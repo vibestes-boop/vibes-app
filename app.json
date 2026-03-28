@@ -1,30 +1,96 @@
 {
   "expo": {
-    "name": "frontend",
-    "slug": "frontend",
+    "name": "Vibes",
+    "slug": "vibes",
     "version": "1.0.0",
+    "scheme": "vibes",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#6D28D9"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": false,
+      "bundleIdentifier": "com.vibesapp.vibes",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "Vibes braucht Kamera-Zugriff für Stories, Posts und Live-Streams.",
+        "NSMicrophoneUsageDescription": "Vibes braucht Mikrofon-Zugriff für Video-Stories und Live-Streams.",
+        "NSPhotoLibraryUsageDescription": "Vibes braucht Zugriff auf deine Fotos für Stories und Posts.",
+        "UIStatusBarStyle": "UIStatusBarStyleLightContent",
+        "UIViewControllerBasedStatusBarAppearance": false,
+        "UIApplicationSceneManifest": {
+          "UIApplicationSupportsMultipleScenes": false
+        }
+      },
+      "entitlements": {
+        "aps-environment": "production"
+      },
+      "buildNumber": "154"
     },
     "android": {
+      "package": "app.vibes.social",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
+        "backgroundColor": "#000000",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE"
+      ],
+      "versionCode": 6
     },
     "web": {
-      "favicon": "./assets/favicon.png"
-    }
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-video",
+      "expo-camera",
+      "expo-image-picker",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#6D28D9",
+          "sounds": []
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "newArchEnabled": true,
+            "buildReactNativeFromSource": true
+          }
+        }
+      ],
+      "./plugins/withRootViewBackground",
+      "@livekit/react-native-expo-plugin"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "02ab536a-5836-4560-a5ec-2dfd6e059f90"
+      }
+    },
+    "owner": "zaurhat"
   }
 }

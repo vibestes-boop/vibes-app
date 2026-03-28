@@ -1,0 +1,78 @@
+{
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": {
+        "simulator": false,
+        "resourceClass": "m-medium"
+      },
+      "android": {
+        "resourceClass": "large",
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleDebug"
+      },
+      "env": {
+        "APP_ENV": "development"
+      }
+    },
+    "development-simulator": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": {
+        "simulator": true
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "ios": {
+        "resourceClass": "m-medium"
+      },
+      "android": {
+        "buildType": "apk",
+        "resourceClass": "large"
+      },
+      "env": {
+        "EAS_BUILD": "1",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://llymwqfgujwkoxzqxrlm.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_chfoBv6Yoha_84qYSjW20A_bAE4pYkg"
+      }
+    },
+    "production": {
+      "autoIncrement": true,
+      "ios": {
+        "resourceClass": "m-medium"
+      },
+      "env": {
+        "APP_ENV": "production",
+        "EAS_BUILD": "1",
+        "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://llymwqfgujwkoxzqxrlm.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_chfoBv6Yoha_84qYSjW20A_bAE4pYkg"
+      }
+    },
+
+    "quarantine-ios": {
+      "autoIncrement": true,
+      "ios": {
+        "resourceClass": "m-medium"
+      },
+      "env": {
+        "APP_ENV": "production",
+        "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
+        "EXPO_PUBLIC_QUARANTINE_UI": "1"
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": {
+        "ascAppId": "6760790424"
+      }
+    }
+  }
+}

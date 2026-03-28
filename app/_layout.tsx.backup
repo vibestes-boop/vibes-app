@@ -1,0 +1,154 @@
+import { useEffect } from 'react';
+import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { Stack, useRouter, useSegments } from 'expo-router';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { supabase } from '@/lib/supabase';
+import { useAuthStore } from '@/lib/authStore';
+import { usePushNotifications } from '@/lib/usePushNotifications';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
+import { OfflineBanner } from '@/components/ui/OfflineBanner';
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60 * 1000,
+      gcTime: 5 * 60 * 1000,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
+
+function AuthGuard() {
+  const { session, initialized, profile, setSession, fetchProfile } = useAuthStore();
+  const segments = useSegments();
+  const router = useRouter();
+
+  // Auth-Listener: absichtlich nur beim Mount (Subscription + initiale Session)
+  useEffect(() => {
+    // Safety-Timeout: Falls getSession() oder fetchProfile() hängt (kein Netzwerk,
+    // Supabase-Timeout bis 60 Sek), wird initialized nach spätestens 5 Sekunden
+    // trotzdem auf true gesetzt → kein ewiger schwarzer Bildschirm.
+    const safetyTimer = setTimeout(() => {
+      useAuthStore.setState({ initialized: true });
+    }, 5000);
+
+    // initialized wird erst NACH fetchProfile gesetzt, damit profile
+    // beim Routing-Effect bereits geladen ist (kein race condition).
+    supabase.auth.getSession()
+      .then(async ({ data: { session } }) => {
+        setSession(session);
+        if (session?.user) await fetchProfile(session.user.id);
+        useAuthStore.setState({ initialized: true });
+      })
+      .catch(() => {
+        // Auch bei Fehler die App initialisieren (ohne Session → Login-Screen)
+        useAuthStore.setState({ initialized: true });
+      })
+      .finally(() => clearTimeout(safetyTimer));
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setSession(session);
+        if (session?.user) await fetchProfile(session.user.id);
+        // Passwort-Reset-Link wurde geklickt → direkt zum Reset-Screen
+        if (event === 'PASSWORD_RECOVERY') {
+          router.replace('/reset-password' as any);
+        }
+      }
+    );
+
+    return () => subscription.unsubscribe();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- kein Re-Subscribe bei Store-/Router-Updates
+  }, []);
+
+  useEffect(() => {
+    if (!initialized) return;
+    // Wenn Session vorhanden, aber Profil noch nicht geladen → warten
+    if (session && !profile) return;
+
+    const inAuthGroup       = segments[0] === '(auth)';
+    const inOnboardingGroup = segments[0] === '(onboarding)';
+
+    if (!session && !inAuthGroup) {
+      router.replace('/(auth)/login');
+    } else if (session && inAuthGroup) {
+      // Neu eingeloggt: Onboarding oder direkt in Tabs
+      if (profile && !profile.onboarding_complete) {
+        router.replace('/(onboarding)');
+      } else {
+        router.replace('/(tabs)');
+      }
+    } else if (session && !inAuthGroup && !inOnboardingGroup) {
+      // App-Start während Session aktiv: Onboarding prüfen
+      if (profile && !profile.onboarding_complete) {
+        router.replace('/(onboarding)');
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- expo-router router-Instanz nicht in deps
+  }, [session, initialized, profile, segments]);
+
+  return null;
+}
+
+function PushNotificationsProvider() {
+  usePushNotifications();
+  return null;
+}
+
+/** Zeigt schwarzen Ladescreen während Supabase-Session geprüft wird.
+ *  Verhindert den weißen/leeren Blitz beim App-Start. */
+function AppSplash() {
+  const initialized = useAuthStore((s) => s.initialized);
+  if (initialized) return null;
+  return (
+    <View style={splashStyles.overlay}>
+      <ActivityIndicator color="#A78BFA" size="large" />
+    </View>
+  );
+}
+
+const splashStyles = StyleSheet.create({
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#000000',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 999,
+  },
+});
+
+function RootLayout() {
+  return (
+    <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <GestureHandlerRootView style={{ flex: 1 }}>
+        <AuthGuard />
+        <PushNotificationsProvider />
+        <AppSplash />
+        <OfflineBanner />
+        <Stack screenOptions={{ headerShown: false, animation: 'none' }}>
+          <Stack.Screen name="(tabs)" />
+          <Stack.Screen name="(auth)" />
+          <Stack.Screen name="(onboarding)" />
+          <Stack.Screen name="create/index" options={{ presentation: 'modal', animation: 'none' }} />
+          <Stack.Screen name="post/[id]" options={{ animation: 'none' }} />
+          <Stack.Screen name="settings" options={{ presentation: 'modal', animation: 'none' }} />
+          <Stack.Screen name="user/[id]" options={{ animation: 'none' }} />
+          <Stack.Screen name="story-viewer" options={{ headerShown: false, animation: 'none', presentation: 'fullScreenModal' }} />
+          <Stack.Screen name="edit-post/[id]" options={{ headerShown: false, presentation: 'modal', animation: 'none' }} />
+          <Stack.Screen name="messages/index" options={{ headerShown: false, animation: 'none' }} />
+          <Stack.Screen name="messages/[id]" options={{ headerShown: false, animation: 'none' }} />
+          <Stack.Screen name="reset-password" options={{ headerShown: false, animation: 'none' }} />
+          <Stack.Screen name="user-posts" options={{ headerShown: false, animation: 'none', presentation: 'fullScreenModal' }} />
+          <Stack.Screen name="live/start" options={{ headerShown: false, presentation: 'fullScreenModal', animation: 'none' }} />
+          <Stack.Screen name="live/host" options={{ headerShown: false, presentation: 'fullScreenModal', animation: 'none', gestureEnabled: false }} />
+          <Stack.Screen name="live/watch/[id]" options={{ headerShown: false, presentation: 'fullScreenModal', animation: 'none' }} />
+        </Stack>
+      </GestureHandlerRootView>
+    </QueryClientProvider>
+    </ErrorBoundary>
+  );
+}
+
+export default RootLayout;

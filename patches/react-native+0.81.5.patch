@@ -1,0 +1,19 @@
+diff --git a/node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios/ReactCommon/RCTTurboModule.mm b/node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios/ReactCommon/RCTTurboModule.mm
+index 2a67797..8bd5877 100644
+--- a/node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios/ReactCommon/RCTTurboModule.mm
++++ b/node_modules/react-native/ReactCommon/react/nativemodule/core/platform/ios/ReactCommon/RCTTurboModule.mm
+@@ -435,7 +435,13 @@ void ObjCTurboModule::performVoidMethodInvocation(
+     @try {
+       [inv invokeWithTarget:strongModule];
+     } @catch (NSException *exception) {
+-      throw convertNSExceptionToJSError(runtime, exception, std::string{moduleName}, methodNameStr);
++      // PATCH: Do not call convertNSExceptionToJSError from a background dispatch queue.
++      // convertNSExceptionToJSError accesses the Hermes JSI runtime which is NOT thread-safe.
++      // Calling it from a non-JS thread while the JS thread is running causes SIGSEGV (memory corruption).
++      // This is a React Native New Architecture bug affecting iOS 18.7+ and iOS 26.x.
++      // We log the exception here instead of propagating it to JavaScript.
++      NSLog(@"[RCTTurboModule] Caught ObjC exception in void method '%s.%s' (not propagated to JS to prevent thread-safety crash): %@ | %@",
++            moduleName, methodNameStr.c_str(), exception.reason, exception.name);
+     } @finally {
+       [retainedObjectsForInvocation removeAllObjects];
+     }

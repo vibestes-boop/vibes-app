@@ -1,0 +1,59 @@
+import { View, Text, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import { X, Send } from 'lucide-react-native';
+import { createStyles as styles } from './createStyles';
+
+export function CreateHeader({
+  title = 'Neuer Vibe',
+  onClose,
+  onPost,
+  uploading,
+}: {
+  title?: string;
+  onClose: () => void;
+  onPost: () => void;
+  uploading: boolean;
+}) {
+  const sendScale = useSharedValue(1);
+  const sendStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: sendScale.value }],
+  }));
+
+  return (
+    <View style={styles.header}>
+      <Pressable onPress={onClose} style={styles.closeBtn}>
+        <X size={20} stroke="#9CA3AF" strokeWidth={2} />
+      </Pressable>
+      <Text style={styles.headerTitle}>{title}</Text>
+      <Animated.View style={sendStyle}>
+        <Pressable
+          onPressIn={() => {
+            sendScale.value = withTiming(0.88, { duration: 80 });
+          }}
+          onPressOut={() => {
+            sendScale.value = withTiming(1, { duration: 80 });
+          }}
+          onPress={onPost}
+          disabled={uploading}
+          style={styles.postBtn}
+        >
+          <LinearGradient
+            colors={['#7C3AED', '#A78BFA']}
+            style={StyleSheet.absoluteFill}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+          />
+          {uploading ? (
+            <ActivityIndicator color="#fff" size="small" />
+          ) : (
+            <>
+              <Send size={14} stroke="#fff" strokeWidth={2.5} />
+              <Text style={styles.postBtnText}>Posten</Text>
+            </>
+          )}
+        </Pressable>
+      </Animated.View>
+    </View>
+  );
+}
