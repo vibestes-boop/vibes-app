@@ -152,7 +152,7 @@ function UserProfileSheet({
             >
               {isFollowing ? (
                 <>
-                  <UserCheck size={16} stroke="#A78BFA" strokeWidth={2} />
+                  <UserCheck size={16} stroke="#22D3EE" strokeWidth={2} />
                   <Text style={[s.profileActionText, s.profileActionTextActive]}>
                     Folge ich
                   </Text>
@@ -278,7 +278,7 @@ export default function ViewerListSheet({ visible, onClose, sessionId, onMention
 
         {/* List */}
         {loading ? (
-          <ActivityIndicator color="#A78BFA" style={{ paddingVertical: 40 }} />
+          <ActivityIndicator color="#22D3EE" style={{ paddingVertical: 40 }} />
         ) : viewers.length === 0 ? (
           <View style={s.emptyState}>
             <Text style={s.emptyEmoji}>👀</Text>
@@ -411,10 +411,10 @@ const s = StyleSheet.create({
     height: 44,
     borderRadius: 22,
     borderWidth: 1.5,
-    borderColor: 'rgba(167,139,250,0.3)',
+    borderColor: 'rgba(34,211,238,0.3)',
   },
   viewerAvatarFallback: {
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#0891B2',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -499,10 +499,10 @@ const s = StyleSheet.create({
     height: 72,
     borderRadius: 36,
     borderWidth: 2,
-    borderColor: 'rgba(167,139,250,0.4)',
+    borderColor: 'rgba(34,211,238,0.4)',
   },
   profileAvatarFallback: {
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#0891B2',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -535,15 +535,15 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#0891B2',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 20,
   },
   profileActionBtnActive: {
-    backgroundColor: 'rgba(167,139,250,0.15)',
+    backgroundColor: 'rgba(34,211,238,0.15)',
     borderWidth: 1,
-    borderColor: 'rgba(167,139,250,0.4)',
+    borderColor: 'rgba(34,211,238,0.4)',
   },
   profileActionText: {
     color: '#fff',
@@ -551,7 +551,7 @@ const s = StyleSheet.create({
     fontWeight: '700',
   },
   profileActionTextActive: {
-    color: '#A78BFA',
+    color: '#22D3EE',
   },
 
   // ── Report Overlay ──

@@ -17,13 +17,81 @@ function mimeToExt(mimeType: string): string {
   return 'jpg';
 }
 
+function isVideo(mimeType: string): boolean {
+  return mimeType.includes('video') || mimeType.includes('mp4') || mimeType.includes('mov') || mimeType.includes('quicktime');
+}
+
 /**
- * iOS-Fix: fetch('file://...').blob() liefert in React Native 0-byte Blobs.
- * Lösung: FormData mit dem lokalen URI direkt — React Native's multipart-Handler
- * liest file:// URIs korrekt und sendet echte Daten.
- * Upload geht per direktem REST-Call (kein Supabase-Client), Auth-Token aus authStore.
+ * Videos → Cloudflare R2 (0€ Egress-Kosten)
+ * Bilder → Supabase Storage (klein, günstig)
+ *
+ * Flow für Videos:
+ * 1. Supabase Edge Function `r2-sign` gibt Presigned PUT URL zurück
+ * 2. App lädt Video direkt zu R2 hoch (kein Secret im Client)
+ * 3. Öffentliche R2-URL wird in posts.media_url gespeichert
  */
-async function uploadToStorage(
+async function uploadVideoToR2(
+  userId: string,
+  localUri: string,
+  mimeType: string,
+  onProgress?: (pct: number) => void,
+): Promise<UploadResult> {
+  onProgress?.(5);
+
+  const ext = mimeToExt(mimeType);
+  const key = `${userId}/${Date.now()}.${ext}`;
+
+  // 1) Presigned URL von Edge Function holen
+  const session = useAuthStore.getState().session;
+  const accessToken = session?.access_token;
+  if (!accessToken) throw new Error('Nicht eingeloggt.');
+
+  const { data: signData, error: signError } = await supabase.functions.invoke('r2-sign', {
+    body: { key, contentType: mimeType },
+  });
+
+  if (signError || !signData?.uploadUrl) {
+    throw new Error(`R2 Sign-Fehler: ${signError?.message ?? 'Keine uploadUrl'}`);
+  }
+
+  const { uploadUrl, publicUrl } = signData as { uploadUrl: string; publicUrl: string };
+  onProgress?.(15);
+
+  // 2) Bug 2 Fix: Presigned PUT erwartet raw binary body, KEIN FormData.
+  //    FormData ändert den Content-Type auf multipart/form-data → R2 SignatureDoesNotMatch.
+  //    Lösung: Datei als Blob laden und direkt als body übergeben.
+  const fileRes = await fetch(localUri);
+  const fileBlob = await fileRes.blob();
+  onProgress?.(20);
+
+  // Simulierter Fortschritt während Upload
+  let simPct = 20;
+  const simInterval = setInterval(() => {
+    simPct = Math.min(simPct + 8, 90);
+    onProgress?.(simPct);
+  }, 600);
+
+  const res = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': mimeType },
+    body: fileBlob,
+  });
+
+  clearInterval(simInterval);
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`R2 Upload fehlgeschlagen (${res.status}): ${text.substring(0, 200)}`);
+  }
+
+  onProgress?.(100);
+  return { url: publicUrl, path: key };
+}
+
+/**
+ * Bilder → Supabase Storage (original, bewährt)
+ */
+async function uploadImageToSupabase(
   bucket: string,
   filePath: string,
   localUri: string,
@@ -41,22 +109,19 @@ async function uploadToStorage(
 
   onProgress?.(20);
 
-  // Auth-Token synchron aus Store holen — kein Supabase-Client-Hang
   const session = useAuthStore.getState().session;
   const accessToken = session?.access_token;
-  if (!accessToken) throw new Error('Nicht eingeloggt — kein Auth-Token vorhanden.');
+  if (!accessToken) throw new Error('Nicht eingeloggt.');
 
   const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
   const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
 
-  // Simulierter Upload-Fortschritt
   let simPct = 20;
   const simInterval = setInterval(() => {
     simPct = Math.min(simPct + 10, 90);
     onProgress?.(simPct);
   }, 500);
 
-  // Content-Type NICHT manuell setzen — React Native setzt die Multipart-Boundary automatisch
   const res = await fetch(
     `${supabaseUrl}/storage/v1/object/${bucket}/${filePath}`,
     {
@@ -81,19 +146,22 @@ async function uploadToStorage(
   return { url: urlData.publicUrl, path: filePath };
 }
 
-/** Post-Medien (Bilder + Videos) → Bucket "posts" */
+/** Post-Medien: Videos → R2, Bilder → Supabase */
 export async function uploadPostMedia(
   userId: string,
   localUri: string,
   mimeType: string = 'image/jpeg',
   onProgress?: (pct: number) => void,
 ): Promise<UploadResult> {
+  if (isVideo(mimeType)) {
+    return uploadVideoToR2(userId, localUri, mimeType, onProgress);
+  }
   const ext = mimeToExt(mimeType);
   const filePath = `${userId}/${Date.now()}.${ext}`;
-  return uploadToStorage('posts', filePath, localUri, mimeType, onProgress);
+  return uploadImageToSupabase('posts', filePath, localUri, mimeType, onProgress);
 }
 
-/** Profilbild → Bucket "avatars" */
+/** Profilbild → Supabase Storage (Avatare sind klein, kein Traffic-Problem) */
 export async function uploadAvatar(
   userId: string,
   localUri: string,
@@ -114,7 +182,6 @@ export async function uploadAvatar(
   const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
   const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
 
-  // upsert=true via query param
   const res = await fetch(
     `${supabaseUrl}/storage/v1/object/avatars/${filePath}?upsert=true`,
     {

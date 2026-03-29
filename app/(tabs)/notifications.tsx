@@ -16,6 +16,7 @@ import {
   MessageCircle,
   UserPlus,
   CheckCheck,
+  Radio,
 } from "lucide-react-native";
 import { impactAsync, ImpactFeedbackStyle } from "expo-haptics";
 import {
@@ -48,21 +49,25 @@ function actionLabel(n: AppNotification): string {
       return n.comment_text
         ? `hat kommentiert: "${n.comment_text}"`
         : "hat deinen Post kommentiert";
+    case "live":
+      return "ist jetzt live 🔴 Schau rein!";
+    case "live_invite":
+      return "hat dich zu einem Live eingeladen 🔴";
     default:
       return "";
   }
 }
 
 function TypeIcon({ type }: { type: AppNotification["type"] }) {
-  const cfg = {
-    like: { Icon: Heart, bg: "rgba(244,114,182,0.18)", color: "#F472B6" },
-    comment: {
-      Icon: MessageCircle,
-      bg: "rgba(167,139,250,0.18)",
-      color: "#A78BFA",
-    },
-    follow: { Icon: UserPlus, bg: "rgba(52,211,153,0.18)", color: "#34D399" },
-  }[type];
+  const cfg = (
+    {
+      like:         { Icon: Heart,         bg: "rgba(244,114,182,0.18)", color: "#F472B6" },
+      comment:      { Icon: MessageCircle,  bg: "rgba(34,211,238,0.18)",  color: "#22D3EE" },
+      follow:       { Icon: UserPlus,       bg: "rgba(52,211,153,0.18)",  color: "#34D399" },
+      live:         { Icon: Radio,          bg: "rgba(239,68,68,0.18)",   color: "#EF4444" },
+      live_invite:  { Icon: Radio,          bg: "rgba(239,68,68,0.18)",   color: "#EF4444" },
+    } as Record<string, { Icon: React.ElementType; bg: string; color: string }>
+  )[type] ?? { Icon: Radio, bg: "rgba(255,200,0,0.15)", color: "#FBBF24" };
 
   return (
     <View style={[styles.typeIcon, { backgroundColor: cfg.bg }]}>
@@ -80,7 +85,13 @@ function NotifCard({ item }: { item: AppNotification }) {
     impactAsync(ImpactFeedbackStyle.Light);
     if (!item.read) markOne(item.id);
 
-    if (item.type === "follow" && item.sender?.id) {
+    if (item.type === "live" || item.type === "live_invite") {
+      // session_id ist in data-Feld der Notification gespeichert
+      const sessionId = item.session_id;
+      if (sessionId) {
+        router.push({ pathname: "/live/watch/[id]", params: { id: sessionId } });
+      }
+    } else if (item.type === "follow" && item.sender?.id) {
       router.push({ pathname: "/user/[id]", params: { id: item.sender.id } });
     } else if (item.post_id) {
       router.push({ pathname: "/post/[id]", params: { id: item.post_id } });
@@ -181,7 +192,7 @@ export default function NotificationsScreen() {
             }}
             style={styles.markAllBtn}
           >
-            <CheckCheck size={15} color="#A78BFA" strokeWidth={2} />
+            <CheckCheck size={15} color="#22D3EE" strokeWidth={2} />
             <Text style={styles.markAllText}>Alle gelesen</Text>
           </Pressable>
         )}
@@ -189,7 +200,7 @@ export default function NotificationsScreen() {
 
       {isLoading ? (
         <View style={styles.center}>
-          <ActivityIndicator color="#A78BFA" size="large" />
+          <ActivityIndicator color="#22D3EE" size="large" />
         </View>
       ) : notifs.length === 0 ? (
         <View style={styles.center}>
@@ -211,7 +222,7 @@ export default function NotificationsScreen() {
             <RefreshControl
               refreshing={isRefetching}
               onRefresh={refetch}
-              tintColor="#A78BFA"
+              tintColor="#22D3EE"
             />
           }
           ItemSeparatorComponent={() => <View style={styles.separator} />}
@@ -248,10 +259,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
-    backgroundColor: "rgba(167,139,250,0.1)",
+    backgroundColor: "rgba(34,211,238,0.1)",
   },
   markAllText: {
-    color: "#A78BFA",
+    color: "#22D3EE",
     fontSize: 12,
     fontWeight: "600",
   },
@@ -272,7 +283,7 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   cardUnread: {
-    backgroundColor: "rgba(167,139,250,0.04)",
+    backgroundColor: "rgba(34,211,238,0.04)",
   },
   unreadDot: {
     position: "absolute",
@@ -281,7 +292,7 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 2.5,
-    backgroundColor: "#A78BFA",
+    backgroundColor: "#22D3EE",
     marginTop: -2.5,
   },
   avatarWrap: {
@@ -297,12 +308,12 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.1)",
   },
   avatarFallback: {
-    backgroundColor: "rgba(167,139,250,0.2)",
+    backgroundColor: "rgba(34,211,238,0.2)",
     alignItems: "center",
     justifyContent: "center",
   },
   avatarInitial: {
-    color: "#A78BFA",
+    color: "#22D3EE",
     fontSize: 18,
     fontWeight: "700",
   },

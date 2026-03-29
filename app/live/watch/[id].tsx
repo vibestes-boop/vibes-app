@@ -35,8 +35,8 @@ import {
   useTracks,
   VideoTrack,
   TrackReferenceOrPlaceholder,
-  Track,
 } from '@livekit/react-native';
+import { Track } from 'livekit-client';  // Track.Source lebt in livekit-client, nicht @livekit/react-native
 import {
   useLiveSession,
   useLiveViewer,
@@ -115,8 +115,8 @@ function RemoteVideoView({ hostAvatar }: { hostAvatar?: string | null }) {
 
   return (
     <VideoTrack
-      trackRef={remoteTrack as TrackReferenceOrPlaceholder}
-      style={StyleSheet.absoluteFill}
+      trackRef={remoteTrack as any}
+      style={StyleSheet.absoluteFill as any}
       objectFit="cover"
     />
   );
@@ -272,13 +272,13 @@ function WatchUI({ sessionId }: { sessionId: string }) {
             onChangeText={setInput}
             onSubmitEditing={submit}
             returnKeyType="send"
-            selectionColor="#A78BFA"
+            selectionColor="#22D3EE"
             maxLength={300}
           />
         </View>
         {input.trim().length > 0 && (
           <Pressable onPress={submit} hitSlop={8} style={s.sendBtn}>
-            <Send size={20} stroke="#A78BFA" strokeWidth={2.2} />
+            <Send size={20} stroke="#22D3EE" strokeWidth={2.2} />
           </Pressable>
         )}
       </View>
@@ -315,7 +315,7 @@ export default function LiveWatchScreen() {
         <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, textAlign: 'center', paddingHorizontal: 32 }}>
           Live Studio läuft nicht in Expo Go.{'\n'}Bitte einen Dev-Build verwenden.
         </Text>
-        <Pressable onPress={() => router.replace('/(tabs)')} style={{ marginTop: 8, backgroundColor: '#7C3AED', borderRadius: 14, paddingHorizontal: 24, paddingVertical: 12 }}>
+        <Pressable onPress={() => router.replace('/(tabs)')} style={{ marginTop: 8, backgroundColor: '#0891B2', borderRadius: 14, paddingHorizontal: 24, paddingVertical: 12 }}>
           <Text style={{ color: '#fff', fontWeight: '700' }}>Zurück</Text>
         </Pressable>
       </View>
@@ -327,7 +327,7 @@ export default function LiveWatchScreen() {
       <View style={[s.root, { alignItems: 'center', justifyContent: 'center', gap: 16 }]}>
         <Text style={{ color: '#fff', fontSize: 16 }}>Verbindung fehlgeschlagen</Text>
         <Pressable onPress={() => router.back()} style={s.backBtnCenter}>
-          <Text style={{ color: '#A78BFA', fontWeight: '700' }}>Zurück</Text>
+          <Text style={{ color: '#22D3EE', fontWeight: '700' }}>Zurück</Text>
         </Pressable>
       </View>
     );
@@ -336,7 +336,7 @@ export default function LiveWatchScreen() {
   if (!lkToken || !lkUrl) {
     return (
       <View style={[s.root, { alignItems: 'center', justifyContent: 'center', gap: 16 }]}>
-        <ActivityIndicator color="#A78BFA" size="large" />
+        <ActivityIndicator color="#22D3EE" size="large" />
         <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>Verbinde mit Live …</Text>
       </View>
     );
@@ -372,7 +372,7 @@ const s = StyleSheet.create({
     width: 110, height: 110, borderRadius: 55,
     borderWidth: 3, borderColor: '#EF4444',
   },
-  hostAvatarFallback: { backgroundColor: '#7C3AED', alignItems: 'center', justifyContent: 'center' },
+  hostAvatarFallback: { backgroundColor: '#0891B2', alignItems: 'center', justifyContent: 'center' },
   hostInitial: { color: '#fff', fontSize: 44, fontWeight: '900' },
   connectingText: { color: 'rgba(255,255,255,0.4)', fontSize: 14, marginTop: 8 },
 
@@ -400,12 +400,12 @@ const s = StyleSheet.create({
   },
   backBtnCenter: {
     paddingHorizontal: 24, paddingVertical: 12,
-    backgroundColor: 'rgba(167,139,250,0.15)',
+    backgroundColor: 'rgba(34,211,238,0.15)',
     borderRadius: 16,
   },
   hostInfo: { flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 },
   hostAvatarSmall: { width: 32, height: 32, borderRadius: 16, overflow: 'hidden' },
-  hostAvatarSmallFallback: { backgroundColor: '#7C3AED', alignItems: 'center', justifyContent: 'center' },
+  hostAvatarSmallFallback: { backgroundColor: '#0891B2', alignItems: 'center', justifyContent: 'center' },
   hostName: { color: '#fff', fontWeight: '700', fontSize: 14 },
   livePill: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
@@ -449,7 +449,7 @@ const s = StyleSheet.create({
     borderRadius: 12, paddingHorizontal: 10, paddingVertical: 5,
     marginBottom: 5, alignSelf: 'flex-start',
   },
-  commentUser: { color: '#A78BFA', fontWeight: '700', fontSize: 13 },
+  commentUser: { color: '#22D3EE', fontWeight: '700', fontSize: 13 },
   commentText: { color: '#fff', fontSize: 13 },
 
   commentBar: {
@@ -459,7 +459,7 @@ const s = StyleSheet.create({
     borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.07)',
   },
   myAvatar: { width: 34, height: 34, borderRadius: 17, overflow: 'hidden', flexShrink: 0 },
-  myAvatarFallback: { backgroundColor: '#7C3AED', alignItems: 'center', justifyContent: 'center' },
+  myAvatarFallback: { backgroundColor: '#0891B2', alignItems: 'center', justifyContent: 'center' },
   inputWrap: {
     flex: 1,
     backgroundColor: 'rgba(255,255,255,0.08)',

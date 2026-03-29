@@ -156,11 +156,11 @@ export function useLiveHost() {
         .then(({ data: followers }) => {
           if (!followers?.length) return;
           const notifications = followers.map((f) => ({
-            user_id: f.follower_id,
-            actor_id: profile.id,
+            recipient_id: f.follower_id,
+            sender_id: profile.id,
             type: 'live',
-            message: title.trim() || null,
             session_id: data.id,
+            comment_text: title.trim() || null,
           }));
           supabase.from('notifications').insert(notifications).then();
         });
@@ -270,6 +270,16 @@ export function useLiveComments(sessionId: string | null) {
 // ─── Echtzeit-Reaktionen ──────────────────────────────────────────────────────
 export function useLiveReactions(sessionId: string | null) {
   const [reactions, setReactions] = useState<LiveReaction[]>([]);
+  // Bug 5 Fix: Alle pending Timeouts tracken für sauberes Cleanup
+  const pendingTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  // Cleanup aller Timeouts wenn Hook unmountet
+  useEffect(() => {
+    return () => {
+      pendingTimers.current.forEach(clearTimeout);
+      pendingTimers.current = [];
+    };
+  }, []);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -292,9 +302,12 @@ export function useLiveReactions(sessionId: string | null) {
           };
           setReactions((prev) => [...prev, reaction]);
           // Reaktion nach 3s wieder entfernen (Animation)
-          setTimeout(() => {
+          const timer = setTimeout(() => {
             setReactions((prev) => prev.filter((r) => r.id !== reaction.id));
+            // Timer aus der Liste entfernen
+            pendingTimers.current = pendingTimers.current.filter((t) => t !== timer);
           }, 3000);
+          pendingTimers.current.push(timer);
         }
       )
       .subscribe();

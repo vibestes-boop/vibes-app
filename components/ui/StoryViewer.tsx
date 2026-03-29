@@ -8,12 +8,13 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming,
-  withSequence, runOnJS, Easing,
+  withSequence, runOnJS, Easing, cancelAnimation,
 } from 'react-native-reanimated';
 import { X, Heart, Send, Share2, UserPlus, UserCheck, Check, Copy, Flag, EyeOff, Download, Search as SearchIcon } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import * as Clipboard from 'expo-clipboard';
 import { BlurView } from 'expo-blur';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import type { StoryGroup, Story } from '@/lib/useStories';
 import { useMarkStoryViewed } from '@/lib/useStories';
@@ -79,15 +80,60 @@ function FallbackVideoStory({ uri, onDurationKnown }: { uri: string; onDurationK
   );
 }
 
+// ── Story Like Hook (story_id → story_likes Tabelle) ─────────────────────────
+function useStoryLike(storyId: string | undefined) {
+  const queryClient = useQueryClient();
+  const userId = useAuthStore((s) => s.profile?.id);
+
+  const { data: liked = false } = useQuery({
+    queryKey: ['story-like', userId, storyId],
+    queryFn: async () => {
+      if (!userId || !storyId) return false;
+      const { data } = await supabase
+        .from('story_likes')
+        .select('id')
+        .eq('story_id', storyId)
+        .eq('user_id', userId)
+        .maybeSingle();
+      return !!data;
+    },
+    enabled: !!userId && !!storyId,
+    staleTime: 1000 * 60,
+  });
+
+  const toggle = useMutation({
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['story-like', userId, storyId] });
+      queryClient.setQueryData(['story-like', userId, storyId], (old: boolean) => !old);
+    },
+    mutationFn: async () => {
+      if (!userId || !storyId) return;
+      if (liked) {
+        await supabase.from('story_likes').delete().eq('story_id', storyId).eq('user_id', userId);
+      } else {
+        await supabase.from('story_likes').insert({ story_id: storyId, user_id: userId });
+      }
+    },
+    onError: () => {
+      // Rollback optimistic update
+      queryClient.setQueryData(['story-like', userId, storyId], liked);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['story-like', userId, storyId] });
+    },
+  });
+
+  return { liked, toggle: toggle.mutate };
+}
+
 // ── Like Button ──────────────────────────────────────────────────────────────
-function LikeBtn() {
-  const [liked, setLiked] = useState(false);
+function LikeBtn({ storyId }: { storyId: string | undefined }) {
+  const { liked, toggle } = useStoryLike(storyId);
   const scale = useSharedValue(1);
   const anim  = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   const press = () => {
-    const next = !liked;
-    setLiked(next);
-    Haptics.impactAsync(next ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light);
+    toggle();
+    Haptics.impactAsync(!liked ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light);
     scale.value = withSequence(
       withTiming(0.65, { duration: 60 }),
       withTiming(1.35, { duration: 80 }),
@@ -201,8 +247,9 @@ function InAppShareModal({
         Linking.openURL(`tg://msg_url?url=${encodeURIComponent(storyLink)}&text=${encodeURIComponent(`Story von @${storyUsername}`)}`).catch(() => Alert.alert('Telegram nicht installiert'));
         break;
       case 'copy':
-        // expo-clipboard oder Alert
-        Alert.alert('Link kopiert', storyLink);
+        Clipboard.setStringAsync(storyLink).catch(() => {});
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+        Alert.alert('Link kopiert ✓', storyLink);
         break;
       case 'more':
         Share.share({ message: `📸 Story von @${storyUsername} auf Vibes: ${storyLink}`, url: storyLink });
@@ -396,6 +443,8 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
 
   useEffect(() => {
     if (isPaused) {
+      // Bug 4 Fix: Animation stoppen + Timer löschen
+      cancelAnimation(progress);
       timerRef.current && clearTimeout(timerRef.current);
       return;
     }
@@ -513,7 +562,7 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
           // Eigene Story: nur Like + Share
           <View style={styles.ownStoryActions}>
             <Text style={styles.ownStoryHint}>Deine Story</Text>
-            <LikeBtn />
+            <LikeBtn storyId={currentStory.id} />
             <Pressable onPress={() => setShareOpen(true)} hitSlop={12}>
               <Share2 size={26} color="#fff" strokeWidth={1.8} />
             </Pressable>
@@ -535,11 +584,11 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
               />
               {replyText.length > 0 && (
                 <Pressable onPress={handleSendReply} hitSlop={8} style={styles.sendIconBtn}>
-                  <Send size={18} color="#A78BFA" />
+                  <Send size={18} color="#22D3EE" />
                 </Pressable>
               )}
             </BlurView>
-            <LikeBtn />
+            <LikeBtn storyId={currentStory.id} />
             <Pressable onPress={() => { Keyboard.dismiss(); setShareOpen(true); }} hitSlop={12}>
               <Share2 size={26} color="#fff" strokeWidth={1.8} />
             </Pressable>
@@ -585,8 +634,8 @@ const styles = StyleSheet.create({
   header:              { position: 'absolute', left: 12, right: 12, flexDirection: 'row', alignItems: 'center', gap: 10, zIndex: 10 },
   headerLeft:          { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
   headerAvatar:        { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.6)' },
-  headerAvatarFallback:{ backgroundColor: 'rgba(167,139,250,0.3)', alignItems: 'center', justifyContent: 'center' },
-  headerAvatarText:    { fontSize: 15, fontWeight: '700', color: '#A78BFA' },
+  headerAvatarFallback:{ backgroundColor: 'rgba(34,211,238,0.3)', alignItems: 'center', justifyContent: 'center' },
+  headerAvatarText:    { fontSize: 15, fontWeight: '700', color: '#22D3EE' },
   headerUsername:      { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
   headerTime:          { fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 1 },
   closeBtn:            { padding: 4 },
@@ -634,19 +683,19 @@ const ss = StyleSheet.create({
   userAvatarWrap:  { position: 'relative' },
   userAvatarChosen:{ },
   userAvatar:      { width: 54, height: 54, borderRadius: 27, borderWidth: 2, borderColor: 'rgba(255,255,255,0.15)' },
-  userAvatarFallback: { backgroundColor: 'rgba(167,139,250,0.25)', alignItems: 'center', justifyContent: 'center' },
-  userAvatarText:  { color: '#A78BFA', fontSize: 20, fontWeight: '700' },
+  userAvatarFallback: { backgroundColor: 'rgba(34,211,238,0.25)', alignItems: 'center', justifyContent: 'center' },
+  userAvatarText:  { color: '#22D3EE', fontSize: 20, fontWeight: '700' },
   checkBadge: {
     position: 'absolute', bottom: 0, right: 0,
     width: 20, height: 20, borderRadius: 10,
-    backgroundColor: '#A78BFA', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#22D3EE', alignItems: 'center', justifyContent: 'center',
     borderWidth: 2, borderColor: '#111118',
   },
   userLabel:       { color: 'rgba(255,255,255,0.7)', fontSize: 11, textAlign: 'center', width: 62 },
   emptyUsers:      { color: 'rgba(255,255,255,0.3)', fontSize: 13, paddingHorizontal: 4, paddingVertical: 6 },
   sendBtn: {
     marginHorizontal: 18, marginTop: 10,
-    backgroundColor: '#A78BFA', borderRadius: 12,
+    backgroundColor: '#22D3EE', borderRadius: 12,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     paddingVertical: 12, gap: 8,
   },

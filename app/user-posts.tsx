@@ -43,7 +43,7 @@ import {
   Eye,
   Send,
 } from 'lucide-react-native';
-import { Video, ResizeMode, type AVPlaybackStatus } from 'expo-av';
+import { FallbackFeedVideo, NativeFeedVideo, USE_EXPO_VIDEO } from '@/components/feed/FeedVideo';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/lib/authStore';
 import { useQueryClient } from '@tanstack/react-query';
@@ -177,7 +177,7 @@ function CommentInputBar({
           returnKeyType="send"
           blurOnSubmit={false}
           maxLength={500}
-          selectionColor="#A78BFA"
+          selectionColor="#22D3EE"
         />
       </Pressable>
 
@@ -185,8 +185,8 @@ function CommentInputBar({
       {text.trim().length > 0 ? (
         <Pressable onPress={submit} disabled={isPending} style={s.commentSendBtn} hitSlop={8}>
           {isPending
-            ? <ActivityIndicator size={16} color="#A78BFA" />
-            : <Send size={20} stroke="#A78BFA" strokeWidth={2.2} />
+            ? <ActivityIndicator size={16} color="#22D3EE" />
+            : <Send size={20} stroke="#22D3EE" strokeWidth={2.2} />
           }
         </Pressable>
       ) : (
@@ -224,11 +224,7 @@ function PostCard({
   const insets = useSafeAreaInsets();
   const [progress, setProgress] = useState(0);
 
-  const handlePlaybackStatus = useCallback((status: AVPlaybackStatus) => {
-    if (!status.isLoaded) return;
-    const dur = status.durationMillis;
-    if (dur && dur > 0) setProgress(status.positionMillis / dur);
-  }, []);
+  const handleProgress = useCallback((p: number) => setProgress(p), []);
 
   const date = item.created_at
     ? new Date(item.created_at).toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -241,15 +237,21 @@ function PostCard({
       {/* Media */}
       {item.media_url ? (
         isVideo ? (
-          <Video
-            source={{ uri: item.media_url }}
-            style={StyleSheet.absoluteFill}
-            resizeMode={ResizeMode.COVER}
-            isLooping
-            shouldPlay={isVisible}
-            isMuted={isMuted}
-            onPlaybackStatusUpdate={handlePlaybackStatus}
-          />
+          USE_EXPO_VIDEO ? (
+            <NativeFeedVideo
+              uri={item.media_url}
+              shouldPlay={isVisible}
+              isMuted={isMuted}
+              onProgress={handleProgress}
+            />
+          ) : (
+            <FallbackFeedVideo
+              uri={item.media_url}
+              shouldPlay={isVisible}
+              isMuted={isMuted}
+              onProgress={handleProgress}
+            />
+          )
         ) : (
           <Image source={{ uri: item.media_url }} style={StyleSheet.absoluteFill} resizeMode="cover" />
         )
@@ -265,7 +267,7 @@ function PostCard({
       {isOwner && (
         <View style={[s.ownerRow, { top: insets.top + 8 }]}>
           <Pressable onPress={() => onEdit(item.id)} style={s.ownerBtn} hitSlop={8}>
-            <Pencil size={17} stroke="#A78BFA" strokeWidth={2} />
+            <Pencil size={17} stroke="#22D3EE" strokeWidth={2} />
           </Pressable>
           <Pressable onPress={() => onDelete(item.id)} style={[s.ownerBtn, s.ownerBtnDanger]} hitSlop={8}>
             <Trash2 size={17} stroke="#F87171" strokeWidth={2} />
@@ -428,7 +430,7 @@ export default function UserPostsScreen() {
   if (loading) {
     return (
       <View style={s.center}>
-        <ActivityIndicator color="#A78BFA" size="large" />
+        <ActivityIndicator color="#22D3EE" size="large" />
       </View>
     );
   }
@@ -549,7 +551,7 @@ const s = StyleSheet.create({
   ownerRow: { position: 'absolute', right: 16, zIndex: 20, flexDirection: 'row', gap: 8 },
   ownerBtn: {
     width: 38, height: 38, borderRadius: 19,
-    backgroundColor: 'rgba(167,139,250,0.15)',
+    backgroundColor: 'rgba(34,211,238,0.15)',
     alignItems: 'center', justifyContent: 'center',
   },
   ownerBtnDanger: { backgroundColor: 'rgba(248,113,113,0.15)' },
@@ -567,7 +569,7 @@ const s = StyleSheet.create({
   authorRow:  { flexDirection: 'row', alignItems: 'center', gap: 10 },
   avatarSmall: {
     width: 36, height: 36, borderRadius: 18,
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#0891B2',
     alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
   },
   avatarSmallImg: { width: '100%', height: '100%', resizeMode: 'cover' },
@@ -578,10 +580,10 @@ const s = StyleSheet.create({
   tagsRow:     { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   tagChip: {
     paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12,
-    backgroundColor: 'rgba(167,139,250,0.15)',
-    borderWidth: 1, borderColor: 'rgba(167,139,250,0.3)',
+    backgroundColor: 'rgba(34,211,238,0.15)',
+    borderWidth: 1, borderColor: 'rgba(34,211,238,0.3)',
   },
-  tagText: { color: '#A78BFA', fontSize: 12, fontWeight: '600' },
+  tagText: { color: '#22D3EE', fontSize: 12, fontWeight: '600' },
 
   // Kommentar-Eingabeleiste
   commentBar: {
@@ -596,7 +598,7 @@ const s = StyleSheet.create({
   },
   commentAvatar: {
     width: 34, height: 34, borderRadius: 17,
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#0891B2',
     alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
     flexShrink: 0,
   },
@@ -641,7 +643,7 @@ const s = StyleSheet.create({
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#A78BFA',
+    backgroundColor: '#22D3EE',
     borderRadius: 1,
   },
 });

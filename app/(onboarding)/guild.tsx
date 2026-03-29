@@ -18,7 +18,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/lib/authStore';
 
 const GUILD_COLORS: Record<string, [string, string]> = {
-  'Pod Alpha':   ['#7C3AED', '#A78BFA'],
+  'Pod Alpha':   ['#0891B2', '#22D3EE'],
   'Pod Beta':    ['#0EA5E9', '#38BDF8'],
   'Pod Gamma':   ['#059669', '#34D399'],
   'Pod Delta':   ['#D97706', '#FBBF24'],
@@ -88,7 +88,7 @@ export default function OnboardingGuild() {
     transform: [{ translateY: (1 - btnOpacity.value) * 16 }],
   }));
 
-  const colors = guildName ? (GUILD_COLORS[guildName] ?? ['#7C3AED', '#A78BFA']) : ['#7C3AED', '#A78BFA'];
+  const colors = guildName ? (GUILD_COLORS[guildName] ?? ['#0891B2', '#22D3EE']) : ['#0891B2', '#22D3EE'];
 
   const handleFinish = async () => {
     if (!profile?.id) return;
@@ -115,8 +115,9 @@ export default function OnboardingGuild() {
 
       <View style={[styles.inner, { paddingTop: insets.top + 32, paddingBottom: insets.bottom + 32 }]}>
 
-        {/* Step indicator */}
+        {/* Step indicator — 4 Schritte */}
         <View style={styles.stepRow}>
+          <View style={[styles.step, styles.stepDone]} />
           <View style={[styles.step, styles.stepDone]} />
           <View style={[styles.step, styles.stepDone]} />
           <View style={[styles.step, styles.stepActive]} />
@@ -230,8 +231,8 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: 'rgba(255,255,255,0.15)',
   },
-  stepDone: { backgroundColor: '#A78BFA' },
-  stepActive: { backgroundColor: '#7C3AED' },
+  stepDone: { backgroundColor: '#22D3EE' },
+  stepActive: { backgroundColor: '#0891B2' },
   title: {
     fontSize: 32,
     fontWeight: '800',

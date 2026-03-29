@@ -17,14 +17,14 @@ export type Category = {
 };
 
 export const CATEGORIES: Category[] = [
-  { id: null,           label: 'For You',      emoji: '✦',  gradient: ['#7C3AED', '#A78BFA'] },
+  { id: null,           label: 'For You',      emoji: '✦',  gradient: ['#0891B2', '#22D3EE'] },
   { id: 'tech',         label: 'Tech',         emoji: '💻', gradient: ['#0EA5E9', '#38BDF8'] },
   { id: 'design',       label: 'Design',       emoji: '🎨', gradient: ['#EC4899', '#F9A8D4'] },
   { id: 'art',          label: 'Art',          emoji: '🖼️',  gradient: ['#F59E0B', '#FDE68A'] },
   { id: 'travel',       label: 'Travel',       emoji: '✈️',  gradient: ['#10B981', '#6EE7B7'] },
-  { id: 'architecture', label: 'Architecture', emoji: '🏛️',  gradient: ['#6366F1', '#A5B4FC'] },
+  { id: 'architecture', label: 'Architecture', emoji: '🏛️',  gradient: ['#0891B2', '#67E8F9'] },
   { id: 'fashion',      label: 'Fashion',      emoji: '👗', gradient: ['#F43F5E', '#FDA4AF'] },
-  { id: 'music',        label: 'Music',        emoji: '🎵', gradient: ['#8B5CF6', '#C4B5FD'] },
+  { id: 'music',        label: 'Music',        emoji: '🎵', gradient: ['#22D3EE', '#A5F3FC'] },
   { id: 'food',         label: 'Food',         emoji: '🍜', gradient: ['#EF4444', '#FCA5A5'] },
   { id: 'sport',        label: 'Sport',        emoji: '⚡', gradient: ['#F97316', '#FED7AA'] },
 ];
@@ -48,7 +48,7 @@ function ForYouPill({ isActive, onPress }: { isActive: boolean; onPress: () => v
       <Pressable onPress={handlePress}>
         {isActive ? (
           <LinearGradient
-            colors={['#7C3AED', '#A78BFA']}
+            colors={['#0891B2', '#22D3EE']}
             style={s.forYouActive}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
@@ -58,7 +58,7 @@ function ForYouPill({ isActive, onPress }: { isActive: boolean; onPress: () => v
           </LinearGradient>
         ) : (
           <View style={[s.forYouInactive, { backgroundColor: 'rgba(20,15,35,0.85)' }]}>
-            <Text style={[s.forYouGlyph, { color: 'rgba(167,139,250,0.55)' }]}>✦</Text>
+            <Text style={[s.forYouGlyph, { color: 'rgba(34,211,238,0.55)' }]}>✦</Text>
             <Text style={s.forYouTextInactive}>For You</Text>
           </View>
         )}
@@ -176,7 +176,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 13,
     paddingVertical: 8,
     borderRadius: 20,
-    shadowColor: '#7C3AED',
+    shadowColor: '#0891B2',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.55,
     shadowRadius: 10,
@@ -191,7 +191,7 @@ const s = StyleSheet.create({
     borderRadius: 20,
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(167,139,250,0.2)',
+    borderColor: 'rgba(34,211,238,0.2)',
   },
   forYouGlyph: {
     fontSize: 11,
@@ -205,7 +205,7 @@ const s = StyleSheet.create({
     letterSpacing: -0.2,
   },
   forYouTextInactive: {
-    color: 'rgba(167,139,250,0.6)',
+    color: 'rgba(34,211,238,0.6)',
     fontSize: 13,
     fontWeight: '600',
   },
@@ -232,7 +232,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
     borderRadius: 20,
-    shadowColor: '#A78BFA',
+    shadowColor: '#22D3EE',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.35,
     shadowRadius: 6,

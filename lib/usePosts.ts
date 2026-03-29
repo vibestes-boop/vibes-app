@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { supabase } from './supabase';
 import { useVibeStore } from './store';
+import { useAuthStore } from './authStore';
 
 export type PostWithAuthor = {
   id: string;
@@ -52,7 +53,7 @@ export function useVibeFeed(activeTag: string | null = null) {
       }
 
       // Fallback: direkter Query wenn RPC fehlt oder leer zurückgibt
-      const query = supabase
+      let query = supabase
         .from('posts')
         .select(`
           id, author_id, caption, media_url, media_type,
@@ -60,12 +61,13 @@ export function useVibeFeed(activeTag: string | null = null) {
           tags, guild_id, is_guild_post, created_at,
           profiles!author_id (username, avatar_url)
         `)
-        .is('is_guild_post', false)
+        .is('is_guild_post', false)   // ← Fix: war vorher im Fallback nicht gesetzt
         .order('created_at', { ascending: false })
         .range(offset, offset + FEED_PAGE_SIZE - 1);
 
       if (activeTag) {
-        query.contains('tags', [activeTag]);
+        // Bug 11 Fix: Builder gibt neue Instanz zurück — reassignment nötig
+        query = query.contains('tags', [activeTag]);
       }
 
       const { data: fallbackData, error: fallbackError } = await query;
@@ -95,21 +97,60 @@ export type GuildPost = {
   username: string | null;
   avatar_url: string | null;
   author_guild_id: string | null;
+  comment_count: number;  // Batch-geladen, kein N+1
+  like_count: number;     // Batch-geladen, kein N+1
+  is_liked: boolean;      // Batch-geladen, kein N+1
 };
 
 export function useGuildFeed() {
+  const userId = useAuthStore((s) => s.profile?.id) ?? null;
+
   return useQuery({
-    queryKey: ['guild-feed'],
+    queryKey: ['guild-feed', userId],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_guild_feed', {
         result_limit: 20,
       });
       if (error) throw error;
-      return (data as GuildPost[]) ?? [];
+      const posts = (data as Omit<GuildPost, 'comment_count' | 'like_count' | 'is_liked'>[]) ?? [];
+
+      if (posts.length === 0) return [] as GuildPost[];
+
+      const postIds = posts.map((p) => p.id);
+
+      // ── Batch-Fetch aller Counts in ZWEI parallelen Calls, nicht 40 ──
+      const [commentCountRes, likeCountRes, likedRes] = await Promise.all([
+        supabase.rpc('get_post_comment_counts', { p_post_ids: postIds }),
+        supabase.rpc('get_post_like_counts',    { p_post_ids: postIds }),
+        userId
+          ? supabase.from('likes').select('post_id').eq('user_id', userId).in('post_id', postIds)
+          : Promise.resolve({ data: [] as { post_id: string }[] }),
+      ]);
+
+      const commentMap: Record<string, number> = {};
+      for (const row of (commentCountRes.data ?? []) as { post_id: string; cnt: number }[]) {
+        commentMap[row.post_id] = Number(row.cnt ?? 0);
+      }
+
+      const likeMap: Record<string, number> = {};
+      for (const row of (likeCountRes.data ?? []) as { post_id: string; cnt: number }[]) {
+        likeMap[row.post_id] = Number(row.cnt ?? 0);
+      }
+
+      const likedSet = new Set<string>(
+        ((likedRes as any).data ?? []).map((r: { post_id: string }) => r.post_id)
+      );
+
+      return posts.map((p) => ({
+        ...p,
+        comment_count: commentMap[p.id] ?? 0,
+        like_count:    likeMap[p.id]    ?? 0,
+        is_liked:      likedSet.has(p.id),
+      })) as GuildPost[];
     },
-    staleTime: 1000 * 60 * 3,   // 3 Minuten Cache — kein Refetch bei jedem Tab-Wechsel
-    gcTime:    1000 * 60 * 10,  // 10 Minuten im Speicher halten
-    refetchOnWindowFocus: false, // kein automatisches Refetch im Hintergrund
+    staleTime: 1000 * 60 * 3,
+    gcTime:    1000 * 60 * 10,
+    refetchOnWindowFocus: false,
   });
 }
 

@@ -59,7 +59,7 @@ export function ExploreSearchBar({
       >
         <SlidersHorizontal
           size={18}
-          color={sortMode !== 'forYou' ? '#A78BFA' : 'rgba(255,255,255,0.55)'}
+          color={sortMode !== 'forYou' ? '#22D3EE' : 'rgba(255,255,255,0.55)'}
           strokeWidth={2}
         />
         {sortMode !== 'forYou' && <View style={styles.filterDot} />}

@@ -132,21 +132,20 @@ export const guildStyles = StyleSheet.create({
   },
 
   card: {
-    marginHorizontal: 16,
-    borderRadius: 20,
+    // Full-width edge-to-edge (Instagram style)
+    marginHorizontal: 0,
+    marginBottom: 2,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
   },
   cardBlur: {
-    padding: 16,
     overflow: 'hidden',
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    marginBottom: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
   },
   avatarWrap: {
     borderRadius: 20,
@@ -198,11 +197,11 @@ export const guildStyles = StyleSheet.create({
     flexShrink: 1,
   },
   mediaWrap: {
-    borderRadius: 14,
+    // Full display width, no radius (Instagram style)
     overflow: 'hidden',
     marginBottom: 0,
-    marginHorizontal: -16,
-    height: GUILD_SCREEN_WIDTH * 0.85,
+    // 4:5 portrait ratio = Instagram standard (1080×1350)
+    height: GUILD_SCREEN_WIDTH * 1.25,
   },
   mediaThumb: {
     width: '100%',
@@ -211,6 +210,7 @@ export const guildStyles = StyleSheet.create({
   captionWrap: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    paddingHorizontal: 14,
     marginTop: 10,
     marginBottom: 4,
   },
@@ -223,7 +223,8 @@ export const guildStyles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
-    marginBottom: 4,
+    paddingHorizontal: 14,
+    marginBottom: 10,
   },
   tag: {
     backgroundColor: 'rgba(255,255,255,0.07)',
@@ -232,7 +233,7 @@ export const guildStyles = StyleSheet.create({
     paddingVertical: 3,
   },
   tagText: {
-    color: '#6366F1',
+    color: '#0891B2',
     fontSize: 11,
     fontWeight: '600',
   },
@@ -240,7 +241,9 @@ export const guildStyles = StyleSheet.create({
     flexDirection: 'row',
     gap: 20,
     alignItems: 'center',
-    paddingTop: 4,
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 4,
   },
   actionBtn: {
     flexDirection: 'row',

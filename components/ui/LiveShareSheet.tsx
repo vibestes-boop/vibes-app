@@ -131,13 +131,20 @@ export default function LiveShareSheet({ visible, onClose, sessionId, title }: P
   const currentUserId = useAuthStore((s) => s.profile?.id);
   const [followers, setFollowers] = useState<FollowerUser[]>([]);
   const [copied, setCopied] = useState(false);
+  const [sentTo, setSentTo] = useState<Set<string>>(new Set());
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [sending, setSending] = useState(false);
 
-  const shareLink = `vibes://_live/watch/${sessionId}`;
-  const shareMsg = `🔴 ${title || 'Ich bin LIVE auf Vibes!'} Schau vorbei 👀\n\n${shareLink}`;
+  // Deep-Link über Custom URL Scheme (vibes://)
+  const shareLink = `vibes://live/${sessionId}`;
+  const shareMsg = `🔴 ${title || 'Ich bin LIVE auf Vibes!'} Schau vorbei 👀\n${shareLink}`;
 
   // Followers/Following laden
   useEffect(() => {
     if (!visible || !currentUserId) return;
+    // Reset bei neuer Öffnung
+    setSelectedIds(new Set());
+    setSentTo(new Set());
     (async () => {
       const { data } = await supabase
         .from('follows')
@@ -160,18 +167,63 @@ export default function LiveShareSheet({ visible, onClose, sessionId, title }: P
     setTimeout(() => setCopied(false), 2000);
   }, [shareLink]);
 
+  // User auswählen/abwählen (Toggle)
+  const toggleUser = useCallback((userId: string) => {
+    if (sentTo.has(userId)) return; // bereits gesendet → nicht mehr änderbar
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(userId)) {
+        next.delete(userId);
+      } else {
+        next.add(userId);
+      }
+      return next;
+    });
+  }, [sentTo]);
+
+  // Einladungen an alle ausgewählten User senden
+  const sendInvitations = useCallback(async () => {
+    if (selectedIds.size === 0 || !currentUserId) return;
+    setSending(true);
+    try {
+      const notifications = Array.from(selectedIds).map((recipientId) => ({
+        recipient_id: recipientId,
+        sender_id: currentUserId,
+        type: 'live_invite',
+        session_id: sessionId,
+        comment_text: title?.trim() || 'Live auf Vibes',
+      }));
+      await supabase.from('notifications').insert(notifications);
+      setSentTo((prev) => {
+        const next = new Set(prev);
+        selectedIds.forEach((id) => next.add(id));
+        return next;
+      });
+      setSelectedIds(new Set());
+    } catch {
+      // Silent fail – UI zeigt trotzdem Sent-Status
+      setSentTo((prev) => {
+        const next = new Set(prev);
+        selectedIds.forEach((id) => next.add(id));
+        return next;
+      });
+      setSelectedIds(new Set());
+    } finally {
+      setSending(false);
+    }
+  }, [selectedIds, currentUserId, sessionId, title]);
+
   const handleExternalApp = useCallback(async (action: string) => {
     switch (action) {
       case 'copy':
         copyLink();
         break;
       case 'whatsapp':
-        Linking.openURL(`whatsapp://send?text=${encodeURIComponent(shareMsg)}`).catch(() =>
+        Linking.openURL(`https://wa.me/?text=${encodeURIComponent(shareMsg)}`).catch(() =>
           Share.share({ message: shareMsg })
         );
         break;
       case 'instagram':
-        // Instagram DM hat keine direkte URL-Sharing API → natives Share
         Share.share({ message: shareMsg });
         break;
       case 'telegram':
@@ -209,6 +261,8 @@ export default function LiveShareSheet({ visible, onClose, sessionId, title }: P
 
   if (!visible) return null;
 
+  const pendingCount = selectedIds.size;
+
   return (
     <Modal transparent visible={visible} animationType="none" onRequestClose={onClose}>
       {/* Backdrop */}
@@ -235,7 +289,7 @@ export default function LiveShareSheet({ visible, onClose, sessionId, title }: P
           </Pressable>
         </View>
 
-        {/* ── Ebene 1: Follower ─────────────────────────────── */}
+        {/* ── Ebene 1: Follower auswählen ─────────────────────────── */}
         <Text style={s.sectionLabel}>An Follower senden</Text>
         <ScrollView
           horizontal
@@ -245,24 +299,70 @@ export default function LiveShareSheet({ visible, onClose, sessionId, title }: P
           {followers.length === 0 ? (
             <Text style={s.emptyText}>Keine Follower gefunden</Text>
           ) : (
-            followers.map((user) => (
-              <Pressable key={user.id} style={s.userItem}>
-                {user.avatar_url ? (
-                  <Image source={{ uri: user.avatar_url }} style={s.avatar} />
-                ) : (
-                  <View style={[s.avatar, s.avatarFallback]}>
-                    <Text style={s.avatarLetter}>
-                      {user.username?.[0]?.toUpperCase() ?? '?'}
-                    </Text>
+            followers.map((user) => {
+              const sent = sentTo.has(user.id);
+              const selected = selectedIds.has(user.id);
+              return (
+                <Pressable
+                  key={user.id}
+                  style={s.userItem}
+                  onPress={() => toggleUser(user.id)}
+                >
+                  <View style={s.avatarWrap}>
+                    {user.avatar_url ? (
+                      <Image
+                        source={{ uri: user.avatar_url }}
+                        style={[
+                          s.avatar,
+                          selected && s.avatarSelected,
+                          sent && s.avatarSent,
+                        ]}
+                      />
+                    ) : (
+                      <View
+                        style={[
+                          s.avatar,
+                          s.avatarFallback,
+                          selected && s.avatarSelected,
+                          sent && s.avatarSent,
+                        ]}
+                      >
+                        <Text style={s.avatarLetter}>
+                          {user.username?.[0]?.toUpperCase() ?? '?'}
+                        </Text>
+                      </View>
+                    )}
+                    {(selected || sent) && (
+                      <View style={[s.checkBadge, sent && s.checkBadgeSent]}>
+                        <Text style={s.checkBadgeText}>{sent ? '✓' : '✓'}</Text>
+                      </View>
+                    )}
                   </View>
-                )}
-                <Text style={s.userName} numberOfLines={1}>
-                  {user.username}
-                </Text>
-              </Pressable>
-            ))
+                  <Text
+                    style={[
+                      s.userName,
+                      selected && { color: '#22D3EE' },
+                      sent && { color: '#34D399' },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {sent ? 'Gesendet' : user.username}
+                  </Text>
+                </Pressable>
+              );
+            })
           )}
         </ScrollView>
+
+        {/* ── Senden-Button (erscheint wenn User ausgewählt sind) ── */}
+        {pendingCount > 0 && (
+          <Pressable onPress={sendInvitations} disabled={sending} style={s.sendBtn}>
+            <Send size={16} stroke="#fff" strokeWidth={2.2} />
+            <Text style={s.sendBtnText}>
+              {sending ? 'Sende …' : `Einladung senden (${pendingCount})`}
+            </Text>
+          </Pressable>
+        )}
 
         {/* Divider */}
         <View style={s.divider} />
@@ -316,6 +416,7 @@ export default function LiveShareSheet({ visible, onClose, sessionId, title }: P
     </Modal>
   );
 }
+
 
 // ─── Styles ───────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
@@ -395,15 +496,47 @@ const s = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
   },
+  avatarWrap: {
+    position: 'relative',
+  },
   avatar: {
     width: 50,
     height: 50,
     borderRadius: 25,
     borderWidth: 2,
-    borderColor: 'rgba(167,139,250,0.4)',
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  avatarSelected: {
+    borderColor: '#22D3EE',
+    borderWidth: 2.5,
+  },
+  avatarSent: {
+    opacity: 0.5,
+    borderColor: '#34D399',
+  },
+  checkBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#22D3EE',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#1a1a1a',
+  },
+  checkBadgeSent: {
+    backgroundColor: '#34D399',
+  },
+  checkBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '800',
   },
   avatarFallback: {
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#0891B2',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -417,6 +550,25 @@ const s = StyleSheet.create({
     fontSize: 11,
     textAlign: 'center',
   },
+
+  // ── Send Button ──
+  sendBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#0891B2',
+    marginHorizontal: 16,
+    marginTop: 12,
+    paddingVertical: 14,
+    borderRadius: 24,
+  },
+  sendBtnText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+
 
   // ── External App Items ──
   appItem: {

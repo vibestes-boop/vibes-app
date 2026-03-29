@@ -126,3 +126,49 @@ export function useFollow(targetUserId: string | null, batchIsFollowing?: boolea
 
   return { isFollowing, toggle, isLoading, isOwnProfile };
 }
+
+// ── Follower-Liste ─────────────────────────────────────────────────────────────
+export type FollowUser = {
+  id: string;
+  username: string;
+  avatar_url: string | null;
+  bio: string | null;
+};
+
+export function useFollowerList(userId: string | null) {
+  return useQuery<FollowUser[]>({
+    queryKey: ['followers', userId],
+    queryFn: async () => {
+      if (!userId) return [];
+      const { data, error } = await supabase
+        .from('follows')
+        .select('follower:follower_id(id, username, avatar_url, bio)')
+        .eq('following_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      return ((data ?? []).map((r: any) => r.follower).filter(Boolean)) as FollowUser[];
+    },
+    enabled: !!userId,
+    staleTime: 1000 * 30,
+  });
+}
+
+export function useFollowingList(userId: string | null) {
+  return useQuery<FollowUser[]>({
+    queryKey: ['following', userId],
+    queryFn: async () => {
+      if (!userId) return [];
+      const { data, error } = await supabase
+        .from('follows')
+        .select('following:following_id(id, username, avatar_url, bio)')
+        .eq('follower_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      return ((data ?? []).map((r: any) => r.following).filter(Boolean)) as FollowUser[];
+    },
+    enabled: !!userId,
+    staleTime: 1000 * 30,
+  });
+}

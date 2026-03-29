@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { View, ActivityIndicator, Alert } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { launchImageLibraryAsync } from "expo-image-picker";
 import { GuildLeaderboard } from "@/components/ui/GuildLeaderboard";
 import { StoriesRow } from "@/components/ui/StoriesRow";
@@ -38,6 +38,12 @@ export default function GuildScreen() {
 
   const { data: memberCount } = useGuildMemberCount(profile?.guild_id);
 
+  // Auto-Refetch wenn User zum Guild-Tab zurückkehrt (wie im Feed-Screen)
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch]),
+  );
   const openViewer = useCallback(
     (group: StoryGroup) => {
       storeOpen(group, storyGroups);
@@ -49,7 +55,7 @@ export default function GuildScreen() {
   const guildName = guild?.name ?? "Dein Pod";
   const guildColorPair = useMemo(
     () =>
-      (GUILD_COLORS[guildName] ?? ["#6366F1", "#8B5CF6"]) as [string, string],
+      (GUILD_COLORS[guildName] ?? ["#0891B2", "#22D3EE"]) as [string, string],
     [guildName],
   );
 

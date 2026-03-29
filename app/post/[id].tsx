@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming, withSequence } from 'react-native-reanimated';
 import { ArrowLeft, Heart, MessageCircle, Bookmark, Share2, Trash2, Pencil, Volume2, VolumeX } from 'lucide-react-native';
-import { Video, ResizeMode } from 'expo-av';
+import { FallbackFeedVideo, NativeFeedVideo, USE_EXPO_VIDEO } from '@/components/feed/FeedVideo';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/lib/authStore';
 import { useQueryClient } from '@tanstack/react-query';
@@ -193,7 +193,7 @@ export default function PostDetailScreen() {
   if (loading && !hasPreview) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color="#A78BFA" size="large" />
+        <ActivityIndicator color="#22D3EE" size="large" />
       </View>
     );
   }
@@ -211,14 +211,14 @@ export default function PostDetailScreen() {
   }
 
   // Daten: entweder aus DB (post) oder aus Preview-Params
-  const displayMediaUrl    = post?.media_url    ?? previewUrl    ?? null;
-  const displayMediaType   = post?.media_type   ?? previewType   ?? 'image';
-  const displayCaption     = post?.caption      ?? previewCaption ?? null;
-  const displayAuthorId    = post?.author_id    ?? null;
-  const displayCreatedAt   = post?.created_at   ?? null;
-  const displayTags        = post?.tags         ?? [];
-  const displayUsername    = post?.profiles?.username    ?? null;
-  const displayAvatarUrl   = post?.profiles?.avatar_url ?? null;
+  const displayMediaUrl = post?.media_url ?? previewUrl ?? null;
+  const displayMediaType = post?.media_type ?? previewType ?? 'image';
+  const displayCaption = post?.caption ?? previewCaption ?? null;
+  const displayAuthorId = post?.author_id ?? null;
+  const displayCreatedAt = post?.created_at ?? null;
+  const displayTags = post?.tags ?? [];
+  const displayUsername = post?.profiles?.username ?? null;
+  const displayAvatarUrl = post?.profiles?.avatar_url ?? null;
 
   const formattedDate = displayCreatedAt
     ? new Date(displayCreatedAt).toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -229,14 +229,21 @@ export default function PostDetailScreen() {
       {/* Hintergrund */}
       {displayMediaUrl ? (
         displayMediaType === 'video' ? (
-          <Video
-            source={{ uri: displayMediaUrl }}
-            style={StyleSheet.absoluteFill}
-            resizeMode={ResizeMode.COVER}
-            isLooping
-            shouldPlay={screenFocused}
-            isMuted={isMuted}
-          />
+          USE_EXPO_VIDEO ? (
+            <NativeFeedVideo
+              uri={displayMediaUrl}
+              shouldPlay={screenFocused}
+              isMuted={isMuted}
+              onProgress={() => { }}
+            />
+          ) : (
+            <FallbackFeedVideo
+              uri={displayMediaUrl}
+              shouldPlay={screenFocused}
+              isMuted={isMuted}
+              onProgress={() => { }}
+            />
+          )
         ) : (
           <>
             <Image
@@ -282,7 +289,7 @@ export default function PostDetailScreen() {
               style={styles.editBtn}
               hitSlop={8}
             >
-              <Pencil size={17} stroke="#A78BFA" strokeWidth={2} />
+              <Pencil size={17} stroke="#22D3EE" strokeWidth={2} />
             </Pressable>
             <Pressable onPress={handleDelete} style={styles.deleteBtn} hitSlop={8}>
               <Trash2 size={17} stroke="#F87171" strokeWidth={2} />
@@ -323,6 +330,10 @@ export default function PostDetailScreen() {
             postId={post.id}
             visible={commentsOpen}
             onClose={() => setCommentsOpen(false)}
+            onUserPress={(userId) => {
+              setCommentsOpen(false);
+              router.push({ pathname: '/user/[id]', params: { id: userId } });
+            }}
           />
         </>
       )}
@@ -382,7 +393,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: '#0D0D0D',
   },
-  backBtnText: { color: '#A78BFA', fontWeight: '600' },
+  backBtnText: { color: '#22D3EE', fontWeight: '600' },
   mainImage: {
     width: W,
     height: H,
@@ -428,7 +439,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(167,139,250,0.15)',
+    backgroundColor: 'rgba(34,211,238,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -479,7 +490,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#0891B2',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -498,9 +509,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
-    backgroundColor: 'rgba(167,139,250,0.15)',
+    backgroundColor: 'rgba(34,211,238,0.15)',
     borderWidth: 1,
-    borderColor: 'rgba(167,139,250,0.3)',
+    borderColor: 'rgba(34,211,238,0.3)',
   },
-  tagText: { color: '#A78BFA', fontSize: 12, fontWeight: '600' },
+  tagText: { color: '#22D3EE', fontSize: 12, fontWeight: '600' },
 });

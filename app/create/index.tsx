@@ -102,13 +102,7 @@ export default function CreatePostScreen() {
       let mediaUrl: string | null = null;
 
       if (image) {
-        const mimeType = image.mimeType ?? "image/jpeg";
-        console.log(
-          "[Upload] Starting upload:",
-          image.uri,
-          "| mimeType:",
-          mimeType,
-        );
+        const mimeType = image.mimeType ?? 'image/jpeg';
         const { url } = await uploadPostMedia(
           profile.id,
           image.uri,
@@ -116,7 +110,6 @@ export default function CreatePostScreen() {
           (pct) => setUploadPct(pct),
         );
         mediaUrl = url;
-        console.log("[Upload] SUCCESS → url:", url);
       }
 
       const { error } = await supabase.from("posts").insert({
@@ -125,7 +118,7 @@ export default function CreatePostScreen() {
         media_url: mediaUrl,
         media_type: image?.type === "video" ? "video" : "image",
         tags: selectedTags.map((t) => t.toLowerCase()),
-        is_guild_post: false,
+        is_guild_post: !!profile.guild_id,
         guild_id: profile.guild_id,
       });
 

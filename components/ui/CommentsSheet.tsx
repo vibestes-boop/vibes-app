@@ -70,13 +70,14 @@ type Props = {
   onClose: () => void;
   mediaUrl?: string | null;
   mediaType?: string;
+  onUserPress?: (userId: string) => void;
 };
 
 const CLOSE_DURATION = 300;
 const OPEN_DURATION = 250;
 const CLOSE_EASING = Easing.out(Easing.cubic);
 
-export default function CommentsSheet({ postId, visible, onClose, mediaUrl, mediaType }: Props) {
+export default function CommentsSheet({ postId, visible, onClose, mediaUrl, mediaType, onUserPress }: Props) {
   const translateY = useSharedValue(SCREEN_HEIGHT);
   const overlayOpacity = useSharedValue(0);
   const contentOpacity = useSharedValue(0);
@@ -216,6 +217,7 @@ export default function CommentsSheet({ postId, visible, onClose, mediaUrl, medi
               postId={postId}
               onClose={handleClose}
               enabled={visible}
+              onUserPress={onUserPress}
             />
           </Animated.View>
         </Animated.View>
@@ -228,10 +230,12 @@ function SheetInner({
   postId,
   onClose,
   enabled,
+  onUserPress,
 }: {
   postId: string;
   onClose: () => void;
   enabled: boolean;
+  onUserPress?: (userId: string) => void;
 }) {
   const { profile } = useAuthStore();
   const insets = useSafeAreaInsets();
@@ -304,7 +308,7 @@ function SheetInner({
       {/* Kommentarliste */}
       {isLoading ? (
         <View style={styles.center}>
-          <ActivityIndicator color="#A78BFA" />
+          <ActivityIndicator color="#22D3EE" />
         </View>
       ) : comments?.length === 0 ? (
         <View style={styles.center}>
@@ -333,6 +337,7 @@ function SheetInner({
                 setActionSheetComment(item);
               }}
               isHighlighted={item.id === lastSentId}
+              onUserPress={onUserPress}
             />
           )}
         />
@@ -371,8 +376,8 @@ function SheetInner({
           activeOpacity={0.7}
         >
           {addComment.isPending
-            ? <ActivityIndicator color="#A78BFA" size="small" />
-            : <Send size={18} stroke={text.trim() ? '#A78BFA' : '#374151'} strokeWidth={2} />
+            ? <ActivityIndicator color="#22D3EE" size="small" />
+            : <Send size={18} stroke={text.trim() ? '#22D3EE' : '#374151'} strokeWidth={2} />
           }
         </TouchableOpacity>
       </View>
@@ -466,6 +471,7 @@ function CommentRow({
   onDelete,
   onLongPress,
   isHighlighted,
+  onUserPress,
 }: {
   comment: Comment;
   isOwn: boolean;
@@ -473,6 +479,7 @@ function CommentRow({
   onDelete: () => void;
   onLongPress: () => void;
   isHighlighted?: boolean;
+  onUserPress?: (userId: string) => void;
 }) {
   const highlightOpacity = useSharedValue(0);
   useEffect(() => {
@@ -484,7 +491,7 @@ function CommentRow({
     }
   }, [isHighlighted, highlightOpacity]);
   const highlightStyle = useAnimatedStyle(() => ({
-    backgroundColor: `rgba(167,139,250,${highlightOpacity.value * 0.15})`,
+    backgroundColor: `rgba(34,211,238,${highlightOpacity.value * 0.15})`,
     borderRadius: 12,
     marginHorizontal: -4,
     paddingHorizontal: 4,
@@ -492,21 +499,34 @@ function CommentRow({
     marginVertical: -2,
   }));
 
+  const handleUserPress = () => {
+    if (comment.user_id && onUserPress) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      onUserPress(comment.user_id);
+    }
+  };
+
   return (
     <Pressable onLongPress={onLongPress} delayLongPress={400}>
       <Animated.View style={[styles.commentRow, highlightStyle]}>
-        <View style={styles.commentAvatar}>
-          {comment.profiles?.avatar_url ? (
-            <Image source={{ uri: comment.profiles.avatar_url }} style={styles.commentAvatarImage} />
-          ) : (
-            <Text style={styles.commentAvatarText}>
-              {comment.profiles?.username?.[0]?.toUpperCase() ?? '?'}
-            </Text>
-          )}
-        </View>
+        {/* Avatar — klickbar → Profil */}
+        <Pressable onPress={handleUserPress} disabled={!onUserPress}>
+          <View style={styles.commentAvatar}>
+            {comment.profiles?.avatar_url ? (
+              <Image source={{ uri: comment.profiles.avatar_url }} style={styles.commentAvatarImage} />
+            ) : (
+              <Text style={styles.commentAvatarText}>
+                {comment.profiles?.username?.[0]?.toUpperCase() ?? '?'}
+              </Text>
+            )}
+          </View>
+        </Pressable>
         <View style={styles.commentBody}>
           <View style={styles.commentHeader}>
-            <Text style={styles.commentUsername}>@{comment.profiles?.username ?? 'unknown'}</Text>
+            {/* Username — klickbar → Profil */}
+            <Pressable onPress={handleUserPress} disabled={!onUserPress}>
+              <Text style={styles.commentUsername}>@{comment.profiles?.username ?? 'unknown'}</Text>
+            </Pressable>
             <Text style={styles.commentTime}>{timeAgo}</Text>
           </View>
           <Text style={styles.commentText}>{comment.text}</Text>
@@ -599,7 +619,7 @@ const styles = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#0891B2',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -633,7 +653,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#0891B2',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -657,7 +677,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(167,139,250,0.1)',
+    backgroundColor: 'rgba(34,211,238,0.1)',
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,

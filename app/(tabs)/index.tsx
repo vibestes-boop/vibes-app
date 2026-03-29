@@ -26,6 +26,7 @@ import TuneMyVibeOverlay from '@/components/ui/TuneMyVibeOverlay';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useVibeFeed } from '@/lib/usePosts';
 import { supabase } from '@/lib/supabase';
+import { useAuthStore } from '@/lib/authStore';
 import { CategoryFilter } from '@/components/ui/CategoryFilter';
 import { useDwellTracker } from '@/lib/useDwellTracker';
 import { useGuildStories, type StoryGroup } from '@/lib/useStories';
@@ -47,11 +48,22 @@ export default function VibeFeedScreen() {
   const [screenFocused, setScreenFocused] = useState(true);
   const [visibleItemId, setVisibleItemId] = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState(false);
-  const [activeTag, setActiveTag] = useState<string | null>(null);
   const [hasNewPosts, setHasNewPosts] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const lastFetchedAt = useRef<string>(new Date().toISOString());
   const pollTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // ── Seed-Feed für neue User: preferred_tags aus Onboarding als initialer Filter ──
+  const profile = useAuthStore((s) => s.profile);
+  const seedTag = (() => {
+    if (!profile?.preferred_tags?.length) return null;
+    // Null-Guard: created_at kann null sein → new Date(null) = epoch → NaN-Tage
+    const createdAt = profile.created_at ? new Date(profile.created_at).getTime() : null;
+    const accountDays = createdAt ? (Date.now() - createdAt) / 86_400_000 : 0;
+    // Nur für User <7 Tage alt — danach ist Dwell-History vorhanden
+    return accountDays < 7 ? (profile.preferred_tags[0] ?? null) : null;
+  })();
+  const [activeTag, setActiveTag] = useState<string | null>(seedTag);
 
   const bannerY = useSharedValue(-60);
   const bannerOpacity = useSharedValue(0);
@@ -185,7 +197,7 @@ export default function VibeFeedScreen() {
         authorId: p.author_id,
         avatarUrl: p.avatar_url ?? null,
         gradient: ['#0A0A0A', '#1a0533', '#0d1f4a'],
-        accentColor: '#A78BFA',
+        accentColor: '#22D3EE',
       })),
     [allPosts]
   );
@@ -282,7 +294,7 @@ export default function VibeFeedScreen() {
         ListFooterComponent={
           isFetchingNextPage ? (
             <View style={styles.pageLoadingFooter}>
-              <ActivityIndicator color="#A78BFA" size="small" />
+              <ActivityIndicator color="#22D3EE" size="small" />
             </View>
           ) : null
         }
@@ -291,7 +303,7 @@ export default function VibeFeedScreen() {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            tintColor="#A78BFA"
+            tintColor="#22D3EE"
             progressViewOffset={insets.top + 100}
           />
         }

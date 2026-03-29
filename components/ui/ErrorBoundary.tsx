@@ -102,7 +102,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   sub: {
-    color: '#C4B5FD',
+    color: '#A5F3FC',
     fontSize: 14,
     fontWeight: '400',
     textAlign: 'center',
@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
   },
   btn: {
     alignItems: 'center',
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#0891B2',
     borderRadius: 14,
     paddingHorizontal: 24,
     paddingVertical: 14,

@@ -6,7 +6,7 @@ import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-na
 /** Animierter Resonanz-Score-Ring: zählt beim Mount von 0 auf den Score hoch */
 export function VibeScoreRing({ score, size = 72 }: { score: number; size?: number }) {
   const pct = Math.min(Math.max(score, 0), 100);
-  const color = pct >= 70 ? '#A78BFA' : pct >= 40 ? '#FBBF24' : '#34D399';
+  const color = pct >= 70 ? '#22D3EE' : pct >= 40 ? '#FBBF24' : '#34D399';
 
   const animatedOpacity = useSharedValue(0);
 

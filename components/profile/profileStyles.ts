@@ -1,10 +1,13 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Dimensions } from 'react-native';
 import { GRID_GAP, GRID_CELL_WIDTH } from './profileConstants';
 
+const { width: W } = Dimensions.get('window');
+
 export const profileStyles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#000' },
+  root: { flex: 1, backgroundColor: '#050505' },
   heroBg: { position: 'absolute', top: 0, left: 0, right: 0 },
 
+  // ── Top Navigation Header ─────────────────────────────────
   header: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -13,11 +16,12 @@ export const profileStyles = StyleSheet.create({
     paddingBottom: 10,
   },
   studioLabel: {
-    color: 'rgba(167,139,250,0.6)',
+    color: '#22D3EE',
     fontSize: 11,
     fontWeight: '700',
     letterSpacing: 1.5,
     textTransform: 'uppercase',
+    opacity: 0.7,
   },
   handle: {
     color: '#fff',
@@ -28,12 +32,12 @@ export const profileStyles = StyleSheet.create({
   },
   headerRight: { flexDirection: 'row', gap: 6 },
   hBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.06)',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255,255,255,0.10)',
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
@@ -42,40 +46,113 @@ export const profileStyles = StyleSheet.create({
     position: 'absolute',
     top: -2,
     right: -2,
-    minWidth: 13,
-    height: 13,
+    minWidth: 14,
+    height: 14,
     borderRadius: 7,
     backgroundColor: '#F472B6',
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 2,
     borderWidth: 1.5,
-    borderColor: '#000',
+    borderColor: '#050505',
   },
   hBadgeText: { color: '#fff', fontSize: 7, fontWeight: '800' },
 
-  creatorCard: {
+  // ── Profile Top (Avatar + Stats) ─────────────────────────
+  profileTop: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 10,
+    paddingHorizontal: 20,
+    paddingTop: 12,
     paddingBottom: 16,
-    gap: 14,
+    gap: 20,
   },
-
-  avatarCol: { alignItems: 'center', gap: 6 },
-  avatarRing: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center' },
+  avatarWrap: { position: 'relative' },
+  avatarRing: {
+    width: 92,
+    height: 92,
+    borderRadius: 46,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   avatarGap: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 82,
+    height: 82,
+    borderRadius: 41,
     overflow: 'hidden',
     borderWidth: 2.5,
-    borderColor: '#000',
+    borderColor: '#050505',
   },
   avatarImg: { width: '100%', height: '100%' },
   avatarFallback: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  avatarInitial: { color: '#fff', fontSize: 28, fontWeight: '800' },
+  avatarInitial: { color: '#fff', fontSize: 30, fontWeight: '800' },
+  storyDot: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 2,
+    borderColor: '#050505',
+  },
+  storyDotActive: { backgroundColor: '#22D3EE' },
+
+  // Stats
+  statsRow: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-around',
+  },
+  statItem: { alignItems: 'center', flex: 1 },
+  statNum: { color: '#fff', fontSize: 18, fontWeight: '800', letterSpacing: -0.5 },
+  statLabel: { color: 'rgba(255,255,255,0.38)', fontSize: 11, fontWeight: '500', marginTop: 2 },
+  statDivider: { width: StyleSheet.hairlineWidth, height: 28, backgroundColor: 'rgba(255,255,255,0.07)' },
+
+  // ── Bio Section ───────────────────────────────────────────
+  bioSection: {
+    paddingHorizontal: 20,
+    paddingBottom: 14,
+    gap: 4,
+  },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
+  displayName: { color: '#fff', fontSize: 16, fontWeight: '800', letterSpacing: -0.3 },
+  verifiedBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(34,211,238,0.15)',
+    borderWidth: 1,
+    borderColor: 'rgba(34,211,238,0.3)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bio: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 13,
+    lineHeight: 19,
+    fontWeight: '400',
+  },
+  resonanzChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 9,
+    paddingVertical: 4,
+    borderRadius: 20,
+    backgroundColor: 'rgba(34,211,238,0.08)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(34,211,238,0.2)',
+  },
+  resonanzDot: { fontSize: 10 },
+  resonanzText: { color: 'rgba(34,211,238,0.8)', fontSize: 11, fontWeight: '600' },
+
+  // Legacy (kept for compatibility)
+  avatarCol: { alignItems: 'center', gap: 6 },
   guildBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -89,31 +166,46 @@ export const profileStyles = StyleSheet.create({
   },
   guildBadgePending: { backgroundColor: 'rgba(251,191,36,0.08)', borderColor: 'rgba(251,191,36,0.2)' },
   guildBadgeText: { color: '#34D399', fontSize: 9, fontWeight: '700' },
-
   bioCol: { flex: 1, gap: 4 },
-  displayName: { color: '#fff', fontSize: 15, fontWeight: '700' },
-  bio: { color: 'rgba(255,255,255,0.4)', fontSize: 12, lineHeight: 17 },
-  followRow: { flexDirection: 'row', alignItems: 'center', marginTop: 5, flexWrap: 'wrap' },
+  followRow: { flexDirection: 'row', alignItems: 'center', marginTop: 5 },
   followNum: { color: 'rgba(255,255,255,0.65)', fontSize: 11, fontWeight: '700' },
-  followLabel: { color: 'rgba(255,255,255,0.3)', fontSize: 11, fontWeight: '400' },
+  followLabel: { color: 'rgba(255,255,255,0.3)', fontSize: 11 },
   followDot: { color: 'rgba(255,255,255,0.2)', fontSize: 11 },
-  editPill: {
+  editPill: { flexDirection: 'row', alignItems: 'center', gap: 4, alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.09)', marginTop: 2 },
+  editPillText: { color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: '600' },
+  scoreCol: { alignItems: 'center', justifyContent: 'center' },
+  creatorCard: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 16, gap: 14 },
+
+  // ── Action Buttons ────────────────────────────────────────
+  actionRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingBottom: 16,
+    gap: 8,
+  },
+  btnPrimary: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.09)',
-    marginTop: 2,
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 9,
+    borderRadius: 10,
+    backgroundColor: '#22D3EE',
   },
-  editPillText: { color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: '600' },
+  btnPrimaryText: { color: '#000', fontSize: 13, fontWeight: '700' },
+  btnSecondary: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 
-  scoreCol: { alignItems: 'center', justifyContent: 'center' },
-
+  // ── Metrics Row (legacy, still used by StatKachel) ────────
   metricsRow: {
     flexDirection: 'row',
     marginHorizontal: 16,
@@ -124,23 +216,13 @@ export const profileStyles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.07)',
     overflow: 'hidden',
   },
-  metricDivider: {
-    width: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    marginVertical: 14,
-  },
+  metricDivider: { width: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.07)', marginVertical: 14 },
   kachel: { flex: 1, alignItems: 'center', paddingVertical: 14, gap: 4 },
-  kachelIcon: {
-    width: 28,
-    height: 28,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 2,
-  },
+  kachelIcon: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
   kachelValue: { color: '#fff', fontSize: 15, fontWeight: '800', letterSpacing: -0.3 },
   kachelLabel: { color: 'rgba(255,255,255,0.28)', fontSize: 10, fontWeight: '600', letterSpacing: 0.5 },
 
+  // ── Tab Bar ───────────────────────────────────────────────
   tabRow: {
     flexDirection: 'row',
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -151,16 +233,16 @@ export const profileStyles = StyleSheet.create({
   },
   tabBtn: {
     flex: 1,
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderBottomWidth: 1.5,
+    paddingVertical: 12,
+    borderBottomWidth: 2,
     borderBottomColor: 'transparent',
   },
+  tabBtnActive: { borderBottomColor: '#22D3EE' },
   tabLabel: { color: 'rgba(255,255,255,0.22)', fontSize: 12, fontWeight: '600' },
 
+  // ── Grid ──────────────────────────────────────────────────
   grid: { flexDirection: 'row', gap: GRID_GAP, marginBottom: GRID_GAP },
   gridCell: { width: GRID_CELL_WIDTH },
   cell: {
@@ -184,41 +266,16 @@ export const profileStyles = StyleSheet.create({
   cellText: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 10, backgroundColor: '#0D0D0D' },
   cellCaption: { color: 'rgba(255,255,255,0.4)', fontSize: 10, textAlign: 'center', lineHeight: 15 },
 
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  modalContent: {
-    width: '100%',
-    maxWidth: 320,
-    backgroundColor: 'rgba(30,30,30,0.98)',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.08)',
-  },
-  modalTitle: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 12,
-    paddingHorizontal: 4,
-  },
-  modalItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 14,
-    paddingHorizontal: 12,
-    borderRadius: 10,
-  },
+  // ── Modal ─────────────────────────────────────────────────
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 24 },
+  modalContent: { width: '100%', maxWidth: 320, backgroundColor: 'rgba(30,30,30,0.98)', borderRadius: 16, padding: 16, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.08)' },
+  modalTitle: { color: '#fff', fontSize: 16, fontWeight: '700', marginBottom: 12, paddingHorizontal: 4 },
+  modalItem: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 12, borderRadius: 10 },
   modalItemText: { color: '#E5E7EB', fontSize: 15, fontWeight: '600' },
   modalItemDestructive: { marginTop: 4 },
   modalItemTextDestructive: { color: '#EF4444', fontSize: 15, fontWeight: '600' },
 
+  // ── Empty ─────────────────────────────────────────────────
   empty: { paddingVertical: 56, alignItems: 'center', gap: 8, paddingHorizontal: 40 },
   emptyEmoji: { fontSize: 32, marginBottom: 2 },
   emptyTitle: { color: 'rgba(255,255,255,0.45)', fontSize: 15, fontWeight: '700' },

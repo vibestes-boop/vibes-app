@@ -22,7 +22,7 @@ export const vibeFeedScreenStyles = StyleSheet.create({
   newPostsBannerInner: {
     borderRadius: 24,
     overflow: 'hidden',
-    shadowColor: '#A78BFA',
+    shadowColor: '#22D3EE',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
     shadowRadius: 12,
@@ -36,14 +36,14 @@ export const vibeFeedScreenStyles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: 'rgba(167,139,250,0.3)',
+    borderColor: 'rgba(34,211,238,0.3)',
     overflow: 'hidden',
   },
   newPostsDot: {
     width: 7,
     height: 7,
     borderRadius: 3.5,
-    backgroundColor: '#A78BFA',
+    backgroundColor: '#22D3EE',
   },
   newPostsText: {
     color: '#FFFFFF',
@@ -51,7 +51,7 @@ export const vibeFeedScreenStyles = StyleSheet.create({
     fontWeight: '700',
   },
   newPostsArrow: {
-    color: '#A78BFA',
+    color: '#22D3EE',
     fontSize: 14,
     fontWeight: '800',
   },
@@ -158,7 +158,7 @@ export const feedItemStyles = StyleSheet.create({
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#A78BFA',
+    backgroundColor: '#22D3EE',
     borderRadius: 1,
   },
   tagBadge: {
@@ -249,14 +249,14 @@ export const feedItemStyles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.4)',
   },
   authorAvatarFallback: {
-    backgroundColor: 'rgba(167,139,250,0.25)',
+    backgroundColor: 'rgba(34,211,238,0.25)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   authorAvatarInitial: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#A78BFA',
+    color: '#22D3EE',
   },
   followBadge: {
     position: 'absolute',
@@ -351,11 +351,11 @@ export const postShareModalStyles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.15)',
   },
   userAvatarFallback: {
-    backgroundColor: 'rgba(167,139,250,0.25)',
+    backgroundColor: 'rgba(34,211,238,0.25)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  userAvatarText: { color: '#A78BFA', fontSize: 20, fontWeight: '700' },
+  userAvatarText: { color: '#22D3EE', fontSize: 20, fontWeight: '700' },
   checkBadge: {
     position: 'absolute',
     bottom: 0,
@@ -363,7 +363,7 @@ export const postShareModalStyles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#A78BFA',
+    backgroundColor: '#22D3EE',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
@@ -374,7 +374,7 @@ export const postShareModalStyles = StyleSheet.create({
   sendBtn: {
     marginHorizontal: 18,
     marginTop: 10,
-    backgroundColor: '#A78BFA',
+    backgroundColor: '#22D3EE',
     borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',

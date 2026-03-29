@@ -13,7 +13,7 @@ export function CreateGuildBanner({ guildName }: { guildName: string }) {
         end={{ x: 1, y: 0 }}
       />
       <View style={styles.guildBannerIcon}>
-        <Users size={16} stroke="#A78BFA" strokeWidth={2} />
+        <Users size={16} stroke="#22D3EE" strokeWidth={2} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={styles.guildBannerTitle}>Wird deinem {guildName} zugänglich gemacht</Text>

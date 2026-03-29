@@ -24,15 +24,15 @@ import { useUnreadCount } from '@/lib/useNotifications';
 
 // ── Tab-Konfiguration ────────────────────────────────────────────────────────
 const TABS = [
-  { name: 'index',   label: 'Vibes',       icon: Zap,           pushTo: null,        isCreate: false },
-  { name: 'guild',   label: 'Guild',       icon: Users,         pushTo: null,        isCreate: false },
-  { name: '_create', label: '',            icon: Plus,          pushTo: '/create',   isCreate: true  },
-  { name: '_dm',     label: 'Nachrichten', icon: MessageCircle, pushTo: '/messages', isCreate: false },
-  { name: 'profile', label: 'Studio',      icon: User,          pushTo: null,        isCreate: false },
+  { name: 'index',    label: 'Vibes',       icon: Zap,           pushTo: null,      isCreate: false },
+  { name: 'guild',   label: 'Guild',       icon: Users,         pushTo: null,      isCreate: false },
+  { name: '_create', label: '',            icon: Plus,          pushTo: '/create', isCreate: true  },
+  { name: 'messages', label: 'Nachrichten', icon: MessageCircle, pushTo: null,      isCreate: false },
+  { name: 'profile', label: 'Studio',      icon: User,          pushTo: null,      isCreate: false },
 ] as const;
 
 // Real-Tab-Reihenfolge (Expo-Router-Screens)
-const REAL_TAB_ORDER = ['index', 'explore', 'guild', 'profile'] as const;
+const REAL_TAB_ORDER = ['index', 'explore', 'guild', 'messages', 'profile'] as const;
 
 // ── Normaler Tab-Button ──────────────────────────────────────────────────────
 function TabBarItem({
@@ -124,7 +124,7 @@ function CreateTabButton({ onPress }: { onPress: () => void }) {
       <Animated.View style={animStyle}>
         <View style={styles.createGlow} />
         <LinearGradient
-          colors={['#C4B5FD', '#A78BFA', '#7C3AED']}
+          colors={['#A5F3FC', '#22D3EE', '#0891B2']}
           style={styles.createBtn}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
@@ -184,7 +184,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 
             const onPress = () => {
               if (isExternal) {
-                router.push(tabConfig.pushTo as any);
+                router.push((tabConfig as any).pushTo as any);
                 return;
               }
               const route = state.routes[routeIndex];
@@ -206,8 +206,8 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             };
 
             const badge =
-              tabConfig.name === '_dm'     ? unreadDMs    :
-              tabConfig.name === 'profile' ? unreadNotifs :
+              tabConfig.name === 'messages' ? unreadDMs    :
+              tabConfig.name === 'profile'  ? unreadNotifs :
               undefined;
 
             return (
@@ -261,7 +261,7 @@ const styles = StyleSheet.create({
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#A78BFA',
+    backgroundColor: '#22D3EE',
   },
   tabLabel: {
     fontSize: 9,
@@ -301,7 +301,7 @@ const styles = StyleSheet.create({
     right: -6,
     bottom: -3,
     borderRadius: 18,
-    backgroundColor: 'rgba(167,139,250,0.18)',
+    backgroundColor: 'rgba(34,211,238,0.18)',
   },
   createBtn: {
     flexDirection: 'row',
@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     borderRadius: 12,
     gap: 0,
-    shadowColor: '#A78BFA',
+    shadowColor: '#22D3EE',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.45,
     shadowRadius: 10,
@@ -347,6 +347,7 @@ export default function TabLayout() {
       <Tabs.Screen name="index" />
       <Tabs.Screen name="explore" options={{ href: undefined }} />
       <Tabs.Screen name="guild" />
+      <Tabs.Screen name="messages" />
       <Tabs.Screen name="profile" />
       {/* notifications ist real aber im Tab-Bar versteckt */}
       <Tabs.Screen name="notifications" options={{ tabBarButton: () => null }} />

@@ -99,6 +99,61 @@ function AuthGuard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, initialized, profile, segments]);
 
+  // ── Deep-Link Handler (vibes://live/<id> und vibes://post/<id>) ──────────
+  // Race-Condition-Fix: URL beim Cold-Start sofort speichern,
+  // aber erst nach Auth-Initialisierung navigieren.
+  const pendingDeepLink = useRef<string | null>(null);
+
+  // Schritt 1: URL so früh wie möglich einfangen (bevor Auth fertig ist)
+  useEffect(() => {
+    const { Linking } = require('react-native') as typeof import('react-native');
+
+    // Cold-Start: initial URL sichern
+    Linking.getInitialURL().then((url: string | null) => {
+      if (url?.startsWith('vibes://')) pendingDeepLink.current = url;
+    }).catch(() => {});
+
+    // Foreground/Background: URL direkt verarbeiten (Auth ist dann schon aktiv)
+    const sub = Linking.addEventListener('url', ({ url }: { url: string }) => {
+      if (!url?.startsWith('vibes://')) return;
+      navigateDeepLink(url);
+    });
+
+    return () => sub.remove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Schritt 2: Pending-URL verarbeiten sobald User authentifiziert ist
+  useEffect(() => {
+    if (!initialized || !session || !profile) return;
+    if (!pendingDeepLink.current) return;
+
+    const url = pendingDeepLink.current;
+    pendingDeepLink.current = null; // einmalig verarbeiten
+
+    // Kleiner Delay damit Router nach Auth-Redirect bereit ist
+    const t = setTimeout(() => navigateDeepLink(url), 300);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialized, session, profile]);
+
+  function navigateDeepLink(url: string) {
+    const liveMatch = url.match(/^vibes:\/\/live\/([^/?#]+)/);
+    if (liveMatch?.[1]) {
+      router.push({ pathname: '/live/watch/[id]', params: { id: liveMatch[1] } });
+      return;
+    }
+    const postMatch = url.match(/^vibes:\/\/post\/([^/?#]+)/);
+    if (postMatch?.[1]) {
+      router.push({ pathname: '/post/[id]', params: { id: postMatch[1] } });
+      return;
+    }
+    const userMatch = url.match(/^vibes:\/\/user\/([^/?#]+)/);
+    if (userMatch?.[1]) {
+      router.push({ pathname: '/user/[id]', params: { id: userMatch[1] } });
+    }
+  }
+
   return null;
 }
 
@@ -157,14 +212,14 @@ function OfflineBanner() {
 const splashStyles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#6D28D9',
+    backgroundColor: '#0E7490',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 999,
     gap: 16,
   },
   label: {
-    color: '#EDE9FE',
+    color: '#CFFAFE',
     fontSize: 15,
     fontWeight: '600',
     letterSpacing: 0.2,
@@ -173,14 +228,14 @@ const splashStyles = StyleSheet.create({
     position: 'absolute',
     top: 52,
     right: 16,
-    backgroundColor: 'rgba(109, 40, 217, 0.85)',
+    backgroundColor: 'rgba(14, 116, 144, 0.85)',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 8,
     zIndex: 1000,
   },
   bannerText: {
-    color: '#EDE9FE',
+    color: '#CFFAFE',
     fontSize: 11,
     fontWeight: '700',
     fontFamily: 'monospace',
@@ -200,6 +255,8 @@ export default function RootLayoutFull() {
     require('@/components/ui/ErrorBoundary') as typeof import('@/components/ui/ErrorBoundary');
   const { QueryClient, QueryClientProvider } =
     require('@tanstack/react-query') as typeof import('@tanstack/react-query');
+  const { GestureHandlerRootView } =
+    require('react-native-gesture-handler') as typeof import('react-native-gesture-handler');
 
   // QueryClient created once via ref, not state, to avoid re-creating on re-renders
   const qcRef = useRef<InstanceType<typeof QueryClient> | null>(null);
@@ -235,7 +292,7 @@ export default function RootLayoutFull() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={qcRef.current}>
-        <View style={{ flex: 1 }}>
+        <GestureHandlerRootView style={{ flex: 1 }}>
           <AuthGuard />
           <PushNotificationsProvider />
           <AppSplash />
@@ -291,8 +348,12 @@ export default function RootLayoutFull() {
                 presentation: 'fullScreenModal',
               }}
             />
+            <Stack.Screen
+              name="follow-list"
+              options={{ headerShown: false, animation: 'slide_from_bottom' }}
+            />
           </Stack>
-        </View>
+        </GestureHandlerRootView>
       </QueryClientProvider>
     </ErrorBoundary>
   );

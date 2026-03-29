@@ -99,11 +99,11 @@ export default function RootLayout() {
       const keys = Object.keys(mod ?? {}).slice(0, 8).join(', ') || '(keine)';
       const esm = String((mod as { __esModule?: boolean })?.__esModule);
       return (
-        <View style={{ flex: 1, backgroundColor: '#7C3AED', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <View style={{ flex: 1, backgroundColor: '#0891B2', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
           <Text style={{ color: '#fff', fontSize: 16, fontWeight: '900', textAlign: 'center' }}>
             ERR: kein gültiger Default-Export
           </Text>
-          <Text style={{ color: '#DDD6FE', fontSize: 11, textAlign: 'center', marginTop: 12, fontFamily: 'monospace' }}>
+          <Text style={{ color: '#A5F3FC', fontSize: 11, textAlign: 'center', marginTop: 12, fontFamily: 'monospace' }}>
             mod type: {modType}{'\n'}
             mod.default type: {defType}{'\n'}
             mod.default val: {defVal}{'\n'}

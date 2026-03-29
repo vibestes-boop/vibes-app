@@ -104,8 +104,31 @@ export function usePushNotifications() {
       notificationListener.current = Notifications.addNotificationReceivedListener((n) => {
         console.log('[PushNotif] Eingehend:', n.request.content.title);
       });
+
+      // D: Deep-Link beim Tippen auf Notification
       responseListener.current = Notifications.addNotificationResponseReceivedListener((r) => {
-        console.log('[PushNotif] Getippt:', r.notification.request.content.data);
+        const data = r.notification.request.content.data as Record<string, any>;
+        console.log('[PushNotif] Getippt:', data);
+
+        // Lazy import um circular dep zu vermeiden
+        const { router } = require('expo-router');
+
+        if (data?.type === 'message' && data?.conversationId) {
+          router.push({
+            pathname: '/messages/[id]',
+            params: {
+              id: data.conversationId,
+              username: data.senderUsername ?? '',
+              avatarUrl: data.senderAvatar ?? '',
+            },
+          });
+        } else if ((data?.type === 'like' || data?.type === 'comment') && data?.postId) {
+          router.push({ pathname: '/post/[id]', params: { id: data.postId } });
+        } else if (data?.type === 'follow' && data?.senderId) {
+          router.push({ pathname: '/user/[id]', params: { id: data.senderId } });
+        } else if (data?.type === 'live_invite' && data?.session_id) {
+          router.push({ pathname: '/live/watch/[id]', params: { id: data.session_id } });
+        }
       });
     } catch {
       /* Expo Go stub */

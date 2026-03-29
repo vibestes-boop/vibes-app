@@ -103,13 +103,15 @@ export function PostShareModal({
     if (selected.size === 0) return;
     setSending(true);
     try {
+      // Content is only a short teaser – the post preview card shows the real media
       const caption = postCaption ? `"${postCaption}"` : 'einen Post';
       await Promise.all(
         Array.from(selected).map(async (uid) => {
           const convId = await getOrCreateConv(uid);
           await sendMsg({
             conversationId: convId,
-            content: `📸 ${caption} von @${postAuthor}: ${postLink}`,
+            content: `📸 ${caption} von @${postAuthor}`,
+            postId,
           });
         })
       );
@@ -129,7 +131,8 @@ export function PostShareModal({
     const text = postCaption ? `"${postCaption}" von @${postAuthor} auf Vibes` : `Post von @${postAuthor} auf Vibes`;
     switch (id) {
       case 'whatsapp':
-        Linking.openURL(`whatsapp://send?text=${encodeURIComponent(`${text}: ${postLink}`)}`).catch(() =>
+        // wa.me erzeugt echten anklickbaren Link
+        Linking.openURL(`https://wa.me/?text=${encodeURIComponent(`${text}: ${postLink}`)}`).catch(() =>
           Alert.alert('WhatsApp nicht installiert')
         );
         break;
@@ -157,7 +160,7 @@ export function PostShareModal({
             id: 'follow',
             label: isFollowing ? 'Entfolgen' : 'Folgen',
             icon: isFollowing ? UserCheck : UserPlus,
-            color: '#A78BFA',
+            color: '#22D3EE',
           },
         ]
       : []),

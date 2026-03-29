@@ -4,12 +4,12 @@ export const createStyles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000000' },
   progressBar: {
     height: 2,
-    backgroundColor: 'rgba(167,139,250,0.15)',
+    backgroundColor: 'rgba(34,211,238,0.15)',
     width: '100%',
   },
   progressFill: {
     height: 2,
-    backgroundColor: '#A78BFA',
+    backgroundColor: '#22D3EE',
     borderRadius: 2,
   },
   header: {
@@ -129,7 +129,7 @@ export const createStyles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#0891B2',
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 4,
@@ -179,8 +179,8 @@ export const createStyles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.08)',
   },
   tagChipActive: {
-    backgroundColor: 'rgba(167, 139, 250, 0.12)',
-    borderColor: '#A78BFA',
+    backgroundColor: 'rgba(34, 211, 238, 0.12)',
+    borderColor: '#22D3EE',
   },
   tagChipText: {
     color: '#6B7280',
@@ -188,7 +188,7 @@ export const createStyles = StyleSheet.create({
     fontWeight: '600',
   },
   tagChipTextActive: {
-    color: '#A78BFA',
+    color: '#22D3EE',
   },
 
   guildBanner: {
@@ -201,18 +201,18 @@ export const createStyles = StyleSheet.create({
     gap: 12,
     padding: 14,
     borderWidth: 1,
-    borderColor: 'rgba(167,139,250,0.2)',
+    borderColor: 'rgba(34,211,238,0.2)',
   },
   guildBannerIcon: {
     width: 34,
     height: 34,
     borderRadius: 10,
-    backgroundColor: 'rgba(167,139,250,0.12)',
+    backgroundColor: 'rgba(34,211,238,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   guildBannerTitle: {
-    color: '#C4B5FD',
+    color: '#A5F3FC',
     fontSize: 13,
     fontWeight: '600',
     marginBottom: 2,

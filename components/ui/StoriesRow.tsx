@@ -28,7 +28,7 @@ function StoryBubble({
   const initial   = (group.username ?? '?')[0].toUpperCase();
   const hasNew    = group.hasUnviewed;
   const ringColor = hasNew
-    ? ['#A78BFA', '#F472B6'] as [string, string]
+    ? ['#22D3EE', '#F472B6'] as [string, string]
     : ['#2D2D2D', '#2D2D2D'] as [string, string];
 
   // Pulsierender Glow für ungesehene Stories
@@ -190,14 +190,14 @@ const styles = StyleSheet.create({
     borderRadius: BUBBLE_SIZE / 2,
   },
   avatarFallback: {
-    backgroundColor: 'rgba(167,139,250,0.15)',
+    backgroundColor: 'rgba(34,211,238,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarInitial: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#A78BFA',
+    color: '#22D3EE',
   },
   addBadge: {
     position: 'absolute',
@@ -206,7 +206,7 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#0891B2',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,

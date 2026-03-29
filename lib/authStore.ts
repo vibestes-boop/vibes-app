@@ -11,6 +11,7 @@ export type Profile = {
   brain_vibe: number;
   created_at: string;
   onboarding_complete: boolean | null;
+  preferred_tags: string[] | null;  // Seed-Interessen aus Onboarding
 };
 
 type AuthStore = {

@@ -52,7 +52,9 @@
         "EAS_BUILD": "1",
         "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
         "EXPO_PUBLIC_SUPABASE_URL": "https://llymwqfgujwkoxzqxrlm.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_chfoBv6Yoha_84qYSjW20A_bAE4pYkg"
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_chfoBv6Yoha_84qYSjW20A_bAE4pYkg",
+        "EXPO_PUBLIC_R2_PUBLIC_URL": "https://pub-35c122d523ba4396b15392ace804c19b.r2.dev",
+        "EXPO_PUBLIC_LIVEKIT_URL": "wss://vibes-app-fklyiq5i.livekit.cloud"
       }
     },
 

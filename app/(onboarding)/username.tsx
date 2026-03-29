@@ -108,8 +108,8 @@ export default function OnboardingUsername() {
         // Parsing-Fehler ignorieren — Navigation trotzdem fortsetzen
       }
 
-      console.log('[Username] navigate to guild');
-      router.push('/(onboarding)/guild');
+      console.log('[Username] navigate to interests');
+      router.push('/(onboarding)/interests');
 
     } catch (e: any) {
       console.error('[Username] catch:', e?.message ?? e);
@@ -141,10 +141,11 @@ export default function OnboardingUsername() {
           style={StyleSheet.absoluteFill}
         />
 
-        {/* Step indicator */}
+        {/* Step indicator – jetzt 4 Schritte */}
         <View style={styles.stepRow}>
           <View style={[styles.step, styles.stepDone]} />
           <View style={[styles.step, styles.stepActive]} />
+          <View style={styles.step} />
           <View style={styles.step} />
         </View>
 
@@ -196,7 +197,7 @@ export default function OnboardingUsername() {
         {/* CTA */}
         <Pressable style={styles.btn} onPress={handleContinue} disabled={loading}>
           <LinearGradient
-            colors={loading ? ['#4B5563', '#4B5563'] : ['#7C3AED', '#A78BFA']}
+            colors={loading ? ['#4B5563', '#4B5563'] : ['#0891B2', '#22D3EE']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.btnGradient}
@@ -227,8 +228,8 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: 'rgba(255,255,255,0.15)',
   },
-  stepDone: { backgroundColor: '#A78BFA' },
-  stepActive: { backgroundColor: '#7C3AED' },
+  stepDone: { backgroundColor: '#22D3EE' },
+  stepActive: { backgroundColor: '#0891B2' },
   title: {
     fontSize: 32,
     fontWeight: '800',
@@ -251,7 +252,7 @@ const styles = StyleSheet.create({
     height: 96,
     borderRadius: 48,
     borderWidth: 2,
-    borderColor: '#A78BFA',
+    borderColor: '#22D3EE',
   },
   avatarPlaceholder: {
     width: 96,
@@ -261,12 +262,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
     borderWidth: 2,
-    borderColor: 'rgba(167,139,250,0.4)',
+    borderColor: 'rgba(34,211,238,0.4)',
   },
   avatarInitials: {
     fontSize: 36,
     fontWeight: '700',
-    color: '#A78BFA',
+    color: '#22D3EE',
   },
   avatarBadge: {
     position: 'absolute',
@@ -275,7 +276,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#0891B2',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,

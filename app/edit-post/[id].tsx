@@ -68,7 +68,7 @@ export default function EditPostScreen() {
   if (loading) {
     return (
       <View style={[styles.screen, styles.center, { paddingTop: insets.top }]}>
-        <ActivityIndicator color="#A78BFA" size="large" />
+        <ActivityIndicator color="#22D3EE" size="large" />
       </View>
     );
   }
@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   saveBtn: {
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#0891B2',
   },
   content: {
     padding: 20,
@@ -257,8 +257,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.1)',
   },
   tagChipActive: {
-    backgroundColor: 'rgba(167,139,250,0.2)',
-    borderColor: '#A78BFA',
+    backgroundColor: 'rgba(34,211,238,0.2)',
+    borderColor: '#22D3EE',
   },
   tagChipDisabled: {
     opacity: 0.35,
@@ -269,7 +269,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   tagChipTextActive: {
-    color: '#A78BFA',
+    color: '#22D3EE',
   },
   tagChipTextDisabled: {
     color: 'rgba(255,255,255,0.3)',

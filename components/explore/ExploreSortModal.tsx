@@ -46,7 +46,7 @@ export function ExploreSortModal({
                     <Text style={[styles.optionLabel, active && styles.optionLabelActive]}>{opt.label}</Text>
                     <Text style={styles.optionSub}>{opt.sub}</Text>
                   </View>
-                  {active && <Check size={18} color="#A78BFA" strokeWidth={2.5} />}
+                  {active && <Check size={18} color="#22D3EE" strokeWidth={2.5} />}
                 </Pressable>
               );
             })}

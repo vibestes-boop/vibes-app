@@ -46,8 +46,8 @@ export const exploreStyles = StyleSheet.create({
     position: 'relative',
   },
   filterBtnActive: {
-    backgroundColor: 'rgba(167,139,250,0.12)',
-    borderColor: 'rgba(167,139,250,0.35)',
+    backgroundColor: 'rgba(34,211,238,0.12)',
+    borderColor: 'rgba(34,211,238,0.35)',
   },
   filterDot: {
     position: 'absolute',
@@ -56,7 +56,7 @@ export const exploreStyles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 3.5,
-    backgroundColor: '#A78BFA',
+    backgroundColor: '#22D3EE',
     borderWidth: 1.5,
     borderColor: '#0A0A0A',
   },
@@ -93,8 +93,8 @@ export const exploreStyles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.06)',
   },
   optionRowActive: {
-    backgroundColor: 'rgba(167,139,250,0.1)',
-    borderColor: 'rgba(167,139,250,0.3)',
+    backgroundColor: 'rgba(34,211,238,0.1)',
+    borderColor: 'rgba(34,211,238,0.3)',
   },
   optionIconWrap: {
     width: 36,
@@ -104,7 +104,7 @@ export const exploreStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  optionIconWrapActive: { backgroundColor: 'rgba(167,139,250,0.25)' },
+  optionIconWrapActive: { backgroundColor: 'rgba(34,211,238,0.25)' },
   optionText: { flex: 1 },
   optionLabel: { color: 'rgba(255,255,255,0.6)', fontSize: 15, fontWeight: '600' },
   optionLabelActive: { color: '#fff' },
@@ -129,8 +129,8 @@ export const exploreStyles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.08)',
   },
   tagChipActive: {
-    backgroundColor: '#7C3AED',
-    borderColor: '#A78BFA',
+    backgroundColor: '#0891B2',
+    borderColor: '#22D3EE',
   },
   tagChipText: {
     fontSize: 13,
@@ -171,14 +171,14 @@ export const exploreStyles = StyleSheet.create({
     borderRadius: 22,
   },
   userAvatarFallback: {
-    backgroundColor: 'rgba(167,139,250,0.2)',
+    backgroundColor: 'rgba(34,211,238,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   userAvatarText: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#A78BFA',
+    color: '#22D3EE',
   },
   userInfo: {
     flex: 1,
@@ -215,6 +215,19 @@ export const exploreStyles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '700',
     color: 'rgba(255,255,255,0.2)',
+  },
+  gridVideoOverlay: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+  },
+  gridPlayBtn: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   loadingWrap: {

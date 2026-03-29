@@ -28,6 +28,8 @@ import {
   Users,
   Grid3X3,
   Share2,
+  Home,
+  User,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { supabase } from '@/lib/supabase';
@@ -37,6 +39,7 @@ import { useOrCreateConversation } from '@/lib/useMessages';
 import { VideoGridThumb } from '@/components/ui/VideoGridThumb';
 import { VibeScoreRing } from '@/components/profile/VibeScoreRing';
 import { StatKachel } from '@/components/profile/StatKachel';
+import { shareUser } from '@/lib/useShare';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const HERO_H      = 190;
@@ -106,6 +109,17 @@ export default function UserProfileScreen() {
 
   useEffect(() => {
     if (!id) return;
+
+    // State sofort zurücksetzen damit kein altes Profil aufblitzt
+    setLoading(true);
+    setProfile(null);
+    setPosts([]);
+    setPostCount(0);
+    avatarScale.value   = 0.6;
+    avatarOpacity.value = 0;
+
+    let canceled = false;
+
     Promise.all([
       supabase
         .from('profiles')
@@ -123,6 +137,7 @@ export default function UserProfileScreen() {
         .select('id', { count: 'exact', head: true })
         .eq('author_id', id),
     ]).then(([{ data: p }, { data: ps }, { count }]) => {
+      if (canceled) return;  // Schutz vor Race-Condition
       const raw = p as any;
       setProfile({ ...(raw as PublicProfile), guild_name: raw?.guilds?.name ?? null });
       setPosts((ps ?? []) as PostThumb[]);
@@ -131,8 +146,11 @@ export default function UserProfileScreen() {
       avatarScale.value   = withSpring(1,   { damping: 13, stiffness: 160 });
       avatarOpacity.value = withTiming(1, { duration: 280 });
     });
+
+    return () => { canceled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
 
   const avgResonanz = useMemo(() => {
     if (posts.length === 0) return 0;
@@ -158,7 +176,7 @@ export default function UserProfileScreen() {
     return (
       <View style={s.loadingWrap}>
         <LinearGradient colors={['#050508', '#0d0020', '#050508']} style={StyleSheet.absoluteFill} />
-        <ActivityIndicator color="#A78BFA" size="large" />
+        <ActivityIndicator color="#22D3EE" size="large" />
       </View>
     );
   }
@@ -197,7 +215,7 @@ export default function UserProfileScreen() {
       {/* ── AVATAR (überlappt Hero und Info) ───────────────────────────── */}
       <Animated.View style={[s.avatarAbsolute, { top: HERO_H + insets.top - AVATAR_OVERLAP }, avatarStyle]}>
         <LinearGradient
-          colors={['#A78BFA', '#7C3AED', '#4C1D95']}
+          colors={['#22D3EE', '#0891B2', '#164E63']}
           style={s.avatarRingGradient}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
@@ -206,7 +224,7 @@ export default function UserProfileScreen() {
             {profile.avatar_url ? (
               <Image source={{ uri: profile.avatar_url }} style={s.avatarImg} />
             ) : (
-              <LinearGradient colors={['#6D28D9', '#A78BFA']} style={s.avatarImg}>
+              <LinearGradient colors={['#0E7490', '#22D3EE']} style={s.avatarImg}>
                 <Text style={s.avatarInitials}>{initials}</Text>
               </LinearGradient>
             )}
@@ -223,7 +241,7 @@ export default function UserProfileScreen() {
             <Text style={s.username}>@{profile.username}</Text>
             {profile.guild_name && (
               <View style={s.guildPill}>
-                <Zap size={10} color="#A78BFA" fill="#A78BFA" />
+                <Zap size={10} color="#22D3EE" fill="#22D3EE" />
                 <Text style={s.guildPillText}>{profile.guild_name}</Text>
               </View>
             )}
@@ -238,11 +256,29 @@ export default function UserProfileScreen() {
 
         {/* Metrik-Kacheln */}
         <View style={s.metricsRow}>
-          <StatKachel icon={Timer} value={`${avgResonanz}%`} label="Resonanz" accent="#A78BFA" />
+          <StatKachel icon={Timer} value={`${avgResonanz}%`} label="Resonanz" accent="#22D3EE" />
           <View style={s.metricDivider} />
           <StatKachel icon={Zap}   value={String(postCount)}           label="Vibes"    accent="#60A5FA" />
           <View style={s.metricDivider} />
-          <StatKachel icon={Users} value={String(counts?.followers ?? 0)} label="Follower" accent="#34D399" />
+          <Pressable
+            style={{ flex: 1 }}
+            onPress={() => router.push({
+              pathname: '/follow-list',
+              params: { userId: id, mode: 'followers', username: profile.username },
+            })}
+          >
+            <StatKachel icon={Users} value={String(counts?.followers ?? 0)} label="Follower" accent="#34D399" />
+          </Pressable>
+          <View style={s.metricDivider} />
+          <Pressable
+            style={{ flex: 1 }}
+            onPress={() => router.push({
+              pathname: '/follow-list',
+              params: { userId: id, mode: 'following', username: profile.username },
+            })}
+          >
+            <StatKachel icon={Users} value={String(counts?.following ?? 0)} label="Following" accent="#A78BFA" />
+          </Pressable>
         </View>
 
         {/* Follow + DM + Share */}
@@ -253,16 +289,16 @@ export default function UserProfileScreen() {
                 {isFollowing ? (
                   <View style={s.followBtnOutline}>
                     {followLoading
-                      ? <ActivityIndicator size="small" color="#A78BFA" />
+                      ? <ActivityIndicator size="small" color="#22D3EE" />
                       : <>
-                          <UserCheck size={16} color="#A78BFA" strokeWidth={2.2} />
-                          <Text style={[s.followBtnText, { color: '#A78BFA' }]}>Folgst du</Text>
+                          <UserCheck size={16} color="#22D3EE" strokeWidth={2.2} />
+                          <Text style={[s.followBtnText, { color: '#22D3EE' }]}>Folgst du</Text>
                         </>
                     }
                   </View>
                 ) : (
                   <LinearGradient
-                    colors={['#7C3AED', '#A78BFA']}
+                    colors={['#0891B2', '#22D3EE']}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={s.followBtnFill}
@@ -281,13 +317,16 @@ export default function UserProfileScreen() {
 
             <Pressable onPress={handleDM} disabled={dmLoading} style={s.iconBtn}>
               {dmLoading
-                ? <ActivityIndicator size="small" color="#A78BFA" />
-                : <MessageCircle size={20} color="#A78BFA" strokeWidth={2} />
+                ? <ActivityIndicator size="small" color="#22D3EE" />
+                : <MessageCircle size={20} color="#22D3EE" strokeWidth={2} />
               }
             </Pressable>
 
             <Pressable
-              onPress={() => Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                shareUser(id, profile.username);
+              }}
               style={s.iconBtn}
             >
               <Share2 size={18} color="rgba(255,255,255,0.5)" strokeWidth={2} />
@@ -323,7 +362,7 @@ export default function UserProfileScreen() {
         keyExtractor={(item) => item.id}
         numColumns={GRID_COLS}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100 }}
+        contentContainerStyle={{ paddingBottom: 120 }}
         ListHeaderComponent={Header}
         columnWrapperStyle={s.gridRow}
         ListEmptyComponent={
@@ -366,6 +405,39 @@ export default function UserProfileScreen() {
           </Pressable>
         )}
       />
+
+      {/* ── Floating Bottom Nav ── */}
+      <View style={[s.bottomNav, { paddingBottom: Math.max(insets.bottom, 8) }]}>
+        <Pressable
+          style={s.navItem}
+          onPress={() => router.push('/(tabs)')
+          }
+        >
+          <Home size={22} color="rgba(255,255,255,0.45)" strokeWidth={1.8} />
+          <Text style={s.navLabel}>Vibes</Text>
+        </Pressable>
+        <Pressable
+          style={s.navItem}
+          onPress={() => router.push('/(tabs)/guild')}
+        >
+          <Users size={22} color="rgba(255,255,255,0.45)" strokeWidth={1.8} />
+          <Text style={s.navLabel}>Guild</Text>
+        </Pressable>
+        <Pressable
+          style={s.navItem}
+          onPress={() => router.push('/(tabs)/messages')}
+        >
+          <MessageCircle size={22} color="rgba(255,255,255,0.45)" strokeWidth={1.8} />
+          <Text style={s.navLabel}>Nachrichten</Text>
+        </Pressable>
+        <Pressable
+          style={s.navItem}
+          onPress={() => router.push('/(tabs)/profile')}
+        >
+          <User size={22} color="rgba(255,255,255,0.45)" strokeWidth={1.8} />
+          <Text style={s.navLabel}>Studio</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -391,7 +463,7 @@ const s = StyleSheet.create({
     width: AVATAR_SIZE * 2.5,
     height: AVATAR_SIZE * 2.5,
     borderRadius: AVATAR_SIZE * 1.25,
-    backgroundColor: 'rgba(124,58,237,0.28)',
+    backgroundColor: 'rgba(8,145,178,0.28)',
   },
   backBtn: { position: 'absolute', left: 16 },
   backBtnInner: {
@@ -414,7 +486,7 @@ const s = StyleSheet.create({
     borderRadius: (AVATAR_SIZE + 6) / 2,
     padding: 3,
     // Shadow
-    shadowColor: '#A78BFA',
+    shadowColor: '#22D3EE',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.45,
     shadowRadius: 14,
@@ -462,12 +534,12 @@ const s = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 20,
-    backgroundColor: 'rgba(124,58,237,0.15)',
+    backgroundColor: 'rgba(8,145,178,0.15)',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(167,139,250,0.3)',
+    borderColor: 'rgba(34,211,238,0.3)',
   },
   guildPillText: {
-    color: '#A78BFA', fontSize: 11, fontWeight: '600', letterSpacing: 0.1,
+    color: '#22D3EE', fontSize: 11, fontWeight: '600', letterSpacing: 0.1,
   },
   bio: {
     color: '#9CA3AF', fontSize: 14,
@@ -505,8 +577,8 @@ const s = StyleSheet.create({
   followBtnOutline: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 8, paddingVertical: 13, borderRadius: 28,
-    backgroundColor: 'rgba(167,139,250,0.1)',
-    borderWidth: 1, borderColor: 'rgba(167,139,250,0.35)',
+    backgroundColor: 'rgba(34,211,238,0.1)',
+    borderWidth: 1, borderColor: 'rgba(34,211,238,0.35)',
   },
   followBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   iconBtn: {
@@ -538,10 +610,10 @@ const s = StyleSheet.create({
     letterSpacing: 1.5, textTransform: 'uppercase', flex: 1,
   },
   gridCountPill: {
-    backgroundColor: 'rgba(167,139,250,0.12)',
+    backgroundColor: 'rgba(34,211,238,0.12)',
     borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3,
   },
-  gridCountText: { color: '#A78BFA', fontSize: 11, fontWeight: '700' },
+  gridCountText: { color: '#22D3EE', fontSize: 11, fontWeight: '700' },
   gridRow: { gap: GRID_GAP, marginBottom: GRID_GAP },
   gridItem: {
     width: GRID_ITEM_WIDTH, height: GRID_ITEM_HEIGHT,
@@ -559,5 +631,31 @@ const s = StyleSheet.create({
   emptyTitle: { color: '#374151', fontSize: 16, fontWeight: '700' },
   emptySub: {
     color: '#1F2937', fontSize: 13, textAlign: 'center', lineHeight: 19,
+  },
+
+  // ── Floating Bottom Nav ──
+  bottomNav: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    backgroundColor: 'rgba(5,5,8,0.95)',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(255,255,255,0.08)',
+    paddingTop: 10,
+  },
+  navItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+    paddingBottom: 4,
+  },
+  navLabel: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 9,
+    fontWeight: '600',
+    letterSpacing: 0.2,
   },
 });

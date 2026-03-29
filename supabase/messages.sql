@@ -83,3 +83,16 @@ CREATE TRIGGER on_new_message
 -- ── Realtime aktivieren ────────────────────────────────────────────────────
 ALTER PUBLICATION supabase_realtime ADD TABLE public.messages;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.conversations;
+
+-- ── Migration: post_id Spalte ──────────────────────────────────────────────
+-- Einmalig im Supabase SQL-Editor ausführen:
+ALTER TABLE public.messages
+  ADD COLUMN IF NOT EXISTS post_id UUID REFERENCES public.posts(id) ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS msg_post_idx ON public.messages (post_id)
+  WHERE post_id IS NOT NULL;
+
+-- ── Migration: image_url Spalte (Bild-DMs) ────────────────────────────────
+-- Einmalig im Supabase SQL-Editor ausführen:
+ALTER TABLE public.messages
+  ADD COLUMN IF NOT EXISTS image_url TEXT;

@@ -15,7 +15,7 @@ import { SlidersHorizontal, Users, Heart } from 'lucide-react-native';
 const FEATURES = [
   {
     icon: SlidersHorizontal,
-    color: '#A78BFA',
+    color: '#22D3EE',
     title: 'Du steuerst den Algorithmus',
     desc: 'Kein Blackbox-Feed. Du entscheidest mit dem "Tune my Vibe"-Slider was du siehst.',
   },
@@ -132,7 +132,7 @@ export default function OnboardingWelcome() {
             onPress={() => router.push('/(onboarding)/username')}
           >
             <LinearGradient
-              colors={['#7C3AED', '#A78BFA']}
+              colors={['#0891B2', '#22D3EE']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.btnGradient}
@@ -157,7 +157,7 @@ const styles = StyleSheet.create({
     width: 320,
     height: 320,
     borderRadius: 160,
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#0891B2',
     opacity: 0.12,
     top: -80,
     alignSelf: 'center',
@@ -181,7 +181,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#A78BFA',
+    backgroundColor: '#22D3EE',
     marginTop: -16,
     marginLeft: 4,
     alignSelf: 'center',

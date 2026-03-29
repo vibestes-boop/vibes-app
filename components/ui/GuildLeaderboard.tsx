@@ -46,7 +46,7 @@ function TopPostCard({
   post, rank, guildColors,
 }: { post: LeaderboardPost; rank: number; guildColors: string[] }) {
   const medal      = MEDAL[rank] ?? `#${rank + 1}`;
-  const rankColors = RANK_COLORS[rank] ?? ['#6366F1', '#8B5CF6'];
+  const rankColors = RANK_COLORS[rank] ?? ['#0891B2', '#22D3EE'];
   const initial    = (post.author_username ?? '?')[0].toUpperCase();
 
   return (
@@ -131,8 +131,8 @@ const card = StyleSheet.create({
   info: { flex: 1, gap: 6 },
   authorRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   avatar: { width: 22, height: 22, borderRadius: 11 },
-  avatarFallback: { backgroundColor: 'rgba(167,139,250,0.2)', alignItems: 'center', justifyContent: 'center' },
-  avatarInitial: { color: '#A78BFA', fontSize: 9, fontWeight: '700' },
+  avatarFallback: { backgroundColor: 'rgba(34,211,238,0.2)', alignItems: 'center', justifyContent: 'center' },
+  avatarInitial: { color: '#22D3EE', fontSize: 9, fontWeight: '700' },
   username: { color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: '600' },
   caption: { color: 'rgba(255,255,255,0.55)', fontSize: 12, lineHeight: 17 },
   dwellLabel: { color: 'rgba(255,255,255,0.25)', fontSize: 10, marginTop: -2 },
@@ -204,8 +204,8 @@ const member_s = StyleSheet.create({
   rankNum: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.06)' },
   rankNumText: { color: 'rgba(255,255,255,0.4)', fontSize: 12, fontWeight: '700' },
   avatar: { width: 44, height: 44, borderRadius: 22, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.1)' },
-  avatarFallback: { backgroundColor: 'rgba(167,139,250,0.2)', alignItems: 'center', justifyContent: 'center' },
-  avatarInitial: { color: '#A78BFA', fontSize: 16, fontWeight: '700' },
+  avatarFallback: { backgroundColor: 'rgba(34,211,238,0.2)', alignItems: 'center', justifyContent: 'center' },
+  avatarInitial: { color: '#22D3EE', fontSize: 16, fontWeight: '700' },
   info: { flex: 1 },
   username: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
   sub: { color: 'rgba(255,255,255,0.35)', fontSize: 11, marginTop: 2 },

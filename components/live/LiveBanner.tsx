@@ -109,7 +109,7 @@ const s = StyleSheet.create({
 
   avatarWrap: { position: 'relative', width: 62, height: 62 },
   avatar: { width: 58, height: 58, borderRadius: 29, position: 'absolute', top: 2, left: 2 },
-  avatarFallback: { backgroundColor: '#7C3AED', alignItems: 'center', justifyContent: 'center' },
+  avatarFallback: { backgroundColor: '#0891B2', alignItems: 'center', justifyContent: 'center' },
   avatarInitial: { color: '#fff', fontSize: 22, fontWeight: '900' },
   liveRing: {
     ...StyleSheet.absoluteFillObject,

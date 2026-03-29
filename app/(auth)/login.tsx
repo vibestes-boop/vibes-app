@@ -71,7 +71,7 @@ export default function LoginScreen() {
       />
 
       <View style={styles.logoArea}>
-        <Zap size={36} stroke="#A78BFA" strokeWidth={2} fill="#A78BFA" />
+        <Zap size={36} stroke="#22D3EE" strokeWidth={2} fill="#22D3EE" />
         <Text style={styles.logoText}>vibes</Text>
         <Text style={styles.tagline}>Dein Feed. Deine Regeln.</Text>
       </View>
@@ -112,7 +112,7 @@ export default function LoginScreen() {
             disabled={loading}
           >
             <LinearGradient
-              colors={['#7C3AED', '#A78BFA']}
+              colors={['#0891B2', '#22D3EE']}
               style={StyleSheet.absoluteFill}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   registerHighlight: {
-    color: '#A78BFA',
+    color: '#22D3EE',
     fontWeight: '600',
   },
   forgotBtn: {

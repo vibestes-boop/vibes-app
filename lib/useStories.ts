@@ -40,13 +40,35 @@ export function useGuildStories() {
         .single();
 
       const guildId = profileData?.guild_id;
-      if (!guildId) return [];
 
-      // Guild-Member IDs
-      const { data: members } = await supabase
-        .from('profiles')
-        .select('id, username, avatar_url')
-        .eq('guild_id', guildId);
+      let members: { id: string; username: string | null; avatar_url: string | null }[] = [];
+
+      if (guildId) {
+        // Normaler Pfad: Guild-Member holen
+        const { data: guildMembers } = await supabase
+          .from('profiles')
+          .select('id, username, avatar_url')
+          .eq('guild_id', guildId);
+        members = guildMembers ?? [];
+      } else {
+        // Bug 8 Fix: Kein Guild → Fallback auf gefolgten Usern (+ eigenes Profil)
+        const { data: followRows } = await supabase
+          .from('follows')
+          .select('following_id')
+          .eq('follower_id', userId);
+
+        const followedIds = (followRows ?? []).map((r) => r.following_id);
+        // Eigene userId immer einschließen damit eigene Stories sichtbar sind
+        const allIds = [...new Set([userId, ...followedIds])];
+
+        if (allIds.length > 0) {
+          const { data: followedProfiles } = await supabase
+            .from('profiles')
+            .select('id, username, avatar_url')
+            .in('id', allIds);
+          members = followedProfiles ?? [];
+        }
+      }
 
       if (!members || members.length === 0) return [];
       const memberIds = members.map((m) => m.id);

@@ -120,10 +120,12 @@ export function useDeleteComment(postId: string) {
 
   return useMutation({
     mutationFn: async (commentId: string) => {
+      if (!userId) throw new Error('Nicht eingeloggt');
       const { error } = await supabase
         .from('comments')
         .delete()
-        .eq('id', commentId);
+        .eq('id', commentId)
+        .eq('user_id', userId); // B3: Nur eigene Kommentare löschen
       if (error) throw error;
       return commentId;
     },

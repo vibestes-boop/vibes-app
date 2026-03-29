@@ -82,7 +82,7 @@ export default function ResetPasswordScreen() {
       />
 
       <View style={styles.logoArea}>
-        <Zap size={32} stroke="#A78BFA" strokeWidth={2} fill="#A78BFA" />
+        <Zap size={32} stroke="#22D3EE" strokeWidth={2} fill="#22D3EE" />
         <Text style={styles.title}>Neues Passwort</Text>
         <Text style={styles.sub}>
           Wähle ein sicheres Passwort{'\n'}(mindestens 8 Zeichen)
@@ -128,7 +128,7 @@ export default function ResetPasswordScreen() {
             disabled={loading}
           >
             <LinearGradient
-              colors={['#7C3AED', '#A78BFA']}
+              colors={['#0891B2', '#22D3EE']}
               style={StyleSheet.absoluteFill}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}

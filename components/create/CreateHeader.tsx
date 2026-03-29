@@ -39,7 +39,7 @@ export function CreateHeader({
           style={styles.postBtn}
         >
           <LinearGradient
-            colors={['#7C3AED', '#A78BFA']}
+            colors={['#0891B2', '#22D3EE']}
             style={StyleSheet.absoluteFill}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}

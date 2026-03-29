@@ -409,12 +409,12 @@ function HostUI({
           onChangeText={setInput}
           onSubmitEditing={submit}
           returnKeyType="send"
-          selectionColor="#A78BFA"
+          selectionColor="#22D3EE"
           maxLength={300}
         />
         {input.trim().length > 0 && (
           <Pressable onPress={submit} hitSlop={8} style={s.sendBtn}>
-            <Send size={18} stroke="#A78BFA" strokeWidth={2.2} />
+            <Send size={18} stroke="#22D3EE" strokeWidth={2.2} />
           </Pressable>
         )}
       </View>
@@ -503,7 +503,7 @@ function ExpoGoPlaceholder({ onBack }: { onBack: () => void }) {
         onPress={onBack}
         style={{
           marginTop: 8,
-          backgroundColor: "#7C3AED",
+          backgroundColor: "#0891B2",
           borderRadius: 14,
           paddingHorizontal: 24,
           paddingVertical: 12,
@@ -663,7 +663,7 @@ export default function LiveHostScreen() {
         <Pressable
           onPress={() => router.replace("/(tabs)")}
           style={{
-            backgroundColor: "#7C3AED",
+            backgroundColor: "#0891B2",
             borderRadius: 14,
             paddingHorizontal: 24,
             paddingVertical: 12,
@@ -797,7 +797,7 @@ const s = StyleSheet.create({
     marginBottom: 5,
     alignSelf: "flex-start",
   },
-  commentUser: { color: "#A78BFA", fontWeight: "700", fontSize: 13 },
+  commentUser: { color: "#22D3EE", fontWeight: "700", fontSize: 13 },
   commentText: { color: "#fff", fontSize: 13 },
 
   inputBar: {
@@ -842,7 +842,7 @@ const s = StyleSheet.create({
     alignItems: "center",
     gap: 20,
     borderWidth: 1,
-    borderColor: "rgba(167,139,250,0.2)",
+    borderColor: "rgba(34,211,238,0.2)",
   },
   summaryTitle: {
     color: "#fff",
@@ -859,7 +859,7 @@ const s = StyleSheet.create({
     gap: 4,
   },
   summaryValue: {
-    color: "#A78BFA",
+    color: "#22D3EE",
     fontSize: 28,
     fontWeight: "900",
   },
@@ -869,7 +869,7 @@ const s = StyleSheet.create({
     fontWeight: "600",
   },
   summaryBtn: {
-    backgroundColor: "#7C3AED",
+    backgroundColor: "#0891B2",
     borderRadius: 14,
     paddingHorizontal: 48,
     paddingVertical: 14,

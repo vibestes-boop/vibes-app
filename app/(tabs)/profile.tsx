@@ -79,7 +79,7 @@ export default function ProfileScreen() {
   return (
     <View style={s.root}>
       <LinearGradient
-        colors={['rgba(124,58,237,0.14)', 'transparent']}
+        colors={['rgba(8,145,178,0.14)', 'transparent']}
         style={[s.heroBg, { height: 200 + insets.top }]}
         pointerEvents="none"
       />
@@ -164,7 +164,7 @@ export default function ProfileScreen() {
         ListEmptyComponent={
           activeTab === 'vibes' && loadingPosts ? (
             <View style={s.empty}>
-              <ActivityIndicator color="#A78BFA" />
+              <ActivityIndicator color="#22D3EE" />
             </View>
           ) : activeTab === 'saved' && loadingSaved ? (
             <View style={s.empty}>

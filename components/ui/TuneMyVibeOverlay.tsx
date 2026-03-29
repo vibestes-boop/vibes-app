@@ -192,7 +192,7 @@ export default function TuneMyVibeOverlay({ visible, onClose }: Props) {
             value={exploreVibe}
             onChange={setExploreVibe}
             onRelease={commitVibes}
-            accentColor="#A78BFA"
+            accentColor="#22D3EE"
             Icon={Compass}
           />
 
@@ -235,8 +235,8 @@ export default function TuneMyVibeOverlay({ visible, onClose }: Props) {
 
           <View style={styles.applyRow}>
             <View style={styles.vibeIndicators}>
-              <View style={[styles.vibeTag, { borderColor: '#A78BFA' }]}>
-                <Text style={[styles.vibeTagText, { color: '#A78BFA' }]}>
+              <View style={[styles.vibeTag, { borderColor: '#22D3EE' }]}>
+                <Text style={[styles.vibeTagText, { color: '#22D3EE' }]}>
                   {exploreVibe > 0.6 ? '🔍 Explorer' : exploreVibe > 0.3 ? '⚖️ Balanced' : '🛡️ Safe'}
                 </Text>
               </View>

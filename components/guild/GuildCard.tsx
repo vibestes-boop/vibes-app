@@ -10,9 +10,9 @@ import Animated, {
   withSequence,
   FadeInDown,
 } from 'react-native-reanimated';
-import { Users, MessageCircle, Heart, Bookmark, Share2, Clock } from 'lucide-react-native';
+import { Users, MessageCircle, Heart, Bookmark, Share2, Clock, Play, Pause } from 'lucide-react-native';
 import CommentsSheet from '@/components/ui/CommentsSheet';
-import { VideoGridThumb } from '@/components/ui/VideoGridThumb';
+import { FallbackFeedVideo, NativeFeedVideo, USE_EXPO_VIDEO } from '@/components/feed/FeedVideo';
 import { useLike } from '@/lib/useLike';
 import { useCommentCount } from '@/lib/useComments';
 import { useBookmark } from '@/lib/useBookmark';
@@ -37,10 +37,14 @@ export function GuildCard({
   guildColors: [string, string];
 }) {
   const router = useRouter();
-  const { liked, count, toggle } = useLike(post.id);
-  const { data: commentCount = 0 } = useCommentCount(post.id);
+  // batch kommt aus useGuildFeed — kein eigener DB-Call für Like-Status/-Count mehr
+  const { liked, count, toggle } = useLike(post.id, { liked: post.is_liked, count: post.like_count });
+  // batchCount kommt aus useGuildFeed — kein eigener DB-Call mehr
+  const { data: commentCount = 0 } = useCommentCount(post.id, post.comment_count);
   const { bookmarked, toggle: toggleBookmark } = useBookmark(post.id);
   const [showComments, setShowComments] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const [showPauseIcon, setShowPauseIcon] = useState(false);
   const isVideo = post.media_type === 'video';
   const scale = useSharedValue(1);
   const [c0] = guildColors;
@@ -56,6 +60,12 @@ export function GuildCard({
     );
     toggle();
   }, [toggle, scale]);
+
+  const handleVideoTap = useCallback(() => {
+    setPaused((p) => !p);
+    setShowPauseIcon(true);
+    setTimeout(() => setShowPauseIcon(false), 700);
+  }, []);
 
   const initials = post.username ? post.username.slice(0, 2).toUpperCase() : '??';
 
@@ -94,11 +104,40 @@ export function GuildCard({
 
         {post.media_url ? (
           <Pressable
-            onPress={() => router.push({ pathname: '/post/[id]', params: { id: post.id } })}
+            onPress={isVideo ? handleVideoTap : () => router.push({ pathname: '/post/[id]', params: { id: post.id } })}
             style={styles.mediaWrap}
           >
             {isVideo ? (
-              <VideoGridThumb uri={post.media_url} style={styles.mediaThumb} />
+              <>
+                {USE_EXPO_VIDEO ? (
+                  <NativeFeedVideo
+                    uri={post.media_url}
+                    shouldPlay={!paused}
+                    isMuted
+                    onProgress={() => {}}
+                  />
+                ) : (
+                  <FallbackFeedVideo
+                    uri={post.media_url}
+                    shouldPlay={!paused}
+                    isMuted
+                    onProgress={() => {}}
+                  />
+                )}
+                {/* Tap-Feedback Icon */}
+                {showPauseIcon && (
+                  <View style={videoStyles.pauseOverlay}>
+                    {paused
+                      ? <Play size={40} color="#fff" fill="#fff" />
+                      : <Pause size={40} color="#fff" fill="#fff" />
+                    }
+                  </View>
+                )}
+                {/* Video-Badge */}
+                <View style={videoStyles.videoBadge}>
+                  <Play size={10} color="#fff" fill="#fff" />
+                </View>
+              </>
             ) : (
               <Image source={{ uri: post.media_url }} style={styles.mediaThumb} resizeMode="cover" />
             )}
@@ -164,3 +203,22 @@ export function GuildCard({
     </Animated.View>
   );
 }
+
+const videoStyles = StyleSheet.create({
+  pauseOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.25)',
+  },
+  videoBadge: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: 6,
+    padding: 5,
+  },
+});
+
+

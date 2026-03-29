@@ -30,6 +30,7 @@ import type { StoryGroup } from '@/lib/useStories';
 import { impactAsync, notificationAsync, ImpactFeedbackStyle, NotificationFeedbackType } from 'expo-haptics';
 import { PostShareModal } from './PostShareModal';
 import { PostOptionsModal } from './PostOptionsModal';
+import PostLongPressSheet from './PostLongPressSheet';
 import { FallbackFeedVideo, NativeFeedVideo, USE_EXPO_VIDEO } from './FeedVideo';
 import {
   ActionButton,
@@ -63,6 +64,7 @@ export const FeedItem = React.memo(function FeedItem({
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
+  const [longPressOpen, setLongPressOpen] = useState(false);
   const [paused, setPaused] = useState(false);
   const [progress, setProgress] = useState(0);
   const [imageError, setImageError] = useState(false);
@@ -138,7 +140,6 @@ export const FeedItem = React.memo(function FeedItem({
             source={{ uri: item.mediaUrl }}
             style={StyleSheet.absoluteFill}
             resizeMode="contain"
-            onLoad={() => console.log('[Image LOADED]', item.mediaUrl)}
             onError={() => setImageError(true)}
           />
         </>
@@ -152,7 +153,15 @@ export const FeedItem = React.memo(function FeedItem({
         />
       )}
 
-      <Pressable style={StyleSheet.absoluteFill} onPress={handleVideoTap}>
+      <Pressable
+        style={StyleSheet.absoluteFill}
+        onPress={handleVideoTap}
+        onLongPress={() => {
+          impactAsync(ImpactFeedbackStyle.Heavy);
+          setLongPressOpen(true);
+        }}
+        delayLongPress={380}
+      >
         {item.mediaUrl && isVideo && (
           USE_EXPO_VIDEO ? (
             <NativeFeedVideo
@@ -216,12 +225,33 @@ export const FeedItem = React.memo(function FeedItem({
         onClose={() => setOptionsOpen(false)}
       />
 
+      <PostLongPressSheet
+        visible={longPressOpen}
+        onClose={() => setLongPressOpen(false)}
+        postId={item.id}
+        mediaUrl={item.mediaUrl}
+        authorId={item.authorId}
+        authorName={item.author}
+        isFollowing={isFollowing}
+        isOwnProfile={isOwnProfile}
+        onToggleFollow={() => {
+          toggleFollow();
+          notificationAsync(NotificationFeedbackType.Success);
+        }}
+        onOpenComments={() => setCommentsOpen(true)}
+        onOpenShare={() => setShareOpen(true)}
+      />
+
       <CommentsSheet
         postId={item.id}
         visible={commentsOpen}
         onClose={() => setCommentsOpen(false)}
         mediaUrl={item.mediaUrl}
         mediaType={item.mediaType}
+        onUserPress={(userId) => {
+          setCommentsOpen(false);
+          router.push({ pathname: '/user/[id]', params: { id: userId } });
+        }}
       />
 
       <View style={styles.bottomInfo} pointerEvents="box-none">
@@ -250,7 +280,7 @@ export const FeedItem = React.memo(function FeedItem({
             {storyGroup ? (
               storyGroup.hasUnviewed ? (
                 <LinearGradient
-                  colors={['#A78BFA', '#F472B6', '#FB923C']}
+                  colors={['#22D3EE', '#F472B6', '#FB923C']}
                   style={styles.storyRingGradient}
                   start={{ x: 0, y: 1 }}
                   end={{ x: 1, y: 0 }}

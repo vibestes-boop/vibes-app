@@ -31,10 +31,15 @@ import {
   User,
   FileText,
   AtSign,
+  LogOut,
+  Trash2,
+  Lock,
+  Mail,
 } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/lib/authStore";
 import { uploadAvatar } from "@/lib/uploadMedia";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -45,6 +50,9 @@ export default function SettingsScreen() {
   const [bio, setBio] = useState(profile?.bio ?? "");
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [changingPw, setChangingPw] = useState(false);
+  const [changingEmail, setChangingEmail] = useState(false);
+  const queryClient = useQueryClient();
 
   const saveScale = useSharedValue(1);
   const saveStyle = useAnimatedStyle(() => ({
@@ -123,6 +131,10 @@ export default function SettingsScreen() {
       // Lokalen Store aktualisieren
       if (data) setProfile(data as typeof profile);
 
+      // Caches invalidieren damit Feed sofort den neuen Username zeigt
+      queryClient.invalidateQueries({ queryKey: ['vibe-feed'] });
+      queryClient.invalidateQueries({ queryKey: ['user-posts', profile.id] });
+      queryClient.invalidateQueries({ queryKey: ['guild-feed'] });
       Alert.alert("Gespeichert ✓", "Dein Profil wurde aktualisiert.", [
         { text: "OK", onPress: () => router.back() },
       ]);
@@ -131,6 +143,95 @@ export default function SettingsScreen() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleChangePassword = () => {
+    Alert.prompt(
+      "Passwort ändern",
+      "Gib dein neues Passwort ein (mindestens 8 Zeichen):",
+      async (newPassword) => {
+        if (!newPassword) return;
+        if (newPassword.length < 8) {
+          Alert.alert("Zu kurz", "Das Passwort muss mindestens 8 Zeichen haben.");
+          return;
+        }
+        setChangingPw(true);
+        const { error } = await supabase.auth.updateUser({ password: newPassword });
+        setChangingPw(false);
+        if (error) {
+          Alert.alert("Fehler", error.message);
+        } else {
+          Alert.alert("Passwort geändert ✓", "Dein Passwort wurde erfolgreich aktualisiert.");
+        }
+      },
+      "secure-text"
+    );
+  };
+
+  const handleChangeEmail = () => {
+    Alert.prompt(
+      "E-Mail ändern",
+      "Gib deine neue E-Mail-Adresse ein. Du erhältst einen Bestätigungslink an beide Adressen:",
+      async (newEmail) => {
+        if (!newEmail || !newEmail.includes("@")) {
+          Alert.alert("Ungültig", "Bitte gib eine gültige E-Mail-Adresse ein.");
+          return;
+        }
+        setChangingEmail(true);
+        const { error } = await supabase.auth.updateUser({ email: newEmail.trim() });
+        setChangingEmail(false);
+        if (error) {
+          Alert.alert("Fehler", error.message);
+        } else {
+          Alert.alert(
+            "Link gesendet ✓",
+            "Bitte prüfe dein Postfach und klicke auf den Bestätigungslink, um die Änderung abzuschließen."
+          );
+        }
+      },
+      "plain-text",
+      undefined,
+      "email-address"
+    );
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      "Abmelden",
+      "Möchtest du dich wirklich abmelden?",
+      [
+        { text: "Abbrechen", style: "cancel" },
+        {
+          text: "Abmelden",
+          style: "destructive",
+          onPress: async () => {
+            queryClient.clear();
+            await useAuthStore.getState().signOut();
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.alert(
+      "Account löschen",
+      "Dein Account und alle Daten werden dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
+      [
+        { text: "Abbrechen", style: "cancel" },
+        {
+          text: "Account löschen",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await supabase.rpc('delete_own_account');
+            } catch { /* Fehler ignorieren — signOut trotzdem durchführen */ }
+            queryClient.clear();
+            await useAuthStore.getState().signOut();
+          },
+        },
+      ]
+    );
   };
 
   const avatarInitial = profile?.username?.[0]?.toUpperCase() ?? "?";
@@ -159,7 +260,7 @@ export default function SettingsScreen() {
             style={styles.saveBtn}
           >
             <LinearGradient
-              colors={["#7C3AED", "#A78BFA"]}
+              colors={["#0891B2", "#22D3EE"]}
               style={StyleSheet.absoluteFill}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
@@ -192,7 +293,7 @@ export default function SettingsScreen() {
             ) : (
               <>
                 <LinearGradient
-                  colors={["#7C3AED", "#A78BFA"]}
+                  colors={["#0891B2", "#22D3EE"]}
                   style={StyleSheet.absoluteFill}
                 />
                 <Text style={styles.avatarInitial}>{avatarInitial}</Text>
@@ -242,6 +343,44 @@ export default function SettingsScreen() {
               Dein Profil ist öffentlich sichtbar für alle Vibes-Nutzer.
             </Text>
           </View>
+        </View>
+
+        {/* Danger Zone */}
+        <View style={styles.dangerSection}>
+          {/* E-Mail ändern */}
+          <Pressable
+            onPress={handleChangeEmail}
+            disabled={changingEmail}
+            style={styles.passwordBtn}
+          >
+            {changingEmail
+              ? <ActivityIndicator size="small" color="#22D3EE" />
+              : <Mail size={16} stroke="#22D3EE" strokeWidth={2} />
+            }
+            <Text style={styles.passwordText}>E-Mail ändern</Text>
+          </Pressable>
+
+          {/* Passwort ändern */}
+          <Pressable
+            onPress={handleChangePassword}
+            disabled={changingPw}
+            style={styles.passwordBtn}
+          >
+            {changingPw
+              ? <ActivityIndicator size="small" color="#22D3EE" />
+              : <Lock size={16} stroke="#22D3EE" strokeWidth={2} />
+            }
+            <Text style={styles.passwordText}>Passwort ändern</Text>
+          </Pressable>
+
+          <Pressable onPress={handleLogout} style={styles.logoutBtn}>
+            <LogOut size={16} stroke="#F87171" strokeWidth={2} />
+            <Text style={styles.logoutText}>Abmelden</Text>
+          </Pressable>
+          <Pressable onPress={handleDeleteAccount} style={styles.deleteBtn}>
+            <Trash2 size={14} stroke="#6B7280" strokeWidth={2} />
+            <Text style={styles.deleteText}>Account löschen</Text>
+          </Pressable>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -328,7 +467,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
-    borderColor: "rgba(167,139,250,0.4)",
+    borderColor: "rgba(34,211,238,0.4)",
   },
   avatarImage: {
     width: "100%",
@@ -347,7 +486,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: "#7C3AED",
+    backgroundColor: "#0891B2",
     alignItems: "center",
     justifyContent: "center",
   },
@@ -412,5 +551,55 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     flex: 1,
+  },
+  dangerSection: {
+    paddingHorizontal: 20,
+    gap: 12,
+    paddingBottom: 20,
+  },
+  passwordBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "rgba(34,211,238,0.07)",
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(34,211,238,0.25)",
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+  },
+  passwordText: {
+    color: "#22D3EE",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  logoutBtn: {
+
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    backgroundColor: "rgba(248,113,113,0.08)",
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: "rgba(248,113,113,0.25)",
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+  },
+  logoutText: {
+    color: "#F87171",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  deleteBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+  },
+  deleteText: {
+    color: "#4B5563",
+    fontSize: 13,
+    fontWeight: "500",
   },
 });

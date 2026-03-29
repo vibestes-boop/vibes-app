@@ -98,6 +98,7 @@ export function useLike(postId: string, batch?: UseLikeBatch | null) {
 
   const toggle = () => {
     if (!userId) return;
+    if (likePost.isPending || unlikePost.isPending) return; // B8: Debounce Doppel-Tap
     if (liked) unlikePost.mutate();
     else likePost.mutate();
   };

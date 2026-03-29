@@ -24,7 +24,7 @@ const EXPO_GO_STUBS = {
   'react-native-reanimated':        path.resolve(__dirname, 'stubs/reanimated-compat.js'),
   'react-native-safe-area-context': path.resolve(__dirname, 'stubs/safe-area-compat.js'),
   'react-native-screens':           path.resolve(__dirname, 'stubs/screens-compat.js'),
-  'lucide-react-native':            path.resolve(__dirname, 'stubs/lucide-compat.js'),
+  // lucide-react-native: KEIN Stub mehr nötig — metro-patch serializer löst _interopNamespace fix
   'expo-linear-gradient':           path.resolve(__dirname, 'stubs/linear-gradient-compat.js'),
   'expo-haptics':                   path.resolve(__dirname, 'stubs/haptics-compat.js'),
   'expo-image-picker':              path.resolve(__dirname, 'stubs/expo-image-picker-mock.js'),
@@ -32,7 +32,7 @@ const EXPO_GO_STUBS = {
   'expo-video-thumbnails':          path.resolve(__dirname, 'stubs/expo-video-thumbnails-mock.js'),
   'expo-image':                     path.resolve(__dirname, 'stubs/expo-image-mock.js'),
   'expo-blur':                      path.resolve(__dirname, 'stubs/expo-blur-mock.js'),
-  'expo-av':                        path.resolve(__dirname, 'stubs/expo-av-mock.js'),
+  // expo-av: KEIN Stub — nativer Video-Player aktiv; Audio-Crash (iOS 18) nur bei Audio-Session-Init
   'expo-network':                   path.resolve(__dirname, 'stubs/expo-network-mock.js'),
   // expo-notifications: nur in Expo Go stubben (kein natives TurboModule verfügbar)
   'expo-notifications':             path.resolve(__dirname, 'stubs/expo-notifications-mock.js'),

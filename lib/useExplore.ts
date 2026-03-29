@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { Sparkles, Flame, Clock } from 'lucide-react-native';
 import type { ElementType } from 'react';
 import { supabase } from '@/lib/supabase';
@@ -51,7 +51,7 @@ export function useTrendingTags() {
         .from('posts')
         .select('tags')
         .not('tags', 'is', null)
-        .limit(200);
+        .limit(100);   // reduziert von 200 — spart Bandwidth
 
       if (!data?.length) return EXPLORE_FALLBACK_TAGS;
 
@@ -68,20 +68,24 @@ export function useTrendingTags() {
         .slice(0, 12)
         .map(([tag]) => tag.charAt(0).toUpperCase() + tag.slice(1));
     },
-    staleTime: 1000 * 60 * 10,
+    staleTime: 1000 * 60 * 15,   // 15 Min — selten ändernd
     placeholderData: EXPLORE_FALLBACK_TAGS,
   });
 }
 
 export function useExploreGrid(tag: string | null, sortMode: ExploreSortMode) {
-  return useQuery<ExplorePostThumb[]>({
+  return useInfiniteQuery({
     queryKey: ['explore-grid', tag, sortMode],
-    queryFn: async () => {
+    initialPageParam: 0,
+    queryFn: async ({ pageParam = 0 }) => {
+      const limit = 30;
+      const offset = pageParam * limit;
+
       let q = supabase
         .from('posts')
         .select('id, media_url, media_type, caption, dwell_time_score, created_at')
         .not('media_url', 'is', null)
-        .limit(60);
+        .range(offset, offset + limit - 1);
 
       if (tag) q = q.contains('tags', [tag]);
 
@@ -95,7 +99,10 @@ export function useExploreGrid(tag: string | null, sortMode: ExploreSortMode) {
       if (error) throw error;
       return (data ?? []) as ExplorePostThumb[];
     },
-    staleTime: 1000 * 60,
+    getNextPageParam: (lastPage, allPages) => {
+      return lastPage.length === 30 ? allPages.length : undefined;
+    },
+    staleTime: 1000 * 60 * 5,   // 5 Min (war 1 Min) — vermeidet Re-Fetch beim Tab-Wechsel
   });
 }
 

@@ -43,7 +43,13 @@ export default function ExploreScreen() {
   const debouncedQuery = useDebounce(query, 300);
   const isSearching = debouncedQuery.trim().length > 0;
 
-  const { data: gridPosts, isLoading: gridLoading } = useExploreGrid(
+  const {
+    data: gridData,
+    isLoading: gridLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useExploreGrid(
     isSearching ? null : activeTag,
     sortMode
   );
@@ -53,7 +59,8 @@ export default function ExploreScreen() {
 
   const renderGridItem = useCallback(({ item }: { item: ExplorePostThumb }) => <ExploreGridItem item={item} />, []);
 
-  const postsToShow = isSearching ? (foundPosts ?? []) : (gridPosts ?? []);
+  const gridPosts = gridData?.pages.flat() ?? [];
+  const postsToShow = isSearching ? (foundPosts ?? []) : gridPosts;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -90,7 +97,7 @@ export default function ExploreScreen() {
 
       {(gridLoading || searchLoading) && postsToShow.length === 0 ? (
         <View style={styles.loadingWrap}>
-          <ActivityIndicator color="#A78BFA" size="large" />
+          <ActivityIndicator color="#22D3EE" size="large" />
         </View>
       ) : postsToShow.length === 0 && isSearching ? (
         <View style={styles.emptyWrap}>
@@ -111,7 +118,19 @@ export default function ExploreScreen() {
           estimatedItemSize={130}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.grid}
-          ItemSeparatorComponent={() => <View style={{ height: 1 }} />}
+          onEndReached={() => {
+            if (!isSearching && hasNextPage && !isFetchingNextPage) {
+              fetchNextPage();
+            }
+          }}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            isFetchingNextPage ? (
+              <View style={{ padding: 20, alignItems: 'center' }}>
+                <ActivityIndicator color="#22D3EE" />
+              </View>
+            ) : null
+          }
         />
       )}
     </View>

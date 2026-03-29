@@ -34,13 +34,23 @@ function ConvItem({ item }: { item: Conversation }) {
       style={[styles.item, hasUnread && styles.itemUnread]}
       onPress={() => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        router.push({ pathname: '/messages/[id]', params: { id: item.id, username: item.other_user.username ?? '', avatarUrl: item.other_user.avatar_url ?? '' } });
+        router.push({ pathname: '/messages/[id]', params: { id: item.id, username: item.other_user.username ?? '', avatarUrl: item.other_user.avatar_url ?? '', otherUserId: item.other_user.id ?? '' } });
       }}
     >
       {hasUnread && <View style={styles.unreadDot} />}
 
-      {/* Avatar */}
-      <View style={styles.avatarWrap}>
+      {/* Avatar — klickbar → Profil */}
+      <Pressable
+        style={styles.avatarWrap}
+        onPress={(e) => {
+          e.stopPropagation();
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          if (item.other_user.id) {
+            router.push({ pathname: '/user/[id]', params: { id: item.other_user.id } });
+          }
+        }}
+        hitSlop={4}
+      >
         {item.other_user.avatar_url ? (
           <Image source={{ uri: item.other_user.avatar_url }} style={styles.avatar} />
         ) : (
@@ -48,8 +58,7 @@ function ConvItem({ item }: { item: Conversation }) {
             <Text style={styles.avatarInitial}>{initial}</Text>
           </View>
         )}
-        {hasUnread && <View style={styles.onlineDot} />}
-      </View>
+      </Pressable>
 
       {/* Text */}
       <View style={styles.textWrap}>
@@ -106,7 +115,7 @@ function NewMessageModal({ visible, onClose }: { visible: boolean; onClose: () =
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     const convId = await openConv(user.id);
     onClose();
-    router.push({ pathname: '/messages/[id]', params: { id: convId, username: user.username ?? '', avatarUrl: user.avatar_url ?? '' } });
+    router.push({ pathname: '/messages/[id]', params: { id: convId, username: user.username ?? '', avatarUrl: user.avatar_url ?? '', otherUserId: user.id } });
   };
 
   return (

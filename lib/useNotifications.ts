@@ -1,14 +1,16 @@
+import { useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from './supabase';
 import { useAuthStore } from './authStore';
 
 export type AppNotification = {
   id: string;
-  type: 'like' | 'comment' | 'follow';
+  type: 'like' | 'comment' | 'follow' | 'live' | 'live_invite';
   read: boolean;
   created_at: string;
   comment_text: string | null;
   post_id: string | null;
+  session_id: string | null;   // für Live-Benachrichtigungen
   sender: {
     id: string;
     username: string | null;
@@ -19,6 +21,31 @@ export type AppNotification = {
 
 export function useNotifications() {
   const userId = useAuthStore((s) => s.profile?.id);
+  const queryClient = useQueryClient();
+
+  // Realtime: neue Notifications sofort anzeigen (kein Pull-to-Refresh nötig)
+  useEffect(() => {
+    if (!userId) return;
+
+    const channel = supabase
+      .channel(`notifications-rt-${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `recipient_id=eq.${userId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['notifications', userId] });
+          queryClient.invalidateQueries({ queryKey: ['notifications-unread', userId] });
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [userId, queryClient]);
 
   return useQuery<AppNotification[]>({
     queryKey: ['notifications', userId],
@@ -28,7 +55,7 @@ export function useNotifications() {
       const { data, error } = await supabase
         .from('notifications')
         .select(`
-          id, type, read, created_at, comment_text, post_id,
+          id, type, read, created_at, comment_text, post_id, session_id,
           sender:sender_id ( id, username, avatar_url ),
           post:post_id ( media_url )
         `)
@@ -45,6 +72,7 @@ export function useNotifications() {
         created_at: n.created_at,
         comment_text: n.comment_text ?? null,
         post_id: n.post_id ?? null,
+        session_id: n.session_id ?? null,
         sender: n.sender ?? null,
         post_thumb: n.post?.media_url ?? null,
       }));
@@ -53,6 +81,7 @@ export function useNotifications() {
     staleTime: 1000 * 30,
   });
 }
+
 
 export function useUnreadCount() {
   const userId = useAuthStore((s) => s.profile?.id);

@@ -96,7 +96,7 @@ export default function LiveStartScreen() {
         <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, textAlign: 'center', paddingHorizontal: 32 }}>
           Live Studio läuft nicht in Expo Go.{'\n'}Bitte einen Dev-Build verwenden.
         </Text>
-        <Pressable onPress={() => router.back()} style={{ marginTop: 8, backgroundColor: '#7C3AED', borderRadius: 14, paddingHorizontal: 24, paddingVertical: 12 }}>
+        <Pressable onPress={() => router.back()} style={{ marginTop: 8, backgroundColor: '#0891B2', borderRadius: 14, paddingHorizontal: 24, paddingVertical: 12 }}>
           <Text style={{ color: '#fff', fontWeight: '700' }}>Zurück</Text>
         </Pressable>
       </View>
@@ -164,7 +164,7 @@ export default function LiveStartScreen() {
           value={title}
           onChangeText={setTitle}
           maxLength={60}
-          selectionColor="#A78BFA"
+          selectionColor="#22D3EE"
         />
 
         <Pressable
@@ -218,7 +218,7 @@ const s = StyleSheet.create({
     fontSize: 120,
     fontWeight: '900',
     color: 'rgba(255,255,255,0.9)',
-    textShadowColor: '#A78BFA',
+    textShadowColor: '#22D3EE',
     textShadowRadius: 30,
   },
 
@@ -230,7 +230,7 @@ const s = StyleSheet.create({
   },
   permissionTitle: { color: '#fff', fontSize: 17, fontWeight: '700' },
   permissionBtn: {
-    backgroundColor: '#7C3AED',
+    backgroundColor: '#0891B2',
     paddingHorizontal: 28, paddingVertical: 12, borderRadius: 20,
   },
   permissionBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },

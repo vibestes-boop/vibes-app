@@ -99,7 +99,7 @@ export default function RegisterScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.logoArea}>
-          <Zap size={32} stroke="#A78BFA" strokeWidth={2} fill="#A78BFA" />
+          <Zap size={32} stroke="#22D3EE" strokeWidth={2} fill="#22D3EE" />
           <Text style={styles.logoText}>Werde Teil von Vibes</Text>
           <Text style={styles.tagline}>Dein KI-gematchter Feed wartet auf dich</Text>
         </View>
@@ -150,7 +150,7 @@ export default function RegisterScreen() {
             disabled={loading}
           >
             <LinearGradient
-              colors={['#7C3AED', '#A78BFA']}
+              colors={['#0891B2', '#22D3EE']}
               style={StyleSheet.absoluteFill}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
@@ -245,7 +245,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   loginHighlight: {
-    color: '#A78BFA',
+    color: '#22D3EE',
     fontWeight: '600',
   },
 });
