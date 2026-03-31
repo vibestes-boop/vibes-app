@@ -86,6 +86,35 @@ export function useVibeFeed(activeTag: string | null = null) {
   });
 }
 
+// ─── Trending Feed (Top Posts nach Dwell-Score) ───────────────────────────────
+// Wird gezeigt wenn der personalisierte Feed leer ist (neue User ohne Follows)
+export function useTrendingFeed() {
+  return useQuery<PostWithAuthor[]>({
+    queryKey: ['trending-feed'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('posts')
+        .select(`
+          id, author_id, caption, media_url, media_type,
+          dwell_time_score, score_explore, score_brain,
+          tags, guild_id, is_guild_post, created_at,
+          profiles!author_id (username, avatar_url)
+        `)
+        .is('is_guild_post', false)
+        .order('dwell_time_score', { ascending: false })
+        .limit(30);
+      if (error) throw error;
+      return ((data ?? []) as any[]).map((p) => ({
+        ...p,
+        username:   (p.profiles as any)?.username   ?? null,
+        avatar_url: (p.profiles as any)?.avatar_url ?? null,
+        final_score: p.dwell_time_score ?? 0,
+      })) as PostWithAuthor[];
+    },
+    staleTime: 1000 * 60 * 5, // 5 min Cache — Trending ändert sich langsamer
+  });
+}
+
 export type GuildPost = {
   id: string;
   author_id: string;
@@ -176,8 +205,9 @@ export function useUserPosts(userId: string | null) {
       return (data ?? []) as UserPost[];
     },
     enabled: !!userId,
-    staleTime: 1000 * 60,
+    staleTime: 0,              // Immer fresh beim Tab-Wechsel
     gcTime: 1000 * 60 * 5,
+    refetchOnMount: 'always',  // Beim Mount immer neu laden
   });
 }
 

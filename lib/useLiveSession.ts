@@ -47,8 +47,27 @@ export type LiveReaction = {
   user_id: string;
 };
 
-// ─── Aktive Lives laden (für LiveBanner im Feed) ──────────────────────────────
+// ─── Aktive Lives laden (für StoriesRow im Feed — TikTok/Instagram Stil) ──────
 export function useActiveLiveSessions() {
+  const queryClient = useQueryClient();
+
+  // Realtime: sofort reagieren wenn ein Live startet / endet
+  useEffect(() => {
+    const channel = supabase
+      .channel('live-sessions-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'live_sessions' },
+        () => {
+          // Cache invalidieren → Query lädt neu mit frischen Daten
+          queryClient.invalidateQueries({ queryKey: ['live-sessions-active'] });
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [queryClient]);
+
   return useQuery<LiveSession[]>({
     queryKey: ['live-sessions-active'],
     queryFn: async () => {
@@ -57,17 +76,49 @@ export function useActiveLiveSessions() {
         .select('*, profiles(username, avatar_url)')
         .eq('status', 'active')
         .order('viewer_count', { ascending: false })
-        .limit(10);
+        .limit(20); // Mehr laden damit Deduplizierung ausreichend Spielraum hat
       if (error) throw error;
-      return (data ?? []) as LiveSession[];
+      // Deduplizierung nach host_id: nur die Session mit den meisten Zuschauern
+      // pro Host behalten (verhindert mehrfache LIVE-Kreise bei Zombie-Sessions)
+      const seen = new Set<string>();
+      const unique = (data ?? []).filter((s) => {
+        if (seen.has(s.host_id)) return false;
+        seen.add(s.host_id);
+        return true;
+      });
+      return unique.slice(0, 10) as LiveSession[];
     },
     staleTime: 10_000,
-    refetchInterval: 15_000,
+    refetchInterval: 30_000, // Fallback-Polling, falls Realtime-Verbindung abbricht
   });
 }
 
 // ─── Einzelne Live-Session laden ──────────────────────────────────────────────
 export function useLiveSession(sessionId: string | null) {
+  const queryClient = useQueryClient();
+
+  // Realtime: sofort reagieren wenn Session-Status oder viewer_count sich ändert
+  // (z.B. Host beendet Live → Zuschauer wird sofort navigiert)
+  useEffect(() => {
+    if (!sessionId) return;
+    const channel = supabase
+      .channel(`live-session-status-${sessionId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'live_sessions',
+          filter: `id=eq.${sessionId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['live-session', sessionId] });
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [sessionId, queryClient]);
+
   return useQuery<LiveSession | null>({
     queryKey: ['live-session', sessionId],
     queryFn: async () => {
@@ -85,6 +136,16 @@ export function useLiveSession(sessionId: string | null) {
     refetchInterval: 10_000,
   });
 }
+
+// ─── Zuschauer-Anzahl (Wrapper um useLiveSession für den Host-Screen) ──────────
+export function useViewerCount(sessionId: string | null) {
+  const { data: session } = useLiveSession(sessionId);
+  return {
+    viewerCount: session?.viewer_count ?? 0,
+    peakViewers: session?.peak_viewers ?? 0,
+  };
+}
+
 
 // ─── LiveKit Token via Supabase Edge Function abrufen ────────────────────────
 export async function fetchLiveKitToken(
@@ -117,12 +178,12 @@ export async function fetchLiveKitToken(
 // ─── Host: Session erstellen & beenden ────────────────────────────────────────
 export function useLiveHost() {
   const { profile } = useAuthStore();
-  const queryClient  = useQueryClient();
-  const [sessionId,  setSessionId]  = useState<string | null>(null);
-  const [roomName,   setRoomName]   = useState<string | null>(null);
-  const [lkToken,    setLkToken]    = useState<string | null>(null);
-  const [lkUrl,      setLkUrl]      = useState<string | null>(null);
-  const [loading,    setLoading]    = useState(false);
+  const queryClient = useQueryClient();
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [roomName, setRoomName] = useState<string | null>(null);
+  const [lkToken, setLkToken] = useState<string | null>(null);
+  const [lkUrl, setLkUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const startSession = async (title: string): Promise<{ sessionId: string; token: string; url: string } | null> => {
     if (!profile) return null;
@@ -134,6 +195,14 @@ export function useLiveHost() {
       // LiveKit-Token holen (bevor Session in DB angelegt wird)
       const lk = await fetchLiveKitToken(room, true);
       if (!lk) throw new Error('LiveKit Token konnte nicht generiert werden');
+
+      // ── Zombie-Sessions bereinigen: alle aktiven Sessions dieses Hosts beenden ──
+      // Verhindert mehrfache LIVE-Kreise falls eine vorherige Session nie sauber beendet wurde
+      await supabase
+        .from('live_sessions')
+        .update({ status: 'ended', ended_at: new Date().toISOString(), viewer_count: 0 })
+        .eq('host_id', profile.id)
+        .eq('status', 'active');
 
       const { data, error } = await supabase
         .from('live_sessions')
@@ -174,11 +243,14 @@ export function useLiveHost() {
   const endSession = async (overrideSessionId?: string) => {
     const id = overrideSessionId ?? sessionId;
     if (!id) return;
+    // RPC setzt status='ended', ended_at=NOW(), viewer_count=0
     await supabase.rpc('end_live_session', { p_session_id: id });
+    // Cache sofort leeren: watch-screens die useLiveSession(id) aufrufen reagieren sofort
+    queryClient.invalidateQueries({ queryKey: ['live-session', id] });
+    queryClient.invalidateQueries({ queryKey: ['live-sessions-active'] });
     setSessionId(null);
     setRoomName(null);
     setLkToken(null);
-    queryClient.invalidateQueries({ queryKey: ['live-sessions-active'] });
   };
 
   return { sessionId, roomName, lkToken, lkUrl, startSession, endSession, loading };
@@ -202,9 +274,11 @@ export function useLiveViewer(sessionId: string | null) {
   }, [sessionId]);
 }
 
-// ─── Echtzeit-Kommentare ──────────────────────────────────────────────────────
+// ─── Echtzeit-Kommentare (via Supabase Broadcast) ─────────────────────────────
 export function useLiveComments(sessionId: string | null) {
   const [comments, setComments] = useState<LiveComment[]>([]);
+  // Kanalreferenz für direkte Broadcasts ohne neuen Channel-Overhead
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   // Initiale Kommentare laden (letzte 50)
   useEffect(() => {
@@ -220,60 +294,73 @@ export function useLiveComments(sessionId: string | null) {
       });
   }, [sessionId]);
 
-  // Realtime-Subscription
+  // Realtime-Subscription via Broadcast (vermeidet DB Traffic & N+1 Queries)
   useEffect(() => {
     if (!sessionId) return;
 
     const channel = supabase
       .channel(`live-comments-${sessionId}`)
       .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'live_comments',
-          filter: `session_id=eq.${sessionId}`,
-        },
-        async (payload) => {
-          // Profil für neuen Kommentar nachladen
-          const { data: profileData } = await supabase
-            .from('profiles')
-            .select('username, avatar_url')
-            .eq('id', payload.new.user_id)
-            .single();
-
-          const newComment: LiveComment = {
-            ...(payload.new as LiveComment),
-            profiles: profileData ?? null,
-          };
-          setComments((prev) => [...prev.slice(-99), newComment]);
+        'broadcast',
+        { event: 'new-comment' },
+        (payload) => {
+          setComments((prev) => [...prev.slice(-99), payload.payload as LiveComment]);
         }
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    channelRef.current = channel;
+    return () => {
+      supabase.removeChannel(channel);
+      channelRef.current = null;
+    };
   }, [sessionId]);
 
   const sendComment = async (text: string) => {
     const { profile } = useAuthStore.getState();
     if (!profile || !sessionId || !text.trim()) return;
-    await supabase.from('live_comments').insert({
+
+    const commentData: LiveComment = {
+      id: Math.random().toString(36).substring(7),
       session_id: sessionId,
       user_id: profile.id,
       text: text.trim(),
+      created_at: new Date().toISOString(),
+      profiles: {
+        username: profile.username,
+        avatar_url: profile.avatar_url,
+      },
+    };
+
+    // 1. Sofort lokales Update (optimistic UI)
+    setComments((prev) => [...prev.slice(-99), commentData]);
+
+    // 2. Broadcast via bestehenden Channel (kein neuer Channel-Overhead)
+    channelRef.current?.send({
+      type: 'broadcast',
+      event: 'new-comment',
+      payload: commentData,
     });
+
+    // 3. Asynchrones Speichern in der DB (Fire-and-Forget)
+    supabase.from('live_comments').insert({
+      session_id: sessionId,
+      user_id: profile.id,
+      text: text.trim(),
+    }).then();
   };
 
   return { comments, sendComment };
 }
 
-// ─── Echtzeit-Reaktionen ──────────────────────────────────────────────────────
+// ─── Echtzeit-Reaktionen (via Supabase Broadcast) ─────────────────────────────
 export function useLiveReactions(sessionId: string | null) {
   const [reactions, setReactions] = useState<LiveReaction[]>([]);
-  // Bug 5 Fix: Alle pending Timeouts tracken für sauberes Cleanup
   const pendingTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  // Kanalreferenz für direkte Broadcasts ohne neuen Channel-Overhead
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
-  // Cleanup aller Timeouts wenn Hook unmountet
+  // Cleanup aller Timeouts beim Unmount
   useEffect(() => {
     return () => {
       pendingTimers.current.forEach(clearTimeout);
@@ -287,24 +374,13 @@ export function useLiveReactions(sessionId: string | null) {
     const channel = supabase
       .channel(`live-reactions-${sessionId}`)
       .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'live_reactions',
-          filter: `session_id=eq.${sessionId}`,
-        },
+        'broadcast',
+        { event: 'new-reaction' },
         (payload) => {
-          const reaction: LiveReaction = {
-            id: payload.new.id as string,
-            emoji: payload.new.emoji as string,
-            user_id: payload.new.user_id as string,
-          };
+          const reaction = payload.payload as LiveReaction;
           setReactions((prev) => [...prev, reaction]);
-          // Reaktion nach 3s wieder entfernen (Animation)
           const timer = setTimeout(() => {
             setReactions((prev) => prev.filter((r) => r.id !== reaction.id));
-            // Timer aus der Liste entfernen
             pendingTimers.current = pendingTimers.current.filter((t) => t !== timer);
           }, 3000);
           pendingTimers.current.push(timer);
@@ -312,17 +388,44 @@ export function useLiveReactions(sessionId: string | null) {
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    channelRef.current = channel;
+    return () => {
+      supabase.removeChannel(channel);
+      channelRef.current = null;
+    };
   }, [sessionId]);
 
   const sendReaction = async (emoji: string) => {
     const { profile } = useAuthStore.getState();
     if (!profile || !sessionId) return;
-    await supabase.from('live_reactions').insert({
+
+    const reactionData: LiveReaction = {
+      id: Math.random().toString(36).substring(7),
+      user_id: profile.id,
+      emoji,
+    };
+
+    // 1. Lokales Update (optimistic UI)
+    setReactions((prev) => [...prev, reactionData]);
+    const timer = setTimeout(() => {
+      setReactions((prev) => prev.filter((r) => r.id !== reactionData.id));
+      pendingTimers.current = pendingTimers.current.filter((t) => t !== timer);
+    }, 3000);
+    pendingTimers.current.push(timer);
+
+    // 2. Broadcast via bestehenden Channel (kein neuer Channel-Overhead)
+    channelRef.current?.send({
+      type: 'broadcast',
+      event: 'new-reaction',
+      payload: reactionData,
+    });
+
+    // 3. Optional in DB speichern für Analytics
+    supabase.from('live_reactions').insert({
       session_id: sessionId,
       user_id: profile.id,
       emoji,
-    });
+    }).then();
   };
 
   return { reactions, sendReaction };

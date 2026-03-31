@@ -406,7 +406,7 @@ export function useDeleteMessage(conversationId: string | null) {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['messages', conversationId] });
-      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['conversations', userId] }); // userId-Scope: nur eigene Liste
     },
   });
 }
@@ -473,13 +473,9 @@ export function useMessageReactions(conversationId: string | null) {
     queryFn: async () => {
       if (!conversationId) return {};
 
-      // Alle Message-IDs dieser Konversation aus Cache
-      const messages = (await supabase
-        .from('messages')
-        .select('id')
-        .eq('conversation_id', conversationId)).data ?? [];
-
-      const msgIds = messages.map((m) => m.id);
+      // Nutze gecachte Message-IDs statt extra DB-Query (Messages sind bereits im Cache)
+      const cachedMessages = queryClient.getQueryData<{ id: string }[]>(['messages', conversationId]) ?? [];
+      const msgIds = cachedMessages.map((m) => m.id);
       if (msgIds.length === 0) return {};
 
       const { data } = await supabase

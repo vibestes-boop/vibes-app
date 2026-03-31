@@ -6,6 +6,11 @@ type UploadResult = {
   path: string;
 };
 
+// ── Limits ──────────────────────────────────────────────────────────────────
+const MAX_IMAGE_BYTES = 50  * 1024 * 1024;  //  50 MB
+const MAX_VIDEO_BYTES = 200 * 1024 * 1024;  // 200 MB
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
 function mimeToExt(mimeType: string): string {
   if (mimeType.includes('png'))       return 'png';
   if (mimeType.includes('webp'))      return 'webp';
@@ -18,70 +23,144 @@ function mimeToExt(mimeType: string): string {
 }
 
 function isVideo(mimeType: string): boolean {
-  return mimeType.includes('video') || mimeType.includes('mp4') || mimeType.includes('mov') || mimeType.includes('quicktime');
+  return (
+    mimeType.includes('video')     ||
+    mimeType.includes('mp4')       ||
+    mimeType.includes('mov')       ||
+    mimeType.includes('quicktime')
+  );
 }
 
 /**
- * Videos → Cloudflare R2 (0€ Egress-Kosten)
- * Bilder → Supabase Storage (klein, günstig)
- *
- * Flow für Videos:
- * 1. Supabase Edge Function `r2-sign` gibt Presigned PUT URL zurück
- * 2. App lädt Video direkt zu R2 hoch (kein Secret im Client)
- * 3. Öffentliche R2-URL wird in posts.media_url gespeichert
+ * Normalize a MIME type coming from expo-image-picker.
+ * Uses || (not ??) to also catch empty strings that iOS sometimes returns.
+ * Trims whitespace to prevent canonical header mismatches with the signed value.
  */
-async function uploadVideoToR2(
-  userId: string,
+function normalizeMime(raw: string | null | undefined): string {
+  return (raw || 'image/jpeg').trim();
+}
+
+// ── Retry with exponential backoff ───────────────────────────────────────────
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxAttempts = 3,
+  onRetry?: (attempt: number, error: Error) => void,
+): Promise<T> {
+  let lastError: Error = new Error('Unknown error');
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      if (attempt < maxAttempts) {
+        onRetry?.(attempt, lastError);
+        // Exponential backoff: 500ms → 1000ms → 2000ms
+        await new Promise(res => setTimeout(res, 500 * Math.pow(2, attempt - 1)));
+      }
+    }
+  }
+  throw lastError;
+}
+
+/**
+ * Universeller Upload zu Cloudflare R2 (0€ Egress-Kosten)
+ *
+ * Wird für Videos, Bilder und Avatare verwendet.
+ * Flow:
+ * 1. Supabase Edge Function `r2-sign` gibt Presigned PUT URL zurück
+ * 2. App lädt Datei direkt zu R2 hoch (kein Secret im Client)
+ * 3. Öffentliche R2-URL wird gespeichert (direkt Cloudflare CDN)
+ *
+ * Features:
+ * - File-size validation (50MB Images / 200MB Videos)
+ * - Retry mit Exponential Backoff (3 Versuche)
+ * - AbortController support (Cancel-Button)
+ * - Content-Type Contract: normalizeMime() einmalig → gleicher Wert für Sign + PUT
+ */
+async function uploadToR2(
+  key: string,
   localUri: string,
-  mimeType: string,
+  rawMimeType: string | null | undefined,
   onProgress?: (pct: number) => void,
+  signal?: AbortSignal,
 ): Promise<UploadResult> {
   onProgress?.(5);
 
-  const ext = mimeToExt(mimeType);
-  const key = `${userId}/${Date.now()}.${ext}`;
-
-  // 1) Presigned URL von Edge Function holen
-  const session = useAuthStore.getState().session;
-  const accessToken = session?.access_token;
-  if (!accessToken) throw new Error('Nicht eingeloggt.');
-
-  const { data: signData, error: signError } = await supabase.functions.invoke('r2-sign', {
-    body: { key, contentType: mimeType },
-  });
-
-  if (signError || !signData?.uploadUrl) {
-    throw new Error(`R2 Sign-Fehler: ${signError?.message ?? 'Keine uploadUrl'}`);
+  if (!useAuthStore.getState().session?.access_token) {
+    throw new Error('Nicht eingeloggt.');
   }
 
-  const { uploadUrl, publicUrl } = signData as { uploadUrl: string; publicUrl: string };
+  // Normalize once — used for both signing AND the PUT Content-Type header.
+  const mimeType = normalizeMime(rawMimeType);
+
+  // ── 1) Fetch local file & validate size ─────────────────────────────────
+  const fileRes = await fetch(localUri, { signal });
+  if (!fileRes.ok) {
+    throw new Error(`Lokale Datei nicht lesbar (${fileRes.status})`);
+  }
+  const fileBuffer = await fileRes.arrayBuffer();
+
+  const maxBytes = isVideo(mimeType) ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES;
+  if (fileBuffer.byteLength > maxBytes) {
+    const limitMB = Math.round(maxBytes / 1024 / 1024);
+    const fileMB  = (fileBuffer.byteLength / 1024 / 1024).toFixed(1);
+    throw new Error(
+      `Datei zu groß: ${fileMB} MB (Maximum: ${limitMB} MB für ${isVideo(mimeType) ? 'Videos' : 'Bilder'})`,
+    );
+  }
   onProgress?.(15);
 
-  // 2) Bug 2 Fix: Presigned PUT erwartet raw binary body, KEIN FormData.
-  //    FormData ändert den Content-Type auf multipart/form-data → R2 SignatureDoesNotMatch.
-  //    Lösung: Datei als Blob laden und direkt als body übergeben.
-  const fileRes = await fetch(localUri);
-  const fileBlob = await fileRes.blob();
+  // ── 2) Get presigned URL from Edge Function (with retry) ────────────────
+  const { uploadUrl, publicUrl } = await withRetry(
+    async () => {
+      if (signal?.aborted) throw new Error('Upload abgebrochen.');
+      const { data, error } = await supabase.functions.invoke('r2-sign', {
+        body: { key, contentType: mimeType },
+      });
+      if (error || !data?.uploadUrl) {
+        throw new Error(`Sign-Fehler: ${error?.message ?? 'Keine uploadUrl'}`);
+      }
+      return data as { uploadUrl: string; publicUrl: string };
+    },
+    3,
+    (attempt, err) => {
+      onProgress?.(-attempt); // Negative value signals retry to the UI
+__DEV__ && console.warn(`[r2-sign] Versuch ${attempt} fehlgeschlagen: ${err.message}`);
+    },
+  );
   onProgress?.(20);
 
-  // Simulierter Fortschritt während Upload
+  // ── 3) PUT to R2 (with retry + simulated progress) ───────────────────────
   let simPct = 20;
   const simInterval = setInterval(() => {
     simPct = Math.min(simPct + 8, 90);
     onProgress?.(simPct);
   }, 600);
 
-  const res = await fetch(uploadUrl, {
-    method: 'PUT',
-    headers: { 'Content-Type': mimeType },
-    body: fileBlob,
-  });
-
-  clearInterval(simInterval);
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`R2 Upload fehlgeschlagen (${res.status}): ${text.substring(0, 200)}`);
+  try {
+    await withRetry(
+      async () => {
+        if (signal?.aborted) throw new Error('Upload abgebrochen.');
+        const res = await fetch(uploadUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': mimeType },
+          body: fileBuffer,
+          signal,
+        });
+        if (!res.ok) {
+          const text = await res.text().catch(() => '(kein Body)');
+          throw new Error(`R2 Upload fehlgeschlagen (${res.status}): ${text.substring(0, 500)}`);
+        }
+      },
+      3,
+      (attempt, err) => {
+        simPct = 20; // Reset simulated progress on retry
+        onProgress?.(-attempt);
+__DEV__ && console.warn(`[r2-upload] Versuch ${attempt} fehlgeschlagen: ${err.message}`);
+      },
+    );
+  } finally {
+    clearInterval(simInterval);
   }
 
   onProgress?.(100);
@@ -89,116 +168,33 @@ async function uploadVideoToR2(
 }
 
 /**
- * Bilder → Supabase Storage (original, bewährt)
+ * Post-Medien: Videos UND Bilder → Cloudflare R2
+ * (0€ Egress — kein Supabase Storage mehr für neue Uploads)
  */
-async function uploadImageToSupabase(
-  bucket: string,
-  filePath: string,
-  localUri: string,
-  mimeType: string,
-  onProgress?: (pct: number) => void,
-): Promise<UploadResult> {
-  onProgress?.(5);
-
-  const formData = new FormData();
-  formData.append('file', {
-    uri: localUri,
-    type: mimeType,
-    name: filePath.split('/').pop() ?? 'upload',
-  } as unknown as Blob);
-
-  onProgress?.(20);
-
-  const session = useAuthStore.getState().session;
-  const accessToken = session?.access_token;
-  if (!accessToken) throw new Error('Nicht eingeloggt.');
-
-  const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
-  const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
-
-  let simPct = 20;
-  const simInterval = setInterval(() => {
-    simPct = Math.min(simPct + 10, 90);
-    onProgress?.(simPct);
-  }, 500);
-
-  const res = await fetch(
-    `${supabaseUrl}/storage/v1/object/${bucket}/${filePath}`,
-    {
-      method: 'POST',
-      headers: {
-        'apikey': supabaseKey,
-        'Authorization': `Bearer ${accessToken}`,
-      },
-      body: formData,
-    },
-  );
-
-  clearInterval(simInterval);
-  onProgress?.(100);
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Upload fehlgeschlagen (${res.status}): ${text.substring(0, 200)}`);
-  }
-
-  const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(filePath);
-  return { url: urlData.publicUrl, path: filePath };
-}
-
-/** Post-Medien: Videos → R2, Bilder → Supabase */
 export async function uploadPostMedia(
   userId: string,
   localUri: string,
-  mimeType: string = 'image/jpeg',
+  mimeType?: string | null,
   onProgress?: (pct: number) => void,
+  signal?: AbortSignal,
 ): Promise<UploadResult> {
-  if (isVideo(mimeType)) {
-    return uploadVideoToR2(userId, localUri, mimeType, onProgress);
-  }
-  const ext = mimeToExt(mimeType);
-  const filePath = `${userId}/${Date.now()}.${ext}`;
-  return uploadImageToSupabase('posts', filePath, localUri, mimeType, onProgress);
+  const resolvedMime = normalizeMime(mimeType);
+  const ext    = mimeToExt(resolvedMime);
+  const folder = isVideo(resolvedMime) ? 'videos' : 'images';
+  const key    = `posts/${folder}/${userId}/${Date.now()}.${ext}`;
+  return uploadToR2(key, localUri, resolvedMime, onProgress, signal);
 }
 
-/** Profilbild → Supabase Storage (Avatare sind klein, kein Traffic-Problem) */
+/**
+ * Profilbild → Cloudflare R2
+ * (Avatare werden bei jedem Feed-Item, Profil und DM geladen — hoher Egress)
+ */
 export async function uploadAvatar(
   userId: string,
   localUri: string,
+  signal?: AbortSignal,
 ): Promise<UploadResult> {
-  const filePath = `${userId}/avatar.jpg`;
-
-  const formData = new FormData();
-  formData.append('file', {
-    uri: localUri,
-    type: 'image/jpeg',
-    name: 'avatar.jpg',
-  } as unknown as Blob);
-
-  const session = useAuthStore.getState().session;
-  const accessToken = session?.access_token;
-  if (!accessToken) throw new Error('Nicht eingeloggt.');
-
-  const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
-  const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
-
-  const res = await fetch(
-    `${supabaseUrl}/storage/v1/object/avatars/${filePath}?upsert=true`,
-    {
-      method: 'POST',
-      headers: {
-        'apikey': supabaseKey,
-        'Authorization': `Bearer ${accessToken}`,
-      },
-      body: formData,
-    },
-  );
-
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`Avatar-Upload fehlgeschlagen (${res.status}): ${text.substring(0, 100)}`);
-  }
-
-  const { data: urlData } = supabase.storage.from('avatars').getPublicUrl(filePath);
-  return { url: urlData.publicUrl, path: filePath };
+  // Timestamp im Key → verhindert CDN-Cache-Probleme bei Avatar-Wechsel
+  const key = `avatars/${userId}/${Date.now()}.jpg`;
+  return uploadToR2(key, localUri, 'image/jpeg', undefined, signal);
 }

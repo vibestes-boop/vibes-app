@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { View, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -11,6 +12,7 @@ import { SCREEN_HEIGHT, SCREEN_WIDTH } from './feedConstants';
 
 /** Einzelne Skeleton-Karte im Feed-Format (Vollbild) */
 function SkeletonCard({ delay }: { delay: number }) {
+  const insets = useSafeAreaInsets();
   const shimmer = useSharedValue(0);
 
   useEffect(() => {
@@ -50,7 +52,7 @@ function SkeletonCard({ delay }: { delay: number }) {
       </View>
 
       {/* Action-Buttons rechts */}
-      <View style={styles.actions}>
+      <View style={[styles.actions, { bottom: insets.bottom + 80 }]}>
         {[0, 1, 2].map((i) => (
           <Animated.View key={i} style={[styles.actionBtn, shimmerStyle]} />
         ))}

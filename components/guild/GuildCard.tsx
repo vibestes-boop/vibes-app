@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, Pressable, Image, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -139,7 +140,7 @@ export function GuildCard({
                 </View>
               </>
             ) : (
-              <Image source={{ uri: post.media_url }} style={styles.mediaThumb} resizeMode="cover" />
+              <Image source={{ uri: post.media_url }} style={styles.mediaThumb} contentFit="cover" />
             )}
             <LinearGradient
               colors={['transparent', 'rgba(0,0,0,0.35)']}

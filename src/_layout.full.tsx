@@ -12,6 +12,12 @@
 /* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any */
 import { useEffect, useRef, useState } from 'react';
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { useFonts,
+  Inter_400Regular,
+  Inter_600SemiBold,
+  Inter_700Bold,
+  Inter_800ExtraBold,
+} from '@expo-google-fonts/inter';
 
 // ─── AuthGuard ────────────────────────────────────────────────────────────────
 function AuthGuard() {
@@ -70,7 +76,7 @@ function AuthGuard() {
     const inAuthGroup = segments[0] === '(auth)';
     const inOnboardingGroup = segments[0] === '(onboarding)';
 
-    console.log(
+    __DEV__ && console.log(
       '[AuthGuard] initialized:', initialized,
       'session:', !!session,
       'profile:', !!profile,
@@ -138,6 +144,11 @@ function AuthGuard() {
   }, [initialized, session, profile]);
 
   function navigateDeepLink(url: string) {
+    // vibes://reset-password — Passwort-Reset per E-Mail-Link
+    if (url.match(/^vibes:\/\/reset-password/)) {
+      router.push('/reset-password' as never);
+      return;
+    }
     const liveMatch = url.match(/^vibes:\/\/live\/([^/?#]+)/);
     if (liveMatch?.[1]) {
       router.push({ pathname: '/live/watch/[id]', params: { id: liveMatch[1] } });
@@ -161,7 +172,58 @@ function AuthGuard() {
 function PushNotificationsProvider() {
   const { usePushNotifications } =
     require('@/lib/usePushNotifications') as typeof import('@/lib/usePushNotifications');
+  const { useAuthStore } =
+    require('@/lib/authStore') as typeof import('@/lib/authStore');
+  const initialized = useAuthStore((s: { initialized: boolean }) => s.initialized);
+  const session = useAuthStore((s: { session: unknown }) => s.session);
+  const profile = useAuthStore((s: { profile: unknown }) => s.profile);
+
   usePushNotifications();
+
+  // Cold-Start: App war geschlossen, User tippt auf eine Push-Notification.
+  // Expo stellt die Response via getLastNotificationResponseAsync() bereit.
+  // Wir verarbeiten sie EINMAL, sobald Auth bereit ist.
+  const coldStartHandled = useRef(false);
+  useEffect(() => {
+    if (!initialized || !session || !profile) return;
+    if (coldStartHandled.current) return;
+    coldStartHandled.current = true;
+
+    try {
+      const Notifications = require('expo-notifications') as typeof import('expo-notifications');
+      if (typeof Notifications.getLastNotificationResponseAsync !== 'function') return;
+
+      Notifications.getLastNotificationResponseAsync().then((response) => {
+        if (!response) return;
+        const data = response.notification.request.content.data as Record<string, any>;
+        const { router } = require('expo-router') as typeof import('expo-router');
+
+        // Kleiner Delay damit der Router nach Auth-Redirect bereit ist
+        setTimeout(() => {
+          if (data?.type === 'message' && data?.conversationId) {
+            router.push({
+              pathname: '/messages/[id]',
+              params: {
+                id: data.conversationId,
+                username: data.senderUsername ?? '',
+                avatarUrl: data.senderAvatar ?? '',
+              },
+            });
+          } else if ((data?.type === 'like' || data?.type === 'comment') && data?.postId) {
+            router.push({ pathname: '/post/[id]', params: { id: data.postId } });
+          } else if (data?.type === 'follow' && data?.senderId) {
+            router.push({ pathname: '/user/[id]', params: { id: data.senderId } });
+          } else if (
+            (data?.type === 'live' || data?.type === 'live_invite') &&
+            data?.session_id
+          ) {
+            router.push({ pathname: '/live/watch/[id]', params: { id: data.session_id } });
+          }
+        }, 400);
+      }).catch(() => {});
+    } catch { /* Expo Go stub */ }
+  }, [initialized, session, profile]);
+
   return null;
 }
 
@@ -249,6 +311,14 @@ const splashStyles = StyleSheet.create({
  * module level (module-level @tanstack/react-query calls can throw in Hermes).
  */
 export default function RootLayoutFull() {
+  // Load Inter font — must be called before any render
+  const [fontsLoaded] = useFonts({
+    Inter_400Regular,
+    Inter_600SemiBold,
+    Inter_700Bold,
+    Inter_800ExtraBold,
+  });
+
   // Lazy-load everything inside the function – NEVER at module level
   const { Stack } = require('expo-router') as typeof import('expo-router');
   const { ErrorBoundary } =
@@ -306,12 +376,12 @@ export default function RootLayoutFull() {
               name="create/index"
               options={{ presentation: 'modal', animation: 'none' }}
             />
-            <Stack.Screen name="post/[id]" options={{ animation: 'none' }} />
+            <Stack.Screen name="post/[id]" options={{ animation: 'slide_from_right' }} />
             <Stack.Screen
               name="settings"
-              options={{ presentation: 'modal', animation: 'none' }}
+              options={{ presentation: 'modal', animation: 'slide_from_bottom' }}
             />
-            <Stack.Screen name="user/[id]" options={{ animation: 'none' }} />
+            <Stack.Screen name="user/[id]" options={{ animation: 'slide_from_right' }} />
             <Stack.Screen
               name="story-viewer"
               options={{
@@ -330,11 +400,11 @@ export default function RootLayoutFull() {
             />
             <Stack.Screen
               name="messages/index"
-              options={{ headerShown: false, animation: 'none' }}
+              options={{ headerShown: false, animation: 'slide_from_right' }}
             />
             <Stack.Screen
               name="messages/[id]"
-              options={{ headerShown: false, animation: 'none' }}
+              options={{ headerShown: false, animation: 'slide_from_right' }}
             />
             <Stack.Screen
               name="reset-password"
@@ -351,6 +421,22 @@ export default function RootLayoutFull() {
             <Stack.Screen
               name="follow-list"
               options={{ headerShown: false, animation: 'slide_from_bottom' }}
+            />
+            <Stack.Screen
+              name="blocked-users"
+              options={{ headerShown: false, animation: 'slide_from_bottom' }}
+            />
+            <Stack.Screen
+              name="live/start"
+              options={{ headerShown: false, animation: 'none', presentation: 'fullScreenModal' }}
+            />
+            <Stack.Screen
+              name="live/host"
+              options={{ headerShown: false, animation: 'none', presentation: 'fullScreenModal' }}
+            />
+            <Stack.Screen
+              name="live/watch/[id]"
+              options={{ headerShown: false, animation: 'none', presentation: 'fullScreenModal' }}
             />
           </Stack>
         </GestureHandlerRootView>

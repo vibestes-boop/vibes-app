@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { View, Text, Pressable, StyleSheet, Image } from 'react-native';
+import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { VideoGridThumb } from '@/components/ui/VideoGridThumb';
@@ -42,7 +43,7 @@ export function ProfileGridCell({
           <Image
             source={{ uri: post.media_url! }}
             style={s.cellImg}
-            resizeMode="cover"
+            contentFit="cover"
             onError={() => setImageError(true)}
           />
         )}

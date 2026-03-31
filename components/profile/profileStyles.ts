@@ -280,4 +280,51 @@ export const profileStyles = StyleSheet.create({
   emptyEmoji: { fontSize: 32, marginBottom: 2 },
   emptyTitle: { color: 'rgba(255,255,255,0.45)', fontSize: 15, fontWeight: '700' },
   emptySub: { color: 'rgba(255,255,255,0.22)', fontSize: 13, textAlign: 'center', lineHeight: 18 },
+
+  // ── Analytics Tab ─────────────────────────────────────────
+  analyticsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    gap: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255,255,255,0.04)',
+  },
+  analyticsRank: {
+    color: 'rgba(255,255,255,0.25)',
+    fontSize: 13,
+    fontWeight: '700',
+    width: 28,
+    textAlign: 'center',
+  },
+  analyticsContent: { flex: 1, gap: 6 },
+  analyticsCaption: {
+    color: '#D1D5DB',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  analyticsBarTrack: {
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    overflow: 'hidden',
+  },
+  analyticsBarFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  analyticsScore: { alignItems: 'center', minWidth: 44 },
+  analyticsScoreNum: {
+    color: '#22D3EE',
+    fontSize: 15,
+    fontWeight: '800',
+  },
+  analyticsScoreLabel: {
+    color: 'rgba(255,255,255,0.25)',
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
 });

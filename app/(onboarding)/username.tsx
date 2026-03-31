@@ -48,8 +48,8 @@ export default function OnboardingUsername() {
     const userId = profile?.id ?? session?.user?.id;
     const accessToken = session?.access_token;
 
-    console.log('[Username] userId:', userId ?? 'NULL');
-    console.log('[Username] token:', accessToken ? accessToken.substring(0, 20) + '...' : 'FEHLT');
+    __DEV__ && console.log('[Username] userId:', userId ?? 'NULL');
+    __DEV__ && console.log('[Username] token:', accessToken ? accessToken.substring(0, 20) + '...' : 'FEHLT');
 
     if (!userId || !accessToken) {
       setError('Session abgelaufen. Bitte App neu starten und einloggen.');
@@ -69,7 +69,7 @@ export default function OnboardingUsername() {
       const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
       const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
 
-      console.log('[Username] direct fetch to:', supabaseUrl + '/rest/v1/profiles');
+      __DEV__ && console.log('[Username] direct fetch to:', supabaseUrl + '/rest/v1/profiles');
 
       const res = await fetch(`${supabaseUrl}/rest/v1/profiles`, {
         method: 'POST',
@@ -84,7 +84,7 @@ export default function OnboardingUsername() {
       });
 
       const resText = await res.text();
-      console.log('[Username] fetch status:', res.status, resText.substring(0, 200));
+      __DEV__ && console.log('[Username] fetch status:', res.status, resText.substring(0, 200));
 
       if (!res.ok) {
         if (resText.includes('23505') || resText.includes('unique')) {
@@ -102,17 +102,17 @@ export default function OnboardingUsername() {
         if (profileData?.id) {
           const { setProfile } = useAuthStore.getState();
           setProfile(profileData);
-          console.log('[Username] profile set from response:', profileData.username);
+          __DEV__ && console.log('[Username] profile set from response:', profileData.username);
         }
       } catch {
         // Parsing-Fehler ignorieren — Navigation trotzdem fortsetzen
       }
 
-      console.log('[Username] navigate to interests');
+      __DEV__ && console.log('[Username] navigate to interests');
       router.push('/(onboarding)/interests');
 
     } catch (e: any) {
-      console.error('[Username] catch:', e?.message ?? e);
+      __DEV__ && console.error('[Username] catch:', e?.message ?? e);
       setError(e?.message ?? 'Netzwerkfehler. Bitte erneut versuchen.');
     } finally {
       setLoading(false);

@@ -3,10 +3,17 @@ import { View, Text } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
+/** Score-Farbe anhand von Schwellenwerten — grün/gelb/rot */
+function vibeRingColor(pct: number): string {
+  if (pct >= 70) return '#22D3EE'; // cyan  — hoch
+  if (pct >= 40) return '#FBBF24'; // gelb  — mittel
+  return '#34D399';                 // grün  — niedrig
+}
+
 /** Animierter Resonanz-Score-Ring: zählt beim Mount von 0 auf den Score hoch */
 export function VibeScoreRing({ score, size = 72 }: { score: number; size?: number }) {
   const pct = Math.min(Math.max(score, 0), 100);
-  const color = pct >= 70 ? '#22D3EE' : pct >= 40 ? '#FBBF24' : '#34D399';
+  const color = vibeRingColor(pct);
 
   const animatedOpacity = useSharedValue(0);
 

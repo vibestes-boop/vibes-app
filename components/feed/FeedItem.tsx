@@ -1,5 +1,5 @@
 import React, { useCallback, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Image as RNImage } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
@@ -96,15 +96,16 @@ export const FeedItem = React.memo(function FeedItem({
 
   const handleVideoTap = () => {
     const now = Date.now();
-    const DOUBLE_TAP_DELAY = 300;
+    const DOUBLE_TAP_DELAY = 250; // TikTok: 250ms Fenster
 
     if (now - lastTap.current < DOUBLE_TAP_DELAY) {
       if (!liked) {
         toggleLike();
         notificationAsync(NotificationFeedbackType.Success);
       }
-      heartScale.value = withSequence(withTiming(1.4, { duration: 80 }), withTiming(1, { duration: 80 }));
-      heartOpacity.value = withSequence(withTiming(1, { duration: 40 }), withTiming(0, { duration: 80 }));
+      // TikTok: Herz erscheint sofort (40ms), verschwindet schnell (60ms)
+      heartScale.value = withSequence(withTiming(1.4, { duration: 40 }), withTiming(1, { duration: 60 }));
+      heartOpacity.value = withSequence(withTiming(1, { duration: 20 }), withTiming(0, { duration: 60 }));
       lastTap.current = 0;
       return;
     }
@@ -115,9 +116,9 @@ export const FeedItem = React.memo(function FeedItem({
     setPaused(next);
     if (next) {
       pauseIconOpacity.value = withSequence(
-        withTiming(1, { duration: 50 }),
-        withTiming(1, { duration: 80 }),
-        withTiming(0, { duration: 60 })
+        withTiming(1, { duration: 30 }),
+        withTiming(1, { duration: 60 }),
+        withTiming(0, { duration: 50 })
       );
     }
   };
@@ -129,17 +130,18 @@ export const FeedItem = React.memo(function FeedItem({
       {/* ── Hintergrund: Bild DIREKT in feedItem */}
       {item.mediaUrl && !isVideo && !imageError && (
         <>
-          <RNImage
+          {/* Blur-Hintergrund: expo-image hat Memory/Disk-Cache — kein doppelter Netzwerkaufruf */}
+          <Image
             source={{ uri: item.mediaUrl }}
             style={[StyleSheet.absoluteFill, { opacity: 0.35 }]}
-            resizeMode="cover"
+            contentFit="cover"
             blurRadius={6}
             onError={() => setImageError(true)}
           />
-          <RNImage
+          <Image
             source={{ uri: item.mediaUrl }}
             style={StyleSheet.absoluteFill}
-            resizeMode="contain"
+            contentFit="contain"
             onError={() => setImageError(true)}
           />
         </>
@@ -161,6 +163,8 @@ export const FeedItem = React.memo(function FeedItem({
           setLongPressOpen(true);
         }}
         delayLongPress={380}
+        accessibilityRole="button"
+        accessibilityLabel={isVideo ? "Video tippen zum Pause/Play, doppeltippen zum Liken, gedrückt halten für Optionen" : "Bild tippen zum Liken, gedrückt halten für Optionen"}
       >
         {item.mediaUrl && isVideo && (
           USE_EXPO_VIDEO ? (
@@ -323,6 +327,9 @@ export const FeedItem = React.memo(function FeedItem({
                 }}
                 style={[styles.followBadge, isFollowing && styles.followBadgeActive]}
                 hitSlop={6}
+                accessibilityRole="button"
+                accessibilityLabel={isFollowing ? `${item.author} entfolgen` : `${item.author} folgen`}
+                accessibilityState={{ selected: isFollowing }}
               >
                 {isFollowing ? <UserCheck size={10} color="#fff" /> : <Text style={styles.followBadgePlus}>+</Text>}
               </Pressable>
@@ -333,12 +340,24 @@ export const FeedItem = React.memo(function FeedItem({
             hitSlop={8}
           >
             <Text style={styles.authorName}>{item.author}</Text>
-            {item.tags && item.tags.length > 0 && (
-              <Text style={styles.authorTags} numberOfLines={1}>
-                {item.tags.map((t) => `#${t}`).join(' ')}
-              </Text>
-            )}
           </Pressable>
+          {/* Hashtags — klickbar → Explore-Filter */}
+          {item.tags && item.tags.length > 0 && (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 2 }}>
+              {item.tags.map((tag) => (
+                <Pressable
+                  key={tag}
+                  onPress={() => router.push({
+                    pathname: '/(tabs)/explore',
+                    params: { tag },
+                  } as any)}
+                  hitSlop={6}
+                >
+                  <Text style={styles.authorTags}>#{tag}</Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
         </View>
         {item.caption ? (
           <Text style={styles.caption} numberOfLines={2}>
@@ -348,14 +367,20 @@ export const FeedItem = React.memo(function FeedItem({
 
         {isVideo && (
           <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { width: `${progress * 100}%` }]} />
+            <View style={[styles.progressFill, { transform: [{ scaleX: progress }], transformOrigin: 'left' }]} />
           </View>
         )}
       </View>
 
       <View style={styles.rightActions}>
         {isVideo && (
-          <Pressable onPress={onMuteToggle} style={styles.muteBtn} hitSlop={12}>
+          <Pressable
+            onPress={onMuteToggle}
+            style={styles.muteBtn}
+            hitSlop={12}
+            accessibilityRole="button"
+            accessibilityLabel={isMuted ? 'Ton einschalten' : 'Ton ausschalten'}
+          >
             <BlurView intensity={60} tint="dark" style={styles.muteBtnBlur}>
               {isMuted ? <VolumeX size={18} color="#fff" /> : <Volume2 size={18} color="#fff" />}
             </BlurView>
@@ -375,6 +400,7 @@ export const FeedItem = React.memo(function FeedItem({
         <BookmarkButton postId={item.id} batchBookmarked={engagement.bookmarkedByPost[item.id]} />
         <ActionButton
           icon={Share2}
+          accessibilityLabel="Post teilen"
           onPress={() => {
             impactAsync(ImpactFeedbackStyle.Light);
             setShareOpen(true);
@@ -382,6 +408,7 @@ export const FeedItem = React.memo(function FeedItem({
         />
         <ActionButton
           icon={MoreVertical}
+          accessibilityLabel="Weitere Optionen"
           onPress={() => {
             impactAsync(ImpactFeedbackStyle.Light);
             setOptionsOpen(true);

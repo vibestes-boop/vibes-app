@@ -4,11 +4,12 @@ import {
   Text,
   StyleSheet,
   Pressable,
-  Image,
   ActivityIndicator,
   Dimensions,
   FlatList,
+  Alert,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -30,15 +31,23 @@ import {
   Share2,
   Home,
   User,
+  ShieldOff,
+  Shield,
+  Flag,
+  Heart,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { supabase } from '@/lib/supabase';
 import { useFollow, useFollowCounts } from '@/lib/useFollow';
 import { useAuthStore } from '@/lib/authStore';
 import { useOrCreateConversation } from '@/lib/useMessages';
+import { useIsBlocked, useBlockUser } from '@/lib/useBlock';
+import { useReportUser } from '@/lib/useReport';
+import { useHasPendingRequest, useSendFollowRequest, useWithdrawFollowRequest } from '@/lib/useFollowRequest';
 import { VideoGridThumb } from '@/components/ui/VideoGridThumb';
 import { VibeScoreRing } from '@/components/profile/VibeScoreRing';
 import { StatKachel } from '@/components/profile/StatKachel';
+import { ProfileHighlightsRow } from '@/components/profile/ProfileHighlightsRow';
 import { shareUser } from '@/lib/useShare';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -87,17 +96,46 @@ export default function UserProfileScreen() {
 
   const [profile,   setProfile]   = useState<PublicProfile | null>(null);
   const [posts,     setPosts]     = useState<PostThumb[]>([]);
+  const [likedPosts, setLikedPosts] = useState<PostThumb[]>([]);
+  const [likedLoading, setLikedLoading] = useState(false);
+  const [activeTab, setActiveTab]  = useState<'posts' | 'liked'>('posts');
   const [postCount, setPostCount] = useState(0);
   const [loading,   setLoading]   = useState(true);
 
   const { isFollowing, toggle, isLoading: followLoading } = useFollow(id ?? null);
   const { data: counts } = useFollowCounts(id ?? null);
   const { mutateAsync: openConversation, isPending: dmLoading } = useOrCreateConversation();
+  const { data: isBlocked = false } = useIsBlocked(id ?? null);
+  const { block, unblock } = useBlockUser(id ?? null);
+  const { mutate: reportUser } = useReportUser();
+  const { data: hasPendingRequest = false } = useHasPendingRequest(id ?? null);
+  const { mutate: sendRequest, isPending: sendingRequest } = useSendFollowRequest();
+  const { mutate: withdrawRequest, isPending: withdrawing } = useWithdrawFollowRequest();
 
   const avatarScale   = useSharedValue(0.6);
   const avatarOpacity = useSharedValue(0);
   const followScale   = useSharedValue(1);
   const listRef       = useRef<FlatList>(null);
+  // Load liked posts when tab is activated
+  useEffect(() => {
+    if (activeTab !== 'liked' || !id) return;
+    if (likedPosts.length > 0) return; // already loaded
+    setLikedLoading(true);
+    supabase
+      .from('likes')
+      .select('post_id, posts(id, media_url, media_type, caption)')
+      .eq('user_id', id)
+      .order('created_at', { ascending: false })
+      .limit(60)
+      .then(({ data }) => {
+        const mapped: PostThumb[] = (data ?? [])
+          .map((r: any) => r.posts)
+          .filter(Boolean)
+          .map((p: any) => ({ id: p.id, media_url: p.media_url, media_type: p.media_type, caption: p.caption }));
+        setLikedPosts(mapped);
+        setLikedLoading(false);
+      });
+  }, [activeTab, id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const avatarStyle  = useAnimatedStyle(() => ({
     transform: [{ scale: avatarScale.value }],
@@ -123,7 +161,7 @@ export default function UserProfileScreen() {
     Promise.all([
       supabase
         .from('profiles')
-        .select('id, username, bio, avatar_url, guild_id, guilds(name)')
+        .select('id, username, bio, avatar_url, guild_id, is_private, guilds(name)')
         .eq('id', id)
         .single(),
       supabase
@@ -136,8 +174,13 @@ export default function UserProfileScreen() {
         .from('posts')
         .select('id', { count: 'exact', head: true })
         .eq('author_id', id),
-    ]).then(([{ data: p }, { data: ps }, { count }]) => {
-      if (canceled) return;  // Schutz vor Race-Condition
+    ]).then(([{ data: p, error: pErr }, { data: ps }, { count }]) => {
+      if (canceled) return;
+      // Profil nicht gefunden oder Netzwerkfehler → graceful null-State
+      if (pErr || !p) {
+        setLoading(false);
+        return;
+      }
       const raw = p as any;
       setProfile({ ...(raw as PublicProfile), guild_name: raw?.guilds?.name ?? null });
       setPosts((ps ?? []) as PostThumb[]);
@@ -164,12 +207,87 @@ export default function UserProfileScreen() {
     router.push({ pathname: '/messages/[id]', params: { id: convId, username: profile.username, avatarUrl: profile.avatar_url ?? '' } });
   };
 
+  const handleBlock = () => {
+    if (isBlocked) {
+      Alert.alert('Blockierung aufheben', `Möchtest du @${profile?.username ?? ''} entblocken?`, [
+        { text: 'Abbrechen', style: 'cancel' },
+        { text: 'Entblocken', onPress: () => unblock.mutate() },
+      ]);
+    } else {
+      Alert.alert('User blockieren', `Möchtest du @${profile?.username ?? ''} blockieren?\nDieser User kann dir nicht mehr folgen oder schreiben.`, [
+        { text: 'Abbrechen', style: 'cancel' },
+        { text: 'Blockieren', style: 'destructive', onPress: () => { block.mutate(); router.back(); } },
+      ]);
+    }
+  };
+
   const handleFollow = () => {
+    const isPrivate = (profile as any)?.is_private;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     followScale.value = withSpring(0.91, { damping: 8 }, () => {
       followScale.value = withSpring(1, { damping: 12 });
     });
-    toggle();
+
+    if (isFollowing) {
+      // Entfolgen — wie bisher
+      toggle();
+      return;
+    }
+
+    if (isPrivate) {
+      // Privates Profil: Anfrage senden oder zurückziehen
+      if (hasPendingRequest) {
+        Alert.alert('Anfrage zurückziehen?', 'Deine Follow-Anfrage wird zurückgezogen.', [
+          { text: 'Abbrechen', style: 'cancel' },
+          { text: 'Zurückziehen', style: 'destructive', onPress: () => id && withdrawRequest(id) },
+        ]);
+      } else {
+        id && sendRequest(id);
+      }
+    } else {
+      toggle();
+    }
+  };
+
+  const handleReportUser = () => {
+    if (!profile) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Alert.alert(
+      `@${profile.username} melden`,
+      'Wähle den Grund für die Meldung:',
+      [
+        {
+          text: '🚫  Spam',
+          onPress: () => {
+            reportUser({ reportedId: id, reason: 'spam' });
+            Alert.alert('Danke für deine Meldung', 'Wir prüfen das Profil zeitnah.');
+          },
+        },
+        {
+          text: '⚠️  Belästigung / Hassrede',
+          onPress: () => {
+            reportUser({ reportedId: id, reason: 'harassment' });
+            Alert.alert('Danke für deine Meldung', 'Wir prüfen das Profil zeitnah.');
+          },
+        },
+        {
+          text: '🔞  Unangemessener Inhalt',
+          onPress: () => {
+            reportUser({ reportedId: id, reason: 'inappropriate' });
+            Alert.alert('Danke für deine Meldung', 'Wir prüfen das Profil zeitnah.');
+          },
+        },
+        {
+          text: '🤖  Fake-Account',
+          onPress: () => {
+            reportUser({ reportedId: id, reason: 'fake_account' });
+            Alert.alert('Danke für deine Meldung', 'Wir prüfen das Profil zeitnah.');
+          },
+        },
+        { text: 'Abbrechen', style: 'cancel' },
+      ],
+      { cancelable: true }
+    );
   };
 
   if (loading) {
@@ -222,7 +340,11 @@ export default function UserProfileScreen() {
         >
           <View style={s.avatarGap}>
             {profile.avatar_url ? (
-              <Image source={{ uri: profile.avatar_url }} style={s.avatarImg} />
+              <Image
+                source={{ uri: profile.avatar_url }}
+                style={s.avatarImg}
+                contentFit="cover"
+              />
             ) : (
               <LinearGradient colors={['#0E7490', '#22D3EE']} style={s.avatarImg}>
                 <Text style={s.avatarInitials}>{initials}</Text>
@@ -285,7 +407,11 @@ export default function UserProfileScreen() {
         {!isOwn && (
           <View style={s.actionRow}>
             <Animated.View style={[{ flex: 1 }, followBtnAnim]}>
-              <Pressable onPress={handleFollow} disabled={followLoading} style={s.followBtnWrap}>
+              <Pressable
+                onPress={handleFollow}
+                disabled={followLoading || sendingRequest || withdrawing}
+                style={s.followBtnWrap}
+              >
                 {isFollowing ? (
                   <View style={s.followBtnOutline}>
                     {followLoading
@@ -296,6 +422,17 @@ export default function UserProfileScreen() {
                         </>
                     }
                   </View>
+                ) : hasPendingRequest ? (
+                  // Anfrage gesendet — warte auf Bestätigung
+                  <View style={[s.followBtnOutline, { borderColor: 'rgba(251,191,36,0.5)', backgroundColor: 'rgba(251,191,36,0.08)' }]}>
+                    {withdrawing
+                      ? <ActivityIndicator size="small" color="#FBBF24" />
+                      : <>
+                          <Timer size={16} color="#FBBF24" strokeWidth={2.2} />
+                          <Text style={[s.followBtnText, { color: '#FBBF24' }]}>Angefragt</Text>
+                        </>
+                    }
+                  </View>
                 ) : (
                   <LinearGradient
                     colors={['#0891B2', '#22D3EE']}
@@ -303,11 +440,13 @@ export default function UserProfileScreen() {
                     end={{ x: 1, y: 0 }}
                     style={s.followBtnFill}
                   >
-                    {followLoading
+                    {(followLoading || sendingRequest)
                       ? <ActivityIndicator size="small" color="#fff" />
                       : <>
                           <UserPlus size={16} color="#fff" strokeWidth={2.2} />
-                          <Text style={s.followBtnText}>Folgen</Text>
+                          <Text style={s.followBtnText}>
+                            {(profile as any)?.is_private ? 'Anfrage senden' : 'Folgen'}
+                          </Text>
                         </>
                     }
                   </LinearGradient>
@@ -331,6 +470,27 @@ export default function UserProfileScreen() {
             >
               <Share2 size={18} color="rgba(255,255,255,0.5)" strokeWidth={2} />
             </Pressable>
+
+            {/* Block-Button */}
+            <Pressable
+              onPress={handleBlock}
+              style={[s.iconBtn, isBlocked && { backgroundColor: 'rgba(239,68,68,0.12)', borderColor: 'rgba(239,68,68,0.25)' }]}
+            >
+              {isBlocked
+                ? <Shield size={18} color="#EF4444" strokeWidth={2} />
+                : <ShieldOff size={18} color="rgba(255,255,255,0.35)" strokeWidth={2} />
+              }
+            </Pressable>
+
+            {/* Report-Button (Apple App Store Pflicht) */}
+            <Pressable
+              onPress={handleReportUser}
+              style={s.iconBtn}
+              hitSlop={8}
+              accessibilityLabel={`@${profile.username} melden`}
+            >
+              <Flag size={18} color="rgba(255,255,255,0.3)" strokeWidth={2} />
+            </Pressable>
           </View>
         )}
 
@@ -339,17 +499,31 @@ export default function UserProfileScreen() {
             <Text style={s.editBtnText}>Profil bearbeiten</Text>
           </Pressable>
         )}
+
+        {/* ── Story Highlights ── */}
+        <ProfileHighlightsRow userId={id ?? null} isOwn={isOwn} />
+
       </View>
 
-      {/* ── GRID-HEADER ──────────────────────────────────────────────── */}
-      <View style={s.gridHeader}>
-        <Grid3X3 size={13} color="#6B7280" />
-        <Text style={s.gridLabel}>Vibes</Text>
-        {postCount > 0 && (
-          <View style={s.gridCountPill}>
-            <Text style={s.gridCountText}>{postCount}</Text>
-          </View>
-        )}
+      {/* ── TABS ──────────────────────────────────────────────── */}
+      <View style={s.tabBar}>
+        <Pressable
+          style={[s.tab, activeTab === 'posts' && s.tabActive]}
+          onPress={() => { setActiveTab('posts'); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+        >
+          <Grid3X3 size={16} color={activeTab === 'posts' ? '#22D3EE' : '#6B7280'} />
+          <Text style={[s.tabLabel, activeTab === 'posts' && s.tabLabelActive]}>Vibes</Text>
+          {postCount > 0 && activeTab === 'posts' && (
+            <View style={s.gridCountPill}><Text style={s.gridCountText}>{postCount}</Text></View>
+          )}
+        </Pressable>
+        <Pressable
+          style={[s.tab, activeTab === 'liked' && s.tabActive]}
+          onPress={() => { setActiveTab('liked'); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+        >
+          <Heart size={16} color={activeTab === 'liked' ? '#F472B6' : '#6B7280'} fill={activeTab === 'liked' ? '#F472B6' : 'transparent'} />
+          <Text style={[s.tabLabel, activeTab === 'liked' && { color: '#F472B6' }]}>Gefällt mir</Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -358,7 +532,7 @@ export default function UserProfileScreen() {
     <View style={s.root}>
       <FlatList
         ref={listRef}
-        data={posts}
+        data={activeTab === 'posts' ? posts : likedPosts}
         keyExtractor={(item) => item.id}
         numColumns={GRID_COLS}
         showsVerticalScrollIndicator={false}
@@ -366,13 +540,20 @@ export default function UserProfileScreen() {
         ListHeaderComponent={Header}
         columnWrapperStyle={s.gridRow}
         ListEmptyComponent={
+          activeTab === 'liked' && likedLoading ? (
+            <View style={s.emptyGrid}><ActivityIndicator color="#22D3EE" /></View>
+          ) : (
           <View style={s.emptyGrid}>
             <Users size={36} stroke="#1F2937" strokeWidth={1.2} />
-            <Text style={s.emptyTitle}>Noch keine Vibes</Text>
+            <Text style={s.emptyTitle}>{activeTab === 'liked' ? 'Keine gelikten Posts' : 'Noch keine Vibes'}</Text>
             <Text style={s.emptySub}>
-              {profile.username} hat noch nichts geteilt.
+              {activeTab === 'liked'
+                ? `${profile?.username ?? 'Dieser User'} hat noch nichts geliket.`
+                : `${profile?.username ?? ''} hat noch nichts geteilt.`
+              }
             </Text>
           </View>
+          )
         }
         renderItem={({ item, index }) => (
           <Pressable
@@ -389,7 +570,7 @@ export default function UserProfileScreen() {
                 <Image
                   source={{ uri: item.media_url }}
                   style={StyleSheet.absoluteFill}
-                  resizeMode="cover"
+                  contentFit="cover"
                 />
               )
             ) : (
@@ -597,6 +778,36 @@ const s = StyleSheet.create({
     alignSelf: 'stretch', alignItems: 'center',
   },
   editBtnText: { color: '#9CA3AF', fontSize: 14, fontWeight: '600' },
+
+  // Tabs
+  tabBar: {
+    flexDirection: 'row',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(255,255,255,0.07)',
+    marginTop: 8,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 13,
+    borderBottomWidth: 2,
+    borderBottomColor: 'transparent',
+  },
+  tabActive: {
+    borderBottomColor: '#22D3EE',
+  },
+  tabLabel: {
+    color: '#6B7280',
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+  },
+  tabLabelActive: {
+    color: '#22D3EE',
+  },
 
   // Grid
   gridHeader: {

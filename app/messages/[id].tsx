@@ -1,13 +1,14 @@
 import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput, Pressable,
-  Image, KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
+  KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
   PanResponder, Modal,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Send, Play, Reply, Trash2, X, ImagePlus } from 'lucide-react-native';
+import { ArrowLeft, Send, Play, Reply, Trash2, X, ImagePlus, Smile } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import Animated, {
@@ -19,6 +20,7 @@ import {
   type Message, type PostPreview,
 } from '@/lib/useMessages';
 import { useAuthStore } from '@/lib/authStore';
+import GifPicker from '@/components/ui/GifPicker';
 import { uploadPostMedia } from '@/lib/uploadMedia';
 
 // ── Konstanten ───────────────────────────────────────────────────────────────
@@ -47,7 +49,7 @@ function PostPreviewCard({ post, onPress }: { post: PostPreview; onPress: () => 
     >
       <View style={styles.previewThumbWrap}>
         {post.media_url ? (
-          <Image source={{ uri: post.media_url }} style={styles.previewThumb} resizeMode="cover" />
+          <Image source={{ uri: post.media_url }} style={styles.previewThumb} contentFit="cover" />
         ) : (
           <View style={[styles.previewThumb, styles.previewThumbFallback]}>
             <Text style={styles.previewFallbackEmoji}>🖼️</Text>
@@ -249,6 +251,7 @@ function MessageBubble({
               styles.bubble,
               isOwn ? styles.bubbleOwn : styles.bubbleOther,
               hasPost && styles.bubbleWithPost,
+              hasImage && !showText && styles.bubbleWithImage,
               isSending && { opacity: 0.6 },
               pressed && { opacity: 0.88 },
             ]}
@@ -262,12 +265,12 @@ function MessageBubble({
             {hasImage && (
               <Pressable
                 onPress={onImagePress}
-                style={styles.imageBubble}
+                style={[styles.imageBubble, isOwn && styles.imageBubbleOwn]}
               >
                 <Image
                   source={{ uri: msg.image_url! }}
                   style={styles.imageBubbleImg}
-                  resizeMode="cover"
+                  contentFit="cover"
                 />
               </Pressable>
             )}
@@ -317,11 +320,13 @@ export default function ChatScreen() {
   const userId   = useAuthStore((s) => s.profile?.id);
   const listRef  = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
+  const isAtBottomRef = useRef(true); // BUG-F: Guard gegen ungewolltes Auto-Scroll
   const [text, setText] = useState('');
   const [activePickerId, setActivePickerId] = useState<string | null>(null);
   const [replyTo, setReplyTo] = useState<{ id: string; content: string } | null>(null);
   const [imageUploading, setImageUploading] = useState(false);
   const [lightboxUri, setLightboxUri] = useState<string | null>(null);
+  const [showGifPicker, setShowGifPicker] = useState(false);
 
   const { data: messagesRaw = [], isLoading } = useMessages(conversationId ?? null);
   const messages = useMemo(() => {
@@ -341,9 +346,22 @@ export default function ChatScreen() {
   useMarkMessagesRead(conversationId ?? null);
   const { otherIsTyping, onTypingStart, onTypingStop } = useTypingPresence(conversationId ?? null);
 
+  // Zuverlässig zum Ende scrollen beim Öffnen des Chats
+  const isFirstLoadRef = useRef(true);
+
   useEffect(() => {
-    if (messages.length > 0) {
-      setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
+    if (messages.length === 0) return;
+
+    if (isFirstLoadRef.current) {
+      // Erster Load: 2 Versuche (Layout + Bild-Layout)
+      isFirstLoadRef.current = false;
+      setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 150);
+      setTimeout(() => listRef.current?.scrollToEnd({ animated: false }), 600);
+    } else {
+      // Neue Nachricht: nur scrollen wenn User am Ende ist
+      if (isAtBottomRef.current) {
+        setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 80);
+      }
     }
   }, [messages.length]);
 
@@ -385,6 +403,17 @@ export default function ChatScreen() {
       setImageUploading(false);
     }
   }, [conversationId, userId, sendMessage]);
+
+  // C: GIF senden (via Tenor URL direkt als image_url)
+  const handleSendGif = useCallback(async (gifUrl: string) => {
+    if (!conversationId) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      await sendMessage({ conversationId, content: '', postId: null, imageUrl: gifUrl });
+    } catch (e: any) {
+      Alert.alert('Fehler', e?.message ?? 'GIF konnte nicht gesendet werden.');
+    }
+  }, [conversationId, sendMessage]);
 
   const handlePostPress = useCallback((postId: string) => {
     router.push(`/post/${postId}` as any);
@@ -476,7 +505,7 @@ export default function ChatScreen() {
                 disabled={!otherUserId}
               >
                 {avatarUrl ? (
-                  <Image source={{ uri: avatarUrl }} style={styles.headerAvatar} />
+                  <Image source={{ uri: avatarUrl }} style={styles.headerAvatar} contentFit="cover" />
                 ) : (
                   <View style={[styles.headerAvatar, styles.headerAvatarFallback]}>
                     <Text style={styles.headerAvatarInitial}>{initial}</Text>
@@ -499,7 +528,25 @@ export default function ChatScreen() {
                 renderItem={renderItem}
                 contentContainerStyle={styles.listContent}
                 showsVerticalScrollIndicator={false}
-                onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
+                scrollEventThrottle={16}
+                initialNumToRender={20}
+                maxToRenderPerBatch={20}
+                windowSize={10}
+                onScroll={(e) => {
+                  const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+                  const dist = contentSize.height - layoutMeasurement.height - contentOffset.y;
+                  isAtBottomRef.current = dist < 60;
+                }}
+                onContentSizeChange={() => {
+                  // Beim ersten Load IMMER ans Ende scrollen
+                  if (isFirstLoadRef.current || isAtBottomRef.current) {
+                    listRef.current?.scrollToEnd({ animated: false });
+                  }
+                }}
+                onLayout={() => {
+                  // Nach erstem Layout-Pass zum Ende scrollen
+                  listRef.current?.scrollToEnd({ animated: false });
+                }}
                 ListEmptyComponent={
                   <View style={styles.center}>
                     <Text style={styles.emptyText}>Schreib die erste Nachricht 👋</Text>
@@ -541,6 +588,15 @@ export default function ChatScreen() {
                   ? <ActivityIndicator size="small" color="#22D3EE" />
                   : <ImagePlus size={22} color="rgba(255,255,255,0.45)" strokeWidth={1.8} />}
               </Pressable>
+              {/* GIF Button */}
+              <Pressable
+                onPress={() => setShowGifPicker(true)}
+                disabled={sending}
+                style={styles.imagePickerBtn}
+                hitSlop={8}
+              >
+                <Text style={styles.gifLabel}>GIF</Text>
+              </Pressable>
               <TextInput
                 ref={inputRef}
                 style={styles.input}
@@ -570,11 +626,18 @@ export default function ChatScreen() {
         </Pressable>
       </KeyboardAvoidingView>
 
+      {/* GIF Picker */}
+      <GifPicker
+        visible={showGifPicker}
+        onClose={() => setShowGifPicker(false)}
+        onSelect={handleSendGif}
+      />
+
       {/* Bild-Lightbox */}
       <Modal visible={!!lightboxUri} transparent animationType="fade" onRequestClose={() => setLightboxUri(null)}>
         <Pressable style={styles.lightboxOverlay} onPress={() => setLightboxUri(null)}>
           {!!lightboxUri && (
-            <Image source={{ uri: lightboxUri as string }} style={styles.lightboxImage} resizeMode="contain" />
+            <Image source={{ uri: lightboxUri as string }} style={styles.lightboxImage} contentFit="contain" />
           )}
         </Pressable>
       </Modal>
@@ -618,6 +681,7 @@ const styles = StyleSheet.create({
   bubbleWithPost: { paddingHorizontal: 0, paddingVertical: 0, gap: 0 },
   bubbleOther: { backgroundColor: 'rgba(255,255,255,0.08)', borderBottomLeftRadius: 4 },
   bubbleOwn: { backgroundColor: '#0891B2', borderBottomRightRadius: 4 },
+  bubbleWithImage: { backgroundColor: 'transparent', padding: 0, borderRadius: 0, overflow: 'visible' },
   bubbleText: { fontSize: 15, color: 'rgba(255,255,255,0.85)', lineHeight: 21, paddingHorizontal: 14, paddingTop: 8 },
   bubbleTextOwn: { color: '#FFFFFF' },
   bubbleTime: { fontSize: 10, color: 'rgba(255,255,255,0.35)', alignSelf: 'flex-end', paddingHorizontal: 14, paddingBottom: 8 },
@@ -756,18 +820,32 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 8,
   },
 
-  // Bild-DM Bubble
+  // Bild-DM Bubble — Hochformat wie TikTok/iMessage, kein Rahmen
   imageBubble: {
-    borderRadius: 12, overflow: 'hidden', marginBottom: 2,
+    overflow: 'hidden',
+    borderRadius: 16,
+    // 9:16 Hochformat — 65% Bildschirmbreite → natürliches Handyfoto-Gefühl
+    width: Math.round(require('react-native').Dimensions.get('window').width * 0.65),
+    aspectRatio: 9 / 16,
+  },
+  imageBubbleOwn: {
+    borderBottomRightRadius: 4,
   },
   imageBubbleImg: {
-    width: 200, height: 200, borderRadius: 12,
+    width: '100%',
+    height: '100%',
   },
 
   // Bild-Picker Button in Input-Bar
   imagePickerBtn: {
     width: 36, height: 36, alignItems: 'center', justifyContent: 'center',
     marginRight: 2,
+  },
+  gifLabel: {
+    color: '#22D3EE',
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
 
   // Lightbox Modal (Vollbild-Bild)

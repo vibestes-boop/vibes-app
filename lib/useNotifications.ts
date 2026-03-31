@@ -5,7 +5,7 @@ import { useAuthStore } from './authStore';
 
 export type AppNotification = {
   id: string;
-  type: 'like' | 'comment' | 'follow' | 'live' | 'live_invite';
+  type: 'like' | 'comment' | 'follow' | 'live' | 'live_invite' | 'dm' | 'mention' | 'follow_request' | 'follow_request_accepted';
   read: boolean;
   created_at: string;
   comment_text: string | null;
@@ -78,7 +78,7 @@ export function useNotifications() {
       }));
     },
     enabled: !!userId,
-    staleTime: 1000 * 30,
+    staleTime: 1000 * 60 * 2, // 2 min — Realtime übernimmt Aktualität
   });
 }
 
@@ -100,7 +100,7 @@ export function useUnreadCount() {
     },
     enabled: !!userId,
     staleTime: 1000 * 15,
-    refetchInterval: 1000 * 30,
+    refetchInterval: false, // Realtime-Kanal in useNotifications() übernimmt Updates
   });
 }
 
@@ -118,14 +118,16 @@ export function useMarkAllRead() {
         .eq('read', false);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
-      queryClient.invalidateQueries({ queryKey: ['notifications-unread'] });
+      // userId-scoped: verhindert Cross-User Cache-Invalidierung
+      queryClient.invalidateQueries({ queryKey: ['notifications', userId] });
+      queryClient.invalidateQueries({ queryKey: ['notifications-unread', userId] });
     },
   });
 }
 
 export function useMarkOneRead() {
   const queryClient = useQueryClient();
+  const userId = useAuthStore((s) => s.profile?.id);
 
   return useMutation({
     mutationFn: async (notifId: string) => {
@@ -135,8 +137,9 @@ export function useMarkOneRead() {
         .eq('id', notifId);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
-      queryClient.invalidateQueries({ queryKey: ['notifications-unread'] });
+      // userId-scoped: verhindert Cross-User Cache-Invalidierung
+      queryClient.invalidateQueries({ queryKey: ['notifications', userId] });
+      queryClient.invalidateQueries({ queryKey: ['notifications-unread', userId] });
     },
   });
 }

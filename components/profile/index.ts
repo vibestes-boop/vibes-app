@@ -8,3 +8,4 @@ export { ProfileGridCell } from './ProfileGridCell';
 export { PostManageModal } from './PostManageModal';
 export { ProfileStudioHeader } from './ProfileStudioHeader';
 export { ProfileListHeader } from './ProfileListHeader';
+export { ProfileHighlightsRow } from './ProfileHighlightsRow';

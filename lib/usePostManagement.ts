@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from './supabase';
+import { useAuthStore } from './authStore';
 
 export function useDeletePost() {
   const queryClient = useQueryClient();
@@ -61,6 +62,28 @@ export function useUpdatePost() {
       queryClient.invalidateQueries({ queryKey: ['post', postId] });
       queryClient.invalidateQueries({ queryKey: ['vibe-feed'] });
       queryClient.invalidateQueries({ queryKey: ['guild-feed'] });
+    },
+  });
+}
+
+/** Post an-/abpinnen. Max. 1 gepinnter Post pro User — via DB-Funktion */
+export function useTogglePinPost() {
+  const queryClient = useQueryClient();
+  const userId = useAuthStore((s) => s.profile?.id);
+
+  return useMutation({
+    mutationFn: async ({ postId, currentlyPinned }: { postId: string; currentlyPinned: boolean }) => {
+      if (!userId) throw new Error('Nicht eingeloggt');
+      // RPC: setzt is_pinned für diesen Post, entfernt Pin von allen anderen
+      const { error } = await supabase.rpc('toggle_pin_post', {
+        p_post_id: postId,
+        p_user_id: userId,
+      });
+      if (error) throw error;
+      return !currentlyPinned;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['user-posts'] });
     },
   });
 }

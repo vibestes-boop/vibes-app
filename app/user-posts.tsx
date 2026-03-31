@@ -10,7 +10,6 @@ import {
   View,
   Text,
   StyleSheet,
-  Image,
   Pressable,
   ActivityIndicator,
   Dimensions,
@@ -21,6 +20,7 @@ import {
   Platform,
   Keyboard,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -253,7 +253,7 @@ function PostCard({
             />
           )
         ) : (
-          <Image source={{ uri: item.media_url }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+          <Image source={{ uri: item.media_url }} style={StyleSheet.absoluteFill} contentFit="cover" />
         )
       ) : (
         <LinearGradient colors={['#0A0A0A', '#1a0533', '#0d1f4a']} style={StyleSheet.absoluteFill} />
@@ -359,6 +359,7 @@ export default function UserPostsScreen() {
 
   const [posts,         setPosts]         = useState<PostItem[]>([]);
   const [loading,       setLoading]       = useState(true);
+  const [loadError,     setLoadError]     = useState<string | null>(null);
   const [visibleIndex,  setVisibleIndex]  = useState(Number(startIndex ?? '0'));
   const [isMuted,       setIsMuted]       = useState(false);
   const [commentsPostId, setCommentsPostId] = useState<string | null>(null);
@@ -383,7 +384,12 @@ export default function UserPostsScreen() {
       .select('id, caption, media_url, media_type, tags, created_at, author_id, view_count, profiles!author_id(username, avatar_url)')
       .eq('author_id', userId)
       .order('created_at', { ascending: false })
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) {
+          setLoadError(error.message);
+          setLoading(false);
+          return;
+        }
         const mapped: PostItem[] = (data ?? []).map((p: any) => ({
           id:         p.id,
           caption:    p.caption,
@@ -431,6 +437,27 @@ export default function UserPostsScreen() {
     return (
       <View style={s.center}>
         <ActivityIndicator color="#22D3EE" size="large" />
+      </View>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <View style={s.center}>
+        <Text style={{ color: '#F87171', fontSize: 15, fontWeight: '700', textAlign: 'center', paddingHorizontal: 32 }}>
+          Fehler beim Laden
+        </Text>
+        <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13, marginTop: 6, textAlign: 'center', paddingHorizontal: 32 }}>
+          {loadError}
+        </Text>
+        <Pressable
+          onPress={() => { setLoading(true); setLoadError(null); }}
+          style={{ marginTop: 16, paddingHorizontal: 22, paddingVertical: 10, borderRadius: 20, backgroundColor: 'rgba(34,211,238,0.15)', borderWidth: 1, borderColor: 'rgba(34,211,238,0.4)' }}
+          accessibilityRole="button"
+          accessibilityLabel="Erneut versuchen"
+        >
+          <Text style={{ color: '#22D3EE', fontWeight: '700', fontSize: 14 }}>Erneut versuchen</Text>
+        </Pressable>
       </View>
     );
   }

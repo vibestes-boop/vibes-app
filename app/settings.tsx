@@ -10,8 +10,10 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
-  Image,
+  Linking,
+  Switch,
 } from "react-native";
+import { Image } from 'expo-image';
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -22,7 +24,9 @@ import Animated, {
 } from "react-native-reanimated";
 import {
   requestMediaLibraryPermissionsAsync,
+  requestCameraPermissionsAsync,
   launchImageLibraryAsync,
+  launchCameraAsync,
 } from "expo-image-picker";
 import {
   ArrowLeft,
@@ -35,6 +39,9 @@ import {
   Trash2,
   Lock,
   Mail,
+  Shield,
+  ExternalLink,
+  ChevronRight,
 } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/lib/authStore";
@@ -48,6 +55,7 @@ export default function SettingsScreen() {
 
   const [username, setUsername] = useState(profile?.username ?? "");
   const [bio, setBio] = useState(profile?.bio ?? "");
+  const [isPrivate, setIsPrivate] = useState((profile as any)?.is_private ?? false);
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [changingPw, setChangingPw] = useState(false);
@@ -61,24 +69,51 @@ export default function SettingsScreen() {
 
   const currentAvatar = avatarUri ?? profile?.avatar_url ?? null;
 
-  const pickAvatar = async () => {
-    const { status } = await requestMediaLibraryPermissionsAsync();
-    if (status !== "granted") {
-      Alert.alert(
-        "Berechtigung erforderlich",
-        "Bitte erlaube den Zugriff auf deine Fotos.",
-      );
-      return;
-    }
-    const result = await launchImageLibraryAsync({
-      mediaTypes: ["images"],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    if (!result.canceled && result.assets[0]) {
-      setAvatarUri(result.assets[0].uri);
-    }
+  const pickAvatar = () => {
+    Alert.alert(
+      'Profilbild ändern',
+      'Wie möchtest du dein Foto auswählen?',
+      [
+        {
+          text: 'Kamera',
+          onPress: async () => {
+            const { status } = await requestCameraPermissionsAsync();
+            if (status !== 'granted') {
+              Alert.alert('Berechtigung erforderlich', 'Bitte erlaube den Kamerazugriff in den Einstellungen.');
+              return;
+            }
+            const result = await launchCameraAsync({
+              allowsEditing: true,
+              aspect: [1, 1],
+              quality: 0.8,
+            });
+            if (!result.canceled && result.assets[0]) {
+              setAvatarUri(result.assets[0].uri);
+            }
+          },
+        },
+        {
+          text: 'Galerie',
+          onPress: async () => {
+            const { status } = await requestMediaLibraryPermissionsAsync();
+            if (status !== 'granted') {
+              Alert.alert('Berechtigung erforderlich', 'Bitte erlaube den Zugriff auf deine Fotos.');
+              return;
+            }
+            const result = await launchImageLibraryAsync({
+              mediaTypes: ['images'],
+              allowsEditing: true,
+              aspect: [1, 1],
+              quality: 0.8,
+            });
+            if (!result.canceled && result.assets[0]) {
+              setAvatarUri(result.assets[0].uri);
+            }
+          },
+        },
+        { text: 'Abbrechen', style: 'cancel' },
+      ]
+    );
   };
 
   const handleSave = async () => {
@@ -216,18 +251,44 @@ export default function SettingsScreen() {
   const handleDeleteAccount = () => {
     Alert.alert(
       "Account löschen",
-      "Dein Account und alle Daten werden dauerhaft gelöscht. Diese Aktion kann nicht rückgängig gemacht werden.",
+      "⚠️ Dein Account und ALLE Daten (Posts, Stories, Nachrichten) werden dauerhaft und unwiderruflich gelöscht.",
       [
         { text: "Abbrechen", style: "cancel" },
         {
-          text: "Account löschen",
+          text: "Jetzt löschen",
           style: "destructive",
           onPress: async () => {
-            try {
-              await supabase.rpc('delete_own_account');
-            } catch { /* Fehler ignorieren — signOut trotzdem durchführen */ }
-            queryClient.clear();
-            await useAuthStore.getState().signOut();
+            // Zweite Bestätigung — Apple Review erfordert bewusste Handlung
+            Alert.alert(
+              "Wirklich sicher?",
+              "Diese Aktion kann NICHT rückgängig gemacht werden.",
+              [
+                { text: "Nein, behalten", style: "cancel" },
+                {
+                  text: "Ja, Account löschen",
+                  style: "destructive",
+                  onPress: async () => {
+                    try {
+                      // Robuste Löschung via Edge Function (Service Role)
+                      const { data: { session } } = await supabase.auth.getSession();
+                      const token = session?.access_token;
+                      if (token) {
+                        const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
+                        await fetch(`${supabaseUrl}/functions/v1/delete-account`, {
+                          method: 'POST',
+                          headers: {
+                            Authorization: `Bearer ${token}`,
+                            'Content-Type': 'application/json',
+                          },
+                        });
+                      }
+                    } catch { /* Edge Function Fehler ignorieren — signOut trotzdem */ }
+                    queryClient.clear();
+                    await useAuthStore.getState().signOut();
+                  },
+                },
+              ]
+            );
           },
         },
       ]
@@ -243,21 +304,25 @@ export default function SettingsScreen() {
     >
       {/* Header */}
       <View style={styles.header}>
-        <Pressable onPress={() => router.back()} style={styles.iconBtn}>
+        <Pressable
+          onPress={() => router.back()}
+          style={styles.iconBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Zurück"
+        >
           <ArrowLeft size={20} stroke="#9CA3AF" strokeWidth={2} />
         </Pressable>
         <Text style={styles.headerTitle}>Profil bearbeiten</Text>
         <Animated.View style={saveStyle}>
           <Pressable
-            onPressIn={() => {
-              saveScale.value = withTiming(0.88, { duration: 80 });
-            }}
-            onPressOut={() => {
-              saveScale.value = withTiming(1, { duration: 80 });
-            }}
+            onPressIn={() => { saveScale.value = withTiming(0.88, { duration: 80 }); }}
+            onPressOut={() => { saveScale.value = withTiming(1, { duration: 80 }); }}
             onPress={handleSave}
             disabled={saving}
             style={styles.saveBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Profil speichern"
+            accessibilityState={{ disabled: saving }}
           >
             <LinearGradient
               colors={["#0891B2", "#22D3EE"]}
@@ -284,11 +349,17 @@ export default function SettingsScreen() {
       >
         {/* Avatar */}
         <View style={styles.avatarSection}>
-          <Pressable onPress={pickAvatar} style={styles.avatarWrapper}>
+          <Pressable
+            onPress={pickAvatar}
+            style={styles.avatarWrapper}
+            accessibilityRole="button"
+            accessibilityLabel="Profilbild ändern"
+          >
             {currentAvatar ? (
               <Image
                 source={{ uri: currentAvatar }}
                 style={styles.avatarImage}
+                contentFit="cover"
               />
             ) : (
               <>
@@ -347,11 +418,81 @@ export default function SettingsScreen() {
 
         {/* Danger Zone */}
         <View style={styles.dangerSection}>
+          {/* Privates Profil Toggle */}
+          <View style={[styles.passwordBtn, { justifyContent: 'space-between' }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 }}>
+              <Lock size={16} stroke={isPrivate ? '#22D3EE' : '#9CA3AF'} strokeWidth={2} />
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.passwordText, isPrivate && { color: '#22D3EE' }]}>Privates Profil</Text>
+                <Text style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11, marginTop: 1 }}>
+                  {isPrivate ? 'Neue Follower müssen bestätigt werden' : 'Jeder kann dein Profil sehen'}
+                </Text>
+              </View>
+            </View>
+            <Switch
+              value={isPrivate}
+              onValueChange={async (val) => {
+                setIsPrivate(val);
+                const { error } = await supabase
+                  .from('profiles')
+                  .update({ is_private: val })
+                  .eq('id', profile?.id ?? '');
+                if (error) {
+                  setIsPrivate(!val); // Rollback
+                  Alert.alert('Fehler', 'Einstellung konnte nicht gespeichert werden.');
+                } else {
+                  // Lokalen Store aktualisieren
+                  setProfile({ ...(profile as any), is_private: val });
+                }
+              }}
+              trackColor={{ false: 'rgba(255,255,255,0.15)', true: 'rgba(34,211,238,0.5)' }}
+              thumbColor={isPrivate ? '#22D3EE' : 'rgba(255,255,255,0.7)'}
+              accessibilityLabel="Privates Profil aktivieren oder deaktivieren"
+            />
+          </View>
+
+          {/* Geblockte Nutzer */}
+          <Pressable
+            onPress={() => router.push('/blocked-users' as any)}
+            style={styles.passwordBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Geblockte Nutzer verwalten"
+          >
+            <Shield size={16} stroke="#9CA3AF" strokeWidth={2} />
+            <Text style={styles.passwordText}>Geblockte Nutzer</Text>
+            <ChevronRight size={16} stroke="#6B7280" strokeWidth={2} style={{ marginLeft: 'auto' }} />
+          </Pressable>
+
+          {/* Datenschutzerklärung */}
+          <Pressable
+            onPress={() => Linking.openURL('https://vibesapp.de/datenschutz').catch(() => {})}
+            style={styles.passwordBtn}
+            accessibilityRole="link"
+            accessibilityLabel="Datenschutzerklärung öffnen"
+          >
+            <ExternalLink size={16} stroke="#9CA3AF" strokeWidth={2} />
+            <Text style={styles.passwordText}>Datenschutzerklärung</Text>
+          </Pressable>
+
+          {/* Nutzungsbedingungen */}
+          <Pressable
+            onPress={() => Linking.openURL('https://vibesapp.de/agb').catch(() => {})}
+            style={styles.passwordBtn}
+            accessibilityRole="link"
+            accessibilityLabel="Nutzungsbedingungen öffnen"
+          >
+            <ExternalLink size={16} stroke="#9CA3AF" strokeWidth={2} />
+            <Text style={styles.passwordText}>Nutzungsbedingungen</Text>
+          </Pressable>
+
           {/* E-Mail ändern */}
           <Pressable
             onPress={handleChangeEmail}
             disabled={changingEmail}
             style={styles.passwordBtn}
+            accessibilityRole="button"
+            accessibilityLabel="E-Mail-Adresse ändern"
+            accessibilityState={{ disabled: changingEmail }}
           >
             {changingEmail
               ? <ActivityIndicator size="small" color="#22D3EE" />
@@ -365,6 +506,9 @@ export default function SettingsScreen() {
             onPress={handleChangePassword}
             disabled={changingPw}
             style={styles.passwordBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Passwort ändern"
+            accessibilityState={{ disabled: changingPw }}
           >
             {changingPw
               ? <ActivityIndicator size="small" color="#22D3EE" />
@@ -373,11 +517,21 @@ export default function SettingsScreen() {
             <Text style={styles.passwordText}>Passwort ändern</Text>
           </Pressable>
 
-          <Pressable onPress={handleLogout} style={styles.logoutBtn}>
+          <Pressable
+            onPress={handleLogout}
+            style={styles.logoutBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Abmelden"
+          >
             <LogOut size={16} stroke="#F87171" strokeWidth={2} />
             <Text style={styles.logoutText}>Abmelden</Text>
           </Pressable>
-          <Pressable onPress={handleDeleteAccount} style={styles.deleteBtn}>
+          <Pressable
+            onPress={handleDeleteAccount}
+            style={styles.deleteBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Account dauerhaft löschen"
+          >
             <Trash2 size={14} stroke="#6B7280" strokeWidth={2} />
             <Text style={styles.deleteText}>Account löschen</Text>
           </Pressable>

@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import { View, ActivityIndicator, Alert } from "react-native";
+import { View, ActivityIndicator, Alert, Text, StyleSheet } from "react-native";
 import { FlashList } from "@shopify/flash-list";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -35,6 +35,7 @@ export default function GuildScreen() {
   const storeOpen = useStoryViewerStore((s) => s.open);
   const router = useRouter();
   const [viewMode, setViewMode] = useState<GuildViewMode>("feed");
+  const [isUploading, setIsUploading] = useState(false);
 
   const { data: memberCount } = useGuildMemberCount(profile?.guild_id);
 
@@ -61,6 +62,7 @@ export default function GuildScreen() {
 
   const handleAddStory = useCallback(async () => {
     if (!profile?.id) return;
+    if (isUploading) return; // Doppel-Tap Guard
     const result = await launchImageLibraryAsync({
       mediaTypes: ["images", "videos"],
       allowsEditing: true,
@@ -68,26 +70,30 @@ export default function GuildScreen() {
       quality: 0.85,
       videoMaxDuration: 15,
     });
-    // Stub gibt canceled:true → erklärender Hinweis statt stiller Fail
-    if (result.canceled || !result.assets?.[0]) {
-      if (!result.assets) {
-        Alert.alert(
-          "Story nicht verfügbar",
-          "Galerie-Zugriff ist in diesem Build deaktiviert. Stories können nach dem EAS-Build erstellt werden.",
-        );
-      }
+    if (result.canceled) return;
+    if (!result.assets?.[0]) {
+      Alert.alert(
+        "Story nicht verfügbar",
+        "Kein Medium ausgewählt. Bitte erlaube den Galerie-Zugriff in den Einstellungen.",
+      );
       return;
     }
     const asset = result.assets[0];
     const mediaType = asset.type === "video" ? "video" : "image";
     const mimeType = mediaType === "video" ? "video/mp4" : "image/jpeg";
+    setIsUploading(true);
     try {
       const upload = await uploadPostMedia(profile.id, asset.uri, mimeType);
       await createStory({ mediaUrl: upload.url, mediaType });
-    } catch (e) {
-      console.error("Story upload failed", e);
+    } catch (e: any) {
+      Alert.alert(
+        "Upload fehlgeschlagen",
+        e?.message ?? "Bitte versuche es erneut.",
+      );
+    } finally {
+      setIsUploading(false);
     }
-  }, [profile?.id, createStory]);
+  }, [profile?.id, createStory, isUploading]);
 
   const renderItem = useCallback(
     ({ item }: { item: GuildPost }) => (
@@ -131,6 +137,13 @@ export default function GuildScreen() {
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
+      {/* Upload-Overlay: User sieht Feedback während Story hochgeladen wird */}
+      {isUploading && (
+        <View style={uploadOverlay.container}>
+          <ActivityIndicator size="large" color="#22D3EE" />
+          <Text style={uploadOverlay.text}>Story wird hochgeladen…</Text>
+        </View>
+      )}
       {viewMode === "leaderboard" ? (
         <>
           <GuildRoomHeader
@@ -152,7 +165,9 @@ export default function GuildScreen() {
           renderItem={renderItem}
           estimatedItemSize={400}
           contentContainerStyle={
-            posts.length === 0 ? { paddingBottom: 0 } : { paddingBottom: 20 }
+            posts.length === 0
+              ? { paddingBottom: insets.bottom }
+              : { paddingBottom: insets.bottom + 90 }  // Tab-Bar (~83px) + Puffer
           }
           ListHeaderComponent={ListHeader}
           ListEmptyComponent={
@@ -173,3 +188,19 @@ export default function GuildScreen() {
     </View>
   );
 }
+
+const uploadOverlay = StyleSheet.create({
+  container: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 14,
+    zIndex: 999,
+  },
+  text: {
+    color: '#22D3EE',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+});

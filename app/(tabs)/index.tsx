@@ -11,20 +11,18 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 // reanimated: CJS require() is used to avoid _interopRequireDefault crash in Hermes HBC.
-// Stub (Expo Go): module.exports = Animated  →  _animMod.View works directly
-// Real Reanimated v3: module.exports.default = Animated  →  need _animMod.default?.View
 import { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
 const _animMod = require('react-native-reanimated') as any;
-const _animNS  = _animMod?.default ?? _animMod;            // default namespace or module itself
-const Animated = { View: _animNS?.View ?? _animMod?.View }; // covers both export styles
+const _animNS  = _animMod?.default ?? _animMod;
+const Animated = { View: _animNS?.View ?? _animMod?.View };
 
-// expo-haptics: 'import * as' → _interopRequireWildcard → TypeError in Hermes HBC
 import { impactAsync, ImpactFeedbackStyle } from 'expo-haptics';
-import { Search } from 'lucide-react-native';
+import { Search, AlertTriangle, SearchX, TrendingUp } from 'lucide-react-native';
 import TuneMyVibeOverlay from '@/components/ui/TuneMyVibeOverlay';
+import { StoriesRow } from '@/components/ui/StoriesRow';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useVibeFeed } from '@/lib/usePosts';
+import { useVibeFeed, useTrendingFeed } from '@/lib/usePosts';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/lib/authStore';
 import { CategoryFilter } from '@/components/ui/CategoryFilter';
@@ -32,6 +30,7 @@ import { useDwellTracker } from '@/lib/useDwellTracker';
 import { useGuildStories, type StoryGroup } from '@/lib/useStories';
 import { useStoryViewerStore } from '@/lib/storyViewerStore';
 import { useFeedEngagement, emptyFeedEngagementMaps } from '@/lib/useFeedEngagement';
+import { useActiveLiveSessions } from '@/lib/useLiveSession';
 import { FeedItem } from '@/components/feed/FeedItem';
 import { FeedSkeleton } from '@/components/feed/FeedSkeleton';
 import { vibeFeedScreenStyles as styles } from '@/components/feed/feedStyles';
@@ -78,6 +77,8 @@ export default function VibeFeedScreen() {
     hasNextPage,
     isFetchingNextPage,
   } = useVibeFeed(activeTag);
+  // Trending-Feed: Fallback für neue User ohne Follows / Dwell-History
+  const { data: trendingPosts } = useTrendingFeed();
   const { onViewableItemsChanged: dwellOnViewable } = useDwellTracker();
   const dwellOnViewableRef = useRef(dwellOnViewable);
   const setVisibleItemIdRef = useRef(setVisibleItemId);
@@ -108,6 +109,7 @@ export default function VibeFeedScreen() {
     ]);
   const viewabilityConfigCallbackPairs = viewabilityConfigCallbackPairsRef.current;
   const { data: storyGroups = [], refetch: refetchStories } = useGuildStories();
+  const { data: liveSessions = [] } = useActiveLiveSessions();
   const storyGroupMap = useMemo(() => new Map(storyGroups.map((g) => [g.userId, g])), [storyGroups]);
   const openStory = useStoryViewerStore((s) => s.open);
   const handleOpenStory = useCallback(
@@ -118,19 +120,20 @@ export default function VibeFeedScreen() {
     [openStory, storyGroups, router]
   );
 
+
   const bannerStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: bannerY.value }],
     opacity: bannerOpacity.value,
   }));
 
   const showBanner = useCallback(() => {
-    bannerY.value = withTiming(0, { duration: 80 });
-    bannerOpacity.value = withTiming(1, { duration: 60 });
+    bannerY.value = withTiming(0, { duration: 150 });
+    bannerOpacity.value = withTiming(1, { duration: 120 });
   }, [bannerY, bannerOpacity]);
 
   const hideBanner = useCallback(() => {
-    bannerY.value = withTiming(-60, { duration: 80 });
-    bannerOpacity.value = withTiming(0, { duration: 60 });
+    bannerY.value = withTiming(-60, { duration: 150 });
+    bannerOpacity.value = withTiming(0, { duration: 120 });
   }, [bannerY, bannerOpacity]);
 
   const checkForNewPosts = useCallback(async () => {
@@ -184,9 +187,13 @@ export default function VibeFeedScreen() {
     [pagedPosts]
   );
 
+  // Trending-Fallback: wenn personalisierter Feed leer ist und kein Tag-Filter aktiv
+  const isTrending = !isLoading && !isError && allPosts.length === 0 && !activeTag && (trendingPosts?.length ?? 0) > 0;
+  const activePosts = isTrending ? (trendingPosts ?? []) : allPosts;
+
   const feedData = useMemo<FeedItemData[]>(
     () =>
-      allPosts.map((p) => ({
+      activePosts.map((p) => ({
         id: p.id,
         author: `@${p.username ?? 'unknown'}`,
         caption: p.caption ?? '',
@@ -199,7 +206,7 @@ export default function VibeFeedScreen() {
         gradient: ['#0A0A0A', '#1a0533', '#0d1f4a'],
         accentColor: '#22D3EE',
       })),
-    [allPosts]
+    [activePosts]
   );
 
   const postIds = useMemo(() => feedData.map((p) => p.id), [feedData]);
@@ -245,26 +252,38 @@ export default function VibeFeedScreen() {
       {isLoading && <FeedSkeleton />}
       {isError && (
         <View style={styles.emptyTag}>
-          <Text style={styles.emptyTagEmoji}>⚠️</Text>
+          <AlertTriangle size={52} color="#F59E0B" />
           <Text style={styles.emptyTagTitle}>Feed-Fehler</Text>
           <Text style={styles.emptyTagSub}>{(error as Error)?.message ?? 'Unbekannter Fehler — Pull zum Neu laden.'}</Text>
         </View>
       )}
-      {!isLoading && !isError && feedData.length === 0 && (
+      {!isLoading && !isError && feedData.length === 0 && activeTag && (
         <View style={styles.emptyTag}>
-          {activeTag ? (
-            <>
-              <Text style={styles.emptyTagEmoji}>🔍</Text>
-              <Text style={styles.emptyTagTitle}>{`Nichts unter „${activeTag}“`}</Text>
-              <Text style={styles.emptyTagSub}>Noch keine Posts mit diesem Tag — sei der Erste.</Text>
-            </>
-          ) : (
-            <>
-              <Text style={styles.emptyTagEmoji}>⚡</Text>
-              <Text style={styles.emptyTagTitle}>Dein Feed ist leer</Text>
-              <Text style={styles.emptyTagSub}>Folge anderen Creators oder erstelle deinen ersten Vibe.</Text>
-            </>
-          )}
+          <SearchX size={52} color="rgba(255,255,255,0.5)" />
+          <Text style={styles.emptyTagTitle}>{`Nichts unter „${activeTag}“`}</Text>
+          <Text style={styles.emptyTagSub}>Noch keine Posts mit diesem Tag — sei der Erste.</Text>
+          <Pressable
+            onPress={() => setActiveTag(null)}
+            style={styles.emptyTagBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Filter entfernen"
+          >
+            <Text style={styles.emptyTagBtnText}>Filter entfernen</Text>
+          </Pressable>
+        </View>
+      )}
+      {/* Trending-Badge: wird nur angezeigt wenn Trending-Feed aktiv ist */}
+      {isTrending && (
+        <View style={[styles.filterBar, { top: insets.top + 56, pointerEvents: 'none' }]}>
+          <View style={{
+            flexDirection: 'row', alignItems: 'center', gap: 5,
+            backgroundColor: 'rgba(239,68,68,0.85)',
+            paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12,
+            alignSelf: 'flex-start', marginLeft: 16,
+          }}>
+            <TrendingUp size={11} color="#fff" strokeWidth={2.5} />
+            <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800', letterSpacing: 0.5 }}>Trending</Text>
+          </View>
         </View>
       )}
       <FlatList
@@ -275,18 +294,15 @@ export default function VibeFeedScreen() {
         getItemLayout={getItemLayout}
         pagingEnabled
         showsVerticalScrollIndicator={false}
-        snapToInterval={SCREEN_HEIGHT}
-        snapToAlignment="start"
         decelerationRate="fast"
-        disableIntervalMomentum
         scrollEventThrottle={16}
         removeClippedSubviews={Platform.OS === 'android'}
         style={styles.list}
         viewabilityConfigCallbackPairs={viewabilityConfigCallbackPairs}
-        windowSize={5}
-        maxToRenderPerBatch={5}
+        windowSize={3}
+        maxToRenderPerBatch={2}
         initialNumToRender={2}
-        updateCellsBatchingPeriod={30}
+        updateCellsBatchingPeriod={16}
         onEndReachedThreshold={0.5}
         onEndReached={() => {
           if (hasNextPage && !isFetchingNextPage) fetchNextPage();
@@ -308,6 +324,17 @@ export default function VibeFeedScreen() {
           />
         }
       />
+
+      {/* ── Live & Stories Row — schwebt über Feed, TikTok/Instagram Stil ── */}
+      {(liveSessions.length > 0 || storyGroups.length > 0) && (
+        <StoriesRow
+          groups={storyGroups}
+          liveSessions={liveSessions}
+          onSelectGroup={handleOpenStory}
+          onAddStory={() => router.push('/live/start' as any)}
+          overlayTop={insets.top + 54}
+        />
+      )}
 
       <Animated.View
         style={[styles.newPostsBanner, { top: insets.top + 6 }, bannerStyle]}

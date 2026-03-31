@@ -116,6 +116,6 @@ export function useBookmarkedPosts() {
       return (data ?? []).map((b: any) => b.posts as BookmarkedPost).filter(Boolean);
     },
     enabled: !!userId,
-    staleTime: 1000 * 30,
+    staleTime: 1000 * 60 * 2, // 2min — Optimistic Updates halten Status aktuell
   });
 }

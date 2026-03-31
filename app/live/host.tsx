@@ -15,10 +15,13 @@ import {
   Alert,
   Keyboard,
   Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
+import * as ScreenOrientation from 'expo-screen-orientation';
 import {
   X,
   Users,
@@ -58,6 +61,7 @@ import {
 } from "@/lib/useLiveSession";
 import LiveShareSheet from "@/components/ui/LiveShareSheet";
 import ViewerListSheet from "@/components/ui/ViewerListSheet";
+import ExpoGoPlaceholder from "@/components/live/ExpoGoPlaceholder";
 // expo-constants: default import causes _interopRequireDefault TypeError in Hermes HBC
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
 const _cMod = require("expo-constants") as any;
@@ -307,16 +311,13 @@ function HostUI({
 
   const handleShare = () => setShareVisible(true);
 
-  const handleEnd = () => {
-    setShowSummary(true);
-  };
+  const handleEnd = () => setShowSummary(true);
 
   const confirmEnd = () => {
     setShowSummary(false);
     onEnd();
   };
 
-  // Formatiere Dauer
   const formatDuration = () => {
     const seconds = Math.floor((Date.now() - startTime) / 1000);
     const m = Math.floor(seconds / 60);
@@ -325,14 +326,17 @@ function HostUI({
   };
 
   return (
-    <View style={StyleSheet.absoluteFill}>
-      {/* Eigenes Kamerabild */}
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
+      {/* Kamerabild + Overlays: absolut positioniert hinter allem */}
       <LocalCameraView />
 
-      {/* Overlay */}
       <LinearGradient
         colors={["rgba(0,0,0,0.55)", "transparent", "rgba(0,0,0,0.85)"]}
         style={StyleSheet.absoluteFill}
+        pointerEvents="none"
       />
 
       {/* Floating Reaktionen */}
@@ -342,82 +346,88 @@ function HostUI({
         ))}
       </View>
 
-      {/* Oben */}
-      <View style={[s.topBar, { paddingTop: insets.top + 8 }]}>
-        <View style={s.livePill}>
-          <Animated.View style={[s.liveDot, dotStyle]} />
-          <Text style={s.liveLabel}>LIVE</Text>
-        </View>
-        {title ? (
-          <Text style={s.titleText} numberOfLines={1}>
-            {title}
-          </Text>
-        ) : null}
-        <Pressable
-          onPress={() => setViewersVisible(true)}
-          style={s.viewerBadge}
-        >
-          <Users size={13} stroke="#fff" strokeWidth={2} />
-          <Text style={s.viewerCount}>{viewerCount}</Text>
-        </Pressable>
-        <Pressable onPress={handleEnd} style={s.endBtn} hitSlop={8}>
-          <X size={18} stroke="#fff" strokeWidth={2.5} />
-        </Pressable>
-      </View>
-
-      {/* Mikrofon / Kamera + Share Controls */}
-      <View style={[s.controlsPos, { top: insets.top + 60 }]}>
-        <HostControls />
-        {/* Share-Button */}
-        <Pressable onPress={handleShare} style={s.controlBtn}>
-          <Share2 size={22} stroke="#fff" strokeWidth={2.2} />
-        </Pressable>
-      </View>
-
-      {/* Reaktions-Buttons */}
-      <View style={s.emojiRow}>
-        {EMOJIS.map((emoji) => (
+      {/* Flex-Container: füllt den Rest, drückt Input nach oben wenn Tastatur offen */}
+      <View style={{ flex: 1 }}>
+        {/* Oben */}
+        <View style={[s.topBar, { paddingTop: insets.top + 8 }]}>
+          <View style={s.livePill}>
+            <Animated.View style={[s.liveDot, dotStyle]} />
+            <Text style={s.liveLabel}>LIVE</Text>
+          </View>
+          {title ? (
+            <Text style={s.titleText} numberOfLines={1}>
+              {title}
+            </Text>
+          ) : null}
           <Pressable
-            key={emoji}
-            onPress={() => sendReaction(emoji)}
-            style={s.emojiBtn}
+            onPress={() => setViewersVisible(true)}
+            style={s.viewerBadge}
           >
-            <Text style={s.emojiText}>{emoji}</Text>
+            <Users size={13} stroke="#fff" strokeWidth={2} />
+            <Text style={s.viewerCount}>{viewerCount}</Text>
           </Pressable>
-        ))}
+          <Pressable onPress={handleEnd} style={s.endBtn} hitSlop={8}>
+            <X size={18} stroke="#fff" strokeWidth={2.5} />
+          </Pressable>
+        </View>
+
+        {/* Mikrofon / Kamera + Share Controls */}
+        <View style={[s.controlsPos, { top: insets.top + 60 }]}>
+          <HostControls />
+          <Pressable onPress={handleShare} style={s.controlBtn}>
+            <Share2 size={22} stroke="#fff" strokeWidth={2.2} />
+          </Pressable>
+        </View>
+
+        {/* Reaktions-Buttons */}
+        <View style={[s.emojiRow, { bottom: insets.bottom + 72 }]}>
+          {EMOJIS.map((emoji) => (
+            <Pressable
+              key={emoji}
+              onPress={() => sendReaction(emoji)}
+              style={s.emojiBtn}
+            >
+              <Text style={s.emojiText}>{emoji}</Text>
+            </Pressable>
+          ))}
+        </View>
+
+        {/* Spacer: drückt Kommentare + Input nach unten */}
+        <View style={{ flex: 1 }} />
+
+        {/* Kommentare */}
+        <View style={[s.commentsArea]}>
+          <FlatList
+            ref={flatRef}
+            data={comments.slice(-30)}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => <CommentRow comment={item} />}
+            showsVerticalScrollIndicator={false}
+            scrollEnabled={false}
+          />
+        </View>
+
+        {/* Kommentar-Eingabe */}
+        <View style={[s.inputBar, { paddingBottom: insets.bottom + 12 }]}>
+          <TextInput
+            style={s.input}
+            placeholder="Als Host kommentieren …"
+            placeholderTextColor="rgba(255,255,255,0.35)"
+            value={input}
+            onChangeText={setInput}
+            onSubmitEditing={submit}
+            returnKeyType="send"
+            selectionColor="#22D3EE"
+            maxLength={300}
+          />
+          {input.trim().length > 0 && (
+            <Pressable onPress={submit} hitSlop={8} style={s.sendBtn}>
+              <Send size={18} stroke="#22D3EE" strokeWidth={2.2} />
+            </Pressable>
+          )}
+        </View>
       </View>
 
-      {/* Kommentare */}
-      <View style={[s.commentsArea, { paddingBottom: insets.bottom + 76 }]}>
-        <FlatList
-          ref={flatRef}
-          data={comments.slice(-30)}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => <CommentRow comment={item} />}
-          showsVerticalScrollIndicator={false}
-          scrollEnabled={false}
-        />
-      </View>
-
-      {/* Kommentar-Eingabe */}
-      <View style={[s.inputBar, { paddingBottom: insets.bottom + 12 }]}>
-        <TextInput
-          style={s.input}
-          placeholder="Als Host kommentieren …"
-          placeholderTextColor="rgba(255,255,255,0.35)"
-          value={input}
-          onChangeText={setInput}
-          onSubmitEditing={submit}
-          returnKeyType="send"
-          selectionColor="#22D3EE"
-          maxLength={300}
-        />
-        {input.trim().length > 0 && (
-          <Pressable onPress={submit} hitSlop={8} style={s.sendBtn}>
-            <Send size={18} stroke="#22D3EE" strokeWidth={2.2} />
-          </Pressable>
-        )}
-      </View>
       {/* Share Sheet */}
       <LiveShareSheet
         visible={shareVisible}
@@ -440,7 +450,7 @@ function HostUI({
       <Modal transparent visible={showSummary} animationType="fade">
         <View style={s.summaryBackdrop}>
           <View style={s.summaryCard}>
-            <Text style={s.summaryTitle}>Live beendet 🎬</Text>
+            <Text style={s.summaryTitle}>Live beendet 🎦</Text>
             <View style={s.summaryRow}>
               <View style={s.summaryItem}>
                 <Text style={s.summaryValue}>{formatDuration()}</Text>
@@ -461,59 +471,10 @@ function HostUI({
           </View>
         </View>
       </Modal>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
-// ─── Expo Go Placeholder ─────────────────────────────────────────────────────
-function ExpoGoPlaceholder({ onBack }: { onBack: () => void }) {
-  return (
-    <View
-      style={{
-        flex: 1,
-        backgroundColor: "#0a0010",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 16,
-      }}
-    >
-      <Text style={{ fontSize: 48 }}>🎥</Text>
-      <Text
-        style={{
-          color: "#fff",
-          fontSize: 18,
-          fontWeight: "700",
-          textAlign: "center",
-        }}
-      >
-        Dev-Build erforderlich
-      </Text>
-      <Text
-        style={{
-          color: "rgba(255,255,255,0.5)",
-          fontSize: 14,
-          textAlign: "center",
-          paddingHorizontal: 32,
-        }}
-      >
-        Live Studio läuft nicht in Expo Go.{"\n"}Bitte einen Dev-Build
-        verwenden.
-      </Text>
-      <Pressable
-        onPress={onBack}
-        style={{
-          marginTop: 8,
-          backgroundColor: "#0891B2",
-          borderRadius: 14,
-          paddingHorizontal: 24,
-          paddingVertical: 12,
-        }}
-      >
-        <Text style={{ color: "#fff", fontWeight: "700" }}>Zurück</Text>
-      </Pressable>
-    </View>
-  );
-}
 
 export default function LiveHostScreen() {
   const { sessionId, title, lkToken, lkUrl } = useLocalSearchParams<{
@@ -531,6 +492,12 @@ export default function LiveHostScreen() {
   const [room] = useState(
     () => new Room({ adaptiveStream: { pixelDensity: "screen" } }),
   );
+
+  // Portrait-Lock für den gesamten Live-Screen
+  useEffect(() => {
+    ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
+    return () => { ScreenOrientation.unlockAsync().catch(() => {}); };
+  }, []);
 
   // EINMALIGER useEffect (leere Deps) — verbindet, aktiviert Tracks, räumt auf.
   useEffect(() => {
@@ -556,7 +523,7 @@ export default function LiveHostScreen() {
         await room.localParticipant
           .setMicrophoneEnabled(true)
           .catch((e: unknown) => {
-            console.warn(
+__DEV__ && console.warn(
               "[LiveHost] Mikrofonaktivierung fehlgeschlagen:",
               String(e),
             );
@@ -576,7 +543,7 @@ export default function LiveHostScreen() {
         };
 
         await enableCamera().catch(async (e: unknown) => {
-          console.warn(
+__DEV__ && console.warn(
             "[LiveHost] Kamera fehlgeschlagen (1. Versuch):",
             String(e),
           );
@@ -584,7 +551,7 @@ export default function LiveHostScreen() {
           await new Promise<void>((r) => setTimeout(r, 3000));
           if (canceled) return;
           await enableCamera().catch((e2: unknown) => {
-            console.warn(
+__DEV__ && console.warn(
               "[LiveHost] Kamera fehlgeschlagen (2. Versuch):",
               String(e2),
             );
@@ -622,7 +589,7 @@ export default function LiveHostScreen() {
   };
 
   if (Constants.appOwnership === "expo") {
-    return <ExpoGoPlaceholder onBack={() => router.replace("/(tabs)")} />;
+    return <ExpoGoPlaceholder onBack={() => router.replace("/(tabs)")} icon="🎥" />;
   }
 
   if (!lkToken || !lkUrl || !sessionId) {
@@ -764,7 +731,6 @@ const s = StyleSheet.create({
   emojiRow: {
     position: "absolute",
     right: 14,
-    bottom: 160,
     gap: 8,
     zIndex: 15,
   },
@@ -779,8 +745,6 @@ const s = StyleSheet.create({
   emojiText: { fontSize: 22 },
 
   commentsArea: {
-    position: "absolute",
-    bottom: 0,
     left: 0,
     right: 70,
     maxHeight: 240,
@@ -801,10 +765,6 @@ const s = StyleSheet.create({
   commentText: { color: "#fff", fontSize: 13 },
 
   inputBar: {
-    position: "absolute",
-    bottom: 0,
-    left: 0,
-    right: 0,
     flexDirection: "row",
     alignItems: "center",
     gap: 10,

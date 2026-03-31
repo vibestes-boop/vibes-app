@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -13,8 +13,11 @@ import {
 } from 'react-native';
 import { Link, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { supabase } from '@/lib/supabase';
 import { Mail, Lock, User, Zap } from 'lucide-react-native';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import { appleSignIn } from '@/lib/useAppleSignIn';
 
 export default function RegisterScreen() {
   const [email, setEmail] = useState('');
@@ -22,6 +25,10 @@ export default function RegisterScreen() {
   const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
+
+  // ── Keyboard-Navigation Refs ────────────────────────────────────
+  const emailRef    = useRef<TextInput>(null);
+  const passwordRef = useRef<TextInput>(null);
 
   const handleRegister = async () => {
     if (!email || !password || !username) {
@@ -115,12 +122,16 @@ export default function RegisterScreen() {
               onChangeText={setUsername}
               autoCapitalize="none"
               autoCorrect={false}
+              returnKeyType="next"
+              onSubmitEditing={() => emailRef.current?.focus()}
+              blurOnSubmit={false}
             />
           </View>
 
           <View style={styles.inputWrapper}>
             <Mail size={18} stroke="#4B5563" strokeWidth={1.8} />
             <TextInput
+              ref={emailRef}
               style={styles.input}
               placeholder="E-Mail"
               placeholderTextColor="#4B5563"
@@ -129,18 +140,24 @@ export default function RegisterScreen() {
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
+              returnKeyType="next"
+              onSubmitEditing={() => passwordRef.current?.focus()}
+              blurOnSubmit={false}
             />
           </View>
 
           <View style={styles.inputWrapper}>
             <Lock size={18} stroke="#4B5563" strokeWidth={1.8} />
             <TextInput
+              ref={passwordRef}
               style={styles.input}
               placeholder="Passwort (min. 6 Zeichen)"
               placeholderTextColor="#4B5563"
               value={password}
               onChangeText={setPassword}
               secureTextEntry
+              returnKeyType="done"
+              onSubmitEditing={handleRegister}
             />
           </View>
 
@@ -148,6 +165,9 @@ export default function RegisterScreen() {
             onPress={handleRegister}
             style={styles.registerBtn}
             disabled={loading}
+            accessibilityRole="button"
+            accessibilityLabel="Account erstellen"
+            accessibilityState={{ disabled: loading }}
           >
             <LinearGradient
               colors={['#0891B2', '#22D3EE']}
@@ -161,8 +181,30 @@ export default function RegisterScreen() {
             }
           </Pressable>
 
+          {/* ── Apple Sign-In Divider ── */}
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>oder</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          {/* ── Apple Sign-In (nur iOS) ── */}
+          {Platform.OS === 'ios' && (
+            <AppleAuthentication.AppleAuthenticationButton
+              buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_UP}
+              buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
+              cornerRadius={16}
+              style={styles.appleBtn}
+              onPress={appleSignIn}
+            />
+          )}
+
           <Link href="/(auth)/login" asChild>
-            <Pressable style={styles.loginLink}>
+          <Pressable
+              style={styles.loginLink}
+              accessibilityRole="link"
+              accessibilityLabel="Einloggen"
+            >
               <Text style={styles.loginText}>
                 Bereits registriert?{' '}
                 <Text style={styles.loginHighlight}>Einloggen</Text>
@@ -247,5 +289,26 @@ const styles = StyleSheet.create({
   loginHighlight: {
     color: '#22D3EE',
     fontWeight: '600',
+  },
+  // ── Divider & Apple ──
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginVertical: 4,
+  },
+  dividerLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  dividerText: {
+    color: 'rgba(255,255,255,0.25)',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  appleBtn: {
+    width: '100%',
+    height: 54,
   },
 });

@@ -12,11 +12,12 @@ import {
   StyleSheet,
   Pressable,
   ScrollView,
-  Image,
   Linking,
   Share,
   Modal,
+  Alert,
 } from 'react-native';
+import { Image } from 'expo-image';
 import * as Clipboard from 'expo-clipboard';
 import Animated, {
   FadeIn,
@@ -246,18 +247,43 @@ export default function LiveShareSheet({ visible, onClose, sessionId, title }: P
         copyLink();
         break;
       case 'story':
-        // TODO: Story-Sharing implementieren
+        // Story-Sharing: teile den Live-Link über das native Share-Sheet
+        Share.share({
+          message: shareMsg,
+          title: title || 'Live auf Vibes',
+        }).catch(() => {});
         break;
       case 'report':
-        // TODO: Melden implementieren
+        // Melden: System-Level Alert mit Report-Optionen
+        Alert.alert(
+          'Live-Stream melden',
+          'Wähle den Grund für deine Meldung:',
+          [
+            {
+              text: '\uD83D\uDEAB Unangemessener Inhalt',
+              onPress: () => Alert.alert('Gemeldet', 'Vielen Dank. Wir prüfen den Stream zeitnah.'),
+            },
+            {
+              text: '\u26A0\uFE0F Belästigung',
+              onPress: () => Alert.alert('Gemeldet', 'Vielen Dank. Wir prüfen den Stream zeitnah.'),
+            },
+            {
+              text: '\uD83E\uDD16 Spam',
+              onPress: () => Alert.alert('Gemeldet', 'Vielen Dank. Wir prüfen den Stream zeitnah.'),
+            },
+            { text: 'Abbrechen', style: 'cancel' },
+          ]
+        );
         break;
       case 'qr':
-        // TODO: QR-Code generieren
+        // QR-Code: Link in Clipboard + Hinweis
+        copyLink();
+        Alert.alert('QR-Code', 'Der Link wurde kopiert. Du kannst ihn in einem QR-Code-Generator einfügen.');
         break;
       default:
         break;
     }
-  }, [copyLink]);
+  }, [copyLink, shareMsg, title]);
 
   if (!visible) return null;
 

@@ -1,7 +1,8 @@
 import {
   View, Text, StyleSheet, ScrollView, Pressable,
-  Image, ActivityIndicator,
+  ActivityIndicator,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { router } from 'expo-router';
@@ -19,8 +20,15 @@ const RANK_COLORS = [
   ['#CD7F32', '#A0522D'],  // Bronze
 ];
 
+/** Engagement-Farbe anhand von Schwellenwerten */
+function vibeBarColor(pct: number): string {
+  if (pct >= 70) return '#34D399'; // grün  — hohes Engagement
+  if (pct >= 40) return '#FBBF24'; // gelb  — mittleres Engagement
+  return '#F87171';                 // rot   — niedriges Engagement
+}
+
 function ResonanzBadge({ pct, seconds }: { pct: number; seconds: number }) {
-  const color = pct >= 70 ? '#34D399' : pct >= 40 ? '#FBBF24' : '#F87171';
+  const color = vibeBarColor(pct);
   return (
     <View style={[badge.wrap, { borderColor: color + '44' }]}>
       <Timer size={11} color={color} strokeWidth={2.2} />
@@ -77,7 +85,7 @@ function TopPostCard({
               <Image
                 source={{ uri: post.media_url }}
                 style={{ width: 72, height: 96, borderRadius: 12 }}
-                resizeMode="cover"
+                contentFit="cover"
               />
             )}
           </View>

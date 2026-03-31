@@ -2,11 +2,18 @@
   "expo": {
     "name": "Vibes",
     "slug": "vibes",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "scheme": "vibes",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
+    "updates": {
+      "fallbackToCacheTimeout": 0,
+      "url": "https://u.expo.dev/02ab536a-5836-4560-a5ec-2dfd6e059f90"
+    },
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -15,21 +22,54 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.vibesapp.vibes",
+      "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "Vibes braucht Kamera-Zugriff für Stories, Posts und Live-Streams.",
         "NSMicrophoneUsageDescription": "Vibes braucht Mikrofon-Zugriff für Video-Stories und Live-Streams.",
         "NSPhotoLibraryUsageDescription": "Vibes braucht Zugriff auf deine Fotos für Stories und Posts.",
+        "NSUserTrackingUsageDescription": "Für personalisierte Inhalte und Werbemessung nutzen wir anonyme Gerätedaten.",
         "UIStatusBarStyle": "UIStatusBarStyleLightContent",
         "UIViewControllerBasedStatusBarAppearance": false,
         "UIApplicationSceneManifest": {
           "UIApplicationSupportsMultipleScenes": false
         }
       },
-      "entitlements": {
-        "aps-environment": "production"
+      "privacyManifests": {
+        "NSPrivacyAccessedAPITypes": [
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryFileTimestamp",
+            "NSPrivacyAccessedAPITypeReasons": [
+              "C617.1"
+            ]
+          },
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryDiskSpace",
+            "NSPrivacyAccessedAPITypeReasons": [
+              "E174.1"
+            ]
+          },
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategorySystemBootTime",
+            "NSPrivacyAccessedAPITypeReasons": [
+              "35F9.1"
+            ]
+          },
+          {
+            "NSPrivacyAccessedAPIType": "NSPrivacyAccessedAPICategoryUserDefaults",
+            "NSPrivacyAccessedAPITypeReasons": [
+              "CA92.1"
+            ]
+          }
+        ]
       },
-      "buildNumber": "156"
+      "entitlements": {
+        "aps-environment": "production",
+        "com.apple.developer.applesignin": [
+          "Default"
+        ]
+      },
+      "buildNumber": "165"
     },
     "android": {
       "package": "app.vibes.social",
@@ -80,7 +120,9 @@
         }
       ],
       "./plugins/withRootViewBackground",
-      "@livekit/react-native-expo-plugin"
+      "@livekit/react-native-expo-plugin",
+      "expo-font",
+      "expo-apple-authentication"
     ],
     "experiments": {
       "typedRoutes": true

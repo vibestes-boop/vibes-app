@@ -39,7 +39,12 @@ export default function EditPostScreen() {
       .select('caption, tags')
       .eq('id', id)
       .single()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) {
+          Alert.alert('Fehler', 'Post konnte nicht geladen werden.');
+          setLoading(false);
+          return;
+        }
         const p = data as PostData | null;
         setCaption(p?.caption ?? '');
         setTags(p?.tags ?? []);

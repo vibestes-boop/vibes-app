@@ -1,8 +1,9 @@
 import { useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, Pressable, Image,
+  View, Text, StyleSheet, Pressable,
   ActivityIndicator, FlatList,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, UserCheck, UserPlus } from 'lucide-react-native';
@@ -24,7 +25,7 @@ function UserRow({ user, onPress }: { user: FollowUser; onPress: () => void }) {
       onPress={onPress}
     >
       {user.avatar_url ? (
-        <Image source={{ uri: user.avatar_url }} style={s.avatar} />
+        <Image source={{ uri: user.avatar_url }} style={s.avatar} contentFit="cover" />
       ) : (
         <View style={[s.avatar, s.avatarFallback]}>
           <Text style={s.avatarInitial}>{initial}</Text>

@@ -4,10 +4,10 @@ import {
   Text,
   StyleSheet,
   Pressable,
-  Image,
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
+import { Image } from "expo-image";
 import { FlashList } from "@shopify/flash-list";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router, useFocusEffect } from "expo-router";
@@ -17,14 +17,20 @@ import {
   UserPlus,
   CheckCheck,
   Radio,
+  Bell,
+  AtSign,
+  Check,
+  X,
 } from "lucide-react-native";
 import { impactAsync, ImpactFeedbackStyle } from "expo-haptics";
+import * as ExpoNotifications from 'expo-notifications';
 import {
   useNotifications,
   useMarkAllRead,
   useMarkOneRead,
   type AppNotification,
 } from "@/lib/useNotifications";
+import { useRespondFollowRequest } from "@/lib/useFollowRequest";
 
 // ── Hilfsfunktionen ────────────────────────────────────────────────────────
 
@@ -49,6 +55,12 @@ function actionLabel(n: AppNotification): string {
       return n.comment_text
         ? `hat kommentiert: "${n.comment_text}"`
         : "hat deinen Post kommentiert";
+    case "mention":
+      return "hat dich in einem Kommentar erwähnt";
+    case "follow_request":
+      return "möchte dir folgen";
+    case "follow_request_accepted":
+      return "hat deine Follow-Anfrage akzeptiert";
     case "live":
       return "ist jetzt live 🔴 Schau rein!";
     case "live_invite":
@@ -61,13 +73,16 @@ function actionLabel(n: AppNotification): string {
 function TypeIcon({ type }: { type: AppNotification["type"] }) {
   const cfg = (
     {
-      like:         { Icon: Heart,         bg: "rgba(244,114,182,0.18)", color: "#F472B6" },
-      comment:      { Icon: MessageCircle,  bg: "rgba(34,211,238,0.18)",  color: "#22D3EE" },
-      follow:       { Icon: UserPlus,       bg: "rgba(52,211,153,0.18)",  color: "#34D399" },
-      live:         { Icon: Radio,          bg: "rgba(239,68,68,0.18)",   color: "#EF4444" },
-      live_invite:  { Icon: Radio,          bg: "rgba(239,68,68,0.18)",   color: "#EF4444" },
+      like:                     { Icon: Heart,     bg: "rgba(244,114,182,0.18)", color: "#F472B6" },
+      comment:                  { Icon: MessageCircle, bg: "rgba(34,211,238,0.18)",  color: "#22D3EE" },
+      mention:                  { Icon: AtSign,    bg: "rgba(139,92,246,0.18)",  color: "#A78BFA" },
+      follow:                   { Icon: UserPlus,  bg: "rgba(52,211,153,0.18)",  color: "#34D399" },
+      follow_request:           { Icon: UserPlus,  bg: "rgba(251,191,36,0.18)",  color: "#FBBF24" },
+      follow_request_accepted:  { Icon: UserPlus,  bg: "rgba(52,211,153,0.18)",  color: "#34D399" },
+      live:                     { Icon: Radio,     bg: "rgba(239,68,68,0.18)",   color: "#EF4444" },
+      live_invite:              { Icon: Radio,     bg: "rgba(239,68,68,0.18)",   color: "#EF4444" },
     } as Record<string, { Icon: React.ElementType; bg: string; color: string }>
-  )[type] ?? { Icon: Radio, bg: "rgba(255,200,0,0.15)", color: "#FBBF24" };
+  )[type] ?? { Icon: Bell, bg: "rgba(255,200,0,0.15)", color: "#FBBF24" };
 
   return (
     <View style={[styles.typeIcon, { backgroundColor: cfg.bg }]}>
@@ -80,21 +95,30 @@ function TypeIcon({ type }: { type: AppNotification["type"] }) {
 
 function NotifCard({ item }: { item: AppNotification }) {
   const { mutate: markOne } = useMarkOneRead();
+  const { mutate: respond, isPending: responding } = useRespondFollowRequest();
 
   const handlePress = () => {
     impactAsync(ImpactFeedbackStyle.Light);
     if (!item.read) markOne(item.id);
 
     if (item.type === "live" || item.type === "live_invite") {
-      // session_id ist in data-Feld der Notification gespeichert
       const sessionId = item.session_id;
       if (sessionId) {
         router.push({ pathname: "/live/watch/[id]", params: { id: sessionId } });
       }
-    } else if (item.type === "follow" && item.sender?.id) {
+    } else if (
+      (item.type === "follow" || item.type === "follow_request" || item.type === "follow_request_accepted")
+      && item.sender?.id
+    ) {
       router.push({ pathname: "/user/[id]", params: { id: item.sender.id } });
     } else if (item.post_id) {
-      router.push({ pathname: "/post/[id]", params: { id: item.post_id } });
+      router.push({
+        pathname: "/post/[id]",
+        params: {
+          id: item.post_id,
+          openComments: (item.type === 'comment' || item.type === 'mention') ? '1' : '0',
+        },
+      });
     }
   };
 
@@ -107,6 +131,8 @@ function NotifCard({ item }: { item: AppNotification }) {
     <Pressable
       onPress={handlePress}
       style={[styles.card, !item.read && styles.cardUnread]}
+      accessibilityRole="button"
+      accessibilityLabel={`Benachrichtigung von ${senderName}: ${actionLabel(item)}`}
     >
       {/* Ungelesen-Indikator */}
       {!item.read && <View style={styles.unreadDot} />}
@@ -117,6 +143,7 @@ function NotifCard({ item }: { item: AppNotification }) {
           <Image
             source={{ uri: item.sender.avatar_url }}
             style={styles.avatar}
+            accessibilityLabel={`${senderName} Profilbild`}
           />
         ) : (
           <View style={[styles.avatar, styles.avatarFallback]}>
@@ -138,12 +165,65 @@ function NotifCard({ item }: { item: AppNotification }) {
       </View>
 
       {/* Post-Thumbnail (bei like/comment) */}
-      {item.post_thumb && item.type !== "follow" && (
+      {item.post_thumb && item.type !== "follow" && item.type !== "follow_request" && (
         <Image
           source={{ uri: item.post_thumb }}
           style={styles.postThumb}
-          resizeMode="cover"
+          contentFit="cover"
+          accessibilityLabel="Post-Vorschaubild"
         />
+      )}
+
+      {/* Follow-Request: Annehmen / Ablehnen */}
+      {item.type === "follow_request" && item.sender?.id && (
+        <View style={{ flexDirection: 'column', gap: 6, marginLeft: 8 }}>
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation();
+              respond({
+                requestId: item.id, // notification id als Referenz
+                senderId: item.sender!.id,
+                accept: true,
+              });
+              markOne(item.id);
+            }}
+            disabled={responding}
+            style={{
+              backgroundColor: 'rgba(52,211,153,0.15)',
+              borderRadius: 10,
+              padding: 7,
+              borderWidth: 1,
+              borderColor: 'rgba(52,211,153,0.4)',
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Anfrage annehmen"
+          >
+            <Check size={14} color="#34D399" strokeWidth={2.5} />
+          </Pressable>
+          <Pressable
+            onPress={(e) => {
+              e.stopPropagation();
+              respond({
+                requestId: item.id,
+                senderId: item.sender!.id,
+                accept: false,
+              });
+              markOne(item.id);
+            }}
+            disabled={responding}
+            style={{
+              backgroundColor: 'rgba(239,68,68,0.1)',
+              borderRadius: 10,
+              padding: 7,
+              borderWidth: 1,
+              borderColor: 'rgba(239,68,68,0.3)',
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Anfrage ablehnen"
+          >
+            <X size={14} color="#EF4444" strokeWidth={2.5} />
+          </Pressable>
+        </View>
       )}
     </Pressable>
   );
@@ -165,6 +245,8 @@ export default function NotificationsScreen() {
   // damit der User erst sehen kann was neu ist, bevor alles markiert wird.
   useFocusEffect(
     useCallback(() => {
+      // Badge auf 0 setzen wenn User den Notifications-Tab öffnet
+      try { ExpoNotifications.setBadgeCountAsync(0); } catch { /* Expo Go stub */ }
       return () => {
         // Wird aufgerufen wenn User den Tab verlässt
         markAll();
@@ -191,6 +273,8 @@ export default function NotificationsScreen() {
               markAll();
             }}
             style={styles.markAllBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Alle als gelesen markieren"
           >
             <CheckCheck size={15} color="#22D3EE" strokeWidth={2} />
             <Text style={styles.markAllText}>Alle gelesen</Text>
@@ -204,11 +288,19 @@ export default function NotificationsScreen() {
         </View>
       ) : notifs.length === 0 ? (
         <View style={styles.center}>
-          <Text style={styles.emptyIcon}>🔔</Text>
+          <Bell size={52} color="rgba(255,255,255,0.2)" strokeWidth={1.5} />
           <Text style={styles.emptyTitle}>Noch keine Aktivität</Text>
           <Text style={styles.emptyDesc}>
             Hier siehst du Likes, Kommentare und neue Follower.
           </Text>
+          <Pressable
+            onPress={() => router.push('/(tabs)/explore' as never)}
+            style={styles.emptyBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Leute entdecken"
+          >
+            <Text style={styles.emptyBtnText}>Leute entdecken</Text>
+          </Pressable>
         </View>
       ) : (
         <FlashList
@@ -381,4 +473,14 @@ const styles = StyleSheet.create({
     maxWidth: 240,
     lineHeight: 20,
   },
+  emptyBtn: {
+    marginTop: 12,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(34,211,238,0.4)',
+    backgroundColor: 'rgba(34,211,238,0.1)',
+  },
+  emptyBtnText: { color: '#22D3EE', fontSize: 14, fontWeight: '600' },
 });

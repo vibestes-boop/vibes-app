@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, Text } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming, withSpring } from 'react-native-reanimated';
 import {
   Heart,
   MessageCircle,
@@ -16,11 +16,13 @@ export function ActionButton({
   count,
   color = '#FFFFFF',
   onPress,
+  accessibilityLabel,
 }: {
   icon: React.ElementType;
   count?: string;
   color?: string;
   onPress?: () => void;
+  accessibilityLabel?: string;
 }) {
   const scale = useSharedValue(1);
 
@@ -33,13 +35,14 @@ export function ActionButton({
       onPressIn={() => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         scale.value = withSequence(
-          withTiming(0.75, { duration: 60 }),
-          withTiming(1.2, { duration: 80 }),
-          withTiming(1, { duration: 80 })
+          withTiming(0.8, { duration: 50 }),
+          withSpring(1, { damping: 12, stiffness: 300 })
         );
       }}
       onPress={onPress}
       style={styles.actionBtn}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
     >
       <Animated.View style={[styles.actionBtnInner, animStyle]}>
         <Icon size={26} stroke={color} strokeWidth={1.8} />
@@ -76,6 +79,8 @@ export function CommentButton({
       }}
       onPress={onPress}
       style={styles.actionBtn}
+      accessibilityRole="button"
+      accessibilityLabel={`Kommentare anzeigen, ${formatted} Kommentare`}
     >
       <Animated.View style={[styles.actionBtnInner, animStyle]}>
         <MessageCircle size={26} stroke="#FFFFFF" strokeWidth={1.8} />
@@ -101,7 +106,13 @@ export function BookmarkButton({ postId, batchBookmarked }: { postId: string; ba
   };
 
   return (
-    <Pressable onPress={handlePress} style={styles.actionBtn}>
+    <Pressable
+      onPress={handlePress}
+      style={styles.actionBtn}
+      accessibilityRole="button"
+      accessibilityLabel={bookmarked ? 'Lesezeichen entfernen' : 'Lesezeichen setzen'}
+      accessibilityState={{ selected: bookmarked }}
+    >
       <Animated.View style={[styles.actionBtnInner, animStyle]}>
         <Bookmark
           size={26}
@@ -142,7 +153,13 @@ export function LikeButton({
   };
 
   return (
-    <Pressable onPress={handlePress} style={styles.actionBtn}>
+    <Pressable
+      onPress={handlePress}
+      style={styles.actionBtn}
+      accessibilityRole="button"
+      accessibilityLabel={liked ? `Gefällt mir entfernen, ${formattedCount} Likes` : `Gefällt mir, ${formattedCount} Likes`}
+      accessibilityState={{ selected: liked }}
+    >
       <Animated.View style={[styles.actionBtnInner, animStyle]}>
         <Heart
           size={26}

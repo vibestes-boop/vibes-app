@@ -3,12 +3,12 @@ import {
   View,
   Text,
   StyleSheet,
-  Image,
   Pressable,
   ActivityIndicator,
   Dimensions,
   Alert,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -109,11 +109,12 @@ function CommentButtonDetail({ postId, onPress }: { postId: string; onPress: () 
 }
 
 export default function PostDetailScreen() {
-  const { id, previewUrl, previewType, previewCaption } = useLocalSearchParams<{
+  const { id, previewUrl, previewType, previewCaption, openComments } = useLocalSearchParams<{
     id: string;
     previewUrl?: string;
     previewType?: string;
     previewCaption?: string;
+    openComments?: string;
   }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -146,7 +147,7 @@ export default function PostDetailScreen() {
           .single();
 
         if (postErr || !postData) {
-          console.warn('[PostDetail] Post nicht geladen:', postErr?.message);
+__DEV__ && console.warn('[PostDetail] Post nicht geladen:', postErr?.message);
           setLoading(false);
           return;
         }
@@ -164,6 +165,11 @@ export default function PostDetailScreen() {
           profiles: profileData ?? null,
         } as PostDetail);
         setLoading(false);
+
+        // Kommentar-Notification: CommentsSheet direkt öffnen
+        if (openComments === '1') {
+          setTimeout(() => setCommentsOpen(true), 300);
+        }
       })();
 
       return () => setScreenFocused(false);
@@ -246,16 +252,17 @@ export default function PostDetailScreen() {
           )
         ) : (
           <>
+            {/* Blur-Hintergrund via expo-image blurRadius */}
             <Image
               source={{ uri: displayMediaUrl }}
               style={[StyleSheet.absoluteFill, { opacity: 0.3 }]}
-              resizeMode="cover"
+              contentFit="cover"
               blurRadius={20}
             />
             <Image
               source={{ uri: displayMediaUrl }}
               style={styles.mainImage}
-              resizeMode="contain"
+              contentFit="contain"
             />
           </>
         )
@@ -346,7 +353,11 @@ export default function PostDetailScreen() {
         >
           <View style={styles.avatarSmall}>
             {displayAvatarUrl ? (
-              <Image source={{ uri: displayAvatarUrl }} style={styles.avatarSmallImage} />
+              <Image
+                source={{ uri: displayAvatarUrl }}
+                style={styles.avatarSmallImage}
+                contentFit="cover"
+              />
             ) : (
               <Text style={styles.avatarText}>
                 {displayUsername?.[0]?.toUpperCase() ?? '?'}

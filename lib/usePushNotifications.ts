@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { useAuthStore } from './authStore';
+import { useQueryClient } from '@tanstack/react-query';
 
 // Expo Project ID aus app.json (für getExpoPushTokenAsync in Expo SDK 54 erforderlich)
 const EXPO_PROJECT_ID = '02ab536a-5836-4560-a5ec-2dfd6e059f90';
@@ -51,7 +52,7 @@ export function usePushNotifications() {
         }
 
         if (finalStatus !== 'granted') {
-          console.log('[PushNotif] Berechtigung nicht erteilt');
+          __DEV__ && console.log('[PushNotif] Berechtigung nicht erteilt');
           return;
         }
 
@@ -61,11 +62,11 @@ export function usePushNotifications() {
 
         const token = tokenData?.data;
         if (!token) {
-          console.warn('[PushNotif] Kein Token erhalten');
+          __DEV__ && console.warn('[PushNotif] Kein Token erhalten');
           return;
         }
 
-        console.log('[PushNotif] Token:', token);
+        __DEV__ && console.log('[PushNotif] Token:', token);
         tokenRegistered.current = true;
 
         // Direkt per REST in profiles speichern — kein Supabase-Client-Hang
@@ -84,13 +85,13 @@ export function usePushNotifications() {
         });
 
         if (res.ok) {
-          console.log('[PushNotif] ✅ Token in DB gespeichert:', token);
+          __DEV__ && console.log('[PushNotif] ✅ Token in DB gespeichert:', token);
         } else {
           const text = await res.text();
-          console.warn('[PushNotif] ❌ PATCH fehlgeschlagen:', res.status, text.substring(0, 150));
+          __DEV__ && console.warn('[PushNotif] ❌ PATCH fehlgeschlagen:', res.status, text.substring(0, 150));
         }
       } catch (err) {
-        console.log('[PushNotif] Fehler (Expo Go oder Stub):', (err as Error)?.message ?? err);
+        __DEV__ && console.log('[PushNotif] Fehler (Expo Go oder Stub):', (err as Error)?.message ?? err);
       }
     };
 
@@ -101,14 +102,19 @@ export function usePushNotifications() {
   useEffect(() => {
     if (Platform.OS === 'web') return;
     try {
-      notificationListener.current = Notifications.addNotificationReceivedListener((n) => {
-        console.log('[PushNotif] Eingehend:', n.request.content.title);
+      notificationListener.current = Notifications.addNotificationReceivedListener(async (n) => {
+        __DEV__ && console.log('[PushNotif] Eingehend:', n.request.content.title);
+        // Badge-Count erhöhen wenn Notification eintrifft
+        try {
+          const current = await Notifications.getBadgeCountAsync();
+          await Notifications.setBadgeCountAsync(current + 1);
+        } catch { /* Expo Go stub */ }
       });
 
       // D: Deep-Link beim Tippen auf Notification
       responseListener.current = Notifications.addNotificationResponseReceivedListener((r) => {
         const data = r.notification.request.content.data as Record<string, any>;
-        console.log('[PushNotif] Getippt:', data);
+        __DEV__ && console.log('[PushNotif] Getippt:', data);
 
         // Lazy import um circular dep zu vermeiden
         const { router } = require('expo-router');
@@ -126,7 +132,10 @@ export function usePushNotifications() {
           router.push({ pathname: '/post/[id]', params: { id: data.postId } });
         } else if (data?.type === 'follow' && data?.senderId) {
           router.push({ pathname: '/user/[id]', params: { id: data.senderId } });
-        } else if (data?.type === 'live_invite' && data?.session_id) {
+        } else if (
+          (data?.type === 'live' || data?.type === 'live_invite') &&
+          data?.session_id
+        ) {
           router.push({ pathname: '/live/watch/[id]', params: { id: data.session_id } });
         }
       });

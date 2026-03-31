@@ -2,6 +2,7 @@ import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
 import { Sparkles, Flame, Clock } from 'lucide-react-native';
 import type { ElementType } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAuthStore } from '@/lib/authStore';
 
 export const EXPLORE_FALLBACK_TAGS = [
   'Tech',
@@ -107,17 +108,37 @@ export function useExploreGrid(tag: string | null, sortMode: ExploreSortMode) {
 }
 
 export function useExploreUserSearch(query: string) {
+  const currentUserId = useAuthStore((s) => s.profile?.id);
+
   return useQuery<ExploreUserResult[]>({
-    queryKey: ['user-search', query],
+    queryKey: ['user-search', query, currentUserId],
     queryFn: async () => {
       if (!query.trim()) return [];
-      const { data, error } = await supabase
+
+      // Blockierte User-IDs holen
+      let blockedIds: string[] = [];
+      if (currentUserId) {
+        const { data: blocks } = await supabase
+          .from('user_blocks')
+          .select('blocked_id')
+          .eq('blocker_id', currentUserId);
+        blockedIds = (blocks ?? []).map((b) => b.blocked_id);
+      }
+
+      let q = supabase
         .from('profiles')
         .select('id, username, avatar_url, bio')
         .ilike('username', `%${query.trim()}%`)
-        .limit(8);
+        .limit(blockedIds.length > 0 ? 20 : 8); // mehr laden wenn geblockte gefiltert werden
+
+      const { data, error } = await q;
       if (error) throw error;
-      return (data ?? []) as ExploreUserResult[];
+
+      const results = (data ?? []) as ExploreUserResult[];
+      // Blockierte User herausfiltern
+      return blockedIds.length > 0
+        ? results.filter((u) => !blockedIds.includes(u.id)).slice(0, 8)
+        : results;
     },
     enabled: query.trim().length >= 1,
     staleTime: 1000 * 30,

@@ -11,17 +11,18 @@ import {
   Pressable,
   FlatList,
   TextInput,
-  Image,
   KeyboardAvoidingView,
   Platform,
   Keyboard,
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ArrowLeft, Users, Send } from 'lucide-react-native';
+import { ArrowLeft, Users, Send, VolumeX, Volume2, MessageCircle } from 'lucide-react-native';
+import * as ScreenOrientation from 'expo-screen-orientation';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -34,7 +35,6 @@ import {
   LiveKitRoom,
   useTracks,
   VideoTrack,
-  TrackReferenceOrPlaceholder,
 } from '@livekit/react-native';
 import { Track } from 'livekit-client';  // Track.Source lebt in livekit-client, nicht @livekit/react-native
 import {
@@ -47,6 +47,8 @@ import {
   type LiveReaction,
 } from '@/lib/useLiveSession';
 import { useAuthStore } from '@/lib/authStore';
+import { useFollow } from '@/lib/useFollow';
+import ExpoGoPlaceholder from '@/components/live/ExpoGoPlaceholder';
 // expo-constants: default import causes _interopRequireDefault TypeError in Hermes HBC
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
 const _cMod = require('expo-constants') as any; const Constants = _cMod?.default ?? _cMod;
@@ -55,17 +57,17 @@ const EMOJIS = ['❤️', '🔥', '👏', '😱', '💜'];
 
 // ─── Floating Reaktions-Bubble ────────────────────────────────────────────────
 function ReactionBubble({ reaction }: { reaction: LiveReaction }) {
-  const left       = 20 + Math.random() * 140;
+  const left = 20 + Math.random() * 140;
   const translateY = useSharedValue(0);
-  const opacity    = useSharedValue(1);
+  const opacity = useSharedValue(1);
 
   useEffect(() => {
     translateY.value = withTiming(-220, { duration: 2800 });
-    opacity.value    = withSequence(
+    opacity.value = withSequence(
       withTiming(1, { duration: 100 }),
       withTiming(0, { duration: 2700 })
     );
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- Werte nur beim Mount starten
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Werte nur beim Mount starten
   }, []);
 
   const style = useAnimatedStyle(() => ({
@@ -101,7 +103,7 @@ function RemoteVideoView({ hostAvatar }: { hostAvatar?: string | null }) {
     return (
       <View style={s.videoPlaceholder}>
         {hostAvatar ? (
-          <Image source={{ uri: hostAvatar }} style={s.hostAvatar} />
+          <Image source={{ uri: hostAvatar }} style={s.hostAvatar} contentFit="cover" />
         ) : (
           <View style={[s.hostAvatar, s.hostAvatarFallback]}>
             <Text style={s.hostInitial}>?</Text>
@@ -124,16 +126,42 @@ function RemoteVideoView({ hostAvatar }: { hostAvatar?: string | null }) {
 
 // ─── Inner Watch UI (innerhalb LiveKitRoom) ───────────────────────────────────
 function WatchUI({ sessionId }: { sessionId: string }) {
-  const insets  = useSafeAreaInsets();
-  const router  = useRouter();
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { profile } = useAuthStore();
 
   const { data: session } = useLiveSession(sessionId);
   useLiveViewer(sessionId);
   const { comments, sendComment } = useLiveComments(sessionId);
   const { reactions, sendReaction } = useLiveReactions(sessionId);
-  const flatRef  = useRef<FlatList>(null);
+  const { isFollowing, toggle: toggleFollow, isOwnProfile } =
+    useFollow(session?.host_id ?? null);
+  const flatRef = useRef<FlatList>(null);
   const [input, setInput] = useState('');
+  const [muted, setMuted] = useState(false);
+
+  // Alle Remote-Audio-Tracks holen um sie stummzuschalten
+  const audioTracks = useTracks([{ source: Track.Source.Microphone, withPlaceholder: false }])
+    .filter((t) => !t.participant?.isLocal);
+
+  // Echter Mute: Remote-Audio-MediaStreamTrack aktivieren/deaktivieren
+  // audioTracks in Dependencies: reagiert auch auf neue Tracks nach Host-Reconnect
+  useEffect(() => {
+    audioTracks.forEach((t) => {
+      const ms = (t.publication?.track as any)?.mediaStreamTrack as MediaStreamTrack | undefined;
+      if (ms) ms.enabled = !muted;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [muted, audioTracks]);
+
+  // Portrait-Lock — Live-Stream ist immer vertikal
+  useEffect(() => {
+    ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => { });
+    return () => {
+      ScreenOrientation.unlockAsync().catch(() => { });
+    };
+  }, []);
+
 
   const dotOpacity = useSharedValue(1);
   useEffect(() => {
@@ -142,7 +170,7 @@ function WatchUI({ sessionId }: { sessionId: string }) {
       -1,
       false
     );
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- nur einmalig starten
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- nur einmalig starten
   }, []);
   const dotStyle = useAnimatedStyle(() => ({ opacity: dotOpacity.value }));
 
@@ -177,7 +205,7 @@ function WatchUI({ sessionId }: { sessionId: string }) {
         <Image
           source={{ uri: host.avatar_url }}
           style={[StyleSheet.absoluteFill, { opacity: 0.18, zIndex: -1 }]}
-          resizeMode="cover"
+          contentFit="cover"
           blurRadius={18}
         />
       )}
@@ -202,7 +230,7 @@ function WatchUI({ sessionId }: { sessionId: string }) {
 
         <View style={s.hostInfo}>
           {host?.avatar_url ? (
-            <Image source={{ uri: host.avatar_url }} style={s.hostAvatarSmall} />
+            <Image source={{ uri: host.avatar_url }} style={s.hostAvatarSmall} contentFit="cover" />
           ) : (
             <View style={[s.hostAvatarSmall, s.hostAvatarSmallFallback]}>
               <Text style={{ color: '#fff', fontWeight: '800', fontSize: 12 }}>
@@ -211,6 +239,17 @@ function WatchUI({ sessionId }: { sessionId: string }) {
             </View>
           )}
           <Text style={s.hostName}>@{host?.username ?? '...'}</Text>
+          {!isOwnProfile && (
+            <Pressable
+              onPress={toggleFollow}
+              style={[s.followBtn, isFollowing && s.followBtnActive]}
+              hitSlop={8}
+            >
+              <Text style={s.followBtnText}>
+                {isFollowing ? 'Gefolgt' : '+ Folgen'}
+              </Text>
+            </Pressable>
+          )}
         </View>
 
         <View style={s.livePill}>
@@ -232,7 +271,7 @@ function WatchUI({ sessionId }: { sessionId: string }) {
       ) : null}
 
       {/* Reaktions-Buttons */}
-      <View style={s.emojiRow}>
+      <View style={[s.emojiRow, { bottom: insets.bottom + 62 }]}>
         {EMOJIS.map((emoji) => (
           <Pressable key={emoji} onPress={() => sendReaction(emoji)} style={s.emojiBtn}>
             <Text style={s.emojiText}>{emoji}</Text>
@@ -254,8 +293,21 @@ function WatchUI({ sessionId }: { sessionId: string }) {
 
       {/* TikTok-Style Kommentar-Leiste */}
       <View style={[s.commentBar, { paddingBottom: insets.bottom + 10 }]}>
+        {/* DM-Button: Nachricht an Host — nur sichtbar wenn nicht eigener Stream */}
+        {!isOwnProfile && session?.host_id && (
+          <Pressable
+            onPress={() => router.push({
+              pathname: '/messages' as any,
+              params: { preSelectUserId: session.host_id },
+            })}
+            style={s.dmBtn}
+            hitSlop={8}
+          >
+            <MessageCircle size={20} stroke="rgba(255,255,255,0.6)" strokeWidth={2} />
+          </Pressable>
+        )}
         {profile?.avatar_url ? (
-          <Image source={{ uri: profile.avatar_url }} style={s.myAvatar} />
+          <Image source={{ uri: profile.avatar_url }} style={s.myAvatar} contentFit="cover" />
         ) : (
           <View style={[s.myAvatar, s.myAvatarFallback]}>
             <Text style={{ color: '#fff', fontWeight: '800', fontSize: 13 }}>
@@ -281,6 +333,16 @@ function WatchUI({ sessionId }: { sessionId: string }) {
             <Send size={20} stroke="#22D3EE" strokeWidth={2.2} />
           </Pressable>
         )}
+        {/* Mute-Button */}
+        <Pressable
+          onPress={() => setMuted((v) => !v)}
+          style={[s.muteBtn, muted && s.muteBtnActive]}
+          hitSlop={8}
+        >
+          {muted
+            ? <VolumeX size={18} stroke="#EF4444" strokeWidth={2.2} />
+            : <Volume2 size={18} stroke="rgba(255,255,255,0.7)" strokeWidth={2.2} />}
+        </Pressable>
       </View>
     </KeyboardAvoidingView>
   );
@@ -289,37 +351,40 @@ function WatchUI({ sessionId }: { sessionId: string }) {
 // ─── Screen (lädt LiveKit Token dann verbindet) ───────────────────────────────
 export default function LiveWatchScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const router  = useRouter();
+  const router = useRouter();
   const { data: session } = useLiveSession(id);
 
   // Hooks MÜSSEN vor allen bedingten Returns stehen (Rules of Hooks)
   const [lkToken, setLkToken] = useState<string | null>(null);
-  const [lkUrl,   setLkUrl]   = useState<string | null>(null);
+  const [lkUrl, setLkUrl] = useState<string | null>(null);
   const [tokenError, setTokenError] = useState(false);
+  // Guard: verhindert dass onError mehrfach feuert (z.B. 'Client initiated disconnect'
+  // nach dem ersten Fehler, wenn der Router die Komponente unmountet)
+  const isHandlingError = useRef(false);
+
+  // Timeout: wenn nach 10s noch kein room_name geladen → Session ungültig → Fehlerscreen
+  useEffect(() => {
+    const t = setTimeout(() => {
+      if (!lkToken && !tokenError) setTokenError(true);
+    }, 10_000);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!session?.room_name) return;
-    fetchLiveKitToken(session.room_name, false).then((res) => {
-      if (!res) { setTokenError(true); return; }
-      setLkToken(res.token);
-      setLkUrl(res.url);
-    });
+    fetchLiveKitToken(session.room_name, false)
+      .then((res) => {
+        if (!res) { setTokenError(true); return; }
+        setLkToken(res.token);
+        setLkUrl(res.url);
+      })
+      .catch(() => setTokenError(true)); // Netzwerk- oder Auth-Fehler → Fehlerscreen
   }, [session?.room_name]);
 
   // Expo Go Placeholder (nach den Hooks — Rules of Hooks einhalten!)
   if (Constants.appOwnership === 'expo') {
-    return (
-      <View style={[s.root, { alignItems: 'center', justifyContent: 'center', gap: 16 }]}>
-        <Text style={{ fontSize: 48 }}>📺</Text>
-        <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700', textAlign: 'center' }}>Dev-Build erforderlich</Text>
-        <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, textAlign: 'center', paddingHorizontal: 32 }}>
-          Live Studio läuft nicht in Expo Go.{'\n'}Bitte einen Dev-Build verwenden.
-        </Text>
-        <Pressable onPress={() => router.replace('/(tabs)')} style={{ marginTop: 8, backgroundColor: '#0891B2', borderRadius: 14, paddingHorizontal: 24, paddingVertical: 12 }}>
-          <Text style={{ color: '#fff', fontWeight: '700' }}>Zurück</Text>
-        </Pressable>
-      </View>
-    );
+    return <ExpoGoPlaceholder onBack={() => router.replace('/(tabs)')} icon="📺" />;
   }
 
   if (tokenError) {
@@ -348,9 +413,12 @@ export default function LiveWatchScreen() {
         serverUrl={lkUrl}
         token={lkToken}
         connect
-        audio
+        audio={false}
         video={false}
         onError={(err) => {
+          // Fix 2b: Guard — nur beim ersten Fehler reagieren
+          if (isHandlingError.current) return;
+          isHandlingError.current = true;
           Alert.alert('Verbindungsfehler', err.message);
           router.replace('/(tabs)');
         }}
@@ -429,7 +497,7 @@ const s = StyleSheet.create({
   titleText: { color: 'rgba(255,255,255,0.85)', fontSize: 14, fontWeight: '600' },
 
   emojiRow: {
-    position: 'absolute', right: 14, bottom: 100,
+    position: 'absolute', right: 14,
     gap: 8, zIndex: 15,
   },
   emojiBtn: {
@@ -468,4 +536,29 @@ const s = StyleSheet.create({
   },
   input: { color: '#fff', fontSize: 14, padding: 0, margin: 0 },
   sendBtn: { padding: 6 },
+
+  followBtn: {
+    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12,
+    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.6)',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  followBtnActive: { borderColor: '#4ade80', backgroundColor: 'rgba(74,222,128,0.15)' },
+  followBtnText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+
+  muteBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0,
+  },
+  muteBtnActive: { backgroundColor: 'rgba(239,68,68,0.2)', borderWidth: 1, borderColor: '#EF4444' },
+  dmBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 2,
+  },
 });

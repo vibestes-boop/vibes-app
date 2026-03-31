@@ -1,12 +1,14 @@
-import { View, Text, Pressable, Image, Dimensions } from 'react-native';
+import { View, Text, Pressable, Dimensions } from 'react-native';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Grid3X3, Bookmark, Settings, Bell, Share2, UserPlus, Edit3, Shield } from 'lucide-react-native';
+import { Grid3X3, Bookmark, Share2, Edit3, Shield, BarChart2, FileText } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import type { Profile } from '@/lib/authStore';
 import { shareUser } from '@/lib/useShare';
 import { profileStyles as s } from './profileStyles';
 import type { ProfileTab } from './types';
+import { ProfileHighlightsRow } from './ProfileHighlightsRow';
 
 const { width: W } = Dimensions.get('window');
 
@@ -159,9 +161,12 @@ export function ProfileListHeader({
         </Pressable>
       </View>
 
+      {/* ── Story Highlights ── */}
+      <ProfileHighlightsRow userId={profile?.id ?? null} isOwn />
+
       {/* ── Tab-Bar ── */}
       <View style={s.tabRow}>
-        {(['vibes', 'saved'] as const).map((tab) => {
+        {(['vibes', 'saved', 'analytics', 'drafts'] as const).map((tab) => {
           const active = activeTab === tab;
           return (
             <Pressable
@@ -178,12 +183,24 @@ export function ProfileListHeader({
                   color={active ? '#22D3EE' : 'rgba(255,255,255,0.3)'}
                   strokeWidth={1.8}
                 />
-              ) : (
+              ) : tab === 'saved' ? (
                 <Bookmark
                   size={18}
                   color={active ? '#22D3EE' : 'rgba(255,255,255,0.3)'}
                   strokeWidth={1.8}
                   fill={active ? '#22D3EE' : 'transparent'}
+                />
+              ) : tab === 'analytics' ? (
+                <BarChart2
+                  size={18}
+                  color={active ? '#22D3EE' : 'rgba(255,255,255,0.3)'}
+                  strokeWidth={1.8}
+                />
+              ) : (
+                <FileText
+                  size={18}
+                  color={active ? '#22D3EE' : 'rgba(255,255,255,0.3)'}
+                  strokeWidth={1.8}
                 />
               )}
             </Pressable>

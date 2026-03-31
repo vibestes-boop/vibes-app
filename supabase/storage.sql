@@ -68,3 +68,34 @@ create policy "User können eigene Medien löschen"
   on storage.objects for delete
   to authenticated
   using (bucket_id = 'posts' and auth.uid()::text = (storage.foldername(name))[1]);
+
+-- ── Stories Bucket ────────────────────────────────────────────────────────────
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'stories',
+  'stories',
+  true,
+  52428800, -- 50MB
+  array['image/jpeg', 'image/png', 'image/webp', 'video/mp4', 'video/quicktime', 'image/heic']
+)
+on conflict (id) do nothing;
+
+drop policy if exists "Stories öffentlich lesbar" on storage.objects;
+drop policy if exists "Eingeloggte User können Stories hochladen" on storage.objects;
+drop policy if exists "User können eigene Stories löschen" on storage.objects;
+
+create policy "Stories öffentlich lesbar"
+  on storage.objects for select
+  to public
+  using (bucket_id = 'stories');
+
+create policy "Eingeloggte User können Stories hochladen"
+  on storage.objects for insert
+  to authenticated
+  with check (bucket_id = 'stories' and auth.uid()::text = (storage.foldername(name))[1]);
+
+create policy "User können eigene Stories löschen"
+  on storage.objects for delete
+  to authenticated
+  using (bucket_id = 'stories' and auth.uid()::text = (storage.foldername(name))[1]);
+

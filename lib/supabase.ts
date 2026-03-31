@@ -62,7 +62,7 @@ function getSupabase(): SupabaseClient {
     if (!supabaseUrl || !supabaseAnonKey) {
       // Env-Vars fehlen — passiert in Quarantäne-Builds oder wenn Secrets nicht gesetzt.
       // Wir WERFEN NICHT, damit die JS-Runtime am Leben bleibt.
-      console.warn(
+      __DEV__ && console.warn(
         '[Supabase] EXPO_PUBLIC_SUPABASE_URL oder EXPO_PUBLIC_SUPABASE_ANON_KEY fehlt. ' +
           'Auth-Funktionen sind deaktiviert. Bitte EAS Secrets prüfen.'
       );

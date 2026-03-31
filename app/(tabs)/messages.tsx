@@ -1,18 +1,19 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, Pressable,
   Image, ActivityIndicator, RefreshControl,
-  Modal, TextInput, TouchableOpacity,
+  Modal, TextInput, TouchableOpacity, Alert,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { MessageCircle, PenSquare, Search, X } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/lib/authStore';
 import { useConversations, useOrCreateConversation, type Conversation } from '@/lib/useMessages';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -25,7 +26,7 @@ function timeAgo(dateStr: string): string {
   return 'Jetzt';
 }
 
-function ConvItem({ item }: { item: Conversation }) {
+function ConvItem({ item, onDelete }: { item: Conversation; onDelete: () => void }) {
   const initial = (item.other_user.username ?? '?')[0].toUpperCase();
   const hasUnread = item.unread_count > 0;
 
@@ -36,6 +37,20 @@ function ConvItem({ item }: { item: Conversation }) {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         router.push({ pathname: '/messages/[id]', params: { id: item.id, username: item.other_user.username ?? '', avatarUrl: item.other_user.avatar_url ?? '', otherUserId: item.other_user.id ?? '' } });
       }}
+      onLongPress={() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        Alert.alert(
+          'Konversation löschen',
+          `Chat mit @${item.other_user.username ?? '?'} löschen?`,
+          [
+            { text: 'Abbrechen', style: 'cancel' },
+            { text: 'Löschen', style: 'destructive', onPress: onDelete },
+          ]
+        );
+      }}
+      delayLongPress={500}
+      accessibilityRole="button"
+      accessibilityLabel={`Chat mit @${item.other_user.username ?? 'Nutzer'} öffnen${hasUnread ? `, ${item.unread_count} ungelesen` : ''}`}
     >
       {hasUnread && <View style={styles.unreadDot} />}
 
@@ -50,9 +65,15 @@ function ConvItem({ item }: { item: Conversation }) {
           }
         }}
         hitSlop={4}
+        accessibilityRole="button"
+        accessibilityLabel={`@${item.other_user.username ?? 'Nutzer'} Profil anzeigen`}
       >
         {item.other_user.avatar_url ? (
-          <Image source={{ uri: item.other_user.avatar_url }} style={styles.avatar} />
+          <Image
+            source={{ uri: item.other_user.avatar_url }}
+            style={styles.avatar}
+            accessibilityLabel={`@${item.other_user.username ?? 'Nutzer'} Profilbild`}
+          />
         ) : (
           <View style={[styles.avatar, styles.avatarFallback]}>
             <Text style={styles.avatarInitial}>{initial}</Text>
@@ -190,12 +211,43 @@ function NewMessageModal({ visible, onClose }: { visible: boolean; onClose: () =
 
 export default function MessagesScreen() {
   const insets = useSafeAreaInsets();
+  const { preSelectUserId } = useLocalSearchParams<{ preSelectUserId?: string }>();
   const [showNew, setShowNew] = useState(false);
   const { data: convs = [], isLoading, refetch, isRefetching } = useConversations();
+  const queryClient = useQueryClient();
+  const { mutateAsync: openConv } = useOrCreateConversation();
+
+  // DM-Button aus Live Watch: sofort Konversation mit Host öffnen
+  useEffect(() => {
+    if (!preSelectUserId) return;
+    let mounted = true; // Memory-Leak Guard: verhindert State-Update nach Unmount
+    openConv(preSelectUserId)
+      .then((convId) => {
+        if (!mounted) return;
+        router.push({ pathname: '/messages/[id]', params: { id: convId } });
+      })
+      .catch(() => {});
+    return () => { mounted = false; };
+  // openConv ist stabil (useMutation ref), router ist stabil (expo-router)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [preSelectUserId]);
+
+  // Konversation lokal aus Cache löschen
+  const handleDeleteConv = useCallback((convId: string) => {
+    queryClient.setQueryData<Conversation[]>(['conversations'], (old = []) =>
+      old.filter((c) => c.id !== convId)
+    );
+    // Auch DB-seitig löschen (Cascade-Delete via FK)
+    supabase.from('conversations').delete().eq('id', convId).then(() => {
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+    });
+  }, [queryClient]);
 
   const renderItem = useCallback(
-    ({ item }: { item: Conversation }) => <ConvItem item={item} />,
-    [],
+    ({ item }: { item: Conversation }) => (
+      <ConvItem item={item} onDelete={() => handleDeleteConv(item.id)} />
+    ),
+    [handleDeleteConv],
   );
 
   return (
@@ -207,6 +259,8 @@ export default function MessagesScreen() {
           onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowNew(true); }}
           style={styles.composeBtn}
           hitSlop={8}
+          accessibilityRole="button"
+          accessibilityLabel="Neue Nachricht erstellen"
         >
           <PenSquare size={20} color="#22D3EE" strokeWidth={2} />
         </Pressable>
@@ -221,8 +275,16 @@ export default function MessagesScreen() {
           <MessageCircle size={52} color="rgba(255,255,255,0.1)" strokeWidth={1.2} />
           <Text style={styles.emptyTitle}>Noch keine Nachrichten</Text>
           <Text style={styles.emptyDesc}>
-            Öffne ein Profil und tippe auf „Nachricht“ um zu starten.
+            Starte eine Konversation mit jemandem aus der Community.
           </Text>
+          <Pressable
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowNew(true); }}
+            style={styles.emptyBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Nutzer suchen und Nachricht senden"
+          >
+            <Text style={styles.emptyBtnText}>Nutzer suchen</Text>
+          </Pressable>
         </View>
       ) : (
         <FlashList
@@ -295,6 +357,16 @@ const styles = StyleSheet.create({
   },
   badgeText: { color: '#FFFFFF', fontSize: 11, fontWeight: '800' },
   separator: { height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.05)', marginLeft: 80 },
+  emptyBtn: {
+    marginTop: 14,
+    paddingHorizontal: 22,
+    paddingVertical: 11,
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: 'rgba(34,211,238,0.4)',
+    backgroundColor: 'rgba(34,211,238,0.1)',
+  },
+  emptyBtnText: { color: '#22D3EE', fontSize: 14, fontWeight: '700' },
 });
 
 const modal = StyleSheet.create({

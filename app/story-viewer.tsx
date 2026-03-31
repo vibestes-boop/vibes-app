@@ -3,18 +3,20 @@ import { router } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useStoryViewerStore } from '@/lib/storyViewerStore';
 import { StoryViewer } from '@/components/ui/StoryViewer';
+import { useAuthStore } from '@/lib/authStore';
 
 export default function StoryViewerScreen() {
   const { group, allGroups, close, setGroup } = useStoryViewerStore();
   const queryClient = useQueryClient();
+  const userId = useAuthStore((s) => s.profile?.id);
   const closingRef = useRef(false);
 
   const handleClose = useCallback(() => {
     if (closingRef.current) return;
     closingRef.current = true;
     close();
-    // Stories-Cache sofort invalidieren → Ring-Status aktualisiert sich beim Rückkehr
-    queryClient.invalidateQueries({ queryKey: ['guild-stories'] });
+    // Stories-Cache für aktuellen User invalidieren → Ring-Status aktualisiert sich beim Rückkehr
+    queryClient.invalidateQueries({ queryKey: ['guild-stories', userId] });
     // router.back() statt replace → bleibt dort wo man war (wie TikTok), Scroll-Position bleibt erhalten
     router.back();
   }, [close, queryClient]);

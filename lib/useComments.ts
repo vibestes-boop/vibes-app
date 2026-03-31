@@ -9,6 +9,8 @@ export type Comment = {
   user_id: string;
   text: string;
   created_at: string;
+  parent_id: string | null;
+  reply_count?: number;
   profiles: {
     username: string;
     avatar_url: string | null;
@@ -42,16 +44,34 @@ export function useComments(postId: string, enabled: boolean = true) {
         .from('comments')
         .select('*, profiles(username, avatar_url)')
         .eq('post_id', postId)
+        .is('parent_id', null)           // Nur Top-Level Kommentare
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+      return (data as Comment[]) ?? [];
+    },
+    staleTime: 1000 * 60,
+    enabled,
+  });
+}
+
+export function useCommentReplies(commentId: string, enabled: boolean = true) {
+  return useQuery({
+    queryKey: ['comment-replies', commentId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('comments')
+        .select('*, profiles(username, avatar_url)')
+        .eq('parent_id', commentId)
         .order('created_at', { ascending: true });
       if (error) throw error;
       return (data as Comment[]) ?? [];
     },
     staleTime: 1000 * 30,
-    enabled,
+    enabled: !!commentId && enabled,
   });
 }
 
-type AddCommentVars = { text: string; tempId: string };
+type AddCommentVars = { text: string; tempId: string; parentId?: string };
 
 export function useAddComment(postId: string) {
   const queryClient = useQueryClient();
@@ -59,13 +79,13 @@ export function useAddComment(postId: string) {
   const userId = profile?.id;
 
   return useMutation({
-    mutationFn: async ({ text }: AddCommentVars) => {
+    mutationFn: async ({ text, parentId }: AddCommentVars) => {
       if (!profile) throw new Error('Nicht eingeloggt');
 
       const { data: inserted, error: insertError } = await supabase
         .from('comments')
-        .insert({ post_id: postId, user_id: profile.id, text })
-        .select('id, post_id, user_id, text, created_at')
+        .insert({ post_id: postId, user_id: profile.id, text, parent_id: parentId ?? null })
+        .select('id, post_id, user_id, text, created_at, parent_id')
         .single();
 
       if (insertError) throw insertError;
@@ -79,36 +99,107 @@ export function useAddComment(postId: string) {
       };
       return newComment;
     },
-    onMutate: async ({ text, tempId }: AddCommentVars) => {
+    onMutate: async ({ text, tempId, parentId }: AddCommentVars) => {
       if (!profile) return {};
-      const previous = queryClient.getQueryData<Comment[]>(['comments', postId]);
+      const cacheKey = parentId ? ['comment-replies', parentId] : ['comments', postId];
+      const previous = queryClient.getQueryData<Comment[]>(cacheKey);
       const optimistic: Comment = {
         id: tempId,
         post_id: postId,
         user_id: profile.id,
         text,
+        parent_id: parentId ?? null,
         created_at: new Date().toISOString(),
         profiles: { username: profile.username ?? 'Du', avatar_url: profile.avatar_url ?? null },
       };
-      queryClient.setQueryData<Comment[]>(['comments', postId], (old) =>
+      queryClient.setQueryData<Comment[]>(cacheKey, (old) =>
         old ? [...old, optimistic] : [optimistic]
       );
-      queryClient.setQueryData<number>(['comment-count', postId], (old) => (old ?? 0) + 1);
-      return { previous };
+      if (!parentId) queryClient.setQueryData<number>(['comment-count', postId], (old) => (old ?? 0) + 1);
+      return { previous, cacheKey };
     },
-    onSuccess: (newComment, { tempId }) => {
-      queryClient.setQueryData<Comment[]>(['comments', postId], (old) =>
+    onSuccess: async (newComment, { tempId, text, parentId }) => {
+      // ── Optimistic cache update ────────────────────────────────────────
+      const cacheKey = parentId ? ['comment-replies', parentId] : ['comments', postId];
+      queryClient.setQueryData<Comment[]>(cacheKey, (old) =>
         old ? old.map((c) => (c.id === tempId ? newComment : c)) : [newComment]
       );
       if (userId) queryClient.invalidateQueries({ queryKey: ['feed-engagement', userId] });
+
+      if (!userId) return;
+
+      // ── Notification an Post-Owner ──────────────────────────────────────
+      const { data: post } = await supabase
+        .from('posts')
+        .select('user_id')
+        .eq('id', postId)
+        .single();
+
+      const notificationsToInsert: object[] = [];
+
+      if (post?.user_id && post.user_id !== userId) {
+        notificationsToInsert.push({
+          user_id:      post.user_id,
+          sender_id:    userId,
+          type:         'comment',
+          post_id:      postId,
+          comment_id:   newComment.id,
+          comment_text: text.slice(0, 200),
+        });
+      }
+
+      // ── comment_reply Notification an Parent-Autor ──────────────────────
+      if (parentId) {
+        const { data: parentComment } = await supabase
+          .from('comments')
+          .select('user_id')
+          .eq('id', parentId)
+          .single();
+        if (parentComment?.user_id && parentComment.user_id !== userId && parentComment.user_id !== post?.user_id) {
+          notificationsToInsert.push({
+            user_id:      parentComment.user_id,
+            sender_id:    userId,
+            type:         'comment_reply',
+            post_id:      postId,
+            comment_id:   newComment.id,
+            comment_text: text.slice(0, 200),
+          });
+        }
+      }
+
+      // ── @Mention Notifications ──────────────────────────────────────────
+      const mentions = [...text.matchAll(/@([a-zA-Z0-9_.]+)/g)].map((m) => m[1].toLowerCase());
+      if (mentions.length > 0) {
+        const { data: mentionedUsers } = await supabase
+          .from('profiles')
+          .select('id, username')
+          .in('username', mentions.slice(0, 5));
+
+        const mentionNotifs = (mentionedUsers ?? [])
+          .filter((u) => u.id !== userId && u.id !== post?.user_id) // nicht doppelt benachrichtigen
+          .map((u) => ({
+            user_id:    u.id,
+            sender_id:  userId,
+            type:       'mention' as const,
+            post_id:    postId,
+            comment_id: newComment.id,
+          }));
+
+        notificationsToInsert.push(...mentionNotifs);
+      }
+
+      if (notificationsToInsert.length > 0) {
+        await supabase.from('notifications').insert(notificationsToInsert);
+      }
     },
     onError: (err: any, _vars, context) => {
-      const prev = (context as { previous?: Comment[] })?.previous;
-      if (prev != null) {
-        queryClient.setQueryData(['comments', postId], prev);
+      const prev = (context as { previous?: Comment[]; cacheKey?: string[] })?.previous;
+      const key  = (context as { previous?: Comment[]; cacheKey?: string[] })?.cacheKey;
+      if (prev != null && key) {
+        queryClient.setQueryData(key, prev);
         queryClient.setQueryData<number>(['comment-count', postId], (old) => Math.max(0, (old ?? 1) - 1));
       }
-      console.error('[useAddComment] Fehler:', err);
+      __DEV__ && console.error('[useAddComment] Fehler:', err);
       Alert.alert('Fehler', err?.message ?? 'Kommentar konnte nicht gesendet werden.');
     },
   });

@@ -1,23 +1,25 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, Pressable, Image, Dimensions,
+  View, Text, StyleSheet, Pressable, Dimensions,
   TextInput, Keyboard, Alert, Modal, Platform,
   KeyboardEvent, ScrollView, Share, Linking,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import Animated, {
-  useSharedValue, useAnimatedStyle, withTiming,
-  withSequence, runOnJS, Easing, cancelAnimation,
+  useSharedValue, useAnimatedStyle, withTiming, withSequence,
+  runOnJS, Easing, cancelAnimation,
 } from 'react-native-reanimated';
 import { X, Heart, Send, Share2, UserPlus, UserCheck, Check, Copy, Flag, EyeOff, Download, Search as SearchIcon } from 'lucide-react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import * as Clipboard from 'expo-clipboard';
 import { BlurView } from 'expo-blur';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import type { StoryGroup, Story } from '@/lib/useStories';
-import { useMarkStoryViewed } from '@/lib/useStories';
+import { useMarkStoryViewed, useMyStoryVote, useStoryPollResults, useVoteStoryPoll } from '@/lib/useStories';
 import { useFollow } from '@/lib/useFollow';
 import { useAuthStore } from '@/lib/authStore';
 import { useOrCreateConversation, useSendMessage } from '@/lib/useMessages';
@@ -124,6 +126,106 @@ function useStoryLike(storyId: string | undefined) {
   });
 
   return { liked, toggle: toggle.mutate };
+}
+
+// ── Story Poll Overlay ────────────────────────────────────────────────────────
+function StoryPollOverlay({
+  storyId,
+  poll,
+}: {
+  storyId: string;
+  poll: { type: 'poll'; question: string; options: [string, string] };
+  onVote?: () => void;
+}) {
+  const { data: myVote, isLoading: voteLoading } = useMyStoryVote(storyId);
+  const { data: results = { counts: [0, 0] as [number, number], total: 0 } } = useStoryPollResults(storyId);
+  const { mutate: vote, isPending: voting } = useVoteStoryPoll();
+
+  const hasVoted = myVote !== null && myVote !== undefined;
+  const total = results.total;
+
+  const pct = (idx: number) => {
+    if (total === 0) return 0;
+    return Math.round((results.counts[idx] / total) * 100);
+  };
+
+  return (
+    <View style={{
+      position: 'absolute',
+      bottom: 160,
+      left: 20,
+      right: 20,
+      backgroundColor: 'rgba(0,0,0,0.65)',
+      borderRadius: 20,
+      padding: 16,
+      gap: 10,
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.1)',
+    }}>
+      <Text style={{ color: '#fff', fontWeight: '800', fontSize: 15, textAlign: 'center' }}>
+        {poll.question}
+      </Text>
+
+      {poll.options.map((opt, idx) => {
+        const p = pct(idx);
+        const isChosen = hasVoted && myVote === idx;
+        return (
+          <Pressable
+            key={idx}
+            disabled={voteLoading || voting || hasVoted}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+              vote({ storyId, optionIdx: idx });
+            }}
+            style={{
+              borderRadius: 12,
+              overflow: 'hidden',
+              height: 44,
+              backgroundColor: 'rgba(255,255,255,0.08)',
+              borderWidth: isChosen ? 1.5 : 1,
+              borderColor: isChosen ? '#22D3EE' : 'rgba(255,255,255,0.2)',
+              justifyContent: 'center',
+            }}
+          >
+            {/* Prozent-Balken hinter dem Text */}
+            {hasVoted && (
+              <View style={{
+                position: 'absolute',
+                left: 0,
+                top: 0,
+                bottom: 0,
+                width: `${p}%`,
+                backgroundColor: isChosen ? 'rgba(34,211,238,0.25)' : 'rgba(255,255,255,0.1)',
+              }} />
+            )}
+            <View style={{
+              flexDirection: 'row',
+              justifyContent: 'space-between',
+              paddingHorizontal: 14,
+              alignItems: 'center',
+            }}>
+              <Text style={{
+                color: isChosen ? '#22D3EE' : '#fff',
+                fontWeight: '700',
+                fontSize: 13,
+              }}>{opt}</Text>
+              {hasVoted && (
+                <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, fontWeight: '600' }}>
+                  {p}%
+                </Text>
+              )}
+            </View>
+          </Pressable>
+        );
+      })}
+
+      {hasVoted && (
+        <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 11, textAlign: 'center' }}>
+          {total} {total === 1 ? 'Stimme' : 'Stimmen'}
+        </Text>
+      )}
+    </View>
+  );
 }
 
 // ── Like Button ──────────────────────────────────────────────────────────────
@@ -470,6 +572,21 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
 
   const progressStyle = useAnimatedStyle(() => ({ width: `${progress.value * 100}%` }));
 
+  // ─ TikTok-style Tap-Flash ─
+  const flashLeft  = useSharedValue(0);
+  const flashRight = useSharedValue(0);
+  const flashLeftStyle  = useAnimatedStyle(() => ({ opacity: flashLeft.value }));
+  const flashRightStyle = useAnimatedStyle(() => ({ opacity: flashRight.value }));
+
+  const handleGoPrev = () => {
+    flashLeft.value = withSequence(withTiming(0.18, { duration: 40 }), withTiming(0, { duration: 80 }));
+    goPrev();
+  };
+  const handleGoNext = () => {
+    flashRight.value = withSequence(withTiming(0.18, { duration: 40 }), withTiming(0, { duration: 80 }));
+    goNext();
+  };
+
   const handleSendReply = async () => {
     const text = replyText.trim();
     if (!text || !currentStory?.user_id || sending) return;
@@ -489,20 +606,30 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
 
   return (
     <View style={styles.screen}>
-      {/* ── Media ── */}
+      {/* ── Media — immer cover, kein Letterboxing ── */}
       {isVideo ? (
         USE_EXPO_VIDEO
           ? <NativeVideoStory uri={currentStory.media_url} onDurationKnown={handleDurationKnown} />
           : <FallbackVideoStory uri={currentStory.media_url} onDurationKnown={handleDurationKnown} />
       ) : (
-        <>
-          <Image source={{ uri: currentStory.media_url }} style={[StyleSheet.absoluteFill, styles.blurBg]} resizeMode="cover" blurRadius={18} />
-          <Image source={{ uri: currentStory.media_url }} style={StyleSheet.absoluteFill} resizeMode="contain" />
-        </>
+        <Image
+          source={{ uri: currentStory.media_url }}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+        />
       )}
 
-      <View style={styles.vignetteTop}    pointerEvents="none" />
-      <View style={styles.vignetteBottom} pointerEvents="none" />
+      {/* ── Vignetten als Gradient (kein harter schwarzer Block) ── */}
+      <LinearGradient
+        colors={['rgba(0,0,0,0.65)', 'rgba(0,0,0,0.1)', 'transparent']}
+        style={styles.vignetteTop}
+        pointerEvents="none"
+      />
+      <LinearGradient
+        colors={['transparent', 'rgba(0,0,0,0.15)', 'rgba(0,0,0,0.72)']}
+        style={styles.vignetteBottom}
+        pointerEvents="none"
+      />
 
       {/* ── Fortschrittsbalken ── */}
       <View style={[styles.progressRow, { top: insets.top + 8 }]} pointerEvents="none">
@@ -552,9 +679,22 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
         </Pressable>
       </View>
 
-      {/* ── Tap-Zonen ── */}
-      <Pressable style={styles.tapLeft}  onPress={goPrev} />
-      <Pressable style={styles.tapRight} onPress={goNext} />
+      {/* ── Tap-Zonen mit Flash-Feedback ── */}
+      <Pressable style={styles.tapLeft}  onPress={handleGoPrev}>
+        <Animated.View style={[{ position: 'absolute', inset: 0, backgroundColor: '#fff', borderRadius: 0 }, flashLeftStyle]} />
+      </Pressable>
+      <Pressable style={styles.tapRight} onPress={handleGoNext}>
+        <Animated.View style={[{ position: 'absolute', inset: 0, backgroundColor: '#fff', borderRadius: 0 }, flashRightStyle]} />
+      </Pressable>
+
+      {/* ── Poll-Overlay ── */}
+      {currentStory.interactive?.type === 'poll' && (
+        <StoryPollOverlay
+          storyId={currentStory.id}
+          poll={currentStory.interactive}
+          onVote={() => { /* Timer pausiert durch isPaused */ }}
+        />
+      )}
 
       {/* ── Bottom-Bar ── */}
       <View style={[styles.bottomBar, { bottom: kbHeight + Math.max(insets.bottom, 10) }]}>
@@ -618,14 +758,13 @@ function formatTimeAgo(dateStr: string): string {
 
 const styles = StyleSheet.create({
   screen:        { flex: 1, backgroundColor: '#000' },
-  blurBg:        { opacity: 0.6 },
   vignetteTop: {
-    position: 'absolute', top: 0, left: 0, right: 0, height: 200,
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    position: 'absolute', top: 0, left: 0, right: 0, height: 220,
+    zIndex: 1,
   },
   vignetteBottom: {
-    position: 'absolute', bottom: 0, left: 0, right: 0, height: 180,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    position: 'absolute', bottom: 0, left: 0, right: 0, height: 260,
+    zIndex: 1,
   },
   progressRow:  { position: 'absolute', left: 12, right: 12, flexDirection: 'row', gap: 4, zIndex: 10 },
   progressTrack:{ flex: 1, height: 2.5, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.35)', overflow: 'hidden' },

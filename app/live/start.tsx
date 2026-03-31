@@ -25,6 +25,7 @@ import Animated, {
   withRepeat,
 } from 'react-native-reanimated';
 import { useLiveHost } from '@/lib/useLiveSession';
+import ExpoGoPlaceholder from '@/components/live/ExpoGoPlaceholder';
 // expo-constants: default import causes _interopRequireDefault TypeError in Hermes HBC
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
 const _cMod = require('expo-constants') as any; const Constants = _cMod?.default ?? _cMod;
@@ -89,18 +90,7 @@ export default function LiveStartScreen() {
   };
 
   if (Constants.appOwnership === 'expo') {
-    return (
-      <View style={[s.root, { alignItems: 'center', justifyContent: 'center', gap: 16 }]}>
-        <Text style={{ fontSize: 48 }}>🎥</Text>
-        <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700', textAlign: 'center' }}>Dev-Build erforderlich</Text>
-        <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, textAlign: 'center', paddingHorizontal: 32 }}>
-          Live Studio läuft nicht in Expo Go.{'\n'}Bitte einen Dev-Build verwenden.
-        </Text>
-        <Pressable onPress={() => router.back()} style={{ marginTop: 8, backgroundColor: '#0891B2', borderRadius: 14, paddingHorizontal: 24, paddingVertical: 12 }}>
-          <Text style={{ color: '#fff', fontWeight: '700' }}>Zurück</Text>
-        </Pressable>
-      </View>
-    );
+    return <ExpoGoPlaceholder onBack={() => router.back()} icon="🎥" />;
   }
 
   return (

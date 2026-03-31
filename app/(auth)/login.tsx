@@ -16,14 +16,17 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
+  FadeInDown,
 } from 'react-native-reanimated';
 import { supabase } from '@/lib/supabase';
 import { Mail, Lock, Zap } from 'lucide-react-native';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import { appleSignIn } from '@/lib/useAppleSignIn';
 
 export default function LoginScreen() {
-  const [email, setEmail]       = useState('');
-  const [password, setPassword] = useState('');
-  const [loading, setLoading]   = useState(false);
+  const [email, setEmail]         = useState('');
+  const [password, setPassword]   = useState('');
+  const [loading, setLoading]     = useState(false);
   const [resetSent, setResetSent] = useState(false);
 
   const btnScale = useSharedValue(1);
@@ -70,13 +73,15 @@ export default function LoginScreen() {
         style={StyleSheet.absoluteFill}
       />
 
-      <View style={styles.logoArea}>
+      {/* ── Logo ── */}
+      <Animated.View entering={FadeInDown.delay(60).duration(500)} style={styles.logoArea}>
         <Zap size={36} stroke="#22D3EE" strokeWidth={2} fill="#22D3EE" />
         <Text style={styles.logoText}>vibes</Text>
         <Text style={styles.tagline}>Dein Feed. Deine Regeln.</Text>
-      </View>
+      </Animated.View>
 
-      <View style={styles.form}>
+      {/* ── Form ── */}
+      <Animated.View entering={FadeInDown.delay(120).duration(500)} style={styles.form}>
         <View style={styles.inputWrapper}>
           <Mail size={18} stroke="#4B5563" strokeWidth={1.8} />
           <TextInput
@@ -103,6 +108,7 @@ export default function LoginScreen() {
           />
         </View>
 
+        {/* E-Mail Login Button */}
         <Animated.View style={btnStyle}>
           <Pressable
             onPressIn={() => { btnScale.value = withTiming(0.96, { duration: 80 }); }}
@@ -110,6 +116,9 @@ export default function LoginScreen() {
             onPress={handleLogin}
             style={styles.loginBtn}
             disabled={loading}
+            accessibilityRole="button"
+            accessibilityLabel="Einloggen"
+            accessibilityState={{ disabled: loading }}
           >
             <LinearGradient
               colors={['#0891B2', '#22D3EE']}
@@ -132,20 +141,50 @@ export default function LoginScreen() {
             </Text>
           </View>
         ) : (
-          <Pressable onPress={handleForgotPassword} style={styles.forgotBtn} disabled={loading}>
+          <Pressable
+            onPress={handleForgotPassword}
+            style={styles.forgotBtn}
+            disabled={loading}
+            accessibilityRole="button"
+            accessibilityLabel="Passwort zurücksetzen"
+            accessibilityState={{ disabled: loading }}
+          >
             <Text style={styles.forgotText}>Passwort vergessen?</Text>
           </Pressable>
         )}
 
+        {/* ── Divider ── */}
+        <View style={styles.dividerRow}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>oder</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+        {/* ── Apple Sign-In (nur iOS) ── */}
+        {Platform.OS === 'ios' && (
+          <AppleAuthentication.AppleAuthenticationButton
+            buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
+            buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
+            cornerRadius={16}
+            style={styles.appleBtn}
+            onPress={appleSignIn}
+          />
+        )}
+
+        {/* ── Registrieren-Link ── */}
         <Link href="/(auth)/register" asChild>
-          <Pressable style={styles.registerLink}>
+          <Pressable
+            style={styles.registerLink}
+            accessibilityRole="link"
+            accessibilityLabel="Jetzt registrieren"
+          >
             <Text style={styles.registerText}>
               Noch kein Account?{' '}
               <Text style={styles.registerHighlight}>Jetzt registrieren</Text>
             </Text>
           </Pressable>
         </Link>
-      </View>
+      </Animated.View>
     </KeyboardAvoidingView>
   );
 }
@@ -205,6 +244,28 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.3,
+  },
+  // ── Divider ──
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginVertical: 4,
+  },
+  dividerLine: {
+    flex: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  dividerText: {
+    color: 'rgba(255,255,255,0.25)',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  // ── Apple Sign-In ──
+  appleBtn: {
+    width: '100%',
+    height: 54,
   },
   registerLink: {
     alignItems: 'center',

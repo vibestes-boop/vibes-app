@@ -8,7 +8,6 @@ import {
   FlatList,
   Platform,
   ActivityIndicator,
-  Image,
   Dimensions,
   Alert,
   Modal,
@@ -30,13 +29,16 @@ import {
   GestureHandlerRootView,
   TouchableOpacity,
 } from 'react-native-gesture-handler';
-import { X, Send, Trash2, Copy, Video } from 'lucide-react-native';
+import { X, Send, Trash2, Copy, Video, AtSign, MessageSquare, Heart } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useComments, useAddComment, useDeleteComment, type Comment } from '@/lib/useComments';
+import { Image } from 'expo-image';
+import { useComments, useAddComment, useDeleteComment, useCommentReplies, type Comment } from '@/lib/useComments';
+import { useCommentLike } from '@/lib/useCommentLike';
 import { useAuthStore } from '@/lib/authStore';
 import { VideoGridThumb } from './VideoGridThumb';
+import { useExploreUserSearch } from '@/lib/useExplore';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 // TikTok: Post-Preview oben (~22%), Sheet darunter
@@ -207,7 +209,7 @@ export default function CommentsSheet({ postId, visible, onClose, mediaUrl, medi
               {mediaType === 'video' ? (
                 <VideoGridThumb uri={mediaUrl} style={StyleSheet.absoluteFill} />
               ) : (
-                <Image source={{ uri: mediaUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+                <Image source={{ uri: mediaUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
               )}
             </View>
           )}
@@ -246,6 +248,15 @@ function SheetInner({
   const [text, setText] = useState('');
   const [lastSentId, setLastSentId] = useState<string | null>(null);
   const [actionSheetComment, setActionSheetComment] = useState<Comment | null>(null);
+  const [replyTo, setReplyTo] = useState<{ id: string; username: string } | null>(null);
+
+  // ── @Mention Autocomplete ──────────────────────────────────
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const mentionDebounced = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [debouncedMention, setDebouncedMention] = useState<string | null>(null);
+  const { data: mentionUsers = [] } = useExploreUserSearch(debouncedMention ?? '');
+  const showMentions = debouncedMention && debouncedMention.length >= 1 && mentionUsers.length > 0;
+
   const inputRef = useRef<TextInput>(null);
   const listRef = useRef<any>(null);
 
@@ -256,10 +267,13 @@ function SheetInner({
     const trimmed = text.trim();
     if (!trimmed || addComment.isPending) return;
     setText('');
+    setReplyTo(null);
+    setMentionQuery(null);
+    setDebouncedMention(null);
     Keyboard.dismiss();
     const tempId = `temp-${Date.now()}`;
     addComment.mutate(
-      { text: trimmed, tempId },
+      { text: trimmed, tempId, parentId: replyTo?.id },
       {
         onSuccess: (newComment) => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -282,6 +296,43 @@ function SheetInner({
   const handleReplyWithVideo = useCallback((username: string) => {
     setText(`@${username} `);
     inputRef.current?.focus();
+  }, []);
+
+  const handleReplyTo = useCallback((commentId: string, username: string) => {
+    setReplyTo({ id: commentId, username });
+    setText(`@${username} `);
+    inputRef.current?.focus();
+    setActionSheetComment(null);
+  }, []);
+
+  const clearReply = useCallback(() => {
+    setReplyTo(null);
+    setText((t) => t.replace(/^@\S+\s?/, ''));
+  }, []);
+
+  // Erkennt @mention beim Tippen und sucht passende User
+  const handleTextChange = useCallback((val: string) => {
+    setText(val);
+    // Suche nach @word am Ende des Textes (Cursor-Position nicht trackbar, letzter @ gewinnt)
+    const match = val.match(/@([\w]*)$/);
+    if (match) {
+      const partial = match[1];
+      setMentionQuery(partial);
+      if (mentionDebounced.current) clearTimeout(mentionDebounced.current);
+      mentionDebounced.current = setTimeout(() => setDebouncedMention(partial || null), 300);
+    } else {
+      setMentionQuery(null);
+      setDebouncedMention(null);
+    }
+  }, []);
+
+  const handleSelectMention = useCallback((username: string) => {
+    // Ersetzt den teilweise getippten @mention durch den vollen Namen
+    setText((t) => t.replace(/@[\w]*$/, `@${username} `));
+    setMentionQuery(null);
+    setDebouncedMention(null);
+    inputRef.current?.focus();
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, []);
 
   const timeAgo = (dateStr: string) => {
@@ -329,9 +380,11 @@ function SheetInner({
           renderItem={({ item }) => (
             <CommentRow
               comment={item}
+              postId={postId}
               isOwn={item.user_id === profile?.id}
               timeAgo={timeAgo(item.created_at)}
               onDelete={() => handleDelete(item.id)}
+              onReply={() => handleReplyTo(item.id, item.profiles?.username ?? 'unknown')}
               onLongPress={() => {
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
                 setActionSheetComment(item);
@@ -341,6 +394,41 @@ function SheetInner({
             />
           )}
         />
+      )}
+
+      {/* @Mention Autocomplete Dropdown */}
+      {showMentions && (
+        <View style={styles.mentionList}>
+          {mentionUsers.slice(0, 5).map((user) => (
+            <Pressable
+              key={user.id}
+              style={styles.mentionItem}
+              onPress={() => handleSelectMention(user.username ?? '')}
+            >
+              {user.avatar_url ? (
+                <Image source={{ uri: user.avatar_url }} style={styles.mentionAvatar} contentFit="cover" />
+              ) : (
+                <View style={[styles.mentionAvatar, styles.mentionAvatarFallback]}>
+                  <Text style={styles.mentionAvatarText}>{(user.username ?? '?')[0].toUpperCase()}</Text>
+                </View>
+              )}
+              <Text style={styles.mentionUsername}>@{user.username}</Text>
+              {user.bio ? <Text style={styles.mentionBio} numberOfLines={1}>{user.bio}</Text> : null}
+            </Pressable>
+          ))}
+        </View>
+      )}
+
+      {/* Reply-Banner */}
+      {replyTo && (
+        <View style={styles.replyBanner}>
+          <Text style={styles.replyBannerText}>
+            Antwort an <Text style={styles.replyBannerUsername}>@{replyTo.username}</Text>
+          </Text>
+          <Pressable onPress={clearReply} hitSlop={10}>
+            <X size={14} stroke="#9CA3AF" strokeWidth={2.5} />
+          </Pressable>
+        </View>
       )}
 
       {/* Input */}
@@ -359,7 +447,7 @@ function SheetInner({
               ref={inputRef}
               style={styles.input}
               value={text}
-              onChangeText={setText}
+              onChangeText={handleTextChange}
               placeholder="Kommentar schreiben..."
               placeholderTextColor="#4B5563"
               multiline
@@ -369,6 +457,17 @@ function SheetInner({
               onSubmitEditing={handleSend}
             />
           </View>
+        {/* @ Mention Schnell-Button */}
+        <TouchableOpacity
+          onPress={() => {
+            setText((prev) => prev + '@');
+            inputRef.current?.focus();
+          }}
+          style={[styles.sendBtn, { backgroundColor: 'rgba(255,255,255,0.05)' }]}
+          activeOpacity={0.7}
+        >
+          <AtSign size={16} stroke="#6B7280" strokeWidth={2} />
+        </TouchableOpacity>
         <TouchableOpacity
           onPress={handleSend}
           disabled={!text.trim() || addComment.isPending}
@@ -466,21 +565,28 @@ function CommentActionSheet({
 
 function CommentRow({
   comment,
+  postId,
   isOwn,
   timeAgo,
   onDelete,
+  onReply,
   onLongPress,
   isHighlighted,
   onUserPress,
 }: {
   comment: Comment;
+  postId: string;
   isOwn: boolean;
   timeAgo: string;
   onDelete: () => void;
+  onReply: () => void;
   onLongPress: () => void;
   isHighlighted?: boolean;
   onUserPress?: (userId: string) => void;
 }) {
+  const [showReplies, setShowReplies] = useState(false);
+  const { data: replies = [] } = useCommentReplies(comment.id, showReplies);
+  const { liked, count, toggle } = useCommentLike(comment.id);
   const highlightOpacity = useSharedValue(0);
   useEffect(() => {
     if (isHighlighted) {
@@ -530,8 +636,71 @@ function CommentRow({
             <Text style={styles.commentTime}>{timeAgo}</Text>
           </View>
           <Text style={styles.commentText}>{comment.text}</Text>
+          {/* Aktionen: Antworten + Liken */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 4 }}>
+            <Pressable onPress={onReply} style={styles.commentReplyBtn} hitSlop={8}>
+              <Text style={styles.commentReplyText}>Antworten</Text>
+            </Pressable>
+            {/* Like-Button */}
+            <Pressable
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                toggle();
+              }}
+              hitSlop={8}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
+              accessibilityRole="button"
+              accessibilityLabel={liked ? 'Kommentar nicht mehr liken' : 'Kommentar liken'}
+            >
+              <Heart
+                size={13}
+                color={liked ? '#F472B6' : 'rgba(255,255,255,0.3)'}
+                fill={liked ? '#F472B6' : 'transparent'}
+                strokeWidth={2}
+              />
+              {count > 0 && (
+                <Text style={{ color: liked ? '#F472B6' : 'rgba(255,255,255,0.3)', fontSize: 11, fontWeight: '600' }}>
+                  {count}
+                </Text>
+              )}
+            </Pressable>
+          </View>
         </View>
+
+        {/* Antworten Toggle */}
+        {replies.length > 0 && showReplies && (
+          <Pressable onPress={() => setShowReplies(false)} hitSlop={8} style={{ marginLeft: 4, marginTop: 2 }}>
+            <Text style={{ color: '#22D3EE', fontSize: 12, fontWeight: '600' }}>Antworten ausblenden</Text>
+          </Pressable>
+        )}
+        {!showReplies && (
+          <Pressable onPress={() => setShowReplies(true)} hitSlop={8} style={{ marginLeft: 4, marginTop: 2 }}>
+            <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>── Antworten anzeigen</Text>
+          </Pressable>
+        )}
       </Animated.View>
+
+      {/* eingerückte Antworten */}
+      {showReplies && replies.map((reply) => (
+        <View key={reply.id} style={{ paddingLeft: 48, marginTop: -4 }}>
+          <CommentRow
+            comment={reply}
+            postId={postId}
+            isOwn={reply.user_id === comment.user_id}
+            timeAgo={(() => {
+              const diff = (Date.now() - new Date(reply.created_at).getTime()) / 1000;
+              if (diff < 60) return 'gerade eben';
+              if (diff < 3600) return `${Math.floor(diff / 60)}m`;
+              if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
+              return `${Math.floor(diff / 86400)}d`;
+            })()}
+            onDelete={() => {}}
+            onReply={onReply}
+            onLongPress={onLongPress}
+            onUserPress={onUserPress}
+          />
+        </View>
+      ))}
     </Pressable>
   );
 }
@@ -720,5 +889,79 @@ const styles = StyleSheet.create({
     color: '#EF4444',
     fontSize: 16,
     fontWeight: '600',
+  },
+
+  // ── Reply Banner ──────────────────────────────────
+  replyBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(34,211,238,0.07)',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(34,211,238,0.25)',
+  },
+  replyBannerText: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 13,
+  },
+  replyBannerUsername: {
+    color: '#22D3EE',
+    fontWeight: '700',
+  },
+
+  // ── Comment Reply Button ──────────────────────────
+  commentReplyBtn: {
+    alignSelf: 'flex-start',
+    marginTop: 4,
+  },
+  commentReplyText: {
+    color: 'rgba(255,255,255,0.35)',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+
+  // ── @Mention Autocomplete ─────────────────────────
+  mentionList: {
+    backgroundColor: 'rgba(15,15,20,0.98)',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(255,255,255,0.08)',
+    maxHeight: 220,
+  },
+  mentionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255,255,255,0.04)',
+  },
+  mentionAvatar: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+  },
+  mentionAvatarFallback: {
+    backgroundColor: 'rgba(34,211,238,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  mentionAvatarText: {
+    color: '#22D3EE',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  mentionUsername: {
+    color: '#F9FAFB',
+    fontSize: 14,
+    fontWeight: '700',
+    flex: 1,
+  },
+  mentionBio: {
+    color: '#6B7280',
+    fontSize: 12,
+    flex: 2,
   },
 });

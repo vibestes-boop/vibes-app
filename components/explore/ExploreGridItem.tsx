@@ -1,4 +1,5 @@
-import { View, Text, Pressable, Image } from 'react-native';
+import { View, Text, Pressable } from 'react-native';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Play } from 'lucide-react-native';
 import { EXPLORE_ITEM_HEIGHT, EXPLORE_ITEM_WIDTH } from './exploreConstants';
@@ -27,7 +28,7 @@ export function ExploreGridItem({ item }: { item: ExplorePostThumb }) {
           <Image
             source={{ uri: item.media_url }}
             style={styles.gridImage}
-            resizeMode="cover"
+            contentFit="cover"
           />
           {/* Play-Indikator für Videos */}
           {isVideo && (

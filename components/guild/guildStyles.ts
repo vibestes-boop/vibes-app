@@ -243,7 +243,7 @@ export const guildStyles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 14,
     paddingTop: 10,
-    paddingBottom: 4,
+    paddingBottom: 14,
   },
   actionBtn: {
     flexDirection: 'row',

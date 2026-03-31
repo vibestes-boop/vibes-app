@@ -16,7 +16,7 @@ export function useFollowCounts(userId: string | null) {
       return { followers: Number(row?.followers ?? 0), following: Number(row?.following ?? 0) };
     },
     enabled: !!userId,
-    staleTime: 1000 * 30,
+    staleTime: 1000 * 60 * 2, // 2min — Optimistic Updates halten Zähler aktuell
   });
 }
 
@@ -150,7 +150,7 @@ export function useFollowerList(userId: string | null) {
       return ((data ?? []).map((r: any) => r.follower).filter(Boolean)) as FollowUser[];
     },
     enabled: !!userId,
-    staleTime: 1000 * 30,
+    staleTime: 1000 * 60 * 2,
   });
 }
 
@@ -169,6 +169,6 @@ export function useFollowingList(userId: string | null) {
       return ((data ?? []).map((r: any) => r.following).filter(Boolean)) as FollowUser[];
     },
     enabled: !!userId,
-    staleTime: 1000 * 30,
+    staleTime: 1000 * 60 * 2,
   });
 }
