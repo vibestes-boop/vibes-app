@@ -69,7 +69,7 @@
           "Default"
         ]
       },
-      "buildNumber": "165"
+      "buildNumber": "166"
     },
     "android": {
       "package": "app.vibes.social",
@@ -90,7 +90,7 @@
         "android.permission.INTERNET",
         "android.permission.ACCESS_NETWORK_STATE"
       ],
-      "versionCode": 7
+      "versionCode": 8
     },
     "web": {
       "favicon": "./assets/favicon.png",
