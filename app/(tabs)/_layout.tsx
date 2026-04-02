@@ -382,7 +382,14 @@ export default function TabLayout() {
   return (
     <Tabs
       tabBar={(props) => <CustomTabBar {...props} />}
-      screenOptions={{ headerShown: false, lazy: true }}
+      screenOptions={{
+        headerShown: false,
+        lazy: true,
+        // Verhindert schwarzen Flash bei lazy Tab-Wechsel:
+        // Der Scene-Container ist standardmäßig transparent → zeigt den nativen Black-Background
+        // solange der Tab noch nicht gemounted wurde.
+        sceneStyle: { backgroundColor: '#050508' },
+      }}
     >
       <Tabs.Screen name="index" />
       <Tabs.Screen name="explore" options={{ href: undefined }} />
@@ -394,3 +401,4 @@ export default function TabLayout() {
     </Tabs>
   );
 }
+
