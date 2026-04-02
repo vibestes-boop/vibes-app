@@ -157,7 +157,8 @@ export const FeedItem = React.memo(function FeedItem({
     if (!shouldPlayVideo && isPaused) setIsPaused(false);
   }
 
-  const actualShouldPlay = shouldPlayVideo && !isPaused;
+  const actualShouldPlay = shouldPlayVideo && !isPaused && !commentsOpen && !shareOpen && !optionsOpen && !longPressOpen;
+
 
   const spawnHeart = useCallback((x: number, y: number) => {
     const newId = heartIdRef.current++;
