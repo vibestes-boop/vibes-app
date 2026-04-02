@@ -35,7 +35,8 @@ import {
   TouchableOpacity,
 } from 'react-native-gesture-handler';
 import { X, Send, Trash2, Copy, Video, AtSign, MessageSquare, Heart } from 'lucide-react-native';
-import * as Clipboard from 'expo-clipboard';
+import { setStringAsync as clipboardSetString } from 'expo-clipboard';
+
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
@@ -545,7 +546,8 @@ function CommentActionSheet({
 
   const handleCopy = () => {
     if (comment?.text) {
-      Clipboard.setStringAsync(comment.text);
+      clipboardSetString(comment.text);
+
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       onCopy(comment.text);
     }

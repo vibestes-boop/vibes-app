@@ -48,6 +48,10 @@
       "ios": {
         "resourceClass": "m-medium"
       },
+      "android": {
+        "resourceClass": "large",
+        "buildType": "app-bundle"
+      },
       "env": {
         "APP_ENV": "production",
         "EAS_BUILD": "1",
@@ -59,6 +63,7 @@
         "EXPO_PUBLIC_GIPHY_API_KEY": "9Kp17xdnCuF9EsveCTQNmKplwF1PRmHY"
       }
     },
+
     "quarantine-ios": {
       "autoIncrement": true,
       "ios": {

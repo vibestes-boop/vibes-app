@@ -35,7 +35,8 @@ import {
   X,
   Download,
 } from 'lucide-react-native';
-import * as Clipboard from 'expo-clipboard';
+import { setStringAsync as clipboardSetString } from 'expo-clipboard';
+
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { useLike } from '@/lib/useLike';
@@ -164,7 +165,8 @@ export default function PostLongPressSheet({
   }, [mediaUrl, onClose]);
 
   const copyLink = useCallback(async () => {
-    await Clipboard.setStringAsync(postLink);
+    await clipboardSetString(postLink);
+
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     onClose();
     Alert.alert('Link kopiert ✓', '');

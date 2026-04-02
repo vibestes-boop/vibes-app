@@ -17,7 +17,8 @@ import {
 import { X, Heart, Send, Share2, UserPlus, UserCheck, Check, Copy, Flag, EyeOff, Download, Search as SearchIcon } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
-import * as Clipboard from 'expo-clipboard';
+import { setStringAsync as clipboardSetString } from 'expo-clipboard';
+
 import { BlurView } from 'expo-blur';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
@@ -373,7 +374,8 @@ function InAppShareModal({
         Linking.openURL(`tg://msg_url?url=${encodeURIComponent(storyLink)}&text=${encodeURIComponent(`Story von @${storyUsername}`)}`).catch(() => Alert.alert('Telegram nicht installiert'));
         break;
       case 'copy':
-        Clipboard.setStringAsync(storyLink).catch(() => { });
+        clipboardSetString(storyLink).catch(() => { });
+
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         Alert.alert('Link kopiert ✓', storyLink);
         break;

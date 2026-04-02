@@ -18,7 +18,8 @@ import {
   Alert,
 } from 'react-native';
 import { Image } from 'expo-image';
-import * as Clipboard from 'expo-clipboard';
+import { setStringAsync as clipboardSetString } from 'expo-clipboard';
+
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
 const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
@@ -166,7 +167,8 @@ export default function LiveShareSheet({ visible, onClose, sessionId, title }: P
   }, [visible, currentUserId]);
 
   const copyLink = useCallback(async () => {
-    await Clipboard.setStringAsync(shareLink);
+    await clipboardSetString(shareLink);
+
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }, [shareLink]);
