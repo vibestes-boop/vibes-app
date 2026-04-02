@@ -257,6 +257,8 @@ function MessageBubble({
               styles.bubble,
               isOwn ? styles.bubbleOwn : styles.bubbleOther,
               hasPost && styles.bubbleWithPost,
+              hasPost && styles.bubbleNoFrame,
+
               hasImage && !showText && styles.bubbleWithImage,
               isSending && { opacity: 0.6 },
               pressed && { opacity: 0.88 },
@@ -728,6 +730,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14, paddingVertical: 10,
   },
   bubbleWithPost: { paddingHorizontal: 0, paddingVertical: 0, gap: 0 },
+  bubbleNoFrame: { backgroundColor: 'transparent' },  // kein Cyan-Rahmen bei geteilten Posts
+
   bubbleOther: { backgroundColor: 'rgba(255,255,255,0.08)', borderBottomLeftRadius: 4 },
   bubbleOwn: { backgroundColor: '#0891B2', borderBottomRightRadius: 4 },
   bubbleWithImage: { backgroundColor: 'transparent', padding: 0, borderRadius: 0, overflow: 'visible' },
@@ -837,10 +841,9 @@ const styles = StyleSheet.create({
   // ── PostPreviewCard ──
   previewCard: {
     borderRadius: 16, overflow: 'hidden',
-    borderWidth: 1.5, borderColor: 'rgba(34,211,238,0.35)',
-    shadowColor: '#0891B2', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25, shadowRadius: 10, elevation: 6, width: 240,
+    width: 240,
   },
+
   previewThumbWrap: { width: '100%', height: 170, position: 'relative' },
   previewThumb: { width: '100%', height: '100%' },
   previewThumbFallback: {
@@ -911,10 +914,9 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     marginBottom: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
     width: 200,
   },
+
   storyReplyLabel: {
     color: 'rgba(255,255,255,0.5)',
     fontSize: 11,
