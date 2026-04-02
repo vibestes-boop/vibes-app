@@ -244,17 +244,18 @@ export const profileStyles = StyleSheet.create({
 
   // ── Grid ──────────────────────────────────────────────────
   grid: { flexDirection: 'row', gap: GRID_GAP, marginBottom: GRID_GAP },
-  // KEIN flex:1 — feste Breite damit letzte Zeile mit 1-2 Items gleich groß bleibt
-  gridCell: { width: GRID_CELL_WIDTH, padding: 1 },
+  // gridCell: flex:1 — FlashList mit numColumns verteilt den Platz via flex.
+  // KEIN festes width hier — das erzeugt Messkonflikt → 1-Spalten-Bug!
+  gridCell: { flex: 1, padding: 1 },
   cell: {
-    width: GRID_CELL_WIDTH,
-    aspectRatio: 4 / 5,    // Instagram Portrait-Format (4:5) — kein Square mehr
+    width: '100%',         // füllt den flex-Container (gridCell) aus
+    aspectRatio: 4 / 5,   // Instagram Portrait-Format (4:5)
     overflow: 'hidden',
     backgroundColor: '#0D0D0D',
     position: 'relative',
   },
   cellAdd: {
-    width: GRID_CELL_WIDTH,
+    width: '100%',
     aspectRatio: 4 / 5,
     alignItems: 'center',
     justifyContent: 'center',
@@ -262,6 +263,7 @@ export const profileStyles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.05)',
   },
+
   cellImg: { width: '100%', height: '100%' },
   cellGrad: { position: 'absolute', bottom: 0, left: 0, right: 0, height: '35%' },
   cellText: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 10, backgroundColor: '#0D0D0D' },

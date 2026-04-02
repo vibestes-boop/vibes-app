@@ -271,7 +271,8 @@ export default function ProfileScreen() {
         data={listData}
         keyExtractor={(item) => item.id}
         numColumns={GRID_COLUMNS}
-        estimatedItemSize={Math.round(GRID_CELL_WIDTH)}
+        estimatedItemSize={CELL_HEIGHT}
+
         overrideItemLayout={overrideItemLayout}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}

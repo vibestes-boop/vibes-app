@@ -429,6 +429,8 @@ function HostUI({
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [tapHearts, setTapHearts] = useState<TapHeartItem[]>([]);
   const tapHeartIdRef = useRef(0);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
 
   const dotOpacity = useSharedValue(1);
   useEffect(() => {
@@ -653,7 +655,7 @@ function HostUI({
             placeholder="Als Host kommentieren …"
             placeholderTextColor="rgba(255,255,255,0.35)"
             value={input}
-            onChangeText={setInput}
+            onChangeText={(t) => { setInput(t); if (t.length > 0) setShowEmojiPicker(false); }}
             onSubmitEditing={submit}
             returnKeyType="send"
             selectionColor="#22D3EE"
@@ -664,13 +666,34 @@ function HostUI({
               <Send size={18} stroke="#22D3EE" strokeWidth={2.2} />
             </Pressable>
           ) : (
-            EMOJIS.map((emoji) => (
-              <Pressable key={emoji} onPress={() => sendReaction(emoji)} style={s.bottomEmojiBtn}>
-                <Text style={s.bottomEmojiText}>{emoji}</Text>
-              </Pressable>
-            ))
+            <Pressable
+              onPress={() => setShowEmojiPicker((v) => !v)}
+              hitSlop={8}
+              style={s.sendBtn}
+            >
+              <Text style={{ fontSize: 20 }}>{showEmojiPicker ? '🚫' : '😊'}</Text>
+            </Pressable>
           )}
         </View>
+
+        {/* Emoji-Picker Zeile — erscheint über dem Input wenn geöffnet */}
+        {showEmojiPicker && input.trim().length === 0 && (
+          <View style={[s.emojiPickerRow, { bottom: insets.bottom + 64 }]}>
+            {EMOJIS.map((emoji) => (
+              <Pressable
+                key={emoji}
+                onPress={() => {
+                  sendReaction(emoji);
+                  setShowEmojiPicker(false);
+                }}
+                style={s.bottomEmojiBtn}
+              >
+                <Text style={s.bottomEmojiText}>{emoji}</Text>
+              </Pressable>
+            ))}
+          </View>
+        )}
+
       </View>
 
       {/* Share Sheet */}
@@ -1039,6 +1062,20 @@ const s = StyleSheet.create({
   commentText: { color: "#fff", fontSize: 13, flexShrink: 1 },
   systemText: { color: 'rgba(255,255,255,0.55)', fontSize: 12, fontStyle: 'italic' },
 
+  emojiPickerRow: {
+    position: 'absolute',
+    left: 14,
+    right: 14,
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    backgroundColor: 'rgba(20,20,30,0.92)',
+    borderRadius: 20,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    zIndex: 30,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
   inputBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1048,6 +1085,7 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.6)',
     zIndex: 20,
   },
+
   input: {
     flex: 1,
     backgroundColor: 'rgba(255,255,255,0.1)',

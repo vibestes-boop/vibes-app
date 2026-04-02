@@ -638,7 +638,8 @@ const sc = StyleSheet.create({
     backgroundColor: '#111118',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: '72%',
+    minHeight: '45%',   // immer mindestens halber Bildschirm sichtbar
+    maxHeight: '80%',   // niemals zu groß
     paddingTop: 12,
   },
   handle: {
@@ -651,12 +652,13 @@ const sc = StyleSheet.create({
     color: '#fff', fontSize: 16, fontWeight: '800',
     textAlign: 'center', marginBottom: 14,
   },
-  list: { flex: 1 },
-  listContent: { paddingHorizontal: 16, paddingBottom: 8, gap: 16 },
-  empty: { alignItems: 'center', paddingVertical: 40, gap: 8 },
+  list: { flex: 1, minHeight: 120 },
+  listContent: { paddingHorizontal: 16, paddingBottom: 8, gap: 16, flexGrow: 1 },
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 40, gap: 8 },
   emptyIcon: { fontSize: 36 },
   emptyText: { color: 'rgba(255,255,255,0.7)', fontSize: 15, fontWeight: '600' },
   emptyHint: { color: 'rgba(255,255,255,0.35)', fontSize: 13 },
+
   row: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
   avatar: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.15)' },
   avatarFallback: { backgroundColor: 'rgba(34,211,238,0.2)', alignItems: 'center', justifyContent: 'center' },
