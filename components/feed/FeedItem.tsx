@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Dimensions } from 'react-native';
+
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 // reanimated: CJS require() vermeidet _interopRequireDefault Crash in Hermes HBC
@@ -50,6 +51,11 @@ import {
 } from './FeedActionButtons';
 import { feedItemStyles as styles } from './feedStyles';
 import type { FeedItemData } from './types';
+
+const { height: SCREEN_H } = Dimensions.get('window');
+// Muss mit CommentsSheet SHEET_TOP (0.22) übereinstimmen:
+const COMMENTS_PEEK_H = Math.round(SCREEN_H * 0.22);
+
 
 // ─── Floating Heart — eigenständige Komponente pro Tap ────────────────────────
 type FloatingHeartItem = { id: number; x: number; y: number };
@@ -160,7 +166,22 @@ export const FeedItem = React.memo(function FeedItem({
   const actualShouldPlay = shouldPlayVideo && !isPaused && !commentsOpen && !shareOpen && !optionsOpen && !longPressOpen;
 
 
+  // ── Media-Resize wenn Comments öffnet (TikTok-Style) ──────────────────────
+  const mediaH = useSharedValue(SCREEN_H);
+  useEffect(() => {
+    mediaH.value = withSpring(
+      commentsOpen ? COMMENTS_PEEK_H : SCREEN_H,
+      { damping: 22, stiffness: 180, mass: 0.8 },
+    );
+  }, [commentsOpen, mediaH]);
+
+  const mediaAnimStyle = useAnimatedStyle(() => ({
+    height: mediaH.value,
+    overflow: 'hidden',
+  }));
+
   const spawnHeart = useCallback((x: number, y: number) => {
+
     const newId = heartIdRef.current++;
     setHearts((prev) => [...prev, { id: newId, x, y }]);
   }, []);
@@ -207,7 +228,8 @@ export const FeedItem = React.memo(function FeedItem({
   const handleProgress = useCallback((p: number) => setProgress(p), []);
 
   return (
-    <View style={styles.feedItem}>
+    <Animated.View style={[styles.feedItem, mediaAnimStyle]}>
+
       {/* ── Hintergrund: Bild DIREKT in feedItem */}
       {item.mediaUrl && !isVideo && !imageError && (
         <Image
@@ -517,9 +539,10 @@ export const FeedItem = React.memo(function FeedItem({
           }}
         />
       </View>
-    </View>
+    </Animated.View>
   );
 });
+
 
 // Pause/Play Flash-Feedback Styles (wie Instagram Reels)
 const feedFlashStyles = StyleSheet.create({
