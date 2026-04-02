@@ -167,6 +167,8 @@ function MessageBubble({
   onSwipeReply,
   onReactionPress,
   onImagePress,
+  onStoryReplyPress,
+
 }: {
   msg: Message;
   isOwn: boolean;
@@ -176,6 +178,8 @@ function MessageBubble({
   onSwipeReply: () => void;
   onReactionPress: (emoji: string) => void;
   onImagePress: () => void;
+  onStoryReplyPress: () => void;
+
 }) {
   const hasPost = !!msg.post;
   const hasImage = !!msg.image_url;
@@ -272,7 +276,10 @@ function MessageBubble({
             )}
             {/* ── TikTok-Style Story-Antwort: Label + Thumbnail + Text ── */}
             {hasStoryReply && (
-              <View style={styles.storyReplyWrap}>
+              <Pressable
+                style={({ pressed }) => [styles.storyReplyWrap, pressed && { opacity: 0.82 }]}
+                onPress={onStoryReplyPress}
+              >
                 <Text style={[styles.storyReplyLabel, isOwn && styles.storyReplyLabelOwn]}>
                   {isOwn
                     ? `Du hast auf die Story von @${msg.story_author ?? '?'} geantwortet`
@@ -283,8 +290,9 @@ function MessageBubble({
                   style={styles.storyReplyThumb}
                   contentFit="cover"
                 />
-              </View>
+              </Pressable>
             )}
+
             {hasImage && (
               <Pressable
                 onPress={onImagePress}
@@ -518,7 +526,9 @@ export default function ChatScreen() {
           onSwipeReply={() => handleSwipeReply(item)}
           onReactionPress={(emoji) => toggleReaction({ messageId: item.id, emoji })}
           onImagePress={() => setLightboxUri(item.image_url)}
+          onStoryReplyPress={() => item.story_media_url && setLightboxUri(item.story_media_url)}
         />
+
       </>
     );
   }, [messages, userId, reactionsMap, activePickerId, handlePostPress, handleLongPress, handleSwipeReply, handleDelete, toggleReaction]);
