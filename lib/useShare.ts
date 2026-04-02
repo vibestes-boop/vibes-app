@@ -14,6 +14,12 @@ export async function sharePost(postId: string, caption?: string | null) {
         ? { message: text, url }
         : { message: `${text}\n${url}` };
     const result = await Share.share(content, { dialogTitle: 'Post teilen' });
+
+    // Lernprofil-Signal: Teilen zeigt sehr starkes Interesse am Content
+    if (result.action === Share.sharedAction) {
+      supabase.rpc('record_share_learn', { p_post_id: postId }).then();
+    }
+
     return result;
   } catch (err: any) {
     const msg: string = err?.message ?? '';
@@ -94,6 +100,10 @@ export async function sharePostViaDM(
       });
 
     if (msgErr) throw msgErr;
+
+    // Lernprofil-Signal: DM-Share zeigt sehr starkes Interesse am Content
+    supabase.rpc('record_share_learn', { p_post_id: postId }).then();
+
     return 'sent';
   } catch (err: any) {
     __DEV__ && console.error('[sharePostViaDM]', err?.message);

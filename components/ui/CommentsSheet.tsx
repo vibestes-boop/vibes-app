@@ -14,7 +14,12 @@ import {
   Keyboard,
   type KeyboardEvent,
 } from 'react-native';
-import Animated, {
+// reanimated: CJS require() vermeidet _interopRequireDefault Crash in Hermes HBC
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+const _animMod = require('react-native-reanimated') as any;
+const _animNS = _animMod?.default ?? _animMod;
+const Animated = { View: _animNS?.View ?? _animMod?.View };
+import {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
@@ -72,6 +77,7 @@ type Props = {
   onClose: () => void;
   mediaUrl?: string | null;
   mediaType?: string;
+  thumbnailUrl?: string | null; // Statisches Thumbnail für Video-Vorschau
   onUserPress?: (userId: string) => void;
 };
 
@@ -79,7 +85,7 @@ const CLOSE_DURATION = 300;
 const OPEN_DURATION = 250;
 const CLOSE_EASING = Easing.out(Easing.cubic);
 
-export default function CommentsSheet({ postId, visible, onClose, mediaUrl, mediaType, onUserPress }: Props) {
+export default function CommentsSheet({ postId, visible, onClose, mediaUrl, mediaType, thumbnailUrl, onUserPress }: Props) {
   const translateY = useSharedValue(SCREEN_HEIGHT);
   const overlayOpacity = useSharedValue(0);
   const contentOpacity = useSharedValue(0);
@@ -115,30 +121,12 @@ export default function CommentsSheet({ postId, visible, onClose, mediaUrl, medi
     }
   }, [visible, overlayOpacity, contentOpacity, translateY]);
 
-  const panGesture = Gesture.Pan()
-    .minDistance(8)
-    .activeOffsetY([-999, 10])
-    .onUpdate((e) => {
-      if (e.translationY > 0) translateY.value = e.translationY;
-    })
-    .onEnd((e) => {
-      const threshold = 70;
-      const velocityThreshold = 350;
-      const shouldClose =
-        e.translationY > threshold ||
-        e.velocityY > velocityThreshold ||
-        (e.translationY > 40 && e.velocityY > 120);
-      if (shouldClose) {
-        runOnJS(handleClose)();
-      } else {
-        translateY.value = withTiming(0, { duration: 80 });
-      }
-    });
-
+  // panForList MUSS vor panGesture deklariert sein,
+  // da panGesture via .requireExternalGestureToFail(panForList) darauf referenziert
   const panForList = Gesture.Pan()
     .minDistance(8)
     .manualActivation(true)
-    .onTouchesDown((e, stateManager) => {
+    .onTouchesDown((e) => {
       if (e.allTouches.length > 0) lastTouchY.value = e.allTouches[0].y;
     })
     .onTouchesMove((e, stateManager) => {
@@ -167,6 +155,30 @@ export default function CommentsSheet({ postId, visible, onClose, mediaUrl, medi
         translateY.value = withTiming(0, { duration: 80 });
       }
     });
+
+  // panGesture: Handle/Header-Bereich — wartet bis panForList fail() meldet
+  // (d.h. FlatList ist nicht mehr am scrolling) bevor er übernimmt
+  const panGesture = Gesture.Pan()
+    .minDistance(8)
+    .activeOffsetY([-999, 10])
+    .requireExternalGestureToFail(panForList)
+    .onUpdate((e) => {
+      if (e.translationY > 0) translateY.value = e.translationY;
+    })
+    .onEnd((e) => {
+      const threshold = 70;
+      const velocityThreshold = 350;
+      const shouldClose =
+        e.translationY > threshold ||
+        e.velocityY > velocityThreshold ||
+        (e.translationY > 40 && e.velocityY > 120);
+      if (shouldClose) {
+        runOnJS(handleClose)();
+      } else {
+        translateY.value = withTiming(0, { duration: 80 });
+      }
+    });
+
 
   const sheetStyle = useAnimatedStyle(() => ({
     position: 'absolute',
@@ -207,21 +219,26 @@ export default function CommentsSheet({ postId, visible, onClose, mediaUrl, medi
           {mediaUrl && (
             <View style={styles.postPreviewFrame} pointerEvents="none">
               {mediaType === 'video' ? (
-                <VideoGridThumb uri={mediaUrl} style={StyleSheet.absoluteFill} />
+                <VideoGridThumb uri={mediaUrl} thumbnailUrl={thumbnailUrl} style={StyleSheet.absoluteFill} />
               ) : (
                 <Image source={{ uri: mediaUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
               )}
             </View>
           )}
 
-          <Animated.View style={[styles.sheet, sheetStyle]}>
-            <SheetInner
-              postId={postId}
-              onClose={handleClose}
-              enabled={visible}
-              onUserPress={onUserPress}
-            />
-          </Animated.View>
+          {/* Sheet mit Pull-down-to-close am Handle, FlatList managt sich intern */}
+          <GestureDetector gesture={panGesture}>
+            <Animated.View style={[styles.sheet, sheetStyle]}>
+              <SheetInner
+                postId={postId}
+                onClose={handleClose}
+                enabled={visible}
+                onUserPress={onUserPress}
+                scrollAtTop={scrollAtTop}
+                panForList={panForList}
+              />
+            </Animated.View>
+          </GestureDetector>
         </Animated.View>
       </GestureHandlerRootView>
     </Modal>
@@ -233,11 +250,15 @@ function SheetInner({
   onClose,
   enabled,
   onUserPress,
+  scrollAtTop,
+  panForList,
 }: {
   postId: string;
   onClose: () => void;
   enabled: boolean;
   onUserPress?: (userId: string) => void;
+  scrollAtTop: SharedValue<number>;
+  panForList: ReturnType<typeof Gesture.Pan>;
 }) {
   const { profile } = useAuthStore();
   const insets = useSafeAreaInsets();
@@ -367,33 +388,39 @@ function SheetInner({
           <Text style={styles.emptySubText}>Sei der Erste! 💬</Text>
         </View>
       ) : (
-        <FlatList
-          ref={listRef}
-          data={comments}
-          keyExtractor={(c) => c.id}
-          contentContainerStyle={styles.commentsList}
-          showsVerticalScrollIndicator={false}
-          bounces={false}
-          overScrollMode="never"
-          decelerationRate="fast"
-          scrollEventThrottle={16}
-          renderItem={({ item }) => (
-            <CommentRow
-              comment={item}
-              postId={postId}
-              isOwn={item.user_id === profile?.id}
-              timeAgo={timeAgo(item.created_at)}
-              onDelete={() => handleDelete(item.id)}
-              onReply={() => handleReplyTo(item.id, item.profiles?.username ?? 'unknown')}
-              onLongPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                setActionSheetComment(item);
-              }}
-              isHighlighted={item.id === lastSentId}
-              onUserPress={onUserPress}
-            />
-          )}
-        />
+        <GestureDetector gesture={panForList}>
+          <FlatList
+            ref={listRef}
+            data={comments}
+            keyExtractor={(c) => c.id}
+            contentContainerStyle={styles.commentsList}
+            showsVerticalScrollIndicator={false}
+            bounces={true}
+            overScrollMode="never"
+            decelerationRate="fast"
+            scrollEventThrottle={16}
+            onScroll={(e) => {
+              // scrollAtTop = 1 wenn ganz oben, sonst 0
+              scrollAtTop.value = e.nativeEvent.contentOffset.y <= 2 ? 1 : 0;
+            }}
+            renderItem={({ item }) => (
+              <CommentRow
+                comment={item}
+                postId={postId}
+                isOwn={item.user_id === profile?.id}
+                timeAgo={timeAgo(item.created_at)}
+                onDelete={() => handleDelete(item.id)}
+                onReply={() => handleReplyTo(item.id, item.profiles?.username ?? 'unknown')}
+                onLongPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                  setActionSheetComment(item);
+                }}
+                isHighlighted={item.id === lastSentId}
+                onUserPress={onUserPress}
+              />
+            )}
+          />
+        </GestureDetector>
       )}
 
       {/* @Mention Autocomplete Dropdown */}
@@ -434,29 +461,29 @@ function SheetInner({
       {/* Input */}
       <View style={[styles.inputRow, { paddingBottom: Math.max(insets.bottom, 12) }]}>
         <View style={styles.inputRowInner}>
-            <View style={styles.avatarTiny}>
-              {profile?.avatar_url ? (
-                <Image source={{ uri: profile.avatar_url }} style={styles.avatarTinyImage} />
-              ) : (
-                <Text style={styles.avatarTinyText}>
-                  {profile?.username?.[0]?.toUpperCase() ?? '?'}
-                </Text>
-              )}
-            </View>
-            <TextInput
-              ref={inputRef}
-              style={styles.input}
-              value={text}
-              onChangeText={handleTextChange}
-              placeholder="Kommentar schreiben..."
-              placeholderTextColor="#4B5563"
-              multiline
-              maxLength={500}
-              returnKeyType="send"
-              blurOnSubmit={false}
-              onSubmitEditing={handleSend}
-            />
+          <View style={styles.avatarTiny}>
+            {profile?.avatar_url ? (
+              <Image source={{ uri: profile.avatar_url }} style={styles.avatarTinyImage} />
+            ) : (
+              <Text style={styles.avatarTinyText}>
+                {profile?.username?.[0]?.toUpperCase() ?? '?'}
+              </Text>
+            )}
           </View>
+          <TextInput
+            ref={inputRef}
+            style={styles.input}
+            value={text}
+            onChangeText={handleTextChange}
+            placeholder="Kommentar schreiben..."
+            placeholderTextColor="#4B5563"
+            multiline
+            maxLength={500}
+            returnKeyType="send"
+            blurOnSubmit={false}
+            onSubmitEditing={handleSend}
+          />
+        </View>
         {/* @ Mention Schnell-Button */}
         <TouchableOpacity
           onPress={() => {
@@ -487,7 +514,7 @@ function SheetInner({
         comment={actionSheetComment}
         isOwn={actionSheetComment?.user_id === profile?.id}
         onDelete={() => actionSheetComment && handleDelete(actionSheetComment.id)}
-        onCopy={() => {}}
+        onCopy={() => { }}
         onReplyWithVideo={handleReplyWithVideo}
         bottomInset={insets.bottom}
       />
@@ -694,7 +721,7 @@ function CommentRow({
               if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
               return `${Math.floor(diff / 86400)}d`;
             })()}
-            onDelete={() => {}}
+            onDelete={() => { }}
             onReply={onReply}
             onLongPress={onLongPress}
             onUserPress={onUserPress}

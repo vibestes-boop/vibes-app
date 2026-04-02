@@ -24,11 +24,18 @@ import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, {
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
+const Animated = { View: _animNS?.View ?? _animMod?.View };
+import {
   useAnimatedStyle,
   useSharedValue,
   withTiming,
   withSequence,
+  withSpring,
+  withDelay,
+  withRepeat,
+  Easing,
 } from 'react-native-reanimated';
 import {
   ArrowLeft,
@@ -75,7 +82,7 @@ type PostItem = {
 
 function formatViews(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000)     return `${(n / 1_000).toFixed(1)}K`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return String(n);
 }
 
@@ -84,7 +91,7 @@ function formatViews(n: number): string {
 function LikeBtn({ postId }: { postId: string }) {
   const { liked, formattedCount, toggle } = useLike(postId);
   const scale = useSharedValue(1);
-  const anim  = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const anim = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
   const press = () => {
     scale.value = withSequence(
@@ -97,10 +104,14 @@ function LikeBtn({ postId }: { postId: string }) {
 
   return (
     <Pressable onPress={press} style={s.actionBtn}>
-      <Animated.View style={[s.actionBtnInner, anim, liked && { backgroundColor: 'rgba(244,114,182,0.2)' }]}>
-        <Heart size={24} stroke={liked ? '#F472B6' : '#FFFFFF'} strokeWidth={1.8} fill={liked ? '#F472B6' : 'transparent'} />
+      <Animated.View style={[
+        s.actionBtnInner,
+        anim,
+        liked && { backgroundColor: 'rgba(238,29,82,0.18)' },
+      ]}>
+        <Heart size={24} stroke={liked ? '#EE1D52' : '#FFFFFF'} strokeWidth={1.8} fill={liked ? '#EE1D52' : 'transparent'} />
       </Animated.View>
-      <Text style={[s.actionCount, liked && { color: '#F472B6' }]}>{formattedCount}</Text>
+      <Text style={[s.actionCount, liked && { color: '#EE1D52' }]}>{formattedCount}</Text>
     </Pressable>
   );
 }
@@ -199,6 +210,54 @@ function CommentInputBar({
   );
 }
 
+// ─── Floating Heart — eigenständige Komponente pro Tap ────────────────────────
+type FloatingHeartItem = { id: number; x: number; y: number };
+
+function FloatingHeart({ x, y, onDone }: { x: number; y: number; onDone: () => void }) {
+  const scale = useSharedValue(0);
+  const floatY = useSharedValue(0);
+  const rot = useSharedValue(0);
+  const opacity = useSharedValue(0);
+
+  useEffect(() => {
+    scale.value = withSequence(
+      withSpring(1.5, { damping: 7, stiffness: 220 }),
+      withTiming(1.15, { duration: 150, easing: Easing.out(Easing.cubic) })
+    );
+    floatY.value = withTiming(-110, { duration: 1700, easing: Easing.out(Easing.quad) });
+    rot.value = withRepeat(
+      withSequence(withTiming(-8, { duration: 180 }), withTiming(8, { duration: 180 })),
+      4, true
+    );
+    opacity.value = withSequence(
+      withTiming(1, { duration: 0 }),
+      withDelay(900, withTiming(0, { duration: 800 }))
+    );
+    const t = setTimeout(onDone, 1750);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const style = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: x - 60 },
+      { translateY: y - 60 + floatY.value },
+      { scale: scale.value },
+      { rotate: `${rot.value}deg` },
+    ],
+    opacity: opacity.value,
+  }));
+
+  return (
+    <Animated.View
+      style={[{ position: 'absolute', width: 120, height: 120, left: 0, top: 0 }, style]}
+      pointerEvents="none"
+    >
+      <Heart size={120} color="#EE1D52" fill="#EE1D52" />
+    </Animated.View>
+  );
+}
+
 // ─── Einzelner Post-Card (Vollbild) ──────────────────────────────────────────
 
 function PostCard({
@@ -232,6 +291,18 @@ function PostCard({
 
   const isVideo = item.media_type === 'video';
 
+  // ── Multiple Floating Hearts (Tap-to-Like) ───────────────────────────────
+  const { liked: tapLiked, toggle: tapToggleLike } = useLike(item.id);
+  const [hearts, setHearts] = useState<FloatingHeartItem[]>([]);
+  const heartIdRef = useRef(0);
+
+  const spawnHeart = useCallback((x: number, y: number) => {
+    if (!tapLiked) tapToggleLike();
+    const newId = heartIdRef.current++;
+    setHearts((prev) => [...prev, { id: newId, x, y }]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tapLiked, tapToggleLike]);
+
   return (
     <View style={{ width: W, height: H }}>
       {/* Media */}
@@ -260,8 +331,24 @@ function PostCard({
       )}
 
       {/* Gradienten oben/unten */}
-      <LinearGradient colors={['rgba(0,0,0,0.65)', 'transparent']} style={s.topGradient} />
-      <LinearGradient colors={['transparent', 'rgba(0,0,0,0.92)']} style={s.bottomGradient} />
+      <LinearGradient colors={['rgba(0,0,0,0.45)', 'transparent']} style={s.topGradient} />
+      <LinearGradient colors={['transparent', 'rgba(0,0,0,0.70)']} style={s.bottomGradient} />
+
+      {/* Tap-Zone → Floating Heart (liegt VOR den Buttons, sodass Buttons Touches abfangen können) */}
+      <Pressable
+        style={StyleSheet.absoluteFill}
+        onPressIn={(evt) => spawnHeart(evt.nativeEvent.locationX, evt.nativeEvent.locationY)}
+      />
+
+      {/* Floating Hearts — je ein unabhängiges Herz pro Tap */}
+      {hearts.map((h) => (
+        <FloatingHeart
+          key={h.id}
+          x={h.x}
+          y={h.y}
+          onDone={() => setHearts((prev) => prev.filter((hh) => hh.id !== h.id))}
+        />
+      ))}
 
       {/* Owner-Aktionen (Bearbeiten/Löschen) oben rechts */}
       {isOwner && (
@@ -352,21 +439,21 @@ export default function UserPostsScreen() {
     startIndex?: string;
     username?: string;
   }>();
-  const router       = useRouter();
-  const insets       = useSafeAreaInsets();
-  const { profile }  = useAuthStore();
-  const queryClient  = useQueryClient();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const { profile } = useAuthStore();
+  const queryClient = useQueryClient();
 
-  const [posts,         setPosts]         = useState<PostItem[]>([]);
-  const [loading,       setLoading]       = useState(true);
-  const [loadError,     setLoadError]     = useState<string | null>(null);
-  const [visibleIndex,  setVisibleIndex]  = useState(Number(startIndex ?? '0'));
-  const [isMuted,       setIsMuted]       = useState(false);
+  const [posts, setPosts] = useState<PostItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [visibleIndex, setVisibleIndex] = useState(Number(startIndex ?? '0'));
+  const [isMuted, setIsMuted] = useState(false);
   const [commentsPostId, setCommentsPostId] = useState<string | null>(null);
   const [screenFocused, setScreenFocused] = useState(true);
 
-  const flatRef     = useRef<FlatList>(null);
-  const initialIdx  = Number(startIndex ?? '0');
+  const flatRef = useRef<FlatList>(null);
+  const initialIdx = Number(startIndex ?? '0');
   // Set mit bereits gezählten Post-IDs (kein doppeltes Inkrementieren)
   const viewedPosts = useRef<Set<string>>(new Set());
 
@@ -391,15 +478,15 @@ export default function UserPostsScreen() {
           return;
         }
         const mapped: PostItem[] = (data ?? []).map((p: any) => ({
-          id:         p.id,
-          caption:    p.caption,
-          media_url:  p.media_url,
+          id: p.id,
+          caption: p.caption,
+          media_url: p.media_url,
           media_type: p.media_type,
-          tags:       p.tags ?? [],
+          tags: p.tags ?? [],
           created_at: p.created_at,
-          author_id:  p.author_id,
+          author_id: p.author_id,
           view_count: p.view_count ?? 0,
-          username:   p.profiles?.username ?? null,
+          username: p.profiles?.username ?? null,
           avatar_url: p.profiles?.avatar_url ?? null,
         }));
         setPosts(mapped);
@@ -557,9 +644,9 @@ export default function UserPostsScreen() {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  center:      { flex: 1, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' },
-  topGradient: { position: 'absolute', top: 0, left: 0, right: 0, height: 160 },
-  bottomGradient: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 340 },
+  center: { flex: 1, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' },
+  topGradient: { position: 'absolute', top: 0, left: 0, right: 0, height: 140 },
+  bottomGradient: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 260 },
 
   backBtn: {
     position: 'absolute', left: 16, zIndex: 20,
@@ -584,7 +671,7 @@ const s = StyleSheet.create({
   ownerBtnDanger: { backgroundColor: 'rgba(248,113,113,0.15)' },
 
   rightActions: { position: 'absolute', right: 16, gap: 4, alignItems: 'center', zIndex: 10 },
-  actionBtn:    { alignItems: 'center', marginBottom: 12 },
+  actionBtn: { alignItems: 'center', marginBottom: 12 },
   actionBtnInner: {
     width: 48, height: 48, borderRadius: 24,
     backgroundColor: 'rgba(255,255,255,0.08)',
@@ -592,19 +679,19 @@ const s = StyleSheet.create({
   },
   actionCount: { color: '#E5E7EB', fontSize: 11, fontWeight: '600', marginTop: 4 },
 
-  bottomInfo: { position: 'absolute', bottom: 0, left: 0, right: 72, paddingHorizontal: 20, paddingTop: 20, gap: 10 },
-  authorRow:  { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  bottomInfo: { position: 'absolute', bottom: 0, left: 0, right: 72, paddingHorizontal: 20, paddingTop: 16, gap: 8 },
+  authorRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   avatarSmall: {
     width: 36, height: 36, borderRadius: 18,
     backgroundColor: '#0891B2',
     alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
   },
   avatarSmallImg: { width: '100%', height: '100%', resizeMode: 'cover' },
-  avatarText:  { color: '#fff', fontSize: 14, fontWeight: '800' },
-  authorName:  { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
-  dateText:    { color: '#6B7280', fontSize: 11, marginTop: 1 },
-  caption:     { color: 'rgba(255,255,255,0.85)', fontSize: 15, lineHeight: 22 },
-  tagsRow:     { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  avatarText: { color: '#fff', fontSize: 14, fontWeight: '800' },
+  authorName: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
+  dateText: { color: '#6B7280', fontSize: 11, marginTop: 1 },
+  caption: { color: 'rgba(255,255,255,0.85)', fontSize: 15, lineHeight: 22 },
+  tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   tagChip: {
     paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12,
     backgroundColor: 'rgba(34,211,238,0.15)',

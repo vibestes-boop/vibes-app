@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Tabs, useRouter } from 'expo-router';
-import { View, StyleSheet, Text, Pressable, Alert } from 'react-native';
+import { View, StyleSheet, Text, Pressable, Alert, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Zap, Users, MessageCircle, User, Plus } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -14,21 +14,22 @@ import {
 } from 'react-native-reanimated';
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
 const _animMod = require('react-native-reanimated') as any;
-const _animNS  = _animMod?.default ?? _animMod;  // real Reanimated v3: .default; stub: direct
+const _animNS = _animMod?.default ?? _animMod;  // real Reanimated v3: .default; stub: direct
 const Animated = { View: _animNS?.View, Text: _animNS?.Text, FlatList: _animNS?.FlatList };
 
 // expo-haptics: named imports (safe for Hermes)
 import { impactAsync, ImpactFeedbackStyle } from 'expo-haptics';
 import { useUnreadDMCount } from '@/lib/useMessages';
 import { useUnreadCount } from '@/lib/useNotifications';
+import { useTabRefreshStore, vibesFeedActions, guildFeedActions } from '@/lib/useTabRefresh';
 
 // ── Tab-Konfiguration ────────────────────────────────────────────────────────
 const TABS = [
-  { name: 'index',    label: 'Vibes',       icon: Zap,           pushTo: null,      isCreate: false },
-  { name: 'guild',   label: 'Guild',       icon: Users,         pushTo: null,      isCreate: false },
-  { name: '_create', label: '',            icon: Plus,          pushTo: '/create', isCreate: true  },
-  { name: 'messages', label: 'Nachrichten', icon: MessageCircle, pushTo: null,      isCreate: false },
-  { name: 'profile', label: 'Studio',      icon: User,          pushTo: null,      isCreate: false },
+  { name: 'index', label: 'Vibes', icon: Zap, pushTo: null, isCreate: false },
+  { name: 'guild', label: 'Guild', icon: Users, pushTo: null, isCreate: false },
+  { name: '_create', label: '', icon: Plus, pushTo: '/create', isCreate: true },
+  { name: 'messages', label: 'Nachrichten', icon: MessageCircle, pushTo: null, isCreate: false },
+  { name: 'profile', label: 'Studio', icon: User, pushTo: null, isCreate: false },
 ] as const;
 
 // Real-Tab-Reihenfolge (Expo-Router-Screens)
@@ -41,22 +42,24 @@ function TabBarItem({
   onPress,
   onLongPress,
   badge,
+  isRefreshing = false,
 }: {
   route: (typeof TABS)[number];
   isFocused: boolean;
   onPress: () => void;
   onLongPress: () => void;
   badge?: number;
+  isRefreshing?: boolean;
 }) {
-  const Icon  = route.icon;
+  const Icon = route.icon;
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
 
-  const handlePressIn  = () => { scale.value = withTiming(0.85, { duration: 80 }); };
-  const handlePressOut = () => { scale.value = withTiming(1,    { duration: 80 }); };
+  const handlePressIn = () => { scale.value = withTiming(0.85, { duration: 80 }); };
+  const handlePressOut = () => { scale.value = withTiming(1, { duration: 80 }); };
 
   const iconOpacity = useSharedValue(isFocused ? 1 : 0.45);
   useEffect(() => {
@@ -76,14 +79,25 @@ function TabBarItem({
       accessibilityState={{ selected: isFocused }}
     >
       <Animated.View style={[styles.tabIconWrapper, animatedStyle]}>
-        <View style={{ position: 'relative' }}>
-          <Animated.View style={iconAnimStyle}>
-            <Icon
-              size={24}
-              stroke={isFocused ? '#FFFFFF' : '#6B7280'}
-              strokeWidth={isFocused ? 2.5 : 1.8}
+        <View style={{ position: 'relative', width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }}>
+          {/* Original Icon — ausgeblendet während Refresh */}
+          {!isRefreshing && (
+            <Animated.View style={[{ position: 'absolute' }, iconAnimStyle]}>
+              <Icon
+                size={24}
+                stroke={isFocused ? '#FFFFFF' : '#6B7280'}
+                strokeWidth={isFocused ? 2.5 : 1.8}
+              />
+            </Animated.View>
+          )}
+          {/* TikTok-Style Lade-Spinner (eingebaut, kein Reanimated nötig) */}
+          {isRefreshing && (
+            <ActivityIndicator
+              size="small"
+              color="#22D3EE"
+              style={{ position: 'absolute' }}
             />
-          </Animated.View>
+          )}
           {badge != null && badge > 0 && (
             <View style={styles.badge}>
               <Text style={styles.badgeText}>{badge > 99 ? '99+' : String(badge)}</Text>
@@ -114,7 +128,7 @@ function CreateTabButton({ onPress }: { onPress: () => void }) {
     scale.value = withSequence(
       withTiming(0.88, { duration: 60 }),
       withTiming(1.05, { duration: 80 }),
-      withTiming(1,    { duration: 80 }),
+      withTiming(1, { duration: 80 }),
     );
     onPress();
   };
@@ -142,8 +156,12 @@ function CreateTabButton({ onPress }: { onPress: () => void }) {
 function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { data: unreadDMs    = 0 } = useUnreadDMCount();
+  const { data: unreadDMs = 0 } = useUnreadDMCount();
   const { data: unreadNotifs = 0 } = useUnreadCount();
+  const triggerVibesRefresh = useTabRefreshStore((s) => s.triggerVibesRefresh);
+  const isVibesRefreshing = useTabRefreshStore((s) => s.isVibesRefreshing);
+  const triggerGuildRefresh = useTabRefreshStore((s) => s.triggerGuildRefresh);
+  const isGuildRefreshing = useTabRefreshStore((s) => s.isGuildRefreshing);
 
   return (
     <View style={styles.tabBarContainer}>
@@ -162,6 +180,10 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
                         {
                           text: '📸  Post erstellen',
                           onPress: () => router.push('/create'),
+                        },
+                        {
+                          text: '🎬  Story erstellen',
+                          onPress: () => router.push('/create-story' as any),
                         },
                         {
                           text: '🔴  Live gehen',
@@ -194,6 +216,20 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
                 target: route.key,
                 canPreventDefault: true,
               });
+              // Bereits auf Vibes-Tab: Direkt Refresh triggern (zwei Wege)
+              if (isFocused && tabConfig.name === 'index') {
+                impactAsync(ImpactFeedbackStyle.Light);
+                vibesFeedActions.refresh?.();
+                triggerVibesRefresh();
+                return;
+              }
+              // Bereits auf Guild-Tab: Direkt Refresh triggern
+              if (isFocused && tabConfig.name === 'guild') {
+                impactAsync(ImpactFeedbackStyle.Light);
+                guildFeedActions.refresh?.();
+                triggerGuildRefresh();
+                return;
+              }
               if (!isFocused && !event.defaultPrevented) {
                 navigation.navigate(tabConfig.name);
               }
@@ -206,9 +242,9 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             };
 
             const badge =
-              tabConfig.name === 'messages' ? unreadDMs    :
-              tabConfig.name === 'profile'  ? unreadNotifs :
-              undefined;
+              tabConfig.name === 'messages' ? unreadDMs :
+                tabConfig.name === 'profile' ? unreadNotifs :
+                  undefined;
 
             return (
               <TabBarItem
@@ -218,6 +254,10 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
                 onPress={onPress}
                 onLongPress={onLongPress}
                 badge={badge}
+                isRefreshing={
+                  (tabConfig.name === 'index' && isVibesRefreshing) ||
+                  (tabConfig.name === 'guild' && isGuildRefreshing)
+                }
               />
             );
           })}

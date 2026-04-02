@@ -17,7 +17,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ArrowLeft, Radio, ChevronRight } from 'lucide-react-native';
-import Animated, {
+// react-native-reanimated: CJS require() vermeidet Hermes HBC Crash
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+const _animMod = require('react-native-reanimated') as any;
+const _animNS = _animMod?.default ?? _animMod;
+const Animated = { View: _animNS?.View ?? _animMod?.View };
+import {
   useSharedValue,
   useAnimatedStyle,
   withSequence,
@@ -31,8 +36,8 @@ import ExpoGoPlaceholder from '@/components/live/ExpoGoPlaceholder';
 const _cMod = require('expo-constants') as any; const Constants = _cMod?.default ?? _cMod;
 
 export default function LiveStartScreen() {
-  const router       = useRouter();
-  const insets       = useSafeAreaInsets();
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { startSession, loading } = useLiveHost();
 
   const [permission, requestPermission] = useCameraPermissions();
@@ -42,7 +47,7 @@ export default function LiveStartScreen() {
 
   // Pulsierender Dot-Anim
   const dotOpacity = useSharedValue(1);
-  const dotStyle   = useAnimatedStyle(() => ({ opacity: dotOpacity.value }));
+  const dotStyle = useAnimatedStyle(() => ({ opacity: dotOpacity.value }));
 
   const startCountdown = async () => {
     if (!permission?.granted) {

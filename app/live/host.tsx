@@ -17,7 +17,10 @@ import {
   Modal,
   KeyboardAvoidingView,
   Platform,
+  Dimensions,
+  AppState,
 } from "react-native";
+import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
@@ -32,16 +35,28 @@ import {
   Camera,
   Share2,
   RotateCcw,
+  Heart,
 } from "lucide-react-native";
-import Animated, {
+// react-native-reanimated: CJS require() vermeidet _interopRequireDefault Crash in Hermes HBC
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+const _animMod = require('react-native-reanimated') as any;
+const _animNS = _animMod?.default ?? _animMod;
+const Animated = {
+  View: _animNS?.View ?? _animMod?.View,
+  Text: _animNS?.Text ?? _animMod?.Text,
+};
+import {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
   withSequence,
   withRepeat,
+  withSpring,
+  withDelay,
   FadeInDown,
   FadeOutUp,
 } from "react-native-reanimated";
+
 import {
   AudioSession,
   useLocalParticipant,
@@ -56,11 +71,13 @@ import {
   useLiveHost,
   useLiveComments,
   useLiveReactions,
+  usePinComment,
   type LiveComment,
   type LiveReaction,
 } from "@/lib/useLiveSession";
 import LiveShareSheet from "@/components/ui/LiveShareSheet";
 import ViewerListSheet from "@/components/ui/ViewerListSheet";
+import { LiveUserSheet } from "@/components/live/LiveUserSheet";
 import ExpoGoPlaceholder from "@/components/live/ExpoGoPlaceholder";
 // expo-constants: default import causes _interopRequireDefault TypeError in Hermes HBC
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
@@ -69,8 +86,59 @@ const Constants = _cMod?.default ?? _cMod;
 
 const EMOJIS = ["❤️", "🔥", "👏", "😱", "💜"];
 
+// Zahlen formatieren: 1200 → "1.2K"
+function fmtNum(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return String(n);
+}
+
+const { width: SCREEN_W } = Dimensions.get('window');
+
+// ─── TikTok-Style Floating Heart ─────────────────────────────────────────────
+function FloatingHeart({ reaction }: { reaction: LiveReaction }) {
+  const x = SCREEN_W * 0.52 + Math.random() * (SCREEN_W * 0.28);
+  const translateY = useSharedValue(0);
+  const scale = useSharedValue(0);
+  const opacity = useSharedValue(1);
+  const rotate = useSharedValue(0);
+
+  useEffect(() => {
+    scale.value = withSpring(1, { damping: 7, stiffness: 140 });
+    translateY.value = withTiming(-300, { duration: 2600 });
+    opacity.value = withDelay(1800, withTiming(0, { duration: 800 }));
+    rotate.value = withRepeat(
+      withSequence(
+        withTiming(-0.18, { duration: 280 }),
+        withTiming(0.18, { duration: 280 }),
+      ),
+      -1,
+      true,
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateY: translateY.value },
+      { scale: scale.value },
+      { rotate: `${rotate.value}rad` },
+    ],
+    opacity: opacity.value,
+    left: x,
+  }));
+
+  return (
+    <Animated.View style={[s.floatingHeartWrap, animStyle]}>
+      <Heart size={56} color="#FF2D55" fill="#FF2D55" />
+    </Animated.View>
+  );
+}
+
 // ─── Floating Reaktions-Bubble ────────────────────────────────────────────────
 function ReactionBubble({ reaction }: { reaction: LiveReaction }) {
+  if (reaction.emoji === '❤️') return <FloatingHeart reaction={reaction} />;
+
   const left = 20 + Math.random() * 80;
   const translateY = useSharedValue(0);
   const opacity = useSharedValue(1);
@@ -96,16 +164,96 @@ function ReactionBubble({ reaction }: { reaction: LiveReaction }) {
   );
 }
 
-// ─── Kommentar-Zeile ──────────────────────────────────────────────────────────
-function CommentRow({ comment }: { comment: LiveComment }) {
+// ─── Tap-to-Like Herz (am Tap-Ort, fliegt hoch) ─────────────────────────────
+type TapHeartItem = { id: number; x: number; y: number };
+
+function TapHeart({ x, y, onDone }: { x: number; y: number; onDone: () => void }) {
+  const scale = useSharedValue(0);
+  const floatY = useSharedValue(0);
+  const rot = useSharedValue(0);
+  const opacity = useSharedValue(0);
+
+  useEffect(() => {
+    scale.value = withSequence(
+      withSpring(1.5, { damping: 7, stiffness: 220 }),
+      withTiming(1.15, { duration: 150 })
+    );
+    floatY.value = withTiming(-110, { duration: 1700 });
+    rot.value = withRepeat(
+      withSequence(withTiming(-8, { duration: 180 }), withTiming(8, { duration: 180 })),
+      4, true
+    );
+    opacity.value = withSequence(
+      withTiming(1, { duration: 0 }),
+      withDelay(900, withTiming(0, { duration: 800 }))
+    );
+    const t = setTimeout(onDone, 1750);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const style = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: x - 60 },
+      { translateY: y - 60 + floatY.value },
+      { scale: scale.value },
+      { rotate: `${rot.value}deg` },
+    ],
+    opacity: opacity.value,
+  }));
+
+  return (
+    <Animated.View
+      style={[{ position: 'absolute', width: 120, height: 120, left: 0, top: 0 }, style]}
+      pointerEvents="none"
+    >
+      <Heart size={120} color="#EE1D52" fill="#EE1D52" />
+    </Animated.View>
+  );
+}
+
+function CommentRow({
+  comment,
+  onLongPress,
+  onUserPress,
+}: {
+  comment: LiveComment;
+  onLongPress?: () => void;
+  onUserPress?: (userId: string) => void;
+}) {
+  const isSystem = (comment as any).isSystem;
+  const avatar = comment.profiles?.avatar_url;
+  const initials = comment.profiles?.username?.[0]?.toUpperCase() ?? '?';
   return (
     <Animated.View
       entering={FadeInDown.duration(200)}
       exiting={FadeOutUp.duration(150)}
       style={s.commentRow}
     >
-      <Text style={s.commentUser}>@{comment.profiles?.username ?? "User"}</Text>
-      <Text style={s.commentText}> {comment.text}</Text>
+      {isSystem ? (
+        <Text style={s.systemText}>{comment.text}</Text>
+      ) : (
+        <Pressable
+          onPress={() => onUserPress?.(comment.user_id)}
+          onLongPress={onLongPress}
+          delayLongPress={500}
+          style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 7, flex: 1 }}
+        >
+          {/* Avatar */}
+          {avatar ? (
+            <Image source={{ uri: avatar }} style={s.commentAvatar} contentFit="cover" />
+          ) : (
+            <View style={[s.commentAvatar, s.commentAvatarFallback]}>
+              <Text style={s.commentAvatarInitial}>{initials}</Text>
+            </View>
+          )}
+          {/* Text */}
+          <View style={s.commentTextWrap}>
+            <Text style={s.commentUser}>@{comment.profiles?.username ?? "User"}</Text>
+            <Text style={s.commentText}>{comment.text}</Text>
+          </View>
+        </Pressable>
+      )}
     </Animated.View>
   );
 }
@@ -153,58 +301,51 @@ function useViewerCount(sessionId: string) {
 
 // ─── LiveKit Host-Steuerung (Mikrofon / Kamera toggle) ────────────────────────
 function HostControls() {
-  const { localParticipant } = useLocalParticipant();
-  const [micEnabled, setMicEnabled] = useState(true);
-  const [cameraEnabled, setCameraEnabled] = useState(true);
+  const { localParticipant, isMicrophoneEnabled, isCameraEnabled } = useLocalParticipant();
 
   const toggleMic = async () => {
-    await localParticipant.setMicrophoneEnabled(!micEnabled);
-    setMicEnabled((v) => !v);
+    try {
+      await localParticipant.setMicrophoneEnabled(!isMicrophoneEnabled);
+    } catch { /* ignore */ }
   };
 
   const toggleCamera = async () => {
-    await localParticipant.setCameraEnabled(!cameraEnabled);
-    setCameraEnabled((v) => !v);
+    try {
+      await localParticipant.setCameraEnabled(!isCameraEnabled);
+    } catch { /* ignore */ }
   };
 
   const switchCamera = async () => {
     try {
-      // Toggle between front and back camera
       const devices = await Room.getLocalDevices("videoinput");
       if (devices.length < 2) return;
-      const currentTrack = localParticipant.getTrackPublication(
-        Track.Source.Camera,
-      );
+      const currentTrack = localParticipant.getTrackPublication(Track.Source.Camera);
       if (!currentTrack?.track) return;
-      const currentDeviceId =
-        currentTrack.track.mediaStreamTrack?.getSettings()?.deviceId;
-      const nextDevice =
-        devices.find((d) => d.deviceId !== currentDeviceId) ?? devices[0];
+      const currentDeviceId = currentTrack.track.mediaStreamTrack?.getSettings()?.deviceId;
+      const nextDevice = devices.find((d) => d.deviceId !== currentDeviceId) ?? devices[0];
       await currentTrack.track.setDeviceId(nextDevice.deviceId);
-    } catch {
-      // Fallback: einfach Camera neu starten
-    }
+    } catch { /* Fallback: einfach Camera neu starten */ }
   };
 
   return (
     <View style={s.controls}>
       <Pressable
-        style={[s.controlBtn, !micEnabled && s.controlBtnOff]}
+        style={[s.controlBtn, !isMicrophoneEnabled && s.controlBtnOff]}
         onPress={toggleMic}
         hitSlop={8}
       >
-        {micEnabled ? (
+        {isMicrophoneEnabled ? (
           <Mic size={18} stroke="#fff" strokeWidth={2} />
         ) : (
           <MicOff size={18} stroke="#EF4444" strokeWidth={2} />
         )}
       </Pressable>
       <Pressable
-        style={[s.controlBtn, !cameraEnabled && s.controlBtnOff]}
+        style={[s.controlBtn, !isCameraEnabled && s.controlBtnOff]}
         onPress={toggleCamera}
         hitSlop={8}
       >
-        {cameraEnabled ? (
+        {isCameraEnabled ? (
           <Camera size={18} stroke="#fff" strokeWidth={2} />
         ) : (
           <CameraOff size={18} stroke="#EF4444" strokeWidth={2} />
@@ -274,8 +415,9 @@ function HostUI({
 }) {
   const insets = useSafeAreaInsets();
   const { data: session } = useLiveSession(sessionId);
-  const { comments, sendComment } = useLiveComments(sessionId);
+  const { comments, sendComment, sendSystemEvent, deleteComment } = useLiveComments(sessionId);
   const { reactions, sendReaction } = useLiveReactions(sessionId);
+  const { pinnedComment, pinComment } = usePinComment(sessionId);
   const { viewerCount, peakViewers } = useViewerCount(sessionId);
   const flatRef = useRef<FlatList>(null);
   const [input, setInput] = useState("");
@@ -283,6 +425,10 @@ function HostUI({
   const [viewersVisible, setViewersVisible] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
   const [startTime] = useState(Date.now());
+  const [userScrolling, setUserScrolling] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [tapHearts, setTapHearts] = useState<TapHeartItem[]>([]);
+  const tapHeartIdRef = useRef(0);
 
   const dotOpacity = useSharedValue(1);
   useEffect(() => {
@@ -299,8 +445,38 @@ function HostUI({
   const dotStyle = useAnimatedStyle(() => ({ opacity: dotOpacity.value }));
 
   useEffect(() => {
-    if (comments.length > 0) flatRef.current?.scrollToEnd({ animated: true });
-  }, [comments.length]);
+    if (comments.length > 0 && !userScrolling) {
+      flatRef.current?.scrollToEnd({ animated: true });
+    }
+  }, [comments.length, userScrolling]);
+
+  // ── Kamera/Mikrofon muten wenn App in Hintergrund geht ──────────────────────
+  // iOS stoppt automatisch die Kamera → Zuschauer sehen weißes Bild.
+  // Lösung: Kamera + Mikrofon beim Hintergrundwechsel explizit muten.
+  // Beim Zurückkehren: wieder unmuten. Zuschauer sehen "Live pausiert"-Overlay.
+  const room = useContext(RoomContext);
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', async (nextState) => {
+      if (!room) return;
+      const localParticipant = room.localParticipant;
+      if (!localParticipant) return;
+      try {
+        if (nextState === 'background' || nextState === 'inactive') {
+          // App geht in Hintergrund → Kamera + Mikrofon muten
+          await localParticipant.setCameraEnabled(false);
+          await localParticipant.setMicrophoneEnabled(false);
+        } else if (nextState === 'active') {
+          // App kommt zurück → Kamera + Mikrofon unmuten
+          await localParticipant.setCameraEnabled(true);
+          await localParticipant.setMicrophoneEnabled(true);
+        }
+      } catch {
+        // Ignore — kann fehlschlagen wenn Room schon getrennt
+      }
+    });
+    return () => sub.remove();
+  }, [room]);
+
 
   const submit = () => {
     if (!input.trim()) return;
@@ -312,6 +488,12 @@ function HostUI({
   const handleShare = () => setShareVisible(true);
 
   const handleEnd = () => setShowSummary(true);
+
+  const handleScreenTap = (x: number, y: number) => {
+    const newId = tapHeartIdRef.current++;
+    setTapHearts((prev) => [...prev, { id: newId, x, y }]);
+    sendReaction('❤️');
+  };
 
   const confirmEnd = () => {
     setShowSummary(false);
@@ -333,6 +515,11 @@ function HostUI({
       {/* Kamerabild + Overlays: absolut positioniert hinter allem */}
       <LocalCameraView />
 
+      {/* HD-Badge — subtil oben links */}
+      <View style={s.hdBadge} pointerEvents="none">
+        <Text style={s.hdBadgeText}>HD</Text>
+      </View>
+
       <LinearGradient
         colors={["rgba(0,0,0,0.55)", "transparent", "rgba(0,0,0,0.85)"]}
         style={StyleSheet.absoluteFill}
@@ -345,6 +532,22 @@ function HostUI({
           <ReactionBubble key={r.id} reaction={r} />
         ))}
       </View>
+
+      {/* Gesamter Screen: Tap → Herz am Tap-Ort */}
+      <Pressable
+        style={[StyleSheet.absoluteFill, { zIndex: 1 }]}
+        onPressIn={(evt) => handleScreenTap(evt.nativeEvent.locationX, evt.nativeEvent.locationY)}
+      />
+
+      {/* Tap-Herzen — je eins pro Tap, fliegen am Tap-Ort hoch */}
+      {tapHearts.map((h) => (
+        <TapHeart
+          key={h.id}
+          x={h.x}
+          y={h.y}
+          onDone={() => setTapHearts((prev) => prev.filter((hh) => hh.id !== h.id))}
+        />
+      ))}
 
       {/* Flex-Container: füllt den Rest, drückt Input nach oben wenn Tastatur offen */}
       <View style={{ flex: 1 }}>
@@ -366,6 +569,12 @@ function HostUI({
             <Users size={13} stroke="#fff" strokeWidth={2} />
             <Text style={s.viewerCount}>{viewerCount}</Text>
           </Pressable>
+
+          {/* Like-Counter: akkumuliert via like_count aus DB */}
+          <View style={s.likeBadge}>
+            <Text style={s.likeBadgeText}>❤️ {fmtNum(session?.like_count ?? 0)}</Text>
+          </View>
+
           <Pressable onPress={handleEnd} style={s.endBtn} hitSlop={8}>
             <X size={18} stroke="#fff" strokeWidth={2.5} />
           </Pressable>
@@ -379,31 +588,61 @@ function HostUI({
           </Pressable>
         </View>
 
-        {/* Reaktions-Buttons */}
-        <View style={[s.emojiRow, { bottom: insets.bottom + 72 }]}>
-          {EMOJIS.map((emoji) => (
-            <Pressable
-              key={emoji}
-              onPress={() => sendReaction(emoji)}
-              style={s.emojiBtn}
-            >
-              <Text style={s.emojiText}>{emoji}</Text>
-            </Pressable>
-          ))}
-        </View>
 
         {/* Spacer: drückt Kommentare + Input nach unten */}
         <View style={{ flex: 1 }} />
+
+        {/* Gepinnter Kommentar — sichtbar für alle über dem Feed */}
+        {pinnedComment && !(pinnedComment as any).isSystem && (
+          <Pressable
+            style={s.pinnedBanner}
+            onPress={() => pinComment(null)}
+          >
+            <Text style={s.pinnedLabel}>📌 Angepinnt</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={s.pinnedUser}>@{pinnedComment.profiles?.username ?? 'User'}</Text>
+              <Text style={s.pinnedText} numberOfLines={2}>{pinnedComment.text}</Text>
+            </View>
+            <Text style={s.pinnedUnpin}>✕</Text>
+          </Pressable>
+        )}
 
         {/* Kommentare */}
         <View style={[s.commentsArea]}>
           <FlatList
             ref={flatRef}
-            data={comments.slice(-30)}
+            data={comments}
             keyExtractor={(item) => item.id}
-            renderItem={({ item }) => <CommentRow comment={item} />}
+            renderItem={({ item }) => (
+              <CommentRow
+                comment={item}
+                onLongPress={!(item as any).isSystem ? () => {
+                  Alert.alert(
+                    'Kommentar',
+                    `Von @${item.profiles?.username ?? 'User'}: "${item.text.slice(0, 60)}"`,
+                    [
+                      { text: '📌 Anpinnen', onPress: () => pinComment(item) },
+                      { text: '🚫 Löschen', style: 'destructive', onPress: () => deleteComment(item.id) },
+                      { text: 'Abbrechen', style: 'cancel' },
+                    ]
+                  );
+                } : undefined}
+                onUserPress={(uid) => !(item as any).isSystem ? setSelectedUserId(uid) : undefined}
+              />
+            )}
             showsVerticalScrollIndicator={false}
-            scrollEnabled={false}
+            scrollEnabled={true}
+            onScrollBeginDrag={() => setUserScrolling(true)}
+            onScrollEndDrag={(e) => {
+              const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
+              const isAtBottom = contentOffset.y + layoutMeasurement.height >= contentSize.height - 20;
+              if (isAtBottom) setUserScrolling(false);
+            }}
+            onMomentumScrollEnd={(e) => {
+              const { layoutMeasurement, contentOffset, contentSize } = e.nativeEvent;
+              const isAtBottom = contentOffset.y + layoutMeasurement.height >= contentSize.height - 20;
+              if (isAtBottom) setUserScrolling(false);
+            }}
           />
         </View>
 
@@ -420,10 +659,16 @@ function HostUI({
             selectionColor="#22D3EE"
             maxLength={300}
           />
-          {input.trim().length > 0 && (
+          {input.trim().length > 0 ? (
             <Pressable onPress={submit} hitSlop={8} style={s.sendBtn}>
               <Send size={18} stroke="#22D3EE" strokeWidth={2.2} />
             </Pressable>
+          ) : (
+            EMOJIS.map((emoji) => (
+              <Pressable key={emoji} onPress={() => sendReaction(emoji)} style={s.bottomEmojiBtn}>
+                <Text style={s.bottomEmojiText}>{emoji}</Text>
+              </Pressable>
+            ))
           )}
         </View>
       </View>
@@ -471,6 +716,15 @@ function HostUI({
           </View>
         </View>
       </Modal>
+      {/* TikTok-Style User Info Sheet */}
+      <LiveUserSheet
+        userId={selectedUserId}
+        onClose={() => setSelectedUserId(null)}
+        onMention={(username) => {
+          setInput((prev) => `${prev}@${username} `);
+          setSelectedUserId(null);
+        }}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -495,8 +749,8 @@ export default function LiveHostScreen() {
 
   // Portrait-Lock für den gesamten Live-Screen
   useEffect(() => {
-    ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => {});
-    return () => { ScreenOrientation.unlockAsync().catch(() => {}); };
+    ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => { });
+    return () => { ScreenOrientation.unlockAsync().catch(() => { }); };
   }, []);
 
   // EINMALIGER useEffect (leere Deps) — verbindet, aktiviert Tracks, räumt auf.
@@ -523,7 +777,7 @@ export default function LiveHostScreen() {
         await room.localParticipant
           .setMicrophoneEnabled(true)
           .catch((e: unknown) => {
-__DEV__ && console.warn(
+            __DEV__ && console.warn(
               "[LiveHost] Mikrofonaktivierung fehlgeschlagen:",
               String(e),
             );
@@ -543,7 +797,7 @@ __DEV__ && console.warn(
         };
 
         await enableCamera().catch(async (e: unknown) => {
-__DEV__ && console.warn(
+          __DEV__ && console.warn(
             "[LiveHost] Kamera fehlgeschlagen (1. Versuch):",
             String(e),
           );
@@ -551,7 +805,7 @@ __DEV__ && console.warn(
           await new Promise<void>((r) => setTimeout(r, 3000));
           if (canceled) return;
           await enableCamera().catch((e2: unknown) => {
-__DEV__ && console.warn(
+            __DEV__ && console.warn(
               "[LiveHost] Kamera fehlgeschlagen (2. Versuch):",
               String(e2),
             );
@@ -672,6 +926,11 @@ const s = StyleSheet.create({
     justifyContent: "center",
   },
   reactionEmoji: { fontSize: 26 },
+  floatingHeartWrap: {
+    position: 'absolute',
+    bottom: 80,
+    zIndex: 6,
+  },
 
   topBar: {
     paddingHorizontal: 16,
@@ -746,45 +1005,68 @@ const s = StyleSheet.create({
 
   commentsArea: {
     left: 0,
-    right: 70,
+    right: 0,
     maxHeight: 240,
     paddingHorizontal: 14,
     zIndex: 10,
   },
   commentRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    backgroundColor: "rgba(0,0,0,0.4)",
-    borderRadius: 12,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    borderRadius: 14,
+    padding: 6,
     marginBottom: 5,
-    alignSelf: "flex-start",
+    alignSelf: 'flex-start',
+    maxWidth: '90%',
+    gap: 7,
   },
+  commentAvatar: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    flexShrink: 0,
+    marginTop: 1,
+  },
+  commentAvatarFallback: {
+    backgroundColor: '#0891B2',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  commentAvatarInitial: { color: '#fff', fontSize: 10, fontWeight: '800' },
+  commentTextWrap: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: 3 },
   commentUser: { color: "#22D3EE", fontWeight: "700", fontSize: 13 },
-  commentText: { color: "#fff", fontSize: 13 },
+  commentText: { color: "#fff", fontSize: 13, flexShrink: 1 },
+  systemText: { color: 'rgba(255,255,255,0.55)', fontSize: 12, fontStyle: 'italic' },
 
   inputBar: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     paddingHorizontal: 14,
     paddingTop: 10,
-    backgroundColor: "rgba(0,0,0,0.6)",
+    backgroundColor: 'rgba(0,0,0,0.6)',
     zIndex: 20,
   },
   input: {
     flex: 1,
-    backgroundColor: "rgba(255,255,255,0.1)",
+    backgroundColor: 'rgba(255,255,255,0.1)',
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.15)",
+    borderColor: 'rgba(255,255,255,0.15)',
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 9,
-    color: "#fff",
+    color: '#fff',
     fontSize: 14,
   },
-  sendBtn: { padding: 6 },
+  sendBtn: { padding: 4, flexShrink: 0 },
+  bottomEmojiBtn: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0,
+  },
+  bottomEmojiText: { fontSize: 18 },
 
   // ── Live-End Summary ──
   summaryBackdrop: {
@@ -840,4 +1122,49 @@ const s = StyleSheet.create({
     fontSize: 16,
     fontWeight: "800",
   },
+
+  // Pinned Comment Banner
+  pinnedBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(34,211,238,0.15)',
+    borderLeftWidth: 3,
+    borderLeftColor: '#22D3EE',
+    borderRadius: 10,
+    marginHorizontal: 8,
+    marginBottom: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 7,
+    gap: 8,
+  },
+  pinnedLabel: { color: '#22D3EE', fontSize: 10, fontWeight: '700', marginRight: 4 },
+  pinnedUser: { color: '#22D3EE', fontWeight: '700', fontSize: 12 },
+  pinnedText: { color: '#fff', fontSize: 12 },
+  pinnedUnpin: { color: 'rgba(255,255,255,0.5)', fontSize: 16, paddingLeft: 4 },
+
+  // Like-Counter Badge
+  likeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,45,85,0.18)',
+    borderRadius: 10,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255,45,85,0.35)',
+  },
+  likeBadgeText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+
+  // HD-Badge
+  hdBadge: {
+    position: 'absolute',
+    top: 0,
+    left: 12,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    zIndex: 5,
+  },
+  hdBadgeText: { color: 'rgba(255,255,255,0.6)', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
 });

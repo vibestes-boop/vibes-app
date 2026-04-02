@@ -6,7 +6,10 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import { router } from 'expo-router';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
+const Animated = { View: _animNS?.View ?? _animMod?.View };
+import { FadeInDown } from 'react-native-reanimated';
 import { Timer, Flame, Trophy } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useGuildLeaderboard, type LeaderboardPost, type LeaderboardMember } from '@/lib/useGuildLeaderboard';
@@ -45,7 +48,7 @@ const badge = StyleSheet.create({
     borderRadius: 20, borderWidth: 1,
     backgroundColor: 'rgba(0,0,0,0.4)',
   },
-  pct:  { color: '#34D399', fontSize: 12, fontWeight: '800' },
+  pct: { color: '#34D399', fontSize: 12, fontWeight: '800' },
   secs: { color: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: '500' },
 });
 
@@ -53,9 +56,9 @@ const badge = StyleSheet.create({
 function TopPostCard({
   post, rank, guildColors,
 }: { post: LeaderboardPost; rank: number; guildColors: string[] }) {
-  const medal      = MEDAL[rank] ?? `#${rank + 1}`;
+  const medal = MEDAL[rank] ?? `#${rank + 1}`;
   const rankColors = RANK_COLORS[rank] ?? ['#0891B2', '#22D3EE'];
-  const initial    = (post.author_username ?? '?')[0].toUpperCase();
+  const initial = (post.author_username ?? '?')[0].toUpperCase();
 
   return (
     <Animated.View entering={FadeInDown.delay(rank * 20).duration(120)}>
@@ -79,6 +82,7 @@ function TopPostCard({
             {post.media_type === 'video' ? (
               <VideoGridThumb
                 uri={post.media_url}
+                thumbnailUrl={post.thumbnail_url}
                 style={{ width: 72, height: 96, borderRadius: 12 }}
               />
             ) : (
@@ -150,9 +154,9 @@ const card = StyleSheet.create({
 function MemberRow({
   member, rank, guildColors,
 }: { member: LeaderboardMember; rank: number; guildColors: string[] }) {
-  const medal      = MEDAL[rank] ?? `#${rank + 1}`;
+  const medal = MEDAL[rank] ?? `#${rank + 1}`;
   const rankColors = RANK_COLORS[rank] ?? guildColors;
-  const initial    = (member.username ?? '?')[0].toUpperCase();
+  const initial = (member.username ?? '?')[0].toUpperCase();
 
   return (
     <Animated.View entering={FadeInDown.delay(rank * 20).duration(120)}>
@@ -243,7 +247,7 @@ const sec = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   title: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
-  sub:   { color: 'rgba(255,255,255,0.35)', fontSize: 11, marginTop: 1 },
+  sub: { color: 'rgba(255,255,255,0.35)', fontSize: 11, marginTop: 1 },
 });
 
 // ── Hauptkomponente ────────────────────────────────────────────────────────
@@ -261,7 +265,7 @@ export function GuildLeaderboard({
     );
   }
 
-  const posts   = data?.top_posts   ?? [];
+  const posts = data?.top_posts ?? [];
   const members = data?.top_members ?? [];
   const isEmpty = posts.length === 0 && members.length === 0;
 

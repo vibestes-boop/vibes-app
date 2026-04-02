@@ -1,17 +1,20 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, {
+// reanimated: CJS require() vermeidet _interopRequireDefault Crash in Hermes HBC
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+const _animMod = require('react-native-reanimated') as any;
+const _animNS = _animMod?.default ?? _animMod;
+const Animated = { View: _animNS?.View ?? _animMod?.View };
+import {
   useAnimatedStyle,
   useSharedValue,
   withTiming,
   withSequence,
-  FadeInDown,
 } from 'react-native-reanimated';
-import { Users, MessageCircle, Heart, Bookmark, Share2, Clock, Play, Pause } from 'lucide-react-native';
+import { Users, MessageCircle, Heart, Bookmark, Share2, Clock, Play, VolumeX, Volume2 } from 'lucide-react-native';
 import CommentsSheet from '@/components/ui/CommentsSheet';
 import { FallbackFeedVideo, NativeFeedVideo, USE_EXPO_VIDEO } from '@/components/feed/FeedVideo';
 import { useLike } from '@/lib/useLike';
@@ -30,25 +33,29 @@ function formatRelativeTime(iso: string) {
   return `vor ${Math.floor(hrs / 24)} Tagen`;
 }
 
-export function GuildCard({
+export const GuildCard = React.memo(function GuildCard({
   post,
   guildColors,
+  isVisible = false,
 }: {
   post: GuildPost;
   guildColors: [string, string];
+  isVisible?: boolean;
 }) {
   const router = useRouter();
-  // batch kommt aus useGuildFeed — kein eigener DB-Call für Like-Status/-Count mehr
   const { liked, count, toggle } = useLike(post.id, { liked: post.is_liked, count: post.like_count });
-  // batchCount kommt aus useGuildFeed — kein eigener DB-Call mehr
   const { data: commentCount = 0 } = useCommentCount(post.id, post.comment_count);
   const { bookmarked, toggle: toggleBookmark } = useBookmark(post.id);
   const [showComments, setShowComments] = useState(false);
-  const [paused, setPaused] = useState(false);
-  const [showPauseIcon, setShowPauseIcon] = useState(false);
+  const [isMuted, setIsMuted] = useState(false); // Videos starten mit Ton
   const isVideo = post.media_type === 'video';
   const scale = useSharedValue(1);
-  const [c0] = guildColors;
+  const [c0, c1] = guildColors;
+
+  // Gecachte Farb-Arrays — verhindert LinearGradient-Rerender durch neue Array-Referenzen
+  const bgGradientColors = useMemo(() => [`${c0}30`, '#0D0D12', `${c1}20`] as [string, string, string], [c0, c1]);
+  const overlayGradientColors = useMemo(() => [`${c0}40`, '#0D0D12', `${c1}30`] as [string, string, string], [c0, c1]);
+  const badgeBgColor = useMemo(() => `${c0}33`, [c0]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -56,30 +63,36 @@ export function GuildCard({
 
   const handleLike = useCallback(() => {
     scale.value = withSequence(
-      withTiming(1.18, { duration: 80 }),
-      withTiming(1, { duration: 80 })
+      withTiming(1.2, { duration: 80 }),
+      withTiming(1, { duration: 100 })
     );
     toggle();
   }, [toggle, scale]);
 
-  const handleVideoTap = useCallback(() => {
-    setPaused((p) => !p);
-    setShowPauseIcon(true);
-    setTimeout(() => setShowPauseIcon(false), 700);
-  }, []);
-
   const initials = post.username ? post.username.slice(0, 2).toUpperCase() : '??';
 
+  // Prefetch das Bild wenn die Karte sichtbar wird — schnelleres Laden in der Detailseite
+  useEffect(() => {
+    if (isVisible && post.media_url && !isVideo) {
+      Image.prefetch?.(post.media_url).catch(() => { /* ignorieren */ });
+    }
+  }, [isVisible, post.media_url, isVideo]);
+
   return (
-    <Animated.View entering={FadeInDown.duration(120)} style={styles.card}>
-      <BlurView intensity={18} tint="dark" style={styles.cardBlur}>
+    // BlurView entfernt — verursachte intermittierend schwarzen Screen in Listen
+    // Ersatz: View mit solider dunkler Farbe + subtiler Rand (optisch gleich)
+    <View style={styles.card}>
+      <View style={styles.cardBlur}>
+
+        {/* Header */}
         <View style={styles.cardHeader}>
           <Pressable
             onPress={() => router.push({ pathname: '/user/[id]', params: { id: post.author_id } })}
             style={styles.avatarWrap}
+            hitSlop={8}
           >
             {post.avatar_url ? (
-              <Image source={{ uri: post.avatar_url }} style={styles.avatar} />
+              <Image source={{ uri: post.avatar_url }} style={styles.avatar} contentFit="cover" />
             ) : (
               <LinearGradient colors={guildColors} style={styles.avatar}>
                 <Text style={styles.avatarText}>{initials}</Text>
@@ -89,6 +102,7 @@ export function GuildCard({
           <View style={{ flex: 1 }}>
             <Pressable
               onPress={() => router.push({ pathname: '/user/[id]', params: { id: post.author_id } })}
+              hitSlop={8}
             >
               <Text style={styles.username}>{post.username ?? 'Unbekannt'}</Text>
             </Pressable>
@@ -97,94 +111,124 @@ export function GuildCard({
               <Text style={styles.metaText}>{formatRelativeTime(post.created_at)}</Text>
             </View>
           </View>
-          <View style={[styles.guildBadge, { backgroundColor: `${c0}33` }]}>
+          <View style={[styles.guildBadge, { backgroundColor: badgeBgColor }]}>
             <Users size={10} color={c0} />
             <Text style={[styles.guildBadgeText, { color: c0 }]}>Pod</Text>
           </View>
         </View>
 
+        {/* Media — Tap → immer zur Post-Detail (Instagram-Style) */}
         {post.media_url ? (
           <Pressable
-            onPress={isVideo ? handleVideoTap : () => router.push({ pathname: '/post/[id]', params: { id: post.id } })}
+            onPress={() => router.push({ pathname: '/guild-post/[id]', params: { id: post.id } })}
             style={styles.mediaWrap}
           >
+            {/* Gradient-Hintergrund — verhindert schwarzes Fenster beim Laden */}
+            <LinearGradient
+              colors={bgGradientColors}
+              style={StyleSheet.absoluteFill}
+              start={{ x: 0.2, y: 0 }}
+              end={{ x: 0.8, y: 1 }}
+            />
+
             {isVideo ? (
               <>
                 {USE_EXPO_VIDEO ? (
                   <NativeFeedVideo
                     uri={post.media_url}
-                    shouldPlay={!paused}
-                    isMuted
-                    onProgress={() => {}}
+                    shouldPlay={isVisible}
+                    isMuted={isMuted}
+                    onProgress={() => { }}
                   />
                 ) : (
                   <FallbackFeedVideo
                     uri={post.media_url}
-                    shouldPlay={!paused}
-                    isMuted
-                    onProgress={() => {}}
+                    shouldPlay={isVisible}
+                    isMuted={isMuted}
+                    onProgress={() => { }}
                   />
                 )}
-                {/* Tap-Feedback Icon */}
-                {showPauseIcon && (
-                  <View style={videoStyles.pauseOverlay}>
-                    {paused
-                      ? <Play size={40} color="#fff" fill="#fff" />
-                      : <Pause size={40} color="#fff" fill="#fff" />
-                    }
-                  </View>
-                )}
-                {/* Video-Badge */}
-                <View style={videoStyles.videoBadge}>
-                  <Play size={10} color="#fff" fill="#fff" />
-                </View>
+                {/* Mute/Unmute Button — rechts oben */}
+                <Pressable
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    setIsMuted((m) => !m);
+                  }}
+                  style={v.muteBtn}
+                  hitSlop={12}
+                >
+                  {isMuted
+                    ? <VolumeX size={16} color="#fff" />
+                    : <Volume2 size={16} color="#fff" />
+                  }
+                </Pressable>
               </>
             ) : (
               <Image source={{ uri: post.media_url }} style={styles.mediaThumb} contentFit="cover" />
+
             )}
+
             <LinearGradient
               colors={['transparent', 'rgba(0,0,0,0.35)']}
               style={StyleSheet.absoluteFill}
               pointerEvents="none"
             />
           </Pressable>
-        ) : null}
+        ) : (
+          /* Post ohne Media: Gradient-Fläche */
+          <View style={[styles.mediaWrap, v.noMediaWrap]}>
+            <LinearGradient
+              colors={overlayGradientColors}
+              style={StyleSheet.absoluteFill}
+              start={{ x: 0.2, y: 0 }}
+              end={{ x: 0.8, y: 1 }}
+            />
+            <Text style={[v.noMediaIcon, { color: c0 }]}>✦</Text>
+          </View>
+        )}
 
+        {/* Action-Buttons */}
         <View style={styles.actions}>
           <Animated.View style={animatedStyle}>
-            <Pressable onPress={handleLike} style={styles.actionBtn}>
+            <Pressable onPress={handleLike} style={styles.actionBtn} hitSlop={10}>
               <Heart
-                size={18}
-                color={liked ? '#F43F5E' : '#6B7280'}
+                size={22}
+                color={liked ? '#F43F5E' : '#9CA3AF'}
                 fill={liked ? '#F43F5E' : 'transparent'}
               />
               <Text style={[styles.actionCount, liked && { color: '#F43F5E' }]}>{count}</Text>
             </Pressable>
           </Animated.View>
-          <Pressable onPress={() => setShowComments(true)} style={styles.actionBtn}>
-            <MessageCircle size={18} color="#6B7280" />
+
+          <Pressable onPress={() => setShowComments(true)} style={styles.actionBtn} hitSlop={10}>
+            <MessageCircle size={22} color="#9CA3AF" />
             <Text style={styles.actionCount}>
               {commentCount >= 1000 ? `${(commentCount / 1000).toFixed(1)}K` : commentCount}
             </Text>
           </Pressable>
-          <Pressable onPress={toggleBookmark} style={styles.actionBtn}>
+
+          <Pressable onPress={toggleBookmark} style={styles.actionBtn} hitSlop={10}>
             <Bookmark
-              size={18}
-              color={bookmarked ? '#FBBF24' : '#6B7280'}
+              size={22}
+              color={bookmarked ? '#FBBF24' : '#9CA3AF'}
               fill={bookmarked ? '#FBBF24' : 'transparent'}
             />
           </Pressable>
-          <Pressable onPress={() => sharePost(post.id, post.caption)} style={styles.actionBtn}>
-            <Share2 size={18} color="#6B7280" />
+
+          <Pressable onPress={() => sharePost(post.id, post.caption)} style={styles.actionBtn} hitSlop={10}>
+            <Share2 size={22} color="#9CA3AF" />
           </Pressable>
         </View>
 
+        {/* Caption */}
         {post.caption ? (
           <View style={styles.captionWrap}>
             <Text style={styles.captionUser}>{post.username ?? 'Unbekannt'} </Text>
             <Text style={styles.caption}>{post.caption}</Text>
           </View>
         ) : null}
+
+        {/* Tags */}
         {post.tags && post.tags.length > 0 ? (
           <View style={styles.tagsRow}>
             {post.tags.map((t) => (
@@ -194,24 +238,24 @@ export function GuildCard({
             ))}
           </View>
         ) : null}
-      </BlurView>
+
+      </View>
 
       <CommentsSheet
         postId={post.id}
         visible={showComments}
         onClose={() => setShowComments(false)}
+        onUserPress={(userId) => {
+          setShowComments(false);
+          router.push({ pathname: '/user/[id]', params: { id: userId } });
+        }}
       />
-    </Animated.View>
+    </View>
   );
-}
+});
 
-const videoStyles = StyleSheet.create({
-  pauseOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.25)',
-  },
+// Lokale Styles (Video / Media Overlays)
+const v = StyleSheet.create({
   videoBadge: {
     position: 'absolute',
     top: 10,
@@ -220,6 +264,21 @@ const videoStyles = StyleSheet.create({
     borderRadius: 6,
     padding: 5,
   },
+  muteBtn: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: 20,
+    padding: 7,
+    zIndex: 10,
+  },
+  noMediaWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  noMediaIcon: {
+    fontSize: 64,
+    opacity: 0.25,
+  },
 });
-
-

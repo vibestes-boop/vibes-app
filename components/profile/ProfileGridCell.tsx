@@ -2,7 +2,10 @@ import { useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
+const Animated = { View: _animNS?.View ?? _animMod?.View };
+import { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { VideoGridThumb } from '@/components/ui/VideoGridThumb';
 import { profileStyles as s } from './profileStyles';
 import type { ProfilePostGridItem } from './types';
@@ -37,13 +40,19 @@ export function ProfileGridCell({
     >
       <Animated.View style={[StyleSheet.absoluteFill, animStyle]}>
         {!showFallback && post.media_type === 'video' && (
-          <VideoGridThumb uri={post.media_url!} style={s.cellImg} />
+          <VideoGridThumb
+            uri={post.media_url!}
+            thumbnailUrl={post.thumbnail_url}
+            style={s.cellImg}
+          />
         )}
         {!showFallback && post.media_type !== 'video' && (
           <Image
             source={{ uri: post.media_url! }}
             style={s.cellImg}
             contentFit="cover"
+            transition={200}
+            placeholder={{ blurhash: 'L00000fQfQfQfQfQfQfQfQfQfQfQ' }}
             onError={() => setImageError(true)}
           />
         )}
@@ -54,7 +63,11 @@ export function ProfileGridCell({
             </Text>
           </View>
         )}
-        <LinearGradient colors={['transparent', 'rgba(0,0,0,0.5)']} style={s.cellGrad} pointerEvents="none" />
+        <LinearGradient
+          colors={['transparent', 'rgba(0,0,0,0.15)']}
+          style={s.cellGrad}
+          pointerEvents="none"
+        />
       </Animated.View>
     </Pressable>
   );

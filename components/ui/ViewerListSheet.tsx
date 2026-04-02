@@ -18,7 +18,12 @@ import {
   FlatList,
   ActivityIndicator,
 } from 'react-native';
-import Animated, {
+// react-native-reanimated: CJS require() vermeidet Hermes HBC Crash
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+const _animMod = require('react-native-reanimated') as any;
+const _animNS = _animMod?.default ?? _animMod;
+const Animated = { View: _animNS?.View ?? _animMod?.View };
+import {
   FadeIn,
   FadeOut,
   SlideInDown,

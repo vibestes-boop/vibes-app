@@ -1,6 +1,9 @@
 import React from 'react';
-import { Pressable, Text } from 'react-native';
-import Animated, { useAnimatedStyle, useSharedValue, withSequence, withTiming, withSpring } from 'react-native-reanimated';
+import { Pressable, Text, View } from 'react-native';
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
+const Animated = { View: _animNS?.View ?? _animMod?.View };
+import { useAnimatedStyle, useSharedValue, withSequence, withTiming, withSpring } from 'react-native-reanimated';
 import {
   Heart,
   MessageCircle,
@@ -15,20 +18,22 @@ export function ActionButton({
   icon: Icon,
   count,
   color = '#FFFFFF',
+  active = false,
+  activeColor,
   onPress,
   accessibilityLabel,
 }: {
   icon: React.ElementType;
   count?: string;
   color?: string;
+  active?: boolean;
+  activeColor?: string;
   onPress?: () => void;
   accessibilityLabel?: string;
 }) {
   const scale = useSharedValue(1);
-
-  const animStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
+  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const iconColor = active && activeColor ? activeColor : color;
 
   return (
     <Pressable
@@ -45,9 +50,13 @@ export function ActionButton({
       accessibilityLabel={accessibilityLabel}
     >
       <Animated.View style={[styles.actionBtnInner, animStyle]}>
-        <Icon size={26} stroke={color} strokeWidth={1.8} />
+        <Icon size={26} stroke={iconColor} strokeWidth={1.8} />
       </Animated.View>
-      {count !== undefined && <Text style={styles.actionCount}>{count}</Text>}
+      {count !== undefined && (
+        <Text style={[styles.actionCount, active && activeColor ? { color: activeColor } : undefined]}>
+          {count}
+        </Text>
+      )}
     </Pressable>
   );
 }
@@ -64,7 +73,6 @@ export function CommentButton({
   const { data: count = 0 } = useCommentCount(postId, batchCount);
   const scale = useSharedValue(1);
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-
   const formatted = count >= 1000 ? `${(count / 1000).toFixed(1)}K` : String(count);
 
   return (
@@ -137,16 +145,13 @@ export function LikeButton({
   onToggle: () => void;
 }) {
   const scale = useSharedValue(1);
-
-  const animStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
+  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
   const handlePress = () => {
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     scale.value = withSequence(
       withTiming(0.7, { duration: 60 }),
-      withTiming(1.3, { duration: 80 }),
+      withTiming(1.35, { duration: 80 }),
       withTiming(1, { duration: 80 })
     );
     onToggle();
@@ -160,15 +165,19 @@ export function LikeButton({
       accessibilityLabel={liked ? `Gefällt mir entfernen, ${formattedCount} Likes` : `Gefällt mir, ${formattedCount} Likes`}
       accessibilityState={{ selected: liked }}
     >
-      <Animated.View style={[styles.actionBtnInner, animStyle]}>
+      <Animated.View style={[
+        styles.actionBtnInner,
+        animStyle,
+        liked && { backgroundColor: 'rgba(238,29,82,0.18)' },
+      ]}>
         <Heart
           size={26}
-          stroke={liked ? '#F472B6' : '#FFFFFF'}
+          stroke={liked ? '#EE1D52' : '#FFFFFF'}
           strokeWidth={1.8}
-          fill={liked ? '#F472B6' : 'transparent'}
+          fill={liked ? '#EE1D52' : 'transparent'}
         />
       </Animated.View>
-      <Text style={[styles.actionCount, liked && { color: '#F472B6' }]}>{formattedCount}</Text>
+      <Text style={[styles.actionCount, liked && { color: '#EE1D52' }]}>{formattedCount}</Text>
     </Pressable>
   );
 }

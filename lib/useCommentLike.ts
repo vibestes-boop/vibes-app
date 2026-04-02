@@ -17,7 +17,7 @@ export type CommentLikeState = {
 // ── Hook ───────────────────────────────────────────────────────────────────
 export function useCommentLike(commentId: string) {
   const queryClient = useQueryClient();
-  const userId      = useAuthStore((s) => s.profile?.id);
+  const userId = useAuthStore((s) => s.profile?.id);
 
   // Laden: Anzahl Likes + ob der aktuelle User geliked hat
   const { data } = useQuery({
@@ -30,11 +30,11 @@ export function useCommentLike(commentId: string) {
           .eq('comment_id', commentId),
         userId
           ? supabase
-              .from('comment_likes')
-              .select('id')
-              .eq('comment_id', commentId)
-              .eq('user_id', userId)
-              .maybeSingle()
+            .from('comment_likes')
+            .select('id')
+            .eq('comment_id', commentId)
+            .eq('user_id', userId)
+            .maybeSingle()
           : Promise.resolve({ data: null }),
       ]);
       return { count: count ?? 0, liked: !!myLike };

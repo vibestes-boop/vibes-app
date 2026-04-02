@@ -21,6 +21,7 @@ BEGIN
       p.caption,
       p.media_url,
       p.media_type,
+      p.thumbnail_url,                                         -- Statisches Thumbnail für Videos
       COALESCE(p.dwell_time_score, 0)                        AS dwell_time_score,
       -- Verweildauer in Sekunden (EMA * 30s Max-Duration Estimate)
       ROUND((COALESCE(p.dwell_time_score, 0) * 30)::numeric, 1) AS avg_seconds,

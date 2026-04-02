@@ -1,48 +1,59 @@
-import { View, Text } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
-import { Users } from 'lucide-react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import { Zap } from 'lucide-react-native';
 import { GuildViewToggle } from './GuildViewToggle';
-import { guildStyles as styles } from './guildStyles';
 import type { GuildViewMode } from './guildConstants';
 
+/**
+ * Minimal Guild Header — TikTok/Instagram-Style.
+ * Kein Gradient, kein Blur, kein "Dein Room"-Label, kein Member-Count.
+ * Nur: Guild-Name (klein, links) + View-Toggle (rechts).
+ */
 export function GuildRoomHeader({
   guildName,
-  memberCount,
   guildColors,
   mode,
   onToggle,
 }: {
   guildName: string;
-  memberCount?: number;
+  memberCount?: number;   // nicht mehr verwendet, aber API bleibt kompatibel
   guildColors: [string, string];
   mode: GuildViewMode;
   onToggle: (m: GuildViewMode) => void;
 }) {
-  const [c0, c1] = guildColors;
+  const [accent] = guildColors;
 
   return (
-    <LinearGradient
-      colors={[`${c0}CC`, `${c1}88`, 'transparent']}
-      style={styles.guildHeader}
-    >
-      <BlurView intensity={30} tint="dark" style={styles.guildHeaderBlur}>
-        <View style={styles.guildHeaderIcon}>
-          <LinearGradient colors={guildColors} style={styles.guildIconGradient}>
-            <Users size={22} color="#FFF" />
-          </LinearGradient>
-        </View>
-        <View>
-          <Text style={styles.guildHeaderLabel}>Dein Guild-Room</Text>
-          <Text style={styles.guildHeaderName}>{guildName}</Text>
-        </View>
-        {memberCount !== undefined && (
-          <View style={styles.memberCountBadge}>
-            <Text style={styles.memberCountText}>{memberCount} Mitglieder</Text>
-          </View>
-        )}
-      </BlurView>
+    <View style={s.wrap}>
+      {/* Guild-Name: klein und dezent, kein dekoratives Element */}
+      <View style={s.nameRow}>
+        <Zap size={12} color={accent} fill={accent} />
+        <Text style={[s.name, { color: accent }]} numberOfLines={1}>
+          {guildName}
+        </Text>
+      </View>
+
+      {/* Feed / Leaderboard Toggle — das einzig wirklich wichtige Element */}
       <GuildViewToggle mode={mode} onChange={onToggle} />
-    </LinearGradient>
+    </View>
   );
 }
+
+const s = StyleSheet.create({
+  wrap: {
+    paddingTop: 4,
+    paddingBottom: 0,
+  },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 20,
+    marginBottom: 10,
+  },
+  name: {
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.3,
+    opacity: 0.7,
+  },
+});

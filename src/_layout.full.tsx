@@ -12,7 +12,8 @@
 /* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any */
 import { useEffect, useRef, useState } from 'react';
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
-import { useFonts,
+import {
+  useFonts,
   Inter_400Regular,
   Inter_600SemiBold,
   Inter_700Bold,
@@ -32,6 +33,17 @@ function AuthGuard() {
     useAuthStore();
   const segments = useSegments();
   const router = useRouter();
+
+  // Warten bis Zustand-Persist-Middleware AsyncStorage gelesen hat
+  // Ohne das würde der Guard profile=null sehen und fälschlicherweise zum Onboarding navigieren
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    // Zustand 5: persist.hasHydrated() oder über onFinishHydration
+    const unsub = (useAuthStore as any).persist?.onFinishHydration?.(() => setHydrated(true));
+    // Falls Hydration bereits abgeschlossen ist
+    if ((useAuthStore as any).persist?.hasHydrated?.()) setHydrated(true);
+    return () => unsub?.();
+  }, []);
 
   useEffect(() => {
     const safetyTimer = setTimeout(() => {
@@ -72,7 +84,8 @@ function AuthGuard() {
   }, []);
 
   useEffect(() => {
-    if (!initialized) return;
+    // Erst routen wenn Zustand hydrated UND Auth initialisiert ist
+    if (!hydrated || !initialized) return;
     const inAuthGroup = segments[0] === '(auth)';
     const inOnboardingGroup = segments[0] === '(onboarding)';
 
@@ -84,14 +97,28 @@ function AuthGuard() {
     );
 
     if (!session) {
+      // Kein Token → Login — egal wo der User gerade ist
       if (!inAuthGroup) router.replace('/(auth)/login' as never);
       return;
     }
+
+    // Session vorhanden, aber profile noch am Laden → NICHTS tun
+    // (sonst sieht der User bei jedem App-Start das Onboarding bis fetchProfile fertig ist)
+    // Wir erkennen "noch am Laden" daran dass initialized gerade erst true wurde und profile null ist.
+    // AuthStore setzt profile auf null bevor er fetchProfile aufruft — das ist der false-positive.
+    // Lösung: Nur navigieren wenn profile definitiv null ist UND wir nicht schon im Onboarding/Auth sind.
+
     if (!profile) {
-      if (!inOnboardingGroup) router.replace('/(onboarding)' as never);
+      // Kein Profil in DB trotz gültiger Session → echter Neu-User → Onboarding
+      if (!inOnboardingGroup && !inAuthGroup) {
+        router.replace('/(onboarding)' as never);
+      }
       return;
     }
+
+    // Ab hier: session ✓ + profile ✓
     if (inAuthGroup) {
+      // Von Login-Seite wegnavigieren
       router.replace(
         !profile.onboarding_complete
           ? ('/(onboarding)' as never)
@@ -99,11 +126,17 @@ function AuthGuard() {
       );
       return;
     }
+    if (inOnboardingGroup && profile.onboarding_complete) {
+      // Onboarding wurde bereits abgeschlossen — direkt zu Tabs
+      router.replace('/(tabs)' as never);
+      return;
+    }
     if (!inAuthGroup && !inOnboardingGroup && !profile.onboarding_complete) {
+      // User hat Onboarding noch nicht abgeschlossen
       router.replace('/(onboarding)' as never);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session, initialized, profile, segments]);
+  }, [session, initialized, profile, segments, hydrated]);
 
   // ── Deep-Link Handler (vibes://live/<id> und vibes://post/<id>) ──────────
   // Race-Condition-Fix: URL beim Cold-Start sofort speichern,
@@ -117,7 +150,7 @@ function AuthGuard() {
     // Cold-Start: initial URL sichern
     Linking.getInitialURL().then((url: string | null) => {
       if (url?.startsWith('vibes://')) pendingDeepLink.current = url;
-    }).catch(() => {});
+    }).catch(() => { });
 
     // Foreground/Background: URL direkt verarbeiten (Auth ist dann schon aktiv)
     const sub = Linking.addEventListener('url', ({ url }: { url: string }) => {
@@ -220,7 +253,7 @@ function PushNotificationsProvider() {
             router.push({ pathname: '/live/watch/[id]', params: { id: data.session_id } });
           }
         }, 400);
-      }).catch(() => {});
+      }).catch(() => { });
     } catch { /* Expo Go stub */ }
   }, [initialized, session, profile]);
 
@@ -350,7 +383,7 @@ export default function RootLayoutFull() {
   useEffect(() => {
     // Guaranteed SplashScreen.hideAsync() with delay.
     const hide = () =>
-      (require('expo-splash-screen') as any).hideAsync?.().catch(() => {});
+      (require('expo-splash-screen') as any).hideAsync?.().catch(() => { });
     const t1 = setTimeout(hide, 500);
     const t2 = setTimeout(hide, 3000);
     return () => {
@@ -377,6 +410,14 @@ export default function RootLayoutFull() {
               options={{ presentation: 'modal', animation: 'none' }}
             />
             <Stack.Screen name="post/[id]" options={{ animation: 'slide_from_right' }} />
+            <Stack.Screen
+              name="guild-post/[id]"
+              options={{
+                headerShown: false,
+                animation: 'slide_from_bottom',
+                presentation: 'fullScreenModal',
+              }}
+            />
             <Stack.Screen
               name="settings"
               options={{ presentation: 'modal', animation: 'slide_from_bottom' }}

@@ -51,6 +51,8 @@ export type Message = {
   reply_to: ReplyPreview | null;   // inline join
   reactions: MessageReaction[];    // batch-geladen
   image_url: string | null;        // Bild-DM
+  story_media_url: string | null;  // Story-Antwort Thumbnail (TikTok-Style)
+  story_author: string | null;     // @username des Story-Erstellers
 };
 
 // ── Hilfsfunktion: sortierte Teilnehmer-IDs ───────────────────────────────
@@ -104,16 +106,17 @@ export function useConversations() {
       if (error) throw error;
 
       return (data ?? []).map((row: any) => ({
-        id:              row.id,
+        id: row.id,
         other_user: {
-          id:         row.other_user_id,
-          username:   row.other_username  ?? null,
+          id: row.other_user_id,
+          username: row.other_username ?? null,
           avatar_url: row.other_avatar_url ?? null,
         },
-        last_message:    row.last_message    ?? null,
+        last_message: row.last_message ?? null,
         last_message_at: row.last_message_at,
-        unread_count:    Number(row.unread_count ?? 0),
+        unread_count: Number(row.unread_count ?? 0),
       } as Conversation));
+
     },
     enabled: !!userId,
     staleTime: 1000 * 30,
@@ -161,19 +164,21 @@ export function useMessages(conversationId: string | null) {
       // Normalize nested post shape
       return (data ?? []).map((row: any) => ({
         ...row,
+        story_media_url: row.story_media_url ?? null,
+        story_author: null,   // Spalte nicht in DB — aus story_media_url/profil ableiten falls benötigt
         post: row.post
           ? {
-              id:              row.post.id,
-              media_url:       row.post.media_url ?? null,
-              media_type:      row.post.media_type ?? null,
-              caption:         row.post.caption ?? null,
-              author_username: row.post.profiles?.username ?? null,
-            }
+            id: row.post.id,
+            media_url: row.post.media_url ?? null,
+            media_type: row.post.media_type ?? null,
+            caption: row.post.caption ?? null,
+            author_username: row.post.profiles?.username ?? null,
+          }
           : null,
       } as Message));
     },
     enabled: !!conversationId,
-    staleTime: 0,
+    staleTime: 1000 * 30,  // Realtime hält Daten aktuell — kein sofortiger Refetch bei App-Fokus
   });
 
   // Realtime: neue Nachrichten live empfangen (Duplikat-Check wegen Race mit Refetch)
@@ -213,12 +218,16 @@ export function useSendMessage() {
       postId,
       replyToId,
       imageUrl,
+      storyMediaUrl,
+      storyAuthor,
     }: {
       conversationId: string;
       content: string;
       postId?: string | null;
       replyToId?: string | null;
       imageUrl?: string | null;
+      storyMediaUrl?: string | null;   // Story-Thumbnail URL
+      storyAuthor?: string | null;     // @username des Story-Erstellers
     }) => {
       if (!userId) throw new Error('Nicht eingeloggt');
       const payload: Record<string, any> = {
@@ -226,20 +235,22 @@ export function useSendMessage() {
         sender_id: userId,
         content: content.trim(),
       };
-      if (postId)    payload.post_id      = postId;
-      if (replyToId) payload.reply_to_id  = replyToId;
-      if (imageUrl)  payload.image_url    = imageUrl;
+      if (postId) payload.post_id = postId;
+      if (replyToId) payload.reply_to_id = replyToId;
+      if (imageUrl) payload.image_url = imageUrl;
+      if (storyMediaUrl) payload.story_media_url = storyMediaUrl;
+      // story_author: Spalte existiert nicht in DB — nicht senden
       const { data, error } = await supabase
         .from('messages')
         .insert(payload)
-        .select('id, conversation_id, sender_id, content, post_id, reply_to_id, image_url, read, created_at')
+        .select('id, conversation_id, sender_id, content, post_id, reply_to_id, image_url, story_media_url, read, created_at')
         .single();
       if (error) throw error;
-      return data as Message;
+      return data as unknown as Message;
     },
 
     // ── Optimistisches Update: Nachricht sofort anzeigen ─────────────────
-    onMutate: async ({ conversationId, content, postId, imageUrl }) => {
+    onMutate: async ({ conversationId, content, postId, imageUrl, storyMediaUrl, storyAuthor }) => {
       await queryClient.cancelQueries({ queryKey: ['messages', conversationId] });
       const previous = queryClient.getQueryData<Message[]>(['messages', conversationId]);
       const tempMsg: Message = {
@@ -255,6 +266,8 @@ export function useSendMessage() {
         reply_to: null,
         reactions: [],
         image_url: imageUrl ?? null,
+        story_media_url: storyMediaUrl ?? null,
+        story_author: storyAuthor ?? null,
       };
 
       queryClient.setQueryData<Message[]>(['messages', conversationId], (old = []) => [

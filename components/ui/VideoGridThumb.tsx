@@ -1,26 +1,49 @@
 /**
- * VideoGridThumb – zeigt das erste Frame eines Videos als Grid-Thumbnail.
+ * VideoGridThumb — Zeigt Videos als Thumbnail im Grid.
  *
- * Strategie: expo-av Video mit shouldPlay={false} rendert das erste Frame
- * ohne abzuspielen. Das funktioniert für Remote-URLs in Expo Go.
- * expo-video-thumbnails schlägt bei Remote-URLs fehl → wird nicht mehr verwendet.
+ * Strategie (neu, nach thumbnail_url Migration):
+ *   - thumbnailUrl vorhanden → statisches JPG via expo-image (kein Video-Decoder!)
+ *   - thumbnailUrl null/undefined → Fallback: expo-av Video mit shouldPlay=false
+ *
+ * Performance-Impact:
+ *   - Statisches Bild: ~0 MB RAM extra, sofort sichtbar
+ *   - Video-Fallback: Video-Decoder initialisiert + erstes Frame decodiert (kostspielig)
  */
 import { View, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import { Video, ResizeMode } from 'expo-av';
 import { Play } from 'lucide-react-native';
 
-export function VideoGridThumb({ uri, style }: { uri: string; style?: object }) {
+type Props = {
+  uri: string;
+  thumbnailUrl?: string | null;
+  style?: object;
+};
+
+export function VideoGridThumb({ uri, thumbnailUrl, style }: Props) {
   return (
     <View style={[styles.container, style]}>
-      <Video
-        source={{ uri }}
-        style={StyleSheet.absoluteFill}
-        resizeMode={ResizeMode.COVER}
-        shouldPlay={false}
-        isMuted
-        isLooping={false}
-      />
-      {/* Play-Overlay */}
+      {thumbnailUrl ? (
+        // ✅ Statisches Thumbnail — kein Video-Decoder nötig
+        <Image
+          source={{ uri: thumbnailUrl }}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          transition={150}
+          placeholder={{ blurhash: 'L00000fQfQfQfQfQfQfQfQfQfQfQ' }}
+        />
+      ) : (
+        // ⚡ Fallback für alte Videos ohne Thumbnail
+        <Video
+          source={{ uri }}
+          style={StyleSheet.absoluteFill}
+          resizeMode={ResizeMode.COVER}
+          shouldPlay={false}
+          isMuted
+          isLooping={false}
+        />
+      )}
+      {/* Play-Icon Overlay — immer sichtbar */}
       <View style={styles.playOverlay}>
         <Play size={16} color="#fff" fill="#fff" />
       </View>

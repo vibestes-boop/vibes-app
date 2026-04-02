@@ -1,9 +1,13 @@
 -- ══════════════════════════════════════════════════════════════════════════════
--- VIBES — Algorithm PRODUCTION v2 (Einzige kanonische Datei)
+-- VIBES — Algorithm PRODUCTION v2 (Basis-Datei)
 -- Enthält: Gaming-Resistenz, Diversity, Freshness, Decay, Leaderboard
 --
--- NUR DIESE DATEI ausführen. Alle anderen algorithm_*.sql sind obsolet.
--- Reihenfolge innerhalb dieser Datei ist wichtig (Tabelle vor Funktion).
+-- AUSFÜHRUNGSREIHENFOLGE:
+--   1. DIESE DATEI (algorithm_production.sql) — Basis
+--   2. user_learning_profile.sql             — Passiver Lern-Loop (DANACH ausführen)
+--      → Überschreibt: update_dwell_time + get_vibe_feed mit Lernprofil-Logik
+--
+-- Alle anderen algorithm_*.sql sind obsolet.
 -- ══════════════════════════════════════════════════════════════════════════════
 
 

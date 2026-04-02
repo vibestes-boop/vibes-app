@@ -142,9 +142,9 @@ export function useGuildStories() {
       });
     },
     enabled: !!userId,
-    staleTime: 1000 * 60,       // 1 Minute Cache — schneller Tab-Wechsel, trotzdem aktuell
-    gcTime:   1000 * 60 * 5,
-    refetchOnMount: 'always',   // beim ersten Mount immer frisch, danach gecached
+    staleTime: 1000 * 60,
+    gcTime: 1000 * 60 * 5,
+    refetchOnMount: true,        // Nur wenn stale (>60s) — nicht bei jedem Tab-Fokus
     refetchOnWindowFocus: false,
   });
 }
@@ -177,21 +177,30 @@ export function useCreateStory() {
       mediaUrl,
       mediaType,
       interactive,
+      thumbnailUrl,
     }: {
       mediaUrl: string;
       mediaType: string;
       interactive?: StoryPoll | null;
+      thumbnailUrl?: string | null;
     }) => {
       if (!userId) return;
-      const { error } = await supabase
-        .from('stories')
-        .insert({
-          user_id:     userId,
-          media_url:   mediaUrl,
-          media_type:  mediaType,
-          interactive: interactive ?? null,
-        });
-      if (error) throw error;
+      const insertData: Record<string, unknown> = {
+        user_id: userId,
+        media_url: mediaUrl,
+        media_type: mediaType,
+      };
+      if (interactive) {
+        insertData.interactive = interactive;
+      }
+      if (thumbnailUrl) {
+        insertData.thumbnail_url = thumbnailUrl;
+      }
+      const { error } = await supabase.from('stories').insert(insertData);
+      if (error) {
+        __DEV__ && console.error('[useCreateStory] Insert error:', error);
+        throw new Error(error.message);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guild-stories', userId] });

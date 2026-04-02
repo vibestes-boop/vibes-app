@@ -24,35 +24,63 @@ export type PostWithAuthor = {
 
 const FEED_PAGE_SIZE = 15;
 
+// Mindestanzahl frischer Posts bevor seen-Content recycelt wird
+const SEEN_FALLBACK_THRESHOLD = 5;
+
 export function useVibeFeed(activeTag: string | null = null) {
   const committedExplore = useVibeStore((s) => s.committedExplore);
   const committedBrain   = useVibeStore((s) => s.committedBrain);
 
   return useInfiniteQuery<PostWithAuthor[]>({
     queryKey: ['vibe-feed', committedExplore, committedBrain, activeTag],
-    initialPageParam: 0,
-    getNextPageParam: (lastPage, allPages) => {
-      // Wenn die letzte Seite weniger als PAGE_SIZE Posts hat, gibt es keine weitere Seite
-      if (lastPage.length < FEED_PAGE_SIZE) return undefined;
-      return allPages.length * FEED_PAGE_SIZE;
-    },
-    queryFn: async ({ pageParam }) => {
-      const offset = pageParam as number;
 
-      // Primär: personalisierter RPC mit Dwell-Algorithmus
-      const { data: rpcData, error: rpcError } = await supabase.rpc('get_vibe_feed', {
+    // ── ID-Exclusion cursor (statt OFFSET) ──────────────────────────────────
+    // Erste Seite: leeres Array → kein Filter
+    // Folgeseiten: alle bereits geladenen Post-IDs → nie Duplikate
+    initialPageParam: [] as string[],
+    getNextPageParam: (lastPage, allPages) => {
+      if (lastPage.length < FEED_PAGE_SIZE) return undefined;
+      // Cursor = alle bisher geladenen IDs (flach, dedupliziert)
+      return allPages.flat().map((p) => p.id);
+    },
+
+    queryFn: async ({ pageParam }) => {
+      const excludeIds = pageParam as string[];
+
+      // ─── Schritt 1: Nur ungesehene Posts ──────────────────────────────────
+      const { data: freshData, error: rpcError } = await supabase.rpc('get_vibe_feed', {
         explore_weight: committedExplore,
         brain_weight:   committedBrain,
         result_limit:   FEED_PAGE_SIZE,
-        result_offset:  offset,
         filter_tag:     activeTag ?? null,
+        include_seen:   false,
+        exclude_ids:    excludeIds,   // ← ID-Cursor statt result_offset
       });
 
-      if (!rpcError && Array.isArray(rpcData) && rpcData.length > 0) {
-        return rpcData as PostWithAuthor[];
+      const freshPosts = Array.isArray(freshData) ? freshData as PostWithAuthor[] : [];
+
+      // Genug frischer Content → direkt zurückgeben
+      if (!rpcError && freshPosts.length >= SEEN_FALLBACK_THRESHOLD) {
+        return freshPosts;
       }
 
-      // Fallback: direkter Query wenn RPC fehlt oder leer zurückgibt
+      // ─── Schritt 2: Automatischer Fallback → gesehene Posts recyceln ────
+      if (!rpcError || freshPosts.length === 0) {
+        const { data: seenData, error: seenError } = await supabase.rpc('get_vibe_feed', {
+          explore_weight: committedExplore,
+          brain_weight:   committedBrain,
+          result_limit:   FEED_PAGE_SIZE,
+          filter_tag:     activeTag ?? null,
+          include_seen:   true,
+          exclude_ids:    excludeIds,  // ← auch bei Fallback keine Duplikate
+        });
+
+        if (!seenError && Array.isArray(seenData) && seenData.length > 0) {
+          return seenData as PostWithAuthor[];
+        }
+      }
+
+      // ─── Schritt 3: Direkter DB-Query (Sicherheitsnetz) ──────────────────
       let query = supabase
         .from('posts')
         .select(`
@@ -61,17 +89,14 @@ export function useVibeFeed(activeTag: string | null = null) {
           tags, guild_id, is_guild_post, created_at,
           profiles!author_id (username, avatar_url)
         `)
-        .is('is_guild_post', false)   // ← Fix: war vorher im Fallback nicht gesetzt
+        .is('is_guild_post', false)
         .order('created_at', { ascending: false })
-        .range(offset, offset + FEED_PAGE_SIZE - 1);
+        .limit(FEED_PAGE_SIZE);
 
-      if (activeTag) {
-        // Bug 11 Fix: Builder gibt neue Instanz zurück — reassignment nötig
-        query = query.contains('tags', [activeTag]);
-      }
+      if (activeTag) query = query.contains('tags', [activeTag]);
+      if (excludeIds.length > 0) query = query.not('id', 'in', `(${excludeIds.join(',')})`);
 
       const { data: fallbackData, error: fallbackError } = await query;
-
       if (fallbackError) throw fallbackError;
 
       return ((fallbackData ?? []) as any[]).map((p) => ({
@@ -198,7 +223,7 @@ export function useUserPosts(userId: string | null) {
       if (!userId) return [];
       const { data, error } = await supabase
         .from('posts')
-        .select('id, media_url, media_type, caption, dwell_time_score')
+        .select('id, media_url, media_type, caption, dwell_time_score, thumbnail_url')
         .eq('author_id', userId)
         .order('created_at', { ascending: false });
       if (error) throw error;

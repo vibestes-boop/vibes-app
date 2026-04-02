@@ -19,7 +19,7 @@ import {
   launchImageLibraryAsync,
 } from 'expo-image-picker';
 import { ArrowLeft, ImagePlus, Type, Send, BarChart2, X } from 'lucide-react-native';
-import { uploadPostMedia } from '@/lib/uploadMedia';
+import { uploadPostMedia, generateAndUploadThumbnail } from '@/lib/uploadMedia';
 import { useAuthStore } from '@/lib/authStore';
 import { useCreateStory, type StoryPoll } from '@/lib/useStories';
 
@@ -67,20 +67,26 @@ export default function CreateStoryScreen() {
       const mimeType = mediaType === 'video' ? 'video/mp4' : 'image/jpeg';
       const { url: publicUrl } = await uploadPostMedia(profile.id, mediaUri, mimeType);
 
+      // Für Videos: Thumbnail aus erstem Frame generieren
+      let thumbnailUrl: string | null = null;
+      if (mediaType === 'video') {
+        thumbnailUrl = await generateAndUploadThumbnail(profile.id, mediaUri);
+      }
+
       // Poll nur hinzufügen wenn Frage ausgefüllt
       const interactive: StoryPoll | null =
         pollActive && pollQuestion.trim()
           ? {
-              type: 'poll',
-              question: pollQuestion.trim(),
-              options: [
-                pollOption0.trim() || 'Option 1',
-                pollOption1.trim() || 'Option 2',
-              ],
-            }
+            type: 'poll',
+            question: pollQuestion.trim(),
+            options: [
+              pollOption0.trim() || 'Option 1',
+              pollOption1.trim() || 'Option 2',
+            ],
+          }
           : null;
 
-      await createStory({ mediaUrl: publicUrl, mediaType, interactive });
+      await createStory({ mediaUrl: publicUrl, mediaType, interactive, thumbnailUrl });
       Alert.alert('Story veröffentlicht! 🎉', 'Deine Story ist 24 Stunden sichtbar.', [
         { text: 'OK', onPress: () => router.back() },
       ]);

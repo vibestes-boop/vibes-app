@@ -1,33 +1,34 @@
 /**
- * ProfileHighlightsRow.tsx
- * Story-Highlights horizontal scroll row — erscheint zwischen Avatar-Section
- * und Posts-Grid im eigenen Profil.
+ * ProfileHighlightsRow.tsx — Highlights 2.0
+ *
+ * • "+" öffnet visuellen Instagram-style Thumbnail-Picker (HighlightPickerSheet)
+ * • Stories UND Posts als Highlight speicherbar
+ * • media_url direkt im Highlight gespeichert → läuft nicht ab
+ * • Long-Press → Highlight löschen
  */
-import { useRef } from 'react';
 import {
-  View,
-  Text,
-  Pressable,
-  StyleSheet,
-  ScrollView,
-  Alert,
-  ActivityIndicator,
+  View, Text, Pressable, StyleSheet,
+  ScrollView, Alert, ActivityIndicator,
 } from 'react-native';
+import { useState } from 'react';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { PlusCircle } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import { useRouter } from 'expo-router';
 import {
-  useStoryHighlights,
-  useRemoveHighlight,
-  type StoryHighlight,
+  useStoryHighlights, useAddHighlight, useRemoveHighlight,
+  useMyStoryArchive, type StoryHighlight, type HighlightItem,
 } from '@/lib/useStoryHighlights';
+import { useStoryViewerStore } from '@/lib/storyViewerStore';
+import type { StoryGroup } from '@/lib/useStories';
+import { HighlightPickerSheet } from './HighlightPickerSheet';
 
+const BUBBLE_SIZE = 66;
+
+// ── Einzelne Highlight-Blase ──────────────────────────────────────────────────
 function HighlightBubble({
-  highlight,
-  isOwn,
-  onPress,
-  onLongPress,
+  highlight, isOwn, onPress, onLongPress,
 }: {
   highlight: StoryHighlight;
   isOwn: boolean;
@@ -39,32 +40,29 @@ function HighlightBubble({
       style={styles.bubble}
       onPress={onPress}
       onLongPress={onLongPress}
-      delayLongPress={400}
+      delayLongPress={420}
       accessibilityRole="button"
       accessibilityLabel={`Highlight: ${highlight.title}`}
     >
-      {/* Thumbnail */}
       <View style={styles.bubbleThumb}>
         <LinearGradient
           colors={['#0891B2', '#A855F7']}
           style={StyleSheet.absoluteFill}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         />
-        {highlight.media_url ? (
+        {/* thumbnail_url für Video-Highlights, media_url für Bilder */}
+        {(highlight.thumbnail_url || highlight.media_url) ? (
           <Image
-            source={{ uri: highlight.media_url }}
+            source={{ uri: highlight.thumbnail_url || highlight.media_url }}
             style={StyleSheet.absoluteFill}
-            contentFit="cover"
+            contentFit="contain"
           />
         ) : null}
-        {/* Subtle vignette */}
         <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.35)']}
+          colors={['transparent', 'rgba(0,0,0,0.4)']}
           style={StyleSheet.absoluteFill}
         />
       </View>
-      {/* Label */}
       <Text style={styles.bubbleLabel} numberOfLines={1}>
         {highlight.title}
       </Text>
@@ -72,31 +70,91 @@ function HighlightBubble({
   );
 }
 
+// ── Hauptkomponente ───────────────────────────────────────────────────────────
 export function ProfileHighlightsRow({
-  userId,
-  isOwn,
+  userId, isOwn,
 }: {
   userId: string | null;
   isOwn: boolean;
 }) {
+  const router = useRouter();
   const { data: highlights = [], isLoading } = useStoryHighlights(userId);
-  const removeHighlight = useRemoveHighlight();
+  const { mutate: removeHighlight } = useRemoveHighlight();
+  const { mutate: addHighlight, isPending: isAdding } = useAddHighlight();
+  const { data: storyArchive = [] } = useMyStoryArchive();
+  const openViewer = useStoryViewerStore((s) => s.open);
+  const [pickerVisible, setPickerVisible] = useState(false);
 
-  const handleLongPress = (highlight: StoryHighlight) => {
+  // ── Highlight im Story-Viewer öffnen ──────────────────────────────────────
+  const handleHighlightPress = (h: StoryHighlight) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    // Multi-Item: alle Items des Highlights als Story-Gruppe anzeigen
+    const itemsToShow = h.items.length > 0
+      ? h.items
+      : [{ media_url: h.media_url, media_type: h.media_type as 'image' | 'video', thumbnail_url: h.thumbnail_url }];
+
+    const group: StoryGroup = {
+      userId: h.user_id,
+      username: null,
+      avatar_url: null,
+      hasUnviewed: false,
+      stories: itemsToShow.map((item, idx) => ({
+        id:         `${h.id}-${idx}`,
+        user_id:    h.user_id,
+        media_url:  item.media_url,
+        media_type: item.media_type,
+        created_at: h.created_at,
+        username:   null,
+        avatar_url: null,
+        viewed:     true,
+        interactive: null,
+      })),
+    };
+    openViewer(group, [group]);
+    router.push('/story-viewer' as any);
+  };
+
+  // ── Long-Press: Highlight löschen ────────────────────────────────────────
+  const handleLongPress = (h: StoryHighlight) => {
     if (!isOwn) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Alert.alert(
-      `"${highlight.title}" entfernen?`,
+      `"${h.title}" entfernen?`,
       'Das Highlight wird aus deinem Profil gelöscht.',
       [
         { text: 'Abbrechen', style: 'cancel' },
-        {
-          text: 'Entfernen',
-          style: 'destructive',
-          onPress: () => removeHighlight.mutate(highlight.id),
-        },
+        { text: 'Entfernen', style: 'destructive', onPress: () => removeHighlight(h.id) },
       ]
     );
+  };
+
+  // ── "+" Button → Picker öffnen ───────────────────────────────────────────
+  const handleAddPress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+    if (storyArchive.length === 0) {
+      Alert.alert(
+        'Noch keine Stories',
+        'Erstelle zuerst eine Story — oder halte einen Post lange gedrückt um ihn zu highlighten.',
+        [
+          { text: 'Abbrechen', style: 'cancel' },
+          { text: 'Story erstellen', onPress: () => router.push('/create-story' as any) },
+        ]
+      );
+      return;
+    }
+
+    setPickerVisible(true);
+  };
+
+  // ── Picker: Mehrere Stories ausgewählt + Titel vergeben ──────────────────
+  const handlePickerConfirm = (items: HighlightItem[], title: string) => {
+    addHighlight({
+      type: 'story',
+      storyId: null, // Multi-Item → kein einzelner story_id Verweis
+      items,
+      title,
+    });
   };
 
   if (!isLoading && highlights.length === 0 && !isOwn) return null;
@@ -108,14 +166,22 @@ export function ProfileHighlightsRow({
         showsHorizontalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* "+ Neu" Bubble (nur für eigenes Profil) */}
+        {/* "+" Neu — nur eigenes Profil */}
         {isOwn && (
-          <View style={styles.bubble}>
+          <Pressable
+            style={styles.bubble}
+            onPress={handleAddPress}
+            accessibilityRole="button"
+            accessibilityLabel="Neues Highlight erstellen"
+          >
             <View style={[styles.bubbleThumb, styles.addThumb]}>
-              <PlusCircle size={26} color="rgba(255,255,255,0.4)" strokeWidth={1.5} />
+              {isAdding
+                ? <ActivityIndicator color="#22D3EE" size="small" />
+                : <PlusCircle size={28} color="rgba(255,255,255,0.45)" strokeWidth={1.5} />
+              }
             </View>
             <Text style={styles.bubbleLabel}>Neu</Text>
-          </View>
+          </Pressable>
         )}
 
         {isLoading ? (
@@ -128,7 +194,7 @@ export function ProfileHighlightsRow({
               key={h.id}
               highlight={h}
               isOwn={isOwn}
-              onPress={() => {/* Navigate to story-viewer */ }}
+              onPress={() => handleHighlightPress(h)}
               onLongPress={() => handleLongPress(h)}
             />
           ))
@@ -137,39 +203,30 @@ export function ProfileHighlightsRow({
 
       {highlights.length === 0 && isOwn && !isLoading && (
         <Text style={styles.emptyHint}>
-          Tippe + um Stories als Highlights zu speichern
+          Tippe + um Stories zu highlighten · Long-Press auf Post zum Pinnen
         </Text>
       )}
+
+      {/* ── Visueller Thumbnail-Picker ── */}
+      <HighlightPickerSheet
+        visible={pickerVisible}
+        stories={storyArchive}
+        onClose={() => setPickerVisible(false)}
+        onConfirm={handlePickerConfirm}
+      />
     </View>
   );
 }
 
-const BUBBLE_SIZE = 64;
 
 const styles = StyleSheet.create({
-  container: {
-    paddingBottom: 4,
-  },
-  scrollContent: {
-    paddingHorizontal: 16,
-    gap: 12,
-    paddingVertical: 8,
-  },
-  bubble: {
-    alignItems: 'center',
-    gap: 5,
-    width: BUBBLE_SIZE,
-  },
+  container:    { paddingBottom: 4 },
+  scrollContent: { paddingHorizontal: 16, gap: 14, paddingVertical: 10 },
+  bubble:       { alignItems: 'center', gap: 6, width: BUBBLE_SIZE },
   bubbleThumb: {
-    width: BUBBLE_SIZE,
-    height: BUBBLE_SIZE,
-    borderRadius: BUBBLE_SIZE / 2,
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: 'rgba(34,211,238,0.4)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#111',
+    width: BUBBLE_SIZE, height: BUBBLE_SIZE, borderRadius: BUBBLE_SIZE / 2,
+    overflow: 'hidden', borderWidth: 2, borderColor: 'rgba(34,211,238,0.45)',
+    alignItems: 'center', justifyContent: 'center', backgroundColor: '#111',
   },
   addThumb: {
     borderStyle: 'dashed',
@@ -177,23 +234,15 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.04)',
   },
   bubbleLabel: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 10,
-    fontWeight: '600',
-    textAlign: 'center',
-    width: BUBBLE_SIZE + 8,
+    color: 'rgba(255,255,255,0.7)', fontSize: 10, fontWeight: '600',
+    textAlign: 'center', width: BUBBLE_SIZE + 10,
   },
   loadingWrap: {
-    width: BUBBLE_SIZE,
-    height: BUBBLE_SIZE,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: BUBBLE_SIZE, height: BUBBLE_SIZE,
+    alignItems: 'center', justifyContent: 'center',
   },
   emptyHint: {
-    color: 'rgba(255,255,255,0.2)',
-    fontSize: 11,
-    textAlign: 'center',
-    paddingHorizontal: 32,
-    paddingBottom: 6,
+    color: 'rgba(255,255,255,0.22)', fontSize: 11, textAlign: 'center',
+    paddingHorizontal: 32, paddingBottom: 6, lineHeight: 17,
   },
 });

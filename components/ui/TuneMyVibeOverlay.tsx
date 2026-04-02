@@ -6,7 +6,10 @@ import {
   Dimensions,
   Pressable,
 } from 'react-native';
-import Animated, {
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
+const Animated = { View: _animNS?.View ?? _animMod?.View };
+import {
   useAnimatedStyle,
   useSharedValue,
   withTiming,
@@ -20,21 +23,21 @@ import { useVibeStore } from '@/lib/store';
 
 // ── Tag-Score Matrix (muss mit vibe_scores.sql übereinstimmen) ─────────────
 const TAG_MATRIX: { tag: string; emoji: string; brain: number; explore: number }[] = [
-  { tag: 'tech',         emoji: '💻', brain: 0.92, explore: 0.22 },
-  { tag: 'business',     emoji: '📈', brain: 0.80, explore: 0.35 },
+  { tag: 'tech', emoji: '💻', brain: 0.92, explore: 0.22 },
+  { tag: 'business', emoji: '📈', brain: 0.80, explore: 0.35 },
   { tag: 'architecture', emoji: '🏛️', brain: 0.72, explore: 0.55 },
-  { tag: 'design',       emoji: '🎨', brain: 0.68, explore: 0.62 },
-  { tag: 'mindfulness',  emoji: '🧘', brain: 0.62, explore: 0.70 },
-  { tag: 'motivation',   emoji: '💪', brain: 0.55, explore: 0.60 },
-  { tag: 'gaming',       emoji: '🎮', brain: 0.40, explore: 0.55 },
-  { tag: 'art',          emoji: '🖼️', brain: 0.42, explore: 0.88 },
-  { tag: 'film',         emoji: '🎬', brain: 0.45, explore: 0.72 },
-  { tag: 'music',        emoji: '🎵', brain: 0.35, explore: 0.65 },
-  { tag: 'travel',       emoji: '✈️', brain: 0.32, explore: 0.92 },
-  { tag: 'nature',       emoji: '🌿', brain: 0.30, explore: 0.82 },
-  { tag: 'sport',        emoji: '⚡', brain: 0.28, explore: 0.42 },
-  { tag: 'food',         emoji: '🍜', brain: 0.22, explore: 0.48 },
-  { tag: 'fashion',      emoji: '👗', brain: 0.20, explore: 0.52 },
+  { tag: 'design', emoji: '🎨', brain: 0.68, explore: 0.62 },
+  { tag: 'mindfulness', emoji: '🧘', brain: 0.62, explore: 0.70 },
+  { tag: 'motivation', emoji: '💪', brain: 0.55, explore: 0.60 },
+  { tag: 'gaming', emoji: '🎮', brain: 0.40, explore: 0.55 },
+  { tag: 'art', emoji: '🖼️', brain: 0.42, explore: 0.88 },
+  { tag: 'film', emoji: '🎬', brain: 0.45, explore: 0.72 },
+  { tag: 'music', emoji: '🎵', brain: 0.35, explore: 0.65 },
+  { tag: 'travel', emoji: '✈️', brain: 0.32, explore: 0.92 },
+  { tag: 'nature', emoji: '🌿', brain: 0.30, explore: 0.82 },
+  { tag: 'sport', emoji: '⚡', brain: 0.28, explore: 0.42 },
+  { tag: 'food', emoji: '🍜', brain: 0.22, explore: 0.48 },
+  { tag: 'fashion', emoji: '👗', brain: 0.20, explore: 0.52 },
 ];
 
 // Berechnet welche Tags am besten zum aktuellen Slider passen

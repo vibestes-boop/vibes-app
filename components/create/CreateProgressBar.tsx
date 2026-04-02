@@ -1,6 +1,9 @@
 import { useEffect } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import Animated, {
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
+const Animated = { View: _animNS?.View ?? _animMod?.View };
+import {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
@@ -36,7 +39,7 @@ export function CreateProgressBar({ visible, progress, onCancel }: CreateProgres
       pulseOpacity.value = withRepeat(
         withSequence(
           withTiming(0.3, { duration: 400 }),
-          withTiming(1,   { duration: 400 }),
+          withTiming(1, { duration: 400 }),
         ),
         -1,
         true,
@@ -45,7 +48,7 @@ export function CreateProgressBar({ visible, progress, onCancel }: CreateProgres
       pulseOpacity.value = withTiming(1, { duration: 150 });
       fillWidth.value = withTiming(progress, { duration: 300 });
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, progress, isRetrying]);
 
   const fillStyle = useAnimatedStyle(() => ({

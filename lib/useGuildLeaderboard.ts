@@ -6,6 +6,7 @@ export type LeaderboardPost = {
   caption: string | null;
   media_url: string;
   media_type: string;
+  thumbnail_url?: string | null; // Statisches Thumbnail für Videos
   dwell_time_score: number;
   avg_seconds: number;
   completion_pct: number;

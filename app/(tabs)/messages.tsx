@@ -1,19 +1,27 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, Pressable,
-  Image, ActivityIndicator, RefreshControl,
+  ActivityIndicator, RefreshControl,
   Modal, TextInput, TouchableOpacity, Alert,
 } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
+
+
 import { FlashList } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router, useLocalSearchParams } from 'expo-router';
-import { MessageCircle, PenSquare, Search, X } from 'lucide-react-native';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { MessageCircle, PenSquare, Search, X, Bookmark } from 'lucide-react-native';
+
 import * as Haptics from 'expo-haptics';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/lib/authStore';
 import { useConversations, useOrCreateConversation, type Conversation } from '@/lib/useMessages';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { StoriesRow } from '@/components/ui/StoriesRow';
+import { useGuildStories, type StoryGroup } from '@/lib/useStories';
+import { useStoryViewerStore } from '@/lib/storyViewerStore';
+import { useActiveLiveSessions } from '@/lib/useLiveSession';
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -26,22 +34,46 @@ function timeAgo(dateStr: string): string {
   return 'Jetzt';
 }
 
-function ConvItem({ item, onDelete }: { item: Conversation; onDelete: () => void }) {
-  const initial = (item.other_user.username ?? '?')[0].toUpperCase();
+function ConvItem({
+  item,
+  onDelete,
+  storyGroup,
+  isLive,
+  onAvatarPress,
+  currentUserId,
+  ownAvatarUrl,
+  ownUsername,
+}: {
+  item: Conversation;
+  onDelete: () => void;
+  storyGroup?: { hasUnviewed: boolean } | null;
+  isLive?: boolean;
+  onAvatarPress?: () => void;
+  currentUserId?: string;
+  ownAvatarUrl?: string | null;
+  ownUsername?: string | null;
+}) {
+  // Selbst-Chat: eigenes Profil anzeigen + "Meine Notizen" Label
+  const isSelfChat = item.other_user.id === currentUserId;
+  const displayAvatarUrl = isSelfChat ? (ownAvatarUrl ?? item.other_user.avatar_url) : item.other_user.avatar_url;
+  const displayUsername = isSelfChat ? (ownUsername ?? item.other_user.username) : item.other_user.username;
+  const initial = (displayUsername ?? '?')[0].toUpperCase();
   const hasUnread = item.unread_count > 0;
+  const hasStory = !!storyGroup && !isSelfChat; // kein Story-Ring für Selbst-Chat
+  const hasUnviewed = storyGroup?.hasUnviewed ?? false;
 
   return (
     <Pressable
       style={[styles.item, hasUnread && styles.itemUnread]}
       onPress={() => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        router.push({ pathname: '/messages/[id]', params: { id: item.id, username: item.other_user.username ?? '', avatarUrl: item.other_user.avatar_url ?? '', otherUserId: item.other_user.id ?? '' } });
+        router.push({ pathname: '/messages/[id]', params: { id: item.id, username: displayUsername ?? '', avatarUrl: displayAvatarUrl ?? '', otherUserId: item.other_user.id ?? '' } });
       }}
       onLongPress={() => {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         Alert.alert(
-          'Konversation löschen',
-          `Chat mit @${item.other_user.username ?? '?'} löschen?`,
+          isSelfChat ? 'Notizen löschen' : 'Konversation löschen',
+          isSelfChat ? 'Meine Notizen löschen?' : `Chat mit @${displayUsername ?? '?'} löschen?`,
           [
             { text: 'Abbrechen', style: 'cancel' },
             { text: 'Löschen', style: 'destructive', onPress: onDelete },
@@ -50,15 +82,17 @@ function ConvItem({ item, onDelete }: { item: Conversation; onDelete: () => void
       }}
       delayLongPress={500}
       accessibilityRole="button"
-      accessibilityLabel={`Chat mit @${item.other_user.username ?? 'Nutzer'} öffnen${hasUnread ? `, ${item.unread_count} ungelesen` : ''}`}
+      accessibilityLabel={isSelfChat ? 'Meine Notizen' : `Chat mit @${displayUsername ?? 'Nutzer'} öffnen`}
     >
       {hasUnread && <View style={styles.unreadDot} />}
 
-      {/* Avatar — klickbar → Profil */}
+      {/* Avatar mit Story-Ring + Live-Badge */}
       <Pressable
         style={styles.avatarWrap}
         onPress={(e) => {
           e.stopPropagation();
+          if (isSelfChat) return; // Selbst-Chat: kein Profil-Push
+          if (onAvatarPress) { onAvatarPress(); return; }
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           if (item.other_user.id) {
             router.push({ pathname: '/user/[id]', params: { id: item.other_user.id } });
@@ -66,17 +100,42 @@ function ConvItem({ item, onDelete }: { item: Conversation; onDelete: () => void
         }}
         hitSlop={4}
         accessibilityRole="button"
-        accessibilityLabel={`@${item.other_user.username ?? 'Nutzer'} Profil anzeigen`}
+        accessibilityLabel={isSelfChat ? 'Meine Notizen' : `@${displayUsername ?? 'Nutzer'} Profil anzeigen`}
       >
-        {item.other_user.avatar_url ? (
-          <Image
-            source={{ uri: item.other_user.avatar_url }}
-            style={styles.avatar}
-            accessibilityLabel={`@${item.other_user.username ?? 'Nutzer'} Profilbild`}
+        {/* Story-Ring */}
+        {hasStory && !isLive && (
+          <View style={[
+            styles.storyRing,
+            hasUnviewed ? styles.storyRingActive : styles.storyRingSeen,
+          ]} />
+        )}
+        {/* Live-Ring */}
+        {isLive && !isSelfChat && (
+          <View style={styles.liveRing} />
+        )}
+
+        {displayAvatarUrl ? (
+          <ExpoImage
+            source={{ uri: displayAvatarUrl }}
+            style={[styles.avatar, (hasStory || isLive) && styles.avatarWithRing]}
+            contentFit="cover"
+            transition={150}
+            cachePolicy="memory-disk"
+            accessibilityLabel={isSelfChat ? 'Mein Profilbild' : `@${displayUsername ?? 'Nutzer'} Profilbild`}
           />
         ) : (
-          <View style={[styles.avatar, styles.avatarFallback]}>
-            <Text style={styles.avatarInitial}>{initial}</Text>
+          <View style={[styles.avatar, styles.avatarFallback, isSelfChat && styles.avatarSelf, (hasStory || isLive) && styles.avatarWithRing]}>
+            {isSelfChat
+              ? <Bookmark size={24} color="#22D3EE" strokeWidth={2} />
+              : <Text style={styles.avatarInitial}>{initial}</Text>
+            }
+          </View>
+        )}
+
+        {/* LIVE-Badge */}
+        {isLive && !isSelfChat && (
+          <View style={styles.liveBadge}>
+            <Text style={styles.liveBadgeText}>LIVE</Text>
           </View>
         )}
       </Pressable>
@@ -84,16 +143,19 @@ function ConvItem({ item, onDelete }: { item: Conversation; onDelete: () => void
       {/* Text */}
       <View style={styles.textWrap}>
         <View style={styles.nameRow}>
-          <Text style={[styles.username, hasUnread && styles.usernameUnread]}>
-            @{item.other_user.username ?? '?'}
-          </Text>
+          <View style={styles.selfChatLabel}>
+            {isSelfChat && <Bookmark size={13} color="#22D3EE" strokeWidth={2} style={{ marginRight: 4 }} />}
+            <Text style={[styles.username, hasUnread && styles.usernameUnread, isSelfChat && styles.selfChatUsername]}>
+              {isSelfChat ? 'Meine Notizen' : `@${displayUsername ?? '?'}`}
+            </Text>
+          </View>
           <Text style={styles.timeText}>{timeAgo(item.last_message_at)}</Text>
         </View>
         <Text
           style={[styles.preview, hasUnread && styles.previewUnread]}
           numberOfLines={1}
         >
-          {item.last_message ?? 'Konversation starten…'}
+          {item.last_message ?? (isSelfChat ? 'Speichere Notizen, Links & Posts…' : 'Konversation starten…')}
         </Text>
       </View>
 
@@ -191,7 +253,8 @@ function NewMessageModal({ visible, onClose }: { visible: boolean; onClose: () =
               return (
                 <TouchableOpacity style={modal.userRow} onPress={() => handleSelect(item)} activeOpacity={0.7}>
                   {item.avatar_url ? (
-                    <Image source={{ uri: item.avatar_url }} style={modal.avatar} />
+                    <ExpoImage source={{ uri: item.avatar_url }} style={modal.avatar} contentFit="cover" cachePolicy="memory-disk" />
+
                   ) : (
                     <View style={[modal.avatar, modal.avatarFallback]}>
                       <Text style={modal.avatarInitial}>{initial}</Text>
@@ -216,6 +279,45 @@ export default function MessagesScreen() {
   const { data: convs = [], isLoading, refetch, isRefetching } = useConversations();
   const queryClient = useQueryClient();
   const { mutateAsync: openConv } = useOrCreateConversation();
+  // Eigene Profildaten für Selbst-Chat-Anzeige
+  // Fallback: direkt aus Supabase laden falls authStore avatar_url fehlt
+  const { profile } = useAuthStore();
+  const ownUserId = profile?.id;
+  const ownUsername = profile?.username ?? null;
+  const [freshAvatarUrl, setFreshAvatarUrl] = useState<string | null>(profile?.avatar_url ?? null);
+
+  useEffect(() => {
+    if (freshAvatarUrl || !ownUserId) return;
+    // Einmaliger direkter Fetch falls Cache-Profil keine avatar_url hat
+    supabase.from('profiles').select('avatar_url').eq('id', ownUserId).single()
+      .then(({ data }) => { if (data?.avatar_url) setFreshAvatarUrl(data.avatar_url); });
+  }, [ownUserId, freshAvatarUrl]);
+
+  const ownAvatarUrl = freshAvatarUrl;
+
+
+  // ── Stories & Live Sessions ──────────────────────────────────────────────
+  const { data: storyGroups = [], refetch: refetchStories, isRefetching: isRefetchingStories } = useGuildStories();
+  const { data: liveSessions = [] } = useActiveLiveSessions();
+  const openStory = useStoryViewerStore((s) => s.open);
+  const storyGroupMap = useMemo(() => new Map(storyGroups.map((g) => [g.userId, g])), [storyGroups]);
+
+
+
+  const handleOpenStory = useCallback(
+    (group: StoryGroup) => {
+      openStory(group, storyGroups);
+      router.push('/story-viewer' as any);
+    },
+    [openStory, storyGroups],
+  );
+
+  // Beim Tab-Wechsel Stories frisch laden
+  useFocusEffect(
+    useCallback(() => {
+      refetchStories();
+    }, [refetchStories]),
+  );
 
   // DM-Button aus Live Watch: sofort Konversation mit Host öffnen
   useEffect(() => {
@@ -226,10 +328,10 @@ export default function MessagesScreen() {
         if (!mounted) return;
         router.push({ pathname: '/messages/[id]', params: { id: convId } });
       })
-      .catch(() => {});
+      .catch(() => { });
     return () => { mounted = false; };
-  // openConv ist stabil (useMutation ref), router ist stabil (expo-router)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // openConv ist stabil (useMutation ref), router ist stabil (expo-router)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preSelectUserId]);
 
   // Konversation lokal aus Cache löschen
@@ -244,11 +346,44 @@ export default function MessagesScreen() {
   }, [queryClient]);
 
   const renderItem = useCallback(
-    ({ item }: { item: Conversation }) => (
-      <ConvItem item={item} onDelete={() => handleDeleteConv(item.id)} />
-    ),
-    [handleDeleteConv],
+    ({ item }: { item: Conversation }) => {
+      const otherId = item.other_user.id;
+      const storyGroup = storyGroupMap.get(otherId) ?? null;
+      const isLive = liveSessions.some((s: any) => s.host_id === otherId || s.user_id === otherId);
+      return (
+        <ConvItem
+          item={item}
+          onDelete={() => handleDeleteConv(item.id)}
+          storyGroup={storyGroup}
+          isLive={isLive}
+          onAvatarPress={storyGroup ? () => handleOpenStory(storyGroup) : undefined}
+          currentUserId={ownUserId}
+          ownAvatarUrl={ownAvatarUrl}
+          ownUsername={ownUsername}
+        />
+      );
+    },
+    [handleDeleteConv, storyGroupMap, liveSessions, handleOpenStory, ownUserId, ownAvatarUrl, ownUsername],
   );
+
+  // Pull-to-Refresh: Conversations UND Stories gleichzeitig
+  const handleRefresh = useCallback(async () => {
+    await Promise.all([refetch(), refetchStories()]);
+  }, [refetch, refetchStories]);
+
+  const isRefreshingAny = isRefetching || isRefetchingStories;
+
+  // Stories+Live Row als ListHeader — damit Pull-to-Refresh alles abdeckt
+  const ListHeader = useMemo(() => (
+    (storyGroups.length > 0 || liveSessions.length > 0) ? (
+      <StoriesRow
+        groups={storyGroups}
+        liveSessions={liveSessions}
+        onSelectGroup={handleOpenStory}
+        onAddStory={() => router.push('/live/start' as any)}
+      />
+    ) : null
+  ), [storyGroups, liveSessions, handleOpenStory, router]);
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
@@ -266,37 +401,49 @@ export default function MessagesScreen() {
         </Pressable>
       </View>
 
-      {isLoading ? (
-        <View style={styles.center}>
-          <ActivityIndicator color="#22D3EE" size="large" />
-        </View>
-      ) : convs.length === 0 ? (
-        <View style={styles.center}>
-          <MessageCircle size={52} color="rgba(255,255,255,0.1)" strokeWidth={1.2} />
-          <Text style={styles.emptyTitle}>Noch keine Nachrichten</Text>
-          <Text style={styles.emptyDesc}>
-            Starte eine Konversation mit jemandem aus der Community.
-          </Text>
-          <Pressable
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowNew(true); }}
-            style={styles.emptyBtn}
-            accessibilityRole="button"
-            accessibilityLabel="Nutzer suchen und Nachricht senden"
-          >
-            <Text style={styles.emptyBtnText}>Nutzer suchen</Text>
-          </Pressable>
-        </View>
+
+      {/* Alles in einer FlashList: Stories als Header + Conversations als Body.
+          So deckt Pull-to-Refresh sowohl Stories als auch Nachrichten ab. */}
+      {isLoading && convs.length === 0 ? (
+        <>
+          {ListHeader}
+          <View style={styles.center}>
+            <ActivityIndicator color="#22D3EE" size="large" />
+          </View>
+        </>
       ) : (
         <FlashList
           data={convs}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           estimatedItemSize={80}
+          ListHeaderComponent={ListHeader}
+          ListEmptyComponent={
+            <View style={styles.center}>
+              <MessageCircle size={52} color="rgba(255,255,255,0.1)" strokeWidth={1.2} />
+              <Text style={styles.emptyTitle}>Noch keine Nachrichten</Text>
+              <Text style={styles.emptyDesc}>
+                Starte eine Konversation mit jemandem aus der Community.
+              </Text>
+              <Pressable
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowNew(true); }}
+                style={styles.emptyBtn}
+                accessibilityRole="button"
+                accessibilityLabel="Nutzer suchen und Nachricht senden"
+              >
+                <Text style={styles.emptyBtnText}>Nutzer suchen</Text>
+              </Pressable>
+            </View>
+          }
           contentContainerStyle={{ paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
           refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor="#22D3EE" />
+            <RefreshControl
+              refreshing={isRefreshingAny}
+              onRefresh={handleRefresh}
+              tintColor="#22D3EE"
+            />
           }
         />
       )}
@@ -334,10 +481,36 @@ const styles = StyleSheet.create({
     width: 5, height: 5, borderRadius: 2.5,
     backgroundColor: '#22D3EE', marginTop: -2.5,
   },
-  avatarWrap: { position: 'relative', width: 52, height: 52 },
-  avatar: { width: 52, height: 52, borderRadius: 26, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.1)' },
+  avatarWrap: { position: 'relative', width: 56, height: 56 },
+  avatar: { width: 56, height: 56, borderRadius: 28, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.1)' },
+  avatarWithRing: { width: 48, height: 48, borderRadius: 24, borderWidth: 0, position: 'absolute', top: 4, left: 4 },
   avatarFallback: { backgroundColor: 'rgba(34,211,238,0.2)', alignItems: 'center', justifyContent: 'center' },
   avatarInitial: { color: '#22D3EE', fontSize: 20, fontWeight: '700' },
+  // Story-Ring: Instagram-Style Gradient-Rand
+  storyRing: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    borderRadius: 28, borderWidth: 2.5,
+  },
+  storyRingActive: { borderColor: '#E1306C' }, // Instagram Gradient-Farbe (vereinfacht)
+  storyRingSeen: { borderColor: 'rgba(255,255,255,0.25)' },
+  // Live-Ring: roter leuchtender Rand
+  liveRing: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    borderRadius: 28, borderWidth: 2.5, borderColor: '#EF4444',
+  },
+  // LIVE-Badge
+  liveBadge: {
+    position: 'absolute', bottom: -1, left: '50%',
+    transform: [{ translateX: -16 }],
+    backgroundColor: '#EF4444',
+    borderRadius: 4, paddingHorizontal: 4, paddingVertical: 1,
+    borderWidth: 1.5, borderColor: '#050508',
+  },
+  liveBadgeText: { color: '#fff', fontSize: 8, fontWeight: '800', letterSpacing: 0.5 },
+  // Selbst-Chat "Meine Notizen"
+  avatarSelf: { backgroundColor: 'rgba(34,211,238,0.1)', borderWidth: 1.5, borderColor: 'rgba(34,211,238,0.3)' },
+  selfChatLabel: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  selfChatUsername: { color: '#22D3EE', fontWeight: '700' },
   onlineDot: {
     position: 'absolute', bottom: 1, right: 1,
     width: 13, height: 13, borderRadius: 6.5,

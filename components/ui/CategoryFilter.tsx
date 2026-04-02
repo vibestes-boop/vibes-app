@@ -1,6 +1,9 @@
 import { useRef, useCallback } from 'react';
 import { ScrollView, Pressable, Text, StyleSheet, View } from 'react-native';
-import Animated, {
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
+const Animated = { View: _animNS?.View ?? _animMod?.View };
+import {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
@@ -17,16 +20,16 @@ export type Category = {
 };
 
 export const CATEGORIES: Category[] = [
-  { id: null,           label: 'For You',      emoji: '✦',  gradient: ['#0891B2', '#22D3EE'] },
-  { id: 'tech',         label: 'Tech',         emoji: '💻', gradient: ['#0EA5E9', '#38BDF8'] },
-  { id: 'design',       label: 'Design',       emoji: '🎨', gradient: ['#EC4899', '#F9A8D4'] },
-  { id: 'art',          label: 'Art',          emoji: '🖼️',  gradient: ['#F59E0B', '#FDE68A'] },
-  { id: 'travel',       label: 'Travel',       emoji: '✈️',  gradient: ['#10B981', '#6EE7B7'] },
-  { id: 'architecture', label: 'Architecture', emoji: '🏛️',  gradient: ['#0891B2', '#67E8F9'] },
-  { id: 'fashion',      label: 'Fashion',      emoji: '👗', gradient: ['#F43F5E', '#FDA4AF'] },
-  { id: 'music',        label: 'Music',        emoji: '🎵', gradient: ['#22D3EE', '#A5F3FC'] },
-  { id: 'food',         label: 'Food',         emoji: '🍜', gradient: ['#EF4444', '#FCA5A5'] },
-  { id: 'sport',        label: 'Sport',        emoji: '⚡', gradient: ['#F97316', '#FED7AA'] },
+  { id: null, label: 'For You', emoji: '✦', gradient: ['#0891B2', '#22D3EE'] },
+  { id: 'tech', label: 'Tech', emoji: '💻', gradient: ['#0EA5E9', '#38BDF8'] },
+  { id: 'design', label: 'Design', emoji: '🎨', gradient: ['#EC4899', '#F9A8D4'] },
+  { id: 'art', label: 'Art', emoji: '🖼️', gradient: ['#F59E0B', '#FDE68A'] },
+  { id: 'travel', label: 'Travel', emoji: '✈️', gradient: ['#10B981', '#6EE7B7'] },
+  { id: 'architecture', label: 'Architecture', emoji: '🏛️', gradient: ['#0891B2', '#67E8F9'] },
+  { id: 'fashion', label: 'Fashion', emoji: '👗', gradient: ['#F43F5E', '#FDA4AF'] },
+  { id: 'music', label: 'Music', emoji: '🎵', gradient: ['#22D3EE', '#A5F3FC'] },
+  { id: 'food', label: 'Food', emoji: '🍜', gradient: ['#EF4444', '#FCA5A5'] },
+  { id: 'sport', label: 'Sport', emoji: '⚡', gradient: ['#F97316', '#FED7AA'] },
 ];
 
 // ── "For You" — Sonderpill mit KI-Aura ────────────────────────────────────────

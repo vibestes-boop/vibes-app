@@ -19,7 +19,10 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import * as Clipboard from 'expo-clipboard';
-import Animated, {
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
+const Animated = { View: _animNS?.View ?? _animMod?.View };
+import {
   FadeIn,
   FadeOut,
   SlideInDown,
@@ -233,7 +236,7 @@ export default function LiveShareSheet({ visible, onClose, sessionId, title }: P
         );
         break;
       case 'sms':
-        Linking.openURL(`sms:?body=${encodeURIComponent(shareMsg)}`).catch(() => {});
+        Linking.openURL(`sms:?body=${encodeURIComponent(shareMsg)}`).catch(() => { });
         break;
       case 'native':
         Share.share({ message: shareMsg, title: title || 'Live auf Vibes' });
@@ -251,7 +254,7 @@ export default function LiveShareSheet({ visible, onClose, sessionId, title }: P
         Share.share({
           message: shareMsg,
           title: title || 'Live auf Vibes',
-        }).catch(() => {});
+        }).catch(() => { });
         break;
       case 'report':
         // Melden: System-Level Alert mit Report-Optionen

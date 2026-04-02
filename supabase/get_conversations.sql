@@ -31,6 +31,7 @@ AS $$
     WHERE c.participant_1 = auth.uid()
        OR c.participant_2 = auth.uid()
   ),
+
   last_msgs AS (
     -- Letzte Nachricht pro Konversation (1 Query für alle)
     SELECT DISTINCT ON (m.conversation_id)

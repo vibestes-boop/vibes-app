@@ -17,9 +17,9 @@ var RN = require('react-native');
 // ResizeMode constants
 var ResizeMode = {
   CONTAIN: 'contain',
-  COVER:   'cover',
+  COVER: 'cover',
   STRETCH: 'stretch',
-  NONE:    'none',
+  NONE: 'none',
 };
 
 var AVPlaybackStatus = {};
@@ -82,23 +82,24 @@ var Audio = {
   Sound: {
     createAsync: function () { return Promise.resolve({ sound: {}, status: {} }); },
   },
-  setAudioModeAsync:        function () { return Promise.resolve(); },
-  setIsEnabledAsync:        function () { return Promise.resolve(); },
-  requestPermissionsAsync:  function () { return Promise.resolve({ status: 'undetermined' }); },
-  getPermissionsAsync:      function () { return Promise.resolve({ status: 'undetermined' }); },
-  AndroidAudioEncoder:      {},
-  AndroidOutputFormat:      {},
-  IOSAudioQuality:          {},
-  IOSOutputFormat:          {},
+  setAudioModeAsync: function () { return Promise.resolve(); },
+  setIsEnabledAsync: function () { return Promise.resolve(); },
+  requestPermissionsAsync: function () { return Promise.resolve({ status: 'undetermined' }); },
+  getPermissionsAsync: function () { return Promise.resolve({ status: 'undetermined' }); },
+  AndroidAudioEncoder: {},
+  AndroidOutputFormat: {},
+  IOSAudioQuality: {},
+  IOSOutputFormat: {},
 };
 
 var AndroidImportance = { MAX: 5, HIGH: 4, DEFAULT: 3, LOW: 2, MIN: 1, NONE: 0 };
 
 module.exports = {
-  Video:              Video,
-  ResizeMode:         ResizeMode,
-  AVPlaybackStatus:   AVPlaybackStatus,
-  Audio:              Audio,
-  AndroidImportance:  AndroidImportance,
+  __esModule: true,
+  Video: Video,
+  ResizeMode: ResizeMode,
+  AVPlaybackStatus: AVPlaybackStatus,
+  Audio: Audio,
+  AndroidImportance: AndroidImportance,
 };
 module.exports.default = module.exports;

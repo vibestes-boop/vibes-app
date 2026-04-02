@@ -6,6 +6,10 @@ type UploadResult = {
   path: string;
 };
 
+type ThumbnailResult = {
+  url: string;
+} | null;
+
 // ── Limits ──────────────────────────────────────────────────────────────────
 const MAX_IMAGE_BYTES = 50  * 1024 * 1024;  //  50 MB
 const MAX_VIDEO_BYTES = 200 * 1024 * 1024;  // 200 MB
@@ -183,6 +187,56 @@ export async function uploadPostMedia(
   const folder = isVideo(resolvedMime) ? 'videos' : 'images';
   const key    = `posts/${folder}/${userId}/${Date.now()}.${ext}`;
   return uploadToR2(key, localUri, resolvedMime, onProgress, signal);
+}
+
+/**
+ * Video-Thumbnail direkt hochladen (bereits generiertes Bild-URI)
+ * Internes Hilfsmittel — wird von generateAndUploadThumbnail genutzt.
+ */
+async function uploadThumbnail(
+  userId: string,
+  localUri: string,
+  signal?: AbortSignal,
+): Promise<string> {
+  const key = `thumbnails/${userId}/${Date.now()}.jpg`;
+  const { url } = await uploadToR2(key, localUri, 'image/jpeg', undefined, signal);
+  return url;
+}
+
+/**
+ * Aus einem Video automatisch einen Thumbnail extrahieren und zu R2 hochladen.
+ *
+ * • Nutzt expo-video-thumbnails (bereits installiert)
+ * • Extrahiert Frame bei t=0ms, Quality=0.75
+ * • Gibt null zurück falls Thumbnail nicht generiert werden kann
+ *   (Thumbnails sind IMMER optional — kein harter Fehler)
+ *
+ * Verwendung:
+ *   const thumbUrl = await generateAndUploadThumbnail(userId, videoUri);
+ *   // thumbUrl ist string | null
+ */
+export async function generateAndUploadThumbnail(
+  userId: string,
+  videoUri: string,
+  signal?: AbortSignal,
+): Promise<string | null> {
+  try {
+    // Dynamischer Import → kein Bundle-Problem falls Library fehlt
+    const VideoThumbnails = await import('expo-video-thumbnails');
+    const { uri: thumbUri } = await VideoThumbnails.getThumbnailAsync(videoUri, {
+      time:    0,     // Erster Frame
+      quality: 0.75,  // JPEG-Qualität — gut genug für Thumbnails
+    });
+
+    if (!thumbUri) return null;
+
+    const url = await uploadThumbnail(userId, thumbUri, signal);
+    return url;
+  } catch (err) {
+    // Thumbnail ist optional — kein harter Fehler, nur warnen
+    __DEV__ && console.warn('[generateAndUploadThumbnail]', err);
+    return null;
+  }
 }
 
 /**

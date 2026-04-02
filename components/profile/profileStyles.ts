@@ -240,21 +240,22 @@ export const profileStyles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   tabBtnActive: { borderBottomColor: '#22D3EE' },
-  tabLabel: { color: 'rgba(255,255,255,0.22)', fontSize: 12, fontWeight: '600' },
+  tabLabel: { color: 'rgba(255,255,255,0.55)', fontSize: 12, fontWeight: '600' },
 
   // ── Grid ──────────────────────────────────────────────────
   grid: { flexDirection: 'row', gap: GRID_GAP, marginBottom: GRID_GAP },
-  gridCell: { width: GRID_CELL_WIDTH },
+  // KEIN flex:1 — feste Breite damit letzte Zeile mit 1-2 Items gleich groß bleibt
+  gridCell: { width: GRID_CELL_WIDTH, padding: 1 },
   cell: {
     width: GRID_CELL_WIDTH,
-    height: GRID_CELL_WIDTH * 1.25,
+    aspectRatio: 4 / 5,    // Instagram Portrait-Format (4:5) — kein Square mehr
     overflow: 'hidden',
     backgroundColor: '#0D0D0D',
     position: 'relative',
   },
   cellAdd: {
     width: GRID_CELL_WIDTH,
-    height: GRID_CELL_WIDTH * 1.25,
+    aspectRatio: 4 / 5,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#080808',

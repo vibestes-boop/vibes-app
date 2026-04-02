@@ -13,7 +13,10 @@ import {
 } from 'react-native';
 import { Link, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { FadeInDown } from 'react-native-reanimated';
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
+const Animated = { View: _animNS?.View ?? _animMod?.View };
+import { FadeInDown } from 'react-native-reanimated';
 import { supabase } from '@/lib/supabase';
 import { Mail, Lock, User, Zap } from 'lucide-react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
@@ -27,7 +30,7 @@ export default function RegisterScreen() {
   const router = useRouter();
 
   // ── Keyboard-Navigation Refs ────────────────────────────────────
-  const emailRef    = useRef<TextInput>(null);
+  const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
 
   const handleRegister = async () => {
@@ -200,7 +203,7 @@ export default function RegisterScreen() {
           )}
 
           <Link href="/(auth)/login" asChild>
-          <Pressable
+            <Pressable
               style={styles.loginLink}
               accessibilityRole="link"
               accessibilityLabel="Einloggen"

@@ -2,7 +2,12 @@ import { useEffect, useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, {
+// react-native-reanimated: CJS require() vermeidet _interopRequireDefault Crash in Hermes HBC
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+const _animMod = require('react-native-reanimated') as any;
+const _animNS = _animMod?.default ?? _animMod;
+const Animated = { View: _animNS?.View ?? _animMod?.View };
+import {
   useSharedValue, useAnimatedStyle,
   withRepeat, withSequence, withTiming, Easing,
 } from 'react-native-reanimated';
@@ -22,29 +27,175 @@ type Props = {
   overlayTop?: number;
 };
 
-// ─── Live-Bubble (roter pulsierender Ring) ────────────────────────────────────
-function LiveBubble({ session, isOwn }: { session: LiveSession; isOwn: boolean }) {
-  const router = useRouter();
-  const initial = (session.profiles?.username ?? '?')[0].toUpperCase();
 
-  // Pulsierender roter Ring
+// ─── Story-Bubble (mit optionalem Live-Override — TikTok-Prinzip) ─────────────
+// Wenn liveSession gesetzt → roter LIVE-Ring statt Story-Ring, Klick → Live
+function StoryBubble({
+  group,
+  isOwn,
+  onPress,
+  liveSession,
+}: {
+  group: StoryGroup;
+  isOwn: boolean;
+  onPress: () => void;
+  liveSession?: LiveSession; // gesetzt wenn dieser User gerade live ist
+}) {
+  const router = useRouter();
+  const initial = (group.username ?? '?')[0].toUpperCase();
+  const isLive = !!liveSession;
+  const hasNew = group.hasUnviewed;
+
+  // Animations-Werte für Story-Ring
+  const glow = useSharedValue(1);
+  // Animations-Werte für Live-Ring
   const scale = useSharedValue(1);
   const opacity = useSharedValue(0.85);
+
+  useEffect(() => {
+    if (isLive) {
+      // Pulsierender roter Ring (Live)
+      scale.value = withRepeat(
+        withSequence(
+          withTiming(1.07, { duration: 600, easing: Easing.inOut(Easing.sin) }),
+          withTiming(1.0,  { duration: 600, easing: Easing.inOut(Easing.sin) }),
+        ),
+        -1, false,
+      );
+      opacity.value = withRepeat(
+        withSequence(withTiming(1, { duration: 600 }), withTiming(0.75, { duration: 600 })),
+        -1, false,
+      );
+    } else if (hasNew) {
+      // Pulsierender Story-Ring
+      glow.value = withRepeat(
+        withSequence(
+          withTiming(1.08, { duration: 250, easing: Easing.inOut(Easing.sin) }),
+          withTiming(1.0,  { duration: 250, easing: Easing.inOut(Easing.sin) }),
+        ),
+        -1, false,
+      );
+    } else {
+      glow.value = 1;
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLive, hasNew]);
+
+  const liveRingStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+    opacity: opacity.value,
+  }));
+  const glowStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: glow.value }],
+  }));
+
+  const ringColor = hasNew
+    ? ['#22D3EE', '#F472B6'] as [string, string]
+    : ['#2D2D2D', '#2D2D2D'] as [string, string];
+
+  const handlePress = () => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    if (isLive && liveSession) {
+      if (isOwn) {
+        // Eigenes Live → Alert
+        const { Alert } = require('react-native') as typeof import('react-native');
+        Alert.alert(
+          '🔴 Du bist LIVE',
+          'Du streamst gerade. Kehre zur Host-Ansicht zurück?',
+          [
+            { text: 'Abbrechen', style: 'cancel' },
+            { text: 'Host-Ansicht', onPress: () => router.push({ pathname: '/live/host' as any, params: { sessionId: liveSession.id } }) },
+          ]
+        );
+      } else {
+        router.push({ pathname: '/live/watch/[id]', params: { id: liveSession.id } });
+      }
+    } else {
+      onPress();
+    }
+  };
+
+  return (
+    <Pressable style={styles.bubble} onPress={handlePress}>
+      {isLive ? (
+        // ── Live-Ring ──────────────────────────────────────────────────────────
+        <>
+          <View style={styles.liveGlow} />
+          <Animated.View style={[styles.liveRingWrap, liveRingStyle]}>
+            <View style={styles.liveRing}>
+              <View style={styles.ringInner}>
+                {group.avatar_url ? (
+                  <Image source={{ uri: group.avatar_url }} style={styles.avatar} />
+                ) : (
+                  <View style={[styles.avatar, styles.avatarFallback]}>
+                    <Text style={styles.avatarInitial}>{initial}</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+          </Animated.View>
+          {/* LIVE-Badge */}
+          <View style={styles.liveBadge}>
+            <Text style={styles.liveBadgeText}>LIVE</Text>
+          </View>
+        </>
+      ) : (
+        // ── Story-Ring ─────────────────────────────────────────────────────────
+        <Animated.View style={glowStyle}>
+          <LinearGradient
+            colors={ringColor}
+            style={styles.ring}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <View style={styles.ringInner}>
+              {group.avatar_url ? (
+                <Image source={{ uri: group.avatar_url }} style={styles.avatar} />
+              ) : (
+                <View style={[styles.avatar, styles.avatarFallback]}>
+                  <Text style={styles.avatarInitial}>{initial}</Text>
+                </View>
+              )}
+            </View>
+          </LinearGradient>
+        </Animated.View>
+      )}
+
+      <Text
+        style={[
+          isLive ? styles.liveBubbleLabel : styles.bubbleLabel,
+          !isLive && hasNew && styles.bubbleLabelNew,
+        ]}
+        numberOfLines={1}
+      >
+        {isOwn
+          ? (isLive ? 'Du bist LIVE' : 'Deine Story')
+          : `@${group.username ?? '?'}`}
+      </Text>
+    </Pressable>
+  );
+}
+
+// ─── Standalone Live-Bubble (nur für User ohne Story) ────────────────────────
+function LiveOnlyBubble({ session, isOwn }: { session: LiveSession; isOwn: boolean }) {
+  const router = useRouter();
+  const initial = (session.profiles?.username ?? '?')[0].toUpperCase();
+  const scale = useSharedValue(1);
+  const opacity = useSharedValue(0.85);
+
   useEffect(() => {
     scale.value = withRepeat(
       withSequence(
         withTiming(1.07, { duration: 600, easing: Easing.inOut(Easing.sin) }),
-        withTiming(1.0, { duration: 600, easing: Easing.inOut(Easing.sin) }),
+        withTiming(1.0,  { duration: 600, easing: Easing.inOut(Easing.sin) }),
       ),
-      -1,
-      false,
+      -1, false,
     );
     opacity.value = withRepeat(
       withSequence(withTiming(1, { duration: 600 }), withTiming(0.75, { duration: 600 })),
-      -1,
-      false,
+      -1, false,
     );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const ringStyle = useAnimatedStyle(() => ({
@@ -55,21 +206,13 @@ function LiveBubble({ session, isOwn }: { session: LiveSession; isOwn: boolean }
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (isOwn) {
-      // Eigenes Live → Alert statt Watch-Screen öffnen
-      // (Host ist bereits im host.tsx Screen wenn er live ist)
       const { Alert } = require('react-native') as typeof import('react-native');
       Alert.alert(
         '🔴 Du bist LIVE',
         'Du streamst gerade. Kehre zur Host-Ansicht zurück?',
         [
           { text: 'Abbrechen', style: 'cancel' },
-          {
-            text: 'Host-Ansicht öffnen',
-            onPress: () => router.push({
-              pathname: '/live/host' as any,
-              params: { sessionId: session.id },
-            }),
-          },
+          { text: 'Host-Ansicht öffnen', onPress: () => router.push({ pathname: '/live/host' as any, params: { sessionId: session.id } }) },
         ]
       );
       return;
@@ -79,11 +222,8 @@ function LiveBubble({ session, isOwn }: { session: LiveSession; isOwn: boolean }
 
   return (
     <Pressable style={styles.bubble} onPress={handlePress}>
-      {/* Ring-Glow (statisch, roter Schatten-Effekt) */}
       <View style={styles.liveGlow} />
-
       <Animated.View style={[styles.liveRingWrap, ringStyle]}>
-        {/* Äußerer pulsierender roter Ring */}
         <View style={styles.liveRing}>
           <View style={styles.ringInner}>
             {session.profiles?.avatar_url ? (
@@ -96,12 +236,9 @@ function LiveBubble({ session, isOwn }: { session: LiveSession; isOwn: boolean }
           </View>
         </View>
       </Animated.View>
-
-      {/* LIVE-Badge */}
       <View style={styles.liveBadge}>
         <Text style={styles.liveBadgeText}>LIVE</Text>
       </View>
-
       <Text style={styles.liveBubbleLabel} numberOfLines={1}>
         {isOwn ? 'Du bist LIVE' : `@${session.profiles?.username ?? '?'}`}
       </Text>
@@ -109,75 +246,9 @@ function LiveBubble({ session, isOwn }: { session: LiveSession; isOwn: boolean }
   );
 }
 
-// ─── Story-Bubble ─────────────────────────────────────────────────────────────
-function StoryBubble({
-  group,
-  isOwn,
-  onPress,
-}: {
-  group: StoryGroup;
-  isOwn: boolean;
-  onPress: () => void;
-}) {
-  const initial = (group.username ?? '?')[0].toUpperCase();
-  const hasNew = group.hasUnviewed;
-  const ringColor = hasNew
-    ? ['#22D3EE', '#F472B6'] as [string, string]
-    : ['#2D2D2D', '#2D2D2D'] as [string, string];
-
-  const glow = useSharedValue(1);
-  useEffect(() => {
-    if (!hasNew) { glow.value = 1; return; }
-    glow.value = withRepeat(
-      withSequence(
-        withTiming(1.08, { duration: 250, easing: Easing.inOut(Easing.sin) }),
-        withTiming(1.0, { duration: 250, easing: Easing.inOut(Easing.sin) }),
-      ),
-      -1,
-      false,
-    );
-  }, [hasNew, glow]);
-
-  const glowStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: glow.value }],
-  }));
-
-  return (
-    <Pressable
-      style={styles.bubble}
-      onPress={() => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-        onPress();
-      }}
-    >
-      <Animated.View style={glowStyle}>
-        <LinearGradient
-          colors={ringColor}
-          style={styles.ring}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          <View style={styles.ringInner}>
-            {group.avatar_url ? (
-              <Image source={{ uri: group.avatar_url }} style={styles.avatar} />
-            ) : (
-              <View style={[styles.avatar, styles.avatarFallback]}>
-                <Text style={styles.avatarInitial}>{initial}</Text>
-              </View>
-            )}
-          </View>
-        </LinearGradient>
-      </Animated.View>
-
-      <Text style={[styles.bubbleLabel, hasNew && styles.bubbleLabelNew]} numberOfLines={1}>
-        {isOwn ? 'Deine Story' : `@${group.username ?? '?'}`}
-      </Text>
-    </Pressable>
-  );
-}
-
 // ─── Add-Story-Bubble ──────────────────────────────────────────────────────────
 function AddStoryBubble({ onPress }: { onPress: () => void }) {
+
   const profile = useAuthStore((s) => s.profile);
   const initial = (profile?.username ?? '?')[0].toUpperCase();
 
@@ -216,8 +287,7 @@ export function StoriesRow({ groups, onSelectGroup, onAddStory, liveSessions = [
   const ownGroup = groups.find((g) => g.userId === userId);
   const otherGroups = groups.filter((g) => g.userId !== userId);
 
-  // Zweite Sicherheitsschicht: Deduplizierung nach host_id, falls die Datenquelle
-  // dennoch mehrere Sessions desselben Hosts liefert (Zombie-Sessions)
+  // Deduplizierung nach host_id (Zombie-Session-Schutz)
   const uniqueLiveSessions = useMemo(() => {
     const seen = new Set<string>();
     return liveSessions.filter((s) => {
@@ -227,8 +297,20 @@ export function StoriesRow({ groups, onSelectGroup, onAddStory, liveSessions = [
     });
   }, [liveSessions]);
 
-  const ownLive = uniqueLiveSessions.find((s) => s.host_id === userId);
-  const otherLive = uniqueLiveSessions.filter((s) => s.host_id !== userId);
+  // Lookup: userId → LiveSession (für schnelles Mergen mit Stories)
+  const liveByUserId = useMemo(() => {
+    const map = new Map<string, LiveSession>();
+    for (const s of uniqueLiveSessions) map.set(s.host_id, s);
+    return map;
+  }, [uniqueLiveSessions]);
+
+  const ownLive = userId ? liveByUserId.get(userId) : undefined;
+
+  // Live-User die KEINE Story haben → separater LiveOnlyBubble
+  const storyUserIds = new Set(groups.map((g) => g.userId));
+  const liveOnlyOther = uniqueLiveSessions.filter(
+    (s) => s.host_id !== userId && !storyUserIds.has(s.host_id)
+  );
 
   const containerStyle = overlayTop !== undefined
     ? [styles.scroll, {
@@ -248,38 +330,56 @@ export function StoriesRow({ groups, onSelectGroup, onAddStory, liveSessions = [
       style={containerStyle}
       contentContainerStyle={styles.scrollContent}
     >
-      {/* 1. Eigener Add-Story-Button (immer da) */}
+      {/* 1. Eigener Add-Story-Button */}
       <AddStoryBubble onPress={onAddStory} />
 
-      {/* 2. Eigene Live-Bubble (falls User gerade live ist) */}
-      {ownLive && <LiveBubble key={`live-own-${ownLive.id}`} session={ownLive} isOwn />}
-
-      {/* 3. Eigene Story (falls vorhanden) */}
+      {/* 2. Eigene Story (mit Live-Override falls live) */}
       {ownGroup && (
         <StoryBubble
+          key={`own-story-${ownGroup.userId}`}
           group={ownGroup}
           isOwn
-          onPress={() => onSelectGroup(ownGroup)}
+          onPress={() => {
+            // Eigene Stories sofort prefetchen beim Antippen
+            ownGroup.stories
+              .filter((s) => s.media_type !== 'video' && s.media_url)
+              .forEach((s) => Image.prefetch(s.media_url!, { cachePolicy: 'memory-disk' }).catch(() => {}));
+            onSelectGroup(ownGroup);
+          }}
+          liveSession={ownLive}
         />
       )}
 
-      {/* 4. Andere Live-User — immer VOR normalen Stories */}
-      {otherLive.map((session) => (
-        <LiveBubble key={`live-${session.id}`} session={session} isOwn={false} />
+      {/* Eigenes Live OHNE Story → separater LiveOnlyBubble */}
+      {ownLive && !ownGroup && (
+        <LiveOnlyBubble key={`live-own-${ownLive.id}`} session={ownLive} isOwn />
+      )}
+
+      {/* 3. Andere Live-User die KEINE Story haben → vor normalen Stories */}
+      {liveOnlyOther.map((session) => (
+        <LiveOnlyBubble key={`live-only-${session.id}`} session={session} isOwn={false} />
       ))}
 
-      {/* 5. Normale Stories */}
+      {/* 4. Andere Stories — mit Live-Override wenn der Story-User auch live ist */}
       {otherGroups.map((group) => (
         <StoryBubble
           key={group.userId}
           group={group}
           isOwn={false}
-          onPress={() => onSelectGroup(group)}
+          onPress={() => {
+            // Alle Story-Bilder sofort prefetchen beim Antippen — kein 2s Ladedelay
+            group.stories
+              .filter((s) => s.media_type !== 'video' && s.media_url)
+              .forEach((s) => Image.prefetch(s.media_url!, { cachePolicy: 'memory-disk' }).catch(() => {}));
+            onSelectGroup(group);
+          }}
+          liveSession={liveByUserId.get(group.userId)}
         />
       ))}
     </ScrollView>
   );
 }
+
 
 const BUBBLE_SIZE = 62;
 

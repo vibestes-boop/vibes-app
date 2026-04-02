@@ -52,16 +52,16 @@ export const createStyles = StyleSheet.create({
   },
   scroll: { flex: 1 },
   imagePicker: {
-    margin: 16,
-    height: 320,
-    borderRadius: 20,
+    marginHorizontal: 16,
+    marginVertical: 10,
+    aspectRatio: 9 / 16,          // TikTok-Hochformat-Vorschau
+    borderRadius: 16,
     overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 10,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
-    borderStyle: 'dashed',
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   previewImage: {
     ...StyleSheet.absoluteFillObject,

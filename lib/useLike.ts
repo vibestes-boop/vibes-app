@@ -16,8 +16,8 @@ export function useLike(postId: string, batch?: UseLikeBatch | null) {
   const userId = useAuthStore((s) => s.profile?.id);
   const skipQueries = batch != null;
 
-  // ── Hat der User geliked? ──────────────────────────────────────────────────
-  const { data: likedFromQ = false } = useQuery({
+  // ── Hat der User geliked? (mit batch als initialData) ─────────────────────
+  const { data: likedData } = useQuery({
     queryKey: ['like-status', userId, postId],
     queryFn: async () => {
       if (!userId) return false;
@@ -29,12 +29,16 @@ export function useLike(postId: string, batch?: UseLikeBatch | null) {
         .maybeSingle();
       return !!data;
     },
-    enabled: !!userId && !!postId && !skipQueries,
+    // batch-Wert als initialData → sofort verfügbar, wird vom Cache überschrieben
+    initialData: skipQueries ? batch!.liked : undefined,
+    // initialDataUpdatedAt verhindert sofortigen Hintergrund-Refetch (wichtig für Feed-Performance)
+    initialDataUpdatedAt: skipQueries ? Date.now() : undefined,
+    enabled: !!userId && !!postId,
     staleTime: 1000 * 60,
   });
 
-  // ── Like-Anzahl ────────────────────────────────────────────────────────────
-  const { data: countFromQ = 0 } = useQuery({
+  // ── Like-Anzahl (mit batch als initialData) ────────────────────────────────
+  const { data: countData } = useQuery({
     queryKey: ['like-count', postId],
     queryFn: async () => {
       const { count: c } = await supabase
@@ -43,12 +47,16 @@ export function useLike(postId: string, batch?: UseLikeBatch | null) {
         .eq('post_id', postId);
       return c ?? 0;
     },
-    enabled: !!postId && !skipQueries,
+    // batch-Wert als initialData → sofort verfügbar, wird vom Cache überschrieben
+    initialData: skipQueries ? batch!.count : undefined,
+    // initialDataUpdatedAt verhindert sofortigen Hintergrund-Refetch
+    initialDataUpdatedAt: skipQueries ? Date.now() : undefined,
+    enabled: !!postId,
     staleTime: 1000 * 60,
   });
 
-  const liked = skipQueries ? batch!.liked : likedFromQ;
-  const count = skipQueries ? batch!.count : countFromQ;
+  const liked = likedData ?? false;
+  const count = countData ?? 0;
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: ['like-status', userId, postId] });

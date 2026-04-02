@@ -9,7 +9,10 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, {
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
+const Animated = { View: _animNS?.View ?? _animMod?.View, Text: _animNS?.Text ?? _animMod?.Text };
+import {
   useSharedValue, useAnimatedStyle, withDelay, withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,18 +22,18 @@ import { useAuthStore } from '@/lib/authStore';
 
 // ── Interesse-Kategorien ─────────────────────────────────────────────────────
 const INTERESTS = [
-  { tag: 'Musik',       emoji: '🎵', color: '#22D3EE' },
-  { tag: 'Sport',       emoji: '⚽', color: '#34D399' },
-  { tag: 'Kunst',       emoji: '🎨', color: '#F472B6' },
-  { tag: 'Tech',        emoji: '💻', color: '#60A5FA' },
-  { tag: 'Gaming',      emoji: '🎮', color: '#FB923C' },
-  { tag: 'Reisen',      emoji: '✈️', color: '#FBBF24' },
-  { tag: 'Kochen',      emoji: '🍳', color: '#4ADE80' },
-  { tag: 'Mode',        emoji: '👗', color: '#E879F9' },
-  { tag: 'Natur',       emoji: '🌿', color: '#22D3EE' },
-  { tag: 'Film',        emoji: '🎬', color: '#F87171' },
-  { tag: 'Business',    emoji: '📈', color: '#818CF8' },
-  { tag: 'Fitness',     emoji: '💪', color: '#FCD34D' },
+  { tag: 'Musik', emoji: '🎵', color: '#22D3EE' },
+  { tag: 'Sport', emoji: '⚽', color: '#34D399' },
+  { tag: 'Kunst', emoji: '🎨', color: '#F472B6' },
+  { tag: 'Tech', emoji: '💻', color: '#60A5FA' },
+  { tag: 'Gaming', emoji: '🎮', color: '#FB923C' },
+  { tag: 'Reisen', emoji: '✈️', color: '#FBBF24' },
+  { tag: 'Kochen', emoji: '🍳', color: '#4ADE80' },
+  { tag: 'Mode', emoji: '👗', color: '#E879F9' },
+  { tag: 'Natur', emoji: '🌿', color: '#22D3EE' },
+  { tag: 'Film', emoji: '🎬', color: '#F87171' },
+  { tag: 'Business', emoji: '📈', color: '#818CF8' },
+  { tag: 'Fitness', emoji: '💪', color: '#FCD34D' },
 ] as const;
 
 const MIN_SELECTED = 3;
@@ -55,9 +58,9 @@ export default function OnboardingInterests() {
   }, []);
 
   const titleStyle = useAnimatedStyle(() => ({ opacity: titleOpacity.value }));
-  const subStyle   = useAnimatedStyle(() => ({ opacity: subtitleOpacity.value }));
-  const gridStyle  = useAnimatedStyle(() => ({ opacity: gridOpacity.value }));
-  const btnStyle   = useAnimatedStyle(() => ({
+  const subStyle = useAnimatedStyle(() => ({ opacity: subtitleOpacity.value }));
+  const gridStyle = useAnimatedStyle(() => ({ opacity: gridOpacity.value }));
+  const btnStyle = useAnimatedStyle(() => ({
     opacity: btnOpacity.value,
     transform: [{ translateY: (1 - btnOpacity.value) * 16 }],
   }));

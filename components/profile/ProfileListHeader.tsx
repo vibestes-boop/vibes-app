@@ -1,7 +1,7 @@
 import { View, Text, Pressable, Dimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Grid3X3, Bookmark, Share2, Edit3, Shield, BarChart2, FileText } from 'lucide-react-native';
+import { Grid3X3, Bookmark, Share2, Edit3, Shield, BarChart2, FileText, Repeat2 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import type { Profile } from '@/lib/authStore';
@@ -166,7 +166,7 @@ export function ProfileListHeader({
 
       {/* ── Tab-Bar ── */}
       <View style={s.tabRow}>
-        {(['vibes', 'saved', 'analytics', 'drafts'] as const).map((tab) => {
+        {(['vibes', 'saved', 'analytics', 'drafts', 'reposts'] as const).map((tab) => {
           const active = activeTab === tab;
           return (
             <Pressable
@@ -178,30 +178,15 @@ export function ProfileListHeader({
               style={[s.tabBtn, active && s.tabBtnActive]}
             >
               {tab === 'vibes' ? (
-                <Grid3X3
-                  size={18}
-                  color={active ? '#22D3EE' : 'rgba(255,255,255,0.3)'}
-                  strokeWidth={1.8}
-                />
+                <Grid3X3 size={24} color={active ? '#22D3EE' : 'rgba(255,255,255,0.65)'} strokeWidth={2} />
               ) : tab === 'saved' ? (
-                <Bookmark
-                  size={18}
-                  color={active ? '#22D3EE' : 'rgba(255,255,255,0.3)'}
-                  strokeWidth={1.8}
-                  fill={active ? '#22D3EE' : 'transparent'}
-                />
+                <Bookmark size={24} color={active ? '#22D3EE' : 'rgba(255,255,255,0.65)'} strokeWidth={2} fill={active ? '#22D3EE' : 'transparent'} />
               ) : tab === 'analytics' ? (
-                <BarChart2
-                  size={18}
-                  color={active ? '#22D3EE' : 'rgba(255,255,255,0.3)'}
-                  strokeWidth={1.8}
-                />
+                <BarChart2 size={24} color={active ? '#22D3EE' : 'rgba(255,255,255,0.65)'} strokeWidth={2} />
+              ) : tab === 'drafts' ? (
+                <FileText size={24} color={active ? '#22D3EE' : 'rgba(255,255,255,0.65)'} strokeWidth={2} />
               ) : (
-                <FileText
-                  size={18}
-                  color={active ? '#22D3EE' : 'rgba(255,255,255,0.3)'}
-                  strokeWidth={1.8}
-                />
+                <Repeat2 size={24} color={active ? '#22D3EE' : 'rgba(255,255,255,0.65)'} strokeWidth={2} />
               )}
             </Pressable>
           );

@@ -137,16 +137,22 @@ export const feedItemStyles = StyleSheet.create({
     letterSpacing: 12,
   },
   muteBtn: {
-    borderRadius: 24,
+    position: 'absolute',
+    bottom: 56,     // über dem Fortschrittsbalken
+    right: 14,
+    borderRadius: 20,
     overflow: 'hidden',
-    marginBottom: 12,
+    zIndex: 20,
   },
-  muteBtnBlur: {
-    width: 48,
-    height: 48,
+  muteBtnInner: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.52)',
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
   },
   pauseIconWrap: {
     ...StyleSheet.absoluteFillObject,
@@ -192,16 +198,16 @@ export const feedItemStyles = StyleSheet.create({
     position: 'absolute',
     right: 6,
     bottom: 90,
-    gap: 4,
+    gap: 0,
     alignItems: 'center',
   },
   actionBtn: {
     alignItems: 'center',
-    marginBottom: 12,
+    marginBottom: 6,
   },
   actionBtnInner: {
     width: 48,
-    height: 48,
+    height: 44,
     borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
@@ -215,7 +221,7 @@ export const feedItemStyles = StyleSheet.create({
   bottomInfo: {
     paddingHorizontal: 20,
     paddingBottom: 110,
-    paddingTop: 60,
+    paddingTop: 10,
   },
   authorRow: {
     flexDirection: 'row',
@@ -307,6 +313,16 @@ export const feedItemStyles = StyleSheet.create({
     lineHeight: 21,
     fontWeight: '400',
     maxWidth: '86%',
+  },
+  captionBlock: {
+    marginTop: 4,
+    gap: 5,
+    maxWidth: '86%',
+  },
+  tagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
   },
 });
 

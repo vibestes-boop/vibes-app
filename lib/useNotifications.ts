@@ -99,8 +99,8 @@ export function useUnreadCount() {
       return count ?? 0;
     },
     enabled: !!userId,
-    staleTime: 1000 * 15,
-    refetchInterval: false, // Realtime-Kanal in useNotifications() übernimmt Updates
+    staleTime: Infinity,         // Realtime-Kanal in useNotifications() invalidiert bei Änderungen
+    refetchInterval: false,
   });
 }
 

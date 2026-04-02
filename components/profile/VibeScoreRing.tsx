@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import { View, Text } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
+const Animated = { View: _animNS?.View ?? _animMod?.View, Text: _animNS?.Text ?? _animMod?.Text };
+import { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 /** Score-Farbe anhand von Schwellenwerten — grün/gelb/rot */
 function vibeRingColor(pct: number): string {

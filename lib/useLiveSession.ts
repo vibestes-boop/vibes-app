@@ -20,6 +20,8 @@ export type LiveSession = {
   status: 'active' | 'ended';
   viewer_count: number;
   peak_viewers: number;
+  like_count: number;           // ❤️-Reaktionen (Gewichtung ×1 — passiv)
+  comment_count: number;        // 💬 Kommentare (Gewichtung ×3 — aktiv, stärker als Likes)
   room_name: string | null;
   started_at: string;
   ended_at: string | null;
@@ -76,20 +78,38 @@ export function useActiveLiveSessions() {
         .select('*, profiles(username, avatar_url)')
         .eq('status', 'active')
         .order('viewer_count', { ascending: false })
-        .limit(20); // Mehr laden damit Deduplizierung ausreichend Spielraum hat
+        .limit(20);
       if (error) throw error;
-      // Deduplizierung nach host_id: nur die Session mit den meisten Zuschauern
-      // pro Host behalten (verhindert mehrfache LIVE-Kreise bei Zombie-Sessions)
+      // Deduplizierung nach host_id
       const seen = new Set<string>();
       const unique = (data ?? []).filter((s) => {
         if (seen.has(s.host_id)) return false;
         seen.add(s.host_id);
         return true;
       });
-      return unique.slice(0, 10) as LiveSession[];
+      // 🔥 Verbesserter Heat Score Algorithmus (Research-Based):
+      // - viewer_count ×5: stärkstes Signal (Echtzeit-Nachfrage)
+      // - comment_count ×3: aktive Teilnahme > Likes (YouTube/Twitch research)
+      // - like_count ×1: passives Signal, niedrigste Gewichtung
+      // - Early Boost ×1.5: TikTok-Prinzip: erste 15 Min bekommen Boost
+      // - Time Decay ÷√(alter+1): Hacker News Prinzip — neue Lives haben Chance
+      const now = Date.now();
+      return unique
+        .slice(0, 10)
+        .map((session) => {
+          const ageMinutes = (now - new Date(session.started_at).getTime()) / 60_000;
+          const earlyBoost = ageMinutes < 15 ? 1.5 : 1.0;
+          const engagement =
+            (session.viewer_count ?? 0) * 5 +
+            (session.comment_count ?? 0) * 3 +
+            (session.like_count ?? 0) * 1;
+          const heatScore = (engagement * earlyBoost) / Math.sqrt(ageMinutes + 1);
+          return { ...session, _heatScore: heatScore };
+        })
+        .sort((a, b) => b._heatScore - a._heatScore) as LiveSession[];
     },
-    staleTime: 10_000,
-    refetchInterval: 30_000, // Fallback-Polling, falls Realtime-Verbindung abbricht
+    staleTime: 0,               // Sofort frisch — Realtime übernimmt danach
+    refetchInterval: false,
   });
 }
 
@@ -132,8 +152,16 @@ export function useLiveSession(sessionId: string | null) {
       return data as LiveSession;
     },
     enabled: !!sessionId,
-    staleTime: 5_000,
-    refetchInterval: 10_000,
+    // staleTime: 0 → jeder Viewer fetcht sofort frische Daten (kein Cache-Miss).
+    // Realtime invalidiert bei Änderungen. Für Host-Screen ist das perfekt:
+    // Host hat aktiven Realtime-Channel → fast nie ein refetch nötig.
+    staleTime: 0,
+    // Retry alle 3s wenn room_name noch null ist (Race-Condition: Viewer schneller als DB-Insert)
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      if (data && !data.room_name) return 3_000;  // warte auf room_name
+      return false; // Realtime übernimmt sobald room_name da ist
+    },
   });
 }
 
@@ -265,10 +293,16 @@ export function useLiveViewer(sessionId: string | null) {
     if (joined.current) return;
     joined.current = true;
 
-    supabase.rpc('join_live_session', { p_session_id: sessionId });
+    supabase.rpc('join_live_session', { p_session_id: sessionId })
+      .then(({ error }) => {
+        if (error) __DEV__ && console.warn('[useLiveViewer] join_live_session failed:', error.message);
+      });
 
     return () => {
-      supabase.rpc('leave_live_session', { p_session_id: sessionId });
+      supabase.rpc('leave_live_session', { p_session_id: sessionId })
+        .then(({ error }) => {
+          if (error) __DEV__ && console.warn('[useLiveViewer] leave_live_session failed:', error.message);
+        });
       joined.current = false;
     };
   }, [sessionId]);
@@ -307,6 +341,14 @@ export function useLiveComments(sessionId: string | null) {
           setComments((prev) => [...prev.slice(-99), payload.payload as LiveComment]);
         }
       )
+      .on(
+        'broadcast',
+        { event: 'delete-comment' },
+        (payload) => {
+          const { commentId } = payload.payload as { commentId: string };
+          setComments((prev) => prev.filter((c) => c.id !== commentId));
+        }
+      )
       .subscribe();
 
     channelRef.current = channel;
@@ -335,22 +377,73 @@ export function useLiveComments(sessionId: string | null) {
     // 1. Sofort lokales Update (optimistic UI)
     setComments((prev) => [...prev.slice(-99), commentData]);
 
-    // 2. Broadcast via bestehenden Channel (kein neuer Channel-Overhead)
-    channelRef.current?.send({
-      type: 'broadcast',
-      event: 'new-comment',
-      payload: commentData,
-    });
+    // 2. Broadcast via bestehenden Channel
+    // Falls Channel null ist (kurze Unterbrechung) → Kommentar nur lokal + DB-Fallback
+    if (channelRef.current) {
+      channelRef.current.send({
+        type: 'broadcast',
+        event: 'new-comment',
+        payload: commentData,
+      });
+    } else {
+      __DEV__ && console.warn('[useLiveComments] Channel nicht verbunden — nur DB-Fallback');
+    }
 
-    // 3. Asynchrones Speichern in der DB (Fire-and-Forget)
+    // 3. DB-Speichern (auch wenn Broadcast scheitert, Kommentar bleibt persistent)
     supabase.from('live_comments').insert({
       session_id: sessionId,
       user_id: profile.id,
       text: text.trim(),
-    }).then();
+    }).then(({ error }) => {
+      if (error) __DEV__ && console.warn('[useLiveComments] insert failed:', error.message);
+    });
   };
 
-  return { comments, sendComment };
+
+  const sendSystemEvent = (text: string) => {
+    const sysEvent: LiveComment = {
+      id: `sys-${Date.now()}-${Math.random()}`,
+      session_id: sessionId ?? '',
+      user_id: 'system',
+      text,
+      created_at: new Date().toISOString(),
+      profiles: null,
+      isSystem: true,
+    } as any;
+    setComments((prev) => [...prev.slice(-99), sysEvent]);
+    // Auch an andere Zuschauer broadcasten
+    channelRef.current?.send({
+      type: 'broadcast',
+      event: 'new-comment',
+      payload: sysEvent,
+    });
+  };
+
+  const deleteComment = (commentId: string) => {
+    // 1. Lokal entfernen
+    setComments((prev) => prev.filter((c) => c.id !== commentId));
+    // 2. An alle Zuschauer broadcasten (Echtzeit-Entfernung)
+    channelRef.current?.send({
+      type: 'broadcast',
+      event: 'delete-comment',
+      payload: { commentId },
+    });
+  };
+
+  return { comments, sendComment, sendSystemEvent, deleteComment };
+}
+
+// Helper: Erstellt ein Fake-Comment-Objekt für System-Nachrichten
+export function makeSystemEvent(text: string): LiveComment {
+  return {
+    id: `sys-${Date.now()}-${Math.random()}`,
+    session_id: '',
+    user_id: 'system',
+    text,
+    created_at: new Date().toISOString(),
+    profiles: null,
+    isSystem: true,
+  } as any;
 }
 
 // ─── Echtzeit-Reaktionen (via Supabase Broadcast) ─────────────────────────────
@@ -413,20 +506,90 @@ export function useLiveReactions(sessionId: string | null) {
     }, 3000);
     pendingTimers.current.push(timer);
 
-    // 2. Broadcast via bestehenden Channel (kein neuer Channel-Overhead)
+    // 2. Broadcast via bestehenden Channel
     channelRef.current?.send({
       type: 'broadcast',
       event: 'new-reaction',
       payload: reactionData,
     });
 
-    // 3. Optional in DB speichern für Analytics
+    // 3. ❤️-Reaktion erhöht den Heat Score des Lives → mehr Verbreitung im Feed
+    if (emoji === '❤️') {
+      supabase.rpc('increment_live_likes', { p_session_id: sessionId }).then();
+    }
+
+    // 4. Optional in DB speichern für Analytics
     supabase.from('live_reactions').insert({
       session_id: sessionId,
       user_id: profile.id,
       emoji,
-    }).then();
+    }).then(({ error }) => {
+      if (error) __DEV__ && console.warn('[useLiveReactions] insert failed:', error.message);
+    });
   };
 
   return { reactions, sendReaction };
+}
+
+// ─── Kommentar anpinnen (Host) ────────────────────────────────────────────────
+export function usePinComment(sessionId: string | null) {
+  const [pinnedComment, setPinnedComment] = useState<LiveComment | null>(null);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  useEffect(() => {
+    if (!sessionId) return;
+    // Aktuellen gepinnten Kommentar aus DB laden
+    supabase
+      .from('live_sessions')
+      .select('pinned_comment')
+      .eq('id', sessionId)
+      .single()
+      .then(({ data }) => {
+        if (data?.pinned_comment) setPinnedComment(data.pinned_comment as LiveComment);
+      });
+
+    const channel = supabase
+      .channel(`live-pin-${sessionId}`)
+      .on('broadcast', { event: 'pin-comment' }, (payload) => {
+        setPinnedComment(payload.payload as LiveComment | null);
+      })
+      .subscribe();
+
+    channelRef.current = channel;
+    return () => { supabase.removeChannel(channel); channelRef.current = null; };
+  }, [sessionId]);
+
+  const pinComment = async (comment: LiveComment | null) => {
+    setPinnedComment(comment);
+    // Broadcast an alle Zuschauer
+    channelRef.current?.send({
+      type: 'broadcast',
+      event: 'pin-comment',
+      payload: comment,
+    });
+    // In DB speichern (persistent auch für neue Viewer)
+    if (sessionId) {
+      supabase.from('live_sessions')
+        .update({ pinned_comment: comment })
+        .eq('id', sessionId)
+        .then();
+    }
+  };
+
+  return { pinnedComment, pinComment };
+}
+
+// ─── Live melden (Viewer) ─────────────────────────────────────────────────────
+export async function reportLive(
+  sessionId: string,
+  reason: 'inappropriate' | 'spam' | 'violence' | 'other'
+): Promise<{ error: string | null }> {
+  const { profile } = useAuthStore.getState();
+  if (!profile) return { error: 'Nicht eingeloggt' };
+  const { error } = await supabase.from('live_reports').insert({
+    session_id: sessionId,
+    reporter_id: profile.id,
+    reason,
+  });
+  return { error: error?.message ?? null };
 }

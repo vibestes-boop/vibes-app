@@ -17,7 +17,10 @@ import { Image } from 'expo-image';
 import { useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearGradient } from "expo-linear-gradient";
-import Animated, {
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
+const Animated = { View: _animNS?.View ?? _animMod?.View };
+import {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
@@ -465,7 +468,7 @@ export default function SettingsScreen() {
 
           {/* Datenschutzerklärung */}
           <Pressable
-            onPress={() => Linking.openURL('https://vibesapp.de/datenschutz').catch(() => {})}
+            onPress={() => Linking.openURL('https://vibesapp.de/datenschutz').catch(() => { })}
             style={styles.passwordBtn}
             accessibilityRole="link"
             accessibilityLabel="Datenschutzerklärung öffnen"
@@ -476,7 +479,7 @@ export default function SettingsScreen() {
 
           {/* Nutzungsbedingungen */}
           <Pressable
-            onPress={() => Linking.openURL('https://vibesapp.de/agb').catch(() => {})}
+            onPress={() => Linking.openURL('https://vibesapp.de/agb').catch(() => { })}
             style={styles.passwordBtn}
             accessibilityRole="link"
             accessibilityLabel="Nutzungsbedingungen öffnen"

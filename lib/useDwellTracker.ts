@@ -18,32 +18,38 @@ type DwellBatch = Map<string, number>; // postId → akkumulierte ms
 export function useDwellTracker() {
   const startTimes  = useRef<Map<string, number>>(new Map());
   const batch       = useRef<DwellBatch>(new Map());
+  const skips       = useRef<Set<string>>(new Set());
   const batchCount  = useRef(0);
   const flushTimer  = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // ── Flush: Batch an Supabase senden ──────────────────────
   const flush = useCallback(async () => {
-    if (batch.current.size === 0) return;
+    if (batch.current.size === 0 && skips.current.size === 0) return;
 
     const records = Array.from(batch.current.entries()).filter(([id]) =>
       isRealPostId(id)
     );
+    const skipRecords = Array.from(skips.current).filter(isRealPostId);
 
     // Batch sofort leeren – nächste Messungen gehen in neuen Batch
     batch.current = new Map();
+    skips.current = new Set();
     batchCount.current = 0;
 
-    if (records.length === 0) return;
+    if (records.length === 0 && skipRecords.length === 0) return;
 
     // Parallel senden – Fehler loggen, nicht crashen
-    await Promise.allSettled(
-      records.map(([postId, dwellMs]) =>
+    await Promise.allSettled([
+      ...records.map(([postId, dwellMs]) =>
         supabase.rpc('update_dwell_time', {
           post_id: postId,
           dwell_ms: Math.min(Math.round(dwellMs), MAX_DWELL_MS),
         })
+      ),
+      ...skipRecords.map((postId) =>
+        supabase.rpc('record_skip', { p_post_id: postId })
       )
-    );
+    ]);
   }, []);
 
   // ── Sichtbare Posts in Batch übertragen ──────────────────
@@ -56,6 +62,13 @@ export function useDwellTracker() {
     startTimes.current.forEach((startTime, postId) => {
       const dwellMs = now - startTime;
       if (dwellMs < 500) return;
+
+      // Skip-Bereich: negatives Signal, kein positives Dwell
+      if (dwellMs < 2_000) {
+        if (isRealPostId(postId)) skips.current.add(postId);
+        return;
+      }
+
       const prev = batch.current.get(postId) ?? 0;
       batch.current.set(postId, prev + dwellMs);
       batchCount.current += 1;
@@ -108,9 +121,16 @@ export function useDwellTracker() {
           const dwellMs = now - start;
           startTimes.current.delete(postId);
 
-          // Nur sinnvolle Messungen (> 500ms) batchen
-          if (dwellMs < 500) return;
+          if (dwellMs < 500) return; // Accidental scroll → ignorieren
 
+          // ── Skip-Erkennung (500ms – 2000ms) ─────────────
+          // Kurz gesehen aber weggeschrollt → negatives Signal
+          if (dwellMs < 2_000) {
+            if (isRealPostId(postId)) skips.current.add(postId);
+            return; // Nicht als positives Dwell-Signal werten
+          }
+
+          // ── Positives Dwell-Signal (>= 2 Sekunden) ───────
           const prev = batch.current.get(postId) ?? 0;
           batch.current.set(postId, prev + dwellMs);
           batchCount.current += 1;

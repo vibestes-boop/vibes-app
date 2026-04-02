@@ -11,7 +11,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowLeft, Send, Play, Reply, Trash2, X, ImagePlus, Smile } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
-import Animated, {
+// reanimated: CJS require() vermeidet _interopRequireDefault Crash in Hermes HBC
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+const _animMod = require('react-native-reanimated') as any;
+const _animNS = _animMod?.default ?? _animMod;
+const Animated = { View: _animNS?.View ?? _animMod?.View };
+import {
   useSharedValue, useAnimatedStyle, withSpring, withTiming,
 } from 'react-native-reanimated';
 import {
@@ -172,8 +177,9 @@ function MessageBubble({
   onReactionPress: (emoji: string) => void;
   onImagePress: () => void;
 }) {
-  const hasPost  = !!msg.post;
+  const hasPost = !!msg.post;
   const hasImage = !!msg.image_url;
+  const hasStoryReply = !!msg.story_media_url;  // TikTok-Style Story-Antwort
   const showText = msg.content && msg.content.trim().length > 0;
   const isSending = msg.id.startsWith('temp-');
 
@@ -262,6 +268,21 @@ function MessageBubble({
                 onPress={() => onPostPress(msg.post!.id)}
               />
             )}
+            {/* ── TikTok-Style Story-Antwort: Label + Thumbnail + Text ── */}
+            {hasStoryReply && (
+              <View style={styles.storyReplyWrap}>
+                <Text style={[styles.storyReplyLabel, isOwn && styles.storyReplyLabelOwn]}>
+                  {isOwn
+                    ? `Du hast auf die Story von @${msg.story_author ?? '?'} geantwortet`
+                    : `Hat auf deine Story geantwortet`}
+                </Text>
+                <Image
+                  source={{ uri: msg.story_media_url! }}
+                  style={styles.storyReplyThumb}
+                  contentFit="cover"
+                />
+              </View>
+            )}
             {hasImage && (
               <Pressable
                 onPress={onImagePress}
@@ -315,10 +336,10 @@ export default function ChatScreen() {
     avatarUrl: string;
     otherUserId?: string;
   }>();
-  const router   = useRouter();
-  const insets   = useSafeAreaInsets();
-  const userId   = useAuthStore((s) => s.profile?.id);
-  const listRef  = useRef<FlatList>(null);
+  const router = useRouter();
+  const insets = useSafeAreaInsets();
+  const userId = useAuthStore((s) => s.profile?.id);
+  const listRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
   const isAtBottomRef = useRef(true); // BUG-F: Guard gegen ungewolltes Auto-Scroll
   const [text, setText] = useState('');
@@ -327,6 +348,29 @@ export default function ChatScreen() {
   const [imageUploading, setImageUploading] = useState(false);
   const [lightboxUri, setLightboxUri] = useState<string | null>(null);
   const [showGifPicker, setShowGifPicker] = useState(false);
+
+  // ── Left-Edge-Swipe → zurück (wie iOS native Geste) ───────────────────
+  const backSwipeRef = useRef(false);
+  const backSwipePan = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: (e) => e.nativeEvent.locationX < 30,
+      onMoveShouldSetPanResponder: (_, g) => g.dx > 8 && Math.abs(g.dy) < 60,
+      onPanResponderMove: (_, g) => {
+        if (g.dx > 80 && Math.abs(g.dy) < 100 && !backSwipeRef.current) {
+          backSwipeRef.current = true;
+        }
+      },
+      onPanResponderRelease: (_, g) => {
+        if (backSwipeRef.current) {
+          backSwipeRef.current = false;
+          router.back();
+        } else {
+          backSwipeRef.current = false;
+        }
+      },
+      onPanResponderTerminate: () => { backSwipeRef.current = false; },
+    })
+  ).current;
 
   const { data: messagesRaw = [], isLoading } = useMessages(conversationId ?? null);
   const messages = useMemo(() => {
@@ -441,9 +485,9 @@ export default function ChatScreen() {
   }, []);
 
   const renderItem = useCallback(({ item, index }: { item: Message; index: number }) => {
-    const isOwn    = item.sender_id === userId;
-    const prev     = messages[index - 1];
-    const showDay  = !prev || formatDay(prev.created_at) !== formatDay(item.created_at);
+    const isOwn = item.sender_id === userId;
+    const prev = messages[index - 1];
+    const showDay = !prev || formatDay(prev.created_at) !== formatDay(item.created_at);
     const reactions = reactionsMap[item.id] ?? [];
 
     return (
@@ -481,14 +525,19 @@ export default function ChatScreen() {
 
   return (
     <>
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={0}
-    >
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={0}
+      >
         {/* Tap anywhere to close picker */}
         <Pressable style={{ flex: 1 }} onPress={() => setActivePickerId(null)}>
           <View style={[styles.screen, { paddingTop: insets.top }]}>
+            {/* Unsichtbarer linker Rand — nimmt Swipe-zurück-Geste auf */}
+            <View
+              style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 30, zIndex: 200 }}
+              {...backSwipePan.panHandlers}
+            />
             {/* Header */}
             <View style={styles.header}>
               <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={12}>
@@ -531,7 +580,7 @@ export default function ChatScreen() {
                 scrollEventThrottle={16}
                 initialNumToRender={20}
                 maxToRenderPerBatch={20}
-                windowSize={10}
+                windowSize={5}
                 onScroll={(e) => {
                   const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
                   const dist = contentSize.height - layoutMeasurement.height - contentOffset.y;
@@ -855,5 +904,30 @@ const styles = StyleSheet.create({
   },
   lightboxImage: {
     width: '100%', height: '85%',
+  },
+
+  // \u2500\u2500 TikTok-Style Story-Antwort Bubble \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+  storyReplyWrap: {
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    width: 200,
+  },
+  storyReplyLabel: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 11,
+    paddingHorizontal: 10,
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  storyReplyLabelOwn: {
+    textAlign: 'right',
+  },
+  storyReplyThumb: {
+    width: '100%',
+    aspectRatio: 9 / 16,    // Hochformat wie Story
+    backgroundColor: '#111',
   },
 });

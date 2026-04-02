@@ -36,12 +36,12 @@ var CameraType = { front: 'front', back: 'back' };
 // Zeigt einen erklärenden Alert und gibt danach 'canceled: true' zurück,
 // damit der Create-Screen nicht hängt.
 function showPickerUnavailable(title) {
-  return new Promise(function(resolve) {
+  return new Promise(function (resolve) {
     RN.Alert.alert(
       title || 'Nicht verfügbar',
       'Kamera/Galerie sind in diesem Build deaktiviert (Native-Modul-Schutz). ' +
       'Du kannst trotzdem einen Text-Post (Caption) erstellen.',
-      [{ text: 'OK', onPress: function() { resolve({ canceled: true, assets: null }); } }]
+      [{ text: 'OK', onPress: function () { resolve({ canceled: true, assets: null }); } }]
     );
   });
 }
@@ -74,6 +74,7 @@ function getCameraPermissionsAsync() {
 }
 
 module.exports = {
+  __esModule: true,
   MediaTypeOptions: MediaTypeOptions,
   UIImagePickerPresentationStyle: UIImagePickerPresentationStyle,
   CameraType: CameraType,

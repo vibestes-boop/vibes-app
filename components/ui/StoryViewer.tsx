@@ -2,14 +2,17 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, Pressable, Dimensions,
   TextInput, Keyboard, Alert, Modal, Platform,
-  KeyboardEvent, ScrollView, Share, Linking,
+  KeyboardEvent, ScrollView, Share, Linking, AppState,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import Animated, {
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
+const Animated = { View: _animNS?.View ?? _animMod?.View };
+import {
   useSharedValue, useAnimatedStyle, withTiming, withSequence,
-  runOnJS, Easing, cancelAnimation,
+  runOnJS, Easing,
 } from 'react-native-reanimated';
 import { X, Heart, Send, Share2, UserPlus, UserCheck, Check, Copy, Flag, EyeOff, Download, Search as SearchIcon } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -20,6 +23,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import type { StoryGroup, Story } from '@/lib/useStories';
 import { useMarkStoryViewed, useMyStoryVote, useStoryPollResults, useVoteStoryPoll } from '@/lib/useStories';
+import { useStoryComments, useAddStoryComment, type StoryComment } from '@/lib/useStoryComments';
 import { useFollow } from '@/lib/useFollow';
 import { useAuthStore } from '@/lib/authStore';
 import { useOrCreateConversation, useSendMessage } from '@/lib/useMessages';
@@ -38,9 +42,9 @@ try {
 }
 
 const { width: W } = Dimensions.get('window');
-const IMAGE_DURATION     = 5000;
+const IMAGE_DURATION = 5000;
 const MAX_VIDEO_DURATION = 15000;
-const USE_EXPO_VIDEO     = VideoView !== null && useVideoPlayer !== null;
+const USE_EXPO_VIDEO = VideoView !== null && useVideoPlayer !== null;
 
 type Props = {
   group: StoryGroup;
@@ -52,7 +56,7 @@ type Props = {
 };
 
 // ── Video-Komponenten ────────────────────────────────────────────────────────
-function NativeVideoStory({ uri, onDurationKnown }: { uri: string; onDurationKnown: (ms: number) => void }) {
+function NativeVideoStory({ uri, isPaused, onDurationKnown }: { uri: string; isPaused: boolean; onDurationKnown: (ms: number) => void }) {
   const player = useVideoPlayer(uri, (p: any) => { p.loop = false; p.muted = false; p.play(); });
   useEffect(() => {
     if (!player) return;
@@ -62,15 +66,29 @@ function NativeVideoStory({ uri, onDurationKnown }: { uri: string; onDurationKno
     });
     return () => sub.remove();
   }, [player, onDurationKnown]);
-  return <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />;
+
+  // Video pausieren/fortsetzen wenn gehalten
+  useEffect(() => {
+    if (!player) return;
+    if (isPaused) {
+      try { player.pause(); } catch { }
+    } else {
+      try { player.play(); } catch { }
+    }
+  }, [isPaused, player]);
+
+  // contain = volles Video sichtbar (kein Schneiden)
+  return <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="contain" nativeControls={false} />;
 }
 
-function FallbackVideoStory({ uri, onDurationKnown }: { uri: string; onDurationKnown: (ms: number) => void }) {
+function FallbackVideoStory({ uri, isPaused, onDurationKnown }: { uri: string; isPaused: boolean; onDurationKnown: (ms: number) => void }) {
   const fixedRef = useRef(false);
   return (
     <Video
       key={uri} source={{ uri }} style={StyleSheet.absoluteFill}
-      resizeMode={ResizeMode.COVER} shouldPlay isLooping={false} isMuted={false}
+      resizeMode={ResizeMode.CONTAIN}
+      shouldPlay={!isPaused}
+      isLooping={false} isMuted={false}
       onPlaybackStatusUpdate={(s: any) => {
         if (!s.isLoaded || fixedRef.current) return;
         if (s.durationMillis && s.durationMillis > 0) {
@@ -232,14 +250,14 @@ function StoryPollOverlay({
 function LikeBtn({ storyId }: { storyId: string | undefined }) {
   const { liked, toggle } = useStoryLike(storyId);
   const scale = useSharedValue(1);
-  const anim  = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const anim = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
   const press = () => {
     toggle();
     Haptics.impactAsync(!liked ? Haptics.ImpactFeedbackStyle.Medium : Haptics.ImpactFeedbackStyle.Light);
     scale.value = withSequence(
       withTiming(0.65, { duration: 60 }),
       withTiming(1.35, { duration: 80 }),
-      withTiming(1,    { duration: 80 }),
+      withTiming(1, { duration: 80 }),
     );
   };
   return (
@@ -255,16 +273,16 @@ function LikeBtn({ storyId }: { storyId: string | undefined }) {
 type ShareTarget = { id: string; username: string | null; avatar_url: string | null };
 
 const APP_SHARE_OPTIONS = [
-  { id: 'whatsapp', label: 'WhatsApp',  emoji: '💬', color: '#25D366' },
-  { id: 'telegram', label: 'Telegram',  emoji: '✈️',  color: '#2CA5E0' },
-  { id: 'copy',     label: 'Link',      icon: Copy,   color: '#6366f1' },
-  { id: 'more',     label: 'Mehr',      icon: Share2, color: '#374151' },
+  { id: 'whatsapp', label: 'WhatsApp', emoji: '💬', color: '#25D366' },
+  { id: 'telegram', label: 'Telegram', emoji: '✈️', color: '#2CA5E0' },
+  { id: 'copy', label: 'Link', icon: Copy, color: '#6366f1' },
+  { id: 'more', label: 'Mehr', icon: Share2, color: '#374151' },
 ];
 
 const ACTION_BUTTONS = [
-  { id: 'report',       label: 'Melden',             icon: Flag,    color: '#ef4444' },
-  { id: 'notinterested',label: 'Kein Interesse',      icon: EyeOff,  color: '#6B7280' },
-  { id: 'download',     label: 'Herunterladen',       icon: Download,color: '#6B7280' },
+  { id: 'report', label: 'Melden', icon: Flag, color: '#ef4444' },
+  { id: 'notinterested', label: 'Kein Interesse', icon: EyeOff, color: '#6B7280' },
+  { id: 'download', label: 'Herunterladen', icon: Download, color: '#6B7280' },
 ];
 
 function InAppShareModal({
@@ -279,12 +297,12 @@ function InAppShareModal({
   onClose: () => void;
 }) {
   const currentUserId = useAuthStore((s) => s.profile?.id);
-  const [search, setSearch]     = useState('');
+  const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [sending, setSending]   = useState(false);
+  const [sending, setSending] = useState(false);
 
   const { mutateAsync: getOrCreateConv } = useOrCreateConversation();
-  const { mutateAsync: sendMsg }         = useSendMessage();
+  const { mutateAsync: sendMsg } = useSendMessage();
 
   const { data: users = [] } = useQuery<ShareTarget[]>({
     queryKey: ['share-user-list'],
@@ -325,7 +343,13 @@ function InAppShareModal({
       await Promise.all(
         Array.from(selected).map(async (userId) => {
           const convId = await getOrCreateConv(userId);
-          await sendMsg({ conversationId: convId, content: `📸 Story von @${storyUsername}: ${storyLink}` });
+          await sendMsg({
+            conversationId: convId,
+            content: `📸 Story von @${storyUsername}`,
+            // ← storyMediaUrl + storyAuthor übergeben → Empfänger sieht Thumbnail
+            storyMediaUrl: storyMediaUrl,
+            storyAuthor: storyUsername,
+          });
         })
       );
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
@@ -349,7 +373,7 @@ function InAppShareModal({
         Linking.openURL(`tg://msg_url?url=${encodeURIComponent(storyLink)}&text=${encodeURIComponent(`Story von @${storyUsername}`)}`).catch(() => Alert.alert('Telegram nicht installiert'));
         break;
       case 'copy':
-        Clipboard.setStringAsync(storyLink).catch(() => {});
+        Clipboard.setStringAsync(storyLink).catch(() => { });
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
         Alert.alert('Link kopiert ✓', storyLink);
         break;
@@ -365,8 +389,8 @@ function InAppShareModal({
     switch (id) {
       case 'report':
         Alert.alert('Melden', 'Wähle einen Grund:', [
-          { text: 'Spam',                 onPress: () => Alert.alert('Gemeldet', 'Danke.') },
-          { text: 'Unangemessener Inhalt',onPress: () => Alert.alert('Gemeldet', 'Danke.') },
+          { text: 'Spam', onPress: () => Alert.alert('Gemeldet', 'Danke.') },
+          { text: 'Unangemessener Inhalt', onPress: () => Alert.alert('Gemeldet', 'Danke.') },
           { text: 'Abbrechen', style: 'cancel' },
         ]);
         break;
@@ -484,31 +508,221 @@ function InAppShareModal({
   );
 }
 
+// ── TikTok-Style Story Kommentar-Sheet ─────────────────────────────────────────
+
+function StoryCommentsSheet({
+  visible,
+  comments,
+  onClose,
+  onSubmit,
+}: {
+  visible: boolean;
+  storyId: string;
+  comments: StoryComment[];
+  onClose: () => void;
+  onSubmit: (text: string) => Promise<void>;
+}) {
+  const insets = useSafeAreaInsets();
+  const [text, setText] = useState('');
+  const [sending, setSending] = useState(false);
+  const inputRef = useRef<TextInput>(null);
+
+  const handleSend = async () => {
+    const trimmed = text.trim();
+    if (!trimmed || sending) return;
+    setSending(true);
+    try {
+      await onSubmit(trimmed);
+      setText('');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {
+      Alert.alert('Fehler', 'Kommentar konnte nicht gesendet werden.');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      {/* Vollflächiger Container mit flex-end damit Sheet von unten erscheint */}
+      <View style={{ flex: 1, justifyContent: 'flex-end' }}>
+        {/* Transparentes Backdrop — Klick schließt das Sheet */}
+        <Pressable
+          style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' }}
+          onPress={onClose}
+        />
+        <View style={[sc.sheet, { paddingBottom: insets.bottom + 8 }]}>
+          {/* Handle */}
+          <View style={sc.handle} />
+          <Text style={sc.title}>Kommentare</Text>
+
+          {/* Kommentar-Liste */}
+          <ScrollView
+            style={sc.list}
+            contentContainerStyle={sc.listContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {comments.length === 0 ? (
+              <View style={sc.empty}>
+                <Text style={sc.emptyIcon}>💬</Text>
+                <Text style={sc.emptyText}>Noch keine Kommentare.</Text>
+                <Text style={sc.emptyHint}>Sei der Erste!</Text>
+              </View>
+            ) : (
+              comments.map((c) => {
+                const username = c.profiles?.username ?? 'User';
+                const avatar = c.profiles?.avatar_url;
+                const initial = username[0]?.toUpperCase() ?? '?';
+                const timeAgo = formatTimeAgo(c.created_at);
+                return (
+                  <View key={c.id} style={sc.row}>
+                    {/* Avatar */}
+                    {avatar ? (
+                      <Image source={{ uri: avatar }} style={sc.avatar} contentFit="cover" />
+                    ) : (
+                      <View style={[sc.avatar, sc.avatarFallback]}>
+                        <Text style={sc.avatarText}>{initial}</Text>
+                      </View>
+                    )}
+                    {/* Content */}
+                    <View style={sc.content}>
+                      <View style={sc.nameRow}>
+                        <Text style={sc.username}>@{username}</Text>
+                        <Text style={sc.time}>{timeAgo}</Text>
+                      </View>
+                      <Text style={[sc.commentText, c.is_emoji && sc.emojiText]}>
+                        {c.content}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })
+            )}
+          </ScrollView>
+
+          {/* Input */}
+          <View style={sc.inputRow}>
+            <TextInput
+              ref={inputRef}
+              style={sc.input}
+              placeholder="Kommentieren…"
+              placeholderTextColor="rgba(255,255,255,0.35)"
+              value={text}
+              onChangeText={setText}
+              returnKeyType="send"
+              onSubmitEditing={handleSend}
+              multiline={false}
+            />
+            {text.trim().length > 0 && (
+              <Pressable onPress={handleSend} disabled={sending} style={sc.sendBtn}>
+                <Send size={18} color="#22D3EE" />
+              </Pressable>
+            )}
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const sc = StyleSheet.create({
+  sheet: {
+    backgroundColor: '#111118',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    maxHeight: '72%',
+    paddingTop: 12,
+  },
+  handle: {
+    width: 40, height: 4, borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    alignSelf: 'center',
+    marginBottom: 12,
+  },
+  title: {
+    color: '#fff', fontSize: 16, fontWeight: '800',
+    textAlign: 'center', marginBottom: 14,
+  },
+  list: { flex: 1 },
+  listContent: { paddingHorizontal: 16, paddingBottom: 8, gap: 16 },
+  empty: { alignItems: 'center', paddingVertical: 40, gap: 8 },
+  emptyIcon: { fontSize: 36 },
+  emptyText: { color: 'rgba(255,255,255,0.7)', fontSize: 15, fontWeight: '600' },
+  emptyHint: { color: 'rgba(255,255,255,0.35)', fontSize: 13 },
+  row: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
+  avatar: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.15)' },
+  avatarFallback: { backgroundColor: 'rgba(34,211,238,0.2)', alignItems: 'center', justifyContent: 'center' },
+  avatarText: { color: '#22D3EE', fontSize: 14, fontWeight: '700' },
+  content: { flex: 1, gap: 3 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  username: { color: 'rgba(255,255,255,0.85)', fontSize: 13, fontWeight: '700' },
+  time: { color: 'rgba(255,255,255,0.35)', fontSize: 11 },
+  commentText: { color: '#fff', fontSize: 14, lineHeight: 20 },
+  emojiText: { fontSize: 24 },
+  inputRow: {
+    flexDirection: 'row', alignItems: 'center',
+    marginHorizontal: 16, marginTop: 12, gap: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(255,255,255,0.1)',
+    paddingTop: 12,
+  },
+  input: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 20, paddingHorizontal: 14, paddingVertical: 10,
+    color: '#fff', fontSize: 14,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
+  },
+  sendBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: 'rgba(34,211,238,0.15)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+});
+
 // ── Haupt-Komponente ─────────────────────────────────────────────────────────
 export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, onPrevGroup }: Props) {
-  const insets        = useSafeAreaInsets();
+  const insets = useSafeAreaInsets();
   const currentUserId = useAuthStore((s) => s.profile?.id);
-  const [storyIndex, setStoryIndex]   = useState(0);
-  const [replyText, setReplyText]     = useState('');
-  const [shareOpen, setShareOpen]     = useState(false);
-  const [kbHeight, setKbHeight]       = useState(0);
+  const [storyIndex, setStoryIndex] = useState(0);
+  const [replyText, setReplyText] = useState('');
+  const [shareOpen, setShareOpen] = useState(false);
+  const [kbHeight, setKbHeight] = useState(0);
+  const [replyMode, setReplyMode] = useState<'dm' | 'public'>('public');
+  const [showEmojis, setShowEmojis] = useState(false);
+  const [showComments, setShowComments] = useState(false);
 
-  const { mutate: markViewed }                      = useMarkStoryViewed();
-  const { mutateAsync: getOrCreateConv }            = useOrCreateConversation();
+  const { mutate: markViewed } = useMarkStoryViewed();
+  const { mutateAsync: getOrCreateConv } = useOrCreateConversation();
   const { mutateAsync: sendMsg, isPending: sending } = useSendMessage();
+  const { mutateAsync: addComment, isPending: addingComment } = useAddStoryComment();
 
-  const progress         = useSharedValue(0);
-  const timerRef         = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const progress = useSharedValue(0);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const durationFixedRef = useRef(false);
-  const inputRef         = useRef<TextInput>(null);
+  const inputRef = useRef<TextInput>(null);
+  const holdProgressRef = useRef(0);
+  const wasHoldingRef = useRef(false);
 
   const currentStory: Story | undefined = group.stories[storyIndex];
   const isOwnStory = currentStory?.user_id === currentUserId;
+  // useStoryComments braucht currentStory.id — Hook ist weiter oben, nutzt currentStory?.id
+  const { data: storyComments = [] } = useStoryComments(currentStory?.id ?? null);
 
   const { isFollowing, toggle: toggleFollow, isOwnProfile } =
     useFollow(currentStory?.user_id ?? null);
 
-  useEffect(() => { setStoryIndex(0); }, [group.userId]);
+  // Bei Story-Wechsel (Tippen links/rechts oder Gruppe wechseln):
+  // → Kommentar-Sheet schließen, Emoji-Picker schließen, Reply-Text löschen
+  useEffect(() => { setStoryIndex(0); setShowComments(false); setShowEmojis(false); setReplyText(''); }, [group.userId]);
+  useEffect(() => { setShowComments(false); setShowEmojis(false); }, [storyIndex]);
+
 
   // Keyboard-Höhe tracken für manuelles Verschieben der Bottom-Bar
   useEffect(() => {
@@ -540,19 +754,58 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
     timerRef.current = setTimeout(() => runOnJS(goNext)(), duration);
   }, [goNext, progress]);
 
-  // Story pausieren wenn Keyboard offen oder Share-Modal offen
-  const isPaused = kbHeight > 0 || shareOpen;
+  // Story pausieren wenn Keyboard offen, Share-Modal offen, User hält oder App im Hintergrund
+  const [isHolding, setIsHolding] = useState(false);
+  const [isAppBackground, setIsAppBackground] = useState(false);
+
+  // AppState: beim Minimieren/App-Switcher pausieren
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (nextState) => {
+      setIsAppBackground(nextState !== 'active');
+    });
+    return () => sub.remove();
+  }, []);
+
+  const isPaused = kbHeight > 0 || shareOpen || isHolding || isAppBackground || showComments;
+
+  // Hold-Handler: bei langem Drücken Fortschritt merken + pausieren
+  const handleHoldStart = useCallback(() => {
+    holdProgressRef.current = progress.value;
+    wasHoldingRef.current = true;
+    setIsHolding(true);
+  }, [progress]);
+
+  const handleHoldEnd = useCallback(() => {
+    setIsHolding(false); // isPaused → false → useEffect resumt
+  }, []);
 
   useEffect(() => {
     if (isPaused) {
       // Bug 4 Fix: Animation stoppen + Timer löschen
-      cancelAnimation(progress);
+      // Reanimated cancelAnimation nicht in Expo Go verfügbar — stattdessen
+      // Shared-Value auf sich selbst setzen: stoppt laufende Animation sofort
+      progress.value = progress.value;  // no-op stop trick
       timerRef.current && clearTimeout(timerRef.current);
       return;
     }
     if (!visible || !currentStory) return;
     const isVideo = currentStory.media_type === 'video';
-    startProgress(isVideo ? MAX_VIDEO_DURATION : IMAGE_DURATION);
+    const totalDur = isVideo ? MAX_VIDEO_DURATION : IMAGE_DURATION;
+
+    // Hold-Resume: vom gespeicherten Fortschritt weitermachen
+    if (wasHoldingRef.current && holdProgressRef.current > 0 && holdProgressRef.current < 0.99) {
+      wasHoldingRef.current = false;
+      const saved = holdProgressRef.current;
+      holdProgressRef.current = 0;
+      const remaining = Math.round((1 - saved) * totalDur);
+      progress.value = saved;  // Von dieser Position weiterlaufen
+      progress.value = withTiming(1, { duration: remaining, easing: Easing.linear });
+      timerRef.current = setTimeout(() => runOnJS(goNext)(), remaining);
+    } else {
+      wasHoldingRef.current = false;
+      holdProgressRef.current = 0;
+      startProgress(totalDur);
+    }
     return () => { timerRef.current && clearTimeout(timerRef.current); };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- currentStory/startProgress: bewusst über id + Callback
   }, [isPaused, currentStory?.id, visible]);
@@ -561,6 +814,11 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
     if (!visible || !currentStory || isPaused) return;
     markViewed(currentStory.id);
     durationFixedRef.current = false;
+    // Nächste Story bereits jetzt prefetchen während die aktuelle läuft
+    const nextStory = group.stories[storyIndex + 1];
+    if (nextStory?.media_url && nextStory.media_type !== 'video') {
+      Image.prefetch(nextStory.media_url, { cachePolicy: 'memory-disk' }).catch(() => { });
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- markViewed + isPaused bewusst
   }, [currentStory?.id, visible]);
 
@@ -573,9 +831,9 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
   const progressStyle = useAnimatedStyle(() => ({ width: `${progress.value * 100}%` }));
 
   // ─ TikTok-style Tap-Flash ─
-  const flashLeft  = useSharedValue(0);
+  const flashLeft = useSharedValue(0);
   const flashRight = useSharedValue(0);
-  const flashLeftStyle  = useAnimatedStyle(() => ({ opacity: flashLeft.value }));
+  const flashLeftStyle = useAnimatedStyle(() => ({ opacity: flashLeft.value }));
   const flashRightStyle = useAnimatedStyle(() => ({ opacity: flashRight.value }));
 
   const handleGoPrev = () => {
@@ -589,16 +847,44 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
 
   const handleSendReply = async () => {
     const text = replyText.trim();
-    if (!text || !currentStory?.user_id || sending) return;
+    if (!text || !currentStory?.user_id || sending || addingComment) return;
     try {
       Keyboard.dismiss();
-      const convId = await getOrCreateConv(currentStory.user_id);
-      await sendMsg({ conversationId: convId, content: `📖 Story-Antwort: ${text}` });
+      if (replyMode === 'dm') {
+        const convId = await getOrCreateConv(currentStory.user_id);
+        await sendMsg({
+          conversationId: convId,
+          content: text,
+          storyMediaUrl: currentStory.media_url ?? undefined,   // Thumbnail
+          storyAuthor: currentStory.username ?? undefined,    // @username
+        });
+      } else {
+        await addComment({ storyId: currentStory.id, content: text, isEmoji: false });
+      }
       setReplyText('');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {
       Alert.alert('Fehler', 'Nachricht konnte nicht gesendet werden.');
     }
+  };
+
+  const handleEmojiReact = async (emoji: string) => {
+    if (!currentStory?.user_id || sending || addingComment) return;
+    try {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      if (replyMode === 'dm') {
+        const convId = await getOrCreateConv(currentStory.user_id);
+        await sendMsg({
+          conversationId: convId,
+          content: emoji,
+          storyMediaUrl: currentStory.media_url ?? undefined,
+          storyAuthor: currentStory.username ?? undefined,
+        });
+      } else {
+        await addComment({ storyId: currentStory.id, content: emoji, isEmoji: true });
+      }
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch { /* ignore */ }
   };
 
   if (!visible || !currentStory) return null;
@@ -609,24 +895,28 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
       {/* ── Media — immer cover, kein Letterboxing ── */}
       {isVideo ? (
         USE_EXPO_VIDEO
-          ? <NativeVideoStory uri={currentStory.media_url} onDurationKnown={handleDurationKnown} />
-          : <FallbackVideoStory uri={currentStory.media_url} onDurationKnown={handleDurationKnown} />
+          ? <NativeVideoStory uri={currentStory.media_url} isPaused={isPaused} onDurationKnown={handleDurationKnown} />
+          : <FallbackVideoStory uri={currentStory.media_url} isPaused={isPaused} onDurationKnown={handleDurationKnown} />
       ) : (
         <Image
           source={{ uri: currentStory.media_url }}
           style={StyleSheet.absoluteFill}
           contentFit="cover"
+          priority="high"
+          transition={200}
+          placeholder={{ blurhash: 'L00000fQfQfQfQfQfQfQfQfQfQfQ' }}
+          cachePolicy="memory-disk"
         />
       )}
 
-      {/* ── Vignetten als Gradient (kein harter schwarzer Block) ── */}
+      {/* ── Vignetten: subtiler Gradient (wie TikTok — kein harter schwarzer Block) ── */}
       <LinearGradient
-        colors={['rgba(0,0,0,0.65)', 'rgba(0,0,0,0.1)', 'transparent']}
+        colors={['rgba(0,0,0,0.35)', 'rgba(0,0,0,0.05)', 'transparent']}
         style={styles.vignetteTop}
         pointerEvents="none"
       />
       <LinearGradient
-        colors={['transparent', 'rgba(0,0,0,0.15)', 'rgba(0,0,0,0.72)']}
+        colors={['transparent', 'rgba(0,0,0,0.05)', 'rgba(0,0,0,0.45)']}
         style={styles.vignetteBottom}
         pointerEvents="none"
       />
@@ -679,13 +969,35 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
         </Pressable>
       </View>
 
-      {/* ── Tap-Zonen mit Flash-Feedback ── */}
-      <Pressable style={styles.tapLeft}  onPress={handleGoPrev}>
+      {/* ── Tap-Zonen: Tippen = vor/zurück | Lang drücken = Pause ── */}
+      <Pressable
+        style={styles.tapLeft}
+        onPress={handleGoPrev}
+        onLongPress={handleHoldStart}
+        onPressOut={handleHoldEnd}
+        delayLongPress={150}
+      >
         <Animated.View style={[{ position: 'absolute', inset: 0, backgroundColor: '#fff', borderRadius: 0 }, flashLeftStyle]} />
       </Pressable>
-      <Pressable style={styles.tapRight} onPress={handleGoNext}>
+      <Pressable
+        style={styles.tapRight}
+        onPress={handleGoNext}
+        onLongPress={handleHoldStart}
+        onPressOut={handleHoldEnd}
+        delayLongPress={150}
+      >
         <Animated.View style={[{ position: 'absolute', inset: 0, backgroundColor: '#fff', borderRadius: 0 }, flashRightStyle]} />
       </Pressable>
+
+      {/* ── Pause-Indikator (erscheint beim Halten) ── */}
+      {isHolding && (
+        <View style={styles.pauseOverlay} pointerEvents="none">
+          <View style={styles.pauseIcon}>
+            <View style={styles.pauseBar} />
+            <View style={styles.pauseBar} />
+          </View>
+        </View>
+      )}
 
       {/* ── Poll-Overlay ── */}
       {currentStory.interactive?.type === 'poll' && (
@@ -708,24 +1020,74 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
             </Pressable>
           </View>
         ) : (
-          // Fremde Story: Reply-Feld + Like + Share
+          // Fremde Story: Emoji-Reaktionen + DM/Öffentlich Toggle + Reply
           <>
+            {/* Emoji Quick-React Row — erscheint bei Fokus */}
+            {showEmojis && (
+              <View style={styles.emojiRow}>
+                {['😍', '😂', '😮', '😇', '❤️', '👏', '🔥', '🎉'].map((em) => (
+                  <Pressable
+                    key={em}
+                    style={styles.emojiBtn}
+                    onPress={() => handleEmojiReact(em)}
+                    hitSlop={6}
+                  >
+                    <Text style={styles.emojiBtnText}>{em}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+
             <BlurView intensity={40} tint="dark" style={styles.replyBlur}>
+              {/* Mode-Toggle: DM ↔ Öffentlich */}
+              <Pressable
+                style={[styles.modeToggle, replyMode === 'public' && styles.modeTogglePublic]}
+                onPress={() => {
+                  setReplyMode(m => m === 'dm' ? 'public' : 'dm');
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }}
+                hitSlop={6}
+              >
+                <Text style={styles.modeToggleText}>
+                  {replyMode === 'dm' ? '✉️' : '💬'}
+                </Text>
+              </Pressable>
+
               <TextInput
                 ref={inputRef}
                 style={styles.replyInput}
-                placeholder="Antworten…"
+                placeholder={replyMode === 'dm'
+                  ? `DM an @${currentStory.username ?? '?'}…`
+                  : 'Öffentlich kommentieren…'}
                 placeholderTextColor="rgba(255,255,255,0.45)"
                 value={replyText}
                 onChangeText={setReplyText}
                 returnKeyType="send"
                 onSubmitEditing={handleSendReply}
+                onFocus={() => setShowEmojis(true)}
+                onBlur={() => setTimeout(() => setShowEmojis(false), 200)}
                 blurOnSubmit
               />
-              {replyText.length > 0 && (
+              {replyText.length > 0 ? (
                 <Pressable onPress={handleSendReply} hitSlop={8} style={styles.sendIconBtn}>
                   <Send size={18} color="#22D3EE" />
                 </Pressable>
+              ) : (
+                replyMode === 'public' && (
+                  <Pressable
+                    style={styles.commentCount}
+                    onPress={() => {
+                      Keyboard.dismiss();
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setShowComments(true);
+                    }}
+                    hitSlop={8}
+                  >
+                    <Text style={styles.commentCountText}>
+                      {storyComments.length > 0 ? storyComments.length : '💬'}
+                    </Text>
+                  </Pressable>
+                )
               )}
             </BlurView>
             <LikeBtn storyId={currentStory.id} />
@@ -743,6 +1105,17 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
         storyMediaUrl={currentStory.media_url}
         onClose={() => setShareOpen(false)}
       />
+
+      {/* ── TikTok-Style Kommentar-Sheet ── */}
+      <StoryCommentsSheet
+        visible={showComments}
+        storyId={currentStory.id}
+        comments={storyComments}
+        onClose={() => setShowComments(false)}
+        onSubmit={async (text) => {
+          await addComment({ storyId: currentStory.id, content: text, isEmoji: false });
+        }}
+      />
     </View>
   );
 }
@@ -757,7 +1130,7 @@ function formatTimeAgo(dateStr: string): string {
 }
 
 const styles = StyleSheet.create({
-  screen:        { flex: 1, backgroundColor: '#000' },
+  screen: { flex: 1, backgroundColor: '#000' },
   vignetteTop: {
     position: 'absolute', top: 0, left: 0, right: 0, height: 220,
     zIndex: 1,
@@ -766,47 +1139,102 @@ const styles = StyleSheet.create({
     position: 'absolute', bottom: 0, left: 0, right: 0, height: 260,
     zIndex: 1,
   },
-  progressRow:  { position: 'absolute', left: 12, right: 12, flexDirection: 'row', gap: 4, zIndex: 10 },
-  progressTrack:{ flex: 1, height: 2.5, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.35)', overflow: 'hidden' },
+  progressRow: { position: 'absolute', left: 12, right: 12, flexDirection: 'row', gap: 4, zIndex: 10 },
+  progressTrack: { flex: 1, height: 2.5, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.35)', overflow: 'hidden' },
   progressFill: { height: '100%', backgroundColor: '#FFFFFF', borderRadius: 2 },
 
-  header:              { position: 'absolute', left: 12, right: 12, flexDirection: 'row', alignItems: 'center', gap: 10, zIndex: 10 },
-  headerLeft:          { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  headerAvatar:        { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.6)' },
-  headerAvatarFallback:{ backgroundColor: 'rgba(34,211,238,0.3)', alignItems: 'center', justifyContent: 'center' },
-  headerAvatarText:    { fontSize: 15, fontWeight: '700', color: '#22D3EE' },
-  headerUsername:      { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
-  headerTime:          { fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 1 },
-  closeBtn:            { padding: 4 },
+  header: { position: 'absolute', left: 12, right: 12, flexDirection: 'row', alignItems: 'center', gap: 10, zIndex: 10 },
+  headerLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  headerAvatar: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.6)' },
+  headerAvatarFallback: { backgroundColor: 'rgba(34,211,238,0.3)', alignItems: 'center', justifyContent: 'center' },
+  headerAvatarText: { fontSize: 15, fontWeight: '700', color: '#22D3EE' },
+  headerUsername: { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
+  headerTime: { fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 1 },
+  closeBtn: { padding: 4 },
 
-  followBtn:      { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.6)', backgroundColor: 'rgba(0,0,0,0.3)' },
-  followBtnActive:{ borderColor: '#4ade80', backgroundColor: 'rgba(74,222,128,0.15)' },
-  followBtnText:  { color: '#fff', fontSize: 12, fontWeight: '700' },
+  followBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.6)', backgroundColor: 'rgba(0,0,0,0.3)' },
+  followBtnActive: { borderColor: '#4ade80', backgroundColor: 'rgba(74,222,128,0.15)' },
+  followBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
 
   // Tap-Zonen lassen 130px unten frei für Bottom-Bar
-  tapLeft:  { position: 'absolute', left: 0, top: 0, bottom: 130, width: W * 0.35, zIndex: 5 },
+  tapLeft: { position: 'absolute', left: 0, top: 0, bottom: 130, width: W * 0.35, zIndex: 5 },
   tapRight: { position: 'absolute', right: 0, top: 0, bottom: 130, width: W * 0.65, zIndex: 5 },
 
   bottomBar: { position: 'absolute', left: 12, right: 12, flexDirection: 'row', alignItems: 'center', gap: 10, zIndex: 20 },
 
-  replyBlur:   { flex: 1, flexDirection: 'row', alignItems: 'center', borderRadius: 24, overflow: 'hidden', paddingHorizontal: 16, paddingVertical: 10, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.25)' },
-  replyInput:  { flex: 1, color: '#fff', fontSize: 14, paddingVertical: 0 },
+  replyBlur: { flex: 1, flexDirection: 'row', alignItems: 'center', borderRadius: 24, overflow: 'hidden', paddingHorizontal: 12, paddingVertical: 10, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.25)' },
+  replyInput: { flex: 1, color: '#fff', fontSize: 14, paddingVertical: 0 },
   sendIconBtn: { marginLeft: 8 },
 
+  // ── Emoji Quick-React Row ──────────────────────────────────────────────────
+  emojiRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
+  emojiBtn: {
+    width: 40, height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emojiBtnText: { fontSize: 20 },
+
+  // ── Mode Toggle (DM / Öffentlich) ─────────────────────────────────────────
+  modeToggle: {
+    width: 32, height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 6,
+  },
+  modeTogglePublic: { backgroundColor: 'rgba(34,211,238,0.25)' },
+  modeToggleText: { fontSize: 16 },
+
+  // ── Kommentar-Zähler ──────────────────────────────────────────────────────
+  commentCount: {
+    marginLeft: 8,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 10,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  commentCountText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+
   ownStoryActions: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 16 },
-  ownStoryHint:    { color: 'rgba(255,255,255,0.45)', fontSize: 13, flex: 1 },
+  ownStoryHint: { color: 'rgba(255,255,255,0.45)', fontSize: 13, flex: 1 },
+
+  // Pause-Indikator beim Lang-Drücken
+  pauseOverlay: {
+    position: 'absolute', inset: 0,
+    alignItems: 'center', justifyContent: 'center',
+    zIndex: 50,
+  },
+  pauseIcon: {
+    flexDirection: 'row', gap: 6,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    padding: 14, borderRadius: 40,
+  },
+  pauseBar: {
+    width: 5, height: 26, borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.90)',
+  },
 });
 
 // ── TikTok Share Sheet Styles ─────────────────────────────────────────────────
 const ss = StyleSheet.create({
-  overlay:  { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'flex-end' },
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'flex-end' },
   sheet: {
     backgroundColor: '#111118', borderTopLeftRadius: 24, borderTopRightRadius: 24,
     paddingTop: 12, paddingBottom: 34,
   },
-  handle:       { width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.18)', alignSelf: 'center', marginBottom: 14 },
+  handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.18)', alignSelf: 'center', marginBottom: 14 },
   sectionLabel: { color: '#fff', fontSize: 15, fontWeight: '700', paddingHorizontal: 18, marginBottom: 10 },
-  divider:      { height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.1)', marginVertical: 14, marginHorizontal: 18 },
+  divider: { height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.1)', marginVertical: 14, marginHorizontal: 18 },
 
   // ── Reihe 1: User-Suche & horizontale Liste ──
   searchRow: {
@@ -815,47 +1243,47 @@ const ss = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 10,
     paddingHorizontal: 12, paddingVertical: 8,
   },
-  searchInput:     { flex: 1, color: '#fff', fontSize: 13 },
-  userScroll:      { marginBottom: 4 },
-  userScrollContent:{ paddingHorizontal: 14, gap: 6 },
-  userItem:        { alignItems: 'center', width: 66, gap: 5 },
-  userAvatarWrap:  { position: 'relative' },
-  userAvatarChosen:{ },
-  userAvatar:      { width: 54, height: 54, borderRadius: 27, borderWidth: 2, borderColor: 'rgba(255,255,255,0.15)' },
+  searchInput: { flex: 1, color: '#fff', fontSize: 13 },
+  userScroll: { marginBottom: 4 },
+  userScrollContent: { paddingHorizontal: 14, gap: 6 },
+  userItem: { alignItems: 'center', width: 66, gap: 5 },
+  userAvatarWrap: { position: 'relative' },
+  userAvatarChosen: {},
+  userAvatar: { width: 54, height: 54, borderRadius: 27, borderWidth: 2, borderColor: 'rgba(255,255,255,0.15)' },
   userAvatarFallback: { backgroundColor: 'rgba(34,211,238,0.25)', alignItems: 'center', justifyContent: 'center' },
-  userAvatarText:  { color: '#22D3EE', fontSize: 20, fontWeight: '700' },
+  userAvatarText: { color: '#22D3EE', fontSize: 20, fontWeight: '700' },
   checkBadge: {
     position: 'absolute', bottom: 0, right: 0,
     width: 20, height: 20, borderRadius: 10,
     backgroundColor: '#22D3EE', alignItems: 'center', justifyContent: 'center',
     borderWidth: 2, borderColor: '#111118',
   },
-  userLabel:       { color: 'rgba(255,255,255,0.7)', fontSize: 11, textAlign: 'center', width: 62 },
-  emptyUsers:      { color: 'rgba(255,255,255,0.3)', fontSize: 13, paddingHorizontal: 4, paddingVertical: 6 },
+  userLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 11, textAlign: 'center', width: 62 },
+  emptyUsers: { color: 'rgba(255,255,255,0.3)', fontSize: 13, paddingHorizontal: 4, paddingVertical: 6 },
   sendBtn: {
     marginHorizontal: 18, marginTop: 10,
     backgroundColor: '#22D3EE', borderRadius: 12,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     paddingVertical: 12, gap: 8,
   },
-  sendBtnText:     { color: '#fff', fontSize: 15, fontWeight: '700' },
+  sendBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 
   // ── Reihe 2: App-Icons ──
-  appRow:          { paddingHorizontal: 14, gap: 8 },
-  appItem:         { alignItems: 'center', width: 68, gap: 6 },
+  appRow: { paddingHorizontal: 14, gap: 8 },
+  appItem: { alignItems: 'center', width: 68, gap: 6 },
   appIcon: {
     width: 52, height: 52, borderRadius: 14,
     alignItems: 'center', justifyContent: 'center',
   },
-  appEmoji:        { fontSize: 26 },
-  appLabel:        { color: 'rgba(255,255,255,0.7)', fontSize: 11, textAlign: 'center' },
+  appEmoji: { fontSize: 26 },
+  appLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 11, textAlign: 'center' },
 
   // ── Reihe 3: Aktions-Buttons ──
-  actionRow:       { flexDirection: 'row', paddingHorizontal: 18, gap: 10 },
-  actionItem:      { flex: 1, alignItems: 'center', gap: 6 },
+  actionRow: { flexDirection: 'row', paddingHorizontal: 18, gap: 10 },
+  actionItem: { flex: 1, alignItems: 'center', gap: 6 },
   actionIcon: {
     width: 52, height: 52, borderRadius: 14,
     alignItems: 'center', justifyContent: 'center',
   },
-  actionLabel:     { color: 'rgba(255,255,255,0.6)', fontSize: 11, textAlign: 'center' },
+  actionLabel: { color: 'rgba(255,255,255,0.6)', fontSize: 11, textAlign: 'center' },
 });

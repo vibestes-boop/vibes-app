@@ -12,7 +12,10 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, {
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
+const Animated = { View: _animNS?.View ?? _animMod?.View };
+import {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
@@ -22,9 +25,9 @@ import { Lock, CheckCircle2, Zap } from 'lucide-react-native';
 
 export default function ResetPasswordScreen() {
   const [password, setPassword] = useState('');
-  const [confirm,  setConfirm]  = useState('');
-  const [loading,  setLoading]  = useState(false);
-  const [done,     setDone]     = useState(false);
+  const [confirm, setConfirm] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
 
   const btnScale = useSharedValue(1);
   const btnStyle = useAnimatedStyle(() => ({

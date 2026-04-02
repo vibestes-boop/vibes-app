@@ -3,7 +3,10 @@ import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-nati
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-import Animated, {
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
+const Animated = { View: _animNS?.View ?? _animMod?.View };
+import {
   useSharedValue,
   useAnimatedStyle,
   withDelay,
@@ -18,10 +21,10 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/lib/authStore';
 
 const GUILD_COLORS: Record<string, [string, string]> = {
-  'Pod Alpha':   ['#0891B2', '#22D3EE'],
-  'Pod Beta':    ['#0EA5E9', '#38BDF8'],
-  'Pod Gamma':   ['#059669', '#34D399'],
-  'Pod Delta':   ['#D97706', '#FBBF24'],
+  'Pod Alpha': ['#0891B2', '#22D3EE'],
+  'Pod Beta': ['#0EA5E9', '#38BDF8'],
+  'Pod Gamma': ['#059669', '#34D399'],
+  'Pod Delta': ['#D97706', '#FBBF24'],
   'Pod Epsilon': ['#DC2626', '#F87171'],
 };
 

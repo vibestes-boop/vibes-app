@@ -1,28 +1,38 @@
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
-import Animated, {
+// reanimated: CJS require() vermeidet _interopRequireDefault Crash in Hermes HBC
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+const _animMod = require('react-native-reanimated') as any;
+const _animNS = _animMod?.default ?? _animMod;
+const Animated = { View: _animNS?.View ?? _animMod?.View };
+import {
   useAnimatedStyle,
   useSharedValue,
   withTiming,
   withSequence,
+  withSpring,
+  withDelay,
+  withRepeat,
+  Easing,
 } from 'react-native-reanimated';
 import {
   Heart,
-  Play,
-  Pause,
   Share2,
+  Repeat2,
   MoreVertical,
   UserCheck,
   Volume2,
   VolumeX,
+  Pause,
+  Play,
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import CommentsSheet from '@/components/ui/CommentsSheet';
 import { useLike } from '@/lib/useLike';
 import { useFollow } from '@/lib/useFollow';
+import { useRepost } from '@/lib/useRepost';
 import { useAuthStore } from '@/lib/authStore';
 import type { FeedEngagementMaps } from '@/lib/useFeedEngagement';
 import type { UseLikeBatch } from '@/lib/useLike';
@@ -40,6 +50,54 @@ import {
 } from './FeedActionButtons';
 import { feedItemStyles as styles } from './feedStyles';
 import type { FeedItemData } from './types';
+
+// ─── Floating Heart — eigenständige Komponente pro Tap ────────────────────────
+type FloatingHeartItem = { id: number; x: number; y: number };
+
+function FloatingHeart({ x, y, onDone }: { x: number; y: number; onDone: () => void }) {
+  const scale = useSharedValue(0);
+  const floatY = useSharedValue(0);
+  const rot = useSharedValue(0);
+  const opacity = useSharedValue(0);
+
+  useEffect(() => {
+    scale.value = withSequence(
+      withSpring(1.5, { damping: 7, stiffness: 220 }),
+      withTiming(1.15, { duration: 150, easing: Easing.out(Easing.cubic) })
+    );
+    floatY.value = withTiming(-110, { duration: 1700, easing: Easing.out(Easing.quad) });
+    rot.value = withRepeat(
+      withSequence(withTiming(-8, { duration: 180 }), withTiming(8, { duration: 180 })),
+      4, true
+    );
+    opacity.value = withSequence(
+      withTiming(1, { duration: 0 }),
+      withDelay(900, withTiming(0, { duration: 800 }))
+    );
+    const t = setTimeout(onDone, 1750);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const style = useAnimatedStyle(() => ({
+    transform: [
+      { translateX: x - 60 },
+      { translateY: y - 60 + floatY.value },
+      { scale: scale.value },
+      { rotate: `${rot.value}deg` },
+    ],
+    opacity: opacity.value,
+  }));
+
+  return (
+    <Animated.View
+      style={[{ position: 'absolute', width: 120, height: 120, left: 0, top: 0 }, style]}
+      pointerEvents="none"
+    >
+      <Heart size={90} color="#EE1D52" fill="#EE1D52" />
+    </Animated.View>
+  );
+}
 
 export const FeedItem = React.memo(function FeedItem({
   item,
@@ -65,7 +123,6 @@ export const FeedItem = React.memo(function FeedItem({
   const [shareOpen, setShareOpen] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [longPressOpen, setLongPressOpen] = useState(false);
-  const [paused, setPaused] = useState(false);
   const [progress, setProgress] = useState(0);
   const [imageError, setImageError] = useState(false);
   const isVideo = item.mediaType === 'video';
@@ -82,45 +139,68 @@ export const FeedItem = React.memo(function FeedItem({
   const { isFollowing, toggle: toggleFollow, isOwnProfile } = useFollow(item.authorId ?? null, followBatch);
 
   const lastTap = useRef<number>(0);
+  const lastTapPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const navTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const { liked, formattedCount: likeFormatted, toggle: toggleLike } = useLike(item.id, likeBatch);
+  const { isReposted, count: repostCount, toggle: toggleRepost } = useRepost(item.id);
 
-  const pauseIconOpacity = useSharedValue(0);
-  const heartScale = useSharedValue(0);
-  const heartOpacity = useSharedValue(0);
+  const [hearts, setHearts] = useState<FloatingHeartItem[]>([]);
+  const heartIdRef = useRef(0);
+  // Pause/Play via Tap
+  const [isPaused, setIsPaused] = useState(false);
+  const [showPlayFlash, setShowPlayFlash] = useState<'pause' | 'play' | null>(null);
 
-  const pauseIconStyle = useAnimatedStyle(() => ({ opacity: pauseIconOpacity.value }));
-  const heartStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: heartScale.value }],
-    opacity: heartOpacity.value,
-  }));
+  // Wenn Video aus dem Viewport verschwindet → Pause-State zurücksetzen
+  const prevShouldPlay = useRef(shouldPlayVideo);
+  if (prevShouldPlay.current !== shouldPlayVideo) {
+    prevShouldPlay.current = shouldPlayVideo;
+    if (!shouldPlayVideo && isPaused) setIsPaused(false);
+  }
 
-  const handleVideoTap = () => {
+  const actualShouldPlay = shouldPlayVideo && !isPaused;
+
+  const spawnHeart = useCallback((x: number, y: number) => {
+    const newId = heartIdRef.current++;
+    setHearts((prev) => [...prev, { id: newId, x, y }]);
+  }, []);
+
+  const handleTap = (evt: { nativeEvent: { locationX: number; locationY: number } }) => {
     const now = Date.now();
-    const DOUBLE_TAP_DELAY = 250; // TikTok: 250ms Fenster
+    const DOUBLE_TAP_DELAY = 250;
+    const pos = { x: evt.nativeEvent.locationX, y: evt.nativeEvent.locationY };
 
     if (now - lastTap.current < DOUBLE_TAP_DELAY) {
+      // — Doppel-Tap: Like + Herz —
+      if (navTimeoutRef.current) {
+        clearTimeout(navTimeoutRef.current);
+        navTimeoutRef.current = null;
+      }
       if (!liked) {
         toggleLike();
         notificationAsync(NotificationFeedbackType.Success);
       }
-      // TikTok: Herz erscheint sofort (40ms), verschwindet schnell (60ms)
-      heartScale.value = withSequence(withTiming(1.4, { duration: 40 }), withTiming(1, { duration: 60 }));
-      heartOpacity.value = withSequence(withTiming(1, { duration: 20 }), withTiming(0, { duration: 60 }));
+      spawnHeart(lastTapPos.current.x, lastTapPos.current.y);
       lastTap.current = 0;
       return;
     }
-    lastTap.current = now;
 
-    if (!isVideo) return;
-    const next = !paused;
-    setPaused(next);
-    if (next) {
-      pauseIconOpacity.value = withSequence(
-        withTiming(1, { duration: 30 }),
-        withTiming(1, { duration: 60 }),
-        withTiming(0, { duration: 50 })
-      );
+    lastTap.current = now;
+    lastTapPos.current = pos;
+
+    // — Einfacher Tap: bei Video Pause/Play togglen (wie Instagram Reels) —
+    if (isVideo) {
+      navTimeoutRef.current = setTimeout(() => {
+        navTimeoutRef.current = null;
+        setIsPaused((p) => {
+          const next = !p;
+          // Kurzes visuelles Feedback (800ms)
+          setShowPlayFlash(next ? 'pause' : 'play');
+          setTimeout(() => setShowPlayFlash(null), 700);
+          return next;
+        });
+      }, DOUBLE_TAP_DELAY + 10);
     }
+    // Bei Bildern: nichts tun beim einfachen Tap
   };
 
   const handleProgress = useCallback((p: number) => setProgress(p), []);
@@ -129,22 +209,12 @@ export const FeedItem = React.memo(function FeedItem({
     <View style={styles.feedItem}>
       {/* ── Hintergrund: Bild DIREKT in feedItem */}
       {item.mediaUrl && !isVideo && !imageError && (
-        <>
-          {/* Blur-Hintergrund: expo-image hat Memory/Disk-Cache — kein doppelter Netzwerkaufruf */}
-          <Image
-            source={{ uri: item.mediaUrl }}
-            style={[StyleSheet.absoluteFill, { opacity: 0.35 }]}
-            contentFit="cover"
-            blurRadius={6}
-            onError={() => setImageError(true)}
-          />
-          <Image
-            source={{ uri: item.mediaUrl }}
-            style={StyleSheet.absoluteFill}
-            contentFit="contain"
-            onError={() => setImageError(true)}
-          />
-        </>
+        <Image
+          source={{ uri: item.mediaUrl }}
+          style={StyleSheet.absoluteFill}
+          contentFit="cover"
+          onError={() => setImageError(true)}
+        />
       )}
       {(!item.mediaUrl || imageError) && (
         <LinearGradient
@@ -157,27 +227,27 @@ export const FeedItem = React.memo(function FeedItem({
 
       <Pressable
         style={StyleSheet.absoluteFill}
-        onPress={handleVideoTap}
+        onPress={handleTap as any}
         onLongPress={() => {
           impactAsync(ImpactFeedbackStyle.Heavy);
           setLongPressOpen(true);
         }}
         delayLongPress={380}
         accessibilityRole="button"
-        accessibilityLabel={isVideo ? "Video tippen zum Pause/Play, doppeltippen zum Liken, gedrückt halten für Optionen" : "Bild tippen zum Liken, gedrückt halten für Optionen"}
+        accessibilityLabel={isVideo ? 'Doppeltippen zum Liken, gedrückt halten für Optionen' : 'Doppeltippen zum Liken, gedrückt halten für Optionen'}
       >
         {item.mediaUrl && isVideo && (
           USE_EXPO_VIDEO ? (
             <NativeFeedVideo
               uri={item.mediaUrl}
-              shouldPlay={shouldPlayVideo && !paused}
+              shouldPlay={actualShouldPlay}
               isMuted={isMuted}
               onProgress={handleProgress}
             />
           ) : (
             <FallbackFeedVideo
               uri={item.mediaUrl}
-              shouldPlay={shouldPlayVideo && !paused}
+              shouldPlay={actualShouldPlay}
               isMuted={isMuted}
               onProgress={handleProgress}
             />
@@ -192,13 +262,41 @@ export const FeedItem = React.memo(function FeedItem({
           </View>
         )}
 
-        <Animated.View style={[styles.pauseIconWrap, pauseIconStyle]} pointerEvents="none">
-          {paused ? <Play size={52} color="#fff" fill="#fff" /> : <Pause size={52} color="#fff" fill="#fff" />}
-        </Animated.View>
+        {/* Floating Hearts */}
+        {hearts.map((h) => (
+          <FloatingHeart
+            key={h.id}
+            x={h.x}
+            y={h.y}
+            onDone={() => setHearts((prev) => prev.filter((hh) => hh.id !== h.id))}
+          />
+        ))}
 
-        <Animated.View style={[styles.doubleTapHeart, heartStyle]} pointerEvents="none">
-          <Heart size={90} color="#F472B6" fill="#F472B6" />
-        </Animated.View>
+        {/* Pause/Play Flash — kurzes visuelles Feedback beim Tap (wie Instagram Reels) */}
+        {showPlayFlash !== null && (
+          <View style={feedFlashStyles.flashWrap} pointerEvents="none">
+            {showPlayFlash === 'pause'
+              ? <Pause size={34} color="#fff" fill="#fff" strokeWidth={0} />
+              : <Play size={34} color="#fff" fill="#fff" strokeWidth={0} />}
+          </View>
+        )}
+
+        {/* Sound-Button — unten rechts auf dem Video, wie Instagram */}
+        {isVideo && (
+          <Pressable
+            onPress={(e) => { e.stopPropagation?.(); onMuteToggle(); }}
+            style={styles.muteBtn}
+            hitSlop={14}
+            accessibilityRole="button"
+            accessibilityLabel={isMuted ? 'Ton einschalten' : 'Ton ausschalten'}
+          >
+            <View style={styles.muteBtnInner}>
+              {isMuted
+                ? <VolumeX size={16} color="#fff" strokeWidth={2.2} />
+                : <Volume2 size={16} color="#fff" strokeWidth={2.2} />}
+            </View>
+          </Pressable>
+        )}
       </Pressable>
 
       <PostShareModal
@@ -260,7 +358,7 @@ export const FeedItem = React.memo(function FeedItem({
 
       <View style={styles.bottomInfo} pointerEvents="box-none">
         <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.55)', 'rgba(0,0,0,0.92)']}
+          colors={['transparent', 'rgba(0,0,0,0.25)', 'rgba(0,0,0,0.65)']}
           style={StyleSheet.absoluteFill}
           pointerEvents="none"
         />
@@ -268,6 +366,7 @@ export const FeedItem = React.memo(function FeedItem({
           <View style={[styles.tagDot, { backgroundColor: item.accentColor }]} />
           <Text style={[styles.tagText, { color: item.accentColor }]}>{item.tag}</Text>
         </View>
+        {/* ── Avatar + Name (horizontal) ── */}
         <View style={styles.authorRow}>
           <Pressable
             onPress={() => {
@@ -341,29 +440,29 @@ export const FeedItem = React.memo(function FeedItem({
           >
             <Text style={styles.authorName}>{item.author}</Text>
           </Pressable>
-          {/* Hashtags — klickbar → Explore-Filter */}
-          {item.tags && item.tags.length > 0 && (
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 2 }}>
-              {item.tags.map((tag) => (
-                <Pressable
-                  key={tag}
-                  onPress={() => router.push({
-                    pathname: '/(tabs)/explore',
-                    params: { tag },
-                  } as any)}
-                  hitSlop={6}
-                >
-                  <Text style={styles.authorTags}>#{tag}</Text>
-                </Pressable>
-              ))}
-            </View>
-          )}
         </View>
-        {item.caption ? (
-          <Text style={styles.caption} numberOfLines={2}>
-            {item.caption}
-          </Text>
-        ) : null}
+
+        {/* ── Caption + Hashtags — vertikal unterhalb des Nicknamens (TikTok-Style) ── */}
+        {(item.caption || (item.tags && item.tags.length > 0)) && (
+          <View style={styles.captionBlock}>
+            {item.caption ? (
+              <Text style={styles.caption} numberOfLines={3}>{item.caption}</Text>
+            ) : null}
+            {item.tags && item.tags.length > 0 && (
+              <View style={styles.tagsRow}>
+                {item.tags.map((tag) => (
+                  <Pressable
+                    key={tag}
+                    onPress={() => router.push({ pathname: '/(tabs)/explore', params: { tag } } as any)}
+                    hitSlop={6}
+                  >
+                    <Text style={styles.authorTags}>#{tag}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
 
         {isVideo && (
           <View style={styles.progressTrack}>
@@ -373,19 +472,7 @@ export const FeedItem = React.memo(function FeedItem({
       </View>
 
       <View style={styles.rightActions}>
-        {isVideo && (
-          <Pressable
-            onPress={onMuteToggle}
-            style={styles.muteBtn}
-            hitSlop={12}
-            accessibilityRole="button"
-            accessibilityLabel={isMuted ? 'Ton einschalten' : 'Ton ausschalten'}
-          >
-            <BlurView intensity={60} tint="dark" style={styles.muteBtnBlur}>
-              {isMuted ? <VolumeX size={18} color="#fff" /> : <Volume2 size={18} color="#fff" />}
-            </BlurView>
-          </Pressable>
-        )}
+        {/* Mute-Button ist jetzt auf dem Video (s.o.) — hier entfernt */}
         <LikeButton
           accentColor={item.accentColor}
           liked={liked}
@@ -398,6 +485,20 @@ export const FeedItem = React.memo(function FeedItem({
           batchCount={engagement.commentCountByPost[item.id]}
         />
         <BookmarkButton postId={item.id} batchBookmarked={engagement.bookmarkedByPost[item.id]} />
+        {/* Repost — nur bei fremden Posts */}
+        {!isOwnProfile && (
+          <ActionButton
+            icon={Repeat2}
+            accessibilityLabel={isReposted ? 'Repost rückgängig' : 'Post reposten'}
+            count={repostCount > 0 ? String(repostCount) : undefined}
+            active={isReposted}
+            activeColor="#22D3EE"
+            onPress={() => {
+              impactAsync(ImpactFeedbackStyle.Medium);
+              toggleRepost();
+            }}
+          />
+        )}
         <ActionButton
           icon={Share2}
           accessibilityLabel="Post teilen"
@@ -417,4 +518,20 @@ export const FeedItem = React.memo(function FeedItem({
       </View>
     </View>
   );
+});
+
+// Pause/Play Flash-Feedback Styles (wie Instagram Reels)
+const feedFlashStyles = StyleSheet.create({
+  flashWrap: {
+    position: 'absolute',
+    alignSelf: 'center',
+    top: '38%',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(0,0,0,0.50)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 60,
+  },
 });

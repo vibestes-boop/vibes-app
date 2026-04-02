@@ -12,7 +12,10 @@ import {
   Modal,
   ScrollView,
 } from 'react-native';
-import Animated, {
+// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
+const Animated = { View: _animNS?.View ?? _animMod?.View };
+import {
   FadeIn,
   FadeOut,
   SlideInDown,

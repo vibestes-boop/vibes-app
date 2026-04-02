@@ -21,7 +21,7 @@ export function GuildViewToggle({
         }}
         activeOpacity={0.75}
       >
-        <Rss size={14} color={mode === 'feed' ? '#FFFFFF' : 'rgba(255,255,255,0.4)'} strokeWidth={2} />
+        <Rss size={18} color={mode === 'feed' ? '#FFFFFF' : 'rgba(255,255,255,0.65)'} strokeWidth={2.2} />
         <Text style={[styles.toggleText, mode === 'feed' && styles.toggleTextActive]}>Feed</Text>
       </TouchableOpacity>
       <TouchableOpacity
@@ -33,9 +33,9 @@ export function GuildViewToggle({
         activeOpacity={0.75}
       >
         <Trophy
-          size={14}
-          color={mode === 'leaderboard' ? '#FBBF24' : 'rgba(255,255,255,0.4)'}
-          strokeWidth={2}
+          size={18}
+          color={mode === 'leaderboard' ? '#FBBF24' : 'rgba(255,255,255,0.65)'}
+          strokeWidth={2.2}
         />
         <Text style={[styles.toggleText, mode === 'leaderboard' && styles.toggleTextGold]}>Rangliste</Text>
       </TouchableOpacity>

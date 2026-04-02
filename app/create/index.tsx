@@ -15,7 +15,7 @@ import {
   type ImagePickerAsset,
 } from "expo-image-picker";
 import { supabase } from "@/lib/supabase";
-import { uploadPostMedia } from "@/lib/uploadMedia";
+import { uploadPostMedia, generateAndUploadThumbnail } from "@/lib/uploadMedia";
 import { useAuthStore } from "@/lib/authStore";
 import { useGuildInfo } from "@/lib/usePosts";
 import { useQueryClient } from "@tanstack/react-query";
@@ -59,9 +59,8 @@ export default function CreatePostScreen() {
     }
     const result = await launchImageLibraryAsync({
       mediaTypes: ["images", "videos"],
-      allowsEditing: true,
-      aspect: [9, 16],
-      quality: 0.85,
+      allowsEditing: false,   // Kein Zuschneiden — Original hochladen wie TikTok
+      quality: 0.92,
       videoMaxDuration: 60,
     });
     if (!result.canceled && result.assets[0]) setImage(result.assets[0]);
@@ -78,9 +77,8 @@ export default function CreatePostScreen() {
     }
     const result = await launchCameraAsync({
       mediaTypes: ["images", "videos"],
-      allowsEditing: true,
-      aspect: [9, 16],
-      quality: 0.85,
+      allowsEditing: false,   // Kein Zuschneiden — Original hochladen wie TikTok
+      quality: 0.92,
       videoMaxDuration: 60,
     });
     if (!result.canceled && result.assets[0]) setImage(result.assets[0]);
@@ -118,6 +116,8 @@ export default function CreatePostScreen() {
 
     try {
       let mediaUrl: string | null = null;
+      let thumbnailUrl: string | null = null;
+      const isVideo = image?.type === 'video';
 
       if (image) {
         const { url } = await uploadPostMedia(
@@ -128,6 +128,15 @@ export default function CreatePostScreen() {
           controller.signal,
         );
         mediaUrl = url;
+
+        // Für Videos: Thumbnail aus erstem Frame generieren
+        if (isVideo) {
+          thumbnailUrl = await generateAndUploadThumbnail(
+            profile.id,
+            image.uri,
+            controller.signal,
+          );
+        }
       }
 
       // Bail out if the user cancelled between the upload and the DB insert
@@ -137,10 +146,11 @@ export default function CreatePostScreen() {
         author_id: profile.id,
         caption: caption.trim() || null,
         media_url: mediaUrl,
-        media_type: image?.type === "video" ? "video" : "image",
+        media_type: isVideo ? "video" : "image",
+        thumbnail_url: thumbnailUrl,
         tags: selectedTags.map((t) => t.toLowerCase()),
-        is_guild_post: false,          // Posts erscheinen immer im Vibe-Feed
-        guild_id: profile.guild_id,   // guild_id steuert Guild-Sichtbarkeit
+        is_guild_post: false,
+        guild_id: profile.guild_id,
       });
 
       if (error) throw error;

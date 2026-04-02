@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native';
-import { GUILD_SCREEN_WIDTH } from './guildConstants';
+
 
 export const guildStyles = StyleSheet.create({
   screen: {
@@ -132,12 +132,17 @@ export const guildStyles = StyleSheet.create({
   },
 
   card: {
-    // Full-width edge-to-edge (Instagram style)
     marginHorizontal: 0,
-    marginBottom: 2,
+    marginBottom: 1,
     overflow: 'hidden',
+    backgroundColor: '#0D0D15',
   },
   cardBlur: {
+    // BlurView entfernt (→ schwarzer Screen in Listen)
+    // Glassmorphism via solider Farbe + Rand
+    backgroundColor: '#0F0F18',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255,255,255,0.07)',
     overflow: 'hidden',
   },
   cardHeader: {
@@ -197,11 +202,17 @@ export const guildStyles = StyleSheet.create({
     flexShrink: 1,
   },
   mediaWrap: {
-    // Full display width, no radius (Instagram style)
     overflow: 'hidden',
     marginBottom: 0,
-    // 4:5 portrait ratio = Instagram standard (1080×1350)
-    height: GUILD_SCREEN_WIDTH * 1.25,
+    width: '100%',
+    aspectRatio: 4 / 5,   // Instagram-Hochformat (4:5) — mobiles Standard-Format
+    maxHeight: 560,
+    backgroundColor: '#0D0D12',
+  },
+  mediaWrapNoMedia: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 200,
   },
   mediaThumb: {
     width: '100%',
@@ -239,21 +250,25 @@ export const guildStyles = StyleSheet.create({
   },
   actions: {
     flexDirection: 'row',
-    gap: 20,
+    gap: 4,
     alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingTop: 10,
-    paddingBottom: 14,
+    paddingHorizontal: 6,
+    paddingTop: 4,
+    paddingBottom: 4,
   },
   actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    minHeight: 44,
+    borderRadius: 10,
   },
   actionCount: {
-    color: '#6B7280',
-    fontSize: 13,
-    fontWeight: '500',
+    color: '#9CA3AF',
+    fontSize: 14,
+    fontWeight: '600',
   },
 
   emptyWrap: {

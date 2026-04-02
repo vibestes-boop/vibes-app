@@ -8,7 +8,7 @@
 function getStringAsync() { return Promise.resolve(''); }
 function setStringAsync(_text) { return Promise.resolve(true); }
 function getString() { return ''; }
-function setString(_text) {}
+function setString(_text) { }
 function hasStringAsync() { return Promise.resolve(false); }
 function getImageAsync(_options) { return Promise.resolve(null); }
 function setImageAsync(_base64Image) { return Promise.resolve(); }
@@ -16,12 +16,13 @@ function hasImageAsync() { return Promise.resolve(false); }
 function getUrlAsync() { return Promise.resolve(null); }
 function setUrlAsync(_url) { return Promise.resolve(); }
 function hasUrlAsync() { return Promise.resolve(false); }
-function addClipboardListener(_listener) { return { remove: function() {} }; }
-function removeClipboardListener(_subscription) {}
+function addClipboardListener(_listener) { return { remove: function () { } }; }
+function removeClipboardListener(_subscription) { }
 
 var StringFormat = { PLAIN_TEXT: 'plainText' };
 
 module.exports = {
+  __esModule: true,
   getStringAsync: getStringAsync,
   setStringAsync: setStringAsync,
   getString: getString,
@@ -37,4 +38,6 @@ module.exports = {
   removeClipboardListener: removeClipboardListener,
   StringFormat: StringFormat,
 };
-module.exports.default = module.exports;
+// KEIN module.exports.default = module.exports !
+// Das erzeugt einen zirkulären Getter-Konflikt in Hermes HBC
+// wenn "import * as Clipboard" versucht .default zu schreiben → TypeError: Cannot assign.
