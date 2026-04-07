@@ -9,3 +9,4 @@ export { PostManageModal } from './PostManageModal';
 export { ProfileStudioHeader } from './ProfileStudioHeader';
 export { ProfileListHeader } from './ProfileListHeader';
 export { ProfileHighlightsRow } from './ProfileHighlightsRow';
+export { AnalyticsTab } from './AnalyticsTab';

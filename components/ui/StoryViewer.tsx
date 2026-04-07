@@ -3,9 +3,12 @@ import {
   View, Text, StyleSheet, Pressable, Dimensions,
   TextInput, Keyboard, Alert, Modal, Platform,
   KeyboardEvent, ScrollView, Share, Linking, AppState,
+  Animated as RNAnimated, Easing as EasingRN,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+// expo-file-system v19: Legacy-API für cacheDirectory + downloadAsync
+import * as FileSystem from 'expo-file-system/legacy';
 import { router } from 'expo-router';
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
 const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
@@ -14,7 +17,7 @@ import {
   useSharedValue, useAnimatedStyle, withTiming, withSequence,
   runOnJS, Easing,
 } from 'react-native-reanimated';
-import { X, Heart, Send, Share2, UserPlus, UserCheck, Check, Copy, Flag, EyeOff, Download, Search as SearchIcon } from 'lucide-react-native';
+import { X, Heart, Send, Share2, UserPlus, UserCheck, Check, Copy, Flag, EyeOff, Download, Search as SearchIcon, Eye } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { setStringAsync as clipboardSetString } from 'expo-clipboard';
@@ -25,6 +28,7 @@ import { supabase } from '@/lib/supabase';
 import type { StoryGroup, Story } from '@/lib/useStories';
 import { useMarkStoryViewed, useMyStoryVote, useStoryPollResults, useVoteStoryPoll } from '@/lib/useStories';
 import { useStoryComments, useAddStoryComment, type StoryComment } from '@/lib/useStoryComments';
+import { StoryViewersSheet } from '@/components/ui/StoryViewersSheet';
 import { useFollow } from '@/lib/useFollow';
 import { useAuthStore } from '@/lib/authStore';
 import { useOrCreateConversation, useSendMessage } from '@/lib/useMessages';
@@ -101,6 +105,44 @@ function FallbackVideoStory({ uri, isPaused, onDurationKnown }: { uri: string; i
   );
 }
 
+// ── Floating Heart — Doppel-Tap-Animation ─────────────────────────────────────
+type FloatingHeartItem = { id: number; x: number; y: number };
+function FloatingHeart({ x, y, onDone }: { x: number; y: number; onDone: () => void }) {
+  const opacity   = useRef(new RNAnimated.Value(1)).current;
+  const scale     = useRef(new RNAnimated.Value(0)).current;
+  const translateY= useRef(new RNAnimated.Value(0)).current;
+  const rotate    = useRef(new RNAnimated.Value(0)).current;
+  useEffect(() => {
+    RNAnimated.parallel([
+      RNAnimated.spring(scale,      { toValue: 1,    friction: 4, tension: 180, useNativeDriver: true }),
+      RNAnimated.timing(translateY, { toValue: -130, duration: 1500, useNativeDriver: true }),
+      RNAnimated.sequence([
+        RNAnimated.timing(rotate, { toValue: -1, duration: 110, useNativeDriver: true }),
+        RNAnimated.timing(rotate, { toValue:  1, duration: 110, useNativeDriver: true }),
+        RNAnimated.timing(rotate, { toValue: -1, duration: 110, useNativeDriver: true }),
+        RNAnimated.timing(rotate, { toValue:  0, duration:  90, useNativeDriver: true }),
+      ]),
+      RNAnimated.sequence([
+        RNAnimated.delay(850),
+        RNAnimated.timing(opacity, { toValue: 0, duration: 650, useNativeDriver: true }),
+      ]),
+    ]).start();
+    const t = setTimeout(onDone, 1600);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const rotateInterp = rotate.interpolate({ inputRange: [-1, 0, 1], outputRange: ['-10deg', '0deg', '10deg'] });
+  return (
+    <RNAnimated.View
+      style={[{ position: 'absolute', width: 120, height: 120, left: x - 60, top: y - 60, alignItems: 'center', justifyContent: 'center' },
+              { opacity, transform: [{ translateY }, { scale }, { rotate: rotateInterp }] }]}
+      pointerEvents="none"
+    >
+      <Heart size={100} color="#EE1D52" fill="#EE1D52" />
+    </RNAnimated.View>
+  );
+}
+
 // ── Story Like Hook (story_id → story_likes Tabelle) ─────────────────────────
 function useStoryLike(storyId: string | undefined) {
   const queryClient = useQueryClient();
@@ -122,24 +164,36 @@ function useStoryLike(storyId: string | undefined) {
     staleTime: 1000 * 60,
   });
 
+  // useRef → stabil über Re-renders (plain object würde bei jedem Render neu erstellt = Bug)
+  const fkErrorRef = useRef(false);
+
   const toggle = useMutation({
     onMutate: async () => {
+      fkErrorRef.current = false;
       await queryClient.cancelQueries({ queryKey: ['story-like', userId, storyId] });
       queryClient.setQueryData(['story-like', userId, storyId], (old: boolean) => !old);
     },
     mutationFn: async () => {
       if (!userId || !storyId) return;
       if (liked) {
-        await supabase.from('story_likes').delete().eq('story_id', storyId).eq('user_id', userId);
+        const { error } = await supabase.from('story_likes').delete().eq('story_id', storyId).eq('user_id', userId);
+        if (error) throw error;
       } else {
-        await supabase.from('story_likes').insert({ story_id: storyId, user_id: userId });
+        const { error } = await supabase.from('story_likes').insert({ story_id: storyId, user_id: userId });
+        // FK-Violation (23503) oder anderer Fehler → onError wird aufgerufen
+        if (error) throw error;
       }
     },
-    onError: () => {
-      // Rollback optimistic update
+    onError: (err: any) => {
+      // FK-Violation (23503): Original-Story abgelaufen/gelöscht (z.B. Highlight über alte Story)
+      // → Optimistisches Update BEHALTEN, kein Rollback, kein Re-fetch
+      if (err?.code === '23503') { fkErrorRef.current = true; return; }
+      // Alle anderen Fehler: Rollback
       queryClient.setQueryData(['story-like', userId, storyId], liked);
     },
     onSettled: () => {
+      // Nach FK-Fehler KEIN invalidate → verhindert dass refetch das optimistische Update überschreibt
+      if (fkErrorRef.current) return;
       queryClient.invalidateQueries({ queryKey: ['story-like', userId, storyId] });
     },
   });
@@ -400,7 +454,32 @@ function InAppShareModal({
         Alert.alert('Verstanden', 'Weniger Stories dieser Art.');
         break;
       case 'download':
-        Alert.alert('Download', 'Story wird gespeichert…');
+        (async () => {
+          try {
+            if (!storyMediaUrl) {
+              Alert.alert('Fehler', 'Kein Medium verfügbar.');
+              return;
+            }
+            // Dateiendung ermitteln
+            const ext = storyMediaUrl.includes('.mp4') ? 'mp4'
+              : storyMediaUrl.includes('.mov') ? 'mov'
+              : storyMediaUrl.includes('.webm') ? 'webm'
+              : 'jpg';
+            const localUri = FileSystem.cacheDirectory + `story_${Date.now()}.${ext}`;
+
+            // Herunterladen in Cache
+            const { uri } = await FileSystem.downloadAsync(storyMediaUrl, localUri);
+
+            // Native Share-Sheet → User kann in Fotos, Dateien etc. speichern
+            await Share.share(
+              { url: uri, message: `Story von @${storyUsername}` },
+              { dialogTitle: 'Story speichern' }
+            );
+          } catch (err: any) {
+            if (err?.message?.includes('cancel')) return; // User hat abgebrochen
+            Alert.alert('Fehler', 'Story konnte nicht gespeichert werden.');
+          }
+        })();
         break;
     }
   };
@@ -694,6 +773,7 @@ const sc = StyleSheet.create({
 export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, onPrevGroup }: Props) {
   const insets = useSafeAreaInsets();
   const currentUserId = useAuthStore((s) => s.profile?.id);
+  const [showViewers, setShowViewers] = useState(false);
   const [storyIndex, setStoryIndex] = useState(0);
   const [replyText, setReplyText] = useState('');
   const [shareOpen, setShareOpen] = useState(false);
@@ -707,7 +787,9 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
   const { mutateAsync: sendMsg, isPending: sending } = useSendMessage();
   const { mutateAsync: addComment, isPending: addingComment } = useAddStoryComment();
 
-  const progress = useSharedValue(0);
+  // Progress: RNAnimated (wie FeedItem.tsx) — zuverlässiger als Reanimated+CJS-Hack
+  const progressAnim = useRef(new RNAnimated.Value(0)).current;
+  const progressRef = useRef(0); // aktuellen 0-1 Wert verfolgen
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const durationFixedRef = useRef(false);
   const inputRef = useRef<TextInput>(null);
@@ -753,14 +835,42 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
 
   const startProgress = useCallback((duration: number) => {
     timerRef.current && clearTimeout(timerRef.current);
-    progress.value = 0;
-    progress.value = withTiming(1, { duration, easing: Easing.linear });
-    timerRef.current = setTimeout(() => runOnJS(goNext)(), duration);
-  }, [goNext, progress]);
+    progressAnim.stopAnimation();
+    progressAnim.setValue(0);
+    progressRef.current = 0;
+    RNAnimated.timing(progressAnim, {
+      toValue: 1,
+      duration,
+      easing: EasingRN.linear,
+      useNativeDriver: false, // width kann keinen native driver nutzen
+    }).start();
+    timerRef.current = setTimeout(() => goNext(), duration);
+  }, [goNext, progressAnim]);
 
   // Story pausieren wenn Keyboard offen, Share-Modal offen, User hält oder App im Hintergrund
   const [isHolding, setIsHolding] = useState(false);
   const [isAppBackground, setIsAppBackground] = useState(false);
+
+  // ── Doppel-Tap: Like + Herz-Animation ─────────────────────────────────────
+  const { liked: storyLiked, toggle: toggleStoryLike } = useStoryLike(currentStory?.id);
+  const [hearts, setHearts] = useState<FloatingHeartItem[]>([]);
+  const heartIdRef   = useRef(0);
+  const lastTapRef   = useRef(0);          // Zeitstempel des letzten Taps
+  const tapTimerRef  = useRef<ReturnType<typeof setTimeout> | null>(null); // Nav-Delay
+
+  const spawnHeart = useCallback((x: number, y: number) => {
+    const id = heartIdRef.current++;
+    setHearts((prev) => [...prev, { id, x, y }]);
+  }, []);
+
+  // Story wechselt → ausstehende Nav-Timer resetten
+  useEffect(() => {
+    if (tapTimerRef.current) { clearTimeout(tapTimerRef.current); tapTimerRef.current = null; }
+    lastTapRef.current = 0;
+  }, [storyIndex]);
+
+  // Cleanup bei Unmount
+  useEffect(() => () => { if (tapTimerRef.current) clearTimeout(tapTimerRef.current); }, []);
 
   // AppState: beim Minimieren/App-Switcher pausieren
   useEffect(() => {
@@ -772,12 +882,13 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
 
   const isPaused = kbHeight > 0 || shareOpen || isHolding || isAppBackground || showComments;
 
-  // Hold-Handler: bei langem Drücken Fortschritt merken + pausieren
+  // Hold-Handler: Fortschritt merken + Animation stoppen
   const handleHoldStart = useCallback(() => {
-    holdProgressRef.current = progress.value;
+    holdProgressRef.current = progressRef.current;
     wasHoldingRef.current = true;
+    progressAnim.stopAnimation();
     setIsHolding(true);
-  }, [progress]);
+  }, [progressAnim]);
 
   const handleHoldEnd = useCallback(() => {
     setIsHolding(false); // isPaused → false → useEffect resumt
@@ -785,10 +896,7 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
 
   useEffect(() => {
     if (isPaused) {
-      // Bug 4 Fix: Animation stoppen + Timer löschen
-      // Reanimated cancelAnimation nicht in Expo Go verfügbar — stattdessen
-      // Shared-Value auf sich selbst setzen: stoppt laufende Animation sofort
-      progress.value = progress.value;  // no-op stop trick
+      progressAnim.stopAnimation();
       timerRef.current && clearTimeout(timerRef.current);
       return;
     }
@@ -802,16 +910,18 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
       const saved = holdProgressRef.current;
       holdProgressRef.current = 0;
       const remaining = Math.round((1 - saved) * totalDur);
-      progress.value = saved;  // Von dieser Position weiterlaufen
-      progress.value = withTiming(1, { duration: remaining, easing: Easing.linear });
-      timerRef.current = setTimeout(() => runOnJS(goNext)(), remaining);
+      progressAnim.stopAnimation();
+      progressAnim.setValue(saved);
+      progressRef.current = saved;
+      RNAnimated.timing(progressAnim, { toValue: 1, duration: remaining, easing: EasingRN.linear, useNativeDriver: false }).start();
+      timerRef.current = setTimeout(() => goNext(), remaining);
     } else {
       wasHoldingRef.current = false;
       holdProgressRef.current = 0;
       startProgress(totalDur);
     }
     return () => { timerRef.current && clearTimeout(timerRef.current); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- currentStory/startProgress: bewusst über id + Callback
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPaused, currentStory?.id, visible]);
 
   useEffect(() => {
@@ -821,7 +931,7 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
     // Nächste Story bereits jetzt prefetchen während die aktuelle läuft
     const nextStory = group.stories[storyIndex + 1];
     if (nextStory?.media_url && nextStory.media_type !== 'video') {
-      Image.prefetch(nextStory.media_url, { cachePolicy: 'memory-disk' }).catch(() => { });
+      Image.prefetch?.(nextStory.media_url).catch(() => { });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- markViewed + isPaused bewusst
   }, [currentStory?.id, visible]);
@@ -832,7 +942,21 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
     startProgress(ms);
   }, [startProgress]);
 
-  const progressStyle = useAnimatedStyle(() => ({ width: `${progress.value * 100}%` }));
+  // progressRef listener: aktuellen Wert für Hold-Resume verfolgen
+  useEffect(() => {
+    const id = progressAnim.addListener(({ value }) => { progressRef.current = value; });
+    return () => progressAnim.removeListener(id);
+  }, [progressAnim]);
+
+  const segW = group.stories.length > 0
+    ? (W - 24 - 4 * (group.stories.length - 1)) / group.stories.length
+    : W - 24;
+
+  // RNAnimated interpolate: width 0 → segW (kein Reanimated nötig)
+  const progressWidth = progressAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, segW],
+  });
 
   // ─ TikTok-style Tap-Flash ─
   const flashLeft = useSharedValue(0);
@@ -848,6 +972,35 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
     flashRight.value = withSequence(withTiming(0.18, { duration: 40 }), withTiming(0, { duration: 80 }));
     goNext();
   };
+
+  // ── Refs für Nav-Handler: immer aktuellste Version — löst stale-Closure-Problem in handleTap ──
+  const navPrevRef = useRef(handleGoPrev);
+  const navNextRef = useRef(handleGoNext);
+  navPrevRef.current = handleGoPrev;
+  navNextRef.current = handleGoNext;
+
+  // ── Tipp-Handler: Doppel-Tap = Like, Einfach-Tap (verzögert) = Nav ─────────
+  const handleTap = useCallback((pageX: number, pageY: number) => {
+    const now = Date.now();
+    if (now - lastTapRef.current < 300) {
+      // Doppel-Tap → like + Herz (kein Unlike bei Doppel-Tap, wie TikTok)
+      if (tapTimerRef.current) { clearTimeout(tapTimerRef.current); tapTimerRef.current = null; }
+      lastTapRef.current = 0;
+      if (!storyLiked) toggleStoryLike();
+      spawnHeart(pageX, pageY);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    } else {
+      // Erster Tap → 300ms warten auf möglichen Doppel-Tap, dann navigieren
+      lastTapRef.current = now;
+      const savedX = pageX;
+      tapTimerRef.current = setTimeout(() => {
+        tapTimerRef.current = null;
+        // Refs verwenden → immer aktuelles handleGoPrev/handleGoNext (kein stale closure)
+        if (savedX < W * 0.35) navPrevRef.current();
+        else                   navNextRef.current();
+      }, 300);
+    }
+  }, [storyLiked, toggleStoryLike, spawnHeart]);
 
   const handleSendReply = async () => {
     const text = replyText.trim();
@@ -896,7 +1049,7 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
 
   return (
     <View style={styles.screen}>
-      {/* ── Media — immer cover, kein Letterboxing ── */}
+      {/* ── Media — contain: Bild immer vollständig sichtbar, kein Zoom/Cropping ── */}
       {isVideo ? (
         USE_EXPO_VIDEO
           ? <NativeVideoStory uri={currentStory.media_url} isPaused={isPaused} onDurationKnown={handleDurationKnown} />
@@ -905,7 +1058,7 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
         <Image
           source={{ uri: currentStory.media_url }}
           style={StyleSheet.absoluteFill}
-          contentFit="cover"
+          contentFit="contain"
           priority="high"
           transition={200}
           placeholder={{ blurhash: 'L00000fQfQfQfQfQfQfQfQfQfQfQ' }}
@@ -930,9 +1083,9 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
         {group.stories.map((s, i) => (
           <View key={s.id} style={styles.progressTrack}>
             {i < storyIndex
-              ? <View style={[styles.progressFill, { width: '100%' }]} />
+              ? <View style={styles.progressFillFull} />
               : i === storyIndex
-                ? <Animated.View style={[styles.progressFill, progressStyle]} />
+                ? <RNAnimated.View style={[styles.progressFillAnim, { width: progressWidth }]} />
                 : null}
           </View>
         ))}
@@ -973,25 +1126,28 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
         </Pressable>
       </View>
 
-      {/* ── Tap-Zonen: Tippen = vor/zurück | Lang drücken = Pause ── */}
+      {/* ── Einheitliche Tap-Zone: Einfach = Nav, Doppel = Like+Herz ── */}
       <Pressable
-        style={styles.tapLeft}
-        onPress={handleGoPrev}
+        style={styles.tapFull}
+        onPress={(evt) => handleTap(evt.nativeEvent.pageX, evt.nativeEvent.pageY)}
         onLongPress={handleHoldStart}
         onPressOut={handleHoldEnd}
         delayLongPress={150}
       >
-        <Animated.View style={[{ position: 'absolute', inset: 0, backgroundColor: '#fff', borderRadius: 0 }, flashLeftStyle]} />
+        {/* Flash-Overlays für visuelles Nav-Feedback */}
+        <Animated.View style={[{ position: 'absolute', left: 0, top: 0, bottom: 0, width: W * 0.35, backgroundColor: '#fff' }, flashLeftStyle]} pointerEvents="none" />
+        <Animated.View style={[{ position: 'absolute', right: 0, top: 0, bottom: 0, width: W * 0.65, backgroundColor: '#fff' }, flashRightStyle]} pointerEvents="none" />
       </Pressable>
-      <Pressable
-        style={styles.tapRight}
-        onPress={handleGoNext}
-        onLongPress={handleHoldStart}
-        onPressOut={handleHoldEnd}
-        delayLongPress={150}
-      >
-        <Animated.View style={[{ position: 'absolute', inset: 0, backgroundColor: '#fff', borderRadius: 0 }, flashRightStyle]} />
-      </Pressable>
+
+      {/* Fliegende Herzen bei Doppel-Tap */}
+      {hearts.map((h) => (
+        <FloatingHeart
+          key={h.id}
+          x={h.x}
+          y={h.y}
+          onDone={() => setHearts((prev) => prev.filter((hh) => hh.id !== h.id))}
+        />
+      ))}
 
       {/* ── Pause-Indikator (erscheint beim Halten) ── */}
       {isHolding && (
@@ -1015,8 +1171,17 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
       {/* ── Bottom-Bar ── */}
       <View style={[styles.bottomBar, { bottom: kbHeight + Math.max(insets.bottom, 10) }]}>
         {isOwnStory ? (
-          // Eigene Story: nur Like + Share
+          // Eigene Story: Viewer-Zähler + Like + Share
           <View style={styles.ownStoryActions}>
+            <Pressable
+              style={styles.viewersBtn}
+              onPress={() => { setShowViewers(true); }}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Story-Aufrufe anzeigen"
+            >
+              <Eye size={20} color="rgba(255,255,255,0.85)" strokeWidth={1.8} />
+            </Pressable>
             <Text style={styles.ownStoryHint}>Deine Story</Text>
             <LikeBtn storyId={currentStory.id} />
             <Pressable onPress={() => setShareOpen(true)} hitSlop={12}>
@@ -1070,7 +1235,7 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
                 onSubmitEditing={handleSendReply}
                 onFocus={() => setShowEmojis(true)}
                 onBlur={() => setTimeout(() => setShowEmojis(false), 200)}
-                blurOnSubmit
+                blurOnSubmit={false}
               />
               {replyText.length > 0 ? (
                 <Pressable onPress={handleSendReply} hitSlop={8} style={styles.sendIconBtn}>
@@ -1120,6 +1285,14 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
           await addComment({ storyId: currentStory.id, content: text, isEmoji: false });
         }}
       />
+
+      {/* ── Story-Viewer-Liste (nur für eigene Stories) ── */}
+      <StoryViewersSheet
+        visible={showViewers}
+        storyId={isOwnStory ? currentStory.id : null}
+        onClose={() => setShowViewers(false)}
+        onNavigateToProfile={onClose}
+      />
     </View>
   );
 }
@@ -1144,8 +1317,26 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   progressRow: { position: 'absolute', left: 12, right: 12, flexDirection: 'row', gap: 4, zIndex: 10 },
-  progressTrack: { flex: 1, height: 2.5, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.35)', overflow: 'hidden' },
-  progressFill: { height: '100%', backgroundColor: '#FFFFFF', borderRadius: 2 },
+  progressTrack: {
+    flex: 1,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.30)',
+    overflow: 'hidden',
+  },
+  // Vergangene Stories: statisch voll
+  progressFillFull: {
+    position: 'absolute', left: 0, top: 0, bottom: 0, right: 0,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 2,
+  },
+  // Aktuelle Story: width-Animation via Reanimated (JS-Thread, fine for 3px bar)
+  progressFillAnim: {
+    position: 'absolute', left: 0, top: 0, bottom: 0,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 2,
+    // width wird animiert via progressStyle
+  },
 
   header: { position: 'absolute', left: 12, right: 12, flexDirection: 'row', alignItems: 'center', gap: 10, zIndex: 10 },
   headerLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
@@ -1161,7 +1352,9 @@ const styles = StyleSheet.create({
   followBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
 
   // Tap-Zonen lassen 130px unten frei für Bottom-Bar
-  tapLeft: { position: 'absolute', left: 0, top: 0, bottom: 130, width: W * 0.35, zIndex: 5 },
+  tapFull: { position: 'absolute', left: 0, right: 0, top: 0, bottom: 130, zIndex: 5 },
+  // tapLeft / tapRight werden nicht mehr als Pressables verwendet (werden durch tapFull ersetzt)
+  tapLeft:  { position: 'absolute', left: 0, top: 0, bottom: 130, width: W * 0.35, zIndex: 5 },
   tapRight: { position: 'absolute', right: 0, top: 0, bottom: 130, width: W * 0.65, zIndex: 5 },
 
   bottomBar: { position: 'absolute', left: 12, right: 12, flexDirection: 'row', alignItems: 'center', gap: 10, zIndex: 20 },
@@ -1211,6 +1404,11 @@ const styles = StyleSheet.create({
 
   ownStoryActions: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 16 },
   ownStoryHint: { color: 'rgba(255,255,255,0.45)', fontSize: 13, flex: 1 },
+  viewersBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center', justifyContent: 'center',
+  },
 
   // Pause-Indikator beim Lang-Drücken
   pauseOverlay: {

@@ -18,6 +18,7 @@ import {
   RefreshControl,
   Alert,
   PanResponder,
+  Linking,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -47,6 +48,8 @@ import {
   Heart,
   Repeat2,
   MoreHorizontal,
+  Link,
+  CheckCircle2,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { supabase } from '@/lib/supabase';
@@ -60,6 +63,7 @@ import { VideoGridThumb } from '@/components/ui/VideoGridThumb';
 import { VibeScoreRing } from '@/components/profile/VibeScoreRing';
 import { ProfileHighlightsRow } from '@/components/profile/ProfileHighlightsRow';
 import { shareUser } from '@/lib/useShare';
+import { StoryRingAvatar } from '@/components/ui/StoryRingAvatar';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const AVATAR_SIZE = 88;  // Kompakter Avatar für die neue Instagram-Style Row
@@ -72,9 +76,12 @@ type PublicProfile = {
   id: string;
   username: string;
   bio: string | null;
+  website: string | null;
   avatar_url: string | null;
   guild_id: string | null;
   guild_name?: string | null;
+  is_verified?: boolean | null;  // Goldenes Häkchen für verifizierte Creator
+  is_private?: boolean | null;
 };
 
 type PostThumb = {
@@ -285,7 +292,7 @@ export function UserProfileContent({ userId, onBack }: Props) {
 
     Promise.all([
       supabase.from('profiles')
-        .select('id, username, bio, avatar_url, guild_id, is_private, guilds(name)')
+        .select('id, username, bio, website, avatar_url, guild_id, is_private, is_verified, guilds(name)')
         .eq('id', id).single(),
       supabase.from('posts')
         .select('id, media_url, media_type, caption, dwell_time_score, thumbnail_url')
@@ -434,21 +441,13 @@ export function UserProfileContent({ userId, onBack }: Props) {
       {/* ── Profile Row: Avatar links + Inline Stats rechts (Instagram) ── */}
       <View style={s.profileRow}>
         <Animated.View style={avatarStyle}>
-          <LinearGradient
-            colors={['#22D3EE', '#0891B2', '#164E63']}
-            style={s.avatarRingGradient}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-          >
-            <View style={s.avatarGap}>
-              {profile.avatar_url ? (
-                <Image source={{ uri: profile.avatar_url }} style={s.avatarImg} contentFit="cover" />
-              ) : (
-                <LinearGradient colors={['#0E7490', '#22D3EE']} style={s.avatarImg}>
-                  <Text style={s.avatarInitials}>{initials}</Text>
-                </LinearGradient>
-              )}
-            </View>
-          </LinearGradient>
+          <StoryRingAvatar
+            userId={id ?? ''}
+            avatarUrl={profile.avatar_url}
+            size={AVATAR_SIZE}
+            initials={initials}
+            fallbackColors={['#0E7490', '#22D3EE']}
+          />
         </Animated.View>
 
         <View style={s.inlineStatsWrap}>
@@ -471,7 +470,13 @@ export function UserProfileContent({ userId, onBack }: Props) {
       <View style={s.userInfoSection}>
         <View style={s.userNameRow}>
           <View style={{ flex: 1 }}>
-            <Text style={s.username}>@{profile.username}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={s.username}>@{profile.username}</Text>
+              {/* Verification Badge: goldenes Häkchen */}
+              {profile.is_verified && (
+                <CheckCircle2 size={16} color="#FBBF24" fill="rgba(251,191,36,0.15)" strokeWidth={2.5} />
+              )}
+            </View>
             {profile.guild_name && (
               <View style={s.guildPill}>
                 <Zap size={10} color="#22D3EE" fill="#22D3EE" />
@@ -482,6 +487,22 @@ export function UserProfileContent({ userId, onBack }: Props) {
           {!loading && <VibeScoreRing score={avgResonanz} size={52} />}
         </View>
         {profile.bio ? <Text style={s.bio}>{profile.bio}</Text> : null}
+        {profile.website ? (
+          <Pressable
+            onPress={() => {
+              const url = profile.website as string;
+              const full = url.startsWith('http') ? url : `https://${url}`;
+              Linking.openURL(full).catch(() => { });
+            }}
+            style={s.websiteRow}
+            hitSlop={8}
+          >
+            <Link size={11} color="#22D3EE" strokeWidth={2} />
+            <Text style={s.websiteLink} numberOfLines={1}>
+              {(profile.website as string).replace(/^https?:\/\//, '')}
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
 
       {/* ── Action Buttons: Follow ⇄ DM Swap ── */}
@@ -608,7 +629,7 @@ export function UserProfileContent({ userId, onBack }: Props) {
         keyExtractor={(item) => item.id}
         numColumns={GRID_COLS}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
         ListHeaderComponent={Header}
         columnWrapperStyle={s.gridRow}
         ListEmptyComponent={
@@ -663,26 +684,6 @@ export function UserProfileContent({ userId, onBack }: Props) {
         )}
       />
 
-
-      {/* ── Bottom Nav — konsistent mit App Tab-Bar ── */}
-      <View style={[s.bottomNav, { paddingBottom: Math.max(insets.bottom, 8) }]}>
-        <Pressable style={s.navItem} onPress={() => router.push('/(tabs)')}>
-          <Zap size={22} color="rgba(255,255,255,0.65)" strokeWidth={2} />
-          <Text style={s.navLabel}>Vibes</Text>
-        </Pressable>
-        <Pressable style={s.navItem} onPress={() => router.push('/(tabs)/guild')}>
-          <Users size={22} color="rgba(255,255,255,0.65)" strokeWidth={2} />
-          <Text style={s.navLabel}>Guild</Text>
-        </Pressable>
-        <Pressable style={s.navItem} onPress={() => router.push('/(tabs)/messages')}>
-          <MessageCircle size={22} color="rgba(255,255,255,0.65)" strokeWidth={2} />
-          <Text style={s.navLabel}>Nachrichten</Text>
-        </Pressable>
-        <Pressable style={s.navItem} onPress={() => router.push('/(tabs)/profile')}>
-          <User size={22} color="rgba(255,255,255,0.65)" strokeWidth={2} />
-          <Text style={s.navLabel}>Studio</Text>
-        </Pressable>
-      </View>
 
       {/* ── Left-Edge-Swipe → zurück ── */}
       <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 30, zIndex: 200 }} {...backSwipePan.panHandlers} />
@@ -745,6 +746,20 @@ const s = StyleSheet.create({
   },
   guildPillText: { color: '#22D3EE', fontSize: 11, fontWeight: '600', letterSpacing: 0.1 },
   bio: { color: '#9CA3AF', fontSize: 14, lineHeight: 21, maxWidth: 280 },
+  websiteRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 2,
+    alignSelf: 'flex-start',
+  },
+  websiteLink: {
+    color: '#22D3EE',
+    fontSize: 13,
+    fontWeight: '500',
+    maxWidth: 240,
+  },
+
   metricsRow: {
     flexDirection: 'row', backgroundColor: 'rgba(255,255,255,0.04)', borderRadius: 16,
     borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.07)', paddingVertical: 4, overflow: 'hidden',

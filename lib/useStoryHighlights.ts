@@ -180,6 +180,35 @@ export function useMyStoryArchive() {
   });
 }
 
+// ── Eigene Posts für den Highlight-Picker ─────────────────────────────────────
+export function useMyPostsForHighlight() {
+  const userId = useAuthStore((s) => s.profile?.id);
+
+  return useQuery({
+    queryKey: ['my-posts-for-highlight', userId],
+    queryFn: async () => {
+      if (!userId) return [];
+
+      const { data, error } = await supabase
+        .from('posts')
+        .select('id, media_url, media_type, thumbnail_url, created_at')
+        .eq('author_id', userId)
+        .not('media_url', 'is', null)
+        .neq('media_url', '')
+        .order('created_at', { ascending: false })
+        .limit(200);
+
+      if (error) {
+        __DEV__ && console.warn('[useMyPostsForHighlight]', error.message);
+        return [];
+      }
+      return (data ?? []).filter((p: any) => !!p.media_url);
+    },
+    enabled: !!userId,
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
 // ── Highlight hinzufügen (Story ODER Post) ────────────────────────────────────
 export function useAddHighlight() {
   const queryClient = useQueryClient();

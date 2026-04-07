@@ -24,7 +24,7 @@ const _animMod = require('react-native-reanimated') as any;
 const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
 import { Easing, useAnimatedStyle, useSharedValue, withTiming, withSequence, withSpring, withRepeat, withDelay } from 'react-native-reanimated';
-import { ArrowLeft, Heart, MessageCircle, Bookmark, Share2, Trash2, Pencil, Volume2, VolumeX, Send } from 'lucide-react-native';
+import { ArrowLeft, Heart, MessageCircle, Bookmark, Share2, Trash2, Pencil, Volume2, VolumeX, Send, Music2 } from 'lucide-react-native';
 import { FallbackFeedVideo, NativeFeedVideo, USE_EXPO_VIDEO } from '@/components/feed/FeedVideo';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/lib/authStore';
@@ -45,47 +45,58 @@ const { width: W, height: H } = Dimensions.get('window');
 type FloatingHeartItem = { id: number; x: number; y: number };
 
 function FloatingHeart({ x, y, onDone }: { x: number; y: number; onDone: () => void }) {
-  const scale = useSharedValue(0);
-  const floatY = useSharedValue(0);
-  const rot = useSharedValue(0);
-  const opacity = useSharedValue(0);
+  const opacity = useRef(new RNAnimated.Value(1)).current;
+  const scale = useRef(new RNAnimated.Value(0)).current;
+  const translateY = useRef(new RNAnimated.Value(0)).current;
+  const rotate = useRef(new RNAnimated.Value(0)).current;
 
   useEffect(() => {
-    scale.value = withSequence(
-      withSpring(1.5, { damping: 7, stiffness: 220 }),
-      withTiming(1.15, { duration: 150, easing: Easing.out(Easing.cubic) })
-    );
-    floatY.value = withTiming(-110, { duration: 1700, easing: Easing.out(Easing.quad) });
-    rot.value = withRepeat(
-      withSequence(withTiming(-8, { duration: 180 }), withTiming(8, { duration: 180 })),
-      4, true
-    );
-    opacity.value = withSequence(
-      withTiming(1, { duration: 0 }),
-      withDelay(900, withTiming(0, { duration: 800 }))
-    );
-    const t = setTimeout(onDone, 1750);
+    RNAnimated.parallel([
+      RNAnimated.spring(scale, { toValue: 1, friction: 4, tension: 180, useNativeDriver: true }),
+      RNAnimated.timing(translateY, { toValue: -140, duration: 1600, useNativeDriver: true }),
+      RNAnimated.sequence([
+        RNAnimated.timing(rotate, { toValue: -1, duration: 120, useNativeDriver: true }),
+        RNAnimated.timing(rotate, { toValue: 1,  duration: 120, useNativeDriver: true }),
+        RNAnimated.timing(rotate, { toValue: -1, duration: 120, useNativeDriver: true }),
+        RNAnimated.timing(rotate, { toValue: 1,  duration: 120, useNativeDriver: true }),
+        RNAnimated.timing(rotate, { toValue: 0,  duration: 100, useNativeDriver: true }),
+      ]),
+      RNAnimated.sequence([
+        RNAnimated.delay(900),
+        RNAnimated.timing(opacity, { toValue: 0, duration: 700, useNativeDriver: true }),
+      ]),
+    ]).start();
+    const t = setTimeout(onDone, 1700);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const style = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: x - 60 },
-      { translateY: y - 60 + floatY.value },
-      { scale: scale.value },
-      { rotate: `${rot.value}deg` },
-    ],
-    opacity: opacity.value,
-  }));
+  const rotateInterp = rotate.interpolate({
+    inputRange: [-1, 0, 1],
+    outputRange: ['-10deg', '0deg', '10deg'],
+  });
 
   return (
-    <Animated.View
-      style={[{ position: 'absolute', width: 120, height: 120, left: 0, top: 0 }, style]}
+    <RNAnimated.View
+      style={[
+        {
+          position: 'absolute',
+          width: 140,
+          height: 140,
+          left: x - 70,
+          top: y - 70,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        {
+          opacity,
+          transform: [{ translateY }, { scale }, { rotate: rotateInterp }],
+        },
+      ]}
       pointerEvents="none"
     >
       <Heart size={120} color="#EE1D52" fill="#EE1D52" />
-    </Animated.View>
+    </RNAnimated.View>
   );
 }
 
@@ -167,6 +178,8 @@ type PostDetail = {
   tags: string[];
   created_at: string;
   author_id: string;
+  audio_url: string | null;
+  audio_volume: number | null;
   profiles: { username: string; avatar_url: string | null } | null;
 };
 
@@ -260,6 +273,8 @@ export default function PostDetailScreen() {
   const [isMuted, setIsMuted] = useState(false);
   const [showMuteFlash, setShowMuteFlash] = useState<'muted' | 'unmuted' | null>(null);
   const isOwner = post?.author_id === profile?.id;
+  // Musik-Track Audio (expo-av — identisch zu FeedItem)
+  const audioSoundRef = useRef<any>(null);
 
   // ── TikTok-Style: Finger-folgendes Profil-Panel (identisch zu Vibes-Feed) ──
   const SCREEN_W = Dimensions.get('window').width;
@@ -424,10 +439,12 @@ export default function PostDetailScreen() {
       (async () => {
         setLoading(true);
 
-        // Post laden — ohne Join, um Foreign-Key-Probleme zu vermeiden
+        // PERF-FIX: Post + Profil in einem einzigen JOIN statt 2 sequentiellen Queries.
+        // Vorher: 150ms (post) + 150ms (profile) = 300ms gesamt.
+        // Jetzt: ~150ms (ein Round-Trip mit JOIN).
         const { data: postData, error: postErr } = await supabase
           .from('posts')
-          .select('id, caption, media_url, media_type, tags, created_at, author_id')
+          .select('id, caption, media_url, media_type, tags, created_at, author_id, audio_url, audio_volume, profiles!author_id(username, avatar_url)')
           .eq('id', id)
           .single();
 
@@ -437,17 +454,16 @@ export default function PostDetailScreen() {
           return;
         }
 
-        // Autor-Profil separat laden
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('username, avatar_url')
-          .eq('id', postData.author_id)
-          .single();
+        const profileRaw = (postData as any).profiles;
+        const profileData: { username: string; avatar_url: string | null } | null =
+          Array.isArray(profileRaw) ? (profileRaw[0] ?? null) : (profileRaw ?? null);
 
         setPost({
           ...postData,
           tags: postData.tags ?? [],
-          profiles: profileData ?? null,
+          audio_url: (postData as any).audio_url ?? null,
+          audio_volume: (postData as any).audio_volume ?? null,
+          profiles: profileData,
         } as PostDetail);
         // Ref setzen für PanResponder (stale-closure-sicher)
         postAuthorIdRef.current = postData.author_id ?? null;
@@ -462,6 +478,49 @@ export default function PostDetailScreen() {
       return () => setScreenFocused(false);
     }, [id])
   );
+
+  // ── Musik-Playback (expo-av) ─────────────────────────────────────────────
+  useEffect(() => {
+    const audioUrl = post?.audio_url;
+    if (!audioUrl || !screenFocused) {
+      audioSoundRef.current?.stopAsync?.().catch(() => {});
+      audioSoundRef.current?.unloadAsync?.().catch(() => {});
+      audioSoundRef.current = null;
+      return;
+    }
+    const volume = Math.max(0, Math.min(1, post?.audio_volume ?? 0.8));
+    let cancelled = false;
+    (async () => {
+      try {
+        const { Audio } = require('expo-av') as any;
+        await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, staysActiveInBackground: false });
+        if (cancelled) return;
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: audioUrl },
+          { isLooping: true, volume: isMuted ? 0 : volume }
+        );
+        if (cancelled) { sound.unloadAsync?.(); return; }
+        audioSoundRef.current = sound;
+        await sound.playAsync();
+      } catch (e) {
+        __DEV__ && console.warn('[PostDetail Audio]', e);
+      }
+    })();
+    return () => {
+      cancelled = true;
+      audioSoundRef.current?.stopAsync?.().catch(() => {});
+      audioSoundRef.current?.unloadAsync?.().catch(() => {});
+      audioSoundRef.current = null;
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [post?.audio_url, screenFocused]);
+
+  // Mute auf Musik anwenden
+  useEffect(() => {
+    if (!audioSoundRef.current || !post?.audio_url) return;
+    const volume = Math.max(0, Math.min(1, post?.audio_volume ?? 0.8));
+    audioSoundRef.current.setVolumeAsync?.(isMuted ? 0 : volume).catch(() => {});
+  }, [isMuted, post?.audio_url, post?.audio_volume]);
 
   const handleDelete = () => {
     Alert.alert(
@@ -645,7 +704,20 @@ export default function PostDetailScreen() {
         {post && (
           <>
             <View style={[styles.rightActions, { bottom: insets.bottom + 8 }]}>
-              {/* Mute-Button in der Aktionsspalte entfernt — jetzt via Einfach-Tap auf Video */}
+              {/* Mute-Button: erscheint wenn Video ODER Musik-Track vorhanden */}
+              {(isVideo || post.audio_url) && (
+                <Pressable
+                  onPress={() => setIsMuted(m => !m)}
+                  style={styles.actionBtn}
+                  hitSlop={12}
+                >
+                  <View style={styles.actionBtnInner}>
+                    {isMuted
+                      ? <VolumeX size={22} color="rgba(255,255,255,0.7)" strokeWidth={1.8} />
+                      : <Volume2 size={22} color="rgba(255,255,255,0.7)" strokeWidth={1.8} />}
+                  </View>
+                </Pressable>
+              )}
               <LikeButtonDetail postId={post.id} />
               <CommentButtonDetail postId={post.id} onPress={() => setCommentsOpen(true)} />
               <BookmarkButtonDetail postId={post.id} />
@@ -696,12 +768,34 @@ export default function PostDetailScreen() {
             <Text style={styles.caption}>{displayCaption}</Text>
           ) : null}
 
+          {/* Musik-Badge (TikTok-Style rollender Text) */}
+          {post?.audio_url && (
+            <Pressable
+              onPress={() => setIsMuted(m => !m)}
+              style={styles.musicBadge}
+            >
+              <Music2 size={12} color="rgba(255,255,255,0.8)" strokeWidth={2} />
+              <Text style={styles.musicBadgeText} numberOfLines={1}>
+                {isMuted ? '🔇 ' : '♪ '}
+                {post.audio_url.split('/').pop()?.replace(/\.mp3|%20/g, ' ')?.slice(0, 30) ?? 'Sound'}
+                {post.audio_volume != null ? `  ·  ${Math.round(post.audio_volume * 100)}%` : ''}
+              </Text>
+            </Pressable>
+          )}
+
           {displayTags.length > 0 && (
             <View style={styles.tagsRow}>
               {displayTags.map((tag) => (
-                <View key={tag} style={styles.tagChip}>
-                  <Text style={styles.tagText}>{tag}</Text>
-                </View>
+                <Pressable
+                  key={tag}
+                  style={styles.tagChip}
+                  onPress={() => router.push({ pathname: '/(tabs)/explore', params: { tag } } as any)}
+                  hitSlop={6}
+                  accessibilityRole="link"
+                  accessibilityLabel={`Hashtag ${tag} in Explore suchen`}
+                >
+                  <Text style={styles.tagText}>#{tag}</Text>
+                </Pressable>
               ))}
             </View>
           )}
@@ -877,6 +971,13 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(34,211,238,0.3)',
   },
   tagText: { color: '#22D3EE', fontSize: 12, fontWeight: '600' },
+  musicBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    borderRadius: 14, paddingHorizontal: 10, paddingVertical: 5, marginTop: 4,
+  },
+  musicBadgeText: { color: 'rgba(255,255,255,0.75)', fontSize: 12, fontWeight: '600', flex: 1 },
 });
 
 // ─── Comment bar styles (separat damit kein Konflikt mit 'styles') ────────────

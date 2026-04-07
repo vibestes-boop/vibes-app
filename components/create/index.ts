@@ -6,3 +6,4 @@ export { CreateMediaPicker } from './CreateMediaPicker';
 export { CreateCaptionField } from './CreateCaptionField';
 export { CreateTagPicker } from './CreateTagPicker';
 export { CreateGuildBanner } from './CreateGuildBanner';
+export { CreatePostSettings, type PostPrivacy, type PostSettingsState } from './CreatePostSettings';

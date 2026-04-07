@@ -58,7 +58,7 @@ function StoryBubble({
       scale.value = withRepeat(
         withSequence(
           withTiming(1.07, { duration: 600, easing: Easing.inOut(Easing.sin) }),
-          withTiming(1.0,  { duration: 600, easing: Easing.inOut(Easing.sin) }),
+          withTiming(1.0, { duration: 600, easing: Easing.inOut(Easing.sin) }),
         ),
         -1, false,
       );
@@ -71,14 +71,14 @@ function StoryBubble({
       glow.value = withRepeat(
         withSequence(
           withTiming(1.08, { duration: 250, easing: Easing.inOut(Easing.sin) }),
-          withTiming(1.0,  { duration: 250, easing: Easing.inOut(Easing.sin) }),
+          withTiming(1.0, { duration: 250, easing: Easing.inOut(Easing.sin) }),
         ),
         -1, false,
       );
     } else {
       glow.value = 1;
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLive, hasNew]);
 
   const liveRingStyle = useAnimatedStyle(() => ({
@@ -120,22 +120,29 @@ function StoryBubble({
       {isLive ? (
         // ── Live-Ring ──────────────────────────────────────────────────────────
         <>
+          {/* Radial Glow hinter der Bubble */}
           <View style={styles.liveGlow} />
           <Animated.View style={[styles.liveRingWrap, liveRingStyle]}>
-            <View style={styles.liveRing}>
+            <LinearGradient
+              colors={['#FF4444', '#FF8C00', '#FF4444']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.liveRing}
+            >
               <View style={styles.ringInner}>
                 {group.avatar_url ? (
-                  <Image source={{ uri: group.avatar_url }} style={styles.avatar} />
+                  <Image source={{ uri: group.avatar_url }} style={styles.avatar} contentFit="cover" />
                 ) : (
                   <View style={[styles.avatar, styles.avatarFallback]}>
                     <Text style={styles.avatarInitial}>{initial}</Text>
                   </View>
                 )}
               </View>
-            </View>
+            </LinearGradient>
           </Animated.View>
-          {/* LIVE-Badge */}
+          {/* LIVE-Badge — Pill mit Dot */}
           <View style={styles.liveBadge}>
+            <View style={styles.liveDot} />
             <Text style={styles.liveBadgeText}>LIVE</Text>
           </View>
         </>
@@ -150,7 +157,7 @@ function StoryBubble({
           >
             <View style={styles.ringInner}>
               {group.avatar_url ? (
-                <Image source={{ uri: group.avatar_url }} style={styles.avatar} />
+                <Image source={{ uri: group.avatar_url }} style={styles.avatar} contentFit="cover" />
               ) : (
                 <View style={[styles.avatar, styles.avatarFallback]}>
                   <Text style={styles.avatarInitial}>{initial}</Text>
@@ -169,9 +176,14 @@ function StoryBubble({
         numberOfLines={1}
       >
         {isOwn
-          ? (isLive ? 'Du bist LIVE' : 'Deine Story')
+          ? (isLive ? '🔴 Du bist LIVE' : 'Deine Story')
           : `@${group.username ?? '?'}`}
       </Text>
+      {isLive && liveSession && (liveSession.viewer_count ?? 0) > 0 && (
+        <Text style={styles.liveViewerCount}>
+          {liveSession.viewer_count} 👁
+        </Text>
+      )}
     </Pressable>
   );
 }
@@ -187,7 +199,7 @@ function LiveOnlyBubble({ session, isOwn }: { session: LiveSession; isOwn: boole
     scale.value = withRepeat(
       withSequence(
         withTiming(1.07, { duration: 600, easing: Easing.inOut(Easing.sin) }),
-        withTiming(1.0,  { duration: 600, easing: Easing.inOut(Easing.sin) }),
+        withTiming(1.0, { duration: 600, easing: Easing.inOut(Easing.sin) }),
       ),
       -1, false,
     );
@@ -195,7 +207,7 @@ function LiveOnlyBubble({ session, isOwn }: { session: LiveSession; isOwn: boole
       withSequence(withTiming(1, { duration: 600 }), withTiming(0.75, { duration: 600 })),
       -1, false,
     );
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const ringStyle = useAnimatedStyle(() => ({
@@ -224,24 +236,36 @@ function LiveOnlyBubble({ session, isOwn }: { session: LiveSession; isOwn: boole
     <Pressable style={styles.bubble} onPress={handlePress}>
       <View style={styles.liveGlow} />
       <Animated.View style={[styles.liveRingWrap, ringStyle]}>
-        <View style={styles.liveRing}>
+        <LinearGradient
+          colors={['#FF4444', '#FF8C00', '#FF4444']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.liveRing}
+        >
           <View style={styles.ringInner}>
             {session.profiles?.avatar_url ? (
-              <Image source={{ uri: session.profiles.avatar_url }} style={styles.avatar} />
+              <Image source={{ uri: session.profiles.avatar_url }} style={styles.avatar} contentFit="cover" />
             ) : (
               <View style={[styles.avatar, styles.avatarFallback]}>
                 <Text style={styles.avatarInitial}>{initial}</Text>
               </View>
             )}
           </View>
-        </View>
+        </LinearGradient>
       </Animated.View>
+      {/* LIVE-Badge — Pill mit Dot */}
       <View style={styles.liveBadge}>
+        <View style={styles.liveDot} />
         <Text style={styles.liveBadgeText}>LIVE</Text>
       </View>
       <Text style={styles.liveBubbleLabel} numberOfLines={1}>
-        {isOwn ? 'Du bist LIVE' : `@${session.profiles?.username ?? '?'}`}
+        {isOwn ? '🔴 Du bist LIVE' : `@${session.profiles?.username ?? '?'}`}
       </Text>
+      {(session.viewer_count ?? 0) > 0 && (
+        <Text style={styles.liveViewerCount}>
+          {session.viewer_count} 👁
+        </Text>
+      )}
     </Pressable>
   );
 }
@@ -343,7 +367,7 @@ export function StoriesRow({ groups, onSelectGroup, onAddStory, liveSessions = [
             // Eigene Stories sofort prefetchen beim Antippen
             ownGroup.stories
               .filter((s) => s.media_type !== 'video' && s.media_url)
-              .forEach((s) => Image.prefetch(s.media_url!, { cachePolicy: 'memory-disk' }).catch(() => {}));
+              .forEach((s) => Image.prefetch?.(s.media_url!).catch(() => { }));
             onSelectGroup(ownGroup);
           }}
           liveSession={ownLive}
@@ -370,7 +394,7 @@ export function StoriesRow({ groups, onSelectGroup, onAddStory, liveSessions = [
             // Alle Story-Bilder sofort prefetchen beim Antippen — kein 2s Ladedelay
             group.stories
               .filter((s) => s.media_type !== 'video' && s.media_url)
-              .forEach((s) => Image.prefetch(s.media_url!, { cachePolicy: 'memory-disk' }).catch(() => {}));
+              .forEach((s) => Image.prefetch?.(s.media_url!).catch(() => { }));
             onSelectGroup(group);
           }}
           liveSession={liveByUserId.get(group.userId)}
@@ -403,54 +427,70 @@ const styles = StyleSheet.create({
   // ── Live-Bubble-Styles ────────────────────────────────────────────────
   liveGlow: {
     position: 'absolute',
-    top: 4,
-    width: BUBBLE_SIZE + 4,
-    height: BUBBLE_SIZE + 4,
-    borderRadius: (BUBBLE_SIZE + 4) / 2,
-    backgroundColor: 'rgba(239,68,68,0.25)',
-    // iOS shadow für Glow-Effekt
-    shadowColor: '#EF4444',
+    width: BUBBLE_SIZE + 28,
+    height: BUBBLE_SIZE + 28,
+    borderRadius: (BUBBLE_SIZE + 28) / 2,
+    backgroundColor: 'transparent',
+    shadowColor: '#FF4444',
+    shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.6,
-    shadowRadius: 10,
-    elevation: 8,
+    shadowRadius: 14,
+    elevation: 10,
   },
   liveRingWrap: {
     // Wrapper für die Animation
   },
   liveRing: {
-    width: BUBBLE_SIZE + 4,
-    height: BUBBLE_SIZE + 4,
-    borderRadius: (BUBBLE_SIZE + 4) / 2,
-    backgroundColor: '#EF4444',
+    width: BUBBLE_SIZE + 6,
+    height: BUBBLE_SIZE + 6,
+    borderRadius: (BUBBLE_SIZE + 6) / 2,
     padding: 3,
-    // Doppelter Border-Effekt
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.3)',
   },
   liveBadge: {
     position: 'absolute',
     bottom: 20,
     alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
     backgroundColor: '#EF4444',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 5,
+    paddingHorizontal: 7,
+    paddingVertical: 2.5,
+    borderRadius: 6,
     borderWidth: 1.5,
     borderColor: '#0A0A0A',
+    shadowColor: '#FF0000',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 4,
+  },
+  liveDot: {
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: '#fff',
+    opacity: 0.95,
   },
   liveBadgeText: {
     color: '#fff',
     fontSize: 8,
     fontWeight: '900',
-    letterSpacing: 0.8,
+    letterSpacing: 1,
   },
   liveBubbleLabel: {
     marginTop: 5,
     fontSize: 11,
-    color: '#EF4444',
+    color: '#FF6B6B',
     fontWeight: '700',
-    maxWidth: BUBBLE_SIZE + 8,
+    maxWidth: BUBBLE_SIZE + 12,
     textAlign: 'center',
+  },
+  liveViewerCount: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.45)',
+    fontWeight: '500',
+    textAlign: 'center',
+    marginTop: 1,
   },
 
   // ── Story-Bubble-Styles ───────────────────────────────────────────────
@@ -466,9 +506,8 @@ const styles = StyleSheet.create({
   ringInner: {
     flex: 1,
     borderRadius: BUBBLE_SIZE / 2,
-    backgroundColor: '#0A0A0A',
-    padding: 2,
     overflow: 'hidden',
+    // kein Background/Padding → kein schwarzer Spalt zwischen Ring und Avatar
   },
   avatar: {
     width: '100%',

@@ -25,13 +25,16 @@ CREATE INDEX IF NOT EXISTS story_votes_story_idx ON public.story_votes(story_id)
 -- RLS
 ALTER TABLE public.story_votes ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "story_votes_select" ON public.story_votes;
 CREATE POLICY "story_votes_select"
   ON public.story_votes FOR SELECT USING (true); -- Ergebnisse öffentlich lesbar
 
+DROP POLICY IF EXISTS "story_votes_insert" ON public.story_votes;
 CREATE POLICY "story_votes_insert"
   ON public.story_votes FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "story_votes_delete" ON public.story_votes;
 CREATE POLICY "story_votes_delete"
   ON public.story_votes FOR DELETE
   USING (auth.uid() = user_id);

@@ -8,6 +8,7 @@ export type FeedEngagementMaps = {
   likeCountByPost: Record<string, number>;
   commentCountByPost: Record<string, number>;
   bookmarkedByPost: Record<string, boolean>;
+  repostedByPost: Record<string, boolean>;  // NEU: Repost-Status im Batch
   followingByAuthor: Record<string, boolean>;
 };
 
@@ -17,6 +18,7 @@ export function emptyFeedEngagementMaps(): FeedEngagementMaps {
     likeCountByPost: {},
     commentCountByPost: {},
     bookmarkedByPost: {},
+    repostedByPost: {},
     followingByAuthor: {},
   };
 }
@@ -88,11 +90,12 @@ export function useFeedEngagement(postIds: string[], authorIds: string[]) {
 
       const uniqueAuthors = [...new Set(authorIds.filter((a): a is string => !!a && a !== userId))];
 
-      const [likedRows, likeCounts, commentCounts, bookmarkRows, followRows] = await Promise.all([
+      const [likedRows, likeCounts, commentCounts, bookmarkRows, repostRows, followRows] = await Promise.all([
         supabase.from('likes').select('post_id').eq('user_id', userId).in('post_id', postIds),
         fetchLikeCounts(postIds),
         fetchCommentCounts(postIds),
         supabase.from('bookmarks').select('post_id').eq('user_id', userId).in('post_id', postIds),
+        supabase.from('reposts').select('post_id').eq('user_id', userId).in('post_id', postIds),
         uniqueAuthors.length === 0
           ? Promise.resolve({ data: [] as { following_id: string }[] })
           : supabase
@@ -114,6 +117,12 @@ export function useFeedEngagement(postIds: string[], authorIds: string[]) {
         if (row.post_id) bookmarkedByPost[row.post_id] = true;
       }
 
+      const repostedByPost: Record<string, boolean> = {};
+      for (const id of postIds) repostedByPost[id] = false;
+      for (const row of repostRows.data ?? []) {
+        if (row.post_id) repostedByPost[row.post_id] = true;
+      }
+
       const followingByAuthor: Record<string, boolean> = {};
       for (const a of uniqueAuthors) followingByAuthor[a] = false;
       for (const row of followRows.data ?? []) {
@@ -125,6 +134,7 @@ export function useFeedEngagement(postIds: string[], authorIds: string[]) {
         likeCountByPost: likeCounts,
         commentCountByPost: commentCounts,
         bookmarkedByPost,
+        repostedByPost,
         followingByAuthor,
       };
     },

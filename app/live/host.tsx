@@ -19,7 +19,10 @@ import {
   Platform,
   Dimensions,
   AppState,
+  ActivityIndicator,
+  ScrollView,
 } from "react-native";
+import * as ImagePicker from 'expo-image-picker';
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -237,21 +240,10 @@ function CommentRow({
           onPress={() => onUserPress?.(comment.user_id)}
           onLongPress={onLongPress}
           delayLongPress={500}
-          style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 7, flex: 1 }}
+          style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' }}
         >
-          {/* Avatar */}
-          {avatar ? (
-            <Image source={{ uri: avatar }} style={s.commentAvatar} contentFit="cover" />
-          ) : (
-            <View style={[s.commentAvatar, s.commentAvatarFallback]}>
-              <Text style={s.commentAvatarInitial}>{initials}</Text>
-            </View>
-          )}
-          {/* Text */}
-          <View style={s.commentTextWrap}>
-            <Text style={s.commentUser}>@{comment.profiles?.username ?? "User"}</Text>
-            <Text style={s.commentText}>{comment.text}</Text>
-          </View>
+          <Text style={s.commentUser}>@{comment.profiles?.username ?? 'User'} </Text>
+          <Text style={s.commentText}>{comment.text}</Text>
         </Pressable>
       )}
     </Animated.View>
@@ -403,6 +395,16 @@ function LocalCameraView() {
   );
 }
 
+// ─── Summary Stat Helper ──────────────────────────────────────────────────────
+function SummaryStatItem({ value, label }: { value: string; label: string }) {
+  return (
+    <View style={{ alignItems: 'center', gap: 4, flex: 1 }}>
+      <Text style={s.summaryValue}>{value}</Text>
+      <Text style={s.summaryLabel}>{label}</Text>
+    </View>
+  );
+}
+
 // ─── Inner Host UI (innerhalb LiveKitRoom) ────────────────────────────────────
 function HostUI({
   sessionId,
@@ -414,16 +416,20 @@ function HostUI({
   onEnd: () => void;
 }) {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { data: session } = useLiveSession(sessionId);
   const { comments, sendComment, sendSystemEvent, deleteComment } = useLiveComments(sessionId);
   const { reactions, sendReaction } = useLiveReactions(sessionId);
   const { pinnedComment, pinComment } = usePinComment(sessionId);
   const { viewerCount, peakViewers } = useViewerCount(sessionId);
+  const { saveReplayUrl } = useLiveHost();
   const flatRef = useRef<FlatList>(null);
   const [input, setInput] = useState("");
   const [shareVisible, setShareVisible] = useState(false);
   const [viewersVisible, setViewersVisible] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
+  const [replaySaving, setReplaySaving] = useState(false);
+  const [replaySaved, setReplaySaved] = useState(false);
   const [startTime] = useState(Date.now());
   const [userScrolling, setUserScrolling] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
@@ -500,6 +506,47 @@ function HostUI({
   const confirmEnd = () => {
     setShowSummary(false);
     onEnd();
+  };
+
+  const handleSaveReplay = () => {
+    Alert.alert(
+      '📱 Live aufzeichnen',
+      'So zeichnest du dein Live auf:\n\n1. Wisch von oben rechts nach unten\n2. Tippe auf „Bildschirmaufnahme“ ⏺\n3. Starte dein Live — es wird automatisch aufgezeichnet\n4. Nach dem Live: Aufnahme stoppen\n\nDie Aufnahme findest du in der Fotos-App.',
+      [{ text: 'Verstanden', style: 'default' }]
+    );
+  };
+
+  const handlePostAsVideo = () => {
+    Alert.alert(
+      '📤 Live als Video posten',
+      'Hast du deinen Live-Stream mit der iOS Bildschirmaufnahme aufgezeichnet?\n\nSo geht’s:\n1. Vor dem nächsten Live: Bildschirmaufnahme starten\n2. Nach dem Live: Aufnahme stoppen\n3. Video aus der Galerie auswählen\n\nDie Aufnahme findest du in der Fotos-App.',
+      [
+        { text: 'Abbrechen', style: 'cancel' },
+        {
+          text: '📁 Galerie öffnen',
+          style: 'default',
+          onPress: async () => {
+            const result = await ImagePicker.launchImageLibraryAsync({
+              mediaTypes: ['videos'],
+              allowsEditing: false,
+              quality: 1,
+              videoMaxDuration: 0,
+            });
+            if (result.canceled || !result.assets?.[0]) return;
+            const asset = result.assets[0];
+            setShowSummary(false);
+            router.replace({
+              pathname: '/create' as any,
+              params: {
+                mediaUri: asset.uri,
+                mediaType: 'video',
+                caption: title ? `Live Replay: ${title}` : 'Live Replay 🔴',
+              },
+            });
+          },
+        },
+      ]
+    );
   };
 
   const formatDuration = () => {
@@ -714,27 +761,95 @@ function HostUI({
         }}
       />
 
-      {/* Live-End Summary Modal */}
-      <Modal transparent visible={showSummary} animationType="fade">
-        <View style={s.summaryBackdrop}>
-          <View style={s.summaryCard}>
-            <Text style={s.summaryTitle}>Live beendet 🎦</Text>
-            <View style={s.summaryRow}>
-              <View style={s.summaryItem}>
-                <Text style={s.summaryValue}>{formatDuration()}</Text>
-                <Text style={s.summaryLabel}>Dauer</Text>
-              </View>
-              <View style={s.summaryItem}>
-                <Text style={s.summaryValue}>{peakViewers}</Text>
-                <Text style={s.summaryLabel}>Peak Zuschauer</Text>
-              </View>
-              <View style={s.summaryItem}>
-                <Text style={s.summaryValue}>{comments.length}</Text>
-                <Text style={s.summaryLabel}>Kommentare</Text>
+      {/* TikTok-Style Summary — Full Screen */}
+      <Modal visible={showSummary} animationType="slide" statusBarTranslucent>
+        <View style={s.summaryScreen}>
+          <LinearGradient
+            colors={['#0D0D18', '#0f0020', '#0D0D18']}
+            style={StyleSheet.absoluteFill}
+          />
+
+          {/* Scrollbarer Inhalt */}
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ paddingBottom: 16 }}
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+          >
+            <View style={[s.summaryTopBar, { paddingTop: insets.top + 12 }]}>
+              <Text style={s.summaryDate}>
+                {new Date().toLocaleDateString('de-DE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })} · {formatDuration()}
+              </Text>
+              <Text style={s.summaryHeadline}>LIVE wurde beendet</Text>
+            </View>
+
+            <View style={s.summarySeparator} />
+
+            {/* Stats-Karte */}
+            <View style={s.summaryStatsCard}>
+              <View style={s.summaryStatRow}>
+                <View style={s.summaryStatItem}>
+                  <Text style={s.summaryStatNum}>{fmtNum(viewerCount + peakViewers > 0 ? peakViewers : 0)}</Text>
+                  <Text style={s.summaryStatLabel}>Peak Zuschauer</Text>
+                </View>
+                <View style={s.summaryStatDivider} />
+                <View style={s.summaryStatItem}>
+                  <Text style={s.summaryStatNum}>{fmtNum(session?.like_count ?? 0)}</Text>
+                  <Text style={s.summaryStatLabel}>Likes ❤️</Text>
+                </View>
+                <View style={s.summaryStatDivider} />
+                <View style={s.summaryStatItem}>
+                  <Text style={s.summaryStatNum}>{fmtNum(comments.filter(c => !(c as any).isSystem).length)}</Text>
+                  <Text style={s.summaryStatLabel}>Kommentare</Text>
+                </View>
               </View>
             </View>
-            <Pressable onPress={confirmEnd} style={s.summaryBtn}>
-              <Text style={s.summaryBtnText}>Fertig</Text>
+
+            {/* Top-Kommentatoren Rangliste — ALLE angezeigt (scrollbar) */}
+            {comments.filter(c => !(c as any).isSystem && c.profiles).length > 0 && (
+              <View style={s.summaryLeaderCard}>
+                <Text style={s.summaryLeaderTitle}>🏆 Top Kommentatoren</Text>
+                {Object.entries(
+                  comments
+                    .filter(c => !(c as any).isSystem && c.profiles?.username)
+                    .reduce((acc: Record<string, { username: string; avatar?: string | null; count: number }>, c) => {
+                      const uid = c.user_id;
+                      if (!acc[uid]) acc[uid] = { username: c.profiles!.username, avatar: c.profiles!.avatar_url, count: 0 };
+                      acc[uid].count++;
+                      return acc;
+                    }, {})
+                )
+                  .sort((a, b) => b[1].count - a[1].count)
+                  .map(([uid, info], idx) => (
+                  <View key={uid} style={s.summaryLeaderRow}>
+                    <Text style={s.summaryLeaderRank}>#{idx + 1}</Text>
+                    {info.avatar ? (
+                      <Image source={{ uri: info.avatar }} style={s.summaryLeaderAvatar} contentFit="cover" />
+                    ) : (
+                      <View style={[s.summaryLeaderAvatar, s.summaryLeaderAvatarFallback]}>
+                        <Text style={{ color: '#22D3EE', fontWeight: '700', fontSize: 13 }}>
+                          {info.username[0].toUpperCase()}
+                        </Text>
+                      </View>
+                    )}
+                    <Text style={s.summaryLeaderName}>@{info.username}</Text>
+                    <Text style={s.summaryLeaderCount}>{info.count} 💬</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+          </ScrollView>
+
+          {/* Aktionen — immer unten sichtbar */}
+          <View style={[s.summaryActionsWrap, { paddingBottom: insets.bottom + 16 }]}>
+            <Pressable style={s.summaryActionPrimary} onPress={handlePostAsVideo}>
+              <Text style={s.summaryActionPrimaryText}>📤 Als Video posten</Text>
+            </Pressable>
+            <Pressable style={s.summaryActionSecondary} onPress={handleSaveReplay}>
+              <Text style={s.summaryActionSecondaryText}>💾 Replay Info</Text>
+            </Pressable>
+            <Pressable onPress={confirmEnd} style={s.summaryDoneBtn}>
+              <Text style={s.summaryDoneBtnText}>Fertig</Text>
             </Pressable>
           </View>
         </View>
@@ -1034,32 +1149,17 @@ const s = StyleSheet.create({
     zIndex: 10,
   },
   commentRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    borderRadius: 14,
-    padding: 6,
-    marginBottom: 5,
+    paddingVertical: 2,
+    marginBottom: 3,
     alignSelf: 'flex-start',
-    maxWidth: '90%',
-    gap: 7,
+    maxWidth: '100%',
   },
-  commentAvatar: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    flexShrink: 0,
-    marginTop: 1,
-  },
-  commentAvatarFallback: {
-    backgroundColor: '#0891B2',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  commentAvatarInitial: { color: '#fff', fontSize: 10, fontWeight: '800' },
+  commentAvatar: { width: 0, height: 0 },
+  commentAvatarFallback: {},
+  commentAvatarInitial: { fontSize: 0 },
   commentTextWrap: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: 3 },
-  commentUser: { color: "#22D3EE", fontWeight: "700", fontSize: 13 },
-  commentText: { color: "#fff", fontSize: 13, flexShrink: 1 },
+  commentUser: { color: '#FFFC00', fontWeight: '800', fontSize: 13 },
+  commentText: { color: '#fff', fontSize: 13, flexShrink: 1 },
   systemText: { color: 'rgba(255,255,255,0.55)', fontSize: 12, fontStyle: 'italic' },
 
   emojiPickerRow: {
@@ -1107,59 +1207,179 @@ const s = StyleSheet.create({
   bottomEmojiText: { fontSize: 18 },
 
   // ── Live-End Summary ──
-  summaryBackdrop: {
+  summaryScreen: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.75)",
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 24,
+    backgroundColor: '#0D0D18',
   },
-  summaryCard: {
-    backgroundColor: "#1a1a2e",
-    borderRadius: 20,
-    padding: 28,
-    width: "100%",
-    alignItems: "center",
-    gap: 20,
-    borderWidth: 1,
-    borderColor: "rgba(34,211,238,0.2)",
+  summaryTopBar: {
+    paddingHorizontal: 20,
+    paddingBottom: 16,
   },
-  summaryTitle: {
-    color: "#fff",
-    fontSize: 22,
-    fontWeight: "800",
-  },
-  summaryRow: {
-    flexDirection: "row",
-    justifyContent: "space-around",
-    width: "100%",
-  },
-  summaryItem: {
-    alignItems: "center",
-    gap: 4,
-  },
-  summaryValue: {
-    color: "#22D3EE",
-    fontSize: 28,
-    fontWeight: "900",
-  },
-  summaryLabel: {
-    color: "rgba(255,255,255,0.5)",
+  summaryDate: {
+    color: 'rgba(255,255,255,0.4)',
     fontSize: 12,
-    fontWeight: "600",
+    fontWeight: '500',
+    marginBottom: 6,
   },
+  summaryHeadline: {
+    color: '#fff',
+    fontSize: 26,
+    fontWeight: '900',
+    letterSpacing: -0.5,
+  },
+  summarySeparator: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    marginBottom: 16,
+  },
+  summaryStatsCard: {
+    marginHorizontal: 16,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 18,
+    padding: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(34,211,238,0.15)',
+    marginBottom: 14,
+  },
+  summaryStatRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+  },
+  summaryStatItem: {
+    alignItems: 'center',
+    gap: 4,
+    flex: 1,
+  },
+  summaryStatNum: {
+    color: '#22D3EE',
+    fontSize: 28,
+    fontWeight: '900',
+    fontVariant: ['tabular-nums'],
+  },
+  summaryStatLabel: {
+    color: 'rgba(255,255,255,0.45)',
+    fontSize: 11,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  summaryStatDivider: {
+    width: StyleSheet.hairlineWidth,
+    height: 36,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  summaryLeaderCard: {
+    marginHorizontal: 16,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.08)',
+    gap: 10,
+    marginBottom: 14,
+  },
+  summaryLeaderTitle: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  summaryLeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  summaryLeaderRank: {
+    color: 'rgba(255,255,255,0.35)',
+    fontSize: 12,
+    fontWeight: '700',
+    width: 22,
+  },
+  summaryLeaderAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+  },
+  summaryLeaderAvatarFallback: {
+    backgroundColor: 'rgba(34,211,238,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  summaryLeaderName: {
+    flex: 1,
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  summaryLeaderCount: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  summaryActionsWrap: {
+    paddingHorizontal: 16,
+    gap: 10,
+    paddingBottom: 32,
+  },
+  summaryActionPrimary: {
+    backgroundColor: '#22D3EE',
+    borderRadius: 16,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  summaryActionPrimaryText: {
+    color: '#000',
+    fontSize: 16,
+    fontWeight: '800',
+  },
+  summaryActionSecondary: {
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderRadius: 16,
+    paddingVertical: 14,
+    alignItems: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  summaryActionSecondaryText: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+  summaryDoneBtn: {
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  summaryDoneBtnText: {
+    color: 'rgba(255,255,255,0.35)',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  // Legacy styles (unused but kept for type safety)
+  summaryBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
+  summaryCard: { backgroundColor: '#0f0f1a', borderRadius: 24, padding: 24, width: '100%', gap: 16 },
+  summaryHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  summaryTitle: { color: '#fff', fontSize: 20, fontWeight: '800' },
+  summaryDuration: { color: '#22D3EE', fontSize: 15, fontWeight: '700' },
+  summaryRow: { flexDirection: 'row', justifyContent: 'space-around', width: '100%' },
+  summaryItem: { alignItems: 'center', gap: 4 },
+  summaryValue: { color: '#22D3EE', fontSize: 24, fontWeight: '900' },
+  summaryLabel: { color: 'rgba(255,255,255,0.45)', fontSize: 11, fontWeight: '600' },
+  summaryDivider: { height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.08)', width: '100%' },
+  summaryActions: { gap: 10, width: '100%' },
+  summaryActionBtn: { paddingVertical: 14, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.07)', alignItems: 'center', minHeight: 48 },
+  summaryActionBtnDone: { backgroundColor: 'rgba(34,211,238,0.1)' },
+  summaryActionText: { color: 'rgba(255,255,255,0.75)', fontSize: 15, fontWeight: '600' },
+  summaryActionTextDone: { color: '#22D3EE' },
+  summaryBtnEnd: { paddingVertical: 14, alignItems: 'center' },
+  summaryBtnEndText: { color: 'rgba(255,255,255,0.35)', fontSize: 14, fontWeight: '600' },
+  // Legacy (wird noch genutzt):
   summaryBtn: {
     backgroundColor: "#0891B2",
     borderRadius: 14,
     paddingHorizontal: 48,
     paddingVertical: 14,
-    marginTop: 4,
   },
-  summaryBtnText: {
-    color: "#fff",
-    fontSize: 16,
-    fontWeight: "800",
-  },
+  summaryBtnText: { color: "#fff", fontSize: 16, fontWeight: "800" },
 
   // Pinned Comment Banner
   pinnedBanner: {

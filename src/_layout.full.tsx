@@ -356,18 +356,34 @@ export default function RootLayoutFull() {
   const { Stack } = require('expo-router') as typeof import('expo-router');
   const { ErrorBoundary } =
     require('@/components/ui/ErrorBoundary') as typeof import('@/components/ui/ErrorBoundary');
-  const { QueryClient, QueryClientProvider } =
+  const { QueryClient } =
     require('@tanstack/react-query') as typeof import('@tanstack/react-query');
+  const { PersistQueryClientProvider } =
+    require('@tanstack/react-query-persist-client') as typeof import('@tanstack/react-query-persist-client');
+  const { createAsyncStoragePersister } =
+    require('@tanstack/query-async-storage-persister') as typeof import('@tanstack/query-async-storage-persister');
+  const AsyncStorage =
+    (require('@react-native-async-storage/async-storage') as any)?.default;
   const { GestureHandlerRootView } =
     require('react-native-gesture-handler') as typeof import('react-native-gesture-handler');
 
-  // QueryClient created once via ref, not state, to avoid re-creating on re-renders
+  // QueryClient once via ref
   const qcRef = useRef<InstanceType<typeof QueryClient> | null>(null);
   if (!qcRef.current) {
     qcRef.current = new QueryClient({
       defaultOptions: {
         queries: { staleTime: 60 * 1000, retry: 1, gcTime: 5 * 60 * 1000 },
       },
+    });
+  }
+
+  // Persister: Feed-Daten überleben Kaltstarts — gleicher lazy-require Pattern wie alles andere
+  const persisterRef = useRef<any>(null);
+  if (!persisterRef.current && AsyncStorage) {
+    persisterRef.current = createAsyncStoragePersister({
+      storage: AsyncStorage,
+      key: 'vibes-rq-cache-v1',
+      throttleTime: 3000,  // max. 1 Schreibvorgang alle 3s — kein AsyncStorage-Spam
     });
   }
 
@@ -394,7 +410,20 @@ export default function RootLayoutFull() {
 
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={qcRef.current}>
+      <PersistQueryClientProvider
+        client={qcRef.current}
+        persistOptions={{
+          persister: persisterRef.current,
+          maxAge: 24 * 60 * 60 * 1000,  // 24 Stunden
+          // Nur Feed-Queries persistieren — kein Schreiben von Auth-sensiblen Daten
+          dehydrateOptions: {
+            shouldDehydrateQuery: (query) => {
+              const key = query.queryKey[0];
+              return key === 'vibe-feed' || key === 'trending-feed';
+            },
+          },
+        }}
+      >
         <GestureHandlerRootView style={{ flex: 1 }}>
           <AuthGuard />
           <PushNotificationsProvider />
@@ -481,7 +510,7 @@ export default function RootLayoutFull() {
             />
           </Stack>
         </GestureHandlerRootView>
-      </QueryClientProvider>
+      </PersistQueryClientProvider>
     </ErrorBoundary>
   );
 }

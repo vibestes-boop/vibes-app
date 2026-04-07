@@ -1,7 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Alert } from 'react-native';
+import { useEffect } from 'react';
 import { supabase } from './supabase';
 import { useAuthStore } from './authStore';
+
 
 export type Comment = {
   id: string;
@@ -18,6 +20,7 @@ export type Comment = {
 };
 
 export function useCommentCount(postId: string, batchCount?: number) {
+  const queryClient = useQueryClient();
   const skip = batchCount !== undefined;
   const q = useQuery({
     queryKey: ['comment-count', postId],
@@ -31,10 +34,39 @@ export function useCommentCount(postId: string, batchCount?: number) {
     },
     enabled: !!postId && !skip,
     staleTime: 1000 * 60,
+    initialData: skip ? batchCount : undefined,
   });
-  const count = skip ? batchCount! : (q.data ?? 0);
+
+  // Realtime: Kommentaranzahl live aktualisieren
+  // PERF-FIX: Subscription nur öffnen wenn KEIN batchCount vorhanden (skip=true).
+  // Im Feed liefert useFeedEngagement Batch-Werte für alle Posts → kein N+1-Channel-Problem.
+  // Subscription nur im Post-Detail oder CommentsSheet wo kein Batch-Wert existiert.
+  useEffect(() => {
+    if (!postId || skip) return;  // ← skip wenn batch-Daten vorhanden: spart bis zu 15 WebSocket-Channels
+    const channel = supabase
+      .channel(`comment-count:${postId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'comments', filter: `post_id=eq.${postId}` },
+        () => {
+          queryClient.setQueryData<number>(['comment-count', postId], (old) => (old ?? 0) + 1);
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'comments', filter: `post_id=eq.${postId}` },
+        () => {
+          queryClient.setQueryData<number>(['comment-count', postId], (old) => Math.max(0, (old ?? 1) - 1));
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [postId, queryClient, skip]);
+
+  const count = q.data ?? (skip ? batchCount! : 0);
   return { ...q, data: count };
 }
+
 
 export function useComments(postId: string, enabled: boolean = true) {
   return useQuery({
@@ -199,8 +231,10 @@ export function useAddComment(postId: string) {
         queryClient.setQueryData(key, prev);
         queryClient.setQueryData<number>(['comment-count', postId], (old) => Math.max(0, (old ?? 1) - 1));
       }
-      __DEV__ && console.error('[useAddComment] Fehler:', err);
-      Alert.alert('Fehler', err?.message ?? 'Kommentar konnte nicht gesendet werden.');
+      // Vollständiges Error-Objekt loggen (wichtig für RLS-Diagnose)
+      __DEV__ && console.error('[useAddComment] Fehler vollständig:', JSON.stringify(err, null, 2));
+      const msg = err?.message || err?.details || err?.hint || err?.code || 'Unbekannter Fehler';
+      Alert.alert('Fehler', msg);
     },
   });
 }

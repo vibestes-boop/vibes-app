@@ -407,9 +407,16 @@ function PostCard({
         {item.tags?.length > 0 && (
           <View style={s.tagsRow}>
             {item.tags.map((tag) => (
-              <View key={tag} style={s.tagChip}>
-                <Text style={s.tagText}>{tag}</Text>
-              </View>
+              <Pressable
+                key={tag}
+                style={s.tagChip}
+                onPress={() => router.push({ pathname: '/(tabs)/explore', params: { tag } } as any)}
+                hitSlop={6}
+                accessibilityRole="link"
+                accessibilityLabel={`Hashtag ${tag} in Explore suchen`}
+              >
+                <Text style={s.tagText}>#{tag}</Text>
+              </Pressable>
             ))}
           </View>
         )}

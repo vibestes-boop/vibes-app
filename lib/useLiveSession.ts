@@ -20,11 +20,15 @@ export type LiveSession = {
   status: 'active' | 'ended';
   viewer_count: number;
   peak_viewers: number;
-  like_count: number;           // ❤️-Reaktionen (Gewichtung ×1 — passiv)
-  comment_count: number;        // 💬 Kommentare (Gewichtung ×3 — aktiv, stärker als Likes)
+  like_count: number;
+  comment_count: number;
   room_name: string | null;
   started_at: string;
   ended_at: string | null;
+  replay_url: string | null;
+  is_replayable: boolean;
+  thumbnail_url: string | null;
+  category: string | null;
   profiles: {
     username: string;
     avatar_url: string | null;
@@ -77,6 +81,7 @@ export function useActiveLiveSessions() {
         .from('live_sessions')
         .select('*, profiles(username, avatar_url)')
         .eq('status', 'active')
+        .gte('started_at', new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString()) // max 8h alte Sessions
         .order('viewer_count', { ascending: false })
         .limit(20);
       if (error) throw error;
@@ -108,8 +113,9 @@ export function useActiveLiveSessions() {
         })
         .sort((a, b) => b._heatScore - a._heatScore) as LiveSession[];
     },
-    staleTime: 0,               // Sofort frisch — Realtime übernimmt danach
-    refetchInterval: false,
+    staleTime: 30_000,           // 30s frisch — Realtime übernimmt primär
+    refetchInterval: 30_000,     // Backup: alle 30s neu laden falls Realtime-Event verloren geht
+    refetchIntervalInBackground: false,
   });
 }
 
@@ -152,10 +158,11 @@ export function useLiveSession(sessionId: string | null) {
       return data as LiveSession;
     },
     enabled: !!sessionId,
-    // staleTime: 0 → jeder Viewer fetcht sofort frische Daten (kein Cache-Miss).
-    // Realtime invalidiert bei Änderungen. Für Host-Screen ist das perfekt:
-    // Host hat aktiven Realtime-Channel → fast nie ein refetch nötig.
-    staleTime: 0,
+    // staleTime: 5s → Realtime-Events innerhalb von 5s lösen nur einen einzigen
+    // Refetch aus statt jeden Event direkt in eine DB-Query umzuwandeln.
+    // Host schreibt viewer_count alle 5s → ohne staleTime = 1 Refetch/5s per Viewer,
+    // mit 5s staleTime = identisches Ergebnis aber robuster gegen Event-Floods.
+    staleTime: 5_000,
     // Retry alle 3s wenn room_name noch null ist (Race-Condition: Viewer schneller als DB-Insert)
     refetchInterval: (query) => {
       const data = query.state.data;
@@ -271,9 +278,19 @@ export function useLiveHost() {
   const endSession = async (overrideSessionId?: string) => {
     const id = overrideSessionId ?? sessionId;
     if (!id) return;
-    // RPC setzt status='ended', ended_at=NOW(), viewer_count=0
-    await supabase.rpc('end_live_session', { p_session_id: id });
-    // Cache sofort leeren: watch-screens die useLiveSession(id) aufrufen reagieren sofort
+
+    // Versuche zuerst via RPC (SECURITY DEFINER — setzt status='ended' + viewer_count=0)
+    const { error: rpcError } = await supabase.rpc('end_live_session', { p_session_id: id });
+
+    if (rpcError) {
+      // Fallback: direktes UPDATE falls RPC nicht deployed oder fehlschlägt
+      __DEV__ && console.warn('[endSession] RPC fehlgeschlagen, direktes UPDATE:', rpcError.message);
+      await supabase
+        .from('live_sessions')
+        .update({ status: 'ended', ended_at: new Date().toISOString(), viewer_count: 0 })
+        .eq('id', id);
+    }
+
     queryClient.invalidateQueries({ queryKey: ['live-session', id] });
     queryClient.invalidateQueries({ queryKey: ['live-sessions-active'] });
     setSessionId(null);
@@ -281,7 +298,16 @@ export function useLiveHost() {
     setLkToken(null);
   };
 
-  return { sessionId, roomName, lkToken, lkUrl, startSession, endSession, loading };
+  /** replay_url setzen — macht das Live als Replay abrufbar */
+  const saveReplayUrl = async (sid: string, url: string) => {
+    await supabase
+      .from('live_sessions')
+      .update({ replay_url: url, is_replayable: true })
+      .eq('id', sid);
+    queryClient.invalidateQueries({ queryKey: ['live-session', sid] });
+  };
+
+  return { sessionId, roomName, lkToken, lkUrl, startSession, endSession, saveReplayUrl, loading };
 }
 
 // ─── Zuschauer: Session beitreten & verlassen ─────────────────────────────────

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Text, View, ActivityIndicator, StyleSheet } from 'react-native';
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
 const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
@@ -8,10 +8,16 @@ import {
   Heart,
   MessageCircle,
   Bookmark,
+  Volume2,
+  VolumeX,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import { useQuery } from '@tanstack/react-query';
 import { useCommentCount } from '@/lib/useComments';
 import { useBookmark } from '@/lib/useBookmark';
+import { useVoiceReader } from '@/lib/useVoiceReader';
+import { useCreatorVoiceSample } from '@/lib/useCreatorVoiceSample';
+import { supabase } from '@/lib/supabase';
 import { feedItemStyles as styles } from './feedStyles';
 
 export function ActionButton({
@@ -138,11 +144,13 @@ export function LikeButton({
   liked,
   formattedCount,
   onToggle,
+  onCountPress,
 }: {
   accentColor: string;
   liked: boolean;
   formattedCount: string;
   onToggle: () => void;
+  onCountPress?: () => void;
 }) {
   const scale = useSharedValue(1);
   const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
@@ -177,7 +185,73 @@ export function LikeButton({
           fill={liked ? '#EE1D52' : 'transparent'}
         />
       </Animated.View>
-      <Text style={[styles.actionCount, liked && { color: '#EE1D52' }]}>{formattedCount}</Text>
+      {onCountPress ? (
+        <Pressable onPress={onCountPress} hitSlop={8}>
+          <Text style={[styles.actionCount, liked && { color: '#EE1D52' }]}>{formattedCount}</Text>
+        </Pressable>
+      ) : (
+        <Text style={[styles.actionCount, liked && { color: '#EE1D52' }]}>{formattedCount}</Text>
+      )}
     </Pressable>
   );
 }
+
+// ── VoiceButton ──────────────────────────────────────────────────────────────
+// TTS-Button: liest den Post-Caption laut vor via Chatterbox (Replicate API)
+// Wenn creatorUserId → voice_sample_url aus profiles → Creator-Stimme klonen
+
+export function VoiceButton({
+  postId,
+  caption,
+  creatorUserId,
+}: {
+  postId: string;
+  caption: string;
+  creatorUserId?: string | null;
+}) {
+  const voiceRefUrl = useCreatorVoiceSample(creatorUserId);
+  const { isLoading, isPlaying, toggle } = useVoiceReader(postId, caption, 0.5, voiceRefUrl);
+  const scale = useSharedValue(1);
+  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
+  const handlePress = () => {
+    if (isLoading) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    scale.value = withSequence(
+      withTiming(0.75, { duration: 60 }),
+      withTiming(1.15, { duration: 80 }),
+      withTiming(1, { duration: 80 }),
+    );
+    toggle();
+  };
+
+  return (
+    <Pressable
+      onPress={handlePress}
+      style={styles.actionBtn}
+      accessibilityRole="button"
+      accessibilityLabel={isPlaying ? 'Audio stoppen' : 'Text vorlesen'}
+      accessibilityState={{ busy: isLoading }}
+    >
+      <Animated.View style={[
+        styles.actionBtnInner,
+        animStyle,
+        isPlaying && voiceStyles.activeBg,
+      ]}>
+        {isLoading ? (
+          <ActivityIndicator size={18} color="rgba(255,255,255,0.7)" />
+        ) : isPlaying ? (
+          <VolumeX size={24} stroke="#22D3EE" strokeWidth={1.8} />
+        ) : (
+          <Volume2 size={24} stroke="rgba(255,255,255,0.75)" strokeWidth={1.8} />
+        )}
+      </Animated.View>
+    </Pressable>
+  );
+}
+
+const voiceStyles = StyleSheet.create({
+  activeBg: {
+    backgroundColor: 'rgba(34,211,238,0.12)',
+  },
+});

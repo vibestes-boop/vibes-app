@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS live_reports (
 ALTER TABLE live_reports ENABLE ROW LEVEL SECURITY;
 
 -- Jeder eingeloggte User darf nur eigene Reports einfügen
+DROP POLICY IF EXISTS "insert_own_live_reports" ON live_reports;
 CREATE POLICY "insert_own_live_reports"
   ON live_reports
   FOR INSERT
@@ -82,6 +83,7 @@ CREATE POLICY "insert_own_live_reports"
   WITH CHECK (reporter_id = auth.uid());
 
 -- Admins können alle Reports lesen (optional — für euer Dashboard)
+DROP POLICY IF EXISTS "admin_read_live_reports" ON live_reports;
 CREATE POLICY "admin_read_live_reports"
   ON live_reports
   FOR SELECT

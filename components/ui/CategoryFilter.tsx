@@ -124,9 +124,10 @@ function CategoryPill({
 type Props = {
   activeTag: string | null;
   onSelect: (tag: string | null) => void;
+  hideForYou?: boolean;
 };
 
-export function CategoryFilter({ activeTag, onSelect }: Props) {
+export function CategoryFilter({ activeTag, onSelect, hideForYou = false }: Props) {
   const scrollRef = useRef<ScrollView>(null);
 
   return (
@@ -138,14 +139,17 @@ export function CategoryFilter({ activeTag, onSelect }: Props) {
       style={s.scroll}
       decelerationRate="fast"
     >
-      {/* For You als erster, spezieller Chip */}
-      <ForYouPill
-        isActive={activeTag === null}
-        onPress={() => onSelect(null)}
-      />
-
-      {/* Separator */}
-      <View style={s.separator} />
+      {/* For You als erster, spezieller Chip — nur wenn nicht versteckt */}
+      {!hideForYou && (
+        <>
+          <ForYouPill
+            isActive={activeTag === null}
+            onPress={() => onSelect(null)}
+          />
+          {/* Separator */}
+          <View style={s.separator} />
+        </>
+      )}
 
       {/* Rest der Kategorien */}
       {CATEGORIES.filter((c) => c.id !== null).map((cat) => (

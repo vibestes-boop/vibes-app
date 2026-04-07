@@ -112,7 +112,68 @@ export const vibeFeedScreenStyles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.12)',
   },
+  // ── Feed-Mode Toggle (TikTok-Style) ─────────────────────────────────
+  feedModeBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    zIndex: 25,
+    height: 52,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+  },
+  feedModeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 20,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    paddingHorizontal: 20,
+    paddingVertical: 7,
+    borderRadius: 30,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  feedModeBtn: {
+    alignItems: 'center',
+    paddingHorizontal: 8,
+    gap: 4,
+  },
+  feedModeTxt: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 14,
+    fontWeight: '600',
+    letterSpacing: 0.2,
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  feedModeTxtActive: {
+    color: '#FFFFFF',
+    fontWeight: '800',
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  feedModeLine: {
+    width: 24,
+    height: 2.5,
+    borderRadius: 2,
+    backgroundColor: '#FFFFFF',
+  },
+  feedSearchBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 });
+
 
 /** Einzelner Feed-Post inkl. Action-Buttons */
 export const feedItemStyles = StyleSheet.create({
@@ -120,7 +181,7 @@ export const feedItemStyles = StyleSheet.create({
     width: SCREEN_WIDTH,
     height: SCREEN_HEIGHT,
     backgroundColor: '#0A0A0A',
-    overflow: 'hidden',
+    // overflow: 'hidden' entfernt — erlaubt absolut positionierte Progress Bar
     justifyContent: 'flex-end',
   },
   patternOverlay: {
@@ -138,7 +199,7 @@ export const feedItemStyles = StyleSheet.create({
   },
   muteBtn: {
     position: 'absolute',
-    bottom: 56,     // über dem Fortschrittsbalken
+    top: 0,     // wird in FeedItem.tsx via insets.top + 56 überschrieben
     right: 14,
     borderRadius: 20,
     overflow: 'hidden',
@@ -154,6 +215,15 @@ export const feedItemStyles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
   },
+  muteSeparator: {
+    width: 20,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignSelf: 'center',
+    marginBottom: 6,
+    marginTop: 2,
+  },
+
   pauseIconWrap: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center',
@@ -197,7 +267,7 @@ export const feedItemStyles = StyleSheet.create({
   rightActions: {
     position: 'absolute',
     right: 6,
-    bottom: 90,
+    bottom: 0,   // wird dynamisch via insets.bottom + 50 gesetzt
     gap: 0,
     alignItems: 'center',
   },
@@ -220,7 +290,7 @@ export const feedItemStyles = StyleSheet.create({
   },
   bottomInfo: {
     paddingHorizontal: 20,
-    paddingBottom: 110,
+    paddingBottom: 0,  // wird dynamisch via insets gesetzt
     paddingTop: 10,
   },
   authorRow: {
@@ -234,32 +304,36 @@ export const feedItemStyles = StyleSheet.create({
     position: 'relative',
   },
   storyRingGradient: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    padding: 2.5,      // Ring direkt auf Avatar — kein schwarzer Spalt
     alignItems: 'center',
     justifyContent: 'center',
   },
   storyRingViewed: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: 'rgba(255,255,255,0.25)',
+    padding: 2.5,
     alignItems: 'center',
     justifyContent: 'center',
   },
   storyRingGap: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#050508',
+    // Wrapper für overflow:hidden (damit Avatar rund bleibt)
+    // alignSelf:'stretch' → füllt den Innenraum des Gradient (nach Padding)
+    alignSelf: 'stretch',
+    borderRadius: 100,
+    overflow: 'hidden',
     alignItems: 'center',
     justifyContent: 'center',
+    // backgroundColor ENTFERNT → kein schwarzer Spalt zwischen Ring und Avatar
   },
   authorAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.4)',
   },
@@ -323,6 +397,34 @@ export const feedItemStyles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
+  },
+  viewCountRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  viewCountText: {
+    color: 'rgba(255,255,255,0.45)',
+    fontSize: 12,
+    fontWeight: '500',
+    letterSpacing: 0.3,
+  },
+  privacyBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    borderRadius: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  privacyBadgeText: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 0.2,
   },
 });
 

@@ -26,6 +26,8 @@ import {
   withSequence,
   runOnJS,
   Easing,
+  interpolate,
+  Extrapolation,
   type SharedValue,
 } from 'react-native-reanimated';
 import {
@@ -34,16 +36,22 @@ import {
   GestureHandlerRootView,
   TouchableOpacity,
 } from 'react-native-gesture-handler';
-import { X, Send, Trash2, Copy, Video, AtSign, MessageSquare, Heart } from 'lucide-react-native';
+import { X, Send, Trash2, Copy, Video, AtSign, MessageSquare, Heart, Volume2, VolumeX } from 'lucide-react-native';
 import { setStringAsync as clipboardSetString } from 'expo-clipboard';
+import { useVoiceReader } from '@/lib/useVoiceReader';
+import { supabase } from '@/lib/supabase';
+import { useQuery } from '@tanstack/react-query';
+import { useCreatorVoiceSample } from '@/lib/useCreatorVoiceSample';
+
 
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useComments, useAddComment, useDeleteComment, useCommentReplies, type Comment } from '@/lib/useComments';
-import { useCommentLike } from '@/lib/useCommentLike';
+import { useCommentLike, useCommentLikesBatch, type CommentLikesMap } from '@/lib/useCommentLike';
 import { useAuthStore } from '@/lib/authStore';
 import { VideoGridThumb } from './VideoGridThumb';
+import { RichText } from '@/components/ui/RichText';
 import { useExploreUserSearch } from '@/lib/useExplore';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -78,15 +86,19 @@ type Props = {
   onClose: () => void;
   mediaUrl?: string | null;
   mediaType?: string;
-  thumbnailUrl?: string | null; // Statisches Thumbnail für Video-Vorschau
+  thumbnailUrl?: string | null;
   onUserPress?: (userId: string) => void;
+  /** Creator-UserId → Chatterbox klingt wie der Creator */
+  creatorUserId?: string | null;
+  /** Von FeedItem übergeben: steuert Post-Höhe synchron zum Sheet-Drag */
+  sheetProgress?: SharedValue<number>;
 };
 
 const CLOSE_DURATION = 300;
 const OPEN_DURATION = 250;
 const CLOSE_EASING = Easing.out(Easing.cubic);
 
-export default function CommentsSheet({ postId, visible, onClose, mediaUrl, mediaType, thumbnailUrl, onUserPress }: Props) {
+export default function CommentsSheet({ postId, visible, onClose, mediaUrl, mediaType, thumbnailUrl, onUserPress, creatorUserId, sheetProgress }: Props) {
   const translateY = useSharedValue(SCREEN_HEIGHT);
   const overlayOpacity = useSharedValue(0);
   const contentOpacity = useSharedValue(0);
@@ -100,6 +112,10 @@ export default function CommentsSheet({ postId, visible, onClose, mediaUrl, medi
     isClosingRef.current = true;
     overlayOpacity.value = withTiming(0, { duration: CLOSE_DURATION });
     contentOpacity.value = withTiming(0, { duration: CLOSE_DURATION });
+    // sheetProgress synchron auf 0 animieren (Post wächst zurück)
+    if (sheetProgress) {
+      sheetProgress.value = withTiming(0, { duration: CLOSE_DURATION, easing: CLOSE_EASING });
+    }
     translateY.value = withTiming(
       SCREEN_HEIGHT,
       { duration: CLOSE_DURATION, easing: CLOSE_EASING },
@@ -107,7 +123,7 @@ export default function CommentsSheet({ postId, visible, onClose, mediaUrl, medi
         if (finished) runOnJS(onClose)();
       }
     );
-  }, [onClose, overlayOpacity, contentOpacity, translateY]);
+  }, [onClose, overlayOpacity, contentOpacity, translateY, sheetProgress]);
 
   useEffect(() => {
     if (visible) {
@@ -141,7 +157,18 @@ export default function CommentsSheet({ postId, visible, onClose, mediaUrl, medi
       }
     })
     .onUpdate((e) => {
-      if (e.translationY > 0) translateY.value = e.translationY;
+      if (e.translationY > 0) {
+        translateY.value = e.translationY;
+        // Post-Höhe synchron mit Finger-Drag updaten (1 = offen, 0 = zu)
+        if (sheetProgress) {
+          sheetProgress.value = interpolate(
+            e.translationY,
+            [0, SCREEN_HEIGHT],
+            [1, 0],
+            Extrapolation.CLAMP
+          );
+        }
+      }
     })
     .onEnd((e) => {
       const threshold = 70;
@@ -154,6 +181,7 @@ export default function CommentsSheet({ postId, visible, onClose, mediaUrl, medi
         runOnJS(handleClose)();
       } else {
         translateY.value = withTiming(0, { duration: 80 });
+        if (sheetProgress) sheetProgress.value = withTiming(1, { duration: 80 });
       }
     });
 
@@ -164,7 +192,18 @@ export default function CommentsSheet({ postId, visible, onClose, mediaUrl, medi
     .activeOffsetY([-999, 10])
     .requireExternalGestureToFail(panForList)
     .onUpdate((e) => {
-      if (e.translationY > 0) translateY.value = e.translationY;
+      if (e.translationY > 0) {
+        translateY.value = e.translationY;
+        // Post-Höhe synchron mit Finger-Drag updaten
+        if (sheetProgress) {
+          sheetProgress.value = interpolate(
+            e.translationY,
+            [0, SCREEN_HEIGHT],
+            [1, 0],
+            Extrapolation.CLAMP
+          );
+        }
+      }
     })
     .onEnd((e) => {
       const threshold = 70;
@@ -177,6 +216,7 @@ export default function CommentsSheet({ postId, visible, onClose, mediaUrl, medi
         runOnJS(handleClose)();
       } else {
         translateY.value = withTiming(0, { duration: 80 });
+        if (sheetProgress) sheetProgress.value = withTiming(1, { duration: 80 });
       }
     });
 
@@ -237,12 +277,84 @@ export default function CommentsSheet({ postId, visible, onClose, mediaUrl, medi
                 onUserPress={onUserPress}
                 scrollAtTop={scrollAtTop}
                 panForList={panForList}
+                creatorUserId={creatorUserId}
               />
             </Animated.View>
           </GestureDetector>
         </Animated.View>
       </GestureHandlerRootView>
     </Modal>
+  );
+}
+
+
+
+
+// ── S1: Kommentare vorlesen ─────────────────────────────────────────────────
+
+function CommentVoiceBtn({
+  postId,
+  comments,
+  voiceRefUrl,
+}: {
+  postId: string;
+  comments: import('@/lib/useComments').Comment[];
+  voiceRefUrl?: string | null;
+}) {
+  // Cache-Key: postId + Anzahl Kommentare (bei neuen Kommentaren neu generieren)
+  const cacheKey = `comments-${postId}-${comments.length}`;
+
+  // Kommentar-Text zusammenbauen — liest die Top-5 Kommentare vor
+  const script = comments
+    .slice(0, 5)
+    .map((c) => {
+      const name = c.profiles?.username ?? 'Jemand';
+      return `${name} schrieb: ${c.text}`;
+    })
+    .join('. ');
+
+  const { isLoading, isPlaying, toggle } = useVoiceReader(cacheKey, script, 0.45, voiceRefUrl);
+
+  return (
+    <Pressable
+      onPress={() => {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        toggle();
+      }}
+      hitSlop={10}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 4,
+        paddingHorizontal: 10,
+        paddingVertical: 6,
+        borderRadius: 16,
+        backgroundColor: isPlaying
+          ? 'rgba(34,211,238,0.15)'
+          : 'rgba(255,255,255,0.05)',
+        borderWidth: 1,
+        borderColor: isPlaying
+          ? 'rgba(34,211,238,0.4)'
+          : 'rgba(255,255,255,0.08)',
+      }}
+      accessibilityRole="button"
+      accessibilityLabel={isPlaying ? 'Vorlesen stoppen' : 'Kommentare vorlesen'}
+    >
+      {isLoading ? (
+        <ActivityIndicator size={13} color="rgba(255,255,255,0.6)" />
+      ) : isPlaying ? (
+        <VolumeX size={13} color="#22D3EE" strokeWidth={2} />
+      ) : (
+        <Volume2 size={13} color="rgba(255,255,255,0.5)" strokeWidth={2} />
+      )}
+      <Text style={{
+        color: isPlaying ? '#22D3EE' : 'rgba(255,255,255,0.4)',
+        fontSize: 11,
+        fontWeight: '600',
+      }}>
+        {isLoading ? 'Laden...' : isPlaying ? 'Stoppen' : 'Vorlesen'}
+      </Text>
+    </Pressable>
   );
 }
 
@@ -253,6 +365,7 @@ function SheetInner({
   onUserPress,
   scrollAtTop,
   panForList,
+  creatorUserId,
 }: {
   postId: string;
   onClose: () => void;
@@ -260,12 +373,24 @@ function SheetInner({
   onUserPress?: (userId: string) => void;
   scrollAtTop: SharedValue<number>;
   panForList: ReturnType<typeof Gesture.Pan>;
+  creatorUserId?: string | null;
 }) {
+  const creatorVoiceUrl = useCreatorVoiceSample(creatorUserId);
   const { profile } = useAuthStore();
   const insets = useSafeAreaInsets();
   const { data: comments, isLoading } = useComments(postId, enabled);
   const addComment = useAddComment(postId);
   const deleteComment = useDeleteComment(postId);
+
+  // ── N+1-Fix: Alle Comment-Likes in 2 Queries statt 2×N ──────────────────
+  // useMemo verhindert neue Array-Referenz bei jedem Render (würde Batch-Query neu triggern)
+  const { useMemo } = require('react') as typeof import('react');
+  const commentIds = useMemo(
+    () => (comments ?? []).map((c) => c.id),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [(comments ?? []).map((c) => c.id).join(',')]
+  );
+  const likeMap = useCommentLikesBatch(commentIds);
 
   const [text, setText] = useState('');
   const [lastSentId, setLastSentId] = useState<string | null>(null);
@@ -372,9 +497,14 @@ function SheetInner({
         <View style={styles.handle} />
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Kommentare</Text>
-          <Pressable onPress={onClose} style={styles.closeBtn}>
-            <X size={18} stroke="#6B7280" strokeWidth={2} />
-          </Pressable>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            {/* 🔊 Vorlesen: deaktiviert — für spätere AI-Narration */}
+            {/* (comments?.length ?? 0) > 0 && <CommentVoiceBtn postId={postId} comments={comments ?? []} voiceRefUrl={creatorVoiceUrl} /> */}
+
+            <Pressable onPress={onClose} style={styles.closeBtn}>
+              <X size={18} stroke="#6B7280" strokeWidth={2} />
+            </Pressable>
+          </View>
         </View>
       </View>
 
@@ -418,6 +548,7 @@ function SheetInner({
                 }}
                 isHighlighted={item.id === lastSentId}
                 onUserPress={onUserPress}
+                likeMap={likeMap}
               />
             )}
           />
@@ -602,6 +733,7 @@ function CommentRow({
   onLongPress,
   isHighlighted,
   onUserPress,
+  likeMap,
 }: {
   comment: Comment;
   postId: string;
@@ -612,10 +744,17 @@ function CommentRow({
   onLongPress: () => void;
   isHighlighted?: boolean;
   onUserPress?: (userId: string) => void;
+  likeMap?: CommentLikesMap;  // Batch-Daten aus SheetInner (Top-Level)
 }) {
   const [showReplies, setShowReplies] = useState(false);
   const { data: replies = [] } = useCommentReplies(comment.id, showReplies);
-  const { liked, count, toggle } = useCommentLike(comment.id);
+
+  // Batch-Daten priorisieren (Top-Level Kommentare), Fallback auf Einzelquery (Replies)
+  const batchState = likeMap?.get(comment.id);
+  const { liked: likedSingle, count: countSingle, toggle } = useCommentLike(comment.id);
+  const liked = batchState?.liked ?? likedSingle;
+  const count = batchState?.count ?? countSingle;
+
   const highlightOpacity = useSharedValue(0);
   useEffect(() => {
     if (isHighlighted) {
@@ -664,7 +803,7 @@ function CommentRow({
             </Pressable>
             <Text style={styles.commentTime}>{timeAgo}</Text>
           </View>
-          <Text style={styles.commentText}>{comment.text}</Text>
+          <RichText text={comment.text} style={styles.commentText} />
           {/* Aktionen: Antworten + Liken */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 4 }}>
             <Pressable onPress={onReply} style={styles.commentReplyBtn} hitSlop={8}>

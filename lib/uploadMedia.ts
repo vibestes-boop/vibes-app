@@ -11,26 +11,26 @@ type ThumbnailResult = {
 } | null;
 
 // ── Limits ──────────────────────────────────────────────────────────────────
-const MAX_IMAGE_BYTES = 50  * 1024 * 1024;  //  50 MB
+const MAX_IMAGE_BYTES = 50 * 1024 * 1024;  //  50 MB
 const MAX_VIDEO_BYTES = 200 * 1024 * 1024;  // 200 MB
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function mimeToExt(mimeType: string): string {
-  if (mimeType.includes('png'))       return 'png';
-  if (mimeType.includes('webp'))      return 'webp';
-  if (mimeType.includes('gif'))       return 'gif';
-  if (mimeType.includes('mp4'))       return 'mp4';
+  if (mimeType.includes('png')) return 'png';
+  if (mimeType.includes('webp')) return 'webp';
+  if (mimeType.includes('gif')) return 'gif';
+  if (mimeType.includes('mp4')) return 'mp4';
   if (mimeType.includes('quicktime')) return 'mov';
-  if (mimeType.includes('mov'))       return 'mov';
-  if (mimeType.includes('video'))     return 'mp4';
+  if (mimeType.includes('mov')) return 'mov';
+  if (mimeType.includes('video')) return 'mp4';
   return 'jpg';
 }
 
 function isVideo(mimeType: string): boolean {
   return (
-    mimeType.includes('video')     ||
-    mimeType.includes('mp4')       ||
-    mimeType.includes('mov')       ||
+    mimeType.includes('video') ||
+    mimeType.includes('mp4') ||
+    mimeType.includes('mov') ||
     mimeType.includes('quicktime')
   );
 }
@@ -107,7 +107,7 @@ async function uploadToR2(
   const maxBytes = isVideo(mimeType) ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES;
   if (fileBuffer.byteLength > maxBytes) {
     const limitMB = Math.round(maxBytes / 1024 / 1024);
-    const fileMB  = (fileBuffer.byteLength / 1024 / 1024).toFixed(1);
+    const fileMB = (fileBuffer.byteLength / 1024 / 1024).toFixed(1);
     throw new Error(
       `Datei zu groß: ${fileMB} MB (Maximum: ${limitMB} MB für ${isVideo(mimeType) ? 'Videos' : 'Bilder'})`,
     );
@@ -129,7 +129,7 @@ async function uploadToR2(
     3,
     (attempt, err) => {
       onProgress?.(-attempt); // Negative value signals retry to the UI
-__DEV__ && console.warn(`[r2-sign] Versuch ${attempt} fehlgeschlagen: ${err.message}`);
+      __DEV__ && console.warn(`[r2-sign] Versuch ${attempt} fehlgeschlagen: ${err.message}`);
     },
   );
   onProgress?.(20);
@@ -160,7 +160,7 @@ __DEV__ && console.warn(`[r2-sign] Versuch ${attempt} fehlgeschlagen: ${err.mess
       (attempt, err) => {
         simPct = 20; // Reset simulated progress on retry
         onProgress?.(-attempt);
-__DEV__ && console.warn(`[r2-upload] Versuch ${attempt} fehlgeschlagen: ${err.message}`);
+        __DEV__ && console.warn(`[r2-upload] Versuch ${attempt} fehlgeschlagen: ${err.message}`);
       },
     );
   } finally {
@@ -183,9 +183,9 @@ export async function uploadPostMedia(
   signal?: AbortSignal,
 ): Promise<UploadResult> {
   const resolvedMime = normalizeMime(mimeType);
-  const ext    = mimeToExt(resolvedMime);
+  const ext = mimeToExt(resolvedMime);
   const folder = isVideo(resolvedMime) ? 'videos' : 'images';
-  const key    = `posts/${folder}/${userId}/${Date.now()}.${ext}`;
+  const key = `posts/${folder}/${userId}/${Date.now()}.${ext}`;
   return uploadToR2(key, localUri, resolvedMime, onProgress, signal);
 }
 
@@ -224,7 +224,7 @@ export async function generateAndUploadThumbnail(
     // Dynamischer Import → kein Bundle-Problem falls Library fehlt
     const VideoThumbnails = await import('expo-video-thumbnails');
     const { uri: thumbUri } = await VideoThumbnails.getThumbnailAsync(videoUri, {
-      time:    0,     // Erster Frame
+      time: 0,     // Erster Frame
       quality: 0.75,  // JPEG-Qualität — gut genug für Thumbnails
     });
 
@@ -252,3 +252,25 @@ export async function uploadAvatar(
   const key = `avatars/${userId}/${Date.now()}.jpg`;
   return uploadToR2(key, localUri, 'image/jpeg', undefined, signal);
 }
+
+/**
+ * Creator-Stimme klonen (Chatterbox S2)
+ * Lädt eine Audioaufnahme (m4a/mp4) zu R2 hoch.
+ * Die URL wird als audio_prompt an generate-voice übergeben.
+ */
+export async function uploadVoiceSample(
+  userId: string,
+  localUri: string,
+  mimeType: string,
+): Promise<string> {
+  // Chatterbox/Replicate erfordert WAV → .wav Extension wenn mimeType audio/wav
+  const ext = mimeType.includes('wav') ? 'wav'
+    : mimeType.includes('m4a') ? 'm4a'
+    : mimeType.includes('mp4') ? 'mp4'
+    : 'wav'; // Default: wav (Chatterbox-kompatibel)
+  const key = `voice-samples/${userId}.${ext}`;
+  const { url } = await uploadToR2(key, localUri, mimeType);
+  return url;
+}
+
+

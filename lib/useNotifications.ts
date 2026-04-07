@@ -10,7 +10,8 @@ export type AppNotification = {
   created_at: string;
   comment_text: string | null;
   post_id: string | null;
-  session_id: string | null;   // für Live-Benachrichtigungen
+  session_id: string | null;       // für Live-Benachrichtigungen
+  conversation_id: string | null;  // für DM-Benachrichtigungen
   sender: {
     id: string;
     username: string | null;
@@ -55,7 +56,7 @@ export function useNotifications() {
       const { data, error } = await supabase
         .from('notifications')
         .select(`
-          id, type, read, created_at, comment_text, post_id, session_id,
+          id, type, read, created_at, comment_text, post_id, session_id, conversation_id,
           sender:sender_id ( id, username, avatar_url ),
           post:post_id ( media_url )
         `)
@@ -73,6 +74,7 @@ export function useNotifications() {
         comment_text: n.comment_text ?? null,
         post_id: n.post_id ?? null,
         session_id: n.session_id ?? null,
+        conversation_id: n.conversation_id ?? null,
         sender: n.sender ?? null,
         post_thumb: n.post?.media_url ?? null,
       }));

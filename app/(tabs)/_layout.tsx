@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Tabs, useRouter } from 'expo-router';
-import { View, StyleSheet, Text, Pressable, Alert, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, Text, Pressable, ActivityIndicator } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Zap, Users, MessageCircle, User, Plus } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -173,26 +173,8 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
                 <CreateTabButton
                   key={tabConfig.name}
                   onPress={() => {
-                    Alert.alert(
-                      'Was möchtest du erstellen?',
-                      '',
-                      [
-                        {
-                          text: '📸  Post erstellen',
-                          onPress: () => router.push('/create'),
-                        },
-                        {
-                          text: '🎬  Story erstellen',
-                          onPress: () => router.push('/create-story' as any),
-                        },
-                        {
-                          text: '🔴  Live gehen',
-                          onPress: () => router.push('/live/start' as any),
-                        },
-                        { text: 'Abbrechen', style: 'cancel' },
-                      ],
-                      { cancelable: true }
-                    );
+                    impactAsync(ImpactFeedbackStyle.Medium);
+                    router.push('/create/camera' as any);
                   }}
                 />
               );

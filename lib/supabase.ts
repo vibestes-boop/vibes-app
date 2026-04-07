@@ -5,10 +5,51 @@ import * as SecureStore from 'expo-secure-store';
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? '';
 
-// Hybrid Storage: In-Memory (schnell, immer aktuell) + SecureStore (Persistenz).
+// Hybrid Storage: In-Memory (schnell, immer aktuell) + Chunked SecureStore (Persistenz).
 // Liest aus Memory zuerst → kein async Lag bei authed Requests.
-// Schreibt in BEIDE → Session überlebt App-Neustart über SecureStore.
+// Schreibt in BEIDE → Session überlebt App-Neustart. Chunks umgehen das 2048-Byte-Limit.
 const memoryCache: Record<string, string> = {};
+
+// Chunked SecureStore: iOS hat ein 2048-Byte-Limit pro Key.
+// Supabase JWT-Sessions können dieses Limit überschreiten.
+// Lösung: Große Werte in 1800-Byte-Chunks aufteilen und separat speichern.
+const CHUNK_SIZE = 1800;
+
+async function setLargeItem(key: string, value: string): Promise<void> {
+  const chunks = Math.ceil(value.length / CHUNK_SIZE);
+  await SecureStore.setItemAsync(`${key}__count`, String(chunks));
+  for (let i = 0; i < chunks; i++) {
+    await SecureStore.setItemAsync(
+      `${key}__${i}`,
+      value.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE)
+    );
+  }
+}
+
+async function getLargeItem(key: string): Promise<string | null> {
+  const countStr = await SecureStore.getItemAsync(`${key}__count`);
+  if (!countStr) return null;
+  const count = parseInt(countStr, 10);
+  if (isNaN(count) || count <= 0) return null;
+  const chunks: string[] = [];
+  for (let i = 0; i < count; i++) {
+    const chunk = await SecureStore.getItemAsync(`${key}__${i}`);
+    if (chunk === null) return null;
+    chunks.push(chunk);
+  }
+  return chunks.join('');
+}
+
+async function deleteLargeItem(key: string): Promise<void> {
+  const countStr = await SecureStore.getItemAsync(`${key}__count`);
+  if (countStr) {
+    const count = parseInt(countStr, 10);
+    for (let i = 0; i < count; i++) {
+      await SecureStore.deleteItemAsync(`${key}__${i}`).catch(() => {});
+    }
+    await SecureStore.deleteItemAsync(`${key}__count`).catch(() => {});
+  }
+}
 
 const StorageAdapter = {
   getItem: (key: string): Promise<string | null> => {
@@ -19,8 +60,8 @@ const StorageAdapter = {
     if (memoryCache[key] !== undefined) {
       return Promise.resolve(memoryCache[key]);
     }
-    // Fallback: SecureStore (für Cold-Start nach App-Neustart)
-    return SecureStore.getItemAsync(key);
+    // Fallback: Chunked SecureStore (für Cold-Start nach App-Neustart)
+    return getLargeItem(key);
   },
   setItem: (key: string, value: string): Promise<void> => {
     if (Platform.OS === 'web') {
@@ -28,10 +69,8 @@ const StorageAdapter = {
       return Promise.resolve();
     }
     memoryCache[key] = value;
-    // Async in SecureStore speichern — nicht awaiten um Requests nicht zu blockieren
-    SecureStore.setItemAsync(key, value).catch(() => {
-      // SecureStore kann bei sehr großen Tokens fehlschlagen (iOS Limit) → ignorieren
-    });
+    // Async in Chunked SecureStore speichern — nicht awaiten
+    setLargeItem(key, value).catch(() => {});
     return Promise.resolve();
   },
   removeItem: (key: string): Promise<void> => {
@@ -40,10 +79,11 @@ const StorageAdapter = {
       return Promise.resolve();
     }
     delete memoryCache[key];
-    SecureStore.deleteItemAsync(key).catch(() => {});
+    deleteLargeItem(key).catch(() => {});
     return Promise.resolve();
   },
 };
+
 
 
 

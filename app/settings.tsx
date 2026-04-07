@@ -45,11 +45,17 @@ import {
   Shield,
   ExternalLink,
   ChevronRight,
+  Bell,
+  Link,
+  Mic,
 } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { useAuthStore } from "@/lib/authStore";
 import { uploadAvatar } from "@/lib/uploadMedia";
 import { useQueryClient } from "@tanstack/react-query";
+import Constants from 'expo-constants';
+import { useNotificationPrefs } from '@/lib/useNotificationPrefs';
+import { VoiceSetupSheet } from '@/components/profile/VoiceSetupSheet';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -58,12 +64,17 @@ export default function SettingsScreen() {
 
   const [username, setUsername] = useState(profile?.username ?? "");
   const [bio, setBio] = useState(profile?.bio ?? "");
+  const [website, setWebsite] = useState(profile?.website ?? "");
   const [isPrivate, setIsPrivate] = useState((profile as any)?.is_private ?? false);
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [changingPw, setChangingPw] = useState(false);
   const [changingEmail, setChangingEmail] = useState(false);
+  const [showVoiceSetup, setShowVoiceSetup] = useState(false);
   const queryClient = useQueryClient();
+  const { prefs: notifPrefs, setPrefs: setNotifPrefs } = useNotificationPrefs();
+
+  const hasVoice = !!(profile as any)?.voice_sample_url;
 
   const saveScale = useSharedValue(1);
   const saveStyle = useAnimatedStyle(() => ({
@@ -151,6 +162,7 @@ export default function SettingsScreen() {
         .update({
           username: trimmedUsername,
           bio: bio.trim() || null,
+          website: website.trim() || null,
           avatar_url: avatarUrl,
         })
         .eq("id", profile.id)
@@ -411,12 +423,96 @@ export default function SettingsScreen() {
             />
           </FieldGroup>
 
+          <FieldGroup icon={Link} label="Website">
+            <TextInput
+              style={styles.input}
+              value={website}
+              onChangeText={setWebsite}
+              placeholder="https://deine-website.com"
+              placeholderTextColor="#374151"
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+              maxLength={100}
+            />
+          </FieldGroup>
+
           <View style={styles.infoCard}>
             <User size={14} stroke="#6B7280" strokeWidth={1.8} />
             <Text style={styles.infoText}>
               Dein Profil ist öffentlich sichtbar für alle Vibes-Nutzer.
             </Text>
           </View>
+        </View>
+
+        {/* ── KI-Stimme ── */}
+        <View style={styles.dangerSection}>
+          <View style={styles.sectionHeader}>
+            <Mic size={14} stroke="#A78BFA" strokeWidth={2} />
+            <Text style={[styles.sectionTitle, { color: '#A78BFA' }]}>KI-Stimme</Text>
+          </View>
+          <Pressable
+            onPress={() => setShowVoiceSetup(true)}
+            style={[
+              styles.passwordBtn,
+              { borderColor: hasVoice ? 'rgba(167,139,250,0.4)' : 'rgba(34,211,238,0.25)' },
+            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Meine KI-Stimme einrichten"
+          >
+            <View style={{
+              width: 32,
+              height: 32,
+              borderRadius: 16,
+              backgroundColor: hasVoice ? 'rgba(167,139,250,0.15)' : 'rgba(34,211,238,0.08)',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}>
+              <Mic size={16} stroke={hasVoice ? '#A78BFA' : '#22D3EE'} strokeWidth={2} />
+            </View>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text style={[styles.passwordText, { color: hasVoice ? '#A78BFA' : '#22D3EE' }]}>
+                Meine KI-Stimme
+              </Text>
+              <Text style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11 }}>
+                {hasVoice
+                  ? '✓ Stimme gespeichert — Chatterbox spricht wie du'
+                  : 'Stimme aufnehmen (5–15 Sek.)'}
+              </Text>
+            </View>
+            <ChevronRight size={16} stroke="#6B7280" strokeWidth={2} />
+          </Pressable>
+        </View>
+
+        {/* Notification-Einstellungen */}
+        <View style={styles.dangerSection}>
+
+          <View style={styles.sectionHeader}>
+            <Bell size={14} stroke="#9CA3AF" strokeWidth={2} />
+            <Text style={styles.sectionTitle}>Benachrichtigungen</Text>
+          </View>
+          {([
+            { key: 'likes', label: 'Likes', sub: 'Wenn jemand deinen Post liket' },
+            { key: 'comments', label: 'Kommentare', sub: 'Wenn jemand kommentiert' },
+            { key: 'follows', label: 'Neue Follower', sub: 'Wenn dir jemand folgt' },
+            { key: 'liveAlerts', label: 'Live-Streams', sub: 'Wenn jemand live geht dem du folgst' },
+            { key: 'messages', label: 'Nachrichten', sub: 'Neue Direktnachrichten' },
+            { key: 'reposts', label: 'Reposts', sub: 'Wenn jemand deinen Post repostet' },
+          ] as const).map(({ key, label, sub }) => (
+            <View key={key} style={[styles.passwordBtn, { justifyContent: 'space-between' }]}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.passwordText}>{label}</Text>
+                <Text style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11, marginTop: 1 }}>{sub}</Text>
+              </View>
+              <Switch
+                value={notifPrefs[key]}
+                onValueChange={(val) => setNotifPrefs({ [key]: val })}
+                trackColor={{ false: 'rgba(255,255,255,0.15)', true: 'rgba(34,211,238,0.5)' }}
+                thumbColor={notifPrefs[key] ? '#22D3EE' : 'rgba(255,255,255,0.7)'}
+                accessibilityLabel={`${label} Benachrichtigungen`}
+              />
+            </View>
+          ))}
         </View>
 
         {/* Danger Zone */}
@@ -468,7 +564,7 @@ export default function SettingsScreen() {
 
           {/* Datenschutzerklärung */}
           <Pressable
-            onPress={() => Linking.openURL('https://vibesapp.de/datenschutz').catch(() => { })}
+            onPress={() => Linking.openURL('https://vibes-web-nine.vercel.app/privacy').catch(() => { })}
             style={styles.passwordBtn}
             accessibilityRole="link"
             accessibilityLabel="Datenschutzerklärung öffnen"
@@ -479,7 +575,7 @@ export default function SettingsScreen() {
 
           {/* Nutzungsbedingungen */}
           <Pressable
-            onPress={() => Linking.openURL('https://vibesapp.de/agb').catch(() => { })}
+            onPress={() => Linking.openURL('https://vibes-web-nine.vercel.app/privacy').catch(() => { })}
             style={styles.passwordBtn}
             accessibilityRole="link"
             accessibilityLabel="Nutzungsbedingungen öffnen"
@@ -538,8 +634,19 @@ export default function SettingsScreen() {
             <Trash2 size={14} stroke="#6B7280" strokeWidth={2} />
             <Text style={styles.deleteText}>Account löschen</Text>
           </Pressable>
+
+          {/* App Version */}
+          <Text style={styles.versionText}>
+            Vibes v{Constants.expoConfig?.version ?? '1.0.0'}
+          </Text>
         </View>
       </ScrollView>
+
+      {/* KI-Stimme Setup */}
+      <VoiceSetupSheet
+        visible={showVoiceSetup}
+        onClose={() => setShowVoiceSetup(false)}
+      />
     </KeyboardAvoidingView>
   );
 }
@@ -758,5 +865,25 @@ const styles = StyleSheet.create({
     color: "#4B5563",
     fontSize: 13,
     fontWeight: "500",
+  },
+  versionText: {
+    color: "#374151",
+    fontSize: 12,
+    textAlign: 'center',
+    paddingTop: 8,
+    paddingBottom: 4,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingBottom: 4,
+  },
+  sectionTitle: {
+    color: '#6B7280',
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
 });

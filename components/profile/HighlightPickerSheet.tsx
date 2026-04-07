@@ -39,10 +39,11 @@ function formatDate(iso: string) {
 }
 
 export function HighlightPickerSheet({
-  visible, stories, onClose, onConfirm,
+  visible, stories, posts = [], onClose, onConfirm,
 }: {
   visible: boolean;
   stories: StoryItem[];
+  posts?: StoryItem[];
   onClose: () => void;
   /** items: alle ausgewählten Medien (mind. 1), title: vergebener Name */
   onConfirm: (items: HighlightItem[], title: string) => void;
@@ -52,6 +53,9 @@ export function HighlightPickerSheet({
   const [selected, setSelected] = useState<StoryItem[]>([]);
   const [step, setStep] = useState<'pick' | 'name'>('pick');
   const [title, setTitle] = useState('');
+  const [activeTab, setActiveTab] = useState<'stories' | 'posts'>('stories');
+
+  const currentItems = activeTab === 'stories' ? stories : posts;
 
   const sheetY = useRef(new Animated.Value(SCREEN_H)).current;
 
@@ -59,6 +63,7 @@ export function HighlightPickerSheet({
     setSelected([]);
     setStep('pick');
     setTitle('');
+    setActiveTab('stories');
   };
 
   // Entrance-Animation
@@ -196,51 +201,69 @@ export function HighlightPickerSheet({
             contentContainerStyle={{ flexGrow: 1 }}
             showsVerticalScrollIndicator={false}
           >
+            {/* Tab-Switcher: Stories / Posts */}
+            {step === 'pick' && (
+              <View style={styles.tabRow}>
+                <Pressable
+                  style={[styles.tab, activeTab === 'stories' && styles.tabActive]}
+                  onPress={() => { setSelected([]); setActiveTab('stories'); }}
+                >
+                  <Text style={[styles.tabText, activeTab === 'stories' && styles.tabTextActive]}>
+                    Stories ({stories.length})
+                  </Text>
+                </Pressable>
+                <Pressable
+                  style={[styles.tab, activeTab === 'posts' && styles.tabActive]}
+                  onPress={() => { setSelected([]); setActiveTab('posts'); }}
+                >
+                  <Text style={[styles.tabText, activeTab === 'posts' && styles.tabTextActive]}>
+                    Posts ({posts.length})
+                  </Text>
+                </Pressable>
+              </View>
+            )}
+
             {/* Story-Auswahl Grid — Multi-Select */}
             {step === 'pick' && (
               <View style={styles.grid}>
-                {Array.from({ length: Math.ceil(stories.length / COLS) }, (_, rowIdx) => (
-                  <View key={rowIdx} style={styles.row}>
-                    {stories.slice(rowIdx * COLS, rowIdx * COLS + COLS).map((item) => {
-                      const selIdx = selected.findIndex(s => s.id === item.id);
-                      const isSelected = selIdx >= 0;
-                      const orderNum = selIdx + 1; // 1-basiert
+                {currentItems.length === 0 ? (
+                  <Text style={styles.emptyTabText}>
+                    {activeTab === 'stories' ? 'Keine Stories vorhanden.' : 'Keine Posts mit Medien.'}
+                  </Text>
+                ) : (
+                  Array.from({ length: Math.ceil(currentItems.length / COLS) }, (_, rowIdx) => (
+                    <View key={rowIdx} style={styles.row}>
+                      {currentItems.slice(rowIdx * COLS, rowIdx * COLS + COLS).map((item) => {
+                        const selIdx = selected.findIndex(s => s.id === item.id);
+                        const isSelected = selIdx >= 0;
+                        const orderNum = selIdx + 1;
 
-                      return (
-                        <Pressable key={item.id} onPress={() => handleSelect(item)} style={styles.cell}>
-                          <LinearGradient colors={['#0e2233', '#1a1a2e']} style={StyleSheet.absoluteFill} />
-                          <Image
-                            source={{ uri: item.thumbnail_url || item.media_url }}
-                            style={StyleSheet.absoluteFill}
-                            contentFit="cover"
-                          />
-
-                          {/* Datum-Badge */}
-                          <View style={styles.dateBadge}>
-                            <Text style={styles.dateText}>{formatDate(item.created_at)}</Text>
-                          </View>
-
-                          {/* Auswahl-Nummer statt einfachem Check */}
-                          <View style={[styles.selectCircle, isSelected && styles.selectCircleActive]}>
-                            {isSelected ? (
-                              <Text style={styles.selectNum}>{orderNum}</Text>
-                            ) : null}
-                          </View>
-
-                          {/* Dimm-Overlay für ausgewählte Items */}
-                          {isSelected && <View style={styles.selectedOverlay} />}
-
-                          {/* Cover-Badge (erstes Item) */}
-                          {isSelected && selIdx === 0 && selCount > 1 && (
-                            <View style={styles.coverBadge}>
-                              <Text style={styles.coverBadgeText}>Cover</Text>
+                        return (
+                          <Pressable key={item.id} onPress={() => handleSelect(item)} style={styles.cell}>
+                            <LinearGradient colors={['#0e2233', '#1a1a2e']} style={StyleSheet.absoluteFill} />
+                            <Image
+                              source={{ uri: item.thumbnail_url || item.media_url }}
+                              style={StyleSheet.absoluteFill}
+                              contentFit="cover"
+                            />
+                            <View style={styles.dateBadge}>
+                              <Text style={styles.dateText}>{formatDate(item.created_at)}</Text>
                             </View>
-                          )}
-                        </Pressable>
-                      );
-                    })}
-                  </View>
-                ))}
+                            <View style={[styles.selectCircle, isSelected && styles.selectCircleActive]}>
+                              {isSelected ? <Text style={styles.selectNum}>{orderNum}</Text> : null}
+                            </View>
+                            {isSelected && <View style={styles.selectedOverlay} />}
+                            {isSelected && selIdx === 0 && selCount > 1 && (
+                              <View style={styles.coverBadge}>
+                                <Text style={styles.coverBadgeText}>Cover</Text>
+                              </View>
+                            )}
+                          </Pressable>
+                        );
+                      })}
+                    </View>
+                  ))
+                )}
               </View>
             )}
 
@@ -369,4 +392,36 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(34,211,238,0.3)',
   },
   charCount: { color: 'rgba(255,255,255,0.25)', fontSize: 11, textAlign: 'right' },
+
+  // Tab-Switcher
+  tabRow: {
+    flexDirection: 'row',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255,255,255,0.08)',
+    marginBottom: 2,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+  },
+  tabActive: {
+    borderBottomWidth: 2,
+    borderBottomColor: '#22D3EE',
+  },
+  tabText: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  tabTextActive: {
+    color: '#22D3EE',
+  },
+  emptyTabText: {
+    color: 'rgba(255,255,255,0.3)',
+    fontSize: 13,
+    textAlign: 'center',
+    paddingVertical: 40,
+    paddingHorizontal: 32,
+  },
 });

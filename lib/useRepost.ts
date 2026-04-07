@@ -13,28 +13,32 @@ interface RepostState {
   toggle:     () => void;
 }
 
-export function useRepost(postId: string): RepostState {
+export interface UseRepostBatch {
+  isReposted: boolean;
+  count: number;
+}
+
+export function useRepost(postId: string, batch?: UseRepostBatch): RepostState {
   const currentUserId = useAuthStore((s) => s.profile?.id);
-  const [isReposted, setIsReposted] = useState(false);
-  const [count,      setCount]      = useState(0);
+  const [isReposted, setIsReposted] = useState(batch?.isReposted ?? false);
+  const [count,      setCount]      = useState(batch?.count ?? 0);
   const [isLoading,  setIsLoading]  = useState(false);
+  const skip = batch !== undefined; // PERF-FIX: Batch vorhanden → kein initialer DB-Aufruf
   // Ref für stale-closure-sicheres toggle
   const stateRef = useRef({ isReposted, count });
   stateRef.current = { isReposted, count };
 
   useEffect(() => {
-    if (!postId || !currentUserId) return;
+    if (!postId || !currentUserId || skip) return; // ← skip wenn Batch-Daten vorhanden
     let canceled = false;
 
     Promise.all([
-      // Hat aktuell eingeloggter User diesen Post gerepostet?
       supabase
         .from('reposts')
         .select('id')
         .eq('post_id', postId)
         .eq('user_id', currentUserId)
         .maybeSingle(),
-      // Gesamtanzahl Reposts dieses Posts
       supabase
         .from('reposts')
         .select('id', { count: 'exact', head: true })
@@ -46,7 +50,7 @@ export function useRepost(postId: string): RepostState {
     });
 
     return () => { canceled = true; };
-  }, [postId, currentUserId]);
+  }, [postId, currentUserId, skip]);
 
   const toggle = () => {
     if (!currentUserId || isLoading) return;

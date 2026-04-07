@@ -57,6 +57,10 @@ function actionLabel(n: AppNotification): string {
         : "hat deinen Post kommentiert";
     case "mention":
       return "hat dich in einem Kommentar erwähnt";
+    case "dm":
+      return n.comment_text
+        ? `hat dir geschrieben: "${n.comment_text}"`
+        : "hat dir eine Nachricht geschickt";
     case "follow_request":
       return "möchte dir folgen";
     case "follow_request_accepted":
@@ -70,17 +74,52 @@ function actionLabel(n: AppNotification): string {
   }
 }
 
+// Gruppierte Notification (für aggregierte Like-Benachrichtigungen)
+type GroupedNotif = AppNotification & { _extraCount: number };
+
+function groupNotifications(notifs: AppNotification[]): GroupedNotif[] {
+  const GROUPABLE: AppNotification['type'][] = ['like'];
+  const groups = new Map<string, AppNotification[]>();
+  const result: GroupedNotif[] = [];
+  const consumed = new Set<string>();
+
+  // Gruppiere by (type + post_id)
+  for (const n of notifs) {
+    if (!GROUPABLE.includes(n.type) || !n.post_id) continue;
+    const key = `${n.type}:${n.post_id}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(n);
+  }
+
+  // Finale Liste aufbauen (Reihenfolge aus Original erhalten)
+  for (const n of notifs) {
+    if (!GROUPABLE.includes(n.type) || !n.post_id) {
+      result.push({ ...n, _extraCount: 0 });
+      continue;
+    }
+    const key = `${n.type}:${n.post_id}`;
+    if (consumed.has(key)) continue; // bereits als Gruppe verarbeitet
+    consumed.add(key);
+    const group = groups.get(key)!;
+    result.push({ ...group[0], _extraCount: group.length - 1 });
+  }
+
+  return result;
+}
+
+
 function TypeIcon({ type }: { type: AppNotification["type"] }) {
   const cfg = (
     {
-      like:                     { Icon: Heart,     bg: "rgba(244,114,182,0.18)", color: "#F472B6" },
+      like:                     { Icon: Heart,         bg: "rgba(244,114,182,0.18)", color: "#F472B6" },
       comment:                  { Icon: MessageCircle, bg: "rgba(34,211,238,0.18)",  color: "#22D3EE" },
-      mention:                  { Icon: AtSign,    bg: "rgba(139,92,246,0.18)",  color: "#A78BFA" },
-      follow:                   { Icon: UserPlus,  bg: "rgba(52,211,153,0.18)",  color: "#34D399" },
-      follow_request:           { Icon: UserPlus,  bg: "rgba(251,191,36,0.18)",  color: "#FBBF24" },
-      follow_request_accepted:  { Icon: UserPlus,  bg: "rgba(52,211,153,0.18)",  color: "#34D399" },
-      live:                     { Icon: Radio,     bg: "rgba(239,68,68,0.18)",   color: "#EF4444" },
-      live_invite:              { Icon: Radio,     bg: "rgba(239,68,68,0.18)",   color: "#EF4444" },
+      mention:                  { Icon: AtSign,        bg: "rgba(139,92,246,0.18)",  color: "#A78BFA" },
+      dm:                       { Icon: MessageCircle, bg: "rgba(251,191,36,0.18)",  color: "#FBBF24" },
+      follow:                   { Icon: UserPlus,      bg: "rgba(52,211,153,0.18)",  color: "#34D399" },
+      follow_request:           { Icon: UserPlus,      bg: "rgba(251,191,36,0.18)",  color: "#FBBF24" },
+      follow_request_accepted:  { Icon: UserPlus,      bg: "rgba(52,211,153,0.18)",  color: "#34D399" },
+      live:                     { Icon: Radio,         bg: "rgba(239,68,68,0.18)",   color: "#EF4444" },
+      live_invite:              { Icon: Radio,         bg: "rgba(239,68,68,0.18)",   color: "#EF4444" },
     } as Record<string, { Icon: React.ElementType; bg: string; color: string }>
   )[type] ?? { Icon: Bell, bg: "rgba(255,200,0,0.15)", color: "#FBBF24" };
 
@@ -101,7 +140,17 @@ function NotifCard({ item }: { item: AppNotification }) {
     impactAsync(ImpactFeedbackStyle.Light);
     if (!item.read) markOne(item.id);
 
-    if (item.type === "live" || item.type === "live_invite") {
+    if (item.type === "dm" && item.conversation_id) {
+      // Direkt zur DM-Konversation
+      router.push({
+        pathname: "/messages/[id]",
+        params: {
+          id: item.conversation_id,
+          username: item.sender?.username ?? '',
+          avatarUrl: item.sender?.avatar_url ?? '',
+        },
+      });
+    } else if (item.type === "live" || item.type === "live_invite") {
       const sessionId = item.session_id;
       if (sessionId) {
         router.push({ pathname: "/live/watch/[id]", params: { id: sessionId } });
@@ -158,7 +207,10 @@ function NotifCard({ item }: { item: AppNotification }) {
       {/* Text */}
       <View style={styles.textWrap}>
         <Text style={styles.cardText} numberOfLines={2}>
-          <Text style={styles.senderName}>{senderName}</Text>{" "}
+          <Text style={styles.senderName}>{senderName}</Text>
+          {(item as GroupedNotif)._extraCount > 0 && (
+            <Text style={styles.actionText}>{` und ${(item as GroupedNotif)._extraCount} weitere`}</Text>
+          )}{" "}
           <Text style={styles.actionText}>{actionLabel(item)}</Text>
         </Text>
         <Text style={styles.timeText}>{timeAgo(item.created_at)}</Text>
@@ -255,9 +307,10 @@ export default function NotificationsScreen() {
   );
 
   const unreadCount = notifs.filter((n) => !n.read).length;
+  const groupedNotifs = groupNotifications(notifs);
 
   const renderItem = useCallback(
-    ({ item }: { item: AppNotification }) => <NotifCard item={item} />,
+    ({ item }: { item: GroupedNotif }) => <NotifCard item={item} />,
     [],
   );
 
@@ -304,11 +357,11 @@ export default function NotificationsScreen() {
         </View>
       ) : (
         <FlashList
-          data={notifs}
+          data={groupedNotifs}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           estimatedItemSize={70}
-          contentContainerStyle={styles.list}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl

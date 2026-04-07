@@ -1,38 +1,58 @@
-import { View, Text, StyleSheet } from 'react-native';
-import { Zap } from 'lucide-react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { Zap, Users } from 'lucide-react-native';
+import { impactAsync, ImpactFeedbackStyle } from 'expo-haptics';
 import { GuildViewToggle } from './GuildViewToggle';
 import type { GuildViewMode } from './guildConstants';
 
 /**
  * Minimal Guild Header — TikTok/Instagram-Style.
- * Kein Gradient, kein Blur, kein "Dein Room"-Label, kein Member-Count.
- * Nur: Guild-Name (klein, links) + View-Toggle (rechts).
+ * Guild-Name + klickbare Mitglieder-Zahl (links) + View-Toggle (rechts).
  */
 export function GuildRoomHeader({
   guildName,
   guildColors,
+  memberCount,
   mode,
   onToggle,
+  onMembersPress,
 }: {
   guildName: string;
-  memberCount?: number;   // nicht mehr verwendet, aber API bleibt kompatibel
+  memberCount?: number;
   guildColors: [string, string];
   mode: GuildViewMode;
   onToggle: (m: GuildViewMode) => void;
+  onMembersPress?: () => void;
 }) {
   const [accent] = guildColors;
 
   return (
     <View style={s.wrap}>
-      {/* Guild-Name: klein und dezent, kein dekoratives Element */}
+      {/* Zeile: Guild-Name + Mitgliederzahl */}
       <View style={s.nameRow}>
         <Zap size={12} color={accent} fill={accent} />
         <Text style={[s.name, { color: accent }]} numberOfLines={1}>
           {guildName}
         </Text>
+
+        {/* Mitgliederzahl — tippbar → öffnet Mitgliederliste */}
+        {memberCount != null && memberCount > 0 && (
+          <Pressable
+            onPress={() => {
+              impactAsync(ImpactFeedbackStyle.Light);
+              onMembersPress?.();
+            }}
+            style={s.memberChip}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel={`${memberCount} Mitglieder anzeigen`}
+          >
+            <Users size={10} color="rgba(255,255,255,0.5)" strokeWidth={2} />
+            <Text style={s.memberCount}>{memberCount}</Text>
+          </Pressable>
+        )}
       </View>
 
-      {/* Feed / Leaderboard Toggle — das einzig wirklich wichtige Element */}
+      {/* Feed / Leaderboard Toggle */}
       <GuildViewToggle mode={mode} onChange={onToggle} />
     </View>
   );
@@ -56,4 +76,21 @@ const s = StyleSheet.create({
     letterSpacing: 0.3,
     opacity: 0.7,
   },
+  memberChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 10,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  memberCount: {
+    color: 'rgba(255,255,255,0.45)',
+    fontSize: 11,
+    fontWeight: '600',
+  },
 });
+

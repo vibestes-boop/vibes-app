@@ -4,10 +4,15 @@ const path = require('path');
 const config = getDefaultConfig(__dirname);
 
 // ─── Build-Modus-Erkennung ───────────────────────────────────────────────────
-// EAS_BUILD=1 wird in eas.json für preview + production gesetzt.
-// Im Expo Go (kein EAS) sind alle Stubs aktiv um Crashes zu verhindern.
-// Im EAS Build sind nur die permanenten Stubs aktiv (CJS/ESM Fixes).
-const IS_EAS_BUILD = process.env.EAS_BUILD === '1';
+// EAS_BUILD=1         → gesetzt in eas.json env für alle Profiles
+// CI=true             → gesetzt von EAS Build Servern (und local EAS CLI)
+// EXPO_NO_DOTENV=1    → intern von EAS CLI gesetzt während Builds
+// Im DevClient wird keiner dieser Werte gesetzt → Expo Go Modus
+const IS_EAS_BUILD =
+  process.env.EAS_BUILD === '1' ||
+  process.env.CI === 'true' ||
+  process.env.CI === '1' ||
+  process.env.EXPO_NO_DOTENV === '1';
 
 console.log(`[metro] Build-Modus: ${IS_EAS_BUILD ? '🏗️  EAS BUILD (native Module aktiv)' : '📱 Expo Go (Stubs aktiv)'}`);
 
@@ -20,11 +25,11 @@ const ALWAYS_STUBS = {
 
 // ─── Expo-Go-Stubs (nur aktiv wenn KEIN EAS Build) ───────────────────────────
 // Ersetzt native TurboModule die in Hermes HBC crashen würden.
+// Im EAS Dev-Build: EAS_BUILD=1 → Stubs NICHT aktiv → echte native Module.
 const EXPO_GO_STUBS = {
   'react-native-reanimated':        path.resolve(__dirname, 'stubs/reanimated-compat.js'),
   'react-native-safe-area-context': path.resolve(__dirname, 'stubs/safe-area-compat.js'),
   'react-native-screens':           path.resolve(__dirname, 'stubs/screens-compat.js'),
-  // lucide-react-native: KEIN Stub mehr nötig — metro-patch serializer löst _interopNamespace fix
   'expo-linear-gradient':           path.resolve(__dirname, 'stubs/linear-gradient-compat.js'),
   'expo-haptics':                   path.resolve(__dirname, 'stubs/haptics-compat.js'),
   'expo-image-picker':              path.resolve(__dirname, 'stubs/expo-image-picker-mock.js'),
@@ -32,15 +37,15 @@ const EXPO_GO_STUBS = {
   'expo-video-thumbnails':          path.resolve(__dirname, 'stubs/expo-video-thumbnails-mock.js'),
   'expo-image':                     path.resolve(__dirname, 'stubs/expo-image-mock.js'),
   'expo-blur':                      path.resolve(__dirname, 'stubs/expo-blur-mock.js'),
-  // expo-av: KEIN Stub — nativer Video-Player aktiv; Audio-Crash (iOS 18) nur bei Audio-Session-Init
   'expo-network':                   path.resolve(__dirname, 'stubs/expo-network-mock.js'),
-  // expo-notifications: nur in Expo Go stubben (kein natives TurboModule verfügbar)
   'expo-notifications':             path.resolve(__dirname, 'stubs/expo-notifications-mock.js'),
-  // @shopify/flash-list: nur in Expo Go stubben (AutoLayoutView ist ein nativer View)
   '@shopify/flash-list':            path.resolve(__dirname, 'stubs/flash-list-mock.js'),
-  // LiveKit: in Expo Go stubben — native WebRTC Module nur in EAS-Builds verfügbar
   '@livekit/react-native':          path.resolve(__dirname, 'stubs/livekit-mock.js'),
   '@livekit/react-native-webrtc':   path.resolve(__dirname, 'stubs/livekit-webrtc-mock.js'),
+  // Skia: braucht Reanimated Worklet Runtime → funktioniert nicht in Expo Go
+  // (weil Reanimated selbst gestrubbt ist). SKIA_READY wird false →
+  // index.tsx fällt auf View-Overlays + expo-image zurück.
+  '@shopify/react-native-skia':     path.resolve(__dirname, 'stubs/skia-mock.js'),
 };
 
 // Aktive Stubs basierend auf Build-Modus

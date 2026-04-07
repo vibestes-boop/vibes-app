@@ -2,11 +2,16 @@ import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'expo-router';
 import { useFocusEffect } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
-import { View, Text, Pressable, ActivityIndicator, Alert, RefreshControl } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
+import { View, Text, Pressable, ActivityIndicator, Alert, RefreshControl, FlatList, ScrollView, Dimensions } from 'react-native';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { PlusCircle, Sparkles, Bookmark, BarChart2, FileText, Trash2 } from 'lucide-react-native';
+import Svg, { Rect, Text as SvgText, Line } from 'react-native-svg';
+import {
+  PlusCircle, Sparkles, Bookmark, BarChart2, FileText, Trash2,
+  Eye, Heart, MessageCircle, TrendingUp, Clock, ArrowUpDown,
+  CheckCircle2, Users, TrendingDown,
+} from 'lucide-react-native';
 import { impactAsync, ImpactFeedbackStyle } from 'expo-haptics';
 import { useUnreadCount } from '@/lib/useNotifications';
 import { useBookmarkedPosts } from '@/lib/useBookmark';
@@ -15,17 +20,28 @@ import { useAuthStore } from '@/lib/authStore';
 import { useDrafts } from '@/lib/useDrafts';
 import { useGuildStories } from '@/lib/useStories';
 import { useStoryViewerStore } from '@/lib/storyViewerStore';
+import {
+  useCreatorOverview,
+  useCreatorTopPosts,
+  useFollowerGrowth,
+  fmtNum,
+  formatDelta,
+  type AnalyticsPeriod,
+  type ContentSortBy,
+} from '@/lib/useAnalytics';
 import { useFollowCounts } from '@/lib/useFollow';
 import { useUserPosts } from '@/lib/usePosts';
 import { supabase } from '@/lib/supabase';
 import {
   GRID_COLUMNS,
   GRID_CELL_WIDTH,
+  GRID_GAP,
   ProfileGridCell,
   PostManageModal,
   ProfileListHeader,
   ProfileStudioHeader,
   profileStyles as s,
+  AnalyticsTab,
   type ProfilePostGridItem,
   type ProfileTab,
 } from '@/components/profile';
@@ -44,6 +60,12 @@ export default function ProfileScreen() {
   const [repostedPosts, setRepostedPosts] = useState<ProfilePostGridItem[]>([]);
   const [repostLoading, setRepostLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [sortKey, setSortKey] = useState<'views' | 'likes' | 'comments' | 'dwell' | 'newest' | 'oldest'>('views');
+  // Analytics: Period-Picker + Content-Sort
+  const [analyticsPeriod, setAnalyticsPeriod] = useState<AnalyticsPeriod>(28);
+  const [contentSort, setContentSort] = useState<ContentSortBy>('views');
+  // Lokaler Zustand: sobald der User eigene Stories anschaut → Ring sofort grau
+  const [ownStoryViewed, setOwnStoryViewed] = useState(false);
 
   const { data: posts = [], isLoading: loadingPosts, refetch: refetchPosts } = useUserPosts(profile?.id ?? null);
   const { data: savedPosts = [], isLoading: loadingSaved } = useBookmarkedPosts();
@@ -56,10 +78,12 @@ export default function ProfileScreen() {
 
   const queryClient = useQueryClient();
 
-  // Nur invalidieren wenn Daten wirklich stale sind (respektiert staleTime)
+  // Bei Fokus: Posts UND Guild-Stories invalidieren → Ring-Farbe aktualisiert sich nach Story-Ansehen
   useFocusEffect(
     useCallback(() => {
       queryClient.invalidateQueries({ queryKey: ['user-posts', profile?.id] });
+      // guild-stories stale machen → Ring wird sofort grau wenn Stories gesehen
+      queryClient.invalidateQueries({ queryKey: ['guild-stories', profile?.id] });
     }, [queryClient, profile?.id]),
   );
   const { data: unreadNotifs = 0 } = useUnreadCount();
@@ -73,7 +97,8 @@ export default function ProfileScreen() {
   const myUserId = profile?.id;
   const myStoryGroup = storyGroups.find((g) => g.userId === myUserId);
   const hasStories = (myStoryGroup?.stories?.length ?? 0) > 0;
-  const hasUnviewedStories = myStoryGroup?.hasUnviewed ?? false;
+  // ownStoryViewed überschreibt den Cache-Wert sofort beim Ansehen
+  const hasUnviewedStories = ownStoryViewed ? false : (myStoryGroup?.hasUnviewed ?? false);
 
   const avgDwell = useMemo(() => {
     if (posts.length === 0) return 0;
@@ -81,13 +106,32 @@ export default function ProfileScreen() {
     return Math.round((sum / posts.length) * 100);
   }, [posts]);
 
+  const totalViews    = useMemo(() => posts.reduce((a, p) => a + (p.view_count ?? 0), 0), [posts]);
+  const totalLikes    = useMemo(() => posts.reduce((a, p) => a + (p.like_count ?? 0), 0), [posts]);
+  const totalComments = useMemo(() => posts.reduce((a, p) => a + (p.comment_count ?? 0), 0), [posts]);
+
+  // ── Analytics Hooks (echte Supabase-Daten) ────────────────────────
+  const { data: overview, isLoading: loadingOverview } = useCreatorOverview(
+    activeTab === 'analytics' ? (profile?.id ?? null) : null,
+    analyticsPeriod,
+  );
+  const { data: topPosts = [], isLoading: loadingTopPosts } = useCreatorTopPosts(
+    activeTab === 'analytics' ? (profile?.id ?? null) : null,
+    contentSort,
+    5,
+  );
+  const { data: followerGrowth = [] } = useFollowerGrowth(
+    activeTab === 'analytics' ? (profile?.id ?? null) : null,
+    analyticsPeriod,
+  );
+
   // ── loadReposts: immer frisch, zwei-Schritt-Query ───────────────────
   const loadReposts = useCallback(async () => {
     if (!profile?.id) return;
     setRepostLoading(true);
     const { data: rows, error } = await supabase
       .from('reposts')
-      .select('post_id')
+      .select('post_id, created_at')      // created_at = Repost-Zeitstempel
       .eq('user_id', profile.id)
       .order('created_at', { ascending: false })
       .limit(60);
@@ -96,13 +140,19 @@ export default function ProfileScreen() {
       setRepostLoading(false);
       return;
     }
-    const postIds = rows.map((r: any) => r.post_id).filter(Boolean);
+    // Map: post_id → repost timestamp
+    const repostTimestamps: Record<string, string> = {};
+    const postIds = rows
+      .map((r: any) => { if (r.post_id) repostTimestamps[r.post_id] = r.created_at; return r.post_id; })
+      .filter(Boolean);
     const { data: postsData } = await supabase
       .from('posts')
-      .select('id, media_url, media_type, caption, dwell_time_score')
+      .select('id, media_url, media_type, caption, dwell_time_score, thumbnail_url, view_count')
       .in('id', postIds);
     const byId = Object.fromEntries((postsData ?? []).map((p: any) => [p.id, p]));
-    const ordered = postIds.map((pid: string) => byId[pid]).filter(Boolean);
+    const ordered = postIds
+      .map((pid: string) => byId[pid] ? { ...byId[pid], reposted_at: repostTimestamps[pid] } : null)
+      .filter(Boolean);
     setRepostedPosts(ordered as ProfilePostGridItem[]);
     setRepostLoading(false);
   }, [profile?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -124,16 +174,18 @@ export default function ProfileScreen() {
         { event: 'INSERT', schema: 'public', table: 'reposts', filter: `user_id=eq.${uid}` },
         async (payload) => {
           const newPostId = (payload.new as any).post_id;
+          const repostedAt = (payload.new as any).created_at;
           if (!newPostId) return;
           const { data } = await supabase
             .from('posts')
-            .select('id, media_url, media_type, caption, dwell_time_score')
+            .select('id, media_url, media_type, caption, dwell_time_score, thumbnail_url, view_count')
             .eq('id', newPostId)
             .single();
           if (data) {
+            const item: ProfilePostGridItem = { ...(data as any), reposted_at: repostedAt };
             setRepostedPosts((prev) => {
-              if (prev.some((p) => p.id === (data as any).id)) return prev;
-              return [data as ProfilePostGridItem, ...prev];
+              if (prev.some((p) => p.id === item.id)) return prev;
+              return [item, ...prev];
             });
           }
         }
@@ -185,10 +237,23 @@ export default function ProfileScreen() {
   const postCount = posts.length;
 
   // Analytics und Drafts haben eigene Overlay-Renderer, nicht in der FlashList
-  const listData: ProfilePostGridItem[] = activeTab === 'vibes' ? (posts as ProfilePostGridItem[])
+  const rawListData: ProfilePostGridItem[] = activeTab === 'vibes' ? (posts as ProfilePostGridItem[])
     : activeTab === 'saved' ? (savedPosts as unknown as ProfilePostGridItem[])
       : activeTab === 'reposts' ? repostedPosts
         : []; // analytics + drafts → separater Renderer
+
+  // Leere Placeholder-Items auffüllen damit die letzte Reihe immer vollständig ist.
+  // Verhindert dass 2 Items die letzte Spalte aufteilen (Instagram-Verhalten).
+  const remainder = rawListData.length % GRID_COLUMNS;
+  const listData: ProfilePostGridItem[] = remainder === 0
+    ? rawListData
+    : [
+      ...rawListData,
+      ...Array.from({ length: GRID_COLUMNS - remainder }, (_, i) => ({
+        id: `__placeholder_${i}`,
+        __isPlaceholder: true,
+      } as unknown as ProfilePostGridItem)),
+    ];
 
   // Gepinnter Post im eigenen Profil
   const pinnedPost = posts.find((p) => (p as any).is_pinned);
@@ -200,58 +265,61 @@ export default function ProfileScreen() {
   const activeTabRef = useRef(activeTab);
   activeTabRef.current = activeTab;
 
-  const renderGridItem = useCallback(({ item, index }: { item: ProfilePostGridItem; index: number }) => (
-    <View style={s.gridCell}>
-      <ProfileGridCell
-        post={item}
-        onPress={() => {
-          if (activeTabRef.current === 'vibes') {
-            router.push({
-              pathname: '/user-posts',
-              params: {
-                userId: profile?.id ?? '',
-                startIndex: String(index),
-                username: profile?.username ?? '',
-              },
-            });
-          } else {
-            router.push({
-              pathname: '/post/[id]',
-              params: {
-                id: item.id,
-                previewUrl: item.media_url ?? '',
-                previewType: item.media_type ?? 'image',
-                previewCaption: item.caption ?? '',
-              },
-            });
-          }
-        }}
-        onLongPress={
-          activeTabRef.current === 'vibes'
-            ? () => {
-              impactAsync(ImpactFeedbackStyle.Medium);
-              handlePostLongPress(item);
-            }
-            : undefined
-        }
-      />
-      {/* 📌 Pin-Badge */}
-      {activeTabRef.current === 'vibes' && item.id === pinnedPostIdRef.current && (
-        <View style={{
-          position: 'absolute', top: 6, left: 6,
-          backgroundColor: 'rgba(0,0,0,0.65)', borderRadius: 8,
-          paddingHorizontal: 5, paddingVertical: 2
-        }}>
-          <Text style={{ fontSize: 11 }}>📌</Text>
-        </View>
-      )}
-    </View>
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  ), [router, profile?.id, profile?.username, handlePostLongPress]);
+  const renderGridItem = useCallback(({ item, index }: { item: ProfilePostGridItem; index: number }) => {
+    // Placeholder: leere transparente Zelle für unvollständige letzte Reihe
+    if ((item as any).__isPlaceholder) {
+      return <View style={s.gridCell} />;
+    }
 
-  const overrideItemLayout = useCallback((layout: { size?: number }) => {
-    layout.size = CELL_HEIGHT;
-  }, []);
+    return (
+      <View style={s.gridCell}>
+        <ProfileGridCell
+          post={item}
+          onPress={() => {
+            if (activeTabRef.current === 'vibes') {
+              router.push({
+                pathname: '/user-posts',
+                params: {
+                  userId: profile?.id ?? '',
+                  startIndex: String(index),
+                  username: profile?.username ?? '',
+                },
+              });
+            } else {
+              router.push({
+                pathname: '/post/[id]',
+                params: {
+                  id: item.id,
+                  previewUrl: item.media_url ?? '',
+                  previewType: item.media_type ?? 'image',
+                  previewCaption: item.caption ?? '',
+                },
+              });
+            }
+          }}
+          onLongPress={
+            activeTabRef.current === 'vibes'
+              ? () => {
+                impactAsync(ImpactFeedbackStyle.Medium);
+                handlePostLongPress(item);
+              }
+              : undefined
+          }
+        />
+        {/* 📌 Pin-Badge */}
+        {activeTabRef.current === 'vibes' && item.id === pinnedPostIdRef.current && (
+          <View style={{
+            position: 'absolute', top: 6, left: 6,
+            backgroundColor: 'rgba(0,0,0,0.65)', borderRadius: 8,
+            paddingHorizontal: 5, paddingVertical: 2
+          }}>
+            <Text style={{ fontSize: 11 }}>📌</Text>
+          </View>
+        )}
+      </View>
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router, profile?.id, profile?.username, handlePostLongPress]);
 
 
   return (
@@ -266,14 +334,12 @@ export default function ProfileScreen() {
         onSignOut={handleSignOut}
       />
 
-      <FlashList
+      <FlatList
         key={activeTab}
         data={listData}
         keyExtractor={(item) => item.id}
         numColumns={GRID_COLUMNS}
-        estimatedItemSize={CELL_HEIGHT}
-
-        overrideItemLayout={overrideItemLayout}
+        columnWrapperStyle={{ gap: GRID_GAP }}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
         refreshControl={
@@ -291,32 +357,15 @@ export default function ProfileScreen() {
             hasStories={hasStories}
             hasUnviewedStories={hasUnviewedStories}
             onAvatarPress={() => {
-              if (!myStoryGroup || !hasStories) {
-                // Keine Stories → direkt zu Story-Erstellen
-                router.push('/create-story' as any);
-                return;
-              }
-              // Stories vorhanden → Auswahl: Ansehen ODER Neue Story
+              if (!myStoryGroup || !hasStories) return;
               impactAsync(ImpactFeedbackStyle.Light);
-              Alert.alert(
-                'Deine Story',
-                undefined,
-                [
-                  {
-                    text: '▶  Story ansehen',
-                    onPress: () => {
-                      openStoryViewer(myStoryGroup, storyGroups);
-                      router.push('/story-viewer' as any);
-                    },
-                  },
-                  {
-                    text: '＋  Neue Story erstellen',
-                    onPress: () => router.push('/create-story' as any),
-                  },
-                  { text: 'Abbrechen', style: 'cancel' },
-                ],
-                { cancelable: true },
-              );
+              setOwnStoryViewed(true); // Ring sofort grau — kein Cache-Warten
+              openStoryViewer(myStoryGroup, [myStoryGroup]);
+              router.push('/story-viewer' as any);
+            }}
+            onCreateStory={() => {
+              impactAsync(ImpactFeedbackStyle.Medium);
+              router.push('/create-story' as any);
             }}
             onEditProfile={() => router.push('/settings')}
             avatarInitial={avatarInitial}
@@ -368,52 +417,18 @@ export default function ProfileScreen() {
               )}
             </View>
 
-            // ─ Analytics-Tab ─
+            // ─ Analytics-Tab (UPGRADED) ─
           ) : activeTab === 'analytics' ? (
-            <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
-              {analyticsPosts.length === 0 ? (
-                <View style={s.empty}>
-                  <ActivityIndicator color="#22D3EE" />
-                </View>
-              ) : (
-                analyticsPosts.map((item, index) => (
-                  <Pressable
-                    key={item.id}
-                    style={s.analyticsRow}
-                    onPress={() => router.push({
-                      pathname: '/post/[id]', params: {
-                        id: item.id,
-                        previewUrl: item.media_url ?? '',
-                        previewType: item.media_type ?? 'image',
-                        previewCaption: item.caption ?? '',
-                      }
-                    })}
-                    accessibilityRole="button"
-                    accessibilityLabel={`Post ${index + 1}`}
-                  >
-                    <Text style={s.analyticsRank}>#{index + 1}</Text>
-                    <View style={s.analyticsContent}>
-                      <Text style={s.analyticsCaption} numberOfLines={1}>
-                        {item.caption ? item.caption : (item.media_type === 'video' ? 'Video' : 'Bild')}
-                      </Text>
-                      <View style={s.analyticsBarTrack}>
-                        <LinearGradient
-                          colors={['#0891B2', '#22D3EE']}
-                          start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                          style={[s.analyticsBarFill, { width: `${Math.max(4, ((item.dwell_time_score ?? 0) / Math.max(maxDwell, 0.01)) * 100)}%` }]}
-                        />
-                      </View>
-                    </View>
-                    <View style={s.analyticsScore}>
-                      <Text style={s.analyticsScoreNum}>
-                        {Math.round(((item.dwell_time_score ?? 0) / Math.max(maxDwell, 0.01)) * 100)}%
-                      </Text>
-                      <Text style={s.analyticsScoreLabel}>Score</Text>
-                    </View>
-                  </Pressable>
-                ))
-              )}
-            </View>
+            <AnalyticsTab
+              userId={profile?.id ?? null}
+              period={analyticsPeriod}
+              onPeriodChange={(p: AnalyticsPeriod) => { impactAsync(ImpactFeedbackStyle.Light); setAnalyticsPeriod(p); }}
+              contentSort={contentSort}
+              onContentSortChange={(s: ContentSortBy) => { impactAsync(ImpactFeedbackStyle.Light); setContentSort(s); }}
+              onPostPress={(postId: string, mediaUrl: string | null, mediaType: string | null, caption: string | null) =>
+                router.push({ pathname: '/post/[id]', params: { id: postId, previewUrl: mediaUrl ?? '', previewType: mediaType ?? 'image', previewCaption: caption ?? '' } })
+              }
+            />
 
             // ─ Vibes leer ─
           ) : activeTab === 'vibes' && loadingPosts ? (
@@ -471,3 +486,161 @@ export default function ProfileScreen() {
     </View>
   );
 }
+
+// ─ fmtNum: re-exported from useAnalytics ─ (local duplicate removed to avoid conflict)
+
+import { StyleSheet } from 'react-native';
+
+const analyticsStyle = StyleSheet.create({
+  // ── Summary Grid
+  kpiGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 28,
+  },
+  kpiCard: {
+    width: '47%',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.08)',
+    paddingHorizontal: 14,
+    paddingTop: 14,
+    paddingBottom: 16,
+    gap: 8,
+  },
+  kpiIconRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  kpiLabel: {
+    color: 'rgba(255,255,255,0.35)',
+    fontSize: 11,
+    fontWeight: '500',
+    letterSpacing: 0.1,
+  },
+  kpiValue: {
+    color: '#FFFFFF',
+    fontSize: 28,
+    fontWeight: '700',
+    letterSpacing: -1,
+    lineHeight: 32,
+  },
+  // ── Section Header
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  sectionTitle: {
+    color: 'rgba(255,255,255,0.25)',
+    fontSize: 10,
+    fontWeight: '600',
+    letterSpacing: 1.2,
+    textTransform: 'uppercase',
+    marginBottom: 12,
+  },
+  // ── Sort Controls
+  sortRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 16,
+  },
+  sortScroll: {
+    flexDirection: 'row',
+    gap: 6,
+    paddingRight: 4,
+  },
+  sortPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  sortPillActive: {
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderColor: 'rgba(255,255,255,0.25)',
+  },
+  sortPillText: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  sortPillTextActive: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+  },
+  // ── Post Rows
+  postRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    gap: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(255,255,255,0.05)',
+  },
+  rank: {
+    color: 'rgba(255,255,255,0.15)',
+    fontSize: 11,
+    fontWeight: '600',
+    width: 20,
+    textAlign: 'center',
+  },
+  thumbWrap: { position: 'relative' },
+  thumb: {
+    width: 48,
+    height: 62,
+    borderRadius: 6,
+  },
+  thumbFallback: {
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  videoTag: {
+    position: 'absolute',
+    bottom: 3,
+    right: 3,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    borderRadius: 3,
+    paddingHorizontal: 3,
+    paddingVertical: 1,
+  },
+  videoTagText: { color: 'rgba(255,255,255,0.7)', fontSize: 7, fontWeight: '700' },
+  postInfo: { flex: 1, gap: 4 },
+  postCaption: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 13,
+    fontWeight: '500',
+    letterSpacing: -0.1,
+  },
+  // Metric chips — all same muted color
+  metricRow: { flexDirection: 'row', gap: 10, marginTop: 1 },
+  metricChip: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  metricText: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  // Dwell bar
+  dwellTrack: {
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    overflow: 'hidden',
+    marginTop: 4,
+  },
+  dwellFill: { height: '100%', borderRadius: 2 },
+  dwellLabel: {
+    color: 'rgba(255,255,255,0.2)',
+    fontSize: 10,
+    fontWeight: '500',
+    letterSpacing: 0.2,
+  },
+});

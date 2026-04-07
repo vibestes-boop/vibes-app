@@ -1,6 +1,8 @@
 /**
  * live/start.tsx
- * Vor dem Live gehen: Titel eingeben, Kamera-Preview, Countdown.
+ * Vor dem Live gehen: Titel, Kategorie, Einstellungen.
+ * Live-Kamera-Preview läuft immer im Hintergrund (wie TikTok).
+ * Karten = Glassmorphism (expo-blur) statt transparenter Boxen.
  */
 import { useState } from 'react';
 import {
@@ -11,12 +13,16 @@ import {
   Pressable,
   Alert,
   ActivityIndicator,
+  ScrollView,
+  Switch,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { ArrowLeft, Radio, ChevronRight } from 'lucide-react-native';
+import * as Haptics from 'expo-haptics';
 // react-native-reanimated: CJS require() vermeidet Hermes HBC Crash
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
 const _animMod = require('react-native-reanimated') as any;
@@ -35,6 +41,19 @@ import ExpoGoPlaceholder from '@/components/live/ExpoGoPlaceholder';
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
 const _cMod = require('expo-constants') as any; const Constants = _cMod?.default ?? _cMod;
 
+// ─── Kategorien ────────────────────────────────────────────────────────────
+const LIVE_CATEGORIES = [
+  { key: 'talk',      emoji: '💬', label: 'Talk'    },
+  { key: 'gaming',    emoji: '🎮', label: 'Gaming'  },
+  { key: 'music',     emoji: '🎵', label: 'Musik'   },
+  { key: 'qna',       emoji: '🙋', label: 'Q&A'     },
+  { key: 'fitness',   emoji: '💪', label: 'Fitness' },
+  { key: 'cooking',   emoji: '🍳', label: 'Kochen'  },
+  { key: 'art',       emoji: '🎨', label: 'Art'     },
+  { key: 'sports',    emoji: '⚽', label: 'Sport'   },
+  { key: 'education', emoji: '📚', label: 'Lernen'  },
+];
+
 export default function LiveStartScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -42,8 +61,11 @@ export default function LiveStartScreen() {
 
   const [permission, requestPermission] = useCameraPermissions();
   const [title, setTitle] = useState('');
+  const [category, setCategory] = useState<string>('talk');
+  const [allowComments, setAllowComments] = useState(true);
+  const [allowGifts, setAllowGifts] = useState(true);
   const [countdown, setCountdown] = useState<number | null>(null);
-  const [cameraActive, setCameraActive] = useState(true); // false setzen VOR Navigation damit iOS die Kamera freigibt
+  const [cameraActive, setCameraActive] = useState(true);
 
   // Pulsierender Dot-Anim
   const dotOpacity = useSharedValue(1);
@@ -55,16 +77,15 @@ export default function LiveStartScreen() {
       return;
     }
 
-    // Dot pulsieren
     dotOpacity.value = withRepeat(
       withSequence(withTiming(0.2, { duration: 500 }), withTiming(1, { duration: 500 })),
       -1,
       false
     );
 
-    // 3-2-1 Countdown
     for (let i = 3; i >= 1; i--) {
       setCountdown(i);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       await new Promise((r) => setTimeout(r, 1000));
     }
     setCountdown(null);
@@ -75,7 +96,6 @@ export default function LiveStartScreen() {
         Alert.alert('Fehler', 'Live konnte nicht gestartet werden. Bitte prüfe deine Verbindung.');
         return;
       }
-      // Kamera 1 s vor Navigation stoppen → iOS gibt Kamera frei bevor LiveKit sie braucht
       setCameraActive(false);
       await new Promise((r) => setTimeout(r, 1000));
 
@@ -100,7 +120,7 @@ export default function LiveStartScreen() {
 
   return (
     <View style={s.root}>
-      {/* Kamera-Preview */}
+      {/* ── Kamera-Preview (läuft immer durch wie TikTok) ── */}
       {permission?.granted ? (
         <CameraView style={StyleSheet.absoluteFill} facing="front" active={cameraActive} />
       ) : (
@@ -110,26 +130,13 @@ export default function LiveStartScreen() {
         />
       )}
 
-      {/* Dunkler Overlay */}
+      {/* Leichter Dunkel-Overlay oben + unten */}
       <LinearGradient
-        colors={['rgba(0,0,0,0.6)', 'transparent', 'rgba(0,0,0,0.75)']}
+        colors={['rgba(0,0,0,0.55)', 'transparent', 'transparent', 'rgba(0,0,0,0.70)']}
+        locations={[0, 0.25, 0.65, 1]}
         style={StyleSheet.absoluteFill}
+        pointerEvents="none"
       />
-
-      {/* Zurück */}
-      <Pressable
-        style={[s.backBtn, { top: insets.top + 10 }]}
-        onPress={() => router.back()}
-        hitSlop={12}
-      >
-        <ArrowLeft size={22} stroke="#fff" strokeWidth={2.2} />
-      </Pressable>
-
-      {/* LIVE Indikator oben */}
-      <View style={[s.liveIndicator, { top: insets.top + 14 }]}>
-        <Animated.View style={[s.liveDot, dotStyle]} />
-        <Text style={s.liveText}>LIVE</Text>
-      </View>
 
       {/* Countdown */}
       {countdown !== null && (
@@ -138,30 +145,88 @@ export default function LiveStartScreen() {
         </View>
       )}
 
-      {/* Kamera-Zugriff anfragen */}
-      {!permission?.granted && (
-        <View style={s.permissionBox}>
-          <Text style={s.permissionTitle}>Kamera-Zugriff benötigt</Text>
-          <Pressable style={s.permissionBtn} onPress={requestPermission}>
-            <Text style={s.permissionBtnText}>Erlauben</Text>
-          </Pressable>
+      {/* ── Header ── */}
+      <View style={[s.header, { paddingTop: insets.top + 10 }]}>
+        <Pressable style={s.backBtn} onPress={() => router.back()} hitSlop={12}>
+          <BlurView intensity={60} tint="dark" style={s.backBtnBlur}>
+            <ArrowLeft size={20} stroke="#fff" strokeWidth={2.2} />
+          </BlurView>
+        </Pressable>
+
+        <View style={s.liveIndicator}>
+          <Animated.View style={[s.liveDot, dotStyle]} />
+          <Text style={s.liveText}>LIVE</Text>
         </View>
-      )}
 
-      {/* Unten: Titel + Start-Button */}
-      <View style={[s.bottom, { paddingBottom: insets.bottom + 24 }]}>
-        <Text style={s.hint}>Deine Follower werden benachrichtigt 🔴</Text>
+        <View style={{ width: 40 }} />
+      </View>
 
-        <TextInput
-          style={s.titleInput}
-          placeholder="Titel für dein Live (optional)"
-          placeholderTextColor="rgba(255,255,255,0.4)"
-          value={title}
-          onChangeText={setTitle}
-          maxLength={60}
-          selectionColor="#22D3EE"
-        />
+      {/* ── Scrollbarer Inhalt ── */}
+      <ScrollView
+        style={s.scroll}
+        contentContainerStyle={[s.scrollContent, { paddingBottom: insets.bottom + 100 }]}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* ── Titel-Input (Glassmorphism) ── */}
+        <BlurView intensity={55} tint="dark" style={s.glassInput}>
+          <TextInput
+            style={s.titleInput}
+            placeholder="Titel für dein Live (optional)"
+            placeholderTextColor="rgba(255,255,255,0.35)"
+            value={title}
+            onChangeText={setTitle}
+            maxLength={60}
+            selectionColor="#22D3EE"
+          />
+        </BlurView>
 
+        {/* ── Kategorie ── */}
+        <Text style={s.sectionLabel}>Kategorie</Text>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.categoryRow}>
+          {LIVE_CATEGORIES.map((cat) => {
+            const active = category === cat.key;
+            return (
+              <Pressable
+                key={cat.key}
+                onPress={() => {
+                  setCategory(cat.key);
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }}
+              >
+                <BlurView
+                  intensity={active ? 70 : 45}
+                  tint="dark"
+                  style={[s.categoryChip, active && s.categoryChipActive]}
+                >
+                  <Text style={s.categoryEmoji}>{cat.emoji}</Text>
+                  <Text style={[s.categoryLabel, active && s.categoryLabelActive]}>
+                    {cat.label}
+                  </Text>
+                </BlurView>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+
+        {/* ── Einstellungen (Glassmorphism-Karte) ── */}
+        <Text style={s.sectionLabel}>Einstellungen</Text>
+        <BlurView intensity={55} tint="dark" style={s.settingsCard}>
+          <SettingToggle label="Kommentare erlauben" value={allowComments} onValueChange={setAllowComments} />
+          <View style={s.settingDivider} />
+          <SettingToggle label="Geschenke erlauben" value={allowGifts} onValueChange={setAllowGifts} />
+        </BlurView>
+
+        {/* Permission-Hinweis */}
+        {!permission?.granted && (
+          <Pressable style={s.permissionBtn} onPress={requestPermission}>
+            <Text style={s.permissionBtnText}>Kamera-Zugriff erlauben</Text>
+          </Pressable>
+        )}
+      </ScrollView>
+
+      {/* ── Start-Button (floating, Glassmorphism) ── */}
+      <View style={[s.startWrap, { bottom: insets.bottom + 24 }]}>
         <Pressable
           style={[s.startBtn, (loading || countdown !== null) && s.startBtnDisabled]}
           onPress={startCountdown}
@@ -173,80 +238,182 @@ export default function LiveStartScreen() {
             <>
               <Radio size={20} stroke="#fff" strokeWidth={2.2} />
               <Text style={s.startBtnText}>Live gehen</Text>
-              <ChevronRight size={18} stroke="rgba(255,255,255,0.6)" strokeWidth={2} />
+              <ChevronRight size={18} stroke="rgba(255,255,255,0.7)" strokeWidth={2} />
             </>
           )}
         </Pressable>
+        <Text style={s.hint}>Deine Follower werden benachrichtigt 🔴</Text>
       </View>
     </View>
   );
 }
 
+// ─── Setting Toggle Row ────────────────────────────────────────────────────
+function SettingToggle({
+  label,
+  value,
+  onValueChange,
+}: {
+  label: string;
+  value: boolean;
+  onValueChange: (v: boolean) => void;
+}) {
+  return (
+    <View style={s.toggleRow}>
+      <Text style={s.toggleLabel}>{label}</Text>
+      <Switch
+        value={value}
+        onValueChange={onValueChange}
+        trackColor={{ false: 'rgba(255,255,255,0.1)', true: 'rgba(239,68,68,0.5)' }}
+        thumbColor={value ? '#EF4444' : 'rgba(255,255,255,0.4)'}
+        ios_backgroundColor="rgba(255,255,255,0.1)"
+      />
+    </View>
+  );
+}
+
+// ─── Styles ────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#000' },
 
-  backBtn: {
-    position: 'absolute', left: 16, zIndex: 20,
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    alignItems: 'center', justifyContent: 'center',
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    zIndex: 20,
   },
-
+  backBtn: { width: 40, height: 40, borderRadius: 20, overflow: 'hidden' },
+  backBtnBlur: {
+    width: 40, height: 40, borderRadius: 20,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.2)',
+    overflow: 'hidden',
+  },
   liveIndicator: {
-    position: 'absolute', alignSelf: 'center', zIndex: 20,
     flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: 'rgba(239,68,68,0.85)',
     paddingHorizontal: 14, paddingVertical: 6, borderRadius: 20,
   },
-  liveDot: {
-    width: 8, height: 8, borderRadius: 4, backgroundColor: '#fff',
-  },
+  liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#fff' },
   liveText: { color: '#fff', fontSize: 13, fontWeight: '800', letterSpacing: 1.5 },
 
   countdownWrap: {
     ...StyleSheet.absoluteFillObject,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 30,
+    alignItems: 'center', justifyContent: 'center', zIndex: 30,
   },
   countdownText: {
-    fontSize: 120,
-    fontWeight: '900',
+    fontSize: 120, fontWeight: '900',
     color: 'rgba(255,255,255,0.9)',
-    textShadowColor: '#22D3EE',
+    textShadowColor: '#EF4444',
     textShadowRadius: 30,
   },
 
-  permissionBox: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 16,
+  // Scroll
+  scroll: { flex: 1 },
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 20,
+    gap: 0,
   },
-  permissionTitle: { color: '#fff', fontSize: 17, fontWeight: '700' },
-  permissionBtn: {
-    backgroundColor: '#0891B2',
-    paddingHorizontal: 28, paddingVertical: 12, borderRadius: 20,
-  },
-  permissionBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
 
-  bottom: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    paddingHorizontal: 24, gap: 14,
+  // ── Glassmorphism-Karten ──
+  // Titel-Input als Glas-Box
+  glassInput: {
+    borderRadius: 18,
+    overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.22)',
+    marginBottom: 22,
   },
-  hint: { color: 'rgba(255,255,255,0.55)', fontSize: 13, textAlign: 'center' },
   titleInput: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)',
-    borderRadius: 14, paddingHorizontal: 18, paddingVertical: 13,
-    color: '#fff', fontSize: 16,
+    paddingHorizontal: 18,
+    paddingVertical: 15,
+    color: '#fff',
+    fontSize: 16,
+  },
+
+  sectionLabel: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginBottom: 10,
+  },
+
+  // Kategorien
+  categoryRow: { gap: 8, paddingBottom: 22 },
+  categoryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 14, paddingVertical: 9,
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.18)',
+  },
+  categoryChipActive: {
+    borderColor: 'rgba(239,68,68,0.6)',
+  },
+  categoryEmoji: { fontSize: 15 },
+  categoryLabel: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 13, fontWeight: '600',
+  },
+  categoryLabelActive: { color: '#fff' },
+
+  // Settings Glassmorphism Card
+  settingsCard: {
+    borderRadius: 18,
+    overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.18)',
+    marginBottom: 24,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 18, paddingVertical: 14,
+  },
+  toggleLabel: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 14, fontWeight: '500',
+  },
+  settingDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    marginLeft: 18,
+  },
+
+  // Permission
+  permissionBtn: {
+    backgroundColor: 'rgba(34,211,238,0.15)',
+    borderRadius: 14, paddingVertical: 13,
+    alignItems: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(34,211,238,0.3)',
+  },
+  permissionBtnText: { color: '#22D3EE', fontWeight: '700', fontSize: 15 },
+
+  // Start Button (floating)
+  startWrap: {
+    position: 'absolute', left: 20, right: 20,
+    gap: 10, zIndex: 20,
   },
   startBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
     backgroundColor: '#EF4444',
-    borderRadius: 16, paddingVertical: 16,
-    shadowColor: '#EF4444', shadowOpacity: 0.5, shadowRadius: 12, elevation: 8,
+    borderRadius: 18, paddingVertical: 17,
+    shadowColor: '#EF4444', shadowOpacity: 0.5, shadowRadius: 16, elevation: 10,
   },
   startBtnDisabled: { opacity: 0.5 },
   startBtnText: { color: '#fff', fontSize: 17, fontWeight: '800' },
+  hint: {
+    color: 'rgba(255,255,255,0.45)',
+    fontSize: 12, textAlign: 'center',
+  },
 });

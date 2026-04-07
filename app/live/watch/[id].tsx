@@ -68,6 +68,9 @@ import { useAuthStore } from '@/lib/authStore';
 import { useFollow } from '@/lib/useFollow';
 import { LiveUserSheet } from '@/components/live/LiveUserSheet';
 import ExpoGoPlaceholder from '@/components/live/ExpoGoPlaceholder';
+import { GiftPicker } from '@/components/live/GiftPicker';
+import { GiftAnimation } from '@/components/live/GiftAnimation';
+import { useGiftStream } from '@/lib/useGifts';
 // expo-constants: default import causes _interopRequireDefault TypeError in Hermes HBC
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
 const _cMod = require('expo-constants') as any; const Constants = _cMod?.default ?? _cMod;
@@ -216,25 +219,13 @@ function CommentRow({
       {isSystem ? (
         <Text style={s.systemText}>{comment.text}</Text>
       ) : (
-        <>
-          {/* Avatar */}
-          <Pressable onPress={() => onUserPress?.(comment.user_id)}>
-            {avatar ? (
-              <Image source={{ uri: avatar }} style={s.commentAvatar} contentFit="cover" />
-            ) : (
-              <View style={[s.commentAvatar, s.commentAvatarFallback]}>
-                <Text style={s.commentAvatarInitial}>{initials}</Text>
-              </View>
-            )}
-          </Pressable>
-          {/* Text */}
-          <View style={s.commentTextWrap}>
-            <Pressable onPress={() => onUserPress?.(comment.user_id)}>
-              <Text style={s.commentUser}>@{comment.profiles?.username ?? 'User'}</Text>
-            </Pressable>
-            <Text style={s.commentText}> {comment.text}</Text>
-          </View>
-        </>
+        <Pressable
+          onPress={() => onUserPress?.(comment.user_id)}
+          style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' }}
+        >
+          <Text style={s.commentUser}>@{comment.profiles?.username ?? 'User'} </Text>
+          <Text style={s.commentText}>{comment.text}</Text>
+        </Pressable>
       )}
     </Animated.View>
   );
@@ -525,6 +516,10 @@ function WatchUI({ sessionId }: { sessionId: string }) {
   const tapHeartIdRef = useRef(0);
   const joinedRef = useRef(false);
 
+  // ─── Gift System ──────────────────────────────────────────────────────────────────────
+  const [giftPickerVisible, setGiftPickerVisible] = useState(false);
+  const { gifts: incomingGifts } = useGiftStream(sessionId);
+
   // System-Event: beigetreten (einmalig nach Session-Load)
   useEffect(() => {
     if (!session || !profile || joinedRef.current) return;
@@ -697,7 +692,7 @@ function WatchUI({ sessionId }: { sessionId: string }) {
         />
       ))}
 
-      {/* Oben */}
+      {/* Oben — TikTok style */}
       <View style={[s.topBar, { paddingTop: insets.top + 8 }]}>
         <Pressable onPress={() => router.back()} style={s.backBtn} hitSlop={12}>
           <ArrowLeft size={20} stroke="#fff" strokeWidth={2.2} />
@@ -713,16 +708,14 @@ function WatchUI({ sessionId }: { sessionId: string }) {
               </Text>
             </View>
           )}
-          <Text style={s.hostName}>@{host?.username ?? '...'}</Text>
+          <Text style={s.hostName} numberOfLines={1}>@{host?.username ?? '...'}</Text>
           {!isOwnProfile && (
             <Pressable
               onPress={toggleFollow}
               style={[s.followBtn, isFollowing && s.followBtnActive]}
               hitSlop={8}
             >
-              <Text style={s.followBtnText}>
-                {isFollowing ? 'Gefolgt' : '+ Folgen'}
-              </Text>
+              <Text style={s.followBtnText}>{isFollowing ? '✓' : '+'}</Text>
             </Pressable>
           )}
         </View>
@@ -732,22 +725,17 @@ function WatchUI({ sessionId }: { sessionId: string }) {
           <Text style={s.liveLabel}>LIVE</Text>
         </View>
 
-        <View style={s.viewerBadge}>
-          <Users size={13} stroke="#fff" strokeWidth={2} />
-          <Text style={s.viewerCount}>{session?.viewer_count ?? 0}</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <View style={s.viewerBadge}>
+            <Users size={13} stroke="#fff" strokeWidth={2} />
+            <Text style={s.viewerCount}>{session?.viewer_count ?? 0}</Text>
+          </View>
+          {!isOwnProfile && (
+            <Pressable onPress={() => setReportModalVisible(true)} hitSlop={12} style={s.reportBtn}>
+              <Flag size={16} stroke="rgba(255,255,255,0.6)" strokeWidth={2} />
+            </Pressable>
+          )}
         </View>
-
-        {/* Like-Counter */}
-        <View style={s.likeBadge}>
-          <Text style={s.likeBadgeText}>❤️ {fmtNum(session?.like_count ?? 0)}</Text>
-        </View>
-
-        {/* Report Button */}
-        {!isOwnProfile && (
-          <Pressable onPress={() => setReportModalVisible(true)} hitSlop={12} style={s.reportBtn}>
-            <Flag size={16} stroke="rgba(255,255,255,0.6)" strokeWidth={2} />
-          </Pressable>
-        )}
       </View>
 
       {/* Titel */}
@@ -769,7 +757,7 @@ function WatchUI({ sessionId }: { sessionId: string }) {
       )}
 
       {/* Kommentare */}
-      <View style={[s.commentsArea, { bottom: insets.bottom + 62 }]}>
+      <View style={[s.commentsArea, { bottom: insets.bottom + 55 }]}>
         <FlatList
           ref={flatRef}
           data={comments}
@@ -798,23 +786,9 @@ function WatchUI({ sessionId }: { sessionId: string }) {
 
       {/* Kommentar-Leiste */}
       <View style={[s.commentBar, { paddingBottom: insets.bottom + 10 }]}>
-
-        {profile?.avatar_url ? (
-          <Image source={{ uri: profile.avatar_url }} style={s.myAvatar} contentFit="cover" />
-        ) : (
-          <View style={[s.myAvatar, s.myAvatarFallback]}>
-            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 13 }}>
-              {profile?.username?.[0]?.toUpperCase() ?? '?'}
-            </Text>
-          </View>
-        )}
-        {/* Textfeld mit Smile-Icon links */}
         <View style={s.inputWrap}>
           <Pressable
-            onPress={() => {
-              Keyboard.dismiss();
-              setEmojiPickerVisible(true);
-            }}
+            onPress={() => { Keyboard.dismiss(); setEmojiPickerVisible(true); }}
             hitSlop={6}
             style={s.smileBtn}
           >
@@ -832,20 +806,39 @@ function WatchUI({ sessionId }: { sessionId: string }) {
             maxLength={300}
           />
         </View>
-        {input.trim().length > 0 && (
+        {input.trim().length > 0 ? (
           <Pressable onPress={submit} hitSlop={8} style={s.sendBtn}>
             <Send size={20} stroke="#22D3EE" strokeWidth={2.2} />
           </Pressable>
+        ) : (
+          // Geschenk-Button (sichtbar wenn kein Text eingegeben)
+          <Pressable
+            hitSlop={8}
+            style={s.giftBtn}
+            onPress={() => setGiftPickerVisible(true)}
+          >
+            <Text style={s.giftBtnEmoji}>🎁</Text>
+          </Pressable>
         )}
-        {/* Mute-Button */}
+      </View>
+
+      {/* Rechte Aktions-Spalte — TikTok style */}
+      <View style={[s.rightActions, { bottom: insets.bottom + 70 }]} pointerEvents="box-none">
         <Pressable
-          onPress={() => setMuted((v) => !v)}
-          style={[s.muteBtn, muted && s.muteBtnActive]}
-          hitSlop={8}
+          style={s.rightActionBtn}
+          onPress={() => {
+            const newId = tapHeartIdRef.current++;
+            setTapHearts((prev) => [...prev, { id: newId, x: SCREEN_W * 0.85, y: 420 }]);
+            sendReaction('❤️');
+          }}
         >
+          <Heart size={32} color="#fff" fill="transparent" strokeWidth={1.8} />
+          <Text style={s.rightActionCount}>{fmtNum(session?.like_count ?? 0)}</Text>
+        </Pressable>
+        <Pressable style={s.rightActionBtn} onPress={() => setMuted((v) => !v)}>
           {muted
-            ? <VolumeX size={18} stroke="#EF4444" strokeWidth={2.2} />
-            : <Volume2 size={18} stroke="rgba(255,255,255,0.7)" strokeWidth={2.2} />}
+            ? <VolumeX size={28} color="#EF4444" strokeWidth={1.8} />
+            : <Volume2 size={28} color="rgba(255,255,255,0.9)" strokeWidth={1.8} />}
         </Pressable>
       </View>
 
@@ -880,6 +873,19 @@ function WatchUI({ sessionId }: { sessionId: string }) {
           </View>
         </Pressable>
       </Modal>
+
+      {/* ─── Gift Animation Overlay ──────────────────────────────────────── */}
+      <GiftAnimation gifts={incomingGifts} />
+
+      {/* ─── Gift Picker Modal ─────────────────────────────────────────── */}
+      <GiftPicker
+        visible={giftPickerVisible}
+        onClose={() => setGiftPickerVisible(false)}
+        recipientId={session?.host_id ?? ''}
+        recipientName={session?.profiles?.username ?? ''}
+        liveSessionId={sessionId}
+      />
+
       {/* Report Modal */}
       <Modal
         transparent
@@ -1177,19 +1183,14 @@ const s = StyleSheet.create({
   emojiText: { fontSize: 22 },
 
   commentsArea: {
-    position: 'absolute', left: 0, right: 0,
-    maxHeight: 220, paddingHorizontal: 14, zIndex: 10,
+    position: 'absolute', left: 0, right: 80,
+    maxHeight: 240, paddingHorizontal: 14, zIndex: 10,
   },
   commentRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    borderRadius: 14,
-    padding: 6,
-    marginBottom: 5,
+    paddingVertical: 2,
+    marginBottom: 3,
     alignSelf: 'flex-start',
-    maxWidth: '90%',
-    gap: 7,
+    maxWidth: '100%',
   },
   commentAvatar: {
     width: 24, height: 24, borderRadius: 12,
@@ -1201,7 +1202,7 @@ const s = StyleSheet.create({
   },
   commentAvatarInitial: { color: '#fff', fontSize: 10, fontWeight: '800' },
   commentTextWrap: { flex: 1, flexDirection: 'row', flexWrap: 'wrap', gap: 3 },
-  commentUser: { color: '#22D3EE', fontWeight: '700', fontSize: 13 },
+  commentUser: { color: '#FFFC00', fontWeight: '800', fontSize: 13 },
   commentText: { color: '#fff', fontSize: 13, flexShrink: 1 },
   systemText: { color: 'rgba(255,255,255,0.55)', fontSize: 12, fontStyle: 'italic' },
 
@@ -1209,11 +1210,10 @@ const s = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     left: 0,
-    right: 0,
+    right: 72,
     flexDirection: 'row', alignItems: 'center', gap: 10,
     paddingHorizontal: 14, paddingTop: 10,
-    backgroundColor: 'rgba(10,10,10,0.92)',
-    borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.07)',
+    backgroundColor: 'rgba(0,0,0,0.0)',
     zIndex: 30,
   },
   myAvatar: { width: 34, height: 34, borderRadius: 17, overflow: 'hidden', flexShrink: 0 },
@@ -1234,12 +1234,25 @@ const s = StyleSheet.create({
   },
 
   followBtn: {
-    paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12,
-    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.6)',
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    width: 26, height: 26, borderRadius: 13,
+    borderWidth: 1.5, borderColor: '#fff',
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    alignItems: 'center', justifyContent: 'center',
   },
-  followBtnActive: { borderColor: '#4ade80', backgroundColor: 'rgba(74,222,128,0.15)' },
-  followBtnText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  followBtnActive: { borderColor: '#4ade80', backgroundColor: 'rgba(74,222,128,0.2)' },
+  followBtnText: { color: '#fff', fontSize: 15, fontWeight: '900', lineHeight: 17 },
+  // Right-side action column
+  rightActions: {
+    position: 'absolute', right: 10,
+    alignItems: 'center', gap: 22, zIndex: 25,
+  },
+  rightActionBtn: { alignItems: 'center', gap: 5 },
+  rightActionCount: {
+    color: '#fff', fontSize: 12, fontWeight: '700',
+    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
 
   muteBtn: {
     width: 36, height: 36, borderRadius: 18,
@@ -1390,4 +1403,15 @@ const s = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.1)',
   },
   emojiPickerEmoji: { fontSize: 32 },
+  giftBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(244,63,94,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(244,63,94,0.5)',
+  },
+  giftBtnEmoji: { fontSize: 20 },
 });

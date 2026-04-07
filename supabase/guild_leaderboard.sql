@@ -3,7 +3,7 @@
 -- sortiert nach dwell_time_score (NICHT Likes).
 -- Zeitfenster: letzte 7 Tage ("Diese Woche")
 
-CREATE OR REPLACE FUNCTION get_guild_leaderboard(p_guild_id TEXT)
+CREATE OR REPLACE FUNCTION get_guild_leaderboard(p_guild_id UUID)
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER

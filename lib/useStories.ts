@@ -161,6 +161,29 @@ export function useMarkStoryViewed() {
         .from('story_views')
         .upsert({ story_id: storyId, user_id: userId }, { onConflict: 'story_id,user_id' });
     },
+    // Sofortiger Cache-Update: Ring wird direkt grau (kein Warten auf Netzwerk)
+    onMutate: async (storyId: string) => {
+      await queryClient.cancelQueries({ queryKey: ['guild-stories', userId] });
+      const prev = queryClient.getQueryData<StoryGroup[]>(['guild-stories', userId]);
+      queryClient.setQueryData<StoryGroup[]>(['guild-stories', userId], (old) => {
+        if (!old) return old;
+        return old.map((group) => {
+          const updated = group.stories.map((s) =>
+            s.id === storyId ? { ...s, viewed: true } : s
+          );
+          return {
+            ...group,
+            stories: updated,
+            hasUnviewed: updated.some((s) => !s.viewed),
+          };
+        });
+      });
+      return { prev };
+    },
+    onError: (_err, _id, context) => {
+      // Rollback bei Fehler
+      if (context?.prev) queryClient.setQueryData(['guild-stories', userId], context.prev);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['guild-stories', userId] });
     },

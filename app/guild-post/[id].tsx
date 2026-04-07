@@ -8,7 +8,7 @@
  * Route: /guild-post/[id]
  * Navigation von: GuildCard (tap auf Media), guild.tsx
  */
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -18,6 +18,7 @@ import {
   FlatList,
   ActivityIndicator,
   PanResponder,
+  Animated as RNAnimated,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -42,11 +43,13 @@ import {
   Share2,
   Clock,
   Users,
-  Play,
   VolumeX,
   Volume2,
 } from 'lucide-react-native';
 import { FallbackFeedVideo, NativeFeedVideo, USE_EXPO_VIDEO } from '@/components/feed/FeedVideo';
+import type { FeedVideoSeekHandle } from '@/components/feed/FeedVideo';
+import { VideoProgressBar } from '@/components/feed/FeedItem';
+import type { VideoProgressHandle } from '@/components/feed/FeedItem';
 import { useLike } from '@/lib/useLike';
 import { useCommentCount } from '@/lib/useComments';
 import { useBookmark } from '@/lib/useBookmark';
@@ -55,6 +58,67 @@ import CommentsSheet from '@/components/ui/CommentsSheet';
 import { useGuildNavStore } from '@/lib/guildNavStore';
 import type { GuildPost } from '@/lib/usePosts';
 import { impactAsync, ImpactFeedbackStyle } from 'expo-haptics';
+import { useAuthStore } from '@/lib/authStore';
+import { StoryRingAvatar } from '@/components/ui/StoryRingAvatar';
+
+// ─── Floating Heart — eigenständige Komponente pro Doppel-Tap ──────────────────
+type FloatingHeartItem = { id: number; x: number; y: number };
+
+function FloatingHeart({ x, y, onDone }: { x: number; y: number; onDone: () => void }) {
+  const opacity = useRef(new RNAnimated.Value(1)).current;
+  const scale = useRef(new RNAnimated.Value(0)).current;
+  const translateY = useRef(new RNAnimated.Value(0)).current;
+  const rotate = useRef(new RNAnimated.Value(0)).current;
+
+  useEffect(() => {
+    RNAnimated.parallel([
+      RNAnimated.spring(scale, { toValue: 1, friction: 4, tension: 180, useNativeDriver: true }),
+      RNAnimated.timing(translateY, { toValue: -140, duration: 1600, useNativeDriver: true }),
+      RNAnimated.sequence([
+        RNAnimated.timing(rotate, { toValue: -1, duration: 120, useNativeDriver: true }),
+        RNAnimated.timing(rotate, { toValue: 1,  duration: 120, useNativeDriver: true }),
+        RNAnimated.timing(rotate, { toValue: -1, duration: 120, useNativeDriver: true }),
+        RNAnimated.timing(rotate, { toValue: 1,  duration: 120, useNativeDriver: true }),
+        RNAnimated.timing(rotate, { toValue: 0,  duration: 100, useNativeDriver: true }),
+      ]),
+      RNAnimated.sequence([
+        RNAnimated.delay(900),
+        RNAnimated.timing(opacity, { toValue: 0, duration: 700, useNativeDriver: true }),
+      ]),
+    ]).start();
+    const t = setTimeout(onDone, 1700);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const rotateInterp = rotate.interpolate({
+    inputRange: [-1, 0, 1],
+    outputRange: ['-10deg', '0deg', '10deg'],
+  });
+
+  return (
+    <RNAnimated.View
+      style={[
+        {
+          position: 'absolute',
+          width: 140,
+          height: 140,
+          left: x - 70,
+          top: y - 70,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        {
+          opacity,
+          transform: [{ translateY }, { scale }, { rotate: rotateInterp }],
+        },
+      ]}
+      pointerEvents="none"
+    >
+      <Heart size={120} color="#EE1D52" fill="#EE1D52" />
+    </RNAnimated.View>
+  );
+}
 
 const { width: W, height: H } = Dimensions.get('window');
 const ITEM_HEIGHT = H;
@@ -87,79 +151,67 @@ function GuildPostDetailItem({
   const isVideo = post.media_type === 'video';
   const [showComments, setShowComments] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
+  const profile = useAuthStore((s) => s.profile);
 
   const { liked, count, toggle } = useLike(post.id, { liked: post.is_liked, count: post.like_count });
   const { data: commentCount = 0 } = useCommentCount(post.id, post.comment_count);
   const { bookmarked, toggle: toggleBookmark } = useBookmark(post.id);
 
+  // Like-Button-Scale (Reanimated, für den Sidebar-Button)
   const scale = useSharedValue(1);
   const animatedHeartStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
 
-  // ─ Doppel-Tap-to-Like (TikTok-Style) ─────────────────────────────────────
+  // ─ Doppel-Tap-to-Like + Floating Hearts (RN built-in Animated) ────────────
   const lastTapRef = useRef<number>(0);
-  const heartX = useSharedValue(0);
-  const heartY = useSharedValue(0);
-  const heartOpacity = useSharedValue(0);
-  const heartScale = useSharedValue(0);
-  const heartAnimStyle = useAnimatedStyle(() => ({
-    opacity: heartOpacity.value,
-    transform: [{ scale: heartScale.value }],
-    position: 'absolute',
-    left: heartX.value - 50,
-    top: heartY.value - 50,
-    width: 100,
-    height: 100,
-    alignItems: 'center',
-    justifyContent: 'center',
-    pointerEvents: 'none',
-  }));
+  const lastTapPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [hearts, setHearts] = useState<FloatingHeartItem[]>([]);
+  const heartIdRef = useRef(0);
 
-  const triggerDoubleTapLike = useCallback((x: number, y: number) => {
-    heartX.value = x;
-    heartY.value = y;
-    heartScale.value = 0;
-    heartOpacity.value = 0;
-    // Eingeblendet + groß werden, dann ausblendet
-    heartScale.value = withSequence(
-      withTiming(1.4, { duration: 120 }),
-      withTiming(1.1, { duration: 80 }),
-    );
-    heartOpacity.value = withSequence(
-      withTiming(1, { duration: 80 }),
-      withTiming(1, { duration: 300 }),
-      withTiming(0, { duration: 250 }),
-    );
-    if (!liked) toggle();
-    impactAsync(ImpactFeedbackStyle.Medium);
-  }, [heartX, heartY, heartScale, heartOpacity, liked, toggle]);
+  const spawnHeart = useCallback((x: number, y: number) => {
+    const newId = heartIdRef.current++;
+    setHearts((prev) => [...prev, { id: newId, x, y }]);
+  }, []);
+
+  // ─ Video-Fortschrittsbalken (identisch zu FeedItem) ──────────────────────────
+  const progressBarRef = useRef<VideoProgressHandle>(null);
+  const videoSeekRef = useRef<FeedVideoSeekHandle>(null);
+  const handleProgress = useCallback((p: number) => progressBarRef.current?.setProgress(p), []);
+  const handleSeek    = useCallback((frac: number) => videoSeekRef.current?.seek(frac), []);
+  const handleSeekEnd = useCallback((frac: number) => videoSeekRef.current?.seek(frac), []);
 
   const handleScreenTap = useCallback((evt: { nativeEvent: { locationX: number; locationY: number } }) => {
     const now = Date.now();
     const x = evt.nativeEvent.locationX;
     const y = evt.nativeEvent.locationY;
     if (now - lastTapRef.current < 300) {
-      // Doppel-Tap
-      triggerDoubleTapLike(x, y);
+      // Doppel-Tap → Like + Herz
+      if (!liked) toggle();
+      spawnHeart(lastTapPosRef.current.x, lastTapPosRef.current.y);
+      impactAsync(ImpactFeedbackStyle.Medium);
       lastTapRef.current = 0;
     } else {
       lastTapRef.current = now;
+      lastTapPosRef.current = { x, y };
     }
-  }, [triggerDoubleTapLike]);
+  }, [liked, toggle, spawnHeart]);
 
   const handleScreenTapVideo = useCallback((evt: { nativeEvent: { locationX: number; locationY: number } }) => {
     const now = Date.now();
     const x = evt.nativeEvent.locationX;
     const y = evt.nativeEvent.locationY;
     if (now - lastTapRef.current < 300) {
-      // Doppel-Tap = Like
-      triggerDoubleTapLike(x, y);
+      // Doppel-Tap = Like + Herz
+      if (!liked) toggle();
+      spawnHeart(lastTapPosRef.current.x, lastTapPosRef.current.y);
+      impactAsync(ImpactFeedbackStyle.Medium);
       lastTapRef.current = 0;
     } else {
       // Einfach-Tap = Mute toggle
       lastTapRef.current = now;
+      lastTapPosRef.current = { x, y };
       setIsMuted((m) => !m);
     }
-  }, [triggerDoubleTapLike]);
+  }, [liked, toggle, spawnHeart]);
 
   const handleLike = useCallback(() => {
     scale.value = withSequence(
@@ -179,17 +231,19 @@ function GuildPostDetailItem({
         isVideo ? (
           USE_EXPO_VIDEO ? (
             <NativeFeedVideo
+              ref={videoSeekRef}
               uri={post.media_url}
               shouldPlay={isActive}
               isMuted={isMuted}
-              onProgress={() => { }}
+              onProgress={handleProgress}
             />
           ) : (
             <FallbackFeedVideo
+              ref={videoSeekRef}
               uri={post.media_url}
               shouldPlay={isActive}
               isMuted={isMuted}
-              onProgress={() => { }}
+              onProgress={handleProgress}
             />
           )
         ) : (
@@ -227,10 +281,15 @@ function GuildPostDetailItem({
         onPress={isVideo ? handleScreenTapVideo : handleScreenTap}
       />
 
-      {/* Fliegendes Herz bei Doppel-Tap */}
-      <Animated.View style={heartAnimStyle} pointerEvents="none">
-        <Heart size={90} color="#F43F5E" fill="#F43F5E" strokeWidth={0} />
-      </Animated.View>
+      {/* Fliegende Herzen bei Doppel-Tap — je ein unabhängiges FloatingHeart pro Tap */}
+      {hearts.map((h) => (
+        <FloatingHeart
+          key={h.id}
+          x={h.x}
+          y={h.y}
+          onDone={() => setHearts((prev) => prev.filter((hh) => hh.id !== h.id))}
+        />
+      ))}
 
       {/* ── Top-Gradient ── */}
       <LinearGradient
@@ -259,20 +318,16 @@ function GuildPostDetailItem({
 
       {/* ── Rechte Aktionen ── */}
       <View style={[itemStyles.rightActions, { bottom: insets.bottom + 90 }]}>
-        {/* Avatar */}
-        <Pressable
+        {/* Avatar mit Story-Ring */}
+        <StoryRingAvatar
+          userId={post.author_id}
+          avatarUrl={post.avatar_url}
+          size={46}
+          initials={initials}
+          fallbackColors={guildColors}
           onPress={() => router.push({ pathname: '/user/[id]', params: { id: post.author_id } })}
-          style={itemStyles.avatarWrap}
-          hitSlop={8}
-        >
-          {post.avatar_url ? (
-            <Image source={{ uri: post.avatar_url }} style={itemStyles.avatar} contentFit="cover" />
-          ) : (
-            <LinearGradient colors={guildColors} style={itemStyles.avatar}>
-              <Text style={itemStyles.avatarText}>{initials}</Text>
-            </LinearGradient>
-          )}
-        </Pressable>
+          style={{ marginBottom: 4 }}
+        />
 
         {/* Like */}
         <Animated.View style={animatedHeartStyle}>
@@ -282,8 +337,15 @@ function GuildPostDetailItem({
           </Pressable>
         </Animated.View>
 
-        {/* Kommentar */}
-        <Pressable onPress={() => setShowComments(true)} style={itemStyles.actionItem} hitSlop={10}>
+        {/* Kommentar — öffnet CommentsSheet (Instagram-Style) */}
+        <Pressable
+          onPress={() => {
+            impactAsync(ImpactFeedbackStyle.Light);
+            setShowComments(true);
+          }}
+          style={itemStyles.actionItem}
+          hitSlop={10}
+        >
           <MessageCircle size={28} color="#fff" strokeWidth={1.8} />
           <Text style={itemStyles.actionCount}>
             {commentCount >= 1000 ? `${(commentCount / 1000).toFixed(1)}K` : commentCount}
@@ -353,6 +415,52 @@ function GuildPostDetailItem({
           router.push({ pathname: '/user/[id]', params: { id: userId } });
         }}
       />
+
+      {/* ── Video-Fortschrittsbalken — direkt über dem Kommentarfeld ── */}
+      {isVideo && (
+        <VideoProgressBar
+          ref={progressBarRef}
+          postId={post.id}
+          onSeek={handleSeek}
+          onSeekEnd={handleSeekEnd}
+          bottomOffset={insets.bottom + 52}
+        />
+      )}
+
+      {/* ── Fake-Kommentarfeld ── Öffnet CommentsSheet ── */}
+      <Pressable
+        style={[itemStyles.commentBarWrap, { paddingBottom: insets.bottom }]}
+        onPress={() => {
+          impactAsync(ImpactFeedbackStyle.Light);
+          setShowComments(true);
+        }}
+        accessibilityRole="button"
+        accessibilityLabel="Kommentare anzeigen und Kommentar schreiben"
+      >
+        <View style={itemStyles.commentBar}>
+          {/* Avatar */}
+          {profile?.avatar_url ? (
+            <Image
+              source={{ uri: profile.avatar_url }}
+              style={itemStyles.commentAvatar}
+              contentFit="cover"
+            />
+          ) : (
+            <View style={[itemStyles.commentAvatar, itemStyles.commentAvatarFallback]}>
+              <Text style={itemStyles.commentAvatarInitial}>
+                {(profile?.username ?? '?')[0].toUpperCase()}
+              </Text>
+            </View>
+          )}
+
+          {/* Fake TextInput (optisch) */}
+          <View style={itemStyles.commentInputWrap}>
+            <Text style={itemStyles.commentPlaceholder}>
+              Kommentiere als @{profile?.username ?? '...'}
+            </Text>
+          </View>
+        </View>
+      </Pressable>
     </View>
   );
 }
@@ -563,7 +671,7 @@ const itemStyles = StyleSheet.create({
   },
   bottomInfo: {
     position: 'absolute',
-    bottom: 0,
+    bottom: 80,   // Platz für die Kommentar-Eingabeleiste
     left: 0,
     right: 80,
     paddingHorizontal: 16,
@@ -609,5 +717,57 @@ const itemStyles = StyleSheet.create({
     color: 'rgba(255,255,255,0.65)',
     fontSize: 13,
     fontWeight: '600',
+  },
+
+  // ── Kommentar-Eingabe ─────────────────────────────────────────────────
+  commentBarWrap: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 30,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(255,255,255,0.08)',
+  },
+  commentBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 8,
+    gap: 10,
+  },
+  commentAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.15)',
+  },
+  commentAvatarFallback: {
+    backgroundColor: 'rgba(34,211,238,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  commentAvatarInitial: {
+    color: '#22D3EE',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  commentInputWrap: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderRadius: 22,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
+  },
+  commentPlaceholder: {
+    color: 'rgba(255,255,255,0.35)',
+    fontSize: 14,
+    lineHeight: 20,
   },
 });

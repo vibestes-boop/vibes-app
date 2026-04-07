@@ -80,8 +80,7 @@ export const profileStyles = StyleSheet.create({
     height: 82,
     borderRadius: 41,
     overflow: 'hidden',
-    borderWidth: 2.5,
-    borderColor: '#050505',
+    // kein Border → kein schwarzer Spalt zwischen Ring und Avatar
   },
   avatarImg: { width: '100%', height: '100%' },
   avatarFallback: { flex: 1, alignItems: 'center', justifyContent: 'center' },
@@ -98,6 +97,27 @@ export const profileStyles = StyleSheet.create({
     borderColor: '#050505',
   },
   storyDotActive: { backgroundColor: '#22D3EE' },
+  // TikTok-style + Badge
+  storyAddBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#22D3EE',
+    borderWidth: 2,
+    borderColor: '#050505',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  storyAddBadgeText: {
+    color: '#000',
+    fontSize: 14,
+    fontWeight: '800',
+    lineHeight: 16,
+    marginTop: -1,
+  },
 
   // Stats
   statsRow: {
@@ -135,6 +155,20 @@ export const profileStyles = StyleSheet.create({
     lineHeight: 19,
     fontWeight: '400',
   },
+  websiteRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 2,
+    alignSelf: 'flex-start',
+  },
+  websiteText: {
+    color: '#22D3EE',
+    fontSize: 13,
+    fontWeight: '500',
+    maxWidth: 220,
+  },
+
   resonanzChip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -243,13 +277,16 @@ export const profileStyles = StyleSheet.create({
   tabLabel: { color: 'rgba(255,255,255,0.55)', fontSize: 12, fontWeight: '600' },
 
   // ── Grid ──────────────────────────────────────────────────
-  grid: { flexDirection: 'row', gap: GRID_GAP, marginBottom: GRID_GAP },
-  // gridCell: flex:1 — FlashList mit numColumns verteilt den Platz via flex.
-  // KEIN festes width hier — das erzeugt Messkonflikt → 1-Spalten-Bug!
-  gridCell: { flex: 1, padding: 1 },
+  // FlatList numColumns + columnWrapperStyle={{ gap: GRID_GAP }}:
+  // explizite Breite + kein marginRight → FlatList handelt den Gap via columnWrapperStyle.
+  // Konsistent in alter UND neuer (Fabric) Architektur.
+  gridCell: {
+    width: GRID_CELL_WIDTH,
+    marginBottom: GRID_GAP,
+  },
   cell: {
-    width: '100%',         // füllt den flex-Container (gridCell) aus
-    aspectRatio: 4 / 5,   // Instagram Portrait-Format (4:5)
+    width: '100%',
+    aspectRatio: 4 / 5,
     overflow: 'hidden',
     backgroundColor: '#0D0D0D',
     position: 'relative',

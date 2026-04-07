@@ -18,7 +18,7 @@ import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import {
   useStoryHighlights, useAddHighlight, useRemoveHighlight,
-  useMyStoryArchive, type StoryHighlight, type HighlightItem,
+  useMyStoryArchive, useMyPostsForHighlight, type StoryHighlight, type HighlightItem,
 } from '@/lib/useStoryHighlights';
 import { useStoryViewerStore } from '@/lib/storyViewerStore';
 import type { StoryGroup } from '@/lib/useStories';
@@ -55,7 +55,7 @@ function HighlightBubble({
           <Image
             source={{ uri: highlight.thumbnail_url || highlight.media_url }}
             style={StyleSheet.absoluteFill}
-            contentFit="contain"
+            contentFit="cover"
           />
         ) : null}
         <LinearGradient
@@ -82,35 +82,43 @@ export function ProfileHighlightsRow({
   const { mutate: removeHighlight } = useRemoveHighlight();
   const { mutate: addHighlight, isPending: isAdding } = useAddHighlight();
   const { data: storyArchive = [] } = useMyStoryArchive();
+  const { data: postArchive = [] } = useMyPostsForHighlight();
   const openViewer = useStoryViewerStore((s) => s.open);
   const [pickerVisible, setPickerVisible] = useState(false);
+
+  // ── Highlight-Liste → StoryGroup konvertieren ─────────────────────────────
+  const toGroup = (h: StoryHighlight): StoryGroup => {
+    const itemsToShow = h.items.length > 0
+      ? h.items
+      : [{ media_url: h.media_url, media_type: h.media_type as 'image' | 'video', thumbnail_url: h.thumbnail_url }];
+    return {
+      userId: h.id,          // ← Highlight-ID (NICHT user_id!) → findIndex findet korrekte Position
+      username: h.title,
+      avatar_url: h.thumbnail_url || h.media_url,
+      hasUnviewed: false,
+      stories: itemsToShow.map((item, idx) => ({
+        // ✔ Echte story_id verwenden wenn verfügbar → useStoryLike kann Likes persistieren
+        // Fallback auf h.id-idx nur für Post-Highlights ohne story_id
+        id: h.story_id ?? `${h.id}-${idx}`,
+        user_id: h.user_id,   // ← echte user_id bleibt erhalten (für Profil-Link im Viewer)
+        media_url: item.media_url,
+        media_type: item.media_type,
+        created_at: h.created_at,
+        username: h.title,
+        avatar_url: h.thumbnail_url || h.media_url,
+        viewed: true,
+        interactive: null,
+      })),
+    };
+  };
 
   // ── Highlight im Story-Viewer öffnen ──────────────────────────────────────
   const handleHighlightPress = (h: StoryHighlight) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    // Multi-Item: alle Items des Highlights als Story-Gruppe anzeigen
-    const itemsToShow = h.items.length > 0
-      ? h.items
-      : [{ media_url: h.media_url, media_type: h.media_type as 'image' | 'video', thumbnail_url: h.thumbnail_url }];
-
-    const group: StoryGroup = {
-      userId: h.user_id,
-      username: null,
-      avatar_url: null,
-      hasUnviewed: false,
-      stories: itemsToShow.map((item, idx) => ({
-        id:         `${h.id}-${idx}`,
-        user_id:    h.user_id,
-        media_url:  item.media_url,
-        media_type: item.media_type,
-        created_at: h.created_at,
-        username:   null,
-        avatar_url: null,
-        viewed:     true,
-        interactive: null,
-      })),
-    };
-    openViewer(group, [group]);
+    // Alle Highlights als Gruppen → Viewer springt automatisch zum nächsten
+    const allGroups = highlights.map(toGroup);
+    const clickedGroup = allGroups[highlights.indexOf(h)] ?? allGroups[0];
+    openViewer(clickedGroup, allGroups);
     router.push('/story-viewer' as any);
   };
 
@@ -131,19 +139,6 @@ export function ProfileHighlightsRow({
   // ── "+" Button → Picker öffnen ───────────────────────────────────────────
   const handleAddPress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-
-    if (storyArchive.length === 0) {
-      Alert.alert(
-        'Noch keine Stories',
-        'Erstelle zuerst eine Story — oder halte einen Post lange gedrückt um ihn zu highlighten.',
-        [
-          { text: 'Abbrechen', style: 'cancel' },
-          { text: 'Story erstellen', onPress: () => router.push('/create-story' as any) },
-        ]
-      );
-      return;
-    }
-
     setPickerVisible(true);
   };
 
@@ -211,6 +206,7 @@ export function ProfileHighlightsRow({
       <HighlightPickerSheet
         visible={pickerVisible}
         stories={storyArchive}
+        posts={postArchive}
         onClose={() => setPickerVisible(false)}
         onConfirm={handlePickerConfirm}
       />
@@ -220,9 +216,9 @@ export function ProfileHighlightsRow({
 
 
 const styles = StyleSheet.create({
-  container:    { paddingBottom: 4 },
+  container: { paddingBottom: 4 },
   scrollContent: { paddingHorizontal: 16, gap: 14, paddingVertical: 10 },
-  bubble:       { alignItems: 'center', gap: 6, width: BUBBLE_SIZE },
+  bubble: { alignItems: 'center', gap: 6, width: BUBBLE_SIZE },
   bubbleThumb: {
     width: BUBBLE_SIZE, height: BUBBLE_SIZE, borderRadius: BUBBLE_SIZE / 2,
     overflow: 'hidden', borderWidth: 2, borderColor: 'rgba(34,211,238,0.45)',

@@ -22,16 +22,19 @@ CREATE INDEX IF NOT EXISTS story_highlights_user_id_idx ON public.story_highligh
 ALTER TABLE public.story_highlights ENABLE ROW LEVEL SECURITY;
 
 -- Jeder kann Highlights lesen (Profil-Ansicht)
+DROP POLICY IF EXISTS "story_highlights_select" ON public.story_highlights;
 CREATE POLICY "story_highlights_select"
   ON public.story_highlights FOR SELECT
   USING (true);
 
 -- Nur eigene Highlights anlegen
+DROP POLICY IF EXISTS "story_highlights_insert" ON public.story_highlights;
 CREATE POLICY "story_highlights_insert"
   ON public.story_highlights FOR INSERT
   WITH CHECK (auth.uid() = user_id);
 
 -- Nur eigene Highlights löschen
+DROP POLICY IF EXISTS "story_highlights_delete" ON public.story_highlights;
 CREATE POLICY "story_highlights_delete"
   ON public.story_highlights FOR DELETE
   USING (auth.uid() = user_id);

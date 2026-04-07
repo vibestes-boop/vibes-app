@@ -1,7 +1,7 @@
-import { View, Text, Pressable, Dimensions } from 'react-native';
+import { View, Text, Pressable, Dimensions, Linking } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Grid3X3, Bookmark, Share2, Edit3, Shield, BarChart2, FileText, Repeat2 } from 'lucide-react-native';
+import { Grid3X3, Bookmark, Share2, Edit3, Shield, BarChart2, FileText, Repeat2, Link, CheckCircle2 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import type { Profile } from '@/lib/authStore';
@@ -18,6 +18,7 @@ export function ProfileListHeader({
   hasStories,
   hasUnviewedStories,
   onAvatarPress,
+  onCreateStory,
   onEditProfile,
   avatarInitial,
   avgDwell,
@@ -30,7 +31,8 @@ export function ProfileListHeader({
   followCounts: { followers: number; following: number } | undefined;
   hasStories: boolean;
   hasUnviewedStories: boolean;
-  onAvatarPress: () => void;
+  onAvatarPress: () => void;  // → Stories ansehen
+  onCreateStory: () => void;  // → Story erstellen (+ Badge)
   onEditProfile: () => void;
   avatarInitial: string;
   avgDwell: number;
@@ -41,20 +43,25 @@ export function ProfileListHeader({
 }) {
   const formatCount = (n: number) =>
     n >= 1000000 ? `${(n / 1000000).toFixed(1)}M`
-    : n >= 1000 ? `${(n / 1000).toFixed(1)}K`
-    : String(n);
+      : n >= 1000 ? `${(n / 1000).toFixed(1)}K`
+        : String(n);
 
   return (
     <>
       {/* ── Avatar + Info (Instagram-Style) ── */}
       <View style={s.profileTop}>
-        {/* Avatar */}
-        <Pressable onPress={onAvatarPress} disabled={!hasStories} style={s.avatarWrap}>
+        {/* Avatar — Klick = Stories ansehen */}
+        <Pressable
+          onPress={hasStories ? onAvatarPress : undefined}
+          style={s.avatarWrap}
+        >
           <LinearGradient
             colors={
               hasStories && hasUnviewedStories
-                ? ['#22D3EE', '#A78BFA', '#F472B6']
-                : ['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.05)']
+                ? ['#22D3EE', '#A78BFA', '#F472B6']          // bunt = ungesehen
+                : hasStories
+                  ? ['rgba(255,255,255,0.3)', 'rgba(255,255,255,0.12)'] // grau = gesehen (wie StoriesRow)
+                  : ['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.03)'] // kaum sichtbar = keine Stories
             }
             style={s.avatarRing}
             start={{ x: 0, y: 1 }}
@@ -70,10 +77,14 @@ export function ProfileListHeader({
               )}
             </View>
           </LinearGradient>
-          {/* Story-Indikator */}
-          {hasStories && (
-            <View style={[s.storyDot, hasUnviewedStories && s.storyDotActive]} />
-          )}
+          {/* "+" Badge — eigener Pressable, immer sichtbar → Story erstellen */}
+          <Pressable
+            onPress={(e) => { e.stopPropagation?.(); onCreateStory(); }}
+            style={s.storyAddBadge}
+            hitSlop={6}
+          >
+            <Text style={s.storyAddBadgeText}>+</Text>
+          </Pressable>
         </Pressable>
 
         {/* Stats-Reihe */}
@@ -119,7 +130,14 @@ export function ProfileListHeader({
           <Text style={s.displayName}>
             {profile?.username ?? '…'}
           </Text>
-          {profile?.guild_id && (
+          {/* Verification Badge: goldenes Häkchen für verifizierte Creator */}
+          {profile?.is_verified && (
+            <View style={s.verifiedBadge}>
+              <CheckCircle2 size={14} color="#FBBF24" fill="rgba(251,191,36,0.15)" strokeWidth={2.5} />
+            </View>
+          )}
+          {/* Guild Badge: nur wenn kein Verification Badge */}
+          {!profile?.is_verified && profile?.guild_id && (
             <View style={s.verifiedBadge}>
               <Shield size={10} color="#22D3EE" strokeWidth={2.5} />
             </View>
@@ -127,6 +145,22 @@ export function ProfileListHeader({
         </View>
         {profile?.bio ? (
           <Text style={s.bio} numberOfLines={3}>{profile.bio}</Text>
+        ) : null}
+        {profile?.website ? (
+          <Pressable
+            onPress={() => {
+              const url = profile.website!;
+              const full = url.startsWith('http') ? url : `https://${url}`;
+              Linking.openURL(full).catch(() => { });
+            }}
+            style={s.websiteRow}
+            hitSlop={8}
+          >
+            <Link size={11} color="#22D3EE" strokeWidth={2} />
+            <Text style={s.websiteText} numberOfLines={1}>
+              {profile.website!.replace(/^https?:\/\//, '')}
+            </Text>
+          </Pressable>
         ) : null}
 
         {/* Vibescore / Resonanz */}

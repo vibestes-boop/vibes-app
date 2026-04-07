@@ -373,16 +373,14 @@ export default function MessagesScreen() {
 
   const isRefreshingAny = isRefetching || isRefetchingStories;
 
-  // Stories+Live Row als ListHeader — damit Pull-to-Refresh alles abdeckt
+  // Stories+Live Row als ListHeader — immer sichtbar (zeigt mindestens eigenen Add-Story-Button)
   const ListHeader = useMemo(() => (
-    (storyGroups.length > 0 || liveSessions.length > 0) ? (
-      <StoriesRow
-        groups={storyGroups}
-        liveSessions={liveSessions}
-        onSelectGroup={handleOpenStory}
-        onAddStory={() => router.push('/live/start' as any)}
-      />
-    ) : null
+    <StoriesRow
+      groups={storyGroups}
+      liveSessions={liveSessions}
+      onSelectGroup={handleOpenStory}
+      onAddStory={() => router.push('/live/start' as any)}
+    />
   ), [storyGroups, liveSessions, handleOpenStory, router]);
 
   return (
@@ -435,7 +433,7 @@ export default function MessagesScreen() {
               </Pressable>
             </View>
           }
-          contentContainerStyle={{ paddingBottom: 100 }}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}
           showsVerticalScrollIndicator={false}
           ItemSeparatorComponent={() => <View style={styles.separator} />}
           refreshControl={

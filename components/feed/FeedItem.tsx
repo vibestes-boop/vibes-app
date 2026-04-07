@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Dimensions, Animated as RNAnimated, PanResponder } from 'react-native';
 
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -16,6 +16,8 @@ import {
   withSpring,
   withDelay,
   withRepeat,
+  interpolate,
+  Extrapolation,
   Easing,
 } from 'react-native-reanimated';
 import {
@@ -28,12 +30,19 @@ import {
   VolumeX,
   Pause,
   Play,
+  Users,
+  Lock,
+  CheckCircle2,
+  Music2,
 } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CommentsSheet from '@/components/ui/CommentsSheet';
+import { RichText } from '@/components/ui/RichText';
 import { useLike } from '@/lib/useLike';
 import { useFollow } from '@/lib/useFollow';
-import { useRepost } from '@/lib/useRepost';
+import { useRepost, type UseRepostBatch } from '@/lib/useRepost';
+
 import { useAuthStore } from '@/lib/authStore';
 import type { FeedEngagementMaps } from '@/lib/useFeedEngagement';
 import type { UseLikeBatch } from '@/lib/useLike';
@@ -41,67 +50,371 @@ import type { StoryGroup } from '@/lib/useStories';
 import { impactAsync, notificationAsync, ImpactFeedbackStyle, NotificationFeedbackType } from 'expo-haptics';
 import { PostShareModal } from './PostShareModal';
 import { PostOptionsModal } from './PostOptionsModal';
+import { LikersSheet } from '@/components/ui/LikersSheet';
 import PostLongPressSheet from './PostLongPressSheet';
-import { FallbackFeedVideo, NativeFeedVideo, USE_EXPO_VIDEO } from './FeedVideo';
+import { FallbackFeedVideo, NativeFeedVideo, USE_EXPO_VIDEO, type FeedVideoSeekHandle } from './FeedVideo';
 import {
   ActionButton,
   BookmarkButton,
   CommentButton,
   LikeButton,
+  VoiceButton,
 } from './FeedActionButtons';
 import { feedItemStyles as styles } from './feedStyles';
+
+// ─── VideoProgressBar ───────────────────────────────────────────────────────────────
+// Isolierte Komponente — Video-Ticks (bis 60/s) lösen NUR hier einen Re-Render aus.
+// Scrubbing: Finger drücken → Balken expandiert → Drag vorwärts/rückwärts → Seek
+export interface VideoProgressHandle {
+  setProgress: (p: number) => void;
+}
+
+export const VideoProgressBar = React.memo(
+  React.forwardRef<VideoProgressHandle, {
+    postId: string;
+    onSeek?: (fraction: number) => void;
+    onSeekEnd?: (fraction: number) => void;
+    bottomOffset?: number;
+  }>(function VideoProgressBar({ onSeek, onSeekEnd, bottomOffset = 49 }, ref) {
+    const [isScrubbing, setIsScrubbing] = useState(false);
+    const trackWidth = useRef(0);
+    // Aktueller Abspiel-Fortschritt (als Ref, damit PanResponder Zugriff hat)
+    const currentFractionRef = useRef(0);
+    // Fortschritt zum Zeitpunkt des Touch-Starts (für relative Berechnung)
+    const scrubStartFractionRef = useRef(0);
+    const scrubProgress = useRef(0);
+    // Alle Animationen nativ
+    const fillWidth = useRef(new RNAnimated.Value(0)).current;
+    const trackHeight = useRef(new RNAnimated.Value(3)).current;
+    const thumbOpacity = useRef(new RNAnimated.Value(0)).current;
+    const thumbX = useRef(new RNAnimated.Value(0)).current;
+
+    React.useImperativeHandle(ref, () => ({
+      setProgress: (p: number) => {
+        if (!isScrubbing) {
+          currentFractionRef.current = p;
+          fillWidth.setValue(p * trackWidth.current);
+          thumbX.setValue(p * trackWidth.current);
+        }
+      },
+    }), [isScrubbing, fillWidth, thumbX]);
+
+    const panResponder = useRef(
+      PanResponder.create({
+        // Capture Phase: beansprucht Geste BEVOR parent-Handler (Profil-Swipe)
+        onStartShouldSetPanResponderCapture: () => true,
+        onMoveShouldSetPanResponderCapture: (_, gs) =>
+          Math.abs(gs.dx) > 4 && Math.abs(gs.dx) > Math.abs(gs.dy),
+        onStartShouldSetPanResponder: () => true,
+        onMoveShouldSetPanResponder: () => true,
+
+        onPanResponderGrant: () => {
+          setIsScrubbing(true);
+          // TikTok-Style: Merke aktuellen Fortschritt — Video springt NICHT zur Tipp-Position
+          scrubStartFractionRef.current = currentFractionRef.current;
+          scrubProgress.current = currentFractionRef.current;
+          RNAnimated.parallel([
+            RNAnimated.spring(trackHeight, { toValue: 6, useNativeDriver: false, bounciness: 0, speed: 30 }),
+            RNAnimated.timing(thumbOpacity, { toValue: 1, duration: 100, useNativeDriver: false }),
+          ]).start();
+          // Kein onSeek hier — Video springt nicht zur Tipp-Position
+        },
+
+        onPanResponderMove: (_, gs) => {
+          // Relative Berechnung: delta vom Start-Fortschritt
+          // 1 Trackbreite = 100% des Videos; dx / trackWidth = Fortschritts-Delta
+          const delta = gs.dx / (trackWidth.current || 1);
+          const frac = Math.max(0, Math.min(1, scrubStartFractionRef.current + delta));
+          scrubProgress.current = frac;
+          fillWidth.setValue(frac * trackWidth.current);
+          thumbX.setValue(frac * trackWidth.current);
+          onSeek?.(frac);
+        },
+
+        onPanResponderRelease: () => {
+          setIsScrubbing(false);
+          RNAnimated.parallel([
+            RNAnimated.spring(trackHeight, { toValue: 3, useNativeDriver: false, bounciness: 0, speed: 30 }),
+            RNAnimated.timing(thumbOpacity, { toValue: 0, duration: 150, useNativeDriver: false }),
+          ]).start();
+          onSeekEnd?.(scrubProgress.current);
+        },
+
+        onPanResponderTerminate: () => {
+          setIsScrubbing(false);
+          RNAnimated.parallel([
+            RNAnimated.spring(trackHeight, { toValue: 3, useNativeDriver: false, bounciness: 0, speed: 30 }),
+            RNAnimated.timing(thumbOpacity, { toValue: 0, duration: 150, useNativeDriver: false }),
+          ]).start();
+        },
+      })
+    ).current;
+
+    return (
+      <View
+        style={[pbStyles.hitArea, { bottom: bottomOffset }]}
+        {...panResponder.panHandlers}
+        onLayout={(e) => { trackWidth.current = e.nativeEvent.layout.width; }}
+      >
+        <RNAnimated.View style={[pbStyles.track, { height: trackHeight }]}>
+          <RNAnimated.View style={[pbStyles.fill, { width: fillWidth }]} />
+          <RNAnimated.View
+            style={[pbStyles.thumb, { left: thumbX, opacity: thumbOpacity }]}
+          />
+        </RNAnimated.View>
+      </View>
+    );
+  })
+);
+
+const pbStyles = StyleSheet.create({
+  hitArea: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 28,
+    justifyContent: 'flex-end',
+    zIndex: 35,
+  },
+
+  track: {
+    width: '100%',
+    backgroundColor: 'rgba(255,255,255,0.35)',
+    borderRadius: 3,
+    overflow: 'visible',
+  },
+  fill: {
+    height: '100%',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 3,
+  },
+  thumb: {
+    position: 'absolute',
+    top: '50%',
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: '#fff',
+    marginTop: -7,
+    marginLeft: -7,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.4,
+    shadowRadius: 3,
+    elevation: 4,
+  },
+});
+
 import type { FeedItemData } from './types';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 // Muss mit CommentsSheet SHEET_TOP (0.22) übereinstimmen:
 const COMMENTS_PEEK_H = Math.round(SCREEN_H * 0.22);
 
+// ─── Music Vinyl Badge ─────────────────────────────────────────────────────────
+function MusicVinylBadge({ trackTitle }: { trackTitle: string }) {
+  const rotation = useSharedValue(0);
+
+  useEffect(() => {
+    rotation.value = withRepeat(
+      withTiming(360, { duration: 4000, easing: Easing.linear }),
+      -1,
+      false,
+    );
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const spinStyle = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${rotation.value}deg` }],
+  }));
+
+  return (
+    <View style={vinylStyles.row}>
+      {/* Rotating vinyl disc */}
+      <Animated.View style={[vinylStyles.disc, spinStyle]}>
+        <LinearGradient
+          colors={['#1a1a2e', '#A78BFA', '#1a1a2e']}
+          style={vinylStyles.discGrad}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <View style={vinylStyles.discHole} />
+        </LinearGradient>
+      </Animated.View>
+      {/* Track name */}
+      <Music2 size={10} color="rgba(255,255,255,0.6)" strokeWidth={2} />
+      <Text style={vinylStyles.trackName} numberOfLines={1}>{trackTitle}</Text>
+    </View>
+  );
+}
+
+const vinylStyles = StyleSheet.create({
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 6,
+    maxWidth: '80%',
+  },
+  disc: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    overflow: 'hidden',
+  },
+  discGrad: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  discHole: {
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
+    backgroundColor: '#050508',
+  },
+  trackName: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 11,
+    fontWeight: '600',
+    flex: 1,
+  },
+});
+
+// ─── Expandable Caption ────────────────────────────────────────────────────────
+const COLLAPSED_LINES = 2;
+
+function ExpandableCaption({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const [isTruncated, setIsTruncated] = useState(false);
+  const btnOpacity = useSharedValue(1);
+
+  const btnStyle = useAnimatedStyle(() => ({
+    opacity: btnOpacity.value,
+  }));
+
+  const handleToggle = () => {
+    btnOpacity.value = withSequence(
+      withTiming(0.4, { duration: 80 }),
+      withTiming(1, { duration: 80 })
+    );
+    setExpanded((e) => !e);
+  };
+
+  return (
+    <View>
+      <RichText
+        text={text}
+        style={captionStyles.text}
+        numberOfLines={expanded ? undefined : COLLAPSED_LINES}
+        onTextLayout={(e) => {
+          if (!expanded) setIsTruncated(e.nativeEvent.lines.length >= COLLAPSED_LINES);
+        }}
+      />
+      {isTruncated && (
+        <Animated.View style={btnStyle}>
+          <Pressable onPress={handleToggle} hitSlop={8}>
+            <Text style={captionStyles.toggle}>
+              {expanded ? 'weniger' : 'mehr anzeigen'}
+            </Text>
+          </Pressable>
+        </Animated.View>
+      )}
+    </View>
+  );
+}
+
+const captionStyles = StyleSheet.create({
+  text: {
+    color: 'rgba(255,255,255,0.92)',
+    fontSize: 13,
+    fontWeight: '400',
+    lineHeight: 18,
+  },
+  toggle: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 3,
+  },
+});
+
 
 // ─── Floating Heart — eigenständige Komponente pro Tap ────────────────────────
 type FloatingHeartItem = { id: number; x: number; y: number };
 
 function FloatingHeart({ x, y, onDone }: { x: number; y: number; onDone: () => void }) {
-  const scale = useSharedValue(0);
-  const floatY = useSharedValue(0);
-  const rot = useSharedValue(0);
-  const opacity = useSharedValue(0);
+  const opacity = useRef(new RNAnimated.Value(1)).current;
+  const scale = useRef(new RNAnimated.Value(0)).current;
+  const translateY = useRef(new RNAnimated.Value(0)).current;
+  const rotate = useRef(new RNAnimated.Value(0)).current;
 
   useEffect(() => {
-    scale.value = withSequence(
-      withSpring(1.5, { damping: 7, stiffness: 220 }),
-      withTiming(1.15, { duration: 150, easing: Easing.out(Easing.cubic) })
-    );
-    floatY.value = withTiming(-110, { duration: 1700, easing: Easing.out(Easing.quad) });
-    rot.value = withRepeat(
-      withSequence(withTiming(-8, { duration: 180 }), withTiming(8, { duration: 180 })),
-      4, true
-    );
-    opacity.value = withSequence(
-      withTiming(1, { duration: 0 }),
-      withDelay(900, withTiming(0, { duration: 800 }))
-    );
-    const t = setTimeout(onDone, 1750);
+    // Einflug: schnelles Spring + gleichzeitiges Hochfloaten + Drehen + Ausblenden
+    RNAnimated.parallel([
+      // Scale: spring rein
+      RNAnimated.spring(scale, {
+        toValue: 1,
+        friction: 4,
+        tension: 180,
+        useNativeDriver: true,
+      }),
+      // Hochfloaten
+      RNAnimated.timing(translateY, {
+        toValue: -130,
+        duration: 1600,
+        useNativeDriver: true,
+      }),
+      // Wackeln: 4x links-rechts
+      RNAnimated.sequence([
+        RNAnimated.timing(rotate, { toValue: -1, duration: 120, useNativeDriver: true }),
+        RNAnimated.timing(rotate, { toValue: 1, duration: 120, useNativeDriver: true }),
+        RNAnimated.timing(rotate, { toValue: -1, duration: 120, useNativeDriver: true }),
+        RNAnimated.timing(rotate, { toValue: 1, duration: 120, useNativeDriver: true }),
+        RNAnimated.timing(rotate, { toValue: 0, duration: 100, useNativeDriver: true }),
+      ]),
+      // Nach 900ms ausblenden
+      RNAnimated.sequence([
+        RNAnimated.delay(900),
+        RNAnimated.timing(opacity, { toValue: 0, duration: 700, useNativeDriver: true }),
+      ]),
+    ]).start();
+
+    const t = setTimeout(onDone, 1700);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const style = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: x - 60 },
-      { translateY: y - 60 + floatY.value },
-      { scale: scale.value },
-      { rotate: `${rot.value}deg` },
-    ],
-    opacity: opacity.value,
-  }));
+  const rotateInterp = rotate.interpolate({
+    inputRange: [-1, 0, 1],
+    outputRange: ['-10deg', '0deg', '10deg'],
+  });
 
   return (
-    <Animated.View
-      style={[{ position: 'absolute', width: 120, height: 120, left: 0, top: 0 }, style]}
+    <RNAnimated.View
+      style={[
+        {
+          position: 'absolute',
+          width: 120,
+          height: 120,
+          left: x - 60,
+          top: y - 60,
+          alignItems: 'center',
+          justifyContent: 'center',
+        },
+        {
+          opacity,
+          transform: [
+            { translateY },
+            { scale },
+            { rotate: rotateInterp },
+          ],
+        },
+      ]}
       pointerEvents="none"
     >
       <Heart size={90} color="#EE1D52" fill="#EE1D52" />
-    </Animated.View>
+    </RNAnimated.View>
   );
 }
 
@@ -125,13 +438,77 @@ export const FeedItem = React.memo(function FeedItem({
   engagement: FeedEngagementMaps;
 }) {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [longPressOpen, setLongPressOpen] = useState(false);
-  const [progress, setProgress] = useState(0);
+  const [likersOpen, setLikersOpen] = useState(false);
+  // progress wurde in VideoProgressBar ausgelagert — kein Re-Render des ganzen FeedItem mehr
   const [imageError, setImageError] = useState(false);
   const isVideo = item.mediaType === 'video';
+
+  // ── Musik-Track: Inline Audio-Playback (expo-av) ──────────────────────────
+  // Lautstärke kommt aus DB (audio_volume), gesetzt vom Creator im Picker
+  const audioSoundRef = useRef<any>(null);
+  const audioUrl = typeof item.audioUrl === 'string' && item.audioUrl.startsWith('http')
+    ? item.audioUrl
+    : null;
+  // Volume aus DB lesen (0..1), Fallback 0.8
+  const audioVolume = typeof item.audioVolume === 'number'
+    ? Math.max(0, Math.min(1, item.audioVolume))
+    : 0.8;
+
+  useEffect(() => {
+    if (!audioUrl) return;
+    if (!shouldPlayVideo) {
+      // Post verlassen → Sound stoppen
+      audioSoundRef.current?.stopAsync?.().catch(() => {});
+      audioSoundRef.current?.unloadAsync?.().catch(() => {});
+      audioSoundRef.current = null;
+      return;
+    }
+
+    let cancelled = false;
+    console.log('[FeedAudio] ▶ Starte:', audioUrl.slice(-40), 'Vol:', audioVolume);
+
+    (async () => {
+      try {
+        const avMod = require('expo-av') as any;
+        const { Audio } = avMod;
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: false,
+        });
+        if (cancelled) return;
+        const { sound } = await Audio.Sound.createAsync(
+          { uri: audioUrl },
+          { isLooping: true, volume: audioVolume },  // ← vom Creator gesetzt
+        );
+        if (cancelled) { sound.unloadAsync?.(); return; }
+        audioSoundRef.current = sound;
+        await sound.playAsync();
+        console.log('[FeedAudio] ✅ Spielt mit Vol:', audioVolume);
+      } catch (err) {
+        console.warn('[FeedAudio] ❌ Fehler:', err);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      audioSoundRef.current?.stopAsync?.().catch(() => {});
+      audioSoundRef.current?.unloadAsync?.().catch(() => {});
+      audioSoundRef.current = null;
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audioUrl, shouldPlayVideo]);
+
+  // Mute/Unmute: Lautstärke der Musik live anpassen wenn User den Button drückt
+  useEffect(() => {
+    if (!audioSoundRef.current) return;
+    const targetVol = isMuted ? 0 : audioVolume;
+    audioSoundRef.current.setVolumeAsync?.(targetVol).catch(() => {});
+  }, [isMuted, audioVolume]);
 
   const currentUserId = useAuthStore((s) => s.profile?.id);
   const likeBatch: UseLikeBatch = {
@@ -147,8 +524,12 @@ export const FeedItem = React.memo(function FeedItem({
   const lastTap = useRef<number>(0);
   const lastTapPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const navTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const repostBatch: UseRepostBatch = {
+    isReposted: engagement.repostedByPost[item.id] ?? false,
+    count: 0, // Repost-Count nicht im Batch — wird beim ersten Toggle nachgeladen
+  };
   const { liked, formattedCount: likeFormatted, toggle: toggleLike } = useLike(item.id, likeBatch);
-  const { isReposted, count: repostCount, toggle: toggleRepost } = useRepost(item.id);
+  const { isReposted, count: repostCount, toggle: toggleRepost } = useRepost(item.id, repostBatch);
 
   const [hearts, setHearts] = useState<FloatingHeartItem[]>([]);
   const heartIdRef = useRef(0);
@@ -167,16 +548,25 @@ export const FeedItem = React.memo(function FeedItem({
 
 
   // ── Media-Resize wenn Comments öffnet (TikTok-Style) ──────────────────────
-  const mediaH = useSharedValue(SCREEN_H);
+  // sheetProgress: 0 = geschlossen (Post voll), 1 = offen (Post klein)
+  // Wird direkt von CommentsSheet gesteuert → perfekte Synchronisation
+  const sheetProgress = useSharedValue(0);
+
+  // Öffnen: progress auf 1 animieren
   useEffect(() => {
-    mediaH.value = withSpring(
-      commentsOpen ? COMMENTS_PEEK_H : SCREEN_H,
-      { damping: 22, stiffness: 180, mass: 0.8 },
-    );
-  }, [commentsOpen, mediaH]);
+    if (commentsOpen) {
+      sheetProgress.value = withSpring(1, { damping: 22, stiffness: 180, mass: 0.8 });
+    }
+    // Schließen passiert via sheetProgress direkt aus CommentsSheet (Drag)
+  }, [commentsOpen, sheetProgress]);
 
   const mediaAnimStyle = useAnimatedStyle(() => ({
-    height: mediaH.value,
+    height: interpolate(
+      sheetProgress.value,
+      [0, 1],
+      [SCREEN_H, COMMENTS_PEEK_H],
+      Extrapolation.CLAMP,
+    ),
     overflow: 'hidden',
   }));
 
@@ -225,7 +615,14 @@ export const FeedItem = React.memo(function FeedItem({
     // Bei Bildern: nichts tun beim einfachen Tap
   };
 
-  const handleProgress = useCallback((p: number) => setProgress(p), []);
+  // handleProgress delegiert an isolierte VideoProgressBar — FeedItem re-rendert NICHT bei Video-Ticks
+  const progressBarRef = useRef<VideoProgressHandle>(null);
+  const handleProgress = useCallback((p: number) => progressBarRef.current?.setProgress(p), []);
+
+  // Seek-Ref: FeedVideo exposed seek(fraction) für den scrubbbaren Fortschrittsbalken
+  const videoSeekRef = useRef<FeedVideoSeekHandle>(null);
+  const handleSeek = useCallback((frac: number) => videoSeekRef.current?.seek(frac), []);
+  const handleSeekEnd = useCallback((frac: number) => videoSeekRef.current?.seek(frac), []);
 
   return (
     <Animated.View style={[styles.feedItem, mediaAnimStyle]}>
@@ -236,6 +633,7 @@ export const FeedItem = React.memo(function FeedItem({
           source={{ uri: item.mediaUrl }}
           style={StyleSheet.absoluteFill}
           contentFit="cover"
+          cachePolicy="memory-disk"
           onError={() => setImageError(true)}
         />
       )}
@@ -262,17 +660,21 @@ export const FeedItem = React.memo(function FeedItem({
         {item.mediaUrl && isVideo && (
           USE_EXPO_VIDEO ? (
             <NativeFeedVideo
+              ref={videoSeekRef}
               uri={item.mediaUrl}
               shouldPlay={actualShouldPlay}
               isMuted={isMuted}
               onProgress={handleProgress}
+              thumbnailUrl={item.thumbnailUrl}
             />
           ) : (
             <FallbackFeedVideo
+              ref={videoSeekRef}
               uri={item.mediaUrl}
               shouldPlay={actualShouldPlay}
               isMuted={isMuted}
               onProgress={handleProgress}
+              thumbnailUrl={item.thumbnailUrl}
             />
           )
         )}
@@ -304,22 +706,8 @@ export const FeedItem = React.memo(function FeedItem({
           </View>
         )}
 
-        {/* Sound-Button — unten rechts auf dem Video, wie Instagram */}
-        {isVideo && (
-          <Pressable
-            onPress={(e) => { e.stopPropagation?.(); onMuteToggle(); }}
-            style={styles.muteBtn}
-            hitSlop={14}
-            accessibilityRole="button"
-            accessibilityLabel={isMuted ? 'Ton einschalten' : 'Ton ausschalten'}
-          >
-            <View style={styles.muteBtnInner}>
-              {isMuted
-                ? <VolumeX size={16} color="#fff" strokeWidth={2.2} />
-                : <Volume2 size={16} color="#fff" strokeWidth={2.2} />}
-            </View>
-          </Pressable>
-        )}
+        {/* Sound-Button → jetzt in der rightActions-Spalte über dem Like-Button */}
+
       </Pressable>
 
       <PostShareModal
@@ -342,6 +730,8 @@ export const FeedItem = React.memo(function FeedItem({
         isFollowing={isFollowing}
         isOwnProfile={isOwnProfile}
         authorName={item.author}
+        mediaType={item.mediaType ?? undefined}
+        mediaUrl={item.mediaUrl ?? undefined}
         onToggleFollow={() => {
           toggleFollow();
           notificationAsync(NotificationFeedbackType.Success);
@@ -371,15 +761,26 @@ export const FeedItem = React.memo(function FeedItem({
         postId={item.id}
         visible={commentsOpen}
         onClose={() => setCommentsOpen(false)}
+        sheetProgress={sheetProgress}
         mediaUrl={item.mediaUrl}
         mediaType={item.mediaType}
+        creatorUserId={item.authorId}
         onUserPress={(userId) => {
           setCommentsOpen(false);
           router.push({ pathname: '/user/[id]', params: { id: userId } });
         }}
       />
 
-      <View style={styles.bottomInfo} pointerEvents="box-none">
+      <LikersSheet
+        postId={item.id}
+        visible={likersOpen}
+        onClose={() => setLikersOpen(false)}
+      />
+
+      <View
+        style={[styles.bottomInfo, { paddingBottom: insets.bottom + 52 }]}
+        pointerEvents="box-none"
+      >
         <LinearGradient
           colors={['transparent', 'rgba(0,0,0,0.25)', 'rgba(0,0,0,0.65)']}
           style={StyleSheet.absoluteFill}
@@ -393,7 +794,10 @@ export const FeedItem = React.memo(function FeedItem({
         <View style={styles.authorRow}>
           <Pressable
             onPress={() => {
-              if (storyGroup && onOpenStory) {
+              // TikTok-Style:
+              // • hasUnviewed → Story-Viewer öffnen
+              // • alle gesehen (kein Ring) → direkt auf Profil
+              if (storyGroup?.hasUnviewed && onOpenStory) {
                 impactAsync(ImpactFeedbackStyle.Light);
                 onOpenStory(storyGroup);
               } else if (item.authorId) {
@@ -403,73 +807,79 @@ export const FeedItem = React.memo(function FeedItem({
             hitSlop={8}
             style={styles.authorAvatarWrap}
           >
-            {storyGroup ? (
-              storyGroup.hasUnviewed ? (
-                <LinearGradient
-                  colors={['#22D3EE', '#F472B6', '#FB923C']}
-                  style={styles.storyRingGradient}
-                  start={{ x: 0, y: 1 }}
-                  end={{ x: 1, y: 0 }}
-                >
-                  <View style={styles.storyRingGap}>
-                    {item.avatarUrl ? (
-                      <Image source={{ uri: item.avatarUrl }} style={styles.authorAvatar} />
-                    ) : (
-                      <View style={[styles.authorAvatar, styles.authorAvatarFallback]}>
-                        <Text style={styles.authorAvatarInitial}>{(item.author[1] ?? '?').toUpperCase()}</Text>
-                      </View>
-                    )}
-                  </View>
-                </LinearGradient>
-              ) : (
-                <View style={styles.storyRingViewed}>
-                  <View style={styles.storyRingGap}>
-                    {item.avatarUrl ? (
-                      <Image source={{ uri: item.avatarUrl }} style={styles.authorAvatar} />
-                    ) : (
-                      <View style={[styles.authorAvatar, styles.authorAvatarFallback]}>
-                        <Text style={styles.authorAvatarInitial}>{(item.author[1] ?? '?').toUpperCase()}</Text>
-                      </View>
-                    )}
-                  </View>
+            {storyGroup?.hasUnviewed ? (
+              /* Bunter Ring = ungesehene Stories → Klick öffnet Viewer */
+              <LinearGradient
+                colors={['#22D3EE', '#F472B6', '#FB923C']}
+                style={styles.storyRingGradient}
+                start={{ x: 0, y: 1 }}
+                end={{ x: 1, y: 0 }}
+              >
+                <View style={styles.storyRingGap}>
+                  {item.avatarUrl ? (
+                    <Image source={{ uri: item.avatarUrl }} style={[styles.authorAvatar, { width: '100%', height: '100%' }]} cachePolicy="memory-disk" />
+                  ) : (
+                    <View style={[styles.authorAvatar, styles.authorAvatarFallback, { width: '100%', height: '100%' }]}>
+                      <Text style={styles.authorAvatarInitial}>{(item.author[1] ?? '?').toUpperCase()}</Text>
+                    </View>
+                  )}
                 </View>
-              )
+              </LinearGradient>
             ) : item.avatarUrl ? (
-              <Image source={{ uri: item.avatarUrl }} style={styles.authorAvatar} />
+              /* Kein Ring (alle gesehen oder keine Stories) → einfacher Avatar, Klick → Profil */
+              <Image source={{ uri: item.avatarUrl }} style={styles.authorAvatar} cachePolicy="memory-disk" />
             ) : (
               <View style={[styles.authorAvatar, styles.authorAvatarFallback]}>
                 <Text style={styles.authorAvatarInitial}>{(item.author[1] ?? '?').toUpperCase()}</Text>
               </View>
             )}
-            {!isOwnProfile && (
+            {/* TikTok-Style: "+" nur wenn NOCH NICHT gefolgt. Entfolgen → nur auf dem Profil. */}
+            {!isOwnProfile && !isFollowing && (
               <Pressable
                 onPress={() => {
                   impactAsync(ImpactFeedbackStyle.Light);
                   toggleFollow();
                 }}
-                style={[styles.followBadge, isFollowing && styles.followBadgeActive]}
+                style={styles.followBadge}
                 hitSlop={6}
                 accessibilityRole="button"
-                accessibilityLabel={isFollowing ? `${item.author} entfolgen` : `${item.author} folgen`}
-                accessibilityState={{ selected: isFollowing }}
+                accessibilityLabel={`${item.author} folgen`}
               >
-                {isFollowing ? <UserCheck size={10} color="#fff" /> : <Text style={styles.followBadgePlus}>+</Text>}
+                <Text style={styles.followBadgePlus}>+</Text>
               </Pressable>
             )}
           </Pressable>
           <Pressable
             onPress={() => item.authorId && router.push({ pathname: '/user/[id]', params: { id: item.authorId } })}
             hitSlop={8}
+            style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
           >
             <Text style={styles.authorName}>{item.author}</Text>
+            {/* Goldenes Häkchen für verifizierte Creator */}
+            {item.isVerified && (
+              <CheckCircle2 size={13} color="#FBBF24" fill="rgba(251,191,36,0.2)" strokeWidth={2.5} />
+            )}
           </Pressable>
+          {/* Privacy Badge: nur bei nicht-öffentlichen Posts sichtbar */}
+          {item.privacy && item.privacy !== 'public' && (
+            <View style={styles.privacyBadge}>
+              {item.privacy === 'friends' ? (
+                <Users size={9} color="rgba(255,255,255,0.6)" strokeWidth={2} />
+              ) : (
+                <Lock size={9} color="rgba(255,255,255,0.6)" strokeWidth={2} />
+              )}
+              <Text style={styles.privacyBadgeText}>
+                {item.privacy === 'friends' ? 'Follower' : 'Privat'}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* ── Caption + Hashtags — vertikal unterhalb des Nicknamens (TikTok-Style) ── */}
         {(item.caption || (item.tags && item.tags.length > 0)) && (
           <View style={styles.captionBlock}>
             {item.caption ? (
-              <Text style={styles.caption} numberOfLines={3}>{item.caption}</Text>
+              <ExpandableCaption text={item.caption} />
             ) : null}
             {item.tags && item.tags.length > 0 && (
               <View style={styles.tagsRow}>
@@ -487,20 +897,51 @@ export const FeedItem = React.memo(function FeedItem({
           </View>
         )}
 
-        {isVideo && (
-          <View style={styles.progressTrack}>
-            <View style={[styles.progressFill, { transform: [{ scaleX: progress }], transformOrigin: 'left' }]} />
-          </View>
+        {/* ── Musik-Badge (TikTok-Style rotierendes Vinyl) ── */}
+        {item.audioTitle && (
+          <MusicVinylBadge trackTitle={item.audioTitle} />
         )}
+
       </View>
 
-      <View style={styles.rightActions}>
-        {/* Mute-Button ist jetzt auf dem Video (s.o.) — hier entfernt */}
+      {/* Progress Bar — absolut über Tab-Bar */}
+      {isVideo && (
+        <VideoProgressBar
+          ref={progressBarRef}
+          postId={item.id}
+          onSeek={handleSeek}
+          onSeekEnd={handleSeekEnd}
+          bottomOffset={insets.bottom + 49}
+        />
+      )}
+
+      <View style={[styles.rightActions, { bottom: insets.bottom + 50 }]}>
+        {/* Mute-Button — für Videos UND für Bild-Posts mit Musik-Track */}
+        {(isVideo || audioUrl) && (
+          <>
+            <Pressable
+              onPress={(e) => { e.stopPropagation?.(); onMuteToggle(); }}
+              style={styles.actionBtn}
+              hitSlop={14}
+              accessibilityRole="button"
+              accessibilityLabel={isMuted ? 'Ton einschalten' : 'Ton ausschalten'}
+            >
+              <View style={styles.muteBtnInner}>
+                {isMuted
+                  ? <VolumeX size={18} color="rgba(255,255,255,0.7)" strokeWidth={2} />
+                  : <Volume2 size={18} color="rgba(255,255,255,0.7)" strokeWidth={2} />}
+              </View>
+            </Pressable>
+            {/* Separator */}
+            <View style={styles.muteSeparator} />
+          </>
+        )}
         <LikeButton
           accentColor={item.accentColor}
           liked={liked}
           formattedCount={likeFormatted}
           onToggle={toggleLike}
+          onCountPress={() => setLikersOpen(true)}
         />
         <CommentButton
           postId={item.id}
@@ -508,6 +949,8 @@ export const FeedItem = React.memo(function FeedItem({
           batchCount={engagement.commentCountByPost[item.id]}
         />
         <BookmarkButton postId={item.id} batchBookmarked={engagement.bookmarkedByPost[item.id]} />
+        {/* Voice-Reader: deaktiviert — für spätere AI-Narration Feature */}
+        {/* !!item.caption && <VoiceButton postId={item.id} caption={item.caption} creatorUserId={item.authorId} /> */}
         {/* Repost — nur bei fremden Posts */}
         {!isOwnProfile && (
           <ActionButton
@@ -539,6 +982,7 @@ export const FeedItem = React.memo(function FeedItem({
           }}
         />
       </View>
+
     </Animated.View>
   );
 });

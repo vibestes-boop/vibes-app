@@ -56,24 +56,30 @@ export class ErrorBoundary extends React.Component<React.PropsWithChildren, Stat
       <View style={styles.container}>
         <Text style={styles.icon}>⚠️</Text>
         <Text style={styles.title}>Ups, etwas ist schiefgelaufen</Text>
-        {/* Error message */}
-        <View style={styles.devBox}>
-          <Text style={styles.devText}>
-            {'💥 ' + errMsg}
+
+        {/* Technische Details NUR im Dev-Modus anzeigen */}
+        {__DEV__ ? (
+          <>
+            <View style={styles.devBox}>
+              <Text style={styles.devText}>{'💥 ' + errMsg}</Text>
+            </View>
+            <View style={[styles.devBox, { borderColor: '#854d0e' }]}>
+              <Text style={[styles.devText, { color: '#fde68a' }]}>
+                {'📋 STACK:\n' + errStack.slice(0, 600)}
+              </Text>
+            </View>
+            <View style={[styles.devBox, { borderColor: '#3730a3' }]}>
+              <Text style={[styles.devText, { color: '#a5b4fc' }]}>
+                {'📍 TREE:\n' + compStack.slice(0, 400)}
+              </Text>
+            </View>
+          </>
+        ) : (
+          <Text style={styles.sub}>
+            Bitte starte die App neu. Falls das Problem weiterhin besteht, kontaktiere uns.
           </Text>
-        </View>
-        {/* JS Call Stack — most important for diagnosis */}
-        <View style={[styles.devBox, { borderColor: '#854d0e' }]}>
-          <Text style={[styles.devText, { color: '#fde68a' }]}>
-            {'📋 STACK:\n' + errStack.slice(0, 600)}
-          </Text>
-        </View>
-        {/* React component tree */}
-        <View style={[styles.devBox, { borderColor: '#3730a3' }]}>
-          <Text style={[styles.devText, { color: '#a5b4fc' }]}>
-            {'📍 TREE:\n' + compStack.slice(0, 400)}
-          </Text>
-        </View>
+        )}
+
         <Pressable style={styles.btn} onPress={this.handleReset}>
           <Text style={styles.btnText}>↺ Neu starten</Text>
         </Pressable>

@@ -7,6 +7,7 @@ export type Profile = {
   id: string;
   username: string;
   bio: string | null;
+  website: string | null;
   avatar_url: string | null;
   guild_id: string | null;
   explore_vibe: number;
@@ -14,7 +15,11 @@ export type Profile = {
   created_at: string;
   onboarding_complete: boolean | null;
   preferred_tags: string[] | null;
+  voice_sample_url: string | null;
+  is_verified?: boolean | null;  // Goldenes Häkchen — nach is_verified Migration
+  is_private?: boolean | null;   // Privates Konto
 };
+
 
 type AuthStore = {
   session: Session | null;

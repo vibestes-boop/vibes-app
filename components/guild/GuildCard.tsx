@@ -23,6 +23,8 @@ import { useBookmark } from '@/lib/useBookmark';
 import { sharePost } from '@/lib/useShare';
 import type { GuildPost } from '@/lib/usePosts';
 import { guildStyles as styles } from './guildStyles';
+import { useVideoMute } from '@/lib/useVideoPreferences';
+import { StoryRingAvatar } from '@/components/ui/StoryRingAvatar';
 
 function formatRelativeTime(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
@@ -47,7 +49,7 @@ export const GuildCard = React.memo(function GuildCard({
   const { data: commentCount = 0 } = useCommentCount(post.id, post.comment_count);
   const { bookmarked, toggle: toggleBookmark } = useBookmark(post.id);
   const [showComments, setShowComments] = useState(false);
-  const [isMuted, setIsMuted] = useState(false); // Videos starten mit Ton
+  const { isMuted, toggleMute } = useVideoMute(); // Global: alle GuildCards teilen denselben Zustand
   const isVideo = post.media_type === 'video';
   const scale = useSharedValue(1);
   const [c0, c1] = guildColors;
@@ -86,19 +88,14 @@ export const GuildCard = React.memo(function GuildCard({
 
         {/* Header */}
         <View style={styles.cardHeader}>
-          <Pressable
+          <StoryRingAvatar
+            userId={post.author_id}
+            avatarUrl={post.avatar_url}
+            size={40}
+            initials={initials}
+            fallbackColors={guildColors}
             onPress={() => router.push({ pathname: '/user/[id]', params: { id: post.author_id } })}
-            style={styles.avatarWrap}
-            hitSlop={8}
-          >
-            {post.avatar_url ? (
-              <Image source={{ uri: post.avatar_url }} style={styles.avatar} contentFit="cover" />
-            ) : (
-              <LinearGradient colors={guildColors} style={styles.avatar}>
-                <Text style={styles.avatarText}>{initials}</Text>
-              </LinearGradient>
-            )}
-          </Pressable>
+          />
           <View style={{ flex: 1 }}>
             <Pressable
               onPress={() => router.push({ pathname: '/user/[id]', params: { id: post.author_id } })}
@@ -152,7 +149,7 @@ export const GuildCard = React.memo(function GuildCard({
                 <Pressable
                   onPress={(e) => {
                     e.stopPropagation();
-                    setIsMuted((m) => !m);
+                    toggleMute();
                   }}
                   style={v.muteBtn}
                   hitSlop={12}

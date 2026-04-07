@@ -24,16 +24,19 @@ CREATE INDEX IF NOT EXISTS follow_requests_sender_idx   ON public.follow_request
 ALTER TABLE public.follow_requests ENABLE ROW LEVEL SECURITY;
 
 -- Jeder kann eigene gesendete und empfangene Requests sehen
+DROP POLICY IF EXISTS "follow_requests_select" ON public.follow_requests;
 CREATE POLICY "follow_requests_select"
   ON public.follow_requests FOR SELECT
   USING (auth.uid() = sender_id OR auth.uid() = receiver_id);
 
 -- Nur eigene Requests senden (nicht doppelt – unique constraint greift)
+DROP POLICY IF EXISTS "follow_requests_insert" ON public.follow_requests;
 CREATE POLICY "follow_requests_insert"
   ON public.follow_requests FOR INSERT
   WITH CHECK (auth.uid() = sender_id AND sender_id != receiver_id);
 
 -- Empfänger oder Absender können Request löschen (ablehnen / zurückziehen)
+DROP POLICY IF EXISTS "follow_requests_delete" ON public.follow_requests;
 CREATE POLICY "follow_requests_delete"
   ON public.follow_requests FOR DELETE
   USING (auth.uid() = sender_id OR auth.uid() = receiver_id);

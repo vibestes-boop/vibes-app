@@ -21,10 +21,10 @@ const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
 
 import { impactAsync, ImpactFeedbackStyle } from 'expo-haptics';
-import { Search, AlertTriangle, SearchX, TrendingUp } from 'lucide-react-native';
+import { Search, AlertTriangle, SearchX, TrendingUp, Zap } from 'lucide-react-native';
 import TuneMyVibeOverlay from '@/components/ui/TuneMyVibeOverlay';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { useVibeFeed, useTrendingFeed } from '@/lib/usePosts';
+import { useVibeFeed, useTrendingFeed, useFollowingFeed } from '@/lib/usePosts';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/lib/authStore';
 import { CategoryFilter } from '@/components/ui/CategoryFilter';
@@ -36,6 +36,7 @@ import { useActiveLiveSessions } from '@/lib/useLiveSession';
 import type { LiveSession } from '@/lib/useLiveSession';
 import { useTabRefreshStore, vibesFeedActions } from '@/lib/useTabRefresh';
 import { FeedItem } from '@/components/feed/FeedItem';
+import { Image } from 'expo-image';
 import { FeedSkeleton } from '@/components/feed/FeedSkeleton';
 import { vibeFeedScreenStyles as styles } from '@/components/feed/feedStyles';
 import { FEED_VIDEO_VIEWABILITY, SCREEN_HEIGHT } from '@/components/feed/feedConstants';
@@ -43,6 +44,8 @@ import type { FeedItemData } from '@/components/feed/types';
 import { UserProfileContent } from '@/components/profile/UserProfileContent';
 import { LiveFeedCard } from '@/components/live/LiveFeedCard';
 import { useFeedNavStore } from '@/lib/feedNavStore';
+import { useVideoMute } from '@/lib/useVideoPreferences';
+import { getTitleFromUrl } from '@/lib/useMusicPicker';
 
 type FeedRow =
   | { __type: 'post'; id: string; data: FeedItemData }
@@ -57,8 +60,9 @@ export default function VibeFeedScreen() {
   const [overlayVisible, setOverlayVisible] = useState(false);
   const [screenFocused, setScreenFocused] = useState(true);
   const [visibleItemId, setVisibleItemId] = useState<string | null>(null);
-  const [isMuted, setIsMuted] = useState(false);
+  const { isMuted, toggleMute } = useVideoMute();
   const [hasNewPosts, setHasNewPosts] = useState(false);
+  const [feedMode, setFeedMode] = useState<'foryou' | 'following'>('foryou');
 
   // ── TikTok-Style: Finger-folgendes Profil-Panel ─────────────────────
   // Refs wegen stale closure (PanResponder wird nur einmal erstellt)
@@ -74,10 +78,27 @@ export default function VibeFeedScreen() {
     () => { setProfilePanel(null); profilePanelRef.current = null; }
   );
 
+  // Y-Grenze: Swipes die IM Header-Bereich beginnen (Status Bar + Toggle + Tags)
+  // sollen den Profil-Swipe NICHT auslösen.
+  // feedModeBar (52px) + CategoryFilter (46px) + Puffer = ~110px
+  const swipeTopBoundaryRef = useRef(150);
+  // Bottom-Grenze: Progress Bar + Tab-Bar Bereich ausschließen (insets.bottom + 49 + 60px Buffer)
+  const swipeBottomBoundaryRef = useRef(9999);
+  useEffect(() => {
+    swipeTopBoundaryRef.current = insets.top + 110;
+    // SCREEN_H - (insets.bottom + tab-bar 49px + hitArea 28px + 20px Puffer)
+    swipeBottomBoundaryRef.current = SCREEN_HEIGHT - insets.bottom - 110;
+  }, [insets.top, insets.bottom]);
+
   const swipePan = useRef(
     PanResponder.create({
-      onMoveShouldSetPanResponder: (_, g) =>
-        g.dx < -18 && Math.abs(g.dx) > Math.abs(g.dy) * 2.0,
+      onMoveShouldSetPanResponder: (evt, g) =>
+        // Swipes im Header-Bereich (Tags, Toggle) NICHT abfangen
+        evt.nativeEvent.pageY > swipeTopBoundaryRef.current &&
+        // Swipes im Progress-Bar / Tab-Bar Bereich NICHT abfangen
+        evt.nativeEvent.pageY < swipeBottomBoundaryRef.current &&
+        g.dx < -18 &&
+        Math.abs(g.dx) > Math.abs(g.dy) * 2.0,
 
       onPanResponderGrant: () => {
         const post = feedDataRef.current.find((p) => p.id === visibleItemIdRef.current);
@@ -149,21 +170,45 @@ export default function VibeFeedScreen() {
 
   const {
     data: pagedPosts,
-    isLoading,
-    isError,
-    error,
-    refetch,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
+    isLoading: foryouLoading,
+    isError: foryouError,
+    error: foryouErr,
+    refetch: refetchForyou,
+    fetchNextPage: fetchNextForyou,
+    hasNextPage: hasNextForyou,
+    isFetchingNextPage: fetchingNextForyou,
   } = useVibeFeed(activeTag);
   // Trending-Feed: Fallback für neue User ohne Follows / Dwell-History
   const { data: trendingPosts } = useTrendingFeed();
+
+  // Following-Feed
+  const {
+    data: followingPagedPosts,
+    isLoading: followingLoading,
+    isError: followingError,
+    error: followingErr,
+    refetch: refetchFollowing,
+    fetchNextPage: fetchNextFollowing,
+    hasNextPage: hasNextFollowing,
+    isFetchingNextPage: fetchingNextFollowing,
+  } = useFollowingFeed();
+
+  // Aktiver Feed basierend auf Modus
+  const isLoading         = feedMode === 'foryou' ? foryouLoading    : followingLoading;
+  const isError           = feedMode === 'foryou' ? foryouError      : followingError;
+  const error             = feedMode === 'foryou' ? foryouErr        : followingErr;
+  const refetch           = feedMode === 'foryou' ? refetchForyou    : refetchFollowing;
+  const fetchNextPage     = feedMode === 'foryou' ? fetchNextForyou  : fetchNextFollowing;
+  const hasNextPage       = feedMode === 'foryou' ? hasNextForyou    : hasNextFollowing;
+  const isFetchingNextPage = feedMode === 'foryou' ? fetchingNextForyou : fetchingNextFollowing;
+  const activePagedPosts  = feedMode === 'foryou' ? pagedPosts       : followingPagedPosts;
   const { onViewableItemsChanged: dwellOnViewable } = useDwellTracker();
   const dwellOnViewableRef = useRef(dwellOnViewable);
   const setVisibleItemIdRef = useRef(setVisibleItemId);
   dwellOnViewableRef.current = dwellOnViewable;
   setVisibleItemIdRef.current = setVisibleItemId;
+
+  const viewedPostsRef = useRef<Set<string>>(new Set());
 
   /** useRef statt useMemo: FlatList erlaubt kein Ersetzen von `viewabilityConfigCallbackPairs` –
    *  auch nicht bei React Fast Refresh. useRef bleibt über alle Re-Renders stabil. */
@@ -175,6 +220,11 @@ export default function VibeFeedScreen() {
         const id =
           raw && typeof raw === 'object' && 'id' in raw ? String((raw as { id: string }).id) : null;
         setVisibleItemIdRef.current(id);
+        // View-Count: RPC nur einmal pro Session pro Post aufrufen (fire & forget)
+        if (id && !viewedPostsRef.current.has(id)) {
+          viewedPostsRef.current.add(id);
+          void Promise.resolve(supabase.rpc('increment_post_view', { p_post_id: id }));
+        }
       },
     },
     {
@@ -193,10 +243,11 @@ export default function VibeFeedScreen() {
   const openStory = useStoryViewerStore((s) => s.open);
   const handleOpenStory = useCallback(
     (group: StoryGroup) => {
-      openStory(group, storyGroups);
+      // Feed-Avatar-Tap → nur diese User's Stories, kein Weitersprung zu anderen
+      openStory(group, [group]);
       router.push('/story-viewer' as any);
     },
-    [openStory, storyGroups, router]
+    [openStory, router]
   );
 
 
@@ -279,17 +330,17 @@ export default function VibeFeedScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vibesRefreshTick]);
 
-  const onMuteToggle = useCallback(() => setIsMuted((m) => !m), []);
+  const onMuteToggle = useCallback(() => toggleMute(), [toggleMute]);
   const onOpenTune = useCallback(() => setOverlayVisible(true), []);
 
   // Alle Seiten zu einer flachen Liste zusammenführen
   const allPosts = useMemo(
-    () => (pagedPosts?.pages ?? []).flatMap((page) => page),
-    [pagedPosts]
+    () => (activePagedPosts?.pages ?? []).flatMap((page) => page),
+    [activePagedPosts]
   );
 
   // Trending-Fallback: wenn personalisierter Feed leer ist und kein Tag-Filter aktiv
-  const isTrending = !isLoading && !isError && allPosts.length === 0 && !activeTag && (trendingPosts?.length ?? 0) > 0;
+  const isTrending = feedMode === 'foryou' && !isLoading && !isError && allPosts.length === 0 && !activeTag && (trendingPosts?.length ?? 0) > 0;
   const activePosts = isTrending ? (trendingPosts ?? []) : allPosts;
 
   const feedData = useMemo<FeedItemData[]>(
@@ -302,13 +353,37 @@ export default function VibeFeedScreen() {
         tags: (p.tags ?? []).slice(0, 4),
         mediaUrl: p.media_url ?? null,
         mediaType: p.media_type ?? 'image',
+        thumbnailUrl: p.thumbnail_url ?? null,
         authorId: p.author_id,
         avatarUrl: p.avatar_url ?? null,
+        viewCount: (p as any).view_count ?? 0,
         gradient: ['#0A0A0A', '#1a0533', '#0d1f4a'],
         accentColor: '#22D3EE',
+        privacy: p.privacy ?? 'public',
+        allowComments: p.allow_comments ?? true,
+        allowDuet: p.allow_duet ?? true,
+        // Musik-Track (TikTok-Vinyl Badge + Feed-Audio)
+        audioUrl: p.audio_url ?? null,
+        audioTitle: getTitleFromUrl(p.audio_url),  // URL → Titel aus der lokalen Library
+        audioVolume: p.audio_volume ?? 0.8,         // Lautstärke vom Creator eingestellt
+        // Verifiziertes Creator-Häkchen
+        isVerified: p.is_verified ?? null,
       })),
     [activePosts]
   );
+
+  // Fix 2: Proaktiver Prefetch — erste 5 Thumbnails + Avatar-URLs sobald Feed geladen
+  // Expo-Image batcht das intern — keine Race Conditions, keine doppelten Requests
+  useEffect(() => {
+    if (feedData.length === 0) return;
+    const urls = feedData
+      .slice(0, 5)
+      .flatMap((p) => [p.thumbnailUrl, p.mediaType === 'image' ? p.mediaUrl : null, p.avatarUrl])
+      .filter((u): u is string => !!u);
+    if (urls.length > 0) {
+      Image.prefetch?.(urls).catch(() => { /* ignorieren */ });
+    }
+  }, [feedData]);
 
   const postIds = useMemo(() => feedData.map((p) => p.id), [feedData]);
   const authorIds = useMemo(() => feedData.map((p) => p.authorId).filter((id): id is string => !!id), [feedData]);
@@ -363,7 +438,12 @@ export default function VibeFeedScreen() {
   const renderItem = useCallback(
     ({ item }: { item: FeedRow }) => {
       if (item.__type === 'live') {
-        return <LiveFeedCard session={item.data as LiveSession} />;
+        return (
+          <LiveFeedCard
+            session={item.data as LiveSession}
+            isActive={item.id === visibleItemIdRef.current}
+          />
+        );
       }
       const postData = item.data as FeedItemData;
       return (
@@ -383,17 +463,13 @@ export default function VibeFeedScreen() {
     [onMuteToggle, handleOpenStory, onOpenTune]
   );
 
-  // getItemLayout: Live-Karten bekommen korrekten Offset (nicht 0)
   const getItemLayout = useCallback(
     (_: unknown, index: number) => {
-      let offset = 0;
-      for (let i = 0; i < index; i++) {
-        offset += feedRows[i]?.__type === 'live' ? 296 : SCREEN_HEIGHT;
-      }
-      const length = feedRows[index]?.__type === 'live' ? 296 : SCREEN_HEIGHT;
-      return { length, offset, index };
+      // Alle Items (Posts UND Lives) haben SCREEN_HEIGHT (für korrektes pagingEnabled-Snapping)
+      const offset = index * SCREEN_HEIGHT;
+      return { length: SCREEN_HEIGHT, offset, index };
     },
-    [feedRows]
+    []
   );
 
   return (
@@ -421,9 +497,46 @@ export default function VibeFeedScreen() {
           </Pressable>
         </View>
       )}
+      {/* Ganz leerer Feed — "Für dich" Mode */}
+      {feedMode === 'foryou' && !isLoading && !isError && feedRows.length === 0 && !activeTag && !isTrending && (
+        <View style={[styles.emptyTag, { gap: 16 }]}>
+          <Zap size={56} color="#A855F7" strokeWidth={1.5} />
+          <Text style={styles.emptyTagTitle}>Willkommen bei Vibes! ✨</Text>
+          <Text style={styles.emptyTagSub}>
+            Folge anderen oder poste deinen ersten Vibe — dein Feed füllt sich automatisch.
+          </Text>
+          <Pressable
+            onPress={() => router.push('/(tabs)/explore')}
+            style={[styles.emptyTagBtn, { backgroundColor: 'rgba(168,85,247,0.2)', borderColor: 'rgba(168,85,247,0.4)', borderWidth: 1 }]}
+            accessibilityRole="button"
+            accessibilityLabel="Explore öffnen"
+          >
+            <Text style={[styles.emptyTagBtnText, { color: '#A855F7' }]}>Explore öffnen</Text>
+          </Pressable>
+        </View>
+      )}
+      {/* Ganz leerer Feed — "Folge ich" Mode */}
+      {feedMode === 'following' && !isLoading && !isError && feedRows.length === 0 && (
+        <View style={[styles.emptyTag, { gap: 16 }]}>
+          <Search size={56} color="#22D3EE" strokeWidth={1.5} />
+          <Text style={styles.emptyTagTitle}>Noch kein Following-Feed</Text>
+          <Text style={styles.emptyTagSub}>
+            Folge Usern im Explore-Tab — ihre Posts erscheinen hier chronologisch.
+          </Text>
+          <Pressable
+            onPress={() => router.push('/(tabs)/explore')}
+            style={[styles.emptyTagBtn, { backgroundColor: 'rgba(34,211,238,0.1)', borderColor: 'rgba(34,211,238,0.3)', borderWidth: 1 }]}
+            accessibilityRole="button"
+            accessibilityLabel="Leute entdecken"
+          >
+            <Text style={[styles.emptyTagBtnText, { color: '#22D3EE' }]}>Leute entdecken</Text>
+          </Pressable>
+        </View>
+      )}
       {/* Trending-Badge: wird nur angezeigt wenn Trending-Feed aktiv ist */}
       {isTrending && (
-        <View style={[styles.filterBar, { top: insets.top + 56, pointerEvents: 'none' }]}>
+        <View style={[styles.filterBar, { top: insets.top + 92, pointerEvents: 'none' }]}>
+
           <View style={{
             flexDirection: 'row', alignItems: 'center', gap: 5,
             backgroundColor: 'rgba(239,68,68,0.85)',
@@ -488,28 +601,69 @@ export default function VibeFeedScreen() {
         </Pressable>
       </Animated.View>
 
-      <View style={[styles.filterBar, { top: insets.top + 10 }]} pointerEvents="box-none">
-        <View style={styles.filterRow} pointerEvents="box-none">
-          <View style={styles.filterScroll}>
-            <CategoryFilter activeTag={activeTag} onSelect={setActiveTag} />
-          </View>
+      {/* ── Haupt-Header: Toggle + Suche in einer Zeile ───────────────── */}
+      <View
+        style={[styles.feedModeBar, { top: insets.top }]}
+        pointerEvents="box-none"
+      >
+        {/* Links: Platzhalter für symmetrisches Zentrieren */}
+        <View style={{ width: 40 }} pointerEvents="none" />
+
+        {/* Mitte: "Für dich | Folge ich" Toggle */}
+        <View style={styles.feedModeRow} pointerEvents="auto">
+          <Pressable
+            onPress={() => {
+              impactAsync(ImpactFeedbackStyle.Light);
+              setFeedMode('foryou');
+              setActiveTag(null);
+            }}
+            style={styles.feedModeBtn}
+            hitSlop={12}
+          >
+            <Text style={[styles.feedModeTxt, feedMode === 'foryou' && styles.feedModeTxtActive]}>
+              Für dich
+            </Text>
+            {feedMode === 'foryou' && <View style={styles.feedModeLine} />}
+          </Pressable>
 
           <Pressable
             onPress={() => {
               impactAsync(ImpactFeedbackStyle.Light);
-              router.push('/(tabs)/explore');
+              setFeedMode('following');
             }}
-            hitSlop={8}
-            style={styles.filterExploreBtn}
+            style={styles.feedModeBtn}
+            hitSlop={12}
           >
-            <View style={[styles.filterExploreBtnBlur, { backgroundColor: 'rgba(10,10,20,0.75)' }]}>
-              <Search size={17} stroke="rgba(255,255,255,0.8)" strokeWidth={2} />
-            </View>
+            <Text style={[styles.feedModeTxt, feedMode === 'following' && styles.feedModeTxtActive]}>
+              Folge ich
+            </Text>
+            {feedMode === 'following' && <View style={styles.feedModeLine} />}
           </Pressable>
         </View>
 
-
+        {/* Rechts: Suche-Button */}
+        <Pressable
+          onPress={() => {
+            impactAsync(ImpactFeedbackStyle.Light);
+            router.push('/(tabs)/explore');
+          }}
+          hitSlop={10}
+          style={styles.feedSearchBtn}
+          pointerEvents="auto"
+        >
+          <Search size={18} stroke="rgba(255,255,255,0.8)" strokeWidth={2} />
+        </Pressable>
       </View>
+
+      {/* ── Kategorie-Chips (nur Für-dich-Mode, ohne "For You") ─────── */}
+      {feedMode === 'foryou' && (
+        <View style={[styles.filterBar, { top: insets.top + 52 }]} pointerEvents="box-none">
+          <View style={styles.filterScroll} pointerEvents="auto">
+            <CategoryFilter activeTag={activeTag} onSelect={setActiveTag} hideForYou />
+          </View>
+        </View>
+      )}
+
 
       <TuneMyVibeOverlay visible={overlayVisible} onClose={() => setOverlayVisible(false)} />
 

@@ -15,6 +15,7 @@ import {
   guildStyles as styles,
   type GuildViewMode,
 } from "@/components/guild";
+import { GuildMembersSheet } from "@/components/guild/GuildMembersSheet";
 import { useAuthStore } from "@/lib/authStore";
 import { useGuildFeed, useGuildInfo, type GuildPost } from "@/lib/usePosts";
 import {
@@ -47,6 +48,7 @@ export default function GuildScreen() {
   const [isScreenFocused, setIsScreenFocused] = useState(true);
 
   const { data: memberCount } = useGuildMemberCount(profile?.guild_id);
+  const [membersOpen, setMembersOpen] = useState(false);
   const { data: activeLives = [] } = useActiveLiveSessions();
   const listRef = useRef<FlashList<GuildPost>>(null);
   const setGuildRefreshing = useTabRefreshStore((s) => s.setGuildRefreshing);
@@ -200,6 +202,7 @@ export default function GuildScreen() {
           memberCount={memberCount}
           mode={viewMode}
           onToggle={setViewMode}
+          onMembersPress={() => setMembersOpen(true)}
         />
         {viewMode === "feed" && (
           <View style={styles.storiesWrap}>
@@ -242,6 +245,7 @@ export default function GuildScreen() {
             memberCount={memberCount}
             mode={viewMode}
             onToggle={setViewMode}
+            onMembersPress={() => setMembersOpen(true)}
           />
           <GuildLeaderboard
             guildId={profile?.guild_id}
@@ -280,6 +284,15 @@ export default function GuildScreen() {
           showsVerticalScrollIndicator={false}
         />
       )}
+
+      {/* Guild-Mitgliederliste */}
+      <GuildMembersSheet
+        visible={membersOpen}
+        onClose={() => setMembersOpen(false)}
+        guildId={profile?.guild_id}
+        guildName={guildName}
+        guildColors={guildColorPair}
+      />
     </View>
   );
 }

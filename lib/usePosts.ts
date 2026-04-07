@@ -8,6 +8,7 @@ export type PostWithAuthor = {
   caption: string | null;
   media_url: string | null;
   media_type: string;
+  thumbnail_url: string | null;
   dwell_time_score: number;
   score_explore: number;
   score_brain: number;
@@ -16,10 +17,19 @@ export type PostWithAuthor = {
   author_id: string;
   guild_id: string | null;
   is_guild_post: boolean;
+  privacy: 'public' | 'friends' | 'private';
+  allow_comments: boolean;
+  allow_download: boolean;
+  allow_duet: boolean;
   // Felder aus dem RPC-Join
   username: string | null;
   avatar_url: string | null;
   final_score: number;
+  // Musik-Track (optional)
+  audio_url?: string | null;
+  audio_volume?: number | null; // Lautstärke 0..1
+  // Verifizierter Creator Badge
+  is_verified?: boolean | null;
 };
 
 const FEED_PAGE_SIZE = 15;
@@ -84,12 +94,15 @@ export function useVibeFeed(activeTag: string | null = null) {
       let query = supabase
         .from('posts')
         .select(`
-          id, author_id, caption, media_url, media_type,
-          dwell_time_score, score_explore, score_brain,
+          id, author_id, caption, media_url, media_type, thumbnail_url,
+          dwell_time_score, score_explore, score_brain, view_count,
           tags, guild_id, is_guild_post, created_at,
-          profiles!author_id (username, avatar_url)
+          privacy, allow_comments, allow_download, allow_duet, audio_url,
+          profiles!author_id (username, avatar_url, is_verified)
         `)
         .is('is_guild_post', false)
+        // Nur öffentliche Posts im For-You Feed (Sicherheitsnetz)
+        .eq('privacy', 'public')
         .order('created_at', { ascending: false })
         .limit(FEED_PAGE_SIZE);
 
@@ -101,9 +114,17 @@ export function useVibeFeed(activeTag: string | null = null) {
 
       return ((fallbackData ?? []) as any[]).map((p) => ({
         ...p,
-        username:   (p.profiles as any)?.username   ?? null,
-        avatar_url: (p.profiles as any)?.avatar_url ?? null,
-        final_score: p.dwell_time_score ?? 0,
+        username:      (p.profiles as any)?.username   ?? null,
+        avatar_url:    (p.profiles as any)?.avatar_url ?? null,
+        thumbnail_url: p.thumbnail_url ?? null,
+        final_score:   p.dwell_time_score ?? 0,
+        privacy:       p.privacy ?? 'public',
+        allow_comments: p.allow_comments ?? true,
+        allow_download: p.allow_download ?? true,
+        allow_duet:     p.allow_duet     ?? true,
+        audio_url:     p.audio_url ?? null,
+        audio_volume:  p.audio_volume ?? 0.8,
+        is_verified:   (p.profiles as any)?.is_verified ?? null,
       })) as PostWithAuthor[];
     },
     staleTime: 1000 * 60,
@@ -120,10 +141,10 @@ export function useTrendingFeed() {
       const { data, error } = await supabase
         .from('posts')
         .select(`
-          id, author_id, caption, media_url, media_type,
-          dwell_time_score, score_explore, score_brain,
-          tags, guild_id, is_guild_post, created_at,
-          profiles!author_id (username, avatar_url)
+          id, author_id, caption, media_url, media_type, thumbnail_url,
+          dwell_time_score, score_explore, score_brain, view_count,
+          tags, guild_id, is_guild_post, created_at, audio_url,
+          profiles!author_id (username, avatar_url, is_verified)
         `)
         .is('is_guild_post', false)
         .order('dwell_time_score', { ascending: false })
@@ -131,14 +152,90 @@ export function useTrendingFeed() {
       if (error) throw error;
       return ((data ?? []) as any[]).map((p) => ({
         ...p,
-        username:   (p.profiles as any)?.username   ?? null,
-        avatar_url: (p.profiles as any)?.avatar_url ?? null,
-        final_score: p.dwell_time_score ?? 0,
+        username:      (p.profiles as any)?.username   ?? null,
+        avatar_url:    (p.profiles as any)?.avatar_url ?? null,
+        thumbnail_url: p.thumbnail_url ?? null,
+        audio_url:     p.audio_url ?? null,
+        audio_volume:  p.audio_volume ?? 0.8,
+        is_verified:   (p.profiles as any)?.is_verified ?? null,
+        final_score:   p.dwell_time_score ?? 0,
       })) as PostWithAuthor[];
     },
     staleTime: 1000 * 60 * 5, // 5 min Cache — Trending ändert sich langsamer
   });
 }
+
+// ─── Following Feed (Posts von gefolgten Usern) ───────────────────────────────
+// Zeigt nur Posts von Usern denen der eingeloggte User folgt — chronologisch.
+export function useFollowingFeed() {
+  const userId = useAuthStore((s) => s.profile?.id);
+
+  return useInfiniteQuery<PostWithAuthor[]>({
+    queryKey: ['following-feed', userId],
+    enabled: !!userId,
+    initialPageParam: [] as string[],
+    getNextPageParam: (lastPage, allPages) => {
+      if (lastPage.length < FEED_PAGE_SIZE) return undefined;
+      return allPages.flat().map((p) => p.id);
+    },
+
+    queryFn: async ({ pageParam }) => {
+      if (!userId) return [];
+      const excludeIds = pageParam as string[];
+
+      // Schritt 1: Folge-Liste holen
+      const { data: followData } = await supabase
+        .from('follows')
+        .select('following_id')
+        .eq('follower_id', userId);
+
+      const followingIds = (followData ?? []).map((f: any) => f.following_id as string);
+      if (followingIds.length === 0) return [];
+
+      // Schritt 2: Posts von gefolgten Usern laden — inkl. friends-Posts
+      let query = supabase
+        .from('posts')
+        .select(`
+          id, author_id, caption, media_url, media_type, thumbnail_url,
+          dwell_time_score, score_explore, score_brain, view_count,
+          tags, guild_id, is_guild_post, created_at,
+          privacy, allow_comments, allow_download, allow_duet, audio_url,
+          profiles!author_id (username, avatar_url, is_verified)
+        `)
+        .is('is_guild_post', false)
+        .in('author_id', followingIds)
+        // Im Following-Feed: public + friends Posts sichtbar, private nicht
+        .in('privacy', ['public', 'friends'])
+        .order('created_at', { ascending: false })
+        .limit(FEED_PAGE_SIZE);
+
+      if (excludeIds.length > 0) {
+        query = query.not('id', 'in', `(${excludeIds.join(',')})`);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      return ((data ?? []) as any[]).map((p) => ({
+        ...p,
+        username:      (p.profiles as any)?.username   ?? null,
+        avatar_url:    (p.profiles as any)?.avatar_url ?? null,
+        thumbnail_url: p.thumbnail_url ?? null,
+        final_score:   p.dwell_time_score ?? 0,
+        privacy:       p.privacy ?? 'public',
+        allow_comments: p.allow_comments ?? true,
+        allow_download: p.allow_download ?? true,
+        allow_duet:     p.allow_duet     ?? true,
+        audio_url:     p.audio_url ?? null,
+        audio_volume:  (p as any).audio_volume ?? 0.8,
+        is_verified:   (p.profiles as any)?.is_verified ?? null,
+      })) as PostWithAuthor[];
+    },
+    staleTime: 1000 * 60,
+    retry: 1,
+  });
+}
+
 
 export type GuildPost = {
   id: string;
@@ -214,6 +311,12 @@ export type UserPost = {
   media_type: string;
   caption: string | null;
   dwell_time_score: number;
+  thumbnail_url?: string | null;
+  view_count?: number;
+  is_pinned?: boolean;      // Pin-Status
+  like_count?: number;      // Anzahl Likes
+  comment_count?: number;   // Anzahl Kommentare
+  created_at?: string;      // Erstellungsdatum
 };
 
 export function useUserPosts(userId: string | null) {
@@ -223,11 +326,21 @@ export function useUserPosts(userId: string | null) {
       if (!userId) return [];
       const { data, error } = await supabase
         .from('posts')
-        .select('id, media_url, media_type, caption, dwell_time_score, thumbnail_url')
+        .select(`
+          id, media_url, media_type, caption,
+          dwell_time_score, thumbnail_url, view_count,
+          is_pinned, created_at,
+          like_count:likes(count),
+          comment_count:comments(count)
+        `)
         .eq('author_id', userId)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return (data ?? []) as UserPost[];
+      return ((data ?? []) as any[]).map((p) => ({
+        ...p,
+        like_count:    Array.isArray(p.like_count)    ? (p.like_count[0]?.count    ?? 0) : (p.like_count    ?? 0),
+        comment_count: Array.isArray(p.comment_count) ? (p.comment_count[0]?.count ?? 0) : (p.comment_count ?? 0),
+      })) as UserPost[];
     },
     enabled: !!userId,
     staleTime: 0,              // Immer fresh beim Tab-Wechsel

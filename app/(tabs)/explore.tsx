@@ -16,6 +16,8 @@ import {
 import { useDiscoverPeople } from '@/lib/useDiscoverPeople';
 import {
   EXPLORE_GRID_COLS,
+  EXPLORE_ITEM_WIDTH,
+  EXPLORE_ITEM_HEIGHT,
   ExploreGridItem,
   ExploreUserRow,
   ExploreSortModal,
@@ -68,10 +70,26 @@ export default function ExploreScreen() {
   const { data: foundPosts, isLoading: searchLoading } = useExplorePostSearch(debouncedQuery);
   const { data: discoverUsers = [] } = useDiscoverPeople();
 
-  const renderGridItem = useCallback(({ item }: { item: ExplorePostThumb }) => <ExploreGridItem item={item} />, []);
+  const renderGridItem = useCallback(({ item }: { item: ExplorePostThumb }) => {
+    if ((item as any).__isPlaceholder) {
+      return <View style={{ width: EXPLORE_ITEM_WIDTH, height: EXPLORE_ITEM_HEIGHT }} />;
+    }
+    return <ExploreGridItem item={item} />;
+  }, []);
 
   const gridPosts = gridData?.pages.flat() ?? [];
-  const postsToShow = isSearching ? (foundPosts ?? []) : gridPosts;
+  const rawPostsToShow: ExplorePostThumb[] = isSearching ? (foundPosts ?? []) : gridPosts;
+  // Letzte Grid-Reihe mit leeren Placeholders auffüllen (verhindert Stretch)
+  const remainder = rawPostsToShow.length % EXPLORE_GRID_COLS;
+  const postsToShow: ExplorePostThumb[] = remainder === 0
+    ? rawPostsToShow
+    : [
+        ...rawPostsToShow,
+        ...Array.from({ length: EXPLORE_GRID_COLS - remainder }, (_, i) => ({
+          id: `__placeholder_${i}`,
+          __isPlaceholder: true,
+        } as unknown as ExplorePostThumb)),
+      ];
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
