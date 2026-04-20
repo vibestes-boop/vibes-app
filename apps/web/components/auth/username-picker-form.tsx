@@ -69,7 +69,7 @@ export function UsernamePickerForm({ next = '/' }: { next?: string }) {
   function onSubmit(values: FormValues) {
     startSubmit(async () => {
       const fd = new FormData();
-      fd.set('username', values.username);
+      fd.set('username', String(values.username));
       const result = await claimUsername(fd);
       if (!result.ok) {
         if (result.field === 'username') {
