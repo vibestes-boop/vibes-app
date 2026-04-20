@@ -20,12 +20,12 @@ export const dynamic = 'force-dynamic';
 export default async function LiveStartPage() {
   const user = await getUser();
   if (!user) {
-    redirect(('/login?next=/live/start' as Route) as string);
+    redirect('/login?next=/live/start' as Route);
   }
 
   const existing = await getMyActiveLiveSession();
   if (existing) {
-    redirect((`/live/host/${existing.id}` as Route) as string);
+    redirect(`/live/host/${existing.id}` as Route);
   }
 
   return (
