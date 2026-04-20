@@ -31,21 +31,21 @@ const nextConfig = {
   // (silences "multiple lockfiles detected" warning)
   outputFileTracingRoot: import.meta.dirname,
   // -------------------------------------------------------------------------
-  // Node-Runtime für Middleware erlauben. Next.js 15.2+ Feature.
-  // Grund: Die Default-Edge-Runtime (V8-Isolate) crashte mit
-  // `ReferenceError: __dirname is not defined` — die Quelle ließ sich nicht
-  // auf User-Code eingrenzen (auch Minimal-Middleware mit nur next/server-
-  // Imports crashte), also entweder Vercel-Platform-Wrapper oder Next.js-
-  // Edge-Adapter-Intern. Node-Runtime umgeht das Constraint vollständig:
-  // __dirname ist dort ein echtes Node-Global.
+  // Hinweis: Es gibt aktuell KEINE apps/web/middleware.ts.
   //
-  // Trade-off: Node-Middleware ist ~50ms langsamer cold-start als Edge,
-  // aber für einen Cookie-Presence-Check auf Protected-Routes irrelevant.
-  // Middleware-File selbst muss `export const runtime = 'nodejs'` setzen.
+  // Hintergrund: In Vercels Edge-Runtime crashte jeder Middleware-Invocation
+  // mit `ReferenceError: __dirname is not defined` — der Fehler entstand nicht
+  // in User-Code (reproduzierte selbst bei einer Minimal-Middleware mit
+  // ausschließlich `next/server`-Imports) und blieb auch bei `nodeMiddleware`-
+  // Opt-in bestehen. Da Middleware für den initialen Launch keine
+  // fachliche Anforderung ist, wurde sie komplett entfernt.
+  //
+  // Route-Protection (/studio, /messages, /settings, /create) läuft jetzt
+  // auf Page-Ebene über `lib/supabase/server.ts` + `redirect('/login')`
+  // im Server-Component der jeweiligen Protected-Page. Das ist sicherer
+  // (Server-side Token-Validation statt Cookie-Presence) und läuft unter
+  // Node-Runtime, wo `__dirname` nie ein Problem ist.
   // -------------------------------------------------------------------------
-  experimental: {
-    nodeMiddleware: true,
-  },
   // -------------------------------------------------------------------------
   // Monorepo-Resolve-Fix für shared/**/*.ts Imports von zod etc.
   //
