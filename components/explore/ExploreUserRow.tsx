@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { exploreStyles as styles } from './exploreStyles';
 import type { ExploreUserResult } from '@/lib/useExplore';
 import { useFollow } from '@/lib/useFollow';
+import { useTheme } from '@/lib/useTheme';
 
 export function ExploreUserRow({
   user,
@@ -16,12 +17,13 @@ export function ExploreUserRow({
 }) {
   const initials = user.username?.[0]?.toUpperCase() ?? '?';
   const { isFollowing, toggle, isLoading, isOwnProfile } = useFollow(user.id);
+  const { colors } = useTheme();
 
   // Kompakte vertikale Karte für horizontales Scrollen (Discover-Sektion)
   if (compact) {
     return (
       <Pressable
-        style={compactStyles.card}
+        style={[compactStyles.card, { backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle }]}
         onPress={() => router.push({ pathname: '/user/[id]', params: { id: user.id } })}
       >
         {user.avatar_url ? (
@@ -31,9 +33,9 @@ export function ExploreUserRow({
             <Text style={compactStyles.avatarText}>{initials}</Text>
           </View>
         )}
-        <Text style={compactStyles.username} numberOfLines={1}>@{user.username}</Text>
+        <Text style={[compactStyles.username, { color: colors.text.primary }]} numberOfLines={1}>@{user.username}</Text>
         {reasonLabel && (
-          <Text style={compactStyles.reason} numberOfLines={1}>{reasonLabel}</Text>
+          <Text style={[compactStyles.reason, { color: colors.text.muted }]} numberOfLines={1}>{reasonLabel}</Text>
         )}
         {!isOwnProfile && (
           <Pressable
@@ -41,14 +43,16 @@ export function ExploreUserRow({
             disabled={isLoading}
             style={[
               compactStyles.followBtn,
+              { borderColor: isFollowing ? 'rgba(255,255,255,0.28)' : colors.border.default },
               isFollowing && compactStyles.followBtnActive,
             ]}
           >
             {isLoading ? (
-              <ActivityIndicator size="small" color="#22D3EE" />
+              <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
               <Text style={[
                 compactStyles.followBtnText,
+                { color: isFollowing ? '#FFFFFF' : colors.text.secondary },
                 isFollowing && compactStyles.followBtnTextActive,
               ]}>
                 {isFollowing ? 'Gefolgt' : '+ Folgen'}
@@ -89,16 +93,16 @@ export function ExploreUserRow({
             paddingVertical: 6,
             borderRadius: 14,
             borderWidth: 1.5,
-            borderColor: isFollowing ? 'rgba(34,211,238,0.4)' : 'rgba(255,255,255,0.25)',
-            backgroundColor: isFollowing ? 'rgba(34,211,238,0.1)' : 'transparent',
+            borderColor: isFollowing ? 'rgba(255,255,255,0.28)' : colors.border.default,
+            backgroundColor: isFollowing ? 'rgba(255,255,255,0.08)' : 'transparent',
           }}
           hitSlop={6}
         >
           {isLoading ? (
-            <ActivityIndicator size="small" color="#22D3EE" />
+            <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
             <Text style={{
-              color: isFollowing ? '#22D3EE' : 'rgba(255,255,255,0.8)',
+              color: isFollowing ? '#FFFFFF' : colors.text.secondary,
               fontSize: 12,
               fontWeight: '700',
             }}>
@@ -129,12 +133,12 @@ const compactStyles = StyleSheet.create({
     borderRadius: 27,
   },
   avatarFallback: {
-    backgroundColor: 'rgba(34,211,238,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarText: {
-    color: '#22D3EE',
+    color: '#FFFFFF',
     fontSize: 20,
     fontWeight: '800',
   },
@@ -158,8 +162,8 @@ const compactStyles = StyleSheet.create({
     marginTop: 2,
   },
   followBtnActive: {
-    borderColor: 'rgba(34,211,238,0.4)',
-    backgroundColor: 'rgba(34,211,238,0.1)',
+    borderColor: 'rgba(255,255,255,0.28)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
   followBtnText: {
     color: 'rgba(255,255,255,0.8)',
@@ -167,6 +171,6 @@ const compactStyles = StyleSheet.create({
     fontWeight: '700',
   },
   followBtnTextActive: {
-    color: '#22D3EE',
+    color: '#FFFFFF',
   },
 });

@@ -202,7 +202,7 @@ function StudioModePill({
       {/* Sliding Hintergrund-Pill */}
       <Animated.View style={[pill.activePill, { width: PILL_W }, pillStyle]}>
         <LinearGradient
-          colors={['rgba(34,211,238,0.25)', 'rgba(168,85,247,0.25)']}
+          colors={['rgba(255,255,255,0.15)', 'rgba(168,85,247,0.25)']}
           style={StyleSheet.absoluteFill}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
@@ -255,7 +255,7 @@ const pill = StyleSheet.create({
     height: '100%',
     borderRadius: 15,
     borderWidth: 1,
-    borderColor: 'rgba(34,211,238,0.3)',
+    borderColor: 'rgba(255,255,255,0.18)',
     overflow: 'hidden',
   },
   btn: {
@@ -421,27 +421,37 @@ export default function CreateCameraScreen() {
   }, []);
 
   const openGallery = useCallback(async () => {
-    const { status } = await requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Berechtigung erforderlich', 'Bitte erlaube den Zugriff auf deine Fotos.');
-      return;
-    }
-    // Im Studio-Modus: Seitenverhältnis-Vorlage anwenden
-    const preset = ASPECT_PRESETS.find(p => p.key === aspectRatio);
-    const result = await launchImageLibraryAsync({
-      mediaTypes: 'mixed' as any,
-      allowsEditing: studioMode === 'studio' && !!preset,
-      aspect: preset?.ratio,
-      quality: 0.92,
-      videoMaxDuration: captureMode === '60s' ? 60 : 15,
-    });
-    if (!result.canceled && result.assets[0]) {
-      const asset = result.assets[0];
-      if (asset.type === 'video') {
-        router.replace({ pathname: '/create', params: { mediaUri: asset.uri, mediaType: 'video', audioUrl: selectedTrack?.url ?? '', audioTitle: selectedTrack?.title ?? '', audioVolume: String(audioVolume) } });
-      } else {
-        router.replace({ pathname: '/create', params: { mediaUri: asset.uri, mediaType: 'image', audioUrl: selectedTrack?.url ?? '', audioTitle: selectedTrack?.title ?? '', audioVolume: String(audioVolume) } });
+    try {
+      const { status } = await requestMediaLibraryPermissionsAsync();
+      // 'limited' = iOS "Ausgewählte Fotos" — Picker trotzdem öffnen
+      if (status === 'denied') {
+        Alert.alert(
+          'Zugriff verweigert',
+          'Bitte erlaube in den Einstellungen den Zugriff auf deine Fotos.',
+          [{ text: 'OK' }]
+        );
+        return;
       }
+      // Im Studio-Modus: Seitenverhältnis-Vorlage anwenden
+      const preset = ASPECT_PRESETS.find(p => p.key === aspectRatio);
+      const result = await launchImageLibraryAsync({
+        mediaTypes: ['images', 'videos'] as any,
+        allowsEditing: studioMode === 'studio' && !!preset,
+        aspect: preset?.ratio,
+        quality: 0.92,
+        videoMaxDuration: captureMode === '60s' ? 60 : 15,
+      });
+      if (!result.canceled && result.assets[0]) {
+        const asset = result.assets[0];
+        if (asset.type === 'video') {
+          router.replace({ pathname: '/create', params: { mediaUri: asset.uri, mediaType: 'video', audioUrl: selectedTrack?.url ?? '', audioTitle: selectedTrack?.title ?? '', audioVolume: String(audioVolume) } });
+        } else {
+          router.replace({ pathname: '/create', params: { mediaUri: asset.uri, mediaType: 'image', audioUrl: selectedTrack?.url ?? '', audioTitle: selectedTrack?.title ?? '', audioVolume: String(audioVolume) } });
+        }
+      }
+    } catch (e) {
+      __DEV__ && console.warn('[openGallery]', e);
+      Alert.alert('Fehler', 'Galerie konnte nicht geöffnet werden.');
     }
   }, [captureMode, router, studioMode, aspectRatio, selectedTrack]);
 
@@ -524,7 +534,7 @@ export default function CreateCameraScreen() {
         <StatusBar barStyle="light-content" />
         <LinearGradient colors={['#0D0D1A', '#050508']} style={StyleSheet.absoluteFill} />
         <LinearGradient
-          colors={['rgba(34,211,238,0.15)', 'transparent']}
+          colors={['rgba(255,255,255,0.10)', 'transparent']}
           style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 300 }}
         />
         <View style={s.permIcon}>
@@ -532,7 +542,7 @@ export default function CreateCameraScreen() {
         </View>
         <Text style={s.permTitle}>Kamera-Zugriff</Text>
         <Text style={s.permSub}>
-          Vibes braucht Kamera und Mikrofon um{'\n'}Vibes, Stories und Live-Streams zu erstellen.
+          Serlo braucht Kamera und Mikrofon um{'\n'}Videos, Stories und Live-Streams zu erstellen.
         </Text>
         <Pressable onPress={requestCameraPermission} style={s.permBtn}>
           <View style={s.permBtnGrad}>
@@ -561,6 +571,7 @@ export default function CreateCameraScreen() {
           flash={flash}
           mode={isPhoto ? 'picture' : 'video'}
           videoQuality="1080p"
+          mirror={cameraFacing === 'front'}
         />
       )}
 
@@ -597,7 +608,7 @@ export default function CreateCameraScreen() {
         {/* Vibes branded dot */}
         <View style={s.topTitleWrap}>
           <View style={s.cyanDot} />
-          <Text style={s.topTitle}>vibes</Text>
+          <Text style={s.topTitle}>Serlo</Text>
           <Text style={s.topTitleSep}> · </Text>
           <Text style={s.topTitleMode}>
             {studioMode === 'vibe' ? 'Creator' : studioMode === 'studio' ? 'Studio' : 'Live'}
@@ -739,7 +750,7 @@ export default function CreateCameraScreen() {
                   <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 9 }}>Galerie</Text>
                 </View>
                 <LinearGradient
-                  colors={['rgba(34,211,238,0.3)', 'rgba(168,85,247,0.3)']}
+                  colors={['rgba(255,255,255,0.18)', 'rgba(168,85,247,0.3)']}
                   style={[StyleSheet.absoluteFill, { borderRadius: 14 }]}
                   start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                   pointerEvents="none"
@@ -827,7 +838,7 @@ const s = StyleSheet.create({
     fontSize: 120,
     fontWeight: '900',
     letterSpacing: -4,
-    textShadowColor: 'rgba(34,211,238,0.6)',
+    textShadowColor: 'rgba(29,185,84,0.6)',
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 30,
   },
@@ -959,9 +970,9 @@ const s = StyleSheet.create({
   permIcon: {
     width: 80, height: 80,
     borderRadius: 24,
-    backgroundColor: 'rgba(34,211,238,0.1)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(34,211,238,0.2)',
+    borderColor: 'rgba(255,255,255,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 24,
@@ -1045,8 +1056,8 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   studioAspectBtnActive: {
-    backgroundColor: 'rgba(34,211,238,0.2)',
-    borderColor: 'rgba(34,211,238,0.6)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderColor: 'rgba(29,185,84,0.6)',
   },
   studioAspectLabel: {
     color: 'rgba(255,255,255,0.6)',

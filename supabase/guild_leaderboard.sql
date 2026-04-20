@@ -34,7 +34,7 @@ BEGIN
     FROM public.posts p
     JOIN public.profiles pr ON pr.id = p.author_id
     WHERE pr.guild_id = p_guild_id
-      AND p.created_at > NOW() - INTERVAL '7 days'
+      AND p.created_at > NOW() - INTERVAL '30 days'
     ORDER BY p.dwell_time_score DESC NULLS LAST, p.created_at DESC
     LIMIT 10
   ) t;
@@ -53,7 +53,7 @@ BEGIN
     FROM public.profiles pr
     JOIN public.posts p ON p.author_id = pr.id
     WHERE pr.guild_id = p_guild_id
-      AND p.created_at > NOW() - INTERVAL '7 days'
+      AND p.created_at > NOW() - INTERVAL '30 days'
     GROUP BY pr.id, pr.username, pr.avatar_url
     HAVING COUNT(p.id) > 0
     ORDER BY avg_dwell_score DESC NULLS LAST

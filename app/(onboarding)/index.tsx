@@ -18,7 +18,7 @@ import { SlidersHorizontal, Users, Heart } from 'lucide-react-native';
 const FEATURES = [
   {
     icon: SlidersHorizontal,
-    color: '#22D3EE',
+    color: '#FFFFFF',
     title: 'Du steuerst den Algorithmus',
     desc: 'Kein Blackbox-Feed. Du entscheidest mit dem "Tune my Vibe"-Slider was du siehst.',
   },
@@ -116,7 +116,7 @@ export default function OnboardingWelcome() {
       <View style={[styles.inner, { paddingTop: insets.top + 48, paddingBottom: insets.bottom + 32 }]}>
         {/* Logo */}
         <Animated.View style={[styles.logoWrap, logoStyle]}>
-          <Text style={styles.logo}>vibes</Text>
+          <Text style={styles.logo}>Serlo</Text>
           <View style={styles.logoDot} />
           <Text style={styles.tagline}>Die Social-App die du wirklich kontrollierst.</Text>
         </Animated.View>
@@ -135,7 +135,7 @@ export default function OnboardingWelcome() {
             onPress={() => router.push('/(onboarding)/username')}
           >
             <LinearGradient
-              colors={['#0891B2', '#22D3EE']}
+              colors={['#CCCCCC', '#FFFFFF']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.btnGradient}
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
     width: 320,
     height: 320,
     borderRadius: 160,
-    backgroundColor: '#0891B2',
+    backgroundColor: '#CCCCCC',
     opacity: 0.12,
     top: -80,
     alignSelf: 'center',
@@ -184,7 +184,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#22D3EE',
+    backgroundColor: '#FFFFFF',
     marginTop: -16,
     marginLeft: 4,
     alignSelf: 'center',

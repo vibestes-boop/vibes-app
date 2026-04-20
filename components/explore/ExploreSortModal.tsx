@@ -5,7 +5,8 @@ import {
   EXPLORE_SORT_OPTIONS,
   type ExploreSortMode,
 } from '@/lib/useExplore';
-import { exploreStyles as styles } from './exploreStyles';
+import { getExploreStyles } from './exploreStyles';
+import { useTheme } from '@/lib/useTheme';
 
 export function ExploreSortModal({
   visible,
@@ -18,6 +19,9 @@ export function ExploreSortModal({
   onClose: () => void;
   onSelectSort: (mode: ExploreSortMode) => void;
 }) {
+  const { colors } = useTheme();
+  const styles = getExploreStyles(colors);
+
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={styles.modalOverlay} onPress={onClose}>
@@ -40,13 +44,17 @@ export function ExploreSortModal({
                   }}
                 >
                   <View style={[styles.optionIconWrap, active && styles.optionIconWrapActive]}>
-                    <IconComp size={18} color={active ? '#fff' : 'rgba(255,255,255,0.5)'} strokeWidth={1.8} />
+                    <IconComp
+                      size={18}
+                      color={active ? '#FFFFFF' : colors.icon.muted}
+                      strokeWidth={1.8}
+                    />
                   </View>
                   <View style={styles.optionText}>
                     <Text style={[styles.optionLabel, active && styles.optionLabelActive]}>{opt.label}</Text>
                     <Text style={styles.optionSub}>{opt.sub}</Text>
                   </View>
-                  {active && <Check size={18} color="#22D3EE" strokeWidth={2.5} />}
+                  {active && <Check size={18} color="#FFFFFF" strokeWidth={2.5} />}
                 </Pressable>
               );
             })}

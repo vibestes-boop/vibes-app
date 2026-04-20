@@ -78,8 +78,8 @@ export default function LoginScreen() {
 
       {/* ── Logo ── */}
       <Animated.View entering={FadeInDown.delay(60).duration(500)} style={styles.logoArea}>
-        <Zap size={36} stroke="#22D3EE" strokeWidth={2} fill="#22D3EE" />
-        <Text style={styles.logoText}>vibes</Text>
+        <Zap size={36} stroke="#FFFFFF" strokeWidth={2} fill="#FFFFFF" />
+        <Text style={styles.logoText}>Serlo</Text>
         <Text style={styles.tagline}>Dein Feed. Deine Regeln.</Text>
       </Animated.View>
 
@@ -124,7 +124,7 @@ export default function LoginScreen() {
             accessibilityState={{ disabled: loading }}
           >
             <LinearGradient
-              colors={['#0891B2', '#22D3EE']}
+              colors={['#CCCCCC', '#FFFFFF']}
               style={StyleSheet.absoluteFill}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
@@ -279,7 +279,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   registerHighlight: {
-    color: '#22D3EE',
+    color: '#FFFFFF',
     fontWeight: '600',
   },
   forgotBtn: {

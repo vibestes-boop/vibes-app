@@ -12,7 +12,7 @@ import {
   GuildCard,
   GuildRoomHeader,
   EmptyGuildState,
-  guildStyles as styles,
+  getGuildStyles,
   type GuildViewMode,
 } from "@/components/guild";
 import { GuildMembersSheet } from "@/components/guild/GuildMembersSheet";
@@ -29,9 +29,12 @@ import { useGuildMemberCount } from "@/lib/useGuildMemberCount";
 import { guildFeedActions, useTabRefreshStore } from "@/lib/useTabRefresh";
 import { useGuildNavStore } from "@/lib/guildNavStore";
 import { useActiveLiveSessions } from "@/lib/useLiveSession";
+import { useTheme } from "@/lib/useTheme";
 
 export default function GuildScreen() {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
+  const styles = getGuildStyles(colors);
   const profile = useAuthStore((s) => s.profile);
   const { data: guild } = useGuildInfo(profile?.guild_id ?? null);
   const { data: posts = [], isLoading, refetch } = useGuildFeed();
@@ -119,7 +122,7 @@ export default function GuildScreen() {
   const guildName = guild?.name ?? "Dein Pod";
   const guildColorPair = useMemo(
     () =>
-      (GUILD_COLORS[guildName] ?? ["#0891B2", "#22D3EE"]) as [string, string],
+      (GUILD_COLORS[guildName] ?? ["#CCCCCC", "#FFFFFF"]) as [string, string],
     [guildName],
   );
 
@@ -196,25 +199,27 @@ export default function GuildScreen() {
   const ListHeader = useCallback(
     () => (
       <>
-        <GuildRoomHeader
-          guildName={guildName}
-          guildColors={guildColorPair}
-          memberCount={memberCount}
-          mode={viewMode}
-          onToggle={setViewMode}
-          onMembersPress={() => setMembersOpen(true)}
-        />
-        {viewMode === "feed" && (
-          <View style={styles.storiesWrap}>
-            <StoriesRow
-              groups={storyGroups}
-              onSelectGroup={openViewer}
-              onAddStory={handleAddStory}
-              liveSessions={activeLives}
-            />
-            <View style={styles.storiesDivider} />
-          </View>
-        )}
+        <View style={{ backgroundColor: colors.bg.secondary }}>
+          <GuildRoomHeader
+            guildName={guildName}
+            guildColors={guildColorPair}
+            memberCount={memberCount}
+            mode={viewMode}
+            onToggle={setViewMode}
+            onMembersPress={() => setMembersOpen(true)}
+          />
+          {viewMode === "feed" && (
+            <View style={styles.storiesWrap}>
+              <StoriesRow
+                groups={storyGroups}
+                onSelectGroup={openViewer}
+                onAddStory={handleAddStory}
+                liveSessions={activeLives}
+              />
+              <View style={styles.storiesDivider} />
+            </View>
+          )}
+        </View>
       </>
     ),
     [
@@ -225,6 +230,7 @@ export default function GuildScreen() {
       openViewer,
       handleAddStory,
       viewMode,
+      colors,          // ← fehlte: Theme-Wechsel löst jetzt Re-Render aus
     ],
   );
 
@@ -233,7 +239,7 @@ export default function GuildScreen() {
       {/* Upload-Overlay: User sieht Feedback während Story hochgeladen wird */}
       {isUploading && (
         <View style={uploadOverlay.container}>
-          <ActivityIndicator size="large" color="#22D3EE" />
+          <ActivityIndicator size="large" color="#FFFFFF" />
           <Text style={uploadOverlay.text}>Story wird hochgeladen…</Text>
         </View>
       )}
@@ -261,8 +267,8 @@ export default function GuildScreen() {
           estimatedItemSize={500}
           contentContainerStyle={
             posts.length === 0
-              ? { paddingBottom: insets.bottom }
-              : { paddingBottom: insets.bottom + 90 }
+              ? { paddingBottom: insets.bottom, paddingTop: 8 }
+              : { paddingBottom: insets.bottom + 90, paddingTop: 8 }
           }
           automaticallyAdjustContentInsets={false}
           automaticallyAdjustsScrollIndicatorInsets={false}
@@ -307,7 +313,7 @@ const uploadOverlay = StyleSheet.create({
     zIndex: 999,
   },
   text: {
-    color: '#22D3EE',
+    color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '600',
   },

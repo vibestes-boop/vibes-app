@@ -19,4 +19,5 @@ export type FeedItemData = {
   audioTitle?: string | null;    // Musik-Track Titel für Badge im Feed
   audioVolume?: number | null;   // Lautstärke 0..1 — vom Creator im Picker eingestellt
   isVerified?: boolean | null;   // Creator-Verifizierungs-Badge
+  womenOnly?: boolean;           // Women-Only Zone Post 🌸
 };

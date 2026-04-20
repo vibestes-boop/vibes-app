@@ -42,7 +42,7 @@ export function useFeedAudio({
     await stopAndUnload();
     if (!mountedRef.current) return;
 
-    console.log('[FeedAudio] Lade Track:', url.slice(-30));
+    __DEV__ && console.log('[FeedAudio] Lade Track:', url.slice(-30));
 
     try {
       // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
@@ -79,12 +79,12 @@ export function useFeedAudio({
       // Manuell starten (zuverlässiger als shouldPlay:true)
       if (!isMutedRef.current) {
         await sound.playAsync?.();
-        console.log('[FeedAudio] ▶ Spielt jetzt:', url.slice(-30));
+        __DEV__ && console.log('[FeedAudio] ▶ Spielt jetzt:', url.slice(-30));
       } else {
-        console.log('[FeedAudio] ⏸ Geladen aber gemuted');
+        __DEV__ && console.log('[FeedAudio] ⏸ Geladen aber gemuted');
       }
     } catch (e) {
-      console.warn('[FeedAudio] ❌ Fehler:', e);
+      __DEV__ && console.warn('[FeedAudio] ❌ Fehler:', e);
     }
   }, [stopAndUnload]);
 

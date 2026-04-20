@@ -14,7 +14,7 @@ import {
   withTiming,
   withSequence,
 } from 'react-native-reanimated';
-import { Users, MessageCircle, Heart, Bookmark, Share2, Clock, Play, VolumeX, Volume2 } from 'lucide-react-native';
+import { MessageCircle, Heart, Bookmark, Share2, VolumeX, Volume2 } from 'lucide-react-native';
 import CommentsSheet from '@/components/ui/CommentsSheet';
 import { FallbackFeedVideo, NativeFeedVideo, USE_EXPO_VIDEO } from '@/components/feed/FeedVideo';
 import { useLike } from '@/lib/useLike';
@@ -22,17 +22,17 @@ import { useCommentCount } from '@/lib/useComments';
 import { useBookmark } from '@/lib/useBookmark';
 import { sharePost } from '@/lib/useShare';
 import type { GuildPost } from '@/lib/usePosts';
-import { guildStyles as styles } from './guildStyles';
+import { getGuildStyles } from './guildStyles';
 import { useVideoMute } from '@/lib/useVideoPreferences';
-import { StoryRingAvatar } from '@/components/ui/StoryRingAvatar';
+import { useTheme } from '@/lib/useTheme';
 
 function formatRelativeTime(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `vor ${mins} Min`;
+  if (mins < 60) return `${mins}m`;
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `vor ${hrs} Std`;
-  return `vor ${Math.floor(hrs / 24)} Tagen`;
+  if (hrs < 24) return `${hrs}h`;
+  return `${Math.floor(hrs / 24)}d`;
 }
 
 export const GuildCard = React.memo(function GuildCard({
@@ -45,19 +45,20 @@ export const GuildCard = React.memo(function GuildCard({
   isVisible?: boolean;
 }) {
   const router = useRouter();
+  const { colors } = useTheme();
+  const styles = getGuildStyles(colors);
   const { liked, count, toggle } = useLike(post.id, { liked: post.is_liked, count: post.like_count });
   const { data: commentCount = 0 } = useCommentCount(post.id, post.comment_count);
   const { bookmarked, toggle: toggleBookmark } = useBookmark(post.id);
   const [showComments, setShowComments] = useState(false);
-  const { isMuted, toggleMute } = useVideoMute(); // Global: alle GuildCards teilen denselben Zustand
+  const [captionExpanded, setCaptionExpanded] = useState(false);
+  const { isMuted, toggleMute } = useVideoMute();
   const isVideo = post.media_type === 'video';
   const scale = useSharedValue(1);
   const [c0, c1] = guildColors;
 
-  // Gecachte Farb-Arrays — verhindert LinearGradient-Rerender durch neue Array-Referenzen
-  const bgGradientColors = useMemo(() => [`${c0}30`, '#0D0D12', `${c1}20`] as [string, string, string], [c0, c1]);
-  const overlayGradientColors = useMemo(() => [`${c0}40`, '#0D0D12', `${c1}30`] as [string, string, string], [c0, c1]);
-  const badgeBgColor = useMemo(() => `${c0}33`, [c0]);
+  const bgGradientColors = useMemo(() => [`${c0}30`, colors.bg.elevated, `${c1}20`] as [string, string, string], [c0, c1, colors.bg.elevated]);
+  const overlayGradientColors = useMemo(() => [`${c0}40`, colors.bg.elevated, `${c1}30`] as [string, string, string], [c0, c1, colors.bg.elevated]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -65,7 +66,7 @@ export const GuildCard = React.memo(function GuildCard({
 
   const handleLike = useCallback(() => {
     scale.value = withSequence(
-      withTiming(1.2, { duration: 80 }),
+      withTiming(1.25, { duration: 80 }),
       withTiming(1, { duration: 100 })
     );
     toggle();
@@ -73,54 +74,28 @@ export const GuildCard = React.memo(function GuildCard({
 
   const initials = post.username ? post.username.slice(0, 2).toUpperCase() : '??';
 
-  // Prefetch das Bild wenn die Karte sichtbar wird — schnelleres Laden in der Detailseite
   useEffect(() => {
     if (isVisible && post.media_url && !isVideo) {
       Image.prefetch?.(post.media_url).catch(() => { /* ignorieren */ });
     }
   }, [isVisible, post.media_url, isVideo]);
 
+  const goToPost = useCallback(() => {
+    router.push({ pathname: '/guild-post/[id]', params: { id: post.id } });
+  }, [router, post.id]);
+
+  const goToAuthor = useCallback(() => {
+    router.push({ pathname: '/user/[id]', params: { id: post.author_id } });
+  }, [router, post.author_id]);
+
   return (
-    // BlurView entfernt — verursachte intermittierend schwarzen Screen in Listen
-    // Ersatz: View mit solider dunkler Farbe + subtiler Rand (optisch gleich)
     <View style={styles.card}>
       <View style={styles.cardBlur}>
 
-        {/* Header */}
-        <View style={styles.cardHeader}>
-          <StoryRingAvatar
-            userId={post.author_id}
-            avatarUrl={post.avatar_url}
-            size={40}
-            initials={initials}
-            fallbackColors={guildColors}
-            onPress={() => router.push({ pathname: '/user/[id]', params: { id: post.author_id } })}
-          />
-          <View style={{ flex: 1 }}>
-            <Pressable
-              onPress={() => router.push({ pathname: '/user/[id]', params: { id: post.author_id } })}
-              hitSlop={8}
-            >
-              <Text style={styles.username}>{post.username ?? 'Unbekannt'}</Text>
-            </Pressable>
-            <View style={styles.metaRow}>
-              <Clock size={11} color="#6B7280" />
-              <Text style={styles.metaText}>{formatRelativeTime(post.created_at)}</Text>
-            </View>
-          </View>
-          <View style={[styles.guildBadge, { backgroundColor: badgeBgColor }]}>
-            <Users size={10} color={c0} />
-            <Text style={[styles.guildBadgeText, { color: c0 }]}>Pod</Text>
-          </View>
-        </View>
-
-        {/* Media — Tap → immer zur Post-Detail (Instagram-Style) */}
+        {/* ── Media (volle Fläche) + Author-Overlay oben drauf (Instagram-Style) ── */}
         {post.media_url ? (
-          <Pressable
-            onPress={() => router.push({ pathname: '/guild-post/[id]', params: { id: post.id } })}
-            style={styles.mediaWrap}
-          >
-            {/* Gradient-Hintergrund — verhindert schwarzes Fenster beim Laden */}
+          <Pressable onPress={goToPost} style={v.mediaWrap}>
+            {/* Placeholder Gradient beim Laden */}
             <LinearGradient
               colors={bgGradientColors}
               style={StyleSheet.absoluteFill}
@@ -128,69 +103,90 @@ export const GuildCard = React.memo(function GuildCard({
               end={{ x: 0.8, y: 1 }}
             />
 
+            {/* Media */}
             {isVideo ? (
               <>
                 {USE_EXPO_VIDEO ? (
-                  <NativeFeedVideo
-                    uri={post.media_url}
-                    shouldPlay={isVisible}
-                    isMuted={isMuted}
-                    onProgress={() => { }}
-                  />
+                  <NativeFeedVideo uri={post.media_url} shouldPlay={isVisible} isMuted={isMuted} onProgress={() => { }} />
                 ) : (
-                  <FallbackFeedVideo
-                    uri={post.media_url}
-                    shouldPlay={isVisible}
-                    isMuted={isMuted}
-                    onProgress={() => { }}
-                  />
+                  <FallbackFeedVideo uri={post.media_url} shouldPlay={isVisible} isMuted={isMuted} onProgress={() => { }} />
                 )}
-                {/* Mute/Unmute Button — rechts oben */}
-                <Pressable
-                  onPress={(e) => {
-                    e.stopPropagation();
-                    toggleMute();
-                  }}
-                  style={v.muteBtn}
-                  hitSlop={12}
-                >
-                  {isMuted
-                    ? <VolumeX size={16} color="#fff" />
-                    : <Volume2 size={16} color="#fff" />
-                  }
-                </Pressable>
               </>
             ) : (
-              <Image source={{ uri: post.media_url }} style={styles.mediaThumb} contentFit="cover" />
-
+              <Image source={{ uri: post.media_url }} style={v.mediaImg} contentFit="cover" />
             )}
 
-            <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.35)']}
-              style={StyleSheet.absoluteFill}
-              pointerEvents="none"
-            />
+
+
+            {/* ── Author-Overlay oben links (Instagram-Style) ── */}
+            <Pressable style={v.authorRow} onPress={goToAuthor} hitSlop={8}>
+              {/* Mini Avatar */}
+              <View style={v.miniAvatarWrap}>
+                {post.avatar_url ? (
+                  <Image source={{ uri: post.avatar_url }} style={v.miniAvatar} contentFit="cover" />
+                ) : (
+                  <View style={[v.miniAvatar, v.miniAvatarFallback]}>
+                    <Text style={v.miniAvatarText}>{initials}</Text>
+                  </View>
+                )}
+              </View>
+              {/* Username + Zeit */}
+              <View style={v.authorInfo}>
+                <Text style={v.authorName} numberOfLines={1}>
+                  {post.username ?? 'Unbekannt'}
+                </Text>
+                <Text style={v.authorTime}>{formatRelativeTime(post.created_at)}</Text>
+              </View>
+            </Pressable>
+
+            {/* Mute-Button oben rechts (nur bei Video) */}
+            {isVideo && (
+              <Pressable
+                onPress={(e) => { e.stopPropagation(); toggleMute(); }}
+                style={v.muteBtn}
+                hitSlop={12}
+              >
+                {isMuted
+                  ? <VolumeX size={16} color="#fff" />
+                  : <Volume2 size={16} color="#fff" />
+                }
+              </Pressable>
+            )}
           </Pressable>
         ) : (
-          /* Post ohne Media: Gradient-Fläche */
-          <View style={[styles.mediaWrap, v.noMediaWrap]}>
+          /* Post ohne Media */
+          <View style={[v.mediaWrap, v.noMediaInner]}>
             <LinearGradient
               colors={overlayGradientColors}
               style={StyleSheet.absoluteFill}
               start={{ x: 0.2, y: 0 }}
               end={{ x: 0.8, y: 1 }}
             />
-            <Text style={[v.noMediaIcon, { color: c0 }]}>✦</Text>
+            {/* Author auch hier overlaid */}
+            <Pressable style={[v.authorRow, { top: 14 }]} onPress={goToAuthor} hitSlop={8}>
+              <View style={v.miniAvatarWrap}>
+                <View style={[v.miniAvatar, v.miniAvatarFallback]}>
+                  <Text style={v.miniAvatarText}>{initials}</Text>
+                </View>
+              </View>
+              <View style={v.authorInfo}>
+                <Text style={v.authorName}>{post.username ?? 'Unbekannt'}</Text>
+              </View>
+            </Pressable>
+            {/* Caption als Ersatz für Media */}
+            {post.caption && (
+              <Text style={v.noMediaCaption} numberOfLines={5}>{post.caption}</Text>
+            )}
           </View>
         )}
 
-        {/* Action-Buttons */}
-        <View style={styles.actions}>
+        {/* ── Action-Leiste (unter dem Media) ── */}
+        <View style={[styles.actions, { paddingTop: 8, paddingBottom: 2 }]}>
           <Animated.View style={animatedStyle}>
             <Pressable onPress={handleLike} style={styles.actionBtn} hitSlop={10}>
               <Heart
                 size={22}
-                color={liked ? '#F43F5E' : '#9CA3AF'}
+                color={liked ? '#F43F5E' : colors.icon.default}
                 fill={liked ? '#F43F5E' : 'transparent'}
               />
               <Text style={[styles.actionCount, liked && { color: '#F43F5E' }]}>{count}</Text>
@@ -198,7 +194,7 @@ export const GuildCard = React.memo(function GuildCard({
           </Animated.View>
 
           <Pressable onPress={() => setShowComments(true)} style={styles.actionBtn} hitSlop={10}>
-            <MessageCircle size={22} color="#9CA3AF" />
+            <MessageCircle size={22} color={colors.icon.default} />
             <Text style={styles.actionCount}>
               {commentCount >= 1000 ? `${(commentCount / 1000).toFixed(1)}K` : commentCount}
             </Text>
@@ -207,22 +203,34 @@ export const GuildCard = React.memo(function GuildCard({
           <Pressable onPress={toggleBookmark} style={styles.actionBtn} hitSlop={10}>
             <Bookmark
               size={22}
-              color={bookmarked ? '#FBBF24' : '#9CA3AF'}
+              color={bookmarked ? '#FBBF24' : colors.icon.default}
               fill={bookmarked ? '#FBBF24' : 'transparent'}
             />
           </Pressable>
 
           <Pressable onPress={() => sharePost(post.id, post.caption)} style={styles.actionBtn} hitSlop={10}>
-            <Share2 size={22} color="#9CA3AF" />
+            <Share2 size={22} color={colors.icon.default} />
           </Pressable>
         </View>
 
-        {/* Caption */}
+        {/* ── Caption — immer anzeigen, expandierbar ── */}
         {post.caption ? (
-          <View style={styles.captionWrap}>
-            <Text style={styles.captionUser}>{post.username ?? 'Unbekannt'} </Text>
-            <Text style={styles.caption}>{post.caption}</Text>
-          </View>
+          <Pressable
+            style={styles.captionWrap}
+            onPress={() => setCaptionExpanded(e => !e)}
+            hitSlop={4}
+          >
+            <Text
+              style={[styles.caption, { flexShrink: 1 }]}
+              numberOfLines={captionExpanded ? undefined : 1}
+            >
+              <Text style={styles.captionUser}>{post.username ?? 'Unbekannt'} </Text>
+              {post.caption}
+            </Text>
+            {!captionExpanded && post.caption.length > 60 && (
+              <Text style={cap.mehr}>mehr</Text>
+            )}
+          </Pressable>
         ) : null}
 
         {/* Tags */}
@@ -251,31 +259,113 @@ export const GuildCard = React.memo(function GuildCard({
   );
 });
 
-// Lokale Styles (Video / Media Overlays)
+// ── Lokale Styles — nur Media-Overlay-Elemente ─────────────────────────────
 const v = StyleSheet.create({
-  videoBadge: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    borderRadius: 6,
-    padding: 5,
+  // Media container — Instagram Reels Format (3:4)
+  mediaWrap: {
+    width: '100%',
+    aspectRatio: 3 / 4,     // Instagram Reels/Portrait — maximale Wirkung
+    overflow: 'hidden',
+    position: 'relative',
   },
+  mediaImg: {
+    width: '100%',
+    height: '100%',
+  },
+  bottomGrad: {
+    top: '60%',              // nur unteres Drittel abdunkeln
+  },
+
+  // ── Instagram-Style Author Overlay ────────────────────────────────────────
+  authorRow: {
+    position: 'absolute',
+    top: 14,
+    left: 12,
+    right: 80,               // Platz für Mute-Button
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    zIndex: 10,
+  },
+  miniAvatarWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.7)',
+  },
+  miniAvatar: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+  },
+  miniAvatarFallback: {
+    backgroundColor: 'rgba(80,80,80,0.8)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  miniAvatarText: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  authorInfo: {
+    gap: 1,
+  },
+  authorName: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  authorTime: {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 11,
+    fontWeight: '500',
+    textShadowColor: 'rgba(0,0,0,0.4)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+
+  // Mute Button
   muteBtn: {
     position: 'absolute',
-    top: 10,
-    right: 10,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    bottom: 12,
+    right: 12,
+    backgroundColor: 'rgba(0,0,0,0.5)',
     borderRadius: 20,
     padding: 7,
     zIndex: 10,
   },
-  noMediaWrap: {
+
+  // Post ohne Media
+  noMediaInner: {
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'rgba(30,30,30,0.05)',
+    minHeight: 200,
   },
-  noMediaIcon: {
-    fontSize: 64,
-    opacity: 0.25,
+  noMediaCaption: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '600',
+    textAlign: 'center',
+    paddingHorizontal: 24,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+});
+
+// ── Caption Expand ──────────────────────────────────────────────────────────
+const cap = StyleSheet.create({
+  mehr: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#9CA3AF',
+    marginTop: 1,
   },
 });

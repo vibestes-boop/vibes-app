@@ -299,7 +299,7 @@ export function HighlightPickerSheet({
                   returnKeyType="done"
                   onSubmitEditing={handleSave}
                   blurOnSubmit={false}
-                  selectionColor="#22D3EE"
+                  selectionColor="#FFFFFF"
                 />
                 <Text style={styles.charCount}>{title.length}/32</Text>
               </View>
@@ -333,10 +333,10 @@ const styles = StyleSheet.create({
   headerBtn:             { minWidth: 72 },
   headerBtnDisabled:     { opacity: 0.35 },
   headerBtnText:         { color: 'rgba(255,255,255,0.7)', fontSize: 15 },
-  headerBtnTextAccent:   { color: '#22D3EE', fontSize: 15, fontWeight: '700', textAlign: 'right' },
+  headerBtnTextAccent:   { color: '#FFFFFF', fontSize: 15, fontWeight: '700', textAlign: 'right' },
   headerBtnTextDisabled: { color: 'rgba(255,255,255,0.3)' },
   headerTitle:           { color: '#fff', fontSize: 15, fontWeight: '700', textAlign: 'center' },
-  headerSub:             { color: '#22D3EE', fontSize: 12, fontWeight: '600', marginTop: 2 },
+  headerSub:             { color: '#FFFFFF', fontSize: 12, fontWeight: '600', marginTop: 2 },
 
   // Grid
   grid: { gap: GAP, paddingHorizontal: GAP, paddingTop: GAP },
@@ -358,15 +358,15 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: 'rgba(0,0,0,0.3)',
   },
-  selectCircleActive: { backgroundColor: '#22D3EE', borderColor: '#22D3EE' },
+  selectCircleActive: { backgroundColor: '#FFFFFF', borderColor: '#FFFFFF' },
   selectNum: { color: '#000', fontSize: 12, fontWeight: '900' },
 
-  selectedOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(34,211,238,0.12)' },
+  selectedOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(255,255,255,0.08)' },
 
   // Cover-Badge (nur wenn mehrere ausgewählt)
   coverBadge: {
     position: 'absolute', bottom: 6, left: 6,
-    backgroundColor: 'rgba(34,211,238,0.85)',
+    backgroundColor: 'rgba(29,185,84,0.85)',
     paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4,
   },
   coverBadgeText: { color: '#000', fontSize: 10, fontWeight: '800' },
@@ -389,7 +389,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.07)',
     borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14,
     color: '#fff', fontSize: 17, fontWeight: '500',
-    borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(34,211,238,0.3)',
+    borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.18)',
   },
   charCount: { color: 'rgba(255,255,255,0.25)', fontSize: 11, textAlign: 'right' },
 
@@ -407,7 +407,7 @@ const styles = StyleSheet.create({
   },
   tabActive: {
     borderBottomWidth: 2,
-    borderBottomColor: '#22D3EE',
+    borderBottomColor: '#FFFFFF',
   },
   tabText: {
     color: 'rgba(255,255,255,0.4)',
@@ -415,7 +415,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   tabTextActive: {
-    color: '#22D3EE',
+    color: '#FFFFFF',
   },
   emptyTabText: {
     color: 'rgba(255,255,255,0.3)',

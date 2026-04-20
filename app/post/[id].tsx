@@ -25,7 +25,8 @@ const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
 import { Easing, useAnimatedStyle, useSharedValue, withTiming, withSequence, withSpring, withRepeat, withDelay } from 'react-native-reanimated';
 import { ArrowLeft, Heart, MessageCircle, Bookmark, Share2, Trash2, Pencil, Volume2, VolumeX, Send, Music2 } from 'lucide-react-native';
-import { FallbackFeedVideo, NativeFeedVideo, USE_EXPO_VIDEO } from '@/components/feed/FeedVideo';
+import { FallbackFeedVideo, NativeFeedVideo, USE_EXPO_VIDEO, type FeedVideoSeekHandle } from '@/components/feed/FeedVideo';
+import { VideoProgressBar, type VideoProgressHandle } from '@/components/feed/FeedItem';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/lib/authStore';
 import { useQueryClient } from '@tanstack/react-query';
@@ -148,14 +149,14 @@ function CommentInputBar({
           returnKeyType="send"
           blurOnSubmit={false}
           maxLength={500}
-          selectionColor="#22D3EE"
+          selectionColor="#FFFFFF"
         />
       </Pressable>
       {text.trim().length > 0 ? (
         <Pressable onPress={submit} disabled={isPending} style={cb.sendBtn} hitSlop={8}>
           {isPending
-            ? <ActivityIndicator size={16} color="#22D3EE" />
-            : <Send size={20} stroke="#22D3EE" strokeWidth={2.2} />
+            ? <ActivityIndicator size={16} color="#FFFFFF" />
+            : <Send size={20} stroke="#FFFFFF" strokeWidth={2.2} />
           }
         </Pressable>
       ) : (
@@ -275,6 +276,13 @@ export default function PostDetailScreen() {
   const isOwner = post?.author_id === profile?.id;
   // Musik-Track Audio (expo-av — identisch zu FeedItem)
   const audioSoundRef = useRef<any>(null);
+
+  // Scrubbarer Fortschrittsbalken (wie Haupt-Feed, mit Seek-Lock gegen Sprung)
+  const progressBarRef = useRef<VideoProgressHandle>(null);
+  const videoSeekRef   = useRef<FeedVideoSeekHandle>(null);
+  const handleProgress = useCallback((p: number) => progressBarRef.current?.setProgress(p), []);
+  const handleSeek     = useCallback((frac: number) => videoSeekRef.current?.seek(frac), []);
+  const handleSeekEnd  = useCallback((frac: number) => videoSeekRef.current?.seek(frac), []);
 
   // ── TikTok-Style: Finger-folgendes Profil-Panel (identisch zu Vibes-Feed) ──
   const SCREEN_W = Dimensions.get('window').width;
@@ -545,7 +553,7 @@ export default function PostDetailScreen() {
   if (loading && !hasPreview) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color="#22D3EE" size="large" />
+        <ActivityIndicator color="#FFFFFF" size="large" />
       </View>
     );
   }
@@ -591,17 +599,19 @@ export default function PostDetailScreen() {
           displayMediaType === 'video' ? (
             USE_EXPO_VIDEO ? (
               <NativeFeedVideo
+                ref={videoSeekRef}
                 uri={displayMediaUrl}
                 shouldPlay={screenFocused}
                 isMuted={isMuted}
-                onProgress={() => { }}
+                onProgress={handleProgress}
               />
             ) : (
               <FallbackFeedVideo
+                ref={videoSeekRef}
                 uri={displayMediaUrl}
                 shouldPlay={screenFocused}
                 isMuted={isMuted}
-                onProgress={() => { }}
+                onProgress={handleProgress}
               />
             )
           ) : (
@@ -626,18 +636,6 @@ export default function PostDetailScreen() {
           />
         )}
 
-
-        {/* 3. GRADIENTS — pointerEvents=none */}
-        <LinearGradient
-          colors={['rgba(0,0,0,0.12)', 'transparent']}
-          style={styles.topGradient}
-          pointerEvents="none"
-        />
-        <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.25)']}
-          style={styles.bottomGradient}
-          pointerEvents="none"
-        />
 
         {/* 4. TAP-ZONE — Einfacher Tap = Mute/Unmute, Doppel-Tap = Like + Herz */}
         <Pressable
@@ -691,7 +689,7 @@ export default function PostDetailScreen() {
                 style={styles.editBtn}
                 hitSlop={8}
               >
-                <Pencil size={17} stroke="#22D3EE" strokeWidth={2} />
+                <Pencil size={17} stroke="#FFFFFF" strokeWidth={2} />
               </Pressable>
               <Pressable onPress={handleDelete} style={styles.deleteBtn} hitSlop={8}>
                 <Trash2 size={17} stroke="#F87171" strokeWidth={2} />
@@ -800,6 +798,17 @@ export default function PostDetailScreen() {
             </View>
           )}
         </View>
+
+        {/* Scrubbarer Fortschrittsbalken — wie Haupt-Feed, kein Sprung-Effekt */}
+        {isVideo && (
+          <VideoProgressBar
+            ref={progressBarRef}
+            postId={Array.isArray(id) ? id[0] : (id ?? '')}
+            onSeek={handleSeek}
+            onSeekEnd={handleSeekEnd}
+            bottomOffset={insets.bottom + COMMENT_BAR_H + 6}
+          />
+        )}
       </View>
 
       {/* TikTok-Style Kommentar-Eingabeleiste */}
@@ -849,24 +858,10 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     backgroundColor: '#0D0D0D',
   },
-  backBtnText: { color: '#22D3EE', fontWeight: '600' },
+  backBtnText: { color: '#FFFFFF', fontWeight: '600' },
   mainImage: {
     width: W,
     height: H,
-  },
-  topGradient: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 90,
-  },
-  bottomGradient: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 160,
   },
   header: {
     position: 'absolute',
@@ -895,7 +890,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(34,211,238,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.10)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -946,7 +941,7 @@ const styles = StyleSheet.create({
     width: 46,
     height: 46,
     borderRadius: 23,
-    backgroundColor: '#0891B2',
+    backgroundColor: '#CCCCCC',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -966,11 +961,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
-    backgroundColor: 'rgba(34,211,238,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.10)',
     borderWidth: 1,
-    borderColor: 'rgba(34,211,238,0.3)',
+    borderColor: 'rgba(255,255,255,0.18)',
   },
-  tagText: { color: '#22D3EE', fontSize: 12, fontWeight: '600' },
+  tagText: { color: '#FFFFFF', fontSize: 12, fontWeight: '600' },
   musicBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     alignSelf: 'flex-start',
@@ -997,7 +992,7 @@ const cb = StyleSheet.create({
     width: 34,
     height: 34,
     borderRadius: 17,
-    backgroundColor: '#0891B2',
+    backgroundColor: '#CCCCCC',
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,

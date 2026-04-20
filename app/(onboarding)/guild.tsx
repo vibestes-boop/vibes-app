@@ -21,7 +21,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/lib/authStore';
 
 const GUILD_COLORS: Record<string, [string, string]> = {
-  'Pod Alpha': ['#0891B2', '#22D3EE'],
+  'Pod Alpha': ['#CCCCCC', '#FFFFFF'],
   'Pod Beta': ['#0EA5E9', '#38BDF8'],
   'Pod Gamma': ['#059669', '#34D399'],
   'Pod Delta': ['#D97706', '#FBBF24'],
@@ -91,7 +91,7 @@ export default function OnboardingGuild() {
     transform: [{ translateY: (1 - btnOpacity.value) * 16 }],
   }));
 
-  const colors = guildName ? (GUILD_COLORS[guildName] ?? ['#0891B2', '#22D3EE']) : ['#0891B2', '#22D3EE'];
+  const colors = guildName ? (GUILD_COLORS[guildName] ?? ['#CCCCCC', '#FFFFFF']) : ['#CCCCCC', '#FFFFFF'];
 
   const handleFinish = async () => {
     if (!profile?.id) return;
@@ -234,8 +234,8 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: 'rgba(255,255,255,0.15)',
   },
-  stepDone: { backgroundColor: '#22D3EE' },
-  stepActive: { backgroundColor: '#0891B2' },
+  stepDone: { backgroundColor: '#FFFFFF' },
+  stepActive: { backgroundColor: '#CCCCCC' },
   title: {
     fontSize: 32,
     fontWeight: '800',

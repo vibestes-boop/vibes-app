@@ -22,7 +22,7 @@ export const vibeFeedScreenStyles = StyleSheet.create({
   newPostsBannerInner: {
     borderRadius: 24,
     overflow: 'hidden',
-    shadowColor: '#22D3EE',
+    shadowColor: '#FFFFFF',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
     shadowRadius: 12,
@@ -36,14 +36,14 @@ export const vibeFeedScreenStyles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: 'rgba(34,211,238,0.3)',
+    borderColor: 'rgba(255,255,255,0.18)',
     overflow: 'hidden',
   },
   newPostsDot: {
     width: 7,
     height: 7,
     borderRadius: 3.5,
-    backgroundColor: '#22D3EE',
+    backgroundColor: '#FFFFFF',
   },
   newPostsText: {
     color: '#FFFFFF',
@@ -51,7 +51,7 @@ export const vibeFeedScreenStyles = StyleSheet.create({
     fontWeight: '700',
   },
   newPostsArrow: {
-    color: '#22D3EE',
+    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '800',
   },
@@ -71,10 +71,10 @@ export const vibeFeedScreenStyles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(34,211,238,0.4)',
-    backgroundColor: 'rgba(34,211,238,0.1)',
+    borderColor: 'rgba(255,255,255,0.28)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
-  emptyTagBtnText: { color: '#22D3EE', fontSize: 14, fontWeight: '600' },
+  emptyTagBtnText: { color: '#FFFFFF', fontSize: 14, fontWeight: '600' },
   list: {
     flex: 1,
   },
@@ -243,7 +243,7 @@ export const feedItemStyles = StyleSheet.create({
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#22D3EE',
+    backgroundColor: '#FFFFFF',
     borderRadius: 1,
   },
   tagBadge: {
@@ -263,6 +263,9 @@ export const feedItemStyles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 1.2,
     textTransform: 'uppercase',
+    textShadowColor: 'rgba(0,0,0,0.9)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   rightActions: {
     position: 'absolute',
@@ -287,6 +290,9 @@ export const feedItemStyles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '600',
     marginTop: 2,
+    textShadowColor: 'rgba(0,0,0,0.9)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   bottomInfo: {
     paddingHorizontal: 20,
@@ -338,14 +344,14 @@ export const feedItemStyles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.4)',
   },
   authorAvatarFallback: {
-    backgroundColor: 'rgba(34,211,238,0.25)',
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   authorAvatarInitial: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#22D3EE',
+    color: '#FFFFFF',
   },
   followBadge: {
     position: 'absolute',
@@ -373,20 +379,29 @@ export const feedItemStyles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '700',
+    textShadowColor: 'rgba(0,0,0,0.9)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 5,
   },
   authorTags: {
-    color: 'rgba(255,255,255,0.35)',
+    color: 'rgba(255,255,255,0.55)',
     fontSize: 10,
     fontWeight: '500',
     letterSpacing: 0.2,
     marginTop: 1,
+    textShadowColor: 'rgba(0,0,0,0.9)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   caption: {
-    color: 'rgba(255,255,255,0.85)',
+    color: 'rgba(255,255,255,0.9)',
     fontSize: 14,
     lineHeight: 21,
     fontWeight: '400',
     maxWidth: '86%',
+    textShadowColor: 'rgba(0,0,0,0.9)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 5,
   },
   captionBlock: {
     marginTop: 4,
@@ -404,10 +419,13 @@ export const feedItemStyles = StyleSheet.create({
     marginTop: 6,
   },
   viewCountText: {
-    color: 'rgba(255,255,255,0.45)',
+    color: 'rgba(255,255,255,0.55)',
     fontSize: 12,
     fontWeight: '500',
     letterSpacing: 0.3,
+    textShadowColor: 'rgba(0,0,0,0.9)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   privacyBadge: {
     flexDirection: 'row',
@@ -425,6 +443,21 @@ export const feedItemStyles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '600',
     letterSpacing: 0.2,
+  },
+  // 🌸 Women-Only Zone Badge
+  wozBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(244,63,94,0.18)',
+    borderRadius: 8,
+    paddingHorizontal: 5,
+    paddingVertical: 2,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(244,63,94,0.35)',
+  },
+  wozBadgeText: {
+    fontSize: 11,
+    lineHeight: 14,
   },
 });
 
@@ -478,11 +511,11 @@ export const postShareModalStyles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.15)',
   },
   userAvatarFallback: {
-    backgroundColor: 'rgba(34,211,238,0.25)',
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  userAvatarText: { color: '#22D3EE', fontSize: 20, fontWeight: '700' },
+  userAvatarText: { color: '#FFFFFF', fontSize: 20, fontWeight: '700' },
   checkBadge: {
     position: 'absolute',
     bottom: 0,
@@ -490,7 +523,7 @@ export const postShareModalStyles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#22D3EE',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
@@ -501,7 +534,7 @@ export const postShareModalStyles = StyleSheet.create({
   sendBtn: {
     marginHorizontal: 18,
     marginTop: 10,
-    backgroundColor: '#22D3EE',
+    backgroundColor: '#FFFFFF',
     borderRadius: 12,
     flexDirection: 'row',
     alignItems: 'center',

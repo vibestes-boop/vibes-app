@@ -17,6 +17,7 @@ import { useRouter } from 'expo-router';
 import type { StoryGroup } from '@/lib/useStories';
 import type { LiveSession } from '@/lib/useLiveSession';
 import { useAuthStore } from '@/lib/authStore';
+import { useTheme } from '@/lib/useTheme';
 
 type Props = {
   groups: StoryGroup[];
@@ -45,6 +46,7 @@ function StoryBubble({
   const initial = (group.username ?? '?')[0].toUpperCase();
   const isLive = !!liveSession;
   const hasNew = group.hasUnviewed;
+  const { colors } = useTheme();
 
   // Animations-Werte für Story-Ring
   const glow = useSharedValue(1);
@@ -90,7 +92,7 @@ function StoryBubble({
   }));
 
   const ringColor = hasNew
-    ? ['#22D3EE', '#F472B6'] as [string, string]
+    ? ['#FFFFFF', '#F472B6'] as [string, string]
     : ['#2D2D2D', '#2D2D2D'] as [string, string];
 
   const handlePress = () => {
@@ -172,6 +174,7 @@ function StoryBubble({
         style={[
           isLive ? styles.liveBubbleLabel : styles.bubbleLabel,
           !isLive && hasNew && styles.bubbleLabelNew,
+          { color: isLive ? '#FF6B6B' : hasNew ? colors.text.primary : colors.text.secondary },
         ]}
         numberOfLines={1}
       >
@@ -180,7 +183,7 @@ function StoryBubble({
           : `@${group.username ?? '?'}`}
       </Text>
       {isLive && liveSession && (liveSession.viewer_count ?? 0) > 0 && (
-        <Text style={styles.liveViewerCount}>
+        <Text style={[styles.liveViewerCount, { color: colors.text.muted }]}>
           {liveSession.viewer_count} 👁
         </Text>
       )}
@@ -192,6 +195,7 @@ function StoryBubble({
 function LiveOnlyBubble({ session, isOwn }: { session: LiveSession; isOwn: boolean }) {
   const router = useRouter();
   const initial = (session.profiles?.username ?? '?')[0].toUpperCase();
+  const { colors } = useTheme();
   const scale = useSharedValue(1);
   const opacity = useSharedValue(0.85);
 
@@ -258,11 +262,11 @@ function LiveOnlyBubble({ session, isOwn }: { session: LiveSession; isOwn: boole
         <View style={styles.liveDot} />
         <Text style={styles.liveBadgeText}>LIVE</Text>
       </View>
-      <Text style={styles.liveBubbleLabel} numberOfLines={1}>
+      <Text style={[styles.liveBubbleLabel, { color: '#FF6B6B' }]} numberOfLines={1}>
         {isOwn ? '🔴 Du bist LIVE' : `@${session.profiles?.username ?? '?'}`}
       </Text>
       {(session.viewer_count ?? 0) > 0 && (
-        <Text style={styles.liveViewerCount}>
+        <Text style={[styles.liveViewerCount, { color: colors.text.muted }]}>
           {session.viewer_count} 👁
         </Text>
       )}
@@ -272,9 +276,9 @@ function LiveOnlyBubble({ session, isOwn }: { session: LiveSession; isOwn: boole
 
 // ─── Add-Story-Bubble ──────────────────────────────────────────────────────────
 function AddStoryBubble({ onPress }: { onPress: () => void }) {
-
   const profile = useAuthStore((s) => s.profile);
   const initial = (profile?.username ?? '?')[0].toUpperCase();
+  const { colors } = useTheme();
 
   return (
     <Pressable
@@ -284,7 +288,7 @@ function AddStoryBubble({ onPress }: { onPress: () => void }) {
         onPress();
       }}
     >
-      <View style={[styles.ring, styles.addRing]}>
+      <View style={[styles.ring, styles.addRing, { backgroundColor: colors.bg.subtle }]}>
         <View style={styles.ringInner}>
           {profile?.avatar_url ? (
             <Image source={{ uri: profile.avatar_url }} style={styles.avatar} />
@@ -295,10 +299,10 @@ function AddStoryBubble({ onPress }: { onPress: () => void }) {
           )}
         </View>
       </View>
-      <View style={styles.addBadge}>
-        <Plus size={10} color="#fff" strokeWidth={3} />
+      <View style={[styles.addBadge, { backgroundColor: colors.text.primary, borderColor: colors.bg.secondary }]}>
+        <Plus size={10} color={colors.bg.primary} strokeWidth={3} />
       </View>
-      <Text style={styles.bubbleLabel} numberOfLines={1}>
+      <Text style={[styles.bubbleLabel, { color: colors.text.secondary }]} numberOfLines={1}>
         Deine Story
       </Text>
     </Pressable>
@@ -515,14 +519,14 @@ const styles = StyleSheet.create({
     borderRadius: BUBBLE_SIZE / 2,
   },
   avatarFallback: {
-    backgroundColor: 'rgba(34,211,238,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.10)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarInitial: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#22D3EE',
+    color: '#FFFFFF',
   },
   addBadge: {
     position: 'absolute',
@@ -531,11 +535,10 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#0891B2',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: '#0A0A0A',
+    // backgroundColor + borderColor via inline mit colors
   },
   bubbleLabel: {
     marginTop: 5,

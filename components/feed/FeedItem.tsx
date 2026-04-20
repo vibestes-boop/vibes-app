@@ -53,6 +53,8 @@ import { PostOptionsModal } from './PostOptionsModal';
 import { LikersSheet } from '@/components/ui/LikersSheet';
 import PostLongPressSheet from './PostLongPressSheet';
 import { FallbackFeedVideo, NativeFeedVideo, USE_EXPO_VIDEO, type FeedVideoSeekHandle } from './FeedVideo';
+import { WomenOnlyBlur } from '@/components/women-only/WomenOnlyBlur';
+import { useWomenOnly } from '@/lib/useWomenOnly';
 import {
   ActionButton,
   BookmarkButton,
@@ -83,6 +85,10 @@ export const VideoProgressBar = React.memo(
     // Fortschritt zum Zeitpunkt des Touch-Starts (für relative Berechnung)
     const scrubStartFractionRef = useRef(0);
     const scrubProgress = useRef(0);
+    // Sperrt setProgress nach Release bis Video an Ziel angekommen ist (verhindert Sprung-Effekt)
+    const seekLockRef = useRef(false);
+    const seekLockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const seekTargetRef = useRef(0); // Ziel-Fraktion des Seeks
     // Alle Animationen nativ
     const fillWidth = useRef(new RNAnimated.Value(0)).current;
     const trackHeight = useRef(new RNAnimated.Value(3)).current;
@@ -91,11 +97,23 @@ export const VideoProgressBar = React.memo(
 
     React.useImperativeHandle(ref, () => ({
       setProgress: (p: number) => {
-        if (!isScrubbing) {
-          currentFractionRef.current = p;
-          fillWidth.setValue(p * trackWidth.current);
-          thumbX.setValue(p * trackWidth.current);
+        // Während Scrubbing ODER während Seek-Sperre: keine externen Updates annehmen.
+        // Seek-Sperre bleibt aktiv bis Video nahe am Ziel ist (oder Timeout).
+        if (isScrubbing || seekLockRef.current) {
+          // Seek-Sperre aufheben sobald Video nahe am Ziel angekommen ist (±3%)
+          if (seekLockRef.current && Math.abs(p - seekTargetRef.current) < 0.03) {
+            seekLockRef.current = false;
+            if (seekLockTimerRef.current) {
+              clearTimeout(seekLockTimerRef.current);
+              seekLockTimerRef.current = null;
+            }
+          } else {
+            return; // noch nicht am Ziel → Update ignorieren
+          }
         }
+        currentFractionRef.current = p;
+        fillWidth.setValue(p * trackWidth.current);
+        thumbX.setValue(p * trackWidth.current);
       },
     }), [isScrubbing, fillWidth, thumbX]);
 
@@ -109,6 +127,12 @@ export const VideoProgressBar = React.memo(
         onMoveShouldSetPanResponder: () => true,
 
         onPanResponderGrant: () => {
+          // Seek-Sperre aufheben wenn neues Scrubbing startet
+          seekLockRef.current = false;
+          if (seekLockTimerRef.current) {
+            clearTimeout(seekLockTimerRef.current);
+            seekLockTimerRef.current = null;
+          }
           setIsScrubbing(true);
           // TikTok-Style: Merke aktuellen Fortschritt — Video springt NICHT zur Tipp-Position
           scrubStartFractionRef.current = currentFractionRef.current;
@@ -122,7 +146,7 @@ export const VideoProgressBar = React.memo(
 
         onPanResponderMove: (_, gs) => {
           // Relative Berechnung: delta vom Start-Fortschritt
-          // 1 Trackbreite = 100% des Videos; dx / trackWidth = Fortschritts-Delta
+          // 1 Trackbreite = 100%; dx / trackWidth = Fortschritts-Delta
           const delta = gs.dx / (trackWidth.current || 1);
           const frac = Math.max(0, Math.min(1, scrubStartFractionRef.current + delta));
           scrubProgress.current = frac;
@@ -132,16 +156,32 @@ export const VideoProgressBar = React.memo(
         },
 
         onPanResponderRelease: () => {
+          const target = scrubProgress.current;
+          seekTargetRef.current = target;
+          // Seek-Sperre setzen: verhindert Sprung durch alte onProgress-Events
+          // während das Video noch zur Zielposition seeked.
+          seekLockRef.current = true;
+          // Fallback-Timeout: Sperre nach 400ms aufheben (falls Video nie nahe genug kommt)
+          seekLockTimerRef.current = setTimeout(() => {
+            seekLockRef.current = false;
+            seekLockTimerRef.current = null;
+          }, 400);
+
           setIsScrubbing(false);
           RNAnimated.parallel([
             RNAnimated.spring(trackHeight, { toValue: 3, useNativeDriver: false, bounciness: 0, speed: 30 }),
             RNAnimated.timing(thumbOpacity, { toValue: 0, duration: 150, useNativeDriver: false }),
           ]).start();
-          onSeekEnd?.(scrubProgress.current);
+          onSeekEnd?.(target);
         },
 
         onPanResponderTerminate: () => {
           setIsScrubbing(false);
+          seekLockRef.current = false;
+          if (seekLockTimerRef.current) {
+            clearTimeout(seekLockTimerRef.current);
+            seekLockTimerRef.current = null;
+          }
           RNAnimated.parallel([
             RNAnimated.spring(trackHeight, { toValue: 3, useNativeDriver: false, bounciness: 0, speed: 30 }),
             RNAnimated.timing(thumbOpacity, { toValue: 0, duration: 150, useNativeDriver: false }),
@@ -166,6 +206,7 @@ export const VideoProgressBar = React.memo(
     );
   })
 );
+
 
 const pbStyles = StyleSheet.create({
   hitArea: {
@@ -326,16 +367,22 @@ function ExpandableCaption({ text }: { text: string }) {
 
 const captionStyles = StyleSheet.create({
   text: {
-    color: 'rgba(255,255,255,0.92)',
+    color: 'rgba(255,255,255,0.95)',
     fontSize: 13,
     fontWeight: '400',
     lineHeight: 18,
+    textShadowColor: 'rgba(0,0,0,0.9)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 5,
   },
   toggle: {
-    color: 'rgba(255,255,255,0.5)',
+    color: 'rgba(255,255,255,0.65)',
     fontSize: 12,
     fontWeight: '600',
     marginTop: 3,
+    textShadowColor: 'rgba(0,0,0,0.9)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
 });
 
@@ -470,7 +517,7 @@ export const FeedItem = React.memo(function FeedItem({
     }
 
     let cancelled = false;
-    console.log('[FeedAudio] ▶ Starte:', audioUrl.slice(-40), 'Vol:', audioVolume);
+    __DEV__ && console.log('[FeedAudio] ▶ Starte:', audioUrl.slice(-40), 'Vol:', audioVolume);
 
     (async () => {
       try {
@@ -488,9 +535,9 @@ export const FeedItem = React.memo(function FeedItem({
         if (cancelled) { sound.unloadAsync?.(); return; }
         audioSoundRef.current = sound;
         await sound.playAsync();
-        console.log('[FeedAudio] ✅ Spielt mit Vol:', audioVolume);
+        __DEV__ && console.log('[FeedAudio] ✅ Spielt mit Vol:', audioVolume);
       } catch (err) {
-        console.warn('[FeedAudio] ❌ Fehler:', err);
+        __DEV__ && console.warn('[FeedAudio] ❌ Fehler:', err);
       }
     })();
 
@@ -520,6 +567,11 @@ export const FeedItem = React.memo(function FeedItem({
       ? (engagement.followingByAuthor[item.authorId] ?? false)
       : undefined;
   const { isFollowing, toggle: toggleFollow, isOwnProfile } = useFollow(item.authorId ?? null, followBatch);
+
+  // ── Women-Only Zone Check ───────────────────────────────────────────────────
+  const { canAccessWomenOnly } = useWomenOnly();
+  // WOZ-Blur anzeigen wenn: Post ist WOZ + Nutzerin nicht verifiziert
+  const showWozBlur = item.womenOnly === true && !canAccessWomenOnly;
 
   const lastTap = useRef<number>(0);
   const lastTapPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -626,6 +678,9 @@ export const FeedItem = React.memo(function FeedItem({
 
   return (
     <Animated.View style={[styles.feedItem, mediaAnimStyle]}>
+
+      {/* ── Women-Only Blur-Overlay (für nicht-verifizierte Nutzerinnen) ── */}
+      {showWozBlur && <WomenOnlyBlur />}
 
       {/* ── Hintergrund: Bild DIREKT in feedItem */}
       {item.mediaUrl && !isVideo && !imageError && (
@@ -781,11 +836,7 @@ export const FeedItem = React.memo(function FeedItem({
         style={[styles.bottomInfo, { paddingBottom: insets.bottom + 52 }]}
         pointerEvents="box-none"
       >
-        <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.25)', 'rgba(0,0,0,0.65)']}
-          style={StyleSheet.absoluteFill}
-          pointerEvents="none"
-        />
+
         <View style={styles.tagBadge}>
           <View style={[styles.tagDot, { backgroundColor: item.accentColor }]} />
           <Text style={[styles.tagText, { color: item.accentColor }]}>{item.tag}</Text>
@@ -810,7 +861,7 @@ export const FeedItem = React.memo(function FeedItem({
             {storyGroup?.hasUnviewed ? (
               /* Bunter Ring = ungesehene Stories → Klick öffnet Viewer */
               <LinearGradient
-                colors={['#22D3EE', '#F472B6', '#FB923C']}
+                colors={['#FFFFFF', '#F472B6', '#FB923C']}
                 style={styles.storyRingGradient}
                 start={{ x: 0, y: 1 }}
                 end={{ x: 1, y: 0 }}
@@ -858,6 +909,12 @@ export const FeedItem = React.memo(function FeedItem({
             {/* Goldenes Häkchen für verifizierte Creator */}
             {item.isVerified && (
               <CheckCircle2 size={13} color="#FBBF24" fill="rgba(251,191,36,0.2)" strokeWidth={2.5} />
+            )}
+            {/* 🌸 Women-Only Badge */}
+            {item.womenOnly && (
+              <View style={styles.wozBadge}>
+                <Text style={styles.wozBadgeText}>🌸</Text>
+              </View>
             )}
           </Pressable>
           {/* Privacy Badge: nur bei nicht-öffentlichen Posts sichtbar */}
@@ -928,8 +985,8 @@ export const FeedItem = React.memo(function FeedItem({
             >
               <View style={styles.muteBtnInner}>
                 {isMuted
-                  ? <VolumeX size={18} color="rgba(255,255,255,0.7)" strokeWidth={2} />
-                  : <Volume2 size={18} color="rgba(255,255,255,0.7)" strokeWidth={2} />}
+                  ? <VolumeX size={18} color="rgba(255,255,255,0.85)" strokeWidth={0} fill="rgba(255,255,255,0.85)" />
+                  : <Volume2 size={18} color="rgba(255,255,255,0.85)" strokeWidth={0} fill="rgba(255,255,255,0.85)" />}
               </View>
             </Pressable>
             {/* Separator */}
@@ -958,7 +1015,7 @@ export const FeedItem = React.memo(function FeedItem({
             accessibilityLabel={isReposted ? 'Repost rückgängig' : 'Post reposten'}
             count={repostCount > 0 ? String(repostCount) : undefined}
             active={isReposted}
-            activeColor="#22D3EE"
+            activeColor="#FFFFFF"
             onPress={() => {
               impactAsync(ImpactFeedbackStyle.Medium);
               toggleRepost();

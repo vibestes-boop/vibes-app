@@ -41,11 +41,16 @@ export function useBookmark(postId: string, batchBookmarked?: boolean) {
       if (!userId) return;
       const { error } = await supabase
         .from('bookmarks')
-        .insert({ user_id: userId, post_id: postId });
+        .upsert(
+          { user_id: userId, post_id: postId },
+          { onConflict: 'user_id,post_id', ignoreDuplicates: true }
+        );
       if (error) throw error;
     },
     onError: (err: any) => {
       queryClient.setQueryData(['bookmark', userId, postId], false);
+      // Duplicate key (23505) → bereits gespeichert, kein Alert nötig
+      if (err?.code === '23505' || err?.message?.includes('duplicate key')) return;
       if (err?.message?.includes('does not exist') || err?.code === '42P01') {
         Alert.alert('Setup fehlt', 'Bitte führe bookmarks.sql im Supabase SQL Editor aus.');
       } else {

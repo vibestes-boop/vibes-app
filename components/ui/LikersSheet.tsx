@@ -205,13 +205,13 @@ const ls = StyleSheet.create({
     paddingVertical: 7,
     borderRadius: 20,
     borderWidth: 1.5,
-    borderColor: '#22D3EE',
+    borderColor: '#FFFFFF',
     backgroundColor: 'transparent',
   },
   followBtnActive: {
     borderColor: 'rgba(255,255,255,0.2)',
     backgroundColor: 'rgba(255,255,255,0.06)',
   },
-  followBtnText: { color: '#22D3EE', fontSize: 12, fontWeight: '700' },
+  followBtnText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
   followBtnTextActive: { color: 'rgba(255,255,255,0.5)' },
 });

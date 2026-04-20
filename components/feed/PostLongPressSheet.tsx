@@ -115,7 +115,7 @@ function QuickPill({
 }) {
   // Safety guard: never crash if an icon is undefined
   if (!Icon) return null;
-  const color = active ? (activeColor ?? '#22D3EE') : 'rgba(255,255,255,0.75)';
+  const color = active ? (activeColor ?? '#FFFFFF') : 'rgba(255,255,255,0.75)';
   return (
     <Pressable
       onPress={onPress}
@@ -236,7 +236,7 @@ export default function PostLongPressSheet({
             icon={Bookmark}
             label={bookmarked ? 'Gespeichert' : 'Speichern'}
             active={bookmarked}
-            activeColor="#22D3EE"
+            activeColor="#FFFFFF"
             onPress={() => { toggleBookmark(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
           />
           <QuickPill
@@ -386,8 +386,8 @@ const s = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.07)',
   },
   pillActive: {
-    backgroundColor: 'rgba(34,211,238,0.1)',
-    borderColor: 'rgba(34,211,238,0.3)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255,255,255,0.18)',
   },
   pillLabel: {
     fontSize: 10,
@@ -432,10 +432,10 @@ const s = StyleSheet.create({
   rowLabel: { fontSize: 15, fontWeight: '600', color: '#fff' },
   rowSub: { fontSize: 12, color: 'rgba(255,255,255,0.38)', lineHeight: 15 },
   badge: {
-    backgroundColor: 'rgba(34,211,238,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
   },
-  badgeText: { color: '#22D3EE', fontSize: 11, fontWeight: '700' },
+  badgeText: { color: '#FFFFFF', fontSize: 11, fontWeight: '700' },
 });

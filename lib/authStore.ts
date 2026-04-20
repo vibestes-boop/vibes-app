@@ -16,8 +16,17 @@ export type Profile = {
   onboarding_complete: boolean | null;
   preferred_tags: string[] | null;
   voice_sample_url: string | null;
-  is_verified?: boolean | null;  // Goldenes Häkchen — nach is_verified Migration
-  is_private?: boolean | null;   // Privates Konto
+  is_verified?: boolean | null;        // Goldenes Häkchen
+  is_private?: boolean | null;         // Privates Konto
+  teip?: string | null;                // Tschetschenischer Clan (Тейп)
+  // ── Women-Only Zone ──────────────────────────────────────────
+  gender?: 'female' | 'male' | 'other' | null;
+  women_only_verified?: boolean | null; // true = Zugang zur Women-Only Zone
+  verification_level?: number | null;   // 0=keine, 1=Selbstdeklaration, 2=Selfie
+  // ── Creator & Admin ──────────────────────────────────────────
+  is_creator?: boolean | null;           // Creator-Status aktiviert
+  display_name?: string | null;          // Anzeigename (optional)
+  is_admin?: boolean | null;             // Admin-Zugang
 };
 
 

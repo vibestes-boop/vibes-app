@@ -59,32 +59,19 @@ export default function RegisterScreen() {
 
     if (error) {
       setLoading(false);
-      Alert.alert('Registrierung fehlgeschlagen', error.message);
+      // Benutzername bereits vergeben
+      if (error.message?.includes('duplicate') || (error as any).code === '23505') {
+        Alert.alert('Fehler', 'Dieser Benutzername ist bereits vergeben. Bitte wähle einen anderen.');
+      } else {
+        Alert.alert('Registrierung fehlgeschlagen', error.message);
+      }
       return;
     }
 
-    if (data.user) {
-      const { error: profileError } = await supabase.from('profiles').insert({
-        id: data.user.id,
-        username: username.toLowerCase().replace(/\s/g, '_'),
-        explore_vibe: 0.5,
-        brain_vibe: 0.5,
-      });
-
-      if (profileError) {
-        // Auth-User existiert, aber Profil-Insert ist fehlgeschlagen.
-        // Auth-Account löschen damit kein Zombie-User entsteht, der sich
-        // nie mehr einloggen kann (fetchProfile → null → stuck).
-        await supabase.auth.signOut();
-        setLoading(false);
-        if (profileError.code === '23505') {
-          Alert.alert('Fehler', 'Dieser Benutzername ist bereits vergeben. Bitte wähle einen anderen.');
-        } else {
-          Alert.alert('Fehler', 'Konto konnte nicht erstellt werden. Bitte versuche es erneut.');
-        }
-        return;
-      }
-    }
+    // ✅ Kein manueller profiles.insert() nötig!
+    // Der Datenbank-Trigger 'on_auth_user_created' (handle_new_user) erstellt
+    // das Profil automatisch beim auth.signUp() — manueller Insert würde
+    // mit "duplicate key" fehlschlagen (Primary Key Konflikt).
 
     setLoading(false);
     Alert.alert(
@@ -92,6 +79,7 @@ export default function RegisterScreen() {
       'Bestätige deine E-Mail und logge dich dann ein.',
       [{ text: 'OK', onPress: () => router.replace('/(auth)/login') }]
     );
+
   };
 
   return (
@@ -109,8 +97,8 @@ export default function RegisterScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.logoArea}>
-          <Zap size={32} stroke="#22D3EE" strokeWidth={2} fill="#22D3EE" />
-          <Text style={styles.logoText}>Werde Teil von Vibes</Text>
+          <Zap size={32} stroke="#FFFFFF" strokeWidth={2} fill="#FFFFFF" />
+          <Text style={styles.logoText}>Werde Teil von Serlo ✨</Text>
           <Text style={styles.tagline}>Dein KI-gematchter Feed wartet auf dich</Text>
         </View>
 
@@ -173,7 +161,7 @@ export default function RegisterScreen() {
             accessibilityState={{ disabled: loading }}
           >
             <LinearGradient
-              colors={['#0891B2', '#22D3EE']}
+              colors={['#CCCCCC', '#FFFFFF']}
               style={StyleSheet.absoluteFill}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
@@ -290,7 +278,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   loginHighlight: {
-    color: '#22D3EE',
+    color: '#FFFFFF',
     fontWeight: '600',
   },
   // ── Divider & Apple ──

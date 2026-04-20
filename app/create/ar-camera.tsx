@@ -49,7 +49,7 @@ function ExpoGoPlaceholder({ onBack }: { onBack: () => void }) {
       </Text>
       <TouchableOpacity style={styles.backBtn} onPress={onBack}>
         <LinearGradient
-          colors={['#22D3EE', '#A855F7']}
+          colors={['#FFFFFF', '#A855F7']}
           style={styles.backBtnGrad}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}

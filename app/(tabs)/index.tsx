@@ -7,6 +7,7 @@ import {
   Platform,
   RefreshControl,
   FlatList,
+  ScrollView,
   PanResponder,
   Dimensions,
   Animated as RNAnimated,
@@ -21,7 +22,7 @@ const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
 
 import { impactAsync, ImpactFeedbackStyle } from 'expo-haptics';
-import { Search, AlertTriangle, SearchX, TrendingUp, Zap } from 'lucide-react-native';
+import { Search, AlertTriangle, SearchX, TrendingUp, Zap, Clock } from 'lucide-react-native';
 import TuneMyVibeOverlay from '@/components/ui/TuneMyVibeOverlay';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useVibeFeed, useTrendingFeed, useFollowingFeed } from '@/lib/usePosts';
@@ -46,6 +47,7 @@ import { LiveFeedCard } from '@/components/live/LiveFeedCard';
 import { useFeedNavStore } from '@/lib/feedNavStore';
 import { useVideoMute } from '@/lib/useVideoPreferences';
 import { getTitleFromUrl } from '@/lib/useMusicPicker';
+import { FollowingEmptyState } from '@/components/feed/FollowingEmptyState';
 
 type FeedRow =
   | { __type: 'post'; id: string; data: FeedItemData }
@@ -358,7 +360,7 @@ export default function VibeFeedScreen() {
         avatarUrl: p.avatar_url ?? null,
         viewCount: (p as any).view_count ?? 0,
         gradient: ['#0A0A0A', '#1a0533', '#0d1f4a'],
-        accentColor: '#22D3EE',
+        accentColor: '#FFFFFF',
         privacy: p.privacy ?? 'public',
         allowComments: p.allow_comments ?? true,
         allowDuet: p.allow_duet ?? true,
@@ -368,6 +370,8 @@ export default function VibeFeedScreen() {
         audioVolume: p.audio_volume ?? 0.8,         // Lautstärke vom Creator eingestellt
         // Verifiziertes Creator-Häkchen
         isVerified: p.is_verified ?? null,
+        // Women-Only Zone
+        womenOnly: (p as any).women_only ?? false,
       })),
     [activePosts]
   );
@@ -501,7 +505,7 @@ export default function VibeFeedScreen() {
       {feedMode === 'foryou' && !isLoading && !isError && feedRows.length === 0 && !activeTag && !isTrending && (
         <View style={[styles.emptyTag, { gap: 16 }]}>
           <Zap size={56} color="#A855F7" strokeWidth={1.5} />
-          <Text style={styles.emptyTagTitle}>Willkommen bei Vibes! ✨</Text>
+          <Text style={styles.emptyTagTitle}>Willkommen bei Serlo! ✨</Text>
           <Text style={styles.emptyTagSub}>
             Folge anderen oder poste deinen ersten Vibe — dein Feed füllt sich automatisch.
           </Text>
@@ -517,21 +521,15 @@ export default function VibeFeedScreen() {
       )}
       {/* Ganz leerer Feed — "Folge ich" Mode */}
       {feedMode === 'following' && !isLoading && !isError && feedRows.length === 0 && (
-        <View style={[styles.emptyTag, { gap: 16 }]}>
-          <Search size={56} color="#22D3EE" strokeWidth={1.5} />
-          <Text style={styles.emptyTagTitle}>Noch kein Following-Feed</Text>
-          <Text style={styles.emptyTagSub}>
-            Folge Usern im Explore-Tab — ihre Posts erscheinen hier chronologisch.
-          </Text>
-          <Pressable
-            onPress={() => router.push('/(tabs)/explore')}
-            style={[styles.emptyTagBtn, { backgroundColor: 'rgba(34,211,238,0.1)', borderColor: 'rgba(34,211,238,0.3)', borderWidth: 1 }]}
-            accessibilityRole="button"
-            accessibilityLabel="Leute entdecken"
-          >
-            <Text style={[styles.emptyTagBtnText, { color: '#22D3EE' }]}>Leute entdecken</Text>
-          </Pressable>
-        </View>
+        <ScrollView
+          style={{ flex: 1 }}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ flexGrow: 1 }}
+        >
+          <FollowingEmptyState
+            onExplore={() => router.push('/(tabs)/explore')}
+          />
+        </ScrollView>
       )}
       {/* Trending-Badge: wird nur angezeigt wenn Trending-Feed aktiv ist */}
       {isTrending && (
@@ -571,7 +569,7 @@ export default function VibeFeedScreen() {
         ListFooterComponent={
           isFetchingNextPage ? (
             <View style={styles.pageLoadingFooter}>
-              <ActivityIndicator color="#22D3EE" size="small" />
+              <ActivityIndicator color="#FFFFFF" size="small" />
             </View>
           ) : null
         }
@@ -580,7 +578,7 @@ export default function VibeFeedScreen() {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            tintColor="#22D3EE"
+            tintColor="#FFFFFF"
             progressViewOffset={insets.top + 100}
           />
         }
@@ -595,7 +593,7 @@ export default function VibeFeedScreen() {
         <Pressable onPress={handleRefresh} style={styles.newPostsBannerInner}>
           <View style={[styles.newPostsBlur, { backgroundColor: 'rgba(10,10,20,0.92)' }]}>
             <View style={styles.newPostsDot} />
-            <Text style={styles.newPostsText}>Neue Vibes verfügbar</Text>
+            <Text style={styles.newPostsText}>Neue Posts verfügbar</Text>
             <Text style={styles.newPostsArrow}>↑</Text>
           </View>
         </Pressable>
@@ -641,26 +639,40 @@ export default function VibeFeedScreen() {
           </Pressable>
         </View>
 
-        {/* Rechts: Suche-Button */}
-        <Pressable
-          onPress={() => {
-            impactAsync(ImpactFeedbackStyle.Light);
-            router.push('/(tabs)/explore');
-          }}
-          hitSlop={10}
-          style={styles.feedSearchBtn}
-          pointerEvents="auto"
-        >
-          <Search size={18} stroke="rgba(255,255,255,0.8)" strokeWidth={2} />
-        </Pressable>
+        {/* Rechts: Suche + Replay Buttons */}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }} pointerEvents="auto">
+          <Pressable
+            onPress={() => {
+              impactAsync(ImpactFeedbackStyle.Light);
+              router.push('/live/replays' as any);
+            }}
+            hitSlop={10}
+            style={styles.feedSearchBtn}
+          >
+            <Clock size={18} stroke="rgba(255,255,255,0.8)" strokeWidth={2} />
+          </Pressable>
+          <Pressable
+            onPress={() => {
+              impactAsync(ImpactFeedbackStyle.Light);
+              router.push('/(tabs)/explore');
+            }}
+            hitSlop={10}
+            style={styles.feedSearchBtn}
+            pointerEvents="auto"
+          >
+            <Search size={18} stroke="rgba(255,255,255,0.8)" strokeWidth={2} />
+          </Pressable>
+        </View>
       </View>
 
-      {/* ── Kategorie-Chips (nur Für-dich-Mode, ohne "For You") ─────── */}
+      {/* ── Kategorie-Tabs (TikTok-Stil, nur Für-dich-Mode) ─────── */}
       {feedMode === 'foryou' && (
         <View style={[styles.filterBar, { top: insets.top + 52 }]} pointerEvents="box-none">
-          <View style={styles.filterScroll} pointerEvents="auto">
-            <CategoryFilter activeTag={activeTag} onSelect={setActiveTag} hideForYou />
-          </View>
+          <CategoryFilter
+            activeTag={activeTag}
+            onSelect={(tag) => setActiveTag(tag === activeTag ? null : tag)}
+            hideForYou
+          />
         </View>
       )}
 

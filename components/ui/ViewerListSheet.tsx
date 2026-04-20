@@ -5,7 +5,7 @@
  * 2. User Profile Mini-Sheet (opens on top when viewer is tapped)
  * 3. Report Flow (flag icon → select what to report)
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -35,10 +35,14 @@ import {
   AtSign,
   UserPlus,
   UserCheck,
+  Shield,
+  ShieldOff,
 } from 'lucide-react-native';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/lib/authStore';
 import { useFollow } from '@/lib/useFollow';
+import { useTopGifters, type TopGifter } from '@/lib/useGifts';
+import { useLiveModerators, useLiveModeratorActions } from '@/lib/useLiveModerators';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type ViewerUser = {
@@ -48,13 +52,54 @@ type ViewerUser = {
   bio: string | null;
 };
 
+/** Merged row für die Sheet-Liste: entweder ranked Top-Gifter oder nur Viewer. */
+type AudienceRow = {
+  id: string;
+  username: string;
+  avatarUrl: string | null;
+  rank: number | null;        // 1..N für Top-Gifter, null für Non-Gifter
+  totalCoins: number;         // 0 wenn Non-Gifter
+  giftsCount: number;         // 0 wenn Non-Gifter
+  bio?: string | null;
+};
+
 type Props = {
   visible: boolean;
   onClose: () => void;
   sessionId: string;
   /** Callback: fügt @username in Kommentar-Input ein */
   onMention?: (username: string) => void;
+  /**
+   * v1.22.2 — true wenn das Sheet vom Host geöffnet wird. Blendet die
+   * Self-CTA "Sende ein Geschenk, um Top-Zuschauer*in zu werden" aus,
+   * weil der Host sich nicht selbst beschenken kann.
+   */
+  isHost?: boolean;
+  /**
+   * v1.22.2 — wenn gesetzt: Self-CTA unten tappbar, öffnet Gift-Picker
+   * (Sheet schließt sich vorher automatisch).
+   */
+  onOpenGiftPicker?: () => void;
+  /**
+   * v1.22.3 — Host-Identität. Wird für das "❤️ {hostName}" Follower-Badge
+   * pro Row gebraucht: batch-Query auf follows(following_id=hostId) ermittelt,
+   * welche der sichtbaren User dem Host folgen.
+   */
+  hostId?: string | null;
+  hostName?: string | null;
 };
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function fmtGiftCount(n: number): string {
+  if (n <= 0) return '-';
+  if (n >= 10) return '10+';
+  return String(n);
+}
+
+function fmtCoins(n: number): string {
+  if (n >= 1000) return `${(n / 1000).toFixed(1)}K`;
+  return String(n);
+}
 
 // ─── Report-Optionen ──────────────────────────────────────────────────────────
 const REPORT_REASONS = [
@@ -72,11 +117,22 @@ function UserProfileSheet({
   visible,
   onClose,
   onMention,
+  // v1.22.3 — Host-Only Moderator-Actions für diese Session
+  modSessionId,
+  isModerator,
+  onGrantMod,
+  onRevokeMod,
+  isModBusy,
 }: {
   user: ViewerUser;
   visible: boolean;
   onClose: () => void;
   onMention?: (username: string) => void;
+  modSessionId?: string | null;
+  isModerator?: boolean;
+  onGrantMod?: (userId: string) => Promise<unknown> | void;
+  onRevokeMod?: (userId: string) => Promise<unknown> | void;
+  isModBusy?: boolean;
 }) {
   const { isFollowing, toggle, isLoading, isOwnProfile } = useFollow(user.id);
   const [showReport, setShowReport] = useState(false);
@@ -95,6 +151,44 @@ function UserProfileSheet({
       })
       .then();
     Alert.alert('Gemeldet', 'Deine Meldung wurde eingereicht. Danke!');
+  };
+
+  // v1.22.3 — Grant/Revoke Handler mit Confirm-Alert
+  const canShowModAction = !!modSessionId && !isOwnProfile;
+  const handleToggleMod = () => {
+    if (!modSessionId) return;
+    if (isModerator) {
+      Alert.alert(
+        'Moderator entfernen?',
+        `@${user.username} verliert sofort die Mod-Rechte für diese Session.`,
+        [
+          { text: 'Abbrechen', style: 'cancel' },
+          {
+            text: 'Entfernen',
+            style: 'destructive',
+            onPress: async () => {
+              try { await onRevokeMod?.(user.id); onClose(); }
+              catch (e) { __DEV__ && console.warn('[ViewerListSheet] revoke failed:', e); }
+            },
+          },
+        ],
+      );
+    } else {
+      Alert.alert(
+        'Moderator ernennen?',
+        `@${user.username} erhält ein Mod-Badge im Chat und in der Zuschauer*innen-Liste.`,
+        [
+          { text: 'Abbrechen', style: 'cancel' },
+          {
+            text: 'Ernennen',
+            onPress: async () => {
+              try { await onGrantMod?.(user.id); onClose(); }
+              catch (e) { __DEV__ && console.warn('[ViewerListSheet] grant failed:', e); }
+            },
+          },
+        ],
+      );
+    }
   };
 
   if (!visible) return null;
@@ -157,7 +251,7 @@ function UserProfileSheet({
             >
               {isFollowing ? (
                 <>
-                  <UserCheck size={16} stroke="#22D3EE" strokeWidth={2} />
+                  <UserCheck size={16} stroke="#FFFFFF" strokeWidth={2} />
                   <Text style={[s.profileActionText, s.profileActionTextActive]}>
                     Folge ich
                   </Text>
@@ -182,6 +276,28 @@ function UserProfileSheet({
             >
               <AtSign size={16} stroke="#fff" strokeWidth={2} />
               <Text style={s.profileActionText}>Erwähnen</Text>
+            </Pressable>
+          )}
+
+          {/* v1.22.3 — Host-Only: Moderator ernennen/entfernen */}
+          {canShowModAction && (
+            <Pressable
+              style={[
+                s.profileActionBtn,
+                isModerator ? s.profileModBtnRevoke : s.profileModBtnGrant,
+                isModBusy && s.profileModBtnBusy,
+              ]}
+              onPress={handleToggleMod}
+              disabled={!!isModBusy}
+            >
+              {isModerator ? (
+                <ShieldOff size={16} stroke="#fff" strokeWidth={2} />
+              ) : (
+                <Shield size={16} stroke="#fff" strokeWidth={2} />
+              )}
+              <Text style={s.profileActionText}>
+                {isModerator ? 'Mod entfernen' : 'Zum Mod'}
+              </Text>
             </Pressable>
           )}
         </View>
@@ -213,18 +329,43 @@ function UserProfileSheet({
 }
 
 // ─── Main Viewer List Sheet ───────────────────────────────────────────────────
-export default function ViewerListSheet({ visible, onClose, sessionId, onMention }: Props) {
+export default function ViewerListSheet({
+  visible,
+  onClose,
+  sessionId,
+  onMention,
+  isHost,
+  onOpenGiftPicker,
+  hostId,
+  hostName,
+}: Props) {
   const [viewers, setViewers] = useState<ViewerUser[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedUser, setSelectedUser] = useState<ViewerUser | null>(null);
 
-  // Zuschauer laden (alle die in der letzten Minute reaktionen/kommentare hatten + session viewer)
+  // v1.22.2 — Realtime Top-Gifter (Ranking nach Coin-Summe in dieser Session)
+  const { topGifters } = useTopGifters(visible ? sessionId : null, 20);
+
+  // Self (Viewer selbst) — für die sticky CTA-Row unten
+  const selfProfile = useAuthStore((st) => st.profile);
+
+  // v1.22.3 — Set der Nutzer-IDs die dem Host folgen (für "❤️ {hostName}" Chip)
+  const [hostFollowers, setHostFollowers] = useState<Set<string>>(new Set());
+
+  // v1.22.3 — Realtime Moderator-Set für diese Session (für "Moderator" Chip)
+  const { modIds } = useLiveModerators(visible ? sessionId : null);
+
+  // v1.22.3 — Moderator-Grant/Revoke — nur für Host aktiv (RPC enforcet host==auth.uid())
+  const modActionsSessionId = isHost && visible ? sessionId : null;
+  const { grant: grantMod, revoke: revokeMod, isBusy: isModBusy } =
+    useLiveModeratorActions(modActionsSessionId);
+
+  // Zuschauer laden (aktive Kommentatoren als beste Datenquelle)
   useEffect(() => {
     if (!visible) return;
     setLoading(true);
 
     (async () => {
-      // Aktive Kommentatoren als "Viewers" nehmen (bessere Datenquelle als LiveKit participants)
       const { data: commentUsers } = await supabase
         .from('live_comments')
         .select('user_id, profiles!live_comments_user_id_fkey(id, username, avatar_url, bio)')
@@ -248,7 +389,160 @@ export default function ViewerListSheet({ visible, onClose, sessionId, onMention
     })();
   }, [visible, sessionId]);
 
+  // v1.22.3 — Batch-Query: welche sichtbaren User folgen dem Host?
+  // Läuft nur, wenn hostId gesetzt ist und das Sheet sichtbar. Re-läuft
+  // wenn sich die Audience-Liste ändert (neuer Kommentator, neues Gift).
+  const audienceIds = useMemo(() => {
+    const set = new Set<string>();
+    viewers.forEach((v) => set.add(v.id));
+    topGifters.forEach((g) => set.add(g.userId));
+    if (selfProfile?.id) set.add(selfProfile.id);
+    // host selbst raus (er folgt sich nicht selbst)
+    if (hostId) set.delete(hostId);
+    return Array.from(set).sort();
+  }, [viewers, topGifters, selfProfile?.id, hostId]);
+
+  useEffect(() => {
+    if (!visible || !hostId || audienceIds.length === 0) {
+      setHostFollowers(new Set());
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from('follows')
+        .select('follower_id')
+        .eq('following_id', hostId)
+        .in('follower_id', audienceIds);
+      if (cancelled) return;
+      if (error) {
+        __DEV__ && console.warn('[ViewerListSheet] host-followers query failed:', error.message);
+        setHostFollowers(new Set());
+        return;
+      }
+      setHostFollowers(new Set((data ?? []).map((r: { follower_id: string }) => r.follower_id)));
+    })();
+    return () => { cancelled = true; };
+    // audienceIds kommt aus useMemo → stabile Referenz solange IDs gleich bleiben
+  }, [visible, hostId, audienceIds]);
+
+  // Merge: Top-Gifter (ranked) zuerst, dann Rest-Viewer (non-gifter) ohne Rank.
+  // Self wird aus der Hauptliste entfernt — erscheint nur unten in der CTA-Row.
+  const rows: AudienceRow[] = (() => {
+    const topSet = new Set(topGifters.map((g) => g.userId));
+    const ranked: AudienceRow[] = topGifters.map((g: TopGifter, i) => ({
+      id:         g.userId,
+      username:   g.username,
+      avatarUrl:  g.avatarUrl ?? null,
+      rank:       i + 1,
+      totalCoins: g.totalCoins,
+      giftsCount: g.giftsCount,
+    }));
+    const unranked: AudienceRow[] = viewers
+      .filter((v) => !topSet.has(v.id))
+      .map((v) => ({
+        id:         v.id,
+        username:   v.username,
+        avatarUrl:  v.avatar_url,
+        rank:       null,
+        totalCoins: 0,
+        giftsCount: 0,
+        bio:        v.bio,
+      }));
+    const merged = [...ranked, ...unranked];
+    // Self raus — wird unten sticky dargestellt
+    return selfProfile ? merged.filter((r) => r.id !== selfProfile.id) : merged;
+  })();
+
+  // Eigener Rank (falls in Top-Gifter) — zur Anzeige in der Sticky-CTA-Row
+  const selfInTop = selfProfile
+    ? topGifters.find((g) => g.userId === selfProfile.id) ?? null
+    : null;
+  const selfRank = selfInTop
+    ? topGifters.findIndex((g) => g.userId === selfProfile!.id) + 1
+    : null;
+
+  const totalCount = rows.length + (selfProfile ? 1 : 0);
+
   if (!visible) return null;
+
+  // Row-Renderer — ranked oder unranked
+  const renderRow = (item: AudienceRow) => (
+    <Pressable
+      style={s.viewerRow}
+      onPress={() =>
+        setSelectedUser({
+          id:         item.id,
+          username:   item.username,
+          avatar_url: item.avatarUrl,
+          bio:        item.bio ?? null,
+        })
+      }
+    >
+      {/* Rank links: "1" / "2" / "3" pink, ab 4 grau, "-" für non-gifter */}
+      <View style={s.rankCol}>
+        {item.rank === null ? (
+          <Text style={s.rankDash}>-</Text>
+        ) : item.rank <= 3 ? (
+          <Text style={[s.rankNum, s.rankTop]}>{item.rank}</Text>
+        ) : (
+          <Text style={[s.rankNum, s.rankRest]}>{item.rank}</Text>
+        )}
+      </View>
+
+      {/* Avatar */}
+      {item.avatarUrl ? (
+        <Image source={{ uri: item.avatarUrl }} style={s.viewerAvatar} />
+      ) : (
+        <View style={[s.viewerAvatar, s.viewerAvatarFallback]}>
+          <Text style={s.viewerAvatarLetter}>
+            {item.username?.[0]?.toUpperCase() ?? '?'}
+          </Text>
+        </View>
+      )}
+
+      {/* Name + Chip-Row: Top-Rank (1..3) + Follower-Badge + Moderator-Badge */}
+      <View style={s.viewerInfo}>
+        <Text style={s.viewerName}>@{item.username}</Text>
+        {(item.rank !== null && item.rank <= 3) ||
+        hostFollowers.has(item.id) ||
+        modIds.has(item.id) ? (
+          <View style={s.rankChipRow}>
+            {item.rank !== null && item.rank <= 3 && (
+              <View
+                style={[
+                  s.rankChip,
+                  item.rank === 1 ? s.rankChipGold : s.rankChipRest3,
+                ]}
+              >
+                <Text style={s.rankChipText}>👑 Nr. {item.rank}</Text>
+              </View>
+            )}
+            {/* v1.22.3 — Moderator-Badge: vom Host ernannte Moderatoren */}
+            {modIds.has(item.id) ? (
+              <View style={[s.rankChip, s.moderatorChip]}>
+                <Text style={s.moderatorChipText}>🛡 Moderator</Text>
+              </View>
+            ) : null}
+            {/* v1.22.3 — Follower-Badge: User folgt dem Host */}
+            {hostFollowers.has(item.id) && hostName ? (
+              <View style={[s.rankChip, s.followerChip]}>
+                <Text style={s.followerChipText}>❤️ {hostName}</Text>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
+      </View>
+
+      {/* Rechts: Gift-Count (10+/5/1) + Coin-Tooltip für Ranked */}
+      {item.rank !== null ? (
+        <View style={s.rightCol}>
+          <Text style={s.giftCountText}>{fmtGiftCount(item.giftsCount)}</Text>
+          <Text style={s.coinHint}>{fmtCoins(item.totalCoins)} 💎</Text>
+        </View>
+      ) : null}
+    </Pressable>
+  );
 
   return (
     <Modal transparent visible={visible} animationType="none" onRequestClose={onClose}>
@@ -261,7 +555,7 @@ export default function ViewerListSheet({ visible, onClose, sessionId, onMention
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
       </Animated.View>
 
-      {/* Viewer List Sheet */}
+      {/* Sheet */}
       <Animated.View
         entering={SlideInDown.springify().damping(18).stiffness(140)}
         exiting={SlideOutDown.duration(250)}
@@ -270,56 +564,102 @@ export default function ViewerListSheet({ visible, onClose, sessionId, onMention
         {/* Header */}
         <View style={s.header}>
           <View style={s.handle} />
-          <Text style={s.headerTitle}>Zuschauer</Text>
+          <Text style={s.headerTitle}>Top-Zuschauer*innen</Text>
           <Pressable onPress={onClose} style={s.closeBtn} hitSlop={12}>
             <X size={20} stroke="#aaa" strokeWidth={2} />
           </Pressable>
         </View>
 
-        {/* Viewer Count */}
+        {/* Count */}
         <Text style={s.viewerCountLabel}>
-          {viewers.length} {viewers.length === 1 ? 'Zuschauer' : 'Zuschauer'}
+          {totalCount} {totalCount === 1 ? 'Zuschauer' : 'Zuschauer'}
         </Text>
 
         {/* List */}
         {loading ? (
-          <ActivityIndicator color="#22D3EE" style={{ paddingVertical: 40 }} />
-        ) : viewers.length === 0 ? (
+          <ActivityIndicator color="#FFFFFF" style={{ paddingVertical: 40 }} />
+        ) : rows.length === 0 ? (
           <View style={s.emptyState}>
             <Text style={s.emptyEmoji}>👀</Text>
             <Text style={s.emptyText}>Noch keine Zuschauer</Text>
           </View>
         ) : (
           <FlatList
-            data={viewers}
+            data={rows}
             keyExtractor={(item) => item.id}
-            contentContainerStyle={{ paddingBottom: 34 }}
+            contentContainerStyle={{ paddingBottom: 12 }}
             showsVerticalScrollIndicator={false}
-            renderItem={({ item }) => (
-              <Pressable
-                style={s.viewerRow}
-                onPress={() => setSelectedUser(item)}
-              >
-                {item.avatar_url ? (
-                  <Image source={{ uri: item.avatar_url }} style={s.viewerAvatar} />
-                ) : (
-                  <View style={[s.viewerAvatar, s.viewerAvatarFallback]}>
-                    <Text style={s.viewerAvatarLetter}>
-                      {item.username?.[0]?.toUpperCase() ?? '?'}
-                    </Text>
-                  </View>
-                )}
-                <View style={s.viewerInfo}>
-                  <Text style={s.viewerName}>@{item.username}</Text>
-                  {item.bio ? (
-                    <Text style={s.viewerBio} numberOfLines={1}>
-                      {item.bio}
-                    </Text>
+            renderItem={({ item }) => renderRow(item)}
+          />
+        )}
+
+        {/* v1.22.2 — Sticky Self-CTA (nicht für Host). Öffnet Gift-Picker. */}
+        {!isHost && selfProfile && (
+          <View style={s.selfDivider} />
+        )}
+        {!isHost && selfProfile && (
+          <Pressable
+            style={s.selfCtaRow}
+            onPress={() => {
+              if (onOpenGiftPicker) {
+                onClose();
+                // kleines Delay: Close-Animation zuerst, dann Picker öffnen
+                setTimeout(onOpenGiftPicker, 220);
+              }
+            }}
+          >
+            <View style={s.rankCol}>
+              {selfRank ? (
+                <Text
+                  style={[
+                    s.rankNum,
+                    selfRank <= 3 ? s.rankTop : s.rankRest,
+                  ]}
+                >
+                  {selfRank}
+                </Text>
+              ) : (
+                <Text style={s.rankDash}>-</Text>
+              )}
+            </View>
+            {selfProfile.avatar_url ? (
+              <Image source={{ uri: selfProfile.avatar_url }} style={s.viewerAvatar} />
+            ) : (
+              <View style={[s.viewerAvatar, s.viewerAvatarFallback]}>
+                <Text style={s.viewerAvatarLetter}>
+                  {selfProfile.username?.[0]?.toUpperCase() ?? '?'}
+                </Text>
+              </View>
+            )}
+            <View style={s.viewerInfo}>
+              <Text style={s.viewerName}>
+                @{selfProfile.username ?? 'du'}
+              </Text>
+              {/* v1.22.3 — Chips in Self-Row: Moderator + Follower */}
+              {modIds.has(selfProfile.id) ||
+              (hostFollowers.has(selfProfile.id) && hostName) ? (
+                <View style={s.rankChipRow}>
+                  {modIds.has(selfProfile.id) ? (
+                    <View style={[s.rankChip, s.moderatorChip]}>
+                      <Text style={s.moderatorChipText}>🛡 Moderator</Text>
+                    </View>
+                  ) : null}
+                  {hostFollowers.has(selfProfile.id) && hostName ? (
+                    <View style={[s.rankChip, s.followerChip]}>
+                      <Text style={s.followerChipText}>❤️ {hostName}</Text>
+                    </View>
                   ) : null}
                 </View>
-              </Pressable>
-            )}
-          />
+              ) : (
+                <Text style={s.selfCtaHint}>
+                  Sende ein Geschenk, um Top-Zuschauer*in zu werden
+                </Text>
+              )}
+            </View>
+            <View style={s.selfCtaBtn}>
+              <Text style={s.selfCtaBtnText}>Geschenk</Text>
+            </View>
+          </Pressable>
         )}
       </Animated.View>
 
@@ -330,6 +670,12 @@ export default function ViewerListSheet({ visible, onClose, sessionId, onMention
           visible={!!selectedUser}
           onClose={() => setSelectedUser(null)}
           onMention={onMention}
+          /* v1.22.3 — Host kann direkt aus der Liste Moderatoren ernennen */
+          modSessionId={isHost ? sessionId : null}
+          isModerator={modIds.has(selectedUser.id)}
+          onGrantMod={grantMod}
+          onRevokeMod={revokeMod}
+          isModBusy={isModBusy}
         />
       )}
     </Modal>
@@ -403,6 +749,109 @@ const s = StyleSheet.create({
     fontSize: 14,
   },
 
+  // ── v1.22.2 — Rank-Column + Gift-Count-Column ──
+  rankCol: {
+    width: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rankNum: {
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  rankTop: { color: '#FF2E63' },           // Top 3 → pink
+  rankRest: { color: 'rgba(255,255,255,0.45)' }, // Ab Platz 4 → grau
+  rankDash: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.25)',
+  },
+  rankChipRow: { flexDirection: 'row', marginTop: 3 },
+  rankChip: {
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+  },
+  rankChipGold:  { backgroundColor: 'rgba(255,46,99,0.18)' },
+  rankChipRest3: { backgroundColor: 'rgba(255,138,76,0.18)' },
+  rankChipText: {
+    color: '#FF6B8A',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
+  // v1.22.3 — Follower-Badge (User folgt dem Host)
+  followerChip: {
+    backgroundColor: 'rgba(239,68,68,0.16)',
+    marginLeft: 6,
+  },
+  followerChipText: {
+    color: '#F87171',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
+  // v1.22.3 — Moderator-Badge (vom Host ernannt, session-scoped)
+  moderatorChip: {
+    backgroundColor: 'rgba(59,130,246,0.18)',
+    marginLeft: 6,
+  },
+  moderatorChipText: {
+    color: '#60A5FA',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.2,
+  },
+  rightCol: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    minWidth: 52,
+  },
+  giftCountText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  coinHint: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: 1,
+  },
+
+  // ── Self-CTA Sticky Row (unten) ──
+  selfDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    marginHorizontal: 16,
+  },
+  selfCtaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+    backgroundColor: '#1a1a1a',
+  },
+  selfCtaHint: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 11,
+    fontWeight: '500',
+    marginTop: 2,
+  },
+  selfCtaBtn: {
+    backgroundColor: '#FF2E63',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 18,
+  },
+  selfCtaBtnText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+
   // ── Viewer Row ──
   viewerRow: {
     flexDirection: 'row',
@@ -416,10 +865,10 @@ const s = StyleSheet.create({
     height: 44,
     borderRadius: 22,
     borderWidth: 1.5,
-    borderColor: 'rgba(34,211,238,0.3)',
+    borderColor: 'rgba(255,255,255,0.18)',
   },
   viewerAvatarFallback: {
-    backgroundColor: '#0891B2',
+    backgroundColor: '#CCCCCC',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -504,10 +953,10 @@ const s = StyleSheet.create({
     height: 72,
     borderRadius: 36,
     borderWidth: 2,
-    borderColor: 'rgba(34,211,238,0.4)',
+    borderColor: 'rgba(255,255,255,0.28)',
   },
   profileAvatarFallback: {
-    backgroundColor: '#0891B2',
+    backgroundColor: '#CCCCCC',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -540,15 +989,15 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#0891B2',
+    backgroundColor: '#CCCCCC',
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 20,
   },
   profileActionBtnActive: {
-    backgroundColor: 'rgba(34,211,238,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.10)',
     borderWidth: 1,
-    borderColor: 'rgba(34,211,238,0.4)',
+    borderColor: 'rgba(255,255,255,0.28)',
   },
   profileActionText: {
     color: '#fff',
@@ -556,8 +1005,12 @@ const s = StyleSheet.create({
     fontWeight: '700',
   },
   profileActionTextActive: {
-    color: '#22D3EE',
+    color: '#FFFFFF',
   },
+  // v1.22.3 — Moderator-Action-Varianten (grant = blau, revoke = rot)
+  profileModBtnGrant:  { backgroundColor: '#3B82F6' },
+  profileModBtnRevoke: { backgroundColor: 'rgba(239,68,68,0.85)' },
+  profileModBtnBusy:   { opacity: 0.5 },
 
   // ── Report Overlay ──
   reportOverlay: {

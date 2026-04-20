@@ -52,8 +52,8 @@ export function PostOptionsModal({
       label: 'Tune my Vibe',
       sub: 'Passe deinen Feed-Algorithmus an',
       icon: SlidersHorizontal,
-      color: '#22D3EE',
-      bg: 'rgba(34,211,238,0.12)',
+      color: '#FFFFFF',
+      bg: 'rgba(255,255,255,0.08)',
     },
     ...(!isOwnProfile
       ? [

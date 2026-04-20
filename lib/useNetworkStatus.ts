@@ -14,21 +14,22 @@ export function useNetworkStatus(): boolean | null {
   const [isConnected, setIsConnected] = useState<boolean | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const check = async () => {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
-      const Network = require('expo-network') as typeof import('expo-network');
-      const state = await Network.getNetworkStateAsync();
-      const connected = (state.isConnected ?? true) && (state.isInternetReachable ?? true);
-      setIsConnected(connected);
-      return connected;
-    } catch {
-      return true; // Im Fehlerfall nicht fälschlicherweise Offline anzeigen
-    }
-  };
-
   useEffect(() => {
     let active = true;
+
+    const check = async (): Promise<boolean> => {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+        const Network = require('expo-network') as typeof import('expo-network');
+        const state = await Network.getNetworkStateAsync();
+        const connected = (state.isConnected ?? true) && (state.isInternetReachable ?? true);
+        // Nur setState wenn noch gemounted — verhindert Leck nach Unmount
+        if (active) setIsConnected(connected);
+        return connected;
+      } catch {
+        return true; // Im Fehlerfall nicht fälschlicherweise Offline anzeigen
+      }
+    };
 
     const poll = async () => {
       if (!active) return;

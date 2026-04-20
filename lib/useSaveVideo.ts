@@ -1,10 +1,4 @@
-/**
- * lib/useSaveVideo.ts
- * Lädt ein Video herunter und speichert es in der Kamera-Galerie des Nutzers.
- * Nutzt die neue expo-file-system Klassen-API (v18+: File.downloadFileAsync)
- * und expo-media-library zum Speichern in der Galerie.
- */
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Alert } from 'react-native';
 import { File, Paths, Directory } from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
@@ -14,6 +8,26 @@ type SaveState = 'idle' | 'downloading' | 'saving' | 'done' | 'error';
 
 export function useSaveVideo() {
   const [state, setState] = useState<SaveState>('idle');
+  const mountedRef  = useRef(true);
+  const timerRef    = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Cleanup on unmount — verhindert setState auf unmounted component
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, []);
+
+  const safeSetState = (s: SaveState) => {
+    if (mountedRef.current) setState(s);
+  };
+
+  const scheduleReset = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => safeSetState('idle'), 2000);
+  };
 
   const saveVideo = async (videoUrl: string) => {
     if (state === 'downloading' || state === 'saving') return;
@@ -29,7 +43,7 @@ export function useSaveVideo() {
         return;
       }
 
-      setState('downloading');
+      safeSetState('downloading');
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
       // 2. Datei in den Cache-Ordner herunterladen
@@ -44,7 +58,7 @@ export function useSaveVideo() {
       // Überspringe Download falls schon vorhanden (idempotent)
       const downloaded = await File.downloadFileAsync(videoUrl, cacheFile, { idempotent: true });
 
-      setState('saving');
+      safeSetState('saving');
 
       // 3. In Galerie speichern
       await MediaLibrary.saveToLibraryAsync(downloaded.uri);
@@ -52,18 +66,18 @@ export function useSaveVideo() {
       // 4. Temporären Cache aufräumen
       try { downloaded.delete(); } catch { /* ignorieren */ }
 
-      setState('done');
+      safeSetState('done');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert('Gespeichert ✓', 'Das Video wurde in deiner Galerie gespeichert.');
 
-      setTimeout(() => setState('idle'), 2000);
+      scheduleReset();
     } catch (err: any) {
-      setState('error');
+      safeSetState('error');
       __DEV__ && console.warn('[useSaveVideo]', err?.message);
       if (!String(err?.message ?? '').includes('cancel')) {
         Alert.alert('Fehler', 'Video konnte nicht gespeichert werden.');
       }
-      setTimeout(() => setState('idle'), 2000);
+      scheduleReset();
     }
   };
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { memo, useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -53,6 +53,7 @@ import { useAuthStore } from '@/lib/authStore';
 import { VideoGridThumb } from './VideoGridThumb';
 import { RichText } from '@/components/ui/RichText';
 import { useExploreUserSearch } from '@/lib/useExplore';
+import { useTheme } from '@/lib/useTheme';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 // TikTok: Post-Preview oben (~22%), Sheet darunter
@@ -106,6 +107,7 @@ export default function CommentsSheet({ postId, visible, onClose, mediaUrl, medi
   const scrollAtTop = useSharedValue(1);
   const lastTouchY = useSharedValue(0);
   const isClosingRef = useRef(false);
+  const { colors } = useTheme();
 
   const handleClose = useCallback(() => {
     if (isClosingRef.current) return;
@@ -269,7 +271,7 @@ export default function CommentsSheet({ postId, visible, onClose, mediaUrl, medi
 
           {/* Sheet mit Pull-down-to-close am Handle, FlatList managt sich intern */}
           <GestureDetector gesture={panGesture}>
-            <Animated.View style={[styles.sheet, sheetStyle]}>
+            <Animated.View style={[styles.sheet, sheetStyle, { backgroundColor: colors.bg.secondary }]}>
               <SheetInner
                 postId={postId}
                 onClose={handleClose}
@@ -330,11 +332,11 @@ function CommentVoiceBtn({
         paddingVertical: 6,
         borderRadius: 16,
         backgroundColor: isPlaying
-          ? 'rgba(34,211,238,0.15)'
+          ? 'rgba(255,255,255,0.10)'
           : 'rgba(255,255,255,0.05)',
         borderWidth: 1,
         borderColor: isPlaying
-          ? 'rgba(34,211,238,0.4)'
+          ? 'rgba(255,255,255,0.28)'
           : 'rgba(255,255,255,0.08)',
       }}
       accessibilityRole="button"
@@ -343,12 +345,12 @@ function CommentVoiceBtn({
       {isLoading ? (
         <ActivityIndicator size={13} color="rgba(255,255,255,0.6)" />
       ) : isPlaying ? (
-        <VolumeX size={13} color="#22D3EE" strokeWidth={2} />
+        <VolumeX size={13} color="#FFFFFF" strokeWidth={2} />
       ) : (
         <Volume2 size={13} color="rgba(255,255,255,0.5)" strokeWidth={2} />
       )}
       <Text style={{
-        color: isPlaying ? '#22D3EE' : 'rgba(255,255,255,0.4)',
+        color: isPlaying ? '#FFFFFF' : 'rgba(255,255,255,0.4)',
         fontSize: 11,
         fontWeight: '600',
       }}>
@@ -378,6 +380,7 @@ function SheetInner({
   const creatorVoiceUrl = useCreatorVoiceSample(creatorUserId);
   const { profile } = useAuthStore();
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
   const { data: comments, isLoading } = useComments(postId, enabled);
   const addComment = useAddComment(postId);
   const deleteComment = useDeleteComment(postId);
@@ -490,8 +493,32 @@ function SheetInner({
     return `${Math.floor(diff / 86400)}d`;
   };
 
+  // Stabile Handler für memoized CommentRow.
+  const handleLongPressComment = useCallback((c: Comment) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setActionSheetComment(c);
+  }, []);
+
+  const renderCommentItem = useCallback(
+    ({ item }: { item: Comment }) => (
+      <CommentRow
+        comment={item}
+        postId={postId}
+        isOwn={item.user_id === profile?.id}
+        timeAgo={timeAgo(item.created_at)}
+        onDelete={handleDelete}
+        onReply={handleReplyTo}
+        onLongPress={handleLongPressComment}
+        isHighlighted={item.id === lastSentId}
+        onUserPress={onUserPress}
+        likeMap={likeMap}
+      />
+    ),
+    [postId, profile?.id, handleDelete, handleReplyTo, handleLongPressComment, lastSentId, onUserPress, likeMap],
+  );
+
   return (
-    <View style={{ flex: 1 }}>
+    <View style={[{ flex: 1 }, { backgroundColor: colors.bg.secondary }]}>
       {/* Handle + Header */}
       <View>
         <View style={styles.handle} />
@@ -511,12 +538,12 @@ function SheetInner({
       {/* Kommentarliste */}
       {isLoading ? (
         <View style={styles.center}>
-          <ActivityIndicator color="#22D3EE" />
+          <ActivityIndicator color={colors.text.primary} />
         </View>
       ) : comments?.length === 0 ? (
         <View style={styles.center}>
-          <Text style={styles.emptyText}>Noch keine Kommentare.</Text>
-          <Text style={styles.emptySubText}>Sei der Erste! 💬</Text>
+          <Text style={[styles.emptyText, { color: colors.text.muted }]}>Noch keine Kommentare.</Text>
+          <Text style={[styles.emptySubText, { color: colors.text.muted }]}>Sei der Erste! 💬</Text>
         </View>
       ) : (
         <GestureDetector gesture={panForList}>
@@ -534,23 +561,7 @@ function SheetInner({
               // scrollAtTop = 1 wenn ganz oben, sonst 0
               scrollAtTop.value = e.nativeEvent.contentOffset.y <= 2 ? 1 : 0;
             }}
-            renderItem={({ item }) => (
-              <CommentRow
-                comment={item}
-                postId={postId}
-                isOwn={item.user_id === profile?.id}
-                timeAgo={timeAgo(item.created_at)}
-                onDelete={() => handleDelete(item.id)}
-                onReply={() => handleReplyTo(item.id, item.profiles?.username ?? 'unknown')}
-                onLongPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                  setActionSheetComment(item);
-                }}
-                isHighlighted={item.id === lastSentId}
-                onUserPress={onUserPress}
-                likeMap={likeMap}
-              />
-            )}
+            renderItem={renderCommentItem}
           />
         </GestureDetector>
       )}
@@ -591,7 +602,7 @@ function SheetInner({
       )}
 
       {/* Input */}
-      <View style={[styles.inputRow, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+      <View style={[styles.inputRow, { paddingBottom: Math.max(insets.bottom, 12), borderTopColor: colors.border.subtle, backgroundColor: colors.bg.secondary }]}>
         <View style={styles.inputRowInner}>
           <View style={styles.avatarTiny}>
             {profile?.avatar_url ? (
@@ -604,7 +615,11 @@ function SheetInner({
           </View>
           <TextInput
             ref={inputRef}
-            style={styles.input}
+            style={[styles.input, {
+              color: colors.text.primary,
+              backgroundColor: colors.bg.input,
+              borderColor: colors.border.default,
+            }]}
             value={text}
             onChangeText={handleTextChange}
             placeholder="Kommentar schreiben..."
@@ -622,7 +637,7 @@ function SheetInner({
             setText((prev) => prev + '@');
             inputRef.current?.focus();
           }}
-          style={[styles.sendBtn, { backgroundColor: 'rgba(255,255,255,0.05)' }]}
+          style={[styles.sendBtn, { backgroundColor: colors.bg.elevated }]}
           activeOpacity={0.7}
         >
           <AtSign size={16} stroke="#6B7280" strokeWidth={2} />
@@ -634,8 +649,8 @@ function SheetInner({
           activeOpacity={0.7}
         >
           {addComment.isPending
-            ? <ActivityIndicator color="#22D3EE" size="small" />
-            : <Send size={18} stroke={text.trim() ? '#22D3EE' : '#374151'} strokeWidth={2} />
+            ? <ActivityIndicator color={colors.text.primary} size="small" />
+            : <Send size={18} stroke={text.trim() ? colors.text.primary : colors.icon.muted} strokeWidth={2} />
           }
         </TouchableOpacity>
       </View>
@@ -723,7 +738,17 @@ function CommentActionSheet({
   );
 }
 
-function CommentRow({
+/**
+ * CommentRow
+ *
+ * Perf: `memo` + stabile Handler-Refs mit (id) / (comment) Signaturen statt
+ * per-Item-Closures. Parent übergibt `onDelete` / `onReply` / `onLongPress`
+ * über useCallback; CommentRow baut seine zero-arg Handler intern via
+ * useCallback aus `comment`. So bleiben CommentRow-Props bei gleichem
+ * `comment` referentiell identisch → `memo` überspringt Re-Renders
+ * existierender Zeilen beim Tippen, Scrollen oder Time-Tick.
+ */
+function CommentRowComponent({
   comment,
   postId,
   isOwn,
@@ -739,15 +764,17 @@ function CommentRow({
   postId: string;
   isOwn: boolean;
   timeAgo: string;
-  onDelete: () => void;
-  onReply: () => void;
-  onLongPress: () => void;
+  /** STABILE Handler (useCallback im Parent) — Row bindet sich selbst */
+  onDelete: (commentId: string) => void;
+  onReply: (commentId: string, username: string) => void;
+  onLongPress: (comment: Comment) => void;
   isHighlighted?: boolean;
   onUserPress?: (userId: string) => void;
   likeMap?: CommentLikesMap;  // Batch-Daten aus SheetInner (Top-Level)
 }) {
   const [showReplies, setShowReplies] = useState(false);
   const { data: replies = [] } = useCommentReplies(comment.id, showReplies);
+  const { colors, isDark } = useTheme();
 
   // Batch-Daten priorisieren (Top-Level Kommentare), Fallback auf Einzelquery (Replies)
   const batchState = likeMap?.get(comment.id);
@@ -765,7 +792,7 @@ function CommentRow({
     }
   }, [isHighlighted, highlightOpacity]);
   const highlightStyle = useAnimatedStyle(() => ({
-    backgroundColor: `rgba(34,211,238,${highlightOpacity.value * 0.15})`,
+    backgroundColor: `rgba(29,185,84,${highlightOpacity.value * 0.15})`,
     borderRadius: 12,
     marginHorizontal: -4,
     paddingHorizontal: 4,
@@ -773,15 +800,26 @@ function CommentRow({
     marginVertical: -2,
   }));
 
-  const handleUserPress = () => {
+  const handleUserPress = useCallback(() => {
     if (comment.user_id && onUserPress) {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
       onUserPress(comment.user_id);
     }
-  };
+  }, [comment.user_id, onUserPress]);
+
+  // Row-gebundene Binder: nehmen die stabilen Parent-Handler und bind'en
+  // sie an die eigene `comment`-Identität. Per Item konstant, solange
+  // sich das Comment-Objekt nicht ändert.
+  const handleReply = useCallback(() => {
+    onReply(comment.id, comment.profiles?.username ?? 'unknown');
+  }, [onReply, comment.id, comment.profiles?.username]);
+
+  const handleLongPress = useCallback(() => {
+    onLongPress(comment);
+  }, [onLongPress, comment]);
 
   return (
-    <Pressable onLongPress={onLongPress} delayLongPress={400}>
+    <Pressable onLongPress={handleLongPress} delayLongPress={400}>
       <Animated.View style={[styles.commentRow, highlightStyle]}>
         {/* Avatar — klickbar → Profil */}
         <Pressable onPress={handleUserPress} disabled={!onUserPress}>
@@ -799,14 +837,14 @@ function CommentRow({
           <View style={styles.commentHeader}>
             {/* Username — klickbar → Profil */}
             <Pressable onPress={handleUserPress} disabled={!onUserPress}>
-              <Text style={styles.commentUsername}>@{comment.profiles?.username ?? 'unknown'}</Text>
+          <Text style={[styles.commentUsername, { color: colors.text.primary }]}>@{comment.profiles?.username ?? 'unknown'}</Text>
             </Pressable>
-            <Text style={styles.commentTime}>{timeAgo}</Text>
+            <Text style={[styles.commentTime, { color: colors.text.muted }]}>{timeAgo}</Text>
           </View>
-          <RichText text={comment.text} style={styles.commentText} />
+          <RichText text={comment.text} style={[styles.commentText, { color: colors.text.secondary }]} />
           {/* Aktionen: Antworten + Liken */}
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 4 }}>
-            <Pressable onPress={onReply} style={styles.commentReplyBtn} hitSlop={8}>
+            <Pressable onPress={handleReply} style={styles.commentReplyBtn} hitSlop={8}>
               <Text style={styles.commentReplyText}>Antworten</Text>
             </Pressable>
             {/* Like-Button */}
@@ -822,12 +860,12 @@ function CommentRow({
             >
               <Heart
                 size={13}
-                color={liked ? '#F472B6' : 'rgba(255,255,255,0.3)'}
+                color={liked ? '#F472B6' : colors.icon.muted}
                 fill={liked ? '#F472B6' : 'transparent'}
                 strokeWidth={2}
               />
               {count > 0 && (
-                <Text style={{ color: liked ? '#F472B6' : 'rgba(255,255,255,0.3)', fontSize: 11, fontWeight: '600' }}>
+                <Text style={{ color: liked ? '#F472B6' : colors.text.muted, fontSize: 11, fontWeight: '600' }}>
                   {count}
                 </Text>
               )}
@@ -838,12 +876,12 @@ function CommentRow({
         {/* Antworten Toggle */}
         {replies.length > 0 && showReplies && (
           <Pressable onPress={() => setShowReplies(false)} hitSlop={8} style={{ marginLeft: 4, marginTop: 2 }}>
-            <Text style={{ color: '#22D3EE', fontSize: 12, fontWeight: '600' }}>Antworten ausblenden</Text>
+            <Text style={{ color: colors.text.secondary, fontSize: 12, fontWeight: '600' }}>Antworten ausblenden</Text>
           </Pressable>
         )}
         {!showReplies && (
           <Pressable onPress={() => setShowReplies(true)} hitSlop={8} style={{ marginLeft: 4, marginTop: 2 }}>
-            <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 12 }}>── Antworten anzeigen</Text>
+            <Text style={{ color: colors.text.muted, fontSize: 12 }}>── Antworten anzeigen</Text>
           </Pressable>
         )}
       </Animated.View>
@@ -862,7 +900,7 @@ function CommentRow({
               if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
               return `${Math.floor(diff / 86400)}d`;
             })()}
-            onDelete={() => { }}
+            onDelete={onDelete}
             onReply={onReply}
             onLongPress={onLongPress}
             onUserPress={onUserPress}
@@ -872,6 +910,8 @@ function CommentRow({
     </Pressable>
   );
 }
+
+const CommentRow = memo(CommentRowComponent);
 
 const styles = StyleSheet.create({
   overlay: {
@@ -944,8 +984,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
   },
-  emptyText: { color: '#6B7280', fontSize: 15, fontWeight: '600' },
-  emptySubText: { color: '#374151', fontSize: 13 },
+  emptyText: { fontSize: 15, fontWeight: '600' },
+  emptySubText: { fontSize: 13 },
   commentsList: { padding: 16, gap: 20 },
   commentRow: {
     flexDirection: 'row',
@@ -953,32 +993,23 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   commentAvatar: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: '#0891B2',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    flexShrink: 0,
+    width: 34, height: 34, borderRadius: 17,
+    backgroundColor: '#E8E8ED',
+    alignItems: 'center', justifyContent: 'center',
+    overflow: 'hidden', flexShrink: 0,
   },
   commentAvatarImage: { width: '100%', height: '100%', resizeMode: 'cover' },
-  commentAvatarText: { color: '#fff', fontSize: 13, fontWeight: '800' },
+  commentAvatarText: { color: '#555', fontSize: 13, fontWeight: '800' },
   commentBody: { flex: 1, gap: 4 },
   commentHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  commentUsername: { color: '#D1D5DB', fontSize: 13, fontWeight: '700' },
-  commentTime: { color: '#4B5563', fontSize: 11 },
-  commentText: { color: '#E5E7EB', fontSize: 14, lineHeight: 20 },
+  commentUsername: { fontSize: 13, fontWeight: '700' },
+  commentTime: { fontSize: 11 },
+  commentText: { fontSize: 14, lineHeight: 20 },
   deleteBtn: { padding: 4, marginTop: 2 },
   inputRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    flexDirection: 'row', alignItems: 'flex-end', gap: 10,
+    paddingHorizontal: 16, paddingVertical: 12,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(255,255,255,0.06)',
-    backgroundColor: 'rgba(0,0,0,0.3)',
   },
   inputRowInner: {
     flex: 1,
@@ -987,34 +1018,23 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   avatarTiny: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#0891B2',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    flexShrink: 0,
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: '#E8E8ED',
+    alignItems: 'center', justifyContent: 'center',
+    overflow: 'hidden', flexShrink: 0,
   },
   avatarTinyImage: { width: '100%', height: '100%', resizeMode: 'cover' },
-  avatarTinyText: { color: '#fff', fontSize: 12, fontWeight: '800' },
+  avatarTinyText: { color: '#555', fontSize: 12, fontWeight: '800' },
   input: {
-    flex: 1,
-    color: '#FFFFFF',
-    fontSize: 14,
-    maxHeight: 100,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 20,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.1)',
+    flex: 1, fontSize: 14,
+    maxHeight: 100, paddingVertical: 8, paddingHorizontal: 14,
+    borderRadius: 20, borderWidth: StyleSheet.hairlineWidth,
   },
   sendBtn: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(34,211,238,0.1)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -1066,16 +1086,16 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: 'rgba(34,211,238,0.07)',
+    backgroundColor: 'rgba(29,185,84,0.07)',
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(34,211,238,0.25)',
+    borderTopColor: 'rgba(255,255,255,0.15)',
   },
   replyBannerText: {
     color: 'rgba(255,255,255,0.55)',
     fontSize: 13,
   },
   replyBannerUsername: {
-    color: '#22D3EE',
+    color: '#FFFFFF',
     fontWeight: '700',
   },
 
@@ -1112,12 +1132,12 @@ const styles = StyleSheet.create({
     borderRadius: 17,
   },
   mentionAvatarFallback: {
-    backgroundColor: 'rgba(34,211,238,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.10)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   mentionAvatarText: {
-    color: '#22D3EE',
+    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
   },

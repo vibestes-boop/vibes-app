@@ -142,7 +142,7 @@ export default function LiveShareSheet({ visible, onClose, sessionId, title }: P
 
   // Deep-Link über Custom URL Scheme (vibes://)
   const shareLink = `vibes://live/${sessionId}`;
-  const shareMsg = `🔴 ${title || 'Ich bin LIVE auf Vibes!'} Schau vorbei 👀\n${shareLink}`;
+  const shareMsg = `🔴 ${title || 'Ich bin LIVE auf Serlo!'} Schau vorbei 👀\n${shareLink}`;
 
   // Followers/Following laden
   useEffect(() => {
@@ -197,7 +197,7 @@ export default function LiveShareSheet({ visible, onClose, sessionId, title }: P
         sender_id: currentUserId,
         type: 'live_invite',
         session_id: sessionId,
-        comment_text: title?.trim() || 'Live auf Vibes',
+        comment_text: title?.trim() || 'Live auf Serlo',
       }));
       await supabase.from('notifications').insert(notifications);
       setSentTo((prev) => {
@@ -241,7 +241,7 @@ export default function LiveShareSheet({ visible, onClose, sessionId, title }: P
         Linking.openURL(`sms:?body=${encodeURIComponent(shareMsg)}`).catch(() => { });
         break;
       case 'native':
-        Share.share({ message: shareMsg, title: title || 'Live auf Vibes' });
+        Share.share({ message: shareMsg, title: title || 'Live auf Serlo' });
         break;
     }
   }, [shareMsg, title, copyLink]);
@@ -255,7 +255,7 @@ export default function LiveShareSheet({ visible, onClose, sessionId, title }: P
         // Story-Sharing: teile den Live-Link über das native Share-Sheet
         Share.share({
           message: shareMsg,
-          title: title || 'Live auf Vibes',
+          title: title || 'Live auf Serlo',
         }).catch(() => { });
         break;
       case 'report':
@@ -372,7 +372,7 @@ export default function LiveShareSheet({ visible, onClose, sessionId, title }: P
                   <Text
                     style={[
                       s.userName,
-                      selected && { color: '#22D3EE' },
+                      selected && { color: '#FFFFFF' },
                       sent && { color: '#34D399' },
                     ]}
                     numberOfLines={1}
@@ -538,7 +538,7 @@ const s = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.15)',
   },
   avatarSelected: {
-    borderColor: '#22D3EE',
+    borderColor: '#FFFFFF',
     borderWidth: 2.5,
   },
   avatarSent: {
@@ -552,7 +552,7 @@ const s = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: '#22D3EE',
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
@@ -567,7 +567,7 @@ const s = StyleSheet.create({
     fontWeight: '800',
   },
   avatarFallback: {
-    backgroundColor: '#0891B2',
+    backgroundColor: '#CCCCCC',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -588,7 +588,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#0891B2',
+    backgroundColor: '#CCCCCC',
     marginHorizontal: 16,
     marginTop: 12,
     paddingVertical: 14,

@@ -141,7 +141,7 @@ export default function GifPicker({ visible, onClose, onSelect }: Props) {
           {/* Grid */}
           {loading && gifs.length === 0 ? (
             <View style={styles.center}>
-              <ActivityIndicator color="#22D3EE" />
+              <ActivityIndicator color="#FFFFFF" />
             </View>
           ) : (
             <FlatList
@@ -153,7 +153,7 @@ export default function GifPicker({ visible, onClose, onSelect }: Props) {
               showsVerticalScrollIndicator={false}
               onEndReached={() => { if (!loading) load(query, false); }}
               onEndReachedThreshold={0.4}
-              ListFooterComponent={loading ? <ActivityIndicator color="#22D3EE" style={{ marginTop: 12 }} /> : null}
+              ListFooterComponent={loading ? <ActivityIndicator color="#FFFFFF" style={{ marginTop: 12 }} /> : null}
               renderItem={({ item }) => (
                 <Pressable
                   onPress={() => handleSelect(item)}

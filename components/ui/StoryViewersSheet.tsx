@@ -85,7 +85,7 @@ export function StoryViewersSheet({ visible, storyId, onClose, onNavigateToProfi
 
           {/* Header */}
           <View style={sv.header}>
-            <Eye size={18} color="#22D3EE" strokeWidth={1.8} />
+            <Eye size={18} color="#FFFFFF" strokeWidth={1.8} />
             <Text style={sv.title}>
               {isLoading ? 'Lädt…' : `${viewers.length} ${viewers.length === 1 ? 'Aufrufer' : 'Aufrufe'}`}
             </Text>
@@ -97,7 +97,7 @@ export function StoryViewersSheet({ visible, storyId, onClose, onNavigateToProfi
           {/* Liste */}
           {isLoading ? (
             <View style={sv.loadingWrap}>
-              <ActivityIndicator color="#22D3EE" />
+              <ActivityIndicator color="#FFFFFF" />
             </View>
           ) : viewers.length === 0 ? (
             <View style={sv.emptyWrap}>
@@ -191,10 +191,10 @@ const sv = StyleSheet.create({
     borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.12)',
   },
   avatarFallback: {
-    backgroundColor: 'rgba(34,211,238,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.10)',
     alignItems: 'center', justifyContent: 'center',
   },
-  avatarText: { color: '#22D3EE', fontSize: 16, fontWeight: '800' },
+  avatarText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
   textWrap: { flex: 1 },
   username: { color: '#fff', fontSize: 14, fontWeight: '700' },
   time: { color: 'rgba(255,255,255,0.35)', fontSize: 12, marginTop: 2 },

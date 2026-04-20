@@ -97,7 +97,7 @@ export function HighlightNameSheet({
                 returnKeyType="done"
                 onSubmitEditing={handleSave}
                 blurOnSubmit={false}
-                selectionColor="#22D3EE"
+                selectionColor="#FFFFFF"
               />
               <Text style={styles.charCount}>{title.length}/32</Text>
             </View>
@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
   },
   headerBtn:     { minWidth: 72 },
   headerBtnText: { color: 'rgba(255,255,255,0.7)', fontSize: 15 },
-  headerBtnAccent: { color: '#22D3EE', fontSize: 15, fontWeight: '700', textAlign: 'right' },
+  headerBtnAccent: { color: '#FFFFFF', fontSize: 15, fontWeight: '700', textAlign: 'right' },
   headerTitle:   { color: '#fff', fontSize: 15, fontWeight: '700', flex: 1, textAlign: 'center' },
   body:          { padding: 24, gap: 16 },
   previewWrap: {
@@ -141,7 +141,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.07)',
     borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14,
     color: '#fff', fontSize: 17, fontWeight: '500',
-    borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(34,211,238,0.3)',
+    borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.18)',
   },
   charCount: { color: 'rgba(255,255,255,0.25)', fontSize: 11, textAlign: 'right' },
 });

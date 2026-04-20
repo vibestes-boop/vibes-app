@@ -19,6 +19,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   Keyboard,
+  Animated as RNAnimated,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
@@ -50,7 +51,8 @@ import {
   Eye,
   Send,
 } from 'lucide-react-native';
-import { FallbackFeedVideo, NativeFeedVideo, USE_EXPO_VIDEO } from '@/components/feed/FeedVideo';
+import { FallbackFeedVideo, NativeFeedVideo, USE_EXPO_VIDEO, type FeedVideoSeekHandle } from '@/components/feed/FeedVideo';
+import { VideoProgressBar, type VideoProgressHandle } from '@/components/feed/FeedItem';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/lib/authStore';
 import { useQueryClient } from '@tanstack/react-query';
@@ -188,7 +190,7 @@ function CommentInputBar({
           returnKeyType="send"
           blurOnSubmit={false}
           maxLength={500}
-          selectionColor="#22D3EE"
+          selectionColor="#FFFFFF"
         />
       </Pressable>
 
@@ -196,8 +198,8 @@ function CommentInputBar({
       {text.trim().length > 0 ? (
         <Pressable onPress={submit} disabled={isPending} style={s.commentSendBtn} hitSlop={8}>
           {isPending
-            ? <ActivityIndicator size={16} color="#22D3EE" />
-            : <Send size={20} stroke="#22D3EE" strokeWidth={2.2} />
+            ? <ActivityIndicator size={16} color="#FFFFFF" />
+            : <Send size={20} stroke="#FFFFFF" strokeWidth={2.2} />
           }
         </Pressable>
       ) : (
@@ -210,51 +212,57 @@ function CommentInputBar({
   );
 }
 
-// ─── Floating Heart — eigenständige Komponente pro Tap ────────────────────────
+// ─── Floating Heart (wie Guild — RNAnimated für maximale Kompatibilität) ───────────────
 type FloatingHeartItem = { id: number; x: number; y: number };
 
 function FloatingHeart({ x, y, onDone }: { x: number; y: number; onDone: () => void }) {
-  const scale = useSharedValue(0);
-  const floatY = useSharedValue(0);
-  const rot = useSharedValue(0);
-  const opacity = useSharedValue(0);
+  const opacity = useRef(new RNAnimated.Value(1)).current;
+  const scale = useRef(new RNAnimated.Value(0)).current;
+  const translateY = useRef(new RNAnimated.Value(0)).current;
+  const rotate = useRef(new RNAnimated.Value(0)).current;
 
   useEffect(() => {
-    scale.value = withSequence(
-      withSpring(1.5, { damping: 7, stiffness: 220 }),
-      withTiming(1.15, { duration: 150, easing: Easing.out(Easing.cubic) })
-    );
-    floatY.value = withTiming(-110, { duration: 1700, easing: Easing.out(Easing.quad) });
-    rot.value = withRepeat(
-      withSequence(withTiming(-8, { duration: 180 }), withTiming(8, { duration: 180 })),
-      4, true
-    );
-    opacity.value = withSequence(
-      withTiming(1, { duration: 0 }),
-      withDelay(900, withTiming(0, { duration: 800 }))
-    );
-    const t = setTimeout(onDone, 1750);
+    RNAnimated.parallel([
+      RNAnimated.spring(scale, { toValue: 1, friction: 4, tension: 180, useNativeDriver: true }),
+      RNAnimated.timing(translateY, { toValue: -140, duration: 1600, useNativeDriver: true }),
+      RNAnimated.sequence([
+        RNAnimated.timing(rotate, { toValue: -1, duration: 120, useNativeDriver: true }),
+        RNAnimated.timing(rotate, { toValue: 1,  duration: 120, useNativeDriver: true }),
+        RNAnimated.timing(rotate, { toValue: -1, duration: 120, useNativeDriver: true }),
+        RNAnimated.timing(rotate, { toValue: 1,  duration: 120, useNativeDriver: true }),
+        RNAnimated.timing(rotate, { toValue: 0,  duration: 100, useNativeDriver: true }),
+      ]),
+      RNAnimated.sequence([
+        RNAnimated.delay(900),
+        RNAnimated.timing(opacity, { toValue: 0, duration: 700, useNativeDriver: true }),
+      ]),
+    ]).start();
+    const t = setTimeout(onDone, 1700);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const style = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: x - 60 },
-      { translateY: y - 60 + floatY.value },
-      { scale: scale.value },
-      { rotate: `${rot.value}deg` },
-    ],
-    opacity: opacity.value,
-  }));
+  const rotateInterp = rotate.interpolate({
+    inputRange: [-1, 0, 1],
+    outputRange: ['-10deg', '0deg', '10deg'],
+  });
 
   return (
-    <Animated.View
-      style={[{ position: 'absolute', width: 120, height: 120, left: 0, top: 0 }, style]}
+    <RNAnimated.View
+      style={[{
+        position: 'absolute',
+        left: x - 60,
+        top: y - 60,
+        width: 120,
+        height: 120,
+      }, {
+        opacity,
+        transform: [{ translateY }, { scale }, { rotate: rotateInterp }],
+      }]}
       pointerEvents="none"
     >
       <Heart size={120} color="#EE1D52" fill="#EE1D52" />
-    </Animated.View>
+    </RNAnimated.View>
   );
 }
 
@@ -281,9 +289,14 @@ function PostCard({
 }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [progress, setProgress] = useState(0);
+  const { profile } = useAuthStore();
 
-  const handleProgress = useCallback((p: number) => setProgress(p), []);
+  // Video-Refs lokal — wie Guild
+  const progressBarRef = useRef<VideoProgressHandle>(null);
+  const videoSeekRef   = useRef<FeedVideoSeekHandle>(null);
+  const handleProgress = useCallback((p: number) => progressBarRef.current?.setProgress(p), []);
+  const handleSeek     = useCallback((frac: number) => videoSeekRef.current?.seek(frac), []);
+  const handleSeekEnd  = useCallback((frac: number) => videoSeekRef.current?.seek(frac), []);
 
   const date = item.created_at
     ? new Date(item.created_at).toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -291,7 +304,7 @@ function PostCard({
 
   const isVideo = item.media_type === 'video';
 
-  // ── Multiple Floating Hearts (Tap-to-Like) ───────────────────────────────
+  // ── Multiple Floating Hearts (Tap-to-Like) ────────────────────────────
   const { liked: tapLiked, toggle: tapToggleLike } = useLike(item.id);
   const [hearts, setHearts] = useState<FloatingHeartItem[]>([]);
   const heartIdRef = useRef(0);
@@ -303,6 +316,28 @@ function PostCard({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tapLiked, tapToggleLike]);
 
+  // Doppeltap-Erkennung (identisch zu Guild)
+  const lastTapRef = useRef<number>(0);
+  const lastTapPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  const handleDoubleTap = useCallback((evt: { nativeEvent: { locationX: number; locationY: number } }) => {
+    const now = Date.now();
+    const x = evt.nativeEvent.locationX;
+    const y = evt.nativeEvent.locationY;
+    if (now - lastTapRef.current < 300) {
+      // Doppeltap → Herz + Like
+      spawnHeart(lastTapPosRef.current.x, lastTapPosRef.current.y);
+      lastTapRef.current = 0;
+    } else {
+      lastTapRef.current = now;
+      lastTapPosRef.current = { x, y };
+    }
+  }, [spawnHeart]);
+
+  // Kommentarfeld-Höhe (wie Guild: paddingTop 8 + avatar 32 + paddingBottom 8 = 48 + insets.bottom)
+  // VideoProgressBar bottomOffset = insets.bottom + 52 (4px Drüber, identisch zu Guild)
+  const commentBarH = 48 + insets.bottom;
+
   return (
     <View style={{ width: W, height: H }}>
       {/* Media */}
@@ -310,6 +345,7 @@ function PostCard({
         isVideo ? (
           USE_EXPO_VIDEO ? (
             <NativeFeedVideo
+              ref={videoSeekRef}
               uri={item.media_url}
               shouldPlay={isVisible}
               isMuted={isMuted}
@@ -317,6 +353,7 @@ function PostCard({
             />
           ) : (
             <FallbackFeedVideo
+              ref={videoSeekRef}
               uri={item.media_url}
               shouldPlay={isVisible}
               isMuted={isMuted}
@@ -330,17 +367,13 @@ function PostCard({
         <LinearGradient colors={['#0A0A0A', '#1a0533', '#0d1f4a']} style={StyleSheet.absoluteFill} />
       )}
 
-      {/* Gradienten oben/unten */}
-      <LinearGradient colors={['rgba(0,0,0,0.45)', 'transparent']} style={s.topGradient} />
-      <LinearGradient colors={['transparent', 'rgba(0,0,0,0.70)']} style={s.bottomGradient} />
-
-      {/* Tap-Zone → Floating Heart (liegt VOR den Buttons, sodass Buttons Touches abfangen können) */}
+      {/* Doppeltap-Zone — kein einzelner Tap-Effekt, nur Doppeltap → Herz + Like */}
       <Pressable
         style={StyleSheet.absoluteFill}
-        onPressIn={(evt) => spawnHeart(evt.nativeEvent.locationX, evt.nativeEvent.locationY)}
+        onPress={handleDoubleTap}
       />
 
-      {/* Floating Hearts — je ein unabhängiges Herz pro Tap */}
+      {/* Floating Hearts */}
       {hearts.map((h) => (
         <FloatingHeart
           key={h.id}
@@ -350,11 +383,11 @@ function PostCard({
         />
       ))}
 
-      {/* Owner-Aktionen (Bearbeiten/Löschen) oben rechts */}
+      {/* Owner-Aktionen oben rechts */}
       {isOwner && (
         <View style={[s.ownerRow, { top: insets.top + 8 }]}>
           <Pressable onPress={() => onEdit(item.id)} style={s.ownerBtn} hitSlop={8}>
-            <Pencil size={17} stroke="#22D3EE" strokeWidth={2} />
+            <Pencil size={17} stroke="#FFFFFF" strokeWidth={2} />
           </Pressable>
           <Pressable onPress={() => onDelete(item.id)} style={[s.ownerBtn, s.ownerBtnDanger]} hitSlop={8}>
             <Trash2 size={17} stroke="#F87171" strokeWidth={2} />
@@ -362,14 +395,14 @@ function PostCard({
         </View>
       )}
 
-      {/* Rechte Aktionen */}
-      <View style={[s.rightActions, { bottom: insets.bottom + COMMENT_BAR_H + 12 }]}>
+      {/* Rechte Aktionen — über Kommentar-Leiste */}
+      <View style={[s.rightActions, { bottom: commentBarH + 8 }]}>
         {isVideo && (
           <Pressable style={s.actionBtn} onPress={onMuteToggle} hitSlop={8}>
             <View style={s.actionBtnInner}>
               {isMuted
-                ? <VolumeX size={22} stroke="#FFFFFF" strokeWidth={1.8} />
-                : <Volume2 size={22} stroke="#FFFFFF" strokeWidth={1.8} />
+                ? <VolumeX size={22} color="#FFFFFF" strokeWidth={0} fill="#FFFFFF" />
+                : <Volume2 size={22} color="#FFFFFF" strokeWidth={0} fill="#FFFFFF" />
               }
             </View>
           </Pressable>
@@ -379,13 +412,13 @@ function PostCard({
         <BookmarkBtn postId={item.id} />
         <Pressable style={s.actionBtn} onPress={() => sharePost(item.id, item.caption)}>
           <View style={s.actionBtnInner}>
-            <Share2 size={24} stroke="#FFFFFF" strokeWidth={1.8} />
+            <Share2 size={24} color="#FFFFFF" strokeWidth={1.8} />
           </View>
         </Pressable>
       </View>
 
       {/* Unten: Avatar, Caption, Tags */}
-      <View style={[s.bottomInfo, { paddingBottom: insets.bottom + COMMENT_BAR_H + 16 }]}>
+      <View style={[s.bottomInfo, { bottom: commentBarH + 6 }]}>
         <Pressable
           style={s.authorRow}
           onPress={() => router.push({ pathname: '/user/[id]', params: { id: item.author_id } })}
@@ -421,30 +454,57 @@ function PostCard({
           </View>
         )}
 
-        {/* View-Count */}
         <View style={s.viewCountRow}>
-          <Eye size={13} stroke="rgba(255,255,255,0.45)" strokeWidth={2} />
+          <Eye size={13} color="rgba(255,255,255,0.45)" strokeWidth={2} />
           <Text style={s.viewCountText}>{formatViews(item.view_count)} Aufrufe</Text>
         </View>
-
-        {/* Video-Fortschrittsbalken */}
-        {isVideo && (
-          <View style={s.progressTrack}>
-            <View style={[s.progressFill, { width: `${Math.round(progress * 100)}%` }]} />
-          </View>
-        )}
       </View>
+
+      {/* ── Kommentar-Leiste: absolut unten, wie Guild ── */}
+      <Pressable
+        style={[s.commentBarWrap, { paddingBottom: insets.bottom }]}
+        onPress={() => onOpenComments(item.id)}
+        accessibilityRole="button"
+        accessibilityLabel="Kommentare anzeigen"
+      >
+        <View style={s.commentBarInner}>
+          {profile?.avatar_url ? (
+            <Image source={{ uri: profile.avatar_url }} style={s.commentBarAvatar} contentFit="cover" />
+          ) : (
+            <View style={[s.commentBarAvatar, s.commentBarAvatarFallback]}>
+              <Text style={s.commentBarInitial}>{(profile?.username ?? '?')[0].toUpperCase()}</Text>
+            </View>
+          )}
+          <View style={s.commentBarInput}>
+            <Text style={s.commentBarPlaceholder}>Kommentiere als @{profile?.username ?? '...'}</Text>
+          </View>
+        </View>
+      </Pressable>
+
+      {/* ── VideoProgressBar — identisch zu Guild: bottomOffset = insets.bottom + 52 ── */}
+      {isVideo && (
+        <VideoProgressBar
+          ref={progressBarRef}
+          postId={item.id}
+          onSeek={handleSeek}
+          onSeekEnd={handleSeekEnd}
+          bottomOffset={insets.bottom + 52}
+        />
+      )}
     </View>
   );
 }
 
+// ─── Screen ───────────────────────────────────────────────────────────────────────────────
+
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
 export default function UserPostsScreen() {
-  const { userId, startIndex, username } = useLocalSearchParams<{
-    userId: string;
+  const { userId, startIndex, username, postIds } = useLocalSearchParams<{
+    userId?: string;
     startIndex?: string;
     username?: string;
+    postIds?: string;  // kommagetrennte Post-IDs (für Saved/Reposts)
   }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -461,7 +521,6 @@ export default function UserPostsScreen() {
 
   const flatRef = useRef<FlatList>(null);
   const initialIdx = Number(startIndex ?? '0');
-  // Set mit bereits gezählten Post-IDs (kein doppeltes Inkrementieren)
   const viewedPosts = useRef<Set<string>>(new Set());
 
   useFocusEffect(
@@ -472,34 +531,62 @@ export default function UserPostsScreen() {
   );
 
   useEffect(() => {
-    if (!userId) return;
-    supabase
-      .from('posts')
-      .select('id, caption, media_url, media_type, tags, created_at, author_id, view_count, profiles!author_id(username, avatar_url)')
-      .eq('author_id', userId)
-      .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
-        if (error) {
-          setLoadError(error.message);
+    const ids = postIds ? postIds.split(',').filter(Boolean) : null;
+
+    if (ids && ids.length > 0) {
+      // Modus: direkte Post-IDs (Saved / Reposts)
+      supabase
+        .from('posts')
+        .select('id, caption, media_url, media_type, tags, created_at, author_id, view_count, profiles!author_id(username, avatar_url)')
+        .in('id', ids)
+        .then(({ data, error }) => {
+          if (error) { setLoadError(error.message); setLoading(false); return; }
+          // Reihenfolge der übergebenen IDs beibehalten
+          const byId = Object.fromEntries((data ?? []).map((p: any) => [p.id, p]));
+          const mapped: PostItem[] = ids
+            .map((id) => byId[id])
+            .filter(Boolean)
+            .map((p: any) => ({
+              id: p.id,
+              caption: p.caption,
+              media_url: p.media_url,
+              media_type: p.media_type,
+              tags: p.tags ?? [],
+              created_at: p.created_at,
+              author_id: p.author_id,
+              view_count: p.view_count ?? 0,
+              username: p.profiles?.username ?? null,
+              avatar_url: p.profiles?.avatar_url ?? null,
+            }));
+          setPosts(mapped);
           setLoading(false);
-          return;
-        }
-        const mapped: PostItem[] = (data ?? []).map((p: any) => ({
-          id: p.id,
-          caption: p.caption,
-          media_url: p.media_url,
-          media_type: p.media_type,
-          tags: p.tags ?? [],
-          created_at: p.created_at,
-          author_id: p.author_id,
-          view_count: p.view_count ?? 0,
-          username: p.profiles?.username ?? null,
-          avatar_url: p.profiles?.avatar_url ?? null,
-        }));
-        setPosts(mapped);
-        setLoading(false);
-      });
-  }, [userId]);
+        });
+    } else if (userId) {
+      // Modus: alle Posts eines Users
+      supabase
+        .from('posts')
+        .select('id, caption, media_url, media_type, tags, created_at, author_id, view_count, profiles!author_id(username, avatar_url)')
+        .eq('author_id', userId)
+        .order('created_at', { ascending: false })
+        .then(({ data, error }) => {
+          if (error) { setLoadError(error.message); setLoading(false); return; }
+          const mapped: PostItem[] = (data ?? []).map((p: any) => ({
+            id: p.id,
+            caption: p.caption,
+            media_url: p.media_url,
+            media_type: p.media_type,
+            tags: p.tags ?? [],
+            created_at: p.created_at,
+            author_id: p.author_id,
+            view_count: p.view_count ?? 0,
+            username: p.profiles?.username ?? null,
+            avatar_url: p.profiles?.avatar_url ?? null,
+          }));
+          setPosts(mapped);
+          setLoading(false);
+        });
+    }
+  }, [userId, postIds]);
 
   const handleDelete = (postId: string) => {
     Alert.alert('Post löschen', 'Wirklich löschen?', [
@@ -530,7 +617,7 @@ export default function UserPostsScreen() {
   if (loading) {
     return (
       <View style={s.center}>
-        <ActivityIndicator color="#22D3EE" size="large" />
+        <ActivityIndicator color="#FFFFFF" size="large" />
       </View>
     );
   }
@@ -546,11 +633,11 @@ export default function UserPostsScreen() {
         </Text>
         <Pressable
           onPress={() => { setLoading(true); setLoadError(null); }}
-          style={{ marginTop: 16, paddingHorizontal: 22, paddingVertical: 10, borderRadius: 20, backgroundColor: 'rgba(34,211,238,0.15)', borderWidth: 1, borderColor: 'rgba(34,211,238,0.4)' }}
+          style={{ marginTop: 16, paddingHorizontal: 22, paddingVertical: 10, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.10)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)' }}
           accessibilityRole="button"
           accessibilityLabel="Erneut versuchen"
         >
-          <Text style={{ color: '#22D3EE', fontWeight: '700', fontSize: 14 }}>Erneut versuchen</Text>
+          <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 14 }}>Erneut versuchen</Text>
         </Pressable>
       </View>
     );
@@ -559,92 +646,75 @@ export default function UserPostsScreen() {
   const currentPostId = posts[visibleIndex]?.id ?? '';
 
   return (
-    <KeyboardAvoidingView
-      style={{ flex: 1, backgroundColor: '#000' }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={0}
-    >
-      {/* Zurück-Button immer sichtbar oben links */}
-      <Pressable
-        onPress={() => router.back()}
-        style={[s.backBtn, { top: insets.top + 10 }]}
-        hitSlop={12}
-      >
-        <ArrowLeft size={20} stroke="#fff" strokeWidth={2.2} />
-      </Pressable>
+    <View style={{ flex: 1, backgroundColor: '#000' }}>
+        {/* Zurück-Button immer sichtbar oben links */}
+        <Pressable
+          onPress={() => router.back()}
+          style={[s.backBtn, { top: insets.top + 10 }]}
+          hitSlop={12}
+        >
+          <ArrowLeft size={20} stroke="#fff" strokeWidth={2.2} />
+        </Pressable>
 
-      {/* Zähler oben Mitte */}
-      <View style={[s.counter, { top: insets.top + 18 }]}>
-        <Text style={s.counterText}>
-          {username ? `@${username}` : ''}{posts.length > 0 ? `  ${visibleIndex + 1} / ${posts.length}` : ''}
-        </Text>
-      </View>
+        {/* Zähler oben Mitte */}
+        <View style={[s.counter, { top: insets.top + 18 }]}>
+          <Text style={s.counterText}>
+            {username ? `@${username}` : ''}{posts.length > 0 ? `  ${visibleIndex + 1} / ${posts.length}` : ''}
+          </Text>
+        </View>
 
-      <FlatList
-        ref={flatRef}
-        data={posts}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item, index }) => (
-          <PostCard
-            item={item}
-            isVisible={screenFocused && index === visibleIndex}
-            isMuted={isMuted}
-            onMuteToggle={() => setIsMuted((m) => !m)}
-            isOwner={item.author_id === profile?.id}
-            onOpenComments={setCommentsPostId}
-            onDelete={handleDelete}
-            onEdit={handleEdit}
+        <FlatList
+          ref={flatRef}
+          data={posts}
+          keyExtractor={(item) => item.id}
+          renderItem={({ item, index }) => (
+            <PostCard
+              item={item}
+              isVisible={screenFocused && index === visibleIndex}
+              isMuted={isMuted}
+              onMuteToggle={() => setIsMuted((m) => !m)}
+              isOwner={item.author_id === profile?.id}
+              onOpenComments={setCommentsPostId}
+              onDelete={handleDelete}
+              onEdit={handleEdit}
+            />
+          )}
+          pagingEnabled
+          showsVerticalScrollIndicator={false}
+          decelerationRate="fast"
+          getItemLayout={getItemLayout}
+          initialScrollIndex={initialIdx < posts.length ? initialIdx : 0}
+          windowSize={3}
+          maxToRenderPerBatch={3}
+          initialNumToRender={2}
+          onViewableItemsChanged={({ viewableItems }) => {
+            const idx = viewableItems[0]?.index;
+            if (idx != null) {
+              setVisibleIndex(idx);
+              const postId = posts[idx]?.id;
+              if (postId && !viewedPosts.current.has(postId)) {
+                viewedPosts.current.add(postId);
+                supabase.rpc('increment_post_view', { p_post_id: postId }).then(() => {
+                  setPosts((prev) =>
+                    prev.map((p) =>
+                      p.id === postId ? { ...p, view_count: p.view_count + 1 } : p
+                    )
+                  );
+                });
+              }
+            }
+          }}
+          viewabilityConfig={VIEWABILITY_CONFIG}
+        />
+
+        {commentsPostId && (
+          <CommentsSheet
+            postId={commentsPostId}
+            visible
+            onClose={() => setCommentsPostId(null)}
           />
         )}
-        pagingEnabled
-        showsVerticalScrollIndicator={false}
-        snapToInterval={H}
-        snapToAlignment="start"
-        decelerationRate="fast"
-        disableIntervalMomentum
-        getItemLayout={getItemLayout}
-        initialScrollIndex={initialIdx < posts.length ? initialIdx : 0}
-        windowSize={3}
-        maxToRenderPerBatch={3}
-        initialNumToRender={2}
-        onViewableItemsChanged={({ viewableItems }) => {
-          const idx = viewableItems[0]?.index;
-          if (idx != null) {
-            setVisibleIndex(idx);
-            const postId = posts[idx]?.id;
-            if (postId && !viewedPosts.current.has(postId)) {
-              viewedPosts.current.add(postId);
-              supabase.rpc('increment_post_view', { p_post_id: postId }).then(() => {
-                setPosts((prev) =>
-                  prev.map((p) =>
-                    p.id === postId ? { ...p, view_count: p.view_count + 1 } : p
-                  )
-                );
-              });
-            }
-          }
-        }}
-        viewabilityConfig={VIEWABILITY_CONFIG}
-      />
-
-      {/* TikTok-Style Kommentar-Eingabeleiste */}
-      {currentPostId ? (
-        <CommentInputBar
-          postId={currentPostId}
-          avatarUrl={profile?.avatar_url ?? null}
-          username={profile?.username ?? null}
-          onCommentsOpen={() => setCommentsPostId(currentPostId)}
-        />
-      ) : null}
-
-      {commentsPostId && (
-        <CommentsSheet
-          postId={commentsPostId}
-          visible
-          onClose={() => setCommentsPostId(null)}
-        />
-      )}
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -652,8 +722,6 @@ export default function UserPostsScreen() {
 
 const s = StyleSheet.create({
   center: { flex: 1, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center' },
-  topGradient: { position: 'absolute', top: 0, left: 0, right: 0, height: 140 },
-  bottomGradient: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 260 },
 
   backBtn: {
     position: 'absolute', left: 16, zIndex: 20,
@@ -672,13 +740,13 @@ const s = StyleSheet.create({
   ownerRow: { position: 'absolute', right: 16, zIndex: 20, flexDirection: 'row', gap: 8 },
   ownerBtn: {
     width: 38, height: 38, borderRadius: 19,
-    backgroundColor: 'rgba(34,211,238,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.10)',
     alignItems: 'center', justifyContent: 'center',
   },
   ownerBtnDanger: { backgroundColor: 'rgba(248,113,113,0.15)' },
 
-  rightActions: { position: 'absolute', right: 16, gap: 4, alignItems: 'center', zIndex: 10 },
-  actionBtn: { alignItems: 'center', marginBottom: 12 },
+  rightActions: { position: 'absolute', right: 14, gap: 18, alignItems: 'center', zIndex: 10 },
+  actionBtn: { alignItems: 'center' },
   actionBtnInner: {
     width: 48, height: 48, borderRadius: 24,
     backgroundColor: 'rgba(255,255,255,0.08)',
@@ -686,11 +754,11 @@ const s = StyleSheet.create({
   },
   actionCount: { color: '#E5E7EB', fontSize: 11, fontWeight: '600', marginTop: 4 },
 
-  bottomInfo: { position: 'absolute', bottom: 0, left: 0, right: 72, paddingHorizontal: 20, paddingTop: 16, gap: 8 },
+  bottomInfo: { position: 'absolute', left: 0, right: 80, paddingHorizontal: 16, gap: 6, zIndex: 10 },
   authorRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   avatarSmall: {
     width: 36, height: 36, borderRadius: 18,
-    backgroundColor: '#0891B2',
+    backgroundColor: '#CCCCCC',
     alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
   },
   avatarSmallImg: { width: '100%', height: '100%', resizeMode: 'cover' },
@@ -701,10 +769,10 @@ const s = StyleSheet.create({
   tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   tagChip: {
     paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12,
-    backgroundColor: 'rgba(34,211,238,0.15)',
-    borderWidth: 1, borderColor: 'rgba(34,211,238,0.3)',
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)',
   },
-  tagText: { color: '#22D3EE', fontSize: 12, fontWeight: '600' },
+  tagText: { color: '#FFFFFF', fontSize: 12, fontWeight: '600' },
 
   // Kommentar-Eingabeleiste
   commentBar: {
@@ -719,7 +787,7 @@ const s = StyleSheet.create({
   },
   commentAvatar: {
     width: 34, height: 34, borderRadius: 17,
-    backgroundColor: '#0891B2',
+    backgroundColor: '#CCCCCC',
     alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
     flexShrink: 0,
   },
@@ -754,17 +822,57 @@ const s = StyleSheet.create({
     color: 'rgba(255,255,255,0.45)', fontSize: 12, fontWeight: '500',
   },
 
-  // Video-Fortschrittsbalken (wie Haupt-Feed)
-  progressTrack: {
-    height: 2,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 1,
-    marginTop: 10,
+  // ── Kommentar-Leiste (absolut in PostCard, identisch zu Guild) ────────────
+  commentBarWrap: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 30,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(255,255,255,0.08)',
+  },
+  commentBarInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 8,
+    gap: 10,
+  },
+  commentBarAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.15)',
     overflow: 'hidden',
   },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#22D3EE',
-    borderRadius: 1,
+  commentBarAvatarFallback: {
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+  commentBarInitial: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  commentBarInput: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderRadius: 22,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
+  },
+  commentBarPlaceholder: {
+    color: 'rgba(255,255,255,0.35)',
+    fontSize: 14,
+    lineHeight: 20,
+  },
+
 });

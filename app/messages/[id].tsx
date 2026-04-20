@@ -8,7 +8,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Send, Play, Reply, Trash2, X, ImagePlus, Smile } from 'lucide-react-native';
+import { ArrowLeft, Send, Play, Reply, Trash2, X, ImagePlus, Smile, User } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 // reanimated: CJS require() vermeidet _interopRequireDefault Crash in Hermes HBC
@@ -27,6 +27,7 @@ import {
 import { useAuthStore } from '@/lib/authStore';
 import GifPicker from '@/components/ui/GifPicker';
 import { uploadPostMedia } from '@/lib/uploadMedia';
+import { useTheme } from '@/lib/useTheme';
 
 // ── Konstanten ───────────────────────────────────────────────────────────────
 const REACTION_EMOJIS = ['❤️', '😂', '🔥', '👏', '😱', '🥲'];
@@ -73,7 +74,7 @@ function PostPreviewCard({ post, onPress }: { post: PostPreview; onPress: () => 
             ) : null}
           </View>
           <View style={styles.vibesBadge}>
-            <Text style={styles.vibesBadgeText}>Vibes</Text>
+            <Text style={styles.vibesBadgeText}>Serlo</Text>
           </View>
         </LinearGradient>
         {isVideo && (
@@ -183,9 +184,10 @@ function MessageBubble({
 }) {
   const hasPost = !!msg.post;
   const hasImage = !!msg.image_url;
-  const hasStoryReply = !!msg.story_media_url;  // TikTok-Style Story-Antwort
+  const hasStoryReply = !!msg.story_media_url;
   const showText = msg.content && msg.content.trim().length > 0;
   const isSending = msg.id.startsWith('temp-');
+  const { colors, isDark } = useTheme();
 
   const translateX = useSharedValue(0);
   const replyOpacity = useSharedValue(0);
@@ -239,7 +241,7 @@ function MessageBubble({
     <View style={[styles.bubbleRow, isOwn && styles.bubbleRowOwn]}>
       {!isOwn && (
         <Animated.View style={[styles.replyIcon, replyIconAnim]}>
-          <Reply size={16} color="#22D3EE" strokeWidth={2} />
+          <Reply size={16} color="#FFFFFF" strokeWidth={2} />
         </Animated.View>
       )}
 
@@ -259,7 +261,9 @@ function MessageBubble({
             delayLongPress={350}
             style={({ pressed }) => [
               styles.bubble,
-              isOwn ? styles.bubbleOwn : styles.bubbleOther,
+              isOwn
+                ? [styles.bubbleOwn, { backgroundColor: isDark ? '#2C2C2E' : '#007AFF' }]
+                : [styles.bubbleOther, { backgroundColor: isDark ? 'rgba(255,255,255,0.10)' : '#E9E9EB' }],
               hasPost && styles.bubbleWithPost,
               hasPost && styles.bubbleNoFrame,
 
@@ -306,19 +310,27 @@ function MessageBubble({
               </Pressable>
             )}
             {showText && (
-              <Text style={[styles.bubbleText, isOwn && styles.bubbleTextOwn]}>
+              <Text style={[
+                styles.bubbleText,
+                { color: isDark ? 'rgba(255,255,255,0.88)' : '#1C1C1E' },
+                isOwn && { color: '#FFFFFF' },
+              ]}>
                 {msg.content}
               </Text>
             )}
-            <Text style={[styles.bubbleTime, isOwn && styles.bubbleTimeOwn]}>
+            <Text style={[
+              styles.bubbleTime,
+              { color: isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.4)' },
+              isOwn && { color: 'rgba(255,255,255,0.65)' },
+            ]}>
               {isSending ? (
                 <Text style={{ color: 'rgba(255,255,255,0.4)' }}>Senden…</Text>
               ) : (
                 <>
                   {formatTime(msg.created_at)}
-                  {isOwn && (
-                    <Text style={styles.readTick}>{msg.read ? ' ✓✓' : ' ✓'}</Text>
-                  )}
+            {isOwn && (
+                <Text style={[styles.readTick, { color: isDark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.4)' }]}>{msg.read ? ' ✓✓' : ' ✓'}</Text>
+              )}
                 </>
               )}
             </Text>
@@ -331,7 +343,7 @@ function MessageBubble({
       {isOwn && (
         <Animated.View style={[styles.replyIcon, replyIconAnim]}>
 
-          <Reply size={16} color="#22D3EE" strokeWidth={2} style={{ transform: [{ scaleX: -1 }] }} />
+          <Reply size={16} color="#FFFFFF" strokeWidth={2} style={{ transform: [{ scaleX: -1 }] }} />
         </Animated.View>
       )}
     </View>
@@ -348,6 +360,7 @@ export default function ChatScreen() {
   }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
   const userId = useAuthStore((s) => s.profile?.id);
   const listRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
@@ -499,12 +512,13 @@ export default function ChatScreen() {
     const prev = messages[index - 1];
     const showDay = !prev || formatDay(prev.created_at) !== formatDay(item.created_at);
     const reactions = reactionsMap[item.id] ?? [];
+    // colors comes from outer ChatScreen scope via closure
 
     return (
       <>
         {showDay && (
           <View style={styles.dayRow}>
-            <Text style={styles.dayText}>{formatDay(item.created_at)}</Text>
+            <Text style={[styles.dayText, { color: colors.text.muted, backgroundColor: colors.bg.elevated }]}>{formatDay(item.created_at)}</Text>
           </View>
         )}
         {/* Emoji-Picker Popover */}
@@ -531,7 +545,7 @@ export default function ChatScreen() {
 
       </>
     );
-  }, [messages, userId, reactionsMap, activePickerId, handlePostPress, handleLongPress, handleSwipeReply, handleDelete, toggleReaction]);
+  }, [messages, userId, reactionsMap, activePickerId, handlePostPress, handleLongPress, handleSwipeReply, handleDelete, toggleReaction, colors]);
 
   const initial = (username ?? '?')[0].toUpperCase();
 
@@ -544,16 +558,16 @@ export default function ChatScreen() {
       >
         {/* Tap anywhere to close picker */}
         <Pressable style={{ flex: 1 }} onPress={() => setActivePickerId(null)}>
-          <View style={[styles.screen, { paddingTop: insets.top }]}>
+          <View style={[styles.screen, { paddingTop: insets.top, backgroundColor: colors.bg.secondary }]}>
             {/* Unsichtbarer linker Rand — nimmt Swipe-zurück-Geste auf */}
             <View
               style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 30, zIndex: 200 }}
               {...backSwipePan.panHandlers}
             />
             {/* Header */}
-            <View style={styles.header}>
+            <View style={[styles.header, { borderBottomColor: colors.border.subtle, backgroundColor: colors.bg.secondary }]}>
               <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={12}>
-                <ArrowLeft size={22} color="#FFFFFF" strokeWidth={2} />
+                <ArrowLeft size={22} color={colors.text.primary} strokeWidth={2} />
               </Pressable>
               <Pressable
                 style={styles.headerUserRow}
@@ -569,17 +583,17 @@ export default function ChatScreen() {
                   <Image source={{ uri: avatarUrl }} style={styles.headerAvatar} contentFit="cover" />
                 ) : (
                   <View style={[styles.headerAvatar, styles.headerAvatarFallback]}>
-                    <Text style={styles.headerAvatarInitial}>{initial}</Text>
+                    <User size={18} color={colors.text.muted} strokeWidth={1.5} />
                   </View>
                 )}
-                <Text style={styles.headerUsername}>@{username ?? '?'}</Text>
+                <Text style={[styles.headerUsername, { color: colors.text.primary }]}>@{username ?? '?'}</Text>
               </Pressable>
             </View>
 
             {/* Messages */}
             {isLoading ? (
               <View style={styles.center}>
-                <ActivityIndicator color="#22D3EE" />
+                <ActivityIndicator color="#FFFFFF" />
               </View>
             ) : (
               <FlatList
@@ -610,7 +624,7 @@ export default function ChatScreen() {
                 }}
                 ListEmptyComponent={
                   <View style={styles.center}>
-                    <Text style={styles.emptyText}>Schreib die erste Nachricht 👋</Text>
+                    <Text style={[styles.emptyText, { color: colors.text.muted }]}>Schreib die erste Nachricht 👋</Text>
                   </View>
                 }
               />
@@ -619,9 +633,9 @@ export default function ChatScreen() {
             {/* Typing-Indikator */}
             {otherIsTyping && (
               <View style={styles.typingRow}>
-                <View style={styles.typingBubble}>
+                <View style={[styles.typingBubble, { backgroundColor: colors.bg.elevated }]}>
                   <Text style={styles.typingDots}>●●●</Text>
-                  <Text style={styles.typingLabel}>{username ?? 'Jemand'} schreibt…</Text>
+                  <Text style={[styles.typingLabel, { color: colors.text.muted }]}>{username ?? 'Jemand'} schreibt…</Text>
                 </View>
               </View>
             )}
@@ -629,16 +643,15 @@ export default function ChatScreen() {
             {/* Reply-Vorschau */}
             {replyTo && (
               <View style={styles.replyBar2}>
-                <Reply size={14} color="#22D3EE" strokeWidth={2} />
-                <Text style={styles.replyBarText} numberOfLines={1}>{replyTo.content}</Text>
+                <Reply size={14} color="#FFFFFF" strokeWidth={2} />
+                <Text style={[styles.replyBarText, { color: colors.text.secondary }]} numberOfLines={1}>{replyTo.content}</Text>
                 <Pressable onPress={() => setReplyTo(null)} hitSlop={8}>
-                  <X size={14} color="rgba(255,255,255,0.4)" strokeWidth={2} />
+                  <X size={14} color={colors.icon.muted} strokeWidth={2} />
                 </Pressable>
               </View>
             )}
 
-            {/* Input */}
-            <View style={[styles.inputBar, { paddingBottom: insets.bottom + 8 }]}>
+                <View style={[styles.inputBar, { paddingBottom: insets.bottom + 8, backgroundColor: colors.bg.secondary, borderTopColor: colors.border.subtle }]}>
               <Pressable
                 onPress={handleSendImage}
                 disabled={imageUploading || sending}
@@ -646,8 +659,8 @@ export default function ChatScreen() {
                 hitSlop={8}
               >
                 {imageUploading
-                  ? <ActivityIndicator size="small" color="#22D3EE" />
-                  : <ImagePlus size={22} color="rgba(255,255,255,0.45)" strokeWidth={1.8} />}
+                  ? <ActivityIndicator size="small" color="#FFFFFF" />
+                  : <ImagePlus size={22} color={colors.icon.muted} strokeWidth={1.8} />}
               </Pressable>
               {/* GIF Button */}
               <Pressable
@@ -660,12 +673,12 @@ export default function ChatScreen() {
               </Pressable>
               <TextInput
                 ref={inputRef}
-                style={styles.input}
+                style={[styles.input, { color: colors.text.primary, backgroundColor: colors.bg.input, borderColor: colors.border.default }]}
                 value={text}
                 onChangeText={(v) => { setText(v); if (v.length > 0) onTypingStart(); else onTypingStop(); }}
                 onBlur={onTypingStop}
                 placeholder={replyTo ? 'Antworten…' : 'Nachricht…'}
-                placeholderTextColor="rgba(255,255,255,0.25)"
+                placeholderTextColor={colors.text.muted}
                 multiline
                 maxLength={500}
                 onSubmitEditing={handleSend}
@@ -707,239 +720,186 @@ export default function ChatScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#050508' },
+  screen: { flex: 1 },
   header: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingHorizontal: 16, paddingVertical: 12,
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: 12, paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255,255,255,0.06)',
   },
-  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  headerAvatar: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.15)' },
-  headerAvatarFallback: { backgroundColor: 'rgba(34,211,238,0.2)', alignItems: 'center', justifyContent: 'center' },
-  headerAvatarInitial: { color: '#22D3EE', fontSize: 14, fontWeight: '700' },
+  backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20 },
+  headerAvatar: { width: 40, height: 40, borderRadius: 20, borderWidth: 2, borderColor: 'rgba(128,128,128,0.2)' },
+  headerAvatarFallback: { backgroundColor: '#E8E8ED', alignItems: 'center', justifyContent: 'center' },
+  headerAvatarInitial: { color: '#6B7280', fontSize: 15, fontWeight: '700' },
   headerUserRow: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
-  headerUsername: { color: '#FFFFFF', fontSize: 16, fontWeight: '700', flex: 1 },
+  headerUsername: { fontSize: 16, fontWeight: '700', flex: 1, letterSpacing: -0.2 },
 
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  emptyText: { color: 'rgba(255,255,255,0.35)', fontSize: 15 },
-  listContent: { paddingHorizontal: 12, paddingVertical: 16, gap: 4, flexGrow: 1 },
+  emptyText: { fontSize: 15 },
+  listContent: { paddingHorizontal: 14, paddingVertical: 20, gap: 2, flexGrow: 1 },
 
-  dayRow: { alignItems: 'center', marginVertical: 12 },
+  dayRow: { alignItems: 'center', marginVertical: 16 },
   dayText: {
-    color: 'rgba(255,255,255,0.3)', fontSize: 11, fontWeight: '600',
-    backgroundColor: 'rgba(255,255,255,0.05)', paddingHorizontal: 12,
-    paddingVertical: 4, borderRadius: 10,
+    fontSize: 11, fontWeight: '600', letterSpacing: 0.3,
+    paddingHorizontal: 14, paddingVertical: 5, borderRadius: 12,
   },
 
   // ── Bubble ──
-  bubbleRow: { flexDirection: 'row', marginVertical: 2, alignItems: 'center', gap: 4 },
+  bubbleRow: { flexDirection: 'row', marginVertical: 1, alignItems: 'flex-end', gap: 6 },
   bubbleRowOwn: { justifyContent: 'flex-end' },
   bubble: {
-    maxWidth: '80%', borderRadius: 18, gap: 3, overflow: 'hidden',
-    paddingHorizontal: 14, paddingVertical: 10,
+    maxWidth: '78%', borderRadius: 20, gap: 0, overflow: 'hidden',
   },
   bubbleWithPost: { paddingHorizontal: 0, paddingVertical: 0, gap: 0 },
-  bubbleNoFrame: { backgroundColor: 'transparent' },  // kein Cyan-Rahmen bei geteilten Posts
+  bubbleNoFrame: { backgroundColor: 'transparent' },
 
-  bubbleOther: { backgroundColor: 'rgba(255,255,255,0.08)', borderBottomLeftRadius: 4 },
-  bubbleOwn: { backgroundColor: '#0891B2', borderBottomRightRadius: 4 },
-  bubbleWithImage: { backgroundColor: 'transparent', padding: 0, borderRadius: 0, overflow: 'visible' },
-  bubbleText: { fontSize: 15, color: 'rgba(255,255,255,0.85)', lineHeight: 21, paddingHorizontal: 14, paddingTop: 8 },
-  bubbleTextOwn: { color: '#FFFFFF' },
-  bubbleTime: { fontSize: 10, color: 'rgba(255,255,255,0.35)', alignSelf: 'flex-end', paddingHorizontal: 14, paddingBottom: 8 },
-  bubbleTimeOwn: { color: 'rgba(255,255,255,0.55)' },
-  readTick: { color: 'rgba(255,255,255,0.55)' },
+  // Note: actual bg/radius set inline with isDark — these are base shapes
+  bubbleOther: { borderBottomLeftRadius: 5 },
+  bubbleOwn: { borderBottomRightRadius: 5 },
+  bubbleWithImage: { backgroundColor: 'transparent', padding: 0, borderRadius: 16, overflow: 'hidden' },
+  // Text/time set inline for theme-awareness
+  bubbleText: { fontSize: 15.5, lineHeight: 22, paddingHorizontal: 14, paddingTop: 10, paddingBottom: 2, fontWeight: '400' },
+  bubbleTextOwn: {},
+  bubbleTime: { fontSize: 10.5, alignSelf: 'flex-end', paddingHorizontal: 12, paddingBottom: 7, paddingTop: 1, fontWeight: '400' },
+  bubbleTimeOwn: {},
+  readTick: {},
 
-  // ── Reply Icon (swipe indicator) ──
+  // ── Reply Icon ──
   replyIcon: {
-    width: 28, height: 28, borderRadius: 14,
-    backgroundColor: 'rgba(34,211,238,0.15)',
+    width: 30, height: 30, borderRadius: 15,
+    backgroundColor: 'rgba(120,120,128,0.14)',
     alignItems: 'center', justifyContent: 'center',
+    marginBottom: 6,
   },
 
-  // ── Reply Preview (oberhalb der Bubble) ──
+  // ── Reply Preview ──
   replyPreview: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5,
-    marginBottom: 3, maxWidth: '80%', gap: 6,
+    borderRadius: 12, paddingHorizontal: 10, paddingVertical: 6,
+    marginBottom: 4, maxWidth: '78%', gap: 8,
+    backgroundColor: 'rgba(120,120,128,0.12)',
   },
   replyPreviewOwn: { alignSelf: 'flex-end' },
-  replyBar: { width: 3, height: '100%', minHeight: 14, backgroundColor: '#22D3EE', borderRadius: 2 },
-  replyBarOwn: { backgroundColor: 'rgba(255,255,255,0.5)' },
-  replyPreviewText: { color: 'rgba(255,255,255,0.55)', fontSize: 12, flex: 1 },
+  replyBar: { width: 3, height: '100%', minHeight: 16, backgroundColor: '#007AFF', borderRadius: 2 },
+  replyBarOwn: { backgroundColor: 'rgba(255,255,255,0.7)' },
+  replyPreviewText: { fontSize: 12.5, flex: 1, color: '#8E8E93' },
 
   // ── Reaction Badges ──
-  reactionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 3 },
+  reactionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4, marginHorizontal: 2 },
   reactionBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 3,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    borderRadius: 12, paddingHorizontal: 7, paddingVertical: 3,
+    backgroundColor: 'rgba(120,120,128,0.14)',
+    borderRadius: 14, paddingHorizontal: 8, paddingVertical: 4,
     borderWidth: 1, borderColor: 'transparent',
   },
   reactionBadgeActive: {
-    backgroundColor: 'rgba(34,211,238,0.15)',
-    borderColor: 'rgba(34,211,238,0.35)',
+    backgroundColor: 'rgba(0,122,255,0.12)',
+    borderColor: 'rgba(0,122,255,0.3)',
   },
   reactionEmoji: { fontSize: 14 },
-  reactionCount: { fontSize: 11, color: 'rgba(255,255,255,0.55)', fontWeight: '600' },
-  reactionCountActive: { color: '#22D3EE' },
+  reactionCount: { fontSize: 11.5, color: '#8E8E93', fontWeight: '600' },
+  reactionCountActive: { color: '#007AFF' },
 
   // ── Emoji Picker ──
   picker: {
-    backgroundColor: '#1A1A2E',
-    borderRadius: 16, paddingHorizontal: 8, paddingVertical: 8,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4, shadowRadius: 12, elevation: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20, paddingHorizontal: 6, paddingVertical: 8,
+    borderWidth: 1, borderColor: 'rgba(0,0,0,0.06)',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12, shadowRadius: 20, elevation: 10,
     alignSelf: 'flex-start', marginBottom: 6, marginLeft: 12,
   },
   pickerOwn: { alignSelf: 'flex-end', marginRight: 12, marginLeft: 0 },
   pickerOther: { alignSelf: 'flex-start', marginLeft: 12 },
-  pickerEmojis: { flexDirection: 'row', gap: 4 },
-  pickerEmoji: { padding: 6, borderRadius: 10 },
-  pickerEmojiText: { fontSize: 22 },
+  pickerEmojis: { flexDirection: 'row', gap: 2 },
+  pickerEmoji: { padding: 7, borderRadius: 12 },
+  pickerEmojiText: { fontSize: 24 },
   deleteBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)',
+    borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.06)',
     paddingTop: 8, marginTop: 6, paddingHorizontal: 4,
   },
   deleteBtnText: { color: '#EF4444', fontSize: 13, fontWeight: '600' },
 
-  // ── Reply Bar (Input-Bereich) ──
+  // ── Reply Bar ──
   replyBar2: {
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-    paddingHorizontal: 14, paddingVertical: 8,
-    backgroundColor: 'rgba(34,211,238,0.07)',
-    borderTopWidth: 1, borderTopColor: 'rgba(34,211,238,0.15)',
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingHorizontal: 16, paddingVertical: 10,
+    borderTopWidth: 1, borderTopColor: 'rgba(0,0,0,0.06)',
+    backgroundColor: 'rgba(0,122,255,0.05)',
   },
-  replyBarText: { flex: 1, color: 'rgba(255,255,255,0.5)', fontSize: 13 },
+  replyBarText: { flex: 1, fontSize: 13 },
 
   // ── Input Bar ──
   inputBar: {
-    flexDirection: 'row', alignItems: 'flex-end', gap: 10,
-    paddingHorizontal: 12, paddingTop: 10,
+    flexDirection: 'row', alignItems: 'flex-end', gap: 8,
+    paddingHorizontal: 10, paddingTop: 8,
     borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(255,255,255,0.06)',
-    backgroundColor: '#050508',
   },
   input: {
-    flex: 1, minHeight: 42, maxHeight: 120,
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    borderRadius: 21, paddingHorizontal: 16, paddingVertical: 10,
-    color: '#FFFFFF', fontSize: 15,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+    flex: 1, minHeight: 40, maxHeight: 120,
+    borderRadius: 22, paddingHorizontal: 16, paddingVertical: 9,
+    fontSize: 15.5, lineHeight: 21,
+    borderWidth: 1,
   },
   sendBtn: {
-    width: 42, height: 42, borderRadius: 21,
-    backgroundColor: '#0891B2',
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: '#007AFF',
     alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#007AFF', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.3, shadowRadius: 6,
   },
-  sendBtnDisabled: { backgroundColor: 'rgba(8,145,178,0.35)' },
+  sendBtnDisabled: { backgroundColor: 'rgba(0,122,255,0.25)', shadowOpacity: 0 },
 
   // ── Typing ──
-  typingRow: { paddingHorizontal: 14, paddingBottom: 4 },
+  typingRow: { paddingHorizontal: 16, paddingBottom: 6 },
   typingBubble: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.07)', alignSelf: 'flex-start',
-    paddingHorizontal: 12, paddingVertical: 7, borderRadius: 16,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 14, paddingVertical: 10, borderRadius: 20,
+    borderBottomLeftRadius: 5,
   },
-  typingDots: { color: '#22D3EE', fontSize: 8, letterSpacing: 2 },
-  typingLabel: { color: 'rgba(255,255,255,0.4)', fontSize: 12, fontStyle: 'italic' },
+  typingDots: { fontSize: 9, letterSpacing: 3, color: '#8E8E93' },
+  typingLabel: { fontSize: 12, fontStyle: 'italic', color: '#8E8E93' },
 
   // ── PostPreviewCard ──
-  previewCard: {
-    borderRadius: 16, overflow: 'hidden',
-    width: 240,
-  },
-
-  previewThumbWrap: { width: '100%', height: 170, position: 'relative' },
+  previewCard: { borderRadius: 18, overflow: 'hidden', width: 230 },
+  previewThumbWrap: { width: '100%', height: 160, position: 'relative' },
   previewThumb: { width: '100%', height: '100%' },
-  previewThumbFallback: {
-    backgroundColor: 'rgba(8,145,178,0.18)',
-    alignItems: 'center', justifyContent: 'center',
-  },
+  previewThumbFallback: { backgroundColor: 'rgba(0,122,255,0.1)', alignItems: 'center', justifyContent: 'center' },
   previewFallbackEmoji: { fontSize: 40 },
   previewGradient: {
-    position: 'absolute', bottom: 0, left: 0, right: 0, height: 90,
+    position: 'absolute', bottom: 0, left: 0, right: 0, height: 80,
     flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between',
     paddingHorizontal: 10, paddingBottom: 10, gap: 6,
   },
   previewMeta: { flex: 1, gap: 2 },
-  previewCaption: {
-    color: '#FFFFFF', fontSize: 12, fontWeight: '600', lineHeight: 16,
-    textShadowColor: 'rgba(0,0,0,0.6)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3,
-  },
+  previewCaption: { color: '#FFFFFF', fontSize: 12, fontWeight: '600', lineHeight: 16 },
   previewAuthor: { color: 'rgba(255,255,255,0.65)', fontSize: 10, fontWeight: '500' },
-  vibesBadge: { backgroundColor: 'rgba(8,145,178,0.75)', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8 },
+  vibesBadge: { backgroundColor: 'rgba(0,122,255,0.8)', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8 },
   vibesBadgeText: { color: '#fff', fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
   playOverlay: { position: 'absolute', inset: 0, alignItems: 'center', justifyContent: 'center' },
   playCircle: {
     width: 44, height: 44, borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.18)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.5)',
+    backgroundColor: 'rgba(255,255,255,0.25)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.6)',
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 8,
   },
 
-  // Bild-DM Bubble — Hochformat wie TikTok/iMessage, kein Rahmen
+  // ── Image Bubble ──
   imageBubble: {
-    overflow: 'hidden',
-    borderRadius: 16,
-    // 9:16 Hochformat — 65% Bildschirmbreite → natürliches Handyfoto-Gefühl
-    width: Math.round(require('react-native').Dimensions.get('window').width * 0.65),
-    aspectRatio: 9 / 16,
+    overflow: 'hidden', borderRadius: 18,
+    width: Math.round(require('react-native').Dimensions.get('window').width * 0.62),
+    aspectRatio: 9 / 14,
   },
-  imageBubbleOwn: {
-    borderBottomRightRadius: 4,
-  },
-  imageBubbleImg: {
-    width: '100%',
-    height: '100%',
-  },
+  imageBubbleOwn: { borderBottomRightRadius: 5 },
+  imageBubbleImg: { width: '100%', height: '100%' },
 
-  // Bild-Picker Button in Input-Bar
-  imagePickerBtn: {
-    width: 36, height: 36, alignItems: 'center', justifyContent: 'center',
-    marginRight: 2,
-  },
-  gifLabel: {
-    color: '#22D3EE',
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
+  imagePickerBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18 },
+  gifLabel: { color: '#007AFF', fontSize: 12, fontWeight: '800', letterSpacing: 0.5 },
 
-  // Lightbox Modal (Vollbild-Bild)
-  lightboxOverlay: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.92)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  lightboxImage: {
-    width: '100%', height: '85%',
-  },
+  lightboxOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', alignItems: 'center', justifyContent: 'center' },
+  lightboxImage: { width: '100%', height: '85%' },
 
-  // \u2500\u2500 TikTok-Style Story-Antwort Bubble \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
-  storyReplyWrap: {
-    borderRadius: 12,
-    overflow: 'hidden',
-    marginBottom: 6,
-    width: 200,
-  },
-
-  storyReplyLabel: {
-    color: 'rgba(255,255,255,0.5)',
-    fontSize: 11,
-    paddingHorizontal: 10,
-    paddingTop: 8,
-    paddingBottom: 4,
-  },
-  storyReplyLabelOwn: {
-    textAlign: 'right',
-  },
-  storyReplyThumb: {
-    width: '100%',
-    aspectRatio: 9 / 16,    // Hochformat wie Story
-    backgroundColor: '#111',
-  },
+  storyReplyWrap: { borderRadius: 14, overflow: 'hidden', marginBottom: 6, width: 200 },
+  storyReplyLabel: { fontSize: 11, paddingHorizontal: 10, paddingTop: 8, paddingBottom: 4, opacity: 0.7 },
+  storyReplyLabelOwn: { textAlign: 'right' },
+  storyReplyThumb: { width: '100%', height: 140 },
 });

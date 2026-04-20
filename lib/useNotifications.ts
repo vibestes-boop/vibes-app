@@ -5,13 +5,15 @@ import { useAuthStore } from './authStore';
 
 export type AppNotification = {
   id: string;
-  type: 'like' | 'comment' | 'follow' | 'live' | 'live_invite' | 'dm' | 'mention' | 'follow_request' | 'follow_request_accepted';
+  type: 'like' | 'comment' | 'follow' | 'live' | 'live_invite' | 'dm' | 'mention' | 'follow_request' | 'follow_request_accepted' | 'gift' | 'new_order';
   read: boolean;
   created_at: string;
   comment_text: string | null;
   post_id: string | null;
   session_id: string | null;       // für Live-Benachrichtigungen
   conversation_id: string | null;  // für DM-Benachrichtigungen
+  gift_name: string | null;        // für Gift-Benachrichtigungen
+  gift_emoji: string | null;       // für Gift-Benachrichtigungen
   sender: {
     id: string;
     username: string | null;
@@ -57,6 +59,7 @@ export function useNotifications() {
         .from('notifications')
         .select(`
           id, type, read, created_at, comment_text, post_id, session_id, conversation_id,
+          gift_name, gift_emoji,
           sender:sender_id ( id, username, avatar_url ),
           post:post_id ( media_url )
         `)
@@ -75,6 +78,8 @@ export function useNotifications() {
         post_id: n.post_id ?? null,
         session_id: n.session_id ?? null,
         conversation_id: n.conversation_id ?? null,
+        gift_name:       n.gift_name       ?? null,
+        gift_emoji:      n.gift_emoji      ?? null,
         sender: n.sender ?? null,
         post_thumb: n.post?.media_url ?? null,
       }));

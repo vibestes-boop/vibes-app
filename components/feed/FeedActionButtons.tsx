@@ -56,7 +56,12 @@ export function ActionButton({
       accessibilityLabel={accessibilityLabel}
     >
       <Animated.View style={[styles.actionBtnInner, animStyle]}>
-        <Icon size={26} stroke={iconColor} strokeWidth={1.8} />
+        <Icon
+          size={26}
+          color={iconColor}
+          strokeWidth={active ? 0 : 1.8}
+          fill={active && activeColor ? activeColor : 'transparent'}
+        />
       </Animated.View>
       {count !== undefined && (
         <Text style={[styles.actionCount, active && activeColor ? { color: activeColor } : undefined]}>
@@ -97,7 +102,7 @@ export function CommentButton({
       accessibilityLabel={`Kommentare anzeigen, ${formatted} Kommentare`}
     >
       <Animated.View style={[styles.actionBtnInner, animStyle]}>
-        <MessageCircle size={26} stroke="#FFFFFF" strokeWidth={1.8} />
+        <MessageCircle size={26} color="#FFFFFF" strokeWidth={1.8} fill="rgba(255,255,255,0.12)" />
       </Animated.View>
       <Text style={styles.actionCount}>{formatted}</Text>
     </Pressable>
@@ -241,7 +246,7 @@ export function VoiceButton({
         {isLoading ? (
           <ActivityIndicator size={18} color="rgba(255,255,255,0.7)" />
         ) : isPlaying ? (
-          <VolumeX size={24} stroke="#22D3EE" strokeWidth={1.8} />
+          <VolumeX size={24} stroke="#FFFFFF" strokeWidth={1.8} />
         ) : (
           <Volume2 size={24} stroke="rgba(255,255,255,0.75)" strokeWidth={1.8} />
         )}
@@ -252,6 +257,6 @@ export function VoiceButton({
 
 const voiceStyles = StyleSheet.create({
   activeBg: {
-    backgroundColor: 'rgba(34,211,238,0.12)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
 });

@@ -1,10 +1,10 @@
 import { useRef } from 'react';
 import { View, TextInput, Pressable } from 'react-native';
-import { BlurView } from 'expo-blur';
 import { Search, X, SlidersHorizontal } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import { exploreStyles as styles } from './exploreStyles';
+import { getExploreStyles } from './exploreStyles';
 import type { ExploreSortMode } from '@/lib/useExplore';
+import { useTheme } from '@/lib/useTheme';
 
 export function ExploreSearchBar({
   query,
@@ -18,19 +18,21 @@ export function ExploreSearchBar({
   onOpenSort: () => void;
 }) {
   const inputRef = useRef<TextInput>(null);
+  const { colors } = useTheme();
+  const styles = getExploreStyles(colors);
 
   return (
     <View style={styles.searchRow}>
       <View style={styles.searchBar}>
-        <BlurView intensity={60} tint="dark" style={styles.searchBlur}>
-          <Search size={18} color="rgba(255,255,255,0.4)" strokeWidth={2} />
+        <View style={styles.searchBlur}>
+          <Search size={18} color={colors.icon.muted} strokeWidth={2} />
           <TextInput
             ref={inputRef}
             style={styles.searchInput}
             value={query}
             onChangeText={onQueryChange}
             placeholder="Suche nach Nutzern oder Posts…"
-            placeholderTextColor="rgba(255,255,255,0.3)"
+            placeholderTextColor={colors.text.muted}
             autoCapitalize="none"
             autoCorrect={false}
             returnKeyType="search"
@@ -43,10 +45,10 @@ export function ExploreSearchBar({
               }}
               hitSlop={8}
             >
-              <X size={16} color="rgba(255,255,255,0.5)" strokeWidth={2} />
+              <X size={16} color={colors.icon.muted} strokeWidth={2} />
             </Pressable>
           )}
-        </BlurView>
+        </View>
       </View>
 
       <Pressable
@@ -59,7 +61,7 @@ export function ExploreSearchBar({
       >
         <SlidersHorizontal
           size={18}
-          color={sortMode !== 'forYou' ? '#22D3EE' : 'rgba(255,255,255,0.55)'}
+          color={sortMode !== 'forYou' ? '#FFFFFF' : colors.icon.muted}
           strokeWidth={2}
         />
         {sortMode !== 'forYou' && <View style={styles.filterDot} />}

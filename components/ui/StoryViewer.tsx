@@ -256,7 +256,7 @@ function StoryPollOverlay({
               height: 44,
               backgroundColor: 'rgba(255,255,255,0.08)',
               borderWidth: isChosen ? 1.5 : 1,
-              borderColor: isChosen ? '#22D3EE' : 'rgba(255,255,255,0.2)',
+              borderColor: isChosen ? '#FFFFFF' : 'rgba(255,255,255,0.2)',
               justifyContent: 'center',
             }}
           >
@@ -268,7 +268,7 @@ function StoryPollOverlay({
                 top: 0,
                 bottom: 0,
                 width: `${p}%`,
-                backgroundColor: isChosen ? 'rgba(34,211,238,0.25)' : 'rgba(255,255,255,0.1)',
+                backgroundColor: isChosen ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.1)',
               }} />
             )}
             <View style={{
@@ -278,7 +278,7 @@ function StoryPollOverlay({
               alignItems: 'center',
             }}>
               <Text style={{
-                color: isChosen ? '#22D3EE' : '#fff',
+                color: isChosen ? '#FFFFFF' : '#fff',
                 fontWeight: '700',
                 fontSize: 13,
               }}>{opt}</Text>
@@ -702,7 +702,7 @@ function StoryCommentsSheet({
             />
             {text.trim().length > 0 && (
               <Pressable onPress={handleSend} disabled={sending} style={sc.sendBtn}>
-                <Send size={18} color="#22D3EE" />
+                <Send size={18} color="#FFFFFF" />
               </Pressable>
             )}
           </View>
@@ -740,8 +740,8 @@ const sc = StyleSheet.create({
 
   row: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
   avatar: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.15)' },
-  avatarFallback: { backgroundColor: 'rgba(34,211,238,0.2)', alignItems: 'center', justifyContent: 'center' },
-  avatarText: { color: '#22D3EE', fontSize: 14, fontWeight: '700' },
+  avatarFallback: { backgroundColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
+  avatarText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
   content: { flex: 1, gap: 3 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   username: { color: 'rgba(255,255,255,0.85)', fontSize: 13, fontWeight: '700' },
@@ -764,7 +764,7 @@ const sc = StyleSheet.create({
   },
   sendBtn: {
     width: 40, height: 40, borderRadius: 20,
-    backgroundColor: 'rgba(34,211,238,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.10)',
     alignItems: 'center', justifyContent: 'center',
   },
 });
@@ -887,12 +887,42 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
     holdProgressRef.current = progressRef.current;
     wasHoldingRef.current = true;
     progressAnim.stopAnimation();
+    // Timer stoppen — verhindert auto-goNext während gehalten
+    if (timerRef.current) { clearTimeout(timerRef.current); timerRef.current = null; }
     setIsHolding(true);
   }, [progressAnim]);
 
   const handleHoldEnd = useCallback(() => {
-    setIsHolding(false); // isPaused → false → useEffect resumt
-  }, []);
+    // Beim Loslassen: Animation sofort HIER fortsetzen (nicht auf useEffect warten)
+    // Verhindert den Sprung der durch die React-State-Zyklen entstehen würde.
+    if (wasHoldingRef.current && currentStory) {
+      const saved = holdProgressRef.current;
+      const isVideo = currentStory.media_type === 'video';
+      const totalDur = isVideo ? MAX_VIDEO_DURATION : IMAGE_DURATION;
+
+      wasHoldingRef.current = false;
+      holdProgressRef.current = 0;
+
+      if (saved > 0 && saved < 0.99) {
+        const remaining = Math.round((1 - saved) * totalDur);
+        // Sofort den gespeicherten Wert setzen — kein sichtbares Flash
+        progressAnim.stopAnimation();
+        progressAnim.setValue(saved);
+        progressRef.current = saved;
+        RNAnimated.timing(progressAnim, {
+          toValue: 1,
+          duration: remaining,
+          easing: EasingRN.linear,
+          useNativeDriver: false,
+        }).start();
+        timerRef.current = setTimeout(() => goNext(), remaining);
+      } else {
+        startProgress(isVideo ? MAX_VIDEO_DURATION : IMAGE_DURATION);
+      }
+    }
+    setIsHolding(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [progressAnim, currentStory, startProgress, goNext]);
 
   useEffect(() => {
     if (isPaused) {
@@ -901,25 +931,14 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
       return;
     }
     if (!visible || !currentStory) return;
-    const isVideo = currentStory.media_type === 'video';
-    const totalDur = isVideo ? MAX_VIDEO_DURATION : IMAGE_DURATION;
-
-    // Hold-Resume: vom gespeicherten Fortschritt weitermachen
-    if (wasHoldingRef.current && holdProgressRef.current > 0 && holdProgressRef.current < 0.99) {
-      wasHoldingRef.current = false;
-      const saved = holdProgressRef.current;
-      holdProgressRef.current = 0;
-      const remaining = Math.round((1 - saved) * totalDur);
-      progressAnim.stopAnimation();
-      progressAnim.setValue(saved);
-      progressRef.current = saved;
-      RNAnimated.timing(progressAnim, { toValue: 1, duration: remaining, easing: EasingRN.linear, useNativeDriver: false }).start();
-      timerRef.current = setTimeout(() => goNext(), remaining);
-    } else {
-      wasHoldingRef.current = false;
-      holdProgressRef.current = 0;
-      startProgress(totalDur);
+    // Wenn Hold gerade beendet wurde: handleHoldEnd hat die Animation bereits
+    // direkt gestartet → hier nichts tun (wasHoldingRef wurde schon auf false gesetzt)
+    if (!wasHoldingRef.current) {
+      // Normaler Story-Start (kein Resume nach Hold)
+      startProgress(currentStory.media_type === 'video' ? MAX_VIDEO_DURATION : IMAGE_DURATION);
     }
+    wasHoldingRef.current = false;
+    holdProgressRef.current = 0;
     return () => { timerRef.current && clearTimeout(timerRef.current); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isPaused, currentStory?.id, visible]);
@@ -1239,7 +1258,7 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
               />
               {replyText.length > 0 ? (
                 <Pressable onPress={handleSendReply} hitSlop={8} style={styles.sendIconBtn}>
-                  <Send size={18} color="#22D3EE" />
+                  <Send size={18} color="#FFFFFF" />
                 </Pressable>
               ) : (
                 replyMode === 'public' && (
@@ -1341,8 +1360,8 @@ const styles = StyleSheet.create({
   header: { position: 'absolute', left: 12, right: 12, flexDirection: 'row', alignItems: 'center', gap: 10, zIndex: 10 },
   headerLeft: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
   headerAvatar: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.6)' },
-  headerAvatarFallback: { backgroundColor: 'rgba(34,211,238,0.3)', alignItems: 'center', justifyContent: 'center' },
-  headerAvatarText: { fontSize: 15, fontWeight: '700', color: '#22D3EE' },
+  headerAvatarFallback: { backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
+  headerAvatarText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF' },
   headerUsername: { fontSize: 14, fontWeight: '700', color: '#FFFFFF' },
   headerTime: { fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 1 },
   closeBtn: { padding: 4 },
@@ -1389,7 +1408,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginRight: 6,
   },
-  modeTogglePublic: { backgroundColor: 'rgba(34,211,238,0.25)' },
+  modeTogglePublic: { backgroundColor: 'rgba(255,255,255,0.15)' },
   modeToggleText: { fontSize: 16 },
 
   // ── Kommentar-Zähler ──────────────────────────────────────────────────────
@@ -1452,19 +1471,19 @@ const ss = StyleSheet.create({
   userAvatarWrap: { position: 'relative' },
   userAvatarChosen: {},
   userAvatar: { width: 54, height: 54, borderRadius: 27, borderWidth: 2, borderColor: 'rgba(255,255,255,0.15)' },
-  userAvatarFallback: { backgroundColor: 'rgba(34,211,238,0.25)', alignItems: 'center', justifyContent: 'center' },
-  userAvatarText: { color: '#22D3EE', fontSize: 20, fontWeight: '700' },
+  userAvatarFallback: { backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
+  userAvatarText: { color: '#FFFFFF', fontSize: 20, fontWeight: '700' },
   checkBadge: {
     position: 'absolute', bottom: 0, right: 0,
     width: 20, height: 20, borderRadius: 10,
-    backgroundColor: '#22D3EE', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center',
     borderWidth: 2, borderColor: '#111118',
   },
   userLabel: { color: 'rgba(255,255,255,0.7)', fontSize: 11, textAlign: 'center', width: 62 },
   emptyUsers: { color: 'rgba(255,255,255,0.3)', fontSize: 13, paddingHorizontal: 4, paddingVertical: 6 },
   sendBtn: {
     marginHorizontal: 18, marginTop: 10,
-    backgroundColor: '#22D3EE', borderRadius: 12,
+    backgroundColor: '#FFFFFF', borderRadius: 12,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     paddingVertical: 12, gap: 8,
   },

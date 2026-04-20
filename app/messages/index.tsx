@@ -1,18 +1,20 @@
 import { useCallback, useState } from 'react';
 import {
   View, Text, StyleSheet, Pressable,
-  Image, ActivityIndicator, RefreshControl,
+  ActivityIndicator, RefreshControl,
   Modal, TextInput, TouchableOpacity,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { FlashList } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { MessageCircle, PenSquare, Search, X } from 'lucide-react-native';
+import { MessageCircle, PenSquare, Search, X, User } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/lib/authStore';
 import { useConversations, useOrCreateConversation, type Conversation } from '@/lib/useMessages';
+import { useTheme } from '@/lib/useTheme';
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -28,6 +30,7 @@ function timeAgo(dateStr: string): string {
 function ConvItem({ item }: { item: Conversation }) {
   const initial = (item.other_user.username ?? '?')[0].toUpperCase();
   const hasUnread = item.unread_count > 0;
+  const { colors } = useTheme();
 
   return (
     <Pressable
@@ -42,10 +45,14 @@ function ConvItem({ item }: { item: Conversation }) {
       {/* Avatar */}
       <View style={styles.avatarWrap}>
         {item.other_user.avatar_url ? (
-          <Image source={{ uri: item.other_user.avatar_url }} style={styles.avatar} />
+          <Image
+            source={{ uri: item.other_user.avatar_url }}
+            style={[styles.avatar, { borderColor: colors.border.strong }]}
+            contentFit="cover"
+          />
         ) : (
-          <View style={[styles.avatar, styles.avatarFallback]}>
-            <Text style={styles.avatarInitial}>{initial}</Text>
+          <View style={[styles.avatar, styles.avatarFallback, { borderColor: colors.border.default }]}>
+            <User size={24} color={colors.text.muted} strokeWidth={1.5} />
           </View>
         )}
         {hasUnread && <View style={styles.onlineDot} />}
@@ -54,13 +61,13 @@ function ConvItem({ item }: { item: Conversation }) {
       {/* Text */}
       <View style={styles.textWrap}>
         <View style={styles.nameRow}>
-          <Text style={[styles.username, hasUnread && styles.usernameUnread]}>
+          <Text style={[styles.username, { color: hasUnread ? colors.text.primary : colors.text.secondary }]}>
             @{item.other_user.username ?? '?'}
           </Text>
-          <Text style={styles.timeText}>{timeAgo(item.last_message_at)}</Text>
+          <Text style={[styles.timeText, { color: colors.text.muted }]}>{timeAgo(item.last_message_at)}</Text>
         </View>
         <Text
-          style={[styles.preview, hasUnread && styles.previewUnread]}
+          style={[styles.preview, { color: hasUnread ? colors.text.secondary : colors.text.muted }]}
           numberOfLines={1}
         >
           {item.last_message ?? 'Konversation starten…'}
@@ -85,6 +92,7 @@ function NewMessageModal({ visible, onClose }: { visible: boolean; onClose: () =
   const [query, setQuery] = useState('');
   const currentUserId = useAuthStore((s) => s.profile?.id);
   const { mutateAsync: openConv, isPending } = useOrCreateConversation();
+  const { colors } = useTheme();
 
   const { data: results = [], isFetching } = useQuery<UserResult[]>({
     queryKey: ['user-search-dm', query],
@@ -111,22 +119,22 @@ function NewMessageModal({ visible, onClose }: { visible: boolean; onClose: () =
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View style={modal.sheet}>
+      <View style={[modal.sheet, { backgroundColor: colors.bg.primary }]}>
         <View style={modal.handle} />
-        <View style={modal.header}>
-          <Text style={modal.title}>Neue Nachricht</Text>
+        <View style={[modal.header, { borderBottomColor: colors.border.subtle }]}>
+          <Text style={[modal.title, { color: colors.text.primary }]}>Neue Nachricht</Text>
           <Pressable onPress={onClose} style={modal.closeBtn} hitSlop={10}>
-            <X size={20} color="rgba(255,255,255,0.6)" strokeWidth={2} />
+            <X size={20} color={colors.icon.muted} strokeWidth={2} />
           </Pressable>
         </View>
 
         {/* Suchfeld */}
-        <View style={modal.searchBar}>
-          <Search size={16} color="rgba(255,255,255,0.35)" strokeWidth={2} />
+        <View style={[modal.searchBar, { backgroundColor: colors.bg.input, borderColor: colors.border.default }]}>
+          <Search size={16} color={colors.icon.muted} strokeWidth={2} />
           <TextInput
-            style={modal.searchInput}
+            style={[modal.searchInput, { color: colors.text.primary }]}
             placeholder="Username suchen…"
-            placeholderTextColor="rgba(255,255,255,0.25)"
+            placeholderTextColor={colors.text.muted}
             value={query}
             onChangeText={setQuery}
             autoFocus
@@ -135,21 +143,21 @@ function NewMessageModal({ visible, onClose }: { visible: boolean; onClose: () =
           />
           {query.length > 0 && (
             <Pressable onPress={() => setQuery('')} hitSlop={8}>
-              <X size={14} color="rgba(255,255,255,0.35)" />
+              <X size={14} color={colors.icon.muted} />
             </Pressable>
           )}
         </View>
 
         {/* Ergebnisse */}
         {isFetching || isPending ? (
-          <ActivityIndicator color="#22D3EE" style={{ marginTop: 32 }} />
+          <ActivityIndicator color="#FFFFFF" style={{ marginTop: 32 }} />
         ) : query.trim().length === 0 ? (
           <View style={modal.hint}>
-            <Text style={modal.hintText}>Tippe einen Username ein um zu suchen</Text>
+            <Text style={[modal.hintText, { color: colors.text.muted }]}>Tippe einen Username ein um zu suchen</Text>
           </View>
         ) : results.length === 0 ? (
           <View style={modal.hint}>
-            <Text style={modal.hintText}>Kein User gefunden</Text>
+            <Text style={[modal.hintText, { color: colors.text.muted }]}>Kein User gefunden</Text>
           </View>
         ) : (
           <FlashList
@@ -161,13 +169,17 @@ function NewMessageModal({ visible, onClose }: { visible: boolean; onClose: () =
               return (
                 <TouchableOpacity style={modal.userRow} onPress={() => handleSelect(item)} activeOpacity={0.7}>
                   {item.avatar_url ? (
-                    <Image source={{ uri: item.avatar_url }} style={modal.avatar} />
+                    <Image
+                      source={{ uri: item.avatar_url }}
+                      style={modal.avatar}
+                      contentFit="cover"
+                    />
                   ) : (
                     <View style={[modal.avatar, modal.avatarFallback]}>
-                      <Text style={modal.avatarInitial}>{initial}</Text>
+                      <User size={20} color={colors.text.muted} strokeWidth={1.5} />
                     </View>
                   )}
-                  <Text style={modal.userName}>@{item.username ?? '?'}</Text>
+                  <Text style={[modal.userName, { color: colors.text.primary }]}>@{item.username ?? '?'}</Text>
                 </TouchableOpacity>
               );
             }}
@@ -181,6 +193,7 @@ function NewMessageModal({ visible, onClose }: { visible: boolean; onClose: () =
 
 export default function MessagesScreen() {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
   const [showNew, setShowNew] = useState(false);
   const { data: convs = [], isLoading, refetch, isRefetching } = useConversations();
 
@@ -190,29 +203,29 @@ export default function MessagesScreen() {
   );
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top }]}>
+    <View style={[styles.screen, { paddingTop: insets.top, backgroundColor: colors.bg.secondary }]}>
       <NewMessageModal visible={showNew} onClose={() => setShowNew(false)} />
-      <View style={styles.header}>
-        <Text style={styles.title}>Nachrichten</Text>
+      <View style={[styles.header, { borderBottomColor: colors.border.subtle }]}>
+        <Text style={[styles.title, { color: colors.text.primary }]}>Nachrichten</Text>
         <Pressable
           onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowNew(true); }}
           style={styles.composeBtn}
           hitSlop={8}
         >
-          <PenSquare size={20} color="#22D3EE" strokeWidth={2} />
+          <PenSquare size={20} color="#FFFFFF" strokeWidth={2} />
         </Pressable>
       </View>
 
       {isLoading ? (
         <View style={styles.center}>
-          <ActivityIndicator color="#22D3EE" size="large" />
+          <ActivityIndicator color="#FFFFFF" size="large" />
         </View>
       ) : convs.length === 0 ? (
         <View style={styles.center}>
-          <MessageCircle size={52} color="rgba(255,255,255,0.1)" strokeWidth={1.2} />
-          <Text style={styles.emptyTitle}>Noch keine Nachrichten</Text>
-          <Text style={styles.emptyDesc}>
-            Öffne ein Profil und tippe auf „Nachricht“ um zu starten.
+          <MessageCircle size={52} color={colors.icon.muted} strokeWidth={1.2} />
+          <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>Noch keine Nachrichten</Text>
+          <Text style={[styles.emptyDesc, { color: colors.text.muted }]}>
+            Öffne ein Profil und tippe auf „Nachricht" um zu starten.
           </Text>
         </View>
       ) : (
@@ -223,9 +236,9 @@ export default function MessagesScreen() {
           estimatedItemSize={80}
           contentContainerStyle={{ paddingBottom: 100 }}
           showsVerticalScrollIndicator={false}
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          ItemSeparatorComponent={() => <View style={[styles.separator, { backgroundColor: colors.border.subtle }]} />}
           refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor="#22D3EE" />
+            <RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor="#FFFFFF" />
           }
         />
       )}
@@ -235,38 +248,38 @@ export default function MessagesScreen() {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#050508' },
+  screen: { flex: 1 },  // backgroundColor via inline
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255,255,255,0.06)',
+    // borderBottomColor via inline
   },
-  title: { color: '#FFFFFF', fontSize: 22, fontWeight: '800', letterSpacing: -0.5, flex: 1 },
+  title: { fontSize: 22, fontWeight: '800', letterSpacing: -0.5, flex: 1 }, // color via inline
   composeBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, paddingBottom: 60 },
-  emptyTitle: { color: '#FFFFFF', fontSize: 18, fontWeight: '700', marginTop: 8 },
-  emptyDesc: { color: 'rgba(255,255,255,0.4)', fontSize: 14, textAlign: 'center', maxWidth: 240, lineHeight: 20 },
+  emptyTitle: { fontSize: 18, fontWeight: '700', marginTop: 8 }, // color via inline
+  emptyDesc: { fontSize: 14, textAlign: 'center', maxWidth: 240, lineHeight: 20 }, // color via inline
   item: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 14,
+    paddingVertical: 9,
     gap: 12,
     position: 'relative',
   },
-  itemUnread: { backgroundColor: 'rgba(34,211,238,0.04)' },
+  itemUnread: { backgroundColor: 'rgba(29,185,84,0.04)' },
   unreadDot: {
     position: 'absolute', left: 4, top: '50%',
     width: 5, height: 5, borderRadius: 2.5,
-    backgroundColor: '#22D3EE', marginTop: -2.5,
+    backgroundColor: '#FFFFFF', marginTop: -2.5,
   },
   avatarWrap: { position: 'relative', width: 52, height: 52 },
-  avatar: { width: 52, height: 52, borderRadius: 26, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.1)' },
-  avatarFallback: { backgroundColor: 'rgba(34,211,238,0.2)', alignItems: 'center', justifyContent: 'center' },
-  avatarInitial: { color: '#22D3EE', fontSize: 20, fontWeight: '700' },
+  avatar: { width: 52, height: 52, borderRadius: 26, borderWidth: 1 },
+  avatarFallback: { backgroundColor: 'rgba(128,128,128,0.1)', alignItems: 'center', justifyContent: 'center' },
+  avatarInitial: { color: '#9CA3AF', fontSize: 20, fontWeight: '700' },
   onlineDot: {
     position: 'absolute', bottom: 1, right: 1,
     width: 13, height: 13, borderRadius: 6.5,
@@ -274,45 +287,46 @@ const styles = StyleSheet.create({
   },
   textWrap: { flex: 1, gap: 4 },
   nameRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  username: { color: 'rgba(255,255,255,0.7)', fontSize: 15, fontWeight: '600' },
-  usernameUnread: { color: '#FFFFFF', fontWeight: '700' },
-  preview: { color: 'rgba(255,255,255,0.4)', fontSize: 13 },
-  previewUnread: { color: 'rgba(255,255,255,0.75)', fontWeight: '500' },
-  timeText: { color: 'rgba(255,255,255,0.3)', fontSize: 12 },
+  username: { fontSize: 15, fontWeight: '600' }, // color via inline
+  usernameUnread: { fontWeight: '700' },
+  preview: { fontSize: 13 }, // color via inline
+  previewUnread: { fontWeight: '500' },
+  timeText: { fontSize: 12 }, // color via inline
   badge: {
     minWidth: 20, height: 20, borderRadius: 10,
-    backgroundColor: '#22D3EE', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center',
     paddingHorizontal: 5,
   },
   badgeText: { color: '#FFFFFF', fontSize: 11, fontWeight: '800' },
-  separator: { height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.05)', marginLeft: 80 },
+  separator: { height: StyleSheet.hairlineWidth, marginLeft: 80 }, // backgroundColor via inline
 });
 
 const modal = StyleSheet.create({
-  sheet: { flex: 1, backgroundColor: '#0A0A0F', paddingTop: 12 },
+  sheet: { flex: 1, paddingTop: 12 }, // backgroundColor via inline
   handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)', alignSelf: 'center', marginBottom: 12 },
   header: {
     flexDirection: 'row', alignItems: 'center',
     paddingHorizontal: 20, paddingBottom: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.06)',
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    // borderBottomColor via inline
   },
-  title: { flex: 1, color: '#FFFFFF', fontSize: 18, fontWeight: '800' },
+  title: { flex: 1, fontSize: 18, fontWeight: '800' }, // color via inline
   closeBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
   searchBar: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     margin: 16, paddingHorizontal: 14, paddingVertical: 10,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 14, borderWidth: 1,
+    // backgroundColor + borderColor via inline
   },
-  searchInput: { flex: 1, color: '#FFFFFF', fontSize: 15 },
+  searchInput: { flex: 1, fontSize: 15 }, // color via inline
   hint: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingBottom: 80 },
-  hintText: { color: 'rgba(255,255,255,0.3)', fontSize: 14 },
+  hintText: { fontSize: 14 }, // color via inline
   userRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     paddingHorizontal: 20, paddingVertical: 13,
   },
   avatar: { width: 44, height: 44, borderRadius: 22 },
-  avatarFallback: { backgroundColor: 'rgba(34,211,238,0.2)', alignItems: 'center', justifyContent: 'center' },
-  avatarInitial: { color: '#22D3EE', fontSize: 17, fontWeight: '700' },
-  userName: { color: '#FFFFFF', fontSize: 15, fontWeight: '600' },
+  avatarFallback: { backgroundColor: 'rgba(128,128,128,0.1)', alignItems: 'center', justifyContent: 'center' },
+  avatarInitial: { color: '#9CA3AF', fontSize: 17, fontWeight: '700' },
+  userName: { fontSize: 15, fontWeight: '600' }, // color via inline
 });

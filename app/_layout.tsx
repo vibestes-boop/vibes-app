@@ -4,6 +4,7 @@ import { View, Text, StyleSheet } from 'react-native';
 // Named imports only to bypass wildcard interop in Hermes production builds.
 import { preventAutoHideAsync as splashPreventHide, hideAsync as splashHide } from 'expo-splash-screen';
 import type { ComponentType } from 'react';
+import * as Sentry from '@sentry/react-native';
 // WebRTC muss vor jeglicher LiveKit-Room-Verbindung initialisiert werden.
 // In Expo Go liefert der Stub eine no-op Implementierung.
 import { registerGlobals } from '@livekit/react-native-webrtc';
@@ -16,7 +17,18 @@ if (!global.navigator) global.navigator = {} as Navigator;
 // @ts-ignore
 if (!global.navigator.userAgent) global.navigator.userAgent = 'react-native';
 
-registerGlobals();
+// ── Sentry: Frühest mögliche Initialisierung (vor jeglichem React-Rendering) ──
+// DSN aus .env: EXPO_PUBLIC_SENTRY_DSN=https://xxx@xxx.ingest.sentry.io/xxx
+Sentry.init({
+  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN ?? '',
+  environment: __DEV__ ? 'development' : 'production',
+  enabled: !__DEV__,              // nur in Production-Builds aktiv
+  tracesSampleRate: 0.15,         // 15% der Requests tracen (Performance)
+  debug: false,
+});
+
+registerGlobals();  // LiveKit WebRTC — NACH Sentry damit Crashes erfasst werden
+
 
 splashPreventHide().catch(() => {});
 
@@ -99,11 +111,11 @@ export default function RootLayout() {
       const keys = Object.keys(mod ?? {}).slice(0, 8).join(', ') || '(keine)';
       const esm = String((mod as { __esModule?: boolean })?.__esModule);
       return (
-        <View style={{ flex: 1, backgroundColor: '#0891B2', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <View style={{ flex: 1, backgroundColor: '#CCCCCC', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
           <Text style={{ color: '#fff', fontSize: 16, fontWeight: '900', textAlign: 'center' }}>
             ERR: kein gültiger Default-Export
           </Text>
-          <Text style={{ color: '#A5F3FC', fontSize: 11, textAlign: 'center', marginTop: 12, fontFamily: 'monospace' }}>
+          <Text style={{ color: '#BBF7D0', fontSize: 11, textAlign: 'center', marginTop: 12, fontFamily: 'monospace' }}>
             mod type: {modType}{'\n'}
             mod.default type: {defType}{'\n'}
             mod.default val: {defVal}{'\n'}

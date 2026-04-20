@@ -4,17 +4,26 @@ const path = require('path');
 const config = getDefaultConfig(__dirname);
 
 // ─── Build-Modus-Erkennung ───────────────────────────────────────────────────
-// EAS_BUILD=1         → gesetzt in eas.json env für alle Profiles
-// CI=true             → gesetzt von EAS Build Servern (und local EAS CLI)
+// EAS_BUILD=1         → gesetzt in eas.json env für alle EAS Build Profiles
+// CI=true             → gesetzt von EAS Build Servern
 // EXPO_NO_DOTENV=1    → intern von EAS CLI gesetzt während Builds
-// Im DevClient wird keiner dieser Werte gesetzt → Expo Go Modus
-const IS_EAS_BUILD =
+// APP_ENV=development → gesetzt in unserem eas.json development profile
+//
+// WICHTIG: Im Dev Client (Dev Build + npx expo start) läuft Metro auf dem Mac,
+// nicht auf dem EAS Server. Daher EAS_BUILD NICHT gesetzt — aber wir wollen
+// KEINE Stubs, weil der Dev Build echte native Module hat.
+// Lösung: APP_ENV=development → Dev Build, kein Stub.
+const IS_DEV_BUILD =
   process.env.EAS_BUILD === '1' ||
   process.env.CI === 'true' ||
   process.env.CI === '1' ||
-  process.env.EXPO_NO_DOTENV === '1';
+  process.env.EXPO_NO_DOTENV === '1' ||
+  process.env.APP_ENV === 'development';   // ← Dev Build mit npx expo start
 
-console.log(`[metro] Build-Modus: ${IS_EAS_BUILD ? '🏗️  EAS BUILD (native Module aktiv)' : '📱 Expo Go (Stubs aktiv)'}`);
+const IS_EAS_BUILD = IS_DEV_BUILD; // Alias für Abwärtskompatibilität
+
+console.log(`[metro] Build-Modus: ${IS_EAS_BUILD ? '🏗️  Dev/EAS Build (native Module aktiv)' : '📱 Expo Go (Stubs aktiv)'}`);
+
 
 // ─── Permanente Stubs (immer aktiv — lösen CJS/ESM-Hazards) ─────────────────
 const ALWAYS_STUBS = {
@@ -42,6 +51,8 @@ const EXPO_GO_STUBS = {
   '@shopify/flash-list':            path.resolve(__dirname, 'stubs/flash-list-mock.js'),
   '@livekit/react-native':          path.resolve(__dirname, 'stubs/livekit-mock.js'),
   '@livekit/react-native-webrtc':   path.resolve(__dirname, 'stubs/livekit-webrtc-mock.js'),
+  'lottie-react-native':            path.resolve(__dirname, 'stubs/lottie-mock.js'),
+  'react-native-purchases':         path.resolve(__dirname, 'stubs/purchases-mock.js'),
   // Skia: braucht Reanimated Worklet Runtime → funktioniert nicht in Expo Go
   // (weil Reanimated selbst gestrubbt ist). SKIA_READY wird false →
   // index.tsx fällt auf View-Overlays + expo-image zurück.

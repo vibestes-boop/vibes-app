@@ -3,6 +3,7 @@ import { Zap, Users } from 'lucide-react-native';
 import { impactAsync, ImpactFeedbackStyle } from 'expo-haptics';
 import { GuildViewToggle } from './GuildViewToggle';
 import type { GuildViewMode } from './guildConstants';
+import { useTheme } from '@/lib/useTheme';
 
 /**
  * Minimal Guild Header — TikTok/Instagram-Style.
@@ -24,6 +25,7 @@ export function GuildRoomHeader({
   onMembersPress?: () => void;
 }) {
   const [accent] = guildColors;
+  const { colors } = useTheme();
 
   return (
     <View style={s.wrap}>
@@ -41,13 +43,13 @@ export function GuildRoomHeader({
               impactAsync(ImpactFeedbackStyle.Light);
               onMembersPress?.();
             }}
-            style={s.memberChip}
+            style={[s.memberChip, { backgroundColor: colors.bg.elevated, borderColor: colors.border.default }]}
             hitSlop={8}
             accessibilityRole="button"
             accessibilityLabel={`${memberCount} Mitglieder anzeigen`}
           >
-            <Users size={10} color="rgba(255,255,255,0.5)" strokeWidth={2} />
-            <Text style={s.memberCount}>{memberCount}</Text>
+            <Users size={10} color={colors.icon.muted} strokeWidth={2} />
+            <Text style={[s.memberCount, { color: colors.text.muted }]}>{memberCount}</Text>
           </Pressable>
         )}
       </View>

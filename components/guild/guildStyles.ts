@@ -1,10 +1,10 @@
 import { StyleSheet } from 'react-native';
+import type { ThemeColors } from '@/lib/theme';
 
-
-export const guildStyles = StyleSheet.create({
+export const getGuildStyles = (c: ThemeColors) => StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: '#050508',
+    backgroundColor: c.bg.primary,
   },
   loadingWrap: {
     flex: 1,
@@ -13,7 +13,7 @@ export const guildStyles = StyleSheet.create({
     gap: 12,
   },
   loadingText: {
-    color: '#6B7280',
+    color: c.text.muted,
     fontSize: 14,
   },
   emptyContainer: {
@@ -37,11 +37,11 @@ export const guildStyles = StyleSheet.create({
     marginHorizontal: 20,
     marginBottom: 12,
     marginTop: 4,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: c.bg.elevated,
     borderRadius: 14,
     padding: 3,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: c.border.default,
   },
   toggleBtn: {
     flex: 1,
@@ -53,18 +53,18 @@ export const guildStyles = StyleSheet.create({
     borderRadius: 11,
   },
   toggleBtnActive: {
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: c.bg.subtle,
   },
   toggleBtnActiveGold: {
     backgroundColor: 'rgba(251,191,36,0.12)',
   },
   toggleText: {
-    color: 'rgba(255,255,255,0.4)',
+    color: c.text.muted,
     fontSize: 13,
     fontWeight: '600',
   },
   toggleTextActive: {
-    color: '#FFFFFF',
+    color: c.text.primary,
     fontWeight: '700',
   },
   toggleTextGold: {
@@ -77,7 +77,7 @@ export const guildStyles = StyleSheet.create({
   },
   storiesDivider: {
     height: 1,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: c.border.subtle,
     marginHorizontal: 16,
     marginBottom: 8,
   },
@@ -94,6 +94,9 @@ export const guildStyles = StyleSheet.create({
     paddingVertical: 18,
     gap: 14,
     overflow: 'hidden',
+    backgroundColor: c.bg.secondary,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: c.border.subtle,
   },
   guildHeaderIcon: {
     borderRadius: 14,
@@ -107,42 +110,40 @@ export const guildStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   guildHeaderLabel: {
-    color: '#9CA3AF',
+    color: c.text.muted,
     fontSize: 11,
     letterSpacing: 0.8,
     textTransform: 'uppercase',
     marginBottom: 2,
   },
   guildHeaderName: {
-    color: '#FFFFFF',
+    color: c.text.primary,
     fontSize: 22,
     fontWeight: '700',
     letterSpacing: -0.3,
   },
   memberCountBadge: {
     marginLeft: 'auto',
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: c.bg.elevated,
     borderRadius: 10,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
   memberCountText: {
-    color: '#9CA3AF',
+    color: c.text.muted,
     fontSize: 11,
   },
 
   card: {
     marginHorizontal: 0,
-    marginBottom: 1,
+    marginBottom: 0,
     overflow: 'hidden',
-    backgroundColor: '#0D0D15',
+    backgroundColor: c.bg.secondary,
   },
   cardBlur: {
-    // BlurView entfernt (→ schwarzer Screen in Listen)
-    // Glassmorphism via solider Farbe + Rand
-    backgroundColor: '#0F0F18',
+    backgroundColor: c.bg.secondary,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255,255,255,0.07)',
+    borderBottomColor: c.border.default,
     overflow: 'hidden',
   },
   cardHeader: {
@@ -169,7 +170,7 @@ export const guildStyles = StyleSheet.create({
     fontSize: 14,
   },
   username: {
-    color: '#F9FAFB',
+    color: c.text.primary,
     fontWeight: '600',
     fontSize: 14,
   },
@@ -180,7 +181,7 @@ export const guildStyles = StyleSheet.create({
     marginTop: 2,
   },
   metaText: {
-    color: '#6B7280',
+    color: c.text.muted,
     fontSize: 11,
   },
   guildBadge: {
@@ -196,7 +197,7 @@ export const guildStyles = StyleSheet.create({
     fontWeight: '600',
   },
   caption: {
-    color: '#D1D5DB',
+    color: c.text.secondary,
     fontSize: 13,
     lineHeight: 19,
     flexShrink: 1,
@@ -205,9 +206,9 @@ export const guildStyles = StyleSheet.create({
     overflow: 'hidden',
     marginBottom: 0,
     width: '100%',
-    aspectRatio: 4 / 5,   // Instagram-Hochformat (4:5) — mobiles Standard-Format
+    aspectRatio: 4 / 5,
     maxHeight: 560,
-    backgroundColor: '#0D0D12',
+    backgroundColor: c.bg.elevated,
   },
   mediaWrapNoMedia: {
     alignItems: 'center',
@@ -226,7 +227,7 @@ export const guildStyles = StyleSheet.create({
     marginBottom: 4,
   },
   captionUser: {
-    color: '#F9FAFB',
+    color: c.text.primary,
     fontWeight: '700',
     fontSize: 13,
   },
@@ -238,13 +239,15 @@ export const guildStyles = StyleSheet.create({
     marginBottom: 10,
   },
   tag: {
-    backgroundColor: 'rgba(255,255,255,0.07)',
+    backgroundColor: c.bg.elevated,
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 3,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: c.border.subtle,
   },
   tagText: {
-    color: '#0891B2',
+    color: c.text.secondary,
     fontSize: 11,
     fontWeight: '600',
   },
@@ -266,7 +269,7 @@ export const guildStyles = StyleSheet.create({
     borderRadius: 10,
   },
   actionCount: {
-    color: '#9CA3AF',
+    color: c.text.muted,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -287,15 +290,27 @@ export const guildStyles = StyleSheet.create({
     justifyContent: 'center',
   },
   emptyTitle: {
-    color: '#F9FAFB',
+    color: c.text.primary,
     fontSize: 18,
     fontWeight: '700',
     textAlign: 'center',
   },
   emptySubtitle: {
-    color: '#6B7280',
+    color: c.text.muted,
     fontSize: 13,
     textAlign: 'center',
     lineHeight: 19,
   },
+
+  // Legacy-Alias — damit alter Import-Code nicht bricht
+});
+
+/** @deprecated use getGuildStyles(colors) */
+export const guildStyles = getGuildStyles({
+  bg: { primary: '#050508', secondary: '#0D0D0D', elevated: '#1A1A1A', input: '#111', subtle: 'rgba(255,255,255,0.04)' },
+  text: { primary: '#FFFFFF', secondary: '#9CA3AF', muted: '#4B5563', inverse: '#FFFFFF' },
+  accent: { primary: '#FFFFFF', secondary: '#A855F7', danger: '#EF4444', success: '#22C55E', warning: '#F59E0B', gold: '#FBBF24' },
+  border: { default: 'rgba(255,255,255,0.08)', subtle: 'rgba(255,255,255,0.04)', strong: 'rgba(255,255,255,0.16)' },
+  icon: { default: '#9CA3AF', muted: '#4B5563', active: '#FFFFFF', inactive: '#6B7280' },
+  tabBar: { bg: '#050508', border: 'rgba(255,255,255,0.06)', active: '#FFFFFF', inactive: '#6B7280' },
 });

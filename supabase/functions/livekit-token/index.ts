@@ -41,7 +41,7 @@ async function livekitToken(
     sub: identity,
     iat: now,
     nbf: 0,
-    exp: now + 4 * 3600,
+    exp: now + 8 * 3600, // 8h — ausreichend für lange Streams
     video: {
       roomJoin:       true,
       room:           roomName,
@@ -104,13 +104,96 @@ serve(async (req: Request) => {
     }
 
     // Request Body
-    const { roomName, isHost } = await req.json() as { roomName: string; isHost: boolean };
+    const { roomName, isHost, isCoHost } = await req.json() as {
+      roomName: string;
+      isHost: boolean;
+      isCoHost?: boolean;
+    };
+
+    if (!roomName || typeof roomName !== 'string') {
+      return new Response(
+        JSON.stringify({ error: 'roomName fehlt oder ungültig' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ── SEC 1: Host-Token nur wenn User wirklich Host dieser aktiven Session ist
+    if (isHost) {
+      const sessionResp = await fetch(
+        `${supabaseUrl}/rest/v1/live_sessions?room_name=eq.${encodeURIComponent(roomName)}&status=eq.active&select=host_id&limit=1`,
+        {
+          headers: {
+            'apikey': serviceRoleKey,
+            'Authorization': `Bearer ${serviceRoleKey}`,
+          },
+        }
+      );
+      const sessions = await sessionResp.json() as { host_id: string }[];
+      const session = sessions?.[0];
+      if (!session || session.host_id !== userId) {
+        return new Response(
+          JSON.stringify({ error: 'Nicht autorisiert als Host für diesen Room' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // ── SEC 2: Co-Host-Token nur wenn User auf Whitelist (live_cohosts) ──────
+    // Vorher reichte isCoHost=true vom Client — jeder konnte Publisher-Rechte
+    // für fremde Streams holen. Jetzt: Session suchen, dann prüfen ob User
+    // aktiver (nicht-revoked) Co-Host dieser Session ist.
+    let coHostApproved = false;
+    if (isCoHost && !isHost) {
+      const sessionResp = await fetch(
+        `${supabaseUrl}/rest/v1/live_sessions?room_name=eq.${encodeURIComponent(roomName)}&status=eq.active&select=id&limit=1`,
+        {
+          headers: {
+            'apikey': serviceRoleKey,
+            'Authorization': `Bearer ${serviceRoleKey}`,
+          },
+        }
+      );
+      const sessions = await sessionResp.json() as { id: string }[];
+      const sessionId = sessions?.[0]?.id;
+      if (!sessionId) {
+        return new Response(
+          JSON.stringify({ error: 'Session nicht aktiv oder nicht gefunden' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const cohostResp = await fetch(
+        `${supabaseUrl}/rest/v1/live_cohosts`
+        + `?session_id=eq.${sessionId}`
+        + `&user_id=eq.${userId}`
+        + `&revoked_at=is.null`
+        + `&select=user_id&limit=1`,
+        {
+          headers: {
+            'apikey': serviceRoleKey,
+            'Authorization': `Bearer ${serviceRoleKey}`,
+          },
+        }
+      );
+      const cohosts = await cohostResp.json() as { user_id: string }[];
+      if (!cohosts?.[0]) {
+        return new Response(
+          JSON.stringify({ error: 'Nicht als Co-Host für diesen Room zugelassen' }),
+          { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      coHostApproved = true;
+    }
 
     const apiKey    = Deno.env.get('LIVEKIT_API_KEY')!;
     const apiSecret = Deno.env.get('LIVEKIT_API_SECRET')!;
     const lkUrl     = Deno.env.get('LIVEKIT_URL')!;
 
-    const token = await livekitToken(apiKey, apiSecret, userId, roomName, isHost === true);
+    // Publish-Rechte strikt: nur verifizierter Host ODER verifizierter Co-Host.
+    // Alles andere ist Viewer → nur Subscribe.
+    const canPublish = (isHost === true) || coHostApproved;
+    const token = await livekitToken(apiKey, apiSecret, userId, roomName, canPublish);
+
 
     return new Response(
       JSON.stringify({ token, url: lkUrl }),

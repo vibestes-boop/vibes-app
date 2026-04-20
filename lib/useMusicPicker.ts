@@ -246,7 +246,7 @@ export function useAudioPlayer(): AudioPlayerState {
       soundRef.current = sound;
 
       await sound.playAsync();
-      console.log('[MusicPicker] ▶ Spielt:', track.title);
+      __DEV__ && console.log('[MusicPicker] ▶ Spielt:', track.title);
 
       setPlayingId(track.id);
       setProgressSec(0);
@@ -266,7 +266,7 @@ export function useAudioPlayer(): AudioPlayerState {
         }
       });
     } catch (e) {
-      console.warn('[MusicPicker] ❌ Fehler:', e);
+      __DEV__ && console.warn('[MusicPicker] ❌ Fehler:', e);
       setPlayingId(null);
     }
     setIsLoading(false);

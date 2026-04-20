@@ -1,0 +1,134 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/**
+ * CSS-Variablen als HSL-Tripels (shadcn/ui-Standard).
+ * Werte korrespondieren zu shared/theme/colors.ts:
+ *   Light: bg.primary=#F5F5F5 → 0 0% 96%
+ *   Dark:  bg.primary=#050508 → 240 20% 3%
+ *
+ * Brand-Farben (gold/success/...) direkt gemappt auf die Native-Accent-Werte.
+ */
+
+@layer base {
+  :root {
+    --background:           0 0% 96%;           /* F5F5F5 */
+    --foreground:           222 47% 11%;        /* 0F172A */
+
+    --card:                 0 0% 100%;          /* FFFFFF */
+    --card-foreground:      222 47% 11%;
+
+    --popover:              0 0% 100%;
+    --popover-foreground:   222 47% 11%;
+
+    --primary:              0 0% 0%;            /* Schwarz auf Weiß (TikTok-Stil) */
+    --primary-foreground:   0 0% 100%;
+
+    --secondary:            210 40% 96%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted:                210 40% 96%;
+    --muted-foreground:     215 16% 46%;
+
+    --accent:               210 40% 96%;
+    --accent-foreground:    222 47% 11%;
+
+    --destructive:          0 72% 51%;          /* DC2626 */
+    --destructive-foreground: 0 0% 100%;
+
+    --border:               214 20% 91%;        /* rgba(0,0,0,0.08) Approx */
+    --input:                210 33% 97%;        /* F8F8F8 */
+    --ring:                 222 47% 11%;
+
+    --radius: 0.625rem;
+
+    /* Brand-Akzente (shared mit Native darkColors.accent) */
+    --brand-gold:           45 93% 47%;         /* D97706 light / FBBF24 dark */
+    --brand-success:        142 71% 45%;        /* 16A34A light / 22C55E dark */
+    --brand-warning:        35 92% 50%;         /* D97706 */
+    --brand-danger:         0 72% 51%;          /* DC2626 light / EF4444 dark */
+    --brand-purple:         272 75% 48%;        /* 9333EA light / A855F7 dark */
+  }
+
+  .dark {
+    --background:           240 20% 3%;         /* 050508 */
+    --foreground:           0 0% 100%;          /* FFFFFF */
+
+    --card:                 0 0% 5%;            /* 0D0D0D */
+    --card-foreground:      0 0% 100%;
+
+    --popover:              0 0% 10%;           /* 1A1A1A */
+    --popover-foreground:   0 0% 100%;
+
+    --primary:              0 0% 100%;          /* Weiß auf Schwarz */
+    --primary-foreground:   0 0% 0%;
+
+    --secondary:            0 0% 10%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted:                0 0% 7%;
+    --muted-foreground:     220 9% 64%;         /* 9CA3AF */
+
+    --accent:               0 0% 10%;
+    --accent-foreground:    0 0% 100%;
+
+    --destructive:          0 84% 60%;          /* EF4444 */
+    --destructive-foreground: 0 0% 100%;
+
+    --border:               0 0% 12%;
+    --input:                0 0% 7%;
+    --ring:                 0 0% 100%;
+
+    --brand-gold:           43 96% 56%;         /* FBBF24 */
+    --brand-success:        142 71% 45%;        /* 22C55E */
+    --brand-warning:        38 92% 50%;         /* F59E0B */
+    --brand-danger:         0 84% 60%;          /* EF4444 */
+    --brand-purple:         271 91% 65%;        /* A855F7 */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html, body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: 'rlig' 1, 'calt' 1;
+  }
+  /* Selektions-Farbe matcht Brand */
+  ::selection {
+    background: hsl(var(--primary) / 0.2);
+  }
+
+  /*
+   * A11y-Baseline: Keyboard-Focus-Ring auf allen interaktiven Elementen.
+   *
+   * `:focus-visible` (nicht `:focus`) ist entscheidend — Mouse-Klicks
+   * triggern keinen Ring, aber Tab-Navigation schon. Diese Regel läuft in
+   * `@layer base`, damit jede Utility-Klasse (z.B. `focus-visible:ring-2
+   * focus-visible:ring-white` in FeedCard) den Ring überschreibt — nur
+   * Komponenten OHNE expliziten Focus-Style fallen auf diese Baseline.
+   *
+   * shadcn/ui-Button + Input-Komponenten haben eigene Rings und sind
+   * damit nicht betroffen.
+   */
+  a:focus-visible,
+  button:focus-visible,
+  [role="button"]:focus-visible,
+  [tabindex]:focus-visible,
+  summary:focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+}
+
+@layer utilities {
+  /* Scrollbar-Styling für horizontale Story-Strips etc. */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}

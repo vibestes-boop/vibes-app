@@ -5,7 +5,9 @@ const _animMod = require('react-native-reanimated') as any; const _animNS = _ani
 const Animated = { View: _animNS?.View ?? _animMod?.View };
 import { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
-import { profileStyles as s } from './profileStyles';
+import { getProfileStyles } from './profileStyles';
+import { useTheme } from '@/lib/useTheme';
+
 
 export function HeaderButton({
   icon: Icon,
@@ -18,6 +20,8 @@ export function HeaderButton({
 }) {
   const scale = useSharedValue(1);
   const anim = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+  const { colors } = useTheme();
+  const s = getProfileStyles(colors);
 
   return (
     <Pressable
@@ -33,7 +37,7 @@ export function HeaderButton({
       }}
     >
       <Animated.View style={[s.hBtn, anim]}>
-        <Icon size={17} color="rgba(255,255,255,0.55)" strokeWidth={1.8} />
+        <Icon size={17} color={colors.icon.default} strokeWidth={1.8} />
         {badge != null && badge > 0 && (
           <View style={s.hBadge}>
             <Text style={s.hBadgeText}>{badge > 9 ? '9+' : badge}</Text>

@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "Vibes",
+    "name": "Serlo",
     "slug": "vibes",
-    "version": "1.6.0",
+    "version": "1.26.3",
     "scheme": "vibes",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "automatic",
     "updates": {
       "fallbackToCacheTimeout": 0,
       "url": "https://u.expo.dev/02ab536a-5836-4560-a5ec-2dfd6e059f90"
@@ -25,10 +25,11 @@
       "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSCameraUsageDescription": "Vibes braucht Kamera-Zugriff für Stories, Posts und Live-Streams.",
-        "NSMicrophoneUsageDescription": "Vibes braucht Mikrofon-Zugriff für Video-Stories und Live-Streams.",
-        "NSPhotoLibraryUsageDescription": "Vibes braucht Zugriff auf deine Fotos für Stories und Posts.",
+        "NSCameraUsageDescription": "Serlo braucht Kamera-Zugriff für Videos und Fotos.",
+        "NSMicrophoneUsageDescription": "Serlo braucht Mikrofon-Zugriff für Video-Stories und Live-Streams.",
+        "NSPhotoLibraryUsageDescription": "Serlo braucht Zugriff auf deine Fotos für Stories und Posts.",
         "NSUserTrackingUsageDescription": "Für personalisierte Inhalte und Werbemessung nutzen wir anonyme Gerätedaten.",
+        "NSLocationWhenInUseUsageDescription": "Standortdaten werden von einer verwendeten Bibliothek referenziert, aber von Serlo nicht aktiv genutzt.",
         "UIStatusBarStyle": "UIStatusBarStyleLightContent",
         "UIViewControllerBasedStatusBarAppearance": false,
         "UIApplicationSceneManifest": {
@@ -69,10 +70,10 @@
           "Default"
         ]
       },
-      "buildNumber": "198"
+      "buildNumber": "268"
     },
     "android": {
-      "package": "app.vibes.social",
+      "package": "app.serlo.social",
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#000000",
@@ -88,9 +89,14 @@
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_MEDIA_VIDEO",
         "android.permission.INTERNET",
-        "android.permission.ACCESS_NETWORK_STATE"
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+        "android.permission.ACCESS_MEDIA_LOCATION",
+        "android.permission.READ_MEDIA_AUDIO"
       ],
-      "versionCode": 10
+      "versionCode": 41
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -104,8 +110,8 @@
       [
         "react-native-vision-camera",
         {
-          "cameraPermissionText": "Vibes braucht Kamera-Zugriff für Videos und Fotos.",
-          "microphonePermissionText": "Vibes braucht Mikrofon-Zugriff für Video-Aufnahmen.",
+          "cameraPermissionText": "Serlo braucht Kamera-Zugriff für Videos und Fotos.",
+          "microphonePermissionText": "Serlo braucht Mikrofon-Zugriff für Video-Aufnahmen.",
           "enableFrameProcessors": true
         }
       ],
@@ -135,8 +141,8 @@
       [
         "expo-media-library",
         {
-          "photosPermission": "Vibes möchte Videos in deiner Galerie speichern.",
-          "savePhotosPermission": "Vibes möchte Videos in deiner Galerie speichern.",
+          "photosPermission": "Serlo möchte Videos in deiner Galerie speichern.",
+          "savePhotosPermission": "Serlo möchte Videos in deiner Galerie speichern.",
           "isAccessMediaLocationEnabled": true
         }
       ],

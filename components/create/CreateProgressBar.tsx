@@ -101,12 +101,12 @@ const styles = StyleSheet.create({
   },
   track: {
     height: 2,
-    backgroundColor: 'rgba(34,211,238,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.10)',
     width: '100%',
   },
   fill: {
     height: 2,
-    backgroundColor: '#22D3EE',
+    backgroundColor: '#FFFFFF',
     borderRadius: 2,
   },
   statusRow: {
@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
     paddingBottom: 2,
   },
   progressText: {
-    color: 'rgba(34,211,238,0.7)',
+    color: 'rgba(29,185,84,0.7)',
     fontSize: 11,
     fontWeight: '600',
     fontVariant: ['tabular-nums'],

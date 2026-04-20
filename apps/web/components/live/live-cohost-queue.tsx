@@ -1,0 +1,386 @@
+'use client';
+
+import { useEffect, useState, useTransition } from 'react';
+import Image from 'next/image';
+import { createBrowserClient } from '@supabase/ssr';
+import { Check, X, UserPlus, UserMinus, Mic, MicOff, VideoOff } from 'lucide-react';
+
+function supa() {
+  return createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  );
+}
+import { acceptCoHostRequest, rejectCoHostRequest, kickCoHost, muteCoHost } from '@/app/actions/live-host';
+
+// -----------------------------------------------------------------------------
+// LiveCoHostQueue — zeigt eingehende CoHost-Requests + aktive CoHosts.
+//
+// Incoming-Requests-Flow:
+//   Viewer → sendet Broadcast `cohost-request` auf `co-host-signals-{id}` →
+//   Host-UI hier hört mit, zeigt Avatar + Name + Slot-Picker (1/2/3).
+//   Host klickt Accept → `accept_cohost_request` RPC → Native-Viewer-Client
+//   bekommt `cohost-accept` Event, publisht Track.
+//
+// Active-CoHosts:
+//   DB-Subscription auf `live_cohosts` → zeigt Kick + Mute-Buttons.
+// -----------------------------------------------------------------------------
+
+interface PendingRequest {
+  user_id: string;
+  username: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+  ts: number;
+}
+
+interface ActiveCoHost {
+  user_id: string;
+  slot_index: number;
+  username: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+  accepted_at: string;
+  audio_muted: boolean;
+  video_muted: boolean;
+}
+
+export interface LiveCoHostQueueProps {
+  sessionId: string;
+  hostId: string;
+}
+
+export function LiveCoHostQueue({ sessionId, hostId }: LiveCoHostQueueProps) {
+  const [pending, setPending] = useState<PendingRequest[]>([]);
+  const [active, setActive] = useState<ActiveCoHost[]>([]);
+
+  // -----------------------------------------------------------------------------
+  // Broadcast-Subscribe: cohost-request, cohost-cancel, cohost-leave
+  // -----------------------------------------------------------------------------
+  useEffect(() => {
+    const supabase = supa();
+    const channel = supabase.channel(`co-host-signals-${sessionId}`);
+
+    channel.on('broadcast', { event: 'cohost-request' }, ({ payload }) => {
+      const p = payload as {
+        user_id: string;
+        username?: string | null;
+        display_name?: string | null;
+        avatar_url?: string | null;
+        ts?: number;
+      };
+      if (!p.user_id || p.user_id === hostId) return;
+      setPending((prev) => {
+        // Dedup
+        if (prev.some((r) => r.user_id === p.user_id)) return prev;
+        return [
+          ...prev,
+          {
+            user_id: p.user_id,
+            username: p.username ?? null,
+            display_name: p.display_name ?? null,
+            avatar_url: p.avatar_url ?? null,
+            ts: p.ts ?? Date.now(),
+          },
+        ];
+      });
+    });
+
+    channel.on('broadcast', { event: 'cohost-cancel' }, ({ payload }) => {
+      const p = payload as { user_id: string };
+      setPending((prev) => prev.filter((r) => r.user_id !== p.user_id));
+    });
+
+    channel.subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [sessionId, hostId]);
+
+  // -----------------------------------------------------------------------------
+  // Active-CoHosts — DB-Subscription
+  // -----------------------------------------------------------------------------
+  useEffect(() => {
+    const supabase = supa();
+    let cancelled = false;
+
+    async function loadActive() {
+      const { data } = await supabase
+        .from('live_cohosts')
+        .select(
+          `user_id, slot_index, accepted_at, audio_muted, video_muted,
+           profile:profiles!live_cohosts_user_id_fkey ( username, display_name, avatar_url )`,
+        )
+        .eq('session_id', sessionId)
+        .is('revoked_at', null)
+        .order('slot_index', { ascending: true });
+
+      if (cancelled || !data) return;
+      setActive(
+        data.map((row) => {
+          const profile = Array.isArray(row.profile) ? row.profile[0] : row.profile;
+          return {
+            user_id: row.user_id as string,
+            slot_index: row.slot_index as number,
+            accepted_at: row.accepted_at as string,
+            audio_muted: (row.audio_muted as boolean) ?? false,
+            video_muted: (row.video_muted as boolean) ?? false,
+            username: (profile as { username?: string } | null)?.username ?? null,
+            display_name: (profile as { display_name?: string } | null)?.display_name ?? null,
+            avatar_url: (profile as { avatar_url?: string } | null)?.avatar_url ?? null,
+          };
+        }),
+      );
+    }
+
+    loadActive();
+
+    const channel = supabase
+      .channel(`live-cohosts-watch-${sessionId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'live_cohosts',
+          filter: `session_id=eq.${sessionId}`,
+        },
+        () => {
+          void loadActive();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, [sessionId]);
+
+  const takenSlots = new Set(active.map((a) => a.slot_index));
+  const nextFreeSlot = [1, 2, 3].find((s) => !takenSlots.has(s)) ?? 1;
+
+  return (
+    <div className="flex flex-col gap-3">
+      <h3 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        CoHosts
+      </h3>
+
+      {/* Pending */}
+      {pending.length === 0 && active.length === 0 && (
+        <p className="text-xs text-muted-foreground">
+          Noch keine Anfragen. Viewer können sich zum Mit-Streamen melden.
+        </p>
+      )}
+
+      {pending.map((req) => (
+        <PendingRow
+          key={req.user_id}
+          req={req}
+          slotIndex={nextFreeSlot}
+          onAccept={() => {
+            setPending((prev) => prev.filter((r) => r.user_id !== req.user_id));
+          }}
+          onReject={() => {
+            setPending((prev) => prev.filter((r) => r.user_id !== req.user_id));
+          }}
+          sessionId={sessionId}
+          slotsAvailable={takenSlots.size < 3}
+        />
+      ))}
+
+      {/* Active */}
+      {active.map((co) => (
+        <ActiveRow key={co.user_id} coHost={co} sessionId={sessionId} />
+      ))}
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// PendingRow — Avatar + Name + Accept/Reject
+// -----------------------------------------------------------------------------
+
+function PendingRow({
+  req,
+  slotIndex,
+  sessionId,
+  slotsAvailable,
+  onAccept,
+  onReject,
+}: {
+  req: PendingRequest;
+  slotIndex: number;
+  sessionId: string;
+  slotsAvailable: boolean;
+  onAccept: () => void;
+  onReject: () => void;
+}) {
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  const label = req.display_name ?? req.username ?? 'Unbekannt';
+  const initial = label.slice(0, 1).toUpperCase();
+
+  return (
+    <div className="flex items-center gap-3 rounded-lg border bg-primary/5 px-3 py-2">
+      <div className="relative h-9 w-9 flex-shrink-0 overflow-hidden rounded-full bg-muted">
+        {req.avatar_url ? (
+          <Image
+            src={req.avatar_url}
+            alt={label}
+            fill
+            sizes="36px"
+            className="object-cover"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-primary/10 text-sm font-semibold text-primary">
+            {initial}
+          </div>
+        )}
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium">{label}</p>
+        <p className="text-xs text-muted-foreground">Möchte CoHost werden</p>
+        {error && <p className="text-xs text-red-500">{error}</p>}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => {
+          if (!slotsAvailable) {
+            setError('Alle Slots belegt.');
+            return;
+          }
+          startTransition(async () => {
+            const r = await acceptCoHostRequest(sessionId, req.user_id, slotIndex);
+            if (!r.ok) {
+              setError(r.error);
+              return;
+            }
+            onAccept();
+          });
+        }}
+        disabled={isPending || !slotsAvailable}
+        className="inline-flex items-center gap-1 rounded-md bg-green-500 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-green-600 disabled:opacity-50"
+      >
+        <Check className="h-3.5 w-3.5" />
+        Slot {slotIndex}
+      </button>
+
+      <button
+        type="button"
+        onClick={() => {
+          startTransition(async () => {
+            const r = await rejectCoHostRequest(sessionId, req.user_id);
+            onReject();
+            if (!r.ok) setError(r.error);
+          });
+        }}
+        disabled={isPending}
+        className="inline-flex items-center rounded-md border px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-muted"
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// ActiveRow — aktiver CoHost mit Mute/Kick
+// -----------------------------------------------------------------------------
+
+function ActiveRow({ coHost, sessionId }: { coHost: ActiveCoHost; sessionId: string }) {
+  const [isPending, startTransition] = useTransition();
+  const [localMuteAudio, setLocalMuteAudio] = useState(coHost.audio_muted);
+  const [localMuteVideo, setLocalMuteVideo] = useState(coHost.video_muted);
+
+  const label = coHost.display_name ?? coHost.username ?? 'Unbekannt';
+  const initial = label.slice(0, 1).toUpperCase();
+
+  return (
+    <div className="flex items-center gap-3 rounded-lg border bg-card px-3 py-2">
+      <div className="relative h-9 w-9 flex-shrink-0 overflow-hidden rounded-full bg-muted">
+        {coHost.avatar_url ? (
+          <Image
+            src={coHost.avatar_url}
+            alt={label}
+            fill
+            sizes="36px"
+            className="object-cover"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center bg-primary/10 text-sm font-semibold text-primary">
+            {initial}
+          </div>
+        )}
+        <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
+          {coHost.slot_index}
+        </span>
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium">{label}</p>
+        <p className="text-xs text-muted-foreground">
+          <UserPlus className="inline h-3 w-3" /> CoHost · Slot {coHost.slot_index}
+        </p>
+      </div>
+
+      {/* Audio-Mute */}
+      <button
+        type="button"
+        onClick={() => {
+          const next = !localMuteAudio;
+          setLocalMuteAudio(next);
+          startTransition(async () => {
+            await muteCoHost(sessionId, coHost.user_id, next, localMuteVideo);
+          });
+        }}
+        disabled={isPending}
+        title={localMuteAudio ? 'Mic unmuten' : 'Mic muten'}
+        className={`inline-flex items-center rounded-md border p-1.5 ${
+          localMuteAudio ? 'bg-red-500/10 text-red-500' : 'hover:bg-muted'
+        }`}
+      >
+        {localMuteAudio ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+      </button>
+
+      {/* Video-Mute */}
+      <button
+        type="button"
+        onClick={() => {
+          const next = !localMuteVideo;
+          setLocalMuteVideo(next);
+          startTransition(async () => {
+            await muteCoHost(sessionId, coHost.user_id, localMuteAudio, next);
+          });
+        }}
+        disabled={isPending}
+        title={localMuteVideo ? 'Kamera aktivieren' : 'Kamera deaktivieren'}
+        className={`inline-flex items-center rounded-md border p-1.5 ${
+          localMuteVideo ? 'bg-red-500/10 text-red-500' : 'hover:bg-muted'
+        }`}
+      >
+        <VideoOff className="h-3.5 w-3.5" />
+      </button>
+
+      {/* Kick */}
+      <button
+        type="button"
+        onClick={() => {
+          if (!window.confirm(`${label} von der Bühne entfernen?`)) return;
+          startTransition(async () => {
+            await kickCoHost(sessionId, coHost.user_id);
+          });
+        }}
+        disabled={isPending}
+        title="CoHost entfernen"
+        className="inline-flex items-center rounded-md border p-1.5 text-red-500 hover:bg-red-500/10"
+      >
+        <UserMinus className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}

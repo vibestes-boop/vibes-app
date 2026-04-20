@@ -327,7 +327,7 @@ const s = StyleSheet.create({
     borderColor: '#fff',
   },
   avatarFallback: {
-    backgroundColor: '#0891B2',
+    backgroundColor: '#CCCCCC',
     alignItems: 'center',
     justifyContent: 'center',
   },

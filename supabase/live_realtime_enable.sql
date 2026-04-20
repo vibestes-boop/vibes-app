@@ -38,6 +38,28 @@ BEGIN
   END IF;
 END $$;
 
+-- gift_transactions — benötigt für useTopGifters (postgres_changes auf INSERT)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND tablename = 'gift_transactions'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.gift_transactions;
+  END IF;
+END $$;
+
+-- follows — benötigt für useFollowerShoutout (postgres_changes auf INSERT)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND tablename = 'follows'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.follows;
+  END IF;
+END $$;
+
 -- 2. session_id Spalte zur notifications Tabelle (falls noch nicht vorhanden)
 ALTER TABLE public.notifications
   ADD COLUMN IF NOT EXISTS session_id UUID

@@ -49,6 +49,7 @@ end;
 $$ language plpgsql security definer;
 
 -- 4. Guild Feed RPC: Chronologisch, kein Algorithmus (das ist der USP!)
+-- Zeigt ALLE Posts aller Mitglieder der eigenen Guild — inkl. thumbnail_url
 create or replace function get_guild_feed(result_limit int default 50)
 returns table (
   id              uuid,
@@ -56,13 +57,25 @@ returns table (
   caption         text,
   media_url       text,
   media_type      text,
+  thumbnail_url   text,
   tags            text[],
   created_at      timestamptz,
   username        text,
   avatar_url      text,
   author_guild_id uuid
 ) as $$
+declare
+  my_guild_id uuid;
 begin
+  -- Eigene Guild holen (NULL guard)
+  select guild_id into my_guild_id
+  from public.profiles
+  where id = auth.uid();
+
+  if my_guild_id is null then
+    return;
+  end if;
+
   return query
   select
     p.id,
@@ -70,16 +83,15 @@ begin
     p.caption,
     p.media_url,
     p.media_type,
+    p.thumbnail_url,
     p.tags,
     p.created_at,
     pr.username,
     pr.avatar_url,
     pr.guild_id as author_guild_id
   from public.posts p
-  left join public.profiles pr on pr.id = p.author_id
-  where pr.guild_id = (
-    select guild_id from public.profiles where id = auth.uid()
-  )
+  inner join public.profiles pr on pr.id = p.author_id
+  where pr.guild_id = my_guild_id
   order by p.created_at desc
   limit result_limit;
 end;

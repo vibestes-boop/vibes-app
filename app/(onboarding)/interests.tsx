@@ -22,7 +22,7 @@ import { useAuthStore } from '@/lib/authStore';
 
 // ── Interesse-Kategorien ─────────────────────────────────────────────────────
 const INTERESTS = [
-  { tag: 'Musik', emoji: '🎵', color: '#22D3EE' },
+  { tag: 'Musik', emoji: '🎵', color: '#FFFFFF' },
   { tag: 'Sport', emoji: '⚽', color: '#34D399' },
   { tag: 'Kunst', emoji: '🎨', color: '#F472B6' },
   { tag: 'Tech', emoji: '💻', color: '#60A5FA' },
@@ -30,7 +30,7 @@ const INTERESTS = [
   { tag: 'Reisen', emoji: '✈️', color: '#FBBF24' },
   { tag: 'Kochen', emoji: '🍳', color: '#4ADE80' },
   { tag: 'Mode', emoji: '👗', color: '#E879F9' },
-  { tag: 'Natur', emoji: '🌿', color: '#22D3EE' },
+  { tag: 'Natur', emoji: '🌿', color: '#FFFFFF' },
   { tag: 'Film', emoji: '🎬', color: '#F87171' },
   { tag: 'Business', emoji: '📈', color: '#818CF8' },
   { tag: 'Fitness', emoji: '💪', color: '#FCD34D' },
@@ -166,7 +166,7 @@ export default function OnboardingInterests() {
             disabled={!canProceed || saving}
           >
             <LinearGradient
-              colors={canProceed ? ['#0891B2', '#22D3EE'] : ['#1F1F2E', '#1F1F2E']}
+              colors={canProceed ? ['#CCCCCC', '#FFFFFF'] : ['#1F1F2E', '#1F1F2E']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.btnGradient}
@@ -196,7 +196,7 @@ const styles = StyleSheet.create({
     width: 300,
     height: 300,
     borderRadius: 150,
-    backgroundColor: '#0891B2',
+    backgroundColor: '#CCCCCC',
     opacity: 0.1,
     top: -80,
     alignSelf: 'center',
@@ -217,8 +217,8 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: 'rgba(255,255,255,0.15)',
   },
-  stepDone: { backgroundColor: '#22D3EE' },
-  stepActive: { backgroundColor: '#0891B2' },
+  stepDone: { backgroundColor: '#FFFFFF' },
+  stepActive: { backgroundColor: '#CCCCCC' },
   header: {},
   title: {
     fontSize: 34,

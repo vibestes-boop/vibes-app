@@ -197,7 +197,7 @@ export default function OnboardingUsername() {
         {/* CTA */}
         <Pressable style={styles.btn} onPress={handleContinue} disabled={loading}>
           <LinearGradient
-            colors={loading ? ['#4B5563', '#4B5563'] : ['#0891B2', '#22D3EE']}
+            colors={loading ? ['#4B5563', '#4B5563'] : ['#CCCCCC', '#FFFFFF']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.btnGradient}
@@ -228,8 +228,8 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     backgroundColor: 'rgba(255,255,255,0.15)',
   },
-  stepDone: { backgroundColor: '#22D3EE' },
-  stepActive: { backgroundColor: '#0891B2' },
+  stepDone: { backgroundColor: '#FFFFFF' },
+  stepActive: { backgroundColor: '#CCCCCC' },
   title: {
     fontSize: 32,
     fontWeight: '800',
@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
     height: 96,
     borderRadius: 48,
     borderWidth: 2,
-    borderColor: '#22D3EE',
+    borderColor: '#FFFFFF',
   },
   avatarPlaceholder: {
     width: 96,
@@ -262,12 +262,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
     borderWidth: 2,
-    borderColor: 'rgba(34,211,238,0.4)',
+    borderColor: 'rgba(255,255,255,0.28)',
   },
   avatarInitials: {
     fontSize: 36,
     fontWeight: '700',
-    color: '#22D3EE',
+    color: '#FFFFFF',
   },
   avatarBadge: {
     position: 'absolute',
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#0891B2',
+    backgroundColor: '#CCCCCC',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,

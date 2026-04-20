@@ -106,7 +106,7 @@ const rt = StyleSheet.create({
     fontWeight: '700',
   },
   hashtag: {
-    color: '#22D3EE',
+    color: '#FFFFFF',
     fontWeight: '600',
   },
 });

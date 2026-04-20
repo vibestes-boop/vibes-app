@@ -5,10 +5,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View, Text: _animNS?.Text ?? _animMod?.Text };
 import { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { useTheme } from '@/lib/useTheme';
 
-/** Score-Farbe anhand von Schwellenwerten — grün/gelb/rot */
+/** Score-Farbe anhand von Schwellenwerten */
 function vibeRingColor(pct: number): string {
-  if (pct >= 70) return '#22D3EE'; // cyan  — hoch
+  if (pct >= 70) return '#A78BFA'; // lila — hoch
   if (pct >= 40) return '#FBBF24'; // gelb  — mittel
   return '#34D399';                 // grün  — niedrig
 }
@@ -17,9 +18,9 @@ function vibeRingColor(pct: number): string {
 export function VibeScoreRing({ score, size = 72 }: { score: number; size?: number }) {
   const pct = Math.min(Math.max(score, 0), 100);
   const color = vibeRingColor(pct);
+  const { colors } = useTheme();
 
   const animatedOpacity = useSharedValue(0);
-
   useEffect(() => {
     animatedOpacity.value = withTiming(1, { duration: 100 });
   }, [pct, animatedOpacity]);
@@ -57,49 +58,52 @@ export function VibeScoreRing({ score, size = 72 }: { score: number; size?: numb
     <Animated.View
       style={[{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }, ringStyle]}
     >
+      {/* Track-Ring: dezenter Hintergrund */}
       <View
         style={{
           position: 'absolute',
           width: size,
           height: size,
           borderRadius: size / 2,
-          borderWidth: 4,
-          borderColor: 'rgba(255,255,255,0.06)',
+          borderWidth: 3,
+          borderColor: colors.border.default,
         }}
       />
+      {/* Score-Bogensegment */}
       <LinearGradient
-        colors={[color + 'CC', color]}
+        colors={[color + 'AA', color]}
         style={{
           position: 'absolute',
           width: size,
           height: size,
           borderRadius: size / 2,
-          borderWidth: 4,
+          borderWidth: 3,
           borderColor: 'transparent',
           opacity: pct > 0 ? 1 : 0,
         }}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       />
+      {/* Innerer Kreis — theme-aware Hintergrund */}
       <View
         style={{
-          width: size - 12,
-          height: size - 12,
-          borderRadius: (size - 12) / 2,
-          backgroundColor: '#0a0a0a',
+          width: size - 10,
+          height: size - 10,
+          borderRadius: (size - 10) / 2,
+          backgroundColor: colors.bg.secondary,
           alignItems: 'center',
           justifyContent: 'center',
         }}
       >
         <Animated.Text
           style={[
-            { color: '#fff', fontSize: size * 0.22, fontWeight: '800', letterSpacing: -0.5 },
+            { color: colors.text.primary, fontSize: size * 0.22, fontWeight: '800', letterSpacing: -0.5 },
             numberStyle,
           ]}
         >
           {displayNum}
         </Animated.Text>
-        <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: size * 0.12, fontWeight: '600' }}>
+        <Text style={{ color: colors.text.muted, fontSize: size * 0.12, fontWeight: '600' }}>
           res.
         </Text>
       </View>

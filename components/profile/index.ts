@@ -1,6 +1,6 @@
 export { GRID_COLUMNS, GRID_CELL_WIDTH, GRID_GAP } from './profileConstants';
 export type { ProfilePostGridItem, ProfileTab } from './types';
-export { profileStyles } from './profileStyles';
+export { profileStyles, getProfileStyles } from './profileStyles';
 export { HeaderButton } from './HeaderButton';
 export { VibeScoreRing } from './VibeScoreRing';
 export { StatKachel } from './StatKachel';
@@ -10,3 +10,4 @@ export { ProfileStudioHeader } from './ProfileStudioHeader';
 export { ProfileListHeader } from './ProfileListHeader';
 export { ProfileHighlightsRow } from './ProfileHighlightsRow';
 export { AnalyticsTab } from './AnalyticsTab';
+export { BattleHistoryList } from './BattleHistoryList';

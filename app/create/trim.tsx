@@ -114,7 +114,7 @@ function TrimHandle({
     <GestureDetector gesture={gesture}>
       <Animated.View style={[handle.wrap, animStyle]}>
         <LinearGradient
-          colors={['#22D3EE', '#A855F7']}
+          colors={['#FFFFFF', '#A855F7']}
           style={handle.bar}
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}
@@ -356,7 +356,7 @@ export default function TrimScreen() {
             <Text style={s.topTitle}>Video kürzen</Text>
             <Pressable onPress={handleWeiter} style={s.nextBtn}>
               <LinearGradient
-                colors={['#22D3EE', '#A855F7']}
+                colors={['#FFFFFF', '#A855F7']}
                 style={s.nextBtnGrad}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
@@ -378,8 +378,8 @@ export default function TrimScreen() {
                 {formatTime(startSec)} – {formatTime(endSec)}
               </Text>
             </View>
-            <View style={[s.durationBadge, { backgroundColor: 'rgba(34,211,238,0.15)', borderColor: 'rgba(34,211,238,0.3)' }]}>
-              <Text style={[s.durationText, { color: '#22D3EE' }]}>
+            <View style={[s.durationBadge, { backgroundColor: 'rgba(255,255,255,0.10)', borderColor: 'rgba(255,255,255,0.18)' }]}>
+              <Text style={[s.durationText, { color: '#FFFFFF' }]}>
                 {trimDuration.toFixed(1)}s ausgewählt
               </Text>
             </View>
@@ -606,7 +606,7 @@ const s = StyleSheet.create({
     height: '100%',
     borderTopWidth: 2,
     borderBottomWidth: 2,
-    borderColor: '#22D3EE',
+    borderColor: '#FFFFFF',
     zIndex: 5,
   },
   mask: {
@@ -633,9 +633,9 @@ const s = StyleSheet.create({
     top: 0,
     bottom: 0,
     width: 2,
-    backgroundColor: '#22D3EE',
+    backgroundColor: '#FFFFFF',
     zIndex: 10,
-    shadowColor: '#22D3EE',
+    shadowColor: '#FFFFFF',
     shadowOpacity: 0.8,
     shadowRadius: 4,
   },
@@ -654,8 +654,8 @@ const s = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.15)',
   },
   coverToggleActive: {
-    backgroundColor: 'rgba(34,211,238,0.12)',
-    borderColor: 'rgba(34,211,238,0.4)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255,255,255,0.28)',
   },
   coverToggleText: {
     color: 'rgba(255,255,255,0.5)',
@@ -663,7 +663,7 @@ const s = StyleSheet.create({
     fontWeight: '600',
   },
   coverToggleTextActive: {
-    color: '#22D3EE',
+    color: '#FFFFFF',
   },
   coverSliderTrack: {
     height: 32,
@@ -680,8 +680,8 @@ const s = StyleSheet.create({
     width: 20,
     height: 24,
     borderRadius: 6,
-    backgroundColor: '#22D3EE',
-    shadowColor: '#22D3EE',
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#FFFFFF',
     shadowOpacity: 0.5,
     shadowRadius: 6,
   },
@@ -701,8 +701,8 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   speedBtnActive: {
-    backgroundColor: 'rgba(34,211,238,0.15)',
-    borderColor: 'rgba(34,211,238,0.4)',
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    borderColor: 'rgba(255,255,255,0.28)',
   },
   speedText: {
     color: 'rgba(255,255,255,0.4)',
@@ -711,6 +711,6 @@ const s = StyleSheet.create({
     fontVariant: ['tabular-nums'],
   },
   speedTextActive: {
-    color: '#22D3EE',
+    color: '#FFFFFF',
   },
 });

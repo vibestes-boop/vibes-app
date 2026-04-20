@@ -200,7 +200,7 @@ export function getStickerAnimation(filterId: string): SkSkottieAnimation | null
     compiledCache.set(filterId, anim);
     return anim;
   } catch (e) {
-    console.warn('[StickerLottie] Kompilierung fehlgeschlagen für', filterId, e);
+    __DEV__ && console.warn('[StickerLottie] Kompilierung fehlgeschlagen für', filterId, e);
     compiledCache.set(filterId, null);
     return null;
   }

@@ -132,11 +132,18 @@ export function usePushNotifications() {
           router.push({ pathname: '/post/[id]', params: { id: data.postId } });
         } else if (data?.type === 'follow' && data?.senderId) {
           router.push({ pathname: '/user/[id]', params: { id: data.senderId } });
+        } else if (data?.type === 'gift' && data?.senderId) {
+          // Gift → Sender-Profil öffnen damit Creator sehen kann wer gifted hat
+          router.push({ pathname: '/user/[id]', params: { id: data.senderId } });
         } else if (
           (data?.type === 'live' || data?.type === 'live_invite') &&
           data?.session_id
         ) {
           router.push({ pathname: '/live/watch/[id]', params: { id: data.session_id } });
+        } else if (data?.type === 'scheduled_live_reminder' && data?.senderId) {
+          // Scheduled-Live-Reminder: Host ist noch nicht live (session_id=null).
+          // Öffne Host-Profil — User sieht dort „geht gleich live" Banner.
+          router.push({ pathname: '/user/[id]', params: { id: data.senderId } });
         }
       });
     } catch {

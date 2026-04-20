@@ -1,8 +1,9 @@
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Rss, Trophy } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import { guildStyles as styles } from './guildStyles';
+import { getGuildStyles } from './guildStyles';
 import type { GuildViewMode } from './guildConstants';
+import { useTheme } from '@/lib/useTheme';
 
 export function GuildViewToggle({
   mode,
@@ -11,6 +12,9 @@ export function GuildViewToggle({
   mode: GuildViewMode;
   onChange: (m: GuildViewMode) => void;
 }) {
+  const { colors } = useTheme();
+  const styles = getGuildStyles(colors);
+
   return (
     <View style={styles.toggleWrap}>
       <TouchableOpacity
@@ -21,7 +25,7 @@ export function GuildViewToggle({
         }}
         activeOpacity={0.75}
       >
-        <Rss size={18} color={mode === 'feed' ? '#FFFFFF' : 'rgba(255,255,255,0.65)'} strokeWidth={2.2} />
+        <Rss size={18} color={mode === 'feed' ? colors.text.primary : colors.text.muted} strokeWidth={2.2} />
         <Text style={[styles.toggleText, mode === 'feed' && styles.toggleTextActive]}>Feed</Text>
       </TouchableOpacity>
       <TouchableOpacity
@@ -34,7 +38,7 @@ export function GuildViewToggle({
       >
         <Trophy
           size={18}
-          color={mode === 'leaderboard' ? '#FBBF24' : 'rgba(255,255,255,0.65)'}
+          color={mode === 'leaderboard' ? '#FBBF24' : colors.text.muted}
           strokeWidth={2.2}
         />
         <Text style={[styles.toggleText, mode === 'leaderboard' && styles.toggleTextGold]}>Rangliste</Text>

@@ -42,9 +42,12 @@ import {
   ProfileStudioHeader,
   profileStyles as s,
   AnalyticsTab,
+  BattleHistoryList,
   type ProfilePostGridItem,
   type ProfileTab,
 } from '@/components/profile';
+import { useTheme } from '@/lib/useTheme';
+import { getProfileStyles } from '@/components/profile/profileStyles';
 
 // Statische Zellhöhe — 4:5 Portrait-Format, berechnet einmalig aus Screen-Breite
 const CELL_HEIGHT = Math.round(GRID_CELL_WIDTH * 5 / 4);
@@ -53,6 +56,8 @@ const CELL_HEIGHT = Math.round(GRID_CELL_WIDTH * 5 / 4);
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { colors } = useTheme();
+  const s = getProfileStyles(colors);
   const { profile, signOut } = useAuthStore();
 
   const [activeTab, setActiveTab] = useState<ProfileTab>('vibes');
@@ -286,13 +291,17 @@ export default function ProfileScreen() {
                 },
               });
             } else {
+              // Saved / Reposts: gleiche TikTok-Scroll-Ansicht wie Vibes-Tab
+              const currentList = activeTabRef.current === 'saved'
+                ? (savedPosts as unknown as ProfilePostGridItem[])
+                : repostedPosts;
+              const ids = currentList.map((p) => p.id).join(',');
               router.push({
-                pathname: '/post/[id]',
+                pathname: '/user-posts',
                 params: {
-                  id: item.id,
-                  previewUrl: item.media_url ?? '',
-                  previewType: item.media_type ?? 'image',
-                  previewCaption: item.caption ?? '',
+                  postIds: ids,
+                  startIndex: String(index),
+                  username: profile?.username ?? '',
                 },
               });
             }
@@ -346,8 +355,8 @@ export default function ProfileScreen() {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            tintColor="#22D3EE"
-            colors={['#22D3EE']}
+            tintColor="#FFFFFF"
+            colors={['#FFFFFF']}
           />
         }
         ListHeaderComponent={
@@ -368,6 +377,12 @@ export default function ProfileScreen() {
               router.push('/create-story' as any);
             }}
             onEditProfile={() => router.push('/settings')}
+            onBuyCoins={() => router.push('/coin-shop' as any)}
+            onMyShop={() => router.push('/shop/my-shop' as any)}
+            onSavedProducts={() => router.push('/shop/saved' as any)}
+            onMyOrders={() => router.push('/shop/orders' as any)}
+            onCreatorStudio={profile?.is_creator ? () => router.push('/creator/dashboard' as any) : undefined}
+            onCreatorStats={profile?.is_creator ? () => router.push('/creator/stats' as any) : undefined}
             avatarInitial={avatarInitial}
             avgDwell={avgDwell}
             postCount={postCount}
@@ -383,22 +398,21 @@ export default function ProfileScreen() {
             <View style={{ paddingHorizontal: 16, paddingTop: 8 }}>
               {drafts.length === 0 ? (
                 <View style={s.empty}>
-                  <FileText size={40} color="rgba(255,255,255,0.2)" />
+                  <FileText size={40} color={colors.icon.muted} />
                   <Text style={s.emptyTitle}>Keine Entwürfe</Text>
                   <Text style={s.emptySub}>Speichere einen Post als Entwurf, um ihn später zu veröffentlichen.</Text>
                 </View>
               ) : (
                 drafts.map((draft) => (
-                  <View key={draft.id} style={{
-                    flexDirection: 'row', alignItems: 'center',
-                    backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 14,
-                    padding: 12, marginBottom: 10, gap: 12
-                  }}>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }} numberOfLines={1}>
+                    <View style={[
+                      {flexDirection: 'row', alignItems: 'center'},
+                      {backgroundColor: colors.bg.secondary, borderRadius: 14, padding: 12, marginBottom: 10, gap: 12}
+                    ]}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={{ color: colors.text.primary, fontSize: 14, fontWeight: '600' }} numberOfLines={1}>
                         {draft.caption || 'Ohne Titel'}
                       </Text>
-                      <Text style={{ color: 'rgba(255,255,255,0.35)', fontSize: 11, marginTop: 2 }}>
+                        <Text style={{ color: colors.text.muted, fontSize: 11, marginTop: 2 }}>
                         {new Date(draft.createdAt).toLocaleDateString('de-DE')}
                         {draft.tags.length > 0 ? `  •  ${draft.tags.map((t) => `#${t}`).join(' ')}` : ''}
                       </Text>
@@ -430,10 +444,14 @@ export default function ProfileScreen() {
               }
             />
 
+            // ─ Battle-History-Tab (v1.17.0) ─
+          ) : activeTab === 'battles' ? (
+            <BattleHistoryList userId={profile?.id ?? null} />
+
             // ─ Vibes leer ─
           ) : activeTab === 'vibes' && loadingPosts ? (
             <View style={s.empty}>
-              <ActivityIndicator color="#22D3EE" />
+              <ActivityIndicator color="#FFFFFF" />
             </View>
           ) : activeTab === 'saved' && loadingSaved ? (
             <View style={s.empty}>

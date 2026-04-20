@@ -21,6 +21,8 @@ import {
   AtSign,
   Check,
   X,
+  Gem,
+  ShoppingBag,
 } from "lucide-react-native";
 import { impactAsync, ImpactFeedbackStyle } from "expo-haptics";
 import * as ExpoNotifications from 'expo-notifications';
@@ -31,6 +33,7 @@ import {
   type AppNotification,
 } from "@/lib/useNotifications";
 import { useRespondFollowRequest } from "@/lib/useFollowRequest";
+import { useTheme } from '@/lib/useTheme';
 
 // ── Hilfsfunktionen ────────────────────────────────────────────────────────
 
@@ -69,6 +72,14 @@ function actionLabel(n: AppNotification): string {
       return "ist jetzt live 🔴 Schau rein!";
     case "live_invite":
       return "hat dich zu einem Live eingeladen 🔴";
+    case "gift":
+      return n.gift_emoji && n.gift_name
+        ? `hat dir ${n.gift_emoji} ${n.gift_name} geschickt!`
+        : "hat dir ein Geschenk geschickt 🎁";
+    case "new_order":
+      return n.comment_text
+        ? `hat bestellt: ${n.comment_text}`
+        : "hat ein Produkt in deinem Shop gekauft 🛍";
     default:
       return "";
   }
@@ -111,17 +122,19 @@ function groupNotifications(notifs: AppNotification[]): GroupedNotif[] {
 function TypeIcon({ type }: { type: AppNotification["type"] }) {
   const cfg = (
     {
-      like:                     { Icon: Heart,         bg: "rgba(244,114,182,0.18)", color: "#F472B6" },
-      comment:                  { Icon: MessageCircle, bg: "rgba(34,211,238,0.18)",  color: "#22D3EE" },
-      mention:                  { Icon: AtSign,        bg: "rgba(139,92,246,0.18)",  color: "#A78BFA" },
-      dm:                       { Icon: MessageCircle, bg: "rgba(251,191,36,0.18)",  color: "#FBBF24" },
-      follow:                   { Icon: UserPlus,      bg: "rgba(52,211,153,0.18)",  color: "#34D399" },
-      follow_request:           { Icon: UserPlus,      bg: "rgba(251,191,36,0.18)",  color: "#FBBF24" },
-      follow_request_accepted:  { Icon: UserPlus,      bg: "rgba(52,211,153,0.18)",  color: "#34D399" },
-      live:                     { Icon: Radio,         bg: "rgba(239,68,68,0.18)",   color: "#EF4444" },
-      live_invite:              { Icon: Radio,         bg: "rgba(239,68,68,0.18)",   color: "#EF4444" },
+      like:                     { Icon: Heart,         bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
+      comment:                  { Icon: MessageCircle, bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
+      mention:                  { Icon: AtSign,        bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
+      dm:                       { Icon: MessageCircle, bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
+      follow:                   { Icon: UserPlus,      bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
+      follow_request:           { Icon: UserPlus,      bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
+      follow_request_accepted:  { Icon: Check,         bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
+      live:                     { Icon: Radio,         bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
+      live_invite:              { Icon: Radio,         bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
+      gift:                     { Icon: Gem,           bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
+      new_order:                { Icon: ShoppingBag,   bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
     } as Record<string, { Icon: React.ElementType; bg: string; color: string }>
-  )[type] ?? { Icon: Bell, bg: "rgba(255,200,0,0.15)", color: "#FBBF24" };
+  )[type] ?? { Icon: Bell, bg: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)" };
 
   return (
     <View style={[styles.typeIcon, { backgroundColor: cfg.bg }]}>
@@ -130,11 +143,42 @@ function TypeIcon({ type }: { type: AppNotification["type"] }) {
   );
 }
 
+// ── Datum-Section Header ──────────────────────────────────────────────────
+type ListItem = GroupedNotif | { _sectionHeader: string; id: string };
+
+function buildListWithSections(notifs: GroupedNotif[]): ListItem[] {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const weekAgo = new Date(today.getTime() - 6 * 86400_000);
+
+  const sections: { label: string; items: GroupedNotif[] }[] = [
+    { label: 'Heute', items: [] },
+    { label: 'Diese Woche', items: [] },
+    { label: 'Älter', items: [] },
+  ];
+
+  for (const n of notifs) {
+    const d = new Date(n.created_at);
+    if (d >= today) sections[0].items.push(n);
+    else if (d >= weekAgo) sections[1].items.push(n);
+    else sections[2].items.push(n);
+  }
+
+  const result: ListItem[] = [];
+  for (const sec of sections) {
+    if (!sec.items.length) continue;
+    result.push({ _sectionHeader: sec.label, id: `header_${sec.label}` });
+    result.push(...sec.items);
+  }
+  return result;
+}
+
 // ── Notification-Karte ─────────────────────────────────────────────────────
 
 function NotifCard({ item }: { item: AppNotification }) {
   const { mutate: markOne } = useMarkOneRead();
   const { mutate: respond, isPending: responding } = useRespondFollowRequest();
+  const { colors } = useTheme();
 
   const handlePress = () => {
     impactAsync(ImpactFeedbackStyle.Light);
@@ -150,6 +194,11 @@ function NotifCard({ item }: { item: AppNotification }) {
           avatarUrl: item.sender?.avatar_url ?? '',
         },
       });
+    } else if (item.type === "gift" && item.sender?.id) {
+      // Gift → Sender-Profil öffnen
+      router.push({ pathname: "/user/[id]", params: { id: item.sender.id } });
+    } else if (item.type === "new_order") {
+      router.push('/shop/orders' as any);
     } else if (item.type === "live" || item.type === "live_invite") {
       const sessionId = item.session_id;
       if (sessionId) {
@@ -207,7 +256,7 @@ function NotifCard({ item }: { item: AppNotification }) {
       {/* Text */}
       <View style={styles.textWrap}>
         <Text style={styles.cardText} numberOfLines={2}>
-          <Text style={styles.senderName}>{senderName}</Text>
+          <Text style={[styles.senderName, { color: colors.text.primary }]}>{senderName}</Text>
           {(item as GroupedNotif)._extraCount > 0 && (
             <Text style={styles.actionText}>{` und ${(item as GroupedNotif)._extraCount} weitere`}</Text>
           )}{" "}
@@ -285,6 +334,7 @@ function NotifCard({ item }: { item: AppNotification }) {
 
 export default function NotificationsScreen() {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
   const {
     data: notifs = [],
     isLoading,
@@ -308,17 +358,27 @@ export default function NotificationsScreen() {
 
   const unreadCount = notifs.filter((n) => !n.read).length;
   const groupedNotifs = groupNotifications(notifs);
+  const listData = buildListWithSections(groupedNotifs);
 
   const renderItem = useCallback(
-    ({ item }: { item: GroupedNotif }) => <NotifCard item={item} />,
-    [],
+    ({ item }: { item: ListItem }) => {
+      if ('_sectionHeader' in item) {
+        return (
+          <View style={styles.sectionHeader}>
+            <Text style={[styles.sectionHeaderText, { color: colors.text.muted }]}>{item._sectionHeader}</Text>
+          </View>
+        );
+      }
+      return <NotifCard item={item as GroupedNotif} />;
+    },
+    [colors],
   );
 
   return (
-    <View style={[styles.screen, { paddingTop: insets.top }]}>
+    <View style={[styles.screen, { paddingTop: insets.top, backgroundColor: colors.bg.primary }]}>
       {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>Aktivität</Text>
+      <View style={[styles.header, { borderBottomColor: colors.border.subtle }]}>
+        <Text style={[styles.title, { color: colors.text.primary }]}>Aktivität</Text>
         {unreadCount > 0 && (
           <Pressable
             onPress={() => {
@@ -329,21 +389,21 @@ export default function NotificationsScreen() {
             accessibilityRole="button"
             accessibilityLabel="Alle als gelesen markieren"
           >
-            <CheckCheck size={15} color="#22D3EE" strokeWidth={2} />
-            <Text style={styles.markAllText}>Alle gelesen</Text>
+            <CheckCheck size={15} color={colors.text.primary} strokeWidth={2} />
+            <Text style={[styles.markAllText, { color: colors.text.primary }]}>Alle gelesen</Text>
           </Pressable>
         )}
       </View>
 
       {isLoading ? (
         <View style={styles.center}>
-          <ActivityIndicator color="#22D3EE" size="large" />
+        <ActivityIndicator color={colors.text.primary} size="large" />
         </View>
       ) : notifs.length === 0 ? (
         <View style={styles.center}>
-          <Bell size={52} color="rgba(255,255,255,0.2)" strokeWidth={1.5} />
-          <Text style={styles.emptyTitle}>Noch keine Aktivität</Text>
-          <Text style={styles.emptyDesc}>
+          <Bell size={52} color={colors.icon.muted} strokeWidth={1.5} />
+          <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>Noch keine Aktivität</Text>
+          <Text style={[styles.emptyDesc, { color: colors.text.muted }]}>
             Hier siehst du Likes, Kommentare und neue Follower.
           </Text>
           <Pressable
@@ -352,12 +412,12 @@ export default function NotificationsScreen() {
             accessibilityRole="button"
             accessibilityLabel="Leute entdecken"
           >
-            <Text style={styles.emptyBtnText}>Leute entdecken</Text>
+            <Text style={[styles.emptyBtnText, { color: colors.text.primary }]}>Leute entdecken</Text>
           </Pressable>
         </View>
       ) : (
         <FlashList
-          data={groupedNotifs}
+          data={listData}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           estimatedItemSize={70}
@@ -367,10 +427,13 @@ export default function NotificationsScreen() {
             <RefreshControl
               refreshing={isRefetching}
               onRefresh={refetch}
-              tintColor="#22D3EE"
+              tintColor={colors.text.primary}
             />
           }
-          ItemSeparatorComponent={() => <View style={styles.separator} />}
+          ItemSeparatorComponent={({ leadingItem }) =>
+            '_sectionHeader' in (leadingItem ?? {}) ? null
+            : <View style={[styles.separator, { backgroundColor: colors.border.subtle }]} />
+          }
         />
       )}
     </View>
@@ -380,7 +443,7 @@ export default function NotificationsScreen() {
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: "#050508",
+    // backgroundColor via inline (theme-aware)
   },
   header: {
     flexDirection: "row",
@@ -392,7 +455,7 @@ const styles = StyleSheet.create({
     borderBottomColor: "rgba(255,255,255,0.06)",
   },
   title: {
-    color: "#FFFFFF",
+    // color via inline (theme-aware)
     fontSize: 22,
     fontWeight: "800",
     letterSpacing: -0.5,
@@ -404,10 +467,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
-    backgroundColor: "rgba(34,211,238,0.1)",
+    backgroundColor: "rgba(255,255,255,0.08)",
   },
   markAllText: {
-    color: "#22D3EE",
+    color: "#FFFFFF",
     fontSize: 12,
     fontWeight: "600",
   },
@@ -419,6 +482,17 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.05)",
     marginLeft: 76,
   },
+  sectionHeader: {
+    paddingHorizontal: 16,
+    paddingTop: 20,
+    paddingBottom: 6,
+  },
+  sectionHeaderText: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+  },
   card: {
     flexDirection: "row",
     alignItems: "center",
@@ -428,7 +502,7 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   cardUnread: {
-    backgroundColor: "rgba(34,211,238,0.04)",
+    backgroundColor: "rgba(29,185,84,0.04)",
   },
   unreadDot: {
     position: "absolute",
@@ -437,7 +511,7 @@ const styles = StyleSheet.create({
     width: 5,
     height: 5,
     borderRadius: 2.5,
-    backgroundColor: "#22D3EE",
+    backgroundColor: '#007AFF',
     marginTop: -2.5,
   },
   avatarWrap: {
@@ -453,14 +527,14 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,255,255,0.1)",
   },
   avatarFallback: {
-    backgroundColor: "rgba(34,211,238,0.2)",
-    alignItems: "center",
-    justifyContent: "center",
+    backgroundColor: '#E8E8ED',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   avatarInitial: {
-    color: "#22D3EE",
+    color: '#555',
     fontSize: 18,
-    fontWeight: "700",
+    fontWeight: '700',
   },
   typeIconPos: {
     position: "absolute",
@@ -474,7 +548,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1.5,
-    borderColor: "#050508",
+    // borderColor via inline in NotifCard
   },
   textWrap: {
     flex: 1,
@@ -485,15 +559,15 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   senderName: {
-    color: "#FFFFFF",
+    color: "#FFFFFF",   // bleibt weiß — wird von NotifCard inline überschrieben wenn nötig
     fontWeight: "700",
   },
   actionText: {
-    color: "rgba(255,255,255,0.65)",
+    color: "rgba(150,150,150,0.9)",  // neutrales grau — lesbar auf beiden Hintergründen
     fontWeight: "400",
   },
   timeText: {
-    color: "rgba(255,255,255,0.35)",
+    color: "rgba(130,130,130,0.9)",  // neutrales grau
     fontSize: 12,
     fontWeight: "500",
   },
@@ -515,12 +589,12 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   emptyTitle: {
-    color: "#FFFFFF",
+    // color via inline (theme-aware)
     fontSize: 18,
     fontWeight: "700",
   },
   emptyDesc: {
-    color: "rgba(255,255,255,0.45)",
+    // color via inline (theme-aware)
     fontSize: 14,
     textAlign: "center",
     maxWidth: 240,
@@ -532,8 +606,8 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(34,211,238,0.4)',
-    backgroundColor: 'rgba(34,211,238,0.1)',
+    borderColor: 'rgba(120,120,128,0.3)',
+    backgroundColor: 'rgba(120,120,128,0.1)',
   },
-  emptyBtnText: { color: '#22D3EE', fontSize: 14, fontWeight: '600' },
+  emptyBtnText: { fontSize: 14, fontWeight: '600' },
 });

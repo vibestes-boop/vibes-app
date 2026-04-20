@@ -128,10 +128,10 @@ export default function CreateStoryScreen() {
           /* Kein Bild — großer Pick-Button */
           <Pressable onPress={pickMedia} style={styles.pickerBtn}>
             <LinearGradient
-              colors={['rgba(8,145,178,0.15)', 'rgba(8,145,178,0.05)']}
+              colors={['rgba(255,255,255,0.10)', 'rgba(22,163,74,0.05)']}
               style={StyleSheet.absoluteFill}
             />
-            <ImagePlus size={48} stroke="#22D3EE" strokeWidth={1.5} />
+            <ImagePlus size={48} stroke="#FFFFFF" strokeWidth={1.5} />
             <Text style={styles.pickerLabel}>Foto oder Video auswählen</Text>
             <Text style={styles.pickerSub}>Sichtbar für 24 Stunden</Text>
           </Pressable>
@@ -236,7 +236,7 @@ export default function CreateStoryScreen() {
           ) : (
             <>
               <LinearGradient
-                colors={mediaUri ? ['#0891B2', '#22D3EE'] : ['#1F2937', '#1F2937']}
+                colors={mediaUri ? ['#CCCCCC', '#FFFFFF'] : ['#1F2937', '#1F2937']}
                 style={StyleSheet.absoluteFill}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}

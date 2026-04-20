@@ -291,19 +291,6 @@ function GuildPostDetailItem({
         />
       ))}
 
-      {/* ── Top-Gradient ── */}
-      <LinearGradient
-        colors={['rgba(0,0,0,0.08)', 'transparent']}
-        style={itemStyles.topGradient}
-        pointerEvents="none"
-      />
-      {/* ── Bottom-Gradient ── */}
-      <LinearGradient
-        colors={['transparent', 'rgba(0,0,0,0.18)']}
-        style={itemStyles.bottomGradient}
-        pointerEvents="none"
-      />
-
       {/* ── Header ── */}
       <View style={[itemStyles.header, { paddingTop: insets.top + 6 }]}>
         <Pressable onPress={onBack} style={itemStyles.backBtn} hitSlop={12}>
@@ -545,8 +532,6 @@ export default function GuildPostDetailScreen() {
         pagingEnabled
         showsVerticalScrollIndicator={false}
         decelerationRate="fast"
-        snapToInterval={ITEM_HEIGHT}
-        snapToAlignment="start"
         getItemLayout={getItemLayout}
         initialScrollIndex={initialIndex >= 0 ? initialIndex : 0}
         viewabilityConfig={viewabilityConfig}
@@ -582,20 +567,6 @@ const itemStyles = StyleSheet.create({
   },
   mainImage: {
     ...StyleSheet.absoluteFillObject,
-  },
-  topGradient: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 70,
-  },
-  bottomGradient: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 120,
   },
   header: {
     position: 'absolute',
@@ -746,12 +717,12 @@ const itemStyles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.15)',
   },
   commentAvatarFallback: {
-    backgroundColor: 'rgba(34,211,238,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   commentAvatarInitial: {
-    color: '#22D3EE',
+    color: '#FFFFFF',
     fontSize: 13,
     fontWeight: '700',
   },

@@ -1,9 +1,9 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { View, Text, ActivityIndicator, Pressable, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, Pressable, StyleSheet, Image as RNImage } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useLocalSearchParams } from 'expo-router';
-import { SearchX, Tag } from 'lucide-react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { SearchX, Tag, ShoppingBag, ChevronRight } from 'lucide-react-native';
 import {
   EXPLORE_FALLBACK_TAGS,
   useTrendingTags,
@@ -23,9 +23,13 @@ import {
   ExploreSortModal,
   ExploreSearchBar,
   ExploreTagChips,
-  exploreStyles as styles,
+  getExploreStyles,
 } from '@/components/explore';
 import { ScrollView as RNScrollView } from 'react-native';
+import { useTheme } from '@/lib/useTheme';
+import { useShopProducts } from '@/lib/useShop';
+import { useWomenOnly } from '@/lib/useWomenOnly';
+import { LinearGradient } from 'expo-linear-gradient';
 
 /** Verzögert den Wert um `delay` ms — verhindert eine Query pro Tastendruck */
 function useDebounce<T>(value: T, delay = 300): T {
@@ -40,11 +44,19 @@ function useDebounce<T>(value: T, delay = 300): T {
 
 export default function ExploreScreen() {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
+  const styles = getExploreStyles(colors);
   const { tag: incomingTag } = useLocalSearchParams<{ tag?: string }>();
+  const router = useRouter();
   const [query, setQuery] = useState('');
   const [activeTag, setActiveTag] = useState<string | null>(null);
   const [sortMode, setSortMode] = useState<ExploreSortMode>('forYou');
   const [filterOpen, setFilterOpen] = useState(false);
+
+  // Top Produkte für Shop-Sektion
+  const { data: topProducts = [] } = useShopProducts({ limit: 6 });
+  // WOZ-Status für Banner
+  const { canAccessWomenOnly } = useWomenOnly();
 
   // Hashtag-Deep-Link aus Feed: Tag direkt vorauswählen
   useEffect(() => {
@@ -92,7 +104,7 @@ export default function ExploreScreen() {
       ];
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.bg.primary }]}>
       <ExploreSearchBar
         query={query}
         onQueryChange={(t) => {
@@ -142,6 +154,88 @@ export default function ExploreScreen() {
         </View>
       )}
 
+      {/* ── Women-Only Zone Banner ── */}
+      {!isSearching && (
+        <Pressable
+          onPress={() => router.push('/women-only' as any)}
+          style={wozBannerStyle.btn}
+          accessibilityRole="button"
+          accessibilityLabel="Women-Only Zone öffnen"
+        >
+          <LinearGradient
+            colors={canAccessWomenOnly
+              ? ['rgba(244,63,94,0.15)', 'rgba(168,85,247,0.15)']
+              : ['rgba(244,63,94,0.08)', 'rgba(168,85,247,0.08)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={[wozBannerStyle.inner, { borderColor: canAccessWomenOnly ? 'rgba(244,63,94,0.35)' : colors.border.subtle }]}
+          >
+            <View style={wozBannerStyle.left}>
+              <Text style={wozBannerStyle.emoji}>🌸</Text>
+              <View>
+                <Text style={[wozBannerStyle.title, { color: canAccessWomenOnly ? '#F43F5E' : colors.text.primary }]}>
+                  {canAccessWomenOnly ? 'Women-Only Zone' : 'Women-Only Zone beitreten'}
+                </Text>
+                <Text style={[wozBannerStyle.sub, { color: colors.text.muted }]}>
+                  {canAccessWomenOnly ? 'Dein geschützter Bereich ✓' : 'Exklusiv · Sicher · Nur für Frauen'}
+                </Text>
+              </View>
+            </View>
+            <ChevronRight size={20} color={canAccessWomenOnly ? '#F43F5E' : colors.text.muted} strokeWidth={2} />
+          </LinearGradient>
+        </Pressable>
+      )}
+
+      {!isSearching && topProducts.length > 0 && (
+        <View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 6 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <ShoppingBag size={15} color={colors.text.primary} strokeWidth={2} />
+              <Text style={[styles.sectionLabel, { paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0 }]}>Shop</Text>
+            </View>
+            <Pressable
+              onPress={() => router.navigate('/(tabs)/shop' as any)}
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}
+              accessibilityRole="button"
+              accessibilityLabel="Alle Produkte anzeigen"
+            >
+              <Text style={{ fontSize: 12, fontWeight: '600', color: colors.text.muted }}>Alle anzeigen</Text>
+              <ChevronRight size={13} color={colors.text.muted} strokeWidth={2} />
+            </Pressable>
+          </View>
+          <RNScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={{ paddingHorizontal: 12, gap: 10, paddingBottom: 12 }}
+          >
+            {topProducts.slice(0, 6).map((product) => (
+              <Pressable
+                key={product.id}
+                style={[shopChipStyle.chip, { backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle }]}
+                onPress={() => router.push({ pathname: '/shop/[id]', params: { id: product.id } } as any)}
+                accessibilityRole="button"
+                accessibilityLabel={product.title}
+              >
+                {product.cover_url ? (
+                  <RNImage
+                    source={{ uri: product.cover_url }}
+                    style={shopChipStyle.cover}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View style={[shopChipStyle.coverPlaceholder, { backgroundColor: colors.bg.primary }]}>
+                    <ShoppingBag size={16} color={colors.text.muted} strokeWidth={1.5} />
+                  </View>
+                )}
+                <Text style={[shopChipStyle.title, { color: colors.text.primary }]} numberOfLines={1}>{product.title}</Text>
+                <Text style={[shopChipStyle.price, { color: colors.accent.primary }]}>🪙 {product.price_coins}</Text>
+              </Pressable>
+            ))}
+          </RNScrollView>
+          <View style={styles.sectionDivider} />
+        </View>
+      )}
+
       {isSearching && (users?.length ?? 0) > 0 && (
         <View style={styles.usersSection}>
           <Text style={styles.sectionLabel}>Nutzer</Text>
@@ -154,7 +248,7 @@ export default function ExploreScreen() {
 
       {(gridLoading || searchLoading) && postsToShow.length === 0 ? (
         <View style={styles.loadingWrap}>
-          <ActivityIndicator color="#22D3EE" size="large" />
+        <ActivityIndicator color={colors.text.primary} size="large" />
         </View>
       ) : postsToShow.length === 0 && isSearching ? (
         <View style={styles.emptyWrap}>
@@ -166,7 +260,7 @@ export default function ExploreScreen() {
             accessibilityRole="button"
             accessibilityLabel="Suche löschen"
           >
-            <Text style={emptyBtnStyle.btnText}>Suche löschen</Text>
+            <Text style={[emptyBtnStyle.btnText, { color: colors.text.primary }]}>Suche löschen</Text>
           </Pressable>
         </View>
       ) : postsToShow.length === 0 && activeTag ? (
@@ -179,7 +273,7 @@ export default function ExploreScreen() {
             accessibilityRole="button"
             accessibilityLabel="Tag-Filter entfernen"
           >
-            <Text style={emptyBtnStyle.btnText}>Filter entfernen</Text>
+            <Text style={[emptyBtnStyle.btnText, { color: colors.text.primary }]}>Filter entfernen</Text>
           </Pressable>
         </View>
       ) : (
@@ -200,7 +294,7 @@ export default function ExploreScreen() {
           ListFooterComponent={
             isFetchingNextPage ? (
               <View style={{ padding: 20, alignItems: 'center' }}>
-                <ActivityIndicator color="#22D3EE" />
+                <ActivityIndicator color={colors.text.primary} />
               </View>
             ) : null
           }
@@ -217,8 +311,31 @@ const emptyBtnStyle = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(34,211,238,0.4)',
-    backgroundColor: 'rgba(34,211,238,0.1)',
+    borderColor: 'rgba(120,120,128,0.3)',
+    backgroundColor: 'rgba(120,120,128,0.1)',
   },
-  btnText: { color: '#22D3EE', fontSize: 14, fontWeight: '600' },
+  btnText: { fontSize: 14, fontWeight: '600' },
+});
+
+const shopChipStyle = StyleSheet.create({
+  chip: {
+    width: 120, borderRadius: 14, borderWidth: 1, overflow: 'hidden',
+  },
+  cover: { width: 120, height: 100 },
+  coverPlaceholder: { width: 120, height: 100, alignItems: 'center', justifyContent: 'center' },
+  title: { fontSize: 12, fontWeight: '700', paddingHorizontal: 8, paddingTop: 6, lineHeight: 16 },
+  price: { fontSize: 11, fontWeight: '800', paddingHorizontal: 8, paddingBottom: 8, paddingTop: 2 },
+});
+
+const wozBannerStyle = StyleSheet.create({
+  btn: { marginHorizontal: 16, marginBottom: 10, borderRadius: 16, overflow: 'hidden' },
+  inner: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingVertical: 14,
+    borderRadius: 16, borderWidth: 1,
+  },
+  left: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  emoji: { fontSize: 26 },
+  title: { fontSize: 14, fontWeight: '800', marginBottom: 2 },
+  sub:   { fontSize: 12, fontWeight: '500' },
 });

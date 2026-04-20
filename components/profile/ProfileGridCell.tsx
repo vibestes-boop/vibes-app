@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
 const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
@@ -87,11 +86,6 @@ export function ProfileGridCell({
             </Text>
           </View>
         )}
-        <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.55)']}
-          style={s.cellGrad}
-          pointerEvents="none"
-        />
         {/* View Count — TikTok-Style "▷ 12.4K" unten links */}
         {viewCount > 0 && !post.reposted_at && (
           <View style={gcs.viewCountWrap}>
@@ -102,6 +96,12 @@ export function ProfileGridCell({
         {!!post.reposted_at && (
           <View style={gcs.viewCountWrap}>
             <Text style={gcs.viewCountText}>↺ {formatRepostTime(post.reposted_at)}</Text>
+          </View>
+        )}
+        {/* Women-Only Badge — oben rechts */}
+        {post.women_only && (
+          <View style={gcs.womenOnlyBadge}>
+            <Text style={gcs.womenOnlyEmoji}>🌸</Text>
           </View>
         )}
       </Animated.View>
@@ -125,4 +125,16 @@ const gcs = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
+  womenOnlyBadge: {
+    position: 'absolute',
+    top: 5,
+    right: 5,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  womenOnlyEmoji: { fontSize: 12 },
 });

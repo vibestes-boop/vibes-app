@@ -1,7 +1,8 @@
 import { View, Text } from 'react-native';
 import { Bell, LogOut, Settings } from 'lucide-react-native';
 import { HeaderButton } from './HeaderButton';
-import { profileStyles as s } from './profileStyles';
+import { getProfileStyles } from './profileStyles';
+import { useTheme } from '@/lib/useTheme';
 
 export function ProfileStudioHeader({
   username,
@@ -18,6 +19,8 @@ export function ProfileStudioHeader({
   onSettings: () => void;
   onSignOut: () => void;
 }) {
+  const { colors } = useTheme();
+  const s = getProfileStyles(colors);
   return (
     <View style={[s.header, { paddingTop }]}>
       <View>

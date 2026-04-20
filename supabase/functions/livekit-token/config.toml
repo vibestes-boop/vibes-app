@@ -1,0 +1,10 @@
+[functions.livekit-token]
+# Supabase Gateway JWT-Verification abschalten.
+# Grund: Neue Supabase-Projekte signieren User-JWTs mit ES256 (asymmetric).
+# Die Edge-Runtime Gate-Validierung unterstützt das (noch) nicht und wirft
+# "UNAUTHORIZED_UNSUPPORTED_TOKEN_ALGORITHM" ab — bevor unser Code läuft.
+# Die Function verifiziert den JWT ohnehin selbst via /auth/v1/user,
+# das unterstützt ES256 korrekt. Zusätzlich werden Host- und Co-Host-Rechte
+# gegen die DB geprüft (live_sessions.host_id + live_cohosts), bevor ein
+# LiveKit-Token ausgestellt wird.
+verify_jwt = false

@@ -10,6 +10,7 @@ import { ArrowLeft, UserCheck, UserPlus } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useFollowerList, useFollowingList, useFollow, type FollowUser } from '@/lib/useFollow';
 import { useAuthStore } from '@/lib/authStore';
+import { useTheme } from '@/lib/useTheme';
 
 type Mode = 'followers' | 'following';
 
@@ -18,6 +19,7 @@ function UserRow({ user, onPress }: { user: FollowUser; onPress: () => void }) {
   const isOwn = currentUserId === user.id;
   const { isFollowing, toggle, isLoading } = useFollow(isOwn ? null : user.id);
   const initial = (user.username ?? '?')[0].toUpperCase();
+  const { colors } = useTheme();
 
   return (
     <Pressable
@@ -32,10 +34,10 @@ function UserRow({ user, onPress }: { user: FollowUser; onPress: () => void }) {
         </View>
       )}
 
-      <View style={s.info}>
-        <Text style={s.username}>@{user.username}</Text>
+      <View style={[s.username && s.info]}>
+        <Text style={[s.username, { color: colors.text.primary }]}>@{user.username}</Text>
         {user.bio ? (
-          <Text style={s.bio} numberOfLines={1}>{user.bio}</Text>
+          <Text style={[s.bio, { color: colors.text.secondary }]} numberOfLines={1}>{user.bio}</Text>
         ) : null}
       </View>
 
@@ -49,11 +51,11 @@ function UserRow({ user, onPress }: { user: FollowUser; onPress: () => void }) {
           style={[s.followBtn, isFollowing && s.followBtnActive]}
         >
           {isLoading ? (
-            <ActivityIndicator size="small" color={isFollowing ? '#22D3EE' : '#fff'} />
+            <ActivityIndicator size="small" color={isFollowing ? '#FFFFFF' : '#fff'} />
           ) : isFollowing ? (
             <>
-              <UserCheck size={13} color="#22D3EE" strokeWidth={2.5} />
-              <Text style={[s.followBtnText, { color: '#22D3EE' }]}>Folgst</Text>
+              <UserCheck size={13} color="#FFFFFF" strokeWidth={2.5} />
+              <Text style={[s.followBtnText, { color: '#FFFFFF' }]}>Folgst</Text>
             </>
           ) : (
             <>
@@ -75,6 +77,7 @@ export default function FollowListScreen() {
   }>();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
 
   const [mode, setMode] = useState<Mode>(initialMode ?? 'followers');
 
@@ -92,17 +95,17 @@ export default function FollowListScreen() {
   ), [router]);
 
   return (
-    <View style={[s.screen, { paddingTop: insets.top }]}>
+    <View style={[s.screen, { paddingTop: insets.top, backgroundColor: colors.bg.primary }]}>
       {/* Header */}
-      <View style={s.header}>
+      <View style={[s.header, { borderBottomColor: colors.border.subtle }]}>
         <Pressable onPress={() => router.back()} style={s.backBtn} hitSlop={12}>
-          <ArrowLeft size={22} color="#fff" strokeWidth={2} />
+          <ArrowLeft size={22} color={colors.icon.default} strokeWidth={2} />
         </Pressable>
-        <Text style={s.headerTitle}>@{username ?? '...'}</Text>
+        <Text style={[s.headerTitle, { color: colors.text.primary }]}>@{username ?? '...'}</Text>
       </View>
 
       {/* Tabs */}
-      <View style={s.tabs}>
+      <View style={[s.tabs, { borderBottomColor: colors.border.subtle }]}>
         {(['followers', 'following'] as Mode[]).map((m) => (
           <Pressable
             key={m}
@@ -112,7 +115,7 @@ export default function FollowListScreen() {
               setMode(m);
             }}
           >
-            <Text style={[s.tabText, mode === m && s.tabTextActive]}>
+            <Text style={[s.tabText, mode === m && s.tabTextActive, { color: mode === m ? colors.text.primary : colors.text.muted }]}>
               {m === 'followers' ? 'Follower' : 'Following'}
             </Text>
             <Text style={[s.tabCount, mode === m && s.tabCountActive]}>
@@ -124,12 +127,12 @@ export default function FollowListScreen() {
 
       {isLoading ? (
         <View style={s.center}>
-          <ActivityIndicator color="#22D3EE" size="large" />
+        <ActivityIndicator color={colors.text.primary} size="large" />
         </View>
       ) : list.length === 0 ? (
         <View style={s.center}>
           <Text style={s.emptyEmoji}>{mode === 'followers' ? '👥' : '🔍'}</Text>
-          <Text style={s.emptyText}>
+          <Text style={[s.emptyText, { color: colors.text.muted }]}>
             {mode === 'followers' ? 'Noch keine Follower' : 'Folgt noch niemandem'}
           </Text>
         </View>
@@ -140,7 +143,7 @@ export default function FollowListScreen() {
           renderItem={renderItem}
           contentContainerStyle={s.list}
           showsVerticalScrollIndicator={false}
-          ItemSeparatorComponent={() => <View style={s.separator} />}
+          ItemSeparatorComponent={() => <View style={[s.separator, { backgroundColor: colors.border.subtle }]} />}
         />
       )}
     </View>
@@ -148,7 +151,7 @@ export default function FollowListScreen() {
 }
 
 const s = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: '#050508' },
+  screen: { flex: 1 },  // backgroundColor via inline
   header: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     paddingHorizontal: 16, paddingVertical: 12,
@@ -156,7 +159,7 @@ const s = StyleSheet.create({
     borderBottomColor: 'rgba(255,255,255,0.06)',
   },
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { color: '#fff', fontSize: 17, fontWeight: '700', flex: 1 },
+  headerTitle: { fontSize: 17, fontWeight: '700', flex: 1 },  // color via inline
 
   tabs: {
     flexDirection: 'row',
@@ -168,20 +171,19 @@ const s = StyleSheet.create({
     gap: 6, paddingVertical: 14,
     borderBottomWidth: 2, borderBottomColor: 'transparent',
   },
-  tabActive: { borderBottomColor: '#22D3EE' },
-  tabText: { color: 'rgba(255,255,255,0.4)', fontSize: 14, fontWeight: '600' },
-  tabTextActive: { color: '#fff' },
+  tabActive: { borderBottomColor: '#007AFF' },
+  tabText: { fontSize: 14, fontWeight: '600' },
+  tabTextActive: {},
   tabCount: {
-    fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.25)',
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    fontSize: 11, fontWeight: '700',
+    backgroundColor: 'rgba(120,120,128,0.1)',
     paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8,
   },
-  tabCountActive: { color: '#22D3EE', backgroundColor: 'rgba(34,211,238,0.12)' },
+  tabCountActive: { backgroundColor: 'rgba(0,122,255,0.12)' },
 
   list: { paddingBottom: 80 },
   separator: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(255,255,255,0.05)',
     marginLeft: 76,
   },
 
@@ -189,23 +191,23 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 12,
     paddingHorizontal: 16, paddingVertical: 12,
   },
-  avatar: { width: 48, height: 48, borderRadius: 24, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.1)' },
-  avatarFallback: { backgroundColor: 'rgba(34,211,238,0.2)', alignItems: 'center', justifyContent: 'center' },
-  avatarInitial: { color: '#22D3EE', fontSize: 18, fontWeight: '700' },
+  avatar: { width: 48, height: 48, borderRadius: 24 },
+  avatarFallback: { backgroundColor: '#E8E8ED', alignItems: 'center', justifyContent: 'center' },
+  avatarInitial: { color: '#555', fontSize: 18, fontWeight: '700' },
   info: { flex: 1, gap: 3 },
-  username: { color: '#fff', fontSize: 15, fontWeight: '700' },
-  bio: { color: 'rgba(255,255,255,0.45)', fontSize: 13 },
+  username: { fontSize: 15, fontWeight: '700' },  // color via inline
+  bio: { fontSize: 13 },   // color via inline
 
   followBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
-    backgroundColor: '#0891B2', minWidth: 80, justifyContent: 'center',
+    backgroundColor: '#007AFF', minWidth: 80, justifyContent: 'center',
   },
   followBtnActive: {
-    backgroundColor: 'rgba(34,211,238,0.12)',
-    borderWidth: 1, borderColor: 'rgba(34,211,238,0.3)',
+    backgroundColor: 'rgba(120,120,128,0.1)',
+    borderWidth: 1, borderColor: 'rgba(120,120,128,0.25)',
   },
-  followBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  followBtnText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
 
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 10 },
   emptyEmoji: { fontSize: 40 },

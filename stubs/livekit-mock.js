@@ -44,4 +44,14 @@ const Track = {
   Source: { Camera: 'camera_video', Microphone: 'microphone', ScreenShare: 'screenshare' },
 };
 
-module.exports = { LiveKitRoom, VideoTrack, useLocalParticipant, useTracks, Track, DevBuildRequired };
+// ← WICHTIG: no-ops damit index.ts nicht crasht wenn Stub aktiv ist
+const registerGlobals = () => {};
+const AudioSession = {
+  startAudioSession: async () => {},
+  stopAudioSession:  async () => {},
+};
+
+module.exports = {
+  LiveKitRoom, VideoTrack, useLocalParticipant, useTracks, Track,
+  DevBuildRequired, registerGlobals, AudioSession,
+};

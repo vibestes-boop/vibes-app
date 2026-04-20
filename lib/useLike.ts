@@ -74,7 +74,11 @@ export function useLike(postId: string, batch?: UseLikeBatch | null) {
     },
     mutationFn: async () => {
       if (!userId) return;
-      await supabase.from('likes').insert({ post_id: postId, user_id: userId });
+      // upsert statt insert → verhindert 409 Conflict bei Race Conditions (error=23505)
+      await supabase.from('likes').upsert(
+        { post_id: postId, user_id: userId },
+        { onConflict: 'post_id,user_id', ignoreDuplicates: true }
+      );
     },
     onError: (err: any) => {
       queryClient.setQueryData(['like-status', userId, postId], false);

@@ -30,6 +30,8 @@ export type PostWithAuthor = {
   audio_volume?: number | null; // Lautstärke 0..1
   // Verifizierter Creator Badge
   is_verified?: boolean | null;
+  // Women-Only Zone
+  women_only?: boolean;
 };
 
 const FEED_PAGE_SIZE = 15;
@@ -64,7 +66,8 @@ export function useVibeFeed(activeTag: string | null = null) {
         result_limit:   FEED_PAGE_SIZE,
         filter_tag:     activeTag ?? null,
         include_seen:   false,
-        exclude_ids:    excludeIds,   // ← ID-Cursor statt result_offset
+        // Leeres Array als null senden — verhindert PostgREST UUID[] Typ-Auflösungs-Fehler (404)
+        exclude_ids:    excludeIds.length > 0 ? excludeIds : null,
       });
 
       const freshPosts = Array.isArray(freshData) ? freshData as PostWithAuthor[] : [];
@@ -82,7 +85,8 @@ export function useVibeFeed(activeTag: string | null = null) {
           result_limit:   FEED_PAGE_SIZE,
           filter_tag:     activeTag ?? null,
           include_seen:   true,
-          exclude_ids:    excludeIds,  // ← auch bei Fallback keine Duplikate
+          // Leeres Array als null senden — verhindert PostgREST UUID[] Typ-Fehler
+          exclude_ids:    excludeIds.length > 0 ? excludeIds : null,
         });
 
         if (!seenError && Array.isArray(seenData) && seenData.length > 0) {
@@ -96,13 +100,14 @@ export function useVibeFeed(activeTag: string | null = null) {
         .select(`
           id, author_id, caption, media_url, media_type, thumbnail_url,
           dwell_time_score, score_explore, score_brain, view_count,
-          tags, guild_id, is_guild_post, created_at,
+          tags, guild_id, is_guild_post, created_at, women_only,
           privacy, allow_comments, allow_download, allow_duet, audio_url,
           profiles!author_id (username, avatar_url, is_verified)
         `)
         .is('is_guild_post', false)
-        // Nur öffentliche Posts im For-You Feed (Sicherheitsnetz)
         .eq('privacy', 'public')
+        // ⚠️ Kritisch: nur moderierte, sichtbare Posts zeigen
+        .eq('is_visible', true)
         .order('created_at', { ascending: false })
         .limit(FEED_PAGE_SIZE);
 
@@ -125,6 +130,7 @@ export function useVibeFeed(activeTag: string | null = null) {
         audio_url:     p.audio_url ?? null,
         audio_volume:  p.audio_volume ?? 0.8,
         is_verified:   (p.profiles as any)?.is_verified ?? null,
+        women_only:    p.women_only ?? false,
       })) as PostWithAuthor[];
     },
     staleTime: 1000 * 60,
@@ -147,6 +153,7 @@ export function useTrendingFeed() {
           profiles!author_id (username, avatar_url, is_verified)
         `)
         .is('is_guild_post', false)
+        .eq('is_visible', true)
         .order('dwell_time_score', { ascending: false })
         .limit(30);
       if (error) throw error;
@@ -204,8 +211,9 @@ export function useFollowingFeed() {
         `)
         .is('is_guild_post', false)
         .in('author_id', followingIds)
-        // Im Following-Feed: public + friends Posts sichtbar, private nicht
         .in('privacy', ['public', 'friends'])
+        // ⚠️ Moderierte Posts ausfiltern
+        .eq('is_visible', true)
         .order('created_at', { ascending: false })
         .limit(FEED_PAGE_SIZE);
 
@@ -243,6 +251,7 @@ export type GuildPost = {
   caption: string | null;
   media_url: string | null;
   media_type: string;
+  thumbnail_url: string | null;
   tags: string[];
   created_at: string;
   username: string | null;
@@ -299,9 +308,10 @@ export function useGuildFeed() {
         is_liked:      likedSet.has(p.id),
       })) as GuildPost[];
     },
-    staleTime: 1000 * 60 * 3,
-    gcTime:    1000 * 60 * 10,
-    refetchOnWindowFocus: false,
+    staleTime: 0,              // Immer fresh — Guild-Feed soll nie gecacht bleiben
+    gcTime:    1000 * 60 * 5,
+    refetchOnWindowFocus: true,
+    refetchOnMount: 'always',
   });
 }
 

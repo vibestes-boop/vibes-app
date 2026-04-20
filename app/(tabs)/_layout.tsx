@@ -1,8 +1,7 @@
 import { useEffect } from 'react';
 import { Tabs, useRouter } from 'expo-router';
 import { View, StyleSheet, Text, Pressable, ActivityIndicator } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Zap, Users, MessageCircle, User, Plus } from 'lucide-react-native';
+import { Zap, User, Plus } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 // react-native-reanimated: named imports (safe for Hermes)
@@ -22,18 +21,21 @@ import { impactAsync, ImpactFeedbackStyle } from 'expo-haptics';
 import { useUnreadDMCount } from '@/lib/useMessages';
 import { useUnreadCount } from '@/lib/useNotifications';
 import { useTabRefreshStore, vibesFeedActions, guildFeedActions } from '@/lib/useTabRefresh';
+import { useTheme } from '@/lib/useTheme';
+import {
+  useTabBarStore,
+  TAB_FEATURES,
+  type TabFeatureMeta,
+  type TabFeature,
+} from '@/lib/tabBarStore';
 
-// ── Tab-Konfiguration ────────────────────────────────────────────────────────
-const TABS = [
-  { name: 'index', label: 'Vibes', icon: Zap, pushTo: null, isCreate: false },
-  { name: 'guild', label: 'Guild', icon: Users, pushTo: null, isCreate: false },
-  { name: '_create', label: '', icon: Plus, pushTo: '/create', isCreate: true },
-  { name: 'messages', label: 'Nachrichten', icon: MessageCircle, pushTo: null, isCreate: false },
-  { name: 'profile', label: 'Studio', icon: User, pushTo: null, isCreate: false },
-] as const;
+// ── Feste Tab-Slots ──────────────────────────────────────────────────────────
+// Slot 1: Feed (fest), Slot 3: + Create (fest), Slot 5: Profil (fest)
+// Slot 2 + 4: kommen aus tabBarStore (user-customizable)
 
-// Real-Tab-Reihenfolge (Expo-Router-Screens)
-const REAL_TAB_ORDER = ['index', 'explore', 'guild', 'messages', 'profile'] as const;
+// Real-Tab-Reihenfolge (Expo-Router-Screens) — bestimmt state.index Mapping
+// Reihenfolge MUSS exakt mit <Tabs.Screen> in TabLayout übereinstimmen (state.index mapping)
+const REAL_TAB_ORDER = ['index', 'explore', 'guild', 'messages', 'profile', 'shop', 'notifications'] as const;
 
 // ── Normaler Tab-Button ──────────────────────────────────────────────────────
 function TabBarItem({
@@ -44,7 +46,7 @@ function TabBarItem({
   badge,
   isRefreshing = false,
 }: {
-  route: (typeof TABS)[number];
+  route: TabFeatureMeta;
   isFocused: boolean;
   onPress: () => void;
   onLongPress: () => void;
@@ -53,6 +55,7 @@ function TabBarItem({
 }) {
   const Icon = route.icon;
   const scale = useSharedValue(1);
+  const { colors } = useTheme();
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -61,9 +64,9 @@ function TabBarItem({
   const handlePressIn = () => { scale.value = withTiming(0.85, { duration: 80 }); };
   const handlePressOut = () => { scale.value = withTiming(1, { duration: 80 }); };
 
-  const iconOpacity = useSharedValue(isFocused ? 1 : 0.45);
+  const iconOpacity = useSharedValue(isFocused ? 1 : 0.72);
   useEffect(() => {
-    iconOpacity.value = withTiming(isFocused ? 1 : 0.45, { duration: 60 });
+    iconOpacity.value = withTiming(isFocused ? 1 : 0.72, { duration: 60 });
   }, [isFocused, iconOpacity]);
 
   const iconAnimStyle = useAnimatedStyle(() => ({ opacity: iconOpacity.value }));
@@ -80,33 +83,32 @@ function TabBarItem({
     >
       <Animated.View style={[styles.tabIconWrapper, animatedStyle]}>
         <View style={{ position: 'relative', width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }}>
-          {/* Original Icon — ausgeblendet während Refresh */}
           {!isRefreshing && (
             <Animated.View style={[{ position: 'absolute' }, iconAnimStyle]}>
               <Icon
                 size={24}
-                stroke={isFocused ? '#FFFFFF' : '#6B7280'}
-                strokeWidth={isFocused ? 2.5 : 1.8}
+                color={isFocused ? colors.tabBar.active : colors.tabBar.inactive}
+                strokeWidth={isFocused ? 0 : 1.8}
+                fill={isFocused ? colors.tabBar.active : 'transparent'}
               />
             </Animated.View>
           )}
-          {/* TikTok-Style Lade-Spinner (eingebaut, kein Reanimated nötig) */}
           {isRefreshing && (
             <ActivityIndicator
               size="small"
-              color="#22D3EE"
+              color={colors.accent.primary}
               style={{ position: 'absolute' }}
             />
           )}
           {badge != null && badge > 0 && (
-            <View style={styles.badge}>
+            <View style={[styles.badge, { borderColor: colors.bg.primary }]}>
               <Text style={styles.badgeText}>{badge > 99 ? '99+' : String(badge)}</Text>
             </View>
           )}
         </View>
-        {isFocused && <View style={styles.activeDot} />}
+        {isFocused && <View style={[styles.activeDot, { backgroundColor: colors.accent.primary }]} />}
         {route.label ? (
-          <Text style={[styles.tabLabel, { color: isFocused ? '#FFFFFF' : '#6B7280' }]}>
+          <Text style={[styles.tabLabel, { color: isFocused ? colors.tabBar.active : colors.tabBar.inactive }]}>
             {route.label}
           </Text>
         ) : null}
@@ -118,6 +120,7 @@ function TabBarItem({
 // ── Zentraler Create-Button ──────────────────────────────────────────────────
 function CreateTabButton({ onPress }: { onPress: () => void }) {
   const scale = useSharedValue(1);
+  const { colors } = useTheme();
 
   const animStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -133,20 +136,19 @@ function CreateTabButton({ onPress }: { onPress: () => void }) {
     onPress();
   };
 
+  const shadowBorderColor = colors.text.primary;
+  const btnBg = colors.text.primary;
+  const iconColor = colors.bg.primary;
+
   return (
     <Pressable onPress={handlePress} style={styles.createTab} accessibilityLabel="Post erstellen">
-      <Animated.View style={animStyle}>
-        <View style={styles.createGlow} />
-        <LinearGradient
-          colors={['#A5F3FC', '#22D3EE', '#0891B2']}
-          style={styles.createBtn}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          <View style={styles.createPillLeft} />
-          <Plus size={22} color="#fff" strokeWidth={2.8} />
-          <View style={styles.createPillRight} />
-        </LinearGradient>
+      <Animated.View style={[styles.createOuter, animStyle]}>
+        {/* Offset-Border-Layer — Neo-Brutalist Tiefe */}
+        <View style={[styles.createShadowLayer, { borderColor: shadowBorderColor }]} />
+        {/* Haupt-Button */}
+        <View style={[styles.createBtn, { backgroundColor: btnBg }]}>
+          <Plus size={20} color={iconColor} strokeWidth={3} />
+        </View>
       </Animated.View>
     </Pressable>
   );
@@ -156,6 +158,7 @@ function CreateTabButton({ onPress }: { onPress: () => void }) {
 function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { colors } = useTheme();
   const { data: unreadDMs = 0 } = useUnreadDMCount();
   const { data: unreadNotifs = 0 } = useUnreadCount();
   const triggerVibesRefresh = useTabRefreshStore((s) => s.triggerVibesRefresh);
@@ -163,86 +166,119 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const triggerGuildRefresh = useTabRefreshStore((s) => s.triggerGuildRefresh);
   const isGuildRefreshing = useTabRefreshStore((s) => s.isGuildRefreshing);
 
+  // Customizable Slots aus Store
+  const slot2Feature = useTabBarStore((s) => s.slot2);
+  const slot4Feature = useTabBarStore((s) => s.slot4);
+
+  // Dynamische Tab-Konfiguration aus Store-Slots
+  const slot2Meta = TAB_FEATURES[slot2Feature];
+  const slot4Meta = TAB_FEATURES[slot4Feature];
+
+  // Hilfsfunktion: Badge für ein Feature
+  const getBadge = (feature: TabFeature): number | undefined => {
+    if (feature === 'messages')      return unreadDMs      || undefined;
+    if (feature === 'notifications') return unreadNotifs   || undefined;
+    return undefined;
+  };
+
+  // Hilfsfunktion: Tab-Aktion für Slot 2 oder 4
+  const handleSlotPress = (meta: typeof slot2Meta) => {
+    impactAsync(ImpactFeedbackStyle.Light);
+    if (meta.isPush) {
+      router.push(meta.route as any);
+      return;
+    }
+    // Expo Router Tab-Navigation
+    const routeIndex = (REAL_TAB_ORDER as readonly string[]).indexOf(meta.route);
+    if (routeIndex < 0) { router.push(meta.route as any); return; }
+    const route = state.routes[routeIndex];
+    if (route) navigation.navigate(meta.route);
+  };
+
+  // Feed-Tab: aktueller Expo-Router-Index
+  const feedIndex = 0;
+  const profileIndex = (REAL_TAB_ORDER as readonly string[]).indexOf('profile');
+  const isFeedFocused    = state.index === feedIndex;
+  const isProfileFocused = state.index === profileIndex;
+
+  // Slot 2: fokussiert wenn der Screen dessen Route aktiv ist
+  const slot2Index = !slot2Meta.isPush
+    ? (REAL_TAB_ORDER as readonly string[]).indexOf(slot2Meta.route)
+    : -1;
+  const slot4Index = !slot4Meta.isPush
+    ? (REAL_TAB_ORDER as readonly string[]).indexOf(slot4Meta.route)
+    : -1;
+  const isSlot2Focused = slot2Index >= 0 && state.index === slot2Index;
+  const isSlot4Focused = slot4Index >= 0 && state.index === slot4Index;
+
   return (
-    <View style={styles.tabBarContainer}>
-      <View style={[styles.blurView, styles.blurFallback]}>
-        <View style={[styles.tabBarInner, { paddingBottom: Math.max(insets.bottom, 8) }]}>
-          {TABS.map((tabConfig) => {
-            if (tabConfig.isCreate) {
-              return (
-                <CreateTabButton
-                  key={tabConfig.name}
-                  onPress={() => {
-                    impactAsync(ImpactFeedbackStyle.Medium);
-                    router.push('/create/camera' as any);
-                  }}
-                />
-              );
-            }
+    <View style={[styles.tabBarContainer, { borderTopColor: colors.tabBar.border }]}>
+      <View style={[styles.blurView, { backgroundColor: colors.tabBar.bg }]}>
+        <View style={[styles.tabBarInner, { paddingBottom: Math.max(insets.bottom - 6, 2) }]}>
 
-            const isExternal = tabConfig.pushTo !== null;
-            const routeIndex = isExternal
-              ? -1
-              : (REAL_TAB_ORDER as readonly string[]).indexOf(tabConfig.name);
-            const isFocused = !isExternal && state.index === routeIndex;
-
-            const onPress = () => {
-              if (isExternal) {
-                router.push((tabConfig as any).pushTo as any);
-                return;
-              }
-              const route = state.routes[routeIndex];
-              if (!route) return;
-              const event = navigation.emit({
-                type: 'tabPress',
-                target: route.key,
-                canPreventDefault: true,
-              });
-              // Bereits auf Vibes-Tab: Direkt Refresh triggern (zwei Wege)
-              if (isFocused && tabConfig.name === 'index') {
+          {/* ── Slot 1: Feed (fest) ── */}
+          <TabBarItem
+            route={{ name: 'index', label: 'Feed', icon: Zap, pushTo: null, isCreate: false } as any}
+            isFocused={isFeedFocused}
+            onPress={() => {
+              if (isFeedFocused) {
                 impactAsync(ImpactFeedbackStyle.Light);
                 vibesFeedActions.refresh?.();
                 triggerVibesRefresh();
                 return;
               }
-              // Bereits auf Guild-Tab: Direkt Refresh triggern
-              if (isFocused && tabConfig.name === 'guild') {
+              navigation.navigate('index');
+            }}
+            onLongPress={() => {}}
+            isRefreshing={isVibesRefreshing}
+          />
+
+          {/* ── Slot 2: wählbar ── */}
+          <TabBarItem
+            route={{ name: slot2Meta.route, label: slot2Meta.label, icon: slot2Meta.icon, pushTo: null, isCreate: false } as any}
+            isFocused={isSlot2Focused}
+            badge={getBadge(slot2Feature)}
+            onPress={() => {
+              if (isSlot2Focused && slot2Feature === 'guild') {
                 impactAsync(ImpactFeedbackStyle.Light);
                 guildFeedActions.refresh?.();
                 triggerGuildRefresh();
                 return;
               }
-              if (!isFocused && !event.defaultPrevented) {
-                navigation.navigate(tabConfig.name);
-              }
-            };
+              handleSlotPress(slot2Meta);
+            }}
+            onLongPress={() => {}}
+            isRefreshing={slot2Feature === 'guild' && isGuildRefreshing}
+          />
 
-            const onLongPress = () => {
-              if (isExternal) return;
-              const route = state.routes[routeIndex];
-              if (route) navigation.emit({ type: 'tabLongPress', target: route.key });
-            };
+          {/* ── Slot 3: + Create (fest) ── */}
+          <CreateTabButton
+            onPress={() => {
+              impactAsync(ImpactFeedbackStyle.Medium);
+              router.push('/create/camera' as any);
+            }}
+          />
 
-            const badge =
-              tabConfig.name === 'messages' ? unreadDMs :
-                tabConfig.name === 'profile' ? unreadNotifs :
-                  undefined;
+          {/* ── Slot 4: wählbar ── */}
+          <TabBarItem
+            route={{ name: slot4Meta.route, label: slot4Meta.label, icon: slot4Meta.icon, pushTo: null, isCreate: false } as any}
+            isFocused={isSlot4Focused}
+            badge={getBadge(slot4Feature)}
+            onPress={() => handleSlotPress(slot4Meta)}
+            onLongPress={() => {}}
+          />
 
-            return (
-              <TabBarItem
-                key={tabConfig.name}
-                route={tabConfig}
-                isFocused={isFocused}
-                onPress={onPress}
-                onLongPress={onLongPress}
-                badge={badge}
-                isRefreshing={
-                  (tabConfig.name === 'index' && isVibesRefreshing) ||
-                  (tabConfig.name === 'guild' && isGuildRefreshing)
-                }
-              />
-            );
-          })}
+          {/* ── Slot 5: Profil (fest) ── */}
+          <TabBarItem
+            route={{ name: 'profile', label: 'Profil', icon: User, pushTo: null, isCreate: false } as any}
+            isFocused={isProfileFocused}
+            badge={unreadNotifs || undefined}
+            onPress={() => {
+              if (!isProfileFocused) navigation.navigate('profile');
+            }}
+            onLongPress={() => {}}
+          />
+
         </View>
       </View>
     </View>
@@ -263,8 +299,8 @@ const styles = StyleSheet.create({
   blurFallback: { backgroundColor: 'rgba(5,5,8,0.95)' },
   tabBarInner: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingTop: 10,
+    alignItems: 'flex-end',
+    paddingTop: 6,
     paddingHorizontal: 4,
   },
   tabItem: {
@@ -283,7 +319,7 @@ const styles = StyleSheet.create({
     width: 4,
     height: 4,
     borderRadius: 2,
-    backgroundColor: '#22D3EE',
+    backgroundColor: '#FFFFFF',
   },
   tabLabel: {
     fontSize: 9,
@@ -316,61 +352,46 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingBottom: 4,
   },
-  createGlow: {
-    position: 'absolute',
-    top: -3,
-    left: -6,
-    right: -6,
-    bottom: -3,
-    borderRadius: 18,
-    backgroundColor: 'rgba(34,211,238,0.18)',
+  // Wrapper für Neo-Brutalist Offset-Effekt
+  createOuter: {
+    width: 56,
+    height: 36,
+    position: 'relative',
   },
+  // Offset-Border darunter (rechts+unten versetzt)
+  createShadowLayer: {
+    position: 'absolute',
+    top: 3,
+    left: 3,
+    right: -3,
+    bottom: -3,
+    borderRadius: 11,
+    borderWidth: 2,
+    backgroundColor: 'transparent',
+  },
+  // Haupt-Button (volle Fläche, leicht angehoben)
   createBtn: {
-    flexDirection: 'row',
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    borderRadius: 11,
     alignItems: 'center',
     justifyContent: 'center',
-    height: 36,
-    paddingHorizontal: 18,
-    borderRadius: 12,
-    gap: 0,
-    shadowColor: '#22D3EE',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.45,
-    shadowRadius: 10,
-    elevation: 8,
-  },
-  createPillLeft: {
-    width: 4,
-    height: 36,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderTopLeftRadius: 12,
-    borderBottomLeftRadius: 12,
-    position: 'absolute',
-    left: 0,
-  },
-  createPillRight: {
-    width: 4,
-    height: 36,
-    backgroundColor: 'rgba(0,0,0,0.15)',
-    borderTopRightRadius: 12,
-    borderBottomRightRadius: 12,
-    position: 'absolute',
-    right: 0,
   },
 });
 
 // ── Tab Layout ───────────────────────────────────────────────────────────────
 export default function TabLayout() {
+  const { colors } = useTheme();
   return (
     <Tabs
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{
         headerShown: false,
         lazy: true,
-        // Verhindert schwarzen Flash bei lazy Tab-Wechsel:
-        // Der Scene-Container ist standardmäßig transparent → zeigt den nativen Black-Background
-        // solange der Tab noch nicht gemounted wurde.
-        sceneStyle: { backgroundColor: '#050508' },
+        sceneStyle: { backgroundColor: colors.bg.primary },
       }}
     >
       <Tabs.Screen name="index" />
@@ -378,6 +399,7 @@ export default function TabLayout() {
       <Tabs.Screen name="guild" />
       <Tabs.Screen name="messages" />
       <Tabs.Screen name="profile" />
+      <Tabs.Screen name="shop" options={{ tabBarButton: () => null }} />
       {/* notifications ist real aber im Tab-Bar versteckt */}
       <Tabs.Screen name="notifications" options={{ tabBarButton: () => null }} />
     </Tabs>

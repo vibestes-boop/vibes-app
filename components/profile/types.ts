@@ -1,4 +1,4 @@
-export type ProfileTab = 'vibes' | 'saved' | 'analytics' | 'drafts' | 'reposts';
+export type ProfileTab = 'vibes' | 'saved' | 'analytics' | 'drafts' | 'reposts' | 'battles';
 
 
 export type ProfilePostGridItem = {
@@ -11,4 +11,5 @@ export type ProfilePostGridItem = {
   is_pinned?: boolean;
   view_count?: number;            // View-Zähler — wird im Grid angezeigt
   reposted_at?: string | null;    // ISO-Datum wann repostet — nur im Reposts-Tab
+  women_only?: boolean;           // Women-Only Zone Post
 };

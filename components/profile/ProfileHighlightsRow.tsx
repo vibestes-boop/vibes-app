@@ -23,6 +23,7 @@ import {
 import { useStoryViewerStore } from '@/lib/storyViewerStore';
 import type { StoryGroup } from '@/lib/useStories';
 import { HighlightPickerSheet } from './HighlightPickerSheet';
+import { useTheme } from '@/lib/useTheme';
 
 const BUBBLE_SIZE = 66;
 
@@ -35,6 +36,7 @@ function HighlightBubble({
   onPress: () => void;
   onLongPress?: () => void;
 }) {
+  const { colors } = useTheme();
   return (
     <Pressable
       style={styles.bubble}
@@ -46,11 +48,10 @@ function HighlightBubble({
     >
       <View style={styles.bubbleThumb}>
         <LinearGradient
-          colors={['#0891B2', '#A855F7']}
+          colors={['#CCCCCC', '#A855F7']}
           style={StyleSheet.absoluteFill}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         />
-        {/* thumbnail_url für Video-Highlights, media_url für Bilder */}
         {(highlight.thumbnail_url || highlight.media_url) ? (
           <Image
             source={{ uri: highlight.thumbnail_url || highlight.media_url }}
@@ -63,7 +64,7 @@ function HighlightBubble({
           style={StyleSheet.absoluteFill}
         />
       </View>
-      <Text style={styles.bubbleLabel} numberOfLines={1}>
+      <Text style={[styles.bubbleLabel, { color: colors.text.secondary }]} numberOfLines={1}>
         {highlight.title}
       </Text>
     </Pressable>
@@ -78,6 +79,7 @@ export function ProfileHighlightsRow({
   isOwn: boolean;
 }) {
   const router = useRouter();
+  const { colors } = useTheme();
   const { data: highlights = [], isLoading } = useStoryHighlights(userId);
   const { mutate: removeHighlight } = useRemoveHighlight();
   const { mutate: addHighlight, isPending: isAdding } = useAddHighlight();
@@ -155,7 +157,7 @@ export function ProfileHighlightsRow({
   if (!isLoading && highlights.length === 0 && !isOwn) return null;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: colors.bg.secondary }]}>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -169,19 +171,23 @@ export function ProfileHighlightsRow({
             accessibilityRole="button"
             accessibilityLabel="Neues Highlight erstellen"
           >
-            <View style={[styles.bubbleThumb, styles.addThumb]}>
+            <View style={[
+              styles.bubbleThumb,
+              styles.addThumb,
+              { borderColor: colors.border.strong, backgroundColor: 'transparent' },
+            ]}>
               {isAdding
-                ? <ActivityIndicator color="#22D3EE" size="small" />
-                : <PlusCircle size={28} color="rgba(255,255,255,0.45)" strokeWidth={1.5} />
+                ? <ActivityIndicator color={colors.accent.primary} size="small" />
+                : <PlusCircle size={28} color={colors.text.primary} strokeWidth={1.5} />
               }
             </View>
-            <Text style={styles.bubbleLabel}>Neu</Text>
+            <Text style={[styles.bubbleLabel, { color: colors.text.muted }]}>Neu</Text>
           </Pressable>
         )}
 
         {isLoading ? (
           <View style={styles.loadingWrap}>
-            <ActivityIndicator color="#22D3EE" size="small" />
+            <ActivityIndicator color="#FFFFFF" size="small" />
           </View>
         ) : (
           highlights.map((h) => (
@@ -197,7 +203,7 @@ export function ProfileHighlightsRow({
       </ScrollView>
 
       {highlights.length === 0 && isOwn && !isLoading && (
-        <Text style={styles.emptyHint}>
+        <Text style={[styles.emptyHint, { color: colors.text.muted }]}>
           Tippe + um Stories zu highlighten · Long-Press auf Post zum Pinnen
         </Text>
       )}
@@ -216,21 +222,25 @@ export function ProfileHighlightsRow({
 
 
 const styles = StyleSheet.create({
-  container: { paddingBottom: 4 },
+  container: {
+    paddingBottom: 4,
+    // backgroundColor via inline (bg.secondary)
+  },
   scrollContent: { paddingHorizontal: 16, gap: 14, paddingVertical: 10 },
   bubble: { alignItems: 'center', gap: 6, width: BUBBLE_SIZE },
   bubbleThumb: {
     width: BUBBLE_SIZE, height: BUBBLE_SIZE, borderRadius: BUBBLE_SIZE / 2,
-    overflow: 'hidden', borderWidth: 2, borderColor: 'rgba(34,211,238,0.45)',
-    alignItems: 'center', justifyContent: 'center', backgroundColor: '#111',
+    overflow: 'hidden', borderWidth: 1.5, borderColor: 'rgba(128,128,128,0.2)',
+    alignItems: 'center', justifyContent: 'center',
+    // backgroundColor: transparent — Highlight-Bild füllt die Blase
   },
   addThumb: {
     borderStyle: 'dashed',
-    borderColor: 'rgba(255,255,255,0.2)',
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    // borderColor + backgroundColor via inline
   },
   bubbleLabel: {
-    color: 'rgba(255,255,255,0.7)', fontSize: 10, fontWeight: '600',
+    // color via inline (theme-aware)
+    fontSize: 10, fontWeight: '600',
     textAlign: 'center', width: BUBBLE_SIZE + 10,
   },
   loadingWrap: {
@@ -238,7 +248,8 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   emptyHint: {
-    color: 'rgba(255,255,255,0.22)', fontSize: 11, textAlign: 'center',
+    // color via inline (theme-aware)
+    fontSize: 11, textAlign: 'center',
     paddingHorizontal: 32, paddingBottom: 6, lineHeight: 17,
   },
 });

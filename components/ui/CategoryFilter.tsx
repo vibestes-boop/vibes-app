@@ -9,38 +9,48 @@ import {
   withTiming,
   withSequence,
 } from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 
 export type Category = {
   id: string | null;
   label: string;
   emoji: string;
-  gradient: [string, string];
+  gradient: [string, string]; // kept for type compat — no longer used for color
 };
 
 export const CATEGORIES: Category[] = [
-  { id: null, label: 'For You', emoji: '✦', gradient: ['#0891B2', '#22D3EE'] },
-  { id: 'tech', label: 'Tech', emoji: '💻', gradient: ['#0EA5E9', '#38BDF8'] },
-  { id: 'design', label: 'Design', emoji: '🎨', gradient: ['#EC4899', '#F9A8D4'] },
-  { id: 'art', label: 'Art', emoji: '🖼️', gradient: ['#F59E0B', '#FDE68A'] },
-  { id: 'travel', label: 'Travel', emoji: '✈️', gradient: ['#10B981', '#6EE7B7'] },
-  { id: 'architecture', label: 'Architecture', emoji: '🏛️', gradient: ['#0891B2', '#67E8F9'] },
-  { id: 'fashion', label: 'Fashion', emoji: '👗', gradient: ['#F43F5E', '#FDA4AF'] },
-  { id: 'music', label: 'Music', emoji: '🎵', gradient: ['#22D3EE', '#A5F3FC'] },
-  { id: 'food', label: 'Food', emoji: '🍜', gradient: ['#EF4444', '#FCA5A5'] },
-  { id: 'sport', label: 'Sport', emoji: '⚡', gradient: ['#F97316', '#FED7AA'] },
+  { id: null,           label: 'For You',      emoji: '✦',  gradient: ['#000', '#000'] },
+  { id: 'tech',         label: 'Tech',         emoji: '💻', gradient: ['#000', '#000'] },
+  { id: 'design',       label: 'Design',       emoji: '🎨', gradient: ['#000', '#000'] },
+  { id: 'art',          label: 'Art',          emoji: '🖼️', gradient: ['#000', '#000'] },
+  { id: 'travel',       label: 'Travel',       emoji: '✈️', gradient: ['#000', '#000'] },
+  { id: 'architecture', label: 'Architektur',  emoji: '🏛️', gradient: ['#000', '#000'] },
+  { id: 'fashion',      label: 'Fashion',      emoji: '👗', gradient: ['#000', '#000'] },
+  { id: 'music',        label: 'Musik',        emoji: '🎵', gradient: ['#000', '#000'] },
+  { id: 'food',         label: 'Food',         emoji: '🍜', gradient: ['#000', '#000'] },
+  { id: 'sport',        label: 'Sport',        emoji: '⚡', gradient: ['#000', '#000'] },
 ];
 
-// ── "For You" — Sonderpill mit KI-Aura ────────────────────────────────────────
-function ForYouPill({ isActive, onPress }: { isActive: boolean; onPress: () => void }) {
+// ── Einzelne Tab-Komponente (TikTok-Stil: nur Text + Unterstrich) ─────────────
+function Tab({
+  label,
+  isActive,
+  onPress,
+}: {
+  label: string;
+  isActive: boolean;
+  onPress: () => void;
+}) {
   const scale = useSharedValue(1);
-  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
+
+  const animStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
 
   const handlePress = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     scale.value = withSequence(
-      withTiming(0.88, { duration: 60 }),
+      withTiming(0.92, { duration: 60 }),
       withTiming(1, { duration: 80 })
     );
     onPress();
@@ -48,73 +58,17 @@ function ForYouPill({ isActive, onPress }: { isActive: boolean; onPress: () => v
 
   return (
     <Animated.View style={animStyle}>
-      <Pressable onPress={handlePress}>
-        {isActive ? (
-          <LinearGradient
-            colors={['#0891B2', '#22D3EE']}
-            style={s.forYouActive}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <Text style={s.forYouGlyph}>✦</Text>
-            <Text style={s.forYouTextActive}>For You</Text>
-          </LinearGradient>
-        ) : (
-          <View style={[s.forYouInactive, { backgroundColor: 'rgba(20,15,35,0.85)' }]}>
-            <Text style={[s.forYouGlyph, { color: 'rgba(34,211,238,0.55)' }]}>✦</Text>
-            <Text style={s.forYouTextInactive}>For You</Text>
-          </View>
-        )}
-      </Pressable>
-    </Animated.View>
-  );
-}
-
-// ── Normale Kategorie-Pill ─────────────────────────────────────────────────────
-function CategoryPill({
-  cat, isActive, onPress,
-}: { cat: Category; isActive: boolean; onPress: () => void }) {
-  const scale = useSharedValue(1);
-
-  const animStyle = useAnimatedStyle(() => ({ transform: [{ scale: scale.value }] }));
-  const glowStyle = useAnimatedStyle(() => ({
-    opacity: withTiming(isActive ? 1 : 0, { duration: 60 }),
-    transform: [{ scale: withTiming(isActive ? 1 : 0.6, { duration: 60 }) }],
-  }));
-
-  const handlePress = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    scale.value = withSequence(
-      withTiming(0.85, { duration: 60 }),
-      withTiming(1, { duration: 80 })
-    );
-    onPress();
-  }, [onPress, scale]);
-
-  return (
-    <Animated.View style={[s.pillWrap, animStyle]}>
-      {/* Glow-Halo */}
-      <Animated.View
-        style={[s.pillGlow, glowStyle, { backgroundColor: cat.gradient[0] + '28' }]}
-        pointerEvents="none"
-      />
-      <Pressable onPress={handlePress}>
-        {isActive ? (
-          <LinearGradient
-            colors={cat.gradient}
-            style={s.pillActive}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
-            <Text style={s.pillEmoji}>{cat.emoji}</Text>
-            <Text style={s.pillTextActive}>{cat.label}</Text>
-          </LinearGradient>
-        ) : (
-          <View style={s.pillInactive}>
-            <Text style={s.pillEmoji}>{cat.emoji}</Text>
-            <Text style={s.pillTextInactive}>{cat.label}</Text>
-          </View>
-        )}
+      <Pressable onPress={handlePress} style={s.tab}>
+        <Text
+          style={[
+            s.tabLabel,
+            isActive ? s.tabLabelActive : s.tabLabelInactive,
+          ]}
+        >
+          {label}
+        </Text>
+        {/* TikTok-Stil: weißer Unterstrich unter aktivem Tab */}
+        {isActive && <View style={s.tabUnderline} />}
       </Pressable>
     </Animated.View>
   );
@@ -131,141 +85,83 @@ export function CategoryFilter({ activeTag, onSelect, hideForYou = false }: Prop
   const scrollRef = useRef<ScrollView>(null);
 
   return (
-    <ScrollView
-      ref={scrollRef}
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={s.scrollContent}
-      style={s.scroll}
-      decelerationRate="fast"
-    >
-      {/* For You als erster, spezieller Chip — nur wenn nicht versteckt */}
-      {!hideForYou && (
-        <>
-          <ForYouPill
+    <View style={s.wrapper}>
+      <ScrollView
+        ref={scrollRef}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={s.scrollContent}
+        style={s.scroll}
+        decelerationRate="fast"
+      >
+        {/* For You */}
+        {!hideForYou && (
+          <Tab
+            label="For You"
             isActive={activeTag === null}
             onPress={() => onSelect(null)}
           />
-          {/* Separator */}
-          <View style={s.separator} />
-        </>
-      )}
+        )}
 
-      {/* Rest der Kategorien */}
-      {CATEGORIES.filter((c) => c.id !== null).map((cat) => (
-        <CategoryPill
-          key={String(cat.id)}
-          cat={cat}
-          isActive={activeTag === cat.id}
-          onPress={() => onSelect(cat.id)}
-        />
-      ))}
-    </ScrollView>
+        {/* Kategorie-Tabs */}
+        {CATEGORIES.filter((c) => c.id !== null).map((cat) => (
+          <Tab
+            key={String(cat.id)}
+            label={cat.label}
+            isActive={activeTag === cat.id}
+            onPress={() => onSelect(cat.id)}
+          />
+        ))}
+      </ScrollView>
+    </View>
   );
 }
 
 // ── Styles ─────────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
+  wrapper: {
+    overflow: 'hidden',
+  },
+
   scroll: { flexGrow: 0 },
   scrollContent: {
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     paddingVertical: 8,
-    gap: 6,
+    gap: 0,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-end',
   },
 
-  // For You — Sonderpill
-  forYouActive: {
-    flexDirection: 'row',
+  tab: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 13,
-    paddingVertical: 8,
-    borderRadius: 20,
-    shadowColor: '#0891B2',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.55,
-    shadowRadius: 10,
-    elevation: 6,
+    gap: 4,
   },
-  forYouInactive: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 13,
-    paddingVertical: 8,
-    borderRadius: 20,
-    overflow: 'hidden',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(34,211,238,0.2)',
-  },
-  forYouGlyph: {
-    fontSize: 11,
-    color: '#fff',
-    fontWeight: '800',
-  },
-  forYouTextActive: {
-    color: '#fff',
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: -0.2,
-  },
-  forYouTextInactive: {
-    color: 'rgba(34,211,238,0.6)',
-    fontSize: 13,
+
+  tabLabel: {
+    fontSize: 14,
     fontWeight: '600',
+    letterSpacing: 0.1,
+    textShadowColor: 'rgba(0,0,0,0.9)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
 
-  // Separator zwischen For You und Kategorien
-  separator: {
-    width: StyleSheet.hairlineWidth,
-    height: 20,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    marginHorizontal: 2,
-  },
-
-  // Normale Pills
-  pillWrap: { position: 'relative' },
-  pillGlow: {
-    position: 'absolute',
-    top: -5, left: -5, right: -5, bottom: -5,
-    borderRadius: 26,
-  },
-  pillActive: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 20,
-    shadowColor: '#22D3EE',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
-    elevation: 4,
-  },
-  pillInactive: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.07)',
-  },
-  pillEmoji: { fontSize: 12 },
-  pillTextActive: {
-    color: '#fff',
-    fontSize: 12,
+  tabLabelActive: {
+    color: '#FFFFFF',
     fontWeight: '700',
-    letterSpacing: -0.1,
   },
-  pillTextInactive: {
-    color: 'rgba(255,255,255,0.4)',
-    fontSize: 12,
-    fontWeight: '500',
+
+  tabLabelInactive: {
+    color: 'rgba(255,255,255,0.88)',
+  },
+
+  // TikTok-Stil: kurzer weißer Balken unter aktivem Tab
+  tabUnderline: {
+    width: 20,
+    height: 2,
+    borderRadius: 1,
+    backgroundColor: '#FFFFFF',
   },
 });

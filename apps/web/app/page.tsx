@@ -1,0 +1,75 @@
+import { createClient } from '@/lib/supabase/server';
+import { LandingPage, type FeaturedCreator } from '@/components/landing-page';
+import { HomeFeedShell } from '@/components/feed/home-feed-shell';
+import { StoryStrip } from '@/components/feed/story-strip';
+import { getForYouFeed, getFollowingFeed, getSuggestedFollows } from '@/lib/data/feed';
+
+/**
+ * `/` Home-Route.
+ *
+ * - Logged-out: Landing-Page (Hero, Value-Props, Discovery-Strip).
+ * - Logged-in:  HomeFeedShell (For-You/Following Tabs, Sidebars, Vertical-Feed).
+ *
+ * Kein `revalidate`, weil auth-basiert — aber die einzelnen Server-Component-Reads
+ * sind via `cache()` pro Request memoized und Supabase-RLS erledigt das Scoping.
+ */
+
+export const dynamic = 'force-dynamic';
+
+export default async function HomePage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    const featured = await getFeaturedCreators();
+    return <LandingPage featured={featured} />;
+  }
+
+  // Logged-in: Feed-Shell mit SSR-Prefetch.
+  // For-You ist Initial-Load (fast & wichtig für LCP).
+  // Following wird optional eagerly geladen wenn User folgt, sonst null (lazy).
+  const [forYou, suggested, hasFollows] = await Promise.all([
+    getForYouFeed({ limit: 10 }),
+    getSuggestedFollows(5),
+    (async () => {
+      const { count } = await supabase
+        .from('follows')
+        .select('follower_id', { count: 'exact', head: true })
+        .eq('follower_id', user.id);
+      return (count ?? 0) > 0;
+    })(),
+  ]);
+
+  // Nur wenn der User jemandem folgt, prefetchen wir — sonst sparen wir den Call.
+  const following = hasFollows ? await getFollowingFeed({ limit: 10 }) : null;
+
+  return (
+    <HomeFeedShell
+      viewerId={user.id}
+      initialForYou={forYou}
+      initialFollowing={following}
+      suggested={suggested}
+      storyStripSlot={<StoryStrip />}
+    />
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Landing-Discovery: Top-Creator nach Follower-Count. Fehler schlucken.
+// -----------------------------------------------------------------------------
+
+async function getFeaturedCreators(): Promise<FeaturedCreator[]> {
+  try {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from('profiles')
+      .select('username, display_name, avatar_url, follower_count')
+      .order('follower_count', { ascending: false })
+      .limit(6);
+    return (data as FeaturedCreator[] | null) ?? [];
+  } catch {
+    return [];
+  }
+}

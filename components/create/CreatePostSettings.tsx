@@ -14,11 +14,13 @@ export interface PostSettingsState {
   allowComments: boolean;
   allowDownload: boolean;
   allowDuet: boolean;
+  womenOnly: boolean;  // Women-Only Zone (opt-in)
 }
 
 interface Props {
   settings: PostSettingsState;
   onChange: (s: PostSettingsState) => void;
+  showWomenOnly?: boolean;  // nur anzeigen wenn Nutzerin verifiziert ist
 }
 
 const PRIVACY_OPTIONS: { key: PostPrivacy; label: string; sub: string; icon: React.ReactNode }[] = [
@@ -26,7 +28,7 @@ const PRIVACY_OPTIONS: { key: PostPrivacy; label: string; sub: string; icon: Rea
     key: 'public',
     label: 'Öffentlich',
     sub: 'Jeder kann sehen',
-    icon: <Globe size={16} color="#22D3EE" strokeWidth={1.8} />,
+    icon: <Globe size={16} color="#FFFFFF" strokeWidth={1.8} />,
   },
   {
     key: 'friends',
@@ -42,7 +44,7 @@ const PRIVACY_OPTIONS: { key: PostPrivacy; label: string; sub: string; icon: Rea
   },
 ];
 
-export function CreatePostSettings({ settings, onChange }: Props) {
+export function CreatePostSettings({ settings, onChange, showWomenOnly }: Props) {
   const set = (partial: Partial<PostSettingsState>) =>
     onChange({ ...settings, ...partial });
 
@@ -89,6 +91,27 @@ export function CreatePostSettings({ settings, onChange }: Props) {
           value={settings.allowDuet}
           onValueChange={(v) => set({ allowDuet: v })}
         />
+        {showWomenOnly && (
+          <>
+            <View style={s.divider} />
+            <View style={s.womenOnlyRow}>
+              <View style={s.womenOnlyLeft}>
+                <Text style={s.womenOnlyEmoji}>🌸</Text>
+                <View>
+                  <Text style={s.womenOnlyLabel}>Women-Only</Text>
+                  <Text style={s.womenOnlySub}>Nur für verifizierte Frauen</Text>
+                </View>
+              </View>
+              <Switch
+                value={settings.womenOnly}
+                onValueChange={(v) => set({ womenOnly: v })}
+                trackColor={{ false: 'rgba(255,255,255,0.1)', true: 'rgba(244,63,94,0.6)' }}
+                thumbColor={settings.womenOnly ? '#F43F5E' : 'rgba(255,255,255,0.4)'}
+                ios_backgroundColor="rgba(255,255,255,0.1)"
+              />
+            </View>
+          </>
+        )}
       </View>
     </View>
   );
@@ -109,8 +132,8 @@ function ToggleRow({
       <Switch
         value={value}
         onValueChange={onValueChange}
-        trackColor={{ false: 'rgba(255,255,255,0.1)', true: 'rgba(34,211,238,0.5)' }}
-        thumbColor={value ? '#22D3EE' : 'rgba(255,255,255,0.4)'}
+        trackColor={{ false: 'rgba(255,255,255,0.1)', true: 'rgba(255,255,255,0.35)' }}
+        thumbColor={value ? '#FFFFFF' : 'rgba(255,255,255,0.4)'}
         ios_backgroundColor="rgba(255,255,255,0.1)"
       />
     </View>
@@ -191,4 +214,20 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.06)',
     marginLeft: 16,
   },
+  womenOnlyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  womenOnlyLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  womenOnlyEmoji: { fontSize: 20 },
+  womenOnlyLabel: { color: '#F9A8D4', fontSize: 14, fontWeight: '600' },
+  womenOnlySub:   { color: 'rgba(249,168,212,0.55)', fontSize: 11, marginTop: 1 },
 });

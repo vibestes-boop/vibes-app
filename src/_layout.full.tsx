@@ -11,7 +11,7 @@
  */
 /* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any */
 import { useEffect, useRef, useState } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, useColorScheme } from 'react-native';
 import {
   useFonts,
   Inter_400Regular,
@@ -260,6 +260,27 @@ function PushNotificationsProvider() {
   return null;
 }
 
+// ─── ThemeProvider ───────────────────────────────────────────────────────────
+// Liest iOS-System-Präferenz und synct sie in den themeStore.
+function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const { Appearance } = require('react-native') as typeof import('react-native');
+  const scheme = useColorScheme() ?? Appearance.getColorScheme() ?? 'dark';
+  // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+  const { useThemeStore } = require('@/lib/themeStore') as any;
+  const setSystemScheme = useThemeStore((s: any) => s.setSystemScheme);
+  const colors = useThemeStore((s: any) => s.colors);
+
+  useEffect(() => {
+    setSystemScheme(scheme as 'dark' | 'light');
+  }, [scheme, setSystemScheme]);
+
+  return (
+    <View style={{ flex: 1, backgroundColor: colors.bg.primary }}>
+      {children}
+    </View>
+  );
+}
+
 // ─── AppSplash ────────────────────────────────────────────────────────────────
 function AppSplash() {
   const { useAuthStore } =
@@ -397,15 +418,13 @@ export default function RootLayoutFull() {
   }, []);
 
   useEffect(() => {
-    // Guaranteed SplashScreen.hideAsync() with delay.
+    // Splash so früh wie möglich verstecken — kein künstliches Delay.
+    // PersistQueryClientProvider liefert gecachte Daten sofort → kein weißer Blitz.
     const hide = () =>
       (require('expo-splash-screen') as any).hideAsync?.().catch(() => { });
-    const t1 = setTimeout(hide, 500);
-    const t2 = setTimeout(hide, 3000);
-    return () => {
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
+    hide(); // sofort versuchen
+    const t = setTimeout(hide, 3000); // Garantie-Fallback
+    return () => clearTimeout(t);
   }, []);
 
   return (
@@ -424,7 +443,8 @@ export default function RootLayoutFull() {
           },
         }}
       >
-        <GestureHandlerRootView style={{ flex: 1 }}>
+        <ThemeProvider>
+          <GestureHandlerRootView style={{ flex: 1 }}>
           <AuthGuard />
           <PushNotificationsProvider />
           <AppSplash />
@@ -510,6 +530,7 @@ export default function RootLayoutFull() {
             />
           </Stack>
         </GestureHandlerRootView>
+        </ThemeProvider>
       </PersistQueryClientProvider>
     </ErrorBoundary>
   );

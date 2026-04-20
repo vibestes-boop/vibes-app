@@ -22,7 +22,7 @@ export default function ExpoGoPlaceholder({
       </Text>
       <Pressable 
         onPress={onBack} 
-        style={{ marginTop: 8, backgroundColor: '#0891B2', borderRadius: 14, paddingHorizontal: 24, paddingVertical: 12 }}
+        style={{ marginTop: 8, backgroundColor: '#CCCCCC', borderRadius: 14, paddingHorizontal: 24, paddingVertical: 12 }}
       >
         <Text style={{ color: '#fff', fontWeight: '700' }}>Zurück</Text>
       </Pressable>

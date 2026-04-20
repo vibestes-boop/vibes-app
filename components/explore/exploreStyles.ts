@@ -1,10 +1,11 @@
 import { StyleSheet } from 'react-native';
 import { EXPLORE_ITEM_WIDTH, EXPLORE_ITEM_HEIGHT } from './exploreConstants';
+import type { ThemeColors } from '@/lib/theme';
 
-export const exploreStyles = StyleSheet.create({
+export const getExploreStyles = (c: ThemeColors) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0A0A0A',
+    backgroundColor: c.bg.primary,
   },
 
   searchRow: {
@@ -18,8 +19,9 @@ export const exploreStyles = StyleSheet.create({
     flex: 1,
     borderRadius: 14,
     overflow: 'hidden',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1,
+    borderColor: c.border.default,
+    backgroundColor: c.bg.secondary,
   },
   searchBlur: {
     flexDirection: 'row',
@@ -31,23 +33,23 @@ export const exploreStyles = StyleSheet.create({
   searchInput: {
     flex: 1,
     fontSize: 15,
-    color: '#FFFFFF',
+    color: c.text.primary,
     fontWeight: '500',
   },
   filterBtn: {
     width: 44,
     height: 44,
     borderRadius: 13,
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: c.bg.elevated,
+    borderWidth: 1,
+    borderColor: c.border.default,
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
   },
   filterBtnActive: {
-    backgroundColor: 'rgba(34,211,238,0.12)',
-    borderColor: 'rgba(34,211,238,0.35)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255,255,255,0.25)',
   },
   filterDot: {
     position: 'absolute',
@@ -56,30 +58,32 @@ export const exploreStyles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 3.5,
-    backgroundColor: '#22D3EE',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
-    borderColor: '#0A0A0A',
+    borderColor: c.bg.primary,
   },
 
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   filterSheet: {
-    backgroundColor: '#111118',
+    backgroundColor: c.bg.secondary,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
     paddingHorizontal: 20,
     paddingBottom: 40,
     paddingTop: 12,
+    borderTopWidth: 1,
+    borderColor: c.border.default,
   },
   sheetHandle: {
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: c.border.strong,
     alignSelf: 'center',
     marginBottom: 18,
   },
-  sheetTitle: { color: '#fff', fontSize: 18, fontWeight: '800', marginBottom: 4 },
-  sheetSub: { color: 'rgba(255,255,255,0.4)', fontSize: 13, marginBottom: 20 },
+  sheetTitle: { color: c.text.primary, fontSize: 18, fontWeight: '800', marginBottom: 4 },
+  sheetSub: { color: c.text.muted, fontSize: 13, marginBottom: 20 },
   optionsList: { gap: 8 },
   optionRow: {
     flexDirection: 'row',
@@ -88,32 +92,29 @@ export const exploreStyles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 14,
     borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: c.bg.elevated,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: c.border.subtle,
   },
   optionRowActive: {
-    backgroundColor: 'rgba(34,211,238,0.1)',
-    borderColor: 'rgba(34,211,238,0.3)',
+    backgroundColor: 'rgba(29,185,84,0.08)',
+    borderColor: 'rgba(255,255,255,0.18)',
   },
   optionIconWrap: {
     width: 36,
     height: 36,
     borderRadius: 10,
-    backgroundColor: 'rgba(255,255,255,0.07)',
+    backgroundColor: c.bg.subtle,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  optionIconWrapActive: { backgroundColor: 'rgba(34,211,238,0.25)' },
+  optionIconWrapActive: { backgroundColor: 'rgba(255,255,255,0.12)' },
   optionText: { flex: 1 },
-  optionLabel: { color: 'rgba(255,255,255,0.6)', fontSize: 15, fontWeight: '600' },
-  optionLabelActive: { color: '#fff' },
-  optionSub: { color: 'rgba(255,255,255,0.3)', fontSize: 12, marginTop: 2 },
+  optionLabel: { color: c.text.secondary, fontSize: 15, fontWeight: '600' },
+  optionLabelActive: { color: c.text.primary },
+  optionSub: { color: c.text.muted, fontSize: 12, marginTop: 2 },
 
-  tagScroll: {
-    maxHeight: 44,
-    marginBottom: 8,
-  },
+  tagScroll: { maxHeight: 44, marginBottom: 8 },
   tagScrollContent: {
     paddingHorizontal: 16,
     gap: 8,
@@ -124,131 +125,68 @@ export const exploreStyles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.07)',
+    backgroundColor: c.bg.elevated,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: c.border.default,
   },
   tagChipActive: {
-    backgroundColor: '#0891B2',
-    borderColor: '#22D3EE',
+    backgroundColor: '#CCCCCC',
+    borderColor: '#FFFFFF',
   },
   tagChipText: {
     fontSize: 13,
     fontWeight: '600',
-    color: 'rgba(255,255,255,0.5)',
+    color: c.text.muted,
   },
-  tagChipTextActive: {
-    color: '#FFFFFF',
-  },
+  tagChipTextActive: { color: '#FFFFFF' },
 
-  usersSection: {
-    paddingHorizontal: 16,
-    marginBottom: 4,
-  },
+  usersSection: { paddingHorizontal: 16, marginBottom: 4 },
   sectionLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: 'rgba(255,255,255,0.4)',
+    color: c.text.muted,
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: 8,
   },
   sectionDivider: {
     height: 1,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: c.border.subtle,
     marginTop: 8,
     marginBottom: 8,
   },
-  userRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    gap: 12,
-  },
-  userAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-  },
-  userAvatarFallback: {
-    backgroundColor: 'rgba(34,211,238,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  userAvatarText: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#22D3EE',
-  },
-  userInfo: {
-    flex: 1,
-  },
-  userName: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  userBio: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.4)',
-    marginTop: 2,
-  },
+  userRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, gap: 12 },
+  userAvatar: { width: 44, height: 44, borderRadius: 22 },
+  userAvatarFallback: { backgroundColor: 'rgba(255,255,255,0.10)', alignItems: 'center', justifyContent: 'center' },
+  userAvatarText: { fontSize: 18, fontWeight: '700', color: '#FFFFFF' },
+  userInfo: { flex: 1 },
+  userName: { fontSize: 15, fontWeight: '700', color: c.text.primary },
+  userBio: { fontSize: 12, color: c.text.muted, marginTop: 2 },
 
-  grid: {
-    paddingBottom: 100,
-  },
-  gridItem: {
-    width: EXPLORE_ITEM_WIDTH,
-    height: EXPLORE_ITEM_HEIGHT,
-    marginRight: 1,
-  },
-  gridImage: {
-    width: '100%',
-    height: '100%',
-  },
-  gridPlaceholder: {
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  placeholderText: {
-    fontSize: 28,
-    fontWeight: '700',
-    color: 'rgba(255,255,255,0.2)',
-  },
-  gridVideoOverlay: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-  },
+  grid: { paddingBottom: 100 },
+  gridItem: { width: EXPLORE_ITEM_WIDTH, height: EXPLORE_ITEM_HEIGHT, marginRight: 1 },
+  gridImage: { width: '100%', height: '100%' },
+  gridPlaceholder: { backgroundColor: c.bg.elevated, alignItems: 'center', justifyContent: 'center' },
+  placeholderText: { fontSize: 28, fontWeight: '700', color: c.text.muted },
+  gridVideoOverlay: { position: 'absolute', top: 6, right: 6 },
   gridPlayBtn: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 22, height: 22, borderRadius: 11,
     backgroundColor: 'rgba(0,0,0,0.55)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center',
   },
 
-  loadingWrap: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  emptyWrap: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    paddingHorizontal: 32,
-  },
-  emptyEmoji: {
-    fontSize: 48,
-  },
-  emptyText: {
-    fontSize: 15,
-    color: 'rgba(255,255,255,0.4)',
-    textAlign: 'center',
-    lineHeight: 22,
-  },
+  loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, paddingHorizontal: 32 },
+  emptyEmoji: { fontSize: 48 },
+  emptyText: { fontSize: 15, color: c.text.muted, textAlign: 'center', lineHeight: 22 },
+});
+
+/** @deprecated use getExploreStyles(colors) */
+export const exploreStyles = getExploreStyles({
+  bg: { primary: '#050508', secondary: '#0D0D0D', elevated: '#1A1A1A', input: '#111', subtle: 'rgba(255,255,255,0.04)' },
+  text: { primary: '#FFFFFF', secondary: '#9CA3AF', muted: '#4B5563', inverse: '#FFFFFF' },
+  accent: { primary: '#FFFFFF', secondary: '#A855F7', danger: '#EF4444', success: '#22C55E', warning: '#F59E0B', gold: '#FBBF24' },
+  border: { default: 'rgba(255,255,255,0.08)', subtle: 'rgba(255,255,255,0.04)', strong: 'rgba(255,255,255,0.18)' },
+  icon: { default: '#9CA3AF', muted: '#4B5563', active: '#FFFFFF', inactive: '#6B7280' },
+  tabBar: { bg: '#050508', border: 'rgba(255,255,255,0.06)', active: '#FFFFFF', inactive: '#6B7280' },
 });

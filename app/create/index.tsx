@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { useModerateImage } from '@/lib/useModerate';
 import {
   View,
   Text,
@@ -50,7 +51,7 @@ const Skia        = _resolveSkia('Skia')         as any;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const useImage: (uri: string | null) => any = _resolveSkia('useImage') ?? (() => null);
 const SKIA_READY = !!(Canvas && SkImg && Skia);
-console.log('[Skia] ready:', SKIA_READY, '| Canvas:', !!Canvas, '| Skia:', !!Skia);
+__DEV__ && console.log('[Skia] ready:', SKIA_READY, '| Canvas:', !!Canvas, '| Skia:', !!Skia);
 
 import { supabase } from '@/lib/supabase';
 import { uploadPostMedia, generateAndUploadThumbnail } from '@/lib/uploadMedia';
@@ -58,17 +59,22 @@ import { useAuthStore } from '@/lib/authStore';
 import { useGuildInfo } from '@/lib/usePosts';
 import { useQueryClient } from '@tanstack/react-query';
 import { useDrafts } from '@/lib/useDrafts';
+import { usePostDraftsCloud } from '@/lib/usePostDraftsCloud';
+import { useScheduledPosts } from '@/lib/useScheduledPosts';
 import {
   Music2, X, ChevronRight,
   Lock, Users, Globe, MessageCircle, Download, Repeat2,
   CheckCircle, ArrowRight, Settings2, Type, Smile, Sliders,
   FlipHorizontal, Scissors, Pencil, RotateCcw,
+  Clock as ClockIcon, FileText as FileTextIcon,
+  ChevronUp, ChevronDown,
 } from 'lucide-react-native';
 import type { MusicTrack } from '@/lib/useMusicPicker';
 import { MUSIC_LIBRARY } from '@/lib/useMusicPicker';
 import { MusicPickerSheet } from '@/components/camera/MusicPickerSheet';
 import { CreateProgressBar } from '@/components/create';
 import type { PostSettingsState } from '@/components/create';
+import { useWomenOnly } from '@/lib/useWomenOnly';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { getThumbnailAsync } from 'expo-video-thumbnails';
 import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -1237,7 +1243,7 @@ const oi = StyleSheet.create({
 });
 
 // ─── Konfetti ───────────────────────────────────────────────────────────────
-const CONFETTI_COLORS = ['#22D3EE','#A855F7','#F472B6','#FB923C','#34D399','#FBBF24','#60A5FA','#F87171'];
+const CONFETTI_COLORS = ['#FFFFFF','#A855F7','#F472B6','#FB923C','#34D399','#FBBF24','#60A5FA','#F87171'];
 function ConfettiDot({ color, angle, delay }: { color: string; angle: number; delay: number }) {
   const tx = useSharedValue(0), ty = useSharedValue(0);
   const opacity = useSharedValue(0), scale = useSharedValue(0);
@@ -1276,7 +1282,7 @@ function PostSuccessOverlay({ visible, onDone }: { visible: boolean; onDone: () 
           {CONFETTI_COLORS.map((c, i) => <ConfettiDot key={i} color={c} angle={(i/CONFETTI_COLORS.length)*360} delay={i*40} />)}
         </View>
         <Animated.View style={checkStyle}>
-          <CheckCircle size={88} color="#22D3EE" strokeWidth={1.5} fill="rgba(34,211,238,0.15)" />
+          <CheckCircle size={88} color="#FFFFFF" strokeWidth={1.5} fill="rgba(255,255,255,0.10)" />
         </Animated.View>
         <Animated.View style={textStyle}>
           <Text style={suc.title}>Vibe ist live! 🎉</Text>
@@ -1298,12 +1304,18 @@ const TAG_OPTIONS = ['#vibes','#music','#chill','#art','#life','#travel','#food'
 function DetailsSheet({
   visible, onClose, caption, onCaption, selectedTags, onToggleTag,
   settings, onSettings, onPost, uploading,
+  onSchedule, onSaveDraft, busyDraft, busySchedule,
 }: {
   visible: boolean; onClose: () => void;
   caption: string; onCaption: (s: string) => void;
   selectedTags: string[]; onToggleTag: (t: string) => void;
   settings: PostSettingsState; onSettings: (s: PostSettingsState) => void;
   onPost: () => void; uploading: boolean;
+  /** v1.20 — optionale Publish-Routen */
+  onSchedule?: () => void;
+  onSaveDraft?: () => void;
+  busyDraft?: boolean;
+  busySchedule?: boolean;
 }) {
   const insets = useSafeAreaInsets();
   const privacyOptions = [
@@ -1392,6 +1404,36 @@ function DetailsSheet({
             <Text style={ds.postBtnText}>{uploading ? 'Wird hochgeladen…' : 'Jetzt posten'}</Text>
             <ArrowRight size={18} color="#000" strokeWidth={2.5} />
           </Pressable>
+
+          {/* v1.20 — Planen + Entwurf speichern */}
+          {(onSchedule || onSaveDraft) && (
+            <View style={ds.secondaryActions}>
+              {onSchedule && (
+                <Pressable
+                  onPress={onSchedule}
+                  disabled={uploading || busySchedule}
+                  style={({ pressed }) => [ds.secondaryBtn, pressed && { opacity: 0.85 }, (uploading || busySchedule) && { opacity: 0.5 }]}
+                >
+                  <ClockIcon size={14} color="#fff" strokeWidth={2} />
+                  <Text style={ds.secondaryBtnText}>
+                    {busySchedule ? 'Plane…' : 'Planen'}
+                  </Text>
+                </Pressable>
+              )}
+              {onSaveDraft && (
+                <Pressable
+                  onPress={onSaveDraft}
+                  disabled={uploading || busyDraft}
+                  style={({ pressed }) => [ds.secondaryBtn, pressed && { opacity: 0.85 }, (uploading || busyDraft) && { opacity: 0.5 }]}
+                >
+                  <FileTextIcon size={14} color="#fff" strokeWidth={2} />
+                  <Text style={ds.secondaryBtnText}>
+                    {busyDraft ? 'Speichert…' : 'Entwurf'}
+                  </Text>
+                </Pressable>
+              )}
+            </View>
+          )}
         </View>
       </KeyboardAvoidingView>
     </Modal>
@@ -1422,6 +1464,199 @@ const ds = StyleSheet.create({
   toggleTextActive: { color: '#fff' },
   postBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#fff', marginHorizontal: 16, paddingVertical: 16, borderRadius: 16 },
   postBtnText: { color: '#000', fontSize: 16, fontWeight: '800' },
+
+  // v1.20 — Sekundäre Aktionen (Planen + Entwurf)
+  secondaryActions: { flexDirection: 'row', gap: 10, marginHorizontal: 16, marginTop: 10 },
+  secondaryBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
+    paddingVertical: 13, borderRadius: 14,
+  },
+  secondaryBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+});
+
+// ─── v1.20 — SchedulerModal (Planen) ─────────────────────────────────────────
+
+function schedPresets(): { label: string; at: Date }[] {
+  const now = new Date();
+  const opts: { label: string; at: Date }[] = [];
+  opts.push({ label: 'in 1 h', at: new Date(now.getTime() + 60 * 60 * 1000) });
+  opts.push({ label: 'in 3 h', at: new Date(now.getTime() + 3 * 60 * 60 * 1000) });
+  const today20 = new Date(now); today20.setHours(20, 0, 0, 0);
+  if (today20.getTime() > now.getTime() + 60_000) opts.push({ label: 'Heute 20:00', at: today20 });
+  const tom = new Date(now); tom.setDate(tom.getDate() + 1);
+  const t9  = new Date(tom); t9.setHours(9, 0, 0, 0);
+  const t14 = new Date(tom); t14.setHours(14, 0, 0, 0);
+  const t20 = new Date(tom); t20.setHours(20, 0, 0, 0);
+  opts.push({ label: 'Morgen 09:00', at: t9 });
+  opts.push({ label: 'Morgen 14:00', at: t14 });
+  opts.push({ label: 'Morgen 20:00', at: t20 });
+  const next7 = new Date(now); next7.setDate(next7.getDate() + 7); next7.setHours(9, 0, 0, 0);
+  opts.push({ label: 'In 1 Woche', at: next7 });
+  return opts;
+}
+
+function fmtSchedLabel(d: Date): string {
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const yy = d.getFullYear();
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mi = String(d.getMinutes()).padStart(2, '0');
+  return `${dd}.${mm}.${yy} · ${hh}:${mi}`;
+}
+
+function SchedulerModal({
+  visible, onClose, onSave, isSaving,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onSave: (d: Date) => void;
+  isSaving: boolean;
+}) {
+  const insets = useSafeAreaInsets();
+  const [date, setDate] = useState<Date>(() => new Date(Date.now() + 3 * 3600 * 1000));
+
+  useEffect(() => {
+    if (visible) setDate(new Date(Date.now() + 3 * 3600 * 1000));
+  }, [visible]);
+
+  const minMs = Date.now() + 60_000;
+  const maxMs = Date.now() + 60 * 24 * 3600 * 1000;
+  const clamp = (d: Date) => new Date(Math.max(minMs, Math.min(maxMs, d.getTime())));
+  const bumpDays    = (n: number) => setDate((d) => clamp(new Date(d.getTime() + n * 86_400_000)));
+  const bumpHours   = (n: number) => setDate((d) => clamp(new Date(d.getTime() + n * 3_600_000)));
+  const bumpMinutes = (n: number) => setDate((d) => clamp(new Date(d.getTime() + n * 60_000)));
+
+  const valid = date.getTime() >= minMs && date.getTime() <= maxMs;
+
+  if (!visible) return null;
+
+  return (
+    <Modal transparent animationType="slide" visible={visible} statusBarTranslucent onRequestClose={onClose}>
+      <Pressable style={sm.overlay} onPress={onClose} />
+      <View style={[sm.sheetWrap, { paddingBottom: insets.bottom + 16 }]}>
+        <View style={sm.sheet}>
+          <View style={sm.handle} />
+          <Text style={sm.heading}>Wann veröffentlichen?</Text>
+          <Text style={sm.sub}>Mindestens 1 Minute, höchstens 60 Tage in der Zukunft.</Text>
+
+          {/* Groß angezeigtes Datum */}
+          <View style={sm.dateCard}>
+            <Text style={sm.dateBig}>{fmtSchedLabel(date)}</Text>
+          </View>
+
+          {/* Presets */}
+          <Text style={sm.sectionLabel}>SCHNELLAUSWAHL</Text>
+          <View style={sm.presetRow}>
+            {schedPresets().map((p) => (
+              <Pressable
+                key={p.label}
+                onPress={() => setDate(clamp(p.at))}
+                style={sm.preset}
+              >
+                <Text style={sm.presetText}>{p.label}</Text>
+              </Pressable>
+            ))}
+          </View>
+
+          {/* Feinsteuerung */}
+          <Text style={sm.sectionLabel}>FEINSTEUERUNG</Text>
+          <View style={sm.stepperRow}>
+            <SchedStepper label="Tag −/+"  onDec={() => bumpDays(-1)}    onInc={() => bumpDays(1)} />
+            <SchedStepper label="Std −/+" onDec={() => bumpHours(-1)}   onInc={() => bumpHours(1)} />
+            <SchedStepper label="Min −/+" onDec={() => bumpMinutes(-15)} onInc={() => bumpMinutes(15)} />
+          </View>
+
+          <View style={sm.actions}>
+            <Pressable
+              onPress={onClose}
+              style={sm.btnGhost}
+            >
+              <Text style={sm.btnGhostText}>Abbrechen</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => onSave(date)}
+              disabled={isSaving || !valid}
+              style={[sm.btnPrimary, (isSaving || !valid) && { opacity: 0.5 }]}
+            >
+              <Text style={sm.btnPrimaryText}>
+                {isSaving ? 'Plant…' : 'Planen'}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function SchedStepper({ label, onDec, onInc }: { label: string; onDec: () => void; onInc: () => void }) {
+  return (
+    <View style={sm.stepper}>
+      <Pressable onPress={onDec} hitSlop={10} style={sm.stepperBtn}>
+        <ChevronDown size={14} color="#fff" strokeWidth={2.5} />
+      </Pressable>
+      <Text style={sm.stepperLabel}>{label}</Text>
+      <Pressable onPress={onInc} hitSlop={10} style={sm.stepperBtn}>
+        <ChevronUp size={14} color="#fff" strokeWidth={2.5} />
+      </Pressable>
+    </View>
+  );
+}
+
+const sm = StyleSheet.create({
+  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
+  sheetWrap: { flex: 1, justifyContent: 'flex-end' },
+  sheet: {
+    backgroundColor: '#0e0e18',
+    borderTopLeftRadius: 22, borderTopRightRadius: 22,
+    paddingTop: 10, paddingHorizontal: 16, paddingBottom: 16,
+  },
+  handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)', alignSelf: 'center', marginBottom: 14 },
+  heading: { color: '#fff', fontSize: 17, fontWeight: '800', textAlign: 'center' },
+  sub: { color: 'rgba(255,255,255,0.4)', fontSize: 12, textAlign: 'center', marginTop: 4 },
+
+  dateCard: {
+    borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+    padding: 14, marginTop: 12, alignItems: 'center',
+  },
+  dateBig: { color: '#fff', fontSize: 22, fontWeight: '900', letterSpacing: -0.6 },
+
+  sectionLabel: { color: 'rgba(255,255,255,0.35)', fontSize: 10, fontWeight: '700', letterSpacing: 0.8, marginTop: 14, marginBottom: 8 },
+
+  presetRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  preset: {
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
+    paddingHorizontal: 12, paddingVertical: 7,
+  },
+  presetText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+
+  stepperRow: { flexDirection: 'row', gap: 8 },
+  stepper: {
+    flex: 1, borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center', paddingVertical: 8, gap: 4,
+  },
+  stepperBtn: { width: 28, height: 28, alignItems: 'center', justifyContent: 'center' },
+  stepperLabel: { color: '#fff', fontSize: 11, fontWeight: '700' },
+
+  actions: { flexDirection: 'row', gap: 10, marginTop: 16 },
+  btnGhost: {
+    flex: 1, borderRadius: 12, borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    paddingVertical: 13, alignItems: 'center',
+  },
+  btnGhostText: { color: '#fff', fontSize: 14, fontWeight: '800' },
+  btnPrimary: {
+    flex: 1, borderRadius: 12, backgroundColor: '#fff',
+    paddingVertical: 13, alignItems: 'center',
+  },
+  btnPrimaryText: { color: '#000', fontSize: 14, fontWeight: '800' },
 });
 
 // ─── Haupt-Screen ────────────────────────────────────────────────────────────
@@ -1431,13 +1666,19 @@ export default function CreatePostScreen() {
   const { profile } = useAuthStore();
   const queryClient = useQueryClient();
   const { saveDraft } = useDrafts();
+  const { moderate } = useModerateImage();
   const { data: guildInfo } = useGuildInfo(profile?.guild_id ?? null);
+  // v1.20 — Cloud-Drafts + Scheduled-Posts
+  const { saveDraft: saveCloudDraft, fetchDraft, deleteDraft: deleteCloudDraft } = usePostDraftsCloud();
+  const { schedulePost } = useScheduledPosts();
 
   const { mediaUri, mediaType: mediaTypeParam, caption: captionParam,
-          audioUrl, audioTitle, audioVolume: audioVolumeParam } =
+          audioUrl, audioTitle, audioVolume: audioVolumeParam,
+          draftId } =
     useLocalSearchParams<{
       mediaUri?: string; mediaType?: string; caption?: string;
       audioUrl?: string; audioTitle?: string; audioVolume?: string;
+      draftId?: string;
     }>();
 
   // Media
@@ -1451,8 +1692,9 @@ export default function CreatePostScreen() {
   // Caption & Tags (bearbeitet im DetailsSheet)
   const [caption, setCaption]           = useState(captionParam ?? '');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const { canAccessWomenOnly } = useWomenOnly();
   const [postSettings, setPostSettings] = useState<PostSettingsState>({
-    privacy: 'public', allowComments: true, allowDownload: true, allowDuet: true,
+    privacy: 'public', allowComments: true, allowDownload: true, allowDuet: true, womenOnly: false,
   });
 
   // Upload
@@ -1460,6 +1702,14 @@ export default function CreatePostScreen() {
   const [uploadPct, setUploadPct]   = useState(0);
   const [showSuccess, setShowSuccess] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+
+  // v1.20 — Cloud-Draft + Scheduled-Post Cache (vermeidet Re-Upload)
+  const [activeCloudDraftId, setActiveCloudDraftId] = useState<string | null>(null);
+  const uploadedMediaRef     = useRef<{ url: string | null; thumbnailUrl: string | null }>({ url: null, thumbnailUrl: null });
+  const [showScheduler, setShowScheduler]    = useState(false);
+  const [schedulingBusy, setSchedulingBusy]  = useState(false);
+  const [draftSavingBusy, setDraftSavingBusy] = useState(false);
+  const hydratedRef = useRef(false);
 
   // Musik
   const initialAudioUrl    = audioUrl && audioUrl.startsWith('http') ? audioUrl : null;
@@ -1496,6 +1746,73 @@ export default function CreatePostScreen() {
   const videoPlayer = useVideoPlayer(mediaTypeParam === 'video' ? (mediaUri ?? '') : '', (p) => {
     p.loop = true; p.play();
   });
+
+  // v1.20 — Hydrate von Cloud-Draft (?draftId=…)
+  useEffect(() => {
+    if (hydratedRef.current) return;
+    if (!draftId) return;
+    (async () => {
+      const d = await fetchDraft(draftId);
+      if (!d) return;
+      hydratedRef.current = true;
+      setActiveCloudDraftId(d.id);
+      setCaption(d.caption ?? '');
+      setSelectedTags(d.tags);
+      if (d.mediaUrl) {
+        // Re-use existing R2-URL als Initial-Image (Resume-Editing via Thumbnail-Preview)
+        setImage({
+          uri: d.mediaUrl,
+          type: d.mediaType === 'video' ? 'video' : 'image',
+          width: 0, height: 0, assetId: null, base64: null, duration: null, exif: null,
+          fileName: null, fileSize: undefined,
+          mimeType: d.mediaType === 'video' ? 'video/mp4' : 'image/jpeg',
+        });
+        uploadedMediaRef.current = { url: d.mediaUrl, thumbnailUrl: d.thumbnailUrl };
+      }
+      setPostSettings((prev) => ({
+        privacy:        d.settings.privacy        ?? prev.privacy,
+        allowComments:  d.settings.allowComments  ?? prev.allowComments,
+        allowDownload:  d.settings.allowDownload  ?? prev.allowDownload,
+        allowDuet:      d.settings.allowDuet      ?? prev.allowDuet,
+        womenOnly:      d.settings.womenOnly      ?? prev.womenOnly,
+      }));
+      const resumedTrack = d.settings.audioUrl
+        ? MUSIC_LIBRARY.find((t) => t.url === d.settings.audioUrl) ?? null
+        : null;
+      if (resumedTrack) setCurrentAudioTrack(resumedTrack);
+      if (typeof d.settings.audioVolume === 'number') setCurrentAudioVolume(d.settings.audioVolume);
+    })();
+  }, [draftId, fetchDraft]);
+
+  /** Sorgt dafür, dass das lokale Image zu R2 hochgeladen ist (Cache). Nutzt ggf. bestehende URL. */
+  const ensureMediaUploaded = useCallback(async (signal: AbortSignal | undefined): Promise<{
+    mediaUrl:     string | null;
+    thumbnailUrl: string | null;
+    mediaType:    'image' | 'video' | null;
+  }> => {
+    if (!profile) throw new Error('Kein Profil');
+    if (!image)  return { mediaUrl: null, thumbnailUrl: null, mediaType: null };
+    const mt: 'image' | 'video' = image.type === 'video' ? 'video' : 'image';
+    // Bereits hochgeladen? (z.B. aus Draft reaktiviert)
+    if (image.uri.startsWith('http') && uploadedMediaRef.current.url === image.uri) {
+      return {
+        mediaUrl:     uploadedMediaRef.current.url,
+        thumbnailUrl: uploadedMediaRef.current.thumbnailUrl,
+        mediaType:    mt,
+      };
+    }
+    const isVideo = mt === 'video';
+    setUploading(true); setUploadPct(0);
+    try {
+      const { url } = await uploadPostMedia(profile.id, image.uri, image.mimeType, (pct) => setUploadPct(pct), signal);
+      let thumbnailUrl: string | null = null;
+      if (isVideo) thumbnailUrl = await generateAndUploadThumbnail(profile.id, image.uri, signal);
+      uploadedMediaRef.current = { url, thumbnailUrl };
+      return { mediaUrl: url, thumbnailUrl, mediaType: mt };
+    } finally {
+      setUploading(false); setUploadPct(0);
+    }
+  }, [profile, image]);
 
   const addTextOverlay = (overlay: Omit<TextOverlay,'id'|'x'|'y'>) => {
     setTextOverlays(prev => [...prev, {
@@ -1556,21 +1873,14 @@ export default function CreatePostScreen() {
     if (!image && !caption.trim()) { Alert.alert('Fehler', 'Füge ein Bild oder eine Caption hinzu.'); return; }
     const controller = new AbortController();
     abortRef.current = controller;
-    setUploading(true); setUploadPct(0);
     try {
-      let mediaUrl: string | null = null, thumbnailUrl: string | null = null;
-      const isVideo = image?.type === 'video';
-      if (image) {
-        const { url } = await uploadPostMedia(profile.id, image.uri, image.mimeType, (pct)=>setUploadPct(pct), controller.signal);
-        mediaUrl = url;
-        if (isVideo) thumbnailUrl = await generateAndUploadThumbnail(profile.id, image.uri, controller.signal);
-      }
+      const { mediaUrl, thumbnailUrl, mediaType } = await ensureMediaUploaded(controller.signal);
       if (controller.signal.aborted) return;
-      const { error } = await supabase.from('posts').insert({
+      const { data: insertedRows, error } = await supabase.from('posts').insert({
         author_id:      profile.id,
         caption:        caption.trim() || null,
         media_url:      mediaUrl,
-        media_type:     isVideo ? 'video' : 'image',
+        media_type:     mediaType,
         thumbnail_url:  thumbnailUrl,
         tags:           selectedTags.map(t=>t.toLowerCase()),
         is_guild_post:  false,
@@ -1581,8 +1891,17 @@ export default function CreatePostScreen() {
         allow_comments: postSettings.allowComments,
         allow_download: postSettings.allowDownload,
         allow_duet:     postSettings.allowDuet,
-      });
+        women_only:     postSettings.womenOnly,
+      }).select('id').single();
       if (error) throw error;
+      // Fire-and-forget NSFW check (blockiert User-Flow nicht)
+      if (mediaUrl && mediaType === 'image' && insertedRows?.id) {
+        moderate(insertedRows.id, mediaUrl);
+      }
+      // v1.20 — wenn Post aus Cloud-Draft kam, Draft löschen (best-effort)
+      if (activeCloudDraftId) {
+        try { await deleteCloudDraft(activeCloudDraftId); } catch {}
+      }
       await queryClient.invalidateQueries({ queryKey: ['vibe-feed'] });
       await queryClient.invalidateQueries({ queryKey: ['guild-feed'] });
       await queryClient.invalidateQueries({ queryKey: ['user-posts', profile.id] });
@@ -1591,6 +1910,95 @@ export default function CreatePostScreen() {
       if (err instanceof Error && err.name === 'AbortError') return;
       Alert.alert('Fehler', err instanceof Error ? err.message : 'Upload fehlgeschlagen.');
     } finally {
+      setUploading(false); setUploadPct(0);
+    }
+  };
+
+  // v1.20 — Cloud-Draft speichern (upsert, Media wird einmalig nach R2 hochgeladen)
+  const handleSaveCloudDraft = async () => {
+    if (!profile) return;
+    if (!image && !caption.trim() && selectedTags.length === 0) {
+      Alert.alert('Leer', 'Füge mindestens Text, Tags oder Medium hinzu.');
+      return;
+    }
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setDraftSavingBusy(true);
+    try {
+      const { mediaUrl, thumbnailUrl, mediaType } = await ensureMediaUploaded(controller.signal);
+      if (controller.signal.aborted) return;
+      const id = await saveCloudDraft({
+        id:            activeCloudDraftId ?? undefined,
+        caption:       caption.trim() || null,
+        tags:          selectedTags.map((t) => t.toLowerCase()),
+        mediaType,
+        mediaUrl,
+        thumbnailUrl,
+        settings: {
+          privacy:       postSettings.privacy,
+          allowComments: postSettings.allowComments,
+          allowDownload: postSettings.allowDownload,
+          allowDuet:     postSettings.allowDuet,
+          womenOnly:     postSettings.womenOnly,
+          audioUrl:      currentAudioTrack?.url     ?? null,
+          audioVolume:   currentAudioTrack          ? currentAudioVolume : null,
+        },
+      });
+      setActiveCloudDraftId(id);
+      setShowDetails(false);
+      Alert.alert('Gespeichert', 'Dein Entwurf ist in der Cloud verfügbar.', [
+        { text: 'OK', onPress: () => router.back() },
+      ]);
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'AbortError') return;
+      Alert.alert('Fehler', err instanceof Error ? err.message : 'Entwurf konnte nicht gespeichert werden.');
+    } finally {
+      setDraftSavingBusy(false);
+      setUploading(false); setUploadPct(0);
+    }
+  };
+
+  // v1.20 — Post planen (Scheduler-Modal öffnet sich zuvor)
+  const handleSchedule = async (publishAt: Date) => {
+    if (!profile) return;
+    if (!image && !caption.trim()) { Alert.alert('Fehler', 'Füge ein Bild oder eine Caption hinzu.'); return; }
+    const controller = new AbortController();
+    abortRef.current = controller;
+    setSchedulingBusy(true);
+    try {
+      const { mediaUrl, thumbnailUrl, mediaType } = await ensureMediaUploaded(controller.signal);
+      if (controller.signal.aborted) return;
+      await schedulePost({
+        publishAt,
+        caption:        caption.trim() || null,
+        mediaUrl,
+        mediaType,
+        thumbnailUrl,
+        tags:           selectedTags.map((t) => t.toLowerCase()),
+        isGuildPost:    false,
+        guildId:        profile.guild_id ?? null,
+        audioUrl:       currentAudioTrack?.url ?? null,
+        audioVolume:    currentAudioTrack ? currentAudioVolume : null,
+        privacy:        postSettings.privacy,
+        allowComments:  postSettings.allowComments,
+        allowDownload:  postSettings.allowDownload,
+        allowDuet:      postSettings.allowDuet,
+        womenOnly:      postSettings.womenOnly,
+      });
+      // Draft aufräumen wenn der Post ursprünglich ein Cloud-Draft war
+      if (activeCloudDraftId) {
+        try { await deleteCloudDraft(activeCloudDraftId); } catch {}
+      }
+      setShowScheduler(false);
+      setShowDetails(false);
+      Alert.alert('Geplant!', 'Dein Post wird zum gewählten Zeitpunkt automatisch veröffentlicht.', [
+        { text: 'OK', onPress: () => router.back() },
+      ]);
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === 'AbortError') return;
+      Alert.alert('Fehler', err instanceof Error ? err.message : 'Planung fehlgeschlagen.');
+    } finally {
+      setSchedulingBusy(false);
       setUploading(false); setUploadPct(0);
     }
   };
@@ -1903,6 +2311,18 @@ export default function CreatePostScreen() {
         onSettings={setPostSettings}
         onPost={handlePost}
         uploading={uploading}
+        onSchedule={() => setShowScheduler(true)}
+        onSaveDraft={handleSaveCloudDraft}
+        busyDraft={draftSavingBusy}
+        busySchedule={schedulingBusy}
+      />
+
+      {/* v1.20 — Scheduler-Modal */}
+      <SchedulerModal
+        visible={showScheduler}
+        onClose={() => setShowScheduler(false)}
+        onSave={handleSchedule}
+        isSaving={schedulingBusy}
       />
 
       {/* ── Erfolgs-Overlay ─────────────────────────────────── */}

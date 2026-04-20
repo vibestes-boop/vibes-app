@@ -314,12 +314,11 @@ export function useMarkMessagesRead(conversationId: string | null) {
       )
     );
 
+    // Read-Receipts laufen seit 20260417_msg_update_hardening.sql über
+    // die RPC mark_messages_read — die strikte msg_update Policy
+    // (auth.uid() = sender_id) würde einen direkten UPDATE RLS-filtern.
     supabase
-      .from('messages')
-      .update({ read: true })
-      .eq('conversation_id', conversationId)
-      .neq('sender_id', userId)
-      .eq('read', false)
+      .rpc('mark_messages_read', { p_conversation_id: conversationId })
       .then(() => {
         queryClient.invalidateQueries({ queryKey: ['conversations', userId] });
       });

@@ -160,7 +160,7 @@ export function PostShareModal({
             id: 'follow',
             label: isFollowing ? 'Entfolgen' : 'Folgen',
             icon: isFollowing ? UserCheck : UserPlus,
-            color: '#22D3EE',
+            color: '#FFFFFF',
           },
         ]
       : []),

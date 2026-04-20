@@ -163,15 +163,15 @@ export function useAddComment(postId: string) {
       // ── Notification an Post-Owner ──────────────────────────────────────
       const { data: post } = await supabase
         .from('posts')
-        .select('user_id')
+        .select('author_id')   // posts-Tabelle hat author_id, nicht user_id
         .eq('id', postId)
         .single();
 
       const notificationsToInsert: object[] = [];
 
-      if (post?.user_id && post.user_id !== userId) {
+      if (post?.author_id && post.author_id !== userId) {
         notificationsToInsert.push({
-          user_id:      post.user_id,
+          recipient_id: post.author_id,
           sender_id:    userId,
           type:         'comment',
           post_id:      postId,
@@ -187,9 +187,9 @@ export function useAddComment(postId: string) {
           .select('user_id')
           .eq('id', parentId)
           .single();
-        if (parentComment?.user_id && parentComment.user_id !== userId && parentComment.user_id !== post?.user_id) {
+        if (parentComment?.user_id && parentComment.user_id !== userId && parentComment.user_id !== post?.author_id) {
           notificationsToInsert.push({
-            user_id:      parentComment.user_id,
+            recipient_id: parentComment.user_id,
             sender_id:    userId,
             type:         'comment_reply',
             post_id:      postId,
@@ -208,9 +208,9 @@ export function useAddComment(postId: string) {
           .in('username', mentions.slice(0, 5));
 
         const mentionNotifs = (mentionedUsers ?? [])
-          .filter((u) => u.id !== userId && u.id !== post?.user_id) // nicht doppelt benachrichtigen
+          .filter((u) => u.id !== userId && u.id !== post?.author_id) // nicht doppelt benachrichtigen
           .map((u) => ({
-            user_id:    u.id,
+            recipient_id: u.id,
             sender_id:  userId,
             type:       'mention' as const,
             post_id:    postId,

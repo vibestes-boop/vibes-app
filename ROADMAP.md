@@ -1,6 +1,4 @@
-![
-    
-](image.png)# Vibes — Roadmap
+![](image.png)# Vibes (Serlo) — Roadmap
 
 > Letztes Update: April 2026
 
@@ -47,16 +45,50 @@
   - [x] `20260405040000_thumbnail_url_in_feed.sql` → ✅ Success
   - [x] `20260407_virtual_gifts.sql` → ✅ bereits vorhanden (idempotent)
   - [x] `verify_functions.sql` → ✅ Daten gesund (Max Score 4.24, 24 Gaming-Logs)
-- [ ] EAS Production Build iOS v1.6.0 ← **nächster Schritt** (Build#195 bereits submitted)
-- [ ] App Store Submission
+- [x] **EAS Production Build iOS v1.6.0** → ✅ Build #199 eingereicht (07.04.2026)
+
+### 💰 Monetarisierung — Borz Coins IAP ✅ (09.04.2026)
+- [x] RevenueCat SDK integriert (`react-native-purchases`)
+- [x] RevenueCat Projekt konfiguriert (App Store Connect .p8 Key verknüpft)
+- [x] 4 Consumable IAP Produkte in App Store Connect erstellt:
+  - `com.vibesapp.vibes.coins_100` → 100 Borz Coins — 0,99€
+  - `com.vibesapp.vibes.coins_500` → 500 Borz Coins — 3,99€
+  - `com.vibesapp.vibes.coins_1200` → 1200 Borz Coins — 8,99€
+  - `com.vibesapp.vibes.coins_3000` → 3000 Borz Coins — 19,99€
+- [x] RevenueCat Offerings konfiguriert (`default` Offering mit 4 Packages)
+- [x] Borz Coin Icon erstellt (Wolf-Münze, Gold, Premium Design)
+- [x] **Coin Shop UI** — TikTok-inspirierter Shop (Grid, Selected State, Payment Methods)
+- [x] Navigation zu Coin Shop (aus Profil + aus Gift-Panel im Livestream)
+- [x] Supabase `coin_purchases` Tabelle (Idempotenz-Log für Käufe)
+- [x] `credit_coins` RPC (atomare UPSERT-Funktion für Wallet-Gutschrift)
+- [x] **RevenueCat Webhook** deployed (`revenuecat-webhook` Edge Function)
+  - RevenueCat → Supabase → `coins_wallets` automatisch nach Kauf
+  - Webhook "Serlo Coin Credits" → Active in RevenueCat
+- [x] Bundle ID auf `com.vibesapp.vibes` korrigiert (war fälschlicherweise `com.serloapp.serlo`)
+- [x] **EAS Build v1.8.0** (Build #203) gestartet — mit Borz Coin + Coin Shop
+
+### 📋 Noch offen für v1.8.0:
+- [ ] IAPs zur App-Version in App Store Connect hinzufügen
+- [ ] App Store Review einreichen
+- [ ] Bankverbindung in App Store Connect eintragen (für Auszahlungen)
 - [ ] TestFlight Beta für erste Nutzer
+
+### ✅ Branding-Fixes (11.04.2026)
+- [x] `"Vibes v..."` → `"Serlo v..."` in settings.tsx
+- [x] Privacy-URLs von `vibes-web-nine.vercel.app` → `serlo.social/privacy`
+- [x] Login-Screen Logo: `vibes` → `Serlo`
+- [x] Onboarding Welcome-Screen: `vibes` → `Serlo`  
+- [x] Kamera Top-Bar + Permission-Screen: `vibes`/`Vibes` → `Serlo`
+- [x] Feed-Screen: `"Willkommen bei Vibes"` → `"Willkommen bei Serlo"`
+- [x] Profil-Stats: `"Vibes"` → `"Posts"` (ProfileListHeader + UserProfileContent)
+- [x] Messages: Post-Badge `"Vibes"` → `"Serlo"`
 
 ---
 
 ## 📱 Phase 3 — Post-Launch Mobile (Q3 2026)
 
 - [ ] Android Support (EAS Build)
-- [ ] Duett / Stitch Feature (wie TikTok)
+- [x] Duett / Stitch Feature (wie TikTok) → ✅ **Live-Duet fertig** (v1.15.2)
 - [x] Sound-/Musik-Bibliothek für Videos → ✅ **fertig**
   - [x] `lib/useMusicPicker.ts` — 8 royaltyfreie Tracks + `useAudioPlayer` Hook
   - [x] `components/camera/MusicPickerSheet.tsx` — TikTok-Style Bottom Sheet
@@ -78,15 +110,43 @@
 - [x] Analytics Dashboard für Creator → ✅ **fertig**
 - [x] TikTok-Style Follow-Button im Feed → ✅ **fertig**
 - [x] Verification Badge System → ✅ **fertig**
-- [ ] Creator Monetarisierung (Badges, Tipps)
-- [ ] Erweiterte Live-Features (Co-Host, Gäste einladen)
+- [x] **Immersiver Create-Screen v2** → ✅ **fertig** (v1.6.0)
+  - [x] **Filter-System** — 22 ColorMatrix Presets, GPU Skia (Dev Build) + View-Overlay Fallback (Expo Go)
+  - [x] **SVG Draw-Tool** — react-native-svg, 10 Farben, 4 Strichstärken, Live-Rendering, Undo
+  - [x] **Premium Draw-Toolbar** — Top-Pill (Strichgröße visuell) + Bottom-Panel (Farbpalette mit aktiver Farb-Preview)
+  - [x] **Sticker-Overlays** — GIPHY-Suche, Pinch-to-Scale, Drag-to-Delete
+  - [x] **Text-Overlays** — Pinch-to-Scale, Drag, Löschen
+  - [x] **Trash-Zone** — präziser Hover-Detect, Haptic Feedback, Zoom-Animation
+  - [x] **Skia Dev-Build Fix** — EAS_BUILD=1 in development/simulator Profilen, skia-mock.js Stub für Expo Go
+  - [x] **Metro-Detection** — CI + EXPO_NO_DOTENV als robuste Build-Signale
+- [ ] **Light / Dark Mode** — Theme-System für die gesamte App (beide Modi, System-Präferenz + manueller Toggle in Einstellungen)
+- [ ] **Video-Filter für Aufnahme** — ColorMatrix auf Camera-Preview (VisionCamera Frame Processor)
+- [ ] **Schriften für Text-Overlays** — TikTok-Style Font-Picker (Bold, Neon, Handschrift etc.)
+- [x] **Erweiterte Live-Features — TikTok-parity Multi-Guest & Duet** → ✅ **fertig** (v1.15.2)
+  - [x] **Phase 1.1** — Runtime Layout-Switcher (Host kann Layout live ändern)
+  - [x] **Phase 1.2** — Host Mute Co-Host (Audio+Video separat via Edge Function)
+  - [x] **Phase 1.3** — Host Kick mit Reason + Block-Dauer (1h / 24h / permanent)
+  - [x] **Phase 1.4** — Konfigurierbare Battle-Dauer (3 / 5 / 10 min)
+  - [x] **Phase 2** — Co-Host Request Queue (FIFO, max 5, Dedup)
+  - [x] **Phase 3** — Multi-Guest bis 8 Co-Hosts (Grid 2×2 + 3×3, slot_index Auto-Vergabe)
+  - [x] **Phase 4** — Battle Polish (Victory-Animation + Force-End Button)
+  - [x] **Phase 5** — DB-Persistenz für Blocklist (`live_cohost_blocks` Tabelle, cross-session)
+  - [x] **Phase 5b** — Settings-Screen `/cohost-blocks` (Übersicht + Unblock)
+  - [x] **Phase 6** — Erweiterte Chat-Moderation (User-Timeouts + Slow-Mode bis 5 min)
 - [ ] Offline-Support (gecachte Posts lesbar ohne Internet)
 - [ ] A/B-Testing für Feed-Algorithmus
 - [ ] Echtes 60fps Live-Face-Tracking (`vision-camera-face-detector` Worklet-Plugin)
 
+### 💰 Monetarisierung v2 (Q3 2026)
+- [ ] Creator Monetarisierung — Diamonds → echtes Geld auszahlen
+- [ ] Auszahlungs-System (Supabase → Stripe → Creator-Bankkonto)
+- [ ] Borz Coins v2 — Lootboxen, saisonale Geschenke, limitierte Items
+- [ ] Abonnements (Creator-Badge, exklusive Inhalte)
+- [ ] Werbe-System (Promoted Posts)
+
 ---
 
-## 🖥️ Phase 4 — Vibes Web / Desktop (Q4 2026 / Q1 2027)
+## 🖥️ Phase 4 — Web / Desktop (Q4 2026 / Q1 2027)
 
 **Ziel:** Passive Content-Consumption auf Desktop, wie TikTok.com
 
@@ -96,7 +156,6 @@
 
 ### Technischer Plan:
 - **Framework:** Next.js (separates Repo) oder Expo Web aus bestehendem Code
-- **Tool für Skeleton Loading:** [Boneyard](https://github.com/0xGF/boneyard) — auto-generierte Skeletons aus dem echten DOM (open source, 2.4k ⭐)
 - **Layout-Anpassungen:** Vertical-Feed → horizontales Grid auf Desktop (wie TikTok.com)
 
 ### Feature-Scope Web:
@@ -119,8 +178,9 @@
 
 - Vibes API für Third-Party-Integrationen
 - Podcast / Audio-Only Mode
-- Virtuelle Gifts & Shop (v2 — Lootboxen, saisonale Items)
-- Verifizierungs-Badge System
+- Borz Coins Marktplatz (User kaufen/tauschen)
 - Kollaborative Playlists / Sammlungen
 - Vibes für Creators (separater Creator-Modus)
 - Skia RuntimeEffect Shader-Editor (In-App Filter selbst erstellen)
+- Challenges & Trending Sounds (wie TikTok Sound-Virality)
+- ~~Gruppen-Livestreams (mehrere Hosts gleichzeitig)~~ → ✅ fertig (Multi-Guest 2×2/3×3, v1.15.2)

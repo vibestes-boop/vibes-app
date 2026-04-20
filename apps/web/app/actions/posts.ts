@@ -1,0 +1,430 @@
+'use server';
+
+import { revalidatePath } from 'next/cache';
+import { createClient } from '@/lib/supabase/server';
+import {
+  getTrendingHashtagSuggestions,
+  getMentionSuggestions,
+  type MentionSuggestion,
+} from '@/lib/data/posts';
+
+// -----------------------------------------------------------------------------
+// Posts-Server-Actions — Create-/Publish-/Schedule-/Draft-Flows für `/create`.
+//
+// Design:
+//  1. Cross-Platform-Parität: Alle Mutationen schreiben in dieselben Tabellen
+//     und delegieren an die Native-RPCs (`schedule_post`, `upsert_post_draft`,
+//     `delete_post_draft`, `cancel_scheduled_post`, `reschedule_post`).
+//  2. Direkter Publish-Path (`publishPost`) schreibt mit RLS-Policy direkt in
+//     `posts` — kein Server-RPC nötig, Native macht's gleich.
+//  3. R2-Upload: client-side via `supabase.functions.invoke('r2-sign')`. Wir
+//     stellen hier nur einen Server-Side-Proxy zur Verfügung (requestR2UploadUrl)
+//     für Flows die Server-Action-Kontext brauchen (Rate-Limit-Tracking).
+//  4. Rate-Limits: 1 Publish/5s und 1 Schedule/2s pro User (defensiv, weil
+//     R2-Uploads teuer und `posts`-Inserts in `vibe_feed_views` propagieren).
+// -----------------------------------------------------------------------------
+
+export type ActionResult<T = null> = { ok: true; data: T } | { ok: false; error: string };
+
+const PUBLISH_COOLDOWN_MS = 5000;
+const SCHEDULE_COOLDOWN_MS = 2000;
+const DRAFT_COOLDOWN_MS = 500;
+const CAPTION_MAX_LEN = 2200;
+const TAG_MAX_COUNT = 10;
+const TAG_MAX_LEN = 64;
+
+const lastPublish = new Map<string, number>();
+const lastSchedule = new Map<string, number>();
+const lastDraft = new Map<string, number>();
+
+function checkCooldown(map: Map<string, number>, key: string, cooldownMs: number): boolean {
+  const now = Date.now();
+  const last = map.get(key) ?? 0;
+  if (now - last < cooldownMs) return false;
+  map.set(key, now);
+  if (map.size > 5000) {
+    const firstKey = map.keys().next().value;
+    if (firstKey !== undefined) map.delete(firstKey);
+  }
+  return true;
+}
+
+async function getViewerId(): Promise<string | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return user?.id ?? null;
+}
+
+function sanitizeTags(raw: string[] | undefined | null): string[] {
+  if (!raw || !Array.isArray(raw)) return [];
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const t of raw) {
+    if (typeof t !== 'string') continue;
+    const cleaned = t.trim().replace(/^#+/, '').toLowerCase().slice(0, TAG_MAX_LEN);
+    if (!cleaned) continue;
+    const withHash = `#${cleaned}`;
+    if (seen.has(withHash)) continue;
+    seen.add(withHash);
+    out.push(withHash);
+    if (out.length >= TAG_MAX_COUNT) break;
+  }
+  return out;
+}
+
+export type Privacy = 'public' | 'friends' | 'private';
+export type MediaType = 'image' | 'video';
+
+export interface PublishInput {
+  caption?: string | null;
+  tags?: string[];
+  mediaUrl: string;
+  mediaType: MediaType;
+  thumbnailUrl?: string | null;
+  privacy?: Privacy;
+  allowComments?: boolean;
+  allowDownload?: boolean;
+  allowDuet?: boolean;
+  womenOnly?: boolean;
+  audioUrl?: string | null;
+  audioVolume?: number | null;
+  coverTimeMs?: number | null;
+  isGuildPost?: boolean;
+  guildId?: string | null;
+  /** Wenn gesetzt → nach Publish wird der Draft gelöscht. */
+  draftId?: string | null;
+}
+
+// -----------------------------------------------------------------------------
+// publishPost — direkter Post in die `posts`-Tabelle. RLS prüft author_id.
+// -----------------------------------------------------------------------------
+
+export async function publishPost(
+  input: PublishInput,
+): Promise<ActionResult<{ id: string }>> {
+  const viewer = await getViewerId();
+  if (!viewer) return { ok: false, error: 'Bitte einloggen.' };
+
+  if (!checkCooldown(lastPublish, viewer, PUBLISH_COOLDOWN_MS)) {
+    return { ok: false, error: 'Kurz warten — Post läuft noch.' };
+  }
+
+  const caption = (input.caption ?? '').trim();
+  if (caption.length > CAPTION_MAX_LEN) {
+    return { ok: false, error: `Caption max ${CAPTION_MAX_LEN} Zeichen.` };
+  }
+  if (!input.mediaUrl) {
+    return { ok: false, error: 'Kein Medium angehängt.' };
+  }
+  if (input.mediaType !== 'image' && input.mediaType !== 'video') {
+    return { ok: false, error: 'Ungültiger Medientyp.' };
+  }
+
+  const supabase = await createClient();
+
+  const row = {
+    author_id: viewer,
+    caption: caption.length > 0 ? caption : null,
+    tags: sanitizeTags(input.tags),
+    media_url: input.mediaUrl,
+    media_type: input.mediaType,
+    thumbnail_url: input.thumbnailUrl ?? null,
+    audio_url: input.audioUrl ?? null,
+    audio_volume: typeof input.audioVolume === 'number' ? input.audioVolume : null,
+    privacy: input.privacy ?? 'public',
+    allow_comments: input.allowComments ?? true,
+    allow_download: input.allowDownload ?? false,
+    allow_duet: input.allowDuet ?? true,
+    women_only: input.womenOnly ?? false,
+    cover_time_ms: typeof input.coverTimeMs === 'number' ? input.coverTimeMs : null,
+    is_guild_post: input.isGuildPost ?? false,
+    guild_id: input.guildId ?? null,
+  };
+
+  const { data, error } = await supabase
+    .from('posts')
+    .insert(row)
+    .select('id')
+    .single();
+
+  if (error || !data) {
+    return { ok: false, error: error?.message ?? 'Post fehlgeschlagen.' };
+  }
+
+  // Draft nach erfolgreichem Publish entfernen (wenn aus Draft gepostet).
+  if (input.draftId) {
+    await supabase.rpc('delete_post_draft', { p_id: input.draftId });
+  }
+
+  revalidatePath('/');
+  revalidatePath('/explore');
+
+  return { ok: true, data: { id: data.id } };
+}
+
+// -----------------------------------------------------------------------------
+// schedulePost — delegiert an Native-RPC `schedule_post`. Akzeptiert UNIX-ms
+// oder ISO-String; RPC macht Server-Side-Validierung (≥1 Min, ≤60 Tage).
+// -----------------------------------------------------------------------------
+
+export interface ScheduleInput extends PublishInput {
+  publishAt: string; // ISO-String oder RFC-3339
+}
+
+export async function schedulePost(
+  input: ScheduleInput,
+): Promise<ActionResult<{ id: string }>> {
+  const viewer = await getViewerId();
+  if (!viewer) return { ok: false, error: 'Bitte einloggen.' };
+
+  if (!checkCooldown(lastSchedule, viewer, SCHEDULE_COOLDOWN_MS)) {
+    return { ok: false, error: 'Kurz warten.' };
+  }
+
+  const caption = (input.caption ?? '').trim();
+  if (caption.length > CAPTION_MAX_LEN) {
+    return { ok: false, error: `Caption max ${CAPTION_MAX_LEN} Zeichen.` };
+  }
+  if (!input.mediaUrl && !caption) {
+    return { ok: false, error: 'Weder Caption noch Medium.' };
+  }
+
+  const publishAtDate = new Date(input.publishAt);
+  if (Number.isNaN(publishAtDate.getTime())) {
+    return { ok: false, error: 'Ungültiger Zeitpunkt.' };
+  }
+
+  const supabase = await createClient();
+
+  const { data, error } = await supabase.rpc('schedule_post', {
+    p_publish_at: publishAtDate.toISOString(),
+    p_caption: caption.length > 0 ? caption : null,
+    p_media_url: input.mediaUrl ?? null,
+    p_media_type: input.mediaType ?? null,
+    p_thumbnail_url: input.thumbnailUrl ?? null,
+    p_tags: sanitizeTags(input.tags),
+    p_is_guild_post: input.isGuildPost ?? false,
+    p_guild_id: input.guildId ?? null,
+    p_audio_url: input.audioUrl ?? null,
+    p_audio_volume: typeof input.audioVolume === 'number' ? input.audioVolume : null,
+    p_privacy: input.privacy ?? 'public',
+    p_allow_comments: input.allowComments ?? true,
+    p_allow_download: input.allowDownload ?? false,
+    p_allow_duet: input.allowDuet ?? true,
+    p_women_only: input.womenOnly ?? false,
+    p_cover_time_ms: typeof input.coverTimeMs === 'number' ? input.coverTimeMs : null,
+  });
+
+  if (error || !data) {
+    return { ok: false, error: error?.message ?? 'Planen fehlgeschlagen.' };
+  }
+
+  // Draft nach Schedule entfernen (wenn aus Draft geplant).
+  if (input.draftId) {
+    await supabase.rpc('delete_post_draft', { p_id: input.draftId });
+  }
+
+  revalidatePath('/create');
+  revalidatePath('/create/scheduled');
+
+  return { ok: true, data: { id: String(data) } };
+}
+
+// -----------------------------------------------------------------------------
+// reschedulePost — Native-RPC-Delegate.
+// -----------------------------------------------------------------------------
+
+export async function reschedulePost(
+  scheduledId: string,
+  newPublishAt: string,
+): Promise<ActionResult<null>> {
+  const viewer = await getViewerId();
+  if (!viewer) return { ok: false, error: 'Bitte einloggen.' };
+
+  const d = new Date(newPublishAt);
+  if (Number.isNaN(d.getTime())) return { ok: false, error: 'Ungültiger Zeitpunkt.' };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('reschedule_post', {
+    p_id: scheduledId,
+    p_new_time: d.toISOString(),
+  });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath('/create/scheduled');
+  return { ok: true, data: null };
+}
+
+// -----------------------------------------------------------------------------
+// cancelScheduledPost — Native-RPC-Delegate.
+// -----------------------------------------------------------------------------
+
+export async function cancelScheduledPost(
+  scheduledId: string,
+): Promise<ActionResult<null>> {
+  const viewer = await getViewerId();
+  if (!viewer) return { ok: false, error: 'Bitte einloggen.' };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('cancel_scheduled_post', {
+    p_id: scheduledId,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath('/create/scheduled');
+  return { ok: true, data: null };
+}
+
+// -----------------------------------------------------------------------------
+// saveDraft — wrapper um `upsert_post_draft`-RPC. Wenn `id` gesetzt → UPDATE,
+// sonst INSERT. Nach Save kein revalidatePath nötig (Drafts-Liste lädt beim
+// Öffnen neu), aber für /create/drafts sicherheitshalber.
+// -----------------------------------------------------------------------------
+
+export interface SaveDraftInput {
+  id?: string | null;
+  caption?: string | null;
+  tags?: string[];
+  mediaType?: MediaType | null;
+  mediaUrl?: string | null;
+  thumbnailUrl?: string | null;
+  settings?: {
+    privacy?: Privacy;
+    allowComments?: boolean;
+    allowDownload?: boolean;
+    allowDuet?: boolean;
+    womenOnly?: boolean;
+    audioUrl?: string | null;
+    audioVolume?: number | null;
+    coverTimeMs?: number | null;
+    isGuildPost?: boolean;
+    guildId?: string | null;
+  };
+}
+
+export async function saveDraft(input: SaveDraftInput): Promise<ActionResult<{ id: string }>> {
+  const viewer = await getViewerId();
+  if (!viewer) return { ok: false, error: 'Bitte einloggen.' };
+
+  if (!checkCooldown(lastDraft, viewer, DRAFT_COOLDOWN_MS)) {
+    return { ok: false, error: 'Kurz warten.' };
+  }
+
+  const caption = (input.caption ?? '').trim();
+  if (caption.length > CAPTION_MAX_LEN) {
+    return { ok: false, error: `Caption max ${CAPTION_MAX_LEN} Zeichen.` };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('upsert_post_draft', {
+    p_id: input.id ?? null,
+    p_caption: caption.length > 0 ? caption : null,
+    p_tags: sanitizeTags(input.tags),
+    p_media_type: input.mediaType ?? null,
+    p_media_url: input.mediaUrl ?? null,
+    p_thumbnail_url: input.thumbnailUrl ?? null,
+    p_settings: input.settings ?? {},
+  });
+
+  if (error || !data) {
+    return { ok: false, error: error?.message ?? 'Entwurf speichern fehlgeschlagen.' };
+  }
+
+  revalidatePath('/create/drafts');
+  return { ok: true, data: { id: String(data) } };
+}
+
+// -----------------------------------------------------------------------------
+// deleteDraft — Native-RPC-Delegate.
+// -----------------------------------------------------------------------------
+
+export async function deleteDraft(draftId: string): Promise<ActionResult<null>> {
+  const viewer = await getViewerId();
+  if (!viewer) return { ok: false, error: 'Bitte einloggen.' };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('delete_post_draft', { p_id: draftId });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath('/create/drafts');
+  return { ok: true, data: null };
+}
+
+// -----------------------------------------------------------------------------
+// requestR2UploadUrl — Proxy für Supabase-Edge-Function `r2-sign`. Wir rufen
+// die Function aus dem Server-Context, damit (a) der User-JWT sauber weiter-
+// gereicht wird und (b) ein Server-Rate-Limit den missbräuchlichen Upload-
+// Spam abfangen kann. Client ruft direkt diese Action, bekommt `{ uploadUrl,
+// publicUrl }` zurück und macht danach das PUT-Fetch direkt an R2.
+// -----------------------------------------------------------------------------
+
+export interface R2SignInput {
+  /** z.B. "posts/videos/{userId}/{ts}.mp4" — wir verifizieren den Prefix. */
+  key: string;
+  /** MIME-Type für AWS-Sig-V4-Signatur (muss beim PUT identisch sein). */
+  contentType: string;
+}
+
+export interface R2SignResult {
+  uploadUrl: string;
+  publicUrl: string;
+  key: string;
+}
+
+const ALLOWED_KEY_PREFIXES = ['posts/videos/', 'posts/images/', 'thumbnails/'];
+
+export async function requestR2UploadUrl(
+  input: R2SignInput,
+): Promise<ActionResult<R2SignResult>> {
+  const viewer = await getViewerId();
+  if (!viewer) return { ok: false, error: 'Bitte einloggen.' };
+
+  // Key muss mit einem erlaubten Prefix beginnen UND die viewerId enthalten
+  // — verhindert dass ein Client in fremde Ordner uploadet.
+  const prefixOk = ALLOWED_KEY_PREFIXES.some((p) => input.key.startsWith(p));
+  const ownerOk = input.key.includes(`/${viewer}/`);
+  if (!prefixOk || !ownerOk) {
+    return { ok: false, error: 'Ungültiger Upload-Pfad.' };
+  }
+
+  if (!input.contentType || input.contentType.length > 127) {
+    return { ok: false, error: 'Ungültiger Content-Type.' };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.functions.invoke('r2-sign', {
+    body: { key: input.key, contentType: input.contentType },
+  });
+
+  if (error || !data) {
+    return { ok: false, error: error?.message ?? 'Signieren fehlgeschlagen.' };
+  }
+
+  const { uploadUrl, publicUrl } = data as {
+    uploadUrl?: string;
+    publicUrl?: string;
+  };
+  if (!uploadUrl || !publicUrl) {
+    return { ok: false, error: 'Unvollständige Signatur.' };
+  }
+
+  return { ok: true, data: { uploadUrl, publicUrl, key: input.key } };
+}
+
+// -----------------------------------------------------------------------------
+// Autocomplete-Actions — werden von Client-Komponenten beim Tippen gerufen.
+// -----------------------------------------------------------------------------
+
+export async function searchHashtagSuggestions(prefix: string): Promise<string[]> {
+  if (!prefix || prefix.length < 1) return [];
+  return getTrendingHashtagSuggestions(prefix, 8);
+}
+
+export async function searchMentionSuggestions(
+  prefix: string,
+): Promise<MentionSuggestion[]> {
+  if (!prefix || prefix.length < 1) return [];
+  return getMentionSuggestions(prefix, 8);
+}

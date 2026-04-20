@@ -102,17 +102,21 @@ export function useCommentLikesBatch(commentIds: string[]): CommentLikesMap {
     queryFn: async (): Promise<CommentLikesMap> => {
       if (commentIds.length === 0) return new Map();
 
+      // Temp-IDs (optimistische IDs vor DB-Speicherung) herausfiltern → verhindert 400 Bad Request
+      const realIds = commentIds.filter(id => !id.startsWith('temp-'));
+      if (realIds.length === 0) return new Map();
+
       // Query 1 + 2 parallel: alle Likes + eigene Likes
       const [{ data: allLikes }, { data: myLikes }] = await Promise.all([
         supabase
           .from('comment_likes')
           .select('comment_id')
-          .in('comment_id', commentIds),
+          .in('comment_id', realIds),
         userId
           ? supabase
             .from('comment_likes')
             .select('comment_id')
-            .in('comment_id', commentIds)
+            .in('comment_id', realIds)
             .eq('user_id', userId)
           : Promise.resolve({ data: [] as { comment_id: string }[] }),
       ]);

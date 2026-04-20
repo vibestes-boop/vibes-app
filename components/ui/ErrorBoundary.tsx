@@ -29,6 +29,17 @@ export class ErrorBoundary extends React.Component<React.PropsWithChildren, Stat
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (require('expo-splash-screen') as any).hideAsync?.().catch(() => {});
     } catch { /* ignore */ }
+    // ⚠️ Sentry-Ingest: ErrorBoundary fängt React-Render-Fehler — die landen sonst
+    // NIRGENDS, weil unser globaler Handler nur Unhandled-Rejections abfängt.
+    // Ohne diesen Call wissen wir in Production nie welcher Render gecrasht ist.
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+      const Sentry = require('@sentry/react-native') as any;
+      Sentry.captureException?.(error, {
+        tags: { area: 'error-boundary' },
+        extra: { componentStack: info.componentStack?.slice(0, 4000) ?? null },
+      });
+    } catch { /* Sentry fehlt → ignorieren */ }
     // Store componentStack for display
     this.setState({ componentStack: info.componentStack ?? '(keine Stack-Info)' });
   }
@@ -75,9 +86,19 @@ export class ErrorBoundary extends React.Component<React.PropsWithChildren, Stat
             </View>
           </>
         ) : (
-          <Text style={styles.sub}>
-            Bitte starte die App neu. Falls das Problem weiterhin besteht, kontaktiere uns.
-          </Text>
+          <>
+            <Text style={styles.sub}>
+              Bitte starte die App neu. Falls das Problem weiterhin besteht, kontaktiere uns.
+            </Text>
+            {/* ⚠️ Für Remote-Debugging: Kurze, sanitisierte Fehlermeldung anzeigen.
+                KEIN Stack, KEIN PII — nur der Message-Text der Exception, abgeschnitten.
+                Erleichtert Support-Chats enorm ("ich sehe: XY") statt leerem "Ups". */}
+            <View style={styles.prodErrBox}>
+              <Text style={styles.prodErrText} numberOfLines={4}>
+                {errMsg.length > 240 ? errMsg.slice(0, 240) + '…' : errMsg}
+              </Text>
+            </View>
+          </>
         )}
 
         <Pressable style={styles.btn} onPress={this.handleReset}>
@@ -108,7 +129,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   sub: {
-    color: '#A5F3FC',
+    color: '#BBF7D0',
     fontSize: 14,
     fontWeight: '400',
     textAlign: 'center',
@@ -130,7 +151,7 @@ const styles = StyleSheet.create({
   },
   btn: {
     alignItems: 'center',
-    backgroundColor: '#0891B2',
+    backgroundColor: '#CCCCCC',
     borderRadius: 14,
     paddingHorizontal: 24,
     paddingVertical: 14,
@@ -140,5 +161,23 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 15,
     fontWeight: '700',
+  },
+  // Production-Error-Display: sanitisierte message, kein Stack
+  prodErrBox: {
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    maxWidth: 340,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.15)',
+    marginTop: 4,
+  },
+  prodErrText: {
+    color: '#FDE68A',
+    fontSize: 12,
+    fontFamily: 'monospace',
+    textAlign: 'center',
+    lineHeight: 18,
   },
 });

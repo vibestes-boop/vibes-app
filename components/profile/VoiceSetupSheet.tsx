@@ -85,7 +85,7 @@ function WaveBar({ delay, isActive }: { delay: number; isActive: boolean }) {
     height: height.value,
     width: 3,
     borderRadius: 2,
-    backgroundColor: isActive ? '#22D3EE' : 'rgba(255,255,255,0.15)',
+    backgroundColor: isActive ? '#FFFFFF' : 'rgba(255,255,255,0.15)',
     marginHorizontal: 2,
   }));
 
@@ -271,11 +271,11 @@ export function VoiceSetupSheet({ visible, onClose }: Props) {
           <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
             {/* Info-Karte */}
             <View style={styles.infoCard}>
-              <Volume2 size={16} color="#22D3EE" strokeWidth={2} />
+              <Volume2 size={16} color="#FFFFFF" strokeWidth={2} />
               <Text style={styles.infoText}>
                 Nimm einen kurzen Text (5–15 Sek.) in deiner natürlichen Stimme auf.
                 Chatterbox nutzt ihn, um Kommentare in{' '}
-                <Text style={{ color: '#22D3EE', fontWeight: '700' }}>deiner Stimme</Text> vorzulesen.
+                <Text style={{ color: '#FFFFFF', fontWeight: '700' }}>deiner Stimme</Text> vorzulesen.
               </Text>
             </View>
 
@@ -348,7 +348,7 @@ export function VoiceSetupSheet({ visible, onClose }: Props) {
               )}
               {isUploading && (
                 <View style={styles.uploadingRow}>
-                  <ActivityIndicator size="small" color="#22D3EE" />
+                  <ActivityIndicator size="small" color="#FFFFFF" />
                   <Text style={styles.statusText}>Wird hochgeladen…</Text>
                 </View>
               )}
@@ -377,9 +377,9 @@ export function VoiceSetupSheet({ visible, onClose }: Props) {
                 {/* Vorschau */}
                 <Pressable onPress={handlePlay} style={styles.actionBtn}>
                   {isPlaying ? (
-                    <Pause size={18} color="#22D3EE" strokeWidth={2} />
+                    <Pause size={18} color="#FFFFFF" strokeWidth={2} />
                   ) : (
-                    <Play size={18} color="#22D3EE" strokeWidth={2} fill="#22D3EE" />
+                    <Play size={18} color="#FFFFFF" strokeWidth={2} fill="#FFFFFF" />
                   )}
                   <Text style={styles.actionBtnText}>
                     {isPlaying ? 'Pause' : 'Anhören'}
@@ -410,7 +410,7 @@ export function VoiceSetupSheet({ visible, onClose }: Props) {
                 disabled={isUploading}
               >
                 <LinearGradient
-                  colors={['#0891B2', '#22D3EE']}
+                  colors={['#CCCCCC', '#FFFFFF']}
                   style={StyleSheet.absoluteFill}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 0 }}
@@ -509,10 +509,10 @@ const styles = StyleSheet.create({
   infoCard: {
     flexDirection: 'row',
     gap: 10,
-    backgroundColor: 'rgba(34,211,238,0.06)',
+    backgroundColor: 'rgba(29,185,84,0.06)',
     borderRadius: 14,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(34,211,238,0.2)',
+    borderColor: 'rgba(255,255,255,0.12)',
     padding: 14,
     alignSelf: 'stretch',
   },
@@ -610,7 +610,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   statusHighlight: {
-    color: '#22D3EE',
+    color: '#FFFFFF',
     fontWeight: '700',
   },
   uploadingRow: {
@@ -640,10 +640,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: 'rgba(34,211,238,0.08)',
+    backgroundColor: 'rgba(29,185,84,0.08)',
     borderRadius: 14,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(34,211,238,0.3)',
+    borderColor: 'rgba(255,255,255,0.18)',
     paddingVertical: 14,
   },
   actionBtnSecondary: {
@@ -651,7 +651,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.1)',
   },
   actionBtnText: {
-    color: '#22D3EE',
+    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '600',
   },
@@ -664,7 +664,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
     borderRadius: 18,
     overflow: 'hidden',
-    shadowColor: '#0891B2',
+    shadowColor: '#CCCCCC',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
     shadowRadius: 12,
