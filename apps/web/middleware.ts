@@ -8,6 +8,10 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
 
+// Node.js-Runtime statt Edge (V8-Isolate). Siehe Kommentar in next.config.mjs
+// `experimental.nodeMiddleware`. Umgeht den __dirname-Crash der Edge-Runtime.
+export const runtime = 'nodejs';
+
 const PROTECTED_PREFIXES = ['/studio', '/messages', '/settings', '/create'] as const;
 
 export function middleware(request: NextRequest) {

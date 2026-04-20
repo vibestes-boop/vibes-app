@@ -31,6 +31,22 @@ const nextConfig = {
   // (silences "multiple lockfiles detected" warning)
   outputFileTracingRoot: import.meta.dirname,
   // -------------------------------------------------------------------------
+  // Node-Runtime für Middleware erlauben. Next.js 15.2+ Feature.
+  // Grund: Die Default-Edge-Runtime (V8-Isolate) crashte mit
+  // `ReferenceError: __dirname is not defined` — die Quelle ließ sich nicht
+  // auf User-Code eingrenzen (auch Minimal-Middleware mit nur next/server-
+  // Imports crashte), also entweder Vercel-Platform-Wrapper oder Next.js-
+  // Edge-Adapter-Intern. Node-Runtime umgeht das Constraint vollständig:
+  // __dirname ist dort ein echtes Node-Global.
+  //
+  // Trade-off: Node-Middleware ist ~50ms langsamer cold-start als Edge,
+  // aber für einen Cookie-Presence-Check auf Protected-Routes irrelevant.
+  // Middleware-File selbst muss `export const runtime = 'nodejs'` setzen.
+  // -------------------------------------------------------------------------
+  experimental: {
+    nodeMiddleware: true,
+  },
+  // -------------------------------------------------------------------------
   // Monorepo-Resolve-Fix für shared/**/*.ts Imports von zod etc.
   //
   // Wichtig: Nutzt `import.meta.dirname` (ESM-native, Node 20.11+) statt
