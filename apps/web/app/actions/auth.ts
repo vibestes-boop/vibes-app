@@ -1,6 +1,7 @@
 'use server';
 
 import { z } from 'zod';
+import type { Route } from 'next';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { headers } from 'next/headers';
@@ -82,7 +83,11 @@ export async function signInWithOAuth(provider: 'google' | 'apple', next = '/'):
     redirect(`/login?error=${encodeURIComponent(error?.message ?? 'OAuth-Start fehlgeschlagen')}`);
   }
 
-  redirect(data.url);
+  // data.url ist eine externe OAuth-Provider-URL (accounts.google.com/…),
+  // kein interner Route. typedRoutes erzwingt `Route` als Parameter-Typ —
+  // der Cast ist eine bewusste Type-Lüge (runtime-safe, weil redirect() jeden
+  // String akzeptiert).
+  redirect(data.url as Route);
 }
 
 // -----------------------------------------------------------------------------

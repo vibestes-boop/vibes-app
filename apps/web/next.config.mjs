@@ -11,6 +11,15 @@ const nextConfig = {
   reactStrictMode: true,
   // Moved out of experimental in Next.js 15.5+
   typedRoutes: true,
+  // ESLint während `next build` überspringen — läuft separat via `npm run lint`.
+  // Grund: ESLint v9 Flat-Config + Next.js 15 + Vercel = Known-Edge-Case
+  // (Vercel versucht eine auto-generierte eslint.config.js zu laden die
+  // `require('eslint/config')` tut, was in ESLint v9 kein Public-Module ist).
+  // Build bricht sonst mit "Cannot find module 'eslint/config'" ab obwohl
+  // der Code selbst lint-clean ist.
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   // Explicitly pin workspace root to this app, not the vibes-app monorepo root
   // (silences "multiple lockfiles detected" warning)
   outputFileTracingRoot: import.meta.dirname,
