@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { Sparkles } from 'lucide-react';
-
+import type { Route } from 'next';
 import { UsernamePickerForm } from '@/components/auth/username-picker-form';
 import { getUser, getProfile } from '@/lib/auth/session';
 
@@ -17,13 +17,13 @@ export default async function OnboardingPage({
   // Must be logged in to onboard.
   const user = await getUser();
   if (!user) {
-    redirect(`/login?next=${encodeURIComponent('/onboarding')}`);
+    redirect(`/login?next=${encodeURIComponent('/onboarding')}` as Route);
   }
 
   // If they already have a username, onboarding is done — skip straight to destination.
   const profile = await getProfile();
   if (profile?.username) {
-    redirect(next);
+    redirect(next as Route);
   }
 
   return (

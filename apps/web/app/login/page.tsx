@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
+import type { Route } from 'next';
 import { AlertCircle } from 'lucide-react';
 
 import { MagicLinkForm } from '@/components/auth/magic-link-form';
@@ -18,7 +19,7 @@ export default async function LoginPage({
   // Already logged in? Skip the form and go directly to destination.
   const user = await getUser();
   if (user) {
-    redirect(params.next && params.next.startsWith('/') ? params.next : '/');
+    redirect((params.next && params.next.startsWith('/') ? params.next : '/') as Route);
   }
 
   const next = params.next && params.next.startsWith('/') && !params.next.startsWith('//') ? params.next : '/';
