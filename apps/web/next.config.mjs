@@ -10,7 +10,9 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const nextConfig = {
   reactStrictMode: true,
   // Moved out of experimental in Next.js 15.5+
-  typedRoutes: true,
+  // Temporarily disabled to unblock deploy — re-enable post-launch
+  // once all dynamic router.push/redirect calls are migrated to `as Route`.
+  typedRoutes: false,
   // ESLint während `next build` überspringen — läuft separat via `npm run lint`.
   // Grund: ESLint v9 Flat-Config + Next.js 15 + Vercel = Known-Edge-Case
   // (Vercel versucht eine auto-generierte eslint.config.js zu laden die
