@@ -58,10 +58,6 @@ export function VideoPlayer({
         }
 
         // Chrome / Firefox / Edge → dynamisch hls.js laden.
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-expect-error — hls.js wird per `npm install` gezogen; Types werden
-        // mit dem Package geliefert, aber während Phase-2-Typecheck (vor
-        // Install) ist das Modul noch nicht aufgelöst. Pre-install-Marker.
         const Hls = (await import('hls.js')).default;
         if (cancelled) return;
 
