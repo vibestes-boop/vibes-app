@@ -1,10 +1,5 @@
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-
 import { withSentryConfig } from '@sentry/nextjs';
 import bundleAnalyzer from '@next/bundle-analyzer';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -33,26 +28,14 @@ const nextConfig = {
   // Explicitly pin workspace root to this app, not the vibes-app monorepo root
   // (silences "multiple lockfiles detected" warning)
   outputFileTracingRoot: import.meta.dirname,
-  // Transpile shared/ (liegt außerhalb von apps/web, ist aber Teil des Builds)
-  transpilePackages: [],
   // -------------------------------------------------------------------------
-  // Monorepo-Fix: Files aus `shared/` (außerhalb von apps/web/) importieren
-  // `zod` etc. — Webpack sucht node_modules von der Importer-Datei aus nach
-  // oben und findet es nicht, weil `zod` nur in `apps/web/node_modules` liegt.
-  // Fix: apps/web/node_modules explizit zur Resolution-Kette hinzufügen.
-  //
-  // Alternative wäre shared/ als echtes Workspace-Package mit eigenem
-  // package.json — overkill für den aktuellen Scope. Sobald wir mehr Pakete
-  // haben (z.B. shared/gifts auch als npm-package), wechseln wir auf pnpm/bun
-  // Workspaces und entfernen diesen Block.
+  // Hinweis: Der alte webpack-resolve.modules-Monkey-Patch mit __dirname wurde
+  // entfernt. Grund: er leakte `__dirname` in den Edge-Runtime-Bundle-Graph
+  // (MIDDLEWARE_INVOCATION_FAILED: ReferenceError: __dirname is not defined).
+  // Der Monorepo-Import-Fix läuft jetzt rein via tsconfig baseUrl + TS-Ignore
+  // in dieser Config — Webpack resolvet die Module über die normale Next.js-
+  // Resolution-Kette sauber.
   // -------------------------------------------------------------------------
-  webpack: (config) => {
-    config.resolve.modules = [
-      path.resolve(__dirname, 'node_modules'),
-      ...(config.resolve.modules ?? ['node_modules']),
-    ];
-    return config;
-  },
   images: {
     // Supabase Storage + Cloudflare R2 + LiveKit thumbnails
     remotePatterns: [
