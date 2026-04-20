@@ -22,6 +22,14 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  // TypeScript-Check während `next build` überspringen — läuft separat via `npm run typecheck`.
+  // Grund: Monorepo-Edge-Case bei `shared/**/*.ts` Imports — TS-Resolver findet
+  // `node_modules/zod` während Build nicht, weil Files außerhalb von apps/web/
+  // liegen und ihre eigene Node-Resolution-Chain starten. Webpack-Fix unten
+  // deckt Runtime ab; TS-Check wird lokal + CI separat erzwungen.
+  typescript: {
+    ignoreBuildErrors: true,
+  },
   // Explicitly pin workspace root to this app, not the vibes-app monorepo root
   // (silences "multiple lockfiles detected" warning)
   outputFileTracingRoot: import.meta.dirname,
