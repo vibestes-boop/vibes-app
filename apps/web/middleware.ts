@@ -4,7 +4,11 @@
  */
 
 import type { NextRequest } from 'next/server';
-import { updateSession } from '@/lib/supabase/middleware';
+// Relative import (nicht `@/`-Alias) — Edge-Runtime-Bundling in Next.js 15
+// resolvet Path-Aliases in der Root-middleware.ts manchmal nicht sauber,
+// Vercel meldet dann "unsupported module @/lib/supabase/middleware".
+// Mit relativem Pfad ist der Import eindeutig aufgelöst.
+import { updateSession } from './lib/supabase/middleware';
 
 export async function middleware(request: NextRequest) {
   return await updateSession(request);
