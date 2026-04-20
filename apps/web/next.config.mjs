@@ -1,3 +1,5 @@
+import path from 'node:path';
+
 import { withSentryConfig } from '@sentry/nextjs';
 import bundleAnalyzer from '@next/bundle-analyzer';
 
@@ -29,13 +31,23 @@ const nextConfig = {
   // (silences "multiple lockfiles detected" warning)
   outputFileTracingRoot: import.meta.dirname,
   // -------------------------------------------------------------------------
-  // Hinweis: Der alte webpack-resolve.modules-Monkey-Patch mit __dirname wurde
-  // entfernt. Grund: er leakte `__dirname` in den Edge-Runtime-Bundle-Graph
-  // (MIDDLEWARE_INVOCATION_FAILED: ReferenceError: __dirname is not defined).
-  // Der Monorepo-Import-Fix läuft jetzt rein via tsconfig baseUrl + TS-Ignore
-  // in dieser Config — Webpack resolvet die Module über die normale Next.js-
-  // Resolution-Kette sauber.
+  // Monorepo-Resolve-Fix für shared/**/*.ts Imports von zod etc.
+  //
+  // Wichtig: Nutzt `import.meta.dirname` (ESM-native, Node 20.11+) statt
+  // `__dirname`. Grund: die alte Variante hatte ein Top-Level-Binding
+  // `const __dirname = path.dirname(fileURLToPath(import.meta.url))`, was
+  // Next.js' Webpack-Config-Serialization in den Edge-Runtime-Bundle-Graph
+  // ziehen konnte (MIDDLEWARE_INVOCATION_FAILED: __dirname is not defined).
+  // `import.meta.dirname` wird bei Next.js-Config-Evaluierung einmalig zu
+  // einem statischen String aufgelöst und taucht in keinem Runtime-Bundle auf.
   // -------------------------------------------------------------------------
+  webpack: (config) => {
+    config.resolve.modules = [
+      path.resolve(import.meta.dirname, 'node_modules'),
+      ...(config.resolve.modules ?? ['node_modules']),
+    ];
+    return config;
+  },
   images: {
     // Supabase Storage + Cloudflare R2 + LiveKit thumbnails
     remotePatterns: [
