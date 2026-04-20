@@ -1,34 +1,22 @@
 // -----------------------------------------------------------------------------
 // Next.js 15 `instrumentation.ts` — canonical integration point for Sentry.
 //
-// Next ruft diese Datei EINMAL pro Runtime-Boot auf (Node oder Edge), bevor
-// irgendein Request durchgeht. Wir routen zum passenden Sentry-Config-File
-// anhand `NEXT_RUNTIME`:
+// TEMPORARILY NO-OP bis Sentry-Env-Vars (NEXT_PUBLIC_SENTRY_DSN, SENTRY_DSN,
+// SENTRY_AUTH_TOKEN, SENTRY_ORG, SENTRY_PROJECT) in Vercel gesetzt sind.
 //
-//   • 'nodejs'  → ./sentry.server.config.ts
-//   • 'edge'    → ./sentry.edge.config.ts
+// Hintergrund: Der synchrone Top-Level-Re-Export `captureRequestError` und
+// der `import * as Sentry from '@sentry/nextjs'` in sentry.edge.config.ts
+// pullen das komplette `@sentry/nextjs`-Package in jede Runtime — auch Edge.
+// `@sentry/nextjs` referenziert intern `__dirname` (Node-Global), das im
+// V8-Isolate der Edge-Middleware nicht existiert → ReferenceError → 500.
 //
-// Die Browser-Config (`sentry.client.config.ts`) wird NICHT hier geladen —
-// sie wird vom Sentry-Webpack-Plugin automatisch in das Client-Bundle
-// injected (siehe `withSentryConfig` in next.config.mjs).
-//
-// Dynamic-Import ist Absicht: das spart Edge-Isolate-Boot-Time falls jemals
-// einer der beiden Runtimes ohne Sentry aktiv sein sollte (z.B. Self-Host
-// ohne SENTRY_DSN).
+// Zum Re-Aktivieren von Sentry:
+//   1. Env-Vars in Vercel setzen (Production + Preview)
+//   2. Diesen File auf die Version vor Commit [deploy-fix] zurücksetzen:
+//      `git show HEAD~N:apps/web/instrumentation.ts > apps/web/instrumentation.ts`
+//   3. Redeploy
 // -----------------------------------------------------------------------------
 
 export async function register(): Promise<void> {
-  if (process.env.NEXT_RUNTIME === 'nodejs') {
-    await import('./sentry.server.config');
-  }
-  if (process.env.NEXT_RUNTIME === 'edge') {
-    await import('./sentry.edge.config');
-  }
+  // noop — Sentry deaktiviert bis Env-Vars gesetzt sind.
 }
-
-// React-Server-Component-Render-Errors bekommen über diesen Hook ihren
-// eigenen Capture-Pfad — ohne den landen RSC-Errors nur im Next-Log,
-// nicht in Sentry. Re-Export ist top-level synchron, damit Next den Hook
-// beim Boot finden kann (kein dynamic import — der würde den Export zu
-// einem Promise machen).
-export { captureRequestError as onRequestError } from '@sentry/nextjs';
