@@ -27,16 +27,18 @@ export interface FeedListProps {
 }
 
 export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }: FeedListProps) {
-  // TanStack-Cache für den Feed — gemeinsamer Key mit `use-engagement` Mutations.
+  // TanStack-Cache für den Feed — feed-key-scoped, damit For-You und Following
+  // jeweils ihren eigenen Cache-Slot haben und sich nicht gegenseitig überschreiben.
+  // Mutations in `use-engagement` nutzen `setQueriesData({ queryKey: ['feed'] }, …)`
+  // mit Partial-Match, so werden BEIDE Caches bei Like/Save/Follow/Comment synchron
+  // gehalten (ein Post kann in For-You UND Following gleichzeitig auftauchen).
   const qc = useQueryClient();
   useEffect(() => {
-    // Initial-Seed, damit Optimistic-Updates greifen.
-    qc.setQueryData<FeedPost[]>(['feed'], initialPosts);
     qc.setQueryData<FeedPost[]>(['feed', feedKey], initialPosts);
   }, [initialPosts, feedKey, qc]);
 
   const { data: posts } = useQuery<FeedPost[]>({
-    queryKey: ['feed'],
+    queryKey: ['feed', feedKey],
     queryFn: () => initialPosts,
     initialData: initialPosts,
     staleTime: Infinity,

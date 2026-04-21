@@ -37,25 +37,26 @@ export function useTogglePostLike() {
     mutationFn: async ({ postId, liked }: LikeArgs) => unwrap(await togglePostLike(postId, liked)),
     onMutate: async ({ postId, liked }) => {
       await qc.cancelQueries({ queryKey: ['feed'] });
-      const prev = qc.getQueryData<FeedPost[]>(['feed']);
-      if (prev) {
-        qc.setQueryData<FeedPost[]>(
-          ['feed'],
-          prev.map((p) =>
-            p.id === postId
-              ? {
-                  ...p,
-                  liked_by_me: !liked,
-                  like_count: p.like_count + (liked ? -1 : 1),
-                }
-              : p,
-          ),
-        );
-      }
+      // Partial-Match: schreibt in alle ['feed', …] Caches (For-You + Following),
+      // damit derselbe Post in beiden Tabs synchron bleibt.
+      const prev = qc.getQueriesData<FeedPost[]>({ queryKey: ['feed'] });
+      qc.setQueriesData<FeedPost[]>({ queryKey: ['feed'] }, (old) =>
+        old?.map((p) =>
+          p.id === postId
+            ? {
+                ...p,
+                liked_by_me: !liked,
+                like_count: p.like_count + (liked ? -1 : 1),
+              }
+            : p,
+        ),
+      );
       return { prev };
     },
     onError: (err, _vars, ctx) => {
-      if (ctx?.prev) qc.setQueryData(['feed'], ctx.prev);
+      if (ctx?.prev) {
+        for (const [key, data] of ctx.prev) qc.setQueryData(key, data);
+      }
       toast.error(err instanceof Error ? err.message : 'Like fehlgeschlagen');
     },
   });
@@ -73,20 +74,19 @@ export function useTogglePostSave() {
       unwrap(await togglePostBookmark(postId, saved)),
     onMutate: async ({ postId, saved }) => {
       await qc.cancelQueries({ queryKey: ['feed'] });
-      const prev = qc.getQueryData<FeedPost[]>(['feed']);
-      if (prev) {
-        qc.setQueryData<FeedPost[]>(
-          ['feed'],
-          prev.map((p) => (p.id === postId ? { ...p, saved_by_me: !saved } : p)),
-        );
-      }
+      const prev = qc.getQueriesData<FeedPost[]>({ queryKey: ['feed'] });
+      qc.setQueriesData<FeedPost[]>({ queryKey: ['feed'] }, (old) =>
+        old?.map((p) => (p.id === postId ? { ...p, saved_by_me: !saved } : p)),
+      );
       return { prev };
     },
     onSuccess: ({ saved }) => {
       toast.success(saved ? 'Gespeichert' : 'Nicht mehr gespeichert');
     },
     onError: (err, _vars, ctx) => {
-      if (ctx?.prev) qc.setQueryData(['feed'], ctx.prev);
+      if (ctx?.prev) {
+        for (const [key, data] of ctx.prev) qc.setQueryData(key, data);
+      }
       toast.error(err instanceof Error ? err.message : 'Speichern fehlgeschlagen');
     },
   });
@@ -104,22 +104,21 @@ export function useToggleFollow() {
       unwrap(await toggleFollow(userId, following)),
     onMutate: async ({ userId, following }) => {
       await qc.cancelQueries({ queryKey: ['feed'] });
-      const prev = qc.getQueryData<FeedPost[]>(['feed']);
-      if (prev) {
-        qc.setQueryData<FeedPost[]>(
-          ['feed'],
-          prev.map((p) =>
-            p.author.id === userId ? { ...p, following_author: !following } : p,
-          ),
-        );
-      }
+      const prev = qc.getQueriesData<FeedPost[]>({ queryKey: ['feed'] });
+      qc.setQueriesData<FeedPost[]>({ queryKey: ['feed'] }, (old) =>
+        old?.map((p) =>
+          p.author.id === userId ? { ...p, following_author: !following } : p,
+        ),
+      );
       return { prev };
     },
     onSuccess: ({ following }) => {
       toast.success(following ? 'Du folgst jetzt diesem Account' : 'Nicht mehr gefolgt');
     },
     onError: (err, _vars, ctx) => {
-      if (ctx?.prev) qc.setQueryData(['feed'], ctx.prev);
+      if (ctx?.prev) {
+        for (const [key, data] of ctx.prev) qc.setQueryData(key, data);
+      }
       toast.error(err instanceof Error ? err.message : 'Follow fehlgeschlagen');
     },
   });
@@ -137,12 +136,10 @@ export function useCreateComment(postId: string) {
     mutationFn: async (body: string) => unwrap(await createComment(postId, body)),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['comments', postId] });
-      qc.setQueryData<FeedPost[]>(
-        ['feed'],
-        (prev) =>
-          prev?.map((p) =>
-            p.id === postId ? { ...p, comment_count: p.comment_count + 1 } : p,
-          ) ?? [],
+      qc.setQueriesData<FeedPost[]>({ queryKey: ['feed'] }, (prev) =>
+        prev?.map((p) =>
+          p.id === postId ? { ...p, comment_count: p.comment_count + 1 } : p,
+        ),
       );
     },
     onError: (err) => {
