@@ -3,6 +3,7 @@
 import { useTransition } from 'react';
 import { Button } from '@/components/ui/button';
 import { signInWithOAuth } from '@/app/actions/auth';
+import { useI18n } from '@/lib/i18n/client';
 
 // Google "G" SVG logo (official brand colors). Inlined so no external asset fetch.
 function GoogleLogo() {
@@ -37,6 +38,7 @@ function AppleLogo() {
 }
 
 export function OAuthButtons({ next = '/' }: { next?: string }) {
+  const { t } = useI18n();
   const [isGooglePending, startGoogle] = useTransition();
   const [isApplePending, startApple] = useTransition();
 
@@ -50,7 +52,7 @@ export function OAuthButtons({ next = '/' }: { next?: string }) {
         onClick={() => startGoogle(() => signInWithOAuth('google', next))}
       >
         <GoogleLogo />
-        <span>Mit Google weiter</span>
+        <span>{t('auth.continueWithGoogle')}</span>
       </Button>
       <Button
         type="button"
@@ -60,7 +62,7 @@ export function OAuthButtons({ next = '/' }: { next?: string }) {
         onClick={() => startApple(() => signInWithOAuth('apple', next))}
       >
         <AppleLogo />
-        <span>Mit Apple weiter</span>
+        <span>{t('auth.continueWithApple')}</span>
       </Button>
     </div>
   );

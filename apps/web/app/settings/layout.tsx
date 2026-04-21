@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { User as UserIcon, Receipt, Shield, Bell } from 'lucide-react';
 
 import { getUser } from '@/lib/auth/session';
+import { getT } from '@/lib/i18n/server';
+import type { TranslationKey } from '@/lib/i18n/translate';
 
 // -----------------------------------------------------------------------------
 // /settings — Layout-Namespace für User-Einstellungen.
@@ -18,21 +20,21 @@ import { getUser } from '@/lib/auth/session';
 // -----------------------------------------------------------------------------
 
 interface SettingsNavItem {
-  label: string;
+  labelKey: TranslationKey;
   href: Route;
   icon: typeof UserIcon;
-  phase?: string;
+  phaseKey?: TranslationKey;
 }
 
 const NAV: SettingsNavItem[] = [
-  { label: 'Profil',         href: '/settings' as Route,          icon: UserIcon, phase: 'Phase 11' },
-  { label: 'Bezahlungen',    href: '/settings/billing' as Route,  icon: Receipt },
-  { label: 'Benachrichtigungen', href: '/settings/notifications' as Route, icon: Bell },
-  { label: 'Privatsphäre',   href: '/settings/privacy' as Route,  icon: Shield },
+  { labelKey: 'settings.navProfile',       href: '/settings' as Route,               icon: UserIcon, phaseKey: 'settings.phaseHint' },
+  { labelKey: 'settings.navBilling',       href: '/settings/billing' as Route,       icon: Receipt },
+  { labelKey: 'settings.navNotifications', href: '/settings/notifications' as Route, icon: Bell },
+  { labelKey: 'settings.navPrivacy',       href: '/settings/privacy' as Route,       icon: Shield },
 ];
 
 export default async function SettingsLayout({ children }: { children: ReactNode }) {
-  const user = await getUser();
+  const [user, t] = await Promise.all([getUser(), getT()]);
   if (!user) redirect('/login?next=/settings');
 
   return (
@@ -41,13 +43,14 @@ export default async function SettingsLayout({ children }: { children: ReactNode
         <nav className="flex flex-row gap-1 overflow-x-auto lg:flex-col">
           {NAV.map((item) => {
             const Icon = item.icon;
-            const isDisabled = !!item.phase;
+            const isDisabled = !!item.phaseKey;
+            const label = t(item.labelKey);
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 aria-disabled={isDisabled}
-                title={item.phase ? `${item.label} — ${item.phase}` : item.label}
+                title={item.phaseKey ? `${label} — ${t(item.phaseKey)}` : label}
                 className={`flex shrink-0 items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors ${
                   isDisabled
                     ? 'pointer-events-none text-muted-foreground opacity-50'
@@ -55,7 +58,7 @@ export default async function SettingsLayout({ children }: { children: ReactNode
                 }`}
               >
                 <Icon className="h-4 w-4 shrink-0" />
-                <span className="whitespace-nowrap">{item.label}</span>
+                <span className="whitespace-nowrap">{label}</span>
               </Link>
             );
           })}

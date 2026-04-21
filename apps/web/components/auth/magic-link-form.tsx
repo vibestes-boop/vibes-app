@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useMemo, useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -11,15 +11,25 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { signInWithMagicLink } from '@/app/actions/auth';
-
-const formSchema = z.object({
-  email: z.string().trim().toLowerCase().email('Bitte gib eine gültige Email ein.'),
-});
-type FormValues = z.infer<typeof formSchema>;
+import { useI18n } from '@/lib/i18n/client';
+import { trans } from '@/lib/i18n/rich';
 
 export function MagicLinkForm({ mode = 'login' }: { mode?: 'login' | 'signup' }) {
+  const { t } = useI18n();
   const [isPending, startTransition] = useTransition();
   const [sentTo, setSentTo] = useState<string | null>(null);
+
+  // Schema muss in der Component gebaut werden, damit `emailInvalid` auf die
+  // aktuelle Locale resolved. useMemo verhindert Neuerstellung bei jedem
+  // Render (wichtig, weil zodResolver die Schema-Referenz behält).
+  const formSchema = useMemo(
+    () =>
+      z.object({
+        email: z.string().trim().toLowerCase().email(t('auth.emailInvalid')),
+      }),
+    [t],
+  );
+  type FormValues = z.infer<typeof formSchema>;
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -40,7 +50,7 @@ export function MagicLinkForm({ mode = 'login' }: { mode?: 'login' | 'signup' })
         return;
       }
       setSentTo(values.email);
-      toast.success(result.message ?? 'Email ist unterwegs.');
+      toast.success(result.message ?? t('auth.linkSentToastDefault'));
     });
   }
 
@@ -49,22 +59,25 @@ export function MagicLinkForm({ mode = 'login' }: { mode?: 'login' | 'signup' })
       <div className="flex flex-col items-center gap-4 rounded-lg border border-border bg-card p-6 text-center">
         <CheckCircle2 className="h-10 w-10 text-brand-success" />
         <div className="space-y-1">
-          <h3 className="text-lg font-semibold">Link unterwegs</h3>
+          <h3 className="text-lg font-semibold">{t('auth.linkSentTitle')}</h3>
           <p className="text-sm text-muted-foreground">
-            Wir haben dir einen Anmelde-Link an <span className="font-medium text-foreground">{sentTo}</span> geschickt.
-            Klick drauf und du bist drin.
+            {trans(t('auth.linkSentHint'), {
+              email: <span className="font-medium text-foreground">{sentTo}</span>,
+            })}
           </p>
         </div>
         <p className="text-xs text-muted-foreground">
-          Nichts bekommen? Check Spam, oder{' '}
-          <button
-            type="button"
-            onClick={() => setSentTo(null)}
-            className="font-medium text-foreground underline underline-offset-4 hover:no-underline"
-          >
-            nochmal senden
-          </button>
-          .
+          {trans(t('auth.linkSentSpam'), {
+            resend: (
+              <button
+                type="button"
+                onClick={() => setSentTo(null)}
+                className="font-medium text-foreground underline underline-offset-4 hover:no-underline"
+              >
+                {t('auth.linkSentResend')}
+              </button>
+            ),
+          })}
         </p>
       </div>
     );
@@ -78,13 +91,13 @@ export function MagicLinkForm({ mode = 'login' }: { mode?: 'login' | 'signup' })
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel>{t('auth.emailLabel')}</FormLabel>
               <FormControl>
                 <Input
                   type="email"
                   autoComplete="email"
                   autoFocus
-                  placeholder="du@example.com"
+                  placeholder={t('auth.emailPlaceholder')}
                   {...field}
                 />
               </FormControl>
@@ -98,7 +111,7 @@ export function MagicLinkForm({ mode = 'login' }: { mode?: 'login' | 'signup' })
           ) : (
             <Mail className="h-4 w-4" />
           )}
-          {mode === 'signup' ? 'Account erstellen' : 'Anmelde-Link senden'}
+          {mode === 'signup' ? t('auth.submitSignup') : t('auth.sendMagicLink')}
         </Button>
       </form>
     </Form>

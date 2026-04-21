@@ -48,9 +48,50 @@ const ruMessages = {
   },
 
   auth: {
+    // Top-Level Actions
     login: 'Войти',
     signup: 'Создать аккаунт',
     logout: 'Выйти',
+
+    // Page-Headings + Subtitles
+    loginTitle: 'Войти',
+    loginWelcome: 'С возвращением в Serlo.',
+    signupTitle: 'Создать аккаунт',
+    signupHint: 'Введи email один раз, нажми на ссылку — готово.',
+
+    // Magic-Link-Form
+    emailLabel: 'Email',
+    emailPlaceholder: 'ты@example.com',
+    emailInvalid: 'Введи корректный email.',
+    sendMagicLink: 'Отправить ссылку для входа',
+    submitSignup: 'Создать аккаунт',
+
+    // Success-State nach Magic-Link-Versand
+    linkSentTitle: 'Ссылка отправлена',
+    linkSentHint:
+      'Мы отправили ссылку для входа на {email}. Нажми на неё и ты внутри.',
+    linkSentSpam: 'Ничего не пришло? Проверь спам или {resend}.',
+    linkSentResend: 'отправь ещё раз',
+    linkSentToastDefault: 'Письмо отправлено.',
+
+    // OAuth
+    continueWithGoogle: 'Продолжить с Google',
+    continueWithApple: 'Продолжить с Apple',
+
+    // Divider
+    or: 'или',
+
+    // Cross-Links Login ↔ Signup
+    noAccount: 'Нет аккаунта?',
+    createNow: 'Создать сейчас',
+    hasAccount: 'Уже есть аккаунт?',
+    backToHome: '← На главную',
+
+    // Terms/Privacy
+    acceptTerms:
+      'Создавая аккаунт, ты принимаешь наши {terms} и нашу {privacy}.',
+    terms: 'Условия использования',
+    privacy: 'Политика конфиденциальности',
   },
 
   messages: {
@@ -64,6 +105,49 @@ const ruMessages = {
 
   empty: {
     generic: 'Здесь пока ничего нет.',
+  },
+
+  explore: {
+    metaTitle: 'Обзор — тренды на Serlo',
+    metaDescription:
+      'Трендовые хештеги, популярные видео и топ-авторы на Serlo.',
+    title: 'Обзор',
+    subtitle: 'Что сейчас на Serlo — хештеги, темы, аккаунты.',
+    trendingHashtags: 'Трендовые хештеги',
+    noHashtags: 'Активных хештегов пока нет — загляни через пару дней.',
+    popularPosts: 'Популярные посты',
+    posts: 'постов',
+    views: 'просмотров',
+  },
+
+  settings: {
+    navProfile: 'Профиль',
+    navBilling: 'Платежи',
+    navNotifications: 'Уведомления',
+    navPrivacy: 'Приватность',
+    phaseHint: 'Этап 11',
+
+    notifMetaTitle: 'Уведомления — Serlo',
+    notifTitle: 'Уведомления',
+    notifSubtitle:
+      'Выбери, как мы будем до тебя доставать — браузер-пуши для десктопа и телефона.',
+    notifComingSoon:
+      'Email-дайджест и точечные настройки (DM / Эфиры / Подарки — по отдельности) появятся в одном из ближайших обновлений.',
+  },
+
+  shop: {
+    title: 'Магазин',
+    metaTitle: 'Магазин — Подборка товаров',
+    metaDescription:
+      'Цифровое, физическое, услуги и коллекционное — напрямую от авторов Serlo-комьюнити. Оплата монетами или (скоро) картой.',
+    ogTitle: 'Serlo Shop',
+    ogDescription: 'Подборка товаров напрямую от авторов.',
+    productCount: '{count} товаров',
+    noMatches: 'Под эти фильтры товаров нет.',
+    saved: 'Сохранённое',
+    emptyTitle: 'Ничего не найдено',
+    emptyHint:
+      'Ослабь фильтры или попробуй другую категорию. В сайдбаре слева есть кнопка «Сбросить».',
   },
 } satisfies Messages;
 

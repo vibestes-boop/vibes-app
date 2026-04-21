@@ -7,17 +7,21 @@ import { ShopFilters } from '@/components/shop/shop-filters';
 import { ShopSearchInput } from '@/components/shop/shop-search-input';
 import { getShopProducts, getMyCoinBalance, type ShopCatalogParams } from '@/lib/data/shop';
 import { getUser } from '@/lib/auth/session';
+import { getT, getLocale } from '@/lib/i18n/server';
+import { LOCALE_INTL } from '@/lib/i18n/config';
 import type { ProductCategory } from '@shared/types';
 
-export const metadata: Metadata = {
-  title: 'Shop — Entdecke kuratierte Produkte',
-  description:
-    'Digital, physisch, Services und Collectibles — direkt von Creatorn der Serlo-Community. Mit Coins oder (in Kürze) per Karte bezahlen.',
-  openGraph: {
-    title: 'Serlo Shop',
-    description: 'Kuratierte Produkte direkt von Creatorn.',
-  },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT();
+  return {
+    title: t('shop.metaTitle'),
+    description: t('shop.metaDescription'),
+    openGraph: {
+      title: t('shop.ogTitle'),
+      description: t('shop.ogDescription'),
+    },
+  };
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -50,7 +54,12 @@ export default async function ShopCatalogPage({ searchParams }: PageProps) {
     limit: 40,
   };
 
-  const [products, user] = await Promise.all([getShopProducts(params), getUser()]);
+  const [products, user, t, locale] = await Promise.all([
+    getShopProducts(params),
+    getUser(),
+    getT(),
+    getLocale(),
+  ]);
   const balance = user ? await getMyCoinBalance() : null;
 
   return (
@@ -63,12 +72,12 @@ export default async function ShopCatalogPage({ searchParams }: PageProps) {
           <div>
             <h1 className="flex items-center gap-2 text-2xl font-semibold">
               <Store className="h-6 w-6 text-primary" />
-              Shop
+              {t('shop.title')}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
               {products.length > 0
-                ? `${products.length} Produkte`
-                : 'Keine Produkte passen auf deine Filter.'}
+                ? t('shop.productCount', { count: products.length })
+                : t('shop.noMatches')}
             </p>
           </div>
 
@@ -76,7 +85,7 @@ export default async function ShopCatalogPage({ searchParams }: PageProps) {
             {balance !== null && (
               <div className="inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1.5 text-sm font-medium tabular-nums">
                 <Coins className="h-4 w-4 text-amber-500" />
-                {balance.toLocaleString('de-DE')}
+                {balance.toLocaleString(LOCALE_INTL[locale])}
               </div>
             )}
             {user && (
@@ -85,7 +94,7 @@ export default async function ShopCatalogPage({ searchParams }: PageProps) {
                 className="inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted"
               >
                 <Bookmark className="h-4 w-4" />
-                Gemerkt
+                {t('shop.saved')}
               </Link>
             )}
           </div>
@@ -111,15 +120,13 @@ export default async function ShopCatalogPage({ searchParams }: PageProps) {
   );
 }
 
-function EmptyState() {
+async function EmptyState() {
+  const t = await getT();
   return (
     <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed py-20 text-center">
       <div className="text-5xl">🛒</div>
-      <h3 className="text-lg font-semibold">Keine Treffer</h3>
-      <p className="max-w-md text-sm text-muted-foreground">
-        Lockere die Filter oder probiere eine andere Kategorie. Die Sidebar links hat einen
-        „Zurücksetzen"-Button.
-      </p>
+      <h3 className="text-lg font-semibold">{t('shop.emptyTitle')}</h3>
+      <p className="max-w-md text-sm text-muted-foreground">{t('shop.emptyHint')}</p>
     </div>
   );
 }

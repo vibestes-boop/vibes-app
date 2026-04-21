@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import type { Route } from 'next';
@@ -6,8 +7,13 @@ import { AlertCircle } from 'lucide-react';
 import { MagicLinkForm } from '@/components/auth/magic-link-form';
 import { OAuthButtons } from '@/components/auth/oauth-buttons';
 import { getUser } from '@/lib/auth/session';
+import { getT } from '@/lib/i18n/server';
+import { trans } from '@/lib/i18n/rich';
 
-export const metadata = { title: 'Account erstellen' };
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT();
+  return { title: t('auth.signupTitle') };
+}
 
 export default async function SignupPage({
   searchParams,
@@ -22,15 +28,14 @@ export default async function SignupPage({
   }
 
   const next = params.next && params.next.startsWith('/') && !params.next.startsWith('//') ? params.next : '/';
+  const t = await getT();
 
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center bg-background px-6 py-16">
       <div className="w-full max-w-sm space-y-8">
         <div className="space-y-2 text-center">
-          <h1 className="font-serif text-4xl font-medium tracking-tight">Account erstellen</h1>
-          <p className="text-sm text-muted-foreground">
-            Einmal Email eingeben, einmal auf den Link klicken — fertig.
-          </p>
+          <h1 className="font-serif text-4xl font-medium tracking-tight">{t('auth.signupTitle')}</h1>
+          <p className="text-sm text-muted-foreground">{t('auth.signupHint')}</p>
         </div>
 
         {params.error ? (
@@ -48,7 +53,7 @@ export default async function SignupPage({
           </div>
           <div className="relative flex justify-center">
             <span className="bg-background px-3 text-xs uppercase tracking-wider text-muted-foreground">
-              oder
+              {t('auth.or')}
             </span>
           </div>
         </div>
@@ -56,30 +61,33 @@ export default async function SignupPage({
         <OAuthButtons next={next} />
 
         <p className="text-center text-xs text-muted-foreground">
-          Mit der Erstellung akzeptierst du unsere{' '}
-          <Link href="/terms" className="underline-offset-4 hover:underline">
-            Nutzungsbedingungen
-          </Link>{' '}
-          und unsere{' '}
-          <Link href="/privacy" className="underline-offset-4 hover:underline">
-            Datenschutzerklärung
-          </Link>
-          .
+          {trans(t('auth.acceptTerms'), {
+            terms: (
+              <Link href="/terms" className="underline-offset-4 hover:underline">
+                {t('auth.terms')}
+              </Link>
+            ),
+            privacy: (
+              <Link href="/privacy" className="underline-offset-4 hover:underline">
+                {t('auth.privacy')}
+              </Link>
+            ),
+          })}
         </p>
 
         <p className="text-center text-sm text-muted-foreground">
-          Schon einen Account?{' '}
+          {t('auth.hasAccount')}{' '}
           <Link
             href="/login"
             className="font-medium text-foreground underline underline-offset-4 hover:no-underline"
           >
-            Einloggen
+            {t('auth.login')}
           </Link>
         </p>
 
         <p className="text-center text-xs text-muted-foreground">
           <Link href="/" className="underline-offset-4 hover:underline">
-            ← Zurück zur Startseite
+            {t('auth.backToHome')}
           </Link>
         </p>
       </div>
