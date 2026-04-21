@@ -149,7 +149,7 @@ export const getConversationHeader = cache(
 
     const { data: profile } = await supabase
       .from('profiles')
-      .select('id, username, display_name, avatar_url, verified')
+      .select('id, username, display_name, avatar_url, verified:is_verified')
       .eq('id', otherId)
       .maybeSingle();
 
@@ -213,7 +213,7 @@ export const getConversationMessages = cache(
       postIds.length > 0
         ? supabase
             .from('posts')
-            .select('id, video_url, thumbnail_url, caption, author:profiles!posts_user_id_fkey(username)')
+            .select('id, video_url:media_url, thumbnail_url, caption, author:profiles!posts_author_id_fkey(username)')
             .in('id', postIds)
             .then(({ data }) => {
               const m = new Map<string, MessageWithContext['post']>();

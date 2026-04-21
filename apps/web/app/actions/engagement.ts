@@ -100,14 +100,14 @@ export async function toggleFollow(
       .from('follows')
       .delete()
       .eq('follower_id', viewer.id)
-      .eq('followed_id', targetUserId);
+      .eq('following_id', targetUserId);
     if (error) return { ok: false, error: error.message };
     return { ok: true, data: { following: false } };
   }
 
   const { error } = await supabase.from('follows').upsert(
-    { follower_id: viewer.id, followed_id: targetUserId },
-    { onConflict: 'follower_id,followed_id', ignoreDuplicates: true },
+    { follower_id: viewer.id, following_id: targetUserId },
+    { onConflict: 'follower_id,following_id', ignoreDuplicates: true },
   );
   if (error) return { ok: false, error: error.message };
   return { ok: true, data: { following: true } };
@@ -142,9 +142,10 @@ export async function createComment(
   if (postErr || !post) return { ok: false, error: 'Post nicht gefunden.' };
   if (post.allow_comments === false) return { ok: false, error: 'Kommentare sind hier deaktiviert.' };
 
+  // Mobile-DB-`comments`-Spalte heißt `text`, nicht `body`.
   const { data, error } = await supabase
     .from('comments')
-    .insert({ post_id: postId, user_id: viewer.id, body })
+    .insert({ post_id: postId, user_id: viewer.id, text: body })
     .select('id')
     .single();
 
@@ -162,10 +163,12 @@ export async function deleteComment(commentId: string): Promise<ActionResult> {
   if (!viewer) return { ok: false, error: 'Nicht eingeloggt.' };
 
   const supabase = await createClient();
-  // Soft-Delete via `deleted_at` — Native macht das gleich, damit Threads nicht brechen
+  // Mobile-DB-`comments` hat KEINE `deleted_at`-Spalte — Native macht HARD-DELETE
+  // via RLS-Policy `for delete using (auth.uid() = user_id)`. Der Web-Client muss
+  // dasselbe tun, sonst feuert PostgREST 42703 auf `deleted_at`.
   const { error } = await supabase
     .from('comments')
-    .update({ deleted_at: new Date().toISOString() })
+    .delete()
     .eq('id', commentId)
     .eq('user_id', viewer.id);
 

@@ -39,6 +39,7 @@ interface CommentRow {
   id: string;
   post_id: string;
   user_id: string;
+  // Web-Contract nutzt `body`, Mobile-DB-Spalte ist `text` — alias in der Query.
   body: string;
   like_count: number;
   created_at: string;
@@ -58,21 +59,28 @@ function useComments(postId: string, enabled: boolean) {
     staleTime: 30_000,
     queryFn: async (): Promise<CommentRow[]> => {
       const supabase = createClient();
+      // Mobile-DB-Drift: (1) `text` → aliasiert auf `body` für den Web-Contract.
+      // (2) `comments` hat keine `like_count`-Spalte und keine `deleted_at`-Spalte
+      // (hard-delete-Modell), also beide in der Projektion bzw. im Filter raus.
+      // (3) Profiles-`is_verified` → aliasiert auf `verified`.
       const { data, error } = await supabase
         .from('comments')
         .select(
-          `id, post_id, user_id, body, like_count, created_at,
-           author:profiles!comments_user_id_fkey ( id, username, display_name, avatar_url, verified )`,
+          `id, post_id, user_id, body:text, created_at,
+           author:profiles!comments_user_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )`,
         )
         .eq('post_id', postId)
-        .is('deleted_at', null)
         .order('created_at', { ascending: false })
         .limit(PAGE_SIZE);
 
       if (error) throw new Error(error.message);
       return (data ?? []).map((row) => {
         const author = Array.isArray(row.author) ? row.author[0] : row.author;
-        return { ...(row as unknown as CommentRow), author };
+        return {
+          ...(row as unknown as Omit<CommentRow, 'like_count'>),
+          like_count: 0, // Spalte existiert nicht — Placeholder bis Native Aggregat liefert.
+          author,
+        };
       }) as CommentRow[];
     },
   });
