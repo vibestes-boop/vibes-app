@@ -125,8 +125,12 @@ function normalizeRow(
 }
 
 // -----------------------------------------------------------------------------
-// getForYouFeed — primär RPC `get_vibe_feed` (Native-Parität),
-// Fallback auf latest Posts wenn RPC-Fehler / leer.
+// getForYouFeed — Mobile-DB-Adapter. Früher haben wir zuerst die RPC
+// `get_vibe_feed` probiert, aber die RPC referenziert in der Prod-DB eine
+// `public.seen_posts`-Tabelle, die dort nicht existiert (42P01). Der Call war
+// also ein dead-error pro Request. Rausgenommen — wir laden die neuesten
+// Public-Posts direkt. Ranking kann später via eine replatzierte RPC wieder
+// aktiviert werden, ohne dass der Feed bis dahin leer bleibt.
 // -----------------------------------------------------------------------------
 
 export const getForYouFeed = cache(
@@ -138,36 +142,6 @@ export const getForYouFeed = cache(
     } = await supabase.auth.getUser();
     const viewerId = user?.id ?? null;
 
-    // Schritt 1: Versuche die Native-RPC. Wir rufen mit konservativen Parametern;
-    // wenn die Signatur in Zukunft anders aussieht, fällt der Catch-Pfad ein.
-    let rpcIds: string[] | null = null;
-    try {
-      const { data, error } = await supabase.rpc('get_vibe_feed', {
-        explore_weight: 0.5,
-        brain_weight: 0.5,
-        result_limit: limit,
-        filter_tag: null,
-        include_seen: false,
-        exclude_ids: excludeIds,
-      });
-      if (!error && Array.isArray(data) && data.length > 0) {
-        // Die RPC könnte bereits volle Post-Rows zurückgeben ODER nur IDs.
-        // Beide Fälle abfangen.
-        const first = data[0] as Record<string, unknown>;
-        if (typeof first.id === 'string' && ('media_url' in first || 'video_url' in first)) {
-          // RPC liefert volle Posts → IDs extrahieren und re-fetchen mit Author-Join,
-          // damit wir überall denselben Shape haben.
-          rpcIds = data.map((r) => (r as { id: string }).id);
-        } else if (typeof first === 'string' || typeof first.id === 'string') {
-          rpcIds = data.map((r) => (typeof r === 'string' ? r : (r as { id: string }).id));
-        }
-      }
-    } catch {
-      // RPC existiert nicht / Signatur weicht ab → Fallback.
-      rpcIds = null;
-    }
-
-    // Schritt 2: Posts laden — entweder aus RPC-ID-Liste oder als Fallback die neuesten.
     let query = supabase
       .from('posts')
       .select(`${POST_COLUMNS}, ${AUTHOR_JOIN}`)
@@ -175,17 +149,17 @@ export const getForYouFeed = cache(
       .order('created_at', { ascending: false })
       .limit(limit);
 
-    if (rpcIds && rpcIds.length > 0) {
-      query = supabase
-        .from('posts')
-        .select(`${POST_COLUMNS}, ${AUTHOR_JOIN}`)
-        .in('id', rpcIds);
-    } else if (excludeIds.length > 0) {
+    if (excludeIds.length > 0) {
       query = query.not('id', 'in', `(${excludeIds.join(',')})`);
     }
 
     const { data: rows, error } = await query;
-    if (error || !rows) return [];
+    if (error) {
+      // Sichtbar in Vercel-Logs — Schema-Drift oder RLS-Probleme nicht mehr silent.
+      console.error('[feed] getForYouFeed query error:', error.code, error.message, error.details);
+      return [];
+    }
+    if (!rows) return [];
 
     const postIds = rows.map((r) => r.id as string);
     const authorIds = Array.from(
@@ -202,18 +176,9 @@ export const getForYouFeed = cache(
 
     const { liked, saved, following } = await batchEngagement(postIds, authorIds, viewerId);
 
-    const normalized = (rows as unknown as RawPostRow[])
+    return (rows as unknown as RawPostRow[])
       .map((row) => normalizeRow(row, liked, saved, following))
       .filter((p): p is FeedPost => p !== null);
-
-    // Wenn wir RPC-IDs nutzen, Reihenfolge laut RPC-Ranking beibehalten
-    // (die `.in('id', rpcIds)`-Query behält die Reihenfolge nicht).
-    if (rpcIds) {
-      const indexMap = new Map(rpcIds.map((id, i) => [id, i]));
-      normalized.sort((a, b) => (indexMap.get(a.id) ?? 0) - (indexMap.get(b.id) ?? 0));
-    }
-
-    return normalized;
   },
 );
 
