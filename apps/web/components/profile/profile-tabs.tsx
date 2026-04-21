@@ -5,33 +5,52 @@ import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import { useCallback, useTransition } from 'react';
 import { Grid3x3, Heart, ShoppingBag, Swords } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/lib/i18n/client';
+import { LOCALE_INTL } from '@/lib/i18n/config';
 
 // -----------------------------------------------------------------------------
 // ProfileTabs — segmented control über /u/[username]?tab=posts|likes|shop|battles
 // URL-State statt Hook-State, damit Share-Links den aktiven Tab mitbringen
 // und Zurück-Button im Browser den Tab-Wechsel rückgängig macht.
+//
+// i18n-Kontrakt: Der Parent-Server-Component übergibt vor-resolvte Labels als
+// `labels`-Prop. Das vermeidet, dass dieser Client-Code in jedem Render den
+// Kontext-Lookup für vier statische Keys macht — und vermeidet gleichzeitig,
+// dass Server-Strings doppelt über die Wire-Boundary geschickt werden, wenn
+// sich nur die Zahlen ändern.
 // -----------------------------------------------------------------------------
 
 export type ProfileTab = 'posts' | 'likes' | 'shop' | 'battles';
 
-const TABS: Array<{ key: ProfileTab; label: string; icon: typeof Grid3x3 }> = [
-  { key: 'posts',   label: 'Posts',   icon: Grid3x3 },
-  { key: 'likes',   label: 'Likes',   icon: Heart },
-  { key: 'shop',    label: 'Shop',    icon: ShoppingBag },
-  { key: 'battles', label: 'Battles', icon: Swords },
-];
+export interface ProfileTabsLabels {
+  tablist: string;
+  posts: string;
+  likes: string;
+  shop: string;
+  battles: string;
+}
 
 export function ProfileTabs({
   active,
   counts,
+  labels,
 }: {
   active: ProfileTab;
   counts?: Partial<Record<ProfileTab, number>>;
+  labels: ProfileTabsLabels;
 }) {
+  const { locale } = useI18n();
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
   const [isPending, startTransition] = useTransition();
+
+  const TABS: Array<{ key: ProfileTab; label: string; icon: typeof Grid3x3 }> = [
+    { key: 'posts',   label: labels.posts,   icon: Grid3x3 },
+    { key: 'likes',   label: labels.likes,   icon: Heart },
+    { key: 'shop',    label: labels.shop,    icon: ShoppingBag },
+    { key: 'battles', label: labels.battles, icon: Swords },
+  ];
 
   const onSelect = useCallback(
     (tab: ProfileTab) => {
@@ -57,7 +76,7 @@ export function ProfileTabs({
   return (
     <div
       role="tablist"
-      aria-label="Profil-Inhalte"
+      aria-label={labels.tablist}
       className="sticky top-14 z-30 flex items-stretch justify-around border-b border-border bg-background/80 backdrop-blur-md"
     >
       {TABS.map(({ key, label, icon: Icon }) => {
@@ -86,7 +105,7 @@ export function ProfileTabs({
             <span className="hidden sm:inline">{label}</span>
             {typeof count === 'number' && count > 0 && (
               <span className="text-xs tabular-nums text-muted-foreground">
-                {count.toLocaleString('de-DE')}
+                {count.toLocaleString(LOCALE_INTL[locale])}
               </span>
             )}
             {isActive && (

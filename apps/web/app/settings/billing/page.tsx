@@ -16,10 +16,14 @@ import {
   getMyCoinOrders,
   formatPrice,
   totalCoins,
-  STATUS_LABEL,
   STATUS_TONE,
+  type CoinOrderStatus,
 } from '@/lib/data/payments';
 import { CancelOrderButton } from '@/components/settings/cancel-order-button';
+import { getT, getLocale } from '@/lib/i18n/server';
+import { LOCALE_INTL } from '@/lib/i18n/config';
+import { trans } from '@/lib/i18n/rich';
+import type { TranslationKey } from '@/lib/i18n/translate';
 
 // -----------------------------------------------------------------------------
 // /settings/billing — Coin-Wallet, Bestellhistorie, Rechnungen.
@@ -31,54 +35,69 @@ import { CancelOrderButton } from '@/components/settings/cancel-order-button';
 //   4. Pending-Orders mit „Abbrechen"-Action
 // -----------------------------------------------------------------------------
 
-export const metadata: Metadata = {
-  title: 'Bezahlungen — Serlo',
-  robots: { index: false },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getT();
+  return {
+    title: t('billing.metaTitle'),
+    robots: { index: false },
+  };
+}
 
 export const dynamic = 'force-dynamic';
 
+// Wir spiegeln `STATUS_LABEL` aus lib/data/payments als i18n-Key-Mapping
+// hier statt dort. Die Konstante in payments.ts bleibt als stabiler
+// Type-safe Fallback unverändert; diese Page bevorzugt übersetzte Labels.
+const STATUS_LABEL_KEY: Record<CoinOrderStatus, TranslationKey> = {
+  pending: 'billing.statusPending',
+  paid: 'billing.statusPaid',
+  failed: 'billing.statusFailed',
+  refunded: 'billing.statusRefunded',
+  cancelled: 'billing.statusCancelled',
+};
+
 export default async function BillingPage() {
-  const [balance, orders] = await Promise.all([
+  const [balance, orders, t, locale] = await Promise.all([
     getMyCoinBalance(),
     getMyCoinOrders(100, 0),
+    getT(),
+    getLocale(),
   ]);
 
   const coins = balance?.coins ?? 0;
   const diamonds = balance?.diamonds ?? 0;
   const totalGifted = balance?.totalGifted ?? 0;
+  const intl = LOCALE_INTL[locale];
 
   return (
     <div>
       <header className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight lg:text-3xl">Bezahlungen</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Dein Coin-Guthaben, Bestellhistorie und Rechnungen.
-        </p>
+        <h1 className="text-2xl font-semibold tracking-tight lg:text-3xl">{t('billing.title')}</h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t('billing.subtitle')}</p>
       </header>
 
       {/* ─── Wallet-Cards ───────────────────────────────────────────────── */}
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <WalletCard
           icon={<Coins className="h-5 w-5" />}
-          label="Coins"
-          value={coins.toLocaleString('de-DE')}
-          hint="für Gifts + Shop-Käufe"
+          label={t('billing.walletCoinsLabel')}
+          value={coins.toLocaleString(intl)}
+          hint={t('billing.walletCoinsHint')}
           tone="gold"
-          cta={{ href: '/coin-shop', label: 'Aufladen' }}
+          cta={{ href: '/coin-shop', label: t('billing.walletCoinsCta') }}
         />
         <WalletCard
           icon={<Diamond className="h-5 w-5" />}
-          label="Diamanten"
-          value={diamonds.toLocaleString('de-DE')}
-          hint="von Fans erhalten"
+          label={t('billing.walletDiamondsLabel')}
+          value={diamonds.toLocaleString(intl)}
+          hint={t('billing.walletDiamondsHint')}
           tone="blue"
         />
         <WalletCard
           icon={<Gift className="h-5 w-5" />}
-          label="Verschenkt"
-          value={totalGifted.toLocaleString('de-DE')}
-          hint="Coins insgesamt"
+          label={t('billing.walletGiftedLabel')}
+          value={totalGifted.toLocaleString(intl)}
+          hint={t('billing.walletGiftedHint')}
           tone="muted"
         />
       </section>
@@ -88,13 +107,13 @@ export default async function BillingPage() {
         <div className="mb-3 flex items-center justify-between">
           <h2 className="flex items-center gap-2 text-lg font-semibold">
             <History className="h-4 w-4" />
-            Bestellhistorie
+            {t('billing.historyTitle')}
           </h2>
           <Link
             href="/coin-shop"
             className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground hover:underline"
           >
-            Neue Bestellung
+            {t('billing.newOrder')}
             <ArrowRight className="h-3 w-3" />
           </Link>
         </div>
@@ -102,15 +121,13 @@ export default async function BillingPage() {
         {orders.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center">
             <Receipt className="mx-auto mb-2 h-6 w-6 text-muted-foreground" />
-            <p className="text-sm font-medium">Noch keine Bestellungen</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Wenn du Coins kaufst, erscheinen die Rechnungen hier.
-            </p>
+            <p className="text-sm font-medium">{t('billing.emptyTitle')}</p>
+            <p className="mt-1 text-xs text-muted-foreground">{t('billing.emptyHint')}</p>
             <Link
               href="/coin-shop"
               className="mt-4 inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
             >
-              Zum Coin-Shop
+              {t('billing.emptyCta')}
             </Link>
           </div>
         ) : (
@@ -118,11 +135,11 @@ export default async function BillingPage() {
             <table className="w-full text-sm">
               <thead className="border-b border-border bg-muted/30 text-xs">
                 <tr>
-                  <th className="px-4 py-2 text-left font-medium text-muted-foreground">Datum</th>
-                  <th className="px-4 py-2 text-left font-medium text-muted-foreground">Paket</th>
-                  <th className="px-4 py-2 text-right font-medium text-muted-foreground">Preis</th>
-                  <th className="px-4 py-2 text-left font-medium text-muted-foreground">Status</th>
-                  <th className="px-4 py-2 text-right font-medium text-muted-foreground">Belege</th>
+                  <th className="px-4 py-2 text-left font-medium text-muted-foreground">{t('billing.colDate')}</th>
+                  <th className="px-4 py-2 text-left font-medium text-muted-foreground">{t('billing.colPackage')}</th>
+                  <th className="px-4 py-2 text-right font-medium text-muted-foreground">{t('billing.colPrice')}</th>
+                  <th className="px-4 py-2 text-left font-medium text-muted-foreground">{t('billing.colStatus')}</th>
+                  <th className="px-4 py-2 text-right font-medium text-muted-foreground">{t('billing.colDocs')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -133,7 +150,7 @@ export default async function BillingPage() {
                   return (
                     <tr key={o.id} className="border-b border-border last:border-0">
                       <td className="px-4 py-3 text-xs text-muted-foreground">
-                        {date.toLocaleDateString('de-DE', {
+                        {date.toLocaleDateString(intl, {
                           day: '2-digit',
                           month: 'short',
                           year: 'numeric',
@@ -143,11 +160,11 @@ export default async function BillingPage() {
                         <div className="flex items-center gap-1.5">
                           <Coins className="h-3.5 w-3.5 text-brand-gold" />
                           <span className="font-medium">
-                            {total.toLocaleString('de-DE')} Coins
+                            {total.toLocaleString(intl)} {t('billing.coinsUnit')}
                           </span>
                           {o.bonus_coins > 0 && (
                             <span className="text-[11px] text-brand-gold">
-                              (+{o.bonus_coins.toLocaleString('de-DE')})
+                              (+{o.bonus_coins.toLocaleString(intl)})
                             </span>
                           )}
                         </div>
@@ -156,7 +173,7 @@ export default async function BillingPage() {
                         {formatPrice(o.price_cents, o.currency)}
                       </td>
                       <td className="px-4 py-3">
-                        <StatusPill tone={tone} label={STATUS_LABEL[o.status]} />
+                        <StatusPill tone={tone} label={t(STATUS_LABEL_KEY[o.status])} />
                         {o.status === 'pending' && (
                           <div className="mt-1">
                             <CancelOrderButton orderId={o.id} />
@@ -173,7 +190,7 @@ export default async function BillingPage() {
                               className="inline-flex items-center gap-1 rounded border border-border bg-muted/30 px-2 py-0.5 text-[11px] font-medium hover:bg-muted"
                             >
                               <FileText className="h-3 w-3" />
-                              Rechnung
+                              {t('billing.docInvoice')}
                               <ExternalLink className="h-2.5 w-2.5" />
                             </a>
                           )}
@@ -185,7 +202,7 @@ export default async function BillingPage() {
                               className="inline-flex items-center gap-1 rounded border border-border bg-muted/30 px-2 py-0.5 text-[11px] font-medium hover:bg-muted"
                             >
                               <Receipt className="h-3 w-3" />
-                              Beleg
+                              {t('billing.docReceipt')}
                               <ExternalLink className="h-2.5 w-2.5" />
                             </a>
                           )}
@@ -202,18 +219,15 @@ export default async function BillingPage() {
 
       {/* ─── Info-Block ─────────────────────────────────────────────────── */}
       <section className="mt-8 rounded-xl border border-border bg-muted/30 p-4 text-xs text-muted-foreground">
-        <p className="font-medium text-foreground">Rechtliches</p>
+        <p className="font-medium text-foreground">{t('billing.legalTitle')}</p>
         <p className="mt-1">
-          Käufe sind endgültig nach Verwendung nicht erstattbar. Rechnungen und
-          Belege werden von Stripe automatisch erstellt und per E-Mail an deine
-          hinterlegte Adresse gesendet. Bei Fragen zu Zahlungen schreib uns an{' '}
-          <a
-            href="mailto:support@serlo.app"
-            className="underline hover:text-foreground"
-          >
-            support@serlo.app
-          </a>
-          .
+          {trans(t('billing.legalHint'), {
+            supportEmail: (
+              <a href="mailto:support@serlo.app" className="underline hover:text-foreground">
+                support@serlo.app
+              </a>
+            ),
+          })}
         </p>
       </section>
     </div>

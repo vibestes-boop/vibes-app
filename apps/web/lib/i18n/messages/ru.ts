@@ -107,6 +107,40 @@ const ruMessages = {
     generic: 'Здесь пока ничего нет.',
   },
 
+  profile: {
+    metaNotFoundTitle: '@{username} не найден',
+    metaGenericDescription: '{name} на Serlo — {count} подписчиков.',
+
+    verifiedBadge: 'Верифицирован',
+    statPosts: 'Постов',
+    statFollower: 'Подписчиков',
+    statFollowing: 'Подписок',
+
+    tablistLabel: 'Содержимое профиля',
+    tabPosts: 'Посты',
+    tabLikes: 'Лайки',
+    tabShop: 'Магазин',
+    tabBattles: 'Баттлы',
+
+    emptyPostsSelf:
+      'Твои видео будут здесь — загрузи первое через приложение.',
+    emptyPostsOther: 'У @{username} пока нет публичных видео.',
+    panelLikesTitle: 'Лайки — приватные',
+    panelLikesHintSelf: 'Только ты видишь свою историю лайков — сейчас только в приложении.',
+    panelLikesHintOther:
+      'Лайки приватные — видит только владелец аккаунта.',
+    panelShopTitle: 'Магазин в фазе 4',
+    panelShopHint: 'Витрина, скидки и оплата собираются прямо сейчас.',
+    panelBattlesTitle: 'Live-баттлы — в приложении',
+    panelBattlesHint: 'История и повторы баттлов придут в вебе в фазе 6.',
+
+    nfTitle: 'Аккаунт не найден',
+    nfHint:
+      'Такого юзернейма на Serlo (пока) нет — возможно, опечатка или аккаунт удалён.',
+    nfHome: 'На главную',
+    nfSignup: 'Создать свой аккаунт',
+  },
+
   explore: {
     metaTitle: 'Обзор — тренды на Serlo',
     metaDescription:
@@ -118,6 +152,46 @@ const ruMessages = {
     popularPosts: 'Популярные посты',
     posts: 'постов',
     views: 'просмотров',
+  },
+
+  billing: {
+    metaTitle: 'Платежи — Serlo',
+    title: 'Платежи',
+    subtitle: 'Твой баланс монет, история заказов и счета.',
+
+    walletCoinsLabel: 'Монеты',
+    walletCoinsHint: 'на подарки и покупки',
+    walletCoinsCta: 'Пополнить',
+    walletDiamondsLabel: 'Бриллианты',
+    walletDiamondsHint: 'получены от фанатов',
+    walletGiftedLabel: 'Подарено',
+    walletGiftedHint: 'монет всего',
+
+    historyTitle: 'История заказов',
+    newOrder: 'Новый заказ',
+    emptyTitle: 'Заказов пока нет',
+    emptyHint: 'Когда ты купишь монеты, счета появятся здесь.',
+    emptyCta: 'В магазин монет',
+
+    colDate: 'Дата',
+    colPackage: 'Пакет',
+    colPrice: 'Цена',
+    colStatus: 'Статус',
+    colDocs: 'Документы',
+    coinsUnit: 'монет',
+
+    statusPending: 'Ожидание',
+    statusPaid: 'Оплачено',
+    statusFailed: 'Ошибка',
+    statusRefunded: 'Возвращено',
+    statusCancelled: 'Отменено',
+
+    docInvoice: 'Счёт',
+    docReceipt: 'Чек',
+
+    legalTitle: 'Юридическое',
+    legalHint:
+      'Покупки после использования не подлежат возврату. Счета и чеки создаются Stripe автоматически и отправляются на указанный email. Вопросы по оплате — {supportEmail}.',
   },
 
   settings: {
@@ -148,6 +222,82 @@ const ruMessages = {
     emptyTitle: 'Ничего не найдено',
     emptyHint:
       'Ослабь фильтры или попробуй другую категорию. В сайдбаре слева есть кнопка «Сбросить».',
+  },
+
+  studio: {
+    navAria: 'Навигация студии',
+    navDashboard: 'Дашборд',
+    navAnalytics: 'Аналитика',
+    navRevenue: 'Доходы',
+    navScheduled: 'Запланировано',
+    navDrafts: 'Черновики',
+    navLive: 'Эфир',
+    navShop: 'Магазин',
+    navOrders: 'Заказы',
+    navModeration: 'Модерация',
+
+    metaTitle: 'Студия автора',
+    metaDescription: 'Твой дашборд — просмотры, доходы, рост подписчиков.',
+
+    badge: 'Студия автора',
+    greeting: 'Привет, {name}',
+    subtitle: 'Твой дашборд — всё на одном экране.',
+    creatorFallback: 'Автор',
+
+    reachTitle: 'Охват',
+    kpiViews: 'Просмотры',
+    kpiLikes: 'Лайки',
+    kpiComments: 'Комментарии',
+    kpiNewFollowers: 'Новые подписчики',
+    kpiPrev: 'ранее: {value}',
+
+    diamondBalance: 'Баланс бриллиантов',
+    periodGiftsLine: '+{amount} за этот период ({gifts} подарков)',
+    noGiftsPeriod: 'За выбранный период подарков нет',
+    earningsDetails: 'Детали доходов',
+
+    engagementRate: 'Engagement-Rate',
+    engagementHint: '{interactions} взаимодействий на {views} просмотров',
+    topGift: 'Топ-подарок',
+    topSupporter: 'Топ-саппортер: {name}',
+    noGiftsPeriodShort: 'Пока нет подарков в этом периоде',
+    followerLabel: 'Подписчики',
+    followerAdded: '+{added} новых за период',
+
+    planningTitle: 'Планирование контента',
+    planScheduledLabel: 'Запланировано',
+    planScheduledActive: 'активно',
+    planScheduledErrors: '{count} ошибок',
+    planDraftsLabel: 'Черновики',
+    planDraftsHint: 'сохранено',
+    planLiveLabel: 'Live-сессии',
+    planLiveHint: 'за {days} дн',
+    planShopLabel: 'Оборот магазина',
+    planShopHint: '{count} продаж',
+
+    topPostsTitle: 'Топ-посты (просмотры)',
+    allLink: 'Все',
+    topPostsEmpty:
+      'Данных пока нет. Опубликуй контент и загляни сюда через пару часов.',
+    noCaption: 'Без подписи',
+
+    recentGiftsTitle: 'Последние подарки',
+    recentGiftsEmpty: 'Подарков пока нет. Иди в эфир — и они появятся.',
+    giftFrom: 'от {name} · {relative}',
+
+    moreDetails: 'Нужно больше деталей?',
+    moreDetailsHint:
+      'Страница аналитики покажет рост подписчиков, пиковые часы и оценку watch-time.',
+    toAnalytics: 'К аналитике',
+
+    timeJustNow: 'только что',
+    timeMinAgo: '{n} мин назад',
+    timeHourAgo: '{n} ч назад',
+    timeDayAgo: '{n} дн назад',
+
+    period7: '7 дней',
+    period28: '28 дней',
+    period90: '90 дней',
   },
 } satisfies Messages;
 

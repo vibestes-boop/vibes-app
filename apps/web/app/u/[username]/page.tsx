@@ -10,6 +10,9 @@ import { PostGrid } from '@/components/profile/post-grid';
 import { ProfileTabs, type ProfileTab } from '@/components/profile/profile-tabs';
 import { FollowButton } from '@/components/profile/follow-button';
 import { CreatorTipButton } from '@/components/profile/creator-tip-button';
+import { getT, getLocale } from '@/lib/i18n/server';
+import { LOCALE_INTL } from '@/lib/i18n/config';
+import type { Locale } from '@/lib/i18n/config';
 
 // -----------------------------------------------------------------------------
 // /u/[username] — public profile.
@@ -35,11 +38,15 @@ export async function generateMetadata({
   params: Promise<{ username: string }>;
 }): Promise<Metadata> {
   const { username } = await params;
-  const profile = await getPublicProfile(username);
+  const [profile, t, locale] = await Promise.all([
+    getPublicProfile(username),
+    getT(),
+    getLocale(),
+  ]);
 
   if (!profile) {
     return {
-      title: '@' + username + ' nicht gefunden',
+      title: t('profile.metaNotFoundTitle', { username }),
       robots: { index: false, follow: false },
     };
   }
@@ -47,7 +54,10 @@ export async function generateMetadata({
   const displayName = profile.display_name ?? `@${profile.username}`;
   const description =
     profile.bio?.slice(0, 160) ??
-    `${displayName} auf Serlo — ${profile.follower_count.toLocaleString('de-DE')} Follower.`;
+    t('profile.metaGenericDescription', {
+      name: displayName,
+      count: profile.follower_count.toLocaleString(LOCALE_INTL[locale]),
+    });
 
   return {
     title: `${displayName} (@${profile.username})`,
@@ -74,11 +84,11 @@ export async function generateMetadata({
 // sich die Pills nicht beim Tick von 1234 auf 1235 minimal verschieben.
 // -----------------------------------------------------------------------------
 
-function StatPill({ label, value }: { label: string; value: number }) {
+function StatPill({ label, value, locale }: { label: string; value: number; locale: Locale }) {
   return (
     <div className="flex flex-col items-center gap-0.5">
       <span className="text-lg font-semibold tabular-nums">
-        {value.toLocaleString('de-DE')}
+        {value.toLocaleString(LOCALE_INTL[locale])}
       </span>
       <span className="text-xs text-muted-foreground">{label}</span>
     </div>
@@ -110,12 +120,14 @@ export default async function ProfilePage({
       ? tabParam
       : 'posts';
 
-  // Parallel: Session + Follow-Status + Posts-Feed + Coin-Balance
-  const [viewer, alreadyFollowing, posts, balance] = await Promise.all([
+  // Parallel: Session + Follow-Status + Posts-Feed + Coin-Balance + i18n
+  const [viewer, alreadyFollowing, posts, balance, t, locale] = await Promise.all([
     getUser(),
     isFollowing(profile.id),
     tab === 'posts' ? getProfilePosts(profile.id, 24) : Promise.resolve([]),
     getMyCoinBalance(),
+    getT(),
+    getLocale(),
   ]);
 
   const isSelf = viewer?.id === profile.id;
@@ -160,7 +172,7 @@ export default async function ProfilePage({
               {profile.verified && (
                 <BadgeCheck
                   className="h-5 w-5 fill-brand-gold text-background"
-                  aria-label="Verifiziert"
+                  aria-label={t('profile.verifiedBadge')}
                 />
               )}
             </div>
@@ -170,9 +182,9 @@ export default async function ProfilePage({
             <div className="flex items-center gap-6 pt-1">
               {/* Phase 3 bringt /u/[username]/followers + /following als eigene Routen.
                   Bis dahin sind die Stat-Pills reine Display-Elemente — kein Link. */}
-              <StatPill label="Posts"    value={profile.post_count} />
-              <StatPill label="Follower" value={profile.follower_count} />
-              <StatPill label="Folgt"    value={profile.following_count} />
+              <StatPill label={t('profile.statPosts')}     value={profile.post_count}      locale={locale} />
+              <StatPill label={t('profile.statFollower')}  value={profile.follower_count}  locale={locale} />
+              <StatPill label={t('profile.statFollowing')} value={profile.following_count} locale={locale} />
             </div>
           </div>
 
@@ -206,6 +218,13 @@ export default async function ProfilePage({
         counts={{
           posts: profile.post_count,
         }}
+        labels={{
+          tablist: t('profile.tablistLabel'),
+          posts: t('profile.tabPosts'),
+          likes: t('profile.tabLikes'),
+          shop: t('profile.tabShop'),
+          battles: t('profile.tabBattles'),
+        }}
       />
 
       {/* ───── Panels ───── */}
@@ -220,34 +239,34 @@ export default async function ProfilePage({
             posts={posts}
             emptyHint={
               isSelf
-                ? 'Deine Videos erscheinen hier — lade dein erstes Video in der App hoch.'
-                : `@${profile.username} hat noch keine öffentlichen Videos.`
+                ? t('profile.emptyPostsSelf')
+                : t('profile.emptyPostsOther', { username: profile.username })
             }
           />
         )}
 
         {tab === 'likes' && (
           <EmptyPanelInfo
-            title="Gelikte Videos sind privat"
+            title={t('profile.panelLikesTitle')}
             hint={
               isSelf
-                ? 'Nur du siehst deine Like-Historie — und aktuell nur in der App.'
-                : 'Likes sind privat — nur der Account-Inhaber selbst kann sie sehen.'
+                ? t('profile.panelLikesHintSelf')
+                : t('profile.panelLikesHintOther')
             }
           />
         )}
 
         {tab === 'shop' && (
           <EmptyPanelInfo
-            title="Shop kommt in Phase 4"
-            hint="Storefront, Sale-Management und Checkout laufen gerade im Build."
+            title={t('profile.panelShopTitle')}
+            hint={t('profile.panelShopHint')}
           />
         )}
 
         {tab === 'battles' && (
           <EmptyPanelInfo
-            title="Live-Battles sind in der App"
-            hint="Battle-History und Replays landen mit Phase 6 im Web."
+            title={t('profile.panelBattlesTitle')}
+            hint={t('profile.panelBattlesHint')}
           />
         )}
       </section>

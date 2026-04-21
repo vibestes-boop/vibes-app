@@ -117,6 +117,40 @@ const ceMessages = {
     generic: 'Кхузахь хIумма дацIа.',
   },
 
+  profile: {
+    metaNotFoundTitle: '@{username} ца каравелла',
+    metaGenericDescription: '{name} Serlo-хь — {count} фолловер.',
+
+    verifiedBadge: 'Тӏеэцна',
+    statPosts: 'Постаныш',
+    statFollower: 'Фолловераш',
+    statFollowing: 'Тӏехьа',
+
+    tablistLabel: 'Профилан чулацамаш',
+    tabPosts: 'Постаныш',
+    tabLikes: 'Лайкаш',
+    tabShop: 'Туькан',
+    tabBattles: 'Баттлаш',
+
+    emptyPostsSelf:
+      'Хьан видеош кхузахь гучуьра — хьалхара видео апп чохь хьала йaккхa.',
+    emptyPostsOther: '@{username}-ан билгалдаьлла видеош дац.',
+    panelLikesTitle: 'Лайкаш — къайлаха',
+    panelLikesHintSelf: 'Хьуна хьайн лайк-исторе ю — хӀинццалц апп чохь бен.',
+    panelLikesHintOther:
+      'Лайкаш къайлаха ю — аккаунтан дa бен ца гo.',
+    panelShopTitle: 'Туькан 4-чу фазехь',
+    panelShopHint: 'Витрина, чекин а кечдеш ду.',
+    panelBattlesTitle: 'Дийна баттлаш — апп чохь',
+    panelBattlesHint: 'Баттлан исторе а юха хьажар а вебехь 6-чу фазехь.',
+
+    nfTitle: 'Аккаунт ца каравелла',
+    nfHint:
+      'Иза юзернейм Serlo-хь (хӀинццалц) дац — тӀеэцна цӀe ю, я аккаунт дӀаяккхна.',
+    nfHome: 'Коьрта агIонe',
+    nfSignup: 'Шен аккаунт йаккхa',
+  },
+
   explore: {
     metaTitle: 'Лаха — Serlo-хь тренд',
     metaDescription:
@@ -128,6 +162,46 @@ const ceMessages = {
     popularPosts: 'Кхечу постаныш',
     posts: 'постаныш',
     views: 'хьаьжнарш',
+  },
+
+  billing: {
+    metaTitle: 'Ахчанаш дӀадалар — Serlo',
+    title: 'Ахчанаш дӀадалар',
+    subtitle: 'Хьан ахчанан баланс, заказан исторе а счеташ а.',
+
+    walletCoinsLabel: 'Ахчанаш',
+    walletCoinsHint: 'Совгаташна а туькана а',
+    walletCoinsCta: 'Тоха',
+    walletDiamondsLabel: 'Аьхалнаш',
+    walletDiamondsHint: 'фанаташкара тӀееана',
+    walletGiftedLabel: 'Совгӏана',
+    walletGiftedHint: 'ерригге ахчанаш',
+
+    historyTitle: 'Заказан исторе',
+    newOrder: 'Керла заказ',
+    emptyTitle: 'Заказаш хӀинццалц дац',
+    emptyCta: 'Ахчанан туькана',
+    emptyHint: 'Ахчанаш эцча, счеташ кхузахь гур ю.',
+
+    colDate: 'Де',
+    colPackage: 'Пакет',
+    colPrice: 'Мах',
+    colStatus: 'Статус',
+    colDocs: 'Кехаташ',
+    coinsUnit: 'ахчанаш',
+
+    statusPending: 'Сeцна',
+    statusPaid: 'Дeлла',
+    statusFailed: 'ГIалат',
+    statusRefunded: 'Юхадeлла',
+    statusCancelled: 'ДIадаьккхина',
+
+    docInvoice: 'Счёт',
+    docReceipt: 'Чек',
+
+    legalTitle: 'Бакъонаш',
+    legalHint:
+      'ДӀaдeхна ахчанаш юхадоьхкур дацара. Счеташ а чекаш а Stripe-ца автоматан кеча а бо, билгалдина email-а тӀe дӀахьажа а бо. Хаттарш нийса {supportEmail} тӀехь дӀахьожо.',
   },
 
   settings: {
@@ -158,6 +232,84 @@ const ceMessages = {
     emptyTitle: 'ХIумма ца каравелла',
     emptyHint:
       'Фильтрашкара цхьаъ дӀадаккхал, я кхин категори хьажал. Аьрру агIонехь „Юхадаха"-кнопка ю.',
+  },
+
+  studio: {
+    // TODO(i18n/ce): Native-Speaker-Review — technische Studio-Begriffe mischen
+    // englische Loanwords (Analytics, Live) mit Chechenischen Alltagswörtern.
+    navAria: 'Студин навигаци',
+    navDashboard: 'Дашборд',
+    navAnalytics: 'Аналитика',
+    navRevenue: 'Мах-хаам',
+    navScheduled: 'Дагадеш',
+    navDrafts: 'Черновикш',
+    navLive: 'Дийна',
+    navShop: 'Туькан',
+    navOrders: 'Заказаш',
+    navModeration: 'Модераци',
+
+    metaTitle: 'Кечдархочун студи',
+    metaDescription: 'Хьан дашборд — хьаьжнарш, ахчанаш, фолловер-ӀалашхӀум.',
+
+    badge: 'Кечдархочун студи',
+    greeting: 'Салам, {name}',
+    subtitle: 'Хьан дашборд — дерриге цхьана агӀонехь.',
+    creatorFallback: 'Кечдархо',
+
+    reachTitle: 'Кхачар',
+    kpiViews: 'Хьаьжнарш',
+    kpiLikes: 'Лайкаш',
+    kpiComments: 'Комментари',
+    kpiNewFollowers: 'Керла фолловераш',
+    kpiPrev: 'хьалха: {value}',
+
+    diamondBalance: 'Аьхалнин баланс',
+    periodGiftsLine: '+{amount} цу муьрехь ({gifts} совгӀаташ)',
+    noGiftsPeriod: 'Хаьржина мур чохь совгӀаташ дац',
+    earningsDetails: 'Мах-хаамаш довзийтар',
+
+    engagementRate: 'Engagement-Rate',
+    engagementHint: '{interactions} тӀехьожам — {views} хьаьжнарш',
+    topGift: 'Топ-совгӀат',
+    topSupporter: 'Топ-саппортер: {name}',
+    noGiftsPeriodShort: 'Цу муьрехь совгӀаташ хӀинца дац',
+    followerLabel: 'Фолловераш',
+    followerAdded: '+{added} керла муьре',
+
+    planningTitle: 'Контент-план',
+    planScheduledLabel: 'Дагадеш',
+    planScheduledActive: 'активан',
+    planScheduledErrors: '{count} гӀалат',
+    planDraftsLabel: 'Черновикш',
+    planDraftsHint: 'Ӏалашдина',
+    planLiveLabel: 'Live-сесси',
+    planLiveHint: '{days} де чохь',
+    planShopLabel: 'Туькан-оборот',
+    planShopHint: '{count} дӀадехкарш',
+
+    topPostsTitle: 'Топ-постаныш (хьаьжнарш)',
+    allLink: 'Дерриге',
+    topPostsEmpty:
+      'Хаамаш хӀинццалц дац. Контент хаттий, кхин сохьтахь кхузахь хьажа.',
+    noCaption: 'Капцица йоцуш',
+
+    recentGiftsTitle: 'ТӀаьххьара совгӀаташ',
+    recentGiftsEmpty: 'СовгӀаташ хӀинццалц дац. Дийна хӀотта — карайоьдур ю.',
+    giftFrom: '{name}-ра · {relative}',
+
+    moreDetails: 'Кхин дукха хаамаш?',
+    moreDetailsHint:
+      'Аналитикан агӀона фолловер-ӀалашхӀум, пиковни сахьташ а watch-time оцена а гойту.',
+    toAnalytics: 'Аналитика',
+
+    timeJustNow: 'хӀинца',
+    timeMinAgo: '{n} минот хьалха',
+    timeHourAgo: '{n} сохь хьалха',
+    timeDayAgo: '{n} де хьалха',
+
+    period7: '7 де',
+    period28: '28 де',
+    period90: '90 де',
   },
 } satisfies Messages;
 

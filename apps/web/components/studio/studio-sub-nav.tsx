@@ -16,6 +16,8 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/lib/i18n/client';
+import type { TranslationKey } from '@/lib/i18n/translate';
 
 // -----------------------------------------------------------------------------
 // StudioSubNav — Sticky Sub-Nav für /studio-Namespace.
@@ -30,6 +32,12 @@ import { cn } from '@/lib/utils';
 //   - Deshalb ist die Nav-Liste hier lokal; Layout rendert nur noch
 //     <StudioSubNav /> ohne Props.
 //
+// i18n-Pattern:
+//   Items tragen `labelKey: TranslationKey` statt eines statischen Strings.
+//   Die Component liest selber via `useI18n()` und resolved den Key zur
+//   Laufzeit — funktioniert weil Labels aus dem Messages-Tree kommen, nicht
+//   aus Server-Props.
+//
 // Responsive:
 // - Mobile/Tablet (< lg): horizontal scrollbare Pill-Row, sticky top-0.
 // - Desktop (>= lg): vertikales Rail mit Sticky-Positionierung unter dem
@@ -43,25 +51,26 @@ import { cn } from '@/lib/utils';
 // -----------------------------------------------------------------------------
 
 export interface StudioNavItem {
-  label: string;
+  labelKey: TranslationKey;
   href: Route;
   icon: LucideIcon;
 }
 
 const STUDIO_NAV: StudioNavItem[] = [
-  { label: 'Dashboard',    href: '/studio' as Route,             icon: LayoutDashboard },
-  { label: 'Analytics',    href: '/studio/analytics' as Route,   icon: BarChart3 },
-  { label: 'Einnahmen',    href: '/studio/revenue' as Route,     icon: Coins },
-  { label: 'Geplant',      href: '/studio/scheduled' as Route,   icon: CalendarDays },
-  { label: 'Entwürfe',     href: '/studio/drafts' as Route,      icon: FileText },
-  { label: 'Live',         href: '/studio/live' as Route,        icon: Radio },
-  { label: 'Shop',         href: '/studio/shop' as Route,        icon: Package },
-  { label: 'Bestellungen', href: '/studio/orders' as Route,      icon: ShoppingBag },
-  { label: 'Moderation',   href: '/studio/moderation' as Route,  icon: ShieldBan },
+  { labelKey: 'studio.navDashboard',  href: '/studio' as Route,             icon: LayoutDashboard },
+  { labelKey: 'studio.navAnalytics',  href: '/studio/analytics' as Route,   icon: BarChart3 },
+  { labelKey: 'studio.navRevenue',    href: '/studio/revenue' as Route,     icon: Coins },
+  { labelKey: 'studio.navScheduled',  href: '/studio/scheduled' as Route,   icon: CalendarDays },
+  { labelKey: 'studio.navDrafts',     href: '/studio/drafts' as Route,      icon: FileText },
+  { labelKey: 'studio.navLive',       href: '/studio/live' as Route,        icon: Radio },
+  { labelKey: 'studio.navShop',       href: '/studio/shop' as Route,        icon: Package },
+  { labelKey: 'studio.navOrders',     href: '/studio/orders' as Route,      icon: ShoppingBag },
+  { labelKey: 'studio.navModeration', href: '/studio/moderation' as Route,  icon: ShieldBan },
 ];
 
 export function StudioSubNav() {
   const pathname = usePathname();
+  const { t } = useI18n();
   const items = STUDIO_NAV;
 
   const isActive = (href: string) => {
@@ -71,7 +80,7 @@ export function StudioSubNav() {
 
   return (
     <nav
-      aria-label="Studio-Navigation"
+      aria-label={t('studio.navAria')}
       className={cn(
         // Mobile: horizontal scroll, sticky
         'sticky top-[var(--site-header-h,64px)] z-20 -mx-4 overflow-x-auto border-y bg-background/80 backdrop-blur-md lg:mx-0',
@@ -96,7 +105,7 @@ export function StudioSubNav() {
                 )}
               >
                 <Icon className="h-4 w-4 shrink-0" />
-                <span className="truncate">{item.label}</span>
+                <span className="truncate">{t(item.labelKey)}</span>
               </Link>
             </li>
           );
