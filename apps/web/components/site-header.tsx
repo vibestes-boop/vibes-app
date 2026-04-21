@@ -1,5 +1,13 @@
 import Link from 'next/link';
-import { LogOut, Settings, User as UserIcon, Coins, Receipt } from 'lucide-react';
+import {
+  LogOut,
+  Settings,
+  User as UserIcon,
+  Coins,
+  Receipt,
+  LayoutDashboard,
+  Users,
+} from 'lucide-react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -11,6 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { DesktopNav, MobileNav } from '@/components/main-nav';
 import { getUser, getProfile } from '@/lib/auth/session';
 import { getMyCoinBalance } from '@/lib/data/payments';
 import { signOut } from '@/app/actions/auth';
@@ -26,10 +35,14 @@ export async function SiteHeader() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-border/40 bg-background/80 backdrop-blur-md">
-      <div className="container flex h-14 items-center justify-between">
-        <Link href="/" className="font-serif text-xl font-medium tracking-tight">
-          Serlo
-        </Link>
+      <div className="container flex h-14 items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <MobileNav isAuthed={!!user} />
+          <Link href="/" className="font-serif text-xl font-medium tracking-tight">
+            Serlo
+          </Link>
+          <DesktopNav isAuthed={!!user} />
+        </div>
         <nav className="flex items-center gap-3">
           {user ? (
             <>
@@ -75,6 +88,19 @@ export async function SiteHeader() {
                       <span>Mein Profil</span>
                     </Link>
                   </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/studio">
+                      <LayoutDashboard className="h-4 w-4" />
+                      <span>Creator-Studio</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/guilds">
+                      <Users className="h-4 w-4" />
+                      <span>Guilds</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
                     <Link href="/settings/billing">
                       <Receipt className="h-4 w-4" />
