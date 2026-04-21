@@ -67,11 +67,18 @@ export default async function MessagesPage() {
             <MessageCircle className="h-6 w-6 text-primary" />
             {t('messages.title')}
           </h1>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            {conversations.length === 0
-              ? t('messages.noConversations')
-              : `${conversations.length} Unterhaltung${conversations.length === 1 ? '' : 'en'}`}
-          </p>
+          {/*
+           * Subtitle nur wenn es tatsächlich Unterhaltungen gibt.
+           * Im Empty-Fall rendert darunter die `EmptyState`-Card eh einen
+           * eigenen H2 + Erklärung — ein zusätzliches "Noch keine
+           * Unterhaltungen." oben wäre redundant und hat auf dem Screen
+           * seltsam doppelt ausgesehen.
+           */}
+          {conversations.length > 0 && (
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              {`${conversations.length} Unterhaltung${conversations.length === 1 ? '' : 'en'}`}
+            </p>
+          )}
         </div>
         <NewConversationButton />
       </header>

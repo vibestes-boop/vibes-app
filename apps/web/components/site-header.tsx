@@ -7,6 +7,7 @@ import {
   Receipt,
   LayoutDashboard,
   Users,
+  Plus,
 } from 'lucide-react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -50,6 +51,20 @@ export async function SiteHeader() {
         <nav className="flex items-center gap-3">
           {user ? (
             <>
+              {/*
+               * Upload-Primary-CTA. Absichtlich NICHT in der DesktopNav-Pill-
+               * Row — Hochladen ist eine Aktion, kein Ziel. Deshalb gefüllter
+               * Primary-Button mit Icon, visuell abgesetzt vom restlichen Nav.
+               * Nur ab `md` sichtbar; auf Mobil ist Upload via Hamburger-
+               * Drawer erreichbar (wo Screen-Real-Estate fürs Icon fehlt).
+               */}
+              <Link
+                href="/create"
+                className="hidden items-center gap-1.5 rounded-full bg-primary px-3.5 py-1.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 md:inline-flex"
+              >
+                <Plus className="h-4 w-4" aria-hidden="true" />
+                <span>{t('nav.create')}</span>
+              </Link>
               <Link
                 href="/coin-shop"
                 aria-label={t('header.coinsAria', { count: coinsFormatted })}

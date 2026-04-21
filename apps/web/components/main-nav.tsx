@@ -36,6 +36,13 @@ type NavItem = {
   icon: typeof Home;
   /** If true, only show when authenticated. */
   authOnly?: boolean;
+  /**
+   * If true, NICHT in der Desktop-Inline-Nav rendern. Für Items die ihre
+   * eigene prominente CTA-Darstellung im Header haben (aktuell: /create
+   * als gefüllter Primary-Button rechts). Mobile-Drawer zeigt sie weiter,
+   * weil dort kein eigener CTA-Slot existiert.
+   */
+  desktopHidden?: boolean;
 };
 
 // Primary nav — the 6 items that appear in the desktop header bar. Kept short
@@ -46,7 +53,7 @@ const PRIMARY_NAV: NavItem[] = [
   { href: '/shop', labelKey: 'nav.shop', icon: ShoppingBag },
   { href: '/live', labelKey: 'nav.live', icon: Radio },
   { href: '/messages', labelKey: 'nav.messages', icon: MessageCircle, authOnly: true },
-  { href: '/create', labelKey: 'nav.create', icon: Plus, authOnly: true },
+  { href: '/create', labelKey: 'nav.create', icon: Plus, authOnly: true, desktopHidden: true },
 ];
 
 // Secondary nav — only shown in the mobile drawer (too many for the desktop
@@ -68,7 +75,9 @@ function isActive(pathname: string, href: string): boolean {
 export function DesktopNav({ isAuthed }: { isAuthed: boolean }) {
   const pathname = usePathname();
   const { t } = useI18n();
-  const items = PRIMARY_NAV.filter((i) => !i.authOnly || isAuthed);
+  const items = PRIMARY_NAV.filter(
+    (i) => !i.desktopHidden && (!i.authOnly || isAuthed),
+  );
 
   return (
     <nav aria-label={t('nav.main')} className="hidden items-center gap-1 md:flex">
