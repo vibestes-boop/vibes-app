@@ -159,16 +159,30 @@ export const getForYouFeed = cache(
       console.error('[feed] getForYouFeed query error:', error.code, error.message, error.details);
       return [];
     }
-    if (!rows) return [];
+    if (!rows) {
+      // Edge-Case: PostgREST liefert normalerweise `[]` — `null` ohne Error ist
+      // so ungewöhnlich, dass wir es explizit sehen wollen.
+      console.error('[feed] getForYouFeed: rows is null (no error, no data)', {
+        viewerId,
+        limit,
+        excluded: excludeIds.length,
+      });
+      return [];
+    }
 
-    // RLS-Silent-Filter-Diagnose: Wenn der authed User 0 Rows sieht, `/explore`
-    // (ISR, anon) aber populated ist, deutet das auf eine RESTRICTIVE-Policy
-    // hin, die für authed blockt aber anon durchlässt (z.B. women_only_zone
-    // mit fehlerhafter `is_women_only_verified()`-Evaluation). Ohne Error ist
-    // das sonst unsichtbar. Einmal pro Request, nur für Diagnose.
-    if (rows.length === 0 && viewerId) {
-      console.warn(
-        '[feed] getForYouFeed: 0 rows for authed viewer — possible RLS silent-filter',
+    // Diagnose 0-Row-Szenario. Als `console.error` statt `.warn`, damit der
+    // Eintrag in Vercel-Runtime-Logs unter dem „Error"-Level-Filter erscheint
+    // (Next.js 15 routet `warn` auf Vercel teilweise als `info`).
+    //
+    // Wir unterscheiden zwei Fälle:
+    //   (a) viewerId gesetzt  → wahrscheinlich RLS-Silent-Filter (authed-Policy
+    //       blockt, anon-Policy lässt durch — siehe /explore das funktioniert).
+    //   (b) viewerId null    → Auth-Cookie ist in diesem `createClient()`-Scope
+    //       nicht angekommen, obwohl page.tsx den User aufgelöst hat. Deutet
+    //       auf Cookie-Drift / SSR-Scoping-Problem hin.
+    if (rows.length === 0) {
+      console.error(
+        `[feed] getForYouFeed: 0 rows (${viewerId ? 'authed → suspected RLS' : 'anon-scope → suspected cookie drift'})`,
         { viewerId, limit, excluded: excludeIds.length },
       );
     }
