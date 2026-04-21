@@ -34,7 +34,14 @@ export function VideoPlayer({
   const [state, setState] = useState<VideoState>('loading');
   const [error, setError] = useState<string | null>(null);
 
+  // Early-Guard: Leerer oder nur-Whitespace-src ist kein Fehler, sondern
+  // „kein Video hinterlegt". Dann sparen wir uns den nativen <video>-onError
+  // („Das Video konnte nicht geladen werden."), der für den User wie ein
+  // Bug aussieht — und rendern einen ruhigen Empty-State mit Poster-Fallback.
+  const hasSrc = typeof src === 'string' && src.trim().length > 0;
+
   useEffect(() => {
+    if (!hasSrc) return;
     const video = videoRef.current;
     if (!video) return;
 
@@ -100,10 +107,27 @@ export function VideoPlayer({
         video.load();
       }
     };
-  }, [src]);
+  }, [src, hasSrc]);
 
   const aspectClass =
     aspect === '16/9' ? 'aspect-video' : aspect === '1/1' ? 'aspect-square' : 'aspect-[9/16]';
+
+  // Empty-State: kein src hinterlegt → Poster (falls vorhanden) mit dezenter
+  // Info-Zeile, anstatt ein <video> mit leerem src zu mounten (das feuert
+  // native onError und zeigt die rote „nicht geladen"-Karte).
+  if (!hasSrc) {
+    return (
+      <div className={`relative overflow-hidden rounded-lg bg-black ${aspectClass} ${className ?? ''}`}>
+        {poster ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img src={poster} alt="" className="h-full w-full object-contain" />
+        ) : null}
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-4 text-center text-xs text-white/80">
+          Kein Video hinterlegt.
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`relative overflow-hidden rounded-lg bg-black ${aspectClass} ${className ?? ''}`}>

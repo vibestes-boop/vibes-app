@@ -161,6 +161,18 @@ export const getForYouFeed = cache(
     }
     if (!rows) return [];
 
+    // RLS-Silent-Filter-Diagnose: Wenn der authed User 0 Rows sieht, `/explore`
+    // (ISR, anon) aber populated ist, deutet das auf eine RESTRICTIVE-Policy
+    // hin, die für authed blockt aber anon durchlässt (z.B. women_only_zone
+    // mit fehlerhafter `is_women_only_verified()`-Evaluation). Ohne Error ist
+    // das sonst unsichtbar. Einmal pro Request, nur für Diagnose.
+    if (rows.length === 0 && viewerId) {
+      console.warn(
+        '[feed] getForYouFeed: 0 rows for authed viewer — possible RLS silent-filter',
+        { viewerId, limit, excluded: excludeIds.length },
+      );
+    }
+
     const postIds = rows.map((r) => r.id as string);
     const authorIds = Array.from(
       new Set(

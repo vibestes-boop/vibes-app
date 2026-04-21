@@ -48,13 +48,46 @@ export async function generateMetadata({
 
   const authorName = post.author.display_name ?? `@${post.author.username}`;
   const caption = post.caption?.trim();
+  const isImage = post.media_type === 'image';
+  const kindLabel = isImage ? 'Beitrag' : 'Video';
   const title = caption
     ? `${caption.slice(0, 70)}${caption.length > 70 ? '…' : ''} — ${authorName}`
-    : `Video von ${authorName}`;
+    : `${kindLabel} von ${authorName}`;
 
   const description =
     caption?.slice(0, 160) ??
     `${authorName} auf Serlo · ${post.view_count.toLocaleString('de-DE')} Aufrufe.`;
+
+  // Für Image-Posts kein video.other-OG-Type + kein Twitter-Player —
+  // das würde Scraper dazu bringen, eine nicht existierende Video-URL
+  // einzubetten.
+  const ogImages = post.thumbnail_url
+    ? [{ url: post.thumbnail_url }]
+    : post.video_url && isImage
+      ? [{ url: post.video_url }]
+      : undefined;
+
+  if (isImage) {
+    return {
+      title,
+      description,
+      alternates: { canonical: `/p/${post.id}` },
+      openGraph: {
+        type: 'article',
+        title,
+        description,
+        url: `/p/${post.id}`,
+        siteName: 'Serlo',
+        images: ogImages,
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title,
+        description,
+        images: post.thumbnail_url ?? post.video_url ?? undefined,
+      },
+    };
+  }
 
   return {
     title,
@@ -66,20 +99,24 @@ export async function generateMetadata({
       description,
       url: `/p/${post.id}`,
       siteName: 'Serlo',
-      videos: [{ url: post.video_url, type: post.video_url.endsWith('.m3u8') ? 'application/x-mpegURL' : 'video/mp4' }],
-      images: post.thumbnail_url ? [{ url: post.thumbnail_url }] : undefined,
+      videos: post.video_url
+        ? [{ url: post.video_url, type: post.video_url.endsWith('.m3u8') ? 'application/x-mpegURL' : 'video/mp4' }]
+        : undefined,
+      images: ogImages,
     },
     twitter: {
       card: 'player',
       title,
       description,
       images: post.thumbnail_url ?? undefined,
-      players: {
-        playerUrl: `/p/${post.id}`, // Twitter-Card-Player zeigt auf unsere Page selbst.
-        streamUrl: post.video_url,
-        width: 1080,
-        height: 1920,
-      },
+      players: post.video_url
+        ? {
+            playerUrl: `/p/${post.id}`, // Twitter-Card-Player zeigt auf unsere Page selbst.
+            streamUrl: post.video_url,
+            width: 1080,
+            height: 1920,
+          }
+        : undefined,
     },
   };
 }
@@ -125,36 +162,59 @@ export default async function PostDetailPage({
 
   const authorName = post.author.display_name ?? `@${post.author.username}`;
   const created = new Date(post.created_at);
+  const isImage = post.media_type === 'image';
 
-  // JSON-LD VideoObject — Google Video-Rich-Result.
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'VideoObject',
-    name: post.caption?.slice(0, 100) ?? `Video von ${authorName}`,
-    description: post.caption ?? `${authorName} auf Serlo`,
-    thumbnailUrl: post.thumbnail_url ? [post.thumbnail_url] : undefined,
-    uploadDate: post.created_at,
-    duration: post.duration_secs ? `PT${Math.round(post.duration_secs)}S` : undefined,
-    contentUrl: post.video_url,
-    embedUrl: `/p/${post.id}`,
-    interactionStatistic: [
-      {
-        '@type': 'InteractionCounter',
-        interactionType: { '@type': 'WatchAction' },
-        userInteractionCount: post.view_count,
-      },
-      {
-        '@type': 'InteractionCounter',
-        interactionType: { '@type': 'LikeAction' },
-        userInteractionCount: post.like_count,
-      },
-    ],
-    author: {
-      '@type': 'Person',
-      name: authorName,
-      url: `/u/${post.author.username}`,
-    },
-  };
+  // JSON-LD — für Video-Posts VideoObject, für Image-Posts ImageObject/SocialMediaPosting.
+  // Google rendert dann den passenden Rich-Result (Video-Carousel vs. Image-Preview).
+  const jsonLd: Record<string, unknown> = isImage
+    ? {
+        '@context': 'https://schema.org',
+        '@type': 'SocialMediaPosting',
+        headline: post.caption?.slice(0, 100) ?? `Beitrag von ${authorName}`,
+        articleBody: post.caption ?? undefined,
+        datePublished: post.created_at,
+        image: post.video_url || post.thumbnail_url || undefined,
+        author: {
+          '@type': 'Person',
+          name: authorName,
+          url: `/u/${post.author.username}`,
+        },
+        interactionStatistic: [
+          {
+            '@type': 'InteractionCounter',
+            interactionType: { '@type': 'LikeAction' },
+            userInteractionCount: post.like_count,
+          },
+        ],
+      }
+    : {
+        '@context': 'https://schema.org',
+        '@type': 'VideoObject',
+        name: post.caption?.slice(0, 100) ?? `Video von ${authorName}`,
+        description: post.caption ?? `${authorName} auf Serlo`,
+        thumbnailUrl: post.thumbnail_url ? [post.thumbnail_url] : undefined,
+        uploadDate: post.created_at,
+        duration: post.duration_secs ? `PT${Math.round(post.duration_secs)}S` : undefined,
+        contentUrl: post.video_url || undefined,
+        embedUrl: `/p/${post.id}`,
+        interactionStatistic: [
+          {
+            '@type': 'InteractionCounter',
+            interactionType: { '@type': 'WatchAction' },
+            userInteractionCount: post.view_count,
+          },
+          {
+            '@type': 'InteractionCounter',
+            interactionType: { '@type': 'LikeAction' },
+            userInteractionCount: post.like_count,
+          },
+        ],
+        author: {
+          '@type': 'Person',
+          name: authorName,
+          url: `/u/${post.author.username}`,
+        },
+      };
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:py-10">
@@ -164,15 +224,42 @@ export default async function PostDetailPage({
       />
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-        {/* ───── Player ───── */}
+        {/* ───── Media: Image oder Video, je nach media_type ───── */}
         <div>
-          <VideoPlayer
-            src={post.video_url}
-            poster={post.thumbnail_url}
-            autoPlay={false}
-            loop={false}
-            muted={false}
-          />
+          {isImage ? (
+            // Image-Post — einfaches <img> in 9:16-Frame (konsistent mit Video),
+            // Object-Contain wegen variabler Aspect-Ratios bei Fotos.
+            <div className="relative overflow-hidden rounded-lg bg-black aspect-[9/16]">
+              {post.video_url ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={post.video_url}
+                  alt={post.caption ?? `Beitrag von ${authorName}`}
+                  className="h-full w-full object-contain"
+                  loading="eager"
+                />
+              ) : post.thumbnail_url ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={post.thumbnail_url}
+                  alt=""
+                  className="h-full w-full object-contain"
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center text-sm text-white/60">
+                  Kein Bild hinterlegt.
+                </div>
+              )}
+            </div>
+          ) : (
+            <VideoPlayer
+              src={post.video_url}
+              poster={post.thumbnail_url}
+              autoPlay={false}
+              loop={false}
+              muted={false}
+            />
+          )}
 
           {/* Stats-Zeile */}
           <div className="mt-4 flex flex-wrap items-center gap-4">

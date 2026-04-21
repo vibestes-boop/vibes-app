@@ -85,30 +85,48 @@ export default async function ExplorePage() {
             {t('explore.popularPosts')}
           </h2>
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-            {preview.map((p) => (
-              <li key={p.id}>
-                <Link
-                  href={`/p/${p.id}` as Route}
-                  className="group relative block aspect-[9/16] overflow-hidden rounded-lg bg-black"
-                >
-                  {p.thumbnail_url && (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
-                      src={p.thumbnail_url}
-                      alt={p.caption ?? 'Post'}
-                      className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                      loading="lazy"
-                    />
-                  )}
-                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent p-2 text-xs text-white">
-                    <div className="truncate font-medium">@{p.author.username}</div>
-                    <div className="text-white/70">
-                      {formatCount(p.view_count ?? 0, locale)} {t('explore.views')}
+            {preview.map((p) => {
+              // Mobile-DB hat für viele Posts kein `thumbnail_url` (Native
+              // berechnet ein Poster-Frame nicht in jedem Flow). Statt eine
+              // komplett schwarze Kachel zu zeigen, rendern wir einen dezenten
+              // Gradient mit Username-Initial als visueller Anker.
+              const initial =
+                (p.author.display_name ?? p.author.username).slice(0, 1).toUpperCase() || '•';
+              return (
+                <li key={p.id}>
+                  <Link
+                    href={`/p/${p.id}` as Route}
+                    className="group relative block aspect-[9/16] overflow-hidden rounded-lg bg-black"
+                  >
+                    {p.thumbnail_url ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={p.thumbnail_url}
+                        alt={p.caption ?? 'Post'}
+                        className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-zinc-800 via-zinc-900 to-black">
+                        <Compass
+                          className="h-10 w-10 text-white/20"
+                          aria-hidden
+                        />
+                        <span className="absolute text-2xl font-bold tabular-nums text-white/40">
+                          {initial}
+                        </span>
+                      </div>
+                    )}
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent p-2 text-xs text-white">
+                      <div className="truncate font-medium">@{p.author.username}</div>
+                      <div className="text-white/70">
+                        {formatCount(p.view_count ?? 0, locale)} {t('explore.views')}
+                      </div>
                     </div>
-                  </div>
-                </Link>
-              </li>
-            ))}
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}

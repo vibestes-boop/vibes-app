@@ -130,6 +130,11 @@ type PostRowMobile = {
   author_id: string;
   caption: string | null;
   media_url: string | null;
+  // Mobile-Schema diskriminiert Bild vs. Video über `media_type`. Für den
+  // Post-Detail-Branch (VideoPlayer vs. <img>) müssen wir den Wert lesen.
+  // Optional + Default 'video' weil ältere Rows vor der media_type-Einführung
+  // reine Video-Posts waren.
+  media_type?: 'image' | 'video' | null;
   thumbnail_url: string | null;
   view_count: number | null;
   tags: string[] | null;
@@ -192,10 +197,17 @@ export const getProfilePosts = cache(
 
 // -----------------------------------------------------------------------------
 // Single post with author-profile joined.
+//
+// `media_type` wird zusätzlich zum Post-Contract durchgereicht, damit die
+// Detail-Page Bild- vs. Video-Posts korrekt rendern kann (sonst landet jeder
+// Image-Post im VideoPlayer → native onError → „Das Video konnte nicht
+// geladen werden."). Der Web-Contract bleibt unberührt, das Feld wird
+// punktuell an der Grenze zwischen Adapter und Page angeflanscht.
 // -----------------------------------------------------------------------------
 
 export interface PostWithAuthor extends Post {
   author: Pick<PublicProfile, 'id' | 'username' | 'display_name' | 'avatar_url' | 'verified'>;
+  media_type: 'image' | 'video';
 }
 
 export const getPost = cache(async (postId: string): Promise<PostWithAuthor | null> => {
@@ -203,7 +215,7 @@ export const getPost = cache(async (postId: string): Promise<PostWithAuthor | nu
   const { data, error } = await supabase
     .from('posts')
     .select(
-      `id, author_id, caption, media_url, thumbnail_url, view_count, tags, allow_comments, allow_duet, created_at,
+      `id, author_id, caption, media_url, media_type, thumbnail_url, view_count, tags, allow_comments, allow_duet, created_at,
        like_count:likes(count),
        comment_count:comments(count),
        author:profiles!posts_author_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )`,
@@ -212,13 +224,15 @@ export const getPost = cache(async (postId: string): Promise<PostWithAuthor | nu
     .maybeSingle();
 
   if (error || !data) return null;
-  const author = normalizeAuthor(
-    (data as unknown as PostRowMobile & { author: AuthorRow | AuthorRow[] | null }).author,
-  );
+  const row = data as unknown as PostRowMobile & { author: AuthorRow | AuthorRow[] | null };
+  const author = normalizeAuthor(row.author);
   if (!author) return null;
 
-  const post = toPost(data as unknown as PostRowMobile);
-  return { ...post, author };
+  const post = toPost(row);
+  // Default auf 'video' — Legacy-Rows vor der media_type-Einführung waren
+  // ausschließlich Videos, und VideoPlayer ist unser Default-Renderer.
+  const media_type: 'image' | 'video' = row.media_type === 'image' ? 'image' : 'video';
+  return { ...post, author, media_type };
 });
 
 // -----------------------------------------------------------------------------
