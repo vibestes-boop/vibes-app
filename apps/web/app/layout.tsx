@@ -9,6 +9,9 @@ import { SiteHeader } from '@/components/site-header';
 import { ConsentBanner } from '@/components/consent/consent-banner';
 import { AnalyticsConsentGate } from '@/components/consent/analytics-consent-gate';
 import { ServiceWorkerRegistrar } from '@/components/pwa/service-worker-registrar';
+import { I18nProvider } from '@/lib/i18n/client';
+import { getI18n } from '@/lib/i18n/server';
+import { LOCALE_HTML_LANG } from '@/lib/i18n/config';
 
 import './globals.css';
 
@@ -50,9 +53,13 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // i18n: Cookie → Locale → Messages. Muss synchron in der RSC-Pass laufen
+  // damit der initial Render bereits die richtigen Übersetzungen zeigt
+  // (kein Flash-of-Untranslated-Content beim Client-Mount).
+  const { locale, messages } = await getI18n();
   return (
-    <html lang="de" suppressHydrationWarning>
+    <html lang={LOCALE_HTML_LANG[locale]} suppressHydrationWarning>
       <body className="min-h-dvh bg-background font-sans text-foreground">
         <ThemeProvider
           attribute="class"
@@ -60,6 +67,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           enableSystem
           disableTransitionOnChange
         >
+          <I18nProvider locale={locale} messages={messages}>
           <QueryProvider>
             <Suspense fallback={null}>
               <PostHogProvider>
@@ -97,6 +105,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </Suspense>
             <Toaster position="top-right" richColors />
           </QueryProvider>
+          </I18nProvider>
         </ThemeProvider>
       </body>
     </html>

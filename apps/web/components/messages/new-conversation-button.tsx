@@ -6,6 +6,7 @@ import { createBrowserClient } from '@supabase/ssr';
 import { Search, UserPlus, X, BadgeCheck, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import { getOrCreateConversation } from '@/app/actions/messages';
+import { useI18n } from '@/lib/i18n/client';
 
 // -----------------------------------------------------------------------------
 // NewConversationButton — "Neu"-Button im Messages-Header. Öffnet ein Modal
@@ -30,6 +31,7 @@ function supa() {
 }
 
 export function NewConversationButton() {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
 
   return (
@@ -40,7 +42,7 @@ export function NewConversationButton() {
         className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
       >
         <UserPlus className="h-4 w-4" />
-        Neu
+        {t('messages.new')}
       </button>
       {open && <UserPickerModal onClose={() => setOpen(false)} />}
     </>

@@ -8,6 +8,7 @@ import { getUser } from '@/lib/auth/session';
 import { getConversations } from '@/lib/data/messages';
 import type { ConversationPreview } from '@/lib/data/messages';
 import { NewConversationButton } from '@/components/messages/new-conversation-button';
+import { getT } from '@/lib/i18n/server';
 
 // -----------------------------------------------------------------------------
 // /messages — Konversations-Liste
@@ -56,7 +57,7 @@ export default async function MessagesPage() {
     redirect('/login?next=/messages');
   }
 
-  const conversations = await getConversations();
+  const [conversations, t] = await Promise.all([getConversations(), getT()]);
 
   return (
     <div className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-3xl flex-col px-4 py-6 md:px-6">
@@ -64,11 +65,11 @@ export default async function MessagesPage() {
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-semibold">
             <MessageCircle className="h-6 w-6 text-primary" />
-            Nachrichten
+            {t('messages.title')}
           </h1>
           <p className="mt-0.5 text-sm text-muted-foreground">
             {conversations.length === 0
-              ? 'Noch keine Unterhaltungen.'
+              ? t('messages.noConversations')
               : `${conversations.length} Unterhaltung${conversations.length === 1 ? '' : 'en'}`}
           </p>
         </div>
@@ -159,22 +160,21 @@ function ConversationRow({ conv }: { conv: ConversationPreview }) {
   );
 }
 
-function EmptyState() {
+async function EmptyState() {
+  const t = await getT();
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-xl border bg-card/30 py-16 text-center">
       <div className="grid h-16 w-16 place-items-center rounded-full bg-primary/10">
         <MessageCircle className="h-8 w-8 text-primary" />
       </div>
-      <h2 className="text-lg font-semibold">Noch keine Nachrichten</h2>
-      <p className="max-w-xs text-sm text-muted-foreground">
-        Suche einen Creator, ein Profil oder einen Shop-Seller und starte eine Unterhaltung.
-      </p>
+      <h2 className="text-lg font-semibold">{t('messages.emptyTitle')}</h2>
+      <p className="max-w-xs text-sm text-muted-foreground">{t('messages.emptyHint')}</p>
       <Link
         href={'/search' as Route}
         className="mt-2 inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
       >
         <Search className="h-4 w-4" />
-        Nutzer suchen
+        {t('messages.searchUser')}
       </Link>
     </div>
   );

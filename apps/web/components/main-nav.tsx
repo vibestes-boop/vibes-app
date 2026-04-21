@@ -26,10 +26,13 @@ import {
 
 import { cn } from '@/lib/utils';
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetClose } from '@/components/ui/sheet';
+import { useI18n } from '@/lib/i18n/client';
+import type { TranslationKey } from '@/lib/i18n/translate';
 
 type NavItem = {
   href: string;
-  label: string;
+  /** i18n-Key — wird zur Laufzeit via `t(labelKey)` resolved. */
+  labelKey: TranslationKey;
   icon: typeof Home;
   /** If true, only show when authenticated. */
   authOnly?: boolean;
@@ -38,19 +41,19 @@ type NavItem = {
 // Primary nav — the 6 items that appear in the desktop header bar. Kept short
 // so the row fits on 13" laptop screens without wrapping.
 const PRIMARY_NAV: NavItem[] = [
-  { href: '/', label: 'Feed', icon: Home, authOnly: true },
-  { href: '/explore', label: 'Entdecken', icon: Compass },
-  { href: '/shop', label: 'Shop', icon: ShoppingBag },
-  { href: '/live', label: 'Live', icon: Radio },
-  { href: '/messages', label: 'Nachrichten', icon: MessageCircle, authOnly: true },
-  { href: '/create', label: 'Hochladen', icon: Plus, authOnly: true },
+  { href: '/', labelKey: 'nav.feed', icon: Home, authOnly: true },
+  { href: '/explore', labelKey: 'nav.explore', icon: Compass },
+  { href: '/shop', labelKey: 'nav.shop', icon: ShoppingBag },
+  { href: '/live', labelKey: 'nav.live', icon: Radio },
+  { href: '/messages', labelKey: 'nav.messages', icon: MessageCircle, authOnly: true },
+  { href: '/create', labelKey: 'nav.create', icon: Plus, authOnly: true },
 ];
 
 // Secondary nav — only shown in the mobile drawer (too many for the desktop
 // bar). Desktop users reach these via the avatar dropdown or direct URLs.
 const SECONDARY_NAV: NavItem[] = [
-  { href: '/guilds', label: 'Guilds', icon: Users, authOnly: true },
-  { href: '/studio', label: 'Creator-Studio', icon: LayoutDashboard, authOnly: true },
+  { href: '/guilds', labelKey: 'nav.guilds', icon: Users, authOnly: true },
+  { href: '/studio', labelKey: 'nav.studio', icon: LayoutDashboard, authOnly: true },
 ];
 
 function isActive(pathname: string, href: string): boolean {
@@ -64,10 +67,11 @@ function isActive(pathname: string, href: string): boolean {
 
 export function DesktopNav({ isAuthed }: { isAuthed: boolean }) {
   const pathname = usePathname();
+  const { t } = useI18n();
   const items = PRIMARY_NAV.filter((i) => !i.authOnly || isAuthed);
 
   return (
-    <nav aria-label="Hauptnavigation" className="hidden items-center gap-1 md:flex">
+    <nav aria-label={t('nav.main')} className="hidden items-center gap-1 md:flex">
       {items.map((item) => {
         const Icon = item.icon;
         const active = isActive(pathname, item.href);
@@ -84,7 +88,7 @@ export function DesktopNav({ isAuthed }: { isAuthed: boolean }) {
             )}
           >
             <Icon className="h-4 w-4" aria-hidden="true" />
-            <span>{item.label}</span>
+            <span>{t(item.labelKey)}</span>
           </Link>
         );
       })}
@@ -98,6 +102,7 @@ export function DesktopNav({ isAuthed }: { isAuthed: boolean }) {
 
 export function MobileNav({ isAuthed }: { isAuthed: boolean }) {
   const pathname = usePathname();
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
 
   const primary = PRIMARY_NAV.filter((i) => !i.authOnly || isAuthed);
@@ -108,14 +113,14 @@ export function MobileNav({ isAuthed }: { isAuthed: boolean }) {
       <SheetTrigger asChild>
         <button
           type="button"
-          aria-label="Menü öffnen"
+          aria-label={t('nav.openMenu')}
           className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-border bg-card text-muted-foreground transition-colors hover:bg-accent hover:text-foreground md:hidden"
         >
           <Menu className="h-4 w-4" aria-hidden="true" />
         </button>
       </SheetTrigger>
       <SheetContent side="left" className="w-72 p-0">
-        <SheetTitle className="sr-only">Navigation</SheetTitle>
+        <SheetTitle className="sr-only">{t('nav.main')}</SheetTitle>
         <div className="flex h-14 items-center border-b border-border/40 px-4 font-serif text-xl font-medium tracking-tight">
           Serlo
         </div>
@@ -136,7 +141,7 @@ export function MobileNav({ isAuthed }: { isAuthed: boolean }) {
                   )}
                 >
                   <Icon className="h-4 w-4" aria-hidden="true" />
-                  <span>{item.label}</span>
+                  <span>{t(item.labelKey)}</span>
                 </Link>
               </SheetClose>
             );
@@ -160,7 +165,7 @@ export function MobileNav({ isAuthed }: { isAuthed: boolean }) {
                       )}
                     >
                       <Icon className="h-4 w-4" aria-hidden="true" />
-                      <span>{item.label}</span>
+                      <span>{t(item.labelKey)}</span>
                     </Link>
                   </SheetClose>
                 );
