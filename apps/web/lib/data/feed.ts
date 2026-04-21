@@ -5,6 +5,13 @@ import type { Post, PublicProfile } from '@shared/types';
 // -----------------------------------------------------------------------------
 // FeedPost = Post + Author + Engagement-Flags
 // Verwendet in `/` (Home-Feed), `/explore`, später in `/t/[tag]`.
+//
+// Schema-Drift-Adapter: Die prod-DB (Mobile-authored) nutzt andere Spalten-
+// namen als der Web-Contract. Statt Transform-Boilerplate nutzen wir hier
+// PostgREST-Select-Aliase (`target_name:source_column`), damit die Row
+// direkt im Post-Contract-Shape zurückkommt. Nur Defaults für Mobile-seitig
+// fehlende Felder (duration_secs/music_id/allow_stitch/share_count) und
+// der verified→is_verified-Alias beim Author werden manuell gesetzt.
 // -----------------------------------------------------------------------------
 
 export type FeedAuthor = Pick<
@@ -19,10 +26,26 @@ export interface FeedPost extends Post {
   following_author: boolean;
 }
 
+// PostgREST-Aliase: user_id:author_id, video_url:media_url, hashtags:tags
+// — mappt Mobile-DB-Spalten auf Web-Contract-Namen bereits in der Query.
 const POST_COLUMNS =
-  'id, user_id, caption, video_url, thumbnail_url, duration_secs, view_count, like_count, comment_count, share_count, hashtags, music_id, allow_comments, allow_duet, allow_stitch, created_at';
+  'id, user_id:author_id, caption, video_url:media_url, thumbnail_url, view_count, like_count, comment_count, hashtags:tags, allow_comments, allow_duet, created_at';
 
-const AUTHOR_JOIN = 'author:profiles!posts_user_id_fkey ( id, username, display_name, avatar_url, verified )';
+const AUTHOR_JOIN =
+  'author:profiles!posts_author_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )';
+
+// Mobile-DB kennt diese Post-Felder nicht — beim Normalisieren mit Defaults
+// füllen, damit der Post-Contract komplett ist.
+function applyPostDefaults(p: Partial<Post>): Post {
+  return {
+    ...(p as Post),
+    duration_secs: p.duration_secs ?? null,
+    music_id: p.music_id ?? null,
+    allow_stitch: p.allow_stitch ?? true,
+    share_count: p.share_count ?? 0,
+    hashtags: (p as Partial<Post>).hashtags ?? [],
+  };
+}
 
 // -----------------------------------------------------------------------------
 // Helper — aus einem Batch Posts die Engagement-Maps holen (liked, saved, follow).
@@ -49,15 +72,15 @@ async function batchEngagement(
     supabase.from('bookmarks').select('post_id').eq('user_id', viewerId).in('post_id', postIds),
     supabase
       .from('follows')
-      .select('followed_id')
+      .select('following_id')
       .eq('follower_id', viewerId)
-      .in('followed_id', authorIds),
+      .in('following_id', authorIds),
   ]);
 
   return {
     liked: new Set((likesRes.data ?? []).map((r) => r.post_id as string)),
     saved: new Set((savesRes.data ?? []).map((r) => r.post_id as string)),
-    following: new Set((followsRes.data ?? []).map((r) => r.followed_id as string)),
+    following: new Set((followsRes.data ?? []).map((r) => r.following_id as string)),
   };
 }
 
@@ -65,9 +88,10 @@ async function batchEngagement(
 // Row-Normalisierung — Supabase-Joined-Row hat author: Profile | Profile[]
 // -----------------------------------------------------------------------------
 
-type RawPostRow = Omit<Post, 'hashtags'> & {
+type RawAuthor = { id: string; username: string; display_name: string | null; avatar_url: string | null; verified: boolean | null };
+type RawPostRow = Omit<Post, 'hashtags' | 'duration_secs' | 'music_id' | 'allow_stitch' | 'share_count'> & {
   hashtags: string[] | null;
-  author: FeedAuthor | FeedAuthor[] | null;
+  author: RawAuthor | RawAuthor[] | null;
 };
 
 function normalizeRow(
@@ -76,12 +100,23 @@ function normalizeRow(
   saved: Set<string>,
   following: Set<string>,
 ): FeedPost | null {
-  const author = Array.isArray(row.author) ? row.author[0] : row.author;
-  if (!author) return null;
+  const rawAuthor = Array.isArray(row.author) ? row.author[0] : row.author;
+  if (!rawAuthor) return null;
+  const author: FeedAuthor = {
+    id: rawAuthor.id,
+    username: rawAuthor.username,
+    display_name: rawAuthor.display_name,
+    avatar_url: rawAuthor.avatar_url,
+    verified: rawAuthor.verified ?? false,
+  };
+
+  const base = applyPostDefaults({
+    ...(row as unknown as Partial<Post>),
+    hashtags: row.hashtags ?? [],
+  });
 
   return {
-    ...(row as unknown as Post),
-    hashtags: row.hashtags ?? [],
+    ...base,
     author,
     liked_by_me: liked.has(row.id),
     saved_by_me: saved.has(row.id),
@@ -119,7 +154,7 @@ export const getForYouFeed = cache(
         // Die RPC könnte bereits volle Post-Rows zurückgeben ODER nur IDs.
         // Beide Fälle abfangen.
         const first = data[0] as Record<string, unknown>;
-        if (typeof first.id === 'string' && 'video_url' in first) {
+        if (typeof first.id === 'string' && ('media_url' in first || 'video_url' in first)) {
           // RPC liefert volle Posts → IDs extrahieren und re-fetchen mit Author-Join,
           // damit wir überall denselben Shape haben.
           rpcIds = data.map((r) => (r as { id: string }).id);
@@ -197,16 +232,16 @@ export const getFollowingFeed = cache(
 
     const { data: follows, error: followErr } = await supabase
       .from('follows')
-      .select('followed_id')
+      .select('following_id')
       .eq('follower_id', user.id);
 
     if (followErr || !follows || follows.length === 0) return [];
-    const followedIds = follows.map((f) => f.followed_id as string);
+    const followedIds = follows.map((f) => f.following_id as string);
 
     let query = supabase
       .from('posts')
       .select(`${POST_COLUMNS}, ${AUTHOR_JOIN}`)
-      .in('user_id', followedIds)
+      .in('author_id', followedIds)
       .eq('privacy', 'public')
       .order('created_at', { ascending: false })
       .limit(limit);
@@ -229,6 +264,12 @@ export const getFollowingFeed = cache(
 
 // -----------------------------------------------------------------------------
 // getSuggestedFollows — Right-Sidebar: Top-Creator denen der User noch nicht folgt.
+//
+// Achtung: Mobile-DB-`profiles` hat KEINE `follower_count`-Spalte (siehe auch
+// public.ts). Wir sortieren deshalb nach `created_at DESC` (neue Profile oben)
+// und liefern `follower_count: 0` als Placeholder. Eine echte Sortierung
+// bräuchte eine Follows-Aggregation oder einen denormalisierten Counter in
+// der `profiles`-Tabelle.
 // -----------------------------------------------------------------------------
 
 export interface SuggestedFollow {
@@ -251,15 +292,15 @@ export const getSuggestedFollows = cache(async (limit = 5): Promise<SuggestedFol
     excludeIds = [user.id];
     const { data: follows } = await supabase
       .from('follows')
-      .select('followed_id')
+      .select('following_id')
       .eq('follower_id', user.id);
-    if (follows) excludeIds.push(...follows.map((f) => f.followed_id as string));
+    if (follows) excludeIds.push(...follows.map((f) => f.following_id as string));
   }
 
   let query = supabase
     .from('profiles')
-    .select('id, username, display_name, avatar_url, follower_count, verified')
-    .order('follower_count', { ascending: false })
+    .select('id, username, display_name, avatar_url, verified:is_verified, created_at')
+    .order('created_at', { ascending: false })
     .limit(limit);
 
   if (excludeIds.length > 0) {
@@ -267,11 +308,26 @@ export const getSuggestedFollows = cache(async (limit = 5): Promise<SuggestedFol
   }
 
   const { data } = await query;
-  return (data as SuggestedFollow[] | null) ?? [];
+  if (!data) return [];
+
+  return (data as Array<{
+    id: string;
+    username: string;
+    display_name: string | null;
+    avatar_url: string | null;
+    verified: boolean | null;
+  }>).map((p) => ({
+    id: p.id,
+    username: p.username,
+    display_name: p.display_name,
+    avatar_url: p.avatar_url,
+    verified: p.verified ?? false,
+    follower_count: 0, // Placeholder — siehe Kommentar oben.
+  }));
 });
 
 // -----------------------------------------------------------------------------
-// getTrendingHashtags — für /explore. Aggregation aus posts.hashtags.
+// getTrendingHashtags — für /explore. Aggregation aus posts.tags.
 // Skaliert nicht unendlich, aber für Phase 3 reicht eine simple Window-Abfrage.
 // -----------------------------------------------------------------------------
 
@@ -294,11 +350,11 @@ export const getTrendingHashtags = cache(async (limit = 20): Promise<TrendingHas
     /* fall through */
   }
 
-  // Fallback: 7-Tage-Fenster, client-seitig aggregieren. Lädt nur die Hashtags-Spalte.
+  // Fallback: 7-Tage-Fenster, client-seitig aggregieren. Lädt nur die tags-Spalte.
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const { data } = await supabase
     .from('posts')
-    .select('hashtags, view_count')
+    .select('tags, view_count')
     .gte('created_at', since)
     .eq('privacy', 'public')
     .limit(1000);
@@ -306,9 +362,9 @@ export const getTrendingHashtags = cache(async (limit = 20): Promise<TrendingHas
   if (!data) return [];
 
   const agg = new Map<string, { post_count: number; total_views: number }>();
-  for (const row of data as { hashtags: string[] | null; view_count: number | null }[]) {
-    if (!row.hashtags) continue;
-    for (const raw of row.hashtags) {
+  for (const row of data as { tags: string[] | null; view_count: number | null }[]) {
+    if (!row.tags) continue;
+    for (const raw of row.tags) {
       const tag = raw.toLowerCase().replace(/^#/, '').trim();
       if (!tag) continue;
       const entry = agg.get(tag) ?? { post_count: 0, total_views: 0 };
@@ -347,12 +403,12 @@ export const searchAll = cache(async (q: string, limit = 12): Promise<SearchResu
   const like = `%${query.replace(/[%_]/g, '')}%`;
   const tagLike = query.toLowerCase().replace(/^#/, '');
 
-  // User-Suche: username + display_name
+  // User-Suche: username + display_name (kein follower_count auf profiles)
   const usersPromise = supabase
     .from('profiles')
-    .select('id, username, display_name, avatar_url, verified, follower_count')
+    .select('id, username, display_name, avatar_url, verified:is_verified, created_at')
     .or(`username.ilike.${like},display_name.ilike.${like}`)
-    .order('follower_count', { ascending: false })
+    .order('created_at', { ascending: false })
     .limit(limit);
 
   // Post-Suche: Caption
@@ -394,8 +450,25 @@ export const searchAll = cache(async (q: string, limit = 12): Promise<SearchResu
     .map((row) => normalizeRow(row, liked, saved, following))
     .filter((p): p is FeedPost => p !== null);
 
+  const users = (
+    (usersRes.data ?? []) as Array<{
+      id: string;
+      username: string;
+      display_name: string | null;
+      avatar_url: string | null;
+      verified: boolean | null;
+    }>
+  ).map((u) => ({
+    id: u.id,
+    username: u.username,
+    display_name: u.display_name,
+    avatar_url: u.avatar_url,
+    verified: u.verified ?? false,
+    follower_count: 0, // Placeholder — profiles hat keinen denorm. Counter.
+  }));
+
   return {
-    users: (usersRes.data ?? []) as SearchResults['users'],
+    users,
     posts,
     hashtags,
   };
