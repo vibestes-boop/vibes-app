@@ -88,7 +88,7 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
 
   return (
     <article
-      className="relative mx-auto flex aspect-[9/16] w-full max-w-[420px] overflow-hidden rounded-2xl bg-black"
+      className="relative mx-auto flex aspect-[9/16] h-full max-h-full w-auto max-w-full overflow-hidden rounded-2xl bg-black"
       data-post-id={post.id}
     >
       {/* Video-Ebene */}

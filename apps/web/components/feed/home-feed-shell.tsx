@@ -58,7 +58,7 @@ export function HomeFeedShell({
   const followingPosts = followingQuery.data ?? initialFollowing ?? [];
 
   return (
-    <div className="grid h-[calc(100dvh-var(--site-header-h,64px))] w-full grid-cols-1 xl:grid-cols-[260px_1fr_320px]">
+    <div className="grid h-[calc(100dvh-var(--site-header-h,64px))] w-full grid-cols-1 grid-rows-[minmax(0,1fr)] xl:grid-cols-[260px_1fr_320px]">
       {/* Left Sidebar (Desktop only) */}
       <aside className="hidden border-r border-border xl:block">
         <FeedSidebar viewerId={viewerId} />

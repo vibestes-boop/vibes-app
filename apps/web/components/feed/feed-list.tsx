@@ -209,7 +209,7 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
             key={post.id}
             data-feed-idx={idx}
             ref={(el) => setCardRef(el, idx)}
-            className="flex h-full w-full snap-start items-center justify-center py-2"
+            className="flex h-full w-full snap-start items-center justify-center"
           >
             <FeedCard
               post={post}
