@@ -5,20 +5,55 @@ import type { PublicProfile, Post, Story } from '@shared/types';
 // -----------------------------------------------------------------------------
 // Public profile by username — read-through cache per request.
 // Returns `null` for 404 case; callers should branch to notFound().
+//
+// Schema-Adapter: Die produktive `profiles`-Tabelle (angelegt vom Mobile-App-
+// Schema) hat KEINE denormalisierten Counter-Spalten (`follower_count`,
+// `following_count`, `post_count`) und verwendet `is_verified` statt `verified`.
+// Wir mappen das hier on-read in die PublicProfile-Shape:
+//   1) Basis-Row: selektieren NUR existierende Spalten (sonst PostgREST-42703 → 404).
+//   2) Counts: drei parallele `HEAD`-Queries mit `count: 'exact'` — bei indexed
+//      FKs auf `follows(follower_id, followed_id)` und `posts(user_id)` billig
+//      genug für Profile-Loads im aktuellen Volumen. Bei >10k Follower/Creator
+//      kann später eine Migration mit denormalisierten Counters + Triggers
+//      folgen, ohne diese Adapter-Stelle zu brechen.
 // -----------------------------------------------------------------------------
 
 export const getPublicProfile = cache(async (username: string): Promise<PublicProfile | null> => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('profiles')
-    .select(
-      'id, username, display_name, avatar_url, bio, follower_count, following_count, post_count, verified',
-    )
+    .select('id, username, display_name, avatar_url, bio, is_verified')
     .eq('username', username.toLowerCase())
     .maybeSingle();
 
   if (error || !data) return null;
-  return data as PublicProfile;
+
+  const [followerRes, followingRes, postsRes] = await Promise.all([
+    supabase
+      .from('follows')
+      .select('follower_id', { count: 'exact', head: true })
+      .eq('followed_id', data.id),
+    supabase
+      .from('follows')
+      .select('followed_id', { count: 'exact', head: true })
+      .eq('follower_id', data.id),
+    supabase
+      .from('posts')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', data.id),
+  ]);
+
+  return {
+    id: data.id,
+    username: data.username,
+    display_name: data.display_name,
+    avatar_url: data.avatar_url,
+    bio: data.bio,
+    verified: data.is_verified,
+    follower_count: followerRes.count ?? 0,
+    following_count: followingRes.count ?? 0,
+    post_count: postsRes.count ?? 0,
+  };
 });
 
 // -----------------------------------------------------------------------------
@@ -59,7 +94,7 @@ export const getPost = cache(async (postId: string): Promise<PostWithAuthor | nu
     .from('posts')
     .select(
       `id, user_id, caption, video_url, thumbnail_url, duration_secs, view_count, like_count, comment_count, share_count, hashtags, music_id, allow_comments, allow_duet, allow_stitch, created_at,
-       author:profiles!posts_user_id_fkey ( id, username, display_name, avatar_url, verified )`,
+       author:profiles!posts_user_id_fkey ( id, username, display_name, avatar_url, verified:is_verified)`,
     )
     .eq('id', postId)
     .maybeSingle();
@@ -90,7 +125,7 @@ export const getPostComments = cache(async (postId: string, limit = 30): Promise
     .from('comments')
     .select(
       `id, post_id, user_id, body, like_count, created_at,
-       author:profiles!comments_user_id_fkey ( id, username, display_name, avatar_url, verified )`,
+       author:profiles!comments_user_id_fkey ( id, username, display_name, avatar_url, verified:is_verified)`,
     )
     .eq('post_id', postId)
     .is('deleted_at', null)
@@ -118,7 +153,7 @@ export const getStory = cache(async (storyId: string): Promise<StoryWithAuthor |
     .from('stories')
     .select(
       `id, user_id, media_url, media_type, duration_secs, expires_at, view_count, created_at,
-       author:profiles!stories_user_id_fkey ( id, username, display_name, avatar_url, verified )`,
+       author:profiles!stories_user_id_fkey ( id, username, display_name, avatar_url, verified:is_verified)`,
     )
     .eq('id', storyId)
     .maybeSingle();
