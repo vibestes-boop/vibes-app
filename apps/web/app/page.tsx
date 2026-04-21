@@ -45,16 +45,6 @@ export default async function HomePage() {
   // Nur wenn der User jemandem folgt, prefetchen wir — sonst sparen wir den Call.
   const following = hasFollows ? await getFollowingFeed({ limit: 10 }) : null;
 
-  // [Pass 8 diag] — SSR-side probe: bestätigt, was in Prod tatsächlich rauskommt.
-  // Entfernen sobald Empty-Feed-Bug gelöst.
-  console.error('[probe:home]', {
-    forYouLen: forYou.length,
-    suggestedLen: suggested.length,
-    hasFollows,
-    followingLen: following?.length ?? null,
-    userId: user.id,
-  });
-
   return (
     <HomeFeedShell
       viewerId={user.id}
