@@ -1,0 +1,90 @@
+# -----------------------------------------------------------------------------
+# Test-Workflow: Native (Expo-Root) + Web (apps/web).
+#
+# Beide Hälften des Monorepos haben EIGENE package.json + lock + node_modules +
+# Jest-Config und müssen darum getrennt installiert + getestet werden. Matrix
+# wäre überkandidelt, da Expo-Root einen schwereren Install (LiveKit + Skia
+# Prebuilds) hat als Web — separate Jobs erlauben unterschiedliche Caches und
+# klarere Fail-Signale in der PR-UI.
+#
+# Node 20 LTS: Next.js 15 braucht ≥18.18, jest-expo ≥18, Expo SDK 54 supportet
+# 20. Pinnen statt "latest" damit Renovate-Bumps nicht spontan CI rot machen.
+#
+# Ausgelöst auf push + PR zu main — so läuft es für Branch-Pushes (früh-Signal
+# während Dev) UND auf PRs (merge-Gate). Workflow-Dispatch erlaubt manuelle
+# Reruns.
+# -----------------------------------------------------------------------------
+
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# Cancel redundant runs auf derselben ref (z.B. force-push) — spart CI-Minuten.
+concurrency:
+  group: test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Native (Expo / React Native) — läuft in Repo-Root.
+  # Testet: lib/__tests__/**/*.test.{ts,tsx} via jest-expo.
+  # ---------------------------------------------------------------------------
+  native:
+    name: native (expo)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install (root)
+        # npm ci benutzt lock + node_modules-sauberes Install. --no-audit weil
+        # Audit bereits auf dev-Maschine + Dependabot läuft. patch-package wird
+        # via postinstall ausgeführt.
+        run: npm ci --no-audit --no-fund
+
+      - name: Test (jest-expo)
+        run: npm test -- --ci --colors
+
+  # ---------------------------------------------------------------------------
+  # Web (Next.js / Serlo) — läuft in apps/web.
+  # Testet: hooks/__tests__ + components/**/__tests__ + lib/** via next/jest.
+  # ---------------------------------------------------------------------------
+  web:
+    name: web (next.js)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install (apps/web)
+        run: npm ci --no-audit --no-fund
+
+      - name: Test (next/jest)
+        # next/jest verlangt ggf. SWC-Binary — Setup-Node cached npm, aber
+        # SWC lädt ggf. nach. In GitHub-Actions-Runnern (Ubuntu x64) ist das
+        # unproblematisch; im Gegensatz zu Sandboxes mit Egress-Restrictions.
+        run: npm test -- --ci --colors

@@ -9,6 +9,9 @@
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
     "lint": "expo lint --max-warnings 0",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
     "postinstall": "patch-package"
   },
   "dependencies": {
@@ -76,10 +79,15 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@testing-library/jest-native": "^5.4.3",
+    "@testing-library/react-native": "^12.8.1",
     "@types/dom-mediacapture-record": "^1.0.22",
+    "@types/jest": "^29.5.14",
     "@types/react": "~19.1.10",
     "eslint": "^9.0.0",
     "eslint-config-expo": "^55.0.0",
+    "jest": "^29.7.0",
+    "jest-expo": "~54.0.0",
     "patch-package": "^8.0.1",
     "typescript": "~5.9.2"
   },
