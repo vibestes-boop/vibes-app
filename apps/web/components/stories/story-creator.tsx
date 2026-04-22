@@ -17,6 +17,7 @@ import {
 import { requestR2UploadUrl } from '@/app/actions/posts';
 import { createStory } from '@/app/actions/stories';
 import { cn } from '@/lib/utils';
+import { compressImage, extensionForMime } from '@/lib/image/compress';
 
 // -----------------------------------------------------------------------------
 // <StoryCreator /> — Upload + Poll-Builder für neue Stories.
@@ -103,19 +104,35 @@ export function StoryCreator({ viewerId }: StoryCreatorProps) {
     setUploadError(null);
     try {
       const ts = Date.now();
-      const ext = (file.name.split('.').pop() || (mediaType === 'video' ? 'mp4' : 'jpg'))
+
+      // Image-Compression-Pass (v1.w.12.7): Story-Bilder werden browser-seitig
+      // komprimiert bevor sie hochgeladen werden. Stories werden ohnehin auf
+      // 9:16-Mobile-Viewport dargestellt, das 48-MP-Original bringt da nichts.
+      // Videos bleiben unberührt (ffmpeg.wasm-Scope).
+      let uploadBody: Blob = file;
+      let uploadMime = file.type || (mediaType === 'video' ? 'video/mp4' : 'image/jpeg');
+      let uploadExt = (file.name.split('.').pop() || (mediaType === 'video' ? 'mp4' : 'jpg'))
         .toLowerCase()
         .slice(0, 5);
+
+      if (mediaType === 'image') {
+        const result = await compressImage(file, { maxEdge: 1920, quality: 0.82 });
+        if (result.compressed) {
+          uploadBody = result.blob;
+          uploadMime = result.mimeType;
+          uploadExt = extensionForMime(result.mimeType);
+        }
+      }
+
       // Siehe Kopf-Kommentar: Reuse der `posts/*`-Prefixes, weil R2-Allowlist
       // `stories/` aktuell nicht kennt.
       const prefix = mediaType === 'video' ? 'posts/videos' : 'posts/images';
-      const key = `${prefix}/${viewerId}/story_${ts}.${ext}`;
-      const contentType = file.type || (mediaType === 'video' ? 'video/mp4' : 'image/jpeg');
+      const key = `${prefix}/${viewerId}/story_${ts}.${uploadExt}`;
 
-      const sig = await requestR2UploadUrl({ key, contentType });
+      const sig = await requestR2UploadUrl({ key, contentType: uploadMime });
       if (!sig.ok) throw new Error(sig.error);
 
-      await putWithProgress(sig.data.uploadUrl, file, contentType, setUploadProgress);
+      await putWithProgress(sig.data.uploadUrl, uploadBody, uploadMime, setUploadProgress);
       setMediaUrl(sig.data.publicUrl);
       setUploadProgress(100);
     } catch (e) {

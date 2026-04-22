@@ -352,6 +352,40 @@ Phasen laufen grob sequenziell, weil jede auf der vorherigen aufbaut. Innerhalb 
 
 Wie in CLAUDE.md: neue Einträge oben, ältere nach unten. Format: `v1.w.X — Kurz-Titel`, dann Checkliste unten mit `- [x]`.
 
+### v1.w.12.7 — Performance-Pass #2: Route-Skeletons, Image-Compression, Font-Cleanup (2026-04-22)
+
+**Scope**: Drei blind-durchziehbare Performance-Wins die KEIN Preview-Deploy für Lighthouse-Audit brauchen. Fokus auf Perceived-Performance (loading.tsx-Skeletons) + Bandwidth/Storage (Image-Compression vor R2-PUT) + Config-Hygiene (tote Font-CSS-Variablen entsorgt). Ergänzt v1.w.12.5 das Bundle-Analyzer/PostHog-Gate geliefert hat.
+
+**Entscheidung gegen Lighthouse-Audit JETZT**: v1.w.12.5 hat das Gate explizit gesetzt — „Lighthouse-Audit + Budget-Config — braucht deployed Vercel-Preview für realistische Messungen, nicht `next build && next start` lokal. Erst nach erstem Prod-Deploy sinnvoll." Respektiert. Dieser Slice liefert dafür zwei messbare Wins die auch ohne Audit valide sind.
+
+**Entscheidung gegen next/font-Swap**: v1.w.12.5 hat festgehalten dass der System-Font-Stack bewusst gewählt ist („sieht TikTok-nah aus, Web-Font-Swap wäre separate Design-Entscheidung"). Statt hier eine neue Design-Entscheidung zu treffen, werden nur die toten CSS-Variablen-Referenzen aufgeräumt und die Intention explizit dokumentiert.
+
+- [x] **Font-Cleanup** (`apps/web/tailwind.config.ts`): Die `fontFamily.sans`/`fontFamily.mono`-Einträge referenzierten `var(--font-geist-sans)` / `var(--font-geist-mono)` — diese CSS-Variablen wurden aber **nirgends** im Codebase definiert (`grep -r "@font-face\|font-geist" apps/web/` → 0 Hits, `apps/web/package.json` hat keine Geist-Dependency). Die Variablen waren Cargo-Cult aus dem create-next-app-Scaffold; Tailwind fiel still auf `system-ui` zurück. Jetzt explizit: Stack = `['system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif']`, Mono analog mit `SFMono-Regular`/`Menlo`. Kommentar dokumentiert warum (Cross-Platform-Parität mit Native, Zero-CLS, TikTok-Look) und wie jemand später einen Web-Font einziehen würde. Optik unverändert — rein semantische Korrektheit.
+
+- [x] **Image-Compression-Util** (`apps/web/lib/image/compress.ts`): Neue 230-Zeilen-Bibliothek mit `compressImage(file, { maxEdge, quality, outputType })`-API. Canvas-basiert, Zero-Dependencies. Default: Longest-Edge 1920px, Quality 0.82, Output-MIME auto (WebP wenn Browser unterstützt, sonst JPEG). Defensive Fallbacks: (a) SVG wird passthrough returned (Canvas-Pipe hätte XSS-Surface erhöht + Vektor-Verlust), (b) bei jedem Fehler (CORS/decode-Fail/unsupported) wird das Original unverändert returned — der Upload-Pfad soll NIE an Compression scheitern, nur davon profitieren, (c) wenn das Compressed-Result größer wäre als das Original (seltener Edge-Case: bereits optimiertes JPEG von einem Screenshot-Tool), fallen wir auf das Original zurück statt unnötig Qualität zu verlieren. `supportsWebp()` ist Modul-level cached — kein Canvas-probe pro Call. Exportierter `extensionForMime(mime)` Helper für R2-Key-Endung bei Mime-Changes (HEIC → WebP etc.).
+
+- [x] **Verdrahtung in 2 Upload-Sites**:
+  - `apps/web/components/create/create-editor.tsx` (`doUpload`-Funktion): Vor dem R2-Key-Build wird für `mType === 'image'` `compressImage(f, { maxEdge: 1920, quality: 0.82 })` gerufen. Bei `result.compressed === true` werden `uploadBody` (Blob), `uploadMime`, `uploadExt` ausgetauscht. Video-Pfad unverändert (würde ffmpeg.wasm brauchen, v1.w.8b-Scope). Video-Cover-Thumbnails laufen weiterhin durch den existierenden `extractVideoFrameBlob`-Canvas-Path (bereits JPEG-0.85), nicht zusätzlich komprimiert — unnötig.
+  - `apps/web/components/stories/story-creator.tsx` (`doUpload`-Callback): Gleiches Pattern für `mediaType === 'image'`. Story-Bilder werden im 9:16-Mobile-Viewport gerendered, 48-MP-Original hätte dort null Mehrwert.
+  - R2-Key-Endung wird bei Mime-Wechsel (HEIC/JPEG → WebP) passend umgeschrieben (`.webp` statt `.jpg`), damit `next/image`-Content-Negotiation an der CDN-Kante greift. Upload-`Content-Type`-Header wird analog angepasst.
+
+- [x] **Route-Level `loading.tsx`-Skeletons** auf 6 Top-Trafic-Routes — vorher 0 loading.tsx im gesamten `apps/web/app/`-Tree. Jede Datei nutzt das neue `<Skeleton>`-Primitive aus `components/ui/skeleton.tsx` (CSS-only, `animate-pulse` + `bg-muted`, `aria-hidden="true"`, Zero-JS im Client-Bundle). Layouts matchen die jeweilige Final-View grob — Dimensions + Grid-Cols identisch zum echten Content, damit der Swap minimal springt:
+  - `app/loading.tsx` — Home (Story-Strip-Circles + 3 Feed-Cards mit 9:16-Video-Body + Avatar-Row). Deckt beide Auth-Pfade (Landing + FeedShell) ab.
+  - `app/shop/loading.tsx` — Katalog (Filter-Sidebar 220px + 2/3/4-col Produkt-Grid mit Square-Thumb + 2 Text-Zeilen).
+  - `app/live/loading.tsx` — Live-Katalog (3-4-col Grid mit 16:9-Thumb + Streamer-Avatar + Titel).
+  - `app/messages/loading.tsx` — DM-Liste links (60×60 Avatare matchen v1.26.9) + Empty-State rechts.
+  - `app/studio/loading.tsx` — Dashboard (Header + Sub-Nav-Tabs + 4-col KPI-Cards + Chart-Row 2:1-Layout). Besonders relevant weil `/studio/page.tsx` mehrere Aggregat-RPCs parallel awaitet.
+  - `app/u/[username]/loading.tsx` — Public-Profile (Cover-Banner + überlappender Avatar + Count-Triple + Bio + Tab-Strip + 3-col-Post-Grid). Externe Traffic-Quelle (Google/Social-Share) — Perceived-Performance besonders wichtig.
+
+- [x] **Shared Skeleton-Primitive** (`components/ui/skeleton.tsx`): 22-Zeilen Server-Component. `aria-hidden="true"` damit Screenreader die Pulse-Boxen nicht ankündigen. `cn()`-merge über Caller-Classes. Kein Shimmer-Gradient (shadcn/ui-Default ist auch pure `animate-pulse`, bewusst ruhiger Look).
+
+- [x] **Bewusst NICHT in v1.w.12.7**:
+  - **Video-Compression** via ffmpeg.wasm — eigener Scope (v1.w.8b), braucht Worker-Setup + Size-Budget-Decision (ffmpeg.wasm ist ~25 MB Core + Codec-Bundles).
+  - **EXIF-Rotation-Fix** in compressImage: Moderne Browser rotieren seit 2019 automatisch bei `drawImage`, Safari iOS <14 hat den Bug noch — Acceptable-Regression. Future: `createImageBitmap({ imageOrientation: 'from-image' })` evaluieren.
+  - **HEIC-Decoding-Pfad**: Browser decoded HEIC nicht nativ, aber `<input type="file" accept="image/*">` wandelt es auf iOS 14+ bei File-Pick automatisch in JPEG. Andere Plattformen sehen HEIC gar nicht erst.
+  - **Loading-States für Sub-Routes** (`/shop/[id]`, `/live/[id]`, `/messages/[id]`, `/u/[username]/shop` etc.) — eigener Slice, die 6 oberen Traffic-Zweige sind der High-Impact-Sweep; Sub-Routes können inkrementell nachziehen.
+  - **Lighthouse-Audit + Budget-Konfig** — bleibt gated auf ersten Prod-Deploy (v1.w.12.5-Entscheidung).
+
 ### v1.w.12.6 — A11y-Foundation: Skip-Link, Landmarks, Icon-Button-Sweep, Focus-Visible-Baseline (2026-04-20)
 
 **Scope**: Foundation-Pass für WCAG-2.1-AA-Compliance, damit der eigentliche Axe-Audit (braucht Preview-Deploy) nicht gleich mit 50+ Findings geflutet wird. Vier konkrete Wins mit App-weitem Impact — keine per-View-Audits, die kommen in separaten Slices nach dem ersten Deploy.

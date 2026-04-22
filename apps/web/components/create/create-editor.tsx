@@ -21,6 +21,7 @@ import {
   Camera,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { compressImage, extensionForMime } from '@/lib/image/compress';
 import {
   publishPost,
   schedulePost,
@@ -189,16 +190,35 @@ export function CreateEditor({ viewerId, initialDraft }: Props) {
       setUploadError(null);
       try {
         const ts = Date.now();
-        const ext = (f.name.split('.').pop() || (mType === 'video' ? 'mp4' : 'jpg'))
+
+        // Image-Compression-Pass (v1.w.12.7): Bilder werden browser-seitig
+        // auf Longest-Edge 1920px runterskaliert + WebP (Fallback JPEG) mit
+        // Quality 0.82 re-encoded, bevor sie als PUT zu R2 gehen. Videos
+        // bleiben unberührt — dafür bräuchte es ffmpeg.wasm (v1.w.8b-Scope).
+        // `compressImage` ist defensiv: bei jedem Fehler + wenn das Original
+        // bereits kleiner wäre, gibt es das Original unverändert zurück.
+        let uploadBody: Blob = f;
+        let uploadMime = f.type || fallbackMime(mType, (f.name.split('.').pop() || 'jpg').toLowerCase().slice(0, 5));
+        let uploadExt = (f.name.split('.').pop() || (mType === 'video' ? 'mp4' : 'jpg'))
           .toLowerCase()
           .slice(0, 5);
-        const key = `${mType === 'video' ? 'posts/videos' : 'posts/images'}/${viewerId}/${ts}.${ext}`;
 
-        const sig = await requestR2UploadUrl({ key, contentType: f.type || fallbackMime(mType, ext) });
+        if (mType === 'image') {
+          const result = await compressImage(f, { maxEdge: 1920, quality: 0.82 });
+          if (result.compressed) {
+            uploadBody = result.blob;
+            uploadMime = result.mimeType;
+            uploadExt = extensionForMime(result.mimeType);
+          }
+        }
+
+        const key = `${mType === 'video' ? 'posts/videos' : 'posts/images'}/${viewerId}/${ts}.${uploadExt}`;
+
+        const sig = await requestR2UploadUrl({ key, contentType: uploadMime });
         if (!sig.ok) throw new Error(sig.error);
 
         // PUT mit XHR (wegen Progress-Tracking)
-        await putWithProgress(sig.data.uploadUrl, f, f.type || fallbackMime(mType, ext), (p) =>
+        await putWithProgress(sig.data.uploadUrl, uploadBody, uploadMime, (p) =>
           setUploadProgress(p),
         );
 
