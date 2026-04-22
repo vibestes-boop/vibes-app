@@ -67,11 +67,17 @@ export function LiveChat({
           filter: `session_id=eq.${sessionId}`,
         },
         async (payload) => {
+          // Realtime-Payload kommt direkt aus Postgres-WAL — verwendet die
+          // echten DB-Spaltennamen, nicht die PostgREST-Aliase. DB-Spalte
+          // heißt `text` (siehe `supabase/live_studio.sql:45`). Wir mappen
+          // `raw.text` unten auf das UI-Feld `body`, damit der Render-Pfad
+          // mit dem SSR-Pfad (`getLiveComments`, der via `body:text` aliast)
+          // konsistent bleibt.
           const raw = payload.new as {
             id: string;
             session_id: string;
             user_id: string;
-            body: string;
+            text: string;
             created_at: string;
             pinned?: boolean;
           };
@@ -90,7 +96,7 @@ export function LiveChat({
             id: raw.id,
             session_id: raw.session_id,
             user_id: raw.user_id,
-            body: raw.body,
+            body: raw.text,
             created_at: raw.created_at,
             pinned: raw.pinned ?? false,
             author: profile

@@ -168,9 +168,14 @@ export async function sendLiveComment(
   }
 
   // Insert — Postgres-Trigger schickt den Broadcast.
+  // DB-Spalte heißt `text` (siehe `supabase/live_studio.sql:45`), nicht `body`.
+  // Schema-Cache-Error „Could not find the 'body' column of 'live_comments'"
+  // entsteht wenn `body` hier landet. Web-Layer aliast an den Lese-Sites
+  // (`getLiveComments` SELECT + Realtime-Mapping) auf `body`, damit die
+  // LiveCommentWithAuthor-Typen + UI-Components unverändert bleiben.
   const { data: inserted, error: insertErr } = await supabase
     .from('live_comments')
-    .insert({ session_id: sessionId, user_id: viewer.id, body: text })
+    .insert({ session_id: sessionId, user_id: viewer.id, text })
     .select('id')
     .single();
 
