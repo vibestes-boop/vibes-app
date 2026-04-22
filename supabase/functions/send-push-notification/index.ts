@@ -108,9 +108,126 @@ Deno.serve(async (req: Request) => {
     const result = await pushRes.json();
     console.log('[push] Expo response:', JSON.stringify(result));
 
+    // ───────────────────────────────────────────────────────────────────────
+    // v1.w.12.8 — Web-Push Fan-Out (Serlo Web Parity)
+    //
+    // Jede notifications-Row wird zusätzlich an send-web-push weitergereicht,
+    // damit Web-User (serlo-web.vercel.app) dieselben Benachrichtigungen
+    // bekommen wie die Native-App. title/body sind oben schon gebaut (msg),
+    // deep-link URL + tag werden typ-abhängig abgeleitet.
+    //
+    // Skip bei type='dm': DMs haben einen separaten Trigger auf messages
+    // (notify_web_push_on_dm → send-web-push direkt), der bereits in
+    // v1.w.12.4 live ging. Ein zweiter Web-Push hier würde Doppel-Ping
+    // verursachen. Der Expo-Pfad dupliziert NICHT weil DMs genau einen
+    // notifications-Eintrag erzeugen und Expo das push_token dedupliziert.
+    //
+    // Fire-and-forget: Web-Push-Fehler blockieren nie die Expo-Response.
+    // ───────────────────────────────────────────────────────────────────────
+    if (record.type !== 'dm') {
+      try {
+        const webUrl = deriveWebUrl(record, actorName);
+        const webTag = deriveWebTag(record);
+        const webPushRes = await fetch(
+          `${Deno.env.get('SUPABASE_URL')!}/functions/v1/send-web-push`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!}`,
+            },
+            body: JSON.stringify({
+              user_id: record.recipient_id,
+              title: msg.title,
+              body: msg.body,
+              url: webUrl,
+              tag: webTag,
+              data: {
+                type: record.type,
+                senderId: record.sender_id,
+                senderUsername: actorName,
+                postId: record.post_id,
+                sessionId: record.session_id,
+              },
+            }),
+          },
+        );
+        const webResult = await webPushRes.json().catch(() => ({}));
+        console.log('[push] Web-Push response:', JSON.stringify(webResult));
+      } catch (webErr) {
+        // Non-fatal: Expo-Push ist die primäre Zustellung, Web nur Parity.
+        console.warn('[push] Web-Push dispatch failed (non-fatal):', webErr);
+      }
+    }
+
     return new Response(JSON.stringify({ ok: true, result }), { status: 200 });
   } catch (err) {
     console.error('[push] Error:', err);
     return new Response(JSON.stringify({ error: String(err) }), { status: 500 });
   }
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Web-URL-Derivation — wohin klickt der User aus der Browser-Notification?
+//
+// Routen müssen mit den tatsächlichen apps/web-Pfaden übereinstimmen:
+//   /p/[postId], /u/[username], /live/[id], /studio/orders
+//
+// sender_id ist eine UUID. Für /u/[username] übergeben wir den bereits
+// aufgelösten `actorName` (aus dem Expo-Pfad oben geholt). Fällt `actorName`
+// auf 'Jemand' zurück (Profil nicht gefunden), gehen wir zur Startseite.
+// ─────────────────────────────────────────────────────────────────────────────
+function deriveWebUrl(
+  record: NotificationPayload['record'],
+  actorName: string,
+): string {
+  const hasActorUsername = actorName && actorName !== 'Jemand';
+
+  switch (record.type) {
+    case 'like':
+    case 'comment':
+      return record.post_id ? `/p/${record.post_id}` : '/';
+    case 'follow':
+    case 'follow_request':
+      return hasActorUsername ? `/u/${actorName}` : '/';
+    case 'live':
+    case 'live_invite':
+    case 'scheduled_live_reminder':
+      return record.session_id ? `/live/${record.session_id}` : '/live';
+    case 'gift':
+      // Live-Gift: zur Live-Session. Shop-Gift (kein session_id): zum Profil
+      // des Senders (dort wird das Geschenk Kontext-gegeben kommuniziert).
+      if (record.session_id) return `/live/${record.session_id}`;
+      return hasActorUsername ? `/u/${actorName}` : '/';
+    case 'new_order':
+      return '/studio/orders';
+    default:
+      return '/';
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Web-Tag-Derivation — Browser gruppiert Notifications mit gleichem `tag`
+// und ersetzt alte durch neue. Wichtig damit z.B. 10 Likes in 2 Sekunden
+// nur EINE Notification im Tray erzeugen, nicht zehn.
+// ─────────────────────────────────────────────────────────────────────────────
+function deriveWebTag(record: NotificationPayload['record']): string {
+  switch (record.type) {
+    case 'like':
+    case 'comment':
+      return record.post_id ? `${record.type}:${record.post_id}` : record.type;
+    case 'follow':
+    case 'follow_request':
+      return `follow:${record.sender_id ?? 'unknown'}`;
+    case 'live':
+    case 'live_invite':
+    case 'scheduled_live_reminder':
+      return `live:${record.session_id ?? record.sender_id ?? 'unknown'}`;
+    case 'gift':
+      return `gift:${record.sender_id ?? 'unknown'}:${record.session_id ?? 'shop'}`;
+    case 'new_order':
+      return `new_order:${record.post_id ?? Date.now()}`;
+    default:
+      return record.type;
+  }
+}
