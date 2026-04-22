@@ -66,12 +66,21 @@ function UserPickerModal({ onClose }: { onClose: () => void }) {
     const token = ++searchTokenRef.current;
     setLoading(true);
     const t = setTimeout(async () => {
-      const { data } = await supa()
+      const { data, error } = await supa()
         .from('profiles')
-        .select('id, username, display_name, avatar_url, verified')
+        .select('id, username, display_name, avatar_url, verified:is_verified')
         .ilike('username', `%${trimmed}%`)
         .limit(20);
       if (token !== searchTokenRef.current) return;
+      if (error) {
+        // Silent-fail ist OK — User sieht „Keine Treffer." Aber wir müssen
+        // den Spaltennamen (`is_verified` auf DB-Seite, aliased zu `verified`
+        // fürs UI) korrekt aliasen, sonst wirft PostgREST 400 und `data`
+        // bleibt null → der User sah vorher NIE Treffer.
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('[NewConversationButton] profile search failed', error);
+        }
+      }
       setResults((data as SearchResult[]) ?? []);
       setLoading(false);
     }, 200);
