@@ -16,7 +16,13 @@ import type { LiveSession } from '@shared/types';
 const SESSION_COLUMNS =
   'id, host_id, room_name, title, thumbnail_url, category, status, viewer_count, peak_viewer_count:peak_viewers, started_at, ended_at, updated_at, moderation_enabled, moderation_words, slow_mode_seconds';
 
-const HOST_JOIN = 'host:profiles!live_sessions_host_id_fkey ( id, username, display_name, avatar_url, verified )';
+// HINWEIS: `verified:is_verified` — analog zu `peak_viewer_count:peak_viewers`.
+// Die DB-Spalte heißt `is_verified` (Migration 20260407010000_creator_analytics),
+// TypeScript-Verbraucher (LiveSessionWithHost.host.verified etc.) erwarten aber
+// `verified`. Supabase-PostgREST-Alias macht das Mapping ohne Type-Rewrite.
+// Ohne den Alias schlägt der Embed-Query still fehl → `data = null` →
+// `getLiveSession` → `notFound()` → 404 auf `/live/host/[id]`.
+const HOST_JOIN = 'host:profiles!live_sessions_host_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )';
 
 export interface LiveSessionWithHost extends LiveSession {
   slow_mode_seconds: number | null;
@@ -105,8 +111,9 @@ export const getLiveComments = cache(
     const { data } = await supabase
       .from('live_comments')
       .select(
+        // `verified:is_verified` — gleicher Alias wie in HOST_JOIN oben.
         `id, session_id, user_id, body, created_at, pinned,
-         author:profiles!live_comments_user_id_fkey ( id, username, display_name, avatar_url, verified )`,
+         author:profiles!live_comments_user_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )`,
       )
       .eq('session_id', sessionId)
       .order('created_at', { ascending: false })
