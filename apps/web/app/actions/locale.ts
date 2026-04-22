@@ -41,5 +41,3 @@ export async function setLocale(value: string, pathToRevalidate?: string) {
 
   return { ok: true as const };
 }
-
-export { SUPPORTED_LOCALES };
