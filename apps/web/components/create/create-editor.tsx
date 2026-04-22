@@ -247,6 +247,15 @@ export function CreateEditor({ viewerId, initialDraft }: Props) {
           } catch {
             // Thumbnail ist best-effort — Post funktioniert auch ohne.
           }
+        } else if (mType === 'image') {
+          // Bei Bild-Posts ist das hochgeladene Bild selbst das Thumbnail.
+          // Wichtig: ohne das wäre thumbnail_url NULL → Profil-Grid zeigt
+          // Gradient-Fallback, Explore zeigt Avatar-Letter-Fallback, Feed
+          // kann (trotz Conditional-Render seit v1.w.12.9) das Poster
+          // nicht setzen. Re-use der media_url ist kostenlos (R2 served
+          // dasselbe Objekt), und spart den extra Roundtrip für ein
+          // separat generiertes Thumbnail.
+          thumbUrl = sig.data.publicUrl;
         }
 
         setUploadProgress(100);

@@ -46,9 +46,14 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
   const followMut = useToggleFollow();
 
   const isSelf = viewerId === post.author.id;
+  // Legacy-Rows (pre-media_type-Einführung) waren alle Videos — deshalb
+  // defaulten wir auf 'video'. Explicit 'image' schaltet in den Bild-Render-
+  // Pfad (Instagram-style Standbild mit Video-ähnlichem Overlay).
+  const isImage = post.media_type === 'image';
 
-  // Auto-Play / Pause je nach `isActive`
+  // Auto-Play / Pause je nach `isActive` — nur für Videos relevant.
   useEffect(() => {
+    if (isImage) return;
     const v = videoRef.current;
     if (!v) return;
     if (isActive && !isPaused) {
@@ -59,9 +64,10 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
     } else {
       v.pause();
     }
-  }, [isActive, isPaused, muted]);
+  }, [isActive, isPaused, muted, isImage]);
 
   const handleVideoTap = () => {
+    if (isImage) return; // Bild-Posts haben keine Play/Pause-Semantik
     const v = videoRef.current;
     if (!v) return;
     if (v.paused) {
@@ -91,44 +97,62 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
       className="relative mx-auto flex aspect-[9/16] h-full max-h-full w-auto max-w-full overflow-hidden rounded-2xl bg-black"
       data-post-id={post.id}
     >
-      {/* Video-Ebene */}
-      <div
-        role="button"
-        tabIndex={0}
-        aria-label="Video pausieren / abspielen"
-        onClick={handleVideoTap}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            handleVideoTap();
-          }
-        }}
-        className="absolute inset-0 cursor-pointer"
-      >
-        <video
-          ref={videoRef}
-          src={post.video_url}
-          poster={post.thumbnail_url ?? undefined}
-          loop
-          muted={muted}
-          playsInline
-          preload="metadata"
-          onTimeUpdate={(e) => {
-            const v = e.currentTarget;
-            if (v.duration > 0) setProgress((v.currentTime / v.duration) * 100);
+      {/* Media-Ebene: Video bei media_type='video', Bild bei 'image' */}
+      {isImage ? (
+        <div className="absolute inset-0">
+          {/* Unscharfer Hintergrund-Fill für Nicht-9:16-Bilder — verhindert
+              schwarze Balken links/rechts ohne das Motiv zu beschneiden. */}
+          <img
+            src={post.thumbnail_url ?? post.video_url}
+            alt=""
+            aria-hidden="true"
+            className="absolute inset-0 h-full w-full scale-110 object-cover opacity-60 blur-2xl"
+          />
+          <img
+            src={post.thumbnail_url ?? post.video_url}
+            alt={post.caption ?? ''}
+            className="absolute inset-0 h-full w-full object-contain"
+          />
+        </div>
+      ) : (
+        <div
+          role="button"
+          tabIndex={0}
+          aria-label="Video pausieren / abspielen"
+          onClick={handleVideoTap}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              handleVideoTap();
+            }
           }}
-          className="h-full w-full object-contain"
-        />
+          className="absolute inset-0 cursor-pointer"
+        >
+          <video
+            ref={videoRef}
+            src={post.video_url}
+            poster={post.thumbnail_url ?? undefined}
+            loop
+            muted={muted}
+            playsInline
+            preload="metadata"
+            onTimeUpdate={(e) => {
+              const v = e.currentTarget;
+              if (v.duration > 0) setProgress((v.currentTime / v.duration) * 100);
+            }}
+            className="h-full w-full object-contain"
+          />
 
-        {/* Play-Overlay wenn pausiert */}
-        {isPaused && (
-          <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/30" aria-hidden="true">
-            <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white/15 backdrop-blur-sm">
-              <Play className="h-10 w-10 fill-white text-white" />
+          {/* Play-Overlay wenn pausiert */}
+          {isPaused && (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/30" aria-hidden="true">
+              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white/15 backdrop-blur-sm">
+                <Play className="h-10 w-10 fill-white text-white" />
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
 
       {/* Overlay-Ebene: Gradient unten + Text */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
@@ -226,21 +250,26 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
           ariaLabel={`Teilen — ${post.share_count} mal geteilt`}
           onClick={handleShare}
         />
-        <ActionButton
-          icon={muted ? <VolumeX className="h-6 w-6" aria-hidden="true" /> : <Volume2 className="h-6 w-6" aria-hidden="true" />}
-          label={muted ? 'Stumm' : 'Laut'}
-          ariaLabel={muted ? 'Ton einschalten' : 'Stummschalten'}
-          onClick={onMuteToggle}
-        />
+        {!isImage && (
+          <ActionButton
+            icon={muted ? <VolumeX className="h-6 w-6" aria-hidden="true" /> : <Volume2 className="h-6 w-6" aria-hidden="true" />}
+            label={muted ? 'Stumm' : 'Laut'}
+            ariaLabel={muted ? 'Ton einschalten' : 'Stummschalten'}
+            onClick={onMuteToggle}
+          />
+        )}
       </div>
 
-      {/* Progress-Bar */}
-      <div className="absolute inset-x-0 bottom-0 z-20 h-1 bg-white/10">
-        <div
-          className="h-full bg-brand-gold transition-[width]"
-          style={{ width: `${progress}%` }}
-        />
-      </div>
+      {/* Progress-Bar — nur für Videos; bei Bildern statische volle Leiste
+          (optisch konsistent, aber keine Zeit-Semantik). */}
+      {!isImage && (
+        <div className="absolute inset-x-0 bottom-0 z-20 h-1 bg-white/10">
+          <div
+            className="h-full bg-brand-gold transition-[width]"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      )}
 
       {/* CommentSheet */}
       <CommentSheet
