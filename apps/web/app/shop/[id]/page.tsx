@@ -252,43 +252,53 @@ export default async function ProductDetailPage({ params }: PageProps) {
             </div>
           )}
 
-          {/* Seller-Karte */}
-          <Link
-            href={`/u/${product.seller.username}` as Route}
-            className="group flex items-center gap-3 rounded-xl border bg-card p-3 transition-colors hover:bg-muted/40"
-          >
-            <div className="relative h-11 w-11 flex-none overflow-hidden rounded-full bg-muted">
-              {product.seller.avatar_url && (
-                <Image
-                  src={product.seller.avatar_url}
-                  alt=""
-                  fill
-                  className="object-cover"
-                  sizes="44px"
-                />
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5">
-                <span className="font-medium">@{product.seller.username}</span>
-                {product.seller.verified && <BadgeCheck className="h-4 w-4 text-sky-500" />}
+          {/*
+            Seller-Karte — bewusst FLACH, KEIN Nested-Link:
+            (a) HTML erlaubt keine <a> in <a> (Browser-Verhalten undefined),
+            (b) Server Components dürfen keine onClick-Handler als Props
+                weiterreichen (→ "Event handlers cannot be passed to Client
+                Component props" Build/RSC-Serialisierungsfehler). Früher hatten
+                wir ein äußeres <Link> mit stopPropagation-Wrapper-<div>s für
+                die inneren Interaktionen — das crasht die Detail-Seite beim
+                SSR. Stattdessen: Container ist ein <div>, nur der Avatar-/Name-
+                Block ist ein Link, Chat-Button und Shop-Link sind eigenständige
+                Siblings daneben.
+          */}
+          <div className="flex items-center gap-3 rounded-xl border bg-card p-3">
+            <Link
+              href={`/u/${product.seller.username}` as Route}
+              className="group flex min-w-0 flex-1 items-center gap-3 rounded-lg transition-colors hover:bg-muted/40"
+            >
+              <div className="relative h-11 w-11 flex-none overflow-hidden rounded-full bg-muted">
+                {product.seller.avatar_url && (
+                  <Image
+                    src={product.seller.avatar_url}
+                    alt=""
+                    fill
+                    className="object-cover"
+                    sizes="44px"
+                  />
+                )}
               </div>
-              <div className="text-xs text-muted-foreground">Profil ansehen →</div>
-            </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-medium">@{product.seller.username}</span>
+                  {product.seller.verified && <BadgeCheck className="h-4 w-4 text-sky-500" />}
+                </div>
+                <div className="text-xs text-muted-foreground">Profil ansehen →</div>
+              </div>
+            </Link>
             {user && user.id !== product.seller_id && (
-              <div onClick={(e) => e.stopPropagation()}>
-                <SellerChatButton sellerId={product.seller_id} productId={product.id} />
-              </div>
+              <SellerChatButton sellerId={product.seller_id} productId={product.id} />
             )}
             <Link
               href={`/u/${product.seller.username}/shop` as Route}
-              className="ml-2 inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium hover:bg-background"
-              onClick={(e) => e.stopPropagation()}
+              className="ml-1 inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium hover:bg-muted/40"
             >
               <ShoppingBag className="h-3.5 w-3.5" />
               Shop
             </Link>
-          </Link>
+          </div>
 
           {/* Beschreibung */}
           {product.description && (
