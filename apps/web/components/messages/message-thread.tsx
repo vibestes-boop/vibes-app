@@ -8,6 +8,7 @@ import {
   useCallback,
   useTransition,
   memo,
+  type MutableRefObject,
 } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -82,6 +83,16 @@ export function MessageThread({
 
   const scrollerRef = useRef<HTMLDivElement>(null);
   const wasNearBottomRef = useRef(true);
+
+  // Shared Typing-Channel für MessageThread + Composer. MessageThread ist
+  // der Besitzer (subscribe + presence-Listener), Composer bekommt den Ref
+  // per Prop um `track({ typing: true/false })` zu feuern. Pragmatisch: dasselbe
+  // Client.channel(topic) wird von @supabase/realtime-js pro Topic dedupliziert
+  // → parallele `.channel('typing-…')` Aufrufe geben das gleiche Objekt zurück.
+  // Ein zweiter `.on('presence', …)` nach `.subscribe()` wirft aber
+  // ("cannot add presence callbacks after subscribe()"), was in #310
+  // (infinite render) kaskadiert. Deshalb: single owner.
+  const typingChannelRef = useRef<ReturnType<ReturnType<typeof supa>['channel']> | null>(null);
 
   // Scroll-State verfolgen — nur auto-scroll bei neuen Messages wenn der User
   // am unteren Ende ist. Sonst frieren wir die Position.
@@ -197,13 +208,19 @@ export function MessageThread({
     };
   }, [conversationId, viewerId]);
 
-  // Typing-Presence
+  // Typing-Presence — Owner-Effekt. Reihenfolge ist hier kritisch:
+  // `.on('presence', …)` MUSS vor `.subscribe()` kommen, sonst wirft
+  // realtime-js mit "cannot add presence callbacks after subscribe()".
   useEffect(() => {
-    if (isSelf) return;
+    if (isSelf) {
+      typingChannelRef.current = null;
+      return;
+    }
     const client = supa();
     const channel = client.channel(`typing-${conversationId}`, {
       config: { presence: { key: viewerId } },
     });
+
     channel.on('presence', { event: 'sync' }, () => {
       const state = channel.presenceState<{ typing: boolean }>();
       const others = Object.entries(state).filter(([k]) => k !== viewerId);
@@ -212,12 +229,17 @@ export function MessageThread({
       );
       setOtherTyping(anyTyping);
     });
+
     channel.subscribe((status) => {
       if (status === 'SUBSCRIBED') {
         channel.track({ typing: false });
       }
     });
+
+    typingChannelRef.current = channel;
+
     return () => {
+      typingChannelRef.current = null;
       client.removeChannel(channel);
     };
   }, [conversationId, viewerId, isSelf]);
@@ -332,6 +354,7 @@ export function MessageThread({
         productShare={productPreview}
         onClearProductShare={() => setProductPreview(null)}
         onSent={onSent}
+        typingChannelRef={typingChannelRef}
       />
     </>
   );
@@ -437,7 +460,14 @@ const MessageBubble = memo(function MessageBubble({
               isOwn ? 'text-primary-foreground/70' : 'text-muted-foreground'
             }`}
           >
-            <span>{time}</span>
+            {/*
+              suppressHydrationWarning: `toLocaleTimeString('de-DE', …)` rendert
+              basierend auf der TZ des Prozesses — Server (Vercel Edge = UTC)
+              und Client (Europe/Berlin etc.) können auf Stunden-Grenzen um 1-2h
+              abweichen. Der Text-Mismatch ist kosmetisch (beide Strings sind
+              valide), nur der React-#418 Warning ist störend.
+            */}
+            <span suppressHydrationWarning>{time}</span>
             {isOwn && !msg.pending && (
               <span aria-label={msg.read ? 'gelesen' : 'gesendet'}>
                 {msg.read ? <CheckCheck className="h-3 w-3" /> : <Check className="h-3 w-3" />}
@@ -541,6 +571,7 @@ function Composer({
   productShare,
   onClearProductShare,
   onSent,
+  typingChannelRef,
 }: {
   conversationId: string;
   viewerId: string;
@@ -550,29 +581,38 @@ function Composer({
   productShare: ProductShareContext | null;
   onClearProductShare: () => void;
   onSent: (msg: PendingMessage) => void;
+  // Owner des Channels ist MessageThread — Composer feuert nur `track()` darauf.
+  // Siehe Kommentar am Ref-Deklarationspunkt in MessageThread oben.
+  typingChannelRef: MutableRefObject<ReturnType<ReturnType<typeof supa>['channel']> | null>;
 }) {
   const [text, setText] = useState('');
   const [isPending, startTransition] = useTransition();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Typing-Presence clientseitig tracken (3s Auto-Stop)
-  const typingChannelRef = useRef<ReturnType<ReturnType<typeof supa>['channel']> | null>(null);
+  // Typing-Presence clientseitig tracken (3s Auto-Stop). Nutzt den von
+  // MessageThread verwalteten Channel — KEINE eigene `client.channel(...)`-Call-Site
+  // hier, sonst bekommen wir einen zweiten `.on('presence', …)` auf dem gleichen
+  // (deduplizierten) Topic → "cannot add presence callbacks after subscribe()" → #310.
   const typingStopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Cleanup: bei Unmount den laufenden Stop-Timer killen und letzten
+  // `typing: false`-State senden, damit der Peer keine hängende "schreibt…"-Dots sieht.
   useEffect(() => {
-    if (isSelf) return;
-    const client = supa();
-    const ch = client.channel(`typing-${conversationId}`, {
-      config: { presence: { key: viewerId } },
-    });
-    ch.subscribe((status) => {
-      if (status === 'SUBSCRIBED') ch.track({ typing: false });
-    });
-    typingChannelRef.current = ch;
     return () => {
-      client.removeChannel(ch);
+      if (typingStopTimer.current) {
+        clearTimeout(typingStopTimer.current);
+        typingStopTimer.current = null;
+      }
+      const ch = typingChannelRef.current;
+      if (ch && !isSelf) {
+        try {
+          ch.track({ typing: false });
+        } catch {
+          // Channel might already be torn down; silently ignore.
+        }
+      }
     };
-  }, [conversationId, viewerId, isSelf]);
+  }, [isSelf, typingChannelRef]);
 
   const onTextChange = useCallback(
     (v: string) => {
@@ -585,7 +625,7 @@ function Composer({
         ch.track({ typing: false });
       }, 3000);
     },
-    [isSelf],
+    [isSelf, typingChannelRef],
   );
 
   const productPriceLabel = (p: ProductShareContext) => {
@@ -767,7 +807,17 @@ function groupByDay(messages: PendingMessage[]): { day: string; items: PendingMe
 function DaySeparator({ label }: { label: string }) {
   return (
     <div className="flex items-center justify-center py-2">
-      <span className="rounded-full bg-muted px-3 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+      {/*
+        suppressHydrationWarning: "Heute"/"Gestern" kommt aus `groupByDay(msgs)` →
+        `new Date().toDateString()` — same TZ-shift-Problem wie bei den
+        Message-Zeiten. Um Mitternacht in DE ist es serverseitig 23:00 UTC noch
+        "heute", clientseitig schon nächster Tag = "Gestern". Wir tolerieren
+        den einen Re-Render nach der Hydration.
+      */}
+      <span
+        suppressHydrationWarning
+        className="rounded-full bg-muted px-3 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+      >
         {label}
       </span>
     </div>
