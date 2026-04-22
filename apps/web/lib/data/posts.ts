@@ -194,7 +194,7 @@ export async function getMentionSuggestions(
 
   const { data } = await supabase
     .from('profiles')
-    .select('id, username, display_name, avatar_url, verified')
+    .select('id, username, display_name, avatar_url, verified:is_verified')
     .ilike('username', `${q}%`)
     .limit(limit);
 
