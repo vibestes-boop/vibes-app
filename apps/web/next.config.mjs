@@ -66,9 +66,24 @@ const nextConfig = {
   },
   images: {
     // Supabase Storage + Cloudflare R2 + LiveKit thumbnails
+    //
+    // WICHTIG — R2 hat zwei Hostname-Kategorien:
+    //   1. `*.r2.cloudflarestorage.com` — S3-API (signed PUT/GET, server-seitig).
+    //      Wird NIE im Browser für Image-Rendering genutzt.
+    //   2. `*.r2.dev` — Public-Read-Subdomain (z.B.
+    //      `pub-35c122d523ba4396b15392ace804c19b.r2.dev`). DAS ist die URL,
+    //      die die `r2-sign` Edge-Function als `publicUrl` zurückgibt und in
+    //      `posts.media_url`, `posts.thumbnail_url`, `products.cover_url`,
+    //      `products.image_urls[]`, `stories.media_url` etc. gespeichert
+    //      wird. Ohne diesen Eintrag schlug `<Image src=…>` client-seitig
+    //      fehl → Profil-Grid/Shop-Cards/DM-Post-Share rendern broken
+    //      bzw. triggerten den Error-Boundary (Regression-Fix 2026-04-22).
+    //   3. Optional Custom-Domain (z.B. `media.vibes-app.com`) — falls
+    //      später eingerichtet, hier ergänzen.
     remotePatterns: [
       { protocol: 'https', hostname: '**.supabase.co' },
       { protocol: 'https', hostname: '**.r2.cloudflarestorage.com' },
+      { protocol: 'https', hostname: '**.r2.dev' },
       { protocol: 'https', hostname: '**.livekit.cloud' },
       { protocol: 'https', hostname: 'avatars.githubusercontent.com' }, // OAuth fallback
       { protocol: 'https', hostname: 'lh3.googleusercontent.com' },     // Google OAuth
