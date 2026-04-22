@@ -178,7 +178,9 @@ export async function heartbeatLiveSession(
   const { error } = await supabase.rpc('heartbeat_live_session', {
     p_session_id: sessionId,
     p_viewer_count: viewerCount,
-    p_peak_count: peakCount,
+    // RPC-Parameter heißt `p_peak_viewers` (siehe Migration
+    // 20260419230000_live_sessions_updated_at.sql) — nicht `p_peak_count`.
+    p_peak_viewers: peakCount,
   });
 
   if (error) return { ok: false, error: error.message };

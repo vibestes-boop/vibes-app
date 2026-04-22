@@ -7,8 +7,14 @@ import type { LiveSession } from '@shared/types';
 // (Realtime-Subscriptions, Comment-Broadcast) liegen in `hooks/use-live.ts`.
 // -----------------------------------------------------------------------------
 
+// HINWEIS: `peak_viewer_count:peak_viewers` — die tatsächliche DB-Spalte heißt
+// `peak_viewers` (siehe `supabase/live_studio.sql` und Replay-Migration).
+// Wir aliasen in Supabase selbst, damit alle TypeScript-Verbraucher weiter
+// `peak_viewer_count` lesen können (shared/types/live.ts + host-deck + studio).
+// Ohne Alias war die Spalte `peak_viewer_count` unbekannt → `data = null` →
+// `notFound()` in `/live/host/[id]` → 404 beim Host-Deck.
 const SESSION_COLUMNS =
-  'id, host_id, room_name, title, thumbnail_url, category, status, viewer_count, peak_viewer_count, started_at, ended_at, updated_at, moderation_enabled, moderation_words, slow_mode_seconds';
+  'id, host_id, room_name, title, thumbnail_url, category, status, viewer_count, peak_viewer_count:peak_viewers, started_at, ended_at, updated_at, moderation_enabled, moderation_words, slow_mode_seconds';
 
 const HOST_JOIN = 'host:profiles!live_sessions_host_id_fkey ( id, username, display_name, avatar_url, verified )';
 
