@@ -55,8 +55,22 @@ jobs:
         # via postinstall ausgeführt.
         run: npm ci --no-audit --no-fund
 
-      - name: Test (jest-expo)
-        run: npm test -- --ci --colors
+      - name: Test (jest-expo) + coverage
+        # --coverage schreibt nach coverage/ und enforced jest.config.js
+        # coverageThreshold — bricht hier wenn global-Floor oder eins der
+        # per-file-Gates (liveModerationWords / gifts) unterschritten wird.
+        run: npm test -- --ci --colors --coverage
+
+      - name: Upload coverage (native)
+        # Nur auf Push zu main + PRs; lokale Dispatch-Runs brauchen kein
+        # Artifact. Retention 7 Tage reicht für Post-Mortem-Debugging.
+        if: success() || failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-native
+          path: coverage/
+          retention-days: 7
+          if-no-files-found: warn
 
   # ---------------------------------------------------------------------------
   # Web (Next.js / Serlo) — läuft in apps/web.
@@ -83,8 +97,21 @@ jobs:
       - name: Install (apps/web)
         run: npm ci --no-audit --no-fund
 
-      - name: Test (next/jest)
+      - name: Test (next/jest) + coverage
         # next/jest verlangt ggf. SWC-Binary — Setup-Node cached npm, aber
         # SWC lädt ggf. nach. In GitHub-Actions-Runnern (Ubuntu x64) ist das
         # unproblematisch; im Gegensatz zu Sandboxes mit Egress-Restrictions.
-        run: npm test -- --ci --colors
+        #
+        # --coverage enforced apps/web/jest.config.js coverageThreshold —
+        # bricht hier wenn global-Floor oder die per-file-Gates (use-engagement,
+        # feed.ts, feed-list.tsx) unterschritten werden.
+        run: npm test -- --ci --colors --coverage
+
+      - name: Upload coverage (web)
+        if: success() || failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-web
+          path: apps/web/coverage/
+          retention-days: 7
+          if-no-files-found: warn
