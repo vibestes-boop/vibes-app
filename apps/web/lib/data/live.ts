@@ -112,7 +112,12 @@ export const getLiveComments = cache(
       .from('live_comments')
       .select(
         // `verified:is_verified` — gleicher Alias wie in HOST_JOIN oben.
-        `id, session_id, user_id, body, created_at, pinned,
+        // `body:text` — DB-Spalte heißt `text` (siehe `supabase/live_studio.sql:45`),
+        // wir aliasen sie hier (und im Realtime-Mapping in live-chat.tsx) auf
+        // `body`, damit der LiveCommentWithAuthor-Typ + UI-Components den
+        // lesbareren Namen behalten. Ohne Alias schlägt der SELECT still
+        // fehl und die Chat-Initial-Liste kommt leer.
+        `id, session_id, user_id, body:text, created_at, pinned,
          author:profiles!live_comments_user_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )`,
       )
       .eq('session_id', sessionId)

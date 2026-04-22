@@ -330,6 +330,13 @@ export async function createLivePoll(
     .eq('session_id', sessionId)
     .is('closed_at', null);
 
+  // NB: `live_polls` (Migration 20260418060000_live_polls.sql) hat KEINE
+  // `duration_secs`-Spalte — nur id/session_id/host_id/question/options/
+  // created_at/closed_at. Die Laufzeit (1/3/5 Min) ist nur ein Client-seitiges
+  // UX-Signal für Auto-Close; wir validieren sie oben (60/180/300), schicken
+  // sie aber NICHT in den Insert, sonst gibt PostgREST „Could not find the
+  // 'duration_secs' column" zurück. Server-seitiges Auto-Close ist bewusst
+  // nicht implementiert — der Host schließt manuell via `closeLivePoll`.
   const { data, error } = await supabase
     .from('live_polls')
     .insert({
@@ -337,7 +344,6 @@ export async function createLivePoll(
       host_id: host.id, // historischer Name — dient ab v1.27.4 als Author-ID
       question: trimmedQuestion,
       options: cleanOptions,
-      duration_secs: durationSecs,
     })
     .select('id')
     .single();
