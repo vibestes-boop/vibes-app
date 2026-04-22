@@ -106,10 +106,17 @@ export function LiveCoHostQueue({ sessionId, hostId }: LiveCoHostQueueProps) {
     let cancelled = false;
 
     async function loadActive() {
+      // Schema-Drift-Korrektur: `live_cohosts` hat `approved_at`, nicht
+      // `accepted_at` (siehe Base-Migration 20260417020000_live_cohosts).
+      // Die Spalten `audio_muted` / `video_muted` existieren in der DB
+      // gar nicht — bisher war das ein phantom-Schema, der SELECT gab 400
+      // zurück und die aktive-CoHost-Liste blieb leer. Mute-Status wird
+      // clientseitig initialisiert (false) und nach Server-enforced-Mute-
+      // Flow aus v1.27.3 per Broadcast synchronisiert.
       const { data } = await supabase
         .from('live_cohosts')
         .select(
-          `user_id, slot_index, accepted_at, audio_muted, video_muted,
+          `user_id, slot_index, approved_at,
            profile:profiles!live_cohosts_user_id_fkey ( username, display_name, avatar_url )`,
         )
         .eq('session_id', sessionId)
@@ -123,9 +130,9 @@ export function LiveCoHostQueue({ sessionId, hostId }: LiveCoHostQueueProps) {
           return {
             user_id: row.user_id as string,
             slot_index: row.slot_index as number,
-            accepted_at: row.accepted_at as string,
-            audio_muted: (row.audio_muted as boolean) ?? false,
-            video_muted: (row.video_muted as boolean) ?? false,
+            accepted_at: row.approved_at as string,
+            audio_muted: false,
+            video_muted: false,
             username: (profile as { username?: string } | null)?.username ?? null,
             display_name: (profile as { display_name?: string } | null)?.display_name ?? null,
             avatar_url: (profile as { avatar_url?: string } | null)?.avatar_url ?? null,

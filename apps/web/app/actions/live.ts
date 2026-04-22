@@ -411,13 +411,21 @@ export interface LiveKitTokenResult {
 export async function fetchLiveKitToken(
   roomName: string,
   isCoHost = false,
+  isHost = false,
 ): Promise<ActionResult<LiveKitTokenResult>> {
   const viewer = await getViewerId();
   if (!viewer) return { ok: false, error: 'Bitte einloggen.' };
 
   const supabase = await createClient();
+  // ACHTUNG: Edge-Function `livekit-token/index.ts` erwartet camelCase-Keys
+  // (`roomName`, `isHost`, `isCoHost`). Vorher wurden snake_case-Keys
+  // (`room_name`, `is_cohost`) geschickt → Function las `roomName=undefined`
+  // und antwortete mit 400 „roomName fehlt oder ungültig" → Host-Deck zeigte
+  // „Stream-Fehler: Edge Function returned a non-2xx status code".
+  // Zusätzlich war `isHost` vorher gar nicht im Contract → Edge-Function
+  // konnte canPublish nie auf true setzen → Host konnte nicht publishen.
   const { data, error } = await supabase.functions.invoke('livekit-token', {
-    body: { room_name: roomName, is_cohost: isCoHost },
+    body: { roomName, isHost, isCoHost },
   });
 
   if (error) return { ok: false, error: error.message ?? 'Token-Abruf fehlgeschlagen.' };
