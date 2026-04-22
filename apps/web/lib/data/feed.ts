@@ -24,12 +24,19 @@ export interface FeedPost extends Post {
   liked_by_me: boolean;
   saved_by_me: boolean;
   following_author: boolean;
+  // Mobile-DB diskriminiert Bild vs. Video. Wir brauchen das im Feed-
+  // Renderer um zwischen <video> (Videos) und <img> (Bilder) zu wählen —
+  // ohne dieses Feld rendert FeedCard blind <video src=bildurl> → leerer
+  // Frame + Broken-Media-State. `null` = Legacy-Row vor media_type-
+  // Einführung; dort defaulten wir auf 'video' (die damalige Annahme).
+  media_type: 'image' | 'video' | null;
 }
 
 // PostgREST-Aliase: user_id:author_id, video_url:media_url, hashtags:tags
 // — mappt Mobile-DB-Spalten auf Web-Contract-Namen bereits in der Query.
+// `media_type` ist unaliased weil der Name in beiden Schemata identisch ist.
 const POST_COLUMNS =
-  'id, user_id:author_id, caption, video_url:media_url, thumbnail_url, view_count, like_count, comment_count, hashtags:tags, allow_comments, allow_duet, created_at';
+  'id, user_id:author_id, caption, video_url:media_url, media_type, thumbnail_url, view_count, like_count, comment_count, hashtags:tags, allow_comments, allow_duet, created_at';
 
 const AUTHOR_JOIN =
   'author:profiles!posts_author_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )';
@@ -91,6 +98,7 @@ async function batchEngagement(
 type RawAuthor = { id: string; username: string; display_name: string | null; avatar_url: string | null; verified: boolean | null };
 type RawPostRow = Omit<Post, 'hashtags' | 'duration_secs' | 'music_id' | 'allow_stitch' | 'share_count'> & {
   hashtags: string[] | null;
+  media_type: 'image' | 'video' | null;
   author: RawAuthor | RawAuthor[] | null;
 };
 
@@ -121,6 +129,7 @@ function normalizeRow(
     liked_by_me: liked.has(row.id),
     saved_by_me: saved.has(row.id),
     following_author: following.has(author.id),
+    media_type: row.media_type ?? null,
   };
 }
 
