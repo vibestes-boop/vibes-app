@@ -87,9 +87,22 @@ export default {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up':   'accordion-up 0.2s ease-out',
       },
+      /**
+       * Bewusste Design-Entscheidung: **System-Font-Stack ohne Web-Font-Load**.
+       * Grund: (a) Native-App nutzt auch die System-Font, Cross-Platform-Parität.
+       * (b) Zero bytes transferred → Zero CLS, keine `font-display`-Strategie nötig.
+       * (c) TikTok-nahes Look-and-Feel (TikTok verwendet ebenfalls Systemfont im Web).
+       * Die vorigen Einträge `var(--font-geist-sans)` / `var(--font-geist-mono)` waren
+       * Cargo-Cult aus dem create-next-app-Scaffold — die Variablen wurden NIE
+       * irgendwo definiert, sodass Tailwind still auf den nächsten Wert
+       * (`system-ui`) fiel. Jetzt explizit dokumentiert statt implizit.
+       * Wer später doch eine Web-Font will: `next/font/local` oder `next/font/google`
+       * im root-`layout.tsx`, daraus die CSS-Var `--font-*` setzen, Stack hier
+       * vorne wieder ergänzen.
+       */
       fontFamily: {
-        sans: ['var(--font-geist-sans)', 'system-ui', 'sans-serif'],
-        mono: ['var(--font-geist-mono)', 'ui-monospace', 'monospace'],
+        sans: ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
     },
   },
