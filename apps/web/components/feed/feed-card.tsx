@@ -1,11 +1,10 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { Route } from 'next';
-import { Heart, MessageCircle, Bookmark, Share2, Music, Volume2, VolumeX, Play, BadgeCheck } from 'lucide-react';
+import { Heart, MessageCircle, Bookmark, Share2, Music, Volume2, VolumeX, Play, BadgeCheck, Plus } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import {
   useTogglePostLike,
@@ -14,6 +13,7 @@ import {
 } from '@/hooks/use-engagement';
 import type { FeedPost } from '@/lib/data/feed';
 import { CommentSheet } from './comment-sheet';
+import { LikeButton } from './like-button';
 
 // -----------------------------------------------------------------------------
 // FeedCard — eine 9:16-Video-Karte im vertikalen Feed.
@@ -35,15 +35,50 @@ function formatCount(n: number): string {
   return n.toString();
 }
 
+// Character-Threshold ab dem das Caption-„mehr"-Affordance greift (A6).
+// 120 entspricht 2.5 Zeilen bei line-clamp-3 / text-sm — knapp über der
+// sichtbaren Clamp-Grenze damit der Button nicht für triviale Längen
+// erscheint.
+const CAPTION_CLAMP_CHARS = 120;
+
 export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: FeedCardProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPaused, setIsPaused] = useState(false);
   const [progress, setProgress] = useState(0);
   const [commentsOpen, setCommentsOpen] = useState(false);
+  // Caption-Expand (A6) — sobald der User „mehr" drückt, zeigen wir den
+  // vollen Text. Beim Post-Wechsel (neuer post.id) auf kollabiert resetten.
+  const [captionExpanded, setCaptionExpanded] = useState(false);
+  useEffect(() => setCaptionExpanded(false), [post.id]);
+  // Double-Tap-Heart-Overlay (A5) — monotoner Key, damit dieselbe Animation
+  // zuverlässig re-triggert wenn der User schnell mehrfach doppelklickt.
+  const [heartOverlayKey, setHeartOverlayKey] = useState<number | null>(null);
+  const lastTapRef = useRef<number>(0);
+  const heartKeyCounterRef = useRef(0);
 
   const likeMut = useTogglePostLike();
   const saveMut = useTogglePostSave();
   const followMut = useToggleFollow();
+
+  const handleLikeClick = useCallback(() => {
+    if (!viewerId) return;
+    likeMut.mutate({ postId: post.id, liked: post.liked_by_me });
+  }, [viewerId, likeMut, post.id, post.liked_by_me]);
+
+  // Double-Tap / Double-Click = like + großer Heart-Overlay.
+  // Touch-Devices: iOS/Android Safari liefern zwar `dblclick`, aber nicht
+  // konsistent auf Video-Elementen — deshalb zusätzlich Timer-basiertes
+  // „zweimal-Touch-unter-300ms"-Muster.
+  const triggerDoubleTapLike = useCallback(() => {
+    // Overlay immer zeigen, auch wenn schon geliked (sonst fühlt sich der
+    // zweite Doppel-Tap „tot" an).
+    heartKeyCounterRef.current += 1;
+    setHeartOverlayKey(heartKeyCounterRef.current);
+    if (!viewerId) return;
+    if (!post.liked_by_me) {
+      likeMut.mutate({ postId: post.id, liked: false });
+    }
+  }, [viewerId, post.id, post.liked_by_me, likeMut]);
 
   const isSelf = viewerId === post.author.id;
   // Legacy-Rows (pre-media_type-Einführung) waren alle Videos — deshalb
@@ -66,8 +101,24 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
     }
   }, [isActive, isPaused, muted, isImage]);
 
+  // Single-Click = Play/Pause-Toggle. Aber: wenn innerhalb 300ms ein
+  // zweiter Klick kommt, überspringen wir das Toggle (der dblclick-Handler
+  // übernimmt) — sonst pausiert das Video zuerst und startet dann wieder,
+  // was visuell als Zuck wahrgenommen wird.
   const handleVideoTap = () => {
-    if (isImage) return; // Bild-Posts haben keine Play/Pause-Semantik
+    if (isImage) return;
+    const now = Date.now();
+    const delta = now - lastTapRef.current;
+    lastTapRef.current = now;
+    if (delta < 300) {
+      // Double-Tap — Heart-Overlay + Like
+      triggerDoubleTapLike();
+      return;
+    }
+    // Single-Tap — Play/Pause. Wir warten NICHT auf den 300ms-Timeout
+    // (das würde sich schwammig anfühlen). Wenn danach doch noch ein
+    // Double-Tap kommt, pausiert das Video kurz — akzeptabler Trade-off,
+    // weil 300ms-Delay auf jeden Single-Tap spürbarer wäre.
     const v = videoRef.current;
     if (!v) return;
     if (v.paused) {
@@ -94,7 +145,7 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
 
   return (
     <article
-      className="relative mx-auto flex aspect-[9/16] h-full max-h-full w-auto max-w-full overflow-hidden rounded-2xl bg-black"
+      className="group/card relative mx-auto flex aspect-[9/16] h-full max-h-full w-auto max-w-full overflow-hidden rounded-2xl bg-black"
       data-post-id={post.id}
     >
       {/* Media-Ebene: Video bei media_type='video', Bild bei 'image' */}
@@ -143,56 +194,79 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
             className="h-full w-full object-contain"
           />
 
-          {/* Play-Overlay wenn pausiert */}
+          {/* Play-Overlay wenn pausiert — TikTok-Größe 96px statt vorher 80 */}
           {isPaused && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/30" aria-hidden="true">
-              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-white/15 backdrop-blur-sm">
-                <Play className="h-10 w-10 fill-white text-white" />
+              <div className="flex h-24 w-24 items-center justify-center rounded-full bg-white/15 backdrop-blur-sm">
+                <Play className="h-12 w-12 fill-white text-white" />
               </div>
             </div>
           )}
         </div>
       )}
 
+      {/* Double-Tap-Heart-Overlay (A5). Re-mountet mit jedem Doppel-Tap via
+          `key`, damit die 800ms-Animation zuverlässig neu startet. Nach der
+          Animation bleibt das Element am DOM (opacity 0) bis der nächste
+          Tap re-mountet. Pointer-events-none damit es den Tap-Path nicht
+          blockiert. */}
+      {heartOverlayKey !== null && (
+        <div
+          key={`heart-overlay-${heartOverlayKey}`}
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center"
+        >
+          <Heart className="h-36 w-36 animate-heart-overlay fill-red-500 text-red-500 drop-shadow-[0_8px_24px_rgba(0,0,0,0.35)]" />
+        </div>
+      )}
+
       {/* Overlay-Ebene: Gradient unten + Text */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
 
-      {/* Text-Overlay unten links */}
+      {/* Text-Overlay unten links (A2: Avatar wandert in den Rail rechts,
+          deshalb hier nur noch Username + Follow-Button in einer Zeile). */}
       <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col gap-2 p-4 pb-6 pr-20 text-white">
         <div className="flex items-center gap-2">
           <Link
             href={`/u/${post.author.username}` as Route}
-            className="flex items-center gap-2"
+            className="flex items-center gap-1 text-sm font-semibold"
           >
-            <Avatar className="h-9 w-9 border border-white/40">
-              <AvatarImage src={post.author.avatar_url ?? undefined} />
-              <AvatarFallback className="bg-neutral-800 text-xs text-white">
-                {(post.author.display_name ?? post.author.username).slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
-            <span className="flex items-center gap-1 text-sm font-semibold">
-              @{post.author.username}
-              {post.author.verified && <BadgeCheck className="h-4 w-4 text-brand-gold" />}
-            </span>
+            @{post.author.username}
+            {post.author.verified && <BadgeCheck className="h-4 w-4 text-brand-gold" />}
           </Link>
           {!isSelf && !post.following_author && viewerId && (
-            <Button
-              size="sm"
-              variant="secondary"
-              className="pointer-events-auto h-7 bg-white/15 px-3 text-xs text-white hover:bg-white/25"
+            <button
+              type="button"
+              className="pointer-events-auto inline-flex h-7 items-center rounded-full bg-white/15 px-3 text-xs font-semibold text-white backdrop-blur-sm transition-colors duration-fast ease-out-expo hover:bg-white/25 disabled:opacity-60"
               disabled={followMut.isPending}
               onClick={() =>
                 followMut.mutate({ userId: post.author.id, following: post.following_author })
               }
             >
               Folgen
-            </Button>
+            </button>
           )}
         </div>
 
-        {post.caption && (
-          <p className="line-clamp-3 text-sm leading-snug text-white/95">{post.caption}</p>
-        )}
+        {/* Caption mit „mehr"-Affordance (A6). Unter CAPTION_CLAMP_CHARS
+            unverändert. Darüber: kollabiert (line-clamp-3) + Button; nach
+            Expand: voller Text + „weniger"-Button. */}
+        {post.caption &&
+          (post.caption.length > CAPTION_CLAMP_CHARS ? (
+            <div className="pointer-events-auto text-sm leading-snug text-white/95">
+              <p className={cn(!captionExpanded && 'line-clamp-3')}>{post.caption}</p>
+              <button
+                type="button"
+                onClick={() => setCaptionExpanded((v) => !v)}
+                className="mt-0.5 text-xs font-semibold text-white/80 underline-offset-2 hover:underline"
+                aria-expanded={captionExpanded}
+              >
+                {captionExpanded ? 'weniger' : 'mehr'}
+              </button>
+            </div>
+          ) : (
+            <p className="text-sm leading-snug text-white/95">{post.caption}</p>
+          ))}
 
         {post.hashtags.length > 0 && (
           <div className="flex flex-wrap gap-x-2 gap-y-1 text-xs text-white/80">
@@ -210,23 +284,66 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
         )}
       </div>
 
-      {/* Action-Rail rechts */}
+      {/* Action-Rail rechts (A2 — Hierarchy + Avatar-Head).
+          Größen-Skala nach TikTok-Pattern:
+            - Avatar 56px (h-14 w-14) mit Follow-Plus-Badge (−bottom-1.5)
+            - Like / Comment / Bookmark 48px (h-12 w-12) — Primary-Engagement
+            - Share 44px (h-11 w-11), Mute 40px (h-10 w-10) — Secondary-Tools
+          Icon-Größen korrespondieren (7/6/5), damit das Icon-to-Circle-Ratio
+          konstant bleibt und die Hierarchie auch „blind" lesbar ist. */}
       <div className="pointer-events-auto absolute bottom-6 right-3 z-10 flex flex-col items-center gap-5 text-white">
-        <ActionButton
-          icon={<Heart className={cn('h-7 w-7', post.liked_by_me && 'fill-red-500 text-red-500')} aria-hidden="true" />}
-          label={formatCount(post.like_count)}
-          ariaLabel={`${post.liked_by_me ? 'Like entfernen' : 'Liken'} — ${post.like_count} Likes`}
+        {/* Avatar mit optionalem Follow-Plus (TikTok-Signature-Slot). */}
+        <Link
+          href={`/u/${post.author.username}` as Route}
+          className="relative rounded-md outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+          aria-label={`Profil von @${post.author.username} öffnen`}
+        >
+          <Avatar className="h-14 w-14 border-2 border-white/80">
+            <AvatarImage src={post.author.avatar_url ?? undefined} alt="" />
+            <AvatarFallback className="bg-neutral-800 text-sm text-white">
+              {(post.author.display_name ?? post.author.username).slice(0, 2).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          {!isSelf && !post.following_author && viewerId && (
+            <button
+              type="button"
+              onClick={(e) => {
+                // Link-Navigation verhindern — nur Follow-Action triggern.
+                e.preventDefault();
+                e.stopPropagation();
+                if (followMut.isPending) return;
+                followMut.mutate({ userId: post.author.id, following: post.following_author });
+              }}
+              aria-label="Folgen"
+              className="absolute -bottom-1.5 left-1/2 flex h-5 w-5 -translate-x-1/2 items-center justify-center rounded-full bg-red-500 text-white shadow-elevation-1 ring-2 ring-black/40 transition-transform duration-fast ease-out-expo hover:scale-110 disabled:opacity-60"
+              disabled={followMut.isPending}
+            >
+              <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+            </button>
+          )}
+        </Link>
+
+        {/* Like (A3: eigene Komponente mit Burst) — 48px */}
+        <LikeButton
+          liked={post.liked_by_me}
+          countLabel={formatCount(post.like_count)}
+          rawCount={post.like_count}
           disabled={!viewerId || likeMut.isPending}
-          onClick={() =>
-            viewerId && likeMut.mutate({ postId: post.id, liked: post.liked_by_me })
-          }
+          onClick={handleLikeClick}
+          iconClassName="h-7 w-7"
+          circleClassName="h-12 w-12"
         />
+
+        {/* Comment — 48px */}
         <ActionButton
           icon={<MessageCircle className="h-7 w-7" aria-hidden="true" />}
           label={formatCount(post.comment_count)}
           ariaLabel={`Kommentare öffnen — ${post.comment_count} Kommentare`}
           onClick={() => setCommentsOpen(true)}
+          circleClassName="h-12 w-12"
         />
+
+        {/* Bookmark — 48px */}
         <ActionButton
           icon={
             <Bookmark
@@ -243,27 +360,38 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
           onClick={() =>
             viewerId && saveMut.mutate({ postId: post.id, saved: post.saved_by_me })
           }
+          circleClassName="h-12 w-12"
         />
+
+        {/* Share — 44px (Secondary-Tool, kleiner) */}
         <ActionButton
-          icon={<Share2 className="h-7 w-7" aria-hidden="true" />}
+          icon={<Share2 className="h-6 w-6" aria-hidden="true" />}
           label={formatCount(post.share_count)}
           ariaLabel={`Teilen — ${post.share_count} mal geteilt`}
           onClick={handleShare}
+          circleClassName="h-11 w-11"
         />
+
+        {/* Mute — 40px (ambient Control, am kleinsten) */}
         {!isImage && (
           <ActionButton
-            icon={muted ? <VolumeX className="h-6 w-6" aria-hidden="true" /> : <Volume2 className="h-6 w-6" aria-hidden="true" />}
+            icon={muted ? <VolumeX className="h-5 w-5" aria-hidden="true" /> : <Volume2 className="h-5 w-5" aria-hidden="true" />}
             label={muted ? 'Stumm' : 'Laut'}
             ariaLabel={muted ? 'Ton einschalten' : 'Stummschalten'}
             onClick={onMuteToggle}
+            circleClassName="h-10 w-10"
           />
         )}
       </div>
 
-      {/* Progress-Bar — nur für Videos; bei Bildern statische volle Leiste
-          (optisch konsistent, aber keine Zeit-Semantik). */}
+      {/* Progress-Bar (A4) — idle 3px, hover auf dem gesamten Video 6px.
+          Die Bar hat keinen eigenen Hover (zu schmales Hit-Target), also
+          triggert der Hover der `article` via `group-hover`. Das heißt:
+          sobald die Maus über dem Video schwebt, ist die Bar fett und
+          lesbar. Auf Touch-Devices sind beide Zustände identisch
+          (kein Hover), was okay ist — man sieht sie eh nur beim Scrollen. */}
       {!isImage && (
-        <div className="absolute inset-x-0 bottom-0 z-20 h-1 bg-white/10">
+        <div className="absolute inset-x-0 bottom-0 z-20 h-[3px] bg-white/10 transition-[height] duration-base ease-out-expo group-hover/card:h-[6px]">
           <div
             className="h-full bg-brand-gold transition-[width]"
             style={{ width: `${progress}%` }}
@@ -293,6 +421,7 @@ function ActionButton({
   ariaLabel,
   onClick,
   disabled,
+  circleClassName,
 }: {
   icon: React.ReactNode;
   label: string;
@@ -304,6 +433,13 @@ function ActionButton({
   ariaLabel?: string;
   onClick?: () => void;
   disabled?: boolean;
+  /**
+   * Größen-Klassen des Icon-Circle. Default 44px — für die A2-Hierarchy
+   * setzen Call-Sites explizit `h-12 w-12` (Primary) oder `h-10 w-10`
+   * (Ambient). Text-Label bleibt in allen Größen gleich (text-xs),
+   * damit Zahlen gut lesbar bleiben.
+   */
+  circleClassName?: string;
 }) {
   return (
     <button
@@ -311,12 +447,17 @@ function ActionButton({
       onClick={onClick}
       disabled={disabled}
       aria-label={ariaLabel ?? label}
-      className="flex flex-col items-center gap-1 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black rounded-md"
+      className="group/action flex flex-col items-center gap-1 rounded-md outline-none transition-opacity duration-fast ease-out-expo focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black disabled:opacity-60"
     >
-      <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm transition-colors hover:bg-white/20">
+      <span
+        className={cn(
+          'flex items-center justify-center rounded-full bg-white/10 backdrop-blur-sm transition-colors duration-base ease-out-expo group-hover/action:bg-white/20',
+          circleClassName ?? 'h-11 w-11',
+        )}
+      >
         {icon}
       </span>
-      <span aria-hidden="true" className="text-[11px] font-medium tabular-nums">{label}</span>
+      <span aria-hidden="true" className="text-xs font-semibold tabular-nums">{label}</span>
     </button>
   );
 }

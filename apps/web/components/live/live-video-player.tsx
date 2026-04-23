@@ -195,8 +195,8 @@ export function LiveVideoPlayer({ roomName, hostId, hostName }: LiveVideoPlayerP
           Trennung auf jedem Hintergrund, p-3 vergrößert Hit-Target auf ~40px
           (Mobile-Safe), h-5 w-5 Icons deutlicher erkennbar aus Armlänge. */}
       {phase === 'live' && (
-        <div className="pointer-events-none absolute inset-0 flex items-end justify-end p-3">
-          <div className="pointer-events-auto flex items-center gap-2">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="pointer-events-auto absolute right-3 top-14 flex items-center gap-2">
             <button
               type="button"
               onClick={() => setMuted((m) => !m)}

@@ -13,21 +13,35 @@ import { useBuyProduct, useToggleSaveProduct } from '@/hooks/use-shop';
 import type { ShopProduct } from '@/lib/data/shop';
 
 // -----------------------------------------------------------------------------
-// BuyBar — sticky Call-to-Action am unteren Ende der Produkt-Detail-Seite.
-// - Merken-Circle (Bookmark-Toggle)
-// - Quantity-Stepper (nur wenn > 1 möglich)
-// - Big-CTA mit Preis-Split
-// - Confirm-Modal vor Buy-Commit
+// BuyBar — Call-to-Action-Block für die Produkt-Detail-Seite.
+//
+// Zwei Varianten (C4 — responsive Buy-CTA):
+//   • `sticky`  = unterste Viewport-Zeile mit Backdrop-Blur (Mobile-Default)
+//   • `inline`  = Card-Style-Block, eingesetzt in die rechte Info-Spalte auf
+//                 Desktop. Gibt den unteren Seiten-Bereich frei für Reviews /
+//                 „Mehr vom Seller" und vermeidet den „Mobile-First sieht auf
+//                 Desktop wie eine App aus"-Look.
+//
+// Die Seite rendert BEIDE Varianten und schaltet via Tailwind `hidden lg:block`
+// / `lg:hidden` — Dialog/State-Duplikation ist akzeptabel, weil der User pro
+// Breakpoint immer nur EINE Instanz bedient; TanStack Query teilt den Cache
+// zwischen beiden, Mutationen sind idempotent auf DB-Level.
 // -----------------------------------------------------------------------------
+
+export type BuyBarVariant = 'sticky' | 'inline';
 
 export function BuyBar({
   product,
   viewerId,
   coinBalance,
+  variant = 'sticky',
+  className,
 }: {
   product: ShopProduct;
   viewerId: string | null;
   coinBalance: number;
+  variant?: BuyBarVariant;
+  className?: string;
 }) {
   const router = useRouter();
   const [qty, setQty] = useState(1);
@@ -60,11 +74,27 @@ export function BuyBar({
     setConfirmOpen(true);
   };
 
+  const isInline = variant === 'inline';
+
   return (
     <>
-      {/* Sticky Bar */}
-      <div className="sticky bottom-0 left-0 right-0 z-20 border-t bg-background/90 px-4 py-3 backdrop-blur-md lg:px-6">
-        <div className="mx-auto flex max-w-5xl items-center gap-3">
+      {/* Container — gleiche Kinder, anderer Shell. Sticky-Variante läuft vom
+          Viewport-Rand (bottom-0), Inline-Variante ist ein ruhiger Card-Block
+          in der Info-Column. */}
+      <div
+        className={cn(
+          isInline
+            ? 'rounded-xl border border-border/60 bg-card p-3 shadow-elevation-1 dark:border-border/30'
+            : 'sticky bottom-0 left-0 right-0 z-20 border-t bg-background/90 px-4 py-3 backdrop-blur-md lg:px-6',
+          className,
+        )}
+      >
+        <div
+          className={cn(
+            'flex items-center gap-3',
+            isInline ? '' : 'mx-auto max-w-5xl',
+          )}
+        >
           {/* Merken */}
           <button
             type="button"
