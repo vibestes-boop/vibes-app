@@ -32,6 +32,7 @@ import {
   type Privacy,
   type MediaType,
 } from '@/app/actions/posts';
+import { AIImageSheet } from '@/components/ai/ai-image-sheet';
 
 // -----------------------------------------------------------------------------
 // CreateEditor — zentrale Client-Komponente für /create.
@@ -98,6 +99,8 @@ export function CreateEditor({ viewerId, initialDraft }: Props) {
   const [uploadProgress, setUploadProgress] = useState<number | null>(null); // 0..100 | null
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  // v1.28.0: AI-Image-Sheet für Bild-Posts ohne eigene Datei
+  const [aiSheetOpen, setAiSheetOpen] = useState(false);
 
   // ---------- Caption + Tags State ----------
   const [caption, setCaption] = useState(initialDraft?.caption ?? '');
@@ -176,6 +179,23 @@ export function CreateEditor({ viewerId, initialDraft }: Props) {
     const f = e.dataTransfer.files?.[0];
     if (f) onFileChosen(f);
   }, [onFileChosen]);
+
+  // v1.28.0: AI-Image als Alternative zum File-Upload — URL ist bereits in Supabase-
+  // Storage, also skippen wir den R2-Upload-Flow und setzen remoteMediaUrl direkt.
+  const applyAIImage = useCallback((url: string) => {
+    setUploadError(null);
+    setFile(null);
+    if (localPreviewUrl) {
+      URL.revokeObjectURL(localPreviewUrl);
+      setLocalPreviewUrl(null);
+    }
+    setMediaType('image');
+    setRemoteMediaUrl(url);
+    // Bei AI-Bildern ist das eigentliche Bild gleichzeitig das Thumbnail
+    setRemoteThumbnailUrl(url);
+    setCoverTimeMs(null);
+    setUploadProgress(null);
+  }, [localPreviewUrl]);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const triggerFilePicker = () => inputRef.current?.click();
@@ -477,6 +497,18 @@ export function CreateEditor({ viewerId, initialDraft }: Props) {
                 <AlertCircle className="h-4 w-4" /> {uploadError}
               </p>
             )}
+            {/* v1.28.0: AI-Alternative (stopPropagation damit die Dropzone nicht öffnet) */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setAiSheetOpen(true);
+              }}
+              className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-3.5 py-1.5 text-xs font-semibold text-primary ring-1 ring-primary/30 hover:bg-primary/15"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              Mit KI erstellen
+            </button>
           </div>
         ) : (
           <MediaPreview
@@ -620,6 +652,22 @@ export function CreateEditor({ viewerId, initialDraft }: Props) {
           )}
         </div>
       )}
+
+      {/* v1.28.0: AI-Image-Sheet — Parität mit Native-Create-Flow */}
+      <AIImageSheet
+        open={aiSheetOpen}
+        onOpenChange={setAiSheetOpen}
+        onUseImage={applyAIImage}
+        purpose="post_cover"
+        defaultSize="1024x1536"
+        title="Post-Bild mit KI"
+        promptPlaceholder="Beschreibe dein Wunsch-Motiv — z.B. „Sonnenuntergang über Bergen"
+        suggestions={[
+          'Moody-Portrait in Neon-Licht, cinematisch',
+          'Abstrakte Komposition in warmen Farben',
+          'Street-Photography-Look, schwarz-weiß',
+        ]}
+      />
     </div>
   );
 }
