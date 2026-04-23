@@ -212,6 +212,31 @@ export function ProductCard({
           </div>
         )}
 
+        {/* Stock-Bar (C7 aus UI_AUDIT)
+            Nur sichtbar wenn `stock <= 5 && stock > 0` (kein Spoiler bei
+            voller Verfügbarkeit, kein Konflikt mit Ausverkauft-Badge).
+            Progress-Berechnung: Bei stock=5 → 100% (voller Amber-Balken),
+            bei stock=1 → 20% (dünner roter Rest). Farb-Gradient von Amber→Rot
+            signalisiert Knappheit (cold-to-hot-Metapher). Caption
+            ("Nur noch N übrig") ist redundant zum Bottom-Right-Badge aber
+            bewusst unter der Progress — die Bar allein sagt „es wird knapp",
+            die Zahl sagt „wie knapp". Beide zusammen schaffen das Urgency-
+            Signal das der Audit als fehlend markierte (vorher nur das
+            kleine Pill-Badge oben). */}
+        {product.stock > 0 && product.stock <= 5 && (
+          <div className="mt-1" aria-live="polite">
+            <div className="h-2 overflow-hidden rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-amber-400 to-red-500 transition-all"
+                style={{ width: `${(product.stock / 5) * 100}%` }}
+              />
+            </div>
+            <div className="mt-1 text-[11px] font-medium text-amber-600 dark:text-amber-400">
+              Nur noch {product.stock} übrig
+            </div>
+          </div>
+        )}
+
         {/* Preis + Sold */}
         <div className="mt-1 flex items-end justify-between gap-2">
           <div className="flex items-baseline gap-1.5">

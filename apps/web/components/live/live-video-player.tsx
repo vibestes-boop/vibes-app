@@ -188,36 +188,30 @@ export function LiveVideoPlayer({ roomName, hostId, hostName }: LiveVideoPlayerP
         </div>
       )}
 
-      {/*
-       * Controls — oben rechts, unterhalb der Melden-Pill (die im Viewer-Page-
-       * Overlay bei `top-3` sitzt). Vorher waren sie unten-rechts, das
-       * kollidierte mit der neuen Action-Bar (`bottom-3 inset-x-3`) und dem
-       * Chat-Overlay (`bottom-20 inset-x-3 max-w-md`). Positioniert bei
-       * `top-16 right-3` sitzen sie sichtbar, aber räumlich getrennt von
-       * Host-Pill (`top-14 left-3`) und Poll (`top-14 right-3`). Bei aktivem
-       * Poll-Panel weichen sie nach `top-3 right-16` aus — bleibt die
-       * Verantwortung der Page-Komposition falls Poll dauerhaft rechts oben
-       * sitzt; Default-Position ist unter der Melden-Pille und verträgt
-       * sich mit allen getesteten Overlay-Zuständen.
-       */}
+      {/* Controls — unten rechts (v1.w.UI.1 — B4 aus UI_AUDIT_WEB)
+          Vorher: bg-black/60 + p-2 + h-4 w-4 → Buttons gingen auf hellen Szenen
+          (Tageslicht-Streams, weißer Hintergrund) im Video-Bild unter.
+          Jetzt: bg-black/80 als Ruhezustand + ring-1 ring-white/10 für Kontur-
+          Trennung auf jedem Hintergrund, p-3 vergrößert Hit-Target auf ~40px
+          (Mobile-Safe), h-5 w-5 Icons deutlicher erkennbar aus Armlänge. */}
       {phase === 'live' && (
         <div className="pointer-events-none absolute inset-0">
           <div className="pointer-events-auto absolute right-3 top-14 flex items-center gap-2">
             <button
               type="button"
               onClick={() => setMuted((m) => !m)}
-              className="rounded-full bg-black/70 p-2 text-white shadow-elevation-1 ring-1 ring-white/10 backdrop-blur-md transition-colors duration-fast ease-out-expo hover:bg-black/90"
+              className="rounded-full bg-black/80 p-3 text-white shadow-elevation-2 ring-1 ring-white/10 backdrop-blur transition-colors duration-fast ease-out-expo hover:bg-black"
               aria-label={muted ? 'Ton einschalten' : 'Stumm schalten'}
             >
-              {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+              {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
             </button>
             <button
               type="button"
               onClick={goFullscreen}
-              className="rounded-full bg-black/70 p-2 text-white shadow-elevation-1 ring-1 ring-white/10 backdrop-blur-md transition-colors duration-fast ease-out-expo hover:bg-black/90"
+              className="rounded-full bg-black/80 p-3 text-white shadow-elevation-2 ring-1 ring-white/10 backdrop-blur transition-colors duration-fast ease-out-expo hover:bg-black"
               aria-label="Vollbild"
             >
-              <Maximize2 className="h-4 w-4" />
+              <Maximize2 className="h-5 w-5" />
             </button>
           </div>
         </div>

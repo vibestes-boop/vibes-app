@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Route } from 'next';
-import { ArrowLeft, Users, Flag } from 'lucide-react';
+import { ArrowLeft, Flag, Users } from 'lucide-react';
 import {
   getLiveSession,
   getLiveComments,
@@ -14,7 +14,6 @@ import {
 } from '@/lib/data/live';
 import { getUser } from '@/lib/auth/session';
 import { LiveVideoPlayer } from '@/components/live/live-video-player';
-import { LiveChatOverlay } from '@/components/live/live-chat-overlay';
 import { LiveActionBar } from '@/components/live/live-action-bar';
 import { LivePollPanel } from '@/components/live/live-poll-panel';
 import { LiveHostPill } from '@/components/live/live-host-pill';
@@ -236,29 +235,6 @@ export default async function LiveViewerPage({ params }: PageProps) {
                   />
                 </div>
               </div>
-            </div>
-          )}
-
-          {/*
-           * Bottom-Overlay — Gradient-Shade für Lesbarkeit des Chats &
-           * der Action-Bar gegen helle Video-Frames.
-           */}
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-black/60 via-black/30 to-transparent" />
-
-          {/* Chat-Overlay (B2) — links unten. Breite responsiv: mobile fast
-              voll, desktop maximal ~380px damit das Video-Zentrum frei bleibt. */}
-          {!ended && (
-            <div className="absolute inset-x-3 bottom-20 max-w-md">
-              <LiveChatOverlay
-                sessionId={id}
-                initialComments={comments}
-                hostId={session.host_id}
-                viewerId={viewerId}
-                isHost={isHost}
-                isModerator={isModerator}
-                slowModeSeconds={session.slow_mode_seconds ?? 0}
-                ended={ended}
-              />
             </div>
           )}
 
