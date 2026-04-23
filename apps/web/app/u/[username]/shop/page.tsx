@@ -3,10 +3,11 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Route } from 'next';
-import { BadgeCheck, ArrowLeft, Store } from 'lucide-react';
+import { BadgeCheck, ArrowLeft, Store, PackageOpen } from 'lucide-react';
 import { ProductCard } from '@/components/shop/product-card';
 import { getPublicProfile } from '@/lib/data/public';
 import { getMerchantProducts } from '@/lib/data/shop';
+import { EmptyState } from '@/components/ui/empty-state';
 
 export const revalidate = 60;
 
@@ -78,12 +79,13 @@ export default async function MerchantShopPage({ params }: PageProps) {
       {/* Grid */}
       <div className="mt-8">
         {products.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed py-16 text-center">
-            <div className="text-4xl">📭</div>
-            <p className="text-sm text-muted-foreground">
-              @{profile.username} hat aktuell keine aktiven Produkte.
-            </p>
-          </div>
+          <EmptyState
+            icon={<PackageOpen className="h-7 w-7" strokeWidth={1.75} />}
+            title="Shop ist leer"
+            description={`@${profile.username} hat aktuell keine aktiven Produkte.`}
+            size="md"
+            bordered
+          />
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
             {products.map((p) => (

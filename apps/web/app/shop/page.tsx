@@ -1,10 +1,11 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { Route } from 'next';
-import { Store, Bookmark, Coins } from 'lucide-react';
+import { Store, Bookmark, Coins, ShoppingBag } from 'lucide-react';
 import { ProductCard } from '@/components/shop/product-card';
 import { ShopFilters } from '@/components/shop/shop-filters';
 import { ShopSearchInput } from '@/components/shop/shop-search-input';
+import { EmptyState as CanonicalEmptyState } from '@/components/ui/empty-state';
 import { getShopProducts, getMyCoinBalance, type ShopCatalogParams } from '@/lib/data/shop';
 import { getUser } from '@/lib/auth/session';
 import { getT, getLocale } from '@/lib/i18n/server';
@@ -123,10 +124,12 @@ export default async function ShopCatalogPage({ searchParams }: PageProps) {
 async function EmptyState() {
   const t = await getT();
   return (
-    <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed py-20 text-center">
-      <div className="text-5xl">🛒</div>
-      <h3 className="text-lg font-semibold">{t('shop.emptyTitle')}</h3>
-      <p className="max-w-md text-sm text-muted-foreground">{t('shop.emptyHint')}</p>
-    </div>
+    <CanonicalEmptyState
+      icon={<ShoppingBag className="h-8 w-8" strokeWidth={1.75} />}
+      title={t('shop.emptyTitle')}
+      description={t('shop.emptyHint')}
+      size="md"
+      bordered
+    />
   );
 }

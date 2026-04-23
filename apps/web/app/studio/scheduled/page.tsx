@@ -4,6 +4,7 @@ import type { Route } from 'next';
 import { Clock, Plus, List, CalendarDays } from 'lucide-react';
 import { getMyScheduledPosts } from '@/lib/data/posts';
 import { ScheduledCalendar } from '@/components/studio/scheduled-calendar';
+import { EmptyState } from '@/components/ui/empty-state';
 import { cn } from '@/lib/utils';
 
 // -----------------------------------------------------------------------------
@@ -116,23 +117,22 @@ export default async function StudioScheduledPage({
 
       {/* Empty-Hint */}
       {rows.length === 0 && (
-        <section className="flex flex-col items-center gap-3 rounded-xl border border-dashed bg-background p-10 text-center">
-          <div className="grid h-14 w-14 place-items-center rounded-full bg-muted">
-            <Clock className="h-6 w-6 text-muted-foreground" />
-          </div>
-          <h3 className="text-base font-semibold">Kein Post geplant</h3>
-          <p className="max-w-md text-sm text-muted-foreground">
-            Im Create-Flow kannst du mit „Planen" einen Veröffentlichungs-Zeitpunkt wählen.
-            Der Post wird automatisch zu dieser Zeit live geschaltet.
-          </p>
-          <Link
-            href={'/create' as Route}
-            className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
-            <Plus className="h-4 w-4" />
-            Post erstellen + planen
-          </Link>
-        </section>
+        <EmptyState
+          icon={<Clock className="h-7 w-7" strokeWidth={1.75} />}
+          title="Kein Post geplant"
+          description={'Im Create-Flow kannst du mit „Planen" einen Veröffentlichungs-Zeitpunkt wählen. Der Post wird automatisch zu dieser Zeit live geschaltet.'}
+          size="sm"
+          bordered
+          cta={
+            <Link
+              href={'/create' as Route}
+              className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              <Plus className="h-4 w-4" />
+              Post erstellen + planen
+            </Link>
+          }
+        />
       )}
     </div>
   );

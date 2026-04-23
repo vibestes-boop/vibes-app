@@ -13,6 +13,7 @@ import { CreatorTipButton } from '@/components/profile/creator-tip-button';
 import { getT, getLocale } from '@/lib/i18n/server';
 import { LOCALE_INTL } from '@/lib/i18n/config';
 import type { Locale } from '@/lib/i18n/config';
+import { linkify } from '@/lib/linkify';
 
 // -----------------------------------------------------------------------------
 // /u/[username] — public profile.
@@ -239,7 +240,7 @@ export default async function ProfilePage({
 
         {profile.bio && (
           <p className="mt-6 whitespace-pre-line text-sm leading-relaxed text-foreground/90">
-            {profile.bio}
+            {linkify(profile.bio)}
           </p>
         )}
       </section>
@@ -269,7 +270,8 @@ export default async function ProfilePage({
         {tab === 'posts' && (
           <PostGrid
             posts={posts}
-            emptyHint={
+            emptyTitle={t('profile.emptyPostsTitle')}
+            emptyDescription={
               isSelf
                 ? t('profile.emptyPostsSelf')
                 : t('profile.emptyPostsOther', { username: profile.username })

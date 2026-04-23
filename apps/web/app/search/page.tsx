@@ -1,9 +1,10 @@
 import Link from 'next/link';
 import type { Route } from 'next';
-import { Search, Hash, User2, Video, BadgeCheck } from 'lucide-react';
+import { Search, SearchX, Hash, User2, Video, BadgeCheck } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { searchAll } from '@/lib/data/feed';
 import { SearchBox } from '@/components/search-box';
+import { EmptyState } from '@/components/ui/empty-state';
 
 // -----------------------------------------------------------------------------
 // /search?q=...&tab=all|users|posts|hashtags
@@ -55,9 +56,13 @@ export default async function SearchPage({
       </nav>
 
       {trimmed.length < 2 ? (
-        <div className="rounded-xl border border-dashed border-border py-20 text-center text-sm text-muted-foreground">
-          Tippe mindestens 2 Zeichen in die Suche.
-        </div>
+        <EmptyState
+          icon={<Search className="h-8 w-8" strokeWidth={1.75} />}
+          title="Los, suche was"
+          description="Tippe mindestens 2 Zeichen, um Accounts, Videos oder Hashtags zu finden."
+          size="md"
+          bordered
+        />
       ) : (
         <>
           {(tab === 'all' || tab === 'users') && results.users.length > 0 && (
@@ -162,9 +167,13 @@ export default async function SearchPage({
           )}
 
           {results.users.length === 0 && results.posts.length === 0 && results.hashtags.length === 0 && (
-            <div className="rounded-xl border border-dashed border-border py-20 text-center text-sm text-muted-foreground">
-              Keine Treffer für &quot;{trimmed}&quot;.
-            </div>
+            <EmptyState
+              icon={<SearchX className="h-8 w-8" strokeWidth={1.75} />}
+              title="Keine Treffer"
+              description={`Für „${trimmed}" haben wir nichts gefunden. Versuch's mit anderen Schlagworten.`}
+              size="md"
+              bordered
+            />
           )}
         </>
       )}

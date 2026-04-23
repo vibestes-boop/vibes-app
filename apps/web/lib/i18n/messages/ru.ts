@@ -123,6 +123,7 @@ const ruMessages = {
     tabShop: 'Магазин',
     tabBattles: 'Баттлы',
 
+    emptyPostsTitle: 'Пока нет видео',
     emptyPostsSelf:
       'Твои видео будут здесь — загрузи первое через приложение.',
     emptyPostsOther: 'У @{username} пока нет публичных видео.',

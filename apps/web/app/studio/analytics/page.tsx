@@ -14,6 +14,7 @@ import {
 import { PeriodTabs } from '@/components/studio/period-tabs';
 import { FollowerGrowthChart } from '@/components/studio/follower-growth-chart';
 import { PeakHoursHeatmap } from '@/components/studio/peak-hours-heatmap';
+import { EmptyState } from '@/components/ui/empty-state';
 import { cn } from '@/lib/utils';
 
 // -----------------------------------------------------------------------------
@@ -147,12 +148,12 @@ export default async function StudioAnalyticsPage({
         </div>
 
         {topPosts.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 px-4 py-14 text-center">
-            <Film className="h-8 w-8 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">
-              Noch keine Posts mit Daten im gewählten Zeitraum.
-            </p>
-          </div>
+          <EmptyState
+            icon={<Film className="h-7 w-7" strokeWidth={1.75} />}
+            title="Keine Daten"
+            description="Noch keine Posts mit Daten im gewählten Zeitraum."
+            size="sm"
+          />
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
