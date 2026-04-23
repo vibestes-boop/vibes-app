@@ -111,47 +111,50 @@ export function ProductCard({
           </div>
         )}
 
-        {/* Top-Left-Badge (Sale oder NEW) */}
-        {isSale && (
-          <span className="absolute left-2 top-2 rounded-md bg-red-500 px-2 py-0.5 text-xs font-semibold text-white shadow-sm">
-            −{discount}%
-          </span>
-        )}
-        {fresh && (
-          <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-md bg-indigo-500 px-2 py-0.5 text-xs font-semibold text-white shadow-sm">
-            <Sparkles className="h-3 w-3" />
-            NEU
+        {/*
+         * Badge-Konsolidierung (UI-Phase 3, C2): nur noch ZWEI Ecken belegt,
+         * vorher waren es vier — top-left Sale, top-right Counter/Ausverkauft,
+         * bottom-right LowStock, bottom-left Women-Only. „Clown-Art"-Effekt.
+         * Neue Regel:
+         *   • Top-Left  = primärer Status, exklusiv. Priorität: Sale > NEU.
+         *   • Top-Right = sekundäre Info, exklusiv. Priorität: Ausverkauft >
+         *     LowStock > Image-Counter.
+         *   • Women-Only → wandert aus der Ecke raus in die Seller-Info-Row
+         *     (siehe unten).
+         * Damit bleibt immer eine diagonale Ecke frei und das Bild atmet.
+         */}
+        {(isSale || fresh) && (
+          <span
+            className={cn(
+              'absolute left-2 top-2 inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold text-white shadow-sm',
+              isSale ? 'bg-red-500' : 'bg-indigo-500',
+            )}
+          >
+            {isSale ? (
+              `−${discount}%`
+            ) : (
+              <>
+                <Sparkles className="h-3 w-3" />
+                NEU
+              </>
+            )}
           </span>
         )}
 
-        {/* Top-Right-Badge — Image-Counter oder Ausverkauft */}
         {soldOut ? (
           <span className="absolute right-2 top-2 rounded-md bg-black/80 px-2 py-0.5 text-xs font-semibold text-white">
             Ausverkauft
           </span>
+        ) : lowStock ? (
+          <span className="absolute right-2 top-2 rounded-md bg-amber-500/95 px-2 py-0.5 text-[11px] font-semibold text-white shadow-sm">
+            Nur noch {product.stock}
+          </span>
         ) : gallerySize > 1 ? (
-          <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-md bg-black/60 px-2 py-0.5 text-xs font-medium text-white">
+          <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-md bg-black/60 px-2 py-0.5 text-xs font-medium text-white backdrop-blur-sm">
             <Camera className="h-3 w-3" />
             {gallerySize}
           </span>
         ) : null}
-
-        {/* Bottom-Right — Low-Stock-Warning */}
-        {lowStock && !soldOut && (
-          <span className="absolute bottom-2 right-2 rounded-md bg-amber-500/90 px-2 py-0.5 text-[11px] font-semibold text-white">
-            Nur noch {product.stock}
-          </span>
-        )}
-
-        {/* Women-Only-Badge */}
-        {product.women_only && (
-          <span
-            className="absolute bottom-2 left-2 inline-flex h-6 w-6 items-center justify-center rounded-full bg-pink-500/90 text-xs text-white"
-            title="Nur für Frauen"
-          >
-            ♀
-          </span>
-        )}
 
         {/* Nicht-aktiv Overlay (nur sichtbar für Owner im Studio) */}
         {!product.is_active && (
@@ -165,10 +168,20 @@ export function ProductCard({
 
       {/* Text-Bereich */}
       <div className="flex flex-col gap-1.5 p-3">
-        {/* Seller-Row */}
+        {/* Seller-Row — Women-Only wandert als diskretes ♀-Glyph hier rein,
+            statt als eigener Badge in der Bild-Ecke (vgl. C2-Konsolidierung). */}
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <span className="truncate">@{product.seller.username}</span>
           {product.seller.verified && <BadgeCheck className="h-3 w-3 flex-none text-sky-500" />}
+          {product.women_only && (
+            <span
+              className="flex-none font-semibold text-pink-500"
+              title="Nur für Frauen"
+              aria-label="Nur für Frauen"
+            >
+              ♀
+            </span>
+          )}
         </div>
 
         {/* Titel */}
