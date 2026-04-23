@@ -122,3 +122,65 @@ export async function generateAIImage(input: {
     model: row.model ?? 'gpt-image-1',
   };
 }
+
+// ── Phase-4: Quota + Mark-Consumed ──────────────────────────────────────────
+
+export interface AIImageQuota {
+  used_today: number;
+  limit_day: number;
+  remaining_today: number;
+  used_week: number;
+  limit_week: number;
+  remaining_week: number;
+  platform_cap_reached: boolean;
+  feature_enabled: boolean;
+}
+
+/**
+ * Holt die aktuelle AI-Image-Quota für den eingeloggten User.
+ * Null wird zurückgegeben wenn nicht eingeloggt oder RPC-Fehler.
+ */
+export async function getAIImageQuota(): Promise<AIImageQuota | null> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data, error } = await supabase.rpc('get_ai_image_user_quota', {
+    p_user_id: user.id,
+  });
+  if (error) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('[getAIImageQuota] RPC failed:', error.message);
+    }
+    return null;
+  }
+  return data as AIImageQuota;
+}
+
+/**
+ * Markiert eine Generierung als „verwendet" — bewahrt das Bild vor der
+ * Retention-Löschung nach 7 Tagen. Fire-and-forget: Fehler werden
+ * geschluckt, Aufrufer bekommen keine Exception.
+ */
+export async function markAIImageConsumed(generationId: string): Promise<void> {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { error } = await supabase.rpc('mark_ai_image_consumed', {
+      p_generation_id: generationId,
+    });
+    if (error && process.env.NODE_ENV !== 'production') {
+      console.warn('[markAIImageConsumed] RPC failed:', error.message);
+    }
+  } catch (e) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.warn('[markAIImageConsumed] throw:', e);
+    }
+  }
+}
