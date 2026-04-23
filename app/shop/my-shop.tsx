@@ -20,7 +20,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import {
   ArrowLeft, Plus, Package, Trash2,
   ShoppingBag, ChevronRight, MapPin, Truck, Percent,
-  Image as ImageIcon, Box, FileText, Wrench, X, Images,
+  Image as ImageIcon, Box, FileText, Wrench, X, Images, Sparkles,
 } from 'lucide-react-native';
 import { launchImageLibraryAsync, MediaTypeOptions, requestMediaLibraryPermissionsAsync } from 'expo-image-picker';
 import { impactAsync, ImpactFeedbackStyle } from 'expo-haptics';
@@ -32,6 +32,7 @@ import {
 import { uploadPostMedia } from '@/lib/uploadMedia';
 import { useCoinsWallet } from '@/lib/useGifts';
 import { useTheme } from '@/lib/useTheme';
+import { AIImageSheet } from '@/components/ai/AIImageSheet';
 
 // ─── Kategorie-Optionen ───────────────────────────────────────────────────────
 
@@ -80,6 +81,9 @@ export default function MyShopScreen() {
   const [uploadingCover, setUploadingCover] = useState(false);
   const isEditMode = editingId !== null;
   const isSaving   = isCreating || isUpdating;
+
+  // v1.28.0: AI-Image-Sheet für Produkt-Mockups ohne eigenes Foto
+  const [showAISheet, setShowAISheet] = useState(false);
 
   // ── Cover hochladen ───────────────────────────────────────────────────────
 
@@ -306,6 +310,7 @@ export default function MyShopScreen() {
           onPickGallery={pickGalleryImages}
           uploadingGallery={uploadingGallery}
           onRemoveGalleryImage={removeGalleryImage}
+          onOpenAI={() => setShowAISheet(true)}
           onSubmit={handleSave}
           isSaving={isSaving}
           onClose={closeSheet}
@@ -313,6 +318,33 @@ export default function MyShopScreen() {
           insets={insets}
         />
       </Modal>
+
+      {/* AI-Image-Sheet — nutzt die Shop-Prompt-Suggestions aus der Kategorie */}
+      <AIImageSheet
+        visible={showAISheet}
+        onClose={() => setShowAISheet(false)}
+        onUseImage={(url) => setForm((f) => ({ ...f, cover_url: url }))}
+        purpose="shop_mockup"
+        defaultSize="1024x1024"
+        title="Produktbild mit KI"
+        promptPlaceholder="z.B. „Schwarzer Hoodie auf weißem Studio-Hintergrund, minimalistisch, Produktfoto"
+        suggestions={
+          form.category === 'physical'
+            ? [
+                'Minimalistisches Produktfoto auf weißem Studio-Hintergrund',
+                'Handwerk-Produkt auf Holzmaserung, warmes Licht',
+              ]
+            : form.category === 'digital'
+              ? [
+                  'Flat-Design-Icon für Digital-Produkt, moderne Farben',
+                  'Abstrakter Verlauf mit Text-Overlay-Placeholder',
+                ]
+              : [
+                  'Professionelle Portrait-Szene, soft light',
+                  'Abstrakte Komposition für Service-Thumbnail',
+                ]
+        }
+      />
     </View>
   );
 }
@@ -443,6 +475,7 @@ function ProductFormSheet({
   form, setForm, isEditMode,
   onPickCover, uploadingCover,
   onPickGallery, uploadingGallery, onRemoveGalleryImage,
+  onOpenAI,
   onSubmit, isSaving, onClose, colors, insets,
 }: {
   form: CreateProductInput;
@@ -453,6 +486,7 @@ function ProductFormSheet({
   onPickGallery: () => void;
   uploadingGallery: boolean;
   onRemoveGalleryImage: (idx: number) => void;
+  onOpenAI: () => void;
   onSubmit: () => void;
   isSaving: boolean;
   onClose: () => void;
@@ -498,6 +532,17 @@ function ProductFormSheet({
               <Text style={[s.coverHint, { color: colors.text.muted }]}>Titelbild hinzufügen</Text>
             </View>
           )}
+        </Pressable>
+
+        {/* v1.28.0: „Mit KI erstellen" als sekundäre Alternative für Seller ohne eigenes Foto */}
+        <Pressable
+          onPress={onOpenAI}
+          style={[s.aiPickerBtn, { borderColor: colors.border.subtle, backgroundColor: colors.bg.elevated }]}
+        >
+          <Sparkles size={14} color={colors.accent.primary} strokeWidth={2} />
+          <Text style={[s.aiPickerText, { color: colors.text.primary }]}>
+            Mit KI erstellen
+          </Text>
         </Pressable>
 
         {/* Galerie-Bilder */}
@@ -797,6 +842,21 @@ const s = StyleSheet.create({
   },
   coverPreview: { width: '100%', height: '100%' },
   coverHint:    { fontSize: 13 },
+
+  aiPickerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginTop: -12,
+    marginBottom: 8,
+  },
+  aiPickerText: { fontSize: 12, fontWeight: '600' },
 
   label: { fontSize: 13, fontWeight: '700', marginBottom: 8, marginTop: 16 },
 
