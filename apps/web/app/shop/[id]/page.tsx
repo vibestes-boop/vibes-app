@@ -9,6 +9,7 @@ import { BuyBar } from '@/components/shop/buy-bar';
 import { ReviewList } from '@/components/shop/review-list';
 import { ReviewForm } from '@/components/shop/review-form';
 import { ProductCard } from '@/components/shop/product-card';
+import { ProductDescription } from '@/components/shop/product-description';
 import { StarDisplay } from '@/components/shop/star-display';
 import { SellerChatButton } from '@/components/shop/seller-chat-button';
 import {
@@ -264,25 +265,31 @@ export default async function ProductDetailPage({ params }: PageProps) {
                 Block ist ein Link, Chat-Button und Shop-Link sind eigenständige
                 Siblings daneben.
           */}
-          <div className="flex items-center gap-3 rounded-xl border bg-card p-3">
+          {/* Seller-Karte (C5) — vorher harte border+card, jetzt weiches
+              muted-Surface mit Hairline-Ring; Avatar bekommt Background-
+              Ring (vgl. iOS Contact-Cards, TikTok Seller-Chips). Der Hover
+              auf Avatar-/Name-Link bleibt sichtbar via ring-accent-Switch. */}
+          <div className="flex items-center gap-3 rounded-xl bg-muted/40 p-4 ring-1 ring-black/5 dark:ring-white/10">
             <Link
               href={`/u/${product.seller.username}` as Route}
-              className="group flex min-w-0 flex-1 items-center gap-3 rounded-lg transition-colors hover:bg-muted/40"
+              className="group flex min-w-0 flex-1 items-center gap-3 rounded-lg outline-none"
             >
-              <div className="relative h-11 w-11 flex-none overflow-hidden rounded-full bg-muted">
+              <div className="relative h-12 w-12 flex-none overflow-hidden rounded-full bg-muted ring-2 ring-background transition-shadow duration-base ease-out-expo group-hover:ring-primary/60 group-focus-visible:ring-primary">
                 {product.seller.avatar_url && (
                   <Image
                     src={product.seller.avatar_url}
                     alt=""
                     fill
                     className="object-cover"
-                    sizes="44px"
+                    sizes="48px"
                   />
                 )}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1.5">
-                  <span className="font-medium">@{product.seller.username}</span>
+                  <span className="font-semibold text-foreground group-hover:underline underline-offset-4 decoration-foreground/40">
+                    @{product.seller.username}
+                  </span>
                   {product.seller.verified && <BadgeCheck className="h-4 w-4 text-sky-500" />}
                 </div>
                 <div className="text-xs text-muted-foreground">Profil ansehen →</div>
@@ -293,24 +300,28 @@ export default async function ProductDetailPage({ params }: PageProps) {
             )}
             <Link
               href={`/u/${product.seller.username}/shop` as Route}
-              className="ml-1 inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-medium hover:bg-muted/40"
+              className="ml-1 inline-flex items-center gap-1.5 rounded-full bg-background/70 px-3 py-1.5 text-xs font-medium text-foreground ring-1 ring-black/5 transition-colors duration-fast ease-out-expo hover:bg-background dark:bg-background/50 dark:ring-white/10 dark:hover:bg-background/80"
             >
               <ShoppingBag className="h-3.5 w-3.5" />
               Shop
             </Link>
           </div>
 
-          {/* Beschreibung */}
-          {product.description && (
-            <details className="rounded-xl border bg-card p-4 text-sm [&[open]_summary::after]:rotate-180">
-              <summary className="flex cursor-pointer list-none items-center justify-between font-medium after:ml-2 after:transition-transform after:content-['↓']">
-                Beschreibung
-              </summary>
-              <p className="mt-3 whitespace-pre-wrap leading-relaxed text-foreground/90">
-                {product.description}
-              </p>
-            </details>
-          )}
+          {/* Beschreibung (C6) — Gradient-Fade + animiertes Expand statt
+              nativem <details>. Eigene Client-Komponente, weil die Animation
+              eine gemessene Ziel-Höhe braucht. */}
+          {product.description && <ProductDescription text={product.description} />}
+
+          {/* Inline Buy-CTA (Desktop) — direkt in der Info-Column. Mobile
+              nutzt weiter die Sticky-Variante am Seiten-Ende (siehe unten). */}
+          <div className="hidden lg:block">
+            <BuyBar
+              product={product}
+              viewerId={user?.id ?? null}
+              coinBalance={balance}
+              variant="inline"
+            />
+          </div>
         </div>
       </div>
 
@@ -355,9 +366,17 @@ export default async function ProductDetailPage({ params }: PageProps) {
         </section>
       )}
 
-      {/* Sticky BuyBar */}
-      <div className="mt-10" />
-      <BuyBar product={product} viewerId={user?.id ?? null} coinBalance={balance} />
+      {/* Sticky BuyBar — nur Mobile. Desktop rendert die Inline-Variante
+          oben in der Info-Column (siehe `variant="inline"` weiter oben). */}
+      <div className="mt-10 lg:hidden" />
+      <div className="lg:hidden">
+        <BuyBar
+          product={product}
+          viewerId={user?.id ?? null}
+          coinBalance={balance}
+          variant="sticky"
+        />
+      </div>
     </div>
   );
 }
