@@ -17,6 +17,7 @@ import { LiveVideoPlayer } from '@/components/live/live-video-player';
 import { LiveActionBar } from '@/components/live/live-action-bar';
 import { LivePollPanel } from '@/components/live/live-poll-panel';
 import { LiveHostPill } from '@/components/live/live-host-pill';
+import { LiveChatOverlay } from '@/components/live/live-chat-overlay';
 import { LiveEnterClient } from '@/components/live/live-enter-client';
 
 // -----------------------------------------------------------------------------
@@ -235,6 +236,31 @@ export default async function LiveViewerPage({ params }: PageProps) {
                   />
                 </div>
               </div>
+            </div>
+          )}
+
+          {/*
+           * Chat-Overlay — links-unten, ABOVE der Action-Bar. Eigene compose-
+           * pill am unteren Rand, mask-fade am oberen Rand damit ältere
+           * Nachrichten optisch in den Video-Canvas auslaufen. Breite auf der
+           * linken Hälfte geklemmt, damit der Poll-Panel rechts und der
+           * Host-Stack oben sichtbar bleiben. Outer-Container ist bereits
+           * `pointer-events-none` (vom LiveChatOverlay selbst) — wir platzieren
+           * nur, die Komponente verwaltet Hit-Areas selbst (Input + Timeout-
+           * Menü werden `pointer-events-auto` gesetzt).
+           */}
+          {!ended && (
+            <div className="absolute bottom-20 left-3 right-3 sm:right-auto sm:w-[62%] sm:max-w-[420px]">
+              <LiveChatOverlay
+                sessionId={id}
+                initialComments={comments}
+                hostId={session.host_id}
+                viewerId={viewerId}
+                isHost={isHost}
+                isModerator={isModerator}
+                slowModeSeconds={session.slow_mode_seconds ?? 0}
+                ended={ended}
+              />
             </div>
           )}
 
