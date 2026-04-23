@@ -33,7 +33,10 @@ import { BlurView } from 'expo-blur';
 import {
   X, RefreshCw, Settings, ChevronRight,
   CalendarClock, ChevronUp, ChevronDown,
+  Sparkles,
 } from 'lucide-react-native';
+import { Image as ExpoImage } from 'expo-image';
+import { AIImageSheet } from '@/components/ai/AIImageSheet';
 import * as Haptics from 'expo-haptics';
 // react-native-reanimated: CJS require() vermeidet Hermes HBC Crash
 // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
@@ -87,6 +90,11 @@ export default function LiveStartScreen() {
   const [cameraActive, setCameraActive] = useState(true);
   const [settingsSheet, setSettingsSheet] = useState(false);
   const [planSheet, setPlanSheet] = useState(false);
+  // v1.28.0 — AI-Live-Thumbnail: vom Host vorab via KI-Cover erzeugt. Wird als
+  // live_sessions.thumbnail_url (Spalte existiert seit v1.18.0 Live-Replay)
+  // gespeichert und später u.a. als Vorschau in der Explore/Home-Live-Row genutzt.
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
+  const [showAISheet, setShowAISheet] = useState(false);
 
   const dotOpacity = useSharedValue(1);
   const dotStyle = useAnimatedStyle(() => ({ opacity: dotOpacity.value }));
@@ -116,7 +124,7 @@ export default function LiveStartScreen() {
     setCountdown(null);
 
     try {
-      const result = await startSession(title, { allowComments, allowGifts, womenOnly });
+      const result = await startSession(title, { allowComments, allowGifts, womenOnly, thumbnailUrl });
       if (!result) {
         Alert.alert('Fehler', 'Live konnte nicht gestartet werden. Bitte prüfe deine Verbindung.');
         return;
@@ -319,6 +327,48 @@ export default function LiveStartScreen() {
               </View>
             </View>
 
+            {/* Cover (KI-generiert) — Phase 3 AI-Image-Rollout */}
+            <View style={ss.section}>
+              <Text style={ss.sectionLabel}>COVER</Text>
+              <View style={ss.coverRow}>
+                <View style={ss.coverPreview}>
+                  {thumbnailUrl ? (
+                    <ExpoImage
+                      source={{ uri: thumbnailUrl }}
+                      style={ss.coverImg}
+                      contentFit="cover"
+                      transition={200}
+                    />
+                  ) : (
+                    <View style={ss.coverEmpty}>
+                      <Sparkles size={20} stroke="#C1C9D4" strokeWidth={1.8} />
+                    </View>
+                  )}
+                </View>
+                <View style={ss.coverActions}>
+                  <Pressable
+                    style={ss.coverAIBtn}
+                    onPress={() => {
+                      setSettingsSheet(false);
+                      // kleiner Delay damit die Settings-Sheet-Animation weg ist,
+                      // bevor das AI-Sheet reinslidet (sonst visueller Stack-Jank)
+                      setTimeout(() => setShowAISheet(true), 260);
+                    }}
+                  >
+                    <Sparkles size={15} stroke="#fff" strokeWidth={2} />
+                    <Text style={ss.coverAIBtnText}>
+                      {thumbnailUrl ? 'Anderes Cover' : 'Mit KI erstellen'}
+                    </Text>
+                  </Pressable>
+                  {thumbnailUrl && (
+                    <Pressable style={ss.coverRemoveBtn} onPress={() => setThumbnailUrl(null)}>
+                      <Text style={ss.coverRemoveText}>Entfernen</Text>
+                    </Pressable>
+                  )}
+                </View>
+              </View>
+            </View>
+
             {/* Toggles */}
             <View style={ss.section}>
               <Text style={ss.sectionLabel}>SICHTBARKEIT</Text>
@@ -397,6 +447,28 @@ export default function LiveStartScreen() {
         onSubmit={submitSchedule}
         isSaving={isScheduling}
         title={title}
+      />
+
+      {/* ── AI-Cover-Sheet (Phase 3 AI-Image-Rollout) ───────────────── */}
+      <AIImageSheet
+        visible={showAISheet}
+        onClose={() => setShowAISheet(false)}
+        onUseImage={(url) => {
+          setThumbnailUrl(url);
+          setShowAISheet(false);
+          // Settings-Sheet wieder öffnen, damit der Host den Flow nicht verliert
+          setTimeout(() => setSettingsSheet(true), 220);
+        }}
+        purpose="live_thumbnail"
+        defaultSize="1024x1536"
+        title="Live-Cover generieren"
+        promptPlaceholder="Beschreibe das Cover-Bild für deinen Stream…"
+        suggestions={[
+          'Neon-Cyberpunk Gaming-Setup mit RGB-Licht',
+          'Gemütliche Lesestunde bei Kerzenschein',
+          'Fitness-Workout in modernem Studio',
+          'Kochshow mit exotischen Zutaten auf Holztisch',
+        ]}
       />
     </View>
   );
@@ -692,6 +764,24 @@ const ss = StyleSheet.create({
     marginTop: 4,
   },
   doneBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+
+  // Cover-Row (KI-Cover)
+  coverRow: { flexDirection: 'row', gap: 12, alignItems: 'center' },
+  coverPreview: {
+    width: 72, height: 108, borderRadius: 12, overflow: 'hidden',
+    backgroundColor: '#F3F4F6', borderWidth: 1, borderColor: '#E5E7EB',
+  },
+  coverImg: { width: '100%', height: '100%' },
+  coverEmpty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  coverActions: { flex: 1, gap: 8 },
+  coverAIBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, backgroundColor: '#8b5cf6', borderRadius: 12,
+    paddingVertical: 11, paddingHorizontal: 14,
+  },
+  coverAIBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  coverRemoveBtn: { alignSelf: 'flex-start', paddingVertical: 4, paddingHorizontal: 2 },
+  coverRemoveText: { color: '#9CA3AF', fontSize: 12, fontWeight: '600' },
 });
 
 // ─── Plan-Sheet Styles ──────────────────────────────────────────────────────
