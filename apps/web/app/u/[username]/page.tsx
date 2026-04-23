@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { BadgeCheck, Construction } from 'lucide-react';
+import { BadgeCheck, Heart, ShoppingBag, Swords } from 'lucide-react';
 
 import { getPublicProfile, getProfilePosts, isFollowing } from '@/lib/data/public';
 import { getUser } from '@/lib/auth/session';
@@ -82,13 +82,36 @@ export async function generateMetadata({
 // -----------------------------------------------------------------------------
 // Helper: stat-pill (Followers / Following / Posts). Tabellen-Zahlen, damit
 // sich die Pills nicht beim Tick von 1234 auf 1235 minimal verschieben.
+//
+// D3 aus UI_AUDIT: Compact-Formatting (1.2K / 45.3K / 1.2M) statt
+// `toLocaleString(1,234)`. Tausender-Trenner frisst horizontalen Space und
+// macht die drei Pills unterschiedlich breit, was den Stats-Row
+// ungleich-gewichtet. Kompakte Notation balanciert die Breiten visuell aus und
+// ist außerdem das TikTok-Signature-Pattern. Locale-separator (`.` in de-DE,
+// `,` in en-US) kommt über ein kleines Replace nach dem toFixed.
+//
+// Gewicht-Shift: Value-Line `text-lg font-semibold` → `text-xl font-bold`
+// (dominanter Zahl-Akzent), Label bleibt `text-xs`. Gap zwischen beiden von
+// 0.5 → 0.25 eng, damit der Block als eine Einheit liest statt als
+// „Nummer + darunter noch was".
 // -----------------------------------------------------------------------------
+
+function formatStat(n: number, locale: Locale): string {
+  if (n < 1_000) return n.toLocaleString(LOCALE_INTL[locale]);
+  const sep = (0.1).toLocaleString(LOCALE_INTL[locale]).charAt(1); // '.' or ','
+  if (n < 1_000_000) {
+    const val = (n / 1_000).toFixed(1).replace('.', sep);
+    return `${val.endsWith(`${sep}0`) ? val.slice(0, -2) : val}K`;
+  }
+  const val = (n / 1_000_000).toFixed(1).replace('.', sep);
+  return `${val.endsWith(`${sep}0`) ? val.slice(0, -2) : val}M`;
+}
 
 function StatPill({ label, value, locale }: { label: string; value: number; locale: Locale }) {
   return (
-    <div className="flex flex-col items-center gap-0.5">
-      <span className="text-lg font-semibold tabular-nums">
-        {value.toLocaleString(LOCALE_INTL[locale])}
+    <div className="flex flex-col items-center gap-px">
+      <span className="text-xl font-bold tabular-nums leading-tight">
+        {formatStat(value, locale)}
       </span>
       <span className="text-xs text-muted-foreground">{label}</span>
     </div>
@@ -170,8 +193,17 @@ export default async function ProfilePage({
                 {displayName}
               </h1>
               {profile.verified && (
+                // Verified-Badge auf TikTok-Blau umgestellt (D3 aus UI_AUDIT).
+                // Vorher: `fill-brand-gold text-background` — Gold-Stroke mit
+                // Background-Farbe als Inner-Tint war sehr dezent, besonders
+                // auf hellem Theme kaum vom Namen abgesetzt. Neu: Sky-Blue-Fill
+                // mit Weiß-Innen — die universelle „Verified"-Farbgebung die
+                // TikTok/X/Meta alle übernommen haben. Gleiches Pattern nutzt
+                // die Messages-Liste und der Feed bereits (`text-sky-500` auf
+                // den kleineren Check-Icons), damit ist die Seitenweiten-
+                // Semantik konsistent.
                 <BadgeCheck
-                  className="h-5 w-5 fill-brand-gold text-background"
+                  className="h-5 w-5 fill-sky-500 text-white dark:text-background"
                   aria-label={t('profile.verifiedBadge')}
                 />
               )}
@@ -247,6 +279,7 @@ export default async function ProfilePage({
 
         {tab === 'likes' && (
           <EmptyPanelInfo
+            icon="likes"
             title={t('profile.panelLikesTitle')}
             hint={
               isSelf
@@ -258,6 +291,7 @@ export default async function ProfilePage({
 
         {tab === 'shop' && (
           <EmptyPanelInfo
+            icon="shop"
             title={t('profile.panelShopTitle')}
             hint={t('profile.panelShopHint')}
           />
@@ -265,6 +299,7 @@ export default async function ProfilePage({
 
         {tab === 'battles' && (
           <EmptyPanelInfo
+            icon="battles"
             title={t('profile.panelBattlesTitle')}
             hint={t('profile.panelBattlesHint')}
           />
@@ -274,15 +309,71 @@ export default async function ProfilePage({
   );
 }
 
-function EmptyPanelInfo({ title, hint }: { title: string; hint: string }) {
+// -----------------------------------------------------------------------------
+// EmptyPanelInfo — D3 aus UI_AUDIT
+//
+// Vorher: Ein generischer `Construction`-Icon in allen drei Empty-Tabs →
+// „under construction"-Prototype-Feel, für den Audit-Kritikpunkt
+// „absolut kein Design. ... wirkt nach 2022 Prototype". Neu:
+//   1. Ein pro Tab passendes Icon (Heart/ShoppingBag/Swords — matcht die
+//      jeweiligen Tab-Icons, sodass der User sofort sieht „das ist der
+//      leere Likes-Tab, nicht eine generische Fehlerseite").
+//   2. Gradient-Glow-Background (pink-500 → red-500 → amber-400, je nach Icon
+//      leicht getinted) statt `bg-muted` — fühlt sich TikTok-brand-freundlich
+//      an, nicht wie ein 404.
+//   3. Ring + Shadow-Elevation damit das Icon-Plate leicht „schwebt" statt
+//      flach im Dashed-Box zu kleben. Ring-Color inner-weiß (ring-background)
+//      + outer-tinted (ring-pink/ring-amber) ist ein Standard-„Halo"-Trick.
+//   4. `border-dashed border-border` → weg, stattdessen dezenter
+//      `bg-muted/30`-Wash. Dashed-Borders sind ein Legacy-Signal für
+//      „Placeholder" und billig.
+// -----------------------------------------------------------------------------
+
+type EmptyIcon = 'likes' | 'shop' | 'battles';
+
+const EMPTY_ICON_MAP: Record<
+  EmptyIcon,
+  { Icon: typeof Heart; gradient: string; ring: string }
+> = {
+  likes: {
+    Icon: Heart,
+    gradient: 'from-pink-500/15 via-rose-500/10 to-red-500/5',
+    ring: 'ring-pink-500/20',
+  },
+  shop: {
+    Icon: ShoppingBag,
+    gradient: 'from-amber-500/15 via-orange-500/10 to-red-500/5',
+    ring: 'ring-amber-500/20',
+  },
+  battles: {
+    Icon: Swords,
+    gradient: 'from-violet-500/15 via-indigo-500/10 to-sky-500/5',
+    ring: 'ring-violet-500/20',
+  },
+};
+
+function EmptyPanelInfo({
+  icon,
+  title,
+  hint,
+}: {
+  icon: EmptyIcon;
+  title: string;
+  hint: string;
+}) {
+  const { Icon, gradient, ring } = EMPTY_ICON_MAP[icon];
   return (
-    <div className="flex min-h-[240px] flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-card/50 px-6 py-12 text-center">
-      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-        <Construction className="h-5 w-5 text-muted-foreground" />
+    <div
+      className={`relative flex min-h-[260px] flex-col items-center justify-center gap-4 overflow-hidden rounded-2xl bg-gradient-to-br ${gradient} bg-card/50 px-6 py-14 text-center`}
+    >
+      <div
+        className={`flex h-16 w-16 items-center justify-center rounded-2xl bg-background shadow-elevation-2 ring-1 ${ring}`}
+      >
+        <Icon className="h-8 w-8 text-foreground/80" strokeWidth={1.75} />
       </div>
-      <div>
-        <p className="text-sm font-medium">{title}</p>
-        <p className="mt-1 max-w-sm text-xs text-muted-foreground">{hint}</p>
+      <div className="max-w-sm">
+        <p className="text-base font-semibold">{title}</p>
+        <p className="mt-1.5 text-sm text-muted-foreground">{hint}</p>
       </div>
     </div>
   );
