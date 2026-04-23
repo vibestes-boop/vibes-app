@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Route } from 'next';
-import { ArrowLeft, Flag } from 'lucide-react';
+import { ArrowLeft, Flag, Users } from 'lucide-react';
 import {
   getLiveSession,
   getLiveComments,
@@ -14,10 +14,8 @@ import {
 } from '@/lib/data/live';
 import { getUser } from '@/lib/auth/session';
 import { LiveVideoPlayer } from '@/components/live/live-video-player';
-import { LiveChatOverlay } from '@/components/live/live-chat-overlay';
 import { LiveActionBar } from '@/components/live/live-action-bar';
 import { LivePollPanel } from '@/components/live/live-poll-panel';
-import { LiveHostCard } from '@/components/live/live-host-card';
 import { LiveHostPill } from '@/components/live/live-host-pill';
 import { LiveEnterClient } from '@/components/live/live-enter-client';
 
@@ -239,20 +237,6 @@ export default async function LiveViewerPage({ params }: PageProps) {
               </div>
             </div>
           )}
-
-          {/* Host-Pill (v1.w.UI.1 — B5 aus UI_AUDIT_WEB).
-              Ersetzt die bisherigen getrennten Live-Badge + Users-Count-Chips
-              durch eine einzige Identitäts-Pill mit Avatar + Name + Viewer-
-              Count + inline Follow-CTA. Live-Marker bleibt als separate rote
-              Mini-Pill daneben, damit das rote Farbsignal (= jetzt-live) nicht
-              in der dunklen Host-Pill aufgeht. */}
-          <LiveHostPill
-            session={session}
-            viewerId={viewerId}
-            initialFollowing={isFollowing}
-            ended={ended}
-          />
-        </div>
 
           {/* Action-Bar (unten) — Reactions + Gifts + CoHost-Request */}
           {!ended && viewerId && (
