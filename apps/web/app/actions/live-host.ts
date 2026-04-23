@@ -10,7 +10,8 @@ import type { ActionResult } from './live';
 //
 // Die meisten Actions delegieren an Native-RPCs, die bereits atomar + RLS-
 // geschützt sind (Phase-2-Hotfixes v1.27.0 & v1.27.2 & v1.27.3):
-//  • create_live_session   — erzeugt Session + room_name + viewer-count-init
+//  • startLiveSession      — direct INSERT auf live_sessions (Native-Parity,
+//                             kein RPC — `create_live_session` existiert nicht)
 //  • end_live_session      — setzt status='ended' + ended_at + purged viewers
 //  • heartbeat_live_session — hält updated_at frisch gegen Zombie-Cleanup-Cron
 //  • accept_cohost_request — CoHost-Row + Slot-Index anlegen
@@ -54,30 +55,51 @@ export async function startLiveSession(
   if (!host) return { ok: false, error: 'Bitte einloggen.' };
 
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc('create_live_session', {
-    p_title: input.title?.slice(0, 120) ?? null,
-    p_category: input.category ?? null,
-    p_thumbnail_url: input.thumbnailUrl ?? null,
-    p_moderation_enabled: input.moderationEnabled ?? true,
-    p_moderation_words: input.moderationWords ?? [],
-  });
 
-  if (error) {
-    if (error.message?.includes('already_streaming'))
-      return { ok: false, error: 'Du hast bereits einen aktiven Stream.' };
-    return { ok: false, error: error.message };
-  }
+  // 1) Zombie-Cleanup: Falls dieser Host noch eine alte 'active'-Session
+  //    liegen hat (Crash, App-Kill während Stream), vorher sauber beenden.
+  //    Native macht das in `lib/useLiveSession.ts:startSession` identisch.
+  await supabase
+    .from('live_sessions')
+    .update({
+      status: 'ended',
+      ended_at: new Date().toISOString(),
+      viewer_count: 0,
+    })
+    .eq('host_id', host.id)
+    .eq('status', 'active');
 
-  const row = (Array.isArray(data) ? data[0] : data) as {
-    session_id: string;
-    room_name: string;
-  } | null;
-  if (!row?.session_id || !row?.room_name)
+  // 2) Room-Name generieren (Collision-Safe genug: host_id + ms-Timestamp).
+  //    LiveKit-Edge-Function akzeptiert beliebige Room-Namen, deduped
+  //    serverseitig über host_id+room_name.
+  const roomName = `vibes-live-${host.id}-${Date.now()}`;
+
+  // 3) Insert. RLS-Policy `live_sessions_insert` erlaubt nur
+  //    `auth.uid() = host_id` — wir setzen host_id explizit für Klarheit.
+  const insertPayload: Record<string, unknown> = {
+    host_id: host.id,
+    room_name: roomName,
+    title: input.title?.trim().slice(0, 120) || null,
+    moderation_enabled: input.moderationEnabled ?? true,
+    moderation_words: input.moderationWords ?? [],
+  };
+  if (input.category !== undefined) insertPayload.category = input.category;
+  if (input.thumbnailUrl !== undefined)
+    insertPayload.thumbnail_url = input.thumbnailUrl;
+
+  const { data, error } = await supabase
+    .from('live_sessions')
+    .insert(insertPayload)
+    .select('id, room_name')
+    .single();
+
+  if (error) return { ok: false, error: error.message };
+  if (!data?.id || !data?.room_name)
     return { ok: false, error: 'Session konnte nicht erstellt werden.' };
 
   return {
     ok: true,
-    data: { sessionId: row.session_id, roomName: row.room_name },
+    data: { sessionId: data.id as string, roomName: data.room_name as string },
   };
 }
 
@@ -156,7 +178,9 @@ export async function heartbeatLiveSession(
   const { error } = await supabase.rpc('heartbeat_live_session', {
     p_session_id: sessionId,
     p_viewer_count: viewerCount,
-    p_peak_count: peakCount,
+    // RPC-Parameter heißt `p_peak_viewers` (siehe Migration
+    // 20260419230000_live_sessions_updated_at.sql) — nicht `p_peak_count`.
+    p_peak_viewers: peakCount,
   });
 
   if (error) return { ok: false, error: error.message };
@@ -306,6 +330,13 @@ export async function createLivePoll(
     .eq('session_id', sessionId)
     .is('closed_at', null);
 
+  // NB: `live_polls` (Migration 20260418060000_live_polls.sql) hat KEINE
+  // `duration_secs`-Spalte — nur id/session_id/host_id/question/options/
+  // created_at/closed_at. Die Laufzeit (1/3/5 Min) ist nur ein Client-seitiges
+  // UX-Signal für Auto-Close; wir validieren sie oben (60/180/300), schicken
+  // sie aber NICHT in den Insert, sonst gibt PostgREST „Could not find the
+  // 'duration_secs' column" zurück. Server-seitiges Auto-Close ist bewusst
+  // nicht implementiert — der Host schließt manuell via `closeLivePoll`.
   const { data, error } = await supabase
     .from('live_polls')
     .insert({
@@ -313,7 +344,6 @@ export async function createLivePoll(
       host_id: host.id, // historischer Name — dient ab v1.27.4 als Author-ID
       question: trimmedQuestion,
       options: cleanOptions,
-      duration_secs: durationSecs,
     })
     .select('id')
     .single();

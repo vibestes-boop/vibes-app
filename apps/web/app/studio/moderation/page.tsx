@@ -110,10 +110,11 @@ export default async function StudioModerationPage() {
             subtitle="Pro Session eigene Wortlisten, Shadow-Ban-Timeouts, Slow-Mode."
           />
           <ModLinkRow
-            href={'/settings' as Route}
+            href={'/studio/moderation' as Route}
             icon={Flag}
             title="Meldungen"
             subtitle="Ausstehende Meldungen + Status-Feedback (kommt in Phase 12)."
+            disabled
           />
         </ul>
       </section>
@@ -167,12 +168,35 @@ function ModLinkRow({
   icon: Icon,
   title,
   subtitle,
+  disabled = false,
 }: {
   href: Route;
   icon: typeof UserX;
   title: string;
   subtitle: string;
+  disabled?: boolean;
 }) {
+  // Disabled-Zeilen rendern ohne Link (kein Next-Navigation), ansonsten geht
+  // `/settings`-Redirect durch und führt zu `/settings/billing` — das verwirrt
+  // beim „kommt in Phase 12"-Placeholder. Kein Hover-Highlight, kein Pfeil,
+  // gedimmt + `aria-disabled` für Screen-Reader.
+  if (disabled) {
+    return (
+      <li
+        aria-disabled="true"
+        className="flex cursor-not-allowed items-center gap-3 px-4 py-3 opacity-60"
+      >
+        <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">
+          <Icon className="h-4 w-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-medium">{title}</div>
+          <div className="truncate text-xs text-muted-foreground">{subtitle}</div>
+        </div>
+      </li>
+    );
+  }
+
   return (
     <li>
       <Link

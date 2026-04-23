@@ -7,10 +7,22 @@ import type { LiveSession } from '@shared/types';
 // (Realtime-Subscriptions, Comment-Broadcast) liegen in `hooks/use-live.ts`.
 // -----------------------------------------------------------------------------
 
+// HINWEIS: `peak_viewer_count:peak_viewers` — die tatsächliche DB-Spalte heißt
+// `peak_viewers` (siehe `supabase/live_studio.sql` und Replay-Migration).
+// Wir aliasen in Supabase selbst, damit alle TypeScript-Verbraucher weiter
+// `peak_viewer_count` lesen können (shared/types/live.ts + host-deck + studio).
+// Ohne Alias war die Spalte `peak_viewer_count` unbekannt → `data = null` →
+// `notFound()` in `/live/host/[id]` → 404 beim Host-Deck.
 const SESSION_COLUMNS =
-  'id, host_id, room_name, title, thumbnail_url, category, status, viewer_count, peak_viewer_count, started_at, ended_at, updated_at, moderation_enabled, moderation_words, slow_mode_seconds';
+  'id, host_id, room_name, title, thumbnail_url, category, status, viewer_count, peak_viewer_count:peak_viewers, started_at, ended_at, updated_at, moderation_enabled, moderation_words, slow_mode_seconds';
 
-const HOST_JOIN = 'host:profiles!live_sessions_host_id_fkey ( id, username, display_name, avatar_url, verified )';
+// HINWEIS: `verified:is_verified` — analog zu `peak_viewer_count:peak_viewers`.
+// Die DB-Spalte heißt `is_verified` (Migration 20260407010000_creator_analytics),
+// TypeScript-Verbraucher (LiveSessionWithHost.host.verified etc.) erwarten aber
+// `verified`. Supabase-PostgREST-Alias macht das Mapping ohne Type-Rewrite.
+// Ohne den Alias schlägt der Embed-Query still fehl → `data = null` →
+// `getLiveSession` → `notFound()` → 404 auf `/live/host/[id]`.
+const HOST_JOIN = 'host:profiles!live_sessions_host_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )';
 
 export interface LiveSessionWithHost extends LiveSession {
   slow_mode_seconds: number | null;
@@ -99,8 +111,14 @@ export const getLiveComments = cache(
     const { data } = await supabase
       .from('live_comments')
       .select(
-        `id, session_id, user_id, body, created_at, pinned,
-         author:profiles!live_comments_user_id_fkey ( id, username, display_name, avatar_url, verified )`,
+        // `verified:is_verified` — gleicher Alias wie in HOST_JOIN oben.
+        // `body:text` — DB-Spalte heißt `text` (siehe `supabase/live_studio.sql:45`),
+        // wir aliasen sie hier (und im Realtime-Mapping in live-chat.tsx) auf
+        // `body`, damit der LiveCommentWithAuthor-Typ + UI-Components den
+        // lesbareren Namen behalten. Ohne Alias schlägt der SELECT still
+        // fehl und die Chat-Initial-Liste kommt leer.
+        `id, session_id, user_id, body:text, created_at, pinned,
+         author:profiles!live_comments_user_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )`,
       )
       .eq('session_id', sessionId)
       .order('created_at', { ascending: false })

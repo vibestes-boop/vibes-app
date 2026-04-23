@@ -162,7 +162,11 @@ export function LiveHostDeck({
     roomRef.current = room;
 
     async function connect() {
-      const tokenResult = await fetchLiveKitToken(session.room_name, false);
+      // `isCoHost=false, isHost=true` — Host-Deck rendert nur, wenn der
+      // viewer === session.host_id ist (SSR-Gate in page.tsx). Der Edge-
+      // Function-Host-Check verifiziert die Identity nochmal via JWT gegen
+      // `live_sessions.host_id` → Publisher-Token nur für echten Host.
+      const tokenResult = await fetchLiveKitToken(session.room_name, false, true);
       if (cancelled) return;
       if (!tokenResult.ok) {
         setErrorMsg(tokenResult.error);

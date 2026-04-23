@@ -31,7 +31,9 @@ export const getMyActiveLiveSession = cache(
 
     const { data } = await supabase
       .from('live_sessions')
-      .select('id, room_name, title, started_at, viewer_count, peak_viewer_count')
+      // `peak_viewer_count:peak_viewers` — DB-Spalte heißt `peak_viewers`,
+      // Alias damit `MyActiveSession.peak_viewer_count` weiter passt.
+      .select('id, room_name, title, started_at, viewer_count, peak_viewer_count:peak_viewers')
       .eq('host_id', user.id)
       .eq('status', 'active')
       .order('started_at', { ascending: false })
@@ -70,7 +72,9 @@ export const getMyPastSessions = cache(
     const { data } = await supabase
       .from('live_sessions')
       .select(
-        'id, room_name, title, thumbnail_url, started_at, ended_at, peak_viewer_count, viewer_count, status',
+        // `peak_viewer_count:peak_viewers` — gleiches Mapping wie in
+        // `getMyActiveLiveSession` / `SESSION_COLUMNS` in data/live.ts.
+        'id, room_name, title, thumbnail_url, started_at, ended_at, peak_viewer_count:peak_viewers, viewer_count, status',
       )
       .eq('host_id', user.id)
       .order('started_at', { ascending: false })
