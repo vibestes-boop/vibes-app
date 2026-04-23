@@ -86,7 +86,17 @@ export default async function MessagesPage() {
       {conversations.length === 0 ? (
         <EmptyState />
       ) : (
-        <ul className="flex-1 divide-y divide-border overflow-hidden rounded-xl border bg-card">
+        // Edge-to-edge Liste (v1.w.UI.1 — D1 aus UI_AUDIT).
+        //
+        // Vorher: `rounded-xl border bg-card` Card-Container → Liste wirkte wie
+        // ein UI-Element, nicht wie Konversationen. WhatsApp/iMessage/Telegram
+        // nutzen alle eine edge-to-edge List-View ohne Card-Framing, weil die
+        // Avatare + Rows selber schon genug visuelle Struktur bringen.
+        //
+        // `divide-y` + `-mx-4 md:mx-0` erweitert die Liste auf Mobile bis an den
+        // Viewport-Rand (Section-Padding wird lokal ausgehebelt), desktop bleibt
+        // contained.
+        <ul className="-mx-4 flex-1 divide-y divide-border/60 md:mx-0">
           {conversations.map((c) => (
             <ConversationRow key={c.id} conv={c} />
           ))}
@@ -107,7 +117,7 @@ function ConversationRow({ conv }: { conv: ConversationPreview }) {
     <li>
       <Link
         href={`/messages/${conv.id}` as Route}
-        className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-muted/40"
+        className="flex items-center gap-4 px-4 py-3 transition-colors duration-fast ease-out-expo hover:bg-muted/60 active:bg-muted"
       >
         <div className="relative h-[60px] w-[60px] flex-none overflow-hidden rounded-full bg-muted">
           {conv.is_self ? (

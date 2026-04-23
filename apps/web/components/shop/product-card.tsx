@@ -61,7 +61,20 @@ export function ProductCard({
     <Link
       href={`/shop/${product.id}` as Route}
       className={cn(
-        'group relative block overflow-hidden rounded-xl border bg-card transition-shadow hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        // Base Card: weiche Elevation-1 als ruhender Zustand, Border nur als
+        // Light-Mode-Fallback für Shadow-Sichtbarkeit (`dark:border-border/30`
+        // macht die Border im Dark-Mode fast weg, weil Shadow dort via Border-
+        // Kontrast statt via Alpha funktioniert — siehe tailwind.config Tokens).
+        'group relative block overflow-hidden rounded-xl bg-card',
+        'border border-border/60 dark:border-border/30',
+        'shadow-elevation-1',
+        // Hover-Lift (duration-base ~200ms mit out-expo-Easing = TikTok-Snap).
+        // `translate-y`-Verschiebung kommt aus transform, nicht aus margin —
+        // damit keine Layout-Shift auftritt und die GPU composited statt neu
+        // paintet.
+        'transition-all duration-base ease-out-expo',
+        'hover:-translate-y-0.5 hover:shadow-elevation-2',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
         !product.is_active && 'opacity-60',
         className,
       )}
@@ -191,7 +204,10 @@ export function ProductCard({
           <div className="flex items-baseline gap-1.5">
             <span
               className={cn(
-                'text-base font-semibold tabular-nums',
+                // Preis = primärer Haken auf der Karte, deshalb font-bold (nicht
+                // nur -semibold). Inter rendert 700 deutlich präsenter als 600
+                // — hilft Scan-Ability in dichten Grid-Listen.
+                'text-base font-bold tabular-nums',
                 isSale && 'text-red-500',
               )}
             >
@@ -220,7 +236,7 @@ export function ProductCard({
 
 export function ProductCardSkeleton() {
   return (
-    <div className="overflow-hidden rounded-xl border bg-card">
+    <div className="overflow-hidden rounded-xl border border-border/60 bg-card shadow-elevation-1 dark:border-border/30">
       <div className="aspect-[3/4] w-full animate-pulse bg-muted" />
       <div className="flex flex-col gap-2 p-3">
         <div className="h-3 w-1/3 animate-pulse rounded bg-muted" />
@@ -232,8 +248,14 @@ export function ProductCardSkeleton() {
 }
 
 export function ProductCardGridSkeleton({ count = 8 }: { count?: number }) {
+  // Grid-Cap bei lg:4 (v1.w.UI.1 — C1 aus UI_AUDIT). Vorher: `2xl:grid-cols-5`.
+  // Warum rausgenommen: auf 2560px-Displays produzierte 5-col-Layout extrem
+  // schmale Cards (~200px Breite), die Blur-Fill-Aesthetic zerbröselt dort.
+  // TikTok-Shop cappt ebenfalls bei 4 pro Reihe mit großzügiger Breite-pro-Tile.
+  // Gap 3 → 4 (zusätzliche visuelle Ruhe zwischen Cards jetzt wo sie gelifted
+  // sind und Hover-Shadow brauchen Clearance zum Nachbarn).
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
       {Array.from({ length: count }).map((_, i) => (
         <ProductCardSkeleton key={i} />
       ))}

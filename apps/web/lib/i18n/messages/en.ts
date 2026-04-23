@@ -23,6 +23,7 @@ const enMessages = {
     create: 'Upload',
     guilds: 'Guilds',
     studio: 'Creator Studio',
+    profile: 'Profile',
     openMenu: 'Open menu',
     main: 'Main navigation',
   },

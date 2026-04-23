@@ -109,7 +109,7 @@ export default async function ShopCatalogPage({ searchParams }: PageProps) {
         {products.length === 0 ? (
           <EmptyState />
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {products.map((p, i) => (
               <ProductCard key={p.id} product={p} priority={i < 4} />
             ))}

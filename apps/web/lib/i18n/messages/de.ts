@@ -27,6 +27,7 @@ const deMessages = {
     create: 'Hochladen',
     guilds: 'Guilds',
     studio: 'Creator-Studio',
+    profile: 'Profil',
     openMenu: 'Menü öffnen',
     main: 'Hauptnavigation',
   },
