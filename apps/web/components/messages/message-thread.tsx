@@ -391,8 +391,12 @@ const MessageBubble = memo(function MessageBubble({
   });
 
   return (
+    // Bubble-Breite von 78% → 72% (D2 aus UI_AUDIT).
+    // Grund: TikTok/iMessage/WhatsApp nutzen alle ~70%, bei 78% wirken längere
+    // Messages (z.B. eingefügte Links) fast wie „Vollbreit"-Blocks und die
+    // Owner/Peer-Alignment-Rhythmik geht verloren.
     <li className={`group flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
-      <div className={`flex max-w-[78%] flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
+      <div className={`flex max-w-[72%] flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
         {msg.reply_to && (
           <div
             className={`mb-1 flex items-center gap-1.5 rounded-t-lg border-l-2 bg-muted/60 px-2 py-1 text-xs text-muted-foreground ${
@@ -457,7 +461,7 @@ const MessageBubble = memo(function MessageBubble({
 
           <div
             className={`mt-0.5 flex items-center gap-1 text-[10px] ${
-              isOwn ? 'text-primary-foreground/70' : 'text-muted-foreground'
+              isOwn ? 'text-primary-foreground/85' : 'text-muted-foreground'
             }`}
           >
             {/*
@@ -469,8 +473,21 @@ const MessageBubble = memo(function MessageBubble({
             */}
             <span suppressHydrationWarning>{time}</span>
             {isOwn && !msg.pending && (
-              <span aria-label={msg.read ? 'gelesen' : 'gesendet'}>
-                {msg.read ? <CheckCheck className="h-3 w-3" /> : <Check className="h-3 w-3" />}
+              // Read-Receipt-Visibility verstärkt (D2 aus UI_AUDIT): `CheckCheck`
+              // bei gelesen bekommt die volle `text-primary-foreground`-Luminanz
+              // statt 70%, dazu +0.5px Stroke-Weight. Der Status ist genug wichtig
+              // für den Sender (bringt emotionale Konnotation — „angekommen vs
+              // wirklich gesehen") dass er nicht gegen den Bubble-Hintergrund
+              // verschwinden darf.
+              <span
+                aria-label={msg.read ? 'gelesen' : 'gesendet'}
+                className={msg.read ? 'text-primary-foreground' : ''}
+              >
+                {msg.read ? (
+                  <CheckCheck className="h-3 w-3 stroke-[2.5]" />
+                ) : (
+                  <Check className="h-3 w-3 stroke-[2.5]" />
+                )}
               </span>
             )}
           </div>
@@ -539,13 +556,21 @@ const MessageBubble = memo(function MessageBubble({
               className="fixed inset-0 z-20"
               aria-hidden="true"
             />
-            <div className="relative z-30 mt-1 flex gap-1 rounded-full border bg-card px-2 py-1.5 shadow-lg">
+            {/*
+              Picker-Elevation und Hover-Scale gedeckelt (D2 aus UI_AUDIT):
+              `shadow-lg` → `shadow-elevation-3` (Design-Token der Web-App,
+              weicher, TikTok-typischer) und `hover:scale-125` → `hover:scale-110`.
+              125% wirkte bei 6 Emojis in einer Reihe „wild" (der erste/letzte
+              Emoji sprang beim Hover fast ins Nachbarpadding), 110% ist die
+              subtilere Pop-Größe die Apple Messages und TikTok nutzen.
+            */}
+            <div className="relative z-30 mt-1 flex gap-1.5 rounded-full border bg-card px-2.5 py-1.5 shadow-elevation-3">
               {REACTION_EMOJIS.map((e) => (
                 <button
                   key={e}
                   type="button"
                   onClick={() => onToggleReaction(msg.id, e)}
-                  className="text-xl transition-transform hover:scale-125"
+                  className="text-xl transition-transform duration-fast ease-out-expo hover:scale-110"
                 >
                   {e}
                 </button>
@@ -825,14 +850,19 @@ function DaySeparator({ label }: { label: string }) {
 }
 
 function TypingDots() {
+  // Typing-Dots in eine „Bubble" gelegt und vergrößert (D2 aus UI_AUDIT).
+  // Alte Variante: 6×6px Dots in einer freien Zeile — fast unsichtbar, besonders
+  // auf Mobile. Neu: iMessage-Style, drei 7×7px Dots in einem Muted-Bubble,
+  // linksbündig wie eine Peer-Message. Das macht sofort klar „der andere tippt
+  // gerade eine Message, die gleich hier erscheint". Gleiches `rounded-bl-md`-
+  // Pattern wie normale Peer-Bubbles für visuelle Konsistenz.
   return (
-    <div className="mt-3 flex items-center gap-2 pl-3 text-xs text-muted-foreground">
-      <div className="flex gap-0.5">
-        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.3s]" />
-        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground [animation-delay:-0.15s]" />
-        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted-foreground" />
+    <div className="mt-3 flex justify-start pl-0" aria-live="polite" aria-label="schreibt">
+      <div className="flex items-center gap-1 rounded-2xl rounded-bl-md bg-muted px-3 py-2">
+        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-foreground/50 [animation-delay:-0.3s]" />
+        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-foreground/50 [animation-delay:-0.15s]" />
+        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-foreground/50" />
       </div>
-      <span>schreibt…</span>
     </div>
   );
 }
