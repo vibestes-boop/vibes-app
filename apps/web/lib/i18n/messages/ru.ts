@@ -27,6 +27,7 @@ const ruMessages = {
     create: 'Загрузить',
     guilds: 'Сообщества',
     studio: 'Студия',
+    profile: 'Профиль',
     openMenu: 'Открыть меню',
     main: 'Главная навигация',
   },

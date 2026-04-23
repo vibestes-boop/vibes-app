@@ -29,6 +29,12 @@ export interface HomeFeedShellProps {
   initialFollowing: FeedPost[] | null; // null = noch nicht geladen
   suggested: SuggestedFollow[];
   storyStripSlot?: ReactNode;
+  /**
+   * Initialer Tab — wird von `/following/page.tsx` auf `'following'` gesetzt,
+   * damit Deep-Links + Sidebar-Klicks direkt im richtigen Tab landen. Default
+   * ist `'foryou'` — bei Home (`/`) soll der For-You-Tab aktiv sein.
+   */
+  initialTab?: TabKey;
 }
 
 type TabKey = 'foryou' | 'following';
@@ -39,8 +45,9 @@ export function HomeFeedShell({
   initialFollowing,
   suggested,
   storyStripSlot,
+  initialTab = 'foryou',
 }: HomeFeedShellProps) {
-  const [tab, setTab] = useState<TabKey>('foryou');
+  const [tab, setTab] = useState<TabKey>(initialTab);
 
   // Following-Tab: lädt nur wenn aktiviert und initialFollowing nicht bereits SSR-seitig da war.
   const followingQuery = useQuery<FeedPost[]>({
@@ -64,12 +71,30 @@ export function HomeFeedShell({
         <FeedSidebar viewerId={viewerId} />
       </aside>
 
-      {/* Center — Feed + Tabs */}
-      <div className="relative flex min-w-0 flex-col">
+      {/*
+       * Center — Feed + Tabs, in einem Dark-Canvas-Wrapper (A1 aus UI_AUDIT).
+       *
+       * Warum dark-on-light: Video-Content pops auf schwarzem Canvas (TikTok,
+       * YouTube-Shorts, Reels). Auf Light-Theme ist der Rest der Site hell
+       * (bg-background = #F5F5F5), aber das Feed-Viewport selbst bekommt
+       * `bg-zinc-950` — der Feed wird dadurch visuell als „the video area"
+       * identifizierbar statt als generischer Content-Block. Die Chroma-
+       * Separierung hebt gleichzeitig die Sidebars im Peripheral-Vision-Bereich
+       * auf Zweitrangigkeit runter, was genau TikToks visuelle Hierarchie ist.
+       *
+       * Auf Mobile (<md) läuft der Feed edge-to-edge; auf Desktop (xl+)
+       * bekommt er rounded corners + elevation-Shadow — wirkt wie eine „Phone
+       * Viewport"-Illusion, die TikToks eigener Web-Client ebenfalls nutzt.
+       *
+       * Tab-Bar klebt im Dark-Canvas mit `bg-zinc-950/80 backdrop-blur`
+       * statt `bg-background/80` — sonst würden die Tabs hell auf dunkler
+       * Umgebung unglücklich kontrastieren.
+       */}
+      <div className="relative flex min-w-0 flex-col bg-zinc-950 text-white xl:m-3 xl:rounded-2xl xl:shadow-elevation-3">
         <div
           role="tablist"
           aria-label="Feed-Quellen"
-          className="mx-auto flex h-12 w-full max-w-[420px] items-center justify-center gap-6 border-b border-border bg-background/80 backdrop-blur-md"
+          className="mx-auto flex h-12 w-full max-w-[420px] items-center justify-center gap-6 border-b border-white/10 bg-zinc-950/80 backdrop-blur-md xl:rounded-t-2xl"
         >
           <FeedTabButton
             label="Für dich"
@@ -234,6 +259,12 @@ function FeedTabButton({
   disabled?: boolean;
   onClick: () => void;
 }) {
+  // Live-on-dark-canvas (seit v1.w.UI.1 — A1 Dark-Canvas-Wrapper): Die Tabs
+  // sitzen jetzt innerhalb des `bg-zinc-950`-Wrappers, daher sind die semantischen
+  // Theme-Tokens (`text-foreground`, `text-muted-foreground`) ungeeignet — sie
+  // würden bei Light-Theme schwarzen Text auf schwarzem Canvas rendern. Wir
+  // nutzen stattdessen die gleiche Kontrast-Skala die TikTok auf schwarz fährt:
+  // aktiv = weiß, inaktiv = weiß/60% (weich, aber lesbar), disabled = weiß/30%.
   return (
     <button
       type="button"
@@ -242,11 +273,11 @@ function FeedTabButton({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        'border-b-2 px-0 py-1 text-sm font-semibold transition-colors',
+        'border-b-2 px-0 py-1 text-sm font-semibold transition-colors duration-base ease-out-expo',
         active
-          ? 'border-foreground text-foreground'
-          : 'border-transparent text-muted-foreground hover:text-foreground',
-        disabled && 'cursor-not-allowed opacity-40 hover:text-muted-foreground',
+          ? 'border-white text-white'
+          : 'border-transparent text-white/60 hover:text-white',
+        disabled && 'cursor-not-allowed opacity-40 hover:text-white/60',
       )}
     >
       {label}

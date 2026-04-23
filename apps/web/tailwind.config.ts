@@ -73,6 +73,50 @@ export default {
         md: 'calc(var(--radius) - 2px)',
         sm: 'calc(var(--radius) - 4px)',
       },
+      /**
+       * Elevation-Skala (v1.w.UI.1). Definiert eine bewusste 4-Stufen-Hierarchie:
+       *   elevation-1 — ruhender Zustand, fast unsichtbar (Cards, Listen-Rows)
+       *   elevation-2 — Hover / leichter Fokus (hover:shadow-elevation-2)
+       *   elevation-3 — Sticky Bars, Dropdown-Menus, Popovers
+       *   elevation-4 — Dialoge, Sheets, Modal-Overlays (max. Lift)
+       *
+       * Warum eigene Tokens statt Tailwind-Default-Shadows (`shadow-sm`, `shadow-md`):
+       * Die Default-Werte nutzen eine pauschale 8%-Opacity und y-Offsets die auf
+       * weißem Canvas zu hart wirken. TikTok/Apple-Stil ist bewusst sanfter —
+       * niedrige Opacity (4-12%), breiter Blur, minimaler y-Offset. Dadurch wirken
+       * Cards „float" statt „stamp".
+       *
+       * Dark-Mode-Hinweis: Shadows mit schwarzem `rgba(0,0,0,x)` sind auf dunklem
+       * Canvas visuell fast unsichtbar. Dark-Mode greift stattdessen via
+       * `dark:border-border/40`-Outline auf die existierende Border-Token-Skala
+       * zurück — der Lift-Effekt kommt dort aus dem Border-Kontrast statt Shadow.
+       */
+      boxShadow: {
+        'elevation-1': '0 1px 2px 0 rgb(0 0 0 / 0.04), 0 1px 3px 0 rgb(0 0 0 / 0.05)',
+        'elevation-2': '0 2px 4px -1px rgb(0 0 0 / 0.06), 0 4px 8px -2px rgb(0 0 0 / 0.08)',
+        'elevation-3': '0 4px 8px -2px rgb(0 0 0 / 0.08), 0 8px 16px -4px rgb(0 0 0 / 0.10)',
+        'elevation-4': '0 8px 16px -4px rgb(0 0 0 / 0.10), 0 16px 32px -8px rgb(0 0 0 / 0.14)',
+      },
+      /**
+       * Motion-System (v1.w.UI.1). Vier Duration-Stufen + eine Easing-Kurve.
+       * `out-expo` ist die TikTok/iOS-typische „schnell raus, sanft rein"-
+       * Bewegung — Finger-Snap-Feel, nicht linear-träge.
+       *
+       * Usage-Konvention:
+       *   duration-fast (120ms) — Pressed-Feedback, Icon-Color-Change
+       *   duration-base (200ms) — Hover-Transitions, Button-States (Default)
+       *   duration-slow (320ms) — Card-Lift, Sheet-In, Drawer-Open
+       *   duration-slower (500ms) — Celebrate-Animations (seltene Verwendung)
+       */
+      transitionTimingFunction: {
+        'out-expo': 'cubic-bezier(0.16, 1, 0.3, 1)',
+      },
+      transitionDuration: {
+        fast:    '120ms',
+        base:    '200ms',
+        slow:    '320ms',
+        slower:  '500ms',
+      },
       keyframes: {
         'accordion-down': {
           from: { height: '0' },
@@ -88,20 +132,33 @@ export default {
         'accordion-up':   'accordion-up 0.2s ease-out',
       },
       /**
-       * Bewusste Design-Entscheidung: **System-Font-Stack ohne Web-Font-Load**.
-       * Grund: (a) Native-App nutzt auch die System-Font, Cross-Platform-Parität.
-       * (b) Zero bytes transferred → Zero CLS, keine `font-display`-Strategie nötig.
-       * (c) TikTok-nahes Look-and-Feel (TikTok verwendet ebenfalls Systemfont im Web).
-       * Die vorigen Einträge `var(--font-geist-sans)` / `var(--font-geist-mono)` waren
-       * Cargo-Cult aus dem create-next-app-Scaffold — die Variablen wurden NIE
-       * irgendwo definiert, sodass Tailwind still auf den nächsten Wert
-       * (`system-ui`) fiel. Jetzt explizit dokumentiert statt implizit.
-       * Wer später doch eine Web-Font will: `next/font/local` oder `next/font/google`
-       * im root-`layout.tsx`, daraus die CSS-Var `--font-*` setzen, Stack hier
-       * vorne wieder ergänzen.
+       * Inter als Primary-Font (v1.w.UI.1 — UI-Audit-Phase-1). Via `next/font/google`
+       * in `app/layout.tsx` self-hosted bundled — kein externer Network-Call zur
+       * Laufzeit. Der Stack fällt bei Font-Block/-Fail sauber auf System-UI zurück
+       * (dieselbe Fallback-Kette wie vorher), deshalb ist der Wechsel non-breaking
+       * auf Browsern/Netzen die `woff2` nicht servieren können.
+       *
+       * Warum Inter und nicht weiter System-Font: TikTok/Instagram/Twitter/LinkedIn
+       * nutzen alle eine proprietäre Sans mit enger Metrik + stark ausgeglichenem
+       * x-Height (TikTok Sans, Proxima Nova, Twitter Chirp, Inter bei LinkedIn).
+       * System-Font rendert auf macOS/iOS als SF-Pro (okay), auf Windows als Segoe
+       * UI (zu wide), auf Linux als DejaVu (visuell bricht sofort als „nicht
+       * consumer-grade"). Inter gibt uns visuelle Konsistenz cross-platform.
+       *
+       * Native-App bleibt bei System-Font — Konsistenz dort kommt über iOS-SF-Pro /
+       * Android-Roboto, die beide exzellent sind. Web hat das Problem NICHT der
+       * Plattform-Varianz sondern der Cross-OS-Varianz.
        */
       fontFamily: {
-        sans: ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+        sans: [
+          'var(--font-inter)',
+          'system-ui',
+          '-apple-system',
+          'BlinkMacSystemFont',
+          'Segoe UI',
+          'Roboto',
+          'sans-serif',
+        ],
         mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
     },

@@ -37,6 +37,7 @@ const ceMessages = {
     create: 'хьала йакха',              // "hochladen / legen"
     guilds: 'Тобанаш',         // "Gemeinschaften"
     studio: 'Студи',               // Lehnwort
+    profile: 'Профиль',            // Lehnwort (Standard im Tschetschenischen)
     openMenu: 'Меню схьайeлла', // "Menü öffnen"
     main: 'Коьрта навигаци',    // "Haupt-Navigation"
   },

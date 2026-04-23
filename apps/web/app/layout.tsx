@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { Suspense } from 'react';
+import { Inter } from 'next/font/google';
 import { Toaster } from 'sonner';
 
 import { QueryProvider } from '@/providers/query-provider';
@@ -9,11 +10,37 @@ import { SiteHeader } from '@/components/site-header';
 import { ConsentBanner } from '@/components/consent/consent-banner';
 import { AnalyticsConsentGate } from '@/components/consent/analytics-consent-gate';
 import { ServiceWorkerRegistrar } from '@/components/pwa/service-worker-registrar';
+import { MobileBottomNav } from '@/components/mobile-bottom-nav';
+import { getUser, getProfile } from '@/lib/auth/session';
 import { I18nProvider } from '@/lib/i18n/client';
 import { getI18n } from '@/lib/i18n/server';
 import { LOCALE_HTML_LANG } from '@/lib/i18n/config';
 
 import './globals.css';
+
+/**
+ * Inter als Primary-Font über next/font/google. next/font/google bündelt
+ * das Font-File self-hosted (keine externen font.googleapis-Requests zur
+ * Runtime, damit kein CLS durch externe Font-Latency und kein GDPR-Thema
+ * durch Google-Server-Hit).
+ *
+ * `variable: '--font-inter'` setzt eine CSS-Var, die wir im <html>-Root
+ * mounten und in tailwind.config.ts als ersten Eintrag in `fontFamily.sans`
+ * referenzieren. So erbt jeder Tailwind-Utility (`font-sans`, Default auf
+ * `<body>`) automatisch Inter, mit System-Font-Stack als Fallback falls die
+ * Font gerade lädt oder blockiert wird.
+ *
+ * `display: 'swap'` — Fallback-Text rendert sofort, wird bei Font-Ready
+ * ausgetauscht. Kein FOIT (Flash of Invisible Text).
+ */
+const inter = Inter({
+  subsets: ['latin', 'latin-ext', 'cyrillic'],
+  display: 'swap',
+  variable: '--font-inter',
+  // Nur die tatsächlich genutzten Gewichte laden — die Typography-Hierarchie
+  // braucht 400 (Body), 500 (Label), 600 (Subhead), 700 (Heading/CTA).
+  weight: ['400', '500', '600', '700'],
+});
 
 export const metadata: Metadata = {
   title: {
@@ -58,9 +85,24 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // damit der initial Render bereits die richtigen Übersetzungen zeigt
   // (kein Flash-of-Untranslated-Content beim Client-Mount).
   const { locale, messages } = await getI18n();
+
+  // Mobile-Bottom-Nav braucht Auth-State + Profile-Href für den „Profil"-Slot.
+  // Beide Lookups sind in der RSC-Pass günstig gecacht (getUser liest den
+  // Supabase-Cookie-Session-Check, getProfile ist nur nötig wenn eingeloggt).
+  // Fallback-Href `/onboarding` deckt den Edge-Case ab, dass ein Account
+  // existiert aber noch keinen `username` hat.
+  const bottomNavUser = await getUser();
+  const bottomNavProfile = bottomNavUser ? await getProfile() : null;
+  const profileHref = bottomNavProfile?.username
+    ? `/u/${bottomNavProfile.username}`
+    : '/onboarding';
   return (
-    <html lang={LOCALE_HTML_LANG[locale]} suppressHydrationWarning>
-      <body className="min-h-dvh bg-background font-sans text-foreground">
+    <html
+      lang={LOCALE_HTML_LANG[locale]}
+      suppressHydrationWarning
+      className={inter.variable}
+    >
+      <body className="min-h-dvh bg-background font-sans text-foreground antialiased">
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -94,10 +136,23 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                  * Landmark-Warning in Axe. `tabIndex={-1}` macht den Div zum
                  * programmatischen Focus-Target ohne ihn in die normale
                  * Tab-Reihenfolge zu hängen.
+                 *
+                 * `pb-[...]` unter md: verhindert, dass die letzte Scroll-Zeile
+                 * einer Seite unter der fixed MobileBottomNav verschwindet.
+                 * Kombiniert die Tab-Bar-Höhe (h-14 = 3.5rem) mit der iOS-
+                 * Safe-Area (`env(safe-area-inset-bottom)`).
                  */}
-                <div id="main-content" tabIndex={-1} className="outline-none">
+                <div
+                  id="main-content"
+                  tabIndex={-1}
+                  className="outline-none pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0"
+                >
                   {children}
                 </div>
+                <MobileBottomNav
+                  isAuthed={!!bottomNavUser}
+                  profileHref={profileHref}
+                />
                 <AnalyticsConsentGate />
                 <ConsentBanner />
                 <ServiceWorkerRegistrar />

@@ -74,10 +74,25 @@ export function ProfileTabs({
   );
 
   return (
+    // Bold-Underline-Style (v1.w.UI.1 — D4 aus UI_AUDIT).
+    //
+    // Änderungen gegenüber der alten Variante:
+    //   - `border-b-2` statt `border-b` auf dem Container (dickerer visueller
+    //     Sockel damit die aktive Tab-Linie darauf sitzt ohne zu verschwinden).
+    //   - Aktive Tab bekommt eigenen 2px-Underline via `after:`-Pseudo statt
+    //     absolute-positioniertem `<span>` — funktioniert ohne Extra-Node in
+    //     der Accessibility-Tree und ist resilienter gegen Padding-Anpassungen.
+    //   - Aktive Tab: `font-semibold` statt nur `font-medium` (TikTok/IG
+    //     markieren die aktive Tab visuell deutlicher — einfaches Farb-Switch
+    //     reicht nicht auf hellem Theme).
+    //   - Icon-Stroke beim aktiven Tab: `stroke-[2.25]` — gleiche Technik wie
+    //     in der neuen MobileBottomNav. Ein inaktives Icon wirkt damit leichter,
+    //     aktives prägnanter (Gewicht-Shift ohne Farb-Shift).
+    //   - Label immer sichtbar auf sm+, Count-Pill immer formatiert.
     <div
       role="tablist"
       aria-label={labels.tablist}
-      className="sticky top-14 z-30 flex items-stretch justify-around border-b border-border bg-background/80 backdrop-blur-md"
+      className="sticky top-14 z-30 flex items-stretch justify-around border-b-2 border-border/60 bg-background/80 backdrop-blur-md"
     >
       {TABS.map(({ key, label, icon: Icon }) => {
         const isActive = key === active;
@@ -93,26 +108,32 @@ export function ProfileTabs({
             disabled={isPending}
             onClick={() => onSelect(key)}
             className={cn(
-              'relative flex flex-1 items-center justify-center gap-1.5 py-3 text-sm font-medium transition-colors',
+              'relative flex flex-1 items-center justify-center gap-1.5 py-3.5 text-sm transition-colors duration-base ease-out-expo',
               'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
+              // Active-Underline via ::after-Pseudo — sitzt auf der -2px Sockel-
+              // Linie des Containers und hat -bottom-0.5 Offset damit die beiden
+              // Linien sauber stacken ohne doppelt zu wirken.
+              'after:absolute after:inset-x-4 after:-bottom-0.5 after:h-0.5 after:rounded-full after:bg-foreground after:transition-opacity after:duration-base',
               isActive
-                ? 'text-foreground'
-                : 'text-muted-foreground hover:text-foreground/80',
+                ? 'font-semibold text-foreground after:opacity-100'
+                : 'font-medium text-muted-foreground hover:text-foreground/80 after:opacity-0',
               isPending && 'opacity-60',
             )}
           >
-            <Icon className="h-4 w-4" aria-hidden />
+            <Icon
+              className={cn('h-4 w-4', isActive ? 'stroke-[2.25]' : 'stroke-[1.75]')}
+              aria-hidden
+            />
             <span className="hidden sm:inline">{label}</span>
             {typeof count === 'number' && count > 0 && (
-              <span className="text-xs tabular-nums text-muted-foreground">
+              <span
+                className={cn(
+                  'text-xs tabular-nums',
+                  isActive ? 'text-foreground/80' : 'text-muted-foreground',
+                )}
+              >
                 {count.toLocaleString(LOCALE_INTL[locale])}
               </span>
-            )}
-            {isActive && (
-              <span
-                aria-hidden
-                className="absolute inset-x-4 bottom-0 h-0.5 rounded-full bg-foreground"
-              />
             )}
           </button>
         );
