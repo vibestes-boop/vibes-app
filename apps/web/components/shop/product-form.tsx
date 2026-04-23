@@ -4,11 +4,12 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Route } from 'next';
 import Image from 'next/image';
-import { Loader2, X, Plus, Info } from 'lucide-react';
+import { Loader2, X, Plus, Info, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { createProduct, updateProduct } from '@/app/actions/shop';
+import { AIImageSheet } from '@/components/ai/ai-image-sheet';
 import type { ProductCategory } from '@shared/types';
 import type { ShopProduct } from '@/lib/data/shop';
 
@@ -79,6 +80,8 @@ export function ProductForm({ existing }: { existing: ShopProduct | null }) {
   const [form, setForm] = useState<FormState>(fromProduct(existing));
   const [imageInput, setImageInput] = useState('');
   const [isPending, startTransition] = useTransition();
+  // v1.28.0: AI-Image-Sheet für Mockups ohne eigenes Foto
+  const [aiSheetOpen, setAiSheetOpen] = useState(false);
 
   const price = Number(form.price_coins || 0);
   const salePrice = form.sale_price_coins ? Number(form.sale_price_coins) : null;
@@ -301,6 +304,14 @@ export function ProductForm({ existing }: { existing: ShopProduct | null }) {
             placeholder="https://…"
             className="mt-1.5 h-10 w-full rounded-md border bg-background px-3 text-sm outline-none focus:border-ring"
           />
+          <button
+            type="button"
+            onClick={() => setAiSheetOpen(true)}
+            className="mt-2 inline-flex items-center gap-1.5 rounded-full border bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-primary" />
+            Mit KI erstellen
+          </button>
 
           <div className="mt-4">
             <label className="text-sm font-medium">
@@ -393,6 +404,33 @@ export function ProductForm({ existing }: { existing: ShopProduct | null }) {
           </Button>
         </div>
       </div>
+
+      {/* AI-Image-Sheet — parität mit native Shop */}
+      <AIImageSheet
+        open={aiSheetOpen}
+        onOpenChange={setAiSheetOpen}
+        onUseImage={(url) => update('cover_url', url)}
+        purpose="shop_mockup"
+        defaultSize="1024x1024"
+        title="Produktbild mit KI"
+        promptPlaceholder="z.B. „Schwarzer Hoodie auf weißem Studio-Hintergrund, minimalistisch, Produktfoto"
+        suggestions={
+          form.category === 'physical'
+            ? [
+                'Minimalistisches Produktfoto auf weißem Studio-Hintergrund',
+                'Handwerk-Produkt auf Holzmaserung, warmes Licht',
+              ]
+            : form.category === 'digital'
+              ? [
+                  'Flat-Design-Icon für Digital-Produkt, moderne Farben',
+                  'Abstrakter Verlauf mit Text-Overlay-Placeholder',
+                ]
+              : [
+                  'Professionelle Portrait-Szene, soft light',
+                  'Abstrakte Komposition für Service-Thumbnail',
+                ]
+        }
+      />
 
       {/* Live-Preview-Sidebar */}
       <aside className="hidden lg:block">
