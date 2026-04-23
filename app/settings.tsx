@@ -24,6 +24,7 @@ import {
 import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/lib/authStore';
 import { uploadAvatar } from '@/lib/uploadMedia';
+import { AIImageSheet } from '@/components/ai/AIImageSheet';
 import { useQueryClient } from '@tanstack/react-query';
 import Constants from 'expo-constants';
 import { useNotificationPrefs } from '@/lib/useNotificationPrefs';
@@ -96,6 +97,8 @@ export default function SettingsScreen() {
   const [showTeipPicker, setShowTeipPicker] = useState(false);
   const [isPrivate, setIsPrivate] = useState((profile as any)?.is_private ?? false);
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
+  // v1.28.0: AI-Image-Sheet für generierte Avatare
+  const [showAIAvatar, setShowAIAvatar] = useState(false);
   const [saving, setSaving] = useState(false);
   const [changingPw, setChangingPw] = useState(false);
   const [changingEmail, setChangingEmail] = useState(false);
@@ -123,6 +126,10 @@ export default function SettingsScreen() {
 
   const pickAvatar = () => {
     Alert.alert('Profilbild ändern', 'Wie möchtest du dein Foto auswählen?', [
+      {
+        text: 'Mit KI erstellen ✨',
+        onPress: () => setShowAIAvatar(true),
+      },
       {
         text: 'Kamera',
         onPress: async () => {
@@ -154,8 +161,14 @@ export default function SettingsScreen() {
     try {
       let avatarUrl = profile.avatar_url;
       if (avatarUri) {
-        const { url } = await uploadAvatar(profile.id, avatarUri);
-        avatarUrl = url;
+        // v1.28.0: AI-generierte Avatare liegen bereits im Supabase-Storage
+        // (public URL aus `ai-generated`-Bucket) — kein Re-Upload nötig.
+        if (avatarUri.startsWith('http://') || avatarUri.startsWith('https://')) {
+          avatarUrl = avatarUri;
+        } else {
+          const { url } = await uploadAvatar(profile.id, avatarUri);
+          avatarUrl = url;
+        }
       }
       const { data, error } = await supabase
         .from('profiles')
@@ -721,6 +734,22 @@ export default function SettingsScreen() {
       <WomenOnlyVerificationSheet
         visible={showWomenOnly}
         onClose={() => setShowWomenOnly(false)}
+      />
+
+      {/* v1.28.0: AI-Image-Sheet für generierte Avatare */}
+      <AIImageSheet
+        visible={showAIAvatar}
+        onClose={() => setShowAIAvatar(false)}
+        onUseImage={(url) => setAvatarUri(url)}
+        purpose="avatar"
+        defaultSize="1024x1024"
+        title="Avatar mit KI"
+        promptPlaceholder="z.B. „Minimalistisches Portrait-Illustration, flache Farben"
+        suggestions={[
+          'Minimalistisches Portrait, flache Farben, Profil-Look',
+          'Abstrakte geometrische Komposition in Blau-Tönen',
+          'Cartoon-Avatar, freundlich, warme Farben',
+        ]}
       />
     </KeyboardAvoidingView>
   );

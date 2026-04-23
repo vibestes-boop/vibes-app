@@ -332,7 +332,7 @@ export function useLiveHost() {
 
   const startSession = async (
     title: string,
-    options?: { allowComments?: boolean; allowGifts?: boolean; womenOnly?: boolean }
+    options?: { allowComments?: boolean; allowGifts?: boolean; womenOnly?: boolean; thumbnailUrl?: string | null }
   ): Promise<{ sessionId: string; token: string; url: string } | null> => {
     if (!profile) return null;
     setLoading(true);
@@ -360,6 +360,10 @@ export function useLiveHost() {
           allow_comments: options?.allowComments ?? true,
           allow_gifts:    options?.allowGifts ?? true,
           women_only:     options?.womenOnly ?? false,
+          // v1.28.0 — AI-Generated Live-Thumbnail: Host kann im Vorbereitungs-
+          // screen ein KI-Cover erzeugen lassen (Phase 3 AI-Image-Rollout).
+          // Spalte existiert seit v1.18.0 (Live-Replay); hier nur neuer Writer.
+          thumbnail_url:  options?.thumbnailUrl ?? null,
         })
         .select('id')
         .single();

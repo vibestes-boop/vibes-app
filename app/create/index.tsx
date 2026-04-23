@@ -67,11 +67,12 @@ import {
   CheckCircle, ArrowRight, Settings2, Type, Smile, Sliders,
   FlipHorizontal, Scissors, Pencil, RotateCcw,
   Clock as ClockIcon, FileText as FileTextIcon,
-  ChevronUp, ChevronDown,
+  ChevronUp, ChevronDown, Sparkles,
 } from 'lucide-react-native';
 import type { MusicTrack } from '@/lib/useMusicPicker';
 import { MUSIC_LIBRARY } from '@/lib/useMusicPicker';
 import { MusicPickerSheet } from '@/components/camera/MusicPickerSheet';
+import { AIImageSheet } from '@/components/ai/AIImageSheet';
 import { CreateProgressBar } from '@/components/create';
 import type { PostSettingsState } from '@/components/create';
 import { useWomenOnly } from '@/lib/useWomenOnly';
@@ -1860,6 +1861,24 @@ export default function CreatePostScreen() {
     if (!result.canceled && result.assets[0]) setImage(result.assets[0]);
   };
 
+  // v1.28.0: AI-Image-Sheet als Alternative zum Galerie-Pick (nur Bild-Posts)
+  const [showAIPostSheet, setShowAIPostSheet] = useState(false);
+  const applyAIImage = useCallback((url: string) => {
+    // Synthetische ImagePickerAsset-Struktur — die Post-URL ist bereits public
+    // (Supabase-Storage), also wird ensureMediaUploaded sie bei image.uri.startsWith('http')
+    // nicht erneut hochladen. Allerdings: unsere AI-URL liegt im `ai-generated`-Bucket,
+    // die uploadedMediaRef wird also unterschiedlich sein vom Cache-Check — um das
+    // Re-Upload zu vermeiden, setzen wir uploadedMediaRef direkt.
+    setImage({
+      uri: url,
+      type: 'image',
+      width: 0, height: 0, assetId: null, base64: null, duration: null, exif: null,
+      fileName: null, fileSize: undefined, mimeType: 'image/png',
+    });
+    // Cache setzen — ensureMediaUploaded wird die AI-URL direkt als finale mediaUrl nutzen
+    uploadedMediaRef.current = { url, thumbnailUrl: null };
+  }, []);
+
   const toggleTag = (tag: string) =>
     setSelectedTags((prev) => prev.includes(tag) ? prev.filter(t=>t!==tag) : [...prev,tag].slice(0,4));
 
@@ -2031,10 +2050,16 @@ export default function CreatePostScreen() {
           )
         ) : (
           /* Leerer State — Medien auswählen */
-          <Pressable style={s.emptyState} onPress={pickFromLibrary}>
-            <Text style={s.emptyIcon}>📷</Text>
-            <Text style={s.emptyText}>Tippe um ein Foto oder Video auszuwählen</Text>
-          </Pressable>
+          <View style={s.emptyState}>
+            <Pressable onPress={pickFromLibrary} style={{ alignItems: 'center' }}>
+              <Text style={s.emptyIcon}>📷</Text>
+              <Text style={s.emptyText}>Tippe um ein Foto oder Video auszuwählen</Text>
+            </Pressable>
+            <Pressable onPress={() => setShowAIPostSheet(true)} style={s.emptyAIBtn}>
+              <Sparkles size={14} color="#fff" strokeWidth={2} />
+              <Text style={s.emptyAIText}>Mit KI erstellen</Text>
+            </Pressable>
+          </View>
         )}
 
         {/*
@@ -2330,6 +2355,22 @@ export default function CreatePostScreen() {
         visible={showSuccess}
         onDone={() => { setShowSuccess(false); router.back(); }}
       />
+
+      {/* v1.28.0: AI-Image-Sheet als Alternative zum Galerie-Pick */}
+      <AIImageSheet
+        visible={showAIPostSheet}
+        onClose={() => setShowAIPostSheet(false)}
+        onUseImage={applyAIImage}
+        purpose="post_cover"
+        defaultSize="1024x1536"
+        title="Post-Bild mit KI"
+        promptPlaceholder="Beschreibe dein Wunsch-Motiv — z.B. „Sonnenuntergang über Bergen"
+        suggestions={[
+          'Moody-Portrait in Neon-Licht, cinematisch',
+          'Abstrakte Komposition in warmen Farben',
+          'Street-Photography-Look, schwarz-weiß',
+        ]}
+      />
     </View>
   );
 }
@@ -2347,6 +2388,16 @@ const s = StyleSheet.create({
   emptyState: { flex:1, alignItems:'center', justifyContent:'center', gap:16, backgroundColor:'#080810' },
   emptyIcon: { fontSize: 52 },
   emptyText: { color:'rgba(255,255,255,0.25)', fontSize:15, textAlign:'center', maxWidth:200, lineHeight:22 },
+  // v1.28.0: AI-Alternative unterhalb des Galerie-CTA
+  emptyAIBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 14, paddingVertical: 10,
+    borderRadius: 20,
+    backgroundColor: 'rgba(139,92,246,0.35)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(139,92,246,0.6)',
+  },
+  emptyAIText: { color: '#fff', fontSize: 13, fontWeight: '700' },
 
   // ── Top-Bar ──────────────────────────────────────────────
   topBar: {

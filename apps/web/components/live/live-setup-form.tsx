@@ -12,8 +12,11 @@ import {
   RefreshCw,
   Radio,
   ShieldCheck,
+  Sparkles,
+  X,
 } from 'lucide-react';
 import { startLiveSession } from '@/app/actions/live-host';
+import { AIImageSheet } from '@/components/ai/ai-image-sheet';
 
 // -----------------------------------------------------------------------------
 // LiveSetupForm — Device-Picker + Title-Input + Go-Live. Das eigentliche
@@ -38,6 +41,11 @@ export function LiveSetupForm() {
   const [category, setCategory] = useState('other');
   const [moderationEnabled, setModerationEnabled] = useState(true);
   const [formError, setFormError] = useState<string | null>(null);
+  // v1.28.0 — KI-Cover für Live-Stream (Phase 3 AI-Image-Rollout).
+  // Spalte `live_sessions.thumbnail_url` existiert seit v1.18.0; Server-Action
+  // `startLiveSession` leitet sie als `p_thumbnail_url` an den RPC weiter.
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
+  const [aiSheetOpen, setAiSheetOpen] = useState(false);
 
   const [isPending, startTransition] = useTransition();
 
@@ -146,6 +154,7 @@ export function LiveSetupForm() {
         title: title.trim(),
         category,
         moderationEnabled,
+        thumbnailUrl: thumbnailUrl ?? undefined,
       });
       if (!result.ok) {
         setFormError(result.error);
@@ -297,6 +306,48 @@ export function LiveSetupForm() {
           <p className="text-[11px] text-muted-foreground">{title.length}/120</p>
         </div>
 
+        {/* Cover (KI-generiert) — Phase 3 AI-Image-Rollout */}
+        <div className="flex flex-col gap-1.5">
+          <label className="text-sm font-medium">Cover</label>
+          <div className="flex items-center gap-3">
+            <div className="relative h-24 w-16 shrink-0 overflow-hidden rounded-lg border bg-muted">
+              {thumbnailUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={thumbnailUrl}
+                  alt="Live-Cover"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-muted-foreground/60">
+                  <Sparkles className="h-5 w-5" />
+                </div>
+              )}
+              {thumbnailUrl && (
+                <button
+                  type="button"
+                  onClick={() => setThumbnailUrl(null)}
+                  aria-label="Cover entfernen"
+                  className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white hover:bg-black/80"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setAiSheetOpen(true)}
+              className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-transform hover:scale-[1.02]"
+            >
+              <Sparkles className="h-4 w-4" />
+              {thumbnailUrl ? 'Anderes Cover' : 'Mit KI erstellen'}
+            </button>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Optional — erscheint im Feed bevor du live gehst und im Replay.
+          </p>
+        </div>
+
         <div className="flex flex-col gap-1.5">
           <label htmlFor="category" className="text-sm font-medium">
             Kategorie
@@ -366,6 +417,26 @@ export function LiveSetupForm() {
           zu. Streams können jederzeit von Moderatoren beendet werden.
         </p>
       </div>
+
+      {/* AI-Cover-Sheet (Phase 3 AI-Image-Rollout) */}
+      <AIImageSheet
+        open={aiSheetOpen}
+        onOpenChange={setAiSheetOpen}
+        onUseImage={(url) => {
+          setThumbnailUrl(url);
+          setAiSheetOpen(false);
+        }}
+        purpose="live_thumbnail"
+        defaultSize="1024x1536"
+        title="Live-Cover generieren"
+        promptPlaceholder="Beschreibe das Cover-Bild für deinen Stream…"
+        suggestions={[
+          'Neon-Cyberpunk Gaming-Setup mit RGB-Licht',
+          'Gemütliche Lesestunde bei Kerzenschein',
+          'Fitness-Workout in modernem Studio',
+          'Kochshow mit exotischen Zutaten auf Holztisch',
+        ]}
+      />
     </div>
   );
 }
