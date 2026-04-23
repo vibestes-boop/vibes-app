@@ -32,9 +32,17 @@
  *   1024×1024 standard  = ca. 4 cents
  *   1024×1024 HD        = ca. 8 cents
  *   1024×1536 / 1536×1024 HD = ca. 12 cents
- * Wir erstellen standard-Qualität und 1024×1024 als Default — kostet 4 cents
- * pro Request. Der Monats-Cap im SQL-Layer (1000 cents / 30d) entspricht also
- * 250 Bildern pro User pro Monat — reichlich für Prototyping.
+ * Wir erstellen medium-Qualität und 1024×1024 als Default — kostet 4 cents
+ * pro Request.
+ *
+ * PHASE-4-LIMITS (ab Migration 20260423200000_ai_image_safeguards.sql)
+ * --------------------------------------------------------------------
+ *   • Feature-Flag `ai_image_enabled` (DB-Toggle für Soforts-Kill ohne Redeploy)
+ *   • Platform-Budget: $50 / 30 Tage global → `platform_budget_exhausted`
+ *   • User-Daily:  3 Bilder / 24h            → `rate_limit_day`
+ *   • User-Weekly: 10 Bilder / 7 Tage        → `rate_limit_week`
+ * Die alten Limits (3/min Burst, 30/Tag, $10/User/30d) sind durch die
+ * strikteren Phase-4-Grenzen ersetzt.
  *
  * WAS NICHT IN PHASE 1
  * --------------------
@@ -182,12 +190,23 @@ serve(async (req: Request) => {
     return err('rate_limit_check_failed', 'Rate-Limit-Check fehlgeschlagen.', 500);
   }
   if (rateCheck && rateCheck !== 'ok') {
+    // Phase-4: neue Limits (3/Tag + 10/Woche) + Platform-Cap + Feature-Flag.
+    // Alte Codes (rate_limit_minute, cost_limit_month) bleiben im Map drin
+    // als Safety-Net falls die Migration auf manchen Envs noch nicht gelaufen
+    // ist und die alte RPC-Version antwortet.
     const humanMessages: Record<string, string> = {
+      feature_disabled: 'AI-Bilder sind aktuell nicht verfügbar. Bitte später erneut versuchen.',
+      platform_budget_exhausted: 'Das monatliche Budget für AI-Bilder ist aufgebraucht. Zurück Anfang nächsten Monats.',
+      rate_limit_day: 'Tageslimit erreicht (3 Bilder/24h). Morgen wieder verfügbar.',
+      rate_limit_week: 'Wochenlimit erreicht (10 Bilder/7 Tage).',
+      // Legacy-Fallbacks:
       rate_limit_minute: 'Zu viele Anfragen. Bitte ca. 1 Minute warten.',
-      rate_limit_day: 'Tageslimit erreicht (30 Bilder/24h).',
       cost_limit_month: 'Monatslimit erreicht. Zurück in 30 Tagen.',
     };
-    return err(rateCheck, humanMessages[rateCheck] ?? 'Limit erreicht.', 429);
+    // `feature_disabled` ist eher 503 (Service-Outage-Stil) als 429, damit
+    // Clients es anders darstellen können als Quota-Fehler.
+    const status = rateCheck === 'feature_disabled' ? 503 : 429;
+    return err(rateCheck, humanMessages[rateCheck] ?? 'Limit erreicht.', status);
   }
 
   // ── OpenAI-Call ───────────────────────────────────────────────────────────

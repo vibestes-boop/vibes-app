@@ -20,8 +20,9 @@
  *   reagieren (z.B. dezenten Hinweis statt generischer Fehler-Alert).
  */
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from './supabase';
+import { useAuthStore } from './authStore';
 
 export type AIImagePurpose =
   | 'shop_mockup'
@@ -127,4 +128,76 @@ export function useGenerateImage() {
     lastError,
     clearError: () => setLastError(null),
   };
+}
+
+// ── Phase-4: Quota + Mark-Consumed ──────────────────────────────────────────
+
+export interface AIImageQuota {
+  used_today: number;
+  limit_day: number;
+  remaining_today: number;
+  used_week: number;
+  limit_week: number;
+  remaining_week: number;
+  platform_cap_reached: boolean;
+  feature_enabled: boolean;
+}
+
+/**
+ * Holt die aktuelle User-Quota vom Server. Wird beim Sheet-Open gerufen
+ * und cached während die Sheet offen ist — nach jeder erfolgreichen
+ * Generierung refresht `refetch()` den Counter.
+ */
+export function useAIImageQuota(enabled: boolean = true) {
+  const userId = useAuthStore((s) => s.user?.id ?? null);
+  const [quota, setQuota] = useState<AIImageQuota | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const fetchQuota = useCallback(async () => {
+    if (!userId) return;
+    setIsLoading(true);
+    try {
+      const { data, error } = await supabase.rpc('get_ai_image_user_quota', {
+        p_user_id: userId,
+      });
+      if (error) {
+        if (__DEV__) console.warn('[useAIImageQuota] RPC failed:', error.message);
+        return;
+      }
+      setQuota(data as AIImageQuota);
+    } catch (e) {
+      if (__DEV__) console.warn('[useAIImageQuota] throw:', e);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [userId]);
+
+  useEffect(() => {
+    if (enabled && userId) fetchQuota();
+  }, [enabled, userId, fetchQuota]);
+
+  return { quota, isLoading, refetch: fetchQuota };
+}
+
+/**
+ * Markiert eine Generierung als „verwendet" — d.h. der User hat das Bild
+ * aktiv in ein Produkt/Live/Post übernommen. Retention-Cron überspringt
+ * markierte Rows und lässt die PNGs dauerhaft im Storage.
+ *
+ * Fehler werden geschluckt — ein fehlgeschlagener Mark-Call soll den
+ * UI-Flow nicht blockieren. Im worst case wird das Bild nach 7 Tagen
+ * vom Retention-Cron mitgelöscht, aber der User hat es ja schon gespeichert
+ * (Shop-Product-Row, Live-Thumbnail-URL etc. haben eine Kopie der URL).
+ */
+export async function markAIImageConsumed(generationId: string): Promise<void> {
+  try {
+    const { error } = await supabase.rpc('mark_ai_image_consumed', {
+      p_generation_id: generationId,
+    });
+    if (error && __DEV__) {
+      console.warn('[markAIImageConsumed] RPC failed:', error.message);
+    }
+  } catch (e) {
+    if (__DEV__) console.warn('[markAIImageConsumed] throw:', e);
+  }
 }

@@ -5,8 +5,11 @@ import Image from 'next/image';
 import { Sparkles, X, RefreshCw, Check, Loader2 } from 'lucide-react';
 import {
   generateAIImage,
+  getAIImageQuota,
+  markAIImageConsumed,
   type AIImagePurpose,
   type AIImageSize,
+  type AIImageQuota,
 } from '@/app/actions/ai';
 
 // -----------------------------------------------------------------------------
@@ -47,10 +50,17 @@ function sizeLabel(sz: AIImageSize): string {
 
 function prettyError(code: string, fallback: string): string {
   switch (code) {
+    case 'feature_disabled':
+      return 'AI-Bilder sind aktuell nicht verfügbar. Bitte später erneut versuchen.';
+    case 'platform_budget_exhausted':
+      return 'Das monatliche AI-Budget ist aufgebraucht. Anfang nächsten Monats wieder verfügbar.';
+    case 'rate_limit_day':
+      return 'Tages-Limit erreicht (3 Bilder / 24h). Morgen geht es weiter.';
+    case 'rate_limit_week':
+      return 'Wochen-Limit erreicht (10 Bilder / 7 Tage).';
+    // Legacy-Codes falls alte Edge-Function-Instanz noch läuft:
     case 'rate_limit_minute':
       return 'Du hast gerade mehrere Bilder generiert — kurz durchatmen und in einer Minute nochmal versuchen.';
-    case 'rate_limit_day':
-      return 'Tages-Limit erreicht (30 Bilder / 24h). Morgen geht es weiter.';
     case 'cost_limit_month':
       return 'Monats-Budget erreicht. Am 1. des nächsten Monats steht wieder Kontingent bereit.';
     case 'prompt_too_short':
@@ -93,8 +103,10 @@ export function AIImageSheet({
   const [size, setSize] = useState<AIImageSize>(defaultSize ?? sizes[0]);
   const [prompt, setPrompt] = useState('');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [generationId, setGenerationId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [quota, setQuota] = useState<AIImageQuota | null>(null);
 
   // Default-Size neu setzen wenn Purpose wechselt
   useEffect(() => {
@@ -107,11 +119,36 @@ export function AIImageSheet({
     if (!open) {
       setPrompt('');
       setPreviewUrl(null);
+      setGenerationId(null);
       setErrorMsg(null);
     }
   }, [open]);
 
+  // Quota laden wenn Sheet öffnet
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      const q = await getAIImageQuota();
+      if (!cancelled) setQuota(q);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [open]);
+
   if (!open) return null;
+
+  // Submit-Gate basierend auf Quota — Button disabled + erklärender Text
+  // statt erst nach dem Call zu failen.
+  const quotaBlock = (() => {
+    if (!quota) return { blocked: false, reason: '' };
+    if (!quota.feature_enabled) return { blocked: true, reason: 'AI-Bilder sind aktuell deaktiviert.' };
+    if (quota.platform_cap_reached) return { blocked: true, reason: 'Monatliches Platform-Budget aufgebraucht.' };
+    if (quota.remaining_today <= 0) return { blocked: true, reason: 'Tages-Limit (3 Bilder) erreicht.' };
+    if (quota.remaining_week <= 0) return { blocked: true, reason: 'Wochen-Limit (10 Bilder) erreicht.' };
+    return { blocked: false, reason: '' };
+  })();
 
   const handleGenerate = () => {
     const trimmed = prompt.trim();
@@ -121,6 +158,7 @@ export function AIImageSheet({
     }
     setErrorMsg(null);
     setPreviewUrl(null);
+    setGenerationId(null);
 
     startTransition(async () => {
       const result = await generateAIImage({ prompt: trimmed, purpose, size });
@@ -129,17 +167,26 @@ export function AIImageSheet({
         return;
       }
       setPreviewUrl(result.url);
+      setGenerationId(result.generationId);
+      // Quota-Refresh nach erfolgreichem Gen — sofortiges UI-Feedback.
+      const q = await getAIImageQuota();
+      setQuota(q);
     });
   };
 
   const handleUse = () => {
     if (!previewUrl) return;
+    // Fire-and-forget Mark-Consumed — schützt vor Retention-Löschung.
+    if (generationId) {
+      void markAIImageConsumed(generationId);
+    }
     onUseImage(previewUrl);
     onOpenChange(false);
   };
 
   const handleRetry = () => {
     setPreviewUrl(null);
+    setGenerationId(null);
     setErrorMsg(null);
   };
 
@@ -190,6 +237,24 @@ export function AIImageSheet({
             </div>
           ) : (
             <>
+              {quota && (
+                <div
+                  className={`mb-3 flex items-center gap-2 rounded-md border px-3 py-2 text-xs ${
+                    quotaBlock.blocked
+                      ? 'border-red-500/30 bg-red-500/10 text-red-500'
+                      : quota.remaining_today === 1
+                      ? 'border-amber-500/30 bg-amber-500/10 text-amber-600'
+                      : 'border-border bg-muted/40 text-foreground'
+                  }`}
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span>
+                    {quotaBlock.blocked
+                      ? quotaBlock.reason
+                      : `Heute noch ${quota.remaining_today} von ${quota.limit_day} Bildern · diese Woche ${quota.remaining_week} von ${quota.limit_week}`}
+                  </span>
+                </div>
+              )}
               <label
                 htmlFor="ai-prompt-input"
                 className="mb-2 block text-xs font-semibold text-foreground"
@@ -291,7 +356,7 @@ export function AIImageSheet({
             <button
               type="button"
               onClick={handleGenerate}
-              disabled={isPending || prompt.trim().length < PROMPT_MIN}
+              disabled={isPending || prompt.trim().length < PROMPT_MIN || quotaBlock.blocked}
               className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
               {isPending ? (
