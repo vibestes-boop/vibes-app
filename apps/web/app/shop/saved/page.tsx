@@ -6,6 +6,7 @@ import { Bookmark, ArrowLeft } from 'lucide-react';
 import { ProductCard } from '@/components/shop/product-card';
 import { getSavedProducts } from '@/lib/data/shop';
 import { getUser } from '@/lib/auth/session';
+import { EmptyState } from '@/components/ui/empty-state';
 
 export const metadata: Metadata = {
   title: 'Gemerkt — Shop',
@@ -42,20 +43,21 @@ export default async function SavedProductsPage() {
 
       <div className="mt-8">
         {products.length === 0 ? (
-          <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed py-20 text-center">
-            <div className="text-5xl">🔖</div>
-            <h3 className="text-lg font-semibold">Noch nichts gemerkt</h3>
-            <p className="max-w-md text-sm text-muted-foreground">
-              Klick auf das Lesezeichen-Symbol bei Produkten die dich interessieren — sie erscheinen
-              dann hier.
-            </p>
-            <Link
-              href={'/shop' as Route}
-              className="mt-2 rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-            >
-              Shop entdecken
-            </Link>
-          </div>
+          <EmptyState
+            icon={<Bookmark className="h-8 w-8" strokeWidth={1.75} />}
+            title="Noch nichts gemerkt"
+            description="Klick auf das Lesezeichen-Symbol bei Produkten die dich interessieren — sie erscheinen dann hier."
+            size="md"
+            bordered
+            cta={
+              <Link
+                href={'/shop' as Route}
+                className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+              >
+                Shop entdecken
+              </Link>
+            }
+          />
         ) : (
           <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
             {products.map((p) => (

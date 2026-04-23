@@ -6,6 +6,7 @@ import { Clock, ArrowLeft, AlertCircle, CheckCircle2, Video, ImageIcon, Ban } fr
 import { getUser } from '@/lib/auth/session';
 import { getMyScheduledPosts, type ScheduledStatus } from '@/lib/data/posts';
 import { ScheduledRowActions } from '@/components/create/scheduled-row-actions';
+import { EmptyState } from '@/components/ui/empty-state';
 import { cn } from '@/lib/utils';
 
 // -----------------------------------------------------------------------------
@@ -48,18 +49,20 @@ export default async function ScheduledPage() {
       </header>
 
       {rows.length === 0 ? (
-        <div className="mt-20 flex flex-col items-center gap-3 text-center text-muted-foreground">
-          <div className="grid h-20 w-20 place-items-center rounded-full bg-muted">
-            <Clock className="h-8 w-8" />
-          </div>
-          <p className="max-w-md text-sm">
-            Plane einen Post über den „Planen"-Button in{' '}
-            <Link href={'/create' as Route} className="text-foreground underline">
-              /create
+        <EmptyState
+          icon={<Clock className="h-8 w-8" strokeWidth={1.75} />}
+          title="Nichts geplant"
+          description={'Plane einen Post über den „Planen"-Button in /create. Er veröffentlicht sich automatisch zur angegebenen Zeit.'}
+          size="md"
+          cta={
+            <Link
+              href={'/create' as Route}
+              className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              Post planen
             </Link>
-            . Er veröffentlicht sich automatisch zur angegebenen Zeit.
-          </p>
-        </div>
+          }
+        />
       ) : (
         <>
           {active.length > 0 && (

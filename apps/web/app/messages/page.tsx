@@ -8,6 +8,7 @@ import { getUser } from '@/lib/auth/session';
 import { getConversations } from '@/lib/data/messages';
 import type { ConversationPreview } from '@/lib/data/messages';
 import { NewConversationButton } from '@/components/messages/new-conversation-button';
+import { EmptyState as CanonicalEmptyState } from '@/components/ui/empty-state';
 import { getT } from '@/lib/i18n/server';
 
 // -----------------------------------------------------------------------------
@@ -180,19 +181,22 @@ function ConversationRow({ conv }: { conv: ConversationPreview }) {
 async function EmptyState() {
   const t = await getT();
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-3 rounded-xl border bg-card/30 py-16 text-center">
-      <div className="grid h-16 w-16 place-items-center rounded-full bg-primary/10">
-        <MessageCircle className="h-8 w-8 text-primary" />
-      </div>
-      <h2 className="text-lg font-semibold">{t('messages.emptyTitle')}</h2>
-      <p className="max-w-xs text-sm text-muted-foreground">{t('messages.emptyHint')}</p>
-      <Link
-        href={'/search' as Route}
-        className="mt-2 inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
-      >
-        <Search className="h-4 w-4" />
-        {t('messages.searchUser')}
-      </Link>
-    </div>
+    <CanonicalEmptyState
+      icon={<MessageCircle className="h-8 w-8" strokeWidth={1.75} />}
+      title={t('messages.emptyTitle')}
+      description={t('messages.emptyHint')}
+      size="lg"
+      bordered
+      cta={
+        <Link
+          href={'/search' as Route}
+          className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+        >
+          <Search className="h-4 w-4" />
+          {t('messages.searchUser')}
+        </Link>
+      }
+      className="flex-1"
+    />
   );
 }

@@ -14,6 +14,12 @@ import {
 import type { FeedPost } from '@/lib/data/feed';
 import { CommentSheet } from './comment-sheet';
 import { LikeButton } from './like-button';
+import { linkify } from '@/lib/linkify';
+
+// Feed-Captions liegen auf dunkler Video-Overlay — default `text-primary`
+// würde gegen Schwarz/Video-Content zu blass werden. Weißer Link mit
+// Underline-On-Hover ist analog zum TikTok-Feed-Stil.
+const FEED_LINK_CLASS = 'font-semibold text-white underline-offset-2 hover:underline';
 
 // -----------------------------------------------------------------------------
 // FeedCard — eine 9:16-Video-Karte im vertikalen Feed.
@@ -254,7 +260,9 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
         {post.caption &&
           (post.caption.length > CAPTION_CLAMP_CHARS ? (
             <div className="pointer-events-auto text-sm leading-snug text-white/95">
-              <p className={cn(!captionExpanded && 'line-clamp-3')}>{post.caption}</p>
+              <p className={cn(!captionExpanded && 'line-clamp-3')}>
+                {linkify(post.caption, { linkClassName: FEED_LINK_CLASS })}
+              </p>
               <button
                 type="button"
                 onClick={() => setCaptionExpanded((v) => !v)}
@@ -265,7 +273,9 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
               </button>
             </div>
           ) : (
-            <p className="text-sm leading-snug text-white/95">{post.caption}</p>
+            <p className="text-sm leading-snug text-white/95">
+              {linkify(post.caption, { linkClassName: FEED_LINK_CLASS })}
+            </p>
           ))}
 
         {post.hashtags.length > 0 && (

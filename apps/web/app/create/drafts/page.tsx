@@ -6,6 +6,7 @@ import { FileText, ArrowLeft } from 'lucide-react';
 import { getUser } from '@/lib/auth/session';
 import { getMyDrafts } from '@/lib/data/posts';
 import { DraftRowActions } from '@/components/create/draft-row-actions';
+import { EmptyState } from '@/components/ui/empty-state';
 
 // -----------------------------------------------------------------------------
 // /create/drafts — Cloud-Draft-Liste. Nutzt `post_drafts`-Tabelle, RLS sorgt
@@ -42,19 +43,20 @@ export default async function DraftsPage() {
       </header>
 
       {drafts.length === 0 ? (
-        <div className="mt-20 flex flex-col items-center gap-3 text-center text-muted-foreground">
-          <div className="grid h-20 w-20 place-items-center rounded-full bg-muted">
-            <FileText className="h-8 w-8" />
-          </div>
-          <p className="max-w-md text-sm">
-            Du hast noch keine Entwürfe. Schreib einen Post in{' '}
-            <Link href={'/create' as Route} className="text-foreground underline">
-              /create
-            </Link>{' '}
-            und speichere ihn über den „Entwurf"-Button — er taucht dann hier und
-            auf deinem Handy auf.
-          </p>
-        </div>
+        <EmptyState
+          icon={<FileText className="h-8 w-8" strokeWidth={1.75} />}
+          title="Noch keine Entwürfe"
+          description={'Schreib einen Post und speichere ihn über den „Entwurf"-Button — er taucht dann hier und auf deinem Handy auf.'}
+          size="md"
+          cta={
+            <Link
+              href={'/create' as Route}
+              className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              Jetzt schreiben
+            </Link>
+          }
+        />
       ) : (
         <ul className="flex flex-col gap-2">
           {drafts.map((d) => (

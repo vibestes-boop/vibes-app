@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { StudioProductRow } from '@/components/shop/studio-product-row';
 import { getMyProducts } from '@/lib/data/shop';
 import { getUser } from '@/lib/auth/session';
+import { EmptyState } from '@/components/ui/empty-state';
 
 export const metadata: Metadata = {
   title: 'Shop-Studio · Serlo',
@@ -77,20 +78,21 @@ export default async function StudioShopPage() {
 
       {/* Produkt-Liste */}
       {products.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed py-20 text-center">
-          <div className="text-5xl">🛠️</div>
-          <h3 className="text-lg font-semibold">Noch keine Produkte</h3>
-          <p className="max-w-md text-sm text-muted-foreground">
-            Leg dein erstes Produkt an — digitaler Download, physischer Artikel, Service oder
-            Collectible.
-          </p>
-          <Button asChild className="mt-2">
-            <Link href={'/studio/shop/new' as Route}>
-              <Plus className="h-4 w-4" />
-              Neues Produkt anlegen
-            </Link>
-          </Button>
-        </div>
+        <EmptyState
+          icon={<Package className="h-8 w-8" strokeWidth={1.75} />}
+          title="Noch keine Produkte"
+          description="Leg dein erstes Produkt an — digitaler Download, physischer Artikel, Service oder Collectible."
+          size="md"
+          bordered
+          cta={
+            <Button asChild>
+              <Link href={'/studio/shop/new' as Route}>
+                <Plus className="h-4 w-4" />
+                Neues Produkt anlegen
+              </Link>
+            </Button>
+          }
+        />
       ) : (
         <div className="divide-y rounded-xl border bg-card">
           {products.map((p) => (

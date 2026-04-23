@@ -1,13 +1,19 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { Play } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { Grid3x3, Play } from 'lucide-react';
 import type { Post } from '@shared/types';
 import { cn } from '@/lib/utils';
+import { EmptyState } from '@/components/ui/empty-state';
 
 // -----------------------------------------------------------------------------
 // PostGrid — server-rendered 3-Spalten-Grid, 9:16, klickbar zu /p/[id].
 // Zeigt Thumbnail mit View-Count-Overlay. Wenn kein Thumbnail vorhanden ist,
 // gibt's einen neutralen Dark-Placeholder (verhindert leere weiße Kacheln).
+//
+// Empty-State nutzt die kanonische `<EmptyState>`-Komponente (D5-Fix).
+// Caller gibt Title + Description strukturiert rein, damit die Empty-View
+// konsistent mit dem Rest der App aussieht (Icon-Circle + Headline + Sub).
 // -----------------------------------------------------------------------------
 
 function formatCount(n: number): string {
@@ -19,17 +25,28 @@ function formatCount(n: number): string {
 export function PostGrid({
   posts,
   className,
-  emptyHint,
+  emptyTitle,
+  emptyDescription,
+  emptyIcon,
+  emptyCta,
 }: {
   posts: Post[];
   className?: string;
-  emptyHint?: string;
+  emptyTitle?: string;
+  emptyDescription?: string;
+  emptyIcon?: ReactNode;
+  emptyCta?: ReactNode;
 }) {
   if (posts.length === 0) {
     return (
-      <div className="flex min-h-[240px] items-center justify-center rounded-lg border border-dashed border-border bg-card/50 px-6 py-12 text-center text-sm text-muted-foreground">
-        {emptyHint ?? 'Noch keine Videos.'}
-      </div>
+      <EmptyState
+        icon={emptyIcon ?? <Grid3x3 className="h-7 w-7" strokeWidth={1.75} />}
+        title={emptyTitle ?? 'Noch keine Videos'}
+        description={emptyDescription}
+        cta={emptyCta}
+        size="md"
+        bordered
+      />
     );
   }
 

@@ -128,6 +128,7 @@ const deMessages = {
     tabBattles: 'Battles',
 
     // Panel-Inhalte
+    emptyPostsTitle: 'Noch keine Videos',
     emptyPostsSelf:
       'Deine Videos erscheinen hier — lade dein erstes Video in der App hoch.',
     emptyPostsOther: '@{username} hat noch keine öffentlichen Videos.',

@@ -16,6 +16,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { VideoPlayer } from '@/components/video/video-player';
 import { ShareButtons } from '@/components/share/share-buttons';
 import { PostComments } from '@/components/post/post-comments';
+import { linkify } from '@/lib/linkify';
 
 // -----------------------------------------------------------------------------
 // /p/[postId] — public post detail.
@@ -306,7 +307,7 @@ export default async function PostDetailPage({
             <div className="space-y-2 rounded-xl border border-border bg-card p-4">
               {post.caption && (
                 <p className="whitespace-pre-line break-words text-sm leading-relaxed">
-                  {post.caption}
+                  {linkify(post.caption)}
                 </p>
               )}
               {post.hashtags.length > 0 && (

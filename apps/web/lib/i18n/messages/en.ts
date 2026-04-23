@@ -119,6 +119,7 @@ const enMessages = {
     tabShop: 'Shop',
     tabBattles: 'Battles',
 
+    emptyPostsTitle: 'No videos yet',
     emptyPostsSelf:
       'Your videos will appear here — upload your first one in the app.',
     emptyPostsOther: '@{username} doesn\u2019t have any public videos yet.',

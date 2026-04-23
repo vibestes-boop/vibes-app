@@ -2,10 +2,11 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import type { Route } from 'next';
-import { ShoppingBag, ArrowLeft } from 'lucide-react';
+import { ShoppingBag, ArrowLeft, PackageOpen } from 'lucide-react';
 import { OrderRow } from '@/components/shop/order-row';
 import { getMyOrders } from '@/lib/data/shop';
 import { getUser } from '@/lib/auth/session';
+import { EmptyState } from '@/components/ui/empty-state';
 import { cn } from '@/lib/utils';
 
 export const metadata: Metadata = {
@@ -93,23 +94,29 @@ export default async function OrdersPage({ searchParams }: PageProps) {
 
       {/* Liste */}
       {orders.length === 0 ? (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed py-20 text-center">
-          <div className="text-5xl">{role === 'buyer' ? '🛍️' : '📭'}</div>
-          <h3 className="text-lg font-semibold">
-            {role === 'buyer' ? 'Noch keine Käufe' : 'Noch keine Verkäufe'}
-          </h3>
-          <p className="max-w-md text-sm text-muted-foreground">
-            {role === 'buyer'
+        <EmptyState
+          icon={
+            role === 'buyer'
+              ? <ShoppingBag className="h-8 w-8" strokeWidth={1.75} />
+              : <PackageOpen className="h-8 w-8" strokeWidth={1.75} />
+          }
+          title={role === 'buyer' ? 'Noch keine Käufe' : 'Noch keine Verkäufe'}
+          description={
+            role === 'buyer'
               ? 'Du hast bisher nichts im Shop gekauft. Entdecke Produkte anderer Creator.'
-              : 'Sobald jemand eins deiner Produkte kauft, erscheint es hier.'}
-          </p>
-          <Link
-            href={(role === 'buyer' ? '/shop' : '/studio/shop') as Route}
-            className="mt-2 rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-          >
-            {role === 'buyer' ? 'Shop entdecken' : 'Zum Shop-Studio'}
-          </Link>
-        </div>
+              : 'Sobald jemand eins deiner Produkte kauft, erscheint es hier.'
+          }
+          size="md"
+          bordered
+          cta={
+            <Link
+              href={(role === 'buyer' ? '/shop' : '/studio/shop') as Route}
+              className="rounded-full bg-primary px-5 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            >
+              {role === 'buyer' ? 'Shop entdecken' : 'Zum Shop-Studio'}
+            </Link>
+          }
+        />
       ) : (
         <div className="divide-y rounded-xl border bg-card">
           {orders.map((o) => (

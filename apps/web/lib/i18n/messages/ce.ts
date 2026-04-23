@@ -133,6 +133,7 @@ const ceMessages = {
     tabShop: 'Туькан',
     tabBattles: 'Баттлаш',
 
+    emptyPostsTitle: 'Видеош хӀинца дац',
     emptyPostsSelf:
       'Хьан видеош кхузахь гучуьра — хьалхара видео апп чохь хьала йaккхa.',
     emptyPostsOther: '@{username}-ан билгалдаьлла видеош дац.',
