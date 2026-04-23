@@ -14,27 +14,40 @@ import {
 } from '@/lib/data/live';
 import { getUser } from '@/lib/auth/session';
 import { LiveVideoPlayer } from '@/components/live/live-video-player';
-import { LiveChat } from '@/components/live/live-chat';
+import { LiveChatOverlay } from '@/components/live/live-chat-overlay';
 import { LiveActionBar } from '@/components/live/live-action-bar';
 import { LivePollPanel } from '@/components/live/live-poll-panel';
-import { LiveHostCard } from '@/components/live/live-host-card';
+import { LiveHostPill } from '@/components/live/live-host-pill';
 import { LiveEnterClient } from '@/components/live/live-enter-client';
 
 // -----------------------------------------------------------------------------
-// /live/[id] — der Viewer. Layout:
-//   ┌──────────────────────────┬─────────────┐
-//   │                          │   HostCard  │
-//   │                          ├─────────────┤
-//   │      LiveVideoPlayer     │   Poll      │
-//   │        (LiveKit)         ├─────────────┤
-//   │                          │             │
-//   │                          │   Chat      │
-//   │                          │   Comments  │
-//   ├──────────────────────────┤             │
-//   │      LiveActionBar       │             │
-//   │  (Reactions/Gifts/CoHost)│             │
-//   └──────────────────────────┴─────────────┘
-// Auf Mobile (< lg) stackt alles vertikal.
+// /live/[id] — der Viewer. TikTok-style Overlay-Architektur (Phase 2, B1+B2+B5):
+//
+//   ┌────────────────────────────────────────┐
+//   │ ← zurück       [melden]               │   ← top-bar (auf Canvas überlagert)
+//   │                                       │
+//   │   ┌──────────────────────────┐        │
+//   │   │ 🔴 LIVE  👁 1.2k         │        │   ← top-left stack
+//   │   │ [avatar] Host [Folgen]   │        │     Host-Pill (B5)
+//   │   │ Stream-Titel…            │        │
+//   │   │                          │ [Poll] │   ← Poll rechts als Card
+//   │   │       (Video 9:16)       │        │
+//   │   │                          │        │
+//   │   │  [chat-overlay]          │        │   ← Chat links unten (B2)
+//   │   │   [nachricht pill]       │        │      mask-image fade top
+//   │   │   [nachricht pill]       │        │
+//   │   │  [input pill] [send]     │        │
+//   │   │                          │        │
+//   │   │ [❤️ 🔥 🎁 ...] Action-Bar│        │   ← unten (bestehend)
+//   │   └──────────────────────────┘        │
+//   │   (seitliche Black-Letterboxes        │
+//   │    auf desktop-Weiten)                │
+//   └────────────────────────────────────────┘
+//
+// Auf Portrait-Mobile ist der 9:16 Canvas = Viewport, die Letterboxes fallen weg.
+// Auf breiten Desktops ist er ein zentrales Rechteck — der Rest des Canvas
+// bleibt dunkel (#0b0b10), erzeugt den „phone viewport in the middle"-Effekt,
+// den TikTok/YouTube-Shorts im Web ebenfalls nutzen.
 // -----------------------------------------------------------------------------
 
 interface PageProps {
@@ -103,131 +116,169 @@ export default async function LiveViewerPage({ params }: PageProps) {
   const isHost = viewerId === session.host_id;
 
   return (
-    <div className="mx-auto flex max-w-[1800px] flex-col gap-4 px-0 py-0 lg:grid lg:grid-cols-[1fr_380px] lg:gap-4 lg:p-4">
+    <main className="relative h-[calc(100dvh-var(--site-header-h,64px))] w-full overflow-hidden bg-[#0b0b10]">
       {/* Join/Leave Tracking — nur Client, kein UI */}
       {viewerId && <LiveEnterClient sessionId={id} />}
 
-      {/* Main-Column: Video + Action-Bar */}
-      <main className="flex min-w-0 flex-col gap-3">
-        {/* Zurück-Leiste (mobile sticky, desktop normal) */}
-        <div className="flex items-center justify-between px-4 pt-3 lg:px-0 lg:pt-0">
-          <Link
-            href={'/live' as Route}
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Zurück zu Live
-          </Link>
-          {viewerId && !isHost && (
-            <Link
-              href={`/live/${id}/report` as Route}
-              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-red-500"
-            >
-              <Flag className="h-3.5 w-3.5" />
-              Melden
-            </Link>
-          )}
-        </div>
+      {/* Canvas — flex-centered 9:16 Frame. Padding damit der Frame auf breiten
+          Viewports nicht an die Bildschirmränder klebt. */}
+      <div className="absolute inset-0 flex items-center justify-center md:p-4">
+        <div className="relative h-full w-full max-h-full md:aspect-[9/16] md:h-full md:w-auto md:max-w-full md:overflow-hidden md:rounded-2xl md:shadow-elevation-4">
+          {/* Video-Layer — füllt den 9:16-Frame vollständig. Player selbst
+              nutzt object-contain, schwarze Letterboxes innerhalb des Frames
+              falls der tatsächliche Track-Aspect vom 9:16 abweicht. */}
+          <div className="absolute inset-0 bg-black">
+            {ended ? (
+              <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-white">
+                {session.thumbnail_url && (
+                  <Image
+                    src={session.thumbnail_url}
+                    alt={session.title ?? 'Beendet'}
+                    fill
+                    sizes="(min-width: 768px) 540px, 100vw"
+                    className="object-cover opacity-30"
+                  />
+                )}
+                <div className="relative z-10 px-6 text-center">
+                  <p className="text-lg font-semibold">Stream beendet</p>
+                  <p className="mt-1 text-sm text-white/60">
+                    {hostName} ist nicht mehr live. Vielleicht gibt&apos;s einen Replay.
+                  </p>
+                  <Link
+                    href={`/live/replay/${id}` as Route}
+                    className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-white backdrop-blur-md transition-colors duration-fast ease-out-expo hover:bg-white/20"
+                  >
+                    Replay ansehen
+                  </Link>
+                </div>
+              </div>
+            ) : (
+              <LiveVideoPlayer
+                sessionId={id}
+                roomName={session.room_name}
+                hostId={session.host_id}
+                hostName={hostName}
+              />
+            )}
+          </div>
 
-        {/* Video-Container */}
-        <div className="relative aspect-video w-full overflow-hidden bg-black lg:rounded-xl">
-          {ended ? (
-            <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-white">
-              {session.thumbnail_url && (
-                <Image
-                  src={session.thumbnail_url}
-                  alt={session.title ?? 'Beendet'}
-                  fill
-                  sizes="100vw"
-                  className="object-cover opacity-30"
-                />
-              )}
-              <div className="relative z-10 text-center">
-                <p className="text-lg font-semibold">Stream beendet</p>
-                <p className="mt-1 text-sm text-white/60">
-                  {hostName} ist nicht mehr live. Vielleicht gibt&apos;s einen Replay.
+          {/*
+           * Top-Overlay — Gradient-Shade für Lesbarkeit der Host-Pill gegen
+           * helle Video-Frames (z. B. Daylight-Streams). Rein dekorativ,
+           * `pointer-events-none` damit Video-Controls darunter klickbar
+           * bleiben (Reserved für Phase 2 B4 Maximize).
+           */}
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/50 via-black/20 to-transparent" />
+
+          {/* Top-Bar: Back-Link links, Melden rechts */}
+          <div className="absolute inset-x-3 top-3 flex items-center justify-between">
+            <Link
+              href={'/live' as Route}
+              className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/55 text-white shadow-elevation-1 ring-1 ring-white/10 backdrop-blur-md transition-colors duration-fast ease-out-expo hover:bg-black/75"
+              aria-label="Zurück zu Live"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+            {viewerId && !isHost && (
+              <Link
+                href={`/live/${id}/report` as Route}
+                className="inline-flex items-center gap-1.5 rounded-full bg-black/55 px-3 py-1.5 text-[11px] font-medium text-white/85 shadow-elevation-1 ring-1 ring-white/10 backdrop-blur-md transition-colors duration-fast ease-out-expo hover:bg-black/75 hover:text-white"
+              >
+                <Flag className="h-3 w-3" />
+                Melden
+              </Link>
+            )}
+          </div>
+
+          {/* Top-Left-Stack: Live-Badge + Viewer-Count + Host-Pill + Titel */}
+          {!ended && (
+            <div className="absolute left-3 top-14 flex max-w-[75%] flex-col items-start gap-2">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-md bg-red-600 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white shadow-elevation-1">
+                  <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
+                  Live
+                </span>
+                <span className="inline-flex items-center gap-1 rounded-md bg-black/70 px-2 py-0.5 text-[11px] font-medium text-white shadow-elevation-1 ring-1 ring-white/10 backdrop-blur-md">
+                  <Users className="h-3 w-3" />
+                  {(session.viewer_count ?? 0).toLocaleString('de-DE')}
+                </span>
+              </div>
+              <LiveHostPill
+                session={session}
+                viewerId={viewerId}
+                initialFollowing={isFollowing}
+              />
+              {session.title && (
+                <p className="line-clamp-2 max-w-full rounded-xl bg-black/40 px-3 py-1.5 text-[13px] font-medium text-white shadow-elevation-1 backdrop-blur-md">
+                  {session.title}
                 </p>
-                <Link
-                  href={`/live/replay/${id}` as Route}
-                  className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-white backdrop-blur hover:bg-white/20"
-                >
-                  Replay ansehen
-                </Link>
+              )}
+            </div>
+          )}
+
+          {/*
+           * Top-Right: Poll (wenn aktiv) — unterhalb der Video-Controls
+           * (`top-14 right-3` im LiveVideoPlayer) positioniert auf `top-28`,
+           * damit Mute/Fullscreen + Poll kollisionsfrei stapeln. Feste Breite
+           * + transparent-gefärbte Hülle um das bestehende LivePollPanel
+           * (das selbst `bg-card` nutzt — wir stellen den Overlay-Background
+           * außen vor das Panel und neutralisieren die innere Card-Bordüre
+           * via Arbitrary-Value-Child-Selector).
+           */}
+          {!ended && activePoll && (
+            <div className="absolute right-3 top-28 w-64 max-w-[55%]">
+              <div className="rounded-2xl bg-black/55 p-1 shadow-elevation-2 ring-1 ring-white/10 backdrop-blur-md">
+                <div className="[&_h3]:text-white [&_.rounded-xl]:bg-transparent [&_.rounded-xl]:!border-0 [&_.rounded-xl]:!p-2">
+                  <LivePollPanel
+                    sessionId={id}
+                    poll={activePoll}
+                    viewerId={viewerId}
+                  />
+                </div>
               </div>
             </div>
-          ) : (
-            <LiveVideoPlayer
-              sessionId={id}
-              roomName={session.room_name}
-              hostId={session.host_id}
-              hostName={hostName}
-            />
           )}
 
-          {/* Live-Badge + Viewer-Count als Overlays */}
+          {/*
+           * Bottom-Overlay — Gradient-Shade für Lesbarkeit des Chats &
+           * der Action-Bar gegen helle Video-Frames.
+           */}
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-48 bg-gradient-to-t from-black/60 via-black/30 to-transparent" />
+
+          {/* Chat-Overlay (B2) — links unten. Breite responsiv: mobile fast
+              voll, desktop maximal ~380px damit das Video-Zentrum frei bleibt. */}
           {!ended && (
-            <div className="pointer-events-none absolute left-3 top-3 flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-md bg-red-600 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white shadow">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
-                Live
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-md bg-black/70 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur">
-                <Users className="h-3 w-3" />
-                {(session.viewer_count ?? 0).toLocaleString('de-DE')}
-              </span>
+            <div className="absolute inset-x-3 bottom-20 max-w-md">
+              <LiveChatOverlay
+                sessionId={id}
+                initialComments={comments}
+                hostId={session.host_id}
+                viewerId={viewerId}
+                isHost={isHost}
+                isModerator={isModerator}
+                slowModeSeconds={session.slow_mode_seconds ?? 0}
+                ended={ended}
+              />
+            </div>
+          )}
+
+          {/* Action-Bar (unten) — Reactions + Gifts + CoHost-Request */}
+          {!ended && viewerId && (
+            <div className="absolute inset-x-3 bottom-3">
+              <div className="rounded-2xl bg-black/55 shadow-elevation-2 ring-1 ring-white/10 backdrop-blur-md [&>*]:!border-0 [&>*]:!bg-transparent">
+                <LiveActionBar
+                  sessionId={id}
+                  hostId={session.host_id}
+                  hostName={hostName}
+                  viewerId={viewerId}
+                  isHost={isHost}
+                  cohosts={cohosts}
+                />
+              </div>
             </div>
           )}
         </div>
-
-        {/* Action-Bar — Reactions + Gifts + CoHost-Request */}
-        {!ended && viewerId && (
-          <div className="px-4 lg:px-0">
-            <LiveActionBar
-              sessionId={id}
-              hostId={session.host_id}
-              hostName={hostName}
-              viewerId={viewerId}
-              isHost={isHost}
-              cohosts={cohosts}
-            />
-          </div>
-        )}
-
-        {/* Session-Title + Host unterhalb des Players (für Mobile) */}
-        <div className="px-4 lg:hidden">
-          <h1 className="text-lg font-semibold leading-snug">
-            {session.title ?? 'Unbenannter Stream'}
-          </h1>
-        </div>
-      </main>
-
-      {/* Side-Column: HostCard + Poll + Chat */}
-      <aside className="flex min-h-[500px] min-w-0 flex-col gap-3 px-4 lg:max-h-[calc(100vh-2rem)] lg:px-0">
-        <LiveHostCard
-          session={session}
-          viewerId={viewerId}
-          initialFollowing={isFollowing}
-        />
-
-        {activePoll && (
-          <LivePollPanel
-            sessionId={id}
-            poll={activePoll}
-            viewerId={viewerId}
-          />
-        )}
-
-        <LiveChat
-          sessionId={id}
-          initialComments={comments}
-          hostId={session.host_id}
-          viewerId={viewerId}
-          isHost={isHost}
-          isModerator={isModerator}
-          slowModeSeconds={session.slow_mode_seconds ?? 0}
-          ended={ended}
-        />
-      </aside>
-    </div>
+      </div>
+    </main>
   );
 }
