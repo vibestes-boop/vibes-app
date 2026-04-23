@@ -188,25 +188,30 @@ export function LiveVideoPlayer({ roomName, hostId, hostName }: LiveVideoPlayerP
         </div>
       )}
 
-      {/* Controls — unten rechts */}
+      {/* Controls — unten rechts (v1.w.UI.1 — B4 aus UI_AUDIT_WEB)
+          Vorher: bg-black/60 + p-2 + h-4 w-4 → Buttons gingen auf hellen Szenen
+          (Tageslicht-Streams, weißer Hintergrund) im Video-Bild unter.
+          Jetzt: bg-black/80 als Ruhezustand + ring-1 ring-white/10 für Kontur-
+          Trennung auf jedem Hintergrund, p-3 vergrößert Hit-Target auf ~40px
+          (Mobile-Safe), h-5 w-5 Icons deutlicher erkennbar aus Armlänge. */}
       {phase === 'live' && (
         <div className="pointer-events-none absolute inset-0 flex items-end justify-end p-3">
           <div className="pointer-events-auto flex items-center gap-2">
             <button
               type="button"
               onClick={() => setMuted((m) => !m)}
-              className="rounded-full bg-black/60 p-2 text-white backdrop-blur hover:bg-black/80"
+              className="rounded-full bg-black/80 p-3 text-white shadow-elevation-2 ring-1 ring-white/10 backdrop-blur transition-colors duration-fast ease-out-expo hover:bg-black"
               aria-label={muted ? 'Ton einschalten' : 'Stumm schalten'}
             >
-              {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+              {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
             </button>
             <button
               type="button"
               onClick={goFullscreen}
-              className="rounded-full bg-black/60 p-2 text-white backdrop-blur hover:bg-black/80"
+              className="rounded-full bg-black/80 p-3 text-white shadow-elevation-2 ring-1 ring-white/10 backdrop-blur transition-colors duration-fast ease-out-expo hover:bg-black"
               aria-label="Vollbild"
             >
-              <Maximize2 className="h-4 w-4" />
+              <Maximize2 className="h-5 w-5" />
             </button>
           </div>
         </div>

@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Route } from 'next';
-import { ArrowLeft, Users, Flag } from 'lucide-react';
+import { ArrowLeft, Flag } from 'lucide-react';
 import {
   getLiveSession,
   getLiveComments,
@@ -18,6 +18,7 @@ import { LiveChat } from '@/components/live/live-chat';
 import { LiveActionBar } from '@/components/live/live-action-bar';
 import { LivePollPanel } from '@/components/live/live-poll-panel';
 import { LiveHostCard } from '@/components/live/live-host-card';
+import { LiveHostPill } from '@/components/live/live-host-pill';
 import { LiveEnterClient } from '@/components/live/live-enter-client';
 
 // -----------------------------------------------------------------------------
@@ -164,19 +165,18 @@ export default async function LiveViewerPage({ params }: PageProps) {
             />
           )}
 
-          {/* Live-Badge + Viewer-Count als Overlays */}
-          {!ended && (
-            <div className="pointer-events-none absolute left-3 top-3 flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-md bg-red-600 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white shadow">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
-                Live
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-md bg-black/70 px-2 py-0.5 text-[11px] font-medium text-white backdrop-blur">
-                <Users className="h-3 w-3" />
-                {(session.viewer_count ?? 0).toLocaleString('de-DE')}
-              </span>
-            </div>
-          )}
+          {/* Host-Pill (v1.w.UI.1 — B5 aus UI_AUDIT_WEB).
+              Ersetzt die bisherigen getrennten Live-Badge + Users-Count-Chips
+              durch eine einzige Identitäts-Pill mit Avatar + Name + Viewer-
+              Count + inline Follow-CTA. Live-Marker bleibt als separate rote
+              Mini-Pill daneben, damit das rote Farbsignal (= jetzt-live) nicht
+              in der dunklen Host-Pill aufgeht. */}
+          <LiveHostPill
+            session={session}
+            viewerId={viewerId}
+            initialFollowing={isFollowing}
+            ended={ended}
+          />
         </div>
 
         {/* Action-Bar — Reactions + Gifts + CoHost-Request */}
