@@ -126,10 +126,40 @@ export default {
           from: { height: 'var(--radix-accordion-content-height)' },
           to:   { height: '0' },
         },
+        // Like-Burst (v1.w.UI.4, A3) — leichter Scale-Pop des Heart-Icons
+        // beim Klick. Peak bei 40%, Undershoot bei 70% für den TikTok-
+        // typischen „snap back"-Feel, dann settle. Gesamt ~400ms.
+        'heart-pop': {
+          '0%':   { transform: 'scale(1)' },
+          '40%':  { transform: 'scale(1.35)' },
+          '70%':  { transform: 'scale(0.92)' },
+          '100%': { transform: 'scale(1)' },
+        },
+        // Like-Burst-Partikel — kleine Herzen die in einem berechneten
+        // Winkel aus dem Icon-Zentrum rausfliegen. Translate-Delta kommt
+        // aus CSS-Custom-Properties (`--dx`, `--dy`), damit dieselbe
+        // Keyframe für acht verschiedene Winkel wiederverwendet wird.
+        'heart-particle': {
+          '0%':   { transform: 'translate(0,0) scale(0)', opacity: '0' },
+          '15%':  { transform: 'translate(calc(var(--dx) * 0.3), calc(var(--dy) * 0.3)) scale(1)', opacity: '1' },
+          '100%': { transform: 'translate(var(--dx), var(--dy)) scale(0.6)', opacity: '0' },
+        },
+        // Double-Tap-Heart-Overlay (v1.w.UI.4, A5) — großes zentrales
+        // Herz das beim Doppelklick aufscalert und wieder rausfadet.
+        // Peak-Opacity bei 20%, dann linear-fade-out während Scale bleibt.
+        'heart-overlay': {
+          '0%':   { transform: 'scale(0.4)', opacity: '0' },
+          '20%':  { transform: 'scale(1.1)', opacity: '0.95' },
+          '60%':  { transform: 'scale(1)',   opacity: '0.9'  },
+          '100%': { transform: 'scale(1.2)', opacity: '0'    },
+        },
       },
       animation: {
-        'accordion-down': 'accordion-down 0.2s ease-out',
-        'accordion-up':   'accordion-up 0.2s ease-out',
+        'accordion-down':  'accordion-down 0.2s ease-out',
+        'accordion-up':    'accordion-up 0.2s ease-out',
+        'heart-pop':       'heart-pop 400ms cubic-bezier(0.34, 1.56, 0.64, 1)',
+        'heart-particle':  'heart-particle 600ms cubic-bezier(0.16, 1, 0.3, 1) forwards',
+        'heart-overlay':   'heart-overlay 800ms cubic-bezier(0.16, 1, 0.3, 1) forwards',
       },
       /**
        * Inter als Primary-Font (v1.w.UI.1 — UI-Audit-Phase-1). Via `next/font/google`
