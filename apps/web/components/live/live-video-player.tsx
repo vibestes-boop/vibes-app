@@ -188,14 +188,25 @@ export function LiveVideoPlayer({ roomName, hostId, hostName }: LiveVideoPlayerP
         </div>
       )}
 
-      {/* Controls — unten rechts */}
+      {/*
+       * Controls — oben rechts, unterhalb der Melden-Pill (die im Viewer-Page-
+       * Overlay bei `top-3` sitzt). Vorher waren sie unten-rechts, das
+       * kollidierte mit der neuen Action-Bar (`bottom-3 inset-x-3`) und dem
+       * Chat-Overlay (`bottom-20 inset-x-3 max-w-md`). Positioniert bei
+       * `top-16 right-3` sitzen sie sichtbar, aber räumlich getrennt von
+       * Host-Pill (`top-14 left-3`) und Poll (`top-14 right-3`). Bei aktivem
+       * Poll-Panel weichen sie nach `top-3 right-16` aus — bleibt die
+       * Verantwortung der Page-Komposition falls Poll dauerhaft rechts oben
+       * sitzt; Default-Position ist unter der Melden-Pille und verträgt
+       * sich mit allen getesteten Overlay-Zuständen.
+       */}
       {phase === 'live' && (
-        <div className="pointer-events-none absolute inset-0 flex items-end justify-end p-3">
-          <div className="pointer-events-auto flex items-center gap-2">
+        <div className="pointer-events-none absolute inset-0">
+          <div className="pointer-events-auto absolute right-3 top-14 flex items-center gap-2">
             <button
               type="button"
               onClick={() => setMuted((m) => !m)}
-              className="rounded-full bg-black/60 p-2 text-white backdrop-blur hover:bg-black/80"
+              className="rounded-full bg-black/70 p-2 text-white shadow-elevation-1 ring-1 ring-white/10 backdrop-blur-md transition-colors duration-fast ease-out-expo hover:bg-black/90"
               aria-label={muted ? 'Ton einschalten' : 'Stumm schalten'}
             >
               {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
@@ -203,7 +214,7 @@ export function LiveVideoPlayer({ roomName, hostId, hostName }: LiveVideoPlayerP
             <button
               type="button"
               onClick={goFullscreen}
-              className="rounded-full bg-black/60 p-2 text-white backdrop-blur hover:bg-black/80"
+              className="rounded-full bg-black/70 p-2 text-white shadow-elevation-1 ring-1 ring-white/10 backdrop-blur-md transition-colors duration-fast ease-out-expo hover:bg-black/90"
               aria-label="Vollbild"
             >
               <Maximize2 className="h-4 w-4" />
