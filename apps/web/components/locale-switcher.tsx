@@ -8,7 +8,7 @@
 // Switcher tief in einem bestehenden Dropdown lebt — ein Modal daraus zu
 // öffnen würde den Dropdown schließen und den Fokus-Flow brechen.
 
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Check, Languages } from 'lucide-react';
 import { useTransition } from 'react';
 
@@ -30,6 +30,7 @@ import { useI18n } from '@/lib/i18n/client';
 export function LocaleSwitcher() {
   const { locale, t } = useI18n();
   const pathname = usePathname();
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
   function handleSelect(next: Locale) {
@@ -39,6 +40,13 @@ export function LocaleSwitcher() {
     // parallele Klicks visuell zu unterdrücken falls nötig.
     startTransition(async () => {
       await setLocale(next, pathname);
+      // Next.js-15-Quirk: `revalidatePath('/', 'layout')` im Action invalidiert
+      // den Server-Cache, aber der Client-Router merkt nicht zuverlässig dass
+      // er die aktuelle Route neu fetchen muss — insbesondere wenn die Cookie-
+      // Änderung nur Context-Werte beeinflusst (I18nProvider), keine URL.
+      // `router.refresh()` zwingt einen RSC-Re-Fetch → Layout liest neuen
+      // Cookie via `getI18n()` → I18nProvider mountet mit neuen Messages.
+      router.refresh();
     });
   }
 
