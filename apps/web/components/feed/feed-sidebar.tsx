@@ -10,24 +10,25 @@ import {
   Radio,
   MessageCircle,
   ShoppingBag,
-  Bookmark,
-  Hash,
   Settings,
-  Store,
-  PlusCircle,
-  FileText,
-  Clock,
   BarChart3,
-  Coins,
-  Receipt,
+  UserRound,
+  Plus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { OpenConsentSettingsButton } from '@/components/consent/consent-banner';
 
 // -----------------------------------------------------------------------------
 // FeedSidebar — linke Navigation auf Desktop-Feed-Seiten.
-// Rein strukturell — die einzelnen Ziele müssen nicht zwingend existieren;
-// /messages, /live, /shop etc. kommen in späteren Phasen.
+//
+// v1.w.UI.10 Layout-Reset: Von 17 Einträgen auf 5 Primary + 3 Secondary
+// runterkompaktiert. Power-User-Items (Entwürfe, Geplant, Mein Shop,
+// Live-Studio, Gemerkt, Coin-Shop, Bezahlungen) leben jetzt im Avatar-
+// Dropdown im SiteHeader, nicht mehr permanent hier.
+//
+// Prominenter „Posten"-CTA sitzt oben im Sidebar-Stack als Primary-Action-Pill
+// (entspricht TikToks „+ Upload" auf Desktop). Damit fällt die DesktopNav
+// Pill-Row im SiteHeader weg — keine Doppel-Navigation mehr.
 // -----------------------------------------------------------------------------
 
 interface NavItem {
@@ -35,59 +36,101 @@ interface NavItem {
   href: Route;
   icon: typeof Home;
   requiresAuth?: boolean;
-  phase?: string; // "kommt in Phase X" — als Tooltip angezeigt, Button bleibt klickbar mit 404
 }
 
-const NAV: NavItem[] = [
-  { label: 'Feed',        href: '/' as Route,            icon: Home },
-  { label: 'Explore',     href: '/explore' as Route,     icon: Compass },
-  { label: 'Pods',        href: '/guilds' as Route,      icon: Users },
-  { label: 'Folge ich',   href: '/following' as Route,   icon: Users, phase: 'Phase 4', requiresAuth: true },
-  { label: 'Live',        href: '/live' as Route,        icon: Radio },
-  { label: 'Messages',    href: '/messages' as Route,    icon: MessageCircle, requiresAuth: true },
-  { label: 'Post erstellen', href: '/create' as Route,   icon: PlusCircle, requiresAuth: true },
-  { label: 'Entwürfe',    href: '/create/drafts' as Route, icon: FileText, requiresAuth: true },
-  { label: 'Geplant',     href: '/create/scheduled' as Route, icon: Clock, requiresAuth: true },
-  { label: 'Shop',        href: '/shop' as Route,        icon: ShoppingBag },
-  { label: 'Creator Studio', href: '/studio' as Route,   icon: BarChart3, requiresAuth: true },
-  { label: 'Mein Shop',   href: '/studio/shop' as Route, icon: Store, requiresAuth: true },
-  { label: 'Live-Studio', href: '/studio/live' as Route, icon: Radio, requiresAuth: true },
-  { label: 'Gemerkt',     href: '/shop/saved' as Route,  icon: Bookmark, requiresAuth: true },
-  { label: 'Coin-Shop',   href: '/coin-shop' as Route,   icon: Coins },
-  { label: 'Bezahlungen', href: '/settings/billing' as Route, icon: Receipt, requiresAuth: true },
-  { label: 'Trending',    href: '/explore' as Route,     icon: Hash },
+const PRIMARY_NAV: NavItem[] = [
+  { label: 'Für dich', href: '/' as Route, icon: Home },
+  { label: 'Folge ich', href: '/following' as Route, icon: UserRound, requiresAuth: true },
+  { label: 'Entdecken', href: '/explore' as Route, icon: Compass },
+  { label: 'Live', href: '/live' as Route, icon: Radio },
+  { label: 'Messages', href: '/messages' as Route, icon: MessageCircle, requiresAuth: true },
+];
+
+const SECONDARY_NAV: NavItem[] = [
+  { label: 'Shop', href: '/shop' as Route, icon: ShoppingBag },
+  { label: 'Pods', href: '/guilds' as Route, icon: Users },
+  { label: 'Creator Studio', href: '/studio' as Route, icon: BarChart3, requiresAuth: true },
 ];
 
 export function FeedSidebar({ viewerId }: { viewerId: string | null }) {
   const pathname = usePathname();
+  const isActive = (href: Route) => pathname === href;
 
   return (
-    <div className="sticky top-0 flex h-[calc(100dvh-var(--site-header-h,64px))] flex-col gap-1 p-4">
-      <nav className="flex flex-col gap-1">
-        {NAV.map((item) => {
+    <div className="sticky top-0 flex h-[calc(100dvh-var(--site-header-h,64px))] flex-col gap-4 p-4">
+      {/* Upload-CTA — ersetzt die frühere DesktopNav-Pill-Row im Header */}
+      <Link
+        href={'/create' as Route}
+        aria-disabled={!viewerId}
+        aria-label="Neuen Post erstellen"
+        className={cn(
+          'flex items-center justify-center gap-2 rounded-xl bg-brand-gold px-4 py-2.5 text-sm font-semibold text-white shadow-elevation-1 transition-colors',
+          'hover:bg-brand-gold/90',
+          !viewerId && 'pointer-events-none opacity-40',
+        )}
+      >
+        <Plus className="h-4 w-4" strokeWidth={2.5} />
+        <span>Posten</span>
+      </Link>
+
+      {/* Primary Nav */}
+      <nav className="flex flex-col gap-1" aria-label="Hauptnavigation">
+        {PRIMARY_NAV.map((item) => {
           const disabled = item.requiresAuth && !viewerId;
-          const active = pathname === item.href;
+          const active = isActive(item.href);
           const Icon = item.icon;
           return (
             <Link
               key={`${item.label}-${item.href}`}
               href={item.href}
               aria-disabled={disabled}
-              title={item.phase ? `${item.label} — ${item.phase}` : item.label}
+              aria-current={active ? 'page' : undefined}
               className={cn(
-                'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                'flex items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] transition-colors',
                 active
                   ? 'bg-muted font-semibold text-foreground'
                   : 'text-muted-foreground hover:bg-muted hover:text-foreground',
                 disabled && 'pointer-events-none opacity-40',
               )}
             >
-              <Icon className="h-5 w-5 shrink-0" />
+              <Icon className="h-6 w-6 shrink-0" />
               <span className="truncate">{item.label}</span>
             </Link>
           );
         })}
       </nav>
+
+      {/* Secondary Nav */}
+      <div className="flex flex-col gap-1.5">
+        <h2 className="px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
+          Mehr
+        </h2>
+        <nav className="flex flex-col gap-0.5" aria-label="Weitere Bereiche">
+          {SECONDARY_NAV.map((item) => {
+            const disabled = item.requiresAuth && !viewerId;
+            const active = isActive(item.href);
+            const Icon = item.icon;
+            return (
+              <Link
+                key={`${item.label}-${item.href}`}
+                href={item.href}
+                aria-disabled={disabled}
+                aria-current={active ? 'page' : undefined}
+                className={cn(
+                  'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+                  active
+                    ? 'bg-muted font-semibold text-foreground'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                  disabled && 'pointer-events-none opacity-40',
+                )}
+              >
+                <Icon className="h-5 w-5 shrink-0" />
+                <span className="truncate">{item.label}</span>
+              </Link>
+            );
+          })}
+        </nav>
+      </div>
 
       <div className="mt-auto flex flex-col gap-1">
         {viewerId && (

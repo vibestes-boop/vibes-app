@@ -8,6 +8,11 @@ import {
   LayoutDashboard,
   Users,
   Plus,
+  FileText,
+  Clock,
+  Store,
+  Radio,
+  Bookmark,
 } from 'lucide-react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -46,7 +51,15 @@ export async function SiteHeader() {
           <Link href="/" className="font-serif text-xl font-medium tracking-tight">
             Serlo
           </Link>
-          <DesktopNav isAuthed={!!user} />
+          {/*
+           * DesktopNav-Pill-Row seit v1.w.UI.10 nur zwischen md und xl
+           * sichtbar. Ab xl übernimmt die FeedSidebar die Nav-Rolle komplett
+           * — doppelte Primary-Nav (horizontal im Header + vertikal in
+           * Sidebar) wurde als visueller Noise identifiziert.
+           */}
+          <div className="xl:hidden">
+            <DesktopNav isAuthed={!!user} />
+          </div>
         </div>
         <nav className="flex items-center gap-3">
           {user ? (
@@ -117,6 +130,52 @@ export async function SiteHeader() {
                     <Link href="/guilds">
                       <Users className="h-4 w-4" />
                       <span>{t('menu.guilds')}</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  {/*
+                   * Creator- und Shop-Power-User-Tools. Seit v1.w.UI.10 nicht
+                   * mehr permanent in der FeedSidebar — diese 6 Einträge sind
+                   * für den Regelfall seltener gebraucht als Für-dich/Folge-
+                   * ich/Entdecken/Live/Messages, und verstopften die Sidebar
+                   * (17 Items total). Dropdown ist der natürliche Overflow-
+                   * Container. Labels bewusst hardcoded deutsch — konsistent
+                   * mit der restlichen FeedSidebar.
+                   */}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/create/drafts">
+                      <FileText className="h-4 w-4" />
+                      <span>Entwürfe</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/create/scheduled">
+                      <Clock className="h-4 w-4" />
+                      <span>Geplant</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/studio/shop">
+                      <Store className="h-4 w-4" />
+                      <span>Mein Shop</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/studio/live">
+                      <Radio className="h-4 w-4" />
+                      <span>Live-Studio</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/shop/saved">
+                      <Bookmark className="h-4 w-4" />
+                      <span>Gemerkt</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/coin-shop">
+                      <Coins className="h-4 w-4" />
+                      <span>Coin-Shop</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />

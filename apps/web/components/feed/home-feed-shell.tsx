@@ -9,8 +9,9 @@ import { cn } from '@/lib/utils';
 
 // -----------------------------------------------------------------------------
 // HomeFeedShell — Client-Shell für authentifizierte User auf `/`.
-// Links: Kategorien/Links (SidebarLeft), Mitte: FeedList (mit Tabs darüber),
-// rechts: Suggested-Follows (SidebarRight).
+// Links: Kategorien/Links (SidebarLeft), Mitte: FeedList (edge-to-edge über die
+// volle Höhe, Tab-Pills als Floating-Overlay obenauf), rechts: Suggested-
+// Follows (SidebarRight).
 //
 // Initial-Daten werden SSR-seitig geladen und als Props reingereicht.
 // Following-Tab lädt erst on-switch (useQuery mit `enabled: true` erst nach
@@ -18,9 +19,10 @@ import { cn } from '@/lib/utils';
 //
 // `storyStripSlot` ist ein optionales ReactNode-Slot (wir passen den Server-
 // gerenderten <StoryStrip /> durch, damit die Shell ein Client-Component
-// bleiben kann ohne selber Auth-Reads zu machen). Strip wird nur oberhalb des
-// „Für dich"-Tabs gerendert — im Following-Tab versteckt, weil TikTok/Meta
-// dort den Platz ebenfalls dem Feed-Flow überlassen.
+// bleiben kann ohne selber Auth-Reads zu machen). Seit v1.w.UI.10 wird der
+// Strip NUR im Following-Tab angezeigt — im „Für dich"-Feed ist er ausgeblendet
+// (TikTok-Referenz: dort gibt es auf For-You überhaupt keine Story-Row, und
+// unser For-You-Viewport soll denselben edge-to-edge Video-Flow bekommen).
 // -----------------------------------------------------------------------------
 
 export interface HomeFeedShellProps {
@@ -72,29 +74,27 @@ export function HomeFeedShell({
       </aside>
 
       {/*
-       * Center — Feed + Tabs, in einem Dark-Canvas-Wrapper (A1 aus UI_AUDIT).
+       * Center — Feed als edge-to-edge Video-Stage (v1.w.UI.10 Layout-Reset).
        *
-       * Warum dark-on-light: Video-Content pops auf schwarzem Canvas (TikTok,
-       * YouTube-Shorts, Reels). Auf Light-Theme ist der Rest der Site hell
-       * (bg-background = #F5F5F5), aber das Feed-Viewport selbst bekommt
-       * `bg-zinc-950` — der Feed wird dadurch visuell als „the video area"
-       * identifizierbar statt als generischer Content-Block. Die Chroma-
-       * Separierung hebt gleichzeitig die Sidebars im Peripheral-Vision-Bereich
-       * auf Zweitrangigkeit runter, was genau TikToks visuelle Hierarchie ist.
+       * Seit v1.w.UI.10: Der frühere „Floating-Window"-Look (xl:m-3 +
+       * xl:rounded-2xl + xl:shadow-elevation-3) ist weg. Das Video füllt auf
+       * Desktop die komplette Center-Spalte zwischen Sidebar-Kante und rechter
+       * Discover-Column, ohne Rand, ohne Rundung, ohne Shadow — TikTok-parität.
        *
-       * Auf Mobile (<md) läuft der Feed edge-to-edge; auf Desktop (xl+)
-       * bekommt er rounded corners + elevation-Shadow — wirkt wie eine „Phone
-       * Viewport"-Illusion, die TikToks eigener Web-Client ebenfalls nutzt.
+       * Der schwarze Canvas (`bg-zinc-950 text-white`) bleibt, weil Video-
+       * Content darauf wie designed kontrastiert; die Chroma-Separierung zur
+       * hellen Site-Umgebung bleibt erhalten, nur eben flush statt floating.
        *
-       * Tab-Bar klebt im Dark-Canvas mit `bg-zinc-950/80 backdrop-blur`
-       * statt `bg-background/80` — sonst würden die Tabs hell auf dunkler
-       * Umgebung unglücklich kontrastieren.
+       * Tab-Pills „Für dich / Folge ich" sind jetzt ein Floating-Overlay am
+       * oberen Stage-Rand (absolute top-3 center, z-20). Das nimmt die früher
+       * permanente h-12 Tab-Row aus dem Content-Flow heraus und gibt dem Video
+       * ~48px zusätzliche Höhe — direkt wie in TikToks Web-Viewer.
        */}
-      <div className="relative flex min-w-0 flex-col bg-zinc-950 text-white xl:m-3 xl:rounded-2xl xl:shadow-elevation-3">
+      <div className="relative flex min-w-0 flex-col bg-zinc-950 text-white">
         <div
           role="tablist"
           aria-label="Feed-Quellen"
-          className="mx-auto flex h-12 w-full max-w-[420px] items-center justify-center gap-6 border-b border-white/10 bg-zinc-950/80 backdrop-blur-md xl:rounded-t-2xl"
+          className="absolute left-1/2 top-3 z-20 flex -translate-x-1/2 items-center gap-6 rounded-full bg-black/35 px-5 py-1.5 backdrop-blur-md"
         >
           <FeedTabButton
             label="Für dich"
@@ -110,26 +110,26 @@ export function HomeFeedShell({
         </div>
 
         <div className="min-h-0 flex-1">
-          <div className={cn('flex h-full flex-col', tab !== 'foryou' && 'hidden')}>
+          <div className={cn('h-full', tab !== 'foryou' && 'hidden')}>
+            <FeedList
+              initialPosts={initialForYou}
+              viewerId={viewerId}
+              feedKey="foryou"
+            />
+          </div>
+          <div className={cn('flex h-full flex-col', tab !== 'following' && 'hidden')}>
             {storyStripSlot ? <div className="shrink-0">{storyStripSlot}</div> : null}
             <div className="min-h-0 flex-1">
-              <FeedList
-                initialPosts={initialForYou}
-                viewerId={viewerId}
-                feedKey="foryou"
-              />
+              {followingQuery.isFetching && followingPosts.length === 0 ? (
+                <FollowingSkeleton />
+              ) : (
+                <FeedList
+                  initialPosts={followingPosts}
+                  viewerId={viewerId}
+                  feedKey="following"
+                />
+              )}
             </div>
-          </div>
-          <div className={cn('h-full', tab !== 'following' && 'hidden')}>
-            {followingQuery.isFetching && followingPosts.length === 0 ? (
-              <FollowingSkeleton />
-            ) : (
-              <FeedList
-                initialPosts={followingPosts}
-                viewerId={viewerId}
-                feedKey="following"
-              />
-            )}
           </div>
         </div>
       </div>
@@ -259,12 +259,11 @@ function FeedTabButton({
   disabled?: boolean;
   onClick: () => void;
 }) {
-  // Live-on-dark-canvas (seit v1.w.UI.1 — A1 Dark-Canvas-Wrapper): Die Tabs
-  // sitzen jetzt innerhalb des `bg-zinc-950`-Wrappers, daher sind die semantischen
-  // Theme-Tokens (`text-foreground`, `text-muted-foreground`) ungeeignet — sie
-  // würden bei Light-Theme schwarzen Text auf schwarzem Canvas rendern. Wir
-  // nutzen stattdessen die gleiche Kontrast-Skala die TikTok auf schwarz fährt:
-  // aktiv = weiß, inaktiv = weiß/60% (weich, aber lesbar), disabled = weiß/30%.
+  // Tabs sitzen seit v1.w.UI.10 innerhalb einer Floating-Pill direkt auf dem
+  // Video-Canvas (absolute top-3 center). Kontrast-Skala bleibt die gleiche
+  // wie vorher in der Tab-Bar: aktiv = weiß + kleiner Underline, inaktiv =
+  // weiß/60% (weich, aber auf leicht transparentem schwarzen Pill-Hintergrund
+  // noch lesbar), disabled = weiß/30% ohne Hover-Feedback.
   return (
     <button
       type="button"
