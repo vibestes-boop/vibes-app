@@ -241,6 +241,18 @@ const enMessages = {
     profileSaved: 'Profile updated.',
     profileErrorFallback: 'Could not save — please try again.',
 
+    // v1.w.UI.21 — Avatar upload
+    profileAvatarTitle: 'Profile picture',
+    profileAvatarHint: 'Square, at least 200 × 200 px works best. JPG, PNG or WebP up to 10 MB.',
+    profileAvatarUpload: 'Choose image',
+    profileAvatarUploading: 'Uploading…',
+    profileAvatarRemove: 'Remove',
+    profileAvatarErrorTooLarge: 'File is too large (max. 10 MB).',
+    profileAvatarErrorType: 'Only image files allowed.',
+    profileAvatarErrorUpload: 'Upload failed — please try again.',
+    profileAvatarErrorSign: 'Could not prepare upload.',
+    profileAvatarErrorSave: 'Could not save profile picture.',
+
     notifMetaTitle: 'Notifications — Serlo',
     notifTitle: 'Notifications',
     notifSubtitle:

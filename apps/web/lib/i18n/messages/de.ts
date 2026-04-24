@@ -253,6 +253,18 @@ const deMessages = {
     profileSaved: 'Profil aktualisiert.',
     profileErrorFallback: 'Konnte nicht gespeichert werden — bitte erneut versuchen.',
 
+    // v1.w.UI.21 — Avatar-Upload
+    profileAvatarTitle: 'Profilbild',
+    profileAvatarHint: 'Quadratisch und mindestens 200 × 200 px funktioniert am besten. JPG, PNG oder WebP bis 10 MB.',
+    profileAvatarUpload: 'Bild wählen',
+    profileAvatarUploading: 'Lade hoch…',
+    profileAvatarRemove: 'Entfernen',
+    profileAvatarErrorTooLarge: 'Die Datei ist zu groß (max. 10 MB).',
+    profileAvatarErrorType: 'Nur Bilddateien erlaubt.',
+    profileAvatarErrorUpload: 'Upload fehlgeschlagen — bitte erneut versuchen.',
+    profileAvatarErrorSign: 'Upload konnte nicht vorbereitet werden.',
+    profileAvatarErrorSave: 'Profilbild konnte nicht gespeichert werden.',
+
     // /settings/notifications
     notifMetaTitle: 'Benachrichtigungen — Serlo',
     notifTitle: 'Benachrichtigungen',

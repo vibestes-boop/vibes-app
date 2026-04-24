@@ -15,9 +15,9 @@ import { ProfileEditForm } from '@/components/settings/profile-edit-form';
 // sichtbar (damit der User „weiß, wo er ist") aber nicht editierbar — der
 // Rename-Flow ist Cascade-Risiko und bleibt explizit out-of-scope.
 //
-// Avatar ist in diesem Slice ebenfalls nicht editierbar — das R2-Upload-
-// Widget (File-Input + Preview + Crop) verdient einen eigenen Slice und
-// würde hier den Editor überfordern, ohne das Feature wirklich zu liefern.
+// UI.21-Update: Avatar-Upload ist jetzt integriert — `AvatarUploadField`
+// erhält `initialAvatarUrl` + `userId` direkt, speichert separat von der
+// display_name/bio-Form über die `updateAvatar` Server-Action.
 // -----------------------------------------------------------------------------
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -67,6 +67,8 @@ export default async function ProfileSettingsPage() {
         initialDisplayName={profile.display_name ?? ''}
         initialBio={profile.bio ?? ''}
         username={profile.username ?? ''}
+        initialAvatarUrl={profile.avatar_url ?? null}
+        userId={user.id}
         labels={{
           displayName: t('settings.profileFieldDisplayName'),
           displayNameHint: t('settings.profileFieldDisplayNameHint'),
@@ -78,6 +80,18 @@ export default async function ProfileSettingsPage() {
           saving: t('settings.profileSaving'),
           saved: t('settings.profileSaved'),
           errorFallback: t('settings.profileErrorFallback'),
+          avatar: {
+            title: t('settings.profileAvatarTitle'),
+            hint: t('settings.profileAvatarHint'),
+            upload: t('settings.profileAvatarUpload'),
+            uploading: t('settings.profileAvatarUploading'),
+            remove: t('settings.profileAvatarRemove'),
+            errorTooLarge: t('settings.profileAvatarErrorTooLarge'),
+            errorType: t('settings.profileAvatarErrorType'),
+            errorUpload: t('settings.profileAvatarErrorUpload'),
+            errorSign: t('settings.profileAvatarErrorSign'),
+            errorSave: t('settings.profileAvatarErrorSave'),
+          },
         }}
       />
     </div>
