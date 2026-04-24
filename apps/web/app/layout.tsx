@@ -6,7 +6,7 @@ import { Toaster } from 'sonner';
 import { QueryProvider } from '@/providers/query-provider';
 import { ThemeProvider } from '@/providers/theme-provider';
 import { PostHogProvider } from '@/providers/posthog-provider';
-import { SiteHeader } from '@/components/site-header';
+import { TopRightActions } from '@/components/top-right-actions';
 import { ConsentBanner } from '@/components/consent/consent-banner';
 import { AnalyticsConsentGate } from '@/components/consent/analytics-consent-gate';
 import { ServiceWorkerRegistrar } from '@/components/pwa/service-worker-registrar';
@@ -127,7 +127,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 >
                   Zum Hauptinhalt springen
                 </a>
-                <SiteHeader />
+                {/*
+                 * v1.w.UI.11 TikTok-Parity: Kein SiteHeader mehr. Die
+                 * FeedSidebar auf xl+ übernimmt die Navigation, TopRightActions
+                 * schweben als Glass-Pills oben rechts über allen Seiten
+                 * (Coins + Avatar-Dropdown für logged-in, Login/Signup für
+                 * logged-out). Auf Mobile rendert MobileBottomNav unten.
+                 */}
+                <TopRightActions />
                 {/*
                  * `id="main-content"` ist das Skip-Link-Target. KEIN `<main>`-
                  * Tag hier, weil einzelne Pages (settings, studio, shop, explore,

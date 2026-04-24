@@ -67,7 +67,7 @@ export function HomeFeedShell({
   const followingPosts = followingQuery.data ?? initialFollowing ?? [];
 
   return (
-    <div className="grid h-[calc(100dvh-var(--site-header-h,64px))] w-full grid-cols-1 grid-rows-[minmax(0,1fr)] xl:grid-cols-[260px_1fr_320px]">
+    <div className="grid h-[100dvh] w-full grid-cols-1 grid-rows-[minmax(0,1fr)] xl:grid-cols-[260px_1fr_320px]">
       {/* Left Sidebar (Desktop only) */}
       <aside className="hidden border-r border-border xl:block">
         <FeedSidebar viewerId={viewerId} />
@@ -164,7 +164,7 @@ function FeedSidebarRight({
   const [pending, startTransition] = useTransition();
 
   return (
-    <div className="sticky top-0 flex h-[calc(100dvh-var(--site-header-h,64px))] flex-col gap-6 overflow-y-auto p-6">
+    <div className="sticky top-0 flex h-[100dvh] flex-col gap-6 overflow-y-auto p-6">
       <section>
         <h2 className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
           <Compass className="h-3.5 w-3.5" />

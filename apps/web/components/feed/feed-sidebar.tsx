@@ -57,7 +57,20 @@ export function FeedSidebar({ viewerId }: { viewerId: string | null }) {
   const isActive = (href: Route) => pathname === href;
 
   return (
-    <div className="sticky top-0 flex h-[calc(100dvh-var(--site-header-h,64px))] flex-col gap-4 p-4">
+    <div className="sticky top-0 flex h-[100dvh] flex-col gap-4 p-4">
+      {/*
+       * Brand-Logo ganz oben — seit v1.w.UI.11 ersetzt die Sidebar den globalen
+       * SiteHeader auf xl+. Logo sitzt da wo bisher im Header „Serlo" stand
+       * (font-serif, tracking-tight), klick führt zurück zum Feed.
+       */}
+      <Link
+        href={'/' as Route}
+        aria-label="Serlo — zur Startseite"
+        className="px-3 pt-1 font-serif text-2xl font-medium tracking-tight text-foreground hover:text-foreground/80"
+      >
+        Serlo
+      </Link>
+
       {/* Upload-CTA — ersetzt die frühere DesktopNav-Pill-Row im Header */}
       <Link
         href={'/create' as Route}

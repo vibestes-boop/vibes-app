@@ -82,10 +82,14 @@ export function StudioSubNav() {
     <nav
       aria-label={t('studio.navAria')}
       className={cn(
-        // Mobile: horizontal scroll, sticky
-        'sticky top-[var(--site-header-h,64px)] z-20 -mx-4 overflow-x-auto border-y bg-background/80 backdrop-blur-md lg:mx-0',
-        // Desktop: vertikal, kein scroll, kein border-y
-        'lg:top-[calc(var(--site-header-h,64px)+1rem)] lg:h-[calc(100dvh-var(--site-header-h,64px)-2rem)] lg:rounded-xl lg:border lg:bg-card lg:backdrop-blur-none',
+        // Mobile: horizontal scroll, sticky am Viewport-Top. Seit v1.w.UI.11
+        // gibt es keinen globalen SiteHeader mehr — Sub-Nav klebt direkt an
+        // der oberen Fensterkante.
+        'sticky top-0 z-20 -mx-4 overflow-x-auto border-y bg-background/80 backdrop-blur-md lg:mx-0',
+        // Desktop: vertikales Rail, 1rem Abstand zum oberen/unteren Rand. Höhe
+        // füllt den Viewport minus Top/Bottom-Padding. Kein SiteHeader-Offset
+        // mehr nötig.
+        'lg:top-4 lg:h-[calc(100dvh-2rem)] lg:rounded-xl lg:border lg:bg-card lg:backdrop-blur-none',
       )}
     >
       <ul className="flex items-center gap-1 px-4 py-2 lg:flex-col lg:items-stretch lg:px-2 lg:py-3">
