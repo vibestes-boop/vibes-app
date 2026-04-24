@@ -5,11 +5,11 @@ import { BadgeCheck, Heart, ShoppingBag, Swords } from 'lucide-react';
 import { getPublicProfile, getProfilePosts, isFollowing } from '@/lib/data/public';
 import { getUser } from '@/lib/auth/session';
 import { getMyCoinBalance } from '@/lib/data/payments';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { PostGrid } from '@/components/profile/post-grid';
 import { ProfileTabs, type ProfileTab } from '@/components/profile/profile-tabs';
 import { FollowButton } from '@/components/profile/follow-button';
 import { CreatorTipButton } from '@/components/profile/creator-tip-button';
+import { LiveRingAvatar } from '@/components/profile/live-ring-avatar';
 import { getT, getLocale } from '@/lib/i18n/server';
 import { LOCALE_INTL } from '@/lib/i18n/config';
 import type { Locale } from '@/lib/i18n/config';
@@ -181,12 +181,30 @@ export default async function ProfilePage({
       {/* ───── Hero ───── */}
       <section className="px-4 pb-4 pt-6 sm:px-6">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
-          <Avatar className="h-24 w-24 sm:h-28 sm:w-28 ring-4 ring-background">
-            <AvatarImage src={profile.avatar_url ?? undefined} alt={displayName} />
-            <AvatarFallback className="text-2xl">
-              {(profile.display_name ?? profile.username).slice(0, 2).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
+          {/* v1.w.UI.16: Avatar mit Gradient-Ring + LIVE-Badge wenn der User
+              aktuell eine Session hostet (Daten kommen via getPublicProfile
+              aus `live_sessions`-Tabelle). Wenn live, wird der Avatar zum
+              Link auf `/live/[sessionId]` — gleiche Affordance wie auf
+              TikTok/Instagram, wo man vom Profil direkt in den Stream
+              springt. Bei non-live User fällt die Komponente auf den
+              bisherigen `ring-4 ring-background`-Look zurück, keine Layout-
+              Änderung. */}
+          <LiveRingAvatar
+            src={profile.avatar_url}
+            alt={displayName}
+            fallback={(profile.display_name ?? profile.username).slice(0, 2).toUpperCase()}
+            live={!!profile.is_live}
+            liveHref={
+              profile.is_live && profile.live_session_id
+                ? `/live/${profile.live_session_id}`
+                : undefined
+            }
+            sizeClassName="h-24 w-24 sm:h-28 sm:w-28"
+            className="shrink-0"
+            liveLinkLabel={t('profile.liveNow', { name: displayName })}
+            liveBadgeLabel={t('profile.liveBadge')}
+          />
+
 
           <div className="flex min-w-0 flex-1 flex-col gap-3">
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">

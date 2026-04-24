@@ -90,7 +90,7 @@ export const getPublicProfile = cache(async (username: string): Promise<PublicPr
 
   if (error || !data) return null;
 
-  const [followerRes, followingRes, postsRes] = await Promise.all([
+  const [followerRes, followingRes, postsRes, liveRes] = await Promise.all([
     // Wer folgt MIR? → follows WHERE following_id = me
     supabase
       .from('follows')
@@ -106,6 +106,22 @@ export const getPublicProfile = cache(async (username: string): Promise<PublicPr
       .from('posts')
       .select('id', { count: 'exact', head: true })
       .eq('author_id', data.id),
+    // v1.w.UI.16: aktive Live-Session dieses Hosts, falls vorhanden. Für den
+    // Avatar-Gradient-Ring + „LIVE"-Badge auf dem Profil-Hero. Wir nehmen
+    // maxStarted (jüngste Session) — doppelte Active-Sessions sollte es nicht
+    // geben (Mobile-Flow beendet alte Session beim Start einer neuen), aber
+    // falls doch, ist die jüngste die richtige. Nutzt `idx_live_sessions_host`
+    // (host_id-Filter verkleinert die Row-Menge auf <10 Sessions pro User
+    // Lifetime) + in-memory Status-Filter. Kein zusätzlicher Partial-Index
+    // nötig bei dieser Result-Set-Größe.
+    supabase
+      .from('live_sessions')
+      .select('id')
+      .eq('host_id', data.id)
+      .eq('status', 'active')
+      .order('started_at', { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
 
   return {
@@ -118,6 +134,8 @@ export const getPublicProfile = cache(async (username: string): Promise<PublicPr
     follower_count: followerRes.count ?? 0,
     following_count: followingRes.count ?? 0,
     post_count: postsRes.count ?? 0,
+    is_live: !!liveRes.data?.id,
+    live_session_id: liveRes.data?.id ?? null,
   };
 });
 

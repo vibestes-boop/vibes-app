@@ -126,6 +126,9 @@ const ceMessages = {
     statPosts: 'Постаныш',
     statFollower: 'Фолловераш',
     statFollowing: 'Тӏехьа',
+    // v1.w.UI.16: gradient-ring + LIVE-badge нагахь санна пайдаоьцурх стримаш а беш
+    liveBadge: 'LIVE',
+    liveNow: '{name} хӏинца стрим беш ву — тӏевогӏий хьайга',
 
     tablistLabel: 'Профилан чулацамаш',
     tabPosts: 'Постаныш',
