@@ -37,6 +37,14 @@ jest.mock('@/components/feed/followed-accounts-section', () => ({
   ),
 }));
 
+// MoreMenu (v1.w.UI.12) ist ein Radix-DropdownMenu + next-themes + Server-Action
+// Bündel. Für Sidebar-Struktur-Tests mocken wir es weg — wir wollen hier nur
+// das Gate (viewerId vorhanden → Trigger da) assertieren, nicht das
+// Dropdown-Verhalten. Das macht der dedizierte more-menu.test.tsx.
+jest.mock('@/components/layout/more-menu', () => ({
+  MoreMenu: () => <div data-testid="more-menu">more-menu-stub</div>,
+}));
+
 describe('FeedSidebar — Layout-Reset (v1.w.UI.10) Struktur', () => {
   const PRIMARY_LABELS = ['Für dich', 'Folge ich', 'Entdecken', 'Live', 'Messages'];
   const SECONDARY_LABELS = ['Shop', 'Pods', 'Creator Studio'];
@@ -59,9 +67,11 @@ describe('FeedSidebar — Layout-Reset (v1.w.UI.10) Struktur', () => {
     }
   });
 
-  it('rendert genau 3 Secondary-Nav-Items unter „Mehr"-Header', () => {
+  it('rendert genau 3 Secondary-Nav-Items unter „Weiteres"-Header', () => {
+    // v1.w.UI.12 — Header umbenannt von „Mehr" → „Weiteres", damit der neue
+    // MoreMenu-Footer-Trigger (Text: „Mehr") keine Doppelbelegung hat.
     render(<FeedSidebar viewerId="viewer-1" />);
-    expect(screen.getByText('Mehr')).toBeInTheDocument();
+    expect(screen.getByText('Weiteres')).toBeInTheDocument();
     for (const label of SECONDARY_LABELS) {
       expect(screen.getByText(label)).toBeInTheDocument();
     }
@@ -109,12 +119,16 @@ describe('FeedSidebar — Layout-Reset (v1.w.UI.10) Struktur', () => {
     expect(entdecken).not.toHaveAttribute('aria-current', 'page');
   });
 
-  it('zeigt Einstellungs-Link nur wenn viewerId vorhanden', () => {
+  it('zeigt MoreMenu nur wenn viewerId vorhanden', () => {
+    // v1.w.UI.12 — Früherer Settings-Quicklink im Footer ist durch das
+    // „Mehr"-Dropdown ersetzt. Die Einstellungen sind jetzt innerhalb der
+    // DropdownMenuContent (→ Portal, nicht im DOM wenn zu) — darum testen wir
+    // stattdessen die Anwesenheit des MoreMenu-Stubs.
     const { rerender } = render(<FeedSidebar viewerId={null} />);
-    expect(screen.queryByText('Einstellungen')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('more-menu')).not.toBeInTheDocument();
 
     rerender(<FeedSidebar viewerId="viewer-1" />);
-    expect(screen.getByText('Einstellungen')).toBeInTheDocument();
+    expect(screen.getByTestId('more-menu')).toBeInTheDocument();
   });
 
   // v1.w.UI.11 Phase B — FollowedAccountsSection Gate-Bedingungen.

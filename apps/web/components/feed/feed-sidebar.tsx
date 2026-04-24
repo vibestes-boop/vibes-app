@@ -10,7 +10,6 @@ import {
   Radio,
   MessageCircle,
   ShoppingBag,
-  Settings,
   BarChart3,
   UserRound,
   Plus,
@@ -18,6 +17,7 @@ import {
 import { cn } from '@/lib/utils';
 import { OpenConsentSettingsButton } from '@/components/consent/consent-banner';
 import { FollowedAccountsSection } from '@/components/feed/followed-accounts-section';
+import { MoreMenu } from '@/components/layout/more-menu';
 import type { FollowedAccount } from '@/lib/data/feed';
 
 // -----------------------------------------------------------------------------
@@ -129,7 +129,7 @@ export function FeedSidebar({
       {/* Secondary Nav */}
       <div className="flex flex-col gap-1.5">
         <h2 className="px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
-          Mehr
+          Weiteres
         </h2>
         <nav className="flex flex-col gap-0.5" aria-label="Weitere Bereiche">
           {SECONDARY_NAV.map((item) => {
@@ -171,15 +171,13 @@ export function FeedSidebar({
       )}
 
       <div className="mt-auto flex flex-col gap-1">
-        {viewerId && (
-          <Link
-            href={'/settings' as Route}
-            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
-          >
-            <Settings className="h-5 w-5 shrink-0" />
-            <span>Einstellungen</span>
-          </Link>
-        )}
+        {/*
+         * v1.w.UI.12 — „Mehr"-Panel ersetzt den früheren Settings-Quicklink.
+         * Öffnet ein Dropdown nach oben mit Einstellungen, Coins,
+         * Darkmode-Toggle und Abmelden. Logged-out-Viewer sehen keinen
+         * Trigger — sign-out hätte keinen Sinn und Coins wären auch leer.
+         */}
+        {viewerId && <MoreMenu />}
 
         <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 px-3 text-[11px] text-muted-foreground/80">
           <Link href={'/imprint' as Route} className="hover:text-foreground hover:underline">
