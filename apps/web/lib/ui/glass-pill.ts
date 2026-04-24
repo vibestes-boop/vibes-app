@@ -126,3 +126,36 @@ export const glassSurface = [
 export const glassSurfaceDense = [
   'bg-black/70 ring-1 ring-white/10 backdrop-blur-md',
 ].join(' ');
+
+/**
+ * Maximal-dichte Interactive-Variante — v1.w.UI.15.
+ *
+ * Für primäre Video-Controls (LiveVideoPlayer: Mute, Fullscreen). Der
+ * Code-Comment im Ursprungs-File von v1.w.UI.1 dokumentiert den Ausgangs-
+ * fix: vorher /60 → Buttons gingen auf hellen Daylight-Szenen im Video-
+ * Bild unter; /80 + Ring korrigierte das. Diese Utility übernimmt genau
+ * diese Rezeptur — Mute und Fullscreen müssen aus Armlänge auf jedem
+ * Video-Canvas erkennbar sein (Haupt-Controls = Primary-Action).
+ *
+ * Gleiche State-Matrix wie `glassPillBase`/`glassPillStrong` (hover +
+ * data-[state=open] + focus-visible), nur am dichten Ende der Skala.
+ *
+ * Abgrenzung:
+ *   - `glassPillBase`    → App-Shell-Pills (TopRightActions, helle Umgebung)
+ *   - `glassPillStrong`  → schwebende Pills über Video (Back, Melden)
+ *   - `glassPillSolid`   → primäre Video-Controls (Mute, Fullscreen)
+ */
+export const glassPillSolid = [
+  // Surface (maximum density — /80 über Video-Canvas)
+  'bg-black/80 ring-1 ring-white/10 backdrop-blur-md',
+  // Text-Default
+  'text-white',
+  // Motion
+  'transition-colors duration-base ease-out-expo',
+  // Hover (/95 — fast komplett schwarz, klarer Affordance-Shift)
+  'hover:bg-black/95 hover:ring-white/20',
+  // Radix data-state=open — gleiche Hervorhebung wie Hover
+  'data-[state=open]:bg-black/95 data-[state=open]:ring-white/20',
+  // Keyboard-Focus (override — kein ring-offset auf schwebendem Element)
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-0',
+].join(' ');

@@ -20,6 +20,7 @@ import {
   glassPillStrong,
   glassSurface,
   glassSurfaceDense,
+  glassPillSolid,
 } from '@/lib/ui/glass-pill';
 
 describe('glassPillBase', () => {
@@ -166,16 +167,58 @@ describe('glassSurfaceDense (v1.w.UI.14 — content-dense Islands)', () => {
   });
 });
 
+describe('glassPillSolid (v1.w.UI.15 — primäre Video-Controls)', () => {
+  it('ist maximal dicht (bg-black/80 statt /55 oder /40)', () => {
+    // Mute + Fullscreen im LiveVideoPlayer müssen aus Armlänge auf jedem
+    // Szenen-Hintergrund erkennbar sein. /80 ist die Antwort auf den in
+    // v1.w.UI.1-B4 dokumentierten „Buttons gingen auf hellen Daylight-
+    // Szenen unter"-Regress.
+    expect(glassPillSolid).toContain('bg-black/80');
+    expect(glassPillSolid).not.toContain('bg-black/55');
+    expect(glassPillSolid).not.toContain('bg-black/40');
+  });
+
+  it('erbt Ring + Blur-Rezeptur von der restlichen Glass-Familie', () => {
+    expect(glassPillSolid).toContain('ring-1');
+    expect(glassPillSolid).toContain('ring-white/10');
+    expect(glassPillSolid).toContain('backdrop-blur-md');
+  });
+
+  it('nutzt /95-Hover für klaren Affordance-Shift (fast vollschwarz)', () => {
+    expect(glassPillSolid).toContain('hover:bg-black/95');
+    expect(glassPillSolid).toContain('hover:ring-white/20');
+  });
+
+  it('spiegelt Hover auf data-[state=open] (konsistent mit Base/Strong)', () => {
+    expect(glassPillSolid).toContain('data-[state=open]:bg-black/95');
+    expect(glassPillSolid).toContain('data-[state=open]:ring-white/20');
+  });
+
+  it('behält Motion-Tokens + Focus-Override', () => {
+    expect(glassPillSolid).toContain('transition-colors');
+    expect(glassPillSolid).toContain('duration-base');
+    expect(glassPillSolid).toContain('ease-out-expo');
+    expect(glassPillSolid).toContain('focus-visible:ring-offset-0');
+  });
+});
+
 describe('Glass-Utility-Familie — Konsistenz-Checks', () => {
-  it('alle vier Varianten sind nicht-leere Strings', () => {
+  it('alle fünf Varianten sind nicht-leere Strings', () => {
     expect(glassPillBase.length).toBeGreaterThan(0);
     expect(glassPillStrong.length).toBeGreaterThan(0);
+    expect(glassPillSolid.length).toBeGreaterThan(0);
     expect(glassSurface.length).toBeGreaterThan(0);
     expect(glassSurfaceDense.length).toBeGreaterThan(0);
   });
 
   it('alle Varianten trimmen sauber (keine double-spaces, kein trailing WS)', () => {
-    for (const cls of [glassPillBase, glassPillStrong, glassSurface, glassSurfaceDense]) {
+    for (const cls of [
+      glassPillBase,
+      glassPillStrong,
+      glassPillSolid,
+      glassSurface,
+      glassSurfaceDense,
+    ]) {
       expect(cls).not.toMatch(/\s{2,}/);
       expect(cls).toBe(cls.trim());
     }
@@ -183,8 +226,22 @@ describe('Glass-Utility-Familie — Konsistenz-Checks', () => {
 
   it('alle Varianten nutzen backdrop-blur-md als gemeinsame Glass-Signatur', () => {
     // Der Blur ist das kennzeichnende Merkmal — ohne ihn ist es kein Glass.
-    for (const cls of [glassPillBase, glassPillStrong, glassSurface, glassSurfaceDense]) {
+    for (const cls of [
+      glassPillBase,
+      glassPillStrong,
+      glassPillSolid,
+      glassSurface,
+      glassSurfaceDense,
+    ]) {
       expect(cls).toContain('backdrop-blur-md');
     }
+  });
+
+  it('Dichte-Skala interaktiv: Base (/40) < Strong (/55) < Solid (/80)', () => {
+    // Guard damit niemand versehentlich die Dichte-Hierarchie umdreht
+    // (z.B. Base auf /60 bumpt und damit überlappt mit Strong).
+    expect(glassPillBase).toContain('bg-black/40');
+    expect(glassPillStrong).toContain('bg-black/55');
+    expect(glassPillSolid).toContain('bg-black/80');
   });
 });
