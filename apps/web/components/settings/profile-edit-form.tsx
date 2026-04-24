@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import { AtSign, CheckCircle2, AlertCircle } from 'lucide-react';
 
 import { updateProfile } from '@/app/actions/profile';
+import { AvatarUploadField, type AvatarUploadFieldLabels } from '@/components/settings/avatar-upload-field';
 import { cn } from '@/lib/utils';
 
 // -----------------------------------------------------------------------------
@@ -44,6 +45,8 @@ export interface ProfileEditFormLabels {
   saving: string;
   saved: string;
   errorFallback: string;
+  /** v1.w.UI.21 — Avatar-Labels; an AvatarUploadField durchgereicht. */
+  avatar: AvatarUploadFieldLabels;
 }
 
 export interface ProfileEditFormProps {
@@ -51,6 +54,10 @@ export interface ProfileEditFormProps {
   initialBio: string;
   /** Username wird readonly angezeigt; Rename ist out-of-scope. */
   username: string;
+  /** v1.w.UI.21 — Aktuelle Avatar-URL aus DB; `null` wenn keiner gesetzt. */
+  initialAvatarUrl: string | null;
+  /** User-ID wird im AvatarUploadField für den R2-Key-Pfad gebraucht. */
+  userId: string;
   labels: ProfileEditFormLabels;
 }
 
@@ -58,6 +65,8 @@ export function ProfileEditForm({
   initialDisplayName,
   initialBio,
   username,
+  initialAvatarUrl,
+  userId,
   labels,
 }: ProfileEditFormProps) {
   const [displayName, setDisplayName] = useState(initialDisplayName);
@@ -129,6 +138,16 @@ export function ProfileEditForm({
           <span>{status.message}</span>
         </div>
       )}
+
+      {/* Avatar — eigener Upload-Flow via R2 (v1.w.UI.21). Lebt außerhalb
+          des restlichen Form-State; speichert sich direkt per `updateAvatar`
+          Server-Action und ist von `handleSubmit` entkoppelt. */}
+      <AvatarUploadField
+        initialAvatarUrl={initialAvatarUrl}
+        userId={userId}
+        displayName={initialDisplayName || username}
+        labels={labels.avatar}
+      />
 
       {/* Username — readonly. Wir rendern es als deaktiviertes Input damit es
           visuell zum Editor gehört, aber der AtSign-Icon + Hint machen klar

@@ -37,7 +37,7 @@ jest.mock('next/headers', () => ({
 import { revalidatePath } from 'next/cache';
 import { getUser } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
-import { updateProfile } from '../profile';
+import { updateProfile, updateAvatar } from '../profile';
 
 const mockGetUser = getUser as jest.MockedFunction<typeof getUser>;
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
@@ -239,6 +239,169 @@ describe('updateProfile — Cache-Invalidation', () => {
 
   it('does NOT revalidate when validation fails', async () => {
     const result = await updateProfile(makeFormData({ display_name: '', bio: '' }));
+    expect(result.ok).toBe(false);
+    expect(mockRevalidatePath).not.toHaveBeenCalled();
+  });
+});
+
+// -----------------------------------------------------------------------------
+// v1.w.UI.21 — updateAvatar (Avatar-Upload-Save)
+// -----------------------------------------------------------------------------
+
+describe('updateAvatar — Auth-Gate', () => {
+  it('returns { ok: false } when no user is logged in', async () => {
+    mockGetUser.mockResolvedValue(null);
+
+    const result = await updateAvatar('https://pub-abc.r2.dev/avatars/user-1/123.jpg');
+
+    expect(result).toEqual({ ok: false, error: expect.any(String) });
+    expect(mockCreateClient).not.toHaveBeenCalled();
+  });
+});
+
+describe('updateAvatar — URL-Allowlist', () => {
+  const USER_ID = 'user-42';
+
+  beforeEach(() => {
+    mockGetUser.mockResolvedValue({ id: USER_ID } as never);
+  });
+
+  it('accepts valid r2.dev public URL with correct /avatars/{userId}/ path', async () => {
+    const { client, lastBuilder } = makeSupabaseMock();
+    mockCreateClient.mockResolvedValue(client as never);
+
+    const url = `https://pub-abc123.r2.dev/avatars/${USER_ID}/1712345678.webp`;
+    const result = await updateAvatar(url);
+
+    expect(result).toEqual({ ok: true, data: null });
+    expect(lastBuilder()!._updatePayload).toEqual({ avatar_url: url });
+    expect(lastBuilder()!._eqCalls).toEqual([['id', USER_ID]]);
+  });
+
+  it('accepts valid r2.cloudflarestorage.com URL', async () => {
+    const { client } = makeSupabaseMock();
+    mockCreateClient.mockResolvedValue(client as never);
+
+    const url = `https://myaccount.r2.cloudflarestorage.com/vibes-media/avatars/${USER_ID}/42.jpg`;
+    const result = await updateAvatar(url);
+
+    expect(result.ok).toBe(true);
+  });
+
+  it('accepts valid supabase.co storage URL', async () => {
+    const { client } = makeSupabaseMock();
+    mockCreateClient.mockResolvedValue(client as never);
+
+    const url = `https://project.supabase.co/storage/v1/object/public/avatars/${USER_ID}/img.png`;
+    const result = await updateAvatar(url);
+
+    expect(result.ok).toBe(true);
+  });
+
+  it('rejects URL with http:// (non-HTTPS)', async () => {
+    const url = `http://pub-abc.r2.dev/avatars/${USER_ID}/42.jpg`;
+    const result = await updateAvatar(url);
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.field).toBe('avatar_url');
+    expect(mockCreateClient).not.toHaveBeenCalled();
+  });
+
+  it('rejects URL with non-allowed host', async () => {
+    const url = `https://evil.example/avatars/${USER_ID}/42.jpg`;
+    const result = await updateAvatar(url);
+    expect(result.ok).toBe(false);
+    expect(mockCreateClient).not.toHaveBeenCalled();
+  });
+
+  it('rejects URL without /avatars/{userId}/ path (cross-user steal)', async () => {
+    const url = 'https://pub-abc.r2.dev/avatars/other-user-id/42.jpg';
+    const result = await updateAvatar(url);
+    expect(result.ok).toBe(false);
+    expect(mockCreateClient).not.toHaveBeenCalled();
+  });
+
+  it('rejects URL pointing at posts/ instead of avatars/', async () => {
+    const url = `https://pub-abc.r2.dev/posts/images/${USER_ID}/42.jpg`;
+    const result = await updateAvatar(url);
+    expect(result.ok).toBe(false);
+    expect(mockCreateClient).not.toHaveBeenCalled();
+  });
+
+  it('rejects malformed URL', async () => {
+    const result = await updateAvatar('not a url');
+    expect(result.ok).toBe(false);
+    expect(mockCreateClient).not.toHaveBeenCalled();
+  });
+
+  it('rejects empty string', async () => {
+    const result = await updateAvatar('');
+    expect(result.ok).toBe(false);
+    expect(mockCreateClient).not.toHaveBeenCalled();
+  });
+
+  it('rejects URL longer than 2048 chars', async () => {
+    const url = `https://pub-abc.r2.dev/avatars/${USER_ID}/${'x'.repeat(2100)}.jpg`;
+    const result = await updateAvatar(url);
+    expect(result.ok).toBe(false);
+    expect(mockCreateClient).not.toHaveBeenCalled();
+  });
+});
+
+describe('updateAvatar — Remove (null)', () => {
+  beforeEach(() => {
+    mockGetUser.mockResolvedValue({ id: 'user-7' } as never);
+  });
+
+  it('accepts null → writes avatar_url: null (clear avatar)', async () => {
+    const { client, lastBuilder } = makeSupabaseMock();
+    mockCreateClient.mockResolvedValue(client as never);
+
+    const result = await updateAvatar(null);
+
+    expect(result).toEqual({ ok: true, data: null });
+    expect(lastBuilder()!._updatePayload).toEqual({ avatar_url: null });
+    expect(lastBuilder()!._eqCalls).toEqual([['id', 'user-7']]);
+  });
+});
+
+describe('updateAvatar — Write-Pfad & Cache-Invalidation', () => {
+  beforeEach(() => {
+    mockGetUser.mockResolvedValue({ id: 'user-9' } as never);
+  });
+
+  it('writes only avatar_url (no display_name / bio / username leaked)', async () => {
+    const { client, lastBuilder } = makeSupabaseMock();
+    mockCreateClient.mockResolvedValue(client as never);
+
+    await updateAvatar('https://pub-abc.r2.dev/avatars/user-9/1.jpg');
+
+    const payload = lastBuilder()!._updatePayload as Record<string, unknown>;
+    expect(Object.keys(payload)).toEqual(['avatar_url']);
+  });
+
+  it('returns Supabase error message when update fails', async () => {
+    const { client } = makeSupabaseMock({ message: 'db offline' });
+    mockCreateClient.mockResolvedValue(client as never);
+
+    const result = await updateAvatar('https://pub-abc.r2.dev/avatars/user-9/1.jpg');
+
+    expect(result).toEqual({ ok: false, error: 'db offline' });
+    expect(mockRevalidatePath).not.toHaveBeenCalled();
+  });
+
+  it('revalidates /settings/profile + layout + /u/[username] on success', async () => {
+    const { client } = makeSupabaseMock();
+    mockCreateClient.mockResolvedValue(client as never);
+
+    await updateAvatar('https://pub-abc.r2.dev/avatars/user-9/1.jpg');
+
+    expect(mockRevalidatePath).toHaveBeenCalledWith('/settings/profile');
+    expect(mockRevalidatePath).toHaveBeenCalledWith('/', 'layout');
+    expect(mockRevalidatePath).toHaveBeenCalledWith('/u/[username]', 'page');
+  });
+
+  it('does NOT revalidate when URL validation fails', async () => {
+    const result = await updateAvatar('https://evil.example/avatars/user-9/1.jpg');
     expect(result.ok).toBe(false);
     expect(mockRevalidatePath).not.toHaveBeenCalled();
   });

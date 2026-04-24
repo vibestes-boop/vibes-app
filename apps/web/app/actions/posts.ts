@@ -373,7 +373,16 @@ export interface R2SignResult {
   key: string;
 }
 
-const ALLOWED_KEY_PREFIXES = ['posts/videos/', 'posts/images/', 'thumbnails/'];
+const ALLOWED_KEY_PREFIXES = [
+  'posts/videos/',
+  'posts/images/',
+  'thumbnails/',
+  // v1.w.UI.21 — Avatar-Upload (Profil-Editor). Key-Pattern:
+  // `avatars/{userId}/{timestamp}.{ext}`. Die `ownerOk`-Check unten
+  // erzwingt dass `{userId}` == Viewer-ID — ein manipulierter Client
+  // kann also nicht in den Avatar-Ordner eines anderen Users schreiben.
+  'avatars/',
+];
 
 export async function requestR2UploadUrl(
   input: R2SignInput,

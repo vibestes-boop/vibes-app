@@ -101,3 +101,100 @@ export async function updateProfile(formData: FormData): Promise<ActionResult<nu
 
   return { ok: true, data: null };
 }
+
+// -----------------------------------------------------------------------------
+// v1.w.UI.21 — Avatar-Update Server-Action.
+//
+// Frontend-Flow:
+//   (1) Client wählt Datei → clientseitig komprimieren (compressImage,
+//       maxEdge 512, quality 0.85 → typisch 30-80 kB JPEG/WebP)
+//   (2) Client ruft `requestR2UploadUrl({ key: 'avatars/{userId}/{ts}.{ext}',
+//       contentType })` → bekommt `{ uploadUrl, publicUrl }`
+//   (3) Client macht `PUT uploadUrl` direkt an R2
+//   (4) Client ruft **diese** Action mit `publicUrl` → `profiles.avatar_url`
+//       wird geschrieben
+//
+// `avatarUrl === null` = Avatar entfernen (DB-Spalte zurück auf NULL).
+//
+// Security-Gate: Wir können nicht verhindern, dass ein manipulierter Client
+// beliebige Strings als `avatarUrl` reinreicht. Deshalb validiert diese Action
+// drei Dinge:
+//   (a) HTTPS (Plain-HTTP wäre ein Mixed-Content-Leck im Browser)
+//   (b) Hostname ist R2 (`*.r2.dev` oder `*.r2.cloudflarestorage.com`) ODER
+//       Supabase-Storage (`*.supabase.co`) — deckt alle Backends ab, die im
+//       `next.config.mjs` → `images.remotePatterns` allowed sind
+//   (c) Path enthält `/avatars/{userId}/` — verhindert dass User-A einen
+//       fremden Avatar-Upload-Pfad (User-B) als sein eigenes Bild setzt
+//
+// Wir whitelisten EXPLIZIT nur `avatar_url` — `display_name`, `bio`,
+// `username` werden hier nie angefasst (analog zum `updateProfile`-Pattern).
+// -----------------------------------------------------------------------------
+
+const AVATAR_MAX_URL_LENGTH = 2048;
+const AVATAR_ALLOWED_HOST_SUFFIXES = [
+  '.r2.dev',
+  '.r2.cloudflarestorage.com',
+  '.supabase.co',
+];
+
+function isAllowedAvatarUrl(url: string, userId: string): boolean {
+  if (url.length > AVATAR_MAX_URL_LENGTH) return false;
+
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+
+  if (parsed.protocol !== 'https:') return false;
+
+  const host = parsed.hostname.toLowerCase();
+  const hostOk = AVATAR_ALLOWED_HOST_SUFFIXES.some((suffix) => host.endsWith(suffix));
+  if (!hostOk) return false;
+
+  // Pfad MUSS den eigenen User-Ordner enthalten. Slashes am Anfang/Ende
+  // verhindern Partial-Matches (z.B. `avatars/abc-foo/` könnte sonst für
+  // User-ID `abc` durchrutschen).
+  const ownerSegment = `/avatars/${userId}/`;
+  if (!parsed.pathname.includes(ownerSegment)) return false;
+
+  return true;
+}
+
+export async function updateAvatar(avatarUrl: string | null): Promise<ActionResult<null>> {
+  const user = await getUser();
+  if (!user) {
+    return { ok: false, error: 'Bitte einloggen.' };
+  }
+
+  // `null` = Avatar entfernen.
+  if (avatarUrl !== null) {
+    if (typeof avatarUrl !== 'string' || avatarUrl.length === 0) {
+      return { ok: false, error: 'Ungültige Avatar-URL.', field: 'avatar_url' };
+    }
+    if (!isAllowedAvatarUrl(avatarUrl, user.id)) {
+      return { ok: false, error: 'Ungültige Avatar-URL.', field: 'avatar_url' };
+    }
+  }
+
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ avatar_url: avatarUrl })
+    .eq('id', user.id);
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  // Gleiche Revalidation-Scopes wie `updateProfile` — der Avatar erscheint
+  // im Editor (eigenes Preview), in der Layout-Nav (FeedSidebar avatar) und
+  // auf dem eigenen `/u/[username]`-Profile.
+  revalidatePath('/settings/profile');
+  revalidatePath('/', 'layout');
+  revalidatePath('/u/[username]', 'page');
+
+  return { ok: true, data: null };
+}

@@ -244,6 +244,18 @@ const ruMessages = {
     profileSaved: 'Профиль обновлён.',
     profileErrorFallback: 'Не удалось сохранить — попробуй ещё раз.',
 
+    // v1.w.UI.21 — Загрузка аватара
+    profileAvatarTitle: 'Аватар',
+    profileAvatarHint: 'Лучше квадрат от 200 × 200 px. JPG, PNG или WebP до 10 МБ.',
+    profileAvatarUpload: 'Выбрать фото',
+    profileAvatarUploading: 'Загружаю…',
+    profileAvatarRemove: 'Удалить',
+    profileAvatarErrorTooLarge: 'Файл слишком большой (макс. 10 МБ).',
+    profileAvatarErrorType: 'Разрешены только изображения.',
+    profileAvatarErrorUpload: 'Загрузка не удалась — попробуй ещё раз.',
+    profileAvatarErrorSign: 'Не удалось подготовить загрузку.',
+    profileAvatarErrorSave: 'Не удалось сохранить аватар.',
+
     notifMetaTitle: 'Уведомления — Serlo',
     notifTitle: 'Уведомления',
     notifSubtitle:

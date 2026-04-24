@@ -254,6 +254,18 @@ const ceMessages = {
     profileSaved: 'Профиль карлайаьккхина.',
     profileErrorFallback: 'Ӏалашдан ца делира — юха дохье.',
 
+    // v1.w.UI.21 — Аватар-загрузка
+    profileAvatarTitle: 'Профилан сурт',
+    profileAvatarHint: 'Дика хир ду квадрат 200 × 200 px дуьхьал. JPG, PNG я WebP 10 МБ кхаччалц.',
+    profileAvatarUpload: 'Сурт харжа',
+    profileAvatarUploading: 'Чу ло…',
+    profileAvatarRemove: 'Дӏадаккха',
+    profileAvatarErrorTooLarge: 'Файл еккъа йоккха ю (макс. 10 МБ).',
+    profileAvatarErrorType: 'Суьрташ бен а мегар дац.',
+    profileAvatarErrorUpload: 'Чу дан ца делира — юха дохье.',
+    profileAvatarErrorSign: 'Чу дан кечдан ца делира.',
+    profileAvatarErrorSave: 'Профилан сурт Ӏалашдан ца делира.',
+
     notifMetaTitle: 'Хаамаш — Serlo',
     notifTitle: 'Хаамаш',
     notifSubtitle:
