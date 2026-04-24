@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation';
 import type { Route } from 'next';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import { User as UserIcon, Receipt, Shield, Bell } from 'lucide-react';
+import { User as UserIcon, Receipt, Shield, Bell, Home } from 'lucide-react';
 
 import { getUser } from '@/lib/auth/session';
 import { getT } from '@/lib/i18n/server';
@@ -26,8 +26,13 @@ interface SettingsNavItem {
   phaseKey?: TranslationKey;
 }
 
+// v1.w.UI.18: Erster Eintrag ist jetzt „Übersicht" (enabled, linkt auf
+// /settings Root = flache Overview-Liste). Der bisherige disabled „Profil"-
+// Eintrag ist entfernt — Profil-Editor kommt als eigener Eintrag wenn
+// Phase 11 die Editor-UI baut; bis dahin ist die Overview selbst die
+// Haupt-Landing-Page.
 const NAV: SettingsNavItem[] = [
-  { labelKey: 'settings.navProfile',       href: '/settings' as Route,               icon: UserIcon, phaseKey: 'settings.phaseHint' },
+  { labelKey: 'settings.navOverview',      href: '/settings' as Route,               icon: Home },
   { labelKey: 'settings.navBilling',       href: '/settings/billing' as Route,       icon: Receipt },
   { labelKey: 'settings.navNotifications', href: '/settings/notifications' as Route, icon: Bell },
   { labelKey: 'settings.navPrivacy',       href: '/settings/privacy' as Route,       icon: Shield },
