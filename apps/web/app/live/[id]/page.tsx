@@ -19,6 +19,7 @@ import { LivePollPanel } from '@/components/live/live-poll-panel';
 import { LiveHostPill } from '@/components/live/live-host-pill';
 import { LiveChatOverlay } from '@/components/live/live-chat-overlay';
 import { LiveEnterClient } from '@/components/live/live-enter-client';
+import { LiveGiftAnimationLayer } from '@/components/live/live-gift-animation-layer';
 import {
   glassPillStrong,
   glassSurface,
@@ -178,6 +179,14 @@ export default async function LiveViewerPage({ params }: PageProps) {
            * bleiben (Reserved für Phase 2 B4 Maximize).
            */}
           <div className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/50 via-black/20 to-transparent" />
+
+          {/*
+           * Gift-Animation-Layer (v1.w.UI.17, B3) — subscribed auf
+           * `live_gifts` INSERT, spawnt float-up-Bursts über dem Video.
+           * Eigene z-20, absolute inset-0, pointer-events-none — stört
+           * keine Controls. Nur während Stream aktiv sinnvoll.
+           */}
+          {!ended && <LiveGiftAnimationLayer sessionId={id} />}
 
           {/* Top-Bar: Back-Link links, Melden rechts */}
           <div className="absolute inset-x-3 top-3 flex items-center justify-between">
