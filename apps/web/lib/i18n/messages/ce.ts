@@ -238,6 +238,22 @@ const ceMessages = {
     rowDeleteSubtitle: 'Юхавирзина йац — дерриге хаамаш дӀадохуш ду',
     comingSoonBadge: 'Сиха',
 
+    // v1.w.UI.20 — Профилан редактор
+    profileMetaTitle: 'Профиль — Нисдарш — Serlo',
+    profileTitle: 'Профиль',
+    profileSubtitle: 'Муха хьуна Serlo-х гу — цӏе, био, ник.',
+    profileBackToOverview: 'Нисдаршка юхавала',
+    profileFieldDisplayName: 'Цӏе',
+    profileFieldDisplayNameHint: 'Иштта хьан цӏе постийн кӏелахь а, хьан профилехь а гойту.',
+    profileFieldBio: 'Био',
+    profileFieldBioHint: 'Жима интро хьан профилехь. Ссылкаш а, @-даларш а бӏаьрг тоьхна даладо.',
+    profileFieldUsername: 'Ник',
+    profileFieldUsernameHint: 'Ник кхузахь хийца лур бац — иза хьан дерриге URL а, даларш а ца дайн.',
+    profileSave: 'Ӏалашде',
+    profileSaving: 'Ӏалашдеш…',
+    profileSaved: 'Профиль карлайаьккхина.',
+    profileErrorFallback: 'Ӏалашдан ца делира — юха дохье.',
+
     notifMetaTitle: 'Хаамаш — Serlo',
     notifTitle: 'Хаамаш',
     notifSubtitle:

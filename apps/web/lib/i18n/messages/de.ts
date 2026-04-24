@@ -237,6 +237,22 @@ const deMessages = {
     rowDeleteSubtitle: 'Unwiderruflich — alle Daten löschen',
     comingSoonBadge: 'Bald',
 
+    // v1.w.UI.20 — Profil-Editor
+    profileMetaTitle: 'Profil — Einstellungen — Serlo',
+    profileTitle: 'Profil',
+    profileSubtitle: 'So erscheinst du auf Serlo — Name, Bio und Handle.',
+    profileBackToOverview: 'Zurück zu Einstellungen',
+    profileFieldDisplayName: 'Anzeigename',
+    profileFieldDisplayNameHint: 'So erscheint dein Name unter Posts und auf deinem Profil.',
+    profileFieldBio: 'Bio',
+    profileFieldBioHint: 'Eine kurze Intro-Zeile auf deinem Profil. Links und @-Erwähnungen werden automatisch erkannt.',
+    profileFieldUsername: 'Benutzername',
+    profileFieldUsernameHint: 'Dein Handle ist hier nicht änderbar — er ist mit all deinen URLs und Erwähnungen verknüpft.',
+    profileSave: 'Speichern',
+    profileSaving: 'Speichere…',
+    profileSaved: 'Profil aktualisiert.',
+    profileErrorFallback: 'Konnte nicht gespeichert werden — bitte erneut versuchen.',
+
     // /settings/notifications
     notifMetaTitle: 'Benachrichtigungen — Serlo',
     notifTitle: 'Benachrichtigungen',
