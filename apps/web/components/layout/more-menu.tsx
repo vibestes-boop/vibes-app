@@ -50,9 +50,18 @@ export function MoreMenu() {
           type="button"
           aria-label="Weitere Optionen"
           className={cn(
-            'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
+            // v1.w.UI.13: duration-base + ease-out-expo für konsistente
+            // Motion-Kurve mit den Glass-Pills im TopRightActions. Der
+            // MoreMenu lebt in der Sidebar auf hellem/getintetem Canvas
+            // (bg-muted via Hover) — bleibt damit Token-basiert, braucht
+            // aber kein Glass-Pattern (kein schwebendes Element).
+            'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors duration-base ease-out-expo',
             'text-muted-foreground hover:bg-muted hover:text-foreground',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+            // Open-State: controlled `open` triggert den Hervorhebungs-State
+            // sofort; Radix' `data-[state=open]`-Selector dient als Backup
+            // für den kurzen Frame zwischen Controlled-Update und Portal-Mount.
+            'data-[state=open]:bg-muted data-[state=open]:text-foreground',
             open && 'bg-muted text-foreground',
           )}
         >

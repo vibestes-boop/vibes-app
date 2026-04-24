@@ -57,7 +57,14 @@ export function LocaleSwitcher() {
         <span>{t('menu.language')}</span>
       </DropdownMenuSubTrigger>
       <DropdownMenuPortal>
-        <DropdownMenuSubContent className="min-w-44">
+        {/*
+         * v1.w.UI.13: min-w-52 (vorher 44) damit die längsten Native-Namen
+         * (z.B. „Нохчийн") nebst der Parenthese nicht drücken; plus flex-
+         * Spalte-Struktur für das Label-Pair damit der Native-Name visuell
+         * über der deutschen Übersetzung steht — auf schmalen Viewports
+         * lesbarer als ein Einzel-Zeilen-Label mit Klammer-Suffix.
+         */}
+        <DropdownMenuSubContent className="min-w-52">
           {SUPPORTED_LOCALES.map((code) => {
             const label = LOCALE_LABELS[code];
             const active = code === locale;
@@ -71,11 +78,11 @@ export function LocaleSwitcher() {
                 }}
                 className="cursor-pointer"
               >
-                <span className="flex flex-1 items-center gap-2">
-                  <span className="font-medium">{label.native}</span>
-                  <span className="text-xs text-muted-foreground">({label.de})</span>
+                <span className="flex flex-1 flex-col gap-0.5">
+                  <span className="text-sm font-medium leading-tight">{label.native}</span>
+                  <span className="text-xs leading-tight text-muted-foreground">{label.de}</span>
                 </span>
-                {active && <Check className="h-4 w-4" aria-hidden="true" />}
+                {active && <Check className="h-4 w-4 shrink-0" aria-hidden="true" />}
               </DropdownMenuItem>
             );
           })}
