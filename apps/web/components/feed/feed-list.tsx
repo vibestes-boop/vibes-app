@@ -190,7 +190,15 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
       // oder Tippen im Input-Feld sollen nicht zählen.
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       const t = e.target as HTMLElement | null;
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      if (t) {
+        if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA') return;
+        // isContentEditable ist in JSDOM unreliable wenn contentEditable via
+        // Property-Setter gesetzt wurde (`el.contentEditable = 'true'`) statt
+        // via setAttribute. Belt-and-suspenders: attribute-Check als Fallback.
+        if (t.isContentEditable) return;
+        const ce = t.getAttribute('contenteditable');
+        if (ce === 'true' || ce === '') return;
+      }
       if (cancelled) return;
 
       cancelled = true;
