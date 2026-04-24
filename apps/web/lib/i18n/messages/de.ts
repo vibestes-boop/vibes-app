@@ -208,11 +208,34 @@ const deMessages = {
 
   settings: {
     // Layout-Nav (in `/settings/layout.tsx` und auf jeder Sub-Page sichtbar)
+    navOverview: 'Übersicht',
     navProfile: 'Profil',
     navBilling: 'Bezahlungen',
     navNotifications: 'Benachrichtigungen',
     navPrivacy: 'Privatsphäre',
     phaseHint: 'Phase 11',
+
+    // /settings (Root-Overview, v1.w.UI.18 D7)
+    overviewMetaTitle: 'Einstellungen — Serlo',
+    overviewTitle: 'Einstellungen',
+    overviewSubtitle: 'Konto, App und alles dazwischen.',
+    sectionAccount: 'Konto',
+    sectionApp: 'App',
+    sectionDanger: 'Gefahrenzone',
+    rowProfileSubtitle: 'Name, Bio, Avatar',
+    rowBillingSubtitle: 'Coins, Wallet, Rechnungen',
+    rowNotificationsSubtitle: 'Push, DMs, Go-Live',
+    rowPrivacySubtitle: 'Daten, Einwilligungen, Export',
+    rowBlockedLabel: 'Geblockte Nutzer',
+    rowBlockedSubtitle: 'Blocks verwalten',
+    rowLanguageLabel: 'Sprache',
+    rowThemeLabel: 'Design',
+    rowThemeLight: 'Hell',
+    rowThemeDark: 'Dunkel',
+    rowSignOutLabel: 'Abmelden',
+    rowDeleteLabel: 'Konto löschen',
+    rowDeleteSubtitle: 'Unwiderruflich — alle Daten löschen',
+    comingSoonBadge: 'Bald',
 
     // /settings/notifications
     notifMetaTitle: 'Benachrichtigungen — Serlo',
