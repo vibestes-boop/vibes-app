@@ -26,6 +26,17 @@ jest.mock('@/components/consent/consent-banner', () => ({
   ),
 }));
 
+// FollowedAccountsSection ist eine neue v1.w.UI.11 Phase-B-Sektion mit eigenem
+// Sheet-State + fetch. Für Sidebar-Struktur-Tests ein Stub, damit wir die
+// Rendering-Bedingungen (viewerId + followedAccounts) sauber assertieren können
+// ohne den internen Fetch/Radix-Kram mitzutesten — das macht der dedizierte
+// followed-accounts-section.test.tsx.
+jest.mock('@/components/feed/followed-accounts-section', () => ({
+  FollowedAccountsSection: () => (
+    <div data-testid="followed-accounts-section">followed-accounts-stub</div>
+  ),
+}));
+
 describe('FeedSidebar — Layout-Reset (v1.w.UI.10) Struktur', () => {
   const PRIMARY_LABELS = ['Für dich', 'Folge ich', 'Entdecken', 'Live', 'Messages'];
   const SECONDARY_LABELS = ['Shop', 'Pods', 'Creator Studio'];
@@ -104,5 +115,26 @@ describe('FeedSidebar — Layout-Reset (v1.w.UI.10) Struktur', () => {
 
     rerender(<FeedSidebar viewerId="viewer-1" />);
     expect(screen.getByText('Einstellungen')).toBeInTheDocument();
+  });
+
+  // v1.w.UI.11 Phase B — FollowedAccountsSection Gate-Bedingungen.
+  // Rendert nur wenn BEIDE Bedingungen erfüllt: viewerId gesetzt UND
+  // followedAccounts-Prop durchgereicht (auch leer-Array). Logged-out oder
+  // Page ohne Prefetch → Section fehlt komplett.
+  it('rendert FollowedAccountsSection nur wenn viewerId + followedAccounts gesetzt', () => {
+    const { rerender } = render(<FeedSidebar viewerId={null} />);
+    expect(screen.queryByTestId('followed-accounts-section')).not.toBeInTheDocument();
+
+    // viewerId ohne followedAccounts-Prop → keine Sektion
+    rerender(<FeedSidebar viewerId="viewer-1" />);
+    expect(screen.queryByTestId('followed-accounts-section')).not.toBeInTheDocument();
+
+    // logged-out + followedAccounts-Prop → keine Sektion (Prop wird ignoriert)
+    rerender(<FeedSidebar viewerId={null} followedAccounts={[]} />);
+    expect(screen.queryByTestId('followed-accounts-section')).not.toBeInTheDocument();
+
+    // Beide gesetzt (auch bei leerem Array, der Empty-CTA-Case) → Sektion da
+    rerender(<FeedSidebar viewerId="viewer-1" followedAccounts={[]} />);
+    expect(screen.getByTestId('followed-accounts-section')).toBeInTheDocument();
   });
 });

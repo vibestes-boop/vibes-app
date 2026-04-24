@@ -4,7 +4,7 @@ import { useState, useTransition, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { FeedList } from './feed-list';
 import { FeedSidebar } from './feed-sidebar';
-import type { FeedPost, SuggestedFollow } from '@/lib/data/feed';
+import type { FeedPost, FollowedAccount, SuggestedFollow } from '@/lib/data/feed';
 import { cn } from '@/lib/utils';
 
 // -----------------------------------------------------------------------------
@@ -37,6 +37,13 @@ export interface HomeFeedShellProps {
    * ist `'foryou'` — bei Home (`/`) soll der For-You-Tab aktiv sein.
    */
   initialTab?: TabKey;
+  /**
+   * SSR-gefetchte Top-N gefolgte Accounts (v1.w.UI.11 Phase B). Wird an die
+   * FeedSidebar durchgereicht, die daraus die „Konten, denen ich folge"-
+   * Sektion rendert. Logged-out / nicht-gefetcht → undefined → Sektion
+   * verschwindet stillschweigend.
+   */
+  followedAccounts?: FollowedAccount[];
 }
 
 type TabKey = 'foryou' | 'following';
@@ -48,6 +55,7 @@ export function HomeFeedShell({
   suggested,
   storyStripSlot,
   initialTab = 'foryou',
+  followedAccounts,
 }: HomeFeedShellProps) {
   const [tab, setTab] = useState<TabKey>(initialTab);
 
@@ -70,7 +78,7 @@ export function HomeFeedShell({
     <div className="grid h-[100dvh] w-full grid-cols-1 grid-rows-[minmax(0,1fr)] xl:grid-cols-[260px_1fr_320px]">
       {/* Left Sidebar (Desktop only) */}
       <aside className="hidden border-r border-border xl:block">
-        <FeedSidebar viewerId={viewerId} />
+        <FeedSidebar viewerId={viewerId} followedAccounts={followedAccounts} />
       </aside>
 
       {/*

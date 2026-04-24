@@ -281,6 +281,91 @@ export interface SuggestedFollow {
   verified: boolean;
 }
 
+// -----------------------------------------------------------------------------
+// getMyFollowedAccounts — Sidebar-Section „Konten, denen ich folge" (TikTok-
+// Parity v1.w.UI.11 Phase B). Gibt die Profile zurück, denen der eingeloggte
+// Viewer aktuell folgt — sortiert nach Follow-Zeitpunkt (neueste zuerst,
+// passend zur TikTok-UX wo frische Follows oben stehen).
+//
+// Der Call läuft in zwei Schritten:
+//   1. `follows`-Lookup (follower_id = viewer) → Array von (following_id, created_at).
+//   2. `profiles`-Fetch (id IN (…)) für die sortierten IDs.
+//
+// Warum kein einziger Join-Query? Weil Supabase-PostgREST für FK-based Embed-
+// dings `follows -> profiles!follows_following_id_fkey` als Relation-Name
+// braucht, und der exakte FK-Name hier je nach Migration-Historie variiert
+// (Mobile-Schema vs. manueller REFERENCES). Der 2-Step-Approach ist robust
+// gegen solche Schema-Drifts und bleibt günstig (beide Queries sind
+// indexiert: `follows.follower_id` + `profiles.id` PK).
+//
+// Paginierung via `offset` — tauglich für den „Alle anzeigen"-Sheet bis
+// mittlere dreistellige Follow-Counts. Bei größeren Listen wäre Keyset-
+// Paginierung über `follows.created_at` sauberer, aber das ist ein v2-
+// Optimierungs-Thema.
+// -----------------------------------------------------------------------------
+
+export interface FollowedAccount {
+  id: string;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  verified: boolean;
+}
+
+export const getMyFollowedAccounts = cache(
+  async ({ limit = 5, offset = 0 }: { limit?: number; offset?: number } = {}): Promise<
+    FollowedAccount[]
+  > => {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    // Schritt 1: IDs der gefolgten Accounts, nach Follow-Datum absteigend.
+    const { data: follows } = await supabase
+      .from('follows')
+      .select('following_id, created_at')
+      .eq('follower_id', user.id)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    const followingIds = (follows ?? []).map((f) => f.following_id as string);
+    if (followingIds.length === 0) return [];
+
+    // Schritt 2: Profile-Details. Supabase-JS garantiert KEIN Ordering bei `.in()`,
+    // deshalb restauriert ein clientseitiger `Map`-Lookup die follow-date-Reihenfolge.
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, username, display_name, avatar_url, verified:is_verified')
+      .in('id', followingIds);
+
+    const byId = new Map<string, FollowedAccount>();
+    for (const p of (profiles ?? []) as Array<{
+      id: string;
+      username: string;
+      display_name: string | null;
+      avatar_url: string | null;
+      verified: boolean | null;
+    }>) {
+      byId.set(p.id, {
+        id: p.id,
+        username: p.username,
+        display_name: p.display_name,
+        avatar_url: p.avatar_url,
+        verified: p.verified ?? false,
+      });
+    }
+
+    // In der ursprünglichen follow-date-Reihenfolge zurückgeben; Profile die
+    // zwischenzeitlich gelöscht wurden (follows-Zeile verwaist) werden
+    // stillschweigend ausgefiltert.
+    return followingIds
+      .map((id) => byId.get(id))
+      .filter((p): p is FollowedAccount => p !== undefined);
+  },
+);
+
 export const getSuggestedFollows = cache(async (limit = 5): Promise<SuggestedFollow[]> => {
   const supabase = await createClient();
   const {
