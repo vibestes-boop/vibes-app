@@ -64,11 +64,25 @@ const makeAccount = (i: number, overrides?: Partial<FollowedAccount>): FollowedA
   ...overrides,
 });
 
+// `Response` existiert in jsdom 20.x (was jest-environment-jsdom 29 nutzt) NICHT
+// als globales Symbol — anders als in Node 20+. Damit würden `new Response(…)`
+// Konstruktor-Aufrufe im Fetch-Mock silent mit `ReferenceError` crashen, von
+// `try/catch` im Component geschluckt, und der Test würde im Error-State
+// hängen statt die gefetchten Accounts zu rendern. Wir bauen deshalb ein
+// minimales Response-Shim, das genau die zwei Felder liefert, die
+// `FollowedAccountsSheet` konsumiert: `ok` + `json()`.
+const makeOkResponse = <T,>(body: T): Response =>
+  ({
+    ok: true,
+    status: 200,
+    json: async () => body,
+  }) as unknown as Response;
+
 describe('FollowedAccountsSection', () => {
   beforeEach(() => {
     // `fetch` ist in JSDOM nicht nativ — pro Test frisch stubben.
-    (global as unknown as { fetch?: typeof fetch }).fetch = jest.fn(
-      async () => new Response(JSON.stringify([]), { status: 200 }) as Response,
+    (global as unknown as { fetch?: typeof fetch }).fetch = jest.fn(async () =>
+      makeOkResponse<unknown[]>([]),
     );
   });
 
@@ -119,8 +133,8 @@ describe('FollowedAccountsSection', () => {
       makeAccount(11),
       makeAccount(12, { verified: true }),
     ];
-    (global as unknown as { fetch: jest.Mock }).fetch = jest.fn(
-      async () => new Response(JSON.stringify(full), { status: 200 }) as Response,
+    (global as unknown as { fetch: jest.Mock }).fetch = jest.fn(async () =>
+      makeOkResponse<FollowedAccount[]>(full),
     );
 
     const initial = [makeAccount(1), makeAccount(2), makeAccount(3), makeAccount(4), makeAccount(5)];
