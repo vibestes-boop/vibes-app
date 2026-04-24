@@ -170,19 +170,46 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
     return () => window.removeEventListener('keydown', handler);
   }, [activeIdx, list, scrollTo, likeMut, viewerId]);
 
-  // Hint-Pop ein-mal pro Session anzeigen.
+  // Hint-Pop ein-mal pro Session — beim ersten Keyboard-Input (nicht beim Mount).
+  // Rationale: Mount-Hints sind visueller Noise für User, die eh nie die Tastatur
+  // nutzen (Mobile, Touch). Wer eine Taste drückt, ist ein Discovery-Signal —
+  // zeig den Hint genau dann, 3s lang, dann weg.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
-      if (!sessionStorage.getItem('serlo.feed.hintShown')) {
-        setShowHint(true);
-        sessionStorage.setItem('serlo.feed.hintShown', '1');
-        const t = setTimeout(() => setShowHint(false), 5000);
-        return () => clearTimeout(t);
-      }
+      if (sessionStorage.getItem('serlo.feed.hintShown')) return;
     } catch {
-      /* ignore */
+      /* ignore storage errors, fall through */
     }
+
+    let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
+    const onFirstKey = (e: KeyboardEvent) => {
+      // Nur echte Nav-Tasten triggern den Hint — Modifier-only-Presses (Shift, Ctrl)
+      // oder Tippen im Input-Feld sollen nicht zählen.
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      if (cancelled) return;
+
+      cancelled = true;
+      window.removeEventListener('keydown', onFirstKey);
+      setShowHint(true);
+      try {
+        sessionStorage.setItem('serlo.feed.hintShown', '1');
+      } catch {
+        /* ignore */
+      }
+      timeoutId = setTimeout(() => setShowHint(false), 3000);
+    };
+
+    window.addEventListener('keydown', onFirstKey);
+    return () => {
+      cancelled = true;
+      window.removeEventListener('keydown', onFirstKey);
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, []);
 
   const onMuteToggle = useCallback(() => setMuted((m) => !m), []);

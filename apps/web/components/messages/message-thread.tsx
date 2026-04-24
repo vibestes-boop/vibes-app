@@ -850,18 +850,19 @@ function DaySeparator({ label }: { label: string }) {
 }
 
 function TypingDots() {
-  // Typing-Dots in eine „Bubble" gelegt und vergrößert (D2 aus UI_AUDIT).
-  // Alte Variante: 6×6px Dots in einer freien Zeile — fast unsichtbar, besonders
-  // auf Mobile. Neu: iMessage-Style, drei 7×7px Dots in einem Muted-Bubble,
+  // Typing-Dots in eine „Bubble" gelegt und vergrößert (D2 aus UI_AUDIT + Follow-up).
+  // iMessage-Style: drei 8×8px Dots mit 60%-Opacity in einem Muted-Bubble,
   // linksbündig wie eine Peer-Message. Das macht sofort klar „der andere tippt
   // gerade eine Message, die gleich hier erscheint". Gleiches `rounded-bl-md`-
-  // Pattern wie normale Peer-Bubbles für visuelle Konsistenz.
+  // Pattern wie normale Peer-Bubbles für visuelle Konsistenz. Etwas mehr
+  // Bubble-Padding (px-3.5 py-2.5) + Gap (gap-1.5) damit die größeren Dots
+  // optisch atmen statt in der Bubble zu kleben.
   return (
     <div className="mt-3 flex justify-start pl-0" aria-live="polite" aria-label="schreibt">
-      <div className="flex items-center gap-1 rounded-2xl rounded-bl-md bg-muted px-3 py-2">
-        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-foreground/50 [animation-delay:-0.3s]" />
-        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-foreground/50 [animation-delay:-0.15s]" />
-        <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-foreground/50" />
+      <div className="flex items-center gap-1.5 rounded-2xl rounded-bl-md bg-muted px-3.5 py-2.5">
+        <span className="h-2 w-2 animate-bounce rounded-full bg-foreground/60 [animation-delay:-0.3s]" />
+        <span className="h-2 w-2 animate-bounce rounded-full bg-foreground/60 [animation-delay:-0.15s]" />
+        <span className="h-2 w-2 animate-bounce rounded-full bg-foreground/60" />
       </div>
     </div>
   );
