@@ -8,7 +8,6 @@ import {
   Languages,
   Palette,
   UserX,
-  LogOut,
   Trash2,
 } from 'lucide-react';
 
@@ -133,9 +132,15 @@ export default async function SettingsOverviewPage() {
           Link auf einen hypothetischen /settings/delete-account — falls der
           nicht existiert nutzen wir /settings/privacy (wo die DeleteAccountCard
           lebt). Kurzcheck: privacy ist das richtige Target bis eine dedizierte
-          Seite kommt. */}
+          Seite kommt.
+          SignOutRow bekommt bewusst KEIN `icon`-Prop — Lucide-Icons sind
+          forwardRef-Funktionen und dürfen nicht von einer Server-Component
+          als Prop an eine Client-Component gereicht werden (→ RSC-Boundary-
+          Crash "Functions cannot be passed directly to Client Components",
+          Vercel-Error digest 1974146109 vom 2026-04-24). SignOutRow hardcoded
+          `LogOut` intern. */}
       <Section label={t('settings.sectionDanger')}>
-        <SignOutRow icon={LogOut} label={t('settings.rowSignOutLabel')} />
+        <SignOutRow label={t('settings.rowSignOutLabel')} />
         <SettingsRow
           icon={Trash2}
           label={t('settings.rowDeleteLabel')}

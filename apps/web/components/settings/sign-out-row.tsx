@@ -1,8 +1,7 @@
 'use client';
 
-import type { ComponentType } from 'react';
 import { useTransition } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, LogOut } from 'lucide-react';
 
 import { signOut } from '@/app/actions/auth';
 import { cn } from '@/lib/utils';
@@ -17,14 +16,27 @@ import { cn } from '@/lib/utils';
 //
 // `useTransition` markiert den Submit als non-blocking und deaktiviert den
 // Button währenddessen (Doppel-Submit-Schutz bei schnellen Klicks).
+//
+// ⚠️ RSC-Boundary-Hinweis (Hotfix nach Vercel-Error digest 1974146109):
+// Das `LogOut`-Icon wird HIER lokal importiert und nicht mehr als Prop von
+// außen übergeben. Lucide-Icons sind `React.forwardRef(...)` — Funktionen
+// mit `$$typeof`/`render`/`displayName`. Wenn ein Server-Component (wie
+// `/settings/page.tsx`) so einen Function-Value als Prop an einen Client-
+// Component reicht, versucht Next die Prop zu serialisieren → harter
+// Runtime-Crash „Functions cannot be passed directly to Client Components".
+// Die saubere Regel: Icon-Komponenten (oder beliebige Funktionen) niemals
+// über die RSC-Grenze als Prop reichen. Entweder das Icon INLINE als JSX
+// rendern (`icon={<LogOut />}` → wird als ReactNode serialisiert) oder —
+// wie hier — im Client-Component selbst referenzieren. Für eine Single-
+// Purpose-Komponente wie SignOutRow ist „hardcoded LogOut" am ehrlichsten,
+// weil das Icon ohnehin nie variiert.
 // -----------------------------------------------------------------------------
 
 export interface SignOutRowProps {
-  icon: ComponentType<{ className?: string }>;
   label: string;
 }
 
-export function SignOutRow({ icon: Icon, label }: SignOutRowProps) {
+export function SignOutRow({ label }: SignOutRowProps) {
   const [isPending, startTransition] = useTransition();
 
   return (
@@ -46,7 +58,7 @@ export function SignOutRow({ icon: Icon, label }: SignOutRowProps) {
           'disabled:opacity-50 disabled:cursor-not-allowed',
         )}
       >
-        <Icon className="h-5 w-5 shrink-0 text-red-600 dark:text-red-400" aria-hidden="true" />
+        <LogOut className="h-5 w-5 shrink-0 text-red-600 dark:text-red-400" aria-hidden="true" />
         <span className="flex-1 truncate font-medium">{label}</span>
         <ChevronRight className="h-4 w-4 shrink-0 text-red-600/70 dark:text-red-400/70" aria-hidden="true" />
       </button>
