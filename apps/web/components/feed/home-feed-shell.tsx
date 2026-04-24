@@ -1,9 +1,15 @@
 'use client';
 
-import { useState, useTransition, type ReactNode } from 'react';
+import { useEffect, useState, useTransition, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { FeedList } from './feed-list';
 import { FeedSidebar } from './feed-sidebar';
+import { CommentSheet } from './comment-sheet';
+import { CommentPanel } from './comment-panel';
+import {
+  FeedInteractionProvider,
+  useFeedInteraction,
+} from './feed-interaction-context';
 import type { FeedPost, FollowedAccount, SuggestedFollow } from '@/lib/data/feed';
 import { cn } from '@/lib/utils';
 
@@ -23,6 +29,16 @@ import { cn } from '@/lib/utils';
 // Strip NUR im Following-Tab angezeigt — im „Für dich"-Feed ist er ausgeblendet
 // (TikTok-Referenz: dort gibt es auf For-You überhaupt keine Story-Row, und
 // unser For-You-Viewport soll denselben edge-to-edge Video-Flow bekommen).
+//
+// v1.w.UI.11 Phase C — Comment-Push-Layout:
+// - FeedInteractionProvider wrappt den gesamten Shell-Subtree, damit einzelne
+//   FeedCards über `useFeedInteraction()` das globale „Welcher Post hat
+//   gerade offene Kommentare?" setzen können, ohne Prop-Drilling.
+// - Auf xl+ ersetzt ein `<CommentPanel>` die rechte Discover-Sidebar
+//   während ein Post aktiv ist — kein Overlay, kein Blur, kein Modal. Die
+//   Video-Center-Spalte bleibt interaktiv, man kann weiter liken/scrollen.
+// - Auf < xl bleibt der existierende `<CommentSheet>` als Overlay-Flow, weil
+//   dort die Viewport-Breite für einen Push nicht reicht.
 // -----------------------------------------------------------------------------
 
 export interface HomeFeedShellProps {
@@ -48,7 +64,19 @@ export interface HomeFeedShellProps {
 
 type TabKey = 'foryou' | 'following';
 
-export function HomeFeedShell({
+export function HomeFeedShell(props: HomeFeedShellProps) {
+  // Provider MUSS außen sein — sonst können FeedCards innerhalb der
+  // FeedList die `openCommentsFor`-Action nicht auflösen. Den inneren
+  // Shell-Body haben wir aus HomeFeedShell rausextrahiert damit der Body
+  // selbst den Hook rufen darf (Hook-Rules: nur unterhalb des Providers).
+  return (
+    <FeedInteractionProvider>
+      <HomeFeedShellBody {...props} />
+    </FeedInteractionProvider>
+  );
+}
+
+function HomeFeedShellBody({
   viewerId,
   initialForYou,
   initialFollowing,
@@ -58,8 +86,10 @@ export function HomeFeedShell({
   followedAccounts,
 }: HomeFeedShellProps) {
   const [tab, setTab] = useState<TabKey>(initialTab);
+  const { commentsOpenForPostId, closeComments } = useFeedInteraction();
 
-  // Following-Tab: lädt nur wenn aktiviert und initialFollowing nicht bereits SSR-seitig da war.
+  // Feed-Daten (inkl. `allow_comments`-Flag des aktuell offenen Posts) brauchen
+  // wir hier, damit CommentPanel + CommentSheet die korrekten Metadaten kriegen.
   const followingQuery = useQuery<FeedPost[]>({
     queryKey: ['feed', 'following'],
     enabled: tab === 'following' && initialFollowing === null,
@@ -74,8 +104,66 @@ export function HomeFeedShell({
 
   const followingPosts = followingQuery.data ?? initialFollowing ?? [];
 
+  // `allowComments` für den offenen Post auflösen — wir suchen in beiden
+  // Tab-Listen, damit der Panel-Content auch nach Tab-Wechsel korrekt bleibt
+  // (der User kann z.B. einen Post auf For-You öffnen und dann auf
+  // Following switchen — Panel bleibt offen und zeigt weiterhin den Post).
+  const activePost: FeedPost | undefined = commentsOpenForPostId
+    ? initialForYou.find((p) => p.id === commentsOpenForPostId) ??
+      followingPosts.find((p) => p.id === commentsOpenForPostId)
+    : undefined;
+  // Fallback: wenn der Post aus der aktuellen Liste rausgescrollt ist (weil
+  // pagination nachgeladen hat) nehmen wir `true` als sichersten Default —
+  // wenn der User tatsächlich posted ohne Kommentar-Berechtigung greift die
+  // Server-RPC in createComment() als letzte Verteidigung.
+  const activeAllowComments = activePost?.allow_comments ?? true;
+
+  // ESC schließt den Kommentar-Panel (auf xl+ ist das die einzige
+  // Tastatur-Möglichkeit, weil kein Radix-Dialog mit eingebautem Handler).
+  // Auf < xl rendert Radix-Sheet selber einen Escape-Handler in CommentSheet
+  // — dort wäre ein Doppel-Handler okay (Idempotent), aber wir registrieren
+  // ihn trotzdem nur wenn der Panel-Mode aktiv ist, um den Scope zu begrenzen.
+  useEffect(() => {
+    if (!commentsOpenForPostId) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeComments();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [commentsOpenForPostId, closeComments]);
+
+  // Responsive-Breakpoint-Tracking: Wir brauchen die Info, ob der User
+  // gerade auf xl+ ist, um zu entscheiden, welcher Comment-Container
+  // rendert (Panel inline vs. Sheet overlay). Tailwind-Breakpoint `xl`
+  // = 1280px.
+  const [isXl, setIsXl] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1280px)');
+    const update = () => setIsXl(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+
+  const showInlinePanel = isXl && !!commentsOpenForPostId;
+  // Auf < xl: Sheet-Overlay (kontrolliert über Context-State) sobald ein
+  // Post offen ist. Der alte lokale `commentsOpen`-State in FeedCard ist
+  // gestrichen (Phase C) — Shell ist der einzige Owner.
+  const showMobileSheet = !isXl && !!commentsOpenForPostId;
+
   return (
-    <div className="grid h-[100dvh] w-full grid-cols-1 grid-rows-[minmax(0,1fr)] xl:grid-cols-[260px_1fr_320px]">
+    <div
+      className={cn(
+        'grid h-[100dvh] w-full grid-cols-1 grid-rows-[minmax(0,1fr)]',
+        // Grid-Template je nach Panel-Mode.
+        // - Default: 260 | Feed | 320 (rechte Discover-Sidebar).
+        // - Panel offen (xl+): 260 | Feed | 400 (CommentPanel breiter als
+        //   Discover, weil Kommentar-Threads mehr horizontalen Platz brauchen).
+        showInlinePanel
+          ? 'xl:grid-cols-[260px_1fr_400px]'
+          : 'xl:grid-cols-[260px_1fr_320px]',
+      )}
+    >
       {/* Left Sidebar (Desktop only) */}
       <aside className="hidden border-r border-border xl:block">
         <FeedSidebar viewerId={viewerId} followedAccounts={followedAccounts} />
@@ -142,10 +230,34 @@ export function HomeFeedShell({
         </div>
       </div>
 
-      {/* Right Sidebar (Desktop only) */}
+      {/* Right Column — entweder Discover-Sidebar oder Comment-Panel (xl+).
+          Auf < xl werden beide versteckt; Kommentare kommen dort via Sheet. */}
       <aside className="hidden border-l border-border xl:block">
-        <FeedSidebarRight suggested={suggested} viewerId={viewerId} />
+        {showInlinePanel && commentsOpenForPostId ? (
+          <CommentPanel
+            postId={commentsOpenForPostId}
+            allowComments={activeAllowComments}
+            viewerId={viewerId}
+            onClose={closeComments}
+          />
+        ) : (
+          <FeedSidebarRight suggested={suggested} viewerId={viewerId} />
+        )}
       </aside>
+
+      {/* Mobile/< xl: Sheet-Overlay als Kommentar-UI. Mount nur wenn gebraucht,
+          damit der interne useComments-Hook on-demand lädt. */}
+      {showMobileSheet && commentsOpenForPostId && (
+        <CommentSheet
+          postId={commentsOpenForPostId}
+          open={true}
+          onOpenChange={(next) => {
+            if (!next) closeComments();
+          }}
+          allowComments={activeAllowComments}
+          viewerId={viewerId}
+        />
+      )}
     </div>
   );
 }
