@@ -189,8 +189,27 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
       // Nur echte Nav-Tasten triggern den Hint — Modifier-only-Presses (Shift, Ctrl)
       // oder Tippen im Input-Feld sollen nicht zählen.
       if (e.metaKey || e.ctrlKey || e.altKey) return;
-      const t = e.target as HTMLElement | null;
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      // e.target kann auch window/document sein (z.B. wenn der Listener auf
+      // window lauscht und kein Element Focus hat — bei Tests via
+      // fireEvent.keyDown(window, …) der Standardfall). Ohne instanceof-Guard
+      // würde getAttribute unten einen TypeError werfen. Element-Check vor
+      // jeglichem Property-Access.
+      const t = e.target;
+      if (t instanceof Element) {
+        if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA') return;
+        // In JSDOM greift weder `isContentEditable` (computed getter) noch
+        // `getAttribute('contenteditable')` verläßlich, wenn das Attribut via
+        // IDL-Property-Setter (`el.contentEditable = 'true'`) statt via
+        // setAttribute gesetzt wurde — die Reflection ist in JSDOM unvollständig.
+        // Triple-Check: IDL-Property direkt (die der Test-Setter immer schreibt)
+        // + computed Getter (echter Browser) + Attribut (setAttribute-Fall).
+        const el = t as HTMLElement;
+        const ceProp = el.contentEditable;
+        if (ceProp === 'true' || ceProp === 'plaintext-only' || ceProp === '') return;
+        if (el.isContentEditable) return;
+        const ce = t.getAttribute('contenteditable');
+        if (ce === 'true' || ce === '' || ce === 'plaintext-only') return;
+      }
       if (cancelled) return;
 
       cancelled = true;
