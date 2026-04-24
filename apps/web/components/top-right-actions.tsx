@@ -30,6 +30,8 @@ import { getMyCoinBalance } from '@/lib/data/payments';
 import { signOut } from '@/app/actions/auth';
 import { getT, getLocale } from '@/lib/i18n/server';
 import { LOCALE_INTL } from '@/lib/i18n/config';
+import { glassPillBase, glassAvatarFallback } from '@/lib/ui/glass-pill';
+import { cn } from '@/lib/utils';
 
 // -----------------------------------------------------------------------------
 // TopRightActions — schwebender Cluster oben rechts über allen Seiten.
@@ -48,6 +50,12 @@ import { LOCALE_INTL } from '@/lib/i18n/config';
 // Logout bleiben erreichbar; die große Sidebar-Nav ist mobile eh nicht da, also
 // enthält der Dropdown auch die zweiten Nav-Slots (Mein Shop, Gemerkt, etc.)
 // damit mobile Nutzer nicht abgeschnitten sind.
+//
+// v1.w.UI.13: Alle drei Trigger (Coins, Avatar, Login/Signup) bauen jetzt auf
+// `glassPillBase` aus `lib/ui/glass-pill.ts` auf — einheitlicher Surface-Look,
+// einheitliche Höhe (h-9), einheitliche Icon-Größe (h-4 w-4), einheitlicher
+// Open-State (data-[state=open] via Radix), einheitlicher Focus-Ring. Früher
+// lebten drei leicht divergente Copy-Paste-Blöcke im File.
 // -----------------------------------------------------------------------------
 
 export async function TopRightActions() {
@@ -65,9 +73,12 @@ export async function TopRightActions() {
             href="/coin-shop"
             aria-label={t('header.coinsAria', { count: coinsFormatted })}
             title={t('header.topUpCoins')}
-            className="pointer-events-auto hidden items-center gap-1.5 rounded-full bg-black/40 px-3 py-1.5 text-xs font-semibold text-white ring-1 ring-white/10 backdrop-blur-md transition-colors hover:bg-black/60 sm:flex"
+            className={cn(
+              glassPillBase,
+              'pointer-events-auto hidden h-9 items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold sm:flex',
+            )}
           >
-            <Coins className="h-3.5 w-3.5 text-brand-gold" aria-hidden="true" />
+            <Coins className="h-4 w-4 text-brand-gold" aria-hidden="true" />
             <span aria-hidden="true">{coinsFormatted}</span>
             <span aria-hidden="true" className="text-[10px] text-white/70">
               +
@@ -78,11 +89,14 @@ export async function TopRightActions() {
               <button
                 type="button"
                 aria-label={t('header.accountMenu')}
-                className="pointer-events-auto flex items-center rounded-full bg-black/40 p-0.5 ring-1 ring-white/10 backdrop-blur-md transition-colors hover:bg-black/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
+                className={cn(
+                  glassPillBase,
+                  'pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full p-0.5',
+                )}
               >
                 <Avatar className="h-8 w-8">
                   <AvatarImage src={profile?.avatar_url ?? undefined} alt="" />
-                  <AvatarFallback className="bg-zinc-800 text-white">
+                  <AvatarFallback className={glassAvatarFallback}>
                     {(profile?.username ?? user.email ?? '?').slice(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
@@ -189,14 +203,17 @@ export async function TopRightActions() {
             asChild
             variant="ghost"
             size="sm"
-            className="pointer-events-auto h-8 rounded-full bg-black/40 px-3 text-white ring-1 ring-white/10 backdrop-blur-md hover:bg-black/60 hover:text-white"
+            className={cn(
+              glassPillBase,
+              'pointer-events-auto h-9 rounded-full px-3.5 text-xs font-semibold hover:text-white',
+            )}
           >
             <Link href="/login">{t('auth.login')}</Link>
           </Button>
           <Button
             asChild
             size="sm"
-            className="pointer-events-auto h-8 rounded-full px-3"
+            className="pointer-events-auto h-9 rounded-full px-3.5 text-xs font-semibold shadow-elevation-2 transition-colors duration-base ease-out-expo"
           >
             <Link href="/signup">{t('auth.signup')}</Link>
           </Button>
