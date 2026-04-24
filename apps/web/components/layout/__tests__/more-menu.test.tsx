@@ -22,124 +22,137 @@ import { MoreMenu } from '../more-menu';
 // plain-div-Implementation, sodass DropdownMenuContent synchron im Test-DOM
 // rendert wenn `open` true ist — identisches Pattern wie in
 // followed-accounts-section.test.tsx (dort für Dialog).
+//
+// Wichtig: `components/ui/dropdown-menu.tsx` greift beim Modul-Load auf
+// `.displayName` von JEDEM Primitive zu (SubTrigger, SubContent, CheckboxItem,
+// RadioItem, Label, …), auch wenn MoreMenu nur einen Subset nutzt. Wir müssen
+// also ALLE referenzierten Primitives als Stubs mit displayName anlegen —
+// sonst wirft `undefined.displayName` sofort beim Import.
 jest.mock('@radix-ui/react-dropdown-menu', () => {
   const React = require('react');
-  const Passthrough = ({ children }: { children?: React.ReactNode }) => <>{children}</>;
-  return {
-    Root: ({
-      children,
-      open,
-      onOpenChange,
-    }: {
-      children: React.ReactNode;
-      open?: boolean;
-      onOpenChange?: (open: boolean) => void;
-    }) => (
-      <div data-testid="dropdown-root" data-open={open}>
-        {React.Children.map(children, (child: React.ReactNode) =>
-          React.isValidElement(child)
-            ? React.cloneElement(child as React.ReactElement, {
-                __open: open,
-                __onOpenChange: onOpenChange,
-              })
-            : child,
-        )}
+  type StubProps = { children?: React.ReactNode; [key: string]: unknown };
+  const Passthrough = ({ children }: StubProps) => <>{children}</>;
+  const makeStub = (name: string, impl?: React.FC<StubProps>): React.FC<StubProps> => {
+    const Stub: React.FC<StubProps> = impl ?? (({ children }) => <>{children}</>);
+    (Stub as React.FC<StubProps> & { displayName: string }).displayName = name;
+    return Stub;
+  };
+
+  const Root: React.FC<{
+    children: React.ReactNode;
+    open?: boolean;
+    onOpenChange?: (open: boolean) => void;
+  }> = ({ children, open, onOpenChange }) => (
+    <div data-testid="dropdown-root" data-open={open}>
+      {React.Children.map(children, (child: React.ReactNode) =>
+        React.isValidElement(child)
+          ? React.cloneElement(child as React.ReactElement, {
+              __open: open,
+              __onOpenChange: onOpenChange,
+            })
+          : child,
+      )}
+    </div>
+  );
+  (Root as React.FC & { displayName: string }).displayName = 'DropdownMenuRoot';
+
+  const Trigger: React.FC<{
+    children: React.ReactNode;
+    __onOpenChange?: (open: boolean) => void;
+    __open?: boolean;
+    asChild?: boolean;
+  }> = ({ children, __onOpenChange, __open, asChild }) => {
+    // `asChild`: erstes Kind IST der eigentliche Trigger. cloneElement
+    // streamt unseren Click-Handler drauf — gleiche Semantik wie Radix.
+    void asChild;
+    const child = React.Children.only(children) as React.ReactElement<{
+      onClick?: (e: React.MouseEvent) => void;
+    }>;
+    return React.cloneElement(child, {
+      onClick: (e: React.MouseEvent) => {
+        child.props.onClick?.(e);
+        __onOpenChange?.(!__open);
+      },
+    });
+  };
+  (Trigger as React.FC & { displayName: string }).displayName = 'DropdownMenuTrigger';
+
+  const Content: React.FC<{
+    children?: React.ReactNode;
+    __open?: boolean;
+    __onOpenChange?: (open: boolean) => void;
+  }> = ({ children, __open, __onOpenChange }) => {
+    // ESC-Handler auf Content-Level simuliert — Radix-Real-Impl macht das
+    // via onEscapeKeyDown auf dem Overlay, aber für Test-Zwecke reicht ein
+    // direkter keydown-Listener auf dem Content-Container.
+    if (!__open) return null;
+    return (
+      <div
+        data-testid="dropdown-content"
+        role="menu"
+        onKeyDown={(e: React.KeyboardEvent) => {
+          if (e.key === 'Escape') __onOpenChange?.(false);
+        }}
+        tabIndex={-1}
+      >
+        {children}
       </div>
-    ),
-    Trigger: ({
-      children,
-      __onOpenChange,
-      __open,
-      asChild,
-    }: {
-      children: React.ReactNode;
-      __onOpenChange?: (open: boolean) => void;
-      __open?: boolean;
-      asChild?: boolean;
-    }) => {
-      // `asChild` bedeutet: das erste Kind ist der eigentliche Trigger, und
-      // wir müssen unseren Click-Handler draufstreamen. React.cloneElement
-      // übernimmt das — so verhält sich der Stub wie die echte Radix-API.
-      void asChild;
-      const child = React.Children.only(children) as React.ReactElement<{
-        onClick?: (e: React.MouseEvent) => void;
-      }>;
+    );
+  };
+  (Content as React.FC & { displayName: string }).displayName = 'DropdownMenuContent';
+
+  const Item: React.FC<{
+    children: React.ReactNode;
+    onSelect?: (e: Event) => void;
+    asChild?: boolean;
+  }> = ({ children, onSelect, asChild }) => {
+    // Radix-Item rendert role="menuitem" und triggert onSelect bei Click.
+    // Mit `asChild`: cloneElement cloned den ersten Child (damit <Link> /
+    // <button> ihr natürliches Verhalten behalten) UND hookt onSelect an.
+    const handler = (e: React.MouseEvent) => {
+      const event = new CustomEvent('select', { cancelable: true });
+      onSelect?.(event);
+      void e;
+    };
+    if (asChild && React.isValidElement(children)) {
+      const child = children as React.ReactElement<{ onClick?: (e: React.MouseEvent) => void }>;
       return React.cloneElement(child, {
         onClick: (e: React.MouseEvent) => {
           child.props.onClick?.(e);
-          __onOpenChange?.(!__open);
+          handler(e);
         },
       });
-    },
-    Portal: Passthrough,
-    Content: ({
-      children,
-      __open,
-      __onOpenChange,
-    }: {
-      children?: React.ReactNode;
-      __open?: boolean;
-      __onOpenChange?: (open: boolean) => void;
-    }) => {
-      // ESC-Handler auf Content-Level simuliert — Radix-Real-Impl macht das
-      // via onEscapeKeyDown auf dem Overlay, aber für Test-Zwecke reicht ein
-      // direkter keydown-Listener auf dem Content-Container.
-      if (!__open) return null;
-      return (
-        <div
-          data-testid="dropdown-content"
-          role="menu"
-          onKeyDown={(e: React.KeyboardEvent) => {
-            if (e.key === 'Escape') __onOpenChange?.(false);
-          }}
-          tabIndex={-1}
-        >
-          {children}
-        </div>
-      );
-    },
-    Item: ({
-      children,
-      onSelect,
-      asChild,
-    }: {
-      children: React.ReactNode;
-      onSelect?: (e: Event) => void;
-      asChild?: boolean;
-    }) => {
-      void asChild;
-      // Radix-Item rendert ein rolle="menuitem" und triggert onSelect bei Click.
-      // Wir simulieren das: wenn `asChild`, cloneElement mit onClick auf den
-      // ersten Child (damit <Link> / <button> ihr natürliches Verhalten behalten
-      // UND wir onSelect hooken können).
-      const handler = (e: React.MouseEvent) => {
-        const event = new CustomEvent('select', { cancelable: true });
-        // defaultPrevented simulieren: onSelect darf preventDefault() rufen,
-        // und der Effekt soll sein „Menu bleibt offen". Unser Mock kümmert
-        // sich hier aber nur um den Call — das Open-State-Management macht
-        // Radix im echten Code anhand des preventDefault-Checks. Für die
-        // Tests reicht es, dass onSelect überhaupt aufgerufen wird; den
-        // preventDefault-Side-Effect (Menu bleibt offen) prüfen wir via
-        // sichtbarem DOM-State (Menu-Content noch vorhanden).
-        onSelect?.(event);
-        void e;
-      };
-      if (asChild && React.isValidElement(children)) {
-        const child = children as React.ReactElement<{ onClick?: (e: React.MouseEvent) => void }>;
-        return React.cloneElement(child, {
-          onClick: (e: React.MouseEvent) => {
-            child.props.onClick?.(e);
-            handler(e);
-          },
-        });
-      }
-      return (
-        <div role="menuitem" onClick={handler}>
-          {children}
-        </div>
-      );
-    },
-    Separator: () => <div role="separator" />,
+    }
+    return (
+      <div role="menuitem" onClick={handler}>
+        {children}
+      </div>
+    );
+  };
+  (Item as React.FC & { displayName: string }).displayName = 'DropdownMenuItem';
+
+  const Separator: React.FC = () => <div role="separator" />;
+  (Separator as React.FC & { displayName: string }).displayName = 'DropdownMenuSeparator';
+
+  // Die folgenden Primitives werden von `components/ui/dropdown-menu.tsx`
+  // importiert und beim Modul-Load auf `.displayName` gelesen, auch wenn
+  // MoreMenu sie nicht nutzt. Wir stubben sie als Passthrough + displayName.
+  return {
+    Root,
+    Trigger,
+    Portal: makeStub('DropdownMenuPortal'),
+    Content,
+    Item,
+    Separator,
+    Group: makeStub('DropdownMenuGroup'),
+    Sub: makeStub('DropdownMenuSub'),
+    SubTrigger: makeStub('DropdownMenuSubTrigger'),
+    SubContent: makeStub('DropdownMenuSubContent'),
+    RadioGroup: makeStub('DropdownMenuRadioGroup'),
+    RadioItem: makeStub('DropdownMenuRadioItem'),
+    CheckboxItem: makeStub('DropdownMenuCheckboxItem'),
+    Label: makeStub('DropdownMenuLabel'),
+    ItemIndicator: Passthrough,
   };
 });
 
