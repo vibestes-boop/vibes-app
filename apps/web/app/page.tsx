@@ -2,7 +2,12 @@ import { createClient } from '@/lib/supabase/server';
 import { LandingPage, type FeaturedCreator } from '@/components/landing-page';
 import { HomeFeedShell } from '@/components/feed/home-feed-shell';
 import { StoryStrip } from '@/components/feed/story-strip';
-import { getForYouFeed, getFollowingFeed, getSuggestedFollows } from '@/lib/data/feed';
+import {
+  getForYouFeed,
+  getFollowingFeed,
+  getMyFollowedAccounts,
+  getSuggestedFollows,
+} from '@/lib/data/feed';
 
 /**
  * `/` Home-Route.
@@ -30,9 +35,13 @@ export default async function HomePage() {
   // Logged-in: Feed-Shell mit SSR-Prefetch.
   // For-You ist Initial-Load (fast & wichtig für LCP).
   // Following wird optional eagerly geladen wenn User folgt, sonst null (lazy).
-  const [forYou, suggested, hasFollows] = await Promise.all([
+  // FollowedAccounts wird für die Sidebar-Section („Konten, denen ich folge")
+  // immer mitgefetcht (v1.w.UI.11 Phase B) — gibt bei Empty-Follows leeres
+  // Array zurück und die Sektion rendert einen Explore-CTA.
+  const [forYou, suggested, followedAccounts, hasFollows] = await Promise.all([
     getForYouFeed({ limit: 10 }),
     getSuggestedFollows(5),
+    getMyFollowedAccounts({ limit: 5 }),
     (async () => {
       const { count } = await supabase
         .from('follows')
@@ -51,6 +60,7 @@ export default async function HomePage() {
       initialForYou={forYou}
       initialFollowing={following}
       suggested={suggested}
+      followedAccounts={followedAccounts}
       storyStripSlot={<StoryStrip />}
     />
   );

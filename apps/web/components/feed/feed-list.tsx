@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { FeedCard } from './feed-card';
+import { useFeedInteraction } from './feed-interaction-context';
 import { useTogglePostLike } from '@/hooks/use-engagement';
 import type { FeedPost } from '@/lib/data/feed';
 import { ArrowDown, ArrowUp, KeyboardIcon } from 'lucide-react';
@@ -51,6 +52,20 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
   const [muted, setMuted] = useState(true);
   const [showHint, setShowHint] = useState(false);
 
+  // Kommentar-Panel-Sync (v1.w.UI.11 Phase C Follow-up): wenn der Panel
+  // auf xl+ offen ist und der User weiterscrollt, soll der Panel automatisch
+  // auf den neuen aktiven Post umschwenken. Ohne diesen Sync würde der Panel
+  // Kommentare für einen Post zeigen, der gar nicht mehr im Viewport ist.
+  //
+  // Wichtig: der Effect triggert NUR solange der Panel bereits offen ist
+  // (`commentsOpenForPostId` truthy). Beim Panel-Schließen oder beim reinen
+  // Scrollen ohne offenen Panel macht er nichts. Kein Auto-Open via Scroll.
+  //
+  // No-op-Fallback via `useFeedInteraction()` (ohne Provider → beide Felder
+  // sind Null/no-op) hält die FeedList isoliert testbar, sowie auf Routen
+  // die keinen HomeFeedShell wrappen.
+  const { commentsOpenForPostId, openCommentsFor } = useFeedInteraction();
+
   const containerRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<Array<HTMLElement | null>>([]);
 
@@ -92,6 +107,38 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
 
     return () => io.disconnect();
   }, [list.length, activeIdx]);
+
+  // Panel-Sync (s. Kommentar oben beim Hook-Destructure). Feuert bei jedem
+  // `activeIdx`-Change UND jedem Panel-Open/Close-Edge.
+  //
+  // Loop-Prävention (wichtig!):
+  // (1) Wir lesen `list` via Ref, NICHT via Dep — sonst triggert jede Query-
+  //     Cache-Mutation (Like/Comment-Count-Bump) einen neuen Effect-Run.
+  // (2) `lastSyncedIdRef` merkt sich die zuletzt dispatchte PostID. Zwischen
+  //     dispatch und dem nachfolgenden Render hat `commentsOpenForPostId`
+  //     noch den alten Wert — ohne diesen Ref würde der Effect nochmal feuern
+  //     bevor der neue State angekommen ist (Layout-Shift vom Grid-Col-Switch
+  //     lässt IO in der Zeit `activeIdx` oszillieren und das reicht).
+  // (3) Reset des Refs beim Panel-Close, damit ein späteres Re-Open auf
+  //     demselben Post wieder greift.
+  const listRef = useRef(list);
+  useEffect(() => {
+    listRef.current = list;
+  }, [list]);
+
+  const lastSyncedIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!commentsOpenForPostId) {
+      lastSyncedIdRef.current = null;
+      return;
+    }
+    const activePost = listRef.current[activeIdx];
+    if (!activePost) return;
+    if (activePost.id === commentsOpenForPostId) return;
+    if (lastSyncedIdRef.current === activePost.id) return;
+    lastSyncedIdRef.current = activePost.id;
+    openCommentsFor(activePost.id);
+  }, [activeIdx, commentsOpenForPostId, openCommentsFor]);
 
   // Navigation
   const scrollTo = useCallback(

@@ -17,6 +17,8 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { OpenConsentSettingsButton } from '@/components/consent/consent-banner';
+import { FollowedAccountsSection } from '@/components/feed/followed-accounts-section';
+import type { FollowedAccount } from '@/lib/data/feed';
 
 // -----------------------------------------------------------------------------
 // FeedSidebar — linke Navigation auf Desktop-Feed-Seiten.
@@ -52,12 +54,36 @@ const SECONDARY_NAV: NavItem[] = [
   { label: 'Creator Studio', href: '/studio' as Route, icon: BarChart3, requiresAuth: true },
 ];
 
-export function FeedSidebar({ viewerId }: { viewerId: string | null }) {
+export function FeedSidebar({
+  viewerId,
+  followedAccounts,
+}: {
+  viewerId: string | null;
+  /**
+   * SSR-gefetchte Top-N gefolgte Accounts für den Sidebar-Bottom-Slot (TikTok-
+   * Parity v1.w.UI.11 Phase B). Wenn null/undefined: Sektion wird nicht
+   * gerendert (Logged-out, oder Page hat den Prefetch nicht durchgereicht).
+   */
+  followedAccounts?: FollowedAccount[];
+}) {
   const pathname = usePathname();
   const isActive = (href: Route) => pathname === href;
 
   return (
-    <div className="sticky top-0 flex h-[calc(100dvh-var(--site-header-h,64px))] flex-col gap-4 p-4">
+    <div className="sticky top-0 flex h-[100dvh] flex-col gap-4 overflow-y-auto p-4">
+      {/*
+       * Brand-Logo ganz oben — seit v1.w.UI.11 ersetzt die Sidebar den globalen
+       * SiteHeader auf xl+. Logo sitzt da wo bisher im Header „Serlo" stand
+       * (font-serif, tracking-tight), klick führt zurück zum Feed.
+       */}
+      <Link
+        href={'/' as Route}
+        aria-label="Serlo — zur Startseite"
+        className="px-3 pt-1 font-serif text-2xl font-medium tracking-tight text-foreground hover:text-foreground/80"
+      >
+        Serlo
+      </Link>
+
       {/* Upload-CTA — ersetzt die frühere DesktopNav-Pill-Row im Header */}
       <Link
         href={'/create' as Route}
@@ -131,6 +157,18 @@ export function FeedSidebar({ viewerId }: { viewerId: string | null }) {
           })}
         </nav>
       </div>
+
+      {/*
+       * „Konten, denen ich folge" — TikTok-Parity-Sektion (v1.w.UI.11 Phase B).
+       * Nur für eingeloggte Viewer, nur wenn die Page den Prefetch durchreicht.
+       * Sitzt konstruktiv ZWISCHEN Secondary-Nav und dem `mt-auto`-Footer,
+       * damit sie bei kurzen Viewports mit dem Nav scrollt (Sidebar ist jetzt
+       * `overflow-y-auto`) und bei großen Viewports bündig unter „Creator
+       * Studio" klebt statt ans Footer-Ende gesaugt zu werden.
+       */}
+      {viewerId && followedAccounts && (
+        <FollowedAccountsSection initial={followedAccounts} />
+      )}
 
       <div className="mt-auto flex flex-col gap-1">
         {viewerId && (

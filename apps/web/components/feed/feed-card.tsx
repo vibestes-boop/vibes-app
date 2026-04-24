@@ -12,8 +12,8 @@ import {
   useToggleFollow,
 } from '@/hooks/use-engagement';
 import type { FeedPost } from '@/lib/data/feed';
-import { CommentSheet } from './comment-sheet';
 import { LikeButton } from './like-button';
+import { useFeedInteraction } from './feed-interaction-context';
 import { linkify } from '@/lib/linkify';
 
 // Feed-Captions liegen auf dunkler Video-Overlay — default `text-primary`
@@ -51,7 +51,15 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPaused, setIsPaused] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [commentsOpen, setCommentsOpen] = useState(false);
+  // v1.w.UI.11 Phase C — Kommentar-Open-State lebt nicht mehr lokal in der
+  // Karte, sondern im zentralen FeedInteractionContext. Grund: Auf xl+ soll
+  // das Öffnen eines Comment-Panels die rechte Sidebar des HomeFeedShell
+  // ersetzen (TikTok-Parity-Push statt Overlay). Die Shell ist State-Owner,
+  // die Karte ist nur Dispatcher. Ohne Provider (z.B. Isolated-Karten-Tests)
+  // liefert der Hook einen no-op-Fallback, FeedCard rendert weiterhin
+  // fehlerfrei.
+  const { commentsOpenForPostId, openCommentsFor, closeComments } = useFeedInteraction();
+  const isCommentsOpenForThisPost = commentsOpenForPostId === post.id;
   // Caption-Expand (A6) — sobald der User „mehr" drückt, zeigen wir den
   // vollen Text. Beim Post-Wechsel (neuer post.id) auf kollabiert resetten.
   const [captionExpanded, setCaptionExpanded] = useState(false);
@@ -344,12 +352,32 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
           circleClassName="h-12 w-12"
         />
 
-        {/* Comment — 48px */}
+        {/* Comment — 48px. Toggle-Verhalten (v1.w.UI.11 Phase C Follow-up):
+            - Panel geschlossen → öffnet für diesen Post.
+            - Panel offen für DIESEN Post → schließt.
+            - Panel offen für einen ANDEREN Post → wechselt das Target auf
+              diesen (passiert praktisch nur wenn FeedList per Scroll noch
+              nicht gesynct hat — der Sync-Effect in FeedList zieht das
+              normalerweise automatisch nach).
+            Active-Tint wenn offen, damit das Icon den State widerspiegelt
+            (TikTok zeigt den Button in dem Fall leicht heller/gold). */}
         <ActionButton
-          icon={<MessageCircle className="h-7 w-7" aria-hidden="true" />}
+          icon={
+            <MessageCircle
+              className={cn('h-7 w-7', isCommentsOpenForThisPost && 'fill-brand-gold text-brand-gold')}
+              aria-hidden="true"
+            />
+          }
           label={formatCount(post.comment_count)}
-          ariaLabel={`Kommentare öffnen — ${post.comment_count} Kommentare`}
-          onClick={() => setCommentsOpen(true)}
+          ariaLabel={
+            isCommentsOpenForThisPost
+              ? 'Kommentare schließen'
+              : `Kommentare öffnen — ${post.comment_count} Kommentare`
+          }
+          onClick={() => {
+            if (isCommentsOpenForThisPost) closeComments();
+            else openCommentsFor(post.id);
+          }}
           circleClassName="h-12 w-12"
         />
 
@@ -409,14 +437,11 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
         </div>
       )}
 
-      {/* CommentSheet */}
-      <CommentSheet
-        postId={post.id}
-        open={commentsOpen}
-        onOpenChange={setCommentsOpen}
-        allowComments={post.allow_comments}
-        viewerId={viewerId}
-      />
+      {/* CommentSheet / CommentPanel wird seit v1.w.UI.11 Phase C vom
+          HomeFeedShell gerendert (State-Owner-Lift), damit das Öffnen auf
+          xl+ die rechte Sidebar durch den Panel ersetzen kann. FeedCard
+          triggert nur noch via `openCommentsFor(post.id)` aus dem
+          FeedInteractionContext. */}
     </article>
   );
 }

@@ -116,7 +116,7 @@ export default async function LiveViewerPage({ params }: PageProps) {
   const isHost = viewerId === session.host_id;
 
   return (
-    <main className="relative h-[calc(100dvh-var(--site-header-h,64px))] w-full overflow-hidden bg-[#0b0b10]">
+    <main className="relative h-[100dvh] w-full overflow-hidden bg-[#0b0b10]">
       {/* Join/Leave Tracking — nur Client, kein UI */}
       {viewerId && <LiveEnterClient sessionId={id} />}
 
