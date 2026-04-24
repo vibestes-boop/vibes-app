@@ -112,6 +112,9 @@ const enMessages = {
     statPosts: 'Posts',
     statFollower: 'Followers',
     statFollowing: 'Following',
+    // v1.w.UI.16: gradient-ring + LIVE-badge when the user is currently hosting
+    liveBadge: 'LIVE',
+    liveNow: '{name} is live — watch now',
 
     tablistLabel: 'Profile content',
     tabPosts: 'Posts',

@@ -119,6 +119,9 @@ const deMessages = {
     statPosts: 'Posts',
     statFollower: 'Follower',
     statFollowing: 'Folgt',
+    // v1.w.UI.16: Gradient-Ring + LIVE-Badge wenn User aktuell live ist
+    liveBadge: 'LIVE',
+    liveNow: '{name} ist live — jetzt reinschauen',
 
     // Tabs
     tablistLabel: 'Profil-Inhalte',

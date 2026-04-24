@@ -116,6 +116,9 @@ const ruMessages = {
     statPosts: 'Постов',
     statFollower: 'Подписчиков',
     statFollowing: 'Подписок',
+    // v1.w.UI.16: gradient-ring + LIVE-badge когда пользователь стримит
+    liveBadge: 'ЛАЙВ',
+    liveNow: '{name} сейчас в эфире — смотреть',
 
     tablistLabel: 'Содержимое профиля',
     tabPosts: 'Посты',
