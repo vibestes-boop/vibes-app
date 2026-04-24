@@ -197,12 +197,18 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
       const t = e.target;
       if (t instanceof Element) {
         if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA') return;
-        // isContentEditable ist in JSDOM unreliable wenn contentEditable via
-        // Property-Setter gesetzt wurde (`el.contentEditable = 'true'`) statt
-        // via setAttribute. Belt-and-suspenders: attribute-Check als Fallback.
-        if ((t as HTMLElement).isContentEditable) return;
+        // In JSDOM greift weder `isContentEditable` (computed getter) noch
+        // `getAttribute('contenteditable')` verläßlich, wenn das Attribut via
+        // IDL-Property-Setter (`el.contentEditable = 'true'`) statt via
+        // setAttribute gesetzt wurde — die Reflection ist in JSDOM unvollständig.
+        // Triple-Check: IDL-Property direkt (die der Test-Setter immer schreibt)
+        // + computed Getter (echter Browser) + Attribut (setAttribute-Fall).
+        const el = t as HTMLElement;
+        const ceProp = el.contentEditable;
+        if (ceProp === 'true' || ceProp === 'plaintext-only' || ceProp === '') return;
+        if (el.isContentEditable) return;
         const ce = t.getAttribute('contenteditable');
-        if (ce === 'true' || ce === '') return;
+        if (ce === 'true' || ce === '' || ce === 'plaintext-only') return;
       }
       if (cancelled) return;
 
