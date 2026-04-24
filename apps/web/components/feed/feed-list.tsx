@@ -109,16 +109,36 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
   }, [list.length, activeIdx]);
 
   // Panel-Sync (s. Kommentar oben beim Hook-Destructure). Feuert bei jedem
-  // `activeIdx`-Change UND jedem Panel-Open/Close-Edge. Guard sorgt dafür,
-  // dass bei geschlossenem Panel nichts passiert (kein Auto-Open) und dass
-  // ein Selbst-Equals kein Re-Dispatch erzeugt (verhindert Render-Loops).
+  // `activeIdx`-Change UND jedem Panel-Open/Close-Edge.
+  //
+  // Loop-Prävention (wichtig!):
+  // (1) Wir lesen `list` via Ref, NICHT via Dep — sonst triggert jede Query-
+  //     Cache-Mutation (Like/Comment-Count-Bump) einen neuen Effect-Run.
+  // (2) `lastSyncedIdRef` merkt sich die zuletzt dispatchte PostID. Zwischen
+  //     dispatch und dem nachfolgenden Render hat `commentsOpenForPostId`
+  //     noch den alten Wert — ohne diesen Ref würde der Effect nochmal feuern
+  //     bevor der neue State angekommen ist (Layout-Shift vom Grid-Col-Switch
+  //     lässt IO in der Zeit `activeIdx` oszillieren und das reicht).
+  // (3) Reset des Refs beim Panel-Close, damit ein späteres Re-Open auf
+  //     demselben Post wieder greift.
+  const listRef = useRef(list);
   useEffect(() => {
-    if (!commentsOpenForPostId) return;
-    const activePost = list[activeIdx];
+    listRef.current = list;
+  }, [list]);
+
+  const lastSyncedIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!commentsOpenForPostId) {
+      lastSyncedIdRef.current = null;
+      return;
+    }
+    const activePost = listRef.current[activeIdx];
     if (!activePost) return;
     if (activePost.id === commentsOpenForPostId) return;
+    if (lastSyncedIdRef.current === activePost.id) return;
+    lastSyncedIdRef.current = activePost.id;
     openCommentsFor(activePost.id);
-  }, [activeIdx, commentsOpenForPostId, list, openCommentsFor]);
+  }, [activeIdx, commentsOpenForPostId, openCommentsFor]);
 
   // Navigation
   const scrollTo = useCallback(
