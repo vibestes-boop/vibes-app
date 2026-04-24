@@ -11,6 +11,8 @@ import {
 } from 'livekit-client';
 import { Loader2, Radio, VolumeX, Volume2, Maximize2 } from 'lucide-react';
 import { fetchLiveKitToken } from '@/app/actions/live';
+import { glassPillSolid } from '@/lib/ui/glass-pill';
+import { cn } from '@/lib/utils';
 
 // -----------------------------------------------------------------------------
 // LiveVideoPlayer — reines Subscribe/Render. Keine Publisher-Logik (Web ist
@@ -188,19 +190,19 @@ export function LiveVideoPlayer({ roomName, hostId, hostName }: LiveVideoPlayerP
         </div>
       )}
 
-      {/* Controls — unten rechts (v1.w.UI.1 — B4 aus UI_AUDIT_WEB)
-          Vorher: bg-black/60 + p-2 + h-4 w-4 → Buttons gingen auf hellen Szenen
-          (Tageslicht-Streams, weißer Hintergrund) im Video-Bild unter.
-          Jetzt: bg-black/80 als Ruhezustand + ring-1 ring-white/10 für Kontur-
-          Trennung auf jedem Hintergrund, p-3 vergrößert Hit-Target auf ~40px
-          (Mobile-Safe), h-5 w-5 Icons deutlicher erkennbar aus Armlänge. */}
+      {/* Controls — unten rechts (v1.w.UI.1 — B4 aus UI_AUDIT_WEB; v1.w.UI.15 Utility).
+          Dichteste Stufe der Glass-Pill-Familie (`glassPillSolid`: /80 + hover /95),
+          weil Mute + Fullscreen als primäre Video-Controls aus Armlänge auf
+          jedem Szenen-Hintergrund erkennbar sein müssen. `p-3` hält das Hit-
+          Target auf ~40px (Mobile-Safe); `h-5 w-5` Icons bleiben bewusst größer
+          als die h-4 w-4 Standard-Icons aus dem App-Shell. */}
       {phase === 'live' && (
         <div className="pointer-events-none absolute inset-0">
           <div className="pointer-events-auto absolute right-3 top-14 flex items-center gap-2">
             <button
               type="button"
               onClick={() => setMuted((m) => !m)}
-              className="rounded-full bg-black/80 p-3 text-white shadow-elevation-2 ring-1 ring-white/10 backdrop-blur transition-colors duration-fast ease-out-expo hover:bg-black"
+              className={cn(glassPillSolid, 'rounded-full p-3 shadow-elevation-2')}
               aria-label={muted ? 'Ton einschalten' : 'Stumm schalten'}
             >
               {muted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
@@ -208,7 +210,7 @@ export function LiveVideoPlayer({ roomName, hostId, hostName }: LiveVideoPlayerP
             <button
               type="button"
               onClick={goFullscreen}
-              className="rounded-full bg-black/80 p-3 text-white shadow-elevation-2 ring-1 ring-white/10 backdrop-blur transition-colors duration-fast ease-out-expo hover:bg-black"
+              className={cn(glassPillSolid, 'rounded-full p-3 shadow-elevation-2')}
               aria-label="Vollbild"
             >
               <Maximize2 className="h-5 w-5" />
