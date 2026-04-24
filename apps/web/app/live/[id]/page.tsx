@@ -19,6 +19,12 @@ import { LivePollPanel } from '@/components/live/live-poll-panel';
 import { LiveHostPill } from '@/components/live/live-host-pill';
 import { LiveChatOverlay } from '@/components/live/live-chat-overlay';
 import { LiveEnterClient } from '@/components/live/live-enter-client';
+import {
+  glassPillStrong,
+  glassSurface,
+  glassSurfaceDense,
+} from '@/lib/ui/glass-pill';
+import { cn } from '@/lib/utils';
 
 // -----------------------------------------------------------------------------
 // /live/[id] — der Viewer. TikTok-style Overlay-Architektur (Phase 2, B1+B2+B5):
@@ -146,7 +152,10 @@ export default async function LiveViewerPage({ params }: PageProps) {
                   </p>
                   <Link
                     href={`/live/replay/${id}` as Route}
-                    className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-white backdrop-blur-md transition-colors duration-fast ease-out-expo hover:bg-white/20"
+                    className={cn(
+                      glassPillStrong,
+                      'mt-4 inline-flex items-center gap-1.5 rounded-full px-4 py-2 text-sm font-medium shadow-elevation-1',
+                    )}
                   >
                     Replay ansehen
                   </Link>
@@ -174,7 +183,10 @@ export default async function LiveViewerPage({ params }: PageProps) {
           <div className="absolute inset-x-3 top-3 flex items-center justify-between">
             <Link
               href={'/live' as Route}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/55 text-white shadow-elevation-1 ring-1 ring-white/10 backdrop-blur-md transition-colors duration-fast ease-out-expo hover:bg-black/75"
+              className={cn(
+                glassPillStrong,
+                'inline-flex h-9 w-9 items-center justify-center rounded-full shadow-elevation-1',
+              )}
               aria-label="Zurück zu Live"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -182,7 +194,10 @@ export default async function LiveViewerPage({ params }: PageProps) {
             {viewerId && !isHost && (
               <Link
                 href={`/live/${id}/report` as Route}
-                className="inline-flex items-center gap-1.5 rounded-full bg-black/55 px-3 py-1.5 text-[11px] font-medium text-white/85 shadow-elevation-1 ring-1 ring-white/10 backdrop-blur-md transition-colors duration-fast ease-out-expo hover:bg-black/75 hover:text-white"
+                className={cn(
+                  glassPillStrong,
+                  'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-medium text-white/85 shadow-elevation-1 hover:text-white',
+                )}
               >
                 <Flag className="h-3 w-3" />
                 Melden
@@ -198,7 +213,12 @@ export default async function LiveViewerPage({ params }: PageProps) {
                   <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
                   Live
                 </span>
-                <span className="inline-flex items-center gap-1 rounded-md bg-black/70 px-2 py-0.5 text-[11px] font-medium text-white shadow-elevation-1 ring-1 ring-white/10 backdrop-blur-md">
+                <span
+                  className={cn(
+                    glassSurfaceDense,
+                    'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium text-white shadow-elevation-1',
+                  )}
+                >
                   <Users className="h-3 w-3" />
                   {(session.viewer_count ?? 0).toLocaleString('de-DE')}
                 </span>
@@ -227,7 +247,7 @@ export default async function LiveViewerPage({ params }: PageProps) {
            */}
           {!ended && activePoll && (
             <div className="absolute right-3 top-28 w-64 max-w-[55%]">
-              <div className="rounded-2xl bg-black/55 p-1 shadow-elevation-2 ring-1 ring-white/10 backdrop-blur-md">
+              <div className={cn(glassSurface, 'rounded-2xl p-1 shadow-elevation-2')}>
                 <div className="[&_h3]:text-white [&_.rounded-xl]:bg-transparent [&_.rounded-xl]:!border-0 [&_.rounded-xl]:!p-2">
                   <LivePollPanel
                     sessionId={id}
@@ -267,7 +287,12 @@ export default async function LiveViewerPage({ params }: PageProps) {
           {/* Action-Bar (unten) — Reactions + Gifts + CoHost-Request */}
           {!ended && viewerId && (
             <div className="absolute inset-x-3 bottom-3">
-              <div className="rounded-2xl bg-black/55 shadow-elevation-2 ring-1 ring-white/10 backdrop-blur-md [&>*]:!border-0 [&>*]:!bg-transparent">
+              <div
+                className={cn(
+                  glassSurface,
+                  'rounded-2xl shadow-elevation-2 [&>*]:!border-0 [&>*]:!bg-transparent',
+                )}
+              >
                 <LiveActionBar
                   sessionId={id}
                   hostId={session.host_id}

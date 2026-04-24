@@ -8,6 +8,8 @@ import type { MouseEvent } from 'react';
 import { UserPlus, Check } from 'lucide-react';
 import { toggleFollowHost } from '@/app/actions/live';
 import type { LiveSessionWithHost } from '@/lib/data/live';
+import { glassSurfaceDense } from '@/lib/ui/glass-pill';
+import { cn } from '@/lib/utils';
 
 // -----------------------------------------------------------------------------
 // LiveHostPill — TikTok-style Identitäts-Pill für das Video-Overlay (v1.w.UI.1
@@ -68,7 +70,12 @@ export function LiveHostPill({
     : ('#' as Route);
 
   return (
-    <div className="flex items-center gap-2 rounded-full bg-black/70 py-1 pl-1 pr-2.5 text-white shadow-elevation-2 ring-1 ring-white/10 backdrop-blur-md">
+    <div
+      className={cn(
+        glassSurfaceDense,
+        'flex items-center gap-2 rounded-full py-1 pl-1 pr-2.5 text-white shadow-elevation-2',
+      )}
+    >
       <Link
         href={profileHref}
         className="relative block h-7 w-7 flex-shrink-0 overflow-hidden rounded-full bg-white/10"

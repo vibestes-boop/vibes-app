@@ -14,7 +14,13 @@
  * volle Auth-Session-Mocks). Visual-QA auf Vercel-Preview fängt den Rest.
  */
 
-import { glassPillBase, glassAvatarFallback } from '@/lib/ui/glass-pill';
+import {
+  glassPillBase,
+  glassAvatarFallback,
+  glassPillStrong,
+  glassSurface,
+  glassSurfaceDense,
+} from '@/lib/ui/glass-pill';
 
 describe('glassPillBase', () => {
   it('enthält die Surface-Basis (bg-black/40 + ring-white/10 + backdrop-blur-md)', () => {
@@ -77,5 +83,108 @@ describe('glassAvatarFallback', () => {
     expect(glassAvatarFallback).toContain('text-white/90');
     expect(glassAvatarFallback).toContain('font-medium');
     expect(glassAvatarFallback).toContain('text-sm');
+  });
+});
+
+describe('glassPillStrong (v1.w.UI.14 — interactive über Video-Canvas)', () => {
+  it('ist dichter als glassPillBase (bg-black/55 statt /40)', () => {
+    // Über dem Live-Video-Canvas reicht /40 nicht — helle Daylight-Frames
+    // lassen den Pill sonst verschwinden. /55 + /75-Hover gibt mehr Kontrast
+    // ohne den Glass-Look zu brechen.
+    expect(glassPillStrong).toContain('bg-black/55');
+    expect(glassPillStrong).not.toContain('bg-black/40');
+  });
+
+  it('erbt Ring + Blur-Rezeptur von glassPillBase', () => {
+    expect(glassPillStrong).toContain('ring-1');
+    expect(glassPillStrong).toContain('ring-white/10');
+    expect(glassPillStrong).toContain('backdrop-blur-md');
+  });
+
+  it('nutzt stärkeren Hover (bg-black/75) für Video-Canvas-Kontrast', () => {
+    expect(glassPillStrong).toContain('hover:bg-black/75');
+    expect(glassPillStrong).toContain('hover:ring-white/20');
+  });
+
+  it('spiegelt Hover auf data-[state=open] wie glassPillBase', () => {
+    expect(glassPillStrong).toContain('data-[state=open]:bg-black/75');
+    expect(glassPillStrong).toContain('data-[state=open]:ring-white/20');
+  });
+
+  it('behält Motion-Tokens + Focus-Override (konsistent mit glassPillBase)', () => {
+    expect(glassPillStrong).toContain('transition-colors');
+    expect(glassPillStrong).toContain('duration-base');
+    expect(glassPillStrong).toContain('ease-out-expo');
+    expect(glassPillStrong).toContain('focus-visible:ring-offset-0');
+  });
+});
+
+describe('glassSurface (v1.w.UI.14 — non-interaktiver Wrapper)', () => {
+  it('hat Surface ohne Interactivity-Tokens', () => {
+    // Poll-Wrapper und Action-Bar-Wrapper stylen ihre Kinder selbst — die
+    // Hülle trägt nur Glass-Surface. Kein Transition, kein Hover, kein Focus:
+    // der Wrapper ist nicht direkt interaktiv.
+    expect(glassSurface).toContain('bg-black/55');
+    expect(glassSurface).toContain('ring-1');
+    expect(glassSurface).toContain('ring-white/10');
+    expect(glassSurface).toContain('backdrop-blur-md');
+  });
+
+  it('hat KEINE Hover/Focus/Transition-Tokens (non-interaktiv)', () => {
+    expect(glassSurface).not.toContain('hover:');
+    expect(glassSurface).not.toContain('focus-visible:');
+    expect(glassSurface).not.toContain('transition');
+    expect(glassSurface).not.toContain('data-[state=');
+  });
+
+  it('setzt keinen Text-Color-Default (Kinder bestimmen Typo)', () => {
+    // glassPillBase setzt `text-white` als Default — Surface lässt die Wahl
+    // beim Konsumenten. Poll-Panel und Action-Bar haben eigene Text-Colors.
+    expect(glassSurface).not.toContain('text-white');
+  });
+});
+
+describe('glassSurfaceDense (v1.w.UI.14 — content-dense Islands)', () => {
+  it('ist dichter als glassSurface (bg-black/70)', () => {
+    // Viewer-Count-Pill + LiveHostPill-Wrapper tragen kleine Texte/Icons
+    // (11px + 3×3 Icons). Auf komplexen Video-Frames braucht das /70-BG
+    // für Lesbarkeit.
+    expect(glassSurfaceDense).toContain('bg-black/70');
+  });
+
+  it('behält Ring + Blur-Rezeptur', () => {
+    expect(glassSurfaceDense).toContain('ring-1');
+    expect(glassSurfaceDense).toContain('ring-white/10');
+    expect(glassSurfaceDense).toContain('backdrop-blur-md');
+  });
+
+  it('ist wie glassSurface non-interaktiv (kein Hover/Focus/Transition)', () => {
+    expect(glassSurfaceDense).not.toContain('hover:');
+    expect(glassSurfaceDense).not.toContain('focus-visible:');
+    expect(glassSurfaceDense).not.toContain('transition');
+    expect(glassSurfaceDense).not.toContain('data-[state=');
+  });
+});
+
+describe('Glass-Utility-Familie — Konsistenz-Checks', () => {
+  it('alle vier Varianten sind nicht-leere Strings', () => {
+    expect(glassPillBase.length).toBeGreaterThan(0);
+    expect(glassPillStrong.length).toBeGreaterThan(0);
+    expect(glassSurface.length).toBeGreaterThan(0);
+    expect(glassSurfaceDense.length).toBeGreaterThan(0);
+  });
+
+  it('alle Varianten trimmen sauber (keine double-spaces, kein trailing WS)', () => {
+    for (const cls of [glassPillBase, glassPillStrong, glassSurface, glassSurfaceDense]) {
+      expect(cls).not.toMatch(/\s{2,}/);
+      expect(cls).toBe(cls.trim());
+    }
+  });
+
+  it('alle Varianten nutzen backdrop-blur-md als gemeinsame Glass-Signatur', () => {
+    // Der Blur ist das kennzeichnende Merkmal — ohne ihn ist es kein Glass.
+    for (const cls of [glassPillBase, glassPillStrong, glassSurface, glassSurfaceDense]) {
+      expect(cls).toContain('backdrop-blur-md');
+    }
   });
 });
