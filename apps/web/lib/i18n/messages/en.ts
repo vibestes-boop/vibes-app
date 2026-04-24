@@ -225,6 +225,22 @@ const enMessages = {
     rowDeleteSubtitle: 'Permanent — all data removed',
     comingSoonBadge: 'Soon',
 
+    // v1.w.UI.20 — Profile editor
+    profileMetaTitle: 'Profile — Settings — Serlo',
+    profileTitle: 'Profile',
+    profileSubtitle: 'How you appear on Serlo — name, bio, and handle.',
+    profileBackToOverview: 'Back to Settings',
+    profileFieldDisplayName: 'Display name',
+    profileFieldDisplayNameHint: 'How your name appears on posts and your profile.',
+    profileFieldBio: 'Bio',
+    profileFieldBioHint: 'A short intro shown on your profile. Links and @-mentions are auto-detected.',
+    profileFieldUsername: 'Username',
+    profileFieldUsernameHint: "Your handle can't be changed here — it's linked to all your URLs and mentions.",
+    profileSave: 'Save',
+    profileSaving: 'Saving…',
+    profileSaved: 'Profile updated.',
+    profileErrorFallback: 'Could not save — please try again.',
+
     notifMetaTitle: 'Notifications — Serlo',
     notifTitle: 'Notifications',
     notifSubtitle:

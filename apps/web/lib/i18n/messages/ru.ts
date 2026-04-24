@@ -228,6 +228,22 @@ const ruMessages = {
     rowDeleteSubtitle: 'Необратимо — все данные стираются',
     comingSoonBadge: 'Скоро',
 
+    // v1.w.UI.20 — Редактор профиля
+    profileMetaTitle: 'Профиль — Настройки — Serlo',
+    profileTitle: 'Профиль',
+    profileSubtitle: 'Каким тебя видят на Serlo — имя, био и ник.',
+    profileBackToOverview: 'Назад к Настройкам',
+    profileFieldDisplayName: 'Имя',
+    profileFieldDisplayNameHint: 'Так твоё имя показывается под постами и на профиле.',
+    profileFieldBio: 'Био',
+    profileFieldBioHint: 'Короткое интро на твоём профиле. Ссылки и @-упоминания определяются автоматически.',
+    profileFieldUsername: 'Ник',
+    profileFieldUsernameHint: 'Ник здесь нельзя изменить — он связан со всеми твоими URL и упоминаниями.',
+    profileSave: 'Сохранить',
+    profileSaving: 'Сохраняю…',
+    profileSaved: 'Профиль обновлён.',
+    profileErrorFallback: 'Не удалось сохранить — попробуй ещё раз.',
+
     notifMetaTitle: 'Уведомления — Serlo',
     notifTitle: 'Уведомления',
     notifSubtitle:

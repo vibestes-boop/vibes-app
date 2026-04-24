@@ -12,7 +12,7 @@ import {
   Trash2,
 } from 'lucide-react';
 
-import { SettingsRow, ComingSoonBadge } from '@/components/settings/settings-row';
+import { SettingsRow } from '@/components/settings/settings-row';
 import { SignOutRow } from '@/components/settings/sign-out-row';
 import { ThemeToggleInline } from '@/components/settings/theme-toggle-inline';
 import { getT, getLocale } from '@/lib/i18n/server';
@@ -58,17 +58,16 @@ export default async function SettingsOverviewPage() {
         </p>
       </header>
 
-      {/* Sektion 1 — Konto. Profile-Editor ist noch Phase 11 → Coming-Soon-
-          Badge rechts + `disabled` (pointer-events-none, keine Navigation).
-          Die anderen drei Rows sind live und linken auf die existierenden
-          Sub-Routes. */}
+      {/* Sektion 1 — Konto. v1.w.UI.20: Profil ist jetzt live — Row linkt auf
+          /settings/profile (display_name + bio editieren, Avatar folgt in
+          eigenem Slice). Der ComingSoonBadge-Fall wurde entfernt.
+          Die anderen drei Rows linken auf die existierenden Sub-Routes. */}
       <Section label={t('settings.sectionAccount')}>
         <SettingsRow
           icon={UserIcon}
           label={t('settings.navProfile')}
           subtitle={t('settings.rowProfileSubtitle')}
-          right={<ComingSoonBadge label={t('settings.comingSoonBadge')} />}
-          disabled
+          href={'/settings/profile' as Route}
           testId="settings-row-profile"
         />
         <SettingsRow

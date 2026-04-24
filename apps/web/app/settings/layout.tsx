@@ -26,13 +26,15 @@ interface SettingsNavItem {
   phaseKey?: TranslationKey;
 }
 
-// v1.w.UI.18: Erster Eintrag ist jetzt „Übersicht" (enabled, linkt auf
-// /settings Root = flache Overview-Liste). Der bisherige disabled „Profil"-
-// Eintrag ist entfernt — Profil-Editor kommt als eigener Eintrag wenn
-// Phase 11 die Editor-UI baut; bis dahin ist die Overview selbst die
-// Haupt-Landing-Page.
+// v1.w.UI.18: Erster Eintrag ist „Übersicht" (enabled, linkt auf /settings
+// Root = flache Overview-Liste).
+// v1.w.UI.20: Zweiter Eintrag „Profil" ist jetzt live (linkt auf
+// /settings/profile = Editor für display_name + bio). Position bewusst
+// direkt nach Übersicht — Account-Identity kommt vor Zahlungen und
+// Notification-Präferenzen.
 const NAV: SettingsNavItem[] = [
   { labelKey: 'settings.navOverview',      href: '/settings' as Route,               icon: Home },
+  { labelKey: 'settings.navProfile',       href: '/settings/profile' as Route,       icon: UserIcon },
   { labelKey: 'settings.navBilling',       href: '/settings/billing' as Route,       icon: Receipt },
   { labelKey: 'settings.navNotifications', href: '/settings/notifications' as Route, icon: Bell },
   { labelKey: 'settings.navPrivacy',       href: '/settings/privacy' as Route,       icon: Shield },
