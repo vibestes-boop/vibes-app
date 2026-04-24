@@ -58,7 +58,8 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
   // die Karte ist nur Dispatcher. Ohne Provider (z.B. Isolated-Karten-Tests)
   // liefert der Hook einen no-op-Fallback, FeedCard rendert weiterhin
   // fehlerfrei.
-  const { openCommentsFor } = useFeedInteraction();
+  const { commentsOpenForPostId, openCommentsFor, closeComments } = useFeedInteraction();
+  const isCommentsOpenForThisPost = commentsOpenForPostId === post.id;
   // Caption-Expand (A6) — sobald der User „mehr" drückt, zeigen wir den
   // vollen Text. Beim Post-Wechsel (neuer post.id) auf kollabiert resetten.
   const [captionExpanded, setCaptionExpanded] = useState(false);
@@ -351,12 +352,32 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
           circleClassName="h-12 w-12"
         />
 
-        {/* Comment — 48px */}
+        {/* Comment — 48px. Toggle-Verhalten (v1.w.UI.11 Phase C Follow-up):
+            - Panel geschlossen → öffnet für diesen Post.
+            - Panel offen für DIESEN Post → schließt.
+            - Panel offen für einen ANDEREN Post → wechselt das Target auf
+              diesen (passiert praktisch nur wenn FeedList per Scroll noch
+              nicht gesynct hat — der Sync-Effect in FeedList zieht das
+              normalerweise automatisch nach).
+            Active-Tint wenn offen, damit das Icon den State widerspiegelt
+            (TikTok zeigt den Button in dem Fall leicht heller/gold). */}
         <ActionButton
-          icon={<MessageCircle className="h-7 w-7" aria-hidden="true" />}
+          icon={
+            <MessageCircle
+              className={cn('h-7 w-7', isCommentsOpenForThisPost && 'fill-brand-gold text-brand-gold')}
+              aria-hidden="true"
+            />
+          }
           label={formatCount(post.comment_count)}
-          ariaLabel={`Kommentare öffnen — ${post.comment_count} Kommentare`}
-          onClick={() => openCommentsFor(post.id)}
+          ariaLabel={
+            isCommentsOpenForThisPost
+              ? 'Kommentare schließen'
+              : `Kommentare öffnen — ${post.comment_count} Kommentare`
+          }
+          onClick={() => {
+            if (isCommentsOpenForThisPost) closeComments();
+            else openCommentsFor(post.id);
+          }}
           circleClassName="h-12 w-12"
         />
 
