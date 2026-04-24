@@ -5,6 +5,7 @@ import { Heart, Flame, Gift, Users2, Laugh, Sparkles, Frown, HandMetal } from 'l
 import { sendLiveReaction, requestCoHost, cancelCoHostRequest } from '@/app/actions/live';
 import { LiveGiftPicker } from './live-gift-picker';
 import { LiveReactionOverlay } from './live-reaction-overlay';
+import { useRemoteReactions } from './use-remote-reactions';
 import type { ActiveCoHostSSR } from '@/lib/data/live';
 
 // -----------------------------------------------------------------------------
@@ -44,6 +45,17 @@ export function LiveActionBar({
   const [coHostRequested, setCoHostRequested] = useState(false);
   const [overlayBurst, setOverlayBurst] = useState<{ key: string; id: number } | null>(null);
   const [, startTransition] = useTransition();
+
+  // v1.w.UI.19 B6 — Remote Reactions von anderen Viewern. Das `sendLiveReaction`
+  // server action broadcastet bereits seit v1.18.0 auf `live:{id}` Event
+  // `reaction`, aber niemand subscribed. Heißt: jeder Viewer sah NUR seine
+  // eigenen schwebenden Hearts. Mit diesem Hook fliegen jetzt ALLE Reactions
+  // aller Viewer über den Screen — TikTok-Party-Feeling.
+  //
+  // Self-Filter läuft im Hook: payload.user_id === viewerId wird gedroppt
+  // weil die lokale Optimistic-Burst bereits den Effekt zeigt (sonst Doppel-
+  // Float pro Klick).
+  const { burst: remoteBurst } = useRemoteReactions({ sessionId, viewerId });
 
   const alreadyCoHost = cohosts.some((c) => c.user_id === viewerId);
 
@@ -126,7 +138,13 @@ export function LiveActionBar({
         </div>
       </div>
 
+      {/* Zwei Overlays (lokal + remote) stapeln sich visuell im gleichen
+          unten-rechten Korridor. `LiveReactionOverlay` cappt intern bei
+          MAX_ITEMS = 30 — pro Overlay, also gesamt 60 gleichzeitige Floater.
+          Das reicht für die 2s-Lebenszeit pro Item (bei 30 Reactions/Sekunde
+          würden auch eh nur 60 sichtbar sein). */}
       <LiveReactionOverlay burst={overlayBurst} />
+      <LiveReactionOverlay burst={remoteBurst} />
 
       {giftOpen && (
         <LiveGiftPicker
