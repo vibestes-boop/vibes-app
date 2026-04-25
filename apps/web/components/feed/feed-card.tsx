@@ -22,9 +22,23 @@ import { linkify } from '@/lib/linkify';
 const FEED_LINK_CLASS = 'font-semibold text-white underline-offset-2 hover:underline';
 
 // -----------------------------------------------------------------------------
-// FeedCard — eine 9:16-Video-Karte im vertikalen Feed.
+// FeedCard — eine Video-Karte im vertikalen Feed.
 // Auto-Play via IntersectionObserver (≥60% sichtbar → play, sonst pause).
 // Muted-Default (Autoplay-Policy); globaler Mute-State kommt vom Parent.
+//
+// Aspect-Ratio-Verhalten (v1.w.UI.23 — TikTok-Parity für Querformat):
+// Standard ist 9:16 (Hochformat-Phone-Video). Sobald `onLoadedMetadata`
+// des `<video>`-Elements feuert, kennen wir die echten Pixel-Dimensionen
+// und passen den Container dynamisch an:
+//   - Ratio < 1 (Portrait): bleibt height-bound (aspect-[9/16] h-full),
+//     wie bisher. Schwarze Letterbox links/rechts nur wenn Video schmaler
+//     als 9:16 ist (selten).
+//   - Ratio >= 1 (Landscape, z.B. 16:9 oder 1:1): wird width-bound
+//     (w-full h-auto) mit dynamischem aspectRatio per inline-style.
+//     Container wird breit + niedriger, KEIN Letterbox oben/unten.
+// Bilder verwenden weiterhin den 9:16-Frame mit Blur-Fill (Insta-Style),
+// weil Image-Posts oft bewusst quadratisch komponiert sind und in einem
+// Portrait-Frame mit Blur-Border besser wirken als beschnitten.
 // -----------------------------------------------------------------------------
 
 export interface FeedCardProps {
@@ -100,6 +114,15 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
   // Pfad (Instagram-style Standbild mit Video-ähnlichem Overlay).
   const isImage = post.media_type === 'image';
 
+  // Detected media aspect-ratio (width/height). null = noch nicht geladen,
+  // dann verwenden wir 9:16 als sicheren Default. Wird bei post.id-Wechsel
+  // resettet, damit das nächste Video nicht mit dem Ratio des vorigen rendert.
+  const [mediaAspectRatio, setMediaAspectRatio] = useState<number | null>(null);
+  useEffect(() => setMediaAspectRatio(null), [post.id]);
+  // Landscape (oder Square) → width-bound Container ohne Letterbox.
+  // Während des Ladens (`null`) bleiben wir auf Portrait-Default.
+  const isLandscape = mediaAspectRatio !== null && mediaAspectRatio >= 1;
+
   // Auto-Play / Pause je nach `isActive` — nur für Videos relevant.
   useEffect(() => {
     if (isImage) return;
@@ -159,8 +182,20 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
 
   return (
     <article
-      className="group/card relative mx-auto flex aspect-[9/16] h-full max-h-full w-auto max-w-full overflow-hidden rounded-2xl bg-black"
+      // Container-Sizing-Strategie wechselt mit der Orientierung des Mediums.
+      // Portrait/unknown: `aspect-[9/16] h-full w-auto` — Karte ist so hoch
+      // wie der Feed-Slot, Breite wird aus dem Aspect ermittelt.
+      // Landscape/Square: `h-auto w-full` + inline aspectRatio aus den
+      // detektierten Video-Dimensionen — Karte füllt die Spaltenbreite,
+      // Höhe ergibt sich aus dem Ratio. Kein 9:16-Frame mehr → kein
+      // schwarzer Letterbox oben/unten.
+      style={isLandscape ? { aspectRatio: mediaAspectRatio ?? undefined } : undefined}
+      className={cn(
+        'group/card relative mx-auto flex max-h-full max-w-full overflow-hidden rounded-2xl bg-black',
+        isLandscape ? 'h-auto w-full' : 'aspect-[9/16] h-full w-auto',
+      )}
       data-post-id={post.id}
+      data-orientation={isLandscape ? 'landscape' : 'portrait'}
     >
       {/* Media-Ebene: Video bei media_type='video', Bild bei 'image' */}
       {isImage ? (
@@ -204,6 +239,18 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
             onTimeUpdate={(e) => {
               const v = e.currentTarget;
               if (v.duration > 0) setProgress((v.currentTime / v.duration) * 100);
+            }}
+            onLoadedMetadata={(e) => {
+              // `videoWidth`/`videoHeight` sind die nativen Pixel-Dimensionen
+              // des Streams — verfügbar sobald die Metadata geladen ist
+              // (typisch <100ms bei `preload="metadata"`). Damit kennen wir
+              // die echte Aspect-Ratio und können den Container in
+              // Querformat umschalten. Wenn ein Wert 0 ist (Edge-Case bei
+              // korrupten Streams), keep den Default beibehalten.
+              const v = e.currentTarget;
+              if (v.videoWidth > 0 && v.videoHeight > 0) {
+                setMediaAspectRatio(v.videoWidth / v.videoHeight);
+              }
             }}
             className="h-full w-full object-contain"
           />
@@ -308,7 +355,18 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
             - Like / Comment / Bookmark 48px (h-12 w-12) — Primary-Engagement
             - Share 44px (h-11 w-11), Mute 40px (h-10 w-10) — Secondary-Tools
           Icon-Größen korrespondieren (7/6/5), damit das Icon-to-Circle-Ratio
-          konstant bleibt und die Hierarchie auch „blind" lesbar ist. */}
+          konstant bleibt und die Hierarchie auch „blind" lesbar ist.
+
+          v1.w.UI.23 Querformat-Tradeoff: Bei Landscape-Videos (16:9 etc.)
+          ist die Card kürzer als der Rail braucht (~480px Stack-Höhe).
+          `overflow-hidden` der article clippt dann das Avatar + ggf. den
+          Like-Button am oberen Rand. Akzeptabel als erste Iteration weil:
+          (a) Like via Double-Tap aufs Video weiter erreichbar,
+          (b) Comment-/Bookmark-/Share-/Mute-Buttons unten bleiben sichtbar,
+          (c) Profil über den Username-Link unten links (Caption-Overlay)
+              navigierbar — Avatar im Rail ist dafür redundant.
+          Saubere Lösung wäre eine horizontale Rail unten bei Landscape
+          (Instagram-Reels-Pattern) — Refactor-Slice für später. */}
       <div className="pointer-events-auto absolute bottom-6 right-3 z-10 flex flex-col items-center gap-5 text-white">
         {/* Avatar mit optionalem Follow-Plus (TikTok-Signature-Slot). */}
         <Link
