@@ -296,6 +296,15 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
           <img
             src={post.thumbnail_url ?? post.video_url}
             alt={post.caption ?? ''}
+            onLoad={(e) => {
+              // Echte Pixel-Dimensionen → Container kann auf Querformat-
+              // Bilder (4:3, 16:9, etc.) reagieren statt sie in einen
+              // 9:16-Frame zu zwängen.
+              const img = e.currentTarget;
+              if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+                setMediaAspectRatio(img.naturalWidth / img.naturalHeight);
+              }
+            }}
             className="absolute inset-0 h-full w-full object-contain"
           />
         </div>
