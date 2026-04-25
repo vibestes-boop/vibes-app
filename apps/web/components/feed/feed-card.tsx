@@ -190,20 +190,41 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
   };
 
   return (
-    <article
-      // Container folgt immer dem detektierten Aspect-Ratio (siehe oben).
-      // Sizing-Strategie: width-bound wenn breiter als 9/16, sonst height-bound.
-      // `aspectRatio` als inline-style überschreibt jede class-level aspect-Klasse
-      // (Inline gewinnt gegen Tailwind-CSS); deshalb keine `aspect-[9/16]`-Klasse
-      // mehr nötig.
-      style={{ aspectRatio: appliedRatio }}
+    // v1.w.UI.25 (TikTok-Parity): Action-Rail aus dem Card raus, als
+    // Sibling neben der article platziert (statt Overlay innerhalb).
+    // Wrapper-Sizing-Strategie:
+    //   - Portrait: `h-full` → Wrapper füllt die FeedList-Section komplett,
+    //     damit die Card `h-full` korrekt auflöst und volle Höhe nimmt.
+    //   - Landscape: `h-auto` → Wrapper sized auf Content-Höhe (max(card,
+    //     rail)). Section's `items-center` zentriert dann das Wrapper-
+    //     Group vertikal in der Spalte — TikTok-Style „Card schwebt
+    //     mittig in der Spalte mit Leerraum oben/unten".
+    // `items-end` aligned Card und Rail unten, sodass die Rail-Bottom mit
+    // der Card-Bottom flush ist (egal ob Card kürzer als Rail oder umgekehrt).
+    <div
       className={cn(
-        'group/card relative mx-auto flex max-h-full max-w-full overflow-hidden rounded-2xl bg-black',
-        isWiderThanPortrait ? 'h-auto w-full' : 'h-full w-auto',
+        'flex w-full max-h-full items-end justify-center gap-3',
+        isWiderThanPortrait ? 'h-auto' : 'h-full',
       )}
       data-post-id={post.id}
       data-aspect-ratio={appliedRatio.toFixed(3)}
       data-orientation={isWiderThanPortrait ? 'wide' : 'portrait'}
+    >
+    <article
+      // Container folgt immer dem detektierten Aspect-Ratio (inline-style
+      // schlägt jede class-level aspect-Klasse). Sizing:
+      //   - Portrait: `h-full w-auto shrink-0` — Card nimmt volle Wrapper-
+      //     Höhe, Breite ergibt sich aus Ratio. shrink-0 verhindert dass
+      //     der flex-Layout die Card kompromittiert (Rail ist auch shrink-0).
+      //   - Landscape: `min-w-0 flex-1 h-auto` — Card grow auf restliche
+      //     Wrapper-Breite (= 100% minus Rail minus gap), Höhe ergibt sich
+      //     aus Ratio. min-w-0 erlaubt dem Flex-Item zu schrumpfen wenn
+      //     der Wrapper enger wird (Mobile).
+      style={{ aspectRatio: appliedRatio }}
+      className={cn(
+        'group/card relative flex max-h-full overflow-hidden rounded-2xl bg-black',
+        isWiderThanPortrait ? 'min-w-0 flex-1 h-auto' : 'h-full w-auto shrink-0',
+      )}
     >
       {/* Media-Ebene: Video bei media_type='video', Bild bei 'image' */}
       {isImage ? (
@@ -305,8 +326,10 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
 
       {/* Text-Overlay unten links (A2: Avatar wandert in den Rail rechts,
-          deshalb hier nur noch Username + Follow-Button in einer Zeile). */}
-      <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col gap-2 p-4 pb-6 pr-20 text-white">
+          deshalb hier nur noch Username + Follow-Button in einer Zeile).
+          v1.w.UI.25: `pr-20` entfernt — Rail liegt nicht mehr über der Card,
+          Caption darf jetzt die volle Breite nutzen. */}
+      <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col gap-2 p-4 pb-6 text-white">
         <div className="flex items-center gap-2">
           <Link
             href={`/u/${post.author.username}` as Route}
@@ -369,137 +392,6 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
         )}
       </div>
 
-      {/* Action-Rail rechts (A2 — Hierarchy + Avatar-Head).
-          Größen-Skala nach TikTok-Pattern:
-            - Avatar 56px (h-14 w-14) mit Follow-Plus-Badge (−bottom-1.5)
-            - Like / Comment / Bookmark 48px (h-12 w-12) — Primary-Engagement
-            - Share 44px (h-11 w-11), Mute 40px (h-10 w-10) — Secondary-Tools
-          Icon-Größen korrespondieren (7/6/5), damit das Icon-to-Circle-Ratio
-          konstant bleibt und die Hierarchie auch „blind" lesbar ist.
-
-          v1.w.UI.23 Querformat-Tradeoff: Bei Landscape-Videos (16:9 etc.)
-          ist die Card kürzer als der Rail braucht (~480px Stack-Höhe).
-          `overflow-hidden` der article clippt dann das Avatar + ggf. den
-          Like-Button am oberen Rand. Akzeptabel als erste Iteration weil:
-          (a) Like via Double-Tap aufs Video weiter erreichbar,
-          (b) Comment-/Bookmark-/Share-/Mute-Buttons unten bleiben sichtbar,
-          (c) Profil über den Username-Link unten links (Caption-Overlay)
-              navigierbar — Avatar im Rail ist dafür redundant.
-          Saubere Lösung wäre eine horizontale Rail unten bei Landscape
-          (Instagram-Reels-Pattern) — Refactor-Slice für später. */}
-      <div className="pointer-events-auto absolute bottom-6 right-3 z-10 flex flex-col items-center gap-5 text-white">
-        {/* Avatar mit optionalem Follow-Plus (TikTok-Signature-Slot). */}
-        <Link
-          href={`/u/${post.author.username}` as Route}
-          className="relative rounded-md outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black"
-          aria-label={`Profil von @${post.author.username} öffnen`}
-        >
-          <Avatar className="h-14 w-14 border-2 border-white/80">
-            <AvatarImage src={post.author.avatar_url ?? undefined} alt="" />
-            <AvatarFallback className="bg-neutral-800 text-sm text-white">
-              {(post.author.display_name ?? post.author.username).slice(0, 2).toUpperCase()}
-            </AvatarFallback>
-          </Avatar>
-          {!isSelf && !post.following_author && viewerId && (
-            <button
-              type="button"
-              onClick={(e) => {
-                // Link-Navigation verhindern — nur Follow-Action triggern.
-                e.preventDefault();
-                e.stopPropagation();
-                if (followMut.isPending) return;
-                followMut.mutate({ userId: post.author.id, following: post.following_author });
-              }}
-              aria-label="Folgen"
-              className="absolute -bottom-1.5 left-1/2 flex h-5 w-5 -translate-x-1/2 items-center justify-center rounded-full bg-red-500 text-white shadow-elevation-1 ring-2 ring-black/40 transition-transform duration-fast ease-out-expo hover:scale-110 disabled:opacity-60"
-              disabled={followMut.isPending}
-            >
-              <Plus className="h-3.5 w-3.5" aria-hidden="true" />
-            </button>
-          )}
-        </Link>
-
-        {/* Like (A3: eigene Komponente mit Burst) — 48px */}
-        <LikeButton
-          liked={post.liked_by_me}
-          countLabel={formatCount(post.like_count)}
-          rawCount={post.like_count}
-          disabled={!viewerId || likeMut.isPending}
-          onClick={handleLikeClick}
-          iconClassName="h-7 w-7"
-          circleClassName="h-12 w-12"
-        />
-
-        {/* Comment — 48px. Toggle-Verhalten (v1.w.UI.11 Phase C Follow-up):
-            - Panel geschlossen → öffnet für diesen Post.
-            - Panel offen für DIESEN Post → schließt.
-            - Panel offen für einen ANDEREN Post → wechselt das Target auf
-              diesen (passiert praktisch nur wenn FeedList per Scroll noch
-              nicht gesynct hat — der Sync-Effect in FeedList zieht das
-              normalerweise automatisch nach).
-            Active-Tint wenn offen, damit das Icon den State widerspiegelt
-            (TikTok zeigt den Button in dem Fall leicht heller/gold). */}
-        <ActionButton
-          icon={
-            <MessageCircle
-              className={cn('h-7 w-7', isCommentsOpenForThisPost && 'fill-brand-gold text-brand-gold')}
-              aria-hidden="true"
-            />
-          }
-          label={formatCount(post.comment_count)}
-          ariaLabel={
-            isCommentsOpenForThisPost
-              ? 'Kommentare schließen'
-              : `Kommentare öffnen — ${post.comment_count} Kommentare`
-          }
-          onClick={() => {
-            if (isCommentsOpenForThisPost) closeComments();
-            else openCommentsFor(post.id);
-          }}
-          circleClassName="h-12 w-12"
-        />
-
-        {/* Bookmark — 48px */}
-        <ActionButton
-          icon={
-            <Bookmark
-              className={cn(
-                'h-7 w-7',
-                post.saved_by_me && 'fill-brand-gold text-brand-gold',
-              )}
-              aria-hidden="true"
-            />
-          }
-          label={post.saved_by_me ? 'Gespeichert' : 'Merken'}
-          ariaLabel={post.saved_by_me ? 'Aus Merkliste entfernen' : 'Zur Merkliste hinzufügen'}
-          disabled={!viewerId || saveMut.isPending}
-          onClick={() =>
-            viewerId && saveMut.mutate({ postId: post.id, saved: post.saved_by_me })
-          }
-          circleClassName="h-12 w-12"
-        />
-
-        {/* Share — 44px (Secondary-Tool, kleiner) */}
-        <ActionButton
-          icon={<Share2 className="h-6 w-6" aria-hidden="true" />}
-          label={formatCount(post.share_count)}
-          ariaLabel={`Teilen — ${post.share_count} mal geteilt`}
-          onClick={handleShare}
-          circleClassName="h-11 w-11"
-        />
-
-        {/* Mute — 40px (ambient Control, am kleinsten) */}
-        {!isImage && (
-          <ActionButton
-            icon={muted ? <VolumeX className="h-5 w-5" aria-hidden="true" /> : <Volume2 className="h-5 w-5" aria-hidden="true" />}
-            label={muted ? 'Stumm' : 'Laut'}
-            ariaLabel={muted ? 'Ton einschalten' : 'Stummschalten'}
-            onClick={onMuteToggle}
-            circleClassName="h-10 w-10"
-          />
-        )}
-      </div>
-
       {/* Progress-Bar (A4) — idle 3px, hover auf dem gesamten Video 6px.
           Die Bar hat keinen eigenen Hover (zu schmales Hit-Target), also
           triggert der Hover der `article` via `group-hover`. Das heißt:
@@ -514,13 +406,128 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
           />
         </div>
       )}
-
-      {/* CommentSheet / CommentPanel wird seit v1.w.UI.11 Phase C vom
-          HomeFeedShell gerendert (State-Owner-Lift), damit das Öffnen auf
-          xl+ die rechte Sidebar durch den Panel ersetzen kann. FeedCard
-          triggert nur noch via `openCommentsFor(post.id)` aus dem
-          FeedInteractionContext. */}
     </article>
+
+    {/* Action-Rail (TikTok-Style — außerhalb der Card, nicht overlaid).
+        Größen-Skala bleibt wie zuvor (Avatar 56, Like/Comment/Bookmark 48,
+        Share 44, Mute 40). Styles sind aber theme-aware: bg-foreground/10
+        statt bg-white/10, text-foreground statt text-white. So passt der
+        Rail in beiden Themes auf den Page-Background.
+        Avatar-Border + Plus-Ring nutzen `border-background`/`ring-background`
+        damit der Avatar visuell vom Rail-Hintergrund abgesetzt ist (nicht
+        auf einer dunklen Video-Letterbox wie zuvor). */}
+    <aside className="pointer-events-auto flex shrink-0 flex-col items-center gap-5 pb-2 text-foreground">
+      {/* Avatar mit optionalem Follow-Plus (TikTok-Signature-Slot). */}
+      <Link
+        href={`/u/${post.author.username}` as Route}
+        className="relative rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        aria-label={`Profil von @${post.author.username} öffnen`}
+      >
+        <Avatar className="h-14 w-14 border-2 border-background shadow-elevation-1">
+          <AvatarImage src={post.author.avatar_url ?? undefined} alt="" />
+          <AvatarFallback className="bg-muted text-sm text-foreground">
+            {(post.author.display_name ?? post.author.username).slice(0, 2).toUpperCase()}
+          </AvatarFallback>
+        </Avatar>
+        {!isSelf && !post.following_author && viewerId && (
+          <button
+            type="button"
+            onClick={(e) => {
+              // Link-Navigation verhindern — nur Follow-Action triggern.
+              e.preventDefault();
+              e.stopPropagation();
+              if (followMut.isPending) return;
+              followMut.mutate({ userId: post.author.id, following: post.following_author });
+            }}
+            aria-label="Folgen"
+            className="absolute -bottom-1.5 left-1/2 flex h-5 w-5 -translate-x-1/2 items-center justify-center rounded-full bg-red-500 text-white shadow-elevation-1 ring-2 ring-background transition-transform duration-fast ease-out-expo hover:scale-110 disabled:opacity-60"
+            disabled={followMut.isPending}
+          >
+            <Plus className="h-3.5 w-3.5" aria-hidden="true" />
+          </button>
+        )}
+      </Link>
+
+      {/* Like (A3: eigene Komponente mit Burst) — 48px */}
+      <LikeButton
+        liked={post.liked_by_me}
+        countLabel={formatCount(post.like_count)}
+        rawCount={post.like_count}
+        disabled={!viewerId || likeMut.isPending}
+        onClick={handleLikeClick}
+        iconClassName="h-7 w-7"
+        circleClassName="h-12 w-12"
+      />
+
+      {/* Comment — 48px. Toggle-Verhalten (v1.w.UI.11 Phase C Follow-up):
+          - Panel geschlossen → öffnet für diesen Post.
+          - Panel offen für DIESEN Post → schließt.
+          - Panel offen für einen ANDEREN Post → wechselt das Target. */}
+      <ActionButton
+        icon={
+          <MessageCircle
+            className={cn('h-7 w-7', isCommentsOpenForThisPost && 'fill-brand-gold text-brand-gold')}
+            aria-hidden="true"
+          />
+        }
+        label={formatCount(post.comment_count)}
+        ariaLabel={
+          isCommentsOpenForThisPost
+            ? 'Kommentare schließen'
+            : `Kommentare öffnen — ${post.comment_count} Kommentare`
+        }
+        onClick={() => {
+          if (isCommentsOpenForThisPost) closeComments();
+          else openCommentsFor(post.id);
+        }}
+        circleClassName="h-12 w-12"
+      />
+
+      {/* Bookmark — 48px */}
+      <ActionButton
+        icon={
+          <Bookmark
+            className={cn(
+              'h-7 w-7',
+              post.saved_by_me && 'fill-brand-gold text-brand-gold',
+            )}
+            aria-hidden="true"
+          />
+        }
+        label={post.saved_by_me ? 'Gespeichert' : 'Merken'}
+        ariaLabel={post.saved_by_me ? 'Aus Merkliste entfernen' : 'Zur Merkliste hinzufügen'}
+        disabled={!viewerId || saveMut.isPending}
+        onClick={() =>
+          viewerId && saveMut.mutate({ postId: post.id, saved: post.saved_by_me })
+        }
+        circleClassName="h-12 w-12"
+      />
+
+      {/* Share — 44px (Secondary-Tool, kleiner) */}
+      <ActionButton
+        icon={<Share2 className="h-6 w-6" aria-hidden="true" />}
+        label={formatCount(post.share_count)}
+        ariaLabel={`Teilen — ${post.share_count} mal geteilt`}
+        onClick={handleShare}
+        circleClassName="h-11 w-11"
+      />
+
+      {/* Mute — 40px (ambient Control, am kleinsten) */}
+      {!isImage && (
+        <ActionButton
+          icon={muted ? <VolumeX className="h-5 w-5" aria-hidden="true" /> : <Volume2 className="h-5 w-5" aria-hidden="true" />}
+          label={muted ? 'Stumm' : 'Laut'}
+          ariaLabel={muted ? 'Ton einschalten' : 'Stummschalten'}
+          onClick={onMuteToggle}
+          circleClassName="h-10 w-10"
+        />
+      )}
+    </aside>
+
+    {/* CommentSheet / CommentPanel wird seit v1.w.UI.11 Phase C vom
+        HomeFeedShell gerendert (State-Owner-Lift). FeedCard triggert nur
+        noch via `openCommentsFor(post.id)` aus dem FeedInteractionContext. */}
+    </div>
   );
 }
 
@@ -560,11 +567,13 @@ function ActionButton({
       onClick={onClick}
       disabled={disabled}
       aria-label={ariaLabel ?? label}
-      className="group/action flex flex-col items-center gap-1 rounded-md outline-none transition-opacity duration-fast ease-out-expo focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black disabled:opacity-60"
+      className="group/action flex flex-col items-center gap-1 rounded-md outline-none transition-opacity duration-fast ease-out-expo focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-60"
     >
       <span
         className={cn(
-          'flex items-center justify-center rounded-full bg-white/10 backdrop-blur-sm transition-colors duration-base ease-out-expo group-hover/action:bg-white/20',
+          // Theme-aware: bg-foreground/10 ist im Light dunkles Grau, im Dark
+          // helles Grau — sichtbar auf Page-Background. (v1.w.UI.25)
+          'flex items-center justify-center rounded-full bg-foreground/10 transition-colors duration-base ease-out-expo group-hover/action:bg-foreground/20',
           circleClassName ?? 'h-11 w-11',
         )}
       >
