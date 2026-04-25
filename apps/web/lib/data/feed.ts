@@ -151,6 +151,25 @@ export const getForYouFeed = cache(
     } = await supabase.auth.getUser();
     const viewerId = user?.id ?? null;
 
+    // v1.w.UI.34: Not-Interested-Filter. User-spezifisch — wir laden alle
+    // Post-IDs die der aktuelle User mit `not_interested` markiert hat und
+    // schließen sie aus dem Feed aus. Anon (viewerId=null) hat keine, also
+    // skip in dem Fall um einen unnötigen Roundtrip zu sparen.
+    const notInterestedIds: string[] = [];
+    if (viewerId) {
+      const { data: ni } = await supabase
+        .from('post_reports')
+        .select('post_id')
+        .eq('reporter_id', viewerId)
+        .eq('reason', 'not_interested');
+      if (ni) {
+        for (const r of ni) {
+          const id = (r as { post_id?: string }).post_id;
+          if (typeof id === 'string') notInterestedIds.push(id);
+        }
+      }
+    }
+
     let query = supabase
       .from('posts')
       .select(`${POST_COLUMNS}, ${AUTHOR_JOIN}`)
@@ -158,8 +177,11 @@ export const getForYouFeed = cache(
       .order('created_at', { ascending: false })
       .limit(limit);
 
-    if (excludeIds.length > 0) {
-      query = query.not('id', 'in', `(${excludeIds.join(',')})`);
+    // Excludes zusammenführen: explicit excludeIds (z.B. „bereits gesehene
+    // Posts") + die not-interested-IDs des Users.
+    const allExcludes = [...excludeIds, ...notInterestedIds];
+    if (allExcludes.length > 0) {
+      query = query.not('id', 'in', `(${allExcludes.join(',')})`);
     }
 
     const { data: rows, error } = await query;
