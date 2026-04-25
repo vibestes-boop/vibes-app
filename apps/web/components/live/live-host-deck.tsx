@@ -37,6 +37,7 @@ import {
   heartbeatLiveSession,
   updateLiveSession,
 } from '@/app/actions/live-host';
+import { deleteWhipIngress } from '@/app/actions/live-ingress';
 import { LiveChat } from './live-chat';
 import { LiveSourcesPanel } from './live-sources-panel';
 import { LiveStreamHealth } from './live-stream-health';
@@ -47,26 +48,23 @@ import { LiveGiftsFeed } from './live-gifts-feed';
 // -----------------------------------------------------------------------------
 // LiveHostDeck — OBS-ähnliches Control-Panel für den Host.
 //
-// Haupt-Bereiche (Desktop-Layout):
-//  ┌──────────────────────────────┬──────────────┐
-//  │  Preview + Header            │  Chat        │
-//  │  (großes Video, Titel-Edit)  │  (Realtime)  │
-//  ├──────────────────────────────┤              │
-//  │  Sources + Health            │              │
-//  │  (Cam/Mic/Screen, Bitrate)   │              │
-//  ├──────────────────────────────┤              │
-//  │  CoHost-Queue + Gifts        │              │
-//  └──────────────────────────────┴──────────────┘
+// Zwei Modi:
 //
-// LiveKit-Integration:
-//  • Token via fetchLiveKitToken(roomName, false). Die Edge-Function erkennt
-//    den Host anhand host_id === JWT-sub und setzt canPublish:true.
-//  • Tracks werden lazy erstellt beim Enable-Toggle. Screenshare ersetzt keine
-//    Kamera (beide können parallel publishen, wie in OBS).
-//  • Device-Prefs aus sessionStorage (gesetzt von /live/start) werden beim
-//    ersten Cam-/Mic-Start angewendet.
+//  Browser-Modus (room_name startet NICHT mit "obs-"):
+//    Host publishet Cam/Mic/Screen direkt aus dem Browser via LiveKit.
+//    Bekommt einen Publisher-Token (isHost=true → canPublish=true).
+//
+//  OBS-Modus (room_name startet mit "obs-"):
+//    OBS publishet via WHIP → LiveKit. Browser ist NUR Subscriber (Monitor-View).
+//    Bekommt einen Subscriber-Token (isHost=false → canPublish=false).
+//    • Kein Cam-/Mic-Toggle (OBS steuert die Quellen)
+//    • Remote-Video-Track von OBS wird im videoRef angezeigt
+//    • Heartbeat läuft sofort beim Mount (unabhängig von LiveKit-Phase!)
+//      → verhindert dass Cleanup-Cron die Session nach 10 Min killt
+//    • "Stream beenden" ruft deleteWhipIngress → beendet Ingress + Session
 //
 // Heartbeat: alle 30s `heartbeat_live_session` RPC — verhindert Zombie-Cleanup.
+// OBS-Modus: Heartbeat startet auf Mount, nicht erst bei phase='live'.
 // -----------------------------------------------------------------------------
 
 interface DevicePrefs {
@@ -106,6 +104,11 @@ export function LiveHostDeck({
   initialGiftGoal,
 }: LiveHostDeckProps) {
   const router = useRouter();
+
+  // OBS-Modus: Session wurde via WHIP-Ingress erstellt (room_name-Präfix "obs-").
+  // Browser ist hier NUR Monitor (Subscriber), nicht Publisher.
+  const isObs = session.room_name.startsWith('obs-');
+
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const screenPreviewRef = useRef<HTMLVideoElement | null>(null);
   const roomRef = useRef<Room | null>(null);
@@ -162,11 +165,15 @@ export function LiveHostDeck({
     roomRef.current = room;
 
     async function connect() {
-      // `isCoHost=false, isHost=true` — Host-Deck rendert nur, wenn der
-      // viewer === session.host_id ist (SSR-Gate in page.tsx). Der Edge-
-      // Function-Host-Check verifiziert die Identity nochmal via JWT gegen
-      // `live_sessions.host_id` → Publisher-Token nur für echten Host.
-      const tokenResult = await fetchLiveKitToken(session.room_name, false, true);
+      // OBS-Modus: Subscriber-Token (kein isHost-Check in der Edge-Function,
+      // kein canPublish). Browser ist Monitor, OBS ist Publisher.
+      // Browser-Modus: Publisher-Token (isHost=true → Edge-Function prüft
+      // Ownership via live_sessions.host_id).
+      const tokenResult = await fetchLiveKitToken(
+        session.room_name,
+        false,   // isCoHost
+        !isObs,  // isHost — nur im Browser-Modus
+      );
       if (cancelled) return;
       if (!tokenResult.ok) {
         setErrorMsg(tokenResult.error);
@@ -181,14 +188,27 @@ export function LiveHostDeck({
         }
         setPhase('live');
 
-        // Device-Prefs vom Setup-Screen anwenden
+        if (isObs) {
+          // OBS-Modus: bereits publizierte OBS-Tracks abholen (falls OBS
+          // schon vor uns im Room war — was der Normalfall ist).
+          for (const participant of room.remoteParticipants.values()) {
+            for (const pub of participant.videoTrackPublications.values()) {
+              if (pub.isSubscribed && pub.track && videoRef.current) {
+                pub.track.attach(videoRef.current);
+              }
+            }
+          }
+          // Kein Cam/Mic-Enable im OBS-Modus — OBS übernimmt das.
+          return;
+        }
+
+        // Browser-Modus: Device-Prefs vom Setup-Screen anwenden
         const prefs = readDevicePrefs(session.id);
         if (prefs) {
           setSelectedCam(prefs.cam);
           setSelectedMic(prefs.mic);
           setCamEnabled(prefs.camEnabled);
           setMicEnabled(prefs.micEnabled);
-          // Initiales Publish
           if (prefs.camEnabled) await enableCam(prefs.cam);
           if (prefs.micEnabled) await enableMic(prefs.mic);
         } else {
@@ -203,9 +223,22 @@ export function LiveHostDeck({
       }
     }
 
+    // OBS-Modus: Remote-Track subscriben wenn OBS-Participant publisht
+    // (nötig wenn OBS erst NACH dem Browser-Join zum Room kommt)
+    if (isObs) {
+      room.on(RoomEvent.TrackSubscribed, (track) => {
+        if (track.kind === Track.Kind.Video && videoRef.current) {
+          track.attach(videoRef.current);
+        }
+      });
+    }
+
     room.on(RoomEvent.ParticipantConnected, () => {
       // Participant-Count ≈ viewer_count — aktualisieren
-      const count = room.numParticipants;
+      // OBS-Modus: OBS-Participant wird mitgezählt, aber Viewer sind alle anderen.
+      const count = isObs
+        ? Math.max(0, room.numParticipants - 1) // OBS-Participant abziehen
+        : room.numParticipants;
       setViewerCount(count);
       if (count > peakRef.current) {
         peakRef.current = count;
@@ -213,7 +246,10 @@ export function LiveHostDeck({
       }
     });
     room.on(RoomEvent.ParticipantDisconnected, () => {
-      setViewerCount(room.numParticipants);
+      const count = isObs
+        ? Math.max(0, room.numParticipants - 1)
+        : room.numParticipants;
+      setViewerCount(count);
     });
     room.on(RoomEvent.Disconnected, () => {
       if (!cancelled) setPhase('ended');
@@ -389,49 +425,76 @@ export function LiveHostDeck({
   useEffect(() => {
     if (phase !== 'live') return;
     const id = window.setInterval(() => {
-      // Duration-Ticker
       setDurationSecs((d) => d + 1);
     }, 1000);
     return () => window.clearInterval(id);
   }, [phase]);
 
+  // Browser-Modus: Heartbeat nur wenn phase=live
   useEffect(() => {
-    if (phase !== 'live') return;
+    if (isObs || phase !== 'live') return;
     const id = window.setInterval(() => {
       void heartbeatLiveSession(session.id, viewerCount, peakRef.current);
     }, 30_000);
-    // Initial-Heartbeat direkt bei live-phase-switch
     void heartbeatLiveSession(session.id, viewerCount, peakRef.current);
     return () => window.clearInterval(id);
-  }, [phase, session.id, viewerCount]);
+  }, [isObs, phase, session.id, viewerCount]);
+
+  // OBS-Modus: Heartbeat sofort beim Mount, unabhängig von der LiveKit-Phase.
+  // Kritisch: verhindert dass der Cleanup-Cron (updated_at > 10 Min) die Session
+  // killt, auch wenn die LiveKit-Verbindung kurz ausfällt oder noch aufbaut.
+  useEffect(() => {
+    if (!isObs) return;
+    const sendHb = () => void heartbeatLiveSession(session.id, viewerCount, peakRef.current);
+    sendHb(); // sofort
+    const id = window.setInterval(sendHb, 30_000);
+    return () => window.clearInterval(id);
+    // viewerCount bewusst weggelassen — kein Effect-Restart bei jedem Viewer-Join
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isObs, session.id]);
 
   // -----------------------------------------------------------------------------
   // End-Stream
   // -----------------------------------------------------------------------------
   const handleEndStream = useCallback(() => {
-    if (phase === 'ending' || phase === 'ended') return;
+    // OBS-Modus: auch aus 'error'-Phase beenden erlauben (kein LiveKit-Connect nötig)
+    const canEnd = isObs
+      ? phase !== 'ending' && phase !== 'ended'
+      : phase === 'live';
+    if (!canEnd) return;
     const confirmed = window.confirm('Stream wirklich beenden? Viewer sehen dann "Stream beendet".');
     if (!confirmed) return;
     setPhase('ending');
     startEnding(async () => {
-      // Tracks sauber freigeben (falls Edge Function langsam antwortet)
-      await disableCam();
-      await disableMic();
-      await stopScreenshare();
-      const result = await endLiveSession(session.id);
-      roomRef.current?.disconnect();
-      if (!result.ok) {
-        setErrorMsg(result.error);
-        setPhase('error');
-        return;
+      if (isObs) {
+        // OBS-Modus: LiveKit-Ingress löschen → OBS verliert die WHIP-Verbindung,
+        // Session wird auf 'ended' gesetzt. Kein Cam/Mic-Cleanup nötig.
+        const result = await deleteWhipIngress(session.id);
+        roomRef.current?.disconnect();
+        if (!result.ok) {
+          setErrorMsg(result.error);
+          setPhase('error');
+          return;
+        }
+      } else {
+        // Browser-Modus: Tracks sauber freigeben
+        await disableCam();
+        await disableMic();
+        await stopScreenshare();
+        const result = await endLiveSession(session.id);
+        roomRef.current?.disconnect();
+        if (!result.ok) {
+          setErrorMsg(result.error);
+          setPhase('error');
+          return;
+        }
       }
       setPhase('ended');
-      // Nach 2s zur Replay-Seite redirecten (VOD processing startet eh serverseitig)
       setTimeout(() => {
         router.push(`/studio/live` as Route);
       }, 2000);
     });
-  }, [phase, session.id, router, disableCam, disableMic, stopScreenshare]);
+  }, [isObs, phase, session.id, router, disableCam, disableMic, stopScreenshare]);
 
   // -----------------------------------------------------------------------------
   // Title-Save
@@ -451,19 +514,21 @@ export function LiveHostDeck({
   useEffect(() => {
     if (phase !== 'live') return;
     const onKey = (e: KeyboardEvent) => {
-      // Nicht in Inputs fangen
       const target = e.target as HTMLElement | null;
       if (target && ['INPUT', 'TEXTAREA'].includes(target.tagName)) return;
       if (target?.isContentEditable) return;
       const k = e.key.toLowerCase();
-      if (k === 'm') void toggleMic();
-      else if (k === 'v') void toggleCam();
-      else if (k === 's') void toggleScreen();
-      else if (k === 'e') handleEndStream();
+      // OBS-Modus: keine Cam/Mic/Screen-Shortcuts
+      if (!isObs) {
+        if (k === 'm') void toggleMic();
+        else if (k === 'v') void toggleCam();
+        else if (k === 's') void toggleScreen();
+      }
+      if (k === 'e') handleEndStream();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [phase, toggleMic, toggleCam, toggleScreen, handleEndStream]);
+  }, [isObs, phase, toggleMic, toggleCam, toggleScreen, handleEndStream]);
 
   // -----------------------------------------------------------------------------
   // Duration-Format
@@ -531,7 +596,13 @@ export function LiveHostDeck({
           <button
             type="button"
             onClick={handleEndStream}
-            disabled={phase === 'ending' || phase === 'ended' || isEnding}
+            disabled={
+              isEnding ||
+              phase === 'ending' ||
+              phase === 'ended' ||
+              // OBS: auch aus 'error'-Phase beenden erlaubt
+              (!isObs && phase !== 'live')
+            }
             className="inline-flex items-center gap-1.5 rounded-full bg-red-500 px-3 py-1.5 text-sm font-semibold text-white hover:bg-red-600 disabled:opacity-50"
           >
             {isEnding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Square className="h-4 w-4" />}
@@ -653,18 +724,28 @@ export function LiveHostDeck({
 
           {/* Sources + Health Grid */}
           <div className="grid grid-cols-1 gap-4 border-b p-4 lg:grid-cols-[1fr_280px] lg:px-6">
-            <LiveSourcesPanel
-              camEnabled={camEnabled}
-              micEnabled={micEnabled}
-              screenEnabled={screenEnabled}
-              selectedCam={selectedCam}
-              selectedMic={selectedMic}
-              onToggleCam={toggleCam}
-              onToggleMic={toggleMic}
-              onToggleScreen={toggleScreen}
-              onSwitchCam={switchCam}
-              onSwitchMic={switchMic}
-            />
+            {isObs ? (
+              <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+                <Radio className="h-4 w-4 shrink-0 text-red-500" />
+                <span>
+                  OBS-Modus — Quellen werden in OBS gesteuert.
+                  Die Browser-Kamera ist deaktiviert.
+                </span>
+              </div>
+            ) : (
+              <LiveSourcesPanel
+                camEnabled={camEnabled}
+                micEnabled={micEnabled}
+                screenEnabled={screenEnabled}
+                selectedCam={selectedCam}
+                selectedMic={selectedMic}
+                onToggleCam={toggleCam}
+                onToggleMic={toggleMic}
+                onToggleScreen={toggleScreen}
+                onSwitchCam={switchCam}
+                onSwitchMic={switchMic}
+              />
+            )}
             <LiveStreamHealth room={roomRef} phase={phase} />
           </div>
 
@@ -715,16 +796,20 @@ export function LiveHostDeck({
 
       {/* Shortcut-Hinweis */}
       <div className="hidden items-center justify-center border-t bg-muted/40 px-4 py-1 text-[11px] text-muted-foreground lg:flex">
-        <kbd className="mx-1 rounded border bg-background px-1.5 py-0.5 font-mono text-[10px]">M</kbd>
-        Mikro
-        <kbd className="mx-1 ml-3 rounded border bg-background px-1.5 py-0.5 font-mono text-[10px]">V</kbd>
-        Kamera
-        <kbd className="mx-1 ml-3 rounded border bg-background px-1.5 py-0.5 font-mono text-[10px]">S</kbd>
-        Screen
+        {!isObs && (
+          <>
+            <kbd className="mx-1 rounded border bg-background px-1.5 py-0.5 font-mono text-[10px]">M</kbd>
+            Mikro
+            <kbd className="mx-1 ml-3 rounded border bg-background px-1.5 py-0.5 font-mono text-[10px]">V</kbd>
+            Kamera
+            <kbd className="mx-1 ml-3 rounded border bg-background px-1.5 py-0.5 font-mono text-[10px]">S</kbd>
+            Screen
+          </>
+        )}
         <kbd className="mx-1 ml-3 rounded border bg-background px-1.5 py-0.5 font-mono text-[10px]">E</kbd>
         Beenden
         <ChevronDown className="ml-3 h-3 w-3 opacity-0" />
-        {/* Dummy-Icon nur für Lucide-Import-Referenz, Mic/Video sind oben */}
+        {/* Dummy-Icons für Lucide-Import-Referenz */}
         <Mic className="hidden" />
         <MicOff className="hidden" />
         <Video className="hidden" />
