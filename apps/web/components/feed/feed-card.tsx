@@ -240,22 +240,25 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
   };
 
   return (
-    // v1.w.UI.25 (TikTok-Parity): Action-Rail aus dem Card raus, als
-    // Sibling neben der article platziert (statt Overlay innerhalb).
-    // Wrapper-Sizing-Strategie:
-    //   - Portrait: `h-full` → Wrapper füllt die FeedList-Section komplett,
-    //     damit die Card `h-full` korrekt auflöst und volle Höhe nimmt.
-    //   - Landscape: `h-auto` → Wrapper sized auf Content-Höhe (max(card,
-    //     rail)). Section's `items-center` zentriert dann das Wrapper-
-    //     Group vertikal in der Spalte — TikTok-Style „Card schwebt
-    //     mittig in der Spalte mit Leerraum oben/unten".
-    // `items-end` aligned Card und Rail unten, sodass die Rail-Bottom mit
-    // der Card-Bottom flush ist (egal ob Card kürzer als Rail oder umgekehrt).
+    // v1.w.UI.25 / v1.w.UI.26 (TikTok-Parity Iteration 4):
+    // Action-Rail aus dem Card raus, als Sibling neben der article platziert.
+    //
+    // Wrapper ist IMMER `h-full` (= Section-Höhe = 100dvh). Vorige Iteration
+    // hatte `h-auto` für Landscape probiert — das machte den Wrapper
+    // content-sized (kürzer als Section), wodurch snap-scroll zwei Sections
+    // gleichzeitig zeigte (Section-Höhe = 100dvh, Wrapper nur ~480px,
+    // Leerraum oben/unten brach die snap-Erwartung).
+    //
+    // Stattdessen: Wrapper füllt Section, `items-end` pinnt Card+Rail an
+    // den Wrapper-Boden (= Section-Boden). Card sitzt unten, Rail bottom-
+    // aligned mit Card-Bottom. Für Portrait-Videos füllt die Card sowieso
+    // die ganze Section — items-end ist no-op. Für Landscape sitzt die
+    // Card am unteren Rand mit Leerraum oben.
+    //
+    // `pb-2` minimaler Bottom-Padding damit der Rail-Mute-Button nicht hart
+    // am Section-Rand klebt, aber visuell immer noch nahe am Card-Bottom.
     <div
-      className={cn(
-        'flex w-full max-h-full items-end justify-center gap-3',
-        isWiderThanPortrait ? 'h-auto' : 'h-full',
-      )}
+      className="flex h-full w-full max-w-full items-end justify-center gap-3 pb-2"
       data-post-id={post.id}
       data-aspect-ratio={appliedRatio.toFixed(3)}
       data-orientation={isWiderThanPortrait ? 'wide' : 'portrait'}
