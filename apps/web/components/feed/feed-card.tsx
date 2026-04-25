@@ -119,9 +119,18 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
   // resettet, damit das nächste Video nicht mit dem Ratio des vorigen rendert.
   const [mediaAspectRatio, setMediaAspectRatio] = useState<number | null>(null);
   useEffect(() => setMediaAspectRatio(null), [post.id]);
-  // Landscape (oder Square) → width-bound Container ohne Letterbox.
-  // Während des Ladens (`null`) bleiben wir auf Portrait-Default.
-  const isLandscape = mediaAspectRatio !== null && mediaAspectRatio >= 1;
+  // Container folgt IMMER dem detektierten Ratio (Default 9/16 während Loading).
+  // Sizing-Strategie hängt davon ab, ob das Medium breiter als 9:16 ist:
+  //   - Ratio > 9/16 → width-bound (`w-full h-auto`) — Karte füllt die Spalte
+  //     in der Breite, Höhe ergibt sich aus aspectRatio. Kein Letterbox bei
+  //     16:9, 4:5, 9:14, 1:1, …
+  //   - Ratio ≤ 9/16 → height-bound (`h-full w-auto`) — Karte füllt die Höhe,
+  //     Breite ergibt sich. Für strikte 9:16 oder noch elongiertere Hochformate.
+  // Loading-Default (9/16 exakt) → height-bound, also wie bisher solange
+  // metadata noch nicht da.
+  const PORTRAIT_RATIO = 9 / 16;
+  const appliedRatio = mediaAspectRatio ?? PORTRAIT_RATIO;
+  const isWiderThanPortrait = appliedRatio > PORTRAIT_RATIO;
 
   // Auto-Play / Pause je nach `isActive` — nur für Videos relevant.
   useEffect(() => {
@@ -182,26 +191,28 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
 
   return (
     <article
-      // Container-Sizing-Strategie wechselt mit der Orientierung des Mediums.
-      // Portrait/unknown: `aspect-[9/16] h-full w-auto` — Karte ist so hoch
-      // wie der Feed-Slot, Breite wird aus dem Aspect ermittelt.
-      // Landscape/Square: `h-auto w-full` + inline aspectRatio aus den
-      // detektierten Video-Dimensionen — Karte füllt die Spaltenbreite,
-      // Höhe ergibt sich aus dem Ratio. Kein 9:16-Frame mehr → kein
-      // schwarzer Letterbox oben/unten.
-      style={isLandscape ? { aspectRatio: mediaAspectRatio ?? undefined } : undefined}
+      // Container folgt immer dem detektierten Aspect-Ratio (siehe oben).
+      // Sizing-Strategie: width-bound wenn breiter als 9/16, sonst height-bound.
+      // `aspectRatio` als inline-style überschreibt jede class-level aspect-Klasse
+      // (Inline gewinnt gegen Tailwind-CSS); deshalb keine `aspect-[9/16]`-Klasse
+      // mehr nötig.
+      style={{ aspectRatio: appliedRatio }}
       className={cn(
         'group/card relative mx-auto flex max-h-full max-w-full overflow-hidden rounded-2xl bg-black',
-        isLandscape ? 'h-auto w-full' : 'aspect-[9/16] h-full w-auto',
+        isWiderThanPortrait ? 'h-auto w-full' : 'h-full w-auto',
       )}
       data-post-id={post.id}
-      data-orientation={isLandscape ? 'landscape' : 'portrait'}
+      data-aspect-ratio={appliedRatio.toFixed(3)}
+      data-orientation={isWiderThanPortrait ? 'wide' : 'portrait'}
     >
       {/* Media-Ebene: Video bei media_type='video', Bild bei 'image' */}
       {isImage ? (
         <div className="absolute inset-0">
           {/* Unscharfer Hintergrund-Fill für Nicht-9:16-Bilder — verhindert
-              schwarze Balken links/rechts ohne das Motiv zu beschneiden. */}
+              schwarze Balken links/rechts ohne das Motiv zu beschneiden.
+              Nur sichtbar als „Vorschau" während das echte Bild lädt; sobald
+              `onLoad` feuert und der Container die echte Aspect-Ratio
+              annimmt, deckt das Foreground-Img den Background komplett ab. */}
           <img
             src={post.thumbnail_url ?? post.video_url}
             alt=""
@@ -211,6 +222,15 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
           <img
             src={post.thumbnail_url ?? post.video_url}
             alt={post.caption ?? ''}
+            onLoad={(e) => {
+              // Echte Pixel-Dimensionen → Container kann auf Querformat-
+              // Bilder (4:3, 16:9, etc.) reagieren statt sie in einen
+              // 9:16-Frame zu zwängen.
+              const img = e.currentTarget;
+              if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+                setMediaAspectRatio(img.naturalWidth / img.naturalHeight);
+              }
+            }}
             className="absolute inset-0 h-full w-full object-contain"
           />
         </div>
