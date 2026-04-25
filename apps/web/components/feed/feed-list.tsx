@@ -315,8 +315,17 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
         ))}
       </div>
 
-      {/* Desktop-Navigation (nur ≥ md) */}
-      <div className="pointer-events-none absolute right-4 top-1/2 z-30 hidden -translate-y-1/2 flex-col gap-2 md:flex">
+      {/* Desktop-Navigation (nur ≥ md).
+          v1.w.UI.24: Position von `top-1/2` auf `top-4` verlegt. Vorher saßen
+          die Buttons in der vertikalen Spaltenmitte und kollidierten bei
+          Landscape-Karten mit der Action-Rail des FeedCard (die vom Karten-
+          Boden nach oben wächst und bei breiten Karten denselben rechten
+          Lane belegt — z.B. Like/Bookmark zwischen Up- und Down-Pfeil).
+          Mit `top-4` sitzen sie jetzt am oberen Spaltenrand, getrennt von
+          der Action-Rail (die typischerweise im unteren Drittel beginnt).
+          Funktional unverändert — Tasten J/K/↑/↓ + Scroll bleiben primäre
+          Navigation. */}
+      <div className="pointer-events-none absolute right-4 top-4 z-30 hidden flex-col gap-2 md:flex">
         <button
           type="button"
           onClick={() => scrollTo(activeIdx - 1)}

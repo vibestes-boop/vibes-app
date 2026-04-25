@@ -94,11 +94,15 @@ export function LikeButton({
       onClick={handleClick}
       disabled={disabled}
       aria-label={`${liked ? 'Like entfernen' : 'Liken'} — ${rawCount} Likes`}
-      className="group/like flex flex-col items-center gap-1 rounded-md outline-none transition-opacity duration-fast ease-out-expo focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-black disabled:opacity-60"
+      className="group/like flex flex-col items-center gap-1 rounded-md outline-none transition-opacity duration-fast ease-out-expo focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-60"
     >
       <span
         className={cn(
-          'relative flex items-center justify-center rounded-full bg-white/10 backdrop-blur-sm transition-colors duration-base ease-out-expo group-hover/like:bg-white/20',
+          // Theme-aware Background (v1.w.UI.25 — Rail moved out of dark video):
+          // bg-foreground/10 ist im Light dunkles Grau, im Dark helles Grau.
+          // Backdrop-blur entfernt — wir sind nicht mehr über transparentem
+          // Video-Content, also unnötig + minimaler Performance-Gewinn.
+          'relative flex items-center justify-center rounded-full bg-foreground/10 transition-colors duration-base ease-out-expo group-hover/like:bg-foreground/20',
           circleClassName ?? 'h-12 w-12',
         )}
       >
@@ -114,7 +118,9 @@ export function LikeButton({
             aria-hidden="true"
             className={cn(
               iconClassName ?? 'h-7 w-7',
-              'text-white transition-colors duration-fast ease-out-expo',
+              // Default: erbe Farbe vom Parent (text-foreground im Rail).
+              // Liked: rot überall.
+              'text-foreground transition-colors duration-fast ease-out-expo',
               liked && 'fill-red-500 text-red-500',
             )}
           />
