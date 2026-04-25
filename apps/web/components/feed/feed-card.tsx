@@ -292,11 +292,16 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
     <div
       className={cn(
         // INNER: w-full kritisch (sonst kollabiert flex-1 article auf 0).
+        // justify-center zentriert Article+Aside horizontal in Inner. Outer's
+        // justify-center alleine reicht nicht — Inner ist w-full (= same width
+        // as Outer), sodass Outer's justify-center keine sichtbare Wirkung
+        // hat. Daher MUSS Inner selbst justify-center haben für Portrait/Square
+        // Cards (Landscape mit flex-1 füllt eh komplett, dort no-op).
         // items-end: card + rail bottom-aligned zueinander.
         // Portrait: h-full → inner = full section content area, card fills.
         // Landscape: kein h-full → inner content-sized, outer items-center
         //   zentriert das Group vertikal.
-        'flex w-full max-h-full max-w-full items-end gap-3',
+        'flex w-full max-h-full max-w-full items-end justify-center gap-3',
         isWiderThanPortrait ? '' : 'h-full',
       )}
     >
