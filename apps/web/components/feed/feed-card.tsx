@@ -240,45 +240,30 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
   };
 
   return (
-    // v1.w.UI.25 / v1.w.UI.27 (TikTok-Parity Iteration 5):
-    // Nested Structure für vertikale Zentrierung bei Landscape:
-    //   - OUTER (`h-full items-center`): füllt die Section komplett (=
-    //     100dvh, snap-scroll bleibt konsistent), zentriert das Inner-Group
-    //     vertikal. Bei Portrait ist Inner h-full = Outer-Höhe → kein
-    //     Centering-Effekt. Bei Landscape ist Inner content-sized → Outer
-    //     centers es vertikal → TikTok-Look.
-    //   - INNER (`items-end gap-3`): hält Card und Rail bottom-aligned
-    //     zueinander (Rail-Bottom = Card-Bottom). Für Portrait ist Inner
-    //     `h-full` (füllt Outer, Card fills Inner, Rail bottom-aligned mit
-    //     Card-Bottom = Section-Bottom). Für Landscape ist Inner ohne
-    //     h-Klasse (= h-auto, Content-Höhe), Outer centers es vertikal.
+    // v1.w.UI.25 / v1.w.UI.28 (TikTok-Parity Iteration 6 — Stabilisierung):
+    // Flache Wrapper-Struktur: `h-full + items-end`. Card+Rail bottom-aligned
+    // an Section-Bottom für ALLE Orientierungen.
     //
-    // Warum geschachtelt statt eine Ebene:
-    // Eine flache Struktur kann nicht GLEICHZEITIG „Card+Rail vertikal
-    // zentriert in der Section" UND „Rail-Bottom flush mit Card-Bottom"
-    // erreichen, weil flex-row + items-center jedes Kind individuell
-    // zentriert (Card bei y=center, Rail bei y=center → unterschiedliche
-    // Bottom-Kanten weil unterschiedliche Höhen).
+    // Warum flat statt nested (wie Iteration 5 versucht hat):
+    // Iteration 5 hatte einen nested Outer (h-full items-center) + Inner
+    // (h-auto items-end für Landscape). Problem: max-h-full auf der Article
+    // braucht eine ELTERN mit DEFINIERTER Höhe — wenn Inner h-auto hat,
+    // resolved max-h-full im child auf 'undefined/auto', die Article kann
+    // ihre per-Aspect-Ratio berechnete Höhe nicht clampen und überläuft
+    // die Section in den nächsten Post (User-bestätigt).
+    //
+    // Trade-off: Landscape-Cards sitzen am unteren Section-Rand statt
+    // mittig zentriert wie auf TikTok. Empty space oben ist akzeptabel,
+    // overflow nach unten ist es nicht. Centering kann später via
+    // JS-Measurement (ResizeObserver + explicit width/height) nachgeholt
+    // werden — das ist die einzige bulletproof CSS-freie Variante für
+    // gleichzeitig (a) Card centered, (b) Rail bottom-aligned mit Card,
+    // (c) Snap-Scroll konsistent, (d) keine overflow.
     <div
-      className="flex h-full w-full max-w-full items-center justify-center"
+      className="flex h-full w-full max-w-full items-end justify-center gap-3 pb-2"
       data-post-id={post.id}
       data-aspect-ratio={appliedRatio.toFixed(3)}
       data-orientation={isWiderThanPortrait ? 'wide' : 'portrait'}
-    >
-    <div
-      className={cn(
-        // `w-full` ist KRITISCH: ohne explizite Container-Breite kann
-        // `flex-1` an der Article nicht ausrechnen wieviel Platz nach der
-        // Aside (shrink-0, ~80px) übrig bleibt — Container wäre content-
-        // sized = 92px = nur die Aside, Article kollabiert auf 0 Breite.
-        // Mit w-full hat der Inner die Section-Breite und flex-1 kann
-        // remaining-width korrekt berechnen.
-        'flex w-full max-h-full max-w-full items-end gap-3 pb-2',
-        // Portrait: Inner füllt Outer → Card kann h-full nutzen.
-        // Landscape: Inner content-sized (HÖHE) → Outer's items-center
-        // zentriert vertikal. Width-mäßig bleibt Inner immer w-full.
-        isWiderThanPortrait ? '' : 'h-full',
-      )}
     >
     <article
       // Container folgt immer dem detektierten Aspect-Ratio (inline-style
@@ -588,7 +573,6 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
     {/* CommentSheet / CommentPanel wird seit v1.w.UI.11 Phase C vom
         HomeFeedShell gerendert (State-Owner-Lift). FeedCard triggert nur
         noch via `openCommentsFor(post.id)` aus dem FeedInteractionContext. */}
-    </div>
     </div>
   );
 }
