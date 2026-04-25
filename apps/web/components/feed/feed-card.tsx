@@ -267,9 +267,16 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
     >
     <div
       className={cn(
-        'flex max-h-full max-w-full items-end gap-3 pb-2',
+        // `w-full` ist KRITISCH: ohne explizite Container-Breite kann
+        // `flex-1` an der Article nicht ausrechnen wieviel Platz nach der
+        // Aside (shrink-0, ~80px) übrig bleibt — Container wäre content-
+        // sized = 92px = nur die Aside, Article kollabiert auf 0 Breite.
+        // Mit w-full hat der Inner die Section-Breite und flex-1 kann
+        // remaining-width korrekt berechnen.
+        'flex w-full max-h-full max-w-full items-end gap-3 pb-2',
         // Portrait: Inner füllt Outer → Card kann h-full nutzen.
-        // Landscape: Inner content-sized → Outer's items-center zentriert.
+        // Landscape: Inner content-sized (HÖHE) → Outer's items-center
+        // zentriert vertikal. Width-mäßig bleibt Inner immer w-full.
         isWiderThanPortrait ? '' : 'h-full',
       )}
     >
