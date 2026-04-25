@@ -119,6 +119,56 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
   // resettet, damit das nächste Video nicht mit dem Ratio des vorigen rendert.
   const [mediaAspectRatio, setMediaAspectRatio] = useState<number | null>(null);
   useEffect(() => setMediaAspectRatio(null), [post.id]);
+
+  // Robuste Aspect-Detection (v1.w.UI.25 — Iteration 3):
+  // Pure JSX-Event-Props (`onLoadedMetadata` / `onLoad`) haben in Production
+  // nicht zuverlässig gefeuert (User-bestätigt: Querformat-Videos blieben
+  // im 9:16-Frame mit Letterbox). Vermutete Gründe: gecachte Medien haben
+  // Metadata bereits beim Mount geladen, das Event feuert nie nochmal; oder
+  // das Event feuert auf einem unmounted Element bei React-Re-Mounts.
+  // Robuster Path:
+  //   - Video: Direkt-Check beim Mount via `readyState >= 1` (HAVE_METADATA)
+  //     für cached Videos + Listener auf `loadedmetadata` UND `loadeddata`.
+  //   - Bild: separates `Image()`-Objekt im Effect — `naturalWidth/Height`
+  //     ist nach `complete=true` verfügbar, decoded() falls noch nicht.
+  useEffect(() => {
+    if (isImage) {
+      // Image-Pfad: eigenständiges Image-Object lädt die URL und meldet
+      // Dimensionen. Funktioniert auch wenn das im JSX gerenderte <img>
+      // bereits aus dem Browser-Cache kommt.
+      const url = post.thumbnail_url ?? post.video_url;
+      if (!url) return;
+      const img = new Image();
+      let cancelled = false;
+      const update = () => {
+        if (cancelled) return;
+        if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+          setMediaAspectRatio(img.naturalWidth / img.naturalHeight);
+        }
+      };
+      img.onload = update;
+      img.src = url;
+      // Wenn `complete` direkt true ist (cached), feuert `onload` evtl. nicht
+      // mehr — direkt prüfen.
+      if (img.complete) update();
+      return () => { cancelled = true; };
+    }
+    // Video-Pfad
+    const v = videoRef.current;
+    if (!v) return;
+    const update = () => {
+      if (v.videoWidth > 0 && v.videoHeight > 0) {
+        setMediaAspectRatio(v.videoWidth / v.videoHeight);
+      }
+    };
+    if (v.readyState >= 1) update();
+    v.addEventListener('loadedmetadata', update);
+    v.addEventListener('loadeddata', update);
+    return () => {
+      v.removeEventListener('loadedmetadata', update);
+      v.removeEventListener('loadeddata', update);
+    };
+  }, [post.video_url, post.thumbnail_url, isImage]);
   // Container folgt IMMER dem detektierten Ratio (Default 9/16 während Loading).
   // Sizing-Strategie hängt davon ab, ob das Medium breiter als 9:16 ist:
   //   - Ratio > 9/16 → width-bound (`w-full h-auto`) — Karte füllt die Spalte
@@ -281,18 +331,9 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
               const v = e.currentTarget;
               if (v.duration > 0) setProgress((v.currentTime / v.duration) * 100);
             }}
-            onLoadedMetadata={(e) => {
-              // `videoWidth`/`videoHeight` sind die nativen Pixel-Dimensionen
-              // des Streams — verfügbar sobald die Metadata geladen ist
-              // (typisch <100ms bei `preload="metadata"`). Damit kennen wir
-              // die echte Aspect-Ratio und können den Container in
-              // Querformat umschalten. Wenn ein Wert 0 ist (Edge-Case bei
-              // korrupten Streams), keep den Default beibehalten.
-              const v = e.currentTarget;
-              if (v.videoWidth > 0 && v.videoHeight > 0) {
-                setMediaAspectRatio(v.videoWidth / v.videoHeight);
-              }
-            }}
+            // Aspect-Ratio-Detection lebt im useEffect oben (nicht hier als
+            // JSX-Prop), weil das Event bei gecachten Videos nicht zuverlässig
+            // feuert.
             className="h-full w-full object-contain"
           />
 
