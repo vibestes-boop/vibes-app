@@ -614,7 +614,6 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
         HomeFeedShell gerendert (State-Owner-Lift). FeedCard triggert nur
         noch via `openCommentsFor(post.id)` aus dem FeedInteractionContext. */}
     </div>
-    </div>
   );
 }
 
