@@ -240,28 +240,38 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
   };
 
   return (
-    // v1.w.UI.25 / v1.w.UI.26 (TikTok-Parity Iteration 4):
-    // Action-Rail aus dem Card raus, als Sibling neben der article platziert.
+    // v1.w.UI.25 / v1.w.UI.27 (TikTok-Parity Iteration 5):
+    // Nested Structure für vertikale Zentrierung bei Landscape:
+    //   - OUTER (`h-full items-center`): füllt die Section komplett (=
+    //     100dvh, snap-scroll bleibt konsistent), zentriert das Inner-Group
+    //     vertikal. Bei Portrait ist Inner h-full = Outer-Höhe → kein
+    //     Centering-Effekt. Bei Landscape ist Inner content-sized → Outer
+    //     centers es vertikal → TikTok-Look.
+    //   - INNER (`items-end gap-3`): hält Card und Rail bottom-aligned
+    //     zueinander (Rail-Bottom = Card-Bottom). Für Portrait ist Inner
+    //     `h-full` (füllt Outer, Card fills Inner, Rail bottom-aligned mit
+    //     Card-Bottom = Section-Bottom). Für Landscape ist Inner ohne
+    //     h-Klasse (= h-auto, Content-Höhe), Outer centers es vertikal.
     //
-    // Wrapper ist IMMER `h-full` (= Section-Höhe = 100dvh). Vorige Iteration
-    // hatte `h-auto` für Landscape probiert — das machte den Wrapper
-    // content-sized (kürzer als Section), wodurch snap-scroll zwei Sections
-    // gleichzeitig zeigte (Section-Höhe = 100dvh, Wrapper nur ~480px,
-    // Leerraum oben/unten brach die snap-Erwartung).
-    //
-    // Stattdessen: Wrapper füllt Section, `items-end` pinnt Card+Rail an
-    // den Wrapper-Boden (= Section-Boden). Card sitzt unten, Rail bottom-
-    // aligned mit Card-Bottom. Für Portrait-Videos füllt die Card sowieso
-    // die ganze Section — items-end ist no-op. Für Landscape sitzt die
-    // Card am unteren Rand mit Leerraum oben.
-    //
-    // `pb-2` minimaler Bottom-Padding damit der Rail-Mute-Button nicht hart
-    // am Section-Rand klebt, aber visuell immer noch nahe am Card-Bottom.
+    // Warum geschachtelt statt eine Ebene:
+    // Eine flache Struktur kann nicht GLEICHZEITIG „Card+Rail vertikal
+    // zentriert in der Section" UND „Rail-Bottom flush mit Card-Bottom"
+    // erreichen, weil flex-row + items-center jedes Kind individuell
+    // zentriert (Card bei y=center, Rail bei y=center → unterschiedliche
+    // Bottom-Kanten weil unterschiedliche Höhen).
     <div
-      className="flex h-full w-full max-w-full items-end justify-center gap-3 pb-2"
+      className="flex h-full w-full max-w-full items-center justify-center"
       data-post-id={post.id}
       data-aspect-ratio={appliedRatio.toFixed(3)}
       data-orientation={isWiderThanPortrait ? 'wide' : 'portrait'}
+    >
+    <div
+      className={cn(
+        'flex max-h-full max-w-full items-end gap-3 pb-2',
+        // Portrait: Inner füllt Outer → Card kann h-full nutzen.
+        // Landscape: Inner content-sized → Outer's items-center zentriert.
+        isWiderThanPortrait ? '' : 'h-full',
+      )}
     >
     <article
       // Container folgt immer dem detektierten Aspect-Ratio (inline-style
@@ -571,6 +581,7 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
     {/* CommentSheet / CommentPanel wird seit v1.w.UI.11 Phase C vom
         HomeFeedShell gerendert (State-Owner-Lift). FeedCard triggert nur
         noch via `openCommentsFor(post.id)` aus dem FeedInteractionContext. */}
+    </div>
     </div>
   );
 }
