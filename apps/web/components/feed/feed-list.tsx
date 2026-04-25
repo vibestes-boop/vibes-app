@@ -302,13 +302,15 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
             key={post.id}
             data-feed-idx={idx}
             ref={(el) => setCardRef(el, idx)}
-            // v1.w.UI.29 (Hard Containment): `overflow-hidden` + `max-h-[100dvh]`
-            // garantieren dass die Section niemals höher als der Viewport wird
-            // und Content niemals visuell in die nächste Section läuft. Zusammen
-            // mit der `snap-mandatory` auf dem Scroll-Container ergibt das
-            // sauberes 1-Post-pro-Viewport-Verhalten — auch bei hochauflösenden
-            // Medien die rechnerisch sehr groß werden.
-            className="flex h-full max-h-[100dvh] w-full snap-start items-center justify-center overflow-hidden"
+            // v1.w.UI.29 / v1.w.UI.31 (Hard Containment + Spacing):
+            // - `overflow-hidden` + `max-h-[100dvh]`: harter Cap auf Viewport-
+            //   Höhe, garantiert dass kein Content in nächste Section läuft
+            // - `py-2`: 8px oben + 8px unten = 16px sichtbarer Gap zwischen
+            //   aufeinanderfolgenden Posts (Page-Background scheint zwischen
+            //   Cards durch). Section-Höhe bleibt 100dvh, Content-Area ist
+            //   100dvh - 16px. items-center zentriert die Card+Rail-Gruppe
+            //   in dieser Content-Area.
+            className="flex h-full max-h-[100dvh] w-full snap-start items-center justify-center overflow-hidden py-2"
           >
             <FeedCard
               post={post}

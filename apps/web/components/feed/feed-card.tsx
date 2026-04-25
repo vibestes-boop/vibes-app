@@ -270,23 +270,35 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
     // gleichzeitig (a) Card centered, (b) Rail bottom-aligned mit Card,
     // (c) Snap-Scroll konsistent, (d) keine overflow.
     <div
-      // v1.w.UI.30: SINGLE-Wrapper-Struktur. Vorige Iterationen hatten
-      // ein nested Wrapper-Pattern, dessen innere Ebene aber kein
-      // `justify-center` hatte → Article+Rail wurden links-gestellt.
-      // Jetzt: ein einziger flex-Container mit allen nötigen Eigenschaften.
+      // v1.w.UI.31 — Nested Wrapper für TikTok-Style-Centering bei Landscape:
+      //   - OUTER (`h-full items-center`): Card+Rail-Gruppe vertikal zentriert
+      //     in der Section-Content-Area. Bei Portrait ist Inner-Höhe = section
+      //     content area (h-full vererbt), centering ist no-op. Bei Landscape
+      //     ist Inner content-sized → Outer zentriert es vertikal → TikTok.
+      //   - INNER (`items-end`): Card und Rail bottom-aligned ZUEINANDER. Egal
+      //     ob in Portrait (= section bottom) oder Landscape (= card bottom
+      //     im zentrierten Inner). Rail-Mute klebt immer am Card-Boden.
       //
-      // - `h-full max-h-[100dvh]`: Section füllen, harte Höhen-Cap auf
-      //   Viewport (Hard Containment Layer 1).
-      // - `w-full max-w-full`: volle Spaltenbreite.
-      // - `items-end`: Card und Rail bottom-aligned (TikTok-Pattern).
-      // - `justify-center`: Article+Aside-Gruppe horizontal zentriert.
-      // - `gap-3`: 12px Abstand zwischen Card und Rail.
-      // - `overflow-hidden`: clipt jeden visuellen Overflow zur nächsten
-      //   Section (Hard Containment).
-      className="flex h-full max-h-[100dvh] w-full max-w-full items-end justify-center gap-3 overflow-hidden"
+      // Nested ging in Iteration 5 schief weil max-h-full auf article ohne
+      // Eltern mit definite height nicht clampte → overflow in nächste section.
+      // Jetzt mit Hard Containment (overflow-hidden + max-h-[100dvh] auf
+      // section UND outer + maxHeight inline auf article) kann das nicht mehr
+      // passieren — Containment ist garantiert, Centering kann sicher rein.
+      className="flex h-full max-h-[100dvh] w-full max-w-full items-center justify-center overflow-hidden"
       data-post-id={post.id}
       data-aspect-ratio={appliedRatio.toFixed(3)}
       data-orientation={isWiderThanPortrait ? 'wide' : 'portrait'}
+    >
+    <div
+      className={cn(
+        // INNER: w-full kritisch (sonst kollabiert flex-1 article auf 0).
+        // items-end: card + rail bottom-aligned zueinander.
+        // Portrait: h-full → inner = full section content area, card fills.
+        // Landscape: kein h-full → inner content-sized, outer items-center
+        //   zentriert das Group vertikal.
+        'flex w-full max-h-full max-w-full items-end gap-3',
+        isWiderThanPortrait ? '' : 'h-full',
+      )}
     >
     <article
       // Container folgt immer dem detektierten Aspect-Ratio (inline-style
