@@ -180,7 +180,17 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
   // metadata noch nicht da.
   const PORTRAIT_RATIO = 9 / 16;
   const appliedRatio = mediaAspectRatio ?? PORTRAIT_RATIO;
-  const isWiderThanPortrait = appliedRatio > PORTRAIT_RATIO;
+  // v1.w.UI.30: Threshold von > 9/16 auf > 1 (Square) verschoben.
+  // Begründung: Portrait-ähnliche Bilder (4:5, 9:14, 0.8) waren mit dem
+  // alten 9/16-Threshold als "wider than portrait" eingestuft → width-bound
+  // Sizing → Article-Höhe rechnerisch > 100dvh → max-h clamp → Aspect-Ratio
+  // bricht → bg-black wird links/rechts vom Bild sichtbar (User-bestätigt
+  // beim Chechen-Renaissance-Post).
+  // Mit Threshold > 1 werden nur echte Landscape-Medien (16:9, 4:3) width-
+  // bound. Portrait UND Portrait-ish (alles ≤ 1) bleibt height-bound →
+  // Card-Höhe = Section-Höhe, Breite ergibt sich, Bild fills perfekt ohne
+  // Letterbox.
+  const isWiderThanPortrait = appliedRatio > 1;
 
   // Auto-Play / Pause je nach `isActive` — nur für Videos relevant.
   useEffect(() => {
@@ -260,30 +270,23 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
     // gleichzeitig (a) Card centered, (b) Rail bottom-aligned mit Card,
     // (c) Snap-Scroll konsistent, (d) keine overflow.
     <div
-      // v1.w.UI.29 (Hard Containment Layer 2): `overflow-hidden` + `max-h-[100dvh]`
-      // als zweite Verteidigungslinie. Section hat bereits overflow-hidden,
-      // aber wenn die Wrapper-Höhe selbst rechnerisch zu groß wird (z.B.
-      // bei nachgeladenen Medien mit großen Aspect-Ratios), wird hier
-      // schon abgefangen. pb-2 entfernt — überflüssig mit harten Boundaries.
+      // v1.w.UI.30: SINGLE-Wrapper-Struktur. Vorige Iterationen hatten
+      // ein nested Wrapper-Pattern, dessen innere Ebene aber kein
+      // `justify-center` hatte → Article+Rail wurden links-gestellt.
+      // Jetzt: ein einziger flex-Container mit allen nötigen Eigenschaften.
+      //
+      // - `h-full max-h-[100dvh]`: Section füllen, harte Höhen-Cap auf
+      //   Viewport (Hard Containment Layer 1).
+      // - `w-full max-w-full`: volle Spaltenbreite.
+      // - `items-end`: Card und Rail bottom-aligned (TikTok-Pattern).
+      // - `justify-center`: Article+Aside-Gruppe horizontal zentriert.
+      // - `gap-3`: 12px Abstand zwischen Card und Rail.
+      // - `overflow-hidden`: clipt jeden visuellen Overflow zur nächsten
+      //   Section (Hard Containment).
       className="flex h-full max-h-[100dvh] w-full max-w-full items-end justify-center gap-3 overflow-hidden"
       data-post-id={post.id}
       data-aspect-ratio={appliedRatio.toFixed(3)}
       data-orientation={isWiderThanPortrait ? 'wide' : 'portrait'}
-    >
-    <div
-      className={cn(
-        // `w-full` ist KRITISCH: ohne explizite Container-Breite kann
-        // `flex-1` an der Article nicht ausrechnen wieviel Platz nach der
-        // Aside (shrink-0, ~80px) übrig bleibt — Container wäre content-
-        // sized = 92px = nur die Aside, Article kollabiert auf 0 Breite.
-        // Mit w-full hat der Inner die Section-Breite und flex-1 kann
-        // remaining-width korrekt berechnen.
-        'flex w-full max-h-full max-w-full items-end gap-3 pb-2',
-        // Portrait: Inner füllt Outer → Card kann h-full nutzen.
-        // Landscape: Inner content-sized (HÖHE) → Outer's items-center
-        // zentriert vertikal. Width-mäßig bleibt Inner immer w-full.
-        isWiderThanPortrait ? '' : 'h-full',
-      )}
     >
     <article
       // Container folgt immer dem detektierten Aspect-Ratio (inline-style
@@ -598,7 +601,6 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
     {/* CommentSheet / CommentPanel wird seit v1.w.UI.11 Phase C vom
         HomeFeedShell gerendert (State-Owner-Lift). FeedCard triggert nur
         noch via `openCommentsFor(post.id)` aus dem FeedInteractionContext. */}
-    </div>
     </div>
   );
 }
