@@ -177,16 +177,23 @@ function HomeFeedShellBody({
        * Desktop die komplette Center-Spalte zwischen Sidebar-Kante und rechter
        * Discover-Column, ohne Rand, ohne Rundung, ohne Shadow — TikTok-parität.
        *
-       * Der schwarze Canvas (`bg-zinc-950 text-white`) bleibt, weil Video-
-       * Content darauf wie designed kontrastiert; die Chroma-Separierung zur
-       * hellen Site-Umgebung bleibt erhalten, nur eben flush statt floating.
+       * v1.w.UI.22 (2026-04-25 Light-Mode-Fix): Die Center-Spalte folgt jetzt
+       * dem Theme (`bg-background text-foreground`) statt hart auf
+       * `bg-zinc-950 text-white` zu sitzen. Im Dark-Mode bleibt das visuell
+       * praktisch identisch (`--background` = #050508 ≈ zinc-950). Im
+       * Light-Mode wird die schwarze Wanne um das Video herum jetzt hell, so
+       * wie der Rest der Seite. Die Letterbox-Bars INNERHALB der FeedCard
+       * (`bg-black` in feed-card.tsx) bleiben absichtlich schwarz — die
+       * dienen Video-Kontrast und sehen in beiden Themes richtig aus.
        *
        * Tab-Pills „Für dich / Folge ich" sind jetzt ein Floating-Overlay am
        * oberen Stage-Rand (absolute top-3 center, z-20). Das nimmt die früher
        * permanente h-12 Tab-Row aus dem Content-Flow heraus und gibt dem Video
-       * ~48px zusätzliche Höhe — direkt wie in TikToks Web-Viewer.
+       * ~48px zusätzliche Höhe — direkt wie in TikToks Web-Viewer. Pill-
+       * Background bleibt `bg-black/35` weil sie immer über der schwarzen
+       * Letterbox der FeedCard schwebt.
        */}
-      <div className="relative flex min-w-0 flex-col bg-zinc-950 text-white">
+      <div className="relative flex min-w-0 flex-col bg-background text-foreground">
         <div
           role="tablist"
           aria-label="Feed-Quellen"
