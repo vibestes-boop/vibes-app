@@ -15,11 +15,14 @@ import {
   BadgeCheck,
   Plus,
   MoreHorizontal,
-  Settings,
-  Captions,
   EyeOff,
   Flag,
+  Link as LinkIcon,
+  PictureInPicture2,
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import { reportPost, markPostNotInteresting } from '@/app/actions/report';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import {
@@ -78,6 +81,7 @@ function formatCount(n: number): string {
 const CAPTION_CLAMP_CHARS = 120;
 
 export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: FeedCardProps) {
+  const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPaused, setIsPaused] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -486,27 +490,93 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
                 className="absolute right-0 top-full mt-2 w-56 overflow-hidden rounded-xl bg-zinc-900/95 text-white shadow-xl ring-1 ring-white/10 backdrop-blur-md"
                 onClick={(e) => e.stopPropagation()}
               >
-                <MoreMenuItem
-                  icon={<Settings className="h-4 w-4" />}
-                  label="Qualität"
-                  rightLabel="Automatisch"
-                  onClick={() => setShowMoreMenu(false)}
-                />
-                <MoreMenuItem
-                  icon={<Captions className="h-4 w-4" />}
-                  label="Untertitel"
-                  onClick={() => setShowMoreMenu(false)}
-                />
+                {/* v1.w.UI.34 — alle Items mit echter Funktionalität.
+                    Quality/Subtitles wurden entfernt weil das Backend
+                    aktuell nur eine Video-Variante liefert (kein HLS/multi-
+                    res, keine VTT-Tracks). Stattdessen vier praktische
+                    Items die ohne weitere Infra funktionieren. */}
                 <MoreMenuItem
                   icon={<EyeOff className="h-4 w-4" />}
                   label="Kein Interesse"
-                  onClick={() => setShowMoreMenu(false)}
+                  onClick={async () => {
+                    setShowMoreMenu(false);
+                    if (!viewerId) {
+                      toast('Bitte zuerst anmelden.');
+                      return;
+                    }
+                    const res = await markPostNotInteresting(post.id);
+                    if (res.ok) {
+                      toast('Wir zeigen dir weniger davon.');
+                      router.refresh();
+                    } else {
+                      toast.error(res.error);
+                    }
+                  }}
                 />
                 <MoreMenuItem
                   icon={<Flag className="h-4 w-4" />}
                   label="Melden"
-                  onClick={() => setShowMoreMenu(false)}
+                  onClick={async () => {
+                    setShowMoreMenu(false);
+                    if (!viewerId) {
+                      toast('Bitte zuerst anmelden.');
+                      return;
+                    }
+                    const res = await reportPost(post.id);
+                    if (res.ok) {
+                      toast('Danke für deine Meldung. Unser Team prüft das.');
+                    } else {
+                      toast.error(res.error);
+                    }
+                  }}
                 />
+                <MoreMenuItem
+                  icon={<LinkIcon className="h-4 w-4" />}
+                  label="Link kopieren"
+                  onClick={async () => {
+                    setShowMoreMenu(false);
+                    const url = `${window.location.origin}/p/${post.id}`;
+                    try {
+                      await navigator.clipboard.writeText(url);
+                      toast('Link kopiert.');
+                    } catch {
+                      toast.error('Kopieren fehlgeschlagen.');
+                    }
+                  }}
+                />
+                <MoreMenuItem
+                  icon={<PictureInPicture2 className="h-4 w-4" />}
+                  label="Schwebender Player"
+                  onClick={async () => {
+                    setShowMoreMenu(false);
+                    const v = videoRef.current;
+                    if (!v) return;
+                    try {
+                      // PIP-API kapseln: typed wenn unterstützt, sonst toast.
+                      const doc = document as Document & {
+                        pictureInPictureElement?: Element | null;
+                        exitPictureInPicture?: () => Promise<void>;
+                      };
+                      if (doc.pictureInPictureElement) {
+                        await doc.exitPictureInPicture?.();
+                      } else {
+                        const reqPip = (v as HTMLVideoElement & {
+                          requestPictureInPicture?: () => Promise<unknown>;
+                        }).requestPictureInPicture;
+                        if (typeof reqPip === 'function') {
+                          await reqPip.call(v);
+                        } else {
+                          toast('Dein Browser unterstützt das nicht.');
+                        }
+                      }
+                    } catch {
+                      toast.error('Schwebender Player nicht verfügbar.');
+                    }
+                  }}
+                />
+                {/* Comment-Anchor: weiter unten könnten User-Aktionen wie
+                    „Blockieren" / „Folgen ausblenden" rein, sobald die
+                    Backend-RPCs dafür stehen. */}
               </div>
             )}
           </div>
