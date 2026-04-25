@@ -260,7 +260,12 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
     // gleichzeitig (a) Card centered, (b) Rail bottom-aligned mit Card,
     // (c) Snap-Scroll konsistent, (d) keine overflow.
     <div
-      className="flex h-full w-full max-w-full items-end justify-center gap-3 pb-2"
+      // v1.w.UI.29 (Hard Containment Layer 2): `overflow-hidden` + `max-h-[100dvh]`
+      // als zweite Verteidigungslinie. Section hat bereits overflow-hidden,
+      // aber wenn die Wrapper-Höhe selbst rechnerisch zu groß wird (z.B.
+      // bei nachgeladenen Medien mit großen Aspect-Ratios), wird hier
+      // schon abgefangen. pb-2 entfernt — überflüssig mit harten Boundaries.
+      className="flex h-full max-h-[100dvh] w-full max-w-full items-end justify-center gap-3 overflow-hidden"
       data-post-id={post.id}
       data-aspect-ratio={appliedRatio.toFixed(3)}
       data-orientation={isWiderThanPortrait ? 'wide' : 'portrait'}
@@ -290,7 +295,12 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
       //     Wrapper-Breite (= 100% minus Rail minus gap), Höhe ergibt sich
       //     aus Ratio. min-w-0 erlaubt dem Flex-Item zu schrumpfen wenn
       //     der Wrapper enger wird (Mobile).
-      style={{ aspectRatio: appliedRatio }}
+      // v1.w.UI.29 (Hard Containment Layer 3): maxHeight via inline-style mit
+      // viewport-units (100dvh) ist ABSOLUT — unabhängig vom Eltern-Element.
+      // Anders als `max-h-full` (CSS percentage, braucht Eltern mit definite
+      // height), funktioniert das auch wenn irgendwo im Eltern-Tree ein
+      // `h-auto` schlummert. Garantierter Cap auf Viewport-Höhe.
+      style={{ aspectRatio: appliedRatio, maxHeight: '100dvh' }}
       className={cn(
         'group/card relative flex max-h-full overflow-hidden rounded-2xl bg-black',
         isWiderThanPortrait ? 'min-w-0 flex-1 h-auto' : 'h-full w-auto shrink-0',
