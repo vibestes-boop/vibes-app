@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import type { Route } from 'next';
 import { getUser } from '@/lib/auth/session';
 import { getMyActiveLiveSession } from '@/lib/data/live-host';
-import { LiveSetupForm } from '@/components/live/live-setup-form';
+import { LiveModeTabs } from '@/components/live/live-mode-tabs';
 
 // -----------------------------------------------------------------------------
 // /live/start — Setup-Screen. Wenn der Host bereits einen aktiven Stream hat,
@@ -33,11 +33,11 @@ export default async function LiveStartPage() {
       <header className="mb-6">
         <h1 className="text-2xl font-semibold">Live gehen</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Stelle Kamera und Mikro ein, vergib einen Titel, dann klick auf „Live gehen".
+          Wähle Browser für schnelles Live-Gehen oder OBS für Pro-Setup mit höherer Qualität.
         </p>
       </header>
 
-      <LiveSetupForm />
+      <LiveModeTabs />
     </div>
   );
 }
