@@ -3,7 +3,23 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { Route } from 'next';
-import { Heart, MessageCircle, Bookmark, Share2, Music, Volume2, VolumeX, Play, BadgeCheck, Plus } from 'lucide-react';
+import {
+  Heart,
+  MessageCircle,
+  Bookmark,
+  Share2,
+  Music,
+  Volume2,
+  VolumeX,
+  Play,
+  BadgeCheck,
+  Plus,
+  MoreHorizontal,
+  Settings,
+  Captions,
+  EyeOff,
+  Flag,
+} from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import {
@@ -178,6 +194,75 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
   //     Breite ergibt sich. Für strikte 9:16 oder noch elongiertere Hochformate.
   // Loading-Default (9/16 exakt) → height-bound, also wie bisher solange
   // metadata noch nicht da.
+  // -------------------------------------------------------------------------
+  // v1.w.UI.33 (TikTok-Player-Features): Volume-Slider, Scrubbing, More-Menu.
+  //
+  // Volume: separater Float (0-1) zusätzlich zum bestehenden mute-Toggle.
+  //   - Wenn user am Slider zieht, wird volume gesetzt UND falls volume>0
+  //     der Mute-State ausgeschaltet (oder umgekehrt). So bleiben die zwei
+  //     Konzepte konsistent (TikTok-Verhalten).
+  // Scrubbing: isSeeking flag während mousedown auf der Progress-Bar.
+  //   - Während aktivem Drag pausieren wir das Video nicht (TikTok-Style:
+  //     scrubbing zeigt den jeweils gezielten Frame, video pausiert nicht
+  //     visuell). Sobald mouseup feuert, springen wir zur finalen Position.
+  // More-Menu: einfaches Dropdown-Toggle. Outside-Click schließt es.
+  // -------------------------------------------------------------------------
+  const [volume, setVolume] = useState(1);
+  const [isSeeking, setIsSeeking] = useState(false);
+  const [hoverProgress, setHoverProgress] = useState<number | null>(null);
+  const [showVolumeSlider, setShowVolumeSlider] = useState(false);
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
+
+  // Volume sync mit Video-Element
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.volume = volume;
+  }, [volume]);
+
+  // Outside-Click schließt das More-Menu
+  useEffect(() => {
+    if (!showMoreMenu) return;
+    const onMouseDown = (e: MouseEvent) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) {
+        setShowMoreMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', onMouseDown);
+    return () => document.removeEventListener('mousedown', onMouseDown);
+  }, [showMoreMenu]);
+
+  // Seek-Handler: konvertiert Maus-X-Position zu Video-Time
+  const seekToClientX = useCallback((clientX: number, rect: DOMRect) => {
+    const v = videoRef.current;
+    if (!v || !v.duration || !isFinite(v.duration)) return;
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+    v.currentTime = ratio * v.duration;
+    setProgress(ratio * 100);
+  }, []);
+
+  // Window-level mousemove/mouseup während aktivem Drag — damit der User
+  // auch außerhalb der Progress-Bar weiterscrubben kann ohne den Drag zu
+  // verlieren (TikTok-Verhalten).
+  useEffect(() => {
+    if (!isSeeking) return;
+    const progressBar = document.querySelector<HTMLElement>(
+      `[data-post-id="${post.id}"] [data-progress-bar]`,
+    );
+    if (!progressBar) return;
+    const onMove = (e: MouseEvent) => {
+      seekToClientX(e.clientX, progressBar.getBoundingClientRect());
+    };
+    const onUp = () => setIsSeeking(false);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, [isSeeking, post.id, seekToClientX]);
+
   const PORTRAIT_RATIO = 9 / 16;
   const appliedRatio = mediaAspectRatio ?? PORTRAIT_RATIO;
   // v1.w.UI.30: Threshold von > 9/16 auf > 1 (Square) verschoben.
@@ -326,6 +411,108 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
         isWiderThanPortrait ? 'min-w-0 flex-1 h-auto' : 'h-full w-auto shrink-0',
       )}
     >
+      {/* v1.w.UI.33: Volume-Control top-left + More-Menu top-right.
+          Beide nur für Videos (Images haben weder Audio noch Quality-Optionen).
+          Beide z-30 damit über der Caption + Action-Rail visible bleiben.
+          Auf TikTok-Style sind sie semi-transparent + backdrop-blur, damit
+          sie dezent über dem Video-Content schweben. */}
+      {!isImage && (
+        <>
+          {/* Volume Button + Hover-Slider — top-left */}
+          <div
+            className="absolute left-3 top-3 z-30 flex items-center gap-2"
+            onMouseEnter={() => setShowVolumeSlider(true)}
+            onMouseLeave={() => setShowVolumeSlider(false)}
+          >
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onMuteToggle();
+              }}
+              aria-label={muted ? 'Ton einschalten' : 'Stummschalten'}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm transition-colors hover:bg-black/60"
+            >
+              {muted || volume === 0 ? (
+                <VolumeX className="h-4 w-4" aria-hidden="true" />
+              ) : (
+                <Volume2 className="h-4 w-4" aria-hidden="true" />
+              )}
+            </button>
+            {/* Slider-Pill nur sichtbar on hover. Range-Input ist a11y-friendly
+                (Tastatur + Screenreader) UND hat einfaches Drag-Handling. */}
+            {showVolumeSlider && (
+              <div
+                className="flex items-center rounded-full bg-black/40 px-3 py-2 backdrop-blur-sm"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={muted ? 0 : volume}
+                  onChange={(e) => {
+                    const newVol = parseFloat(e.target.value);
+                    setVolume(newVol);
+                    // volume>0 + currently muted → unmute. volume=0 + not muted → mute.
+                    if (newVol > 0 && muted) onMuteToggle();
+                    else if (newVol === 0 && !muted) onMuteToggle();
+                  }}
+                  aria-label="Lautstärke"
+                  className="h-1 w-24 cursor-pointer accent-white"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* 3-Punkte-Menü — top-right */}
+          <div className="absolute right-3 top-3 z-30" ref={moreMenuRef}>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowMoreMenu((v) => !v);
+              }}
+              aria-label="Weitere Optionen"
+              aria-expanded={showMoreMenu}
+              className="flex h-9 w-9 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm transition-colors hover:bg-black/60"
+            >
+              <MoreHorizontal className="h-4 w-4" aria-hidden="true" />
+            </button>
+            {showMoreMenu && (
+              <div
+                role="menu"
+                className="absolute right-0 top-full mt-2 w-56 overflow-hidden rounded-xl bg-zinc-900/95 text-white shadow-xl ring-1 ring-white/10 backdrop-blur-md"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreMenuItem
+                  icon={<Settings className="h-4 w-4" />}
+                  label="Qualität"
+                  rightLabel="Automatisch"
+                  onClick={() => setShowMoreMenu(false)}
+                />
+                <MoreMenuItem
+                  icon={<Captions className="h-4 w-4" />}
+                  label="Untertitel"
+                  onClick={() => setShowMoreMenu(false)}
+                />
+                <MoreMenuItem
+                  icon={<EyeOff className="h-4 w-4" />}
+                  label="Kein Interesse"
+                  onClick={() => setShowMoreMenu(false)}
+                />
+                <MoreMenuItem
+                  icon={<Flag className="h-4 w-4" />}
+                  label="Melden"
+                  onClick={() => setShowMoreMenu(false)}
+                />
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
       {/* Media-Ebene: Video bei media_type='video', Bild bei 'image' */}
       {isImage ? (
         <div className="absolute inset-0">
@@ -483,18 +670,61 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
         )}
       </div>
 
-      {/* Progress-Bar (A4) — idle 3px, hover auf dem gesamten Video 6px.
-          Die Bar hat keinen eigenen Hover (zu schmales Hit-Target), also
-          triggert der Hover der `article` via `group-hover`. Das heißt:
-          sobald die Maus über dem Video schwebt, ist die Bar fett und
-          lesbar. Auf Touch-Devices sind beide Zustände identisch
-          (kein Hover), was okay ist — man sieht sie eh nur beim Scrollen. */}
+      {/* Interactive Progress-Bar (A4 + v1.w.UI.33 Scrubbing).
+          - Idle: dünne 3px Bar, hover auf der Card macht sie fett (6px).
+          - Klickbar/draggable: mousedown startet Scrub-Mode, mousemove
+            (window-level via Effect) seekt das Video.
+          - Auf hover sichtbarer Thumb-Knopf am Progress-Ende. */}
       {!isImage && (
-        <div className="absolute inset-x-0 bottom-0 z-20 h-[3px] bg-white/10 transition-[height] duration-base ease-out-expo group-hover/card:h-[6px]">
+        <div
+          // Wrapper mit größerem Hit-Target (py-2) damit die schmale Bar
+          // einfacher zu treffen ist mit der Maus. group/progress-Hover
+          // triggert den Thumb.
+          className="group/progress absolute inset-x-0 bottom-0 z-20 cursor-pointer py-2"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            setIsSeeking(true);
+            const bar = e.currentTarget.querySelector<HTMLElement>('[data-progress-bar]');
+            if (bar) seekToClientX(e.clientX, bar.getBoundingClientRect());
+          }}
+          onMouseMove={(e) => {
+            const bar = e.currentTarget.querySelector<HTMLElement>('[data-progress-bar]');
+            if (bar) {
+              const rect = bar.getBoundingClientRect();
+              const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+              setHoverProgress(ratio * 100);
+            }
+          }}
+          onMouseLeave={() => setHoverProgress(null)}
+        >
           <div
-            className="h-full bg-brand-gold transition-[width]"
-            style={{ width: `${progress}%` }}
-          />
+            data-progress-bar
+            className="relative h-[3px] w-full bg-white/20 transition-[height] duration-base ease-out-expo group-hover/card:h-[6px] group-hover/progress:h-[6px]"
+          >
+            {/* Hover-Position-Indikator (TikTok zeigt eine helle Linie wo
+                gerade gehovered wird, vor dem eigentlichen Klick). */}
+            {hoverProgress !== null && hoverProgress > progress && (
+              <div
+                className="absolute inset-y-0 left-0 bg-white/30"
+                style={{ width: `${hoverProgress}%` }}
+              />
+            )}
+            <div
+              className="relative h-full bg-brand-gold transition-[width]"
+              style={{ width: `${progress}%` }}
+            >
+              {/* Thumb (Drag-Indikator) — sichtbar on hover oder während
+                  active scrubbing. */}
+              <div
+                className={cn(
+                  'absolute right-0 top-1/2 h-3 w-3 -translate-y-1/2 translate-x-1/2 rounded-full bg-white shadow-md transition-opacity duration-fast',
+                  'opacity-0 group-hover/progress:opacity-100',
+                  isSeeking && 'opacity-100',
+                )}
+                aria-hidden="true"
+              />
+            </div>
+          </div>
         </div>
       )}
     </article>
@@ -620,6 +850,43 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
         noch via `openCommentsFor(post.id)` aus dem FeedInteractionContext. */}
     </div>
     </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// MoreMenuItem — Eintrag im 3-Punkte-Dropdown (TikTok-Style).
+// Aktuell sind die meisten Items Stubs (Qualität, Untertitel, Kein Interesse,
+// Melden) — nur das visuelle Pattern ist da. Echte Implementierung kommt in
+// späteren Slices wenn die Backend-Endpunkte (z.B. report_post RPC) bereit
+// sind.
+// -----------------------------------------------------------------------------
+
+function MoreMenuItem({
+  icon,
+  label,
+  rightLabel,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  rightLabel?: string;
+  onClick?: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      onClick={onClick}
+      className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-colors hover:bg-white/10 focus:bg-white/10 focus:outline-none"
+    >
+      <span className="flex h-5 w-5 shrink-0 items-center justify-center text-white/80">
+        {icon}
+      </span>
+      <span className="flex-1 truncate font-medium">{label}</span>
+      {rightLabel && (
+        <span className="shrink-0 text-xs text-white/60">{rightLabel}</span>
+      )}
+    </button>
   );
 }
 
