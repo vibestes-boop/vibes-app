@@ -33,7 +33,9 @@ import { LOCALE_INTL } from '@/lib/i18n/config';
 import { glassPillBase, glassAvatarFallback } from '@/lib/ui/glass-pill';
 import { cn } from '@/lib/utils';
 import { getUnreadDmCount } from '@/app/actions/messages';
+import { getUnreadNotificationCount } from '@/app/actions/notifications';
 import { DmInboxPill } from '@/components/layout/dm-inbox-pill';
+import { NotifBellPill } from '@/components/layout/notif-bell-pill';
 
 // -----------------------------------------------------------------------------
 // TopRightActions — schwebender Cluster oben rechts über allen Seiten.
@@ -62,9 +64,9 @@ import { DmInboxPill } from '@/components/layout/dm-inbox-pill';
 
 export async function TopRightActions() {
   const [user, t, locale] = await Promise.all([getUser(), getT(), getLocale()]);
-  const [profile, balance, initialUnreadDms] = user
-    ? await Promise.all([getProfile(), getMyCoinBalance(), getUnreadDmCount()])
-    : [null, null, 0];
+  const [profile, balance, initialUnreadDms, initialUnreadNotifs] = user
+    ? await Promise.all([getProfile(), getMyCoinBalance(), getUnreadDmCount(), getUnreadNotificationCount()])
+    : [null, null, 0, 0];
   const coinsFormatted = (balance?.coins ?? 0).toLocaleString(LOCALE_INTL[locale]);
 
   return (
@@ -86,10 +88,11 @@ export async function TopRightActions() {
               +
             </span>
           </Link>
-          {/* DM-Inbox-Pill: Glass-Pill-Link zu /messages mit Unread-Badge.
-              Client-seitiges Polling (30s) via DmInboxPill; initialUnreadDms
-              liefert server-gerenderter Wert für flicker-freies erstes Paint. */}
+          {/* DM + Notifications Badges (v1.w.UI.75 / v1.w.UI.76).
+              Server-seitige Initial-Counts für flicker-freies erstes Paint;
+              Client-Polling via TanStack Query (DMs 30s, Notifs 60s). */}
           <DmInboxPill initialCount={initialUnreadDms} />
+          <NotifBellPill initialCount={initialUnreadNotifs} />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
