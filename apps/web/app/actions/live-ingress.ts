@@ -77,7 +77,21 @@ async function invokeFunction<T>(
   if (!user) return { error: 'Bitte zuerst anmelden.' };
 
   const { data, error } = await supabase.functions.invoke(name, { body });
-  if (error) return { error: error.message ?? 'Function-Aufruf fehlgeschlagen.' };
+  if (error) {
+    // Supabase SDK gibt bei non-2xx nur den generischen "Edge Function returned
+    // a non-2xx status code" zurück. Den eigentlichen Fehler-Body aus der
+    // Edge Function lesen wir über error.context (Response-Objekt).
+    let detail = error.message ?? 'Function-Aufruf fehlgeschlagen.';
+    try {
+      const ctx = (error as unknown as { context?: Response }).context;
+      if (ctx && typeof ctx.json === 'function') {
+        const body = await ctx.json() as { error?: string; detail?: string };
+        if (body?.error) detail = body.error;
+        if (body?.detail) detail += ` — ${body.detail}`;
+      }
+    } catch { /* ignore parse errors */ }
+    return { error: detail };
+  }
   // Edge-Function kann ein eigenes `error`-Feld zurückgeben (z.B. bei
   // Auth-Fail) — als String-Error normalisieren.
   if (data && typeof data === 'object' && 'error' in data && typeof (data as { error: unknown }).error === 'string') {

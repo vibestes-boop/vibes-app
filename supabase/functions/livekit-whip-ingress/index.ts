@@ -269,8 +269,10 @@ async function handleCreate(body: { title?: string; privacy?: string }, env: Env
     // Noch kein Ingress → neuen erstellen
     // Stabiler room_name: obs-perm-{userId.slice(0,8)} — ändert sich nie
     roomName = `obs-perm-${userId.slice(0, 8)}`;
+    console.log(`[create] no existing ingress for ${userId}, creating new one with room ${roomName}`);
     const created = await createLiveKitIngress(env, roomName, userId, `WHIP-perm-${userId.slice(0, 8)}`);
     if ('error' in created) {
+      console.error(`[create] LiveKit ingress creation failed:`, created.error);
       return jsonResponse({ error: created.error }, 502);
     }
     ingressData = created;
@@ -303,6 +305,7 @@ async function handleCreate(body: { title?: string; privacy?: string }, env: Env
 
   if (!insertResp.ok) {
     const errBody = await insertResp.text();
+    console.error(`[create] live_sessions insert failed (status ${insertResp.status}):`, errBody);
     // Wenn wir gerade erst einen neuen Ingress erstellt haben und der Session-
     // Insert scheitert, löschen wir den Ingress um keinen Zombie zu hinterlassen.
     // Bei wiederverwendetem Ingress nichts tun — er gehört dem User dauerhaft.
