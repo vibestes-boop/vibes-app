@@ -198,3 +198,67 @@ export async function updateAvatar(avatarUrl: string | null): Promise<ActionResu
 
   return { ok: true, data: null };
 }
+
+// -----------------------------------------------------------------------------
+// Notification channel preferences — v1.w.UI.63
+//
+// notif_prefs: JSONB-Spalte auf `profiles`.
+// Keys: likes | comments | follows | messages | live | gifts | orders
+// Default: alle true (opt-out-Modell, see DB migration 20260426200000).
+// -----------------------------------------------------------------------------
+
+export interface NotifPrefs {
+  likes:    boolean;
+  comments: boolean;
+  follows:  boolean;
+  messages: boolean;
+  live:     boolean;
+  gifts:    boolean;
+  orders:   boolean;
+}
+
+const DEFAULT_PREFS: NotifPrefs = {
+  likes: true, comments: true, follows: true,
+  messages: true, live: true, gifts: true, orders: true,
+};
+
+export async function getNotifPrefs(): Promise<NotifPrefs> {
+  const user = await getUser();
+  if (!user) return DEFAULT_PREFS;
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('profiles')
+    .select('notif_prefs')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (!data?.notif_prefs) return DEFAULT_PREFS;
+
+  // Merge mit Defaults damit fehlende Keys (zukünftige Erweiterungen) nicht
+  // auf undefined laufen.
+  return { ...DEFAULT_PREFS, ...(data.notif_prefs as Partial<NotifPrefs>) };
+}
+
+export async function updateNotifPrefs(
+  prefs: Partial<NotifPrefs>,
+): Promise<ActionResult> {
+  const user = await getUser();
+  if (!user) return { ok: false, error: 'Nicht eingeloggt.' };
+
+  const supabase = await createClient();
+
+  // Bestehende Prefs laden und zusammenführen — Partial-Update statt Overwrite.
+  const current = await getNotifPrefs();
+  const merged: NotifPrefs = { ...current, ...prefs };
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ notif_prefs: merged })
+    .eq('id', user.id);
+
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath('/settings/notifications');
+  return { ok: true, data: null };
+}

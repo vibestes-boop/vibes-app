@@ -2,7 +2,9 @@ import type { Metadata } from 'next';
 import { Bell } from 'lucide-react';
 
 import { WebPushCard } from '@/components/settings/web-push-card';
+import { NotifPrefsCard } from '@/components/settings/notif-prefs-card';
 import { getT } from '@/lib/i18n/server';
+import { getNotifPrefs } from '@/app/actions/profile';
 
 // -----------------------------------------------------------------------------
 // /settings/notifications — Benachrichtigungs-Einstellungen.
@@ -24,6 +26,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function NotificationsPage() {
   const t = await getT();
+  const initialPrefs = await getNotifPrefs();
 
   return (
     <div>
@@ -37,9 +40,9 @@ export default async function NotificationsPage() {
 
       <WebPushCard />
 
-      <section className="mt-6 rounded-xl border border-dashed border-border bg-card/40 p-5 text-sm text-muted-foreground">
-        <p>{t('settings.notifComingSoon')}</p>
-      </section>
+      <div className="mt-6">
+        <NotifPrefsCard initialPrefs={initialPrefs} />
+      </div>
     </div>
   );
 }

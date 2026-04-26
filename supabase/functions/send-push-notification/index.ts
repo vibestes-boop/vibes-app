@@ -31,15 +31,34 @@ Deno.serve(async (req: Request) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
 
-    // Push-Token des Empfängers aus profiles holen
+    // Push-Token + Notification-Prefs des Empfängers aus profiles holen
     const { data: recipient } = await supabase
       .from('profiles')
-      .select('username, push_token')
+      .select('username, push_token, notif_prefs')
       .eq('id', record.recipient_id)
       .single();
 
     if (!recipient?.push_token) {
       return new Response(JSON.stringify({ skipped: 'No push token' }), { status: 200 });
+    }
+
+    // Kanal-Präferenz prüfen — User kann einzelne Benachrichtigungs-Typen deaktivieren
+    const TYPE_TO_PREF: Record<string, string> = {
+      like:                      'likes',
+      comment:                   'comments',
+      follow:                    'follows',
+      follow_request:            'follows',
+      dm:                        'messages',
+      live:                      'live',
+      live_invite:               'live',
+      scheduled_live_reminder:   'live',
+      gift:                      'gifts',
+      new_order:                 'orders',
+    };
+    const prefKey = TYPE_TO_PREF[record.type];
+    const prefs = recipient.notif_prefs as Record<string, boolean> | null;
+    if (prefKey && prefs && prefs[prefKey] === false) {
+      return new Response(JSON.stringify({ skipped: `Channel ${prefKey} disabled by user` }), { status: 200 });
     }
 
     // Auslöser-Username holen
