@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { BadgeCheck, Heart, ShoppingBag, Swords } from 'lucide-react';
 
-import { getPublicProfile, getProfilePosts, isFollowing } from '@/lib/data/public';
+import { getPublicProfile, getProfilePosts, getProfileLikedPosts, isFollowing } from '@/lib/data/public';
 import { getUser } from '@/lib/auth/session';
 import { getMyCoinBalance } from '@/lib/data/payments';
 import { PostGrid } from '@/components/profile/post-grid';
@@ -169,6 +169,8 @@ export default async function ProfilePage({
       : 'posts';
 
   // Parallel: Session + Follow-Status + Posts-Feed + Coin-Balance + i18n
+  // isSelf kann erst nach getUser() bestimmt werden — Likes-Fetch wird daher
+  // zwei-stufig: erst viewer, dann (wenn isSelf && tab=likes) likedPosts.
   const [viewer, alreadyFollowing, posts, balance, t, locale] = await Promise.all([
     getUser(),
     isFollowing(profile.id),
@@ -179,6 +181,12 @@ export default async function ProfilePage({
   ]);
 
   const isSelf = viewer?.id === profile.id;
+
+  // Liked Posts: nur für den Profilinhaber selbst (Likes sind privat).
+  const likedPosts =
+    tab === 'likes' && isSelf
+      ? await getProfileLikedPosts(profile.id, 24)
+      : [];
   const displayName = profile.display_name ?? `@${profile.username}`;
 
   // JSON-LD (ProfilePage Schema.org) — hilft Google bei Rich-Results.
@@ -321,15 +329,22 @@ export default async function ProfilePage({
         )}
 
         {tab === 'likes' && (
-          <EmptyPanelInfo
-            icon="likes"
-            title={t('profile.panelLikesTitle')}
-            hint={
-              isSelf
-                ? t('profile.panelLikesHintSelf')
-                : t('profile.panelLikesHintOther')
-            }
-          />
+          isSelf ? (
+            // Eigener Account: echtes Liked-Grid
+            <PostGrid
+              posts={likedPosts}
+              emptyTitle="Noch nichts geliked"
+              emptyDescription="Videos, die du likest, erscheinen hier — nur für dich sichtbar."
+              emptyIcon={<Heart className="h-7 w-7" strokeWidth={1.75} />}
+            />
+          ) : (
+            // Fremder Account: Likes sind privat
+            <EmptyPanelInfo
+              icon="likes"
+              title={t('profile.panelLikesTitle')}
+              hint={t('profile.panelLikesHintOther')}
+            />
+          )
         )}
 
         {tab === 'shop' && (

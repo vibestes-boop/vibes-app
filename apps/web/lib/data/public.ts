@@ -214,6 +214,51 @@ export const getProfilePosts = cache(
 );
 
 // -----------------------------------------------------------------------------
+// Posts liked by a profile — newest like first, capped at limit.
+//
+// Sichtbarkeit: In der nativen App und hier auf Web sind Likes privat —
+// der Likes-Tab wird auf dem Profil-Screen nur für `isSelf` gerendert.
+// Die Funktion selbst macht keinen Auth-Check (RLS `using (true)`) — die
+// Sichtbarkeits-Entscheidung liegt beim Aufrufer (Profile-Page: isSelf-Guard).
+// -----------------------------------------------------------------------------
+
+type LikesJoinRow = {
+  liked_at: string;
+  post: PostRowMobile | null;
+};
+
+export const getProfileLikedPosts = cache(
+  async (userId: string, limit = 24): Promise<Post[]> => {
+    const supabase = await createClient();
+
+    // Via likes → posts join: newest-liked zuerst.
+    const { data, error } = await supabase
+      .from('likes')
+      .select(
+        `liked_at:created_at,
+         post:posts!likes_post_id_fkey (
+           id, author_id, caption, media_url, thumbnail_url, view_count, tags,
+           allow_comments, allow_duet, created_at,
+           like_count:likes(count),
+           comment_count:comments(count)
+         )`,
+      )
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error || !data) return [];
+
+    const posts: Post[] = [];
+    for (const row of data as unknown as LikesJoinRow[]) {
+      if (!row.post) continue;
+      posts.push(toPost(row.post));
+    }
+    return posts;
+  },
+);
+
+// -----------------------------------------------------------------------------
 // Single post with author-profile joined.
 //
 // `media_type` wird zusätzlich zum Post-Contract durchgereicht, damit die
