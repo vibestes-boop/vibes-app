@@ -4,6 +4,7 @@ import type { Route } from 'next';
 import { notFound } from 'next/navigation';
 import { Hash, TrendingUp, Eye, Film } from 'lucide-react';
 import { getPostsByTag, getTrendingHashtags } from '@/lib/data/feed';
+import { ExploreVideoCard } from '@/components/explore/explore-video-card';
 import { getLocale } from '@/lib/i18n/server';
 import { LOCALE_INTL } from '@/lib/i18n/config';
 import type { Locale } from '@/lib/i18n/config';
@@ -103,42 +104,22 @@ export default async function HashtagPage({ params }: PageProps) {
           </Link>
         </div>
       ) : (
+        /* v1.w.UI.55b — ExploreVideoCard für Hover-Video-Preview */
         <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
           {posts.map((p) => {
-            const initial =
+            const fallbackInitial =
               (p.author.display_name ?? p.author.username ?? '?').slice(0, 1).toUpperCase();
             return (
               <li key={p.id}>
-                <Link
-                  href={`/p/${p.id}` as Route}
-                  className="group relative block aspect-[9/16] overflow-hidden rounded-lg bg-black"
-                >
-                  {p.thumbnail_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={p.thumbnail_url}
-                      alt={p.caption ?? `#${tag}`}
-                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-zinc-800 via-zinc-900 to-black">
-                      <span className="text-3xl font-bold text-white/30">{initial}</span>
-                    </div>
-                  )}
-                  {/* Overlay: Views + Caption */}
-                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent p-2">
-                    <div className="truncate text-xs font-medium text-white">
-                      @{p.author.username}
-                    </div>
-                    {(p.view_count ?? 0) > 0 && (
-                      <div className="flex items-center gap-1 text-[10px] text-white/70">
-                        <Eye className="h-2.5 w-2.5" />
-                        {formatCount(p.view_count ?? 0, locale)}
-                      </div>
-                    )}
-                  </div>
-                </Link>
+                <ExploreVideoCard
+                  id={p.id}
+                  videoUrl={p.video_url}
+                  thumbnailUrl={p.thumbnail_url}
+                  caption={p.caption}
+                  authorUsername={p.author.username}
+                  viewCount={p.view_count ?? 0}
+                  fallbackInitial={fallbackInitial}
+                />
               </li>
             );
           })}
