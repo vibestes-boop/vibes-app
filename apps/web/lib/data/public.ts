@@ -376,3 +376,39 @@ export const isFollowing = cache(async (targetUserId: string): Promise<boolean> 
 
   return !!data;
 });
+
+// -----------------------------------------------------------------------------
+// getPostInteractionState — liked + saved state für den eingeloggten User.
+// Wird von /p/[postId] genutzt um Like- und Bookmark-Buttons korrekt
+// vorzubelegen. Gibt { liked: false, saved: false } zurück wenn nicht authed.
+// -----------------------------------------------------------------------------
+
+export interface PostInteractionState {
+  liked: boolean;
+  saved: boolean;
+}
+
+export const getPostInteractionState = cache(
+  async (postId: string): Promise<PostInteractionState> => {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { liked: false, saved: false };
+
+    const [{ count: likeCount }, { count: saveCount }] = await Promise.all([
+      supabase
+        .from('likes')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('post_id', postId),
+      supabase
+        .from('bookmarks')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .eq('post_id', postId),
+    ]);
+
+    return { liked: (likeCount ?? 0) > 0, saved: (saveCount ?? 0) > 0 };
+  },
+);

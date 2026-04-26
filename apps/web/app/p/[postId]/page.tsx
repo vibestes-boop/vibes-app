@@ -11,21 +11,26 @@ import {
   CalendarDays,
 } from 'lucide-react';
 
-import { getPost, getPostComments } from '@/lib/data/public';
+import { getPost, getPostComments, getPostInteractionState } from '@/lib/data/public';
+import { getUser } from '@/lib/auth/session';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { VideoPlayer } from '@/components/video/video-player';
 import { ShareButtons } from '@/components/share/share-buttons';
 import { PostComments } from '@/components/post/post-comments';
+import { PostActionsBar } from '@/components/post/post-actions-bar';
+import { CommentForm } from '@/components/post/comment-form';
 import { linkify } from '@/lib/linkify';
 
 // -----------------------------------------------------------------------------
 // /p/[postId] — public post detail.
 //
-// ISR: 60s — identisches Reasoning wie Profile, view_count/like_count ticken
-// zwar hoch, aber 60s stale ist für einen Share-Link absolut okay.
+// force-dynamic: Seite enthält Auth-abhängigen State (liked_by_me, saved_by_me).
+// ISR war vorher 60s — aber weil wir jetzt per-User-State rendern, ist
+// force-dynamic korrekt. Statische Teile (Video, Caption) sind trotzdem schnell
+// da Supabase-Queries intern gecacht sind (React.cache per Request).
 // -----------------------------------------------------------------------------
 
-export const revalidate = 60;
+export const dynamic = 'force-dynamic';
 export const dynamicParams = true;
 
 // -----------------------------------------------------------------------------
@@ -158,8 +163,12 @@ export default async function PostDetailPage({
   const post = await getPost(postId);
   if (!post) notFound();
 
-  // Kommentare parallel laden (nur wenn erlaubt — spart ein DB-Roundtrip).
-  const comments = post.allow_comments ? await getPostComments(post.id, 20) : [];
+  // Kommentare + Interaction-State + Viewer parallel laden.
+  const [comments, interaction, viewer] = await Promise.all([
+    post.allow_comments ? getPostComments(post.id, 20) : Promise.resolve([]),
+    getPostInteractionState(post.id),
+    getUser(),
+  ]);
 
   const authorName = post.author.display_name ?? `@${post.author.username}`;
   const created = new Date(post.created_at);
@@ -262,10 +271,16 @@ export default async function PostDetailPage({
             />
           )}
 
-          {/* Stats-Zeile */}
+          {/* Stats-Zeile: statische Counts + interaktive Like/Bookmark-Buttons */}
           <div className="mt-4 flex flex-wrap items-center gap-4">
             <StatLine icon={Eye}           value={post.view_count}    label="Aufrufe" />
-            <StatLine icon={Heart}         value={post.like_count}    label="Likes" />
+            <PostActionsBar
+              postId={post.id}
+              initialLiked={interaction.liked}
+              initialSaved={interaction.saved}
+              likeCount={post.like_count}
+              isAuthenticated={!!viewer}
+            />
             <StatLine icon={MessageCircle} value={post.comment_count} label="Kommentare" />
             <StatLine icon={ShareIcon}     value={post.share_count}   label="Shares" />
           </div>
@@ -363,6 +378,15 @@ export default async function PostDetailPage({
         allowComments={post.allow_comments}
         totalCount={post.comment_count}
       />
+
+      {/* Kommentar-Eingabe — nur wenn Kommentare erlaubt */}
+      {post.allow_comments && (
+        <CommentForm
+          postId={post.id}
+          isAuthenticated={!!viewer}
+          postPath={`/p/${post.id}`}
+        />
+      )}
     </main>
   );
 }
