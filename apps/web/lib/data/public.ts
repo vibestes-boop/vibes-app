@@ -259,6 +259,54 @@ export const getProfileLikedPosts = cache(
 );
 
 // -----------------------------------------------------------------------------
+// Posts bookmarked by the authenticated user — newest bookmark first.
+//
+// Rein privat — Bookmarks sind nur für den eingeloggten User selbst sichtbar.
+// RLS auf `bookmarks`: `for select using (auth.uid() = user_id)` → fremde
+// User können diese Funktion aufrufen, bekommen aber 0 Ergebnisse zurück.
+// Die /saved-Page macht zusätzlich einen Auth-Redirect-Guard.
+// -----------------------------------------------------------------------------
+
+type BookmarkJoinRow = {
+  bookmarked_at: string;
+  post: PostRowMobile | null;
+};
+
+export const getBookmarkedPosts = cache(
+  async (limit = 48): Promise<Post[]> => {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    const { data, error } = await supabase
+      .from('bookmarks')
+      .select(
+        `bookmarked_at:created_at,
+         post:posts!bookmarks_post_id_fkey (
+           id, author_id, caption, media_url, thumbnail_url, view_count, tags,
+           allow_comments, allow_duet, created_at,
+           like_count:likes(count),
+           comment_count:comments(count)
+         )`,
+      )
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (error || !data) return [];
+
+    const posts: Post[] = [];
+    for (const row of data as unknown as BookmarkJoinRow[]) {
+      if (!row.post) continue;
+      posts.push(toPost(row.post));
+    }
+    return posts;
+  },
+);
+
+// -----------------------------------------------------------------------------
 // Single post with author-profile joined.
 //
 // `media_type` wird zusätzlich zum Post-Contract durchgereicht, damit die

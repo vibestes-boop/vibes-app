@@ -10,6 +10,7 @@ import {
   Moon,
   Sun,
   LogOut,
+  Bookmark,
 } from 'lucide-react';
 
 import {
@@ -80,6 +81,12 @@ export function MoreMenu() {
           <Link href="/coin-shop">
             <Coins className="h-4 w-4" />
             <span>Coins</span>
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/saved">
+            <Bookmark className="h-4 w-4" />
+            <span>Gespeichert</span>
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem
