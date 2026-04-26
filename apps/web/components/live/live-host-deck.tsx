@@ -191,10 +191,16 @@ export function LiveHostDeck({
         if (isObs) {
           // OBS-Modus: bereits publizierte OBS-Tracks abholen (falls OBS
           // schon vor uns im Room war — was der Normalfall ist).
+          // Tracks die noch nicht subscribed sind werden via TrackSubscribed-Event
+          // unten abgeholt. Kurzes Delay damit LiveKit die initiale Subscription
+          // abschließen kann bevor wir den pub-State lesen.
+          await new Promise((r) => setTimeout(r, 500));
           for (const participant of room.remoteParticipants.values()) {
             for (const pub of participant.videoTrackPublications.values()) {
-              if (pub.isSubscribed && pub.track && videoRef.current) {
+              if (pub.track && videoRef.current) {
                 pub.track.attach(videoRef.current);
+                videoRef.current.muted = true;
+                void videoRef.current.play().catch(() => {});
               }
             }
           }
@@ -228,7 +234,10 @@ export function LiveHostDeck({
     if (isObs) {
       room.on(RoomEvent.TrackSubscribed, (track) => {
         if (track.kind === Track.Kind.Video && videoRef.current) {
-          track.attach(videoRef.current);
+          const el = videoRef.current;
+          track.attach(el);
+          el.muted = true;
+          void el.play().catch(() => {});
         }
       });
     }

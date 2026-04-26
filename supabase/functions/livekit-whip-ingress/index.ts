@@ -270,6 +270,48 @@ async function handleCreate(body: { title?: string; privacy?: string }, env: Env
     // Stabiler room_name: obs-perm-{userId.slice(0,8)} — ändert sich nie
     roomName = `obs-perm-${userId.slice(0, 8)}`;
     console.log(`[create] no existing ingress for ${userId}, creating new one with room ${roomName}`);
+
+    // Cleanup: Alle alten Ingresses dieses Users löschen bevor wir einen neuen
+    // anlegen. Verhindert "total ingress object limit exceeded" bei LiveKit.
+    // Wir listen alle Ingresses und filtern client-seitig nach participant_identity.
+    try {
+      const cleanupJwt = await liveKitAdminJwt(env.liveKitApiKey, env.liveKitApiSecret);
+      const listResp = await fetch(`${env.liveKitUrl}/twirp/livekit.Ingress/ListIngress`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${cleanupJwt}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
+      if (listResp.ok) {
+        const list = (await listResp.json()) as {
+          items?: Array<{ ingress_id: string; participant_identity?: string }>;
+        };
+        // LiveKit Twirp JSON kann snake_case oder camelCase zurückgeben — beide prüfen
+        const toDelete = (list.items ?? []).filter((i) => {
+          const raw = i as Record<string, unknown>;
+          const pid = raw['participant_identity'] ?? raw['participantIdentity'];
+          return pid === `host-${userId}`;
+        });
+        console.log(`[create] cleanup: found ${toDelete.length} old ingress(es) for user`);
+        if (toDelete.length > 0) {
+          const dJwt = await liveKitAdminJwt(env.liveKitApiKey, env.liveKitApiSecret);
+          await Promise.all(
+            toDelete.map((item) =>
+              fetch(`${env.liveKitUrl}/twirp/livekit.Ingress/DeleteIngress`, {
+                method: 'POST',
+                headers: { Authorization: `Bearer ${dJwt}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ingress_id: item.ingress_id }),
+              }),
+            ),
+          );
+          // Kurz warten damit LiveKit die Deletions propagiert bevor wir CreateIngress rufen
+          await new Promise((r) => setTimeout(r, 800));
+        }
+      }
+    } catch (e) {
+      // Cleanup-Fehler sind nicht kritisch — wir versuchen trotzdem einen neuen zu erstellen
+      console.error(`[create] cleanup error (non-fatal):`, e);
+    }
+
     const created = await createLiveKitIngress(env, roomName, userId, `WHIP-perm-${userId.slice(0, 8)}`);
     if ('error' in created) {
       console.error(`[create] LiveKit ingress creation failed:`, created.error);
