@@ -13,6 +13,7 @@ import {
   BarChart3,
   UserRound,
   Plus,
+  Bell,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
@@ -21,6 +22,7 @@ import { FollowedAccountsSection } from '@/components/feed/followed-accounts-sec
 import { MoreMenu } from '@/components/layout/more-menu';
 import type { FollowedAccount } from '@/lib/data/feed';
 import { getUnreadDmCount } from '@/app/actions/messages';
+import { getUnreadNotificationCount } from '@/app/actions/notifications';
 
 // -----------------------------------------------------------------------------
 // FeedSidebar — linke Navigation auf Desktop-Feed-Seiten.
@@ -48,6 +50,7 @@ const PRIMARY_NAV: NavItem[] = [
   { label: 'Entdecken', href: '/explore' as Route, icon: Compass },
   { label: 'Live', href: '/live' as Route, icon: Radio },
   { label: 'Messages', href: '/messages' as Route, icon: MessageCircle, requiresAuth: true },
+  { label: 'Benachrichtigungen', href: '/notifications' as Route, icon: Bell, requiresAuth: true },
 ];
 
 const SECONDARY_NAV: NavItem[] = [
@@ -79,6 +82,16 @@ export function FeedSidebar({
     enabled: !!viewerId,
     refetchInterval: 30_000,
     staleTime: 20_000,
+  });
+
+  // Unread-Notif-Badge: 60s Polling reicht (Notifications sind weniger zeitkritisch
+  // als DMs). Wird nach dem Besuch von /notifications via revalidatePath() zurückgesetzt.
+  const { data: unreadNotifs = 0 } = useQuery({
+    queryKey: ['unread-notifs'],
+    queryFn: () => getUnreadNotificationCount(),
+    enabled: !!viewerId,
+    refetchInterval: 60_000,
+    staleTime: 50_000,
   });
 
   return (
@@ -118,7 +131,9 @@ export function FeedSidebar({
           const active = isActive(item.href);
           const Icon = item.icon;
           const isMessages = item.href === '/messages';
-          const badgeCount = isMessages ? unreadDms : 0;
+          const isNotifs = item.href === '/notifications';
+          const badgeCount = isMessages ? unreadDms : isNotifs ? unreadNotifs : 0;
+          const badgeLabel = badgeCount > 99 ? '99+' : badgeCount;
           return (
             <Link
               key={`${item.label}-${item.href}`}
@@ -126,8 +141,8 @@ export function FeedSidebar({
               aria-disabled={disabled}
               aria-current={active ? 'page' : undefined}
               aria-label={
-                isMessages && badgeCount > 0
-                  ? `Messages (${badgeCount > 99 ? '99+' : badgeCount} ungelesen)`
+                badgeCount > 0
+                  ? `${item.label} (${badgeLabel} ungelesen)`
                   : item.label
               }
               className={cn(
@@ -140,12 +155,12 @@ export function FeedSidebar({
             >
               <Icon className="h-6 w-6 shrink-0" />
               <span className="flex-1 truncate">{item.label}</span>
-              {isMessages && badgeCount > 0 && (
+              {badgeCount > 0 && (
                 <span
                   aria-hidden="true"
                   className="ml-auto flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-brand-gold px-1.5 text-[11px] font-semibold leading-none text-white"
                 >
-                  {badgeCount > 99 ? '99+' : badgeCount}
+                  {badgeLabel}
                 </span>
               )}
             </Link>

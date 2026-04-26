@@ -31,11 +31,15 @@ jest.mock('next/navigation', () => ({
   usePathname: () => '/',
 }));
 
-// getUnreadDmCount ist eine Server Action die Supabase/cookies() nutzt —
-// beides nicht in jsdom verfügbar. Für Sidebar-Struktur-Tests ein Stub der
-// immer 0 zurückgibt (kein Badge — Badge-Rendering ist ein eigener Test).
+// getUnreadDmCount + getUnreadNotificationCount sind Server Actions die
+// Supabase/cookies() nutzen — beides nicht in jsdom verfügbar.
+// Stubs die immer 0 zurückgeben (kein Badge — Badge-Rendering ist ein eigener Test).
 jest.mock('@/app/actions/messages', () => ({
   getUnreadDmCount: jest.fn().mockResolvedValue(0),
+}));
+
+jest.mock('@/app/actions/notifications', () => ({
+  getUnreadNotificationCount: jest.fn().mockResolvedValue(0),
 }));
 
 // OpenConsentSettingsButton ist ein Client-Hook-heavy Consent-Banner-Kontrollpunkt
@@ -68,7 +72,7 @@ jest.mock('@/components/layout/more-menu', () => ({
 }));
 
 describe('FeedSidebar — Layout-Reset (v1.w.UI.10) Struktur', () => {
-  const PRIMARY_LABELS = ['Für dich', 'Folge ich', 'Entdecken', 'Live', 'Messages'];
+  const PRIMARY_LABELS = ['Für dich', 'Folge ich', 'Entdecken', 'Live', 'Messages', 'Benachrichtigungen'];
   const SECONDARY_LABELS = ['Shop', 'Pods', 'Creator Studio'];
   const REMOVED_LABELS = [
     'Entwürfe',
@@ -82,7 +86,7 @@ describe('FeedSidebar — Layout-Reset (v1.w.UI.10) Struktur', () => {
     'Post erstellen',
   ];
 
-  it('rendert genau 5 Primary-Nav-Items', () => {
+  it('rendert genau 6 Primary-Nav-Items', () => {
     renderWithQueryClient(<FeedSidebar viewerId="viewer-1" />);
     for (const label of PRIMARY_LABELS) {
       expect(screen.getByText(label)).toBeInTheDocument();
@@ -118,12 +122,14 @@ describe('FeedSidebar — Layout-Reset (v1.w.UI.10) Struktur', () => {
     const ctaLink = screen.getByRole('link', { name: /Neuen Post erstellen/i });
     expect(ctaLink).toHaveAttribute('aria-disabled', 'true');
 
-    // „Folge ich" + „Messages" + „Creator Studio" sind requiresAuth → disabled
-    // wenn kein Viewer. Wir prüfen über den nächsten <a> wrapping das Label.
+    // „Folge ich" + „Messages" + „Benachrichtigungen" + „Creator Studio"
+    // sind requiresAuth → disabled wenn kein Viewer.
     const folgeIch = screen.getByText('Folge ich').closest('a');
     expect(folgeIch).toHaveAttribute('aria-disabled', 'true');
     const messages = screen.getByText('Messages').closest('a');
     expect(messages).toHaveAttribute('aria-disabled', 'true');
+    const benachrichtigungen = screen.getByText('Benachrichtigungen').closest('a');
+    expect(benachrichtigungen).toHaveAttribute('aria-disabled', 'true');
     const creatorStudio = screen.getByText('Creator Studio').closest('a');
     expect(creatorStudio).toHaveAttribute('aria-disabled', 'true');
 
