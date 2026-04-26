@@ -136,33 +136,49 @@ describe('FollowButton — Optimistisches Follow', () => {
     mockToastError.mockClear();
   });
 
-  it('wechselt sofort auf „Folgst du" bei Klick (optimistisches Update)', async () => {
-    // Action antwortet mit Verzögerung — wir prüfen den State VOR Auflösung
+  it('Button ist während der laufenden Action disabled (Spinner sichtbar)', () => {
+    // useTransition: isPending=true sobald startTransition aufgerufen wird.
+    // Der Button rendert dann den Loader, nicht "Folgst du".
     mockToggleFollow.mockReturnValue(new Promise(() => {})); // never resolves
     render(<FollowButton {...BASE_PROPS} isFollowing={false} />);
 
     fireEvent.click(screen.getByRole('button', { name: /folgen/i }));
 
-    // Optimistisches Update ist synchron nach dem Click
-    expect(screen.getByText(/Folgst du/i)).toBeInTheDocument();
+    // isPending=true → Button ist disabled und zeigt Spinner
+    expect(screen.getByRole('button')).toBeDisabled();
+  });
+
+  it('zeigt „Folgst du" nach erfolgreichem Folgen', async () => {
+    mockToggleFollow.mockResolvedValue({ ok: true, data: { following: true } });
+    render(<FollowButton {...BASE_PROPS} isFollowing={false} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /folgen/i }));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/Folgst du/i)).toBeInTheDocument();
+    });
   });
 
   it('ruft toggleFollow mit korrekten Argumenten auf', async () => {
     mockToggleFollow.mockResolvedValue({ ok: true, data: { following: true } });
     render(<FollowButton {...BASE_PROPS} isFollowing={false} />);
 
-    fireEvent.click(screen.getByRole('button'));
-
-    await waitFor(() => {
-      expect(mockToggleFollow).toHaveBeenCalledWith('uid-42', false);
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button'));
     });
+
+    expect(mockToggleFollow).toHaveBeenCalledWith('uid-42', false);
   });
 
   it('zeigt Toast nach erfolgreichem Folgen', async () => {
     mockToggleFollow.mockResolvedValue({ ok: true, data: { following: true } });
     render(<FollowButton {...BASE_PROPS} isFollowing={false} />);
 
-    fireEvent.click(screen.getByRole('button'));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button'));
+    });
 
     await waitFor(() => {
       expect(mockToastSuccess).toHaveBeenCalledWith(
@@ -175,11 +191,10 @@ describe('FollowButton — Optimistisches Follow', () => {
     mockToggleFollow.mockResolvedValue({ ok: true, data: { following: false } });
     render(<FollowButton {...BASE_PROPS} isFollowing={true} />);
 
-    fireEvent.click(screen.getByRole('button'));
-
-    await waitFor(() => {
-      expect(mockToggleFollow).toHaveBeenCalled();
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button'));
     });
+
     expect(mockToastSuccess).not.toHaveBeenCalled();
   });
 });
@@ -193,24 +208,38 @@ describe('FollowButton — Optimistisches Unfollow', () => {
     mockToastError.mockClear();
   });
 
-  it('wechselt sofort auf „Folgen" bei Klick auf „Folgst du"', () => {
+  it('Button ist während der laufenden Action disabled (Spinner sichtbar)', () => {
+    // useTransition: isPending=true → Loader-Spinner statt "Folgen"-Text
     mockToggleFollow.mockReturnValue(new Promise(() => {}));
     render(<FollowButton {...BASE_PROPS} isFollowing={true} />);
 
     fireEvent.click(screen.getByRole('button', { name: /folgst du/i }));
 
-    expect(screen.getByText(/Folgen/i)).toBeInTheDocument();
+    expect(screen.getByRole('button')).toBeDisabled();
+  });
+
+  it('zeigt „Folgen" nach erfolgreichem Entfolgen', async () => {
+    mockToggleFollow.mockResolvedValue({ ok: true, data: { following: false } });
+    render(<FollowButton {...BASE_PROPS} isFollowing={true} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /folgst du/i }));
+    });
+
+    await waitFor(() => {
+      expect(screen.getByText(/^Folgen$/i)).toBeInTheDocument();
+    });
   });
 
   it('ruft toggleFollow(uid, currentlyFollowing=true) auf', async () => {
     mockToggleFollow.mockResolvedValue({ ok: true, data: { following: false } });
     render(<FollowButton {...BASE_PROPS} isFollowing={true} />);
 
-    fireEvent.click(screen.getByRole('button'));
-
-    await waitFor(() => {
-      expect(mockToggleFollow).toHaveBeenCalledWith('uid-42', true);
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button'));
     });
+
+    expect(mockToggleFollow).toHaveBeenCalledWith('uid-42', true);
   });
 });
 
@@ -227,11 +256,12 @@ describe('FollowButton — Fehler-Rollback', () => {
     mockToggleFollow.mockResolvedValue({ ok: false, error: 'Netzwerkfehler' });
     render(<FollowButton {...BASE_PROPS} isFollowing={false} />);
 
-    fireEvent.click(screen.getByRole('button'));
-    // Optimistisch auf "Folgst du"
-    expect(screen.getByText(/Folgst du/i)).toBeInTheDocument();
+    // act() flusht die komplette async Transition (optimistisch + Rollback)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button'));
+    });
 
-    // Nach Fehler: zurück auf "Folgen"
+    // Nach dem Rollback: wieder "Folgen" (nicht "Folgst du")
     await waitFor(() => {
       expect(screen.getByText(/^Folgen$/i)).toBeInTheDocument();
     });
@@ -241,7 +271,9 @@ describe('FollowButton — Fehler-Rollback', () => {
     mockToggleFollow.mockResolvedValue({ ok: false, error: 'Netzwerkfehler' });
     render(<FollowButton {...BASE_PROPS} isFollowing={false} />);
 
-    fireEvent.click(screen.getByRole('button'));
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button'));
+    });
 
     await waitFor(() => {
       expect(mockToastError).toHaveBeenCalledWith(
@@ -255,11 +287,13 @@ describe('FollowButton — Fehler-Rollback', () => {
     mockToggleFollow.mockResolvedValue({ ok: false, error: 'Serverfehler' });
     render(<FollowButton {...BASE_PROPS} isFollowing={true} />);
 
-    fireEvent.click(screen.getByRole('button'));
-    expect(screen.getByText(/Folgen/i)).toBeInTheDocument(); // optimistisch
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button'));
+    });
 
+    // Rollback: zurück auf "Folgst du"
     await waitFor(() => {
-      expect(screen.getByText(/Folgst du/i)).toBeInTheDocument(); // Rollback
+      expect(screen.getByText(/Folgst du/i)).toBeInTheDocument();
     });
     expect(mockToastError).toHaveBeenCalled();
   });
