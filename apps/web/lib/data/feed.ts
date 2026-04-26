@@ -143,8 +143,8 @@ function normalizeRow(
 // -----------------------------------------------------------------------------
 
 export const getForYouFeed = cache(
-  async (opts: { limit?: number; excludeIds?: string[] } = {}): Promise<FeedPost[]> => {
-    const { limit = 10, excludeIds = [] } = opts;
+  async (opts: { limit?: number; excludeIds?: string[]; before?: string } = {}): Promise<FeedPost[]> => {
+    const { limit = 10, excludeIds = [], before } = opts;
     const supabase = await createClient();
     const {
       data: { user },
@@ -183,6 +183,8 @@ export const getForYouFeed = cache(
     if (allExcludes.length > 0) {
       query = query.not('id', 'in', `(${allExcludes.join(',')})`);
     }
+    // Cursor-Pagination — identisches Pattern wie getFollowingFeed.
+    if (before) query = query.lt('created_at', before);
 
     const { data: rows, error } = await query;
     if (error) {

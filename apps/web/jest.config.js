@@ -76,6 +76,16 @@ const customConfig = {
       functions: 30,
       lines: 40,
     },
+    // v1.w.UI.70: SearchBox (v1.w.UI.48) bekommt eigenen Gate.
+    // Debounce-Logik, Dropdown-State, Keyboard-Nav und Fetch-Handling sind
+    // alle durch die Test-Suite abgedeckt. Thresholds konservativ gesetzt
+    // (~10 Punkte unter erwartetem Wert) weil CI den ersten echten Run macht.
+    'components/search-box.tsx': {
+      statements: 55,
+      branches: 35,
+      functions: 55,
+      lines: 55,
+    },
   },
 };
 
