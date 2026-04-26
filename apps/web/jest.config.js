@@ -86,6 +86,14 @@ const customConfig = {
       functions: 55,
       lines: 55,
     },
+    // v1.w.UI.71: FollowButton (v1.w.UI.40) — alle 3 Render-Zustände +
+    // optimistisches Toggle + Rollback + Toast werden getestet.
+    'components/profile/follow-button.tsx': {
+      statements: 70,
+      branches: 55,
+      functions: 70,
+      lines: 70,
+    },
   },
 };
 
