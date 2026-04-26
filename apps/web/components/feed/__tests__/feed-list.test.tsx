@@ -321,6 +321,9 @@ describe('FeedList — "Neue Posts" pill (v1.w.UI.68)', () => {
     mockRouterRefresh.mockClear();
     // global.fetch kann in jsdom undefined sein → immer frischen Mock zuweisen
     global.fetch = jest.fn();
+    // jsdom implementiert HTMLElement.scrollTo nicht — stub damit handleNewPostsPill
+    // nicht crasht und das nachfolgende setTimeout korrekt ausgeführt wird.
+    window.HTMLElement.prototype.scrollTo = jest.fn();
   });
 
   it('does NOT show pill on initial render', () => {
