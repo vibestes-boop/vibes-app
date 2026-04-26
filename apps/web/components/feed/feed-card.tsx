@@ -37,6 +37,7 @@ import type { FeedPost } from '@/lib/data/feed';
 import { LikeButton } from './like-button';
 import { useFeedInteraction } from './feed-interaction-context';
 import { linkify } from '@/lib/linkify';
+import { PostShareDmSheet } from './post-share-dm-sheet';
 
 // Feed-Captions liegen auf dunkler Video-Overlay — default `text-primary`
 // würde gegen Schwarz/Video-Content zu blass werden. Weißer Link mit
@@ -137,6 +138,8 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
       likeMut.mutate({ postId: post.id, liked: false });
     }
   }, [viewerId, post.id, post.liked_by_me, likeMut]);
+
+  const [shareDmOpen, setShareDmOpen] = useState(false);
 
   const isSelf = viewerId === post.author.id;
   // Legacy-Rows (pre-media_type-Einführung) waren alle Videos — deshalb
@@ -335,16 +338,25 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
     }
   };
 
-  const handleShare = async () => {
-    const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/p/${post.id}`;
-    try {
-      if (typeof navigator !== 'undefined' && navigator.share) {
-        await navigator.share({ url, title: post.caption ?? 'Serlo' });
-      } else {
-        await navigator.clipboard.writeText(url);
-      }
-    } catch {
-      /* User-Cancel ignorieren */
+  const handleShare = () => {
+    if (viewerId) {
+      // Eingeloggte User: DM-Share-Sheet öffnen (mit "Link kopieren"-Footer
+      // als Secondary-Aktion).
+      setShareDmOpen(true);
+    } else {
+      // Gäste: direkt nativer Share oder Clipboard-Fallback.
+      const url = `${typeof window !== 'undefined' ? window.location.origin : ''}/p/${post.id}`;
+      void (async () => {
+        try {
+          if (typeof navigator !== 'undefined' && navigator.share) {
+            await navigator.share({ url, title: post.caption ?? 'Serlo' });
+          } else {
+            await navigator.clipboard.writeText(url);
+          }
+        } catch {
+          /* User-Cancel ignorieren */
+        }
+      })();
     }
   };
 
@@ -954,6 +966,23 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
     {/* CommentSheet / CommentPanel wird seit v1.w.UI.11 Phase C vom
         HomeFeedShell gerendert (State-Owner-Lift). FeedCard triggert nur
         noch via `openCommentsFor(post.id)` aus dem FeedInteractionContext. */}
+
+    {/* v1.w.UI.74 — Post-Share-DM-Sheet (nur wenn eingeloggt + Share geklickt) */}
+    {shareDmOpen && (
+      <PostShareDmSheet
+        post={{
+          id: post.id,
+          thumbnail_url: post.thumbnail_url,
+          caption: post.caption ?? null,
+          author: {
+            username: post.author.username,
+            display_name: post.author.display_name ?? null,
+            avatar_url: post.author.avatar_url ?? null,
+          },
+        }}
+        onClose={() => setShareDmOpen(false)}
+      />
+    )}
     </div>
     </div>
   );
