@@ -1,9 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, Copy, Share2 } from 'lucide-react';
+import { Check, Copy, Share2, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
+import type { ShareablePost } from '@/components/feed/post-share-dm-sheet';
+import { PostShareDmSheet } from '@/components/feed/post-share-dm-sheet';
 
 // -----------------------------------------------------------------------------
 // ShareButtons — Native Share API wenn verfügbar, sonst Copy-Link + Direct-Links.
@@ -18,12 +20,16 @@ export function ShareButtons({
   url,
   title,
   text,
+  dmPost,
 }: {
   url: string;
   title: string;
   text?: string;
+  /** Wenn gesetzt: „Via DM"-Button öffnet PostShareDmSheet (nur für eingeloggte User). */
+  dmPost?: ShareablePost;
 }) {
   const [copied, setCopied] = useState(false);
+  const [dmOpen, setDmOpen] = useState(false);
 
   // Absolute URL aus relativem Input bauen (relative lässt native Share-Sheet
   // auf einigen Plattformen fallen).
@@ -83,6 +89,14 @@ export function ShareButtons({
         )}
       </Button>
 
+      {/* Via DM teilen — nur wenn dmPost gesetzt (eingeloggt + Post-Kontext) */}
+      {dmPost && (
+        <Button variant="outline" size="sm" onClick={() => setDmOpen(true)}>
+          <MessageCircle className="h-4 w-4" />
+          Via DM
+        </Button>
+      )}
+
       {/* WhatsApp */}
       <ShareIconLink
         href={`https://wa.me/?text=${encodedText}%20${encodedUrl}`}
@@ -112,6 +126,9 @@ export function ShareButtons({
           <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
         </svg>
       </ShareIconLink>
+      {dmOpen && dmPost && (
+        <PostShareDmSheet post={dmPost} onClose={() => setDmOpen(false)} />
+      )}
     </div>
   );
 }

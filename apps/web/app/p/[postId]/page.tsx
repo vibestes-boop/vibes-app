@@ -410,6 +410,16 @@ export default async function PostDetailPage({
               url={`/p/${post.id}`}
               title={authorName + ' auf Serlo'}
               text={post.caption?.slice(0, 100) ?? ''}
+              dmPost={viewer ? {
+                id: post.id,
+                thumbnail_url: post.thumbnail_url ?? null,
+                caption: post.caption ?? null,
+                author: {
+                  username: post.author.username,
+                  display_name: post.author.display_name ?? null,
+                  avatar_url: post.author.avatar_url ?? null,
+                },
+              } : undefined}
             />
           </div>
 
