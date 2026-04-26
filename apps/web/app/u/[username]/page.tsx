@@ -10,6 +10,7 @@ import { getMerchantProducts } from '@/lib/data/shop';
 import { PostGrid } from '@/components/profile/post-grid';
 import { ProductCard } from '@/components/shop/product-card';
 import { BattleList } from '@/components/profile/battle-list';
+import { ProfileBlockButton } from '@/components/profile/profile-block-button';
 import { ProfileTabs, type ProfileTab } from '@/components/profile/profile-tabs';
 import { FollowButton } from '@/components/profile/follow-button';
 import { CreatorTipButton } from '@/components/profile/creator-tip-button';
@@ -275,13 +276,22 @@ export default async function ProfilePage({
           </div>
 
           <div className="flex flex-col gap-2 sm:self-start">
-            <FollowButton
-              isAuthenticated={!!viewer}
-              isFollowing={alreadyFollowing}
-              isSelf={isSelf}
-              username={profile.username}
-              targetUserId={profile.id}
-            />
+            <div className="flex items-center gap-2">
+              <FollowButton
+                isAuthenticated={!!viewer}
+                isFollowing={alreadyFollowing}
+                isSelf={isSelf}
+                username={profile.username}
+                targetUserId={profile.id}
+              />
+              {/* v1.w.UI.54: Block-Option für fremde eingeloggte User */}
+              {viewer && !isSelf && (
+                <ProfileBlockButton
+                  targetUserId={profile.id}
+                  targetUsername={profile.username}
+                />
+              )}
+            </div>
             <CreatorTipButton
               recipientId={profile.id}
               recipientName={profile.username}

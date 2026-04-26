@@ -15,6 +15,26 @@ import type { ActionResult } from './live';
 // Nebenwirkung auf fremden Profilen.
 // -----------------------------------------------------------------------------
 
+export async function blockUser(targetUserId: string): Promise<ActionResult<null>> {
+  if (!targetUserId) return { ok: false, error: 'Ungültige User-ID.' };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'Bitte einloggen.' };
+  if (user.id === targetUserId) return { ok: false, error: 'Du kannst dich nicht selbst blockieren.' };
+
+  const { error } = await supabase.rpc('block_user', {
+    p_blocked_id: targetUserId,
+  });
+
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath('/settings/blocked');
+  return { ok: true, data: null };
+}
+
 export async function unblockUser(targetUserId: string): Promise<ActionResult<null>> {
   if (!targetUserId) return { ok: false, error: 'Ungültige User-ID.' };
 
