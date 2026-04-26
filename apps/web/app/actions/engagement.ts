@@ -193,6 +193,48 @@ export async function deleteComment(commentId: string): Promise<ActionResult> {
 }
 
 // -----------------------------------------------------------------------------
+// toggleCommentLike — v1.w.UI.57: Kommentar liken / entliken.
+//
+// Nutzt die `comment_likes`-Tabelle (PK: comment_id + user_id).
+// Toggle-Logik: INSERT → wenn 23505 (unique violation) → DELETE (unlike).
+// Kein RPC nötig — direktes INSERT/DELETE reicht, RLS prüft user_id.
+// -----------------------------------------------------------------------------
+
+export async function toggleCommentLike(
+  commentId: string,
+): Promise<ActionResult<{ liked: boolean }>> {
+  if (!commentId) return { ok: false, error: 'Ungültige Kommentar-ID.' };
+
+  const viewer = await getViewerId();
+  if (!viewer) return { ok: false, error: 'Bitte einloggen.' };
+
+  const supabase = await createClient();
+
+  // Versuche zu liken.
+  const { error: insertError } = await supabase
+    .from('comment_likes')
+    .insert({ comment_id: commentId, user_id: viewer.id });
+
+  if (!insertError) {
+    return { ok: true, data: { liked: true } };
+  }
+
+  // 23505 = unique_violation → bereits geliked → entliken.
+  if (insertError.code === '23505') {
+    const { error: deleteError } = await supabase
+      .from('comment_likes')
+      .delete()
+      .eq('comment_id', commentId)
+      .eq('user_id', viewer.id);
+
+    if (deleteError) return { ok: false, error: deleteError.message };
+    return { ok: true, data: { liked: false } };
+  }
+
+  return { ok: false, error: insertError.message };
+}
+
+// -----------------------------------------------------------------------------
 // recordDwell — v1.w.UI.53: Ruft update_dwell_time RPC auf.
 //
 // Feuert im FeedCard nach ≥3s Playback und im Post-Detail on-mount.

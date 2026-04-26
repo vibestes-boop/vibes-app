@@ -6,7 +6,7 @@ import type { Route } from 'next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { BadgeCheck, Lock, Send, Loader2, Heart, X } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
-import { createComment } from '@/app/actions/engagement';
+import { createComment, toggleCommentLike } from '@/app/actions/engagement';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -52,6 +52,7 @@ interface CommentRow {
   // Web-Contract nutzt `body`, Mobile-DB-Spalte ist `text` — alias in der Query.
   body: string;
   like_count: number;
+  liked_by_me: boolean;
   created_at: string;
   author: {
     id: string;
@@ -69,6 +70,7 @@ function useComments(postId: string, enabled: boolean) {
     staleTime: 30_000,
     queryFn: async (): Promise<CommentRow[]> => {
       const supabase = createClient();
+
       // Mobile-DB-Drift: (1) `text` → aliasiert auf `body` für den Web-Contract.
       // (2) `comments` hat keine `like_count`-Spalte und keine `deleted_at`-Spalte
       // (hard-delete-Modell), also beide in der Projektion bzw. im Filter raus.
@@ -84,11 +86,54 @@ function useComments(postId: string, enabled: boolean) {
         .limit(PAGE_SIZE);
 
       if (error) throw new Error(error.message);
-      return (data ?? []).map((row) => {
+
+      const rows = data ?? [];
+      if (rows.length === 0) return [];
+
+      const ids = rows.map((r) => r.id as string);
+
+      // v1.w.UI.57 — Likes aus `comment_likes`-Tabelle nachladen.
+      // Zwei parallele Queries:
+      //  (a) Alle Likes für diese Kommentare → client-side count per ID
+      //  (b) Eigene Likes des eingeloggten Users → liked_by_me-Set
+      // Fehler (z.B. Tabelle noch nicht deployed) werden silent behandelt
+      // und fallen auf like_count=0 / liked_by_me=false zurück.
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      const [allLikesRes, myLikesRes] = await Promise.all([
+        supabase
+          .from('comment_likes')
+          .select('comment_id')
+          .in('comment_id', ids),
+        user
+          ? supabase
+              .from('comment_likes')
+              .select('comment_id')
+              .eq('user_id', user.id)
+              .in('comment_id', ids)
+          : Promise.resolve({ data: [] as Array<{ comment_id: string }> }),
+      ]);
+
+      // Anzahl pro Kommentar aggregieren.
+      const countMap = new Map<string, number>();
+      for (const r of allLikesRes.data ?? []) {
+        countMap.set(r.comment_id, (countMap.get(r.comment_id) ?? 0) + 1);
+      }
+      const likedSet = new Set(
+        ((myLikesRes as { data: Array<{ comment_id: string }> | null }).data ?? []).map(
+          (r) => r.comment_id,
+        ),
+      );
+
+      return rows.map((row) => {
         const author = Array.isArray(row.author) ? row.author[0] : row.author;
+        const id = row.id as string;
         return {
-          ...(row as unknown as Omit<CommentRow, 'like_count'>),
-          like_count: 0, // Spalte existiert nicht — Placeholder bis Native Aggregat liefert.
+          ...(row as unknown as Omit<CommentRow, 'like_count' | 'liked_by_me'>),
+          like_count: countMap.get(id) ?? 0,
+          liked_by_me: likedSet.has(id),
           author,
         };
       }) as CommentRow[];
@@ -208,7 +253,7 @@ export function CommentsBody({ postId, allowComments, viewerId, variant, onClose
         {comments && comments.length > 0 && (
           <ul className="flex flex-col gap-4">
             {comments.map((c) => (
-              <CommentRow key={c.id} comment={c} />
+              <CommentRow key={c.id} comment={c} postId={postId} viewerId={viewerId} />
             ))}
           </ul>
         )}
@@ -282,14 +327,59 @@ export function CommentsBody({ postId, allowComments, viewerId, variant, onClose
 }
 
 // -----------------------------------------------------------------------------
-// CommentRow — ein Kommentar mit Avatar, Body, Timestamp, Like-Button (Stub).
-// Like-Mutation folgt in Phase 4 (Comment-Likes sind sekundär).
+// CommentRow — ein Kommentar mit Avatar, Body, Timestamp + Like-Button.
+// v1.w.UI.57: Like-Button ist jetzt aktiv mit Optimistic-Update.
 // -----------------------------------------------------------------------------
 
-function CommentRow({ comment }: { comment: CommentRow }) {
+function CommentRow({
+  comment,
+  postId,
+  viewerId,
+}: {
+  comment: CommentRow;
+  postId: string;
+  viewerId: string | null;
+}) {
+  const qc = useQueryClient();
   const initials = (comment.author.display_name ?? comment.author.username)
     .slice(0, 2)
     .toUpperCase();
+
+  const likeMut = useMutation({
+    mutationFn: () => toggleCommentLike(comment.id),
+    // Optimistic update — sofortige Reaktion im UI.
+    onMutate: async () => {
+      await qc.cancelQueries({ queryKey: ['comments', postId] });
+      const prev = qc.getQueryData<CommentRow[]>(['comments', postId]);
+      qc.setQueryData<CommentRow[]>(['comments', postId], (old) =>
+        (old ?? []).map((c) =>
+          c.id !== comment.id
+            ? c
+            : {
+                ...c,
+                liked_by_me: !c.liked_by_me,
+                like_count: c.liked_by_me
+                  ? Math.max(0, c.like_count - 1)
+                  : c.like_count + 1,
+              },
+        ),
+      );
+      return { prev };
+    },
+    onError: (_err, _vars, ctx) => {
+      // Rollback bei Fehler.
+      if (ctx?.prev) qc.setQueryData(['comments', postId], ctx.prev);
+      toast.error('Like konnte nicht gespeichert werden.');
+    },
+  });
+
+  const handleLike = () => {
+    if (!viewerId) {
+      toast('Bitte zuerst anmelden.');
+      return;
+    }
+    likeMut.mutate();
+  };
 
   return (
     <li className="flex gap-3">
@@ -316,14 +406,27 @@ function CommentRow({ comment }: { comment: CommentRow }) {
         </div>
         <p className="whitespace-pre-wrap break-words text-sm leading-snug">{comment.body}</p>
       </div>
+      {/* Like-Button — aktiv seit v1.w.UI.57 */}
       <button
         type="button"
-        className="self-start text-muted-foreground hover:text-foreground"
-        aria-label="Kommentar liken"
-        disabled
-        title="Kommentar-Likes folgen in Phase 4"
+        onClick={handleLike}
+        disabled={likeMut.isPending}
+        aria-label={comment.liked_by_me ? 'Kommentar-Like entfernen' : 'Kommentar liken'}
+        className={cn(
+          'flex shrink-0 flex-col items-center gap-0.5 self-start pt-0.5',
+          'text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50',
+          comment.liked_by_me && 'text-red-500 hover:text-red-400',
+        )}
       >
-        <Heart className="h-4 w-4" aria-hidden="true" />
+        <Heart
+          className={cn('h-4 w-4', comment.liked_by_me && 'fill-current')}
+          aria-hidden="true"
+        />
+        {comment.like_count > 0 && (
+          <span className="text-[10px] tabular-nums leading-none">
+            {comment.like_count}
+          </span>
+        )}
       </button>
     </li>
   );
