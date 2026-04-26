@@ -4,12 +4,12 @@ import { useState, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { BadgeCheck, Heart, ChevronDown, ChevronUp, Send, CornerDownRight, Trash2 } from 'lucide-react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { useCreateComment } from '@/hooks/use-engagement';
-import { fetchCommentReplies, deleteComment } from '@/app/actions/engagement';
+import { fetchCommentReplies, deleteComment, toggleCommentLike } from '@/app/actions/engagement';
 import type { CommentWithAuthor } from '@/lib/data/public';
 
 // -----------------------------------------------------------------------------
@@ -49,6 +49,10 @@ function CommentRow({
   onDeleted?: (id: string) => void;
 }) {
   const [isDeleting, setIsDeleting] = useState(false);
+  // Lokaler Like-State für optimistische Aktualisierung (SSR-Wert als Initialwert).
+  const [liked, setLiked] = useState(comment.liked_by_me ?? false);
+  const [likeCount, setLikeCount] = useState(comment.like_count);
+
   const router = useRouter();
   const qc = useQueryClient();
   const isOwn = !!viewerId && viewerId === comment.user_id;
@@ -68,6 +72,37 @@ function CommentRow({
       setIsDeleting(false);
       toast.error(res.error ?? 'Löschen fehlgeschlagen.');
     }
+  };
+
+  // Like-Mutation mit optimistischem Local-State.
+  const likeMut = useMutation({
+    mutationFn: () => toggleCommentLike(comment.id),
+    onMutate: () => {
+      // Optimistisch toggeln.
+      setLiked((v) => !v);
+      setLikeCount((c) => (liked ? Math.max(0, c - 1) : c + 1));
+    },
+    onSuccess: (res) => {
+      if (!res.ok) {
+        // Rollback bei Server-Fehler.
+        setLiked(liked);
+        setLikeCount(likeCount);
+        toast.error(res.error ?? 'Like fehlgeschlagen.');
+      }
+    },
+    onError: () => {
+      setLiked(liked);
+      setLikeCount(likeCount);
+      toast.error('Like konnte nicht gespeichert werden.');
+    },
+  });
+
+  const handleLike = () => {
+    if (!viewerId) {
+      toast('Bitte zuerst anmelden.');
+      return;
+    }
+    likeMut.mutate();
   };
 
   return (
@@ -107,12 +142,25 @@ function CommentRow({
         </p>
 
         <div className="mt-1.5 flex items-center gap-3">
-          {comment.like_count > 0 && (
-            <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-              <Heart className="h-3 w-3" />
-              {comment.like_count.toLocaleString('de-DE')}
-            </span>
-          )}
+          {/* Like-Button — immer sichtbar, zeigt Count wenn > 0 */}
+          <button
+            type="button"
+            onClick={handleLike}
+            disabled={likeMut.isPending}
+            aria-label={liked ? 'Kommentar nicht mehr liken' : 'Kommentar liken'}
+            className={cn(
+              'inline-flex items-center gap-1 text-xs transition-colors disabled:opacity-50',
+              liked
+                ? 'text-rose-500 hover:text-rose-400'
+                : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            <Heart className={cn('h-3 w-3', liked && 'fill-rose-500')} />
+            {likeCount > 0 && (
+              <span className="tabular-nums">{likeCount.toLocaleString('de-DE')}</span>
+            )}
+          </button>
+
           {onReply && (
             <button
               type="button"

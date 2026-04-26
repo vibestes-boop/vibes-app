@@ -168,10 +168,11 @@ export default async function PostDetailPage({
   if (!post) notFound();
 
   // Kommentare + Interaction-State + Viewer parallel laden.
-  const [comments, interaction, viewer] = await Promise.all([
-    post.allow_comments ? getPostComments(post.id, 20) : Promise.resolve([]),
+  // Viewer zuerst auflösen damit getPostComments liked_by_me befüllen kann.
+  const viewer = await getUser();
+  const [comments, interaction] = await Promise.all([
+    post.allow_comments ? getPostComments(post.id, 20, viewer?.id ?? null) : Promise.resolve([]),
     getPostInteractionState(post.id),
-    getUser(),
   ]);
 
   const isSelf = viewer?.id === post.author.id;

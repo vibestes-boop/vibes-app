@@ -452,6 +452,8 @@ export interface CommentWithAuthor {
   parent_id: string | null;
   body: string;
   like_count: number;
+  /** true wenn der aktuelle Viewer diesen Kommentar geliked hat. */
+  liked_by_me: boolean;
   created_at: string;
   /** Anzahl direkter Antworten (denormalisiert via Sub-Query in getPostComments). */
   reply_count: number;
@@ -479,7 +481,12 @@ function extractCommentCount(raw: CommentRowMobile['reply_count']): number {
 
 // getPostComments — nur Top-Level-Kommentare (parent_id IS NULL), älteste zuerst.
 // reply_count wird als aggregiertes COUNT eingebettet.
-export const getPostComments = cache(async (postId: string, limit = 30): Promise<CommentWithAuthor[]> => {
+// viewerId optional — wenn gesetzt, werden liked_by_me + like_count per Batch befüllt.
+export const getPostComments = cache(async (
+  postId: string,
+  limit = 30,
+  viewerId?: string | null,
+): Promise<CommentWithAuthor[]> => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('comments')
@@ -494,8 +501,32 @@ export const getPostComments = cache(async (postId: string, limit = 30): Promise
     .limit(limit);
 
   if (error || !data) return [];
+
+  const rows = data as unknown as CommentRowMobile[];
+  const ids = rows.map((r) => r.id);
+
+  // Batch-fetch comment_likes für Like-Count + liked_by_me.
+  const [allLikesRes, myLikesRes] = await Promise.all([
+    ids.length > 0
+      ? supabase.from('comment_likes').select('comment_id').in('comment_id', ids)
+      : Promise.resolve({ data: [] as { comment_id: string }[], error: null }),
+    ids.length > 0 && viewerId
+      ? supabase
+          .from('comment_likes')
+          .select('comment_id')
+          .eq('user_id', viewerId)
+          .in('comment_id', ids)
+      : Promise.resolve({ data: [] as { comment_id: string }[], error: null }),
+  ]);
+
+  const countMap = new Map<string, number>();
+  for (const r of allLikesRes.data ?? []) {
+    countMap.set(r.comment_id, (countMap.get(r.comment_id) ?? 0) + 1);
+  }
+  const likedSet = new Set((myLikesRes.data ?? []).map((r) => r.comment_id));
+
   const out: CommentWithAuthor[] = [];
-  for (const row of data as unknown as CommentRowMobile[]) {
+  for (const row of rows) {
     const author = normalizeAuthor(row.author);
     if (!author) continue;
     out.push({
@@ -504,7 +535,8 @@ export const getPostComments = cache(async (postId: string, limit = 30): Promise
       user_id: row.user_id,
       parent_id: row.parent_id ?? null,
       body: row.text ?? '',
-      like_count: 0,
+      like_count: countMap.get(row.id) ?? 0,
+      liked_by_me: likedSet.has(row.id),
       reply_count: extractCommentCount(row.reply_count),
       created_at: row.created_at,
       author,
@@ -516,9 +548,11 @@ export const getPostComments = cache(async (postId: string, limit = 30): Promise
 // getCommentReplies — Replies zu einem Top-Level-Kommentar, älteste zuerst.
 // Kein React.cache() — wird client-seitig via Server Action aufgerufen,
 // per-request-Dedup bringt dort nichts.
+// viewerId optional — befüllt liked_by_me + like_count per Batch.
 export async function getCommentReplies(
   parentId: string,
   limit = 20,
+  viewerId?: string | null,
 ): Promise<CommentWithAuthor[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -532,8 +566,31 @@ export async function getCommentReplies(
     .limit(limit);
 
   if (error || !data) return [];
+
+  const rows = data as unknown as CommentRowMobile[];
+  const ids = rows.map((r) => r.id);
+
+  const [allLikesRes, myLikesRes] = await Promise.all([
+    ids.length > 0
+      ? supabase.from('comment_likes').select('comment_id').in('comment_id', ids)
+      : Promise.resolve({ data: [] as { comment_id: string }[], error: null }),
+    ids.length > 0 && viewerId
+      ? supabase
+          .from('comment_likes')
+          .select('comment_id')
+          .eq('user_id', viewerId)
+          .in('comment_id', ids)
+      : Promise.resolve({ data: [] as { comment_id: string }[], error: null }),
+  ]);
+
+  const countMap = new Map<string, number>();
+  for (const r of allLikesRes.data ?? []) {
+    countMap.set(r.comment_id, (countMap.get(r.comment_id) ?? 0) + 1);
+  }
+  const likedSet = new Set((myLikesRes.data ?? []).map((r) => r.comment_id));
+
   const out: CommentWithAuthor[] = [];
-  for (const row of data as unknown as CommentRowMobile[]) {
+  for (const row of rows) {
     const author = normalizeAuthor(row.author);
     if (!author) continue;
     out.push({
@@ -542,7 +599,8 @@ export async function getCommentReplies(
       user_id: row.user_id,
       parent_id: row.parent_id ?? null,
       body: row.text ?? '',
-      like_count: 0,
+      like_count: countMap.get(row.id) ?? 0,
+      liked_by_me: likedSet.has(row.id),
       reply_count: 0, // Replies haben keine weiteren Replies (1 Ebene max.)
       created_at: row.created_at,
       author,

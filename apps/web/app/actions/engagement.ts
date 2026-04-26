@@ -167,11 +167,13 @@ export async function createComment(
 
 // fetchCommentReplies — Server Action Wrapper für getCommentReplies.
 // Wird von CommentThread (Client-Component) aufgerufen.
+// Holt Viewer-ID aus der Session damit liked_by_me korrekt befüllt wird.
 export async function fetchCommentReplies(
   parentId: string,
 ): Promise<import('@/lib/data/public').CommentWithAuthor[]> {
+  const viewer = await getViewerId();
   const { getCommentReplies } = await import('@/lib/data/public');
-  return getCommentReplies(parentId);
+  return getCommentReplies(parentId, 20, viewer?.id ?? null);
 }
 
 export async function deleteComment(commentId: string): Promise<ActionResult> {
