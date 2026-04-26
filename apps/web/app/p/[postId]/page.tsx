@@ -11,7 +11,7 @@ import {
   CalendarDays,
 } from 'lucide-react';
 
-import { getPost, getPostComments, getPostInteractionState } from '@/lib/data/public';
+import { getPost, getPostComments, getPostInteractionState, isFollowing } from '@/lib/data/public';
 import { getUser } from '@/lib/auth/session';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { VideoPlayer } from '@/components/video/video-player';
@@ -19,6 +19,7 @@ import { ShareButtons } from '@/components/share/share-buttons';
 import { PostComments } from '@/components/post/post-comments';
 import { PostActionsBar } from '@/components/post/post-actions-bar';
 import { CommentForm } from '@/components/post/comment-form';
+import { FollowButton } from '@/components/profile/follow-button';
 import { linkify } from '@/lib/linkify';
 
 // -----------------------------------------------------------------------------
@@ -170,6 +171,9 @@ export default async function PostDetailPage({
     getUser(),
   ]);
 
+  const isSelf = viewer?.id === post.author.id;
+  const followingAuthor = !isSelf && viewer ? await isFollowing(post.author.id) : false;
+
   const authorName = post.author.display_name ?? `@${post.author.username}`;
   const created = new Date(post.created_at);
   const isImage = post.media_type === 'image';
@@ -290,17 +294,19 @@ export default async function PostDetailPage({
         <aside className="space-y-5">
           {/* Autor-Karte */}
           <div className="rounded-xl border border-border bg-card p-4">
-            <Link
-              href={`/u/${post.author.username}`}
-              className="flex items-center gap-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-md"
-            >
-              <Avatar className="h-11 w-11">
-                <AvatarImage src={post.author.avatar_url ?? undefined} alt={authorName} />
-                <AvatarFallback>
-                  {(post.author.display_name ?? post.author.username).slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-3">
+              <Link
+                href={`/u/${post.author.username}`}
+                className="shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-full"
+              >
+                <Avatar className="h-11 w-11">
+                  <AvatarImage src={post.author.avatar_url ?? undefined} alt={authorName} />
+                  <AvatarFallback>
+                    {(post.author.display_name ?? post.author.username).slice(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              </Link>
+              <Link href={`/u/${post.author.username}`} className="min-w-0 flex-1">
                 <div className="flex items-center gap-1">
                   <span className="truncate font-semibold">{authorName}</span>
                   {post.author.verified && (
@@ -313,8 +319,15 @@ export default async function PostDetailPage({
                 <div className="truncate text-xs text-muted-foreground">
                   @{post.author.username}
                 </div>
-              </div>
-            </Link>
+              </Link>
+              <FollowButton
+                isAuthenticated={!!viewer}
+                isFollowing={followingAuthor}
+                isSelf={isSelf}
+                username={post.author.username}
+                targetUserId={post.author.id}
+              />
+            </div>
           </div>
 
           {/* Caption + Hashtags */}
@@ -328,14 +341,13 @@ export default async function PostDetailPage({
               {post.hashtags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5 pt-1">
                   {post.hashtags.map((tag) => (
-                    // Hashtag-Detail-Routes kommen Phase 3 (/t/[tag]). Bis dahin
-                    // rendern wir nur die Pill — sieht identisch aus, ist aber kein Link.
-                    <span
+                    <Link
                       key={tag}
-                      className="inline-flex rounded-full bg-muted px-2.5 py-0.5 text-xs text-foreground/80"
+                      href={`/t/${encodeURIComponent(tag)}` as import('next').Route}
+                      className="inline-flex rounded-full bg-muted px-2.5 py-0.5 text-xs text-foreground/80 transition-colors hover:bg-muted/70 hover:text-primary"
                     >
                       #{tag}
-                    </span>
+                    </Link>
                   ))}
                 </div>
               )}
