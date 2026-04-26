@@ -21,6 +21,7 @@ import { PostActionsBar } from '@/components/post/post-actions-bar';
 import { CommentForm } from '@/components/post/comment-form';
 import { FollowButton } from '@/components/profile/follow-button';
 import { PostAuthorMenu } from '@/components/post/post-author-menu';
+import { PostDwellTracker } from '@/components/post/post-dwell-tracker';
 import { linkify } from '@/lib/linkify';
 
 // -----------------------------------------------------------------------------
@@ -233,6 +234,8 @@ export default async function PostDetailPage({
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:py-10">
+      {/* v1.w.UI.53: View-Count auf Mount erhöhen — fire-and-forget. */}
+      <PostDwellTracker postId={post.id} isAuthenticated={!!viewer} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

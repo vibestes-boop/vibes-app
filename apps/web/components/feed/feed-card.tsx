@@ -25,6 +25,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { reportPost, markPostNotInteresting } from '@/app/actions/report';
 import { deletePost } from '@/app/actions/posts';
+import { recordDwell } from '@/app/actions/engagement';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import {
@@ -105,6 +106,13 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
   const [heartOverlayKey, setHeartOverlayKey] = useState<number | null>(null);
   const lastTapRef = useRef<number>(0);
   const heartKeyCounterRef = useRef(0);
+
+  // v1.w.UI.53: Dwell-Tracking — View-Count nach 3s Playback erhöhen.
+  // dwellFiredRef verhindert Doppel-Call wenn das Video kurz pausiert/resumet.
+  // Wird bei post.id-Wechsel resettet damit das neue Video zählt.
+  const dwellFiredRef = useRef(false);
+  const playStartRef = useRef<number | null>(null);
+  useEffect(() => { dwellFiredRef.current = false; playStartRef.current = null; }, [post.id]);
 
   const likeMut = useTogglePostLike();
   const saveMut = useTogglePostSave();
@@ -658,6 +666,13 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
             onTimeUpdate={(e) => {
               const v = e.currentTarget;
               if (v.duration > 0) setProgress((v.currentTime / v.duration) * 100);
+              // v1.w.UI.53: View-Count nach 3s echtem Playback erhöhen.
+              // currentTime >= 3 bedeutet 3s des Videos tatsächlich abgespielt
+              // (nicht Scrub-Artefakte). dwellFiredRef verhindert Mehrfach-Calls.
+              if (!dwellFiredRef.current && viewerId && v.currentTime >= 3) {
+                dwellFiredRef.current = true;
+                void recordDwell(post.id, Math.round(v.currentTime * 1000));
+              }
             }}
             // Aspect-Ratio-Detection lebt im useEffect oben (nicht hier als
             // JSX-Prop), weil das Event bei gecachten Videos nicht zuverlässig

@@ -191,3 +191,21 @@ export async function deleteComment(commentId: string): Promise<ActionResult> {
   if (error) return { ok: false, error: error.message };
   return { ok: true, data: null };
 }
+
+// -----------------------------------------------------------------------------
+// recordDwell — v1.w.UI.53: Ruft update_dwell_time RPC auf.
+//
+// Feuert im FeedCard nach ≥3s Playback und im Post-Detail on-mount.
+// Gaming-Guard lebt serverseitig (60min Cooldown + max 5/User/Post).
+// Keine ActionResult-Rückgabe nötig — fire-and-forget, kein UI-Feedback.
+// Nur für eingeloggte User (Anon-Views zählen nicht zum dwell_time_score).
+// -----------------------------------------------------------------------------
+
+export async function recordDwell(postId: string, dwellMs: number): Promise<void> {
+  const viewer = await getViewerId();
+  if (!viewer) return; // Anon-Views nicht tracken
+
+  const supabase = await createClient();
+  await supabase.rpc('update_dwell_time', { post_id: postId, dwell_ms: dwellMs });
+  // Fehler ignorieren — fire-and-forget. RPC hat eigene Guards.
+}
