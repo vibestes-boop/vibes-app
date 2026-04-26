@@ -91,13 +91,12 @@ export function linkify(text: string, options: LinkifyOptions = {}): ReactNode[]
         </Link>,
       );
     } else if (cleanToken.startsWith('#')) {
-      const tag = cleanToken.slice(1);
-      // Hashtag → Suche. `%23` = URL-encoded `#` damit die Suche-Page
-      // einen Marker bekommt dass es ein Tag-Query ist.
+      const tag = cleanToken.slice(1).toLowerCase();
+      // Hashtag → dedizierte /t/[tag]-Seite (direkter als über die Suche).
       parts.push(
         <Link
           key={key}
-          href={`/search?q=%23${encodeURIComponent(tag)}` as Route}
+          href={`/t/${encodeURIComponent(tag)}` as Route}
           className={linkClassName}
         >
           {cleanToken}

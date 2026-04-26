@@ -52,7 +52,18 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
 
   // Aktiver Post: der mit höchstem Intersection-Ratio in der Liste.
   const [activeIdx, setActiveIdx] = useState(0);
+  // v1.w.UI.67 — Mute-Präferenz persistieren. Default: true (stumm) für
+  // Autoplay-Compliance, aber User-Wahl wird in localStorage gemerkt damit
+  // er nicht nach jedem Reload erneut den Ton einschalten muss.
   const [muted, setMuted] = useState(true);
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('serlo.feed.muted');
+      if (stored !== null) setMuted(stored === 'true');
+    } catch {
+      /* localStorage blockiert (Privacy-Mode) → Default true bleibt */
+    }
+  }, []);
   const [showHint, setShowHint] = useState(false);
 
   // Kommentar-Panel-Sync (v1.w.UI.11 Phase C Follow-up): wenn der Panel
@@ -331,7 +342,13 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
     };
   }, []);
 
-  const onMuteToggle = useCallback(() => setMuted((m) => !m), []);
+  const onMuteToggle = useCallback(() => {
+    setMuted((m) => {
+      const next = !m;
+      try { localStorage.setItem('serlo.feed.muted', String(next)); } catch { /* ignore */ }
+      return next;
+    });
+  }, []);
 
   const empty = useMemo(() => list.length === 0, [list.length]);
 
