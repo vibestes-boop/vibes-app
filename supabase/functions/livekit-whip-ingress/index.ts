@@ -321,7 +321,22 @@ async function handleCreate(body: { title?: string; privacy?: string }, env: Env
     isNew = true;
   }
 
-  // ── Schritt 2: Neue live_sessions-Row anlegen ────────────────────────────
+  // ── Schritt 2: Zombie-Session mit gleichem room_name beenden (falls vorhanden)
+  // Kann auftreten wenn vorheriger Stream nicht sauber beendet wurde.
+  await fetch(
+    `${env.supabaseUrl}/rest/v1/live_sessions?room_name=eq.${encodeURIComponent(roomName!)}&status=eq.active`,
+    {
+      method: 'PATCH',
+      headers: {
+        apikey: env.serviceRoleKey,
+        Authorization: `Bearer ${env.serviceRoleKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ status: 'ended', ended_at: new Date().toISOString() }),
+    },
+  );
+
+  // ── Schritt 3: Neue live_sessions-Row anlegen ────────────────────────────
   const sessionId = crypto.randomUUID();
 
   const insertResp = await fetch(`${env.supabaseUrl}/rest/v1/live_sessions`, {
