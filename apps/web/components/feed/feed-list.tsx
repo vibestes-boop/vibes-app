@@ -1,12 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { FeedCard } from './feed-card';
 import { useFeedInteraction } from './feed-interaction-context';
 import { useTogglePostLike } from '@/hooks/use-engagement';
 import type { FeedPost } from '@/lib/data/feed';
-import { ArrowDown, ArrowUp, KeyboardIcon } from 'lucide-react';
+import { ArrowDown, ArrowUp, KeyboardIcon, RefreshCw } from 'lucide-react';
 
 // -----------------------------------------------------------------------------
 // FeedList — vertikaler Snap-Scroll-Container, ein Post pro Viewport-Höhe.
@@ -65,6 +66,41 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
     }
   }, []);
   const [showHint, setShowHint] = useState(false);
+
+  // ── v1.w.UI.68 — "Neue Posts" Refresh-Pill ───────────────────────────────
+  // Einmal nach 90s den Einzel-Head-Request auf /api/feed/[feedKey]?limit=1
+  // abfeuern. Falls der zurückgegebene Post neuer ist als der neueste im
+  // aktuellen Snapshot, erscheint ein floating Pill "⬆ Neue Posts" oben.
+  // Klick → router.refresh() + scroll to top. Nur für 'foryou' (Following
+  // ist weniger volatil; würde dort eher verwirren).
+  const router = useRouter();
+  const [showNewPostsPill, setShowNewPostsPill] = useState(false);
+  const newestCreatedAt = useMemo(
+    () => (list.length > 0 ? list[0].created_at : null),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [], // bewusst nur beim ersten Render — wir wollen den initialen Snapshot
+  );
+  useEffect(() => {
+    if (feedKey !== 'foryou' || !newestCreatedAt) return;
+    const tid = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/feed/foryou?limit=1`, { cache: 'no-store' });
+        if (!res.ok) return;
+        const data: FeedPost[] = await res.json();
+        if (data.length > 0 && data[0].created_at > newestCreatedAt) {
+          setShowNewPostsPill(true);
+        }
+      } catch { /* non-fatal */ }
+    }, 90_000); // 90 Sekunden
+    return () => clearTimeout(tid);
+  }, [feedKey, newestCreatedAt]);
+
+  const handleNewPostsPill = useCallback(() => {
+    setShowNewPostsPill(false);
+    containerRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    // Kurze Verzögerung damit der Scroll-Animation Zeit hat bevor Refresh
+    setTimeout(() => router.refresh(), 400);
+  }, [router]);
 
   // Kommentar-Panel-Sync (v1.w.UI.11 Phase C Follow-up): wenn der Panel
   // auf xl+ offen ist und der User weiterscrollt, soll der Panel automatisch
@@ -354,6 +390,18 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
 
   return (
     <div className="relative h-full w-full">
+      {/* ── Neue-Posts-Pill (v1.w.UI.68) ───────────────────────────────── */}
+      {showNewPostsPill && (
+        <button
+          type="button"
+          onClick={handleNewPostsPill}
+          className="absolute inset-x-0 top-4 z-30 mx-auto flex w-fit items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-xs font-semibold text-background shadow-lg transition-transform hover:scale-105 active:scale-95"
+        >
+          <RefreshCw className="h-3.5 w-3.5" />
+          Neue Posts
+        </button>
+      )}
+
       {header && <div className="absolute inset-x-0 top-0 z-20 mx-auto max-w-[420px]">{header}</div>}
 
       <div
