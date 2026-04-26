@@ -3,6 +3,7 @@
 import type { Route } from 'next';
 import Link from 'next/link';
 import { useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Send } from 'lucide-react';
 import { useCreateComment } from '@/hooks/use-engagement';
 import { cn } from '@/lib/utils';
@@ -29,6 +30,7 @@ export function CommentForm({
 }) {
   const [body, setBody] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const router = useRouter();
   const mutation = useCreateComment(postId);
 
   if (!isAuthenticated) {
@@ -56,6 +58,10 @@ export function CommentForm({
       onSuccess: () => {
         setBody('');
         textareaRef.current?.blur();
+        // RSC-Kommentarliste neu laden — force-dynamic Seite rendert sofort
+        // mit dem neuen Kommentar ohne Full-Page-Reload (Next.js router.refresh
+        // patcht nur den RSC-Tree, Client-State bleibt erhalten).
+        router.refresh();
       },
     });
   };
