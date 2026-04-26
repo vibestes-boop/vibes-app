@@ -118,6 +118,7 @@ export default async function ConversationPage({ params, searchParams }: PagePro
         conversationId={id}
         viewerId={user.id}
         initialMessages={messages}
+        initialHasMore={messages.length >= 80}
         initialReactions={reactions}
         otherUser={header.other_user}
         isSelf={header.is_self}

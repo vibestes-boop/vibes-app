@@ -2,6 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { getOlderMessages } from '@/lib/data/messages';
+import type { MessageWithContext } from '@/lib/data/messages';
 
 // -----------------------------------------------------------------------------
 // Messages-Server-Actions — DM-Flows für `/messages` und `/messages/[id]`.
@@ -280,4 +282,27 @@ export async function requestImageUploadPath(): Promise<
   if (!viewer) return { ok: false, error: 'Bitte einloggen.' };
   const path = `${viewer}/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.jpg`;
   return { ok: true, data: { path, bucket: 'chat-images' } };
+}
+
+// -----------------------------------------------------------------------------
+// loadOlderMessages — Server Action für den Scroll-Up-Infinite-Scroll im
+// MessageThread (v1.w.UI.72).
+//
+// `before`: ISO-Timestamp der ältesten aktuell geladenen Message. Alle
+// Messages mit created_at < before werden geladen, neueste zuerst (DESC),
+// dann umgekehrt (chronologisch) zurückgegeben.
+//
+// `hasMore` im Result signalisiert ob es noch ältere Messages gibt — der
+// Client kann dann entscheiden ob der Scroll-Trigger weiter aktiv bleibt.
+// -----------------------------------------------------------------------------
+
+export async function loadOlderMessages(
+  conversationId: string,
+  before: string,
+): Promise<ActionResult<{ messages: MessageWithContext[]; hasMore: boolean }>> {
+  const viewer = await getViewerId();
+  if (!viewer) return { ok: false, error: 'Bitte einloggen.' };
+
+  const result = await getOlderMessages(conversationId, before);
+  return { ok: true, data: result };
 }

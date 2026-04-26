@@ -241,6 +241,83 @@ export const getConversationMessages = cache(
 );
 
 // -----------------------------------------------------------------------------
+// getOlderMessages — Cursor-basierter Load für Scroll-Up-Infinite-Scroll.
+//
+// Lädt Messages mit created_at < `before` (ISO-Timestamp der ältesten aktuell
+// sichtbaren Message). +1-Trick für hasMore-Detection ohne Extra-Count-Query.
+// Nicht mit React.cache() — Cursor-Queries sind per Request frisch und würden
+// mit falschen Params gecacht werden.
+// -----------------------------------------------------------------------------
+
+const OLDER_MESSAGES_PAGE = 40;
+
+export async function getOlderMessages(
+  conversationId: string,
+  before: string,
+  limit = OLDER_MESSAGES_PAGE,
+): Promise<{ messages: MessageWithContext[]; hasMore: boolean }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { messages: [], hasMore: false };
+
+  // +1 um zu prüfen ob es noch ältere gibt, ohne COUNT-Query.
+  const { data, error } = await supabase
+    .from('messages')
+    .select(MESSAGE_COLUMNS)
+    .eq('conversation_id', conversationId)
+    .lt('created_at', before)
+    .order('created_at', { ascending: false })
+    .limit(limit + 1);
+
+  if (error || !data) return { messages: [], hasMore: false };
+
+  const hasMore = data.length > limit;
+  const rows = (hasMore ? data.slice(0, limit) : data).reverse() as MessageRow[];
+
+  // Reply-Targets + Posts nachladen — gleiche Logik wie getConversationMessages.
+  const replyIds = rows.map((m) => m.reply_to_id).filter((x): x is string => !!x);
+  const postIds  = rows.map((m) => m.post_id).filter((x): x is string => !!x);
+
+  const [replyMap, postMap] = await Promise.all([
+    replyIds.length > 0
+      ? supabase
+          .from('messages')
+          .select('id, sender_id, content, image_url')
+          .in('id', replyIds)
+          .then(({ data: d }) => new Map((d ?? []).map((r) => [r.id, r])))
+      : Promise.resolve(new Map()),
+    postIds.length > 0
+      ? supabase
+          .from('posts')
+          .select('id, video_url:media_url, thumbnail_url, caption, author:profiles!posts_author_id_fkey(username)')
+          .in('id', postIds)
+          .then(({ data: d }) => {
+            const m = new Map<string, MessageWithContext['post']>();
+            (d ?? []).forEach((p) => {
+              const author = Array.isArray(p.author) ? p.author[0] : p.author;
+              m.set(p.id, {
+                id: p.id,
+                video_url: (p as { video_url?: string | null }).video_url ?? null,
+                thumbnail_url: p.thumbnail_url ?? null,
+                caption: p.caption ?? null,
+                author_username: (author as { username?: string } | null)?.username ?? null,
+              });
+            });
+            return m;
+          })
+      : Promise.resolve(new Map()),
+  ]);
+
+  const messages = rows.map((msg) => ({
+    ...msg,
+    reply_to: msg.reply_to_id ? (replyMap.get(msg.reply_to_id) ?? null) : null,
+    post:     msg.post_id     ? (postMap.get(msg.post_id)      ?? null) : null,
+  }));
+
+  return { messages, hasMore };
+}
+
+// -----------------------------------------------------------------------------
 // getConversationReactions — Reactions für die initial geladenen Messages.
 // Gruppiert nach (message_id, emoji), zählt Rows und flaggt `by_me`.
 // -----------------------------------------------------------------------------

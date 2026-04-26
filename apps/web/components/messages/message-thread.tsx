@@ -2,6 +2,7 @@
 
 import {
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -25,6 +26,7 @@ import {
   markConversationRead,
   toggleMessageReaction,
   deleteMessage,
+  loadOlderMessages,
 } from '@/app/actions/messages';
 
 // -----------------------------------------------------------------------------
@@ -52,6 +54,8 @@ interface Props {
   conversationId: string;
   viewerId: string;
   initialMessages: MessageWithContext[];
+  /** true wenn initialMessages === 80 (Vollseite) — signalisiert dass ältere existieren. */
+  initialHasMore?: boolean;
   initialReactions: ReactionAggregate[];
   otherUser: {
     id: string;
@@ -69,6 +73,7 @@ export function MessageThread({
   conversationId,
   viewerId,
   initialMessages,
+  initialHasMore = false,
   initialReactions,
   otherUser,
   isSelf,
@@ -80,6 +85,24 @@ export function MessageThread({
   const [otherTyping, setOtherTyping] = useState(false);
   const [pickerFor, setPickerFor] = useState<string | null>(null);
   const [productPreview, setProductPreview] = useState<ProductShareContext | null>(productShare);
+
+  // ── Scroll-Up Infinite-Scroll (v1.w.UI.72) ────────────────────────────────
+  const [hasMore, setHasMore] = useState(initialHasMore);
+  const [isLoadingOlder, setIsLoadingOlder] = useState(false);
+
+  // Stable refs damit IntersectionObserver-Callback keine stale closures hat.
+  const hasMoreRef = useRef(initialHasMore);
+  const isLoadingOlderRef = useRef(false);
+  const messagesRef = useRef(messages);
+
+  // Scroll-Restore nach Prepend: speichert scrollHeight vor dem State-Update,
+  // useLayoutEffect wendet das Delta synchron VOR dem nächsten Paint an.
+  const pendingPrependRef = useRef(false);
+  const scrollRestoreRef = useRef(0);
+
+  // Sentinel-Element oben im Thread — wird vom IntersectionObserver beobachtet.
+  const topSentinelRef = useRef<HTMLDivElement>(null);
+  // ────────────────────────────────────────────────────────────────────────────
 
   const scrollerRef = useRef<HTMLDivElement>(null);
   const wasNearBottomRef = useRef(true);
@@ -113,6 +136,76 @@ export function MessageThread({
   useEffect(() => {
     scrollToBottom(false);
   }, [scrollToBottom]);
+
+  // Refs synchron halten (damit Callbacks keine stale closures brauchen)
+  useEffect(() => { messagesRef.current = messages; }, [messages]);
+  useEffect(() => { hasMoreRef.current = hasMore; }, [hasMore]);
+  useEffect(() => { isLoadingOlderRef.current = isLoadingOlder; }, [isLoadingOlder]);
+
+  // ── Scroll-Up Infinite-Scroll ──────────────────────────────────────────────
+
+  // Scroll-Restore: läuft synchron nach DOM-Update (useLayoutEffect) damit kein
+  // sichtbarer Jump auftritt. Greift nur wenn pendingPrependRef.current=true.
+  useLayoutEffect(() => {
+    if (!pendingPrependRef.current || !scrollerRef.current || scrollRestoreRef.current === 0) {
+      return;
+    }
+    pendingPrependRef.current = false;
+    const newScrollHeight = scrollerRef.current.scrollHeight;
+    scrollerRef.current.scrollTop += newScrollHeight - scrollRestoreRef.current;
+    scrollRestoreRef.current = 0;
+  });
+
+  // loadOlderMessages: ruft Server Action auf, prependet Ergebnis, erhält Scroll-Position.
+  const handleLoadOlder = useCallback(async () => {
+    if (!hasMoreRef.current || isLoadingOlderRef.current) return;
+    const current = messagesRef.current;
+    if (current.length === 0) return;
+
+    const before = current[0].created_at;
+    isLoadingOlderRef.current = true;
+    setIsLoadingOlder(true);
+
+    const result = await loadOlderMessages(conversationId, before);
+
+    if (result.ok && result.data.messages.length > 0) {
+      // Scroll-Höhe JETZT speichern, VOR State-Update (DOM noch unverändert).
+      scrollRestoreRef.current = scrollerRef.current?.scrollHeight ?? 0;
+      pendingPrependRef.current = true;
+      setMessages((prev) => {
+        // Dedup-Guard: bereits vorhandene IDs nicht doppelt einfügen.
+        const existingIds = new Set(prev.map((m) => m.id));
+        const fresh = result.data.messages.filter((m) => !existingIds.has(m.id));
+        return [...fresh, ...prev];
+      });
+      setHasMore(result.data.hasMore);
+    } else if (result.ok) {
+      // Keine weiteren Messages
+      setHasMore(false);
+    }
+
+    isLoadingOlderRef.current = false;
+    setIsLoadingOlder(false);
+  }, [conversationId]);
+
+  // IntersectionObserver auf dem Top-Sentinel — löst Load aus wenn sichtbar.
+  useEffect(() => {
+    const sentinel = topSentinelRef.current;
+    if (!sentinel || !hasMore) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) handleLoadOlder();
+      },
+      // threshold 0 = sobald auch nur 1px des Sentinels sichtbar ist.
+      { threshold: 0, rootMargin: '0px 0px 0px 0px' },
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, handleLoadOlder]);
+
+  // ────────────────────────────────────────────────────────────────────────────
 
   // Read-Receipts: on-mount + on-focus
   useEffect(() => {
@@ -314,6 +407,27 @@ export function MessageThread({
         onScroll={handleScroll}
         className="flex-1 overflow-y-auto px-3 py-4"
       >
+        {/* Top-Sentinel für IntersectionObserver + Loading-Spinner */}
+        {hasMore && (
+          <div ref={topSentinelRef} className="flex h-8 items-center justify-center">
+            {isLoadingOlder && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <svg
+                  className="h-3.5 w-3.5 animate-spin"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                <span>Ältere Nachrichten…</span>
+              </div>
+            )}
+          </div>
+        )}
+
         {messages.length === 0 ? (
           <EmptyThread otherName={otherUser.display_name ?? otherUser.username} isSelf={isSelf} />
         ) : (
