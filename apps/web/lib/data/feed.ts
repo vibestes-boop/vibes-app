@@ -488,6 +488,60 @@ export const getTrendingHashtags = cache(async (limit = 20): Promise<TrendingHas
 });
 
 // -----------------------------------------------------------------------------
+// getPostsByTag — /t/[tag] Hashtag-Detail-Seite.
+//
+// Filtert Posts wo das `tags`-Array den normalisierten Tag enthält.
+// PostgREST: `.contains('tags', [tag])` → SQL: tags @> ARRAY['tag'].
+// Normalisierung: lowercase, führendes # entfernen.
+// -----------------------------------------------------------------------------
+
+export const getPostsByTag = cache(
+  async (rawTag: string, limit = 24): Promise<FeedPost[]> => {
+    const tag = rawTag.toLowerCase().replace(/^#/, '').trim();
+    if (!tag) return [];
+
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    const { data, error } = await supabase
+      .from('posts')
+      .select(`${POST_COLUMNS}, ${AUTHOR_JOIN}`)
+      .contains('tags', [tag])
+      .eq('privacy', 'public')
+      .order('view_count', { ascending: false })
+      .limit(limit);
+
+    if (error || !data) return [];
+
+    // Engagement-Maps nur für eingeloggte User (like/save/follow).
+    const liked = new Set<string>();
+    const saved = new Set<string>();
+    const following = new Set<string>();
+
+    if (user && data.length > 0) {
+      const ids = data.map((r) => r.id as string);
+      const authorIds = [...new Set(data.map((r) => (r as Record<string, unknown>).author_id as string).filter(Boolean))];
+      const [likesRes, savesRes, followsRes] = await Promise.all([
+        supabase.from('likes').select('post_id').eq('user_id', user.id).in('post_id', ids),
+        supabase.from('bookmarks').select('post_id').eq('user_id', user.id).in('post_id', ids),
+        authorIds.length > 0
+          ? supabase.from('follows').select('following_id').eq('follower_id', user.id).in('following_id', authorIds)
+          : Promise.resolve({ data: [] }),
+      ]);
+      (likesRes.data ?? []).forEach((r) => liked.add(r.post_id as string));
+      (savesRes.data ?? []).forEach((r) => saved.add(r.post_id as string));
+      ((followsRes as { data: Array<{following_id: string}> | null }).data ?? []).forEach((r) => following.add(r.following_id));
+    }
+
+    return (data as unknown as RawPostRow[])
+      .map((row) => normalizeRow(row, liked, saved, following))
+      .filter((p): p is FeedPost => p !== null);
+  },
+);
+
+// -----------------------------------------------------------------------------
 // searchAll — /search Multi-Tab.
 // -----------------------------------------------------------------------------
 
