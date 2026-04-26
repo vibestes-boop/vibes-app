@@ -10,7 +10,7 @@ import {
   FeedInteractionProvider,
   useFeedInteraction,
 } from './feed-interaction-context';
-import type { FeedPost, FollowedAccount, SuggestedFollow } from '@/lib/data/feed';
+import type { FeedPost, FollowedAccount, SuggestedFollow, TrendingHashtag } from '@/lib/data/feed';
 import { cn } from '@/lib/utils';
 
 // -----------------------------------------------------------------------------
@@ -60,6 +60,11 @@ export interface HomeFeedShellProps {
    * verschwindet stillschweigend.
    */
   followedAccounts?: FollowedAccount[];
+  /**
+   * v1.w.UI.64 — SSR-gefetchte Top-6 Trending Hashtags für die rechte Sidebar.
+   * Ersetzt den Stub-Link „Trending Hashtags → /explore" mit echten Tag-Kacheln.
+   */
+  trendingHashtags?: TrendingHashtag[];
 }
 
 type TabKey = 'foryou' | 'following';
@@ -84,6 +89,7 @@ function HomeFeedShellBody({
   storyStripSlot,
   initialTab = 'foryou',
   followedAccounts,
+  trendingHashtags,
 }: HomeFeedShellProps) {
   const [tab, setTab] = useState<TabKey>(initialTab);
   const { commentsOpenForPostId, closeComments } = useFeedInteraction();
@@ -248,7 +254,7 @@ function HomeFeedShellBody({
             onClose={closeComments}
           />
         ) : (
-          <FeedSidebarRight suggested={suggested} viewerId={viewerId} />
+          <FeedSidebarRight suggested={suggested} viewerId={viewerId} trendingHashtags={trendingHashtags} />
         )}
       </aside>
 
@@ -283,29 +289,48 @@ import { useToggleFollow } from '@/hooks/use-engagement';
 function FeedSidebarRight({
   suggested,
   viewerId,
+  trendingHashtags,
 }: {
   suggested: SuggestedFollow[];
   viewerId: string | null;
+  trendingHashtags?: TrendingHashtag[];
 }) {
   const follow = useToggleFollow();
   const [pending, startTransition] = useTransition();
 
   return (
     <div className="sticky top-0 flex h-[100dvh] flex-col gap-6 overflow-y-auto p-6">
+      {/* ── Trending Hashtags ─────────────────────────────────────────────── */}
       <section>
         <h2 className="mb-3 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          <Compass className="h-3.5 w-3.5" />
-          Entdecken
+          <TrendingUp className="h-3.5 w-3.5" />
+          Trending
         </h2>
-        <div className="flex flex-col gap-1">
+        {trendingHashtags && trendingHashtags.length > 0 ? (
+          <ul className="flex flex-col gap-0.5">
+            {trendingHashtags.map((ht) => (
+              <li key={ht.tag}>
+                <Link
+                  href={`/t/${encodeURIComponent(ht.tag)}` as Route}
+                  className="flex items-center justify-between rounded-md px-2 py-1.5 text-sm transition-colors hover:bg-muted"
+                >
+                  <span className="font-medium">#{ht.tag}</span>
+                  <span className="ml-2 shrink-0 text-xs text-muted-foreground">
+                    {formatTagCount(ht.post_count)}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        ) : (
           <Link
             href={'/explore' as Route}
             className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted"
           >
-            <TrendingUp className="h-4 w-4" />
-            Trending Hashtags
+            <Compass className="h-4 w-4" />
+            Zur Explore-Seite
           </Link>
-        </div>
+        )}
       </section>
 
       {suggested.length > 0 && (
@@ -365,6 +390,12 @@ function FeedSidebarRight({
       </footer>
     </div>
   );
+}
+
+function formatTagCount(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace('.0', '')}M Posts`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace('.0', '')}K Posts`;
+  return `${n} Posts`;
 }
 
 function FollowingSkeleton() {

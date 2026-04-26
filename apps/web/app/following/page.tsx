@@ -6,6 +6,7 @@ import {
   getFollowingFeed,
   getMyFollowedAccounts,
   getSuggestedFollows,
+  getTrendingHashtags,
 } from '@/lib/data/feed';
 
 /**
@@ -36,11 +37,12 @@ export default async function FollowingFeedPage() {
   // - For-You wird geprefetcht, damit der Tab-Switch keine Ladeverzögerung hat.
   // - Following ist hier der Primär-Tab → eager laden.
   // - FollowedAccounts für die Sidebar-Section (v1.w.UI.11 Phase B).
-  const [forYou, following, suggested, followedAccounts] = await Promise.all([
+  const [forYou, following, suggested, followedAccounts, trendingHashtags] = await Promise.all([
     getForYouFeed({ limit: 10 }),
     getFollowingFeed({ limit: 10 }),
     getSuggestedFollows(5),
     getMyFollowedAccounts({ limit: 5 }),
+    getTrendingHashtags(6),
   ]);
 
   return (
@@ -50,6 +52,7 @@ export default async function FollowingFeedPage() {
       initialFollowing={following}
       suggested={suggested}
       followedAccounts={followedAccounts}
+      trendingHashtags={trendingHashtags}
       initialTab="following"
     />
   );

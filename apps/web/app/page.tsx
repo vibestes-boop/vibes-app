@@ -7,6 +7,7 @@ import {
   getFollowingFeed,
   getMyFollowedAccounts,
   getSuggestedFollows,
+  getTrendingHashtags,
 } from '@/lib/data/feed';
 
 /**
@@ -38,10 +39,11 @@ export default async function HomePage() {
   // FollowedAccounts wird für die Sidebar-Section („Konten, denen ich folge")
   // immer mitgefetcht (v1.w.UI.11 Phase B) — gibt bei Empty-Follows leeres
   // Array zurück und die Sektion rendert einen Explore-CTA.
-  const [forYou, suggested, followedAccounts, hasFollows] = await Promise.all([
+  const [forYou, suggested, followedAccounts, trendingHashtags, hasFollows] = await Promise.all([
     getForYouFeed({ limit: 10 }),
     getSuggestedFollows(5),
     getMyFollowedAccounts({ limit: 5 }),
+    getTrendingHashtags(6),
     (async () => {
       const { count } = await supabase
         .from('follows')
@@ -61,6 +63,7 @@ export default async function HomePage() {
       initialFollowing={following}
       suggested={suggested}
       followedAccounts={followedAccounts}
+      trendingHashtags={trendingHashtags}
       storyStripSlot={<StoryStrip />}
     />
   );
