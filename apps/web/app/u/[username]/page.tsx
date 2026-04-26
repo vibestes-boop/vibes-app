@@ -6,7 +6,9 @@ import { BadgeCheck, Heart, ShoppingBag, Swords } from 'lucide-react';
 import { getPublicProfile, getProfilePosts, getProfileLikedPosts, isFollowing } from '@/lib/data/public';
 import { getUser } from '@/lib/auth/session';
 import { getMyCoinBalance } from '@/lib/data/payments';
+import { getMerchantProducts } from '@/lib/data/shop';
 import { PostGrid } from '@/components/profile/post-grid';
+import { ProductCard } from '@/components/shop/product-card';
 import { ProfileTabs, type ProfileTab } from '@/components/profile/profile-tabs';
 import { FollowButton } from '@/components/profile/follow-button';
 import { CreatorTipButton } from '@/components/profile/creator-tip-button';
@@ -171,10 +173,11 @@ export default async function ProfilePage({
   // Parallel: Session + Follow-Status + Posts-Feed + Coin-Balance + i18n
   // isSelf kann erst nach getUser() bestimmt werden — Likes-Fetch wird daher
   // zwei-stufig: erst viewer, dann (wenn isSelf && tab=likes) likedPosts.
-  const [viewer, alreadyFollowing, posts, balance, t, locale] = await Promise.all([
+  const [viewer, alreadyFollowing, posts, shopProducts, balance, t, locale] = await Promise.all([
     getUser(),
     isFollowing(profile.id),
     tab === 'posts' ? getProfilePosts(profile.id, 24) : Promise.resolve([]),
+    tab === 'shop' ? getMerchantProducts(profile.id, 48) : Promise.resolve([]),
     getMyCoinBalance(),
     getT(),
     getLocale(),
@@ -348,11 +351,22 @@ export default async function ProfilePage({
         )}
 
         {tab === 'shop' && (
-          <EmptyPanelInfo
-            icon="shop"
-            title={t('profile.panelShopTitle')}
-            hint={t('profile.panelShopHint')}
-          />
+          // v1.w.UI.51: echte Produkte via getMerchantProducts — zeigt auch
+          // inaktive Produkte wenn isSelf (getMerchantProducts prüft Auth intern).
+          // EmptyPanelInfo bleibt als Fallback für leere Shops.
+          shopProducts.length > 0 ? (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {shopProducts.map((p) => (
+                <ProductCard key={p.id} product={p} />
+              ))}
+            </div>
+          ) : (
+            <EmptyPanelInfo
+              icon="shop"
+              title={t('profile.panelShopTitle')}
+              hint={isSelf ? 'Erstelle dein erstes Produkt im Creator Studio.' : t('profile.panelShopHint')}
+            />
+          )
         )}
 
         {tab === 'battles' && (
