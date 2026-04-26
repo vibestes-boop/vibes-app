@@ -509,3 +509,26 @@ export const getProfileFollowing = cache(
       .filter((u): u is FollowUser => u !== undefined);
   },
 );
+
+// -----------------------------------------------------------------------------
+// getViewerFollowingSet — Set<userId> denen der eingeloggte Viewer folgt.
+// Wird von Follower/Following-Listen genutzt um FollowButton korrekt
+// vorzubelegen. Gibt leeres Set zurück wenn nicht eingeloggt.
+// Cap 500 — ausreichend für die initiale Listen-Ansicht.
+// -----------------------------------------------------------------------------
+
+export const getViewerFollowingSet = cache(async (): Promise<Set<string>> => {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return new Set();
+
+  const { data } = await supabase
+    .from('follows')
+    .select('following_id')
+    .eq('follower_id', user.id)
+    .limit(500);
+
+  return new Set((data ?? []).map((f) => f.following_id as string));
+});

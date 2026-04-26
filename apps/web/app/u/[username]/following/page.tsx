@@ -4,7 +4,7 @@ import type { Route } from 'next';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, BadgeCheck, UserCheck } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { getPublicProfile, getProfileFollowing } from '@/lib/data/public';
+import { getPublicProfile, getProfileFollowing, getViewerFollowingSet } from '@/lib/data/public';
 import { getUser } from '@/lib/auth/session';
 import { FollowButton } from '@/components/profile/follow-button';
 
@@ -39,7 +39,10 @@ export default async function FollowingPage({ params }: PageProps) {
 
   if (!profile) notFound();
 
-  const following = await getProfileFollowing(profile.id, 100);
+  const [following, followingSet] = await Promise.all([
+    getProfileFollowing(profile.id, 100),
+    getViewerFollowingSet(),
+  ]);
 
   return (
     <main className="mx-auto w-full max-w-lg px-4 pb-16 pt-6">
@@ -100,7 +103,7 @@ export default async function FollowingPage({ params }: PageProps) {
                 {!isSelf && (
                   <FollowButton
                     isAuthenticated={!!viewer}
-                    isFollowing={false}
+                    isFollowing={followingSet.has(u.id)}
                     isSelf={false}
                     username={u.username}
                     targetUserId={u.id}

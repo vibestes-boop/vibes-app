@@ -3,8 +3,11 @@ import type { Route } from 'next';
 import { Search, SearchX, Hash, User2, Video, BadgeCheck } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { searchAll } from '@/lib/data/feed';
+import { getViewerFollowingSet } from '@/lib/data/public';
+import { getUser } from '@/lib/auth/session';
 import { SearchBox } from '@/components/search-box';
 import { EmptyState } from '@/components/ui/empty-state';
+import { FollowButton } from '@/components/profile/follow-button';
 
 // -----------------------------------------------------------------------------
 // /search?q=...&tab=all|users|posts|hashtags
@@ -31,9 +34,11 @@ export default async function SearchPage({
     : 'all';
 
   const trimmed = q.trim();
-  const results = trimmed.length >= 2
-    ? await searchAll(trimmed, 20)
-    : { users: [], posts: [], hashtags: [] };
+  const [results, viewer, followingSet] = await Promise.all([
+    trimmed.length >= 2 ? searchAll(trimmed, 20) : Promise.resolve({ users: [], posts: [], hashtags: [] }),
+    getUser(),
+    getViewerFollowingSet(),
+  ]);
 
   return (
     <main className="container mx-auto max-w-4xl px-4 py-8">
@@ -74,17 +79,17 @@ export default async function SearchPage({
                 </h2>
               )}
               <ul className="flex flex-col gap-1">
-                {results.users.map((u) => (
-                  <li key={u.id}>
-                    <Link
-                      href={`/u/${u.username}` as Route}
-                      className="flex items-center gap-3 rounded-lg p-3 transition-colors hover:bg-muted"
-                    >
-                      <Avatar className="h-11 w-11">
-                        <AvatarImage src={u.avatar_url ?? undefined} />
-                        <AvatarFallback>{(u.display_name ?? u.username).slice(0, 2).toUpperCase()}</AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0 flex-1">
+                {results.users.map((u) => {
+                  const isSelf = viewer?.id === u.id;
+                  return (
+                    <li key={u.id} className="flex items-center gap-3 rounded-lg p-3 transition-colors hover:bg-muted">
+                      <Link href={`/u/${u.username}` as Route} className="shrink-0">
+                        <Avatar className="h-11 w-11">
+                          <AvatarImage src={u.avatar_url ?? undefined} />
+                          <AvatarFallback>{(u.display_name ?? u.username).slice(0, 2).toUpperCase()}</AvatarFallback>
+                        </Avatar>
+                      </Link>
+                      <Link href={`/u/${u.username}` as Route} className="min-w-0 flex-1">
                         <div className="flex items-center gap-1 truncate text-sm font-semibold">
                           @{u.username}
                           {u.verified && <BadgeCheck className="h-3.5 w-3.5 text-brand-gold" />}
@@ -92,10 +97,19 @@ export default async function SearchPage({
                         <div className="truncate text-xs text-muted-foreground">
                           {u.display_name ?? '—'} · {formatCount(u.follower_count ?? 0)} Follower
                         </div>
-                      </div>
-                    </Link>
-                  </li>
-                ))}
+                      </Link>
+                      {!isSelf && (
+                        <FollowButton
+                          isAuthenticated={!!viewer}
+                          isFollowing={followingSet.has(u.id)}
+                          isSelf={false}
+                          username={u.username}
+                          targetUserId={u.id}
+                        />
+                      )}
+                    </li>
+                  );
+                })}
               </ul>
             </section>
           )}
