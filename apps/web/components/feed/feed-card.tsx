@@ -19,10 +19,12 @@ import {
   Flag,
   Link as LinkIcon,
   PictureInPicture2,
+  Trash2,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { reportPost, markPostNotInteresting } from '@/app/actions/report';
+import { deletePost } from '@/app/actions/posts';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import {
@@ -491,45 +493,64 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
                 onClick={(e) => e.stopPropagation()}
               >
                 {/* v1.w.UI.34 — alle Items mit echter Funktionalität.
-                    Quality/Subtitles wurden entfernt weil das Backend
-                    aktuell nur eine Video-Variante liefert (kein HLS/multi-
-                    res, keine VTT-Tracks). Stattdessen vier praktische
-                    Items die ohne weitere Infra funktionieren. */}
-                <MoreMenuItem
-                  icon={<EyeOff className="h-4 w-4" />}
-                  label="Kein Interesse"
-                  onClick={async () => {
-                    setShowMoreMenu(false);
-                    if (!viewerId) {
-                      toast('Bitte zuerst anmelden.');
-                      return;
-                    }
-                    const res = await markPostNotInteresting(post.id);
-                    if (res.ok) {
-                      toast('Wir zeigen dir weniger davon.');
-                      router.refresh();
-                    } else {
-                      toast.error(res.error);
-                    }
-                  }}
-                />
-                <MoreMenuItem
-                  icon={<Flag className="h-4 w-4" />}
-                  label="Melden"
-                  onClick={async () => {
-                    setShowMoreMenu(false);
-                    if (!viewerId) {
-                      toast('Bitte zuerst anmelden.');
-                      return;
-                    }
-                    const res = await reportPost(post.id);
-                    if (res.ok) {
-                      toast('Danke für deine Meldung. Unser Team prüft das.');
-                    } else {
-                      toast.error(res.error);
-                    }
-                  }}
-                />
+                    v1.w.UI.46 — Delete für eigene Posts + kein Report/NotInterested
+                    auf eigene Posts (ergibt keinen Sinn). */}
+                {isSelf ? (
+                  <MoreMenuItem
+                    icon={<Trash2 className="h-4 w-4" />}
+                    label="Post löschen"
+                    destructive
+                    onClick={async () => {
+                      setShowMoreMenu(false);
+                      if (!confirm('Post wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) return;
+                      const res = await deletePost(post.id);
+                      if (res.ok) {
+                        toast('Post gelöscht.');
+                        router.refresh();
+                      } else {
+                        toast.error(res.error ?? 'Löschen fehlgeschlagen.');
+                      }
+                    }}
+                  />
+                ) : (
+                  <>
+                    <MoreMenuItem
+                      icon={<EyeOff className="h-4 w-4" />}
+                      label="Kein Interesse"
+                      onClick={async () => {
+                        setShowMoreMenu(false);
+                        if (!viewerId) {
+                          toast('Bitte zuerst anmelden.');
+                          return;
+                        }
+                        const res = await markPostNotInteresting(post.id);
+                        if (res.ok) {
+                          toast('Wir zeigen dir weniger davon.');
+                          router.refresh();
+                        } else {
+                          toast.error(res.error);
+                        }
+                      }}
+                    />
+                    <MoreMenuItem
+                      icon={<Flag className="h-4 w-4" />}
+                      label="Melden"
+                      onClick={async () => {
+                        setShowMoreMenu(false);
+                        if (!viewerId) {
+                          toast('Bitte zuerst anmelden.');
+                          return;
+                        }
+                        const res = await reportPost(post.id);
+                        if (res.ok) {
+                          toast('Danke für deine Meldung. Unser Team prüft das.');
+                        } else {
+                          toast.error(res.error);
+                        }
+                      }}
+                    />
+                  </>
+                )}
                 <MoreMenuItem
                   icon={<LinkIcon className="h-4 w-4" />}
                   label="Link kopieren"
@@ -935,11 +956,14 @@ function MoreMenuItem({
   icon,
   label,
   rightLabel,
+  destructive,
   onClick,
 }: {
   icon: React.ReactNode;
   label: string;
   rightLabel?: string;
+  /** Wenn true: Text + Icon in Rot (für destruktive Aktionen wie Löschen). */
+  destructive?: boolean;
   onClick?: () => void;
 }) {
   return (
@@ -947,9 +971,14 @@ function MoreMenuItem({
       type="button"
       role="menuitem"
       onClick={onClick}
-      className="flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-colors hover:bg-white/10 focus:bg-white/10 focus:outline-none"
+      className={cn(
+        'flex w-full items-center gap-3 px-4 py-3 text-left text-sm transition-colors focus:outline-none',
+        destructive
+          ? 'text-red-400 hover:bg-red-500/10 focus:bg-red-500/10'
+          : 'hover:bg-white/10 focus:bg-white/10',
+      )}
     >
-      <span className="flex h-5 w-5 shrink-0 items-center justify-center text-white/80">
+      <span className={cn('flex h-5 w-5 shrink-0 items-center justify-center', destructive ? 'text-red-400' : 'text-white/80')}>
         {icon}
       </span>
       <span className="flex-1 truncate font-medium">{label}</span>

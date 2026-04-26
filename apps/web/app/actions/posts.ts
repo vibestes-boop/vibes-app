@@ -337,6 +337,28 @@ export async function saveDraft(input: SaveDraftInput): Promise<ActionResult<{ i
 }
 
 // -----------------------------------------------------------------------------
+// deletePost — Löscht einen eigenen Post (RLS: author_id = auth.uid()).
+// Löscht nur wenn der eingeloggte User der Autor ist — die RLS-Policy in
+// `post_management.sql` erzwingt das serverseitig zusätzlich.
+// Nach erfolgreichem Delete wird der Profil-Feed revalidiert.
+// -----------------------------------------------------------------------------
+
+export async function deletePost(postId: string): Promise<ActionResult<null>> {
+  const viewer = await getViewerId();
+  if (!viewer) return { ok: false, error: 'Bitte einloggen.' };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from('posts').delete().eq('id', postId).eq('author_id', viewer);
+  if (error) return { ok: false, error: error.message };
+
+  // Feed-Routen invalidieren — der Post taucht im For-You und Following-Feed
+  // nicht mehr auf nach dem nächsten SSR-Request.
+  revalidatePath('/');
+  revalidatePath('/following');
+  return { ok: true, data: null };
+}
+
+// -----------------------------------------------------------------------------
 // deleteDraft — Native-RPC-Delegate.
 // -----------------------------------------------------------------------------
 

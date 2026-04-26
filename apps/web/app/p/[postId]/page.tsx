@@ -20,6 +20,7 @@ import { PostComments } from '@/components/post/post-comments';
 import { PostActionsBar } from '@/components/post/post-actions-bar';
 import { CommentForm } from '@/components/post/comment-form';
 import { FollowButton } from '@/components/profile/follow-button';
+import { PostAuthorMenu } from '@/components/post/post-author-menu';
 import { linkify } from '@/lib/linkify';
 
 // -----------------------------------------------------------------------------
@@ -320,13 +321,20 @@ export default async function PostDetailPage({
                   @{post.author.username}
                 </div>
               </Link>
-              <FollowButton
-                isAuthenticated={!!viewer}
-                isFollowing={followingAuthor}
-                isSelf={isSelf}
-                username={post.author.username}
-                targetUserId={post.author.id}
-              />
+              {isSelf ? (
+                <PostAuthorMenu
+                  postId={post.id}
+                  authorUsername={post.author.username}
+                />
+              ) : (
+                <FollowButton
+                  isAuthenticated={!!viewer}
+                  isFollowing={followingAuthor}
+                  isSelf={isSelf}
+                  username={post.author.username}
+                  targetUserId={post.author.id}
+                />
+              )}
             </div>
           </div>
 
