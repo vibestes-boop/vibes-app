@@ -22,6 +22,7 @@ const deMessages = {
     feed: 'Feed',
     explore: 'Entdecken',
     shop: 'Shop',
+    inbox: 'Inbox',
     live: 'Live',
     messages: 'Nachrichten',
     create: 'Hochladen',

@@ -18,6 +18,7 @@ const enMessages = {
     feed: 'Feed',
     explore: 'Explore',
     shop: 'Shop',
+    inbox: 'Inbox',
     live: 'Live',
     messages: 'Messages',
     create: 'Upload',

@@ -4,27 +4,23 @@
 // MobileBottomNav — 5-Slot-Tab-Bar am unteren Viewport-Rand, nur sichtbar
 // unterhalb `md` (< 768px).
 //
-// Warum: Die existierende Hamburger-Nav (`MobileNav` in site-header.tsx) ist
-// die Standard-Pattern aus Desktop-Web-Design, aber auf Mobile-Social-Apps
-// (TikTok, Instagram, Twitter, YouTube) ist eine persistente Bottom-Bar
-// unverhandelbar. Grund: Daumen-Reachability. Der obere Header ist auf 6"+
-// Phones mit einer Hand nicht erreichbar, während das untere Drittel im
-// natürlichen Daumen-Arc liegt. Jede Social-App mit nennenswerter DAU hat
-// genau dieses Pattern.
+// Slot-Reihenfolge (TikTok-Parität, v1.w.UI.39):
+//   Home | Explore | Create (Center) | Inbox | Profil
 //
-// Active-State: Prefix-Match identisch zur Desktop-Nav (`isActive()` in
-// main-nav.tsx), damit `/shop/123` auch weiterhin den Shop-Tab markiert.
+// „Inbox" ersetzt den früheren „Shop"-Slot. Shop bleibt über die FeedSidebar
+// auf Desktop und über das Profil-Menü auf Mobile erreichbar — für die
+// Bottom-Tab-Bar ist der Engagement-Loop (Benachrichtigungen + DMs) wertvoller
+// als ein Commerce-Einstieg, der ohne aktive Session kaum genutzt wird.
 //
-// Auth-Gating: Der "Create" Center-Slot ist nur sichtbar wenn `isAuthed`;
-// unauthentifizierte Visitors sehen 4 Slots (Feed als Landing → Explore,
-// Shop, Live, Profile). Das ist bewusst schlanker statt dem User einen
-// disabled-Plus-Button zu zeigen, der nach einem Login-Flow riecht.
+// Unread-Badge: `unreadCount` (kombiniert Notifs + DMs) wird SSR vom
+// layout.tsx durchgereicht. Badge erscheint als roter Dot über dem Inbox-Icon
+// (Instagram-Pattern) — keine Zahl auf Mobile, zu wenig Platz bei kleinen
+// Icons. Screen-Reader bekommt die Zahl über aria-label.
 //
-// Safe-Area: `pb-[env(safe-area-inset-bottom)]` respektiert iOS-Home-Indicator-
-// Bereich. Der Content-Wrapper im `layout.tsx` muss dementsprechend
-// `pb-[calc(4rem+env(safe-area-inset-bottom))]` bekommen, damit letzte Scroll-
-// Content-Zeile nicht unter der Tab-Bar verschwindet. Das handeln wir oben im
-// Layout.
+// Auth-Gating: Create + Inbox + Profil sind authOnly.
+// Logged-out: Home | Explore | Shop (fallback für anonyme Discovery)
+//
+// Safe-Area: `pb-[env(safe-area-inset-bottom)]` respektiert iOS-Home-Indicator.
 // -----------------------------------------------------------------------------
 
 import Link from 'next/link';
@@ -34,8 +30,9 @@ import {
   Home,
   Compass,
   PlusSquare,
-  ShoppingBag,
+  Bell,
   User as UserIcon,
+  ShoppingBag,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/client';
@@ -48,14 +45,24 @@ type Slot = {
   authOnly?: boolean;
   /** "Create" ist der zentrale Primary-Slot, visuell hervorgehoben. */
   primary?: boolean;
+  /** Slot bekommt einen Unread-Badge-Dot wenn unreadCount > 0. */
+  hasBadge?: boolean;
 };
 
-const SLOTS: Slot[] = [
+// Authed-Reihenfolge: Home | Explore | Create | Inbox | Profil
+const SLOTS_AUTHED: Slot[] = [
+  { href: '/',              labelKey: 'nav.feed',    icon: Home },
+  { href: '/explore',       labelKey: 'nav.explore', icon: Compass },
+  { href: '/create',        labelKey: 'nav.create',  icon: PlusSquare,  authOnly: true, primary: true },
+  { href: '/notifications', labelKey: 'nav.inbox',   icon: Bell,        authOnly: true, hasBadge: true },
+  { href: '/profile',       labelKey: 'nav.profile', icon: UserIcon,    authOnly: true },
+];
+
+// Logged-out: Home | Explore | Shop (3 Slots — Create + Inbox + Profil sind sinnlos)
+const SLOTS_ANON: Slot[] = [
   { href: '/',        labelKey: 'nav.feed',    icon: Home },
   { href: '/explore', labelKey: 'nav.explore', icon: Compass },
-  { href: '/create',  labelKey: 'nav.create',  icon: PlusSquare, authOnly: true, primary: true },
   { href: '/shop',    labelKey: 'nav.shop',    icon: ShoppingBag },
-  { href: '/profile', labelKey: 'nav.profile', icon: UserIcon, authOnly: true },
 ];
 
 function isActive(pathname: string, href: string): boolean {
@@ -66,45 +73,49 @@ function isActive(pathname: string, href: string): boolean {
 export function MobileBottomNav({
   isAuthed,
   profileHref,
+  unreadCount = 0,
 }: {
   isAuthed: boolean;
   /**
    * Profile-Slot verlinkt bei authentifizierten Usern auf `/u/<username>`
-   * (eigenes Profil). Fallback `/onboarding` falls `username` null ist
-   * (Account ohne abgeschlossenen Onboarding-Flow).
+   * (eigenes Profil). Fallback `/onboarding` falls `username` null ist.
    */
   profileHref: string;
+  /**
+   * Kombinierter Unread-Count (Notifs + DMs), SSR-berechnet vom layout.tsx.
+   * Treibt den Badge-Dot auf dem Inbox-Slot.
+   */
+  unreadCount?: number;
 }) {
   const { t } = useI18n();
   const pathname = usePathname();
 
-  const visible = SLOTS.filter((s) => !s.authOnly || isAuthed).map((s) =>
-    s.href === '/profile' ? { ...s, href: profileHref } : s,
-  );
+  const slots = isAuthed
+    ? SLOTS_AUTHED.map((s) => (s.href === '/profile' ? { ...s, href: profileHref } : s))
+    : SLOTS_ANON;
 
   return (
     <nav
       aria-label={t('nav.main')}
       className={cn(
-        // Positionierung: fixed unten, nur unterhalb md sichtbar
         'fixed inset-x-0 bottom-0 z-40 md:hidden',
-        // Safe-Area für iOS-Home-Indicator
         'pb-[env(safe-area-inset-bottom)]',
-        // Glas-Effekt mit Border-Top (Theme-aware via `bg-background/90`)
         'border-t border-border/60 bg-background/90 backdrop-blur-lg',
       )}
     >
       <ul className="flex items-stretch justify-around">
-        {visible.map((slot) => {
+        {slots.map((slot) => {
           const Icon = slot.icon;
           const active = isActive(pathname, slot.href);
           const label = t(slot.labelKey);
+          const showBadge = slot.hasBadge && unreadCount > 0;
+
           return (
             <li key={slot.href} className="flex-1">
               <Link
                 href={slot.href as Route}
                 aria-current={active ? 'page' : undefined}
-                aria-label={label}
+                aria-label={showBadge ? `${label} (${unreadCount > 99 ? '99+' : unreadCount} ungelesen)` : label}
                 className={cn(
                   'flex h-14 flex-col items-center justify-center gap-0.5',
                   'transition-colors duration-fast ease-out-expo',
@@ -117,21 +128,28 @@ export function MobileBottomNav({
                 )}
               >
                 {slot.primary ? (
-                  // Zentraler "Create"-Slot: gefüllter Primary-Button statt Icon-nur.
-                  // Visuell identifiziert als "Aktion, nicht Ziel" — wie der Desktop-
-                  // CTA im SiteHeader.
+                  // Zentraler "Create"-Slot: gefüllter Primary-Button.
                   <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-elevation-2">
                     <Icon className="h-5 w-5" aria-hidden="true" />
                   </span>
                 ) : (
                   <>
-                    <Icon
-                      className={cn(
-                        'h-5 w-5',
-                        active ? 'stroke-[2.25]' : 'stroke-[1.75]',
+                    {/* Icon + optionaler Badge-Dot */}
+                    <span className="relative">
+                      <Icon
+                        className={cn(
+                          'h-5 w-5',
+                          active ? 'stroke-[2.25]' : 'stroke-[1.75]',
+                        )}
+                        aria-hidden="true"
+                      />
+                      {showBadge && (
+                        <span
+                          aria-hidden="true"
+                          className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-red-500 ring-2 ring-background"
+                        />
                       )}
-                      aria-hidden="true"
-                    />
+                    </span>
                     <span
                       className={cn(
                         'text-[10px] leading-none',

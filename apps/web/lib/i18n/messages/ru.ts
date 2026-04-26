@@ -22,6 +22,7 @@ const ruMessages = {
     feed: 'Лента',
     explore: 'Обзор',
     shop: 'Магазин',
+    inbox: 'Уведомления',
     live: 'Эфир',
     messages: 'Сообщения',
     create: 'Загрузить',

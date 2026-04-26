@@ -31,7 +31,8 @@ const ceMessages = {
   nav: {
     feed: 'Хаамаш',              // "Nachrichten/News-Feed"
     explore: 'Лаха',              // "suchen / entdecken"
-    shop: 'Туькан',               // "Laden / Shop"
+    shop: 'Туькан',
+    inbox: 'Хаамаш',               // "Nachrichten / Benachrichtigungen"
     live: 'Дийна',                // "live (wörtl. am-Leben)"
     messages: 'Кехаташ',         // "Briefe / Nachrichten"
     create: 'хьала йакха',              // "hochladen / legen"
