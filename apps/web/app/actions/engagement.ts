@@ -176,6 +176,24 @@ export async function fetchCommentReplies(
   return getCommentReplies(parentId, 20, viewer?.id ?? null);
 }
 
+// -----------------------------------------------------------------------------
+// fetchMoreComments — v1.w.UI.60: "Load more" Pagination für Post-Detail.
+//
+// Lädt Top-Level-Kommentare ab einem Offset (älteste-zuerst, konsistent mit
+// dem ersten SSR-Batch). Viewer wird aus der Session geholt damit liked_by_me
+// korrekt befüllt wird — gleiche Semantik wie fetchCommentReplies.
+// -----------------------------------------------------------------------------
+
+export async function fetchMoreComments(
+  postId: string,
+  offset: number,
+  limit = 20,
+): Promise<import('@/lib/data/public').CommentWithAuthor[]> {
+  const viewer = await getViewerId();
+  const { getMoreComments } = await import('@/lib/data/public');
+  return getMoreComments(postId, offset, limit, viewer?.id ?? null);
+}
+
 export async function deleteComment(commentId: string): Promise<ActionResult> {
   const viewer = await getViewerId();
   if (!viewer) return { ok: false, error: 'Nicht eingeloggt.' };

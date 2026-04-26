@@ -609,6 +609,72 @@ export async function getCommentReplies(
   return out;
 }
 
+// getMoreComments — Offset-Pagination für Top-Level-Kommentare.
+// Kein React.cache() — wird client-seitig via Server Action aufgerufen.
+// Gleiche Semantik wie getPostComments aber mit .range(offset, offset+limit-1).
+export async function getMoreComments(
+  postId: string,
+  offset: number,
+  limit = 20,
+  viewerId?: string | null,
+): Promise<CommentWithAuthor[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('comments')
+    .select(
+      `id, post_id, user_id, parent_id, text, created_at,
+       reply_count:comments!comments_parent_id_fkey(count),
+       author:profiles!comments_user_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )`,
+    )
+    .eq('post_id', postId)
+    .is('parent_id', null)
+    .order('created_at', { ascending: true })
+    .range(offset, offset + limit - 1);
+
+  if (error || !data) return [];
+
+  const rows = data as unknown as CommentRowMobile[];
+  const ids = rows.map((r) => r.id);
+
+  const [allLikesRes, myLikesRes] = await Promise.all([
+    ids.length > 0
+      ? supabase.from('comment_likes').select('comment_id').in('comment_id', ids)
+      : Promise.resolve({ data: [] as { comment_id: string }[], error: null }),
+    ids.length > 0 && viewerId
+      ? supabase
+          .from('comment_likes')
+          .select('comment_id')
+          .eq('user_id', viewerId)
+          .in('comment_id', ids)
+      : Promise.resolve({ data: [] as { comment_id: string }[], error: null }),
+  ]);
+
+  const countMap = new Map<string, number>();
+  for (const r of allLikesRes.data ?? []) {
+    countMap.set(r.comment_id, (countMap.get(r.comment_id) ?? 0) + 1);
+  }
+  const likedSet = new Set((myLikesRes.data ?? []).map((r) => r.comment_id));
+
+  const out: CommentWithAuthor[] = [];
+  for (const row of rows) {
+    const author = normalizeAuthor(row.author);
+    if (!author) continue;
+    out.push({
+      id: row.id,
+      post_id: row.post_id,
+      user_id: row.user_id,
+      parent_id: row.parent_id ?? null,
+      body: row.text ?? '',
+      like_count: countMap.get(row.id) ?? 0,
+      liked_by_me: likedSet.has(row.id),
+      reply_count: extractCommentCount(row.reply_count),
+      created_at: row.created_at,
+      author,
+    });
+  }
+  return out;
+}
+
 // -----------------------------------------------------------------------------
 // Story with TTL check — returns null if expired (Mobile hat kein expires_at).
 // -----------------------------------------------------------------------------

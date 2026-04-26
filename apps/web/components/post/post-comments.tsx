@@ -1,6 +1,7 @@
 import { Lock } from 'lucide-react';
 import type { CommentWithAuthor } from '@/lib/data/public';
 import { CommentThread } from './comment-thread';
+import { LoadMoreComments } from './load-more-comments';
 
 // -----------------------------------------------------------------------------
 // PostComments — Server-Component Wrapper für die Kommentar-Sektion auf
@@ -63,10 +64,16 @@ export function PostComments({
         </ul>
       )}
 
+      {/* v1.w.UI.60: "Mehr laden" statt totem Hinweis-Text */}
       {comments.length < totalCount && (
-        <p className="mt-4 text-center text-xs text-muted-foreground">
-          Zeige die neuesten {comments.length} von {totalCount.toLocaleString('de-DE')} Kommentaren.
-        </p>
+        <LoadMoreComments
+          postId={postId}
+          initialOffset={comments.length}
+          totalCount={totalCount}
+          viewerId={viewerId}
+          isAuthenticated={isAuthenticated}
+          postPath={postPath}
+        />
       )}
     </section>
   );
