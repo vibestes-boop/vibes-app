@@ -1,6 +1,6 @@
 'use server';
 
-import { revalidateTag } from 'next/cache';
+import { revalidateTag, revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 
 // -----------------------------------------------------------------------------
@@ -102,6 +102,8 @@ export async function toggleFollow(
       .eq('follower_id', viewer.id)
       .eq('following_id', targetUserId);
     if (error) return { ok: false, error: error.message };
+    // Profil-Cache invalidieren damit Follower-Count sofort aktuell ist.
+    revalidatePath(`/u/`);
     return { ok: true, data: { following: false } };
   }
 
@@ -110,6 +112,7 @@ export async function toggleFollow(
     { onConflict: 'follower_id,following_id', ignoreDuplicates: true },
   );
   if (error) return { ok: false, error: error.message };
+  revalidatePath(`/u/`);
   return { ok: true, data: { following: true } };
 }
 
