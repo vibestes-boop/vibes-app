@@ -16,6 +16,13 @@ jest.mock('next/navigation', () => ({
   usePathname: () => '/',
 }));
 
+// getUnreadDmCount ist eine Server Action die Supabase/cookies() nutzt —
+// beides nicht in jsdom verfügbar. Für Sidebar-Struktur-Tests ein Stub der
+// immer 0 zurückgibt (kein Badge — Badge-Rendering ist ein eigener Test).
+jest.mock('@/app/actions/messages', () => ({
+  getUnreadDmCount: jest.fn().mockResolvedValue(0),
+}));
+
 // OpenConsentSettingsButton ist ein Client-Hook-heavy Consent-Banner-Kontrollpunkt
 // — für Sidebar-Struktur-Tests ein Thin-Stub.
 jest.mock('@/components/consent/consent-banner', () => ({
