@@ -12,6 +12,7 @@ import {
   getProductShareContext,
 } from '@/lib/data/messages';
 import { MessageThread } from '@/components/messages/message-thread';
+import { ConversationSearch } from '@/components/messages/conversation-search';
 
 // -----------------------------------------------------------------------------
 // /messages/[id] — Thread-View mit Realtime-Messages + Composer.
@@ -62,7 +63,8 @@ export default async function ConversationPage({ params, searchParams }: PagePro
 
   return (
     <div className="mx-auto flex h-[calc(100dvh-4rem)] w-full max-w-3xl flex-col">
-      <header className="flex items-center gap-3 border-b bg-background/95 px-4 py-3 backdrop-blur">
+      {/* relative: ConversationSearch positioniert ihr Overlay absolut relativ zu diesem Container */}
+      <header className="relative flex items-center gap-3 border-b bg-background/95 px-4 py-3 backdrop-blur">
         <Link
           href={'/messages' as Route}
           aria-label="Zurück zur Liste"
@@ -112,6 +114,9 @@ export default async function ConversationPage({ params, searchParams }: PagePro
             </Link>
           )}
         </div>
+
+        {/* Search-Icon — öffnet ConversationSearch-Overlay im Header */}
+        <ConversationSearch conversationId={id} viewerId={user.id} />
       </header>
 
       <MessageThread
