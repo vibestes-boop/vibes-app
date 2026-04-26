@@ -2,16 +2,20 @@
 
 import type { Route } from 'next';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import { toast } from 'sonner';
-import { UserPlus, UserCheck } from 'lucide-react';
+import { UserPlus, UserCheck, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { toggleFollow } from '@/app/actions/engagement';
 
 // -----------------------------------------------------------------------------
-// FollowButton — Phase-2-Stub.
-// Zeigt den aktuellen Status (follow / following), echte Mutations folgen in
-// Phase 3 zusammen mit Feed/Notifications. Unauthenticated-User werden auf
-// /login geschickt — mit `next` param für Rück-Redirect nach Login.
+// FollowButton — v1.w.UI.40 Follow-Graph live.
+//
+// Optimistisches UI: State wird sofort getoggelt, Server Action läuft im
+// Hintergrund. Bei Fehler wird der State zurückgerollt + Toast.
+//
+// useTransition verhindert UI-Freeze während der Server Action läuft und
+// gibt uns `isPending` für den Loading-Spinner gratis.
 // -----------------------------------------------------------------------------
 
 export function FollowButton({
@@ -19,25 +23,28 @@ export function FollowButton({
   isFollowing: initialIsFollowing,
   isSelf,
   username,
+  targetUserId,
 }: {
   isAuthenticated: boolean;
   isFollowing: boolean;
   isSelf: boolean;
   username: string;
+  /** Supabase-UUID des Profil-Inhabers — nötig für toggleFollow Server Action. */
+  targetUserId: string;
 }) {
   const [isFollowing, setIsFollowing] = useState(initialIsFollowing);
+  const [isPending, startTransition] = useTransition();
 
-  // Eigener Account → Edit-Profil-Link (führt zu Settings in Phase 5).
-  // `/settings` kommt Phase 5 — bis dahin Route-Cast (Page existiert noch nicht).
+  // Eigener Account → Profil bearbeiten
   if (isSelf) {
     return (
       <Button asChild variant="outline" size="sm" className="min-w-[120px]">
-        <Link href={'/settings' as Route}>Profil bearbeiten</Link>
+        <Link href={'/settings/profile' as Route}>Profil bearbeiten</Link>
       </Button>
     );
   }
 
-  // Nicht eingeloggt → Button ist sichtbar aber führt zu /login?next=/u/{username}.
+  // Nicht eingeloggt → /login?next=...
   if (!isAuthenticated) {
     return (
       <Button asChild size="sm" className="min-w-[120px]">
@@ -49,12 +56,24 @@ export function FollowButton({
     );
   }
 
-  // Eingeloggt + fremdes Profil — Phase-2-Stub: optimistisches Toggle lokal,
-  // Toast weist darauf hin dass Follow-Graph erst in Phase 3 landet.
-  const onClick = () => {
-    setIsFollowing((prev) => !prev);
-    toast('Follow-Funktion folgt in Kürze', {
-      description: 'Web-Phase 3 bringt den Follow-Graphen. In der App bereits möglich.',
+  const handleClick = () => {
+    const wasFollowing = isFollowing;
+    setIsFollowing(!wasFollowing);
+
+    startTransition(async () => {
+      const result = await toggleFollow(targetUserId, wasFollowing);
+
+      if (!result.ok) {
+        setIsFollowing(wasFollowing);
+        toast.error('Aktion fehlgeschlagen', { description: result.error });
+        return;
+      }
+
+      setIsFollowing(result.data.following);
+
+      if (result.data.following) {
+        toast.success(`Du folgst jetzt @${username}`);
+      }
     });
   };
 
@@ -62,10 +81,13 @@ export function FollowButton({
     <Button
       size="sm"
       variant={isFollowing ? 'outline' : 'default'}
-      onClick={onClick}
+      onClick={handleClick}
+      disabled={isPending}
       className="min-w-[120px]"
     >
-      {isFollowing ? (
+      {isPending ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : isFollowing ? (
         <>
           <UserCheck className="h-4 w-4" />
           Folgst du

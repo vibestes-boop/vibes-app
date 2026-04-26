@@ -245,6 +245,7 @@ export default async function ProfilePage({
               isFollowing={alreadyFollowing}
               isSelf={isSelf}
               username={profile.username}
+              targetUserId={profile.id}
             />
             <CreatorTipButton
               recipientId={profile.id}
