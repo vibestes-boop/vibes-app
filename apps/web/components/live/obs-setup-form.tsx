@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Route } from 'next';
-import { Copy, Eye, EyeOff, Loader2, Radio, ExternalLink } from 'lucide-react';
+import { Copy, Eye, EyeOff, Loader2, Radio, ExternalLink, RefreshCw, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,54 +12,63 @@ import {
   createWhipIngress,
   deleteWhipIngress,
   getWhipStatus,
+  getMyWhipIngress,
+  rotateWhipIngress,
 } from '@/app/actions/live-ingress';
 
 // -----------------------------------------------------------------------------
 // OBSSetupForm — UI für /live/start im OBS-Tab.
 //
-// Drei Phasen:
+// v1.w.UI.36 — Persistenter WHIP-Ingress
 //
-//   1. SETUP (default): Title-Eingabe + „WHIP-Endpoint generieren"-Button.
-//      Beim Klick → Server-Action createWhipIngress → Phase 2.
+// Phasen:
 //
-//   2. CREDENTIALS: Zeigt WHIP-URL + Stream-Key (masked-with-reveal +
-//      Copy-Button) + OBS-Setup-Anleitung. Polling auf Status alle 3s.
+//   loading:     Prüft on-mount ob der User bereits persistente Credentials
+//                hat (getMyWhipIngress RPC). Kurze Lade-State.
 //
-//   3. LIVE: Sobald LiveKit isPublishing=true zurückgibt, redirecten wir
-//      zu /live/host/[id]. Dort sieht der Host sein Stream-Preview, hat
-//      Chat-Moderation, kann Polls starten — alles wie im Browser-Modus.
-//      Aber er ist NICHT der Publisher (OBS ist es), das Host-Deck wird
-//      mit `obsMode={true}`-Variante gerendert (kein Cam-Toggle, kein
-//      Screenshare-Toggle — diese Optionen sind in OBS).
+//   setup:       Zeigt je nach hasExistingIngress zwei Varianten:
 //
-// Cleanup: Wenn der User die Seite verlässt BEVOR OBS verbunden hat,
-// rufen wir deleteWhipIngress() im beforeunload-Handler. Dadurch bleiben
-// keine verwaisten Sessions/Ingresses bei LiveKit zurück. Falls der User
-// zurückkommt nach OBS-Verbindung, ist die Session aktiv und der
-// Standard-/live/host/[id] Cleanup-Flow greift.
+//     hasExistingIngress=false (erster Stream):
+//       Title-Eingabe + „WHIP-Endpoint generieren"-Button.
+//       Beim Klick → createWhipIngress → credentials-Phase.
+//
+//     hasExistingIngress=true (wiederkehrender Streamer):
+//       Existing URL + Stream-Key bereits sichtbar.
+//       Title-Eingabe + „Stream starten"-Button → nur neue Session anlegen,
+//       Credentials bleiben gleich → credentials-Phase (Polling).
+//       „Schlüssel rotieren"-Link zum Erneuern des Keys.
+//
+//   credentials: WHIP-URL + Stream-Key (masked-with-reveal + Copy-Button) +
+//                OBS-Setup-Anleitung. Polling auf Status alle 3s.
+//                Sobald LiveKit isPublishing=true → Redirect /live/host/[id].
+//
+// Cleanup (beforeunload): Wenn der User die Seite verlässt BEVOR OBS
+// verbunden hat, rufen wir deleteWhipIngress() (beendet nur die Session,
+// Ingress bleibt erhalten). Damit bleiben keine aktiven Sessions im DB zurück.
 // -----------------------------------------------------------------------------
 
-type Phase = 'setup' | 'credentials';
+type Phase = 'loading' | 'setup' | 'credentials';
 
 export function OBSSetupForm() {
   const router = useRouter();
-  const [phase, setPhase] = useState<Phase>('setup');
+  const [phase, setPhase] = useState<Phase>('loading');
   const [title, setTitle] = useState('');
   const [isPending, startTransition] = useTransition();
+  const [isRotating, setIsRotating] = useState(false);
+  const [showRotateConfirm, setShowRotateConfirm] = useState(false);
 
-  // Phase 2 state
+  // Persistente Credentials (loaded on mount)
+  const [hasExistingIngress, setHasExistingIngress] = useState(false);
+
+  // Aktuelle Credentials für die credentials-Phase
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [ingressUrl, setIngressUrl] = useState<string | null>(null);
   const [ingressStreamKey, setIngressStreamKey] = useState<string | null>(null);
   const [showKey, setShowKey] = useState(false);
   const [isWaiting, setIsWaiting] = useState(false);
 
-  // beforeunload cleanup: wenn User die Seite verlässt während wir noch
-  // auf OBS warten, killen wir die Session damit kein Zombie-Ingress
-  // bei LiveKit bleibt. Best-effort: navigator.sendBeacon ist hier
-  // overkill, supabase.functions.invoke geht auch. Wir nutzen ein Ref
-  // damit der Effect die aktuelle sessionId sieht ohne re-binden zu
-  // müssen.
+  // cleanupRef: damit beforeunload die aktuelle sessionId sieht ohne
+  // den Effect neu zu binden.
   const cleanupRef = useRef<{ sessionId: string | null; isPublishing: boolean }>({
     sessionId: null,
     isPublishing: false,
@@ -68,13 +77,25 @@ export function OBSSetupForm() {
     cleanupRef.current.sessionId = sessionId;
   }, [sessionId]);
 
+  // ── On-mount: persistente Credentials laden ────────────────────────────────
+  useEffect(() => {
+    void (async () => {
+      const res = await getMyWhipIngress();
+      if (res.ok && res.ingress) {
+        setHasExistingIngress(true);
+        setIngressUrl(res.ingress.ingressUrl);
+        setIngressStreamKey(res.ingress.streamKey);
+      }
+      setPhase('setup');
+    })();
+  }, []);
+
+  // ── beforeunload cleanup ───────────────────────────────────────────────────
   useEffect(() => {
     function onUnload() {
       const sid = cleanupRef.current.sessionId;
       if (sid && !cleanupRef.current.isPublishing) {
-        // Fire-and-forget — der Browser killt Page eh, await würde nichts
-        // bringen. Server-Action ist idempotent: doppel-DELETE schadet
-        // nicht.
+        // Beendet nur die Session (nicht den Ingress — der ist persistent).
         void deleteWhipIngress(sid);
       }
     }
@@ -82,7 +103,7 @@ export function OBSSetupForm() {
     return () => window.removeEventListener('beforeunload', onUnload);
   }, []);
 
-  // Polling auf Stream-Status während Phase 2
+  // ── Polling auf Stream-Status in credentials-Phase ─────────────────────────
   useEffect(() => {
     if (phase !== 'credentials' || !sessionId) return;
     let cancelled = false;
@@ -96,7 +117,6 @@ export function OBSSetupForm() {
         cleanupRef.current.isPublishing = true;
         setIsWaiting(false);
         toast.success('OBS verbunden — du bist live!');
-        // Mini-Delay damit der Toast sichtbar bleibt vor dem Redirect
         setTimeout(() => router.push(`/live/host/${sessionId}` as Route), 700);
         return;
       }
@@ -110,7 +130,8 @@ export function OBSSetupForm() {
     };
   }, [phase, sessionId, router]);
 
-  function handleCreate() {
+  // ── Neuen Stream starten (mit oder ohne existing ingress) ──────────────────
+  function handleStartStream() {
     if (!title.trim()) {
       toast.error('Bitte gib einen Titel ein.');
       return;
@@ -122,22 +143,49 @@ export function OBSSetupForm() {
         return;
       }
       setSessionId(res.sessionId);
+      // Credentials aktualisieren (bei erstem Stream neue Werte, bei
+      // bestehendem Ingress dieselben wie vorher — aber trotzdem setzen
+      // damit die credentials-Phase immer aktuelle Werte zeigt).
       setIngressUrl(res.ingressUrl);
       setIngressStreamKey(res.ingressStreamKey);
+      if (!hasExistingIngress) {
+        // Jetzt hat der User einen Ingress — beim nächsten Render wird
+        // hasExistingIngress=true gesetzt (via state update unten).
+        setHasExistingIngress(true);
+      }
       setPhase('credentials');
     });
   }
 
+  // ── Stream-Setup abbrechen (nur in credentials-Phase möglich) ─────────────
   async function handleCancel() {
-    if (!sessionId) return;
+    if (!sessionId) {
+      setPhase('setup');
+      return;
+    }
     setPhase('setup');
+    const sid = sessionId;
     setSessionId(null);
-    setIngressUrl(null);
-    setIngressStreamKey(null);
-    setShowKey(false);
     setIsWaiting(false);
-    await deleteWhipIngress(sessionId);
+    cleanupRef.current.sessionId = null;
+    await deleteWhipIngress(sid);
     toast('Stream-Setup abgebrochen.');
+  }
+
+  // ── Schlüssel rotieren ─────────────────────────────────────────────────────
+  async function handleRotate() {
+    setShowRotateConfirm(false);
+    setIsRotating(true);
+    const res = await rotateWhipIngress();
+    setIsRotating(false);
+    if (!res.ok) {
+      toast.error(res.error);
+      return;
+    }
+    setIngressUrl(res.ingressUrl);
+    setIngressStreamKey(res.ingressStreamKey);
+    setShowKey(false);
+    toast.success('Neuer Stream-Key generiert. Bitte OBS neu konfigurieren.');
   }
 
   async function copyToClipboard(text: string, label: string) {
@@ -149,9 +197,20 @@ export function OBSSetupForm() {
     }
   }
 
+  // ── Loading ────────────────────────────────────────────────────────────────
+  if (phase === 'loading') {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  // ── Setup-Phase ────────────────────────────────────────────────────────────
   if (phase === 'setup') {
     return (
       <div className="space-y-6">
+        {/* Header-Card */}
         <div className="rounded-xl border border-border bg-card p-6">
           <div className="mb-4 flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-500/10 text-red-500">
@@ -165,6 +224,106 @@ export function OBSSetupForm() {
             </div>
           </div>
 
+          {/* Existing credentials panel */}
+          {hasExistingIngress && ingressUrl && ingressStreamKey && (
+            <div className="mb-5 space-y-3 rounded-lg border border-border bg-muted/30 p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-green-600 dark:text-green-400">
+                  ✓ OBS bereits konfiguriert — Credentials unverändert
+                </p>
+                {!showRotateConfirm && (
+                  <button
+                    type="button"
+                    onClick={() => setShowRotateConfirm(true)}
+                    disabled={isRotating}
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+                  >
+                    {isRotating ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <RefreshCw className="h-3 w-3" />
+                    )}
+                    Schlüssel rotieren
+                  </button>
+                )}
+              </div>
+
+              {showRotateConfirm && (
+                <div className="rounded-md border border-yellow-500/40 bg-yellow-500/10 p-3 text-xs text-yellow-700 dark:text-yellow-300">
+                  <div className="mb-2 flex items-start gap-2">
+                    <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                    <span>
+                      Neuer Key macht den alten ungültig. OBS muss danach neu konfiguriert werden.
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleRotate}
+                      className="rounded bg-yellow-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-yellow-700"
+                    >
+                      Ja, rotieren
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowRotateConfirm(false)}
+                      className="rounded px-2.5 py-1 text-xs text-muted-foreground hover:text-foreground"
+                    >
+                      Abbrechen
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <Label className="text-xs">Server (URL)</Label>
+                <div className="mt-1 flex gap-2">
+                  <Input value={ingressUrl} readOnly className="font-mono text-xs" />
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    onClick={() => copyToClipboard(ingressUrl, 'Server-URL')}
+                    aria-label="Server-URL kopieren"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              <div>
+                <Label className="text-xs">Stream Key (Bearer Token)</Label>
+                <div className="mt-1 flex gap-2">
+                  <Input
+                    value={ingressStreamKey}
+                    readOnly
+                    type={showKey ? 'text' : 'password'}
+                    className="font-mono text-xs"
+                  />
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    onClick={() => setShowKey((v) => !v)}
+                    aria-label={showKey ? 'Stream-Key verstecken' : 'Stream-Key zeigen'}
+                  >
+                    {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    onClick={() => copyToClipboard(ingressStreamKey, 'Stream-Key')}
+                    aria-label="Stream-Key kopieren"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Titel + Start-Button */}
           <div className="space-y-4">
             <div>
               <Label htmlFor="obs-title">Titel des Streams</Label>
@@ -182,16 +341,18 @@ export function OBSSetupForm() {
             </div>
 
             <Button
-              onClick={handleCreate}
-              disabled={isPending || !title.trim()}
+              onClick={handleStartStream}
+              disabled={isPending || !title.trim() || isRotating}
               className="w-full"
               size="lg"
             >
               {isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Erstelle Stream-Endpoint…
+                  {hasExistingIngress ? 'Starte Stream…' : 'Erstelle Stream-Endpoint…'}
                 </>
+              ) : hasExistingIngress ? (
+                'Stream starten'
               ) : (
                 'WHIP-Endpoint generieren'
               )}
@@ -199,19 +360,25 @@ export function OBSSetupForm() {
           </div>
         </div>
 
+        {/* Info-Box */}
         <div className="rounded-xl border border-border bg-muted/30 p-5 text-sm">
           <h3 className="mb-2 font-semibold">Was du brauchst</h3>
           <ul className="ml-5 list-disc space-y-1 text-muted-foreground">
             <li>OBS Studio 30+ (oder vMix, Streamlabs, jeder WHIP-fähige Encoder)</li>
             <li>Eine stabile Upload-Verbindung (mind. 5 Mbps für 1080p60)</li>
             <li>Hardware-Encoder empfohlen (NVENC, AMD AMF, Apple VideoToolbox)</li>
+            {hasExistingIngress && (
+              <li className="text-green-600 dark:text-green-400">
+                Dein OBS ist bereits konfiguriert — einfach Titel eingeben und starten!
+              </li>
+            )}
           </ul>
         </div>
       </div>
     );
   }
 
-  // Phase: credentials
+  // ── Credentials-Phase (warten auf OBS) ────────────────────────────────────
   return (
     <div className="space-y-6">
       {isWaiting && (
@@ -228,6 +395,11 @@ export function OBSSetupForm() {
         <h2 className="mb-1 text-lg font-semibold">OBS-Konfiguration</h2>
         <p className="mb-4 text-sm text-muted-foreground">
           Kopiere diese Werte in <strong>OBS → Einstellungen → Stream</strong>.
+          {hasExistingIngress && (
+            <span className="ml-1 text-green-600 dark:text-green-400">
+              Dein Key ist persistent — er ändert sich nicht zwischen Streams.
+            </span>
+          )}
         </p>
 
         <div className="space-y-4">
@@ -303,6 +475,9 @@ export function OBSSetupForm() {
           </li>
           <li>
             Server-URL und Stream-Key oben einfügen
+            {hasExistingIngress && (
+              <span className="text-green-600 dark:text-green-400"> (bereits eingetragen — nichts ändern!)</span>
+            )}
           </li>
           <li>
             <em>Einstellungen</em> →{' '}
