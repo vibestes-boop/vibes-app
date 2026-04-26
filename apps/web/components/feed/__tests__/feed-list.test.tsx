@@ -319,10 +319,8 @@ describe('FeedList — "Neue Posts" pill (v1.w.UI.68)', () => {
 
   beforeEach(() => {
     mockRouterRefresh.mockClear();
-    // fetch-Mock zurücksetzen
-    if ('mockReset' in global.fetch) {
-      (global.fetch as jest.Mock).mockReset();
-    }
+    // global.fetch kann in jsdom undefined sein → immer frischen Mock zuweisen
+    global.fetch = jest.fn();
   });
 
   it('does NOT show pill on initial render', () => {
