@@ -193,11 +193,10 @@ async function createLiveKitIngress(
     room_name: roomName,
     participant_identity: `host-${userId}`,
     participant_name: label,
-    // bypass_transcoding=true → Stream wird ohne Re-Encode an den Room
-    // weitergereicht. Niedrigere Latenz, höhere Quality, aber Viewer-Browser
-    // muss die Encoder-Codecs (typisch H264 + Opus) supporten — was alle
-    // modernen Browser tun.
-    bypass_transcoding: true,
+    // enable_transcoding=true → LiveKit transkodiert den OBS-Stream in VP8/Opus
+    // für Browser-Kompatibilität. Etwas mehr Latenz als bypass, aber stabiler
+    // weil die SDP-Verhandlung zwischen OBS und LiveKit nicht perfekt matchen muss.
+    enable_transcoding: true,
   };
 
   const resp = await fetch(`${env.liveKitUrl}/twirp/livekit.Ingress/CreateIngress`, {
