@@ -6,11 +6,16 @@ import { getNotifications } from '@/lib/data/notifications';
 import { NotificationList } from '@/components/notifications/notification-list';
 
 // -----------------------------------------------------------------------------
-// /notifications — Aktivitäts-Feed (v1.w.UI.38)
+// /notifications — Aktivitäts-Feed (v1.w.UI.38 / v1.w.UI.56)
 //
 // SSR: Notifications werden server-seitig geladen (frischester Stand beim
 // ersten Render). Client-Component `NotificationList` markiert beim Mount
 // alle ungelesen als gelesen (einmalig via Server Action).
+//
+// v1.w.UI.56: viewerId wird an NotificationList durchgereicht damit der
+// Client-Component eine Supabase-Realtime-Subscription aufbauen kann.
+// Neue Notifications erscheinen ohne Reload (postgres_changes INSERT →
+// router.refresh() + Badge-Invalidate).
 //
 // Nur für eingeloggte Nutzer — Redirect zu /login sonst.
 // -----------------------------------------------------------------------------
@@ -34,7 +39,7 @@ export default async function NotificationsPage() {
         <Bell className="h-6 w-6 text-primary" />
         <h1 className="text-2xl font-semibold tracking-tight">Benachrichtigungen</h1>
       </header>
-      <NotificationList notifications={notifications} />
+      <NotificationList notifications={notifications} viewerId={user.id} />
     </div>
   );
 }

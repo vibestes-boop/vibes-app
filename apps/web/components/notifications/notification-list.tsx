@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Route } from 'next';
+import { useRouter } from 'next/navigation';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Heart,
   MessageCircle,
@@ -17,6 +19,7 @@ import {
 import { cn } from '@/lib/utils';
 import { markAllNotificationsRead } from '@/app/actions/notifications';
 import type { Notification, NotificationType } from '@/lib/data/notifications';
+import { createClient } from '@/lib/supabase/client';
 
 // -----------------------------------------------------------------------------
 // NotificationList — Client-Component für /notifications
@@ -129,7 +132,19 @@ function initials(n: Notification['sender']): string {
 
 // ── Hauptkomponente ───────────────────────────────────────────────────────────
 
-export function NotificationList({ notifications }: { notifications: Notification[] }) {
+export function NotificationList({
+  notifications,
+  viewerId,
+}: {
+  notifications: Notification[];
+  /** Supabase-UUID des eingeloggten Users. Wird für Realtime-Subscription benötigt. */
+  viewerId: string | null;
+}) {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  // channelRef verhindert doppelte Subscriptions in React Strict-Mode-Mounts.
+  const channelRef = useRef<ReturnType<ReturnType<typeof createClient>['channel']> | null>(null);
+
   // Beim Mount alle als gelesen markieren — einmalig, fire-and-forget.
   useEffect(() => {
     const hasUnread = notifications.some((n) => !n.read);
@@ -139,6 +154,51 @@ export function NotificationList({ notifications }: { notifications: Notificatio
       });
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // v1.w.UI.56 — Realtime-Subscription: neue Notifications erscheinen sofort.
+  //
+  // postgres_changes INSERT on notifications WHERE recipient_id=eq.{viewerId}
+  // → router.refresh() lässt die RSC-Seite neu rendern (neuer SSR-Snapshot mit
+  //   der frischen Notification vorne), ohne den kompletten Seitenbaum zu
+  //   dismounten. Client-State (z.B. das mark-all-read) bleibt erhalten.
+  // → queryClient.invalidateQueries(['unread-notifs']) aktualisiert sofort den
+  //   Sidebar-Bell-Badge ohne auf den nächsten 60s-Poll zu warten.
+  useEffect(() => {
+    if (!viewerId) return;
+
+    const client = createClient();
+
+    // Cleanup alter Channel falls vorhanden (Strict-Mode Re-Mount).
+    if (channelRef.current) {
+      client.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
+
+    const channel = client
+      .channel(`notifications-realtime-${viewerId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `recipient_id=eq.${viewerId}`,
+        },
+        () => {
+          // Neue Notification: RSC neu rendern + Badge invalidieren.
+          router.refresh();
+          void queryClient.invalidateQueries({ queryKey: ['unread-notifs'] });
+        },
+      )
+      .subscribe();
+
+    channelRef.current = channel;
+
+    return () => {
+      client.removeChannel(channel);
+      channelRef.current = null;
+    };
+  }, [viewerId, router, queryClient]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (notifications.length === 0) {
     return (
