@@ -127,7 +127,9 @@ export async function sendDirectMessage(
     .insert({
       conversation_id: input.conversationId,
       sender_id: viewer,
-      content: content || null,
+      // messages.content ist NOT NULL in der DB. Leerer String statt null
+      // wenn nur postId/imageUrl/storyMediaUrl mitkommt (kein Text).
+      content: content.length > 0 ? content : '',
       image_url: input.imageUrl ?? null,
       post_id: input.postId ?? null,
       reply_to_id: input.replyToId ?? null,
