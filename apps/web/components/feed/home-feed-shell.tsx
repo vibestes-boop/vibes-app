@@ -231,6 +231,8 @@ function HomeFeedShellBody({
             <div className="min-h-0 flex-1">
               {followingQuery.isFetching && followingPosts.length === 0 ? (
                 <FollowingSkeleton />
+              ) : !followingQuery.isFetching && followingPosts.length === 0 ? (
+                <FollowingEmptyState suggested={suggested} viewerId={viewerId} />
               ) : (
                 <FeedList
                   initialPosts={followingPosts}
@@ -283,7 +285,7 @@ import Link from 'next/link';
 import type { Route } from 'next';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { BadgeCheck, Compass, TrendingUp } from 'lucide-react';
+import { BadgeCheck, Compass, TrendingUp, UserRound } from 'lucide-react';
 import { useToggleFollow } from '@/hooks/use-engagement';
 
 function FeedSidebarRight({
@@ -402,6 +404,97 @@ function FollowingSkeleton() {
   return (
     <div className="flex h-full items-center justify-center">
       <div className="h-8 w-8 animate-pulse rounded-full bg-muted" />
+    </div>
+  );
+}
+
+// ─── v1.w.UI.66 — Following Empty State ──────────────────────────────────────
+//
+// Zeigt wenn der Following-Tab leer ist (User folgt niemandem oder keiner der
+// gefolgten Accounts hat Posts). Statt totem Text: Discover-Card mit Top-5
+// Vorschlägen + Explore-CTA. Dreht einen Dead-End in einen Follow-Funnel.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function FollowingEmptyState({
+  suggested,
+  viewerId,
+}: {
+  suggested: SuggestedFollow[];
+  viewerId: string | null;
+}) {
+  const follow = useToggleFollow();
+  const [, startTransition] = useTransition();
+
+  return (
+    <div className="flex h-full flex-col items-center justify-center px-6 py-12">
+      <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-elevation-1">
+        {/* Icon + heading */}
+        <div className="mb-4 flex flex-col items-center gap-2 text-center">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+            <UserRound className="h-6 w-6 text-muted-foreground" />
+          </div>
+          <h2 className="text-base font-semibold">Noch keine Posts</h2>
+          <p className="text-sm text-muted-foreground">
+            Folge anderen Accounts, um ihren Content hier zu sehen.
+          </p>
+        </div>
+
+        {/* Suggested accounts */}
+        {suggested.length > 0 && (
+          <ul className="mb-4 flex flex-col gap-3">
+            {suggested.slice(0, 4).map((s) => (
+              <li key={s.id} className="flex items-center gap-3">
+                <Link href={`/u/${s.username}` as Route} aria-label={`@${s.username}`}>
+                  <Avatar className="h-9 w-9">
+                    <AvatarImage src={s.avatar_url ?? undefined} />
+                    <AvatarFallback>
+                      {(s.display_name ?? s.username).slice(0, 2).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                </Link>
+                <div className="min-w-0 flex-1">
+                  <Link
+                    href={`/u/${s.username}` as Route}
+                    className="flex items-center gap-1 truncate text-sm font-semibold hover:underline"
+                  >
+                    @{s.username}
+                    {s.verified && <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-brand-gold" />}
+                  </Link>
+                  {s.follower_count > 0 && (
+                    <div className="text-xs text-muted-foreground">
+                      {formatTagCount(s.follower_count).replace(' Posts', ' Follower')}
+                    </div>
+                  )}
+                </div>
+                {viewerId && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 shrink-0 px-3 text-xs"
+                    disabled={follow.isPending}
+                    onClick={() =>
+                      startTransition(() => {
+                        follow.mutate({ userId: s.id, following: false });
+                      })
+                    }
+                  >
+                    Folgen
+                  </Button>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+
+        {/* Explore CTA */}
+        <Link
+          href={'/explore' as Route}
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-gold px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-gold/90"
+        >
+          <Compass className="h-4 w-4" />
+          Neue Accounts entdecken
+        </Link>
+      </div>
     </div>
   );
 }
