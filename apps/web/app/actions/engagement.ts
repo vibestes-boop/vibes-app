@@ -117,7 +117,9 @@ export async function toggleFollow(
 }
 
 // -----------------------------------------------------------------------------
-// createComment — wir bewusst ohne Parent-Replies (Native hat, Web kommt später).
+// createComment — Top-Level und Replies.
+// parentId optional — wenn gesetzt, wird parent_id in die DB geschrieben
+// (max. 1 Ebene tief, entsprechend der Migration 20260331020000_comment_replies.sql).
 // -----------------------------------------------------------------------------
 
 const COMMENT_MAX = 500;
@@ -125,6 +127,7 @@ const COMMENT_MAX = 500;
 export async function createComment(
   postId: string,
   rawBody: string,
+  parentId?: string | null,
 ): Promise<ActionResult<{ id: string }>> {
   const viewer = await getViewerId();
   if (!viewer) return { ok: false, error: 'Nicht eingeloggt.' };
@@ -146,19 +149,29 @@ export async function createComment(
   if (post.allow_comments === false) return { ok: false, error: 'Kommentare sind hier deaktiviert.' };
 
   // Mobile-DB-`comments`-Spalte heißt `text`, nicht `body`.
+  const insertRow: Record<string, unknown> = { post_id: postId, user_id: viewer.id, text: body };
+  if (parentId) insertRow.parent_id = parentId;
+
   const { data, error } = await supabase
     .from('comments')
-    .insert({ post_id: postId, user_id: viewer.id, text: body })
+    .insert(insertRow)
     .select('id')
     .single();
 
   if (error || !data) return { ok: false, error: error?.message ?? 'Fehler beim Senden.' };
 
-  // Wir invalidieren Post-Caches (getPostComments ist pro-request gecached, aber
-  // ISR-Renders von /p/[postId] dürfen vom neuen Count profitieren).
   revalidateTag(`post:${postId}`);
 
   return { ok: true, data: { id: data.id as string } };
+}
+
+// fetchCommentReplies — Server Action Wrapper für getCommentReplies.
+// Wird von CommentThread (Client-Component) aufgerufen.
+export async function fetchCommentReplies(
+  parentId: string,
+): Promise<import('@/lib/data/public').CommentWithAuthor[]> {
+  const { getCommentReplies } = await import('@/lib/data/public');
+  return getCommentReplies(parentId);
 }
 
 export async function deleteComment(commentId: string): Promise<ActionResult> {

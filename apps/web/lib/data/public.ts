@@ -261,9 +261,13 @@ export interface CommentWithAuthor {
   id: string;
   post_id: string;
   user_id: string;
+  /** null = Top-Level-Kommentar; uuid = Reply auf einen anderen Kommentar. */
+  parent_id: string | null;
   body: string;
   like_count: number;
   created_at: string;
+  /** Anzahl direkter Antworten (denormalisiert via Sub-Query in getPostComments). */
+  reply_count: number;
   author: Pick<PublicProfile, 'id' | 'username' | 'display_name' | 'avatar_url' | 'verified'>;
 }
 
@@ -271,21 +275,35 @@ type CommentRowMobile = {
   id: string;
   post_id: string;
   user_id: string;
+  parent_id: string | null;
   text: string | null;
   created_at: string;
+  reply_count?: { count: number }[] | number | null;
   author: AuthorRow | AuthorRow[] | null;
 };
 
+// Hilfsfunktion — normalisiert PostgREST count-embedding auf Zahl.
+function extractCommentCount(raw: CommentRowMobile['reply_count']): number {
+  if (!raw) return 0;
+  if (typeof raw === 'number') return raw;
+  if (Array.isArray(raw) && raw.length > 0) return raw[0]?.count ?? 0;
+  return 0;
+}
+
+// getPostComments — nur Top-Level-Kommentare (parent_id IS NULL), älteste zuerst.
+// reply_count wird als aggregiertes COUNT eingebettet.
 export const getPostComments = cache(async (postId: string, limit = 30): Promise<CommentWithAuthor[]> => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('comments')
     .select(
-      `id, post_id, user_id, text, created_at,
+      `id, post_id, user_id, parent_id, text, created_at,
+       reply_count:comments!comments_parent_id_fkey(count),
        author:profiles!comments_user_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )`,
     )
     .eq('post_id', postId)
-    .order('created_at', { ascending: false })
+    .is('parent_id', null)
+    .order('created_at', { ascending: true })
     .limit(limit);
 
   if (error || !data) return [];
@@ -297,14 +315,54 @@ export const getPostComments = cache(async (postId: string, limit = 30): Promise
       id: row.id,
       post_id: row.post_id,
       user_id: row.user_id,
+      parent_id: row.parent_id ?? null,
       body: row.text ?? '',
-      like_count: 0, // Mobile-Schema denormalisiert Comment-Likes nicht; Web zeigt 0.
+      like_count: 0,
+      reply_count: extractCommentCount(row.reply_count),
       created_at: row.created_at,
       author,
     });
   }
   return out;
 });
+
+// getCommentReplies — Replies zu einem Top-Level-Kommentar, älteste zuerst.
+// Kein React.cache() — wird client-seitig via Server Action aufgerufen,
+// per-request-Dedup bringt dort nichts.
+export async function getCommentReplies(
+  parentId: string,
+  limit = 20,
+): Promise<CommentWithAuthor[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('comments')
+    .select(
+      `id, post_id, user_id, parent_id, text, created_at,
+       author:profiles!comments_user_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )`,
+    )
+    .eq('parent_id', parentId)
+    .order('created_at', { ascending: true })
+    .limit(limit);
+
+  if (error || !data) return [];
+  const out: CommentWithAuthor[] = [];
+  for (const row of data as unknown as CommentRowMobile[]) {
+    const author = normalizeAuthor(row.author);
+    if (!author) continue;
+    out.push({
+      id: row.id,
+      post_id: row.post_id,
+      user_id: row.user_id,
+      parent_id: row.parent_id ?? null,
+      body: row.text ?? '',
+      like_count: 0,
+      reply_count: 0, // Replies haben keine weiteren Replies (1 Ebene max.)
+      created_at: row.created_at,
+      author,
+    });
+  }
+  return out;
+}
 
 // -----------------------------------------------------------------------------
 // Story with TTL check — returns null if expired (Mobile hat kein expires_at).

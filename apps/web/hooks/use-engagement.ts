@@ -129,13 +129,17 @@ export function useToggleFollow() {
 // vom Server brauchen und der Thread-Refresh ein paar hundert ms dauert.
 // -----------------------------------------------------------------------------
 
-export function useCreateComment(postId: string) {
+export function useCreateComment(postId: string, parentId?: string | null) {
   const qc = useQueryClient();
 
   return useMutation({
-    mutationFn: async (body: string) => unwrap(await createComment(postId, body)),
+    mutationFn: async (body: string) => unwrap(await createComment(postId, body, parentId)),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['comments', postId] });
+      // Replies-Cache für den Parent-Kommentar invalidieren wenn es eine Reply ist.
+      if (parentId) {
+        qc.invalidateQueries({ queryKey: ['replies', parentId] });
+      }
       qc.setQueriesData<FeedPost[]>({ queryKey: ['feed'] }, (prev) =>
         prev?.map((p) =>
           p.id === postId ? { ...p, comment_count: p.comment_count + 1 } : p,

@@ -397,6 +397,9 @@ export default async function PostDetailPage({
         comments={comments}
         allowComments={post.allow_comments}
         totalCount={post.comment_count}
+        isAuthenticated={!!viewer}
+        postId={post.id}
+        postPath={`/p/${post.id}`}
       />
 
       {/* Kommentar-Eingabe — nur wenn Kommentare erlaubt */}
