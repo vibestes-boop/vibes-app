@@ -21,6 +21,7 @@ import { PostActionsBar } from '@/components/post/post-actions-bar';
 import { CommentForm } from '@/components/post/comment-form';
 import { FollowButton } from '@/components/profile/follow-button';
 import { PostAuthorMenu } from '@/components/post/post-author-menu';
+import { PostViewerMenu } from '@/components/post/post-viewer-menu';
 import { PostDwellTracker } from '@/components/post/post-dwell-tracker';
 import { linkify } from '@/lib/linkify';
 
@@ -330,13 +331,23 @@ export default async function PostDetailPage({
                   authorUsername={post.author.username}
                 />
               ) : (
-                <FollowButton
-                  isAuthenticated={!!viewer}
-                  isFollowing={followingAuthor}
-                  isSelf={isSelf}
-                  username={post.author.username}
-                  targetUserId={post.author.id}
-                />
+                // v1.w.UI.58: FollowButton + PostViewerMenu (Melden / Kein Interesse /
+                // Link kopieren / Blockieren) in einer flex-row.
+                <div className="flex items-center gap-2">
+                  <FollowButton
+                    isAuthenticated={!!viewer}
+                    isFollowing={followingAuthor}
+                    isSelf={isSelf}
+                    username={post.author.username}
+                    targetUserId={post.author.id}
+                  />
+                  <PostViewerMenu
+                    postId={post.id}
+                    targetUserId={post.author.id}
+                    targetUsername={post.author.username}
+                    isAuthenticated={!!viewer}
+                  />
+                </div>
               )}
             </div>
           </div>
