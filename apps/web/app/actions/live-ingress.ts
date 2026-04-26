@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server';
 
 // -----------------------------------------------------------------------------
 // OBS-WHIP-Ingest Server-Actions (v1.w.UI.35 — Phase 6b der WEB_ROADMAP).
+// v1.w.UI.36 — Persistenter WHIP-Ingress (Bearer Token ändert sich nie).
 //
 // Wrapper um die `livekit-whip-ingress` Edge-Function. Wir delegieren den
 // gesamten LiveKit-Twirp-Flow an die Function (Admin-JWT-Sigung,
@@ -13,11 +14,13 @@ import { createClient } from '@/lib/supabase/server';
 //   2. Function via supabase.functions.invoke() rufen
 //   3. Antwort in einen für die UI lesbaren Shape mappen
 //
-// Warum Server-Action statt Direkt-Fetch im Client:
-//   - User-JWT bleibt server-side, wandert nie ins Bundle
-//   - Bei Erfolg können wir gezielt Cache-Tags revalidieren (zB
-//     /studio/live falls dort offene Streams gelistet sind)
-//   - Konsistent mit dem Rest der Web-Auth-Architektur (action-based)
+// v1.w.UI.36 Ergänzungen:
+//   - getMyWhipIngress(): liest persistente Credentials via SECURITY DEFINER
+//     RPC (get_my_whip_ingress). Wird vom OBS-Setup-Form on-mount aufgerufen
+//     damit der User seine Credentials sofort sieht ohne einen neuen Stream
+//     starten zu müssen.
+//   - rotateWhipIngress(): löscht alten LiveKit-Ingress, erstellt neuen,
+//     aktualisiert user_whip_ingresses. Gibt neue Credentials zurück.
 // -----------------------------------------------------------------------------
 
 const createSchema = z.object({
@@ -36,6 +39,7 @@ export type CreateWhipResult =
       roomName: string;
       ingressUrl: string;
       ingressStreamKey: string;
+      isPersistent: boolean;
     }
   | { ok: false; error: string };
 
@@ -43,6 +47,21 @@ export type SimpleResult = { ok: true } | { ok: false; error: string };
 
 export type StatusResult =
   | { ok: true; isPublishing: boolean }
+  | { ok: false; error: string };
+
+export type WhipIngressInfo = {
+  ingressId: string;
+  ingressUrl: string;
+  streamKey: string;
+  roomName: string;
+} | null;
+
+export type GetMyWhipIngressResult =
+  | { ok: true; ingress: WhipIngressInfo }
+  | { ok: false; error: string };
+
+export type RotateWhipResult =
+  | { ok: true; ingressUrl: string; ingressStreamKey: string }
   | { ok: false; error: string };
 
 type InvokeResult<T> = { error: string } | (T & { error?: never });
@@ -68,12 +87,53 @@ async function invokeFunction<T>(
 }
 
 // -----------------------------------------------------------------------------
-// createWhipIngress — legt Session + WHIP-Ingress an.
+// getMyWhipIngress — liest persistente Ingress-Credentials aus der DB.
 //
-// Returns ingressUrl + ingressStreamKey die der User in OBS eintragen muss.
-// Diese Werte werden auch in der live_sessions-Row persistiert (für späteren
-// Re-Read via get_my_ingress_credentials RPC, falls der User die Seite
-// reloadet bevor er OBS konfiguriert hat).
+// Nutzt den SECURITY DEFINER RPC get_my_whip_ingress() der die column-level
+// REVOKE auf stream_key umgeht (nur für den eigenen User).
+//
+// Gibt null zurück wenn noch kein Ingress existiert (erster Stream).
+// -----------------------------------------------------------------------------
+export async function getMyWhipIngress(): Promise<GetMyWhipIngressResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'Bitte zuerst anmelden.' };
+
+  const { data, error } = await supabase.rpc('get_my_whip_ingress');
+  if (error) return { ok: false, error: error.message };
+
+  const row = (data as Array<{
+    ingress_id: string;
+    ingress_url: string;
+    stream_key: string;
+    room_name: string;
+  }>)?.[0];
+
+  if (!row) return { ok: true, ingress: null };
+
+  return {
+    ok: true,
+    ingress: {
+      ingressId: row.ingress_id,
+      ingressUrl: row.ingress_url,
+      streamKey: row.stream_key,
+      roomName: row.room_name,
+    },
+  };
+}
+
+// -----------------------------------------------------------------------------
+// createWhipIngress — legt Session + ggf. WHIP-Ingress an.
+//
+// v1.w.UI.36: Die Edge-Function prüft jetzt selbst ob ein persistenter Ingress
+// existiert. Falls ja, wird nur eine neue Session angelegt und die
+// gespeicherten Credentials zurückgegeben — kein neuer LiveKit-Ingress.
+// Falls nein, wird ein neuer Ingress erstellt.
+//
+// Returns ingressUrl + ingressStreamKey die der User in OBS eintragen muss
+// (bei vorhandenem Ingress: dieselben Werte wie beim letzten Mal).
 // -----------------------------------------------------------------------------
 export async function createWhipIngress(input: {
   title: string;
@@ -89,6 +149,7 @@ export async function createWhipIngress(input: {
     roomName: string;
     ingressUrl: string;
     ingressStreamKey: string;
+    isPersistent: boolean;
   }>('livekit-whip-ingress', {
     action: 'create',
     title: parsed.data.title,
@@ -108,15 +169,15 @@ export async function createWhipIngress(input: {
     roomName: result.roomName,
     ingressUrl: result.ingressUrl,
     ingressStreamKey: result.ingressStreamKey,
+    isPersistent: result.isPersistent ?? true,
   };
 }
 
 // -----------------------------------------------------------------------------
-// deleteWhipIngress — beendet die Session + räumt den LiveKit-Ingress auf.
+// deleteWhipIngress — beendet die Session.
 //
-// Wird vom UI gerufen wenn der User „Stream beenden" klickt (oder beim
-// Page-Unload als best-effort cleanup). Idempotent — doppel-Call schadet
-// nicht.
+// v1.w.UI.36: Der LiveKit-Ingress bleibt erhalten — nur die Session wird auf
+// status='ended' gesetzt. Idempotent — doppel-Call schadet nicht.
 // -----------------------------------------------------------------------------
 export async function deleteWhipIngress(sessionId: string): Promise<SimpleResult> {
   const parsed = sessionIdSchema.safeParse({ sessionId });
@@ -157,4 +218,32 @@ export async function getWhipStatus(sessionId: string): Promise<StatusResult> {
     return { ok: false, error: result.error };
   }
   return { ok: true, isPublishing: !!result.isPublishing };
+}
+
+// -----------------------------------------------------------------------------
+// rotateWhipIngress — erstellt frische Credentials (neuer Stream-Key).
+//
+// Löscht den alten LiveKit-Ingress und erstellt einen neuen mit demselben
+// room_name. Nützlich wenn der Stream-Key kompromittiert wurde.
+//
+// Hinweis: Falls gerade ein Stream läuft, wird OBS getrennt. Der User sollte
+// vorher „Stream beenden" klicken.
+// -----------------------------------------------------------------------------
+export async function rotateWhipIngress(): Promise<RotateWhipResult> {
+  const result = await invokeFunction<{
+    ingressUrl: string;
+    ingressStreamKey: string;
+    ingressId: string;
+  }>('livekit-whip-ingress', {
+    action: 'rotate',
+  });
+
+  if ('error' in result && typeof result.error === 'string') {
+    return { ok: false, error: result.error };
+  }
+  if (!result.ingressUrl || !result.ingressStreamKey) {
+    return { ok: false, error: 'Antwort vom Server unvollständig.' };
+  }
+
+  return { ok: true, ingressUrl: result.ingressUrl, ingressStreamKey: result.ingressStreamKey };
 }

@@ -135,6 +135,13 @@ const { colors } = useTheme();
 
 ## 🚀 Aktuell in Entwicklung (Stand April 2026)
 
+### v1.w.UI.36 — Persistenter WHIP-Ingress (OBS Bearer Token bleibt stabil)
+- [x] **Problem**: Bei jedem neuen Stream wurde ein neuer LiveKit-Ingress erstellt → neuer Stream-Key → OBS musste jedes Mal rekonfiguriert werden. Komplett inkompatibel mit dem normalen Streaming-Workflow (Twitch/YouTube generieren den Key einmalig).
+- [x] **DB**: Neue Tabelle `user_whip_ingresses` (PK: `user_id`) — speichert `ingress_id`, `ingress_url`, `stream_key`, `room_name` dauerhaft. `room_name` = `obs-perm-{userId.slice(0,8)}` (stabil). column-level REVOKE auf `stream_key` + SECURITY DEFINER RPC `get_my_whip_ingress()` für sicheren Zugriff.
+- [x] **Edge Function `livekit-whip-ingress`**: `handleCreate` prüft `user_whip_ingresses` — falls Row existiert: neue Session mit bestehenden Credentials, kein neuer LiveKit-Ingress. Falls nicht: neuer Ingress + in DB persistieren. `handleDelete` beendet nur Session (kein LiveKit DeleteIngress mehr). Neue Action `rotate`: löscht alten Ingress, erstellt neuen, aktualisiert DB.
+- [x] **Server Actions** (`live-ingress.ts`): `getMyWhipIngress()` via RPC, `rotateWhipIngress()` via edge function. `createWhipIngress` + `deleteWhipIngress` transparent — Verhalten ändert sich server-seitig.
+- [x] **OBS-Setup-Form**: On-mount prüft `getMyWhipIngress()` → bei vorhandenen Credentials zeigt das Setup-Panel sofort URL + Key (readonly) + Titel-Eingabe + „Stream starten"-Button. Kein Credential-Regenerieren mehr. „Schlüssel rotieren"-Link mit Bestätigungs-Dialog. Erste Session: unveränderter Flow (generate-Button).
+
 ### v1.27.4 — CoHost-Poll-Parity
 - [x] **Problem**: Nach v1.27.2 (Chat-Moderation) und v1.27.3 (serverseitiges Mute) blieb ein weiterer UX-Gap: Nur der Host konnte Live-Umfragen starten/schließen. Ein aktiver CoHost — gleichberechtigt auf der Bühne, mit Mod-Rechten — konnte nicht auf ein spontanes „Poll jetzt!"-Moment reagieren. TikTok/Twitch: beide Streamer steuern Audience-Engagement-Tools.
 - [x] **Design-Entscheidung**: Same single-source-of-truth-Pattern wie v1.27.2 — `is_live_session_moderator` bleibt die Authority-Grenze, und weil dieser Helper seit v1.27.2 aktive CoHosts einschließt, reicht eine reine RLS-Policy-Erweiterung auf `live_polls`. Kein neuer Helper, kein neuer RPC-Wrapper, keine zusätzliche Tabelle.
