@@ -412,3 +412,100 @@ export const getPostInteractionState = cache(
     return { liked: (likeCount ?? 0) > 0, saved: (saveCount ?? 0) > 0 };
   },
 );
+
+// -----------------------------------------------------------------------------
+// getProfileFollowers / getProfileFollowing — für /u/[username]/followers +
+// /u/[username]/following. Beide liefern dasselbe Shape (id, username,
+// display_name, avatar_url, verified) — damit dieselbe UserRow-Komponente
+// in beiden Seiten genutzt werden kann.
+//
+// Pagination via `offset` — ausreichend für Listen bis ~500 (UI zeigt max 100).
+// Für sehr große Follow-Listen wäre Keyset-Pagination über follows.created_at
+// nötig, aber das ist ein v2-Topic.
+// -----------------------------------------------------------------------------
+
+export interface FollowUser {
+  id: string;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  verified: boolean;
+}
+
+export const getProfileFollowers = cache(
+  async (userId: string, limit = 50, offset = 0): Promise<FollowUser[]> => {
+    const supabase = await createClient();
+
+    // follows WHERE following_id = userId → follower_id-Liste
+    const { data: follows } = await supabase
+      .from('follows')
+      .select('follower_id, created_at')
+      .eq('following_id', userId)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    const ids = (follows ?? []).map((f) => f.follower_id as string);
+    if (ids.length === 0) return [];
+
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, username, display_name, avatar_url, verified:is_verified')
+      .in('id', ids);
+
+    const byId = new Map(
+      (profiles ?? []).map((p) => [
+        p.id as string,
+        {
+          id: p.id as string,
+          username: p.username as string,
+          display_name: p.display_name as string | null,
+          avatar_url: p.avatar_url as string | null,
+          verified: (p.verified as boolean | null) ?? false,
+        } satisfies FollowUser,
+      ]),
+    );
+
+    return ids
+      .map((id) => byId.get(id))
+      .filter((u): u is FollowUser => u !== undefined);
+  },
+);
+
+export const getProfileFollowing = cache(
+  async (userId: string, limit = 50, offset = 0): Promise<FollowUser[]> => {
+    const supabase = await createClient();
+
+    // follows WHERE follower_id = userId → following_id-Liste
+    const { data: follows } = await supabase
+      .from('follows')
+      .select('following_id, created_at')
+      .eq('follower_id', userId)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    const ids = (follows ?? []).map((f) => f.following_id as string);
+    if (ids.length === 0) return [];
+
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, username, display_name, avatar_url, verified:is_verified')
+      .in('id', ids);
+
+    const byId = new Map(
+      (profiles ?? []).map((p) => [
+        p.id as string,
+        {
+          id: p.id as string,
+          username: p.username as string,
+          display_name: p.display_name as string | null,
+          avatar_url: p.avatar_url as string | null,
+          verified: (p.verified as boolean | null) ?? false,
+        } satisfies FollowUser,
+      ]),
+    );
+
+    return ids
+      .map((id) => byId.get(id))
+      .filter((u): u is FollowUser => u !== undefined);
+  },
+);

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { BadgeCheck, Heart, ShoppingBag, Swords } from 'lucide-react';
 
@@ -108,15 +109,38 @@ function formatStat(n: number, locale: Locale): string {
   return `${val.endsWith(`${sep}0`) ? val.slice(0, -2) : val}M`;
 }
 
-function StatPill({ label, value, locale }: { label: string; value: number; locale: Locale }) {
-  return (
-    <div className="flex flex-col items-center gap-px">
+function StatPill({
+  label,
+  value,
+  locale,
+  href,
+}: {
+  label: string;
+  value: number;
+  locale: Locale;
+  href?: string;
+}) {
+  const inner = (
+    <>
       <span className="text-xl font-bold tabular-nums leading-tight">
         {formatStat(value, locale)}
       </span>
       <span className="text-xs text-muted-foreground">{label}</span>
-    </div>
+    </>
   );
+
+  if (href) {
+    return (
+      <Link
+        href={href as import('next').Route}
+        className="flex flex-col items-center gap-px rounded-md transition-colors hover:text-foreground/80"
+      >
+        {inner}
+      </Link>
+    );
+  }
+
+  return <div className="flex flex-col items-center gap-px">{inner}</div>;
 }
 
 // -----------------------------------------------------------------------------
@@ -231,11 +255,9 @@ export default async function ProfilePage({
             <div className="text-sm text-muted-foreground">@{profile.username}</div>
 
             <div className="flex items-center gap-6 pt-1">
-              {/* Phase 3 bringt /u/[username]/followers + /following als eigene Routen.
-                  Bis dahin sind die Stat-Pills reine Display-Elemente — kein Link. */}
               <StatPill label={t('profile.statPosts')}     value={profile.post_count}      locale={locale} />
-              <StatPill label={t('profile.statFollower')}  value={profile.follower_count}  locale={locale} />
-              <StatPill label={t('profile.statFollowing')} value={profile.following_count} locale={locale} />
+              <StatPill label={t('profile.statFollower')}  value={profile.follower_count}  locale={locale} href={`/u/${profile.username}/followers`} />
+              <StatPill label={t('profile.statFollowing')} value={profile.following_count} locale={locale} href={`/u/${profile.username}/following`} />
             </div>
           </div>
 
