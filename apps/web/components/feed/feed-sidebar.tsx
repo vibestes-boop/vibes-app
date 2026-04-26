@@ -14,11 +14,13 @@ import {
   UserRound,
   Plus,
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { OpenConsentSettingsButton } from '@/components/consent/consent-banner';
 import { FollowedAccountsSection } from '@/components/feed/followed-accounts-section';
 import { MoreMenu } from '@/components/layout/more-menu';
 import type { FollowedAccount } from '@/lib/data/feed';
+import { getUnreadDmCount } from '@/app/actions/messages';
 
 // -----------------------------------------------------------------------------
 // FeedSidebar — linke Navigation auf Desktop-Feed-Seiten.
@@ -69,6 +71,16 @@ export function FeedSidebar({
   const pathname = usePathname();
   const isActive = (href: Route) => pathname === href;
 
+  // Unread-DM-Badge: nur für eingeloggte User pollen, alle 30s refresh.
+  // Gibt 0 zurück wenn nicht eingeloggt → kein Badge.
+  const { data: unreadDms = 0 } = useQuery({
+    queryKey: ['unread-dms'],
+    queryFn: () => getUnreadDmCount(),
+    enabled: !!viewerId,
+    refetchInterval: 30_000,
+    staleTime: 20_000,
+  });
+
   return (
     <div className="sticky top-0 flex h-[100dvh] flex-col gap-4 overflow-y-auto p-4">
       {/*
@@ -105,12 +117,19 @@ export function FeedSidebar({
           const disabled = item.requiresAuth && !viewerId;
           const active = isActive(item.href);
           const Icon = item.icon;
+          const isMessages = item.href === '/messages';
+          const badgeCount = isMessages ? unreadDms : 0;
           return (
             <Link
               key={`${item.label}-${item.href}`}
               href={item.href}
               aria-disabled={disabled}
               aria-current={active ? 'page' : undefined}
+              aria-label={
+                isMessages && badgeCount > 0
+                  ? `Messages (${badgeCount > 99 ? '99+' : badgeCount} ungelesen)`
+                  : item.label
+              }
               className={cn(
                 'flex items-center gap-3 rounded-lg px-3 py-2.5 text-[15px] transition-colors',
                 active
@@ -120,7 +139,15 @@ export function FeedSidebar({
               )}
             >
               <Icon className="h-6 w-6 shrink-0" />
-              <span className="truncate">{item.label}</span>
+              <span className="flex-1 truncate">{item.label}</span>
+              {isMessages && badgeCount > 0 && (
+                <span
+                  aria-hidden="true"
+                  className="ml-auto flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-brand-gold px-1.5 text-[11px] font-semibold leading-none text-white"
+                >
+                  {badgeCount > 99 ? '99+' : badgeCount}
+                </span>
+              )}
             </Link>
           );
         })}
