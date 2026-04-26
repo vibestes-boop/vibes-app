@@ -3,12 +3,13 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { BadgeCheck, Heart, ShoppingBag, Swords } from 'lucide-react';
 
-import { getPublicProfile, getProfilePosts, getProfileLikedPosts, isFollowing } from '@/lib/data/public';
+import { getPublicProfile, getProfilePosts, getProfileLikedPosts, getBattleHistory, isFollowing } from '@/lib/data/public';
 import { getUser } from '@/lib/auth/session';
 import { getMyCoinBalance } from '@/lib/data/payments';
 import { getMerchantProducts } from '@/lib/data/shop';
 import { PostGrid } from '@/components/profile/post-grid';
 import { ProductCard } from '@/components/shop/product-card';
+import { BattleList } from '@/components/profile/battle-list';
 import { ProfileTabs, type ProfileTab } from '@/components/profile/profile-tabs';
 import { FollowButton } from '@/components/profile/follow-button';
 import { CreatorTipButton } from '@/components/profile/creator-tip-button';
@@ -173,11 +174,12 @@ export default async function ProfilePage({
   // Parallel: Session + Follow-Status + Posts-Feed + Coin-Balance + i18n
   // isSelf kann erst nach getUser() bestimmt werden — Likes-Fetch wird daher
   // zwei-stufig: erst viewer, dann (wenn isSelf && tab=likes) likedPosts.
-  const [viewer, alreadyFollowing, posts, shopProducts, balance, t, locale] = await Promise.all([
+  const [viewer, alreadyFollowing, posts, shopProducts, battles, balance, t, locale] = await Promise.all([
     getUser(),
     isFollowing(profile.id),
     tab === 'posts' ? getProfilePosts(profile.id, 24) : Promise.resolve([]),
     tab === 'shop' ? getMerchantProducts(profile.id, 48) : Promise.resolve([]),
+    tab === 'battles' ? getBattleHistory(profile.id, 30) : Promise.resolve([]),
     getMyCoinBalance(),
     getT(),
     getLocale(),
@@ -370,11 +372,10 @@ export default async function ProfilePage({
         )}
 
         {tab === 'battles' && (
-          <EmptyPanelInfo
-            icon="battles"
-            title={t('profile.panelBattlesTitle')}
-            hint={t('profile.panelBattlesHint')}
-          />
+          // v1.w.UI.52: echte Battle-History aus live_battle_history.
+          // BattleList rendert W-L-D Summary + chronologische Rows.
+          // Leerer State kommt aus BattleList selbst.
+          <BattleList battles={battles} />
         )}
       </section>
     </main>

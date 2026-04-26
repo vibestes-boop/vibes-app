@@ -307,6 +307,100 @@ export const getBookmarkedPosts = cache(
 );
 
 // -----------------------------------------------------------------------------
+// getBattleHistory — v1.w.UI.52 Profil Battles-Tab.
+//
+// Liefert alle Battles eines Users (als Host oder Guest) aus
+// `live_battle_history`, jeweils mit Opponent-Profil.
+// Public lesbar (RLS: authenticated), kein Auth-Gate nötig außer für
+// den Battle-Ergebnis-Hinweis (won/lost/draw relative zum Viewer).
+// -----------------------------------------------------------------------------
+
+export interface BattleRecord {
+  id: string;
+  session_id: string;
+  /** Der User selbst: score des angezeigten Profils */
+  my_score: number;
+  /** Der Gegner: score */
+  opponent_score: number;
+  /** 'won' | 'lost' | 'draw' — relativ zum Profil-User */
+  result: 'won' | 'lost' | 'draw';
+  duration_secs: number;
+  ended_at: string;
+  opponent: {
+    id: string;
+    username: string | null;
+    display_name: string | null;
+    avatar_url: string | null;
+  };
+}
+
+export const getBattleHistory = cache(
+  async (userId: string, limit = 30): Promise<BattleRecord[]> => {
+    const supabase = await createClient();
+
+    // Zwei separate Queries (als Host / als Guest) + client-side merge,
+    // weil PostgREST kein OR über FKs in einem Select unterstützt.
+    const [hostRes, guestRes] = await Promise.all([
+      supabase
+        .from('live_battle_history')
+        .select(
+          `id, session_id, host_score, guest_score, winner, duration_secs, ended_at,
+           opponent:profiles!live_battle_history_guest_id_fkey (
+             id, username, display_name, avatar_url
+           )`,
+        )
+        .eq('host_id', userId)
+        .order('ended_at', { ascending: false })
+        .limit(limit),
+      supabase
+        .from('live_battle_history')
+        .select(
+          `id, session_id, host_score, guest_score, winner, duration_secs, ended_at,
+           opponent:profiles!live_battle_history_host_id_fkey (
+             id, username, display_name, avatar_url
+           )`,
+        )
+        .eq('guest_id', userId)
+        .order('ended_at', { ascending: false })
+        .limit(limit),
+    ]);
+
+    type RawRow = {
+      id: string;
+      session_id: string;
+      host_score: number;
+      guest_score: number;
+      winner: string;
+      duration_secs: number;
+      ended_at: string;
+      opponent: { id: string; username: string | null; display_name: string | null; avatar_url: string | null } | null;
+    };
+
+    const toRecord = (row: RawRow, role: 'host' | 'guest'): BattleRecord | null => {
+      if (!row.opponent) return null;
+      const myScore   = role === 'host' ? row.host_score  : row.guest_score;
+      const oppScore  = role === 'host' ? row.guest_score : row.host_score;
+      const winner    = row.winner; // 'host' | 'guest' | 'draw'
+      const result: BattleRecord['result'] =
+        winner === 'draw' ? 'draw'
+        : (winner === 'host') === (role === 'host') ? 'won' : 'lost';
+      return { id: row.id, session_id: row.session_id, my_score: myScore, opponent_score: oppScore, result, duration_secs: row.duration_secs, ended_at: row.ended_at, opponent: row.opponent };
+    };
+
+    const hostRows   = ((hostRes.data  ?? []) as unknown as RawRow[]).map((r) => toRecord(r, 'host')).filter((r): r is BattleRecord => r !== null);
+    const guestRows  = ((guestRes.data ?? []) as unknown as RawRow[]).map((r) => toRecord(r, 'guest')).filter((r): r is BattleRecord => r !== null);
+
+    // Merge + sort by ended_at desc, deduplicate by id, cap at limit
+    const all = [...hostRows, ...guestRows]
+      .sort((a, b) => b.ended_at.localeCompare(a.ended_at))
+      .filter((r, i, arr) => arr.findIndex((x) => x.id === r.id) === i)
+      .slice(0, limit);
+
+    return all;
+  },
+);
+
+// -----------------------------------------------------------------------------
 // Single post with author-profile joined.
 //
 // `media_type` wird zusätzlich zum Post-Contract durchgereicht, damit die
