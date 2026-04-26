@@ -15,7 +15,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import type { Route } from 'next';
 import { createBrowserClient } from '@supabase/ssr';
-import { Send, ImagePlus, Smile, CornerDownRight, X, Check, CheckCheck, Trash2 } from 'lucide-react';
+import { Send, ImagePlus, Loader2, Smile, CornerDownRight, X, Check, CheckCheck, Trash2 } from 'lucide-react';
 import type {
   MessageWithContext,
   ReactionAggregate,
@@ -27,6 +27,7 @@ import {
   toggleMessageReaction,
   deleteMessage,
   loadOlderMessages,
+  requestImageUploadPath,
 } from '@/app/actions/messages';
 
 // -----------------------------------------------------------------------------
@@ -728,6 +729,84 @@ function Composer({
   const [isPending, startTransition] = useTransition();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  // ── v1.w.UI.73 — Bild-Upload-State ──────────────────────────────────────────
+  // pendingImagePreviewUrl: lokale Object-URL für die Vorschau (sofort nach
+  // Dateiauswahl). pendingImageUrl: Supabase-Public-URL nach erfolgtem Upload.
+  // Erst wenn `pendingImageUrl` gesetzt ist, kann die Message abgeschickt werden.
+  // isUploading: true während des Uploads (disables Send + zeigt Spinner).
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [pendingImagePreviewUrl, setPendingImagePreviewUrl] = useState<string | null>(null);
+  const [pendingImageUrl, setPendingImageUrl] = useState<string | null>(null);
+  const [pendingImageName, setPendingImageName] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+
+  // Cleanup Object-URL bei Unmount oder wenn das Bild entfernt wird.
+  const clearPendingImage = useCallback(() => {
+    if (pendingImagePreviewUrl) URL.revokeObjectURL(pendingImagePreviewUrl);
+    setPendingImagePreviewUrl(null);
+    setPendingImageUrl(null);
+    setPendingImageName(null);
+    setUploadError(null);
+  }, [pendingImagePreviewUrl]);
+
+  const handleFileSelect = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      // Reset des Inputs damit dieselbe Datei nochmals ausgewählt werden kann.
+      e.target.value = '';
+      if (!file) return;
+
+      if (!file.type.startsWith('image/')) {
+        setUploadError('Nur Bilddateien erlaubt.');
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        setUploadError('Max. 10 MB.');
+        return;
+      }
+
+      // Vorschau sofort zeigen, Upload starten.
+      if (pendingImagePreviewUrl) URL.revokeObjectURL(pendingImagePreviewUrl);
+      const previewUrl = URL.createObjectURL(file);
+      setPendingImagePreviewUrl(previewUrl);
+      setPendingImageName(file.name);
+      setPendingImageUrl(null);
+      setUploadError(null);
+      setIsUploading(true);
+
+      const pathResult = await requestImageUploadPath();
+      if (!pathResult.ok) {
+        setIsUploading(false);
+        URL.revokeObjectURL(previewUrl);
+        setPendingImagePreviewUrl(null);
+        setPendingImageName(null);
+        setUploadError(pathResult.error);
+        return;
+      }
+
+      const { path, bucket } = pathResult.data;
+      const client = supa();
+      const { error: storageError } = await client.storage
+        .from(bucket)
+        .upload(path, file, { upsert: false, contentType: file.type });
+
+      if (storageError) {
+        setIsUploading(false);
+        URL.revokeObjectURL(previewUrl);
+        setPendingImagePreviewUrl(null);
+        setPendingImageName(null);
+        setUploadError('Upload fehlgeschlagen.');
+        return;
+      }
+
+      const { data: urlData } = client.storage.from(bucket).getPublicUrl(path);
+      setPendingImageUrl(urlData.publicUrl);
+      setIsUploading(false);
+    },
+    [pendingImagePreviewUrl],
+  );
+
   // Typing-Presence clientseitig tracken (3s Auto-Stop). Nutzt den von
   // MessageThread verwalteten Channel — KEINE eigene `client.channel(...)`-Call-Site
   // hier, sonst bekommen wir einen zweiten `.on('presence', …)` auf dem gleichen
@@ -772,17 +851,24 @@ function Composer({
     return `🪙 ${eff.toLocaleString('de-DE')}`;
   };
 
-  const canSend = text.trim().length > 0 || productShare !== null;
+  // canSend: Text eingegeben ODER Produkt-Share ODER Bild fertig hochgeladen.
+  // isUploading blockiert bewusst (Button disabled) damit kein Send vor
+  // fertigem Upload möglich ist — Empfänger sieht sonst eine leere Bubble.
+  const canSend =
+    (text.trim().length > 0 || productShare !== null || pendingImageUrl !== null) &&
+    !isUploading;
 
   const handleSend = () => {
     if (!canSend || isPending) return;
     const content = text.trim();
+    const imageUrlForSend = pendingImageUrl;
     const optimistic: PendingMessage = {
       id: `pending-${Date.now()}-${Math.random().toString(36).slice(2)}`,
       conversation_id: conversationId,
       sender_id: viewerId,
       content: content || (productShare ? `${productShare.title}` : null),
-      image_url: null,
+      // Optimistic: Object-URL für sofortige Vorschau; Realtime ersetzt mit DB-Row.
+      image_url: imageUrlForSend ?? null,
       post_id: null,
       reply_to_id: replyTo?.id ?? null,
       story_media_url: null,
@@ -801,13 +887,12 @@ function Composer({
     };
     onSent(optimistic);
     setText('');
+    clearPendingImage();
     const productForSend = productShare;
     if (productForSend) onClearProductShare();
 
     startTransition(async () => {
-      // Wenn ein Produkt geteilt wird, hängen wir den Produkt-Link ans Ende
-      // an. (Volles Product-Share-Card-Rendering wäre separate Tabelle —
-      // Phase 7b.)
+      // Wenn ein Produkt geteilt wird, hängen wir den Produkt-Link ans Ende an.
       const finalContent = productForSend
         ? `${content ? content + '\n' : ''}🛍️ ${productForSend.title} — ${productPriceLabel(
             productForSend,
@@ -816,6 +901,7 @@ function Composer({
       const res = await sendDirectMessage({
         conversationId,
         content: finalContent || null,
+        imageUrl: imageUrlForSend ?? null,
         replyToId: replyTo?.id ?? null,
       });
       if (!res.ok) {
@@ -880,13 +966,74 @@ function Composer({
         </div>
       )}
 
+      {/* ── Bild-Vorschau-Strip (v1.w.UI.73) ──────────────────────────── */}
+      {(pendingImagePreviewUrl || isUploading) && (
+        <div className="mb-2 flex items-center gap-2 rounded-lg bg-muted/60 px-2 py-1.5">
+          {isUploading ? (
+            <>
+              <Loader2 className="h-4 w-4 flex-none animate-spin text-muted-foreground" aria-hidden="true" />
+              <span className="flex-1 truncate text-xs text-muted-foreground">Wird hochgeladen…</span>
+            </>
+          ) : pendingImagePreviewUrl ? (
+            <>
+              <div className="relative h-12 w-12 flex-none overflow-hidden rounded-md bg-muted">
+                <Image
+                  src={pendingImagePreviewUrl}
+                  alt="Bildvorschau"
+                  fill
+                  className="object-cover"
+                  sizes="48px"
+                  unoptimized
+                />
+              </div>
+              <span className="flex-1 truncate text-xs text-muted-foreground">
+                {pendingImageName}
+                {pendingImageUrl && (
+                  <span className="ml-1 text-green-600">✓ bereit</span>
+                )}
+              </span>
+              <button
+                type="button"
+                onClick={clearPendingImage}
+                aria-label="Bild entfernen"
+                className="grid h-6 w-6 flex-none place-items-center rounded-full hover:bg-muted"
+              >
+                <X className="h-3.5 w-3.5" aria-hidden="true" />
+              </button>
+            </>
+          ) : null}
+          {uploadError && (
+            <span className="text-xs text-destructive">{uploadError}</span>
+          )}
+        </div>
+      )}
+
+      {/* Upload-Fehler ohne Preview (z.B. Dateityp/Größe abgelehnt) */}
+      {uploadError && !pendingImagePreviewUrl && !isUploading && (
+        <div className="mb-2 rounded-lg bg-destructive/10 px-2 py-1 text-xs text-destructive">
+          {uploadError}
+        </div>
+      )}
+
+      {/* Hidden file input — wird via ImagePlus-Button getriggert */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="sr-only"
+        aria-hidden="true"
+        tabIndex={-1}
+        onChange={handleFileSelect}
+      />
+
       <div className="flex items-end gap-2">
         <button
           type="button"
-          disabled
-          className="grid h-9 w-9 flex-none place-items-center rounded-full text-muted-foreground/50"
-          aria-label="Bild anhängen (Phase 7b)"
-          title="Bild-Upload kommt Phase 7b"
+          onClick={() => fileInputRef.current?.click()}
+          disabled={isUploading}
+          className="grid h-9 w-9 flex-none place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
+          aria-label="Bild anhängen"
+          title="Bild anhängen"
         >
           <ImagePlus className="h-5 w-5" />
         </button>

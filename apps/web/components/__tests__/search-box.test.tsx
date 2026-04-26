@@ -98,17 +98,32 @@ describe('SearchBox — Clear-Button', () => {
   beforeEach(() => jest.useFakeTimers());
   afterEach(() => jest.useRealTimers());
 
-  it('leert den Input und entfernt den Dropdown', async () => {
+  it('leert den Input und schließt einen offenen Dropdown', async () => {
     global.fetch = mockFetch(FULL_RESULTS);
-    render(<SearchBox initialQuery="za" />);
-    // Debounce laufen lassen und Dropdown öffnen
+    render(<SearchBox />);
+
+    // Input ausfüllen und Dropdown öffnen
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'za' } });
     await tickDebounce();
+    expect(screen.getByRole('listbox')).toBeInTheDocument();
 
     // Clear klicken
     fireEvent.click(screen.getByRole('button', { name: /löschen/i }));
 
     expect(screen.getByRole('searchbox')).toHaveValue('');
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+  });
+
+  it('fokussiert nach dem Löschen wieder das Input-Feld', async () => {
+    global.fetch = mockFetch(FULL_RESULTS);
+    render(<SearchBox />);
+    fireEvent.change(screen.getByRole('searchbox'), { target: { value: 'za' } });
+    await tickDebounce();
+
+    fireEvent.click(screen.getByRole('button', { name: /löschen/i }));
+
+    // Clear-Button verschwindet nach dem Leeren
+    expect(screen.queryByRole('button', { name: /löschen/i })).not.toBeInTheDocument();
   });
 });
 
