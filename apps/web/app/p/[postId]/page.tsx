@@ -11,8 +11,9 @@ import {
   CalendarDays,
 } from 'lucide-react';
 
-import { getPost, getPostComments, getPostInteractionState, isFollowing } from '@/lib/data/public';
+import { getPost, getPostComments, getPostInteractionState, isFollowing, getProfilePosts } from '@/lib/data/public';
 import { getUser } from '@/lib/auth/session';
+import { ExploreVideoCard } from '@/components/explore/explore-video-card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { VideoPlayer } from '@/components/video/video-player';
 import { ShareButtons } from '@/components/share/share-buttons';
@@ -170,10 +171,15 @@ export default async function PostDetailPage({
   // Kommentare + Interaction-State + Viewer parallel laden.
   // Viewer zuerst auflösen damit getPostComments liked_by_me befüllen kann.
   const viewer = await getUser();
-  const [comments, interaction] = await Promise.all([
+  const [comments, interaction, authorPosts] = await Promise.all([
     post.allow_comments ? getPostComments(post.id, 20, viewer?.id ?? null) : Promise.resolve([]),
     getPostInteractionState(post.id),
+    // v1.w.UI.62: "Mehr von @author" — bis zu 7 holen, aktuellen Post rausfiltern → max 6
+    getProfilePosts(post.author.id, 7),
   ]);
+
+  // Aktuellen Post aus der "Mehr von"-Liste herausfiltern.
+  const morePosts = authorPosts.filter((p) => p.id !== post.id).slice(0, 6);
 
   const isSelf = viewer?.id === post.author.id;
   const followingAuthor = !isSelf && viewer ? await isFollowing(post.author.id) : false;
@@ -397,13 +403,58 @@ export default async function PostDetailPage({
 
           {/* Share */}
           <div className="rounded-xl border border-border bg-card p-4">
-            <div className="mb-3 text-sm font-semibold">Video teilen</div>
+            <div className="mb-3 text-sm font-semibold">
+              {isImage ? 'Beitrag teilen' : 'Video teilen'}
+            </div>
             <ShareButtons
               url={`/p/${post.id}`}
               title={authorName + ' auf Serlo'}
               text={post.caption?.slice(0, 100) ?? ''}
             />
           </div>
+
+          {/* v1.w.UI.62: Mehr von @author */}
+          {morePosts.length > 0 && (
+            <div className="rounded-xl border border-border bg-card p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-sm font-semibold">
+                  Mehr von{' '}
+                  <Link
+                    href={`/u/${post.author.username}`}
+                    className="text-primary hover:underline underline-offset-2"
+                  >
+                    @{post.author.username}
+                  </Link>
+                </span>
+                <Link
+                  href={`/u/${post.author.username}`}
+                  className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  Alle ansehen
+                </Link>
+              </div>
+              <ul className="grid grid-cols-3 gap-1.5">
+                {morePosts.map((p) => {
+                  const fallbackInitial = (post.author.display_name ?? post.author.username ?? '?')
+                    .slice(0, 1)
+                    .toUpperCase();
+                  return (
+                    <li key={p.id}>
+                      <ExploreVideoCard
+                        id={p.id}
+                        videoUrl={p.video_url}
+                        thumbnailUrl={p.thumbnail_url}
+                        caption={p.caption}
+                        authorUsername={post.author.username}
+                        viewCount={p.view_count}
+                        fallbackInitial={fallbackInitial}
+                      />
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
         </aside>
       </div>
 

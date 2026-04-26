@@ -8,6 +8,7 @@ import { getUser } from '@/lib/auth/session';
 import { SearchBox } from '@/components/search-box';
 import { EmptyState } from '@/components/ui/empty-state';
 import { FollowButton } from '@/components/profile/follow-button';
+import { ExploreVideoCard } from '@/components/explore/explore-video-card';
 
 // -----------------------------------------------------------------------------
 // /search?q=...&tab=all|users|posts|hashtags
@@ -122,29 +123,26 @@ export default async function SearchPage({
                   Videos
                 </h2>
               )}
-              <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
-                {results.posts.map((p) => (
-                  <li key={p.id}>
-                    <Link
-                      href={`/p/${p.id}` as Route}
-                      className="group relative block aspect-[9/16] overflow-hidden rounded-lg bg-black"
-                    >
-                      {p.thumbnail_url && (
-                        /* eslint-disable-next-line @next/next/no-img-element */
-                        <img
-                          src={p.thumbnail_url}
-                          alt={p.caption ?? 'Post'}
-                          className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                          loading="lazy"
-                        />
-                      )}
-                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 to-transparent p-2 text-xs text-white">
-                        <div className="truncate font-medium">@{p.author.username}</div>
-                        <div className="text-white/70">{formatCount(p.view_count ?? 0)} Views</div>
-                      </div>
-                    </Link>
-                  </li>
-                ))}
+              {/* v1.w.UI.61 — ExploreVideoCard für Hover-Video-Preview (Parität mit /explore + /t/[tag]) */}
+              <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+                {results.posts.map((p) => {
+                  const fallbackInitial = (p.author.display_name ?? p.author.username ?? '?')
+                    .slice(0, 1)
+                    .toUpperCase();
+                  return (
+                    <li key={p.id}>
+                      <ExploreVideoCard
+                        id={p.id}
+                        videoUrl={p.video_url}
+                        thumbnailUrl={p.thumbnail_url}
+                        caption={p.caption}
+                        authorUsername={p.author.username}
+                        viewCount={p.view_count ?? 0}
+                        fallbackInitial={fallbackInitial}
+                      />
+                    </li>
+                  );
+                })}
               </ul>
             </section>
           )}
