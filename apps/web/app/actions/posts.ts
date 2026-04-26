@@ -74,6 +74,40 @@ function sanitizeTags(raw: string[] | undefined | null): string[] {
   return out;
 }
 
+// v1.w.UI.65 — Caption-Hashtag auto-extraction.
+//
+// Parst #word tokens aus dem Freitext der Caption und gibt normalisierte
+// Tag-Strings zurück. Wird in publishPost/schedulePost mit den expliziten
+// Tag-Picker-Einträgen gemergt — explicit tags haben Vorrang (kommen zuerst
+// in die deduplizierte Liste → verbrauchen TAG_MAX_COUNT-Slots zuerst).
+//
+// Regex: #[\p{L}\p{N}_]+ — Unicode-aware (unterstützt Kyrillisch, Arabisch,
+// CE-Zeichen). Mindestlänge 2 Zeichen nach dem #, max TAG_MAX_LEN.
+const CAPTION_HASHTAG_RE = /#([\p{L}\p{N}_]{2,})/gu;
+
+function extractCaptionHashtags(caption: string): string[] {
+  if (!caption) return [];
+  const tags: string[] = [];
+  const seen = new Set<string>();
+  for (const m of caption.matchAll(CAPTION_HASHTAG_RE)) {
+    const tag = m[1].toLowerCase().slice(0, TAG_MAX_LEN);
+    const withHash = `#${tag}`;
+    if (!seen.has(withHash)) {
+      seen.add(withHash);
+      tags.push(withHash);
+    }
+  }
+  return tags;
+}
+
+// Mergt explizite Tag-Picker-Tags mit Caption-Hashtags, dedupliciert, normalisiert.
+function mergeTags(explicitTags: string[] | undefined | null, caption: string): string[] {
+  const explicit = sanitizeTags(explicitTags);
+  const fromCaption = extractCaptionHashtags(caption);
+  // explicit zuerst — sie sind intentional und füllen den Limit-Slot bevorzugt
+  return sanitizeTags([...explicit, ...fromCaption]);
+}
+
 export type Privacy = 'public' | 'friends' | 'private';
 export type MediaType = 'image' | 'video';
 
@@ -127,7 +161,7 @@ export async function publishPost(
   const row = {
     author_id: viewer,
     caption: caption.length > 0 ? caption : null,
-    tags: sanitizeTags(input.tags),
+    tags: mergeTags(input.tags, caption),
     media_url: input.mediaUrl,
     media_type: input.mediaType,
     thumbnail_url: input.thumbnailUrl ?? null,
@@ -204,7 +238,7 @@ export async function schedulePost(
     p_media_url: input.mediaUrl ?? null,
     p_media_type: input.mediaType ?? null,
     p_thumbnail_url: input.thumbnailUrl ?? null,
-    p_tags: sanitizeTags(input.tags),
+    p_tags: mergeTags(input.tags, caption),
     p_is_guild_post: input.isGuildPost ?? false,
     p_guild_id: input.guildId ?? null,
     p_audio_url: input.audioUrl ?? null,
