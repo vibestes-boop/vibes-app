@@ -32,6 +32,8 @@ import { getT, getLocale } from '@/lib/i18n/server';
 import { LOCALE_INTL } from '@/lib/i18n/config';
 import { glassPillBase, glassAvatarFallback } from '@/lib/ui/glass-pill';
 import { cn } from '@/lib/utils';
+import { getUnreadDmCount } from '@/app/actions/messages';
+import { DmInboxPill } from '@/components/layout/dm-inbox-pill';
 
 // -----------------------------------------------------------------------------
 // TopRightActions — schwebender Cluster oben rechts über allen Seiten.
@@ -60,9 +62,9 @@ import { cn } from '@/lib/utils';
 
 export async function TopRightActions() {
   const [user, t, locale] = await Promise.all([getUser(), getT(), getLocale()]);
-  const [profile, balance] = user
-    ? await Promise.all([getProfile(), getMyCoinBalance()])
-    : [null, null];
+  const [profile, balance, initialUnreadDms] = user
+    ? await Promise.all([getProfile(), getMyCoinBalance(), getUnreadDmCount()])
+    : [null, null, 0];
   const coinsFormatted = (balance?.coins ?? 0).toLocaleString(LOCALE_INTL[locale]);
 
   return (
@@ -84,6 +86,11 @@ export async function TopRightActions() {
               +
             </span>
           </Link>
+          {/* DM-Inbox-Pill: Glass-Pill-Link zu /messages mit Unread-Badge.
+              Client-seitiges Polling (30s) via DmInboxPill; initialUnreadDms
+              liefert server-gerenderter Wert für flicker-freies erstes Paint. */}
+          <DmInboxPill initialCount={initialUnreadDms} />
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button
