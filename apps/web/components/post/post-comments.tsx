@@ -17,6 +17,7 @@ export function PostComments({
   isAuthenticated,
   postId,
   postPath,
+  viewerId,
 }: {
   comments: CommentWithAuthor[];
   allowComments: boolean;
@@ -24,6 +25,7 @@ export function PostComments({
   isAuthenticated: boolean;
   postId: string;
   postPath: string;
+  viewerId: string | null;
 }) {
   if (!allowComments) {
     return (
@@ -55,6 +57,7 @@ export function PostComments({
               postId={postId}
               isAuthenticated={isAuthenticated}
               postPath={postPath}
+              viewerId={viewerId}
             />
           ))}
         </ul>

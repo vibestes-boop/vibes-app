@@ -400,6 +400,7 @@ export default async function PostDetailPage({
         isAuthenticated={!!viewer}
         postId={post.id}
         postPath={`/p/${post.id}`}
+        viewerId={viewer?.id ?? null}
       />
 
       {/* Kommentar-Eingabe — nur wenn Kommentare erlaubt */}

@@ -3,12 +3,13 @@
 import { useState, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { BadgeCheck, Heart, ChevronDown, ChevronUp, Send, CornerDownRight } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { BadgeCheck, Heart, ChevronDown, ChevronUp, Send, CornerDownRight, Trash2 } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { useCreateComment } from '@/hooks/use-engagement';
-import { fetchCommentReplies } from '@/app/actions/engagement';
+import { fetchCommentReplies, deleteComment } from '@/app/actions/engagement';
 import type { CommentWithAuthor } from '@/lib/data/public';
 
 // -----------------------------------------------------------------------------
@@ -35,13 +36,40 @@ function formatRelative(iso: string): string {
 function CommentRow({
   comment,
   isReply = false,
+  viewerId,
+  postId,
   onReply,
+  onDeleted,
 }: {
   comment: CommentWithAuthor;
   isReply?: boolean;
+  viewerId: string | null;
+  postId: string;
   onReply?: (username: string) => void;
+  onDeleted?: (id: string) => void;
 }) {
+  const [isDeleting, setIsDeleting] = useState(false);
+  const router = useRouter();
+  const qc = useQueryClient();
+  const isOwn = !!viewerId && viewerId === comment.user_id;
   const authorName = comment.author.display_name ?? `@${comment.author.username}`;
+
+  const handleDelete = async () => {
+    if (!confirm('Kommentar wirklich löschen?')) return;
+    setIsDeleting(true);
+    const res = await deleteComment(comment.id);
+    if (res.ok) {
+      toast('Kommentar gelöscht.');
+      onDeleted?.(comment.id);
+      // Replies-Cache + Feed-Comment-Count invalidieren
+      qc.invalidateQueries({ queryKey: ['replies', comment.id] });
+      router.refresh();
+    } else {
+      setIsDeleting(false);
+      toast.error(res.error ?? 'Löschen fehlgeschlagen.');
+    }
+  };
+
   return (
     <div className={cn('flex gap-3', isReply && 'pl-10')}>
       <Link
@@ -92,6 +120,17 @@ function CommentRow({
               className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
               Antworten
+            </button>
+          )}
+          {isOwn && (
+            <button
+              type="button"
+              onClick={handleDelete}
+              disabled={isDeleting}
+              aria-label="Kommentar löschen"
+              className="text-xs text-muted-foreground/60 transition-colors hover:text-destructive disabled:opacity-40"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
             </button>
           )}
         </div>
@@ -212,14 +251,18 @@ export function CommentThread({
   postId,
   isAuthenticated,
   postPath,
+  viewerId,
 }: {
   comment: CommentWithAuthor;
   postId: string;
   isAuthenticated: boolean;
   postPath: string;
+  viewerId: string | null;
 }) {
   const [repliesOpen, setRepliesOpen] = useState(false);
   const [replyTarget, setReplyTarget] = useState<string | null>(null);
+  // Optimistisch gelöschte Reply-IDs — sofort aus der UI entfernen.
+  const [deletedReplyIds, setDeletedReplyIds] = useState<Set<string>>(new Set());
 
   // Lazy-fetch Replies via TanStack Query (enabled sobald repliesOpen=true).
   const repliesQuery = useQuery<CommentWithAuthor[]>({
@@ -236,11 +279,17 @@ export function CommentThread({
     if (!repliesOpen) setRepliesOpen(true);
   };
 
+  const handleReplyDeleted = (id: string) => {
+    setDeletedReplyIds((s) => new Set([...s, id]));
+  };
+
   return (
     <li className="flex flex-col gap-1.5">
       {/* Top-Level Kommentar */}
       <CommentRow
         comment={comment}
+        viewerId={viewerId}
+        postId={postId}
         onReply={handleReply}
       />
 
@@ -272,12 +321,17 @@ export function CommentThread({
           {repliesQuery.isLoading && (
             <div className="pl-10 text-xs text-muted-foreground">Lade Antworten…</div>
           )}
-          {repliesQuery.data?.map((reply) => (
+          {repliesQuery.data
+            ?.filter((r) => !deletedReplyIds.has(r.id))
+            .map((reply) => (
             <CommentRow
               key={reply.id}
               comment={reply}
               isReply
+              viewerId={viewerId}
+              postId={postId}
               onReply={handleReply}
+              onDeleted={handleReplyDeleted}
             />
           ))}
         </div>
