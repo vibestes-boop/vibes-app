@@ -19,6 +19,19 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { FollowButton } from '../follow-button';
 
+// ── useTransition-Mock — isPending per Test steuerbar ────────────────────────
+// React 18 concurrent-mode: isPending bleibt true für die gesamte Dauer der
+// async startTransition-Callback-Auflösung — auch innerhalb von act(). In jsdom
+// schlägt waitFor mit Timeout fehl weil der Spinner nie verschwindet.
+// Lösung: useTransition auf synchronen Pass-Through mocken (fn() direkt aufrufen,
+// kein async scheduling). mockIsPending steuert den disabled/Spinner-Zustand in
+// Spinner-spezifischen Tests explizit; Default ist false (kein Spinner).
+let mockIsPending = false;
+jest.mock('react', () => ({
+  ...jest.requireActual('react'),
+  useTransition: () => [mockIsPending, (fn: () => void | Promise<void>) => { void fn(); }],
+}));
+
 // ── Button-Mock — asChild gibt das Kind direkt zurück ────────────────────────
 jest.mock('@/components/ui/button', () => {
   const React = require('react');
@@ -131,18 +144,17 @@ describe('FollowButton — Render-Zustände (authentifiziert)', () => {
 
 describe('FollowButton — Optimistisches Follow', () => {
   beforeEach(() => {
+    mockIsPending = false;
     mockToggleFollow.mockClear();
     mockToastSuccess.mockClear();
     mockToastError.mockClear();
   });
 
   it('Button ist während der laufenden Action disabled (Spinner sichtbar)', () => {
-    // useTransition: isPending=true sobald startTransition aufgerufen wird.
-    // Der Button rendert dann den Loader, nicht "Folgst du".
-    mockToggleFollow.mockReturnValue(new Promise(() => {})); // never resolves
+    // mockIsPending=true simuliert useTransition isPending direkt — kein
+    // never-resolving Promise nötig; der Button rendert Loader und ist disabled.
+    mockIsPending = true;
     render(<FollowButton {...BASE_PROPS} isFollowing={false} />);
-
-    fireEvent.click(screen.getByRole('button', { name: /folgen/i }));
 
     // isPending=true → Button ist disabled und zeigt Spinner
     expect(screen.getByRole('button')).toBeDisabled();
@@ -203,17 +215,16 @@ describe('FollowButton — Optimistisches Follow', () => {
 
 describe('FollowButton — Optimistisches Unfollow', () => {
   beforeEach(() => {
+    mockIsPending = false;
     mockToggleFollow.mockClear();
     mockToastSuccess.mockClear();
     mockToastError.mockClear();
   });
 
   it('Button ist während der laufenden Action disabled (Spinner sichtbar)', () => {
-    // useTransition: isPending=true → Loader-Spinner statt "Folgen"-Text
-    mockToggleFollow.mockReturnValue(new Promise(() => {}));
+    // mockIsPending=true simuliert useTransition isPending → Loader sichtbar.
+    mockIsPending = true;
     render(<FollowButton {...BASE_PROPS} isFollowing={true} />);
-
-    fireEvent.click(screen.getByRole('button', { name: /folgst du/i }));
 
     expect(screen.getByRole('button')).toBeDisabled();
   });
@@ -247,6 +258,7 @@ describe('FollowButton — Optimistisches Unfollow', () => {
 
 describe('FollowButton — Fehler-Rollback', () => {
   beforeEach(() => {
+    mockIsPending = false;
     mockToggleFollow.mockClear();
     mockToastSuccess.mockClear();
     mockToastError.mockClear();
