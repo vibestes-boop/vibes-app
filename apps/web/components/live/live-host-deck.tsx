@@ -117,6 +117,9 @@ export function LiveHostDeck({
   const screenVideoTrackRef = useRef<LocalVideoTrack | null>(null);
   const screenAudioTrackRef = useRef<LocalAudioTrack | null>(null);
   const peakRef = useRef(session.peak_viewer_count ?? 0);
+  // OBS-Modus: Audio-Tracks von OBS als separate <audio>-Elemente — das
+  // <video>-Element hat muted=true (kein Echo), Audio kommt separat.
+  const obsAudioElsRef = useRef<HTMLAudioElement[]>([]);
 
   // Session-State
   const [phase, setPhase] = useState<'connecting' | 'live' | 'error' | 'ending' | 'ended'>(
@@ -203,6 +206,16 @@ export function LiveHostDeck({
                 void videoRef.current.play().catch(() => {});
               }
             }
+            // Audio-Track separat abspielen — <video> ist muted (kein Echo),
+            // LiveKit erstellt automatisch ein <audio>-Element via attach().
+            for (const pub of participant.audioTrackPublications.values()) {
+              if (pub.track) {
+                const audioEl = pub.track.attach() as HTMLAudioElement;
+                audioEl.autoplay = true;
+                document.body.appendChild(audioEl);
+                obsAudioElsRef.current.push(audioEl);
+              }
+            }
           }
           // Kein Cam/Mic-Enable im OBS-Modus — OBS übernimmt das.
           return;
@@ -238,6 +251,13 @@ export function LiveHostDeck({
           track.attach(el);
           el.muted = true;
           void el.play().catch(() => {});
+        } else if (track.kind === Track.Kind.Audio) {
+          // Audio separat: <video> ist muted, daher brauchen wir ein eigenes
+          // <audio>-Element damit OBS-Ton beim Host ankommt.
+          const audioEl = track.attach() as HTMLAudioElement;
+          audioEl.autoplay = true;
+          document.body.appendChild(audioEl);
+          obsAudioElsRef.current.push(audioEl);
         }
       });
     }
@@ -272,6 +292,13 @@ export function LiveHostDeck({
       micTrackRef.current?.stop();
       screenVideoTrackRef.current?.stop();
       screenAudioTrackRef.current?.stop();
+      // OBS-Audio-Elemente aus dem DOM entfernen
+      for (const el of obsAudioElsRef.current) {
+        el.pause();
+        el.srcObject = null;
+        el.remove();
+      }
+      obsAudioElsRef.current = [];
       room.disconnect();
       roomRef.current = null;
     };
