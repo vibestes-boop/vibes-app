@@ -155,6 +155,10 @@ const enMessages = {
     popularPosts: 'Popular posts',
     posts: 'posts',
     views: 'views',
+    suggestedPeople: 'Discover accounts',
+    noSuggestedPeople: 'No suggestions available.',
+    follow: 'Follow',
+    following: 'Following',
   },
 
   billing: {

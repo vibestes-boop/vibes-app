@@ -164,6 +164,10 @@ const deMessages = {
     popularPosts: 'Populäre Posts',
     posts: 'Posts',
     views: 'Views',
+    suggestedPeople: 'Accounts entdecken',
+    noSuggestedPeople: 'Keine Vorschläge verfügbar.',
+    follow: 'Folgen',
+    following: 'Folgst du',
   },
 
   billing: {

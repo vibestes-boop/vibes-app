@@ -158,6 +158,10 @@ const ruMessages = {
     popularPosts: 'Популярные посты',
     posts: 'постов',
     views: 'просмотров',
+    suggestedPeople: 'Новые аккаунты',
+    noSuggestedPeople: 'Нет предложений.',
+    follow: 'Подписаться',
+    following: 'Вы подписаны',
   },
 
   billing: {

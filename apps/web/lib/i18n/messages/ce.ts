@@ -168,6 +168,10 @@ const ceMessages = {
     popularPosts: 'Кхечу постаныш',
     posts: 'постаныш',
     views: 'хьаьжнарш',
+    suggestedPeople: 'Аккаунташ лаха',
+    noSuggestedPeople: 'Хьехамаш дац.',
+    follow: 'ТӀехьа дала',
+    following: 'ТӀехьа дого',
   },
 
   billing: {

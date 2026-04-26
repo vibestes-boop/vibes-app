@@ -1,18 +1,26 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { Route } from 'next';
-import { Hash, Flame, TrendingUp, Compass } from 'lucide-react';
-import { getTrendingHashtags, getForYouFeed } from '@/lib/data/feed';
+import { Hash, Flame, TrendingUp, Compass, Users } from 'lucide-react';
+import { getTrendingHashtags, getForYouFeed, getSuggestedFollows } from '@/lib/data/feed';
+import { getUser } from '@/lib/auth/session';
+import { FollowButton } from '@/components/profile/follow-button';
 import { getT, getLocale } from '@/lib/i18n/server';
 import { LOCALE_INTL } from '@/lib/i18n/config';
 import type { Locale } from '@/lib/i18n/config';
 
 // -----------------------------------------------------------------------------
-// /explore — Trending Hashtags + horizontaler Preview-Strip.
-// SSR mit Revalidate (Trending ändert sich nicht pro Request, aber stündlich).
+// /explore — Trending Hashtags + People-Discovery + horizontaler Preview-Strip.
+//
+// Drei Sektionen:
+//  1. Trending Hashtags (ISR 15 min)
+//  2. Accounts entdecken — getSuggestedFollows(12), filtert bereits bekannte
+//     Follows und den eigenen Account aus. FollowButton ist Client-Komponente,
+//     rendert direkt aus dem RSC. revalidate=0 damit neue Follows sofort greifen.
+//  3. Populäre Posts (ISR 15 min)
 // -----------------------------------------------------------------------------
 
-export const revalidate = 900; // 15 min
+export const revalidate = 0; // force-dynamic wegen Auth-abhängiger People-Section
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getT();
@@ -23,9 +31,11 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function ExplorePage() {
-  const [hashtags, preview, t, locale] = await Promise.all([
+  const [hashtags, preview, people, viewer, t, locale] = await Promise.all([
     getTrendingHashtags(24),
     getForYouFeed({ limit: 6 }),
+    getSuggestedFollows(12),
+    getUser(),
     getT(),
     getLocale(),
   ]);
@@ -76,6 +86,70 @@ export default async function ExplorePage() {
           </ul>
         )}
       </section>
+
+      {/* People to follow */}
+      {people.length > 0 && (
+        <section className="mb-12">
+          <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
+            <Users className="h-5 w-5 text-brand-gold" />
+            {t('explore.suggestedPeople')}
+          </h2>
+          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+            {people.map((person) => {
+              const initial = (person.display_name ?? person.username ?? '?')
+                .slice(0, 1)
+                .toUpperCase();
+              return (
+                <li key={person.id}>
+                  <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-card p-4 text-center">
+                    {/* Avatar */}
+                    <Link
+                      href={`/u/${person.username}` as Route}
+                      className="block shrink-0"
+                    >
+                      {person.avatar_url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={person.avatar_url}
+                          alt={person.display_name ?? person.username}
+                          className="h-14 w-14 rounded-full object-cover ring-2 ring-border"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted text-xl font-bold text-muted-foreground ring-2 ring-border">
+                          {initial}
+                        </div>
+                      )}
+                    </Link>
+
+                    {/* Name */}
+                    <div className="w-full min-w-0">
+                      <Link href={`/u/${person.username}` as Route} className="block">
+                        <p className="truncate text-sm font-semibold leading-tight">
+                          {person.display_name ?? person.username}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          @{person.username}
+                        </p>
+                      </Link>
+                    </div>
+
+                    {/* Follow button — getSuggestedFollows filters already-followed
+                        accounts + self, so isFollowing=false / isSelf=false always. */}
+                    <FollowButton
+                      isAuthenticated={!!viewer}
+                      isFollowing={false}
+                      isSelf={false}
+                      username={person.username}
+                      targetUserId={person.id}
+                    />
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
 
       {/* Video-Preview */}
       {preview.length > 0 && (
