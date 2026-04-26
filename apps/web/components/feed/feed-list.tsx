@@ -16,6 +16,9 @@ import { ArrowDown, ArrowUp, KeyboardIcon } from 'lucide-react';
 // - Initial-Liste kommt per SSR-Prefetch (Query-Hydration), dieser Client-Query
 //   liest dann bloß aus dem Cache. Wenn initialData nicht da ist, ist die
 //   Liste halt leer und der Parent-Screen zeigt einen eigenen Empty-State.
+// - Infinite Scroll (v1.w.UI.45): Sentinel am Listenende triggert Nachladen
+//   via /api/feed/[feedKey]?before=<cursor>. TQ-Cache wird mit append
+//   mitgepflegt, damit Like/Save-Mutations auf nachgeladenen Posts greifen.
 // -----------------------------------------------------------------------------
 
 export interface FeedListProps {
@@ -65,6 +68,56 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
   // sind Null/no-op) hält die FeedList isoliert testbar, sowie auf Routen
   // die keinen HomeFeedShell wrappen.
   const { commentsOpenForPostId, openCommentsFor } = useFeedInteraction();
+
+  // ── Infinite Scroll ──────────────────────────────────────────────────────
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  const loadMore = useCallback(async () => {
+    if (isFetchingMore || !hasMore) return;
+    const current = qc.getQueryData<FeedPost[]>(['feed', feedKey]) ?? initialPosts;
+    const last = current[current.length - 1];
+    if (!last) return;
+
+    setIsFetchingMore(true);
+    try {
+      const url = `/api/feed/${feedKey}?before=${encodeURIComponent(last.created_at)}&limit=10`;
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) return;
+      const newPosts: FeedPost[] = await res.json();
+      if (newPosts.length === 0) {
+        setHasMore(false);
+      } else {
+        // Doppelte Posts vermeiden (race condition bei schnellem Scroll)
+        const seenIds = new Set(current.map((p) => p.id));
+        const deduped = newPosts.filter((p) => !seenIds.has(p.id));
+        if (deduped.length > 0) {
+          qc.setQueryData<FeedPost[]>(['feed', feedKey], [...current, ...deduped]);
+        }
+        if (newPosts.length < 10) setHasMore(false);
+      }
+    } catch {
+      // silent — nächster Scroll-Trigger versucht es erneut
+    } finally {
+      setIsFetchingMore(false);
+    }
+  }, [isFetchingMore, hasMore, feedKey, initialPosts, qc]);
+
+  // Sentinel-Observer — triggert loadMore wenn der Sentinel sichtbar wird.
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) loadMore();
+      },
+      { threshold: 0.1 },
+    );
+    io.observe(sentinel);
+    return () => io.disconnect();
+  }, [loadMore]);
+  // ─────────────────────────────────────────────────────────────────────────
 
   const containerRef = useRef<HTMLDivElement>(null);
   const cardRefs = useRef<Array<HTMLElement | null>>([]);
@@ -321,6 +374,20 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
             />
           </section>
         ))}
+
+        {/* Infinite-Scroll-Sentinel — wenn er sichtbar wird, triggert der
+            IntersectionObserver oben `loadMore()`. snap-start damit der
+            Scroller nicht über den Sentinel hinausschießt. */}
+        {hasMore && (
+          <div
+            ref={sentinelRef}
+            className="flex h-16 items-center justify-center snap-start"
+          >
+            {isFetchingMore && (
+              <div className="h-5 w-5 animate-spin rounded-full border-2 border-foreground/20 border-t-foreground/60" />
+            )}
+          </div>
+        )}
       </div>
 
       {/* Desktop-Navigation (nur ≥ md).
