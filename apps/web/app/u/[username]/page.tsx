@@ -347,12 +347,14 @@ export default async function ProfilePage({
 
         {tab === 'likes' && (
           isSelf ? (
-            // Eigener Account: echtes Liked-Grid
+            // Eigener Account: echtes Liked-Grid mit infinite scroll (v1.w.UI.126)
             <PostGrid
               posts={likedPosts}
               emptyTitle="Noch nichts geliked"
               emptyDescription="Videos, die du likest, erscheinen hier — nur für dich sichtbar."
               emptyIcon={<Heart className="h-7 w-7" strokeWidth={1.75} />}
+              fetchMoreUrl="/api/posts/liked"
+              initialHasMore={likedPosts.length >= 24}
             />
           ) : (
             // Fremder Account: Likes sind privat

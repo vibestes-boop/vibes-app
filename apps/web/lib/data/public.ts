@@ -282,6 +282,47 @@ export async function getBookmarkedPostsPage(
 }
 
 // -----------------------------------------------------------------------------
+// getLikedPostsPage — non-cached, offset-based variant for infinite scroll.
+// Auth-scoped: returns posts liked by the authenticated user only (likes are
+// private — only shown on isSelf profile tab). v1.w.UI.126
+// -----------------------------------------------------------------------------
+
+export async function getLikedPostsPage(
+  offset: number,
+  limit: number,
+): Promise<Post[]> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from('likes')
+    .select(
+      `liked_at:created_at,
+       post:posts!likes_post_id_fkey (
+         id, author_id, caption, media_url, thumbnail_url, view_count, tags,
+         allow_comments, allow_duet, created_at,
+         like_count:likes(count),
+         comment_count:comments(count)
+       )`,
+    )
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error || !data) return [];
+
+  const posts: Post[] = [];
+  for (const row of data as unknown as LikesJoinRow[]) {
+    if (!row.post) continue;
+    posts.push(toPost(row.post));
+  }
+  return posts;
+}
+
+// -----------------------------------------------------------------------------
 // Posts liked by a profile — newest like first, capped at limit.
 //
 // Sichtbarkeit: In der nativen App und hier auf Web sind Likes privat —
