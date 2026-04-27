@@ -770,6 +770,18 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
             🌸 Women Only
           </span>
         )}
+        {/* v1.w.UI.172 — audience badge: shown only on restricted posts so author
+            (who sees own friends/private posts) gets a visual reminder */}
+        {post.privacy === 'friends' && (
+          <span className="pointer-events-none inline-flex w-fit items-center gap-1 rounded-full bg-black/40 px-2.5 py-0.5 text-[11px] font-semibold text-white/90 ring-1 ring-white/20 backdrop-blur-sm">
+            👥 Freunde
+          </span>
+        )}
+        {post.privacy === 'private' && (
+          <span className="pointer-events-none inline-flex w-fit items-center gap-1 rounded-full bg-black/40 px-2.5 py-0.5 text-[11px] font-semibold text-white/90 ring-1 ring-white/20 backdrop-blur-sm">
+            🔒 Nur ich
+          </span>
+        )}
         <div className="flex items-center gap-2">
           <Link
             href={`/u/${post.author.username}` as Route}

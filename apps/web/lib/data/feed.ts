@@ -38,13 +38,17 @@ export interface FeedPost extends Post {
   // RLS ensures non-verified users never receive women_only=true rows,
   // so this flag is display-only (no client-side gating needed).
   women_only: boolean;
+  // v1.w.UI.172 — post visibility level: public / friends / private.
+  // Authors see their own restricted posts in the feed; this flag drives
+  // the audience-badge overlay (lock icon for private, users icon for friends).
+  privacy: 'public' | 'friends' | 'private';
 }
 
 // PostgREST-Aliase: user_id:author_id, video_url:media_url, hashtags:tags
 // — mappt Mobile-DB-Spalten auf Web-Contract-Namen bereits in der Query.
 // `media_type` ist unaliased weil der Name in beiden Schemata identisch ist.
 const POST_COLUMNS =
-  'id, user_id:author_id, caption, video_url:media_url, media_type, thumbnail_url, view_count, like_count, comment_count, share_count, hashtags:tags, allow_comments, allow_duet, allow_download, women_only, created_at';
+  'id, user_id:author_id, caption, video_url:media_url, media_type, thumbnail_url, view_count, like_count, comment_count, share_count, hashtags:tags, allow_comments, allow_duet, allow_download, women_only, privacy, created_at';
 
 const AUTHOR_JOIN =
   'author:profiles!posts_author_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )';
@@ -112,6 +116,7 @@ type RawPostRow = Omit<Post, 'hashtags' | 'duration_secs' | 'music_id' | 'allow_
   media_type: 'image' | 'video' | null;
   allow_download?: boolean;
   women_only?: boolean;
+  privacy?: string | null;
   author: RawAuthor | RawAuthor[] | null;
 };
 
@@ -150,6 +155,10 @@ function normalizeRow(
     allow_download: row.allow_download ?? true,
     // v1.w.UI.169 — WOZ badge; default false for legacy rows.
     women_only: row.women_only ?? false,
+    // v1.w.UI.172 — privacy badge; default 'public' for legacy rows.
+    privacy: (['public', 'friends', 'private'] as const).includes(row.privacy as 'public' | 'friends' | 'private')
+      ? (row.privacy as 'public' | 'friends' | 'private')
+      : 'public',
   };
 }
 
