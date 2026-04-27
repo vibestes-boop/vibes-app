@@ -340,6 +340,8 @@ export default async function ProfilePage({
                 ? t('profile.emptyPostsSelf')
                 : t('profile.emptyPostsOther', { username: profile.username })
             }
+            fetchMoreUrl={`/api/posts/user/${profile.id}`}
+            initialHasMore={posts.length >= 24}
           />
         )}
 

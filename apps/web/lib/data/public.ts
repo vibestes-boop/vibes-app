@@ -214,6 +214,74 @@ export const getProfilePosts = cache(
 );
 
 // -----------------------------------------------------------------------------
+// getProfilePostsPage — non-cached, offset-based variant of getProfilePosts.
+// Used by GET /api/posts/user/[userId] for PostGrid infinite scroll.
+// v1.w.UI.121
+// -----------------------------------------------------------------------------
+
+export async function getProfilePostsPage(
+  userId: string,
+  offset: number,
+  limit: number,
+): Promise<Post[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('posts')
+    .select(
+      `id, author_id, caption, media_url, thumbnail_url, view_count, tags, allow_comments, allow_duet, created_at,
+       like_count:likes(count),
+       comment_count:comments(count)`,
+    )
+    .eq('author_id', userId)
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error || !data) return [];
+  return (data as unknown as PostRowMobile[]).map(toPost);
+}
+
+// -----------------------------------------------------------------------------
+// getBookmarkedPostsPage — non-cached, offset-based variant of getBookmarkedPosts.
+// Used by GET /api/saved for PostGrid infinite scroll on /saved.
+// v1.w.UI.121
+// -----------------------------------------------------------------------------
+
+export async function getBookmarkedPostsPage(
+  offset: number,
+  limit: number,
+): Promise<Post[]> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from('bookmarks')
+    .select(
+      `bookmarked_at:created_at,
+       post:posts!bookmarks_post_id_fkey (
+         id, author_id, caption, media_url, thumbnail_url, view_count, tags,
+         allow_comments, allow_duet, created_at,
+         like_count:likes(count),
+         comment_count:comments(count)
+       )`,
+    )
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error || !data) return [];
+
+  const posts: Post[] = [];
+  for (const row of data as unknown as BookmarkJoinRow[]) {
+    if (!row.post) continue;
+    posts.push(toPost(row.post));
+  }
+  return posts;
+}
+
+// -----------------------------------------------------------------------------
 // Posts liked by a profile — newest like first, capped at limit.
 //
 // Sichtbarkeit: In der nativen App und hier auf Web sind Likes privat —
