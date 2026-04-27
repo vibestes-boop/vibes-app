@@ -122,7 +122,47 @@ export default async function LiveViewerPage({ params }: PageProps) {
   const viewerId = user?.id ?? null;
   const isHost = viewerId === session.host_id;
 
+  // ── JSON-LD: BroadcastEvent + VideoObject schema ──────────────────────────
+  // BroadcastEvent: Google uses this to show a "LIVE" badge in search results
+  // when the stream is active (eventStatus = EventScheduled/InProgress).
+  // Combined with VideoObject so embedded players can be indexed.
+  // v1.w.UI.134 — JSON-LD structured data batch.
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://serlo.app';
+  const liveJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'BroadcastEvent',
+    name: session.title ?? `Live mit ${hostName}`,
+    description: session.title
+      ? `${hostName} streamt live auf Serlo: ${session.title}`
+      : `${hostName} streamt live auf Serlo.`,
+    startDate: session.started_at,
+    ...(ended && session.ended_at ? { endDate: session.ended_at } : {}),
+    eventStatus: ended
+      ? 'https://schema.org/EventEnded'
+      : 'https://schema.org/EventScheduled',
+    eventAttendanceMode: 'https://schema.org/OnlineEventAttendanceMode',
+    location: { '@type': 'VirtualLocation', url: `${siteUrl}/live/${session.id}` },
+    organizer: {
+      '@type': 'Person',
+      name: hostName,
+      ...(session.host?.username ? { url: `${siteUrl}/u/${session.host.username}` } : {}),
+    },
+    ...(session.thumbnail_url ? { image: session.thumbnail_url } : {}),
+    workFeatured: {
+      '@type': 'VideoObject',
+      name: session.title ?? `Live mit ${hostName}`,
+      thumbnailUrl: session.thumbnail_url ?? undefined,
+      uploadDate: session.started_at,
+      embedUrl: `${siteUrl}/live/${session.id}`,
+    },
+  };
+
   return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(liveJsonLd) }}
+      />
     <main className="relative h-[100dvh] w-full overflow-hidden bg-[#0b0b10]">
       {/* Join/Leave Tracking — nur Client, kein UI */}
       {viewerId && <LiveEnterClient sessionId={id} />}
@@ -318,5 +358,6 @@ export default async function LiveViewerPage({ params }: PageProps) {
         </div>
       </div>
     </main>
+    </>
   );
 }
