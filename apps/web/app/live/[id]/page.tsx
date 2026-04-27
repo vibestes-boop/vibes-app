@@ -12,6 +12,7 @@ import {
   getIsFollowingHost,
   getIsSessionModerator,
 } from '@/lib/data/live';
+import { getActiveGiftGoal } from '@/lib/data/live-host';
 import { getUser } from '@/lib/auth/session';
 import { LiveVideoPlayer } from '@/components/live/live-video-player';
 import { LiveActionBar } from '@/components/live/live-action-bar';
@@ -20,6 +21,7 @@ import { LiveHostPill } from '@/components/live/live-host-pill';
 import { LiveChatOverlay } from '@/components/live/live-chat-overlay';
 import { LiveEnterClient } from '@/components/live/live-enter-client';
 import { LiveGiftAnimationLayer } from '@/components/live/live-gift-animation-layer';
+import { LiveGiftGoalViewer } from '@/components/live/live-gift-goal-viewer';
 import {
   glassPillStrong,
   glassSurface,
@@ -109,13 +111,15 @@ export default async function LiveViewerPage({ params }: PageProps) {
   if (!session) notFound();
 
   // Initial-State für Client-Komponenten
-  const [comments, activePoll, cohosts, isFollowing, isModerator] = await Promise.all([
-    getLiveComments(id, 50),
-    getActiveLivePoll(id),
-    getActiveCoHosts(id),
-    user ? getIsFollowingHost(session.host_id) : Promise.resolve(false),
-    user ? getIsSessionModerator(id) : Promise.resolve(false),
-  ]);
+  const [comments, activePoll, cohosts, isFollowing, isModerator, activeGiftGoal] =
+    await Promise.all([
+      getLiveComments(id, 50),
+      getActiveLivePoll(id),
+      getActiveCoHosts(id),
+      user ? getIsFollowingHost(session.host_id) : Promise.resolve(false),
+      user ? getIsSessionModerator(id) : Promise.resolve(false),
+      getActiveGiftGoal(id).catch(() => null), // v1.w.UI.137 — gift goal viewer
+    ]);
 
   const ended = session.status !== 'active';
   const hostName = session.host?.display_name ?? session.host?.username ?? 'Unbekannt';
@@ -337,6 +341,18 @@ export default async function LiveViewerPage({ params }: PageProps) {
                 slowModeSeconds={session.slow_mode_seconds ?? 0}
                 ended={ended}
               />
+            </div>
+          )}
+
+          {/*
+           * Gift-Goal-Progress-Bar (v1.w.UI.137) — rechts, über der Action-Bar.
+           * Nur sichtbar wenn Host ein aktives Ziel gesetzt hat. Realtime-Update
+           * via Supabase Subscription in der Client-Komponente selbst.
+           * right-3 / bottom-20 klärt Kollision mit Chat (links) + Action-Bar (unten).
+           */}
+          {!ended && (
+            <div className="absolute bottom-20 right-3 z-10">
+              <LiveGiftGoalViewer sessionId={id} initialGoal={activeGiftGoal} />
             </div>
           )}
 
