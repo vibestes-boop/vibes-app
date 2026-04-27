@@ -84,7 +84,7 @@ export const getPublicProfile = cache(async (username: string): Promise<PublicPr
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, username, display_name, avatar_url, bio, is_verified')
+    .select('id, username, display_name, avatar_url, bio, is_verified, is_private')
     .eq('username', username.toLowerCase())
     .maybeSingle();
 
@@ -136,6 +136,44 @@ export const getPublicProfile = cache(async (username: string): Promise<PublicPr
     post_count: postsRes.count ?? 0,
     is_live: !!liveRes.data?.id,
     live_session_id: liveRes.data?.id ?? null,
+    is_private: (data as { is_private?: boolean | null }).is_private ?? false,
+  };
+});
+
+// -----------------------------------------------------------------------------
+// getFollowState — follows + pending follow_request check for the viewer.
+// Replaces the bare `isFollowing` cache for profile pages that need to show
+// "Anfrage gesendet" when the target has is_private=true.
+// -----------------------------------------------------------------------------
+
+export interface FollowState {
+  following: boolean;
+  pendingRequest: boolean;
+}
+
+export const getFollowState = cache(async (targetUserId: string): Promise<FollowState> => {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user || user.id === targetUserId) return { following: false, pendingRequest: false };
+
+  const [followRow, requestRow] = await Promise.all([
+    supabase
+      .from('follows')
+      .select('follower_id')
+      .eq('follower_id', user.id)
+      .eq('following_id', targetUserId)
+      .maybeSingle(),
+    supabase
+      .from('follow_requests')
+      .select('id')
+      .eq('sender_id', user.id)
+      .eq('receiver_id', targetUserId)
+      .maybeSingle(),
+  ]);
+
+  return {
+    following: !!followRow.data,
+    pendingRequest: !!requestRow.data,
   };
 });
 

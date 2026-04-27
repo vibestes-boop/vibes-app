@@ -29,4 +29,6 @@ export interface PublicProfile {
   // (`apps/web/lib/data/public.ts`) kommen.
   is_live?: boolean;
   live_session_id?: string | null;
+  // v1.w.UI.149 (Web-only): Privates Konto — Follow-Anfragen statt direktem Follow.
+  is_private?: boolean;
 }

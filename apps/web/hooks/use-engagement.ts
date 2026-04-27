@@ -112,8 +112,9 @@ export function useToggleFollow() {
       );
       return { prev };
     },
-    onSuccess: ({ following }) => {
-      toast.success(following ? 'Du folgst jetzt diesem Account' : 'Nicht mehr gefolgt');
+    onSuccess: ({ following, pending }) => {
+      if (pending) toast.success('Follower-Anfrage gesendet');
+      else toast.success(following ? 'Du folgst jetzt diesem Account' : 'Nicht mehr gefolgt');
     },
     onError: (err, _vars, ctx) => {
       if (ctx?.prev) {

@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { BadgeCheck, Heart, ShoppingBag, Swords } from 'lucide-react';
 
-import { getPublicProfile, getProfilePosts, getProfileLikedPosts, getBattleHistory, isFollowing } from '@/lib/data/public';
+import { getPublicProfile, getProfilePosts, getProfileLikedPosts, getBattleHistory, getFollowState } from '@/lib/data/public';
 import { getUser } from '@/lib/auth/session';
 import { getMyCoinBalance } from '@/lib/data/payments';
 import { getMerchantProducts } from '@/lib/data/shop';
@@ -175,9 +175,9 @@ export default async function ProfilePage({
   // Parallel: Session + Follow-Status + Posts-Feed + Coin-Balance + i18n
   // isSelf kann erst nach getUser() bestimmt werden — Likes-Fetch wird daher
   // zwei-stufig: erst viewer, dann (wenn isSelf && tab=likes) likedPosts.
-  const [viewer, alreadyFollowing, posts, shopProducts, battles, balance, t, locale] = await Promise.all([
+  const [viewer, followState, posts, shopProducts, battles, balance, t, locale] = await Promise.all([
     getUser(),
-    isFollowing(profile.id),
+    getFollowState(profile.id),
     tab === 'posts' ? getProfilePosts(profile.id, 24) : Promise.resolve([]),
     tab === 'shop' ? getMerchantProducts(profile.id, 48) : Promise.resolve([]),
     tab === 'battles' ? getBattleHistory(profile.id, 30) : Promise.resolve([]),
@@ -279,7 +279,8 @@ export default async function ProfilePage({
             <div className="flex items-center gap-2">
               <FollowButton
                 isAuthenticated={!!viewer}
-                isFollowing={alreadyFollowing}
+                isFollowing={followState.following}
+                isPendingRequest={followState.pendingRequest}
                 isSelf={isSelf}
                 username={profile.username}
                 targetUserId={profile.id}

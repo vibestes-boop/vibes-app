@@ -200,6 +200,56 @@ export async function updateAvatar(avatarUrl: string | null): Promise<ActionResu
 }
 
 // -----------------------------------------------------------------------------
+// setPrivateAccount — v1.w.UI.149 — privates Konto an/ausschalten.
+//
+// Bei Umschalten auf öffentlich werden ausstehende Follow-Requests automatisch
+// in echte Follows konvertiert (Parität zu TikTok: wenn du dein Konto öffnest,
+// werden ausstehende Anfragen direkt angenommen). Die DB hat dafür keine
+// automatische Trigger-Logik, daher erledigen wir es hier.
+// -----------------------------------------------------------------------------
+
+export async function setPrivateAccount(isPrivate: boolean): Promise<ActionResult<null>> {
+  const user = await getUser();
+  if (!user) return { ok: false, error: 'Bitte einloggen.' };
+
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ is_private: isPrivate })
+    .eq('id', user.id);
+
+  if (error) return { ok: false, error: error.message };
+
+  // Bei Umschalten auf öffentlich: alle ausstehenden Follow-Requests → follows
+  if (!isPrivate) {
+    const { data: pendingRequests } = await supabase
+      .from('follow_requests')
+      .select('sender_id')
+      .eq('receiver_id', user.id);
+
+    if (pendingRequests && pendingRequests.length > 0) {
+      const followRows = pendingRequests.map((r: { sender_id: string }) => ({
+        follower_id: r.sender_id,
+        following_id: user.id,
+      }));
+      await supabase.from('follows').upsert(followRows, {
+        onConflict: 'follower_id,following_id',
+        ignoreDuplicates: true,
+      });
+      await supabase
+        .from('follow_requests')
+        .delete()
+        .eq('receiver_id', user.id);
+    }
+  }
+
+  revalidatePath('/settings/privacy');
+  revalidatePath('/u/[username]', 'page');
+  return { ok: true, data: null };
+}
+
+// -----------------------------------------------------------------------------
 // Notification channel preferences — v1.w.UI.63
 //
 // notif_prefs: JSONB-Spalte auf `profiles`.

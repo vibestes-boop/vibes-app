@@ -10,6 +10,7 @@ import {
   Heart,
   MessageCircle,
   UserPlus,
+  UserCheck,
   AtSign,
   Gift,
   Radio,
@@ -46,8 +47,10 @@ const TYPE_META: Record<NotificationType, NotifMeta> = {
   mention:     { icon: AtSign,        color: 'text-violet-500', bg: 'bg-violet-500/10' },
   dm:          { icon: MessageCircle, color: 'text-blue-400',   bg: 'bg-blue-400/10' },
   gift:        { icon: Gift,          color: 'text-amber-500',  bg: 'bg-amber-500/10' },
-  live:        { icon: Radio,         color: 'text-rose-500',   bg: 'bg-rose-500/10' },
-  live_invite: { icon: Users,         color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
+  live:                    { icon: Radio,     color: 'text-rose-500',    bg: 'bg-rose-500/10' },
+  live_invite:             { icon: Users,     color: 'text-indigo-500',  bg: 'bg-indigo-500/10' },
+  follow_request:          { icon: UserPlus,  color: 'text-amber-500',   bg: 'bg-amber-500/10' },
+  follow_request_accepted: { icon: UserCheck, color: 'text-green-500',   bg: 'bg-green-500/10' },
 };
 
 // ── Notification-Text pro Typ ─────────────────────────────────────────────────
@@ -77,6 +80,10 @@ function notifText(n: Notification): string {
       return `${name} ist jetzt live.`;
     case 'live_invite':
       return `${name} hat dich zum Duett eingeladen.`;
+    case 'follow_request':
+      return `${name} möchte dir folgen.`;
+    case 'follow_request_accepted':
+      return `${name} hat deine Follower-Anfrage angenommen.`;
     default:
       return `Neue Aktivität von ${name}.`;
   }
@@ -100,6 +107,11 @@ function notifHref(n: Notification): Route {
     case 'live':
     case 'live_invite':
       return n.session_id ? (`/live/${n.session_id}` as Route) : ('/' as Route);
+    case 'follow_request':
+    case 'follow_request_accepted':
+      return n.sender?.username
+        ? (`/u/${n.sender.username}` as Route)
+        : ('/' as Route);
     default:
       return '/' as Route;
   }

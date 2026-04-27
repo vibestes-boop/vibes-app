@@ -83,18 +83,30 @@ export async function togglePostBookmark(
 
 // -----------------------------------------------------------------------------
 // toggleFollow — user folgt / entfolgt anderem Profil.
+//
+// v1.w.UI.149: Privates-Konto-Unterstützung.
+//  • Öffentliches Konto:  direkter INSERT in `follows` (wie bisher).
+//  • Privates Konto:      INSERT in `follow_requests`; returns pending=true.
+//  • "Entfolgen" oder "Anfrage zurückziehen": entsprechende DELETE-Pfade.
+//
+// Rückgabe-Shape: { following, pending }
+//   following = true  → sofort gefolgt (öffentliches Konto)
+//   pending   = true  → Anfrage gesendet (privates Konto, noch nicht angenommen)
+//   beide false       → entfolgt / Anfrage zurückgezogen
 // -----------------------------------------------------------------------------
 
 export async function toggleFollow(
   targetUserId: string,
   currentlyFollowing: boolean,
-): Promise<ActionResult<{ following: boolean }>> {
+  currentlyPending = false,
+): Promise<ActionResult<{ following: boolean; pending: boolean }>> {
   const viewer = await getViewerId();
   if (!viewer) return { ok: false, error: 'Nicht eingeloggt.' };
   if (viewer.id === targetUserId) return { ok: false, error: 'Dir selbst folgen geht nicht.' };
 
   const supabase = await createClient();
 
+  // ── Unfollow / withdraw request ──────────────────────────────────────────
   if (currentlyFollowing) {
     const { error } = await supabase
       .from('follows')
@@ -102,18 +114,50 @@ export async function toggleFollow(
       .eq('follower_id', viewer.id)
       .eq('following_id', targetUserId);
     if (error) return { ok: false, error: error.message };
-    // Profil-Cache invalidieren damit Follower-Count sofort aktuell ist.
     revalidatePath(`/u/`);
-    return { ok: true, data: { following: false } };
+    return { ok: true, data: { following: false, pending: false } };
   }
 
+  if (currentlyPending) {
+    // Zurückziehen der Anfrage
+    const { error } = await supabase
+      .from('follow_requests')
+      .delete()
+      .eq('sender_id', viewer.id)
+      .eq('receiver_id', targetUserId);
+    if (error) return { ok: false, error: error.message };
+    return { ok: true, data: { following: false, pending: false } };
+  }
+
+  // ── Follow — prüfe ob Ziel-Konto privat ist ──────────────────────────────
+  const { data: targetProfile } = await supabase
+    .from('profiles')
+    .select('is_private')
+    .eq('id', targetUserId)
+    .maybeSingle();
+
+  const isPrivate = (targetProfile as { is_private?: boolean | null } | null)?.is_private ?? false;
+
+  if (isPrivate) {
+    // Follow-Request statt direktem Follow
+    const { error } = await supabase
+      .from('follow_requests')
+      .upsert(
+        { sender_id: viewer.id, receiver_id: targetUserId },
+        { onConflict: 'sender_id,receiver_id', ignoreDuplicates: true },
+      );
+    if (error) return { ok: false, error: error.message };
+    return { ok: true, data: { following: false, pending: true } };
+  }
+
+  // Öffentliches Konto → direkter Follow
   const { error } = await supabase.from('follows').upsert(
     { follower_id: viewer.id, following_id: targetUserId },
     { onConflict: 'follower_id,following_id', ignoreDuplicates: true },
   );
   if (error) return { ok: false, error: error.message };
   revalidatePath(`/u/`);
-  return { ok: true, data: { following: true } };
+  return { ok: true, data: { following: true, pending: false } };
 }
 
 // -----------------------------------------------------------------------------

@@ -27,7 +27,9 @@ export type NotificationType =
   | 'dm'
   | 'gift'
   | 'live'
-  | 'live_invite';
+  | 'live_invite'
+  | 'follow_request'
+  | 'follow_request_accepted';
 
 export interface NotificationSender {
   id: string;
