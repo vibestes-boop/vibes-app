@@ -191,7 +191,10 @@ export function CreateEditor({ viewerId, initialDraft }: Props) {
       };
       vid.src = URL.createObjectURL(f);
     } else {
-      const img = new Image();
+      // `Image` ist hier das `next/image`-Default-Import (siehe oben) — der
+      // DOM-HTMLImageElement-Konstruktor wird via `window.Image` adressiert,
+      // damit kein Namens-Clash entsteht.
+      const img = new window.Image();
       img.onload = () => {
         const w = img.naturalWidth;
         const h = img.naturalHeight;
