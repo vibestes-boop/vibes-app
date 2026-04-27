@@ -503,7 +503,13 @@ export const getPostComments = cache(async (
   viewerId?: string | null,
 ): Promise<CommentWithAuthor[]> => {
   const supabase = await createClient();
-  const { data, error } = await supabase
+
+  // Primärer Query: mit parent_id-Filter + Reply-Count (setzt parent_id-Spalte voraus).
+  // Fallback: simpler Query ohne parent_id wenn Spalte noch nicht migriert wurde.
+  let data: unknown[] | null = null;
+  let hasParentId = true;
+
+  const { data: d1, error: e1 } = await supabase
     .from('comments')
     .select(
       `id, post_id, user_id, parent_id, text, created_at,
@@ -515,7 +521,25 @@ export const getPostComments = cache(async (
     .order('created_at', { ascending: true })
     .limit(limit);
 
-  if (error || !data) return [];
+  if (!e1 && d1) {
+    data = d1;
+  } else {
+    // Fallback: parent_id-Spalte existiert noch nicht — einfacher Query ohne Filter.
+    hasParentId = false;
+    const { data: d2, error: e2 } = await supabase
+      .from('comments')
+      .select(
+        `id, post_id, user_id, text, created_at,
+         author:profiles!comments_user_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )`,
+      )
+      .eq('post_id', postId)
+      .order('created_at', { ascending: true })
+      .limit(limit);
+    if (e2 || !d2) return [];
+    data = d2;
+  }
+
+  if (!data) return [];
 
   const rows = data as unknown as CommentRowMobile[];
   const ids = rows.map((r) => r.id);
@@ -548,11 +572,11 @@ export const getPostComments = cache(async (
       id: row.id,
       post_id: row.post_id,
       user_id: row.user_id,
-      parent_id: row.parent_id ?? null,
+      parent_id: hasParentId ? (row.parent_id ?? null) : null,
       body: row.text ?? '',
       like_count: countMap.get(row.id) ?? 0,
       liked_by_me: likedSet.has(row.id),
-      reply_count: extractCommentCount(row.reply_count),
+      reply_count: hasParentId ? extractCommentCount(row.reply_count) : 0,
       created_at: row.created_at,
       author,
     });
