@@ -8,6 +8,7 @@ import {
   MessageCircle,
   Bookmark,
   Share2,
+  Repeat2,
   Music,
   Volume2,
   VolumeX,
@@ -34,6 +35,7 @@ import {
   useTogglePostLike,
   useTogglePostSave,
   useToggleFollow,
+  useToggleRepost,
 } from '@/hooks/use-engagement';
 import type { FeedPost } from '@/lib/data/feed';
 import { LikeButton } from './like-button';
@@ -120,6 +122,7 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
   const likeMut = useTogglePostLike();
   const saveMut = useTogglePostSave();
   const followMut = useToggleFollow();
+  const repostMut = useToggleRepost();
 
   const handleLikeClick = useCallback(() => {
     if (!viewerId) return;
@@ -976,6 +979,25 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
         }
         circleClassName="h-12 w-12"
       />
+
+      {/* Repost — nur für fremde Posts, analog Mobile-Verhalten (v1.w.UI.151) */}
+      {!isSelf && viewerId && (
+        <ActionButton
+          icon={
+            <Repeat2
+              className={cn('h-6 w-6', post.reposted_by_me && 'text-emerald-400')}
+              aria-hidden="true"
+            />
+          }
+          label={post.reposted_by_me ? 'Repostet' : 'Reposten'}
+          ariaLabel={post.reposted_by_me ? 'Repost entfernen' : 'Post reposten'}
+          disabled={repostMut.isPending}
+          onClick={() =>
+            repostMut.mutate({ postId: post.id, reposted: post.reposted_by_me })
+          }
+          circleClassName="h-11 w-11"
+        />
+      )}
 
       {/* Share — 44px (Secondary-Tool, kleiner) */}
       <ActionButton

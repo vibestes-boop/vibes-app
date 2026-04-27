@@ -24,6 +24,8 @@ export interface FeedPost extends Post {
   liked_by_me: boolean;
   saved_by_me: boolean;
   following_author: boolean;
+  // v1.w.UI.151 — Repost-Flag für Repeat2-Button im Feed (nur fremde Posts).
+  reposted_by_me: boolean;
   // Mobile-DB diskriminiert Bild vs. Video. Wir brauchen das im Feed-
   // Renderer um zwischen <video> (Videos) und <img> (Bilder) zu wählen —
   // ohne dieses Feld rendert FeedCard blind <video src=bildurl> → leerer
@@ -69,14 +71,15 @@ async function batchEngagement(
   liked: Set<string>;
   saved: Set<string>;
   following: Set<string>;
+  reposted: Set<string>;
 }> {
   if (!viewerId || postIds.length === 0) {
-    return { liked: new Set(), saved: new Set(), following: new Set() };
+    return { liked: new Set(), saved: new Set(), following: new Set(), reposted: new Set() };
   }
 
   const supabase = await createClient();
 
-  const [likesRes, savesRes, followsRes] = await Promise.all([
+  const [likesRes, savesRes, followsRes, repostsRes] = await Promise.all([
     supabase.from('likes').select('post_id').eq('user_id', viewerId).in('post_id', postIds),
     supabase.from('bookmarks').select('post_id').eq('user_id', viewerId).in('post_id', postIds),
     supabase
@@ -84,12 +87,14 @@ async function batchEngagement(
       .select('following_id')
       .eq('follower_id', viewerId)
       .in('following_id', authorIds),
+    supabase.from('reposts').select('post_id').eq('user_id', viewerId).in('post_id', postIds),
   ]);
 
   return {
     liked: new Set((likesRes.data ?? []).map((r) => r.post_id as string)),
     saved: new Set((savesRes.data ?? []).map((r) => r.post_id as string)),
     following: new Set((followsRes.data ?? []).map((r) => r.following_id as string)),
+    reposted: new Set((repostsRes.data ?? []).map((r) => r.post_id as string)),
   };
 }
 
@@ -110,6 +115,7 @@ function normalizeRow(
   liked: Set<string>,
   saved: Set<string>,
   following: Set<string>,
+  reposted: Set<string> = new Set(),
 ): FeedPost | null {
   const rawAuthor = Array.isArray(row.author) ? row.author[0] : row.author;
   if (!rawAuthor) return null;
@@ -132,6 +138,8 @@ function normalizeRow(
     liked_by_me: liked.has(row.id),
     saved_by_me: saved.has(row.id),
     following_author: following.has(author.id),
+    // v1.w.UI.151 — repost flag
+    reposted_by_me: reposted.has(row.id),
     media_type: row.media_type ?? null,
     // v1.w.UI.142 — default true: if the column is missing (legacy row) assume download is allowed.
     allow_download: row.allow_download ?? true,
@@ -238,10 +246,10 @@ export const getForYouFeed = cache(
       ),
     );
 
-    const { liked, saved, following } = await batchEngagement(postIds, authorIds, viewerId);
+    const { liked, saved, following, reposted } = await batchEngagement(postIds, authorIds, viewerId);
 
     return (rows as unknown as RawPostRow[])
-      .map((row) => normalizeRow(row, liked, saved, following))
+      .map((row) => normalizeRow(row, liked, saved, following, reposted))
       .filter((p): p is FeedPost => p !== null);
   },
 );
@@ -280,13 +288,13 @@ export const getFollowingFeed = cache(
     if (error || !rows) return [];
 
     const postIds = rows.map((r) => r.id as string);
-    const { liked, saved } = await batchEngagement(postIds, followedIds, user.id);
+    const { liked, saved, reposted } = await batchEngagement(postIds, followedIds, user.id);
 
     // Following-Feed: following_author ist per Definition true
     const followingSet = new Set(followedIds);
 
     return (rows as unknown as RawPostRow[])
-      .map((row) => normalizeRow(row, liked, saved, followingSet))
+      .map((row) => normalizeRow(row, liked, saved, followingSet, reposted))
       .filter((p): p is FeedPost => p !== null);
   },
 );
@@ -523,28 +531,31 @@ export const getPostsByTag = cache(
 
     if (error || !data) return [];
 
-    // Engagement-Maps nur für eingeloggte User (like/save/follow).
+    // Engagement-Maps nur für eingeloggte User (like/save/follow/repost).
     const liked = new Set<string>();
     const saved = new Set<string>();
     const following = new Set<string>();
+    const reposted = new Set<string>();
 
     if (user && data.length > 0) {
       const ids = data.map((r) => r.id as string);
       const authorIds = [...new Set(data.map((r) => (r as Record<string, unknown>).author_id as string).filter(Boolean))];
-      const [likesRes, savesRes, followsRes] = await Promise.all([
+      const [likesRes, savesRes, followsRes, repostsRes] = await Promise.all([
         supabase.from('likes').select('post_id').eq('user_id', user.id).in('post_id', ids),
         supabase.from('bookmarks').select('post_id').eq('user_id', user.id).in('post_id', ids),
         authorIds.length > 0
           ? supabase.from('follows').select('following_id').eq('follower_id', user.id).in('following_id', authorIds)
           : Promise.resolve({ data: [] }),
+        supabase.from('reposts').select('post_id').eq('user_id', user.id).in('post_id', ids),
       ]);
       (likesRes.data ?? []).forEach((r) => liked.add(r.post_id as string));
       (savesRes.data ?? []).forEach((r) => saved.add(r.post_id as string));
       ((followsRes as { data: Array<{following_id: string}> | null }).data ?? []).forEach((r) => following.add(r.following_id));
+      (repostsRes.data ?? []).forEach((r) => reposted.add(r.post_id as string));
     }
 
     return (data as unknown as RawPostRow[])
-      .map((row) => normalizeRow(row, liked, saved, following))
+      .map((row) => normalizeRow(row, liked, saved, following, reposted))
       .filter((p): p is FeedPost => p !== null);
   },
 );
@@ -614,9 +625,9 @@ export const searchAll = cache(async (q: string, limit = 12): Promise<SearchResu
     ),
   );
 
-  const { liked, saved, following } = await batchEngagement(postIds, authorIds, viewerId);
+  const { liked, saved, following, reposted } = await batchEngagement(postIds, authorIds, viewerId);
   const posts = postRows
-    .map((row) => normalizeRow(row, liked, saved, following))
+    .map((row) => normalizeRow(row, liked, saved, following, reposted))
     .filter((p): p is FeedPost => p !== null);
 
   const users = (
@@ -710,8 +721,8 @@ export async function searchPaginated(
     const authorIds = Array.from(new Set(rows.map((r) => {
       const a = r.author; const author = Array.isArray(a) ? a[0] : a; return author?.id;
     }).filter((id): id is string => typeof id === 'string')));
-    const { liked, saved, following } = await batchEngagement(postIds, authorIds, viewerId);
-    const posts = rows.map((row) => normalizeRow(row, liked, saved, following)).filter((p): p is FeedPost => p !== null);
+    const { liked, saved, following, reposted } = await batchEngagement(postIds, authorIds, viewerId);
+    const posts = rows.map((row) => normalizeRow(row, liked, saved, following, reposted)).filter((p): p is FeedPost => p !== null);
     return { type, posts, hasMore: posts.length >= SEARCH_PAGE_LIMIT };
   }
 

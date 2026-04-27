@@ -315,3 +315,39 @@ export async function recordDwell(postId: string, dwellMs: number): Promise<void
   await supabase.rpc('update_dwell_time', { post_id: postId, dwell_ms: dwellMs });
   // Fehler ignorieren — fire-and-forget. RPC hat eigene Guards.
 }
+
+// -----------------------------------------------------------------------------
+// toggleRepost — v1.w.UI.151: In-App-Repost (Repeat2) ähnlich TikTok.
+//
+// Schreibt in die `reposts`-Tabelle (user_id, post_id). Eigene Posts dürfen
+// nicht repostet werden (Guard auch auf DB-Ebene sinnvoll, wir prüfen
+// zusätzlich client-seitig im FeedCard — hier als Defense-in-Depth).
+// Toggle-Logik: INSERT → wenn unique_violation (23505) → DELETE.
+// -----------------------------------------------------------------------------
+
+export async function toggleRepost(
+  postId: string,
+  currentlyReposted: boolean,
+): Promise<ActionResult<{ reposted: boolean }>> {
+  const viewer = await getViewerId();
+  if (!viewer) return { ok: false, error: 'Nicht eingeloggt.' };
+
+  const supabase = await createClient();
+
+  if (currentlyReposted) {
+    const { error } = await supabase
+      .from('reposts')
+      .delete()
+      .eq('user_id', viewer.id)
+      .eq('post_id', postId);
+    if (error) return { ok: false, error: error.message };
+    return { ok: true, data: { reposted: false } };
+  }
+
+  const { error } = await supabase.from('reposts').upsert(
+    { user_id: viewer.id, post_id: postId },
+    { onConflict: 'user_id,post_id', ignoreDuplicates: true },
+  );
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, data: { reposted: true } };
+}
