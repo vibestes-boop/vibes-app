@@ -153,3 +153,47 @@ export const getUnreadNotificationCount = cache(async (): Promise<number> => {
   if (error) return 0;
   return count ?? 0;
 });
+
+// -----------------------------------------------------------------------------
+// getNotificationsPage — paginierte Version ohne React cache().
+// Wird von GET /api/notifications?offset=N&limit=N aufgerufen.
+// Kein cache() weil die Argumente sich ändern.
+// -----------------------------------------------------------------------------
+export async function getNotificationsPage(
+  offset: number,
+  limit: number,
+): Promise<Notification[]> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from('notifications')
+    .select(NOTIF_COLUMNS)
+    .eq('recipient_id', user.id)
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error || !data) return [];
+
+  return data.map((row) => {
+    const rawSender = row.sender as NotificationSender | NotificationSender[] | null;
+    const sender = Array.isArray(rawSender) ? (rawSender[0] ?? null) : rawSender;
+    return {
+      id: row.id,
+      type: row.type as NotificationType,
+      read: row.read,
+      created_at: row.created_at,
+      sender,
+      post_id: row.post_id ?? null,
+      comment_id: row.comment_id ?? null,
+      session_id: row.session_id ?? null,
+      comment_text: row.comment_text ?? null,
+      gift_name: row.gift_name ?? null,
+      gift_emoji: row.gift_emoji ?? null,
+      product_name: row.product_name ?? null,
+    };
+  });
+}

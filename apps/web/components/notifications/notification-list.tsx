@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Route } from 'next';
@@ -17,6 +17,7 @@ import {
   Bell,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 import { markAllNotificationsRead } from '@/app/actions/notifications';
 import type { Notification, NotificationType } from '@/lib/data/notifications';
 import { createClient } from '@/lib/supabase/client';
@@ -132,22 +133,77 @@ function initials(n: Notification['sender']): string {
 
 // ── Hauptkomponente ───────────────────────────────────────────────────────────
 
+const LOAD_MORE_LIMIT = 20;
+const INITIAL_LIMIT = 40; // muss mit getNotifications() .limit() übereinstimmen
+
 export function NotificationList({
-  notifications,
+  notifications: initialNotifications,
   viewerId,
+  initialHasMore,
 }: {
   notifications: Notification[];
   /** Supabase-UUID des eingeloggten Users. Wird für Realtime-Subscription benötigt. */
   viewerId: string | null;
+  /** True wenn der Server genau `INITIAL_LIMIT` Notifications geliefert hat — könnte noch mehr geben. */
+  initialHasMore?: boolean;
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  // channelRef verhindert doppelte Subscriptions in React Strict-Mode-Mounts.
   const channelRef = useRef<ReturnType<ReturnType<typeof createClient>['channel']> | null>(null);
+
+  // ── Infinite-scroll state ─────────────────────────────────────────────────
+  const [items, setItems] = useState<Notification[]>(initialNotifications);
+  const [hasMore, setHasMore] = useState(initialHasMore ?? false);
+  const [isFetching, setIsFetching] = useState(false);
+  const fetchedOffsetRef = useRef(initialNotifications.length); // guard StrictMode double-fetch
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  const loadMore = useCallback(async () => {
+    if (isFetching || !hasMore) return;
+    const offset = fetchedOffsetRef.current;
+    if (fetchedOffsetRef.current !== items.length) return; // prevent double-fire
+    setIsFetching(true);
+    try {
+      const res = await fetch(
+        `/api/notifications?offset=${offset}&limit=${LOAD_MORE_LIMIT}`,
+      );
+      if (!res.ok) return;
+      const next = (await res.json()) as Notification[];
+      if (next.length === 0) {
+        setHasMore(false);
+      } else {
+        const seen = new Set(items.map((n) => n.id));
+        const fresh = next.filter((n) => !seen.has(n.id));
+        setItems((prev) => [...prev, ...fresh]);
+        fetchedOffsetRef.current = offset + next.length;
+        if (next.length < LOAD_MORE_LIMIT) setHasMore(false);
+      }
+    } catch {
+      // silent
+    } finally {
+      setIsFetching(false);
+    }
+  }, [isFetching, hasMore, items]);
+
+  // ── IntersectionObserver für Infinite Scroll ─────────────────────────────
+  useEffect(() => {
+    if (!hasMore) return;
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) loadMore();
+      },
+      { rootMargin: '300px' },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, loadMore]);
 
   // Beim Mount alle als gelesen markieren — einmalig, fire-and-forget.
   useEffect(() => {
-    const hasUnread = notifications.some((n) => !n.read);
+    const hasUnread = items.some((n) => !n.read);
     if (hasUnread) {
       markAllNotificationsRead().catch(() => {
         // silent — Badge wird spätestens beim nächsten Navigation-Render aktuell
@@ -200,7 +256,7 @@ export function NotificationList({
     };
   }, [viewerId, router, queryClient]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (notifications.length === 0) {
+  if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-20 text-center text-muted-foreground">
         <Bell className="h-10 w-10 opacity-30" />
@@ -213,8 +269,9 @@ export function NotificationList({
   }
 
   return (
+    <>
     <ul className="flex flex-col divide-y divide-border/50">
-      {notifications.map((n) => {
+      {items.map((n) => {
         const meta = TYPE_META[n.type] ?? TYPE_META.like;
         const Icon = meta.icon;
         const href = notifHref(n);
@@ -278,5 +335,25 @@ export function NotificationList({
         );
       })}
     </ul>
+
+    {/* Sentinel + loading indicator */}
+    {hasMore && (
+      <div ref={sentinelRef} className="flex justify-center py-4">
+        {isFetching && (
+          <div className="space-y-3 w-full">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="flex items-start gap-3 px-2 py-3">
+                <Skeleton className="h-11 w-11 rounded-full shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/4" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    )}
+    </>
   );
 }
