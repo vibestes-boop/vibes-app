@@ -5,13 +5,16 @@ import { createClient } from '@/lib/supabase/server';
 // sitemap.xml — dynamisch generiert.
 //
 // Strategie:
-//   Static:   /, /explore, /shop, /live, /guilds, /login, /signup
-//   Dynamic:  Top-1000 Profile | Top-5000 Posts | Top-500 Produkte | Top-200 Hashtags
+//   Static:   /, /explore, /shop, /live, /guilds, /people, /login, /signup
+//   Dynamic:  Top-1000 Profile | Top-5000 Posts | Top-500 Produkte |
+//             Top-200 Hashtags | alle /g/[id] Guild-Detail-Seiten (max 100)
 // Google schluckt bis zu 50.000 URLs / Sitemap — für Phase 2 ist das mehr als
 // genug. In Phase 13 splitten wir in Sitemap-Index (users.xml, posts.xml,
 // shop.xml, tags.xml separat).
 //
 // Wird mit `revalidate: 3600` gecacht — 1× pro Stunde frisch, spart Supabase-Load.
+//
+// v1.w.UI.131 — Guild-Detail-Pages (/g/[id]) zu dynamischen Routes hinzugefügt.
 // -----------------------------------------------------------------------------
 
 export const revalidate = 3600;
@@ -96,7 +99,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       priority: 0.55,
     }));
 
-    dynamicRoutes = [...profileRoutes, ...postRoutes, ...productRoutes, ...hashtagRoutes];
+    // Guild-Detail-Seiten — derzeit max. 5 feste Pods, kein Pagination-Bedarf.
+    // Limit 100 als Safety-Net falls Schema später expandiert wird.
+    const { data: guilds } = await supabase
+      .from('guilds')
+      .select('id')
+      .limit(100);
+
+    const guildRoutes: MetadataRoute.Sitemap = (guilds ?? []).map((g) => ({
+      url: `${baseUrl}/g/${(g as { id: string }).id}`,
+      changeFrequency: 'daily' as const,
+      priority: 0.6,
+    }));
+
+    dynamicRoutes = [...profileRoutes, ...postRoutes, ...productRoutes, ...hashtagRoutes, ...guildRoutes];
   } catch {
     // Wenn Supabase zickt — wenigstens die statischen Routes liefern.
     dynamicRoutes = [];
