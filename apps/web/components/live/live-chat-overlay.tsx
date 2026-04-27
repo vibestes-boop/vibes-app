@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition, type FormEvent } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
-import { Send, ShieldAlert } from 'lucide-react';
-import { sendLiveComment, timeoutChatUser } from '@/app/actions/live';
+import { Send, ShieldAlert, Pin, PinOff } from 'lucide-react';
+import { sendLiveComment, timeoutChatUser, pinLiveComment, unpinLiveComment } from '@/app/actions/live';
 import type { LiveCommentWithAuthor } from '@/lib/data/live';
 import { cn } from '@/lib/utils';
 
@@ -59,6 +59,8 @@ export function LiveChatOverlay({
   const [text, setText] = useState('');
   const [sendError, setSendError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  // v1.w.UI.139 — Slow-mode client-side countdown after successful send.
+  const [cooldownLeft, setCooldownLeft] = useState(0);
   const listRef = useRef<HTMLDivElement | null>(null);
 
   // ---------------------------------------------------------------------------
@@ -124,6 +126,23 @@ export function LiveChatOverlay({
           });
         },
       )
+      // v1.w.UI.139 — UPDATE subscription: pinned field changes propagate in real-time.
+      // Host/mod calls pin_live_comment/unpin_live_comment → row UPDATE → banner refreshes.
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'live_comments',
+          filter: `session_id=eq.${sessionId}`,
+        },
+        (payload) => {
+          const raw = payload.new as { id: string; pinned?: boolean };
+          setComments((prev) =>
+            prev.map((c) => (c.id === raw.id ? { ...c, pinned: raw.pinned ?? false } : c)),
+          );
+        },
+      )
       .subscribe();
 
     return () => {
@@ -142,12 +161,21 @@ export function LiveChatOverlay({
   }, [comments]);
 
   // ---------------------------------------------------------------------------
+  // v1.w.UI.139 — Slow-mode countdown: decrement every second until 0.
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    if (cooldownLeft <= 0) return;
+    const id = setInterval(() => setCooldownLeft((n) => Math.max(0, n - 1)), 1000);
+    return () => clearInterval(id);
+  }, [cooldownLeft]);
+
+  // ---------------------------------------------------------------------------
   // Send-Handler (identisch zur Sidebar-Variante inkl. Shadow-Ban-Ghost).
   // ---------------------------------------------------------------------------
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     const trimmed = text.trim();
-    if (!trimmed || !viewerId || ended) return;
+    if (!trimmed || !viewerId || ended || cooldownLeft > 0) return;
 
     setSendError(null);
     startTransition(async () => {
@@ -157,6 +185,8 @@ export function LiveChatOverlay({
         return;
       }
       setText('');
+      // Start client-side cooldown after successful send.
+      if (slowModeSeconds > 0) setCooldownLeft(slowModeSeconds);
       if (result.data.shadowBanned) {
         const localGhost: LiveCommentWithAuthor = {
           id: `ghost-${Date.now()}`,
@@ -177,6 +207,31 @@ export function LiveChatOverlay({
   const handleTimeout = (targetUserId: string, seconds: number) => {
     startTransition(async () => {
       const result = await timeoutChatUser(sessionId, targetUserId, seconds);
+      if (!result.ok) setSendError(result.error);
+    });
+  };
+
+  // v1.w.UI.139 — Pin/Unpin. Optimistic: flip pinned flag immediately,
+  // revert on error. Server action calls pin_live_comment / unpin_live_comment RPC.
+  const handlePin = (commentId: string) => {
+    // Optimistic: set this comment as pinned, clear any previous pin
+    setComments((prev) =>
+      prev.map((c) => ({ ...c, pinned: c.id === commentId })),
+    );
+    startTransition(async () => {
+      const result = await pinLiveComment(sessionId, commentId);
+      if (!result.ok) {
+        // Revert — re-fetch would be ideal but just clear optimistic state
+        setComments((prev) => prev.map((c) => (c.id === commentId ? { ...c, pinned: false } : c)));
+        setSendError(result.error);
+      }
+    });
+  };
+
+  const handleUnpin = () => {
+    setComments((prev) => prev.map((c) => ({ ...c, pinned: false })));
+    startTransition(async () => {
+      const result = await unpinLiveComment(sessionId);
       if (!result.ok) setSendError(result.error);
     });
   };
@@ -222,6 +277,8 @@ export function LiveChatOverlay({
               isHostMsg={c.user_id === hostId}
               canModerate={canModerate && c.user_id !== hostId && c.user_id !== viewerId}
               onTimeout={(secs) => handleTimeout(c.user_id, secs)}
+              onPin={() => handlePin(c.id)}
+              onUnpin={handleUnpin}
             />
           ))
         )}
@@ -239,19 +296,29 @@ export function LiveChatOverlay({
               type="text"
               value={text}
               onChange={(e) => setText(e.target.value.slice(0, INPUT_MAX))}
-              placeholder={slowModeSeconds > 0 ? `Slow-Mode ${slowModeSeconds}s…` : 'Schreib was…'}
+              placeholder={
+                cooldownLeft > 0
+                  ? `Warte ${cooldownLeft}s…`
+                  : slowModeSeconds > 0
+                    ? `Slow-Mode ${slowModeSeconds}s…`
+                    : 'Schreib was…'
+              }
               className="min-w-0 flex-1 rounded-full border border-white/15 bg-black/55 px-4 py-2 text-sm text-white placeholder-white/50 outline-none backdrop-blur-md transition-colors duration-fast ease-out-expo focus:border-white/40 focus:bg-black/70"
-              disabled={isPending}
+              disabled={isPending || cooldownLeft > 0}
               maxLength={INPUT_MAX}
               aria-label="Chat-Nachricht"
             />
             <button
               type="submit"
-              disabled={isPending || !text.trim()}
-              className="inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-rose-500 text-white shadow-elevation-2 transition-all duration-fast ease-out-expo hover:bg-rose-600 disabled:opacity-40"
+              disabled={isPending || !text.trim() || cooldownLeft > 0}
+              className="relative inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-rose-500 text-white shadow-elevation-2 transition-all duration-fast ease-out-expo hover:bg-rose-600 disabled:opacity-40"
               aria-label="Senden"
             >
-              <Send className="h-4 w-4" aria-hidden="true" />
+              {cooldownLeft > 0 ? (
+                <span className="text-[11px] font-bold tabular-nums">{cooldownLeft}</span>
+              ) : (
+                <Send className="h-4 w-4" aria-hidden="true" />
+              )}
             </button>
           </form>
         )
@@ -277,11 +344,15 @@ function OverlayRow({
   isHostMsg,
   canModerate,
   onTimeout,
+  onPin,
+  onUnpin,
 }: {
   comment: LiveCommentWithAuthor;
   isHostMsg: boolean;
   canModerate: boolean;
   onTimeout: (seconds: number) => void;
+  onPin: () => void;
+  onUnpin: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const name = comment.author?.display_name ?? comment.author?.username ?? 'Anonym';
@@ -324,7 +395,23 @@ function OverlayRow({
             <ShieldAlert className="h-3.5 w-3.5" aria-hidden="true" />
           </button>
           {menuOpen && (
-            <div className="absolute right-0 top-full z-10 mt-1 w-32 overflow-hidden rounded-xl bg-black/85 text-xs text-white shadow-elevation-3 ring-1 ring-white/10 backdrop-blur-md">
+            <div className="absolute right-0 top-full z-10 mt-1 w-36 overflow-hidden rounded-xl bg-black/85 text-xs text-white shadow-elevation-3 ring-1 ring-white/10 backdrop-blur-md">
+              {/* Pin / Unpin — v1.w.UI.139 */}
+              <button
+                type="button"
+                onClick={() => {
+                  comment.pinned ? onUnpin() : onPin();
+                  setMenuOpen(false);
+                }}
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-white/10"
+              >
+                {comment.pinned ? (
+                  <><PinOff className="h-3 w-3 flex-shrink-0" />Entpinnen</>
+                ) : (
+                  <><Pin className="h-3 w-3 flex-shrink-0" />Anpinnen</>
+                )}
+              </button>
+              <div className="h-px bg-white/10" />
               {[
                 { label: '1 Min', secs: 60 },
                 { label: '5 Min', secs: 300 },

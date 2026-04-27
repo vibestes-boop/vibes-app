@@ -2,8 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition, type FormEvent } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
-import { Send, ShieldAlert, Clock } from 'lucide-react';
-import { sendLiveComment, timeoutChatUser } from '@/app/actions/live';
+import { Send, ShieldAlert, Clock, Pin, PinOff } from 'lucide-react';
+import { sendLiveComment, timeoutChatUser, pinLiveComment, unpinLiveComment } from '@/app/actions/live';
 import type { LiveCommentWithAuthor } from '@/lib/data/live';
 
 // -----------------------------------------------------------------------------
@@ -43,6 +43,8 @@ export function LiveChat({
   const [text, setText] = useState('');
   const [sendError, setSendError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  // v1.w.UI.139 — Slow-mode client-side countdown
+  const [cooldownLeft, setCooldownLeft] = useState(0);
   const listRef = useRef<HTMLDivElement | null>(null);
 
   // -----------------------------------------------------------------------------
@@ -119,6 +121,22 @@ export function LiveChat({
           });
         },
       )
+      // v1.w.UI.139 — UPDATE: pinned state changes propagate in real-time
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'live_comments',
+          filter: `session_id=eq.${sessionId}`,
+        },
+        (payload) => {
+          const raw = payload.new as { id: string; pinned?: boolean };
+          setComments((prev) =>
+            prev.map((c) => (c.id === raw.id ? { ...c, pinned: raw.pinned ?? false } : c)),
+          );
+        },
+      )
       .subscribe();
 
     return () => {
@@ -146,13 +164,20 @@ export function LiveChat({
     }
   }, [comments]);
 
+  // v1.w.UI.139 — Slow-mode countdown
+  useEffect(() => {
+    if (cooldownLeft <= 0) return;
+    const id = setInterval(() => setCooldownLeft((n) => Math.max(0, n - 1)), 1000);
+    return () => clearInterval(id);
+  }, [cooldownLeft]);
+
   // -----------------------------------------------------------------------------
   // Send-Handler
   // -----------------------------------------------------------------------------
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     const trimmed = text.trim();
-    if (!trimmed || !viewerId || ended) return;
+    if (!trimmed || !viewerId || ended || cooldownLeft > 0) return;
 
     setSendError(null);
     startTransition(async () => {
@@ -162,6 +187,7 @@ export function LiveChat({
         return;
       }
       setText('');
+      if (slowModeSeconds > 0) setCooldownLeft(slowModeSeconds);
       // Bei Shadow-Ban: Lokal anzeigen, damit der Troll nicht merkt, dass
       // niemand ihn sieht. Native macht dasselbe.
       if (result.data.shadowBanned) {
@@ -190,6 +216,26 @@ export function LiveChat({
       if (!result.ok) {
         setSendError(result.error);
       }
+    });
+  };
+
+  // v1.w.UI.139 — Pin/Unpin handlers (for host + mods)
+  const handlePin = (commentId: string) => {
+    setComments((prev) => prev.map((c) => ({ ...c, pinned: c.id === commentId })));
+    startTransition(async () => {
+      const result = await pinLiveComment(sessionId, commentId);
+      if (!result.ok) {
+        setComments((prev) => prev.map((c) => (c.id === commentId ? { ...c, pinned: false } : c)));
+        setSendError(result.error);
+      }
+    });
+  };
+
+  const handleUnpin = () => {
+    setComments((prev) => prev.map((c) => ({ ...c, pinned: false })));
+    startTransition(async () => {
+      const result = await unpinLiveComment(sessionId);
+      if (!result.ok) setSendError(result.error);
     });
   };
 
@@ -238,6 +284,8 @@ export function LiveChat({
               isHostMsg={c.user_id === hostId}
               canModerate={canModerate && c.user_id !== hostId && c.user_id !== viewerId}
               onTimeout={(secs) => handleTimeout(c.user_id, secs)}
+              onPin={() => handlePin(c.id)}
+              onUnpin={handleUnpin}
             />
           ))
         )}
@@ -255,18 +303,22 @@ export function LiveChat({
               type="text"
               value={text}
               onChange={(e) => setText(e.target.value.slice(0, INPUT_MAX))}
-              placeholder="Schreib was…"
+              placeholder={cooldownLeft > 0 ? `Warte ${cooldownLeft}s…` : 'Schreib was…'}
               className="min-w-0 flex-1 rounded-full border bg-background px-3 py-1.5 text-sm outline-none focus:border-primary"
-              disabled={isPending}
+              disabled={isPending || cooldownLeft > 0}
               maxLength={INPUT_MAX}
             />
             <button
               type="submit"
-              disabled={isPending || !text.trim()}
-              className="inline-flex items-center justify-center rounded-full bg-primary px-3 py-1.5 text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              disabled={isPending || !text.trim() || cooldownLeft > 0}
+              className="inline-flex min-w-[2.25rem] items-center justify-center rounded-full bg-primary px-3 py-1.5 text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
               aria-label="Senden"
             >
-              <Send className="h-4 w-4" aria-hidden="true" />
+              {cooldownLeft > 0 ? (
+                <span className="text-[11px] font-bold tabular-nums">{cooldownLeft}</span>
+              ) : (
+                <Send className="h-4 w-4" aria-hidden="true" />
+              )}
             </button>
           </form>
         )
@@ -292,11 +344,15 @@ function CommentRow({
   isHostMsg,
   canModerate,
   onTimeout,
+  onPin,
+  onUnpin,
 }: {
   comment: LiveCommentWithAuthor;
   isHostMsg: boolean;
   canModerate: boolean;
   onTimeout: (seconds: number) => void;
+  onPin: () => void;
+  onUnpin: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const name = comment.author?.display_name ?? comment.author?.username ?? 'Anonym';
@@ -336,7 +392,23 @@ function CommentRow({
             <ShieldAlert className="h-3.5 w-3.5" aria-hidden="true" />
           </button>
           {menuOpen && (
-            <div className="absolute right-0 top-full z-10 mt-1 w-32 overflow-hidden rounded-md border bg-popover text-xs shadow-lg">
+            <div className="absolute right-0 top-full z-10 mt-1 w-36 overflow-hidden rounded-md border bg-popover text-xs shadow-lg">
+              {/* Pin / Unpin — v1.w.UI.139 */}
+              <button
+                type="button"
+                onClick={() => {
+                  comment.pinned ? onUnpin() : onPin();
+                  setMenuOpen(false);
+                }}
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-muted"
+              >
+                {comment.pinned ? (
+                  <><PinOff className="h-3 w-3 flex-shrink-0" />Entpinnen</>
+                ) : (
+                  <><Pin className="h-3 w-3 flex-shrink-0" />Anpinnen</>
+                )}
+              </button>
+              <div className="h-px bg-border" />
               {[
                 { label: '1 Min', secs: 60 },
                 { label: '5 Min', secs: 300 },
