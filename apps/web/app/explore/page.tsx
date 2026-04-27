@@ -5,23 +5,24 @@ import { Hash, Flame, TrendingUp, Compass, Users } from 'lucide-react';
 import { getTrendingHashtags, getForYouFeed, getSuggestedFollows } from '@/lib/data/feed';
 import { getUser } from '@/lib/auth/session';
 import { FollowButton } from '@/components/profile/follow-button';
-import { ExploreVideoCard } from '@/components/explore/explore-video-card';
+import { ExplorePostGrid } from '@/components/explore/explore-post-grid';
 import { getT, getLocale } from '@/lib/i18n/server';
 import { LOCALE_INTL } from '@/lib/i18n/config';
 import type { Locale } from '@/lib/i18n/config';
 
 // -----------------------------------------------------------------------------
-// /explore — Trending Hashtags + People-Discovery + horizontaler Preview-Strip.
+// /explore — Trending Hashtags + People-Discovery + Popular Posts (∞ scroll).
 //
 // Drei Sektionen:
-//  1. Trending Hashtags (ISR 15 min)
-//  2. Accounts entdecken — getSuggestedFollows(12), filtert bereits bekannte
-//     Follows und den eigenen Account aus. FollowButton ist Client-Komponente,
-//     rendert direkt aus dem RSC. revalidate=0 damit neue Follows sofort greifen.
-//  3. Populäre Posts (ISR 15 min)
+//  1. Trending Hashtags
+//  2. Accounts entdecken — getSuggestedFollows(12)
+//  3. Populäre Posts — SSR-Seed 12, infinite scroll via ExplorePostGrid
+//     (GET /api/feed/explore?offset=N). v1.w.UI.124.
 // -----------------------------------------------------------------------------
 
 export const revalidate = 0; // force-dynamic wegen Auth-abhängiger People-Section
+
+const EXPLORE_SEED = 12;
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getT();
@@ -34,7 +35,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function ExplorePage() {
   const [hashtags, preview, people, viewer, t, locale] = await Promise.all([
     getTrendingHashtags(24),
-    getForYouFeed({ limit: 6 }),
+    getForYouFeed({ limit: EXPLORE_SEED }),
     getSuggestedFollows(12),
     getUser(),
     getT(),
@@ -161,32 +162,17 @@ export default async function ExplorePage() {
         </section>
       )}
 
-      {/* Video-Preview — v1.w.UI.55b: ExploreVideoCard für Hover-Video-Preview */}
+      {/* Popular Posts — v1.w.UI.124: ExplorePostGrid mit infinite scroll */}
       {preview.length > 0 && (
         <section>
           <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
             <TrendingUp className="h-5 w-5" />
             {t('explore.popularPosts')}
           </h2>
-          <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
-            {preview.map((p) => {
-              const fallbackInitial =
-                (p.author.display_name ?? p.author.username).slice(0, 1).toUpperCase() || '•';
-              return (
-                <li key={p.id}>
-                  <ExploreVideoCard
-                    id={p.id}
-                    videoUrl={p.video_url}
-                    thumbnailUrl={p.thumbnail_url}
-                    caption={p.caption}
-                    authorUsername={p.author.username}
-                    viewCount={p.view_count ?? 0}
-                    fallbackInitial={fallbackInitial}
-                  />
-                </li>
-              );
-            })}
-          </ul>
+          <ExplorePostGrid
+            initialPosts={preview}
+            initialHasMore={preview.length >= EXPLORE_SEED}
+          />
         </section>
       )}
     </main>
