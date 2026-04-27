@@ -7,6 +7,7 @@ import { getPublicProfile, getProfilePosts, getProfileLikedPosts, getBattleHisto
 import { getUser } from '@/lib/auth/session';
 import { getMyCoinBalance } from '@/lib/data/payments';
 import { getMerchantProducts } from '@/lib/data/shop';
+import { isHostMuted } from '@/lib/data/live-host';
 import { PostGrid } from '@/components/profile/post-grid';
 import { ProductCard } from '@/components/shop/product-card';
 import { BattleList } from '@/components/profile/battle-list';
@@ -15,6 +16,7 @@ import { ProfileTabs, type ProfileTab } from '@/components/profile/profile-tabs'
 import { FollowButton } from '@/components/profile/follow-button';
 import { CreatorTipButton } from '@/components/profile/creator-tip-button';
 import { LiveRingAvatar } from '@/components/profile/live-ring-avatar';
+import { MuteHostButton } from '@/components/profile/mute-host-button';
 import { getT, getLocale } from '@/lib/i18n/server';
 import { LOCALE_INTL } from '@/lib/i18n/config';
 import type { Locale } from '@/lib/i18n/config';
@@ -175,13 +177,14 @@ export default async function ProfilePage({
   // Parallel: Session + Follow-Status + Posts-Feed + Coin-Balance + i18n
   // isSelf kann erst nach getUser() bestimmt werden — Likes-Fetch wird daher
   // zwei-stufig: erst viewer, dann (wenn isSelf && tab=likes) likedPosts.
-  const [viewer, followState, posts, shopProducts, battles, balance, t, locale] = await Promise.all([
+  const [viewer, followState, posts, shopProducts, battles, balance, hostMuted, t, locale] = await Promise.all([
     getUser(),
     getFollowState(profile.id),
     tab === 'posts' ? getProfilePosts(profile.id, 24) : Promise.resolve([]),
     tab === 'shop' ? getMerchantProducts(profile.id, 48) : Promise.resolve([]),
     tab === 'battles' ? getBattleHistory(profile.id, 30) : Promise.resolve([]),
     getMyCoinBalance(),
+    isHostMuted(profile.id),
     getT(),
     getLocale(),
   ]);
@@ -290,6 +293,13 @@ export default async function ProfilePage({
                 <ProfileBlockButton
                   targetUserId={profile.id}
                   targetUsername={profile.username}
+                />
+              )}
+              {/* v1.w.UI.156: Bell-Toggle — Go-Live Push stummschalten */}
+              {viewer && !isSelf && (
+                <MuteHostButton
+                  hostId={profile.id}
+                  initiallyMuted={hostMuted}
                 />
               )}
             </div>

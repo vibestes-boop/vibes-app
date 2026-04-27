@@ -77,6 +77,25 @@ export async function unmuteHost(hostId: string): Promise<ActionResult<null>> {
   return { ok: true, data: null };
 }
 
+export async function muteHost(hostId: string): Promise<ActionResult<null>> {
+  const user = await getUser();
+  if (!user) return { ok: false, error: 'Nicht eingeloggt.' };
+  if (user.id === hostId) return { ok: false, error: 'Du kannst dich nicht selbst stummschalten.' };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('muted_live_hosts')
+    .upsert(
+      { user_id: user.id, host_id: hostId },
+      { onConflict: 'user_id,host_id', ignoreDuplicates: true },
+    );
+
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath('/settings/muted-live-hosts');
+  return { ok: true, data: null };
+}
+
 // ─── CoHost Blocks ───────────────────────────────────────────────────────────
 
 export interface CoHostBlockRow {

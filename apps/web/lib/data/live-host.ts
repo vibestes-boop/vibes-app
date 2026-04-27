@@ -241,3 +241,22 @@ export const getMyScheduledLives = cache(
     return data.map(mapScheduledRow);
   },
 );
+
+// -----------------------------------------------------------------------------
+// isHostMuted — check if the current viewer has muted this host's Go-Live push.
+// Used on public profile pages to render the bell toggle button.
+// Returns false for unauthenticated visitors or self-profile.
+// -----------------------------------------------------------------------------
+export const isHostMuted = cache(
+  async (hostId: string): Promise<boolean> => {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || user.id === hostId) return false;
+    const { count } = await supabase
+      .from('muted_live_hosts')
+      .select('host_id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('host_id', hostId);
+    return (count ?? 0) > 0;
+  },
+);
