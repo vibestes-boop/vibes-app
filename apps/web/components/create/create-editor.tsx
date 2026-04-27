@@ -231,6 +231,11 @@ export function CreateEditor({ viewerId, initialDraft }: Props) {
     setRemoteThumbnailUrl(url);
     setCoverTimeMs(null);
     setUploadProgress(null);
+    // KI-Bilder sind immer quadratisch (1024×1024 / 1024×1536 je nach Size-Option).
+    // 1024×1024 → square, 1024×1536 → portrait. Default-Size ist 1024×1536,
+    // also portrait. Wir setzen explizit zurück damit ein vorher gewähltes
+    // Querformat nicht versehentlich übernommen wird.
+    setAspectRatio('portrait');
   }, [localPreviewUrl]);
 
   const inputRef = useRef<HTMLInputElement>(null);
