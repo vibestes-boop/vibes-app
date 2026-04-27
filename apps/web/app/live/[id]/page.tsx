@@ -16,7 +16,7 @@ import { getActiveGiftGoal } from '@/lib/data/live-host';
 import { getUser } from '@/lib/auth/session';
 import { LiveVideoPlayer } from '@/components/live/live-video-player';
 import { LiveActionBar } from '@/components/live/live-action-bar';
-import { LivePollPanel } from '@/components/live/live-poll-panel';
+import { LiveActivePollWatcher } from '@/components/live/live-active-poll-watcher';
 import { LiveHostPill } from '@/components/live/live-host-pill';
 import { LiveChatOverlay } from '@/components/live/live-chat-overlay';
 import { LiveEnterClient } from '@/components/live/live-enter-client';
@@ -302,19 +302,15 @@ export default async function LiveViewerPage({ params }: PageProps) {
            * außen vor das Panel und neutralisieren die innere Card-Bordüre
            * via Arbitrary-Value-Child-Selector).
            */}
-          {!ended && activePoll && (
-            <div className="absolute right-3 top-28 w-64 max-w-[55%]">
-              <div className={cn(glassSurface, 'rounded-2xl p-1 shadow-elevation-2')}>
-                <div className="[&_h3]:text-white [&_.rounded-xl]:bg-transparent [&_.rounded-xl]:!border-0 [&_.rounded-xl]:!p-2">
-                  <LivePollPanel
-                    sessionId={id}
-                    poll={activePoll}
-                    viewerId={viewerId}
-                  />
-                </div>
-              </div>
-            </div>
-          )}
+          {/* v1.w.UI.143 — LiveActivePollWatcher manages poll lifecycle client-side:
+               INSERT subscription shows polls started after page load,
+               UPDATE subscription dismisses closed polls after 8s. */}
+          <LiveActivePollWatcher
+            sessionId={id}
+            initialPoll={activePoll}
+            viewerId={viewerId}
+            ended={ended}
+          />
 
           {/*
            * Chat-Overlay — links-unten, ABOVE der Action-Bar. Eigene compose-
