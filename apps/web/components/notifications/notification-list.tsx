@@ -17,10 +17,13 @@ import {
   Users,
   Bell,
   ShoppingBag,
+  Check,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { markAllNotificationsRead } from '@/app/actions/notifications';
+import { respondFollowRequest } from '@/app/actions/profile';
 import type { Notification, NotificationType } from '@/lib/data/notifications';
 import { createClient } from '@/lib/supabase/client';
 
@@ -178,6 +181,33 @@ export function NotificationList({
   const fetchedOffsetRef = useRef(initialNotifications.length); // guard StrictMode double-fetch
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
+  // ── Follow-Request inline Accept/Decline (v1.w.UI.152) ───────────────────
+  // respondingIds: notification IDs currently being processed (button spinner).
+  // dismissedIds:  notification IDs to hide optimistically after acting.
+  const [respondingIds, setRespondingIds] = useState<Set<string>>(new Set());
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+
+  const handleRespondRequest = useCallback(async (
+    notifId: string,
+    senderId: string,
+    accept: boolean,
+  ) => {
+    setRespondingIds((prev) => new Set(prev).add(notifId));
+    try {
+      const res = await respondFollowRequest(senderId, accept);
+      if (res.ok) {
+        // Optimistically hide the notification row
+        setDismissedIds((prev) => new Set(prev).add(notifId));
+      }
+    } finally {
+      setRespondingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(notifId);
+        return next;
+      });
+    }
+  }, []);
+
   const loadMore = useCallback(async () => {
     if (isFetching || !hasMore) return;
     const offset = fetchedOffsetRef.current;
@@ -292,9 +322,14 @@ export function NotificationList({
     <>
     <ul className="flex flex-col divide-y divide-border/50">
       {items.map((n) => {
+        // Optimistically hide acted-upon follow_request rows.
+        if (dismissedIds.has(n.id)) return null;
+
         const meta = TYPE_META[n.type] ?? TYPE_META.like;
         const Icon = meta.icon;
         const href = notifHref(n);
+        const isFollowRequest = n.type === 'follow_request';
+        const isResponding = respondingIds.has(n.id);
 
         return (
           <li key={n.id}>
@@ -346,9 +381,39 @@ export function NotificationList({
                 </p>
               </div>
 
-              {/* Unread-Dot */}
-              {!n.read && (
-                <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />
+              {/* Follow-Request Accept / Decline (v1.w.UI.152) */}
+              {isFollowRequest && n.sender?.id ? (
+                <div className="ml-1 flex shrink-0 flex-col gap-1.5">
+                  <button
+                    type="button"
+                    aria-label="Anfrage annehmen"
+                    disabled={isResponding}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      void handleRespondRequest(n.id, n.sender!.id, true);
+                    }}
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-500 transition-colors hover:bg-emerald-500/20 disabled:opacity-50"
+                  >
+                    <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Anfrage ablehnen"
+                    disabled={isResponding}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      void handleRespondRequest(n.id, n.sender!.id, false);
+                    }}
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-red-500/30 bg-red-500/10 text-red-500 transition-colors hover:bg-red-500/20 disabled:opacity-50"
+                  >
+                    <X className="h-3.5 w-3.5" strokeWidth={2.5} />
+                  </button>
+                </div>
+              ) : (
+                /* Unread-Dot (für nicht-follow_request Rows) */
+                !n.read && (
+                  <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                )
               )}
             </Link>
           </li>

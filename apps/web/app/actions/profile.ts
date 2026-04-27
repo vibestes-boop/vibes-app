@@ -312,3 +312,53 @@ export async function updateNotifPrefs(
   revalidatePath('/settings/notifications');
   return { ok: true, data: null };
 }
+
+// -----------------------------------------------------------------------------
+// respondFollowRequest — v1.w.UI.152
+//
+// Wird von der /notifications-Seite für inline Accept/Decline-Buttons aufgerufen.
+// Parität zu mobile `useRespondFollowRequest`.
+//
+//   accept=true:  löscht Row aus follow_requests + upsert in follows
+//                 + schreibt 'follow_request_accepted'-Notification an Sender
+//   accept=false: löscht Row aus follow_requests (stilles Ablehnen)
+// -----------------------------------------------------------------------------
+
+export async function respondFollowRequest(
+  senderId: string,
+  accept: boolean,
+): Promise<ActionResult<null>> {
+  const user = await getUser();
+  if (!user) return { ok: false, error: 'Nicht eingeloggt.' };
+
+  const supabase = await createClient();
+
+  // Follow-Request-Row löschen (funktioniert für accept und decline).
+  const { error: delErr } = await supabase
+    .from('follow_requests')
+    .delete()
+    .eq('sender_id', senderId)
+    .eq('receiver_id', user.id);
+
+  if (delErr) return { ok: false, error: delErr.message };
+
+  if (accept) {
+    // Follow eintragen
+    const { error: followErr } = await supabase
+      .from('follows')
+      .upsert(
+        { follower_id: senderId, following_id: user.id },
+        { onConflict: 'follower_id,following_id', ignoreDuplicates: true },
+      );
+    if (followErr) return { ok: false, error: followErr.message };
+
+    // Benachrichtigung an Sender: Anfrage angenommen
+    await supabase.from('notifications').insert({
+      recipient_id: senderId,
+      sender_id:    user.id,
+      type:         'follow_request_accepted',
+    });
+  }
+
+  return { ok: true, data: null };
+}
