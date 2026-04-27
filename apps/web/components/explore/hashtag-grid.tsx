@@ -94,6 +94,7 @@ export function HashtagGrid({ initialPosts, tag }: HashtagGridProps) {
                 authorUsername={p.author.username}
                 viewCount={p.view_count ?? 0}
                 fallbackInitial={fallbackInitial}
+                womenOnly={p.women_only}
               />
             </li>
           );

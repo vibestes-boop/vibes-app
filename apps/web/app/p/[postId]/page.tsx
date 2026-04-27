@@ -444,6 +444,7 @@ export default async function PostDetailPage({
                       authorUsername={post.author.username}
                       viewCount={p.view_count}
                       fallbackInitial={fallbackInitial}
+                      womenOnly={p.women_only}
                     />
                   </li>
                 );

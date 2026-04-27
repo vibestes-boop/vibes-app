@@ -123,6 +123,7 @@ export function LandingPage({ featured, liveNow, trendingPosts }: LandingPagePro
                     authorUsername={p.author.username}
                     viewCount={p.view_count ?? 0}
                     fallbackInitial={fallback}
+                    womenOnly={p.women_only}
                   />
                 </li>
               );

@@ -309,6 +309,7 @@ export function SearchResultsTabs({ q, results, viewerId, followingSet, initialT
                     authorUsername={p.author.username}
                     viewCount={p.view_count ?? 0}
                     fallbackInitial={fallbackInitial}
+                    womenOnly={p.women_only}
                   />
                 </li>
               );

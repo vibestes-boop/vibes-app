@@ -82,6 +82,7 @@ export function ExplorePostGrid({
                 authorUsername={p.author.username}
                 viewCount={p.view_count ?? 0}
                 fallbackInitial={fallbackInitial}
+                womenOnly={p.women_only}
               />
             </li>
           );

@@ -816,11 +816,22 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
             </p>
           ))}
 
+        {/* v1.w.UI.170 — hashtag chips are clickable links to /t/[tag] */}
         {post.hashtags.length > 0 && (
           <div className="flex flex-wrap gap-x-2 gap-y-1 text-xs text-white/80">
-            {post.hashtags.slice(0, 4).map((tag) => (
-              <span key={tag}>#{tag.replace(/^#/, '')}</span>
-            ))}
+            {post.hashtags.slice(0, 4).map((tag) => {
+              const clean = tag.replace(/^#/, '');
+              return (
+                <Link
+                  key={tag}
+                  href={`/t/${clean}` as Route}
+                  className="hover:text-white hover:underline"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  #{clean}
+                </Link>
+              );
+            })}
           </div>
         )}
 
