@@ -409,6 +409,7 @@ export interface UpdatePostInput {
   allowComments: boolean;
   allowDownload: boolean;
   allowDuet: boolean;
+  womenOnly: boolean;
 }
 
 export async function updatePost(
@@ -439,6 +440,7 @@ export async function updatePost(
       allow_comments: input.allowComments,
       allow_download: input.allowDownload,
       allow_duet: input.allowDuet,
+      women_only: input.womenOnly,
     })
     .eq('id', postId)
     .eq('author_id', viewer);
@@ -460,6 +462,7 @@ export async function updatePostCaption(
     allowComments: true,
     allowDownload: true,
     allowDuet: true,
+    womenOnly: false,
   });
 }
 

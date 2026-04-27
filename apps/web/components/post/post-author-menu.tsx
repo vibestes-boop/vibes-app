@@ -23,6 +23,7 @@ export function PostAuthorMenu({
   allowComments = true,
   allowDownload = true,
   allowDuet = true,
+  womenOnly = false,
 }: {
   postId: string;
   authorUsername: string;
@@ -31,6 +32,7 @@ export function PostAuthorMenu({
   allowComments?: boolean;
   allowDownload?: boolean;
   allowDuet?: boolean;
+  womenOnly?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -138,6 +140,7 @@ export function PostAuthorMenu({
           initialAllowComments={allowComments}
           initialAllowDownload={allowDownload}
           initialAllowDuet={allowDuet}
+          initialWomenOnly={womenOnly}
           onClose={() => setEditOpen(false)}
           onSaved={() => {
             setEditOpen(false);
@@ -171,6 +174,7 @@ function PostEditDialog({
   initialAllowComments,
   initialAllowDownload,
   initialAllowDuet,
+  initialWomenOnly,
   onClose,
   onSaved,
 }: {
@@ -180,6 +184,7 @@ function PostEditDialog({
   initialAllowComments: boolean;
   initialAllowDownload: boolean;
   initialAllowDuet: boolean;
+  initialWomenOnly: boolean;
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -188,6 +193,7 @@ function PostEditDialog({
   const [allowComments, setAllowComments]   = useState(initialAllowComments);
   const [allowDownload, setAllowDownload]   = useState(initialAllowDownload);
   const [allowDuet, setAllowDuet]           = useState(initialAllowDuet);
+  const [womenOnly, setWomenOnly]           = useState(initialWomenOnly);
   const [isPending, startTransition]        = useTransition();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -206,7 +212,8 @@ function PostEditDialog({
     privacy !== initialPrivacy ||
     allowComments !== initialAllowComments ||
     allowDownload !== initialAllowDownload ||
-    allowDuet !== initialAllowDuet;
+    allowDuet !== initialAllowDuet ||
+    womenOnly !== initialWomenOnly;
 
   const handleSave = () => {
     startTransition(async () => {
@@ -216,6 +223,7 @@ function PostEditDialog({
         allowComments,
         allowDownload,
         allowDuet,
+        womenOnly,
       };
       const res = await updatePost(postId, input);
       if (res.ok) {
@@ -312,9 +320,15 @@ function PostEditDialog({
               Interaktionen
             </label>
             <div className="overflow-hidden rounded-xl border border-border divide-y divide-border">
-              <ToggleRow label="Kommentare erlauben" checked={allowComments} onChange={setAllowComments} />
-              <ToggleRow label="Download erlauben"   checked={allowDownload} onChange={setAllowDownload} />
-              <ToggleRow label="Duett erlauben"      checked={allowDuet}    onChange={setAllowDuet} />
+              <ToggleRow label="Kommentare erlauben"        checked={allowComments} onChange={setAllowComments} />
+              <ToggleRow label="Download erlauben"          checked={allowDownload} onChange={setAllowDownload} />
+              <ToggleRow label="Duett erlauben"             checked={allowDuet}    onChange={setAllowDuet} />
+              <ToggleRow
+                label="Nur für Frauen"
+                icon={<span className="text-pink-400 text-xs leading-none">♀</span>}
+                checked={womenOnly}
+                onChange={setWomenOnly}
+              />
             </div>
           </section>
         </div>
@@ -347,30 +361,37 @@ function PostEditDialog({
 
 function ToggleRow({
   label,
+  icon,
   checked,
   onChange,
 }: {
   label: string;
+  icon?: React.ReactNode;
   checked: boolean;
   onChange: (v: boolean) => void;
 }) {
   return (
     <div className="flex items-center justify-between bg-background px-3 py-3">
-      <span className="text-sm text-foreground">{label}</span>
+      <span className="flex items-center gap-1.5 text-sm text-foreground">
+        {icon}
+        {label}
+      </span>
       <button
         type="button"
         role="switch"
         aria-checked={checked}
         onClick={() => onChange(!checked)}
         className={cn(
-          'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
-          checked ? 'bg-primary' : 'bg-muted-foreground/30',
+          'relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1',
+          checked
+            ? 'bg-emerald-500 focus:ring-emerald-500'
+            : 'bg-zinc-600 focus:ring-zinc-500',
         )}
       >
         <span
           className={cn(
-            'inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform',
-            checked ? 'translate-x-[22px]' : 'translate-x-[2px]',
+            'inline-block h-[18px] w-[18px] rounded-full bg-white shadow transition-transform',
+            checked ? 'translate-x-[25px]' : 'translate-x-[3px]',
           )}
         />
       </button>

@@ -341,6 +341,7 @@ export default async function PostDetailPage({
                   allowComments={post.allow_comments}
                   allowDownload={post.allow_download}
                   allowDuet={post.allow_duet}
+                  womenOnly={post.women_only}
                 />
               ) : (
                 // v1.w.UI.58: FollowButton + PostViewerMenu (Melden / Kein Interesse /

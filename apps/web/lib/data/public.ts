@@ -416,6 +416,7 @@ export interface PostWithAuthor extends Post {
   /** Privacy-Setting: 'public' | 'friends' | 'private'. Default 'public' für Legacy-Rows. */
   privacy: 'public' | 'friends' | 'private';
   allow_download: boolean;
+  women_only: boolean;
 }
 
 export const getPost = cache(async (postId: string): Promise<PostWithAuthor | null> => {
@@ -423,7 +424,7 @@ export const getPost = cache(async (postId: string): Promise<PostWithAuthor | nu
   const { data, error } = await supabase
     .from('posts')
     .select(
-      `id, author_id, caption, media_url, media_type, thumbnail_url, view_count, tags, allow_comments, allow_duet, allow_download, privacy, created_at,
+      `id, author_id, caption, media_url, media_type, thumbnail_url, view_count, tags, allow_comments, allow_duet, allow_download, privacy, women_only, created_at,
        like_count:likes(count),
        comment_count:comments(count),
        author:profiles!posts_author_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )`,
@@ -445,7 +446,8 @@ export const getPost = cache(async (postId: string): Promise<PostWithAuthor | nu
     ? (rowAny.privacy as 'public' | 'friends' | 'private')
     : 'public';
   const allow_download = typeof rowAny.allow_download === 'boolean' ? rowAny.allow_download : true;
-  return { ...post, author, media_type, privacy, allow_download };
+  const women_only = typeof rowAny.women_only === 'boolean' ? rowAny.women_only : false;
+  return { ...post, author, media_type, privacy, allow_download, women_only };
 });
 
 // -----------------------------------------------------------------------------
