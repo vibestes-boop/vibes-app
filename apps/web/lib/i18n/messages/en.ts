@@ -290,6 +290,7 @@ const enMessages = {
     noMatches: 'No products match your filters.',
     browseCatalog: 'Discover products from creators.',
     saved: 'Saved',
+    myOrders: 'Orders',
     emptyTitle: 'No matches',
     emptyHint:
       'Loosen the filters or try another category. The sidebar on the left has a "Reset" button.',

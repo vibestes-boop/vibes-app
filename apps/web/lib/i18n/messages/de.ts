@@ -304,6 +304,7 @@ const deMessages = {
     noMatches: 'Keine Produkte passen auf deine Filter.',
     browseCatalog: 'Entdecke Produkte von Creatorn.',
     saved: 'Gemerkt',
+    myOrders: 'Bestellungen',
     emptyTitle: 'Keine Treffer',
     emptyHint:
       'Lockere die Filter oder probiere eine andere Kategorie. Die Sidebar links hat einen „Zurücksetzen"-Button.',

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { Route } from 'next';
-import { Store, Bookmark, Coins, ShoppingBag } from 'lucide-react';
+import { Store, Bookmark, Coins, Package, ShoppingBag } from 'lucide-react';
 import { ShopGrid } from '@/components/shop/shop-grid';
 import { ShopFilters } from '@/components/shop/shop-filters';
 import { ShopSearchInput } from '@/components/shop/shop-search-input';
@@ -86,6 +86,15 @@ export default async function ShopCatalogPage({ searchParams }: PageProps) {
                 <Coins className="h-4 w-4 text-amber-500" />
                 {balance.toLocaleString(LOCALE_INTL[locale])}
               </div>
+            )}
+            {user && (
+              <Link
+                href={'/shop/orders' as Route}
+                className="inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted"
+              >
+                <Package className="h-4 w-4" />
+                {t('shop.myOrders')}
+              </Link>
             )}
             {user && (
               <Link
