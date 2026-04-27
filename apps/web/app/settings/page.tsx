@@ -9,6 +9,8 @@ import {
   Palette,
   UserX,
   Trash2,
+  BellOff,
+  ShieldOff,
 } from 'lucide-react';
 
 import { SettingsRow } from '@/components/settings/settings-row';
@@ -124,6 +126,20 @@ export default async function SettingsOverviewPage() {
           subtitle={t('settings.rowBlockedSubtitle')}
           href={'/settings/blocked' as Route}
           testId="settings-row-blocked"
+        />
+        <SettingsRow
+          icon={BellOff}
+          label={t('settings.rowMutedHostsLabel')}
+          subtitle={t('settings.rowMutedHostsSubtitle')}
+          href={'/settings/muted-live-hosts' as Route}
+          testId="settings-row-muted-hosts"
+        />
+        <SettingsRow
+          icon={ShieldOff}
+          label={t('settings.rowCohostBlocksLabel')}
+          subtitle={t('settings.rowCohostBlocksSubtitle')}
+          href={'/settings/cohost-blocks' as Route}
+          testId="settings-row-cohost-blocks"
         />
       </Section>
 
