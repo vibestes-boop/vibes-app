@@ -41,11 +41,27 @@ const bioSchema = z
   .trim()
   .max(200, 'Bio darf maximal 200 Zeichen haben.');
 
+const websiteSchema = z
+  .string()
+  .trim()
+  .max(200, 'Website-URL darf maximal 200 Zeichen haben.')
+  .refine(
+    (v) => v === '' || /^https?:\/\/.+/.test(v),
+    'Website muss mit http:// oder https:// beginnen.',
+  );
+
+// Teip-Wert darf beliebig sein (kommt aus einer kontrollierten Liste im Client,
+// aber wir speichern auf Trust-Basis — kein Enum-Check serverseitig, die mobile
+// App macht es genauso).
+const teipSchema = z.string().trim().max(100, 'Teip-Name zu lang.').nullable();
+
 const updateProfileSchema = z.object({
   display_name: displayNameSchema,
   // Bio darf leer sein — dann speichern wir `null`, damit die DB-Spalte
   // nicht zwischen "leerer String" und "kein Eintrag" unterscheiden muss.
   bio: bioSchema,
+  website: websiteSchema.optional(),
+  teip: teipSchema.optional(),
 });
 
 export async function updateProfile(formData: FormData): Promise<ActionResult<null>> {
@@ -54,9 +70,12 @@ export async function updateProfile(formData: FormData): Promise<ActionResult<nu
     return { ok: false, error: 'Bitte einloggen.' };
   }
 
+  const rawTeip = (formData.get('teip') as string | null)?.trim() || null;
   const parsed = updateProfileSchema.safeParse({
     display_name: formData.get('display_name'),
     bio: formData.get('bio'),
+    website: formData.get('website') ?? '',
+    teip: rawTeip,
   });
 
   if (!parsed.success) {
@@ -78,6 +97,8 @@ export async function updateProfile(formData: FormData): Promise<ActionResult<nu
     .update({
       display_name: parsed.data.display_name,
       bio: parsed.data.bio.length > 0 ? parsed.data.bio : null,
+      website: parsed.data.website && parsed.data.website.length > 0 ? parsed.data.website : null,
+      teip: parsed.data.teip || null,
     })
     .eq('id', user.id);
 
