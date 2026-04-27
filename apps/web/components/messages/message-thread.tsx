@@ -549,6 +549,24 @@ const MessageBubble = memo(function MessageBubble({
             </a>
           )}
 
+          {/* Story-Reply-Karte — wird gezeigt wenn die Nachricht als Antwort auf
+              eine Story gesendet wurde (story_media_url enthält die Story-Media-URL).
+              Parität zu mobile storyReplyWrap (app/messages/[id].tsx). */}
+          {msg.story_media_url && (
+            <div className="mb-1.5 overflow-hidden rounded-xl border border-white/10 bg-black/20">
+              <p className={`px-2.5 pt-2 pb-1 text-[10px] opacity-60 ${isOwn ? 'text-primary-foreground' : 'text-foreground'}`}>
+                📸 Antwort auf Story
+              </p>
+              <Image
+                src={msg.story_media_url}
+                alt="Story"
+                width={200}
+                height={140}
+                className="h-36 w-full object-cover"
+              />
+            </div>
+          )}
+
           {msg.post && (
             <Link
               href={`/p/${msg.post.id}` as Route}
