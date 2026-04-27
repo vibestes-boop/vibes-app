@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Route } from 'next';
-import { ArrowLeft, Flag, Users } from 'lucide-react';
+import { ArrowLeft, Flag } from 'lucide-react';
 import {
   getLiveSession,
   getLiveComments,
@@ -22,6 +22,7 @@ import { LiveChatOverlay } from '@/components/live/live-chat-overlay';
 import { LiveEnterClient } from '@/components/live/live-enter-client';
 import { LiveGiftAnimationLayer } from '@/components/live/live-gift-animation-layer';
 import { LiveGiftGoalViewer } from '@/components/live/live-gift-goal-viewer';
+import { LiveViewerCount } from '@/components/live/live-viewer-count';
 import {
   glassPillStrong,
   glassSurface,
@@ -273,15 +274,11 @@ export default async function LiveViewerPage({ params }: PageProps) {
                   <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
                   Live
                 </span>
-                <span
-                  className={cn(
-                    glassSurfaceDense,
-                    'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium text-white shadow-elevation-1',
-                  )}
-                >
-                  <Users className="h-3 w-3" />
-                  {(session.viewer_count ?? 0).toLocaleString('de-DE')}
-                </span>
+                {/* v1.w.UI.141 — realtime viewer count (replaces static SSR span) */}
+                <LiveViewerCount
+                  sessionId={id}
+                  initialCount={session.viewer_count ?? 0}
+                />
               </div>
               <LiveHostPill
                 session={session}
