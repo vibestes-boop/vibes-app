@@ -717,3 +717,76 @@ export async function searchPaginated(
   const page = filtered.slice(offset, offset + SEARCH_PAGE_LIMIT);
   return { type, hashtags: page, hasMore: filtered.length > offset + SEARCH_PAGE_LIMIT };
 }
+
+// -----------------------------------------------------------------------------
+// getSuggestedFollowsPage — Paginated, non-cached variant of getSuggestedFollows.
+//
+// Used by /people (dedicated discovery page) and GET /api/people.
+// Unlike the cached getSuggestedFollows (sidebar, limit 5–12), this one takes
+// an offset so the client can scroll through the full unfiltered list.
+//
+// Auth-aware: wenn eingeloggt, werden Self + bereits-gefolgte Accounts
+// ausgeschlossen. Anon-User sehen alle Profile (kein Ausschluss nötig).
+//
+// Sortierung: follower_count DESC (beliebteste zuerst) — intentionally
+// different from the sidebar variant (created_at DESC) so "people" page shows
+// most useful accounts to discover first.
+// -----------------------------------------------------------------------------
+
+export const PEOPLE_PAGE_LIMIT = 24;
+
+export interface PeoplePage {
+  people: SuggestedFollow[];
+  hasMore: boolean;
+}
+
+export async function getSuggestedFollowsPage(
+  offset: number,
+  limit: number = PEOPLE_PAGE_LIMIT,
+): Promise<PeoplePage> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let excludeIds: string[] = [];
+  if (user) {
+    excludeIds = [user.id];
+    const { data: follows } = await supabase
+      .from('follows')
+      .select('following_id')
+      .eq('follower_id', user.id);
+    if (follows) excludeIds.push(...follows.map((f) => f.following_id as string));
+  }
+
+  let query = supabase
+    .from('profiles')
+    .select('id, username, display_name, avatar_url, verified:is_verified, follower_count')
+    .order('follower_count', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (excludeIds.length > 0) {
+    query = query.not('id', 'in', `(${excludeIds.join(',')})`);
+  }
+
+  const { data } = await query;
+  if (!data) return { people: [], hasMore: false };
+
+  const people = (data as Array<{
+    id: string;
+    username: string;
+    display_name: string | null;
+    avatar_url: string | null;
+    verified: boolean | null;
+    follower_count: number | null;
+  }>).map((p) => ({
+    id: p.id,
+    username: p.username,
+    display_name: p.display_name,
+    avatar_url: p.avatar_url,
+    verified: p.verified ?? false,
+    follower_count: p.follower_count ?? 0,
+  }));
+
+  return { people, hasMore: people.length >= limit };
+}

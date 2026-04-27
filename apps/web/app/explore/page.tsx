@@ -149,6 +149,15 @@ export default async function ExplorePage() {
               );
             })}
           </ul>
+          {/* v1.w.UI.120 — Link to full people-discovery page */}
+          <div className="mt-4 flex justify-end">
+            <Link
+              href="/people"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground hover:underline"
+            >
+              Alle ansehen →
+            </Link>
+          </div>
         </section>
       )}
 
