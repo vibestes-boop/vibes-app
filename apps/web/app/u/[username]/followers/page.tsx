@@ -2,17 +2,20 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { Route } from 'next';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, BadgeCheck, Users } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ArrowLeft, Users } from 'lucide-react';
 import { getPublicProfile, getProfileFollowers, getViewerFollowingSet } from '@/lib/data/public';
 import { getUser } from '@/lib/auth/session';
-import { FollowButton } from '@/components/profile/follow-button';
+import { FollowUserList } from '@/components/profile/follow-user-list';
 
 // -----------------------------------------------------------------------------
 // /u/[username]/followers — Wer folgt diesem Account?
 //
-// ISR: force-dynamic — Liste ändert sich bei jedem Follow/Unfollow.
-// FollowButton ist Client-Komponente, rendert direkt aus RSC.
+// SSR-Seed: erste 50 Follower; danach IntersectionObserver via FollowUserList
+// → GET /api/follows/followers?username=X&offset=N.
+//
+// force-dynamic: Liste ändert sich bei jedem Follow/Unfollow.
+//
+// v1.w.UI.128 — infinite scroll (vorher: hartes 100er-Limit).
 // -----------------------------------------------------------------------------
 
 export const dynamic = 'force-dynamic';
@@ -25,9 +28,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const { username } = await params;
   return {
     title: `Follower von @${username} — Serlo`,
-    robots: { index: false, follow: false }, // Listen-Pages nicht indexieren
+    robots: { index: false, follow: false },
   };
 }
+
+const SEED = 50;
 
 export default async function FollowersPage({ params }: PageProps) {
   const { username } = await params;
@@ -40,7 +45,7 @@ export default async function FollowersPage({ params }: PageProps) {
   if (!profile) notFound();
 
   const [followers, followingSet] = await Promise.all([
-    getProfileFollowers(profile.id, 100),
+    getProfileFollowers(profile.id, SEED),
     getViewerFollowingSet(),
   ]);
 
@@ -64,56 +69,14 @@ export default async function FollowersPage({ params }: PageProps) {
         </h1>
       </header>
 
-      {followers.length === 0 ? (
-        <p className="py-12 text-center text-sm text-muted-foreground">
-          Noch keine Follower.
-        </p>
-      ) : (
-        <ul className="divide-y divide-border">
-          {followers.map((u) => {
-            const isSelf = viewer?.id === u.id;
-            return (
-              <li key={u.id} className="flex items-center gap-3 py-3">
-                <Link href={`/u/${u.username}` as Route} className="shrink-0">
-                  <Avatar className="h-11 w-11">
-                    <AvatarImage src={u.avatar_url ?? undefined} alt="" />
-                    <AvatarFallback className="text-sm">
-                      {(u.display_name ?? u.username).slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                </Link>
-
-                <div className="min-w-0 flex-1">
-                  <Link
-                    href={`/u/${u.username}` as Route}
-                    className="block hover:underline underline-offset-4"
-                  >
-                    <div className="flex items-center gap-1 truncate text-sm font-semibold">
-                      {u.display_name ?? u.username}
-                      {u.verified && (
-                        <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-brand-gold" />
-                      )}
-                    </div>
-                    <div className="truncate text-xs text-muted-foreground">
-                      @{u.username}
-                    </div>
-                  </Link>
-                </div>
-
-                {!isSelf && (
-                  <FollowButton
-                    isAuthenticated={!!viewer}
-                    isFollowing={followingSet.has(u.id)}
-                    isSelf={false}
-                    username={u.username}
-                    targetUserId={u.id}
-                  />
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      <FollowUserList
+        mode="followers"
+        username={username}
+        initialUsers={followers}
+        initialHasMore={followers.length >= SEED}
+        viewerId={viewer?.id ?? null}
+        followingSet={followingSet}
+      />
     </main>
   );
 }
