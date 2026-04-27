@@ -68,7 +68,39 @@ export default async function HashtagPage({ params }: PageProps) {
   const totalViews = posts.reduce((sum, p) => sum + (p.view_count ?? 0), 0);
   const rank = trending.findIndex((h) => h.tag === tag);
 
+  // ── JSON-LD: CollectionPage + ItemList ──────────────────────────────────
+  // CollectionPage signals to Google that this is a curated list of content
+  // for a given topic (the hashtag). ItemList entries let Google index the
+  // individual posts and their positions in the tag feed.
+  // v1.w.UI.135
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://serlo.app';
+  const collectionJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: `#${tag} — Serlo`,
+    description: `Alle Posts mit #${tag} auf Serlo`,
+    url: `${siteUrl}/t/${encodeURIComponent(tag)}`,
+    ...(posts.length > 0
+      ? {
+          mainEntity: {
+            '@type': 'ItemList',
+            numberOfItems: posts.length,
+            itemListElement: posts.slice(0, 20).map((post, idx) => ({
+              '@type': 'ListItem',
+              position: idx + 1,
+              url: `${siteUrl}/p/${post.id}`,
+            })),
+          },
+        }
+      : {}),
+  };
+
   return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionJsonLd) }}
+      />
     <main className="mx-auto w-full max-w-5xl px-4 pb-16 pt-8 lg:px-6">
       {/* Header */}
       <header className="mb-8">
@@ -140,5 +172,6 @@ export default async function HashtagPage({ params }: PageProps) {
         </section>
       )}
     </main>
+    </>
   );
 }
