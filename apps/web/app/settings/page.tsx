@@ -11,6 +11,8 @@ import {
   Trash2,
   BellOff,
   ShieldOff,
+  Sparkles,
+  LayoutDashboard,
 } from 'lucide-react';
 
 import { SettingsRow } from '@/components/settings/settings-row';
@@ -18,22 +20,14 @@ import { SignOutRow } from '@/components/settings/sign-out-row';
 import { ThemeToggleInline } from '@/components/settings/theme-toggle-inline';
 import { getT, getLocale } from '@/lib/i18n/server';
 import { LOCALE_LABELS } from '@/lib/i18n/config';
+import { getProfile } from '@/lib/auth/session';
 
 // -----------------------------------------------------------------------------
 // /settings (Root) — v1.w.UI.18 D7 TikTok-Parity Settings-Overview.
 //
-// Ersetzt den bisherigen Redirect auf /settings/billing durch eine echte
-// flache Liste: drei Sektionen (Konto, App, Gefahrenzone) mit Icon + Label +
-// Subtitle + Chevron-Right — genau das Pattern das TikTok/Instagram/iOS in
-// ihren Settings verwenden. Dichtere, klarere Information-Architektur als
-// eine gekapselte Card-UI.
-//
-// Warum hier, nicht im Layout: Das bestehende `/settings/layout.tsx` rendert
-// auf Desktop eine Sidebar-Nav für Sub-Routes (Billing, Notifications, etc.)
-// und bleibt unverändert — die Overview-Liste ist nur die Inhaltsfläche
-// dieser Layout-Grid-Column. Auf Mobile (`lg:` Breakpoints nicht aktiv) ist
-// die Sidebar eine horizontal scrollende Tab-Leiste und die flache Liste
-// darunter ist das Hauptnavigations-Tool.
+// v1.w.UI.163: Creator-Row hinzugefügt — zeigt "Creator Studio" (→ /studio)
+// für bestehende Creators, "Creator werden ✦" (→ /creator/activate) für alle
+// anderen. Mobile-Parität (settings.tsx: is_creator-Branch auf gleiche Routes).
 // -----------------------------------------------------------------------------
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -44,14 +38,16 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
+export const dynamic = 'force-dynamic';
+
 export default async function SettingsOverviewPage() {
-  const [t, locale] = await Promise.all([getT(), getLocale()]);
+  const [t, locale, profile] = await Promise.all([getT(), getLocale(), getProfile()]);
   const localeLabel = LOCALE_LABELS[locale].native;
+  const isCreator = profile && (profile as unknown as { is_creator?: boolean }).is_creator;
 
   return (
     <div className="mx-auto w-full max-w-2xl">
-      {/* Header — bewusst nicht sticky, damit das Overview-Gefühl „Zuhause in
-          den Einstellungen" ist und nicht „scrollbares Dokument". */}
+      {/* Header */}
       <header className="mb-6 px-4 sm:px-0">
         <h1 className="text-2xl font-bold tracking-tight">{t('settings.overviewTitle')}</h1>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -59,10 +55,7 @@ export default async function SettingsOverviewPage() {
         </p>
       </header>
 
-      {/* Sektion 1 — Konto. v1.w.UI.20: Profil ist jetzt live — Row linkt auf
-          /settings/profile (display_name + bio editieren, Avatar folgt in
-          eigenem Slice). Der ComingSoonBadge-Fall wurde entfernt.
-          Die anderen drei Rows linken auf die existierenden Sub-Routes. */}
+      {/* Sektion 1 — Konto */}
       <Section label={t('settings.sectionAccount')}>
         <SettingsRow
           icon={UserIcon}
@@ -92,16 +85,27 @@ export default async function SettingsOverviewPage() {
           href={'/settings/privacy' as Route}
           testId="settings-row-privacy"
         />
+        {/* v1.w.UI.163 — Creator-Row. Mobile: settings.tsx → is_creator-Branch */}
+        {isCreator ? (
+          <SettingsRow
+            icon={LayoutDashboard}
+            label={t('settings.rowCreatorStudioLabel')}
+            subtitle={t('settings.rowCreatorStudioSubtitle')}
+            href={'/studio' as Route}
+            testId="settings-row-creator-studio"
+          />
+        ) : (
+          <SettingsRow
+            icon={Sparkles}
+            label={t('settings.rowCreatorActivateLabel')}
+            subtitle={t('settings.rowCreatorActivateSubtitle')}
+            href={'/creator/activate' as Route}
+            testId="settings-row-creator-activate"
+          />
+        )}
       </Section>
 
-      {/* Sektion 2 — App. Theme + Language + Blocked-Users.
-          Design-Row: `right={<ThemeToggleInline />}` — kein Chevron, kein
-          Link, der Toggle ist das interaktive Element.
-          Sprache: statische Row die das aktuelle Label rechts zeigt; Wechsel
-          läuft weiterhin über den LocaleSwitcher im TopRightActions-Dropdown
-          (kein eigener Settings-Route nötig, weil Cookie + router.refresh()
-          reicht und eine dedizierte Sprach-Page hier Overkill wäre).
-          Geblockte Nutzer linkt auf /settings/blocked. */}
+      {/* Sektion 2 — App */}
       <Section label={t('settings.sectionApp')}>
         <SettingsRow
           icon={Palette}
@@ -143,18 +147,7 @@ export default async function SettingsOverviewPage() {
         />
       </Section>
 
-      {/* Sektion 3 — Gefahrenzone. Abmelden + Konto löschen, beide rot.
-          SignOutRow ist Form-basiert (Server-Action), DeleteAccount ist ein
-          Link auf einen hypothetischen /settings/delete-account — falls der
-          nicht existiert nutzen wir /settings/privacy (wo die DeleteAccountCard
-          lebt). Kurzcheck: privacy ist das richtige Target bis eine dedizierte
-          Seite kommt.
-          SignOutRow bekommt bewusst KEIN `icon`-Prop — Lucide-Icons sind
-          forwardRef-Funktionen und dürfen nicht von einer Server-Component
-          als Prop an eine Client-Component gereicht werden (→ RSC-Boundary-
-          Crash "Functions cannot be passed directly to Client Components",
-          Vercel-Error digest 1974146109 vom 2026-04-24). SignOutRow hardcoded
-          `LogOut` intern. */}
+      {/* Sektion 3 — Gefahrenzone */}
       <Section label={t('settings.sectionDanger')}>
         <SignOutRow label={t('settings.rowSignOutLabel')} />
         <SettingsRow
@@ -170,10 +163,6 @@ export default async function SettingsOverviewPage() {
   );
 }
 
-// Eine Section ist ein Uppercase-Kleinheader + divide-y-List. `divide-y` gibt
-// zwischen den Rows einen Hairline-Strich im `border`-Token — Apple/iOS-Style.
-// Der Container hat selbst keinen Border/Shadow — das Pattern ist „Liste in
-// der Seite", nicht „Card in der Seite".
 function Section({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <section className="mb-8" data-settings-section={label}>
