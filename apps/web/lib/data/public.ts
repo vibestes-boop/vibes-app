@@ -1150,3 +1150,75 @@ export const getViewerFollowingSet = cache(async (): Promise<Set<string>> => {
 
   return new Set((data ?? []).map((f) => f.following_id as string));
 });
+
+// -----------------------------------------------------------------------------
+// getProfileReposts — v1.w.UI.164
+//
+// Liefert die Posts die ein User repostet hat (aus `reposts`-Tabelle),
+// geordnet nach Repost-Datum DESC. Identisches Datenmuster wie auf Mobile
+// (UserProfileContent.tsx: reposts Tab).
+//
+// Zwei-stufig:
+//   1. reposts WHERE user_id = userId ORDER BY created_at DESC LIMIT limit
+//   2. posts IN (post_ids) → gemappt auf Post[]
+//
+// Öffentlich lesbar (RLS: SELECT true auf reposts — jeder kann sehen was
+// ein User geteilt hat, entspricht TikTok-Verhalten).
+// -----------------------------------------------------------------------------
+
+export const getProfileReposts = cache(async (userId: string, limit = 48): Promise<Post[]> => {
+  const supabase = await createClient();
+
+  const { data: repostRows } = await supabase
+    .from('reposts')
+    .select('post_id, created_at')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (!repostRows || repostRows.length === 0) return [];
+
+  const postIds = (repostRows as { post_id: string }[]).map((r) => r.post_id).filter(Boolean);
+  if (postIds.length === 0) return [];
+
+  const { data, error } = await supabase
+    .from('posts')
+    .select(
+      `id, author_id, caption, media_url, thumbnail_url, view_count, tags, allow_comments, allow_duet, created_at,
+       like_count:likes(count),
+       comment_count:comments(count)`,
+    )
+    .in('id', postIds);
+
+  if (error || !data) return [];
+
+  // Preserve repost-date order (post created_at ≠ repost created_at).
+  const byId = new Map((data as unknown as PostRowMobile[]).map((p) => [p.id, toPost(p)]));
+  return postIds.map((id) => byId.get(id)).filter((p): p is Post => p !== undefined);
+});
+
+// -----------------------------------------------------------------------------
+// getWOZFeed — Women-Only Zone Feed.
+// v1.w.UI.167: Parity mit app/women-only/index.tsx.
+// RLS-Policies auf `posts` schränken `women_only=true` automatisch auf
+// verifizierte Nutzerinnen ein. `is_women_only_verified()` DB-Helper greift.
+// Non-verified User erhalten leere Liste (RLS returns 0 rows).
+// -----------------------------------------------------------------------------
+
+export const getWOZFeed = cache(async (limit = 60): Promise<Post[]> => {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('posts')
+    .select(
+      `id, author_id, caption, media_url, thumbnail_url, view_count, tags, allow_comments, allow_duet, created_at,
+       like_count:likes(count),
+       comment_count:comments(count)`,
+    )
+    .eq('women_only', true)
+    .not('media_url', 'is', null)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error || !data) return [];
+  return (data as unknown as PostRowMobile[]).map(toPost);
+});
