@@ -415,6 +415,8 @@ export interface UpdatePostInput {
   allowDuet: boolean;
   womenOnly: boolean;
   aspectRatio: 'portrait' | 'landscape' | 'square';
+  // v1.w.UI.162: Explicit tag-picker tags — merged with caption-extracted hashtags.
+  tags?: string[];
 }
 
 export async function updatePost(
@@ -433,10 +435,8 @@ export async function updatePost(
   const validAspect = ['portrait', 'landscape', 'square'] as const;
   if (!validAspect.includes(input.aspectRatio)) return { ok: false, error: 'Ungültiges Format.' };
 
-  // Hashtags aus Caption extrahieren
-  const tags = Array.from(
-    new Set((trimmed.match(/#(\w{1,50})/g) ?? []).map((t) => t.slice(1).toLowerCase())),
-  );
+  // v1.w.UI.162: Merge explicit picker tags with caption-extracted hashtags.
+  const tags = mergeTags(input.tags, trimmed);
 
   const supabase = await createClient();
   const { error } = await supabase

@@ -298,6 +298,7 @@ export default async function PostDetailPage({
                   allowDuet={post.allow_duet}
                   womenOnly={post.women_only}
                   aspectRatio={post.aspect_ratio}
+                  initialTags={post.hashtags}
                 />
               ) : (
                 <div className="flex items-center gap-2">
