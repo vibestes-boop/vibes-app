@@ -383,6 +383,12 @@ function FeedSidebarRight({
               </li>
             ))}
           </ul>
+          <Link
+            href={'/people' as Route}
+            className="mt-3 block text-center text-xs text-muted-foreground hover:text-foreground hover:underline"
+          >
+            Alle ansehen →
+          </Link>
         </section>
       )}
 
