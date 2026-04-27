@@ -460,6 +460,36 @@ export async function updatePost(
   return { ok: true, data: null };
 }
 
+// v1.w.UI.146 — Nur Caption + Tags patchen, KEINE anderen Felder anfassen.
+// Anders als updatePostCaption (deprecated, überschreibt Privacy/Toggles auf Defaults)
+// tut diese Funktion ein chirurgisches UPDATE das nur caption + tags ändert.
+export async function patchPostCaption(
+  postId: string,
+  caption: string,
+): Promise<ActionResult<null>> {
+  const viewer = await getViewerId();
+  if (!viewer) return { ok: false, error: 'Bitte einloggen.' };
+
+  const trimmed = caption.trim();
+  if (trimmed.length > 2000) return { ok: false, error: 'Caption zu lang (max. 2000 Zeichen).' };
+
+  const tags = Array.from(
+    new Set((trimmed.match(/#(\w{1,50})/g) ?? []).map((t) => t.slice(1).toLowerCase())),
+  );
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('posts')
+    .update({ caption: trimmed || null, tags })
+    .eq('id', postId)
+    .eq('author_id', viewer);
+
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(`/p/${postId}`);
+  return { ok: true, data: null };
+}
+
 // Backwards-compat alias (wird von post-author-menu genutzt, solange kein anderer Aufrufer)
 export async function updatePostCaption(
   postId: string,

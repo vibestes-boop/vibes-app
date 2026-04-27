@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
 import type { Route } from 'next';
 import {
@@ -21,11 +21,12 @@ import {
   PictureInPicture2,
   Trash2,
   Download,
+  Pencil,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { reportPost, markPostNotInteresting } from '@/app/actions/report';
-import { deletePost } from '@/app/actions/posts';
+import { deletePost, patchPostCaption } from '@/app/actions/posts';
 import { recordDwell } from '@/app/actions/engagement';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
@@ -141,6 +142,10 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
   }, [viewerId, post.id, post.liked_by_me, likeMut]);
 
   const [shareDmOpen, setShareDmOpen] = useState(false);
+  // v1.w.UI.146 — inline caption-edit state
+  const [editOpen, setEditOpen] = useState(false);
+  const [editCaption, setEditCaption] = useState('');
+  const [editPending, startEditTransition] = useTransition();
 
   const isSelf = viewerId === post.author.id;
   // Legacy-Rows (pre-media_type-Einführung) waren alle Videos — deshalb
@@ -517,22 +522,34 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
                     v1.w.UI.46 — Delete für eigene Posts + kein Report/NotInterested
                     auf eigene Posts (ergibt keinen Sinn). */}
                 {isSelf ? (
-                  <MoreMenuItem
-                    icon={<Trash2 className="h-4 w-4" />}
-                    label="Post löschen"
-                    destructive
-                    onClick={async () => {
-                      setShowMoreMenu(false);
-                      if (!confirm('Post wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) return;
-                      const res = await deletePost(post.id);
-                      if (res.ok) {
-                        toast('Post gelöscht.');
-                        router.refresh();
-                      } else {
-                        toast.error(res.error ?? 'Löschen fehlgeschlagen.');
-                      }
-                    }}
-                  />
+                  <>
+                    {/* v1.w.UI.146 — Author: Bearbeiten + Löschen */}
+                    <MoreMenuItem
+                      icon={<Pencil className="h-4 w-4" />}
+                      label="Bearbeiten"
+                      onClick={() => {
+                        setShowMoreMenu(false);
+                        setEditCaption(post.caption ?? '');
+                        setEditOpen(true);
+                      }}
+                    />
+                    <MoreMenuItem
+                      icon={<Trash2 className="h-4 w-4" />}
+                      label="Post löschen"
+                      destructive
+                      onClick={async () => {
+                        setShowMoreMenu(false);
+                        if (!confirm('Post wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) return;
+                        const res = await deletePost(post.id);
+                        if (res.ok) {
+                          toast('Post gelöscht.');
+                          router.refresh();
+                        } else {
+                          toast.error(res.error ?? 'Löschen fehlgeschlagen.');
+                        }
+                      }}
+                    />
+                  </>
                 ) : (
                   <>
                     <MoreMenuItem
@@ -1000,6 +1017,60 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
         }}
         onClose={() => setShareDmOpen(false)}
       />
+    )}
+
+    {/* v1.w.UI.146 — Inline Caption-Edit Modal */}
+    {editOpen && (
+      <div
+        className="fixed inset-0 z-[200] flex items-end justify-center sm:items-center"
+        onClick={(e) => { if (e.target === e.currentTarget) setEditOpen(false); }}
+      >
+        <div className="pointer-events-none absolute inset-0 bg-black/60" aria-hidden="true" />
+        <div className="relative z-10 w-full max-w-sm rounded-t-2xl sm:rounded-2xl bg-card border border-border p-5 shadow-xl">
+          <h3 className="mb-3 text-sm font-semibold">Caption bearbeiten</h3>
+          <textarea
+            value={editCaption}
+            onChange={(e) => setEditCaption(e.target.value.slice(0, 2000))}
+            rows={4}
+            className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+            placeholder="Was möchtest du teilen?"
+            disabled={editPending}
+            autoFocus
+          />
+          <p className="mt-1 text-right text-[11px] text-muted-foreground">
+            {editCaption.length}/2000
+          </p>
+          <div className="mt-3 flex gap-2">
+            <button
+              type="button"
+              onClick={() => setEditOpen(false)}
+              disabled={editPending}
+              className="flex-1 rounded-full border border-border py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
+            >
+              Abbrechen
+            </button>
+            <button
+              type="button"
+              disabled={editPending}
+              onClick={() => {
+                startEditTransition(async () => {
+                  const res = await patchPostCaption(post.id, editCaption);
+                  if (res.ok) {
+                    toast('Caption aktualisiert.');
+                    setEditOpen(false);
+                    router.refresh();
+                  } else {
+                    toast.error(res.error ?? 'Speichern fehlgeschlagen.');
+                  }
+                });
+              }}
+              className="flex-1 rounded-full bg-primary py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            >
+              {editPending ? 'Speichere…' : 'Speichern'}
+            </button>
+          </div>
+        </div>
+      </div>
     )}
     </div>
     </div>
