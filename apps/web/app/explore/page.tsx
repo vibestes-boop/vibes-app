@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { Route } from 'next';
-import { Hash, Flame, TrendingUp, Compass, Users } from 'lucide-react';
+import { Hash, Flame, TrendingUp, Compass, Users, Sparkles } from 'lucide-react';
 import { getTrendingHashtags, getForYouFeed, getSuggestedFollows } from '@/lib/data/feed';
-import { getUser } from '@/lib/auth/session';
+import { getUser, getProfile } from '@/lib/auth/session';
 import { FollowButton } from '@/components/profile/follow-button';
 import { ExplorePostGrid } from '@/components/explore/explore-post-grid';
 import { getT, getLocale } from '@/lib/i18n/server';
@@ -33,14 +33,20 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function ExplorePage() {
-  const [hashtags, preview, people, viewer, t, locale] = await Promise.all([
+  const [hashtags, preview, people, viewer, profile, t, locale] = await Promise.all([
     getTrendingHashtags(24),
     getForYouFeed({ limit: EXPLORE_SEED }),
     getSuggestedFollows(12),
     getUser(),
+    getProfile(),
     getT(),
     getLocale(),
   ]);
+
+  const isWozVerified =
+    !!(profile as unknown as { gender?: string; women_only_verified?: boolean } | null)
+      ?.women_only_verified &&
+    (profile as unknown as { gender?: string } | null)?.gender === 'female';
 
   return (
     <main className="container mx-auto max-w-6xl px-4 py-8">
@@ -159,6 +165,36 @@ export default async function ExplorePage() {
               Alle ansehen →
             </Link>
           </div>
+        </section>
+      )}
+
+      {/* v1.w.UI.168 — Women-Only Zone Banner (authenticated users only) */}
+      {viewer && (
+        <section className="mb-12">
+          <Link
+            href={'/women-only' as Route}
+            className="group flex items-center gap-4 overflow-hidden rounded-2xl border border-pink-500/30 bg-gradient-to-r from-pink-500/10 via-rose-500/5 to-violet-500/10 p-5 transition-all hover:border-pink-500/50 hover:from-pink-500/15 hover:to-violet-500/15"
+          >
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-pink-500/20 to-violet-500/20 ring-1 ring-pink-500/30 text-2xl">
+              🌸
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="font-semibold text-pink-600 dark:text-pink-400">
+                Women-Only Zone
+                {isWozVerified && (
+                  <span className="ml-2 inline-flex items-center gap-0.5 rounded-full bg-pink-500/15 px-1.5 py-0.5 text-[10px] font-medium text-pink-600 dark:text-pink-400">
+                    Mitglied
+                  </span>
+                )}
+              </p>
+              <p className="mt-0.5 truncate text-sm text-muted-foreground">
+                {isWozVerified
+                  ? 'Dein geschützter Raum — exklusive Posts nur für dich'
+                  : 'Ein geschützter Raum nur für Frauen — kostenlos beitreten'}
+              </p>
+            </div>
+            <Sparkles className="h-5 w-5 shrink-0 text-pink-400 transition-transform group-hover:scale-110" />
+          </Link>
         </section>
       )}
 
