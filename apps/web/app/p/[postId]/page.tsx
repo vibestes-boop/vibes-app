@@ -187,6 +187,10 @@ export default async function PostDetailPage({
   const authorName = post.author.display_name ?? `@${post.author.username}`;
   const created = new Date(post.created_at);
   const isImage = post.media_type === 'image';
+  const isLandscape = post.aspect_ratio === 'landscape';
+  const isSquare = post.aspect_ratio === 'square';
+  // VideoPlayer aspect prop
+  const videoAspect: '9/16' | '16/9' | '1/1' = isLandscape ? '16/9' : isSquare ? '1/1' : '9/16';
 
   // JSON-LD — für Video-Posts VideoObject, für Image-Posts ImageObject/SocialMediaPosting.
   // Google rendert dann den passenden Rich-Result (Video-Carousel vs. Image-Preview).
@@ -241,7 +245,7 @@ export default async function PostDetailPage({
       };
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:py-10">
+    <main className={`mx-auto px-4 py-6 sm:px-6 lg:py-10 ${isLandscape ? 'max-w-6xl' : 'max-w-5xl'}`}>
       {/* v1.w.UI.53: View-Count auf Mount erhöhen — fire-and-forget. */}
       <PostDwellTracker postId={post.id} isAuthenticated={!!viewer} />
       <script
@@ -249,62 +253,10 @@ export default async function PostDetailPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-        {/* ───── Media: Image oder Video, je nach media_type ───── */}
-        <div>
-          {isImage ? (
-            // Image-Post — einfaches <img> in 9:16-Frame (konsistent mit Video),
-            // Object-Contain wegen variabler Aspect-Ratios bei Fotos.
-            <div className="relative overflow-hidden rounded-lg bg-black aspect-[9/16]">
-              {post.video_url ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img
-                  src={post.video_url}
-                  alt={post.caption ?? `Beitrag von ${authorName}`}
-                  className="h-full w-full object-contain"
-                  loading="eager"
-                />
-              ) : post.thumbnail_url ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img
-                  src={post.thumbnail_url}
-                  alt=""
-                  className="h-full w-full object-contain"
-                />
-              ) : (
-                <div className="flex h-full items-center justify-center text-sm text-white/60">
-                  Kein Bild hinterlegt.
-                </div>
-              )}
-            </div>
-          ) : (
-            <VideoPlayer
-              src={post.video_url}
-              poster={post.thumbnail_url}
-              autoPlay={false}
-              loop={false}
-              muted={false}
-            />
-          )}
-
-          {/* Stats-Zeile: statische Counts + interaktive Like/Bookmark-Buttons */}
-          <div className="mt-4 flex flex-wrap items-center gap-4">
-            <StatLine icon={Eye}           value={post.view_count}    label="Aufrufe" />
-            <PostActionsBar
-              postId={post.id}
-              initialLiked={interaction.liked}
-              initialSaved={interaction.saved}
-              likeCount={post.like_count}
-              isAuthenticated={!!viewer}
-            />
-            <StatLine icon={MessageCircle} value={post.comment_count} label="Kommentare" />
-            <StatLine icon={ShareIcon}     value={post.share_count}   label="Shares" />
-          </div>
-        </div>
-
-        {/* ───── Sidebar: Autor + Caption + Share ───── */}
-        <aside className="space-y-5">
-          {/* Autor-Karte */}
+      {/* ── Wiederverwendbare Sidebar-Blöcke als JSX-Variablen ─────────────── */}
+      {(() => {
+        // Autor-Karte
+        const authorCard = (
           <div className="rounded-xl border border-border bg-card p-4">
             <div className="flex items-center gap-3">
               <Link
@@ -342,10 +294,9 @@ export default async function PostDetailPage({
                   allowDownload={post.allow_download}
                   allowDuet={post.allow_duet}
                   womenOnly={post.women_only}
+                  aspectRatio={post.aspect_ratio}
                 />
               ) : (
-                // v1.w.UI.58: FollowButton + PostViewerMenu (Melden / Kein Interesse /
-                // Link kopieren / Blockieren) in einer flex-row.
                 <div className="flex items-center gap-2">
                   <FollowButton
                     isAuthenticated={!!viewer}
@@ -364,50 +315,52 @@ export default async function PostDetailPage({
               )}
             </div>
           </div>
+        );
 
-          {/* Caption + Hashtags */}
-          {(post.caption || post.hashtags.length > 0) && (
-            <div className="space-y-2 rounded-xl border border-border bg-card p-4">
-              {post.caption && (
-                <p className="whitespace-pre-line break-words text-sm leading-relaxed">
-                  {linkify(post.caption)}
-                </p>
-              )}
-              {post.hashtags.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 pt-1">
-                  {post.hashtags.map((tag) => (
-                    <Link
-                      key={tag}
-                      href={`/t/${encodeURIComponent(tag)}` as import('next').Route}
-                      className="inline-flex rounded-full bg-muted px-2.5 py-0.5 text-xs text-foreground/80 transition-colors hover:bg-muted/70 hover:text-primary"
-                    >
-                      #{tag}
-                    </Link>
-                  ))}
-                </div>
-              )}
-              <div className="flex items-center gap-3 pt-2 text-xs text-muted-foreground">
-                <span className="inline-flex items-center gap-1">
-                  <CalendarDays className="h-3 w-3" />
-                  <time dateTime={post.created_at}>
-                    {created.toLocaleDateString('de-DE', {
-                      day: 'numeric',
-                      month: 'long',
-                      year: 'numeric',
-                    })}
-                  </time>
-                </span>
-                {post.music_id && (
-                  <span className="inline-flex items-center gap-1">
-                    <Music2 className="h-3 w-3" />
-                    Sound
-                  </span>
-                )}
+        // Caption + Hashtags
+        const captionCard = (post.caption || post.hashtags.length > 0) ? (
+          <div className="space-y-2 rounded-xl border border-border bg-card p-4">
+            {post.caption && (
+              <p className="whitespace-pre-line break-words text-sm leading-relaxed">
+                {linkify(post.caption)}
+              </p>
+            )}
+            {post.hashtags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {post.hashtags.map((tag) => (
+                  <Link
+                    key={tag}
+                    href={`/t/${encodeURIComponent(tag)}` as import('next').Route}
+                    className="inline-flex rounded-full bg-muted px-2.5 py-0.5 text-xs text-foreground/80 transition-colors hover:bg-muted/70 hover:text-primary"
+                  >
+                    #{tag}
+                  </Link>
+                ))}
               </div>
+            )}
+            <div className="flex items-center gap-3 pt-2 text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1">
+                <CalendarDays className="h-3 w-3" />
+                <time dateTime={post.created_at}>
+                  {created.toLocaleDateString('de-DE', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                  })}
+                </time>
+              </span>
+              {post.music_id && (
+                <span className="inline-flex items-center gap-1">
+                  <Music2 className="h-3 w-3" />
+                  Sound
+                </span>
+              )}
             </div>
-          )}
+          </div>
+        ) : null;
 
-          {/* Share */}
+        // Share-Karte
+        const shareCard = (
           <div className="rounded-xl border border-border bg-card p-4">
             <div className="mb-3 text-sm font-semibold">
               {isImage ? 'Beitrag teilen' : 'Video teilen'}
@@ -428,51 +381,146 @@ export default async function PostDetailPage({
               } : undefined}
             />
           </div>
+        );
 
-          {/* v1.w.UI.62: Mehr von @author */}
-          {morePosts.length > 0 && (
-            <div className="rounded-xl border border-border bg-card p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <span className="text-sm font-semibold">
-                  Mehr von{' '}
-                  <Link
-                    href={`/u/${post.author.username}`}
-                    className="text-primary hover:underline underline-offset-2"
-                  >
-                    @{post.author.username}
-                  </Link>
-                </span>
+        // Mehr von @author
+        const moreCard = morePosts.length > 0 ? (
+          <div className="rounded-xl border border-border bg-card p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <span className="text-sm font-semibold">
+                Mehr von{' '}
                 <Link
                   href={`/u/${post.author.username}`}
-                  className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+                  className="text-primary hover:underline underline-offset-2"
                 >
-                  Alle ansehen
+                  @{post.author.username}
                 </Link>
-              </div>
-              <ul className="grid grid-cols-3 gap-1.5">
-                {morePosts.map((p) => {
-                  const fallbackInitial = (post.author.display_name ?? post.author.username ?? '?')
-                    .slice(0, 1)
-                    .toUpperCase();
-                  return (
-                    <li key={p.id}>
-                      <ExploreVideoCard
-                        id={p.id}
-                        videoUrl={p.video_url}
-                        thumbnailUrl={p.thumbnail_url}
-                        caption={p.caption}
-                        authorUsername={post.author.username}
-                        viewCount={p.view_count}
-                        fallbackInitial={fallbackInitial}
-                      />
-                    </li>
-                  );
-                })}
-              </ul>
+              </span>
+              <Link
+                href={`/u/${post.author.username}`}
+                className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+              >
+                Alle ansehen
+              </Link>
             </div>
-          )}
-        </aside>
-      </div>
+            <ul className={`grid gap-1.5 ${isLandscape ? 'grid-cols-6' : 'grid-cols-3'}`}>
+              {morePosts.map((p) => {
+                const fallbackInitial = (post.author.display_name ?? post.author.username ?? '?')
+                  .slice(0, 1)
+                  .toUpperCase();
+                return (
+                  <li key={p.id}>
+                    <ExploreVideoCard
+                      id={p.id}
+                      videoUrl={p.video_url}
+                      thumbnailUrl={p.thumbnail_url}
+                      caption={p.caption}
+                      authorUsername={post.author.username}
+                      viewCount={p.view_count}
+                      fallbackInitial={fallbackInitial}
+                    />
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ) : null;
+
+        // Stats-Zeile
+        const statsBar = (
+          <div className="mt-4 flex flex-wrap items-center gap-4">
+            <StatLine icon={Eye}           value={post.view_count}    label="Aufrufe" />
+            <PostActionsBar
+              postId={post.id}
+              initialLiked={interaction.liked}
+              initialSaved={interaction.saved}
+              likeCount={post.like_count}
+              isAuthenticated={!!viewer}
+            />
+            <StatLine icon={MessageCircle} value={post.comment_count} label="Kommentare" />
+            <StatLine icon={ShareIcon}     value={post.share_count}   label="Shares" />
+          </div>
+        );
+
+        // Image-Container: aspect abhängig vom Format
+        const imageAspectClass = isLandscape ? 'aspect-video' : isSquare ? 'aspect-square' : 'aspect-[9/16]';
+        const mediaBlock = isImage ? (
+          <div className={`relative overflow-hidden rounded-lg bg-black ${imageAspectClass}`}>
+            {post.video_url ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={post.video_url}
+                alt={post.caption ?? `Beitrag von ${authorName}`}
+                className="h-full w-full object-contain"
+                loading="eager"
+              />
+            ) : post.thumbnail_url ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={post.thumbnail_url}
+                alt=""
+                className="h-full w-full object-contain"
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center text-sm text-white/60">
+                Kein Bild hinterlegt.
+              </div>
+            )}
+          </div>
+        ) : (
+          <VideoPlayer
+            src={post.video_url}
+            poster={post.thumbnail_url}
+            autoPlay={false}
+            loop={false}
+            muted={false}
+            aspect={videoAspect}
+          />
+        );
+
+        // ── Landscape-Layout: Video oben, Info in 2-Spalten darunter ───────
+        if (isLandscape) {
+          return (
+            <>
+              {/* Video volle Breite */}
+              <div>
+                {mediaBlock}
+                {statsBar}
+              </div>
+
+              {/* Info-Zeile: Autor+Caption links | Share rechts */}
+              <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+                <div className="space-y-4">
+                  {authorCard}
+                  {captionCard}
+                </div>
+                <aside className="space-y-4">
+                  {shareCard}
+                </aside>
+              </div>
+
+              {/* Mehr von — volle Breite mit 6-Spalten-Grid */}
+              {moreCard && <div className="mt-5">{moreCard}</div>}
+            </>
+          );
+        }
+
+        // ── Portrait / Square-Layout: Media links | Sidebar rechts ─────────
+        return (
+          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+            <div>
+              {mediaBlock}
+              {statsBar}
+            </div>
+            <aside className="space-y-5">
+              {authorCard}
+              {captionCard}
+              {shareCard}
+              {moreCard}
+            </aside>
+          </div>
+        );
+      })()}
 
       {/* ───── Kommentare (volle Breite) ───── */}
       <PostComments

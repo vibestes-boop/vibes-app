@@ -24,6 +24,7 @@ export function PostAuthorMenu({
   allowDownload = true,
   allowDuet = true,
   womenOnly = false,
+  aspectRatio = 'portrait',
 }: {
   postId: string;
   authorUsername: string;
@@ -33,6 +34,7 @@ export function PostAuthorMenu({
   allowDownload?: boolean;
   allowDuet?: boolean;
   womenOnly?: boolean;
+  aspectRatio?: 'portrait' | 'landscape' | 'square';
 }) {
   const [open, setOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -141,6 +143,7 @@ export function PostAuthorMenu({
           initialAllowDownload={allowDownload}
           initialAllowDuet={allowDuet}
           initialWomenOnly={womenOnly}
+          initialAspectRatio={aspectRatio}
           onClose={() => setEditOpen(false)}
           onSaved={() => {
             setEditOpen(false);
@@ -175,6 +178,7 @@ function PostEditDialog({
   initialAllowDownload,
   initialAllowDuet,
   initialWomenOnly,
+  initialAspectRatio,
   onClose,
   onSaved,
 }: {
@@ -185,6 +189,7 @@ function PostEditDialog({
   initialAllowDownload: boolean;
   initialAllowDuet: boolean;
   initialWomenOnly: boolean;
+  initialAspectRatio: 'portrait' | 'landscape' | 'square';
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -194,6 +199,7 @@ function PostEditDialog({
   const [allowDownload, setAllowDownload]   = useState(initialAllowDownload);
   const [allowDuet, setAllowDuet]           = useState(initialAllowDuet);
   const [womenOnly, setWomenOnly]           = useState(initialWomenOnly);
+  const [aspectRatio, setAspectRatio]       = useState<'portrait' | 'landscape' | 'square'>(initialAspectRatio);
   const [isPending, startTransition]        = useTransition();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -213,7 +219,8 @@ function PostEditDialog({
     allowComments !== initialAllowComments ||
     allowDownload !== initialAllowDownload ||
     allowDuet !== initialAllowDuet ||
-    womenOnly !== initialWomenOnly;
+    womenOnly !== initialWomenOnly ||
+    aspectRatio !== initialAspectRatio;
 
   const handleSave = () => {
     startTransition(async () => {
@@ -224,6 +231,7 @@ function PostEditDialog({
         allowDownload,
         allowDuet,
         womenOnly,
+        aspectRatio,
       };
       const res = await updatePost(postId, input);
       if (res.ok) {
@@ -309,6 +317,45 @@ function PostEditDialog({
                   {privacy === opt.value && (
                     <span className="text-xs font-semibold text-primary">✓</span>
                   )}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {/* Format */}
+          <section>
+            <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Format
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {([
+                { value: 'portrait',  label: 'Hochformat', shape: '9:16' },
+                { value: 'landscape', label: 'Querformat', shape: '16:9' },
+                { value: 'square',    label: 'Quadrat',    shape: '1:1'  },
+              ] as const).map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setAspectRatio(opt.value)}
+                  className={cn(
+                    'flex flex-col items-center gap-1.5 rounded-xl border py-3 px-2 text-xs transition-colors',
+                    aspectRatio === opt.value
+                      ? 'border-primary bg-primary/5 text-foreground'
+                      : 'border-border bg-background text-muted-foreground hover:bg-muted',
+                  )}
+                >
+                  {/* Visual aspect-ratio preview box */}
+                  <span
+                    className={cn(
+                      'rounded border-2 bg-muted/40',
+                      aspectRatio === opt.value ? 'border-primary' : 'border-muted-foreground/40',
+                      opt.value === 'portrait'  && 'h-8 w-5',
+                      opt.value === 'landscape' && 'h-5 w-8',
+                      opt.value === 'square'    && 'h-6 w-6',
+                    )}
+                  />
+                  <span className="font-medium text-foreground">{opt.label}</span>
+                  <span className="text-[10px] text-muted-foreground">{opt.shape}</span>
                 </button>
               ))}
             </div>

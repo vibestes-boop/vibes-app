@@ -417,6 +417,8 @@ export interface PostWithAuthor extends Post {
   privacy: 'public' | 'friends' | 'private';
   allow_download: boolean;
   women_only: boolean;
+  /** Seitenverhältnis für format-aware Layout. Default 'portrait' für Legacy-Rows. */
+  aspect_ratio: 'portrait' | 'landscape' | 'square';
 }
 
 export const getPost = cache(async (postId: string): Promise<PostWithAuthor | null> => {
@@ -424,7 +426,7 @@ export const getPost = cache(async (postId: string): Promise<PostWithAuthor | nu
   const { data, error } = await supabase
     .from('posts')
     .select(
-      `id, author_id, caption, media_url, media_type, thumbnail_url, view_count, tags, allow_comments, allow_duet, allow_download, privacy, women_only, created_at,
+      `id, author_id, caption, media_url, media_type, thumbnail_url, view_count, tags, allow_comments, allow_duet, allow_download, privacy, women_only, aspect_ratio, created_at,
        like_count:likes(count),
        comment_count:comments(count),
        author:profiles!posts_author_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )`,
@@ -447,7 +449,10 @@ export const getPost = cache(async (postId: string): Promise<PostWithAuthor | nu
     : 'public';
   const allow_download = typeof rowAny.allow_download === 'boolean' ? rowAny.allow_download : true;
   const women_only = typeof rowAny.women_only === 'boolean' ? rowAny.women_only : false;
-  return { ...post, author, media_type, privacy, allow_download, women_only };
+  const aspect_ratio = (['portrait', 'landscape', 'square'] as const).includes(rowAny.aspect_ratio as 'portrait' | 'landscape' | 'square')
+    ? (rowAny.aspect_ratio as 'portrait' | 'landscape' | 'square')
+    : 'portrait';
+  return { ...post, author, media_type, privacy, allow_download, women_only, aspect_ratio };
 });
 
 // -----------------------------------------------------------------------------

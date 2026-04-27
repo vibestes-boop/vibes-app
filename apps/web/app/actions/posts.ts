@@ -410,6 +410,7 @@ export interface UpdatePostInput {
   allowDownload: boolean;
   allowDuet: boolean;
   womenOnly: boolean;
+  aspectRatio: 'portrait' | 'landscape' | 'square';
 }
 
 export async function updatePost(
@@ -424,6 +425,9 @@ export async function updatePost(
 
   const validPrivacy = ['public', 'friends', 'private'] as const;
   if (!validPrivacy.includes(input.privacy)) return { ok: false, error: 'Ungültige Privacy-Option.' };
+
+  const validAspect = ['portrait', 'landscape', 'square'] as const;
+  if (!validAspect.includes(input.aspectRatio)) return { ok: false, error: 'Ungültiges Format.' };
 
   // Hashtags aus Caption extrahieren
   const tags = Array.from(
@@ -441,6 +445,7 @@ export async function updatePost(
       allow_download: input.allowDownload,
       allow_duet: input.allowDuet,
       women_only: input.womenOnly,
+      aspect_ratio: input.aspectRatio,
     })
     .eq('id', postId)
     .eq('author_id', viewer);
@@ -463,6 +468,7 @@ export async function updatePostCaption(
     allowDownload: true,
     allowDuet: true,
     womenOnly: false,
+    aspectRatio: 'portrait',
   });
 }
 
