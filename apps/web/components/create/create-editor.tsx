@@ -96,6 +96,7 @@ export function CreateEditor({ viewerId, initialDraft }: Props) {
   const [coverTimeMs, setCoverTimeMs] = useState<number | null>(
     initialDraft?.settings?.coverTimeMs ?? null,
   );
+  const [aspectRatio, setAspectRatio] = useState<'portrait' | 'landscape' | 'square'>('portrait');
   const [uploadProgress, setUploadProgress] = useState<number | null>(null); // 0..100 | null
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -164,13 +165,45 @@ export function CreateEditor({ viewerId, initialDraft }: Props) {
     // Vorherige Preview-URL aufräumen
     if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
 
+    const objectUrl = URL.createObjectURL(f);
     setFile(f);
     setMediaType(isVideo ? 'video' : 'image');
-    setLocalPreviewUrl(URL.createObjectURL(f));
+    setLocalPreviewUrl(objectUrl);
     // Alte Remote-URL verwerfen — neuer Upload überschreibt
     setRemoteMediaUrl(null);
     setRemoteThumbnailUrl(null);
     setCoverTimeMs(null);
+
+    // Aspect-Ratio auto-detect aus Medien-Dimensionen
+    if (isVideo) {
+      const vid = document.createElement('video');
+      vid.preload = 'metadata';
+      vid.onloadedmetadata = () => {
+        const w = vid.videoWidth;
+        const h = vid.videoHeight;
+        URL.revokeObjectURL(vid.src);
+        if (w > 0 && h > 0) {
+          const ratio = w / h;
+          if (ratio > 1.4)       setAspectRatio('landscape'); // ≥ ~14:10 → 16:9
+          else if (ratio > 0.85) setAspectRatio('square');    // ~1:1
+          else                   setAspectRatio('portrait');   // 9:16
+        }
+      };
+      vid.src = URL.createObjectURL(f);
+    } else {
+      const img = new Image();
+      img.onload = () => {
+        const w = img.naturalWidth;
+        const h = img.naturalHeight;
+        if (w > 0 && h > 0) {
+          const ratio = w / h;
+          if (ratio > 1.4)       setAspectRatio('landscape');
+          else if (ratio > 0.85) setAspectRatio('square');
+          else                   setAspectRatio('portrait');
+        }
+      };
+      img.src = objectUrl;
+    }
   }, [localPreviewUrl]);
 
   const onDrop = useCallback((e: React.DragEvent) => {
@@ -327,6 +360,7 @@ export function CreateEditor({ viewerId, initialDraft }: Props) {
         womenOnly,
         coverTimeMs,
         draftId,
+        aspectRatio,
       });
       if (!res.ok) {
         setToast({ kind: 'err', msg: res.error });
@@ -374,6 +408,7 @@ export function CreateEditor({ viewerId, initialDraft }: Props) {
         coverTimeMs,
         publishAt: scheduleAt.toISOString(),
         draftId,
+        aspectRatio,
       });
       if (!res.ok) {
         setToast({ kind: 'err', msg: res.error });

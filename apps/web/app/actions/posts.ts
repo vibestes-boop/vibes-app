@@ -129,6 +129,8 @@ export interface PublishInput {
   guildId?: string | null;
   /** Wenn gesetzt → nach Publish wird der Draft gelöscht. */
   draftId?: string | null;
+  /** Auto-erkannt beim Upload aus Video/Bild-Dimensionen. Default: 'portrait'. */
+  aspectRatio?: 'portrait' | 'landscape' | 'square';
 }
 
 // -----------------------------------------------------------------------------
@@ -175,6 +177,7 @@ export async function publishPost(
     cover_time_ms: typeof input.coverTimeMs === 'number' ? input.coverTimeMs : null,
     is_guild_post: input.isGuildPost ?? false,
     guild_id: input.guildId ?? null,
+    aspect_ratio: input.aspectRatio ?? 'portrait',
   };
 
   const { data, error } = await supabase
@@ -249,6 +252,7 @@ export async function schedulePost(
     p_allow_duet: input.allowDuet ?? true,
     p_women_only: input.womenOnly ?? false,
     p_cover_time_ms: typeof input.coverTimeMs === 'number' ? input.coverTimeMs : null,
+    p_aspect_ratio: input.aspectRatio ?? 'portrait',
   });
 
   if (error || !data) {
