@@ -3,10 +3,12 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { redirect } from 'next/navigation';
 import type { Route } from 'next';
-import { Radio, Clock, Users, Play, Plus, Settings } from 'lucide-react';
+import { Radio, Clock, Users, Play, Plus, Settings, CalendarDays, BellRing } from 'lucide-react';
 import { getUser } from '@/lib/auth/session';
-import { getMyActiveLiveSession, getMyPastSessions } from '@/lib/data/live-host';
-import type { PastSession } from '@/lib/data/live-host';
+import { getMyActiveLiveSession, getMyPastSessions, getMyScheduledLives } from '@/lib/data/live-host';
+import type { PastSession, ScheduledLiveRow } from '@/lib/data/live-host';
+import { CancelScheduledLiveButton } from '@/components/studio/cancel-scheduled-live-button';
+import { ScheduleLiveForm } from '@/components/studio/schedule-live-form';
 
 // -----------------------------------------------------------------------------
 // /studio/live — Host-Dashboard:
@@ -60,9 +62,10 @@ export default async function StudioLivePage() {
     redirect('/login?next=/studio/live');
   }
 
-  const [activeSession, pastSessions] = await Promise.all([
+  const [activeSession, pastSessions, scheduledLives] = await Promise.all([
     getMyActiveLiveSession(),
     getMyPastSessions(30),
+    getMyScheduledLives(),
   ]);
 
   return (
@@ -113,6 +116,26 @@ export default async function StudioLivePage() {
         </section>
       )}
 
+      {/* Geplante Lives — v1.w.UI.155 */}
+      <section className="mb-8">
+        <div className="mb-3 flex items-center justify-between gap-2">
+          <h2 className="text-sm font-semibold text-muted-foreground">Geplante Lives</h2>
+          <ScheduleLiveForm />
+        </div>
+        {scheduledLives.length === 0 ? (
+          <div className="flex items-center gap-3 rounded-xl border border-dashed bg-card px-4 py-5 text-sm text-muted-foreground">
+            <CalendarDays className="h-5 w-5 shrink-0 text-muted-foreground/50" />
+            <p>Noch keine geplanten Streams. Kündige deinen nächsten Live im Voraus an.</p>
+          </div>
+        ) : (
+          <ul className="overflow-hidden rounded-xl border bg-card">
+            {scheduledLives.map((s) => (
+              <ScheduledLiveRow key={s.id} row={s} />
+            ))}
+          </ul>
+        )}
+      </section>
+
       {/* History */}
       <section>
         <h2 className="mb-3 text-sm font-semibold text-muted-foreground">Vergangene Streams</h2>
@@ -132,6 +155,50 @@ export default async function StudioLivePage() {
         )}
       </section>
     </div>
+  );
+}
+
+// ─── ScheduledLiveRow ─────────────────────────────────────────────────────────
+
+function scheduledLabel(iso: string): string {
+  const now  = Date.now();
+  const then = new Date(iso).getTime();
+  const diff = then - now;
+  if (diff < 0) return 'Gleich';
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 60) return `in ${mins} min`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `in ${hrs} Std`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) {
+    const d = new Date(iso);
+    return `${d.toLocaleDateString('de-DE', { weekday: 'short' })} ${d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`;
+  }
+  return new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' });
+}
+
+function ScheduledLiveRow({ row }: { row: ScheduledLiveRow }) {
+  const isReminded = row.status === 'reminded';
+  return (
+    <li className="flex items-center gap-3 px-4 py-3 [&:not(:last-child)]:border-b">
+      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${isReminded ? 'bg-amber-500/15 text-amber-500' : 'bg-primary/10 text-primary'}`}>
+        {isReminded ? <BellRing className="h-4 w-4" /> : <CalendarDays className="h-4 w-4" />}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-medium">{row.title}</p>
+        <p className="text-[11px] text-muted-foreground">{scheduledLabel(row.scheduled_at)}</p>
+      </div>
+      {row.status === 'reminded' && (
+        <Link
+          href={'/live/start' as Route}
+          className="mr-1 inline-flex items-center gap-1 rounded-full bg-red-500 px-2.5 py-1 text-xs font-semibold text-white hover:bg-red-600"
+        >
+          <Radio className="h-3 w-3" />
+          Live gehen
+        </Link>
+      )}
+      <CancelScheduledLiveButton id={row.id} title={row.title} />
+    </li>
   );
 }
 

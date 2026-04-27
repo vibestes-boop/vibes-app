@@ -166,3 +166,78 @@ export const getActiveGiftGoal = cache(
     return (data as ActiveGiftGoal | null) ?? null;
   },
 );
+
+// -----------------------------------------------------------------------------
+// Scheduled Lives — v1.w.UI.155
+// -----------------------------------------------------------------------------
+
+export interface ScheduledLiveRow {
+  id:           string;
+  host_id:      string;
+  title:        string;
+  description:  string | null;
+  scheduled_at: string;
+  status:       'scheduled' | 'reminded' | 'live' | 'expired' | 'cancelled';
+  allow_comments: boolean;
+  allow_gifts:    boolean;
+  women_only:     boolean;
+  session_id:   string | null;
+  created_at:   string;
+  // join
+  host_username:   string | null;
+  host_avatar_url: string | null;
+}
+
+function mapScheduledRow(r: any): ScheduledLiveRow {
+  const host = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles;
+  return {
+    id:           r.id,
+    host_id:      r.host_id,
+    title:        r.title,
+    description:  r.description ?? null,
+    scheduled_at: r.scheduled_at,
+    status:       r.status,
+    allow_comments: r.allow_comments,
+    allow_gifts:    r.allow_gifts,
+    women_only:     r.women_only,
+    session_id:   r.session_id ?? null,
+    created_at:   r.created_at,
+    host_username:   host?.username   ?? null,
+    host_avatar_url: host?.avatar_url ?? null,
+  };
+}
+
+/** Public upcoming lives — for /live page "Demnächst" strip. */
+export const getUpcomingScheduledLives = cache(
+  async (limit = 8): Promise<ScheduledLiveRow[]> => {
+    const supabase = await createClient();
+    const cutoff = new Date(Date.now() - 10 * 60_000).toISOString();
+    const { data } = await supabase
+      .from('scheduled_lives')
+      .select('*, profiles!host_id(username, avatar_url)')
+      .in('status', ['scheduled', 'reminded'])
+      .gt('scheduled_at', cutoff)
+      .order('scheduled_at', { ascending: true })
+      .limit(limit);
+    if (!data) return [];
+    return data.map(mapScheduledRow);
+  },
+);
+
+/** Creator's own scheduled lives — for /studio/live page. */
+export const getMyScheduledLives = cache(
+  async (): Promise<ScheduledLiveRow[]> => {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+    const { data } = await supabase
+      .from('scheduled_lives')
+      .select('*, profiles!host_id(username, avatar_url)')
+      .eq('host_id', user.id)
+      .in('status', ['scheduled', 'reminded', 'live'])
+      .order('scheduled_at', { ascending: true })
+      .limit(20);
+    if (!data) return [];
+    return data.map(mapScheduledRow);
+  },
+);

@@ -2,8 +2,9 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Route } from 'next';
-import { Radio, Users, Eye, Flame, Video } from 'lucide-react';
+import { Radio, Users, Eye, Flame, Video, CalendarDays, Clock } from 'lucide-react';
 import { getActiveLiveSessions, type LiveSessionWithHost } from '@/lib/data/live';
+import { getUpcomingScheduledLives, type ScheduledLiveRow } from '@/lib/data/live-host';
 import { getUser } from '@/lib/auth/session';
 import { LivePageRefresher } from '@/components/live/live-page-refresher';
 
@@ -42,9 +43,10 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 export default async function LiveIndexPage() {
-  const [sessions, user] = await Promise.all([
+  const [sessions, user, upcoming] = await Promise.all([
     getActiveLiveSessions(60),
     getUser(),
+    getUpcomingScheduledLives(8),
   ]);
 
   const isAuthed = !!user;
@@ -101,6 +103,21 @@ export default async function LiveIndexPage() {
         </div>
       </header>
 
+      {/* Demnächst — Upcoming Scheduled Lives strip — v1.w.UI.155 */}
+      {upcoming.length > 0 && (
+        <section className="mb-6">
+          <h2 className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-muted-foreground">
+            <CalendarDays className="h-4 w-4" />
+            Demnächst
+          </h2>
+          <ul className="flex gap-3 overflow-x-auto pb-1 scrollbar-none">
+            {upcoming.map((u) => (
+              <UpcomingLiveCard key={u.id} row={u} />
+            ))}
+          </ul>
+        </section>
+      )}
+
       {sessions.length === 0 ? (
         <EmptyState isAuthed={isAuthed} />
       ) : (
@@ -111,6 +128,57 @@ export default async function LiveIndexPage() {
         </div>
       )}
     </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// UpcomingLiveCard — compact horizontal card for the "Demnächst" strip.
+// -----------------------------------------------------------------------------
+
+function upcomingLabel(iso: string): string {
+  const diff = new Date(iso).getTime() - Date.now();
+  if (diff < 0) return 'Gleich';
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 60) return `in ${mins} min`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) {
+    const d = new Date(iso);
+    return `Heute ${d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`;
+  }
+  const d = new Date(iso);
+  return `${d.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' })} ${d.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' })}`;
+}
+
+function UpcomingLiveCard({ row }: { row: ScheduledLiveRow }) {
+  const initial = (row.host_username ?? '?').charAt(0).toUpperCase();
+  return (
+    <li className="flex w-52 shrink-0 flex-col gap-2 overflow-hidden rounded-xl border bg-card p-3">
+      <div className="flex items-center gap-2">
+        {row.host_avatar_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={row.host_avatar_url} alt="" className="h-7 w-7 rounded-full object-cover" />
+        ) : (
+          <div className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
+            {initial}
+          </div>
+        )}
+        {row.host_username ? (
+          <Link
+            href={`/u/${row.host_username}` as Route}
+            className="truncate text-xs font-medium hover:underline"
+          >
+            @{row.host_username}
+          </Link>
+        ) : (
+          <span className="truncate text-xs text-muted-foreground">Unbekannt</span>
+        )}
+      </div>
+      <p className="line-clamp-2 text-sm font-semibold leading-snug">{row.title}</p>
+      <div className="mt-auto flex items-center gap-1 text-[11px] text-muted-foreground">
+        <Clock className="h-3 w-3 shrink-0" />
+        <span className="truncate">{upcomingLabel(row.scheduled_at)}</span>
+      </div>
+    </li>
   );
 }
 
