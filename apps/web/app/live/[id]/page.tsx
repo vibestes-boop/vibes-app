@@ -122,6 +122,11 @@ export default async function LiveViewerPage({ params }: PageProps) {
   const viewerId = user?.id ?? null;
   const isHost = viewerId === session.host_id;
 
+  // v1.w.UI.136 — CoHost Duet-Layout: ersten aktiven CoHost an LiveVideoPlayer übergeben.
+  const activeCoHost = cohosts[0] ?? null;
+  const coHostId = activeCoHost?.user_id ?? null;
+  const coHostName = activeCoHost?.profile?.username ?? null;
+
   // ── JSON-LD: BroadcastEvent + VideoObject schema ──────────────────────────
   // BroadcastEvent: Google uses this to show a "LIVE" badge in search results
   // when the stream is active (eventStatus = EventScheduled/InProgress).
@@ -208,6 +213,8 @@ export default async function LiveViewerPage({ params }: PageProps) {
                 roomName={session.room_name}
                 hostId={session.host_id}
                 hostName={hostName}
+                coHostId={coHostId}
+                coHostName={coHostName}
               />
             )}
           </div>
