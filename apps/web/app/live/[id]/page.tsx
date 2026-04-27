@@ -23,6 +23,7 @@ import { LiveEnterClient } from '@/components/live/live-enter-client';
 import { LiveGiftAnimationLayer } from '@/components/live/live-gift-animation-layer';
 import { LiveGiftGoalViewer } from '@/components/live/live-gift-goal-viewer';
 import { LiveViewerCount } from '@/components/live/live-viewer-count';
+import { LiveSessionEndWatcher } from '@/components/live/live-session-end-watcher';
 import {
   glassPillStrong,
   glassSurface,
@@ -176,6 +177,8 @@ export default async function LiveViewerPage({ params }: PageProps) {
     <main className="relative h-[100dvh] w-full overflow-hidden bg-[#0b0b10]">
       {/* Join/Leave Tracking — nur Client, kein UI */}
       {viewerId && <LiveEnterClient sessionId={id} />}
+      {/* v1.w.UI.144 — Session-End-Watcher: router.refresh() wenn Host Stream beendet */}
+      <LiveSessionEndWatcher sessionId={id} alreadyEnded={ended} />
 
       {/* Canvas — flex-centered 9:16 Frame. Padding damit der Frame auf breiten
           Viewports nicht an die Bildschirmränder klebt. */}
