@@ -24,6 +24,7 @@ import { LiveGiftAnimationLayer } from '@/components/live/live-gift-animation-la
 import { LiveGiftGoalViewer } from '@/components/live/live-gift-goal-viewer';
 import { LiveViewerCount } from '@/components/live/live-viewer-count';
 import { LiveSessionEndWatcher } from '@/components/live/live-session-end-watcher';
+import { LiveCoHostWatcher } from '@/components/live/live-cohost-watcher';
 import {
   glassPillStrong,
   glassSurface,
@@ -179,6 +180,8 @@ export default async function LiveViewerPage({ params }: PageProps) {
       {viewerId && <LiveEnterClient sessionId={id} />}
       {/* v1.w.UI.144 — Session-End-Watcher: router.refresh() wenn Host Stream beendet */}
       <LiveSessionEndWatcher sessionId={id} alreadyEnded={ended} />
+      {/* v1.w.UI.145 — CoHost-Watcher: router.refresh() wenn CoHost joined/left */}
+      <LiveCoHostWatcher sessionId={id} ended={ended} />
 
       {/* Canvas — flex-centered 9:16 Frame. Padding damit der Frame auf breiten
           Viewports nicht an die Bildschirmränder klebt. */}
