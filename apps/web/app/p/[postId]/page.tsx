@@ -336,6 +336,7 @@ export default async function PostDetailPage({
                 <PostAuthorMenu
                   postId={post.id}
                   authorUsername={post.author.username}
+                  caption={post.caption ?? null}
                 />
               ) : (
                 // v1.w.UI.58: FollowButton + PostViewerMenu (Melden / Kein Interesse /

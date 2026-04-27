@@ -393,6 +393,45 @@ export async function deletePost(postId: string): Promise<ActionResult<null>> {
 }
 
 // -----------------------------------------------------------------------------
+// updatePostCaption — Caption + Hashtags eines eigenen Posts bearbeiten.
+//
+// RLS auf `posts`: UPDATE erlaubt nur wenn `author_id = auth.uid()`. Wir
+// fügen zusätzlich `.eq('author_id', viewer)` hinzu (defense-in-depth).
+//
+// Hashtag-Extraktion: alle #token aus dem Caption-Text (1-50 Zeichen, nur
+// \w-Chars) — identisches Pattern wie `publishPost`. Die `tags`-Spalte wird
+// synchron aktualisiert.
+// -----------------------------------------------------------------------------
+
+export async function updatePostCaption(
+  postId: string,
+  caption: string,
+): Promise<ActionResult<null>> {
+  const viewer = await getViewerId();
+  if (!viewer) return { ok: false, error: 'Bitte einloggen.' };
+
+  const trimmed = caption.trim();
+  if (trimmed.length > 2000) return { ok: false, error: 'Caption zu lang (max. 2000 Zeichen).' };
+
+  // Hashtags aus Caption extrahieren
+  const tags = Array.from(
+    new Set((trimmed.match(/#(\w{1,50})/g) ?? []).map((t) => t.slice(1).toLowerCase())),
+  );
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('posts')
+    .update({ caption: trimmed || null, tags })
+    .eq('id', postId)
+    .eq('author_id', viewer);
+
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(`/p/${postId}`);
+  return { ok: true, data: null };
+}
+
+// -----------------------------------------------------------------------------
 // deleteDraft — Native-RPC-Delegate.
 // -----------------------------------------------------------------------------
 
