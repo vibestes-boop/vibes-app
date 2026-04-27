@@ -383,6 +383,28 @@ export default async function PostDetailPage({
           </div>
         );
 
+        // Kommentar-Sektion (layout-aware, wird in beide Layouts eingebaut)
+        const commentsSection = (
+          <>
+            <PostComments
+              comments={comments}
+              allowComments={post.allow_comments}
+              totalCount={post.comment_count}
+              isAuthenticated={!!viewer}
+              postId={post.id}
+              postPath={`/p/${post.id}`}
+              viewerId={viewer?.id ?? null}
+            />
+            {post.allow_comments && (
+              <CommentForm
+                postId={post.id}
+                isAuthenticated={!!viewer}
+                postPath={`/p/${post.id}`}
+              />
+            )}
+          </>
+        );
+
         // Mehr von @author
         const moreCard = morePosts.length > 0 ? (
           <div className="rounded-xl border border-border bg-card p-4">
@@ -478,7 +500,7 @@ export default async function PostDetailPage({
           />
         );
 
-        // ── Landscape-Layout: Video oben, Info in 2-Spalten darunter ───────
+        // ── Landscape-Layout: Video oben, dann 2-Spalten (Author+Kommentare | Share), More ganz unten ──
         if (isLandscape) {
           return (
             <>
@@ -488,24 +510,27 @@ export default async function PostDetailPage({
                 {statsBar}
               </div>
 
-              {/* Info-Zeile: Autor+Caption links | Share rechts */}
+              {/* Info-Zeile: Autor + Caption + Kommentare links | Share rechts */}
               <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
                 <div className="space-y-4">
                   {authorCard}
                   {captionCard}
+                  {commentsSection}
                 </div>
                 <aside className="space-y-4">
                   {shareCard}
                 </aside>
               </div>
 
-              {/* Mehr von — volle Breite mit 6-Spalten-Grid */}
+              {/* Mehr von — volle Breite mit 6-Spalten-Grid, ganz unten */}
               {moreCard && <div className="mt-5">{moreCard}</div>}
             </>
           );
         }
 
         // ── Portrait / Square-Layout: Media links | Sidebar rechts ─────────
+        // Kommentare in der Sidebar direkt unter Caption — TikTok-Web-Pattern.
+        // Mehr von @author ganz am Ende der Sidebar.
         return (
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
             <div>
@@ -515,32 +540,13 @@ export default async function PostDetailPage({
             <aside className="space-y-5">
               {authorCard}
               {captionCard}
+              {commentsSection}
               {shareCard}
               {moreCard}
             </aside>
           </div>
         );
       })()}
-
-      {/* ───── Kommentare (volle Breite) ───── */}
-      <PostComments
-        comments={comments}
-        allowComments={post.allow_comments}
-        totalCount={post.comment_count}
-        isAuthenticated={!!viewer}
-        postId={post.id}
-        postPath={`/p/${post.id}`}
-        viewerId={viewer?.id ?? null}
-      />
-
-      {/* Kommentar-Eingabe — nur wenn Kommentare erlaubt */}
-      {post.allow_comments && (
-        <CommentForm
-          postId={post.id}
-          isAuthenticated={!!viewer}
-          postPath={`/p/${post.id}`}
-        />
-      )}
     </main>
   );
 }
