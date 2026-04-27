@@ -3,29 +3,24 @@
 // -----------------------------------------------------------------------------
 // SearchResultsTabs — Client Component für instant Tab-Switching.
 //
-// v1.w.UI.95:
-//   Vorher: Tabs waren <Link>-basiert → jeder Tab-Klick triggerte eine volle
-//   Server-Navigierung (/search?q=…&tab=users). Das fühlte sich langsam an,
-//   obwohl alle Daten bereits im initialen SSR geladen waren.
-//
-//   Jetzt: Tabs nutzen lokalen useState. Die drei Datensätze (users, posts,
-//   hashtags) kommen alle per SSR-Props. Tab-Wechsel sind sofort, kein Netz.
-//   URL-Deep-Links funktionieren weiterhin: `initialTab` kommt vom Server aus
-//   dem ?tab=-Param, initialisiert den State. Beim ersten Render ist der korrekte
-//   Tab aktiv — ohne JS-Flash.
+// v1.w.UI.95: Client-seitiges Tab-Switching ohne Reload.
+// v1.w.UI.117: IntersectionObserver load-more per Einzel-Tab (users/posts/
+//   hashtags). 'all'-Tab zeigt keine Sentinels — zu aufwändig bei 3 parallelen
+//   Feeds. User wechselt für tiefere Suche in den Einzel-Tab.
 // -----------------------------------------------------------------------------
 
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { Route } from 'next';
 import { BadgeCheck, Hash, SearchX, User2, Video } from 'lucide-react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { EmptyState } from '@/components/ui/empty-state';
+import { Skeleton } from '@/components/ui/skeleton';
 import { FollowButton } from '@/components/profile/follow-button';
 import { ExploreVideoCard } from '@/components/explore/explore-video-card';
 import { cn } from '@/lib/utils';
-import type { SearchResults } from '@/lib/data/feed';
+import type { SearchResults, SearchPageResult } from '@/lib/data/feed';
 
 type Tab = 'all' | 'users' | 'posts' | 'hashtags';
 
@@ -37,6 +32,8 @@ interface Props {
   initialTab: Tab;
 }
 
+const SSR_LIMIT = 20; // muss mit searchAll(trimmed, 20) übereinstimmen
+
 function formatCount(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace('.0', '')}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace('.0', '')}K`;
@@ -45,7 +42,118 @@ function formatCount(n: number): string {
 
 export function SearchResultsTabs({ q, results, viewerId, followingSet, initialTab }: Props) {
   const [tab, setTab] = useState<Tab>(initialTab);
-  const { users, posts, hashtags } = results;
+
+  // ── Paginated state per category ───────────────────────────────────────────
+  const [users,    setUsers]    = useState(results.users);
+  const [posts,    setPosts]    = useState(results.posts);
+  const [hashtags, setHashtags] = useState(results.hashtags);
+
+  const [hasMoreUsers,    setHasMoreUsers]    = useState(results.users.length >= SSR_LIMIT);
+  const [hasMorePosts,    setHasMorePosts]    = useState(results.posts.length >= SSR_LIMIT);
+  const [hasMoreHashtags, setHasMoreHashtags] = useState(results.hashtags.length >= SSR_LIMIT);
+
+  const [fetchingUsers,    setFetchingUsers]    = useState(false);
+  const [fetchingPosts,    setFetchingPosts]    = useState(false);
+  const [fetchingHashtags, setFetchingHashtags] = useState(false);
+
+  const fetchedOffsetUsers    = useRef(results.users.length);
+  const fetchedOffsetPosts    = useRef(results.posts.length);
+  const fetchedOffsetHashtags = useRef(results.hashtags.length);
+
+  const sentinelUsersRef    = useRef<HTMLDivElement | null>(null);
+  const sentinelPostsRef    = useRef<HTMLDivElement | null>(null);
+  const sentinelHashtagsRef = useRef<HTMLDivElement | null>(null);
+
+  // Reset paginated state whenever the query changes (parent re-renders with new SSR data).
+  // Using a key on the parent would be cleaner but we're inside a client component.
+  const prevQ = useRef(q);
+  if (prevQ.current !== q) {
+    prevQ.current = q;
+    setUsers(results.users);
+    setPosts(results.posts);
+    setHashtags(results.hashtags);
+    setHasMoreUsers(results.users.length >= SSR_LIMIT);
+    setHasMorePosts(results.posts.length >= SSR_LIMIT);
+    setHasMoreHashtags(results.hashtags.length >= SSR_LIMIT);
+    fetchedOffsetUsers.current    = results.users.length;
+    fetchedOffsetPosts.current    = results.posts.length;
+    fetchedOffsetHashtags.current = results.hashtags.length;
+  }
+
+  const loadMore = useCallback(async (type: 'users' | 'posts' | 'hashtags') => {
+    const isFetching = type === 'users' ? fetchingUsers : type === 'posts' ? fetchingPosts : fetchingHashtags;
+    const hasMore    = type === 'users' ? hasMoreUsers  : type === 'posts' ? hasMorePosts  : hasMoreHashtags;
+    if (isFetching || !hasMore) return;
+
+    const offset = type === 'users'
+      ? fetchedOffsetUsers.current
+      : type === 'posts'
+        ? fetchedOffsetPosts.current
+        : fetchedOffsetHashtags.current;
+
+    const setFetching = type === 'users' ? setFetchingUsers : type === 'posts' ? setFetchingPosts : setFetchingHashtags;
+    setFetching(true);
+
+    try {
+      const res = await fetch(
+        `/api/search/more?q=${encodeURIComponent(q)}&type=${type}&offset=${offset}`,
+      );
+      if (!res.ok) return;
+      const data = (await res.json()) as SearchPageResult;
+
+      if (type === 'users' && data.users) {
+        const seen = new Set(users.map((u) => u.id));
+        const fresh = data.users.filter((u) => !seen.has(u.id));
+        setUsers((prev) => [...prev, ...fresh]);
+        fetchedOffsetUsers.current = offset + data.users.length;
+        setHasMoreUsers(data.hasMore);
+      } else if (type === 'posts' && data.posts) {
+        const seen = new Set(posts.map((p) => p.id));
+        const fresh = data.posts.filter((p) => !seen.has(p.id));
+        setPosts((prev) => [...prev, ...fresh]);
+        fetchedOffsetPosts.current = offset + data.posts.length;
+        setHasMorePosts(data.hasMore);
+      } else if (type === 'hashtags' && data.hashtags) {
+        const seen = new Set(hashtags.map((h) => h.tag));
+        const fresh = data.hashtags.filter((h) => !seen.has(h.tag));
+        setHashtags((prev) => [...prev, ...fresh]);
+        fetchedOffsetHashtags.current = offset + data.hashtags.length;
+        setHasMoreHashtags(data.hasMore);
+      }
+    } catch {
+      // silent
+    } finally {
+      setFetching(false);
+    }
+  }, [q, fetchingUsers, fetchingPosts, fetchingHashtags, hasMoreUsers, hasMorePosts, hasMoreHashtags, users, posts, hashtags]);
+
+  // ── IntersectionObserver per category sentinel ─────────────────────────────
+  useEffect(() => {
+    if (tab !== 'users' || !hasMoreUsers) return;
+    const el = sentinelUsersRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver((e) => { if (e[0]?.isIntersecting) void loadMore('users'); }, { rootMargin: '300px' });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [tab, hasMoreUsers, loadMore]);
+
+  useEffect(() => {
+    if (tab !== 'posts' || !hasMorePosts) return;
+    const el = sentinelPostsRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver((e) => { if (e[0]?.isIntersecting) void loadMore('posts'); }, { rootMargin: '300px' });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [tab, hasMorePosts, loadMore]);
+
+  useEffect(() => {
+    if (tab !== 'hashtags' || !hasMoreHashtags) return;
+    const el = sentinelHashtagsRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver((e) => { if (e[0]?.isIntersecting) void loadMore('hashtags'); }, { rootMargin: '300px' });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [tab, hasMoreHashtags, loadMore]);
 
   const tabs: { id: Tab; label: string; count: number | null }[] = [
     { id: 'all',      label: 'Alle',      count: null },
@@ -54,16 +162,16 @@ export function SearchResultsTabs({ q, results, viewerId, followingSet, initialT
     { id: 'hashtags', label: 'Hashtags',  count: hashtags.length },
   ];
 
+  const showUsers    = tab === 'all' || tab === 'users';
+  const showPosts    = tab === 'all' || tab === 'posts';
+  const showHashtags = tab === 'all' || tab === 'hashtags';
+
   const noResults = users.length === 0 && posts.length === 0 && hashtags.length === 0;
 
   const isCurrentTabEmpty =
     (tab === 'users'    && users.length    === 0) ||
     (tab === 'posts'    && posts.length    === 0) ||
     (tab === 'hashtags' && hashtags.length === 0);
-
-  const showUsers    = tab === 'all' || tab === 'users';
-  const showPosts    = tab === 'all' || tab === 'posts';
-  const showHashtags = tab === 'all' || tab === 'hashtags';
 
   return (
     <div>
@@ -159,6 +267,19 @@ export function SearchResultsTabs({ q, results, viewerId, followingSet, initialT
               </li>
             ))}
           </ul>
+          {tab === 'users' && hasMoreUsers && (
+            <div ref={sentinelUsersRef} className="py-4 flex flex-col gap-1">
+              {fetchingUsers && [...Array(3)].map((_, i) => (
+                <div key={i} className="flex items-center gap-3 rounded-lg p-3">
+                  <Skeleton className="h-11 w-11 rounded-full shrink-0" />
+                  <div className="flex-1 space-y-1.5">
+                    <Skeleton className="h-4 w-28" />
+                    <Skeleton className="h-3 w-40" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
       )}
 
@@ -193,6 +314,17 @@ export function SearchResultsTabs({ q, results, viewerId, followingSet, initialT
               );
             })}
           </ul>
+          {tab === 'posts' && hasMorePosts && (
+            <div ref={sentinelPostsRef} className="py-4">
+              {fetchingPosts && (
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 mt-2">
+                  {[...Array(4)].map((_, i) => (
+                    <Skeleton key={i} className="aspect-[9/16] w-full rounded-lg" />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </section>
       )}
 
@@ -225,6 +357,17 @@ export function SearchResultsTabs({ q, results, viewerId, followingSet, initialT
               </li>
             ))}
           </ul>
+          {tab === 'hashtags' && hasMoreHashtags && (
+            <div ref={sentinelHashtagsRef} className="py-4">
+              {fetchingHashtags && (
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 mt-2">
+                  {[...Array(3)].map((_, i) => (
+                    <Skeleton key={i} className="h-14 w-full rounded-lg" />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </section>
       )}
     </div>

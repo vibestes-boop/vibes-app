@@ -637,3 +637,83 @@ export const searchAll = cache(async (q: string, limit = 12): Promise<SearchResu
     hashtags,
   };
 });
+
+// -----------------------------------------------------------------------------
+// searchPaginated — paginierte Einzel-Kategorie-Suche (v1.w.UI.117).
+// Wird von GET /api/search/more?q=&type=users|posts|hashtags&offset=N aufgerufen.
+// Kein cache() — nimmt offset-Argument.
+// -----------------------------------------------------------------------------
+
+export type SearchType = 'users' | 'posts' | 'hashtags';
+
+export interface SearchPageResult {
+  type: SearchType;
+  users?: SearchResults['users'];
+  posts?: SearchResults['posts'];
+  hashtags?: SearchResults['hashtags'];
+  hasMore: boolean;
+}
+
+const SEARCH_PAGE_LIMIT = 20;
+
+export async function searchPaginated(
+  q: string,
+  type: SearchType,
+  offset: number,
+): Promise<SearchPageResult> {
+  const query = q.trim();
+  if (query.length < 2) {
+    return { type, users: [], posts: [], hashtags: [], hasMore: false };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const viewerId = user?.id ?? null;
+  const like = `%${query.replace(/[%_]/g, '')}%`;
+
+  if (type === 'users') {
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, username, display_name, avatar_url, verified:is_verified')
+      .or(`username.ilike.${like},display_name.ilike.${like}`)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + SEARCH_PAGE_LIMIT - 1);
+
+    const users = ((data ?? []) as Array<{
+      id: string; username: string; display_name: string | null;
+      avatar_url: string | null; verified: boolean | null;
+    }>).map((u) => ({
+      id: u.id, username: u.username, display_name: u.display_name,
+      avatar_url: u.avatar_url, verified: u.verified ?? false, follower_count: 0,
+    }));
+    return { type, users, hasMore: users.length >= SEARCH_PAGE_LIMIT };
+  }
+
+  if (type === 'posts') {
+    const { data } = await supabase
+      .from('posts')
+      .select(`${POST_COLUMNS}, ${AUTHOR_JOIN}`)
+      .ilike('caption', like)
+      .eq('privacy', 'public')
+      .order('view_count', { ascending: false })
+      .range(offset, offset + SEARCH_PAGE_LIMIT - 1);
+
+    const rows = (data ?? []) as unknown as RawPostRow[];
+    const postIds = rows.map((r) => r.id);
+    const authorIds = Array.from(new Set(rows.map((r) => {
+      const a = r.author; const author = Array.isArray(a) ? a[0] : a; return author?.id;
+    }).filter((id): id is string => typeof id === 'string')));
+    const { liked, saved, following } = await batchEngagement(postIds, authorIds, viewerId);
+    const posts = rows.map((row) => normalizeRow(row, liked, saved, following)).filter((p): p is FeedPost => p !== null);
+    return { type, posts, hasMore: posts.length >= SEARCH_PAGE_LIMIT };
+  }
+
+  // hashtags — full list is fetched from trending (max 200), offset in-memory
+  const tagLike = query.toLowerCase().replace(/^#/, '');
+  const allTags = await getTrendingHashtags(200);
+  const filtered = allTags.filter((t) => t.tag.includes(tagLike));
+  const page = filtered.slice(offset, offset + SEARCH_PAGE_LIMIT);
+  return { type, hashtags: page, hasMore: filtered.length > offset + SEARCH_PAGE_LIMIT };
+}
