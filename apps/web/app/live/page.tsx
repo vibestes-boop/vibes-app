@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Route } from 'next';
-import { Radio, Users, Eye, Flame, Video, CalendarDays, Clock } from 'lucide-react';
+import { Radio, Users, Eye, Flame, PlayCircle, Video, CalendarDays, Clock } from 'lucide-react';
 import { getActiveLiveSessions, type LiveSessionWithHost } from '@/lib/data/live';
 import { getUpcomingScheduledLives, type ScheduledLiveRow } from '@/lib/data/live-host';
 import { getUser } from '@/lib/auth/session';
@@ -81,6 +81,13 @@ export default async function LiveIndexPage() {
               {totalViewers.toLocaleString('de-DE')} Zuschauer
             </div>
           )}
+          <Link
+            href={'/live/replays' as Route}
+            className="inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted"
+          >
+            <PlayCircle className="h-4 w-4" />
+            Replays
+          </Link>
 
           {/* v1.w.UI.100: CTA für eingeloggte User — immer sichtbar, nicht nur bei leerem State */}
           {isAuthed ? (

@@ -222,6 +222,49 @@ export const getActiveCoHosts = cache(
 );
 
 // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// getPublicReplays — Listing aller öffentlichen VOD-Replays für /live/replays.
+// Nur Sessions mit `is_replayable=true` und `replay_url IS NOT NULL`.
+// -----------------------------------------------------------------------------
+
+export interface ReplaySession {
+  id: string;
+  title: string | null;
+  thumbnail_url: string | null;
+  replay_url: string | null;
+  replay_views: number;
+  peak_viewer_count: number;
+  ended_at: string | null;
+  host: {
+    id: string;
+    username: string;
+    avatar_url: string | null;
+  } | null;
+}
+
+export const getPublicReplays = cache(
+  async (limit = 40): Promise<ReplaySession[]> => {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from('live_sessions')
+      .select(
+        `id, title, thumbnail_url, replay_url, replay_views, peak_viewer_count:peak_viewers, ended_at,
+         host:profiles!live_sessions_host_id_fkey ( id, username, avatar_url )`,
+      )
+      .eq('is_replayable', true)
+      .not('replay_url', 'is', null)
+      .eq('status', 'ended')
+      .order('ended_at', { ascending: false })
+      .limit(limit);
+
+    if (!data) return [];
+    return (data as unknown as ReplaySession[]).map((r) => ({
+      ...r,
+      host: Array.isArray(r.host) ? r.host[0] ?? null : r.host,
+    }));
+  },
+);
+
 // Replay-Metadata. `live_recordings` hält den S3/Storage-URL + duration_secs +
 // clip_markers kommen aus separater Tabelle.
 // -----------------------------------------------------------------------------
