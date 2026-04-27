@@ -404,7 +404,25 @@ export function LiveHostDeck({
   // -----------------------------------------------------------------------------
   // Screenshare — läuft parallel zur Cam. Audio (System-Audio) nur wenn Browser
   // das zulässt und der User es anklickt.
+  //
+  // Reihenfolge: `stopScreenshare` ZUERST definiert, weil `startScreenshare` es
+  // intern via `t.once('ended', …)` aufruft. Sonst Temporal-Dead-Zone-Crash beim
+  // useCallback-Deps-Array von `startScreenshare`.
   // -----------------------------------------------------------------------------
+  const stopScreenshare = useCallback(async () => {
+    const room = roomRef.current;
+    const video = screenVideoTrackRef.current;
+    const audio = screenAudioTrackRef.current;
+    if (video && room) await room.localParticipant.unpublishTrack(video, true);
+    if (audio && room) await room.localParticipant.unpublishTrack(audio, true);
+    video?.stop();
+    audio?.stop();
+    screenVideoTrackRef.current = null;
+    screenAudioTrackRef.current = null;
+    if (screenPreviewRef.current) screenPreviewRef.current.srcObject = null;
+    setScreenEnabled(false);
+  }, []);
+
   const startScreenshare = useCallback(async () => {
     const room = roomRef.current;
     if (!room) return;
@@ -434,21 +452,7 @@ export function LiveHostDeck({
       if (err instanceof Error && err.name === 'NotAllowedError') return;
       setErrorMsg(err instanceof Error ? err.message : 'Screenshare fehlgeschlagen.');
     }
-  }, []);
-
-  const stopScreenshare = useCallback(async () => {
-    const room = roomRef.current;
-    const video = screenVideoTrackRef.current;
-    const audio = screenAudioTrackRef.current;
-    if (video && room) await room.localParticipant.unpublishTrack(video, true);
-    if (audio && room) await room.localParticipant.unpublishTrack(audio, true);
-    video?.stop();
-    audio?.stop();
-    screenVideoTrackRef.current = null;
-    screenAudioTrackRef.current = null;
-    if (screenPreviewRef.current) screenPreviewRef.current.srcObject = null;
-    setScreenEnabled(false);
-  }, []);
+  }, [stopScreenshare]);
 
   const toggleScreen = useCallback(async () => {
     if (screenEnabled) await stopScreenshare();
