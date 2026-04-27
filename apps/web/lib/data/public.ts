@@ -84,7 +84,7 @@ export const getPublicProfile = cache(async (username: string): Promise<PublicPr
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, username, display_name, avatar_url, bio, is_verified, is_private')
+    .select('id, username, display_name, avatar_url, bio, is_verified, is_private, website, teip')
     .eq('username', username.toLowerCase())
     .maybeSingle();
 
@@ -136,7 +136,9 @@ export const getPublicProfile = cache(async (username: string): Promise<PublicPr
     post_count: postsRes.count ?? 0,
     is_live: !!liveRes.data?.id,
     live_session_id: liveRes.data?.id ?? null,
-    is_private: (data as { is_private?: boolean | null }).is_private ?? false,
+    is_private: (data as any).is_private ?? false,
+    website: (data as any).website ?? null,
+    teip: (data as any).teip ?? null,
   };
 });
 

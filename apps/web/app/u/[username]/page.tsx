@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { BadgeCheck, Heart, ShoppingBag, Swords } from 'lucide-react';
+import { BadgeCheck, Heart, ShoppingBag, Swords, Globe, Mountain } from 'lucide-react';
 
 import { getPublicProfile, getProfilePosts, getProfileLikedPosts, getBattleHistory, getFollowState } from '@/lib/data/public';
 import { getUser } from '@/lib/auth/session';
@@ -317,6 +317,29 @@ export default async function ProfilePage({
           <p className="mt-6 whitespace-pre-line text-sm leading-relaxed text-foreground/90">
             {linkify(profile.bio)}
           </p>
+        )}
+
+        {/* Website + Teip — v1.w.UI.160 */}
+        {(profile.website || profile.teip) && (
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5">
+            {profile.website && (
+              <a
+                href={profile.website}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+              >
+                <Globe className="h-3.5 w-3.5 shrink-0" />
+                {profile.website.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+              </a>
+            )}
+            {profile.teip && (
+              <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+                <Mountain className="h-3.5 w-3.5 shrink-0" />
+                🏔️ {profile.teip}
+              </span>
+            )}
+          </div>
         )}
       </section>
 
