@@ -191,10 +191,7 @@ export function CreateEditor({ viewerId, initialDraft }: Props) {
       };
       vid.src = URL.createObjectURL(f);
     } else {
-      // `Image` ist hier das `next/image`-Default-Import (siehe oben) — der
-      // DOM-HTMLImageElement-Konstruktor wird via `window.Image` adressiert,
-      // damit kein Namens-Clash entsteht.
-      const img = new window.Image();
+      const img = new Image();
       img.onload = () => {
         const w = img.naturalWidth;
         const h = img.naturalHeight;
@@ -231,11 +228,6 @@ export function CreateEditor({ viewerId, initialDraft }: Props) {
     setRemoteThumbnailUrl(url);
     setCoverTimeMs(null);
     setUploadProgress(null);
-    // KI-Bilder sind immer quadratisch (1024×1024 / 1024×1536 je nach Size-Option).
-    // 1024×1024 → square, 1024×1536 → portrait. Default-Size ist 1024×1536,
-    // also portrait. Wir setzen explizit zurück damit ein vorher gewähltes
-    // Querformat nicht versehentlich übernommen wird.
-    setAspectRatio('portrait');
   }, [localPreviewUrl]);
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -599,14 +591,6 @@ export function CreateEditor({ viewerId, initialDraft }: Props) {
           addTagFromInput={addTagFromInput}
           removeTag={removeTag}
         />
-
-        {/* Format-Picker — nur sichtbar wenn Media geladen */}
-        {hasMedia && (
-          <AspectRatioPicker
-            value={aspectRatio}
-            onChange={setAspectRatio}
-          />
-        )}
 
         <PrivacyPanel
           privacy={privacy}
@@ -1124,60 +1108,6 @@ function TagChips({
   );
 }
 
-function AspectRatioPicker({
-  value,
-  onChange,
-}: {
-  value: 'portrait' | 'landscape' | 'square';
-  onChange: (v: 'portrait' | 'landscape' | 'square') => void;
-}) {
-  const options: Array<{
-    v: 'portrait' | 'landscape' | 'square';
-    label: string;
-    sub: string;
-    preview: string; // Tailwind-Klassen für das visuelle Vorschau-Rechteck
-  }> = [
-    { v: 'portrait',  label: 'Hochformat', sub: '9:16',  preview: 'h-8 w-5' },
-    { v: 'landscape', label: 'Querformat', sub: '16:9',  preview: 'h-5 w-8' },
-    { v: 'square',    label: 'Quadrat',    sub: '1:1',   preview: 'h-6 w-6' },
-  ];
-
-  return (
-    <div>
-      <label className="mb-2 block text-sm font-medium">Format</label>
-      <div className="grid grid-cols-3 gap-2">
-        {options.map((o) => {
-          const active = value === o.v;
-          return (
-            <button
-              key={o.v}
-              type="button"
-              onClick={() => onChange(o.v)}
-              className={cn(
-                'flex flex-col items-center gap-1.5 rounded-xl border px-2 py-3 text-xs transition-colors',
-                active
-                  ? 'border-primary bg-primary/10 text-primary'
-                  : 'bg-background hover:bg-muted',
-              )}
-            >
-              {/* Visuelle Vorschau des Seitenverhältnisses */}
-              <div
-                className={cn(
-                  'rounded-sm border-2',
-                  active ? 'border-primary' : 'border-muted-foreground/40',
-                  o.preview,
-                )}
-              />
-              <span className="font-medium">{o.label}</span>
-              <span className="text-[10px] text-muted-foreground">{o.sub}</span>
-            </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
 function PrivacyPanel({
   privacy,
   setPrivacy,
@@ -1279,15 +1209,15 @@ function ToggleRow({
         type="button"
         onClick={() => onChange(!checked)}
         className={cn(
-          'inline-flex h-6 w-11 items-center rounded-full transition-colors shrink-0',
-          checked ? 'bg-emerald-500' : 'bg-zinc-600',
+          'relative h-6 w-10 rounded-full transition-colors',
+          checked ? 'bg-primary' : 'bg-muted',
         )}
         aria-pressed={checked}
       >
         <span
           className={cn(
-            'h-[18px] w-[18px] rounded-full bg-white shadow transition-transform',
-            checked ? 'translate-x-[25px]' : 'translate-x-[3px]',
+            'absolute top-0.5 h-5 w-5 rounded-full bg-background shadow transition-transform',
+            checked ? 'translate-x-[1.125rem]' : 'translate-x-0.5',
           )}
         />
       </button>
