@@ -498,7 +498,7 @@ export const getTrendingHashtags = cache(async (limit = 20): Promise<TrendingHas
 // -----------------------------------------------------------------------------
 
 export const getPostsByTag = cache(
-  async (rawTag: string, limit = 24): Promise<FeedPost[]> => {
+  async (rawTag: string, limit = 24, offset = 0): Promise<FeedPost[]> => {
     const tag = rawTag.toLowerCase().replace(/^#/, '').trim();
     if (!tag) return [];
 
@@ -513,7 +513,8 @@ export const getPostsByTag = cache(
       .contains('tags', [tag])
       .eq('privacy', 'public')
       .order('view_count', { ascending: false })
-      .limit(limit);
+      .order('id', { ascending: false }) // stable tie-break
+      .range(offset, offset + limit - 1);
 
     if (error || !data) return [];
 
