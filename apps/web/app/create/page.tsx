@@ -1,3 +1,11 @@
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Video hochladen — Serlo',
+  description: 'Lade ein Video hoch, schreibe einen Post oder plane Inhalte für später.',
+  robots: { index: false, follow: false },
+};
+
 import { redirect } from 'next/navigation';
 import { getUser } from '@/lib/auth/session';
 import { getDraft } from '@/lib/data/posts';
