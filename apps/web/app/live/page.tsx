@@ -2,8 +2,9 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Route } from 'next';
-import { Radio, Users, Eye, Flame } from 'lucide-react';
+import { Radio, Users, Eye, Flame, Video } from 'lucide-react';
 import { getActiveLiveSessions, type LiveSessionWithHost } from '@/lib/data/live';
+import { getUser } from '@/lib/auth/session';
 import { LivePageRefresher } from '@/components/live/live-page-refresher';
 
 // -----------------------------------------------------------------------------
@@ -41,14 +42,20 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 export default async function LiveIndexPage() {
-  const sessions = await getActiveLiveSessions(60);
+  const [sessions, user] = await Promise.all([
+    getActiveLiveSessions(60),
+    getUser(),
+  ]);
+
+  const isAuthed = !!user;
+  const totalViewers = sessions.reduce((acc, s) => acc + (s.viewer_count ?? 0), 0);
 
   return (
     <div className="mx-auto max-w-[1600px] px-4 py-6 lg:px-8">
       {/* Unsichtbare Client-Shell: hält die Liste via Realtime + 30s-Polling frisch */}
       <LivePageRefresher sessionCount={sessions.length} />
 
-      <header className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+      <header className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-semibold">
             <span className="relative flex h-3 w-3">
@@ -64,17 +71,38 @@ export default async function LiveIndexPage() {
           </p>
         </div>
 
-        {sessions.length > 0 && (
-          <div className="inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1.5 text-sm text-muted-foreground">
-            <Eye className="h-4 w-4" />
-            {sessions.reduce((acc, s) => acc + (s.viewer_count ?? 0), 0).toLocaleString('de-DE')}{' '}
-            Zuschauer insgesamt
-          </div>
-        )}
+        {/* Right side: viewer pill + Go-Live CTA */}
+        <div className="flex flex-wrap items-center gap-2">
+          {sessions.length > 0 && (
+            <div className="inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1.5 text-sm text-muted-foreground">
+              <Eye className="h-4 w-4" />
+              {totalViewers.toLocaleString('de-DE')} Zuschauer
+            </div>
+          )}
+
+          {/* v1.w.UI.100: CTA für eingeloggte User — immer sichtbar, nicht nur bei leerem State */}
+          {isAuthed ? (
+            <Link
+              href={'/live/start' as Route}
+              className="inline-flex items-center gap-2 rounded-full bg-red-600 px-4 py-1.5 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90"
+            >
+              <Video className="h-4 w-4" />
+              Stream starten
+            </Link>
+          ) : (
+            <Link
+              href={'/login?next=/live/start' as Route}
+              className="inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-sm font-medium hover:bg-muted"
+            >
+              <Video className="h-4 w-4" />
+              Live gehen
+            </Link>
+          )}
+        </div>
       </header>
 
       {sessions.length === 0 ? (
-        <EmptyState />
+        <EmptyState isAuthed={isAuthed} />
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
           {sessions.map((s, i) => (
@@ -195,21 +223,41 @@ function LiveSessionCard({
 }
 
 // -----------------------------------------------------------------------------
-// EmptyState — wenn kein Stream aktiv ist. Zeigt Creator-CTA (App-Download,
-// denn Streaming vom Web ist Phase 6, nicht Phase 5).
+// EmptyState — wenn kein Stream aktiv ist.
+// v1.w.UI.100: Eingeloggte User sehen einen direkten "Jetzt live gehen"-CTA.
+// Anon-User sehen einen Login-Link. Stale "in Arbeit"-Copy entfernt.
 // -----------------------------------------------------------------------------
 
-function EmptyState() {
+function EmptyState({ isAuthed }: { isAuthed: boolean }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-4 rounded-xl border border-dashed py-20 text-center">
-      <Radio className="h-12 w-12 text-muted-foreground/40" />
-      <div>
-        <h3 className="text-lg font-semibold">Gerade läuft nichts</h3>
-        <p className="mt-1 max-w-md text-sm text-muted-foreground">
-          Komm später wieder vorbei — oder starte selbst einen Stream aus der Serlo-App. Web-
-          Streaming ist in Arbeit.
+    <div className="flex flex-col items-center justify-center gap-5 rounded-xl border border-dashed py-24 text-center">
+      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-500/10">
+        <Radio className="h-8 w-8 text-red-500/70" />
+      </div>
+      <div className="space-y-1">
+        <h3 className="text-lg font-semibold">Gerade läuft kein Stream</h3>
+        <p className="max-w-sm text-sm text-muted-foreground">
+          {isAuthed
+            ? 'Sei der Erste — starte jetzt deinen eigenen Live-Stream direkt im Browser.'
+            : 'Komm später wieder vorbei oder melde dich an, um selbst live zu gehen.'}
         </p>
       </div>
+      {isAuthed ? (
+        <Link
+          href={'/live/start' as Route}
+          className="inline-flex items-center gap-2 rounded-full bg-red-600 px-6 py-2.5 text-sm font-semibold text-white shadow transition-opacity hover:opacity-90"
+        >
+          <Video className="h-4 w-4" />
+          Jetzt live gehen
+        </Link>
+      ) : (
+        <Link
+          href={'/login?next=/live/start' as Route}
+          className="inline-flex items-center gap-2 rounded-full border px-6 py-2.5 text-sm font-medium hover:bg-muted"
+        >
+          Einloggen &amp; live gehen
+        </Link>
+      )}
     </div>
   );
 }
