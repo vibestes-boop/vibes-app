@@ -9,6 +9,7 @@ import {
   getSuggestedFollows,
   getTrendingHashtags,
 } from '@/lib/data/feed';
+import { getActiveLiveSessions } from '@/lib/data/live';
 
 /**
  * `/` Home-Route.
@@ -29,8 +30,12 @@ export default async function HomePage() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    const featured = await getFeaturedCreators();
-    return <LandingPage featured={featured} />;
+    const [featured, liveNow, trendingPosts] = await Promise.all([
+      getFeaturedCreators(),
+      getActiveLiveSessions(4).catch(() => []),
+      getForYouFeed({ limit: 6 }).catch(() => []),
+    ]);
+    return <LandingPage featured={featured} liveNow={liveNow} trendingPosts={trendingPosts} />;
   }
 
   // Logged-in: Feed-Shell mit SSR-Prefetch.
