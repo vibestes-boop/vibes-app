@@ -130,6 +130,7 @@ const { colors } = useTheme();
 6. **Reanimated-Imports** via `require()` in .tsx Dateien (Hermes-Kompatibilität)
 7. **Supabase Migrations**: SQL-Dateien in `/supabase/*.sql` — immer `IF NOT EXISTS` nutzen
 8. **LiveKit Token**: `supabase/functions/livekit-token/index.ts` — Guests brauchen `canPublish: true`
+9. **Migration-Dateipfad & -Naming**: Neue Migrations IMMER unter `supabase/migrations/` mit **14-stelligem Timestamp-Prefix** `YYYYMMDDHHMMSS_<slug>.sql` (z. B. `20260428100000_post_aspect_ratio.sql`). Niemals lose unter `supabase/` und niemals nur 8-stellig — `supabase db push` ignoriert sonst still die Datei und das Schema-Tracking läuft auseinander.
 
 ---
 
