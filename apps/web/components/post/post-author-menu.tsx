@@ -2,27 +2,35 @@
 
 import { useRef, useState, useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { MoreHorizontal, Trash2, Link as LinkIcon, Pencil, Loader2 } from 'lucide-react';
+import { MoreHorizontal, Trash2, Link as LinkIcon, Pencil, Loader2, Globe, Users, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { deletePost, updatePostCaption } from '@/app/actions/posts';
+import { deletePost, updatePost } from '@/app/actions/posts';
+import type { UpdatePostInput } from '@/app/actions/posts';
 
 // -----------------------------------------------------------------------------
 // PostAuthorMenu — drei-Punkte-Dropdown für Post-Autoren auf /p/[postId].
 //
 // v1.w.UI.46: Post löschen + Link kopieren.
-// v1.w.UI.79: Caption bearbeiten — öffnet Edit-Dialog mit Textarea.
+// v1.w.UI.79: Post bearbeiten — Caption, Privacy, Kommentare/Download/Duett.
 // -----------------------------------------------------------------------------
 
 export function PostAuthorMenu({
   postId,
   authorUsername,
   caption,
+  privacy = 'public',
+  allowComments = true,
+  allowDownload = true,
+  allowDuet = true,
 }: {
   postId: string;
   authorUsername: string;
-  /** Aktuelle Caption — für Edit-Dialog Prefill. */
   caption?: string | null;
+  privacy?: 'public' | 'friends' | 'private';
+  allowComments?: boolean;
+  allowDownload?: boolean;
+  allowDuet?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -78,10 +86,10 @@ export function PostAuthorMenu({
               }}
             />
 
-            {/* Caption bearbeiten */}
+            {/* Post bearbeiten */}
             <MenuItem
               icon={<Pencil className="h-4 w-4" />}
-              label="Caption bearbeiten"
+              label="Post bearbeiten"
               onClick={() => {
                 setOpen(false);
                 setEditOpen(true);
@@ -120,12 +128,16 @@ export function PostAuthorMenu({
         )}
       </div>
 
-      {/* Caption-Edit-Dialog — außerhalb des Menü-Refs damit Außerhalb-Klick
+      {/* Post-Edit-Dialog — außerhalb des Menü-Refs damit Außerhalb-Klick
           ihn nicht schließt und er korrekt über allem liegt. */}
       {editOpen && (
-        <CaptionEditDialog
+        <PostEditDialog
           postId={postId}
           initialCaption={caption ?? ''}
+          initialPrivacy={privacy}
+          initialAllowComments={allowComments}
+          initialAllowDownload={allowDownload}
+          initialAllowDuet={allowDuet}
           onClose={() => setEditOpen(false)}
           onSaved={() => {
             setEditOpen(false);
@@ -137,27 +149,51 @@ export function PostAuthorMenu({
   );
 }
 
-// ── CaptionEditDialog ─────────────────────────────────────────────────────────
+// ── PostEditDialog ────────────────────────────────────────────────────────────
 
-function CaptionEditDialog({
+type Privacy = 'public' | 'friends' | 'private';
+
+const PRIVACY_OPTIONS: {
+  value: Privacy;
+  label: string;
+  icon: React.ReactNode;
+  description: string;
+}[] = [
+  { value: 'public',  label: 'Öffentlich', icon: <Globe className="h-4 w-4" />,  description: 'Alle können diesen Post sehen' },
+  { value: 'friends', label: 'Freunde',    icon: <Users className="h-4 w-4" />,  description: 'Nur deine Follower sehen diesen Post' },
+  { value: 'private', label: 'Privat',     icon: <Lock  className="h-4 w-4" />,  description: 'Nur du siehst diesen Post' },
+];
+
+function PostEditDialog({
   postId,
   initialCaption,
+  initialPrivacy,
+  initialAllowComments,
+  initialAllowDownload,
+  initialAllowDuet,
   onClose,
   onSaved,
 }: {
   postId: string;
   initialCaption: string;
+  initialPrivacy: Privacy;
+  initialAllowComments: boolean;
+  initialAllowDownload: boolean;
+  initialAllowDuet: boolean;
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [value, setValue] = useState(initialCaption);
-  const [isPending, startTransition] = useTransition();
+  const [caption, setCaption]               = useState(initialCaption);
+  const [privacy, setPrivacy]               = useState<Privacy>(initialPrivacy);
+  const [allowComments, setAllowComments]   = useState(initialAllowComments);
+  const [allowDownload, setAllowDownload]   = useState(initialAllowDownload);
+  const [allowDuet, setAllowDuet]           = useState(initialAllowDuet);
+  const [isPending, startTransition]        = useTransition();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   // Autofokus + ESC-Handler
   useEffect(() => {
     textareaRef.current?.focus();
-    textareaRef.current?.select();
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
@@ -165,11 +201,25 @@ function CaptionEditDialog({
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
 
+  const isDirty =
+    caption.trim() !== initialCaption.trim() ||
+    privacy !== initialPrivacy ||
+    allowComments !== initialAllowComments ||
+    allowDownload !== initialAllowDownload ||
+    allowDuet !== initialAllowDuet;
+
   const handleSave = () => {
     startTransition(async () => {
-      const res = await updatePostCaption(postId, value);
+      const input: UpdatePostInput = {
+        caption,
+        privacy,
+        allowComments,
+        allowDownload,
+        allowDuet,
+      };
+      const res = await updatePost(postId, input);
       if (res.ok) {
-        toast.success('Caption gespeichert.');
+        toast.success('Post gespeichert.');
         onSaved();
       } else {
         toast.error(res.error ?? 'Speichern fehlgeschlagen.');
@@ -181,7 +231,7 @@ function CaptionEditDialog({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Caption bearbeiten"
+      aria-label="Post bearbeiten"
       onClick={onClose}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
     >
@@ -189,8 +239,9 @@ function CaptionEditDialog({
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-lg overflow-hidden rounded-2xl bg-card shadow-2xl"
       >
+        {/* Header */}
         <header className="flex items-center justify-between border-b px-4 py-3">
-          <h2 className="text-base font-semibold">Caption bearbeiten</h2>
+          <h2 className="text-base font-semibold">Post bearbeiten</h2>
           <button
             type="button"
             onClick={onClose}
@@ -201,21 +252,74 @@ function CaptionEditDialog({
           </button>
         </header>
 
-        <div className="p-4">
-          <textarea
-            ref={textareaRef}
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            rows={5}
-            maxLength={2000}
-            placeholder="Was möchtest du mitteilen? #hashtag @mention"
-            className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring"
-          />
-          <div className="mt-1 text-right text-xs text-muted-foreground">
-            {value.length} / 2000
-          </div>
+        <div className="max-h-[70dvh] overflow-y-auto p-4 space-y-5">
+
+          {/* Caption */}
+          <section>
+            <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Caption
+            </label>
+            <textarea
+              ref={textareaRef}
+              value={caption}
+              onChange={(e) => setCaption(e.target.value)}
+              rows={4}
+              maxLength={2000}
+              placeholder="Was möchtest du mitteilen? #hashtag @mention"
+              className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring"
+            />
+            <div className="mt-1 text-right text-xs text-muted-foreground">
+              {caption.length} / 2000
+            </div>
+          </section>
+
+          {/* Privacy */}
+          <section>
+            <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Sichtbarkeit
+            </label>
+            <div className="space-y-1.5">
+              {PRIVACY_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setPrivacy(opt.value)}
+                  className={cn(
+                    'flex w-full items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm transition-colors',
+                    privacy === opt.value
+                      ? 'border-primary bg-primary/5 text-foreground'
+                      : 'border-border bg-background text-muted-foreground hover:bg-muted',
+                  )}
+                >
+                  <span className={cn('shrink-0', privacy === opt.value ? 'text-primary' : '')}>
+                    {opt.icon}
+                  </span>
+                  <span className="flex-1">
+                    <span className="block font-medium text-foreground">{opt.label}</span>
+                    <span className="block text-xs text-muted-foreground">{opt.description}</span>
+                  </span>
+                  {privacy === opt.value && (
+                    <span className="text-xs font-semibold text-primary">✓</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {/* Toggles */}
+          <section>
+            <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Interaktionen
+            </label>
+            <div className="overflow-hidden rounded-xl border border-border divide-y divide-border">
+              <ToggleRow label="Kommentare erlauben" checked={allowComments} onChange={setAllowComments} />
+              <ToggleRow label="Download erlauben"   checked={allowDownload} onChange={setAllowDownload} />
+              <ToggleRow label="Duett erlauben"      checked={allowDuet}    onChange={setAllowDuet} />
+            </div>
+          </section>
         </div>
 
+        {/* Footer */}
         <footer className="flex justify-end gap-2 border-t px-4 py-3">
           <button
             type="button"
@@ -227,7 +331,7 @@ function CaptionEditDialog({
           <button
             type="button"
             onClick={handleSave}
-            disabled={isPending || value.trim() === initialCaption.trim()}
+            disabled={isPending || !isDirty}
             className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
@@ -235,6 +339,41 @@ function CaptionEditDialog({
           </button>
         </footer>
       </div>
+    </div>
+  );
+}
+
+// ── ToggleRow ─────────────────────────────────────────────────────────────────
+
+function ToggleRow({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between bg-background px-3 py-3">
+      <span className="text-sm text-foreground">{label}</span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={() => onChange(!checked)}
+        className={cn(
+          'relative h-6 w-11 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2',
+          checked ? 'bg-primary' : 'bg-muted-foreground/30',
+        )}
+      >
+        <span
+          className={cn(
+            'absolute top-0.5 h-5 w-5 rounded-full bg-white shadow-sm transition-transform',
+            checked ? 'translate-x-5' : 'translate-x-0.5',
+          )}
+        />
+      </button>
     </div>
   );
 }

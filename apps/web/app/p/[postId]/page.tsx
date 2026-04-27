@@ -337,6 +337,10 @@ export default async function PostDetailPage({
                   postId={post.id}
                   authorUsername={post.author.username}
                   caption={post.caption ?? null}
+                  privacy={post.privacy}
+                  allowComments={post.allow_comments}
+                  allowDownload={post.allow_download}
+                  allowDuet={post.allow_duet}
                 />
               ) : (
                 // v1.w.UI.58: FollowButton + PostViewerMenu (Melden / Kein Interesse /

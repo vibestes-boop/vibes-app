@@ -413,6 +413,9 @@ export const getBattleHistory = cache(
 export interface PostWithAuthor extends Post {
   author: Pick<PublicProfile, 'id' | 'username' | 'display_name' | 'avatar_url' | 'verified'>;
   media_type: 'image' | 'video';
+  /** Privacy-Setting: 'public' | 'friends' | 'private'. Default 'public' für Legacy-Rows. */
+  privacy: 'public' | 'friends' | 'private';
+  allow_download: boolean;
 }
 
 export const getPost = cache(async (postId: string): Promise<PostWithAuthor | null> => {
@@ -420,7 +423,7 @@ export const getPost = cache(async (postId: string): Promise<PostWithAuthor | nu
   const { data, error } = await supabase
     .from('posts')
     .select(
-      `id, author_id, caption, media_url, media_type, thumbnail_url, view_count, tags, allow_comments, allow_duet, created_at,
+      `id, author_id, caption, media_url, media_type, thumbnail_url, view_count, tags, allow_comments, allow_duet, allow_download, privacy, created_at,
        like_count:likes(count),
        comment_count:comments(count),
        author:profiles!posts_author_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )`,
@@ -437,7 +440,12 @@ export const getPost = cache(async (postId: string): Promise<PostWithAuthor | nu
   // Default auf 'video' — Legacy-Rows vor der media_type-Einführung waren
   // ausschließlich Videos, und VideoPlayer ist unser Default-Renderer.
   const media_type: 'image' | 'video' = row.media_type === 'image' ? 'image' : 'video';
-  return { ...post, author, media_type };
+  const rowAny = row as Record<string, unknown>;
+  const privacy = (['public', 'friends', 'private'] as const).includes(rowAny.privacy as 'public' | 'friends' | 'private')
+    ? (rowAny.privacy as 'public' | 'friends' | 'private')
+    : 'public';
+  const allow_download = typeof rowAny.allow_download === 'boolean' ? rowAny.allow_download : true;
+  return { ...post, author, media_type, privacy, allow_download };
 });
 
 // -----------------------------------------------------------------------------

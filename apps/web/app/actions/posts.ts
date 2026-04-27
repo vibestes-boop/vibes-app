@@ -393,7 +393,7 @@ export async function deletePost(postId: string): Promise<ActionResult<null>> {
 }
 
 // -----------------------------------------------------------------------------
-// updatePostCaption — Caption + Hashtags eines eigenen Posts bearbeiten.
+// updatePost — vollständiges Post-Bearbeiten: Caption, Privacy, Toggles.
 //
 // RLS auf `posts`: UPDATE erlaubt nur wenn `author_id = auth.uid()`. Wir
 // fügen zusätzlich `.eq('author_id', viewer)` hinzu (defense-in-depth).
@@ -403,15 +403,26 @@ export async function deletePost(postId: string): Promise<ActionResult<null>> {
 // synchron aktualisiert.
 // -----------------------------------------------------------------------------
 
-export async function updatePostCaption(
+export interface UpdatePostInput {
+  caption: string;
+  privacy: 'public' | 'friends' | 'private';
+  allowComments: boolean;
+  allowDownload: boolean;
+  allowDuet: boolean;
+}
+
+export async function updatePost(
   postId: string,
-  caption: string,
+  input: UpdatePostInput,
 ): Promise<ActionResult<null>> {
   const viewer = await getViewerId();
   if (!viewer) return { ok: false, error: 'Bitte einloggen.' };
 
-  const trimmed = caption.trim();
+  const trimmed = input.caption.trim();
   if (trimmed.length > 2000) return { ok: false, error: 'Caption zu lang (max. 2000 Zeichen).' };
+
+  const validPrivacy = ['public', 'friends', 'private'] as const;
+  if (!validPrivacy.includes(input.privacy)) return { ok: false, error: 'Ungültige Privacy-Option.' };
 
   // Hashtags aus Caption extrahieren
   const tags = Array.from(
@@ -421,7 +432,14 @@ export async function updatePostCaption(
   const supabase = await createClient();
   const { error } = await supabase
     .from('posts')
-    .update({ caption: trimmed || null, tags })
+    .update({
+      caption: trimmed || null,
+      tags,
+      privacy: input.privacy,
+      allow_comments: input.allowComments,
+      allow_download: input.allowDownload,
+      allow_duet: input.allowDuet,
+    })
     .eq('id', postId)
     .eq('author_id', viewer);
 
@@ -429,6 +447,20 @@ export async function updatePostCaption(
 
   revalidatePath(`/p/${postId}`);
   return { ok: true, data: null };
+}
+
+// Backwards-compat alias (wird von post-author-menu genutzt, solange kein anderer Aufrufer)
+export async function updatePostCaption(
+  postId: string,
+  caption: string,
+): Promise<ActionResult<null>> {
+  return updatePost(postId, {
+    caption,
+    privacy: 'public',
+    allowComments: true,
+    allowDownload: true,
+    allowDuet: true,
+  });
 }
 
 // -----------------------------------------------------------------------------
