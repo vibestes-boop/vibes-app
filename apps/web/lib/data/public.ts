@@ -22,8 +22,8 @@ import type { PublicProfile, Post, Story } from '@shared/types';
 //     user_id               → author_id      (FK: posts_author_id_fkey)
 //     video_url             → media_url
 //     hashtags              → tags
-//     duration_secs / music_id / allow_stitch / share_count
-//                           → existieren nicht → null/0/true-Defaults
+//     duration_secs / music_id / allow_stitch
+//                           → existieren nicht → null/true-Defaults
 //     like_count / comment_count
 //                           → nicht denormalisiert → embedded aggregate
 //                             via likes(count) / comments(count)
@@ -200,6 +200,8 @@ type PostRowMobile = {
   allow_duet: boolean | null;
   // v1.w.UI.169 — WOZ badge in PostGrid
   women_only?: boolean | null;
+  // v1.w.UI.171 — real share count from DB
+  share_count?: number | null;
   created_at: string;
   like_count?: unknown; // embedded aggregate
   comment_count?: unknown; // embedded aggregate
@@ -219,7 +221,7 @@ function toPost(row: PostRowMobile): Post {
     view_count: row.view_count ?? 0,
     like_count: extractCount(row.like_count),
     comment_count: extractCount(row.comment_count),
-    share_count: 0,
+    share_count: row.share_count ?? 0,
     hashtags: row.tags ?? [],
     music_id: null,
     allow_comments: row.allow_comments ?? true,
@@ -240,7 +242,7 @@ export const getProfilePosts = cache(
     let query = supabase
       .from('posts')
       .select(
-        `id, author_id, caption, media_url, thumbnail_url, view_count, tags, allow_comments, allow_duet, women_only, created_at,
+        `id, author_id, caption, media_url, thumbnail_url, view_count, share_count, tags, allow_comments, allow_duet, women_only, created_at,
          like_count:likes(count),
          comment_count:comments(count)`,
       )
@@ -271,7 +273,7 @@ export async function getProfilePostsPage(
   const { data, error } = await supabase
     .from('posts')
     .select(
-      `id, author_id, caption, media_url, thumbnail_url, view_count, tags, allow_comments, allow_duet, women_only, created_at,
+      `id, author_id, caption, media_url, thumbnail_url, view_count, share_count, tags, allow_comments, allow_duet, women_only, created_at,
        like_count:likes(count),
        comment_count:comments(count)`,
     )
@@ -304,7 +306,7 @@ export async function getBookmarkedPostsPage(
     .select(
       `bookmarked_at:created_at,
        post:posts!bookmarks_post_id_fkey (
-         id, author_id, caption, media_url, thumbnail_url, view_count, tags,
+         id, author_id, caption, media_url, thumbnail_url, view_count, share_count, tags,
          allow_comments, allow_duet, created_at,
          like_count:likes(count),
          comment_count:comments(count)
@@ -345,7 +347,7 @@ export async function getLikedPostsPage(
     .select(
       `liked_at:created_at,
        post:posts!likes_post_id_fkey (
-         id, author_id, caption, media_url, thumbnail_url, view_count, tags,
+         id, author_id, caption, media_url, thumbnail_url, view_count, share_count, tags,
          allow_comments, allow_duet, created_at,
          like_count:likes(count),
          comment_count:comments(count)
@@ -389,7 +391,7 @@ export const getProfileLikedPosts = cache(
       .select(
         `liked_at:created_at,
          post:posts!likes_post_id_fkey (
-           id, author_id, caption, media_url, thumbnail_url, view_count, tags,
+           id, author_id, caption, media_url, thumbnail_url, view_count, share_count, tags,
            allow_comments, allow_duet, created_at,
            like_count:likes(count),
            comment_count:comments(count)
@@ -437,7 +439,7 @@ export const getBookmarkedPosts = cache(
       .select(
         `bookmarked_at:created_at,
          post:posts!bookmarks_post_id_fkey (
-           id, author_id, caption, media_url, thumbnail_url, view_count, tags,
+           id, author_id, caption, media_url, thumbnail_url, view_count, share_count, tags,
            allow_comments, allow_duet, created_at,
            like_count:likes(count),
            comment_count:comments(count)
@@ -578,7 +580,7 @@ export const getPost = cache(async (postId: string): Promise<PostWithAuthor | nu
   const { data, error } = await supabase
     .from('posts')
     .select(
-      `id, author_id, caption, media_url, media_type, thumbnail_url, view_count, tags, allow_comments, allow_duet, allow_download, privacy, women_only, aspect_ratio, created_at,
+      `id, author_id, caption, media_url, media_type, thumbnail_url, view_count, share_count, tags, allow_comments, allow_duet, allow_download, privacy, women_only, aspect_ratio, created_at,
        like_count:likes(count),
        comment_count:comments(count),
        author:profiles!posts_author_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )`,
@@ -1187,7 +1189,7 @@ export const getProfileReposts = cache(async (userId: string, limit = 48): Promi
   const { data, error } = await supabase
     .from('posts')
     .select(
-      `id, author_id, caption, media_url, thumbnail_url, view_count, tags, allow_comments, allow_duet, created_at,
+      `id, author_id, caption, media_url, thumbnail_url, view_count, share_count, tags, allow_comments, allow_duet, created_at,
        like_count:likes(count),
        comment_count:comments(count)`,
     )
@@ -1213,7 +1215,7 @@ export const getWOZFeed = cache(async (limit = 60): Promise<Post[]> => {
   const { data, error } = await supabase
     .from('posts')
     .select(
-      `id, author_id, caption, media_url, thumbnail_url, view_count, tags, allow_comments, allow_duet, created_at,
+      `id, author_id, caption, media_url, thumbnail_url, view_count, share_count, tags, allow_comments, allow_duet, created_at,
        like_count:likes(count),
        comment_count:comments(count)`,
     )

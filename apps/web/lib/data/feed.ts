@@ -10,7 +10,7 @@ import type { Post, PublicProfile } from '@shared/types';
 // namen als der Web-Contract. Statt Transform-Boilerplate nutzen wir hier
 // PostgREST-Select-Aliase (`target_name:source_column`), damit die Row
 // direkt im Post-Contract-Shape zurückkommt. Nur Defaults für Mobile-seitig
-// fehlende Felder (duration_secs/music_id/allow_stitch/share_count) und
+// fehlende Felder (duration_secs/music_id/allow_stitch) und
 // der verified→is_verified-Alias beim Author werden manuell gesetzt.
 // -----------------------------------------------------------------------------
 
@@ -44,7 +44,7 @@ export interface FeedPost extends Post {
 // — mappt Mobile-DB-Spalten auf Web-Contract-Namen bereits in der Query.
 // `media_type` ist unaliased weil der Name in beiden Schemata identisch ist.
 const POST_COLUMNS =
-  'id, user_id:author_id, caption, video_url:media_url, media_type, thumbnail_url, view_count, like_count, comment_count, hashtags:tags, allow_comments, allow_duet, allow_download, women_only, created_at';
+  'id, user_id:author_id, caption, video_url:media_url, media_type, thumbnail_url, view_count, like_count, comment_count, share_count, hashtags:tags, allow_comments, allow_duet, allow_download, women_only, created_at';
 
 const AUTHOR_JOIN =
   'author:profiles!posts_author_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )';
@@ -107,7 +107,7 @@ async function batchEngagement(
 // -----------------------------------------------------------------------------
 
 type RawAuthor = { id: string; username: string; display_name: string | null; avatar_url: string | null; verified: boolean | null };
-type RawPostRow = Omit<Post, 'hashtags' | 'duration_secs' | 'music_id' | 'allow_stitch' | 'share_count'> & {
+type RawPostRow = Omit<Post, 'hashtags' | 'duration_secs' | 'music_id' | 'allow_stitch'> & {
   hashtags: string[] | null;
   media_type: 'image' | 'video' | null;
   allow_download?: boolean;
