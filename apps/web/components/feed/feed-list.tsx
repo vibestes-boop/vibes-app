@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { createBrowserClient } from '@supabase/ssr';
 import { FeedCard } from './feed-card';
 import { useFeedInteraction } from './feed-interaction-context';
 import { useTogglePostLike } from '@/hooks/use-engagement';
@@ -239,6 +240,29 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
     lastSyncedIdRef.current = activePost.id;
     openCommentsFor(activePost.id);
   }, [activeIdx, commentsOpenForPostId, openCommentsFor]);
+
+  // ── v1.w.UI.138 — View-Count Tracking ────────────────────────────────────
+  // Fires increment_post_view after 1.5 s dwell — mirrors mobile app behaviour.
+  // Session-dedup via Set (RPC also deduplicates server-side via post_views table).
+  // Skipped for unauthenticated users — RPC is REVOKE'd from anon anyway.
+  const viewedInSessionRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!viewerId) return;
+    const post = listRef.current[activeIdx];
+    if (!post || viewedInSessionRef.current.has(post.id)) return;
+    const timer = setTimeout(() => {
+      const p = listRef.current[activeIdx];
+      if (!p || viewedInSessionRef.current.has(p.id)) return;
+      viewedInSessionRef.current.add(p.id);
+      const db = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      );
+      void Promise.resolve(db.rpc('increment_post_view', { p_post_id: p.id })).catch(() => undefined);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [activeIdx, viewerId]);
+  // ─────────────────────────────────────────────────────────────────────────
 
   // Navigation
   const scrollTo = useCallback(

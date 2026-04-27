@@ -24,6 +24,7 @@ import { FollowButton } from '@/components/profile/follow-button';
 import { PostAuthorMenu } from '@/components/post/post-author-menu';
 import { PostViewerMenu } from '@/components/post/post-viewer-menu';
 import { PostDwellTracker } from '@/components/post/post-dwell-tracker';
+import { PostViewTracker } from '@/components/post/post-view-tracker';
 import { linkify } from '@/lib/linkify';
 
 // -----------------------------------------------------------------------------
@@ -246,8 +247,10 @@ export default async function PostDetailPage({
 
   return (
     <main className={`mx-auto px-4 py-6 sm:px-6 lg:py-10 ${isLandscape ? 'max-w-6xl' : 'max-w-5xl'}`}>
-      {/* v1.w.UI.53: View-Count auf Mount erhöhen — fire-and-forget. */}
+      {/* v1.w.UI.53: Dwell-time tracking for algorithm scoring. */}
       <PostDwellTracker postId={post.id} isAuthenticated={!!viewer} />
+      {/* v1.w.UI.138: View-count increment — mirrors mobile increment_post_view RPC. */}
+      <PostViewTracker postId={post.id} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
