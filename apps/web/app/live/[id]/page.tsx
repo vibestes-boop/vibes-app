@@ -374,6 +374,7 @@ export default async function LiveViewerPage({ params }: PageProps) {
                   cohosts={cohosts}
                   isModerator={isModerator}
                   activePoll={activePoll}
+                  sessionStartedAt={session.started_at}
                 />
               </div>
             </div>

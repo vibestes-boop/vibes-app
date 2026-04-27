@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Heart, Flame, Gift, Users2, Laugh, Sparkles, Frown, HandMetal, BarChart3 } from 'lucide-react';
-import { sendLiveReaction, requestCoHost, cancelCoHostRequest } from '@/app/actions/live';
+import { Heart, Flame, Gift, Users2, Laugh, Sparkles, Frown, HandMetal, BarChart3, Scissors, Check } from 'lucide-react';
+import { sendLiveReaction, requestCoHost, cancelCoHostRequest, createLiveClipMarker } from '@/app/actions/live';
 import { LiveGiftPicker } from './live-gift-picker';
 import { LiveReactionOverlay } from './live-reaction-overlay';
 import { LivePollStartSheet } from './live-poll-start-sheet';
@@ -28,6 +28,8 @@ export interface LiveActionBarProps {
   isModerator?: boolean;
   /** SSR-loaded active poll; kept in sync via LivePollStartSheet.onPollChange. */
   activePoll?: ActiveLivePollSSR | null;
+  /** ISO timestamp of session start — used to compute positionSecs for clip markers (v1.w.UI.140). */
+  sessionStartedAt?: string | null;
 }
 
 const REACTIONS = [
@@ -48,12 +50,15 @@ export function LiveActionBar({
   cohosts,
   isModerator = false,
   activePoll: initialActivePoll = null,
+  sessionStartedAt = null,
 }: LiveActionBarProps) {
   const [giftOpen, setGiftOpen] = useState(false);
   const [pollSheetOpen, setPollSheetOpen] = useState(false);
   const [currentPoll, setCurrentPoll] = useState<ActiveLivePollSSR | null>(initialActivePoll);
   const [coHostRequested, setCoHostRequested] = useState(false);
   const [overlayBurst, setOverlayBurst] = useState<{ key: string; id: number } | null>(null);
+  // v1.w.UI.140 — Clip marker: brief "marked!" feedback state (resets after 2 s)
+  const [clipMarked, setClipMarked] = useState(false);
   const [, startTransition] = useTransition();
 
   // v1.w.UI.19 B6 — Remote Reactions von anderen Viewern. Das `sendLiveReaction`
@@ -86,6 +91,21 @@ export function LiveActionBar({
       } else {
         const result = await requestCoHost(sessionId);
         if (result.ok) setCoHostRequested(true);
+      }
+    });
+  };
+
+  // v1.w.UI.140 — Mark clip: record the current stream position.
+  // positionSecs = elapsed time since stream started (best approximation client-side).
+  const handleClipMarker = () => {
+    const positionSecs = sessionStartedAt
+      ? Math.max(0, Math.floor((Date.now() - Date.parse(sessionStartedAt)) / 1000))
+      : 0;
+    startTransition(async () => {
+      const res = await createLiveClipMarker(sessionId, positionSecs);
+      if (res.ok) {
+        setClipMarked(true);
+        setTimeout(() => setClipMarked(false), 2000);
       }
     });
   };
@@ -163,6 +183,30 @@ export function LiveActionBar({
             <Users2 className="h-4 w-4" />
             Du bist dabei
           </span>
+        )}
+
+        {/* Clip-Marker — v1.w.UI.140. Nur für eingeloggte Viewer (nicht Hosts,
+            die sehen die Markers sowieso im Replay). Brief "✓ Markiert!"-Feedback. */}
+        {!isHost && (
+          <button
+            type="button"
+            onClick={handleClipMarker}
+            disabled={clipMarked}
+            className={[
+              'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',
+              clipMarked
+                ? 'border-green-500 bg-green-500/10 text-green-600 dark:text-green-400'
+                : 'hover:bg-muted',
+            ].join(' ')}
+            title="Diesen Moment als Clip markieren"
+            aria-label="Clip markieren"
+          >
+            {clipMarked ? (
+              <><Check className="h-4 w-4" />Markiert!</>
+            ) : (
+              <><Scissors className="h-4 w-4" />Clip</>
+            )}
+          </button>
         )}
 
         <div className="ml-auto text-[11px] text-muted-foreground">
