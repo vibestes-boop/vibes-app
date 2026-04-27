@@ -3,10 +3,10 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { redirect } from 'next/navigation';
 import type { Route } from 'next';
-import { Radio, Clock, Users, Play, Plus, Settings, CalendarDays, BellRing } from 'lucide-react';
+import { Radio, Clock, Users, Play, Plus, Settings, CalendarDays, BellRing, Gem, MessageCircle, Trophy } from 'lucide-react';
 import { getUser } from '@/lib/auth/session';
 import { getMyActiveLiveSession, getMyPastSessions, getMyScheduledLives } from '@/lib/data/live-host';
-import type { PastSession, ScheduledLiveRow } from '@/lib/data/live-host';
+import type { PastSession, ScheduledLiveRow, BattleResult } from '@/lib/data/live-host';
 import { CancelScheduledLiveButton } from '@/components/studio/cancel-scheduled-live-button';
 import { ScheduleLiveForm } from '@/components/studio/schedule-live-form';
 
@@ -202,8 +202,22 @@ function ScheduledLiveRow({ row }: { row: ScheduledLiveRow }) {
   );
 }
 
+const BATTLE_CHIP: Record<BattleResult, { label: string; className: string }> = {
+  win:  { label: 'Gewonnen', className: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' },
+  loss: { label: 'Verloren', className: 'bg-rose-500/15 text-rose-500' },
+  draw: { label: 'Unentschieden', className: 'bg-amber-500/15 text-amber-600 dark:text-amber-400' },
+};
+
+function fmtNum(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return String(n);
+}
+
 function PastSessionCard({ session }: { session: PastSession }) {
   const hasReplay = session.status === 'ended';
+  const battleChip = session.battle_result ? BATTLE_CHIP[session.battle_result] : null;
+
   return (
     <li className="group flex flex-col overflow-hidden rounded-xl border bg-card transition-shadow hover:shadow-md">
       <Link href={(hasReplay ? `/live/replay/${session.id}` : '#') as Route} className="flex flex-1 flex-col">
@@ -235,17 +249,56 @@ function PastSessionCard({ session }: { session: PastSession }) {
             <Clock className="h-2.5 w-2.5" />
             {formatDuration(session.duration_secs)}
           </div>
+
+          {battleChip && (
+            <div className={`absolute right-2 top-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${battleChip.className}`}>
+              <Trophy className="h-2.5 w-2.5" />
+              {battleChip.label}
+            </div>
+          )}
         </div>
 
         <div className="flex flex-1 flex-col gap-1 px-3 py-2">
           <p className="truncate text-sm font-medium">{session.title ?? 'Unbenannter Stream'}</p>
+
+          {/* Row 1: peak viewers + date */}
           <div className="flex items-center justify-between text-[11px] text-muted-foreground">
             <span className="inline-flex items-center gap-0.5">
               <Users className="h-3 w-3" />
-              Peak {session.peak_viewer_count}
+              Peak {fmtNum(session.peak_viewer_count)}
             </span>
             <span>{formatShortDate(session.started_at)}</span>
           </div>
+
+          {/* Row 2: diamonds + comments (only if any) */}
+          {(session.total_gift_diamonds > 0 || session.comment_count > 0) && (
+            <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
+              {session.total_gift_diamonds > 0 && (
+                <span className="inline-flex items-center gap-0.5 text-amber-500">
+                  <Gem className="h-3 w-3" />
+                  {fmtNum(session.total_gift_diamonds)} 💎
+                </span>
+              )}
+              {session.comment_count > 0 && (
+                <span className="inline-flex items-center gap-0.5">
+                  <MessageCircle className="h-3 w-3" />
+                  {fmtNum(session.comment_count)}
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Battle opponent */}
+          {session.battle_result && session.battle_opponent_name && (
+            <p className="truncate text-[10px] text-muted-foreground">
+              vs. {session.battle_opponent_name}
+              {session.battle_host_score !== null && session.battle_guest_score !== null && (
+                <span className="ml-1 font-mono">
+                  ({session.battle_host_score} : {session.battle_guest_score})
+                </span>
+              )}
+            </p>
+          )}
         </div>
       </Link>
     </li>

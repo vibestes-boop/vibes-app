@@ -48,6 +48,8 @@ export const getMyActiveLiveSession = cache(
 // getMyPastSessions — History für `/studio/live`.
 // -----------------------------------------------------------------------------
 
+export type BattleResult = 'win' | 'loss' | 'draw';
+
 export interface PastSession {
   id: string;
   room_name: string;
@@ -59,6 +61,15 @@ export interface PastSession {
   viewer_count: number;
   status: string;
   duration_secs: number | null;
+  // enriched from creator_live_history view
+  total_gift_diamonds: number;
+  gift_count: number;
+  comment_count: number;
+  battle_result: BattleResult | null;
+  battle_host_score: number | null;
+  battle_guest_score: number | null;
+  battle_opponent_name: string | null;
+  battle_opponent_avatar: string | null;
 }
 
 export const getMyPastSessions = cache(
@@ -69,12 +80,15 @@ export const getMyPastSessions = cache(
     } = await supabase.auth.getUser();
     if (!user) return [];
 
+    // Use creator_live_history view for rich per-session analytics
+    // (gift totals, comment count, battle result) — same data as mobile live-history screen.
     const { data } = await supabase
-      .from('live_sessions')
+      .from('creator_live_history')
       .select(
-        // `peak_viewer_count:peak_viewers` — gleiches Mapping wie in
-        // `getMyActiveLiveSession` / `SESSION_COLUMNS` in data/live.ts.
-        'id, room_name, title, thumbnail_url, started_at, ended_at, peak_viewer_count:peak_viewers, viewer_count, status',
+        'session_id, title, started_at, ended_at, peak_viewers, status, duration_secs,' +
+        'total_gift_diamonds, gift_count, comment_count,' +
+        'battle_result, battle_host_score, battle_guest_score,' +
+        'battle_opponent_name, battle_opponent_avatar',
       )
       .eq('host_id', user.id)
       .order('started_at', { ascending: false })
@@ -82,11 +96,38 @@ export const getMyPastSessions = cache(
 
     if (!data) return [];
 
-    return data.map((row) => {
-      const start = row.started_at ? new Date(row.started_at).getTime() : null;
-      const end = row.ended_at ? new Date(row.ended_at).getTime() : null;
-      const duration = start && end ? Math.floor((end - start) / 1000) : null;
-      return { ...row, duration_secs: duration } as PastSession;
+    // Fetch thumbnails separately from live_sessions (not in the view)
+    const ids = (data as any[]).map((r) => r.session_id as string);
+    const { data: sessions } = await supabase
+      .from('live_sessions')
+      .select('id, thumbnail_url, room_name, viewer_count')
+      .in('id', ids);
+    const sessionMap = new Map(
+      (sessions ?? []).map((s) => [s.id, s]),
+    );
+
+    return (data as any[]).map((row) => {
+      const extra = sessionMap.get(row.session_id) ?? {};
+      return {
+        id:                  row.session_id,
+        room_name:           (extra as any).room_name ?? '',
+        title:               row.title ?? null,
+        thumbnail_url:       (extra as any).thumbnail_url ?? null,
+        started_at:          row.started_at,
+        ended_at:            row.ended_at ?? null,
+        peak_viewer_count:   row.peak_viewers ?? 0,
+        viewer_count:        (extra as any).viewer_count ?? 0,
+        status:              row.status,
+        duration_secs:       row.duration_secs ?? null,
+        total_gift_diamonds: row.total_gift_diamonds ?? 0,
+        gift_count:          row.gift_count ?? 0,
+        comment_count:       row.comment_count ?? 0,
+        battle_result:       row.battle_result ?? null,
+        battle_host_score:   row.battle_host_score ?? null,
+        battle_guest_score:  row.battle_guest_score ?? null,
+        battle_opponent_name:   row.battle_opponent_name ?? null,
+        battle_opponent_avatar: row.battle_opponent_avatar ?? null,
+      } as PastSession;
     });
   },
 );
