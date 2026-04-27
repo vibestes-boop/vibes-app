@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { Route } from 'next';
 import { Store, Bookmark, Coins, ShoppingBag } from 'lucide-react';
-import { ProductCard } from '@/components/shop/product-card';
+import { ShopGrid } from '@/components/shop/shop-grid';
 import { ShopFilters } from '@/components/shop/shop-filters';
 import { ShopSearchInput } from '@/components/shop/shop-search-input';
 import { EmptyState as CanonicalEmptyState } from '@/components/ui/empty-state';
@@ -52,7 +52,7 @@ export default async function ShopCatalogPage({ searchParams }: PageProps) {
     minPrice: pick('min') ? Number(pick('min')) : undefined,
     maxPrice: pick('max') ? Number(pick('max')) : undefined,
     q: pick('q') ?? undefined,
-    limit: 40,
+    limit: 24,
   };
 
   const [products, user, t, locale] = await Promise.all([
@@ -76,9 +76,7 @@ export default async function ShopCatalogPage({ searchParams }: PageProps) {
               {t('shop.title')}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              {products.length > 0
-                ? t('shop.productCount', { count: products.length })
-                : t('shop.noMatches')}
+              {products.length === 0 ? t('shop.noMatches') : t('shop.browseCatalog')}
             </p>
           </div>
 
@@ -110,11 +108,7 @@ export default async function ShopCatalogPage({ searchParams }: PageProps) {
         {products.length === 0 ? (
           <EmptyState />
         ) : (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {products.map((p, i) => (
-              <ProductCard key={p.id} product={p} priority={i < 4} />
-            ))}
-          </div>
+          <ShopGrid initialProducts={products} params={params} />
         )}
       </main>
     </div>

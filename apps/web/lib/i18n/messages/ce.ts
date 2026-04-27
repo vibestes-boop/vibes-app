@@ -288,6 +288,7 @@ const ceMessages = {
     ogDescription: 'ТӀехьежнарг хIуманаш нийса кечдархошкара.',
     productCount: '{count} хIуманаш',
     noMatches: 'Хьан фильтрашна хIумма дац.',
+    browseCatalog: 'Крейторийн хIуманаш лаха.',
     saved: 'ДӀаялорна',
     emptyTitle: 'ХIумма ца каравелла',
     emptyHint:

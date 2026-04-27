@@ -278,6 +278,7 @@ const ruMessages = {
     ogDescription: 'Подборка товаров напрямую от авторов.',
     productCount: '{count} товаров',
     noMatches: 'Под эти фильтры товаров нет.',
+    browseCatalog: 'Открой товары от крейторов.',
     saved: 'Сохранённое',
     emptyTitle: 'Ничего не найдено',
     emptyHint:

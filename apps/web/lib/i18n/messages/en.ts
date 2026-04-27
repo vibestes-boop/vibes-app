@@ -275,6 +275,7 @@ const enMessages = {
     ogDescription: 'Curated products straight from creators.',
     productCount: '{count} products',
     noMatches: 'No products match your filters.',
+    browseCatalog: 'Discover products from creators.',
     saved: 'Saved',
     emptyTitle: 'No matches',
     emptyHint:

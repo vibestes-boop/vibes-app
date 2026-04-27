@@ -289,6 +289,7 @@ const deMessages = {
     // Interpolation {count} — Pluralformen muss jede Locale selbst im String regeln
     productCount: '{count} Produkte',
     noMatches: 'Keine Produkte passen auf deine Filter.',
+    browseCatalog: 'Entdecke Produkte von Creatorn.',
     saved: 'Gemerkt',
     emptyTitle: 'Keine Treffer',
     emptyHint:
