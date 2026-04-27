@@ -505,7 +505,8 @@ export const getPostComments = cache(async (
   const supabase = await createClient();
 
   // Primärer Query: mit parent_id-Filter + Reply-Count (setzt parent_id-Spalte voraus).
-  // Fallback: simpler Query ohne parent_id wenn Spalte noch nicht migriert wurde.
+  // Hint via Spaltenname (`comments!parent_id`), nicht Constraint-Name — robuster
+  // gegen Constraint-Renames und matched die anonyme FK aus der Migration.
   let data: unknown[] | null = null;
   let hasParentId = true;
 
@@ -513,7 +514,7 @@ export const getPostComments = cache(async (
     .from('comments')
     .select(
       `id, post_id, user_id, parent_id, text, created_at,
-       reply_count:comments!comments_parent_id_fkey(count),
+       reply_count:comments!parent_id(count),
        author:profiles!comments_user_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )`,
     )
     .eq('post_id', postId)
@@ -523,8 +524,10 @@ export const getPostComments = cache(async (
 
   if (!e1 && d1) {
     data = d1;
-  } else {
-    // Fallback: parent_id-Spalte existiert noch nicht — einfacher Query ohne Filter.
+  } else if (e1?.code === '42703') {
+    // Migration-rollout safety net: code may land on Vercel before
+    // `supabase db push` ran. Catch only "column missing" (42703);
+    // every other error must surface so we can fix it.
     hasParentId = false;
     const { data: d2, error: e2 } = await supabase
       .from('comments')
@@ -537,6 +540,10 @@ export const getPostComments = cache(async (
       .limit(limit);
     if (e2 || !d2) return [];
     data = d2;
+  } else {
+    // Anderer Fehler — nicht maskieren, leere Liste konsistent mit den
+    // anderen Data-Layer-Functions (siehe `feed.ts`-Pattern).
+    return [];
   }
 
   if (!data) return [];
@@ -662,7 +669,7 @@ export async function getMoreComments(
     .from('comments')
     .select(
       `id, post_id, user_id, parent_id, text, created_at,
-       reply_count:comments!comments_parent_id_fkey(count),
+       reply_count:comments!parent_id(count),
        author:profiles!comments_user_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )`,
     )
     .eq('post_id', postId)
