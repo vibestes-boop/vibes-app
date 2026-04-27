@@ -134,8 +134,13 @@ const ceMessages = {
     tablistLabel: 'Профилан чулацамаш',
     tabPosts: 'Постаныш',
     tabLikes: 'Лайкаш',
+    tabReposts: 'Репосташ',
     tabShop: 'Туькан',
     tabBattles: 'Баттлаш',
+    emptyRepostsTitle: 'Репосташ яц',
+    emptyRepostsSelf: 'Хьо репост дечу постаныш кхане гуш хир ду.',
+    emptyRepostsOther: '@{username} цхьа а репост ца дина.',
+    emptyRepostsHint: 'Репосташ яц.',
 
     emptyPostsTitle: 'Видеош хӀинца дац',
     emptyPostsSelf:

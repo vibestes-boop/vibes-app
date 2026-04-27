@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { BadgeCheck, Heart, ShoppingBag, Swords, Globe, Mountain } from 'lucide-react';
+import { BadgeCheck, Heart, Repeat2, ShoppingBag, Swords, Globe, Mountain } from 'lucide-react';
 
-import { getPublicProfile, getProfilePosts, getProfileLikedPosts, getBattleHistory, getFollowState } from '@/lib/data/public';
+import { getPublicProfile, getProfilePosts, getProfileLikedPosts, getProfileReposts, getBattleHistory, getFollowState } from '@/lib/data/public';
 import { getUser } from '@/lib/auth/session';
 import { getMyCoinBalance } from '@/lib/data/payments';
 import { getMerchantProducts } from '@/lib/data/shop';
@@ -170,17 +170,18 @@ export default async function ProfilePage({
   // bereits lowercase-matcht — keine Redirect-Loop-Gefahr.
 
   const tab: ProfileTab =
-    tabParam === 'likes' || tabParam === 'shop' || tabParam === 'battles'
+    tabParam === 'likes' || tabParam === 'reposts' || tabParam === 'shop' || tabParam === 'battles'
       ? tabParam
       : 'posts';
 
   // Parallel: Session + Follow-Status + Posts-Feed + Coin-Balance + i18n
   // isSelf kann erst nach getUser() bestimmt werden — Likes-Fetch wird daher
   // zwei-stufig: erst viewer, dann (wenn isSelf && tab=likes) likedPosts.
-  const [viewer, followState, posts, shopProducts, battles, balance, hostMuted, t, locale] = await Promise.all([
+  const [viewer, followState, posts, reposts, shopProducts, battles, balance, hostMuted, t, locale] = await Promise.all([
     getUser(),
     getFollowState(profile.id),
     tab === 'posts' ? getProfilePosts(profile.id, 24) : Promise.resolve([]),
+    tab === 'reposts' ? getProfileReposts(profile.id, 48) : Promise.resolve([]),
     tab === 'shop' ? getMerchantProducts(profile.id, 48) : Promise.resolve([]),
     tab === 'battles' ? getBattleHistory(profile.id, 30) : Promise.resolve([]),
     getMyCoinBalance(),
@@ -353,6 +354,7 @@ export default async function ProfilePage({
           tablist: t('profile.tablistLabel'),
           posts: t('profile.tabPosts'),
           likes: t('profile.tabLikes'),
+          reposts: t('profile.tabReposts'),
           shop: t('profile.tabShop'),
           battles: t('profile.tabBattles'),
         }}
@@ -396,6 +398,23 @@ export default async function ProfilePage({
               icon="likes"
               title={t('profile.panelLikesTitle')}
               hint={t('profile.panelLikesHintOther')}
+            />
+          )
+        )}
+
+        {tab === 'reposts' && (
+          reposts.length > 0 ? (
+            <PostGrid
+              posts={reposts}
+              emptyTitle={t('profile.emptyRepostsTitle')}
+              emptyDescription={t('profile.emptyRepostsHint')}
+              emptyIcon={<Repeat2 className="h-7 w-7" strokeWidth={1.75} />}
+            />
+          ) : (
+            <EmptyPanelInfo
+              icon="reposts"
+              title={t('profile.emptyRepostsTitle')}
+              hint={isSelf ? t('profile.emptyRepostsSelf') : t('profile.emptyRepostsOther', { username: profile.username })}
             />
           )
         )}
@@ -450,7 +469,7 @@ export default async function ProfilePage({
 //      „Placeholder" und billig.
 // -----------------------------------------------------------------------------
 
-type EmptyIcon = 'likes' | 'shop' | 'battles';
+type EmptyIcon = 'likes' | 'reposts' | 'shop' | 'battles';
 
 const EMPTY_ICON_MAP: Record<
   EmptyIcon,
@@ -460,6 +479,11 @@ const EMPTY_ICON_MAP: Record<
     Icon: Heart,
     gradient: 'from-pink-500/15 via-rose-500/10 to-red-500/5',
     ring: 'ring-pink-500/20',
+  },
+  reposts: {
+    Icon: Repeat2,
+    gradient: 'from-emerald-500/15 via-teal-500/10 to-cyan-500/5',
+    ring: 'ring-emerald-500/20',
   },
   shop: {
     Icon: ShoppingBag,

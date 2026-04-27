@@ -3,7 +3,7 @@
 import type { Route } from 'next';
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import { useCallback, useTransition } from 'react';
-import { Grid3x3, Heart, ShoppingBag, Swords } from 'lucide-react';
+import { Grid3x3, Heart, Repeat2, ShoppingBag, Swords } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/client';
 import { LOCALE_INTL } from '@/lib/i18n/config';
@@ -20,12 +20,13 @@ import { LOCALE_INTL } from '@/lib/i18n/config';
 // sich nur die Zahlen ändern.
 // -----------------------------------------------------------------------------
 
-export type ProfileTab = 'posts' | 'likes' | 'shop' | 'battles';
+export type ProfileTab = 'posts' | 'likes' | 'reposts' | 'shop' | 'battles';
 
 export interface ProfileTabsLabels {
   tablist: string;
   posts: string;
   likes: string;
+  reposts: string;
   shop: string;
   battles: string;
 }
@@ -48,6 +49,7 @@ export function ProfileTabs({
   const TABS: Array<{ key: ProfileTab; label: string; icon: typeof Grid3x3 }> = [
     { key: 'posts',   label: labels.posts,   icon: Grid3x3 },
     { key: 'likes',   label: labels.likes,   icon: Heart },
+    { key: 'reposts', label: labels.reposts, icon: Repeat2 },
     { key: 'shop',    label: labels.shop,    icon: ShoppingBag },
     { key: 'battles', label: labels.battles, icon: Swords },
   ];

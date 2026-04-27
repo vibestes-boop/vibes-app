@@ -124,8 +124,13 @@ const ruMessages = {
     tablistLabel: 'Содержимое профиля',
     tabPosts: 'Посты',
     tabLikes: 'Лайки',
+    tabReposts: 'Репосты',
     tabShop: 'Магазин',
     tabBattles: 'Баттлы',
+    emptyRepostsTitle: 'Нет репостов',
+    emptyRepostsSelf: 'Посты, которые ты репостишь, появятся здесь.',
+    emptyRepostsOther: '@{username} ещё ничего не репостил.',
+    emptyRepostsHint: 'Нет репостов.',
 
     emptyPostsTitle: 'Пока нет видео',
     emptyPostsSelf:

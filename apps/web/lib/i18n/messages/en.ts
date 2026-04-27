@@ -120,8 +120,13 @@ const enMessages = {
     tablistLabel: 'Profile content',
     tabPosts: 'Posts',
     tabLikes: 'Likes',
+    tabReposts: 'Reposts',
     tabShop: 'Shop',
     tabBattles: 'Battles',
+    emptyRepostsTitle: 'No reposts yet',
+    emptyRepostsSelf: 'Posts you repost will appear here.',
+    emptyRepostsOther: '@{username} hasn’t reposted anything yet.',
+    emptyRepostsHint: 'No reposts.',
 
     emptyPostsTitle: 'No videos yet',
     emptyPostsSelf:

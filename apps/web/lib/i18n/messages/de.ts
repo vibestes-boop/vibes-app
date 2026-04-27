@@ -128,8 +128,13 @@ const deMessages = {
     tablistLabel: 'Profil-Inhalte',
     tabPosts: 'Posts',
     tabLikes: 'Likes',
+    tabReposts: 'Reposts',
     tabShop: 'Shop',
     tabBattles: 'Battles',
+    emptyRepostsTitle: 'Noch keine Reposts',
+    emptyRepostsSelf: 'Beiträge, die du repostest, erscheinen hier.',
+    emptyRepostsOther: '@{username} hat noch nichts regepostet.',
+    emptyRepostsHint: 'Keine Reposts vorhanden.',
 
     // Panel-Inhalte
     emptyPostsTitle: 'Noch keine Videos',
