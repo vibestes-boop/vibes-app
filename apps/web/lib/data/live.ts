@@ -265,6 +265,36 @@ export const getPublicReplays = cache(
   },
 );
 
+// getUserReplays — Public replays for a specific host (profile Lives tab).
+// v1.w.UI.173. Same shape as ReplaySession, filtered to a single host.
+// Only replayable sessions with a replay_url — matches what the viewer
+// would find on /live/replay/[id], so no dead links.
+// -----------------------------------------------------------------------------
+
+export const getUserReplays = cache(
+  async (hostId: string, limit = 30): Promise<ReplaySession[]> => {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from('live_sessions')
+      .select(
+        `id, title, thumbnail_url, replay_url, replay_views, peak_viewer_count:peak_viewers, ended_at,
+         host:profiles!live_sessions_host_id_fkey ( id, username, avatar_url )`,
+      )
+      .eq('host_id', hostId)
+      .eq('is_replayable', true)
+      .not('replay_url', 'is', null)
+      .eq('status', 'ended')
+      .order('ended_at', { ascending: false })
+      .limit(limit);
+
+    if (!data) return [];
+    return (data as unknown as ReplaySession[]).map((r) => ({
+      ...r,
+      host: Array.isArray(r.host) ? r.host[0] ?? null : r.host,
+    }));
+  },
+);
+
 // Replay-Metadata. `live_recordings` hält den S3/Storage-URL + duration_secs +
 // clip_markers kommen aus separater Tabelle.
 // -----------------------------------------------------------------------------

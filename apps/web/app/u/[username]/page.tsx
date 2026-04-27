@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { BadgeCheck, Heart, Repeat2, ShoppingBag, Swords, Globe, Mountain } from 'lucide-react';
+import { BadgeCheck, Heart, Repeat2, ShoppingBag, Swords, Globe, Mountain, Radio } from 'lucide-react';
 
 import { getPublicProfile, getProfilePosts, getProfileLikedPosts, getProfileReposts, getBattleHistory, getFollowState } from '@/lib/data/public';
+import { getUserReplays } from '@/lib/data/live';
 import { getUser } from '@/lib/auth/session';
 import { getMyCoinBalance } from '@/lib/data/payments';
 import { getMerchantProducts } from '@/lib/data/shop';
@@ -170,20 +171,21 @@ export default async function ProfilePage({
   // bereits lowercase-matcht — keine Redirect-Loop-Gefahr.
 
   const tab: ProfileTab =
-    tabParam === 'likes' || tabParam === 'reposts' || tabParam === 'shop' || tabParam === 'battles'
+    tabParam === 'likes' || tabParam === 'reposts' || tabParam === 'shop' || tabParam === 'battles' || tabParam === 'lives'
       ? tabParam
       : 'posts';
 
   // Parallel: Session + Follow-Status + Posts-Feed + Coin-Balance + i18n
   // isSelf kann erst nach getUser() bestimmt werden — Likes-Fetch wird daher
   // zwei-stufig: erst viewer, dann (wenn isSelf && tab=likes) likedPosts.
-  const [viewer, followState, posts, reposts, shopProducts, battles, balance, hostMuted, t, locale] = await Promise.all([
+  const [viewer, followState, posts, reposts, shopProducts, battles, replays, balance, hostMuted, t, locale] = await Promise.all([
     getUser(),
     getFollowState(profile.id),
     tab === 'posts' ? getProfilePosts(profile.id, 24) : Promise.resolve([]),
     tab === 'reposts' ? getProfileReposts(profile.id, 48) : Promise.resolve([]),
     tab === 'shop' ? getMerchantProducts(profile.id, 48) : Promise.resolve([]),
     tab === 'battles' ? getBattleHistory(profile.id, 30) : Promise.resolve([]),
+    tab === 'lives' ? getUserReplays(profile.id, 30) : Promise.resolve([]),
     getMyCoinBalance(),
     isHostMuted(profile.id),
     getT(),
@@ -357,6 +359,7 @@ export default async function ProfilePage({
           reposts: t('profile.tabReposts'),
           shop: t('profile.tabShop'),
           battles: t('profile.tabBattles'),
+          lives: 'Lives',
         }}
       />
 
@@ -444,6 +447,60 @@ export default async function ProfilePage({
           // Leerer State kommt aus BattleList selbst.
           <BattleList battles={battles} />
         )}
+
+        {tab === 'lives' && (
+          // v1.w.UI.173: Past live-stream replays for this profile.
+          // getUserReplays returns only is_replayable=true sessions with a
+          // replay_url — no dead links. Cards link to /live/replay/[id].
+          replays.length > 0 ? (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              {replays.map((session) => (
+                <a
+                  key={session.id}
+                  href={`/live/replay/${session.id}`}
+                  className="group relative overflow-hidden rounded-xl bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  {/* Thumbnail */}
+                  <div className="aspect-[9/16] w-full overflow-hidden bg-muted">
+                    {session.thumbnail_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={session.thumbnail_url}
+                        alt={session.title ?? 'Live Replay'}
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center">
+                        <Radio className="h-8 w-8 text-muted-foreground/40" strokeWidth={1.5} />
+                      </div>
+                    )}
+                  </div>
+                  {/* Bottom gradient overlay */}
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent px-2.5 pb-2.5 pt-8">
+                    {session.title && (
+                      <p className="line-clamp-2 text-[11px] font-semibold leading-tight text-white">
+                        {session.title}
+                      </p>
+                    )}
+                    <p className="mt-0.5 text-[10px] text-white/70">
+                      👁 {session.replay_views.toLocaleString(LOCALE_INTL[locale])}
+                    </p>
+                  </div>
+                </a>
+              ))}
+            </div>
+          ) : (
+            <EmptyPanelInfo
+              icon="lives"
+              title="Keine Replays"
+              hint={
+                isSelf
+                  ? 'Deine Live-Streams werden hier als Replay gespeichert.'
+                  : `${profile.username} hat noch keine öffentlichen Replays.`
+              }
+            />
+          )
+        )}
       </section>
     </main>
   );
@@ -469,7 +526,7 @@ export default async function ProfilePage({
 //      „Placeholder" und billig.
 // -----------------------------------------------------------------------------
 
-type EmptyIcon = 'likes' | 'reposts' | 'shop' | 'battles';
+type EmptyIcon = 'likes' | 'reposts' | 'shop' | 'battles' | 'lives';
 
 const EMPTY_ICON_MAP: Record<
   EmptyIcon,
@@ -494,6 +551,11 @@ const EMPTY_ICON_MAP: Record<
     Icon: Swords,
     gradient: 'from-violet-500/15 via-indigo-500/10 to-sky-500/5',
     ring: 'ring-violet-500/20',
+  },
+  lives: {
+    Icon: Radio,
+    gradient: 'from-red-500/15 via-rose-500/10 to-pink-500/5',
+    ring: 'ring-red-500/20',
   },
 };
 
