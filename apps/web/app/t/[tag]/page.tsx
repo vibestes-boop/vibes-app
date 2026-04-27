@@ -39,6 +39,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       title: `#${decoded} auf Serlo`,
       description: `Entdecke Videos und Posts mit #${decoded}`,
     },
+    twitter: {
+      card: 'summary_large_image',
+      title: `#${decoded} auf Serlo`,
+      description: `Entdecke Videos und Posts mit #${decoded}`,
+    },
   };
 }
 
