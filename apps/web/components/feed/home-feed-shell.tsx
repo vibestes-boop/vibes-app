@@ -220,15 +220,11 @@ function HomeFeedShellBody({
 
         <div className="min-h-0 flex-1">
           <div className={cn('h-full', tab !== 'foryou' && 'hidden')}>
-            {initialForYou.length === 0 ? (
-              <ForYouEmptyState suggested={suggested} viewerId={viewerId} />
-            ) : (
-              <FeedList
-                initialPosts={initialForYou}
-                viewerId={viewerId}
-                feedKey="foryou"
-              />
-            )}
+            <FeedList
+              initialPosts={initialForYou}
+              viewerId={viewerId}
+              feedKey="foryou"
+            />
           </div>
           <div className={cn('flex h-full flex-col', tab !== 'following' && 'hidden')}>
             {storyStripSlot ? <div className="shrink-0">{storyStripSlot}</div> : null}
@@ -289,7 +285,7 @@ import Link from 'next/link';
 import type { Route } from 'next';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { BadgeCheck, Compass, Sparkles, TrendingUp, UserRound } from 'lucide-react';
+import { BadgeCheck, Compass, TrendingUp, UserRound } from 'lucide-react';
 import { useToggleFollow } from '@/hooks/use-engagement';
 
 function FeedSidebarRight({
@@ -408,112 +404,6 @@ function FollowingSkeleton() {
   return (
     <div className="flex h-full items-center justify-center">
       <div className="h-8 w-8 animate-pulse rounded-full bg-muted" />
-    </div>
-  );
-}
-
-// ─── v1.w.UI.94 — For-You Empty State (Onboarding) ───────────────────────────
-//
-// Zeigt wenn der For-You-Feed komplett leer ist — typischerweise neue User
-// kurz nach dem Signup bevor der Algorithmus Posts hat. Statt todem Text:
-// Willkommens-Card mit Suggested-Accounts + Explore-CTA + Post-erstellen-CTA.
-// ─────────────────────────────────────────────────────────────────────────────
-
-function ForYouEmptyState({
-  suggested,
-  viewerId,
-}: {
-  suggested: SuggestedFollow[];
-  viewerId: string | null;
-}) {
-  const follow = useToggleFollow();
-  const [, startTransition] = useTransition();
-
-  return (
-    <div className="flex h-full flex-col items-center justify-center overflow-y-auto px-6 py-10">
-      <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-elevation-1">
-        {/* Icon + heading */}
-        <div className="mb-5 flex flex-col items-center gap-2 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-gold/10">
-            <Sparkles className="h-7 w-7 text-brand-gold" />
-          </div>
-          <h2 className="text-lg font-semibold">Willkommen auf Serlo!</h2>
-          <p className="text-sm text-muted-foreground">
-            Folge anderen Accounts — dein Feed füllt sich dann automatisch mit Content, der zu dir passt.
-          </p>
-        </div>
-
-        {/* Suggested accounts */}
-        {suggested.length > 0 && (
-          <ul className="mb-4 flex flex-col gap-3">
-            {suggested.slice(0, 5).map((s) => (
-              <li key={s.id} className="flex items-center gap-3">
-                <Link href={`/u/${s.username}` as Route} aria-label={`@${s.username}`}>
-                  <Avatar className="h-9 w-9">
-                    <AvatarImage src={s.avatar_url ?? undefined} />
-                    <AvatarFallback>
-                      {(s.display_name ?? s.username).slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                </Link>
-                <div className="min-w-0 flex-1">
-                  <Link
-                    href={`/u/${s.username}` as Route}
-                    className="flex items-center gap-1 truncate text-sm font-semibold hover:underline"
-                  >
-                    @{s.username}
-                    {s.verified && (
-                      <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-brand-gold" />
-                    )}
-                  </Link>
-                  {s.follower_count > 0 && (
-                    <div className="text-xs text-muted-foreground">
-                      {s.follower_count >= 1000
-                        ? `${(s.follower_count / 1000).toFixed(1).replace('.0', '')}K`
-                        : s.follower_count}{' '}
-                      Follower
-                    </div>
-                  )}
-                </div>
-                {viewerId && (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-7 shrink-0 px-3 text-xs"
-                    disabled={follow.isPending}
-                    onClick={() =>
-                      startTransition(() => {
-                        follow.mutate({ userId: s.id, following: false });
-                      })
-                    }
-                  >
-                    Folgen
-                  </Button>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-
-        {/* Primary CTA: Explore */}
-        <Link
-          href={'/explore' as Route}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-gold px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-gold/90"
-        >
-          <Compass className="h-4 w-4" />
-          Accounts &amp; Videos entdecken
-        </Link>
-
-        {/* Secondary CTA: Post erstellen */}
-        {viewerId && (
-          <Link
-            href={'/create' as Route}
-            className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm font-semibold transition-colors hover:bg-muted"
-          >
-            Selbst etwas posten
-          </Link>
-        )}
-      </div>
     </div>
   );
 }

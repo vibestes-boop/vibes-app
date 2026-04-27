@@ -7,7 +7,7 @@ import { FeedCard } from './feed-card';
 import { useFeedInteraction } from './feed-interaction-context';
 import { useTogglePostLike } from '@/hooks/use-engagement';
 import type { FeedPost } from '@/lib/data/feed';
-import { ArrowDown, ArrowUp, Compass, KeyboardIcon, RefreshCw } from 'lucide-react';
+import { ArrowDown, ArrowUp, KeyboardIcon, RefreshCw } from 'lucide-react';
 
 // -----------------------------------------------------------------------------
 // FeedList — vertikaler Snap-Scroll-Container, ein Post pro Viewport-Höhe.
@@ -409,10 +409,9 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
         className="no-scrollbar h-full w-full snap-y snap-mandatory overflow-y-auto overscroll-contain"
       >
         {empty && (
-          <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-muted-foreground">
-            <Compass className="h-10 w-10 opacity-30" strokeWidth={1.5} />
-            <p className="text-sm font-medium">Noch keine Posts hier.</p>
-            <p className="text-xs opacity-70">Schau in /explore rein oder folge neuen Accounts.</p>
+          <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-sm text-muted-foreground">
+            <span>Noch nichts in deinem Feed.</span>
+            <span className="text-xs">Folge jemandem oder schau in /explore rein.</span>
           </div>
         )}
 
