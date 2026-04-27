@@ -47,6 +47,7 @@ export function makeFeedPost(overrides: Partial<FeedPost> = {}): FeedPost {
     allow_comments: true,
     allow_duet: true,
     allow_stitch: true,
+    allow_download: true,
     created_at: new Date('2026-04-20T12:00:00Z').toISOString(),
     // FeedPost-Erweiterung:
     author,

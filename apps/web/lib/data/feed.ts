@@ -30,13 +30,15 @@ export interface FeedPost extends Post {
   // Frame + Broken-Media-State. `null` = Legacy-Row vor media_type-
   // Einführung; dort defaulten wir auf 'video' (die damalige Annahme).
   media_type: 'image' | 'video' | null;
+  // v1.w.UI.142 — allow_download gated by author; feed card shows download in more-menu.
+  allow_download: boolean;
 }
 
 // PostgREST-Aliase: user_id:author_id, video_url:media_url, hashtags:tags
 // — mappt Mobile-DB-Spalten auf Web-Contract-Namen bereits in der Query.
 // `media_type` ist unaliased weil der Name in beiden Schemata identisch ist.
 const POST_COLUMNS =
-  'id, user_id:author_id, caption, video_url:media_url, media_type, thumbnail_url, view_count, like_count, comment_count, hashtags:tags, allow_comments, allow_duet, created_at';
+  'id, user_id:author_id, caption, video_url:media_url, media_type, thumbnail_url, view_count, like_count, comment_count, hashtags:tags, allow_comments, allow_duet, allow_download, created_at';
 
 const AUTHOR_JOIN =
   'author:profiles!posts_author_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )';
@@ -99,6 +101,7 @@ type RawAuthor = { id: string; username: string; display_name: string | null; av
 type RawPostRow = Omit<Post, 'hashtags' | 'duration_secs' | 'music_id' | 'allow_stitch' | 'share_count'> & {
   hashtags: string[] | null;
   media_type: 'image' | 'video' | null;
+  allow_download?: boolean;
   author: RawAuthor | RawAuthor[] | null;
 };
 
@@ -130,6 +133,8 @@ function normalizeRow(
     saved_by_me: saved.has(row.id),
     following_author: following.has(author.id),
     media_type: row.media_type ?? null,
+    // v1.w.UI.142 — default true: if the column is missing (legacy row) assume download is allowed.
+    allow_download: row.allow_download ?? true,
   };
 }
 

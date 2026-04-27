@@ -20,6 +20,7 @@ import {
   Link as LinkIcon,
   PictureInPicture2,
   Trash2,
+  Download,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -585,6 +586,23 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
                     }
                   }}
                 />
+                {/* v1.w.UI.142 — Download: nur für Videos wenn Autor download erlaubt hat */}
+                {post.allow_download && post.media_type !== 'image' && post.video_url && (
+                  <MoreMenuItem
+                    icon={<Download className="h-4 w-4" />}
+                    label="Video herunterladen"
+                    onClick={() => {
+                      setShowMoreMenu(false);
+                      const a = document.createElement('a');
+                      a.href = post.video_url!;
+                      a.download = `video-${post.id}.mp4`;
+                      a.target = '_blank';
+                      document.body.appendChild(a);
+                      a.click();
+                      document.body.removeChild(a);
+                    }}
+                  />
+                )}
                 <MoreMenuItem
                   icon={<PictureInPicture2 className="h-4 w-4" />}
                   label="Schwebender Player"
