@@ -32,38 +32,23 @@ type ProductRefineInput = {
   free_shipping?: boolean;
 };
 
-// -----------------------------------------------------------------------------
-// Refine-Callbacks als standalone Funktionen — bewusst NICHT in einen
-// generischen Helper gewrappt. Grund: ein Helper `<T extends z.ZodType<X>>`
-// fixiert zods `Output` auf X, wodurch `z.infer<typeof productCreateSchema>`
-// fälschlich auf `ProductRefineInput` (4 Felder) statt auf den vollen
-// productBaseSchema-Output kollabiert. Inline-Applikation auf beide Schemas
-// hält Output korrekt bei (full / Partial<full>) und kostet nur ein paar
-// Zeilen Duplikation.
-// -----------------------------------------------------------------------------
-const refineSalePriceLessThanPrice: (d: ProductRefineInput) => unknown = (d) =>
-  d.sale_price_coins == null ||
-  d.price_coins == null ||
-  d.sale_price_coins < d.price_coins;
-const refineSalePriceErr = {
-  path: ['sale_price_coins'],
-  message: 'Angebotspreis muss kleiner als Original-Preis sein',
-};
+function attachRefines<T extends z.ZodType<ProductRefineInput>>(schema: T) {
+  return schema
+    .refine(
+      (d) =>
+        d.sale_price_coins == null ||
+        d.price_coins == null ||
+        d.sale_price_coins < d.price_coins,
+      { path: ['sale_price_coins'], message: 'Angebotspreis muss kleiner als Original-Preis sein' },
+    )
+    .refine(
+      (d) => d.category === 'physical' || !d.free_shipping,
+      { path: ['free_shipping'], message: 'Gratis-Versand nur bei physischen Produkten' },
+    );
+}
 
-const refineFreeShippingPhysicalOnly: (d: ProductRefineInput) => unknown = (d) =>
-  d.category === 'physical' || !d.free_shipping;
-const refineFreeShippingErr = {
-  path: ['free_shipping'],
-  message: 'Gratis-Versand nur bei physischen Produkten',
-};
-
-export const productCreateSchema = productBaseSchema
-  .refine(refineSalePriceLessThanPrice, refineSalePriceErr)
-  .refine(refineFreeShippingPhysicalOnly, refineFreeShippingErr);
+export const productCreateSchema = attachRefines(productBaseSchema);
 export type ProductCreateInput = z.infer<typeof productCreateSchema>;
 
-export const productUpdateSchema = productBaseSchema
-  .partial()
-  .refine(refineSalePriceLessThanPrice, refineSalePriceErr)
-  .refine(refineFreeShippingPhysicalOnly, refineFreeShippingErr);
+export const productUpdateSchema = attachRefines(productBaseSchema.partial());
 export type ProductUpdateInput = z.infer<typeof productUpdateSchema>;

@@ -96,8 +96,8 @@ describe('FeedList — cache isolation per feedKey', () => {
 
     render(<FeedList initialPosts={[]} viewerId={null} feedKey="following" />, { wrapper });
 
-    // Empty-State-Text aus feed-list.tsx (Zeile ~200).
-    expect(screen.getByText(/Noch nichts in deinem Feed/i)).toBeInTheDocument();
+    // Empty-State-Text aus feed-list.tsx (v1.w.UI.94: Compass + neuer Text).
+    expect(screen.getByText(/Noch keine Posts hier/i)).toBeInTheDocument();
     // Kein FeedCard gerendert.
     expect(screen.queryAllByTestId('feed-card')).toHaveLength(0);
   });

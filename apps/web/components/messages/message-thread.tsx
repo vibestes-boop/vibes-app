@@ -813,25 +813,24 @@ function Composer({
   // (deduplizierten) Topic → "cannot add presence callbacks after subscribe()" → #310.
   const typingStopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Cleanup: bei Unmount NUR den laufenden Stop-Timer killen. Das explizite
-  // `track({typing:false})` ist absichtlich raus: `typingChannelRef.current`
-  // im Cleanup zu lesen war ein Realtime-Channel-Leak-Risiko (ESLint-Warning
-  // #818) — die Ref gehört dem Parent (MessageThread), wird dort gesetzt UND
-  // entfernt. Beim Parent-Unmount/Dep-Change ruft der Owner-Effekt
-  // `removeChannel(channel)`, was Supabase-seitig automatisch die Presence
-  // dieses Users untrackt — der Peer sieht das funktional identisch zu
-  // `typing:false`. Kein Bedarf hier reinzugreifen.
+  // Cleanup: bei Unmount den laufenden Stop-Timer killen und letzten
+  // `typing: false`-State senden, damit der Peer keine hängende "schreibt…"-Dots sieht.
   useEffect(() => {
-    // Lokale Referenz auf den Timer-Ref capturen, damit der Cleanup nicht
-    // `.current` während des Cleanups liest (gleiche ESLint-Klasse).
-    const timerRef = typingStopTimer;
     return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
+      if (typingStopTimer.current) {
+        clearTimeout(typingStopTimer.current);
+        typingStopTimer.current = null;
+      }
+      const ch = typingChannelRef.current;
+      if (ch && !isSelf) {
+        try {
+          ch.track({ typing: false });
+        } catch {
+          // Channel might already be torn down; silently ignore.
+        }
       }
     };
-  }, []);
+  }, [isSelf, typingChannelRef]);
 
   const onTextChange = useCallback(
     (v: string) => {

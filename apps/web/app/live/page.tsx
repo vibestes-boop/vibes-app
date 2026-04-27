@@ -4,7 +4,6 @@ import Image from 'next/image';
 import type { Route } from 'next';
 import { Radio, Users, Eye, Flame } from 'lucide-react';
 import { getActiveLiveSessions, type LiveSessionWithHost } from '@/lib/data/live';
-import { LivePageRefresher } from '@/components/live/live-page-refresher';
 
 // -----------------------------------------------------------------------------
 // formatShortDuration — lokaler Ersatz für date-fns/formatDistanceToNowStrict.
@@ -45,9 +44,6 @@ export default async function LiveIndexPage() {
 
   return (
     <div className="mx-auto max-w-[1600px] px-4 py-6 lg:px-8">
-      {/* Unsichtbare Client-Shell: hält die Liste via Realtime + 30s-Polling frisch */}
-      <LivePageRefresher sessionCount={sessions.length} />
-
       <header className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-semibold">
