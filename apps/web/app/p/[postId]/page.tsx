@@ -458,6 +458,8 @@ export default async function PostDetailPage({
               initialSaved={interaction.saved}
               likeCount={post.like_count}
               isAuthenticated={!!viewer}
+              videoUrl={post.video_url || undefined}
+              allowDownload={post.allow_download}
             />
             <StatLine icon={MessageCircle} value={post.comment_count} label="Kommentare" />
             <StatLine icon={ShareIcon}     value={post.share_count}   label="Shares" />
