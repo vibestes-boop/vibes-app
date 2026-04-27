@@ -872,10 +872,21 @@ export async function getMoreComments(
 
 // -----------------------------------------------------------------------------
 // Story with TTL check — returns null if expired (Mobile hat kein expires_at).
+// v1.w.UI.161: Extended with interactive poll data + vote counts.
 // -----------------------------------------------------------------------------
+
+export type StoryPoll = {
+  type: 'poll';
+  question: string;
+  options: string[];
+};
 
 export interface StoryWithAuthor extends Story {
   author: Pick<PublicProfile, 'id' | 'username' | 'display_name' | 'avatar_url' | 'verified'>;
+  // v1.w.UI.161: Poll fields — present when stories.interactive is set.
+  poll?: StoryPoll | null;
+  poll_votes?: number[];  // vote count per option index (length === options.length)
+  my_vote?: number | null; // option_idx the current user voted, null = not voted
 }
 
 type StoryRowMobile = {
@@ -884,24 +895,29 @@ type StoryRowMobile = {
   media_url: string | null;
   media_type: 'image' | 'video' | null;
   created_at: string;
+  interactive: unknown | null;
   author: AuthorRow | AuthorRow[] | null;
 };
 
 export const getStory = cache(async (storyId: string): Promise<StoryWithAuthor | null> => {
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('stories')
-    .select(
-      `id, user_id, media_url, media_type, created_at,
-       author:profiles!stories_user_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )`,
-    )
-    .eq('id', storyId)
-    .maybeSingle();
 
-  if (error || !data) return null;
+  const [storyRes, { data: { user } }] = await Promise.all([
+    supabase
+      .from('stories')
+      .select(
+        `id, user_id, media_url, media_type, created_at, interactive,
+         author:profiles!stories_user_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )`,
+      )
+      .eq('id', storyId)
+      .maybeSingle(),
+    supabase.auth.getUser(),
+  ]);
+
+  if (storyRes.error || !storyRes.data) return null;
 
   // 24h TTL — Mobile-Schema hat kein explizites expires_at, wir rechnen es.
-  const row = data as unknown as StoryRowMobile;
+  const row = storyRes.data as unknown as StoryRowMobile;
   const createdMs = new Date(row.created_at).getTime();
   const expiresMs = createdMs + STORY_TTL_MS;
   if (expiresMs < Date.now()) return null;
@@ -919,6 +935,44 @@ export const getStory = cache(async (storyId: string): Promise<StoryWithAuthor |
     view_count: 0,
     created_at: row.created_at,
   };
+
+  // v1.w.UI.161: Parse poll + fetch vote counts if interactive is set.
+  const interactiveRaw = row.interactive as { type?: string; question?: string; options?: string[] } | null;
+  if (interactiveRaw?.type === 'poll' && Array.isArray(interactiveRaw.options)) {
+    const poll: StoryPoll = {
+      type: 'poll',
+      question: interactiveRaw.question ?? '',
+      options: interactiveRaw.options as string[],
+    };
+
+    // Fetch all votes for this story + optionally the current user's vote.
+    const [votesRes, myVoteRes] = await Promise.all([
+      supabase
+        .from('story_votes')
+        .select('option_idx')
+        .eq('story_id', storyId),
+      user
+        ? supabase
+            .from('story_votes')
+            .select('option_idx')
+            .eq('story_id', storyId)
+            .eq('user_id', user.id)
+            .maybeSingle()
+        : Promise.resolve({ data: null }),
+    ]);
+
+    // Tally votes per option.
+    const tallied = new Array<number>(poll.options.length).fill(0);
+    for (const v of votesRes.data ?? []) {
+      const idx = v.option_idx as number;
+      if (idx >= 0 && idx < tallied.length) tallied[idx]++;
+    }
+
+    const myVote = myVoteRes.data ? (myVoteRes.data.option_idx as number) : null;
+
+    return { ...story, author, poll, poll_votes: tallied, my_vote: myVote };
+  }
+
   return { ...story, author };
 });
 

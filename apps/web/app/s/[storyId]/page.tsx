@@ -5,9 +5,11 @@ import { notFound } from 'next/navigation';
 import { BadgeCheck, Clock3 } from 'lucide-react';
 
 import { getStory } from '@/lib/data/public';
+import { getUser } from '@/lib/auth/session';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { VideoPlayer } from '@/components/video/video-player';
 import { ShareButtons } from '@/components/share/share-buttons';
+import { StoryPollWidget } from '@/components/story/story-poll-widget';
 
 // -----------------------------------------------------------------------------
 // /s/[storyId] — ephemere Story-View.
@@ -96,7 +98,7 @@ export default async function StoryPage({
   params: Promise<{ storyId: string }>;
 }) {
   const { storyId } = await params;
-  const story = await getStory(storyId);
+  const [story, user] = await Promise.all([getStory(storyId), getUser()]);
 
   if (!story) notFound();
 
@@ -170,6 +172,17 @@ export default async function StoryPage({
           text="Ephemer — nur 24 Stunden sichtbar auf Serlo."
         />
       </div>
+
+      {/* v1.w.UI.161: Interactive poll widget — only rendered when story has a poll. */}
+      {story.poll && (
+        <StoryPollWidget
+          storyId={story.id}
+          poll={story.poll}
+          pollVotes={story.poll_votes ?? story.poll.options.map(() => 0)}
+          myVote={story.my_vote ?? null}
+          isAuthenticated={!!user}
+        />
+      )}
     </main>
   );
 }
