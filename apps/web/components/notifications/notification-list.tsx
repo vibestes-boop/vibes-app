@@ -16,6 +16,7 @@ import {
   Radio,
   Users,
   Bell,
+  ShoppingBag,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -49,8 +50,9 @@ const TYPE_META: Record<NotificationType, NotifMeta> = {
   gift:        { icon: Gift,          color: 'text-amber-500',  bg: 'bg-amber-500/10' },
   live:                    { icon: Radio,     color: 'text-rose-500',    bg: 'bg-rose-500/10' },
   live_invite:             { icon: Users,     color: 'text-indigo-500',  bg: 'bg-indigo-500/10' },
-  follow_request:          { icon: UserPlus,  color: 'text-amber-500',   bg: 'bg-amber-500/10' },
-  follow_request_accepted: { icon: UserCheck, color: 'text-green-500',   bg: 'bg-green-500/10' },
+  follow_request:          { icon: UserPlus,     color: 'text-amber-500',   bg: 'bg-amber-500/10' },
+  follow_request_accepted: { icon: UserCheck,    color: 'text-green-500',   bg: 'bg-green-500/10' },
+  new_order:               { icon: ShoppingBag,  color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
 };
 
 // ── Notification-Text pro Typ ─────────────────────────────────────────────────
@@ -84,6 +86,10 @@ function notifText(n: Notification): string {
       return `${name} möchte dir folgen.`;
     case 'follow_request_accepted':
       return `${name} hat deine Follower-Anfrage angenommen.`;
+    case 'new_order':
+      return n.product_name
+        ? `${name} hat „${n.product_name}" gekauft.`
+        : `${name} hat ein Produkt bei dir gekauft.`;
     default:
       return `Neue Aktivität von ${name}.`;
   }
@@ -112,6 +118,8 @@ function notifHref(n: Notification): Route {
       return n.sender?.username
         ? (`/u/${n.sender.username}` as Route)
         : ('/' as Route);
+    case 'new_order':
+      return '/studio/orders?role=seller' as Route;
     default:
       return '/' as Route;
   }

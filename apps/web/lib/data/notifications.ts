@@ -29,7 +29,8 @@ export type NotificationType =
   | 'live'
   | 'live_invite'
   | 'follow_request'
-  | 'follow_request_accepted';
+  | 'follow_request_accepted'
+  | 'new_order';
 
 export interface NotificationSender {
   id: string;
