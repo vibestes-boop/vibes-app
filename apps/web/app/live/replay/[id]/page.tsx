@@ -58,8 +58,61 @@ export default async function ReplayPage({ params }: PageProps) {
   const hostName = session.host?.display_name ?? session.host?.username ?? 'Unbekannt';
   const isReady = recording?.status === 'ready' && Boolean(recording.playback_url);
 
+  // ── JSON-LD: VideoObject schema ──────────────────────────────────────────
+  // Allows Google to index replays as video content — shows in Video Search
+  // and video rich results. Only emitted when recording is ready (has URL).
+  // Duration ISO 8601 format: PT<M>M<S>S.
+  // v1.w.UI.133 — JSON-LD structured data batch.
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://serlo.app';
+  const videoJsonLd =
+    isReady && recording
+      ? {
+          '@context': 'https://schema.org',
+          '@type': 'VideoObject',
+          name: session.title ?? 'Live-Aufnahme',
+          description: `Live-Stream von ${hostName} auf Serlo.`,
+          thumbnailUrl: session.thumbnail_url ?? undefined,
+          contentUrl: recording.playback_url,
+          embedUrl: `${siteUrl}/live/replay/${session.id}`,
+          uploadDate: recording.finished_at ?? session.ended_at ?? session.started_at,
+          ...(recording.duration_secs
+            ? {
+                duration: `PT${Math.floor(recording.duration_secs / 60)}M${recording.duration_secs % 60}S`,
+              }
+            : {}),
+          author: {
+            '@type': 'Person',
+            name: hostName,
+            ...(session.host?.username
+              ? { url: `${siteUrl}/u/${session.host.username}` }
+              : {}),
+          },
+          publisher: {
+            '@type': 'Organization',
+            name: 'Serlo',
+            url: siteUrl,
+          },
+          ...(session.peak_viewer_count && session.peak_viewer_count > 0
+            ? {
+                interactionStatistic: {
+                  '@type': 'InteractionCounter',
+                  interactionType: 'https://schema.org/WatchAction',
+                  userInteractionCount: session.peak_viewer_count,
+                },
+              }
+            : {}),
+        }
+      : null;
+
   return (
-    <div className="mx-auto max-w-[1400px] px-4 py-4 lg:px-8">
+    <>
+      {videoJsonLd && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(videoJsonLd) }}
+        />
+      )}
+      <div className="mx-auto max-w-[1400px] px-4 py-4 lg:px-8">
       {/* Breadcrumb */}
       <div className="mb-4 flex items-center justify-between">
         <Link
@@ -158,5 +211,6 @@ export default async function ReplayPage({ params }: PageProps) {
         </p>
       )}
     </div>
+    </>
   );
 }

@@ -139,7 +139,58 @@ export default async function ProductDetailPage({ params }: PageProps) {
           Math.min(100, (product.stock / Math.max(1, product.sold_count + product.stock)) * 100),
         );
 
+  // ── JSON-LD: Product schema ──────────────────────────────────────────────
+  // Ermöglicht Google Rich-Snippets (Bewertungssterne, Preis-Hint) in den
+  // Suchergebnissen — signifikanter CTR-Boost für Shop-Seiten.
+  // Preis: Coins sind keine ISO-4217-Währung — wir geben `priceCurrency: 'XXX'`
+  // (ISO-Platzhalter für non-fiat) + `description` mit Coin-Betrag.
+  // v1.w.UI.133 — JSON-LD structured data batch.
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://serlo.app';
+  const productJsonLd: Record<string, unknown> = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: product.title,
+    description: product.description ?? undefined,
+    image: images.length > 0 ? images : undefined,
+    url: `${siteUrl}/shop/${product.id}`,
+    brand: {
+      '@type': 'Person',
+      name: `@${product.seller.username}`,
+      url: `${siteUrl}/u/${product.seller.username}`,
+    },
+    offers: {
+      '@type': 'Offer',
+      availability:
+        product.stock === 0
+          ? 'https://schema.org/OutOfStock'
+          : 'https://schema.org/InStock',
+      priceCurrency: 'XXX',
+      price: eff,
+      seller: {
+        '@type': 'Person',
+        name: `@${product.seller.username}`,
+        url: `${siteUrl}/u/${product.seller.username}`,
+      },
+    },
+    ...(product.review_count > 0 && product.avg_rating !== null
+      ? {
+          aggregateRating: {
+            '@type': 'AggregateRating',
+            ratingValue: product.avg_rating.toFixed(1),
+            reviewCount: product.review_count,
+            bestRating: 5,
+            worstRating: 1,
+          },
+        }
+      : {}),
+  };
+
   return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+      />
     <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-6xl flex-col px-4 pb-0 pt-6 lg:px-6">
       {/* Breadcrumb */}
       <nav className="mb-4 text-sm text-muted-foreground">
@@ -378,5 +429,6 @@ export default async function ProductDetailPage({ params }: PageProps) {
         />
       </div>
     </div>
+    </>
   );
 }
