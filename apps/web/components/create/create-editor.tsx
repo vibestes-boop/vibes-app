@@ -595,6 +595,14 @@ export function CreateEditor({ viewerId, initialDraft }: Props) {
           removeTag={removeTag}
         />
 
+        {/* Format-Picker — nur sichtbar wenn Media geladen */}
+        {hasMedia && (
+          <AspectRatioPicker
+            value={aspectRatio}
+            onChange={setAspectRatio}
+          />
+        )}
+
         <PrivacyPanel
           privacy={privacy}
           setPrivacy={setPrivacy}
@@ -1106,6 +1114,60 @@ function TagChips({
           placeholder={tags.length === 0 ? '#hashtag hinzufügen…' : ''}
           className="min-w-[120px] flex-1 bg-transparent px-2 py-1 text-sm outline-none placeholder:text-muted-foreground"
         />
+      </div>
+    </div>
+  );
+}
+
+function AspectRatioPicker({
+  value,
+  onChange,
+}: {
+  value: 'portrait' | 'landscape' | 'square';
+  onChange: (v: 'portrait' | 'landscape' | 'square') => void;
+}) {
+  const options: Array<{
+    v: 'portrait' | 'landscape' | 'square';
+    label: string;
+    sub: string;
+    preview: string; // Tailwind-Klassen für das visuelle Vorschau-Rechteck
+  }> = [
+    { v: 'portrait',  label: 'Hochformat', sub: '9:16',  preview: 'h-8 w-5' },
+    { v: 'landscape', label: 'Querformat', sub: '16:9',  preview: 'h-5 w-8' },
+    { v: 'square',    label: 'Quadrat',    sub: '1:1',   preview: 'h-6 w-6' },
+  ];
+
+  return (
+    <div>
+      <label className="mb-2 block text-sm font-medium">Format</label>
+      <div className="grid grid-cols-3 gap-2">
+        {options.map((o) => {
+          const active = value === o.v;
+          return (
+            <button
+              key={o.v}
+              type="button"
+              onClick={() => onChange(o.v)}
+              className={cn(
+                'flex flex-col items-center gap-1.5 rounded-xl border px-2 py-3 text-xs transition-colors',
+                active
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'bg-background hover:bg-muted',
+              )}
+            >
+              {/* Visuelle Vorschau des Seitenverhältnisses */}
+              <div
+                className={cn(
+                  'rounded-sm border-2',
+                  active ? 'border-primary' : 'border-muted-foreground/40',
+                  o.preview,
+                )}
+              />
+              <span className="font-medium">{o.label}</span>
+              <span className="text-[10px] text-muted-foreground">{o.sub}</span>
+            </button>
+          );
+        })}
       </div>
     </div>
   );
