@@ -1,17 +1,19 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Heart, Flame, Gift, Users2, Laugh, Sparkles, Frown, HandMetal } from 'lucide-react';
+import { Heart, Flame, Gift, Users2, Laugh, Sparkles, Frown, HandMetal, BarChart3 } from 'lucide-react';
 import { sendLiveReaction, requestCoHost, cancelCoHostRequest } from '@/app/actions/live';
 import { LiveGiftPicker } from './live-gift-picker';
 import { LiveReactionOverlay } from './live-reaction-overlay';
+import { LivePollStartSheet } from './live-poll-start-sheet';
 import { useRemoteReactions } from './use-remote-reactions';
-import type { ActiveCoHostSSR } from '@/lib/data/live';
+import type { ActiveCoHostSSR, ActiveLivePollSSR } from '@/lib/data/live';
 
 // -----------------------------------------------------------------------------
-// LiveActionBar — unter dem Player. Drei Gruppen:
+// LiveActionBar — unter dem Player. Vier Gruppen:
 //  • Reactions: 6 Emoji-Buttons, client-side floating-heart animation
 //  • Gift-Button: öffnet GiftPicker-Sheet
+//  • Poll-Button: nur für Moderatoren/CoHosts (v1.w.UI.99, parity v1.27.4)
 //  • CoHost-Button: Request senden oder zurückziehen
 // -----------------------------------------------------------------------------
 
@@ -22,6 +24,10 @@ export interface LiveActionBarProps {
   viewerId: string;
   isHost: boolean;
   cohosts: ActiveCoHostSSR[];
+  /** v1.w.UI.99: Mod/CoHost-gated poll-start. Undefined = not a moderator. */
+  isModerator?: boolean;
+  /** SSR-loaded active poll; kept in sync via LivePollStartSheet.onPollChange. */
+  activePoll?: ActiveLivePollSSR | null;
 }
 
 const REACTIONS = [
@@ -40,8 +46,12 @@ export function LiveActionBar({
   viewerId,
   isHost,
   cohosts,
+  isModerator = false,
+  activePoll: initialActivePoll = null,
 }: LiveActionBarProps) {
   const [giftOpen, setGiftOpen] = useState(false);
+  const [pollSheetOpen, setPollSheetOpen] = useState(false);
+  const [currentPoll, setCurrentPoll] = useState<ActiveLivePollSSR | null>(initialActivePoll);
   const [coHostRequested, setCoHostRequested] = useState(false);
   const [overlayBurst, setOverlayBurst] = useState<{ key: string; id: number } | null>(null);
   const [, startTransition] = useTransition();
@@ -111,6 +121,28 @@ export function LiveActionBar({
           Geschenk
         </button>
 
+        {/* Poll-Button — nur für Moderatoren / aktive CoHosts (v1.w.UI.99) */}
+        {isModerator && (
+          <>
+            <div className="h-6 w-px bg-border" />
+            <button
+              type="button"
+              onClick={() => setPollSheetOpen(true)}
+              title={currentPoll ? 'Aktive Umfrage verwalten' : 'Umfrage starten'}
+              aria-label={currentPoll ? 'Aktive Umfrage verwalten' : 'Umfrage starten'}
+              className={[
+                'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',
+                currentPoll
+                  ? 'border-violet-500 bg-violet-500/10 text-violet-600 dark:text-violet-400'
+                  : 'hover:bg-muted',
+              ].join(' ')}
+            >
+              <BarChart3 className="h-4 w-4" />
+              {currentPoll ? 'Umfrage läuft' : 'Umfrage'}
+            </button>
+          </>
+        )}
+
         {/* CoHost-Button (nur wenn nicht Host und nicht schon CoHost) */}
         {!isHost && !alreadyCoHost && (
           <button
@@ -153,6 +185,19 @@ export function LiveActionBar({
           hostName={hostName}
           cohosts={cohosts}
           onClose={() => setGiftOpen(false)}
+        />
+      )}
+
+      {/* Poll-Sheet — nur für Moderatoren/CoHosts */}
+      {pollSheetOpen && (
+        <LivePollStartSheet
+          sessionId={sessionId}
+          activePoll={currentPoll}
+          onClose={() => setPollSheetOpen(false)}
+          onPollChange={(p) => {
+            setCurrentPoll(p);
+            if (!p) setPollSheetOpen(false);
+          }}
         />
       )}
     </>

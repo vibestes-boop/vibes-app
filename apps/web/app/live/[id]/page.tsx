@@ -309,6 +309,8 @@ export default async function LiveViewerPage({ params }: PageProps) {
                   viewerId={viewerId}
                   isHost={isHost}
                   cohosts={cohosts}
+                  isModerator={isModerator}
+                  activePoll={activePoll}
                 />
               </div>
             </div>
