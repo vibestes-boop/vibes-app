@@ -106,6 +106,12 @@ function PostGridItem({ post }: { post: Post }) {
             <Play className="h-3 w-3 fill-current" />
             {formatCount(post.view_count)}
           </span>
+          {/* v1.w.UI.169 — WOZ badge on thumbnail */}
+          {post.women_only && (
+            <span className="text-xs leading-none" aria-label="Women Only" title="Women-Only Zone">
+              🌸
+            </span>
+          )}
         </div>
       </Link>
     </li>

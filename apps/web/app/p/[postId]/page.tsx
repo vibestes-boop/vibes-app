@@ -454,7 +454,14 @@ export default async function PostDetailPage({
 
         // Stats-Zeile
         const statsBar = (
-          <div className="mt-4 flex flex-wrap items-center gap-4">
+          <div className="mt-4 space-y-3">
+            {/* v1.w.UI.169 — WOZ badge: only visible to RLS-verified members */}
+            {post.women_only && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-pink-500/30 bg-pink-500/10 px-3 py-1 text-xs font-semibold text-pink-600 dark:text-pink-400">
+                🌸 Women-Only Zone
+              </span>
+            )}
+          <div className="flex flex-wrap items-center gap-4">
             <StatLine icon={Eye}           value={post.view_count}    label="Aufrufe" />
             <PostActionsBar
               postId={post.id}
@@ -467,6 +474,7 @@ export default async function PostDetailPage({
             />
             <StatLine icon={MessageCircle} value={post.comment_count} label="Kommentare" />
             <StatLine icon={ShareIcon}     value={post.share_count}   label="Shares" />
+          </div>
           </div>
         );
 

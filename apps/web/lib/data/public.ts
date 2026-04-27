@@ -198,6 +198,8 @@ type PostRowMobile = {
   tags: string[] | null;
   allow_comments: boolean | null;
   allow_duet: boolean | null;
+  // v1.w.UI.169 — WOZ badge in PostGrid
+  women_only?: boolean | null;
   created_at: string;
   like_count?: unknown; // embedded aggregate
   comment_count?: unknown; // embedded aggregate
@@ -223,6 +225,7 @@ function toPost(row: PostRowMobile): Post {
     allow_comments: row.allow_comments ?? true,
     allow_duet: row.allow_duet ?? true,
     allow_stitch: true,
+    women_only: row.women_only ?? false,
     created_at: row.created_at,
   };
 }
@@ -237,7 +240,7 @@ export const getProfilePosts = cache(
     let query = supabase
       .from('posts')
       .select(
-        `id, author_id, caption, media_url, thumbnail_url, view_count, tags, allow_comments, allow_duet, created_at,
+        `id, author_id, caption, media_url, thumbnail_url, view_count, tags, allow_comments, allow_duet, women_only, created_at,
          like_count:likes(count),
          comment_count:comments(count)`,
       )
@@ -268,7 +271,7 @@ export async function getProfilePostsPage(
   const { data, error } = await supabase
     .from('posts')
     .select(
-      `id, author_id, caption, media_url, thumbnail_url, view_count, tags, allow_comments, allow_duet, created_at,
+      `id, author_id, caption, media_url, thumbnail_url, view_count, tags, allow_comments, allow_duet, women_only, created_at,
        like_count:likes(count),
        comment_count:comments(count)`,
     )

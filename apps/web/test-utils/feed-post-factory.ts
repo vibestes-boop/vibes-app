@@ -56,6 +56,7 @@ export function makeFeedPost(overrides: Partial<FeedPost> = {}): FeedPost {
     following_author: false,
     reposted_by_me: false,
     media_type: 'video',
+    women_only: false,
   };
 
   return { ...base, ...overrides, author };

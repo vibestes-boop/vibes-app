@@ -764,6 +764,12 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
           v1.w.UI.25: `pr-20` entfernt — Rail liegt nicht mehr über der Card,
           Caption darf jetzt die volle Breite nutzen. */}
       <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col gap-2 p-4 pb-6 text-white">
+        {/* v1.w.UI.169 — WOZ badge: only visible to verified members (RLS-enforced) */}
+        {post.women_only && (
+          <span className="pointer-events-none inline-flex w-fit items-center gap-1 rounded-full bg-pink-500/25 px-2.5 py-0.5 text-[11px] font-semibold text-pink-200 ring-1 ring-pink-400/40 backdrop-blur-sm">
+            🌸 Women Only
+          </span>
+        )}
         <div className="flex items-center gap-2">
           <Link
             href={`/u/${post.author.username}` as Route}

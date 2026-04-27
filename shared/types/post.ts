@@ -14,6 +14,8 @@ export interface Post {
   allow_comments: boolean;
   allow_duet: boolean;
   allow_stitch: boolean;
+  /** Optional — populated by web queries; undefined for legacy mobile rows. */
+  women_only?: boolean;
   created_at: string;
 }
 
