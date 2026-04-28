@@ -202,6 +202,8 @@ type PostRowMobile = {
   women_only?: boolean | null;
   // v1.w.UI.171 — real share count from DB
   share_count?: number | null;
+  // v1.w.UI.179 — pinned to author profile
+  is_pinned?: boolean | null;
   created_at: string;
   like_count?: unknown; // embedded aggregate
   comment_count?: unknown; // embedded aggregate
@@ -228,6 +230,8 @@ function toPost(row: PostRowMobile): Post {
     allow_duet: row.allow_duet ?? true,
     allow_stitch: true,
     women_only: row.women_only ?? false,
+    // v1.w.UI.179 — carry pinned flag through so PostGrid can badge it
+    is_pinned: row.is_pinned ?? false,
     created_at: row.created_at,
   };
 }
@@ -239,14 +243,16 @@ function toPost(row: PostRowMobile): Post {
 export const getProfilePosts = cache(
   async (userId: string, limit = 24, before?: string): Promise<Post[]> => {
     const supabase = await createClient();
+    // v1.w.UI.179 — include is_pinned; order pinned post first, then newest first.
     let query = supabase
       .from('posts')
       .select(
-        `id, author_id, caption, media_url, thumbnail_url, view_count, share_count, tags, allow_comments, allow_duet, women_only, created_at,
+        `id, author_id, caption, media_url, thumbnail_url, view_count, share_count, tags, allow_comments, allow_duet, women_only, is_pinned, created_at,
          like_count:likes(count),
          comment_count:comments(count)`,
       )
       .eq('author_id', userId)
+      .order('is_pinned', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(limit);
 
@@ -270,14 +276,16 @@ export async function getProfilePostsPage(
   limit: number,
 ): Promise<Post[]> {
   const supabase = await createClient();
+  // v1.w.UI.179 — include is_pinned; pinned posts always sort first.
   const { data, error } = await supabase
     .from('posts')
     .select(
-      `id, author_id, caption, media_url, thumbnail_url, view_count, share_count, tags, allow_comments, allow_duet, women_only, created_at,
+      `id, author_id, caption, media_url, thumbnail_url, view_count, share_count, tags, allow_comments, allow_duet, women_only, is_pinned, created_at,
        like_count:likes(count),
        comment_count:comments(count)`,
     )
     .eq('author_id', userId)
+    .order('is_pinned', { ascending: false })
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1);
 

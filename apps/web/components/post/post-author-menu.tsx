@@ -2,10 +2,10 @@
 
 import { useRef, useState, useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { MoreHorizontal, Trash2, Link as LinkIcon, Pencil, Loader2, Globe, Users, Lock } from 'lucide-react';
+import { MoreHorizontal, Trash2, Link as LinkIcon, Pencil, Loader2, Globe, Users, Lock, Pin, PinOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { deletePost, updatePost } from '@/app/actions/posts';
+import { deletePost, updatePost, togglePinPost } from '@/app/actions/posts';
 import type { UpdatePostInput } from '@/app/actions/posts';
 
 // -----------------------------------------------------------------------------
@@ -26,6 +26,7 @@ export function PostAuthorMenu({
   womenOnly = false,
   aspectRatio = 'portrait',
   initialTags = [],
+  isPinned = false,
 }: {
   postId: string;
   authorUsername: string;
@@ -38,9 +39,12 @@ export function PostAuthorMenu({
   aspectRatio?: 'portrait' | 'landscape' | 'square';
   // v1.w.UI.162: Existing tags so the edit dialog can pre-select them.
   initialTags?: string[];
+  // v1.w.UI.179: whether this post is currently pinned to the author's profile.
+  isPinned?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isPinning, setIsPinning] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -100,6 +104,31 @@ export function PostAuthorMenu({
               onClick={() => {
                 setOpen(false);
                 setEditOpen(true);
+              }}
+            />
+
+            {/* v1.w.UI.179: Pin / Unpin an Profil */}
+            <MenuItem
+              icon={isPinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
+              label={
+                isPinning
+                  ? 'Wird gespeichert…'
+                  : isPinned
+                    ? 'Von Profil lösen'
+                    : 'Auf Profil anpinnen'
+              }
+              disabled={isPinning}
+              onClick={async () => {
+                setOpen(false);
+                setIsPinning(true);
+                const res = await togglePinPost(postId);
+                setIsPinning(false);
+                if (res.ok) {
+                  toast(isPinned ? 'Pin entfernt.' : 'Post angepinnt.');
+                  router.refresh();
+                } else {
+                  toast.error(res.error ?? 'Aktion fehlgeschlagen.');
+                }
               }}
             />
 

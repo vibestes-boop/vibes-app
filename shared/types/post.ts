@@ -16,6 +16,8 @@ export interface Post {
   allow_stitch: boolean;
   /** Optional — populated by web queries; undefined for legacy mobile rows. */
   women_only?: boolean;
+  /** v1.w.UI.179 — pinned to author's profile (max 1 per user). */
+  is_pinned?: boolean;
   created_at: string;
 }
 

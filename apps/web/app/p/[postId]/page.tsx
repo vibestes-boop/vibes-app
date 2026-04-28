@@ -299,6 +299,7 @@ export default async function PostDetailPage({
                   womenOnly={post.women_only}
                   aspectRatio={post.aspect_ratio}
                   initialTags={post.hashtags}
+                  isPinned={post.is_pinned ?? false}
                 />
               ) : (
                 <div className="flex items-center gap-2">

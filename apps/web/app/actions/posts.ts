@@ -397,6 +397,30 @@ export async function deletePost(postId: string): Promise<ActionResult<null>> {
 }
 
 // -----------------------------------------------------------------------------
+// togglePinPost — v1.w.UI.179: Pin/Unpin eines Posts an das eigene Profil.
+//
+// Delegiert an DB-RPC `toggle_pin_post(p_post_id, p_user_id)` die atomisch:
+//   1. Alle is_pinned=true Rows des Users zurücksetzt
+//   2. Den gewählten Post pinniert WENN er vorher nicht gepinnt war
+// → max. 1 gepinnter Post pro User, zweiter Klick auf denselben löst den Pin.
+// -----------------------------------------------------------------------------
+
+export async function togglePinPost(postId: string): Promise<ActionResult<null>> {
+  const viewer = await getViewerId();
+  if (!viewer) return { ok: false, error: 'Bitte einloggen.' };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('toggle_pin_post', {
+    p_post_id: postId,
+    p_user_id: viewer,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath('/'); // feed may show profile grid
+  return { ok: true, data: null };
+}
+
+// -----------------------------------------------------------------------------
 // updatePost — vollständiges Post-Bearbeiten: Caption, Privacy, Toggles.
 //
 // RLS auf `posts`: UPDATE erlaubt nur wenn `author_id = auth.uid()`. Wir

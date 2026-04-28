@@ -100,6 +100,13 @@ function PostGridItem({ post }: { post: Post }) {
           )}
         />
 
+        {/* v1.w.UI.179 — Pin badge oben links */}
+        {post.is_pinned && (
+          <div className="pointer-events-none absolute left-1.5 top-1.5 z-10 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] leading-none text-white backdrop-blur-sm">
+            📌
+          </div>
+        )}
+
         {/* View-Count unten links, leichter Gradient-Boden für Lesbarkeit */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between bg-gradient-to-t from-black/70 to-transparent p-2">
           <span className="inline-flex items-center gap-1 text-xs font-medium text-white drop-shadow">
