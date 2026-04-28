@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Heart, Flame, Gift, Users2, Laugh, Sparkles, Frown, HandMetal, BarChart3, Scissors, Check } from 'lucide-react';
+import { Heart, Flame, Gift, Users2, Laugh, Sparkles, Frown, HandMetal, BarChart3, Scissors, Check, Share2 } from 'lucide-react';
 import { sendLiveReaction, requestCoHost, cancelCoHostRequest, createLiveClipMarker } from '@/app/actions/live';
 import { LiveGiftPicker } from './live-gift-picker';
 import { LiveReactionOverlay } from './live-reaction-overlay';
@@ -62,6 +62,8 @@ export function LiveActionBar({
   const [overlayBurst, setOverlayBurst] = useState<{ key: string; id: number } | null>(null);
   // v1.w.UI.140 — Clip marker: brief "marked!" feedback state (resets after 2 s)
   const [clipMarked, setClipMarked] = useState(false);
+  // v1.w.UI.199 — Share button: brief "Kopiert!"-feedback state
+  const [shareCopied, setShareCopied] = useState(false);
   const [, startTransition] = useTransition();
 
   // v1.w.UI.19 B6 — Remote Reactions von anderen Viewern. Das `sendLiveReaction`
@@ -98,6 +100,27 @@ export function LiveActionBar({
     });
   };
 
+  // v1.w.UI.199 — Share: Web Share API → clipboard fallback
+  const handleShare = async () => {
+    const url = typeof window !== 'undefined' ? window.location.href : '';
+    const title = `${hostName} streamt live`;
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        await navigator.share({ title, url });
+        return;
+      } catch {
+        // user cancelled or API unavailable — fall through to clipboard
+      }
+    }
+    try {
+      await navigator.clipboard.writeText(url);
+      setShareCopied(true);
+      setTimeout(() => setShareCopied(false), 2000);
+    } catch {
+      // clipboard blocked — nothing to do silently
+    }
+  };
+
   // v1.w.UI.140 — Mark clip: record the current stream position.
   // positionSecs = elapsed time since stream started (best approximation client-side).
   const handleClipMarker = () => {
@@ -131,6 +154,28 @@ export function LiveActionBar({
             </button>
           ))}
         </div>
+
+        <div className="h-6 w-px bg-border" />
+
+        {/* Share-Button — v1.w.UI.199: Web Share API → clipboard fallback */}
+        <button
+          type="button"
+          onClick={handleShare}
+          className={[
+            'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',
+            shareCopied
+              ? 'border-green-500 bg-green-500/10 text-green-600 dark:text-green-400'
+              : 'hover:bg-muted',
+          ].join(' ')}
+          title="Stream-Link teilen"
+          aria-label="Stream-Link teilen"
+        >
+          {shareCopied ? (
+            <><Check className="h-4 w-4" />Kopiert!</>
+          ) : (
+            <><Share2 className="h-4 w-4" />Teilen</>
+          )}
+        </button>
 
         <div className="h-6 w-px bg-border" />
 
