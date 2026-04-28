@@ -17,7 +17,6 @@
   ],
   "exclude": [
     "node_modules",
-    "supabase/functions",
-    "apps/web"
+    "supabase/functions"
   ]
 }

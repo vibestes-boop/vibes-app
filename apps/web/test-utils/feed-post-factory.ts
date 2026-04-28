@@ -47,18 +47,13 @@ export function makeFeedPost(overrides: Partial<FeedPost> = {}): FeedPost {
     allow_comments: true,
     allow_duet: true,
     allow_stitch: true,
-    allow_download: true,
     created_at: new Date('2026-04-20T12:00:00Z').toISOString(),
     // FeedPost-Erweiterung:
     author,
     liked_by_me: false,
     saved_by_me: false,
     following_author: false,
-    reposted_by_me: false,
     media_type: 'video',
-    women_only: false,
-    privacy: 'public',
-    aspect_ratio: 'portrait',
   };
 
   return { ...base, ...overrides, author };

@@ -4,17 +4,12 @@ import { createClient } from '@/lib/supabase/server';
 // -----------------------------------------------------------------------------
 // sitemap.xml — dynamisch generiert.
 //
-// Strategie:
-//   Static:   /, /explore, /shop, /live, /guilds, /people, /login, /signup
-//   Dynamic:  Top-1000 Profile | Top-5000 Posts | Top-500 Produkte |
-//             Top-200 Hashtags | alle /g/[id] Guild-Detail-Seiten (max 100)
-// Google schluckt bis zu 50.000 URLs / Sitemap — für Phase 2 ist das mehr als
-// genug. In Phase 13 splitten wir in Sitemap-Index (users.xml, posts.xml,
-// shop.xml, tags.xml separat).
+// Strategie: Top-1000 Profile nach Follower-Count + Top-5000 Posts nach
+// view_count. Google schluckt bis zu 50.000 URLs / Sitemap — für Phase 2 ist
+// das mehr als genug. In Phase 13 splitten wir in Sitemap-Index (users.xml,
+// posts.xml, shop.xml separat).
 //
 // Wird mit `revalidate: 3600` gecacht — 1× pro Stunde frisch, spart Supabase-Load.
-//
-// v1.w.UI.131 — Guild-Detail-Pages (/g/[id]) zu dynamischen Routes hinzugefügt.
 // -----------------------------------------------------------------------------
 
 export const revalidate = 3600;
@@ -24,14 +19,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   // Static-Routes zuerst — die crawlt Google immer.
   const staticRoutes: MetadataRoute.Sitemap = [
-    { url: `${baseUrl}/`,        changeFrequency: 'daily',   priority: 1.0 },
-    { url: `${baseUrl}/explore`, changeFrequency: 'daily',   priority: 0.9 },
-    { url: `${baseUrl}/shop`,    changeFrequency: 'daily',   priority: 0.9 },
-    { url: `${baseUrl}/live`,    changeFrequency: 'hourly',  priority: 0.8 },
-    { url: `${baseUrl}/guilds`,  changeFrequency: 'weekly',  priority: 0.6 },
-    { url: `${baseUrl}/people`, changeFrequency: 'daily',   priority: 0.7 },
-    { url: `${baseUrl}/login`,   changeFrequency: 'monthly', priority: 0.3 },
-    { url: `${baseUrl}/signup`,  changeFrequency: 'monthly', priority: 0.5 },
+    { url: `${baseUrl}/`,       changeFrequency: 'daily',   priority: 1.0 },
+    { url: `${baseUrl}/login`,  changeFrequency: 'monthly', priority: 0.3 },
+    { url: `${baseUrl}/signup`, changeFrequency: 'monthly', priority: 0.5 },
   ];
 
   let dynamicRoutes: MetadataRoute.Sitemap = [];
@@ -69,50 +59,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.6,
       }));
 
-    // Shop-Produkte (aktiv, sortiert nach Verkäufen — SEO-relevante Produktseiten)
-    const { data: products } = await supabase
-      .from('products')
-      .select('id, updated_at')
-      .eq('is_active', true)
-      .order('sold_count', { ascending: false })
-      .limit(500);
-
-    const productRoutes: MetadataRoute.Sitemap =
-      (products ?? []).map((p) => ({
-        url: `${baseUrl}/shop/${p.id}`,
-        lastModified: p.updated_at ? new Date(p.updated_at) : undefined,
-        changeFrequency: 'weekly' as const,
-        priority: 0.65,
-      }));
-
-    // Trending Hashtags — Top 200 nach Post-Count
-    const { data: hashtags } = await supabase
-      .from('post_hashtags')
-      .select('tag')
-      .limit(200);
-
-    // Deduplizieren und als Set → unique Tags
-    const uniqueTags = [...new Set((hashtags ?? []).map((h) => h.tag as string))];
-    const hashtagRoutes: MetadataRoute.Sitemap = uniqueTags.map((tag) => ({
-      url: `${baseUrl}/t/${encodeURIComponent(tag)}`,
-      changeFrequency: 'daily' as const,
-      priority: 0.55,
-    }));
-
-    // Guild-Detail-Seiten — derzeit max. 5 feste Pods, kein Pagination-Bedarf.
-    // Limit 100 als Safety-Net falls Schema später expandiert wird.
-    const { data: guilds } = await supabase
-      .from('guilds')
-      .select('id')
-      .limit(100);
-
-    const guildRoutes: MetadataRoute.Sitemap = (guilds ?? []).map((g) => ({
-      url: `${baseUrl}/g/${(g as { id: string }).id}`,
-      changeFrequency: 'daily' as const,
-      priority: 0.6,
-    }));
-
-    dynamicRoutes = [...profileRoutes, ...postRoutes, ...productRoutes, ...hashtagRoutes, ...guildRoutes];
+    dynamicRoutes = [...profileRoutes, ...postRoutes];
   } catch {
     // Wenn Supabase zickt — wenigstens die statischen Routes liefern.
     dynamicRoutes = [];

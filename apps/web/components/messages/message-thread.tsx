@@ -16,7 +16,6 @@ import Link from 'next/link';
 import type { Route } from 'next';
 import { createBrowserClient } from '@supabase/ssr';
 import { Send, ImagePlus, Loader2, Smile, CornerDownRight, X, Check, CheckCheck, Trash2 } from 'lucide-react';
-import { GifPicker } from './gif-picker';
 import type {
   MessageWithContext,
   ReactionAggregate,
@@ -550,24 +549,6 @@ const MessageBubble = memo(function MessageBubble({
             </a>
           )}
 
-          {/* Story-Reply-Karte — wird gezeigt wenn die Nachricht als Antwort auf
-              eine Story gesendet wurde (story_media_url enthält die Story-Media-URL).
-              Parität zu mobile storyReplyWrap (app/messages/[id].tsx). */}
-          {msg.story_media_url && (
-            <div className="mb-1.5 overflow-hidden rounded-xl border border-white/10 bg-black/20">
-              <p className={`px-2.5 pt-2 pb-1 text-[10px] opacity-60 ${isOwn ? 'text-primary-foreground' : 'text-foreground'}`}>
-                📸 Antwort auf Story
-              </p>
-              <Image
-                src={msg.story_media_url}
-                alt="Story"
-                width={200}
-                height={140}
-                className="h-36 w-full object-cover"
-              />
-            </div>
-          )}
-
           {msg.post && (
             <Link
               href={`/p/${msg.post.id}` as Route}
@@ -760,9 +741,6 @@ function Composer({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
-  // ── v1.w.UI.190 — GIF-Picker ─────────────────────────────────────────────────
-  const [showGifPicker, setShowGifPicker] = useState(false);
-
   // Cleanup Object-URL bei Unmount oder wenn das Bild entfernt wird.
   const clearPendingImage = useCallback(() => {
     if (pendingImagePreviewUrl) URL.revokeObjectURL(pendingImagePreviewUrl);
@@ -771,42 +749,6 @@ function Composer({
     setPendingImageName(null);
     setUploadError(null);
   }, [pendingImagePreviewUrl]);
-
-  // v1.w.UI.190 — GIF direkt senden (Giphy-URL, kein R2-Upload nötig).
-  // Parity mit mobile handleSendGif in app/messages/[id].tsx.
-  const handleSendGif = useCallback(
-    (gifUrl: string) => {
-      setShowGifPicker(false);
-      const optimistic: PendingMessage = {
-        id: `pending-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-        conversation_id: conversationId,
-        sender_id: viewerId,
-        content: null,
-        image_url: gifUrl,
-        post_id: null,
-        reply_to_id: null,
-        story_media_url: null,
-        read: false,
-        created_at: new Date().toISOString(),
-        reply_to: null,
-        post: null,
-        pending: true,
-      };
-      onSent(optimistic);
-      startTransition(async () => {
-        const res = await sendDirectMessage({
-          conversationId,
-          content: null,
-          imageUrl: gifUrl,
-          replyToId: null,
-        });
-        if (!res.ok) {
-          process.env.NODE_ENV !== 'production' && console.warn('[GIF send failed]', res.error);
-        }
-      });
-    },
-    [conversationId, viewerId, onSent, startTransition],
-  );
 
   const handleFileSelect = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -871,25 +813,24 @@ function Composer({
   // (deduplizierten) Topic → "cannot add presence callbacks after subscribe()" → #310.
   const typingStopTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Cleanup: bei Unmount NUR den laufenden Stop-Timer killen. Das explizite
-  // `track({typing:false})` ist absichtlich raus: `typingChannelRef.current`
-  // im Cleanup zu lesen war ein Realtime-Channel-Leak-Risiko (ESLint-Warning
-  // #818) — die Ref gehört dem Parent (MessageThread), wird dort gesetzt UND
-  // entfernt. Beim Parent-Unmount/Dep-Change ruft der Owner-Effekt
-  // `removeChannel(channel)`, was Supabase-seitig automatisch die Presence
-  // dieses Users untrackt — der Peer sieht das funktional identisch zu
-  // `typing:false`. Kein Bedarf hier reinzugreifen.
+  // Cleanup: bei Unmount den laufenden Stop-Timer killen und letzten
+  // `typing: false`-State senden, damit der Peer keine hängende "schreibt…"-Dots sieht.
   useEffect(() => {
-    // Lokale Referenz auf den Timer-Ref capturen, damit der Cleanup nicht
-    // `.current` während des Cleanups liest (gleiche ESLint-Klasse).
-    const timerRef = typingStopTimer;
     return () => {
-      if (timerRef.current) {
-        clearTimeout(timerRef.current);
-        timerRef.current = null;
+      if (typingStopTimer.current) {
+        clearTimeout(typingStopTimer.current);
+        typingStopTimer.current = null;
+      }
+      const ch = typingChannelRef.current;
+      if (ch && !isSelf) {
+        try {
+          ch.track({ typing: false });
+        } catch {
+          // Channel might already be torn down; silently ignore.
+        }
       }
     };
-  }, []);
+  }, [isSelf, typingChannelRef]);
 
   const onTextChange = useCallback(
     (v: string) => {
@@ -977,7 +918,7 @@ function Composer({
   };
 
   return (
-    <div className="relative border-t bg-background px-3 py-2">
+    <div className="border-t bg-background px-3 py-2">
       {replyTo && (
         <div className="mb-2 flex items-center gap-2 rounded-lg bg-muted/60 px-3 py-1.5 text-xs">
           <CornerDownRight className="h-3.5 w-3.5 flex-none" aria-hidden="true" />
@@ -1074,14 +1015,6 @@ function Composer({
         </div>
       )}
 
-      {/* v1.w.UI.190 — GIF Picker panel (positioned absolute above compose bar) */}
-      {showGifPicker && (
-        <GifPicker
-          onSelect={handleSendGif}
-          onClose={() => setShowGifPicker(false)}
-        />
-      )}
-
       {/* Hidden file input — wird via ImagePlus-Button getriggert */}
       <input
         ref={fileInputRef}
@@ -1103,18 +1036,6 @@ function Composer({
           title="Bild anhängen"
         >
           <ImagePlus className="h-5 w-5" />
-        </button>
-        {/* v1.w.UI.190 — GIF button (parity with mobile GIF picker) */}
-        <button
-          type="button"
-          onClick={() => setShowGifPicker((v) => !v)}
-          disabled={isUploading}
-          className="grid h-9 w-9 flex-none place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
-          aria-label="GIF senden"
-          title="GIF senden"
-          aria-pressed={showGifPicker}
-        >
-          <span className="text-[11px] font-black tracking-tighter text-current">GIF</span>
         </button>
         <textarea
           ref={textareaRef}

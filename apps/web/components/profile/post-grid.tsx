@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useCallback, useEffect } from 'react';
+import { useRef, useState, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { ReactNode } from 'react';
@@ -8,7 +8,6 @@ import { Grid3x3, Play } from 'lucide-react';
 import type { Post } from '@shared/types';
 import { cn } from '@/lib/utils';
 import { EmptyState } from '@/components/ui/empty-state';
-import { Skeleton } from '@/components/ui/skeleton';
 
 // -----------------------------------------------------------------------------
 // PostGrid — 3-Spalten-Grid, 9:16, klickbar zu /p/[id].
@@ -51,19 +50,11 @@ function PostGridItem({ post }: { post: Post }) {
     setVideoReady(false);
   }, []);
 
-  // v1.w.UI.205 — respect the stored aspect ratio (portrait/landscape/square).
-  const aspectClass =
-    post.aspect_ratio === 'landscape'
-      ? 'aspect-video'
-      : post.aspect_ratio === 'square'
-        ? 'aspect-square'
-        : 'aspect-[9/16]';
-
   return (
     <li className="group relative overflow-hidden rounded-md bg-muted">
       <Link
         href={`/p/${post.id}`}
-        className={`relative block ${aspectClass} w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`}
+        className="relative block aspect-[9/16] w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
         aria-label={
           post.caption ? `Video ansehen: ${post.caption.slice(0, 80)}` : 'Video ansehen'
         }
@@ -108,25 +99,12 @@ function PostGridItem({ post }: { post: Post }) {
           )}
         />
 
-        {/* v1.w.UI.179 — Pin badge oben links */}
-        {post.is_pinned && (
-          <div className="pointer-events-none absolute left-1.5 top-1.5 z-10 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] leading-none text-white backdrop-blur-sm">
-            📌
-          </div>
-        )}
-
         {/* View-Count unten links, leichter Gradient-Boden für Lesbarkeit */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between bg-gradient-to-t from-black/70 to-transparent p-2">
           <span className="inline-flex items-center gap-1 text-xs font-medium text-white drop-shadow">
             <Play className="h-3 w-3 fill-current" />
             {formatCount(post.view_count)}
           </span>
-          {/* v1.w.UI.169 — WOZ badge on thumbnail */}
-          {post.women_only && (
-            <span className="text-xs leading-none" aria-label="Women Only" title="Women-Only Zone">
-              🌸
-            </span>
-          )}
         </div>
       </Link>
     </li>
@@ -134,26 +112,14 @@ function PostGridItem({ post }: { post: Post }) {
 }
 
 // ─── PostGrid ─────────────────────────────────────────────────────────────────
-//
-// v1.w.UI.121: optional infinite scroll via `fetchMoreUrl` + `initialHasMore`.
-//   fetchMoreUrl — base URL for the paginated API endpoint. The component
-//     appends `?offset=N` automatically. If omitted, the grid is static.
-//   initialHasMore — whether the server seed was exactly PAGE_SIZE, meaning
-//     there may be more posts to load.
-
-const POST_PAGE_SIZE = 24;
-
-type PostPageResponse = { posts: Post[]; hasMore: boolean };
 
 export function PostGrid({
-  posts: initialPosts,
+  posts,
   className,
   emptyTitle,
   emptyDescription,
   emptyIcon,
   emptyCta,
-  fetchMoreUrl,
-  initialHasMore = false,
 }: {
   posts: Post[];
   className?: string;
@@ -161,49 +127,7 @@ export function PostGrid({
   emptyDescription?: string;
   emptyIcon?: ReactNode;
   emptyCta?: ReactNode;
-  /** Base API URL for infinite scroll, e.g. "/api/posts/user/abc". */
-  fetchMoreUrl?: string;
-  /** True if the initial posts array hit the page limit. */
-  initialHasMore?: boolean;
 }) {
-  const [posts, setPosts]     = useState<Post[]>(initialPosts);
-  const [hasMore, setHasMore] = useState(initialHasMore && !!fetchMoreUrl);
-  const [fetching, setFetching] = useState(false);
-  const offsetRef   = useRef(initialPosts.length);
-  const sentinelRef = useRef<HTMLDivElement | null>(null);
-
-  const loadMore = useCallback(async () => {
-    if (fetching || !hasMore || !fetchMoreUrl) return;
-    setFetching(true);
-    try {
-      const res = await fetch(`${fetchMoreUrl}?offset=${offsetRef.current}&limit=${POST_PAGE_SIZE}`);
-      if (!res.ok) return;
-      const { posts: next, hasMore: more } = (await res.json()) as PostPageResponse;
-      if (next.length === 0) { setHasMore(false); return; }
-      const seen = new Set(posts.map((p) => p.id));
-      const fresh = next.filter((p) => !seen.has(p.id));
-      setPosts((prev) => [...prev, ...fresh]);
-      offsetRef.current += next.length;
-      setHasMore(more);
-    } catch {
-      // silent
-    } finally {
-      setFetching(false);
-    }
-  }, [fetching, hasMore, fetchMoreUrl, posts]);
-
-  useEffect(() => {
-    if (!hasMore) return;
-    const el = sentinelRef.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      (entries) => { if (entries[0]?.isIntersecting) void loadMore(); },
-      { rootMargin: '400px' },
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [hasMore, loadMore]);
-
   if (posts.length === 0) {
     return (
       <EmptyState
@@ -218,27 +142,10 @@ export function PostGrid({
   }
 
   return (
-    <>
-      <ul className={cn('grid grid-cols-3 gap-1 sm:gap-1.5', className)}>
-        {posts.map((post) => (
-          <PostGridItem key={post.id} post={post} />
-        ))}
-      </ul>
-
-      {/* Sentinel + skeleton cells while fetching */}
-      {hasMore && (
-        <div ref={sentinelRef} className="mt-1">
-          {fetching && (
-            <ul className="grid grid-cols-3 gap-1 sm:gap-1.5">
-              {[...Array(6)].map((_, i) => (
-                <li key={i}>
-                  <Skeleton className="aspect-[9/16] w-full rounded-sm" />
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      )}
-    </>
+    <ul className={cn('grid grid-cols-3 gap-1 sm:gap-1.5', className)}>
+      {posts.map((post) => (
+        <PostGridItem key={post.id} post={post} />
+      ))}
+    </ul>
   );
 }

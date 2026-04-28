@@ -1,19 +1,17 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Heart, Flame, Gift, Users2, Laugh, Sparkles, Frown, HandMetal, BarChart3, Scissors, Check, Share2 } from 'lucide-react';
-import { sendLiveReaction, requestCoHost, cancelCoHostRequest, createLiveClipMarker } from '@/app/actions/live';
+import { Heart, Flame, Gift, Users2, Laugh, Sparkles, Frown, HandMetal } from 'lucide-react';
+import { sendLiveReaction, requestCoHost, cancelCoHostRequest } from '@/app/actions/live';
 import { LiveGiftPicker } from './live-gift-picker';
 import { LiveReactionOverlay } from './live-reaction-overlay';
-import { LivePollStartSheet } from './live-poll-start-sheet';
 import { useRemoteReactions } from './use-remote-reactions';
-import type { ActiveCoHostSSR, ActiveLivePollSSR } from '@/lib/data/live';
+import type { ActiveCoHostSSR } from '@/lib/data/live';
 
 // -----------------------------------------------------------------------------
-// LiveActionBar — unter dem Player. Vier Gruppen:
+// LiveActionBar — unter dem Player. Drei Gruppen:
 //  • Reactions: 6 Emoji-Buttons, client-side floating-heart animation
 //  • Gift-Button: öffnet GiftPicker-Sheet
-//  • Poll-Button: nur für Moderatoren/CoHosts (v1.w.UI.99, parity v1.27.4)
 //  • CoHost-Button: Request senden oder zurückziehen
 // -----------------------------------------------------------------------------
 
@@ -24,14 +22,6 @@ export interface LiveActionBarProps {
   viewerId: string;
   isHost: boolean;
   cohosts: ActiveCoHostSSR[];
-  /** v1.w.UI.99: Mod/CoHost-gated poll-start. Undefined = not a moderator. */
-  isModerator?: boolean;
-  /** SSR-loaded active poll; kept in sync via LivePollStartSheet.onPollChange. */
-  activePoll?: ActiveLivePollSSR | null;
-  /** ISO timestamp of session start — used to compute positionSecs for clip markers (v1.w.UI.140). */
-  sessionStartedAt?: string | null;
-  /** v1.w.UI.185 — wenn false: Gift-Button ausblenden (Host hat Geschenke deaktiviert). */
-  allowGifts?: boolean;
 }
 
 const REACTIONS = [
@@ -50,20 +40,10 @@ export function LiveActionBar({
   viewerId,
   isHost,
   cohosts,
-  isModerator = false,
-  activePoll: initialActivePoll = null,
-  sessionStartedAt = null,
-  allowGifts = true,
 }: LiveActionBarProps) {
   const [giftOpen, setGiftOpen] = useState(false);
-  const [pollSheetOpen, setPollSheetOpen] = useState(false);
-  const [currentPoll, setCurrentPoll] = useState<ActiveLivePollSSR | null>(initialActivePoll);
   const [coHostRequested, setCoHostRequested] = useState(false);
   const [overlayBurst, setOverlayBurst] = useState<{ key: string; id: number } | null>(null);
-  // v1.w.UI.140 — Clip marker: brief "marked!" feedback state (resets after 2 s)
-  const [clipMarked, setClipMarked] = useState(false);
-  // v1.w.UI.199 — Share button: brief "Kopiert!"-feedback state
-  const [shareCopied, setShareCopied] = useState(false);
   const [, startTransition] = useTransition();
 
   // v1.w.UI.19 B6 — Remote Reactions von anderen Viewern. Das `sendLiveReaction`
@@ -100,42 +80,6 @@ export function LiveActionBar({
     });
   };
 
-  // v1.w.UI.199 — Share: Web Share API → clipboard fallback
-  const handleShare = async () => {
-    const url = typeof window !== 'undefined' ? window.location.href : '';
-    const title = `${hostName} streamt live`;
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      try {
-        await navigator.share({ title, url });
-        return;
-      } catch {
-        // user cancelled or API unavailable — fall through to clipboard
-      }
-    }
-    try {
-      await navigator.clipboard.writeText(url);
-      setShareCopied(true);
-      setTimeout(() => setShareCopied(false), 2000);
-    } catch {
-      // clipboard blocked — nothing to do silently
-    }
-  };
-
-  // v1.w.UI.140 — Mark clip: record the current stream position.
-  // positionSecs = elapsed time since stream started (best approximation client-side).
-  const handleClipMarker = () => {
-    const positionSecs = sessionStartedAt
-      ? Math.max(0, Math.floor((Date.now() - Date.parse(sessionStartedAt)) / 1000))
-      : 0;
-    startTransition(async () => {
-      const res = await createLiveClipMarker(sessionId, positionSecs);
-      if (res.ok) {
-        setClipMarked(true);
-        setTimeout(() => setClipMarked(false), 2000);
-      }
-    });
-  };
-
   return (
     <>
       <div className="flex flex-wrap items-center gap-2 rounded-xl border bg-card p-2">
@@ -157,61 +101,15 @@ export function LiveActionBar({
 
         <div className="h-6 w-px bg-border" />
 
-        {/* Share-Button — v1.w.UI.199: Web Share API → clipboard fallback */}
+        {/* Gift-Button */}
         <button
           type="button"
-          onClick={handleShare}
-          className={[
-            'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',
-            shareCopied
-              ? 'border-green-500 bg-green-500/10 text-green-600 dark:text-green-400'
-              : 'hover:bg-muted',
-          ].join(' ')}
-          title="Stream-Link teilen"
-          aria-label="Stream-Link teilen"
+          onClick={() => setGiftOpen(true)}
+          className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-br from-amber-400 to-pink-500 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition-transform hover:scale-105"
         >
-          {shareCopied ? (
-            <><Check className="h-4 w-4" />Kopiert!</>
-          ) : (
-            <><Share2 className="h-4 w-4" />Teilen</>
-          )}
+          <Gift className="h-4 w-4" />
+          Geschenk
         </button>
-
-        <div className="h-6 w-px bg-border" />
-
-        {/* Gift-Button — v1.w.UI.185: nur rendern wenn allowGifts */}
-        {allowGifts && (
-          <button
-            type="button"
-            onClick={() => setGiftOpen(true)}
-            className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-br from-amber-400 to-pink-500 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition-transform hover:scale-105"
-          >
-            <Gift className="h-4 w-4" />
-            Geschenk
-          </button>
-        )}
-
-        {/* Poll-Button — nur für Moderatoren / aktive CoHosts (v1.w.UI.99) */}
-        {isModerator && (
-          <>
-            <div className="h-6 w-px bg-border" />
-            <button
-              type="button"
-              onClick={() => setPollSheetOpen(true)}
-              title={currentPoll ? 'Aktive Umfrage verwalten' : 'Umfrage starten'}
-              aria-label={currentPoll ? 'Aktive Umfrage verwalten' : 'Umfrage starten'}
-              className={[
-                'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',
-                currentPoll
-                  ? 'border-violet-500 bg-violet-500/10 text-violet-600 dark:text-violet-400'
-                  : 'hover:bg-muted',
-              ].join(' ')}
-            >
-              <BarChart3 className="h-4 w-4" />
-              {currentPoll ? 'Umfrage läuft' : 'Umfrage'}
-            </button>
-          </>
-        )}
 
         {/* CoHost-Button (nur wenn nicht Host und nicht schon CoHost) */}
         {!isHost && !alreadyCoHost && (
@@ -235,30 +133,6 @@ export function LiveActionBar({
           </span>
         )}
 
-        {/* Clip-Marker — v1.w.UI.140. Nur für eingeloggte Viewer (nicht Hosts,
-            die sehen die Markers sowieso im Replay). Brief "✓ Markiert!"-Feedback. */}
-        {!isHost && (
-          <button
-            type="button"
-            onClick={handleClipMarker}
-            disabled={clipMarked}
-            className={[
-              'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors',
-              clipMarked
-                ? 'border-green-500 bg-green-500/10 text-green-600 dark:text-green-400'
-                : 'hover:bg-muted',
-            ].join(' ')}
-            title="Diesen Moment als Clip markieren"
-            aria-label="Clip markieren"
-          >
-            {clipMarked ? (
-              <><Check className="h-4 w-4" />Markiert!</>
-            ) : (
-              <><Scissors className="h-4 w-4" />Clip</>
-            )}
-          </button>
-        )}
-
         <div className="ml-auto text-[11px] text-muted-foreground">
           Host: <span className="font-medium text-foreground">{hostName}</span>
         </div>
@@ -279,19 +153,6 @@ export function LiveActionBar({
           hostName={hostName}
           cohosts={cohosts}
           onClose={() => setGiftOpen(false)}
-        />
-      )}
-
-      {/* Poll-Sheet — nur für Moderatoren/CoHosts */}
-      {pollSheetOpen && (
-        <LivePollStartSheet
-          sessionId={sessionId}
-          activePoll={currentPoll}
-          onClose={() => setPollSheetOpen(false)}
-          onPollChange={(p) => {
-            setCurrentPoll(p);
-            if (!p) setPollSheetOpen(false);
-          }}
         />
       )}
     </>

@@ -22,8 +22,8 @@ import type { PublicProfile, Post, Story } from '@shared/types';
 //     user_id               → author_id      (FK: posts_author_id_fkey)
 //     video_url             → media_url
 //     hashtags              → tags
-//     duration_secs / music_id / allow_stitch
-//                           → existieren nicht → null/true-Defaults
+//     duration_secs / music_id / allow_stitch / share_count
+//                           → existieren nicht → null/0/true-Defaults
 //     like_count / comment_count
 //                           → nicht denormalisiert → embedded aggregate
 //                             via likes(count) / comments(count)
@@ -84,7 +84,7 @@ export const getPublicProfile = cache(async (username: string): Promise<PublicPr
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, username, display_name, avatar_url, bio, is_verified, is_private, website, teip')
+    .select('id, username, display_name, avatar_url, bio, is_verified')
     .eq('username', username.toLowerCase())
     .maybeSingle();
 
@@ -136,46 +136,6 @@ export const getPublicProfile = cache(async (username: string): Promise<PublicPr
     post_count: postsRes.count ?? 0,
     is_live: !!liveRes.data?.id,
     live_session_id: liveRes.data?.id ?? null,
-    is_private: (data as any).is_private ?? false,
-    website: (data as any).website ?? null,
-    teip: (data as any).teip ?? null,
-  };
-});
-
-// -----------------------------------------------------------------------------
-// getFollowState — follows + pending follow_request check for the viewer.
-// Replaces the bare `isFollowing` cache for profile pages that need to show
-// "Anfrage gesendet" when the target has is_private=true.
-// -----------------------------------------------------------------------------
-
-export interface FollowState {
-  following: boolean;
-  pendingRequest: boolean;
-}
-
-export const getFollowState = cache(async (targetUserId: string): Promise<FollowState> => {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.id === targetUserId) return { following: false, pendingRequest: false };
-
-  const [followRow, requestRow] = await Promise.all([
-    supabase
-      .from('follows')
-      .select('follower_id')
-      .eq('follower_id', user.id)
-      .eq('following_id', targetUserId)
-      .maybeSingle(),
-    supabase
-      .from('follow_requests')
-      .select('id')
-      .eq('sender_id', user.id)
-      .eq('receiver_id', targetUserId)
-      .maybeSingle(),
-  ]);
-
-  return {
-    following: !!followRow.data,
-    pendingRequest: !!requestRow.data,
   };
 });
 
@@ -198,20 +158,10 @@ type PostRowMobile = {
   tags: string[] | null;
   allow_comments: boolean | null;
   allow_duet: boolean | null;
-  // v1.w.UI.169 — WOZ badge in PostGrid
-  women_only?: boolean | null;
-  // v1.w.UI.171 — real share count from DB
-  share_count?: number | null;
-  // v1.w.UI.179 — pinned to author profile
-  is_pinned?: boolean | null;
-  // v1.w.UI.205 — aspect ratio at upload time
-  aspect_ratio?: 'portrait' | 'landscape' | 'square' | null;
   created_at: string;
   like_count?: unknown; // embedded aggregate
   comment_count?: unknown; // embedded aggregate
 };
-
-const VALID_RATIOS = ['portrait', 'landscape', 'square'] as const;
 
 function toPost(row: PostRowMobile): Post {
   return {
@@ -227,19 +177,12 @@ function toPost(row: PostRowMobile): Post {
     view_count: row.view_count ?? 0,
     like_count: extractCount(row.like_count),
     comment_count: extractCount(row.comment_count),
-    share_count: row.share_count ?? 0,
+    share_count: 0,
     hashtags: row.tags ?? [],
     music_id: null,
     allow_comments: row.allow_comments ?? true,
     allow_duet: row.allow_duet ?? true,
     allow_stitch: true,
-    women_only: row.women_only ?? false,
-    // v1.w.UI.179 — carry pinned flag through so PostGrid can badge it
-    is_pinned: row.is_pinned ?? false,
-    // v1.w.UI.205 — carry aspect_ratio through for PostGrid display
-    aspect_ratio: VALID_RATIOS.includes(row.aspect_ratio as 'portrait' | 'landscape' | 'square')
-      ? (row.aspect_ratio as 'portrait' | 'landscape' | 'square')
-      : 'portrait',
     created_at: row.created_at,
   };
 }
@@ -251,16 +194,14 @@ function toPost(row: PostRowMobile): Post {
 export const getProfilePosts = cache(
   async (userId: string, limit = 24, before?: string): Promise<Post[]> => {
     const supabase = await createClient();
-    // v1.w.UI.179 — include is_pinned; order pinned post first, then newest first.
     let query = supabase
       .from('posts')
       .select(
-        `id, author_id, caption, media_url, thumbnail_url, view_count, share_count, tags, allow_comments, allow_duet, women_only, is_pinned, aspect_ratio, created_at,
+        `id, author_id, caption, media_url, thumbnail_url, view_count, tags, allow_comments, allow_duet, created_at,
          like_count:likes(count),
          comment_count:comments(count)`,
       )
       .eq('author_id', userId)
-      .order('is_pinned', { ascending: false })
       .order('created_at', { ascending: false })
       .limit(limit);
 
@@ -271,117 +212,6 @@ export const getProfilePosts = cache(
     return (data as unknown as PostRowMobile[]).map(toPost);
   },
 );
-
-// -----------------------------------------------------------------------------
-// getProfilePostsPage — non-cached, offset-based variant of getProfilePosts.
-// Used by GET /api/posts/user/[userId] for PostGrid infinite scroll.
-// v1.w.UI.121
-// -----------------------------------------------------------------------------
-
-export async function getProfilePostsPage(
-  userId: string,
-  offset: number,
-  limit: number,
-): Promise<Post[]> {
-  const supabase = await createClient();
-  // v1.w.UI.179 — include is_pinned; pinned posts always sort first.
-  const { data, error } = await supabase
-    .from('posts')
-    .select(
-      `id, author_id, caption, media_url, thumbnail_url, view_count, share_count, tags, allow_comments, allow_duet, women_only, is_pinned, aspect_ratio, created_at,
-       like_count:likes(count),
-       comment_count:comments(count)`,
-    )
-    .eq('author_id', userId)
-    .order('is_pinned', { ascending: false })
-    .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1);
-
-  if (error || !data) return [];
-  return (data as unknown as PostRowMobile[]).map(toPost);
-}
-
-// -----------------------------------------------------------------------------
-// getBookmarkedPostsPage — non-cached, offset-based variant of getBookmarkedPosts.
-// Used by GET /api/saved for PostGrid infinite scroll on /saved.
-// v1.w.UI.121
-// -----------------------------------------------------------------------------
-
-export async function getBookmarkedPostsPage(
-  offset: number,
-  limit: number,
-): Promise<Post[]> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return [];
-
-  const { data, error } = await supabase
-    .from('bookmarks')
-    .select(
-      `bookmarked_at:created_at,
-       post:posts!bookmarks_post_id_fkey (
-         id, author_id, caption, media_url, thumbnail_url, view_count, share_count, tags,
-         allow_comments, allow_duet, aspect_ratio, created_at,
-         like_count:likes(count),
-         comment_count:comments(count)
-       )`,
-    )
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1);
-
-  if (error || !data) return [];
-
-  const posts: Post[] = [];
-  for (const row of data as unknown as BookmarkJoinRow[]) {
-    if (!row.post) continue;
-    posts.push(toPost(row.post));
-  }
-  return posts;
-}
-
-// -----------------------------------------------------------------------------
-// getLikedPostsPage — non-cached, offset-based variant for infinite scroll.
-// Auth-scoped: returns posts liked by the authenticated user only (likes are
-// private — only shown on isSelf profile tab). v1.w.UI.126
-// -----------------------------------------------------------------------------
-
-export async function getLikedPostsPage(
-  offset: number,
-  limit: number,
-): Promise<Post[]> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return [];
-
-  const { data, error } = await supabase
-    .from('likes')
-    .select(
-      `liked_at:created_at,
-       post:posts!likes_post_id_fkey (
-         id, author_id, caption, media_url, thumbnail_url, view_count, share_count, tags,
-         allow_comments, allow_duet, aspect_ratio, created_at,
-         like_count:likes(count),
-         comment_count:comments(count)
-       )`,
-    )
-    .eq('user_id', user.id)
-    .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1);
-
-  if (error || !data) return [];
-
-  const posts: Post[] = [];
-  for (const row of data as unknown as LikesJoinRow[]) {
-    if (!row.post) continue;
-    posts.push(toPost(row.post));
-  }
-  return posts;
-}
 
 // -----------------------------------------------------------------------------
 // Posts liked by a profile — newest like first, capped at limit.
@@ -407,8 +237,8 @@ export const getProfileLikedPosts = cache(
       .select(
         `liked_at:created_at,
          post:posts!likes_post_id_fkey (
-           id, author_id, caption, media_url, thumbnail_url, view_count, share_count, tags,
-           allow_comments, allow_duet, aspect_ratio, created_at,
+           id, author_id, caption, media_url, thumbnail_url, view_count, tags,
+           allow_comments, allow_duet, created_at,
            like_count:likes(count),
            comment_count:comments(count)
          )`,
@@ -455,8 +285,8 @@ export const getBookmarkedPosts = cache(
       .select(
         `bookmarked_at:created_at,
          post:posts!bookmarks_post_id_fkey (
-           id, author_id, caption, media_url, thumbnail_url, view_count, share_count, tags,
-           allow_comments, allow_duet, aspect_ratio, created_at,
+           id, author_id, caption, media_url, thumbnail_url, view_count, tags,
+           allow_comments, allow_duet, created_at,
            like_count:likes(count),
            comment_count:comments(count)
          )`,
@@ -596,7 +426,7 @@ export const getPost = cache(async (postId: string): Promise<PostWithAuthor | nu
   const { data, error } = await supabase
     .from('posts')
     .select(
-      `id, author_id, caption, media_url, media_type, thumbnail_url, view_count, share_count, tags, allow_comments, allow_duet, allow_download, privacy, women_only, aspect_ratio, created_at,
+      `id, author_id, caption, media_url, media_type, thumbnail_url, view_count, tags, allow_comments, allow_duet, allow_download, privacy, women_only, aspect_ratio, created_at,
        like_count:likes(count),
        comment_count:comments(count),
        author:profiles!posts_author_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )`,
@@ -893,21 +723,10 @@ export async function getMoreComments(
 
 // -----------------------------------------------------------------------------
 // Story with TTL check — returns null if expired (Mobile hat kein expires_at).
-// v1.w.UI.161: Extended with interactive poll data + vote counts.
 // -----------------------------------------------------------------------------
-
-export type StoryPoll = {
-  type: 'poll';
-  question: string;
-  options: string[];
-};
 
 export interface StoryWithAuthor extends Story {
   author: Pick<PublicProfile, 'id' | 'username' | 'display_name' | 'avatar_url' | 'verified'>;
-  // v1.w.UI.161: Poll fields — present when stories.interactive is set.
-  poll?: StoryPoll | null;
-  poll_votes?: number[];  // vote count per option index (length === options.length)
-  my_vote?: number | null; // option_idx the current user voted, null = not voted
 }
 
 type StoryRowMobile = {
@@ -916,29 +735,24 @@ type StoryRowMobile = {
   media_url: string | null;
   media_type: 'image' | 'video' | null;
   created_at: string;
-  interactive: unknown | null;
   author: AuthorRow | AuthorRow[] | null;
 };
 
 export const getStory = cache(async (storyId: string): Promise<StoryWithAuthor | null> => {
   const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('stories')
+    .select(
+      `id, user_id, media_url, media_type, created_at,
+       author:profiles!stories_user_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )`,
+    )
+    .eq('id', storyId)
+    .maybeSingle();
 
-  const [storyRes, { data: { user } }] = await Promise.all([
-    supabase
-      .from('stories')
-      .select(
-        `id, user_id, media_url, media_type, created_at, interactive,
-         author:profiles!stories_user_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )`,
-      )
-      .eq('id', storyId)
-      .maybeSingle(),
-    supabase.auth.getUser(),
-  ]);
-
-  if (storyRes.error || !storyRes.data) return null;
+  if (error || !data) return null;
 
   // 24h TTL — Mobile-Schema hat kein explizites expires_at, wir rechnen es.
-  const row = storyRes.data as unknown as StoryRowMobile;
+  const row = data as unknown as StoryRowMobile;
   const createdMs = new Date(row.created_at).getTime();
   const expiresMs = createdMs + STORY_TTL_MS;
   if (expiresMs < Date.now()) return null;
@@ -956,44 +770,6 @@ export const getStory = cache(async (storyId: string): Promise<StoryWithAuthor |
     view_count: 0,
     created_at: row.created_at,
   };
-
-  // v1.w.UI.161: Parse poll + fetch vote counts if interactive is set.
-  const interactiveRaw = row.interactive as { type?: string; question?: string; options?: string[] } | null;
-  if (interactiveRaw?.type === 'poll' && Array.isArray(interactiveRaw.options)) {
-    const poll: StoryPoll = {
-      type: 'poll',
-      question: interactiveRaw.question ?? '',
-      options: interactiveRaw.options as string[],
-    };
-
-    // Fetch all votes for this story + optionally the current user's vote.
-    const [votesRes, myVoteRes] = await Promise.all([
-      supabase
-        .from('story_votes')
-        .select('option_idx')
-        .eq('story_id', storyId),
-      user
-        ? supabase
-            .from('story_votes')
-            .select('option_idx')
-            .eq('story_id', storyId)
-            .eq('user_id', user.id)
-            .maybeSingle()
-        : Promise.resolve({ data: null }),
-    ]);
-
-    // Tally votes per option.
-    const tallied = new Array<number>(poll.options.length).fill(0);
-    for (const v of votesRes.data ?? []) {
-      const idx = v.option_idx as number;
-      if (idx >= 0 && idx < tallied.length) tallied[idx]++;
-    }
-
-    const myVote = myVoteRes.data ? (myVoteRes.data.option_idx as number) : null;
-
-    return { ...story, author, poll, poll_votes: tallied, my_vote: myVote };
-  }
-
   return { ...story, author };
 });
 
@@ -1170,76 +946,4 @@ export const getViewerFollowingSet = cache(async (): Promise<Set<string>> => {
     .limit(500);
 
   return new Set((data ?? []).map((f) => f.following_id as string));
-});
-
-// -----------------------------------------------------------------------------
-// getProfileReposts — v1.w.UI.164
-//
-// Liefert die Posts die ein User repostet hat (aus `reposts`-Tabelle),
-// geordnet nach Repost-Datum DESC. Identisches Datenmuster wie auf Mobile
-// (UserProfileContent.tsx: reposts Tab).
-//
-// Zwei-stufig:
-//   1. reposts WHERE user_id = userId ORDER BY created_at DESC LIMIT limit
-//   2. posts IN (post_ids) → gemappt auf Post[]
-//
-// Öffentlich lesbar (RLS: SELECT true auf reposts — jeder kann sehen was
-// ein User geteilt hat, entspricht TikTok-Verhalten).
-// -----------------------------------------------------------------------------
-
-export const getProfileReposts = cache(async (userId: string, limit = 48): Promise<Post[]> => {
-  const supabase = await createClient();
-
-  const { data: repostRows } = await supabase
-    .from('reposts')
-    .select('post_id, created_at')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-
-  if (!repostRows || repostRows.length === 0) return [];
-
-  const postIds = (repostRows as { post_id: string }[]).map((r) => r.post_id).filter(Boolean);
-  if (postIds.length === 0) return [];
-
-  const { data, error } = await supabase
-    .from('posts')
-    .select(
-      `id, author_id, caption, media_url, thumbnail_url, view_count, share_count, tags, allow_comments, allow_duet, aspect_ratio, created_at,
-       like_count:likes(count),
-       comment_count:comments(count)`,
-    )
-    .in('id', postIds);
-
-  if (error || !data) return [];
-
-  // Preserve repost-date order (post created_at ≠ repost created_at).
-  const byId = new Map((data as unknown as PostRowMobile[]).map((p) => [p.id, toPost(p)]));
-  return postIds.map((id) => byId.get(id)).filter((p): p is Post => p !== undefined);
-});
-
-// -----------------------------------------------------------------------------
-// getWOZFeed — Women-Only Zone Feed.
-// v1.w.UI.167: Parity mit app/women-only/index.tsx.
-// RLS-Policies auf `posts` schränken `women_only=true` automatisch auf
-// verifizierte Nutzerinnen ein. `is_women_only_verified()` DB-Helper greift.
-// Non-verified User erhalten leere Liste (RLS returns 0 rows).
-// -----------------------------------------------------------------------------
-
-export const getWOZFeed = cache(async (limit = 60): Promise<Post[]> => {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('posts')
-    .select(
-      `id, author_id, caption, media_url, thumbnail_url, view_count, share_count, tags, allow_comments, allow_duet, aspect_ratio, created_at,
-       like_count:likes(count),
-       comment_count:comments(count)`,
-    )
-    .eq('women_only', true)
-    .not('media_url', 'is', null)
-    .order('created_at', { ascending: false })
-    .limit(limit);
-
-  if (error || !data) return [];
-  return (data as unknown as PostRowMobile[]).map(toPost);
 });

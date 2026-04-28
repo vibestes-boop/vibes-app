@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Route } from 'next';
-import { ArrowLeft, Flag } from 'lucide-react';
+import { ArrowLeft, Flag, Users } from 'lucide-react';
 import {
   getLiveSession,
   getLiveComments,
@@ -12,28 +12,14 @@ import {
   getIsFollowingHost,
   getIsSessionModerator,
 } from '@/lib/data/live';
-import { getActiveGiftGoal } from '@/lib/data/live-host';
-import { getHostShopCount } from '@/lib/data/shop';
 import { getUser } from '@/lib/auth/session';
 import { LiveVideoPlayer } from '@/components/live/live-video-player';
 import { LiveActionBar } from '@/components/live/live-action-bar';
-import { LiveActivePollWatcher } from '@/components/live/live-active-poll-watcher';
+import { LivePollPanel } from '@/components/live/live-poll-panel';
 import { LiveHostPill } from '@/components/live/live-host-pill';
 import { LiveChatOverlay } from '@/components/live/live-chat-overlay';
 import { LiveEnterClient } from '@/components/live/live-enter-client';
 import { LiveGiftAnimationLayer } from '@/components/live/live-gift-animation-layer';
-import { LiveGiftGoalViewer } from '@/components/live/live-gift-goal-viewer';
-import { LiveAudienceEntry } from '@/components/live/live-audience-entry';
-import { LiveSessionEndWatcher } from '@/components/live/live-session-end-watcher';
-import { LiveCoHostWatcher } from '@/components/live/live-cohost-watcher';
-import { LiveGiftLeaderboard } from '@/components/live/live-gift-leaderboard';
-import { LiveShoppingViewer } from '@/components/live/live-shopping-viewer';
-import { LiveBattleOverlay } from '@/components/live/live-battle-overlay';
-import { LiveDuetInviteWatcher } from '@/components/live/live-duet-invite-watcher';
-import { LiveWelcomeToasts } from '@/components/live/live-welcome-toasts';
-import { LiveHostShopBadge } from '@/components/live/live-host-shop-sheet';
-import { LiveStickerLayer } from '@/components/live/live-sticker-layer';
-import { LivePlacedProductLayer } from '@/components/live/live-placed-product-layer';
 import {
   glassPillStrong,
   glassSurface,
@@ -123,87 +109,23 @@ export default async function LiveViewerPage({ params }: PageProps) {
   if (!session) notFound();
 
   // Initial-State für Client-Komponenten
-  const shopEnabled = !!(session.shop_enabled);
-  const [comments, activePoll, cohosts, isFollowing, isModerator, activeGiftGoal, hostShopCount] =
-    await Promise.all([
-      getLiveComments(id, 50),
-      getActiveLivePoll(id),
-      getActiveCoHosts(id),
-      user ? getIsFollowingHost(session.host_id) : Promise.resolve(false),
-      user ? getIsSessionModerator(id) : Promise.resolve(false),
-      getActiveGiftGoal(id).catch(() => null), // v1.w.UI.137 — gift goal viewer
-      shopEnabled ? getHostShopCount(session.host_id) : Promise.resolve(0), // v1.w.UI.200 — shop badge
-    ]);
+  const [comments, activePoll, cohosts, isFollowing, isModerator] = await Promise.all([
+    getLiveComments(id, 50),
+    getActiveLivePoll(id),
+    getActiveCoHosts(id),
+    user ? getIsFollowingHost(session.host_id) : Promise.resolve(false),
+    user ? getIsSessionModerator(id) : Promise.resolve(false),
+  ]);
 
   const ended = session.status !== 'active';
   const hostName = session.host?.display_name ?? session.host?.username ?? 'Unbekannt';
   const viewerId = user?.id ?? null;
   const isHost = viewerId === session.host_id;
 
-  // v1.w.UI.188 — Followers-only chat: non-followers can't chat when flag is set.
-  // isHost and isModerator are exempted (they can always chat).
-  const allowCommentsEffective =
-    (session.allow_comments ?? true) &&
-    !(
-      (session.followers_only_chat ?? false) &&
-      !isHost &&
-      !isModerator &&
-      !isFollowing
-    );
-
-  // v1.w.UI.136 — CoHost Duet-Layout: ersten aktiven CoHost an LiveVideoPlayer übergeben.
-  const activeCoHost = cohosts[0] ?? null;
-  const coHostId = activeCoHost?.user_id ?? null;
-  const coHostName = activeCoHost?.profile?.username ?? null;
-
-  // ── JSON-LD: BroadcastEvent + VideoObject schema ──────────────────────────
-  // BroadcastEvent: Google uses this to show a "LIVE" badge in search results
-  // when the stream is active (eventStatus = EventScheduled/InProgress).
-  // Combined with VideoObject so embedded players can be indexed.
-  // v1.w.UI.134 — JSON-LD structured data batch.
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://serlo.app';
-  const liveJsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'BroadcastEvent',
-    name: session.title ?? `Live mit ${hostName}`,
-    description: session.title
-      ? `${hostName} streamt live auf Serlo: ${session.title}`
-      : `${hostName} streamt live auf Serlo.`,
-    startDate: session.started_at,
-    ...(ended && session.ended_at ? { endDate: session.ended_at } : {}),
-    eventStatus: ended
-      ? 'https://schema.org/EventEnded'
-      : 'https://schema.org/EventScheduled',
-    eventAttendanceMode: 'https://schema.org/OnlineEventAttendanceMode',
-    location: { '@type': 'VirtualLocation', url: `${siteUrl}/live/${session.id}` },
-    organizer: {
-      '@type': 'Person',
-      name: hostName,
-      ...(session.host?.username ? { url: `${siteUrl}/u/${session.host.username}` } : {}),
-    },
-    ...(session.thumbnail_url ? { image: session.thumbnail_url } : {}),
-    workFeatured: {
-      '@type': 'VideoObject',
-      name: session.title ?? `Live mit ${hostName}`,
-      thumbnailUrl: session.thumbnail_url ?? undefined,
-      uploadDate: session.started_at,
-      embedUrl: `${siteUrl}/live/${session.id}`,
-    },
-  };
-
   return (
-    <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(liveJsonLd) }}
-      />
     <main className="relative h-[100dvh] w-full overflow-hidden bg-[#0b0b10]">
       {/* Join/Leave Tracking — nur Client, kein UI */}
       {viewerId && <LiveEnterClient sessionId={id} />}
-      {/* v1.w.UI.144 — Session-End-Watcher: router.refresh() wenn Host Stream beendet */}
-      <LiveSessionEndWatcher sessionId={id} alreadyEnded={ended} />
-      {/* v1.w.UI.145 — CoHost-Watcher: router.refresh() wenn CoHost joined/left */}
-      <LiveCoHostWatcher sessionId={id} ended={ended} />
 
       {/* Canvas — flex-centered 9:16 Frame. Padding damit der Frame auf breiten
           Viewports nicht an die Bildschirmränder klebt. */}
@@ -246,8 +168,6 @@ export default async function LiveViewerPage({ params }: PageProps) {
                 roomName={session.room_name}
                 hostId={session.host_id}
                 hostName={hostName}
-                coHostId={coHostId}
-                coHostName={coHostName}
               />
             )}
           </div>
@@ -268,15 +188,7 @@ export default async function LiveViewerPage({ params }: PageProps) {
            */}
           {!ended && <LiveGiftAnimationLayer sessionId={id} />}
 
-          {/* v1.w.UI.202 — Emoji-Sticker overlay (host-placed, read-only for viewers).
-               Subscribes to live_stickers postgres_changes; pointer-events-none. */}
-          {!ended && <LiveStickerLayer sessionId={id} />}
-
-          {/* v1.w.UI.208 — Placed-product cards overlay (host-placed, viewer-clickable).
-               Subscribes to live_placed_products postgres_changes; click → /shop/[id]. */}
-          {!ended && <LivePlacedProductLayer sessionId={id} />}
-
-          {/* Top-Bar: Back-Link links, WOZ-Badge + Melden rechts */}
+          {/* Top-Bar: Back-Link links, Melden rechts */}
           <div className="absolute inset-x-3 top-3 flex items-center justify-between">
             <Link
               href={'/live' as Route}
@@ -288,32 +200,18 @@ export default async function LiveViewerPage({ params }: PageProps) {
             >
               <ArrowLeft className="h-4 w-4" />
             </Link>
-            <div className="flex items-center gap-2">
-              {/* v1.w.UI.185 — WOZ badge: Host hat "Nur Frauen" aktiviert */}
-              {session.women_only && (
-                <span
-                  className={cn(
-                    glassPillStrong,
-                    'inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] font-semibold text-rose-300 shadow-elevation-1',
-                  )}
-                  title="Dieser Stream ist nur für Frauen"
-                >
-                  ♀ Nur Frauen
-                </span>
-              )}
-              {viewerId && !isHost && (
-                <Link
-                  href={`/live/${id}/report` as Route}
-                  className={cn(
-                    glassPillStrong,
-                    'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-medium text-white/85 shadow-elevation-1 hover:text-white',
-                  )}
-                >
-                  <Flag className="h-3 w-3" />
-                  Melden
-                </Link>
-              )}
-            </div>
+            {viewerId && !isHost && (
+              <Link
+                href={`/live/${id}/report` as Route}
+                className={cn(
+                  glassPillStrong,
+                  'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-medium text-white/85 shadow-elevation-1 hover:text-white',
+                )}
+              >
+                <Flag className="h-3 w-3" />
+                Melden
+              </Link>
+            )}
           </div>
 
           {/* Top-Left-Stack: Live-Badge + Viewer-Count + Host-Pill + Titel */}
@@ -324,14 +222,15 @@ export default async function LiveViewerPage({ params }: PageProps) {
                   <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
                   Live
                 </span>
-                {/* v1.w.UI.195 — tappable viewer count → audience modal */}
-                <LiveAudienceEntry
-                  sessionId={id}
-                  initialCount={session.viewer_count ?? 0}
-                  hostId={session.host_id}
-                  viewerId={viewerId}
-                  isHost={isHost}
-                />
+                <span
+                  className={cn(
+                    glassSurfaceDense,
+                    'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium text-white shadow-elevation-1',
+                  )}
+                >
+                  <Users className="h-3 w-3" />
+                  {(session.viewer_count ?? 0).toLocaleString('de-DE')}
+                </span>
               </div>
               <LiveHostPill
                 session={session}
@@ -343,9 +242,6 @@ export default async function LiveViewerPage({ params }: PageProps) {
                   {session.title}
                 </p>
               )}
-              {/* v1.w.UI.176 — Gift leaderboard: top-3 gifters strip.
-                  Returns null when no gifts yet — no layout gap. */}
-              <LiveGiftLeaderboard sessionId={id} />
             </div>
           )}
 
@@ -358,15 +254,19 @@ export default async function LiveViewerPage({ params }: PageProps) {
            * außen vor das Panel und neutralisieren die innere Card-Bordüre
            * via Arbitrary-Value-Child-Selector).
            */}
-          {/* v1.w.UI.143 — LiveActivePollWatcher manages poll lifecycle client-side:
-               INSERT subscription shows polls started after page load,
-               UPDATE subscription dismisses closed polls after 8s. */}
-          <LiveActivePollWatcher
-            sessionId={id}
-            initialPoll={activePoll}
-            viewerId={viewerId}
-            ended={ended}
-          />
+          {!ended && activePoll && (
+            <div className="absolute right-3 top-28 w-64 max-w-[55%]">
+              <div className={cn(glassSurface, 'rounded-2xl p-1 shadow-elevation-2')}>
+                <div className="[&_h3]:text-white [&_.rounded-xl]:bg-transparent [&_.rounded-xl]:!border-0 [&_.rounded-xl]:!p-2">
+                  <LivePollPanel
+                    sessionId={id}
+                    poll={activePoll}
+                    viewerId={viewerId}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/*
            * Chat-Overlay — links-unten, ABOVE der Action-Bar. Eigene compose-
@@ -380,10 +280,6 @@ export default async function LiveViewerPage({ params }: PageProps) {
            */}
           {!ended && (
             <div className="absolute bottom-20 left-3 right-3 sm:right-auto sm:w-[62%] sm:max-w-[420px]">
-              {/* v1.w.UI.192 — Welcome toasts: floats above chat compose bar */}
-              {viewerId && (
-                <LiveWelcomeToasts sessionId={id} viewerId={viewerId} />
-              )}
               <LiveChatOverlay
                 sessionId={id}
                 initialComments={comments}
@@ -393,58 +289,8 @@ export default async function LiveViewerPage({ params }: PageProps) {
                 isModerator={isModerator}
                 slowModeSeconds={session.slow_mode_seconds ?? 0}
                 ended={ended}
-                allowComments={allowCommentsEffective}
-                commentsLockedLabel={
-                  // v1.w.UI.188: distinguish followers-only lock from comments-disabled
-                  !allowCommentsEffective && (session.allow_comments ?? true) && (session.followers_only_chat ?? false)
-                    ? 'Nur Follower können chatten.'
-                    : undefined
-                }
               />
             </div>
-          )}
-
-          {/*
-           * Gift-Goal-Progress-Bar (v1.w.UI.137) — rechts, über der Action-Bar.
-           * Nur sichtbar wenn Host ein aktives Ziel gesetzt hat. Realtime-Update
-           * via Supabase Subscription in der Client-Komponente selbst.
-           * right-3 / bottom-20 klärt Kollision mit Chat (links) + Action-Bar (unten).
-           */}
-          {!ended && (
-            <div className="absolute bottom-20 right-3 z-10 flex flex-col items-end gap-2">
-              {/* v1.w.UI.200 — Host-Shop badge: only when host has shop_enabled */}
-              {shopEnabled && session.host?.username && (
-                <LiveHostShopBadge
-                  hostId={session.host_id}
-                  hostUsername={session.host.username}
-                  productCount={hostShopCount}
-                />
-              )}
-              <LiveGiftGoalViewer sessionId={id} initialGoal={activeGiftGoal} />
-            </div>
-          )}
-
-          {/* v1.w.UI.181 — Battle mode: score bar + timer overlay */}
-          {!ended && (
-            <LiveBattleOverlay
-              sessionId={id}
-              hostName={hostName}
-              coHostName={coHostName}
-              coHostId={coHostId}
-            />
-          )}
-
-          {/* v1.w.UI.180 — Live-Shopping: pinned product pill + sold banners */}
-          {!ended && (
-            <LiveShoppingViewer
-              sessionId={id}
-              viewerUsername={user?.user_metadata?.username as string | null ?? null}
-            />
-          )}
-
-          {/* v1.w.UI.187 — Duet-Invite: Modal für eingehende Host→Viewer-Einladungen */}
-          {!ended && viewerId && !isHost && (
-            <LiveDuetInviteWatcher sessionId={id} viewerId={viewerId} />
           )}
 
           {/* Action-Bar (unten) — Reactions + Gifts + CoHost-Request */}
@@ -463,10 +309,6 @@ export default async function LiveViewerPage({ params }: PageProps) {
                   viewerId={viewerId}
                   isHost={isHost}
                   cohosts={cohosts}
-                  isModerator={isModerator}
-                  activePoll={activePoll}
-                  sessionStartedAt={session.started_at}
-                  allowGifts={session.allow_gifts ?? true}
                 />
               </div>
             </div>
@@ -474,6 +316,5 @@ export default async function LiveViewerPage({ params }: PageProps) {
         </div>
       </div>
     </main>
-    </>
   );
 }

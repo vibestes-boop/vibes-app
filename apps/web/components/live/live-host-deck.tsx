@@ -61,6 +61,7 @@ import { LiveWelcomeToasts } from './live-welcome-toasts';
 import { LiveAudienceModal } from './live-audience-modal';
 import { LiveStickerLayer } from './live-sticker-layer';
 import { LivePlacedProductLayer } from './live-placed-product-layer';
+import { LiveGiftGoalViewer } from './live-gift-goal-viewer';
 
 // v1.w.UI.207 — Sticker catalog (matches mobile StickerPicker categories)
 const STICKER_CATALOG = [
@@ -1124,6 +1125,14 @@ export function LiveHostDeck({
                 Mobile parity: LivePlacedProductLayer in app/live/host.tsx. */}
             {phase === 'live' && (
               <LivePlacedProductLayer sessionId={session.id} isHost />
+            )}
+
+            {/* v1.w.UI.209 — Gift Goal overlay on host video (mobile parity: LiveGoalBar in host.tsx).
+                Same component as viewer page; host sees live progress while streaming. */}
+            {phase === 'live' && (
+              <div className="absolute bottom-20 right-3 pointer-events-none">
+                <LiveGiftGoalViewer sessionId={session.id} initialGoal={initialGiftGoal} />
+              </div>
             )}
 
             {/* v1.w.UI.194 — Welcome toasts: host sees "✨ @user joined" for followers/top-fans.

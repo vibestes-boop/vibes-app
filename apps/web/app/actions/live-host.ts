@@ -436,6 +436,29 @@ export async function createLiveGiftGoal(
 }
 
 // -----------------------------------------------------------------------------
+// closeActiveGiftGoal — v1.w.UI.209: Host entfernt das aktive Coin-Ziel.
+// Mobile parity: setLiveGoal(sessionId, null) in lib/useLiveGoal.ts.
+// -----------------------------------------------------------------------------
+
+export async function closeActiveGiftGoal(
+  sessionId: string,
+): Promise<ActionResult<null>> {
+  const host = await getHost();
+  if (!host) return { ok: false, error: 'Bitte einloggen.' };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('live_gift_goals')
+    .update({ closed_at: new Date().toISOString() })
+    .eq('session_id', sessionId)
+    .eq('host_id', host.id)
+    .is('closed_at', null);
+
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, data: null };
+}
+
+// -----------------------------------------------------------------------------
 // v1.w.UI.206 — Recording start / stop.
 //
 // Delegiert an die `livekit-egress` Edge Function (identisches Interface wie
