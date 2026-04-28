@@ -49,6 +49,7 @@ import { LiveGiftsFeed } from './live-gifts-feed';
 import { useLiveShoppingHost, LiveShopHostPanel } from './live-shopping';
 import { useBattleStore } from './live-battle-store';
 import { LiveBattleBar } from './live-battle-bar';
+import { LiveWelcomeToasts } from './live-welcome-toasts';
 
 // -----------------------------------------------------------------------------
 // LiveHostDeck — OBS-ähnliches Control-Panel für den Host.
@@ -739,6 +740,14 @@ export function LiveHostDeck({
             {!camEnabled && phase === 'live' && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/80 text-white/60">
                 <VideoOff className="h-12 w-12" />
+              </div>
+            )}
+
+            {/* v1.w.UI.194 — Welcome toasts: host sees "✨ @user joined" for followers/top-fans.
+                viewerId=null → host does not self-announce (matches mobile announceSelf: false). */}
+            {phase === 'live' && (
+              <div className="absolute bottom-3 left-3 pointer-events-none">
+                <LiveWelcomeToasts sessionId={session.id} viewerId={null} />
               </div>
             )}
           </div>
