@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useMemo, useState, useTransition } from 'react';
-import { Gift, Target, Loader2, Plus, Check, Trash2 } from 'lucide-react';
+import { Gift, Target, Loader2, Plus, Check } from 'lucide-react';
 import { createBrowserClient } from '@supabase/ssr';
-import { createLiveGiftGoal, closeActiveGiftGoal } from '@/app/actions/live-host';
+import { createLiveGiftGoal } from '@/app/actions/live-host';
 
 function supa() {
   return createBrowserClient(
@@ -35,7 +35,6 @@ export function LiveGiftsFeed({ sessionId, initialGifts, initialGoal }: LiveGift
   const [gifts, setGifts] = useState<SessionGiftRow[]>(initialGifts);
   const [goal, setGoal] = useState<ActiveGiftGoal | null>(initialGoal);
   const [showGoalEditor, setShowGoalEditor] = useState(false);
-  const [isClosingGoal, startCloseGoal] = useTransition();
 
   // -----------------------------------------------------------------------------
   // Realtime-Subscriptions
@@ -194,29 +193,9 @@ export function LiveGiftsFeed({ sessionId, initialGifts, initialGoal }: LiveGift
               )}
               {goal.label}
             </span>
-            <div className="flex items-center gap-2">
-              <span className="tabular-nums text-xs text-muted-foreground">
-                {goal.current_coins.toLocaleString('de-DE')} / {goal.target_coins.toLocaleString('de-DE')}
-              </span>
-              {/* v1.w.UI.209 — remove goal button (mobile parity: setLiveGoal(null)) */}
-              <button
-                type="button"
-                title="Ziel entfernen"
-                disabled={isClosingGoal}
-                onClick={() =>
-                  startCloseGoal(async () => {
-                    await closeActiveGiftGoal(sessionId);
-                  })
-                }
-                className="rounded p-0.5 text-muted-foreground hover:text-destructive disabled:opacity-40"
-              >
-                {isClosingGoal ? (
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <Trash2 className="h-3.5 w-3.5" />
-                )}
-              </button>
-            </div>
+            <span className="tabular-nums text-xs text-muted-foreground">
+              {goal.current_coins.toLocaleString('de-DE')} / {goal.target_coins.toLocaleString('de-DE')}
+            </span>
           </div>
           <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
             <div
