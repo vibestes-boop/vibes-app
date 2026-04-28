@@ -34,6 +34,10 @@ import {
   X,
   Package,
   Coins,
+  Heart,
+  MessageCircle,
+  Trophy,
+  ArrowRight,
 } from 'lucide-react';
 import type { LiveSessionWithHost, LiveCommentWithAuthor, ActiveLivePollSSR, LiveRecordingSSR } from '@/lib/data/live';
 import type { SessionGiftRow, ActiveGiftGoal } from '@/lib/data/live-host';
@@ -183,6 +187,24 @@ export function LiveHostDeck({
   // Active-Poll realtime-state — wird LivePollStartSheet runtergereicht
   const [activePoll, setActivePoll] = useState<ActiveLivePollSSR | null>(initialPoll);
 
+  // v1.w.UI.224 — Accumulated gifts + comments for end-of-stream summary.
+  // We subscribe in parallel to LiveGiftsFeed/LiveChat so the host deck has
+  // its own snapshot for the summary panel (no prop-drilling needed).
+  const [summaryGifts, setSummaryGifts] = useState<SessionGiftRow[]>(initialGifts);
+  const [summaryCommentCount, setSummaryCommentCount] = useState(initialComments.length);
+  const [summaryCommentAuthors, setSummaryCommentAuthors] = useState<
+    Array<{ userId: string; username: string; avatarUrl: string | null; count: number }>
+  >(() => {
+    const map = new Map<string, { username: string; avatarUrl: string | null; count: number }>();
+    for (const c of initialComments) {
+      if (!c.author?.id) continue;
+      const entry = map.get(c.author.id) ?? { username: c.author.username ?? '?', avatarUrl: c.author.avatar_url ?? null, count: 0 };
+      entry.count += 1;
+      map.set(c.author.id, entry);
+    }
+    return Array.from(map.entries()).map(([userId, v]) => ({ userId, ...v }));
+  });
+
   // v1.w.UI.188 — Followers-only chat toggle (optimistic UI)
   const [followersOnlyChat, setFollowersOnlyChat] = useState(session.followers_only_chat ?? false);
   const [, startFollowersToggle] = useTransition();
@@ -259,6 +281,82 @@ export function LiveHostDeck({
       .subscribe();
     return () => { void sb.removeChannel(ch); };
   }, [session.id]);
+
+  // v1.w.UI.224 — Realtime gift accumulation for summary
+  useEffect(() => {
+    const sb = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    );
+    const ch = sb
+      .channel(`host-summary-gifts-${session.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'live_gifts', filter: `session_id=eq.${session.id}` },
+        (payload) => {
+          const row = payload.new as SessionGiftRow;
+          setSummaryGifts((prev) => [row, ...prev]);
+        },
+      )
+      .subscribe();
+    return () => { void sb.removeChannel(ch); };
+  }, [session.id]);
+
+  // v1.w.UI.224 — Realtime comment accumulation for summary
+  useEffect(() => {
+    const sb = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    );
+    const ch = sb
+      .channel(`host-summary-comments-${session.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'live_comments', filter: `session_id=eq.${session.id}` },
+        (payload) => {
+          const row = payload.new as { sender_id?: string; username?: string; avatar_url?: string };
+          setSummaryCommentCount((n) => n + 1);
+          if (row.sender_id) {
+            setSummaryCommentAuthors((prev) => {
+              const idx = prev.findIndex((a) => a.userId === row.sender_id);
+              if (idx >= 0) {
+                const next = [...prev];
+                next[idx] = { ...next[idx], count: next[idx].count + 1 };
+                return next;
+              }
+              return [...prev, { userId: row.sender_id!, username: row.username ?? '?', avatarUrl: row.avatar_url ?? null, count: 1 }];
+            });
+          }
+        },
+      )
+      .subscribe();
+    return () => { void sb.removeChannel(ch); };
+  }, [session.id]);
+
+  // v1.w.UI.224 — Derived summary data
+  const topGifters = useMemo(() => {
+    const map = new Map<string, { username: string; avatarUrl: string | null; total: number }>();
+    for (const g of summaryGifts) {
+      if (!g.sender_id) continue;
+      const entry = map.get(g.sender_id) ?? { username: g.sender?.username ?? '?', avatarUrl: g.sender?.avatar_url ?? null, total: 0 };
+      entry.total += g.coin_cost;
+      map.set(g.sender_id, entry);
+    }
+    return Array.from(map.entries())
+      .map(([userId, v]) => ({ userId, ...v }))
+      .sort((a, b) => b.total - a.total)
+      .slice(0, 5);
+  }, [summaryGifts]);
+
+  const topCommenters = useMemo(
+    () => [...summaryCommentAuthors].sort((a, b) => b.count - a.count).slice(0, 5),
+    [summaryCommentAuthors],
+  );
+
+  const totalGiftCoins = useMemo(
+    () => summaryGifts.reduce((s, g) => s + g.coin_cost, 0),
+    [summaryGifts],
+  );
 
   // v1.w.UI.207 — Sticker picker: open/close state + add handler
   // Mobile parity: StickerPicker sheet in app/live/host.tsx.
@@ -743,11 +841,9 @@ export function LiveHostDeck({
         }
       }
       setPhase('ended');
-      setTimeout(() => {
-        router.push(`/studio/live` as Route);
-      }, 2000);
+      // v1.w.UI.224 — Summary panel shows; user navigates manually via "Fertig" button.
     });
-  }, [isObs, phase, session.id, router, disableCam, disableMic, stopScreenshare]);
+  }, [isObs, phase, session.id, disableCam, disableMic, stopScreenshare]);
 
   // -----------------------------------------------------------------------------
   // Title-Save
@@ -1076,10 +1172,104 @@ export function LiveHostDeck({
               </div>
             )}
 
+            {/* v1.w.UI.224 — End-of-stream summary panel (parity with native host.tsx summary modal) */}
             {phase === 'ended' && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/80 text-white">
-                <Radio className="h-8 w-8 text-white/40" />
-                <p className="text-sm">Stream beendet. Weiterleitung zum Studio…</p>
+              <div className="absolute inset-0 z-50 flex flex-col overflow-y-auto bg-gradient-to-b from-[#0D0D18] via-[#0f0020] to-[#0D0D18] text-white">
+                {/* Header */}
+                <div className="flex-shrink-0 border-b border-white/10 px-6 py-4">
+                  <p className="text-xs text-white/50">
+                    {new Date().toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    {' · '}
+                    {(() => {
+                      const s = durationSecs;
+                      const h = Math.floor(s / 3600);
+                      const m = Math.floor((s % 3600) / 60);
+                      const sec = s % 60;
+                      if (h > 0) return `${h}h ${m}m`;
+                      if (m > 0) return `${m}m ${sec}s`;
+                      return `${sec}s`;
+                    })()}
+                  </p>
+                  <h2 className="mt-0.5 text-lg font-bold tracking-tight">LIVE wurde beendet</h2>
+                </div>
+
+                {/* Stats row */}
+                <div className="flex-shrink-0 grid grid-cols-4 divide-x divide-white/10 border-b border-white/10">
+                  {[
+                    { icon: <Users className="h-4 w-4" />, value: peakCount.toLocaleString('de-DE'), label: 'Peak' },
+                    { icon: <Heart className="h-4 w-4 text-rose-400" />, value: ((session as unknown as Record<string, unknown>).like_count as number ?? 0).toLocaleString('de-DE'), label: 'Likes' },
+                    { icon: <MessageCircle className="h-4 w-4 text-sky-400" />, value: summaryCommentCount.toLocaleString('de-DE'), label: 'Kommentare' },
+                    { icon: <Coins className="h-4 w-4 text-yellow-400" />, value: totalGiftCoins.toLocaleString('de-DE'), label: 'Coins 🪙' },
+                  ].map(({ icon, value, label }) => (
+                    <div key={label} className="flex flex-col items-center gap-0.5 py-4 px-2">
+                      <span className="text-white/60">{icon}</span>
+                      <span className="text-lg font-bold leading-none">{value}</span>
+                      <span className="text-[10px] text-white/50">{label}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Top gifters */}
+                {topGifters.length > 0 && (
+                  <div className="flex-shrink-0 border-b border-white/10 px-6 py-4">
+                    <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-yellow-400">
+                      <Trophy className="h-4 w-4" /> Top Spender
+                    </p>
+                    <div className="space-y-2">
+                      {topGifters.map((g, i) => (
+                        <div key={g.userId} className="flex items-center gap-3">
+                          <span className="w-5 text-center text-xs font-bold text-white/40">#{i + 1}</span>
+                          {g.avatarUrl ? (
+                            <img src={g.avatarUrl} alt="" className="h-7 w-7 rounded-full object-cover" />
+                          ) : (
+                            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 text-xs font-bold">
+                              {g.username[0]?.toUpperCase() ?? '?'}
+                            </div>
+                          )}
+                          <span className="flex-1 truncate text-sm">@{g.username}</span>
+                          <span className="text-sm font-semibold text-yellow-400">{g.total.toLocaleString('de-DE')} 🪙</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Top commenters */}
+                {topCommenters.length > 0 && (
+                  <div className="flex-shrink-0 border-b border-white/10 px-6 py-4">
+                    <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-sky-400">
+                      <MessageCircle className="h-4 w-4" /> Top Kommentatoren
+                    </p>
+                    <div className="space-y-2">
+                      {topCommenters.map((c, i) => (
+                        <div key={c.userId} className="flex items-center gap-3">
+                          <span className="w-5 text-center text-xs font-bold text-white/40">#{i + 1}</span>
+                          {c.avatarUrl ? (
+                            <img src={c.avatarUrl} alt="" className="h-7 w-7 rounded-full object-cover" />
+                          ) : (
+                            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 text-xs font-bold">
+                              {c.username[0]?.toUpperCase() ?? '?'}
+                            </div>
+                          )}
+                          <span className="flex-1 truncate text-sm">@{c.username}</span>
+                          <span className="text-sm font-semibold text-sky-400">{c.count}×</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="flex-1" />
+                <div className="flex-shrink-0 p-6">
+                  <button
+                    type="button"
+                    onClick={() => router.push('/studio/live' as Route)}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 py-3.5 text-sm font-semibold transition-colors hover:bg-white/20"
+                  >
+                    Zum Studio <ArrowRight className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
             )}
 
