@@ -28,6 +28,7 @@ import { LiveCoHostWatcher } from '@/components/live/live-cohost-watcher';
 import { LiveGiftLeaderboard } from '@/components/live/live-gift-leaderboard';
 import { LiveShoppingViewer } from '@/components/live/live-shopping-viewer';
 import { LiveBattleOverlay } from '@/components/live/live-battle-overlay';
+import { LiveDuetInviteWatcher } from '@/components/live/live-duet-invite-watcher';
 import {
   glassPillStrong,
   glassSurface,
@@ -392,6 +393,11 @@ export default async function LiveViewerPage({ params }: PageProps) {
               sessionId={id}
               viewerUsername={user?.user_metadata?.username as string | null ?? null}
             />
+          )}
+
+          {/* v1.w.UI.187 — Duet-Invite: Modal für eingehende Host→Viewer-Einladungen */}
+          {!ended && viewerId && !isHost && (
+            <LiveDuetInviteWatcher sessionId={id} viewerId={viewerId} />
           )}
 
           {/* Action-Bar (unten) — Reactions + Gifts + CoHost-Request */}

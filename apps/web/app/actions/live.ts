@@ -671,3 +671,33 @@ export async function unpinLiveComment(
   if (error) return { ok: false, error: error.message };
   return { ok: true, data: null };
 }
+
+// v1.w.UI.187 — Duet-Invite: Accept oder Decline.
+// Ruft die RPC `respond_duet_invite` auf (identisch zum Mobile-Flow).
+export interface RespondDuetInviteResult {
+  status:     'accepted' | 'declined';
+  session_id: string;
+  host_id:    string;
+  guest_id:   string;
+  layout:     string;
+}
+
+export async function respondDuetInvite(
+  inviteId: string,
+  accept: boolean,
+  reason?: string,
+): Promise<ActionResult<RespondDuetInviteResult>> {
+  const viewer = await getViewerId();
+  if (!viewer) return { ok: false, error: 'Bitte einloggen.' };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('respond_duet_invite', {
+    p_invite_id: inviteId,
+    p_accept:    accept,
+    p_reason:    reason ?? null,
+  });
+
+  if (error) return { ok: false, error: error.message };
+  const row = Array.isArray(data) ? data[0] : data;
+  return { ok: true, data: row as RespondDuetInviteResult };
+}
