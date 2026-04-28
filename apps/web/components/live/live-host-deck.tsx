@@ -50,6 +50,7 @@ import { useLiveShoppingHost, LiveShopHostPanel } from './live-shopping';
 import { useBattleStore } from './live-battle-store';
 import { LiveBattleBar } from './live-battle-bar';
 import { LiveWelcomeToasts } from './live-welcome-toasts';
+import { LiveAudienceModal } from './live-audience-modal';
 
 // -----------------------------------------------------------------------------
 // LiveHostDeck — OBS-ähnliches Control-Panel für den Host.
@@ -150,6 +151,7 @@ export function LiveHostDeck({
 
   // Panels
   const [pollSheetOpen, setPollSheetOpen] = useState(false);
+  const [audienceOpen, setAudienceOpen] = useState(false);
   const [titleDraft, setTitleDraft] = useState(session.title ?? '');
   const [titleEditing, setTitleEditing] = useState(false);
   const [isSavingTitle, startSaveTitle] = useTransition();
@@ -630,13 +632,19 @@ export function LiveHostDeck({
           <span className="font-mono text-sm tabular-nums text-muted-foreground">
             {durationLabel}
           </span>
-          <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
+          {/* v1.w.UI.195 — tappable viewer count → audience modal (host sees who's watching) */}
+          <button
+            type="button"
+            onClick={() => setAudienceOpen(true)}
+            className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            aria-label="Zuschauer*innen anzeigen"
+          >
             <Users className="h-4 w-4" />
             {viewerCount.toLocaleString('de-DE')}
             {peakCount > viewerCount && (
               <span className="text-xs">(Peak {peakCount.toLocaleString('de-DE')})</span>
             )}
-          </span>
+          </button>
         </div>
 
         <div className="flex items-center gap-2">
@@ -930,6 +938,16 @@ export function LiveHostDeck({
           onPollChange={setActivePoll}
         />
       )}
+
+      {/* v1.w.UI.195 — Audience modal: host can see who's watching, grant/revoke mods */}
+      <LiveAudienceModal
+        open={audienceOpen}
+        onClose={() => setAudienceOpen(false)}
+        sessionId={session.id}
+        hostId={hostId}
+        viewerId={hostId}
+        isHost={true}
+      />
 
       {/* Shortcut-Hinweis */}
       <div className="hidden items-center justify-center border-t bg-muted/40 px-4 py-1 text-[11px] text-muted-foreground lg:flex">
