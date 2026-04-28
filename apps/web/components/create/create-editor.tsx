@@ -19,6 +19,7 @@ import {
   AlertCircle,
   CheckCircle2,
   Camera,
+  Music2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { compressImage, extensionForMime } from '@/lib/image/compress';
@@ -33,6 +34,7 @@ import {
   type MediaType,
 } from '@/app/actions/posts';
 import { AIImageSheet } from '@/components/ai/ai-image-sheet';
+import { MusicPickerDialog, MUSIC_LIBRARY } from '@/components/create/music-picker-dialog';
 
 // -----------------------------------------------------------------------------
 // CreateEditor — zentrale Client-Komponente für /create.
@@ -120,6 +122,10 @@ export function CreateEditor({ viewerId, initialDraft }: Props) {
   const [draftId, setDraftId] = useState<string | null>(initialDraft?.id ?? null);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [scheduleAt, setScheduleAt] = useState<Date>(() => nextQuarterHour(new Date()));
+
+  // ---------- Music Picker (v1.w.UI.234) ----------
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [musicPickerOpen, setMusicPickerOpen] = useState(false);
 
   // ---------- Global Feedback ----------
   const [toast, setToast] = useState<{ kind: 'ok' | 'err'; msg: string } | null>(null);
@@ -366,6 +372,7 @@ export function CreateEditor({ viewerId, initialDraft }: Props) {
         allowDuet,
         allowDownload,
         womenOnly,
+        audioUrl,
         coverTimeMs,
         draftId,
         aspectRatio,
@@ -413,6 +420,7 @@ export function CreateEditor({ viewerId, initialDraft }: Props) {
         allowDuet,
         allowDownload,
         womenOnly,
+        audioUrl,
         coverTimeMs,
         publishAt: scheduleAt.toISOString(),
         draftId,
@@ -621,6 +629,37 @@ export function CreateEditor({ viewerId, initialDraft }: Props) {
           setWomenOnly={setWomenOnly}
         />
 
+        {/* Music Picker (v1.w.UI.234) */}
+        <div>
+          <button
+            type="button"
+            onClick={() => setMusicPickerOpen(true)}
+            className={cn(
+              'flex w-full items-center gap-2.5 rounded-xl border px-3 py-2.5 text-sm transition-colors hover:bg-muted/50',
+              audioUrl ? 'border-primary/40 bg-primary/5 text-primary' : 'bg-background text-muted-foreground',
+            )}
+          >
+            <Music2 className="h-4 w-4 shrink-0" />
+            {audioUrl
+              ? (() => {
+                  const t = MUSIC_LIBRARY.find((x) => x.url === audioUrl);
+                  return t ? `${t.title} · ${t.genre}` : 'Musik gewählt';
+                })()
+              : 'Musik hinzufügen'}
+            {audioUrl && (
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={(e) => { e.stopPropagation(); setAudioUrl(null); }}
+                onKeyDown={(e) => { if (e.key === 'Enter') { e.stopPropagation(); setAudioUrl(null); } }}
+                className="ml-auto rounded-full p-0.5 hover:bg-primary/20"
+              >
+                <X className="h-3.5 w-3.5" />
+              </span>
+            )}
+          </button>
+        </div>
+
         {/* Action-Buttons */}
         <div className="mt-2 flex flex-col gap-2">
           <button
@@ -670,6 +709,14 @@ export function CreateEditor({ viewerId, initialDraft }: Props) {
           </p>
         )}
       </aside>
+
+      {/* Music Picker Modal */}
+      <MusicPickerDialog
+        open={musicPickerOpen}
+        onClose={() => setMusicPickerOpen(false)}
+        selectedUrl={audioUrl}
+        onSelect={setAudioUrl}
+      />
 
       {/* Scheduler Modal */}
       {scheduleOpen && (
