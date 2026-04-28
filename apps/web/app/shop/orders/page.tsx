@@ -17,6 +17,7 @@ import {
 
 import { getMyOrders, type ShopOrder } from '@/lib/data/shop';
 import { getUser } from '@/lib/auth/session';
+import { ReviewDialog } from '@/components/shop/review-dialog';
 
 // -----------------------------------------------------------------------------
 // /shop/orders — Käufer-Bestellhistorie.
@@ -84,6 +85,8 @@ function OrderRow({ order }: { order: ShopOrder }) {
   const catLabel = CAT_LABELS[product?.category ?? ''] ?? '📦 Produkt';
   const isDigital = product?.category === 'digital';
   const canDownload = isDigital && order.status === 'completed' && !!order.download_url;
+  // Buyer can review any completed order — mirrors native canReview logic.
+  const canReview = order.status === 'completed';
 
   return (
     <div className="flex items-start gap-4 rounded-xl border border-border bg-card p-4 shadow-elevation-1 transition-colors hover:bg-card/80">
@@ -157,6 +160,7 @@ function OrderRow({ order }: { order: ShopOrder }) {
               Herunterladen
             </a>
           )}
+          {canReview && <ReviewDialog productId={order.product_id} />}
           <Link
             href={`/shop/${order.product_id}` as Route}
             className="inline-flex items-center gap-1 text-xs text-primary hover:underline"

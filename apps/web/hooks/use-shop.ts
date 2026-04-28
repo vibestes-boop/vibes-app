@@ -1,6 +1,6 @@
 'use client';
 
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import {
   toggleSaveProduct,
@@ -10,6 +10,7 @@ import {
   reportProduct,
   toggleProductActive,
   deleteProduct,
+  getMyReviewAction,
   type ActionResult,
   type BuyResult,
 } from '@/app/actions/shop';
@@ -104,6 +105,20 @@ export function useBuyProduct(opts?: { onSuccess?: (r: BuyResult) => void }) {
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : 'Kauf fehlgeschlagen');
     },
+  });
+}
+
+// -----------------------------------------------------------------------------
+// useMyReview — für ReviewDialog auf der Orders-Page (client-side fetch).
+// productId=null → skip.
+// -----------------------------------------------------------------------------
+
+export function useMyReview(productId: string | null) {
+  return useQuery({
+    queryKey: ['my-review', productId],
+    queryFn: () => getMyReviewAction(productId!),
+    enabled: !!productId,
+    staleTime: 60_000,
   });
 }
 

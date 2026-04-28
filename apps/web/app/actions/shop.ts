@@ -2,6 +2,7 @@
 
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { getMyReview, type ProductReview } from '@/lib/data/shop';
 import {
   productCreateSchema,
   productUpdateSchema,
@@ -212,6 +213,15 @@ export async function deleteReview(reviewId: string): Promise<ActionResult> {
     revalidateTag(`reviews:${review.product_id}`);
   }
   return { ok: true, data: null };
+}
+
+// -----------------------------------------------------------------------------
+// getMyReviewAction — Server-Action-Wrapper für Client-Components (orders page).
+// Thin wrapper um getMyReview() aus lib/data/shop.ts.
+// -----------------------------------------------------------------------------
+
+export async function getMyReviewAction(productId: string): Promise<ProductReview | null> {
+  return getMyReview(productId);
 }
 
 // -----------------------------------------------------------------------------
