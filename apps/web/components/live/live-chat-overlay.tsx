@@ -24,6 +24,15 @@ import { cn } from '@/lib/utils';
 // `LiveChat`-Original (bewusst dupliziert statt Shared-Hook — der sidebar-
 // variant lebt noch im Host-Deck und wir wollen die beiden Call-Sites
 // unabhängig evolvieren können).
+//
+// v1.w.UI.191 — MOD + ★ TOP-Gifter-Badges auf einzelnen Nachrichten.
+// Mobile-Parity: watch/[id].tsx zeigt HOST / 🛡 MOD / ★ TOP Badges in der
+// CommentRow. Web hatte nur den HOST-Badge. Jetzt:
+//   • modIds Set — via live_moderators INSERT/DELETE Realtime
+//   • gifterMap Map<userId,coins> — via live_gifts INSERT + initial snapshot
+//   • topGifterIds = top-3 nach total coins (useMemo über gifterMap)
+// Beide Sets werden direkt in dieser Datei gehalten (kein shared hook) um
+// die beiden Chat-Varianten (Overlay vs. Sidebar) unabhängig zu halten.
 // -----------------------------------------------------------------------------
 
 export interface LiveChatOverlayProps {
@@ -68,6 +77,16 @@ export function LiveChatOverlay({
   // v1.w.UI.139 — Slow-mode client-side countdown after successful send.
   const [cooldownLeft, setCooldownLeft] = useState(0);
   const listRef = useRef<HTMLDivElement | null>(null);
+
+  // v1.w.UI.191 — Mod IDs + top-gifter IDs for message badges.
+  const [modIds, setModIds] = useState<Set<string>>(new Set());
+  // gifterMap: userId → total coins gifted in this session
+  const [gifterMap, setGifterMap] = useState<Map<string, number>>(new Map());
+  // Derive top-3 gifter ID set (re-sorted only when gifterMap changes)
+  const topGifterIds = useMemo(() => {
+    const sorted = [...gifterMap.entries()].sort((a, b) => b[1] - a[1]);
+    return new Set(sorted.slice(0, 3).map(([uid]) => uid));
+  }, [gifterMap]);
 
   // ---------------------------------------------------------------------------
   // Realtime: dasselbe `live-comments-{id}` Channel-Pattern wie in LiveChat.
@@ -176,6 +195,106 @@ export function LiveChatOverlay({
   }, [cooldownLeft]);
 
   // ---------------------------------------------------------------------------
+  // v1.w.UI.191 — Moderator IDs subscription.
+  // Initial load + INSERT/DELETE realtime so mod badges appear/disappear live.
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    );
+
+    let cancelled = false;
+
+    // Initial snapshot
+    supabase
+      .from('live_moderators')
+      .select('user_id')
+      .eq('session_id', sessionId)
+      .then(({ data }) => {
+        if (cancelled || !data?.length) return;
+        setModIds(new Set(data.map((r: { user_id: string }) => r.user_id)));
+      });
+
+    const ch = supabase
+      .channel(`live-mods-overlay-${sessionId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'live_moderators', filter: `session_id=eq.${sessionId}` },
+        (payload) => {
+          const uid = (payload.new as { user_id?: string }).user_id;
+          if (uid) setModIds((prev) => { const s = new Set(prev); s.add(uid); return s; });
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'live_moderators', filter: `session_id=eq.${sessionId}` },
+        (payload) => {
+          const uid = (payload.old as { user_id?: string }).user_id;
+          if (uid) setModIds((prev) => { const s = new Set(prev); s.delete(uid); return s; });
+        },
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(ch);
+    };
+  }, [sessionId]);
+
+  // ---------------------------------------------------------------------------
+  // v1.w.UI.191 — Top-Gifter IDs aggregator (same approach as LiveGiftLeaderboard).
+  // Aggregates coin totals per sender for ★ TOP badge on the top-3 chatters.
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    );
+
+    let cancelled = false;
+
+    // Initial snapshot — accumulate historical gifts so late-joiners see correct badges.
+    supabase
+      .from('live_gifts')
+      .select('sender_id, coin_cost')
+      .eq('session_id', sessionId)
+      .then(({ data }) => {
+        if (cancelled || !data?.length) return;
+        setGifterMap(() => {
+          const m = new Map<string, number>();
+          for (const row of data as Array<{ sender_id: string; coin_cost: number }>) {
+            m.set(row.sender_id, (m.get(row.sender_id) ?? 0) + row.coin_cost);
+          }
+          return m;
+        });
+      });
+
+    const ch = supabase
+      .channel(`live-gifts-overlay-${sessionId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'live_gifts', filter: `session_id=eq.${sessionId}` },
+        (payload) => {
+          const { sender_id, coin_cost } = payload.new as { sender_id: string; coin_cost: number };
+          if (sender_id && coin_cost) {
+            setGifterMap((prev) => {
+              const next = new Map(prev);
+              next.set(sender_id, (next.get(sender_id) ?? 0) + coin_cost);
+              return next;
+            });
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(ch);
+    };
+  }, [sessionId]);
+
+  // ---------------------------------------------------------------------------
   // Send-Handler (identisch zur Sidebar-Variante inkl. Shadow-Ban-Ghost).
   // ---------------------------------------------------------------------------
   const handleSubmit = (e: FormEvent) => {
@@ -281,6 +400,8 @@ export function LiveChatOverlay({
               key={c.id}
               comment={c}
               isHostMsg={c.user_id === hostId}
+              isModMsg={c.user_id !== hostId && modIds.has(c.user_id)}
+              isTopGifterMsg={topGifterIds.has(c.user_id)}
               canModerate={canModerate && c.user_id !== hostId && c.user_id !== viewerId}
               onTimeout={(secs) => handleTimeout(c.user_id, secs)}
               onPin={() => handlePin(c.id)}
@@ -355,6 +476,8 @@ export function LiveChatOverlay({
 function OverlayRow({
   comment,
   isHostMsg,
+  isModMsg,
+  isTopGifterMsg,
   canModerate,
   onTimeout,
   onPin,
@@ -362,6 +485,10 @@ function OverlayRow({
 }: {
   comment: LiveCommentWithAuthor;
   isHostMsg: boolean;
+  /** v1.w.UI.191 — true wenn Absender ein aktiver Moderator dieser Session ist */
+  isModMsg: boolean;
+  /** v1.w.UI.191 — true wenn Absender unter den Top-3-Giftern dieser Session ist */
+  isTopGifterMsg: boolean;
   canModerate: boolean;
   onTimeout: (seconds: number) => void;
   onPin: () => void;
@@ -377,7 +504,9 @@ function OverlayRow({
           'min-w-0 rounded-2xl px-3 py-1.5 text-[13px] leading-snug text-white shadow-elevation-1 backdrop-blur-md',
           isHostMsg
             ? 'bg-amber-500/25 ring-1 ring-amber-300/40'
-            : 'bg-black/55 ring-1 ring-white/10',
+            : isModMsg
+              ? 'bg-violet-500/20 ring-1 ring-violet-300/30'
+              : 'bg-black/55 ring-1 ring-white/10',
         )}
       >
         <span className="mr-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-white/90">
@@ -385,6 +514,16 @@ function OverlayRow({
           {isHostMsg && (
             <span className="rounded-sm bg-amber-300/30 px-1 py-0.5 text-[8px] uppercase tracking-wider text-amber-100">
               Host
+            </span>
+          )}
+          {isModMsg && (
+            <span className="rounded-sm bg-violet-400/30 px-1 py-0.5 text-[8px] uppercase tracking-wider text-violet-200">
+              🛡 Mod
+            </span>
+          )}
+          {isTopGifterMsg && (
+            <span className="rounded-sm bg-yellow-400/25 px-1 py-0.5 text-[8px] font-bold uppercase tracking-wider text-yellow-200">
+              ★ Top
             </span>
           )}
           {comment.author?.verified && (
