@@ -1,9 +1,12 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState, useTransition, type FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
+import type { Route } from 'next';
 import { createBrowserClient } from '@supabase/ssr';
-import { Send, ShieldAlert, Pin, PinOff } from 'lucide-react';
+import { Send, ShieldAlert, Pin, PinOff, X, UserPlus, UserCheck, ExternalLink, AtSign, Clock } from 'lucide-react';
 import { sendLiveComment, timeoutChatUser, pinLiveComment, unpinLiveComment } from '@/app/actions/live';
+import { toggleFollow } from '@/app/actions/engagement';
 import type { LiveCommentWithAuthor } from '@/lib/data/live';
 import { cn } from '@/lib/utils';
 
@@ -329,6 +332,17 @@ export function LiveChatOverlay({
 
   const canModerate = isHost || isModerator;
 
+  // v1.w.UI.196 — Chat username tap → user profile mini-panel.
+  // Mobile parity: tapping a username in watch/[id].tsx opens LiveUserSheet
+  // (follow, mention, profile, mod actions). Same surface on web.
+  const [selectedChatUser, setSelectedChatUser] = useState<{
+    id: string;
+    username: string;
+    display_name: string | null;
+    avatar_url: string | null;
+    verified: boolean;
+  } | null>(null);
+
   const handleTimeout = (targetUserId: string, seconds: number) => {
     startTransition(async () => {
       const result = await timeoutChatUser(sessionId, targetUserId, seconds);
@@ -370,7 +384,7 @@ export function LiveChatOverlay({
   );
 
   return (
-    <div className={cn('pointer-events-none flex flex-col gap-2', className)}>
+    <div className={cn('pointer-events-none relative flex flex-col gap-2', className)}>
       {/* Pinned (immer sichtbar, nicht vom Mask-Fade betroffen) */}
       {pinned && (
         <div className="pointer-events-auto max-w-[85%] self-start rounded-2xl bg-amber-500/90 px-3 py-1.5 text-[13px] text-white shadow-elevation-2 backdrop-blur-md ring-1 ring-white/20">
@@ -406,6 +420,18 @@ export function LiveChatOverlay({
               onTimeout={(secs) => handleTimeout(c.user_id, secs)}
               onPin={() => handlePin(c.id)}
               onUnpin={handleUnpin}
+              onUserClick={
+                c.user_id !== viewerId && c.author
+                  ? () =>
+                      setSelectedChatUser({
+                        id: c.user_id,
+                        username: c.author!.username ?? '',
+                        display_name: c.author!.display_name ?? null,
+                        avatar_url: c.author!.avatar_url ?? null,
+                        verified: c.author!.verified ?? false,
+                      })
+                  : undefined
+              }
             />
           ))
         )}
@@ -463,6 +489,27 @@ export function LiveChatOverlay({
           {sendError}
         </div>
       )}
+
+      {/* v1.w.UI.196 — User profile mini-panel (slides in above compose) */}
+      {selectedChatUser && (
+        <ChatUserPanel
+          user={selectedChatUser}
+          viewerId={viewerId}
+          sessionId={sessionId}
+          canModerate={canModerate}
+          isHost={isHost}
+          hostId={hostId}
+          onClose={() => setSelectedChatUser(null)}
+          onMention={(username) => {
+            setText((prev) => `@${username} ${prev}`.trimEnd() + (prev ? '' : ''));
+            setSelectedChatUser(null);
+          }}
+          onTimeout={(secs) => {
+            handleTimeout(selectedChatUser.id, secs);
+            setSelectedChatUser(null);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -482,6 +529,7 @@ function OverlayRow({
   onTimeout,
   onPin,
   onUnpin,
+  onUserClick,
 }: {
   comment: LiveCommentWithAuthor;
   isHostMsg: boolean;
@@ -493,6 +541,8 @@ function OverlayRow({
   onTimeout: (seconds: number) => void;
   onPin: () => void;
   onUnpin: () => void;
+  /** v1.w.UI.196 — called when the username badge is tapped */
+  onUserClick?: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const name = comment.author?.display_name ?? comment.author?.username ?? 'Anonym';
@@ -509,7 +559,16 @@ function OverlayRow({
               : 'bg-black/55 ring-1 ring-white/10',
         )}
       >
-        <span className="mr-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-white/90">
+        {/* v1.w.UI.196 — username is a tappable button (opens ChatUserPanel) */}
+        <button
+          type="button"
+          onClick={onUserClick}
+          disabled={!onUserClick}
+          className={cn(
+            'mr-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-white/90',
+            onUserClick && 'cursor-pointer underline-offset-2 hover:text-white hover:underline',
+          )}
+        >
           {name}
           {isHostMsg && (
             <span className="rounded-sm bg-amber-300/30 px-1 py-0.5 text-[8px] uppercase tracking-wider text-amber-100">
@@ -532,7 +591,7 @@ function OverlayRow({
             </span>
           )}
           <span className="text-white/60">:</span>
-        </span>
+        </button>
         <span className="break-words text-white">{comment.body}</span>
       </div>
 
@@ -586,6 +645,264 @@ function OverlayRow({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// ChatUserPanel — v1.w.UI.196
+// Glassmorphic mini-sheet that appears when a chat username is tapped.
+// Mobile parity: LiveUserSheet in watch/[id].tsx — shows follow/unfollow,
+// view profile, @mention, and moderator actions.
+//
+// Positioned absolutely at bottom-left of the chat overlay container so
+// it sits naturally above the compose input without layout shifts.
+// -----------------------------------------------------------------------------
+
+function ChatUserPanel({
+  user,
+  viewerId,
+  sessionId,
+  canModerate,
+  isHost,
+  hostId,
+  onClose,
+  onMention,
+  onTimeout,
+}: {
+  user: {
+    id: string;
+    username: string;
+    display_name: string | null;
+    avatar_url: string | null;
+    verified: boolean;
+  };
+  viewerId: string | null;
+  sessionId: string;
+  canModerate: boolean;
+  isHost: boolean;
+  hostId: string;
+  onClose: () => void;
+  onMention: (username: string) => void;
+  onTimeout: (seconds: number) => void;
+}) {
+  const router = useRouter();
+  const [following, setFollowing] = useState<boolean | null>(null);
+  const [isMod, setIsMod] = useState<boolean | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const [modPending, startModTransition] = useTransition();
+  const [timeoutOpen, setTimeoutOpen] = useState(false);
+
+  const displayName = user.display_name ?? user.username;
+  const initials = displayName.slice(0, 2).toUpperCase();
+
+  // Fetch follow + mod status on mount
+  useEffect(() => {
+    if (!viewerId) return;
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    );
+    supabase
+      .from('follows')
+      .select('follower_id')
+      .eq('follower_id', viewerId)
+      .eq('following_id', user.id)
+      .maybeSingle()
+      .then(({ data }) => setFollowing(!!data));
+
+    if (isHost) {
+      supabase
+        .from('live_moderators')
+        .select('user_id')
+        .eq('session_id', sessionId)
+        .eq('user_id', user.id)
+        .maybeSingle()
+        .then(({ data }) => setIsMod(!!data));
+    }
+  }, [viewerId, user.id, sessionId, isHost]);
+
+  const handleFollow = () => {
+    if (!viewerId) return;
+    const was = following ?? false;
+    setFollowing(!was);
+    startTransition(async () => {
+      const result = await toggleFollow(user.id, was, false);
+      if (!result.ok) setFollowing(was);
+      else setFollowing(result.data.following);
+    });
+  };
+
+  const handleToggleMod = () => {
+    startModTransition(async () => {
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      );
+      if (isMod) {
+        await supabase.rpc('revoke_moderator', { p_session_id: sessionId, p_user_id: user.id });
+        setIsMod(false);
+      } else {
+        await supabase.rpc('grant_moderator', { p_session_id: sessionId, p_user_id: user.id });
+        setIsMod(true);
+      }
+    });
+  };
+
+  const TIMEOUT_OPTS = [
+    { label: '1 Min', secs: 60 },
+    { label: '5 Min', secs: 300 },
+    { label: '10 Min', secs: 600 },
+    { label: '1 Std', secs: 3600 },
+  ];
+
+  return (
+    <div className="pointer-events-auto absolute bottom-full left-0 mb-2 w-64 overflow-hidden rounded-2xl bg-black/80 shadow-elevation-3 ring-1 ring-white/15 backdrop-blur-xl">
+      {/* Header: avatar + name + close */}
+      <div className="flex items-center gap-3 px-3 pb-2 pt-3">
+        <div className="relative h-10 w-10 shrink-0">
+          {user.avatar_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={user.avatar_url}
+              alt={displayName}
+              className="h-10 w-10 rounded-full object-cover ring-1 ring-white/20"
+            />
+          ) : (
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-sm font-semibold text-white ring-1 ring-white/20">
+              {initials}
+            </div>
+          )}
+          {user.verified && (
+            <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-[8px] font-bold text-white ring-1 ring-black/60">
+              ✓
+            </span>
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-white">{displayName}</p>
+          <p className="truncate text-[11px] text-white/55">@{user.username}</p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="shrink-0 rounded-full p-1 text-white/50 hover:bg-white/10 hover:text-white"
+          aria-label="Schließen"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="h-px bg-white/10" />
+
+      <div className="flex flex-col py-1">
+        {/* Follow / Unfollow */}
+        {viewerId && viewerId !== user.id && (
+          <button
+            type="button"
+            onClick={handleFollow}
+            disabled={isPending || following === null}
+            className="flex w-full items-center gap-3 px-4 py-2 text-sm text-white transition-colors hover:bg-white/10 disabled:opacity-50"
+          >
+            {following ? (
+              <UserCheck className="h-4 w-4 shrink-0 text-green-400" />
+            ) : (
+              <UserPlus className="h-4 w-4 shrink-0 text-white/70" />
+            )}
+            {following ? 'Gefolgt' : 'Folgen'}
+          </button>
+        )}
+
+        {/* @Mention */}
+        <button
+          type="button"
+          onClick={() => onMention(user.username)}
+          className="flex w-full items-center gap-3 px-4 py-2 text-sm text-white transition-colors hover:bg-white/10"
+        >
+          <AtSign className="h-4 w-4 shrink-0 text-white/70" />
+          Erwähnen
+        </button>
+
+        {/* View profile */}
+        <button
+          type="button"
+          onClick={() => {
+            onClose();
+            router.push(`/u/${user.username}` as Route);
+          }}
+          className="flex w-full items-center gap-3 px-4 py-2 text-sm text-white transition-colors hover:bg-white/10"
+        >
+          <ExternalLink className="h-4 w-4 shrink-0 text-white/70" />
+          Profil öffnen
+        </button>
+
+        {/* Mod actions (host can grant/revoke mod + timeout) */}
+        {isHost && user.id !== hostId && (
+          <>
+            <div className="mx-3 my-1 h-px bg-white/10" />
+            <button
+              type="button"
+              onClick={handleToggleMod}
+              disabled={modPending || isMod === null}
+              className="flex w-full items-center gap-3 px-4 py-2 text-sm text-white transition-colors hover:bg-white/10 disabled:opacity-50"
+            >
+              <ShieldAlert className={cn('h-4 w-4 shrink-0', isMod ? 'text-violet-400' : 'text-white/70')} />
+              {isMod ? 'Mod entfernen' : 'Zum Mod machen'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setTimeoutOpen((v) => !v)}
+              className="flex w-full items-center gap-3 px-4 py-2 text-sm text-white transition-colors hover:bg-white/10"
+            >
+              <Clock className="h-4 w-4 shrink-0 text-white/70" />
+              Timeout…
+            </button>
+            {timeoutOpen && (
+              <div className="flex flex-wrap gap-1.5 px-4 pb-2">
+                {TIMEOUT_OPTS.map((opt) => (
+                  <button
+                    key={opt.secs}
+                    type="button"
+                    onClick={() => onTimeout(opt.secs)}
+                    className="rounded-full bg-white/10 px-2.5 py-1 text-xs text-white hover:bg-red-500/70"
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
+        {/* Non-host moderators: timeout only */}
+        {canModerate && !isHost && user.id !== hostId && (
+          <>
+            <div className="mx-3 my-1 h-px bg-white/10" />
+            <button
+              type="button"
+              onClick={() => setTimeoutOpen((v) => !v)}
+              className="flex w-full items-center gap-3 px-4 py-2 text-sm text-white transition-colors hover:bg-white/10"
+            >
+              <Clock className="h-4 w-4 shrink-0 text-white/70" />
+              Timeout…
+            </button>
+            {timeoutOpen && (
+              <div className="flex flex-wrap gap-1.5 px-4 pb-2">
+                {TIMEOUT_OPTS.map((opt) => (
+                  <button
+                    key={opt.secs}
+                    type="button"
+                    onClick={() => onTimeout(opt.secs)}
+                    className="rounded-full bg-white/10 px-2.5 py-1 text-xs text-white hover:bg-red-500/70"
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
