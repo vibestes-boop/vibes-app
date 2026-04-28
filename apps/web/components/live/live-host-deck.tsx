@@ -32,6 +32,8 @@ import {
   Circle,
   Smile,
   X,
+  Package,
+  Coins,
 } from 'lucide-react';
 import type { LiveSessionWithHost, LiveCommentWithAuthor, ActiveLivePollSSR, LiveRecordingSSR } from '@/lib/data/live';
 import type { SessionGiftRow, ActiveGiftGoal } from '@/lib/data/live-host';
@@ -58,6 +60,7 @@ import { LiveBattleBar } from './live-battle-bar';
 import { LiveWelcomeToasts } from './live-welcome-toasts';
 import { LiveAudienceModal } from './live-audience-modal';
 import { LiveStickerLayer } from './live-sticker-layer';
+import { LivePlacedProductLayer } from './live-placed-product-layer';
 
 // v1.w.UI.207 — Sticker catalog (matches mobile StickerPicker categories)
 const STICKER_CATALOG = [
@@ -291,6 +294,67 @@ export function LiveHostDeck({
       position_y: 200, // upper-third of 844-tall reference
     });
     // LiveStickerLayer realtime subscription picks up the INSERT automatically
+  }, [session.id, hostId]);
+
+  // v1.w.UI.208 — Placed-Products picker: place shop products as overlay cards on stream.
+  // Mobile parity: ProductPlaceSheet + LivePlacedProductLayer in app/live/host.tsx.
+  const [productPickerOpen, setProductPickerOpen] = useState(false);
+  const productBtnRef = useRef<HTMLButtonElement>(null);
+  const [hostProducts, setHostProducts] = useState<{
+    id: string; title: string; price_coins: number; sale_price_coins: number | null; cover_url: string | null;
+  }[]>([]);
+  const [loadingHostProducts, setLoadingHostProducts] = useState(false);
+
+  // Lazy-load host's shop products when picker opens
+  useEffect(() => {
+    if (!productPickerOpen || hostProducts.length > 0) return;
+    setLoadingHostProducts(true);
+    const sb = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    );
+    (async () => {
+      const { data } = await sb.rpc('get_shop_products', {
+        p_seller_id: hostId,
+        p_limit: 40,
+        p_offset: 0,
+      });
+      setHostProducts((data ?? []) as typeof hostProducts);
+      setLoadingHostProducts(false);
+    })();
+  }, [productPickerOpen, hostProducts.length, hostId]);
+
+  // Close product picker on Escape / click-outside
+  useEffect(() => {
+    if (!productPickerOpen) return;
+    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setProductPickerOpen(false); };
+    const handleClick = (e: MouseEvent) => {
+      const btn = productBtnRef.current;
+      if (btn && btn.contains(e.target as Node)) return;
+      setProductPickerOpen(false);
+    };
+    document.addEventListener('keydown', handleKey);
+    document.addEventListener('mousedown', handleClick);
+    return () => {
+      document.removeEventListener('keydown', handleKey);
+      document.removeEventListener('mousedown', handleClick);
+    };
+  }, [productPickerOpen]);
+
+  const handlePlaceProduct = useCallback(async (productId: string) => {
+    setProductPickerOpen(false);
+    const sb = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    );
+    await sb.from('live_placed_products').insert({
+      session_id: session.id,
+      host_id: hostId,
+      product_id: productId,
+      position_x: 195, // centre of 390px reference space
+      position_y: 260, // roughly upper-third of 844px reference
+    });
+    // LivePlacedProductLayer realtime subscription picks up the INSERT
   }, [session.id, hostId]);
 
   // Live-Shopping — v1.w.UI.180
@@ -848,6 +912,94 @@ export function LiveHostDeck({
             )}
           </div>
 
+          {/* v1.w.UI.208 — Placed-products picker. Mobile parity: ProductPlaceSheet in host.tsx. */}
+          <div className="relative">
+            <button
+              ref={productBtnRef}
+              type="button"
+              onClick={() => setProductPickerOpen((o) => !o)}
+              disabled={phase !== 'live'}
+              className={[
+                'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors disabled:opacity-50',
+                productPickerOpen ? 'border-primary bg-primary/10 text-primary' : 'hover:bg-muted',
+              ].join(' ')}
+            >
+              <Package className="h-4 w-4" />
+              Produkt
+            </button>
+
+            {/* Product picker popover */}
+            {productPickerOpen && (
+              <div
+                className="absolute bottom-full right-0 z-50 mb-2 w-72 overflow-hidden rounded-xl border bg-popover shadow-xl"
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between border-b px-3 py-2">
+                  <span className="text-sm font-medium">Produkt platzieren</span>
+                  <button
+                    type="button"
+                    onClick={() => setProductPickerOpen(false)}
+                    className="rounded p-0.5 hover:bg-muted"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="max-h-64 overflow-y-auto">
+                  {loadingHostProducts ? (
+                    <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Lade Produkte…
+                    </div>
+                  ) : hostProducts.length === 0 ? (
+                    <div className="px-4 py-6 text-center text-sm text-muted-foreground">
+                      Noch keine aktiven Produkte in deinem Shop.
+                    </div>
+                  ) : (
+                    <ul className="divide-y">
+                      {hostProducts.map((p) => {
+                        const price = p.sale_price_coins ?? p.price_coins;
+                        return (
+                          <li key={p.id}>
+                            <button
+                              type="button"
+                              className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-muted transition-colors"
+                              onClick={() => void handlePlaceProduct(p.id)}
+                            >
+                              {p.cover_url ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={p.cover_url}
+                                  alt=""
+                                  className="h-10 w-10 rounded-md object-cover shrink-0"
+                                />
+                              ) : (
+                                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-muted">
+                                  <Package className="h-5 w-5 text-muted-foreground" />
+                                </div>
+                              )}
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-medium">{p.title}</p>
+                                <p className="text-xs text-amber-600 dark:text-amber-400">
+                                  <Coins className="mr-0.5 inline h-3 w-3" />
+                                  {price.toLocaleString('de-DE')}
+                                </p>
+                              </div>
+                            </button>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  )}
+                </div>
+                <div className="border-t px-3 py-2">
+                  <p className="text-[11px] text-muted-foreground">
+                    Karte ziehen zum Verschieben · Rechtsklick zum Entfernen
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* v1.w.UI.206 — Recording toggle. Mobile parity: "Aufnahme"/"Stop-REC" in CreatorToolsSheet. */}
           <button
             type="button"
@@ -966,6 +1118,12 @@ export function LiveHostDeck({
                 Only visible during live phase; isHost=true enables interactivity. */}
             {phase === 'live' && (
               <LiveStickerLayer sessionId={session.id} isHost />
+            )}
+
+            {/* v1.w.UI.208 — Host placed-product layer: same drag+remove pattern as sticker layer.
+                Mobile parity: LivePlacedProductLayer in app/live/host.tsx. */}
+            {phase === 'live' && (
+              <LivePlacedProductLayer sessionId={session.id} isHost />
             )}
 
             {/* v1.w.UI.194 — Welcome toasts: host sees "✨ @user joined" for followers/top-fans.

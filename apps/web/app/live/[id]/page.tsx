@@ -33,6 +33,7 @@ import { LiveDuetInviteWatcher } from '@/components/live/live-duet-invite-watche
 import { LiveWelcomeToasts } from '@/components/live/live-welcome-toasts';
 import { LiveHostShopBadge } from '@/components/live/live-host-shop-sheet';
 import { LiveStickerLayer } from '@/components/live/live-sticker-layer';
+import { LivePlacedProductLayer } from '@/components/live/live-placed-product-layer';
 import {
   glassPillStrong,
   glassSurface,
@@ -270,6 +271,10 @@ export default async function LiveViewerPage({ params }: PageProps) {
           {/* v1.w.UI.202 — Emoji-Sticker overlay (host-placed, read-only for viewers).
                Subscribes to live_stickers postgres_changes; pointer-events-none. */}
           {!ended && <LiveStickerLayer sessionId={id} />}
+
+          {/* v1.w.UI.208 — Placed-product cards overlay (host-placed, viewer-clickable).
+               Subscribes to live_placed_products postgres_changes; click → /shop/[id]. */}
+          {!ended && <LivePlacedProductLayer sessionId={id} />}
 
           {/* Top-Bar: Back-Link links, WOZ-Badge + Melden rechts */}
           <div className="absolute inset-x-3 top-3 flex items-center justify-between">
