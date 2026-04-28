@@ -5,10 +5,16 @@ import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createBrowserClient } from '@supabase/ssr';
 import { FeedCard } from './feed-card';
+import { WebLiveFeedCard, type LiveFeedSession } from './web-live-feed-card';
 import { useFeedInteraction } from './feed-interaction-context';
 import { useTogglePostLike } from '@/hooks/use-engagement';
 import type { FeedPost } from '@/lib/data/feed';
 import { ArrowDown, ArrowUp, Compass, KeyboardIcon, RefreshCw } from 'lucide-react';
+
+// ── DisplayRow: interleaved Posts + Live-Cards ───────────────────────────────
+type DisplayRow =
+  | { kind: 'post'; post: FeedPost }
+  | { kind: 'live'; session: LiveFeedSession; rowKey: string };
 
 // -----------------------------------------------------------------------------
 // FeedList — vertikaler Snap-Scroll-Container, ein Post pro Viewport-Höhe.
@@ -76,6 +82,38 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
   // ist weniger volatil; würde dort eher verwirren).
   const router = useRouter();
   const [showNewPostsPill, setShowNewPostsPill] = useState(false);
+
+  // ── Live-Sessions für Feed-Injection (v1.w.UI.229) ────────────────────────
+  // Einmalig beim Mount gefetcht — wir wollen keine Realtime-Volatilität im Feed.
+  // Limit 6, gecycled falls weniger Sessions als 6-Post-Blöcke vorhanden.
+  const [liveSessions, setLiveSessions] = useState<LiveFeedSession[]>([]);
+  useEffect(() => {
+    fetch('/api/feed/live', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: LiveFeedSession[]) => setLiveSessions(data))
+      .catch(() => { /* silent — kein Live bedeutet einfach keine Injection */ });
+  }, []);
+
+  // ── DisplayRows: Posts interleaved mit Live-Cards alle 6 Posts ────────────
+  const displayRows = useMemo((): DisplayRow[] => {
+    if (liveSessions.length === 0) {
+      // Kein Live → plain Post-Rows
+      return list.map((post) => ({ kind: 'post', post }));
+    }
+    const rows: DisplayRow[] = [];
+    list.forEach((post, postIdx) => {
+      rows.push({ kind: 'post', post });
+      // Nach jedem 6. Post (0-basiert: Index 5, 11, 17, …) eine Live-Card
+      if ((postIdx + 1) % 6 === 0) {
+        const liveIdx = Math.floor(postIdx / 6) % liveSessions.length;
+        const session = liveSessions[liveIdx];
+        if (session) {
+          rows.push({ kind: 'live', session, rowKey: `live-${session.id}-after-${postIdx}` });
+        }
+      }
+    });
+    return rows;
+  }, [list, liveSessions]);
   const newestCreatedAt = useMemo(
     () => (list.length > 0 ? list[0].created_at : null),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -177,7 +215,7 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
   // IntersectionObserver — wir beobachten jede Karte, der mit dem größten
   // `intersectionRatio` gewinnt. Threshold-Liste für feinere Übergänge.
   useEffect(() => {
-    if (list.length === 0) return;
+    if (displayRows.length === 0) return;
     const root = containerRef.current;
     if (!root) return;
 
@@ -207,7 +245,7 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
     }
 
     return () => io.disconnect();
-  }, [list.length, activeIdx]);
+  }, [displayRows.length, activeIdx]);
 
   // Panel-Sync (s. Kommentar oben beim Hook-Destructure). Feuert bei jedem
   // `activeIdx`-Change UND jedem Panel-Open/Close-Edge.
@@ -222,10 +260,10 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
   //     lässt IO in der Zeit `activeIdx` oszillieren und das reicht).
   // (3) Reset des Refs beim Panel-Close, damit ein späteres Re-Open auf
   //     demselben Post wieder greift.
-  const listRef = useRef(list);
+  const displayRowsRef = useRef(displayRows);
   useEffect(() => {
-    listRef.current = list;
-  }, [list]);
+    displayRowsRef.current = displayRows;
+  }, [displayRows]);
 
   const lastSyncedIdRef = useRef<string | null>(null);
   useEffect(() => {
@@ -233,7 +271,8 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
       lastSyncedIdRef.current = null;
       return;
     }
-    const activePost = listRef.current[activeIdx];
+    const activeRow = displayRowsRef.current[activeIdx];
+    const activePost = activeRow?.kind === 'post' ? activeRow.post : null;
     if (!activePost) return;
     if (activePost.id === commentsOpenForPostId) return;
     if (lastSyncedIdRef.current === activePost.id) return;
@@ -248,10 +287,12 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
   const viewedInSessionRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (!viewerId) return;
-    const post = listRef.current[activeIdx];
+    const activeRow = displayRowsRef.current[activeIdx];
+    const post = activeRow?.kind === 'post' ? activeRow.post : null;
     if (!post || viewedInSessionRef.current.has(post.id)) return;
     const timer = setTimeout(() => {
-      const p = listRef.current[activeIdx];
+      const row = displayRowsRef.current[activeIdx];
+      const p = row?.kind === 'post' ? row.post : null;
       if (!p || viewedInSessionRef.current.has(p.id)) return;
       viewedInSessionRef.current.add(p.id);
       const db = createBrowserClient(
@@ -267,14 +308,14 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
   // Navigation
   const scrollTo = useCallback(
     (nextIdx: number) => {
-      if (list.length === 0) return;
-      const clamped = Math.max(0, Math.min(list.length - 1, nextIdx));
+      if (displayRows.length === 0) return;
+      const clamped = Math.max(0, Math.min(displayRows.length - 1, nextIdx));
       const target = cardRefs.current[clamped];
       if (target) {
         target.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     },
-    [list.length],
+    [displayRows.length],
   );
 
   // Keyboard shortcuts — global, solange der Container gemountet ist und
@@ -291,7 +332,8 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
       }
       if (e.metaKey || e.ctrlKey || e.altKey) return;
 
-      const active = list[activeIdx];
+      const activeRow = displayRows[activeIdx];
+      const active = activeRow?.kind === 'post' ? activeRow.post : null;
       switch (e.key) {
         case 'j':
         case 'J':
@@ -339,7 +381,7 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
 
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [activeIdx, list, scrollTo, likeMut, viewerId]);
+  }, [activeIdx, displayRows, scrollTo, likeMut, viewerId]);
 
   // Hint-Pop ein-mal pro Session — beim ersten Keyboard-Input (nicht beim Mount).
   // Rationale: Mount-Hints sind visueller Noise für User, die eh nie die Tastatur
@@ -440,9 +482,9 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
           </div>
         )}
 
-        {list.map((post, idx) => (
+        {displayRows.map((row, idx) => (
           <section
-            key={post.id}
+            key={row.kind === 'post' ? row.post.id : row.rowKey}
             data-feed-idx={idx}
             ref={(el) => setCardRef(el, idx)}
             // v1.w.UI.29 / v1.w.UI.31 / v1.w.UI.32 (Hard Containment + Spacing):
@@ -455,13 +497,17 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
             //   Content-Area ist 100dvh - 32px.
             className="flex h-full max-h-[100dvh] w-full snap-start items-center justify-center overflow-hidden py-4"
           >
-            <FeedCard
-              post={post}
-              viewerId={viewerId}
-              isActive={idx === activeIdx}
-              muted={muted}
-              onMuteToggle={onMuteToggle}
-            />
+            {row.kind === 'post' ? (
+              <FeedCard
+                post={row.post}
+                viewerId={viewerId}
+                isActive={idx === activeIdx}
+                muted={muted}
+                onMuteToggle={onMuteToggle}
+              />
+            ) : (
+              <WebLiveFeedCard session={row.session} />
+            )}
           </section>
         ))}
 
@@ -503,7 +549,7 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
         <button
           type="button"
           onClick={() => scrollTo(activeIdx + 1)}
-          disabled={activeIdx >= list.length - 1}
+          disabled={activeIdx >= displayRows.length - 1}
           className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-foreground shadow-md backdrop-blur hover:bg-background disabled:opacity-40"
           aria-label="Nächstes Video (J)"
         >
