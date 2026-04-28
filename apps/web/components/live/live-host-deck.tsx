@@ -30,6 +30,8 @@ import {
   ChevronDown,
   UserCheck,
   Circle,
+  Smile,
+  X,
 } from 'lucide-react';
 import type { LiveSessionWithHost, LiveCommentWithAuthor, ActiveLivePollSSR, LiveRecordingSSR } from '@/lib/data/live';
 import type { SessionGiftRow, ActiveGiftGoal } from '@/lib/data/live-host';
@@ -55,6 +57,15 @@ import { useBattleStore } from './live-battle-store';
 import { LiveBattleBar } from './live-battle-bar';
 import { LiveWelcomeToasts } from './live-welcome-toasts';
 import { LiveAudienceModal } from './live-audience-modal';
+import { LiveStickerLayer } from './live-sticker-layer';
+
+// v1.w.UI.207 — Sticker catalog (matches mobile StickerPicker categories)
+const STICKER_CATALOG = [
+  { category: 'Emotion',  emojis: ['❤️','🔥','💯','🥰','😍','🤩','😎','😂','🤣','😭','🥺','😱'] },
+  { category: 'Reaktion', emojis: ['👀','👍','👎','🙌','👏','🙏','💪','🤝','🤘','✌️','🤞','👋'] },
+  { category: 'Symbole',  emojis: ['⭐','✨','💫','🌟','💎','🎉','🎊','🏆','👑','💰','💸','🚀'] },
+  { category: 'Spaß',     emojis: ['🎵','🎶','🎧','🎤','🎬','🎮','🍕','🍔','☕','🍻','🌹','🌈'] },
+] as const;
 
 // -----------------------------------------------------------------------------
 // LiveHostDeck — OBS-ähnliches Control-Panel für den Host.
@@ -243,6 +254,44 @@ export function LiveHostDeck({
       .subscribe();
     return () => { void sb.removeChannel(ch); };
   }, [session.id]);
+
+  // v1.w.UI.207 — Sticker picker: open/close state + add handler
+  // Mobile parity: StickerPicker sheet in app/live/host.tsx.
+  const [stickerPickerOpen, setStickerPickerOpen] = useState(false);
+  const stickerBtnRef = useRef<HTMLButtonElement>(null);
+
+  // Close picker on Escape or click-outside
+  useEffect(() => {
+    if (!stickerPickerOpen) return;
+    const handleKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setStickerPickerOpen(false); };
+    const handleClick = (e: MouseEvent) => {
+      const btn = stickerBtnRef.current;
+      if (btn && btn.contains(e.target as Node)) return; // button toggles itself
+      setStickerPickerOpen(false);
+    };
+    document.addEventListener('keydown', handleKey);
+    document.addEventListener('mousedown', handleClick);
+    return () => {
+      document.removeEventListener('keydown', handleKey);
+      document.removeEventListener('mousedown', handleClick);
+    };
+  }, [stickerPickerOpen]);
+
+  const handleAddSticker = useCallback(async (emoji: string) => {
+    setStickerPickerOpen(false);
+    const sb = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    );
+    await sb.from('live_stickers').insert({
+      session_id: session.id,
+      host_id: hostId,
+      emoji,
+      position_x: 195, // centre of 390-wide reference (will be near middle)
+      position_y: 200, // upper-third of 844-tall reference
+    });
+    // LiveStickerLayer realtime subscription picks up the INSERT automatically
+  }, [session.id, hostId]);
 
   // Live-Shopping — v1.w.UI.180
   const { pinnedProduct: shopPinnedProduct, pinProduct, unpinProduct } = useLiveShoppingHost(session.id);
@@ -737,6 +786,68 @@ export function LiveHostDeck({
             <BarChart3 className="h-4 w-4" />
             Umfrage
           </button>
+          {/* v1.w.UI.207 — Sticker placement. Mobile parity: StickerPicker sheet in host.tsx. */}
+          <div className="relative">
+            <button
+              ref={stickerBtnRef}
+              type="button"
+              onClick={() => setStickerPickerOpen((o) => !o)}
+              disabled={phase !== 'live'}
+              className={[
+                'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm transition-colors disabled:opacity-50',
+                stickerPickerOpen ? 'border-primary bg-primary/10 text-primary' : 'hover:bg-muted',
+              ].join(' ')}
+            >
+              <Smile className="h-4 w-4" />
+              Sticker
+            </button>
+
+            {/* Sticker picker popover */}
+            {stickerPickerOpen && (
+              <div
+                className="absolute bottom-full right-0 z-50 mb-2 w-72 overflow-hidden rounded-xl border bg-popover shadow-xl"
+                // Prevent mousedown from bubbling to document (would close picker)
+                onMouseDown={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between border-b px-3 py-2">
+                  <span className="text-sm font-medium">Sticker hinzufügen</span>
+                  <button
+                    type="button"
+                    onClick={() => setStickerPickerOpen(false)}
+                    className="rounded p-0.5 hover:bg-muted"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <div className="max-h-64 overflow-y-auto p-3">
+                  {STICKER_CATALOG.map((cat) => (
+                    <div key={cat.category} className="mb-3 last:mb-0">
+                      <p className="mb-1 text-xs font-medium text-muted-foreground">{cat.category}</p>
+                      <div className="grid grid-cols-6 gap-1">
+                        {cat.emojis.map((emoji) => (
+                          <button
+                            key={emoji}
+                            type="button"
+                            title={`Sticker ${emoji} hinzufügen`}
+                            onClick={() => void handleAddSticker(emoji)}
+                            className="flex h-9 w-9 items-center justify-center rounded-lg text-xl hover:bg-muted active:scale-90 transition-transform"
+                          >
+                            {emoji}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="border-t px-3 py-2">
+                  <p className="text-[11px] text-muted-foreground">
+                    Sticker ziehen zum Verschieben · Rechtsklick zum Entfernen
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* v1.w.UI.206 — Recording toggle. Mobile parity: "Aufnahme"/"Stop-REC" in CreatorToolsSheet. */}
           <button
             type="button"
@@ -849,6 +960,12 @@ export function LiveHostDeck({
               <div className="absolute inset-0 flex items-center justify-center bg-black/80 text-white/60">
                 <VideoOff className="h-12 w-12" />
               </div>
+            )}
+
+            {/* v1.w.UI.207 — Host sticker layer: drag-to-move + right-click-to-remove.
+                Only visible during live phase; isHost=true enables interactivity. */}
+            {phase === 'live' && (
+              <LiveStickerLayer sessionId={session.id} isHost />
             )}
 
             {/* v1.w.UI.194 — Welcome toasts: host sees "✨ @user joined" for followers/top-fans.
