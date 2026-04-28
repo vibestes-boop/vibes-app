@@ -14,6 +14,12 @@ export interface Post {
   allow_comments: boolean;
   allow_duet: boolean;
   allow_stitch: boolean;
+  /** Optional — populated by web queries; undefined for legacy mobile rows. */
+  women_only?: boolean;
+  /** v1.w.UI.179 — pinned to author's profile (max 1 per user). */
+  is_pinned?: boolean;
+  /** v1.w.UI.205 — video frame aspect ratio stored at upload time. */
+  aspect_ratio?: 'portrait' | 'landscape' | 'square';
   created_at: string;
 }
 
