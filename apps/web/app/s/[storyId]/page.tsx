@@ -6,6 +6,7 @@ import { BadgeCheck, Clock3 } from 'lucide-react';
 
 import { getStory } from '@/lib/data/public';
 import { getUser } from '@/lib/auth/session';
+import { getStoryViewers } from '@/lib/data/stories';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { VideoPlayer } from '@/components/video/video-player';
 import { ShareButtons } from '@/components/share/share-buttons';
@@ -105,6 +106,10 @@ export default async function StoryPage({
   const authorName = story.author.display_name ?? `@${story.author.username}`;
   const remaining = formatRemaining(story.expires_at);
 
+  // v1.w.UI.178 — Viewer list only visible to the story's own author.
+  const isSelf = !!user && user.id === story.author.id;
+  const viewers = isSelf ? await getStoryViewers(storyId) : [];
+
   return (
     <main className="mx-auto max-w-md px-4 py-6">
       {/* Autor-Header (floating above media) */}
@@ -182,6 +187,56 @@ export default async function StoryPage({
           myVote={story.my_vote ?? null}
           isAuthenticated={!!user}
         />
+      )}
+
+      {/* v1.w.UI.178: Viewer list — only visible to the story author. */}
+      {isSelf && viewers.length > 0 && (
+        <div className="mt-4">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Zuschauer · {viewers.length.toLocaleString('de-DE')}
+          </p>
+          <ul className="divide-y divide-border rounded-xl border border-border bg-card">
+            {viewers.map((v) => {
+              const name = v.display_name ?? v.username ?? 'Unbekannt';
+              const initials = name.slice(0, 2).toUpperCase();
+              const href = v.username ? `/u/${v.username}` : undefined;
+              const viewedDate = new Date(v.viewed_at);
+              const timeLabel = viewedDate.toLocaleTimeString('de-DE', {
+                hour: '2-digit',
+                minute: '2-digit',
+              });
+              return (
+                <li key={v.user_id} className="flex items-center gap-3 px-3 py-2">
+                  <Avatar className="h-8 w-8 shrink-0">
+                    <AvatarImage src={v.avatar_url ?? undefined} alt={name} />
+                    <AvatarFallback className="text-[10px]">{initials}</AvatarFallback>
+                  </Avatar>
+                  <div className="min-w-0 flex-1">
+                    {href ? (
+                      <Link
+                        href={href}
+                        className="truncate text-sm font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        {name}
+                      </Link>
+                    ) : (
+                      <span className="truncate text-sm font-medium">{name}</span>
+                    )}
+                    {v.username && (
+                      <p className="truncate text-xs text-muted-foreground">@{v.username}</p>
+                    )}
+                  </div>
+                  <time
+                    dateTime={v.viewed_at}
+                    className="shrink-0 text-xs text-muted-foreground"
+                  >
+                    {timeLabel}
+                  </time>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       )}
     </main>
   );
