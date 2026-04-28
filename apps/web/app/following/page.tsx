@@ -1,3 +1,10 @@
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Following-Feed — Serlo',
+  robots: { index: false, follow: false },
+};
+
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { HomeFeedShell } from '@/components/feed/home-feed-shell';

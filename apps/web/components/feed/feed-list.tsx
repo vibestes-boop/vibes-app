@@ -3,11 +3,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { createBrowserClient } from '@supabase/ssr';
 import { FeedCard } from './feed-card';
 import { useFeedInteraction } from './feed-interaction-context';
 import { useTogglePostLike } from '@/hooks/use-engagement';
 import type { FeedPost } from '@/lib/data/feed';
-import { ArrowDown, ArrowUp, KeyboardIcon, RefreshCw } from 'lucide-react';
+import { ArrowDown, ArrowUp, Compass, KeyboardIcon, RefreshCw } from 'lucide-react';
 
 // -----------------------------------------------------------------------------
 // FeedList — vertikaler Snap-Scroll-Container, ein Post pro Viewport-Höhe.
@@ -240,6 +241,29 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
     openCommentsFor(activePost.id);
   }, [activeIdx, commentsOpenForPostId, openCommentsFor]);
 
+  // ── v1.w.UI.138 — View-Count Tracking ────────────────────────────────────
+  // Fires increment_post_view after 1.5 s dwell — mirrors mobile app behaviour.
+  // Session-dedup via Set (RPC also deduplicates server-side via post_views table).
+  // Skipped for unauthenticated users — RPC is REVOKE'd from anon anyway.
+  const viewedInSessionRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!viewerId) return;
+    const post = listRef.current[activeIdx];
+    if (!post || viewedInSessionRef.current.has(post.id)) return;
+    const timer = setTimeout(() => {
+      const p = listRef.current[activeIdx];
+      if (!p || viewedInSessionRef.current.has(p.id)) return;
+      viewedInSessionRef.current.add(p.id);
+      const db = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      );
+      void Promise.resolve(db.rpc('increment_post_view', { p_post_id: p.id })).catch(() => undefined);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [activeIdx, viewerId]);
+  // ─────────────────────────────────────────────────────────────────────────
+
   // Navigation
   const scrollTo = useCallback(
     (nextIdx: number) => {
@@ -409,9 +433,10 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
         className="no-scrollbar h-full w-full snap-y snap-mandatory overflow-y-auto overscroll-contain"
       >
         {empty && (
-          <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-sm text-muted-foreground">
-            <span>Noch nichts in deinem Feed.</span>
-            <span className="text-xs">Folge jemandem oder schau in /explore rein.</span>
+          <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-muted-foreground">
+            <Compass className="h-10 w-10 opacity-30" strokeWidth={1.5} />
+            <p className="text-sm font-medium">Noch keine Posts hier.</p>
+            <p className="text-xs opacity-70">Schau in /explore rein oder folge neuen Accounts.</p>
           </div>
         )}
 

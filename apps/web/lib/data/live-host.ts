@@ -48,6 +48,8 @@ export const getMyActiveLiveSession = cache(
 // getMyPastSessions — History für `/studio/live`.
 // -----------------------------------------------------------------------------
 
+export type BattleResult = 'win' | 'loss' | 'draw';
+
 export interface PastSession {
   id: string;
   room_name: string;
@@ -59,6 +61,15 @@ export interface PastSession {
   viewer_count: number;
   status: string;
   duration_secs: number | null;
+  // enriched from creator_live_history view
+  total_gift_diamonds: number;
+  gift_count: number;
+  comment_count: number;
+  battle_result: BattleResult | null;
+  battle_host_score: number | null;
+  battle_guest_score: number | null;
+  battle_opponent_name: string | null;
+  battle_opponent_avatar: string | null;
 }
 
 export const getMyPastSessions = cache(
@@ -69,12 +80,15 @@ export const getMyPastSessions = cache(
     } = await supabase.auth.getUser();
     if (!user) return [];
 
+    // Use creator_live_history view for rich per-session analytics
+    // (gift totals, comment count, battle result) — same data as mobile live-history screen.
     const { data } = await supabase
-      .from('live_sessions')
+      .from('creator_live_history')
       .select(
-        // `peak_viewer_count:peak_viewers` — gleiches Mapping wie in
-        // `getMyActiveLiveSession` / `SESSION_COLUMNS` in data/live.ts.
-        'id, room_name, title, thumbnail_url, started_at, ended_at, peak_viewer_count:peak_viewers, viewer_count, status',
+        'session_id, title, started_at, ended_at, peak_viewers, status, duration_secs,' +
+        'total_gift_diamonds, gift_count, comment_count,' +
+        'battle_result, battle_host_score, battle_guest_score,' +
+        'battle_opponent_name, battle_opponent_avatar',
       )
       .eq('host_id', user.id)
       .order('started_at', { ascending: false })
@@ -82,11 +96,38 @@ export const getMyPastSessions = cache(
 
     if (!data) return [];
 
-    return data.map((row) => {
-      const start = row.started_at ? new Date(row.started_at).getTime() : null;
-      const end = row.ended_at ? new Date(row.ended_at).getTime() : null;
-      const duration = start && end ? Math.floor((end - start) / 1000) : null;
-      return { ...row, duration_secs: duration } as PastSession;
+    // Fetch thumbnails separately from live_sessions (not in the view)
+    const ids = (data as any[]).map((r) => r.session_id as string);
+    const { data: sessions } = await supabase
+      .from('live_sessions')
+      .select('id, thumbnail_url, room_name, viewer_count')
+      .in('id', ids);
+    const sessionMap = new Map(
+      (sessions ?? []).map((s) => [s.id, s]),
+    );
+
+    return (data as any[]).map((row) => {
+      const extra = sessionMap.get(row.session_id) ?? {};
+      return {
+        id:                  row.session_id,
+        room_name:           (extra as any).room_name ?? '',
+        title:               row.title ?? null,
+        thumbnail_url:       (extra as any).thumbnail_url ?? null,
+        started_at:          row.started_at,
+        ended_at:            row.ended_at ?? null,
+        peak_viewer_count:   row.peak_viewers ?? 0,
+        viewer_count:        (extra as any).viewer_count ?? 0,
+        status:              row.status,
+        duration_secs:       row.duration_secs ?? null,
+        total_gift_diamonds: row.total_gift_diamonds ?? 0,
+        gift_count:          row.gift_count ?? 0,
+        comment_count:       row.comment_count ?? 0,
+        battle_result:       row.battle_result ?? null,
+        battle_host_score:   row.battle_host_score ?? null,
+        battle_guest_score:  row.battle_guest_score ?? null,
+        battle_opponent_name:   row.battle_opponent_name ?? null,
+        battle_opponent_avatar: row.battle_opponent_avatar ?? null,
+      } as PastSession;
     });
   },
 );
@@ -164,5 +205,99 @@ export const getActiveGiftGoal = cache(
       .limit(1)
       .maybeSingle();
     return (data as ActiveGiftGoal | null) ?? null;
+  },
+);
+
+// -----------------------------------------------------------------------------
+// Scheduled Lives — v1.w.UI.155
+// -----------------------------------------------------------------------------
+
+export interface ScheduledLiveRow {
+  id:           string;
+  host_id:      string;
+  title:        string;
+  description:  string | null;
+  scheduled_at: string;
+  status:       'scheduled' | 'reminded' | 'live' | 'expired' | 'cancelled';
+  allow_comments: boolean;
+  allow_gifts:    boolean;
+  women_only:     boolean;
+  session_id:   string | null;
+  created_at:   string;
+  // join
+  host_username:   string | null;
+  host_avatar_url: string | null;
+}
+
+function mapScheduledRow(r: any): ScheduledLiveRow {
+  const host = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles;
+  return {
+    id:           r.id,
+    host_id:      r.host_id,
+    title:        r.title,
+    description:  r.description ?? null,
+    scheduled_at: r.scheduled_at,
+    status:       r.status,
+    allow_comments: r.allow_comments,
+    allow_gifts:    r.allow_gifts,
+    women_only:     r.women_only,
+    session_id:   r.session_id ?? null,
+    created_at:   r.created_at,
+    host_username:   host?.username   ?? null,
+    host_avatar_url: host?.avatar_url ?? null,
+  };
+}
+
+/** Public upcoming lives — for /live page "Demnächst" strip. */
+export const getUpcomingScheduledLives = cache(
+  async (limit = 8): Promise<ScheduledLiveRow[]> => {
+    const supabase = await createClient();
+    const cutoff = new Date(Date.now() - 10 * 60_000).toISOString();
+    const { data } = await supabase
+      .from('scheduled_lives')
+      .select('*, profiles!host_id(username, avatar_url)')
+      .in('status', ['scheduled', 'reminded'])
+      .gt('scheduled_at', cutoff)
+      .order('scheduled_at', { ascending: true })
+      .limit(limit);
+    if (!data) return [];
+    return data.map(mapScheduledRow);
+  },
+);
+
+/** Creator's own scheduled lives — for /studio/live page. */
+export const getMyScheduledLives = cache(
+  async (): Promise<ScheduledLiveRow[]> => {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+    const { data } = await supabase
+      .from('scheduled_lives')
+      .select('*, profiles!host_id(username, avatar_url)')
+      .eq('host_id', user.id)
+      .in('status', ['scheduled', 'reminded', 'live'])
+      .order('scheduled_at', { ascending: true })
+      .limit(20);
+    if (!data) return [];
+    return data.map(mapScheduledRow);
+  },
+);
+
+// -----------------------------------------------------------------------------
+// isHostMuted — check if the current viewer has muted this host's Go-Live push.
+// Used on public profile pages to render the bell toggle button.
+// Returns false for unauthenticated visitors or self-profile.
+// -----------------------------------------------------------------------------
+export const isHostMuted = cache(
+  async (hostId: string): Promise<boolean> => {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user || user.id === hostId) return false;
+    const { count } = await supabase
+      .from('muted_live_hosts')
+      .select('host_id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('host_id', hostId);
+    return (count ?? 0) > 0;
   },
 );

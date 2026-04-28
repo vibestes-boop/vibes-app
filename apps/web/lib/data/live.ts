@@ -14,7 +14,7 @@ import type { LiveSession } from '@shared/types';
 // Ohne Alias war die Spalte `peak_viewer_count` unbekannt → `data = null` →
 // `notFound()` in `/live/host/[id]` → 404 beim Host-Deck.
 const SESSION_COLUMNS =
-  'id, host_id, room_name, title, thumbnail_url, category, status, viewer_count, peak_viewer_count:peak_viewers, started_at, ended_at, updated_at, moderation_enabled, moderation_words, slow_mode_seconds';
+  'id, host_id, room_name, title, thumbnail_url, category, status, viewer_count, peak_viewer_count:peak_viewers, started_at, ended_at, updated_at, moderation_enabled, moderation_words, slow_mode_seconds, allow_comments, allow_gifts, women_only, followers_only_chat, shop_enabled';
 
 // HINWEIS: `verified:is_verified` — analog zu `peak_viewer_count:peak_viewers`.
 // Die DB-Spalte heißt `is_verified` (Migration 20260407010000_creator_analytics),
@@ -26,6 +26,7 @@ const HOST_JOIN = 'host:profiles!live_sessions_host_id_fkey ( id, username, disp
 
 export interface LiveSessionWithHost extends LiveSession {
   slow_mode_seconds: number | null;
+  shop_enabled: boolean | null;
   host: {
     id: string;
     username: string;
@@ -222,6 +223,79 @@ export const getActiveCoHosts = cache(
 );
 
 // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// getPublicReplays — Listing aller öffentlichen VOD-Replays für /live/replays.
+// Nur Sessions mit `is_replayable=true` und `replay_url IS NOT NULL`.
+// -----------------------------------------------------------------------------
+
+export interface ReplaySession {
+  id: string;
+  title: string | null;
+  thumbnail_url: string | null;
+  replay_url: string | null;
+  replay_views: number;
+  peak_viewer_count: number;
+  ended_at: string | null;
+  host: {
+    id: string;
+    username: string;
+    avatar_url: string | null;
+  } | null;
+}
+
+export const getPublicReplays = cache(
+  async (limit = 40): Promise<ReplaySession[]> => {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from('live_sessions')
+      .select(
+        `id, title, thumbnail_url, replay_url, replay_views, peak_viewer_count:peak_viewers, ended_at,
+         host:profiles!live_sessions_host_id_fkey ( id, username, avatar_url )`,
+      )
+      .eq('is_replayable', true)
+      .not('replay_url', 'is', null)
+      .eq('status', 'ended')
+      .order('ended_at', { ascending: false })
+      .limit(limit);
+
+    if (!data) return [];
+    return (data as unknown as ReplaySession[]).map((r) => ({
+      ...r,
+      host: Array.isArray(r.host) ? r.host[0] ?? null : r.host,
+    }));
+  },
+);
+
+// getUserReplays — Public replays for a specific host (profile Lives tab).
+// v1.w.UI.173. Same shape as ReplaySession, filtered to a single host.
+// Only replayable sessions with a replay_url — matches what the viewer
+// would find on /live/replay/[id], so no dead links.
+// -----------------------------------------------------------------------------
+
+export const getUserReplays = cache(
+  async (hostId: string, limit = 30): Promise<ReplaySession[]> => {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from('live_sessions')
+      .select(
+        `id, title, thumbnail_url, replay_url, replay_views, peak_viewer_count:peak_viewers, ended_at,
+         host:profiles!live_sessions_host_id_fkey ( id, username, avatar_url )`,
+      )
+      .eq('host_id', hostId)
+      .eq('is_replayable', true)
+      .not('replay_url', 'is', null)
+      .eq('status', 'ended')
+      .order('ended_at', { ascending: false })
+      .limit(limit);
+
+    if (!data) return [];
+    return (data as unknown as ReplaySession[]).map((r) => ({
+      ...r,
+      host: Array.isArray(r.host) ? r.host[0] ?? null : r.host,
+    }));
+  },
+);
+
 // Replay-Metadata. `live_recordings` hält den S3/Storage-URL + duration_secs +
 // clip_markers kommen aus separater Tabelle.
 // -----------------------------------------------------------------------------

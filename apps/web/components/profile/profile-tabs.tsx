@@ -3,7 +3,7 @@
 import type { Route } from 'next';
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
 import { useCallback, useTransition } from 'react';
-import { Grid3x3, Heart, ShoppingBag, Swords } from 'lucide-react';
+import { Grid3x3, Heart, Repeat2, ShoppingBag, Swords, Radio, Bookmark } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/client';
 import { LOCALE_INTL } from '@/lib/i18n/config';
@@ -20,24 +20,30 @@ import { LOCALE_INTL } from '@/lib/i18n/config';
 // sich nur die Zahlen ändern.
 // -----------------------------------------------------------------------------
 
-export type ProfileTab = 'posts' | 'likes' | 'shop' | 'battles';
+export type ProfileTab = 'posts' | 'likes' | 'saved' | 'reposts' | 'shop' | 'battles' | 'lives';
 
 export interface ProfileTabsLabels {
   tablist: string;
   posts: string;
   likes: string;
+  saved?: string;
+  reposts: string;
   shop: string;
   battles: string;
+  lives: string;
 }
 
 export function ProfileTabs({
   active,
   counts,
   labels,
+  savedVisible = false,
 }: {
   active: ProfileTab;
   counts?: Partial<Record<ProfileTab, number>>;
   labels: ProfileTabsLabels;
+  /** Show the Saved/Bookmarks tab — only for own-profile (isSelf). */
+  savedVisible?: boolean;
 }) {
   const { locale } = useI18n();
   const router = useRouter();
@@ -48,8 +54,13 @@ export function ProfileTabs({
   const TABS: Array<{ key: ProfileTab; label: string; icon: typeof Grid3x3 }> = [
     { key: 'posts',   label: labels.posts,   icon: Grid3x3 },
     { key: 'likes',   label: labels.likes,   icon: Heart },
+    ...(savedVisible
+      ? [{ key: 'saved' as ProfileTab, label: labels.saved ?? 'Gespeichert', icon: Bookmark }]
+      : []),
+    { key: 'reposts', label: labels.reposts, icon: Repeat2 },
     { key: 'shop',    label: labels.shop,    icon: ShoppingBag },
     { key: 'battles', label: labels.battles, icon: Swords },
+    { key: 'lives',   label: labels.lives,   icon: Radio },
   ];
 
   const onSelect = useCallback(

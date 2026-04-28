@@ -88,11 +88,11 @@ export async function TopRightActions() {
               +
             </span>
           </Link>
-          {/* DM + Notifications Badges (v1.w.UI.75 / v1.w.UI.76).
+          {/* DM + Notifications Badges (v1.w.UI.75 / v1.w.UI.76 / v1.w.UI.93).
               Server-seitige Initial-Counts für flicker-freies erstes Paint;
-              Client-Polling via TanStack Query (DMs 30s, Notifs 60s). */}
-          <DmInboxPill initialCount={initialUnreadDms} />
-          <NotifBellPill initialCount={initialUnreadNotifs} />
+              DMs: 30s-Polling; Notifs: Realtime (postgres_changes INSERT) + 60s-Fallback. */}
+          <DmInboxPill initialCount={initialUnreadDms} viewerId={user.id} />
+          <NotifBellPill initialCount={initialUnreadNotifs} viewerId={user.id} />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

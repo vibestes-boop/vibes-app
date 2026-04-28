@@ -2,8 +2,14 @@ import type { MetadataRoute } from 'next';
 
 // -----------------------------------------------------------------------------
 // /robots.txt — generiert von Next.js aus diesem File.
-// Wichtig: /settings, /onboarding, /auth/callback vom Crawl ausschließen —
-// sind authentifizierte / transient Routes.
+//
+// Explizit erlaubt: alle öffentlichen Discovery-Seiten.
+// Explizit verboten: Auth-transiente und nutzerspezifische Bereiche.
+//
+// Hinweis: Ohne `Disallow: /` gilt alles Nicht-Disallowed als crawlbar.
+// Die `allow`-Einträge dienen als eindeutiger Signal-Layer für Googlebots
+// longest-match-Algorithmus — besonders wichtig wenn im gleichen Segment
+// öffentliche und private Sub-Routen koexistieren (z.B. /settings vs /).
 // -----------------------------------------------------------------------------
 
 export default function robots(): MetadataRoute.Robots {
@@ -13,13 +19,34 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: '*',
-        allow: ['/', '/u/', '/p/'],
+        allow: [
+          '/',
+          '/u/',       // Public profiles + /u/[username]/shop
+          '/p/',       // Post detail pages
+          '/explore',  // Discovery
+          '/shop/',    // Product catalog + detail pages
+          '/live',     // Live listing
+          '/guilds',   // Pod discovery
+          '/t/',       // Hashtag pages
+          '/g/',       // Guild detail pages
+          '/terms',
+          '/privacy',
+          '/imprint',
+        ],
         disallow: [
           '/api/',
           '/auth/',
-          '/settings',
+          '/settings',  // Auth-gated — enthält billing/notifications/etc.
           '/onboarding',
-          '/s/',          // Stories sind ephemer — keine Indexierung.
+          '/studio',    // Creator-only, kein SEO-Wert
+          '/create',    // Upload-Flow, kein SEO-Wert
+          '/messages',  // Private DMs
+          '/following', // Per-User-Feed
+          '/saved',     // Bookmarks, per-User
+          '/notifications', // Per-User
+          '/coin-shop', // Checkout — kein indexierbarer Wert
+          '/s/',        // Stories sind ephemer
+          '/stories/',  // Story-Creator/-Viewer
         ],
       },
     ],

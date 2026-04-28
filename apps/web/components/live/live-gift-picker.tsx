@@ -6,16 +6,17 @@ import { createBrowserClient } from '@supabase/ssr';
 import { X, Coins, Loader2 } from 'lucide-react';
 import { sendLiveGift } from '@/app/actions/live';
 import type { ActiveCoHostSSR } from '@/lib/data/live';
+import { useBattleStore } from './live-battle-store';
+import type { BattleTeam } from './live-battle-store';
 
 // -----------------------------------------------------------------------------
-// LiveGiftPicker — Bottom-Sheet mit Geschenk-Katalog. Nutzt dieselbe Tabelle
-// wie Native: `live_gift_catalog` mit Spalten `id, name, coin_cost, image_url,
-// animation_url, season, active`. Season-Filter greift nur für Specials.
+// LiveGiftPicker — v1.w.UI.181 (battle mode added)
 //
 // Recipient-Logik:
 //  • Normal: Host = Recipient
-//  • Mit 1 aktivem CoHost: Auswahl Host | CoHost (segmented control)
-//  • Battle-Mode: NICHT implementiert im Web — Phase 6 (Battle-UI).
+//  • Mit 1 aktivem CoHost (non-battle): Auswahl Host | CoHost (segmented control)
+//  • Battle-Mode: 🔴 HOST / 🔵 GUEST team picker (TikTok-style colored pills)
+//    After a successful gift, broadcasts battle-gift event via store's sendBattleGift.
 // -----------------------------------------------------------------------------
 
 interface GiftCatalogRow {
@@ -48,12 +49,14 @@ export function LiveGiftPicker({
   const [loading, setLoading] = useState(true);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [recipient, setRecipient] = useState<'host' | 'cohost'>('host');
+  const [battleTeam, setBattleTeam] = useState<BattleTeam>('host');
   const [error, setError] = useState<string | null>(null);
   const [sentFlash, setSentFlash] = useState(false);
   const [isPending, startTransition] = useTransition();
 
+  const { isBattle, sendBattleGift } = useBattleStore();
   const activeCoHost = cohosts[0] ?? null;
-  const showRecipientSwitch = Boolean(activeCoHost);
+  const showRecipientSwitch = Boolean(activeCoHost) && !isBattle;
 
   // -----------------------------------------------------------------------------
   // Katalog + Balance laden
@@ -90,7 +93,10 @@ export function LiveGiftPicker({
     const gift = gifts.find((g) => g.id === selectedId);
     if (!gift) return;
 
-    const recipientId = recipient === 'cohost' && activeCoHost ? activeCoHost.user_id : hostId;
+    // Battle mode: recipient = the chosen team's user id
+    const recipientId = isBattle
+      ? (battleTeam === 'guest' && activeCoHost ? activeCoHost.user_id : hostId)
+      : (recipient === 'cohost' && activeCoHost ? activeCoHost.user_id : hostId);
 
     startTransition(async () => {
       const result = await sendLiveGift(sessionId, recipientId, selectedId);
@@ -99,6 +105,10 @@ export function LiveGiftPicker({
         return;
       }
       setBalance(result.data.newBalance);
+      // Broadcast battle-gift score event
+      if (isBattle && sendBattleGift) {
+        sendBattleGift(battleTeam, gift.coin_cost);
+      }
       setSentFlash(true);
       window.setTimeout(() => setSentFlash(false), 1200);
     });
@@ -134,7 +144,38 @@ export function LiveGiftPicker({
           </div>
         </div>
 
-        {/* Recipient-Switch (nur bei CoHost) */}
+        {/* Battle team picker — 🔴/🔵 TikTok-style pills */}
+        {isBattle && (
+          <div className="flex items-center justify-center gap-2 border-b bg-black/5 px-4 py-2 dark:bg-white/5">
+            <span className="text-[11px] font-medium text-muted-foreground">Team wählen:</span>
+            <div className="inline-flex gap-1.5 text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => setBattleTeam('host')}
+                className={`rounded-full px-3 py-1 transition-all ${
+                  battleTeam === 'host'
+                    ? 'bg-[#FF2D6D] text-white shadow-sm'
+                    : 'border border-[#FF2D6D]/40 text-[#FF2D6D] hover:bg-[#FF2D6D]/10'
+                }`}
+              >
+                🔴 {hostName}
+              </button>
+              <button
+                type="button"
+                onClick={() => setBattleTeam('guest')}
+                className={`rounded-full px-3 py-1 transition-all ${
+                  battleTeam === 'guest'
+                    ? 'bg-[#00D4FF] text-black shadow-sm'
+                    : 'border border-[#00D4FF]/40 text-[#00D4FF] hover:bg-[#00D4FF]/10'
+                }`}
+              >
+                🔵 {activeCoHost?.profile?.username ?? 'Guest'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Recipient-Switch (nur bei CoHost ohne Battle) */}
         {showRecipientSwitch && (
           <div className="flex items-center justify-center gap-2 border-b px-4 py-2">
             <div className="inline-flex rounded-full border bg-muted/40 p-0.5 text-xs font-medium">

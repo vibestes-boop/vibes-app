@@ -66,6 +66,8 @@ export default async function ProfileSettingsPage() {
       <ProfileEditForm
         initialDisplayName={profile.display_name ?? ''}
         initialBio={profile.bio ?? ''}
+        initialWebsite={(profile as any).website ?? ''}
+        initialTeip={(profile as any).teip ?? null}
         username={profile.username ?? ''}
         initialAvatarUrl={profile.avatar_url ?? null}
         userId={user.id}

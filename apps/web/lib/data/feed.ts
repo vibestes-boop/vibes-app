@@ -10,7 +10,7 @@ import type { Post, PublicProfile } from '@shared/types';
 // namen als der Web-Contract. Statt Transform-Boilerplate nutzen wir hier
 // PostgREST-Select-Aliase (`target_name:source_column`), damit die Row
 // direkt im Post-Contract-Shape zurückkommt. Nur Defaults für Mobile-seitig
-// fehlende Felder (duration_secs/music_id/allow_stitch/share_count) und
+// fehlende Felder (duration_secs/music_id/allow_stitch) und
 // der verified→is_verified-Alias beim Author werden manuell gesetzt.
 // -----------------------------------------------------------------------------
 
@@ -24,19 +24,35 @@ export interface FeedPost extends Post {
   liked_by_me: boolean;
   saved_by_me: boolean;
   following_author: boolean;
+  // v1.w.UI.151 — Repost-Flag für Repeat2-Button im Feed (nur fremde Posts).
+  reposted_by_me: boolean;
   // Mobile-DB diskriminiert Bild vs. Video. Wir brauchen das im Feed-
   // Renderer um zwischen <video> (Videos) und <img> (Bilder) zu wählen —
   // ohne dieses Feld rendert FeedCard blind <video src=bildurl> → leerer
   // Frame + Broken-Media-State. `null` = Legacy-Row vor media_type-
   // Einführung; dort defaulten wir auf 'video' (die damalige Annahme).
   media_type: 'image' | 'video' | null;
+  // v1.w.UI.142 — allow_download gated by author; feed card shows download in more-menu.
+  allow_download: boolean;
+  // v1.w.UI.169 — Women-Only Zone posts: 🌸 badge overlay in feed card.
+  // RLS ensures non-verified users never receive women_only=true rows,
+  // so this flag is display-only (no client-side gating needed).
+  women_only: boolean;
+  // v1.w.UI.172 — post visibility level: public / friends / private.
+  // Authors see their own restricted posts in the feed; this flag drives
+  // the audience-badge overlay (lock icon for private, users icon for friends).
+  privacy: 'public' | 'friends' | 'private';
+  // v1.w.UI.175 — stored aspect ratio for CLS-free layout on first render.
+  // Eliminates the 9:16 → actual-ratio jump for landscape/square posts while
+  // media metadata loads. 'portrait' = 9:16, 'landscape' = 16:9, 'square' = 1:1.
+  aspect_ratio: 'portrait' | 'landscape' | 'square';
 }
 
 // PostgREST-Aliase: user_id:author_id, video_url:media_url, hashtags:tags
 // — mappt Mobile-DB-Spalten auf Web-Contract-Namen bereits in der Query.
 // `media_type` ist unaliased weil der Name in beiden Schemata identisch ist.
 const POST_COLUMNS =
-  'id, user_id:author_id, caption, video_url:media_url, media_type, thumbnail_url, view_count, like_count, comment_count, hashtags:tags, allow_comments, allow_duet, created_at';
+  'id, user_id:author_id, caption, video_url:media_url, media_type, thumbnail_url, view_count, like_count, comment_count, share_count, hashtags:tags, allow_comments, allow_duet, allow_download, women_only, privacy, aspect_ratio, created_at';
 
 const AUTHOR_JOIN =
   'author:profiles!posts_author_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )';
@@ -67,14 +83,15 @@ async function batchEngagement(
   liked: Set<string>;
   saved: Set<string>;
   following: Set<string>;
+  reposted: Set<string>;
 }> {
   if (!viewerId || postIds.length === 0) {
-    return { liked: new Set(), saved: new Set(), following: new Set() };
+    return { liked: new Set(), saved: new Set(), following: new Set(), reposted: new Set() };
   }
 
   const supabase = await createClient();
 
-  const [likesRes, savesRes, followsRes] = await Promise.all([
+  const [likesRes, savesRes, followsRes, repostsRes] = await Promise.all([
     supabase.from('likes').select('post_id').eq('user_id', viewerId).in('post_id', postIds),
     supabase.from('bookmarks').select('post_id').eq('user_id', viewerId).in('post_id', postIds),
     supabase
@@ -82,12 +99,14 @@ async function batchEngagement(
       .select('following_id')
       .eq('follower_id', viewerId)
       .in('following_id', authorIds),
+    supabase.from('reposts').select('post_id').eq('user_id', viewerId).in('post_id', postIds),
   ]);
 
   return {
     liked: new Set((likesRes.data ?? []).map((r) => r.post_id as string)),
     saved: new Set((savesRes.data ?? []).map((r) => r.post_id as string)),
     following: new Set((followsRes.data ?? []).map((r) => r.following_id as string)),
+    reposted: new Set((repostsRes.data ?? []).map((r) => r.post_id as string)),
   };
 }
 
@@ -96,9 +115,13 @@ async function batchEngagement(
 // -----------------------------------------------------------------------------
 
 type RawAuthor = { id: string; username: string; display_name: string | null; avatar_url: string | null; verified: boolean | null };
-type RawPostRow = Omit<Post, 'hashtags' | 'duration_secs' | 'music_id' | 'allow_stitch' | 'share_count'> & {
+type RawPostRow = Omit<Post, 'hashtags' | 'duration_secs' | 'music_id' | 'allow_stitch'> & {
   hashtags: string[] | null;
   media_type: 'image' | 'video' | null;
+  allow_download?: boolean;
+  women_only?: boolean;
+  privacy?: string | null;
+  aspect_ratio?: string | null;
   author: RawAuthor | RawAuthor[] | null;
 };
 
@@ -107,6 +130,7 @@ function normalizeRow(
   liked: Set<string>,
   saved: Set<string>,
   following: Set<string>,
+  reposted: Set<string> = new Set(),
 ): FeedPost | null {
   const rawAuthor = Array.isArray(row.author) ? row.author[0] : row.author;
   if (!rawAuthor) return null;
@@ -129,7 +153,21 @@ function normalizeRow(
     liked_by_me: liked.has(row.id),
     saved_by_me: saved.has(row.id),
     following_author: following.has(author.id),
+    // v1.w.UI.151 — repost flag
+    reposted_by_me: reposted.has(row.id),
     media_type: row.media_type ?? null,
+    // v1.w.UI.142 — default true: if the column is missing (legacy row) assume download is allowed.
+    allow_download: row.allow_download ?? true,
+    // v1.w.UI.169 — WOZ badge; default false for legacy rows.
+    women_only: row.women_only ?? false,
+    // v1.w.UI.172 — privacy badge; default 'public' for legacy rows.
+    privacy: (['public', 'friends', 'private'] as const).includes(row.privacy as 'public' | 'friends' | 'private')
+      ? (row.privacy as 'public' | 'friends' | 'private')
+      : 'public',
+    // v1.w.UI.175 — stored aspect ratio for CLS-free layout; default 'portrait'.
+    aspect_ratio: (['portrait', 'landscape', 'square'] as const).includes(row.aspect_ratio as 'portrait' | 'landscape' | 'square')
+      ? (row.aspect_ratio as 'portrait' | 'landscape' | 'square')
+      : 'portrait',
   };
 }
 
@@ -233,10 +271,10 @@ export const getForYouFeed = cache(
       ),
     );
 
-    const { liked, saved, following } = await batchEngagement(postIds, authorIds, viewerId);
+    const { liked, saved, following, reposted } = await batchEngagement(postIds, authorIds, viewerId);
 
     return (rows as unknown as RawPostRow[])
-      .map((row) => normalizeRow(row, liked, saved, following))
+      .map((row) => normalizeRow(row, liked, saved, following, reposted))
       .filter((p): p is FeedPost => p !== null);
   },
 );
@@ -275,13 +313,13 @@ export const getFollowingFeed = cache(
     if (error || !rows) return [];
 
     const postIds = rows.map((r) => r.id as string);
-    const { liked, saved } = await batchEngagement(postIds, followedIds, user.id);
+    const { liked, saved, reposted } = await batchEngagement(postIds, followedIds, user.id);
 
     // Following-Feed: following_author ist per Definition true
     const followingSet = new Set(followedIds);
 
     return (rows as unknown as RawPostRow[])
-      .map((row) => normalizeRow(row, liked, saved, followingSet))
+      .map((row) => normalizeRow(row, liked, saved, followingSet, reposted))
       .filter((p): p is FeedPost => p !== null);
   },
 );
@@ -498,7 +536,7 @@ export const getTrendingHashtags = cache(async (limit = 20): Promise<TrendingHas
 // -----------------------------------------------------------------------------
 
 export const getPostsByTag = cache(
-  async (rawTag: string, limit = 24): Promise<FeedPost[]> => {
+  async (rawTag: string, limit = 24, offset = 0): Promise<FeedPost[]> => {
     const tag = rawTag.toLowerCase().replace(/^#/, '').trim();
     if (!tag) return [];
 
@@ -513,32 +551,36 @@ export const getPostsByTag = cache(
       .contains('tags', [tag])
       .eq('privacy', 'public')
       .order('view_count', { ascending: false })
-      .limit(limit);
+      .order('id', { ascending: false }) // stable tie-break
+      .range(offset, offset + limit - 1);
 
     if (error || !data) return [];
 
-    // Engagement-Maps nur für eingeloggte User (like/save/follow).
+    // Engagement-Maps nur für eingeloggte User (like/save/follow/repost).
     const liked = new Set<string>();
     const saved = new Set<string>();
     const following = new Set<string>();
+    const reposted = new Set<string>();
 
     if (user && data.length > 0) {
       const ids = data.map((r) => r.id as string);
       const authorIds = [...new Set(data.map((r) => (r as Record<string, unknown>).author_id as string).filter(Boolean))];
-      const [likesRes, savesRes, followsRes] = await Promise.all([
+      const [likesRes, savesRes, followsRes, repostsRes] = await Promise.all([
         supabase.from('likes').select('post_id').eq('user_id', user.id).in('post_id', ids),
         supabase.from('bookmarks').select('post_id').eq('user_id', user.id).in('post_id', ids),
         authorIds.length > 0
           ? supabase.from('follows').select('following_id').eq('follower_id', user.id).in('following_id', authorIds)
           : Promise.resolve({ data: [] }),
+        supabase.from('reposts').select('post_id').eq('user_id', user.id).in('post_id', ids),
       ]);
       (likesRes.data ?? []).forEach((r) => liked.add(r.post_id as string));
       (savesRes.data ?? []).forEach((r) => saved.add(r.post_id as string));
       ((followsRes as { data: Array<{following_id: string}> | null }).data ?? []).forEach((r) => following.add(r.following_id));
+      (repostsRes.data ?? []).forEach((r) => reposted.add(r.post_id as string));
     }
 
     return (data as unknown as RawPostRow[])
-      .map((row) => normalizeRow(row, liked, saved, following))
+      .map((row) => normalizeRow(row, liked, saved, following, reposted))
       .filter((p): p is FeedPost => p !== null);
   },
 );
@@ -608,9 +650,9 @@ export const searchAll = cache(async (q: string, limit = 12): Promise<SearchResu
     ),
   );
 
-  const { liked, saved, following } = await batchEngagement(postIds, authorIds, viewerId);
+  const { liked, saved, following, reposted } = await batchEngagement(postIds, authorIds, viewerId);
   const posts = postRows
-    .map((row) => normalizeRow(row, liked, saved, following))
+    .map((row) => normalizeRow(row, liked, saved, following, reposted))
     .filter((p): p is FeedPost => p !== null);
 
   const users = (
@@ -636,3 +678,156 @@ export const searchAll = cache(async (q: string, limit = 12): Promise<SearchResu
     hashtags,
   };
 });
+
+// -----------------------------------------------------------------------------
+// searchPaginated — paginierte Einzel-Kategorie-Suche (v1.w.UI.117).
+// Wird von GET /api/search/more?q=&type=users|posts|hashtags&offset=N aufgerufen.
+// Kein cache() — nimmt offset-Argument.
+// -----------------------------------------------------------------------------
+
+export type SearchType = 'users' | 'posts' | 'hashtags';
+
+export interface SearchPageResult {
+  type: SearchType;
+  users?: SearchResults['users'];
+  posts?: SearchResults['posts'];
+  hashtags?: SearchResults['hashtags'];
+  hasMore: boolean;
+}
+
+const SEARCH_PAGE_LIMIT = 20;
+
+export async function searchPaginated(
+  q: string,
+  type: SearchType,
+  offset: number,
+): Promise<SearchPageResult> {
+  const query = q.trim();
+  if (query.length < 2) {
+    return { type, users: [], posts: [], hashtags: [], hasMore: false };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const viewerId = user?.id ?? null;
+  const like = `%${query.replace(/[%_]/g, '')}%`;
+
+  if (type === 'users') {
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, username, display_name, avatar_url, verified:is_verified')
+      .or(`username.ilike.${like},display_name.ilike.${like}`)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + SEARCH_PAGE_LIMIT - 1);
+
+    const users = ((data ?? []) as Array<{
+      id: string; username: string; display_name: string | null;
+      avatar_url: string | null; verified: boolean | null;
+    }>).map((u) => ({
+      id: u.id, username: u.username, display_name: u.display_name,
+      avatar_url: u.avatar_url, verified: u.verified ?? false, follower_count: 0,
+    }));
+    return { type, users, hasMore: users.length >= SEARCH_PAGE_LIMIT };
+  }
+
+  if (type === 'posts') {
+    const { data } = await supabase
+      .from('posts')
+      .select(`${POST_COLUMNS}, ${AUTHOR_JOIN}`)
+      .ilike('caption', like)
+      .eq('privacy', 'public')
+      .order('view_count', { ascending: false })
+      .range(offset, offset + SEARCH_PAGE_LIMIT - 1);
+
+    const rows = (data ?? []) as unknown as RawPostRow[];
+    const postIds = rows.map((r) => r.id);
+    const authorIds = Array.from(new Set(rows.map((r) => {
+      const a = r.author; const author = Array.isArray(a) ? a[0] : a; return author?.id;
+    }).filter((id): id is string => typeof id === 'string')));
+    const { liked, saved, following, reposted } = await batchEngagement(postIds, authorIds, viewerId);
+    const posts = rows.map((row) => normalizeRow(row, liked, saved, following, reposted)).filter((p): p is FeedPost => p !== null);
+    return { type, posts, hasMore: posts.length >= SEARCH_PAGE_LIMIT };
+  }
+
+  // hashtags — full list is fetched from trending (max 200), offset in-memory
+  const tagLike = query.toLowerCase().replace(/^#/, '');
+  const allTags = await getTrendingHashtags(200);
+  const filtered = allTags.filter((t) => t.tag.includes(tagLike));
+  const page = filtered.slice(offset, offset + SEARCH_PAGE_LIMIT);
+  return { type, hashtags: page, hasMore: filtered.length > offset + SEARCH_PAGE_LIMIT };
+}
+
+// -----------------------------------------------------------------------------
+// getSuggestedFollowsPage — Paginated, non-cached variant of getSuggestedFollows.
+//
+// Used by /people (dedicated discovery page) and GET /api/people.
+// Unlike the cached getSuggestedFollows (sidebar, limit 5–12), this one takes
+// an offset so the client can scroll through the full unfiltered list.
+//
+// Auth-aware: wenn eingeloggt, werden Self + bereits-gefolgte Accounts
+// ausgeschlossen. Anon-User sehen alle Profile (kein Ausschluss nötig).
+//
+// Sortierung: follower_count DESC (beliebteste zuerst) — intentionally
+// different from the sidebar variant (created_at DESC) so "people" page shows
+// most useful accounts to discover first.
+// -----------------------------------------------------------------------------
+
+export const PEOPLE_PAGE_LIMIT = 24;
+
+export interface PeoplePage {
+  people: SuggestedFollow[];
+  hasMore: boolean;
+}
+
+export async function getSuggestedFollowsPage(
+  offset: number,
+  limit: number = PEOPLE_PAGE_LIMIT,
+): Promise<PeoplePage> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  let excludeIds: string[] = [];
+  if (user) {
+    excludeIds = [user.id];
+    const { data: follows } = await supabase
+      .from('follows')
+      .select('following_id')
+      .eq('follower_id', user.id);
+    if (follows) excludeIds.push(...follows.map((f) => f.following_id as string));
+  }
+
+  let query = supabase
+    .from('profiles')
+    .select('id, username, display_name, avatar_url, verified:is_verified, follower_count')
+    .order('follower_count', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (excludeIds.length > 0) {
+    query = query.not('id', 'in', `(${excludeIds.join(',')})`);
+  }
+
+  const { data } = await query;
+  if (!data) return { people: [], hasMore: false };
+
+  const people = (data as Array<{
+    id: string;
+    username: string;
+    display_name: string | null;
+    avatar_url: string | null;
+    verified: boolean | null;
+    follower_count: number | null;
+  }>).map((p) => ({
+    id: p.id,
+    username: p.username,
+    display_name: p.display_name,
+    avatar_url: p.avatar_url,
+    verified: p.verified ?? false,
+    follower_count: p.follower_count ?? 0,
+  }));
+
+  return { people, hasMore: people.length >= limit };
+}

@@ -264,6 +264,21 @@ export const getMyProducts = cache(async (): Promise<ShopProduct[]> => {
 });
 
 // -----------------------------------------------------------------------------
+// getHostShopCount — Lightweight count for the live-viewer ShoppingBag badge.
+// Only counts active products to match what the viewer sees in the sheet.
+// -----------------------------------------------------------------------------
+
+export const getHostShopCount = cache(async (sellerId: string): Promise<number> => {
+  const supabase = await createClient();
+  const { count } = await supabase
+    .from('products')
+    .select('id', { count: 'exact', head: true })
+    .eq('seller_id', sellerId)
+    .eq('is_active', true);
+  return count ?? 0;
+});
+
+// -----------------------------------------------------------------------------
 // Orders — Studio/Orders. Role-Split: buyer/seller sind beide relevant.
 // -----------------------------------------------------------------------------
 

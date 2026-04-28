@@ -41,11 +41,27 @@ const bioSchema = z
   .trim()
   .max(200, 'Bio darf maximal 200 Zeichen haben.');
 
+const websiteSchema = z
+  .string()
+  .trim()
+  .max(200, 'Website-URL darf maximal 200 Zeichen haben.')
+  .refine(
+    (v) => v === '' || /^https?:\/\/.+/.test(v),
+    'Website muss mit http:// oder https:// beginnen.',
+  );
+
+// Teip-Wert darf beliebig sein (kommt aus einer kontrollierten Liste im Client,
+// aber wir speichern auf Trust-Basis — kein Enum-Check serverseitig, die mobile
+// App macht es genauso).
+const teipSchema = z.string().trim().max(100, 'Teip-Name zu lang.').nullable();
+
 const updateProfileSchema = z.object({
   display_name: displayNameSchema,
   // Bio darf leer sein — dann speichern wir `null`, damit die DB-Spalte
   // nicht zwischen "leerer String" und "kein Eintrag" unterscheiden muss.
   bio: bioSchema,
+  website: websiteSchema.optional(),
+  teip: teipSchema.optional(),
 });
 
 export async function updateProfile(formData: FormData): Promise<ActionResult<null>> {
@@ -54,9 +70,12 @@ export async function updateProfile(formData: FormData): Promise<ActionResult<nu
     return { ok: false, error: 'Bitte einloggen.' };
   }
 
+  const rawTeip = (formData.get('teip') as string | null)?.trim() || null;
   const parsed = updateProfileSchema.safeParse({
     display_name: formData.get('display_name'),
     bio: formData.get('bio'),
+    website: formData.get('website') ?? '',
+    teip: rawTeip,
   });
 
   if (!parsed.success) {
@@ -78,6 +97,8 @@ export async function updateProfile(formData: FormData): Promise<ActionResult<nu
     .update({
       display_name: parsed.data.display_name,
       bio: parsed.data.bio.length > 0 ? parsed.data.bio : null,
+      website: parsed.data.website && parsed.data.website.length > 0 ? parsed.data.website : null,
+      teip: parsed.data.teip || null,
     })
     .eq('id', user.id);
 
@@ -200,10 +221,60 @@ export async function updateAvatar(avatarUrl: string | null): Promise<ActionResu
 }
 
 // -----------------------------------------------------------------------------
+// setPrivateAccount — v1.w.UI.149 — privates Konto an/ausschalten.
+//
+// Bei Umschalten auf öffentlich werden ausstehende Follow-Requests automatisch
+// in echte Follows konvertiert (Parität zu TikTok: wenn du dein Konto öffnest,
+// werden ausstehende Anfragen direkt angenommen). Die DB hat dafür keine
+// automatische Trigger-Logik, daher erledigen wir es hier.
+// -----------------------------------------------------------------------------
+
+export async function setPrivateAccount(isPrivate: boolean): Promise<ActionResult<null>> {
+  const user = await getUser();
+  if (!user) return { ok: false, error: 'Bitte einloggen.' };
+
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ is_private: isPrivate })
+    .eq('id', user.id);
+
+  if (error) return { ok: false, error: error.message };
+
+  // Bei Umschalten auf öffentlich: alle ausstehenden Follow-Requests → follows
+  if (!isPrivate) {
+    const { data: pendingRequests } = await supabase
+      .from('follow_requests')
+      .select('sender_id')
+      .eq('receiver_id', user.id);
+
+    if (pendingRequests && pendingRequests.length > 0) {
+      const followRows = pendingRequests.map((r: { sender_id: string }) => ({
+        follower_id: r.sender_id,
+        following_id: user.id,
+      }));
+      await supabase.from('follows').upsert(followRows, {
+        onConflict: 'follower_id,following_id',
+        ignoreDuplicates: true,
+      });
+      await supabase
+        .from('follow_requests')
+        .delete()
+        .eq('receiver_id', user.id);
+    }
+  }
+
+  revalidatePath('/settings/privacy');
+  revalidatePath('/u/[username]', 'page');
+  return { ok: true, data: null };
+}
+
+// -----------------------------------------------------------------------------
 // Notification channel preferences — v1.w.UI.63
 //
 // notif_prefs: JSONB-Spalte auf `profiles`.
-// Keys: likes | comments | follows | messages | live | gifts | orders
+// Keys: likes | comments | follows | messages | live | gifts | orders | reposts
 // Default: alle true (opt-out-Modell, see DB migration 20260426200000).
 // -----------------------------------------------------------------------------
 
@@ -215,11 +286,12 @@ export interface NotifPrefs {
   live:     boolean;
   gifts:    boolean;
   orders:   boolean;
+  reposts:  boolean;
 }
 
 const DEFAULT_PREFS: NotifPrefs = {
   likes: true, comments: true, follows: true,
-  messages: true, live: true, gifts: true, orders: true,
+  messages: true, live: true, gifts: true, orders: true, reposts: true,
 };
 
 export async function getNotifPrefs(): Promise<NotifPrefs> {
@@ -260,5 +332,55 @@ export async function updateNotifPrefs(
   if (error) return { ok: false, error: error.message };
 
   revalidatePath('/settings/notifications');
+  return { ok: true, data: null };
+}
+
+// -----------------------------------------------------------------------------
+// respondFollowRequest — v1.w.UI.152
+//
+// Wird von der /notifications-Seite für inline Accept/Decline-Buttons aufgerufen.
+// Parität zu mobile `useRespondFollowRequest`.
+//
+//   accept=true:  löscht Row aus follow_requests + upsert in follows
+//                 + schreibt 'follow_request_accepted'-Notification an Sender
+//   accept=false: löscht Row aus follow_requests (stilles Ablehnen)
+// -----------------------------------------------------------------------------
+
+export async function respondFollowRequest(
+  senderId: string,
+  accept: boolean,
+): Promise<ActionResult<null>> {
+  const user = await getUser();
+  if (!user) return { ok: false, error: 'Nicht eingeloggt.' };
+
+  const supabase = await createClient();
+
+  // Follow-Request-Row löschen (funktioniert für accept und decline).
+  const { error: delErr } = await supabase
+    .from('follow_requests')
+    .delete()
+    .eq('sender_id', senderId)
+    .eq('receiver_id', user.id);
+
+  if (delErr) return { ok: false, error: delErr.message };
+
+  if (accept) {
+    // Follow eintragen
+    const { error: followErr } = await supabase
+      .from('follows')
+      .upsert(
+        { follower_id: senderId, following_id: user.id },
+        { onConflict: 'follower_id,following_id', ignoreDuplicates: true },
+      );
+    if (followErr) return { ok: false, error: followErr.message };
+
+    // Benachrichtigung an Sender: Anfrage angenommen
+    await supabase.from('notifications').insert({
+      recipient_id: senderId,
+      sender_id:    user.id,
+      type:         'follow_request_accepted',
+    });
+  }
+
   return { ok: true, data: null };
 }

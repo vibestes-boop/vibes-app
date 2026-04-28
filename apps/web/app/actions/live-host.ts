@@ -41,6 +41,12 @@ export interface StartLiveSessionInput {
   thumbnailUrl?: string;
   moderationEnabled?: boolean;
   moderationWords?: string[];
+  // v1.w.UI.184 — Parity mit Mobile-Live-Start (allow_comments / allow_gifts / women_only)
+  allowComments?: boolean;
+  allowGifts?: boolean;
+  womenOnly?: boolean;
+  // v1.w.UI.188 — Followers-only chat
+  followersOnlyChat?: boolean;
 }
 
 export interface StartLiveSessionResult {
@@ -82,6 +88,10 @@ export async function startLiveSession(
     title: input.title?.trim().slice(0, 120) || null,
     moderation_enabled: input.moderationEnabled ?? true,
     moderation_words: input.moderationWords ?? [],
+    allow_comments: input.allowComments ?? true,
+    allow_gifts: input.allowGifts ?? true,
+    women_only: input.womenOnly ?? false,
+    followers_only_chat: input.followersOnlyChat ?? false,
   };
   if (input.category !== undefined) insertPayload.category = input.category;
   if (input.thumbnailUrl !== undefined)
@@ -191,10 +201,14 @@ export async function heartbeatLiveSession(
 // CoHost-Queue-Management — accept, reject, kick.
 // -----------------------------------------------------------------------------
 
+export type DuetLayout = 'top-bottom' | 'side-by-side' | 'pip' | 'battle';
+
 export async function acceptCoHostRequest(
   sessionId: string,
   requesterId: string,
   slotIndex: number,
+  layout: DuetLayout = 'side-by-side',
+  battleDuration?: number,
 ): Promise<ActionResult<null>> {
   const host = await getHost();
   if (!host) return { ok: false, error: 'Bitte einloggen.' };
@@ -216,6 +230,21 @@ export async function acceptCoHostRequest(
       return { ok: false, error: 'Nur der Host kann CoHosts akzeptieren.' };
     return { ok: false, error: error.message };
   }
+
+  // v1.w.UI.182 — broadcast layout + battleDuration to viewer clients so they
+  // know which split mode and whether battle mode is active.
+  const channel = supabase.channel(`co-host-signals-${sessionId}`);
+  await channel.subscribe();
+  await channel.send({
+    type: 'broadcast',
+    event: 'co-host-accepted',
+    payload: {
+      userId: requesterId,
+      layout,
+      ...(layout === 'battle' ? { battleDuration: battleDuration ?? 60 } : {}),
+    },
+  });
+  await supabase.removeChannel(channel);
 
   return { ok: true, data: null };
 }
@@ -404,4 +433,66 @@ export async function createLiveGiftGoal(
 
   if (error || !data) return { ok: false, error: error?.message ?? 'Ziel fehlgeschlagen.' };
   return { ok: true, data: { goalId: data.id as string } };
+}
+
+// -----------------------------------------------------------------------------
+// v1.w.UI.206 — Recording start / stop.
+//
+// Delegiert an die `livekit-egress` Edge Function (identisches Interface wie
+// mobile `useToggleRecording`). Host-Identity-Check in der Function selbst via
+// Supabase-JWT → `live_sessions.host_id`. Kein doppelter Check nötig hier.
+//
+// start: erstellt RoomComposite-Egress + schreibt `live_recordings`-Row.
+// stop:  stoppt Egress; Webhook updated dann status → processing → ready.
+// -----------------------------------------------------------------------------
+
+export async function startLiveRecording(
+  sessionId: string,
+  roomName: string,
+): Promise<ActionResult<{ recordingId: string | null }>> {
+  const host = await getHost();
+  if (!host) return { ok: false, error: 'Bitte einloggen.' };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.functions.invoke('livekit-egress', {
+    body: { action: 'start', sessionId, roomName },
+  });
+
+  if (error) return { ok: false, error: error.message ?? 'Aufnahme konnte nicht gestartet werden.' };
+  const row = (data as { recording_id?: string | null } | null) ?? null;
+  return { ok: true, data: { recordingId: row?.recording_id ?? null } };
+}
+
+export async function stopLiveRecording(
+  sessionId: string,
+): Promise<ActionResult<null>> {
+  const host = await getHost();
+  if (!host) return { ok: false, error: 'Bitte einloggen.' };
+
+  const supabase = await createClient();
+  const { error } = await supabase.functions.invoke('livekit-egress', {
+    body: { action: 'stop', sessionId },
+  });
+
+  if (error) return { ok: false, error: error.message ?? 'Aufnahme konnte nicht gestoppt werden.' };
+  return { ok: true, data: null };
+}
+
+// v1.w.UI.188 — Toggle followers-only chat während eines laufenden Streams.
+// Ruft die DB-RPC `toggle_followers_only_chat` auf (Security Definer, prüft host_id).
+export async function toggleFollowersOnlyChat(
+  sessionId: string,
+  enabled: boolean,
+): Promise<ActionResult<null>> {
+  const host = await getHost();
+  if (!host) return { ok: false, error: 'Bitte einloggen.' };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('toggle_followers_only_chat', {
+    p_session_id: sessionId,
+    p_enabled: enabled,
+  });
+
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, data: null };
 }

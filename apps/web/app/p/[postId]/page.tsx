@@ -24,6 +24,7 @@ import { FollowButton } from '@/components/profile/follow-button';
 import { PostAuthorMenu } from '@/components/post/post-author-menu';
 import { PostViewerMenu } from '@/components/post/post-viewer-menu';
 import { PostDwellTracker } from '@/components/post/post-dwell-tracker';
+import { PostViewTracker } from '@/components/post/post-view-tracker';
 import { linkify } from '@/lib/linkify';
 
 // -----------------------------------------------------------------------------
@@ -246,8 +247,10 @@ export default async function PostDetailPage({
 
   return (
     <main className={`mx-auto px-4 py-6 sm:px-6 lg:py-10 ${isLandscape ? 'max-w-6xl' : 'max-w-5xl'}`}>
-      {/* v1.w.UI.53: View-Count auf Mount erhöhen — fire-and-forget. */}
+      {/* v1.w.UI.53: Dwell-time tracking for algorithm scoring. */}
       <PostDwellTracker postId={post.id} isAuthenticated={!!viewer} />
+      {/* v1.w.UI.138: View-count increment — mirrors mobile increment_post_view RPC. */}
+      <PostViewTracker postId={post.id} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -295,6 +298,8 @@ export default async function PostDetailPage({
                   allowDuet={post.allow_duet}
                   womenOnly={post.women_only}
                   aspectRatio={post.aspect_ratio}
+                  initialTags={post.hashtags}
+                  isPinned={post.is_pinned ?? false}
                 />
               ) : (
                 <div className="flex items-center gap-2">
@@ -440,6 +445,7 @@ export default async function PostDetailPage({
                       authorUsername={post.author.username}
                       viewCount={p.view_count}
                       fallbackInitial={fallbackInitial}
+                      womenOnly={p.women_only}
                     />
                   </li>
                 );
@@ -450,7 +456,14 @@ export default async function PostDetailPage({
 
         // Stats-Zeile
         const statsBar = (
-          <div className="mt-4 flex flex-wrap items-center gap-4">
+          <div className="mt-4 space-y-3">
+            {/* v1.w.UI.169 — WOZ badge: only visible to RLS-verified members */}
+            {post.women_only && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-pink-500/30 bg-pink-500/10 px-3 py-1 text-xs font-semibold text-pink-600 dark:text-pink-400">
+                🌸 Women-Only Zone
+              </span>
+            )}
+          <div className="flex flex-wrap items-center gap-4">
             <StatLine icon={Eye}           value={post.view_count}    label="Aufrufe" />
             <PostActionsBar
               postId={post.id}
@@ -458,9 +471,12 @@ export default async function PostDetailPage({
               initialSaved={interaction.saved}
               likeCount={post.like_count}
               isAuthenticated={!!viewer}
+              videoUrl={post.video_url || undefined}
+              allowDownload={post.allow_download}
             />
             <StatLine icon={MessageCircle} value={post.comment_count} label="Kommentare" />
             <StatLine icon={ShareIcon}     value={post.share_count}   label="Shares" />
+          </div>
           </div>
         );
 

@@ -2,10 +2,10 @@
 
 import { useRef, useState, useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { MoreHorizontal, Trash2, Link as LinkIcon, Pencil, Loader2, Globe, Users, Lock } from 'lucide-react';
+import { MoreHorizontal, Trash2, Link as LinkIcon, Pencil, Loader2, Globe, Users, Lock, Pin, PinOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { deletePost, updatePost } from '@/app/actions/posts';
+import { deletePost, updatePost, togglePinPost } from '@/app/actions/posts';
 import type { UpdatePostInput } from '@/app/actions/posts';
 
 // -----------------------------------------------------------------------------
@@ -25,6 +25,8 @@ export function PostAuthorMenu({
   allowDuet = true,
   womenOnly = false,
   aspectRatio = 'portrait',
+  initialTags = [],
+  isPinned = false,
 }: {
   postId: string;
   authorUsername: string;
@@ -35,9 +37,14 @@ export function PostAuthorMenu({
   allowDuet?: boolean;
   womenOnly?: boolean;
   aspectRatio?: 'portrait' | 'landscape' | 'square';
+  // v1.w.UI.162: Existing tags so the edit dialog can pre-select them.
+  initialTags?: string[];
+  // v1.w.UI.179: whether this post is currently pinned to the author's profile.
+  isPinned?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isPinning, setIsPinning] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -100,6 +107,31 @@ export function PostAuthorMenu({
               }}
             />
 
+            {/* v1.w.UI.179: Pin / Unpin an Profil */}
+            <MenuItem
+              icon={isPinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
+              label={
+                isPinning
+                  ? 'Wird gespeichert…'
+                  : isPinned
+                    ? 'Von Profil lösen'
+                    : 'Auf Profil anpinnen'
+              }
+              disabled={isPinning}
+              onClick={async () => {
+                setOpen(false);
+                setIsPinning(true);
+                const res = await togglePinPost(postId);
+                setIsPinning(false);
+                if (res.ok) {
+                  toast(isPinned ? 'Pin entfernt.' : 'Post angepinnt.');
+                  router.refresh();
+                } else {
+                  toast.error(res.error ?? 'Aktion fehlgeschlagen.');
+                }
+              }}
+            />
+
             {/* Trennlinie */}
             <div className="mx-3 border-t border-border/60" />
 
@@ -144,6 +176,7 @@ export function PostAuthorMenu({
           initialAllowDuet={allowDuet}
           initialWomenOnly={womenOnly}
           initialAspectRatio={aspectRatio}
+          initialTags={initialTags}
           onClose={() => setEditOpen(false)}
           onSaved={() => {
             setEditOpen(false);
@@ -170,6 +203,13 @@ const PRIVACY_OPTIONS: {
   { value: 'private', label: 'Privat',     icon: <Lock  className="h-4 w-4" />,  description: 'Nur du siehst diesen Post' },
 ];
 
+// v1.w.UI.162: Same suggested tags as mobile edit-post screen.
+const SUGGESTED_TAGS = [
+  'Tech', 'Design', 'AI', 'Art', 'Music',
+  'Travel', 'Nature', 'Fitness', 'Photography', 'Gaming',
+  'Lifestyle', 'Architecture', 'Food', 'Fashion', 'Meme',
+] as const;
+
 function PostEditDialog({
   postId,
   initialCaption,
@@ -179,6 +219,7 @@ function PostEditDialog({
   initialAllowDuet,
   initialWomenOnly,
   initialAspectRatio,
+  initialTags = [],
   onClose,
   onSaved,
 }: {
@@ -190,6 +231,7 @@ function PostEditDialog({
   initialAllowDuet: boolean;
   initialWomenOnly: boolean;
   initialAspectRatio: 'portrait' | 'landscape' | 'square';
+  initialTags?: string[];
   onClose: () => void;
   onSaved: () => void;
 }) {
@@ -200,6 +242,10 @@ function PostEditDialog({
   const [allowDuet, setAllowDuet]           = useState(initialAllowDuet);
   const [womenOnly, setWomenOnly]           = useState(initialWomenOnly);
   const [aspectRatio, setAspectRatio]       = useState<'portrait' | 'landscape' | 'square'>(initialAspectRatio);
+  // Normalize: strip leading # if present (mobile stores raw tag names without #).
+  const [selectedTags, setSelectedTags]     = useState<string[]>(
+    () => initialTags.map((t) => t.replace(/^#/, '').toLowerCase()),
+  );
   const [isPending, startTransition]        = useTransition();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -213,6 +259,7 @@ function PostEditDialog({
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
 
+  const normalizedInitialTags = initialTags.map((t) => t.replace(/^#/, '').toLowerCase());
   const isDirty =
     caption.trim() !== initialCaption.trim() ||
     privacy !== initialPrivacy ||
@@ -220,7 +267,15 @@ function PostEditDialog({
     allowDownload !== initialAllowDownload ||
     allowDuet !== initialAllowDuet ||
     womenOnly !== initialWomenOnly ||
-    aspectRatio !== initialAspectRatio;
+    aspectRatio !== initialAspectRatio ||
+    JSON.stringify([...selectedTags].sort()) !== JSON.stringify([...normalizedInitialTags].sort());
+
+  function toggleTag(tag: string) {
+    const lower = tag.toLowerCase();
+    setSelectedTags((prev) =>
+      prev.includes(lower) ? prev.filter((t) => t !== lower) : [...prev, lower],
+    );
+  }
 
   const handleSave = () => {
     startTransition(async () => {
@@ -232,6 +287,7 @@ function PostEditDialog({
         allowDuet,
         womenOnly,
         aspectRatio,
+        tags: selectedTags,
       };
       const res = await updatePost(postId, input);
       if (res.ok) {
@@ -287,6 +343,39 @@ function PostEditDialog({
             <div className="mt-1 text-right text-xs text-muted-foreground">
               {caption.length} / 2000
             </div>
+          </section>
+
+          {/* v1.w.UI.162: Tag Picker — gleiche Suggested-Tags wie Mobile */}
+          <section>
+            <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Tags
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {SUGGESTED_TAGS.map((tag) => {
+                const lower = tag.toLowerCase();
+                const active = selectedTags.includes(lower);
+                return (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => toggleTag(lower)}
+                    className={cn(
+                      'rounded-full border px-3 py-1 text-xs font-medium transition-colors',
+                      active
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground',
+                    )}
+                  >
+                    #{tag}
+                  </button>
+                );
+              })}
+            </div>
+            {selectedTags.length > 0 && (
+              <p className="mt-1.5 text-xs text-muted-foreground">
+                {selectedTags.length} Tag{selectedTags.length > 1 ? 's' : ''} ausgewählt
+              </p>
+            )}
           </section>
 
           {/* Privacy */}
