@@ -167,6 +167,86 @@ export const getGuildLeaderboard = cache(
   },
 );
 
+// ─── Guild-Feed (neueste Posts von Mitgliedern) ─────────────────────────────
+
+export interface GuildFeedPost {
+  id: string;
+  author_id: string;
+  caption: string | null;
+  media_url: string;
+  media_type: 'video' | 'image' | null;
+  thumbnail_url: string | null;
+  view_count: number;
+  like_count: number;
+  created_at: string;
+  author: {
+    id: string;
+    username: string | null;
+    avatar_url: string | null;
+    display_name: string | null;
+  };
+}
+
+/**
+ * Paginierter Feed aller Posts von Mitgliedern einer Guild.
+ * Cursor-basiert via `created_at` für Infinite-Scroll.
+ * Kein React cache() — jede Seite hat anderen Cursor.
+ */
+export async function getGuildFeedPage(
+  guildId: string,
+  cursor: string | null = null,
+  pageSize = 12,
+): Promise<{ posts: GuildFeedPost[]; nextCursor: string | null }> {
+  const supabase = await createClient();
+
+  // PostgREST !inner filter: nur Rows wo der Author zur Guild gehört.
+  // `.eq('profiles.guild_id', guildId)` nutzt den echten Tabellennamen
+  // (nicht den Alias) — das ist die korrekte PostgREST-Syntax für
+  // Embedded-Resource-Filter.
+  let query = supabase
+    .from('posts')
+    .select(
+      `id, author_id, caption, media_url, media_type, thumbnail_url,
+       view_count, like_count, created_at,
+       author:profiles!posts_author_id_fkey!inner ( id, username, avatar_url, display_name, guild_id )`,
+    )
+    .eq('profiles.guild_id', guildId)
+    .order('created_at', { ascending: false })
+    .limit(pageSize);
+
+  if (cursor) {
+    query = query.lt('created_at', cursor);
+  }
+
+  const { data, error } = await query;
+  if (error || !data) return { posts: [], nextCursor: null };
+
+  const posts = (data as Record<string, unknown>[]).map((row) => {
+    const a = row.author as Record<string, unknown> | null;
+    return {
+      id: row.id as string,
+      author_id: row.author_id as string,
+      caption: (row.caption as string | null) ?? null,
+      media_url: row.media_url as string,
+      media_type: (row.media_type as 'video' | 'image' | null) ?? null,
+      thumbnail_url: (row.thumbnail_url as string | null) ?? null,
+      view_count: (row.view_count as number) ?? 0,
+      like_count: (row.like_count as number) ?? 0,
+      created_at: row.created_at as string,
+      author: {
+        id: (a?.id as string) ?? '',
+        username: (a?.username as string | null) ?? null,
+        avatar_url: (a?.avatar_url as string | null) ?? null,
+        display_name: (a?.display_name as string | null) ?? null,
+      },
+    } satisfies GuildFeedPost;
+  });
+
+  const nextCursor =
+    posts.length === pageSize ? (posts[posts.length - 1]?.created_at ?? null) : null;
+  return { posts, nextCursor };
+}
+
 // ─── Meine eigene Guild ─────────────────────────────────────────────────────
 
 export const getMyGuildId = cache(async (): Promise<string | null> => {

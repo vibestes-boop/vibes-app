@@ -27,7 +27,14 @@ export type NotificationType =
   | 'dm'
   | 'gift'
   | 'live'
-  | 'live_invite';
+  | 'live_invite'
+  | 'follow_request'
+  | 'follow_request_accepted'
+  | 'new_order'
+  | 'comment_like'
+  | 'repost'
+  | 'story_reaction'
+  | 'guild';
 
 export interface NotificationSender {
   id: string;
@@ -51,6 +58,13 @@ export interface Notification {
   product_name: string | null;
 }
 
+// WICHTIG: kein `.trim()` und keine String-Konkatenation aufrufen — die
+// Supabase-JS SELECT-Query-Type-Inferenz braucht eine LITERAL-Template-
+// String-Typ (siehe `EatWhitespace<Input extends string>` in postgrest-js
+// `select-query-parser/parser.ts`: `string extends Input ? GenericStringError`).
+// `.trim()` returned `string` (wide type) → Parser-Bail → `data: GenericStringError[]`.
+// Multi-Line-Whitespace inside dem Template ist OK — `EatWhitespace` rekursiv
+// im Parser handled das.
 const NOTIF_COLUMNS = `
   id,
   type,
@@ -69,7 +83,7 @@ const NOTIF_COLUMNS = `
     display_name,
     avatar_url
   )
-`.trim();
+`;
 
 // -----------------------------------------------------------------------------
 // getNotifications — neueste 40 Notifications des eingeloggten Users.
@@ -92,27 +106,37 @@ export const getNotifications = cache(async (): Promise<Notification[]> => {
 
   if (error || !data) return [];
 
-  return data.map((row) => ({
-    id: row.id,
-    type: row.type as NotificationType,
-    read: row.read ?? false,
-    created_at: row.created_at,
-    sender: row.sender
-      ? {
-          id: (row.sender as NotificationSender).id,
-          username: (row.sender as NotificationSender).username,
-          display_name: (row.sender as NotificationSender).display_name,
-          avatar_url: (row.sender as NotificationSender).avatar_url,
-        }
-      : null,
-    post_id: row.post_id ?? null,
-    comment_id: row.comment_id ?? null,
-    session_id: row.session_id ?? null,
-    comment_text: row.comment_text ?? null,
-    gift_name: row.gift_name ?? null,
-    gift_emoji: row.gift_emoji ?? null,
-    product_name: row.product_name ?? null,
-  }));
+  // PostgREST embed-Cardinality: Auch für eine M:1-FK (sender_id → profiles.id)
+  // typt der SELECT-Query-Parser den Embed als Array (`{...}[]`) — die
+  // Cardinality lässt sich aus der Query allein nicht ableiten. Zur Runtime
+  // ist es aber genau ein Profil. `Array.isArray`-Unwrap analog zu
+  // feed.ts/normalizeRow.
+  return data.map((row) => {
+    const rawSender = row.sender as NotificationSender | NotificationSender[] | null;
+    const sender = Array.isArray(rawSender) ? (rawSender[0] ?? null) : rawSender;
+
+    return {
+      id: row.id,
+      type: row.type as NotificationType,
+      read: row.read ?? false,
+      created_at: row.created_at,
+      sender: sender
+        ? {
+            id: sender.id,
+            username: sender.username,
+            display_name: sender.display_name,
+            avatar_url: sender.avatar_url,
+          }
+        : null,
+      post_id: row.post_id ?? null,
+      comment_id: row.comment_id ?? null,
+      session_id: row.session_id ?? null,
+      comment_text: row.comment_text ?? null,
+      gift_name: row.gift_name ?? null,
+      gift_emoji: row.gift_emoji ?? null,
+      product_name: row.product_name ?? null,
+    };
+  });
 });
 
 // -----------------------------------------------------------------------------
@@ -136,3 +160,47 @@ export const getUnreadNotificationCount = cache(async (): Promise<number> => {
   if (error) return 0;
   return count ?? 0;
 });
+
+// -----------------------------------------------------------------------------
+// getNotificationsPage — paginierte Version ohne React cache().
+// Wird von GET /api/notifications?offset=N&limit=N aufgerufen.
+// Kein cache() weil die Argumente sich ändern.
+// -----------------------------------------------------------------------------
+export async function getNotificationsPage(
+  offset: number,
+  limit: number,
+): Promise<Notification[]> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data, error } = await supabase
+    .from('notifications')
+    .select(NOTIF_COLUMNS)
+    .eq('recipient_id', user.id)
+    .order('created_at', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error || !data) return [];
+
+  return data.map((row) => {
+    const rawSender = row.sender as NotificationSender | NotificationSender[] | null;
+    const sender = Array.isArray(rawSender) ? (rawSender[0] ?? null) : rawSender;
+    return {
+      id: row.id,
+      type: row.type as NotificationType,
+      read: row.read,
+      created_at: row.created_at,
+      sender,
+      post_id: row.post_id ?? null,
+      comment_id: row.comment_id ?? null,
+      session_id: row.session_id ?? null,
+      comment_text: row.comment_text ?? null,
+      gift_name: row.gift_name ?? null,
+      gift_emoji: row.gift_emoji ?? null,
+      product_name: row.product_name ?? null,
+    };
+  });
+}

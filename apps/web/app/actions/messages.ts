@@ -142,9 +142,30 @@ export async function sendDirectMessage(
     return { ok: false, error: error?.message ?? 'Senden fehlgeschlagen.' };
   }
 
-  // Kein revalidatePath hier — Realtime-Channel `messages-{conversationId}`
-  // aktualisiert den Client sofort. Conversation-Liste wird beim nächsten
-  // Besuch neu gezogen (auch via Trigger `on_new_message` → last_message_at).
+  // Realtime-Channel `messages-{conversationId}` aktualisiert den Thread sofort.
+  //
+  // v1.w.UI.96 — Badge-Sofort-Update: Broadcast auf den persönlichen Inbox-
+  // Channel des Empfängers, damit DmInboxPill den Badge ohne 30s-Polling-Warten
+  // aktualisiert. Den recipientId ermitteln wir aus `conversations.participant_1/2`.
+  try {
+    const { data: conv } = await supabase
+      .from('conversations')
+      .select('participant_1, participant_2')
+      .eq('id', input.conversationId)
+      .maybeSingle();
+    if (conv) {
+      const recipientId =
+        conv.participant_1 === viewer ? conv.participant_2 : conv.participant_1;
+      // Broadcast-only — kein DB-Write. Supabase ignoriert den Payload
+      // content komplett, wir brauchen nur das Event-Signal.
+      await supabase
+        .channel(`user-inbox-${recipientId}`)
+        .send({ type: 'broadcast', event: 'new_dm', payload: {} });
+    }
+  } catch {
+    // Broadcast-Fehler darf das eigentliche Senden nie blockieren.
+  }
+
   return { ok: true, data: { id: data.id } };
 }
 

@@ -248,10 +248,21 @@ function toPost(row: PostRowMobile): Post {
 // Posts by a profile — latest first, paginated.
 // -----------------------------------------------------------------------------
 
+// v1.w.UI.212 — sort key for profile post-grid (matches mobile sort bar).
+export type ProfileSortKey = 'newest' | 'views' | 'likes';
+
+/** Returns the secondary order-by column for the given sort key. */
+function profileSortOrder(sort: ProfileSortKey): string {
+  if (sort === 'views') return 'view_count';
+  if (sort === 'likes') return 'like_count';
+  return 'created_at';
+}
+
 export const getProfilePosts = cache(
-  async (userId: string, limit = 24, before?: string): Promise<Post[]> => {
+  async (userId: string, limit = 24, before?: string, sort: ProfileSortKey = 'newest'): Promise<Post[]> => {
     const supabase = await createClient();
-    // v1.w.UI.179 — include is_pinned; order pinned post first, then newest first.
+    // v1.w.UI.179 — include is_pinned; order pinned post first.
+    // v1.w.UI.212 — secondary sort driven by `sort` param.
     let query = supabase
       .from('posts')
       .select(
@@ -261,10 +272,10 @@ export const getProfilePosts = cache(
       )
       .eq('author_id', userId)
       .order('is_pinned', { ascending: false })
-      .order('created_at', { ascending: false })
+      .order(profileSortOrder(sort), { ascending: false })
       .limit(limit);
 
-    if (before) query = query.lt('created_at', before);
+    if (before && sort === 'newest') query = query.lt('created_at', before);
 
     const { data, error } = await query;
     if (error || !data) return [];
@@ -282,9 +293,11 @@ export async function getProfilePostsPage(
   userId: string,
   offset: number,
   limit: number,
+  sort: ProfileSortKey = 'newest',
 ): Promise<Post[]> {
   const supabase = await createClient();
   // v1.w.UI.179 — include is_pinned; pinned posts always sort first.
+  // v1.w.UI.212 — secondary sort driven by `sort` param.
   const { data, error } = await supabase
     .from('posts')
     .select(
@@ -294,7 +307,7 @@ export async function getProfilePostsPage(
     )
     .eq('author_id', userId)
     .order('is_pinned', { ascending: false })
-    .order('created_at', { ascending: false })
+    .order(profileSortOrder(sort), { ascending: false })
     .range(offset, offset + limit - 1);
 
   if (error || !data) return [];

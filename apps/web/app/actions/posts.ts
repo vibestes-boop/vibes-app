@@ -397,6 +397,30 @@ export async function deletePost(postId: string): Promise<ActionResult<null>> {
 }
 
 // -----------------------------------------------------------------------------
+// togglePinPost — v1.w.UI.179: Pin/Unpin eines Posts an das eigene Profil.
+//
+// Delegiert an DB-RPC `toggle_pin_post(p_post_id, p_user_id)` die atomisch:
+//   1. Alle is_pinned=true Rows des Users zurücksetzt
+//   2. Den gewählten Post pinniert WENN er vorher nicht gepinnt war
+// → max. 1 gepinnter Post pro User, zweiter Klick auf denselben löst den Pin.
+// -----------------------------------------------------------------------------
+
+export async function togglePinPost(postId: string): Promise<ActionResult<null>> {
+  const viewer = await getViewerId();
+  if (!viewer) return { ok: false, error: 'Bitte einloggen.' };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('toggle_pin_post', {
+    p_post_id: postId,
+    p_user_id: viewer,
+  });
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath('/'); // feed may show profile grid
+  return { ok: true, data: null };
+}
+
+// -----------------------------------------------------------------------------
 // updatePost — vollständiges Post-Bearbeiten: Caption, Privacy, Toggles.
 //
 // RLS auf `posts`: UPDATE erlaubt nur wenn `author_id = auth.uid()`. Wir
@@ -415,6 +439,8 @@ export interface UpdatePostInput {
   allowDuet: boolean;
   womenOnly: boolean;
   aspectRatio: 'portrait' | 'landscape' | 'square';
+  // v1.w.UI.162: Explicit tag-picker tags — merged with caption-extracted hashtags.
+  tags?: string[];
 }
 
 export async function updatePost(
@@ -433,10 +459,8 @@ export async function updatePost(
   const validAspect = ['portrait', 'landscape', 'square'] as const;
   if (!validAspect.includes(input.aspectRatio)) return { ok: false, error: 'Ungültiges Format.' };
 
-  // Hashtags aus Caption extrahieren
-  const tags = Array.from(
-    new Set((trimmed.match(/#(\w{1,50})/g) ?? []).map((t) => t.slice(1).toLowerCase())),
-  );
+  // v1.w.UI.162: Merge explicit picker tags with caption-extracted hashtags.
+  const tags = mergeTags(input.tags, trimmed);
 
   const supabase = await createClient();
   const { error } = await supabase
@@ -451,6 +475,36 @@ export async function updatePost(
       women_only: input.womenOnly,
       aspect_ratio: input.aspectRatio,
     })
+    .eq('id', postId)
+    .eq('author_id', viewer);
+
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath(`/p/${postId}`);
+  return { ok: true, data: null };
+}
+
+// v1.w.UI.146 — Nur Caption + Tags patchen, KEINE anderen Felder anfassen.
+// Anders als updatePostCaption (deprecated, überschreibt Privacy/Toggles auf Defaults)
+// tut diese Funktion ein chirurgisches UPDATE das nur caption + tags ändert.
+export async function patchPostCaption(
+  postId: string,
+  caption: string,
+): Promise<ActionResult<null>> {
+  const viewer = await getViewerId();
+  if (!viewer) return { ok: false, error: 'Bitte einloggen.' };
+
+  const trimmed = caption.trim();
+  if (trimmed.length > 2000) return { ok: false, error: 'Caption zu lang (max. 2000 Zeichen).' };
+
+  const tags = Array.from(
+    new Set((trimmed.match(/#(\w{1,50})/g) ?? []).map((t) => t.slice(1).toLowerCase())),
+  );
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('posts')
+    .update({ caption: trimmed || null, tags })
     .eq('id', postId)
     .eq('author_id', viewer);
 

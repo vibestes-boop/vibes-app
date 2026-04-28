@@ -4,16 +4,20 @@ import type { Route } from 'next';
 import { notFound } from 'next/navigation';
 import { Hash, TrendingUp, Eye, Film } from 'lucide-react';
 import { getPostsByTag, getTrendingHashtags } from '@/lib/data/feed';
-import { ExploreVideoCard } from '@/components/explore/explore-video-card';
+import { HashtagGrid } from '@/components/explore/hashtag-grid';
 import { getLocale } from '@/lib/i18n/server';
 import { LOCALE_INTL } from '@/lib/i18n/config';
 import type { Locale } from '@/lib/i18n/config';
 
 // -----------------------------------------------------------------------------
-// /t/[tag] — Hashtag-Detail-Seite (v1.w.UI.41)
+// /t/[tag] — Hashtag-Detail-Seite (v1.w.UI.41 + v1.w.UI.101 infinite scroll)
 //
 // Zeigt alle öffentlichen Posts mit dem gegebenen Hashtag, sortiert nach
 // View-Count (populärste zuerst). Explore verlinkt hierher — bisher 404.
+//
+// v1.w.UI.101: Die initiale SSR-Charge lädt 24 Posts. HashtagGrid übernimmt
+// als Client-Shell und lädt weitere Seiten via
+// GET /api/feed/hashtag/[tag]?offset=N&limit=24 nach.
 //
 // SEO: generateMetadata mit og:title/description für jeden Hashtag.
 // ISR 15 min: Trending-Tags ändern sich nicht sekündlich.
@@ -35,6 +39,11 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       title: `#${decoded} auf Serlo`,
       description: `Entdecke Videos und Posts mit #${decoded}`,
     },
+    twitter: {
+      card: 'summary_large_image',
+      title: `#${decoded} auf Serlo`,
+      description: `Entdecke Videos und Posts mit #${decoded}`,
+    },
   };
 }
 
@@ -51,7 +60,7 @@ export default async function HashtagPage({ params }: PageProps) {
   if (!tag || tag.length > 100) notFound();
 
   const [posts, trending, locale] = await Promise.all([
-    getPostsByTag(tag, 48),
+    getPostsByTag(tag, 24), // First page; HashtagGrid handles further pages client-side
     getTrendingHashtags(10),
     getLocale(),
   ]);
@@ -59,7 +68,39 @@ export default async function HashtagPage({ params }: PageProps) {
   const totalViews = posts.reduce((sum, p) => sum + (p.view_count ?? 0), 0);
   const rank = trending.findIndex((h) => h.tag === tag);
 
+  // ── JSON-LD: CollectionPage + ItemList ──────────────────────────────────
+  // CollectionPage signals to Google that this is a curated list of content
+  // for a given topic (the hashtag). ItemList entries let Google index the
+  // individual posts and their positions in the tag feed.
+  // v1.w.UI.135
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://serlo.app';
+  const collectionJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: `#${tag} — Serlo`,
+    description: `Alle Posts mit #${tag} auf Serlo`,
+    url: `${siteUrl}/t/${encodeURIComponent(tag)}`,
+    ...(posts.length > 0
+      ? {
+          mainEntity: {
+            '@type': 'ItemList',
+            numberOfItems: posts.length,
+            itemListElement: posts.slice(0, 20).map((post, idx) => ({
+              '@type': 'ListItem',
+              position: idx + 1,
+              url: `${siteUrl}/p/${post.id}`,
+            })),
+          },
+        }
+      : {}),
+  };
+
   return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionJsonLd) }}
+      />
     <main className="mx-auto w-full max-w-5xl px-4 pb-16 pt-8 lg:px-6">
       {/* Header */}
       <header className="mb-8">
@@ -91,7 +132,7 @@ export default async function HashtagPage({ params }: PageProps) {
         </div>
       </header>
 
-      {/* Post-Grid */}
+      {/* Post-Grid — v1.w.UI.101: HashtagGrid als Client-Shell mit infinite scroll */}
       {posts.length === 0 ? (
         <div className="flex flex-col items-center gap-3 py-20 text-center text-muted-foreground">
           <Hash className="h-10 w-10 opacity-30" />
@@ -104,26 +145,7 @@ export default async function HashtagPage({ params }: PageProps) {
           </Link>
         </div>
       ) : (
-        /* v1.w.UI.55b — ExploreVideoCard für Hover-Video-Preview */
-        <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-          {posts.map((p) => {
-            const fallbackInitial =
-              (p.author.display_name ?? p.author.username ?? '?').slice(0, 1).toUpperCase();
-            return (
-              <li key={p.id}>
-                <ExploreVideoCard
-                  id={p.id}
-                  videoUrl={p.video_url}
-                  thumbnailUrl={p.thumbnail_url}
-                  caption={p.caption}
-                  authorUsername={p.author.username}
-                  viewCount={p.view_count ?? 0}
-                  fallbackInitial={fallbackInitial}
-                />
-              </li>
-            );
-          })}
-        </ul>
+        <HashtagGrid initialPosts={posts} tag={tag} />
       )}
 
       {/* Related Hashtags */}
@@ -150,5 +172,6 @@ export default async function HashtagPage({ params }: PageProps) {
         </section>
       )}
     </main>
+    </>
   );
 }

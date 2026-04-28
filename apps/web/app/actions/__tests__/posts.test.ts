@@ -347,8 +347,9 @@ describe('updatePost — Write-Pfad', () => {
     );
 
     const payload = client.lastBuilder()!._updatePayload as Record<string, unknown>;
-    // updatePost strippt das `#` und lowercased; #FOO ist Dup von #Foo.
-    expect(payload.tags).toEqual(['foo', 'bar']);
+    // updatePost lowercases and dedupes, but keeps the # prefix (withHash pattern).
+    // #FOO is a dup of #Foo → only one entry.
+    expect(payload.tags).toEqual(['#foo', '#bar']);
   });
 
   it('writes empty tags array when caption has no hashtag', async () => {

@@ -2,17 +2,20 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { Route } from 'next';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, BadgeCheck, UserCheck } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { ArrowLeft, UserCheck } from 'lucide-react';
 import { getPublicProfile, getProfileFollowing, getViewerFollowingSet } from '@/lib/data/public';
 import { getUser } from '@/lib/auth/session';
-import { FollowButton } from '@/components/profile/follow-button';
+import { FollowUserList } from '@/components/profile/follow-user-list';
 
 // -----------------------------------------------------------------------------
 // /u/[username]/following — Wem folgt dieser Account?
 //
-// Gleiche Struktur wie /followers, anderer Datencall + Icon.
-// force-dynamic weil Follow-Status auth-abhängig ist.
+// SSR-Seed: erste 50 Accounts; danach IntersectionObserver via FollowUserList
+// → GET /api/follows/following?username=X&offset=N.
+//
+// force-dynamic: Follow-Status ist auth-abhängig.
+//
+// v1.w.UI.128 — infinite scroll (vorher: hartes 100er-Limit).
 // -----------------------------------------------------------------------------
 
 export const dynamic = 'force-dynamic';
@@ -29,6 +32,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
+const SEED = 50;
+
 export default async function FollowingPage({ params }: PageProps) {
   const { username } = await params;
 
@@ -40,7 +45,7 @@ export default async function FollowingPage({ params }: PageProps) {
   if (!profile) notFound();
 
   const [following, followingSet] = await Promise.all([
-    getProfileFollowing(profile.id, 100),
+    getProfileFollowing(profile.id, SEED),
     getViewerFollowingSet(),
   ]);
 
@@ -64,56 +69,14 @@ export default async function FollowingPage({ params }: PageProps) {
         </h1>
       </header>
 
-      {following.length === 0 ? (
-        <p className="py-12 text-center text-sm text-muted-foreground">
-          Folgt noch niemandem.
-        </p>
-      ) : (
-        <ul className="divide-y divide-border">
-          {following.map((u) => {
-            const isSelf = viewer?.id === u.id;
-            return (
-              <li key={u.id} className="flex items-center gap-3 py-3">
-                <Link href={`/u/${u.username}` as Route} className="shrink-0">
-                  <Avatar className="h-11 w-11">
-                    <AvatarImage src={u.avatar_url ?? undefined} alt="" />
-                    <AvatarFallback className="text-sm">
-                      {(u.display_name ?? u.username).slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                </Link>
-
-                <div className="min-w-0 flex-1">
-                  <Link
-                    href={`/u/${u.username}` as Route}
-                    className="block hover:underline underline-offset-4"
-                  >
-                    <div className="flex items-center gap-1 truncate text-sm font-semibold">
-                      {u.display_name ?? u.username}
-                      {u.verified && (
-                        <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-brand-gold" />
-                      )}
-                    </div>
-                    <div className="truncate text-xs text-muted-foreground">
-                      @{u.username}
-                    </div>
-                  </Link>
-                </div>
-
-                {!isSelf && (
-                  <FollowButton
-                    isAuthenticated={!!viewer}
-                    isFollowing={followingSet.has(u.id)}
-                    isSelf={false}
-                    username={u.username}
-                    targetUserId={u.id}
-                  />
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
+      <FollowUserList
+        mode="following"
+        username={username}
+        initialUsers={following}
+        initialHasMore={following.length >= SEED}
+        viewerId={viewer?.id ?? null}
+        followingSet={followingSet}
+      />
     </main>
   );
 }

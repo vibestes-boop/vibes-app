@@ -1,15 +1,19 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { Route } from 'next';
-import { Download, Trash2, FileText, Clock, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { Download, Trash2, FileText, Clock, ShieldCheck, AlertTriangle, UserCog } from 'lucide-react';
+import { createClient } from '@/lib/supabase/server';
+import { getUser } from '@/lib/auth/session';
 
 import { DataExportButton } from '@/components/settings/data-export-button';
 import { DeleteAccountCard } from '@/components/settings/delete-account-card';
+import { PrivateAccountToggle } from '@/components/settings/private-account-toggle';
 
 // -----------------------------------------------------------------------------
-// /settings/privacy — DSGVO-Panel: Auskunft (Art. 15 / 20) + Löschung (Art. 17).
+// /settings/privacy — Konto-Sichtbarkeit + DSGVO-Panel.
 //
 // Sektionen:
+//   0. Konto-Sichtbarkeit (privat/öffentlich) — v1.w.UI.149
 //   1. Cookie-Einstellungen → öffnet den Consent-Banner erneut
 //   2. Daten-Export (JSON-Download)
 //   3. Konto-Löschung (Danger-Zone mit Tipp-Bestätigung)
@@ -22,7 +26,21 @@ export const metadata: Metadata = {
 
 export const dynamic = 'force-dynamic';
 
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
+  // Lade is_private-Status des eingeloggten Users für den Toggle.
+  // Kein hard-error wenn nicht eingeloggt — Settings-Layout sollte redirecten.
+  const user = await getUser();
+  let isPrivate = false;
+  if (user) {
+    const supabase = await createClient();
+    const { data } = await supabase
+      .from('profiles')
+      .select('is_private')
+      .eq('id', user.id)
+      .maybeSingle();
+    isPrivate = (data as { is_private?: boolean | null } | null)?.is_private ?? false;
+  }
+
   return (
     <div>
       <header className="mb-6">
@@ -34,6 +52,21 @@ export default function PrivacyPage() {
           Deine Daten, deine Kontrolle. Export, Löschung und Cookie-Einstellungen.
         </p>
       </header>
+
+      {/* ─── Konto-Sichtbarkeit ──────────────────────────────────────────── */}
+      {user && (
+        <section className="mb-8 rounded-xl border border-border bg-card p-5">
+          <h2 className="mb-4 flex items-center gap-2 text-base font-semibold">
+            <UserCog className="h-4 w-4" />
+            Konto-Sichtbarkeit
+          </h2>
+          <PrivateAccountToggle initialIsPrivate={isPrivate} />
+          <p className="mt-3 text-xs text-muted-foreground">
+            Du kannst diese Einstellung jederzeit ändern. Beim Wechsel von privat auf öffentlich
+            werden alle ausstehenden Follower-Anfragen automatisch angenommen.
+          </p>
+        </section>
+      )}
 
       {/* ─── Rechtliche Hinweise (Links) ─────────────────────────────────── */}
       <section className="mb-8 rounded-xl border border-border bg-card p-5">

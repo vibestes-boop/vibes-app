@@ -3,6 +3,8 @@ import { redirect } from 'next/navigation';
 import { Bookmark } from 'lucide-react';
 import { getUser } from '@/lib/auth/session';
 import { getBookmarkedPosts } from '@/lib/data/public';
+
+// v1.w.UI.121 — infinite scroll via /api/saved
 import { PostGrid } from '@/components/profile/post-grid';
 
 // -----------------------------------------------------------------------------
@@ -27,7 +29,7 @@ export default async function SavedPage() {
   const user = await getUser();
   if (!user) redirect('/login?next=/saved');
 
-  const posts = await getBookmarkedPosts(48);
+  const posts = await getBookmarkedPosts(24);
 
   return (
     <div className="mx-auto w-full max-w-3xl px-4 py-6 md:px-6">
@@ -41,6 +43,8 @@ export default async function SavedPage() {
         emptyTitle="Noch nichts gespeichert"
         emptyDescription="Tippe auf das Lesezeichen-Symbol bei einem Video, um es hier zu speichern."
         emptyIcon={<Bookmark className="h-7 w-7" strokeWidth={1.75} />}
+        fetchMoreUrl="/api/saved"
+        initialHasMore={posts.length >= 24}
       />
     </div>
   );

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Heart, MessageCircle, UserPlus, Mail, Radio, Gift, ShoppingBag } from 'lucide-react';
+import { Heart, MessageCircle, UserPlus, Mail, Radio, Gift, ShoppingBag, Repeat2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { updateNotifPrefs, type NotifPrefs } from '@/app/actions/profile';
@@ -69,6 +69,12 @@ const CHANNELS: Channel[] = [
     label: 'Shop-Bestellungen',
     description: 'Jemand kauft eines deiner Produkte.',
     icon: ShoppingBag,
+  },
+  {
+    key: 'reposts',
+    label: 'Reposts',
+    description: 'Jemand teilt deinen Post.',
+    icon: Repeat2,
   },
 ];
 

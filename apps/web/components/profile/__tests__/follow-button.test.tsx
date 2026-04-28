@@ -181,7 +181,8 @@ describe('FollowButton — Optimistisches Follow', () => {
       fireEvent.click(screen.getByRole('button'));
     });
 
-    expect(mockToggleFollow).toHaveBeenCalledWith('uid-42', false);
+    // v1.w.UI.149 added wasPending as third arg (false for non-pending follow)
+    expect(mockToggleFollow).toHaveBeenCalledWith('uid-42', false, false);
   });
 
   it('zeigt Toast nach erfolgreichem Folgen', async () => {
@@ -250,7 +251,8 @@ describe('FollowButton — Optimistisches Unfollow', () => {
       fireEvent.click(screen.getByRole('button'));
     });
 
-    expect(mockToggleFollow).toHaveBeenCalledWith('uid-42', true);
+    // v1.w.UI.149 added wasPending as third arg (false when currently following)
+    expect(mockToggleFollow).toHaveBeenCalledWith('uid-42', true, false);
   });
 });
 
