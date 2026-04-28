@@ -27,6 +27,7 @@ import { LiveSessionEndWatcher } from '@/components/live/live-session-end-watche
 import { LiveCoHostWatcher } from '@/components/live/live-cohost-watcher';
 import { LiveGiftLeaderboard } from '@/components/live/live-gift-leaderboard';
 import { LiveShoppingViewer } from '@/components/live/live-shopping-viewer';
+import { LiveBattleOverlay } from '@/components/live/live-battle-overlay';
 import {
   glassPillStrong,
   glassSurface,
@@ -358,6 +359,16 @@ export default async function LiveViewerPage({ params }: PageProps) {
             <div className="absolute bottom-20 right-3 z-10">
               <LiveGiftGoalViewer sessionId={id} initialGoal={activeGiftGoal} />
             </div>
+          )}
+
+          {/* v1.w.UI.181 — Battle mode: score bar + timer overlay */}
+          {!ended && (
+            <LiveBattleOverlay
+              sessionId={id}
+              hostName={hostName}
+              coHostName={coHostName}
+              coHostId={coHostId}
+            />
           )}
 
           {/* v1.w.UI.180 — Live-Shopping: pinned product pill + sold banners */}
