@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Bookmark, BookmarkCheck, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { LikeButton } from '@/components/feed/like-button';
+import { PostLikersDialog } from '@/components/post/post-likers-dialog';
 import { useTogglePostLike, useTogglePostSave } from '@/hooks/use-engagement';
 import { cn } from '@/lib/utils';
 
@@ -33,6 +34,7 @@ export function PostActionsBar({
   initialSaved,
   likeCount: initialLikeCount,
   isAuthenticated,
+  viewerId,
   videoUrl,
   allowDownload,
 }: {
@@ -41,12 +43,16 @@ export function PostActionsBar({
   initialSaved: boolean;
   likeCount: number;
   isAuthenticated: boolean;
+  /** v1.w.UI.236 — needed for LikersDialog (own profile = no follow button) */
+  viewerId?: string | null;
   videoUrl?: string;
   allowDownload?: boolean;
 }) {
   const [liked, setLiked] = useState(initialLiked);
   const [saved, setSaved] = useState(initialSaved);
   const [likeCount, setLikeCount] = useState(initialLikeCount);
+  // v1.w.UI.236 — likers dialog state
+  const [likersOpen, setLikersOpen] = useState(false);
 
   const likeMutation = useTogglePostLike();
   const saveMutation = useTogglePostSave();
@@ -86,6 +92,7 @@ export function PostActionsBar({
   };
 
   return (
+    <>
     <div className="flex items-center gap-2">
       {/* Like — renutzt LikeButton mit Burst-Animation */}
       <LikeButton
@@ -94,6 +101,7 @@ export function PostActionsBar({
         rawCount={likeCount}
         disabled={likeMutation.isPending}
         onClick={handleLike}
+        onCountClick={likeCount > 0 ? () => setLikersOpen(true) : undefined}
         iconClassName="h-5 w-5"
         circleClassName="h-9 w-9"
       />
@@ -140,5 +148,16 @@ export function PostActionsBar({
         </a>
       )}
     </div>
+
+    {/* v1.w.UI.236 — Likers Dialog */}
+    {likersOpen && (
+      <PostLikersDialog
+        postId={postId}
+        likeCount={likeCount}
+        viewerId={viewerId ?? null}
+        onClose={() => setLikersOpen(false)}
+      />
+    )}
+    </>
   );
 }

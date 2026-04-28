@@ -471,6 +471,7 @@ export default async function PostDetailPage({
               initialSaved={interaction.saved}
               likeCount={post.like_count}
               isAuthenticated={!!viewer}
+              viewerId={viewer?.id ?? null}
               videoUrl={post.video_url || undefined}
               allowDownload={post.allow_download}
             />

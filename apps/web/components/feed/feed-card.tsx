@@ -44,6 +44,7 @@ import { LikeButton } from './like-button';
 import { useFeedInteraction } from './feed-interaction-context';
 import { linkify } from '@/lib/linkify';
 import { PostShareDmSheet } from './post-share-dm-sheet';
+import { PostLikersDialog } from '@/components/post/post-likers-dialog';
 import { useVoiceReader } from '@/hooks/use-voice-reader';
 import { useCreatorVoiceSample } from '@/hooks/use-creator-voice-sample';
 
@@ -150,6 +151,8 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
   }, [viewerId, post.id, post.liked_by_me, likeMut]);
 
   const [shareDmOpen, setShareDmOpen] = useState(false);
+  // v1.w.UI.236 — likers dialog state
+  const [likersOpen, setLikersOpen] = useState(false);
   // v1.w.UI.146 — inline caption-edit state
   const [editOpen, setEditOpen] = useState(false);
   const [editCaption, setEditCaption] = useState('');
@@ -1050,6 +1053,7 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
         rawCount={post.like_count}
         disabled={!viewerId || likeMut.isPending}
         onClick={handleLikeClick}
+        onCountClick={post.like_count > 0 ? () => setLikersOpen(true) : undefined}
         iconClassName="h-7 w-7"
         circleClassName="h-12 w-12"
       />
@@ -1194,6 +1198,16 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
     {/* CommentSheet / CommentPanel wird seit v1.w.UI.11 Phase C vom
         HomeFeedShell gerendert (State-Owner-Lift). FeedCard triggert nur
         noch via `openCommentsFor(post.id)` aus dem FeedInteractionContext. */}
+
+    {/* v1.w.UI.236 — Likers Dialog: tap like count → see who liked */}
+    {likersOpen && (
+      <PostLikersDialog
+        postId={post.id}
+        likeCount={post.like_count}
+        viewerId={viewerId}
+        onClose={() => setLikersOpen(false)}
+      />
+    )}
 
     {/* v1.w.UI.74 — Post-Share-DM-Sheet (nur wenn eingeloggt + Share geklickt) */}
     {shareDmOpen && (

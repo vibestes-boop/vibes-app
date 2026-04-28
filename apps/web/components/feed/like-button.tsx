@@ -48,6 +48,12 @@ export interface LikeButtonProps {
   disabled?: boolean;
   /** Click-Handler, ruft den Mutate vom Parent auf. */
   onClick: () => void;
+  /**
+   * v1.w.UI.236 — Optionaler Handler für Tap auf den Zähler-Label.
+   * Wenn gesetzt, wird die Count-Zeile zu einem eigenen Button der
+   * z.B. ein Likers-Dialog öffnet (parity mit native LikersSheet).
+   */
+  onCountClick?: () => void;
   /** Icon-Größe in Tailwind-Klasse (Default: 'h-7 w-7'). */
   iconClassName?: string;
   /**
@@ -64,6 +70,7 @@ export function LikeButton({
   rawCount,
   disabled,
   onClick,
+  onCountClick,
   iconClassName,
   circleClassName,
 }: LikeButtonProps) {
@@ -88,6 +95,103 @@ export function LikeButton({
     }
   }, [disabled, liked, onClick]);
 
+  // ─── Shared heart-circle JSX ────────────────────────────────────────────────
+  // Extracted so it can be reused in both single-button and split-button layouts.
+  const heartCircle = (
+    <span
+      className={cn(
+        // Theme-aware Background (v1.w.UI.25 — Rail moved out of dark video):
+        // bg-foreground/10 ist im Light dunkles Grau, im Dark helles Grau.
+        // Backdrop-blur entfernt — wir sind nicht mehr über transparentem
+        // Video-Content, also unnötig + minimaler Performance-Gewinn.
+        'relative flex items-center justify-center rounded-full bg-foreground/10 transition-colors duration-base ease-out-expo group-hover/like:bg-foreground/20',
+        circleClassName ?? 'h-12 w-12',
+      )}
+    >
+      {/* Scale-Pop Container — re-mountet mit popKey bei jedem Like. */}
+      <span
+        key={`pop-${popKey}`}
+        className={cn(
+          'flex items-center justify-center',
+          popKey !== null && 'animate-heart-pop',
+        )}
+      >
+        <Heart
+          aria-hidden="true"
+          className={cn(
+            iconClassName ?? 'h-7 w-7',
+            // Default: erbe Farbe vom Parent (text-foreground im Rail).
+            // Liked: rot überall.
+            'text-foreground transition-colors duration-fast ease-out-expo',
+            liked && 'fill-red-500 text-red-500',
+          )}
+        />
+      </span>
+
+      {/* Partikel-Burst — 8 kleine Herzen. Nur gerendert wenn burstKey
+          gesetzt ist. Pointer-events-none, damit die Partikel den
+          Click-Path nicht blockieren. */}
+      {burstKey !== null && (
+        <span
+          key={`burst-${burstKey}`}
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 flex items-center justify-center"
+        >
+          {PARTICLE_ANGLES.map((deg, i) => {
+            const rad = (deg * Math.PI) / 180;
+            // Leichter Jitter pro Partikel damit nicht alle exakt am
+            // gleichen Radius sitzen — wirkt „lebendiger".
+            const r = PARTICLE_RADIUS + (i % 2 === 0 ? 6 : -4);
+            const dx = Math.cos(rad) * r;
+            const dy = Math.sin(rad) * r;
+            return (
+              <Heart
+                key={deg}
+                aria-hidden="true"
+                className="absolute h-3 w-3 animate-heart-particle fill-red-500 text-red-500"
+                style={{
+                  // Animation liest diese Custom-Properties (siehe
+                  // tailwind.config `heart-particle`-Keyframe).
+                  ['--dx' as string]: `${dx}px`,
+                  ['--dy' as string]: `${dy}px`,
+                }}
+              />
+            );
+          })}
+        </span>
+      )}
+    </span>
+  );
+
+  // ─── Split layout (onCountClick provided) ───────────────────────────────────
+  // HTML-Spec verbietet Button-in-Button → äußeres <div> + zwei separate
+  // <button>-Elemente: einer für den Like-Toggle, einer für den Zähler.
+  if (onCountClick) {
+    return (
+      <div className="group/like flex flex-col items-center gap-1">
+        <button
+          type="button"
+          onClick={handleClick}
+          disabled={disabled}
+          aria-label={`${liked ? 'Like entfernen' : 'Liken'} — ${rawCount} Likes`}
+          className="rounded-md outline-none transition-opacity duration-fast ease-out-expo focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-60"
+        >
+          {heartCircle}
+        </button>
+        <button
+          type="button"
+          onClick={onCountClick}
+          aria-label={`${rawCount} Likes anzeigen`}
+          className="rounded text-xs font-semibold tabular-nums outline-none transition-opacity hover:opacity-70 focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          {countLabel}
+        </button>
+      </div>
+    );
+  }
+
+  // ─── Default layout (no onCountClick) ───────────────────────────────────────
+  // Alles in einem Button — rückwärtskompatibel.
   return (
     <button
       type="button"
@@ -96,69 +200,7 @@ export function LikeButton({
       aria-label={`${liked ? 'Like entfernen' : 'Liken'} — ${rawCount} Likes`}
       className="group/like flex flex-col items-center gap-1 rounded-md outline-none transition-opacity duration-fast ease-out-expo focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-60"
     >
-      <span
-        className={cn(
-          // Theme-aware Background (v1.w.UI.25 — Rail moved out of dark video):
-          // bg-foreground/10 ist im Light dunkles Grau, im Dark helles Grau.
-          // Backdrop-blur entfernt — wir sind nicht mehr über transparentem
-          // Video-Content, also unnötig + minimaler Performance-Gewinn.
-          'relative flex items-center justify-center rounded-full bg-foreground/10 transition-colors duration-base ease-out-expo group-hover/like:bg-foreground/20',
-          circleClassName ?? 'h-12 w-12',
-        )}
-      >
-        {/* Scale-Pop Container — re-mountet mit popKey bei jedem Like. */}
-        <span
-          key={`pop-${popKey}`}
-          className={cn(
-            'flex items-center justify-center',
-            popKey !== null && 'animate-heart-pop',
-          )}
-        >
-          <Heart
-            aria-hidden="true"
-            className={cn(
-              iconClassName ?? 'h-7 w-7',
-              // Default: erbe Farbe vom Parent (text-foreground im Rail).
-              // Liked: rot überall.
-              'text-foreground transition-colors duration-fast ease-out-expo',
-              liked && 'fill-red-500 text-red-500',
-            )}
-          />
-        </span>
-
-        {/* Partikel-Burst — 8 kleine Herzen. Nur gerendert wenn burstKey
-            gesetzt ist. Pointer-events-none, damit die Partikel den
-            Click-Path nicht blockieren. */}
-        {burstKey !== null && (
-          <span
-            key={`burst-${burstKey}`}
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 flex items-center justify-center"
-          >
-            {PARTICLE_ANGLES.map((deg, i) => {
-              const rad = (deg * Math.PI) / 180;
-              // Leichter Jitter pro Partikel damit nicht alle exakt am
-              // gleichen Radius sitzen — wirkt „lebendiger".
-              const r = PARTICLE_RADIUS + (i % 2 === 0 ? 6 : -4);
-              const dx = Math.cos(rad) * r;
-              const dy = Math.sin(rad) * r;
-              return (
-                <Heart
-                  key={deg}
-                  aria-hidden="true"
-                  className="absolute h-3 w-3 animate-heart-particle fill-red-500 text-red-500"
-                  style={{
-                    // Animation liest diese Custom-Properties (siehe
-                    // tailwind.config `heart-particle`-Keyframe).
-                    ['--dx' as string]: `${dx}px`,
-                    ['--dy' as string]: `${dy}px`,
-                  }}
-                />
-              );
-            })}
-          </span>
-        )}
-      </span>
+      {heartCircle}
       <span aria-hidden="true" className="text-xs font-semibold tabular-nums">
         {countLabel}
       </span>
