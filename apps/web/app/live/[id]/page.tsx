@@ -29,6 +29,7 @@ import { LiveGiftLeaderboard } from '@/components/live/live-gift-leaderboard';
 import { LiveShoppingViewer } from '@/components/live/live-shopping-viewer';
 import { LiveBattleOverlay } from '@/components/live/live-battle-overlay';
 import { LiveDuetInviteWatcher } from '@/components/live/live-duet-invite-watcher';
+import { LiveWelcomeToasts } from '@/components/live/live-welcome-toasts';
 import {
   glassPillStrong,
   glassSurface,
@@ -362,6 +363,10 @@ export default async function LiveViewerPage({ params }: PageProps) {
            */}
           {!ended && (
             <div className="absolute bottom-20 left-3 right-3 sm:right-auto sm:w-[62%] sm:max-w-[420px]">
+              {/* v1.w.UI.192 — Welcome toasts: floats above chat compose bar */}
+              {viewerId && (
+                <LiveWelcomeToasts sessionId={id} viewerId={viewerId} />
+              )}
               <LiveChatOverlay
                 sessionId={id}
                 initialComments={comments}
