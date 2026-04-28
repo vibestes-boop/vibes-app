@@ -159,8 +159,20 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
   // Detected media aspect-ratio (width/height). null = noch nicht geladen,
   // dann verwenden wir 9:16 als sicheren Default. Wird bei post.id-Wechsel
   // resettet, damit das nächste Video nicht mit dem Ratio des vorigen rendert.
-  const [mediaAspectRatio, setMediaAspectRatio] = useState<number | null>(null);
-  useEffect(() => setMediaAspectRatio(null), [post.id]);
+  //
+  // v1.w.UI.175 — CLS-fix: statt blind null (→ 9:16-Flash) initialisieren wir
+  // mit dem gespeicherten aspect_ratio-Wert aus der DB. Landscape- und Square-
+  // Posts rendern dann vom ersten Paint an mit dem korrekten Rahmen, ohne zu
+  // 9:16 zu springen und dann aufzureißen. Metadata-Detection überschreibt den
+  // Wert sobald echte Dimensionen vorliegen (für edge-cases wo DB-Wert falsch ist).
+  // Portrait bleibt null → gleicher Pfad wie bisher (default 9/16).
+  const storedRatio = post.aspect_ratio === 'landscape'
+    ? 16 / 9
+    : post.aspect_ratio === 'square'
+      ? 1
+      : null; // portrait → null, detektiert via metadata (default = 9/16)
+  const [mediaAspectRatio, setMediaAspectRatio] = useState<number | null>(storedRatio);
+  useEffect(() => setMediaAspectRatio(storedRatio), [post.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Robuste Aspect-Detection (v1.w.UI.25 — Iteration 3):
   // Pure JSX-Event-Props (`onLoadedMetadata` / `onLoad`) haben in Production

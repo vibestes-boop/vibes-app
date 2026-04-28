@@ -58,6 +58,7 @@ export function makeFeedPost(overrides: Partial<FeedPost> = {}): FeedPost {
     media_type: 'video',
     women_only: false,
     privacy: 'public',
+    aspect_ratio: 'portrait',
   };
 
   return { ...base, ...overrides, author };

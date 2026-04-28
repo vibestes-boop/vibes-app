@@ -42,13 +42,17 @@ export interface FeedPost extends Post {
   // Authors see their own restricted posts in the feed; this flag drives
   // the audience-badge overlay (lock icon for private, users icon for friends).
   privacy: 'public' | 'friends' | 'private';
+  // v1.w.UI.175 — stored aspect ratio for CLS-free layout on first render.
+  // Eliminates the 9:16 → actual-ratio jump for landscape/square posts while
+  // media metadata loads. 'portrait' = 9:16, 'landscape' = 16:9, 'square' = 1:1.
+  aspect_ratio: 'portrait' | 'landscape' | 'square';
 }
 
 // PostgREST-Aliase: user_id:author_id, video_url:media_url, hashtags:tags
 // — mappt Mobile-DB-Spalten auf Web-Contract-Namen bereits in der Query.
 // `media_type` ist unaliased weil der Name in beiden Schemata identisch ist.
 const POST_COLUMNS =
-  'id, user_id:author_id, caption, video_url:media_url, media_type, thumbnail_url, view_count, like_count, comment_count, share_count, hashtags:tags, allow_comments, allow_duet, allow_download, women_only, privacy, created_at';
+  'id, user_id:author_id, caption, video_url:media_url, media_type, thumbnail_url, view_count, like_count, comment_count, share_count, hashtags:tags, allow_comments, allow_duet, allow_download, women_only, privacy, aspect_ratio, created_at';
 
 const AUTHOR_JOIN =
   'author:profiles!posts_author_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )';
@@ -117,6 +121,7 @@ type RawPostRow = Omit<Post, 'hashtags' | 'duration_secs' | 'music_id' | 'allow_
   allow_download?: boolean;
   women_only?: boolean;
   privacy?: string | null;
+  aspect_ratio?: string | null;
   author: RawAuthor | RawAuthor[] | null;
 };
 
@@ -159,6 +164,10 @@ function normalizeRow(
     privacy: (['public', 'friends', 'private'] as const).includes(row.privacy as 'public' | 'friends' | 'private')
       ? (row.privacy as 'public' | 'friends' | 'private')
       : 'public',
+    // v1.w.UI.175 — stored aspect ratio for CLS-free layout; default 'portrait'.
+    aspect_ratio: (['portrait', 'landscape', 'square'] as const).includes(row.aspect_ratio as 'portrait' | 'landscape' | 'square')
+      ? (row.aspect_ratio as 'portrait' | 'landscape' | 'square')
+      : 'portrait',
   };
 }
 
