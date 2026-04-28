@@ -30,9 +30,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import type { Route } from 'next';
 import Link from 'next/link';
-import { X, Shield, ShieldOff, UserPlus, UserCheck, Gift } from 'lucide-react';
+import { X, Shield, ShieldOff, UserPlus, UserCheck, Gift, Tv2, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toggleFollow } from '@/app/actions/engagement';
+import { createDuetInvite, type DuetLayout } from '@/app/actions/live-host';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -97,6 +98,20 @@ function Avatar({
 
 // ─── Mini Profile Card ───────────────────────────────────────────────────────
 
+// ─── Duet Layout labels ──────────────────────────────────────────────────────
+
+const LAYOUT_LABELS: Record<DuetLayout, string> = {
+  'top-bottom':   'Oben/Unten',
+  'side-by-side': 'Nebeneinander',
+  'pip':          'Bild-in-Bild',
+  'battle':       '⚔️ Battle',
+};
+const BATTLE_DURATIONS: { secs: number; label: string }[] = [
+  { secs: 60,  label: '1 Min' },
+  { secs: 180, label: '3 Min' },
+  { secs: 300, label: '5 Min' },
+];
+
 function ProfileSheet({
   user,
   hostId,
@@ -121,10 +136,16 @@ function ProfileSheet({
 
   const isSelf = user.id === viewerId;
   const isMod  = modIds.has(user.id);
-  const [following, setFollowing]   = useState(false);
+  const [following, setFollowing]       = useState(false);
   const [followLoading, setFollowLoading] = useState(true);
-  const [modBusy, setModBusy]       = useState(false);
-  const [reported, setReported]     = useState(false);
+  const [modBusy, setModBusy]           = useState(false);
+  const [reported, setReported]         = useState(false);
+
+  // v1.w.UI.222 — Duet-Invite state (host only)
+  const [duetStep, setDuetStep]         = useState<'idle' | 'picking' | 'sent' | 'error'>('idle');
+  const [duetLayout, setDuetLayout]     = useState<DuetLayout>('side-by-side');
+  const [battleDuration, setBattleDuration] = useState(60);
+  const [duetBusy, setDuetBusy]         = useState(false);
 
   // Fetch follow state
   useEffect(() => {
@@ -180,6 +201,24 @@ function ProfileSheet({
     setReported(true);
   };
 
+  // v1.w.UI.222 — Duet-Invite senden
+  const handleSendDuetInvite = async () => {
+    if (duetBusy) return;
+    setDuetBusy(true);
+    const result = await createDuetInvite(
+      sessionId,
+      user.id,
+      duetLayout,
+      duetLayout === 'battle' ? battleDuration : undefined,
+    );
+    setDuetBusy(false);
+    if (result.ok) {
+      setDuetStep('sent');
+    } else {
+      setDuetStep('error');
+    }
+  };
+
   return (
     <div className="flex flex-col gap-4 p-4">
       <div className="flex items-center gap-3">
@@ -230,6 +269,27 @@ function ProfileSheet({
             {isMod ? 'Mod entfernen' : 'Zum Mod'}
           </button>
         )}
+        {/* v1.w.UI.222 — Host: Zum Duett einladen */}
+        {isHost && !isSelf && duetStep === 'idle' && (
+          <button
+            type="button"
+            onClick={() => setDuetStep('picking')}
+            className="flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted/80"
+          >
+            <Tv2 className="h-3.5 w-3.5" />
+            Zum Duett einladen
+          </button>
+        )}
+        {isHost && !isSelf && duetStep === 'sent' && (
+          <span className="flex items-center gap-1.5 rounded-full bg-green-500/15 px-3 py-1.5 text-xs font-semibold text-green-400">
+            ✓ Einladung gesendet
+          </span>
+        )}
+        {isHost && !isSelf && duetStep === 'error' && (
+          <span className="flex items-center gap-1.5 rounded-full bg-red-500/15 px-3 py-1.5 text-xs font-semibold text-red-400">
+            Fehler — erneut versuchen
+          </span>
+        )}
         {!isSelf && viewerId && (
           <button
             type="button"
@@ -241,6 +301,70 @@ function ProfileSheet({
           </button>
         )}
       </div>
+
+      {/* v1.w.UI.222 — Inline Layout Picker (step 2) */}
+      {isHost && !isSelf && duetStep === 'picking' && (
+        <div className="flex flex-col gap-3 border-t pt-3">
+          <p className="text-xs font-semibold text-foreground">Layout wählen</p>
+          <div className="flex flex-wrap gap-2">
+            {(['top-bottom', 'side-by-side', 'pip', 'battle'] as DuetLayout[]).map((l) => (
+              <button
+                key={l}
+                type="button"
+                onClick={() => setDuetLayout(l)}
+                className={cn(
+                  'rounded-full border px-3 py-1 text-xs font-semibold transition-colors',
+                  duetLayout === l
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'border-border bg-background text-foreground hover:bg-muted',
+                )}
+              >
+                {LAYOUT_LABELS[l]}
+              </button>
+            ))}
+          </div>
+          {duetLayout === 'battle' && (
+            <div className="flex flex-col gap-1.5">
+              <p className="text-xs text-muted-foreground">Battle-Dauer</p>
+              <div className="flex gap-2">
+                {BATTLE_DURATIONS.map(({ secs, label }) => (
+                  <button
+                    key={secs}
+                    type="button"
+                    onClick={() => setBattleDuration(secs)}
+                    className={cn(
+                      'rounded-full border px-3 py-1 text-xs font-semibold transition-colors',
+                      battleDuration === secs
+                        ? 'border-primary bg-primary text-primary-foreground'
+                        : 'border-border bg-background text-foreground hover:bg-muted',
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleSendDuetInvite}
+              disabled={duetBusy}
+              className="inline-flex flex-1 items-center justify-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            >
+              {duetBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Tv2 className="h-3.5 w-3.5" />}
+              {duetBusy ? 'Sende…' : 'Einladung senden'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setDuetStep('idle')}
+              className="rounded-full bg-muted px-4 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted/80"
+            >
+              Abbrechen
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -501,6 +501,31 @@ export async function stopLiveRecording(
   return { ok: true, data: null };
 }
 
+// v1.w.UI.222 — Host lädt einen Viewer zum Duett ein.
+// Delegiert an `create_duet_invite` RPC (Security Definer, prüft caller = host).
+// direction = 'host-to-viewer' — RPC leitet das selbst anhand caller/invitee ab.
+export async function createDuetInvite(
+  sessionId: string,
+  inviteeId: string,
+  layout: DuetLayout = 'side-by-side',
+  battleDurationSecs?: number,
+): Promise<ActionResult<{ inviteId: string }>> {
+  const host = await getHost();
+  if (!host) return { ok: false, error: 'Bitte einloggen.' };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('create_duet_invite', {
+    p_session_id: sessionId,
+    p_invitee_id: inviteeId,
+    p_layout: layout,
+    p_battle_duration: layout === 'battle' ? (battleDurationSecs ?? 60) : null,
+    p_message: null,
+  });
+
+  if (error) return { ok: false, error: error.message ?? 'Einladung konnte nicht gesendet werden.' };
+  return { ok: true, data: { inviteId: data as string } };
+}
+
 // v1.w.UI.188 — Toggle followers-only chat während eines laufenden Streams.
 // Ruft die DB-RPC `toggle_followers_only_chat` auf (Security Definer, prüft host_id).
 export async function toggleFollowersOnlyChat(
