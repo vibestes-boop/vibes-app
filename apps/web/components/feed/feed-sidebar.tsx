@@ -14,6 +14,7 @@ import {
   UserRound,
   Plus,
   Bell,
+  ShieldCheck,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
@@ -56,6 +57,7 @@ const PRIMARY_NAV: NavItem[] = [
 const SECONDARY_NAV: NavItem[] = [
   { label: 'Shop', href: '/shop' as Route, icon: ShoppingBag },
   { label: 'Pods', href: '/guilds' as Route, icon: Users },
+  { label: 'Women-Only Zone', href: '/woz' as Route, icon: ShieldCheck, requiresAuth: true },
   { label: 'Creator Studio', href: '/studio' as Route, icon: BarChart3, requiresAuth: true },
 ];
 
