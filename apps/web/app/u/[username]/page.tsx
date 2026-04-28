@@ -18,6 +18,8 @@ import { FollowButton } from '@/components/profile/follow-button';
 import { CreatorTipButton } from '@/components/profile/creator-tip-button';
 import { LiveRingAvatar } from '@/components/profile/live-ring-avatar';
 import { MuteHostButton } from '@/components/profile/mute-host-button';
+import { ProfileHighlightsRow } from '@/components/profile/profile-highlights-row';
+import { getProfileHighlights } from '@/lib/data/story-highlights';
 import { getT, getLocale } from '@/lib/i18n/server';
 import { LOCALE_INTL } from '@/lib/i18n/config';
 import type { Locale } from '@/lib/i18n/config';
@@ -201,10 +203,11 @@ export default async function ProfilePage({
 
   const isSelf = viewer?.id === profile.id;
 
-  // Liked + Saved Posts: nur für den Profilinhaber selbst (privat).
-  const [likedPosts, savedPosts] = await Promise.all([
+  // Liked + Saved Posts + Highlights parallel.
+  const [likedPosts, savedPosts, highlights] = await Promise.all([
     tab === 'likes' && isSelf ? getProfileLikedPosts(profile.id, 24) : Promise.resolve([]),
     tab === 'saved' && isSelf ? getBookmarkedPosts(48) : Promise.resolve([]),
+    getProfileHighlights(profile.id),
   ]);
   const displayName = profile.display_name ?? `@${profile.username}`;
 
@@ -352,6 +355,15 @@ export default async function ProfilePage({
           </div>
         )}
       </section>
+
+      {/* ───── Story Highlights ───── v1.w.UI.235 */}
+      {highlights.length > 0 && (
+        <ProfileHighlightsRow
+          initialHighlights={highlights}
+          isOwn={isSelf}
+          username={profile.username ?? ''}
+        />
+      )}
 
       {/* ───── Tab-Navigation ───── */}
       <ProfileTabs
