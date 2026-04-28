@@ -274,7 +274,7 @@ export async function setPrivateAccount(isPrivate: boolean): Promise<ActionResul
 // Notification channel preferences — v1.w.UI.63
 //
 // notif_prefs: JSONB-Spalte auf `profiles`.
-// Keys: likes | comments | follows | messages | live | gifts | orders
+// Keys: likes | comments | follows | messages | live | gifts | orders | reposts
 // Default: alle true (opt-out-Modell, see DB migration 20260426200000).
 // -----------------------------------------------------------------------------
 
@@ -286,11 +286,12 @@ export interface NotifPrefs {
   live:     boolean;
   gifts:    boolean;
   orders:   boolean;
+  reposts:  boolean;
 }
 
 const DEFAULT_PREFS: NotifPrefs = {
   likes: true, comments: true, follows: true,
-  messages: true, live: true, gifts: true, orders: true,
+  messages: true, live: true, gifts: true, orders: true, reposts: true,
 };
 
 export async function getNotifPrefs(): Promise<NotifPrefs> {

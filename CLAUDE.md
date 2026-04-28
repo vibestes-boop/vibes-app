@@ -296,27 +296,3 @@ supabase functions deploy livekit-token
 | RevenueCat | In-App Purchases | `coin-shop.tsx` + Supabase Webhook |
 | Sentry | Error-Monitoring | `app/_layout.tsx` |
 | EAS | Build & Deploy | `eas.json` |
-
----
-
-## 🤖 Dispatch-Tasks: Git-Push ohne Inline-PAT
-
-Cowork-/Dispatch-Tasks die nach `vibestes-boop/vibes-app` pushen müssen, ziehen den fine-grained PAT
-aus `.env.local` (Variable `GITHUB_TOKEN`). Die Datei ist via `.gitignore` (`.env*.local`) ausgeschlossen
-und darf **niemals** committed oder geechot werden.
-
-```bash
-# Token aus .env.local laden (NIE im Output zeigen!)
-TOKEN=$(grep -E '^GITHUB_TOKEN=' .env.local | cut -d= -f2-)
-
-# Push via temporärer Auth-URL (Token landet nicht in der Remote-Config)
-git push "https://x-access-token:${TOKEN}@github.com/vibestes-boop/vibes-app.git" HEAD:main
-
-# Falls das Token fehlt / abgelaufen ist: User um neuen PAT bitten,
-# nicht inline im Prompt einfordern (Transkript-Leak-Risiko).
-```
-
-Token-Properties: fine-grained, nur dieses Repo, `Contents: read+write`, GitHub-Name `cowork-vibes-app`,
-Ablauf 26.07.2026. Bei Rotation einfach die `GITHUB_TOKEN=`-Zeile in `.env.local` ersetzen — keine
-weitere Konfiguration nötig. Wenn `git push` mit `403`/`401` antwortet → wahrscheinlich abgelaufen
-oder Scope falsch.

@@ -14,10 +14,6 @@ import {
   ShieldCheck,
   Sparkles,
   X,
-  MessageCircle,
-  Gem,
-  Heart,
-  UserCheck,
 } from 'lucide-react';
 import { startLiveSession } from '@/app/actions/live-host';
 import { AIImageSheet } from '@/components/ai/ai-image-sheet';
@@ -44,12 +40,6 @@ export function LiveSetupForm() {
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState('other');
   const [moderationEnabled, setModerationEnabled] = useState(true);
-  // v1.w.UI.184 — Parity mit Mobile-Live-Start
-  const [allowComments, setAllowComments] = useState(true);
-  const [allowGifts, setAllowGifts] = useState(true);
-  const [womenOnly, setWomenOnly] = useState(false);
-  // v1.w.UI.188 — Followers-only chat
-  const [followersOnlyChat, setFollowersOnlyChat] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   // v1.28.0 — KI-Cover für Live-Stream (Phase 3 AI-Image-Rollout).
   // Spalte `live_sessions.thumbnail_url` existiert seit v1.18.0; Server-Action
@@ -165,10 +155,6 @@ export function LiveSetupForm() {
         category,
         moderationEnabled,
         thumbnailUrl: thumbnailUrl ?? undefined,
-        allowComments,
-        allowGifts,
-        womenOnly,
-        followersOnlyChat,
       });
       if (!result.ok) {
         setFormError(result.error);
@@ -383,107 +369,23 @@ export function LiveSetupForm() {
           </select>
         </div>
 
-        {/* ── Stream-Optionen — 4 Toggles (Parity Mobile v1.w.UI.184) ── */}
-        <div className="grid gap-2 sm:grid-cols-2">
-          <label className="flex items-start gap-3 rounded-lg border bg-card px-3 py-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={moderationEnabled}
-              onChange={(e) => setModerationEnabled(e.target.checked)}
-              className="mt-0.5 h-4 w-4"
-            />
-            <div className="flex-1">
-              <p className="flex items-center gap-1.5 text-sm font-medium">
-                <ShieldCheck className="h-4 w-4 text-green-500" />
-                Chat-Moderation
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Wortliste filtert Beleidigungen (Shadow-Ban).
-              </p>
-            </div>
-          </label>
-
-          <label className="flex items-start gap-3 rounded-lg border bg-card px-3 py-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={allowComments}
-              onChange={(e) => setAllowComments(e.target.checked)}
-              className="mt-0.5 h-4 w-4"
-            />
-            <div className="flex-1">
-              <p className="flex items-center gap-1.5 text-sm font-medium">
-                <MessageCircle className="h-4 w-4 text-blue-500" />
-                Kommentare erlaubt
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Zuschauer können im Chat schreiben.
-              </p>
-            </div>
-          </label>
-
-          <label className="flex items-start gap-3 rounded-lg border bg-card px-3 py-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={allowGifts}
-              onChange={(e) => setAllowGifts(e.target.checked)}
-              className="mt-0.5 h-4 w-4"
-            />
-            <div className="flex-1">
-              <p className="flex items-center gap-1.5 text-sm font-medium">
-                <Gem className="h-4 w-4 text-amber-500" />
-                Geschenke erlaubt
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Zuschauer können Coins-Geschenke senden.
-              </p>
-            </div>
-          </label>
-
-          <label
-            className={`flex items-start gap-3 rounded-lg border px-3 py-2 cursor-pointer transition-colors ${
-              womenOnly ? 'border-rose-400/60 bg-rose-500/5' : 'bg-card'
-            }`}
-          >
-            <input
-              type="checkbox"
-              checked={womenOnly}
-              onChange={(e) => setWomenOnly(e.target.checked)}
-              className="mt-0.5 h-4 w-4"
-            />
-            <div className="flex-1">
-              <p className={`flex items-center gap-1.5 text-sm font-medium ${womenOnly ? 'text-rose-500' : ''}`}>
-                <Heart className={`h-4 w-4 ${womenOnly ? 'text-rose-500' : 'text-rose-400'}`} />
-                Nur Frauen (WOZ)
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Nur verifizierte Frauen können zuschauen.
-              </p>
-            </div>
-          </label>
-
-          {/* v1.w.UI.188 — Followers-only chat */}
-          <label
-            className={`flex items-start gap-3 rounded-lg border px-3 py-2 cursor-pointer transition-colors ${
-              followersOnlyChat ? 'border-green-400/60 bg-green-500/5' : 'bg-card'
-            }`}
-          >
-            <input
-              type="checkbox"
-              checked={followersOnlyChat}
-              onChange={(e) => setFollowersOnlyChat(e.target.checked)}
-              className="mt-0.5 h-4 w-4"
-            />
-            <div className="flex-1">
-              <p className={`flex items-center gap-1.5 text-sm font-medium ${followersOnlyChat ? 'text-green-600 dark:text-green-400' : ''}`}>
-                <UserCheck className={`h-4 w-4 ${followersOnlyChat ? 'text-green-500' : 'text-green-500/60'}`} />
-                Nur Follower chatten
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Nur deine Follower können im Chat schreiben.
-              </p>
-            </div>
-          </label>
-        </div>
+        <label className="flex items-start gap-3 rounded-lg border bg-card px-3 py-2">
+          <input
+            type="checkbox"
+            checked={moderationEnabled}
+            onChange={(e) => setModerationEnabled(e.target.checked)}
+            className="mt-0.5 h-4 w-4"
+          />
+          <div className="flex-1">
+            <p className="flex items-center gap-1.5 text-sm font-medium">
+              <ShieldCheck className="h-4 w-4 text-green-500" />
+              Chat-Moderation aktiv
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Globale Wortliste filtert Beleidigungen automatisch (Shadow-Ban).
+            </p>
+          </div>
+        </label>
 
         {formError && (
           <div className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-500">

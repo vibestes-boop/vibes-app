@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation';
 import type { ReactNode } from 'react';
-import type { Route } from 'next';
-import { getUser, getProfile } from '@/lib/auth/session';
+import { getUser } from '@/lib/auth/session';
 import { StudioSubNav } from '@/components/studio/studio-sub-nav';
 
 // -----------------------------------------------------------------------------
@@ -10,9 +9,6 @@ import { StudioSubNav } from '@/components/studio/studio-sub-nav';
 // Layout-Strategie:
 // - SSR Auth-Gate: Creator-Studio ist nicht public. Ohne Session Redirect zum
 //   Login mit `next=/studio` damit man nach Login am richtigen Ort landet.
-// - v1.w.UI.163: is_creator-Gate — wer kein Creator ist, sieht /creator/activate.
-//   /creator/activate liegt AUSSERHALB des studio/-Verzeichnisses → kein
-//   Redirect-Loop möglich.
 // - Sticky Sub-Nav (horizontal scrollend auf Mobile, fest auf Desktop). Auf
 //   Desktop > lg wird die Nav zu einem linken Rail-Menü — Dashboards nutzen
 //   den Platz besser als ein Center-geschwurbeltes 4xl-Layout.
@@ -26,14 +22,7 @@ import { StudioSubNav } from '@/components/studio/studio-sub-nav';
 
 export default async function StudioLayout({ children }: { children: ReactNode }) {
   const user = await getUser();
-  if (!user) redirect('/login?next=/studio' as Route);
-
-  // v1.w.UI.163: Creator-Gate. getProfile() is cached per-request, no extra DB hit.
-  const profile = await getProfile();
-  const isCreator = profile && (profile as unknown as { is_creator?: boolean }).is_creator;
-  if (!isCreator) {
-    redirect('/creator/activate' as Route);
-  }
+  if (!user) redirect('/login?next=/studio');
 
   return (
     <div className="mx-auto w-full max-w-[1400px] px-4 pb-20 pt-4 lg:grid lg:grid-cols-[220px_1fr] lg:gap-6 lg:px-6 lg:pt-6">

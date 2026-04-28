@@ -80,9 +80,8 @@ export function UsernamePickerForm({ next = '/' }: { next?: string }) {
         return;
       }
       toast.success('Willkommen bei Serlo.');
-      // Route through the follow-suggestions step before landing on destination.
-      const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : '/';
-      router.push(`/onboarding/follow?next=${encodeURIComponent(safeNext)}`);
+      // safeNext guard already applied client-side — server re-validates on next navigation.
+      router.push(next.startsWith('/') && !next.startsWith('//') ? next : '/');
       router.refresh();
     });
   }

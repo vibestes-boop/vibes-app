@@ -6,7 +6,6 @@ import {
   togglePostLike,
   togglePostBookmark,
   toggleFollow,
-  toggleRepost,
   createComment,
   type ActionResult,
 } from '@/app/actions/engagement';
@@ -20,7 +19,6 @@ import type { FeedPost } from '@/lib/data/feed';
 type LikeArgs = { postId: string; liked: boolean };
 type SaveArgs = { postId: string; saved: boolean };
 type FollowArgs = { userId: string; following: boolean };
-type RepostArgs = { postId: string; reposted: boolean };
 
 /** Helper — wirf lesbar wenn Action-Result nicht ok. */
 function unwrap<T>(r: ActionResult<T>): T {
@@ -114,45 +112,14 @@ export function useToggleFollow() {
       );
       return { prev };
     },
-    onSuccess: ({ following, pending }) => {
-      if (pending) toast.success('Follower-Anfrage gesendet');
-      else toast.success(following ? 'Du folgst jetzt diesem Account' : 'Nicht mehr gefolgt');
+    onSuccess: ({ following }) => {
+      toast.success(following ? 'Du folgst jetzt diesem Account' : 'Nicht mehr gefolgt');
     },
     onError: (err, _vars, ctx) => {
       if (ctx?.prev) {
         for (const [key, data] of ctx.prev) qc.setQueryData(key, data);
       }
       toast.error(err instanceof Error ? err.message : 'Follow fehlgeschlagen');
-    },
-  });
-}
-
-// -----------------------------------------------------------------------------
-// useToggleRepost — v1.w.UI.151
-// -----------------------------------------------------------------------------
-
-export function useToggleRepost() {
-  const qc = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ postId, reposted }: RepostArgs) =>
-      unwrap(await toggleRepost(postId, reposted)),
-    onMutate: async ({ postId, reposted }) => {
-      await qc.cancelQueries({ queryKey: ['feed'] });
-      const prev = qc.getQueriesData<FeedPost[]>({ queryKey: ['feed'] });
-      qc.setQueriesData<FeedPost[]>({ queryKey: ['feed'] }, (old) =>
-        old?.map((p) => (p.id === postId ? { ...p, reposted_by_me: !reposted } : p)),
-      );
-      return { prev };
-    },
-    onSuccess: ({ reposted: isReposted }) => {
-      toast.success(isReposted ? 'Repostet' : 'Repost entfernt');
-    },
-    onError: (err, _vars, ctx) => {
-      if (ctx?.prev) {
-        for (const [key, data] of ctx.prev) qc.setQueryData(key, data);
-      }
-      toast.error(err instanceof Error ? err.message : 'Repost fehlgeschlagen');
     },
   });
 }

@@ -281,19 +281,13 @@ export default async function StudioRevenuePage({
       {/* Payout-Hinweis */}
       <section className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
         <div className="flex items-start gap-3">
-          <Gem className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+          <AlertCircle className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
           <div className="min-w-0 flex-1">
-            <h3 className="text-sm font-semibold">Auszahlung beantragen</h3>
+            <h3 className="text-sm font-semibold">Auszahlung</h3>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Ab 2.500 💎 (≈ 50 €) kannst du eine Auszahlung per SEPA-Überweisung oder PayPal beantragen.
+              Diamanten können ab 100.000 💎 (= ca. 500 € netto) per SEPA ausgezahlt werden.
+              Die Auszahlungs-Funktion kommt in Phase 10.
             </p>
-            <Link
-              href={'/studio/revenue/payout' as Route}
-              className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-amber-500 px-3 py-1 text-xs font-semibold text-white hover:bg-amber-600"
-            >
-              <CreditCard className="h-3 w-3" />
-              Zur Auszahlung
-            </Link>
           </div>
         </div>
       </section>

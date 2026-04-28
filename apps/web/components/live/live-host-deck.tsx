@@ -28,16 +28,14 @@ import {
   Gift,
   Settings2,
   ChevronDown,
-  UserCheck,
 } from 'lucide-react';
 import type { LiveSessionWithHost, LiveCommentWithAuthor, ActiveLivePollSSR } from '@/lib/data/live';
 import type { SessionGiftRow, ActiveGiftGoal } from '@/lib/data/live-host';
-import { fetchLiveKitToken, setLiveSlowMode, setLiveShopMode } from '@/app/actions/live';
+import { fetchLiveKitToken } from '@/app/actions/live';
 import {
   endLiveSession,
   heartbeatLiveSession,
   updateLiveSession,
-  toggleFollowersOnlyChat,
 } from '@/app/actions/live-host';
 import { deleteWhipIngress } from '@/app/actions/live-ingress';
 import { LiveChat } from './live-chat';
@@ -46,11 +44,6 @@ import { LiveStreamHealth } from './live-stream-health';
 import { LiveCoHostQueue } from './live-cohost-queue';
 import { LivePollStartSheet } from './live-poll-start-sheet';
 import { LiveGiftsFeed } from './live-gifts-feed';
-import { useLiveShoppingHost, LiveShopHostPanel } from './live-shopping';
-import { useBattleStore } from './live-battle-store';
-import { LiveBattleBar } from './live-battle-bar';
-import { LiveWelcomeToasts } from './live-welcome-toasts';
-import { LiveAudienceModal } from './live-audience-modal';
 
 // -----------------------------------------------------------------------------
 // LiveHostDeck — OBS-ähnliches Control-Panel für den Host.
@@ -151,7 +144,6 @@ export function LiveHostDeck({
 
   // Panels
   const [pollSheetOpen, setPollSheetOpen] = useState(false);
-  const [audienceOpen, setAudienceOpen] = useState(false);
   const [titleDraft, setTitleDraft] = useState(session.title ?? '');
   const [titleEditing, setTitleEditing] = useState(false);
   const [isSavingTitle, startSaveTitle] = useTransition();
@@ -159,43 +151,6 @@ export function LiveHostDeck({
 
   // Active-Poll realtime-state — wird LivePollStartSheet runtergereicht
   const [activePoll, setActivePoll] = useState<ActiveLivePollSSR | null>(initialPoll);
-
-  // v1.w.UI.188 — Followers-only chat toggle (optimistic UI)
-  const [followersOnlyChat, setFollowersOnlyChat] = useState(session.followers_only_chat ?? false);
-  const [, startFollowersToggle] = useTransition();
-
-  // v1.w.UI.198 — Slow-mode: host can set 0/5/10/30/60s between messages.
-  // Mobile parity: set_live_slow_mode RPC button in host right-controls.
-  const [slowModeSecs, setSlowModeSecs] = useState(session.slow_mode_seconds ?? 0);
-  const [, startSlowModeTransition] = useTransition();
-
-  const handleSetSlowMode = (secs: number) => {
-    const prev = slowModeSecs;
-    setSlowModeSecs(secs);
-    startSlowModeTransition(async () => {
-      const res = await setLiveSlowMode(session.id, secs);
-      if (!res.ok) setSlowModeSecs(prev); // rollback on error
-    });
-  };
-
-  // v1.w.UI.201 — Shop-Mode toggle: shop_enabled on live_sessions.
-  // Parity with mobile useLiveShopModeActions.toggleShopMode().
-  const [shopEnabled, setShopEnabled] = useState(!!(session.shop_enabled));
-  const [, startShopToggle] = useTransition();
-  const handleShopToggle = () => {
-    const next = !shopEnabled;
-    setShopEnabled(next);
-    startShopToggle(async () => {
-      const res = await setLiveShopMode(session.id, next);
-      if (!res.ok) setShopEnabled(!next); // rollback
-    });
-  };
-
-  // Live-Shopping — v1.w.UI.180
-  const { pinnedProduct: shopPinnedProduct, pinProduct, unpinProduct } = useLiveShoppingHost(session.id);
-
-  // Battle — v1.w.UI.182: reads from module-level store written by LiveCoHostQueue when host accepts
-  const battleStore = useBattleStore();
 
   // -----------------------------------------------------------------------------
   // LiveKit-Connect — initial Mount nur einmal
@@ -449,25 +404,7 @@ export function LiveHostDeck({
   // -----------------------------------------------------------------------------
   // Screenshare — läuft parallel zur Cam. Audio (System-Audio) nur wenn Browser
   // das zulässt und der User es anklickt.
-  //
-  // Reihenfolge: `stopScreenshare` ZUERST definiert, weil `startScreenshare` es
-  // intern via `t.once('ended', …)` aufruft. Sonst Temporal-Dead-Zone-Crash beim
-  // useCallback-Deps-Array von `startScreenshare`.
   // -----------------------------------------------------------------------------
-  const stopScreenshare = useCallback(async () => {
-    const room = roomRef.current;
-    const video = screenVideoTrackRef.current;
-    const audio = screenAudioTrackRef.current;
-    if (video && room) await room.localParticipant.unpublishTrack(video, true);
-    if (audio && room) await room.localParticipant.unpublishTrack(audio, true);
-    video?.stop();
-    audio?.stop();
-    screenVideoTrackRef.current = null;
-    screenAudioTrackRef.current = null;
-    if (screenPreviewRef.current) screenPreviewRef.current.srcObject = null;
-    setScreenEnabled(false);
-  }, []);
-
   const startScreenshare = useCallback(async () => {
     const room = roomRef.current;
     if (!room) return;
@@ -497,7 +434,21 @@ export function LiveHostDeck({
       if (err instanceof Error && err.name === 'NotAllowedError') return;
       setErrorMsg(err instanceof Error ? err.message : 'Screenshare fehlgeschlagen.');
     }
-  }, [stopScreenshare]);
+  }, []);
+
+  const stopScreenshare = useCallback(async () => {
+    const room = roomRef.current;
+    const video = screenVideoTrackRef.current;
+    const audio = screenAudioTrackRef.current;
+    if (video && room) await room.localParticipant.unpublishTrack(video, true);
+    if (audio && room) await room.localParticipant.unpublishTrack(audio, true);
+    video?.stop();
+    audio?.stop();
+    screenVideoTrackRef.current = null;
+    screenAudioTrackRef.current = null;
+    if (screenPreviewRef.current) screenPreviewRef.current.srcObject = null;
+    setScreenEnabled(false);
+  }, []);
 
   const toggleScreen = useCallback(async () => {
     if (screenEnabled) await stopScreenshare();
@@ -659,19 +610,13 @@ export function LiveHostDeck({
           <span className="font-mono text-sm tabular-nums text-muted-foreground">
             {durationLabel}
           </span>
-          {/* v1.w.UI.195 — tappable viewer count → audience modal (host sees who's watching) */}
-          <button
-            type="button"
-            onClick={() => setAudienceOpen(true)}
-            className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            aria-label="Zuschauer*innen anzeigen"
-          >
+          <span className="inline-flex items-center gap-1 text-sm text-muted-foreground">
             <Users className="h-4 w-4" />
             {viewerCount.toLocaleString('de-DE')}
             {peakCount > viewerCount && (
               <span className="text-xs">(Peak {peakCount.toLocaleString('de-DE')})</span>
             )}
-          </button>
+          </span>
         </div>
 
         <div className="flex items-center gap-2">
@@ -761,28 +706,9 @@ export function LiveHostDeck({
               </div>
             )}
 
-            {/* v1.w.UI.182 — Battle bar overlay on preview */}
-            {battleStore.isBattle && (
-              <div className="absolute inset-0 pointer-events-none">
-                <LiveBattleBar
-                  state={battleStore}
-                  hostName={session.host?.display_name ?? session.host?.username ?? 'Host'}
-                  coHostName="Guest"
-                />
-              </div>
-            )}
-
             {!camEnabled && phase === 'live' && (
               <div className="absolute inset-0 flex items-center justify-center bg-black/80 text-white/60">
                 <VideoOff className="h-12 w-12" />
-              </div>
-            )}
-
-            {/* v1.w.UI.194 — Welcome toasts: host sees "✨ @user joined" for followers/top-fans.
-                viewerId=null → host does not self-announce (matches mobile announceSelf: false). */}
-            {phase === 'live' && (
-              <div className="absolute bottom-3 left-3 pointer-events-none">
-                <LiveWelcomeToasts sessionId={session.id} viewerId={null} />
               </div>
             )}
           </div>
@@ -819,60 +745,16 @@ export function LiveHostDeck({
                 </button>
               </div>
             ) : (
-              <div>
-                <button
-                  type="button"
-                  onClick={() => setTitleEditing(true)}
-                  className="group flex w-full items-center justify-between gap-2 text-left"
-                >
-                  <span className="truncate text-lg font-semibold">
-                    {session.title ?? 'Unbenannter Stream'}
-                  </span>
-                  <Settings2 className="h-4 w-4 flex-shrink-0 text-muted-foreground group-hover:text-foreground" />
-                </button>
-                {/* v1.w.UI.186 — session flag badges so host sees their own settings at a glance */}
-                {(session.women_only || session.allow_comments === false || session.allow_gifts === false) && (
-                  <div className="mt-1.5 flex flex-wrap gap-1">
-                    {session.women_only && (
-                      <span className="inline-flex items-center rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-medium text-rose-700 dark:bg-rose-500/15 dark:text-rose-300">
-                        ♀ Nur Frauen
-                      </span>
-                    )}
-                    {session.allow_comments === false && (
-                      <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                        💬 Kommentare aus
-                      </span>
-                    )}
-                    {session.allow_gifts === false && (
-                      <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                        🎁 Geschenke aus
-                      </span>
-                    )}
-                  </div>
-                )}
-                {/* v1.w.UI.188 — Followers-only chat toggle (live, während des Streams) */}
-                <button
-                  type="button"
-                  onClick={() => {
-                    const next = !followersOnlyChat;
-                    setFollowersOnlyChat(next);
-                    startFollowersToggle(async () => {
-                      const res = await toggleFollowersOnlyChat(session.id, next);
-                      if (!res.ok) setFollowersOnlyChat(!next); // rollback
-                    });
-                  }}
-                  className={[
-                    'mt-2 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
-                    followersOnlyChat
-                      ? 'border-green-500 bg-green-500/10 text-green-600 dark:text-green-400'
-                      : 'border-border bg-card text-muted-foreground hover:bg-muted',
-                  ].join(' ')}
-                  title={followersOnlyChat ? 'Nur Follower chatten (aktiv) — klicken zum Deaktivieren' : 'Nur Follower chatten — klicken zum Aktivieren'}
-                >
-                  <UserCheck className="h-3 w-3" />
-                  {followersOnlyChat ? 'Nur Follower' : 'Alle chatten'}
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => setTitleEditing(true)}
+                className="group flex w-full items-center justify-between gap-2 text-left"
+              >
+                <span className="truncate text-lg font-semibold">
+                  {session.title ?? 'Unbenannter Stream'}
+                </span>
+                <Settings2 className="h-4 w-4 flex-shrink-0 text-muted-foreground group-hover:text-foreground" />
+              </button>
             )}
           </div>
 
@@ -916,61 +798,12 @@ export function LiveHostDeck({
               initialGoal={initialGiftGoal}
             />
           </div>
-
-          {/* Shop — v1.w.UI.180 + v1.w.UI.201 */}
-          <div className="border-t p-4 lg:px-6">
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                Shop
-              </span>
-              {/* v1.w.UI.201 — shop_enabled toggle (viewer sees ShoppingBag button when on) */}
-              <button
-                type="button"
-                onClick={handleShopToggle}
-                className={[
-                  'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors',
-                  shopEnabled
-                    ? 'bg-emerald-500/15 text-emerald-500 ring-1 ring-emerald-500/40'
-                    : 'bg-muted text-muted-foreground hover:text-foreground',
-                ].join(' ')}
-                title={shopEnabled ? 'Shop-Modus deaktivieren' : 'Shop-Modus aktivieren'}
-              >
-                {shopEnabled ? '🛍 An' : '🛍 Aus'}
-              </button>
-            </div>
-            <LiveShopHostPanel
-              sessionId={session.id}
-              pinnedProduct={shopPinnedProduct}
-              onPin={pinProduct}
-              onUnpin={unpinProduct}
-            />
-          </div>
         </div>
 
         {/* Right-Column — Chat */}
         <aside className="flex min-h-[480px] flex-col border-l bg-card lg:h-full lg:overflow-hidden">
-          {/* v1.w.UI.198 — Chat header with slow-mode toggle */}
-          <div className="flex items-center justify-between border-b px-4 py-2">
-            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Chat</span>
-            <div className="flex items-center gap-1" title="Slow-Mode: Mindestwartzeit zwischen Nachrichten">
-              {([0, 5, 10, 30, 60] as const).map((secs) => (
-                <button
-                  key={secs}
-                  type="button"
-                  onClick={() => handleSetSlowMode(secs)}
-                  disabled={phase !== 'live'}
-                  className={[
-                    'rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors disabled:opacity-40',
-                    slowModeSecs === secs
-                      ? 'bg-orange-500/20 text-orange-500 ring-1 ring-orange-500/40'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                  ].join(' ')}
-                  aria-pressed={slowModeSecs === secs}
-                >
-                  {secs === 0 ? 'Off' : `${secs}s`}
-                </button>
-              ))}
-            </div>
+          <div className="border-b px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Chat
           </div>
           <div className="flex-1 overflow-hidden">
             <LiveChat
@@ -980,7 +813,7 @@ export function LiveHostDeck({
               viewerId={hostId}
               isHost={true}
               isModerator={true}
-              slowModeSeconds={slowModeSecs}
+              slowModeSeconds={session.slow_mode_seconds ?? 0}
               ended={phase === 'ended'}
             />
           </div>
@@ -996,16 +829,6 @@ export function LiveHostDeck({
           onPollChange={setActivePoll}
         />
       )}
-
-      {/* v1.w.UI.195 — Audience modal: host can see who's watching, grant/revoke mods */}
-      <LiveAudienceModal
-        open={audienceOpen}
-        onClose={() => setAudienceOpen(false)}
-        sessionId={session.id}
-        hostId={hostId}
-        viewerId={hostId}
-        isHost={true}
-      />
 
       {/* Shortcut-Hinweis */}
       <div className="hidden items-center justify-center border-t bg-muted/40 px-4 py-1 text-[11px] text-muted-foreground lg:flex">
