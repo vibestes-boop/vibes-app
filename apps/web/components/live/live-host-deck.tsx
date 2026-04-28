@@ -224,6 +224,36 @@ export function LiveHostDeck({
     });
   };
 
+  // v1.w.UI.226 — Follower shoutout: watch follows INSERT for this host during
+  // the live stream and inject a system message into the chat.
+  // Mobile parity: useFollowerShoutout(hostUserId, sessionId, sendSystemEvent).
+  const [sysMessages, setSysMessages] = useState<string[]>([]);
+  useEffect(() => {
+    const sb = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    );
+    const ch = sb
+      .channel(`host-follower-shoutout-${session.id}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'follows', filter: `following_id=eq.${hostId}` },
+        async (payload) => {
+          const followerId = (payload.new as { follower_id?: string }).follower_id;
+          if (!followerId) return;
+          const { data } = await sb
+            .from('profiles')
+            .select('username')
+            .eq('id', followerId)
+            .maybeSingle();
+          const username = (data as { username?: string } | null)?.username ?? 'Jemand';
+          setSysMessages((prev) => [...prev, `🎉 @${username} folgt jetzt!`]);
+        },
+      )
+      .subscribe();
+    return () => { void sb.removeChannel(ch); };
+  }, [session.id, hostId]);
+
   // v1.w.UI.225 — In-stream moderation toggle + custom word editor.
   // Mobile parity: toggleModeration() + addHostWords() via Alert.prompt in app/live/host.tsx.
   // Web replaces Alert.prompt with an inline expandable word-editor panel in the chat sidebar.
@@ -1651,6 +1681,7 @@ export function LiveHostDeck({
               isModerator={true}
               slowModeSeconds={slowModeSecs}
               ended={phase === 'ended'}
+              localSystemMessages={sysMessages}
             />
           </div>
         </aside>

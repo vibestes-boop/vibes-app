@@ -27,6 +27,10 @@ export interface LiveChatProps {
   isModerator: boolean;
   slowModeSeconds: number;
   ended: boolean;
+  /** v1.w.UI.226 — Local-only system messages injected by the host deck
+   * (e.g. "🎉 @username folgt jetzt!"). Not persisted to DB — client-only
+   * overlay inside the chat message list. Parity with native sendSystemEvent(). */
+  localSystemMessages?: string[];
 }
 
 const INPUT_MAX = 200;
@@ -40,6 +44,7 @@ export function LiveChat({
   isModerator,
   slowModeSeconds,
   ended,
+  localSystemMessages,
 }: LiveChatProps) {
   const [comments, setComments] = useState<LiveCommentWithAuthor[]>(initialComments);
   const [text, setText] = useState('');
@@ -166,6 +171,13 @@ export function LiveChat({
     }
   }, [comments]);
 
+  // v1.w.UI.226 — Also auto-scroll when system messages arrive
+  useEffect(() => {
+    if (wasAtBottomRef.current && listRef.current) {
+      listRef.current.scrollTop = listRef.current.scrollHeight;
+    }
+  }, [localSystemMessages]);
+
   // v1.w.UI.139 — Slow-mode countdown
   useEffect(() => {
     if (cooldownLeft <= 0) return;
@@ -282,29 +294,41 @@ export function LiveChat({
             Sei der Erste im Chat.
           </p>
         ) : (
-          comments.map((c) => (
-            <CommentRow
-              key={c.id}
-              comment={c}
-              isHostMsg={c.user_id === hostId}
-              canModerate={canModerate && c.user_id !== hostId && c.user_id !== viewerId}
-              onTimeout={(secs) => handleTimeout(c.user_id, secs)}
-              onPin={() => handlePin(c.id)}
-              onUnpin={handleUnpin}
-              onUserClick={
-                c.user_id !== viewerId && c.author
-                  ? () =>
-                      setSelectedChatUser({
-                        id: c.user_id,
-                        username: c.author!.username ?? '',
-                        display_name: c.author!.display_name ?? null,
-                        avatar_url: c.author!.avatar_url ?? null,
-                        verified: c.author!.verified ?? false,
-                      })
-                  : undefined
-              }
-            />
-          ))
+          <>
+            {comments.map((c) => (
+              <CommentRow
+                key={c.id}
+                comment={c}
+                isHostMsg={c.user_id === hostId}
+                canModerate={canModerate && c.user_id !== hostId && c.user_id !== viewerId}
+                onTimeout={(secs) => handleTimeout(c.user_id, secs)}
+                onPin={() => handlePin(c.id)}
+                onUnpin={handleUnpin}
+                onUserClick={
+                  c.user_id !== viewerId && c.author
+                    ? () =>
+                        setSelectedChatUser({
+                          id: c.user_id,
+                          username: c.author!.username ?? '',
+                          display_name: c.author!.display_name ?? null,
+                          avatar_url: c.author!.avatar_url ?? null,
+                          verified: c.author!.verified ?? false,
+                        })
+                    : undefined
+                }
+              />
+            ))}
+            {/* v1.w.UI.226 — Local system messages (follower shoutouts, etc.)
+                Not persisted to DB — parity with native sendSystemEvent(). */}
+            {localSystemMessages?.map((msg, i) => (
+              <div
+                key={`sys-${i}`}
+                className="py-0.5 text-center text-[11px] italic text-muted-foreground"
+              >
+                {msg}
+              </div>
+            ))}
+          </>
         )}
       </div>
 
