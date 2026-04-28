@@ -14,8 +14,7 @@ import {
   Loader2,
   Euro,
 } from 'lucide-react';
-import { requestPayout, getMyPayoutRequests, type PayoutRequest } from '@/app/actions/payout';
-import { getCreatorEarnings } from '@/lib/data/studio';
+import { requestPayout, getMyPayoutRequests, getMyDiamondsBalance, type PayoutRequest } from '@/app/actions/payout';
 
 // -----------------------------------------------------------------------------
 // /studio/revenue/payout — v1.w.UI.157
@@ -73,11 +72,11 @@ export default function PayoutPage() {
 
   useEffect(() => {
     async function load() {
-      const [earnings, requests] = await Promise.all([
-        getCreatorEarnings(28),
+      const [balance, requests] = await Promise.all([
+        getMyDiamondsBalance(),
         getMyPayoutRequests(),
       ]);
-      setBalance(earnings?.diamondsBalance ?? 0);
+      setBalance(balance);
       setPastRequests(requests);
       setLoading(false);
     }

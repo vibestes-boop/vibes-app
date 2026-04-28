@@ -206,7 +206,7 @@ describe('useToggleFollow', () => {
       following: [a3],
     });
 
-    mockToggleFollow.mockResolvedValueOnce({ ok: true, data: { following: true, pending: false } });
+    mockToggleFollow.mockResolvedValueOnce({ ok: true, data: { following: true } });
 
     const { result } = renderHook(() => useToggleFollow(), { wrapper });
 

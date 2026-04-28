@@ -9,7 +9,6 @@ import {
   getSuggestedFollows,
   getTrendingHashtags,
 } from '@/lib/data/feed';
-import { getActiveLiveSessions } from '@/lib/data/live';
 
 /**
  * `/` Home-Route.
@@ -30,41 +29,8 @@ export default async function HomePage() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    const [featured, liveNow, trendingPosts] = await Promise.all([
-      getFeaturedCreators(),
-      getActiveLiveSessions(4).catch(() => []),
-      getForYouFeed({ limit: 6 }).catch(() => []),
-    ]);
-    // ── JSON-LD: WebSite + SearchAction ─────────────────────────────────────
-    // Enables Google Sitelinks Searchbox in search results. Only on the public
-    // landing page — logged-in feed is personalised so WebSite schema is not
-    // meaningful there. SearchAction points to /search?q={search_term_string}.
-    // v1.w.UI.135
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://serlo.app';
-    const websiteJsonLd = {
-      '@context': 'https://schema.org',
-      '@type': 'WebSite',
-      name: 'Serlo',
-      url: siteUrl,
-      description: 'Deine Community — Videos, Live, Geschenke, Shop.',
-      potentialAction: {
-        '@type': 'SearchAction',
-        target: {
-          '@type': 'EntryPoint',
-          urlTemplate: `${siteUrl}/search?q={search_term_string}`,
-        },
-        'query-input': 'required name=search_term_string',
-      },
-    };
-    return (
-      <>
-        <script
-          type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
-        />
-        <LandingPage featured={featured} liveNow={liveNow} trendingPosts={trendingPosts} />
-      </>
-    );
+    const featured = await getFeaturedCreators();
+    return <LandingPage featured={featured} />;
   }
 
   // Logged-in: Feed-Shell mit SSR-Prefetch.

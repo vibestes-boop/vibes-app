@@ -5,7 +5,6 @@ import {
   getLiveSession,
   getLiveComments,
   getActiveLivePoll,
-  getLiveRecording,
 } from '@/lib/data/live';
 import { getSessionGifts, getActiveGiftGoal } from '@/lib/data/live-host';
 import { LiveHostDeck } from '@/components/live/live-host-deck';
@@ -16,7 +15,7 @@ import { LiveHostDeck } from '@/components/live/live-host-deck';
 // Verantwortung dieser Page:
 //   1. Auth-Guard (eingeloggt?)
 //   2. Ownership-Guard (ist user der host_id der Session?)
-//   3. SSR-Pre-Loads für den Deck (Comments, Active-Poll, Gift-Feed, Gift-Goal, Recording)
+//   3. SSR-Pre-Loads für den Deck (Comments, Active-Poll, Gift-Feed, Gift-Goal)
 //   4. Render <LiveHostDeck> als reine Client-Shell
 //
 // Die eigentliche Publisher-Logik (LiveKit Room, canPublish, Track-Enable) sitzt
@@ -59,12 +58,11 @@ export default async function LiveHostPage({ params }: PageProps) {
   }
 
   // Parallel-SSR-Reads
-  const [comments, activePoll, gifts, giftGoal, recording] = await Promise.all([
+  const [comments, activePoll, gifts, giftGoal] = await Promise.all([
     getLiveComments(id),
     getActiveLivePoll(id),
     getSessionGifts(id),
     getActiveGiftGoal(id),
-    getLiveRecording(id),
   ]);
 
   return (
@@ -75,7 +73,6 @@ export default async function LiveHostPage({ params }: PageProps) {
       initialPoll={activePoll}
       initialGifts={gifts}
       initialGiftGoal={giftGoal}
-      initialRecording={recording}
     />
   );
 }

@@ -17,9 +17,6 @@ import { NotificationList } from '@/components/notifications/notification-list';
 // Neue Notifications erscheinen ohne Reload (postgres_changes INSERT →
 // router.refresh() + Badge-Invalidate).
 //
-// v1.w.UI.113: initialHasMore — wenn der SSR-Snapshot genau 40 Items hat,
-// könnte es mehr geben. NotificationList lädt via IntersectionObserver nach.
-//
 // Nur für eingeloggte Nutzer — Redirect zu /login sonst.
 // -----------------------------------------------------------------------------
 
@@ -42,11 +39,7 @@ export default async function NotificationsPage() {
         <Bell className="h-6 w-6 text-primary" />
         <h1 className="text-2xl font-semibold tracking-tight">Benachrichtigungen</h1>
       </header>
-      <NotificationList
-        notifications={notifications}
-        viewerId={user.id}
-        initialHasMore={notifications.length >= 40}
-      />
+      <NotificationList notifications={notifications} viewerId={user.id} />
     </div>
   );
 }

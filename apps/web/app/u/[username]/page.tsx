@@ -1,14 +1,12 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { BadgeCheck, Heart, Repeat2, ShoppingBag, Swords, Globe, Mountain, Radio, Bookmark } from 'lucide-react';
+import { BadgeCheck, Heart, ShoppingBag, Swords } from 'lucide-react';
 
-import { getPublicProfile, getProfilePosts, getProfileLikedPosts, getProfileReposts, getBattleHistory, getFollowState, getBookmarkedPosts, type ProfileSortKey } from '@/lib/data/public';
-import { getUserReplays } from '@/lib/data/live';
+import { getPublicProfile, getProfilePosts, getProfileLikedPosts, getBattleHistory, isFollowing } from '@/lib/data/public';
 import { getUser } from '@/lib/auth/session';
 import { getMyCoinBalance } from '@/lib/data/payments';
 import { getMerchantProducts } from '@/lib/data/shop';
-import { isHostMuted } from '@/lib/data/live-host';
 import { PostGrid } from '@/components/profile/post-grid';
 import { ProductCard } from '@/components/shop/product-card';
 import { BattleList } from '@/components/profile/battle-list';
@@ -17,7 +15,6 @@ import { ProfileTabs, type ProfileTab } from '@/components/profile/profile-tabs'
 import { FollowButton } from '@/components/profile/follow-button';
 import { CreatorTipButton } from '@/components/profile/creator-tip-button';
 import { LiveRingAvatar } from '@/components/profile/live-ring-avatar';
-import { MuteHostButton } from '@/components/profile/mute-host-button';
 import { getT, getLocale } from '@/lib/i18n/server';
 import { LOCALE_INTL } from '@/lib/i18n/config';
 import type { Locale } from '@/lib/i18n/config';
@@ -154,21 +151,14 @@ function StatPill({
 // Page
 // -----------------------------------------------------------------------------
 
-// v1.w.UI.212 — valid sort keys for the post-grid sort bar.
-const VALID_SORTS = new Set<ProfileSortKey>(['newest', 'views', 'likes']);
-
 export default async function ProfilePage({
   params,
   searchParams,
 }: {
   params: Promise<{ username: string }>;
-  searchParams: Promise<{ tab?: string; sort?: string }>;
+  searchParams: Promise<{ tab?: string }>;
 }) {
-  const [{ username }, { tab: tabParam, sort: sortParam }] = await Promise.all([params, searchParams]);
-  const sort: ProfileSortKey =
-    sortParam && VALID_SORTS.has(sortParam as ProfileSortKey)
-      ? (sortParam as ProfileSortKey)
-      : 'newest';
+  const [{ username }, { tab: tabParam }] = await Promise.all([params, searchParams]);
 
   const profile = await getPublicProfile(username);
   if (!profile) notFound();
@@ -178,34 +168,31 @@ export default async function ProfilePage({
   // bereits lowercase-matcht — keine Redirect-Loop-Gefahr.
 
   const tab: ProfileTab =
-    tabParam === 'likes' || tabParam === 'saved' || tabParam === 'reposts' || tabParam === 'shop' || tabParam === 'battles' || tabParam === 'lives'
+    tabParam === 'likes' || tabParam === 'shop' || tabParam === 'battles'
       ? tabParam
       : 'posts';
 
   // Parallel: Session + Follow-Status + Posts-Feed + Coin-Balance + i18n
   // isSelf kann erst nach getUser() bestimmt werden — Likes-Fetch wird daher
   // zwei-stufig: erst viewer, dann (wenn isSelf && tab=likes) likedPosts.
-  const [viewer, followState, posts, reposts, shopProducts, battles, replays, balance, hostMuted, t, locale] = await Promise.all([
+  const [viewer, alreadyFollowing, posts, shopProducts, battles, balance, t, locale] = await Promise.all([
     getUser(),
-    getFollowState(profile.id),
-    tab === 'posts' ? getProfilePosts(profile.id, 24, undefined, sort) : Promise.resolve([]),
-    tab === 'reposts' ? getProfileReposts(profile.id, 48) : Promise.resolve([]),
+    isFollowing(profile.id),
+    tab === 'posts' ? getProfilePosts(profile.id, 24) : Promise.resolve([]),
     tab === 'shop' ? getMerchantProducts(profile.id, 48) : Promise.resolve([]),
     tab === 'battles' ? getBattleHistory(profile.id, 30) : Promise.resolve([]),
-    tab === 'lives' ? getUserReplays(profile.id, 30) : Promise.resolve([]),
     getMyCoinBalance(),
-    isHostMuted(profile.id),
     getT(),
     getLocale(),
   ]);
 
   const isSelf = viewer?.id === profile.id;
 
-  // Liked + Saved Posts: nur für den Profilinhaber selbst (privat).
-  const [likedPosts, savedPosts] = await Promise.all([
-    tab === 'likes' && isSelf ? getProfileLikedPosts(profile.id, 24) : Promise.resolve([]),
-    tab === 'saved' && isSelf ? getBookmarkedPosts(48) : Promise.resolve([]),
-  ]);
+  // Liked Posts: nur für den Profilinhaber selbst (Likes sind privat).
+  const likedPosts =
+    tab === 'likes' && isSelf
+      ? await getProfileLikedPosts(profile.id, 24)
+      : [];
   const displayName = profile.display_name ?? `@${profile.username}`;
 
   // JSON-LD (ProfilePage Schema.org) — hilft Google bei Rich-Results.
@@ -292,8 +279,7 @@ export default async function ProfilePage({
             <div className="flex items-center gap-2">
               <FollowButton
                 isAuthenticated={!!viewer}
-                isFollowing={followState.following}
-                isPendingRequest={followState.pendingRequest}
+                isFollowing={alreadyFollowing}
                 isSelf={isSelf}
                 username={profile.username}
                 targetUserId={profile.id}
@@ -303,13 +289,6 @@ export default async function ProfilePage({
                 <ProfileBlockButton
                   targetUserId={profile.id}
                   targetUsername={profile.username}
-                />
-              )}
-              {/* v1.w.UI.156: Bell-Toggle — Go-Live Push stummschalten */}
-              {viewer && !isSelf && (
-                <MuteHostButton
-                  hostId={profile.id}
-                  initiallyMuted={hostMuted}
                 />
               )}
             </div>
@@ -328,29 +307,6 @@ export default async function ProfilePage({
             {linkify(profile.bio)}
           </p>
         )}
-
-        {/* Website + Teip — v1.w.UI.160 */}
-        {(profile.website || profile.teip) && (
-          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5">
-            {profile.website && (
-              <a
-                href={profile.website}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
-              >
-                <Globe className="h-3.5 w-3.5 shrink-0" />
-                {profile.website.replace(/^https?:\/\//, '').replace(/\/$/, '')}
-              </a>
-            )}
-            {profile.teip && (
-              <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
-                <Mountain className="h-3.5 w-3.5 shrink-0" />
-                🏔️ {profile.teip}
-              </span>
-            )}
-          </div>
-        )}
       </section>
 
       {/* ───── Tab-Navigation ───── */}
@@ -363,13 +319,9 @@ export default async function ProfilePage({
           tablist: t('profile.tablistLabel'),
           posts: t('profile.tabPosts'),
           likes: t('profile.tabLikes'),
-          saved: 'Gespeichert',
-          reposts: t('profile.tabReposts'),
           shop: t('profile.tabShop'),
           battles: t('profile.tabBattles'),
-          lives: 'Lives',
         }}
-        savedVisible={isSelf}
       />
 
       {/* ───── Panels ───── */}
@@ -380,63 +332,25 @@ export default async function ProfilePage({
         className="px-2 py-4 sm:px-3"
       >
         {tab === 'posts' && (
-          <>
-            {/* v1.w.UI.212 — Sort bar (server-rendered Link pills, no JS needed).
-                Matches mobile's sort bar: views / likes / newest.
-                Only shown when the profile has posts so it doesn't float above an EmptyState. */}
-            {posts.length > 0 && (
-              <nav aria-label="Sortierung" className="mb-3 flex gap-1.5 px-0.5">
-                {(
-                  [
-                    { key: 'newest', label: '🕐 Neueste' },
-                    { key: 'views',  label: '▶ Views'   },
-                    { key: 'likes',  label: '♥ Likes'   },
-                  ] as { key: ProfileSortKey; label: string }[]
-                ).map(({ key, label }) => (
-                  <Link
-                    key={key}
-                    href={`/u/${profile.username}?sort=${key}` as import('next').Route}
-                    className={[
-                      'rounded-full px-3 py-1 text-xs font-medium transition-colors',
-                      sort === key
-                        ? 'bg-foreground text-background'
-                        : 'bg-muted text-muted-foreground hover:bg-muted/80',
-                    ].join(' ')}
-                    aria-current={sort === key ? 'page' : undefined}
-                  >
-                    {label}
-                  </Link>
-                ))}
-              </nav>
-            )}
-            <PostGrid
-              posts={posts}
-              emptyTitle={t('profile.emptyPostsTitle')}
-              emptyDescription={
-                isSelf
-                  ? t('profile.emptyPostsSelf')
-                  : t('profile.emptyPostsOther', { username: profile.username })
-              }
-              fetchMoreUrl={
-                sort === 'newest'
-                  ? `/api/posts/user/${profile.id}`
-                  : `/api/posts/user/${profile.id}?sort=${sort}`
-              }
-              initialHasMore={posts.length >= 24}
-            />
-          </>
+          <PostGrid
+            posts={posts}
+            emptyTitle={t('profile.emptyPostsTitle')}
+            emptyDescription={
+              isSelf
+                ? t('profile.emptyPostsSelf')
+                : t('profile.emptyPostsOther', { username: profile.username })
+            }
+          />
         )}
 
         {tab === 'likes' && (
           isSelf ? (
-            // Eigener Account: echtes Liked-Grid mit infinite scroll (v1.w.UI.126)
+            // Eigener Account: echtes Liked-Grid
             <PostGrid
               posts={likedPosts}
               emptyTitle="Noch nichts geliked"
               emptyDescription="Videos, die du likest, erscheinen hier — nur für dich sichtbar."
               emptyIcon={<Heart className="h-7 w-7" strokeWidth={1.75} />}
-              fetchMoreUrl="/api/posts/liked"
-              initialHasMore={likedPosts.length >= 24}
             />
           ) : (
             // Fremder Account: Likes sind privat
@@ -444,43 +358,6 @@ export default async function ProfilePage({
               icon="likes"
               title={t('profile.panelLikesTitle')}
               hint={t('profile.panelLikesHintOther')}
-            />
-          )
-        )}
-
-        {tab === 'saved' && (
-          isSelf ? (
-            // v1.w.UI.203 — Saved/Bookmarks tab: own-profile only (parity with mobile 'saved' tab)
-            <PostGrid
-              posts={savedPosts}
-              emptyTitle="Nichts gespeichert"
-              emptyDescription="Bookmarkte Posts erscheinen hier — nur für dich sichtbar."
-              emptyIcon={<Bookmark className="h-7 w-7" strokeWidth={1.75} />}
-              fetchMoreUrl="/api/posts/bookmarked"
-              initialHasMore={savedPosts.length >= 48}
-            />
-          ) : (
-            <EmptyPanelInfo
-              icon="likes"
-              title="Gespeicherte Posts sind privat"
-              hint="Nur der Profilinhaber kann seine gespeicherten Posts sehen."
-            />
-          )
-        )}
-
-        {tab === 'reposts' && (
-          reposts.length > 0 ? (
-            <PostGrid
-              posts={reposts}
-              emptyTitle={t('profile.emptyRepostsTitle')}
-              emptyDescription={t('profile.emptyRepostsHint')}
-              emptyIcon={<Repeat2 className="h-7 w-7" strokeWidth={1.75} />}
-            />
-          ) : (
-            <EmptyPanelInfo
-              icon="reposts"
-              title={t('profile.emptyRepostsTitle')}
-              hint={isSelf ? t('profile.emptyRepostsSelf') : t('profile.emptyRepostsOther', { username: profile.username })}
             />
           )
         )}
@@ -510,60 +387,6 @@ export default async function ProfilePage({
           // Leerer State kommt aus BattleList selbst.
           <BattleList battles={battles} />
         )}
-
-        {tab === 'lives' && (
-          // v1.w.UI.173: Past live-stream replays for this profile.
-          // getUserReplays returns only is_replayable=true sessions with a
-          // replay_url — no dead links. Cards link to /live/replay/[id].
-          replays.length > 0 ? (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              {replays.map((session) => (
-                <a
-                  key={session.id}
-                  href={`/live/replay/${session.id}`}
-                  className="group relative overflow-hidden rounded-xl bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  {/* Thumbnail */}
-                  <div className="aspect-[9/16] w-full overflow-hidden bg-muted">
-                    {session.thumbnail_url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={session.thumbnail_url}
-                        alt={session.title ?? 'Live Replay'}
-                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center">
-                        <Radio className="h-8 w-8 text-muted-foreground/40" strokeWidth={1.5} />
-                      </div>
-                    )}
-                  </div>
-                  {/* Bottom gradient overlay */}
-                  <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent px-2.5 pb-2.5 pt-8">
-                    {session.title && (
-                      <p className="line-clamp-2 text-[11px] font-semibold leading-tight text-white">
-                        {session.title}
-                      </p>
-                    )}
-                    <p className="mt-0.5 text-[10px] text-white/70">
-                      👁 {session.replay_views.toLocaleString(LOCALE_INTL[locale])}
-                    </p>
-                  </div>
-                </a>
-              ))}
-            </div>
-          ) : (
-            <EmptyPanelInfo
-              icon="lives"
-              title="Keine Replays"
-              hint={
-                isSelf
-                  ? 'Deine Live-Streams werden hier als Replay gespeichert.'
-                  : `${profile.username} hat noch keine öffentlichen Replays.`
-              }
-            />
-          )
-        )}
       </section>
     </main>
   );
@@ -589,7 +412,7 @@ export default async function ProfilePage({
 //      „Placeholder" und billig.
 // -----------------------------------------------------------------------------
 
-type EmptyIcon = 'likes' | 'reposts' | 'shop' | 'battles' | 'lives';
+type EmptyIcon = 'likes' | 'shop' | 'battles';
 
 const EMPTY_ICON_MAP: Record<
   EmptyIcon,
@@ -600,11 +423,6 @@ const EMPTY_ICON_MAP: Record<
     gradient: 'from-pink-500/15 via-rose-500/10 to-red-500/5',
     ring: 'ring-pink-500/20',
   },
-  reposts: {
-    Icon: Repeat2,
-    gradient: 'from-emerald-500/15 via-teal-500/10 to-cyan-500/5',
-    ring: 'ring-emerald-500/20',
-  },
   shop: {
     Icon: ShoppingBag,
     gradient: 'from-amber-500/15 via-orange-500/10 to-red-500/5',
@@ -614,11 +432,6 @@ const EMPTY_ICON_MAP: Record<
     Icon: Swords,
     gradient: 'from-violet-500/15 via-indigo-500/10 to-sky-500/5',
     ring: 'ring-violet-500/20',
-  },
-  lives: {
-    Icon: Radio,
-    gradient: 'from-red-500/15 via-rose-500/10 to-pink-500/5',
-    ring: 'ring-red-500/20',
   },
 };
 

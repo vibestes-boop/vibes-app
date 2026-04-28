@@ -58,7 +58,7 @@ const customConfig = {
   coverageThreshold: {
     'hooks/use-engagement.ts': {
       statements: 60,
-      branches: 40, // actual: 41.66% — new isPending branch in v1.w.UI.149 slightly reduced this
+      branches: 45,
       functions: 55,
       lines: 60,
     },

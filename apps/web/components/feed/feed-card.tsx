@@ -1,15 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { Route } from 'next';
 import {
   Heart,
   MessageCircle,
-  MessageCircleOff,
   Bookmark,
   Share2,
-  Repeat2,
   Music,
   Volume2,
   VolumeX,
@@ -22,13 +20,11 @@ import {
   Link as LinkIcon,
   PictureInPicture2,
   Trash2,
-  Download,
-  Pencil,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { reportPost, markPostNotInteresting } from '@/app/actions/report';
-import { deletePost, patchPostCaption } from '@/app/actions/posts';
+import { deletePost } from '@/app/actions/posts';
 import { recordDwell } from '@/app/actions/engagement';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
@@ -36,7 +32,6 @@ import {
   useTogglePostLike,
   useTogglePostSave,
   useToggleFollow,
-  useToggleRepost,
 } from '@/hooks/use-engagement';
 import type { FeedPost } from '@/lib/data/feed';
 import { LikeButton } from './like-button';
@@ -92,7 +87,6 @@ const CAPTION_CLAMP_CHARS = 120;
 export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: FeedCardProps) {
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
-  const audioRef = useRef<HTMLAudioElement>(null);
   const [isPaused, setIsPaused] = useState(false);
   const [progress, setProgress] = useState(0);
   // v1.w.UI.11 Phase C — Kommentar-Open-State lebt nicht mehr lokal in der
@@ -124,7 +118,6 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
   const likeMut = useTogglePostLike();
   const saveMut = useTogglePostSave();
   const followMut = useToggleFollow();
-  const repostMut = useToggleRepost();
 
   const handleLikeClick = useCallback(() => {
     if (!viewerId) return;
@@ -147,10 +140,6 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
   }, [viewerId, post.id, post.liked_by_me, likeMut]);
 
   const [shareDmOpen, setShareDmOpen] = useState(false);
-  // v1.w.UI.146 — inline caption-edit state
-  const [editOpen, setEditOpen] = useState(false);
-  const [editCaption, setEditCaption] = useState('');
-  const [editPending, startEditTransition] = useTransition();
 
   const isSelf = viewerId === post.author.id;
   // Legacy-Rows (pre-media_type-Einführung) waren alle Videos — deshalb
@@ -161,20 +150,8 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
   // Detected media aspect-ratio (width/height). null = noch nicht geladen,
   // dann verwenden wir 9:16 als sicheren Default. Wird bei post.id-Wechsel
   // resettet, damit das nächste Video nicht mit dem Ratio des vorigen rendert.
-  //
-  // v1.w.UI.175 — CLS-fix: statt blind null (→ 9:16-Flash) initialisieren wir
-  // mit dem gespeicherten aspect_ratio-Wert aus der DB. Landscape- und Square-
-  // Posts rendern dann vom ersten Paint an mit dem korrekten Rahmen, ohne zu
-  // 9:16 zu springen und dann aufzureißen. Metadata-Detection überschreibt den
-  // Wert sobald echte Dimensionen vorliegen (für edge-cases wo DB-Wert falsch ist).
-  // Portrait bleibt null → gleicher Pfad wie bisher (default 9/16).
-  const storedRatio = post.aspect_ratio === 'landscape'
-    ? 16 / 9
-    : post.aspect_ratio === 'square'
-      ? 1
-      : null; // portrait → null, detektiert via metadata (default = 9/16)
-  const [mediaAspectRatio, setMediaAspectRatio] = useState<number | null>(storedRatio);
-  useEffect(() => setMediaAspectRatio(storedRatio), [post.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [mediaAspectRatio, setMediaAspectRatio] = useState<number | null>(null);
+  useEffect(() => setMediaAspectRatio(null), [post.id]);
 
   // Robuste Aspect-Detection (v1.w.UI.25 — Iteration 3):
   // Pure JSX-Event-Props (`onLoadedMetadata` / `onLoad`) haben in Production
@@ -331,41 +308,6 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
       v.pause();
     }
   }, [isActive, isPaused, muted, isImage]);
-
-  // v1.w.UI.211 — Audio-Track Play/Pause (parallel zu Video, parity mit Mobile).
-  // audio_url = vom Creator im Musik-Picker gewählter Track. Browser-Autoplay-
-  // Policy: <audio> startet nur wenn das Video selbst bereits durch eine
-  // User-Geste gespielt wurde (isActive=true nach erster Interaktion).
-  // Mute-Sync: selbe `muted`-State wie Video — User sieht einen Lautstärke-Toggle.
-  const audioUrl = post.audio_url ?? null;
-  const audioVolume = typeof post.audio_volume === 'number'
-    ? Math.max(0, Math.min(1, post.audio_volume))
-    : 0.8;
-
-  useEffect(() => {
-    const a = audioRef.current;
-    if (!a || !audioUrl) return;
-    if (isActive && !isPaused) {
-      a.volume = muted ? 0 : audioVolume;
-      void a.play().catch(() => { /* Autoplay-Policy — silent */ });
-    } else {
-      a.pause();
-    }
-  }, [isActive, isPaused, muted, audioUrl, audioVolume]);
-
-  // Reset audio when post changes (new track URL).
-  useEffect(() => {
-    const a = audioRef.current;
-    if (!a || !audioUrl) return;
-    a.currentTime = 0;
-  }, [post.id, audioUrl]);
-
-  // Mute/Unmute the audio track live — mirrors the video mute toggle.
-  useEffect(() => {
-    const a = audioRef.current;
-    if (!a || !audioUrl) return;
-    a.volume = muted ? 0 : audioVolume;
-  }, [muted, audioVolume, audioUrl]);
 
   // Single-Click = Play/Pause-Toggle. Aber: wenn innerhalb 300ms ein
   // zweiter Klick kommt, überspringen wir das Toggle (der dblclick-Handler
@@ -574,34 +516,22 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
                     v1.w.UI.46 — Delete für eigene Posts + kein Report/NotInterested
                     auf eigene Posts (ergibt keinen Sinn). */}
                 {isSelf ? (
-                  <>
-                    {/* v1.w.UI.146 — Author: Bearbeiten + Löschen */}
-                    <MoreMenuItem
-                      icon={<Pencil className="h-4 w-4" />}
-                      label="Bearbeiten"
-                      onClick={() => {
-                        setShowMoreMenu(false);
-                        setEditCaption(post.caption ?? '');
-                        setEditOpen(true);
-                      }}
-                    />
-                    <MoreMenuItem
-                      icon={<Trash2 className="h-4 w-4" />}
-                      label="Post löschen"
-                      destructive
-                      onClick={async () => {
-                        setShowMoreMenu(false);
-                        if (!confirm('Post wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) return;
-                        const res = await deletePost(post.id);
-                        if (res.ok) {
-                          toast('Post gelöscht.');
-                          router.refresh();
-                        } else {
-                          toast.error(res.error ?? 'Löschen fehlgeschlagen.');
-                        }
-                      }}
-                    />
-                  </>
+                  <MoreMenuItem
+                    icon={<Trash2 className="h-4 w-4" />}
+                    label="Post löschen"
+                    destructive
+                    onClick={async () => {
+                      setShowMoreMenu(false);
+                      if (!confirm('Post wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) return;
+                      const res = await deletePost(post.id);
+                      if (res.ok) {
+                        toast('Post gelöscht.');
+                        router.refresh();
+                      } else {
+                        toast.error(res.error ?? 'Löschen fehlgeschlagen.');
+                      }
+                    }}
+                  />
                 ) : (
                   <>
                     <MoreMenuItem
@@ -655,23 +585,6 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
                     }
                   }}
                 />
-                {/* v1.w.UI.142 — Download: nur für Videos wenn Autor download erlaubt hat */}
-                {post.allow_download && post.media_type !== 'image' && post.video_url && (
-                  <MoreMenuItem
-                    icon={<Download className="h-4 w-4" />}
-                    label="Video herunterladen"
-                    onClick={() => {
-                      setShowMoreMenu(false);
-                      const a = document.createElement('a');
-                      a.href = post.video_url!;
-                      a.download = `video-${post.id}.mp4`;
-                      a.target = '_blank';
-                      document.body.appendChild(a);
-                      a.click();
-                      document.body.removeChild(a);
-                    }}
-                  />
-                )}
                 <MoreMenuItem
                   icon={<PictureInPicture2 className="h-4 w-4" />}
                   label="Schwebender Player"
@@ -779,20 +692,6 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
             className="h-full w-full object-contain"
           />
 
-          {/* v1.w.UI.211 — Hidden <audio> for background music track. Browser plays
-              it in sync with the video when isActive. Volume is synced to the
-              video mute-state so the single mute-button controls both streams. */}
-          {audioUrl && (
-            <audio
-              ref={audioRef}
-              src={audioUrl}
-              loop
-              preload="none"
-              aria-hidden="true"
-              className="hidden"
-            />
-          )}
-
           {/* Play-Overlay wenn pausiert — TikTok-Größe 96px statt vorher 80 */}
           {isPaused && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/30" aria-hidden="true">
@@ -827,24 +726,6 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
           v1.w.UI.25: `pr-20` entfernt — Rail liegt nicht mehr über der Card,
           Caption darf jetzt die volle Breite nutzen. */}
       <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col gap-2 p-4 pb-6 text-white">
-        {/* v1.w.UI.169 — WOZ badge: only visible to verified members (RLS-enforced) */}
-        {post.women_only && (
-          <span className="pointer-events-none inline-flex w-fit items-center gap-1 rounded-full bg-pink-500/25 px-2.5 py-0.5 text-[11px] font-semibold text-pink-200 ring-1 ring-pink-400/40 backdrop-blur-sm">
-            🌸 Women Only
-          </span>
-        )}
-        {/* v1.w.UI.172 — audience badge: shown only on restricted posts so author
-            (who sees own friends/private posts) gets a visual reminder */}
-        {post.privacy === 'friends' && (
-          <span className="pointer-events-none inline-flex w-fit items-center gap-1 rounded-full bg-black/40 px-2.5 py-0.5 text-[11px] font-semibold text-white/90 ring-1 ring-white/20 backdrop-blur-sm">
-            👥 Freunde
-          </span>
-        )}
-        {post.privacy === 'private' && (
-          <span className="pointer-events-none inline-flex w-fit items-center gap-1 rounded-full bg-black/40 px-2.5 py-0.5 text-[11px] font-semibold text-white/90 ring-1 ring-white/20 backdrop-blur-sm">
-            🔒 Nur ich
-          </span>
-        )}
         <div className="flex items-center gap-2">
           <Link
             href={`/u/${post.author.username}` as Route}
@@ -891,43 +772,18 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
             </p>
           ))}
 
-        {/* v1.w.UI.170 — hashtag chips are clickable links to /t/[tag] */}
         {post.hashtags.length > 0 && (
           <div className="flex flex-wrap gap-x-2 gap-y-1 text-xs text-white/80">
-            {post.hashtags.slice(0, 4).map((tag) => {
-              const clean = tag.replace(/^#/, '');
-              return (
-                <Link
-                  key={tag}
-                  href={`/t/${clean}` as Route}
-                  className="hover:text-white hover:underline"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  #{clean}
-                </Link>
-              );
-            })}
+            {post.hashtags.slice(0, 4).map((tag) => (
+              <span key={tag}>#{tag.replace(/^#/, '')}</span>
+            ))}
           </div>
         )}
 
-        {/* v1.w.UI.211 — Audio-Track-Badge: animated spinning vinyl pill.
-            Shown when creator added a music track. Mirrors MusicVinylBadge
-            from mobile FeedItem. `music_id` = no-URL legacy, `audio_url` = new. */}
-        {(post.music_id || post.audio_url) && (
+        {post.music_id && (
           <div className="flex items-center gap-1.5 text-xs text-white/80">
-            <span
-              className={cn(
-                'inline-flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-white/15 ring-1 ring-white/25',
-                isActive && !isPaused && 'animate-spin',
-              )}
-              style={{ animationDuration: '3s' }}
-              aria-hidden="true"
-            >
-              <Music className="h-3 w-3" />
-            </span>
-            <span className="truncate max-w-[140px]">
-              {post.audio_url ? 'Musik' : 'Original-Sound'}
-            </span>
+            <Music className="h-3.5 w-3.5" aria-hidden="true" />
+            <span>Original-Sound</span>
           </div>
         )}
       </div>
@@ -1045,31 +901,19 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
       {/* Comment — 48px. Toggle-Verhalten (v1.w.UI.11 Phase C Follow-up):
           - Panel geschlossen → öffnet für diesen Post.
           - Panel offen für DIESEN Post → schließt.
-          - Panel offen für einen ANDEREN Post → wechselt das Target.
-          v1.w.UI.177 — wenn allow_comments=false: Icon wird zum MessageCircleOff,
-          Button bleibt klickbar (öffnet Panel mit Hinweistext) aber das Icon
-          signalisiert visuell dass Kommentare deaktiviert sind. */}
+          - Panel offen für einen ANDEREN Post → wechselt das Target. */}
       <ActionButton
         icon={
-          post.allow_comments ? (
-            <MessageCircle
-              className={cn('h-7 w-7', isCommentsOpenForThisPost && 'fill-brand-gold text-brand-gold')}
-              aria-hidden="true"
-            />
-          ) : (
-            <MessageCircleOff
-              className="h-7 w-7 text-muted-foreground/60"
-              aria-hidden="true"
-            />
-          )
+          <MessageCircle
+            className={cn('h-7 w-7', isCommentsOpenForThisPost && 'fill-brand-gold text-brand-gold')}
+            aria-hidden="true"
+          />
         }
-        label={post.allow_comments ? formatCount(post.comment_count) : '—'}
+        label={formatCount(post.comment_count)}
         ariaLabel={
-          !post.allow_comments
-            ? 'Kommentare deaktiviert'
-            : isCommentsOpenForThisPost
-              ? 'Kommentare schließen'
-              : `Kommentare öffnen — ${post.comment_count} Kommentare`
+          isCommentsOpenForThisPost
+            ? 'Kommentare schließen'
+            : `Kommentare öffnen — ${post.comment_count} Kommentare`
         }
         onClick={() => {
           if (isCommentsOpenForThisPost) closeComments();
@@ -1097,25 +941,6 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
         }
         circleClassName="h-12 w-12"
       />
-
-      {/* Repost — nur für fremde Posts, analog Mobile-Verhalten (v1.w.UI.151) */}
-      {!isSelf && viewerId && (
-        <ActionButton
-          icon={
-            <Repeat2
-              className={cn('h-6 w-6', post.reposted_by_me && 'text-emerald-400')}
-              aria-hidden="true"
-            />
-          }
-          label={post.reposted_by_me ? 'Repostet' : 'Reposten'}
-          ariaLabel={post.reposted_by_me ? 'Repost entfernen' : 'Post reposten'}
-          disabled={repostMut.isPending}
-          onClick={() =>
-            repostMut.mutate({ postId: post.id, reposted: post.reposted_by_me })
-          }
-          circleClassName="h-11 w-11"
-        />
-      )}
 
       {/* Share — 44px (Secondary-Tool, kleiner) */}
       <ActionButton
@@ -1157,60 +982,6 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
         }}
         onClose={() => setShareDmOpen(false)}
       />
-    )}
-
-    {/* v1.w.UI.146 — Inline Caption-Edit Modal */}
-    {editOpen && (
-      <div
-        className="fixed inset-0 z-[200] flex items-end justify-center sm:items-center"
-        onClick={(e) => { if (e.target === e.currentTarget) setEditOpen(false); }}
-      >
-        <div className="pointer-events-none absolute inset-0 bg-black/60" aria-hidden="true" />
-        <div className="relative z-10 w-full max-w-sm rounded-t-2xl sm:rounded-2xl bg-card border border-border p-5 shadow-xl">
-          <h3 className="mb-3 text-sm font-semibold">Caption bearbeiten</h3>
-          <textarea
-            value={editCaption}
-            onChange={(e) => setEditCaption(e.target.value.slice(0, 2000))}
-            rows={4}
-            className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-            placeholder="Was möchtest du teilen?"
-            disabled={editPending}
-            autoFocus
-          />
-          <p className="mt-1 text-right text-[11px] text-muted-foreground">
-            {editCaption.length}/2000
-          </p>
-          <div className="mt-3 flex gap-2">
-            <button
-              type="button"
-              onClick={() => setEditOpen(false)}
-              disabled={editPending}
-              className="flex-1 rounded-full border border-border py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
-            >
-              Abbrechen
-            </button>
-            <button
-              type="button"
-              disabled={editPending}
-              onClick={() => {
-                startEditTransition(async () => {
-                  const res = await patchPostCaption(post.id, editCaption);
-                  if (res.ok) {
-                    toast('Caption aktualisiert.');
-                    setEditOpen(false);
-                    router.refresh();
-                  } else {
-                    toast.error(res.error ?? 'Speichern fehlgeschlagen.');
-                  }
-                });
-              }}
-              className="flex-1 rounded-full bg-primary py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-            >
-              {editPending ? 'Speichere…' : 'Speichern'}
-            </button>
-          </div>
-        </div>
-      </div>
     )}
     </div>
     </div>

@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { Route } from 'next';
-import { Store, Bookmark, Coins, Package, ShoppingBag } from 'lucide-react';
-import { ShopGrid } from '@/components/shop/shop-grid';
+import { Store, Bookmark, Coins, ShoppingBag } from 'lucide-react';
+import { ProductCard } from '@/components/shop/product-card';
 import { ShopFilters } from '@/components/shop/shop-filters';
 import { ShopSearchInput } from '@/components/shop/shop-search-input';
 import { EmptyState as CanonicalEmptyState } from '@/components/ui/empty-state';
@@ -52,7 +52,7 @@ export default async function ShopCatalogPage({ searchParams }: PageProps) {
     minPrice: pick('min') ? Number(pick('min')) : undefined,
     maxPrice: pick('max') ? Number(pick('max')) : undefined,
     q: pick('q') ?? undefined,
-    limit: 24,
+    limit: 40,
   };
 
   const [products, user, t, locale] = await Promise.all([
@@ -76,7 +76,9 @@ export default async function ShopCatalogPage({ searchParams }: PageProps) {
               {t('shop.title')}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              {products.length === 0 ? t('shop.noMatches') : t('shop.browseCatalog')}
+              {products.length > 0
+                ? t('shop.productCount', { count: products.length })
+                : t('shop.noMatches')}
             </p>
           </div>
 
@@ -86,15 +88,6 @@ export default async function ShopCatalogPage({ searchParams }: PageProps) {
                 <Coins className="h-4 w-4 text-amber-500" />
                 {balance.toLocaleString(LOCALE_INTL[locale])}
               </div>
-            )}
-            {user && (
-              <Link
-                href={'/shop/orders' as Route}
-                className="inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted"
-              >
-                <Package className="h-4 w-4" />
-                {t('shop.myOrders')}
-              </Link>
             )}
             {user && (
               <Link
@@ -117,7 +110,11 @@ export default async function ShopCatalogPage({ searchParams }: PageProps) {
         {products.length === 0 ? (
           <EmptyState />
         ) : (
-          <ShopGrid initialProducts={products} params={params} />
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+            {products.map((p, i) => (
+              <ProductCard key={p.id} product={p} priority={i < 4} />
+            ))}
+          </div>
         )}
       </main>
     </div>

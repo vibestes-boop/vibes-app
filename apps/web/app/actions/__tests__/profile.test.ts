@@ -172,12 +172,10 @@ describe('updateProfile — Write-Pfad', () => {
     expect(client.from).toHaveBeenCalledWith('profiles');
     const builder = lastBuilder();
     expect(builder).not.toBeNull();
-    // display_name wird getrimmt; v1.w.UI.159 added website + teip fields
+    // display_name wird getrimmt
     expect(builder!._updatePayload).toEqual({
       display_name: 'Alice',
       bio: 'hello world',
-      website: null,
-      teip: null,
     });
     expect(builder!._eqCalls).toEqual([['id', 'user-42']]);
   });
@@ -189,12 +187,9 @@ describe('updateProfile — Write-Pfad', () => {
     await updateProfile(makeFormData({ display_name: 'Alice', bio: '    ' }));
 
     const builder = lastBuilder()!;
-    // v1.w.UI.159 added website + teip; both null when not provided in FormData
     expect(builder._updatePayload).toEqual({
       display_name: 'Alice',
       bio: null,
-      website: null,
-      teip: null,
     });
   });
 
@@ -212,8 +207,7 @@ describe('updateProfile — Write-Pfad', () => {
     const payload = lastBuilder()!._updatePayload as Record<string, unknown>;
     expect(payload).not.toHaveProperty('username');
     expect(payload).not.toHaveProperty('avatar_url');
-    // v1.w.UI.159: website + teip are allowed fields (written as null when absent)
-    expect(Object.keys(payload).sort()).toEqual(['bio', 'display_name', 'teip', 'website']);
+    expect(Object.keys(payload).sort()).toEqual(['bio', 'display_name']);
   });
 
   it('returns Supabase error message when update fails', async () => {

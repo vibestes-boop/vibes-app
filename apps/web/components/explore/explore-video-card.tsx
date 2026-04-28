@@ -32,7 +32,6 @@ export function ExploreVideoCard({
   authorUsername,
   viewCount,
   fallbackInitial,
-  womenOnly = false,
 }: {
   id: string;
   videoUrl: string;
@@ -41,8 +40,6 @@ export function ExploreVideoCard({
   authorUsername: string;
   viewCount: number;
   fallbackInitial: string;
-  /** v1.w.UI.170 — show 🌸 badge on Women-Only Zone posts */
-  womenOnly?: boolean;
 }) {
   const { t } = useI18n();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -114,12 +111,6 @@ export function ExploreVideoCard({
 
       {/* Overlay */}
       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent p-2 text-xs text-white">
-        {/* v1.w.UI.170 — WOZ badge */}
-        {womenOnly && (
-          <div className="mb-1">
-            <span className="text-xs leading-none" aria-label="Women Only" title="Women-Only Zone">🌸</span>
-          </div>
-        )}
         <div className="truncate font-medium">@{authorUsername}</div>
         <div className="text-white/70">
           {formatCount(viewCount)} {t('explore.views')}

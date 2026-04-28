@@ -83,14 +83,6 @@ export function ConversationSearch({ conversationId, viewerId }: ConversationSea
   const inputRef = useRef<HTMLInputElement>(null);
   const searchTokenRef = useRef(0);
 
-  // handleClose — stable Identität via useCallback([]) damit der ESC-Effect
-  // sich nicht bei jedem Render neu re-subscribed.
-  const handleClose = useCallback(() => {
-    setOpen(false);
-    setQuery('');
-    setResults([]);
-  }, []);
-
   // ESC → schließen
   useEffect(() => {
     if (!open) return;
@@ -99,7 +91,7 @@ export function ConversationSearch({ conversationId, viewerId }: ConversationSea
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [open, handleClose]);
+  }, [open]);
 
   // Autofokus nach Öffnen
   useEffect(() => {
@@ -134,6 +126,12 @@ export function ConversationSearch({ conversationId, viewerId }: ConversationSea
     }, 200);
     return () => clearTimeout(tid);
   }, [query, open, conversationId]);
+
+  const handleClose = useCallback(() => {
+    setOpen(false);
+    setQuery('');
+    setResults([]);
+  }, []);
 
   if (!open) {
     return (

@@ -1,81 +1,59 @@
 import { Skeleton } from '@/components/ui/skeleton';
 
-// Skeleton for /studio — Creator Dashboard
-// Mirrors: greeting row | KPI-Grid (4 cells) | top-posts strip | earnings chart | gift history
-export default function StudioDashboardLoading() {
+/**
+ * `/studio` Loading-State.
+ *
+ * Creator-Dashboard-Landing (v1.w.9). Drei KPI-Karten oben + zwei breite
+ * Chart-/Tabellen-Blöcke darunter + ein Sub-Navigation-Strip. Rendert schnell
+ * weg weil `/studio/page.tsx` auf mehrere Aggregate-RPCs parallel wartet
+ * (views, watch-time, revenue, schedule) — Skeleton ist dort besonders wichtig.
+ */
+export default function StudioLoading() {
   return (
-    <div className="mx-auto max-w-5xl space-y-8 px-4 pb-16 pt-6 lg:px-8">
-      {/* Greeting + badge */}
-      <div className="flex items-start justify-between">
-        <div className="space-y-2">
-          <Skeleton className="h-4 w-28 rounded-full" />
-          <Skeleton className="h-8 w-52" />
-          <Skeleton className="h-4 w-64" />
+    <div className="mx-auto w-full max-w-6xl px-4 py-8">
+      {/* Header */}
+      <div className="mb-6 flex items-center justify-between">
+        <Skeleton className="h-8 w-40" />
+        <div className="flex gap-2">
+          <Skeleton className="h-9 w-24 rounded-md" />
+          <Skeleton className="h-9 w-28 rounded-md" />
         </div>
-        <Skeleton className="h-12 w-12 rounded-full" />
       </div>
 
-      {/* KPI grid — 4 cards */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      {/* Sub-Nav (Tabs) */}
+      <div className="mb-6 flex gap-2 border-b border-border pb-3">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Skeleton key={i} className="h-7 w-20" />
+        ))}
+      </div>
+
+      {/* KPI-Grid */}
+      <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="rounded-xl border bg-card p-4 space-y-3">
-            <div className="flex items-center justify-between">
-              <Skeleton className="h-4 w-16" />
-              <Skeleton className="h-5 w-5 rounded" />
-            </div>
-            <Skeleton className="h-8 w-20" />
-            <Skeleton className="h-3 w-24" />
+          <div key={i} className="flex flex-col gap-2 rounded-xl border border-border p-4">
+            <Skeleton className="h-3 w-20" />
+            <Skeleton className="h-7 w-28" />
+            <Skeleton className="h-3 w-16" />
           </div>
         ))}
       </div>
 
-      {/* Top posts strip */}
-      <div className="space-y-3">
-        <Skeleton className="h-5 w-32" />
-        <div className="grid grid-cols-3 gap-3 sm:grid-cols-5">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="space-y-1.5">
-              <Skeleton className="aspect-[9/16] w-full rounded-lg" />
-              <Skeleton className="h-3 w-full" />
-              <Skeleton className="h-3 w-2/3" />
-            </div>
-          ))}
+      {/* Chart-Row + Table-Row */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="flex flex-col gap-3 rounded-xl border border-border p-4 lg:col-span-2">
+          <Skeleton className="h-5 w-32" />
+          <Skeleton className="h-56 w-full" />
         </div>
-      </div>
-
-      {/* Earnings chart area */}
-      <div className="rounded-xl border bg-card p-5 space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-3 rounded-xl border border-border p-4">
           <Skeleton className="h-5 w-28" />
-          <Skeleton className="h-8 w-24 rounded-lg" />
-        </div>
-        {/* Bar chart rows */}
-        <div className="space-y-2 pt-2">
-          {Array.from({ length: 6 }).map((_, i) => (
+          {Array.from({ length: 5 }).map((_, i) => (
             <div key={i} className="flex items-center gap-3">
-              <Skeleton className="h-3 w-8" />
-              <Skeleton
-                className="h-5 rounded"
-                style={{ width: `${30 + (i % 3) * 20 + (i % 5) * 10}%` }}
-              />
+              <Skeleton className="h-8 w-8 rounded-full" />
+              <Skeleton className="h-3 flex-1" />
+              <Skeleton className="h-3 w-10" />
             </div>
           ))}
         </div>
-      </div>
-
-      {/* Gift history list */}
-      <div className="space-y-3">
-        <Skeleton className="h-5 w-28" />
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="flex items-center gap-3 rounded-xl border p-3">
-            <Skeleton className="h-10 w-10 flex-shrink-0 rounded-full" />
-            <div className="flex-1 space-y-1.5">
-              <Skeleton className="h-4 w-36" />
-              <Skeleton className="h-3 w-24" />
-            </div>
-            <Skeleton className="h-5 w-16" />
-          </div>
-        ))}
       </div>
     </div>
   );

@@ -35,6 +35,22 @@ export interface PayoutRequest {
   processed_at: string | null;
 }
 
+/** Liest nur den diamonds_balance — Server-Action-Wrapper damit Client Components
+ *  nicht direkt lib/data/studio (= next/headers) importieren müssen. */
+export async function getMyDiamondsBalance(): Promise<number> {
+  const user = await getUser();
+  if (!user) return 0;
+
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('profiles')
+    .select('diamonds_balance')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  return Number((data as any)?.diamonds_balance ?? 0);
+}
+
 export async function getMyPayoutRequests(): Promise<PayoutRequest[]> {
   const user = await getUser();
   if (!user) return [];

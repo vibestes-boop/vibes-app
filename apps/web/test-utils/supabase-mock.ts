@@ -22,9 +22,7 @@
 
 export type TableResponse<T = unknown> = {
   data?: T[] | null;
-  // `details` darf `null` sein — echte PostgREST-Fehler liefern
-  // `string | null` (nicht `undefined`); Test-Fixtures spiegeln das.
-  error?: { code?: string; message?: string; details?: string | null } | null;
+  error?: { code?: string; message?: string; details?: string } | null;
 };
 
 export type RpcResponse<T = unknown> = {
