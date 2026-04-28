@@ -88,10 +88,14 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
   // Limit 6, gecycled falls weniger Sessions als 6-Post-Blöcke vorhanden.
   const [liveSessions, setLiveSessions] = useState<LiveFeedSession[]>([]);
   useEffect(() => {
+    // Nur im For-You-Feed und nur wenn initiale Posts vorhanden sind (sonst
+    // gibt es nichts, in das wir Live-Cards injizieren könnten).
+    if (feedKey !== 'foryou' || initialPosts.length === 0) return;
     fetch('/api/feed/live', { cache: 'no-store' })
       .then((r) => (r.ok ? r.json() : []))
       .then((data: LiveFeedSession[]) => setLiveSessions(data))
       .catch(() => { /* silent — kein Live bedeutet einfach keine Injection */ });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── DisplayRows: Posts interleaved mit Live-Cards alle 6 Posts ────────────

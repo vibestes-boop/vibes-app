@@ -37,6 +37,12 @@ import { FeedList } from '../feed-list';
 
 beforeEach(() => {
   resetFeedPostCounter();
+  // /api/feed/live wird bei jedem FeedList-Mount gefetcht (v1.w.UI.229).
+  // Stiller Default-Mock damit Tests die fetch nicht explizit setzen nicht crashen.
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: true,
+    json: () => Promise.resolve([]),
+  } as unknown as Response);
 });
 
 // -----------------------------------------------------------------------------
@@ -319,8 +325,13 @@ describe('FeedList — "Neue Posts" pill (v1.w.UI.68)', () => {
 
   beforeEach(() => {
     mockRouterRefresh.mockClear();
-    // global.fetch kann in jsdom undefined sein → immer frischen Mock zuweisen
-    global.fetch = jest.fn();
+    // Frischen Mock mit silent-Default-Antwort zuweisen. Individuelle Tests
+    // überschreiben global.fetch mit mockResolvedValueOnce / mockResolvedValue
+    // für die URL die sie testen möchten. Der Default deckt /api/feed/live ab.
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve([]),
+    } as unknown as Response);
     // jsdom implementiert HTMLElement.scrollTo nicht — stub damit handleNewPostsPill
     // nicht crasht und das nachfolgende setTimeout korrekt ausgeführt wird.
     window.HTMLElement.prototype.scrollTo = jest.fn();
