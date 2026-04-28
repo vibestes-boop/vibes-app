@@ -45,6 +45,8 @@ import { LiveCoHostQueue } from './live-cohost-queue';
 import { LivePollStartSheet } from './live-poll-start-sheet';
 import { LiveGiftsFeed } from './live-gifts-feed';
 import { useLiveShoppingHost, LiveShopHostPanel } from './live-shopping';
+import { useBattleStore } from './live-battle-store';
+import { LiveBattleBar } from './live-battle-bar';
 
 // -----------------------------------------------------------------------------
 // LiveHostDeck — OBS-ähnliches Control-Panel für den Host.
@@ -155,6 +157,9 @@ export function LiveHostDeck({
 
   // Live-Shopping — v1.w.UI.180
   const { pinnedProduct: shopPinnedProduct, pinProduct, unpinProduct } = useLiveShoppingHost(session.id);
+
+  // Battle — v1.w.UI.182: reads from module-level store written by LiveCoHostQueue when host accepts
+  const battleStore = useBattleStore();
 
   // -----------------------------------------------------------------------------
   // LiveKit-Connect — initial Mount nur einmal
@@ -711,6 +716,17 @@ export function LiveHostDeck({
                 <span className="absolute left-1 top-1 rounded bg-black/70 px-1.5 py-0.5 text-[10px] text-white">
                   Screen
                 </span>
+              </div>
+            )}
+
+            {/* v1.w.UI.182 — Battle bar overlay on preview */}
+            {battleStore.isBattle && (
+              <div className="absolute inset-0 pointer-events-none">
+                <LiveBattleBar
+                  state={battleStore}
+                  hostName={session.host?.display_name ?? session.host?.username ?? 'Host'}
+                  coHostName="Guest"
+                />
               </div>
             )}
 

@@ -191,10 +191,14 @@ export async function heartbeatLiveSession(
 // CoHost-Queue-Management — accept, reject, kick.
 // -----------------------------------------------------------------------------
 
+export type DuetLayout = 'top-bottom' | 'side-by-side' | 'pip' | 'battle';
+
 export async function acceptCoHostRequest(
   sessionId: string,
   requesterId: string,
   slotIndex: number,
+  layout: DuetLayout = 'side-by-side',
+  battleDuration?: number,
 ): Promise<ActionResult<null>> {
   const host = await getHost();
   if (!host) return { ok: false, error: 'Bitte einloggen.' };
@@ -216,6 +220,21 @@ export async function acceptCoHostRequest(
       return { ok: false, error: 'Nur der Host kann CoHosts akzeptieren.' };
     return { ok: false, error: error.message };
   }
+
+  // v1.w.UI.182 — broadcast layout + battleDuration to viewer clients so they
+  // know which split mode and whether battle mode is active.
+  const channel = supabase.channel(`co-host-signals-${sessionId}`);
+  await channel.subscribe();
+  await channel.send({
+    type: 'broadcast',
+    event: 'co-host-accepted',
+    payload: {
+      userId: requesterId,
+      layout,
+      ...(layout === 'battle' ? { battleDuration: battleDuration ?? 60 } : {}),
+    },
+  });
+  await supabase.removeChannel(channel);
 
   return { ok: true, data: null };
 }

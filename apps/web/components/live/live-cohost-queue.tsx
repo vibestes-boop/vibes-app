@@ -12,19 +12,35 @@ function supa() {
   );
 }
 import { acceptCoHostRequest, rejectCoHostRequest, kickCoHost, muteCoHost } from '@/app/actions/live-host';
+import type { DuetLayout } from '@/app/actions/live-host';
+import { setBattleStore, resetBattleStore } from './live-battle-store';
 
 // -----------------------------------------------------------------------------
-// LiveCoHostQueue — zeigt eingehende CoHost-Requests + aktive CoHosts.
+// LiveCoHostQueue — v1.w.UI.182 (layout picker + battle mode)
 //
 // Incoming-Requests-Flow:
 //   Viewer → sendet Broadcast `cohost-request` auf `co-host-signals-{id}` →
-//   Host-UI hier hört mit, zeigt Avatar + Name + Slot-Picker (1/2/3).
-//   Host klickt Accept → `accept_cohost_request` RPC → Native-Viewer-Client
-//   bekommt `cohost-accept` Event, publisht Track.
+//   Host-UI hier hört mit, zeigt Avatar + Name + Layout-Picker.
+//   Host wählt Layout → Accept → acceptCoHostRequest broadcasts co-host-accepted
+//   with layout+battleDuration → viewers/host switch into the right mode.
 //
 // Active-CoHosts:
 //   DB-Subscription auf `live_cohosts` → zeigt Kick + Mute-Buttons.
 // -----------------------------------------------------------------------------
+
+const LAYOUTS: { value: DuetLayout; emoji: string; label: string }[] = [
+  { value: 'side-by-side', emoji: '↔️', label: 'Side' },
+  { value: 'top-bottom',   emoji: '↕️', label: 'Stack' },
+  { value: 'pip',          emoji: '🎯', label: 'PiP' },
+  { value: 'battle',       emoji: '⚔️', label: 'Battle' },
+];
+
+const BATTLE_DURATIONS = [
+  { label: '1 min',  secs: 60 },
+  { label: '3 min',  secs: 180 },
+  { label: '5 min',  secs: 300 },
+  { label: '10 min', secs: 600 },
+];
 
 interface PendingRequest {
   user_id: string;
@@ -196,6 +212,8 @@ export function LiveCoHostQueue({ sessionId, hostId }: LiveCoHostQueueProps) {
           slotsAvailable={takenSlots.size < 3}
         />
       ))}
+      {/* When cohost is kicked/revoked, clear battle state */}
+      {/* (This is handled by the active cohost list changes below) */}
 
       {/* Active */}
       {active.map((co) => (
@@ -221,76 +239,123 @@ function PendingRow({
   slotIndex: number;
   sessionId: string;
   slotsAvailable: boolean;
-  onAccept: () => void;
+  onAccept: (layout: DuetLayout, battleDuration?: number) => void;
   onReject: () => void;
 }) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [layout, setLayout] = useState<DuetLayout>('side-by-side');
+  const [battleDuration, setBattleDuration] = useState(60);
+  const [expanded, setExpanded] = useState(false);
 
   const label = req.display_name ?? req.username ?? 'Unbekannt';
   const initial = label.slice(0, 1).toUpperCase();
 
+  const doAccept = () => {
+    if (!slotsAvailable) { setError('Alle Slots belegt.'); return; }
+    startTransition(async () => {
+      const r = await acceptCoHostRequest(
+        sessionId, req.user_id, slotIndex, layout,
+        layout === 'battle' ? battleDuration : undefined,
+      );
+      if (!r.ok) { setError(r.error); return; }
+      // If battle, write to module-level store so LiveBattleBar is shown immediately
+      if (layout === 'battle') {
+        setBattleStore({ isBattle: true, durationSecs: battleDuration, secondsLeft: battleDuration });
+      }
+      onAccept(layout, layout === 'battle' ? battleDuration : undefined);
+    });
+  };
+
   return (
-    <div className="flex items-center gap-3 rounded-lg border bg-primary/5 px-3 py-2">
-      <div className="relative h-9 w-9 flex-shrink-0 overflow-hidden rounded-full bg-muted">
-        {req.avatar_url ? (
-          <Image
-            src={req.avatar_url}
-            alt={label}
-            fill
-            sizes="36px"
-            className="object-cover"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center bg-primary/10 text-sm font-semibold text-primary">
-            {initial}
+    <div className="rounded-lg border bg-primary/5 px-3 py-2">
+      <div className="flex items-center gap-3">
+        <div className="relative h-9 w-9 flex-shrink-0 overflow-hidden rounded-full bg-muted">
+          {req.avatar_url ? (
+            <Image src={req.avatar_url} alt={label} fill sizes="36px" className="object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-primary/10 text-sm font-semibold text-primary">
+              {initial}
+            </div>
+          )}
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium">{label}</p>
+          <p className="text-xs text-muted-foreground">Möchte CoHost werden</p>
+          {error && <p className="text-xs text-red-500">{error}</p>}
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="inline-flex items-center gap-1 rounded-md bg-green-500 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-green-600"
+        >
+          <Check className="h-3.5 w-3.5" />
+          Accept
+        </button>
+
+        <button
+          type="button"
+          onClick={() => { startTransition(async () => { const r = await rejectCoHostRequest(sessionId, req.user_id); onReject(); if (!r.ok) setError(r.error); }); }}
+          disabled={isPending}
+          className="inline-flex items-center rounded-md border px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-muted"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      {/* v1.w.UI.182 — Layout picker (shown after clicking Accept) */}
+      {expanded && (
+        <div className="mt-2 space-y-2 border-t pt-2">
+          <p className="text-[11px] font-medium text-muted-foreground">Layout wählen:</p>
+          <div className="flex flex-wrap gap-1.5">
+            {LAYOUTS.map((l) => (
+              <button
+                key={l.value}
+                type="button"
+                onClick={() => setLayout(l.value)}
+                className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                  layout === l.value
+                    ? 'bg-primary text-primary-foreground'
+                    : 'border hover:bg-muted'
+                }`}
+              >
+                {l.emoji} {l.label}
+              </button>
+            ))}
           </div>
-        )}
-      </div>
 
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">{label}</p>
-        <p className="text-xs text-muted-foreground">Möchte CoHost werden</p>
-        {error && <p className="text-xs text-red-500">{error}</p>}
-      </div>
+          {/* Battle duration picker */}
+          {layout === 'battle' && (
+            <div className="flex flex-wrap gap-1.5">
+              {BATTLE_DURATIONS.map((d) => (
+                <button
+                  key={d.secs}
+                  type="button"
+                  onClick={() => setBattleDuration(d.secs)}
+                  className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                    battleDuration === d.secs
+                      ? 'bg-[#FF2D6D] text-white'
+                      : 'border border-[#FF2D6D]/30 text-[#FF2D6D] hover:bg-[#FF2D6D]/10'
+                  }`}
+                >
+                  {d.label}
+                </button>
+              ))}
+            </div>
+          )}
 
-      <button
-        type="button"
-        onClick={() => {
-          if (!slotsAvailable) {
-            setError('Alle Slots belegt.');
-            return;
-          }
-          startTransition(async () => {
-            const r = await acceptCoHostRequest(sessionId, req.user_id, slotIndex);
-            if (!r.ok) {
-              setError(r.error);
-              return;
-            }
-            onAccept();
-          });
-        }}
-        disabled={isPending || !slotsAvailable}
-        className="inline-flex items-center gap-1 rounded-md bg-green-500 px-2.5 py-1.5 text-xs font-medium text-white hover:bg-green-600 disabled:opacity-50"
-      >
-        <Check className="h-3.5 w-3.5" />
-        Slot {slotIndex}
-      </button>
-
-      <button
-        type="button"
-        onClick={() => {
-          startTransition(async () => {
-            const r = await rejectCoHostRequest(sessionId, req.user_id);
-            onReject();
-            if (!r.ok) setError(r.error);
-          });
-        }}
-        disabled={isPending}
-        className="inline-flex items-center rounded-md border px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-muted"
-      >
-        <X className="h-3.5 w-3.5" />
-      </button>
+          <button
+            type="button"
+            onClick={doAccept}
+            disabled={isPending}
+            className="w-full rounded-md bg-green-500 py-1.5 text-xs font-semibold text-white hover:bg-green-600 disabled:opacity-50"
+          >
+            {isPending ? 'Wird akzeptiert…' : `Bestätigen (${LAYOUTS.find(l => l.value === layout)?.emoji} ${layout === 'battle' ? `Battle ${BATTLE_DURATIONS.find(d => d.secs === battleDuration)?.label}` : LAYOUTS.find(l => l.value === layout)?.label})`}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
