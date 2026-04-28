@@ -247,6 +247,59 @@ export async function getGuildFeedPage(
   return { posts, nextCursor };
 }
 
+// ─── Aktive Live-Sessions von Guild-Mitgliedern ─────────────────────────────
+
+export interface GuildLiveSession {
+  id: string;
+  title: string | null;
+  viewer_count: number;
+  thumbnail_url: string | null;
+  started_at: string;
+  host: {
+    id: string;
+    username: string | null;
+    display_name: string | null;
+    avatar_url: string | null;
+  };
+}
+
+/**
+ * Gibt alle aktiven Live-Sessions zurück, deren Host Mitglied der Guild ist.
+ * Zwei-Schritt-Query weil PostgREST keinen embedded-resource-Filter auf
+ * !inner-Join für `live_sessions` unterstützt (kein !inner-FK-Alias verfügbar).
+ * Schritt 1: Alle Member-IDs der Guild.
+ * Schritt 2: live_sessions WHERE status='active' AND host_id IN (memberIds).
+ */
+export const getGuildActiveLiveSessions = cache(
+  async (guildId: string): Promise<GuildLiveSession[]> => {
+    const supabase = await createClient();
+
+    const { data: memberRows } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('guild_id', guildId)
+      .limit(500);
+
+    if (!memberRows || memberRows.length === 0) return [];
+
+    const memberIds = (memberRows as { id: string }[]).map((m) => m.id);
+
+    const { data, error } = await supabase
+      .from('live_sessions')
+      .select(
+        `id, title, viewer_count, thumbnail_url, started_at,
+         host:profiles!live_sessions_host_id_fkey ( id, username, display_name, avatar_url )`,
+      )
+      .eq('status', 'active')
+      .in('host_id', memberIds)
+      .order('viewer_count', { ascending: false })
+      .limit(10);
+
+    if (error || !data) return [];
+    return data as unknown as GuildLiveSession[];
+  },
+);
+
 // ─── Meine eigene Guild ─────────────────────────────────────────────────────
 
 export const getMyGuildId = cache(async (): Promise<string | null> => {

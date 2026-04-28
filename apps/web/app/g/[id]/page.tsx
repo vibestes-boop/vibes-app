@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { Route } from 'next';
 import { notFound } from 'next/navigation';
-import { Hash, Users, Trophy, Info, Clock3, Newspaper } from 'lucide-react';
+import { Hash, Users, Trophy, Info, Clock3, Newspaper, Radio } from 'lucide-react';
 
 import { getUser } from '@/lib/auth/session';
 import {
@@ -12,6 +12,7 @@ import {
   getGuildMembers,
   getMyGuildId,
   getGuildFeedPage,
+  getGuildActiveLiveSessions,
 } from '@/lib/data/guilds';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { SwitchGuildButton } from '@/components/guilds/switch-guild-button';
@@ -81,12 +82,13 @@ export default async function GuildDetailPage({ params }: Props) {
   const [user, guild] = await Promise.all([getUser(), getGuildById(id)]);
   if (!guild) notFound();
 
-  const [leaderboard, memberCount, members, myGuildId, feedPage] = await Promise.all([
+  const [leaderboard, memberCount, members, myGuildId, feedPage, activeLives] = await Promise.all([
     getGuildLeaderboard(id),
     getGuildMemberCount(id),
     getGuildMembers(id, 48),
     getMyGuildId(),
     getGuildFeedPage(id, null, 12),
+    getGuildActiveLiveSessions(id),
   ]);
 
   const isMember = myGuildId === id;
@@ -174,6 +176,68 @@ export default async function GuildDetailPage({ params }: Props) {
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
         {/* ── Left column ─────────────────────────────────────────────── */}
         <section className="min-w-0 space-y-10">
+
+          {/* ── Jetzt live ─────────────────────────────────────────── */}
+          {activeLives.length > 0 && (
+            <div>
+              <div className="mb-3 flex items-center gap-2">
+                <Radio className="h-5 w-5 text-red-500" />
+                <h2 className="text-xl font-semibold">Jetzt live</h2>
+                <span className="rounded-full bg-red-500 px-2 py-0.5 text-[11px] font-bold text-white">
+                  {activeLives.length}
+                </span>
+              </div>
+              <div className="flex gap-3 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                {activeLives.map((session) => (
+                  <Link
+                    key={session.id}
+                    href={`/live/${session.id}` as Route}
+                    className="group relative flex w-[140px] shrink-0 flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-sm transition-transform hover:scale-[1.02]"
+                  >
+                    {/* thumbnail or gradient fallback */}
+                    <div className="relative aspect-[9/16] w-full overflow-hidden bg-gradient-to-br from-brand-primary/30 to-brand-gold/20">
+                      {session.thumbnail_url && (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={session.thumbnail_url}
+                          alt=""
+                          className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                        />
+                      )}
+                      {/* LIVE badge */}
+                      <span className="absolute left-2 top-2 rounded-md bg-red-500 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
+                        Live
+                      </span>
+                      {/* viewer count */}
+                      <span className="absolute bottom-2 right-2 flex items-center gap-1 rounded-full bg-black/60 px-2 py-0.5 text-[10px] text-white backdrop-blur-sm">
+                        <Users className="h-2.5 w-2.5" />
+                        {session.viewer_count}
+                      </span>
+                    </div>
+                    {/* host info */}
+                    <div className="flex items-center gap-2 p-2">
+                      <Avatar className="h-7 w-7 shrink-0 ring-2 ring-red-500/60">
+                        <AvatarImage src={session.host.avatar_url ?? undefined} alt="" />
+                        <AvatarFallback className="text-[9px]">
+                          {(session.host.username ?? '?').slice(0, 2).toUpperCase()}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0">
+                        <p className="truncate text-[11px] font-semibold leading-tight">
+                          @{session.host.username ?? '…'}
+                        </p>
+                        {session.title && (
+                          <p className="line-clamp-1 text-[10px] text-muted-foreground">
+                            {session.title}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* ── Neueste Posts ──────────────────────────────────────── */}
           <div>
