@@ -242,3 +242,67 @@ export async function checkUsernameAvailable(raw: string): Promise<{ available: 
   if (data) return { available: false, reason: 'Bereits vergeben.' };
   return { available: true };
 }
+
+// -----------------------------------------------------------------------------
+// setOnboardingGuild — Onboarding Schritt 2: Guild auswählen (v1.w.UI.232)
+// Speichert guild_id in profiles. Auth-gate: nur eigenes Profil.
+// -----------------------------------------------------------------------------
+
+export async function setOnboardingGuild(guildId: string): Promise<ActionResult> {
+  if (!guildId) return { ok: false, error: 'Bitte wähle eine Guild.' };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { ok: false, error: 'Nicht eingeloggt.' };
+
+  // Verify guild exists.
+  const { data: guild } = await supabase
+    .from('guilds')
+    .select('id')
+    .eq('id', guildId)
+    .maybeSingle();
+
+  if (!guild) return { ok: false, error: 'Guild nicht gefunden.' };
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ guild_id: guildId })
+    .eq('id', user.id);
+
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath('/', 'layout');
+  return { ok: true };
+}
+
+// -----------------------------------------------------------------------------
+// setOnboardingInterests — Onboarding Schritt 3: Interessen wählen (v1.w.UI.232)
+// Speichert preferred_tags[] in profiles. Feed-Algorithmus nutzt diese sofort.
+// Min. 3 Tags erforderlich (Parity mit native).
+// -----------------------------------------------------------------------------
+
+export async function setOnboardingInterests(tags: string[]): Promise<ActionResult> {
+  if (!tags || tags.length < 3) {
+    return { ok: false, error: 'Bitte wähle mindestens 3 Interessen.' };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) return { ok: false, error: 'Nicht eingeloggt.' };
+
+  const { error } = await supabase
+    .from('profiles')
+    .update({ preferred_tags: tags })
+    .eq('id', user.id);
+
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath('/', 'layout');
+  return { ok: true };
+}

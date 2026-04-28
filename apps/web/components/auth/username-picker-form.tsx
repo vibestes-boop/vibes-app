@@ -80,9 +80,10 @@ export function UsernamePickerForm({ next = '/' }: { next?: string }) {
         return;
       }
       toast.success('Willkommen bei Serlo.');
-      // Route through the follow-suggestions step before landing on destination.
+      // Route through guild → interests → follow steps before landing on destination.
+      // v1.w.UI.232: guild + interests added to the onboarding funnel.
       const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : '/';
-      router.push(`/onboarding/follow?next=${encodeURIComponent(safeNext)}`);
+      router.push(`/onboarding/guild?next=${encodeURIComponent(safeNext)}`);
       router.refresh();
     });
   }
