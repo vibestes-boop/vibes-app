@@ -3,7 +3,8 @@
 import { useEffect, useState, useTransition } from 'react';
 import Image from 'next/image';
 import { createBrowserClient } from '@supabase/ssr';
-import { Check, X, UserPlus, UserMinus, Mic, MicOff, VideoOff } from 'lucide-react';
+import { Check, X, UserPlus, UserMinus, Mic, MicOff, VideoOff, LayoutTemplate } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 function supa() {
   return createBrowserClient(
@@ -361,98 +362,218 @@ function PendingRow({
 }
 
 // -----------------------------------------------------------------------------
-// ActiveRow — aktiver CoHost mit Mute/Kick
+// ActiveRow — aktiver CoHost mit Mute/Kick/Layout-Switch
 // -----------------------------------------------------------------------------
+
+const ACTIVE_LAYOUTS: { value: DuetLayout; emoji: string; label: string }[] = [
+  { value: 'top-bottom',   emoji: '↕️', label: 'Oben/Unten' },
+  { value: 'side-by-side', emoji: '↔️', label: 'Nebeneinander' },
+  { value: 'pip',          emoji: '🎯', label: 'Bild-in-Bild' },
+  { value: 'battle',       emoji: '⚔️', label: 'Battle' },
+];
+
+const ACTIVE_BATTLE_DURATIONS = [
+  { label: '1 min', secs: 60 },
+  { label: '3 min', secs: 180 },
+  { label: '5 min', secs: 300 },
+];
 
 function ActiveRow({ coHost, sessionId }: { coHost: ActiveCoHost; sessionId: string }) {
   const [isPending, startTransition] = useTransition();
   const [localMuteAudio, setLocalMuteAudio] = useState(coHost.audio_muted);
   const [localMuteVideo, setLocalMuteVideo] = useState(coHost.video_muted);
 
+  // v1.w.UI.223 — Mid-stream layout switcher
+  const [layoutPickerOpen, setLayoutPickerOpen] = useState(false);
+  const [pickedLayout, setPickedLayout]         = useState<DuetLayout>('side-by-side');
+  const [pickedBattle, setPickedBattle]         = useState(60);
+  const [layoutBusy, setLayoutBusy]             = useState(false);
+
   const label = coHost.display_name ?? coHost.username ?? 'Unbekannt';
   const initial = label.slice(0, 1).toUpperCase();
 
+  async function handleSwitchLayout() {
+    if (layoutBusy) return;
+    setLayoutBusy(true);
+    try {
+      const client = supa();
+      const ch = client.channel(`co-host-signals-${sessionId}`);
+      await ch.subscribe();
+      await ch.send({
+        type: 'broadcast',
+        event: 'co-host-layout-changed',
+        payload: {
+          layout: pickedLayout,
+          ...(pickedLayout === 'battle' ? { battleDuration: pickedBattle } : {}),
+        },
+      });
+      client.removeChannel(ch);
+      setLayoutPickerOpen(false);
+    } catch {
+      // silent — viewer will miss the switch, host can retry
+    } finally {
+      setLayoutBusy(false);
+    }
+  }
+
   return (
-    <div className="flex items-center gap-3 rounded-lg border bg-card px-3 py-2">
-      <div className="relative h-9 w-9 flex-shrink-0 overflow-hidden rounded-full bg-muted">
-        {coHost.avatar_url ? (
-          <Image
-            src={coHost.avatar_url}
-            alt={label}
-            fill
-            sizes="36px"
-            className="object-cover"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center bg-primary/10 text-sm font-semibold text-primary">
-            {initial}
+    <div className="rounded-lg border bg-card">
+      <div className="flex items-center gap-3 px-3 py-2">
+        <div className="relative h-9 w-9 flex-shrink-0 overflow-hidden rounded-full bg-muted">
+          {coHost.avatar_url ? (
+            <Image
+              src={coHost.avatar_url}
+              alt={label}
+              fill
+              sizes="36px"
+              className="object-cover"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center bg-primary/10 text-sm font-semibold text-primary">
+              {initial}
+            </div>
+          )}
+          <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
+            {coHost.slot_index}
+          </span>
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium">{label}</p>
+          <p className="text-xs text-muted-foreground">
+            <UserPlus className="inline h-3 w-3" /> CoHost · Slot {coHost.slot_index}
+          </p>
+        </div>
+
+        {/* v1.w.UI.223 — Layout-Switch */}
+        <button
+          type="button"
+          onClick={() => setLayoutPickerOpen((v) => !v)}
+          title="Layout wechseln"
+          className={cn(
+            'inline-flex items-center rounded-md border p-1.5',
+            layoutPickerOpen ? 'bg-primary/10 text-primary' : 'hover:bg-muted',
+          )}
+        >
+          <LayoutTemplate className="h-3.5 w-3.5" />
+        </button>
+
+        {/* Audio-Mute */}
+        <button
+          type="button"
+          onClick={() => {
+            const next = !localMuteAudio;
+            setLocalMuteAudio(next);
+            startTransition(async () => {
+              await muteCoHost(sessionId, coHost.user_id, next, localMuteVideo);
+            });
+          }}
+          disabled={isPending}
+          title={localMuteAudio ? 'Mic unmuten' : 'Mic muten'}
+          className={`inline-flex items-center rounded-md border p-1.5 ${
+            localMuteAudio ? 'bg-red-500/10 text-red-500' : 'hover:bg-muted'
+          }`}
+        >
+          {localMuteAudio ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+        </button>
+
+        {/* Video-Mute */}
+        <button
+          type="button"
+          onClick={() => {
+            const next = !localMuteVideo;
+            setLocalMuteVideo(next);
+            startTransition(async () => {
+              await muteCoHost(sessionId, coHost.user_id, localMuteAudio, next);
+            });
+          }}
+          disabled={isPending}
+          title={localMuteVideo ? 'Kamera aktivieren' : 'Kamera deaktivieren'}
+          className={`inline-flex items-center rounded-md border p-1.5 ${
+            localMuteVideo ? 'bg-red-500/10 text-red-500' : 'hover:bg-muted'
+          }`}
+        >
+          <VideoOff className="h-3.5 w-3.5" />
+        </button>
+
+        {/* Kick */}
+        <button
+          type="button"
+          onClick={() => {
+            if (!window.confirm(`${label} von der Bühne entfernen?`)) return;
+            startTransition(async () => {
+              await kickCoHost(sessionId, coHost.user_id);
+            });
+          }}
+          disabled={isPending}
+          title="CoHost entfernen"
+          className="inline-flex items-center rounded-md border p-1.5 text-red-500 hover:bg-red-500/10"
+        >
+          <UserMinus className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+      {/* v1.w.UI.223 — Inline layout picker */}
+      {layoutPickerOpen && (
+        <div className="border-t px-3 py-2.5 flex flex-col gap-2">
+          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Layout wechseln
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {ACTIVE_LAYOUTS.map((l) => (
+              <button
+                key={l.value}
+                type="button"
+                onClick={() => setPickedLayout(l.value)}
+                className={cn(
+                  'rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors',
+                  pickedLayout === l.value
+                    ? 'border-primary bg-primary text-primary-foreground'
+                    : 'border-border bg-background text-foreground hover:bg-muted',
+                )}
+              >
+                {l.emoji} {l.label}
+              </button>
+            ))}
           </div>
-        )}
-        <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
-          {coHost.slot_index}
-        </span>
-      </div>
-
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">{label}</p>
-        <p className="text-xs text-muted-foreground">
-          <UserPlus className="inline h-3 w-3" /> CoHost · Slot {coHost.slot_index}
-        </p>
-      </div>
-
-      {/* Audio-Mute */}
-      <button
-        type="button"
-        onClick={() => {
-          const next = !localMuteAudio;
-          setLocalMuteAudio(next);
-          startTransition(async () => {
-            await muteCoHost(sessionId, coHost.user_id, next, localMuteVideo);
-          });
-        }}
-        disabled={isPending}
-        title={localMuteAudio ? 'Mic unmuten' : 'Mic muten'}
-        className={`inline-flex items-center rounded-md border p-1.5 ${
-          localMuteAudio ? 'bg-red-500/10 text-red-500' : 'hover:bg-muted'
-        }`}
-      >
-        {localMuteAudio ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
-      </button>
-
-      {/* Video-Mute */}
-      <button
-        type="button"
-        onClick={() => {
-          const next = !localMuteVideo;
-          setLocalMuteVideo(next);
-          startTransition(async () => {
-            await muteCoHost(sessionId, coHost.user_id, localMuteAudio, next);
-          });
-        }}
-        disabled={isPending}
-        title={localMuteVideo ? 'Kamera aktivieren' : 'Kamera deaktivieren'}
-        className={`inline-flex items-center rounded-md border p-1.5 ${
-          localMuteVideo ? 'bg-red-500/10 text-red-500' : 'hover:bg-muted'
-        }`}
-      >
-        <VideoOff className="h-3.5 w-3.5" />
-      </button>
-
-      {/* Kick */}
-      <button
-        type="button"
-        onClick={() => {
-          if (!window.confirm(`${label} von der Bühne entfernen?`)) return;
-          startTransition(async () => {
-            await kickCoHost(sessionId, coHost.user_id);
-          });
-        }}
-        disabled={isPending}
-        title="CoHost entfernen"
-        className="inline-flex items-center rounded-md border p-1.5 text-red-500 hover:bg-red-500/10"
-      >
-        <UserMinus className="h-3.5 w-3.5" />
-      </button>
+          {pickedLayout === 'battle' && (
+            <div className="flex gap-1.5">
+              {ACTIVE_BATTLE_DURATIONS.map(({ label: bl, secs }) => (
+                <button
+                  key={secs}
+                  type="button"
+                  onClick={() => setPickedBattle(secs)}
+                  className={cn(
+                    'rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors',
+                    pickedBattle === secs
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : 'border-border bg-background text-foreground hover:bg-muted',
+                  )}
+                >
+                  {bl}
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={handleSwitchLayout}
+              disabled={layoutBusy}
+              className="flex-1 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            >
+              {layoutBusy ? 'Wechselt…' : 'Layout anwenden'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setLayoutPickerOpen(false)}
+              className="rounded-full bg-muted px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-muted/80"
+            >
+              Abbrechen
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
