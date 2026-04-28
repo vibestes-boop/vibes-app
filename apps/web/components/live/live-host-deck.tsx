@@ -769,16 +769,38 @@ export function LiveHostDeck({
                 </button>
               </div>
             ) : (
-              <button
-                type="button"
-                onClick={() => setTitleEditing(true)}
-                className="group flex w-full items-center justify-between gap-2 text-left"
-              >
-                <span className="truncate text-lg font-semibold">
-                  {session.title ?? 'Unbenannter Stream'}
-                </span>
-                <Settings2 className="h-4 w-4 flex-shrink-0 text-muted-foreground group-hover:text-foreground" />
-              </button>
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setTitleEditing(true)}
+                  className="group flex w-full items-center justify-between gap-2 text-left"
+                >
+                  <span className="truncate text-lg font-semibold">
+                    {session.title ?? 'Unbenannter Stream'}
+                  </span>
+                  <Settings2 className="h-4 w-4 flex-shrink-0 text-muted-foreground group-hover:text-foreground" />
+                </button>
+                {/* v1.w.UI.186 — session flag badges so host sees their own settings at a glance */}
+                {(session.women_only || session.allow_comments === false || session.allow_gifts === false) && (
+                  <div className="mt-1.5 flex flex-wrap gap-1">
+                    {session.women_only && (
+                      <span className="inline-flex items-center rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-medium text-rose-700 dark:bg-rose-500/15 dark:text-rose-300">
+                        ♀ Nur Frauen
+                      </span>
+                    )}
+                    {session.allow_comments === false && (
+                      <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                        💬 Kommentare aus
+                      </span>
+                    )}
+                    {session.allow_gifts === false && (
+                      <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                        🎁 Geschenke aus
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
           </div>
 

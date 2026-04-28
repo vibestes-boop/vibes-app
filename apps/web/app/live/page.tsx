@@ -233,13 +233,21 @@ function LiveSessionCard({
           Live
         </div>
 
-        {/* Hot-Badge */}
-        {hot && (
-          <div className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-md bg-orange-500 px-2 py-0.5 text-[11px] font-bold text-white shadow">
-            <Flame className="h-3 w-3" />
-            Hot
-          </div>
-        )}
+        {/* Top-right badge stack: WOZ + Hot (can stack) */}
+        <div className="absolute right-3 top-3 flex flex-col items-end gap-1">
+          {/* v1.w.UI.186 — WOZ badge */}
+          {session.women_only && (
+            <div className="inline-flex items-center gap-1 rounded-md bg-rose-500 px-2 py-0.5 text-[11px] font-bold text-white shadow">
+              ♀ Nur Frauen
+            </div>
+          )}
+          {hot && (
+            <div className="inline-flex items-center gap-1 rounded-md bg-orange-500 px-2 py-0.5 text-[11px] font-bold text-white shadow">
+              <Flame className="h-3 w-3" />
+              Hot
+            </div>
+          )}
+        </div>
 
         {/* Viewer-Count unten rechts */}
         <div className="absolute bottom-3 right-3 inline-flex items-center gap-1 rounded-md bg-black/70 px-2 py-1 text-[11px] font-medium text-white backdrop-blur">
@@ -247,12 +255,25 @@ function LiveSessionCard({
           {viewerCount.toLocaleString('de-DE')}
         </div>
 
-        {/* Dauer unten links */}
-        {session.started_at && (
-          <div className="absolute bottom-3 left-3 rounded-md bg-black/70 px-2 py-1 text-[11px] font-medium text-white backdrop-blur">
-            {formatShortDuration(new Date(session.started_at))}
-          </div>
-        )}
+        {/* Bottom-left: Dauer + session restriction badges */}
+        <div className="absolute bottom-3 left-3 flex items-center gap-1">
+          {session.started_at && (
+            <div className="rounded-md bg-black/70 px-2 py-1 text-[11px] font-medium text-white backdrop-blur">
+              {formatShortDuration(new Date(session.started_at))}
+            </div>
+          )}
+          {/* v1.w.UI.186 — no-comments / no-gifts badges */}
+          {session.allow_comments === false && (
+            <div className="rounded-md bg-black/70 px-2 py-1 text-[11px] font-medium text-white/80 backdrop-blur" title="Kommentare deaktiviert">
+              💬✕
+            </div>
+          )}
+          {session.allow_gifts === false && (
+            <div className="rounded-md bg-black/70 px-2 py-1 text-[11px] font-medium text-white/80 backdrop-blur" title="Geschenke deaktiviert">
+              🎁✕
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Info-Block */}
