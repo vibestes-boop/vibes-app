@@ -7,6 +7,7 @@ import { getWOZFeed } from '@/lib/data/public';
 import { createClient } from '@/lib/supabase/server';
 import { PostGrid } from '@/components/profile/post-grid';
 import { WozJoinButton } from '@/components/woz/woz-join-button';
+import { WozLeaveButton } from '@/components/woz/woz-leave-button';
 
 // -----------------------------------------------------------------------------
 // /woz — Women-Only Zone Hub.
@@ -144,11 +145,14 @@ export default async function WozPage() {
             Verifiziert
           </span>
         </div>
-        {posts.length > 0 && (
-          <span className="text-xs text-muted-foreground">
-            {posts.length} Beiträge
-          </span>
-        )}
+        <div className="flex items-center gap-3">
+          {posts.length > 0 && (
+            <span className="text-xs text-muted-foreground">
+              {posts.length} Beiträge
+            </span>
+          )}
+          <WozLeaveButton />
+        </div>
       </div>
 
       {/* Post Grid */}
