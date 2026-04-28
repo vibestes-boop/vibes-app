@@ -28,6 +28,7 @@ import {
   Gift,
   Settings2,
   ChevronDown,
+  UserCheck,
 } from 'lucide-react';
 import type { LiveSessionWithHost, LiveCommentWithAuthor, ActiveLivePollSSR } from '@/lib/data/live';
 import type { SessionGiftRow, ActiveGiftGoal } from '@/lib/data/live-host';
@@ -36,6 +37,7 @@ import {
   endLiveSession,
   heartbeatLiveSession,
   updateLiveSession,
+  toggleFollowersOnlyChat,
 } from '@/app/actions/live-host';
 import { deleteWhipIngress } from '@/app/actions/live-ingress';
 import { LiveChat } from './live-chat';
@@ -154,6 +156,10 @@ export function LiveHostDeck({
 
   // Active-Poll realtime-state — wird LivePollStartSheet runtergereicht
   const [activePoll, setActivePoll] = useState<ActiveLivePollSSR | null>(initialPoll);
+
+  // v1.w.UI.188 — Followers-only chat toggle (optimistic UI)
+  const [followersOnlyChat, setFollowersOnlyChat] = useState(session.followers_only_chat ?? false);
+  const [, startFollowersToggle] = useTransition();
 
   // Live-Shopping — v1.w.UI.180
   const { pinnedProduct: shopPinnedProduct, pinProduct, unpinProduct } = useLiveShoppingHost(session.id);
@@ -800,6 +806,28 @@ export function LiveHostDeck({
                     )}
                   </div>
                 )}
+                {/* v1.w.UI.188 — Followers-only chat toggle (live, während des Streams) */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !followersOnlyChat;
+                    setFollowersOnlyChat(next);
+                    startFollowersToggle(async () => {
+                      const res = await toggleFollowersOnlyChat(session.id, next);
+                      if (!res.ok) setFollowersOnlyChat(!next); // rollback
+                    });
+                  }}
+                  className={[
+                    'mt-2 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors',
+                    followersOnlyChat
+                      ? 'border-green-500 bg-green-500/10 text-green-600 dark:text-green-400'
+                      : 'border-border bg-card text-muted-foreground hover:bg-muted',
+                  ].join(' ')}
+                  title={followersOnlyChat ? 'Nur Follower chatten (aktiv) — klicken zum Deaktivieren' : 'Nur Follower chatten — klicken zum Aktivieren'}
+                >
+                  <UserCheck className="h-3 w-3" />
+                  {followersOnlyChat ? 'Nur Follower' : 'Alle chatten'}
+                </button>
               </div>
             )}
           </div>

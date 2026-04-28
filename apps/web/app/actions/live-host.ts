@@ -45,6 +45,8 @@ export interface StartLiveSessionInput {
   allowComments?: boolean;
   allowGifts?: boolean;
   womenOnly?: boolean;
+  // v1.w.UI.188 — Followers-only chat
+  followersOnlyChat?: boolean;
 }
 
 export interface StartLiveSessionResult {
@@ -89,6 +91,7 @@ export async function startLiveSession(
     allow_comments: input.allowComments ?? true,
     allow_gifts: input.allowGifts ?? true,
     women_only: input.womenOnly ?? false,
+    followers_only_chat: input.followersOnlyChat ?? false,
   };
   if (input.category !== undefined) insertPayload.category = input.category;
   if (input.thumbnailUrl !== undefined)
@@ -430,4 +433,23 @@ export async function createLiveGiftGoal(
 
   if (error || !data) return { ok: false, error: error?.message ?? 'Ziel fehlgeschlagen.' };
   return { ok: true, data: { goalId: data.id as string } };
+}
+
+// v1.w.UI.188 — Toggle followers-only chat während eines laufenden Streams.
+// Ruft die DB-RPC `toggle_followers_only_chat` auf (Security Definer, prüft host_id).
+export async function toggleFollowersOnlyChat(
+  sessionId: string,
+  enabled: boolean,
+): Promise<ActionResult<null>> {
+  const host = await getHost();
+  if (!host) return { ok: false, error: 'Bitte einloggen.' };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('toggle_followers_only_chat', {
+    p_session_id: sessionId,
+    p_enabled: enabled,
+  });
+
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, data: null };
 }

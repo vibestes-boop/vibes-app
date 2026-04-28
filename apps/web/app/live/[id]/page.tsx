@@ -133,6 +133,17 @@ export default async function LiveViewerPage({ params }: PageProps) {
   const viewerId = user?.id ?? null;
   const isHost = viewerId === session.host_id;
 
+  // v1.w.UI.188 — Followers-only chat: non-followers can't chat when flag is set.
+  // isHost and isModerator are exempted (they can always chat).
+  const allowCommentsEffective =
+    (session.allow_comments ?? true) &&
+    !(
+      (session.followers_only_chat ?? false) &&
+      !isHost &&
+      !isModerator &&
+      !isFollowing
+    );
+
   // v1.w.UI.136 — CoHost Duet-Layout: ersten aktiven CoHost an LiveVideoPlayer übergeben.
   const activeCoHost = cohosts[0] ?? null;
   const coHostId = activeCoHost?.user_id ?? null;
@@ -360,7 +371,13 @@ export default async function LiveViewerPage({ params }: PageProps) {
                 isModerator={isModerator}
                 slowModeSeconds={session.slow_mode_seconds ?? 0}
                 ended={ended}
-                allowComments={session.allow_comments ?? true}
+                allowComments={allowCommentsEffective}
+                commentsLockedLabel={
+                  // v1.w.UI.188: distinguish followers-only lock from comments-disabled
+                  !allowCommentsEffective && (session.allow_comments ?? true) && (session.followers_only_chat ?? false)
+                    ? 'Nur Follower können chatten.'
+                    : undefined
+                }
               />
             </div>
           )}

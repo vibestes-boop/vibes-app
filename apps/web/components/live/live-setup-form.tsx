@@ -17,6 +17,7 @@ import {
   MessageCircle,
   Gem,
   Heart,
+  UserCheck,
 } from 'lucide-react';
 import { startLiveSession } from '@/app/actions/live-host';
 import { AIImageSheet } from '@/components/ai/ai-image-sheet';
@@ -47,6 +48,8 @@ export function LiveSetupForm() {
   const [allowComments, setAllowComments] = useState(true);
   const [allowGifts, setAllowGifts] = useState(true);
   const [womenOnly, setWomenOnly] = useState(false);
+  // v1.w.UI.188 — Followers-only chat
+  const [followersOnlyChat, setFollowersOnlyChat] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   // v1.28.0 — KI-Cover für Live-Stream (Phase 3 AI-Image-Rollout).
   // Spalte `live_sessions.thumbnail_url` existiert seit v1.18.0; Server-Action
@@ -165,6 +168,7 @@ export function LiveSetupForm() {
         allowComments,
         allowGifts,
         womenOnly,
+        followersOnlyChat,
       });
       if (!result.ok) {
         setFormError(result.error);
@@ -453,6 +457,29 @@ export function LiveSetupForm() {
               </p>
               <p className="text-xs text-muted-foreground">
                 Nur verifizierte Frauen können zuschauen.
+              </p>
+            </div>
+          </label>
+
+          {/* v1.w.UI.188 — Followers-only chat */}
+          <label
+            className={`flex items-start gap-3 rounded-lg border px-3 py-2 cursor-pointer transition-colors ${
+              followersOnlyChat ? 'border-green-400/60 bg-green-500/5' : 'bg-card'
+            }`}
+          >
+            <input
+              type="checkbox"
+              checked={followersOnlyChat}
+              onChange={(e) => setFollowersOnlyChat(e.target.checked)}
+              className="mt-0.5 h-4 w-4"
+            />
+            <div className="flex-1">
+              <p className={`flex items-center gap-1.5 text-sm font-medium ${followersOnlyChat ? 'text-green-600 dark:text-green-400' : ''}`}>
+                <UserCheck className={`h-4 w-4 ${followersOnlyChat ? 'text-green-500' : 'text-green-500/60'}`} />
+                Nur Follower chatten
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Nur deine Follower können im Chat schreiben.
               </p>
             </div>
           </label>

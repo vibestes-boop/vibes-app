@@ -19,6 +19,8 @@ export interface LiveSession {
   allow_comments: boolean;
   allow_gifts: boolean;
   women_only: boolean;
+  // v1.w.UI.188 — Followers-only chat (parity with mobile toggle_followers_only_chat)
+  followers_only_chat: boolean;
 }
 
 export interface LiveComment {

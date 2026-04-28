@@ -14,7 +14,7 @@ import type { LiveSession } from '@shared/types';
 // Ohne Alias war die Spalte `peak_viewer_count` unbekannt → `data = null` →
 // `notFound()` in `/live/host/[id]` → 404 beim Host-Deck.
 const SESSION_COLUMNS =
-  'id, host_id, room_name, title, thumbnail_url, category, status, viewer_count, peak_viewer_count:peak_viewers, started_at, ended_at, updated_at, moderation_enabled, moderation_words, slow_mode_seconds, allow_comments, allow_gifts, women_only';
+  'id, host_id, room_name, title, thumbnail_url, category, status, viewer_count, peak_viewer_count:peak_viewers, started_at, ended_at, updated_at, moderation_enabled, moderation_words, slow_mode_seconds, allow_comments, allow_gifts, women_only, followers_only_chat';
 
 // HINWEIS: `verified:is_verified` — analog zu `peak_viewer_count:peak_viewers`.
 // Die DB-Spalte heißt `is_verified` (Migration 20260407010000_creator_analytics),

@@ -37,6 +37,8 @@ export interface LiveChatOverlayProps {
   ended: boolean;
   /** v1.w.UI.185 — wenn false: Kommentare sind für alle Viewer gesperrt (Input disabled). */
   allowComments?: boolean;
+  /** v1.w.UI.188 — optionaler Grund-Text für den gesperrten Chat (z.B. "Nur Follower können chatten."). */
+  commentsLockedLabel?: string;
   className?: string;
 }
 
@@ -56,6 +58,7 @@ export function LiveChatOverlay({
   slowModeSeconds,
   ended,
   allowComments = true,
+  commentsLockedLabel,
   className,
 }: LiveChatOverlayProps) {
   const [comments, setComments] = useState<LiveCommentWithAuthor[]>(initialComments);
@@ -291,10 +294,10 @@ export function LiveChatOverlay({
           außer der einzelnen Pill-Hovers) */}
       {viewerId ? (
         ended ? null : !allowComments ? (
-          // v1.w.UI.185 — Kommentare vom Host deaktiviert
+          // v1.w.UI.185/188 — Kommentare deaktiviert oder Follower-Only
           <div className="pointer-events-auto flex items-center gap-2">
             <div className="min-w-0 flex-1 rounded-full border border-white/10 bg-black/40 px-4 py-2 text-sm text-white/40 backdrop-blur-md">
-              Kommentare deaktiviert
+              {commentsLockedLabel ?? 'Kommentare deaktiviert'}
             </div>
           </div>
         ) : (
