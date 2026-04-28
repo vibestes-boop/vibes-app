@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { Route } from 'next';
-import { Hash, Flame, TrendingUp, Compass, Users, Sparkles } from 'lucide-react';
+import { Hash, Flame, TrendingUp, Compass, Users, Sparkles, ShoppingBag, ChevronRight } from 'lucide-react';
 import { getTrendingHashtags, getForYouFeed, getSuggestedFollows } from '@/lib/data/feed';
 import { getUser, getProfile } from '@/lib/auth/session';
+import { getShopProducts } from '@/lib/data/shop';
 import { FollowButton } from '@/components/profile/follow-button';
 import { ExplorePostGrid } from '@/components/explore/explore-post-grid';
 import { getT, getLocale } from '@/lib/i18n/server';
@@ -13,11 +14,12 @@ import type { Locale } from '@/lib/i18n/config';
 // -----------------------------------------------------------------------------
 // /explore — Trending Hashtags + People-Discovery + Popular Posts (∞ scroll).
 //
-// Drei Sektionen:
+// Sektionen:
 //  1. Trending Hashtags
 //  2. Accounts entdecken — getSuggestedFollows(12)
-//  3. Populäre Posts — SSR-Seed 12, infinite scroll via ExplorePostGrid
-//     (GET /api/feed/explore?offset=N). v1.w.UI.124.
+//  3. Shop-Strip — top 6 Produkte (v1.w.UI.193, mobile parity)
+//  4. Women-Only Zone Banner (v1.w.UI.168)
+//  5. Populäre Posts — SSR-Seed 12, infinite scroll via ExplorePostGrid
 // -----------------------------------------------------------------------------
 
 export const revalidate = 0; // force-dynamic wegen Auth-abhängiger People-Section
@@ -33,10 +35,11 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function ExplorePage() {
-  const [hashtags, preview, people, viewer, profile, t, locale] = await Promise.all([
+  const [hashtags, preview, people, topProducts, viewer, profile, t, locale] = await Promise.all([
     getTrendingHashtags(24),
     getForYouFeed({ limit: EXPLORE_SEED }),
     getSuggestedFollows(12),
+    getShopProducts({ limit: 6, sort: 'popular' }).catch(() => []),
     getUser(),
     getProfile(),
     getT(),
@@ -164,6 +167,65 @@ export default async function ExplorePage() {
             >
               Alle ansehen →
             </Link>
+          </div>
+        </section>
+      )}
+
+      {/* v1.w.UI.193 — Shop-Strip: top 6 Produkte (mobile parity) */}
+      {topProducts.length > 0 && (
+        <section className="mb-12">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="flex items-center gap-2 text-lg font-semibold">
+              <ShoppingBag className="h-5 w-5 text-brand-gold" />
+              Shop
+            </h2>
+            <Link
+              href={'/shop' as Route}
+              className="flex items-center gap-0.5 text-sm font-medium text-muted-foreground hover:text-foreground"
+            >
+              Alle anzeigen
+              <ChevronRight className="h-4 w-4" />
+            </Link>
+          </div>
+          <div className="flex gap-3 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {topProducts.map((product) => (
+              <Link
+                key={product.id}
+                href={`/shop/${product.id}` as Route}
+                className="group flex w-32 shrink-0 flex-col overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-foreground/20"
+              >
+                {/* Cover */}
+                <div className="relative aspect-square overflow-hidden bg-muted">
+                  {product.cover_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={product.cover_url}
+                      alt={product.title}
+                      className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center">
+                      <ShoppingBag className="h-7 w-7 text-muted-foreground/40" />
+                    </div>
+                  )}
+                  {product.sale_price_coins && (
+                    <span className="absolute left-1.5 top-1.5 rounded bg-red-500 px-1 py-0.5 text-[9px] font-bold text-white">
+                      SALE
+                    </span>
+                  )}
+                </div>
+                {/* Info */}
+                <div className="flex flex-col gap-0.5 p-2">
+                  <p className="line-clamp-2 text-[11px] font-medium leading-tight text-foreground">
+                    {product.title}
+                  </p>
+                  <p className="text-[11px] font-semibold text-brand-gold">
+                    🪙 {(product.sale_price_coins ?? product.price_coins).toLocaleString('de-DE')}
+                  </p>
+                </div>
+              </Link>
+            ))}
           </div>
         </section>
       )}
