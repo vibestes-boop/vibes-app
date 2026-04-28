@@ -20,9 +20,11 @@ import { cn } from '@/lib/utils';
 interface LiveViewerCountProps {
   sessionId: string;
   initialCount: number;
+  /** v1.w.UI.195 — when provided, the pill is rendered as a button that opens the audience modal */
+  onClick?: () => void;
 }
 
-export function LiveViewerCount({ sessionId, initialCount }: LiveViewerCountProps) {
+export function LiveViewerCount({ sessionId, initialCount, onClick }: LiveViewerCountProps) {
   const [count, setCount] = useState(initialCount);
 
   useEffect(() => {
@@ -55,13 +57,23 @@ export function LiveViewerCount({ sessionId, initialCount }: LiveViewerCountProp
     };
   }, [sessionId]);
 
+  const cls = cn(
+    glassSurfaceDense,
+    'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium text-white shadow-elevation-1',
+    onClick && 'cursor-pointer hover:bg-white/20 transition-colors',
+  );
+
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className={cls} aria-label="Zuschauer*innen anzeigen">
+        <Users className="h-3 w-3" aria-hidden="true" />
+        {count.toLocaleString('de-DE')}
+      </button>
+    );
+  }
+
   return (
-    <span
-      className={cn(
-        glassSurfaceDense,
-        'inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-[11px] font-medium text-white shadow-elevation-1',
-      )}
-    >
+    <span className={cls}>
       <Users className="h-3 w-3" aria-hidden="true" />
       {count.toLocaleString('de-DE')}
     </span>

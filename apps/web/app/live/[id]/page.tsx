@@ -22,7 +22,7 @@ import { LiveChatOverlay } from '@/components/live/live-chat-overlay';
 import { LiveEnterClient } from '@/components/live/live-enter-client';
 import { LiveGiftAnimationLayer } from '@/components/live/live-gift-animation-layer';
 import { LiveGiftGoalViewer } from '@/components/live/live-gift-goal-viewer';
-import { LiveViewerCount } from '@/components/live/live-viewer-count';
+import { LiveAudienceEntry } from '@/components/live/live-audience-entry';
 import { LiveSessionEndWatcher } from '@/components/live/live-session-end-watcher';
 import { LiveCoHostWatcher } from '@/components/live/live-cohost-watcher';
 import { LiveGiftLeaderboard } from '@/components/live/live-gift-leaderboard';
@@ -310,10 +310,13 @@ export default async function LiveViewerPage({ params }: PageProps) {
                   <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
                   Live
                 </span>
-                {/* v1.w.UI.141 — realtime viewer count (replaces static SSR span) */}
-                <LiveViewerCount
+                {/* v1.w.UI.195 — tappable viewer count → audience modal */}
+                <LiveAudienceEntry
                   sessionId={id}
                   initialCount={session.viewer_count ?? 0}
+                  hostId={session.host_id}
+                  viewerId={viewerId}
+                  isHost={isHost}
                 />
               </div>
               <LiveHostPill
