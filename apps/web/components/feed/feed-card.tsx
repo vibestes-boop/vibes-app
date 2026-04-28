@@ -6,6 +6,7 @@ import type { Route } from 'next';
 import {
   Heart,
   MessageCircle,
+  MessageCircleOff,
   Bookmark,
   Share2,
   Repeat2,
@@ -980,19 +981,31 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
       {/* Comment — 48px. Toggle-Verhalten (v1.w.UI.11 Phase C Follow-up):
           - Panel geschlossen → öffnet für diesen Post.
           - Panel offen für DIESEN Post → schließt.
-          - Panel offen für einen ANDEREN Post → wechselt das Target. */}
+          - Panel offen für einen ANDEREN Post → wechselt das Target.
+          v1.w.UI.177 — wenn allow_comments=false: Icon wird zum MessageCircleOff,
+          Button bleibt klickbar (öffnet Panel mit Hinweistext) aber das Icon
+          signalisiert visuell dass Kommentare deaktiviert sind. */}
       <ActionButton
         icon={
-          <MessageCircle
-            className={cn('h-7 w-7', isCommentsOpenForThisPost && 'fill-brand-gold text-brand-gold')}
-            aria-hidden="true"
-          />
+          post.allow_comments ? (
+            <MessageCircle
+              className={cn('h-7 w-7', isCommentsOpenForThisPost && 'fill-brand-gold text-brand-gold')}
+              aria-hidden="true"
+            />
+          ) : (
+            <MessageCircleOff
+              className="h-7 w-7 text-muted-foreground/60"
+              aria-hidden="true"
+            />
+          )
         }
-        label={formatCount(post.comment_count)}
+        label={post.allow_comments ? formatCount(post.comment_count) : '—'}
         ariaLabel={
-          isCommentsOpenForThisPost
-            ? 'Kommentare schließen'
-            : `Kommentare öffnen — ${post.comment_count} Kommentare`
+          !post.allow_comments
+            ? 'Kommentare deaktiviert'
+            : isCommentsOpenForThisPost
+              ? 'Kommentare schließen'
+              : `Kommentare öffnen — ${post.comment_count} Kommentare`
         }
         onClick={() => {
           if (isCommentsOpenForThisPost) closeComments();
