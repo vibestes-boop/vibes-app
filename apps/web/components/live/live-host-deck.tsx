@@ -32,7 +32,7 @@ import {
 } from 'lucide-react';
 import type { LiveSessionWithHost, LiveCommentWithAuthor, ActiveLivePollSSR } from '@/lib/data/live';
 import type { SessionGiftRow, ActiveGiftGoal } from '@/lib/data/live-host';
-import { fetchLiveKitToken } from '@/app/actions/live';
+import { fetchLiveKitToken, setLiveSlowMode } from '@/app/actions/live';
 import {
   endLiveSession,
   heartbeatLiveSession,
@@ -163,6 +163,20 @@ export function LiveHostDeck({
   // v1.w.UI.188 — Followers-only chat toggle (optimistic UI)
   const [followersOnlyChat, setFollowersOnlyChat] = useState(session.followers_only_chat ?? false);
   const [, startFollowersToggle] = useTransition();
+
+  // v1.w.UI.198 — Slow-mode: host can set 0/5/10/30/60s between messages.
+  // Mobile parity: set_live_slow_mode RPC button in host right-controls.
+  const [slowModeSecs, setSlowModeSecs] = useState(session.slow_mode_seconds ?? 0);
+  const [, startSlowModeTransition] = useTransition();
+
+  const handleSetSlowMode = (secs: number) => {
+    const prev = slowModeSecs;
+    setSlowModeSecs(secs);
+    startSlowModeTransition(async () => {
+      const res = await setLiveSlowMode(session.id, secs);
+      if (!res.ok) setSlowModeSecs(prev); // rollback on error
+    });
+  };
 
   // Live-Shopping — v1.w.UI.180
   const { pinnedProduct: shopPinnedProduct, pinProduct, unpinProduct } = useLiveShoppingHost(session.id);
@@ -911,8 +925,28 @@ export function LiveHostDeck({
 
         {/* Right-Column — Chat */}
         <aside className="flex min-h-[480px] flex-col border-l bg-card lg:h-full lg:overflow-hidden">
-          <div className="border-b px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Chat
+          {/* v1.w.UI.198 — Chat header with slow-mode toggle */}
+          <div className="flex items-center justify-between border-b px-4 py-2">
+            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Chat</span>
+            <div className="flex items-center gap-1" title="Slow-Mode: Mindestwartzeit zwischen Nachrichten">
+              {([0, 5, 10, 30, 60] as const).map((secs) => (
+                <button
+                  key={secs}
+                  type="button"
+                  onClick={() => handleSetSlowMode(secs)}
+                  disabled={phase !== 'live'}
+                  className={[
+                    'rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors disabled:opacity-40',
+                    slowModeSecs === secs
+                      ? 'bg-orange-500/20 text-orange-500 ring-1 ring-orange-500/40'
+                      : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                  ].join(' ')}
+                  aria-pressed={slowModeSecs === secs}
+                >
+                  {secs === 0 ? 'Off' : `${secs}s`}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="flex-1 overflow-hidden">
             <LiveChat
@@ -922,7 +956,7 @@ export function LiveHostDeck({
               viewerId={hostId}
               isHost={true}
               isModerator={true}
-              slowModeSeconds={session.slow_mode_seconds ?? 0}
+              slowModeSeconds={slowModeSecs}
               ended={phase === 'ended'}
             />
           </div>
