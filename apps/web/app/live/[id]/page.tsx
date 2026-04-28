@@ -249,7 +249,7 @@ export default async function LiveViewerPage({ params }: PageProps) {
            */}
           {!ended && <LiveGiftAnimationLayer sessionId={id} />}
 
-          {/* Top-Bar: Back-Link links, Melden rechts */}
+          {/* Top-Bar: Back-Link links, WOZ-Badge + Melden rechts */}
           <div className="absolute inset-x-3 top-3 flex items-center justify-between">
             <Link
               href={'/live' as Route}
@@ -261,18 +261,32 @@ export default async function LiveViewerPage({ params }: PageProps) {
             >
               <ArrowLeft className="h-4 w-4" />
             </Link>
-            {viewerId && !isHost && (
-              <Link
-                href={`/live/${id}/report` as Route}
-                className={cn(
-                  glassPillStrong,
-                  'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-medium text-white/85 shadow-elevation-1 hover:text-white',
-                )}
-              >
-                <Flag className="h-3 w-3" />
-                Melden
-              </Link>
-            )}
+            <div className="flex items-center gap-2">
+              {/* v1.w.UI.185 — WOZ badge: Host hat "Nur Frauen" aktiviert */}
+              {session.women_only && (
+                <span
+                  className={cn(
+                    glassPillStrong,
+                    'inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] font-semibold text-rose-300 shadow-elevation-1',
+                  )}
+                  title="Dieser Stream ist nur für Frauen"
+                >
+                  ♀ Nur Frauen
+                </span>
+              )}
+              {viewerId && !isHost && (
+                <Link
+                  href={`/live/${id}/report` as Route}
+                  className={cn(
+                    glassPillStrong,
+                    'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-medium text-white/85 shadow-elevation-1 hover:text-white',
+                  )}
+                >
+                  <Flag className="h-3 w-3" />
+                  Melden
+                </Link>
+              )}
+            </div>
           </div>
 
           {/* Top-Left-Stack: Live-Badge + Viewer-Count + Host-Pill + Titel */}
@@ -345,6 +359,7 @@ export default async function LiveViewerPage({ params }: PageProps) {
                 isModerator={isModerator}
                 slowModeSeconds={session.slow_mode_seconds ?? 0}
                 ended={ended}
+                allowComments={session.allow_comments ?? true}
               />
             </div>
           )}
@@ -398,6 +413,7 @@ export default async function LiveViewerPage({ params }: PageProps) {
                   isModerator={isModerator}
                   activePoll={activePoll}
                   sessionStartedAt={session.started_at}
+                  allowGifts={session.allow_gifts ?? true}
                 />
               </div>
             </div>

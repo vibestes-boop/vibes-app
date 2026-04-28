@@ -30,6 +30,8 @@ export interface LiveActionBarProps {
   activePoll?: ActiveLivePollSSR | null;
   /** ISO timestamp of session start — used to compute positionSecs for clip markers (v1.w.UI.140). */
   sessionStartedAt?: string | null;
+  /** v1.w.UI.185 — wenn false: Gift-Button ausblenden (Host hat Geschenke deaktiviert). */
+  allowGifts?: boolean;
 }
 
 const REACTIONS = [
@@ -51,6 +53,7 @@ export function LiveActionBar({
   isModerator = false,
   activePoll: initialActivePoll = null,
   sessionStartedAt = null,
+  allowGifts = true,
 }: LiveActionBarProps) {
   const [giftOpen, setGiftOpen] = useState(false);
   const [pollSheetOpen, setPollSheetOpen] = useState(false);
@@ -131,15 +134,17 @@ export function LiveActionBar({
 
         <div className="h-6 w-px bg-border" />
 
-        {/* Gift-Button */}
-        <button
-          type="button"
-          onClick={() => setGiftOpen(true)}
-          className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-br from-amber-400 to-pink-500 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition-transform hover:scale-105"
-        >
-          <Gift className="h-4 w-4" />
-          Geschenk
-        </button>
+        {/* Gift-Button — v1.w.UI.185: nur rendern wenn allowGifts */}
+        {allowGifts && (
+          <button
+            type="button"
+            onClick={() => setGiftOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-br from-amber-400 to-pink-500 px-3 py-1.5 text-sm font-semibold text-white shadow-sm transition-transform hover:scale-105"
+          >
+            <Gift className="h-4 w-4" />
+            Geschenk
+          </button>
+        )}
 
         {/* Poll-Button — nur für Moderatoren / aktive CoHosts (v1.w.UI.99) */}
         {isModerator && (
