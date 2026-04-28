@@ -71,6 +71,12 @@ jest.mock('@/components/layout/more-menu', () => ({
   MoreMenu: () => <div data-testid="more-menu">more-menu-stub</div>,
 }));
 
+// AdminNavLink (v1.w.UI.215) fetcht is_admin via Supabase-Browser-Client —
+// in jsdom nicht verfügbar. Stub rendert nichts (= Nicht-Admin-Fall).
+jest.mock('@/components/feed/admin-nav-link', () => ({
+  AdminNavLink: () => null,
+}));
+
 describe('FeedSidebar — Layout-Reset (v1.w.UI.10) Struktur', () => {
   const PRIMARY_LABELS = ['Für dich', 'Folge ich', 'Entdecken', 'Live', 'Messages', 'Benachrichtigungen'];
   const SECONDARY_LABELS = ['Shop', 'Pods', 'Creator Studio'];
