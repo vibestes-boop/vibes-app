@@ -62,6 +62,7 @@ import { LiveAudienceModal } from './live-audience-modal';
 import { LiveStickerLayer } from './live-sticker-layer';
 import { LivePlacedProductLayer } from './live-placed-product-layer';
 import { LiveGiftGoalViewer } from './live-gift-goal-viewer';
+import { LiveDuetInviteWatcher } from './live-duet-invite-watcher';
 
 // v1.w.UI.207 — Sticker catalog (matches mobile StickerPicker categories)
 const STICKER_CATALOG = [
@@ -1363,6 +1364,12 @@ export function LiveHostDeck({
         viewerId={hostId}
         isHost={true}
       />
+
+      {/* v1.w.UI.220 — Duet-Invite-Inbox: Host empfängt viewer→host Anfragen.
+          Der Watcher abonniert live_duet_invites mit invitee_id = hostId, was
+          viewer-to-host Invites matcht (Host ist der Entscheider → invitee).
+          Gleiche Komponente wie auf der Viewer-Seite — kein neuer Code nötig. */}
+      <LiveDuetInviteWatcher sessionId={session.id} viewerId={hostId} />
 
       {/* Shortcut-Hinweis */}
       <div className="hidden items-center justify-center border-t bg-muted/40 px-4 py-1 text-[11px] text-muted-foreground lg:flex">
