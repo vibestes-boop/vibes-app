@@ -380,17 +380,51 @@ export default async function ProfilePage({
         className="px-2 py-4 sm:px-3"
       >
         {tab === 'posts' && (
-          <PostGrid
-            posts={posts}
-            emptyTitle={t('profile.emptyPostsTitle')}
-            emptyDescription={
-              isSelf
-                ? t('profile.emptyPostsSelf')
-                : t('profile.emptyPostsOther', { username: profile.username })
-            }
-            fetchMoreUrl={`/api/posts/user/${profile.id}`}
-            initialHasMore={posts.length >= 24}
-          />
+          <>
+            {/* v1.w.UI.212 — Sort bar (server-rendered Link pills, no JS needed).
+                Matches mobile's sort bar: views / likes / newest.
+                Only shown when the profile has posts so it doesn't float above an EmptyState. */}
+            {posts.length > 0 && (
+              <nav aria-label="Sortierung" className="mb-3 flex gap-1.5 px-0.5">
+                {(
+                  [
+                    { key: 'newest', label: '🕐 Neueste' },
+                    { key: 'views',  label: '▶ Views'   },
+                    { key: 'likes',  label: '♥ Likes'   },
+                  ] as { key: ProfileSortKey; label: string }[]
+                ).map(({ key, label }) => (
+                  <Link
+                    key={key}
+                    href={`/u/${profile.username}?sort=${key}` as import('next').Route}
+                    className={[
+                      'rounded-full px-3 py-1 text-xs font-medium transition-colors',
+                      sort === key
+                        ? 'bg-foreground text-background'
+                        : 'bg-muted text-muted-foreground hover:bg-muted/80',
+                    ].join(' ')}
+                    aria-current={sort === key ? 'page' : undefined}
+                  >
+                    {label}
+                  </Link>
+                ))}
+              </nav>
+            )}
+            <PostGrid
+              posts={posts}
+              emptyTitle={t('profile.emptyPostsTitle')}
+              emptyDescription={
+                isSelf
+                  ? t('profile.emptyPostsSelf')
+                  : t('profile.emptyPostsOther', { username: profile.username })
+              }
+              fetchMoreUrl={
+                sort === 'newest'
+                  ? `/api/posts/user/${profile.id}`
+                  : `/api/posts/user/${profile.id}?sort=${sort}`
+              }
+              initialHasMore={posts.length >= 24}
+            />
+          </>
         )}
 
         {tab === 'likes' && (
