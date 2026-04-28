@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { Route } from 'next';
 import { notFound } from 'next/navigation';
-import { Hash, Users, Trophy, Info, Clock3 } from 'lucide-react';
+import { Hash, Users, Trophy, Info, Clock3, Newspaper } from 'lucide-react';
 
 import { getUser } from '@/lib/auth/session';
 import {
@@ -11,9 +11,11 @@ import {
   getGuildMemberCount,
   getGuildMembers,
   getMyGuildId,
+  getGuildFeedPage,
 } from '@/lib/data/guilds';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { SwitchGuildButton } from '@/components/guilds/switch-guild-button';
+import { GuildFeedSection } from '@/components/guilds/guild-feed-section';
 
 // -----------------------------------------------------------------------------
 // /g/[id] — Pod-Detail-Seite.
@@ -79,16 +81,51 @@ export default async function GuildDetailPage({ params }: Props) {
   const [user, guild] = await Promise.all([getUser(), getGuildById(id)]);
   if (!guild) notFound();
 
-  const [leaderboard, memberCount, members, myGuildId] = await Promise.all([
+  const [leaderboard, memberCount, members, myGuildId, feedPage] = await Promise.all([
     getGuildLeaderboard(id),
     getGuildMemberCount(id),
     getGuildMembers(id, 48),
     getMyGuildId(),
+    getGuildFeedPage(id, null, 12),
   ]);
 
   const isMember = myGuildId === id;
 
+  // ── JSON-LD: Organization schema ──────────────────────────────────────────
+  // Allows Google to surface the Pod as an Organization in Knowledge Panel /
+  // rich results. memberCount exposed via interactionStatistic (RegisterAction
+  // = "joined" is the closest schema.org approximation for community members).
+  // v1.w.UI.134 — JSON-LD structured data batch.
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://serlo.app';
+  const orgJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: guild.name,
+    ...(guild.description ? { description: guild.description } : {}),
+    url: `${siteUrl}/g/${guild.id}`,
+    ...(memberCount > 0
+      ? {
+          interactionStatistic: {
+            '@type': 'InteractionCounter',
+            interactionType: 'https://schema.org/RegisterAction',
+            userInteractionCount: memberCount,
+          },
+        }
+      : {}),
+    ...(guild.vibe_tags.length > 0 ? { keywords: guild.vibe_tags.join(', ') } : {}),
+    memberOf: {
+      '@type': 'Organization',
+      name: 'Serlo',
+      url: siteUrl,
+    },
+  };
+
   return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }}
+      />
     <div className="mx-auto w-full max-w-[1200px] px-4 pb-24 pt-6 lg:px-6">
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <header className="mb-8 flex flex-col gap-4 rounded-2xl border border-border bg-card p-6 md:flex-row md:items-start md:justify-between">
@@ -135,8 +172,24 @@ export default async function GuildDetailPage({ params }: Props) {
       </header>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-        {/* ── Top-Posts ──────────────────────────────────────────────── */}
-        <section className="min-w-0">
+        {/* ── Left column ─────────────────────────────────────────────── */}
+        <section className="min-w-0 space-y-10">
+
+          {/* ── Neueste Posts ──────────────────────────────────────── */}
+          <div>
+            <div className="mb-4 flex items-center gap-2">
+              <Newspaper className="h-5 w-5 text-muted-foreground" />
+              <h2 className="text-xl font-semibold">Neueste Posts</h2>
+            </div>
+            <GuildFeedSection
+              guildId={id}
+              initialPosts={feedPage.posts}
+              initialNextCursor={feedPage.nextCursor}
+            />
+          </div>
+
+          {/* ── Top-Posts ──────────────────────────────────────────── */}
+          <div>
           <div className="mb-4 flex items-center gap-2">
             <Trophy className="h-5 w-5 text-brand-gold" />
             <h2 className="text-xl font-semibold">Top-Posts der letzten 30 Tage</h2>
@@ -243,6 +296,7 @@ export default async function GuildDetailPage({ params }: Props) {
               </p>
             </div>
           </div>
+          </div>{/* /Top-Posts div */}
         </section>
 
         {/* ── Right-Sidebar: Members-Grid ─────────────────────────── */}
@@ -309,5 +363,6 @@ export default async function GuildDetailPage({ params }: Props) {
         </aside>
       </div>
     </div>
+    </>
   );
 }

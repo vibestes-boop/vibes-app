@@ -1,12 +1,21 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import type { Route } from 'next';
-import { ArrowRight, Gamepad2, ShoppingBag, Radio, Sparkles, Compass } from 'lucide-react';
+import { ArrowRight, Gamepad2, ShoppingBag, Radio, Sparkles, Compass, Users, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import type { LiveSessionWithHost } from '@/lib/data/live';
+import type { FeedPost } from '@/lib/data/feed';
+import { ExploreVideoCard } from '@/components/explore/explore-video-card';
 
 // -----------------------------------------------------------------------------
 // Landing-Page für ausgeloggte Besucher.
 // Server-Component, rein markup-lastig; die Daten kommen via Props.
+//
+// v1.w.UI.102: Zwei dynamische Sections hinzugefügt:
+//  • "Jetzt live" — bis zu 4 aktive Live-Sessions mit Mini-Cards
+//    (nur gerendert wenn Sessions vorhanden; wirbt für das Live-Feature)
+//  • "Trending" — 6 Posts als horizontaler ExploreVideoCard-Strip
 // -----------------------------------------------------------------------------
 
 export type FeaturedCreator = {
@@ -16,14 +25,22 @@ export type FeaturedCreator = {
   follower_count: number;
 };
 
-export function LandingPage({ featured }: { featured: FeaturedCreator[] }) {
+interface LandingPageProps {
+  featured: FeaturedCreator[];
+  liveNow: LiveSessionWithHost[];
+  trendingPosts: FeedPost[];
+}
+
+export function LandingPage({ featured, liveNow, trendingPosts }: LandingPageProps) {
   return (
     <main className="min-h-dvh bg-background">
       {/* Hero */}
       <section className="container mx-auto flex flex-col items-center py-20 text-center lg:py-32">
         <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-sm text-muted-foreground">
           <Sparkles className="h-3.5 w-3.5 text-brand-gold" />
-          Web-Beta · Phase 3 Feed
+          {liveNow.length > 0
+            ? `${liveNow.length} Stream${liveNow.length === 1 ? '' : 's'} jetzt live`
+            : 'Web-Beta · Live & Shop'}
         </div>
 
         <h1 className="max-w-3xl text-5xl font-bold tracking-tight md:text-7xl">
@@ -50,6 +67,71 @@ export function LandingPage({ featured }: { featured: FeaturedCreator[] }) {
         </div>
       </section>
 
+      {/* Jetzt live — nur wenn Streams aktiv sind */}
+      {liveNow.length > 0 && (
+        <section className="container mx-auto pb-16">
+          <div className="mb-6 flex items-center justify-between">
+            <h2 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
+              <span className="relative flex h-3 w-3">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
+                <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500" />
+              </span>
+              Jetzt live
+            </h2>
+            <Link
+              href={'/live' as Route}
+              className="text-sm font-medium text-primary hover:underline underline-offset-4"
+            >
+              Alle Streams →
+            </Link>
+          </div>
+          <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {liveNow.map((s) => (
+              <LiveMiniCard key={s.id} session={s} />
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* Trending Posts */}
+      {trendingPosts.length > 0 && (
+        <section className="container mx-auto pb-16">
+          <div className="mb-6 flex items-center justify-between">
+            <h2 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
+              <Eye className="h-5 w-5 text-brand-gold" />
+              Trending
+            </h2>
+            <Link
+              href={'/explore' as Route}
+              className="text-sm font-medium text-primary hover:underline underline-offset-4"
+            >
+              Mehr entdecken →
+            </Link>
+          </div>
+          <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+            {trendingPosts.map((p) => {
+              const fallback = (p.author.display_name ?? p.author.username ?? '?')
+                .slice(0, 1)
+                .toUpperCase();
+              return (
+                <li key={p.id}>
+                  <ExploreVideoCard
+                    id={p.id}
+                    videoUrl={p.video_url}
+                    thumbnailUrl={p.thumbnail_url}
+                    caption={p.caption}
+                    authorUsername={p.author.username}
+                    viewCount={p.view_count ?? 0}
+                    fallbackInitial={fallback}
+                    womenOnly={p.women_only}
+                  />
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      )}
+
       {/* Value-Props */}
       <section className="container mx-auto grid gap-6 pb-20 md:grid-cols-3">
         <ValueCard
@@ -72,7 +154,7 @@ export function LandingPage({ featured }: { featured: FeaturedCreator[] }) {
         />
       </section>
 
-      {/* Discovery-Strip */}
+      {/* Creator Discovery-Strip */}
       {featured.length > 0 && (
         <section className="container mx-auto pb-16">
           <div className="mb-6 flex items-center justify-between">
@@ -126,6 +208,76 @@ export function LandingPage({ featured }: { featured: FeaturedCreator[] }) {
   );
 }
 
+// -----------------------------------------------------------------------------
+// LiveMiniCard — kompakte Session-Karte für die Landing-"Jetzt live"-Section.
+// Kein Client-State, kein Realtime — reine SSR-Snapshot-Ansicht.
+// -----------------------------------------------------------------------------
+function LiveMiniCard({ session }: { session: LiveSessionWithHost }) {
+  const hostName = session.host?.display_name ?? session.host?.username ?? 'Unbekannt';
+  const viewerCount = session.viewer_count ?? 0;
+
+  return (
+    <li>
+      <Link
+        href={`/live/${session.id}` as Route}
+        className="group relative flex flex-col overflow-hidden rounded-xl border bg-card transition-colors hover:bg-muted/50"
+      >
+        {/* Thumbnail */}
+        <div className="relative aspect-video w-full overflow-hidden bg-muted">
+          {session.thumbnail_url ? (
+            <Image
+              src={session.thumbnail_url}
+              alt={session.title ?? 'Live Stream'}
+              fill
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+              className="object-cover transition-transform duration-300 group-hover:scale-105"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center">
+              <Radio className="h-8 w-8 text-muted-foreground/40" />
+            </div>
+          )}
+          {/* Live-Badge */}
+          <div className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-md bg-red-600 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white shadow">
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
+            Live
+          </div>
+          {/* Viewer-Count */}
+          <div className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-md bg-black/70 px-1.5 py-0.5 text-[11px] font-medium text-white backdrop-blur">
+            <Users className="h-2.5 w-2.5" />
+            {viewerCount.toLocaleString('de-DE')}
+          </div>
+        </div>
+        {/* Info */}
+        <div className="flex items-center gap-2 p-2.5">
+          <div className="relative h-8 w-8 flex-shrink-0 overflow-hidden rounded-full bg-muted">
+            {session.host?.avatar_url ? (
+              <Image
+                src={session.host.avatar_url}
+                alt={hostName}
+                fill
+                sizes="32px"
+                className="object-cover"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-primary/10 text-xs font-bold text-primary">
+                {hostName.slice(0, 1).toUpperCase()}
+              </div>
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-semibold">{session.title ?? 'Live-Stream'}</p>
+            <p className="truncate text-[11px] text-muted-foreground">{hostName}</p>
+          </div>
+        </div>
+      </Link>
+    </li>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// Helpers
+// -----------------------------------------------------------------------------
 function formatCount(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace('.0', '')}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace('.0', '')}K`;

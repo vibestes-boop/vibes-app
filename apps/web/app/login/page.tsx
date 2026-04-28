@@ -64,6 +64,15 @@ export default async function LoginPage({
         <OAuthButtons next={next} />
 
         <p className="text-center text-sm text-muted-foreground">
+          <Link
+            href="/auth/forgot-password"
+            className="font-medium text-foreground underline underline-offset-4 hover:no-underline"
+          >
+            Passwort vergessen?
+          </Link>
+        </p>
+
+        <p className="text-center text-sm text-muted-foreground">
           {t('auth.noAccount')}{' '}
           <Link
             href="/signup"

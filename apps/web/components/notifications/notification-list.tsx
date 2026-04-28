@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Route } from 'next';
@@ -10,14 +10,22 @@ import {
   Heart,
   MessageCircle,
   UserPlus,
+  UserCheck,
   AtSign,
   Gift,
   Radio,
   Users,
   Bell,
+  ShoppingBag,
+  Check,
+  X,
+  Repeat2,
+  Camera,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Skeleton } from '@/components/ui/skeleton';
 import { markAllNotificationsRead } from '@/app/actions/notifications';
+import { respondFollowRequest } from '@/app/actions/profile';
 import type { Notification, NotificationType } from '@/lib/data/notifications';
 import { createClient } from '@/lib/supabase/client';
 
@@ -45,8 +53,15 @@ const TYPE_META: Record<NotificationType, NotifMeta> = {
   mention:     { icon: AtSign,        color: 'text-violet-500', bg: 'bg-violet-500/10' },
   dm:          { icon: MessageCircle, color: 'text-blue-400',   bg: 'bg-blue-400/10' },
   gift:        { icon: Gift,          color: 'text-amber-500',  bg: 'bg-amber-500/10' },
-  live:        { icon: Radio,         color: 'text-rose-500',   bg: 'bg-rose-500/10' },
-  live_invite: { icon: Users,         color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
+  live:                    { icon: Radio,     color: 'text-rose-500',    bg: 'bg-rose-500/10' },
+  live_invite:             { icon: Users,     color: 'text-indigo-500',  bg: 'bg-indigo-500/10' },
+  follow_request:          { icon: UserPlus,     color: 'text-amber-500',   bg: 'bg-amber-500/10' },
+  follow_request_accepted: { icon: UserCheck,    color: 'text-green-500',   bg: 'bg-green-500/10' },
+  new_order:               { icon: ShoppingBag,  color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+  comment_like:            { icon: Heart,        color: 'text-pink-400',    bg: 'bg-pink-400/10' },
+  repost:                  { icon: Repeat2,      color: 'text-teal-500',    bg: 'bg-teal-500/10' },
+  story_reaction:          { icon: Camera,       color: 'text-fuchsia-500', bg: 'bg-fuchsia-500/10' },
+  guild:                   { icon: Users,        color: 'text-sky-500',     bg: 'bg-sky-500/10' },
 };
 
 // ── Notification-Text pro Typ ─────────────────────────────────────────────────
@@ -76,6 +91,22 @@ function notifText(n: Notification): string {
       return `${name} ist jetzt live.`;
     case 'live_invite':
       return `${name} hat dich zum Duett eingeladen.`;
+    case 'follow_request':
+      return `${name} möchte dir folgen.`;
+    case 'follow_request_accepted':
+      return `${name} hat deine Follower-Anfrage angenommen.`;
+    case 'new_order':
+      return n.product_name
+        ? `${name} hat „${n.product_name}" gekauft.`
+        : `${name} hat ein Produkt bei dir gekauft.`;
+    case 'comment_like':
+      return `${name} hat deinen Kommentar geliked.`;
+    case 'repost':
+      return `${name} hat deinen Post geteilt.`;
+    case 'story_reaction':
+      return `${name} hat auf deine Story reagiert.`;
+    case 'guild':
+      return `Neue Aktivität in deiner Guild.`;
     default:
       return `Neue Aktivität von ${name}.`;
   }
@@ -99,6 +130,23 @@ function notifHref(n: Notification): Route {
     case 'live':
     case 'live_invite':
       return n.session_id ? (`/live/${n.session_id}` as Route) : ('/' as Route);
+    case 'follow_request':
+    case 'follow_request_accepted':
+      return n.sender?.username
+        ? (`/u/${n.sender.username}` as Route)
+        : ('/' as Route);
+    case 'new_order':
+      return '/studio/orders?role=seller' as Route;
+    case 'comment_like':
+      return n.post_id ? (`/p/${n.post_id}` as Route) : ('/' as Route);
+    case 'repost':
+      return n.post_id ? (`/p/${n.post_id}` as Route) : ('/' as Route);
+    case 'story_reaction':
+      return n.sender?.username
+        ? (`/u/${n.sender.username}` as Route)
+        : ('/' as Route);
+    case 'guild':
+      return '/guilds' as Route;
     default:
       return '/' as Route;
   }
@@ -132,22 +180,104 @@ function initials(n: Notification['sender']): string {
 
 // ── Hauptkomponente ───────────────────────────────────────────────────────────
 
+const LOAD_MORE_LIMIT = 20;
+const INITIAL_LIMIT = 40; // muss mit getNotifications() .limit() übereinstimmen
+
 export function NotificationList({
-  notifications,
+  notifications: initialNotifications,
   viewerId,
+  initialHasMore,
 }: {
   notifications: Notification[];
   /** Supabase-UUID des eingeloggten Users. Wird für Realtime-Subscription benötigt. */
   viewerId: string | null;
+  /** True wenn der Server genau `INITIAL_LIMIT` Notifications geliefert hat — könnte noch mehr geben. */
+  initialHasMore?: boolean;
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
-  // channelRef verhindert doppelte Subscriptions in React Strict-Mode-Mounts.
   const channelRef = useRef<ReturnType<ReturnType<typeof createClient>['channel']> | null>(null);
+
+  // ── Infinite-scroll state ─────────────────────────────────────────────────
+  const [items, setItems] = useState<Notification[]>(initialNotifications);
+  const [hasMore, setHasMore] = useState(initialHasMore ?? false);
+  const [isFetching, setIsFetching] = useState(false);
+  const fetchedOffsetRef = useRef(initialNotifications.length); // guard StrictMode double-fetch
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  // ── Follow-Request inline Accept/Decline (v1.w.UI.152) ───────────────────
+  // respondingIds: notification IDs currently being processed (button spinner).
+  // dismissedIds:  notification IDs to hide optimistically after acting.
+  const [respondingIds, setRespondingIds] = useState<Set<string>>(new Set());
+  const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
+
+  const handleRespondRequest = useCallback(async (
+    notifId: string,
+    senderId: string,
+    accept: boolean,
+  ) => {
+    setRespondingIds((prev) => new Set(prev).add(notifId));
+    try {
+      const res = await respondFollowRequest(senderId, accept);
+      if (res.ok) {
+        // Optimistically hide the notification row
+        setDismissedIds((prev) => new Set(prev).add(notifId));
+      }
+    } finally {
+      setRespondingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(notifId);
+        return next;
+      });
+    }
+  }, []);
+
+  const loadMore = useCallback(async () => {
+    if (isFetching || !hasMore) return;
+    const offset = fetchedOffsetRef.current;
+    if (fetchedOffsetRef.current !== items.length) return; // prevent double-fire
+    setIsFetching(true);
+    try {
+      const res = await fetch(
+        `/api/notifications?offset=${offset}&limit=${LOAD_MORE_LIMIT}`,
+      );
+      if (!res.ok) return;
+      const next = (await res.json()) as Notification[];
+      if (next.length === 0) {
+        setHasMore(false);
+      } else {
+        const seen = new Set(items.map((n) => n.id));
+        const fresh = next.filter((n) => !seen.has(n.id));
+        setItems((prev) => [...prev, ...fresh]);
+        fetchedOffsetRef.current = offset + next.length;
+        if (next.length < LOAD_MORE_LIMIT) setHasMore(false);
+      }
+    } catch {
+      // silent
+    } finally {
+      setIsFetching(false);
+    }
+  }, [isFetching, hasMore, items]);
+
+  // ── IntersectionObserver für Infinite Scroll ─────────────────────────────
+  useEffect(() => {
+    if (!hasMore) return;
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) loadMore();
+      },
+      { rootMargin: '300px' },
+    );
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [hasMore, loadMore]);
 
   // Beim Mount alle als gelesen markieren — einmalig, fire-and-forget.
   useEffect(() => {
-    const hasUnread = notifications.some((n) => !n.read);
+    const hasUnread = items.some((n) => !n.read);
     if (hasUnread) {
       markAllNotificationsRead().catch(() => {
         // silent — Badge wird spätestens beim nächsten Navigation-Render aktuell
@@ -200,7 +330,7 @@ export function NotificationList({
     };
   }, [viewerId, router, queryClient]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (notifications.length === 0) {
+  if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-20 text-center text-muted-foreground">
         <Bell className="h-10 w-10 opacity-30" />
@@ -213,11 +343,17 @@ export function NotificationList({
   }
 
   return (
+    <>
     <ul className="flex flex-col divide-y divide-border/50">
-      {notifications.map((n) => {
+      {items.map((n) => {
+        // Optimistically hide acted-upon follow_request rows.
+        if (dismissedIds.has(n.id)) return null;
+
         const meta = TYPE_META[n.type] ?? TYPE_META.like;
         const Icon = meta.icon;
         const href = notifHref(n);
+        const isFollowRequest = n.type === 'follow_request';
+        const isResponding = respondingIds.has(n.id);
 
         return (
           <li key={n.id}>
@@ -269,14 +405,64 @@ export function NotificationList({
                 </p>
               </div>
 
-              {/* Unread-Dot */}
-              {!n.read && (
-                <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />
+              {/* Follow-Request Accept / Decline (v1.w.UI.152) */}
+              {isFollowRequest && n.sender?.id ? (
+                <div className="ml-1 flex shrink-0 flex-col gap-1.5">
+                  <button
+                    type="button"
+                    aria-label="Anfrage annehmen"
+                    disabled={isResponding}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      void handleRespondRequest(n.id, n.sender!.id, true);
+                    }}
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-500 transition-colors hover:bg-emerald-500/20 disabled:opacity-50"
+                  >
+                    <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="Anfrage ablehnen"
+                    disabled={isResponding}
+                    onClick={(e) => {
+                      e.preventDefault();
+                      void handleRespondRequest(n.id, n.sender!.id, false);
+                    }}
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-red-500/30 bg-red-500/10 text-red-500 transition-colors hover:bg-red-500/20 disabled:opacity-50"
+                  >
+                    <X className="h-3.5 w-3.5" strokeWidth={2.5} />
+                  </button>
+                </div>
+              ) : (
+                /* Unread-Dot (für nicht-follow_request Rows) */
+                !n.read && (
+                  <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                )
               )}
             </Link>
           </li>
         );
       })}
     </ul>
+
+    {/* Sentinel + loading indicator */}
+    {hasMore && (
+      <div ref={sentinelRef} className="flex justify-center py-4">
+        {isFetching && (
+          <div className="space-y-3 w-full">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="flex items-start gap-3 px-2 py-3">
+                <Skeleton className="h-11 w-11 rounded-full shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <Skeleton className="h-4 w-3/4" />
+                  <Skeleton className="h-3 w-1/4" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    )}
+    </>
   );
 }

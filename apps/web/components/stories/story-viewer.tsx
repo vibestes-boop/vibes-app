@@ -5,12 +5,19 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { Route } from 'next';
 import Image from 'next/image';
-import { ChevronLeft, ChevronRight, Pause, Play, Trash2, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, MessageCircle, Pause, Play, Send, Trash2, X } from 'lucide-react';
 
 import type { StoryGroup, StoryItem } from '@/lib/data/stories';
-import { deleteStory, markStoryViewed } from '@/app/actions/stories';
+import { addStoryComment, deleteStory, markStoryViewed } from '@/app/actions/stories';
+import { getOrCreateConversation, sendDirectMessage } from '@/app/actions/messages';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
+
+// Reply-Modi: DM sendet als Direktnachricht (story_media_url Referenz),
+// public fügt einen öffentlichen Kommentar zur Story hinzu.
+type ReplyMode = 'dm' | 'public';
+
+const EMOJI_REACTIONS = ['😍', '😂', '😮', '😇', '❤️', '👏', '🔥', '🎉'];
 
 // -----------------------------------------------------------------------------
 // <StoryViewer /> — Fullscreen Story-Viewer mit Timer-Progress, Tap-to-advance,
@@ -53,6 +60,14 @@ export function StoryViewer({
   const [progress, setProgress] = useState(0); // 0..1 für aktive Story
   const [, startTransition] = useTransition();
 
+  // ── Reply State ──
+  const [replyText, setReplyText] = useState('');
+  const [replyMode, setReplyMode] = useState<ReplyMode>('dm');
+  const [inputFocused, setInputFocused] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [sentFeedback, setSentFeedback] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
   const active: StoryItem | undefined = group.stories[activeIdx];
   const isOwn = group.userId === viewerUserId;
 
@@ -91,12 +106,16 @@ export function StoryViewer({
     startedAtRef.current = null;
     setProgress(0);
     setPaused(false);
+    setReplyText('');
+    setSentFeedback(null);
   }, [activeIdx, group.userId]);
 
-  // ── Timer-Loop ──
+  // ── Timer-Loop (pausiert auch wenn Input fokussiert) ──
+  const effectivePaused = paused || inputFocused;
+
   useEffect(() => {
     if (!active) return;
-    if (paused) {
+    if (effectivePaused) {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       // akkumulierte Zeit updaten
       if (startedAtRef.current != null) {
@@ -136,7 +155,7 @@ export function StoryViewer({
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paused, activeIdx, group.userId, storyDurationMs, active?.id]);
+  }, [effectivePaused, activeIdx, group.userId, storyDurationMs, active?.id]);
 
   // ── Keyboard-Shortcuts ──
   useEffect(() => {
@@ -153,6 +172,40 @@ export function StoryViewer({
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeIdx, prevUserId, nextUserId]);
+
+  // ── Reply: DM oder öffentlicher Kommentar ──
+  const handleSendReply = async (textOverride?: string) => {
+    const text = (textOverride ?? replyText).trim();
+    const isEmoji = !!textOverride; // Emoji-Quick-React ist immer ein Override
+    if (!text || sending || !active) return;
+    setSending(true);
+    try {
+      if (replyMode === 'dm' || isEmoji) {
+        // DM-Flow: Conversation holen/erstellen, dann Story-Thumbnail als Referenz senden
+        const convRes = await getOrCreateConversation(group.userId);
+        if (!convRes.ok) { window.alert(convRes.error); return; }
+        await sendDirectMessage({
+          conversationId: convRes.data.id,
+          content: text,
+          storyMediaUrl: active.media_url,
+        });
+      } else {
+        // Öffentlicher Kommentar
+        const res = await addStoryComment(active.id, text, isEmoji);
+        if (!res.ok) { window.alert(res.error); return; }
+      }
+      if (!textOverride) setReplyText('');
+      setSentFeedback(isEmoji ? '✓' : replyMode === 'dm' ? '✉️ Gesendet' : '💬 Kommentiert');
+      setTimeout(() => setSentFeedback(null), 2000);
+      inputRef.current?.blur();
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleEmojiReact = (emoji: string) => {
+    void handleSendReply(emoji);
+  };
 
   // ── Delete (nur für eigene Stories) ──
   const handleDelete = () => {
@@ -227,10 +280,10 @@ export function StoryViewer({
           <button
             type="button"
             onClick={() => setPaused((p) => !p)}
-            aria-label={paused ? 'Weiter' : 'Pausieren'}
+            aria-label={effectivePaused ? 'Weiter' : 'Pausieren'}
             className="flex h-9 w-9 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm"
           >
-            {paused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
+            {effectivePaused ? <Play className="h-4 w-4" /> : <Pause className="h-4 w-4" />}
           </button>
           {isOwn && (
             <button
@@ -292,19 +345,106 @@ export function StoryViewer({
             </div>
           )}
 
-          {/* Tap-zones */}
+          {/* Tap-zones (nur bis zur Reply-Bar) */}
           <button
             type="button"
             onClick={gotoPrev}
             aria-label="Vorherige Story"
-            className="absolute inset-y-0 left-0 w-1/3 focus:outline-none"
+            className="absolute inset-x-0 left-0 w-1/3 focus:outline-none"
+            style={{ top: 0, bottom: isOwn ? 0 : '72px' }}
           />
           <button
             type="button"
             onClick={gotoNext}
             aria-label="Nächste Story"
-            className="absolute inset-y-0 right-0 w-1/3 focus:outline-none"
+            className="absolute inset-x-0 right-0 w-1/3 focus:outline-none"
+            style={{ top: 0, bottom: isOwn ? 0 : '72px' }}
           />
+
+          {/* ── Reply Bar (nur für fremde Stories) ── */}
+          {!isOwn && (
+            <div className="absolute bottom-0 left-0 right-0 z-10">
+              {/* Emoji Quick-React Row — erscheint bei Fokus */}
+              {inputFocused && (
+                <div className="flex justify-center gap-2 px-3 pb-1">
+                  {EMOJI_REACTIONS.map((em) => (
+                    <button
+                      key={em}
+                      type="button"
+                      onClick={() => handleEmojiReact(em)}
+                      className="flex h-9 w-9 items-center justify-center rounded-full bg-black/40 text-lg backdrop-blur-sm transition-transform hover:scale-125 active:scale-110"
+                    >
+                      {em}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Sent-Feedback Toast */}
+              {sentFeedback && (
+                <div className="mb-1 flex justify-center">
+                  <span className="rounded-full bg-white/20 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm">
+                    {sentFeedback}
+                  </span>
+                </div>
+              )}
+
+              {/* Input Row */}
+              <div className="flex items-center gap-2 px-3 pb-3">
+                {/* DM / Public Toggle */}
+                <button
+                  type="button"
+                  onClick={() => setReplyMode((m) => m === 'dm' ? 'public' : 'dm')}
+                  title={replyMode === 'dm' ? 'DM-Modus — wechseln zu Öffentlich' : 'Öffentlich-Modus — wechseln zu DM'}
+                  className={cn(
+                    'flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full backdrop-blur-sm text-base transition-colors',
+                    replyMode === 'dm'
+                      ? 'bg-white/20 text-white'
+                      : 'bg-white/10 text-white/70',
+                  )}
+                >
+                  {replyMode === 'dm' ? '✉️' : <MessageCircle className="h-4 w-4" />}
+                </button>
+
+                {/* Text Input */}
+                <div className="relative flex-1">
+                  <input
+                    ref={inputRef}
+                    type="text"
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    onFocus={() => setInputFocused(true)}
+                    onBlur={() => setTimeout(() => setInputFocused(false), 150)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        void handleSendReply();
+                      }
+                    }}
+                    placeholder={
+                      replyMode === 'dm'
+                        ? `DM an @${group.username ?? '?'}…`
+                        : 'Öffentlich kommentieren…'
+                    }
+                    disabled={sending}
+                    className="w-full rounded-full border border-white/30 bg-black/50 px-4 py-2 text-sm text-white placeholder-white/45 backdrop-blur-sm outline-none focus:border-white/60 disabled:opacity-50"
+                  />
+                </div>
+
+                {/* Send Button (nur wenn Text vorhanden) */}
+                {replyText.trim().length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => void handleSendReply()}
+                    disabled={sending}
+                    className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-white/20 text-white backdrop-blur-sm transition-colors hover:bg-white/30 disabled:opacity-50"
+                  >
+                    <Send className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Desktop Prev/Next außerhalb der Canvas */}

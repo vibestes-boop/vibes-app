@@ -15,6 +15,12 @@ export interface LiveSession {
   updated_at: string;
   moderation_enabled: boolean;
   moderation_words: string[] | null;
+  // v1.w.UI.185 — Host-set session flags (parity with mobile v1.w.UI.184)
+  allow_comments: boolean;
+  allow_gifts: boolean;
+  women_only: boolean;
+  // v1.w.UI.188 — Followers-only chat (parity with mobile toggle_followers_only_chat)
+  followers_only_chat: boolean;
 }
 
 export interface LiveComment {

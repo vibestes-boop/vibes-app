@@ -1,14 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { Bookmark, BookmarkCheck } from 'lucide-react';
+import { Bookmark, BookmarkCheck, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { LikeButton } from '@/components/feed/like-button';
 import { useTogglePostLike, useTogglePostSave } from '@/hooks/use-engagement';
 import { cn } from '@/lib/utils';
 
 // -----------------------------------------------------------------------------
-// PostActionsBar — Like + Bookmark als Client-Island im Post-Detail.
+// PostActionsBar — Like + Bookmark + Download als Client-Island im Post-Detail.
 //
 // Unterschied zum Feed-Rail-LikeButton: hier horizontal statt vertikal,
 // und mit Label-Text statt Count unterhalb. Renutzt aber dieselbe
@@ -16,6 +16,9 @@ import { cn } from '@/lib/utils';
 //
 // isAuthenticated-Guard: Wenn nicht eingeloggt, zeigt Like-Button ein
 // Toast statt die Mutation aufzurufen.
+//
+// v1.w.UI.119: Download-Button — sichtbar wenn `allowDownload && videoUrl`.
+// Nutzt <a download> auf die öffentliche R2-URL.
 // -----------------------------------------------------------------------------
 
 function formatCount(n: number): string {
@@ -30,12 +33,16 @@ export function PostActionsBar({
   initialSaved,
   likeCount: initialLikeCount,
   isAuthenticated,
+  videoUrl,
+  allowDownload,
 }: {
   postId: string;
   initialLiked: boolean;
   initialSaved: boolean;
   likeCount: number;
   isAuthenticated: boolean;
+  videoUrl?: string;
+  allowDownload?: boolean;
 }) {
   const [liked, setLiked] = useState(initialLiked);
   const [saved, setSaved] = useState(initialSaved);
@@ -114,6 +121,24 @@ export function PostActionsBar({
           {saved ? 'Gespeichert' : 'Speichern'}
         </span>
       </button>
+
+      {/* Download — nur wenn Autor es erlaubt hat und URL vorliegt */}
+      {allowDownload && videoUrl && (
+        <a
+          href={videoUrl}
+          download
+          aria-label="Video herunterladen"
+          className={cn(
+            'flex flex-col items-center gap-1 rounded-md outline-none transition-opacity',
+            'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+          )}
+        >
+          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-foreground/10 transition-colors hover:bg-foreground/20">
+            <Download className="h-5 w-5 text-foreground" />
+          </span>
+          <span className="text-xs font-semibold text-foreground/70">Download</span>
+        </a>
+      )}
     </div>
   );
 }

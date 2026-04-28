@@ -239,6 +239,59 @@ export const getStoryGroupForUser = cache(
   },
 );
 
+// ─── Story Viewers (for author) ────────────────────────────────────────────
+
+// v1.w.UI.178 — Story-Author sieht wer seine Story angeschaut hat (wie in
+// Native-App: untere Leiste mit Avataren + Anzahl). Nur der Autor selbst
+// kann diese Liste abrufen — RLS auf story_views erlaubt SELECT nur wenn
+// auth.uid() === story.user_id ODER auth.uid() === story_views.user_id.
+// Wir fetchen als logged-in Supabase-Client, also greift Row-Level Security.
+
+export interface StoryViewer {
+  user_id: string;
+  username: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+  viewed_at: string;
+}
+
+export const getStoryViewers = cache(
+  async (storyId: string, limit = 50): Promise<StoryViewer[]> => {
+    const supabase = await createClient();
+
+    const { data } = await supabase
+      .from('story_views')
+      .select(
+        'user_id, viewed_at, viewer:profiles!story_views_user_id_fkey ( username, display_name, avatar_url )',
+      )
+      .eq('story_id', storyId)
+      .order('viewed_at', { ascending: false })
+      .limit(limit);
+
+    if (!data?.length) return [];
+
+    return (
+      data as Array<{
+        user_id: string;
+        viewed_at: string;
+        viewer:
+          | { username: string | null; display_name: string | null; avatar_url: string | null }
+          | Array<{ username: string | null; display_name: string | null; avatar_url: string | null }>
+          | null;
+      }>
+    ).map((row) => {
+      const p = Array.isArray(row.viewer) ? (row.viewer[0] ?? null) : row.viewer;
+      return {
+        user_id: row.user_id,
+        username: p?.username ?? null,
+        display_name: p?.display_name ?? null,
+        avatar_url: p?.avatar_url ?? null,
+        viewed_at: row.viewed_at,
+      };
+    });
+  },
+);
+
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
 export function storyExpiresAt(createdAt: string): Date {

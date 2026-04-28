@@ -2,22 +2,25 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 
 /**
- * Auth Callback — handles both Magic-Link and OAuth (Google/Apple) return flows.
+ * Auth Callback — handles Magic-Link, OAuth (Google/Apple) and Password-Reset flows.
  *
  * Supabase redirects here with either:
  *   - `?code=...` → exchangeable for a session (PKCE flow used by @supabase/ssr)
+ *   - `?code=...&type=recovery` → password-reset recovery link (v1.w.UI.216)
  *   - `?error=...&error_description=...` → OAuth rejection / user cancel
  *
  * The `?next=...` param (URL-encoded) tells us where to land after success.
  * Defaults to `/` if not provided.
  *
  * Post-auth routing:
+ *   - type=recovery → /auth/reset-password (skip profile check — session is ephemeral)
  *   - User has profile row with username → redirect to `next`
  *   - User authenticated but no profile / missing username → redirect to `/onboarding`
  */
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
+  const type = searchParams.get('type');
   const errorParam = searchParams.get('error');
   const errorDescription = searchParams.get('error_description');
   const next = searchParams.get('next') ?? '/';
@@ -37,6 +40,13 @@ export async function GET(request: NextRequest) {
 
   if (error) {
     return NextResponse.redirect(`${origin}/login?error=${encodeURIComponent(error.message)}`);
+  }
+
+  // v1.w.UI.216 — Password-Reset recovery: session is now active, send straight
+  // to the reset-password page. Skip profile-check (user may have no profile yet
+  // and the session is ephemeral / scoped to this operation).
+  if (type === 'recovery') {
+    return NextResponse.redirect(`${origin}/auth/reset-password`);
   }
 
   // Check profile state — onboarding needed?

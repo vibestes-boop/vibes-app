@@ -158,3 +158,35 @@ export async function markStoryViewed(storyId: string): Promise<ActionResult<nul
   // den Home-Feed revalidieren, hätten wir pro View-Tick einen Full-Re-Render.
   return { ok: true, data: null };
 }
+
+// addStoryComment — Öffentlicher Kommentar auf eine Story.
+// isEmoji=true: Emoji-Reaction (wird im UI anders dargestellt).
+// Parität zu mobile useAddStoryComment (lib/useStoryComments.ts).
+export async function addStoryComment(
+  storyId: string,
+  content: string,
+  isEmoji = false,
+): Promise<ActionResult<null>> {
+  if (!storyId || typeof storyId !== 'string') {
+    return { ok: false, error: 'Story-ID fehlt.' };
+  }
+  const trimmed = content.trim();
+  if (!trimmed) return { ok: false, error: 'Inhalt fehlt.' };
+  if (trimmed.length > 300) return { ok: false, error: 'Max 300 Zeichen.' };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: 'Bitte einloggen.' };
+
+  const { error } = await supabase.from('story_comments').insert({
+    story_id: storyId,
+    author_id: user.id,
+    content: trimmed,
+    is_emoji: isEmoji,
+  });
+
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, data: null };
+}

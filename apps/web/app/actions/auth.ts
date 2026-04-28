@@ -152,6 +152,70 @@ export async function claimUsername(formData: FormData): Promise<ActionResult> {
 }
 
 // -----------------------------------------------------------------------------
+// Password Reset — sends a recovery email via Supabase resetPasswordForEmail.
+//
+// v1.w.UI.216: Parity mit native reset-password.tsx.
+// Supabase schickt eine E-Mail mit einem Recovery-Link → /auth/callback?type=recovery
+// Der Callback erkennt den Typ und leitet auf /auth/reset-password weiter.
+// Dort setzt der User sein neues Passwort via supabase.auth.updateUser({ password }).
+// -----------------------------------------------------------------------------
+
+const resetEmailSchema = z.object({
+  email: z.string().trim().toLowerCase().email('Bitte eine gültige Email eingeben.'),
+});
+
+export async function sendPasswordResetEmail(formData: FormData): Promise<ActionResult> {
+  const parsed = resetEmailSchema.safeParse({ email: formData.get('email') });
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? 'Ungültige Email.', field: 'email' };
+  }
+
+  const origin = await getOrigin();
+  const supabase = await createClient();
+
+  const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
+    redirectTo: `${origin}/auth/callback?type=recovery&next=${encodeURIComponent('/auth/reset-password')}`,
+  });
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  // Always return success — avoids email enumeration (user doesn't know if
+  // the email is registered or not).
+  return { ok: true, message: 'Falls ein Konto mit dieser E-Mail existiert, wurde ein Reset-Link gesendet.' };
+}
+
+// -----------------------------------------------------------------------------
+// Set new password — called from /auth/reset-password after recovery session.
+// -----------------------------------------------------------------------------
+
+const newPasswordSchema = z.object({
+  password: z.string().min(8, 'Mindestens 8 Zeichen erforderlich.'),
+});
+
+export async function setNewPassword(formData: FormData): Promise<ActionResult> {
+  const parsed = newPasswordSchema.safeParse({ password: formData.get('password') });
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.issues[0]?.message ?? 'Ungültiges Passwort.', field: 'password' };
+  }
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { ok: false, error: 'Session abgelaufen. Bitte erneut auf den Link in der E-Mail klicken.' };
+  }
+
+  const { error } = await supabase.auth.updateUser({ password: parsed.data.password });
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  revalidatePath('/', 'layout');
+  return { ok: true, message: 'Passwort erfolgreich geändert.' };
+}
+
+// -----------------------------------------------------------------------------
 // Username availability — cheap pre-check for live UI feedback.
 // Not authoritative — `claimUsername` re-checks at submit time.
 // -----------------------------------------------------------------------------

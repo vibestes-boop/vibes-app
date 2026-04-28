@@ -1,3 +1,11 @@
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Story erstellen — Serlo',
+  description: 'Erstelle eine ephemere Story — 24 Stunden sichtbar.',
+  robots: { index: false, follow: false },
+};
+
 import { redirect } from 'next/navigation';
 
 import { getUser } from '@/lib/auth/session';
