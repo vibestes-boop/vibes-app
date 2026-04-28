@@ -840,3 +840,104 @@ export async function getSuggestedFollowsPage(
 
   return { people, hasMore: people.length >= limit };
 }
+
+// -----------------------------------------------------------------------------
+// getExploreTrendingFeed — Offset-paginierter Feed sortiert nach view_count DESC.
+//
+// Für /explore "Trending"-Tab (v1.w.UI.219). Kein cache()-Wrapper wegen offset-
+// Argument. Native .range()-Pagination (kein over-fetch+slice wie getForYouFeed).
+// -----------------------------------------------------------------------------
+
+export interface ExplorePage {
+  posts: FeedPost[];
+  hasMore: boolean;
+}
+
+export async function getExploreTrendingFeed(
+  limit = 12,
+  offset = 0,
+): Promise<ExplorePage> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const viewerId = user?.id ?? null;
+
+  const { data, error } = await supabase
+    .from('posts')
+    .select(`${POST_COLUMNS}, ${AUTHOR_JOIN}`)
+    .eq('privacy', 'public')
+    .order('view_count', { ascending: false })
+    .order('id', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error || !data) return { posts: [], hasMore: false };
+
+  const rows = data as unknown as RawPostRow[];
+  const postIds = rows.map((r) => r.id);
+  const authorIds = Array.from(
+    new Set(
+      rows
+        .map((r) => {
+          const a = r.author;
+          const author = Array.isArray(a) ? a[0] : a;
+          return author?.id;
+        })
+        .filter((id): id is string => typeof id === 'string'),
+    ),
+  );
+  const { liked, saved, following, reposted } = await batchEngagement(postIds, authorIds, viewerId);
+  const posts = rows
+    .map((row) => normalizeRow(row, liked, saved, following, reposted))
+    .filter((p): p is FeedPost => p !== null);
+
+  return { posts, hasMore: posts.length >= limit };
+}
+
+// -----------------------------------------------------------------------------
+// getExploreNewestFeed — Offset-paginierter Feed sortiert nach created_at DESC.
+//
+// Für /explore "Newest"-Tab (v1.w.UI.219). Kein cache()-Wrapper wegen offset-
+// Argument. Native .range()-Pagination.
+// -----------------------------------------------------------------------------
+
+export async function getExploreNewestFeed(
+  limit = 12,
+  offset = 0,
+): Promise<ExplorePage> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const viewerId = user?.id ?? null;
+
+  const { data, error } = await supabase
+    .from('posts')
+    .select(`${POST_COLUMNS}, ${AUTHOR_JOIN}`)
+    .eq('privacy', 'public')
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error || !data) return { posts: [], hasMore: false };
+
+  const rows = data as unknown as RawPostRow[];
+  const postIds = rows.map((r) => r.id);
+  const authorIds = Array.from(
+    new Set(
+      rows
+        .map((r) => {
+          const a = r.author;
+          const author = Array.isArray(a) ? a[0] : a;
+          return author?.id;
+        })
+        .filter((id): id is string => typeof id === 'string'),
+    ),
+  );
+  const { liked, saved, following, reposted } = await batchEngagement(postIds, authorIds, viewerId);
+  const posts = rows
+    .map((row) => normalizeRow(row, liked, saved, following, reposted))
+    .filter((p): p is FeedPost => p !== null);
+
+  return { posts, hasMore: posts.length >= limit };
+}
