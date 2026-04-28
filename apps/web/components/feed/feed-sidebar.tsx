@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils';
 import { OpenConsentSettingsButton } from '@/components/consent/consent-banner';
 import { FollowedAccountsSection } from '@/components/feed/followed-accounts-section';
 import { MoreMenu } from '@/components/layout/more-menu';
+import { AdminNavLink } from '@/components/feed/admin-nav-link';
 import type { FollowedAccount } from '@/lib/data/feed';
 import { getUnreadDmCount } from '@/app/actions/messages';
 import { getUnreadNotificationCount } from '@/app/actions/notifications';
@@ -200,6 +201,8 @@ export function FeedSidebar({
             );
           })}
         </nav>
+        {/* v1.w.UI.215 — Admin-Panel-Link (nur für Admins sichtbar, self-contained) */}
+        {viewerId && <AdminNavLink />}
       </div>
 
       {/*
