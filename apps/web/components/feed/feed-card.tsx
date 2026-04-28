@@ -24,6 +24,7 @@ import {
   Trash2,
   Download,
   Pencil,
+  Loader2,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -43,6 +44,8 @@ import { LikeButton } from './like-button';
 import { useFeedInteraction } from './feed-interaction-context';
 import { linkify } from '@/lib/linkify';
 import { PostShareDmSheet } from './post-share-dm-sheet';
+import { useVoiceReader } from '@/hooks/use-voice-reader';
+import { useCreatorVoiceSample } from '@/hooks/use-creator-voice-sample';
 
 // Feed-Captions liegen auf dunkler Video-Overlay — default `text-primary`
 // würde gegen Schwarz/Video-Content zu blass werden. Weißer Link mit
@@ -157,6 +160,15 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
   // defaulten wir auf 'video'. Explicit 'image' schaltet in den Bild-Render-
   // Pfad (Instagram-style Standbild mit Video-ähnlichem Overlay).
   const isImage = post.media_type === 'image';
+
+  // v1.w.UI.218 — Chatterbox TTS: Creator-Stimme laden + voice reader state
+  const creatorVoiceUrl = useCreatorVoiceSample(post.author.id);
+  const caption = post.caption ?? '';
+  const {
+    isLoading: voiceLoading,
+    isPlaying: voicePlaying,
+    toggle: toggleVoice,
+  } = useVoiceReader(post.id, caption, 0.5, creatorVoiceUrl);
 
   // Detected media aspect-ratio (width/height). null = noch nicht geladen,
   // dann verwenden wir 9:16 als sicheren Default. Wird bei post.id-Wechsel
@@ -1134,6 +1146,47 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
           ariaLabel={muted ? 'Ton einschalten' : 'Stummschalten'}
           onClick={onMuteToggle}
           circleClassName="h-10 w-10"
+        />
+      )}
+
+      {/* v1.w.UI.218 — Chatterbox TTS: Caption laut vorlesen (Creator-Stimme
+          wenn voice_sample_url gesetzt, sonst speechSynthesis-Fallback).
+          Nur anzeigen wenn Caption vorhanden. */}
+      {caption.length > 0 && (
+        <ActionButton
+          icon={
+            voiceLoading ? (
+              <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
+            ) : voicePlaying ? (
+              <VolumeX
+                className="h-5 w-5 text-violet-400"
+                aria-hidden="true"
+              />
+            ) : (
+              <Volume2
+                className={cn(
+                  'h-5 w-5',
+                  creatorVoiceUrl ? 'text-violet-300' : 'text-white/70',
+                )}
+                aria-hidden="true"
+              />
+            )
+          }
+          label={voicePlaying ? 'Stop' : 'Vorlesen'}
+          ariaLabel={
+            voiceLoading
+              ? 'Audio wird geladen…'
+              : voicePlaying
+                ? 'Vorlesen stoppen'
+                : creatorVoiceUrl
+                  ? 'Caption in Creator-Stimme vorlesen'
+                  : 'Caption vorlesen'
+          }
+          onClick={() => void toggleVoice()}
+          circleClassName={cn(
+            'h-10 w-10',
+            voicePlaying && 'bg-violet-500/20',
+          )}
         />
       )}
     </aside>
