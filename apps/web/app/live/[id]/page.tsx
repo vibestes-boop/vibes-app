@@ -26,6 +26,7 @@ import { LiveViewerCount } from '@/components/live/live-viewer-count';
 import { LiveSessionEndWatcher } from '@/components/live/live-session-end-watcher';
 import { LiveCoHostWatcher } from '@/components/live/live-cohost-watcher';
 import { LiveGiftLeaderboard } from '@/components/live/live-gift-leaderboard';
+import { LiveShoppingViewer } from '@/components/live/live-shopping-viewer';
 import {
   glassPillStrong,
   glassSurface,
@@ -357,6 +358,14 @@ export default async function LiveViewerPage({ params }: PageProps) {
             <div className="absolute bottom-20 right-3 z-10">
               <LiveGiftGoalViewer sessionId={id} initialGoal={activeGiftGoal} />
             </div>
+          )}
+
+          {/* v1.w.UI.180 — Live-Shopping: pinned product pill + sold banners */}
+          {!ended && (
+            <LiveShoppingViewer
+              sessionId={id}
+              viewerUsername={user?.user_metadata?.username as string | null ?? null}
+            />
           )}
 
           {/* Action-Bar (unten) — Reactions + Gifts + CoHost-Request */}

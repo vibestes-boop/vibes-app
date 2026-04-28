@@ -44,6 +44,7 @@ import { LiveStreamHealth } from './live-stream-health';
 import { LiveCoHostQueue } from './live-cohost-queue';
 import { LivePollStartSheet } from './live-poll-start-sheet';
 import { LiveGiftsFeed } from './live-gifts-feed';
+import { useLiveShoppingHost, LiveShopHostPanel } from './live-shopping';
 
 // -----------------------------------------------------------------------------
 // LiveHostDeck — OBS-ähnliches Control-Panel für den Host.
@@ -151,6 +152,9 @@ export function LiveHostDeck({
 
   // Active-Poll realtime-state — wird LivePollStartSheet runtergereicht
   const [activePoll, setActivePoll] = useState<ActiveLivePollSSR | null>(initialPoll);
+
+  // Live-Shopping — v1.w.UI.180
+  const { pinnedProduct: shopPinnedProduct, pinProduct, unpinProduct } = useLiveShoppingHost(session.id);
 
   // -----------------------------------------------------------------------------
   // LiveKit-Connect — initial Mount nur einmal
@@ -800,6 +804,24 @@ export function LiveHostDeck({
               sessionId={session.id}
               initialGifts={initialGifts}
               initialGoal={initialGiftGoal}
+            />
+          </div>
+
+          {/* Shop — v1.w.UI.180: Host pinnt Produkte aus eigenem Shop */}
+          <div className="border-t p-4 lg:px-6">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Shop
+              </span>
+              {shopPinnedProduct && (
+                <span className="text-[10px] text-emerald-500">● Aktiv</span>
+              )}
+            </div>
+            <LiveShopHostPanel
+              sessionId={session.id}
+              pinnedProduct={shopPinnedProduct}
+              onPin={pinProduct}
+              onUnpin={unpinProduct}
             />
           </div>
         </div>
