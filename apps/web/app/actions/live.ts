@@ -701,3 +701,20 @@ export async function respondDuetInvite(
   const row = Array.isArray(data) ? data[0] : data;
   return { ok: true, data: row as RespondDuetInviteResult };
 }
+
+// v1.w.UI.201 — Host: toggle live_sessions.shop_enabled.
+// Parity with mobile useLiveShopModeActions.toggleShopMode().
+// Caller-Identity enforced server-side via set_live_shop_mode RPC
+// (SECURITY DEFINER, checks host_id === auth.uid()).
+export async function setLiveShopMode(
+  sessionId: string,
+  enabled: boolean,
+): Promise<ActionResult<null>> {
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('set_live_shop_mode', {
+    p_session_id: sessionId,
+    p_enabled: enabled,
+  });
+  if (error) return { ok: false, error: error.message };
+  return { ok: true, data: null };
+}

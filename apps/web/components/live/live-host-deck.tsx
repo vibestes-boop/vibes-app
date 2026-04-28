@@ -32,7 +32,7 @@ import {
 } from 'lucide-react';
 import type { LiveSessionWithHost, LiveCommentWithAuthor, ActiveLivePollSSR } from '@/lib/data/live';
 import type { SessionGiftRow, ActiveGiftGoal } from '@/lib/data/live-host';
-import { fetchLiveKitToken, setLiveSlowMode } from '@/app/actions/live';
+import { fetchLiveKitToken, setLiveSlowMode, setLiveShopMode } from '@/app/actions/live';
 import {
   endLiveSession,
   heartbeatLiveSession,
@@ -175,6 +175,19 @@ export function LiveHostDeck({
     startSlowModeTransition(async () => {
       const res = await setLiveSlowMode(session.id, secs);
       if (!res.ok) setSlowModeSecs(prev); // rollback on error
+    });
+  };
+
+  // v1.w.UI.201 — Shop-Mode toggle: shop_enabled on live_sessions.
+  // Parity with mobile useLiveShopModeActions.toggleShopMode().
+  const [shopEnabled, setShopEnabled] = useState(!!(session.shop_enabled));
+  const [, startShopToggle] = useTransition();
+  const handleShopToggle = () => {
+    const next = !shopEnabled;
+    setShopEnabled(next);
+    startShopToggle(async () => {
+      const res = await setLiveShopMode(session.id, next);
+      if (!res.ok) setShopEnabled(!next); // rollback
     });
   };
 
@@ -904,15 +917,26 @@ export function LiveHostDeck({
             />
           </div>
 
-          {/* Shop — v1.w.UI.180: Host pinnt Produkte aus eigenem Shop */}
+          {/* Shop — v1.w.UI.180 + v1.w.UI.201 */}
           <div className="border-t p-4 lg:px-6">
             <div className="mb-2 flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                 Shop
               </span>
-              {shopPinnedProduct && (
-                <span className="text-[10px] text-emerald-500">● Aktiv</span>
-              )}
+              {/* v1.w.UI.201 — shop_enabled toggle (viewer sees ShoppingBag button when on) */}
+              <button
+                type="button"
+                onClick={handleShopToggle}
+                className={[
+                  'inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold transition-colors',
+                  shopEnabled
+                    ? 'bg-emerald-500/15 text-emerald-500 ring-1 ring-emerald-500/40'
+                    : 'bg-muted text-muted-foreground hover:text-foreground',
+                ].join(' ')}
+                title={shopEnabled ? 'Shop-Modus deaktivieren' : 'Shop-Modus aktivieren'}
+              >
+                {shopEnabled ? '🛍 An' : '🛍 Aus'}
+              </button>
             </div>
             <LiveShopHostPanel
               sessionId={session.id}
