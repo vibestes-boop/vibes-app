@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { ShieldCheck, Lock } from 'lucide-react';
+import { ShieldCheck, Lock, Eye, Users, Sparkles } from 'lucide-react';
 
 import { getUser } from '@/lib/auth/session';
 import { getWOZFeed } from '@/lib/data/public';
@@ -14,7 +14,7 @@ import { WozJoinButton } from '@/components/woz/woz-join-button';
 // v1.w.UI.213: Parity mit app/women-only/index.tsx.
 //
 // Zwei Zustände:
-//   1. Nicht verifiziert → Premium-Onboarding mit "Beitreten"-CTA
+//   1. Nicht verifiziert → Premium-Gate mit "Beitreten"-CTA
 //   2. Verifiziert → WOZ-Post-Grid (getWOZFeed, RLS schützt serverseitig)
 //
 // Auth-Gate: Nicht-eingeloggte → /login?next=/woz.
@@ -58,6 +58,24 @@ async function getWozStatus(): Promise<{
   };
 }
 
+const FEATURES = [
+  {
+    icon: Eye,
+    title: 'Vollständig privat',
+    desc: 'Deine Inhalte sind ausschließlich für verifizierte Mitglieder sichtbar.',
+  },
+  {
+    icon: Users,
+    title: 'Eigener Community-Feed',
+    desc: 'Alle Women-Only Beiträge aus der Community auf einen Blick.',
+  },
+  {
+    icon: Sparkles,
+    title: 'Sofort aktivierbar',
+    desc: 'Level-1-Selbstdeklaration genügt. Level-2-Verifikation folgt optional.',
+  },
+];
+
 export default async function WozPage() {
   const status = await getWozStatus();
 
@@ -68,50 +86,45 @@ export default async function WozPage() {
   // ── Unverified State ────────────────────────────────────────────────────────
   if (!status.isVerified) {
     return (
-      <main className="mx-auto max-w-lg px-4 py-12 text-center">
-        {/* Icon */}
-        <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-pink-500/20 to-purple-500/20">
-          <ShieldCheck className="h-10 w-10 text-pink-500" />
+      <main className="mx-auto max-w-md px-6 py-16">
+        {/* Wordmark / badge */}
+        <div className="mb-10">
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-rose-500 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-400">
+            <ShieldCheck className="h-3 w-3" />
+            Women-Only Zone
+          </span>
         </div>
 
         {/* Headline */}
-        <h1 className="mb-2 text-2xl font-bold">Women-Only Zone</h1>
-        <p className="mb-6 text-sm text-muted-foreground">
-          Ein geschützter, privater Bereich nur für Frauen. Teile Inhalte in einer
-          sicheren Community, sichtbar nur für verifizierte Mitglieder.
+        <h1 className="mb-3 text-[2rem] font-semibold leading-[1.15] tracking-tight text-foreground">
+          Ein Raum,<br />
+          der dir gehört.
+        </h1>
+        <p className="mb-10 text-[15px] leading-relaxed text-muted-foreground">
+          Ein geschützter Bereich auf Serlo, in dem Frauen offen teilen können —
+          sichtbar nur für verifizierte Mitglieder.
         </p>
 
-        {/* Feature Pills */}
-        <div className="mb-8 flex flex-wrap justify-center gap-2">
-          {[
-            '🔒 Nur für Frauen sichtbar',
-            '🛡 Geschützter Feed',
-            '💜 Community-Gefühl',
-          ].map((f) => (
-            <span
-              key={f}
-              className="rounded-full bg-pink-500/10 px-3 py-1 text-xs font-medium text-pink-600 dark:text-pink-400"
-            >
-              {f}
-            </span>
+        {/* Feature rows */}
+        <ul className="mb-10 space-y-5">
+          {FEATURES.map(({ icon: Icon, title, desc }) => (
+            <li key={title} className="flex items-start gap-4">
+              <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted">
+                <Icon className="h-4 w-4 text-foreground/70" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">{title}</p>
+                <p className="mt-0.5 text-[13px] leading-snug text-muted-foreground">{desc}</p>
+              </div>
+            </li>
           ))}
-        </div>
+        </ul>
 
-        {/* Info Box */}
-        <div className="mb-6 rounded-xl border border-pink-500/20 bg-pink-500/5 p-4 text-left text-sm text-muted-foreground">
-          <p className="mb-1 font-medium text-foreground">So funktioniert es:</p>
-          <ul className="space-y-1.5">
-            <li>• Du bestätigst dein Geschlecht als weiblich (Level 1 – Selbstdeklaration).</li>
-            <li>• Deine Inhalte mit „Women-Only"-Markierung sind nur für verifizierte Mitglieder sichtbar.</li>
-            <li>• Der WOZ-Feed zeigt dir alle solchen Beiträge aus der Community.</li>
-          </ul>
-        </div>
-
+        {/* CTA */}
         <WozJoinButton />
 
-        <p className="mt-4 text-xs text-muted-foreground">
-          Mit dem Beitreten bestätigst du, dass du weiblich bist. Eine spätere
-          Identitätsverifizierung (Level 2) kann folgen.
+        <p className="mt-4 text-center text-[11px] leading-relaxed text-muted-foreground/70">
+          Mit dem Beitreten bestätigst du, dass du weiblich bist.
         </p>
       </main>
     );
@@ -123,22 +136,19 @@ export default async function WozPage() {
   return (
     <main className="mx-auto max-w-3xl px-4 py-6">
       {/* Header */}
-      <div className="mb-6 flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-pink-500 to-purple-600">
-          <ShieldCheck className="h-5 w-5 text-white" />
+      <div className="mb-6 flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <span className="text-lg font-semibold tracking-tight">Women-Only Zone</span>
+          <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/10 px-2 py-0.5 text-[10px] font-semibold text-rose-500 dark:text-rose-400">
+            <ShieldCheck className="h-3 w-3" />
+            Verifiziert
+          </span>
         </div>
-        <div>
-          <h1 className="text-xl font-bold">Women-Only Zone</h1>
-          <p className="text-xs text-muted-foreground">
-            {posts.length > 0
-              ? `${posts.length} Beiträge · Nur für verifizierte Mitglieder`
-              : 'Nur für verifizierte Mitglieder'}
-          </p>
-        </div>
-        <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-pink-500/15 px-2.5 py-0.5 text-[10px] font-semibold text-pink-600 dark:text-pink-400">
-          <ShieldCheck className="h-3 w-3" />
-          Verifiziert
-        </span>
+        {posts.length > 0 && (
+          <span className="text-xs text-muted-foreground">
+            {posts.length} Beiträge
+          </span>
+        )}
       </div>
 
       {/* Post Grid */}
