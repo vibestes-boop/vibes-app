@@ -25,6 +25,7 @@ import { LiveGiftGoalViewer } from '@/components/live/live-gift-goal-viewer';
 import { LiveViewerCount } from '@/components/live/live-viewer-count';
 import { LiveSessionEndWatcher } from '@/components/live/live-session-end-watcher';
 import { LiveCoHostWatcher } from '@/components/live/live-cohost-watcher';
+import { LiveGiftLeaderboard } from '@/components/live/live-gift-leaderboard';
 import {
   glassPillStrong,
   glassSurface,
@@ -296,6 +297,9 @@ export default async function LiveViewerPage({ params }: PageProps) {
                   {session.title}
                 </p>
               )}
+              {/* v1.w.UI.176 — Gift leaderboard: top-3 gifters strip.
+                  Returns null when no gifts yet — no layout gap. */}
+              <LiveGiftLeaderboard sessionId={id} />
             </div>
           )}
 
