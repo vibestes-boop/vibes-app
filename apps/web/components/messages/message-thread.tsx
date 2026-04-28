@@ -16,6 +16,7 @@ import Link from 'next/link';
 import type { Route } from 'next';
 import { createBrowserClient } from '@supabase/ssr';
 import { Send, ImagePlus, Loader2, Smile, CornerDownRight, X, Check, CheckCheck, Trash2 } from 'lucide-react';
+import { GifPicker } from './gif-picker';
 import type {
   MessageWithContext,
   ReactionAggregate,
@@ -759,6 +760,9 @@ function Composer({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
+  // ── v1.w.UI.190 — GIF-Picker ─────────────────────────────────────────────────
+  const [showGifPicker, setShowGifPicker] = useState(false);
+
   // Cleanup Object-URL bei Unmount oder wenn das Bild entfernt wird.
   const clearPendingImage = useCallback(() => {
     if (pendingImagePreviewUrl) URL.revokeObjectURL(pendingImagePreviewUrl);
@@ -767,6 +771,42 @@ function Composer({
     setPendingImageName(null);
     setUploadError(null);
   }, [pendingImagePreviewUrl]);
+
+  // v1.w.UI.190 — GIF direkt senden (Giphy-URL, kein R2-Upload nötig).
+  // Parity mit mobile handleSendGif in app/messages/[id].tsx.
+  const handleSendGif = useCallback(
+    (gifUrl: string) => {
+      setShowGifPicker(false);
+      const optimistic: PendingMessage = {
+        id: `pending-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        conversation_id: conversationId,
+        sender_id: viewerId,
+        content: null,
+        image_url: gifUrl,
+        post_id: null,
+        reply_to_id: null,
+        story_media_url: null,
+        read: false,
+        created_at: new Date().toISOString(),
+        reply_to: null,
+        post: null,
+        pending: true,
+      };
+      onSent(optimistic);
+      startTransition(async () => {
+        const res = await sendDirectMessage({
+          conversationId,
+          content: null,
+          imageUrl: gifUrl,
+          replyToId: null,
+        });
+        if (!res.ok) {
+          process.env.NODE_ENV !== 'production' && console.warn('[GIF send failed]', res.error);
+        }
+      });
+    },
+    [conversationId, viewerId, onSent, startTransition],
+  );
 
   const handleFileSelect = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -937,7 +977,7 @@ function Composer({
   };
 
   return (
-    <div className="border-t bg-background px-3 py-2">
+    <div className="relative border-t bg-background px-3 py-2">
       {replyTo && (
         <div className="mb-2 flex items-center gap-2 rounded-lg bg-muted/60 px-3 py-1.5 text-xs">
           <CornerDownRight className="h-3.5 w-3.5 flex-none" aria-hidden="true" />
@@ -1034,6 +1074,14 @@ function Composer({
         </div>
       )}
 
+      {/* v1.w.UI.190 — GIF Picker panel (positioned absolute above compose bar) */}
+      {showGifPicker && (
+        <GifPicker
+          onSelect={handleSendGif}
+          onClose={() => setShowGifPicker(false)}
+        />
+      )}
+
       {/* Hidden file input — wird via ImagePlus-Button getriggert */}
       <input
         ref={fileInputRef}
@@ -1055,6 +1103,18 @@ function Composer({
           title="Bild anhängen"
         >
           <ImagePlus className="h-5 w-5" />
+        </button>
+        {/* v1.w.UI.190 — GIF button (parity with mobile GIF picker) */}
+        <button
+          type="button"
+          onClick={() => setShowGifPicker((v) => !v)}
+          disabled={isUploading}
+          className="grid h-9 w-9 flex-none place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-40"
+          aria-label="GIF senden"
+          title="GIF senden"
+          aria-pressed={showGifPicker}
+        >
+          <span className="text-[11px] font-black tracking-tighter text-current">GIF</span>
         </button>
         <textarea
           ref={textareaRef}
