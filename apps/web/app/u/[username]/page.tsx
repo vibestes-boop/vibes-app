@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { BadgeCheck, Heart, Repeat2, ShoppingBag, Swords, Globe, Mountain, Radio } from 'lucide-react';
+import { BadgeCheck, Heart, Repeat2, ShoppingBag, Swords, Globe, Mountain, Radio, Bookmark } from 'lucide-react';
 
-import { getPublicProfile, getProfilePosts, getProfileLikedPosts, getProfileReposts, getBattleHistory, getFollowState } from '@/lib/data/public';
+import { getPublicProfile, getProfilePosts, getProfileLikedPosts, getProfileReposts, getBattleHistory, getFollowState, getBookmarkedPosts } from '@/lib/data/public';
 import { getUserReplays } from '@/lib/data/live';
 import { getUser } from '@/lib/auth/session';
 import { getMyCoinBalance } from '@/lib/data/payments';
@@ -171,7 +171,7 @@ export default async function ProfilePage({
   // bereits lowercase-matcht — keine Redirect-Loop-Gefahr.
 
   const tab: ProfileTab =
-    tabParam === 'likes' || tabParam === 'reposts' || tabParam === 'shop' || tabParam === 'battles' || tabParam === 'lives'
+    tabParam === 'likes' || tabParam === 'saved' || tabParam === 'reposts' || tabParam === 'shop' || tabParam === 'battles' || tabParam === 'lives'
       ? tabParam
       : 'posts';
 
@@ -194,11 +194,11 @@ export default async function ProfilePage({
 
   const isSelf = viewer?.id === profile.id;
 
-  // Liked Posts: nur für den Profilinhaber selbst (Likes sind privat).
-  const likedPosts =
-    tab === 'likes' && isSelf
-      ? await getProfileLikedPosts(profile.id, 24)
-      : [];
+  // Liked + Saved Posts: nur für den Profilinhaber selbst (privat).
+  const [likedPosts, savedPosts] = await Promise.all([
+    tab === 'likes' && isSelf ? getProfileLikedPosts(profile.id, 24) : Promise.resolve([]),
+    tab === 'saved' && isSelf ? getBookmarkedPosts(48) : Promise.resolve([]),
+  ]);
   const displayName = profile.display_name ?? `@${profile.username}`;
 
   // JSON-LD (ProfilePage Schema.org) — hilft Google bei Rich-Results.
@@ -356,11 +356,13 @@ export default async function ProfilePage({
           tablist: t('profile.tablistLabel'),
           posts: t('profile.tabPosts'),
           likes: t('profile.tabLikes'),
+          saved: 'Gespeichert',
           reposts: t('profile.tabReposts'),
           shop: t('profile.tabShop'),
           battles: t('profile.tabBattles'),
           lives: 'Lives',
         }}
+        savedVisible={isSelf}
       />
 
       {/* ───── Panels ───── */}
@@ -401,6 +403,26 @@ export default async function ProfilePage({
               icon="likes"
               title={t('profile.panelLikesTitle')}
               hint={t('profile.panelLikesHintOther')}
+            />
+          )
+        )}
+
+        {tab === 'saved' && (
+          isSelf ? (
+            // v1.w.UI.203 — Saved/Bookmarks tab: own-profile only (parity with mobile 'saved' tab)
+            <PostGrid
+              posts={savedPosts}
+              emptyTitle="Nichts gespeichert"
+              emptyDescription="Bookmarkte Posts erscheinen hier — nur für dich sichtbar."
+              emptyIcon={<Bookmark className="h-7 w-7" strokeWidth={1.75} />}
+              fetchMoreUrl="/api/posts/bookmarked"
+              initialHasMore={savedPosts.length >= 48}
+            />
+          ) : (
+            <EmptyPanelInfo
+              icon="likes"
+              title="Gespeicherte Posts sind privat"
+              hint="Nur der Profilinhaber kann seine gespeicherten Posts sehen."
             />
           )
         )}
