@@ -5,6 +5,8 @@ import { createBrowserClient } from '@supabase/ssr';
 import { Send, ShieldAlert, Clock, Pin, PinOff } from 'lucide-react';
 import { sendLiveComment, timeoutChatUser, pinLiveComment, unpinLiveComment } from '@/app/actions/live';
 import type { LiveCommentWithAuthor } from '@/lib/data/live';
+import { LiveChatUserPanel } from './live-chat-user-panel';
+import type { ChatUserInfo } from './live-chat-user-panel';
 
 // -----------------------------------------------------------------------------
 // LiveChat — Realtime-Chat via `live-comments-{id}` Broadcast (gleicher Channel
@@ -241,8 +243,11 @@ export function LiveChat({
 
   const pinned = useMemo(() => comments.find((c) => c.pinned), [comments]);
 
+  // v1.w.UI.197 — sidebar chat username tap → user profile mini-panel
+  const [selectedChatUser, setSelectedChatUser] = useState<ChatUserInfo | null>(null);
+
   return (
-    <div className="flex flex-1 flex-col overflow-hidden rounded-xl border bg-card">
+    <div className="relative flex flex-1 flex-col overflow-hidden rounded-xl border bg-card">
       {/* Header */}
       <div className="flex items-center justify-between border-b px-3 py-2">
         <h2 className="text-sm font-semibold">Chat</h2>
@@ -286,6 +291,18 @@ export function LiveChat({
               onTimeout={(secs) => handleTimeout(c.user_id, secs)}
               onPin={() => handlePin(c.id)}
               onUnpin={handleUnpin}
+              onUserClick={
+                c.user_id !== viewerId && c.author
+                  ? () =>
+                      setSelectedChatUser({
+                        id: c.user_id,
+                        username: c.author!.username ?? '',
+                        display_name: c.author!.display_name ?? null,
+                        avatar_url: c.author!.avatar_url ?? null,
+                        verified: c.author!.verified ?? false,
+                      })
+                  : undefined
+              }
             />
           ))
         )}
@@ -331,12 +348,35 @@ export function LiveChat({
       {sendError && (
         <div className="border-t bg-red-500/10 px-3 py-2 text-xs text-red-500">{sendError}</div>
       )}
+
+      {/* v1.w.UI.197 — user profile panel (overlays the sidebar when a username is tapped) */}
+      {selectedChatUser && (
+        <LiveChatUserPanel
+          user={selectedChatUser}
+          viewerId={viewerId}
+          sessionId={sessionId}
+          canModerate={canModerate}
+          isHost={isHost}
+          hostId={hostId}
+          className="absolute inset-x-2 bottom-[4.5rem] z-10"
+          onClose={() => setSelectedChatUser(null)}
+          onMention={(username) => {
+            setText(`@${username} `);
+            setSelectedChatUser(null);
+          }}
+          onTimeout={(secs) => {
+            handleTimeout(selectedChatUser.id, secs);
+            setSelectedChatUser(null);
+          }}
+        />
+      )}
     </div>
   );
 }
 
 // -----------------------------------------------------------------------------
 // CommentRow — einzelne Nachricht. Host hat Badge, Mods können Timeout geben.
+// v1.w.UI.197 — username is now a tappable button (opens LiveChatUserPanel).
 // -----------------------------------------------------------------------------
 
 function CommentRow({
@@ -346,6 +386,7 @@ function CommentRow({
   onTimeout,
   onPin,
   onUnpin,
+  onUserClick,
 }: {
   comment: LiveCommentWithAuthor;
   isHostMsg: boolean;
@@ -353,6 +394,7 @@ function CommentRow({
   onTimeout: (seconds: number) => void;
   onPin: () => void;
   onUnpin: () => void;
+  onUserClick?: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const name = comment.author?.display_name ?? comment.author?.username ?? 'Anonym';
@@ -360,10 +402,13 @@ function CommentRow({
   return (
     <div className="group relative flex items-start gap-2 rounded-md px-1 py-0.5 hover:bg-muted/40">
       <div className="min-w-0 flex-1">
-        <span
+        <button
+          type="button"
+          onClick={onUserClick}
+          disabled={!onUserClick}
           className={`mr-1.5 text-xs font-semibold ${
             isHostMsg ? 'text-primary' : 'text-foreground/80'
-          }`}
+          } ${onUserClick ? 'cursor-pointer hover:underline underline-offset-2' : 'cursor-default'}`}
         >
           {name}
           {isHostMsg && (
@@ -377,7 +422,7 @@ function CommentRow({
             </span>
           )}
           :
-        </span>
+        </button>
         <span className="break-words text-foreground">{comment.body}</span>
       </div>
 
