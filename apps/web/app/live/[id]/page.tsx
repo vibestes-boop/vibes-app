@@ -13,6 +13,7 @@ import {
   getIsSessionModerator,
 } from '@/lib/data/live';
 import { getActiveGiftGoal } from '@/lib/data/live-host';
+import { getHostShopCount } from '@/lib/data/shop';
 import { getUser } from '@/lib/auth/session';
 import { LiveVideoPlayer } from '@/components/live/live-video-player';
 import { LiveActionBar } from '@/components/live/live-action-bar';
@@ -30,6 +31,7 @@ import { LiveShoppingViewer } from '@/components/live/live-shopping-viewer';
 import { LiveBattleOverlay } from '@/components/live/live-battle-overlay';
 import { LiveDuetInviteWatcher } from '@/components/live/live-duet-invite-watcher';
 import { LiveWelcomeToasts } from '@/components/live/live-welcome-toasts';
+import { LiveHostShopBadge } from '@/components/live/live-host-shop-sheet';
 import {
   glassPillStrong,
   glassSurface,
@@ -119,7 +121,8 @@ export default async function LiveViewerPage({ params }: PageProps) {
   if (!session) notFound();
 
   // Initial-State für Client-Komponenten
-  const [comments, activePoll, cohosts, isFollowing, isModerator, activeGiftGoal] =
+  const shopEnabled = !!(session.shop_enabled);
+  const [comments, activePoll, cohosts, isFollowing, isModerator, activeGiftGoal, hostShopCount] =
     await Promise.all([
       getLiveComments(id, 50),
       getActiveLivePoll(id),
@@ -127,6 +130,7 @@ export default async function LiveViewerPage({ params }: PageProps) {
       user ? getIsFollowingHost(session.host_id) : Promise.resolve(false),
       user ? getIsSessionModerator(id) : Promise.resolve(false),
       getActiveGiftGoal(id).catch(() => null), // v1.w.UI.137 — gift goal viewer
+      shopEnabled ? getHostShopCount(session.host_id) : Promise.resolve(0), // v1.w.UI.200 — shop badge
     ]);
 
   const ended = session.status !== 'active';
@@ -397,7 +401,15 @@ export default async function LiveViewerPage({ params }: PageProps) {
            * right-3 / bottom-20 klärt Kollision mit Chat (links) + Action-Bar (unten).
            */}
           {!ended && (
-            <div className="absolute bottom-20 right-3 z-10">
+            <div className="absolute bottom-20 right-3 z-10 flex flex-col items-end gap-2">
+              {/* v1.w.UI.200 — Host-Shop badge: only when host has shop_enabled */}
+              {shopEnabled && session.host?.username && (
+                <LiveHostShopBadge
+                  hostId={session.host_id}
+                  hostUsername={session.host.username}
+                  productCount={hostShopCount}
+                />
+              )}
               <LiveGiftGoalViewer sessionId={id} initialGoal={activeGiftGoal} />
             </div>
           )}
