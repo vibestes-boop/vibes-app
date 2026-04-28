@@ -38,6 +38,7 @@ import {
   MessageCircle,
   Trophy,
   ArrowRight,
+  Shield,
 } from 'lucide-react';
 import type { LiveSessionWithHost, LiveCommentWithAuthor, ActiveLivePollSSR, LiveRecordingSSR } from '@/lib/data/live';
 import type { SessionGiftRow, ActiveGiftGoal } from '@/lib/data/live-host';
@@ -220,6 +221,44 @@ export function LiveHostDeck({
     startSlowModeTransition(async () => {
       const res = await setLiveSlowMode(session.id, secs);
       if (!res.ok) setSlowModeSecs(prev); // rollback on error
+    });
+  };
+
+  // v1.w.UI.225 — In-stream moderation toggle + custom word editor.
+  // Mobile parity: toggleModeration() + addHostWords() via Alert.prompt in app/live/host.tsx.
+  // Web replaces Alert.prompt with an inline expandable word-editor panel in the chat sidebar.
+  const [moderationEnabled, setModerationEnabled] = useState(session.moderation_enabled ?? false);
+  const [hostWords, setHostWords] = useState<string[]>(session.moderation_words ?? []);
+  const [modWordEditorOpen, setModWordEditorOpen] = useState(false);
+  const [wordInput, setWordInput] = useState('');
+  const [, startModTransition] = useTransition();
+
+  const handleToggleModeration = () => {
+    const next = !moderationEnabled;
+    setModerationEnabled(next);
+    startModTransition(async () => {
+      const res = await updateLiveSession(session.id, { moderationEnabled: next, moderationWords: hostWords });
+      if (!res.ok) setModerationEnabled(!next); // rollback
+    });
+  };
+
+  const handleAddWords = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!wordInput.trim()) return;
+    const newWords = wordInput.split(',').map((w) => w.trim().toLowerCase()).filter(Boolean);
+    const merged = [...new Set([...hostWords, ...newWords])];
+    setHostWords(merged);
+    setWordInput('');
+    startModTransition(async () => {
+      await updateLiveSession(session.id, { moderationEnabled, moderationWords: merged });
+    });
+  };
+
+  const handleRemoveWord = (word: string) => {
+    const updated = hostWords.filter((w) => w !== word);
+    setHostWords(updated);
+    startModTransition(async () => {
+      await updateLiveSession(session.id, { moderationEnabled, moderationWords: updated });
     });
   };
 
@@ -1497,28 +1536,110 @@ export function LiveHostDeck({
 
         {/* Right-Column — Chat */}
         <aside className="flex min-h-[480px] flex-col border-l bg-card lg:h-full lg:overflow-hidden">
-          {/* v1.w.UI.198 — Chat header with slow-mode toggle */}
-          <div className="flex items-center justify-between border-b px-4 py-2">
-            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Chat</span>
-            <div className="flex items-center gap-1" title="Slow-Mode: Mindestwartzeit zwischen Nachrichten">
-              {([0, 5, 10, 30, 60] as const).map((secs) => (
-                <button
-                  key={secs}
-                  type="button"
-                  onClick={() => handleSetSlowMode(secs)}
-                  disabled={phase !== 'live'}
-                  className={[
-                    'rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors disabled:opacity-40',
-                    slowModeSecs === secs
-                      ? 'bg-orange-500/20 text-orange-500 ring-1 ring-orange-500/40'
-                      : 'text-muted-foreground hover:bg-muted hover:text-foreground',
-                  ].join(' ')}
-                  aria-pressed={slowModeSecs === secs}
-                >
-                  {secs === 0 ? 'Off' : `${secs}s`}
-                </button>
-              ))}
+          {/* v1.w.UI.198 + v1.w.UI.225 — Chat header: slow-mode + moderation controls */}
+          <div className="border-b">
+            {/* Row 1: Chat label + slow-mode buttons */}
+            <div className="flex items-center justify-between px-4 py-2">
+              <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Chat</span>
+              <div className="flex items-center gap-1" title="Slow-Mode: Mindestwartzeit zwischen Nachrichten">
+                {([0, 5, 10, 30, 60] as const).map((secs) => (
+                  <button
+                    key={secs}
+                    type="button"
+                    onClick={() => handleSetSlowMode(secs)}
+                    disabled={phase !== 'live'}
+                    className={[
+                      'rounded px-1.5 py-0.5 text-[10px] font-medium transition-colors disabled:opacity-40',
+                      slowModeSecs === secs
+                        ? 'bg-orange-500/20 text-orange-500 ring-1 ring-orange-500/40'
+                        : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                    ].join(' ')}
+                    aria-pressed={slowModeSecs === secs}
+                  >
+                    {secs === 0 ? 'Off' : `${secs}s`}
+                  </button>
+                ))}
+              </div>
             </div>
+            {/* v1.w.UI.225 — Row 2: Moderation on/off toggle + word count badge + editor link */}
+            <div className="flex items-center gap-2 border-t px-4 pb-2 pt-1.5">
+              <Shield
+                className={[
+                  'h-3.5 w-3.5 shrink-0 transition-colors',
+                  moderationEnabled ? 'text-violet-400' : 'text-muted-foreground',
+                ].join(' ')}
+              />
+              <span className="text-[11px] font-medium text-muted-foreground">Moderation</span>
+              <button
+                type="button"
+                onClick={handleToggleModeration}
+                disabled={phase !== 'live'}
+                className={[
+                  'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold transition-colors disabled:opacity-40',
+                  moderationEnabled
+                    ? 'bg-violet-500/15 text-violet-400 ring-1 ring-violet-500/30'
+                    : 'bg-muted text-muted-foreground hover:text-foreground',
+                ].join(' ')}
+                title={moderationEnabled ? 'Moderation deaktivieren' : 'Moderation aktivieren'}
+              >
+                {moderationEnabled ? 'AN' : 'AUS'}
+              </button>
+              {moderationEnabled && hostWords.length > 0 && (
+                <span className="rounded-full bg-violet-500/15 px-1.5 py-0.5 text-[10px] font-medium text-violet-400">
+                  {hostWords.length}
+                </span>
+              )}
+              {moderationEnabled && (
+                <button
+                  type="button"
+                  onClick={() => setModWordEditorOpen((v) => !v)}
+                  className="ml-auto text-[10px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                >
+                  {modWordEditorOpen ? 'Schließen' : 'Wörter bearbeiten'}
+                </button>
+              )}
+            </div>
+            {/* v1.w.UI.225 — Row 3 (conditional): Inline word-editor panel */}
+            {modWordEditorOpen && moderationEnabled && (
+              <div className="border-t px-4 pb-3 pt-2">
+                <form className="flex gap-1.5" onSubmit={handleAddWords}>
+                  <input
+                    type="text"
+                    value={wordInput}
+                    onChange={(e) => setWordInput(e.target.value)}
+                    placeholder="Wörter kommagetrennt..."
+                    className="min-w-0 flex-1 rounded border border-border bg-muted/50 px-2.5 py-1 text-[11px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-violet-500/40"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!wordInput.trim()}
+                    className="rounded bg-violet-500/15 px-2.5 py-1 text-[11px] font-semibold text-violet-400 transition-colors hover:bg-violet-500/25 disabled:opacity-40"
+                  >
+                    +
+                  </button>
+                </form>
+                {hostWords.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {hostWords.map((word) => (
+                      <span
+                        key={word}
+                        className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium"
+                      >
+                        {word}
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveWord(word)}
+                          className="text-muted-foreground hover:text-destructive"
+                          aria-label={`${word} entfernen`}
+                        >
+                          <X className="h-2.5 w-2.5" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <div className="flex-1 overflow-hidden">
             <LiveChat
