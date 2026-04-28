@@ -576,6 +576,9 @@ const ALLOWED_KEY_PREFIXES = [
   // erzwingt dass `{userId}` == Viewer-ID — ein manipulierter Client
   // kann also nicht in den Avatar-Ordner eines anderen Users schreiben.
   'avatars/',
+  // v1.w.UI.217 — KI-Stimme (Voice Clone). Key-Pattern:
+  // `voice-samples/{userId}/{timestamp}.webm`. ownerOk-Check gilt gleich.
+  'voice-samples/',
 ];
 
 export async function requestR2UploadUrl(

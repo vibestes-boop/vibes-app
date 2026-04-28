@@ -132,3 +132,14 @@
     scrollbar-width: none;
   }
 }
+
+/* ── v1.w.UI.217 — KI-Stimme Waveform-Bar-Animation ──────────────────────── */
+@keyframes voice-bar {
+  0%, 100% { height: 4px; }
+  50%       { height: 32px; }
+}
+
+.animate-voice-bar {
+  animation: voice-bar linear infinite;
+  min-height: 4px;
+}

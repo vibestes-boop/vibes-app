@@ -221,6 +221,61 @@ export async function updateAvatar(avatarUrl: string | null): Promise<ActionResu
 }
 
 // -----------------------------------------------------------------------------
+// v1.w.UI.217 — KI-Stimme (Voice Clone) Server-Actions.
+//
+// saveVoiceSample(url) — Setzt profiles.voice_sample_url auf eine validierte
+//   R2-URL. Security-Pattern analog zu updateAvatar: HTTPS-only, Host-Allowlist,
+//   User-ID im Pfad. Nur `voice-samples/{userId}/` wird akzeptiert.
+//
+// deleteVoiceSample() — Setzt profiles.voice_sample_url auf NULL.
+// -----------------------------------------------------------------------------
+
+const VOICE_ALLOWED_HOST_SUFFIXES = [
+  '.r2.dev',
+  '.r2.cloudflarestorage.com',
+];
+
+function isAllowedVoiceUrl(url: string, userId: string): boolean {
+  if (!url || url.length > 2048) return false;
+  let parsed: URL;
+  try { parsed = new URL(url); } catch { return false; }
+  if (parsed.protocol !== 'https:') return false;
+  const host = parsed.hostname.toLowerCase();
+  if (!VOICE_ALLOWED_HOST_SUFFIXES.some((s) => host.endsWith(s))) return false;
+  if (!parsed.pathname.includes(`/voice-samples/${userId}/`)) return false;
+  return true;
+}
+
+export async function saveVoiceSample(voiceUrl: string): Promise<ActionResult<null>> {
+  const user = await getUser();
+  if (!user) return { ok: false, error: 'Bitte einloggen.' };
+  if (!isAllowedVoiceUrl(voiceUrl, user.id)) {
+    return { ok: false, error: 'Ungültige Audio-URL.' };
+  }
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('profiles')
+    .update({ voice_sample_url: voiceUrl })
+    .eq('id', user.id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath('/settings/voice');
+  return { ok: true, data: null };
+}
+
+export async function deleteVoiceSample(): Promise<ActionResult<null>> {
+  const user = await getUser();
+  if (!user) return { ok: false, error: 'Bitte einloggen.' };
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('profiles')
+    .update({ voice_sample_url: null })
+    .eq('id', user.id);
+  if (error) return { ok: false, error: error.message };
+  revalidatePath('/settings/voice');
+  return { ok: true, data: null };
+}
+
+// -----------------------------------------------------------------------------
 // setPrivateAccount — v1.w.UI.149 — privates Konto an/ausschalten.
 //
 // Bei Umschalten auf öffentlich werden ausstehende Follow-Requests automatisch
