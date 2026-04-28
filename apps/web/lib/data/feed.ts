@@ -941,3 +941,173 @@ export async function getExploreNewestFeed(
 
   return { posts, hasMore: posts.length >= limit };
 }
+
+// -----------------------------------------------------------------------------
+// getDiscoverPeople — Explore "Nutzer entdecken" mit Grund-Labels (v1.w.UI.231)
+//
+// Parity mit native `useDiscoverPeople()`. Drei Tiers:
+//  1. Gleiche Guild  → reason: 'guild'
+//  2. Gleiche Interessen (Top-Hashtag aus eigenen Posts) → reason: 'interests'
+//  3. Neueste aktive User (Fallback)  → reason: 'new'
+//
+// Schließt Self + bereits-gefolgte Accounts aus. Max `limit` Empfehlungen.
+// Server-side cached via React `cache()` — safe für SSR parallel fetch.
+// -----------------------------------------------------------------------------
+
+export type DiscoverReason = 'guild' | 'interests' | 'new';
+
+export interface DiscoverPerson {
+  id: string;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  verified: boolean;
+  reason: DiscoverReason;
+}
+
+export const getDiscoverPeople = cache(async (limit = 12): Promise<DiscoverPerson[]> => {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    // Anon: nur Fallback — neueste Profile ohne Guild/Interest-Matching
+    const { data } = await supabase
+      .from('profiles')
+      .select('id, username, display_name, avatar_url, verified:is_verified')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (!data) return [];
+    return (
+      data as Array<{
+        id: string;
+        username: string;
+        display_name: string | null;
+        avatar_url: string | null;
+        verified: boolean;
+      }>
+    ).map((p) => ({ ...p, reason: 'new' as DiscoverReason }));
+  }
+
+  const userId = user.id;
+
+  // ── Ausschluss-Set: Self + bereits gefolgt ─────────────────────────────────
+  const { data: followingRows } = await supabase
+    .from('follows')
+    .select('following_id')
+    .eq('follower_id', userId);
+  const excludeIds = new Set<string>([
+    userId,
+    ...(followingRows ?? []).map((r) => r.following_id as string),
+  ]);
+
+  const results: DiscoverPerson[] = [];
+  const seen = new Set<string>();
+
+  const addUser = (
+    u: {
+      id: string;
+      username: string;
+      display_name: string | null;
+      avatar_url: string | null;
+      verified: boolean;
+    },
+    reason: DiscoverReason,
+  ) => {
+    if (!seen.has(u.id) && !excludeIds.has(u.id)) {
+      seen.add(u.id);
+      results.push({ ...u, reason });
+    }
+  };
+
+  // ── Guild-ID des eingeloggten Users ───────────────────────────────────────
+  const { data: myProfile } = await supabase
+    .from('profiles')
+    .select('guild_id')
+    .eq('id', userId)
+    .maybeSingle();
+  const guildId = (myProfile as { guild_id: string | null } | null)?.guild_id ?? null;
+
+  // ── Tier 1: Gleiche Guild ──────────────────────────────────────────────────
+  if (guildId) {
+    const { data: guildUsers } = await supabase
+      .from('profiles')
+      .select('id, username, display_name, avatar_url, verified:is_verified')
+      .eq('guild_id', guildId)
+      .neq('id', userId)
+      .limit(8);
+    (guildUsers ?? []).forEach((u) =>
+      addUser(
+        u as {
+          id: string;
+          username: string;
+          display_name: string | null;
+          avatar_url: string | null;
+          verified: boolean;
+        },
+        'guild',
+      ),
+    );
+  }
+
+  // ── Tier 2: Gleiche Interessen (Top-Hashtag aus eigenen Posts) ────────────
+  const { data: myPosts } = await supabase
+    .from('posts')
+    .select('tags')
+    .eq('author_id', userId)
+    .limit(20);
+
+  const tagFreq = new Map<string, number>();
+  (myPosts ?? []).forEach((p) => {
+    ((p.tags as string[]) ?? []).forEach((t) => tagFreq.set(t, (tagFreq.get(t) ?? 0) + 1));
+  });
+  const topTag = [...tagFreq.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 1)
+    .map(([t]) => t)[0];
+
+  if (topTag) {
+    const { data: tagPosts } = await supabase
+      .from('posts')
+      .select('author_id, profiles!inner(id, username, display_name, avatar_url, verified:is_verified)')
+      .contains('tags', [topTag])
+      .neq('author_id', userId)
+      .limit(20);
+
+    (tagPosts ?? []).forEach((p) => {
+      const u = p.profiles as unknown as {
+        id: string;
+        username: string;
+        display_name: string | null;
+        avatar_url: string | null;
+        verified: boolean;
+      };
+      if (u) addUser(u, 'interests');
+    });
+  }
+
+  // ── Tier 3: Neueste aktive User (Fallback) ─────────────────────────────────
+  if (results.length < limit) {
+    const { data: newUsers } = await supabase
+      .from('profiles')
+      .select('id, username, display_name, avatar_url, verified:is_verified')
+      .neq('id', userId)
+      .order('created_at', { ascending: false })
+      .limit(limit + excludeIds.size);
+    (newUsers ?? []).forEach((u) =>
+      addUser(
+        u as {
+          id: string;
+          username: string;
+          display_name: string | null;
+          avatar_url: string | null;
+          verified: boolean;
+        },
+        'new',
+      ),
+    );
+  }
+
+  return results.slice(0, limit);
+});

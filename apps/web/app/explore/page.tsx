@@ -2,7 +2,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { Route } from 'next';
 import { Hash, Flame, TrendingUp, Compass, Users, Sparkles, ShoppingBag, ChevronRight } from 'lucide-react';
-import { getTrendingHashtags, getForYouFeed, getSuggestedFollows } from '@/lib/data/feed';
+import { getTrendingHashtags, getForYouFeed, getDiscoverPeople } from '@/lib/data/feed';
+import type { DiscoverReason } from '@/lib/data/feed';
 import { getUser, getProfile } from '@/lib/auth/session';
 import { getShopProducts } from '@/lib/data/shop';
 import { FollowButton } from '@/components/profile/follow-button';
@@ -38,7 +39,7 @@ export default async function ExplorePage() {
   const [hashtags, preview, people, topProducts, viewer, profile, t, locale] = await Promise.all([
     getTrendingHashtags(24),
     getForYouFeed({ limit: EXPLORE_SEED }),
-    getSuggestedFollows(12),
+    getDiscoverPeople(12),
     getShopProducts({ limit: 6, sort: 'popular' }).catch(() => []),
     getUser(),
     getProfile(),
@@ -98,7 +99,7 @@ export default async function ExplorePage() {
         )}
       </section>
 
-      {/* People to follow */}
+      {/* People to follow — v1.w.UI.231: reason labels */}
       {people.length > 0 && (
         <section className="mb-12">
           <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
@@ -145,7 +146,10 @@ export default async function ExplorePage() {
                       </Link>
                     </div>
 
-                    {/* Follow button — getSuggestedFollows filters already-followed
+                    {/* Reason badge — parity with native "Gleiche Guild" etc. */}
+                    <DiscoverReasonBadge reason={person.reason} />
+
+                    {/* Follow button — getDiscoverPeople filters already-followed
                         accounts + self, so isFollowing=false / isSelf=false always. */}
                     <FollowButton
                       isAuthenticated={!!viewer}
@@ -281,4 +285,30 @@ function formatCount(n: number, locale: Locale): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1).replace('.0', '')}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1).replace('.0', '')}K`;
   return n.toLocaleString(LOCALE_INTL[locale]);
+}
+
+// ── Discover Reason Badge (v1.w.UI.231) ────────────────────────────────────────
+// Parity mit native "🏛 Gleiche Guild" / "🏷 Gleiche Interessen" / "✨ Neu"
+// Labels aus useDiscoverPeople.ts. Kleine Pill unter dem Avatar-Namen.
+
+const REASON_LABELS: Record<DiscoverReason, string> = {
+  guild: '🏛 Gleiche Guild',
+  interests: '🏷 Interessen',
+  new: '✨ Neu',
+};
+
+const REASON_CLASSES: Record<DiscoverReason, string> = {
+  guild: 'bg-brand-gold/10 text-brand-gold',
+  interests: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
+  new: 'bg-sky-500/10 text-sky-600 dark:text-sky-400',
+};
+
+function DiscoverReasonBadge({ reason }: { reason: DiscoverReason }) {
+  return (
+    <span
+      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium leading-none ${REASON_CLASSES[reason]}`}
+    >
+      {REASON_LABELS[reason]}
+    </span>
+  );
 }
