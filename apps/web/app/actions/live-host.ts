@@ -41,6 +41,10 @@ export interface StartLiveSessionInput {
   thumbnailUrl?: string;
   moderationEnabled?: boolean;
   moderationWords?: string[];
+  // v1.w.UI.184 — Parity mit Mobile-Live-Start (allow_comments / allow_gifts / women_only)
+  allowComments?: boolean;
+  allowGifts?: boolean;
+  womenOnly?: boolean;
 }
 
 export interface StartLiveSessionResult {
@@ -82,6 +86,9 @@ export async function startLiveSession(
     title: input.title?.trim().slice(0, 120) || null,
     moderation_enabled: input.moderationEnabled ?? true,
     moderation_words: input.moderationWords ?? [],
+    allow_comments: input.allowComments ?? true,
+    allow_gifts: input.allowGifts ?? true,
+    women_only: input.womenOnly ?? false,
   };
   if (input.category !== undefined) insertPayload.category = input.category;
   if (input.thumbnailUrl !== undefined)
