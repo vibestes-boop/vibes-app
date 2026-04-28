@@ -88,6 +88,7 @@ export default async function ProfileSettingsPage() {
             upload: t('settings.profileAvatarUpload'),
             uploading: t('settings.profileAvatarUploading'),
             remove: t('settings.profileAvatarRemove'),
+            aiGenerate: t('settings.profileAvatarAiGenerate'),
             errorTooLarge: t('settings.profileAvatarErrorTooLarge'),
             errorType: t('settings.profileAvatarErrorType'),
             errorUpload: t('settings.profileAvatarErrorUpload'),

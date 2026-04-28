@@ -301,6 +301,7 @@ const deMessages = {
     profileAvatarUpload: 'Bild wählen',
     profileAvatarUploading: 'Lade hoch…',
     profileAvatarRemove: 'Entfernen',
+    profileAvatarAiGenerate: 'KI-Bild',
     profileAvatarErrorTooLarge: 'Die Datei ist zu groß (max. 10 MB).',
     profileAvatarErrorType: 'Nur Bilddateien erlaubt.',
     profileAvatarErrorUpload: 'Upload fehlgeschlagen — bitte erneut versuchen.',

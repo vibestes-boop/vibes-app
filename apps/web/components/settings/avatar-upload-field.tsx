@@ -2,12 +2,13 @@
 
 import { useRef, useState, useTransition } from 'react';
 import Image from 'next/image';
-import { Upload, Trash2, AlertCircle, Loader2, User } from 'lucide-react';
+import { Upload, Trash2, AlertCircle, Loader2, User, Sparkles } from 'lucide-react';
 
 import { requestR2UploadUrl } from '@/app/actions/posts';
 import { updateAvatar } from '@/app/actions/profile';
 import { compressImage, extensionForMime } from '@/lib/image/compress';
 import { cn } from '@/lib/utils';
+import { AIImageSheet } from '@/components/ai/ai-image-sheet';
 
 // -----------------------------------------------------------------------------
 // <AvatarUploadField /> — v1.w.UI.21.
@@ -40,6 +41,8 @@ export interface AvatarUploadFieldLabels {
   upload: string;
   uploading: string;
   remove: string;
+  /** Label for the AI-generate button (optional; button hidden when absent). */
+  aiGenerate?: string;
   errorTooLarge: string;
   errorType: string;
   errorUpload: string;
@@ -68,6 +71,7 @@ export function AvatarUploadField({
   const [progress, setProgress] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isRemoving, startRemoveTransition] = useTransition();
+  const [aiSheetOpen, setAiSheetOpen] = useState(false);
 
   const initial = (displayName || '?').trim().charAt(0).toUpperCase() || '?';
   const isBusy = progress !== null || isRemoving;
@@ -162,6 +166,64 @@ export function AvatarUploadField({
     });
   }
 
+  // ── v1.w.UI.221 — AI-generated avatar ────────────────────────────────────────
+  // The AI image lands in Supabase Storage (`ai-generated` bucket) at a path
+  // that doesn't satisfy the `/avatars/{userId}/` security-check in
+  // `updateAvatar`. So we fetch it as a Blob client-side, compress it the
+  // same way as a normal file upload, then push it to R2 at the canonical
+  // `avatars/{userId}/ai-{ts}.ext` key before calling `updateAvatar`.
+  async function handleAIImage(url: string) {
+    setError(null);
+    setProgress(0);
+    try {
+      // (1) Fetch AI image as blob.
+      const resp = await fetch(url);
+      if (!resp.ok) throw new Error('fetch');
+      const blob = await resp.blob();
+      const file = new File([blob], 'ai-avatar.png', { type: blob.type || 'image/png' });
+
+      // (2) Compress to 512px WebP.
+      const compressed = await compressImage(file, { maxEdge: MAX_EDGE_PX, quality: 0.85 });
+      const ext = extensionForMime(compressed.mimeType);
+      const key = `avatars/${userId}/ai-${Date.now()}.${ext}`;
+
+      // (3) Presigned R2 upload URL.
+      const signed = await requestR2UploadUrl({ key, contentType: compressed.mimeType });
+      if (!signed.ok) {
+        setError(signed.error || labels.errorSign);
+        setProgress(null);
+        return;
+      }
+
+      // (4) PUT to R2.
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('PUT', signed.data.uploadUrl, true);
+        xhr.setRequestHeader('Content-Type', compressed.mimeType);
+        xhr.upload.onprogress = (ev) => {
+          if (ev.lengthComputable) setProgress(Math.round((ev.loaded / ev.total) * 100));
+        };
+        xhr.onload = () => (xhr.status >= 200 && xhr.status < 300 ? resolve() : reject(new Error(`HTTP ${xhr.status}`)));
+        xhr.onerror = () => reject(new Error('network'));
+        xhr.send(compressed.blob);
+      });
+
+      // (5) Save to profile.
+      const saved = await updateAvatar(signed.data.publicUrl);
+      if (!saved.ok) {
+        setError(saved.error || labels.errorSave);
+        setProgress(null);
+        return;
+      }
+
+      setCurrentUrl(signed.data.publicUrl);
+      setProgress(null);
+    } catch {
+      setError(labels.errorUpload);
+      setProgress(null);
+    }
+  }
+
   return (
     <div className="space-y-2" data-testid="avatar-upload-field">
       <label className="text-sm font-medium text-foreground">{labels.title}</label>
@@ -219,6 +281,23 @@ export function AvatarUploadField({
               {progress !== null ? labels.uploading : labels.upload}
             </button>
 
+            {labels.aiGenerate && (
+              <button
+                type="button"
+                onClick={() => setAiSheetOpen(true)}
+                disabled={isBusy}
+                className={cn(
+                  'inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-sm text-primary',
+                  'hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                  'disabled:cursor-not-allowed disabled:opacity-50',
+                )}
+                data-testid="avatar-ai-button"
+              >
+                <Sparkles className="h-4 w-4" aria-hidden="true" />
+                {labels.aiGenerate}
+              </button>
+            )}
+
             {currentUrl && !isBusy && (
               <button
                 type="button"
@@ -259,6 +338,23 @@ export function AvatarUploadField({
         className="sr-only"
         onChange={handleFileSelected}
         data-testid="avatar-upload-input"
+      />
+
+      {/* v1.w.UI.221 — AI avatar generation sheet */}
+      <AIImageSheet
+        open={aiSheetOpen}
+        onOpenChange={setAiSheetOpen}
+        onUseImage={(url) => void handleAIImage(url)}
+        purpose="avatar"
+        defaultSize="512x512"
+        title="KI-Avatar erstellen"
+        promptPlaceholder="Beschreibe deinen Wunsch-Avatar auf Deutsch oder Englisch…"
+        suggestions={[
+          'Realistisches Portrait, junger Mann, tschetschenisches Aussehen, sauberer Hintergrund',
+          'Anime-Stil Avatar, farbige Haare, glänzende Augen',
+          'Minimalistisches Icon, geometrisch, Blautöne',
+          'Cartoon-Charakter, freundliches Lächeln, heller Hintergrund',
+        ]}
       />
     </div>
   );

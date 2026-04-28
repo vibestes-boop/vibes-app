@@ -292,6 +292,7 @@ const ruMessages = {
     profileAvatarUpload: 'Выбрать фото',
     profileAvatarUploading: 'Загружаю…',
     profileAvatarRemove: 'Удалить',
+    profileAvatarAiGenerate: 'ИИ-изображение',
     profileAvatarErrorTooLarge: 'Файл слишком большой (макс. 10 МБ).',
     profileAvatarErrorType: 'Разрешены только изображения.',
     profileAvatarErrorUpload: 'Загрузка не удалась — попробуй ещё раз.',

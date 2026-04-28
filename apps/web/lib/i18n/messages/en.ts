@@ -289,6 +289,7 @@ const enMessages = {
     profileAvatarUpload: 'Choose image',
     profileAvatarUploading: 'Uploading…',
     profileAvatarRemove: 'Remove',
+    profileAvatarAiGenerate: 'AI Image',
     profileAvatarErrorTooLarge: 'File is too large (max. 10 MB).',
     profileAvatarErrorType: 'Only image files allowed.',
     profileAvatarErrorUpload: 'Upload failed — please try again.',

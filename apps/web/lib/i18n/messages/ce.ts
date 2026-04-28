@@ -302,6 +302,7 @@ const ceMessages = {
     profileAvatarUpload: 'Сурт харжа',
     profileAvatarUploading: 'Чу ло…',
     profileAvatarRemove: 'Дӏадаккха',
+    profileAvatarAiGenerate: 'ИИ сурт',
     profileAvatarErrorTooLarge: 'Файл еккъа йоккха ю (макс. 10 МБ).',
     profileAvatarErrorType: 'Суьрташ бен а мегар дац.',
     profileAvatarErrorUpload: 'Чу дан ца делира — юха дохье.',
