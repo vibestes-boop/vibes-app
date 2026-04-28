@@ -52,6 +52,7 @@ import {
   searchAll,
   searchPaginated,
   getSuggestedFollowsPage,
+  getDiscoverPeople,
   getMyFollowedAccounts,
   getPostsByTag,
 } from '../feed';
@@ -1011,5 +1012,143 @@ describe('getPostsByTag', () => {
     expect(result[0]!.id).toBe('tag-p1');
     expect(result[0]!.liked_by_me).toBe(false);
     expect(result[0]!.following_author).toBe(false);
+  });
+});
+
+// -----------------------------------------------------------------------------
+// getDiscoverPeople (v1.w.UI.231)
+// Drei Tiers: Guild-Match → Interesse-Match (Top-Hashtag) → Neueste (Fallback).
+// -----------------------------------------------------------------------------
+
+describe('getDiscoverPeople', () => {
+  it('returns newest profiles with reason=new for anon users', async () => {
+    setupSupabase({
+      auth: { user: null },
+      tables: {
+        profiles: {
+          data: [
+            { id: 'u1', username: 'alice', display_name: 'Alice', avatar_url: null, verified: false },
+            { id: 'u2', username: 'bob', display_name: 'Bob', avatar_url: null, verified: false },
+          ],
+          error: null,
+        },
+      },
+    });
+
+    const result = await getDiscoverPeople(12);
+    expect(result).toHaveLength(2);
+    expect(result.every((p) => p.reason === 'new')).toBe(true);
+    expect(result[0]!.username).toBe('alice');
+  });
+
+  it('returns empty array when no profiles exist (anon)', async () => {
+    setupSupabase({
+      auth: { user: null },
+      tables: {
+        profiles: { data: null, error: null },
+      },
+    });
+
+    const result = await getDiscoverPeople();
+    expect(result).toEqual([]);
+  });
+
+  it('returns guild members with reason=guild for authenticated user with guild', async () => {
+    // Query order for authenticated user with guild_id:
+    //   follows (1) → profiles:viewer-profile/maybeSingle (2) → profiles:guild-users (3) → posts:tags (4)
+    // Note: the viewer's own profile is fetched with .maybeSingle() which resolves to a single
+    // object (not array). We bypass TypeScript's T[] constraint with `as unknown as never[]`.
+    setupSupabase({
+      auth: { user: { id: 'viewer' } },
+      tables: {
+        follows:  { data: [], error: null },
+        profiles: [
+          // 1st call: .maybeSingle() → data must be a plain object, not an array
+          { data: { guild_id: 'guild-1' } as unknown as never[], error: null },
+          // 2nd call: guild members list
+          {
+            data: [
+              { id: 'u1', username: 'alice', display_name: 'Alice', avatar_url: null, verified: true },
+              { id: 'u2', username: 'bob',   display_name: 'Bob',   avatar_url: null, verified: false },
+            ],
+            error: null,
+          },
+          // 3rd call (fallback) — empty so it doesn't interfere with assertions
+          { data: [], error: null },
+        ],
+        posts: { data: [], error: null },
+      },
+    });
+
+    const result = await getDiscoverPeople(2);
+    // Both users come from guild tier
+    expect(result).toHaveLength(2);
+    expect(result[0]!.reason).toBe('guild');
+    expect(result[1]!.reason).toBe('guild');
+    expect(result.map((p) => p.username)).toEqual(['alice', 'bob']);
+  });
+
+  it('returns interest matches with reason=interests when user has top hashtag posts', async () => {
+    setupSupabase({
+      auth: { user: { id: 'viewer' } },
+      tables: {
+        follows:  { data: [], error: null },
+        profiles: [
+          // viewer's profile via .maybeSingle() — no guild
+          { data: { guild_id: null } as unknown as never[], error: null },
+          // fallback newest (may be called after interests)
+          { data: [], error: null },
+        ],
+        posts: [
+          // viewer's own posts with tags
+          { data: [{ tags: ['coding', 'coding', 'design'] }], error: null },
+          // posts matching top tag 'coding' — with nested profiles
+          {
+            data: [
+              {
+                author_id: 'u3',
+                profiles: { id: 'u3', username: 'carol', display_name: 'Carol', avatar_url: null, verified: false },
+              },
+            ],
+            error: null,
+          },
+        ],
+      },
+    });
+
+    const result = await getDiscoverPeople(12);
+    expect(result.some((p) => p.reason === 'interests')).toBe(true);
+    expect(result.find((p) => p.reason === 'interests')?.username).toBe('carol');
+  });
+
+  it('falls back to newest users and excludes already-followed accounts', async () => {
+    setupSupabase({
+      auth: { user: { id: 'viewer' } },
+      tables: {
+        follows: {
+          data: [{ following_id: 'u1' }], // viewer already follows u1
+          error: null,
+        },
+        profiles: [
+          // viewer's profile via .maybeSingle() — no guild
+          { data: { guild_id: null } as unknown as never[], error: null },
+          // fallback newest users — u1 should be excluded
+          {
+            data: [
+              { id: 'u1', username: 'alice', display_name: 'Alice', avatar_url: null, verified: false },
+              { id: 'u2', username: 'bob',   display_name: 'Bob',   avatar_url: null, verified: false },
+            ],
+            error: null,
+          },
+        ],
+        posts: { data: [], error: null }, // no posts → no top tag
+      },
+    });
+
+    const result = await getDiscoverPeople(12);
+    // u1 is already followed → excluded; u2 included with reason=new
+    expect(result.find((p) => p.username === 'alice')).toBeUndefined();
+    expect(result.find((p) => p.username === 'bob')).toBeDefined();
+    expect(result.find((p) => p.username === 'bob')?.reason).toBe('new');
   });
 });
