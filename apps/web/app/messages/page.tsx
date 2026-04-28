@@ -7,8 +7,12 @@ import { BadgeCheck, Bookmark, MessageCircle, Search } from 'lucide-react';
 import { getUser } from '@/lib/auth/session';
 import { getConversations } from '@/lib/data/messages';
 import type { ConversationPreview } from '@/lib/data/messages';
+import { getActiveStoryGroups } from '@/lib/data/stories';
+import { getActiveLiveSessions } from '@/lib/data/live';
 import { NewConversationButton } from '@/components/messages/new-conversation-button';
 import { EmptyState as CanonicalEmptyState } from '@/components/ui/empty-state';
+import { StoryStrip } from '@/components/feed/story-strip';
+import { cn } from '@/lib/utils';
 import { getT } from '@/lib/i18n/server';
 
 // -----------------------------------------------------------------------------
@@ -18,6 +22,11 @@ import { getT } from '@/lib/i18n/server';
 // Nachrichten während die Liste offen ist) kommen über den
 // `conversations-realtime`-Channel im Client-Wrapper; für den ersten Render
 // reicht der SSR-Snapshot.
+//
+// v1.w.UI.230 — Parity mit native messages tab:
+// - StoryStrip oberhalb der Konversationsliste (Stories + Live-Bubbles)
+// - Story-Ring (Gradient für ungesehen, grau für gesehen) auf Conv-Avataren
+// - LIVE-Ring + LIVE-Badge auf Avataren von live-streamenden Kontakten
 // -----------------------------------------------------------------------------
 
 export const metadata: Metadata = {
@@ -58,23 +67,28 @@ export default async function MessagesPage() {
     redirect('/login?next=/messages');
   }
 
-  const [conversations, t] = await Promise.all([getConversations(), getT()]);
+  // Parallel fetch: Konversationen + Story-Groups + Live-Sessions
+  const [conversations, storyGroups, liveSessions, t] = await Promise.all([
+    getConversations(),
+    getActiveStoryGroups(),
+    getActiveLiveSessions(20),
+    getT(),
+  ]);
+
+  // ── Lookup-Maps für Avatar-Decorations ───────────────────────────────────
+  // userId → { hasUnviewed: boolean } — nur andere User (kein self-chat)
+  const storyByUserId = new Map(storyGroups.map((g) => [g.userId, g]));
+  // userId → live-session-id
+  const liveByUserId = new Map(liveSessions.map((s) => [s.host_id, s.id]));
 
   return (
-    <div className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-3xl flex-col px-4 py-6 md:px-6">
-      <header className="mb-6 flex items-center justify-between">
+    <div className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-3xl flex-col py-6">
+      <header className="mb-4 flex items-center justify-between px-4 md:px-6">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-semibold">
             <MessageCircle className="h-6 w-6 text-primary" />
             {t('messages.title')}
           </h1>
-          {/*
-           * Subtitle nur wenn es tatsächlich Unterhaltungen gibt.
-           * Im Empty-Fall rendert darunter die `EmptyState`-Card eh einen
-           * eigenen H2 + Erklärung — ein zusätzliches "Noch keine
-           * Unterhaltungen." oben wäre redundant und hat auf dem Screen
-           * seltsam doppelt ausgesehen.
-           */}
           {conversations.length > 0 && (
             <p className="mt-0.5 text-sm text-muted-foreground">
               {`${conversations.length} Unterhaltung${conversations.length === 1 ? '' : 'en'}`}
@@ -84,59 +98,101 @@ export default async function MessagesPage() {
         <NewConversationButton />
       </header>
 
+      {/* ── Story + Live Strip (v1.w.UI.230) ──────────────────────────────── */}
+      <div className="-mx-0 mb-4">
+        <StoryStrip />
+      </div>
+
       {conversations.length === 0 ? (
-        <EmptyState />
+        <div className="px-4 md:px-6">
+          <EmptyState />
+        </div>
       ) : (
         // Edge-to-edge Liste (v1.w.UI.1 — D1 aus UI_AUDIT).
-        //
-        // Vorher: `rounded-xl border bg-card` Card-Container → Liste wirkte wie
-        // ein UI-Element, nicht wie Konversationen. WhatsApp/iMessage/Telegram
-        // nutzen alle eine edge-to-edge List-View ohne Card-Framing, weil die
-        // Avatare + Rows selber schon genug visuelle Struktur bringen.
-        //
-        // `divide-y` + `-mx-4 md:mx-0` erweitert die Liste auf Mobile bis an den
-        // Viewport-Rand (Section-Padding wird lokal ausgehebelt), desktop bleibt
-        // contained.
-        <ul className="-mx-4 flex-1 divide-y divide-border/60 md:mx-0">
-          {conversations.map((c) => (
-            <ConversationRow key={c.id} conv={c} />
-          ))}
+        <ul className="-mx-0 flex-1 divide-y divide-border/60">
+          {conversations.map((c) => {
+            const story = c.is_self ? null : storyByUserId.get(c.other_user_id) ?? null;
+            const liveSessionId = c.is_self ? null : liveByUserId.get(c.other_user_id) ?? null;
+            return (
+              <ConversationRow
+                key={c.id}
+                conv={c}
+                hasUnviewedStory={!!story?.hasUnviewed}
+                hasSeenStory={!!story && !story.hasUnviewed}
+                liveSessionId={liveSessionId ?? null}
+              />
+            );
+          })}
         </ul>
       )}
     </div>
   );
 }
 
-function ConversationRow({ conv }: { conv: ConversationPreview }) {
+function ConversationRow({
+  conv,
+  hasUnviewedStory,
+  hasSeenStory,
+  liveSessionId,
+}: {
+  conv: ConversationPreview;
+  hasUnviewedStory: boolean;
+  hasSeenStory: boolean;
+  liveSessionId: string | null;
+}) {
   const isUnread = conv.unread_count > 0;
   const displayName = conv.is_self
     ? 'Meine Notizen'
     : conv.other_display_name ?? `@${conv.other_username}`;
   const preview = conv.last_message ?? (conv.is_self ? 'Notiere hier für dich selbst' : 'Sag Hallo 👋');
 
+  const hasRing = !conv.is_self && (hasUnviewedStory || hasSeenStory || !!liveSessionId);
+
+  // Outer ring wrapper — gradient / red-pulse / gray depending on state
+  const ringClass = liveSessionId
+    ? 'animate-pulse rounded-full bg-red-500 p-[2.5px]'
+    : hasUnviewedStory
+      ? 'rounded-full bg-gradient-to-tr from-amber-400 via-rose-500 to-fuchsia-500 p-[2.5px]'
+      : hasSeenStory
+        ? 'rounded-full bg-muted p-[2.5px]'
+        : null;
+
   return (
     <li>
       <Link
         href={`/messages/${conv.id}` as Route}
-        className="flex items-center gap-4 px-4 py-3 transition-colors duration-fast ease-out-expo hover:bg-muted/60 active:bg-muted"
+        className="flex items-center gap-4 px-4 py-3 transition-colors duration-fast ease-out-expo hover:bg-muted/60 active:bg-muted md:px-6"
       >
-        <div className="relative h-[60px] w-[60px] flex-none overflow-hidden rounded-full bg-muted">
-          {conv.is_self ? (
-            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-amber-400 to-pink-500">
-              <Bookmark className="h-7 w-7 fill-white text-white" />
+        {/* ── Avatar mit optionalem Ring + LIVE-Badge ────────────────────── */}
+        <div className="relative flex-none">
+          {hasRing && ringClass ? (
+            <div className={ringClass}>
+              <div className="rounded-full bg-background p-[2px]">
+                <AvatarInner conv={conv} size={52} />
+              </div>
             </div>
-          ) : conv.other_avatar_url ? (
-            <Image src={conv.other_avatar_url} alt="" fill className="object-cover" sizes="60px" />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-muted text-lg font-medium text-muted-foreground">
-              {initials(conv.other_display_name ?? conv.other_username)}
+            <div className="h-[60px] w-[60px] overflow-hidden rounded-full bg-muted">
+              <AvatarInner conv={conv} size={60} />
             </div>
           )}
+
+          {/* Unread-Dot (oben rechts) */}
           {isUnread && (
             <span
-              className="absolute right-0 top-0 h-3 w-3 rounded-full border-2 border-card bg-primary"
+              className={cn(
+                'absolute h-3 w-3 rounded-full border-2 border-background bg-primary',
+                hasRing ? '-right-0.5 -top-0.5' : 'right-0 top-0',
+              )}
               aria-label={`${conv.unread_count} ungelesen`}
             />
+          )}
+
+          {/* LIVE-Badge (unten, mittig) */}
+          {liveSessionId && !conv.is_self && (
+            <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-sm bg-red-500 px-1 py-px text-[8px] font-bold uppercase tracking-widest text-white">
+              Live
+            </span>
           )}
         </div>
 
@@ -175,6 +231,41 @@ function ConversationRow({ conv }: { conv: ConversationPreview }) {
         </div>
       </Link>
     </li>
+  );
+}
+
+/** Inline helper — avatar image / fallback für ConversationRow */
+function AvatarInner({ conv, size }: { conv: ConversationPreview; size: number }) {
+  const dim = `${size}px`;
+  if (conv.is_self) {
+    return (
+      <div
+        style={{ width: dim, height: dim }}
+        className="flex items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-pink-500"
+      >
+        <Bookmark className="h-7 w-7 fill-white text-white" />
+      </div>
+    );
+  }
+  if (conv.other_avatar_url) {
+    return (
+      <Image
+        src={conv.other_avatar_url}
+        alt=""
+        width={size}
+        height={size}
+        className="rounded-full object-cover"
+        sizes={dim}
+      />
+    );
+  }
+  return (
+    <div
+      style={{ width: dim, height: dim }}
+      className="flex items-center justify-center rounded-full bg-muted text-lg font-medium text-muted-foreground"
+    >
+      {initials(conv.other_display_name ?? conv.other_username)}
+    </div>
   );
 }
 
