@@ -19,6 +19,8 @@ import {
   ShoppingBag,
   Check,
   X,
+  Repeat2,
+  Camera,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -56,6 +58,10 @@ const TYPE_META: Record<NotificationType, NotifMeta> = {
   follow_request:          { icon: UserPlus,     color: 'text-amber-500',   bg: 'bg-amber-500/10' },
   follow_request_accepted: { icon: UserCheck,    color: 'text-green-500',   bg: 'bg-green-500/10' },
   new_order:               { icon: ShoppingBag,  color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+  comment_like:            { icon: Heart,        color: 'text-pink-400',    bg: 'bg-pink-400/10' },
+  repost:                  { icon: Repeat2,      color: 'text-teal-500',    bg: 'bg-teal-500/10' },
+  story_reaction:          { icon: Camera,       color: 'text-fuchsia-500', bg: 'bg-fuchsia-500/10' },
+  guild:                   { icon: Users,        color: 'text-sky-500',     bg: 'bg-sky-500/10' },
 };
 
 // ── Notification-Text pro Typ ─────────────────────────────────────────────────
@@ -93,6 +99,14 @@ function notifText(n: Notification): string {
       return n.product_name
         ? `${name} hat „${n.product_name}" gekauft.`
         : `${name} hat ein Produkt bei dir gekauft.`;
+    case 'comment_like':
+      return `${name} hat deinen Kommentar geliked.`;
+    case 'repost':
+      return `${name} hat deinen Post geteilt.`;
+    case 'story_reaction':
+      return `${name} hat auf deine Story reagiert.`;
+    case 'guild':
+      return `Neue Aktivität in deiner Guild.`;
     default:
       return `Neue Aktivität von ${name}.`;
   }
@@ -123,6 +137,16 @@ function notifHref(n: Notification): Route {
         : ('/' as Route);
     case 'new_order':
       return '/studio/orders?role=seller' as Route;
+    case 'comment_like':
+      return n.post_id ? (`/p/${n.post_id}` as Route) : ('/' as Route);
+    case 'repost':
+      return n.post_id ? (`/p/${n.post_id}` as Route) : ('/' as Route);
+    case 'story_reaction':
+      return n.sender?.username
+        ? (`/u/${n.sender.username}` as Route)
+        : ('/' as Route);
+    case 'guild':
+      return '/guilds' as Route;
     default:
       return '/' as Route;
   }

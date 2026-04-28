@@ -30,7 +30,11 @@ export type NotificationType =
   | 'live_invite'
   | 'follow_request'
   | 'follow_request_accepted'
-  | 'new_order';
+  | 'new_order'
+  | 'comment_like'
+  | 'repost'
+  | 'story_reaction'
+  | 'guild';
 
 export interface NotificationSender {
   id: string;
