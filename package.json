@@ -15,6 +15,7 @@
     "thumbnails:backfill": "node scripts/backfill-video-thumbnails.mjs",
     "images:thumbnails:backfill": "node scripts/backfill-image-thumbnails.mjs",
     "env:doctor": "node scripts/env-doctor.mjs",
+    "stability:api-contracts": "node scripts/check-api-contracts.mjs",
     "stability:media-budget": "node scripts/check-media-budget.mjs",
     "test": "jest",
     "test:watch": "jest --watch",
