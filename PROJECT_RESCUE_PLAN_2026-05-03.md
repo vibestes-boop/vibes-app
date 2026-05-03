@@ -314,13 +314,12 @@ Erstellt unter `/Users/zaurhatuev/vibes-backups/20260503-020559`.
 ### Phase 2 — Media Performance und Backfill (2 bis 5 Tage)
 
 1. Backfill für fehlende Video-Thumbnails:
-   - IDs ohne `thumbnail_url` finden.
-   - Thumbnails serverseitig oder einmalig lokal generieren.
-   - `posts.thumbnail_url` aktualisieren.
+   - Erledigt am 2026-05-03.
+   - 4 fehlende Video-Thumbnails wurden lokal mit ffmpeg generiert.
+   - JPEGs wurden nach R2 unter `thumbnails/{userId}/...` hochgeladen.
+   - `posts.thumbnail_url` wurde fuer alle 4 Kandidaten aktualisiert.
    - Werkzeug gebaut: `npm run thumbnails:backfill -- --dry-run --limit 25`.
-   - Dry-Run findet aktuell 4 Video-Posts ohne `thumbnail_url`.
-   - Apply benoetigt noch `SUPABASE_SERVICE_ROLE_KEY`,
-     `CF_R2_ACCESS_KEY_ID` und `CF_R2_SECRET_ACCESS_KEY`.
+   - Verifikation danach: `No video posts without thumbnail_url found.`
 2. Bild-Backfill:
    - alte große Bilder identifizieren.
    - kleine WebP/JPEG-Thumbnails erzeugen.
@@ -421,12 +420,13 @@ Die nächsten praktischen Schritte:
    Smoke: Startseite 200, `/explore` 200, Feed API 200, R2 CORS 204.
 6. Z-Placeholder ist entschärft:
    Explore Cards und Profile Grid zeigen bei fehlendem Thumbnail den ersten Video-Frame.
-   Thumbnail-Backfill fuer die bekannten Video-Posts ohne `thumbnail_url` ist vorbereitet.
-   Dry-Run-Kandidaten:
+   Thumbnail-Backfill fuer die bekannten Video-Posts ohne `thumbnail_url` ist erledigt.
+   Aktualisierte Posts:
    - `ada22442-031f-4485-a0ca-d133683ccd4f`
    - `7faaa080-ec41-49dd-9c06-20ca2cb912a3`
    - `7349cad1-e9d8-4c6d-836e-819307feeddf`
    - `ec83966c-4efa-4941-95fc-5db64ec63986`
+   Verifikation: Feed API erste 24 Posts, `videoMissingThumbnails: 0`.
 7. Explore-Performance ist verbessert:
    Serverdaten nutzen pro Request den gecachten `getUser()`-Helper statt mehrerer paralleler Auth-Abfragen.
    Warm-Smoke nach Deploy: `/explore` ca. `0.729s`, Feed API ca. `0.279s`.

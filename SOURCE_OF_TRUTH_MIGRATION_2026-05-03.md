@@ -82,13 +82,19 @@ Letzter Smoke gegen `https://serlo-web.vercel.app` nach Production-Deploy am 202
 - Warme `/explore`-Antwortzeiten: erster Alias-Warmup ca. `3.95s`, danach `0.729s`.
 - 12 Posts geliefert, `hasMore: true`.
 - 8 Videos in der ersten Seite.
-- 3 Videos ohne `thumbnail_url`:
+- Vor dem Backfill hatten 3 Videos in der ersten Feed-Seite kein `thumbnail_url`:
   - `ada22442-031f-4485-a0ca-d133683ccd4f`
   - `7faaa080-ec41-49dd-9c06-20ca2cb912a3`
   - `7349cad1-e9d8-4c6d-836e-819307feeddf`
 - UI-Fallback fuer diese Altvideos ist deployed:
   - Explore Cards laden bei fehlendem Thumbnail Video-Metadaten und zeigen den ersten Frame statt dauerhaftem Z-Placeholder.
   - Profile Grid unterscheidet Bild-URLs von Video-URLs und nutzt denselben ersten-Frame-Fallback.
+- Thumbnail-Backfill wurde danach am 2026-05-03 ausgefuehrt:
+  - 4 Video-Thumbnails generiert.
+  - 4 JPEGs nach R2 hochgeladen.
+  - 4 `posts.thumbnail_url` Werte in Supabase gesetzt.
+  - Verifikation: `No video posts without thumbnail_url found.`
+  - Feed API erste 24 Posts: `videoMissingThumbnails: 0`.
 - Explore-Performance-Fix ist deployed:
   - `getForYouFeed`, `getDiscoverPeople` und `getShopProducts` verwenden den pro Request gecachten `getUser()`-Helper.
   - Dadurch vermeidet `/explore` mehrere parallele Supabase-Auth-Roundtrips fuer denselben Request.
@@ -206,13 +212,11 @@ Regel:
    - Web: `npm run env:doctor`.
    - Ausgabe zeigt nur Key-Status und Quellen, niemals Werte.
    - Aktueller Core-Status: Web Core und Native Core haben 0 fehlende Pflicht-Keys.
-6. Thumbnail-Backfill vorbereiten.
-   - Alte Videos ohne `thumbnail_url` haben jetzt einen UI-Fallback.
+6. Thumbnail-Backfill ist erledigt.
+   - Alte Videos ohne `thumbnail_url` haben einen UI-Fallback.
    - Backfill-Tool: `npm run thumbnails:backfill -- --dry-run --limit 25`.
-   - Dry-Run findet aktuell 4 Video-Posts ohne `thumbnail_url`.
-   - Echte Backfill-Thumbnails bleiben wichtig fuer Performance und saubere Poster.
-   - `--apply` benoetigt noch `SUPABASE_SERVICE_ROLE_KEY`,
-     `CF_R2_ACCESS_KEY_ID` und `CF_R2_SECRET_ACCESS_KEY`.
+   - Apply wurde am 2026-05-03 fuer 4 Kandidaten ausgefuehrt.
+   - Verifikation danach: keine Video-Posts ohne `thumbnail_url`.
 7. Explore weiter optimieren.
    - Nach dem Auth-Dedupe ist `/explore` warm unter 1s.
    - Naechster Hebel: serverseitige Page-Sektionen splitten oder den anonymen Shell-Anteil statisch/cached machen.
