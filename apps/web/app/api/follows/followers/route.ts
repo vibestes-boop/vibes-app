@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getPublicProfile } from '@/lib/data/public';
 import { getProfileFollowers } from '@/lib/data/public';
+import { privateNoStoreHeaders, publicApiCacheHeaders } from '@/lib/cache/headers';
 
 // -----------------------------------------------------------------------------
 // GET /api/follows/followers?username=X&offset=N&limit=N
@@ -16,6 +17,10 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const PAGE = 50;
+const PUBLIC_FOLLOW_LIST_HEADERS = publicApiCacheHeaders({
+  cdnMaxAge: 30,
+  staleWhileRevalidate: 120,
+});
 
 export async function GET(request: Request) {
   const url      = new URL(request.url);
@@ -29,14 +34,22 @@ export async function GET(request: Request) {
 
   try {
     const profile = await getPublicProfile(username);
-    if (!profile) return NextResponse.json({ users: [], hasMore: false });
+    if (!profile) {
+      return NextResponse.json(
+        { users: [], hasMore: false },
+        { headers: PUBLIC_FOLLOW_LIST_HEADERS },
+      );
+    }
 
     const users = await getProfileFollowers(profile.id, limit, offset);
     return NextResponse.json(
       { users, hasMore: users.length >= limit },
-      { headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=120' } },
+      { headers: PUBLIC_FOLLOW_LIST_HEADERS },
     );
   } catch {
-    return NextResponse.json({ users: [], hasMore: false }, { status: 200 });
+    return NextResponse.json(
+      { users: [], hasMore: false },
+      { status: 200, headers: privateNoStoreHeaders() },
+    );
   }
 }
