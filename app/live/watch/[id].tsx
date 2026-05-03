@@ -83,7 +83,7 @@ import { useLiveModerators } from '@/lib/useLiveModerators';
 import { useLiveWelcome } from '@/lib/useLiveWelcome';
 import { WelcomeToast } from '@/components/live/WelcomeToast';
 import { useQueryClient } from '@tanstack/react-query';
-import { useAuthStore } from '@/lib/authStore';
+import { useAuthStore, type Profile } from '@/lib/authStore';
 import { useFollow } from '@/lib/useFollow';
 import { LiveUserSheet } from '@/components/live/LiveUserSheet';
 import { LivePollStartSheet } from '@/components/live/LivePollStartSheet';
@@ -746,28 +746,75 @@ const s2 = StyleSheet.create({
   endedAutoClose: { color: 'rgba(255,255,255,0.3)', fontSize: 12, marginTop: 4 },
 });
 
-// ─── Inner Watch UI (innerhalb LiveKitRoom) ───────────────────────────────────
-function WatchUI({
-  sessionId,
-  onRequestPublisherUpgrade,
-}: {
+type WatchUIProps = {
   sessionId: string;
   // Wird aufgerufen, sobald coHostStatus === 'accepted'. Holt einen Token
   // mit canPublish=true und triggert internen LiveKit-Reconnect. Gibt true
   // zurück wenn der Upgrade geklappt hat, false sonst.
   onRequestPublisherUpgrade: () => Promise<boolean>;
-}) {
+};
+
+type WatchUIContentProps = WatchUIProps & {
+  insets: ReturnType<typeof useSafeAreaInsets>;
+  router: ReturnType<typeof useRouter>;
+  profile: Profile | null;
+  session: ReturnType<typeof useLiveSession>['data'];
+};
+
+// ─── Inner Watch UI (innerhalb LiveKitRoom) ───────────────────────────────────
+function WatchUI({ sessionId, onRequestPublisherUpgrade }: WatchUIProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { profile } = useAuthStore();
-
-  // WOZ-Guard zuerst — MUSS vor allen anderen Hooks stehen (Rules of Hooks)
   const { canAccessWomenOnly } = useWomenOnly();
-
-  // Bildschirm an lassen während des Live-Streams
   useKeepAwake();
-
   const { data: session } = useLiveSession(sessionId);
+
+  if (session && (session as any).women_only && !canAccessWomenOnly) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#0A0A0F' }}>
+        <LinearGradient
+          colors={['rgba(244,63,94,0.2)', 'rgba(168,85,247,0.1)', 'transparent']}
+          style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 }}
+        >
+          <Text style={{ fontSize: 56, marginBottom: 20 }}>🔒</Text>
+          <Text style={{ color: '#F43F5E', fontSize: 24, fontWeight: '900', textAlign: 'center', marginBottom: 8 }}>
+            Women-Only Live
+          </Text>
+          <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, textAlign: 'center', lineHeight: 22, marginBottom: 40 }}>
+            Dieser Live-Stream ist nur für verifizierte Frauen zugänglich.
+          </Text>
+          <Pressable
+            onPress={() => router.back()}
+            style={{ backgroundColor: 'rgba(244,63,94,0.15)', borderWidth: 1, borderColor: 'rgba(244,63,94,0.4)', borderRadius: 16, paddingHorizontal: 28, paddingVertical: 14 }}
+          >
+            <Text style={{ color: '#F43F5E', fontSize: 15, fontWeight: '700' }}>Zurück</Text>
+          </Pressable>
+        </LinearGradient>
+      </View>
+    );
+  }
+
+  return (
+    <WatchUIContent
+      sessionId={sessionId}
+      onRequestPublisherUpgrade={onRequestPublisherUpgrade}
+      insets={insets}
+      router={router}
+      profile={profile}
+      session={session}
+    />
+  );
+}
+
+function WatchUIContent({
+  sessionId,
+  onRequestPublisherUpgrade,
+  insets,
+  router,
+  profile,
+  session,
+}: WatchUIContentProps) {
   useLiveViewer(sessionId);
   // Phase 6: Viewer muss Moderation-Einstellungen des Hosts kennen
   // (Word-Filter, Slow-Mode). Timeouts werden im Hook selbst via Broadcast
@@ -863,32 +910,6 @@ function WatchUI({
   const tapHeartIdRef = useRef(0);
   const [tapHearts, setTapHearts] = useState<TapHeart[]>([]);
   const joinedRef = useRef(false);
-
-  // ─── Women-Only Guard: ALLE Hooks sind oben deklariert → sicheres early return ──
-  if (session && (session as any).women_only && !canAccessWomenOnly) {
-    return (
-      <View style={{ flex: 1, backgroundColor: '#0A0A0F' }}>
-        <LinearGradient
-          colors={['rgba(244,63,94,0.2)', 'rgba(168,85,247,0.1)', 'transparent']}
-          style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 }}
-        >
-          <Text style={{ fontSize: 56, marginBottom: 20 }}>🔒</Text>
-          <Text style={{ color: '#F43F5E', fontSize: 24, fontWeight: '900', textAlign: 'center', marginBottom: 8 }}>
-            Women-Only Live
-          </Text>
-          <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, textAlign: 'center', lineHeight: 22, marginBottom: 40 }}>
-            Dieser Live-Stream ist nur für verifizierte Frauen zugänglich.
-          </Text>
-          <Pressable
-            onPress={() => router.back()}
-            style={{ backgroundColor: 'rgba(244,63,94,0.15)', borderWidth: 1, borderColor: 'rgba(244,63,94,0.4)', borderRadius: 16, paddingHorizontal: 28, paddingVertical: 14 }}
-          >
-            <Text style={{ color: '#F43F5E', fontSize: 15, fontWeight: '700' }}>Zurück</Text>
-          </Pressable>
-        </LinearGradient>
-      </View>
-    );
-  }
 
   // ─── Keyboard tracking (RNAnimated, nicht Reanimated) ─────────────────────────
   const keyboardBottom = useRef(new RNAnimated.Value(0)).current;
@@ -3521,4 +3542,3 @@ const ss = StyleSheet.create({
     textAlign: 'center', lineHeight: 14,
   },
 });
-

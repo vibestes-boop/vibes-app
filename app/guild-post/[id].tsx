@@ -494,18 +494,6 @@ export default function GuildPostDetailScreen() {
     index,
   }), []);
 
-  // Kein Store-Inhalt → Spinner bis Guild-Feed geladen
-  if (posts.length === 0) {
-    return (
-      <View style={{ flex: 1, backgroundColor: '#050508', alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator color="#7C3AED" size="large" />
-      </View>
-    );
-  }
-
-  // initialNumToRender muss >= initialIndex+1 sein damit scrollToIndex funktioniert
-  const safeInitialNumToRender = Math.max((initialIndex >= 0 ? initialIndex : 0) + 2, 3);
-
   // ─ Linker Edge-Swipe → router.back() ─────────────────────────────────
   // Schmaler linker Streifen (~22px) mit PanResponder:
   // Swipe nach rechts (dx > 60, |dy| < 80) → router.back()
@@ -521,6 +509,18 @@ export default function GuildPostDetailScreen() {
       },
     })
   ).current;
+
+  // Kein Store-Inhalt → Spinner bis Guild-Feed geladen
+  if (posts.length === 0) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#050508', alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator color="#7C3AED" size="large" />
+      </View>
+    );
+  }
+
+  // initialNumToRender muss >= initialIndex+1 sein damit scrollToIndex funktioniert
+  const safeInitialNumToRender = Math.max((initialIndex >= 0 ? initialIndex : 0) + 2, 3);
 
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }}>

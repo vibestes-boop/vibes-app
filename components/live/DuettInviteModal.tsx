@@ -208,7 +208,7 @@ export function DuettInviteModal({
         </View>
 
         {invite.message ? (
-          <Text style={s.message}>"{invite.message}"</Text>
+          <Text style={s.message}>{`"${invite.message}"`}</Text>
         ) : null}
 
         {/* Buttons */}

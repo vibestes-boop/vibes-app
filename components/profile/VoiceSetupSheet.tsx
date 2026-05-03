@@ -438,7 +438,7 @@ export function VoiceSetupSheet({ visible, onClose }: Props) {
             <Text style={styles.footnote}>
               Beispiel-Text zum Vorlesen:{'\n'}
               <Text style={styles.footnoteExample}>
-                „Hey, ich bin dabei! Schau dir meinen neuesten Vibe an – du wirst es lieben."
+                {'„Hey, ich bin dabei! Schau dir meinen neuesten Vibe an – du wirst es lieben.“'}
               </Text>
             </Text>
           </ScrollView>

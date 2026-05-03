@@ -437,9 +437,10 @@ Die nächsten praktischen Schritte:
    Root `npm run env:doctor -- --no-fail`, Web `npm run env:doctor`.
 10. Desktop-Native-Core-Social-Diffs einzeln ins Monorepo portieren:
    Kommentare, Teilen, Post-Optionen, Create-Flow.
-11. Root/Native-Lint separat reparieren:
-   `npm run lint -- --quiet` findet aktuell 61 bestehende Fehler.
-   Hauptblock: Hook-Reihenfolge in `app/live/watch/[id].tsx`.
+11. Root/Native-Lint-Fehler sind repariert:
+   `npx expo lint --quiet` ist gruen.
+   `npm run lint` blockt Fehler, Warnungen bleiben sichtbar.
+   `npm run lint:strict` bleibt fuer die spaetere 0-Warnungen-Aufraeumrunde.
 
 ## 7. Definition of Victory
 

@@ -218,6 +218,7 @@ Regel:
    - Naechster Hebel: serverseitige Page-Sektionen splitten oder den anonymen Shell-Anteil statisch/cached machen.
 8. Desktop-Native Core-Social-Diffs einzeln portieren.
    - Fokus: Kommentare, Teilen, Post-Optionen, Create-Flow.
-9. Root/Native-Lint separat reparieren.
-   - `npm run lint -- --quiet` findet aktuell 61 bestehende Fehler.
-   - Groesster Block: Hook-Reihenfolge in `app/live/watch/[id].tsx`.
+9. Root/Native-Lint-Fehler sind repariert.
+   - `npx expo lint --quiet` ist gruen.
+   - `npm run lint` blockt Fehler, zeigt aber Legacy-Warnungen weiter an.
+   - `npm run lint:strict` bleibt fuer die spaetere 0-Warnungen-Aufraeumrunde.

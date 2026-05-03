@@ -258,7 +258,7 @@ export function WomenOnlyVerificationSheet({
                 end={{ x: 1, y: 0 }}
                 style={s.primaryBtnGradient}
               >
-                <Text style={s.primaryBtnText}>Los geht's!</Text>
+                <Text style={s.primaryBtnText}>{"Los geht's!"}</Text>
               </LinearGradient>
             </Pressable>
           </View>

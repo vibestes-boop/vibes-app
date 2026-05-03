@@ -404,7 +404,7 @@ export default function ProfileScreen() {
                 </View>
               ) : (
                 drafts.map((draft) => (
-                    <View style={[
+                    <View key={draft.id} style={[
                       {flexDirection: 'row', alignItems: 'center'},
                       {backgroundColor: colors.bg.secondary, borderRadius: 14, padding: 12, marginBottom: 10, gap: 12}
                     ]}>
