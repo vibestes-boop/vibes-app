@@ -23,6 +23,22 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  api-contract:
+    name: public API contract (production)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Check Explore API contract
+        run: node scripts/check-api-contracts.mjs --skip-supabase
+
   media-budget:
     name: media budget (production)
     runs-on: ubuntu-latest
