@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { Route } from 'next';
+import { Suspense } from 'react';
 import { Hash, Flame, TrendingUp, Compass, Users, Sparkles, ShoppingBag, ChevronRight } from 'lucide-react';
-import { getTrendingHashtags, getForYouFeed, getDiscoverPeople } from '@/lib/data/feed';
+import { getPublicTrendingHashtags, getPublicForYouFeed, getDiscoverPeople } from '@/lib/data/feed';
 import type { DiscoverReason } from '@/lib/data/feed';
 import { getUser, getProfile } from '@/lib/auth/session';
 import { getShopProducts } from '@/lib/data/shop';
@@ -36,21 +37,12 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function ExplorePage() {
-  const [hashtags, preview, people, topProducts, viewer, profile, t, locale] = await Promise.all([
-    getTrendingHashtags(24),
-    getForYouFeed({ limit: EXPLORE_SEED }),
-    getDiscoverPeople(12),
-    getShopProducts({ limit: 6, sort: 'popular' }).catch(() => []),
-    getUser(),
-    getProfile(),
+  const [hashtags, preview, t, locale] = await Promise.all([
+    getPublicTrendingHashtags(24),
+    getPublicForYouFeed({ limit: EXPLORE_SEED }),
     getT(),
     getLocale(),
   ]);
-
-  const isWozVerified =
-    !!(profile as unknown as { gender?: string; women_only_verified?: boolean } | null)
-      ?.women_only_verified &&
-    (profile as unknown as { gender?: string } | null)?.gender === 'female';
 
   return (
     <main className="container mx-auto max-w-6xl px-4 py-8">
@@ -99,12 +91,48 @@ export default async function ExplorePage() {
         )}
       </section>
 
+      {/* Popular Posts — v1.w.UI.124: ExplorePostGrid mit infinite scroll */}
+      {preview.length > 0 && (
+        <section className="mb-12">
+          <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
+            <TrendingUp className="h-5 w-5" />
+            {t('explore.popularPosts')}
+          </h2>
+          <ExplorePostGrid
+            initialPosts={preview}
+            initialHasMore={preview.length >= EXPLORE_SEED}
+          />
+        </section>
+      )}
+
+      <Suspense fallback={null}>
+        <ExploreDeferredSections suggestedPeopleTitle={t('explore.suggestedPeople')} />
+      </Suspense>
+    </main>
+  );
+}
+
+async function ExploreDeferredSections({ suggestedPeopleTitle }: { suggestedPeopleTitle: string }) {
+  const [people, topProducts, viewer, profile] = await Promise.all([
+    getDiscoverPeople(12),
+    getShopProducts({ limit: 6, sort: 'popular' }).catch(() => []),
+    getUser(),
+    getProfile(),
+  ]);
+
+  const isWozVerified =
+    !!(profile as unknown as { gender?: string; women_only_verified?: boolean } | null)
+      ?.women_only_verified &&
+    (profile as unknown as { gender?: string } | null)?.gender === 'female';
+
+  return (
+    <>
       {/* People to follow — v1.w.UI.231: reason labels */}
       {people.length > 0 && (
         <section className="mb-12">
           <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
             <Users className="h-5 w-5 text-brand-gold" />
-            {t('explore.suggestedPeople')}
+            {suggestedPeopleTitle}
           </h2>
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
             {people.map((person) => {
@@ -114,7 +142,6 @@ export default async function ExplorePage() {
               return (
                 <li key={person.id}>
                   <div className="flex flex-col items-center gap-3 rounded-xl border border-border bg-card p-4 text-center">
-                    {/* Avatar */}
                     <Link
                       href={`/u/${person.username}` as Route}
                       className="block shrink-0"
@@ -134,7 +161,6 @@ export default async function ExplorePage() {
                       )}
                     </Link>
 
-                    {/* Name */}
                     <div className="w-full min-w-0">
                       <Link href={`/u/${person.username}` as Route} className="block">
                         <p className="truncate text-sm font-semibold leading-tight">
@@ -146,11 +172,8 @@ export default async function ExplorePage() {
                       </Link>
                     </div>
 
-                    {/* Reason badge — parity with native "Gleiche Guild" etc. */}
                     <DiscoverReasonBadge reason={person.reason} />
 
-                    {/* Follow button — getDiscoverPeople filters already-followed
-                        accounts + self, so isFollowing=false / isSelf=false always. */}
                     <FollowButton
                       isAuthenticated={!!viewer}
                       isFollowing={false}
@@ -163,7 +186,6 @@ export default async function ExplorePage() {
               );
             })}
           </ul>
-          {/* v1.w.UI.120 — Link to full people-discovery page */}
           <div className="mt-4 flex justify-end">
             <Link
               href="/people"
@@ -198,7 +220,6 @@ export default async function ExplorePage() {
                 href={`/shop/${product.id}` as Route}
                 className="group flex w-32 shrink-0 flex-col overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-foreground/20"
               >
-                {/* Cover */}
                 <div className="relative aspect-square overflow-hidden bg-muted">
                   {product.cover_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -219,7 +240,6 @@ export default async function ExplorePage() {
                     </span>
                   )}
                 </div>
-                {/* Info */}
                 <div className="flex flex-col gap-0.5 p-2">
                   <p className="line-clamp-2 text-[11px] font-medium leading-tight text-foreground">
                     {product.title}
@@ -263,21 +283,7 @@ export default async function ExplorePage() {
           </Link>
         </section>
       )}
-
-      {/* Popular Posts — v1.w.UI.124: ExplorePostGrid mit infinite scroll */}
-      {preview.length > 0 && (
-        <section>
-          <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
-            <TrendingUp className="h-5 w-5" />
-            {t('explore.popularPosts')}
-          </h2>
-          <ExplorePostGrid
-            initialPosts={preview}
-            initialHasMore={preview.length >= EXPLORE_SEED}
-          />
-        </section>
-      )}
-    </main>
+    </>
   );
 }
 

@@ -1,5 +1,6 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
+import { createPublicClient } from '@/lib/supabase/public';
 import { getUser } from '@/lib/auth/session';
 import type { Post, PublicProfile } from '@shared/types';
 
@@ -288,6 +289,37 @@ export const getForYouFeed = cache(
   },
 );
 
+// Cookie-freier Public-Feed fuer anonyme Explore-SSR/API-Pfade.
+// Spart den Supabase-Auth-Roundtrip und alle user-spezifischen Engagement-Reads.
+export const getPublicForYouFeed = cache(
+  async (opts: { limit?: number; excludeIds?: string[]; before?: string } = {}): Promise<FeedPost[]> => {
+    const { limit = 10, excludeIds = [], before } = opts;
+    const supabase = createPublicClient();
+
+    let query = supabase
+      .from('posts')
+      .select(`${POST_COLUMNS}, ${AUTHOR_JOIN}`)
+      .eq('privacy', 'public')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    if (excludeIds.length > 0) {
+      query = query.not('id', 'in', `(${excludeIds.join(',')})`);
+    }
+    if (before) query = query.lt('created_at', before);
+
+    const { data: rows, error } = await query;
+    if (error || !rows) {
+      if (error) console.error('[feed] getPublicForYouFeed query error:', error.code, error.message, error.details);
+      return [];
+    }
+
+    return (rows as unknown as RawPostRow[])
+      .map((row) => normalizeRow(row, new Set(), new Set(), new Set(), new Set()))
+      .filter((p): p is FeedPost => p !== null);
+  },
+);
+
 // -----------------------------------------------------------------------------
 // getFollowingFeed — nur Posts von Leuten denen der User folgt.
 // -----------------------------------------------------------------------------
@@ -507,6 +539,47 @@ export const getTrendingHashtags = cache(async (limit = 20): Promise<TrendingHas
   }
 
   // Fallback: 7-Tage-Fenster, client-seitig aggregieren. Lädt nur die tags-Spalte.
+  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  const { data } = await supabase
+    .from('posts')
+    .select('tags, view_count')
+    .gte('created_at', since)
+    .eq('privacy', 'public')
+    .limit(1000);
+
+  if (!data) return [];
+
+  const agg = new Map<string, { post_count: number; total_views: number }>();
+  for (const row of data as { tags: string[] | null; view_count: number | null }[]) {
+    if (!row.tags) continue;
+    for (const raw of row.tags) {
+      const tag = raw.toLowerCase().replace(/^#/, '').trim();
+      if (!tag) continue;
+      const entry = agg.get(tag) ?? { post_count: 0, total_views: 0 };
+      entry.post_count += 1;
+      entry.total_views += row.view_count ?? 0;
+      agg.set(tag, entry);
+    }
+  }
+
+  return Array.from(agg.entries())
+    .map(([tag, v]) => ({ tag, ...v }))
+    .sort((a, b) => b.total_views - a.total_views || b.post_count - a.post_count)
+    .slice(0, limit);
+});
+
+export const getPublicTrendingHashtags = cache(async (limit = 20): Promise<TrendingHashtag[]> => {
+  const supabase = createPublicClient();
+
+  try {
+    const { data, error } = await supabase.rpc('get_trending_hashtags', { result_limit: limit });
+    if (!error && Array.isArray(data)) {
+      return (data as TrendingHashtag[]).slice(0, limit);
+    }
+  } catch {
+    /* fall through */
+  }
+
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const { data } = await supabase
     .from('posts')
@@ -937,6 +1010,50 @@ export async function getExploreNewestFeed(
   const { liked, saved, following, reposted } = await batchEngagement(postIds, authorIds, viewerId);
   const posts = rows
     .map((row) => normalizeRow(row, liked, saved, following, reposted))
+    .filter((p): p is FeedPost => p !== null);
+
+  return { posts, hasMore: posts.length >= limit };
+}
+
+export async function getPublicExploreTrendingFeed(
+  limit = 12,
+  offset = 0,
+): Promise<ExplorePage> {
+  const supabase = createPublicClient();
+  const { data, error } = await supabase
+    .from('posts')
+    .select(`${POST_COLUMNS}, ${AUTHOR_JOIN}`)
+    .eq('privacy', 'public')
+    .order('view_count', { ascending: false })
+    .order('id', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error || !data) return { posts: [], hasMore: false };
+
+  const posts = (data as unknown as RawPostRow[])
+    .map((row) => normalizeRow(row, new Set(), new Set(), new Set(), new Set()))
+    .filter((p): p is FeedPost => p !== null);
+
+  return { posts, hasMore: posts.length >= limit };
+}
+
+export async function getPublicExploreNewestFeed(
+  limit = 12,
+  offset = 0,
+): Promise<ExplorePage> {
+  const supabase = createPublicClient();
+  const { data, error } = await supabase
+    .from('posts')
+    .select(`${POST_COLUMNS}, ${AUTHOR_JOIN}`)
+    .eq('privacy', 'public')
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
+    .range(offset, offset + limit - 1);
+
+  if (error || !data) return { posts: [], hasMore: false };
+
+  const posts = (data as unknown as RawPostRow[])
+    .map((row) => normalizeRow(row, new Set(), new Set(), new Set(), new Set()))
     .filter((p): p is FeedPost => p !== null);
 
   return { posts, hasMore: posts.length >= limit };
