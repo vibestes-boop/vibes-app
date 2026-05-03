@@ -155,10 +155,10 @@ Release-Hygiene am 2026-05-03:
 - Die isolierte Temp-Worktree-Pruefung zeigte danach, dass Git-HEAD + diese 34 Dateien
   noch nicht allein typecheck-faehig ist, weil der lauffaehige lokale Web-Stand weitere
   bereits vorhandene Code-Aenderungen braucht.
-- Der geplante Commit wurde deshalb bewusst auf 50 Dateien erweitert:
+- Der Release-Commit wurde deshalb bewusst auf 50 Dateien erweitert:
   - enthalten: zusaetzliche Web-Daten-/Routen-/Create-/Explore-Dateien, CI-Typecheck,
     R2-CORS-Script, `.gitignore`, `.env.local.example` ohne Werte.
-  - ausgeschlossen: `.lock` und `apps/remotion/` (gross/unklar/generiert).
+  - zuerst ausgeschlossen: `.lock` und `apps/remotion/` (gross/unklar/generiert).
 - Isolierte Temp-Worktree-Verifikation fuer den geplanten Commit:
   - Root `npm run typecheck`: gruen.
   - Root `npm test -- --runInBand`: 2 Suites, 62 Tests gruen.
@@ -166,15 +166,22 @@ Release-Hygiene am 2026-05-03:
   - Web `npm run lint -- --quiet`: gruen.
   - Web `npm test -- --runInBand`: 18 Suites, 274 Tests gruen.
   - Web `npm run build`: gruen.
+- Commit erstellt: `6f7880f chore: stabilize web release pipeline`.
+- `.lock` wurde als versehentliche Git-Index-Datei entfernt.
+- `apps/remotion/` wurde danach separat sortiert:
+  - `node_modules` bleibt ignoriert.
+  - Render-Ausgaben unter `apps/remotion/out/*` bleiben ignoriert.
+  - `apps/remotion/out/.gitkeep` bleibt versioniert.
+  - Typecheck: `npm run typecheck` in `apps/remotion` ist gruen.
+- Commit erstellt: `4ef7b3a feat: add remotion video package`.
 
 Regel:
 
 - Keine Massen-Deletes committen, bevor klar ist, ob sie gewollt sind.
 - Keine fremden Aenderungen resetten.
 - Rettungsfixes koennen spaeter aus `rescue-relative-paths.txt` gezielt reviewt und staged werden.
-- Der Production-Deploy am 2026-05-03 wurde aus dem aktuellen Working-Tree gebaut,
-  nicht aus einem sauberen Commit. Das war bewusst, weil die App lokal und remote
-  alle Gates bestanden hat, der Git-Index aber fremde grosse Aenderungen enthaelt.
+- Der Production-Deploy am 2026-05-03 wurde vor der Commit-Hygiene aus dem damaligen
+  Working-Tree gebaut. Die deployed Rettungsarbeit ist jetzt in Git nachgezogen.
 
 ## Naechste Arbeit
 
@@ -199,11 +206,18 @@ Regel:
    - Web: `npm run env:doctor`.
    - Ausgabe zeigt nur Key-Status und Quellen, niemals Werte.
    - Aktueller Core-Status: Web Core und Native Core haben 0 fehlende Pflicht-Keys.
-6. Thumbnail-Backfill planen.
+6. Thumbnail-Backfill vorbereiten.
    - Alte Videos ohne `thumbnail_url` haben jetzt einen UI-Fallback.
-   - Echte Backfill-Thumbnails bleiben trotzdem wichtig fuer Performance und saubere Poster.
+   - Backfill-Tool: `npm run thumbnails:backfill -- --dry-run --limit 25`.
+   - Dry-Run findet aktuell 4 Video-Posts ohne `thumbnail_url`.
+   - Echte Backfill-Thumbnails bleiben wichtig fuer Performance und saubere Poster.
+   - `--apply` benoetigt noch `SUPABASE_SERVICE_ROLE_KEY`,
+     `CF_R2_ACCESS_KEY_ID` und `CF_R2_SECRET_ACCESS_KEY`.
 7. Explore weiter optimieren.
    - Nach dem Auth-Dedupe ist `/explore` warm unter 1s.
    - Naechster Hebel: serverseitige Page-Sektionen splitten oder den anonymen Shell-Anteil statisch/cached machen.
 8. Desktop-Native Core-Social-Diffs einzeln portieren.
    - Fokus: Kommentare, Teilen, Post-Optionen, Create-Flow.
+9. Root/Native-Lint separat reparieren.
+   - `npm run lint -- --quiet` findet aktuell 61 bestehende Fehler.
+   - Groesster Block: Hook-Reihenfolge in `app/live/watch/[id].tsx`.

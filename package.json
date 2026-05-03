@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "expo lint --max-warnings 0",
     "r2:cors": "node scripts/configure-r2-cors.mjs",
+    "thumbnails:backfill": "node scripts/backfill-video-thumbnails.mjs",
     "env:doctor": "node scripts/env-doctor.mjs",
     "test": "jest",
     "test:watch": "jest --watch",
