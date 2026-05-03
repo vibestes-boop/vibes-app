@@ -37,7 +37,7 @@ jobs:
           node-version: '20'
 
       - name: Check Explore API contract
-        run: node scripts/check-api-contracts.mjs --skip-supabase
+        run: node scripts/check-api-contracts.mjs --skip-supabase --require-cdn-cache
 
   media-budget:
     name: media budget (production)
