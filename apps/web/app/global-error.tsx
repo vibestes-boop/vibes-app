@@ -21,6 +21,7 @@
 // -----------------------------------------------------------------------------
 
 import * as Sentry from '@sentry/nextjs';
+import Link from 'next/link';
 import NextError from 'next/error';
 import { useEffect } from 'react';
 
@@ -104,7 +105,7 @@ export default function GlobalError({ error }: GlobalErrorProps) {
               flexWrap: 'wrap',
             }}
           >
-            <a
+            <Link
               href="/"
               style={{
                 display: 'inline-block',
@@ -118,7 +119,7 @@ export default function GlobalError({ error }: GlobalErrorProps) {
               }}
             >
               Zum Feed
-            </a>
+            </Link>
             <button
               type="button"
               onClick={() => window.location.reload()}

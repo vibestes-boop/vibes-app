@@ -3,7 +3,7 @@
  */
 
 import { QueryClientProvider } from '@tanstack/react-query';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import type { FeedPost } from '@/lib/data/feed';
 import { createTestQueryClient } from '@/test-utils/query-client';

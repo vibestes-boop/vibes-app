@@ -1,6 +1,4 @@
 [functions.r2-sign]
-# Allow unauthenticated calls — the function itself does no sensitive user-data
-# access and the R2 credentials are stored as server-side secrets.
-# Without this, Supabase Gateway returns 401 when the user JWT is expired or
-# when the app passes the anon key (e.g. fresh installs / logged-out uploads).
-verify_jwt = false
+# Upload signing is sensitive: a valid user JWT is required and the function
+# additionally checks that the requested object key belongs to auth.uid().
+verify_jwt = true

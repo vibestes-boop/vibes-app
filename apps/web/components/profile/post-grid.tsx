@@ -36,20 +36,45 @@ function formatCount(n: number): string {
 function PostGridItem({ post }: { post: Post }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoReady, setVideoReady] = useState(false);
+  const inferredImage = /\.(?:avif|gif|jpe?g|png|webp)(?:[?#].*)?$/i.test(post.video_url);
+  const previewImageUrl = post.thumbnail_url ?? (inferredImage ? post.video_url : null);
+  const canPreviewVideo = !inferredImage && post.video_url.length > 0;
 
   const handleMouseEnter = useCallback(() => {
+    if (!canPreviewVideo) return;
     const v = videoRef.current;
     if (!v) return;
     v.currentTime = 0;
     void v.play().catch(() => {/* autoplay blocked — stay on thumbnail */});
-  }, []);
+  }, [canPreviewVideo]);
 
   const handleMouseLeave = useCallback(() => {
+    if (!canPreviewVideo) return;
     const v = videoRef.current;
     if (!v) return;
     v.pause();
+    if (!previewImageUrl) {
+      try {
+        v.currentTime = Math.min(0.1, Number.isFinite(v.duration) ? v.duration / 10 : 0.1);
+      } catch {
+        // Keep whatever decoded frame the browser has.
+      }
+      setVideoReady(true);
+      return;
+    }
     setVideoReady(false);
-  }, []);
+  }, [canPreviewVideo, previewImageUrl]);
+
+  const handleLoadedMetadata = useCallback(() => {
+    if (previewImageUrl || !canPreviewVideo) return;
+    const v = videoRef.current;
+    if (!v) return;
+    try {
+      v.currentTime = Math.min(0.1, Number.isFinite(v.duration) ? v.duration / 10 : 0.1);
+    } catch {
+      // Some browsers block seeking until enough data is buffered.
+    }
+  }, [canPreviewVideo, previewImageUrl]);
 
   // v1.w.UI.205 — respect the stored aspect ratio (portrait/landscape/square).
   const aspectClass =
@@ -71,9 +96,9 @@ function PostGridItem({ post }: { post: Post }) {
         onMouseLeave={handleMouseLeave}
       >
         {/* Static thumbnail — fades out once video is ready */}
-        {post.thumbnail_url ? (
+        {previewImageUrl ? (
           <Image
-            src={post.thumbnail_url}
+            src={previewImageUrl}
             alt=""
             fill
             sizes="(min-width: 1024px) 300px, 33vw"
@@ -91,22 +116,29 @@ function PostGridItem({ post }: { post: Post }) {
           />
         )}
 
-        {/* Hover video preview — preload="none" keeps grid cheap at rest */}
-        {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
-        <video
-          ref={videoRef}
-          src={post.video_url}
-          muted
-          playsInline
-          preload="none"
-          loop
-          onCanPlay={() => setVideoReady(true)}
-          onError={() => setVideoReady(false)}
-          className={cn(
-            'pointer-events-none absolute inset-0 h-full w-full object-cover transition-opacity duration-300',
-            videoReady ? 'opacity-100' : 'opacity-0',
-          )}
-        />
+        {canPreviewVideo && (
+          <>
+            {/* Hover video preview. Missing thumbnails preload metadata to reveal a first-frame fallback. */}
+            <video
+              ref={videoRef}
+              src={post.video_url}
+              muted
+              playsInline
+              preload={previewImageUrl ? 'none' : 'metadata'}
+              poster={previewImageUrl ?? undefined}
+              loop
+              onLoadedMetadata={handleLoadedMetadata}
+              onLoadedData={() => setVideoReady(true)}
+              onSeeked={() => setVideoReady(true)}
+              onCanPlay={() => setVideoReady(true)}
+              onError={() => setVideoReady(false)}
+              className={cn(
+                'pointer-events-none absolute inset-0 h-full w-full object-cover transition-opacity duration-300',
+                videoReady ? 'opacity-100' : 'opacity-0',
+              )}
+            />
+          </>
+        )}
 
         {/* v1.w.UI.179 — Pin badge oben links */}
         {post.is_pinned && (

@@ -443,7 +443,7 @@ export function VoiceSetup({ userId, initialVoiceUrl }: Props) {
       {/* Hint */}
       <p className="text-center text-xs leading-relaxed text-muted-foreground">
         Beispiel-Text zum Vorlesen:{' '}
-        <em>„Hey, ich bin dabei! Schau dir meinen neuesten Vibe an – du wirst es lieben."</em>
+        <em>&bdquo;Hey, ich bin dabei! Schau dir meinen neuesten Vibe an – du wirst es lieben.&quot;</em>
       </p>
     </div>
   );

@@ -42,7 +42,7 @@ export default async function MutedLiveHostsPage() {
           Stumm geschaltete Lives
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Du erhältst keine Benachrichtigung wenn diese Hosts live gehen. Tippe auf „Aktivieren" um
+          Du erhältst keine Benachrichtigung wenn diese Hosts live gehen. Tippe auf &bdquo;Aktivieren&quot; um
           Push-Benachrichtigungen wieder einzuschalten.
         </p>
       </header>

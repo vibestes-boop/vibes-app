@@ -1,5 +1,6 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
+import { getUser } from '@/lib/auth/session';
 import type { Post, PublicProfile } from '@shared/types';
 
 // -----------------------------------------------------------------------------
@@ -55,8 +56,9 @@ export interface FeedPost extends Post {
 // PostgREST-Aliase: user_id:author_id, video_url:media_url, hashtags:tags
 // — mappt Mobile-DB-Spalten auf Web-Contract-Namen bereits in der Query.
 // `media_type` ist unaliased weil der Name in beiden Schemata identisch ist.
+// `share_count` existiert in der Mobile-DB nicht und wird unten auf 0 defaulted.
 const POST_COLUMNS =
-  'id, user_id:author_id, caption, video_url:media_url, media_type, thumbnail_url, view_count, like_count, comment_count, share_count, hashtags:tags, allow_comments, allow_duet, allow_download, women_only, privacy, aspect_ratio, audio_url, audio_volume, created_at';
+  'id, user_id:author_id, caption, video_url:media_url, media_type, thumbnail_url, view_count, like_count, comment_count, hashtags:tags, allow_comments, allow_duet, allow_download, women_only, privacy, aspect_ratio, audio_url, audio_volume, created_at';
 
 const AUTHOR_JOIN =
   'author:profiles!posts_author_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )';
@@ -193,9 +195,7 @@ export const getForYouFeed = cache(
   async (opts: { limit?: number; excludeIds?: string[]; before?: string } = {}): Promise<FeedPost[]> => {
     const { limit = 10, excludeIds = [], before } = opts;
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getUser();
     const viewerId = user?.id ?? null;
 
     // v1.w.UI.34: Not-Interested-Filter. User-spezifisch — wir laden alle
@@ -967,9 +967,7 @@ export interface DiscoverPerson {
 
 export const getDiscoverPeople = cache(async (limit = 12): Promise<DiscoverPerson[]> => {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
 
   if (!user) {
     // Anon: nur Fallback — neueste Profile ohne Guild/Interest-Matching

@@ -72,6 +72,10 @@ interface InitialDraft {
     | null;
 }
 
+const IMMUTABLE_MEDIA_CACHE = 'public, max-age=31536000, immutable';
+const ENABLE_R2_UPLOAD_CACHE_CONTROL =
+  process.env.NEXT_PUBLIC_R2_UPLOAD_CACHE_CONTROL === '1';
+
 interface Props {
   viewerId: string;
   initialDraft: InitialDraft | null;
@@ -281,12 +285,17 @@ export function CreateEditor({ viewerId, initialDraft }: Props) {
 
         const key = `${mType === 'video' ? 'posts/videos' : 'posts/images'}/${viewerId}/${ts}.${uploadExt}`;
 
-        const sig = await requestR2UploadUrl({ key, contentType: uploadMime });
+        const cacheControl = ENABLE_R2_UPLOAD_CACHE_CONTROL ? IMMUTABLE_MEDIA_CACHE : undefined;
+        const sig = await requestR2UploadUrl({ key, contentType: uploadMime, cacheControl });
         if (!sig.ok) throw new Error(sig.error);
 
         // PUT mit XHR (wegen Progress-Tracking)
-        await putWithProgress(sig.data.uploadUrl, uploadBody, uploadMime, (p) =>
-          setUploadProgress(p),
+        await putWithProgress(
+          sig.data.uploadUrl,
+          uploadBody,
+          uploadMime,
+          (p) => setUploadProgress(p),
+          cacheControl,
         );
 
         let thumbUrl: string | null = null;
@@ -298,6 +307,7 @@ export function CreateEditor({ viewerId, initialDraft }: Props) {
               const thumbSig = await requestR2UploadUrl({
                 key: thumbKey,
                 contentType: 'image/jpeg',
+                cacheControl,
               });
               if (thumbSig.ok) {
                 await putWithProgress(
@@ -307,6 +317,7 @@ export function CreateEditor({ viewerId, initialDraft }: Props) {
                   () => {
                     /* ignore thumb progress */
                   },
+                  cacheControl,
                 );
                 thumbUrl = thumbSig.data.publicUrl;
               }
@@ -1510,11 +1521,13 @@ function putWithProgress(
   body: Blob,
   contentType: string,
   onProgress: (p: number) => void,
+  cacheControl?: string,
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('PUT', url, true);
     xhr.setRequestHeader('Content-Type', contentType);
+    if (cacheControl) xhr.setRequestHeader('Cache-Control', cacheControl);
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) {
         onProgress(Math.round((e.loaded / e.total) * 100));

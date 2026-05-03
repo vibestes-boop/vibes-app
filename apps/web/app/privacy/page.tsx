@@ -219,8 +219,8 @@ export default function PrivacyPage() {
           Wir verwenden technisch notwendige Cookies zur Aufrechterhaltung der
           Session und zur CSRF-Prävention. Optionale Cookies für Analytics oder
           Marketing werden nur nach Ihrer aktiven Einwilligung im Cookie-Banner
-          gesetzt. Ihre Wahl können Sie jederzeit über den „Cookie-
-          Einstellungen"-Link im Footer ändern.
+          gesetzt. Ihre Wahl können Sie jederzeit über den &bdquo;Cookie-
+          Einstellungen&quot;-Link im Footer ändern.
         </p>
       </section>
 

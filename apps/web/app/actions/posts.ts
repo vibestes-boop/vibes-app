@@ -559,6 +559,8 @@ export interface R2SignInput {
   key: string;
   /** MIME-Type für AWS-Sig-V4-Signatur (muss beim PUT identisch sein). */
   contentType: string;
+  /** Optionaler Objekt-Cache-Control-Header; muss beim PUT identisch gesendet werden. */
+  cacheControl?: string;
 }
 
 export interface R2SignResult {
@@ -598,10 +600,20 @@ export async function requestR2UploadUrl(
   if (!input.contentType || input.contentType.length > 127) {
     return { ok: false, error: 'Ungültiger Content-Type.' };
   }
+  if (
+    input.cacheControl &&
+    (input.cacheControl.length > 255 || /[\r\n]/.test(input.cacheControl))
+  ) {
+    return { ok: false, error: 'Ungültiger Cache-Control-Header.' };
+  }
 
   const supabase = await createClient();
   const { data, error } = await supabase.functions.invoke('r2-sign', {
-    body: { key: input.key, contentType: input.contentType },
+    body: {
+      key: input.key,
+      contentType: input.contentType,
+      cacheControl: input.cacheControl,
+    },
   });
 
   if (error || !data) {

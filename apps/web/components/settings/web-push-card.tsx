@@ -59,7 +59,7 @@ export function WebPushCard() {
               Du hast Benachrichtigungen abgelehnt. Wir können das nicht
               rückgängig machen — öffne die Seiten-Einstellungen in deinem
               Browser (Schloss-Symbol neben der URL) und erlaube
-              „Benachrichtigungen".
+              &bdquo;Benachrichtigungen&quot;.
             </p>
           </div>
         </div>

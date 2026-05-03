@@ -91,12 +91,23 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
     // Nur im For-You-Feed und nur wenn initiale Posts vorhanden sind (sonst
     // gibt es nichts, in das wir Live-Cards injizieren könnten).
     if (feedKey !== 'foryou' || initialPosts.length === 0) return;
-    fetch('/api/feed/live', { cache: 'no-store' })
+    const controller = new AbortController();
+    let cancelled = false;
+
+    fetch('/api/feed/live', { cache: 'no-store', signal: controller.signal })
       .then((r) => (r.ok ? r.json() : []))
-      .then((data: LiveFeedSession[]) => setLiveSessions(data))
+      .then((data: LiveFeedSession[]) => {
+        if (!cancelled && Array.isArray(data) && data.length > 0) {
+          setLiveSessions(data);
+        }
+      })
       .catch(() => { /* silent — kein Live bedeutet einfach keine Injection */ });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+    };
+  }, [feedKey, initialPosts.length]);
 
   // ── DisplayRows: Posts interleaved mit Live-Cards alle 6 Posts ────────────
   const displayRows = useMemo((): DisplayRow[] => {

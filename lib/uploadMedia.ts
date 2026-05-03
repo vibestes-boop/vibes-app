@@ -13,6 +13,7 @@ type ThumbnailResult = {
 // ── Limits ──────────────────────────────────────────────────────────────────
 const MAX_IMAGE_BYTES = 50 * 1024 * 1024;  //  50 MB
 const MAX_VIDEO_BYTES = 200 * 1024 * 1024;  // 200 MB
+const IMMUTABLE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function mimeToExt(mimeType: string): string {
@@ -119,7 +120,7 @@ async function uploadToR2(
     async () => {
       if (signal?.aborted) throw new Error('Upload abgebrochen.');
       const { data, error } = await supabase.functions.invoke('r2-sign', {
-        body: { key, contentType: mimeType },
+        body: { key, contentType: mimeType, cacheControl: IMMUTABLE_CACHE_CONTROL },
       });
       if (error || !data?.uploadUrl) {
         throw new Error(`Sign-Fehler: ${error?.message ?? 'Keine uploadUrl'}`);
@@ -147,7 +148,10 @@ async function uploadToR2(
         if (signal?.aborted) throw new Error('Upload abgebrochen.');
         const res = await fetch(uploadUrl, {
           method: 'PUT',
-          headers: { 'Content-Type': mimeType },
+          headers: {
+            'Content-Type': mimeType,
+            'Cache-Control': IMMUTABLE_CACHE_CONTROL,
+          },
           body: fileBuffer,
           signal,
         });
@@ -268,9 +272,7 @@ export async function uploadVoiceSample(
     : mimeType.includes('m4a') ? 'm4a'
     : mimeType.includes('mp4') ? 'mp4'
     : 'wav'; // Default: wav (Chatterbox-kompatibel)
-  const key = `voice-samples/${userId}.${ext}`;
+  const key = `voice-samples/${userId}/${Date.now()}.${ext}`;
   const { url } = await uploadToR2(key, localUri, mimeType);
   return url;
 }
-
-

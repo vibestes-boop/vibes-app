@@ -4,8 +4,10 @@
  * Generates an S3-presigned PUT URL for Cloudflare R2.
  * Called by the app before uploading media (images, videos, avatars).
  * Credentials are stored as Supabase secrets — never exposed to the client.
+ * Requires a valid Supabase user JWT. The requested object key must live inside
+ * the caller's own user folder.
  *
- * POST body: { key: string, contentType: string }
+ * POST body: { key: string, contentType: string, cacheControl?: string }
  * Response:  { uploadUrl: string, publicUrl: string }
  *
  * AWS Signature V4 spec:
@@ -22,6 +24,14 @@ const R2_ACCESS_KEY_ID = Deno.env.get('R2_ACCESS_KEY_ID')!;
 const R2_SECRET_KEY    = Deno.env.get('R2_SECRET_ACCESS_KEY')!;
 const R2_BUCKET        = Deno.env.get('R2_BUCKET_NAME') ?? 'vibes-media';
 const R2_PUBLIC_URL    = Deno.env.get('R2_PUBLIC_URL')!;
+
+const ALLOWED_OWNED_PREFIXES = [
+  'posts/videos',
+  'posts/images',
+  'thumbnails',
+  'avatars',
+  'voice-samples',
+] as const;
 
 // ── HMAC-SHA256 signing helper ──────────────────────────────────────────────
 async function hmacSign(key: Uint8Array, message: string): Promise<Uint8Array> {
@@ -68,10 +78,33 @@ function isValidKey(key: string): boolean {
   return /^[a-zA-Z0-9/.\-_]+$/.test(key);
 }
 
+function getAuthenticatedUserId(req: Request): string | null {
+  const auth = req.headers.get('authorization') ?? '';
+  const match = auth.match(/^Bearer\s+(.+)$/i);
+  const token = match?.[1];
+  if (!token) return null;
+
+  try {
+    const payload = token.split('.')[1];
+    if (!payload) return null;
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, '=');
+    const claims = JSON.parse(atob(padded)) as { sub?: unknown };
+    return typeof claims.sub === 'string' && claims.sub ? claims.sub : null;
+  } catch {
+    return null;
+  }
+}
+
+function isOwnedUploadKey(key: string, userId: string): boolean {
+  return ALLOWED_OWNED_PREFIXES.some((prefix) => key.startsWith(`${prefix}/${userId}/`));
+}
+
 // ── Presigned URL generator ─────────────────────────────────────────────────
 async function generatePresignedUrl(
   key: string,
   contentType: string,
+  cacheControl?: string,
   expiresIn = 3600,
 ): Promise<string> {
   const host    = `${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`;
@@ -90,26 +123,32 @@ async function generatePresignedUrl(
   const encodedKey  = key.split('/').map(s => rfc3986Encode(s)).join('/');
   const canonicalUri = `/${R2_BUCKET}/${encodedKey}`;
 
+  const signedHeaders = cacheControl
+    ? 'cache-control;content-type;host'
+    : 'content-type;host';
+
   // Canonical query string — must be sorted and RFC-3986 encoded
   const queryParams: Record<string, string> = {
     'X-Amz-Algorithm':     'AWS4-HMAC-SHA256',
     'X-Amz-Credential':    credential,
     'X-Amz-Date':          datetimeStr,
     'X-Amz-Expires':       String(expiresIn),
-    'X-Amz-SignedHeaders': 'content-type;host',
+    'X-Amz-SignedHeaders': signedHeaders,
   };
   const canonicalQueryString = buildCanonicalQueryString(queryParams);
 
   // Canonical headers — must be trimmed lowercase, sorted alphabetically
   // content-type MUST exactly match what the client will send in the PUT request
-  const canonicalHeaders = `content-type:${contentType.trim()}\nhost:${host}\n`;
+  const canonicalHeaders = cacheControl
+    ? `cache-control:${cacheControl.trim()}\ncontent-type:${contentType.trim()}\nhost:${host}\n`
+    : `content-type:${contentType.trim()}\nhost:${host}\n`;
 
   const canonicalRequest = [
     'PUT',
     canonicalUri,
     canonicalQueryString,
     canonicalHeaders,
-    'content-type;host',       // Signed headers list
+    signedHeaders,             // Signed headers list
     'UNSIGNED-PAYLOAD',        // Payload hash — presigned URLs use this literal
   ].join('\n');
 
@@ -151,9 +190,19 @@ Deno.serve(async (req: Request) => {
   }
 
   try {
-    const body = await req.json() as { key?: unknown; contentType?: unknown };
+    const userId = getAuthenticatedUserId(req);
+    if (!userId) {
+      return new Response(JSON.stringify({ error: 'Not authenticated' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const body = await req.json() as { key?: unknown; contentType?: unknown; cacheControl?: unknown };
     const key         = typeof body.key === 'string'         ? body.key.trim()         : '';
     const contentType = typeof body.contentType === 'string' ? body.contentType.trim() : '';
+    const cacheControl =
+      typeof body.cacheControl === 'string' ? body.cacheControl.trim() : undefined;
 
     if (!key || !contentType) {
       return new Response(JSON.stringify({ error: 'key and contentType are required' }), {
@@ -170,7 +219,21 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const uploadUrl = await generatePresignedUrl(key, contentType);
+    if (!isOwnedUploadKey(key, userId)) {
+      return new Response(JSON.stringify({ error: 'Forbidden upload key' }), {
+        status: 403,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    if (cacheControl && (cacheControl.length > 255 || /[\r\n]/.test(cacheControl))) {
+      return new Response(JSON.stringify({ error: 'Invalid cacheControl' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const uploadUrl = await generatePresignedUrl(key, contentType, cacheControl);
     const publicUrl = `${R2_PUBLIC_URL}/${key}`;
 
     return new Response(JSON.stringify({ uploadUrl, publicUrl }), {

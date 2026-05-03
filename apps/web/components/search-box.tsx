@@ -361,7 +361,7 @@ export function SearchBox({
                 <Search className="h-4 w-4 shrink-0 text-muted-foreground" />
                 <span className="text-muted-foreground">
                   Alle Ergebnisse für{' '}
-                  <span className="font-semibold text-foreground">„{value.trim()}"</span>
+                  <span className="font-semibold text-foreground">&bdquo;{value.trim()}&quot;</span>
                 </span>
               </button>
             );

@@ -47,7 +47,7 @@ export default function GlobalError({
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold tracking-tight">Ups, da lief was schief.</h1>
         <p className="text-sm text-muted-foreground">
-          Wir haben den Fehler automatisch protokolliert. Versuch's nochmal,
+          Wir haben den Fehler automatisch protokolliert. Versuch&apos;s nochmal,
           oder geh zurück zur Startseite.
         </p>
         {error.digest && (
