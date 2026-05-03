@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getTrendingHashtags } from '@/lib/data/feed';
+import { privateNoStoreHeaders, publicApiCacheHeaders } from '@/lib/cache/headers';
 
 // -----------------------------------------------------------------------------
 // GET /api/search/quick?q=... — Lightweight Autocomplete-Endpoint.
@@ -16,6 +17,11 @@ import { getTrendingHashtags } from '@/lib/data/feed';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+const PUBLIC_QUICK_SEARCH_HEADERS = publicApiCacheHeaders({
+  cdnMaxAge: 30,
+  staleWhileRevalidate: 60,
+});
 
 export interface QuickSearchResult {
   users: Array<{
@@ -33,7 +39,10 @@ export async function GET(request: Request): Promise<NextResponse> {
   const q = (searchParams.get('q') ?? '').trim();
 
   if (q.length < 2) {
-    return NextResponse.json({ users: [], hashtags: [] } satisfies QuickSearchResult);
+    return NextResponse.json(
+      { users: [], hashtags: [] } satisfies QuickSearchResult,
+      { headers: PUBLIC_QUICK_SEARCH_HEADERS },
+    );
   }
 
   const like = `%${q.replace(/[%_]/g, '')}%`;
@@ -71,10 +80,6 @@ export async function GET(request: Request): Promise<NextResponse> {
   } = await supabase.auth.getUser();
 
   return NextResponse.json(result, {
-    headers: {
-      'Cache-Control': authUser
-        ? 'private, no-store'
-        : 'public, s-maxage=30, stale-while-revalidate=60',
-    },
+    headers: authUser ? privateNoStoreHeaders() : PUBLIC_QUICK_SEARCH_HEADERS,
   });
 }

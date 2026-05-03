@@ -22,10 +22,13 @@ const limit = readPositiveInt(args.limit, DEFAULT_LIMIT);
 const minPosts = readNonNegativeInt(args.minPosts, DEFAULT_MIN_POSTS);
 const timeoutMs = readPositiveInt(args.timeoutMs, DEFAULT_TIMEOUT_MS);
 const requireCdnCache = args.requireCdnCache;
+const requirePublicEndpointCdnCache = args.requirePublicEndpointCdnCache;
 const failures = [];
 const warnings = [];
 const checkedFeeds = [];
+const checkedPublicEndpoints = [];
 const checkedSupabase = [];
+let sampleUsername = null;
 
 console.log(`API contract check: ${siteUrl}`);
 console.log(`Budget: ${SORTS.join(', ')} feeds, limit ${limit}, minimum ${minPosts} posts per feed.`);
@@ -54,16 +57,9 @@ for (const target of feedTargets) {
 
   failures.push(...validation.failures);
   warnings.push(...validation.warnings);
+  sampleUsername = sampleUsername || findSampleUsername(data);
 
-  if (!hasPublicCache(cacheControl)) {
-    failures.push(`[${target.label}] Missing public anonymous cache header: ${cacheControl || '(missing)'}.`);
-  }
-
-  if (!hasCdnCache(cdnCacheControl)) {
-    const message = `[${target.label}] Missing CDN cache header: ${cdnCacheControl || '(missing)'}.`;
-    if (requireCdnCache) failures.push(message);
-    else warnings.push(message);
-  }
+  validatePublicCacheHeaders(target.label, headers, { requireCdnCache });
 
   checkedFeeds.push({
     label: target.label,
@@ -89,15 +85,7 @@ if (!args.feedUrl) {
 
     const cacheControl = pageTwo.headers.get('cache-control') ?? '';
     const cdnCacheControl = readCdnCacheControl(pageTwo.headers);
-    if (!hasPublicCache(cacheControl)) {
-      failures.push(`[pagination] Missing public anonymous cache header: ${cacheControl || '(missing)'}.`);
-    }
-
-    if (!hasCdnCache(cdnCacheControl)) {
-      const message = `[pagination] Missing CDN cache header: ${cdnCacheControl || '(missing)'}.`;
-      if (requireCdnCache) failures.push(message);
-      else warnings.push(message);
-    }
+    validatePublicCacheHeaders('pagination', pageTwo.headers, { requireCdnCache });
 
     checkedFeeds.push({
       label: 'pagination',
@@ -107,6 +95,8 @@ if (!args.feedUrl) {
       cdnCacheControl,
     });
   }
+
+  await runPublicEndpointChecks(sampleUsername);
 }
 
 if (!args.skipSupabase) {
@@ -130,6 +120,17 @@ if (checkedSupabase.length > 0) {
   }
 }
 
+if (checkedPublicEndpoints.length > 0) {
+  console.log('');
+  console.log('Checked public API endpoints:');
+  for (const item of checkedPublicEndpoints) {
+    console.log(
+      `  - ${item.label}: ${item.status}, cache=${item.cacheControl || '(missing)'}, ` +
+        `cdn=${item.cdnCacheControl || '(missing)'}`,
+    );
+  }
+}
+
 if (warnings.length > 0) {
   console.log('');
   console.log('Warnings:');
@@ -145,6 +146,78 @@ if (failures.length > 0) {
 
 console.log('');
 console.log('API contract check passed.');
+
+async function runPublicEndpointChecks(username) {
+  const query = (username || 'za').slice(0, 2);
+  const targets = [
+    {
+      label: 'search.quick',
+      url: `${siteUrl}/api/search/quick?q=${encodeURIComponent(query)}`,
+      validate: validateQuickSearchContract,
+    },
+  ];
+
+  if (username) {
+    targets.push(
+      {
+        label: 'follows.followers',
+        url: `${siteUrl}/api/follows/followers?username=${encodeURIComponent(username)}&offset=0&limit=1`,
+        validate: validateFollowListContract,
+      },
+      {
+        label: 'follows.following',
+        url: `${siteUrl}/api/follows/following?username=${encodeURIComponent(username)}&offset=0&limit=1`,
+        validate: validateFollowListContract,
+      },
+    );
+  } else {
+    warnings.push('[public:endpoints] Skipped follow-list checks: no sample username in feed.');
+  }
+
+  for (const target of targets) {
+    const result = await fetchJsonWithHeaders(withBudgetBust(target.url), timeoutMs);
+    if (!result.ok) {
+      failures.push(`[${target.label}] Request failed: ${result.error}`);
+      continue;
+    }
+
+    const validation = target.validate(target.label, result.data);
+    failures.push(...validation.failures);
+    warnings.push(...validation.warnings);
+    validatePublicCacheHeaders(target.label, result.headers, {
+      requireCdnCache: requirePublicEndpointCdnCache,
+    });
+
+    checkedPublicEndpoints.push({
+      label: target.label,
+      status: result.status,
+      cacheControl: result.headers.get('cache-control') ?? '',
+      cdnCacheControl: readCdnCacheControl(result.headers),
+    });
+  }
+}
+
+function validateQuickSearchContract(label, data) {
+  const localFailures = [];
+  if (!isPlainObject(data)) {
+    localFailures.push(`[${label}] Expected JSON object response.`);
+    return { failures: localFailures, warnings: [] };
+  }
+  if (!Array.isArray(data.users)) localFailures.push(`[${label}].users must be an array.`);
+  if (!Array.isArray(data.hashtags)) localFailures.push(`[${label}].hashtags must be an array.`);
+  return { failures: localFailures, warnings: [] };
+}
+
+function validateFollowListContract(label, data) {
+  const localFailures = [];
+  if (!isPlainObject(data)) {
+    localFailures.push(`[${label}] Expected JSON object response.`);
+    return { failures: localFailures, warnings: [] };
+  }
+  if (!Array.isArray(data.users)) localFailures.push(`[${label}].users must be an array.`);
+  if (typeof data.hasMore !== 'boolean') localFailures.push(`[${label}].hasMore must be boolean.`);
+  return { failures: localFailures, warnings: [] };
+}
 
 async function runSupabaseAnonSmoke(loadedEnv) {
   const webUrl = findFirstSet(loadedEnv, ['NEXT_PUBLIC_SUPABASE_URL']);
@@ -320,6 +393,32 @@ function validatePost(prefix, post, localFailures, localWarnings) {
   if (post.media_type === 'video' && mediaHost && thumbHost && mediaHost !== thumbHost) {
     localWarnings.push(`${prefix} video and thumbnail use different hosts (${mediaHost} vs ${thumbHost}).`);
   }
+}
+
+function validatePublicCacheHeaders(label, headers, { requireCdnCache: requireCdn }) {
+  const cacheControl = headers.get('cache-control') ?? '';
+  const cdnCacheControl = readCdnCacheControl(headers);
+
+  if (!hasPublicCache(cacheControl)) {
+    failures.push(`[${label}] Missing public cache header: ${cacheControl || '(missing)'}.`);
+  }
+
+  if (!hasCdnCache(cdnCacheControl)) {
+    const message = `[${label}] Missing CDN cache header: ${cdnCacheControl || '(missing)'}.`;
+    if (requireCdn) failures.push(message);
+    else warnings.push(message);
+  }
+}
+
+function findSampleUsername(data) {
+  if (!isPlainObject(data) || !Array.isArray(data.posts)) return null;
+  for (const post of data.posts) {
+    if (!isPlainObject(post) || !isPlainObject(post.author)) continue;
+    if (typeof post.author.username === 'string' && post.author.username.length >= 2) {
+      return post.author.username;
+    }
+  }
+  return null;
 }
 
 async function fetchJsonWithHeaders(url, timeout) {
@@ -521,6 +620,7 @@ function parseArgs(rawArgs) {
     limit: undefined,
     minPosts: undefined,
     requireCdnCache: false,
+    requirePublicEndpointCdnCache: false,
     siteUrl: undefined,
     skipSupabase: false,
     timeoutMs: undefined,
@@ -533,6 +633,7 @@ function parseArgs(rawArgs) {
     else if (arg === '--limit') parsed.limit = rawArgs[++i];
     else if (arg === '--min-posts') parsed.minPosts = rawArgs[++i];
     else if (arg === '--require-cdn-cache') parsed.requireCdnCache = true;
+    else if (arg === '--require-public-endpoint-cdn-cache') parsed.requirePublicEndpointCdnCache = true;
     else if (arg === '--site-url') parsed.siteUrl = rawArgs[++i];
     else if (arg === '--skip-supabase') parsed.skipSupabase = true;
     else if (arg === '--timeout-ms') parsed.timeoutMs = rawArgs[++i];
@@ -575,14 +676,18 @@ Options:
   --limit <n>            Number of posts requested per feed (default: ${DEFAULT_LIMIT})
   --min-posts <n>        Minimum posts expected per primary feed (default: ${DEFAULT_MIN_POSTS})
   --require-cdn-cache    Fail when CDN-Cache-Control/Vercel-CDN-Cache-Control is missing
+  --require-public-endpoint-cdn-cache
+                          Fail when public non-feed endpoints miss CDN cache headers
   --skip-supabase        Skip optional direct Supabase anon/RLS smoke
   --timeout-ms <n>       Per-request timeout in ms (default: ${DEFAULT_TIMEOUT_MS})
 
 Checks:
   - Explore API returns stable JSON: { posts, hasMore }
+  - Public search/follow APIs keep stable JSON contracts
   - Post rows keep the web/native feed contract fields
   - Anonymous responses keep public browser cache headers
   - CDN cache headers are present (warning by default, error with --require-cdn-cache)
+  - Public non-feed endpoint CDN cache headers are warning-only until explicitly required
   - Optional Supabase anon REST smoke catches RLS/env drift when env is available
 `);
 }
