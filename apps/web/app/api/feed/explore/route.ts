@@ -1,5 +1,12 @@
 import { NextResponse } from 'next/server';
-import { getForYouFeed, getExploreTrendingFeed, getExploreNewestFeed } from '@/lib/data/feed';
+import {
+  getForYouFeed,
+  getPublicForYouFeed,
+  getExploreTrendingFeed,
+  getExploreNewestFeed,
+  getPublicExploreTrendingFeed,
+  getPublicExploreNewestFeed,
+} from '@/lib/data/feed';
 
 // -----------------------------------------------------------------------------
 // GET /api/feed/explore — offset-based paginator for /explore Popular Posts.
@@ -30,25 +37,32 @@ export async function GET(request: Request) {
   const limit  = Math.min(48, Math.max(1, Number(url.searchParams.get('limit') ?? PAGE)));
   const rawSort = url.searchParams.get('sort') ?? 'forYou';
   const sort: SortMode = rawSort === 'trending' ? 'trending' : rawSort === 'newest' ? 'newest' : 'forYou';
-  const headers = { 'Cache-Control': hasSupabaseAuthCookie(request) ? PRIVATE_CACHE : ANON_CACHE };
+  const isAuthed = hasSupabaseAuthCookie(request);
+  const headers = { 'Cache-Control': isAuthed ? PRIVATE_CACHE : ANON_CACHE };
 
   try {
     if (sort === 'trending') {
-      const { posts, hasMore } = await getExploreTrendingFeed(limit, offset);
+      const { posts, hasMore } = isAuthed
+        ? await getExploreTrendingFeed(limit, offset)
+        : await getPublicExploreTrendingFeed(limit, offset);
       return NextResponse.json({ posts, hasMore }, { headers });
     }
 
     if (sort === 'newest') {
-      const { posts, hasMore } = await getExploreNewestFeed(limit, offset);
+      const { posts, hasMore } = isAuthed
+        ? await getExploreNewestFeed(limit, offset)
+        : await getPublicExploreNewestFeed(limit, offset);
       return NextResponse.json({ posts, hasMore }, { headers });
     }
 
     if (offset > 0) {
-      const { posts, hasMore } = await getExploreNewestFeed(limit, offset);
+      const { posts, hasMore } = isAuthed
+        ? await getExploreNewestFeed(limit, offset)
+        : await getPublicExploreNewestFeed(limit, offset);
       return NextResponse.json({ posts, hasMore }, { headers });
     }
 
-    const page = await getForYouFeed({ limit });
+    const page = isAuthed ? await getForYouFeed({ limit }) : await getPublicForYouFeed({ limit });
     return NextResponse.json({ posts: page, hasMore: page.length >= limit }, { headers });
   } catch {
     return NextResponse.json(
