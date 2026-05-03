@@ -1,0 +1,40 @@
+# -----------------------------------------------------------------------------
+# Stability-Workflow: Production-Fruehwarnungen, die keine Secrets brauchen.
+#
+# Dieser Check ist bewusst klein und extern sichtbar: Er misst die echte
+# Explore-Feed-API und die tatsaechlichen R2-Medien, damit Medien-Regressionen
+# nicht erst durch Nutzer-Screenshots auffallen.
+# -----------------------------------------------------------------------------
+
+name: stability
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  schedule:
+    # Zweimal taeglich: frueh genug fuer Drift, nicht noisy.
+    - cron: '17 5,17 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: stability-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  media-budget:
+    name: media budget (production)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Check Explore media budget
+        run: node scripts/check-media-budget.mjs
