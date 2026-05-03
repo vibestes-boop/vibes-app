@@ -1,0 +1,28 @@
+{
+  "name": "@serlo/remotion",
+  "version": "1.0.0",
+  "description": "Remotion video compositions for Serlo — App Store previews, weekly stats, live intros",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "studio": "npx remotion studio src/index.ts",
+    "render:gifters": "npx remotion render src/index.ts WeeklyTopGifters out/weekly-top-gifters.mp4",
+    "render:preview": "npx remotion render src/index.ts AppStorePreview out/app-store-preview.mp4",
+    "render:intro": "npx remotion render src/index.ts LiveStreamIntro out/live-stream-intro.webm",
+    "render:all": "npm run render:gifters && npm run render:preview && npm run render:intro"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "remotion": "^4.0.0"
+  },
+  "devDependencies": {
+    "@remotion/bundler": "^4.0.456",
+    "@remotion/renderer": "^4.0.456",
+    "@supabase/supabase-js": "^2.105.1",
+    "@types/react": "^18.3.1",
+    "dotenv": "^17.4.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.0"
+  }
+}

@@ -44,3 +44,7 @@ yarn-error.*
 # Supabase CLI cache
 supabase/.temp/
 .vercel
+
+# Remotion render outputs
+apps/remotion/out/*
+!apps/remotion/out/.gitkeep
