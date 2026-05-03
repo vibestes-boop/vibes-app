@@ -710,7 +710,7 @@ function ProductFormSheet({
             <View style={{ flex: 1 }}>
               <Text style={[s.wozTitle, { color: colors.text.primary }]}>🚚 Gratis Versand</Text>
               <Text style={[s.wozSub, { color: colors.text.muted }]}>
-                „Gratis Versand"-Label auf der Shop-Karte anzeigen
+                {'„Gratis Versand“-Label auf der Shop-Karte anzeigen'}
               </Text>
             </View>
             <Switch

@@ -10,22 +10,16 @@ const nextConfig = {
   // Temporarily disabled to unblock deploy — re-enable post-launch
   // once all dynamic router.push/redirect calls are migrated to `as Route`.
   typedRoutes: false,
-  // ESLint während `next build` überspringen — läuft separat via `npm run lint`.
-  // Grund: ESLint v9 Flat-Config + Next.js 15 + Vercel = Known-Edge-Case
-  // (Vercel versucht eine auto-generierte eslint.config.js zu laden die
-  // `require('eslint/config')` tut, was in ESLint v9 kein Public-Module ist).
-  // Build bricht sonst mit "Cannot find module 'eslint/config'" ab obwohl
-  // der Code selbst lint-clean ist.
+  // ESLint wird separat via `npm run lint` als explizites Release-Gate geprüft.
+  // Next.js 15 deprecates `next lint`; die App nutzt deshalb ESLint CLI mit
+  // `apps/web/eslint.config.mjs`.
   eslint: {
-    ignoreDuringBuilds: true,
+    ignoreDuringBuilds: false,
   },
-  // TypeScript-Check während `next build` überspringen — läuft separat via `npm run typecheck`.
-  // Grund: Monorepo-Edge-Case bei `shared/**/*.ts` Imports — TS-Resolver findet
-  // `node_modules/zod` während Build nicht, weil Files außerhalb von apps/web/
-  // liegen und ihre eigene Node-Resolution-Chain starten. Webpack-Fix unten
-  // deckt Runtime ab; TS-Check wird lokal + CI separat erzwungen.
+  // TypeScript soll den Build wieder blockieren. Der fruehere zod-Resolver-Drift
+  // wurde durch eine Root-Dependency behoben.
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
   // Explicitly pin workspace root to this app, not the vibes-app monorepo root
   // (silences "multiple lockfiles detected" warning)

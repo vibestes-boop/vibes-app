@@ -133,7 +133,7 @@ export default function AdminReportsScreen() {
                 </View>
 
                 <Text style={[s.reportReason, { color: colors.text.primary }]}>
-                  „{report.reason}"
+                  {`„${report.reason}“`}
                 </Text>
                 <Text style={[s.reportMeta, { color: colors.text.muted }]}>
                   von @{(report.reporter as any)?.username ?? 'Unbekannt'}
@@ -165,7 +165,7 @@ export default function AdminReportsScreen() {
           <View style={[s.resolveSheet, { backgroundColor: colors.bg.elevated }]}>
             <Text style={[s.sheetTitle, { color: colors.text.primary }]}>Report bearbeiten</Text>
             <Text style={[s.sheetReason, { color: colors.text.muted }]}>
-              „{selectedReport?.reason}"
+              {`„${selectedReport?.reason ?? ''}“`}
             </Text>
 
             <Text style={[s.sheetLabel, { color: colors.text.primary }]}>Admin-Notiz (optional)</Text>

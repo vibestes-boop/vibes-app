@@ -1,5 +1,6 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
+import { getUser } from '@/lib/auth/session';
 import type { Product, ProductWithSeller, ProductCategory } from '@shared/types';
 
 // -----------------------------------------------------------------------------
@@ -90,9 +91,7 @@ export const getShopProducts = cache(async (params: ShopCatalogParams = {}): Pro
   } = params;
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
   const viewerId = user?.id ?? null;
 
   let query = supabase

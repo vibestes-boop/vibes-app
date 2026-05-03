@@ -411,7 +411,7 @@ export function MusicPickerSheet({ visible, selectedTrack, audioVolume, onSelect
             <Pressable onPress={() => { onSelect(selectedTrack, volume); handleClose(); }} style={s.confirm}>
               <View style={s.confirmInner}>
                 <Music2 size={16} color="#fff" strokeWidth={2.5} />
-                <Text style={s.confirmTxt}>„{selectedTrack.title}" verwenden  ·  {Math.round(volume * 100)}%</Text>
+                <Text style={s.confirmTxt}>{`„${selectedTrack.title}“ verwenden  ·  ${Math.round(volume * 100)}%`}</Text>
               </View>
             </Pressable>
           )}

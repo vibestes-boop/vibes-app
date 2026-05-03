@@ -20,7 +20,7 @@ export default function PostNotFound() {
       <div className="space-y-2">
         <h1 className="text-2xl font-semibold tracking-tight">Video nicht verfügbar</h1>
         <p className="text-sm text-muted-foreground">
-          Dieses Video gibt's hier nicht (mehr). Vielleicht wurde es vom Creator gelöscht
+          Dieses Video gibt&apos;s hier nicht (mehr). Vielleicht wurde es vom Creator gelöscht
           oder die URL ist nicht korrekt.
         </p>
       </div>

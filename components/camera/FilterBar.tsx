@@ -78,7 +78,6 @@ const styles = StyleSheet.create({
   container: {
     backgroundColor: 'rgba(0,0,0,0.7)',
     paddingBottom: 8,
-    backdropFilter: 'blur(20px)',
   },
   categoryRow: {
     flexDirection: 'row',

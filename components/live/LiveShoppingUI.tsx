@@ -169,7 +169,7 @@ export function ProductSoldBanner({ events }: ProductSoldBannerProps) {
       </View>
       <View style={s.soldBannerText}>
         <Text style={s.soldBannerUser} numberOfLines={1}>@{latest.buyerUsername}</Text>
-        <Text style={s.soldBannerProduct} numberOfLines={1}>hat "{latest.productTitle}" gekauft!</Text>
+        <Text style={s.soldBannerProduct} numberOfLines={1}>{`hat "${latest.productTitle}" gekauft!`}</Text>
       </View>
       <Text style={s.soldBannerCoins}>🪙 {latest.quantity}</Text>
     </View>

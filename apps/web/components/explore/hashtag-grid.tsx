@@ -90,6 +90,7 @@ export function HashtagGrid({ initialPosts, tag }: HashtagGridProps) {
                 id={p.id}
                 videoUrl={p.video_url}
                 thumbnailUrl={p.thumbnail_url}
+                mediaType={p.media_type}
                 caption={p.caption}
                 authorUsername={p.author.username}
                 viewCount={p.view_count ?? 0}

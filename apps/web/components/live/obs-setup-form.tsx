@@ -385,7 +385,7 @@ export function OBSSetupForm() {
         <div className="flex items-center gap-3 rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-4 text-sm text-yellow-700 dark:text-yellow-300">
           <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
           <span>
-            Wartet auf OBS-Verbindung… Sobald du in OBS auf „Streaming starten" klickst, leiten
+            Wartet auf OBS-Verbindung… Sobald du in OBS auf &bdquo;Streaming starten&quot; klickst, leiten
             wir dich zur Live-Ansicht weiter.
           </span>
         </div>

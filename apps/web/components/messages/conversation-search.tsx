@@ -180,7 +180,7 @@ export function ConversationSearch({ conversationId, viewerId }: ConversationSea
         <div className="max-h-[50dvh] overflow-y-auto border-t">
           {!loading && results.length === 0 ? (
             <p className="px-4 py-5 text-center text-sm text-muted-foreground">
-              Keine Treffer für „{query.trim()}".
+              Keine Treffer für &bdquo;{query.trim()}&quot;.
             </p>
           ) : (
             <ul className="divide-y divide-border">

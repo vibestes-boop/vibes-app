@@ -261,7 +261,7 @@ function PayoutCard({ req, colors, onStatusChange, updating }: {
       </View>
 
       {/* Notizen */}
-      {req.note       && <Text style={[s.cardNote, { color: colors.text.muted }]}>"{req.note}"</Text>}
+      {req.note       && <Text style={[s.cardNote, { color: colors.text.muted }]}>{`"${req.note}"`}</Text>}
       {req.admin_note && <Text style={[s.cardNote, { color: '#EF4444' }]}>Admin: {req.admin_note}</Text>}
 
       {/* Aktionen */}

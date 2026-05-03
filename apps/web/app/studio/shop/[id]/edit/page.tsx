@@ -45,7 +45,7 @@ export default async function EditProductPage({ params }: PageProps) {
           <Edit className="h-6 w-6 text-primary" />
           Produkt bearbeiten
         </h1>
-        <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">„{product.title}"</p>
+        <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">&bdquo;{product.title}&quot;</p>
       </div>
 
       <ProductForm existing={product} />

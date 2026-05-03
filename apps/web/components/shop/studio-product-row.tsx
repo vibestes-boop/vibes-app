@@ -147,7 +147,7 @@ export function StudioProductRow({ product }: { product: ShopProduct }) {
             <DialogTitle>Produkt löschen?</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            „{product.title}" wird dauerhaft entfernt. Diese Aktion kann nicht rückgängig gemacht
+            &bdquo;{product.title}&quot; wird dauerhaft entfernt. Diese Aktion kann nicht rückgängig gemacht
             werden.
           </p>
           <div className="mt-4 flex gap-2">

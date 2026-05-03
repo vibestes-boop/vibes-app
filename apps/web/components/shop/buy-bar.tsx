@@ -275,7 +275,7 @@ function SuccessPanel({
       <div>
         <h3 className="text-lg font-semibold">Kauf erfolgreich</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          Bestellung für „{product.title}" gespeichert. Neues Guthaben: 🪙{' '}
+          Bestellung für &bdquo;{product.title}&quot; gespeichert. Neues Guthaben: 🪙{' '}
           {result.newBalance.toLocaleString('de-DE')}
         </p>
       </div>

@@ -7,9 +7,12 @@
     "dev": "next dev --port 3000",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "analyze": "ANALYZE=true next build",
+    "r2:cors": "node ../../scripts/configure-r2-cors.mjs",
+    "env:doctor": "node ../../scripts/env-doctor.mjs --scope web",
+    "thumbnails:backfill": "node ../../scripts/backfill-video-thumbnails.mjs",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"

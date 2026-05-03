@@ -4,12 +4,12 @@ import { getForYouFeed, getExploreTrendingFeed, getExploreNewestFeed } from '@/l
 // -----------------------------------------------------------------------------
 // GET /api/feed/explore — offset-based paginator for /explore Popular Posts.
 //
-// ?sort=forYou   (default) — sorted by created_at DESC  (getForYouFeed over-fetch)
+// ?sort=forYou   (default) — first page uses getForYouFeed, later pages use native offset
 // ?sort=trending           — sorted by view_count DESC   (getExploreTrendingFeed)
 // ?sort=newest             — sorted by created_at DESC   (getExploreNewestFeed)
 //
-// forYou keeps the existing over-fetch+slice approach (getForYouFeed has cursor
-// pagination, not native offset). trending+newest use native .range() pagination.
+// Anonyme Responses sind kurz CDN-cachebar; eingeloggte Requests bleiben private,
+// weil liked/saved/following Felder user-spezifisch sind.
 //
 // v1.w.UI.124 — Explore infinite scroll.
 // v1.w.UI.219 — Sort tabs.
@@ -19,6 +19,8 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const PAGE = 12;
+const ANON_CACHE = 'public, s-maxage=30, stale-while-revalidate=120';
+const PRIVATE_CACHE = 'private, no-store';
 
 type SortMode = 'forYou' | 'trending' | 'newest';
 
@@ -28,32 +30,35 @@ export async function GET(request: Request) {
   const limit  = Math.min(48, Math.max(1, Number(url.searchParams.get('limit') ?? PAGE)));
   const rawSort = url.searchParams.get('sort') ?? 'forYou';
   const sort: SortMode = rawSort === 'trending' ? 'trending' : rawSort === 'newest' ? 'newest' : 'forYou';
+  const headers = { 'Cache-Control': hasSupabaseAuthCookie(request) ? PRIVATE_CACHE : ANON_CACHE };
 
   try {
     if (sort === 'trending') {
       const { posts, hasMore } = await getExploreTrendingFeed(limit, offset);
-      return NextResponse.json(
-        { posts, hasMore },
-        { headers: { 'Cache-Control': 'private, no-store' } },
-      );
+      return NextResponse.json({ posts, hasMore }, { headers });
     }
 
     if (sort === 'newest') {
       const { posts, hasMore } = await getExploreNewestFeed(limit, offset);
-      return NextResponse.json(
-        { posts, hasMore },
-        { headers: { 'Cache-Control': 'private, no-store' } },
-      );
+      return NextResponse.json({ posts, hasMore }, { headers });
     }
 
-    // forYou — keep original over-fetch+slice logic (getForYouFeed is cursor-based)
-    const all  = await getForYouFeed({ limit: offset + limit });
-    const page = all.slice(offset, offset + limit);
-    return NextResponse.json(
-      { posts: page, hasMore: page.length >= limit },
-      { headers: { 'Cache-Control': 'private, no-store' } },
-    );
+    if (offset > 0) {
+      const { posts, hasMore } = await getExploreNewestFeed(limit, offset);
+      return NextResponse.json({ posts, hasMore }, { headers });
+    }
+
+    const page = await getForYouFeed({ limit });
+    return NextResponse.json({ posts: page, hasMore: page.length >= limit }, { headers });
   } catch {
-    return NextResponse.json({ posts: [], hasMore: false }, { status: 200 });
+    return NextResponse.json(
+      { posts: [], hasMore: false },
+      { status: 200, headers: { 'Cache-Control': PRIVATE_CACHE } },
+    );
   }
+}
+
+function hasSupabaseAuthCookie(request: Request): boolean {
+  const cookie = request.headers.get('cookie') ?? '';
+  return /\bsb-[^=]+-auth-token=/.test(cookie) || cookie.includes('supabase-auth-token');
 }

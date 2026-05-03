@@ -40,10 +40,10 @@ export default function TermsPage() {
       <section>
         <h2>§ 1 Geltungsbereich</h2>
         <p>
-          Diese Allgemeinen Geschäftsbedingungen (nachfolgend „AGB") regeln das
+          Diese Allgemeinen Geschäftsbedingungen (nachfolgend &bdquo;AGB&quot;) regeln das
           Vertragsverhältnis zwischen der Serlo-Plattform (nachfolgend
-          „Serlo" oder „Anbieter") und den Nutzerinnen und Nutzern
-          (nachfolgend „Nutzer") der über <code>serlo.app</code> und zugehörige
+          &bdquo;Serlo&quot; oder &bdquo;Anbieter&quot;) und den Nutzerinnen und Nutzern
+          (nachfolgend &bdquo;Nutzer&quot;) der über <code>serlo.app</code> und zugehörige
           Subdomains bereitgestellten Web- und Mobil-Dienste. Abweichende
           Bedingungen des Nutzers werden nicht anerkannt, es sei denn, der
           Anbieter stimmt ihrer Geltung ausdrücklich schriftlich zu.
@@ -57,7 +57,7 @@ export default function TermsPage() {
           Kern-Funktionalitäten umfasst: Video-Feed mit For-You- und Following-
           Algorithmus, Stories mit 24-Stunden-Sichtbarkeit, Live-Streaming,
           Direktnachrichten, Pods (Community-Gruppen), In-App-Marktplatz (Shop),
-          virtuelle Währung („Borz-Coins") und Geschenksystem.
+          virtuelle Währung (&bdquo;Borz-Coins&quot;) und Geschenksystem.
         </p>
         <p>
           Serlo behält sich vor, einzelne Funktionen zu ändern, zu erweitern
@@ -139,7 +139,7 @@ export default function TermsPage() {
         <h2>§ 6 Shop und Kaufverträge</h2>
         <p>
           Kaufverträge im Shop-Bereich werden ausschließlich zwischen Käufer
-          und dem jeweiligen Händler („Seller") geschlossen. Serlo tritt
+          und dem jeweiligen Händler (&bdquo;Seller&quot;) geschlossen. Serlo tritt
           lediglich als technischer Vermittler auf und ist nicht Vertragspartei.
           Ausnahmen bilden First-Party-Angebote von Serlo selbst, die als
           solche gekennzeichnet sind.
