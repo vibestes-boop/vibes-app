@@ -21,6 +21,7 @@ const siteUrl = normalizeBase(args.siteUrl || process.env.STABILITY_SITE_URL || 
 const limit = readPositiveInt(args.limit, DEFAULT_LIMIT);
 const minPosts = readNonNegativeInt(args.minPosts, DEFAULT_MIN_POSTS);
 const timeoutMs = readPositiveInt(args.timeoutMs, DEFAULT_TIMEOUT_MS);
+const requireCdnCache = args.requireCdnCache;
 const failures = [];
 const warnings = [];
 const checkedFeeds = [];
@@ -45,6 +46,7 @@ for (const target of feedTargets) {
 
   const { data, headers, status } = result;
   const cacheControl = headers.get('cache-control') ?? '';
+  const cdnCacheControl = readCdnCacheControl(headers);
   const validation = validateExploreFeedContract(target.label, data, {
     minPosts,
     requireAnonCache: !args.feedUrl,
@@ -55,8 +57,12 @@ for (const target of feedTargets) {
 
   if (!hasPublicCache(cacheControl)) {
     failures.push(`[${target.label}] Missing public anonymous cache header: ${cacheControl || '(missing)'}.`);
-  } else if (!hasSharedMaxAge(cacheControl)) {
-    warnings.push(`[${target.label}] Anonymous cache header is public but has no s-maxage: ${cacheControl}.`);
+  }
+
+  if (!hasCdnCache(cdnCacheControl)) {
+    const message = `[${target.label}] Missing CDN cache header: ${cdnCacheControl || '(missing)'}.`;
+    if (requireCdnCache) failures.push(message);
+    else warnings.push(message);
   }
 
   checkedFeeds.push({
@@ -64,6 +70,7 @@ for (const target of feedTargets) {
     status,
     posts: validation.postCount,
     cacheControl,
+    cdnCacheControl,
   });
 }
 
@@ -81,10 +88,15 @@ if (!args.feedUrl) {
     warnings.push(...validation.warnings);
 
     const cacheControl = pageTwo.headers.get('cache-control') ?? '';
+    const cdnCacheControl = readCdnCacheControl(pageTwo.headers);
     if (!hasPublicCache(cacheControl)) {
       failures.push(`[pagination] Missing public anonymous cache header: ${cacheControl || '(missing)'}.`);
-    } else if (!hasSharedMaxAge(cacheControl)) {
-      warnings.push(`[pagination] Anonymous cache header is public but has no s-maxage: ${cacheControl}.`);
+    }
+
+    if (!hasCdnCache(cdnCacheControl)) {
+      const message = `[pagination] Missing CDN cache header: ${cdnCacheControl || '(missing)'}.`;
+      if (requireCdnCache) failures.push(message);
+      else warnings.push(message);
     }
 
     checkedFeeds.push({
@@ -92,6 +104,7 @@ if (!args.feedUrl) {
       status: pageTwo.status,
       posts: validation.postCount,
       cacheControl,
+      cdnCacheControl,
     });
   }
 }
@@ -103,7 +116,10 @@ if (!args.skipSupabase) {
 console.log('');
 console.log('Checked feeds:');
 for (const item of checkedFeeds) {
-  console.log(`  - ${item.label}: ${item.status}, ${item.posts} posts, cache=${item.cacheControl || '(missing)'}`);
+  console.log(
+    `  - ${item.label}: ${item.status}, ${item.posts} posts, ` +
+      `cache=${item.cacheControl || '(missing)'}, cdn=${item.cdnCacheControl || '(missing)'}`,
+  );
 }
 
 if (checkedSupabase.length > 0) {
@@ -398,9 +414,14 @@ function hasPublicCache(value) {
   return lower.includes('public') && !lower.includes('private') && !lower.includes('no-store');
 }
 
-function hasSharedMaxAge(value) {
+function hasCdnCache(value) {
   if (!value) return false;
-  return value.toLowerCase().includes('s-maxage=');
+  const lower = value.toLowerCase();
+  return lower.includes('public') && lower.includes('max-age=') && !lower.includes('private') && !lower.includes('no-store');
+}
+
+function readCdnCacheControl(headers) {
+  return headers.get('cdn-cache-control') || headers.get('vercel-cdn-cache-control') || '';
 }
 
 function isPlainObject(value) {
@@ -499,6 +520,7 @@ function parseArgs(rawArgs) {
     help: false,
     limit: undefined,
     minPosts: undefined,
+    requireCdnCache: false,
     siteUrl: undefined,
     skipSupabase: false,
     timeoutMs: undefined,
@@ -510,6 +532,7 @@ function parseArgs(rawArgs) {
     else if (arg === '--help' || arg === '-h') parsed.help = true;
     else if (arg === '--limit') parsed.limit = rawArgs[++i];
     else if (arg === '--min-posts') parsed.minPosts = rawArgs[++i];
+    else if (arg === '--require-cdn-cache') parsed.requireCdnCache = true;
     else if (arg === '--site-url') parsed.siteUrl = rawArgs[++i];
     else if (arg === '--skip-supabase') parsed.skipSupabase = true;
     else if (arg === '--timeout-ms') parsed.timeoutMs = rawArgs[++i];
@@ -551,13 +574,15 @@ Options:
   --feed-url <url>       Exact feed API URL to validate instead of all Explore sorts
   --limit <n>            Number of posts requested per feed (default: ${DEFAULT_LIMIT})
   --min-posts <n>        Minimum posts expected per primary feed (default: ${DEFAULT_MIN_POSTS})
+  --require-cdn-cache    Fail when CDN-Cache-Control/Vercel-CDN-Cache-Control is missing
   --skip-supabase        Skip optional direct Supabase anon/RLS smoke
   --timeout-ms <n>       Per-request timeout in ms (default: ${DEFAULT_TIMEOUT_MS})
 
 Checks:
   - Explore API returns stable JSON: { posts, hasMore }
   - Post rows keep the web/native feed contract fields
-  - Anonymous responses keep CDN cache headers
+  - Anonymous responses keep public browser cache headers
+  - CDN cache headers are present (warning by default, error with --require-cdn-cache)
   - Optional Supabase anon REST smoke catches RLS/env drift when env is available
 `);
 }

@@ -26,7 +26,8 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const PAGE = 12;
-const ANON_CACHE = 'public, s-maxage=30, stale-while-revalidate=120';
+const ANON_BROWSER_CACHE = 'public, max-age=0, must-revalidate';
+const ANON_CDN_CACHE = 'public, max-age=30, stale-while-revalidate=120';
 const PRIVATE_CACHE = 'private, no-store';
 
 type SortMode = 'forYou' | 'trending' | 'newest';
@@ -38,7 +39,7 @@ export async function GET(request: Request) {
   const rawSort = url.searchParams.get('sort') ?? 'forYou';
   const sort: SortMode = rawSort === 'trending' ? 'trending' : rawSort === 'newest' ? 'newest' : 'forYou';
   const isAuthed = hasSupabaseAuthCookie(request);
-  const headers = { 'Cache-Control': isAuthed ? PRIVATE_CACHE : ANON_CACHE };
+  const headers = isAuthed ? privateHeaders() : publicFeedHeaders();
 
   try {
     if (sort === 'trending') {
@@ -75,4 +76,19 @@ export async function GET(request: Request) {
 function hasSupabaseAuthCookie(request: Request): boolean {
   const cookie = request.headers.get('cookie') ?? '';
   return /\bsb-[^=]+-auth-token=/.test(cookie) || cookie.includes('supabase-auth-token');
+}
+
+function publicFeedHeaders(): Record<string, string> {
+  return {
+    // Browser gets a revalidation-friendly header; CDN TTL is controlled below.
+    'Cache-Control': ANON_BROWSER_CACHE,
+    // Visible to downstream CDNs and our production guardrail.
+    'CDN-Cache-Control': ANON_CDN_CACHE,
+    // Vercel-specific, consumed by Vercel and not forwarded to the browser.
+    'Vercel-CDN-Cache-Control': ANON_CDN_CACHE,
+  };
+}
+
+function privateHeaders(): Record<string, string> {
+  return { 'Cache-Control': PRIVATE_CACHE };
 }
