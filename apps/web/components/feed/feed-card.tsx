@@ -44,7 +44,12 @@ import type { FeedPost } from '@/lib/data/feed';
 import { LikeButton } from './like-button';
 import { useFeedInteraction } from './feed-interaction-context';
 import { linkify } from '@/lib/linkify';
-import { getOptimizedImageUrl } from '@/lib/media/optimized-image-url';
+import {
+  FEED_ACTION_AVATAR_QUALITY,
+  FEED_ACTION_AVATAR_WIDTH,
+  FEED_VIDEO_POSTER_WIDTH,
+  getOptimizedImageUrl,
+} from '@/lib/media/optimized-image-url';
 
 // Feed-Captions liegen auf dunkler Video-Overlay — default `text-primary`
 // würde gegen Schwarz/Video-Content zu blass werden. Weißer Link mit
@@ -187,7 +192,12 @@ export function FeedCard({
 
   const caption = post.caption ?? '';
   const mediaSource = post.thumbnail_url || post.video_url || '';
-  const optimizedPosterUrl = getOptimizedImageUrl(post.thumbnail_url, 1080);
+  const optimizedPosterUrl = getOptimizedImageUrl(post.thumbnail_url, FEED_VIDEO_POSTER_WIDTH);
+  const optimizedAuthorAvatarUrl = getOptimizedImageUrl(
+    post.author.avatar_url,
+    FEED_ACTION_AVATAR_WIDTH,
+    FEED_ACTION_AVATAR_QUALITY,
+  );
   const [voiceReaderMounted, setVoiceReaderMounted] = useState(false);
   useEffect(() => setVoiceReaderMounted(false), [post.id]);
 
@@ -1068,7 +1078,7 @@ export function FeedCard({
         aria-label={`Profil von @${post.author.username} öffnen`}
       >
         <Avatar className="h-14 w-14 border-2 border-background shadow-elevation-1">
-          <AvatarImage src={post.author.avatar_url ?? undefined} alt="" />
+          <AvatarImage src={optimizedAuthorAvatarUrl} alt="" />
           <AvatarFallback className="bg-muted text-sm text-foreground">
             {(post.author.display_name ?? post.author.username).slice(0, 2).toUpperCase()}
           </AvatarFallback>
