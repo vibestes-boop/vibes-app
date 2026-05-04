@@ -22,6 +22,11 @@ concurrency:
   group: stability-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  # Opt into GitHub's Node 24 JavaScript-action runtime before it becomes the
+  # default, so scheduled production guardrails exercise the future runner path.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   api-contract:
     name: public API contract (production)
@@ -31,10 +36,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node 20
+      - name: Setup Node 24
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
 
       - name: Check Explore API contract
         run: node scripts/check-api-contracts.mjs --skip-supabase --require-cdn-cache --require-public-endpoint-cdn-cache
@@ -47,10 +52,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node 20
+      - name: Setup Node 24
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
 
       - name: Check Explore media budget
         run: node scripts/check-media-budget.mjs
