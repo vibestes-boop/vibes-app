@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
+import NextImage from 'next/image';
 import type { Route } from 'next';
 import {
   Heart,
@@ -24,7 +26,6 @@ import {
   Trash2,
   Download,
   Pencil,
-  Loader2,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -43,15 +44,26 @@ import type { FeedPost } from '@/lib/data/feed';
 import { LikeButton } from './like-button';
 import { useFeedInteraction } from './feed-interaction-context';
 import { linkify } from '@/lib/linkify';
-import { PostShareDmSheet } from './post-share-dm-sheet';
-import { PostLikersDialog } from '@/components/post/post-likers-dialog';
-import { useVoiceReader } from '@/hooks/use-voice-reader';
-import { useCreatorVoiceSample } from '@/hooks/use-creator-voice-sample';
 
 // Feed-Captions liegen auf dunkler Video-Overlay — default `text-primary`
 // würde gegen Schwarz/Video-Content zu blass werden. Weißer Link mit
 // Underline-On-Hover ist analog zum TikTok-Feed-Stil.
 const FEED_LINK_CLASS = 'font-semibold text-white underline-offset-2 hover:underline';
+
+const LazyPostShareDmSheet = dynamic(
+  () => import('./post-share-dm-sheet').then((mod) => mod.PostShareDmSheet),
+  { ssr: false },
+);
+
+const LazyPostLikersDialog = dynamic(
+  () => import('@/components/post/post-likers-dialog').then((mod) => mod.PostLikersDialog),
+  { ssr: false },
+);
+
+const LazyVoiceReaderControl = dynamic(
+  () => import('./voice-reader-control').then((mod) => mod.VoiceReaderControl),
+  { ssr: false },
+);
 
 // -----------------------------------------------------------------------------
 // FeedCard — eine Video-Karte im vertikalen Feed.
@@ -77,6 +89,7 @@ export interface FeedCardProps {
   post: FeedPost;
   viewerId: string | null;
   isActive: boolean;
+  shouldLoadMedia?: boolean;
   muted: boolean;
   onMuteToggle: () => void;
 }
@@ -93,7 +106,14 @@ function formatCount(n: number): string {
 // erscheint.
 const CAPTION_CLAMP_CHARS = 120;
 
-export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: FeedCardProps) {
+export function FeedCard({
+  post,
+  viewerId,
+  isActive,
+  shouldLoadMedia = isActive,
+  muted,
+  onMuteToggle,
+}: FeedCardProps) {
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -164,14 +184,10 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
   // Pfad (Instagram-style Standbild mit Video-ähnlichem Overlay).
   const isImage = post.media_type === 'image';
 
-  // v1.w.UI.218 — Chatterbox TTS: Creator-Stimme laden + voice reader state
-  const creatorVoiceUrl = useCreatorVoiceSample(post.author.id);
   const caption = post.caption ?? '';
-  const {
-    isLoading: voiceLoading,
-    isPlaying: voicePlaying,
-    toggle: toggleVoice,
-  } = useVoiceReader(post.id, caption, 0.5, creatorVoiceUrl);
+  const mediaSource = post.thumbnail_url || post.video_url || '';
+  const [voiceReaderMounted, setVoiceReaderMounted] = useState(false);
+  useEffect(() => setVoiceReaderMounted(false), [post.id]);
 
   // Detected media aspect-ratio (width/height). null = noch nicht geladen,
   // dann verwenden wir 9:16 als sicheren Default. Wird bei post.id-Wechsel
@@ -202,7 +218,9 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
   //     für cached Videos + Listener auf `loadedmetadata` UND `loadeddata`.
   //   - Bild: separates `Image()`-Objekt im Effect — `naturalWidth/Height`
   //     ist nach `complete=true` verfügbar, decoded() falls noch nicht.
+  const canLoadMedia = shouldLoadMedia || isActive;
   useEffect(() => {
+    if (!canLoadMedia) return;
     if (isImage) {
       // Image-Pfad: eigenständiges Image-Object lädt die URL und meldet
       // Dimensionen. Funktioniert auch wenn das im JSX gerenderte <img>
@@ -239,7 +257,7 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
       v.removeEventListener('loadedmetadata', update);
       v.removeEventListener('loadeddata', update);
     };
-  }, [post.video_url, post.thumbnail_url, isImage]);
+  }, [post.video_url, post.thumbnail_url, isImage, canLoadMedia]);
   // Container folgt IMMER dem detektierten Ratio (Default 9/16 während Loading).
   // Sizing-Strategie hängt davon ab, ob das Medium breiter als 9:16 ist:
   //   - Ratio > 9/16 → width-bound (`w-full h-auto`) — Karte füllt die Spalte
@@ -729,31 +747,43 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
       {/* Media-Ebene: Video bei media_type='video', Bild bei 'image' */}
       {isImage ? (
         <div className="absolute inset-0">
-          {/* Unscharfer Hintergrund-Fill für Nicht-9:16-Bilder — verhindert
-              schwarze Balken links/rechts ohne das Motiv zu beschneiden.
-              Nur sichtbar als „Vorschau" während das echte Bild lädt; sobald
-              `onLoad` feuert und der Container die echte Aspect-Ratio
-              annimmt, deckt das Foreground-Img den Background komplett ab. */}
-          <img
-            src={post.thumbnail_url ?? post.video_url}
-            alt=""
-            aria-hidden="true"
-            className="absolute inset-0 h-full w-full scale-110 object-cover opacity-60 blur-2xl"
-          />
-          <img
-            src={post.thumbnail_url ?? post.video_url}
-            alt={post.caption ?? ''}
-            onLoad={(e) => {
-              // Echte Pixel-Dimensionen → Container kann auf Querformat-
-              // Bilder (4:3, 16:9, etc.) reagieren statt sie in einen
-              // 9:16-Frame zu zwängen.
-              const img = e.currentTarget;
-              if (img.naturalWidth > 0 && img.naturalHeight > 0) {
-                setMediaAspectRatio(img.naturalWidth / img.naturalHeight);
-              }
-            }}
-            className="absolute inset-0 h-full w-full object-contain"
-          />
+          {mediaSource ? (
+            <>
+              {/* Unscharfer Hintergrund-Fill für Nicht-9:16-Bilder — verhindert
+                  schwarze Balken links/rechts ohne das Motiv zu beschneiden.
+                  Nur sichtbar als „Vorschau" während das echte Bild lädt; sobald
+                  `onLoad` feuert und der Container die echte Aspect-Ratio
+                  annimmt, deckt das Foreground-Img den Background komplett ab. */}
+              <NextImage
+                src={mediaSource}
+                alt=""
+                aria-hidden="true"
+                fill
+                sizes={isActive ? '(max-width: 1279px) 100vw, 55vw' : '1px'}
+                priority={isActive}
+                className="scale-110 object-cover opacity-60 blur-2xl"
+              />
+              <NextImage
+                src={mediaSource}
+                alt={post.caption ?? ''}
+                fill
+                sizes="(max-width: 1279px) 100vw, 55vw"
+                priority={isActive}
+                onLoad={(e) => {
+                  // Echte Pixel-Dimensionen → Container kann auf Querformat-
+                  // Bilder (4:3, 16:9, etc.) reagieren statt sie in einen
+                  // 9:16-Frame zu zwängen.
+                  const img = e.currentTarget;
+                  if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+                    setMediaAspectRatio(img.naturalWidth / img.naturalHeight);
+                  }
+                }}
+                className="object-contain"
+              />
+            </>
+          ) : (
+            <div className="h-full w-full bg-black" aria-hidden="true" />
+          )}
         </div>
       ) : (
         <div
@@ -769,35 +799,48 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
           }}
           className="absolute inset-0 cursor-pointer"
         >
-          <video
-            ref={videoRef}
-            src={post.video_url}
-            poster={post.thumbnail_url ?? undefined}
-            loop
-            muted={muted}
-            playsInline
-            preload="metadata"
-            onTimeUpdate={(e) => {
-              const v = e.currentTarget;
-              if (v.duration > 0) setProgress((v.currentTime / v.duration) * 100);
-              // v1.w.UI.53: View-Count nach 3s echtem Playback erhöhen.
-              // currentTime >= 3 bedeutet 3s des Videos tatsächlich abgespielt
-              // (nicht Scrub-Artefakte). dwellFiredRef verhindert Mehrfach-Calls.
-              if (!dwellFiredRef.current && viewerId && v.currentTime >= 3) {
-                dwellFiredRef.current = true;
-                void recordDwell(post.id, Math.round(v.currentTime * 1000));
-              }
-            }}
-            // Aspect-Ratio-Detection lebt im useEffect oben (nicht hier als
-            // JSX-Prop), weil das Event bei gecachten Videos nicht zuverlässig
-            // feuert.
-            className="h-full w-full object-contain"
-          />
+          {canLoadMedia ? (
+            <video
+              ref={videoRef}
+              src={post.video_url}
+              poster={post.thumbnail_url ?? undefined}
+              loop
+              muted={muted}
+              playsInline
+              preload={isActive ? 'metadata' : 'none'}
+              onTimeUpdate={(e) => {
+                const v = e.currentTarget;
+                if (v.duration > 0) setProgress((v.currentTime / v.duration) * 100);
+                // v1.w.UI.53: View-Count nach 3s echtem Playback erhöhen.
+                // currentTime >= 3 bedeutet 3s des Videos tatsächlich abgespielt
+                // (nicht Scrub-Artefakte). dwellFiredRef verhindert Mehrfach-Calls.
+                if (!dwellFiredRef.current && viewerId && v.currentTime >= 3) {
+                  dwellFiredRef.current = true;
+                  void recordDwell(post.id, Math.round(v.currentTime * 1000));
+                }
+              }}
+              // Aspect-Ratio-Detection lebt im useEffect oben (nicht hier als
+              // JSX-Prop), weil das Event bei gecachten Videos nicht zuverlässig
+              // feuert.
+              className="h-full w-full object-contain"
+            />
+          ) : post.thumbnail_url ? (
+            <NextImage
+              src={post.thumbnail_url}
+              alt=""
+              aria-hidden="true"
+              fill
+              sizes="(max-width: 1279px) 100vw, 55vw"
+              className="object-contain"
+            />
+          ) : (
+            <div className="h-full w-full bg-black" aria-hidden="true" />
+          )}
 
           {/* v1.w.UI.211 — Hidden <audio> for background music track. Browser plays
               it in sync with the video when isActive. Volume is synced to the
               video mute-state so the single mute-button controls both streams. */}
-          {audioUrl && (
+          {canLoadMedia && audioUrl && (
             <audio
               ref={audioRef}
               src={audioUrl}
@@ -1157,41 +1200,22 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
           wenn voice_sample_url gesetzt, sonst speechSynthesis-Fallback).
           Nur anzeigen wenn Caption vorhanden. */}
       {caption.length > 0 && (
-        <ActionButton
-          icon={
-            voiceLoading ? (
-              <Loader2 className="h-5 w-5 animate-spin" aria-hidden="true" />
-            ) : voicePlaying ? (
-              <VolumeX
-                className="h-5 w-5 text-violet-400"
-                aria-hidden="true"
-              />
-            ) : (
-              <Volume2
-                className={cn(
-                  'h-5 w-5',
-                  creatorVoiceUrl ? 'text-violet-300' : 'text-white/70',
-                )}
-                aria-hidden="true"
-              />
-            )
-          }
-          label={voicePlaying ? 'Stop' : 'Vorlesen'}
-          ariaLabel={
-            voiceLoading
-              ? 'Audio wird geladen…'
-              : voicePlaying
-                ? 'Vorlesen stoppen'
-                : creatorVoiceUrl
-                  ? 'Caption in Creator-Stimme vorlesen'
-                  : 'Caption vorlesen'
-          }
-          onClick={() => void toggleVoice()}
-          circleClassName={cn(
-            'h-10 w-10',
-            voicePlaying && 'bg-violet-500/20',
-          )}
-        />
+        voiceReaderMounted ? (
+          <LazyVoiceReaderControl
+            postId={post.id}
+            authorId={post.author.id}
+            caption={caption}
+            autoStart
+          />
+        ) : (
+          <ActionButton
+            icon={<Volume2 className="h-5 w-5 text-foreground/70" aria-hidden="true" />}
+            label="Vorlesen"
+            ariaLabel="Caption vorlesen"
+            onClick={() => setVoiceReaderMounted(true)}
+            circleClassName="h-10 w-10"
+          />
+        )
       )}
     </aside>
 
@@ -1201,7 +1225,7 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
 
     {/* v1.w.UI.236 — Likers Dialog: tap like count → see who liked */}
     {likersOpen && (
-      <PostLikersDialog
+      <LazyPostLikersDialog
         postId={post.id}
         likeCount={post.like_count}
         viewerId={viewerId}
@@ -1211,7 +1235,7 @@ export function FeedCard({ post, viewerId, isActive, muted, onMuteToggle }: Feed
 
     {/* v1.w.UI.74 — Post-Share-DM-Sheet (nur wenn eingeloggt + Share geklickt) */}
     {shareDmOpen && (
-      <PostShareDmSheet
+      <LazyPostShareDmSheet
         post={{
           id: post.id,
           thumbnail_url: post.thumbnail_url,

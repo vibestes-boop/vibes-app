@@ -158,7 +158,8 @@ function HomeFeedShellBody({
   const showMobileSheet = !isXl && !!commentsOpenForPostId;
 
   return (
-    <div
+    <main
+      aria-label="Feed"
       className={cn(
         'grid h-[100dvh] w-full grid-cols-1 grid-rows-[minmax(0,1fr)]',
         // Grid-Template je nach Panel-Mode.
@@ -203,7 +204,7 @@ function HomeFeedShellBody({
         <div
           role="tablist"
           aria-label="Feed-Quellen"
-          className="absolute left-1/2 top-3 z-20 flex -translate-x-1/2 items-center gap-6 rounded-full bg-black/35 px-5 py-1.5 backdrop-blur-md"
+          className="absolute left-1/2 top-3 z-20 flex -translate-x-1/2 items-center gap-6 rounded-full bg-black/70 px-5 py-1.5 backdrop-blur-md"
         >
           <FeedTabButton
             label="Für dich"
@@ -277,7 +278,7 @@ function HomeFeedShellBody({
           viewerId={viewerId}
         />
       )}
-    </div>
+    </main>
   );
 }
 
@@ -629,8 +630,8 @@ function FeedTabButton({
   // Tabs sitzen seit v1.w.UI.10 innerhalb einer Floating-Pill direkt auf dem
   // Video-Canvas (absolute top-3 center). Kontrast-Skala bleibt die gleiche
   // wie vorher in der Tab-Bar: aktiv = weiß + kleiner Underline, inaktiv =
-  // weiß/60% (weich, aber auf leicht transparentem schwarzen Pill-Hintergrund
-  // noch lesbar), disabled = weiß/30% ohne Hover-Feedback.
+  // weiß/85% auf dunkler Pill. Das hält die Lighthouse-Kontrastprüfung stabil
+  // auch wenn die Pill über hellem Videomaterial schwebt.
   return (
     <button
       type="button"
@@ -642,8 +643,8 @@ function FeedTabButton({
         'border-b-2 px-0 py-1 text-sm font-semibold transition-colors duration-base ease-out-expo',
         active
           ? 'border-white text-white'
-          : 'border-transparent text-white/60 hover:text-white',
-        disabled && 'cursor-not-allowed opacity-40 hover:text-white/60',
+          : 'border-transparent text-white/85 hover:text-white',
+        disabled && 'cursor-not-allowed opacity-60 hover:text-white/85',
       )}
     >
       {label}
