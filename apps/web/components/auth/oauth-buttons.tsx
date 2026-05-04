@@ -50,6 +50,7 @@ export function OAuthButtons({ next = '/' }: { next?: string }) {
         size="lg"
         disabled={isGooglePending || isApplePending}
         onClick={() => startGoogle(() => signInWithOAuth('google', next))}
+        data-testid="oauth-google-button"
       >
         <GoogleLogo />
         <span>{t('auth.continueWithGoogle')}</span>
@@ -60,6 +61,7 @@ export function OAuthButtons({ next = '/' }: { next?: string }) {
         size="lg"
         disabled={isGooglePending || isApplePending}
         onClick={() => startApple(() => signInWithOAuth('apple', next))}
+        data-testid="oauth-apple-button"
       >
         <AppleLogo />
         <span>{t('auth.continueWithApple')}</span>

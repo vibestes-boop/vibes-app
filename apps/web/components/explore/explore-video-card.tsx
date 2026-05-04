@@ -6,7 +6,7 @@ import Link from 'next/link';
 import type { Route } from 'next';
 import { Compass } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useI18n } from '@/lib/i18n/client';
+import { useOptionalI18n } from '@/lib/i18n/client';
 
 // -----------------------------------------------------------------------------
 // ExploreVideoCard — v1.w.UI.55b
@@ -49,7 +49,8 @@ export function ExploreVideoCard({
   /** v1.w.UI.170 — show 🌸 badge on Women-Only Zone posts */
   womenOnly?: boolean;
 }) {
-  const { t } = useI18n();
+  const i18n = useOptionalI18n();
+  const viewsLabel = i18n?.t('explore.views') ?? 'Views';
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoReady, setVideoReady] = useState(false);
   const inferredImage =
@@ -161,7 +162,7 @@ export function ExploreVideoCard({
         )}
         <div className="truncate font-medium">@{authorUsername}</div>
         <div className="text-white/70">
-          {formatCount(viewCount)} {t('explore.views')}
+          {formatCount(viewCount)} {viewsLabel}
         </div>
       </div>
     </Link>

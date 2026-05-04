@@ -33,7 +33,7 @@ interface LandingPageProps {
 
 export function LandingPage({ featured, liveNow, trendingPosts }: LandingPageProps) {
   return (
-    <main className="min-h-dvh bg-background">
+    <main className="min-h-dvh bg-background" data-testid="public-landing">
       {/* Hero */}
       <section className="container mx-auto flex flex-col items-center py-20 text-center lg:py-32">
         <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-sm text-slate-600 dark:text-muted-foreground">
