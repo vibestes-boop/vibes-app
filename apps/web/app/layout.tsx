@@ -66,6 +66,11 @@ export const metadata: Metadata = {
     site:    '@serloapp',
     creator: '@serloapp',
   },
+  icons: {
+    icon: '/icon.svg',
+    shortcut: '/icon.svg',
+    apple: '/icon.svg',
+  },
   robots: {
     index:  true,
     follow: true,
