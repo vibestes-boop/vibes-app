@@ -10,7 +10,10 @@ import {
   getTrendingHashtags,
 } from '@/lib/data/feed';
 import { getActiveLiveSessions } from '@/lib/data/live';
-import { getOptimizedImageUrl } from '@/lib/media/optimized-image-url';
+import {
+  FEED_VIDEO_POSTER_WIDTH,
+  getOptimizedImageUrl,
+} from '@/lib/media/optimized-image-url';
 
 /**
  * `/` Home-Route.
@@ -93,7 +96,7 @@ export default async function HomePage() {
   const firstForYouPost = forYou[0];
   const firstForYouPosterUrl =
     firstForYouPost?.media_type === 'video'
-      ? getOptimizedImageUrl(firstForYouPost.thumbnail_url, 1080)
+      ? getOptimizedImageUrl(firstForYouPost.thumbnail_url, FEED_VIDEO_POSTER_WIDTH)
       : undefined;
 
   return (
