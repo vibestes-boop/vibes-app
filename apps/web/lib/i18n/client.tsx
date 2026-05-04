@@ -45,3 +45,18 @@ export function useI18n() {
       resolve(ctx.messages, key, vars),
   };
 }
+
+/**
+ * Optional variant for leaf widgets that can safely render outside the app
+ * provider, for example in smoke-tested public cards or isolated embeds.
+ */
+export function useOptionalI18n() {
+  const ctx = useContext(I18nContext);
+  if (!ctx) return null;
+
+  return {
+    locale: ctx.locale,
+    t: (key: TranslationKey, vars?: Record<string, string | number>) =>
+      resolve(ctx.messages, key, vars),
+  };
+}

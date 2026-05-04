@@ -85,7 +85,7 @@ export function MagicLinkForm({ mode = 'login' }: { mode?: 'login' | 'signup' })
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3" data-testid="auth-magic-link-form">
         <FormField
           control={form.control}
           name="email"
@@ -98,6 +98,7 @@ export function MagicLinkForm({ mode = 'login' }: { mode?: 'login' | 'signup' })
                   autoComplete="email"
                   autoFocus
                   placeholder={t('auth.emailPlaceholder')}
+                  data-testid="auth-email-input"
                   {...field}
                 />
               </FormControl>
@@ -105,7 +106,7 @@ export function MagicLinkForm({ mode = 'login' }: { mode?: 'login' | 'signup' })
             </FormItem>
           )}
         />
-        <Button type="submit" size="lg" className="w-full" disabled={isPending}>
+        <Button type="submit" size="lg" className="w-full" disabled={isPending} data-testid="auth-submit-button">
           {isPending ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (

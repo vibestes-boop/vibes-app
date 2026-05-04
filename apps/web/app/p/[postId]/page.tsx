@@ -246,7 +246,10 @@ export default async function PostDetailPage({
       };
 
   return (
-    <main className={`mx-auto px-4 py-6 sm:px-6 lg:py-10 ${isLandscape ? 'max-w-6xl' : 'max-w-5xl'}`}>
+    <main
+      className={`mx-auto px-4 py-6 sm:px-6 lg:py-10 ${isLandscape ? 'max-w-6xl' : 'max-w-5xl'}`}
+      data-testid="post-detail-page"
+    >
       {/* v1.w.UI.53: Dwell-time tracking for algorithm scoring. */}
       <PostDwellTracker postId={post.id} isAuthenticated={!!viewer} />
       {/* v1.w.UI.138: View-count increment — mirrors mobile increment_post_view RPC. */}
