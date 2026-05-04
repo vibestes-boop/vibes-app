@@ -20,13 +20,22 @@ import { useEffect } from 'react';
 
 export function ServiceWorkerRegistrar() {
   useEffect(() => {
-    if (process.env.NODE_ENV !== 'production') return;
     if (typeof window === 'undefined') return;
-    if (!('serviceWorker' in navigator)) return;
 
-    // `window.load`-Event ist wichtig, damit der SW nicht mit dem initialen
-    // Page-Render konkurriert — vor allem auf schwachen mobilen Geräten.
-    const register = () => {
+    // Manifest + Service Worker erst nach dem Load-Event einhängen. Lighthouse
+    // hatte `/manifest.webmanifest` sonst im initialen Network-Dependency-Tree;
+    // Installability bleibt erhalten, aber sie konkurriert nicht mit LCP.
+    const afterLoad = () => {
+      if (!document.querySelector('link[rel="manifest"]')) {
+        const manifest = document.createElement('link');
+        manifest.rel = 'manifest';
+        manifest.href = '/manifest.webmanifest';
+        document.head.appendChild(manifest);
+      }
+
+      if (process.env.NODE_ENV !== 'production') return;
+      if (!('serviceWorker' in navigator)) return;
+
       navigator.serviceWorker
         .register('/sw.js', { scope: '/' })
         .catch((err) => {
@@ -40,10 +49,10 @@ export function ServiceWorkerRegistrar() {
     };
 
     if (document.readyState === 'complete') {
-      register();
+      afterLoad();
     } else {
-      window.addEventListener('load', register, { once: true });
-      return () => window.removeEventListener('load', register);
+      window.addEventListener('load', afterLoad, { once: true });
+      return () => window.removeEventListener('load', afterLoad);
     }
   }, []);
 

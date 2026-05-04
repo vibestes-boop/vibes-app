@@ -1,0 +1,44 @@
+{
+  "name": "Serlo — Live, Feed, Shop",
+  "short_name": "Serlo",
+  "description": "Serlo — die Social-Video-Plattform. Live-Streaming, Community-Feed und Marktplatz.",
+  "start_url": "/?utm_source=pwa",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "lang": "de",
+  "dir": "ltr",
+  "background_color": "#050508",
+  "theme_color": "#050508",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ],
+  "categories": ["social", "entertainment", "shopping"],
+  "shortcuts": [
+    {
+      "name": "Feed",
+      "url": "/",
+      "description": "Direkt in den For-You-Feed springen."
+    },
+    {
+      "name": "Live",
+      "url": "/live",
+      "description": "Aktive Live-Streams entdecken."
+    },
+    {
+      "name": "Neues Video",
+      "url": "/create",
+      "description": "Ein neues Video erstellen."
+    },
+    {
+      "name": "Messages",
+      "url": "/messages",
+      "description": "Deine Direktnachrichten öffnen."
+    }
+  ]
+}

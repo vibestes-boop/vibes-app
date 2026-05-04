@@ -44,6 +44,7 @@ import type { FeedPost } from '@/lib/data/feed';
 import { LikeButton } from './like-button';
 import { useFeedInteraction } from './feed-interaction-context';
 import { linkify } from '@/lib/linkify';
+import { getOptimizedImageUrl } from '@/lib/media/optimized-image-url';
 
 // Feed-Captions liegen auf dunkler Video-Overlay — default `text-primary`
 // würde gegen Schwarz/Video-Content zu blass werden. Weißer Link mit
@@ -186,6 +187,7 @@ export function FeedCard({
 
   const caption = post.caption ?? '';
   const mediaSource = post.thumbnail_url || post.video_url || '';
+  const optimizedPosterUrl = getOptimizedImageUrl(post.thumbnail_url, 1080);
   const [voiceReaderMounted, setVoiceReaderMounted] = useState(false);
   useEffect(() => setVoiceReaderMounted(false), [post.id]);
 
@@ -801,9 +803,10 @@ export function FeedCard({
         >
           {canLoadMedia ? (
             <video
+              {...(isActive ? { fetchpriority: 'high' } : {})}
               ref={videoRef}
               src={post.video_url}
-              poster={post.thumbnail_url ?? undefined}
+              poster={optimizedPosterUrl}
               loop
               muted={muted}
               playsInline

@@ -10,6 +10,7 @@ import {
   getTrendingHashtags,
 } from '@/lib/data/feed';
 import { getActiveLiveSessions } from '@/lib/data/live';
+import { getOptimizedImageUrl } from '@/lib/media/optimized-image-url';
 
 /**
  * `/` Home-Route.
@@ -89,17 +90,32 @@ export default async function HomePage() {
 
   // Nur wenn der User jemandem folgt, prefetchen wir — sonst sparen wir den Call.
   const following = hasFollows ? await getFollowingFeed({ limit: 10 }) : null;
+  const firstForYouPost = forYou[0];
+  const firstForYouPosterUrl =
+    firstForYouPost?.media_type === 'video'
+      ? getOptimizedImageUrl(firstForYouPost.thumbnail_url, 1080)
+      : undefined;
 
   return (
-    <HomeFeedShell
-      viewerId={user.id}
-      initialForYou={forYou}
-      initialFollowing={following}
-      suggested={suggested}
-      followedAccounts={followedAccounts}
-      trendingHashtags={trendingHashtags}
-      storyStripSlot={<StoryStrip />}
-    />
+    <>
+      {firstForYouPosterUrl && (
+        <link
+          rel="preload"
+          as="image"
+          href={firstForYouPosterUrl}
+          fetchPriority="high"
+        />
+      )}
+      <HomeFeedShell
+        viewerId={user.id}
+        initialForYou={forYou}
+        initialFollowing={following}
+        suggested={suggested}
+        followedAccounts={followedAccounts}
+        trendingHashtags={trendingHashtags}
+        storyStripSlot={<StoryStrip />}
+      />
+    </>
   );
 }
 
