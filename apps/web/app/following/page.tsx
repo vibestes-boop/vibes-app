@@ -44,12 +44,20 @@ export default async function FollowingFeedPage() {
   // - For-You wird geprefetcht, damit der Tab-Switch keine Ladeverzögerung hat.
   // - Following ist hier der Primär-Tab → eager laden.
   // - FollowedAccounts für die Sidebar-Section (v1.w.UI.11 Phase B).
-  const [forYou, following, suggested, followedAccounts, trendingHashtags] = await Promise.all([
+  const [forYou, following, suggested, followedAccounts, trendingHashtags, viewerIsAdmin] = await Promise.all([
     getForYouFeed({ limit: 10 }),
     getFollowingFeed({ limit: 10 }),
     getSuggestedFollows(5),
     getMyFollowedAccounts({ limit: 5 }),
     getTrendingHashtags(6),
+    (async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', user.id)
+        .maybeSingle();
+      return Boolean((data as { is_admin?: boolean } | null)?.is_admin);
+    })(),
   ]);
 
   return (
@@ -60,6 +68,7 @@ export default async function FollowingFeedPage() {
       suggested={suggested}
       followedAccounts={followedAccounts}
       trendingHashtags={trendingHashtags}
+      viewerIsAdmin={viewerIsAdmin}
       initialTab="following"
     />
   );

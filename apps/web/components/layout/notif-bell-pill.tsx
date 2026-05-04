@@ -1,23 +1,19 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { Bell } from 'lucide-react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { getUnreadNotificationCount } from '@/app/actions/notifications';
-import { createClient } from '@/lib/supabase/client';
 import { glassPillBase } from '@/lib/ui/glass-pill';
 import { cn } from '@/lib/utils';
 
 // -----------------------------------------------------------------------------
 // NotifBellPill — Glass-Pill-Link zu /notifications mit Unread-Badge.
 //
-// v1.w.UI.93 — Realtime-Upgrade:
-//   - Supabase postgres_changes INSERT auf notifications WHERE
-//     recipient_id=eq.{viewerId} → invalidiert ['unread-notifs'] sofort.
-//   - 60s-Polling bleibt als Fallback (Realtime-Disconnect, Tab-Hintergrund).
-//   - channelRef verhindert Doppel-Subscriptions in React Strict-Mode.
-//   - viewerId null → kein Channel (Anon-User, kein Realtime nötig).
+// v1.w.UI.246 — Global header badges stay polling-only. Notifications still
+// refresh regularly, while realtime subscriptions stay scoped to pages that
+// actually need live updates. This keeps the home feed's global shell free of
+// WebSockets and the Supabase browser SDK on first load.
 // -----------------------------------------------------------------------------
 
 function formatBadge(n: number): string {
@@ -31,48 +27,10 @@ interface NotifBellPillProps {
 }
 
 export function NotifBellPill({ initialCount, viewerId }: NotifBellPillProps) {
-  const qc = useQueryClient();
-  const channelRef = useRef<ReturnType<ReturnType<typeof createClient>['channel']> | null>(null);
-
-  useEffect(() => {
-    if (!viewerId) return;
-
-    const client = createClient();
-
-    // Cleanup vorheriger Channel (Strict-Mode-Remount-Schutz)
-    if (channelRef.current) {
-      client.removeChannel(channelRef.current);
-      channelRef.current = null;
-    }
-
-    const channel = client
-      .channel(`notif-bell-${viewerId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          filter: `recipient_id=eq.${viewerId}`,
-        },
-        () => {
-          // Neue Notification → Badge sofort neu laden
-          void qc.invalidateQueries({ queryKey: ['unread-notifs'] });
-        },
-      )
-      .subscribe();
-
-    channelRef.current = channel;
-
-    return () => {
-      client.removeChannel(channel);
-      channelRef.current = null;
-    };
-  }, [viewerId, qc]);
-
   const { data: count = initialCount } = useQuery({
     queryKey: ['unread-notifs'],
     queryFn: () => getUnreadNotificationCount(),
+    enabled: !!viewerId,
     initialData: initialCount,
     refetchInterval: 60_000,
     staleTime: 50_000,

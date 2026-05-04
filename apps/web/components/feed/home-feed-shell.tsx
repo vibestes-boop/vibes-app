@@ -1,17 +1,26 @@
 'use client';
 
 import { useEffect, useState, useTransition, type ReactNode } from 'react';
+import dynamic from 'next/dynamic';
 import { useQuery } from '@tanstack/react-query';
 import { FeedList } from './feed-list';
 import { FeedSidebar } from './feed-sidebar';
-import { CommentSheet } from './comment-sheet';
-import { CommentPanel } from './comment-panel';
 import {
   FeedInteractionProvider,
   useFeedInteraction,
 } from './feed-interaction-context';
 import type { FeedPost, FollowedAccount, SuggestedFollow, TrendingHashtag } from '@/lib/data/feed';
 import { cn } from '@/lib/utils';
+
+const LazyCommentSheet = dynamic(
+  () => import('./comment-sheet').then((mod) => mod.CommentSheet),
+  { ssr: false },
+);
+
+const LazyCommentPanel = dynamic(
+  () => import('./comment-panel').then((mod) => mod.CommentPanel),
+  { ssr: false },
+);
 
 // -----------------------------------------------------------------------------
 // HomeFeedShell — Client-Shell für authentifizierte User auf `/`.
@@ -65,6 +74,8 @@ export interface HomeFeedShellProps {
    * Ersetzt den Stub-Link „Trending Hashtags → /explore" mit echten Tag-Kacheln.
    */
   trendingHashtags?: TrendingHashtag[];
+  /** Server-resolved admin flag for the desktop sidebar admin entry. */
+  viewerIsAdmin?: boolean;
 }
 
 type TabKey = 'foryou' | 'following';
@@ -90,6 +101,7 @@ function HomeFeedShellBody({
   initialTab = 'foryou',
   followedAccounts,
   trendingHashtags,
+  viewerIsAdmin = false,
 }: HomeFeedShellProps) {
   const [tab, setTab] = useState<TabKey>(initialTab);
   const { commentsOpenForPostId, closeComments } = useFeedInteraction();
@@ -173,7 +185,11 @@ function HomeFeedShellBody({
     >
       {/* Left Sidebar (Desktop only) */}
       <aside className="hidden border-r border-border xl:block">
-        <FeedSidebar viewerId={viewerId} followedAccounts={followedAccounts} />
+        <FeedSidebar
+          viewerId={viewerId}
+          followedAccounts={followedAccounts}
+          viewerIsAdmin={viewerIsAdmin}
+        />
       </aside>
 
       {/*
@@ -254,7 +270,7 @@ function HomeFeedShellBody({
           Auf < xl werden beide versteckt; Kommentare kommen dort via Sheet. */}
       <aside className="hidden border-l border-border xl:block">
         {showInlinePanel && commentsOpenForPostId ? (
-          <CommentPanel
+          <LazyCommentPanel
             postId={commentsOpenForPostId}
             allowComments={activeAllowComments}
             viewerId={viewerId}
@@ -268,7 +284,7 @@ function HomeFeedShellBody({
       {/* Mobile/< xl: Sheet-Overlay als Kommentar-UI. Mount nur wenn gebraucht,
           damit der interne useComments-Hook on-demand lädt. */}
       {showMobileSheet && commentsOpenForPostId && (
-        <CommentSheet
+        <LazyCommentSheet
           postId={commentsOpenForPostId}
           open={true}
           onOpenChange={(next) => {

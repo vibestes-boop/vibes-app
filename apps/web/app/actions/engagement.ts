@@ -317,6 +317,22 @@ export async function recordDwell(postId: string, dwellMs: number): Promise<void
 }
 
 // -----------------------------------------------------------------------------
+// recordPostView — v1.w.UI.138 follow-up.
+//
+// Keep the Supabase browser client out of the feed's initial JS bundle. The RPC
+// still runs with the authenticated user's session, but the heavy Supabase SDK
+// stays on the server side instead of becoming an above-the-fold client chunk.
+// -----------------------------------------------------------------------------
+
+export async function recordPostView(postId: string): Promise<void> {
+  const viewer = await getViewerId();
+  if (!viewer) return;
+
+  const supabase = await createClient();
+  await supabase.rpc('increment_post_view', { p_post_id: postId });
+}
+
+// -----------------------------------------------------------------------------
 // toggleRepost — v1.w.UI.151: In-App-Repost (Repeat2) ähnlich TikTok.
 //
 // Schreibt in die `reposts`-Tabelle (user_id, post_id). Eigene Posts dürfen
