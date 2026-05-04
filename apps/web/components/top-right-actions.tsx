@@ -215,7 +215,7 @@ export async function TopRightActions() {
             size="sm"
             className={cn(
               glassPillBase,
-              'pointer-events-auto h-9 rounded-full px-3.5 text-xs font-semibold hover:text-white',
+              'pointer-events-auto h-9 rounded-full bg-black/70 px-3.5 text-xs font-semibold hover:bg-black/85 hover:text-white',
             )}
           >
             <Link href="/login">{t('auth.login')}</Link>
