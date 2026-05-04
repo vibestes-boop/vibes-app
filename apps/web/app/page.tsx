@@ -77,7 +77,14 @@ export default async function HomePage() {
   // FollowedAccounts wird für die Sidebar-Section („Konten, denen ich folge")
   // immer mitgefetcht (v1.w.UI.11 Phase B) — gibt bei Empty-Follows leeres
   // Array zurück und die Sektion rendert einen Explore-CTA.
-  const [forYou, suggested, followedAccounts, trendingHashtags, hasFollows] = await Promise.all([
+  const [
+    forYou,
+    suggested,
+    followedAccounts,
+    trendingHashtags,
+    hasFollows,
+    viewerIsAdmin,
+  ] = await Promise.all([
     getForYouFeed({ limit: 10 }),
     getSuggestedFollows(5),
     getMyFollowedAccounts({ limit: 5 }),
@@ -88,6 +95,14 @@ export default async function HomePage() {
         .select('follower_id', { count: 'exact', head: true })
         .eq('follower_id', user.id);
       return (count ?? 0) > 0;
+    })(),
+    (async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', user.id)
+        .maybeSingle();
+      return Boolean((data as { is_admin?: boolean } | null)?.is_admin);
     })(),
   ]);
 
@@ -116,6 +131,7 @@ export default async function HomePage() {
         suggested={suggested}
         followedAccounts={followedAccounts}
         trendingHashtags={trendingHashtags}
+        viewerIsAdmin={viewerIsAdmin}
         storyStripSlot={<StoryStrip />}
       />
     </>

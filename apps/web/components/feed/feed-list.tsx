@@ -4,11 +4,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import NextImage from 'next/image';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { createBrowserClient } from '@supabase/ssr';
 import { FeedCard } from './feed-card';
 import { WebLiveFeedCard, type LiveFeedSession } from './web-live-feed-card';
 import { useFeedInteraction } from './feed-interaction-context';
 import { useTogglePostLike } from '@/hooks/use-engagement';
+import { recordPostView } from '@/app/actions/engagement';
 import type { FeedPost } from '@/lib/data/feed';
 import { cn } from '@/lib/utils';
 import { ArrowDown, ArrowUp, Compass, KeyboardIcon, RefreshCw } from 'lucide-react';
@@ -312,11 +312,7 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
       const p = row?.kind === 'post' ? row.post : null;
       if (!p || viewedInSessionRef.current.has(p.id)) return;
       viewedInSessionRef.current.add(p.id);
-      const db = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      );
-      void Promise.resolve(db.rpc('increment_post_view', { p_post_id: p.id })).catch(() => undefined);
+      void recordPostView(p.id).catch(() => undefined);
     }, 1500);
     return () => clearTimeout(timer);
   }, [activeIdx, viewerId]);

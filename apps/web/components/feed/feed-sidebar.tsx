@@ -21,7 +21,6 @@ import { cn } from '@/lib/utils';
 import { OpenConsentSettingsButton } from '@/components/consent/consent-banner';
 import { FollowedAccountsSection } from '@/components/feed/followed-accounts-section';
 import { MoreMenu } from '@/components/layout/more-menu';
-import { AdminNavLink } from '@/components/feed/admin-nav-link';
 import type { FollowedAccount } from '@/lib/data/feed';
 import { getUnreadDmCount } from '@/app/actions/messages';
 import { getUnreadNotificationCount } from '@/app/actions/notifications';
@@ -65,6 +64,7 @@ const SECONDARY_NAV: NavItem[] = [
 export function FeedSidebar({
   viewerId,
   followedAccounts,
+  viewerIsAdmin = false,
 }: {
   viewerId: string | null;
   /**
@@ -73,6 +73,7 @@ export function FeedSidebar({
    * gerendert (Logged-out, oder Page hat den Prefetch nicht durchgereicht).
    */
   followedAccounts?: FollowedAccount[];
+  viewerIsAdmin?: boolean;
 }) {
   const pathname = usePathname();
   const isActive = (href: Route) => pathname === href;
@@ -201,8 +202,21 @@ export function FeedSidebar({
             );
           })}
         </nav>
-        {/* v1.w.UI.215 — Admin-Panel-Link (nur für Admins sichtbar, self-contained) */}
-        {viewerId && <AdminNavLink />}
+        {/* v1.w.UI.246 — Admin-Panel-Link wird serverseitig entschieden. */}
+        {viewerId && viewerIsAdmin && (
+          <Link
+            href={'/admin' as Route}
+            className={cn(
+              'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
+              pathname.startsWith('/admin')
+                ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+            )}
+          >
+            <ShieldCheck className="h-5 w-5 shrink-0" />
+            <span>Admin-Panel</span>
+          </Link>
+        )}
       </div>
 
       {/*

@@ -26,6 +26,13 @@ jest.mock('@/hooks/use-engagement', () => ({
   useTogglePostLike: () => ({ mutate: jest.fn(), mutateAsync: jest.fn() }),
 }));
 
+// FeedList fires view tracking via a Server Action after dwell. The action
+// module imports next/cache, which is intentionally outside this client-unit
+// test's scope.
+jest.mock('@/app/actions/engagement', () => ({
+  recordPostView: jest.fn(),
+}));
+
 // next/navigation — useRouter() benötigt den App-Router-Context der in jsdom
 // nicht existiert. Mock liefert einen stabilen Stub damit alle Tests rendern.
 const mockRouterRefresh = jest.fn();
