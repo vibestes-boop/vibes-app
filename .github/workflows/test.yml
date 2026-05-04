@@ -46,10 +46,10 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node 24
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '24'
           cache: npm
@@ -71,7 +71,7 @@ jobs:
         # Nur auf Push zu main + PRs; lokale Dispatch-Runs brauchen kein
         # Artifact. Retention 7 Tage reicht für Post-Mortem-Debugging.
         if: success() || failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: coverage-native
           path: coverage/
@@ -91,10 +91,10 @@ jobs:
         working-directory: apps/web
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Setup Node 24
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: '24'
           cache: npm
@@ -115,7 +115,7 @@ jobs:
 
       - name: Upload coverage (web)
         if: success() || failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: coverage-web
           path: apps/web/coverage/
