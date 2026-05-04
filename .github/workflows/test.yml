@@ -7,8 +7,9 @@
 # Prebuilds) hat als Web — separate Jobs erlauben unterschiedliche Caches und
 # klarere Fail-Signale in der PR-UI.
 #
-# Node 20 LTS: Next.js 15 braucht ≥18.18, jest-expo ≥18, Expo SDK 54 supportet
-# 20. Pinnen statt "latest" damit Renovate-Bumps nicht spontan CI rot machen.
+# Node 24 LTS: GitHub Actions stellt JavaScript-Actions schrittweise auf Node 24
+# um; wir pinnen explizit statt "latest", damit CI reproduzierbar bleibt und
+# Future-Runner-Drift frueh sichtbar wird.
 #
 # Ausgelöst auf push + PR zu main — so läuft es für Branch-Pushes (früh-Signal
 # während Dev) UND auf PRs (merge-Gate). Workflow-Dispatch erlaubt manuelle
@@ -29,6 +30,11 @@ concurrency:
   group: test-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  # Opt into GitHub's Node 24 JavaScript-action runtime before it becomes the
+  # default, so checkout/setup-node/upload-artifact warnings become hard signal.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   # ---------------------------------------------------------------------------
   # Native (Expo / React Native) — läuft in Repo-Root.
@@ -42,10 +48,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node 20
+      - name: Setup Node 24
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: npm
           cache-dependency-path: package-lock.json
 
@@ -87,10 +93,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node 20
+      - name: Setup Node 24
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: npm
           cache-dependency-path: apps/web/package-lock.json
 

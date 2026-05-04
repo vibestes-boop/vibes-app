@@ -27,6 +27,11 @@ concurrency:
   group: typecheck-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  # Opt into GitHub's Node 24 JavaScript-action runtime before it becomes the
+  # default, so checkout/setup-node warnings turn into real compatibility tests.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   web:
     name: web (next.js)
@@ -39,10 +44,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup Node 20
+      - name: Setup Node 24
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: npm
           cache-dependency-path: apps/web/package-lock.json
 
