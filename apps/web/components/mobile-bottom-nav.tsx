@@ -124,7 +124,7 @@ export function MobileBottomNav({
                     ? 'text-foreground'
                     : active
                       ? 'text-foreground'
-                      : 'text-muted-foreground hover:text-foreground',
+                      : 'text-slate-600 hover:text-foreground dark:text-muted-foreground',
                 )}
               >
                 {slot.primary ? (
