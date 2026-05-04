@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import NextImage from 'next/image';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { createBrowserClient } from '@supabase/ssr';
 import { FeedCard } from './feed-card';
@@ -9,6 +10,7 @@ import { WebLiveFeedCard, type LiveFeedSession } from './web-live-feed-card';
 import { useFeedInteraction } from './feed-interaction-context';
 import { useTogglePostLike } from '@/hooks/use-engagement';
 import type { FeedPost } from '@/lib/data/feed';
+import { cn } from '@/lib/utils';
 import { ArrowDown, ArrowUp, Compass, KeyboardIcon, RefreshCw } from 'lucide-react';
 
 // ── DisplayRow: interleaved Posts + Live-Cards ───────────────────────────────
@@ -497,34 +499,44 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
           </div>
         )}
 
-        {displayRows.map((row, idx) => (
-          <section
-            key={row.kind === 'post' ? row.post.id : row.rowKey}
-            data-feed-idx={idx}
-            ref={(el) => setCardRef(el, idx)}
-            // v1.w.UI.29 / v1.w.UI.31 / v1.w.UI.32 (Hard Containment + Spacing):
-            // - `overflow-hidden` + `max-h-[100dvh]`: harter Cap auf Viewport-
-            //   Höhe, garantiert dass kein Content in nächste Section läuft
-            // - `py-4`: 16px oben + 16px unten = 32px sichtbarer Gap zwischen
-            //   aufeinanderfolgenden Posts. py-2 (16px gesamt) war bei Hoch-
-            //   format-Posts kaum sichtbar weil Article fast volle Höhe
-            //   ausfüllt — py-4 macht es deutlich. Section-Höhe bleibt 100dvh,
-            //   Content-Area ist 100dvh - 32px.
-            className="flex h-full max-h-[100dvh] w-full snap-start items-center justify-center overflow-hidden py-4"
-          >
-            {row.kind === 'post' ? (
-              <FeedCard
-                post={row.post}
-                viewerId={viewerId}
-                isActive={idx === activeIdx}
-                muted={muted}
-                onMuteToggle={onMuteToggle}
-              />
-            ) : (
-              <WebLiveFeedCard session={row.session} />
-            )}
-          </section>
-        ))}
+        {displayRows.map((row, idx) => {
+          const distanceFromActive = Math.abs(idx - activeIdx);
+          const shouldMountInteractiveCard = distanceFromActive <= 2;
+
+          return (
+            <section
+              key={row.kind === 'post' ? row.post.id : row.rowKey}
+              data-feed-idx={idx}
+              ref={(el) => setCardRef(el, idx)}
+              // v1.w.UI.29 / v1.w.UI.31 / v1.w.UI.32 (Hard Containment + Spacing):
+              // - `overflow-hidden` + `max-h-[100dvh]`: harter Cap auf Viewport-
+              //   Höhe, garantiert dass kein Content in nächste Section läuft
+              // - `py-4`: 16px oben + 16px unten = 32px sichtbarer Gap zwischen
+              //   aufeinanderfolgenden Posts. py-2 (16px gesamt) war bei Hoch-
+              //   format-Posts kaum sichtbar weil Article fast volle Höhe
+              //   ausfüllt — py-4 macht es deutlich. Section-Höhe bleibt 100dvh,
+              //   Content-Area ist 100dvh - 32px.
+              className="flex h-full max-h-[100dvh] w-full snap-start items-center justify-center overflow-hidden py-4"
+            >
+              {row.kind === 'post' ? (
+                shouldMountInteractiveCard ? (
+                  <FeedCard
+                    post={row.post}
+                    viewerId={viewerId}
+                    isActive={idx === activeIdx}
+                    shouldLoadMedia={distanceFromActive <= 1}
+                    muted={muted}
+                    onMuteToggle={onMuteToggle}
+                  />
+                ) : (
+                  <FeedPostPlaceholder post={row.post} />
+                )
+              ) : (
+                <WebLiveFeedCard session={row.session} />
+              )}
+            </section>
+          );
+        })}
 
         {/* Infinite-Scroll-Sentinel — wenn er sichtbar wird, triggert der
             IntersectionObserver oben `loadMore()`. snap-start damit der
@@ -596,6 +608,58 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function FeedPostPlaceholder({ post }: { post: FeedPost }) {
+  const mediaSource = post.thumbnail_url || (post.media_type === 'image' ? post.video_url : '');
+  const aspectRatio =
+    post.aspect_ratio === 'landscape'
+      ? 16 / 9
+      : post.aspect_ratio === 'square'
+        ? 1
+        : 9 / 16;
+  const isWide = aspectRatio > 1;
+
+  return (
+    <div
+      aria-hidden="true"
+      className="pointer-events-none flex h-full max-h-[100dvh] w-full max-w-full items-center justify-center overflow-hidden opacity-95"
+    >
+      <div
+        className={cn(
+          'flex w-full max-h-full max-w-full items-end justify-center gap-3',
+          isWide ? '' : 'h-full',
+        )}
+      >
+        <article
+          style={{ aspectRatio, maxHeight: '100dvh' }}
+          className={cn(
+            'relative flex max-h-full overflow-hidden rounded-2xl bg-black',
+            isWide ? 'min-w-0 flex-1 h-auto' : 'h-full w-auto shrink-0',
+          )}
+        >
+          {mediaSource ? (
+            <NextImage
+              src={mediaSource}
+              alt=""
+              fill
+              sizes="1px"
+              className="object-contain opacity-80"
+            />
+          ) : (
+            <div className="h-full w-full bg-black" />
+          )}
+        </article>
+        <aside className="flex shrink-0 flex-col items-center gap-5 pb-2">
+          <div className="h-14 w-14 rounded-full bg-foreground/10" />
+          <div className="h-12 w-12 rounded-full bg-foreground/10" />
+          <div className="h-12 w-12 rounded-full bg-foreground/10" />
+          <div className="h-12 w-12 rounded-full bg-foreground/10" />
+          <div className="h-11 w-11 rounded-full bg-foreground/10" />
+        </aside>
+      </div>
     </div>
   );
 }
