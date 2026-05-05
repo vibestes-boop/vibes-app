@@ -16,9 +16,21 @@ alter table public.comments enable row level security;
 create policy "Kommentare sind öffentlich lesbar"
   on public.comments for select using (true);
 
-create policy "Eingeloggte User können kommentieren"
+create policy "comments_insert_policy"
   on public.comments for insert
-  with check (auth.uid() = user_id);
+  to authenticated
+  with check (
+    auth.uid() = user_id
+    and exists (
+      select 1
+      from public.posts p
+      where p.id = post_id
+        and (
+          coalesce(p.allow_comments, true) = true
+          or p.author_id = auth.uid()
+        )
+    )
+  );
 
 create policy "User können eigene Kommentare löschen"
   on public.comments for delete

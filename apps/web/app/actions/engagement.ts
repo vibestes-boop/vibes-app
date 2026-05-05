@@ -170,6 +170,27 @@ export async function toggleFollow(
 
 const COMMENT_MAX = 500;
 
+function mapCreateCommentInsertError(error: { code?: string; message?: string }) {
+  const message = (error.message ?? '').toLowerCase();
+
+  if (error.code === '23503' || message.includes('foreign key')) {
+    return { error: 'Post nicht gefunden.', reason: 'post_not_found' };
+  }
+
+  if (
+    error.code === '42501' ||
+    message.includes('row-level security') ||
+    message.includes('violates row-level security')
+  ) {
+    return {
+      error: 'Kommentare sind hier deaktiviert oder der Post ist nicht verfügbar.',
+      reason: 'comment_policy_denied',
+    };
+  }
+
+  return { error: error.message ?? 'Fehler beim Senden.', reason: 'insert_error' };
+}
+
 export async function createComment(
   postId: string,
   rawBody: string,
@@ -208,24 +229,9 @@ export async function createComment(
       );
     }
 
-    // Post-Check: existiert + allow_comments true?
-    const { data: post, error: postErr } = await timing.measure('posts.check', () =>
-      supabase.from('posts').select('id, allow_comments').eq('id', postId).maybeSingle(),
-    );
-    if (postErr || !post) {
-      return finish(
-        { ok: false, error: 'Post nicht gefunden.' },
-        { ok: false, reason: postErr ? 'post_check_error' : 'post_not_found' },
-      );
-    }
-    if (post.allow_comments === false) {
-      return finish(
-        { ok: false, error: 'Kommentare sind hier deaktiviert.' },
-        { ok: false, reason: 'comments_disabled' },
-      );
-    }
-
     // Mobile-DB-`comments`-Spalte heißt `text`, nicht `body`.
+    // `allow_comments` und Post-Sichtbarkeit werden in der comments_insert_policy
+    // erzwungen; so bleibt Kommentar-Erstellung ein einzelner DB-Roundtrip.
     const insertRow: Record<string, unknown> = { post_id: postId, user_id: user.id, text: body };
     if (parentId) insertRow.parent_id = parentId;
 
@@ -241,9 +247,10 @@ export async function createComment(
     );
 
     if (error || !data) {
+      const mapped = error ? mapCreateCommentInsertError(error) : null;
       return finish(
-        { ok: false, error: error?.message ?? 'Fehler beim Senden.' },
-        { ok: false, reason: 'insert_error' },
+        { ok: false, error: mapped?.error ?? 'Fehler beim Senden.' },
+        { ok: false, reason: mapped?.reason ?? 'insert_error' },
       );
     }
 
