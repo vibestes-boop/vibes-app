@@ -43,7 +43,7 @@ import { hasAnalyticsConsent, onConsentChange } from '@/lib/consent';
 // das nicht sauber durch alle Call-Sites.
 type PostHogLib = typeof import('posthog-js').default;
 
-export function PostHogProvider({ children }: { children: ReactNode }) {
+export function PostHogProvider({ children }: { children?: ReactNode }) {
   const phRef = useRef<PostHogLib | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [consentOk, setConsentOk] = useState(false);
@@ -144,5 +144,5 @@ export function PostHogProvider({ children }: { children: ReactNode }) {
     }
   }, [pathname, searchParams, loaded, consentOk]);
 
-  return <>{children}</>;
+  return children ? <>{children}</> : null;
 }

@@ -107,9 +107,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       suppressHydrationWarning
       className={inter.variable}
     >
-      <head>
-        <meta name="description" content={SITE_DESCRIPTION} />
-      </head>
       <body className="min-h-dvh bg-background font-sans text-foreground antialiased">
         <ThemeProvider
           attribute="class"
@@ -119,8 +116,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         >
           <I18nProvider locale={locale} messages={messages}>
           <QueryProvider>
-            <Suspense fallback={null}>
-              <PostHogProvider>
                 {/*
                  * Skip-to-Content-Link (WCAG 2.4.1 Bypass Blocks). Per Default
                  * visuell via `sr-only` versteckt, springt bei Keyboard-Focus
@@ -167,11 +162,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <MobileBottomNav
                   isAuthed={!!bottomNavUser}
                 />
+                <Suspense fallback={null}>
+                  <PostHogProvider />
+                </Suspense>
                 <AnalyticsConsentGate />
                 <ConsentBanner />
                 <ServiceWorkerRegistrar />
-              </PostHogProvider>
-            </Suspense>
             <Toaster position="top-right" richColors />
           </QueryProvider>
           </I18nProvider>
