@@ -46,13 +46,15 @@ const inter = Inter({
   weight: ['400', '500', '600', '700'],
 });
 
+const SITE_DESCRIPTION =
+  'Serlo — die Social-Video-Plattform. Live-Streaming vom PC, Marktplatz für Händler, Community-Feed.';
+
 export const metadata: Metadata = {
   title: {
     default:  'Serlo — Live, Feed, Shop',
     template: '%s · Serlo',
   },
-  description:
-    'Serlo — die Social-Video-Plattform. Live-Streaming vom PC, Marktplatz für Händler, Community-Feed.',
+  description: SITE_DESCRIPTION,
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
   openGraph: {
     type:      'website',
@@ -105,6 +107,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       suppressHydrationWarning
       className={inter.variable}
     >
+      <head>
+        <meta name="description" content={SITE_DESCRIPTION} />
+      </head>
       <body className="min-h-dvh bg-background font-sans text-foreground antialiased">
         <ThemeProvider
           attribute="class"
