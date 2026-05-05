@@ -1,5 +1,5 @@
 import { ImageResponse } from 'next/og';
-import { getPostsByTag, getTrendingHashtags } from '@/lib/data/feed';
+import { getTrendingHashtags } from '@/lib/data/feed';
 
 // OG-Image für /t/[tag] — zeigt #tag + Post-Count + Trending-Rank auf
 // einem dunklen Hintergrund. Kein Thumbnail-Grid (Edge-Render zu teuer).
@@ -17,12 +17,7 @@ export default async function Image({ params }: { params: { tag: string } }) {
 
   if (!rawTag || rawTag.length > 100) return fallback(rawTag);
 
-  const [posts, trending] = await Promise.all([
-    getPostsByTag(rawTag, 1).catch(() => []),
-    getTrendingHashtags(10).catch(() => []),
-  ]);
-
-  const postCount = posts.length; // proxy — just signals "has posts"
+  const trending = await getTrendingHashtags(10).catch(() => []);
   const rank = trending.findIndex((h) => h.tag === rawTag);
 
   return new ImageResponse(

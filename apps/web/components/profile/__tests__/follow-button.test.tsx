@@ -34,7 +34,7 @@ jest.mock('react', () => ({
 
 // ── Button-Mock — asChild gibt das Kind direkt zurück ────────────────────────
 jest.mock('@/components/ui/button', () => {
-  const React = require('react');
+  const React = jest.requireActual<typeof import('react')>('react');
   return {
     Button: ({
       children,

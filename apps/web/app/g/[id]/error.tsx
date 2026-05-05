@@ -14,7 +14,7 @@ export default function GuildError({
 }) {
   useEffect(() => {
     if (process.env.NODE_ENV !== 'production') {
-      // eslint-disable-next-line no-console
+
       console.error('[GuildError]', error);
     }
   }, [error]);

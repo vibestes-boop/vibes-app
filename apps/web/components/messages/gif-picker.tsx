@@ -20,7 +20,6 @@
 // -----------------------------------------------------------------------------
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import Image from 'next/image';
 import { Search, X, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 

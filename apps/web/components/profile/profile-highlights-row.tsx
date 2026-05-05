@@ -13,7 +13,7 @@
 //  • Hidden when no highlights (no empty-state clutter on other people's profiles)
 // -----------------------------------------------------------------------------
 
-import { useState, useTransition, useRef, useEffect } from 'react';
+import { useState, useTransition, useEffect } from 'react';
 import Image from 'next/image';
 import { X, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';

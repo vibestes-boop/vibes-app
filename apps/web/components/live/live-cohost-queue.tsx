@@ -14,7 +14,7 @@ function supa() {
 }
 import { acceptCoHostRequest, rejectCoHostRequest, kickCoHost, muteCoHost } from '@/app/actions/live-host';
 import type { DuetLayout } from '@/app/actions/live-host';
-import { setBattleStore, resetBattleStore } from './live-battle-store';
+import { setBattleStore } from './live-battle-store';
 
 // -----------------------------------------------------------------------------
 // LiveCoHostQueue — v1.w.UI.182 (layout picker + battle mode)

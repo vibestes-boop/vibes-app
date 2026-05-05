@@ -224,7 +224,7 @@ export function LiveVideoPlayer({
       room.disconnect();
       roomRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [roomName, hostId, coHostId]);
 
   // Reset coHostActive wenn coHostId wegfällt (CoHost revoked zwischen Renders)

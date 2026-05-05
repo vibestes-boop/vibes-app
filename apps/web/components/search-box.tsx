@@ -192,6 +192,7 @@ export function SearchBox({
       role="combobox"
       aria-expanded={dropdownOpen}
       aria-haspopup="listbox"
+      aria-controls={listboxId}
       aria-owns={listboxId}
     >
       <form

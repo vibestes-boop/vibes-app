@@ -11,7 +11,7 @@
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 
-import { LOCALE_COOKIE, SUPPORTED_LOCALES, isLocale } from '@/lib/i18n/config';
+import { LOCALE_COOKIE, isLocale } from '@/lib/i18n/config';
 
 // 1 Jahr — passend zu Apple/TikTok-Pattern (Sprache ist Long-term-Preference,
 // nicht per-Session). Cookie als httpOnly=false damit Client-Side-Scripts

@@ -46,7 +46,7 @@ export default async function Image({ params }: { params: { postId: string } }) 
           }}
         >
           {post.thumbnail_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
+
             <img
               src={post.thumbnail_url}
               alt=""
@@ -143,7 +143,7 @@ export default async function Image({ params }: { params: { postId: string } }) 
           {/* Bottom: Author */}
           <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: '20px' }}>
             {post.author.avatar_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
+
               <img
                 src={post.author.avatar_url}
                 alt=""

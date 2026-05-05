@@ -28,7 +28,8 @@ interface LivePageRefresherProps {
   sessionCount: number;
 }
 
-export function LivePageRefresher({ sessionCount: _ }: LivePageRefresherProps) {
+export function LivePageRefresher({ sessionCount }: LivePageRefresherProps) {
+  void sessionCount;
   const router = useRouter();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const channelRef = useRef<ReturnType<ReturnType<typeof createClient>['channel']> | null>(null);

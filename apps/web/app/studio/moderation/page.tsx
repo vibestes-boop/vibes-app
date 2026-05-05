@@ -179,11 +179,10 @@ function ModLinkRow({
   // Disabled-Zeilen rendern ohne Link (kein Next-Navigation), ansonsten geht
   // `/settings`-Redirect durch und führt zu `/settings/billing` — das verwirrt
   // beim „kommt in Phase 12"-Placeholder. Kein Hover-Highlight, kein Pfeil,
-  // gedimmt + `aria-disabled` für Screen-Reader.
+  // gedimmt ohne Link, damit Screen-Reader keinen navigierbaren Eintrag ankündigen.
   if (disabled) {
     return (
       <li
-        aria-disabled="true"
         className="flex cursor-not-allowed items-center gap-3 px-4 py-3 opacity-60"
       >
         <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground">

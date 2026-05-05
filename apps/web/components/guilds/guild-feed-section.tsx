@@ -153,7 +153,6 @@ export function GuildFeedSection({
 
 function GuildFeedCard({ post }: { post: GuildFeedPost }) {
   const username = post.author.username ?? '…';
-  const displayName = post.author.display_name ?? `@${username}`;
 
   return (
     <Link

@@ -32,6 +32,17 @@ export interface MutedHostRow {
   avatar_url: string | null;
 }
 
+type JoinedProfile = {
+  username: string | null;
+  avatar_url: string | null;
+} | null;
+
+type MutedHostSelectRow = {
+  host_id: string;
+  created_at: string;
+  host: JoinedProfile | JoinedProfile[];
+};
+
 export async function getMutedLiveHosts(): Promise<MutedHostRow[]> {
   const user = await getUser();
   if (!user) return [];
@@ -52,12 +63,15 @@ export async function getMutedLiveHosts(): Promise<MutedHostRow[]> {
 
   if (error || !data) return [];
 
-  return data.map((r: any) => ({
-    host_id:    r.host_id,
-    muted_at:   r.created_at,
-    username:   r.host?.username   ?? null,
-    avatar_url: r.host?.avatar_url ?? null,
-  }));
+  return (data as MutedHostSelectRow[]).map((r) => {
+    const host = Array.isArray(r.host) ? (r.host[0] ?? null) : r.host;
+    return {
+      host_id:    r.host_id,
+      muted_at:   r.created_at,
+      username:   host?.username   ?? null,
+      avatar_url: host?.avatar_url ?? null,
+    };
+  });
 }
 
 export async function unmuteHost(hostId: string): Promise<ActionResult<null>> {
@@ -107,6 +121,14 @@ export interface CoHostBlockRow {
   avatar_url:      string | null;
 }
 
+type CoHostBlockSelectRow = {
+  blocked_user_id: string;
+  created_at: string;
+  expires_at: string | null;
+  reason: string | null;
+  profile: JoinedProfile | JoinedProfile[];
+};
+
 export async function getCoHostBlocks(): Promise<CoHostBlockRow[]> {
   const user = await getUser();
   if (!user) return [];
@@ -132,14 +154,17 @@ export async function getCoHostBlocks(): Promise<CoHostBlockRow[]> {
 
   if (error || !data) return [];
 
-  return data.map((r: any) => ({
-    blocked_user_id: r.blocked_user_id,
-    blocked_at:      r.created_at,
-    expires_at:      r.expires_at ?? null,
-    reason:          r.reason     ?? null,
-    username:        r.profile?.username   ?? null,
-    avatar_url:      r.profile?.avatar_url ?? null,
-  }));
+  return (data as CoHostBlockSelectRow[]).map((r) => {
+    const profile = Array.isArray(r.profile) ? (r.profile[0] ?? null) : r.profile;
+    return {
+      blocked_user_id: r.blocked_user_id,
+      blocked_at:      r.created_at,
+      expires_at:      r.expires_at ?? null,
+      reason:          r.reason     ?? null,
+      username:        profile?.username   ?? null,
+      avatar_url:      profile?.avatar_url ?? null,
+    };
+  });
 }
 
 export async function unblockCoHost(userId: string): Promise<ActionResult<null>> {

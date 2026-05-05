@@ -605,7 +605,8 @@ function OverlayRow({
               <button
                 type="button"
                 onClick={() => {
-                  comment.pinned ? onUnpin() : onPin();
+                  if (comment.pinned) onUnpin();
+                  else onPin();
                   setMenuOpen(false);
                 }}
                 className="flex w-full items-center gap-2 px-3 py-1.5 text-left hover:bg-white/10"

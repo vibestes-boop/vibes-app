@@ -1,6 +1,4 @@
 import type { Metadata } from 'next';
-import Link from 'next/link';
-import type { Route } from 'next';
 import { redirect } from 'next/navigation';
 import { Lock, ShieldCheck, Video, Heart, Users, Sparkles } from 'lucide-react';
 

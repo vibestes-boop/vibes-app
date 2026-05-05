@@ -61,7 +61,7 @@ const INIT_STATE: BattleState = {
 
 export function LiveBattleOverlay({ sessionId, hostName, coHostName, coHostId }: Props) {
   const [isBattle, setIsBattle] = useState(false);
-  const [durationSecs, setDurationSecs] = useState(60);
+  const [, setDurationSecs] = useState(60);
   const [battleState, setBattleState] = useState<BattleState>(INIT_STATE);
 
   // refs

@@ -63,7 +63,7 @@ function makeSupabaseMock(errorForUpdate: { message: string } | null = null): {
   let lastBuilder: UpdateBuilder | null = null;
 
   const client = {
-    from: jest.fn((_table: string) => {
+    from: jest.fn(() => {
       const builder: UpdateBuilder = {
         _updatePayload: undefined,
         _eqCalls: [],

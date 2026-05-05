@@ -15,7 +15,6 @@ import {
   Users as UsersIcon,
   Lock,
   Sparkles,
-  ChevronDown,
   AlertCircle,
   CheckCircle2,
   Camera,

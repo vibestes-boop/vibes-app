@@ -64,7 +64,7 @@ export default async function Image({ params }: { params: { id: string } }) {
           }}
         >
           {product.cover_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
+
             <img
               src={product.cover_url}
               alt=""
@@ -237,7 +237,7 @@ export default async function Image({ params }: { params: { id: string } }) {
             }}
           >
             {product.seller.avatar_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
+
               <img
                 src={product.seller.avatar_url}
                 alt=""

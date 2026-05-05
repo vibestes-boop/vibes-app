@@ -75,7 +75,7 @@ export async function exportMyData(): Promise<ActionResult<UserDataExport>> {
 
   async function safeSelect<T>(
     label: string,
-    runner: () => Promise<{ data: T | null; error: { message: string } | null }>,
+    runner: () => PromiseLike<{ data: T | null; error: { message: string } | null }>,
   ): Promise<T | null> {
     try {
       const { data, error } = await runner();
@@ -109,46 +109,46 @@ export async function exportMyData(): Promise<ActionResult<UserDataExport>> {
     savedProducts,
   ] = await Promise.all([
     safeSelect('profile', () =>
-      supabase.from('profiles').select('*').eq('id', uid).maybeSingle() as any,
+      supabase.from('profiles').select('*').eq('id', uid).maybeSingle(),
     ),
     safeSelect('posts', () =>
-      supabase.from('posts').select('*').eq('user_id', uid) as any,
+      supabase.from('posts').select('*').eq('user_id', uid),
     ),
     safeSelect('comments', () =>
-      supabase.from('comments').select('*').eq('user_id', uid) as any,
+      supabase.from('comments').select('*').eq('user_id', uid),
     ),
     safeSelect('likes', () =>
-      supabase.from('likes').select('*').eq('user_id', uid) as any,
+      supabase.from('likes').select('*').eq('user_id', uid),
     ),
     safeSelect('following', () =>
-      supabase.from('follows').select('*').eq('follower_id', uid) as any,
+      supabase.from('follows').select('*').eq('follower_id', uid),
     ),
     safeSelect('followers', () =>
-      supabase.from('follows').select('*').eq('following_id', uid) as any,
+      supabase.from('follows').select('*').eq('following_id', uid),
     ),
     safeSelect('messages', () =>
-      supabase.from('messages').select('*').eq('sender_id', uid) as any,
+      supabase.from('messages').select('*').eq('sender_id', uid),
     ),
     safeSelect('stories', () =>
-      supabase.from('stories').select('*').eq('user_id', uid) as any,
+      supabase.from('stories').select('*').eq('user_id', uid),
     ),
     safeSelect('guild_memberships', () =>
-      supabase.from('guild_memberships').select('*').eq('user_id', uid) as any,
+      supabase.from('guild_memberships').select('*').eq('user_id', uid),
     ),
     safeSelect('live_sessions', () =>
-      supabase.from('live_sessions').select('*').eq('host_id', uid) as any,
+      supabase.from('live_sessions').select('*').eq('host_id', uid),
     ),
     safeSelect('coin_purchases', () =>
-      supabase.from('coin_purchases').select('*').eq('user_id', uid) as any,
+      supabase.from('coin_purchases').select('*').eq('user_id', uid),
     ),
     safeSelect('shop_products', () =>
-      supabase.from('products').select('*').eq('seller_id', uid) as any,
+      supabase.from('products').select('*').eq('seller_id', uid),
     ),
     safeSelect('shop_orders', () =>
-      supabase.from('shop_orders').select('*').eq('buyer_id', uid) as any,
+      supabase.from('shop_orders').select('*').eq('buyer_id', uid),
     ),
     safeSelect('saved_products', () =>
-      supabase.from('saved_products').select('*').eq('user_id', uid) as any,
+      supabase.from('saved_products').select('*').eq('user_id', uid),
     ),
   ]);
 

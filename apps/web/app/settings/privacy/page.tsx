@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { Route } from 'next';
-import { Download, Trash2, FileText, Clock, ShieldCheck, AlertTriangle, UserCog } from 'lucide-react';
+import { Download, FileText, Clock, ShieldCheck, AlertTriangle, UserCog } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
 import { getUser } from '@/lib/auth/session';
 

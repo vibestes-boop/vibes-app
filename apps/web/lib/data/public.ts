@@ -56,6 +56,18 @@ type AuthorRow = {
 
 type AuthorContract = Pick<PublicProfile, 'id' | 'username' | 'display_name' | 'avatar_url' | 'verified'>;
 
+type PublicProfileRow = {
+  id: string;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  bio: string | null;
+  is_verified: boolean | null;
+  is_private?: boolean | null;
+  website?: string | null;
+  teip?: string | null;
+};
+
 function normalizeAuthor(a: AuthorRow | AuthorRow[] | null | undefined): AuthorContract | null {
   const raw = Array.isArray(a) ? (a[0] ?? null) : a ?? null;
   if (!raw) return null;
@@ -90,23 +102,24 @@ export const getPublicProfile = cache(async (username: string): Promise<PublicPr
     .maybeSingle();
 
   if (error || !data) return null;
+  const profile = data as PublicProfileRow;
 
   const [followerRes, followingRes, postsRes, liveRes] = await Promise.all([
     // Wer folgt MIR? → follows WHERE following_id = me
     supabase
       .from('follows')
       .select('follower_id', { count: 'exact', head: true })
-      .eq('following_id', data.id),
+      .eq('following_id', profile.id),
     // Wem folge ICH? → follows WHERE follower_id = me
     supabase
       .from('follows')
       .select('following_id', { count: 'exact', head: true })
-      .eq('follower_id', data.id),
+      .eq('follower_id', profile.id),
     // Meine Posts → posts WHERE author_id = me
     supabase
       .from('posts')
       .select('id', { count: 'exact', head: true })
-      .eq('author_id', data.id),
+      .eq('author_id', profile.id),
     // v1.w.UI.16: aktive Live-Session dieses Hosts, falls vorhanden. Für den
     // Avatar-Gradient-Ring + „LIVE"-Badge auf dem Profil-Hero. Wir nehmen
     // maxStarted (jüngste Session) — doppelte Active-Sessions sollte es nicht
@@ -118,7 +131,7 @@ export const getPublicProfile = cache(async (username: string): Promise<PublicPr
     supabase
       .from('live_sessions')
       .select('id')
-      .eq('host_id', data.id)
+      .eq('host_id', profile.id)
       .eq('status', 'active')
       .order('started_at', { ascending: false })
       .limit(1)
@@ -126,20 +139,20 @@ export const getPublicProfile = cache(async (username: string): Promise<PublicPr
   ]);
 
   return {
-    id: data.id,
-    username: data.username,
-    display_name: data.display_name,
-    avatar_url: data.avatar_url,
-    bio: data.bio,
-    verified: data.is_verified,
+    id: profile.id,
+    username: profile.username,
+    display_name: profile.display_name,
+    avatar_url: profile.avatar_url,
+    bio: profile.bio,
+    verified: profile.is_verified ?? false,
     follower_count: followerRes.count ?? 0,
     following_count: followingRes.count ?? 0,
     post_count: postsRes.count ?? 0,
     is_live: !!liveRes.data?.id,
     live_session_id: liveRes.data?.id ?? null,
-    is_private: (data as any).is_private ?? false,
-    website: (data as any).website ?? null,
-    teip: (data as any).teip ?? null,
+    is_private: profile.is_private ?? false,
+    website: profile.website ?? null,
+    teip: profile.teip ?? null,
   };
 });
 

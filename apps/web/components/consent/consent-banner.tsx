@@ -9,7 +9,6 @@ import {
   readConsent,
   writeConsent,
   onConsentChange,
-  type ConsentState,
 } from '@/lib/consent';
 import { cn } from '@/lib/utils';
 

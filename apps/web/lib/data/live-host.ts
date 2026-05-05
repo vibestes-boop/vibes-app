@@ -72,6 +72,31 @@ export interface PastSession {
   battle_opponent_avatar: string | null;
 }
 
+type CreatorLiveHistoryRow = {
+  session_id: string;
+  title: string | null;
+  started_at: string;
+  ended_at: string | null;
+  peak_viewers: number | null;
+  status: string;
+  duration_secs: number | null;
+  total_gift_diamonds: number | null;
+  gift_count: number | null;
+  comment_count: number | null;
+  battle_result: BattleResult | null;
+  battle_host_score: number | null;
+  battle_guest_score: number | null;
+  battle_opponent_name: string | null;
+  battle_opponent_avatar: string | null;
+};
+
+type LiveSessionExtraRow = {
+  id: string;
+  thumbnail_url: string | null;
+  room_name: string | null;
+  viewer_count: number | null;
+};
+
 export const getMyPastSessions = cache(
   async (limit = 30): Promise<PastSession[]> => {
     const supabase = await createClient();
@@ -97,26 +122,27 @@ export const getMyPastSessions = cache(
     if (!data) return [];
 
     // Fetch thumbnails separately from live_sessions (not in the view)
-    const ids = (data as any[]).map((r) => r.session_id as string);
+    const rows = data as unknown as CreatorLiveHistoryRow[];
+    const ids = rows.map((r) => r.session_id);
     const { data: sessions } = await supabase
       .from('live_sessions')
       .select('id, thumbnail_url, room_name, viewer_count')
       .in('id', ids);
     const sessionMap = new Map(
-      (sessions ?? []).map((s) => [s.id, s]),
+      ((sessions ?? []) as LiveSessionExtraRow[]).map((s) => [s.id, s]),
     );
 
-    return (data as any[]).map((row) => {
-      const extra = sessionMap.get(row.session_id) ?? {};
+    return rows.map((row) => {
+      const extra = sessionMap.get(row.session_id);
       return {
         id:                  row.session_id,
-        room_name:           (extra as any).room_name ?? '',
+        room_name:           extra?.room_name ?? '',
         title:               row.title ?? null,
-        thumbnail_url:       (extra as any).thumbnail_url ?? null,
+        thumbnail_url:       extra?.thumbnail_url ?? null,
         started_at:          row.started_at,
         ended_at:            row.ended_at ?? null,
         peak_viewer_count:   row.peak_viewers ?? 0,
-        viewer_count:        (extra as any).viewer_count ?? 0,
+        viewer_count:        extra?.viewer_count ?? 0,
         status:              row.status,
         duration_secs:       row.duration_secs ?? null,
         total_gift_diamonds: row.total_gift_diamonds ?? 0,
@@ -229,7 +255,20 @@ export interface ScheduledLiveRow {
   host_avatar_url: string | null;
 }
 
-function mapScheduledRow(r: any): ScheduledLiveRow {
+type ScheduledLiveSelectRow = Omit<
+  ScheduledLiveRow,
+  'host_username' | 'host_avatar_url'
+> & {
+  profiles?: {
+    username: string | null;
+    avatar_url: string | null;
+  } | Array<{
+    username: string | null;
+    avatar_url: string | null;
+  }> | null;
+};
+
+function mapScheduledRow(r: ScheduledLiveSelectRow): ScheduledLiveRow {
   const host = Array.isArray(r.profiles) ? r.profiles[0] : r.profiles;
   return {
     id:           r.id,

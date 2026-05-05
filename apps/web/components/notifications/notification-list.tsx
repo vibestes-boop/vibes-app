@@ -181,7 +181,6 @@ function initials(n: Notification['sender']): string {
 // ── Hauptkomponente ───────────────────────────────────────────────────────────
 
 const LOAD_MORE_LIMIT = 20;
-const INITIAL_LIMIT = 40; // muss mit getNotifications() .limit() übereinstimmen
 
 export function NotificationList({
   notifications: initialNotifications,
@@ -328,7 +327,7 @@ export function NotificationList({
       client.removeChannel(channel);
       channelRef.current = null;
     };
-  }, [viewerId, router, queryClient]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [viewerId, router, queryClient]);
 
   if (items.length === 0) {
     return (
