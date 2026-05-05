@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidateTag, revalidatePath } from 'next/cache';
+import { createActionTiming } from '@/lib/observability/action-timing';
 import { createClient } from '@/lib/supabase/server';
 import type { CommentWithAuthor } from '@/lib/data/public';
 
@@ -174,90 +175,146 @@ export async function createComment(
   rawBody: string,
   parentId?: string | null,
 ): Promise<ActionResult<CommentWithAuthor>> {
-  const viewer = await getViewerId();
-  if (!viewer) return { ok: false, error: 'Nicht eingeloggt.' };
-
-  const body = rawBody.trim();
-  if (body.length === 0) return { ok: false, error: 'Kommentar darf nicht leer sein.' };
-  if (body.length > COMMENT_MAX)
-    return { ok: false, error: `Maximal ${COMMENT_MAX} Zeichen.` };
-
-  const supabase = await createClient();
-
-  // Post-Check: existiert + allow_comments true?
-  const { data: post, error: postErr } = await supabase
-    .from('posts')
-    .select('id, allow_comments')
-    .eq('id', postId)
-    .maybeSingle();
-  if (postErr || !post) return { ok: false, error: 'Post nicht gefunden.' };
-  if (post.allow_comments === false) return { ok: false, error: 'Kommentare sind hier deaktiviert.' };
-
-  // Mobile-DB-`comments`-Spalte heißt `text`, nicht `body`.
-  const insertRow: Record<string, unknown> = { post_id: postId, user_id: viewer.id, text: body };
-  if (parentId) insertRow.parent_id = parentId;
-
-  const { data, error } = await supabase
-    .from('comments')
-    .insert(insertRow)
-    .select(
-      `id, post_id, user_id, parent_id, text, created_at,
-       author:profiles!comments_user_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )`,
-    )
-    .single();
-
-  if (error || !data) return { ok: false, error: error?.message ?? 'Fehler beim Senden.' };
-
-  const row = data as unknown as {
-    id: string;
-    post_id: string;
-    user_id: string;
-    parent_id: string | null;
-    text: string | null;
-    created_at: string;
-    author:
-      | {
-          id: string;
-          username: string;
-          display_name: string | null;
-          avatar_url: string | null;
-          verified: boolean | null;
-        }
-      | {
-          id: string;
-          username: string;
-          display_name: string | null;
-          avatar_url: string | null;
-          verified: boolean | null;
-        }[]
-      | null;
+  const timing = createActionTiming('comments.create', { hasParent: Boolean(parentId) });
+  const finish = (
+    result: ActionResult<CommentWithAuthor>,
+    extra: Parameters<typeof timing.finish>[0],
+  ) => {
+    timing.finish(extra);
+    return result;
   };
-  const author = Array.isArray(row.author) ? (row.author[0] ?? null) : row.author;
-  if (!author) return { ok: false, error: 'Kommentar gesendet, Profil konnte aber nicht geladen werden.' };
 
-  revalidateTag(`post:${postId}`);
+  try {
+    const supabase = await timing.measure('supabase.createClient', createClient);
+    const {
+      data: { user },
+    } = await timing.measure('auth.getUser', () => supabase.auth.getUser());
 
-  return {
-    ok: true,
-    data: {
-      id: row.id,
-      post_id: row.post_id,
-      user_id: row.user_id,
-      parent_id: row.parent_id ?? null,
-      body: row.text ?? body,
-      like_count: 0,
-      liked_by_me: false,
-      reply_count: 0,
-      created_at: row.created_at,
-      author: {
-        id: author.id,
-        username: author.username,
-        display_name: author.display_name,
-        avatar_url: author.avatar_url,
-        verified: author.verified ?? false,
+    if (!user) {
+      return finish({ ok: false, error: 'Nicht eingeloggt.' }, { ok: false, reason: 'unauthenticated' });
+    }
+
+    const body = rawBody.trim();
+    if (body.length === 0) {
+      return finish(
+        { ok: false, error: 'Kommentar darf nicht leer sein.' },
+        { ok: false, reason: 'empty_body' },
+      );
+    }
+    if (body.length > COMMENT_MAX) {
+      return finish(
+        { ok: false, error: `Maximal ${COMMENT_MAX} Zeichen.` },
+        { ok: false, reason: 'body_too_long' },
+      );
+    }
+
+    // Post-Check: existiert + allow_comments true?
+    const { data: post, error: postErr } = await timing.measure('posts.check', () =>
+      supabase.from('posts').select('id, allow_comments').eq('id', postId).maybeSingle(),
+    );
+    if (postErr || !post) {
+      return finish(
+        { ok: false, error: 'Post nicht gefunden.' },
+        { ok: false, reason: postErr ? 'post_check_error' : 'post_not_found' },
+      );
+    }
+    if (post.allow_comments === false) {
+      return finish(
+        { ok: false, error: 'Kommentare sind hier deaktiviert.' },
+        { ok: false, reason: 'comments_disabled' },
+      );
+    }
+
+    // Mobile-DB-`comments`-Spalte heißt `text`, nicht `body`.
+    const insertRow: Record<string, unknown> = { post_id: postId, user_id: user.id, text: body };
+    if (parentId) insertRow.parent_id = parentId;
+
+    const { data, error } = await timing.measure('comments.insert', () =>
+      supabase
+        .from('comments')
+        .insert(insertRow)
+        .select(
+          `id, post_id, user_id, parent_id, text, created_at,
+         author:profiles!comments_user_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )`,
+        )
+        .single(),
+    );
+
+    if (error || !data) {
+      return finish(
+        { ok: false, error: error?.message ?? 'Fehler beim Senden.' },
+        { ok: false, reason: 'insert_error' },
+      );
+    }
+
+    const row = data as unknown as {
+      id: string;
+      post_id: string;
+      user_id: string;
+      parent_id: string | null;
+      text: string | null;
+      created_at: string;
+      author:
+        | {
+            id: string;
+            username: string;
+            display_name: string | null;
+            avatar_url: string | null;
+            verified: boolean | null;
+          }
+        | {
+            id: string;
+            username: string;
+            display_name: string | null;
+            avatar_url: string | null;
+            verified: boolean | null;
+          }[]
+        | null;
+    };
+    const author = Array.isArray(row.author) ? (row.author[0] ?? null) : row.author;
+    if (!author) {
+      return finish(
+        { ok: false, error: 'Kommentar gesendet, Profil konnte aber nicht geladen werden.' },
+        { ok: false, reason: 'author_missing' },
+      );
+    }
+
+    await timing.measure('cache.revalidatePost', () => {
+      revalidateTag(`post:${postId}`);
+    });
+
+    return finish(
+      {
+        ok: true,
+        data: {
+          id: row.id,
+          post_id: row.post_id,
+          user_id: row.user_id,
+          parent_id: row.parent_id ?? null,
+          body: row.text ?? body,
+          like_count: 0,
+          liked_by_me: false,
+          reply_count: 0,
+          created_at: row.created_at,
+          author: {
+            id: author.id,
+            username: author.username,
+            display_name: author.display_name,
+            avatar_url: author.avatar_url,
+            verified: author.verified ?? false,
+          },
+        },
       },
-    },
-  };
+      { ok: true },
+    );
+  } catch (error) {
+    timing.finish({
+      ok: false,
+      reason: 'exception',
+      error: error instanceof Error ? error.name : 'UnknownError',
+    });
+    throw error;
+  }
 }
 
 // fetchCommentReplies — Server Action Wrapper für getCommentReplies.
