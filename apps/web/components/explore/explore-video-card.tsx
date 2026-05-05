@@ -98,6 +98,7 @@ export function ExploreVideoCard({
   return (
     <Link
       href={`/p/${id}` as Route}
+      prefetch={false}
       className="group relative block aspect-[9/16] overflow-hidden rounded-lg bg-black"
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
@@ -137,7 +138,6 @@ export function ExploreVideoCard({
             muted
             playsInline
             preload={previewImageUrl ? 'none' : 'metadata'}
-            poster={previewImageUrl ?? undefined}
             loop
             onLoadedMetadata={handleLoadedMetadata}
             onLoadedData={() => setVideoReady(true)}
