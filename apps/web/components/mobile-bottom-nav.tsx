@@ -12,10 +12,11 @@
 // Bottom-Tab-Bar ist der Engagement-Loop (Benachrichtigungen + DMs) wertvoller
 // als ein Commerce-Einstieg, der ohne aktive Session kaum genutzt wird.
 //
-// Unread-Badge: `unreadCount` (kombiniert Notifs + DMs) wird SSR vom
-// layout.tsx durchgereicht. Badge erscheint als roter Dot über dem Inbox-Icon
-// (Instagram-Pattern) — keine Zahl auf Mobile, zu wenig Platz bei kleinen
-// Icons. Screen-Reader bekommt die Zahl über aria-label.
+// Unread-Badge: kombiniert Notifs + DMs, aber bewusst clientseitig nach dem
+// ersten Paint. So blockieren Count-RPCs nicht den initialen Root-Layout-Render.
+// Badge erscheint als roter Dot über dem Inbox-Icon (Instagram-Pattern) — keine
+// Zahl auf Mobile, zu wenig Platz bei kleinen Icons. Screen-Reader bekommt die
+// Zahl über aria-label.
 //
 // Auth-Gating: Create + Inbox + Profil sind authOnly.
 // Logged-out: Home | Explore | Shop (fallback für anonyme Discovery)
@@ -26,6 +27,7 @@
 import Link from 'next/link';
 import type { Route } from 'next';
 import { usePathname } from 'next/navigation';
+import { useQuery } from '@tanstack/react-query';
 import {
   Home,
   Compass,
@@ -34,6 +36,8 @@ import {
   User as UserIcon,
   ShoppingBag,
 } from 'lucide-react';
+import { getUnreadDmCount } from '@/app/actions/messages';
+import { getUnreadNotificationCount } from '@/app/actions/notifications';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/client';
 import type { TranslationKey } from '@/lib/i18n/translate';
@@ -67,31 +71,35 @@ const SLOTS_ANON: Slot[] = [
 
 function isActive(pathname: string, href: string): boolean {
   if (href === '/') return pathname === '/';
+  if (href === '/profile') {
+    return pathname === '/profile' || pathname === '/onboarding' || pathname.startsWith('/u/');
+  }
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 export function MobileBottomNav({
   isAuthed,
-  profileHref,
-  unreadCount = 0,
 }: {
   isAuthed: boolean;
-  /**
-   * Profile-Slot verlinkt bei authentifizierten Usern auf `/u/<username>`
-   * (eigenes Profil). Fallback `/onboarding` falls `username` null ist.
-   */
-  profileHref: string;
-  /**
-   * Kombinierter Unread-Count (Notifs + DMs), SSR-berechnet vom layout.tsx.
-   * Treibt den Badge-Dot auf dem Inbox-Slot.
-   */
-  unreadCount?: number;
 }) {
   const { t } = useI18n();
   const pathname = usePathname();
+  const { data: unreadCount = 0 } = useQuery({
+    queryKey: ['mobile-unread-count'],
+    queryFn: async () => {
+      const [dms, notifications] = await Promise.all([
+        getUnreadDmCount(),
+        getUnreadNotificationCount(),
+      ]);
+      return dms + notifications;
+    },
+    enabled: isAuthed,
+    staleTime: 30_000,
+    refetchInterval: 60_000,
+  });
 
   const slots = isAuthed
-    ? SLOTS_AUTHED.map((s) => (s.href === '/profile' ? { ...s, href: profileHref } : s))
+    ? SLOTS_AUTHED
     : SLOTS_ANON;
 
   return (

@@ -42,6 +42,10 @@ jest.mock('next/headers', () => ({
   }),
 }));
 
+jest.mock('next/cache', () => ({
+  unstable_cache: <T extends (...args: unknown[]) => unknown>(fn: T) => fn,
+}));
+
 import { createClient } from '@/lib/supabase/server';
 import { createSupabaseMock, type SupabaseMockConfig } from '@/test-utils/supabase-mock';
 import {

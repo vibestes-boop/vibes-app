@@ -1,7 +1,9 @@
 import { cache } from 'react';
+import { unstable_cache } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { createPublicClient } from '@/lib/supabase/public';
 import { getUser } from '@/lib/auth/session';
+import { PUBLIC_FEED_CACHE_TAG } from '@/lib/cache/tags';
 import type { Post, PublicProfile } from '@shared/types';
 
 // -----------------------------------------------------------------------------
@@ -289,34 +291,51 @@ export const getForYouFeed = cache(
   },
 );
 
+async function fetchPublicForYouFeed(
+  opts: { limit?: number; excludeIds?: string[]; before?: string } = {},
+): Promise<FeedPost[]> {
+  const { limit = 10, excludeIds = [], before } = opts;
+  const supabase = createPublicClient();
+
+  let query = supabase
+    .from('posts')
+    .select(`${POST_COLUMNS}, ${AUTHOR_JOIN}`)
+    .eq('privacy', 'public')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (excludeIds.length > 0) {
+    query = query.not('id', 'in', `(${excludeIds.join(',')})`);
+  }
+  if (before) query = query.lt('created_at', before);
+
+  const { data: rows, error } = await query;
+  if (error || !rows) {
+    if (error) console.error('[feed] getPublicForYouFeed query error:', error.code, error.message, error.details);
+    return [];
+  }
+
+  return (rows as unknown as RawPostRow[])
+    .map((row) => normalizeRow(row, new Set(), new Set(), new Set(), new Set()))
+    .filter((p): p is FeedPost => p !== null);
+}
+
+const getCachedPublicForYouFeed = unstable_cache(
+  async (limit: number): Promise<FeedPost[]> => fetchPublicForYouFeed({ limit }),
+  ['public-for-you-feed'],
+  { revalidate: 30, tags: [PUBLIC_FEED_CACHE_TAG] },
+);
+
 // Cookie-freier Public-Feed fuer anonyme Explore-SSR/API-Pfade.
 // Spart den Supabase-Auth-Roundtrip und alle user-spezifischen Engagement-Reads.
 export const getPublicForYouFeed = cache(
   async (opts: { limit?: number; excludeIds?: string[]; before?: string } = {}): Promise<FeedPost[]> => {
     const { limit = 10, excludeIds = [], before } = opts;
-    const supabase = createPublicClient();
-
-    let query = supabase
-      .from('posts')
-      .select(`${POST_COLUMNS}, ${AUTHOR_JOIN}`)
-      .eq('privacy', 'public')
-      .order('created_at', { ascending: false })
-      .limit(limit);
-
-    if (excludeIds.length > 0) {
-      query = query.not('id', 'in', `(${excludeIds.join(',')})`);
-    }
-    if (before) query = query.lt('created_at', before);
-
-    const { data: rows, error } = await query;
-    if (error || !rows) {
-      if (error) console.error('[feed] getPublicForYouFeed query error:', error.code, error.message, error.details);
-      return [];
+    if (!before && excludeIds.length === 0) {
+      return getCachedPublicForYouFeed(limit);
     }
 
-    return (rows as unknown as RawPostRow[])
-      .map((row) => normalizeRow(row, new Set(), new Set(), new Set(), new Set()))
-      .filter((p): p is FeedPost => p !== null);
+    return fetchPublicForYouFeed({ limit, excludeIds, before });
   },
 );
 
@@ -328,9 +347,7 @@ export const getFollowingFeed = cache(
   async (opts: { limit?: number; before?: string } = {}): Promise<FeedPost[]> => {
     const { limit = 10, before } = opts;
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getUser();
     if (!user) return [];
 
     const { data: follows, error: followErr } = await supabase
@@ -420,9 +437,7 @@ export const getMyFollowedAccounts = cache(
     FollowedAccount[]
   > => {
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getUser();
     if (!user) return [];
 
     // Schritt 1: IDs der gefolgten Accounts, nach Follow-Datum absteigend.
@@ -471,9 +486,7 @@ export const getMyFollowedAccounts = cache(
 
 export const getSuggestedFollows = cache(async (limit = 5): Promise<SuggestedFollow[]> => {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
 
   let excludeIds: string[] = [];
   if (user) {

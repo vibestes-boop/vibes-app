@@ -7,13 +7,15 @@ import { useRouter } from 'next/navigation';
 import { Send } from 'lucide-react';
 import { useCreateComment } from '@/hooks/use-engagement';
 import { cn } from '@/lib/utils';
+import type { CommentWithAuthor } from '@/lib/data/public';
 
 // -----------------------------------------------------------------------------
 // CommentForm — Kommentar-Eingabe für /p/[postId].
 //
 // Nicht eingeloggte User: zeigen Login-CTA statt Formular.
 // Max 500 Zeichen (gespiegelt aus createComment Server Action).
-// Optimistic-Update läuft im Hook (invalidateQueries auf ['comments', postId]).
+// Optionales Optimistic-Update läuft in der Kommentar-Sektion, damit ein neuer
+// Kommentar sofort sichtbar ist und der RSC-Refresh nur noch nachzieht.
 // -----------------------------------------------------------------------------
 
 const MAX = 500;
@@ -22,11 +24,19 @@ export function CommentForm({
   postId,
   isAuthenticated,
   postPath,
+  viewerAuthor,
+  onOptimisticComment,
+  onCommentConfirmed,
+  onCommentFailed,
 }: {
   postId: string;
   isAuthenticated: boolean;
   /** Aktueller Pfad für den Login-Redirect (z.B. '/p/abc123'). */
   postPath: string;
+  viewerAuthor?: CommentWithAuthor['author'] | null;
+  onOptimisticComment?: (comment: CommentWithAuthor) => void;
+  onCommentConfirmed?: (temporaryId: string, comment: CommentWithAuthor) => void;
+  onCommentFailed?: (temporaryId: string) => void;
 }) {
   const [body, setBody] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -54,14 +64,40 @@ export function CommentForm({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSubmit) return;
+    const temporaryId = `optimistic-${globalThis.crypto?.randomUUID?.() ?? Date.now()}`;
+
+    if (viewerAuthor && onOptimisticComment) {
+      onOptimisticComment({
+        id: temporaryId,
+        post_id: postId,
+        user_id: viewerAuthor.id,
+        parent_id: null,
+        body: trimmed,
+        like_count: 0,
+        liked_by_me: false,
+        reply_count: 0,
+        created_at: new Date().toISOString(),
+        author: viewerAuthor,
+      });
+      setBody('');
+      textareaRef.current?.blur();
+    }
+
     mutation.mutate(trimmed, {
-      onSuccess: () => {
-        setBody('');
-        textareaRef.current?.blur();
+      onSuccess: (comment) => {
+        if (!viewerAuthor || !onOptimisticComment) {
+          setBody('');
+          textareaRef.current?.blur();
+        }
+        onCommentConfirmed?.(temporaryId, comment);
         // RSC-Kommentarliste neu laden — force-dynamic Seite rendert sofort
         // mit dem neuen Kommentar ohne Full-Page-Reload (Next.js router.refresh
         // patcht nur den RSC-Tree, Client-State bleibt erhalten).
         router.refresh();
+      },
+      onError: () => {
+        onCommentFailed?.(temporaryId);
+        if (viewerAuthor && onOptimisticComment) setBody(trimmed);
       },
     });
   };

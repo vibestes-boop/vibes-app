@@ -1,5 +1,7 @@
 import { cache } from 'react';
+import { unstable_cache } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { ACTIVE_LIVE_SESSIONS_CACHE_TAG } from '@/lib/cache/tags';
 import type { LiveSession } from '@shared/types';
 
 // -----------------------------------------------------------------------------
@@ -48,20 +50,32 @@ function normalizeHost<T extends { host: unknown }>(row: T): T {
 // Tie-Break auf started_at asc (älteste Live-Streams zuerst bei gleichem Publikum).
 // -----------------------------------------------------------------------------
 
-export const getActiveLiveSessions = cache(
-  async (limit = 30): Promise<LiveSessionWithHost[]> => {
-    const supabase = await createClient();
-    const { data } = await supabase
-      .from('live_sessions')
-      .select(`${SESSION_COLUMNS}, ${HOST_JOIN}`)
-      .eq('status', 'active')
-      .order('viewer_count', { ascending: false })
-      .order('started_at', { ascending: true })
-      .limit(limit);
+async function fetchActiveLiveSessions(limit = 30): Promise<LiveSessionWithHost[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('live_sessions')
+    .select(`${SESSION_COLUMNS}, ${HOST_JOIN}`)
+    .eq('status', 'active')
+    .order('viewer_count', { ascending: false })
+    .order('started_at', { ascending: true })
+    .limit(limit);
 
-    if (!data) return [];
-    return (data as unknown as LiveSessionWithHost[]).map((r) => normalizeHost(r));
-  },
+  if (!data) return [];
+  return (data as unknown as LiveSessionWithHost[]).map((r) => normalizeHost(r));
+}
+
+const getCachedActiveLiveSessionsByLimit = unstable_cache(
+  async (limit: number): Promise<LiveSessionWithHost[]> => fetchActiveLiveSessions(limit),
+  ['active-live-sessions'],
+  { revalidate: 10, tags: [ACTIVE_LIVE_SESSIONS_CACHE_TAG] },
+);
+
+export const getActiveLiveSessions = cache(
+  async (limit = 30): Promise<LiveSessionWithHost[]> => fetchActiveLiveSessions(limit),
+);
+
+export const getCachedActiveLiveSessions = cache(
+  async (limit = 30): Promise<LiveSessionWithHost[]> => getCachedActiveLiveSessionsByLimit(limit),
 );
 
 // -----------------------------------------------------------------------------

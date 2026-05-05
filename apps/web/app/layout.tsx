@@ -11,14 +11,16 @@ import { ConsentBanner } from '@/components/consent/consent-banner';
 import { AnalyticsConsentGate } from '@/components/consent/analytics-consent-gate';
 import { ServiceWorkerRegistrar } from '@/components/pwa/service-worker-registrar';
 import { MobileBottomNav } from '@/components/mobile-bottom-nav';
-import { getUser, getProfile } from '@/lib/auth/session';
-import { getUnreadNotificationCount } from '@/lib/data/notifications';
-import { getUnreadDMCount } from '@/lib/data/messages';
+import { getUser } from '@/lib/auth/session';
 import { I18nProvider } from '@/lib/i18n/client';
 import { getI18n } from '@/lib/i18n/server';
 import { LOCALE_HTML_LANG } from '@/lib/i18n/config';
 
 import './globals.css';
+
+// Keep dynamic server work close to Supabase (project region: eu-west-1).
+// This trims cross-region latency for RSC reads, route handlers, and server actions.
+export const preferredRegion = 'lhr1';
 
 /**
  * Inter als Primary-Font über next/font/google. next/font/google bündelt
@@ -93,21 +95,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // (kein Flash-of-Untranslated-Content beim Client-Mount).
   const { locale, messages } = await getI18n();
 
-  // Mobile-Bottom-Nav braucht Auth-State + Profile-Href für den „Profil"-Slot.
-  // Beide Lookups sind in der RSC-Pass günstig gecacht (getUser liest den
-  // Supabase-Cookie-Session-Check, getProfile ist nur nötig wenn eingeloggt).
-  // Fallback-Href `/onboarding` deckt den Edge-Case ab, dass ein Account
-  // existiert aber noch keinen `username` hat.
+  // Mobile-Bottom-Nav braucht im Root nur den Auth-State. Profil-Ziel und
+  // Unread-Badges werden nicht mehr auf dem kritischen ersten Render-Pfad
+  // gelesen: `/profile` redirected bei Klick, Badges refreshen clientseitig.
   const bottomNavUser = await getUser();
-  const [bottomNavProfile, notifCount, dmCount] = await Promise.all([
-    bottomNavUser ? getProfile() : Promise.resolve(null),
-    bottomNavUser ? getUnreadNotificationCount() : Promise.resolve(0),
-    bottomNavUser ? getUnreadDMCount() : Promise.resolve(0),
-  ]);
-  const profileHref = bottomNavProfile?.username
-    ? `/u/${bottomNavProfile.username}`
-    : '/onboarding';
-  const mobileUnreadCount = notifCount + dmCount;
   return (
     <html
       lang={LOCALE_HTML_LANG[locale]}
@@ -170,8 +161,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 </div>
                 <MobileBottomNav
                   isAuthed={!!bottomNavUser}
-                  profileHref={profileHref}
-                  unreadCount={mobileUnreadCount}
                 />
                 <AnalyticsConsentGate />
                 <ConsentBanner />

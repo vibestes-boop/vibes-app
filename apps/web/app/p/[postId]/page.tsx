@@ -3,7 +3,6 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
   BadgeCheck,
-  Heart,
   MessageCircle,
   Share2 as ShareIcon,
   Eye,
@@ -19,13 +18,13 @@ import { VideoPlayer } from '@/components/video/video-player';
 import { ShareButtons } from '@/components/share/share-buttons';
 import { PostComments } from '@/components/post/post-comments';
 import { PostActionsBar } from '@/components/post/post-actions-bar';
-import { CommentForm } from '@/components/post/comment-form';
 import { FollowButton } from '@/components/profile/follow-button';
 import { PostAuthorMenu } from '@/components/post/post-author-menu';
 import { PostViewerMenu } from '@/components/post/post-viewer-menu';
 import { PostDwellTracker } from '@/components/post/post-dwell-tracker';
 import { PostViewTracker } from '@/components/post/post-view-tracker';
 import { linkify } from '@/lib/linkify';
+import { getProfile } from '@/lib/auth/session';
 
 // -----------------------------------------------------------------------------
 // /p/[postId] — public post detail.
@@ -172,11 +171,12 @@ export default async function PostDetailPage({
   // Kommentare + Interaction-State + Viewer parallel laden.
   // Viewer zuerst auflösen damit getPostComments liked_by_me befüllen kann.
   const viewer = await getUser();
-  const [comments, interaction, authorPosts] = await Promise.all([
+  const [comments, interaction, authorPosts, viewerProfile] = await Promise.all([
     post.allow_comments ? getPostComments(post.id, 20, viewer?.id ?? null) : Promise.resolve([]),
     getPostInteractionState(post.id),
     // v1.w.UI.62: "Mehr von @author" — bis zu 7 holen, aktuellen Post rausfiltern → max 6
     getProfilePosts(post.author.id, 7),
+    viewer ? getProfile() : Promise.resolve(null),
   ]);
 
   // Aktuellen Post aus der "Mehr von"-Liste herausfiltern.
@@ -186,6 +186,15 @@ export default async function PostDetailPage({
   const followingAuthor = !isSelf && viewer ? await isFollowing(post.author.id) : false;
 
   const authorName = post.author.display_name ?? `@${post.author.username}`;
+  const viewerAuthor = viewerProfile?.username
+    ? {
+        id: viewerProfile.id as string,
+        username: viewerProfile.username as string,
+        display_name: (viewerProfile.display_name as string | null) ?? null,
+        avatar_url: (viewerProfile.avatar_url as string | null) ?? null,
+        verified: false,
+      }
+    : null;
   const created = new Date(post.created_at);
   const isImage = post.media_type === 'image';
   const isLandscape = post.aspect_ratio === 'landscape';
@@ -402,14 +411,8 @@ export default async function PostDetailPage({
               postId={post.id}
               postPath={`/p/${post.id}`}
               viewerId={viewer?.id ?? null}
+              viewerAuthor={viewerAuthor}
             />
-            {post.allow_comments && (
-              <CommentForm
-                postId={post.id}
-                isAuthenticated={!!viewer}
-                postPath={`/p/${post.id}`}
-              />
-            )}
           </>
         );
 

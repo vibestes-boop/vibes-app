@@ -2,6 +2,7 @@
 
 import { revalidateTag, revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import type { CommentWithAuthor } from '@/lib/data/public';
 
 // -----------------------------------------------------------------------------
 // Engagement-Server-Actions — Like / Save / Follow / Comment.
@@ -172,7 +173,7 @@ export async function createComment(
   postId: string,
   rawBody: string,
   parentId?: string | null,
-): Promise<ActionResult<{ id: string }>> {
+): Promise<ActionResult<CommentWithAuthor>> {
   const viewer = await getViewerId();
   if (!viewer) return { ok: false, error: 'Nicht eingeloggt.' };
 
@@ -199,14 +200,64 @@ export async function createComment(
   const { data, error } = await supabase
     .from('comments')
     .insert(insertRow)
-    .select('id')
+    .select(
+      `id, post_id, user_id, parent_id, text, created_at,
+       author:profiles!comments_user_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )`,
+    )
     .single();
 
   if (error || !data) return { ok: false, error: error?.message ?? 'Fehler beim Senden.' };
 
+  const row = data as unknown as {
+    id: string;
+    post_id: string;
+    user_id: string;
+    parent_id: string | null;
+    text: string | null;
+    created_at: string;
+    author:
+      | {
+          id: string;
+          username: string;
+          display_name: string | null;
+          avatar_url: string | null;
+          verified: boolean | null;
+        }
+      | {
+          id: string;
+          username: string;
+          display_name: string | null;
+          avatar_url: string | null;
+          verified: boolean | null;
+        }[]
+      | null;
+  };
+  const author = Array.isArray(row.author) ? (row.author[0] ?? null) : row.author;
+  if (!author) return { ok: false, error: 'Kommentar gesendet, Profil konnte aber nicht geladen werden.' };
+
   revalidateTag(`post:${postId}`);
 
-  return { ok: true, data: { id: data.id as string } };
+  return {
+    ok: true,
+    data: {
+      id: row.id,
+      post_id: row.post_id,
+      user_id: row.user_id,
+      parent_id: row.parent_id ?? null,
+      body: row.text ?? body,
+      like_count: 0,
+      liked_by_me: false,
+      reply_count: 0,
+      created_at: row.created_at,
+      author: {
+        id: author.id,
+        username: author.username,
+        display_name: author.display_name,
+        avatar_url: author.avatar_url,
+        verified: author.verified ?? false,
+      },
+    },
+  };
 }
 
 // fetchCommentReplies — Server Action Wrapper für getCommentReplies.

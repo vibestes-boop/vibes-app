@@ -32,8 +32,6 @@ import { getT, getLocale } from '@/lib/i18n/server';
 import { LOCALE_INTL } from '@/lib/i18n/config';
 import { glassPillBase, glassAvatarFallback } from '@/lib/ui/glass-pill';
 import { cn } from '@/lib/utils';
-import { getUnreadDmCount } from '@/app/actions/messages';
-import { getUnreadNotificationCount } from '@/app/actions/notifications';
 import { DmInboxPill } from '@/components/layout/dm-inbox-pill';
 import { NotifBellPill } from '@/components/layout/notif-bell-pill';
 
@@ -64,9 +62,9 @@ import { NotifBellPill } from '@/components/layout/notif-bell-pill';
 
 export async function TopRightActions() {
   const [user, t, locale] = await Promise.all([getUser(), getT(), getLocale()]);
-  const [profile, balance, initialUnreadDms, initialUnreadNotifs] = user
-    ? await Promise.all([getProfile(), getMyCoinBalance(), getUnreadDmCount(), getUnreadNotificationCount()])
-    : [null, null, 0, 0];
+  const [profile, balance] = user
+    ? await Promise.all([getProfile(), getMyCoinBalance()])
+    : [null, null];
   const coinsFormatted = (balance?.coins ?? 0).toLocaleString(LOCALE_INTL[locale]);
 
   return (
@@ -89,10 +87,10 @@ export async function TopRightActions() {
             </span>
           </Link>
           {/* DM + Notifications Badges (v1.w.UI.75 / v1.w.UI.76 / v1.w.UI.93).
-              Server-seitige Initial-Counts für flicker-freies erstes Paint;
-              DMs: 30s-Polling; Notifs: Realtime (postgres_changes INSERT) + 60s-Fallback. */}
-          <DmInboxPill initialCount={initialUnreadDms} viewerId={user.id} />
-          <NotifBellPill initialCount={initialUnreadNotifs} viewerId={user.id} />
+              Counts werden clientseitig nach dem ersten Paint geladen, damit
+              der globale Header nicht den Feed-SSR blockiert. */}
+          <DmInboxPill initialCount={0} viewerId={user.id} />
+          <NotifBellPill initialCount={0} viewerId={user.id} />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
