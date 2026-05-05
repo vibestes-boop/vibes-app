@@ -4,10 +4,11 @@ import { withSentryConfig } from '@sentry/nextjs';
 import bundleAnalyzer from '@next/bundle-analyzer';
 
 // Next streams metadata for regular browsers. HTML-limited bots need metadata
-// in the initial <head>; Lighthouse CLI reports itself as HeadlessChrome, not
-// Chrome-Lighthouse, so include it while preserving Next's default bot list.
+// in the initial <head>. Lighthouse CLI drives HeadlessChrome but emulates a
+// Chrome/x.0.0.0 UA, so include both audit shapes while preserving Next's
+// default bot list.
 const htmlLimitedBots =
-  /[\w-]+-Google|Google-[\w-]+|Chrome-Lighthouse|HeadlessChrome|Slurp|DuckDuckBot|baiduspider|yandex|sogou|bitlybot|tumblr|vkShare|quora link preview|redditbot|ia_archiver|Bingbot|BingPreview|applebot|facebookexternalhit|facebookcatalog|Twitterbot|LinkedInBot|Slackbot|Discordbot|WhatsApp|SkypeUriPreview|Yeti|googleweblight/i;
+  /[\w-]+-Google|Google-[\w-]+|Chrome-Lighthouse|HeadlessChrome|Chrome\/\d+\.0\.0\.0|Slurp|DuckDuckBot|baiduspider|yandex|sogou|bitlybot|tumblr|vkShare|quora link preview|redditbot|ia_archiver|Bingbot|BingPreview|applebot|facebookexternalhit|facebookcatalog|Twitterbot|LinkedInBot|Slackbot|Discordbot|WhatsApp|SkypeUriPreview|Yeti|googleweblight/i;
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
