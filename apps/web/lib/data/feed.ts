@@ -538,10 +538,12 @@ export interface TrendingHashtag {
   total_views: number;
 }
 
-export const getTrendingHashtags = cache(async (limit = 20): Promise<TrendingHashtag[]> => {
-  const supabase = await createClient();
+async function fetchTrendingHashtags(
+  limit: number,
+  createSupabase: () => ReturnType<typeof createClient> | ReturnType<typeof createPublicClient>,
+): Promise<TrendingHashtag[]> {
+  const supabase = await createSupabase();
 
-  // Versuche RPC (falls Native einen rollup-View hat), sonst Fallback.
   try {
     const { data, error } = await supabase.rpc('get_trending_hashtags', { result_limit: limit });
     if (!error && Array.isArray(data)) {
@@ -579,48 +581,22 @@ export const getTrendingHashtags = cache(async (limit = 20): Promise<TrendingHas
     .map(([tag, v]) => ({ tag, ...v }))
     .sort((a, b) => b.total_views - a.total_views || b.post_count - a.post_count)
     .slice(0, limit);
-});
+}
 
-export const getPublicTrendingHashtags = cache(async (limit = 20): Promise<TrendingHashtag[]> => {
-  const supabase = createPublicClient();
+const getCachedPublicTrendingHashtags = unstable_cache(
+  async (limit: number): Promise<TrendingHashtag[]> =>
+    fetchTrendingHashtags(limit, createPublicClient),
+  ['public-trending-hashtags'],
+  { revalidate: 120, tags: [PUBLIC_FEED_CACHE_TAG] },
+);
 
-  try {
-    const { data, error } = await supabase.rpc('get_trending_hashtags', { result_limit: limit });
-    if (!error && Array.isArray(data)) {
-      return (data as TrendingHashtag[]).slice(0, limit);
-    }
-  } catch {
-    /* fall through */
-  }
+export const getTrendingHashtags = cache(async (limit = 20): Promise<TrendingHashtag[]> =>
+  fetchTrendingHashtags(limit, () => createClient()),
+);
 
-  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-  const { data } = await supabase
-    .from('posts')
-    .select('tags, view_count')
-    .gte('created_at', since)
-    .eq('privacy', 'public')
-    .limit(1000);
-
-  if (!data) return [];
-
-  const agg = new Map<string, { post_count: number; total_views: number }>();
-  for (const row of data as { tags: string[] | null; view_count: number | null }[]) {
-    if (!row.tags) continue;
-    for (const raw of row.tags) {
-      const tag = raw.toLowerCase().replace(/^#/, '').trim();
-      if (!tag) continue;
-      const entry = agg.get(tag) ?? { post_count: 0, total_views: 0 };
-      entry.post_count += 1;
-      entry.total_views += row.view_count ?? 0;
-      agg.set(tag, entry);
-    }
-  }
-
-  return Array.from(agg.entries())
-    .map(([tag, v]) => ({ tag, ...v }))
-    .sort((a, b) => b.total_views - a.total_views || b.post_count - a.post_count)
-    .slice(0, limit);
-});
+export const getPublicTrendingHashtags = cache(async (limit = 20): Promise<TrendingHashtag[]> =>
+  getCachedPublicTrendingHashtags(limit),
+);
 
 // -----------------------------------------------------------------------------
 // getPostsByTag — /t/[tag] Hashtag-Detail-Seite.
