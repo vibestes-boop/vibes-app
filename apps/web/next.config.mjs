@@ -84,6 +84,20 @@ const nextConfig = {
     ],
   },
   // Security-Headers — shippen zusätzlich in jedem Response
+  async redirects() {
+    return [
+      {
+        source: '/@:username',
+        destination: '/u/:username',
+        permanent: true,
+      },
+      {
+        source: '/@:username/:path*',
+        destination: '/u/:username/:path*',
+        permanent: true,
+      },
+    ];
+  },
   async headers() {
     return [
       {
