@@ -9,6 +9,7 @@ import { createClient } from '@/lib/supabase/client';
 import { createComment, toggleCommentLike } from '@/app/actions/engagement';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import type { FeedPost } from '@/lib/data/feed';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -61,6 +62,16 @@ interface CommentRow {
     avatar_url: string | null;
     verified: boolean;
   };
+  pending?: boolean;
+}
+
+type FeedSnapshot = Array<[readonly unknown[], FeedPost[] | undefined]>;
+
+interface CreateCommentContext {
+  previousComments?: CommentRow[];
+  previousFeeds: FeedSnapshot;
+  rawBody: string;
+  temporaryId: string;
 }
 
 function useComments(postId: string, enabled: boolean) {
@@ -159,6 +170,64 @@ function formatAgo(iso: string): string {
   return `${Math.floor(diffDay / 365)}y`;
 }
 
+function createTemporaryId(): string {
+  return `optimistic-${globalThis.crypto?.randomUUID?.() ?? Date.now().toString(36)}`;
+}
+
+function makeOptimisticComment({
+  postId,
+  userId,
+  body,
+  temporaryId,
+}: {
+  postId: string;
+  userId: string;
+  body: string;
+  temporaryId: string;
+}): CommentRow {
+  return {
+    id: temporaryId,
+    post_id: postId,
+    user_id: userId,
+    body,
+    like_count: 0,
+    liked_by_me: false,
+    created_at: new Date().toISOString(),
+    pending: true,
+    author: {
+      id: userId,
+      username: 'du',
+      display_name: 'Du',
+      avatar_url: null,
+      verified: false,
+    },
+  };
+}
+
+function incrementFeedCommentCount(postId: string, posts?: FeedPost[]): FeedPost[] | undefined {
+  return posts?.map((post) =>
+    post.id === postId
+      ? { ...post, comment_count: Math.max(0, post.comment_count) + 1 }
+      : post,
+  );
+}
+
+function replaceOptimisticComment(
+  rows: CommentRow[] | undefined,
+  temporaryId: string,
+  savedComment: CommentRow,
+): CommentRow[] {
+  const existing = rows ?? [];
+  const withoutDuplicate = existing.filter((row) => row.id !== savedComment.id);
+  let replaced = false;
+  const next = withoutDuplicate.map((row) => {
+    if (row.id !== temporaryId) return row;
+    replaced = true;
+    return savedComment;
+  });
+  return replaced ? next : [savedComment, ...next];
+}
+
 export function CommentsBody({ postId, allowComments, viewerId, variant, onClose }: CommentsBodyProps) {
   const qc = useQueryClient();
   const [body, setBody] = useState('');
@@ -171,25 +240,53 @@ export function CommentsBody({ postId, allowComments, viewerId, variant, onClose
   // CommentSheet v1 (enabled={open}).
   const { data: comments, isLoading, isError, refetch } = useComments(postId, true);
 
-  const createMut = useMutation({
+  const createMut = useMutation<CommentRow, Error, string, CreateCommentContext>({
     mutationFn: async (rawBody: string) => {
       const res = await createComment(postId, rawBody);
       if (!res.ok) throw new Error(res.error);
       return res.data;
     },
-    onSuccess: () => {
+    onMutate: async (rawBody) => {
+      const temporaryId = createTemporaryId();
+
+      await Promise.all([
+        qc.cancelQueries({ queryKey: ['comments', postId] }),
+        qc.cancelQueries({ queryKey: ['feed'] }),
+      ]);
+
+      const previousComments = qc.getQueryData<CommentRow[]>(['comments', postId]);
+      const previousFeeds = qc.getQueriesData<FeedPost[]>({ queryKey: ['feed'] });
+
       setBody('');
-      void refetch();
-      // Feed-Cache: comment_count +1 (Optimistic)
-      qc.setQueryData<unknown[]>(
-        ['feed'],
-        (prev) =>
-          (prev as Array<{ id: string; comment_count: number }> | undefined)?.map((p) =>
-            p.id === postId ? { ...p, comment_count: p.comment_count + 1 } : p,
-          ) ?? prev,
+      qc.setQueryData<CommentRow[]>(['comments', postId], (current) => [
+        makeOptimisticComment({
+          postId,
+          userId: viewerId ?? 'viewer',
+          body: rawBody,
+          temporaryId,
+        }),
+        ...(current ?? []),
+      ]);
+      qc.setQueriesData<FeedPost[]>({ queryKey: ['feed'] }, (current) =>
+        incrementFeedCommentCount(postId, current),
       );
+
+      return { previousComments, previousFeeds, rawBody, temporaryId };
     },
-    onError: (err) => {
+    onSuccess: (savedComment, _rawBody, ctx) => {
+      qc.setQueryData<CommentRow[]>(['comments', postId], (current) =>
+        replaceOptimisticComment(current, ctx.temporaryId, savedComment),
+      );
+      void refetch();
+    },
+    onError: (err, _rawBody, ctx) => {
+      if (ctx) {
+        qc.setQueryData(['comments', postId], ctx.previousComments);
+        for (const [queryKey, snapshot] of ctx.previousFeeds) {
+          qc.setQueryData(queryKey, snapshot);
+        }
+        setBody(ctx.rawBody);
+      }
       toast.error(err instanceof Error ? err.message : 'Kommentar konnte nicht gesendet werden');
     },
   });
@@ -382,7 +479,7 @@ function CommentRow({
   };
 
   return (
-    <li className="flex gap-3">
+    <li className={cn('flex gap-3', comment.pending && 'opacity-70')}>
       <Link
         href={`/u/${comment.author.username}` as Route}
         className="shrink-0"
@@ -402,7 +499,9 @@ function CommentRow({
             @{comment.author.username}
             {comment.author.verified && <BadgeCheck className="h-3.5 w-3.5 text-brand-gold" />}
           </Link>
-          <span className="text-xs text-muted-foreground">· {formatAgo(comment.created_at)}</span>
+          <span className="text-xs text-muted-foreground">
+            · {comment.pending ? 'sendet…' : formatAgo(comment.created_at)}
+          </span>
         </div>
         <p className="whitespace-pre-wrap break-words text-sm leading-snug">{comment.body}</p>
       </div>
