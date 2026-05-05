@@ -3,9 +3,16 @@ import path from 'node:path';
 import { withSentryConfig } from '@sentry/nextjs';
 import bundleAnalyzer from '@next/bundle-analyzer';
 
+// Next streams metadata for regular browsers. HTML-limited bots need metadata
+// in the initial <head>; Lighthouse CLI reports itself as HeadlessChrome, not
+// Chrome-Lighthouse, so include it while preserving Next's default bot list.
+const htmlLimitedBots =
+  /[\w-]+-Google|Google-[\w-]+|Chrome-Lighthouse|HeadlessChrome|Slurp|DuckDuckBot|baiduspider|yandex|sogou|bitlybot|tumblr|vkShare|quora link preview|redditbot|ia_archiver|Bingbot|BingPreview|applebot|facebookexternalhit|facebookcatalog|Twitterbot|LinkedInBot|Slackbot|Discordbot|WhatsApp|SkypeUriPreview|Yeti|googleweblight/i;
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  htmlLimitedBots,
   // Moved out of experimental in Next.js 15.5+
   // Temporarily disabled to unblock deploy — re-enable post-launch
   // once all dynamic router.push/redirect calls are migrated to `as Route`.
