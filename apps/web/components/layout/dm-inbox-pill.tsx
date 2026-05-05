@@ -2,10 +2,9 @@
 
 import Link from 'next/link';
 import { MessageCircle } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
-import { getUnreadDmCount } from '@/app/actions/messages';
 import { glassPillBase } from '@/lib/ui/glass-pill';
 import { cn } from '@/lib/utils';
+import { useUnreadShellCounts } from '@/components/layout/use-unread-shell-counts';
 
 // -----------------------------------------------------------------------------
 // DmInboxPill — Glass-Pill-Link zu /messages mit Unread-Badge.
@@ -27,14 +26,11 @@ interface DmInboxPillProps {
 }
 
 export function DmInboxPill({ initialCount, viewerId }: DmInboxPillProps) {
-  const { data: count = initialCount } = useQuery({
-    queryKey: ['unread-dms'],
-    queryFn: () => getUnreadDmCount(),
-    enabled: !!viewerId,
-    initialData: initialCount,
-    refetchInterval: 30_000,
-    staleTime: 20_000,
+  const { data: counts } = useUnreadShellCounts(viewerId, {
+    dms: initialCount,
+    notifications: 0,
   });
+  const count = counts.dms;
 
   return (
     <Link

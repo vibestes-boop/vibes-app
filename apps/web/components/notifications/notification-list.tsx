@@ -290,7 +290,7 @@ export function NotificationList({
   // → router.refresh() lässt die RSC-Seite neu rendern (neuer SSR-Snapshot mit
   //   der frischen Notification vorne), ohne den kompletten Seitenbaum zu
   //   dismounten. Client-State (z.B. das mark-all-read) bleibt erhalten.
-  // → queryClient.invalidateQueries(['unread-notifs']) aktualisiert sofort den
+  // → queryClient.invalidateQueries(['unread-shell-counts']) aktualisiert sofort den
   //   Sidebar-Bell-Badge ohne auf den nächsten 60s-Poll zu warten.
   useEffect(() => {
     if (!viewerId) return;
@@ -316,7 +316,7 @@ export function NotificationList({
         () => {
           // Neue Notification: RSC neu rendern + Badge invalidieren.
           router.refresh();
-          void queryClient.invalidateQueries({ queryKey: ['unread-notifs'] });
+          void queryClient.invalidateQueries({ queryKey: ['unread-shell-counts'] });
         },
       )
       .subscribe();

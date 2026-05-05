@@ -27,7 +27,6 @@
 import Link from 'next/link';
 import type { Route } from 'next';
 import { usePathname } from 'next/navigation';
-import { useQuery } from '@tanstack/react-query';
 import {
   Home,
   Compass,
@@ -36,11 +35,10 @@ import {
   User as UserIcon,
   ShoppingBag,
 } from 'lucide-react';
-import { getUnreadDmCount } from '@/app/actions/messages';
-import { getUnreadNotificationCount } from '@/app/actions/notifications';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/client';
 import type { TranslationKey } from '@/lib/i18n/translate';
+import { useUnreadShellCounts } from '@/components/layout/use-unread-shell-counts';
 
 type Slot = {
   href: string;
@@ -84,19 +82,8 @@ export function MobileBottomNav({
 }) {
   const { t } = useI18n();
   const pathname = usePathname();
-  const { data: unreadCount = 0 } = useQuery({
-    queryKey: ['mobile-unread-count'],
-    queryFn: async () => {
-      const [dms, notifications] = await Promise.all([
-        getUnreadDmCount(),
-        getUnreadNotificationCount(),
-      ]);
-      return dms + notifications;
-    },
-    enabled: isAuthed,
-    staleTime: 30_000,
-    refetchInterval: 60_000,
-  });
+  const { data: unreadCounts } = useUnreadShellCounts(isAuthed ? 'mobile' : null);
+  const unreadCount = unreadCounts.dms + unreadCounts.notifications;
 
   const slots = isAuthed
     ? SLOTS_AUTHED

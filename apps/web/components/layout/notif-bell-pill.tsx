@@ -2,10 +2,9 @@
 
 import Link from 'next/link';
 import { Bell } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
-import { getUnreadNotificationCount } from '@/app/actions/notifications';
 import { glassPillBase } from '@/lib/ui/glass-pill';
 import { cn } from '@/lib/utils';
+import { useUnreadShellCounts } from '@/components/layout/use-unread-shell-counts';
 
 // -----------------------------------------------------------------------------
 // NotifBellPill — Glass-Pill-Link zu /notifications mit Unread-Badge.
@@ -27,14 +26,11 @@ interface NotifBellPillProps {
 }
 
 export function NotifBellPill({ initialCount, viewerId }: NotifBellPillProps) {
-  const { data: count = initialCount } = useQuery({
-    queryKey: ['unread-notifs'],
-    queryFn: () => getUnreadNotificationCount(),
-    enabled: !!viewerId,
-    initialData: initialCount,
-    refetchInterval: 60_000,
-    staleTime: 50_000,
+  const { data: counts } = useUnreadShellCounts(viewerId, {
+    dms: 0,
+    notifications: initialCount,
   });
+  const count = counts.notifications;
 
   return (
     <Link
