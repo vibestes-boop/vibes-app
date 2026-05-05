@@ -324,6 +324,98 @@ export async function createComment(
   }
 }
 
+type WebCommentRpcRow = {
+  id: string;
+  post_id: string;
+  user_id: string;
+  parent_id: string | null;
+  body: string | null;
+  like_count: number | string | null;
+  liked_by_me: boolean | null;
+  reply_count: number | string | null;
+  created_at: string;
+  author_id: string;
+  author_username: string;
+  author_display_name: string | null;
+  author_avatar_url: string | null;
+  author_verified: boolean | null;
+};
+
+function toNumber(value: number | string | null | undefined): number {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
+}
+
+export async function fetchPostCommentsForFeed(
+  postId: string,
+  limit = 30,
+  includeViewerState = true,
+): Promise<CommentWithAuthor[]> {
+  const timing = createActionTiming('comments.list', {
+    includeViewerState,
+    limit,
+  });
+
+  try {
+    const supabase = await timing.measure('supabase.createClient', createClient);
+    let viewerId: string | null = null;
+
+    if (includeViewerState) {
+      const {
+        data: { user },
+      } = await timing.measure('auth.getUser', () => supabase.auth.getUser());
+      viewerId = user?.id ?? null;
+    }
+
+    const { data, error } = await timing.measure('comments.rpc', () =>
+      supabase.rpc('get_post_comments_web', {
+        p_post_id: postId,
+        p_limit: limit,
+        p_viewer_id: viewerId,
+      }),
+    );
+
+    if (error) {
+      timing.finish({ ok: false, reason: 'comments_rpc_error' });
+      throw new Error(error.message);
+    }
+
+    const rows = (data ?? []) as WebCommentRpcRow[];
+    const comments = rows.map((row) => ({
+      id: row.id,
+      post_id: row.post_id,
+      user_id: row.user_id,
+      parent_id: row.parent_id ?? null,
+      body: row.body ?? '',
+      like_count: toNumber(row.like_count),
+      liked_by_me: row.liked_by_me ?? false,
+      reply_count: toNumber(row.reply_count),
+      created_at: row.created_at,
+      author: {
+        id: row.author_id,
+        username: row.author_username,
+        display_name: row.author_display_name,
+        avatar_url: row.author_avatar_url,
+        verified: row.author_verified ?? false,
+      },
+    }));
+
+    timing.finish({ ok: true, count: comments.length });
+    return comments;
+  } catch (error) {
+    timing.finish({
+      ok: false,
+      reason: 'exception',
+      error: error instanceof Error ? error.name : 'UnknownError',
+    });
+    throw error;
+  }
+}
+
 // fetchCommentReplies — Server Action Wrapper für getCommentReplies.
 // Wird von CommentThread (Client-Component) aufgerufen.
 // Holt Viewer-ID aus der Session damit liked_by_me korrekt befüllt wird.

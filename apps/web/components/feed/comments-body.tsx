@@ -5,8 +5,7 @@ import Link from 'next/link';
 import type { Route } from 'next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { BadgeCheck, Lock, Send, Loader2, Heart, X } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
-import { createComment, toggleCommentLike } from '@/app/actions/engagement';
+import { createComment, fetchPostCommentsForFeed, toggleCommentLike } from '@/app/actions/engagement';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import type { FeedPost } from '@/lib/data/feed';
@@ -74,81 +73,12 @@ interface CreateCommentContext {
   temporaryId: string;
 }
 
-function useComments(postId: string, enabled: boolean) {
+function useComments(postId: string, enabled: boolean, viewerId: string | null) {
   return useQuery({
     queryKey: ['comments', postId],
     enabled,
     staleTime: 30_000,
-    queryFn: async (): Promise<CommentRow[]> => {
-      const supabase = createClient();
-
-      // Mobile-DB-Drift: (1) `text` → aliasiert auf `body` für den Web-Contract.
-      // (2) `comments` hat keine `like_count`-Spalte und keine `deleted_at`-Spalte
-      // (hard-delete-Modell), also beide in der Projektion bzw. im Filter raus.
-      // (3) Profiles-`is_verified` → aliasiert auf `verified`.
-      const { data, error } = await supabase
-        .from('comments')
-        .select(
-          `id, post_id, user_id, body:text, created_at,
-           author:profiles!comments_user_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )`,
-        )
-        .eq('post_id', postId)
-        .order('created_at', { ascending: false })
-        .limit(PAGE_SIZE);
-
-      if (error) throw new Error(error.message);
-
-      const rows = data ?? [];
-      if (rows.length === 0) return [];
-
-      const ids = rows.map((r) => r.id as string);
-
-      // v1.w.UI.57 — Likes aus `comment_likes`-Tabelle nachladen.
-      // Zwei parallele Queries:
-      //  (a) Alle Likes für diese Kommentare → client-side count per ID
-      //  (b) Eigene Likes des eingeloggten Users → liked_by_me-Set
-      // Fehler (z.B. Tabelle noch nicht deployed) werden silent behandelt
-      // und fallen auf like_count=0 / liked_by_me=false zurück.
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      const [allLikesRes, myLikesRes] = await Promise.all([
-        supabase
-          .from('comment_likes')
-          .select('comment_id')
-          .in('comment_id', ids),
-        user
-          ? supabase
-              .from('comment_likes')
-              .select('comment_id')
-              .eq('user_id', user.id)
-              .in('comment_id', ids)
-          : Promise.resolve({ data: [] as Array<{ comment_id: string }> }),
-      ]);
-
-      // Anzahl pro Kommentar aggregieren.
-      const countMap = new Map<string, number>();
-      for (const r of allLikesRes.data ?? []) {
-        countMap.set(r.comment_id, (countMap.get(r.comment_id) ?? 0) + 1);
-      }
-      const likedSet = new Set(
-        ((myLikesRes as { data: Array<{ comment_id: string }> | null }).data ?? []).map(
-          (r) => r.comment_id,
-        ),
-      );
-
-      return rows.map((row) => {
-        const author = Array.isArray(row.author) ? row.author[0] : row.author;
-        const id = row.id as string;
-        return {
-          ...(row as unknown as Omit<CommentRow, 'like_count' | 'liked_by_me'>),
-          like_count: countMap.get(id) ?? 0,
-          liked_by_me: likedSet.has(id),
-          author,
-        };
-      }) as CommentRow[];
-    },
+    queryFn: () => fetchPostCommentsForFeed(postId, PAGE_SIZE, Boolean(viewerId)),
   });
 }
 
@@ -238,7 +168,7 @@ export function CommentsBody({ postId, allowComments, viewerId, variant, onClose
   // nicht gerendert wird, wird auch CommentsBody nicht gerendert → Query
   // lädt nur on-demand. Entspricht dem ursprünglichen Verhalten aus
   // CommentSheet v1 (enabled={open}).
-  const { data: comments, isLoading, isError, refetch } = useComments(postId, true);
+  const { data: comments, isLoading, isError, refetch } = useComments(postId, true, viewerId);
 
   const createMut = useMutation<CommentRow, Error, string, CreateCommentContext>({
     mutationFn: async (rawBody: string) => {
