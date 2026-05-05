@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { getOlderMessages } from '@/lib/data/messages';
+import { getUnreadShellCounts } from '@/app/actions/unread-counts';
 import type { MessageWithContext } from '@/lib/data/messages';
 
 // -----------------------------------------------------------------------------
@@ -272,20 +273,8 @@ export async function deleteMessage(messageId: string): Promise<ActionResult<nul
 // Wird von FeedSidebar via useQuery alle 30s gepolt.
 // -----------------------------------------------------------------------------
 export async function getUnreadDmCount(): Promise<number> {
-  const viewer = await getViewerId();
-  if (!viewer) return 0;
-
-  // Conversations holen und unread_count summieren — gleicher Weg wie
-  // getUnreadDMCount in lib/data/messages.ts, aber als Server Action exportiert
-  // damit Client-Components ihn direkt aufrufen können.
-  const supabase = await createClient();
-  const { data } = await supabase.rpc('get_conversations');
-  if (!data) return 0;
-
-  return (data as Array<{ unread_count: number | string }>).reduce((sum, c) => {
-    const n = typeof c.unread_count === 'string' ? parseInt(c.unread_count, 10) : c.unread_count;
-    return sum + (isNaN(n) ? 0 : n);
-  }, 0);
+  const counts = await getUnreadShellCounts();
+  return counts.dms;
 }
 
 // -----------------------------------------------------------------------------
