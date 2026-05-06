@@ -6,7 +6,7 @@ import { Hash, Flame, TrendingUp, Compass, Users, Sparkles, ShoppingBag, Chevron
 import { getPublicTrendingHashtags, getPublicForYouFeed, getDiscoverPeople } from '@/lib/data/feed';
 import type { DiscoverReason } from '@/lib/data/feed';
 import { getUser, getProfile } from '@/lib/auth/session';
-import { getShopProducts } from '@/lib/data/shop';
+import { getPublicShopPreviewProducts } from '@/lib/data/shop';
 import { FollowButton } from '@/components/profile/follow-button';
 import { ExplorePostGrid } from '@/components/explore/explore-post-grid';
 import { getT, getLocale } from '@/lib/i18n/server';
@@ -115,7 +115,7 @@ export default async function ExplorePage() {
 async function ExploreDeferredSections({ suggestedPeopleTitle }: { suggestedPeopleTitle: string }) {
   const [people, topProducts, viewer, profile] = await Promise.all([
     getDiscoverPeople(12),
-    getShopProducts({ limit: 6, sort: 'popular' }).catch(() => []),
+    getPublicShopPreviewProducts(6).catch(() => []),
     getUser(),
     getProfile(),
   ]);

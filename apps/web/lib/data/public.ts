@@ -1,5 +1,6 @@
 import { cache } from 'react';
 import { createClient } from '@/lib/supabase/server';
+import { createPublicClient } from '@/lib/supabase/public';
 import type { PublicProfile, Post, Story } from '@shared/types';
 
 // -----------------------------------------------------------------------------
@@ -68,6 +69,38 @@ type PublicProfileRow = {
   teip?: string | null;
 };
 
+type PublicProfileRpcRow = PublicProfileRow & {
+  follower_count: number | string | null;
+  following_count: number | string | null;
+  post_count: number | string | null;
+  is_live: boolean | null;
+  live_session_id: string | null;
+};
+
+function toCount(value: number | string | null | undefined): number {
+  const n = typeof value === 'string' ? Number.parseInt(value, 10) : value;
+  return Number.isFinite(n) ? Number(n) : 0;
+}
+
+function toPublicProfile(row: PublicProfileRpcRow): PublicProfile {
+  return {
+    id: row.id,
+    username: row.username,
+    display_name: row.display_name,
+    avatar_url: row.avatar_url,
+    bio: row.bio,
+    verified: row.is_verified ?? false,
+    follower_count: toCount(row.follower_count),
+    following_count: toCount(row.following_count),
+    post_count: toCount(row.post_count),
+    is_live: !!row.is_live,
+    live_session_id: row.live_session_id ?? null,
+    is_private: row.is_private ?? false,
+    website: row.website ?? null,
+    teip: row.teip ?? null,
+  };
+}
+
 function normalizeAuthor(a: AuthorRow | AuthorRow[] | null | undefined): AuthorContract | null {
   const raw = Array.isArray(a) ? (a[0] ?? null) : a ?? null;
   if (!raw) return null;
@@ -94,6 +127,19 @@ function extractCount(v: unknown): number {
 // -----------------------------------------------------------------------------
 
 export const getPublicProfile = cache(async (username: string): Promise<PublicProfile | null> => {
+  try {
+    const supabase = createPublicClient();
+    const { data, error } = await supabase
+      .rpc('get_public_profile_web', { p_username: username })
+      .maybeSingle();
+
+    if (!error && data) {
+      return toPublicProfile(data as unknown as PublicProfileRpcRow);
+    }
+  } catch {
+    // Migration may not be deployed yet. Fall back to the PostgREST path.
+  }
+
   const supabase = await createClient();
   const { data, error } = await supabase
     .from('profiles')
@@ -208,14 +254,14 @@ type PostRowMobile = {
   // reine Video-Posts waren.
   media_type?: 'image' | 'video' | null;
   thumbnail_url: string | null;
-  view_count: number | null;
+  view_count: number | string | null;
   tags: string[] | null;
   allow_comments: boolean | null;
   allow_duet: boolean | null;
   // v1.w.UI.169 — WOZ badge in PostGrid
   women_only?: boolean | null;
   // v1.w.UI.171 — Web contract field; Mobile-DB has no share_count column.
-  share_count?: number | null;
+  share_count?: number | string | null;
   // v1.w.UI.179 — pinned to author profile
   is_pinned?: boolean | null;
   // v1.w.UI.205 — aspect ratio at upload time
@@ -238,10 +284,10 @@ function toPost(row: PostRowMobile): Post {
     video_url: row.media_url ?? '',
     thumbnail_url: row.thumbnail_url,
     duration_secs: null,
-    view_count: row.view_count ?? 0,
+    view_count: toCount(row.view_count),
     like_count: extractCount(row.like_count),
     comment_count: extractCount(row.comment_count),
-    share_count: row.share_count ?? 0,
+    share_count: toCount(row.share_count),
     hashtags: row.tags ?? [],
     music_id: null,
     allow_comments: row.allow_comments ?? true,
@@ -272,9 +318,38 @@ function profileSortOrder(sort: ProfileSortKey): string {
   return 'created_at';
 }
 
+type ServerSupabaseClient = Awaited<ReturnType<typeof createClient>>;
+
+async function getProfilePostsViaRpc(
+  supabase: ServerSupabaseClient,
+  userId: string,
+  limit: number,
+  offset: number,
+  before: string | undefined,
+  sort: ProfileSortKey,
+): Promise<Post[] | null> {
+  try {
+    const { data, error } = await supabase.rpc('get_profile_posts_web', {
+      p_user_id: userId,
+      result_limit: limit,
+      result_offset: offset,
+      before_ts: sort === 'newest' ? (before ?? null) : null,
+      sort_key: sort,
+    });
+
+    if (error || !Array.isArray(data)) return null;
+    return (data as unknown as PostRowMobile[]).map(toPost);
+  } catch {
+    return null;
+  }
+}
+
 export const getProfilePosts = cache(
   async (userId: string, limit = 24, before?: string, sort: ProfileSortKey = 'newest'): Promise<Post[]> => {
     const supabase = await createClient();
+    const fastPosts = await getProfilePostsViaRpc(supabase, userId, limit, 0, before, sort);
+    if (fastPosts) return fastPosts;
+
     // v1.w.UI.179 — include is_pinned; order pinned post first.
     // v1.w.UI.212 — secondary sort driven by `sort` param.
     let query = supabase
@@ -310,6 +385,9 @@ export async function getProfilePostsPage(
   sort: ProfileSortKey = 'newest',
 ): Promise<Post[]> {
   const supabase = await createClient();
+  const fastPosts = await getProfilePostsViaRpc(supabase, userId, limit, offset, undefined, sort);
+  if (fastPosts) return fastPosts;
+
   // v1.w.UI.179 — include is_pinned; pinned posts always sort first.
   // v1.w.UI.212 — secondary sort driven by `sort` param.
   const { data, error } = await supabase

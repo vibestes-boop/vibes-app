@@ -1,5 +1,7 @@
 import { cache } from 'react';
+import { unstable_cache } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { createPublicClient } from '@/lib/supabase/public';
 import { getUser } from '@/lib/auth/session';
 import type { Product, ProductWithSeller, ProductCategory } from '@shared/types';
 
@@ -31,6 +33,11 @@ type RawProductRow = Omit<Product, 'image_urls'> & {
   is_active: boolean;
 };
 
+export type ShopPreviewProduct = Pick<
+  Product,
+  'id' | 'title' | 'price_coins' | 'sale_price_coins' | 'cover_url'
+>;
+
 function normalizeProduct(row: RawProductRow, saved: Set<string>): ShopProduct | null {
   const seller = Array.isArray(row.seller) ? row.seller[0] : row.seller;
   if (!seller) return null;
@@ -45,6 +52,44 @@ function normalizeProduct(row: RawProductRow, saved: Set<string>): ShopProduct |
     saved_by_me: saved.has(row.id),
   };
 }
+
+async function fetchPublicShopPreviewProducts(limit: number): Promise<ShopPreviewProduct[]> {
+  const supabase = createPublicClient();
+
+  try {
+    const { data, error } = await supabase.rpc('get_public_shop_preview_products', {
+      result_limit: limit,
+    });
+
+    if (!error && Array.isArray(data)) {
+      return data as ShopPreviewProduct[];
+    }
+  } catch {
+    // Migration may not be deployed yet. Fall back to the PostgREST path.
+  }
+
+  const { data, error } = await supabase
+    .from('products')
+    .select('id, title, price_coins, sale_price_coins, cover_url')
+    .eq('is_active', true)
+    .eq('women_only', false)
+    .order('sold_count', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error || !data) return [];
+  return data as ShopPreviewProduct[];
+}
+
+const getCachedPublicShopPreviewProducts = unstable_cache(
+  async (limit: number): Promise<ShopPreviewProduct[]> => fetchPublicShopPreviewProducts(limit),
+  ['public-shop-preview-products'],
+  { revalidate: 300 },
+);
+
+export const getPublicShopPreviewProducts = cache(async (limit = 6): Promise<ShopPreviewProduct[]> =>
+  getCachedPublicShopPreviewProducts(limit),
+);
 
 async function batchSaved(productIds: string[], viewerId: string | null): Promise<Set<string>> {
   if (!viewerId || productIds.length === 0) return new Set();
