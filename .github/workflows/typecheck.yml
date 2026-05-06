@@ -1,9 +1,8 @@
 # -----------------------------------------------------------------------------
-# Typecheck-Workflow: tsc --noEmit gegen apps/web.
+# Typecheck-Workflow: tsc --noEmit gegen Expo-Root und apps/web.
 #
-# Zweck: TS-Sauberkeit (heute auf 0 Errors gebracht) gegen schleichende
-# Regressionen schützen. Niemand läuft `tsc --noEmit` lokal manuell vor jedem
-# Push — CI muss das übernehmen.
+# Zweck: TS-Sauberkeit gegen schleichende Regressionen schützen. Niemand läuft
+# `tsc --noEmit` lokal manuell vor jedem Push — CI muss das übernehmen.
 #
 # Bewusst eigenes File (statt Step in test.yml): läuft parallel zu Jest, eigener
 # Check-Eintrag in der PR-UI ("typecheck / web"), schneller-failing wenn TS
@@ -33,6 +32,27 @@ env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
 jobs:
+  native:
+    name: native (expo)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install (root)
+        run: npm ci --no-audit --no-fund
+
+      - name: Type check
+        run: npm run typecheck
+
   web:
     name: web (next.js)
     runs-on: ubuntu-latest

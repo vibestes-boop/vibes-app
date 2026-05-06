@@ -59,3 +59,30 @@ jobs:
 
       - name: Check Explore media budget
         run: node scripts/check-media-budget.mjs
+
+  authenticated-interactions:
+    name: authenticated interactions (production)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      STABILITY_AUTH_EMAIL: ${{ secrets.STABILITY_AUTH_EMAIL }}
+      STABILITY_AUTH_PASSWORD: ${{ secrets.STABILITY_AUTH_PASSWORD }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install (root)
+        run: npm ci --no-audit --no-fund
+
+      - name: Check authenticated comments, likes and bookmarks
+        run: npm run stability:auth -- --skip-if-missing
