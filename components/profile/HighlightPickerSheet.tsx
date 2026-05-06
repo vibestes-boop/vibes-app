@@ -7,16 +7,25 @@
  * • Cover = erste ausgewählte Story
  * • Swipe-to-Close mit Handle-Bar-PanResponder
  */
-import {
-  Modal, View, Text, Pressable, ScrollView, Animated, PanResponder,
-  StyleSheet, Dimensions, TextInput, KeyboardAvoidingView, Platform,
-} from 'react-native';
+import type { HighlightItem } from '@/lib/useStoryHighlights';
+import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRef, useState, useCallback, useEffect } from 'react';
-import * as Haptics from 'expo-haptics';
+import { useCallback,useEffect,useRef,useState } from 'react';
+import {
+Animated,
+Dimensions,
+KeyboardAvoidingView,
+Modal,
+PanResponder,
+Platform,
+Pressable,ScrollView,
+StyleSheet,
+Text,
+TextInput,
+View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type { HighlightItem } from '@/lib/useStoryHighlights';
 
 const { width: W, height: SCREEN_H } = Dimensions.get('window');
 const COLS = 3;
@@ -84,7 +93,7 @@ export function HighlightPickerSheet({
       reset();
       onClose();
     });
-  }, [onClose, sheetY]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [onClose, sheetY]);
 
   // PanResponder nur auf Handle-Bar
   const handleBarPan = useRef(

@@ -11,38 +11,38 @@
  *  - Sliding Pill Mode-Selector (animiert)
  *  - Premium Dark Ästhetik
  */
-import { useState, useRef, useCallback, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  Dimensions,
-  StatusBar,
-  Alert,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { useIsFocused } from '@react-navigation/native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CameraView, CameraType, FlashMode, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
-import { launchImageLibraryAsync, requestMediaLibraryPermissionsAsync } from 'expo-image-picker';
-import { LinearGradient } from 'expo-linear-gradient';
-import { X, RotateCcw, Zap, ZapOff, Timer, Sparkles, Radio, Video, Music2, ImageIcon } from 'lucide-react-native';
-import * as Haptics from 'expo-haptics';
 import { MusicPickerSheet } from '@/components/camera/MusicPickerSheet';
 import type { MusicTrack } from '@/lib/useMusicPicker';
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+import { useIsFocused } from '@react-navigation/native';
+import { CameraType,CameraView,FlashMode,useCameraPermissions,useMicrophonePermissions } from 'expo-camera';
+import * as Haptics from 'expo-haptics';
+import { launchImageLibraryAsync,requestMediaLibraryPermissionsAsync } from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import { ImageIcon,Music2,Radio,RotateCcw,Sparkles,Timer,Video,X,Zap,ZapOff } from 'lucide-react-native';
+import { useCallback,useEffect,useRef,useState } from 'react';
+import {
+Alert,
+Dimensions,
+Pressable,
+StatusBar,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
+import {
+useAnimatedStyle,
+useSharedValue,
+withRepeat,
+withSequence,
+withSpring,
+withTiming,
+} from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any;
 const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
-import {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withTiming,
-  withRepeat,
-  withSequence,
-} from 'react-native-reanimated';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 
@@ -453,7 +453,7 @@ export default function CreateCameraScreen() {
       __DEV__ && console.warn('[openGallery]', e);
       Alert.alert('Fehler', 'Galerie konnte nicht geöffnet werden.');
     }
-  }, [captureMode, router, studioMode, aspectRatio, selectedTrack]);
+  }, [captureMode, router, studioMode, aspectRatio, selectedTrack, audioVolume]);
 
   const takePhoto = useCallback(async () => {
     if (!cameraRef.current) return;
@@ -464,7 +464,7 @@ export default function CreateCameraScreen() {
     } catch {
       Alert.alert('Fehler', 'Foto konnte nicht aufgenommen werden.');
     }
-  }, [router, selectedTrack]);
+  }, [router, selectedTrack, audioVolume]);
 
   const startRecording = useCallback(async () => {
     if (!cameraRef.current || isRecording || countdown > 0) return;
@@ -501,7 +501,7 @@ export default function CreateCameraScreen() {
     if (recIntervalRef.current) clearInterval(recIntervalRef.current);
     setIsRecording(false);
     setRecSeconds(0);
-  }, [isRecording, countdown, captureMode, router, timerSec]);
+  }, [isRecording, countdown, captureMode, router, timerSec, selectedTrack?.url, selectedTrack?.title, audioVolume]);
 
   const stopRecording = useCallback(() => {
     if (!isRecording) return;

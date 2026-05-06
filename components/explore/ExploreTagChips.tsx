@@ -1,5 +1,5 @@
-import { ScrollView, Pressable, Text, StyleSheet } from 'react-native';
 import { useTheme } from '@/lib/useTheme';
+import { Pressable,ScrollView,StyleSheet,Text } from 'react-native';
 
 export function ExploreTagChips({
   tags,

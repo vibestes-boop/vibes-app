@@ -10,14 +10,21 @@
  * Persistiert via Zustand + AsyncStorage.
  */
 
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import {
-  Zap, Users, MessageCircle, User, ShoppingBag,
-  Compass, Bell, Video, Flower2,
-} from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
+import {
+Bell,
+Compass,
+Flower2,
+MessageCircle,
+ShoppingBag,
+User,
+Users,
+Video,
+Zap,
+} from 'lucide-react-native';
+import { create } from 'zustand';
+import { createJSONStorage,persist } from 'zustand/middleware';
 
 // Alle verfügbaren Tab-Features
 export type TabFeature =

@@ -16,24 +16,24 @@
  * useLiveShopMode.shopEnabled + lokalem UI-State.
  */
 
-import React, { useCallback } from 'react';
-import {
-  Modal,
-  View,
-  Text,
-  Pressable,
-  StyleSheet,
-  ScrollView,
-  Dimensions,
-  ActivityIndicator,
-} from 'react-native';
-import { Image } from 'expo-image';
-import { X as XIcon, ShoppingBag, Package } from 'lucide-react-native';
-import { BlurView } from 'expo-blur';
-import * as Haptics from 'expo-haptics';
-import { useRouter } from 'expo-router';
 import { useHostShopProducts } from '@/lib/useLiveShopMode';
 import type { Product } from '@/lib/useShop';
+import { BlurView } from 'expo-blur';
+import * as Haptics from 'expo-haptics';
+import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
+import { Package,ShoppingBag,X as XIcon } from 'lucide-react-native';
+import React,{ useCallback } from 'react';
+import {
+ActivityIndicator,
+Dimensions,
+Modal,
+Pressable,
+ScrollView,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
 
 const { height: SCREEN_H, width: SCREEN_W } = Dimensions.get('window');
 

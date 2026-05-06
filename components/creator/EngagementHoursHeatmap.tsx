@@ -15,9 +15,9 @@
  *   • Peak-Cell hervorgehoben + Tap auf Zelle zeigt Tooltip mit Count
  */
 
-import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Dimensions } from 'react-native';
 import type { EngagementHourPoint } from '@/lib/useAnalytics';
+import React,{ useMemo,useState } from 'react';
+import { Dimensions,Pressable,StyleSheet,Text,View } from 'react-native';
 
 const WEEKDAYS = ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'];
 const HOUR_LABELS: { hour: number; label: string }[] = [

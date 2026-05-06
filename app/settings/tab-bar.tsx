@@ -5,19 +5,19 @@
  * echten Tab Bar, die sich sofort aktualisiert wenn der User Slot 2 oder 4 auswählt.
  */
 
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { ArrowLeft, Check, Lock, Pin, Plus, Zap, User } from 'lucide-react-native';
-import { impactAsync, ImpactFeedbackStyle } from 'expo-haptics';
 import {
-  useTabBarStore,
-  TAB_FEATURES,
-  ALL_TAB_FEATURES,
-  type TabFeature,
+ALL_TAB_FEATURES,
+TAB_FEATURES,
+useTabBarStore,
+type TabFeature,
 } from '@/lib/tabBarStore';
 import { useTheme } from '@/lib/useTheme';
+import { impactAsync,ImpactFeedbackStyle } from 'expo-haptics';
+import { useRouter } from 'expo-router';
+import { ArrowLeft,Check,Pin,Plus,User,Zap } from 'lucide-react-native';
+import React,{ useState } from 'react';
+import { Pressable,ScrollView,StyleSheet,Text,View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // ─── Echter Tab Bar – Vorschau-Komponente (1:1 der echten CustomTabBar) ────────
 

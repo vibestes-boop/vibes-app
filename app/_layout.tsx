@@ -1,10 +1,10 @@
 import { useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { StyleSheet,Text,View } from 'react-native';
 // SplashScreen: 'import * as' → _interopRequireWildcard → TypeError on non-configurable .default getter.
 // Named imports only to bypass wildcard interop in Hermes production builds.
-import { preventAutoHideAsync as splashPreventHide, hideAsync as splashHide } from 'expo-splash-screen';
-import type { ComponentType } from 'react';
 import * as Sentry from '@sentry/react-native';
+import { hideAsync as splashHide,preventAutoHideAsync as splashPreventHide } from 'expo-splash-screen';
+import type { ComponentType } from 'react';
 // WebRTC muss vor jeglicher LiveKit-Room-Verbindung initialisiert werden.
 // In Expo Go liefert der Stub eine no-op Implementierung.
 import { registerGlobals } from '@livekit/react-native-webrtc';

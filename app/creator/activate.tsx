@@ -3,20 +3,29 @@
  * Design: App-native Monochrom-Stil
  */
 
-import React, { useState } from 'react';
-import {
-  View, Text, StyleSheet, Pressable, ScrollView, ActivityIndicator,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import {
-  ArrowLeft, Gift, ShoppingBag, Video, TrendingUp,
-  Diamond, CheckCircle2, Sparkles,
-} from 'lucide-react-native';
-import { useTheme } from '@/lib/useTheme';
 import { useAuthStore } from '@/lib/authStore';
 import { supabase } from '@/lib/supabase';
-import { impactAsync, notificationAsync, ImpactFeedbackStyle, NotificationFeedbackType } from 'expo-haptics';
+import { useTheme } from '@/lib/useTheme';
+import { impactAsync,ImpactFeedbackStyle,notificationAsync,NotificationFeedbackType } from 'expo-haptics';
+import { useRouter } from 'expo-router';
+import {
+ArrowLeft,
+CheckCircle2,
+Diamond,
+Gift,ShoppingBag,
+Sparkles,
+TrendingUp,
+Video,
+} from 'lucide-react-native';
+import React,{ useState } from 'react';
+import {
+ActivityIndicator,
+Pressable,ScrollView,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const BENEFITS = [
   { icon: Gift,        label: 'Gift-Einnahmen',  desc: '70% aller Gifts gehen direkt an dich' },

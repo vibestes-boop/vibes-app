@@ -2,14 +2,18 @@
  * components/shop/ReviewSheet.tsx
  * Bottom-Sheet zum Abgeben / Bearbeiten einer Produktbewertung
  */
-import { useState, useEffect } from 'react';
-import {
-  View, Text, StyleSheet, Modal, Pressable,
-  TextInput, ActivityIndicator, Alert,
-} from 'react-native';
-import { Star, X, Send } from 'lucide-react-native';
-import { useSubmitReview, useMyReview } from '@/lib/useProductReviews';
+import { useMyReview,useSubmitReview } from '@/lib/useProductReviews';
 import * as Haptics from 'expo-haptics';
+import { Send,Star,X } from 'lucide-react-native';
+import { useEffect,useState } from 'react';
+import {
+ActivityIndicator,Alert,
+Modal,Pressable,
+StyleSheet,
+Text,
+TextInput,
+View,
+} from 'react-native';
 
 interface ReviewSheetProps {
   productId: string;

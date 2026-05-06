@@ -14,23 +14,40 @@
  * Design: konsistent mit app/creator/scheduled.tsx (gleicher Look-and-Feel).
  */
 
-import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, Pressable, FlatList,
-  ActivityIndicator, RefreshControl, Alert, Modal,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+scheduledLiveLabel,
+useScheduledLives,
+type ScheduledLive,
+} from '@/lib/useScheduledLives';
+import { useTheme } from '@/lib/useTheme';
 import { useRouter } from 'expo-router';
 import {
-  ArrowLeft, Radio, AlertTriangle, Edit2,
-  X as XIcon, Sparkles, ChevronUp, ChevronDown,
-  Video, CheckCircle2, Circle, BellRing,
+AlertTriangle,
+ArrowLeft,
+BellRing,
+CheckCircle2,
+ChevronDown,
+ChevronUp,
+Circle,
+Edit2,
+Radio,
+Sparkles,
+Video,
+X as XIcon,
 } from 'lucide-react-native';
-import { useTheme } from '@/lib/useTheme';
+import React,{ useState } from 'react';
 import {
-  useScheduledLives, scheduledLiveLabel,
-  type ScheduledLive,
-} from '@/lib/useScheduledLives';
+ActivityIndicator,
+Alert,
+FlatList,
+Modal,
+Pressable,
+RefreshControl,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 

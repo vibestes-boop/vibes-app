@@ -6,17 +6,17 @@
  *
  * Wird aus LiveUserSheet (Host) und DuettInviteCard (Viewer) verwendet.
  */
-import { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  Modal,
-  ScrollView,
-} from 'react-native';
-import { Rows2, Columns2, PictureInPicture2, Swords, X } from 'lucide-react-native';
 import type { DuetLayout } from '@/lib/useCoHost';
+import { Columns2,PictureInPicture2,Rows2,Swords,X } from 'lucide-react-native';
+import { useCallback,useState } from 'react';
+import {
+Modal,
+Pressable,
+ScrollView,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
 
 interface Props {
   visible: boolean;

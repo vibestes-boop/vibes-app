@@ -1,9 +1,9 @@
-import { View, Text, TouchableOpacity } from 'react-native';
-import { Rss, Trophy } from 'lucide-react-native';
-import * as Haptics from 'expo-haptics';
-import { getGuildStyles } from './guildStyles';
-import type { GuildViewMode } from './guildConstants';
 import { useTheme } from '@/lib/useTheme';
+import * as Haptics from 'expo-haptics';
+import { Rss,Trophy } from 'lucide-react-native';
+import { Text,TouchableOpacity,View } from 'react-native';
+import type { GuildViewMode } from './guildConstants';
+import { getGuildStyles } from './guildStyles';
 
 export function GuildViewToggle({
   mode,

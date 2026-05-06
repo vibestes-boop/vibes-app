@@ -14,23 +14,29 @@
  * Prompt-UX, Call zum Edge-Function, Error-Mapping und Preview-Rendering.
  */
 
-import { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, Pressable, Modal,
-  TextInput, ActivityIndicator, KeyboardAvoidingView,
-  Platform, ScrollView,
-} from 'react-native';
-import { Image } from 'expo-image';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Sparkles, X, RefreshCw, Check } from 'lucide-react-native';
-import {
-  useGenerateImage,
-  useAIImageQuota,
-  markAIImageConsumed,
-  type AIImagePurpose,
-  type AIImageSize,
+markAIImageConsumed,
+useAIImageQuota,
+useGenerateImage,
+type AIImagePurpose,
+type AIImageSize,
 } from '@/lib/useGenerateImage';
 import { useTheme } from '@/lib/useTheme';
+import { Image } from 'expo-image';
+import { Check,RefreshCw,Sparkles } from 'lucide-react-native';
+import { useEffect,useState } from 'react';
+import {
+ActivityIndicator,KeyboardAvoidingView,
+Modal,
+Platform,
+Pressable,
+ScrollView,
+StyleSheet,
+Text,
+TextInput,
+View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export interface AIImageSheetProps {
   visible: boolean;

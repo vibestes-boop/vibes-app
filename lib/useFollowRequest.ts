@@ -7,9 +7,9 @@
  * - useRespondRequest: annehmen / ablehnen
  * - useHasPendingRequest: prüft ob ich eine Anfrage an User X gesendet habe
  */
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from './supabase';
+import { useMutation,useQuery,useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from './authStore';
+import { supabase } from './supabase';
 
 // ── Typen ──────────────────────────────────────────────────────────────────
 export type FollowRequest = {

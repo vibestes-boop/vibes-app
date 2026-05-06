@@ -9,22 +9,22 @@
  * stattdessen "platziert") — Double-Pin ist durch Unique-Index geblockt.
  */
 
-import React from 'react';
-import {
-  Modal,
-  View,
-  Text,
-  Pressable,
-  StyleSheet,
-  ScrollView,
-  Dimensions,
-  ActivityIndicator,
-} from 'react-native';
-import { Image } from 'expo-image';
-import { X as XIcon, Package, Check } from 'lucide-react-native';
+import { useMyProducts,type Product } from '@/lib/useShop';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
-import { useMyProducts, type Product } from '@/lib/useShop';
+import { Image } from 'expo-image';
+import { Check,Package,X as XIcon } from 'lucide-react-native';
+import React from 'react';
+import {
+ActivityIndicator,
+Dimensions,
+Modal,
+Pressable,
+ScrollView,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 

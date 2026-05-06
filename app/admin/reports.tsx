@@ -5,17 +5,24 @@
  * - Pro Report: Inhalt anzeigen, akzeptieren oder ablehnen mit optionaler Notiz
  */
 
-import { useState, useCallback } from 'react';
+import { useAdminReports,useAdminResolveReport,type ContentReport } from '@/lib/useAdmin';
+import { useTheme } from '@/lib/useTheme';
+import { impactAsync,ImpactFeedbackStyle } from 'expo-haptics';
+import { useRouter } from 'expo-router';
+import { ArrowLeft,CheckCircle,Clock,FileText,Flag,XCircle } from 'lucide-react-native';
+import { useCallback,useState } from 'react';
 import {
-  View, Text, StyleSheet, Pressable, FlatList,
-  ActivityIndicator, Alert, TextInput, Modal, RefreshControl,
+ActivityIndicator,Alert,
+FlatList,
+Modal,
+Pressable,
+RefreshControl,
+StyleSheet,
+Text,
+TextInput,
+View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { ArrowLeft, Flag, CheckCircle, XCircle, Clock, FileText } from 'lucide-react-native';
-import { impactAsync, ImpactFeedbackStyle } from 'expo-haptics';
-import { useAdminReports, useAdminResolveReport, type ContentReport } from '@/lib/useAdmin';
-import { useTheme } from '@/lib/useTheme';
 
 type ReportTab = 'pending' | 'reviewed' | 'dismissed' | 'actioned';
 

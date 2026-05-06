@@ -1,27 +1,22 @@
-import { useState, useRef } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ActivityIndicator,
-  Alert,
-  ScrollView,
-} from 'react-native';
-import { Link, useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
-const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
-const Animated = { View: _animNS?.View ?? _animMod?.View };
-import { FadeInDown } from 'react-native-reanimated';
 import { supabase } from '@/lib/supabase';
-import { Mail, Lock, User, Zap } from 'lucide-react-native';
-import * as AppleAuthentication from 'expo-apple-authentication';
 import { appleSignIn } from '@/lib/useAppleSignIn';
-
+import * as AppleAuthentication from 'expo-apple-authentication';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Link,useRouter } from 'expo-router';
+import { Lock,Mail,User,Zap } from 'lucide-react-native';
+import { useRef,useState } from 'react';
+import {
+ActivityIndicator,
+Alert,
+KeyboardAvoidingView,
+Platform,
+Pressable,
+ScrollView,
+StyleSheet,
+Text,
+TextInput,
+View,
+} from 'react-native';
 export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -49,7 +44,7 @@ export default function RegisterScreen() {
 
     setLoading(true);
 
-    const { data, error } = await supabase.auth.signUp({
+    const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {

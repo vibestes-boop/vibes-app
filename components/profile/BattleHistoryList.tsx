@@ -14,15 +14,15 @@
  * Wird nur gerendert, wenn totalBattles > 0 (Tab wird sonst gar nicht gezeigt).
  */
 
-import React from 'react';
-import { View, Text, Pressable, ActivityIndicator } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import * as Haptics from 'expo-haptics';
-import { Swords, Trophy, X as XIcon, Minus } from 'lucide-react-native';
+import { Minus,Swords,Trophy,X as XIcon } from 'lucide-react-native';
+import React from 'react';
+import { ActivityIndicator,Pressable,Text,View } from 'react-native';
 
+import { useBattleHistory,type BattleHistoryEntry } from '@/lib/useBattleStats';
 import { useTheme } from '@/lib/useTheme';
-import { useBattleHistory, type BattleHistoryEntry } from '@/lib/useBattleStats';
 
 // ─── Helper ─────────────────────────────────────────────────────────
 

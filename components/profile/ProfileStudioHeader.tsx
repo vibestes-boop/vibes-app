@@ -1,8 +1,8 @@
-import { View, Text } from 'react-native';
-import { Bell, LogOut, Settings } from 'lucide-react-native';
+import { useTheme } from '@/lib/useTheme';
+import { Bell,LogOut,Settings } from 'lucide-react-native';
+import { Text,View } from 'react-native';
 import { HeaderButton } from './HeaderButton';
 import { getProfileStyles } from './profileStyles';
-import { useTheme } from '@/lib/useTheme';
 
 export function ProfileStudioHeader({
   username,

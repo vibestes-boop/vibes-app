@@ -1,8 +1,6 @@
-import { StyleSheet, Dimensions } from 'react-native';
-import { GRID_GAP, GRID_CELL_WIDTH } from './profileConstants';
 import type { ThemeColors } from '@/lib/theme';
-
-const { width: W } = Dimensions.get('window');
+import { StyleSheet } from 'react-native';
+import { GRID_CELL_WIDTH,GRID_GAP } from './profileConstants';
 
 // ── Factory — wird in jedem Aufruf von useProfileTheme() gecacht ──────────────
 // Damit StyleSheet.create() nur neu ausgeführt wird, wenn sich colors ändert.

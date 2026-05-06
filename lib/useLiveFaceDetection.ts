@@ -8,11 +8,11 @@
  * - Saubereres Interval-Management mit AbortFlag für race conditions
  */
 
-import { useRef, useCallback, useState, useEffect } from 'react';
-import type { Camera } from 'react-native-vision-camera';
-import * as FileSystem from 'expo-file-system';
-import { getStickerPosition, type FaceLandmarks } from './useFaceDetection';
 import FaceDetection from '@react-native-ml-kit/face-detection';
+import * as FileSystem from 'expo-file-system';
+import { useCallback,useEffect,useRef,useState } from 'react';
+import type { Camera } from 'react-native-vision-camera';
+import { getStickerPosition,type FaceLandmarks } from './useFaceDetection';
 
 export interface LiveStickerPosition {
   x: number;

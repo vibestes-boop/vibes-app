@@ -20,9 +20,9 @@
  *   reagieren (z.B. dezenten Hinweis statt generischer Fehler-Alert).
  */
 
-import { useCallback, useEffect, useState } from 'react';
-import { supabase } from './supabase';
+import { useCallback,useEffect,useState } from 'react';
 import { useAuthStore } from './authStore';
+import { supabase } from './supabase';
 
 export type AIImagePurpose =
   | 'shop_mockup'

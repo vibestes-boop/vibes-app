@@ -1,11 +1,11 @@
-import { Modal, Pressable, Text, View, ActivityIndicator, StyleSheet } from 'react-native';
-import { Pencil, Trash2, BarChart2, Pin, PinOff, Bookmark } from 'lucide-react-native';
-import { getProfileStyles } from './profileStyles';
-import { useTheme } from '@/lib/useTheme';
-import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAddHighlight } from '@/lib/useStoryHighlights';
+import { useTheme } from '@/lib/useTheme';
+import { BarChart2,Bookmark,Pencil,Pin,PinOff,Trash2 } from 'lucide-react-native';
+import { useState } from 'react';
+import { ActivityIndicator,Modal,Pressable,StyleSheet,Text,View } from 'react-native';
 import { HighlightNameSheet } from './HighlightNameSheet';
+import { getProfileStyles } from './profileStyles';
 
 type PostStats = {
   likes: number;

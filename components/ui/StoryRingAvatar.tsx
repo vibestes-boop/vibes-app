@@ -10,15 +10,15 @@
  *  2. Gap-Kreis             — TOTAL - 2*RING, Seitenhintergrundfarbe
  *  3. Avatar-Kreis          — size px, mit Bild oder Icon
  */
-import { View, Pressable, StyleSheet, Text } from 'react-native';
+import { useStoryViewerStore } from '@/lib/storyViewerStore';
+import { useGuildStories } from '@/lib/useStories';
+import { useTheme } from '@/lib/useTheme';
+import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { User } from 'lucide-react-native';
-import { useGuildStories } from '@/lib/useStories';
-import { useStoryViewerStore } from '@/lib/storyViewerStore';
-import { useTheme } from '@/lib/useTheme';
+import { Pressable,StyleSheet,View } from 'react-native';
 
 interface StoryRingAvatarProps {
   userId: string;

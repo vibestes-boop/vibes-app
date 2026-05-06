@@ -13,10 +13,14 @@
  * useDownloadDigitalProduct: Download-URL für digitale Produkte
  */
 
-import { useCallback, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from './supabase';
+import { useMutation,useQuery,useQueryClient } from '@tanstack/react-query';
+import { useCallback,useState } from 'react';
 import { useAuthStore } from './authStore';
+import { supabase } from './supabase';
+
+// ─── Download digitaler Produkte ──────────────────────────────────────────────
+
+import { Linking } from 'react-native';
 
 // ─── Typen ────────────────────────────────────────────────────────────────────
 
@@ -291,10 +295,6 @@ export function useMyOrders(role: 'buyer' | 'seller' = 'buyer') {
     },
   });
 }
-
-// ─── Download digitaler Produkte ──────────────────────────────────────────────
-
-import { Linking } from 'react-native';
 
 export function useDownloadDigitalProduct() {
   const [isLoading, setIsLoading] = useState(false);

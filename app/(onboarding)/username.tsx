@@ -1,17 +1,22 @@
-import { useState } from 'react';
-import {
-  View, Text, StyleSheet, TextInput, Pressable,
-  ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView,
-} from 'react-native';
-import { Image } from 'expo-image';
-import { router } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
-import { launchImageLibraryAsync } from 'expo-image-picker';
-import { Camera, User } from 'lucide-react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuthStore } from '@/lib/authStore';
 import { uploadAvatar } from '@/lib/uploadMedia';
+import { BlurView } from 'expo-blur';
+import { Image } from 'expo-image';
+import { launchImageLibraryAsync } from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
+import { Camera,User } from 'lucide-react-native';
+import { useState } from 'react';
+import {
+ActivityIndicator,KeyboardAvoidingView,Platform,
+Pressable,
+ScrollView,
+StyleSheet,
+Text,
+TextInput,
+View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function OnboardingUsername() {
   const insets = useSafeAreaInsets();

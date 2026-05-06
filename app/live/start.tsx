@@ -13,53 +13,57 @@
  *     linkLiveSessionToScheduled(sid, scheduledLiveId) aufgerufen, damit
  *     Follower beim Tap auf den Reminder-Push direkt in diese Session kommen.
  */
-import { useEffect, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  Pressable,
-  Alert,
-  ActivityIndicator,
-  Switch,
-  Modal,
-} from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { CameraView, useCameraPermissions } from 'expo-camera';
-import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
-import {
-  X, RefreshCw, Settings, ChevronRight,
-  CalendarClock, ChevronUp, ChevronDown,
-  Sparkles,
-} from 'lucide-react-native';
-import { Image as ExpoImage } from 'expo-image';
 import { AIImageSheet } from '@/components/ai/AIImageSheet';
+import ExpoGoPlaceholder from '@/components/live/ExpoGoPlaceholder';
+import { useLiveHost } from '@/lib/useLiveSession';
+import {
+linkLiveSessionToScheduled,
+scheduledLiveLabel,
+useScheduledLives,
+} from '@/lib/useScheduledLives';
+import { useWomenOnly } from '@/lib/useWomenOnly';
+import { BlurView } from 'expo-blur';
+import { CameraView,useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
+import { Image as ExpoImage } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useLocalSearchParams,useRouter } from 'expo-router';
+import {
+CalendarClock,
+ChevronDown,
+ChevronRight,
+ChevronUp,
+RefreshCw,Settings,
+Sparkles,
+X,
+} from 'lucide-react-native';
+import { useEffect,useRef,useState } from 'react';
+import {
+ActivityIndicator,
+Alert,
+Modal,
+Pressable,
+StyleSheet,
+Switch,
+Text,
+TextInput,
+View,
+} from 'react-native';
+import {
+useAnimatedStyle,
+useSharedValue,
+withRepeat,
+withSequence,
+withTiming,
+} from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 // react-native-reanimated: CJS require() vermeidet Hermes HBC Crash
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any;
 const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
-import {
-  useSharedValue,
-  useAnimatedStyle,
-  withSequence,
-  withTiming,
-  withRepeat,
-} from 'react-native-reanimated';
-import { useLiveHost } from '@/lib/useLiveSession';
-import { useWomenOnly } from '@/lib/useWomenOnly';
-import {
-  useScheduledLives,
-  linkLiveSessionToScheduled,
-  scheduledLiveLabel,
-} from '@/lib/useScheduledLives';
-import ExpoGoPlaceholder from '@/components/live/ExpoGoPlaceholder';
 // expo-constants: default import causes _interopRequireDefault TypeError in Hermes HBC
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const _cMod = require('expo-constants') as any; const Constants = _cMod?.default ?? _cMod;
 
 export default function LiveStartScreen() {

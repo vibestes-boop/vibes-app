@@ -1,6 +1,6 @@
-import { View, Text } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image as ImageIcon } from 'lucide-react-native';
+import { Text,View } from 'react-native';
 import { guildStyles as styles } from './guildStyles';
 
 export function EmptyGuildState({ guildColors }: { guildColors: [string, string] }) {

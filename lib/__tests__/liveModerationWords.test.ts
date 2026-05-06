@@ -17,7 +17,7 @@ import { containsBlockedWord } from '../liveModerationWords';
 // -----------------------------------------------------------------------------
 
 describe('containsBlockedWord — positives', () => {
-  const cases: Array<[string, string]> = [
+  const cases: [string, string][] = [
     // Basic hit pro Sprache
     ['halt die fresse du arschloch', 'DE: arschloch direkt'],
     ['was für ein wichser', 'DE: wichser'],
@@ -49,7 +49,7 @@ describe('containsBlockedWord — positives', () => {
 // -----------------------------------------------------------------------------
 
 describe('containsBlockedWord — negatives (regression anchors)', () => {
-  const cases: Array<[string, string]> = [
+  const cases: [string, string][] = [
     // Word-Start-Boundary greift: Letter davor → kein Match (ehemalige
     // Substring-False-Positives aus v1).
     ['schwichse', 'kein match auf "wichse" mit Letter davor'],

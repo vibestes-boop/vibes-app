@@ -2,24 +2,34 @@
  * app/shop/orders.tsx
  * Meine Bestellungen — Käufer-Ansicht + Verkäufer-Ansicht
  */
-import { useState } from 'react';
-import {
-  View, Text, StyleSheet, FlatList, Pressable,
-  ActivityIndicator, Alert, Dimensions,
-} from 'react-native';
-import { Image } from 'expo-image';
-import { router } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-  ArrowLeft, Package, Download, ShoppingBag,
-  Store, Clock, CheckCircle2, XCircle, RefreshCw,
-  Coins, ChevronRight, FileText, Star,
-} from 'lucide-react-native';
-import { useMyOrders, useDownloadDigitalProduct, type Order } from '@/lib/useShop';
 import { ReviewSheet } from '@/components/shop/ReviewSheet';
 import { useMyReview } from '@/lib/useProductReviews';
-
-const { width: SCREEN_W } = Dimensions.get('window');
+import { useDownloadDigitalProduct,useMyOrders,type Order } from '@/lib/useShop';
+import { Image } from 'expo-image';
+import { router } from 'expo-router';
+import {
+ArrowLeft,
+CheckCircle2,
+Clock,
+Coins,
+Download,
+FileText,
+Package,
+RefreshCw,
+ShoppingBag,
+Star,
+Store,
+XCircle
+} from 'lucide-react-native';
+import { useState } from 'react';
+import {
+ActivityIndicator,Alert,
+FlatList,Pressable,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // ─── Status Badge ──────────────────────────────────────────────────────────────
 const STATUS_CONFIG = {

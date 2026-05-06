@@ -1,15 +1,15 @@
-import { useRef, useCallback } from 'react';
-import { ScrollView, Pressable, Text, StyleSheet, View } from 'react-native';
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+import * as Haptics from 'expo-haptics';
+import { useCallback,useRef } from 'react';
+import { Pressable,ScrollView,StyleSheet,Text,View } from 'react-native';
+import {
+useAnimatedStyle,
+useSharedValue,
+withSequence,
+withTiming,
+} from 'react-native-reanimated';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
-import {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withSequence,
-} from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
 
 export type Category = {
   id: string | null;

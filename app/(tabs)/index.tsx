@@ -1,53 +1,53 @@
-import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
+import { useCallback,useEffect,useMemo,useRef,useState } from 'react';
 import {
-  View,
-  Text,
-  Pressable,
-  ActivityIndicator,
-  Platform,
-  RefreshControl,
-  FlatList,
-  ScrollView,
-  PanResponder,
-  Dimensions,
-  Animated as RNAnimated,
-  type ViewToken,
+ActivityIndicator,
+Dimensions,
+FlatList,
+PanResponder,
+Platform,
+Pressable,
+RefreshControl,
+Animated as RNAnimated,
+ScrollView,
+Text,
+View,
+type ViewToken,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 // reanimated: CJS require() is used to avoid _interopRequireDefault crash in Hermes HBC.
-import { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+import { useAnimatedStyle,useSharedValue,withTiming } from 'react-native-reanimated';
+
+import { FEED_VIDEO_VIEWABILITY,SCREEN_HEIGHT } from '@/components/feed/feedConstants';
+import { FeedItem } from '@/components/feed/FeedItem';
+import { FeedSkeleton } from '@/components/feed/FeedSkeleton';
+import { vibeFeedScreenStyles as styles } from '@/components/feed/feedStyles';
+import { FollowingEmptyState } from '@/components/feed/FollowingEmptyState';
+import type { FeedItemData } from '@/components/feed/types';
+import { LiveFeedCard } from '@/components/live/LiveFeedCard';
+import { UserProfileContent } from '@/components/profile/UserProfileContent';
+import { CategoryFilter } from '@/components/ui/CategoryFilter';
+import TuneMyVibeOverlay from '@/components/ui/TuneMyVibeOverlay';
+import { useAuthStore } from '@/lib/authStore';
+import { useFeedNavStore } from '@/lib/feedNavStore';
+import { useStoryViewerStore } from '@/lib/storyViewerStore';
+import { supabase } from '@/lib/supabase';
+import { useDwellTracker } from '@/lib/useDwellTracker';
+import { emptyFeedEngagementMaps,useFeedEngagement } from '@/lib/useFeedEngagement';
+import type { LiveSession } from '@/lib/useLiveSession';
+import { useActiveLiveSessions } from '@/lib/useLiveSession';
+import { getTitleFromUrl } from '@/lib/useMusicPicker';
+import { useFollowingFeed,useTrendingFeed,useVibeFeed } from '@/lib/usePosts';
+import { useGuildStories,type StoryGroup } from '@/lib/useStories';
+import { useTabRefreshStore,vibesFeedActions } from '@/lib/useTabRefresh';
+import { useVideoMute } from '@/lib/useVideoPreferences';
+import { impactAsync,ImpactFeedbackStyle } from 'expo-haptics';
+import { Image } from 'expo-image';
+import { useFocusEffect,useRouter } from 'expo-router';
+import { AlertTriangle,Clock,Search,SearchX,TrendingUp,Zap } from 'lucide-react-native';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any;
 const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
-
-import { impactAsync, ImpactFeedbackStyle } from 'expo-haptics';
-import { Search, AlertTriangle, SearchX, TrendingUp, Zap, Clock } from 'lucide-react-native';
-import TuneMyVibeOverlay from '@/components/ui/TuneMyVibeOverlay';
-import { useFocusEffect, useRouter } from 'expo-router';
-import { useVibeFeed, useTrendingFeed, useFollowingFeed } from '@/lib/usePosts';
-import { supabase } from '@/lib/supabase';
-import { useAuthStore } from '@/lib/authStore';
-import { CategoryFilter } from '@/components/ui/CategoryFilter';
-import { useDwellTracker } from '@/lib/useDwellTracker';
-import { useGuildStories, type StoryGroup } from '@/lib/useStories';
-import { useStoryViewerStore } from '@/lib/storyViewerStore';
-import { useFeedEngagement, emptyFeedEngagementMaps } from '@/lib/useFeedEngagement';
-import { useActiveLiveSessions } from '@/lib/useLiveSession';
-import type { LiveSession } from '@/lib/useLiveSession';
-import { useTabRefreshStore, vibesFeedActions } from '@/lib/useTabRefresh';
-import { FeedItem } from '@/components/feed/FeedItem';
-import { Image } from 'expo-image';
-import { FeedSkeleton } from '@/components/feed/FeedSkeleton';
-import { vibeFeedScreenStyles as styles } from '@/components/feed/feedStyles';
-import { FEED_VIDEO_VIEWABILITY, SCREEN_HEIGHT } from '@/components/feed/feedConstants';
-import type { FeedItemData } from '@/components/feed/types';
-import { UserProfileContent } from '@/components/profile/UserProfileContent';
-import { LiveFeedCard } from '@/components/live/LiveFeedCard';
-import { useFeedNavStore } from '@/lib/feedNavStore';
-import { useVideoMute } from '@/lib/useVideoPreferences';
-import { getTitleFromUrl } from '@/lib/useMusicPicker';
-import { FollowingEmptyState } from '@/components/feed/FollowingEmptyState';
 
 type FeedRow =
   | { __type: 'post'; id: string; data: FeedItemData }
@@ -343,7 +343,10 @@ export default function VibeFeedScreen() {
 
   // Trending-Fallback: wenn personalisierter Feed leer ist und kein Tag-Filter aktiv
   const isTrending = feedMode === 'foryou' && !isLoading && !isError && allPosts.length === 0 && !activeTag && (trendingPosts?.length ?? 0) > 0;
-  const activePosts = isTrending ? (trendingPosts ?? []) : allPosts;
+  const activePosts = useMemo(
+    () => (isTrending ? (trendingPosts ?? []) : allPosts),
+    [isTrending, trendingPosts, allPosts]
+  );
 
   const feedData = useMemo<FeedItemData[]>(
     () =>
@@ -465,15 +468,6 @@ export default function VibeFeedScreen() {
     },
     // Nur stabile Callbacks als Dependencies — keine volatilen Werte
     [onMuteToggle, handleOpenStory, onOpenTune]
-  );
-
-  const getItemLayout = useCallback(
-    (_: unknown, index: number) => {
-      // Alle Items (Posts UND Lives) haben SCREEN_HEIGHT (für korrektes pagingEnabled-Snapping)
-      const offset = index * SCREEN_HEIGHT;
-      return { length: SCREEN_HEIGHT, offset, index };
-    },
-    []
   );
 
   return (

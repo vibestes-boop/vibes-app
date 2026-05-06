@@ -98,7 +98,7 @@ function compileWordRegex(word: string): RegExp {
 }
 
 /** Precompile globale Liste einmal beim Modul-Load */
-const GLOBAL_REGEXES: ReadonlyArray<RegExp> = GLOBAL_BLOCKED_WORDS
+const GLOBAL_REGEXES: readonly RegExp[] = GLOBAL_BLOCKED_WORDS
   .map((w) => w.trim())
   .filter(Boolean)
   .map(compileWordRegex);

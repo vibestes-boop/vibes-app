@@ -3,15 +3,15 @@
  * Zeigt Color-Filter + Sticker als scrollbare Chips
  */
 
-import React, { useState } from 'react';
+import { FILTER_CATALOG,type CameraFilter,type FilterCategory } from '@/lib/cameraFilters';
+import React,{ useState } from 'react';
 import {
-  ScrollView,
-  TouchableOpacity,
-  Text,
-  View,
-  StyleSheet,
+ScrollView,
+StyleSheet,
+Text,
+TouchableOpacity,
+View,
 } from 'react-native';
-import { FILTER_CATALOG, type CameraFilter, type FilterCategory } from '@/lib/cameraFilters';
 
 interface FilterBarProps {
   selectedFilter: CameraFilter | null;

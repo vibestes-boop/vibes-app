@@ -1,7 +1,7 @@
+import { useMutation,useQuery,useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from './supabase';
 import { useAuthStore } from './authStore';
+import { supabase } from './supabase';
 
 export type AppNotification = {
   id: string;

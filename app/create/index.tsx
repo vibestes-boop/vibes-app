@@ -1,95 +1,113 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { useModerateImage } from '@/lib/useModerate';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  Modal,
-  Alert,
-  ScrollView,
-  TextInput,
-  KeyboardAvoidingView,
-  Platform,
-  Dimensions,
-  TouchableWithoutFeedback,
-  Keyboard,
-  PanResponder,
-  Animated as RNAnimated,
-} from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import {
-  requestMediaLibraryPermissionsAsync,
-  launchImageLibraryAsync,
-  type ImagePickerAsset,
-} from 'expo-image-picker';
 import { Image } from 'expo-image';
-import type { SkPath } from '@shopify/react-native-skia';
+import {
+launchImageLibraryAsync,
+requestMediaLibraryPermissionsAsync,
+type ImagePickerAsset,
+} from 'expo-image-picker';
+import { useLocalSearchParams,useRouter } from 'expo-router';
+import React,{ useCallback,useEffect,useRef,useState } from 'react';
+import {
+Alert,
+Dimensions,
+Keyboard,
+KeyboardAvoidingView,
+Modal,
+PanResponder,
+Platform,
+Pressable,
+Animated as RNAnimated,
+ScrollView,
+StyleSheet,
+Text,
+TextInput,
+TouchableWithoutFeedback,
+View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { AIImageSheet } from '@/components/ai/AIImageSheet';
+import { MusicPickerSheet } from '@/components/camera/MusicPickerSheet';
+import type { PostSettingsState } from '@/components/create';
+import { CreateProgressBar } from '@/components/create';
+import { useAuthStore } from '@/lib/authStore';
+import type { ColorFilterId } from '@/lib/cameraFilters';
+import { COLOR_FILTERS,FILTER_CATALOG } from '@/lib/cameraFilters';
+import { supabase } from '@/lib/supabase';
+import { generateAndUploadThumbnail,uploadPostMedia } from '@/lib/uploadMedia';
+import { useDrafts } from '@/lib/useDrafts';
+import type { MusicTrack } from '@/lib/useMusicPicker';
+import { MUSIC_LIBRARY } from '@/lib/useMusicPicker';
+import { usePostDraftsCloud } from '@/lib/usePostDraftsCloud';
+import { useScheduledPosts } from '@/lib/useScheduledPosts';
+import { useQueryClient } from '@tanstack/react-query';
+import { useVideoPlayer,VideoView } from 'expo-video';
+import { getThumbnailAsync } from 'expo-video-thumbnails';
+import {
+ArrowRight,
+CheckCircle,
+ChevronDown,
+ChevronRight,
+ChevronUp,
+Clock as ClockIcon,
+Download,
+FileText as FileTextIcon,
+FlipHorizontal,
+Globe,
+Lock,
+MessageCircle,
+Music2,
+Pencil,
+Repeat2,
+RotateCcw,
+Scissors,
+Settings2,
+Sliders,
+Smile,
+Sparkles,
+Type,
+Users,
+X,
+} from 'lucide-react-native';
+import { Gesture,GestureDetector,GestureHandlerRootView } from 'react-native-gesture-handler';
+import {
+Easing,
+runOnJS,
+useAnimatedStyle,
+useSharedValue,
+withDelay,
+withSequence,
+withSpring,withTiming,
+} from 'react-native-reanimated';
 // Skia sicher laden — alle Export-Pfade ausprobieren (Metro vs. ESM interop).
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const _skiaRaw: any = (() => {
+// eslint-disable-next-line @typescript-eslint/no-require-imports
   try { return require('@shopify/react-native-skia'); }
   catch { return {}; }
 })();
 // Named exports können entweder direkt oder unter .default liegen
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const _resolveSkia = (key: string): any =>
   _skiaRaw[key] ?? _skiaRaw?.default?.[key] ?? undefined;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const Canvas      = _resolveSkia('Canvas')      as any;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const SkImg       = _resolveSkia('Image')        as any;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const ColorMatrix = _resolveSkia('ColorMatrix')  as any;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const SkiaPathEl  = _resolveSkia('Path')         as any;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const Skia        = _resolveSkia('Skia')         as any;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const useImage: (uri: string | null) => any = _resolveSkia('useImage') ?? (() => null);
 const SKIA_READY = !!(Canvas && SkImg && Skia);
 __DEV__ && console.log('[Skia] ready:', SKIA_READY, '| Canvas:', !!Canvas, '| Skia:', !!Skia);
-
-import { supabase } from '@/lib/supabase';
-import { uploadPostMedia, generateAndUploadThumbnail } from '@/lib/uploadMedia';
-import { useAuthStore } from '@/lib/authStore';
-import { useGuildInfo } from '@/lib/usePosts';
-import { useQueryClient } from '@tanstack/react-query';
-import { useDrafts } from '@/lib/useDrafts';
-import { usePostDraftsCloud } from '@/lib/usePostDraftsCloud';
-import { useScheduledPosts } from '@/lib/useScheduledPosts';
-import {
-  Music2, X, ChevronRight,
-  Lock, Users, Globe, MessageCircle, Download, Repeat2,
-  CheckCircle, ArrowRight, Settings2, Type, Smile, Sliders,
-  FlipHorizontal, Scissors, Pencil, RotateCcw,
-  Clock as ClockIcon, FileText as FileTextIcon,
-  ChevronUp, ChevronDown, Sparkles,
-} from 'lucide-react-native';
-import type { MusicTrack } from '@/lib/useMusicPicker';
-import { MUSIC_LIBRARY } from '@/lib/useMusicPicker';
-import { MusicPickerSheet } from '@/components/camera/MusicPickerSheet';
-import { AIImageSheet } from '@/components/ai/AIImageSheet';
-import { CreateProgressBar } from '@/components/create';
-import type { PostSettingsState } from '@/components/create';
-import { useWomenOnly } from '@/lib/useWomenOnly';
-import { useVideoPlayer, VideoView } from 'expo-video';
-import { getThumbnailAsync } from 'expo-video-thumbnails';
-import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
-import { COLOR_FILTERS, FILTER_CATALOG } from '@/lib/cameraFilters';
-import type { ColorFilterId } from '@/lib/cameraFilters';
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any;
 const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
-import {
-  useSharedValue, useAnimatedStyle,
-  withSpring, withTiming, withSequence, withDelay, Easing,
-  runOnJS,
-} from 'react-native-reanimated';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 
@@ -455,7 +473,8 @@ const fs = StyleSheet.create({
 const DRAW_COLORS = ['#FFFFFF','#000000','#FF3B30','#FF9500','#FFCC00','#34C759','#00C7BE','#007AFF','#AF52DE','#FF2D55'];
 const DRAW_SIZES  = [3, 6, 12, 20];
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const _svg: any = (() => { try { return require('react-native-svg'); } catch { return {}; } })();
 const Svg        = (_svg?.default?.default ?? _svg?.default ?? _svg)?.Svg         as any;
 const SvgPath    = (_svg?.default?.default ?? _svg?.default ?? _svg)?.Path        as any;
@@ -834,7 +853,7 @@ function VideoTrimSheet({
   const [startSec, setStartSec] = useState(0);
   const [endSec, setEndSec] = useState(0);
   const [speedFactor, setSpeedFactor] = useState<0.5|1|1.5|2>(1);
-  const [isPlaying, setIsPlaying] = useState(true);
+  const [, setIsPlaying] = useState(true);
   const leftPos = useSharedValue(0);
   const rightPos = useSharedValue(STRIP_W - HANDLE_W);
 
@@ -1100,7 +1119,7 @@ function TrashZone({ visible, isOver }: { visible: boolean; isOver: boolean }) {
     RNAnimated.timing(opacityAnim, {
       toValue: visible ? 1 : 0, duration: 200, useNativeDriver: true,
     }).start();
-  }, [visible]);
+  }, [visible, opacityAnim]);
 
   useEffect(() => {
     // Kein Spring (federt) — einfaches Timing für weiche Skalierung
@@ -1109,7 +1128,7 @@ function TrashZone({ visible, isOver }: { visible: boolean; isOver: boolean }) {
       duration: 180,
       useNativeDriver: true,
     }).start();
-  }, [isOver]);
+  }, [isOver, scaleAnim]);
 
   return (
     <RNAnimated.View
@@ -1668,17 +1687,16 @@ export default function CreatePostScreen() {
   const queryClient = useQueryClient();
   const { saveDraft } = useDrafts();
   const { moderate } = useModerateImage();
-  const { data: guildInfo } = useGuildInfo(profile?.guild_id ?? null);
   // v1.20 — Cloud-Drafts + Scheduled-Posts
   const { saveDraft: saveCloudDraft, fetchDraft, deleteDraft: deleteCloudDraft } = usePostDraftsCloud();
   const { schedulePost } = useScheduledPosts();
 
   const { mediaUri, mediaType: mediaTypeParam, caption: captionParam,
-          audioUrl, audioTitle, audioVolume: audioVolumeParam,
+          audioUrl, audioVolume: audioVolumeParam,
           draftId } =
     useLocalSearchParams<{
       mediaUri?: string; mediaType?: string; caption?: string;
-      audioUrl?: string; audioTitle?: string; audioVolume?: string;
+      audioUrl?: string; audioVolume?: string;
       draftId?: string;
     }>();
 
@@ -1693,7 +1711,6 @@ export default function CreatePostScreen() {
   // Caption & Tags (bearbeitet im DetailsSheet)
   const [caption, setCaption]           = useState(captionParam ?? '');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const { canAccessWomenOnly } = useWomenOnly();
   const [postSettings, setPostSettings] = useState<PostSettingsState>({
     privacy: 'public', allowComments: true, allowDownload: true, allowDuet: true, womenOnly: false,
   });

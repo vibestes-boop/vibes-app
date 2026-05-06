@@ -1,20 +1,24 @@
-import {
-  View, Text, StyleSheet, ScrollView, Pressable,
-  ActivityIndicator,
-} from 'react-native';
+import type { ThemeColors } from '@/lib/theme';
+import { useGuildLeaderboard,type LeaderboardMember,type LeaderboardPost } from '@/lib/useGuildLeaderboard';
+import { useTheme } from '@/lib/useTheme';
+import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+import { Flame,Timer,Trophy } from 'lucide-react-native';
+import {
+ActivityIndicator,
+Pressable,
+ScrollView,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
+import { FadeInDown } from 'react-native-reanimated';
+import { VideoGridThumb } from './VideoGridThumb';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
-import { FadeInDown } from 'react-native-reanimated';
-import { Timer, Flame, Trophy } from 'lucide-react-native';
-import * as Haptics from 'expo-haptics';
-import { useGuildLeaderboard, type LeaderboardPost, type LeaderboardMember } from '@/lib/useGuildLeaderboard';
-import { VideoGridThumb } from './VideoGridThumb';
-import { useTheme } from '@/lib/useTheme';
-import type { ThemeColors } from '@/lib/theme';
 
 // ── Medaillen ──────────────────────────────────────────────────────────────
 const MEDAL = ['🥇', '🥈', '🥉'];

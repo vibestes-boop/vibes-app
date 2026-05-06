@@ -9,7 +9,7 @@
  *  - EVERYTHING else: lazy require() with string literals inside component bodies.
  *    This avoids ANY module-init-time failure (tanstack-query, zustand, supabase, etc.)
  */
-/* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-require-imports */
 import { useEffect, useRef, useState } from 'react';
 import { View, Text, ActivityIndicator, StyleSheet, useColorScheme } from 'react-native';
 import {
@@ -43,7 +43,7 @@ function AuthGuard() {
     // Falls Hydration bereits abgeschlossen ist
     if ((useAuthStore as any).persist?.hasHydrated?.()) setHydrated(true);
     return () => unsub?.();
-  }, []);
+  }, [useAuthStore]);
 
   useEffect(() => {
     const safetyTimer = setTimeout(() => {
@@ -265,7 +265,6 @@ function PushNotificationsProvider() {
 function ThemeProvider({ children }: { children: React.ReactNode }) {
   const { Appearance } = require('react-native') as typeof import('react-native');
   const scheme = useColorScheme() ?? Appearance.getColorScheme() ?? 'dark';
-  // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
   const { useThemeStore } = require('@/lib/themeStore') as any;
   const setSystemScheme = useThemeStore((s: any) => s.setSystemScheme);
   const colors = useThemeStore((s: any) => s.colors);
@@ -366,7 +365,7 @@ const splashStyles = StyleSheet.create({
  */
 export default function RootLayoutFull() {
   // Load Inter font — must be called before any render
-  const [fontsLoaded] = useFonts({
+  useFonts({
     Inter_400Regular,
     Inter_600SemiBold,
     Inter_700Bold,

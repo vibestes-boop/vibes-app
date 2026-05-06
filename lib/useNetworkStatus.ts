@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect,useRef,useState } from 'react';
 // expo-network: 'import * as' → _interopRequireWildcard → TypeError in Hermes HBC.
 // Load lazily inside the async check function via require() to bypass wildcard interop.
 
@@ -19,7 +19,7 @@ export function useNetworkStatus(): boolean | null {
 
     const check = async (): Promise<boolean> => {
       try {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
         const Network = require('expo-network') as typeof import('expo-network');
         const state = await Network.getNetworkStateAsync();
         const connected = (state.isConnected ?? true) && (state.isInternetReachable ?? true);

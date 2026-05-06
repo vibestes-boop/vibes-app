@@ -4,28 +4,28 @@
  * Zeigt Profil-Info, Follow-Button, @ Erwähnen, Profil öffnen und User melden.
  * User bleibt dabei im Live-Stream — kein Navigation-Leave.
  */
-import { useEffect, useRef, useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  Modal,
-  Animated,
-  ActivityIndicator,
-  Dimensions,
-  Alert,
-} from 'react-native';
+import { useAuthStore } from '@/lib/authStore';
+import { supabase } from '@/lib/supabase';
+import type { DuetLayout } from '@/lib/useCoHost';
+import { useDuettInviter } from '@/lib/useDuett';
+import { useFollow } from '@/lib/useFollow';
+import { useLiveModeratorActions,useLiveModerators } from '@/lib/useLiveModerators';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { UserPlus, UserCheck, AtSign, Flag, X, ExternalLink, Swords, Hourglass, Shield, ShieldOff } from 'lucide-react-native';
-import { supabase } from '@/lib/supabase';
-import { useAuthStore } from '@/lib/authStore';
-import { useFollow } from '@/lib/useFollow';
-import { useDuettInviter } from '@/lib/useDuett';
-import type { DuetLayout } from '@/lib/useCoHost';
+import { AtSign,ExternalLink,Flag,Hourglass,Shield,ShieldOff,Swords,UserCheck,UserPlus,X } from 'lucide-react-native';
+import { useCallback,useEffect,useRef,useState } from 'react';
+import {
+ActivityIndicator,
+Alert,
+Animated,
+Dimensions,
+Modal,
+Pressable,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
 import { DuettLayoutPicker } from './DuettLayoutPicker';
-import { useLiveModerators, useLiveModeratorActions } from '@/lib/useLiveModerators';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 
@@ -364,12 +364,6 @@ export function LiveUserSheet({ userId, onClose, onMention, onReport, duetInvite
   );
 }
 
-function fmt(n: number): string {
-  if (!n) return '0';
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return String(n);
-}
 
 const s = StyleSheet.create({
   backdrop: {

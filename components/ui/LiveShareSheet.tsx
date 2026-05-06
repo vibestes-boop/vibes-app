@@ -5,43 +5,43 @@
  * Layer 2: External apps (WhatsApp, Telegram, SMS, etc.)
  * Layer 3: Function buttons (Link kopieren, Story, Melden, etc.)
  */
-import { useEffect, useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  ScrollView,
-  Linking,
-  Share,
-  Modal,
-  Alert,
-} from 'react-native';
-import { Image } from 'expo-image';
+import { useAuthStore } from '@/lib/authStore';
+import { supabase } from '@/lib/supabase';
 import { setStringAsync as clipboardSetString } from 'expo-clipboard';
+import { Image } from 'expo-image';
+import {
+BookmarkPlus,
+Flag,
+HelpCircle,
+Link2,
+MessageCircle,
+QrCode,
+Send,
+ThumbsUp,
+X,
+} from 'lucide-react-native';
+import { useCallback,useEffect,useState } from 'react';
+import {
+Alert,
+Linking,
+Modal,
+Pressable,
+ScrollView,
+Share,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
+import {
+FadeIn,
+FadeOut,
+SlideInDown,
+SlideOutDown,
+} from 'react-native-reanimated';
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
-import {
-  FadeIn,
-  FadeOut,
-  SlideInDown,
-  SlideOutDown,
-} from 'react-native-reanimated';
-import {
-  Link2,
-  MessageCircle,
-  Send,
-  Flag,
-  HelpCircle,
-  ThumbsUp,
-  X,
-  QrCode,
-  BookmarkPlus,
-} from 'lucide-react-native';
-import { supabase } from '@/lib/supabase';
-import { useAuthStore } from '@/lib/authStore';
 
 
 // ─── Types ────────────────────────────────────────────────────────────────────

@@ -1,35 +1,35 @@
-import { useState, type ElementType } from 'react';
-import {
-  View,
-  Text,
-  Modal,
-  Pressable,
-  ScrollView,
-  TextInput,
-  Alert,
-  Share,
-  Platform,
-  Linking,
-} from 'react-native';
-import { Image } from 'expo-image';
-import {
-  Search,
-  Send,
-  Share2,
-  Copy,
-  UserPlus,
-  UserCheck,
-  EyeOff,
-  Flag,
-  Download,
-  Check,
-} from 'lucide-react-native';
+import { useAuthStore } from '@/lib/authStore';
+import { supabase } from '@/lib/supabase';
+import { useOrCreateConversation,useSendMessage } from '@/lib/useMessages';
+import { useReport } from '@/lib/useReport';
 import { useQuery } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
-import { supabase } from '@/lib/supabase';
-import { useAuthStore } from '@/lib/authStore';
-import { useOrCreateConversation, useSendMessage } from '@/lib/useMessages';
-import { useReport } from '@/lib/useReport';
+import { Image } from 'expo-image';
+import {
+Check,
+Copy,
+Download,
+EyeOff,
+Flag,
+Search,
+Send,
+Share2,
+UserCheck,
+UserPlus,
+} from 'lucide-react-native';
+import { useState,type ElementType } from 'react';
+import {
+Alert,
+Linking,
+Modal,
+Platform,
+Pressable,
+ScrollView,
+Share,
+Text,
+TextInput,
+View,
+} from 'react-native';
 import { postShareModalStyles as pss } from './feedStyles';
 
 const POST_APP_OPTIONS = [

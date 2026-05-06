@@ -9,10 +9,10 @@
  *  🥉 @akhmat08      340 💎
  */
 
-import { useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Modal } from 'react-native';
-import { Image } from 'expo-image';
 import type { TopGifter } from '@/lib/useGifts';
+import { Image } from 'expo-image';
+import { useState } from 'react';
+import { Modal,Pressable,StyleSheet,Text,View } from 'react-native';
 
 interface Props {
   topGifters: TopGifter[];

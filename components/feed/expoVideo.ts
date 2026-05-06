@@ -11,4 +11,4 @@ try {
 }
 
 export const USE_EXPO_VIDEO = VideoView !== null && useVideoPlayer !== null;
-export { VideoView, useVideoPlayer };
+export { VideoView,useVideoPlayer };

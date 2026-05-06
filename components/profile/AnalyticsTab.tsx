@@ -3,26 +3,37 @@
  * Premium Monochrome Design — kein Pink/Lila, maximaler Informationsgehalt
  */
 
-import React, { useMemo } from 'react';
 import {
-  View, Text, Pressable, ScrollView,
-  ActivityIndicator, StyleSheet, Dimensions,
-} from 'react-native';
-import { Image } from 'expo-image';
-import Svg, { Rect, Text as SvgText, Line, Circle } from 'react-native-svg';
-import { LinearGradient } from 'expo-linear-gradient';
-import {
-  Eye, Heart, MessageCircle, Users, TrendingUp, TrendingDown,
-  BarChart2, ArrowUpRight, ArrowDownRight, Minus, Gem, Gift,
-} from 'lucide-react-native';
-import { impactAsync, ImpactFeedbackStyle } from 'expo-haptics';
-import {
-  useCreatorOverview, useCreatorTopPosts, useFollowerGrowth,
-  useCreatorEarnings, useCreatorGiftHistory,
-  fmtNum, formatDelta,
-  type AnalyticsPeriod, type ContentSortBy,
+fmtNum,formatDelta,
+useCreatorEarnings,useCreatorGiftHistory,
+useCreatorOverview,useCreatorTopPosts,useFollowerGrowth,
+type AnalyticsPeriod,type ContentSortBy,
 } from '@/lib/useAnalytics';
 import { useTheme } from '@/lib/useTheme';
+import { impactAsync,ImpactFeedbackStyle } from 'expo-haptics';
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import {
+ArrowDownRight,
+ArrowUpRight,
+BarChart2,
+Eye,
+Gem,
+Heart,MessageCircle,
+Minus,
+TrendingUp,
+Users
+} from 'lucide-react-native';
+import React from 'react';
+import {
+ActivityIndicator,
+Dimensions,
+Pressable,ScrollView,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
+import Svg,{ Line,Rect,Text as SvgText } from 'react-native-svg';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const CHART_W = SCREEN_W - 32;

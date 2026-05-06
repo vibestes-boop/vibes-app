@@ -9,8 +9,8 @@
  *   await detectFace('file:///path/to/photo.jpg');
  */
 
-import FaceDetection, { Face } from '@react-native-ml-kit/face-detection';
-import { useState, useCallback } from 'react';
+import FaceDetection,{ Face } from '@react-native-ml-kit/face-detection';
+import { useCallback,useState } from 'react';
 
 export interface FaceLandmarks {
   /** Bounding Box des Gesichts (relativ zum Bild, 0-1) */

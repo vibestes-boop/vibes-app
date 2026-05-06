@@ -1,68 +1,67 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Dimensions, Animated as RNAnimated, PanResponder } from 'react-native';
+import React,{ useCallback,useEffect,useRef,useState } from 'react';
+import { Dimensions,PanResponder,Pressable,Animated as RNAnimated,StyleSheet,Text,View } from 'react-native';
 
-import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
-// reanimated: CJS require() vermeidet _interopRequireDefault Crash in Hermes HBC
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
-const _animMod = require('react-native-reanimated') as any;
-const _animNS = _animMod?.default ?? _animMod;
-const Animated = { View: _animNS?.View ?? _animMod?.View };
-import {
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-  withSequence,
-  withSpring,
-  withDelay,
-  withRepeat,
-  interpolate,
-  Extrapolation,
-  Easing,
-} from 'react-native-reanimated';
-import {
-  Heart,
-  Share2,
-  Repeat2,
-  MoreVertical,
-  UserCheck,
-  Volume2,
-  VolumeX,
-  Pause,
-  Play,
-  Users,
-  Lock,
-  CheckCircle2,
-  Music2,
-} from 'lucide-react-native';
-import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import CommentsSheet from '@/components/ui/CommentsSheet';
 import { RichText } from '@/components/ui/RichText';
-import { useLike } from '@/lib/useLike';
 import { useFollow } from '@/lib/useFollow';
-import { useRepost, type UseRepostBatch } from '@/lib/useRepost';
+import { useLike } from '@/lib/useLike';
+import { useRepost,type UseRepostBatch } from '@/lib/useRepost';
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import {
+CheckCircle2,
+Heart,
+Lock,
+MoreVertical,
+Music2,
+Pause,
+Play,
+Repeat2,
+Share2,
+Users,
+Volume2,
+VolumeX
+} from 'lucide-react-native';
+import {
+Easing,
+Extrapolation,
+interpolate,
+useAnimatedStyle,
+useSharedValue,
+withRepeat,
+withSequence,
+withSpring,
+withTiming
+} from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { LikersSheet } from '@/components/ui/LikersSheet';
+import { WomenOnlyBlur } from '@/components/women-only/WomenOnlyBlur';
 import { useAuthStore } from '@/lib/authStore';
 import type { FeedEngagementMaps } from '@/lib/useFeedEngagement';
 import type { UseLikeBatch } from '@/lib/useLike';
 import type { StoryGroup } from '@/lib/useStories';
-import { impactAsync, notificationAsync, ImpactFeedbackStyle, NotificationFeedbackType } from 'expo-haptics';
-import { PostShareModal } from './PostShareModal';
-import { PostOptionsModal } from './PostOptionsModal';
-import { LikersSheet } from '@/components/ui/LikersSheet';
-import PostLongPressSheet from './PostLongPressSheet';
-import { FallbackFeedVideo, NativeFeedVideo, USE_EXPO_VIDEO, type FeedVideoSeekHandle } from './FeedVideo';
-import { WomenOnlyBlur } from '@/components/women-only/WomenOnlyBlur';
 import { useWomenOnly } from '@/lib/useWomenOnly';
+import { impactAsync,ImpactFeedbackStyle,notificationAsync,NotificationFeedbackType } from 'expo-haptics';
 import {
-  ActionButton,
-  BookmarkButton,
-  CommentButton,
-  LikeButton,
-  VoiceButton,
+ActionButton,
+BookmarkButton,
+CommentButton,
+LikeButton
 } from './FeedActionButtons';
 import { feedItemStyles as styles } from './feedStyles';
+import { FallbackFeedVideo,NativeFeedVideo,USE_EXPO_VIDEO,type FeedVideoSeekHandle } from './FeedVideo';
+import PostLongPressSheet from './PostLongPressSheet';
+import { PostOptionsModal } from './PostOptionsModal';
+import { PostShareModal } from './PostShareModal';
+
+import type { FeedItemData } from './types';
+// reanimated: CJS require() vermeidet _interopRequireDefault Crash in Hermes HBC
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const _animMod = require('react-native-reanimated') as any;
+const _animNS = _animMod?.default ?? _animMod;
+const Animated = { View: _animNS?.View ?? _animMod?.View };
 
 // ─── VideoProgressBar ───────────────────────────────────────────────────────────────
 // Isolierte Komponente — Video-Ticks (bis 60/s) lösen NUR hier einen Re-Render aus.
@@ -245,8 +244,6 @@ const pbStyles = StyleSheet.create({
     elevation: 4,
   },
 });
-
-import type { FeedItemData } from './types';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 // Muss mit CommentsSheet SHEET_TOP (0.22) übereinstimmen:
@@ -521,6 +518,7 @@ export const FeedItem = React.memo(function FeedItem({
 
     (async () => {
       try {
+// eslint-disable-next-line @typescript-eslint/no-require-imports
         const avMod = require('expo-av') as any;
         const { Audio } = avMod;
         await Audio.setAudioModeAsync({

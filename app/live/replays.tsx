@@ -2,17 +2,19 @@
  * app/live/replays.tsx
  * Live Replays — vergangene Lives nachschauen
  */
-import { useState } from 'react';
-import {
-  View, Text, StyleSheet, FlatList, Pressable,
-  ActivityIndicator,
-} from 'react-native';
+import { supabase } from '@/lib/supabase';
+import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
+import { ArrowLeft,Clock,Eye,Play,Users } from 'lucide-react-native';
+import {
+ActivityIndicator,
+FlatList,Pressable,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Play, Eye, Clock, Users } from 'lucide-react-native';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
 
 // ─── Typen ───────────────────────────────────────────────────────────────────
 interface ReplaySession {

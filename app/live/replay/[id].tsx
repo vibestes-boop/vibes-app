@@ -13,25 +13,38 @@
  *   Back-Button, Host-Header, Share-Button, View-Count.
  */
 
-import React, { useEffect, useRef, useState } from 'react';
-import {
-  View, Text, StyleSheet, Pressable, ActivityIndicator, Share,
-} from 'react-native';
-import { Image } from 'expo-image';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useVideoPlayer, VideoView } from 'expo-video';
-import {
-  ArrowLeft, Share2, Eye, Clock, Play, Pause, AlertCircle, Radio, Scissors,
-} from 'lucide-react-native';
-import * as Haptics from 'expo-haptics';
 import { supabase } from '@/lib/supabase';
-import { useQuery } from '@tanstack/react-query';
-import {
-  useReplay, useReplayForSession, incrementReplayViews, isReplayPlayable,
-  type LiveRecording,
-} from '@/lib/useLiveRecording';
 import { useSessionClipHotspots } from '@/lib/useLiveClips';
+import {
+incrementReplayViews,isReplayPlayable,
+useReplay,useReplayForSession,
+type LiveRecording,
+} from '@/lib/useLiveRecording';
+import { useQuery } from '@tanstack/react-query';
+import * as Haptics from 'expo-haptics';
+import { Image } from 'expo-image';
+import { useLocalSearchParams,useRouter } from 'expo-router';
+import { useVideoPlayer,VideoView } from 'expo-video';
+import {
+AlertCircle,
+ArrowLeft,
+Clock,
+Eye,
+Pause,
+Play,
+Radio,Scissors,
+Share2,
+} from 'lucide-react-native';
+import React,{ useEffect,useRef,useState } from 'react';
+import {
+ActivityIndicator,
+Pressable,
+Share,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // ─── Minimaler Host-Lookup ──────────────────────────────────────────────────
 
@@ -124,7 +137,6 @@ export default function ReplayScreen() {
 
   // URL: neu aus live_recordings, sonst legacy replay_url
   const videoUrl = recording?.fileUrl ?? meta.data?.replay_url ?? null;
-  const thumbnailUrl = recording?.thumbnailUrl ?? meta.data?.thumbnail_url ?? null;
   const isPlayable   = (recording && isReplayPlayable(recording)) || !!meta.data?.replay_url;
 
   // View-Count einmalig inkrementieren sobald das Video initialisiert ist

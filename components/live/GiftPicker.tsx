@@ -5,32 +5,33 @@
  * Unterstützt Light & Dark Mode. Coin-Balance + Katalog + Senden.
  */
 
-import React, { memo, useCallback, useState } from 'react';
-import { useRouter } from 'expo-router';
-import {
-  Modal,
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  FlatList,
-  Alert,
-  ActivityIndicator,
-  Image as RNImage,
-  useColorScheme,
-  ScrollView,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { formatCoins, RARITY_META, type GiftItem, type GiftRarity } from '@/lib/gifts';
-import { Sparkles } from 'lucide-react-native';
-import { useCoinsWallet, useSendGift } from '@/lib/useGifts';
+import { formatCoins,RARITY_META,type GiftItem,type GiftRarity } from '@/lib/gifts';
 import { useGiftCatalog } from '@/lib/useGiftCatalog';
+import { useCoinsWallet,useSendGift } from '@/lib/useGifts';
 import type { RealtimeChannel } from '@supabase/supabase-js';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import { Sparkles } from 'lucide-react-native';
+import React,{ memo,useCallback,useState } from 'react';
+import {
+ActivityIndicator,
+Alert,
+FlatList,
+Modal,
+Pressable,
+Image as RNImage,
+ScrollView,
+StyleSheet,
+Text,
+useColorScheme,
+View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Lottie optional — nur in Dev Build verfügbar
 let LottieView: React.ComponentType<{ source: object; autoPlay: boolean; loop: boolean; style: object }> | null = null;
-try { LottieView = require('lottie-react-native').default; } catch (_) {}
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+try { LottieView = require('lottie-react-native').default; } catch {}
 
 interface GiftPickerProps {
   visible:        boolean;

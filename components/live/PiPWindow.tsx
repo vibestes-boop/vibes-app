@@ -13,20 +13,20 @@
  * Nutzung (im Watch-Screen, eigene Kamera):
  *   <PiPWindow localView={LocalCoHostCameraView} label="DU" onSwap={handleSwap} />
  */
-import React, { useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Dimensions,
-  PanResponder,
-  Animated,
-  Pressable,
-} from 'react-native';
 import { VideoTrack } from '@livekit/react-native';
-import type { TrackPublication, Participant } from 'livekit-client';
+import type { Participant,TrackPublication } from 'livekit-client';
 import { Track } from 'livekit-client';
 import { ArrowLeftRight } from 'lucide-react-native';
+import React,{ useRef } from 'react';
+import {
+Animated,
+Dimensions,
+PanResponder,
+Pressable,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
 
 const { width: W, height: H } = Dimensions.get('window');
 

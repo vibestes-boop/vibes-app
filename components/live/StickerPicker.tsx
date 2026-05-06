@@ -9,20 +9,20 @@
  * Kategorien: Emotion, Reaktion, Symbole, Spaß (siehe STICKER_CATALOG).
  */
 
-import React from 'react';
-import {
-  Modal,
-  View,
-  Text,
-  Pressable,
-  StyleSheet,
-  ScrollView,
-  Dimensions,
-} from 'react-native';
-import { X as XIcon } from 'lucide-react-native';
+import { STICKER_CATALOG } from '@/lib/useLiveStickers';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
-import { STICKER_CATALOG } from '@/lib/useLiveStickers';
+import { X as XIcon } from 'lucide-react-native';
+import React from 'react';
+import {
+Dimensions,
+Modal,
+Pressable,
+ScrollView,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const GRID_COLS = 6;

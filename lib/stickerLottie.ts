@@ -14,8 +14,8 @@
  * Fallback: wenn getStickerLottie() → null → Emoji-Text wird gerendert
  */
 
-import { Skia } from '@shopify/react-native-skia';
 import type { SkSkottieAnimation } from '@shopify/react-native-skia';
+import { Skia } from '@shopify/react-native-skia';
 
 // ─── Minimales Lottie-Basis-Template ──────────────────────────────────────
 

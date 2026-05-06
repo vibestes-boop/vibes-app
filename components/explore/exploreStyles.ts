@@ -1,6 +1,6 @@
-import { StyleSheet } from 'react-native';
-import { EXPLORE_ITEM_WIDTH, EXPLORE_ITEM_HEIGHT } from './exploreConstants';
 import type { ThemeColors } from '@/lib/theme';
+import { StyleSheet } from 'react-native';
+import { EXPLORE_ITEM_HEIGHT,EXPLORE_ITEM_WIDTH } from './exploreConstants';
 
 export const getExploreStyles = (c: ThemeColors) => StyleSheet.create({
   container: {

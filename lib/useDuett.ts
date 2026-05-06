@@ -29,10 +29,10 @@
  *      → Profil/Studio: Liste vergangener Duette (als Host ODER Gast)
  */
 
-import { useEffect, useMemo, useRef, useCallback } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from './supabase';
+import { useMutation,useQuery,useQueryClient } from '@tanstack/react-query';
+import { useCallback,useEffect,useMemo,useRef } from 'react';
 import { useAuthStore } from './authStore';
+import { supabase } from './supabase';
 import type { DuetLayout } from './useCoHost';
 
 // ─── Types ──────────────────────────────────────────────────────────────────

@@ -8,30 +8,40 @@
  * Design: App-native Monochrom-Stil, konsistent mit dashboard.tsx.
  */
 
-import React, { useMemo } from 'react';
-import {
-  View, Text, StyleSheet, Pressable, FlatList,
-  ActivityIndicator, Dimensions,
-} from 'react-native';
-import { Image } from 'expo-image';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import {
-  ArrowLeft, Eye, Gift, MessageCircle, Trophy,
-  X as XIcon, Minus, Clock, Radio, Sparkles, Play,
-} from 'lucide-react-native';
-import { useHostRecordings } from '@/lib/useLiveRecording';
-import Svg, { Rect, Line } from 'react-native-svg';
 import { useAuthStore } from '@/lib/authStore';
-import { useTheme } from '@/lib/useTheme';
 import { fmtNum } from '@/lib/useAnalytics';
 import {
-  useCreatorLiveHistory,
-  formatDuration,
-  formatRelativeTime,
-  type CreatorLiveSession,
-  type BattleResult,
+formatDuration,
+formatRelativeTime,
+useCreatorLiveHistory,
+type BattleResult,
+type CreatorLiveSession,
 } from '@/lib/useCreatorLiveHistory';
+import { useHostRecordings } from '@/lib/useLiveRecording';
+import { useTheme } from '@/lib/useTheme';
+import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
+import {
+ArrowLeft,
+Clock,
+Eye,Gift,MessageCircle,
+Minus,
+Play,
+Radio,Sparkles,
+Trophy,
+X as XIcon,
+} from 'lucide-react-native';
+import React,{ useMemo } from 'react';
+import {
+ActivityIndicator,Dimensions,
+FlatList,
+Pressable,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg,{ Line,Rect } from 'react-native-svg';
 
 const { width: W } = Dimensions.get('window');
 

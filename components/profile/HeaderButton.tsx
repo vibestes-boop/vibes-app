@@ -1,12 +1,12 @@
+import { useTheme } from '@/lib/useTheme';
+import * as Haptics from 'expo-haptics';
 import { type ElementType } from 'react';
-import { View, Text, Pressable } from 'react-native';
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+import { Pressable,Text,View } from 'react-native';
+import { useAnimatedStyle,useSharedValue,withTiming } from 'react-native-reanimated';
+import { getProfileStyles } from './profileStyles';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
-import { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
-import { getProfileStyles } from './profileStyles';
-import { useTheme } from '@/lib/useTheme';
 
 
 export function HeaderButton({

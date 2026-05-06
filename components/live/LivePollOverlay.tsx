@@ -13,13 +13,13 @@
  *   Viewer: remotePosition → folgt sanft der Position die Host festgelegt hat
  */
 
-import React, { useEffect, useMemo, useRef } from 'react';
-import { Dimensions, View, Text, Pressable, StyleSheet, Animated, Easing } from 'react-native';
-import { BarChart3, X as XIcon, Move } from 'lucide-react-native';
-import * as Haptics from 'expo-haptics';
 import type { LivePoll } from '@/lib/useLivePolls';
 import { pollPercentage } from '@/lib/useLivePolls';
-import { DraggableOverlay, type DraggablePosition } from './DraggableOverlay';
+import * as Haptics from 'expo-haptics';
+import { BarChart3,Move,X as XIcon } from 'lucide-react-native';
+import React,{ useEffect,useMemo,useRef } from 'react';
+import { Animated,Dimensions,Easing,Pressable,StyleSheet,Text,View } from 'react-native';
+import { DraggableOverlay,type DraggablePosition } from './DraggableOverlay';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 // v1.22.0 (UX): Kompakte Breite — nimmt nur so viel Platz wie nötig.

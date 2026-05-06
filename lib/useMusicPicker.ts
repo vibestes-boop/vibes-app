@@ -2,8 +2,8 @@
  * useMusicPicker.ts — Musik-Bibliothek + Favorites + Playback-Hook
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useCallback,useEffect,useRef,useState } from 'react';
 
 const FAVS_KEY = '@vibes:music_favorites';
 
@@ -204,7 +204,7 @@ export function useAudioPlayer(): AudioPlayerState {
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [progressSec, setProgressSec] = useState(0);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const soundRef = useRef<any>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -229,7 +229,7 @@ export function useAudioPlayer(): AudioPlayerState {
     setIsLoading(true);
     await stop();
     try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const avMod = require('expo-av') as any;
       const { Audio } = avMod;
 

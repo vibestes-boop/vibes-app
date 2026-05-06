@@ -1,4 +1,4 @@
-import { Share, Platform, Alert } from 'react-native';
+import { Alert,Platform,Share } from 'react-native';
 import { supabase } from './supabase';
 
 export async function sharePost(postId: string, caption?: string | null) {

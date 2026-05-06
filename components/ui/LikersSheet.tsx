@@ -3,15 +3,15 @@
  * Bottom Sheet mit Liste aller User die einen Post geliked haben.
  * Wird per Tap auf die Like-Zahl geöffnet.
  */
-import { Modal, View, Text, FlatList, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
-import { Image } from 'expo-image';
-import { X, Heart } from 'lucide-react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
-import { usePostLikers, type LikerProfile } from '@/lib/usePostLikers';
-import { useFollow } from '@/lib/useFollow';
 import { useAuthStore } from '@/lib/authStore';
+import { useFollow } from '@/lib/useFollow';
+import { usePostLikers,type LikerProfile } from '@/lib/usePostLikers';
 import * as Haptics from 'expo-haptics';
+import { Image } from 'expo-image';
+import { router } from 'expo-router';
+import { Heart,X } from 'lucide-react-native';
+import { ActivityIndicator,FlatList,Modal,Pressable,StyleSheet,Text,View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // ─── User-Row mit Follow-Button ───────────────────────────────────────────────
 function LikerRow({ liker, onClose }: { liker: LikerProfile; onClose: () => void }) {

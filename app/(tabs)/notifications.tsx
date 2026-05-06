@@ -1,39 +1,39 @@
+import { useRespondFollowRequest } from "@/lib/useFollowRequest";
+import {
+useMarkAllRead,
+useMarkOneRead,
+useNotifications,
+type AppNotification,
+} from "@/lib/useNotifications";
+import { useTheme } from '@/lib/useTheme';
+import { FlashList } from "@shopify/flash-list";
+import { impactAsync,ImpactFeedbackStyle } from "expo-haptics";
+import { Image } from "expo-image";
+import * as ExpoNotifications from 'expo-notifications';
+import { router,useFocusEffect } from "expo-router";
+import {
+AtSign,
+Bell,
+Check,
+CheckCheck,
+Gem,
+Heart,
+MessageCircle,
+Radio,
+ShoppingBag,
+UserPlus,
+X,
+} from "lucide-react-native";
 import { useCallback } from "react";
 import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  ActivityIndicator,
-  RefreshControl,
+ActivityIndicator,
+Pressable,
+RefreshControl,
+StyleSheet,
+Text,
+View,
 } from "react-native";
-import { Image } from "expo-image";
-import { FlashList } from "@shopify/flash-list";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { router, useFocusEffect } from "expo-router";
-import {
-  Heart,
-  MessageCircle,
-  UserPlus,
-  CheckCheck,
-  Radio,
-  Bell,
-  AtSign,
-  Check,
-  X,
-  Gem,
-  ShoppingBag,
-} from "lucide-react-native";
-import { impactAsync, ImpactFeedbackStyle } from "expo-haptics";
-import * as ExpoNotifications from 'expo-notifications';
-import {
-  useNotifications,
-  useMarkAllRead,
-  useMarkOneRead,
-  type AppNotification,
-} from "@/lib/useNotifications";
-import { useRespondFollowRequest } from "@/lib/useFollowRequest";
-import { useTheme } from '@/lib/useTheme';
 
 // ── Hilfsfunktionen ────────────────────────────────────────────────────────
 

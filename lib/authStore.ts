@@ -1,7 +1,7 @@
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Session, User } from '@supabase/supabase-js';
+import { Session,User } from '@supabase/supabase-js';
+import { create } from 'zustand';
+import { createJSONStorage,persist } from 'zustand/middleware';
 
 export type Profile = {
   id: string;

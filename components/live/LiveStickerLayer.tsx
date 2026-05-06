@@ -13,12 +13,12 @@
  *   • Remote-Position Broadcasts animieren sanft zu neuer Position
  */
 
-import React, { useCallback } from 'react';
-import { Text, Pressable, StyleSheet, View } from 'react-native';
-import * as Haptics from 'expo-haptics';
-import { DraggableOverlay, type DraggablePosition } from './DraggableOverlay';
 import { useLiveOverlayPosition } from '@/lib/useLiveOverlayPosition';
 import type { LiveSticker } from '@/lib/useLiveStickers';
+import * as Haptics from 'expo-haptics';
+import React,{ useCallback } from 'react';
+import { Pressable,StyleSheet,Text,View } from 'react-native';
+import { DraggableOverlay,type DraggablePosition } from './DraggableOverlay';
 
 interface LayerProps {
   sessionId: string | null | undefined;

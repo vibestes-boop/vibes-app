@@ -3,121 +3,119 @@
  * Zuschauer-Ansicht eines Live-Streams via LiveKit.
  * Braucht Dev-Build: npx expo run:ios / npx expo run:android
  */
-import { memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  FlatList,
-  TextInput,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-  Keyboard,
-  Alert,
-  ActivityIndicator,
-  Dimensions,
-  Modal,
-  Animated as RNAnimated,
-  PanResponder,
-  Share,
-} from 'react-native';
-import { Image } from 'expo-image';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import * as Sentry from '@sentry/react-native';
-import { useWomenOnly } from '@/lib/useWomenOnly';
-import { X, Share2, Video, Search, Users, Send, VolumeX, Volume2, Heart, Flag, Smile, Scissors, ShoppingBag, BarChart3 } from 'lucide-react-native';
 import { useClipNow } from '@/lib/useLiveClips';
+import { useWomenOnly } from '@/lib/useWomenOnly';
+import * as Sentry from '@sentry/react-native';
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useLocalSearchParams,useRouter } from 'expo-router';
 import * as ScreenOrientation from 'expo-screen-orientation';
+import { BarChart3,Heart,Scissors,Search,Send,Share2,ShoppingBag,Smile,Users,Video,Volume2,VolumeX,X } from 'lucide-react-native';
+import { memo,useCallback,useContext,useEffect,useMemo,useRef,useState } from 'react';
+import {
+ActivityIndicator,
+Alert,
+Dimensions,
+FlatList,
+Keyboard,
+KeyboardAvoidingView,
+Modal,
+PanResponder,
+Platform,
+Pressable,
+Animated as RNAnimated,
+ScrollView,
+Share,
+StyleSheet,
+Text,
+TextInput,
+View,
+} from 'react-native';
+import {
+FadeInDown,
+useAnimatedStyle,
+useSharedValue,
+withDelay,
+withRepeat,
+withSequence,
+withSpring,
+withTiming
+} from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import {
+fetchLiveKitToken,
+reportLive,
+useActiveLiveSessions,
+useChatModeration,
+useIsFollowingHost,
+useLiveComments,
+useLiveReactions,
+useLiveSession,
+useLiveViewer,
+usePinComment,
+type LiveComment,
+type LiveReaction,
+} from '@/lib/useLiveSession';
+import { RoomContext } from '@livekit/components-react';
+import {
+AudioSession,
+LiveKitRoom,
+useTracks,
+VideoTrack,
+} from '@livekit/react-native';
+import type { Participant,TrackPublication } from 'livekit-client';
+import { createLocalAudioTrack,createLocalVideoTrack,RoomEvent,Track } from 'livekit-client';
+// v1.23 — Moderatoren-Befugnisse im Viewer: Mod kann aus dem Chat direkt
+// Timeout/Pin/Delete auslösen. Der Schreibschutz liegt in der DB (SECURITY
+// DEFINER RPCs prüfen Host ODER Mod), wir unlocken clientseitig nur die UI.
+import { useLiveModerators } from '@/lib/useLiveModerators';
+// v1.24 — Welcome-Toast beim Live-Join für Follower + Top-Fans
+import ExpoGoPlaceholder from '@/components/live/ExpoGoPlaceholder';
+import { GiftAnimation } from '@/components/live/GiftAnimation';
+import { GiftPicker } from '@/components/live/GiftPicker';
+import { LivePollStartSheet } from '@/components/live/LivePollStartSheet';
+import { PinnedProductPill,ProductSoldBanner } from '@/components/live/LiveShoppingUI';
+import { LiveUserSheet } from '@/components/live/LiveUserSheet';
+import { TopGifterBadge } from '@/components/live/TopGifterBadge';
+import { WelcomeToast } from '@/components/live/WelcomeToast';
+import { useAuthStore,type Profile } from '@/lib/authStore';
+import { useFollow } from '@/lib/useFollow';
+import { useGiftStream,useTopGifters } from '@/lib/useGifts';
+import { useLiveShopping } from '@/lib/useLiveShopping';
+import { useLiveWelcome } from '@/lib/useLiveWelcome';
+import { useQueryClient } from '@tanstack/react-query';
+// v1.22.2 — Viewer-Seite: gleiche TikTok-Style Top-Zuschauer*innen Sheet wie Host.
+import { BattleBar } from '@/components/live/BattleBar';
+import { DuettInviteModal } from '@/components/live/DuettInviteModal';
+import { HostShopSheet } from '@/components/live/HostShopSheet';
+import { LiveGoalBar } from '@/components/live/LiveGoalBar';
+import { LivePlacedProductLayer } from '@/components/live/LivePlacedProductLayer';
+import { LivePollOverlay } from '@/components/live/LivePollOverlay';
+import { LIVE_REACTION_EMOJIS,LiveReactionIcon } from '@/components/live/LiveReactionIcon';
+import { LiveStickerLayer } from '@/components/live/LiveStickerLayer';
+import { PiPWindow } from '@/components/live/PiPWindow';
+import ViewerListSheet from '@/components/ui/ViewerListSheet';
+import { useBattle } from '@/lib/useBattle';
+import { useCoHostViewer,useLiveCoHosts } from '@/lib/useCoHost';
+import { useDuettInbox } from '@/lib/useDuett';
+import { useLiveGoal } from '@/lib/useLiveGoal';
+import { useLiveOverlayPosition } from '@/lib/useLiveOverlayPosition';
+import { useActivePlacedProducts } from '@/lib/useLivePlacedProducts';
+import { useActiveLivePoll } from '@/lib/useLivePolls';
+import { useHostShopProducts,useLiveShopMode } from '@/lib/useLiveShopMode';
+import { useActiveStickers } from '@/lib/useLiveStickers';
+import { useKeepAwake } from 'expo-keep-awake';
 // react-native-reanimated: CJS require() vermeidet _interopRequireDefault Crash in Hermes HBC
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any;
 const _animNS = _animMod?.default ?? _animMod;
 const Animated = {
   View: _animNS?.View ?? _animMod?.View,
   Text: _animNS?.Text ?? _animMod?.Text,
 };
-import {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withSequence,
-  withRepeat,
-  withSpring,
-  withDelay,
-  FadeInDown,
-  Easing,
-} from 'react-native-reanimated';
-
-import {
-  LiveKitRoom,
-  useTracks,
-  VideoTrack,
-  AudioSession,
-} from '@livekit/react-native';
-import { Track, RoomEvent, createLocalVideoTrack, createLocalAudioTrack } from 'livekit-client';
-import type { TrackPublication } from 'livekit-client';
-import { RoomContext } from '@livekit/components-react';
-import {
-  useLiveSession,
-  useLiveViewer,
-  useLiveComments,
-  useLiveReactions,
-  usePinComment,
-  useChatModeration,
-  reportLive,
-  fetchLiveKitToken,
-  useIsFollowingHost,
-  useActiveLiveSessions,
-  type LiveComment,
-  type LiveReaction,
-} from '@/lib/useLiveSession';
-// v1.23 — Moderatoren-Befugnisse im Viewer: Mod kann aus dem Chat direkt
-// Timeout/Pin/Delete auslösen. Der Schreibschutz liegt in der DB (SECURITY
-// DEFINER RPCs prüfen Host ODER Mod), wir unlocken clientseitig nur die UI.
-import { useLiveModerators } from '@/lib/useLiveModerators';
-// v1.24 — Welcome-Toast beim Live-Join für Follower + Top-Fans
-import { useLiveWelcome } from '@/lib/useLiveWelcome';
-import { WelcomeToast } from '@/components/live/WelcomeToast';
-import { useQueryClient } from '@tanstack/react-query';
-import { useAuthStore, type Profile } from '@/lib/authStore';
-import { useFollow } from '@/lib/useFollow';
-import { LiveUserSheet } from '@/components/live/LiveUserSheet';
-import { LivePollStartSheet } from '@/components/live/LivePollStartSheet';
-import ExpoGoPlaceholder from '@/components/live/ExpoGoPlaceholder';
-import { GiftPicker } from '@/components/live/GiftPicker';
-import { GiftAnimation } from '@/components/live/GiftAnimation';
-import { useGiftStream, useTopGifters } from '@/lib/useGifts';
-import { useLiveShopping } from '@/lib/useLiveShopping';
-import { PinnedProductPill, ProductSoldBanner } from '@/components/live/LiveShoppingUI';
-import { TopGifterBadge } from '@/components/live/TopGifterBadge';
-// v1.22.2 — Viewer-Seite: gleiche TikTok-Style Top-Zuschauer*innen Sheet wie Host.
-import ViewerListSheet from '@/components/ui/ViewerListSheet';
-import { useLiveGoal } from '@/lib/useLiveGoal';
-import { LiveGoalBar } from '@/components/live/LiveGoalBar';
-import { useActiveLivePoll } from '@/lib/useLivePolls';
-import { LivePollOverlay } from '@/components/live/LivePollOverlay';
-import { useLiveOverlayPosition } from '@/lib/useLiveOverlayPosition';
-import { useActiveStickers } from '@/lib/useLiveStickers';
-import { LiveStickerLayer } from '@/components/live/LiveStickerLayer';
-import { useActivePlacedProducts } from '@/lib/useLivePlacedProducts';
-import { LivePlacedProductLayer } from '@/components/live/LivePlacedProductLayer';
-import { useLiveShopMode, useHostShopProducts } from '@/lib/useLiveShopMode';
-import { HostShopSheet } from '@/components/live/HostShopSheet';
-import { useKeepAwake } from 'expo-keep-awake';
-import { useCoHostViewer, useLiveCoHosts } from '@/lib/useCoHost';
-import { useDuettInbox } from '@/lib/useDuett';
-import { DuettInviteModal } from '@/components/live/DuettInviteModal';
-import { PiPWindow } from '@/components/live/PiPWindow';
-import { BattleBar } from '@/components/live/BattleBar';
-import { useBattle } from '@/lib/useBattle';
-import type { Participant } from 'livekit-client';
-import { LiveReactionIcon, LIVE_REACTION_EMOJIS } from '@/components/live/LiveReactionIcon';
 // expo-constants: default import causes _interopRequireDefault TypeError in Hermes HBC
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const _cMod = require('expo-constants') as any; const Constants = _cMod?.default ?? _cMod;
 
 // TikTok-Style Reactions — unsere eigenen SVG-Icons (keine Apple-Smileys!)
@@ -942,7 +940,7 @@ function WatchUIContent({
         message: `Schau dir @${host?.username ?? ''} live an auf Serlo! 🎥`,
         url: `https://serlo.social/live/${sessionId}`,
       });
-    } catch (_) {}
+    } catch {}
   };
 
   // ─── Gift System ──────────────────────────────────────────────────────────────────────
@@ -1007,7 +1005,7 @@ function WatchUIContent({
   const [pipSwapped, setPipSwapped] = useState(false);
 
   // Wenn Co-Host akzeptiert: AudioSession umschalten + lokale Kamera + Mikrofon publishen
-  // ⚠️ BUG 1 FIX: AudioSession muss VOR createLocalVideoTrack auf 'playAndRecord' 
+  // ⚠️ BUG 1 FIX: AudioSession muss VOR createLocalVideoTrack auf 'playAndRecord'
   //    umgeschaltet werden. iOS blockiert Mikrofon wenn Session-Kategorie falsch.
   // ⚠️ BUG 6 FIX: publishTrack() funktioniert jetzt weil Token canPublish=true hat.
   useEffect(() => {
@@ -1428,7 +1426,7 @@ function WatchUIContent({
       const ms = (t.publication?.track as any)?.mediaStreamTrack as MediaStreamTrack | undefined;
       if (ms) ms.enabled = !muted;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [muted, audioTracks]);
 
   // iOS/Android Audio-Session für Viewer konfigurieren
@@ -1496,17 +1494,6 @@ function WatchUIContent({
     };
   }, []);
 
-
-  const dotOpacity = useSharedValue(1);
-  useEffect(() => {
-    dotOpacity.value = withRepeat(
-      withSequence(withTiming(0.3, { duration: 700 }), withTiming(1, { duration: 700 })),
-      -1,
-      false
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- nur einmalig starten
-  }, []);
-  const dotStyle = useAnimatedStyle(() => ({ opacity: dotOpacity.value }));
 
   useEffect(() => {
     if (comments.length > 0 && !userScrolling) {
@@ -1631,7 +1618,7 @@ function WatchUIContent({
   // ⚠️ BUG FIX: Stabile Referenz für RemoteVideoView in PiP (kein Inline-Arrow → kein Remount)
   const HostRemoteVideoAsPiP = useCallback(
     () => <RemoteVideoView hostAvatar={host?.avatar_url} hostId={session?.host_id} />,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
     [host?.avatar_url, session?.host_id]
   );
 
@@ -2656,7 +2643,7 @@ export default function LiveWatchScreen() {
         });
         setTokenError(true);
       });
-  }, [session?.room_name, isReplayMode]);
+  }, [session?.room_name, isReplayMode, id]);
 
   // ─── Publisher-Upgrade Callback ───────────────────────────────────────────
   // Wird von WatchUI aufgerufen, wenn `coHostStatus === 'accepted'` greift.
@@ -2689,7 +2676,7 @@ export default function LiveWatchScreen() {
       if (!lkToken) setTokenError(true);
     }, 20_000);
     return () => clearTimeout(t);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [session?.id, session?.room_name, lkToken]);
 
   // Globaler Safety-Timeout: läuft nur bis lkToken vorhanden ist

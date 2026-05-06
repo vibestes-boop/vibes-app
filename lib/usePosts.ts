@@ -1,7 +1,7 @@
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { supabase } from './supabase';
-import { useVibeStore } from './store';
+import { useInfiniteQuery,useQuery } from '@tanstack/react-query';
 import { useAuthStore } from './authStore';
+import { useVibeStore } from './store';
+import { supabase } from './supabase';
 
 export type PostWithAuthor = {
   id: string;

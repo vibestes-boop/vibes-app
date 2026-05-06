@@ -6,8 +6,8 @@
  * sich ALLE anderen sofort (wie ein Mini-EventBus, ohne Zustand/Context).
  * AsyncStorage persistiert den Wert über App-Neustarts.
  */
-import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useCallback,useEffect,useState } from 'react';
 
 const MUTED_KEY = '@vibes:video_muted';
 

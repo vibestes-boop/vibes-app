@@ -21,27 +21,27 @@
  * Stream nicht zu überladen. Kleine Combos (x2–x4) bleiben im GiftPill-Chip.
  */
 
-import { memo, useEffect, useMemo, useRef } from 'react';
-import { View, Text, StyleSheet, Dimensions } from 'react-native';
 import { Image } from 'expo-image';
-
-// react-native-reanimated: CJS require() vermeidet Hermes HBC Crash
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
-const _animMod = require('react-native-reanimated') as any;
-const _animNS = _animMod?.default ?? _animMod;
-const Animated = { View: _animNS?.View ?? _animMod?.View, Text: _animNS?.Text ?? _animMod?.Text };
+import { memo,useEffect,useMemo,useRef } from 'react';
+import { Dimensions,StyleSheet,Text,View } from 'react-native';
 import {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withSpring,
-  withSequence,
-  withRepeat,
-  Easing,
-  interpolateColor,
+Easing,
+interpolateColor,
+useAnimatedStyle,
+useSharedValue,
+withRepeat,
+withSequence,
+withSpring,
+withTiming,
 } from 'react-native-reanimated';
 
 import type { IncomingGift } from '@/lib/useGifts';
+
+// react-native-reanimated: CJS require() vermeidet Hermes HBC Crash
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const _animMod = require('react-native-reanimated') as any;
+const _animNS = _animMod?.default ?? _animMod;
+const Animated = { View: _animNS?.View ?? _animMod?.View, Text: _animNS?.Text ?? _animMod?.Text };
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 

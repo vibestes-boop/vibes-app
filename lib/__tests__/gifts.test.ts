@@ -8,13 +8,13 @@
  */
 
 import {
-  rarityFromCost,
-  isGiftActive,
-  formatCoins,
-  formatCoinsShort,
-  GIFT_BY_ID,
-  GIFT_CATALOG,
-  type GiftItem,
+formatCoins,
+formatCoinsShort,
+GIFT_BY_ID,
+GIFT_CATALOG,
+isGiftActive,
+rarityFromCost,
+type GiftItem,
 } from '../gifts';
 
 // -----------------------------------------------------------------------------
@@ -22,7 +22,7 @@ import {
 // -----------------------------------------------------------------------------
 
 describe('rarityFromCost', () => {
-  const cases: Array<[number, string]> = [
+  const cases: [number, string][] = [
     [0, 'common'],
     [1, 'common'],
     [50, 'common'],    // grenze inklusiv
@@ -99,7 +99,7 @@ describe('isGiftActive', () => {
 // -----------------------------------------------------------------------------
 
 describe('formatCoins', () => {
-  const cases: Array<[number, string]> = [
+  const cases: [number, string][] = [
     [0, '0'],
     [1, '1'],
     [999, '999'],
@@ -118,7 +118,7 @@ describe('formatCoins', () => {
 // -----------------------------------------------------------------------------
 
 describe('formatCoinsShort', () => {
-  const cases: Array<[number, string]> = [
+  const cases: [number, string][] = [
     [0, '0'],
     [999, '999'],                 // < 1K → keine Abkürzung
     [1_000, '1K'],                // genau 1K

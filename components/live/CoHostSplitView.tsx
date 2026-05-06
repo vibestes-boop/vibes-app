@@ -8,12 +8,12 @@
  *
  * Für PiP → eigenes PiPWindow.tsx
  */
-import React from 'react';
-import { View, Text, StyleSheet, Dimensions } from 'react-native';
-import { VideoTrack } from '@livekit/react-native';
-import type { TrackPublication, Participant } from 'livekit-client';
-import { Track } from 'livekit-client';
 import type { DuetLayout } from '@/lib/useCoHost';
+import { VideoTrack } from '@livekit/react-native';
+import type { Participant,TrackPublication } from 'livekit-client';
+import { Track } from 'livekit-client';
+import React from 'react';
+import { Dimensions,StyleSheet,Text,View } from 'react-native';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const HALF_H = Math.floor(SCREEN_H / 2);

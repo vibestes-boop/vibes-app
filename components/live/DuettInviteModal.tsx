@@ -17,22 +17,22 @@
  *   - Invite-Status → 'declined'
  *   - Modal schließt sich
  */
-import { useEffect, useState, useCallback, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  Modal,
-  Animated,
-  ActivityIndicator,
-} from 'react-native';
-import { Image } from 'expo-image';
-import { Swords, X, Check, Rows2, Columns2, PictureInPicture2 } from 'lucide-react-native';
-import * as Haptics from 'expo-haptics';
-import type { DuetInvite } from '@/lib/useDuett';
-import { duetLayoutLabel, inviteSecondsLeft } from '@/lib/useDuett';
 import type { DuetLayout } from '@/lib/useCoHost';
+import type { DuetInvite } from '@/lib/useDuett';
+import { duetLayoutLabel,inviteSecondsLeft } from '@/lib/useDuett';
+import * as Haptics from 'expo-haptics';
+import { Image } from 'expo-image';
+import { Check,Columns2,PictureInPicture2,Rows2,Swords,X } from 'lucide-react-native';
+import { useCallback,useEffect,useRef,useState } from 'react';
+import {
+ActivityIndicator,
+Animated,
+Modal,
+Pressable,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
 
 interface AcceptedPayload {
   invite:    DuetInvite;

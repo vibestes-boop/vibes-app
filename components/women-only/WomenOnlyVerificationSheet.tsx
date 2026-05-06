@@ -1,6 +1,6 @@
 /**
  * WomenOnlyVerificationSheet.tsx
- * 
+ *
  * Bottom-Sheet für die Women-Only Zone Verifikation.
  * 3-Screen-Flow:
  *   1. Was ist die Women-Only Zone? (Info)
@@ -8,22 +8,22 @@
  *   3. Willkommen! (Erfolg)
  */
 
-import { useState } from 'react';
-import {
-  View,
-  Text,
-  Modal,
-  Pressable,
-  StyleSheet,
-  ActivityIndicator,
-  Dimensions,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { X, Shield, CheckCircle2, Lock } from 'lucide-react-native';
 import { useTheme } from '@/lib/useTheme';
 import { useWomenOnly } from '@/lib/useWomenOnly';
 import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
+import { CheckCircle2,Lock,Shield,X } from 'lucide-react-native';
+import { useState } from 'react';
+import {
+ActivityIndicator,
+Dimensions,
+Modal,
+Pressable,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 

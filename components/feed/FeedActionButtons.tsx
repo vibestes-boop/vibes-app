@@ -1,24 +1,22 @@
+import { useBookmark } from '@/lib/useBookmark';
+import { useCommentCount } from '@/lib/useComments';
+import { useCreatorVoiceSample } from '@/lib/useCreatorVoiceSample';
+import { useVoiceReader } from '@/lib/useVoiceReader';
+import * as Haptics from 'expo-haptics';
+import {
+Bookmark,
+Heart,
+MessageCircle,
+Volume2,
+VolumeX,
+} from 'lucide-react-native';
 import React from 'react';
-import { Pressable, Text, View, ActivityIndicator, StyleSheet } from 'react-native';
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+import { ActivityIndicator,Pressable,StyleSheet,Text } from 'react-native';
+import { useAnimatedStyle,useSharedValue,withSequence,withSpring,withTiming } from 'react-native-reanimated';
+import { feedItemStyles as styles } from './feedStyles';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
-import { useAnimatedStyle, useSharedValue, withSequence, withTiming, withSpring } from 'react-native-reanimated';
-import {
-  Heart,
-  MessageCircle,
-  Bookmark,
-  Volume2,
-  VolumeX,
-} from 'lucide-react-native';
-import * as Haptics from 'expo-haptics';
-import { useQuery } from '@tanstack/react-query';
-import { useCommentCount } from '@/lib/useComments';
-import { useBookmark } from '@/lib/useBookmark';
-import { useVoiceReader } from '@/lib/useVoiceReader';
-import { useCreatorVoiceSample } from '@/lib/useCreatorVoiceSample';
-import { supabase } from '@/lib/supabase';
-import { feedItemStyles as styles } from './feedStyles';
 
 export function ActionButton({
   icon: Icon,

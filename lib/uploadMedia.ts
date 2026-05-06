@@ -1,14 +1,10 @@
-import { supabase } from './supabase';
 import { useAuthStore } from './authStore';
+import { supabase } from './supabase';
 
 type UploadResult = {
   url: string;
   path: string;
 };
-
-type ThumbnailResult = {
-  url: string;
-} | null;
 
 // ── Limits ──────────────────────────────────────────────────────────────────
 const MAX_IMAGE_BYTES = 50 * 1024 * 1024;  //  50 MB

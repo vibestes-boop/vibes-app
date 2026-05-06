@@ -1,36 +1,59 @@
-import { useState, useRef } from 'react';
-import { useTheme } from '@/lib/useTheme';
-import {
-  View, Text, StyleSheet, TextInput, Pressable, ScrollView,
-  ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Linking, Switch,
-} from 'react-native';
-import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
-const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
-const Animated = { View: _animNS?.View ?? _animMod?.View };
-import { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
-import {
-  requestMediaLibraryPermissionsAsync, requestCameraPermissionsAsync,
-  launchImageLibraryAsync, launchCameraAsync,
-} from 'expo-image-picker';
-import {
-  ArrowLeft, Camera, Check, User, Users, FileText, AtSign,
-  LogOut, Trash2, Lock, Mail, Shield, ExternalLink, ChevronRight,
-  Bell, Link, Mic, Sun, ShieldCheck, Zap, Sparkles,
-} from 'lucide-react-native';
-import { supabase } from '@/lib/supabase';
-import { useAuthStore } from '@/lib/authStore';
-import { uploadAvatar } from '@/lib/uploadMedia';
 import { AIImageSheet } from '@/components/ai/AIImageSheet';
-import { useQueryClient } from '@tanstack/react-query';
-import Constants from 'expo-constants';
-import { useNotificationPrefs } from '@/lib/useNotificationPrefs';
 import { VoiceSetupSheet } from '@/components/profile/VoiceSetupSheet';
 import { WomenOnlyVerificationSheet } from '@/components/women-only/WomenOnlyVerificationSheet';
+import { useAuthStore } from '@/lib/authStore';
+import { supabase } from '@/lib/supabase';
+import { uploadAvatar } from '@/lib/uploadMedia';
+import { useNotificationPrefs } from '@/lib/useNotificationPrefs';
 import { useWomenOnly } from '@/lib/useWomenOnly';
+import { useQueryClient } from '@tanstack/react-query';
+import Constants from 'expo-constants';
+import { Image } from 'expo-image';
+import {
+launchCameraAsync,
+launchImageLibraryAsync,
+requestCameraPermissionsAsync,
+requestMediaLibraryPermissionsAsync,
+} from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import {
+ArrowLeft,
+AtSign,
+Camera,Check,
+ChevronRight,
+ExternalLink,
+FileText,
+Link,
+Lock,
+LogOut,
+Mail,
+Mic,
+Shield,
+ShieldCheck,
+Sparkles,
+Sun,
+Trash2,
+User,Users,
+Zap
+} from 'lucide-react-native';
+import { useRef,useState } from 'react';
+import {
+ActivityIndicator,Alert,KeyboardAvoidingView,
+Linking,
+Platform,
+Pressable,ScrollView,
+StyleSheet,
+Switch,
+Text,
+TextInput,
+View,
+} from 'react-native';
+import { useAnimatedStyle,useSharedValue,withTiming } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
+const Animated = { View: _animNS?.View ?? _animMod?.View };
 
 // Vollständige Liste tschetschenischer Тейпы (Clans / Teips)
 // Geordnet nach Тукхум (Stammesverbände) + freie Teips
@@ -111,7 +134,7 @@ export default function SettingsScreen() {
   const debugTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasVoice = !!(profile as any)?.voice_sample_url;
 
-  // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { useThemeStore: _useTS } = require('@/lib/themeStore') as any;
   const themeMode    = _useTS((s: any) => s.mode);
   const setThemeMode = _useTS((s: any) => s.setMode);

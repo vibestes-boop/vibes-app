@@ -1,11 +1,11 @@
-import { View, Text, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+import { Send,X } from 'lucide-react-native';
+import { ActivityIndicator,Pressable,StyleSheet,Text,View } from 'react-native';
+import { useAnimatedStyle,useSharedValue,withTiming } from 'react-native-reanimated';
+import { createStyles as styles } from './createStyles';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
-import { useSharedValue, useAnimatedStyle, withTiming } from 'react-native-reanimated';
-import { X, Send } from 'lucide-react-native';
-import { createStyles as styles } from './createStyles';
 
 export function CreateHeader({
   title = 'Neuer Vibe',

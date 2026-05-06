@@ -3,32 +3,31 @@
  * TikTok-Style Creation Flow — Bottom Sheet mit 3 visuell reichen Karten.
  * Ersetzt den hässlichen Alert.alert Dialog.
  */
-import { useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  Modal,
-  Animated,
-  Dimensions,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Camera, Zap, Radio } from 'lucide-react-native';
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+import { Camera,Zap } from 'lucide-react-native';
+import { useEffect } from 'react';
+import {
+Dimensions,
+Modal,
+Pressable,
+StyleSheet,
+Text,
+View
+} from 'react-native';
+import {
+Easing,
+useAnimatedStyle,
+useSharedValue,
+withRepeat,
+withSequence,
+withSpring,
+withTiming,
+} from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any;
 const _animNS = _animMod?.default ?? _animMod;
 const ReAnimated = { View: _animNS?.View ?? _animMod?.View };
-import {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withTiming,
-  withRepeat,
-  withSequence,
-  Easing,
-} from 'react-native-reanimated';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 

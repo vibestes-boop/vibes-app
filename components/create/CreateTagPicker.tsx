@@ -1,6 +1,6 @@
-import { View, Text, Pressable } from 'react-native';
 import { Tag } from 'lucide-react-native';
-import { CREATE_SUGGESTED_TAGS, CREATE_MAX_TAGS } from './createConstants';
+import { Pressable,Text,View } from 'react-native';
+import { CREATE_MAX_TAGS,CREATE_SUGGESTED_TAGS } from './createConstants';
 import { createStyles as styles } from './createStyles';
 
 export function CreateTagPicker({

@@ -1,9 +1,9 @@
-import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { Zap, Users } from 'lucide-react-native';
-import { impactAsync, ImpactFeedbackStyle } from 'expo-haptics';
+import { useTheme } from '@/lib/useTheme';
+import { impactAsync,ImpactFeedbackStyle } from 'expo-haptics';
+import { Users,Zap } from 'lucide-react-native';
+import { Pressable,StyleSheet,Text,View } from 'react-native';
 import { GuildViewToggle } from './GuildViewToggle';
 import type { GuildViewMode } from './guildConstants';
-import { useTheme } from '@/lib/useTheme';
 
 /**
  * Minimal Guild Header — TikTok/Instagram-Style.

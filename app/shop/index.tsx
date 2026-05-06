@@ -11,21 +11,37 @@
  * - Coin-Balance Hero-Pill im Header
  */
 
-import { useState, useCallback, useMemo } from 'react';
-import {
-  View, Text, StyleSheet, Pressable, FlatList,
-  TextInput, RefreshControl, ScrollView, Modal,
-} from 'react-native';
+import { useCoinsWallet } from '@/lib/useGifts';
+import { useShopProducts,type Product,type ProductCategory } from '@/lib/useShop';
+import { useTheme } from '@/lib/useTheme';
 import { Image } from 'expo-image';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
-  Search, Package, ShoppingBag, X, Star,
-  MapPin, Camera, Truck, Flame, Sparkles, ArrowDownUp, Check,
+ArrowDownUp,
+Camera,
+Check,
+Flame,
+MapPin,
+Package,
+Search,
+ShoppingBag,
+Sparkles,
+Star,
+Truck,
+X,
 } from 'lucide-react-native';
-import { useShopProducts, type Product, type ProductCategory } from '@/lib/useShop';
-import { useCoinsWallet } from '@/lib/useGifts';
-import { useTheme } from '@/lib/useTheme';
+import { useCallback,useMemo,useState } from 'react';
+import {
+FlatList,
+Modal,
+Pressable,
+RefreshControl,ScrollView,
+StyleSheet,
+Text,
+TextInput,
+View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // ─── Konstanten ──────────────────────────────────────────────────────────────
 

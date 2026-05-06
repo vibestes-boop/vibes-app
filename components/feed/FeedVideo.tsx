@@ -1,13 +1,13 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { StyleSheet, View, Animated } from 'react-native';
+import { AVPlaybackStatus,ResizeMode,Video } from 'expo-av';
 import { Image } from 'expo-image';
-import { Video, ResizeMode, AVPlaybackStatus } from 'expo-av';
-import { USE_EXPO_VIDEO, VideoView, useVideoPlayer } from './expoVideo';
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+import { forwardRef,useCallback,useEffect,useImperativeHandle,useRef,useState } from 'react';
+import { Animated,StyleSheet,View } from 'react-native';
+import { useAnimatedStyle,useSharedValue,withRepeat,withSequence,withTiming } from 'react-native-reanimated';
+import { USE_EXPO_VIDEO,VideoView,useVideoPlayer } from './expoVideo';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any;
 const _animNS = _animMod?.default ?? _animMod;
 const AnimatedR = { View: _animNS?.View ?? _animMod?.View };
-import { useSharedValue, useAnimatedStyle, withRepeat, withSequence, withTiming } from 'react-native-reanimated';
 
 // ─── Seek Handle (gemeinsam für beide Video-Komponenten) ──────────────────────
 export interface FeedVideoSeekHandle {

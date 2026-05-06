@@ -16,10 +16,10 @@
  *   • Final-Commit in DB via moveProduct (spät joinende Viewer + Restart)
  */
 
-import { useCallback, useEffect, useMemo } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from './supabase';
+import { useMutation,useQuery,useQueryClient } from '@tanstack/react-query';
+import { useCallback,useEffect,useMemo } from 'react';
 import { useAuthStore } from './authStore';
+import { supabase } from './supabase';
 import type { ProductCategory } from './useShop';
 
 // ─── Types ──────────────────────────────────────────────────────────────────

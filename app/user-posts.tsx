@@ -5,66 +5,55 @@
  * im Grid eines Profils (eigen oder fremd) auf einen Post tippt.
  * Verhalten: wie der Haupt-Feed, aber auf einen User gefiltert.
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  ActivityIndicator,
-  Dimensions,
-  Alert,
-  FlatList,
-  TextInput,
-  KeyboardAvoidingView,
-  Platform,
-  Keyboard,
-  Animated as RNAnimated,
-} from 'react-native';
+import { VideoProgressBar,type VideoProgressHandle } from '@/components/feed/FeedItem';
+import { FallbackFeedVideo,NativeFeedVideo,USE_EXPO_VIDEO,type FeedVideoSeekHandle } from '@/components/feed/FeedVideo';
+import CommentsSheet from '@/components/ui/CommentsSheet';
+import { useAuthStore } from '@/lib/authStore';
+import { supabase } from '@/lib/supabase';
+import { useBookmark } from '@/lib/useBookmark';
+import { useCommentCount } from '@/lib/useComments';
+import { useLike } from '@/lib/useLike';
+import { sharePost } from '@/lib/useShare';
+import { useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
-import { useLocalSearchParams, useRouter, useFocusEffect } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+import { useFocusEffect,useLocalSearchParams,useRouter } from 'expo-router';
+import {
+ArrowLeft,
+Bookmark,
+Eye,
+Heart,
+MessageCircle,
+Pencil,
+Share2,
+Trash2,
+Volume2,
+VolumeX
+} from 'lucide-react-native';
+import { useCallback,useEffect,useRef,useState } from 'react';
+import {
+ActivityIndicator,
+Alert,
+Dimensions,
+FlatList,
+Pressable,
+Animated as RNAnimated,
+StyleSheet,
+Text,
+View
+} from 'react-native';
+import {
+useAnimatedStyle,
+useSharedValue,
+withSequence,
+withTiming
+} from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
-import {
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-  withSequence,
-  withSpring,
-  withDelay,
-  withRepeat,
-  Easing,
-} from 'react-native-reanimated';
-import {
-  ArrowLeft,
-  Heart,
-  MessageCircle,
-  Bookmark,
-  Share2,
-  Trash2,
-  Pencil,
-  Volume2,
-  VolumeX,
-  Eye,
-  Send,
-} from 'lucide-react-native';
-import { FallbackFeedVideo, NativeFeedVideo, USE_EXPO_VIDEO, type FeedVideoSeekHandle } from '@/components/feed/FeedVideo';
-import { VideoProgressBar, type VideoProgressHandle } from '@/components/feed/FeedItem';
-import { supabase } from '@/lib/supabase';
-import { useAuthStore } from '@/lib/authStore';
-import { useQueryClient } from '@tanstack/react-query';
-import { useLike } from '@/lib/useLike';
-import { useCommentCount, useAddComment } from '@/lib/useComments';
-import { useBookmark } from '@/lib/useBookmark';
-import { sharePost } from '@/lib/useShare';
-import CommentsSheet from '@/components/ui/CommentsSheet';
 
 const VIEWABILITY_CONFIG = { itemVisiblePercentThreshold: 60 };
-// Höhe der Kommentar-Leiste (paddingVertical 10*2 + Avatar 34 + Border 1 ≈ 55)
-const COMMENT_BAR_H = 58;
 
 
 const { width: W, height: H } = Dimensions.get('window');
@@ -139,76 +128,6 @@ function BookmarkBtn({ postId }: { postId: string }) {
         <Bookmark size={24} stroke={bookmarked ? '#FBBF24' : '#FFFFFF'} strokeWidth={1.8} fill={bookmarked ? '#FBBF24' : 'transparent'} />
       </View>
     </Pressable>
-  );
-}
-
-// ─── TikTok-Style Kommentar-Eingabeleiste ────────────────────────────────────
-
-function CommentInputBar({
-  postId,
-  avatarUrl,
-  username,
-  onCommentsOpen,
-}: {
-  postId: string;
-  avatarUrl: string | null;
-  username: string | null;
-  onCommentsOpen: () => void;
-}) {
-  const [text, setText] = useState('');
-  const inputRef = useRef<TextInput>(null);
-  const { mutateAsync: addComment, isPending } = useAddComment(postId);
-
-  const submit = async () => {
-    const trimmed = text.trim();
-    if (!trimmed || isPending) return;
-    setText('');
-    Keyboard.dismiss();
-    await addComment({ text: trimmed, tempId: `temp-${Date.now()}` });
-  };
-
-  return (
-    <View style={s.commentBar}>
-      {/* Avatar */}
-      <Pressable onPress={() => inputRef.current?.focus()} style={s.commentAvatar}>
-        {avatarUrl
-          ? <Image source={{ uri: avatarUrl }} style={s.commentAvatarImg} />
-          : <Text style={s.commentAvatarInitial}>{username?.[0]?.toUpperCase() ?? '?'}</Text>
-        }
-      </Pressable>
-
-      {/* Eingabefeld */}
-      <Pressable style={s.commentInputWrap} onPress={() => inputRef.current?.focus()}>
-        <TextInput
-          ref={inputRef}
-          style={s.commentInput}
-          placeholder="Kommentar schreiben …"
-          placeholderTextColor="rgba(255,255,255,0.35)"
-          value={text}
-          onChangeText={setText}
-          onSubmitEditing={submit}
-          returnKeyType="send"
-          blurOnSubmit={false}
-          maxLength={500}
-          selectionColor="#FFFFFF"
-        />
-      </Pressable>
-
-      {/* Senden-Button (nur wenn Text vorhanden) */}
-      {text.trim().length > 0 ? (
-        <Pressable onPress={submit} disabled={isPending} style={s.commentSendBtn} hitSlop={8}>
-          {isPending
-            ? <ActivityIndicator size={16} color="#FFFFFF" />
-            : <Send size={20} stroke="#FFFFFF" strokeWidth={2.2} />
-          }
-        </Pressable>
-      ) : (
-        /* Kommentar-Icon öffnet vollständige Sheet */
-        <Pressable onPress={onCommentsOpen} style={s.commentSendBtn} hitSlop={8}>
-          <MessageCircle size={20} stroke="rgba(255,255,255,0.5)" strokeWidth={1.8} />
-        </Pressable>
-      )}
-    </View>
   );
 }
 
@@ -313,7 +232,7 @@ function PostCard({
     if (!tapLiked) tapToggleLike();
     const newId = heartIdRef.current++;
     setHearts((prev) => [...prev, { id: newId, x, y }]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [tapLiked, tapToggleLike]);
 
   // Doppeltap-Erkennung (identisch zu Guild)
@@ -642,8 +561,6 @@ export default function UserPostsScreen() {
       </View>
     );
   }
-
-  const currentPostId = posts[visibleIndex]?.id ?? '';
 
   return (
     <View style={{ flex: 1, backgroundColor: '#000' }}>

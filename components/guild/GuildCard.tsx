@@ -1,30 +1,30 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { FallbackFeedVideo,NativeFeedVideo,USE_EXPO_VIDEO } from '@/components/feed/FeedVideo';
+import CommentsSheet from '@/components/ui/CommentsSheet';
+import { useBookmark } from '@/lib/useBookmark';
+import { useCommentCount } from '@/lib/useComments';
+import { useLike } from '@/lib/useLike';
+import type { GuildPost } from '@/lib/usePosts';
+import { sharePost } from '@/lib/useShare';
+import { useTheme } from '@/lib/useTheme';
+import { useVideoMute } from '@/lib/useVideoPreferences';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import { Bookmark,Heart,MessageCircle,Share2,Volume2,VolumeX } from 'lucide-react-native';
+import React,{ useCallback,useEffect,useMemo,useState } from 'react';
+import { Pressable,StyleSheet,Text,View } from 'react-native';
+import {
+useAnimatedStyle,
+useSharedValue,
+withSequence,
+withTiming,
+} from 'react-native-reanimated';
+import { getGuildStyles } from './guildStyles';
 // reanimated: CJS require() vermeidet _interopRequireDefault Crash in Hermes HBC
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any;
 const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
-import {
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-  withSequence,
-} from 'react-native-reanimated';
-import { MessageCircle, Heart, Bookmark, Share2, VolumeX, Volume2 } from 'lucide-react-native';
-import CommentsSheet from '@/components/ui/CommentsSheet';
-import { FallbackFeedVideo, NativeFeedVideo, USE_EXPO_VIDEO } from '@/components/feed/FeedVideo';
-import { useLike } from '@/lib/useLike';
-import { useCommentCount } from '@/lib/useComments';
-import { useBookmark } from '@/lib/useBookmark';
-import { sharePost } from '@/lib/useShare';
-import type { GuildPost } from '@/lib/usePosts';
-import { getGuildStyles } from './guildStyles';
-import { useVideoMute } from '@/lib/useVideoPreferences';
-import { useTheme } from '@/lib/useTheme';
 
 function formatRelativeTime(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();

@@ -9,23 +9,23 @@
  *   Primary-Button: "Umfrage starten"
  */
 
-import React, { useCallback, useState } from 'react';
+import { useCreateLivePoll } from '@/lib/useLivePolls';
+import * as Haptics from 'expo-haptics';
+import { BarChart3,Plus,X as XIcon } from 'lucide-react-native';
+import React,{ useCallback,useState } from 'react';
 import {
-  Modal,
-  View,
-  Text,
-  Pressable,
-  TextInput,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ActivityIndicator,
-  Alert,
+ActivityIndicator,
+Alert,
+KeyboardAvoidingView,
+Modal,
+Platform,
+Pressable,
+StyleSheet,
+Text,
+TextInput,
+View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BarChart3, Plus, X as XIcon } from 'lucide-react-native';
-import * as Haptics from 'expo-haptics';
-import { useCreateLivePoll } from '@/lib/useLivePolls';
 
 interface Props {
   visible:    boolean;

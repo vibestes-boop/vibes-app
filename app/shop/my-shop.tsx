@@ -7,32 +7,55 @@
  * - Produkt löschen
  */
 
-import { useState, useCallback } from 'react';
-import {
-  View, Text, StyleSheet, Pressable, ScrollView,
-  TextInput, Alert, ActivityIndicator, Switch, Modal,
-  KeyboardAvoidingView, Platform, FlatList,
-} from 'react-native';
-import { Image } from 'expo-image';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import {
-  ArrowLeft, Plus, Package, Trash2,
-  ShoppingBag, ChevronRight, MapPin, Truck, Percent,
-  Image as ImageIcon, Box, FileText, Wrench, X, Images, Sparkles,
-} from 'lucide-react-native';
-import { launchImageLibraryAsync, MediaTypeOptions, requestMediaLibraryPermissionsAsync } from 'expo-image-picker';
-import { impactAsync, ImpactFeedbackStyle } from 'expo-haptics';
-import {
-  useMyProducts, useCreateProduct, useUpdateProduct,
-  useDeleteProduct,
-  type Product, type ProductCategory, type CreateProductInput,
-} from '@/lib/useShop';
+import { AIImageSheet } from '@/components/ai/AIImageSheet';
 import { uploadPostMedia } from '@/lib/uploadMedia';
 import { useCoinsWallet } from '@/lib/useGifts';
+import {
+useCreateProduct,
+useDeleteProduct,
+useMyProducts,
+useUpdateProduct,
+type CreateProductInput,
+type Product,type ProductCategory,
+} from '@/lib/useShop';
 import { useTheme } from '@/lib/useTheme';
-import { AIImageSheet } from '@/components/ai/AIImageSheet';
+import { impactAsync,ImpactFeedbackStyle } from 'expo-haptics';
+import { Image } from 'expo-image';
+import { launchImageLibraryAsync,MediaTypeOptions,requestMediaLibraryPermissionsAsync } from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import {
+ArrowLeft,
+Box,
+ChevronRight,
+FileText,
+Image as ImageIcon,
+Images,
+MapPin,
+Package,
+Percent,
+Plus,
+ShoppingBag,
+Sparkles,
+Trash2,
+Wrench,X
+} from 'lucide-react-native';
+import { useCallback,useState } from 'react';
+import {
+ActivityIndicator,
+Alert,
+FlatList,
+KeyboardAvoidingView,
+Modal,
+Platform,
+Pressable,ScrollView,
+StyleSheet,
+Switch,
+Text,
+TextInput,
+View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // ─── Kategorie-Optionen ───────────────────────────────────────────────────────
 

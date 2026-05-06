@@ -1,21 +1,19 @@
-import { useState } from 'react';
-import { View, Text, Pressable, Dimensions, Linking, Modal } from 'react-native';
+import type { Profile } from '@/lib/authStore';
+import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Grid3X3, Bookmark, Share2, Edit3, Shield, BarChart2, FileText, Repeat2, Link, CheckCircle2, ShoppingBag, Sparkles, BarChart, MoreHorizontal, Package, ChevronRight, Swords } from 'lucide-react-native';
-import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
-import type { Profile } from '@/lib/authStore';
+import { BarChart,BarChart2,Bookmark,CheckCircle2,ChevronRight,Edit3,FileText,Grid3X3,Link,MoreHorizontal,Package,Repeat2,Share2,Shield,ShoppingBag,Sparkles,Swords } from 'lucide-react-native';
+import { useState } from 'react';
+import { Linking,Modal,Pressable,Text,View } from 'react-native';
 
 import { ProfileShareSheet } from '@/components/profile/ProfileShareSheet';
-import { getProfileStyles } from './profileStyles';
-import type { ProfileTab } from './types';
-import { ProfileHighlightsRow } from './ProfileHighlightsRow';
-import { useTheme } from '@/lib/useTheme';
 import { AvatarZoomViewer } from '@/components/ui/AvatarZoomViewer';
 import { useBattleStats } from '@/lib/useBattleStats';
-
-const { width: W } = Dimensions.get('window');
+import { useTheme } from '@/lib/useTheme';
+import { ProfileHighlightsRow } from './ProfileHighlightsRow';
+import { getProfileStyles } from './profileStyles';
+import type { ProfileTab } from './types';
 
 // ─── Tools Bottom-Sheet mit Menü-Einträgen (Instagram/TikTok Pattern) ──────────
 function MenuRow({

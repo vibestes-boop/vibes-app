@@ -1,24 +1,24 @@
-import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
-import { router } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useAuthStore } from '@/lib/authStore';
+import { supabase } from '@/lib/supabase';
 import { BlurView } from 'expo-blur';
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
-const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
-const Animated = { View: _animNS?.View ?? _animMod?.View };
+import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
+import { ChevronRight,Sparkles,Users } from 'lucide-react-native';
+import { useEffect,useState } from 'react';
+import { ActivityIndicator,Pressable,StyleSheet,Text,View } from 'react-native';
 import {
-  useSharedValue,
-  useAnimatedStyle,
-  withDelay,
-  withTiming,
-  withSequence,
-  withRepeat,
-  Easing,
+Easing,
+useAnimatedStyle,
+useSharedValue,
+withDelay,
+withRepeat,
+withSequence,
+withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Users, Sparkles, ChevronRight } from 'lucide-react-native';
-import { supabase } from '@/lib/supabase';
-import { useAuthStore } from '@/lib/authStore';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
+const Animated = { View: _animNS?.View ?? _animMod?.View };
 
 const GUILD_COLORS: Record<string, [string, string]> = {
   'Pod Alpha': ['#CCCCCC', '#FFFFFF'],

@@ -1,59 +1,55 @@
-import { memo, useEffect, useRef, useState, useCallback, useMemo } from 'react';
+import { setStringAsync as clipboardSetString } from 'expo-clipboard';
+import { AtSign,Copy,Heart,Send,Trash2,Video,X } from 'lucide-react-native';
+import { memo,useCallback,useEffect,useRef,useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  Pressable,
-  FlatList,
-  Platform,
-  ActivityIndicator,
-  Dimensions,
-  Alert,
-  Modal,
-  Keyboard,
-  type KeyboardEvent,
+ActivityIndicator,
+Alert,
+Dimensions,
+FlatList,
+Keyboard,
+Modal,
+Platform,
+Pressable,
+StyleSheet,
+Text,
+TextInput,
+View,
+type KeyboardEvent,
 } from 'react-native';
+import {
+Gesture,
+GestureDetector,
+GestureHandlerRootView,
+TouchableOpacity,
+} from 'react-native-gesture-handler';
+import {
+Easing,
+Extrapolation,
+interpolate,
+runOnJS,
+useAnimatedStyle,
+useSharedValue,
+withSequence,
+withTiming,
+type SharedValue,
+} from 'react-native-reanimated';
+
+
+import { RichText } from '@/components/ui/RichText';
+import { useAuthStore } from '@/lib/authStore';
+import { useCommentLike,useCommentLikesBatch,type CommentLikesMap } from '@/lib/useCommentLike';
+import { useAddComment,useCommentReplies,useComments,useDeleteComment,type Comment } from '@/lib/useComments';
+import { useExploreUserSearch } from '@/lib/useExplore';
+import { useTheme } from '@/lib/useTheme';
+import * as Haptics from 'expo-haptics';
+import { Image } from 'expo-image';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { VideoGridThumb } from './VideoGridThumb';
 // reanimated: CJS require() vermeidet _interopRequireDefault Crash in Hermes HBC
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any;
 const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
-import {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withSequence,
-  runOnJS,
-  Easing,
-  interpolate,
-  Extrapolation,
-  type SharedValue,
-} from 'react-native-reanimated';
-import {
-  Gesture,
-  GestureDetector,
-  GestureHandlerRootView,
-  TouchableOpacity,
-} from 'react-native-gesture-handler';
-import { X, Send, Trash2, Copy, Video, AtSign, MessageSquare, Heart, Volume2, VolumeX } from 'lucide-react-native';
-import { setStringAsync as clipboardSetString } from 'expo-clipboard';
-import { useVoiceReader } from '@/lib/useVoiceReader';
-import { supabase } from '@/lib/supabase';
-import { useQuery } from '@tanstack/react-query';
-import { useCreatorVoiceSample } from '@/lib/useCreatorVoiceSample';
-
-
-import * as Haptics from 'expo-haptics';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Image } from 'expo-image';
-import { useComments, useAddComment, useDeleteComment, useCommentReplies, type Comment } from '@/lib/useComments';
-import { useCommentLike, useCommentLikesBatch, type CommentLikesMap } from '@/lib/useCommentLike';
-import { useAuthStore } from '@/lib/authStore';
-import { VideoGridThumb } from './VideoGridThumb';
-import { RichText } from '@/components/ui/RichText';
-import { useExploreUserSearch } from '@/lib/useExplore';
-import { useTheme } from '@/lib/useTheme';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 // TikTok: Post-Preview oben (~22%), Sheet darunter
@@ -292,74 +288,6 @@ export default function CommentsSheet({ postId, visible, onClose, mediaUrl, medi
 
 
 
-// ── S1: Kommentare vorlesen ─────────────────────────────────────────────────
-
-function CommentVoiceBtn({
-  postId,
-  comments,
-  voiceRefUrl,
-}: {
-  postId: string;
-  comments: import('@/lib/useComments').Comment[];
-  voiceRefUrl?: string | null;
-}) {
-  // Cache-Key: postId + Anzahl Kommentare (bei neuen Kommentaren neu generieren)
-  const cacheKey = `comments-${postId}-${comments.length}`;
-
-  // Kommentar-Text zusammenbauen — liest die Top-5 Kommentare vor
-  const script = comments
-    .slice(0, 5)
-    .map((c) => {
-      const name = c.profiles?.username ?? 'Jemand';
-      return `${name} schrieb: ${c.text}`;
-    })
-    .join('. ');
-
-  const { isLoading, isPlaying, toggle } = useVoiceReader(cacheKey, script, 0.45, voiceRefUrl);
-
-  return (
-    <Pressable
-      onPress={() => {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        toggle();
-      }}
-      hitSlop={10}
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 4,
-        paddingHorizontal: 10,
-        paddingVertical: 6,
-        borderRadius: 16,
-        backgroundColor: isPlaying
-          ? 'rgba(255,255,255,0.10)'
-          : 'rgba(255,255,255,0.05)',
-        borderWidth: 1,
-        borderColor: isPlaying
-          ? 'rgba(255,255,255,0.28)'
-          : 'rgba(255,255,255,0.08)',
-      }}
-      accessibilityRole="button"
-      accessibilityLabel={isPlaying ? 'Vorlesen stoppen' : 'Kommentare vorlesen'}
-    >
-      {isLoading ? (
-        <ActivityIndicator size={13} color="rgba(255,255,255,0.6)" />
-      ) : isPlaying ? (
-        <VolumeX size={13} color="#FFFFFF" strokeWidth={2} />
-      ) : (
-        <Volume2 size={13} color="rgba(255,255,255,0.5)" strokeWidth={2} />
-      )}
-      <Text style={{
-        color: isPlaying ? '#FFFFFF' : 'rgba(255,255,255,0.4)',
-        fontSize: 11,
-        fontWeight: '600',
-      }}>
-        {isLoading ? 'Laden...' : isPlaying ? 'Stoppen' : 'Vorlesen'}
-      </Text>
-    </Pressable>
-  );
-}
-
 function SheetInner({
   postId,
   onClose,
@@ -377,7 +305,6 @@ function SheetInner({
   panForList: ReturnType<typeof Gesture.Pan>;
   creatorUserId?: string | null;
 }) {
-  const creatorVoiceUrl = useCreatorVoiceSample(creatorUserId);
   const { profile } = useAuthStore();
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
@@ -387,6 +314,7 @@ function SheetInner({
 
   // ── N+1-Fix: Alle Comment-Likes in 2 Queries statt 2×N ──────────────────
   // useMemo verhindert neue Array-Referenz bei jedem Render (würde Batch-Query neu triggern)
+// eslint-disable-next-line @typescript-eslint/no-require-imports
   const { useMemo } = require('react') as typeof import('react');
   const commentIds = useMemo(
     () => (comments ?? []).map((c) => c.id),
@@ -401,7 +329,7 @@ function SheetInner({
   const [replyTo, setReplyTo] = useState<{ id: string; username: string } | null>(null);
 
   // ── @Mention Autocomplete ──────────────────────────────────
-  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  const [, setMentionQuery] = useState<string | null>(null);
   const mentionDebounced = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [debouncedMention, setDebouncedMention] = useState<string | null>(null);
   const { data: mentionUsers = [] } = useExploreUserSearch(debouncedMention ?? '');
@@ -434,7 +362,7 @@ function SheetInner({
         onError: () => setText(trimmed),
       }
     );
-  }, [text, addComment]);
+  }, [text, addComment, replyTo?.id]);
 
   const handleDelete = useCallback((commentId: string) => {
     Alert.alert('Kommentar löschen', 'Möchtest du diesen Kommentar wirklich löschen?', [
@@ -525,9 +453,6 @@ function SheetInner({
         <View style={styles.header}>
           <Text style={styles.headerTitle}>Kommentare</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            {/* 🔊 Vorlesen: deaktiviert — für spätere AI-Narration */}
-            {/* (comments?.length ?? 0) > 0 && <CommentVoiceBtn postId={postId} comments={comments ?? []} voiceRefUrl={creatorVoiceUrl} /> */}
-
             <Pressable onPress={onClose} style={styles.closeBtn}>
               <X size={18} stroke="#6B7280" strokeWidth={2} />
             </Pressable>
@@ -774,7 +699,7 @@ function CommentRowComponent({
 }) {
   const [showReplies, setShowReplies] = useState(false);
   const { data: replies = [] } = useCommentReplies(comment.id, showReplies);
-  const { colors, isDark } = useTheme();
+  const { colors } = useTheme();
 
   // Batch-Daten priorisieren (Top-Level Kommentare), Fallback auf Einzelquery (Replies)
   const batchState = likeMap?.get(comment.id);

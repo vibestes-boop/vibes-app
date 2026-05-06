@@ -15,59 +15,57 @@
  * - Resolution-Uniform wird beim Mount einmal gesetzt (SCREEN_W/H)
  */
 
-import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  View,
-  StyleSheet,
-  TouchableOpacity,
-  Text,
-  Alert,
-  ActivityIndicator,
-  Dimensions,
-} from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withRepeat,
-  withSequence,
-  withTiming,
-  useDerivedValue,
-  runOnJS,
-} from 'react-native-reanimated';
-import * as Haptics from 'expo-haptics';
-import {
-  Camera,
-  useCameraDevice,
-  useCameraPermission,
-  useSkiaFrameProcessor,
-  type PhotoFile,
-  type VideoFile,
-} from 'react-native-vision-camera';
-import { useIsFocused } from '@react-navigation/native';
-import {
-  Skia,
-  Canvas,
-  Image as SkiaImage,
-  useImage,
-  RadialGradient,
-  Rect,
-  vec,
-  RuntimeShader,
-} from '@shopify/react-native-skia';
-import { LinearGradient } from 'expo-linear-gradient';
-import { FilterBar } from './FilterBar';
-import {
-  FILTER_CATALOG,
-  COLOR_FILTERS,
-  FRAME_CONFIGS,
-  type CameraFilter,
-  type FrameFilterId,
-  type ShaderFilterId,
+COLOR_FILTERS,
+FILTER_CATALOG,
+FRAME_CONFIGS,
+type CameraFilter,
+type FrameFilterId,
+type ShaderFilterId,
 } from '@/lib/cameraFilters';
 import { SHADER_REGISTRY } from '@/lib/cameraShaders';
-import { useFaceDetection, getStickerPosition } from '@/lib/useFaceDetection';
+import { getStickerPosition,useFaceDetection } from '@/lib/useFaceDetection';
 import { useLiveFaceDetection } from '@/lib/useLiveFaceDetection';
+import { useIsFocused } from '@react-navigation/native';
+import {
+Canvas,
+RadialGradient,
+Rect,
+RuntimeShader,
+Skia,
+Image as SkiaImage,
+useImage,
+vec,
+} from '@shopify/react-native-skia';
+import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
+import React,{ useEffect,useMemo,useRef,useState } from 'react';
+import {
+ActivityIndicator,
+Alert,
+Dimensions,
+StyleSheet,
+Text,
+TouchableOpacity,
+View,
+} from 'react-native';
+import Animated,{
+useAnimatedStyle,
+useSharedValue,
+withRepeat,
+withSequence,
+withSpring,
+withTiming
+} from 'react-native-reanimated';
+import {
+Camera,
+useCameraDevice,
+useCameraPermission,
+useSkiaFrameProcessor,
+type PhotoFile,
+type VideoFile,
+} from 'react-native-vision-camera';
+import { FilterBar } from './FilterBar';
 import { StickerCanvas } from './StickerCanvas';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');

@@ -3,16 +3,23 @@
  * Eigener Stil: Cremig-hell, Gold-Akzent, dunkler Header, nicht TikTok-Kopie.
  */
 
-import React, { useEffect, useRef, useState } from 'react';
-import {
-  View, Text, StyleSheet, Pressable, ActivityIndicator,
-  Alert, ScrollView, Image, Animated,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { useCoinsWallet } from '@/lib/useGifts';
 import { supabase } from '@/lib/supabase';
+import { useCoinsWallet } from '@/lib/useGifts';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import React,{ useEffect,useRef,useState } from 'react';
+import {
+ActivityIndicator,
+Alert,
+Animated,
+Image,
+Pressable,
+ScrollView,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const COIN_PACKAGES = [
   { id: 'com.vibesapp.vibes.coins_100',  coins: 100,  price: 0.99,  priceStr: '0,99 €', badge: null },
@@ -46,12 +53,13 @@ export default function CoinShopScreen() {
     ).start();
 
     initRevenueCat();
-  }, []);
+  }, [coinSpin, fadeIn]);
 
   const coinScale = coinSpin.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 1.08, 1] });
 
   async function initRevenueCat() {
     try {
+// eslint-disable-next-line @typescript-eslint/no-require-imports
       const { Purchases } = require('react-native-purchases');
       const apiKey = process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY;
       if (!apiKey) return;
@@ -82,6 +90,7 @@ export default function CoinShopScreen() {
     }
     setPurchasing(true);
     try {
+// eslint-disable-next-line @typescript-eslint/no-require-imports
       const { Purchases } = require('react-native-purchases');
       const pkg = offerings?.current?.availablePackages?.find(
         (p: any) => p.product.identifier === selected
@@ -199,6 +208,7 @@ export default function CoinShopScreen() {
           <Pressable onPress={async () => {
             if (!iapAvailable) return;
             try {
+// eslint-disable-next-line @typescript-eslint/no-require-imports
               const { Purchases } = require('react-native-purchases');
               await Purchases.restorePurchases(); await refetch();
               Alert.alert('✅', 'Käufe wiederhergestellt.');
@@ -250,7 +260,6 @@ export default function CoinShopScreen() {
 // ─── Styles ──────────────────────────────────────────────────────────────────
 const GOLD = '#F5A623';
 const GOLD_LIGHT = '#FFF8E8';
-const PURPLE_SEL = '#6B21A8';
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#FAF8F5' },

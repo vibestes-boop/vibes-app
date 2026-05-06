@@ -6,24 +6,34 @@
  * • media_url direkt im Highlight gespeichert → läuft nicht ab
  * • Long-Press → Highlight löschen
  */
-import {
-  View, Text, Pressable, StyleSheet,
-  ScrollView, Alert, ActivityIndicator,
-} from 'react-native';
-import { useState } from 'react';
-import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
-import { PlusCircle } from 'lucide-react-native';
-import * as Haptics from 'expo-haptics';
-import { useRouter } from 'expo-router';
-import {
-  useStoryHighlights, useAddHighlight, useRemoveHighlight,
-  useMyStoryArchive, useMyPostsForHighlight, type StoryHighlight, type HighlightItem,
-} from '@/lib/useStoryHighlights';
 import { useStoryViewerStore } from '@/lib/storyViewerStore';
 import type { StoryGroup } from '@/lib/useStories';
-import { HighlightPickerSheet } from './HighlightPickerSheet';
+import {
+useAddHighlight,
+useMyPostsForHighlight,
+useMyStoryArchive,
+useRemoveHighlight,
+useStoryHighlights,
+type HighlightItem,
+type StoryHighlight,
+} from '@/lib/useStoryHighlights';
 import { useTheme } from '@/lib/useTheme';
+import * as Haptics from 'expo-haptics';
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import { PlusCircle } from 'lucide-react-native';
+import { useState } from 'react';
+import {
+ActivityIndicator,
+Alert,
+Pressable,
+ScrollView,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
+import { HighlightPickerSheet } from './HighlightPickerSheet';
 
 const BUBBLE_SIZE = 66;
 

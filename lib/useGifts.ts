@@ -6,13 +6,13 @@
  * useCoinsWallet: Liest das Coin-Guthaben des Users
  */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Dimensions } from 'react-native';
 import * as Sentry from '@sentry/react-native';
-import { supabase } from './supabase';
-import { useAuthStore } from './authStore';
 import type { RealtimeChannel } from '@supabase/supabase-js';
-import { GIFT_BY_ID, type GiftItem, type GiftRealtimePayload } from './gifts';
+import React,{ useCallback,useEffect,useRef,useState } from 'react';
+import { Dimensions } from 'react-native';
+import { useAuthStore } from './authStore';
+import { GIFT_BY_ID,type GiftItem,type GiftRealtimePayload } from './gifts';
+import { supabase } from './supabase';
 
 const SCREEN_W = Dimensions.get('window').width;
 

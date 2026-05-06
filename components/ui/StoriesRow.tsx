@@ -1,23 +1,25 @@
-import { useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native';
+import { useAuthStore } from '@/lib/authStore';
+import type { LiveSession } from '@/lib/useLiveSession';
+import type { StoryGroup } from '@/lib/useStories';
+import { useTheme } from '@/lib/useTheme';
+import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import { Plus } from 'lucide-react-native';
+import { useEffect,useMemo } from 'react';
+import { Pressable,ScrollView,StyleSheet,Text,View } from 'react-native';
+import {
+Easing,
+useAnimatedStyle,
+useSharedValue,
+withRepeat,withSequence,withTiming,
+} from 'react-native-reanimated';
 // react-native-reanimated: CJS require() vermeidet _interopRequireDefault Crash in Hermes HBC
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any;
 const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
-import {
-  useSharedValue, useAnimatedStyle,
-  withRepeat, withSequence, withTiming, Easing,
-} from 'react-native-reanimated';
-import { Plus } from 'lucide-react-native';
-import * as Haptics from 'expo-haptics';
-import { useRouter } from 'expo-router';
-import type { StoryGroup } from '@/lib/useStories';
-import type { LiveSession } from '@/lib/useLiveSession';
-import { useAuthStore } from '@/lib/authStore';
-import { useTheme } from '@/lib/useTheme';
 
 type Props = {
   groups: StoryGroup[];
@@ -100,6 +102,7 @@ function StoryBubble({
     if (isLive && liveSession) {
       if (isOwn) {
         // Eigenes Live → Alert
+// eslint-disable-next-line @typescript-eslint/no-require-imports
         const { Alert } = require('react-native') as typeof import('react-native');
         Alert.alert(
           '🔴 Du bist LIVE',
@@ -222,6 +225,7 @@ function LiveOnlyBubble({ session, isOwn }: { session: LiveSession; isOwn: boole
   const handlePress = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     if (isOwn) {
+// eslint-disable-next-line @typescript-eslint/no-require-imports
       const { Alert } = require('react-native') as typeof import('react-native');
       Alert.alert(
         '🔴 Du bist LIVE',
