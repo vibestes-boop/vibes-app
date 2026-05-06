@@ -42,6 +42,12 @@ const steps = [
     cwd: repoRoot,
   },
   {
+    name: 'Auth interactions',
+    cmd: 'npm',
+    args: ['run', 'stability:auth', '--', '--skip-if-missing'],
+    cwd: repoRoot,
+  },
+  {
     name: 'Media budget',
     cmd: 'npm',
     args: ['run', 'stability:media-budget'],
