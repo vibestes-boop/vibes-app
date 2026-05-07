@@ -872,6 +872,70 @@ export const getPostComments = cache(async (
   return out;
 });
 
+type WebCommentRpcRow = {
+  id: string;
+  post_id: string;
+  user_id: string;
+  parent_id: string | null;
+  body: string | null;
+  like_count: number | string | null;
+  liked_by_me: boolean | null;
+  reply_count: number | string | null;
+  created_at: string;
+  author_id: string;
+  author_username: string;
+  author_display_name: string | null;
+  author_avatar_url: string | null;
+  author_verified: boolean | null;
+};
+
+function commentRpcRowToComment(row: WebCommentRpcRow): CommentWithAuthor {
+  return {
+    id: row.id,
+    post_id: row.post_id,
+    user_id: row.user_id,
+    parent_id: row.parent_id ?? null,
+    body: row.body ?? '',
+    like_count: toCount(row.like_count),
+    liked_by_me: row.liked_by_me ?? false,
+    reply_count: toCount(row.reply_count),
+    created_at: row.created_at,
+    author: {
+      id: row.author_id,
+      username: row.author_username,
+      display_name: row.author_display_name,
+      avatar_url: row.author_avatar_url,
+      verified: row.author_verified ?? false,
+    },
+  };
+}
+
+export const getPostCommentsFast = cache(async (
+  postId: string,
+  limit = 30,
+  viewerId?: string | null,
+): Promise<CommentWithAuthor[]> => {
+  const supabase = await createClient();
+
+  try {
+    const { data, error } = await supabase.rpc('get_post_comments_web', {
+      p_post_id: postId,
+      p_limit: limit,
+      p_viewer_id: viewerId ?? null,
+    });
+
+    if (!error && Array.isArray(data)) {
+      return (data as unknown as WebCommentRpcRow[])
+        .map(commentRpcRowToComment)
+        .sort((a, b) => a.created_at.localeCompare(b.created_at));
+    }
+  } catch {
+    // Migration may not be available in every environment yet.
+  }
+
+  return getPostComments(postId, limit, viewerId);
+});
+
 // getCommentReplies — Replies zu einem Top-Level-Kommentar, älteste zuerst.
 // Kein React.cache() — wird client-seitig via Server Action aufgerufen,
 // per-request-Dedup bringt dort nichts.
@@ -1115,12 +1179,21 @@ export const getStory = cache(async (storyId: string): Promise<StoryWithAuthor |
 export const isFollowing = cache(async (targetUserId: string): Promise<boolean> => {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.id === targetUserId) return false;
+  return isFollowingForViewer(targetUserId, user?.id ?? null);
+});
+
+export const isFollowingForViewer = cache(async (
+  targetUserId: string,
+  viewerId?: string | null,
+): Promise<boolean> => {
+  if (!viewerId || viewerId === targetUserId) return false;
+
+  const supabase = await createClient();
 
   const { data } = await supabase
     .from('follows')
     .select('follower_id')
-    .eq('follower_id', user.id)
+    .eq('follower_id', viewerId)
     .eq('following_id', targetUserId)
     .maybeSingle();
 
@@ -1144,22 +1217,31 @@ export const getPostInteractionState = cache(
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return { liked: false, saved: false };
+    return getPostInteractionStateForViewer(postId, user?.id ?? null);
+  },
+);
 
-    const [{ count: likeCount }, { count: saveCount }] = await Promise.all([
+export const getPostInteractionStateForViewer = cache(
+  async (postId: string, viewerId?: string | null): Promise<PostInteractionState> => {
+    if (!viewerId) return { liked: false, saved: false };
+
+    const supabase = await createClient();
+    const [likeRes, saveRes] = await Promise.all([
       supabase
         .from('likes')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('post_id', postId),
+        .select('post_id')
+        .eq('user_id', viewerId)
+        .eq('post_id', postId)
+        .maybeSingle(),
       supabase
         .from('bookmarks')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('post_id', postId),
+        .select('post_id')
+        .eq('user_id', viewerId)
+        .eq('post_id', postId)
+        .maybeSingle(),
     ]);
 
-    return { liked: (likeCount ?? 0) > 0, saved: (saveCount ?? 0) > 0 };
+    return { liked: !!likeRes.data, saved: !!saveRes.data };
   },
 );
 

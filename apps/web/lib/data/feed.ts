@@ -1075,38 +1075,23 @@ export async function getPublicExploreTrendingFeed(
   limit = 12,
   offset = 0,
 ): Promise<ExplorePage> {
-  const supabase = createPublicClient();
-  const fastRows = await fetchExploreFeedViaRpc(supabase, limit, offset, 'trending');
-  if (fastRows) {
-    const posts = fastRows
-      .map(normalizePublicRpcRow)
-      .filter((p): p is FeedPost => p !== null);
-    return { posts, hasMore: posts.length >= limit };
-  }
-
-  const { data, error } = await supabase
-    .from('posts')
-    .select(`${POST_COLUMNS}, ${AUTHOR_JOIN}`)
-    .eq('privacy', 'public')
-    .order('view_count', { ascending: false })
-    .order('id', { ascending: false })
-    .range(offset, offset + limit - 1);
-
-  if (error || !data) return { posts: [], hasMore: false };
-
-  const posts = (data as unknown as RawPostRow[])
-    .map((row) => normalizeRow(row, new Set(), new Set(), new Set(), new Set()))
-    .filter((p): p is FeedPost => p !== null);
-
-  return { posts, hasMore: posts.length >= limit };
+  return getCachedPublicExploreFeed('trending', limit, offset);
 }
 
 export async function getPublicExploreNewestFeed(
   limit = 12,
   offset = 0,
 ): Promise<ExplorePage> {
+  return getCachedPublicExploreFeed('newest', limit, offset);
+}
+
+async function fetchPublicExploreFeed(
+  sortKey: ExploreSortKey,
+  limit: number,
+  offset: number,
+): Promise<ExplorePage> {
   const supabase = createPublicClient();
-  const fastRows = await fetchExploreFeedViaRpc(supabase, limit, offset, 'newest');
+  const fastRows = await fetchExploreFeedViaRpc(supabase, limit, offset, sortKey);
   if (fastRows) {
     const posts = fastRows
       .map(normalizePublicRpcRow)
@@ -1114,14 +1099,17 @@ export async function getPublicExploreNewestFeed(
     return { posts, hasMore: posts.length >= limit };
   }
 
-  const { data, error } = await supabase
+  let query = supabase
     .from('posts')
     .select(`${POST_COLUMNS}, ${AUTHOR_JOIN}`)
     .eq('privacy', 'public')
-    .order('created_at', { ascending: false })
-    .order('id', { ascending: false })
     .range(offset, offset + limit - 1);
 
+  query = sortKey === 'trending'
+    ? query.order('view_count', { ascending: false }).order('id', { ascending: false })
+    : query.order('created_at', { ascending: false }).order('id', { ascending: false });
+
+  const { data, error } = await query;
   if (error || !data) return { posts: [], hasMore: false };
 
   const posts = (data as unknown as RawPostRow[])
@@ -1132,6 +1120,13 @@ export async function getPublicExploreNewestFeed(
 }
 
 type ExploreSortKey = 'trending' | 'newest';
+const getCachedPublicExploreFeed = unstable_cache(
+  async (sortKey: ExploreSortKey, limit: number, offset: number): Promise<ExplorePage> =>
+    fetchPublicExploreFeed(sortKey, limit, offset),
+  ['public-explore-feed'],
+  { revalidate: 30, tags: [PUBLIC_FEED_CACHE_TAG] },
+);
+
 type ServerSupabaseClient = Awaited<ReturnType<typeof createClient>>;
 type PublicSupabaseClient = ReturnType<typeof createPublicClient>;
 

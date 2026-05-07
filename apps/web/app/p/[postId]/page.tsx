@@ -10,8 +10,15 @@ import {
   CalendarDays,
 } from 'lucide-react';
 
-import { getPost, getPostComments, getPostInteractionState, isFollowing, getProfilePosts } from '@/lib/data/public';
-import { getUser } from '@/lib/auth/session';
+import {
+  getPost,
+  getPostComments,
+  getPostCommentsFast,
+  getPostInteractionStateForViewer,
+  isFollowingForViewer,
+  getProfilePosts,
+} from '@/lib/data/public';
+import { getProfile, getUser } from '@/lib/auth/session';
 import { ExploreVideoCard } from '@/components/explore/explore-video-card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { VideoPlayer } from '@/components/video/video-player';
@@ -24,7 +31,6 @@ import { PostViewerMenu } from '@/components/post/post-viewer-menu';
 import { PostDwellTracker } from '@/components/post/post-dwell-tracker';
 import { PostViewTracker } from '@/components/post/post-view-tracker';
 import { linkify } from '@/lib/linkify';
-import { getProfile } from '@/lib/auth/session';
 
 // -----------------------------------------------------------------------------
 // /p/[postId] — public post detail.
@@ -37,6 +43,7 @@ import { getProfile } from '@/lib/auth/session';
 
 export const dynamic = 'force-dynamic';
 export const dynamicParams = true;
+const INITIAL_COMMENT_LIMIT = 20;
 
 // -----------------------------------------------------------------------------
 // Metadata — Social-Previews + Twitter-Card mit "player"-Type für Inline-Video.
@@ -171,19 +178,24 @@ export default async function PostDetailPage({
   // Kommentare + Interaction-State + Viewer parallel laden.
   // Viewer zuerst auflösen damit getPostComments liked_by_me befüllen kann.
   const viewer = await getUser();
-  const [comments, interaction, authorPosts, viewerProfile] = await Promise.all([
-    post.allow_comments ? getPostComments(post.id, 20, viewer?.id ?? null) : Promise.resolve([]),
-    getPostInteractionState(post.id),
+  const viewerId = viewer?.id ?? null;
+  const isSelf = viewerId === post.author.id;
+  const canUseFastComments = post.comment_count <= INITIAL_COMMENT_LIMIT;
+  const [comments, interaction, authorPosts, viewerProfile, followingAuthor] = await Promise.all([
+    post.allow_comments
+      ? canUseFastComments
+        ? getPostCommentsFast(post.id, INITIAL_COMMENT_LIMIT, viewerId)
+        : getPostComments(post.id, INITIAL_COMMENT_LIMIT, viewerId)
+      : Promise.resolve([]),
+    getPostInteractionStateForViewer(post.id, viewerId),
     // v1.w.UI.62: "Mehr von @author" — bis zu 7 holen, aktuellen Post rausfiltern → max 6
     getProfilePosts(post.author.id, 7),
     viewer ? getProfile() : Promise.resolve(null),
+    !isSelf && viewerId ? isFollowingForViewer(post.author.id, viewerId) : Promise.resolve(false),
   ]);
 
   // Aktuellen Post aus der "Mehr von"-Liste herausfiltern.
   const morePosts = authorPosts.filter((p) => p.id !== post.id).slice(0, 6);
-
-  const isSelf = viewer?.id === post.author.id;
-  const followingAuthor = !isSelf && viewer ? await isFollowing(post.author.id) : false;
 
   const authorName = post.author.display_name ?? `@${post.author.username}`;
   const viewerAuthor = viewerProfile?.username
