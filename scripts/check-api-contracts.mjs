@@ -151,6 +151,11 @@ async function runPublicEndpointChecks(username) {
   const query = (username || 'za').slice(0, 2);
   const targets = [
     {
+      label: 'feed.foryou',
+      url: `${siteUrl}/api/feed/foryou?limit=${limit}`,
+      validate: validateForYouFeedContract,
+    },
+    {
       label: 'search.quick',
       url: `${siteUrl}/api/search/quick?q=${encodeURIComponent(query)}`,
       validate: validateQuickSearchContract,
@@ -195,6 +200,33 @@ async function runPublicEndpointChecks(username) {
       cdnCacheControl: readCdnCacheControl(result.headers),
     });
   }
+}
+
+function validateForYouFeedContract(label, data) {
+  const localFailures = [];
+  const localWarnings = [];
+
+  if (!Array.isArray(data)) {
+    localFailures.push(`[${label}] Expected JSON array response.`);
+    return { failures: localFailures, warnings: localWarnings };
+  }
+
+  if (data.length < minPosts) {
+    localFailures.push(`[${label}] Expected at least ${minPosts} posts, got ${data.length}.`);
+  }
+
+  const ids = new Set();
+  for (const [index, post] of data.slice(0, limit).entries()) {
+    const prefix = `[${label}] post[${index}]`;
+    validatePost(prefix, post, localFailures, localWarnings);
+
+    if (isPlainObject(post) && typeof post.id === 'string') {
+      if (ids.has(post.id)) localFailures.push(`${prefix} duplicate id ${post.id}.`);
+      ids.add(post.id);
+    }
+  }
+
+  return { failures: localFailures, warnings: localWarnings };
 }
 
 function validateQuickSearchContract(label, data) {
