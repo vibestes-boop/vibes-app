@@ -34,6 +34,14 @@ export interface QuickSearchResult {
   hashtags: Array<{ tag: string; post_count: number }>;
 }
 
+type QuickSearchUserRow = {
+  id: string;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  verified: boolean | null;
+};
+
 export async function GET(request: Request): Promise<NextResponse> {
   const { searchParams } = new URL(request.url);
   const q = (searchParams.get('q') ?? '').trim();
@@ -51,19 +59,30 @@ export async function GET(request: Request): Promise<NextResponse> {
   const supabase = createPublicClient();
 
   const [usersRes, allHashtags] = await Promise.all([
-    supabase
-      .from('profiles')
-      .select('id, username, display_name, avatar_url, verified:is_verified')
-      .or(`username.ilike.${like},display_name.ilike.${like}`)
-      .order('created_at', { ascending: false })
-      .limit(5),
+    supabase.rpc('search_public_profiles_web', {
+      search_query: q,
+      result_limit: 5,
+    }),
     // Hashtag-Liste aus dem Public-Trending-Cache (kein Extra-DB-Hit).
     getPublicTrendingHashtags(80).then((tags) =>
       tags.filter((t) => t.tag.includes(tagLike)).slice(0, 4),
     ),
   ]);
 
-  const users = (usersRes.data ?? []).map((u) => ({
+  let userRows: QuickSearchUserRow[] = usersRes.error
+    ? []
+    : ((usersRes.data ?? []) as QuickSearchUserRow[]);
+  if (usersRes.error) {
+    const fallback = await supabase
+      .from('profiles')
+      .select('id, username, display_name, avatar_url, verified:is_verified')
+      .or(`username.ilike.${like},display_name.ilike.${like}`)
+      .order('created_at', { ascending: false })
+      .limit(5);
+    userRows = (fallback.data ?? []) as QuickSearchUserRow[];
+  }
+
+  const users = userRows.map((u) => ({
     id: u.id as string,
     username: u.username as string,
     display_name: (u.display_name as string | null) ?? null,
