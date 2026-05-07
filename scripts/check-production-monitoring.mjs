@@ -6,6 +6,7 @@ const DEFAULT_SITE_URL = 'https://serlo-web.vercel.app';
 const DEFAULT_SINCE = '45m';
 const DEFAULT_LOG_LIMIT = 100;
 const DEFAULT_TIMEOUT_MS = 8000;
+const DEFAULT_ROUTE_WARN_MS = 1500;
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const webRoot = path.join(repoRoot, 'apps/web');
@@ -20,11 +21,12 @@ const siteUrl = normalizeBase(args.siteUrl || process.env.STABILITY_SITE_URL || 
 const since = args.since || DEFAULT_SINCE;
 const logLimit = readPositiveInt(args.limit, DEFAULT_LOG_LIMIT);
 const timeoutMs = readPositiveInt(args.timeoutMs, DEFAULT_TIMEOUT_MS);
+const routeWarnMs = readPositiveInt(args.routeWarnMs, DEFAULT_ROUTE_WARN_MS);
 const failures = [];
 const warnings = [];
 
 console.log(`Production monitoring check: ${siteUrl}`);
-console.log(`Window: last ${since}, logs limit ${logLimit}.`);
+console.log(`Window: last ${since}, logs limit ${logLimit}, route warn ${routeWarnMs}ms.`);
 
 const routeResults = await runRouteSmoke();
 const logResult = args.skipLogs ? null : runVercelLogProbe();
@@ -100,6 +102,8 @@ async function runRouteSmoke() {
           `[route:${spec.label}] ${spec.path} returned ${response.status}` +
             `${location ? ` -> ${location}` : ''}.`,
         );
+      } else if (durationMs > routeWarnMs) {
+        warnings.push(`[route:${spec.label}] ${spec.path} took ${durationMs}ms (warn>${routeWarnMs}ms).`);
       }
     } catch (error) {
       const durationMs = Math.round(performance.now() - startedAt);
@@ -175,12 +179,14 @@ function runVercelLogProbe() {
       hotspots: [],
       statusCounts: new Map(),
       errorRecords: [],
+      clientErrorRecords: [],
     };
   }
 
   const statusCounts = new Map();
   const timingRows = [];
   const errorRecords = [];
+  const clientErrorRecords = [];
 
   for (const record of records) {
     const status = Number(record.responseStatusCode);
@@ -188,6 +194,8 @@ function runVercelLogProbe() {
       statusCounts.set(status, (statusCounts.get(status) ?? 0) + 1);
       if (status >= 500) {
         errorRecords.push(record);
+      } else if (status >= 400) {
+        clientErrorRecords.push(record);
       }
     }
 
@@ -211,6 +219,9 @@ function runVercelLogProbe() {
 
   if (fiveXxCount > 0) failures.push(`[logs] Found ${fiveXxCount} 5xx response(s) in production logs.`);
   if (errorRecords.length > 0) failures.push(`[logs] Found ${errorRecords.length} error-level log record(s).`);
+  if (clientErrorRecords.length > 0) {
+    warnings.push(`[logs] Found ${clientErrorRecords.length} 4xx response(s): ${summarizeRequestPaths(clientErrorRecords)}`);
+  }
 
   return {
     ok: true,
@@ -218,6 +229,7 @@ function runVercelLogProbe() {
     hotspots,
     statusCounts,
     errorRecords,
+    clientErrorRecords,
     exitCode: result.status,
   };
 }
@@ -361,6 +373,11 @@ function printLogResults(result) {
   console.log(`  - records: ${result.records.length}`);
   console.log(`  - status counts: ${statusText}`);
   console.log(`  - error records: ${result.errorRecords.length}`);
+  console.log(`  - 4xx records: ${result.clientErrorRecords.length}`);
+
+  if (result.clientErrorRecords.length > 0) {
+    console.log(`  - 4xx top paths: ${summarizeRequestPaths(result.clientErrorRecords)}`);
+  }
 
   if (result.hotspots.length > 0) {
     console.log('  - timing hotspots:');
@@ -406,6 +423,23 @@ function readPositiveInt(value, fallback) {
   return parsed;
 }
 
+function summarizeRequestPaths(records) {
+  const counts = new Map();
+
+  for (const record of records) {
+    const method = String(record.requestMethod || 'GET').toUpperCase();
+    const pathName = String(record.requestPath || '/');
+    const key = `${method} ${pathName}`;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+
+  return Array.from(counts.entries())
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, 5)
+    .map(([pathName, count]) => `${pathName} x${count}`)
+    .join(', ');
+}
+
 function parseArgs(rawArgs) {
   const parsed = {
     help: false,
@@ -414,6 +448,7 @@ function parseArgs(rawArgs) {
     since: undefined,
     siteUrl: undefined,
     timeoutMs: undefined,
+    routeWarnMs: undefined,
   };
 
   for (let i = 0; i < rawArgs.length; i += 1) {
@@ -424,6 +459,7 @@ function parseArgs(rawArgs) {
     else if (arg === '--since') parsed.since = rawArgs[++i];
     else if (arg === '--site-url') parsed.siteUrl = rawArgs[++i];
     else if (arg === '--timeout-ms') parsed.timeoutMs = rawArgs[++i];
+    else if (arg === '--route-warn-ms') parsed.routeWarnMs = rawArgs[++i];
     else throw new Error(`Unknown argument: ${arg}`);
   }
 
@@ -448,6 +484,7 @@ Options:
   --limit <n>          Max Vercel log records to inspect (default: ${DEFAULT_LOG_LIMIT})
   --skip-logs          Only run route smoke; do not call Vercel logs
   --timeout-ms <n>     Per-request timeout (default: ${DEFAULT_TIMEOUT_MS})
+  --route-warn-ms <n>  Warn when a route smoke request is slower (default: ${DEFAULT_ROUTE_WARN_MS})
   -h, --help           Show this help
 `);
 }
