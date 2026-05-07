@@ -383,6 +383,8 @@ export const getProfilePosts = cache(
          comment_count:comments(count)`,
       )
       .eq('author_id', userId)
+      .eq('privacy', 'public')
+      .eq('women_only', false)
       .order('is_pinned', { ascending: false })
       .order(profileSortOrder(sort), { ascending: false })
       .limit(limit);
@@ -421,6 +423,8 @@ export async function getProfilePostsPage(
        comment_count:comments(count)`,
     )
     .eq('author_id', userId)
+    .eq('privacy', 'public')
+    .eq('women_only', false)
     .order('is_pinned', { ascending: false })
     .order(profileSortOrder(sort), { ascending: false })
     .range(offset, offset + limit - 1);
