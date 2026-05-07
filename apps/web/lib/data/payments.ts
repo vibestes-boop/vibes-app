@@ -62,17 +62,14 @@ export interface CoinBalance {
   totalGifted: number;
 }
 
-export const getMyCoinBalance = cache(async (): Promise<CoinBalance | null> => {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+export const getCoinBalanceForViewer = cache(async (viewerId: string | null | undefined): Promise<CoinBalance | null> => {
+  if (!viewerId) return null;
 
+  const supabase = await createClient();
   const { data, error } = await supabase
     .from('coins_wallets')
     .select('coins, diamonds, total_gifted')
-    .eq('user_id', user.id)
+    .eq('user_id', viewerId)
     .maybeSingle();
 
   if (error || !data) {
@@ -85,6 +82,14 @@ export const getMyCoinBalance = cache(async (): Promise<CoinBalance | null> => {
     diamonds: data.diamonds ?? 0,
     totalGifted: data.total_gifted ?? 0,
   };
+});
+
+export const getMyCoinBalance = cache(async (): Promise<CoinBalance | null> => {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  return getCoinBalanceForViewer(user?.id ?? null);
 });
 
 // ─── Order-History ──────────────────────────────────────────────────────────

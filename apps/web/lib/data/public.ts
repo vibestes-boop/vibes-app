@@ -1,6 +1,8 @@
 import { cache } from 'react';
+import { unstable_cache } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { createPublicClient } from '@/lib/supabase/public';
+import { PUBLIC_PROFILE_CACHE_TAG } from '@/lib/cache/tags';
 import type { PublicProfile, Post, Story } from '@shared/types';
 
 // -----------------------------------------------------------------------------
@@ -126,11 +128,13 @@ function extractCount(v: unknown): number {
 // Public profile by username — read-through cache per request.
 // -----------------------------------------------------------------------------
 
-export const getPublicProfile = cache(async (username: string): Promise<PublicProfile | null> => {
+async function fetchPublicProfile(username: string): Promise<PublicProfile | null> {
+  const normalizedUsername = username.toLowerCase();
+
   try {
     const supabase = createPublicClient();
     const { data, error } = await supabase
-      .rpc('get_public_profile_web', { p_username: username })
+      .rpc('get_public_profile_web', { p_username: normalizedUsername })
       .maybeSingle();
 
     if (!error && data) {
@@ -140,11 +144,11 @@ export const getPublicProfile = cache(async (username: string): Promise<PublicPr
     // Migration may not be deployed yet. Fall back to the PostgREST path.
   }
 
-  const supabase = await createClient();
+  const supabase = createPublicClient();
   const { data, error } = await supabase
     .from('profiles')
     .select('id, username, display_name, avatar_url, bio, is_verified, is_private, website, teip')
-    .eq('username', username.toLowerCase())
+    .eq('username', normalizedUsername)
     .maybeSingle();
 
   if (error || !data) return null;
@@ -200,6 +204,16 @@ export const getPublicProfile = cache(async (username: string): Promise<PublicPr
     website: profile.website ?? null,
     teip: profile.teip ?? null,
   };
+}
+
+const getCachedPublicProfile = unstable_cache(
+  fetchPublicProfile,
+  ['public-profile'],
+  { revalidate: 60, tags: [PUBLIC_PROFILE_CACHE_TAG] },
+);
+
+export const getPublicProfile = cache(async (username: string): Promise<PublicProfile | null> => {
+  return getCachedPublicProfile(username);
 });
 
 // -----------------------------------------------------------------------------
@@ -213,22 +227,25 @@ export interface FollowState {
   pendingRequest: boolean;
 }
 
-export const getFollowState = cache(async (targetUserId: string): Promise<FollowState> => {
+export const getFollowStateForViewer = cache(async (
+  targetUserId: string,
+  viewerId: string | null | undefined,
+): Promise<FollowState> => {
+  if (!viewerId || viewerId === targetUserId) return { following: false, pendingRequest: false };
+
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.id === targetUserId) return { following: false, pendingRequest: false };
 
   const [followRow, requestRow] = await Promise.all([
     supabase
       .from('follows')
       .select('follower_id')
-      .eq('follower_id', user.id)
+      .eq('follower_id', viewerId)
       .eq('following_id', targetUserId)
       .maybeSingle(),
     supabase
       .from('follow_requests')
       .select('id')
-      .eq('sender_id', user.id)
+      .eq('sender_id', viewerId)
       .eq('receiver_id', targetUserId)
       .maybeSingle(),
   ]);
@@ -237,6 +254,12 @@ export const getFollowState = cache(async (targetUserId: string): Promise<Follow
     following: !!followRow.data,
     pendingRequest: !!requestRow.data,
   };
+});
+
+export const getFollowState = cache(async (targetUserId: string): Promise<FollowState> => {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  return getFollowStateForViewer(targetUserId, user?.id ?? null);
 });
 
 // -----------------------------------------------------------------------------

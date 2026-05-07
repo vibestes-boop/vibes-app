@@ -8,7 +8,8 @@
 // -----------------------------------------------------------------------------
 
 import { createClient } from '@/lib/supabase/server';
-import { revalidatePath } from 'next/cache';
+import { PUBLIC_PROFILE_CACHE_TAG } from '@/lib/cache/tags';
+import { revalidatePath, revalidateTag } from 'next/cache';
 
 export async function deleteHighlight(
   highlightId: string,
@@ -27,5 +28,6 @@ export async function deleteHighlight(
 
   // Revalidate the profile page so the row disappears.
   revalidatePath(`/u/${username}`);
+  revalidateTag(PUBLIC_PROFILE_CACHE_TAG);
   return { ok: true };
 }

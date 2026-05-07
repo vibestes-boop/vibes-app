@@ -327,16 +327,24 @@ export const getMyScheduledLives = cache(
 // Used on public profile pages to render the bell toggle button.
 // Returns false for unauthenticated visitors or self-profile.
 // -----------------------------------------------------------------------------
+export const isHostMutedForViewer = cache(
+  async (hostId: string, viewerId: string | null | undefined): Promise<boolean> => {
+    if (!viewerId || viewerId === hostId) return false;
+
+    const supabase = await createClient();
+    const { count } = await supabase
+      .from('muted_live_hosts')
+      .select('host_id', { count: 'exact', head: true })
+      .eq('user_id', viewerId)
+      .eq('host_id', hostId);
+    return (count ?? 0) > 0;
+  },
+);
+
 export const isHostMuted = cache(
   async (hostId: string): Promise<boolean> => {
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user || user.id === hostId) return false;
-    const { count } = await supabase
-      .from('muted_live_hosts')
-      .select('host_id', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-      .eq('host_id', hostId);
-    return (count ?? 0) > 0;
+    return isHostMutedForViewer(hostId, user?.id ?? null);
   },
 );

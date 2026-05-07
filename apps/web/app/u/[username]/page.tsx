@@ -3,12 +3,12 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { BadgeCheck, Heart, Repeat2, ShoppingBag, Swords, Globe, Mountain, Radio, Bookmark } from 'lucide-react';
 
-import { getPublicProfile, getProfilePosts, getProfileLikedPosts, getProfileReposts, getBattleHistory, getFollowState, getBookmarkedPosts, type ProfileSortKey } from '@/lib/data/public';
+import { getPublicProfile, getProfilePosts, getProfileLikedPosts, getProfileReposts, getBattleHistory, getFollowStateForViewer, getBookmarkedPosts, type ProfileSortKey } from '@/lib/data/public';
 import { getUserReplays } from '@/lib/data/live';
 import { getUser } from '@/lib/auth/session';
-import { getMyCoinBalance } from '@/lib/data/payments';
+import { getCoinBalanceForViewer } from '@/lib/data/payments';
 import { getMerchantProducts } from '@/lib/data/shop';
-import { isHostMuted } from '@/lib/data/live-host';
+import { isHostMutedForViewer } from '@/lib/data/live-host';
 import { PostGrid } from '@/components/profile/post-grid';
 import { ProductCard } from '@/components/shop/product-card';
 import { BattleList } from '@/components/profile/battle-list';
@@ -172,7 +172,12 @@ export default async function ProfilePage({
       ? (sortParam as ProfileSortKey)
       : 'newest';
 
-  const profile = await getPublicProfile(username);
+  const [profile, viewer, t, locale] = await Promise.all([
+    getPublicProfile(username),
+    getUser(),
+    getT(),
+    getLocale(),
+  ]);
   if (!profile) notFound();
 
   // Canonical redirect: /u/zAuR → /u/zaur (nur Komfort, 404 bleibt 404).
@@ -184,30 +189,26 @@ export default async function ProfilePage({
       ? tabParam
       : 'posts';
 
-  // Parallel: Session + Follow-Status + Posts-Feed + Coin-Balance + i18n
-  // isSelf kann erst nach getUser() bestimmt werden — Likes-Fetch wird daher
-  // zwei-stufig: erst viewer, dann (wenn isSelf && tab=likes) likedPosts.
-  const [viewer, followState, posts, reposts, shopProducts, battles, replays, balance, hostMuted, t, locale] = await Promise.all([
-    getUser(),
-    getFollowState(profile.id),
+  const viewerId = viewer?.id ?? null;
+  const isSelf = viewerId === profile.id;
+
+  const [followState, posts, reposts, shopProducts, battles, replays, balance, hostMuted, highlights] = await Promise.all([
+    viewerId && !isSelf
+      ? getFollowStateForViewer(profile.id, viewerId)
+      : Promise.resolve({ following: false, pendingRequest: false }),
     tab === 'posts' ? getProfilePosts(profile.id, 24, undefined, sort) : Promise.resolve([]),
     tab === 'reposts' ? getProfileReposts(profile.id, 48) : Promise.resolve([]),
     tab === 'shop' ? getMerchantProducts(profile.id, 48) : Promise.resolve([]),
     tab === 'battles' ? getBattleHistory(profile.id, 30) : Promise.resolve([]),
     tab === 'lives' ? getUserReplays(profile.id, 30) : Promise.resolve([]),
-    getMyCoinBalance(),
-    isHostMuted(profile.id),
-    getT(),
-    getLocale(),
+    viewerId ? getCoinBalanceForViewer(viewerId) : Promise.resolve(null),
+    viewerId && !isSelf ? isHostMutedForViewer(profile.id, viewerId) : Promise.resolve(false),
+    getProfileHighlights(profile.id),
   ]);
 
-  const isSelf = viewer?.id === profile.id;
-
-  // Liked + Saved Posts + Highlights parallel.
-  const [likedPosts, savedPosts, highlights] = await Promise.all([
+  const [likedPosts, savedPosts] = await Promise.all([
     tab === 'likes' && isSelf ? getProfileLikedPosts(profile.id, 24) : Promise.resolve([]),
     tab === 'saved' && isSelf ? getBookmarkedPosts(48) : Promise.resolve([]),
-    getProfileHighlights(profile.id),
   ]);
   const displayName = profile.display_name ?? `@${profile.username}`;
 

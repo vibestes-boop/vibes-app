@@ -1,4 +1,6 @@
-import { createClient } from '@/lib/supabase/server';
+import { createPublicClient } from '@/lib/supabase/public';
+import { PUBLIC_PROFILE_CACHE_TAG } from '@/lib/cache/tags';
+import { unstable_cache } from 'next/cache';
 
 // -----------------------------------------------------------------------------
 // lib/data/story-highlights.ts — v1.w.UI.235
@@ -23,8 +25,8 @@ export type StoryHighlight = {
  * Fetch all highlights for a given user, ordered oldest-first
  * (same as native — new ones append at the end).
  */
-export async function getProfileHighlights(userId: string): Promise<StoryHighlight[]> {
-  const supabase = await createClient();
+async function fetchProfileHighlights(userId: string): Promise<StoryHighlight[]> {
+  const supabase = createPublicClient();
   const { data, error } = await supabase
     .from('story_highlights')
     .select('id, user_id, story_id, post_id, title, media_url, media_type, thumbnail_url, created_at')
@@ -36,4 +38,14 @@ export async function getProfileHighlights(userId: string): Promise<StoryHighlig
     return [];
   }
   return (data ?? []) as StoryHighlight[];
+}
+
+const getCachedProfileHighlights = unstable_cache(
+  fetchProfileHighlights,
+  ['profile-highlights'],
+  { revalidate: 60, tags: [PUBLIC_PROFILE_CACHE_TAG] },
+);
+
+export async function getProfileHighlights(userId: string): Promise<StoryHighlight[]> {
+  return getCachedProfileHighlights(userId);
 }
