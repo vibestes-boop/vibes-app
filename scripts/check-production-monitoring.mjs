@@ -7,6 +7,12 @@ const DEFAULT_SINCE = '45m';
 const DEFAULT_LOG_LIMIT = 100;
 const DEFAULT_TIMEOUT_MS = 8000;
 const DEFAULT_ROUTE_WARN_MS = 1500;
+const KNOWN_SCANNER_PATHS = [
+  /^\/\.env(?:$|[/?#])/,
+  /^\/wp-/i,
+  /^\/wordpress(?:\/|$)/i,
+  /^\/phpmyadmin(?:\/|$)/i,
+];
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const webRoot = path.join(repoRoot, 'apps/web');
@@ -180,6 +186,8 @@ function runVercelLogProbe() {
       statusCounts: new Map(),
       errorRecords: [],
       clientErrorRecords: [],
+      knownScannerRecords: [],
+      actionableClientErrorRecords: [],
     };
   }
 
@@ -213,14 +221,20 @@ function runVercelLogProbe() {
   }
 
   const hotspots = summarizeTiming(timingRows);
+  const knownScannerRecords = clientErrorRecords.filter(isKnownScannerRecord);
+  const actionableClientErrorRecords = clientErrorRecords.filter((record) => !isKnownScannerRecord(record));
   const fiveXxCount = Array.from(statusCounts.entries())
     .filter(([status]) => status >= 500)
     .reduce((sum, [, count]) => sum + count, 0);
 
   if (fiveXxCount > 0) failures.push(`[logs] Found ${fiveXxCount} 5xx response(s) in production logs.`);
   if (errorRecords.length > 0) failures.push(`[logs] Found ${errorRecords.length} error-level log record(s).`);
-  if (clientErrorRecords.length > 0) {
-    warnings.push(`[logs] Found ${clientErrorRecords.length} 4xx response(s): ${summarizeRequestPaths(clientErrorRecords)}`);
+  if (actionableClientErrorRecords.length > 0) {
+    warnings.push(
+      `[logs] Found ${actionableClientErrorRecords.length} app-facing 4xx response(s): ${summarizeRequestPaths(
+        actionableClientErrorRecords,
+      )}`,
+    );
   }
 
   return {
@@ -230,6 +244,8 @@ function runVercelLogProbe() {
     statusCounts,
     errorRecords,
     clientErrorRecords,
+    knownScannerRecords,
+    actionableClientErrorRecords,
     exitCode: result.status,
   };
 }
@@ -340,6 +356,11 @@ function isErrorLog(log) {
   return /\b(error|exception|unhandled|failed|timeout)\b/i.test(log.message || '');
 }
 
+function isKnownScannerRecord(record) {
+  const pathName = String(record.requestPath || '/');
+  return KNOWN_SCANNER_PATHS.some((pattern) => pattern.test(pathName));
+}
+
 function printRouteResults(results) {
   console.log('');
   console.log('Route smoke:');
@@ -377,6 +398,14 @@ function printLogResults(result) {
 
   if (result.clientErrorRecords.length > 0) {
     console.log(`  - 4xx top paths: ${summarizeRequestPaths(result.clientErrorRecords)}`);
+  }
+
+  if (result.knownScannerRecords.length > 0) {
+    console.log(`  - known scanner 4xx: ${summarizeRequestPaths(result.knownScannerRecords)}`);
+  }
+
+  if (result.actionableClientErrorRecords.length > 0) {
+    console.log(`  - app-facing 4xx: ${summarizeRequestPaths(result.actionableClientErrorRecords)}`);
   }
 
   if (result.hotspots.length > 0) {
