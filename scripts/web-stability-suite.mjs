@@ -8,6 +8,12 @@ const args = new Set(process.argv.slice(2));
 
 const steps = [
   {
+    name: 'Workspace Doctor',
+    cmd: 'npm',
+    args: ['run', 'workspace:doctor'],
+    cwd: repoRoot,
+  },
+  {
     name: 'Env Doctor (web)',
     cmd: 'node',
     args: ['scripts/env-doctor.mjs', '--scope', 'web'],
