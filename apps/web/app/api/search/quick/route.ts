@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { getTrendingHashtags } from '@/lib/data/feed';
-import { privateNoStoreHeaders, publicApiCacheHeaders } from '@/lib/cache/headers';
+import { createPublicClient } from '@/lib/supabase/public';
+import { getPublicTrendingHashtags } from '@/lib/data/feed';
+import { publicApiCacheHeaders } from '@/lib/cache/headers';
 
 // -----------------------------------------------------------------------------
 // GET /api/search/quick?q=... — Lightweight Autocomplete-Endpoint.
@@ -9,10 +9,10 @@ import { privateNoStoreHeaders, publicApiCacheHeaders } from '@/lib/cache/header
 // Gibt nur User + Hashtags zurück (keine Posts — zu schwer für Instant-UX).
 // Limit: 5 User, 4 Hashtags.
 //
-// Caching: 30s public für Nicht-Auth-Anfragen, private/no-store wenn eingeloggt
-// (damit eigene Profil-Daten nicht aus einem gemeinsamen Cache kommen).
+// Caching: 30s public. The endpoint only returns public profiles and public
+// hashtag aggregates, so it does not need the cookie-aware Supabase client.
 //
-// Verwendet Node-Runtime damit Supabase-Cookie-Auth greift.
+// Verwendet Node-Runtime fuer konsistente Supabase-REST-Nutzung.
 // -----------------------------------------------------------------------------
 
 export const runtime = 'nodejs';
@@ -48,7 +48,7 @@ export async function GET(request: Request): Promise<NextResponse> {
   const like = `%${q.replace(/[%_]/g, '')}%`;
   const tagLike = q.toLowerCase().replace(/^#/, '');
 
-  const supabase = await createClient();
+  const supabase = createPublicClient();
 
   const [usersRes, allHashtags] = await Promise.all([
     supabase
@@ -57,8 +57,8 @@ export async function GET(request: Request): Promise<NextResponse> {
       .or(`username.ilike.${like},display_name.ilike.${like}`)
       .order('created_at', { ascending: false })
       .limit(5),
-    // Hashtag-Liste aus dem Trending-Cache (kein Extra-DB-Hit).
-    getTrendingHashtags(80).then((tags) =>
+    // Hashtag-Liste aus dem Public-Trending-Cache (kein Extra-DB-Hit).
+    getPublicTrendingHashtags(80).then((tags) =>
       tags.filter((t) => t.tag.includes(tagLike)).slice(0, 4),
     ),
   ]);
@@ -75,11 +75,7 @@ export async function GET(request: Request): Promise<NextResponse> {
 
   const result: QuickSearchResult = { users, hashtags };
 
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
-
   return NextResponse.json(result, {
-    headers: authUser ? privateNoStoreHeaders() : PUBLIC_QUICK_SEARCH_HEADERS,
+    headers: PUBLIC_QUICK_SEARCH_HEADERS,
   });
 }

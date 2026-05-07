@@ -681,7 +681,7 @@ const getCachedPublicTrendingHashtags = unstable_cache(
 );
 
 export const getTrendingHashtags = cache(async (limit = 20): Promise<TrendingHashtag[]> =>
-  fetchTrendingHashtags(limit, () => createClient()),
+  getCachedPublicTrendingHashtags(limit),
 );
 
 export const getPublicTrendingHashtags = cache(async (limit = 20): Promise<TrendingHashtag[]> =>

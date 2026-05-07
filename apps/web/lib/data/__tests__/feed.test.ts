@@ -21,6 +21,10 @@ jest.mock('@/lib/supabase/server', () => ({
   createClient: jest.fn(),
 }));
 
+jest.mock('@/lib/supabase/public', () => ({
+  createPublicClient: jest.fn(),
+}));
+
 // `cache` aus react memoized per Request-Scope — außerhalb des Next.js-
 // Server-Runtimes ist das unpredictable. Identity-Wrap, damit jeder Test
 // frisch evaluiert.
@@ -47,6 +51,7 @@ jest.mock('next/cache', () => ({
 }));
 
 import { createClient } from '@/lib/supabase/server';
+import { createPublicClient } from '@/lib/supabase/public';
 import { createSupabaseMock, type SupabaseMockConfig } from '@/test-utils/supabase-mock';
 import {
   getForYouFeed,
@@ -62,6 +67,7 @@ import {
 } from '../feed';
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
+const mockCreatePublicClient = createPublicClient as jest.MockedFunction<typeof createPublicClient>;
 
 function setupSupabase(config: SupabaseMockConfig = {}) {
   const client = createSupabaseMock(config);
@@ -70,6 +76,7 @@ function setupSupabase(config: SupabaseMockConfig = {}) {
   // das ist nahe genug an der Realität (in Prod ist es pro Request auch
   // derselbe cookie-scope), und `_calls` zählt alles konsistent.
   mockCreateClient.mockResolvedValue(client as unknown as Awaited<ReturnType<typeof createClient>>);
+  mockCreatePublicClient.mockReturnValue(client as unknown as ReturnType<typeof createPublicClient>);
   return client;
 }
 
