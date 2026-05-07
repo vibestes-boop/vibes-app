@@ -261,6 +261,42 @@ export const getForYouFeed = cache(
       }
     }
 
+    // Excludes zusammenführen: explicit excludeIds (z.B. „bereits gesehene
+    // Posts") + die not-interested-IDs des Users.
+    const allExcludes = Array.from(new Set([...excludeIds, ...notInterestedIds]));
+
+    try {
+      const { data, error } = await supabase.rpc('get_public_feed_web', {
+        result_limit: limit,
+        before_ts: before ?? null,
+        exclude_post_ids: allExcludes,
+      });
+
+      if (!error && Array.isArray(data)) {
+        const rows = data as unknown as PublicFeedRpcRow[];
+
+        if (rows.length === 0) {
+          console.error(
+            `[feed] getForYouFeed: 0 rows (${viewerId ? 'authed → suspected RLS' : 'anon-scope → suspected cookie drift'})`,
+            { viewerId, limit, excluded: allExcludes.length },
+          );
+        }
+
+        const postIds = rows.map((row) => row.id).filter((id): id is string => typeof id === 'string');
+        const authorIds = Array.from(
+          new Set(rows.map((row) => row.author_id).filter((id): id is string => typeof id === 'string')),
+        );
+        const { liked, saved, following, reposted } = await batchEngagement(postIds, authorIds, viewerId);
+
+        return rows
+          .map((row) => normalizeRpcRow(row, liked, saved, following, reposted))
+          .filter((p): p is FeedPost => p !== null);
+      }
+    } catch {
+      // Migration may be absent in older environments. Fall back to the stable
+      // PostgREST join path below.
+    }
+
     let query = supabase
       .from('posts')
       .select(`${POST_COLUMNS}, ${AUTHOR_JOIN}`)
@@ -268,9 +304,6 @@ export const getForYouFeed = cache(
       .order('created_at', { ascending: false })
       .limit(limit);
 
-    // Excludes zusammenführen: explicit excludeIds (z.B. „bereits gesehene
-    // Posts") + die not-interested-IDs des Users.
-    const allExcludes = [...excludeIds, ...notInterestedIds];
     if (allExcludes.length > 0) {
       query = query.not('id', 'in', `(${allExcludes.join(',')})`);
     }
