@@ -6,7 +6,8 @@ import { publicApiCacheHeaders } from '@/lib/cache/headers';
 // -----------------------------------------------------------------------------
 // GET /api/search/quick?q=... — Lightweight Autocomplete-Endpoint.
 //
-// Gibt nur User + Hashtags zurück (keine Posts — zu schwer für Instant-UX).
+// Gibt nur User ODER Hashtags zurück (keine Posts — zu schwer für Instant-UX).
+// Normaler Text / @handle sucht Accounts; #tag sucht Hashtags.
 // Limit: 5 User, 4 Hashtags.
 //
 // Caching: 30s public. The endpoint only returns public profiles and public
@@ -42,6 +43,14 @@ type QuickSearchUserRow = {
   verified: boolean | null;
 };
 
+function normalizeProfileQuery(q: string) {
+  return q.replace(/^@+/, '').trim();
+}
+
+function normalizeTagQuery(q: string) {
+  return q.toLowerCase().replace(/^#+/, '').trim();
+}
+
 export async function GET(request: Request): Promise<NextResponse> {
   const { searchParams } = new URL(request.url);
   const q = (searchParams.get('q') ?? '').trim();
@@ -53,26 +62,31 @@ export async function GET(request: Request): Promise<NextResponse> {
     );
   }
 
-  const like = `%${q.replace(/[%_]/g, '')}%`;
-  const tagLike = q.toLowerCase().replace(/^#/, '');
+  const wantsHashtags = q.startsWith('#');
+  const profileQuery = normalizeProfileQuery(q);
+  const tagLike = normalizeTagQuery(q);
+  const like = `%${profileQuery.replace(/[%_]/g, '')}%`;
 
   const supabase = createPublicClient();
 
   const [usersRes, allHashtags] = await Promise.all([
-    supabase.rpc('search_public_profiles_web', {
-      search_query: q,
-      result_limit: 5,
-    }),
-    // Hashtag-Liste aus dem Public-Trending-Cache (kein Extra-DB-Hit).
-    getPublicTrendingHashtags(80).then((tags) =>
-      tags.filter((t) => t.tag.includes(tagLike)).slice(0, 4),
-    ),
+    wantsHashtags || profileQuery.length < 2
+      ? Promise.resolve({ data: [], error: null })
+      : supabase.rpc('search_public_profiles_web', {
+          search_query: profileQuery,
+          result_limit: 5,
+        }),
+    wantsHashtags && tagLike.length > 0
+      ? getPublicTrendingHashtags(80).then((tags) =>
+          tags.filter((t) => t.tag.includes(tagLike)).slice(0, 4),
+        )
+      : Promise.resolve([]),
   ]);
 
   let userRows: QuickSearchUserRow[] = usersRes.error
     ? []
     : ((usersRes.data ?? []) as QuickSearchUserRow[]);
-  if (usersRes.error) {
+  if (usersRes.error && !wantsHashtags) {
     const fallback = await supabase
       .from('profiles')
       .select('id, username, display_name, avatar_url, verified:is_verified')

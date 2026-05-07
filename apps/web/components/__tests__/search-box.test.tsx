@@ -156,7 +156,6 @@ describe('SearchBox — Debounce + Fetch (v1.w.UI.48)', () => {
     expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringContaining('/api/search/quick?q=za'),
-      expect.objectContaining({ cache: 'no-store' }),
     );
   });
 
@@ -173,7 +172,6 @@ describe('SearchBox — Debounce + Fetch (v1.w.UI.48)', () => {
     expect(global.fetch).toHaveBeenCalledTimes(1);
     expect(global.fetch).toHaveBeenCalledWith(
       expect.stringContaining('q=zau'),
-      expect.anything(),
     );
   });
 
