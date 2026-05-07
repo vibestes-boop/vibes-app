@@ -56,6 +56,7 @@ import { createSupabaseMock, type SupabaseMockConfig } from '@/test-utils/supaba
 import {
   getForYouFeed,
   getFollowingFeed,
+  getPublicForYouFeed,
   getSuggestedFollows,
   getTrendingHashtags,
   searchAll,
@@ -116,6 +117,36 @@ function makeRawPost(overrides: Partial<Record<string, unknown>> = {}) {
       avatar_url: null,
       verified: true,
     },
+    ...overrides,
+  };
+}
+
+function makeRpcPost(overrides: Partial<Record<string, unknown>> = {}) {
+  return {
+    id: 'p-1',
+    user_id: 'author-1',
+    caption: 'hello',
+    video_url: 'https://cdn.example/p-1.mp4',
+    media_type: 'video',
+    thumbnail_url: 'https://cdn.example/p-1.jpg',
+    view_count: 100,
+    like_count: 10,
+    comment_count: 2,
+    hashtags: ['vibes'],
+    allow_comments: true,
+    allow_duet: true,
+    allow_download: true,
+    women_only: false,
+    privacy: 'public',
+    aspect_ratio: 'portrait',
+    audio_url: null,
+    audio_volume: null,
+    created_at: '2026-04-20T10:00:00Z',
+    author_id: 'author-1',
+    author_username: 'alice',
+    author_display_name: 'Alice',
+    author_avatar_url: null,
+    author_verified: true,
     ...overrides,
   };
 }
@@ -332,6 +363,36 @@ describe('getForYouFeed', () => {
     const result = await getForYouFeed();
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe('p-with-author');
+  });
+});
+
+describe('getPublicForYouFeed', () => {
+  it('uses the anonymous public-feed RPC fast path', async () => {
+    const client = setupSupabase({
+      rpcs: {
+        get_public_feed_web_anon: {
+          data: [makeRpcPost()],
+          error: null,
+        },
+      },
+    });
+
+    const result = await getPublicForYouFeed({ limit: 10 });
+
+    expect(client.rpc).toHaveBeenCalledWith('get_public_feed_web_anon', {
+      result_limit: 10,
+      before_ts: null,
+      exclude_post_ids: [],
+    });
+    expect(mockCreateClient).not.toHaveBeenCalled();
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      id: 'p-1',
+      author: { id: 'author-1', username: 'alice' },
+      liked_by_me: false,
+      saved_by_me: false,
+      following_author: false,
+    });
   });
 });
 

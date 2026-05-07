@@ -372,7 +372,7 @@ async function fetchPublicForYouFeed(
   const supabase = createPublicClient();
 
   try {
-    const { data, error } = await supabase.rpc('get_public_feed_web', {
+    const { data, error } = await supabase.rpc('get_public_feed_web_anon', {
       result_limit: limit,
       before_ts: before ?? null,
       exclude_post_ids: excludeIds,
