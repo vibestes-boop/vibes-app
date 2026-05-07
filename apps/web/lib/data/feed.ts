@@ -372,11 +372,16 @@ async function fetchPublicForYouFeed(
   const supabase = createPublicClient();
 
   try {
-    const { data, error } = await supabase.rpc('get_public_feed_web_anon', {
-      result_limit: limit,
-      before_ts: before ?? null,
-      exclude_post_ids: excludeIds,
-    });
+    const isFirstPage = !before && excludeIds.length === 0;
+    const { data, error } = isFirstPage
+      ? await supabase.rpc('get_public_feed_web_anon_first_page', {
+          result_limit: limit,
+        })
+      : await supabase.rpc('get_public_feed_web_anon', {
+          result_limit: limit,
+          before_ts: before ?? null,
+          exclude_post_ids: excludeIds,
+        });
 
     if (!error && Array.isArray(data)) {
       return (data as unknown as PublicFeedRpcRow[])

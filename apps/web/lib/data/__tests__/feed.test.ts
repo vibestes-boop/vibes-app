@@ -367,10 +367,10 @@ describe('getForYouFeed', () => {
 });
 
 describe('getPublicForYouFeed', () => {
-  it('uses the anonymous public-feed RPC fast path', async () => {
+  it('uses the first-page anonymous public-feed RPC fast path', async () => {
     const client = setupSupabase({
       rpcs: {
-        get_public_feed_web_anon: {
+        get_public_feed_web_anon_first_page: {
           data: [makeRpcPost()],
           error: null,
         },
@@ -379,10 +379,8 @@ describe('getPublicForYouFeed', () => {
 
     const result = await getPublicForYouFeed({ limit: 10 });
 
-    expect(client.rpc).toHaveBeenCalledWith('get_public_feed_web_anon', {
+    expect(client.rpc).toHaveBeenCalledWith('get_public_feed_web_anon_first_page', {
       result_limit: 10,
-      before_ts: null,
-      exclude_post_ids: [],
     });
     expect(mockCreateClient).not.toHaveBeenCalled();
     expect(result).toHaveLength(1);
@@ -393,6 +391,27 @@ describe('getPublicForYouFeed', () => {
       saved_by_me: false,
       following_author: false,
     });
+  });
+
+  it('uses the cursor-capable anonymous public-feed RPC for pagination', async () => {
+    const client = setupSupabase({
+      rpcs: {
+        get_public_feed_web_anon: {
+          data: [makeRpcPost()],
+          error: null,
+        },
+      },
+    });
+
+    const result = await getPublicForYouFeed({ limit: 10, before: '2026-05-07T18:00:00.000Z' });
+
+    expect(client.rpc).toHaveBeenCalledWith('get_public_feed_web_anon', {
+      result_limit: 10,
+      before_ts: '2026-05-07T18:00:00.000Z',
+      exclude_post_ids: [],
+    });
+    expect(mockCreateClient).not.toHaveBeenCalled();
+    expect(result).toHaveLength(1);
   });
 });
 
