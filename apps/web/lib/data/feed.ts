@@ -1228,6 +1228,61 @@ export interface DiscoverPerson {
   reason: DiscoverReason;
 }
 
+async function fetchPublicDiscoverPeople(limit = 12): Promise<DiscoverPerson[]> {
+  const supabase = createPublicClient();
+
+  try {
+    const { data, error } = await supabase.rpc('get_public_discover_people_web', {
+      result_limit: limit,
+    });
+
+    if (!error && Array.isArray(data)) {
+      return (data as Array<{
+        id: string;
+        username: string;
+        display_name: string | null;
+        avatar_url: string | null;
+        verified: boolean | null;
+        reason: DiscoverReason | null;
+      }>).map((p) => ({
+        id: p.id,
+        username: p.username,
+        display_name: p.display_name,
+        avatar_url: p.avatar_url,
+        verified: p.verified ?? false,
+        reason: p.reason ?? 'new',
+      }));
+    }
+  } catch {
+    // Migration may be absent in older environments. Fall back below.
+  }
+
+  const { data } = await supabase
+    .from('profiles')
+    .select('id, username, display_name, avatar_url, verified:is_verified')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (!data) return [];
+  return (data as Array<{
+    id: string;
+    username: string;
+    display_name: string | null;
+    avatar_url: string | null;
+    verified: boolean | null;
+  }>).map((p) => ({ ...p, verified: p.verified ?? false, reason: 'new' as DiscoverReason }));
+}
+
+const getCachedPublicDiscoverPeople = unstable_cache(
+  async (limit: number): Promise<DiscoverPerson[]> => fetchPublicDiscoverPeople(limit),
+  ['public-discover-people'],
+  { revalidate: 120, tags: [PUBLIC_FEED_CACHE_TAG] },
+);
+
+export const getPublicDiscoverPeople = cache(async (limit = 12): Promise<DiscoverPerson[]> =>
+  getCachedPublicDiscoverPeople(limit),
+);
+
 export const getDiscoverPeople = cache(async (limit = 12): Promise<DiscoverPerson[]> => {
   const supabase = await createClient();
   const user = await getUser();

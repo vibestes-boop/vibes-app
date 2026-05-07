@@ -3,7 +3,12 @@ import Link from 'next/link';
 import type { Route } from 'next';
 import { Suspense } from 'react';
 import { Hash, Flame, TrendingUp, Compass, Users, Sparkles, ShoppingBag, ChevronRight } from 'lucide-react';
-import { getPublicTrendingHashtags, getPublicForYouFeed, getDiscoverPeople } from '@/lib/data/feed';
+import {
+  getPublicTrendingHashtags,
+  getPublicForYouFeed,
+  getDiscoverPeople,
+  getPublicDiscoverPeople,
+} from '@/lib/data/feed';
 import type { DiscoverReason } from '@/lib/data/feed';
 import { getUser, getProfile } from '@/lib/auth/session';
 import { getPublicShopPreviewProducts } from '@/lib/data/shop';
@@ -113,11 +118,13 @@ export default async function ExplorePage() {
 }
 
 async function ExploreDeferredSections({ suggestedPeopleTitle }: { suggestedPeopleTitle: string }) {
-  const [people, topProducts, viewer, profile] = await Promise.all([
-    getDiscoverPeople(12),
+  const [topProducts, viewer] = await Promise.all([
     getPublicShopPreviewProducts(6).catch(() => []),
     getUser(),
-    getProfile(),
+  ]);
+  const [people, profile] = await Promise.all([
+    viewer ? getDiscoverPeople(12) : getPublicDiscoverPeople(12),
+    viewer ? getProfile() : Promise.resolve(null),
   ]);
 
   const isWozVerified =

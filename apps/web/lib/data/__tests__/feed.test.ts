@@ -63,6 +63,7 @@ import {
   searchPaginated,
   getSuggestedFollowsPage,
   getDiscoverPeople,
+  getPublicDiscoverPeople,
   getMyFollowedAccounts,
   getPostsByTag,
 } from '../feed';
@@ -1112,6 +1113,44 @@ describe('getPostsByTag', () => {
 // -----------------------------------------------------------------------------
 
 describe('getDiscoverPeople', () => {
+  it('getPublicDiscoverPeople uses the anonymous public people RPC', async () => {
+    const client = setupSupabase({
+      rpcs: {
+        get_public_discover_people_web: {
+          data: [
+            {
+              id: 'u1',
+              username: 'alice',
+              display_name: 'Alice',
+              avatar_url: null,
+              verified: true,
+              reason: 'new',
+            },
+          ],
+          error: null,
+        },
+      },
+    });
+
+    const result = await getPublicDiscoverPeople(12);
+
+    expect(client.rpc).toHaveBeenCalledWith('get_public_discover_people_web', {
+      result_limit: 12,
+    });
+    expect(mockCreatePublicClient).toHaveBeenCalledTimes(1);
+    expect(mockCreateClient).not.toHaveBeenCalled();
+    expect(result).toEqual([
+      {
+        id: 'u1',
+        username: 'alice',
+        display_name: 'Alice',
+        avatar_url: null,
+        verified: true,
+        reason: 'new',
+      },
+    ]);
+  });
+
   it('returns newest profiles with reason=new for anon users', async () => {
     setupSupabase({
       auth: { user: null },
