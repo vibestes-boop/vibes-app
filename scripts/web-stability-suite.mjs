@@ -48,6 +48,12 @@ const steps = [
     cwd: repoRoot,
   },
   {
+    name: 'Post privacy',
+    cmd: 'npm',
+    args: ['run', 'stability:privacy'],
+    cwd: repoRoot,
+  },
+  {
     name: 'Media budget',
     cmd: 'npm',
     args: ['run', 'stability:media-budget'],

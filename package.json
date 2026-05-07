@@ -18,6 +18,7 @@
     "stability:api-contracts": "node scripts/check-api-contracts.mjs",
     "stability:auth": "node scripts/check-auth-interactions.mjs",
     "stability:media-budget": "node scripts/check-media-budget.mjs",
+    "stability:privacy": "node scripts/check-post-privacy.mjs",
     "stability:web": "node scripts/web-stability-suite.mjs",
     "test": "jest",
     "test:watch": "jest --watch",

@@ -294,6 +294,17 @@ type PostRowMobile = {
   comment_count?: unknown; // embedded aggregate
 };
 
+type PublicPostRpcRow = PostRowMobile & {
+  privacy?: 'public' | 'friends' | 'private' | null;
+  allow_download?: boolean | null;
+  audio_url?: string | null;
+  audio_volume?: number | null;
+  author_username: string;
+  author_display_name: string | null;
+  author_avatar_url: string | null;
+  author_verified: boolean | null;
+};
+
 const VALID_RATIOS = ['portrait', 'landscape', 'square'] as const;
 
 function toPost(row: PostRowMobile): Post {
@@ -727,8 +738,61 @@ export interface PostWithAuthor extends Post {
   audio_volume: number | null;
 }
 
+function toPostWithAuthor(row: PostRowMobile & {
+  author: AuthorRow | AuthorRow[] | null;
+  privacy?: unknown;
+  allow_download?: unknown;
+  audio_url?: unknown;
+  audio_volume?: unknown;
+}): PostWithAuthor | null {
+  const author = normalizeAuthor(row.author);
+  if (!author) return null;
+
+  const post = toPost(row);
+  // Default auf 'video' — Legacy-Rows vor der media_type-Einführung waren
+  // ausschließlich Videos, und VideoPlayer ist unser Default-Renderer.
+  const media_type: 'image' | 'video' = row.media_type === 'image' ? 'image' : 'video';
+  const privacy = (['public', 'friends', 'private'] as const).includes(row.privacy as 'public' | 'friends' | 'private')
+    ? (row.privacy as 'public' | 'friends' | 'private')
+    : 'public';
+  const allow_download = typeof row.allow_download === 'boolean' ? row.allow_download : true;
+  const women_only = typeof row.women_only === 'boolean' ? row.women_only : false;
+  const aspect_ratio = (['portrait', 'landscape', 'square'] as const).includes(row.aspect_ratio as 'portrait' | 'landscape' | 'square')
+    ? (row.aspect_ratio as 'portrait' | 'landscape' | 'square')
+    : 'portrait';
+  const audio_url = typeof row.audio_url === 'string' ? row.audio_url : null;
+  const audio_volume = typeof row.audio_volume === 'number' ? row.audio_volume : null;
+  return { ...post, author, media_type, privacy, allow_download, women_only, aspect_ratio, audio_url, audio_volume };
+}
+
+function publicPostRpcToPost(row: PublicPostRpcRow): PostWithAuthor | null {
+  return toPostWithAuthor({
+    ...row,
+    author: {
+      id: row.author_id,
+      username: row.author_username,
+      display_name: row.author_display_name,
+      avatar_url: row.author_avatar_url,
+      verified: row.author_verified ?? false,
+    },
+  });
+}
+
 export const getPost = cache(async (postId: string): Promise<PostWithAuthor | null> => {
   const supabase = await createClient();
+
+  try {
+    const { data, error } = await supabase
+      .rpc('get_public_post_web', { p_post_id: postId })
+      .maybeSingle();
+
+    if (!error && data) {
+      return publicPostRpcToPost(data as unknown as PublicPostRpcRow);
+    }
+  } catch {
+    // Migration rollout safety: fall back to the RLS-protected table read.
+  }
+
   const { data, error } = await supabase
     .from('posts')
     .select(
@@ -742,25 +806,7 @@ export const getPost = cache(async (postId: string): Promise<PostWithAuthor | nu
 
   if (error || !data) return null;
   const row = data as unknown as PostRowMobile & { author: AuthorRow | AuthorRow[] | null };
-  const author = normalizeAuthor(row.author);
-  if (!author) return null;
-
-  const post = toPost(row);
-  // Default auf 'video' — Legacy-Rows vor der media_type-Einführung waren
-  // ausschließlich Videos, und VideoPlayer ist unser Default-Renderer.
-  const media_type: 'image' | 'video' = row.media_type === 'image' ? 'image' : 'video';
-  const rowAny = row as Record<string, unknown>;
-  const privacy = (['public', 'friends', 'private'] as const).includes(rowAny.privacy as 'public' | 'friends' | 'private')
-    ? (rowAny.privacy as 'public' | 'friends' | 'private')
-    : 'public';
-  const allow_download = typeof rowAny.allow_download === 'boolean' ? rowAny.allow_download : true;
-  const women_only = typeof rowAny.women_only === 'boolean' ? rowAny.women_only : false;
-  const aspect_ratio = (['portrait', 'landscape', 'square'] as const).includes(rowAny.aspect_ratio as 'portrait' | 'landscape' | 'square')
-    ? (rowAny.aspect_ratio as 'portrait' | 'landscape' | 'square')
-    : 'portrait';
-  const audio_url = typeof rowAny.audio_url === 'string' ? rowAny.audio_url : null;
-  const audio_volume = typeof rowAny.audio_volume === 'number' ? rowAny.audio_volume : null;
-  return { ...post, author, media_type, privacy, allow_download, women_only, aspect_ratio, audio_url, audio_volume };
+  return toPostWithAuthor(row);
 });
 
 // -----------------------------------------------------------------------------
