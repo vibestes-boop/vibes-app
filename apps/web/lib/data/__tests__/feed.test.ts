@@ -57,6 +57,10 @@ import {
   getForYouFeed,
   getFollowingFeed,
   getPublicForYouFeed,
+  getExploreTrendingFeed,
+  getExploreNewestFeed,
+  getPublicExploreTrendingFeed,
+  getPublicExploreNewestFeed,
   getSuggestedFollows,
   getTrendingHashtags,
   searchAll,
@@ -413,6 +417,125 @@ describe('getPublicForYouFeed', () => {
     });
     expect(mockCreateClient).not.toHaveBeenCalled();
     expect(result).toHaveLength(1);
+  });
+});
+
+describe('Explore feed RPC paths', () => {
+  it('getExploreTrendingFeed uses the materialized explore RPC and hydrates viewer engagement', async () => {
+    const client = setupSupabase({
+      auth: { user: { id: 'viewer-1' } },
+      rpcs: {
+        get_public_explore_feed_web: {
+          data: [makeRpcPost()],
+          error: null,
+        },
+      },
+      tables: {
+        likes: { data: [{ post_id: 'p-1' }], error: null },
+        bookmarks: { data: [], error: null },
+        follows: { data: [{ following_id: 'author-1' }], error: null },
+        reposts: { data: [], error: null },
+      },
+    });
+
+    const result = await getExploreTrendingFeed(1, 24);
+
+    expect(client.rpc).toHaveBeenCalledWith('get_public_explore_feed_web', {
+      result_limit: 1,
+      result_offset: 24,
+      sort_key: 'trending',
+    });
+    expect(result).toMatchObject({
+      hasMore: true,
+      posts: [
+        {
+          id: 'p-1',
+          liked_by_me: true,
+          saved_by_me: false,
+          following_author: true,
+          reposted_by_me: false,
+          author: { id: 'author-1', username: 'alice' },
+        },
+      ],
+    });
+  });
+
+  it('getExploreNewestFeed falls back to the PostgREST newest query when the RPC is unavailable', async () => {
+    const client = setupSupabase({
+      auth: { user: null },
+      rpcs: {
+        get_public_explore_feed_web: {
+          data: null,
+          error: { code: '42883', message: 'function does not exist' },
+        },
+      },
+      tables: {
+        posts: { data: [makeRawPost({ id: 'newest-p1' })], error: null },
+      },
+    });
+
+    const result = await getExploreNewestFeed(12, 6);
+
+    expect(result.posts).toHaveLength(1);
+    expect(result.posts[0]).toMatchObject({ id: 'newest-p1', author: { username: 'alice' } });
+    expect(result.hasMore).toBe(false);
+
+    const postsChain = client.from.mock.results.find(
+      (_r, i) => (client.from.mock.calls[i] as unknown[])[0] === 'posts',
+    )?.value as { order: jest.Mock; range: jest.Mock };
+    expect(postsChain.order).toHaveBeenCalledWith('created_at', { ascending: false });
+    expect(postsChain.range).toHaveBeenCalledWith(6, 17);
+  });
+
+  it('getPublicExploreTrendingFeed uses the public-client RPC fast path', async () => {
+    const client = setupSupabase({
+      rpcs: {
+        get_public_explore_feed_web: {
+          data: [makeRpcPost()],
+          error: null,
+        },
+      },
+    });
+
+    const result = await getPublicExploreTrendingFeed(1, 2);
+
+    expect(mockCreateClient).not.toHaveBeenCalled();
+    expect(client.rpc).toHaveBeenCalledWith('get_public_explore_feed_web', {
+      result_limit: 1,
+      result_offset: 2,
+      sort_key: 'trending',
+    });
+    expect(result).toMatchObject({
+      hasMore: true,
+      posts: [{ id: 'p-1', liked_by_me: false, saved_by_me: false }],
+    });
+  });
+
+  it('getPublicExploreNewestFeed falls back to the public PostgREST newest query', async () => {
+    const client = setupSupabase({
+      rpcs: {
+        get_public_explore_feed_web: {
+          data: null,
+          error: { code: 'PGRST202', message: 'not in schema cache' },
+        },
+      },
+      tables: {
+        posts: { data: [makeRawPost({ id: 'public-newest-p1' })], error: null },
+      },
+    });
+
+    const result = await getPublicExploreNewestFeed(12, 12);
+
+    expect(mockCreateClient).not.toHaveBeenCalled();
+    expect(result.posts).toHaveLength(1);
+    expect(result.posts[0]).toMatchObject({ id: 'public-newest-p1' });
+    expect(result.hasMore).toBe(false);
+
+    const postsChain = client.from.mock.results.find(
+      (_r, i) => (client.from.mock.calls[i] as unknown[])[0] === 'posts',
+    )?.value as { order: jest.Mock; range: jest.Mock };
+    expect(postsChain.order).toHaveBeenCalledWith('created_at', { ascending: false });
+    expect(postsChain.range).toHaveBeenCalledWith(12, 23);
   });
 });
 
