@@ -114,7 +114,6 @@ const BATTLE_DURATIONS: { secs: number; label: string }[] = [
 
 function ProfileSheet({
   user,
-  hostId,
   viewerId,
   isHost,
   sessionId,
@@ -122,7 +121,6 @@ function ProfileSheet({
   onClose,
 }: {
   user: ProfileCard;
-  hostId: string;
   viewerId: string | null;
   isHost?: boolean;
   sessionId: string;
@@ -556,7 +554,6 @@ export function LiveAudienceModal({
           <div className="shrink-0 border-b bg-muted/30">
             <ProfileSheet
               user={selectedUser}
-              hostId={hostId}
               viewerId={viewerId}
               isHost={isHost}
               sessionId={sessionId}

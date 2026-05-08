@@ -1,9 +1,9 @@
-import { useEffect, useCallback, useRef } from 'react';
-import { router } from 'expo-router';
-import { useQueryClient } from '@tanstack/react-query';
-import { useStoryViewerStore } from '@/lib/storyViewerStore';
 import { StoryViewer } from '@/components/ui/StoryViewer';
 import { useAuthStore } from '@/lib/authStore';
+import { useStoryViewerStore } from '@/lib/storyViewerStore';
+import { useQueryClient } from '@tanstack/react-query';
+import { router } from 'expo-router';
+import { useCallback,useEffect,useRef } from 'react';
 
 export default function StoryViewerScreen() {
   const { group, allGroups, close, setGroup } = useStoryViewerStore();
@@ -19,7 +19,7 @@ export default function StoryViewerScreen() {
     queryClient.invalidateQueries({ queryKey: ['guild-stories', userId] });
     // router.back() statt replace → bleibt dort wo man war (wie TikTok), Scroll-Position bleibt erhalten
     router.back();
-  }, [close, queryClient]);
+  }, [close, queryClient, userId]);
 
   // Falls group unerwartet null ist, zurück navigieren
   useEffect(() => {

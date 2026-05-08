@@ -8,58 +8,58 @@
  * Route: /guild-post/[id]
  * Navigation von: GuildCard (tap auf Media), guild.tsx
  */
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  Dimensions,
-  FlatList,
-  ActivityIndicator,
-  PanResponder,
-  Animated as RNAnimated,
-} from 'react-native';
+import type { VideoProgressHandle } from '@/components/feed/FeedItem';
+import { VideoProgressBar } from '@/components/feed/FeedItem';
+import type { FeedVideoSeekHandle } from '@/components/feed/FeedVideo';
+import { FallbackFeedVideo,NativeFeedVideo,USE_EXPO_VIDEO } from '@/components/feed/FeedVideo';
+import CommentsSheet from '@/components/ui/CommentsSheet';
+import { StoryRingAvatar } from '@/components/ui/StoryRingAvatar';
+import { useAuthStore } from '@/lib/authStore';
+import { useGuildNavStore } from '@/lib/guildNavStore';
+import { useBookmark } from '@/lib/useBookmark';
+import { useCommentCount } from '@/lib/useComments';
+import { useLike } from '@/lib/useLike';
+import type { GuildPost } from '@/lib/usePosts';
+import { sharePost } from '@/lib/useShare';
+import { impactAsync,ImpactFeedbackStyle } from 'expo-haptics';
 import { Image } from 'expo-image';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useLocalSearchParams,useRouter } from 'expo-router';
+import {
+ArrowLeft,
+Bookmark,
+Clock,
+Heart,
+MessageCircle,
+Share2,
+Users,
+Volume2,
+VolumeX,
+} from 'lucide-react-native';
+import React,{ useCallback,useEffect,useRef,useState } from 'react';
+import {
+ActivityIndicator,
+Dimensions,
+FlatList,
+PanResponder,
+Pressable,
+Animated as RNAnimated,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
+import {
+useAnimatedStyle,
+useSharedValue,
+withSequence,
+withTiming,
+} from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 // reanimated: CJS require() vermeidet _interopRequireDefault Crash in Hermes HBC
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any;
 const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
-import {
-  useAnimatedStyle,
-  useSharedValue,
-  withSequence,
-  withTiming,
-} from 'react-native-reanimated';
-import {
-  ArrowLeft,
-  Heart,
-  MessageCircle,
-  Bookmark,
-  Share2,
-  Clock,
-  Users,
-  VolumeX,
-  Volume2,
-} from 'lucide-react-native';
-import { FallbackFeedVideo, NativeFeedVideo, USE_EXPO_VIDEO } from '@/components/feed/FeedVideo';
-import type { FeedVideoSeekHandle } from '@/components/feed/FeedVideo';
-import { VideoProgressBar } from '@/components/feed/FeedItem';
-import type { VideoProgressHandle } from '@/components/feed/FeedItem';
-import { useLike } from '@/lib/useLike';
-import { useCommentCount } from '@/lib/useComments';
-import { useBookmark } from '@/lib/useBookmark';
-import { sharePost } from '@/lib/useShare';
-import CommentsSheet from '@/components/ui/CommentsSheet';
-import { useGuildNavStore } from '@/lib/guildNavStore';
-import type { GuildPost } from '@/lib/usePosts';
-import { impactAsync, ImpactFeedbackStyle } from 'expo-haptics';
-import { useAuthStore } from '@/lib/authStore';
-import { StoryRingAvatar } from '@/components/ui/StoryRingAvatar';
 
 // ─── Floating Heart — eigenständige Komponente pro Doppel-Tap ──────────────────
 type FloatingHeartItem = { id: number; x: number; y: number };
@@ -467,7 +467,7 @@ export default function GuildPostDetailScreen() {
 
   // ✅ Hooks VOR bedingtem Return (Rules of Hooks)
   const onViewableItemsChanged = useCallback(
-    ({ viewableItems }: { viewableItems: Array<{ index: number | null }> }) => {
+    ({ viewableItems }: { viewableItems: { index: number | null }[] }) => {
       const first = viewableItems[0];
       if (first?.index != null) setActiveIndex(first.index);
     },

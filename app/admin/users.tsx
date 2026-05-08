@@ -7,24 +7,35 @@
  * - Admin-Rechte vergeben / entziehen
  */
 
-import { useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, Pressable, TextInput,
-  FlatList, ActivityIndicator, Alert,
-} from 'react-native';
-import { Image } from 'expo-image';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import {
-  ArrowLeft, Search, Shield, CheckCircle,
-  Ban, ShieldCheck, Users,
-} from 'lucide-react-native';
-import { impactAsync, ImpactFeedbackStyle } from 'expo-haptics';
-import {
-  useAdminUsers, useAdminBanUser, useAdminVerifyUser,
-  useAdminToggleAdmin, type AdminUser,
+useAdminBanUser,
+useAdminToggleAdmin,
+useAdminUsers,
+useAdminVerifyUser,
+type AdminUser,
 } from '@/lib/useAdmin';
 import { useTheme } from '@/lib/useTheme';
+import { impactAsync,ImpactFeedbackStyle } from 'expo-haptics';
+import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
+import {
+ArrowLeft,
+Ban,
+CheckCircle,
+Search,Shield,
+ShieldCheck,Users,
+} from 'lucide-react-native';
+import { useCallback,useState } from 'react';
+import {
+ActivityIndicator,Alert,
+FlatList,
+Pressable,
+StyleSheet,
+Text,
+TextInput,
+View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function AdminUsersScreen() {
   const insets = useSafeAreaInsets();

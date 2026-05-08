@@ -21,10 +21,9 @@
  *   als Soft-Signaling-Layer für schnelles UI-Feedback erhalten.
  */
 
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from './supabase';
+import { useCallback,useEffect,useRef,useState } from 'react';
 import { useAuthStore } from './authStore';
+import { supabase } from './supabase';
 
 // ─── Broadcast-Helfer ─────────────────────────────────────────────────────────
 // Fix #3: `channel.send()` kann still fehlschlagen wenn der Channel noch nicht

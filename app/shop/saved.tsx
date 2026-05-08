@@ -4,18 +4,23 @@
  * Erreichbar über: More-Menu → "Gespeicherte ansehen"
  */
 
-import { useState, useCallback } from 'react';
-import {
-  View, Text, StyleSheet, Pressable, FlatList,
-  ActivityIndicator, RefreshControl,
-} from 'react-native';
-import { Image } from 'expo-image';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { ArrowLeft, Bookmark, ShoppingBag } from 'lucide-react-native';
-import { useSavedProducts, useSavedProduct, type SavedProduct } from '@/lib/useShop';
+import { useSavedProduct,useSavedProducts,type SavedProduct } from '@/lib/useShop';
 import { useTheme } from '@/lib/useTheme';
-import { impactAsync, ImpactFeedbackStyle } from 'expo-haptics';
+import { impactAsync,ImpactFeedbackStyle } from 'expo-haptics';
+import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
+import { ArrowLeft,Bookmark,ShoppingBag } from 'lucide-react-native';
+import { useCallback } from 'react';
+import {
+ActivityIndicator,
+FlatList,
+Pressable,
+RefreshControl,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // ─── Produktkarte ─────────────────────────────────────────────────────────────
 

@@ -13,9 +13,9 @@
  *  - Konfetti-Partikel (einfache Animated Views)
  */
 
-import { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
 import type { LiveGoal } from '@/lib/useLiveGoal';
+import { useEffect,useRef } from 'react';
+import { Animated,Easing,StyleSheet,Text,View } from 'react-native';
 
 interface Props {
   goal: LiveGoal;

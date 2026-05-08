@@ -7,14 +7,20 @@
  *
  * Keyboard: KeyboardAvoidingView + keyboardShouldPersistTaps="always"
  */
-import {
-  Modal, View, Text, Pressable, ScrollView,
-  StyleSheet, TextInput, KeyboardAvoidingView, Platform,
-} from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useState } from 'react';
-import * as Haptics from 'expo-haptics';
+import {
+KeyboardAvoidingView,
+Modal,
+Platform,
+Pressable,ScrollView,
+StyleSheet,
+Text,
+TextInput,
+View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export function HighlightNameSheet({

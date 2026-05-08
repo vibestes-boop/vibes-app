@@ -37,14 +37,12 @@ function CommentRow({
   comment,
   isReply = false,
   viewerId,
-  postId,
   onReply,
   onDeleted,
 }: {
   comment: CommentWithAuthor;
   isReply?: boolean;
   viewerId: string | null;
-  postId: string;
   onReply?: (username: string) => void;
   onDeleted?: (id: string) => void;
 }) {
@@ -337,7 +335,6 @@ export function CommentThread({
       <CommentRow
         comment={comment}
         viewerId={viewerId}
-        postId={postId}
         onReply={handleReply}
       />
 
@@ -377,7 +374,6 @@ export function CommentThread({
               comment={reply}
               isReply
               viewerId={viewerId}
-              postId={postId}
               onReply={handleReply}
               onDeleted={handleReplyDeleted}
             />

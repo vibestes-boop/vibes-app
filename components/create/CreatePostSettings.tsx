@@ -4,8 +4,8 @@
  * - Privatsphäre: Öffentlich / Freunde / Privat
  * - Toggles: Kommentare / Download / Duet
  */
-import { View, Text, Pressable, Switch, StyleSheet } from 'react-native';
-import { Globe, Users, Lock } from 'lucide-react-native';
+import { Globe,Lock,Users } from 'lucide-react-native';
+import { Pressable,StyleSheet,Switch,Text,View } from 'react-native';
 
 export type PostPrivacy = 'public' | 'friends' | 'private';
 

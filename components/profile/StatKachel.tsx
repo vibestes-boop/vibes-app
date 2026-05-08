@@ -1,5 +1,5 @@
 import { type ElementType } from 'react';
-import { View, Text } from 'react-native';
+import { Text,View } from 'react-native';
 import { profileStyles as s } from './profileStyles';
 
 export function StatKachel({

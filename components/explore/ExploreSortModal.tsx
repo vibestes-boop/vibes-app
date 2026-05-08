@@ -1,12 +1,12 @@
-import { Modal, Pressable, View, Text } from 'react-native';
-import { Check } from 'lucide-react-native';
-import * as Haptics from 'expo-haptics';
 import {
-  EXPLORE_SORT_OPTIONS,
-  type ExploreSortMode,
+EXPLORE_SORT_OPTIONS,
+type ExploreSortMode,
 } from '@/lib/useExplore';
-import { getExploreStyles } from './exploreStyles';
 import { useTheme } from '@/lib/useTheme';
+import * as Haptics from 'expo-haptics';
+import { Check } from 'lucide-react-native';
+import { Modal,Pressable,Text,View } from 'react-native';
+import { getExploreStyles } from './exploreStyles';
 
 export function ExploreSortModal({
   visible,

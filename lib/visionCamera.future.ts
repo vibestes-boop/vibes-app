@@ -62,4 +62,4 @@ export function ARCamera() {
 }
 */
 
-export {}; // Verhindert TypeScript-Fehler (leeres Modul)
+export { }; // Verhindert TypeScript-Fehler (leeres Modul)

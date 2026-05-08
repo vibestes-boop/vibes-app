@@ -23,15 +23,15 @@
 
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { supabase } from './supabase';
 import {
-  GIFT_CATALOG,
-  GIFT_BY_ID,
-  rarityFromCost,
-  isGiftActive,
-  type GiftItem,
-  type GiftRarity,
+GIFT_BY_ID,
+GIFT_CATALOG,
+isGiftActive,
+rarityFromCost,
+type GiftItem,
+type GiftRarity,
 } from './gifts';
+import { supabase } from './supabase';
 
 // ─── DB Row Shape ────────────────────────────────────────────────────────────
 

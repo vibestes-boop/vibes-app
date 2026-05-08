@@ -31,15 +31,12 @@ jest.mock('next/navigation', () => ({
   usePathname: () => '/',
 }));
 
-// getUnreadDmCount + getUnreadNotificationCount sind Server Actions die
-// Supabase/cookies() nutzen — beides nicht in jsdom verfügbar.
-// Stubs die immer 0 zurückgeben (kein Badge — Badge-Rendering ist ein eigener Test).
-jest.mock('@/app/actions/messages', () => ({
-  getUnreadDmCount: jest.fn().mockResolvedValue(0),
-}));
-
-jest.mock('@/app/actions/notifications', () => ({
-  getUnreadNotificationCount: jest.fn().mockResolvedValue(0),
+// UnreadShellCounts nutzt Server Actions plus delayed polling; fuer die
+// Strukturtests reicht ein stabiler Null-State.
+jest.mock('@/components/layout/use-unread-shell-counts', () => ({
+  useUnreadShellCounts: () => ({
+    data: { dms: 0, notifications: 0 },
+  }),
 }));
 
 // OpenConsentSettingsButton ist ein Client-Hook-heavy Consent-Banner-Kontrollpunkt

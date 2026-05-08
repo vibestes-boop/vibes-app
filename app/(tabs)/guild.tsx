@@ -1,35 +1,35 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { View, ActivityIndicator, Alert, Text, StyleSheet } from "react-native";
-import { FlashList } from "@shopify/flash-list";
-import { Image } from "expo-image";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { useFocusEffect, useRouter } from "expo-router";
-import { launchImageLibraryAsync } from "expo-image-picker";
-import { GuildLeaderboard } from "@/components/ui/GuildLeaderboard";
-import { StoriesRow } from "@/components/ui/StoriesRow";
 import {
-  GUILD_COLORS,
-  GuildCard,
-  GuildRoomHeader,
-  EmptyGuildState,
-  getGuildStyles,
-  type GuildViewMode,
+EmptyGuildState,
+getGuildStyles,
+GUILD_COLORS,
+GuildCard,
+GuildRoomHeader,
+type GuildViewMode,
 } from "@/components/guild";
 import { GuildMembersSheet } from "@/components/guild/GuildMembersSheet";
+import { GuildLeaderboard } from "@/components/ui/GuildLeaderboard";
+import { StoriesRow } from "@/components/ui/StoriesRow";
 import { useAuthStore } from "@/lib/authStore";
-import { useGuildFeed, useGuildInfo, type GuildPost } from "@/lib/usePosts";
-import {
-  useGuildStories,
-  useCreateStory,
-  type StoryGroup,
-} from "@/lib/useStories";
-import { useStoryViewerStore } from "@/lib/storyViewerStore";
-import { uploadPostMedia, generateAndUploadThumbnail } from "@/lib/uploadMedia";
-import { useGuildMemberCount } from "@/lib/useGuildMemberCount";
-import { guildFeedActions, useTabRefreshStore } from "@/lib/useTabRefresh";
 import { useGuildNavStore } from "@/lib/guildNavStore";
+import { useStoryViewerStore } from "@/lib/storyViewerStore";
+import { generateAndUploadThumbnail,uploadPostMedia } from "@/lib/uploadMedia";
+import { useGuildMemberCount } from "@/lib/useGuildMemberCount";
 import { useActiveLiveSessions } from "@/lib/useLiveSession";
+import { useGuildFeed,useGuildInfo,type GuildPost } from "@/lib/usePosts";
+import {
+useCreateStory,
+useGuildStories,
+type StoryGroup,
+} from "@/lib/useStories";
+import { guildFeedActions,useTabRefreshStore } from "@/lib/useTabRefresh";
 import { useTheme } from "@/lib/useTheme";
+import { FlashList } from "@shopify/flash-list";
+import { Image } from "expo-image";
+import { launchImageLibraryAsync } from "expo-image-picker";
+import { useFocusEffect,useRouter } from "expo-router";
+import { useCallback,useEffect,useMemo,useRef,useState } from "react";
+import { ActivityIndicator,Alert,StyleSheet,Text,View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function GuildScreen() {
   const insets = useSafeAreaInsets();
@@ -60,7 +60,7 @@ export default function GuildScreen() {
   // Viewability: Video spielt nur wenn Karte zu ≥60% sichtbar
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
   const onViewableItemsChanged = useCallback(
-    ({ viewableItems }: { viewableItems: Array<{ item: GuildPost; isViewable: boolean }> }) => {
+    ({ viewableItems }: { viewableItems: { item: GuildPost; isViewable: boolean }[] }) => {
       const first = viewableItems.find((vi) => vi.isViewable);
       setVisiblePostId(first?.item.id ?? null);
     },
@@ -229,7 +229,10 @@ export default function GuildScreen() {
       storyGroups,
       openViewer,
       handleAddStory,
+      activeLives,
       viewMode,
+      styles.storiesWrap,
+      styles.storiesDivider,
       colors,          // ← fehlte: Theme-Wechsel löst jetzt Re-Render aus
     ],
   );

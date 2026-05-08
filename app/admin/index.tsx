@@ -5,21 +5,33 @@
  * Nutzer, Posts, Bestellungen, Umsatz, offene Reports
  */
 
-import {
-  View, Text, StyleSheet, Pressable,
-  ScrollView, ActivityIndicator, RefreshControl,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-import {
-  Users, FileText, ShoppingBag, Flag,
-  TrendingUp, Shield, ChevronRight, Zap,
-  Package, LogOut, Settings,
-} from 'lucide-react-native';
+import { useAuthStore } from '@/lib/authStore';
 import { useAdminStats } from '@/lib/useAdmin';
 import { useTheme } from '@/lib/useTheme';
-import { useAuthStore } from '@/lib/authStore';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import {
+ChevronRight,
+FileText,
+Flag,
+LogOut,
+Package,
+Shield,
+ShoppingBag,
+TrendingUp,
+Users,
+Zap
+} from 'lucide-react-native';
+import {
+ActivityIndicator,
+Pressable,
+RefreshControl,
+ScrollView,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // ─── Stats-Karte ──────────────────────────────────────────────────────────────
 

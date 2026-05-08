@@ -2,12 +2,13 @@
 
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
-import { getUnreadNotificationCount as _getCount } from '@/lib/data/notifications';
+import { getUnreadShellCounts } from '@/app/actions/unread-counts';
 
 // getUnreadNotificationCount — als Server Action für Client-Components (useQuery).
 // Wrapper um den Data-Layer damit Client-Components ihn direkt aufrufen können.
 export async function getUnreadNotificationCount(): Promise<number> {
-  return _getCount();
+  const counts = await getUnreadShellCounts();
+  return counts.notifications;
 }
 
 // -----------------------------------------------------------------------------

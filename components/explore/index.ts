@@ -1,7 +1,7 @@
-export { EXPLORE_GRID_COLS, EXPLORE_ITEM_WIDTH, EXPLORE_ITEM_HEIGHT } from './exploreConstants';
-export { exploreStyles, getExploreStyles } from './exploreStyles';
+export { EXPLORE_GRID_COLS,EXPLORE_ITEM_HEIGHT,EXPLORE_ITEM_WIDTH } from './exploreConstants';
 export { ExploreGridItem } from './ExploreGridItem';
-export { ExploreUserRow } from './ExploreUserRow';
-export { ExploreSortModal } from './ExploreSortModal';
 export { ExploreSearchBar } from './ExploreSearchBar';
+export { ExploreSortModal } from './ExploreSortModal';
+export { exploreStyles,getExploreStyles } from './exploreStyles';
 export { ExploreTagChips } from './ExploreTagChips';
+export { ExploreUserRow } from './ExploreUserRow';

@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
-import { getForYouFeed } from '@/lib/data/feed';
+import { getForYouFeed, getPublicForYouFeed } from '@/lib/data/feed';
+import {
+  hasSupabaseAuthCookie,
+  privateNoStoreHeaders,
+  publicApiCacheHeaders,
+} from '@/lib/cache/headers';
 
 // -----------------------------------------------------------------------------
 // GET /api/feed/foryou — client-seitiger Nachlader für den For-You-Tab.
@@ -14,13 +19,17 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const limit = Number(url.searchParams.get('limit') ?? 10);
   const before = url.searchParams.get('before') ?? undefined;
+  const isAuthed = hasSupabaseAuthCookie(request);
+  const headers = isAuthed
+    ? privateNoStoreHeaders()
+    : publicApiCacheHeaders({ cdnMaxAge: 30, staleWhileRevalidate: 120 });
 
   try {
-    const posts = await getForYouFeed({ limit, before });
-    return NextResponse.json(posts, {
-      headers: { 'Cache-Control': 'private, no-store' },
-    });
+    const posts = isAuthed
+      ? await getForYouFeed({ limit, before })
+      : await getPublicForYouFeed({ limit, before });
+    return NextResponse.json(posts, { headers });
   } catch {
-    return NextResponse.json([], { status: 200 });
+    return NextResponse.json([], { status: 200, headers });
   }
 }

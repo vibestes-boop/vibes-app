@@ -9,7 +9,7 @@
  *   likes      — Gesamt-Likes des Streams
  */
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect,useRef,useState } from 'react';
 import { supabase } from './supabase';
 
 export type GoalType = 'gift_value' | 'likes';

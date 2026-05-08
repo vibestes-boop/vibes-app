@@ -1,5 +1,5 @@
 import { StyleSheet } from 'react-native';
-import { SCREEN_HEIGHT, SCREEN_WIDTH } from './feedConstants';
+import { SCREEN_HEIGHT,SCREEN_WIDTH } from './feedConstants';
 
 /** Screen: VibeFeedScreen (Liste, Filter, Banner, Empty) */
 export const vibeFeedScreenStyles = StyleSheet.create({

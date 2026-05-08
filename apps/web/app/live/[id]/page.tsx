@@ -37,7 +37,6 @@ import { LivePlacedProductLayer } from '@/components/live/live-placed-product-la
 import {
   glassPillStrong,
   glassSurface,
-  glassSurfaceDense,
 } from '@/lib/ui/glass-pill';
 import { cn } from '@/lib/utils';
 

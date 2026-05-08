@@ -3,12 +3,12 @@
  * Bottom Sheet das die Viewer-Liste einer eigenen Story anzeigt.
  * Öffnet sich über den "Augen"-Button in der eigenen Story-Ansicht.
  */
-import { Modal, View, Text, FlatList, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
+import { useStoryViewers,type StoryViewerEntry } from '@/lib/useStoryViews';
 import { Image } from 'expo-image';
-import { X, Eye } from 'lucide-react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { useStoryViewers, type StoryViewerEntry } from '@/lib/useStoryViews';
+import { Eye,X } from 'lucide-react-native';
+import { ActivityIndicator,FlatList,Modal,Pressable,StyleSheet,Text,View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function formatTimeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();

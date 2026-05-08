@@ -3,398 +3,107 @@
  * Zuschauer-Ansicht eines Live-Streams via LiveKit.
  * Braucht Dev-Build: npx expo run:ios / npx expo run:android
  */
-import { memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  FlatList,
-  TextInput,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-  Keyboard,
-  Alert,
-  ActivityIndicator,
-  Dimensions,
-  Modal,
-  Animated as RNAnimated,
-  PanResponder,
-  Share,
-} from 'react-native';
-import { Image } from 'expo-image';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import * as Sentry from '@sentry/react-native';
-import { useWomenOnly } from '@/lib/useWomenOnly';
-import { X, Share2, Video, Search, Users, Send, VolumeX, Volume2, Heart, Flag, Smile, Scissors, ShoppingBag, BarChart3 } from 'lucide-react-native';
 import { useClipNow } from '@/lib/useLiveClips';
+import { useWomenOnly } from '@/lib/useWomenOnly';
+import * as Sentry from '@sentry/react-native';
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useLocalSearchParams,useRouter } from 'expo-router';
 import * as ScreenOrientation from 'expo-screen-orientation';
-// react-native-reanimated: CJS require() vermeidet _interopRequireDefault Crash in Hermes HBC
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
-const _animMod = require('react-native-reanimated') as any;
-const _animNS = _animMod?.default ?? _animMod;
-const Animated = {
-  View: _animNS?.View ?? _animMod?.View,
-  Text: _animNS?.Text ?? _animMod?.Text,
-};
+import { BarChart3,Heart,Scissors,Search,Send,Share2,ShoppingBag,Smile,Users,Video,Volume2,VolumeX,X } from 'lucide-react-native';
+import { useCallback,useContext,useEffect,useMemo,useRef,useState } from 'react';
 import {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withSequence,
-  withRepeat,
-  withSpring,
-  withDelay,
-  FadeInDown,
-  Easing,
-} from 'react-native-reanimated';
+ActivityIndicator,
+Alert,
+FlatList,
+Keyboard,
+KeyboardAvoidingView,
+Modal,
+PanResponder,
+Platform,
+Pressable,
+Animated as RNAnimated,
+ScrollView,
+Share,
+StyleSheet,
+Text,
+TextInput,
+View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import {
-  LiveKitRoom,
-  useTracks,
-  VideoTrack,
-  AudioSession,
-} from '@livekit/react-native';
-import { Track, RoomEvent, createLocalVideoTrack, createLocalAudioTrack } from 'livekit-client';
-import type { TrackPublication } from 'livekit-client';
+fetchLiveKitToken,
+reportLive,
+useActiveLiveSessions,
+useChatModeration,
+useIsFollowingHost,
+useLiveComments,
+useLiveReactions,
+useLiveSession,
+useLiveViewer,
+usePinComment,
+type LiveComment,
+} from '@/lib/useLiveSession';
 import { RoomContext } from '@livekit/components-react';
 import {
-  useLiveSession,
-  useLiveViewer,
-  useLiveComments,
-  useLiveReactions,
-  usePinComment,
-  useChatModeration,
-  reportLive,
-  fetchLiveKitToken,
-  useIsFollowingHost,
-  useActiveLiveSessions,
-  type LiveComment,
-  type LiveReaction,
-} from '@/lib/useLiveSession';
+AudioSession,
+LiveKitRoom,
+useTracks,
+VideoTrack,
+} from '@livekit/react-native';
+import type { Participant,TrackPublication } from 'livekit-client';
+import { createLocalAudioTrack,createLocalVideoTrack,RoomEvent,Track } from 'livekit-client';
 // v1.23 — Moderatoren-Befugnisse im Viewer: Mod kann aus dem Chat direkt
 // Timeout/Pin/Delete auslösen. Der Schreibschutz liegt in der DB (SECURITY
 // DEFINER RPCs prüfen Host ODER Mod), wir unlocken clientseitig nur die UI.
 import { useLiveModerators } from '@/lib/useLiveModerators';
 // v1.24 — Welcome-Toast beim Live-Join für Follower + Top-Fans
-import { useLiveWelcome } from '@/lib/useLiveWelcome';
-import { WelcomeToast } from '@/components/live/WelcomeToast';
-import { useQueryClient } from '@tanstack/react-query';
-import { useAuthStore, type Profile } from '@/lib/authStore';
-import { useFollow } from '@/lib/useFollow';
-import { LiveUserSheet } from '@/components/live/LiveUserSheet';
-import { LivePollStartSheet } from '@/components/live/LivePollStartSheet';
 import ExpoGoPlaceholder from '@/components/live/ExpoGoPlaceholder';
-import { GiftPicker } from '@/components/live/GiftPicker';
 import { GiftAnimation } from '@/components/live/GiftAnimation';
-import { useGiftStream, useTopGifters } from '@/lib/useGifts';
-import { useLiveShopping } from '@/lib/useLiveShopping';
-import { PinnedProductPill, ProductSoldBanner } from '@/components/live/LiveShoppingUI';
+import { GiftPicker } from '@/components/live/GiftPicker';
+import { LivePollStartSheet } from '@/components/live/LivePollStartSheet';
+import { PinnedProductPill,ProductSoldBanner } from '@/components/live/LiveShoppingUI';
+import { LiveUserSheet } from '@/components/live/LiveUserSheet';
 import { TopGifterBadge } from '@/components/live/TopGifterBadge';
+import { WelcomeToast } from '@/components/live/WelcomeToast';
+import { useAuthStore,type Profile } from '@/lib/authStore';
+import { useFollow } from '@/lib/useFollow';
+import { useGiftStream,useTopGifters } from '@/lib/useGifts';
+import { useLiveShopping } from '@/lib/useLiveShopping';
+import { useLiveWelcome } from '@/lib/useLiveWelcome';
+import { useQueryClient } from '@tanstack/react-query';
 // v1.22.2 — Viewer-Seite: gleiche TikTok-Style Top-Zuschauer*innen Sheet wie Host.
-import ViewerListSheet from '@/components/ui/ViewerListSheet';
-import { useLiveGoal } from '@/lib/useLiveGoal';
-import { LiveGoalBar } from '@/components/live/LiveGoalBar';
-import { useActiveLivePoll } from '@/lib/useLivePolls';
-import { LivePollOverlay } from '@/components/live/LivePollOverlay';
-import { useLiveOverlayPosition } from '@/lib/useLiveOverlayPosition';
-import { useActiveStickers } from '@/lib/useLiveStickers';
-import { LiveStickerLayer } from '@/components/live/LiveStickerLayer';
-import { useActivePlacedProducts } from '@/lib/useLivePlacedProducts';
-import { LivePlacedProductLayer } from '@/components/live/LivePlacedProductLayer';
-import { useLiveShopMode, useHostShopProducts } from '@/lib/useLiveShopMode';
-import { HostShopSheet } from '@/components/live/HostShopSheet';
-import { useKeepAwake } from 'expo-keep-awake';
-import { useCoHostViewer, useLiveCoHosts } from '@/lib/useCoHost';
-import { useDuettInbox } from '@/lib/useDuett';
-import { DuettInviteModal } from '@/components/live/DuettInviteModal';
-import { PiPWindow } from '@/components/live/PiPWindow';
 import { BattleBar } from '@/components/live/BattleBar';
+import { DuettInviteModal } from '@/components/live/DuettInviteModal';
+import { HostShopSheet } from '@/components/live/HostShopSheet';
+import { LiveGoalBar } from '@/components/live/LiveGoalBar';
+import {
+LiveCommentRow,
+LiveReactionBubble,
+TapHeartBurst,
+type TapHeart,
+} from '@/components/live/LiveInteractionPrimitives';
+import { LivePlacedProductLayer } from '@/components/live/LivePlacedProductLayer';
+import { LivePollOverlay } from '@/components/live/LivePollOverlay';
+import { LIVE_REACTION_EMOJIS,LiveReactionIcon } from '@/components/live/LiveReactionIcon';
+import { LiveStickerLayer } from '@/components/live/LiveStickerLayer';
+import { PiPWindow } from '@/components/live/PiPWindow';
+import ViewerListSheet from '@/components/ui/ViewerListSheet';
 import { useBattle } from '@/lib/useBattle';
-import type { Participant } from 'livekit-client';
-import { LiveReactionIcon, LIVE_REACTION_EMOJIS } from '@/components/live/LiveReactionIcon';
+import { useCoHostViewer,useLiveCoHosts } from '@/lib/useCoHost';
+import { useDuettInbox } from '@/lib/useDuett';
+import { formatLiveCount as fmtNum } from '@/lib/liveFormat';
+import { useLiveGoal } from '@/lib/useLiveGoal';
+import { useLiveOverlayPosition } from '@/lib/useLiveOverlayPosition';
+import { useActivePlacedProducts } from '@/lib/useLivePlacedProducts';
+import { useActiveLivePoll } from '@/lib/useLivePolls';
+import { useHostShopProducts,useLiveShopMode } from '@/lib/useLiveShopMode';
+import { useActiveStickers } from '@/lib/useLiveStickers';
+import { useKeepAwake } from 'expo-keep-awake';
 // expo-constants: default import causes _interopRequireDefault TypeError in Hermes HBC
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const _cMod = require('expo-constants') as any; const Constants = _cMod?.default ?? _cMod;
-
-// TikTok-Style Reactions — unsere eigenen SVG-Icons (keine Apple-Smileys!)
-const EMOJIS = LIVE_REACTION_EMOJIS;
-const { width: SCREEN_W } = Dimensions.get('window');
-
-// Zahlen formatieren: 1200 → "1.2K"
-function fmtNum(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return String(n);
-}
-
-// ─── TikTok-Style Floating Heart (Reaktion-Feed — kommt von rechts unten) ──────
-function FloatingHeart({ reaction }: { reaction: LiveReaction }) {
-  const x = SCREEN_W * 0.52 + Math.random() * (SCREEN_W * 0.28);
-  const translateY = useSharedValue(0);
-  const scale = useSharedValue(0);
-  const opacity = useSharedValue(1);
-  const rotate = useSharedValue(0);
-
-  useEffect(() => {
-    scale.value = withSpring(1, { damping: 7, stiffness: 140 });
-    translateY.value = withTiming(-300, { duration: 2600 });
-    opacity.value = withDelay(1800, withTiming(0, { duration: 800 }));
-    rotate.value = withRepeat(
-      withSequence(
-        withTiming(-0.18, { duration: 280 }),
-        withTiming(0.18, { duration: 280 }),
-      ),
-      -1,
-      true,
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const animStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateY: translateY.value },
-      { scale: scale.value },
-      { rotate: `${rotate.value}rad` },
-    ],
-    opacity: opacity.value,
-    left: x,
-  }));
-
-  return (
-    <Animated.View style={[s.floatingHeartWrap, animStyle]}>
-      <LiveReactionIcon emoji="❤️" size={36} />
-    </Animated.View>
-  );
-}
-
-// ─── TAP-Position Herz — erscheint genau wo getippt wurde ────────────────────
-interface TapHeart {
-  id: number;
-  x: number;
-  y: number;
-}
-
-/**
- * TapHeartBurst — EIN Herz pro Tap am Finger-Punkt.
- *
- * Jede Instanz hat komplett eigene randomisierte Parameter (Drift, Sway, Dauer,
- * Rotation, Skalierung), damit mehrere schnell hintereinander getippte Herzen
- * unabhängig voneinander floaten und nicht synchron aussehen.
- */
-function TapHeartBurst({ tapHeart, onDone }: { tapHeart: TapHeart; onDone: (id: number) => void }) {
-  return (
-    <TapHeartParticle
-      x={tapHeart.x}
-      y={tapHeart.y}
-      onDone={() => onDone(tapHeart.id)}
-    />
-  );
-}
-
-function TapHeartParticle({
-  x, y, onDone,
-}: { x: number; y: number; onDone: () => void }) {
-  const translateY = useSharedValue(0);
-  const translateX = useSharedValue(0);
-  const scale     = useSharedValue(0);
-  const opacity   = useSharedValue(0);
-  const rotate    = useSharedValue((Math.random() - 0.5) * 0.6); // -30°..+30°
-
-  // Randomisierte Animations-Parameter — damit jedes Herz unabhängig floatet.
-  // Alle Werte EINMAL per useRef berechnen → stable über Re-Renders.
-  const params = useRef({
-    driftY:     180 + Math.random() * 140,         // 180–320px hoch
-    driftX:     (Math.random() - 0.5) * 80,        // ±40px seitlich
-    swayMag:    12 + Math.random() * 16,           // Schwingung ±12–28px
-    swayPeriod: 600 + Math.random() * 500,         // 600–1100ms pro Schwing
-    duration:   1100 + Math.random() * 500,        // 1.1–1.6s Lebensdauer
-    peakScale:  1.1 + Math.random() * 0.3,         // 1.1–1.4 Pop
-    rotateEnd:  (Math.random() - 0.5) * 1.0,       // ±0.5rad Drift-Rotation
-  }).current;
-
-  useEffect(() => {
-    const doneTimer = setTimeout(onDone, params.duration + 200);
-
-    // Aufpoppen + am Ende ausblenden
-    scale.value   = withSequence(
-      withSpring(params.peakScale, { damping: 5, stiffness: 260 }),
-      withTiming(0.85, { duration: 200 }),
-    );
-    opacity.value = withSequence(
-      withTiming(1, { duration: 80 }),
-      withDelay(params.duration * 0.55, withTiming(0, { duration: params.duration * 0.45 })),
-    );
-
-    // Haupt-Bewegung nach oben + leichter X-Drift + kontinuierliche Rotation
-    translateY.value = withTiming(-params.driftY, { duration: params.duration });
-    rotate.value     = withTiming(params.rotateEnd, { duration: params.duration });
-
-    // Seitliche Schwingung: loopt so lange das Herz sichtbar ist (ergibt Sinus-Path)
-    translateX.value = withRepeat(
-      withSequence(
-        withTiming(params.driftX + params.swayMag, { duration: params.swayPeriod }),
-        withTiming(params.driftX - params.swayMag, { duration: params.swayPeriod }),
-      ),
-      -1,
-      true,
-    );
-
-    return () => clearTimeout(doneTimer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const style = useAnimatedStyle(() => ({
-    position: 'absolute',
-    left: x - 18,
-    top:  y - 18,
-    transform: [
-      { translateX: translateX.value },
-      { translateY: translateY.value },
-      { scale: scale.value },
-      { rotate: `${rotate.value}rad` },
-    ],
-    opacity: opacity.value,
-    zIndex: 200,
-  }));
-
-  return (
-    <Animated.View style={style} pointerEvents="none">
-      <LiveReactionIcon emoji="❤️" size={36} />
-    </Animated.View>
-  );
-}
-
-// ─── Floating Reaktions-Bubble ────────────────────────────────────────────────
-// WARN 7 Fix: Hooks dürfen nicht nach bedingtem Return stehen.
-// Deshalb zwei separate Komponenten: FloatingHeart + OtherReactionBubble.
-function OtherReactionBubble({ reaction }: { reaction: LiveReaction }) {
-  const left = 20 + Math.random() * 140;
-  const translateY = useSharedValue(0);
-  const opacity = useSharedValue(1);
-
-  useEffect(() => {
-    translateY.value = withTiming(-220, { duration: 2800 });
-    opacity.value = withSequence(
-      withTiming(1, { duration: 100 }),
-      withTiming(0, { duration: 2700 })
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- Werte nur beim Mount starten
-  }, []);
-
-  const style = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }],
-    opacity: opacity.value,
-    left,
-  }));
-
-  return (
-    <Animated.View style={[s.reactionBubble, style]}>
-      <LiveReactionIcon emoji={reaction.emoji} size={42} />
-    </Animated.View>
-  );
-}
-
-function ReactionBubble({ reaction }: { reaction: LiveReaction }) {
-  if (reaction.emoji === '❤️') return <FloatingHeart reaction={reaction} />;
-  return <OtherReactionBubble reaction={reaction} />;
-}
-
-// ─── Kommentar-Zeile ──────────────────────────────────────────────────
-/**
- * CommentRow (watch/[id].tsx)
- *
- * Perf: `memo` + stabile Handler-Refs statt per-Item-Closures.
- * Parent übergibt `onUserSelect` + `onModerate` (beide via useCallback stabil).
- * Row baut seine onPress/onLongPress intern aus `comment` — dadurch sind
- * CommentRow-Props bei unveränderten Chat-Items referentiell gleich und
- * `memo` kann re-renders existierender Rows überspringen.
- */
-function CommentRowComponent({
-  comment,
-  isHost,
-  isModerator,
-  isTopGifter,
-  onUserSelect,
-  onModerate,
-}: {
-  comment: LiveComment;
-  /** v1.23: Username-Badges */
-  isHost?: boolean;
-  isModerator?: boolean;
-  isTopGifter?: boolean;
-  /** STABILE Handler (useCallback im Parent) */
-  onUserSelect: (userId: string) => void;
-  /** null → keine Moderations-Optionen (non-Mod-Kontext); stabil via useCallback */
-  onModerate: ((comment: LiveComment) => void) | null;
-}) {
-  const isSystem = (comment as any).isSystem;
-  const avatar = comment.profiles?.avatar_url;
-  const username = comment.profiles?.username ?? 'User';
-  const initials = username[0]?.toUpperCase() ?? '?';
-
-  const handlePress = useCallback(() => {
-    if (isSystem) return;
-    onUserSelect(comment.user_id);
-  }, [isSystem, onUserSelect, comment.user_id]);
-
-  const handleLongPress = useCallback(() => {
-    if (isSystem || !onModerate) return;
-    onModerate(comment);
-  }, [isSystem, onModerate, comment]);
-
-  return (
-    <Animated.View entering={FadeInDown.duration(200)} style={s.commentRow}>
-      {isSystem ? (
-        <Text style={s.systemText}>{comment.text}</Text>
-      ) : (
-        <Pressable
-          onPress={handlePress}
-          onLongPress={onModerate ? handleLongPress : undefined}
-          delayLongPress={500}
-          style={s.commentInner}
-        >
-          {/* Avatar — links, oben ausgerichtet */}
-          {avatar ? (
-            <Image source={{ uri: avatar }} style={s.commentAvatar} contentFit="cover" />
-          ) : (
-            <View style={[s.commentAvatar, s.commentAvatarFallback]}>
-              <Text style={s.commentAvatarInitial}>{initials}</Text>
-            </View>
-          )}
-          {/* Vertikal: Zeile 1 = Username + Badges, Zeile 2 = Text */}
-          <View style={s.commentStack}>
-            <View style={s.commentUserRow}>
-              <Text style={s.commentUser} numberOfLines={1}>{username}</Text>
-              {isHost ? (
-                <View style={[s.commentBadge, s.commentBadgeHost]}>
-                  <Text style={s.commentBadgeText}>HOST</Text>
-                </View>
-              ) : null}
-              {isModerator ? (
-                <View style={[s.commentBadge, s.commentBadgeMod]}>
-                  <Text style={s.commentBadgeText}>🛡 MOD</Text>
-                </View>
-              ) : null}
-              {isTopGifter ? (
-                <View style={[s.commentBadge, s.commentBadgeGifter]}>
-                  <Text style={s.commentBadgeText}>★ TOP</Text>
-                </View>
-              ) : null}
-            </View>
-            <Text style={s.commentText}>{comment.text}</Text>
-          </View>
-        </Pressable>
-      )}
-    </Animated.View>
-  );
-}
-
-const CommentRow = memo(CommentRowComponent);
-
 
 // ─── Remote Video (Host-Stream) ───────────────────────────────────────────────
 // ⚠️ BUG FIX: hostId-Prop ergänzt damit bei Duet der richtige Track angezeigt wird.
@@ -942,7 +651,7 @@ function WatchUIContent({
         message: `Schau dir @${host?.username ?? ''} live an auf Serlo! 🎥`,
         url: `https://serlo.social/live/${sessionId}`,
       });
-    } catch (_) {}
+    } catch {}
   };
 
   // ─── Gift System ──────────────────────────────────────────────────────────────────────
@@ -1007,7 +716,7 @@ function WatchUIContent({
   const [pipSwapped, setPipSwapped] = useState(false);
 
   // Wenn Co-Host akzeptiert: AudioSession umschalten + lokale Kamera + Mikrofon publishen
-  // ⚠️ BUG 1 FIX: AudioSession muss VOR createLocalVideoTrack auf 'playAndRecord' 
+  // ⚠️ BUG 1 FIX: AudioSession muss VOR createLocalVideoTrack auf 'playAndRecord'
   //    umgeschaltet werden. iOS blockiert Mikrofon wenn Session-Kategorie falsch.
   // ⚠️ BUG 6 FIX: publishTrack() funktioniert jetzt weil Token canPublish=true hat.
   useEffect(() => {
@@ -1428,7 +1137,7 @@ function WatchUIContent({
       const ms = (t.publication?.track as any)?.mediaStreamTrack as MediaStreamTrack | undefined;
       if (ms) ms.enabled = !muted;
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [muted, audioTracks]);
 
   // iOS/Android Audio-Session für Viewer konfigurieren
@@ -1496,17 +1205,6 @@ function WatchUIContent({
     };
   }, []);
 
-
-  const dotOpacity = useSharedValue(1);
-  useEffect(() => {
-    dotOpacity.value = withRepeat(
-      withSequence(withTiming(0.3, { duration: 700 }), withTiming(1, { duration: 700 })),
-      -1,
-      false
-    );
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- nur einmalig starten
-  }, []);
-  const dotStyle = useAnimatedStyle(() => ({ opacity: dotOpacity.value }));
 
   useEffect(() => {
     if (comments.length > 0 && !userScrolling) {
@@ -1631,7 +1329,7 @@ function WatchUIContent({
   // ⚠️ BUG FIX: Stabile Referenz für RemoteVideoView in PiP (kein Inline-Arrow → kein Remount)
   const HostRemoteVideoAsPiP = useCallback(
     () => <RemoteVideoView hostAvatar={host?.avatar_url} hostId={session?.host_id} />,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+
     [host?.avatar_url, session?.host_id]
   );
 
@@ -1699,8 +1397,9 @@ function WatchUIContent({
 
   const renderChatItem = useCallback(
     ({ item }: { item: LiveComment }) => (
-      <CommentRow
+      <LiveCommentRow
         comment={item}
+        styles={s}
         /* v1.23 Badges: Host-Author, Session-Mod, oder Top-3-Gifter */
         isHost={!!hostUserIdForChat && item.user_id === hostUserIdForChat}
         isModerator={sessionModIds.has(item.user_id)}
@@ -1957,7 +1656,9 @@ function WatchUIContent({
 
       {/* Floating Reaktionen (von anderen Usern) */}
       <View style={s.reactionsLayer} pointerEvents="none">
-        {reactions.map((r) => <ReactionBubble key={r.id} reaction={r} />)}
+        {reactions.map((r) => (
+          <LiveReactionBubble key={r.id} reaction={r} styles={s} leftRange={140} />
+        ))}
       </View>
 
       {/* Tap-Herzen — erscheinen genau am Tipp-Punkt */}
@@ -2326,7 +2027,7 @@ function WatchUIContent({
             <View style={s.emojiPickerHandle} />
             <Text style={s.emojiPickerTitle}>Reaktion senden</Text>
             <View style={s.emojiPickerGrid}>
-              {EMOJIS.map((emoji) => (
+              {LIVE_REACTION_EMOJIS.map((emoji) => (
                 <Pressable
                   key={emoji}
                   style={({ pressed }) => [s.emojiPickerBtn, pressed && { opacity: 0.7, transform: [{ scale: 1.15 }] }]}
@@ -2656,7 +2357,7 @@ export default function LiveWatchScreen() {
         });
         setTokenError(true);
       });
-  }, [session?.room_name, isReplayMode]);
+  }, [session?.room_name, isReplayMode, id]);
 
   // ─── Publisher-Upgrade Callback ───────────────────────────────────────────
   // Wird von WatchUI aufgerufen, wenn `coHostStatus === 'accepted'` greift.
@@ -2689,7 +2390,7 @@ export default function LiveWatchScreen() {
       if (!lkToken) setTokenError(true);
     }, 20_000);
     return () => clearTimeout(t);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [session?.id, session?.room_name, lkToken]);
 
   // Globaler Safety-Timeout: läuft nur bis lkToken vorhanden ist

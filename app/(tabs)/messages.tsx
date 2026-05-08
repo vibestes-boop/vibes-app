@@ -1,28 +1,33 @@
-import { useCallback, useEffect, useState, useMemo } from 'react';
-import {
-  View, Text, StyleSheet, Pressable,
-  ActivityIndicator, RefreshControl,
-  Modal, TextInput, TouchableOpacity, Alert,
-} from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
+import { useCallback,useEffect,useMemo,useState } from 'react';
+import {
+ActivityIndicator,
+Alert,
+Modal,
+Pressable,
+RefreshControl,
+StyleSheet,
+Text,
+TextInput,TouchableOpacity,
+View,
+} from 'react-native';
 
 
 import { FlashList } from '@shopify/flash-list';
+import { router,useFocusEffect,useLocalSearchParams } from 'expo-router';
+import { Bookmark,MessageCircle,PenSquare,Search,X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { MessageCircle, PenSquare, Search, X, Bookmark } from 'lucide-react-native';
 
-import * as Haptics from 'expo-haptics';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
-import { useAuthStore } from '@/lib/authStore';
-import { useConversations, useOrCreateConversation, type Conversation } from '@/lib/useMessages';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { StoriesRow } from '@/components/ui/StoriesRow';
-import { useGuildStories, type StoryGroup } from '@/lib/useStories';
+import { useAuthStore } from '@/lib/authStore';
 import { useStoryViewerStore } from '@/lib/storyViewerStore';
+import { supabase } from '@/lib/supabase';
 import { useActiveLiveSessions } from '@/lib/useLiveSession';
+import { useConversations,useOrCreateConversation,type Conversation } from '@/lib/useMessages';
+import { useGuildStories,type StoryGroup } from '@/lib/useStories';
 import { useTheme } from '@/lib/useTheme';
+import { useQuery,useQueryClient } from '@tanstack/react-query';
+import * as Haptics from 'expo-haptics';
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -396,7 +401,7 @@ export default function MessagesScreen() {
       onSelectGroup={handleOpenStory}
       onAddStory={() => router.push('/live/start' as any)}
     />
-  ), [storyGroups, liveSessions, handleOpenStory, router]);
+  ), [storyGroups, liveSessions, handleOpenStory]);
 
   return (
     <View style={[styles.screen, { paddingTop: insets.top, backgroundColor: colors.bg.secondary }]}>

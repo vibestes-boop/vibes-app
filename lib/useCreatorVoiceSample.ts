@@ -7,9 +7,9 @@
  * Deaktiviert (UI-Button entfernt) — Infrastruktur bleibt für
  * zukünftiges AI-Narration Feature (Phase 2: Creator-Stimme für Videos).
  */
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/lib/authStore';
+import { supabase } from '@/lib/supabase';
+import { useQuery } from '@tanstack/react-query';
 
 export function useCreatorVoiceSample(userId: string | null | undefined): string | null {
   const { profile } = useAuthStore();

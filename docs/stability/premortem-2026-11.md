@@ -19,7 +19,7 @@ Disziplin abhaengt.
 | 6 | Feature-Breite ueberholt Stabilitaet | Live, Shop, AI, Coins, Guilds, Feed wirken unfertig | Viele Produktflaechen, wenige automatische End-to-End-Checks | Stabilitaetsfenster: Speed, Upload, Auth, Feed vor neuen Grossfeatures |
 | 7 | Backups werden nicht restauriert getestet | Datenverlust oder kaputte Migration wird erst im Ernstfall entdeckt | Backup wird erwaehnt, Restore nicht geprobt | Monatlicher Restore-Test fuer Supabase + R2-Stichprobe |
 | 8 | Kosten/Bandbreite laufen weg | R2/egress/compute steigen schneller als Nutzung | Grosse Originalbilder und Video-Previews im Grid | Medienbudget, Cache-Control, Thumbnail-Backfills, Upload-Kompression |
-| 9 | CI prueft nicht die echten Nutzerpfade | Tests gruen, Prod trotzdem kaputt | Unit-Tests stark, aber wenige Live-Smokes | Scheduled stability workflow gegen Production-Feed |
+| 9 | CI prueft nicht die echten Nutzerpfade | Tests gruen, Prod trotzdem kaputt | Unit-Tests stark, aber wenige Live-Smokes | Scheduled stability workflow gegen Production-Feed plus `npm run stability:auth` |
 | 10 | Release-Hygiene bleibt manuell | Deploys passieren aus falschem Ordner/Repo oder mit altem Branch | Zwei lokale Repos/Pfade und manuelle Vercel CLI-Schritte | Ein dokumentierter Release-Pfad, PR/CI/Vercel als Standard |
 
 ## Timeline des hypothetischen Scheiterns
@@ -98,6 +98,7 @@ regelmaessig erfuellt sind:
 - Web typecheck, lint quiet, tests und build sind gruen.
 - Native typecheck, lint und tests sind gruen.
 - Production-Smoke nach Deploy prueft `/`, `/explore`, Feed-API und Upload-Signatur.
+- Auth-Smoke loggt einen Testaccount ein, schreibt Kommentar/Like/Bookmark und raeumt danach auf.
 
 ## Naechste technische Guardrails
 
@@ -105,8 +106,9 @@ regelmaessig erfuellt sind:
 2. API-Error-Masking abbauen, zuerst Feed und Upload.
 3. Sentry/PostHog aktivieren oder bewusst als Aufgabe terminieren.
 4. Contract-Tests fuer Post/Feed-Normalisierung zwischen App und Web.
-5. Release-Checkliste fuer Vercel, Supabase, R2 und GitHub.
-6. Restore-Test dokumentieren und monatlich ausfuehren.
+5. Auth-Interaction-Smoke nachts gegen Production mit Testaccount laufen lassen.
+6. Release-Checkliste fuer Vercel, Supabase, R2 und GitHub.
+7. Restore-Test dokumentieren und monatlich ausfuehren.
 
 ## Entscheidung
 

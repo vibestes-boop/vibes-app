@@ -6,21 +6,27 @@
  *   2. Verifiziert → WOZ-Feed mit allen Women-Only Posts
  */
 
-import React, { useState, useCallback } from 'react';
-import {
-  View, Text, StyleSheet, Pressable, FlatList,
-  ActivityIndicator, RefreshControl, Dimensions,
-} from 'react-native';
+import { WomenOnlyVerificationSheet } from '@/components/women-only/WomenOnlyVerificationSheet';
+import { supabase } from '@/lib/supabase';
+import { useTheme } from '@/lib/useTheme';
+import { useWomenOnly } from '@/lib/useWomenOnly';
+import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Lock, ShieldCheck, Video } from 'lucide-react-native';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
-import { useWomenOnly } from '@/lib/useWomenOnly';
-import { useTheme } from '@/lib/useTheme';
-import { WomenOnlyVerificationSheet } from '@/components/women-only/WomenOnlyVerificationSheet';
+import { ArrowLeft,Lock,ShieldCheck,Video } from 'lucide-react-native';
+import React,{ useCallback,useState } from 'react';
+import {
+ActivityIndicator,
+Dimensions,
+FlatList,
+Pressable,
+RefreshControl,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const CARD_W = (SCREEN_W - 48) / 2;

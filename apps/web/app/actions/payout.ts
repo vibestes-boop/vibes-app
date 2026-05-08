@@ -22,6 +22,10 @@ import type { ActionResult } from './profile';
 const MIN_PAYOUT = 2_500;
 const RATE       = 0.02; // €/diamond
 
+type DiamondsProfileRow = {
+  diamonds_balance: number | string | null;
+};
+
 export interface PayoutRequest {
   id:           string;
   diamonds_amount: number;
@@ -48,7 +52,7 @@ export async function getMyDiamondsBalance(): Promise<number> {
     .eq('id', user.id)
     .maybeSingle();
 
-  return Number((data as any)?.diamonds_balance ?? 0);
+  return Number((data as DiamondsProfileRow | null)?.diamonds_balance ?? 0);
 }
 
 export async function getMyPayoutRequests(): Promise<PayoutRequest[]> {
@@ -91,8 +95,6 @@ export async function requestPayout(formData: FormData): Promise<ActionResult<nu
     return { ok: false, error: `Mindestbetrag für Auszahlung: ${MIN_PAYOUT.toLocaleString('de-DE')} 💎 (≈ ${(MIN_PAYOUT * RATE).toFixed(2)} €).` };
   }
 
-  const euroAmount = parseFloat((balance * RATE).toFixed(2));
-
   // Sicherheits-Revalidierung: prüfe ob der User tatsächlich diesen Balance hat
   const supabase = await createClient();
   const { data: profileData } = await supabase
@@ -101,7 +103,7 @@ export async function requestPayout(formData: FormData): Promise<ActionResult<nu
     .eq('id', user.id)
     .maybeSingle();
 
-  const actualBalance = Number((profileData as any)?.diamonds_balance ?? 0);
+  const actualBalance = Number((profileData as DiamondsProfileRow | null)?.diamonds_balance ?? 0);
   if (actualBalance < MIN_PAYOUT) {
     return { ok: false, error: `Dein aktuelles Guthaben reicht nicht aus (${actualBalance.toLocaleString('de-DE')} 💎). Mindestens ${MIN_PAYOUT.toLocaleString('de-DE')} 💎 erforderlich.` };
   }

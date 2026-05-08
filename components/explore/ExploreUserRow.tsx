@@ -1,10 +1,10 @@
-import { View, Text, Pressable, ActivityIndicator, StyleSheet } from 'react-native';
-import { Image } from 'expo-image';
-import { router } from 'expo-router';
-import { exploreStyles as styles } from './exploreStyles';
 import type { ExploreUserResult } from '@/lib/useExplore';
 import { useFollow } from '@/lib/useFollow';
 import { useTheme } from '@/lib/useTheme';
+import { Image } from 'expo-image';
+import { router } from 'expo-router';
+import { ActivityIndicator,Pressable,StyleSheet,Text,View } from 'react-native';
+import { exploreStyles as styles } from './exploreStyles';
 
 export function ExploreUserRow({
   user,

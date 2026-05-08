@@ -3,22 +3,33 @@
  * Design: App-native Monochrom-Stil (wie admin/index.tsx)
  */
 
-import { useState } from 'react';
-import {
-  View, Text, StyleSheet, Pressable, FlatList,
-  ActivityIndicator, Alert, RefreshControl, TextInput, ScrollView,
-} from 'react-native';
-import { Image } from 'expo-image';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import {
-  ArrowLeft, Diamond, CheckCircle2, XCircle,
-  CreditCard, Mail, Search, Users, ChevronRight,
-} from 'lucide-react-native';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useAdminSellerBalances } from '@/lib/useAdmin';
 import { useTheme } from '@/lib/useTheme';
+import { useMutation,useQuery,useQueryClient } from '@tanstack/react-query';
+import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
+import {
+ArrowLeft,
+CheckCircle2,
+CreditCard,
+Diamond,
+Mail,Search,
+XCircle
+} from 'lucide-react-native';
+import { useState } from 'react';
+import {
+ActivityIndicator,Alert,
+FlatList,
+Pressable,
+RefreshControl,
+ScrollView,
+StyleSheet,
+Text,
+TextInput,
+View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type PayoutStatus = 'pending' | 'processing' | 'paid' | 'rejected';
 type AdminTab     = 'requests' | 'balances';

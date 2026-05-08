@@ -11,9 +11,9 @@
  * → Null Latenz, kein Schema-Change nötig.
  */
 
-import { useEffect, useRef, useState, useCallback } from 'react';
-import { supabase } from './supabase';
+import { useCallback,useEffect,useRef,useState } from 'react';
 import { useAuthStore } from './authStore';
+import { supabase } from './supabase';
 
 // ─── Typen ────────────────────────────────────────────────────────────────────
 

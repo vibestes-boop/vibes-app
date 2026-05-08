@@ -8,22 +8,31 @@
  *  3. LiveShopHostPanel  — Host: eigene Produkte auswählen + pinnen
  */
 
-import { useState, useCallback, useEffect } from 'react';
-import {
-  View, Text, StyleSheet, Pressable, Modal,
-  FlatList, ActivityIndicator, Alert, Animated,
-} from 'react-native';
-import { Image } from 'expo-image';
-import { BlurView } from 'expo-blur';
-import {
-  ShoppingBag, X, ChevronRight, Package, FileText, Box, Wrench,
-} from 'lucide-react-native';
-import { impactAsync, notificationAsync, ImpactFeedbackStyle, NotificationFeedbackType } from 'expo-haptics';
-import { useMyProducts, useBuyProduct, type Product } from '@/lib/useShop';
 import { useCoinsWallet } from '@/lib/useGifts';
-import type { PinnedProduct, ProductSoldEvent } from '@/lib/useLiveShopping';
-import { useTheme } from '@/lib/useTheme';
+import type { PinnedProduct,ProductSoldEvent } from '@/lib/useLiveShopping';
+import { useBuyProduct,useMyProducts,type Product } from '@/lib/useShop';
+import { BlurView } from 'expo-blur';
+import { impactAsync,ImpactFeedbackStyle,notificationAsync,NotificationFeedbackType } from 'expo-haptics';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
+import {
+Box,
+ChevronRight,
+FileText,
+ShoppingBag,
+Wrench,
+X
+} from 'lucide-react-native';
+import { useCallback,useState } from 'react';
+import {
+ActivityIndicator,Alert,
+FlatList,
+Modal,
+Pressable,
+StyleSheet,
+Text,
+View
+} from 'react-native';
 
 // ─── 1. PinnedProductPill ─────────────────────────────────────────────────────
 //
@@ -36,7 +45,6 @@ interface PinnedProductPillProps {
 }
 
 export function PinnedProductPill({ product, onBought, viewerUsername }: PinnedProductPillProps) {
-  const { colors } = useTheme();
   const router = useRouter();
   const { coins } = useCoinsWallet();
   const { buyProduct, isBuying } = useBuyProduct();

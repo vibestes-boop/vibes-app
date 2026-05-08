@@ -4,16 +4,21 @@
  * Alle Transaktionen mit Status-Update-Funktion
  */
 
+import { useAdminOrders,useAdminUpdateOrderStatus,type AdminOrder } from '@/lib/useAdmin';
+import { useTheme } from '@/lib/useTheme';
+import { useRouter } from 'expo-router';
+import { ArrowLeft,CheckCircle,Clock,Package,RefreshCw,XCircle } from 'lucide-react-native';
 import { useState } from 'react';
 import {
-  View, Text, StyleSheet, Pressable, FlatList,
-  ActivityIndicator, Alert, RefreshControl,
+ActivityIndicator,Alert,
+FlatList,
+Pressable,
+RefreshControl,
+StyleSheet,
+Text,
+View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { ArrowLeft, Package, CheckCircle, Clock, XCircle, RefreshCw } from 'lucide-react-native';
-import { useAdminOrders, useAdminUpdateOrderStatus, type AdminOrder } from '@/lib/useAdmin';
-import { useTheme } from '@/lib/useTheme';
 
 // ─── Status-Meta ──────────────────────────────────────────────────────────────
 

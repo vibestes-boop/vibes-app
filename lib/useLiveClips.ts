@@ -14,10 +14,10 @@
  *   useSessionClipHotspots(sessionId)         → 15s-Aggregat für Hotness-Anzeige
  */
 
-import { useCallback, useMemo } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from './supabase';
+import { useMutation,useQuery,useQueryClient } from '@tanstack/react-query';
+import { useCallback,useMemo } from 'react';
 import { useAuthStore } from './authStore';
+import { supabase } from './supabase';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 

@@ -3,8 +3,8 @@
 import { useState, useTransition, useDeferredValue } from 'react';
 import Image from 'next/image';
 import {
-  Search, Shield, CheckCircle, Ban, ShieldCheck,
-  ShieldOff, BadgeCheck, UserX, Loader2, ChevronDown, ChevronUp,
+  Search, Shield, CheckCircle, Ban,
+  ShieldOff, BadgeCheck, Loader2, ChevronDown, ChevronUp,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {

@@ -2,26 +2,26 @@
  * FollowingEmptyState
  *
  * Angezeigt wenn "Folge ich"-Feed leer ist.
- * Zeigt User-Empfehlungen mit Follow-Buttons direkt — 
+ * Zeigt User-Empfehlungen mit Follow-Buttons direkt —
  * sodass der User ohne Tab-Wechsel jemanden folgen kann.
  */
-import { useCallback } from 'react';
-import {
-  View,
-  Text,
-  Pressable,
-  StyleSheet,
-  ScrollView,
-  ActivityIndicator,
-} from 'react-native';
+import { useDiscoverPeople,type DiscoverUser } from '@/lib/useDiscoverPeople';
+import { useFollow } from '@/lib/useFollow';
+import { useTheme } from '@/lib/useTheme';
+import { useQueryClient } from '@tanstack/react-query';
+import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { UserPlus, Users, Compass, CheckCircle2 } from 'lucide-react-native';
-import * as Haptics from 'expo-haptics';
-import { useDiscoverPeople, type DiscoverUser } from '@/lib/useDiscoverPeople';
-import { useFollow } from '@/lib/useFollow';
-import { useQueryClient } from '@tanstack/react-query';
-import { useTheme } from '@/lib/useTheme';
+import { CheckCircle2,Compass,UserPlus,Users } from 'lucide-react-native';
+import { useCallback } from 'react';
+import {
+ActivityIndicator,
+Pressable,
+ScrollView,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
 
 // ── Einzelne User-Karte ───────────────────────────────────────────────────────
 function SuggestedUserCard({ user }: { user: DiscoverUser }) {

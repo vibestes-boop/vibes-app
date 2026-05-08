@@ -3,20 +3,20 @@
  * Fullscreen Avatar Zoom — erscheint bei LongPress auf Profilbild.
  * Dark-Overlay + Spring-Animation + Tap-to-close
  */
-import { useEffect } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View, Dimensions } from 'react-native';
 import { Image } from 'expo-image';
+import { useEffect } from 'react';
+import { Dimensions,Modal,Pressable,StyleSheet,Text,View } from 'react-native';
+import {
+useAnimatedStyle,
+useSharedValue,
+withSpring,
+withTiming,
+} from 'react-native-reanimated';
 // Reanimated via require() — Hermes-sicher
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const _ra = require('react-native-reanimated') as any;
 const _ns = _ra?.default ?? _ra;
 const AnimatedView = _ns?.View ?? View;
-import {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated';
 
 const { width: W, height: H } = Dimensions.get('window');
 const IMG_SIZE = Math.min(W * 0.82, 340);

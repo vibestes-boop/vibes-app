@@ -8,12 +8,12 @@
  * - Echtzeit-Reaktionen via Supabase Realtime
  * - Aktive Lives für den Feed laden
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as Sentry from '@sentry/react-native';
-import { supabase } from './supabase';
+import { useQuery,useQueryClient } from '@tanstack/react-query';
+import { useCallback,useEffect,useRef,useState } from 'react';
 import { useAuthStore } from './authStore';
 import { containsBlockedWord } from './liveModerationWords';
+import { supabase } from './supabase';
 
 export type LiveSession = {
   id: string;

@@ -1,9 +1,10 @@
 'use server';
 
 import { z } from 'zod';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { getUser } from '@/lib/auth/session';
+import { PUBLIC_PROFILE_CACHE_TAG } from '@/lib/cache/tags';
 
 // -----------------------------------------------------------------------------
 // v1.w.UI.20 D7-Follow-up — Profil-Editor Server-Actions.
@@ -113,6 +114,7 @@ export async function updateProfile(formData: FormData): Promise<ActionResult<nu
   // aufsetzt (FeedSidebar, MobileBottomNav).
   revalidatePath('/settings/profile');
   revalidatePath('/', 'layout');
+  revalidateTag(PUBLIC_PROFILE_CACHE_TAG);
 
   // Eigenes Public-Profile. Username kennen wir nicht ohne extra Query — wir
   // revalidieren stattdessen das Route-Segment /u/[username] pauschal per
@@ -215,6 +217,7 @@ export async function updateAvatar(avatarUrl: string | null): Promise<ActionResu
   // auf dem eigenen `/u/[username]`-Profile.
   revalidatePath('/settings/profile');
   revalidatePath('/', 'layout');
+  revalidateTag(PUBLIC_PROFILE_CACHE_TAG);
   revalidatePath('/u/[username]', 'page');
 
   return { ok: true, data: null };

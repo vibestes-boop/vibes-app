@@ -1,9 +1,9 @@
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { Video as AvVideo,ResizeMode } from 'expo-av';
 import { Image } from 'expo-image';
 import type * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import { ImagePlus, Video } from 'lucide-react-native';
-import { Video as AvVideo, ResizeMode } from 'expo-av';
+import { ImagePlus,Video } from 'lucide-react-native';
+import { Pressable,StyleSheet,Text,View } from 'react-native';
 import { createStyles as styles } from './createStyles';
 
 export function CreateMediaPicker({

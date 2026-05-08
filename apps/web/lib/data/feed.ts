@@ -1,7 +1,9 @@
 import { cache } from 'react';
+import { unstable_cache } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { createPublicClient } from '@/lib/supabase/public';
 import { getUser } from '@/lib/auth/session';
+import { PUBLIC_FEED_CACHE_TAG } from '@/lib/cache/tags';
 import type { Post, PublicProfile } from '@shared/types';
 
 // -----------------------------------------------------------------------------
@@ -134,6 +136,14 @@ type RawPostRow = Omit<Post, 'hashtags' | 'duration_secs' | 'music_id' | 'allow_
   author: RawAuthor | RawAuthor[] | null;
 };
 
+type PublicFeedRpcRow = Omit<RawPostRow, 'author'> & {
+  author_id: string | null;
+  author_username: string | null;
+  author_display_name: string | null;
+  author_avatar_url: string | null;
+  author_verified: boolean | null;
+};
+
 function normalizeRow(
   row: RawPostRow,
   liked: Set<string>,
@@ -183,6 +193,39 @@ function normalizeRow(
   };
 }
 
+function normalizeRpcRow(
+  row: PublicFeedRpcRow,
+  liked: Set<string> = new Set(),
+  saved: Set<string> = new Set(),
+  following: Set<string> = new Set(),
+  reposted: Set<string> = new Set(),
+): FeedPost | null {
+  if (!row.author_id || !row.author_username) return null;
+
+  return normalizeRow(
+    {
+      ...row,
+      video_url: row.video_url ?? '',
+      hashtags: row.hashtags ?? [],
+      author: {
+        id: row.author_id,
+        username: row.author_username,
+        display_name: row.author_display_name,
+        avatar_url: row.author_avatar_url,
+        verified: row.author_verified ?? false,
+      },
+    },
+    liked,
+    saved,
+    following,
+    reposted,
+  );
+}
+
+function normalizePublicRpcRow(row: PublicFeedRpcRow): FeedPost | null {
+  return normalizeRpcRow(row);
+}
+
 // -----------------------------------------------------------------------------
 // getForYouFeed — Mobile-DB-Adapter. Früher haben wir zuerst die RPC
 // `get_vibe_feed` probiert, aber die RPC referenziert in der Prod-DB eine
@@ -218,6 +261,42 @@ export const getForYouFeed = cache(
       }
     }
 
+    // Excludes zusammenführen: explicit excludeIds (z.B. „bereits gesehene
+    // Posts") + die not-interested-IDs des Users.
+    const allExcludes = Array.from(new Set([...excludeIds, ...notInterestedIds]));
+
+    try {
+      const { data, error } = await supabase.rpc('get_public_feed_web', {
+        result_limit: limit,
+        before_ts: before ?? null,
+        exclude_post_ids: allExcludes,
+      });
+
+      if (!error && Array.isArray(data)) {
+        const rows = data as unknown as PublicFeedRpcRow[];
+
+        if (rows.length === 0) {
+          console.error(
+            `[feed] getForYouFeed: 0 rows (${viewerId ? 'authed → suspected RLS' : 'anon-scope → suspected cookie drift'})`,
+            { viewerId, limit, excluded: allExcludes.length },
+          );
+        }
+
+        const postIds = rows.map((row) => row.id).filter((id): id is string => typeof id === 'string');
+        const authorIds = Array.from(
+          new Set(rows.map((row) => row.author_id).filter((id): id is string => typeof id === 'string')),
+        );
+        const { liked, saved, following, reposted } = await batchEngagement(postIds, authorIds, viewerId);
+
+        return rows
+          .map((row) => normalizeRpcRow(row, liked, saved, following, reposted))
+          .filter((p): p is FeedPost => p !== null);
+      }
+    } catch {
+      // Migration may be absent in older environments. Fall back to the stable
+      // PostgREST join path below.
+    }
+
     let query = supabase
       .from('posts')
       .select(`${POST_COLUMNS}, ${AUTHOR_JOIN}`)
@@ -225,9 +304,6 @@ export const getForYouFeed = cache(
       .order('created_at', { ascending: false })
       .limit(limit);
 
-    // Excludes zusammenführen: explicit excludeIds (z.B. „bereits gesehene
-    // Posts") + die not-interested-IDs des Users.
-    const allExcludes = [...excludeIds, ...notInterestedIds];
     if (allExcludes.length > 0) {
       query = query.not('id', 'in', `(${allExcludes.join(',')})`);
     }
@@ -289,34 +365,72 @@ export const getForYouFeed = cache(
   },
 );
 
+async function fetchPublicForYouFeed(
+  opts: { limit?: number; excludeIds?: string[]; before?: string } = {},
+): Promise<FeedPost[]> {
+  const { limit = 10, excludeIds = [], before } = opts;
+  const supabase = createPublicClient();
+
+  try {
+    const isFirstPage = !before && excludeIds.length === 0;
+    const { data, error } = isFirstPage
+      ? await supabase.rpc('get_public_feed_web_anon_first_page', {
+          result_limit: limit,
+        })
+      : await supabase.rpc('get_public_feed_web_anon', {
+          result_limit: limit,
+          before_ts: before ?? null,
+          exclude_post_ids: excludeIds,
+        });
+
+    if (!error && Array.isArray(data)) {
+      return (data as unknown as PublicFeedRpcRow[])
+        .map(normalizePublicRpcRow)
+        .filter((p): p is FeedPost => p !== null);
+    }
+  } catch {
+    // Migration may not be deployed yet. Fall back to the PostgREST join path.
+  }
+
+  let query = supabase
+    .from('posts')
+    .select(`${POST_COLUMNS}, ${AUTHOR_JOIN}`)
+    .eq('privacy', 'public')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (excludeIds.length > 0) {
+    query = query.not('id', 'in', `(${excludeIds.join(',')})`);
+  }
+  if (before) query = query.lt('created_at', before);
+
+  const { data: rows, error } = await query;
+  if (error || !rows) {
+    if (error) console.error('[feed] getPublicForYouFeed query error:', error.code, error.message, error.details);
+    return [];
+  }
+
+  return (rows as unknown as RawPostRow[])
+    .map((row) => normalizeRow(row, new Set(), new Set(), new Set(), new Set()))
+    .filter((p): p is FeedPost => p !== null);
+}
+
+const getCachedPublicForYouFeed = unstable_cache(
+  async (limit: number): Promise<FeedPost[]> => fetchPublicForYouFeed({ limit }),
+  ['public-for-you-feed'],
+  { revalidate: 30, tags: [PUBLIC_FEED_CACHE_TAG] },
+);
+
 // Cookie-freier Public-Feed fuer anonyme Explore-SSR/API-Pfade.
 // Spart den Supabase-Auth-Roundtrip und alle user-spezifischen Engagement-Reads.
 export const getPublicForYouFeed = cache(
   async (opts: { limit?: number; excludeIds?: string[]; before?: string } = {}): Promise<FeedPost[]> => {
     const { limit = 10, excludeIds = [], before } = opts;
-    const supabase = createPublicClient();
-
-    let query = supabase
-      .from('posts')
-      .select(`${POST_COLUMNS}, ${AUTHOR_JOIN}`)
-      .eq('privacy', 'public')
-      .order('created_at', { ascending: false })
-      .limit(limit);
-
-    if (excludeIds.length > 0) {
-      query = query.not('id', 'in', `(${excludeIds.join(',')})`);
-    }
-    if (before) query = query.lt('created_at', before);
-
-    const { data: rows, error } = await query;
-    if (error || !rows) {
-      if (error) console.error('[feed] getPublicForYouFeed query error:', error.code, error.message, error.details);
-      return [];
+    if (!before && excludeIds.length === 0) {
+      return getCachedPublicForYouFeed(limit);
     }
 
-    return (rows as unknown as RawPostRow[])
-      .map((row) => normalizeRow(row, new Set(), new Set(), new Set(), new Set()))
-      .filter((p): p is FeedPost => p !== null);
+    return fetchPublicForYouFeed({ limit, excludeIds, before });
   },
 );
 
@@ -328,9 +442,7 @@ export const getFollowingFeed = cache(
   async (opts: { limit?: number; before?: string } = {}): Promise<FeedPost[]> => {
     const { limit = 10, before } = opts;
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getUser();
     if (!user) return [];
 
     const { data: follows, error: followErr } = await supabase
@@ -420,9 +532,7 @@ export const getMyFollowedAccounts = cache(
     FollowedAccount[]
   > => {
     const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const user = await getUser();
     if (!user) return [];
 
     // Schritt 1: IDs der gefolgten Accounts, nach Follow-Datum absteigend.
@@ -471,9 +581,7 @@ export const getMyFollowedAccounts = cache(
 
 export const getSuggestedFollows = cache(async (limit = 5): Promise<SuggestedFollow[]> => {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
 
   let excludeIds: string[] = [];
   if (user) {
@@ -525,10 +633,12 @@ export interface TrendingHashtag {
   total_views: number;
 }
 
-export const getTrendingHashtags = cache(async (limit = 20): Promise<TrendingHashtag[]> => {
-  const supabase = await createClient();
+async function fetchTrendingHashtags(
+  limit: number,
+  createSupabase: () => ReturnType<typeof createClient> | ReturnType<typeof createPublicClient>,
+): Promise<TrendingHashtag[]> {
+  const supabase = await createSupabase();
 
-  // Versuche RPC (falls Native einen rollup-View hat), sonst Fallback.
   try {
     const { data, error } = await supabase.rpc('get_trending_hashtags', { result_limit: limit });
     if (!error && Array.isArray(data)) {
@@ -566,48 +676,22 @@ export const getTrendingHashtags = cache(async (limit = 20): Promise<TrendingHas
     .map(([tag, v]) => ({ tag, ...v }))
     .sort((a, b) => b.total_views - a.total_views || b.post_count - a.post_count)
     .slice(0, limit);
-});
+}
 
-export const getPublicTrendingHashtags = cache(async (limit = 20): Promise<TrendingHashtag[]> => {
-  const supabase = createPublicClient();
+const getCachedPublicTrendingHashtags = unstable_cache(
+  async (limit: number): Promise<TrendingHashtag[]> =>
+    fetchTrendingHashtags(limit, createPublicClient),
+  ['public-trending-hashtags'],
+  { revalidate: 120, tags: [PUBLIC_FEED_CACHE_TAG] },
+);
 
-  try {
-    const { data, error } = await supabase.rpc('get_trending_hashtags', { result_limit: limit });
-    if (!error && Array.isArray(data)) {
-      return (data as TrendingHashtag[]).slice(0, limit);
-    }
-  } catch {
-    /* fall through */
-  }
+export const getTrendingHashtags = cache(async (limit = 20): Promise<TrendingHashtag[]> =>
+  getCachedPublicTrendingHashtags(limit),
+);
 
-  const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-  const { data } = await supabase
-    .from('posts')
-    .select('tags, view_count')
-    .gte('created_at', since)
-    .eq('privacy', 'public')
-    .limit(1000);
-
-  if (!data) return [];
-
-  const agg = new Map<string, { post_count: number; total_views: number }>();
-  for (const row of data as { tags: string[] | null; view_count: number | null }[]) {
-    if (!row.tags) continue;
-    for (const raw of row.tags) {
-      const tag = raw.toLowerCase().replace(/^#/, '').trim();
-      if (!tag) continue;
-      const entry = agg.get(tag) ?? { post_count: 0, total_views: 0 };
-      entry.post_count += 1;
-      entry.total_views += row.view_count ?? 0;
-      agg.set(tag, entry);
-    }
-  }
-
-  return Array.from(agg.entries())
-    .map(([tag, v]) => ({ tag, ...v }))
-    .sort((a, b) => b.total_views - a.total_views || b.post_count - a.post_count)
-    .slice(0, limit);
-});
+export const getPublicTrendingHashtags = cache(async (limit = 20): Promise<TrendingHashtag[]> =>
+  getCachedPublicTrendingHashtags(limit),
+);
 
 // -----------------------------------------------------------------------------
 // getPostsByTag — /t/[tag] Hashtag-Detail-Seite.
@@ -936,6 +1020,11 @@ export async function getExploreTrendingFeed(
   } = await supabase.auth.getUser();
   const viewerId = user?.id ?? null;
 
+  const fastRows = await fetchExploreFeedViaRpc(supabase, limit, offset, 'trending');
+  if (fastRows) {
+    return normalizeExploreRpcPage(fastRows, limit, viewerId);
+  }
+
   const { data, error } = await supabase
     .from('posts')
     .select(`${POST_COLUMNS}, ${AUTHOR_JOIN}`)
@@ -984,6 +1073,11 @@ export async function getExploreNewestFeed(
   } = await supabase.auth.getUser();
   const viewerId = user?.id ?? null;
 
+  const fastRows = await fetchExploreFeedViaRpc(supabase, limit, offset, 'newest');
+  if (fastRows) {
+    return normalizeExploreRpcPage(fastRows, limit, viewerId);
+  }
+
   const { data, error } = await supabase
     .from('posts')
     .select(`${POST_COLUMNS}, ${AUTHOR_JOIN}`)
@@ -1019,15 +1113,41 @@ export async function getPublicExploreTrendingFeed(
   limit = 12,
   offset = 0,
 ): Promise<ExplorePage> {
+  return getCachedPublicExploreFeed('trending', limit, offset);
+}
+
+export async function getPublicExploreNewestFeed(
+  limit = 12,
+  offset = 0,
+): Promise<ExplorePage> {
+  return getCachedPublicExploreFeed('newest', limit, offset);
+}
+
+async function fetchPublicExploreFeed(
+  sortKey: ExploreSortKey,
+  limit: number,
+  offset: number,
+): Promise<ExplorePage> {
   const supabase = createPublicClient();
-  const { data, error } = await supabase
+  const fastRows = await fetchExploreFeedViaRpc(supabase, limit, offset, sortKey);
+  if (fastRows) {
+    const posts = fastRows
+      .map(normalizePublicRpcRow)
+      .filter((p): p is FeedPost => p !== null);
+    return { posts, hasMore: posts.length >= limit };
+  }
+
+  let query = supabase
     .from('posts')
     .select(`${POST_COLUMNS}, ${AUTHOR_JOIN}`)
     .eq('privacy', 'public')
-    .order('view_count', { ascending: false })
-    .order('id', { ascending: false })
     .range(offset, offset + limit - 1);
 
+  query = sortKey === 'trending'
+    ? query.order('view_count', { ascending: false }).order('id', { ascending: false })
+    : query.order('created_at', { ascending: false }).order('id', { ascending: false });
+
+  const { data, error } = await query;
   if (error || !data) return { posts: [], hasMore: false };
 
   const posts = (data as unknown as RawPostRow[])
@@ -1037,23 +1157,49 @@ export async function getPublicExploreTrendingFeed(
   return { posts, hasMore: posts.length >= limit };
 }
 
-export async function getPublicExploreNewestFeed(
-  limit = 12,
-  offset = 0,
+type ExploreSortKey = 'trending' | 'newest';
+const getCachedPublicExploreFeed = unstable_cache(
+  async (sortKey: ExploreSortKey, limit: number, offset: number): Promise<ExplorePage> =>
+    fetchPublicExploreFeed(sortKey, limit, offset),
+  ['public-explore-feed'],
+  { revalidate: 30, tags: [PUBLIC_FEED_CACHE_TAG] },
+);
+
+type ServerSupabaseClient = Awaited<ReturnType<typeof createClient>>;
+type PublicSupabaseClient = ReturnType<typeof createPublicClient>;
+
+async function fetchExploreFeedViaRpc(
+  supabase: ServerSupabaseClient | PublicSupabaseClient,
+  limit: number,
+  offset: number,
+  sortKey: ExploreSortKey,
+): Promise<PublicFeedRpcRow[] | null> {
+  try {
+    const { data, error } = await supabase.rpc('get_public_explore_feed_web', {
+      result_limit: limit,
+      result_offset: offset,
+      sort_key: sortKey,
+    });
+
+    if (error || !Array.isArray(data)) return null;
+    return data as unknown as PublicFeedRpcRow[];
+  } catch {
+    return null;
+  }
+}
+
+async function normalizeExploreRpcPage(
+  rows: PublicFeedRpcRow[],
+  limit: number,
+  viewerId: string | null,
 ): Promise<ExplorePage> {
-  const supabase = createPublicClient();
-  const { data, error } = await supabase
-    .from('posts')
-    .select(`${POST_COLUMNS}, ${AUTHOR_JOIN}`)
-    .eq('privacy', 'public')
-    .order('created_at', { ascending: false })
-    .order('id', { ascending: false })
-    .range(offset, offset + limit - 1);
-
-  if (error || !data) return { posts: [], hasMore: false };
-
-  const posts = (data as unknown as RawPostRow[])
-    .map((row) => normalizeRow(row, new Set(), new Set(), new Set(), new Set()))
+  const postIds = rows.map((row) => row.id).filter((id): id is string => typeof id === 'string');
+  const authorIds = Array.from(
+    new Set(rows.map((row) => row.author_id).filter((id): id is string => typeof id === 'string')),
+  );
+  const { liked, saved, following, reposted } = await batchEngagement(postIds, authorIds, viewerId);
+  const posts = rows
+    .map((row) => normalizeRpcRow(row, liked, saved, following, reposted))
     .filter((p): p is FeedPost => p !== null);
 
   return { posts, hasMore: posts.length >= limit };
@@ -1081,6 +1227,61 @@ export interface DiscoverPerson {
   verified: boolean;
   reason: DiscoverReason;
 }
+
+async function fetchPublicDiscoverPeople(limit = 12): Promise<DiscoverPerson[]> {
+  const supabase = createPublicClient();
+
+  try {
+    const { data, error } = await supabase.rpc('get_public_discover_people_web', {
+      result_limit: limit,
+    });
+
+    if (!error && Array.isArray(data)) {
+      return (data as Array<{
+        id: string;
+        username: string;
+        display_name: string | null;
+        avatar_url: string | null;
+        verified: boolean | null;
+        reason: DiscoverReason | null;
+      }>).map((p) => ({
+        id: p.id,
+        username: p.username,
+        display_name: p.display_name,
+        avatar_url: p.avatar_url,
+        verified: p.verified ?? false,
+        reason: p.reason ?? 'new',
+      }));
+    }
+  } catch {
+    // Migration may be absent in older environments. Fall back below.
+  }
+
+  const { data } = await supabase
+    .from('profiles')
+    .select('id, username, display_name, avatar_url, verified:is_verified')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (!data) return [];
+  return (data as Array<{
+    id: string;
+    username: string;
+    display_name: string | null;
+    avatar_url: string | null;
+    verified: boolean | null;
+  }>).map((p) => ({ ...p, verified: p.verified ?? false, reason: 'new' as DiscoverReason }));
+}
+
+const getCachedPublicDiscoverPeople = unstable_cache(
+  async (limit: number): Promise<DiscoverPerson[]> => fetchPublicDiscoverPeople(limit),
+  ['public-discover-people'],
+  { revalidate: 120, tags: [PUBLIC_FEED_CACHE_TAG] },
+);
+
+export const getPublicDiscoverPeople = cache(async (limit = 12): Promise<DiscoverPerson[]> =>
+  getCachedPublicDiscoverPeople(limit),
+);
 
 export const getDiscoverPeople = cache(async (limit = 12): Promise<DiscoverPerson[]> => {
   const supabase = await createClient();

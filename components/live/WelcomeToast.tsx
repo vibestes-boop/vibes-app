@@ -16,23 +16,23 @@
  *   • top_fan  → goldener Rand, 👑 Icon, "…ist zurück" (Top-Fan-Framing)
  */
 
-import { memo, useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
-
-// react-native-reanimated: CJS require() vermeidet Hermes HBC Crash
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
-const _animMod = require('react-native-reanimated') as any;
-const _animNS = _animMod?.default ?? _animMod;
-const Animated = { View: _animNS?.View ?? _animMod?.View };
+import { memo,useEffect } from 'react';
+import { StyleSheet,Text,View } from 'react-native';
 import {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  Easing,
+Easing,
+useAnimatedStyle,
+useSharedValue,
+withTiming,
 } from 'react-native-reanimated';
 
 import type { WelcomeEvent } from '@/lib/useLiveWelcome';
+
+// react-native-reanimated: CJS require() vermeidet Hermes HBC Crash
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const _animMod = require('react-native-reanimated') as any;
+const _animNS = _animMod?.default ?? _animMod;
+const Animated = { View: _animNS?.View ?? _animMod?.View };
 
 interface Props {
   welcomes: WelcomeEvent[];

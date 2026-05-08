@@ -8,6 +8,11 @@ import { getUser, getProfile } from '@/lib/auth/session';
 import { getT } from '@/lib/i18n/server';
 import { ProfileEditForm } from '@/components/settings/profile-edit-form';
 
+type ProfileSettingsExtras = {
+  website?: string | null;
+  teip?: string | null;
+};
+
 // -----------------------------------------------------------------------------
 // /settings/profile — v1.w.UI.20 D7-Follow-up.
 //
@@ -43,6 +48,8 @@ export default async function ProfileSettingsPage() {
     redirect('/onboarding/username');
   }
 
+  const profileExtras = profile as typeof profile & ProfileSettingsExtras;
+
   return (
     <div className="mx-auto w-full max-w-2xl">
       {/* Back-Link zur Settings-Overview — redundant mit der Layout-NAV auf
@@ -66,8 +73,8 @@ export default async function ProfileSettingsPage() {
       <ProfileEditForm
         initialDisplayName={profile.display_name ?? ''}
         initialBio={profile.bio ?? ''}
-        initialWebsite={(profile as any).website ?? ''}
-        initialTeip={(profile as any).teip ?? null}
+        initialWebsite={profileExtras.website ?? ''}
+        initialTeip={profileExtras.teip ?? null}
         username={profile.username ?? ''}
         initialAvatarUrl={profile.avatar_url ?? null}
         userId={user.id}

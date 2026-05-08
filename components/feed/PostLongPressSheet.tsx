@@ -3,46 +3,47 @@
  * Premium bottom sheet that appears on long-press of a post.
  * Groups actions into three sections: Quick Actions, Social, Safety.
  */
+import { setStringAsync as clipboardSetString } from 'expo-clipboard';
+import {
+Bookmark,
+Download,
+EyeOff,
+Flag,
+Heart,
+Link2,
+MessageCircle,
+Share2,
+User,
+UserCheck,
+UserPlus,
+X,
+} from 'lucide-react-native';
 import { useCallback } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  Modal,
-  ScrollView,
+Alert,
+Modal,
+Pressable,
+ScrollView,
+Share,
+StyleSheet,
+Text,
+View
 } from 'react-native';
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
-const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
-const Animated = { View: _animNS?.View ?? _animMod?.View };
 import {
-  FadeIn,
-  FadeOut,
-  SlideInDown,
-  SlideOutDown,
+FadeIn,
+FadeOut,
+SlideInDown,
+SlideOutDown,
 } from 'react-native-reanimated';
-import {
-  Heart,
-  MessageCircle,
-  Bookmark,
-  Share2,
-  Link2,
-  User,
-  UserPlus,
-  UserCheck,
-  EyeOff,
-  Flag,
-  X,
-  Download,
-} from 'lucide-react-native';
-import { setStringAsync as clipboardSetString } from 'expo-clipboard';
 
+import { useBookmark } from '@/lib/useBookmark';
+import { useLike } from '@/lib/useLike';
+import { useReport } from '@/lib/useReport';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
-import { useLike } from '@/lib/useLike';
-import { useBookmark } from '@/lib/useBookmark';
-import { useReport } from '@/lib/useReport';
-import { Alert, Share } from 'react-native';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
+const Animated = { View: _animNS?.View ?? _animMod?.View };
 
 type Props = {
   visible: boolean;

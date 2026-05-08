@@ -70,7 +70,7 @@ export default async function Image({ params }: { params: { username: string } }
         <div style={{ display: 'flex', alignItems: 'center', gap: '32px', marginTop: '120px' }}>
           {avatarUrl ? (
             // Wichtig: IMG-Tag, nicht next/image — satori kennt kein Next-Image.
-            // eslint-disable-next-line @next/next/no-img-element
+
             <img
               src={avatarUrl}
               alt=""

@@ -16,14 +16,12 @@ import {
   Bell,
   ShieldCheck,
 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import { OpenConsentSettingsButton } from '@/components/consent/consent-banner';
 import { FollowedAccountsSection } from '@/components/feed/followed-accounts-section';
 import { MoreMenu } from '@/components/layout/more-menu';
 import type { FollowedAccount } from '@/lib/data/feed';
-import { getUnreadDmCount } from '@/app/actions/messages';
-import { getUnreadNotificationCount } from '@/app/actions/notifications';
+import { useUnreadShellCounts } from '@/components/layout/use-unread-shell-counts';
 
 // -----------------------------------------------------------------------------
 // FeedSidebar — linke Navigation auf Desktop-Feed-Seiten.
@@ -78,25 +76,9 @@ export function FeedSidebar({
   const pathname = usePathname();
   const isActive = (href: Route) => pathname === href;
 
-  // Unread-DM-Badge: nur für eingeloggte User pollen, alle 30s refresh.
-  // Gibt 0 zurück wenn nicht eingeloggt → kein Badge.
-  const { data: unreadDms = 0 } = useQuery({
-    queryKey: ['unread-dms'],
-    queryFn: () => getUnreadDmCount(),
-    enabled: !!viewerId,
-    refetchInterval: 30_000,
-    staleTime: 20_000,
-  });
-
-  // Unread-Notif-Badge: 60s Polling reicht (Notifications sind weniger zeitkritisch
-  // als DMs). Wird nach dem Besuch von /notifications via revalidatePath() zurückgesetzt.
-  const { data: unreadNotifs = 0 } = useQuery({
-    queryKey: ['unread-notifs'],
-    queryFn: () => getUnreadNotificationCount(),
-    enabled: !!viewerId,
-    refetchInterval: 60_000,
-    staleTime: 50_000,
-  });
+  const { data: unreadCounts } = useUnreadShellCounts(viewerId);
+  const unreadDms = unreadCounts.dms;
+  const unreadNotifs = unreadCounts.notifications;
 
   return (
     <div className="sticky top-0 flex h-[100dvh] flex-col gap-4 overflow-y-auto p-4">

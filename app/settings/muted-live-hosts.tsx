@@ -13,23 +13,23 @@
  *      (Liste dient nur zum Überblick und Wiederaktivieren)
  */
 
-import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  FlatList,
-  ActivityIndicator,
-} from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
+import { ArrowLeft,BellOff,Undo2 } from 'lucide-react-native';
+import React from 'react';
+import {
+ActivityIndicator,
+FlatList,
+Pressable,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, BellOff, Undo2 } from 'lucide-react-native';
-import * as Haptics from 'expo-haptics';
 
+import { useMutedLiveHosts,useToggleMuteHost,type MutedHost } from '@/lib/useMutedLiveHosts';
 import { useTheme } from '@/lib/useTheme';
-import { useMutedLiveHosts, useToggleMuteHost, type MutedHost } from '@/lib/useMutedLiveHosts';
 
 // ─── Row ────────────────────────────────────────────────────────────
 

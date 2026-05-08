@@ -1,35 +1,34 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
-import { View, Text, ActivityIndicator, Pressable, StyleSheet, Image as RNImage } from 'react-native';
-import { FlashList } from '@shopify/flash-list';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { SearchX, Tag, ShoppingBag, ChevronRight } from 'lucide-react-native';
 import {
-  EXPLORE_FALLBACK_TAGS,
-  useTrendingTags,
-  useExploreGrid,
-  useExploreUserSearch,
-  useExplorePostSearch,
-  type ExploreSortMode,
-  type ExplorePostThumb,
-} from '@/lib/useExplore';
+EXPLORE_GRID_COLS,
+EXPLORE_ITEM_HEIGHT,
+EXPLORE_ITEM_WIDTH,
+ExploreGridItem,
+ExploreSearchBar,
+ExploreSortModal,
+ExploreTagChips,
+ExploreUserRow,
+getExploreStyles,
+} from '@/components/explore';
 import { useDiscoverPeople } from '@/lib/useDiscoverPeople';
 import {
-  EXPLORE_GRID_COLS,
-  EXPLORE_ITEM_WIDTH,
-  EXPLORE_ITEM_HEIGHT,
-  ExploreGridItem,
-  ExploreUserRow,
-  ExploreSortModal,
-  ExploreSearchBar,
-  ExploreTagChips,
-  getExploreStyles,
-} from '@/components/explore';
-import { ScrollView as RNScrollView } from 'react-native';
-import { useTheme } from '@/lib/useTheme';
+EXPLORE_FALLBACK_TAGS,
+useExploreGrid,
+useExplorePostSearch,
+useExploreUserSearch,
+useTrendingTags,
+type ExplorePostThumb,
+type ExploreSortMode,
+} from '@/lib/useExplore';
 import { useShopProducts } from '@/lib/useShop';
+import { useTheme } from '@/lib/useTheme';
 import { useWomenOnly } from '@/lib/useWomenOnly';
+import { FlashList } from '@shopify/flash-list';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useLocalSearchParams,useRouter } from 'expo-router';
+import { ChevronRight,SearchX,ShoppingBag,Tag } from 'lucide-react-native';
+import { useCallback,useEffect,useRef,useState } from 'react';
+import { ActivityIndicator,Pressable,Image as RNImage,ScrollView as RNScrollView,StyleSheet,Text,View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 /** Verzögert den Wert um `delay` ms — verhindert eine Query pro Tastendruck */
 function useDebounce<T>(value: T, delay = 300): T {

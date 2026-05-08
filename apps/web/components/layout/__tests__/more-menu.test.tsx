@@ -29,7 +29,7 @@ import { MoreMenu } from '../more-menu';
 // also ALLE referenzierten Primitives als Stubs mit displayName anlegen —
 // sonst wirft `undefined.displayName` sofort beim Import.
 jest.mock('@radix-ui/react-dropdown-menu', () => {
-  const React = require('react');
+  const React = jest.requireActual<typeof import('react')>('react');
   type StubProps = { children?: React.ReactNode; [key: string]: unknown };
   const Passthrough = ({ children }: StubProps) => <>{children}</>;
   const makeStub = (name: string, impl?: React.FC<StubProps>): React.FC<StubProps> => {

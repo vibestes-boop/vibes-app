@@ -18,28 +18,28 @@
  *   - Gradient-CTA "Annehmen" (pink→rot) + Outline "Ablehnen"
  *   - Spring-Slide-in + Haptics beim Öffnen
  */
-import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  Animated,
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import type { DuetLayout } from '@/lib/useCoHost';
+import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
-  Check,
-  Columns2,
-  PictureInPicture2,
-  Rows2,
-  Swords,
-  Video,
-  X,
+Check,
+Columns2,
+PictureInPicture2,
+Rows2,
+Swords,
+Video,
+X,
 } from 'lucide-react-native';
-import * as Haptics from 'expo-haptics';
-import type { DuetLayout } from '@/lib/useCoHost';
+import { useCallback,useEffect,useRef,useState } from 'react';
+import {
+Animated,
+Modal,
+Pressable,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
 
 interface Props {
   visible: boolean;

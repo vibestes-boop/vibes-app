@@ -13,15 +13,15 @@
  *   • Tap auf Karte → öffnet `/shop/{productId}` (Produkt-Detail)
  */
 
-import React, { useCallback } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
-import { ShoppingBag, Package } from 'lucide-react-native';
-import * as Haptics from 'expo-haptics';
-import { DraggableOverlay, type DraggablePosition } from './DraggableOverlay';
 import { useLiveOverlayPosition } from '@/lib/useLiveOverlayPosition';
 import type { PlacedProduct } from '@/lib/useLivePlacedProducts';
+import * as Haptics from 'expo-haptics';
+import { Image } from 'expo-image';
+import { useRouter } from 'expo-router';
+import { Package,ShoppingBag } from 'lucide-react-native';
+import React,{ useCallback } from 'react';
+import { Pressable,StyleSheet,Text,View } from 'react-native';
+import { DraggableOverlay,type DraggablePosition } from './DraggableOverlay';
 
 interface LayerProps {
   sessionId: string | null | undefined;

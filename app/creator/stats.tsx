@@ -2,17 +2,22 @@
  * app/creator/stats.tsx
  * Creator Dashboard — monochrome, premium, kein Vibecodet
  */
-import { useEffect, useState } from 'react';
-import {
-  View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator,
-} from 'react-native';
+import { useAuthStore } from '@/lib/authStore';
+import { supabase } from '@/lib/supabase';
+import { useMyOrders } from '@/lib/useShop';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
+import { ArrowLeft,ChevronRight,Eye,Heart,ShoppingBag,TrendingUp,Users,Video } from 'lucide-react-native';
+import { useEffect,useState } from 'react';
+import {
+ActivityIndicator,
+Pressable,
+ScrollView,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, TrendingUp, Users, Heart, Eye, Coins, ShoppingBag, Video, ChevronRight } from 'lucide-react-native';
-import { supabase } from '@/lib/supabase';
-import { useAuthStore } from '@/lib/authStore';
-import { useMyOrders } from '@/lib/useShop';
 
 // ─── Daten ────────────────────────────────────────────────────────────────────
 interface CreatorStats {

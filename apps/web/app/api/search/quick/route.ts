@@ -1,18 +1,19 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
-import { getTrendingHashtags } from '@/lib/data/feed';
-import { privateNoStoreHeaders, publicApiCacheHeaders } from '@/lib/cache/headers';
+import { createPublicClient } from '@/lib/supabase/public';
+import { getPublicTrendingHashtags } from '@/lib/data/feed';
+import { publicApiCacheHeaders } from '@/lib/cache/headers';
 
 // -----------------------------------------------------------------------------
 // GET /api/search/quick?q=... — Lightweight Autocomplete-Endpoint.
 //
-// Gibt nur User + Hashtags zurück (keine Posts — zu schwer für Instant-UX).
+// Gibt nur User ODER Hashtags zurück (keine Posts — zu schwer für Instant-UX).
+// Normaler Text / @handle sucht Accounts; #tag sucht Hashtags.
 // Limit: 5 User, 4 Hashtags.
 //
-// Caching: 30s public für Nicht-Auth-Anfragen, private/no-store wenn eingeloggt
-// (damit eigene Profil-Daten nicht aus einem gemeinsamen Cache kommen).
+// Caching: 30s public. The endpoint only returns public profiles and public
+// hashtag aggregates, so it does not need the cookie-aware Supabase client.
 //
-// Verwendet Node-Runtime damit Supabase-Cookie-Auth greift.
+// Verwendet Node-Runtime fuer konsistente Supabase-REST-Nutzung.
 // -----------------------------------------------------------------------------
 
 export const runtime = 'nodejs';
@@ -34,6 +35,22 @@ export interface QuickSearchResult {
   hashtags: Array<{ tag: string; post_count: number }>;
 }
 
+type QuickSearchUserRow = {
+  id: string;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  verified: boolean | null;
+};
+
+function normalizeProfileQuery(q: string) {
+  return q.replace(/^@+/, '').trim();
+}
+
+function normalizeTagQuery(q: string) {
+  return q.toLowerCase().replace(/^#+/, '').trim();
+}
+
 export async function GET(request: Request): Promise<NextResponse> {
   const { searchParams } = new URL(request.url);
   const q = (searchParams.get('q') ?? '').trim();
@@ -45,25 +62,41 @@ export async function GET(request: Request): Promise<NextResponse> {
     );
   }
 
-  const like = `%${q.replace(/[%_]/g, '')}%`;
-  const tagLike = q.toLowerCase().replace(/^#/, '');
+  const wantsHashtags = q.startsWith('#');
+  const profileQuery = normalizeProfileQuery(q);
+  const tagLike = normalizeTagQuery(q);
+  const like = `%${profileQuery.replace(/[%_]/g, '')}%`;
 
-  const supabase = await createClient();
+  const supabase = createPublicClient();
 
   const [usersRes, allHashtags] = await Promise.all([
-    supabase
+    wantsHashtags || profileQuery.length < 2
+      ? Promise.resolve({ data: [], error: null })
+      : supabase.rpc('search_public_profiles_web', {
+          search_query: profileQuery,
+          result_limit: 5,
+        }),
+    wantsHashtags && tagLike.length > 0
+      ? getPublicTrendingHashtags(80).then((tags) =>
+          tags.filter((t) => t.tag.includes(tagLike)).slice(0, 4),
+        )
+      : Promise.resolve([]),
+  ]);
+
+  let userRows: QuickSearchUserRow[] = usersRes.error
+    ? []
+    : ((usersRes.data ?? []) as QuickSearchUserRow[]);
+  if (usersRes.error && !wantsHashtags) {
+    const fallback = await supabase
       .from('profiles')
       .select('id, username, display_name, avatar_url, verified:is_verified')
       .or(`username.ilike.${like},display_name.ilike.${like}`)
       .order('created_at', { ascending: false })
-      .limit(5),
-    // Hashtag-Liste aus dem Trending-Cache (kein Extra-DB-Hit).
-    getTrendingHashtags(80).then((tags) =>
-      tags.filter((t) => t.tag.includes(tagLike)).slice(0, 4),
-    ),
-  ]);
+      .limit(5);
+    userRows = (fallback.data ?? []) as QuickSearchUserRow[];
+  }
 
-  const users = (usersRes.data ?? []).map((u) => ({
+  const users = userRows.map((u) => ({
     id: u.id as string,
     username: u.username as string,
     display_name: (u.display_name as string | null) ?? null,
@@ -75,11 +108,7 @@ export async function GET(request: Request): Promise<NextResponse> {
 
   const result: QuickSearchResult = { users, hashtags };
 
-  const {
-    data: { user: authUser },
-  } = await supabase.auth.getUser();
-
   return NextResponse.json(result, {
-    headers: authUser ? privateNoStoreHeaders() : PUBLIC_QUICK_SEARCH_HEADERS,
+    headers: PUBLIC_QUICK_SEARCH_HEADERS,
   });
 }

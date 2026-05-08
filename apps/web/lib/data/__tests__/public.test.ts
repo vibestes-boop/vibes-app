@@ -41,7 +41,7 @@ jest.mock('next/headers', () => ({
 
 import { createClient } from '@/lib/supabase/server';
 import { createSupabaseMock, type SupabaseMockConfig } from '@/test-utils/supabase-mock';
-import { getPostComments } from '../public';
+import { getPostComments, getPostCommentsFast } from '../public';
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
 
@@ -77,6 +77,26 @@ function makeCommentRow(overrides: Partial<Record<string, unknown>> = {}) {
       avatar_url: null,
       verified: true,
     },
+    ...overrides,
+  };
+}
+
+function makeCommentRpcRow(overrides: Partial<Record<string, unknown>> = {}) {
+  return {
+    id: 'c-rpc-1',
+    post_id: 'p-1',
+    user_id: 'u-1',
+    parent_id: null,
+    body: 'hello from rpc',
+    like_count: 2,
+    liked_by_me: true,
+    reply_count: 1,
+    created_at: '2026-04-26T10:00:00Z',
+    author_id: 'u-1',
+    author_username: 'alice',
+    author_display_name: 'Alice',
+    author_avatar_url: null,
+    author_verified: true,
     ...overrides,
   };
 }
@@ -195,6 +215,67 @@ describe('getPostComments', () => {
     const result = await getPostComments('p-1');
 
     expect(result).toEqual([]);
+    expect(client._calls.tables.comments).toBe(1);
+  });
+});
+
+describe('getPostCommentsFast', () => {
+  test('uses the one-roundtrip RPC and preserves oldest-first output order', async () => {
+    const client = setupSupabase({
+      rpcs: {
+        get_post_comments_web: {
+          data: [
+            makeCommentRpcRow({
+              id: 'c-new',
+              body: 'newer',
+              created_at: '2026-04-26T10:02:00Z',
+            }),
+            makeCommentRpcRow({
+              id: 'c-old',
+              body: 'older',
+              like_count: '4',
+              reply_count: '2',
+              created_at: '2026-04-26T10:01:00Z',
+            }),
+          ],
+          error: null,
+        },
+      },
+    });
+
+    const result = await getPostCommentsFast('p-1', 20, 'viewer-1');
+
+    expect(result.map((comment) => comment.id)).toEqual(['c-old', 'c-new']);
+    expect(result[0]).toMatchObject({
+      body: 'older',
+      like_count: 4,
+      liked_by_me: true,
+      reply_count: 2,
+      author: { username: 'alice', verified: true },
+    });
+    expect(client._calls.rpcs.get_post_comments_web).toBe(1);
+    expect(client._calls.tables.comments ?? 0).toBe(0);
+  });
+
+  test('falls back to the PostgREST path when the RPC is unavailable', async () => {
+    const client = setupSupabase({
+      rpcs: {
+        get_post_comments_web: {
+          data: null,
+          error: { code: 'RPC_MISSING', message: 'function not found' },
+        },
+      },
+      tables: {
+        comments: { data: [makeCommentRow()], error: null },
+        comment_likes: { data: [], error: null },
+      },
+    });
+
+    const result = await getPostCommentsFast('p-1');
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ id: 'c-1', body: 'hello' });
+    expect(client._calls.rpcs.get_post_comments_web).toBe(1);
     expect(client._calls.tables.comments).toBe(1);
   });
 });

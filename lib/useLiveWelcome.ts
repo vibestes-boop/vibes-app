@@ -23,10 +23,10 @@
  * Toasts gleichzeitig, um Spam bei Stream-Start zu vermeiden.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
 import * as Sentry from '@sentry/react-native';
-import { supabase } from './supabase';
+import { useCallback,useEffect,useRef,useState } from 'react';
 import { useAuthStore } from './authStore';
+import { supabase } from './supabase';
 
 export type WelcomeTier = 'follower' | 'top_fan';
 

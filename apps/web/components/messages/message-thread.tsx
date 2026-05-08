@@ -801,7 +801,9 @@ function Composer({
           replyToId: null,
         });
         if (!res.ok) {
-          process.env.NODE_ENV !== 'production' && console.warn('[GIF send failed]', res.error);
+          if (process.env.NODE_ENV !== 'production') {
+            console.warn('[GIF send failed]', res.error);
+          }
         }
       });
     },

@@ -1,25 +1,25 @@
-import React, { useMemo } from 'react';
+import { useVibeStore } from '@/lib/store';
+import { BlurView } from 'expo-blur';
+import { Brain,Compass,TrendingDown,TrendingUp,X } from 'lucide-react-native';
+import React,{ useMemo } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  Dimensions,
-  Pressable,
+Dimensions,
+Pressable,
+StyleSheet,
+Text,
+View,
 } from 'react-native';
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+import { Gesture,GestureDetector } from 'react-native-gesture-handler';
+import {
+interpolate,
+runOnJS,
+useAnimatedStyle,
+useSharedValue,
+withTiming,
+} from 'react-native-reanimated';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
-import {
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-  interpolate,
-  runOnJS,
-} from 'react-native-reanimated';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { BlurView } from 'expo-blur';
-import { X, Compass, Brain, TrendingUp, TrendingDown } from 'lucide-react-native';
-import { useVibeStore } from '@/lib/store';
 
 // ── Tag-Score Matrix (muss mit vibe_scores.sql übereinstimmen) ─────────────
 const TAG_MATRIX: { tag: string; emoji: string; brain: number; explore: number }[] = [

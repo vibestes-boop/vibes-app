@@ -1,16 +1,16 @@
 /**
  * WomenOnlyBlur.tsx
- * 
+ *
  * Overlay das angezeigt wird wenn ein Post women_only=true ist
  * und die aktuelle Nutzerin keinen Zugang zur Women-Only Zone hat.
- * 
+ *
  * Tippen öffnet das Verifikations-Sheet.
  */
 
-import { useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { WomenOnlyVerificationSheet } from '@/components/women-only/WomenOnlyVerificationSheet';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useState } from 'react';
+import { Pressable,StyleSheet,Text } from 'react-native';
 
 interface WomenOnlyBlurProps {
   /** Größe des Containers (für den Overlay) */

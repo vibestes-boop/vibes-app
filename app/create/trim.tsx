@@ -9,33 +9,33 @@
  *  - Aufnahmedauer-Anzeige
  *  - "Weiter" → /create mit trim params
  */
-import { useState, useEffect, useCallback, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  StatusBar,
-  Dimensions,
-} from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useVideoPlayer, VideoView } from 'expo-video';
-import { getThumbnailAsync } from 'expo-video-thumbnails';
+import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { X, Check, Play, Pause } from 'lucide-react-native';
-import * as Haptics from 'expo-haptics';
-import { GestureDetector, Gesture, GestureHandlerRootView } from 'react-native-gesture-handler';
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+import { useLocalSearchParams,useRouter } from 'expo-router';
+import { useVideoPlayer,VideoView } from 'expo-video';
+import { getThumbnailAsync } from 'expo-video-thumbnails';
+import { Check,Pause,Play,X } from 'lucide-react-native';
+import { useCallback,useEffect,useRef,useState } from 'react';
+import {
+Dimensions,
+Pressable,
+StatusBar,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
+import { Gesture,GestureDetector,GestureHandlerRootView } from 'react-native-gesture-handler';
+import {
+runOnJS,
+useAnimatedStyle,
+useSharedValue,
+} from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any;
 const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
-import {
-  useSharedValue,
-  useAnimatedStyle,
-  runOnJS,
-} from 'react-native-reanimated';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const STRIP_PADDING = 24;

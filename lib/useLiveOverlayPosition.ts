@@ -14,8 +14,8 @@
  * (Poll + 5 Sticker + 2 Produkt-Karten), ohne zusätzliche Channels zu öffnen.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RealtimeChannel } from '@supabase/supabase-js';
+import { useCallback,useEffect,useRef,useState } from 'react';
 import { supabase } from './supabase';
 
 export interface OverlayPosition {

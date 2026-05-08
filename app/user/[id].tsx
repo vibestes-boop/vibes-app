@@ -1,5 +1,5 @@
-import { useLocalSearchParams, useRouter } from 'expo-router';
 import { UserProfileContent } from '@/components/profile/UserProfileContent';
+import { useLocalSearchParams,useRouter } from 'expo-router';
 
 export default function UserProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();

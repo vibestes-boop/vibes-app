@@ -1,57 +1,46 @@
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
-import { useRouter } from 'expo-router';
-import { useFocusEffect } from '@react-navigation/native';
-import { useQueryClient } from '@tanstack/react-query';
-import { View, Text, Pressable, ActivityIndicator, Alert, RefreshControl, FlatList, ScrollView, Dimensions } from 'react-native';
-import { Image } from 'expo-image';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Rect, Text as SvgText, Line } from 'react-native-svg';
 import {
-  PlusCircle, Sparkles, Bookmark, BarChart2, FileText, Trash2,
-  Eye, Heart, MessageCircle, TrendingUp, Clock, ArrowUpDown,
-  CheckCircle2, Users, TrendingDown,
-} from 'lucide-react-native';
-import { impactAsync, ImpactFeedbackStyle } from 'expo-haptics';
-import { useUnreadCount } from '@/lib/useNotifications';
-import { useBookmarkedPosts } from '@/lib/useBookmark';
-import { useDeletePost, useTogglePinPost } from '@/lib/usePostManagement';
+AnalyticsTab,
+BattleHistoryList,
+GRID_COLUMNS,
+GRID_GAP,
+PostManageModal,
+ProfileGridCell,
+ProfileListHeader,
+ProfileStudioHeader,
+type ProfilePostGridItem,
+type ProfileTab
+} from '@/components/profile';
+import { getProfileStyles } from '@/components/profile/profileStyles';
 import { useAuthStore } from '@/lib/authStore';
-import { useDrafts } from '@/lib/useDrafts';
-import { useGuildStories } from '@/lib/useStories';
 import { useStoryViewerStore } from '@/lib/storyViewerStore';
-import {
-  useCreatorOverview,
-  useCreatorTopPosts,
-  useFollowerGrowth,
-  fmtNum,
-  formatDelta,
-  type AnalyticsPeriod,
-  type ContentSortBy,
-} from '@/lib/useAnalytics';
-import { useFollowCounts } from '@/lib/useFollow';
-import { useUserPosts } from '@/lib/usePosts';
 import { supabase } from '@/lib/supabase';
 import {
-  GRID_COLUMNS,
-  GRID_CELL_WIDTH,
-  GRID_GAP,
-  ProfileGridCell,
-  PostManageModal,
-  ProfileListHeader,
-  ProfileStudioHeader,
-  profileStyles as s,
-  AnalyticsTab,
-  BattleHistoryList,
-  type ProfilePostGridItem,
-  type ProfileTab,
-} from '@/components/profile';
+type AnalyticsPeriod,
+type ContentSortBy
+} from '@/lib/useAnalytics';
+import { useBookmarkedPosts } from '@/lib/useBookmark';
+import { useDrafts } from '@/lib/useDrafts';
+import { useFollowCounts } from '@/lib/useFollow';
+import { useUnreadCount } from '@/lib/useNotifications';
+import { useDeletePost,useTogglePinPost } from '@/lib/usePostManagement';
+import { useUserPosts } from '@/lib/usePosts';
+import { useGuildStories } from '@/lib/useStories';
 import { useTheme } from '@/lib/useTheme';
-import { getProfileStyles } from '@/components/profile/profileStyles';
+import { useFocusEffect } from '@react-navigation/native';
+import { useQueryClient } from '@tanstack/react-query';
+import { impactAsync,ImpactFeedbackStyle } from 'expo-haptics';
+import { useRouter } from 'expo-router';
+import {
+Bookmark,
+FileText,
+PlusCircle,Sparkles,
+Trash2
+} from 'lucide-react-native';
+import { useCallback,useEffect,useMemo,useRef,useState } from 'react';
+import { ActivityIndicator,Alert,FlatList,Pressable,RefreshControl,Text,View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-// Statische Zellhöhe — 4:5 Portrait-Format, berechnet einmalig aus Screen-Breite
-const CELL_HEIGHT = Math.round(GRID_CELL_WIDTH * 5 / 4);
-
+// ─ fmtNum: re-exported from useAnalytics ─ (local duplicate removed to avoid conflict)
 
 export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
@@ -63,9 +52,7 @@ export default function ProfileScreen() {
   const [activeTab, setActiveTab] = useState<ProfileTab>('vibes');
   const [managePost, setManagePost] = useState<{ id: string; media_url?: string; media_type?: string } | null>(null);
   const [repostedPosts, setRepostedPosts] = useState<ProfilePostGridItem[]>([]);
-  const [repostLoading, setRepostLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [sortKey, setSortKey] = useState<'views' | 'likes' | 'comments' | 'dwell' | 'newest' | 'oldest'>('views');
   // Analytics: Period-Picker + Content-Sort
   const [analyticsPeriod, setAnalyticsPeriod] = useState<AnalyticsPeriod>(28);
   const [contentSort, setContentSort] = useState<ContentSortBy>('views');
@@ -111,29 +98,9 @@ export default function ProfileScreen() {
     return Math.round((sum / posts.length) * 100);
   }, [posts]);
 
-  const totalViews    = useMemo(() => posts.reduce((a, p) => a + (p.view_count ?? 0), 0), [posts]);
-  const totalLikes    = useMemo(() => posts.reduce((a, p) => a + (p.like_count ?? 0), 0), [posts]);
-  const totalComments = useMemo(() => posts.reduce((a, p) => a + (p.comment_count ?? 0), 0), [posts]);
-
-  // ── Analytics Hooks (echte Supabase-Daten) ────────────────────────
-  const { data: overview, isLoading: loadingOverview } = useCreatorOverview(
-    activeTab === 'analytics' ? (profile?.id ?? null) : null,
-    analyticsPeriod,
-  );
-  const { data: topPosts = [], isLoading: loadingTopPosts } = useCreatorTopPosts(
-    activeTab === 'analytics' ? (profile?.id ?? null) : null,
-    contentSort,
-    5,
-  );
-  const { data: followerGrowth = [] } = useFollowerGrowth(
-    activeTab === 'analytics' ? (profile?.id ?? null) : null,
-    analyticsPeriod,
-  );
-
   // ── loadReposts: immer frisch, zwei-Schritt-Query ───────────────────
   const loadReposts = useCallback(async () => {
     if (!profile?.id) return;
-    setRepostLoading(true);
     const { data: rows, error } = await supabase
       .from('reposts')
       .select('post_id, created_at')      // created_at = Repost-Zeitstempel
@@ -142,7 +109,6 @@ export default function ProfileScreen() {
       .limit(60);
     if (error || !rows || rows.length === 0) {
       setRepostedPosts([]);
-      setRepostLoading(false);
       return;
     }
     // Map: post_id → repost timestamp
@@ -159,8 +125,7 @@ export default function ProfileScreen() {
       .map((pid: string) => byId[pid] ? { ...byId[pid], reposted_at: repostTimestamps[pid] } : null)
       .filter(Boolean);
     setRepostedPosts(ordered as ProfilePostGridItem[]);
-    setRepostLoading(false);
-  }, [profile?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [profile?.id]);
 
   // Laden wenn Tab aktiv wird
   useEffect(() => {
@@ -210,13 +175,6 @@ export default function ProfileScreen() {
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [profile?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Analytics: Posts nach dwell_time_score sortiert (absteigend)
-  const analyticsPosts = useMemo(() => {
-    return [...posts].sort((a, b) => (b.dwell_time_score ?? 0) - (a.dwell_time_score ?? 0));
-  }, [posts]);
-
-  const maxDwell = analyticsPosts[0]?.dwell_time_score ?? 1;
 
   const handlePostLongPress = (item: ProfilePostGridItem) =>
     setManagePost({ id: item.id, media_url: item.media_url ?? undefined, media_type: item.media_type ?? undefined });
@@ -504,161 +462,3 @@ export default function ProfileScreen() {
     </View>
   );
 }
-
-// ─ fmtNum: re-exported from useAnalytics ─ (local duplicate removed to avoid conflict)
-
-import { StyleSheet } from 'react-native';
-
-const analyticsStyle = StyleSheet.create({
-  // ── Summary Grid
-  kpiGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 28,
-  },
-  kpiCard: {
-    width: '47%',
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.08)',
-    paddingHorizontal: 14,
-    paddingTop: 14,
-    paddingBottom: 16,
-    gap: 8,
-  },
-  kpiIconRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  kpiLabel: {
-    color: 'rgba(255,255,255,0.35)',
-    fontSize: 11,
-    fontWeight: '500',
-    letterSpacing: 0.1,
-  },
-  kpiValue: {
-    color: '#FFFFFF',
-    fontSize: 28,
-    fontWeight: '700',
-    letterSpacing: -1,
-    lineHeight: 32,
-  },
-  // ── Section Header
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 4,
-  },
-  sectionTitle: {
-    color: 'rgba(255,255,255,0.25)',
-    fontSize: 10,
-    fontWeight: '600',
-    letterSpacing: 1.2,
-    textTransform: 'uppercase',
-    marginBottom: 12,
-  },
-  // ── Sort Controls
-  sortRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 16,
-  },
-  sortScroll: {
-    flexDirection: 'row',
-    gap: 6,
-    paddingRight: 4,
-  },
-  sortPill: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.1)',
-  },
-  sortPillActive: {
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderColor: 'rgba(255,255,255,0.25)',
-  },
-  sortPillText: {
-    color: 'rgba(255,255,255,0.4)',
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  sortPillTextActive: {
-    color: '#FFFFFF',
-    fontWeight: '600',
-  },
-  // ── Post Rows
-  postRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    gap: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
-  },
-  rank: {
-    color: 'rgba(255,255,255,0.15)',
-    fontSize: 11,
-    fontWeight: '600',
-    width: 20,
-    textAlign: 'center',
-  },
-  thumbWrap: { position: 'relative' },
-  thumb: {
-    width: 48,
-    height: 62,
-    borderRadius: 6,
-  },
-  thumbFallback: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  videoTag: {
-    position: 'absolute',
-    bottom: 3,
-    right: 3,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    borderRadius: 3,
-    paddingHorizontal: 3,
-    paddingVertical: 1,
-  },
-  videoTagText: { color: 'rgba(255,255,255,0.7)', fontSize: 7, fontWeight: '700' },
-  postInfo: { flex: 1, gap: 4 },
-  postCaption: {
-    color: 'rgba(255,255,255,0.75)',
-    fontSize: 13,
-    fontWeight: '500',
-    letterSpacing: -0.1,
-  },
-  // Metric chips — all same muted color
-  metricRow: { flexDirection: 'row', gap: 10, marginTop: 1 },
-  metricChip: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  metricText: {
-    color: 'rgba(255,255,255,0.4)',
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  // Dwell bar
-  dwellTrack: {
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    overflow: 'hidden',
-    marginTop: 4,
-  },
-  dwellFill: { height: '100%', borderRadius: 2 },
-  dwellLabel: {
-    color: 'rgba(255,255,255,0.2)',
-    fontSize: 10,
-    fontWeight: '500',
-    letterSpacing: 0.2,
-  },
-});

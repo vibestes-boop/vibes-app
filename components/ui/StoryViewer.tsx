@@ -1,38 +1,51 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
-import {
-  View, Text, StyleSheet, Pressable, Dimensions,
-  TextInput, Keyboard, Alert, Modal, Platform,
-  KeyboardEvent, ScrollView, Share, Linking, AppState,
-  Animated as RNAnimated, Easing as EasingRN,
-} from 'react-native';
 import { Image } from 'expo-image';
+import { useCallback,useEffect,useRef,useState } from 'react';
+import {
+Alert,
+AppState,
+Dimensions,
+Easing as EasingRN,
+Keyboard,
+KeyboardEvent,
+Linking,
+Modal,Platform,
+Pressable,
+Animated as RNAnimated,
+ScrollView,Share,
+StyleSheet,
+Text,
+TextInput,
+View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 // expo-file-system v19: Legacy-API für cacheDirectory + downloadAsync
+import { setStringAsync as clipboardSetString } from 'expo-clipboard';
 import * as FileSystem from 'expo-file-system/legacy';
+import * as Haptics from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+import { Check,Copy,Download,Eye,EyeOff,Flag,Heart,Search as SearchIcon,Send,Share2,UserCheck,UserPlus,X } from 'lucide-react-native';
+import {
+useAnimatedStyle,
+useSharedValue,
+withSequence,
+withTiming
+} from 'react-native-reanimated';
+
+import { StoryViewersSheet } from '@/components/ui/StoryViewersSheet';
+import { useAuthStore } from '@/lib/authStore';
+import { supabase } from '@/lib/supabase';
+import { useFollow } from '@/lib/useFollow';
+import { useOrCreateConversation,useSendMessage } from '@/lib/useMessages';
+import type { Story,StoryGroup } from '@/lib/useStories';
+import { useMarkStoryViewed,useMyStoryVote,useStoryPollResults,useVoteStoryPoll } from '@/lib/useStories';
+import { useAddStoryComment,useStoryComments,type StoryComment } from '@/lib/useStoryComments';
+import { useMutation,useQuery,useQueryClient } from '@tanstack/react-query';
+import { ResizeMode,Video } from 'expo-av';
+import { BlurView } from 'expo-blur';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
-import {
-  useSharedValue, useAnimatedStyle, withTiming, withSequence,
-  runOnJS, Easing,
-} from 'react-native-reanimated';
-import { X, Heart, Send, Share2, UserPlus, UserCheck, Check, Copy, Flag, EyeOff, Download, Search as SearchIcon, Eye } from 'lucide-react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import * as Haptics from 'expo-haptics';
-import { setStringAsync as clipboardSetString } from 'expo-clipboard';
-
-import { BlurView } from 'expo-blur';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
-import type { StoryGroup, Story } from '@/lib/useStories';
-import { useMarkStoryViewed, useMyStoryVote, useStoryPollResults, useVoteStoryPoll } from '@/lib/useStories';
-import { useStoryComments, useAddStoryComment, type StoryComment } from '@/lib/useStoryComments';
-import { StoryViewersSheet } from '@/components/ui/StoryViewersSheet';
-import { useFollow } from '@/lib/useFollow';
-import { useAuthStore } from '@/lib/authStore';
-import { useOrCreateConversation, useSendMessage } from '@/lib/useMessages';
-import { Video, ResizeMode } from 'expo-av';
 
 // expo-video optional (z. B. ohne natives Modul in Expo Go)
 let VideoView: any = null;
@@ -921,7 +934,7 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
       }
     }
     setIsHolding(false);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+
   }, [progressAnim, currentStory, startProgress, goNext]);
 
   useEffect(() => {

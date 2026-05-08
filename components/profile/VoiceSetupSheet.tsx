@@ -9,50 +9,49 @@
  * - Upload & Speichern
  */
 
-import { useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  Modal,
-  ScrollView,
-  ActivityIndicator,
-  Alert,
-  Platform,
-} from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
-  Mic,
-  Square,
-  Play,
-  Pause,
-  Upload,
-  Trash2,
-  X,
-  Check,
-  Volume2,
+Check,
+Mic,
+Pause,
+Play,
+Square,
+Trash2,
+Upload,
+Volume2,
+X,
 } from 'lucide-react-native';
-import * as Haptics from 'expo-haptics';
+import { useEffect } from 'react';
+import {
+ActivityIndicator,
+Alert,
+Modal,
+Pressable,
+ScrollView,
+StyleSheet,
+Text,
+View
+} from 'react-native';
+import {
+Easing,
+useAnimatedStyle,
+useSharedValue,
+withRepeat,
+withSequence,
+withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useVoiceClone } from '@/lib/useVoiceClone';
+
 // Reanimated via require() — vermeidet Hermes-Crash
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any;
 const _animNS = _animMod?.default ?? _animMod;
 const RNAnimated = {
   View: _animNS?.View ?? _animMod?.View,
 };
-import {
-  useSharedValue,
-  useAnimatedStyle,
-  withRepeat,
-  withTiming,
-  withSequence,
-  Easing,
-} from 'react-native-reanimated';
-
-import { useVoiceClone } from '@/lib/useVoiceClone';
 
 // ── Wellenform-Balken ────────────────────────────────────────────────────────
 

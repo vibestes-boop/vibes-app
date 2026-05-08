@@ -1,7 +1,9 @@
 'use server';
 
 import { revalidateTag, revalidatePath } from 'next/cache';
+import { createActionTiming } from '@/lib/observability/action-timing';
 import { createClient } from '@/lib/supabase/server';
+import type { CommentWithAuthor } from '@/lib/data/public';
 
 // -----------------------------------------------------------------------------
 // Engagement-Server-Actions — Like / Save / Follow / Comment.
@@ -168,45 +170,250 @@ export async function toggleFollow(
 
 const COMMENT_MAX = 500;
 
+function mapCreateCommentInsertError(error: { code?: string; message?: string }) {
+  const message = (error.message ?? '').toLowerCase();
+
+  if (error.code === '23503' || message.includes('foreign key')) {
+    return { error: 'Post nicht gefunden.', reason: 'post_not_found' };
+  }
+
+  if (
+    error.code === '42501' ||
+    message.includes('row-level security') ||
+    message.includes('violates row-level security')
+  ) {
+    return {
+      error: 'Kommentare sind hier deaktiviert oder der Post ist nicht verfügbar.',
+      reason: 'comment_policy_denied',
+    };
+  }
+
+  return { error: error.message ?? 'Fehler beim Senden.', reason: 'insert_error' };
+}
+
 export async function createComment(
   postId: string,
   rawBody: string,
   parentId?: string | null,
-): Promise<ActionResult<{ id: string }>> {
-  const viewer = await getViewerId();
-  if (!viewer) return { ok: false, error: 'Nicht eingeloggt.' };
+): Promise<ActionResult<CommentWithAuthor>> {
+  const timing = createActionTiming('comments.create', { hasParent: Boolean(parentId) });
+  const finish = (
+    result: ActionResult<CommentWithAuthor>,
+    extra: Parameters<typeof timing.finish>[0],
+  ) => {
+    timing.finish(extra);
+    return result;
+  };
 
-  const body = rawBody.trim();
-  if (body.length === 0) return { ok: false, error: 'Kommentar darf nicht leer sein.' };
-  if (body.length > COMMENT_MAX)
-    return { ok: false, error: `Maximal ${COMMENT_MAX} Zeichen.` };
+  try {
+    const supabase = await timing.measure('supabase.createClient', createClient);
+    const {
+      data: { user },
+    } = await timing.measure('auth.getUser', () => supabase.auth.getUser());
 
-  const supabase = await createClient();
+    if (!user) {
+      return finish({ ok: false, error: 'Nicht eingeloggt.' }, { ok: false, reason: 'unauthenticated' });
+    }
 
-  // Post-Check: existiert + allow_comments true?
-  const { data: post, error: postErr } = await supabase
-    .from('posts')
-    .select('id, allow_comments')
-    .eq('id', postId)
-    .maybeSingle();
-  if (postErr || !post) return { ok: false, error: 'Post nicht gefunden.' };
-  if (post.allow_comments === false) return { ok: false, error: 'Kommentare sind hier deaktiviert.' };
+    const body = rawBody.trim();
+    if (body.length === 0) {
+      return finish(
+        { ok: false, error: 'Kommentar darf nicht leer sein.' },
+        { ok: false, reason: 'empty_body' },
+      );
+    }
+    if (body.length > COMMENT_MAX) {
+      return finish(
+        { ok: false, error: `Maximal ${COMMENT_MAX} Zeichen.` },
+        { ok: false, reason: 'body_too_long' },
+      );
+    }
 
-  // Mobile-DB-`comments`-Spalte heißt `text`, nicht `body`.
-  const insertRow: Record<string, unknown> = { post_id: postId, user_id: viewer.id, text: body };
-  if (parentId) insertRow.parent_id = parentId;
+    // Mobile-DB-`comments`-Spalte heißt `text`, nicht `body`.
+    // `allow_comments` und Post-Sichtbarkeit werden in der comments_insert_policy
+    // erzwungen; so bleibt Kommentar-Erstellung ein einzelner DB-Roundtrip.
+    const insertRow: Record<string, unknown> = { post_id: postId, user_id: user.id, text: body };
+    if (parentId) insertRow.parent_id = parentId;
 
-  const { data, error } = await supabase
-    .from('comments')
-    .insert(insertRow)
-    .select('id')
-    .single();
+    const { data, error } = await timing.measure('comments.insert', () =>
+      supabase
+        .from('comments')
+        .insert(insertRow)
+        .select(
+          `id, post_id, user_id, parent_id, text, created_at,
+         author:profiles!comments_user_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )`,
+        )
+        .single(),
+    );
 
-  if (error || !data) return { ok: false, error: error?.message ?? 'Fehler beim Senden.' };
+    if (error || !data) {
+      const mapped = error ? mapCreateCommentInsertError(error) : null;
+      return finish(
+        { ok: false, error: mapped?.error ?? 'Fehler beim Senden.' },
+        { ok: false, reason: mapped?.reason ?? 'insert_error' },
+      );
+    }
 
-  revalidateTag(`post:${postId}`);
+    const row = data as unknown as {
+      id: string;
+      post_id: string;
+      user_id: string;
+      parent_id: string | null;
+      text: string | null;
+      created_at: string;
+      author:
+        | {
+            id: string;
+            username: string;
+            display_name: string | null;
+            avatar_url: string | null;
+            verified: boolean | null;
+          }
+        | {
+            id: string;
+            username: string;
+            display_name: string | null;
+            avatar_url: string | null;
+            verified: boolean | null;
+          }[]
+        | null;
+    };
+    const author = Array.isArray(row.author) ? (row.author[0] ?? null) : row.author;
+    if (!author) {
+      return finish(
+        { ok: false, error: 'Kommentar gesendet, Profil konnte aber nicht geladen werden.' },
+        { ok: false, reason: 'author_missing' },
+      );
+    }
 
-  return { ok: true, data: { id: data.id as string } };
+    await timing.measure('cache.revalidatePost', () => {
+      revalidateTag(`post:${postId}`);
+    });
+
+    return finish(
+      {
+        ok: true,
+        data: {
+          id: row.id,
+          post_id: row.post_id,
+          user_id: row.user_id,
+          parent_id: row.parent_id ?? null,
+          body: row.text ?? body,
+          like_count: 0,
+          liked_by_me: false,
+          reply_count: 0,
+          created_at: row.created_at,
+          author: {
+            id: author.id,
+            username: author.username,
+            display_name: author.display_name,
+            avatar_url: author.avatar_url,
+            verified: author.verified ?? false,
+          },
+        },
+      },
+      { ok: true },
+    );
+  } catch (error) {
+    timing.finish({
+      ok: false,
+      reason: 'exception',
+      error: error instanceof Error ? error.name : 'UnknownError',
+    });
+    throw error;
+  }
+}
+
+type WebCommentRpcRow = {
+  id: string;
+  post_id: string;
+  user_id: string;
+  parent_id: string | null;
+  body: string | null;
+  like_count: number | string | null;
+  liked_by_me: boolean | null;
+  reply_count: number | string | null;
+  created_at: string;
+  author_id: string;
+  author_username: string;
+  author_display_name: string | null;
+  author_avatar_url: string | null;
+  author_verified: boolean | null;
+};
+
+function toNumber(value: number | string | null | undefined): number {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : 0;
+  }
+  return 0;
+}
+
+export async function fetchPostCommentsForFeed(
+  postId: string,
+  limit = 30,
+  includeViewerState = true,
+): Promise<CommentWithAuthor[]> {
+  const timing = createActionTiming('comments.list', {
+    includeViewerState,
+    limit,
+  });
+
+  try {
+    const supabase = await timing.measure('supabase.createClient', createClient);
+    let viewerId: string | null = null;
+
+    if (includeViewerState) {
+      const {
+        data: { user },
+      } = await timing.measure('auth.getUser', () => supabase.auth.getUser());
+      viewerId = user?.id ?? null;
+    }
+
+    const { data, error } = await timing.measure('comments.rpc', () =>
+      supabase.rpc('get_post_comments_web', {
+        p_post_id: postId,
+        p_limit: limit,
+        p_viewer_id: viewerId,
+      }),
+    );
+
+    if (error) {
+      timing.finish({ ok: false, reason: 'comments_rpc_error' });
+      throw new Error(error.message);
+    }
+
+    const rows = (data ?? []) as WebCommentRpcRow[];
+    const comments = rows.map((row) => ({
+      id: row.id,
+      post_id: row.post_id,
+      user_id: row.user_id,
+      parent_id: row.parent_id ?? null,
+      body: row.body ?? '',
+      like_count: toNumber(row.like_count),
+      liked_by_me: row.liked_by_me ?? false,
+      reply_count: toNumber(row.reply_count),
+      created_at: row.created_at,
+      author: {
+        id: row.author_id,
+        username: row.author_username,
+        display_name: row.author_display_name,
+        avatar_url: row.author_avatar_url,
+        verified: row.author_verified ?? false,
+      },
+    }));
+
+    timing.finish({ ok: true, count: comments.length });
+    return comments;
+  } catch (error) {
+    timing.finish({
+      ok: false,
+      reason: 'exception',
+      error: error instanceof Error ? error.name : 'UnknownError',
+    });
+    throw error;
+  }
 }
 
 // fetchCommentReplies — Server Action Wrapper für getCommentReplies.

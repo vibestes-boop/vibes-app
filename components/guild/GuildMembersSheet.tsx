@@ -1,22 +1,22 @@
-import React, { useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  Modal,
-  ActivityIndicator,
-  FlatList,
-  SafeAreaView,
-} from 'react-native';
+import { useAuthStore } from '@/lib/authStore';
+import { useFollow } from '@/lib/useFollow';
+import { useGuildMembers,type GuildMember } from '@/lib/useGuildMembers';
+import { useTheme } from '@/lib/useTheme';
+import { impactAsync,ImpactFeedbackStyle } from 'expo-haptics';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { X, Users } from 'lucide-react-native';
-import { impactAsync, ImpactFeedbackStyle } from 'expo-haptics';
-import { useGuildMembers, type GuildMember } from '@/lib/useGuildMembers';
-import { useFollow } from '@/lib/useFollow';
-import { useAuthStore } from '@/lib/authStore';
-import { useTheme } from '@/lib/useTheme';
+import { Users,X } from 'lucide-react-native';
+import React,{ useCallback } from 'react';
+import {
+ActivityIndicator,
+FlatList,
+Modal,
+Pressable,
+SafeAreaView,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
 
 // ─── Single member row ────────────────────────────────────────────────────────
 function MemberRow({

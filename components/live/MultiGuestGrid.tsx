@@ -16,17 +16,17 @@
  * zu und suchen den Remote-Participant mit `identity === userId`.
  */
 
-import React, { useContext, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
-import { VideoTrack } from '@livekit/react-native';
-import { RoomContext } from '@livekit/components-react';
-import {
-  Track,
-  RoomEvent,
-  type Participant,
-  type TrackPublication,
-} from 'livekit-client';
 import type { ActiveCoHost } from '@/lib/useCoHost';
+import { RoomContext } from '@livekit/components-react';
+import { VideoTrack } from '@livekit/react-native';
+import {
+RoomEvent,
+Track,
+type Participant,
+type TrackPublication,
+} from 'livekit-client';
+import React,{ useContext,useEffect,useState } from 'react';
+import { Image,StyleSheet,Text,View } from 'react-native';
 
 // ─── Einzelne Remote-Tile (Co-Host) ────────────────────────────────────
 function RemoteTile({ cohost }: { cohost: ActiveCoHost }) {

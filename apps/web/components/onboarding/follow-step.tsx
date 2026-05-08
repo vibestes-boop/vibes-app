@@ -63,7 +63,7 @@ function AccountCard({
   return (
     <div className="flex items-center gap-3 rounded-xl border border-border/60 bg-card px-4 py-3 shadow-sm">
       {/* Avatar */}
-      <Link href={`/@${person.username}` as Route} className="shrink-0">
+      <Link href={`/u/${person.username}` as Route} className="shrink-0">
         {person.avatar_url ? (
           <Image
             src={person.avatar_url}
@@ -81,7 +81,7 @@ function AccountCard({
 
       {/* Name + username */}
       <div className="min-w-0 flex-1">
-        <Link href={`/@${person.username}` as Route}>
+        <Link href={`/u/${person.username}` as Route}>
           <p className="truncate text-sm font-semibold leading-tight text-foreground">
             {person.display_name ?? person.username}
             {person.verified && (

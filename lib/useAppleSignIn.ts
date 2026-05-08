@@ -6,8 +6,8 @@
  * Wichtig: Apple liefert den vollständigen Namen NUR beim allerersten Login.
  * Danach ist credential.fullName null. Deshalb: Name beim ersten Login in DB speichern.
  */
-import { Alert, Platform } from 'react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
+import { Alert,Platform } from 'react-native';
 import { supabase } from './supabase';
 
 export type AppleSignInResult = 'success' | 'canceled' | 'error';

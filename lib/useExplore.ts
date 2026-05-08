@@ -1,8 +1,8 @@
-import { useQuery, useInfiniteQuery } from '@tanstack/react-query';
-import { Sparkles, Flame, Clock } from 'lucide-react-native';
-import type { ElementType } from 'react';
-import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/lib/authStore';
+import { supabase } from '@/lib/supabase';
+import { useInfiniteQuery,useQuery } from '@tanstack/react-query';
+import { Clock,Flame,Sparkles } from 'lucide-react-native';
+import type { ElementType } from 'react';
 
 export const EXPLORE_FALLBACK_TAGS = [
   'Tech',

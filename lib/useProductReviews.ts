@@ -2,9 +2,9 @@
  * lib/useProductReviews.ts
  * Shop Bewertungen — lesen, schreiben, eigene Bewertung prüfen
  */
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from './supabase';
+import { useMutation,useQuery,useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from './authStore';
+import { supabase } from './supabase';
 
 export interface ProductReview {
   id:          string;

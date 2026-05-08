@@ -1,33 +1,47 @@
-import { useRef, useState, useEffect, useCallback, useMemo } from 'react';
+import GifPicker from '@/components/ui/GifPicker';
+import { useAuthStore } from '@/lib/authStore';
+import { uploadPostMedia } from '@/lib/uploadMedia';
 import {
-  View, Text, StyleSheet, FlatList, TextInput, Pressable,
-  KeyboardAvoidingView, Platform, ActivityIndicator, Alert,
-  PanResponder, Modal,
-} from 'react-native';
-import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, Send, Play, Reply, Trash2, X, ImagePlus, Smile, User } from 'lucide-react-native';
+useDeleteMessage,
+useMarkMessagesRead,
+useMessageReactions,
+useMessages,useSendMessage,
+useToggleReaction,
+useTypingPresence,
+type Message,type PostPreview,
+} from '@/lib/useMessages';
+import { useTheme } from '@/lib/useTheme';
 import * as Haptics from 'expo-haptics';
+import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useLocalSearchParams,useRouter } from 'expo-router';
+import { ArrowLeft,ImagePlus,Play,Reply,Send,Trash2,User,X } from 'lucide-react-native';
+import { useCallback,useEffect,useMemo,useRef,useState } from 'react';
+import {
+ActivityIndicator,Alert,
+FlatList,
+KeyboardAvoidingView,
+Modal,
+PanResponder,
+Platform,
+Pressable,
+StyleSheet,
+Text,
+TextInput,
+View,
+} from 'react-native';
+import {
+useAnimatedStyle,
+useSharedValue,
+withSpring,withTiming,
+} from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 // reanimated: CJS require() vermeidet _interopRequireDefault Crash in Hermes HBC
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any;
 const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
-import {
-  useSharedValue, useAnimatedStyle, withSpring, withTiming,
-} from 'react-native-reanimated';
-import {
-  useMessages, useSendMessage, useMarkMessagesRead, useTypingPresence,
-  useDeleteMessage, useToggleReaction, useMessageReactions,
-  type Message, type PostPreview,
-} from '@/lib/useMessages';
-import { useAuthStore } from '@/lib/authStore';
-import GifPicker from '@/components/ui/GifPicker';
-import { uploadPostMedia } from '@/lib/uploadMedia';
-import { useTheme } from '@/lib/useTheme';
 
 // ── Konstanten ───────────────────────────────────────────────────────────────
 const REACTION_EMOJIS = ['❤️', '😂', '🔥', '👏', '😱', '🥲'];
@@ -187,7 +201,7 @@ function MessageBubble({
   const hasStoryReply = !!msg.story_media_url;
   const showText = msg.content && msg.content.trim().length > 0;
   const isSending = msg.id.startsWith('temp-');
-  const { colors, isDark } = useTheme();
+  const { isDark } = useTheme();
 
   const translateX = useSharedValue(0);
   const replyOpacity = useSharedValue(0);
@@ -547,8 +561,6 @@ export default function ChatScreen() {
     );
   }, [messages, userId, reactionsMap, activePickerId, handlePostPress, handleLongPress, handleSwipeReply, handleDelete, toggleReaction, colors]);
 
-  const initial = (username ?? '?')[0].toUpperCase();
-
   return (
     <>
       <KeyboardAvoidingView
@@ -886,6 +898,7 @@ const styles = StyleSheet.create({
   // ── Image Bubble ──
   imageBubble: {
     overflow: 'hidden', borderRadius: 18,
+// eslint-disable-next-line @typescript-eslint/no-require-imports
     width: Math.round(require('react-native').Dimensions.get('window').width * 0.62),
     aspectRatio: 9 / 14,
   },

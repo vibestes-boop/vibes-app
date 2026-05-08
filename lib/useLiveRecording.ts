@@ -12,10 +12,10 @@
  * (für Host-UI, um „● Rec" Badge anzuzeigen).
  */
 
+import { useMutation,useQuery,useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from './supabase';
 import { useAuthStore } from './authStore';
+import { supabase } from './supabase';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 

@@ -1,4 +1,4 @@
-import { View, Text, Pressable } from 'react-native';
+import { Pressable,Text,View } from 'react-native';
 
 interface Props {
   onBack: () => void;
@@ -6,10 +6,10 @@ interface Props {
   title?: string;
 }
 
-export default function ExpoGoPlaceholder({ 
-  onBack, 
-  icon = '📺', 
-  title = 'Live Studio läuft nicht in Expo Go.\nBitte einen Dev-Build verwenden.' 
+export default function ExpoGoPlaceholder({
+  onBack,
+  icon = '📺',
+  title = 'Live Studio läuft nicht in Expo Go.\nBitte einen Dev-Build verwenden.'
 }: Props) {
   return (
     <View style={{ flex: 1, backgroundColor: '#000', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
@@ -20,8 +20,8 @@ export default function ExpoGoPlaceholder({
       <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14, textAlign: 'center', paddingHorizontal: 32 }}>
         {title}
       </Text>
-      <Pressable 
-        onPress={onBack} 
+      <Pressable
+        onPress={onBack}
         style={{ marginTop: 8, backgroundColor: '#CCCCCC', borderRadius: 14, paddingHorizontal: 24, paddingVertical: 12 }}
       >
         <Text style={{ color: '#fff', fontWeight: '700' }}>Zurück</Text>

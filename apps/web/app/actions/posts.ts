@@ -1,7 +1,8 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { PUBLIC_FEED_CACHE_TAG } from '@/lib/cache/tags';
 import {
   getTrendingHashtagSuggestions,
   getMentionSuggestions,
@@ -197,6 +198,9 @@ export async function publishPost(
 
   revalidatePath('/');
   revalidatePath('/explore');
+  if ((input.privacy ?? 'public') === 'public') {
+    revalidateTag(PUBLIC_FEED_CACHE_TAG);
+  }
 
   return { ok: true, data: { id: data.id } };
 }
@@ -393,6 +397,7 @@ export async function deletePost(postId: string): Promise<ActionResult<null>> {
   // nicht mehr auf nach dem nächsten SSR-Request.
   revalidatePath('/');
   revalidatePath('/following');
+  revalidateTag(PUBLIC_FEED_CACHE_TAG);
   return { ok: true, data: null };
 }
 

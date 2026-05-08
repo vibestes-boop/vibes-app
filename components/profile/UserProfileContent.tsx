@@ -6,81 +6,80 @@
  *   - app/user/[id].tsx (Route-Wrapper)
  *   - app/(tabs)/index.tsx (Swipe-Panel, folgt dem Finger)
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  ActivityIndicator,
-  Dimensions,
-  FlatList,
-  RefreshControl,
-  Alert,
-  PanResponder,
-  Linking,
-  Modal,
-} from 'react-native';
+import { BattleHistoryList } from '@/components/profile/BattleHistoryList';
+import { ProfileHighlightsRow } from '@/components/profile/ProfileHighlightsRow';
+import { ProfileShareSheet } from '@/components/profile/ProfileShareSheet';
+import { VibeScoreRing } from '@/components/profile/VibeScoreRing';
+import { AvatarZoomViewer } from '@/components/ui/AvatarZoomViewer';
+import { StoryRingAvatar } from '@/components/ui/StoryRingAvatar';
+import { VideoGridThumb } from '@/components/ui/VideoGridThumb';
+import { useAuthStore } from '@/lib/authStore';
+import { supabase } from '@/lib/supabase';
+import { useBattleStats } from '@/lib/useBattleStats';
+import { useBlockUser,useIsBlocked } from '@/lib/useBlock';
+import { useFollow,useFollowCounts } from '@/lib/useFollow';
+import { useHasPendingRequest,useSendFollowRequest,useWithdrawFollowRequest } from '@/lib/useFollowRequest';
+import { useOrCreateConversation } from '@/lib/useMessages';
+import { useIsHostMuted,useToggleMuteHost } from '@/lib/useMutedLiveHosts';
+import { useReportUser } from '@/lib/useReport';
+import { useShopProducts,type Product } from '@/lib/useShop';
+import { useTheme } from '@/lib/useTheme';
+import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import {
+ArrowLeft,
+Bell,
+BellOff,
+CheckCircle2,
+Flag,
+Grid3X3,
+Heart,
+Link,
+MessageCircle,
+MoreHorizontal,
+Repeat2,
+Share2,
+Shield,
+ShieldOff,
+ShoppingBag,
+Swords,
+Timer,
+User,
+UserCheck,
+UserPlus,
+Users,
+X,
+Zap,
+} from 'lucide-react-native';
+import { useCallback,useEffect,useMemo,useRef,useState } from 'react';
+import {
+ActivityIndicator,
+Alert,
+Dimensions,
+FlatList,
+Linking,
+Modal,
+PanResponder,
+Pressable,
+RefreshControl,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
+import {
+useAnimatedStyle,
+useSharedValue,
+withSpring,
+withTiming,
+} from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 // reanimated: CJS require() vermeidet _interopRequireDefault Crash in Hermes HBC
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any;
 const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
-import {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated';
-import {
-  ArrowLeft,
-  UserCheck,
-  UserPlus,
-  MessageCircle,
-  Timer,
-  Zap,
-  Users,
-  Grid3X3,
-  User,
-  Heart,
-  Repeat2,
-  MoreHorizontal,
-  Link,
-  CheckCircle2,
-  Share2,
-  ShieldOff,
-  Shield,
-  Flag,
-  X,
-  Swords,
-  Bell,
-  BellOff,
-  ShoppingBag,
-} from 'lucide-react-native';
-import * as Haptics from 'expo-haptics';
-import { supabase } from '@/lib/supabase';
-import { useFollow, useFollowCounts } from '@/lib/useFollow';
-import { useAuthStore } from '@/lib/authStore';
-import { useOrCreateConversation } from '@/lib/useMessages';
-import { useIsBlocked, useBlockUser } from '@/lib/useBlock';
-import { useReportUser } from '@/lib/useReport';
-import { useHasPendingRequest, useSendFollowRequest, useWithdrawFollowRequest } from '@/lib/useFollowRequest';
-import { VideoGridThumb } from '@/components/ui/VideoGridThumb';
-import { VibeScoreRing } from '@/components/profile/VibeScoreRing';
-import { ProfileHighlightsRow } from '@/components/profile/ProfileHighlightsRow';
-import { shareUser } from '@/lib/useShare';
-import { ProfileShareSheet } from '@/components/profile/ProfileShareSheet';
-import { StoryRingAvatar } from '@/components/ui/StoryRingAvatar';
-import { AvatarZoomViewer } from '@/components/ui/AvatarZoomViewer';
-import { useTheme } from '@/lib/useTheme';
-import { useBattleStats } from '@/lib/useBattleStats';
-import { BattleHistoryList } from '@/components/profile/BattleHistoryList';
-import { useIsHostMuted, useToggleMuteHost } from '@/lib/useMutedLiveHosts';
-import { useShopProducts, type Product } from '@/lib/useShop';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const AVATAR_SIZE = 88;  // Kompakter Avatar für die neue Instagram-Style Row
@@ -254,7 +253,7 @@ export function UserProfileContent({ userId, onBack }: Props) {
     const ordered: PostThumb[] = postIds.map((pid: string) => postsById[pid]).filter(Boolean);
     setRepostedPosts(ordered);
     setRepostLoading(false);
-  }, [id]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [id]);
 
   useEffect(() => {
     if (activeTab === 'reposts') loadReposts();

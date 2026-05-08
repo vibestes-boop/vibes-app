@@ -1,13 +1,13 @@
-import { useState } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { Image } from 'expo-image';
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
-const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
-const Animated = { View: _animNS?.View ?? _animMod?.View };
-import { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { VideoGridThumb } from '@/components/ui/VideoGridThumb';
+import { Image } from 'expo-image';
+import { useState } from 'react';
+import { Pressable,StyleSheet,Text,View } from 'react-native';
+import { useAnimatedStyle,useSharedValue,withTiming } from 'react-native-reanimated';
 import { profileStyles as s } from './profileStyles';
 import type { ProfilePostGridItem } from './types';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
+const Animated = { View: _animNS?.View ?? _animMod?.View };
 
 function formatViews(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;

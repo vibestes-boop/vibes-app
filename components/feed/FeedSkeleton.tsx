@@ -1,17 +1,17 @@
 import { useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { StyleSheet,View } from 'react-native';
+import {
+interpolate,
+useAnimatedStyle,
+useSharedValue,
+withRepeat,
+withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+import { SCREEN_HEIGHT,SCREEN_WIDTH } from './feedConstants';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
-import {
-  useSharedValue,
-  useAnimatedStyle,
-  withRepeat,
-  withTiming,
-  interpolate,
-} from 'react-native-reanimated';
-import { SCREEN_HEIGHT, SCREEN_WIDTH } from './feedConstants';
 
 /** Einzelne Skeleton-Karte im Feed-Format (Vollbild) */
 function SkeletonCard({ delay }: { delay: number }) {

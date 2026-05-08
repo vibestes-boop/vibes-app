@@ -27,4 +27,4 @@
 
 export type ARFilter = 'sunglasses' | 'dogears' | 'crown' | 'hearts' | 'stars' | null;
 
-export {};
+export { };

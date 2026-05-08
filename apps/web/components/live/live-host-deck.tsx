@@ -68,6 +68,7 @@ import { LiveStickerLayer } from './live-sticker-layer';
 import { LivePlacedProductLayer } from './live-placed-product-layer';
 import { LiveGiftGoalViewer } from './live-gift-goal-viewer';
 import { LiveDuetInviteWatcher } from './live-duet-invite-watcher';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 // v1.w.UI.207 — Sticker catalog (matches mobile StickerPicker categories)
 const STICKER_CATALOG = [
@@ -1288,13 +1289,12 @@ export function LiveHostDeck({
                       {topGifters.map((g, i) => (
                         <div key={g.userId} className="flex items-center gap-3">
                           <span className="w-5 text-center text-xs font-bold text-white/40">#{i + 1}</span>
-                          {g.avatarUrl ? (
-                            <img src={g.avatarUrl} alt="" className="h-7 w-7 rounded-full object-cover" />
-                          ) : (
-                            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 text-xs font-bold">
+                          <Avatar className="h-7 w-7 bg-white/20">
+                            {g.avatarUrl ? <AvatarImage src={g.avatarUrl} alt="" /> : null}
+                            <AvatarFallback className="bg-white/20 text-xs font-bold text-white">
                               {g.username[0]?.toUpperCase() ?? '?'}
-                            </div>
-                          )}
+                            </AvatarFallback>
+                          </Avatar>
                           <span className="flex-1 truncate text-sm">@{g.username}</span>
                           <span className="text-sm font-semibold text-yellow-400">{g.total.toLocaleString('de-DE')} 🪙</span>
                         </div>
@@ -1313,13 +1313,12 @@ export function LiveHostDeck({
                       {topCommenters.map((c, i) => (
                         <div key={c.userId} className="flex items-center gap-3">
                           <span className="w-5 text-center text-xs font-bold text-white/40">#{i + 1}</span>
-                          {c.avatarUrl ? (
-                            <img src={c.avatarUrl} alt="" className="h-7 w-7 rounded-full object-cover" />
-                          ) : (
-                            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-white/20 text-xs font-bold">
+                          <Avatar className="h-7 w-7 bg-white/20">
+                            {c.avatarUrl ? <AvatarImage src={c.avatarUrl} alt="" /> : null}
+                            <AvatarFallback className="bg-white/20 text-xs font-bold text-white">
                               {c.username[0]?.toUpperCase() ?? '?'}
-                            </div>
-                          )}
+                            </AvatarFallback>
+                          </Avatar>
                           <span className="flex-1 truncate text-sm">@{c.username}</span>
                           <span className="text-sm font-semibold text-sky-400">{c.count}×</span>
                         </div>

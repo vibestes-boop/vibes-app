@@ -13,7 +13,7 @@ import type { QuickSearchResult } from '@/app/api/search/quick/route';
 //
 // Architektur:
 //  1. Debounce 220ms nach letztem Tastendruck → Fetch /api/search/quick
-//  2. Dropdown: ≤5 User + ≤4 Hashtags + "Alle Ergebnisse"-Footer
+//  2. Dropdown: ≤5 User oder ≤4 Hashtags (#prefix) + "Alle Ergebnisse"-Footer
 //  3. Keyboard: ↑/↓ navigieren, Enter auf Item wählt aus, Escape schließt
 //  4. Außerhalb-Klick schließt (mousedown-Guard)
 //  5. Form-Submit / Enter ohne aktives Item → volle Suche auf /search?q=…
@@ -60,10 +60,7 @@ export function SearchBox({
     }
     setIsFetching(true);
     try {
-      const res = await fetch(
-        `/api/search/quick?q=${encodeURIComponent(q.trim())}`,
-        { cache: 'no-store' },
-      );
+      const res = await fetch(`/api/search/quick?q=${encodeURIComponent(q.trim())}`);
       if (!res.ok) return;
       const data: QuickSearchResult = await res.json();
       setResults(data);
@@ -192,6 +189,7 @@ export function SearchBox({
       role="combobox"
       aria-expanded={dropdownOpen}
       aria-haspopup="listbox"
+      aria-controls={listboxId}
       aria-owns={listboxId}
     >
       <form

@@ -1,27 +1,27 @@
-import { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  TextInput,
-  ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
-import { Image } from 'expo-image';
-import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import {
-  requestMediaLibraryPermissionsAsync,
-  launchImageLibraryAsync,
-} from 'expo-image-picker';
-import { ArrowLeft, ImagePlus, Type, Send, BarChart2, X } from 'lucide-react-native';
-import { uploadPostMedia, generateAndUploadThumbnail } from '@/lib/uploadMedia';
 import { useAuthStore } from '@/lib/authStore';
-import { useCreateStory, type StoryPoll } from '@/lib/useStories';
+import { generateAndUploadThumbnail,uploadPostMedia } from '@/lib/uploadMedia';
+import { useCreateStory,type StoryPoll } from '@/lib/useStories';
+import { Image } from 'expo-image';
+import {
+launchImageLibraryAsync,
+requestMediaLibraryPermissionsAsync,
+} from 'expo-image-picker';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import { ArrowLeft,BarChart2,ImagePlus,Send,Type,X } from 'lucide-react-native';
+import { useCallback,useState } from 'react';
+import {
+ActivityIndicator,
+Alert,
+KeyboardAvoidingView,
+Platform,
+Pressable,
+StyleSheet,
+Text,
+TextInput,
+View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function CreateStoryScreen() {
   const router = useRouter();

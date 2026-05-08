@@ -8,7 +8,7 @@
  *  - Debug-Logging im Expo-Terminalfenster
  */
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useCallback,useEffect,useRef } from 'react';
 
 export function useFeedAudio({
   audioUrl,
@@ -19,7 +19,7 @@ export function useFeedAudio({
   isActive: boolean;
   isMuted: boolean;
 }) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
   const soundRef   = useRef<any>(null);
   const mountedRef = useRef(true);
   const isMutedRef = useRef(isMuted);
@@ -45,7 +45,7 @@ export function useFeedAudio({
     __DEV__ && console.log('[FeedAudio] Lade Track:', url.slice(-30));
 
     try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const avMod = require('expo-av') as any;
       const { Audio } = avMod;
 

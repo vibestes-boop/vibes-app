@@ -1,20 +1,25 @@
-import { useCallback, useState } from 'react';
-import {
-  View, Text, StyleSheet, Pressable,
-  ActivityIndicator, RefreshControl,
-  Modal, TextInput, TouchableOpacity,
-} from 'react-native';
-import { Image } from 'expo-image';
-import { FlashList } from '@shopify/flash-list';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
-import { MessageCircle, PenSquare, Search, X, User } from 'lucide-react-native';
-import * as Haptics from 'expo-haptics';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
 import { useAuthStore } from '@/lib/authStore';
-import { useConversations, useOrCreateConversation, type Conversation } from '@/lib/useMessages';
+import { supabase } from '@/lib/supabase';
+import { useConversations,useOrCreateConversation,type Conversation } from '@/lib/useMessages';
 import { useTheme } from '@/lib/useTheme';
+import { FlashList } from '@shopify/flash-list';
+import { useQuery } from '@tanstack/react-query';
+import * as Haptics from 'expo-haptics';
+import { Image } from 'expo-image';
+import { router } from 'expo-router';
+import { MessageCircle,PenSquare,Search,User,X } from 'lucide-react-native';
+import { useCallback,useState } from 'react';
+import {
+ActivityIndicator,
+Modal,
+Pressable,
+RefreshControl,
+StyleSheet,
+Text,
+TextInput,TouchableOpacity,
+View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function timeAgo(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -28,7 +33,6 @@ function timeAgo(dateStr: string): string {
 }
 
 function ConvItem({ item }: { item: Conversation }) {
-  const initial = (item.other_user.username ?? '?')[0].toUpperCase();
   const hasUnread = item.unread_count > 0;
   const { colors } = useTheme();
 
@@ -165,7 +169,6 @@ function NewMessageModal({ visible, onClose }: { visible: boolean; onClose: () =
             keyExtractor={(u) => u.id}
             estimatedItemSize={56}
             renderItem={({ item }) => {
-              const initial = (item.username ?? '?')[0].toUpperCase();
               return (
                 <TouchableOpacity style={modal.userRow} onPress={() => handleSelect(item)} activeOpacity={0.7}>
                   {item.avatar_url ? (

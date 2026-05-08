@@ -6,11 +6,11 @@
  * In Production/Dev Build: vollständige AR-Kamera
  */
 
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { useRouter } from 'expo-router';
 import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import React from 'react';
+import { StyleSheet,Text,TouchableOpacity,View } from 'react-native';
 
 // ─── Expo Go Detection ────────────────────────────────────────────────────────
 const isExpoGo = Constants.appOwnership === 'expo';

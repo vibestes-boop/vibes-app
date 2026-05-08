@@ -1,8 +1,7 @@
-import { useEffect, useRef } from 'react';
-import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import { useEffect,useRef } from 'react';
+import { Platform } from 'react-native';
 import { useAuthStore } from './authStore';
-import { useQueryClient } from '@tanstack/react-query';
 
 // Expo Project ID aus app.json (für getExpoPushTokenAsync in Expo SDK 54 erforderlich)
 const EXPO_PROJECT_ID = '02ab536a-5836-4560-a5ec-2dfd6e059f90';
@@ -117,6 +116,7 @@ export function usePushNotifications() {
         __DEV__ && console.log('[PushNotif] Getippt:', data);
 
         // Lazy import um circular dep zu vermeiden
+// eslint-disable-next-line @typescript-eslint/no-require-imports
         const { router } = require('expo-router');
 
         if (data?.type === 'message' && data?.conversationId) {

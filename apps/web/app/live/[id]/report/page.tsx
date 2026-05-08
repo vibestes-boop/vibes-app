@@ -7,7 +7,6 @@
 // -----------------------------------------------------------------------------
 
 import { use, useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { Route } from 'next';
 import { ArrowLeft, Flag, CheckCircle2 } from 'lucide-react';
@@ -30,7 +29,6 @@ const REASONS: Array<{ value: string; label: string; description: string }> = [
 
 export default function ReportPage({ params }: PageProps) {
   const { id } = use(params);
-  const router = useRouter();
   const [selectedReason, setSelectedReason] = useState('');
   const [details, setDetails] = useState('');
   const [submitted, setSubmitted] = useState(false);

@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
-import { View, Text } from 'react-native';
+import { useTheme } from '@/lib/useTheme';
 import { LinearGradient } from 'expo-linear-gradient';
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+import { useEffect,useState } from 'react';
+import { Text,View } from 'react-native';
+import { useAnimatedStyle,useSharedValue,withTiming } from 'react-native-reanimated';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View, Text: _animNS?.Text ?? _animMod?.Text };
-import { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-import { useTheme } from '@/lib/useTheme';
 
 /** Score-Farbe anhand von Schwellenwerten */
 function vibeRingColor(pct: number): string {

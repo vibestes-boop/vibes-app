@@ -9,8 +9,8 @@
  * Schließt User aus denen man bereits folgt (und sich selbst).
  */
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from './supabase';
 import { useAuthStore } from './authStore';
+import { supabase } from './supabase';
 
 export type DiscoverUser = {
   id: string;

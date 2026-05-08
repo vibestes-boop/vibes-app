@@ -15,17 +15,17 @@
  *   👏  clap       — Klatschen
  *   🙌  raise      — Hoch
  */
-import React, { memo } from 'react';
-import { Text, View } from 'react-native';
-import Svg, {
-  Circle,
-  Defs,
-  Ellipse,
-  G,
-  LinearGradient,
-  Path,
-  RadialGradient,
-  Stop,
+import React,{ memo } from 'react';
+import { Text,View } from 'react-native';
+import Svg,{
+Circle,
+Defs,
+Ellipse,
+G,
+LinearGradient,
+Path,
+RadialGradient,
+Stop,
 } from 'react-native-svg';
 
 export type LiveReactionEmoji = '❤️' | '🔥' | '🤣' | '👏' | '🙌';

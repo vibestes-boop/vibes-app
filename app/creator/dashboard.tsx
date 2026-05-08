@@ -5,41 +5,58 @@
  * Accent = colors.accent.primary (Weiß im Dark, Schwarz im Light Mode).
  */
 
-import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, Pressable, ScrollView,
-  ActivityIndicator, RefreshControl, Dimensions,
-} from 'react-native';
+EngagementHoursHeatmap,
+EngagementHoursHeatmapEmpty,
+} from '@/components/creator/EngagementHoursHeatmap';
+import { useAuthStore } from '@/lib/authStore';
+import {
+fmtDuration,
+fmtNum,
+formatDelta,
+useCreatorEarnings,
+useCreatorEngagementHours,
+useCreatorGiftHistory,
+useCreatorOverview,
+useCreatorTopPosts,
+useCreatorWatchTime,
+useFollowerGrowth,
+type AnalyticsPeriod,
+} from '@/lib/useAnalytics';
+import { usePostDraftsCloud } from '@/lib/usePostDraftsCloud';
+import { useScheduledPosts } from '@/lib/useScheduledPosts';
+import { useTheme } from '@/lib/useTheme';
 import { Image } from 'expo-image';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
-  ArrowLeft, Eye, Heart, MessageCircle, Users,
-  TrendingUp, TrendingDown, Sparkles, Play,
-  Diamond, ChevronRight, BarChart2, Gift, Radio,
-  Clock, FileText, Timer,
+ArrowLeft,
+BarChart2,
+ChevronRight,
+Clock,
+Diamond,
+Eye,
+FileText,
+Heart,MessageCircle,
+Play,
+Radio,
+Sparkles,
+Timer,
+TrendingDown,
+TrendingUp,
+Users
 } from 'lucide-react-native';
-import { useAuthStore } from '@/lib/authStore';
-import { useTheme } from '@/lib/useTheme';
+import React,{ useState } from 'react';
 import {
-  useCreatorOverview,
-  useCreatorEarnings,
-  useCreatorTopPosts,
-  useCreatorGiftHistory,
-  useFollowerGrowth,
-  useCreatorEngagementHours,
-  useCreatorWatchTime,
-  fmtNum,
-  fmtDuration,
-  formatDelta,
-  type AnalyticsPeriod,
-} from '@/lib/useAnalytics';
-import {
-  EngagementHoursHeatmap,
-  EngagementHoursHeatmapEmpty,
-} from '@/components/creator/EngagementHoursHeatmap';
-import { useScheduledPosts } from '@/lib/useScheduledPosts';
-import { usePostDraftsCloud } from '@/lib/usePostDraftsCloud';
+ActivityIndicator,
+Dimensions,
+Pressable,
+RefreshControl,
+ScrollView,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width: W } = Dimensions.get('window');
 

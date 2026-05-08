@@ -18,19 +18,19 @@
  * Tap schließt das Sheet automatisch (außer bei explizit `keepOpen: true`).
  */
 
+import { BlurView } from 'expo-blur';
+import * as Haptics from 'expo-haptics';
+import { X as XIcon } from 'lucide-react-native';
 import React from 'react';
 import {
-  Modal,
-  View,
-  Text,
-  Pressable,
-  StyleSheet,
-  ScrollView,
-  Dimensions,
+Dimensions,
+Modal,
+Pressable,
+ScrollView,
+StyleSheet,
+Text,
+View,
 } from 'react-native';
-import { BlurView } from 'expo-blur';
-import { X as XIcon } from 'lucide-react-native';
-import * as Haptics from 'expo-haptics';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 

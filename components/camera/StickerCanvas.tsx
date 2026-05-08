@@ -8,15 +8,15 @@
  *   Die Größe steuert der Canvas-Container
  */
 
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import {
-  Canvas,
-  Skottie,
-  useClock,           // ← aus Skia (wraps Reanimated intern)
-} from '@shopify/react-native-skia';
-import { useDerivedValue } from 'react-native-reanimated';
 import { getStickerAnimation } from '@/lib/stickerLottie';
+import {
+Canvas,
+Skottie,
+useClock, // ← aus Skia (wraps Reanimated intern)
+} from '@shopify/react-native-skia';
+import React,{ useMemo } from 'react';
+import { StyleSheet,Text,View } from 'react-native';
+import { useDerivedValue } from 'react-native-reanimated';
 
 const STICKER_EMOJI: Record<string, string> = {
   sunglasses: '🕶️',

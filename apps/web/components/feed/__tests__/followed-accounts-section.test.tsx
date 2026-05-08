@@ -19,7 +19,7 @@ import type { FollowedAccount } from '@/lib/data/feed';
 // nicht nativ bringt. Wir stubben die Portal-Variante auf eine plain-div-
 // Implementierung, sodass der Sheet-Inhalt synchron im Test-DOM rendert.
 jest.mock('@radix-ui/react-dialog', () => {
-  const React = require('react');
+  const React = jest.requireActual<typeof import('react')>('react');
   const Passthrough = ({ children }: { children?: React.ReactNode }) => <>{children}</>;
   return {
     Root: ({

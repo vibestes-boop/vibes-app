@@ -6,20 +6,26 @@
  * Layer 2: Apps (WhatsApp, Telegram, Link kopieren, …)
  * Layer 3: Aktionen (Melden, Sperren, QR-Code, Nachricht)
  */
-import { useState } from 'react';
-import {
-  View, Text, Modal, Pressable, ScrollView,
-  TextInput, Share, Clipboard, Alert,
-  StyleSheet, ActivityIndicator,
-} from 'react-native';
-import { Image } from 'expo-image';
-import { Search, X, Copy, Share2, Check, Flag, UserX, QrCode, Send } from 'lucide-react-native';
+import { useAuthStore } from '@/lib/authStore';
+import { supabase } from '@/lib/supabase';
+import { useOrCreateConversation,useSendMessage } from '@/lib/useMessages';
 import { useQuery } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
-import { supabase } from '@/lib/supabase';
-import { useAuthStore } from '@/lib/authStore';
-import { useOrCreateConversation, useSendMessage } from '@/lib/useMessages';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
+import { Check,Flag,QrCode,Search,Send,UserX,X } from 'lucide-react-native';
+import { useState } from 'react';
+import {
+ActivityIndicator,
+Alert,
+Clipboard,
+Modal,Pressable,ScrollView,
+Share,
+StyleSheet,
+Text,
+TextInput,
+View,
+} from 'react-native';
 
 // ─── Typen ────────────────────────────────────────────────────────────────────
 type ShareTarget = { id: string; username: string | null; avatar_url: string | null };
@@ -84,7 +90,11 @@ export function ProfileShareSheet({ visible, onClose, userId, username, avatarUr
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setSelected((prev) => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
       return next;
     });
   };

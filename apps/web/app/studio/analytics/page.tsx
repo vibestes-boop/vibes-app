@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Route } from 'next';
-import { Eye, Heart, MessageCircle, Clock3, Users, Film, Image as ImageIcon } from 'lucide-react';
+import { Eye, Clock3, Users, Film, Image as ImageIcon } from 'lucide-react';
 import {
   getFollowerGrowth,
   getPeakHours,

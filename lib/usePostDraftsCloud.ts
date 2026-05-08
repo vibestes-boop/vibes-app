@@ -13,10 +13,10 @@
  *   • Cross-Device: User kann auf Phone anfangen, auf Tablet weiterschreiben.
  */
 
-import { useCallback, useEffect } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from './supabase';
+import { useMutation,useQuery,useQueryClient } from '@tanstack/react-query';
+import { useCallback,useEffect } from 'react';
 import { useAuthStore } from './authStore';
+import { supabase } from './supabase';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 

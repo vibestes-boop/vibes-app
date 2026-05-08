@@ -1,6 +1,5 @@
-import { useRef, useCallback, useEffect } from 'react';
-import { AppState, type AppStateStatus } from 'react-native';
-import { type ViewToken } from 'react-native';
+import { useCallback,useEffect,useRef } from 'react';
+import { AppState,type AppStateStatus,type ViewToken } from 'react-native';
 import { supabase } from './supabase';
 
 // ─── Konstanten ────────────────────────────────────────────

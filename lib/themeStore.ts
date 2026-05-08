@@ -8,10 +8,10 @@
  * Standard: 'system' (folgt iOS Dark/Light automatisch)
  */
 
-import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { darkColors, lightColors, type ThemeColors, type ThemeMode } from './theme';
+import { create } from 'zustand';
+import { createJSONStorage,persist } from 'zustand/middleware';
+import { darkColors,lightColors,type ThemeColors,type ThemeMode } from './theme';
 
 interface ThemeStore {
   mode: ThemeMode;

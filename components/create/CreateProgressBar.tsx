@@ -1,16 +1,16 @@
+import { X } from 'lucide-react-native';
 import { useEffect } from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+import { Pressable,StyleSheet,Text,View } from 'react-native';
+import {
+useAnimatedStyle,
+useSharedValue,
+withRepeat,
+withSequence,
+withTiming,
+} from 'react-native-reanimated';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
-import {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withRepeat,
-  withSequence,
-} from 'react-native-reanimated';
-import { X } from 'lucide-react-native';
 
 interface CreateProgressBarProps {
   visible: boolean;

@@ -56,7 +56,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
           }}
         >
           {session.thumbnail_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
+
             <img
               src={session.thumbnail_url}
               alt=""
@@ -207,7 +207,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
             }}
           >
             {session.host?.avatar_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
+
               <img
                 src={session.host.avatar_url}
                 alt=""

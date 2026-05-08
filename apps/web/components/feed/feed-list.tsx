@@ -87,6 +87,8 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
 
   // ── Live-Sessions für Feed-Injection (v1.w.UI.229) ────────────────────────
   // Einmalig beim Mount gefetcht — wir wollen keine Realtime-Volatilität im Feed.
+  // Die Route ist kurz gecached; kein `no-store`, damit Browser-Restore nicht
+  // unnötig durch diesen nicht-personalisierten Check blockiert wird.
   // Limit 6, gecycled falls weniger Sessions als 6-Post-Blöcke vorhanden.
   const [liveSessions, setLiveSessions] = useState<LiveFeedSession[]>([]);
   useEffect(() => {
@@ -96,7 +98,7 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
     const controller = new AbortController();
     let cancelled = false;
 
-    fetch('/api/feed/live', { cache: 'no-store', signal: controller.signal })
+    fetch('/api/feed/live', { signal: controller.signal })
       .then((r) => (r.ok ? r.json() : []))
       .then((data: LiveFeedSession[]) => {
         if (!cancelled && Array.isArray(data) && data.length > 0) {

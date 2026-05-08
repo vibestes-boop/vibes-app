@@ -1,6 +1,6 @@
-import { View, Text, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Users } from 'lucide-react-native';
+import { StyleSheet,Text,View } from 'react-native';
 import { createStyles as styles } from './createStyles';
 
 export function CreateGuildBanner({ guildName }: { guildName: string }) {

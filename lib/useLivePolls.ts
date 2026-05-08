@@ -13,10 +13,10 @@
  *   useCloseLivePoll()           → { closePoll }
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from './supabase';
+import { useMutation,useQuery,useQueryClient } from '@tanstack/react-query';
+import { useCallback,useEffect } from 'react';
 import { useAuthStore } from './authStore';
+import { supabase } from './supabase';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -34,7 +34,7 @@ interface RawPoll {
   question:   string;
   options:    string[];
   created_at: string;
-  tallies:    Array<{ option_index: number; vote_count: number }>;
+  tallies:    { option_index: number; vote_count: number }[];
 }
 
 // ─── Active-Poll Query ──────────────────────────────────────────────────────

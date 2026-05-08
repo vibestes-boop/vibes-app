@@ -48,13 +48,7 @@ const ROW_BASE =
 
 // ─── Inline expand form ───────────────────────────────────────────────────────
 
-function InlineForm({
-  onClose,
-  children,
-}: {
-  onClose: () => void;
-  children: React.ReactNode;
-}) {
+function InlineForm({ children }: { children: React.ReactNode }) {
   return (
     <div className="border-t border-border bg-muted/30 px-4 py-3">
       {children}
@@ -93,7 +87,7 @@ function ChangeEmailForm({
 
   if (status === 'ok') {
     return (
-      <InlineForm onClose={onClose}>
+      <InlineForm>
         <div className="flex items-start gap-2 text-sm text-green-600 dark:text-green-400">
           <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
           <span>{labels.securityEmailSuccess}</span>
@@ -110,7 +104,7 @@ function ChangeEmailForm({
   }
 
   return (
-    <InlineForm onClose={onClose}>
+    <InlineForm>
       <form onSubmit={handleSubmit} className="flex flex-col gap-2">
         <input
           type="email"
@@ -194,7 +188,7 @@ function ChangePasswordForm({
 
   if (status === 'ok') {
     return (
-      <InlineForm onClose={onClose}>
+      <InlineForm>
         <div className="flex items-start gap-2 text-sm text-green-600 dark:text-green-400">
           <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" />
           <span>{labels.securityPasswordSuccess}</span>
@@ -211,7 +205,7 @@ function ChangePasswordForm({
   }
 
   return (
-    <InlineForm onClose={onClose}>
+    <InlineForm>
       <form onSubmit={handleSubmit} className="flex flex-col gap-2">
         <input
           type="password"

@@ -40,7 +40,7 @@ export function resolve(
   for (const p of parts) {
     if (node == null || typeof node !== 'object') {
       if (process.env.NODE_ENV !== 'production') {
-        // eslint-disable-next-line no-console
+
         console.warn(`[i18n] missing key: ${key}`);
       }
       return key;
@@ -49,7 +49,7 @@ export function resolve(
   }
   if (typeof node !== 'string') {
     if (process.env.NODE_ENV !== 'production') {
-      // eslint-disable-next-line no-console
+
       console.warn(`[i18n] key is not a leaf string: ${key}`);
     }
     return key;

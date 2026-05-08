@@ -30,6 +30,14 @@ yarn-error.*
 test-results/
 playwright-report/
 
+# Coverage / build artifacts
+coverage/
+.next/
+apps/web/.next/
+apps/web/coverage/
+apps/web/test-results/
+apps/web/playwright-report/
+
 # macOS
 .DS_Store
 *.pem
@@ -48,6 +56,9 @@ playwright-report/
 # Supabase CLI cache
 supabase/.temp/
 .vercel
+
+# Legacy/local sibling app copy. The real web app lives in apps/web.
+vibes-web/
 
 # Remotion render outputs
 apps/remotion/out/*

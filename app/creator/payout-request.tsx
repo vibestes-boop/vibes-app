@@ -3,19 +3,23 @@
  * Design: App-native Monochrom-Stil
  */
 
-import React, { useState } from 'react';
+import { useAuthStore } from '@/lib/authStore';
+import { supabase } from '@/lib/supabase';
+import { fmtNum,useCreatorEarnings } from '@/lib/useAnalytics';
+import { useTheme } from '@/lib/useTheme';
+import { impactAsync,ImpactFeedbackStyle,notificationAsync,NotificationFeedbackType } from 'expo-haptics';
+import { useRouter } from 'expo-router';
+import { AlertCircle,ArrowLeft,CheckCircle2,CreditCard,Mail } from 'lucide-react-native';
+import React,{ useState } from 'react';
 import {
-  View, Text, StyleSheet, Pressable, ScrollView,
-  TextInput, ActivityIndicator, KeyboardAvoidingView, Platform,
+ActivityIndicator,KeyboardAvoidingView,Platform,
+Pressable,ScrollView,
+StyleSheet,
+Text,
+TextInput,
+View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { ArrowLeft, CreditCard, Mail, AlertCircle, CheckCircle2 } from 'lucide-react-native';
-import { useTheme } from '@/lib/useTheme';
-import { useAuthStore } from '@/lib/authStore';
-import { useCreatorEarnings, fmtNum } from '@/lib/useAnalytics';
-import { supabase } from '@/lib/supabase';
-import { notificationAsync, NotificationFeedbackType, impactAsync, ImpactFeedbackStyle } from 'expo-haptics';
 
 const MIN_PAYOUT = 2500;
 const RATE       = 0.02; // 1 Diamond = 2 Cent

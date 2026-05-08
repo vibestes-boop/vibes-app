@@ -1,10 +1,10 @@
-import { useRef } from 'react';
-import { View, TextInput, Pressable } from 'react-native';
-import { Search, X, SlidersHorizontal } from 'lucide-react-native';
-import * as Haptics from 'expo-haptics';
-import { getExploreStyles } from './exploreStyles';
 import type { ExploreSortMode } from '@/lib/useExplore';
 import { useTheme } from '@/lib/useTheme';
+import * as Haptics from 'expo-haptics';
+import { Search,SlidersHorizontal,X } from 'lucide-react-native';
+import { useRef } from 'react';
+import { Pressable,TextInput,View } from 'react-native';
+import { getExploreStyles } from './exploreStyles';
 
 export function ExploreSearchBar({
   query,

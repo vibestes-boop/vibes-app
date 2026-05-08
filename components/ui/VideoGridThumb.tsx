@@ -9,10 +9,10 @@
  *   - Statisches Bild: ~0 MB RAM extra, sofort sichtbar
  *   - Video-Fallback: Video-Decoder initialisiert + erstes Frame decodiert (kostspielig)
  */
-import { View, StyleSheet } from 'react-native';
+import { ResizeMode,Video } from 'expo-av';
 import { Image } from 'expo-image';
-import { Video, ResizeMode } from 'expo-av';
 import { Play } from 'lucide-react-native';
+import { StyleSheet,View } from 'react-native';
 
 type Props = {
   uri: string;

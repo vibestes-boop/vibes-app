@@ -12,24 +12,24 @@
  * Co-Host-spezifische Blocklist. Ein User auf dieser Liste kann die Live
  * weiter als Viewer anschauen, aber NICHT mehr als Co-Host beitreten.
  */
-import { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  ActivityIndicator,
-  Alert,
-  FlatList,
-} from 'react-native';
+import { useAuthStore } from '@/lib/authStore';
+import { supabase } from '@/lib/supabase';
+import { useTheme } from '@/lib/useTheme';
+import { useQuery,useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
+import { ArrowLeft,Info,ShieldOff,UserX } from 'lucide-react-native';
+import { useCallback,useState } from 'react';
+import {
+ActivityIndicator,
+Alert,
+FlatList,
+Pressable,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, ShieldOff, UserX, Info } from 'lucide-react-native';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
-import { useAuthStore } from '@/lib/authStore';
-import { useTheme } from '@/lib/useTheme';
 
 // ─── Typen ───────────────────────────────────────────────────────────────
 interface CoHostBlock {

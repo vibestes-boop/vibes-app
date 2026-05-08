@@ -6,9 +6,9 @@
  * - #hashtag   → cyan,  öffnet Explore mit ausgewähltem Tag
  * - Normaler Text → transparent/weiß
  */
-import { Text, Pressable, StyleSheet, TextStyle } from 'react-native';
-import { router } from 'expo-router';
 import * as Haptics from 'expo-haptics';
+import { router } from 'expo-router';
+import { StyleSheet,Text,TextStyle } from 'react-native';
 
 type Token =
   | { type: 'text'; value: string }

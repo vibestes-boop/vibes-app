@@ -3,25 +3,25 @@
  * Features: Search · Favoriten · Trending-Tab · Progress-Timer · BPM · Genre-Colors
  */
 
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import type { MusicTrack } from '@/lib/useMusicPicker';
+import { MUSIC_LIBRARY,useAudioPlayer,useFavorites } from '@/lib/useMusicPicker';
+import { impactAsync,ImpactFeedbackStyle } from 'expo-haptics';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Check,Flame,Heart,Music2,Search,Volume2,X } from 'lucide-react-native';
+import React,{ useEffect,useMemo,useRef,useState } from 'react';
 import {
-  View,
-  Text,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Dimensions,
-  Modal,
-  Animated,
-  PanResponder,
-  TextInput,
+Animated,
+Dimensions,
+Modal,
+PanResponder,
+Pressable,
+ScrollView,
+StyleSheet,
+Text,
+TextInput,
+View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { X, Music2, Check, Volume2, Search, Heart, Flame } from 'lucide-react-native';
-import { impactAsync, ImpactFeedbackStyle } from 'expo-haptics';
-import type { MusicTrack } from '@/lib/useMusicPicker';
-import { MUSIC_LIBRARY, GENRES, useAudioPlayer, useFavorites } from '@/lib/useMusicPicker';
 
 const { height: SH } = Dimensions.get('window');
 
@@ -269,7 +269,7 @@ export function MusicPickerSheet({ visible, selectedTrack, audioVolume, onSelect
   const searchRef = useRef<TextInput>(null);
 
   // Nur 3 Tabs: Trending | Alle | Favoriten
-  const TABS: Array<{ id: TabId; label: string }> = [
+  const TABS: { id: TabId; label: string }[] = [
     { id: 'trending',  label: '🔥 Trending' },
     { id: 'alle',      label: 'Alle' },
     { id: 'favoriten', label: '♥ Favoriten' },
@@ -304,9 +304,6 @@ export function MusicPickerSheet({ visible, selectedTrack, audioVolume, onSelect
     setVolumeState(v);
     setVolume(v);  // ändert laufende Audio-Instanz live
   };
-
-  // Neutral — kein lila Markenton
-  const accent = 'rgba(255,255,255,0.7)';
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>

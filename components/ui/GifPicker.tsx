@@ -3,22 +3,22 @@
  * Giphy-powered GIF search modal for DMs.
  * Falls back to trending GIFs when search is empty.
  */
-import { useState, useCallback, useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  Modal,
-  ActivityIndicator,
-  Dimensions,
-  KeyboardAvoidingView,
-  Platform,
-} from 'react-native';
 import { Image } from 'expo-image';
-import { X, Search } from 'lucide-react-native';
+import { Search,X } from 'lucide-react-native';
+import { useCallback,useEffect,useRef,useState } from 'react';
+import {
+ActivityIndicator,
+Dimensions,
+FlatList,
+KeyboardAvoidingView,
+Modal,
+Platform,
+Pressable,
+StyleSheet,
+Text,
+TextInput,
+View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { width: W } = Dimensions.get('window');

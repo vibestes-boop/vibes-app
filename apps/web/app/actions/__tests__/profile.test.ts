@@ -26,6 +26,7 @@ jest.mock('@/lib/supabase/server', () => ({
 
 jest.mock('next/cache', () => ({
   revalidatePath: jest.fn(),
+  revalidateTag: jest.fn(),
 }));
 
 // next/headers wird indirekt von supabase/server gezogen — der createClient-Mock
@@ -34,14 +35,16 @@ jest.mock('next/headers', () => ({
   cookies: jest.fn().mockResolvedValue({ getAll: () => [], set: jest.fn() }),
 }));
 
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { getUser } from '@/lib/auth/session';
 import { createClient } from '@/lib/supabase/server';
+import { PUBLIC_PROFILE_CACHE_TAG } from '@/lib/cache/tags';
 import { updateProfile, updateAvatar } from '../profile';
 
 const mockGetUser = getUser as jest.MockedFunction<typeof getUser>;
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
 const mockRevalidatePath = revalidatePath as jest.MockedFunction<typeof revalidatePath>;
+const mockRevalidateTag = revalidateTag as jest.MockedFunction<typeof revalidateTag>;
 
 // -----------------------------------------------------------------------------
 // Mini-Supabase-Mock für den Update-Pfad. Wir brauchen nur `from().update().eq()`.
@@ -63,7 +66,7 @@ function makeSupabaseMock(errorForUpdate: { message: string } | null = null): {
   let lastBuilder: UpdateBuilder | null = null;
 
   const client = {
-    from: jest.fn((_table: string) => {
+    from: jest.fn(() => {
       const builder: UpdateBuilder = {
         _updatePayload: undefined,
         _eqCalls: [],
@@ -241,12 +244,14 @@ describe('updateProfile — Cache-Invalidation', () => {
     expect(mockRevalidatePath).toHaveBeenCalledWith('/settings/profile');
     expect(mockRevalidatePath).toHaveBeenCalledWith('/', 'layout');
     expect(mockRevalidatePath).toHaveBeenCalledWith('/u/[username]', 'page');
+    expect(mockRevalidateTag).toHaveBeenCalledWith(PUBLIC_PROFILE_CACHE_TAG);
   });
 
   it('does NOT revalidate when validation fails', async () => {
     const result = await updateProfile(makeFormData({ display_name: '', bio: '' }));
     expect(result.ok).toBe(false);
     expect(mockRevalidatePath).not.toHaveBeenCalled();
+    expect(mockRevalidateTag).not.toHaveBeenCalled();
   });
 });
 
@@ -393,6 +398,7 @@ describe('updateAvatar — Write-Pfad & Cache-Invalidation', () => {
 
     expect(result).toEqual({ ok: false, error: 'db offline' });
     expect(mockRevalidatePath).not.toHaveBeenCalled();
+    expect(mockRevalidateTag).not.toHaveBeenCalled();
   });
 
   it('revalidates /settings/profile + layout + /u/[username] on success', async () => {
@@ -404,11 +410,13 @@ describe('updateAvatar — Write-Pfad & Cache-Invalidation', () => {
     expect(mockRevalidatePath).toHaveBeenCalledWith('/settings/profile');
     expect(mockRevalidatePath).toHaveBeenCalledWith('/', 'layout');
     expect(mockRevalidatePath).toHaveBeenCalledWith('/u/[username]', 'page');
+    expect(mockRevalidateTag).toHaveBeenCalledWith(PUBLIC_PROFILE_CACHE_TAG);
   });
 
   it('does NOT revalidate when URL validation fails', async () => {
     const result = await updateAvatar('https://evil.example/avatars/user-9/1.jpg');
     expect(result.ok).toBe(false);
     expect(mockRevalidatePath).not.toHaveBeenCalled();
+    expect(mockRevalidateTag).not.toHaveBeenCalled();
   });
 });

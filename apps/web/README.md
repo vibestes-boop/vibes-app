@@ -27,6 +27,19 @@ npm run dev
 
 Für einen funktionierenden Auth-Flow brauchst du mindestens `NEXT_PUBLIC_SUPABASE_URL` und `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Alle anderen Keys (LiveKit, Stripe, R2) sind in Phase 0 optional — ihre Features werden erst ab Phase 5 (Live), Phase 8 (Upload), Phase 10 (Payments) genutzt.
 
+### Supabase Query Timing
+
+Wenn der erste Load langsam wirkt, kannst du Supabase-Requests sichtbar machen:
+
+```bash
+SUPABASE_QUERY_TIMING=slow
+SUPABASE_QUERY_TIMING_SLOW_MS=250
+```
+
+In Vercel erscheinen dann Logs im Format `[supabase:timing] {...}` mit
+`endpoint`, `durationMs`, `status` und Query-Key-Namen. Es werden keine Header,
+Tokens, Query-Werte oder Response-Bodies geloggt.
+
 ---
 
 ## 📁 Struktur

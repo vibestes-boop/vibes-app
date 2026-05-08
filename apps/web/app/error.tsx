@@ -33,7 +33,7 @@ export default function GlobalError({
     });
 
     if (process.env.NODE_ENV !== 'production') {
-      // eslint-disable-next-line no-console
+
       console.error('[GlobalError]', error);
     }
   }, [error]);

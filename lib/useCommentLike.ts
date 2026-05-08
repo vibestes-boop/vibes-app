@@ -7,9 +7,9 @@
  * useCommentLikesBatch: Batch-Variante für CommentsSheet.
  * Lädt Like-Status für N Kommentare in 2 Queries statt 2×N.
  */
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from './supabase';
+import { useMutation,useQuery,useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from './authStore';
+import { supabase } from './supabase';
 
 // ── Typen ──────────────────────────────────────────────────────────────────
 export type CommentLikeState = {

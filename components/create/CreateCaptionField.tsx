@@ -5,18 +5,18 @@
  * Erkennt wenn der User # oder @ tippt → zeigt Vorschläge als Dropdown.
  * Tipp auf Vorschlag → fügt ihn in die Caption ein.
  */
-import { useState, useRef, useCallback } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  FlatList,
-  Pressable,
-  StyleSheet,
-} from 'react-native';
-import { Image } from 'expo-image';
 import { supabase } from '@/lib/supabase';
-import { CREATE_CAPTION_MAX, CREATE_SUGGESTED_TAGS } from './createConstants';
+import { Image } from 'expo-image';
+import { useCallback,useRef,useState } from 'react';
+import {
+FlatList,
+Pressable,
+StyleSheet,
+Text,
+TextInput,
+View,
+} from 'react-native';
+import { CREATE_CAPTION_MAX,CREATE_SUGGESTED_TAGS } from './createConstants';
 import { createStyles as styles } from './createStyles';
 
 // ─── Typen ──────────────────────────────────────────────────────────────────

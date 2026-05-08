@@ -8,9 +8,9 @@
  *   tinyld-light: 65 KB, >90% Genauigkeit, offline, 62+ Sprachen.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useAudioPlayer, useAudioPlayerStatus } from 'expo-audio';
+import { useAudioPlayer,useAudioPlayerStatus } from 'expo-audio';
 import * as Speech from 'expo-speech';
+import { useCallback,useEffect,useRef,useState } from 'react';
 import { detect } from 'tinyld/light';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
@@ -79,7 +79,7 @@ export function useVoiceReader(
     return () => {
       isMountedRef.current = false;
       abortRef.current?.abort();
-      try { player.pause(); } catch (_) { /* ignore */ }
+      try { player.pause(); } catch { /* ignore */ }
       Speech.stop(); // synchron, kein Promise
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -179,12 +179,12 @@ export function useVoiceReader(
       console.error('[VoiceReader] Playback error:', err);
       if (isMountedRef.current) playSpeech();
     }
-  }, [fetchAudioUrl, player, playSpeech, voiceRefUrl]);
+  }, [fetchAudioUrl, player, playSpeech]);
 
   // ── Stop ──────────────────────────────────────────────────────────────────
   const stop = useCallback(() => {
     abortRef.current?.abort();
-    try { player.pause(); } catch (_) { /* ignore */ }
+    try { player.pause(); } catch { /* ignore */ }
     Speech.stop(); // synchron
     if (isMountedRef.current) setState('idle');
   }, [player]);

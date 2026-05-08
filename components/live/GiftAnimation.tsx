@@ -7,18 +7,22 @@
  *                            oben transparent auslaufend — genau wie TikTok
  */
 
-import React, { useEffect, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Animated,
-  Dimensions,
-} from 'react-native';
+import { type IncomingGift } from '@/lib/useGifts';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { type IncomingGift } from '@/lib/useGifts';
+import React,{ useCallback,useEffect,useRef } from 'react';
+import {
+Animated,
+Dimensions,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
 import { GiftComboBurst } from './GiftComboBurst';
+
+import MaskedView from '@react-native-masked-view/masked-view';
+import { VideoView,useVideoPlayer } from 'expo-video';
+import Svg,{ Defs,Rect,Stop,LinearGradient as SvgGradient } from 'react-native-svg';
 
 // Lottie optional — braucht Dev Build
 let LottieView: React.ComponentType<{
@@ -28,8 +32,9 @@ let LottieView: React.ComponentType<{
   style: object;
 }> | null = null;
 try {
+// eslint-disable-next-line @typescript-eslint/no-require-imports
   LottieView = require('lottie-react-native').default;
-} catch (_) {}
+} catch {}
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
@@ -38,14 +43,6 @@ const PREMIUM_THRESHOLD = 750;
 
 // Höhe des Premium-Overlays: untere 50% des Bildschirms (fullwidth)
 const GIFT_AREA_HEIGHT = SCREEN_H * 0.50;
-
-import MaskedView from '@react-native-masked-view/masked-view';
-import { VideoView, useVideoPlayer } from 'expo-video';
-import Svg, { Defs, LinearGradient as SvgGradient, Stop, Rect } from 'react-native-svg';
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
-const _constMod = require('expo-constants') as any;
-const Constants = _constMod?.default ?? _constMod;
-
 // ─── Premium Overlay — TikTok-Style mit echtem Transparency-Fade ──────────────
 // MaskedView + LinearGradient Maske = echter Per-Pixel Alpha Fade nach oben.
 // Lottie-Animationen haben transparenten Hintergrund → perfekt für diesen Effekt.
@@ -65,11 +62,11 @@ function PremiumGiftOverlay({ gift }: { gift: IncomingGift }) {
     p.muted = false;
   });
 
-  const fadeOut = () => {
+  const fadeOut = useCallback(() => {
     Animated.timing(overlayOpacity, {
       toValue: 0, duration: 700, useNativeDriver: true,
     }).start();
-  };
+  }, [overlayOpacity]);
 
   useEffect(() => {
     if (!videoSource) return;
@@ -83,7 +80,7 @@ function PremiumGiftOverlay({ gift }: { gift: IncomingGift }) {
     const displaySec = videoSource ? 15 : 4;
     const t = setTimeout(fadeOut, displaySec * 1000);
     return () => clearTimeout(t);
-  }, []);
+  }, [fadeOut, slideY, videoSource]);
 
   const color = gift.gift.color ?? '#F59E0B';
 
@@ -237,7 +234,7 @@ function GiftPill({ gift, index, pillsBottomOffset }: {
     }, 4500);
 
     return () => clearTimeout(t);
-  }, []);
+  }, [giftScale, opacity, slideX]);
 
   // Combo-Counter ändert sich → Bounce-Animation triggern
   useEffect(() => {
@@ -252,7 +249,7 @@ function GiftPill({ gift, index, pillsBottomOffset }: {
       friction: 8,
       useNativeDriver: true,
     }).start();
-  }, [gift.comboCount]);
+  }, [gift.comboCount, comboScale]);
 
   const color   = gift.gift.color ?? '#FFFFFF';
   // Pills stapeln sich von pillsBottomOffset aufwärts — direkt über den Kommentaren
@@ -383,7 +380,7 @@ function BurstEmoji({
         ]),
       ]),
     ]).start();
-  }, []);
+  }, [delay, opacity, rotate, scale, translateX, translateY]);
 
   const spin = rotate.interpolate({
     inputRange: [-1, 1],

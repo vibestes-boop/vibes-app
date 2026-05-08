@@ -10,11 +10,11 @@
  * Upload läuft über uploadVoiceSample (→ Cloudflare R2).
  */
 
-import { useState, useCallback, useRef } from 'react';
 import { Audio } from 'expo-av';
+import { useCallback,useRef,useState } from 'react';
 import { Platform } from 'react-native';
-import { supabase } from './supabase';
 import { useAuthStore } from './authStore';
+import { supabase } from './supabase';
 import { uploadVoiceSample } from './uploadMedia';
 
 export type CloneState = 'idle' | 'recording' | 'recorded' | 'uploading' | 'saved' | 'error';

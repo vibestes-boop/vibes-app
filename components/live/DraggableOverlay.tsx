@@ -21,17 +21,17 @@
  * Später auch für Sticker, Produkt-Karten, Pinned-Comments nutzbar.
  */
 
-import React, { useCallback, useEffect, useState } from 'react';
-import { Dimensions, LayoutChangeEvent, StyleSheet } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  runOnJS,
-  Easing,
-} from 'react-native-reanimated';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import React,{ useCallback,useEffect,useState } from 'react';
+import { Dimensions,LayoutChangeEvent,StyleSheet } from 'react-native';
+import { Gesture,GestureDetector } from 'react-native-gesture-handler';
+import Animated,{
+Easing,
+runOnJS,
+useAnimatedStyle,
+useSharedValue,
+withTiming,
+} from 'react-native-reanimated';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 

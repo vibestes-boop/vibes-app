@@ -21,6 +21,10 @@ jest.mock('@/lib/supabase/server', () => ({
   createClient: jest.fn(),
 }));
 
+jest.mock('@/lib/supabase/public', () => ({
+  createPublicClient: jest.fn(),
+}));
+
 // `cache` aus react memoized per Request-Scope — außerhalb des Next.js-
 // Server-Runtimes ist das unpredictable. Identity-Wrap, damit jeder Test
 // frisch evaluiert.
@@ -42,22 +46,34 @@ jest.mock('next/headers', () => ({
   }),
 }));
 
+jest.mock('next/cache', () => ({
+  unstable_cache: <T extends (...args: unknown[]) => unknown>(fn: T) => fn,
+}));
+
 import { createClient } from '@/lib/supabase/server';
+import { createPublicClient } from '@/lib/supabase/public';
 import { createSupabaseMock, type SupabaseMockConfig } from '@/test-utils/supabase-mock';
 import {
   getForYouFeed,
   getFollowingFeed,
+  getPublicForYouFeed,
+  getExploreTrendingFeed,
+  getExploreNewestFeed,
+  getPublicExploreTrendingFeed,
+  getPublicExploreNewestFeed,
   getSuggestedFollows,
   getTrendingHashtags,
   searchAll,
   searchPaginated,
   getSuggestedFollowsPage,
   getDiscoverPeople,
+  getPublicDiscoverPeople,
   getMyFollowedAccounts,
   getPostsByTag,
 } from '../feed';
 
 const mockCreateClient = createClient as jest.MockedFunction<typeof createClient>;
+const mockCreatePublicClient = createPublicClient as jest.MockedFunction<typeof createPublicClient>;
 
 function setupSupabase(config: SupabaseMockConfig = {}) {
   const client = createSupabaseMock(config);
@@ -66,6 +82,7 @@ function setupSupabase(config: SupabaseMockConfig = {}) {
   // das ist nahe genug an der Realität (in Prod ist es pro Request auch
   // derselbe cookie-scope), und `_calls` zählt alles konsistent.
   mockCreateClient.mockResolvedValue(client as unknown as Awaited<ReturnType<typeof createClient>>);
+  mockCreatePublicClient.mockReturnValue(client as unknown as ReturnType<typeof createPublicClient>);
   return client;
 }
 
@@ -105,6 +122,36 @@ function makeRawPost(overrides: Partial<Record<string, unknown>> = {}) {
       avatar_url: null,
       verified: true,
     },
+    ...overrides,
+  };
+}
+
+function makeRpcPost(overrides: Partial<Record<string, unknown>> = {}) {
+  return {
+    id: 'p-1',
+    user_id: 'author-1',
+    caption: 'hello',
+    video_url: 'https://cdn.example/p-1.mp4',
+    media_type: 'video',
+    thumbnail_url: 'https://cdn.example/p-1.jpg',
+    view_count: 100,
+    like_count: 10,
+    comment_count: 2,
+    hashtags: ['vibes'],
+    allow_comments: true,
+    allow_duet: true,
+    allow_download: true,
+    women_only: false,
+    privacy: 'public',
+    aspect_ratio: 'portrait',
+    audio_url: null,
+    audio_volume: null,
+    created_at: '2026-04-20T10:00:00Z',
+    author_id: 'author-1',
+    author_username: 'alice',
+    author_display_name: 'Alice',
+    author_avatar_url: null,
+    author_verified: true,
     ...overrides,
   };
 }
@@ -321,6 +368,174 @@ describe('getForYouFeed', () => {
     const result = await getForYouFeed();
     expect(result).toHaveLength(1);
     expect(result[0].id).toBe('p-with-author');
+  });
+});
+
+describe('getPublicForYouFeed', () => {
+  it('uses the first-page anonymous public-feed RPC fast path', async () => {
+    const client = setupSupabase({
+      rpcs: {
+        get_public_feed_web_anon_first_page: {
+          data: [makeRpcPost()],
+          error: null,
+        },
+      },
+    });
+
+    const result = await getPublicForYouFeed({ limit: 10 });
+
+    expect(client.rpc).toHaveBeenCalledWith('get_public_feed_web_anon_first_page', {
+      result_limit: 10,
+    });
+    expect(mockCreateClient).not.toHaveBeenCalled();
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      id: 'p-1',
+      author: { id: 'author-1', username: 'alice' },
+      liked_by_me: false,
+      saved_by_me: false,
+      following_author: false,
+    });
+  });
+
+  it('uses the cursor-capable anonymous public-feed RPC for pagination', async () => {
+    const client = setupSupabase({
+      rpcs: {
+        get_public_feed_web_anon: {
+          data: [makeRpcPost()],
+          error: null,
+        },
+      },
+    });
+
+    const result = await getPublicForYouFeed({ limit: 10, before: '2026-05-07T18:00:00.000Z' });
+
+    expect(client.rpc).toHaveBeenCalledWith('get_public_feed_web_anon', {
+      result_limit: 10,
+      before_ts: '2026-05-07T18:00:00.000Z',
+      exclude_post_ids: [],
+    });
+    expect(mockCreateClient).not.toHaveBeenCalled();
+    expect(result).toHaveLength(1);
+  });
+});
+
+describe('Explore feed RPC paths', () => {
+  it('getExploreTrendingFeed uses the materialized explore RPC and hydrates viewer engagement', async () => {
+    const client = setupSupabase({
+      auth: { user: { id: 'viewer-1' } },
+      rpcs: {
+        get_public_explore_feed_web: {
+          data: [makeRpcPost()],
+          error: null,
+        },
+      },
+      tables: {
+        likes: { data: [{ post_id: 'p-1' }], error: null },
+        bookmarks: { data: [], error: null },
+        follows: { data: [{ following_id: 'author-1' }], error: null },
+        reposts: { data: [], error: null },
+      },
+    });
+
+    const result = await getExploreTrendingFeed(1, 24);
+
+    expect(client.rpc).toHaveBeenCalledWith('get_public_explore_feed_web', {
+      result_limit: 1,
+      result_offset: 24,
+      sort_key: 'trending',
+    });
+    expect(result).toMatchObject({
+      hasMore: true,
+      posts: [
+        {
+          id: 'p-1',
+          liked_by_me: true,
+          saved_by_me: false,
+          following_author: true,
+          reposted_by_me: false,
+          author: { id: 'author-1', username: 'alice' },
+        },
+      ],
+    });
+  });
+
+  it('getExploreNewestFeed falls back to the PostgREST newest query when the RPC is unavailable', async () => {
+    const client = setupSupabase({
+      auth: { user: null },
+      rpcs: {
+        get_public_explore_feed_web: {
+          data: null,
+          error: { code: '42883', message: 'function does not exist' },
+        },
+      },
+      tables: {
+        posts: { data: [makeRawPost({ id: 'newest-p1' })], error: null },
+      },
+    });
+
+    const result = await getExploreNewestFeed(12, 6);
+
+    expect(result.posts).toHaveLength(1);
+    expect(result.posts[0]).toMatchObject({ id: 'newest-p1', author: { username: 'alice' } });
+    expect(result.hasMore).toBe(false);
+
+    const postsChain = client.from.mock.results.find(
+      (_r, i) => (client.from.mock.calls[i] as unknown[])[0] === 'posts',
+    )?.value as { order: jest.Mock; range: jest.Mock };
+    expect(postsChain.order).toHaveBeenCalledWith('created_at', { ascending: false });
+    expect(postsChain.range).toHaveBeenCalledWith(6, 17);
+  });
+
+  it('getPublicExploreTrendingFeed uses the public-client RPC fast path', async () => {
+    const client = setupSupabase({
+      rpcs: {
+        get_public_explore_feed_web: {
+          data: [makeRpcPost()],
+          error: null,
+        },
+      },
+    });
+
+    const result = await getPublicExploreTrendingFeed(1, 2);
+
+    expect(mockCreateClient).not.toHaveBeenCalled();
+    expect(client.rpc).toHaveBeenCalledWith('get_public_explore_feed_web', {
+      result_limit: 1,
+      result_offset: 2,
+      sort_key: 'trending',
+    });
+    expect(result).toMatchObject({
+      hasMore: true,
+      posts: [{ id: 'p-1', liked_by_me: false, saved_by_me: false }],
+    });
+  });
+
+  it('getPublicExploreNewestFeed falls back to the public PostgREST newest query', async () => {
+    const client = setupSupabase({
+      rpcs: {
+        get_public_explore_feed_web: {
+          data: null,
+          error: { code: 'PGRST202', message: 'not in schema cache' },
+        },
+      },
+      tables: {
+        posts: { data: [makeRawPost({ id: 'public-newest-p1' })], error: null },
+      },
+    });
+
+    const result = await getPublicExploreNewestFeed(12, 12);
+
+    expect(mockCreateClient).not.toHaveBeenCalled();
+    expect(result.posts).toHaveLength(1);
+    expect(result.posts[0]).toMatchObject({ id: 'public-newest-p1' });
+    expect(result.hasMore).toBe(false);
+
+    const postsChain = client.from.mock.results.find(
+      (_r, i) => (client.from.mock.calls[i] as unknown[])[0] === 'posts',
+    )?.value as { order: jest.Mock; range: jest.Mock };
+    expect(postsChain.order).toHaveBeenCalledWith('created_at', { ascending: false });
+    expect(postsChain.range).toHaveBeenCalledWith(12, 23);
   });
 });
 
@@ -1021,6 +1236,44 @@ describe('getPostsByTag', () => {
 // -----------------------------------------------------------------------------
 
 describe('getDiscoverPeople', () => {
+  it('getPublicDiscoverPeople uses the anonymous public people RPC', async () => {
+    const client = setupSupabase({
+      rpcs: {
+        get_public_discover_people_web: {
+          data: [
+            {
+              id: 'u1',
+              username: 'alice',
+              display_name: 'Alice',
+              avatar_url: null,
+              verified: true,
+              reason: 'new',
+            },
+          ],
+          error: null,
+        },
+      },
+    });
+
+    const result = await getPublicDiscoverPeople(12);
+
+    expect(client.rpc).toHaveBeenCalledWith('get_public_discover_people_web', {
+      result_limit: 12,
+    });
+    expect(mockCreatePublicClient).toHaveBeenCalledTimes(1);
+    expect(mockCreateClient).not.toHaveBeenCalled();
+    expect(result).toEqual([
+      {
+        id: 'u1',
+        username: 'alice',
+        display_name: 'Alice',
+        avatar_url: null,
+        verified: true,
+        reason: 'new',
+      },
+    ]);
+  });
+
   it('returns newest profiles with reason=new for anon users', async () => {
     setupSupabase({
       auth: { user: null },

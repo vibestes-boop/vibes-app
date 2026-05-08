@@ -5,10 +5,10 @@ import Link from 'next/link';
 import type { Route } from 'next';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { BadgeCheck, Lock, Send, Loader2, Heart, X } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
-import { createComment, toggleCommentLike } from '@/app/actions/engagement';
+import { createComment, fetchPostCommentsForFeed, toggleCommentLike } from '@/app/actions/engagement';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+import type { FeedPost } from '@/lib/data/feed';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
@@ -61,83 +61,24 @@ interface CommentRow {
     avatar_url: string | null;
     verified: boolean;
   };
+  pending?: boolean;
 }
 
-function useComments(postId: string, enabled: boolean) {
+type FeedSnapshot = Array<[readonly unknown[], FeedPost[] | undefined]>;
+
+interface CreateCommentContext {
+  previousComments?: CommentRow[];
+  previousFeeds: FeedSnapshot;
+  rawBody: string;
+  temporaryId: string;
+}
+
+function useComments(postId: string, enabled: boolean, viewerId: string | null) {
   return useQuery({
     queryKey: ['comments', postId],
     enabled,
     staleTime: 30_000,
-    queryFn: async (): Promise<CommentRow[]> => {
-      const supabase = createClient();
-
-      // Mobile-DB-Drift: (1) `text` → aliasiert auf `body` für den Web-Contract.
-      // (2) `comments` hat keine `like_count`-Spalte und keine `deleted_at`-Spalte
-      // (hard-delete-Modell), also beide in der Projektion bzw. im Filter raus.
-      // (3) Profiles-`is_verified` → aliasiert auf `verified`.
-      const { data, error } = await supabase
-        .from('comments')
-        .select(
-          `id, post_id, user_id, body:text, created_at,
-           author:profiles!comments_user_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )`,
-        )
-        .eq('post_id', postId)
-        .order('created_at', { ascending: false })
-        .limit(PAGE_SIZE);
-
-      if (error) throw new Error(error.message);
-
-      const rows = data ?? [];
-      if (rows.length === 0) return [];
-
-      const ids = rows.map((r) => r.id as string);
-
-      // v1.w.UI.57 — Likes aus `comment_likes`-Tabelle nachladen.
-      // Zwei parallele Queries:
-      //  (a) Alle Likes für diese Kommentare → client-side count per ID
-      //  (b) Eigene Likes des eingeloggten Users → liked_by_me-Set
-      // Fehler (z.B. Tabelle noch nicht deployed) werden silent behandelt
-      // und fallen auf like_count=0 / liked_by_me=false zurück.
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      const [allLikesRes, myLikesRes] = await Promise.all([
-        supabase
-          .from('comment_likes')
-          .select('comment_id')
-          .in('comment_id', ids),
-        user
-          ? supabase
-              .from('comment_likes')
-              .select('comment_id')
-              .eq('user_id', user.id)
-              .in('comment_id', ids)
-          : Promise.resolve({ data: [] as Array<{ comment_id: string }> }),
-      ]);
-
-      // Anzahl pro Kommentar aggregieren.
-      const countMap = new Map<string, number>();
-      for (const r of allLikesRes.data ?? []) {
-        countMap.set(r.comment_id, (countMap.get(r.comment_id) ?? 0) + 1);
-      }
-      const likedSet = new Set(
-        ((myLikesRes as { data: Array<{ comment_id: string }> | null }).data ?? []).map(
-          (r) => r.comment_id,
-        ),
-      );
-
-      return rows.map((row) => {
-        const author = Array.isArray(row.author) ? row.author[0] : row.author;
-        const id = row.id as string;
-        return {
-          ...(row as unknown as Omit<CommentRow, 'like_count' | 'liked_by_me'>),
-          like_count: countMap.get(id) ?? 0,
-          liked_by_me: likedSet.has(id),
-          author,
-        };
-      }) as CommentRow[];
-    },
+    queryFn: () => fetchPostCommentsForFeed(postId, PAGE_SIZE, Boolean(viewerId)),
   });
 }
 
@@ -159,6 +100,64 @@ function formatAgo(iso: string): string {
   return `${Math.floor(diffDay / 365)}y`;
 }
 
+function createTemporaryId(): string {
+  return `optimistic-${globalThis.crypto?.randomUUID?.() ?? Date.now().toString(36)}`;
+}
+
+function makeOptimisticComment({
+  postId,
+  userId,
+  body,
+  temporaryId,
+}: {
+  postId: string;
+  userId: string;
+  body: string;
+  temporaryId: string;
+}): CommentRow {
+  return {
+    id: temporaryId,
+    post_id: postId,
+    user_id: userId,
+    body,
+    like_count: 0,
+    liked_by_me: false,
+    created_at: new Date().toISOString(),
+    pending: true,
+    author: {
+      id: userId,
+      username: 'du',
+      display_name: 'Du',
+      avatar_url: null,
+      verified: false,
+    },
+  };
+}
+
+function incrementFeedCommentCount(postId: string, posts?: FeedPost[]): FeedPost[] | undefined {
+  return posts?.map((post) =>
+    post.id === postId
+      ? { ...post, comment_count: Math.max(0, post.comment_count) + 1 }
+      : post,
+  );
+}
+
+function replaceOptimisticComment(
+  rows: CommentRow[] | undefined,
+  temporaryId: string,
+  savedComment: CommentRow,
+): CommentRow[] {
+  const existing = rows ?? [];
+  const withoutDuplicate = existing.filter((row) => row.id !== savedComment.id);
+  let replaced = false;
+  const next = withoutDuplicate.map((row) => {
+    if (row.id !== temporaryId) return row;
+    replaced = true;
+    return savedComment;
+  });
+  return replaced ? next : [savedComment, ...next];
+}
+
 export function CommentsBody({ postId, allowComments, viewerId, variant, onClose }: CommentsBodyProps) {
   const qc = useQueryClient();
   const [body, setBody] = useState('');
@@ -169,27 +168,55 @@ export function CommentsBody({ postId, allowComments, viewerId, variant, onClose
   // nicht gerendert wird, wird auch CommentsBody nicht gerendert → Query
   // lädt nur on-demand. Entspricht dem ursprünglichen Verhalten aus
   // CommentSheet v1 (enabled={open}).
-  const { data: comments, isLoading, isError, refetch } = useComments(postId, true);
+  const { data: comments, isLoading, isError, refetch } = useComments(postId, true, viewerId);
 
-  const createMut = useMutation({
+  const createMut = useMutation<CommentRow, Error, string, CreateCommentContext>({
     mutationFn: async (rawBody: string) => {
       const res = await createComment(postId, rawBody);
       if (!res.ok) throw new Error(res.error);
       return res.data;
     },
-    onSuccess: () => {
+    onMutate: async (rawBody) => {
+      const temporaryId = createTemporaryId();
+
+      await Promise.all([
+        qc.cancelQueries({ queryKey: ['comments', postId] }),
+        qc.cancelQueries({ queryKey: ['feed'] }),
+      ]);
+
+      const previousComments = qc.getQueryData<CommentRow[]>(['comments', postId]);
+      const previousFeeds = qc.getQueriesData<FeedPost[]>({ queryKey: ['feed'] });
+
       setBody('');
-      void refetch();
-      // Feed-Cache: comment_count +1 (Optimistic)
-      qc.setQueryData<unknown[]>(
-        ['feed'],
-        (prev) =>
-          (prev as Array<{ id: string; comment_count: number }> | undefined)?.map((p) =>
-            p.id === postId ? { ...p, comment_count: p.comment_count + 1 } : p,
-          ) ?? prev,
+      qc.setQueryData<CommentRow[]>(['comments', postId], (current) => [
+        makeOptimisticComment({
+          postId,
+          userId: viewerId ?? 'viewer',
+          body: rawBody,
+          temporaryId,
+        }),
+        ...(current ?? []),
+      ]);
+      qc.setQueriesData<FeedPost[]>({ queryKey: ['feed'] }, (current) =>
+        incrementFeedCommentCount(postId, current),
       );
+
+      return { previousComments, previousFeeds, rawBody, temporaryId };
     },
-    onError: (err) => {
+    onSuccess: (savedComment, _rawBody, ctx) => {
+      qc.setQueryData<CommentRow[]>(['comments', postId], (current) =>
+        replaceOptimisticComment(current, ctx.temporaryId, savedComment),
+      );
+      void refetch();
+    },
+    onError: (err, _rawBody, ctx) => {
+      if (ctx) {
+        qc.setQueryData(['comments', postId], ctx.previousComments);
+        for (const [queryKey, snapshot] of ctx.previousFeeds) {
+          qc.setQueryData(queryKey, snapshot);
+        }
+        setBody(ctx.rawBody);
+      }
       toast.error(err instanceof Error ? err.message : 'Kommentar konnte nicht gesendet werden');
     },
   });
@@ -382,7 +409,7 @@ function CommentRow({
   };
 
   return (
-    <li className="flex gap-3">
+    <li className={cn('flex gap-3', comment.pending && 'opacity-70')}>
       <Link
         href={`/u/${comment.author.username}` as Route}
         className="shrink-0"
@@ -402,7 +429,9 @@ function CommentRow({
             @{comment.author.username}
             {comment.author.verified && <BadgeCheck className="h-3.5 w-3.5 text-brand-gold" />}
           </Link>
-          <span className="text-xs text-muted-foreground">· {formatAgo(comment.created_at)}</span>
+          <span className="text-xs text-muted-foreground">
+            · {comment.pending ? 'sendet…' : formatAgo(comment.created_at)}
+          </span>
         </div>
         <p className="whitespace-pre-wrap break-words text-sm leading-snug">{comment.body}</p>
       </div>

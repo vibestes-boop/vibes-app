@@ -5,6 +5,8 @@ const DEFAULT_IMAGE_QUALITY = 75;
 export const FEED_VIDEO_POSTER_WIDTH = 750;
 export const FEED_ACTION_AVATAR_WIDTH = 128;
 export const FEED_ACTION_AVATAR_QUALITY = 70;
+export const AVATAR_IMAGE_WIDTH = 128;
+export const AVATAR_IMAGE_QUALITY = 70;
 
 export function getOptimizedImageUrl(
   src: string | null | undefined,

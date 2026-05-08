@@ -3,24 +3,24 @@
  * Zeigt alle geblockten User — Apple App Store Pflicht.
  * User können direkt in dieser Liste entblocken.
  */
-import { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-  ActivityIndicator,
-  Alert,
-  FlatList,
-} from 'react-native';
+import { useAuthStore } from '@/lib/authStore';
+import { useBlockedUsers,useBlockUser,type BlockedUser } from '@/lib/useBlock';
+import { useTheme } from '@/lib/useTheme';
+import { useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
+import { ArrowLeft,ShieldOff,UserX } from 'lucide-react-native';
+import { useState } from 'react';
+import {
+ActivityIndicator,
+Alert,
+FlatList,
+Pressable,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, ShieldOff, UserX } from 'lucide-react-native';
-import { useQueryClient } from '@tanstack/react-query';
-import { useBlockedUsers, useBlockUser, type BlockedUser } from '@/lib/useBlock';
-import { useAuthStore } from '@/lib/authStore';
-import { useTheme } from '@/lib/useTheme';
 
 function BlockedUserRow({ user }: { user: BlockedUser }) {
   const [unblocking, setUnblocking] = useState(false);

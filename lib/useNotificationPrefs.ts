@@ -3,8 +3,8 @@
  * Speichert die Push-Notification-Einstellungen des Users lokal in AsyncStorage.
  * Die Präferenzen werden beim Laden der App gelesen und beim Ändern sofort persistiert.
  */
-import { useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useEffect } from 'react';
 import { create } from 'zustand';
 
 const STORAGE_KEY = '@vibes_notif_prefs';

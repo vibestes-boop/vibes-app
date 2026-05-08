@@ -1,23 +1,22 @@
 import { useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { StyleSheet,Text,View } from 'react-native';
 // Animated: 'import Animated from' → _interopRequireDefault → TypeError in Hermes HBC.
 // Use named imports only. The reanimated stub exports these as named properties.
 import {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  withSpring,
-  // Animated object (View etc.) accessed via named import of the default export value
+useAnimatedStyle,
+useSharedValue,
+withSpring,
+withTiming,
 } from 'react-native-reanimated';
+
+
+import { useNetworkStatus } from '@/lib/useNetworkStatus';
+import { WifiOff } from 'lucide-react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 // Animated.View component: get it from the module directly via require to avoid default interop
-/* eslint-disable @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-require-imports */
 const _ra = require('react-native-reanimated') as any;
 const AnimatedView = (_ra?.default ?? _ra)?.View ?? View;
-
-/* eslint-enable @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any */
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { WifiOff } from 'lucide-react-native';
-import { useNetworkStatus } from '@/lib/useNetworkStatus';
 
 /**
  * Schiebt sich von oben ins Bild wenn kein Internet vorhanden ist.

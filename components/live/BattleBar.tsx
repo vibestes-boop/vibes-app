@@ -17,16 +17,16 @@
  *   - Countdown-Pill oben (schwebt über der Bar)
  *   - Winner-Overlay wenn Battle ended (ScaleIn + Konfetti)
  */
-import React, { useEffect, useMemo, useRef } from 'react';
-import {
-  Animated,
-  Dimensions,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import type { BattleState } from '@/lib/useBattle';
+import { LinearGradient } from 'expo-linear-gradient';
+import React,{ useEffect,useMemo,useRef } from 'react';
+import {
+Animated,
+Dimensions,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 

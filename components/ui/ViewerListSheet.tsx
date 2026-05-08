@@ -5,44 +5,43 @@
  * 2. User Profile Mini-Sheet (opens on top when viewer is tapped)
  * 3. Report Flow (flag icon → select what to report)
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useAuthStore } from '@/lib/authStore';
+import { supabase } from '@/lib/supabase';
+import { useFollow } from '@/lib/useFollow';
+import { useTopGifters,type TopGifter } from '@/lib/useGifts';
+import { useLiveModeratorActions,useLiveModerators } from '@/lib/useLiveModerators';
 import {
-  View,
-  Text,
-  StyleSheet,
-  Pressable,
-
-  Image,
-  Modal,
-  Alert,
-  FlatList,
-  ActivityIndicator,
+AtSign,
+Flag,
+Shield,
+ShieldOff,
+UserCheck,
+UserPlus,
+X,
+} from 'lucide-react-native';
+import { useEffect,useMemo,useState } from 'react';
+import {
+ActivityIndicator,
+Alert,
+FlatList,
+Image,
+Modal,
+Pressable,
+StyleSheet,
+Text,
+View,
 } from 'react-native';
+import {
+FadeIn,
+FadeOut,
+SlideInDown,
+SlideOutDown,
+} from 'react-native-reanimated';
 // react-native-reanimated: CJS require() vermeidet Hermes HBC Crash
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any;
 const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
-import {
-  FadeIn,
-  FadeOut,
-  SlideInDown,
-  SlideOutDown,
-} from 'react-native-reanimated';
-import {
-  X,
-  Flag,
-  AtSign,
-  UserPlus,
-  UserCheck,
-  Shield,
-  ShieldOff,
-} from 'lucide-react-native';
-import { supabase } from '@/lib/supabase';
-import { useAuthStore } from '@/lib/authStore';
-import { useFollow } from '@/lib/useFollow';
-import { useTopGifters, type TopGifter } from '@/lib/useGifts';
-import { useLiveModerators, useLiveModeratorActions } from '@/lib/useLiveModerators';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type ViewerUser = {

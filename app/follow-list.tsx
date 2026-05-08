@@ -1,16 +1,19 @@
-import { useState, useCallback } from 'react';
-import {
-  View, Text, StyleSheet, Pressable,
-  ActivityIndicator, FlatList,
-} from 'react-native';
-import { Image } from 'expo-image';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowLeft, UserCheck, UserPlus } from 'lucide-react-native';
-import * as Haptics from 'expo-haptics';
-import { useFollowerList, useFollowingList, useFollow, type FollowUser } from '@/lib/useFollow';
 import { useAuthStore } from '@/lib/authStore';
+import { useFollow,useFollowerList,useFollowingList,type FollowUser } from '@/lib/useFollow';
 import { useTheme } from '@/lib/useTheme';
+import * as Haptics from 'expo-haptics';
+import { Image } from 'expo-image';
+import { useLocalSearchParams,useRouter } from 'expo-router';
+import { ArrowLeft,UserCheck,UserPlus } from 'lucide-react-native';
+import { useCallback,useState } from 'react';
+import {
+ActivityIndicator,FlatList,
+Pressable,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Mode = 'followers' | 'following';
 

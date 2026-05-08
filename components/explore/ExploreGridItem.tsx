@@ -1,10 +1,9 @@
-import { View, Text, Pressable } from 'react-native';
+import type { ExplorePostThumb } from '@/lib/useExplore';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Play } from 'lucide-react-native';
-import { EXPLORE_ITEM_HEIGHT, EXPLORE_ITEM_WIDTH } from './exploreConstants';
+import { Pressable,Text,View } from 'react-native';
 import { exploreStyles as styles } from './exploreStyles';
-import type { ExplorePostThumb } from '@/lib/useExplore';
 
 /**
  * ExploreGridItem — Performance-optimiert

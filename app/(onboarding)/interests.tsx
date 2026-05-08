@@ -3,22 +3,28 @@
  * Der User wählt 3+ Kategorien → werden als preferred_tags in DB gespeichert.
  * Gibt dem Algorithmus sofortigen Kontext — löst das Cold-Start-Problem.
  */
-import { useState, useEffect } from 'react';
-import {
-  View, Text, StyleSheet, Pressable, ScrollView, ActivityIndicator,
-} from 'react-native';
-import { router } from 'expo-router';
+import { useAuthStore } from '@/lib/authStore';
+import { supabase } from '@/lib/supabase';
 import { LinearGradient } from 'expo-linear-gradient';
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
-const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
-const Animated = { View: _animNS?.View ?? _animMod?.View, Text: _animNS?.Text ?? _animMod?.Text };
+import { router } from 'expo-router';
+import { Check,ChevronRight } from 'lucide-react-native';
+import { useEffect,useState } from 'react';
 import {
-  useSharedValue, useAnimatedStyle, withDelay, withTiming,
+ActivityIndicator,
+Pressable,ScrollView,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
+import {
+useAnimatedStyle,
+useSharedValue,
+withDelay,withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Check, ChevronRight } from 'lucide-react-native';
-import { supabase } from '@/lib/supabase';
-import { useAuthStore } from '@/lib/authStore';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
+const Animated = { View: _animNS?.View ?? _animMod?.View, Text: _animNS?.Text ?? _animMod?.Text };
 
 // ── Interesse-Kategorien ─────────────────────────────────────────────────────
 const INTERESTS = [

@@ -1,5 +1,8 @@
 import { cache } from 'react';
+import { unstable_cache } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { createPublicClient } from '@/lib/supabase/public';
+import { PUBLIC_PROFILE_CACHE_TAG } from '@/lib/cache/tags';
 import type { PublicProfile, Post, Story } from '@shared/types';
 
 // -----------------------------------------------------------------------------
@@ -56,6 +59,50 @@ type AuthorRow = {
 
 type AuthorContract = Pick<PublicProfile, 'id' | 'username' | 'display_name' | 'avatar_url' | 'verified'>;
 
+type PublicProfileRow = {
+  id: string;
+  username: string;
+  display_name: string | null;
+  avatar_url: string | null;
+  bio: string | null;
+  is_verified: boolean | null;
+  is_private?: boolean | null;
+  website?: string | null;
+  teip?: string | null;
+};
+
+type PublicProfileRpcRow = PublicProfileRow & {
+  follower_count: number | string | null;
+  following_count: number | string | null;
+  post_count: number | string | null;
+  is_live: boolean | null;
+  live_session_id: string | null;
+};
+
+function toCount(value: number | string | null | undefined): number {
+  const n = typeof value === 'string' ? Number.parseInt(value, 10) : value;
+  return Number.isFinite(n) ? Number(n) : 0;
+}
+
+function toPublicProfile(row: PublicProfileRpcRow): PublicProfile {
+  return {
+    id: row.id,
+    username: row.username,
+    display_name: row.display_name,
+    avatar_url: row.avatar_url,
+    bio: row.bio,
+    verified: row.is_verified ?? false,
+    follower_count: toCount(row.follower_count),
+    following_count: toCount(row.following_count),
+    post_count: toCount(row.post_count),
+    is_live: !!row.is_live,
+    live_session_id: row.live_session_id ?? null,
+    is_private: row.is_private ?? false,
+    website: row.website ?? null,
+    teip: row.teip ?? null,
+  };
+}
+
 function normalizeAuthor(a: AuthorRow | AuthorRow[] | null | undefined): AuthorContract | null {
   const raw = Array.isArray(a) ? (a[0] ?? null) : a ?? null;
   if (!raw) return null;
@@ -81,32 +128,48 @@ function extractCount(v: unknown): number {
 // Public profile by username — read-through cache per request.
 // -----------------------------------------------------------------------------
 
-export const getPublicProfile = cache(async (username: string): Promise<PublicProfile | null> => {
-  const supabase = await createClient();
+async function fetchPublicProfile(username: string): Promise<PublicProfile | null> {
+  const normalizedUsername = username.toLowerCase();
+
+  try {
+    const supabase = createPublicClient();
+    const { data, error } = await supabase
+      .rpc('get_public_profile_web', { p_username: normalizedUsername })
+      .maybeSingle();
+
+    if (!error && data) {
+      return toPublicProfile(data as unknown as PublicProfileRpcRow);
+    }
+  } catch {
+    // Migration may not be deployed yet. Fall back to the PostgREST path.
+  }
+
+  const supabase = createPublicClient();
   const { data, error } = await supabase
     .from('profiles')
     .select('id, username, display_name, avatar_url, bio, is_verified, is_private, website, teip')
-    .eq('username', username.toLowerCase())
+    .eq('username', normalizedUsername)
     .maybeSingle();
 
   if (error || !data) return null;
+  const profile = data as PublicProfileRow;
 
   const [followerRes, followingRes, postsRes, liveRes] = await Promise.all([
     // Wer folgt MIR? → follows WHERE following_id = me
     supabase
       .from('follows')
       .select('follower_id', { count: 'exact', head: true })
-      .eq('following_id', data.id),
+      .eq('following_id', profile.id),
     // Wem folge ICH? → follows WHERE follower_id = me
     supabase
       .from('follows')
       .select('following_id', { count: 'exact', head: true })
-      .eq('follower_id', data.id),
+      .eq('follower_id', profile.id),
     // Meine Posts → posts WHERE author_id = me
     supabase
       .from('posts')
       .select('id', { count: 'exact', head: true })
-      .eq('author_id', data.id),
+      .eq('author_id', profile.id),
     // v1.w.UI.16: aktive Live-Session dieses Hosts, falls vorhanden. Für den
     // Avatar-Gradient-Ring + „LIVE"-Badge auf dem Profil-Hero. Wir nehmen
     // maxStarted (jüngste Session) — doppelte Active-Sessions sollte es nicht
@@ -118,7 +181,7 @@ export const getPublicProfile = cache(async (username: string): Promise<PublicPr
     supabase
       .from('live_sessions')
       .select('id')
-      .eq('host_id', data.id)
+      .eq('host_id', profile.id)
       .eq('status', 'active')
       .order('started_at', { ascending: false })
       .limit(1)
@@ -126,21 +189,31 @@ export const getPublicProfile = cache(async (username: string): Promise<PublicPr
   ]);
 
   return {
-    id: data.id,
-    username: data.username,
-    display_name: data.display_name,
-    avatar_url: data.avatar_url,
-    bio: data.bio,
-    verified: data.is_verified,
+    id: profile.id,
+    username: profile.username,
+    display_name: profile.display_name,
+    avatar_url: profile.avatar_url,
+    bio: profile.bio,
+    verified: profile.is_verified ?? false,
     follower_count: followerRes.count ?? 0,
     following_count: followingRes.count ?? 0,
     post_count: postsRes.count ?? 0,
     is_live: !!liveRes.data?.id,
     live_session_id: liveRes.data?.id ?? null,
-    is_private: (data as any).is_private ?? false,
-    website: (data as any).website ?? null,
-    teip: (data as any).teip ?? null,
+    is_private: profile.is_private ?? false,
+    website: profile.website ?? null,
+    teip: profile.teip ?? null,
   };
+}
+
+const getCachedPublicProfile = unstable_cache(
+  fetchPublicProfile,
+  ['public-profile'],
+  { revalidate: 60, tags: [PUBLIC_PROFILE_CACHE_TAG] },
+);
+
+export const getPublicProfile = cache(async (username: string): Promise<PublicProfile | null> => {
+  return getCachedPublicProfile(username);
 });
 
 // -----------------------------------------------------------------------------
@@ -154,22 +227,25 @@ export interface FollowState {
   pendingRequest: boolean;
 }
 
-export const getFollowState = cache(async (targetUserId: string): Promise<FollowState> => {
+export const getFollowStateForViewer = cache(async (
+  targetUserId: string,
+  viewerId: string | null | undefined,
+): Promise<FollowState> => {
+  if (!viewerId || viewerId === targetUserId) return { following: false, pendingRequest: false };
+
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.id === targetUserId) return { following: false, pendingRequest: false };
 
   const [followRow, requestRow] = await Promise.all([
     supabase
       .from('follows')
       .select('follower_id')
-      .eq('follower_id', user.id)
+      .eq('follower_id', viewerId)
       .eq('following_id', targetUserId)
       .maybeSingle(),
     supabase
       .from('follow_requests')
       .select('id')
-      .eq('sender_id', user.id)
+      .eq('sender_id', viewerId)
       .eq('receiver_id', targetUserId)
       .maybeSingle(),
   ]);
@@ -178,6 +254,12 @@ export const getFollowState = cache(async (targetUserId: string): Promise<Follow
     following: !!followRow.data,
     pendingRequest: !!requestRow.data,
   };
+});
+
+export const getFollowState = cache(async (targetUserId: string): Promise<FollowState> => {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  return getFollowStateForViewer(targetUserId, user?.id ?? null);
 });
 
 // -----------------------------------------------------------------------------
@@ -195,14 +277,14 @@ type PostRowMobile = {
   // reine Video-Posts waren.
   media_type?: 'image' | 'video' | null;
   thumbnail_url: string | null;
-  view_count: number | null;
+  view_count: number | string | null;
   tags: string[] | null;
   allow_comments: boolean | null;
   allow_duet: boolean | null;
   // v1.w.UI.169 — WOZ badge in PostGrid
   women_only?: boolean | null;
   // v1.w.UI.171 — Web contract field; Mobile-DB has no share_count column.
-  share_count?: number | null;
+  share_count?: number | string | null;
   // v1.w.UI.179 — pinned to author profile
   is_pinned?: boolean | null;
   // v1.w.UI.205 — aspect ratio at upload time
@@ -210,6 +292,17 @@ type PostRowMobile = {
   created_at: string;
   like_count?: unknown; // embedded aggregate
   comment_count?: unknown; // embedded aggregate
+};
+
+type PublicPostRpcRow = PostRowMobile & {
+  privacy?: 'public' | 'friends' | 'private' | null;
+  allow_download?: boolean | null;
+  audio_url?: string | null;
+  audio_volume?: number | null;
+  author_username: string;
+  author_display_name: string | null;
+  author_avatar_url: string | null;
+  author_verified: boolean | null;
 };
 
 const VALID_RATIOS = ['portrait', 'landscape', 'square'] as const;
@@ -225,10 +318,10 @@ function toPost(row: PostRowMobile): Post {
     video_url: row.media_url ?? '',
     thumbnail_url: row.thumbnail_url,
     duration_secs: null,
-    view_count: row.view_count ?? 0,
+    view_count: toCount(row.view_count),
     like_count: extractCount(row.like_count),
     comment_count: extractCount(row.comment_count),
-    share_count: row.share_count ?? 0,
+    share_count: toCount(row.share_count),
     hashtags: row.tags ?? [],
     music_id: null,
     allow_comments: row.allow_comments ?? true,
@@ -259,9 +352,38 @@ function profileSortOrder(sort: ProfileSortKey): string {
   return 'created_at';
 }
 
+type ServerSupabaseClient = Awaited<ReturnType<typeof createClient>>;
+
+async function getProfilePostsViaRpc(
+  supabase: ServerSupabaseClient,
+  userId: string,
+  limit: number,
+  offset: number,
+  before: string | undefined,
+  sort: ProfileSortKey,
+): Promise<Post[] | null> {
+  try {
+    const { data, error } = await supabase.rpc('get_profile_posts_web', {
+      p_user_id: userId,
+      result_limit: limit,
+      result_offset: offset,
+      before_ts: sort === 'newest' ? (before ?? null) : null,
+      sort_key: sort,
+    });
+
+    if (error || !Array.isArray(data)) return null;
+    return (data as unknown as PostRowMobile[]).map(toPost);
+  } catch {
+    return null;
+  }
+}
+
 export const getProfilePosts = cache(
   async (userId: string, limit = 24, before?: string, sort: ProfileSortKey = 'newest'): Promise<Post[]> => {
     const supabase = await createClient();
+    const fastPosts = await getProfilePostsViaRpc(supabase, userId, limit, 0, before, sort);
+    if (fastPosts) return fastPosts;
+
     // v1.w.UI.179 — include is_pinned; order pinned post first.
     // v1.w.UI.212 — secondary sort driven by `sort` param.
     let query = supabase
@@ -272,6 +394,8 @@ export const getProfilePosts = cache(
          comment_count:comments(count)`,
       )
       .eq('author_id', userId)
+      .eq('privacy', 'public')
+      .eq('women_only', false)
       .order('is_pinned', { ascending: false })
       .order(profileSortOrder(sort), { ascending: false })
       .limit(limit);
@@ -297,6 +421,9 @@ export async function getProfilePostsPage(
   sort: ProfileSortKey = 'newest',
 ): Promise<Post[]> {
   const supabase = await createClient();
+  const fastPosts = await getProfilePostsViaRpc(supabase, userId, limit, offset, undefined, sort);
+  if (fastPosts) return fastPosts;
+
   // v1.w.UI.179 — include is_pinned; pinned posts always sort first.
   // v1.w.UI.212 — secondary sort driven by `sort` param.
   const { data, error } = await supabase
@@ -307,6 +434,8 @@ export async function getProfilePostsPage(
        comment_count:comments(count)`,
     )
     .eq('author_id', userId)
+    .eq('privacy', 'public')
+    .eq('women_only', false)
     .order('is_pinned', { ascending: false })
     .order(profileSortOrder(sort), { ascending: false })
     .range(offset, offset + limit - 1);
@@ -609,8 +738,61 @@ export interface PostWithAuthor extends Post {
   audio_volume: number | null;
 }
 
+function toPostWithAuthor(row: PostRowMobile & {
+  author: AuthorRow | AuthorRow[] | null;
+  privacy?: unknown;
+  allow_download?: unknown;
+  audio_url?: unknown;
+  audio_volume?: unknown;
+}): PostWithAuthor | null {
+  const author = normalizeAuthor(row.author);
+  if (!author) return null;
+
+  const post = toPost(row);
+  // Default auf 'video' — Legacy-Rows vor der media_type-Einführung waren
+  // ausschließlich Videos, und VideoPlayer ist unser Default-Renderer.
+  const media_type: 'image' | 'video' = row.media_type === 'image' ? 'image' : 'video';
+  const privacy = (['public', 'friends', 'private'] as const).includes(row.privacy as 'public' | 'friends' | 'private')
+    ? (row.privacy as 'public' | 'friends' | 'private')
+    : 'public';
+  const allow_download = typeof row.allow_download === 'boolean' ? row.allow_download : true;
+  const women_only = typeof row.women_only === 'boolean' ? row.women_only : false;
+  const aspect_ratio = (['portrait', 'landscape', 'square'] as const).includes(row.aspect_ratio as 'portrait' | 'landscape' | 'square')
+    ? (row.aspect_ratio as 'portrait' | 'landscape' | 'square')
+    : 'portrait';
+  const audio_url = typeof row.audio_url === 'string' ? row.audio_url : null;
+  const audio_volume = typeof row.audio_volume === 'number' ? row.audio_volume : null;
+  return { ...post, author, media_type, privacy, allow_download, women_only, aspect_ratio, audio_url, audio_volume };
+}
+
+function publicPostRpcToPost(row: PublicPostRpcRow): PostWithAuthor | null {
+  return toPostWithAuthor({
+    ...row,
+    author: {
+      id: row.author_id,
+      username: row.author_username,
+      display_name: row.author_display_name,
+      avatar_url: row.author_avatar_url,
+      verified: row.author_verified ?? false,
+    },
+  });
+}
+
 export const getPost = cache(async (postId: string): Promise<PostWithAuthor | null> => {
   const supabase = await createClient();
+
+  try {
+    const { data, error } = await supabase
+      .rpc('get_public_post_web', { p_post_id: postId })
+      .maybeSingle();
+
+    if (!error && data) {
+      return publicPostRpcToPost(data as unknown as PublicPostRpcRow);
+    }
+  } catch {
+    // Migration rollout safety: fall back to the RLS-protected table read.
+  }
+
   const { data, error } = await supabase
     .from('posts')
     .select(
@@ -624,25 +806,7 @@ export const getPost = cache(async (postId: string): Promise<PostWithAuthor | nu
 
   if (error || !data) return null;
   const row = data as unknown as PostRowMobile & { author: AuthorRow | AuthorRow[] | null };
-  const author = normalizeAuthor(row.author);
-  if (!author) return null;
-
-  const post = toPost(row);
-  // Default auf 'video' — Legacy-Rows vor der media_type-Einführung waren
-  // ausschließlich Videos, und VideoPlayer ist unser Default-Renderer.
-  const media_type: 'image' | 'video' = row.media_type === 'image' ? 'image' : 'video';
-  const rowAny = row as Record<string, unknown>;
-  const privacy = (['public', 'friends', 'private'] as const).includes(rowAny.privacy as 'public' | 'friends' | 'private')
-    ? (rowAny.privacy as 'public' | 'friends' | 'private')
-    : 'public';
-  const allow_download = typeof rowAny.allow_download === 'boolean' ? rowAny.allow_download : true;
-  const women_only = typeof rowAny.women_only === 'boolean' ? rowAny.women_only : false;
-  const aspect_ratio = (['portrait', 'landscape', 'square'] as const).includes(rowAny.aspect_ratio as 'portrait' | 'landscape' | 'square')
-    ? (rowAny.aspect_ratio as 'portrait' | 'landscape' | 'square')
-    : 'portrait';
-  const audio_url = typeof rowAny.audio_url === 'string' ? rowAny.audio_url : null;
-  const audio_volume = typeof rowAny.audio_volume === 'number' ? rowAny.audio_volume : null;
-  return { ...post, author, media_type, privacy, allow_download, women_only, aspect_ratio, audio_url, audio_volume };
+  return toPostWithAuthor(row);
 });
 
 // -----------------------------------------------------------------------------
@@ -779,6 +943,70 @@ export const getPostComments = cache(async (
     });
   }
   return out;
+});
+
+type WebCommentRpcRow = {
+  id: string;
+  post_id: string;
+  user_id: string;
+  parent_id: string | null;
+  body: string | null;
+  like_count: number | string | null;
+  liked_by_me: boolean | null;
+  reply_count: number | string | null;
+  created_at: string;
+  author_id: string;
+  author_username: string;
+  author_display_name: string | null;
+  author_avatar_url: string | null;
+  author_verified: boolean | null;
+};
+
+function commentRpcRowToComment(row: WebCommentRpcRow): CommentWithAuthor {
+  return {
+    id: row.id,
+    post_id: row.post_id,
+    user_id: row.user_id,
+    parent_id: row.parent_id ?? null,
+    body: row.body ?? '',
+    like_count: toCount(row.like_count),
+    liked_by_me: row.liked_by_me ?? false,
+    reply_count: toCount(row.reply_count),
+    created_at: row.created_at,
+    author: {
+      id: row.author_id,
+      username: row.author_username,
+      display_name: row.author_display_name,
+      avatar_url: row.author_avatar_url,
+      verified: row.author_verified ?? false,
+    },
+  };
+}
+
+export const getPostCommentsFast = cache(async (
+  postId: string,
+  limit = 30,
+  viewerId?: string | null,
+): Promise<CommentWithAuthor[]> => {
+  const supabase = await createClient();
+
+  try {
+    const { data, error } = await supabase.rpc('get_post_comments_web', {
+      p_post_id: postId,
+      p_limit: limit,
+      p_viewer_id: viewerId ?? null,
+    });
+
+    if (!error && Array.isArray(data)) {
+      return (data as unknown as WebCommentRpcRow[])
+        .map(commentRpcRowToComment)
+        .sort((a, b) => a.created_at.localeCompare(b.created_at));
+    }
+  } catch {
+    // Migration may not be available in every environment yet.
+  }
+
+  return getPostComments(postId, limit, viewerId);
 });
 
 // getCommentReplies — Replies zu einem Top-Level-Kommentar, älteste zuerst.
@@ -1024,12 +1252,21 @@ export const getStory = cache(async (storyId: string): Promise<StoryWithAuthor |
 export const isFollowing = cache(async (targetUserId: string): Promise<boolean> => {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user || user.id === targetUserId) return false;
+  return isFollowingForViewer(targetUserId, user?.id ?? null);
+});
+
+export const isFollowingForViewer = cache(async (
+  targetUserId: string,
+  viewerId?: string | null,
+): Promise<boolean> => {
+  if (!viewerId || viewerId === targetUserId) return false;
+
+  const supabase = await createClient();
 
   const { data } = await supabase
     .from('follows')
     .select('follower_id')
-    .eq('follower_id', user.id)
+    .eq('follower_id', viewerId)
     .eq('following_id', targetUserId)
     .maybeSingle();
 
@@ -1053,22 +1290,31 @@ export const getPostInteractionState = cache(
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    if (!user) return { liked: false, saved: false };
+    return getPostInteractionStateForViewer(postId, user?.id ?? null);
+  },
+);
 
-    const [{ count: likeCount }, { count: saveCount }] = await Promise.all([
+export const getPostInteractionStateForViewer = cache(
+  async (postId: string, viewerId?: string | null): Promise<PostInteractionState> => {
+    if (!viewerId) return { liked: false, saved: false };
+
+    const supabase = await createClient();
+    const [likeRes, saveRes] = await Promise.all([
       supabase
         .from('likes')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('post_id', postId),
+        .select('post_id')
+        .eq('user_id', viewerId)
+        .eq('post_id', postId)
+        .maybeSingle(),
       supabase
         .from('bookmarks')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
-        .eq('post_id', postId),
+        .select('post_id')
+        .eq('user_id', viewerId)
+        .eq('post_id', postId)
+        .maybeSingle(),
     ]);
 
-    return { liked: (likeCount ?? 0) > 0, saved: (saveCount ?? 0) > 0 };
+    return { liked: !!likeRes.data, saved: !!saveRes.data };
   },
 );
 

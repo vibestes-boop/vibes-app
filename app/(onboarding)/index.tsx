@@ -1,19 +1,19 @@
-import { useEffect } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { router } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
-const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
-const Animated = { View: _animNS?.View ?? _animMod?.View };
+import { LinearGradient } from 'expo-linear-gradient';
+import { router } from 'expo-router';
+import { Heart,SlidersHorizontal,Users } from 'lucide-react-native';
+import { useEffect } from 'react';
+import { Pressable,StyleSheet,Text,View } from 'react-native';
 import {
-  useSharedValue,
-  useAnimatedStyle,
-  withDelay,
-  withTiming,
+useAnimatedStyle,
+useSharedValue,
+withDelay,
+withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { SlidersHorizontal, Users, Heart } from 'lucide-react-native';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
+const Animated = { View: _animNS?.View ?? _animMod?.View };
 
 const FEATURES = [
   {

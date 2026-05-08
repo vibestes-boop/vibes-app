@@ -15,36 +15,64 @@
  * - More-Menu (Speichern, Melden, Hilfe)
  */
 
-import { useState, useCallback, useRef } from 'react';
-import {
-  View, Text, StyleSheet, Pressable, ScrollView, Modal,
-  ActivityIndicator, useWindowDimensions, Share,
-  NativeSyntheticEvent, NativeScrollEvent, Alert, TextInput, Linking,
-} from 'react-native';
-import { Image } from 'expo-image';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useLocalSearchParams, useRouter } from 'expo-router';
-import {
-  ArrowLeft, Search, Share2, ShoppingCart,
-  MoreHorizontal, X, Truck, Bookmark, Flag,
-  HelpCircle, ChevronDown, ChevronUp, FileText, Box, Wrench, ShoppingBag,
-  CheckCircle, AlertCircle, Check, Send, BadgeCheck, MapPin, Minus, Plus,
-  MessageCircle,
-} from 'lucide-react-native';
-import { useAuthStore } from '@/lib/authStore';
-import { useMutation, useQuery } from '@tanstack/react-query';
-import {
-  impactAsync, ImpactFeedbackStyle,
-  notificationAsync, NotificationFeedbackType,
-} from 'expo-haptics';
-import { useShopProducts, useBuyProduct, useSavedProduct, useReportProduct, REPORT_REASONS, type ReportReason, type Product } from '@/lib/useShop';
-import { useCoinsWallet } from '@/lib/useGifts';
-import { useTheme } from '@/lib/useTheme';
 import { StarDisplay } from '@/components/shop/ReviewSheet';
-import { useProductReviews } from '@/lib/useProductReviews';
-import { useOrCreateConversation, useSendMessage } from '@/lib/useMessages';
+import { useAuthStore } from '@/lib/authStore';
 import { supabase } from '@/lib/supabase';
+import { useCoinsWallet } from '@/lib/useGifts';
+import { useOrCreateConversation,useSendMessage } from '@/lib/useMessages';
+import { useProductReviews } from '@/lib/useProductReviews';
+import { REPORT_REASONS,useBuyProduct,useReportProduct,useSavedProduct,useShopProducts,type Product,type ReportReason } from '@/lib/useShop';
+import { useTheme } from '@/lib/useTheme';
+import { useQuery } from '@tanstack/react-query';
 import * as Clipboard from 'expo-clipboard';
+import {
+impactAsync,ImpactFeedbackStyle,
+notificationAsync,NotificationFeedbackType,
+} from 'expo-haptics';
+import { Image } from 'expo-image';
+import { useLocalSearchParams,useRouter } from 'expo-router';
+import {
+AlertCircle,
+ArrowLeft,
+BadgeCheck,
+Bookmark,
+Box,
+Check,
+CheckCircle,
+ChevronDown,ChevronUp,FileText,
+Flag,
+HelpCircle,
+MapPin,
+MessageCircle,
+Minus,
+MoreHorizontal,
+Plus,
+Search,
+Send,
+Share2,
+ShoppingBag,
+ShoppingCart,
+Truck,
+Wrench,
+X,
+} from 'lucide-react-native';
+import { useCallback,useRef,useState } from 'react';
+import {
+ActivityIndicator,
+Alert,
+Linking,
+Modal,
+NativeScrollEvent,
+NativeSyntheticEvent,
+Pressable,ScrollView,
+Share,
+StyleSheet,
+Text,
+TextInput,
+useWindowDimensions,
+View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // ─── Konstanten ───────────────────────────────────────────────────────────────
 
@@ -397,7 +425,15 @@ function ShareSheet({ product, onClose, colors }: { product: Product; onClose: (
 
   const toggleSelect = (id: string) => {
     impactAsync(ImpactFeedbackStyle.Light);
-    setSelected((prev) => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
   };
 
   const handleSend = async () => {

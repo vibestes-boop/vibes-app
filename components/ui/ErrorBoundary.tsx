@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 // CRITICAL: `import React from 'react'` → _interopRequireDefault → TypeError in Hermes HBC.
 // Use require() to avoid the interop wrapper for React default import.
+import { Pressable,StyleSheet,Text,View } from 'react-native';
 const React = require('react') as typeof import('react');
-import { View, Text, Pressable, StyleSheet } from 'react-native';
 // expo-router `router` and lucide icons loaded lazily inside methods to avoid factory throws.
 
 interface State {
@@ -26,14 +26,14 @@ export class ErrorBoundary extends React.Component<React.PropsWithChildren, Stat
     console.error('[ErrorBoundary] Fehler:', error.message, info.componentStack);
     // Hide splash so user isn't stuck on black screen
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       (require('expo-splash-screen') as any).hideAsync?.().catch(() => {});
     } catch { /* ignore */ }
     // ⚠️ Sentry-Ingest: ErrorBoundary fängt React-Render-Fehler — die landen sonst
     // NIRGENDS, weil unser globaler Handler nur Unhandled-Rejections abfängt.
     // Ohne diesen Call wissen wir in Production nie welcher Render gecrasht ist.
     try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+
       const Sentry = require('@sentry/react-native') as any;
       Sentry.captureException?.(error, {
         tags: { area: 'error-boundary' },
@@ -47,7 +47,7 @@ export class ErrorBoundary extends React.Component<React.PropsWithChildren, Stat
   handleReset = () => {
     this.setState({ hasError: false, error: undefined });
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+
       (require('expo-router') as any).router?.replace('/(tabs)');
     } catch { /* navigation not possible */ }
   };

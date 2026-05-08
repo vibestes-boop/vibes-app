@@ -4,17 +4,17 @@
  * Zugang: Settings → "Serlo v1.6.0" 7x tippen
  */
 
-import { useState, useEffect } from 'react';
-import { View, Text, Pressable, StyleSheet, ScrollView, ActivityIndicator } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { ArrowLeft, Zap } from 'lucide-react-native';
 import { GiftAnimation } from '@/components/live/GiftAnimation';
-import { useCoinsWallet } from '@/lib/useGifts';
 import { useAuthStore } from '@/lib/authStore';
+import { GIFT_BY_ID,GIFT_CATALOG,type GiftItem } from '@/lib/gifts';
 import { supabase } from '@/lib/supabase';
-import { GIFT_CATALOG, GIFT_BY_ID, type GiftItem } from '@/lib/gifts';
 import type { IncomingGift } from '@/lib/useGifts';
+import { useCoinsWallet } from '@/lib/useGifts';
+import { useRouter } from 'expo-router';
+import { ArrowLeft,Zap } from 'lucide-react-native';
+import { useEffect,useState } from 'react';
+import { ActivityIndicator,Pressable,ScrollView,StyleSheet,Text,View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const DEBUG_SESSION_ID = 'debug-gift-test-session-001';
 
@@ -38,7 +38,7 @@ export default function DebugGiftsScreen() {
 
   useEffect(() => {
     addLog(`Bereit. User: @${profile?.username ?? '?'}`);
-  }, []);
+  }, [profile?.username]);
 
   const addCoins = async () => {
     if (!profile?.id) return;

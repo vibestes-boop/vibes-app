@@ -1,5 +1,5 @@
-import { StyleSheet } from 'react-native';
 import type { ThemeColors } from '@/lib/theme';
+import { StyleSheet } from 'react-native';
 
 export const getGuildStyles = (c: ThemeColors) => StyleSheet.create({
   screen: {

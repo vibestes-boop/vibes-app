@@ -6,12 +6,11 @@
  *  2. Server: RLS + SECURITY DEFINER RPCs erlauben Admin-Queries nur mit is_admin = true
  */
 
-import { useEffect } from 'react';
-import { Stack } from 'expo-router';
-import { useRouter } from 'expo-router';
-import { View, ActivityIndicator } from 'react-native';
 import { useAuthStore } from '@/lib/authStore';
 import { useTheme } from '@/lib/useTheme';
+import { Stack,useRouter } from 'expo-router';
+import { useEffect } from 'react';
+import { ActivityIndicator,View } from 'react-native';
 
 export default function AdminLayout() {
   const router = useRouter();

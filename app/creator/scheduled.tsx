@@ -14,24 +14,37 @@
  * Design: App-native Monochrom-Stil (konsistent mit dashboard.tsx).
  */
 
-import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, Pressable, FlatList,
-  ActivityIndicator, RefreshControl, Alert, Modal,
-} from 'react-native';
+scheduledPostLabel,
+useScheduledPosts,
+type ScheduledPost,
+} from '@/lib/useScheduledPosts';
+import { useTheme } from '@/lib/useTheme';
 import { Image } from 'expo-image';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import {
-  ArrowLeft, Clock, AlertTriangle, Edit2,
-  X as XIcon, Play, RotateCw, Sparkles,
-  ChevronUp, ChevronDown,
+AlertTriangle,
+ArrowLeft,
+ChevronDown,
+ChevronUp,
+Clock,
+Edit2,
+Play,RotateCw,Sparkles,
+X as XIcon,
 } from 'lucide-react-native';
-import { useTheme } from '@/lib/useTheme';
+import React,{ useState } from 'react';
 import {
-  useScheduledPosts, scheduledPostLabel,
-  type ScheduledPost,
-} from '@/lib/useScheduledPosts';
+ActivityIndicator,
+Alert,
+FlatList,
+Modal,
+Pressable,
+RefreshControl,
+StyleSheet,
+Text,
+View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 

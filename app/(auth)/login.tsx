@@ -1,30 +1,30 @@
+import { supabase } from '@/lib/supabase';
+import { appleSignIn } from '@/lib/useAppleSignIn';
+import * as AppleAuthentication from 'expo-apple-authentication';
+import { LinearGradient } from 'expo-linear-gradient';
+import { Link } from 'expo-router';
+import { Lock,Mail,Zap } from 'lucide-react-native';
 import { useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  Pressable,
-  StyleSheet,
-  KeyboardAvoidingView,
-  Platform,
-  ActivityIndicator,
-  Alert,
+ActivityIndicator,
+Alert,
+KeyboardAvoidingView,
+Platform,
+Pressable,
+StyleSheet,
+Text,
+TextInput,
+View,
 } from 'react-native';
-import { Link } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-// eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-explicit-any
+import {
+FadeInDown,
+useAnimatedStyle,
+useSharedValue,
+withTiming,
+} from 'react-native-reanimated';
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
-import {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  FadeInDown,
-} from 'react-native-reanimated';
-import { supabase } from '@/lib/supabase';
-import { Mail, Lock, Zap } from 'lucide-react-native';
-import * as AppleAuthentication from 'expo-apple-authentication';
-import { appleSignIn } from '@/lib/useAppleSignIn';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
