@@ -33,27 +33,35 @@ export function LiveViewerCount({ sessionId, initialCount, onClick }: LiveViewer
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     );
 
-    const channel = supabase
-      .channel(`live-session-count-${sessionId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'live_sessions',
-          filter: `id=eq.${sessionId}`,
-        },
-        (payload) => {
-          const row = payload.new as { viewer_count?: number };
-          if (typeof row.viewer_count === 'number') {
-            setCount(row.viewer_count);
-          }
-        },
-      )
-      .subscribe();
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    try {
+      channel = supabase
+        .channel(`live-session-count-${sessionId}-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'live_sessions',
+            filter: `id=eq.${sessionId}`,
+          },
+          (payload) => {
+            const row = payload.new as { viewer_count?: number };
+            if (typeof row.viewer_count === 'number') {
+              setCount(row.viewer_count);
+            }
+          },
+        )
+        .subscribe();
+    } catch (error) {
+      console.warn('[LiveViewerCount] realtime subscription disabled', error);
+    }
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
     };
   }, [sessionId]);
 
