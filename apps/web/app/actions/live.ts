@@ -159,10 +159,10 @@ export async function sendLiveComment(
   // Timeout-Check
   const { data: timeout } = await supabase
     .from('live_chat_timeouts')
-    .select('until')
+    .select('until_at')
     .eq('session_id', sessionId)
     .eq('user_id', viewer.id)
-    .gte('until', new Date().toISOString())
+    .gte('until_at', new Date().toISOString())
     .maybeSingle();
   if (timeout) {
     return { ok: false, error: 'Du bist im Chat momentan gesperrt.' };
@@ -178,7 +178,7 @@ export async function sendLiveComment(
     .from('live_comments')
     .insert({ session_id: sessionId, user_id: viewer.id, text })
     .select(
-      `id, session_id, user_id, body:text, created_at, pinned,
+      `id, session_id, user_id, body:text, created_at,
        author:profiles!live_comments_user_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )`,
     )
     .single();
@@ -189,7 +189,7 @@ export async function sendLiveComment(
   const row = inserted as unknown as LiveCommentWithAuthor & { author: unknown };
   const comment: LiveCommentWithAuthor = {
     ...row,
-    pinned: row.pinned ?? false,
+    pinned: false,
     author: Array.isArray(row.author)
       ? ((row.author[0] as LiveCommentWithAuthor['author']) ?? null)
       : (row.author as LiveCommentWithAuthor['author']),
@@ -674,9 +674,32 @@ export async function pinLiveComment(
   if (!viewer) return { ok: false, error: 'Bitte einloggen.' };
 
   const supabase = await createClient();
+  const { data: commentRow, error: commentErr } = await supabase
+    .from('live_comments')
+    .select(
+      `id, session_id, user_id, body:text, created_at,
+       author:profiles!live_comments_user_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )`,
+    )
+    .eq('session_id', sessionId)
+    .eq('id', commentId)
+    .maybeSingle();
+
+  if (commentErr || !commentRow) {
+    return { ok: false, error: commentErr?.message ?? 'Kommentar nicht gefunden.' };
+  }
+
+  const row = commentRow as unknown as LiveCommentWithAuthor & { author: unknown };
+  const pinnedComment: LiveCommentWithAuthor = {
+    ...row,
+    pinned: true,
+    author: Array.isArray(row.author)
+      ? ((row.author[0] as LiveCommentWithAuthor['author']) ?? null)
+      : (row.author as LiveCommentWithAuthor['author']),
+  };
+
   const { error } = await supabase.rpc('pin_live_comment', {
     p_session_id: sessionId,
-    p_comment_id: commentId,
+    p_comment: pinnedComment,
   });
 
   if (error) return { ok: false, error: error.message };

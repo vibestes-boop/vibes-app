@@ -68,13 +68,13 @@ export function LiveGiftPicker({
     );
 
     async function load() {
-      const [catalogRes, balanceRes] = await Promise.all([
+      const [catalogRes, authRes] = await Promise.all([
         supabase
           .from('gift_catalog')
           .select('id, name, emoji, coin_cost, color, season_tag, available_from, available_until')
           .order('sort_order', { ascending: true })
           .order('coin_cost', { ascending: true }),
-        supabase.rpc('get_my_coin_balance'),
+        supabase.auth.getUser(),
       ]);
 
       if (catalogRes.data) {
@@ -87,7 +87,24 @@ export function LiveGiftPicker({
           }),
         );
       }
-      if (typeof balanceRes.data === 'number') setBalance(balanceRes.data);
+
+      const userId = authRes.data.user?.id;
+      if (!userId) {
+        setBalance(0);
+        setLoading(false);
+        return;
+      }
+
+      const { data: wallet, error: walletErr } = await supabase
+        .from('coins_wallets')
+        .select('coins')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (walletErr) {
+        console.warn('[LiveGiftPicker] coin balance unavailable', walletErr);
+      }
+      setBalance(typeof wallet?.coins === 'number' ? wallet.coins : 0);
       setLoading(false);
     }
     load();
