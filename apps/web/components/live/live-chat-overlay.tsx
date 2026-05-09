@@ -91,7 +91,8 @@ export function LiveChatOverlay({
   }, [gifterMap]);
 
   // ---------------------------------------------------------------------------
-  // Realtime: dasselbe `live-comments-{id}` Channel-Pattern wie in LiveChat.
+  // Realtime: eigener Topic pro Overlay-Instanz, damit mehrere Chat-Views
+  // dieselbe Session abonnieren koennen ohne Supabase-Topic-Kollision.
   // ---------------------------------------------------------------------------
   useEffect(() => {
     const supabase = createBrowserClient(
@@ -99,81 +100,93 @@ export function LiveChatOverlay({
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     );
 
-    const channel = supabase
-      .channel(`live-comments-${sessionId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'live_comments',
-          filter: `session_id=eq.${sessionId}`,
-        },
-        async (payload) => {
-          const raw = payload.new as {
-            id: string;
-            session_id: string;
-            user_id: string;
-            text: string;
-            created_at: string;
-            pinned?: boolean;
-          };
+    let channel: ReturnType<typeof supabase.channel> | null = null;
 
-          const { data: profile } = await supabase
-            .from('profiles')
-            .select('id, username, display_name, avatar_url, verified:is_verified')
-            .eq('id', raw.user_id)
-            .maybeSingle();
+    try {
+      const topic = `live-comments-overlay-${sessionId}-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2)}`;
 
-          const withAuthor: LiveCommentWithAuthor = {
-            id: raw.id,
-            session_id: raw.session_id,
-            user_id: raw.user_id,
-            body: raw.text,
-            created_at: raw.created_at,
-            pinned: raw.pinned ?? false,
-            author: profile
-              ? {
-                  id: profile.id,
-                  username: profile.username,
-                  display_name: profile.display_name,
-                  avatar_url: profile.avatar_url,
-                  verified: profile.verified ?? false,
-                }
-              : null,
-          };
+      channel = supabase
+        .channel(topic)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'live_comments',
+            filter: `session_id=eq.${sessionId}`,
+          },
+          async (payload) => {
+            const raw = payload.new as {
+              id: string;
+              session_id: string;
+              user_id: string;
+              text: string;
+              created_at: string;
+              pinned?: boolean;
+            };
 
-          setComments((prev) => {
-            if (prev.some((c) => c.id === withAuthor.id)) return prev;
-            const next = [...prev, withAuthor];
-            // Memory-Cap — rendern wir zwar nur die letzten OVERLAY_VISIBLE,
-            // aber im Fall dass der Moderator-Pin weiter oben in der Liste
-            // liegt wollen wir ihn noch finden können.
-            return next.length > 500 ? next.slice(-500) : next;
-          });
-        },
-      )
-      // v1.w.UI.139 — UPDATE subscription: pinned field changes propagate in real-time.
-      // Host/mod calls pin_live_comment/unpin_live_comment → row UPDATE → banner refreshes.
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'live_comments',
-          filter: `session_id=eq.${sessionId}`,
-        },
-        (payload) => {
-          const raw = payload.new as { id: string; pinned?: boolean };
-          setComments((prev) =>
-            prev.map((c) => (c.id === raw.id ? { ...c, pinned: raw.pinned ?? false } : c)),
-          );
-        },
-      )
-      .subscribe();
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('id, username, display_name, avatar_url, verified:is_verified')
+              .eq('id', raw.user_id)
+              .maybeSingle();
+
+            const withAuthor: LiveCommentWithAuthor = {
+              id: raw.id,
+              session_id: raw.session_id,
+              user_id: raw.user_id,
+              body: raw.text,
+              created_at: raw.created_at,
+              pinned: raw.pinned ?? false,
+              author: profile
+                ? {
+                    id: profile.id,
+                    username: profile.username,
+                    display_name: profile.display_name,
+                    avatar_url: profile.avatar_url,
+                    verified: profile.verified ?? false,
+                  }
+                : null,
+            };
+
+            setComments((prev) => {
+              if (prev.some((c) => c.id === withAuthor.id)) return prev;
+              const next = [...prev, withAuthor];
+              // Memory-Cap — rendern wir zwar nur die letzten OVERLAY_VISIBLE,
+              // aber im Fall dass der Moderator-Pin weiter oben in der Liste
+              // liegt wollen wir ihn noch finden können.
+              return next.length > 500 ? next.slice(-500) : next;
+            });
+          },
+        )
+        // v1.w.UI.139 — UPDATE subscription: pinned field changes propagate in real-time.
+        // Host/mod calls pin_live_comment/unpin_live_comment → row UPDATE → banner refreshes.
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'live_comments',
+            filter: `session_id=eq.${sessionId}`,
+          },
+          (payload) => {
+            const raw = payload.new as { id: string; pinned?: boolean };
+            setComments((prev) =>
+              prev.map((c) => (c.id === raw.id ? { ...c, pinned: raw.pinned ?? false } : c)),
+            );
+          },
+        )
+        .subscribe();
+    } catch (error) {
+      console.warn('[LiveChatOverlay] realtime subscription disabled', error);
+    }
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
     };
   }, [sessionId]);
 

@@ -62,9 +62,9 @@ export function LiveChat({
   const listRef = useRef<HTMLDivElement | null>(null);
 
   // -----------------------------------------------------------------------------
-  // Realtime-Subscription auf `live_comments`-Inserts. Native broadcasted
-  // zusätzlich über den `live-comments-{id}` Channel; wir nutzen hier die
-  // einfachere `postgres_changes`-Subscription, die dasselbe Event durchreicht.
+  // Realtime-Subscription auf `live_comments`-Inserts. Der Channel-Topic muss
+  // pro Komponente eindeutig sein: Supabase erlaubt keine weiteren
+  // `postgres_changes`-Callbacks auf einem bereits subscribed Topic.
   // -----------------------------------------------------------------------------
   useEffect(() => {
     const supabase = createBrowserClient(
@@ -72,89 +72,101 @@ export function LiveChat({
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     );
 
-    const channel = supabase
-      .channel(`live-comments-${sessionId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'live_comments',
-          filter: `session_id=eq.${sessionId}`,
-        },
-        async (payload) => {
-          // Realtime-Payload kommt direkt aus Postgres-WAL — verwendet die
-          // echten DB-Spaltennamen, nicht die PostgREST-Aliase. DB-Spalte
-          // heißt `text` (siehe `supabase/live_studio.sql:45`). Wir mappen
-          // `raw.text` unten auf das UI-Feld `body`, damit der Render-Pfad
-          // mit dem SSR-Pfad (`getLiveComments`, der via `body:text` aliast)
-          // konsistent bleibt.
-          const raw = payload.new as {
-            id: string;
-            session_id: string;
-            user_id: string;
-            text: string;
-            created_at: string;
-            pinned?: boolean;
-          };
+    let channel: ReturnType<typeof supabase.channel> | null = null;
 
-          // Author-Profile lazy holen (nicht im Realtime-Event enthalten)
-          const { data: profile } = await supabase
-            .from('profiles')
-            // `verified:is_verified` — DB-Spalte heißt `is_verified` (Migration
-            // 20260407010000_creator_analytics), ohne Alias schlägt der SELECT
-            // still fehl und Realtime-Chat-Kommentare rendern ohne Author-Profil.
-            .select('id, username, display_name, avatar_url, verified:is_verified')
-            .eq('id', raw.user_id)
-            .maybeSingle();
+    try {
+      const topic = `live-comments-chat-${sessionId}-${Date.now()}-${Math.random()
+        .toString(36)
+        .slice(2)}`;
 
-          const withAuthor: LiveCommentWithAuthor = {
-            id: raw.id,
-            session_id: raw.session_id,
-            user_id: raw.user_id,
-            body: raw.text,
-            created_at: raw.created_at,
-            pinned: raw.pinned ?? false,
-            author: profile
-              ? {
-                  id: profile.id,
-                  username: profile.username,
-                  display_name: profile.display_name,
-                  avatar_url: profile.avatar_url,
-                  verified: profile.verified ?? false,
-                }
-              : null,
-          };
+      channel = supabase
+        .channel(topic)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'live_comments',
+            filter: `session_id=eq.${sessionId}`,
+          },
+          async (payload) => {
+            // Realtime-Payload kommt direkt aus Postgres-WAL — verwendet die
+            // echten DB-Spaltennamen, nicht die PostgREST-Aliase. DB-Spalte
+            // heißt `text` (siehe `supabase/live_studio.sql:45`). Wir mappen
+            // `raw.text` unten auf das UI-Feld `body`, damit der Render-Pfad
+            // mit dem SSR-Pfad (`getLiveComments`, der via `body:text` aliast)
+            // konsistent bleibt.
+            const raw = payload.new as {
+              id: string;
+              session_id: string;
+              user_id: string;
+              text: string;
+              created_at: string;
+              pinned?: boolean;
+            };
 
-          setComments((prev) => {
-            // Dedup (Optimistic-Update-Kollision)
-            if (prev.some((c) => c.id === withAuthor.id)) return prev;
-            const next = [...prev, withAuthor];
-            // Cap auf 500 Nachrichten im Memory
-            return next.length > 500 ? next.slice(-500) : next;
-          });
-        },
-      )
-      // v1.w.UI.139 — UPDATE: pinned state changes propagate in real-time
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'live_comments',
-          filter: `session_id=eq.${sessionId}`,
-        },
-        (payload) => {
-          const raw = payload.new as { id: string; pinned?: boolean };
-          setComments((prev) =>
-            prev.map((c) => (c.id === raw.id ? { ...c, pinned: raw.pinned ?? false } : c)),
-          );
-        },
-      )
-      .subscribe();
+            // Author-Profile lazy holen (nicht im Realtime-Event enthalten)
+            const { data: profile } = await supabase
+              .from('profiles')
+              // `verified:is_verified` — DB-Spalte heißt `is_verified` (Migration
+              // 20260407010000_creator_analytics), ohne Alias schlägt der SELECT
+              // still fehl und Realtime-Chat-Kommentare rendern ohne Author-Profil.
+              .select('id, username, display_name, avatar_url, verified:is_verified')
+              .eq('id', raw.user_id)
+              .maybeSingle();
+
+            const withAuthor: LiveCommentWithAuthor = {
+              id: raw.id,
+              session_id: raw.session_id,
+              user_id: raw.user_id,
+              body: raw.text,
+              created_at: raw.created_at,
+              pinned: raw.pinned ?? false,
+              author: profile
+                ? {
+                    id: profile.id,
+                    username: profile.username,
+                    display_name: profile.display_name,
+                    avatar_url: profile.avatar_url,
+                    verified: profile.verified ?? false,
+                  }
+                : null,
+            };
+
+            setComments((prev) => {
+              // Dedup (Optimistic-Update-Kollision)
+              if (prev.some((c) => c.id === withAuthor.id)) return prev;
+              const next = [...prev, withAuthor];
+              // Cap auf 500 Nachrichten im Memory
+              return next.length > 500 ? next.slice(-500) : next;
+            });
+          },
+        )
+        // v1.w.UI.139 — UPDATE: pinned state changes propagate in real-time
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'live_comments',
+            filter: `session_id=eq.${sessionId}`,
+          },
+          (payload) => {
+            const raw = payload.new as { id: string; pinned?: boolean };
+            setComments((prev) =>
+              prev.map((c) => (c.id === raw.id ? { ...c, pinned: raw.pinned ?? false } : c)),
+            );
+          },
+        )
+        .subscribe();
+    } catch (error) {
+      console.warn('[LiveChat] realtime subscription disabled', error);
+    }
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
     };
   }, [sessionId]);
 
