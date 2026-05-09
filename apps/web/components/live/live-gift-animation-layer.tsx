@@ -6,7 +6,7 @@ import { createBrowserClient } from '@supabase/ssr';
 // -----------------------------------------------------------------------------
 // LiveGiftAnimationLayer — v1.w.UI.17 (B3 Web-Parity)
 //
-// Subscribed auf `live_gifts` INSERT-Events für eine Session. Pro eingegangenem
+// Subscribed auf `gift_transactions` INSERT-Events für eine Session. Pro eingegangenem
 // Geschenk spawnt ein Card-Burst von unten-links nach oben mit leichtem
 // horizontalen Drift, bleibt ~3s sichtbar und räumt sich selbst auf.
 //
@@ -54,6 +54,7 @@ export interface LiveGiftBurst {
   senderName: string;
   giftName: string;
   giftImage: string | null;
+  giftEmoji?: string | null;
   coinCost: number;
   lane: 0 | 1 | 2;
   drift: number;
@@ -92,8 +93,8 @@ export function LiveGiftAnimationLayer({ sessionId, onBurst }: LiveGiftAnimation
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'live_gifts',
-          filter: `session_id=eq.${sessionId}`,
+          table: 'gift_transactions',
+          filter: `live_session_id=eq.${sessionId}`,
         },
         async (payload) => {
           const row = payload.new as {
@@ -111,8 +112,8 @@ export function LiveGiftAnimationLayer({ sessionId, onBurst }: LiveGiftAnimation
               .eq('id', row.sender_id)
               .maybeSingle(),
             supabase
-              .from('live_gift_catalog')
-              .select('name, image_url')
+              .from('gift_catalog')
+              .select('name, emoji')
               .eq('id', row.gift_id)
               .maybeSingle(),
           ]);
@@ -120,14 +121,15 @@ export function LiveGiftAnimationLayer({ sessionId, onBurst }: LiveGiftAnimation
           const sender = senderData as
             | { username: string | null; display_name: string | null }
             | null;
-          const gift = giftData as { name: string | null; image_url: string | null } | null;
+          const gift = giftData as { name: string | null; emoji: string | null } | null;
 
           const burst: LiveGiftBurst = {
             id: row.id,
             senderName:
               sender?.display_name?.trim() || sender?.username?.trim() || 'Unbekannt',
             giftName: gift?.name?.trim() || 'Geschenk',
-            giftImage: gift?.image_url ?? null,
+            giftImage: null,
+            giftEmoji: gift?.emoji ?? null,
             coinCost: row.coin_cost,
             lane: (Math.floor(Math.random() * 3) as 0 | 1 | 2),
             drift: -24 + Math.round(Math.random() * 48),
@@ -219,8 +221,8 @@ function LiveGiftBurstCard({ burst }: { burst: LiveGiftBurst }) {
       data-testid="gift-burst"
     >
       {burst.giftImage ? (
-        // Plain `<img>` bewusst — `live_gift_catalog.image_url` zeigt auf
-        // externe/CDN-URLs die nicht in `next.config` allowlisted sind.
+        // Plain `<img>` bewusst: externe Gift-Assets sind nicht zwingend in
+        // `next.config` allowlisted.
         // `live-gifts-feed.tsx` nutzt dasselbe Muster für Konsistenz.
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -230,7 +232,7 @@ function LiveGiftBurstCard({ burst }: { burst: LiveGiftBurst }) {
         />
       ) : (
         <span className="text-3xl leading-none" aria-hidden="true">
-          🎁
+          {burst.giftEmoji ?? '🎁'}
         </span>
       )}
       <div className="flex min-w-0 flex-col leading-tight">

@@ -17,8 +17,8 @@ import type { SessionGiftRow, ActiveGiftGoal } from '@/lib/data/live-host';
 // LiveGiftsFeed — zeigt eingehende Geschenke + optionales Coin-Goal.
 //
 // Realtime:
-//  • DB-Subscription auf live_gifts.INSERT mit session_id-Filter
-//  • DB-Subscription auf live_gift_goals.UPDATE (current_coins-Änderung)
+//  • DB-Subscription auf gift_transactions.INSERT mit live_session_id-Filter
+//  • Optional: live_gift_goals nur wenn NEXT_PUBLIC_LIVE_GIFT_GOALS_ENABLED=1
 //
 // Goal-Editor:
 //  • Host kann Ziel setzen (100-1.000.000 Coins) mit Label
@@ -36,6 +36,7 @@ export function LiveGiftsFeed({ sessionId, initialGifts, initialGoal }: LiveGift
   const [goal, setGoal] = useState<ActiveGiftGoal | null>(initialGoal);
   const [showGoalEditor, setShowGoalEditor] = useState(false);
   const [isClosingGoal, startCloseGoal] = useTransition();
+  const giftGoalsEnabled = process.env.NEXT_PUBLIC_LIVE_GIFT_GOALS_ENABLED === '1';
 
   // -----------------------------------------------------------------------------
   // Realtime-Subscriptions
@@ -50,8 +51,8 @@ export function LiveGiftsFeed({ sessionId, initialGifts, initialGoal }: LiveGift
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'live_gifts',
-          filter: `session_id=eq.${sessionId}`,
+          table: 'gift_transactions',
+          filter: `live_session_id=eq.${sessionId}`,
         },
         async (payload) => {
           const row = payload.new as {
@@ -70,8 +71,8 @@ export function LiveGiftsFeed({ sessionId, initialGifts, initialGoal }: LiveGift
               .eq('id', row.sender_id)
               .maybeSingle(),
             supabase
-              .from('live_gift_catalog')
-              .select('name, image_url')
+              .from('gift_catalog')
+              .select('name, emoji')
               .eq('id', row.gift_id)
               .maybeSingle(),
           ]);
@@ -85,7 +86,7 @@ export function LiveGiftsFeed({ sessionId, initialGifts, initialGoal }: LiveGift
                 coin_cost: row.coin_cost,
                 created_at: row.created_at,
                 sender: (sender as { username: string; avatar_url: string | null } | null) ?? null,
-                gift: (giftMeta as { name: string; image_url: string | null } | null) ?? null,
+                gift: (giftMeta as { name: string; emoji: string | null } | null) ?? null,
               } as SessionGiftRow,
               ...prev,
             ].slice(0, 100),
@@ -94,35 +95,37 @@ export function LiveGiftsFeed({ sessionId, initialGifts, initialGoal }: LiveGift
       )
       .subscribe();
 
-    const goalChannel = supabase
-      .channel(`live-goals-watch-${sessionId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'live_gift_goals',
-          filter: `session_id=eq.${sessionId}`,
-        },
-        async () => {
-          const { data } = await supabase
-            .from('live_gift_goals')
-            .select('id, session_id, host_id, label, target_coins, current_coins, created_at')
-            .eq('session_id', sessionId)
-            .is('closed_at', null)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-          setGoal((data as ActiveGiftGoal | null) ?? null);
-        },
-      )
-      .subscribe();
+    const goalChannel = giftGoalsEnabled
+      ? supabase
+          .channel(`live-goals-watch-${sessionId}`)
+          .on(
+            'postgres_changes',
+            {
+              event: '*',
+              schema: 'public',
+              table: 'live_gift_goals',
+              filter: `session_id=eq.${sessionId}`,
+            },
+            async () => {
+              const { data } = await supabase
+                .from('live_gift_goals')
+                .select('id, session_id, host_id, label, target_coins, current_coins, created_at')
+                .eq('session_id', sessionId)
+                .is('closed_at', null)
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+              setGoal((data as ActiveGiftGoal | null) ?? null);
+            },
+          )
+          .subscribe()
+      : null;
 
     return () => {
       supabase.removeChannel(giftsChannel);
-      supabase.removeChannel(goalChannel);
+      if (goalChannel) supabase.removeChannel(goalChannel);
     };
-  }, [sessionId]);
+  }, [giftGoalsEnabled, sessionId]);
 
   // -----------------------------------------------------------------------------
   // Aggregat: Top-Supporter (Session-weit)
@@ -158,7 +161,7 @@ export function LiveGiftsFeed({ sessionId, initialGifts, initialGoal }: LiveGift
           <Gift className="h-3.5 w-3.5" />
           Geschenke
         </h3>
-        {!goal && (
+        {giftGoalsEnabled && !goal && (
           <button
             type="button"
             onClick={() => setShowGoalEditor((s) => !s)}
@@ -252,13 +255,17 @@ export function LiveGiftsFeed({ sessionId, initialGifts, initialGoal }: LiveGift
               key={g.id}
               className="flex items-center gap-2 rounded-md border bg-card px-2 py-1.5 text-xs"
             >
-              {g.gift?.image_url && (
+              {g.gift?.image_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={g.gift.image_url}
                   alt={g.gift.name}
                   className="h-8 w-8 flex-shrink-0 object-contain"
                 />
+              ) : (
+                <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-muted text-lg">
+                  {g.gift?.emoji ?? '🎁'}
+                </span>
               )}
               <div className="min-w-0 flex-1">
                 <p className="truncate">

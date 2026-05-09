@@ -176,7 +176,8 @@ export interface SessionGiftRow {
   } | null;
   gift: {
     name: string;
-    image_url: string | null;
+    image_url?: string | null;
+    emoji?: string | null;
   } | null;
 }
 
@@ -184,13 +185,13 @@ export const getSessionGifts = cache(
   async (sessionId: string, limit = 30): Promise<SessionGiftRow[]> => {
     const supabase = await createClient();
     const { data } = await supabase
-      .from('live_gifts')
+      .from('gift_transactions')
       .select(
         `id, sender_id, recipient_id, gift_id, coin_cost, created_at,
-         sender:profiles!live_gifts_sender_id_fkey ( username, avatar_url ),
-         gift:live_gift_catalog!live_gifts_gift_id_fkey ( name, image_url )`,
+         sender:profiles!gift_transactions_sender_id_fkey ( username, avatar_url ),
+         gift:gift_catalog!gift_transactions_gift_id_fkey ( name, emoji )`,
       )
-      .eq('session_id', sessionId)
+      .eq('live_session_id', sessionId)
       .order('created_at', { ascending: false })
       .limit(limit);
 
@@ -221,6 +222,13 @@ export interface ActiveGiftGoal {
 
 export const getActiveGiftGoal = cache(
   async (sessionId: string): Promise<ActiveGiftGoal | null> => {
+    if (
+      process.env.LIVE_GIFT_GOALS_ENABLED !== '1' &&
+      process.env.NEXT_PUBLIC_LIVE_GIFT_GOALS_ENABLED !== '1'
+    ) {
+      return null;
+    }
+
     const supabase = await createClient();
     const { data } = await supabase
       .from('live_gift_goals')

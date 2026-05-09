@@ -13,7 +13,7 @@ import { glassPillStrong } from '@/lib/ui/glass-pill';
 // row overlaid on the stream so viewers know who the biggest supporters are.
 //
 // Architecture:
-//  • Subscribes to live_gifts INSERT (same filter as LiveGiftsFeed)
+//  • Subscribes to gift_transactions INSERT (same filter as LiveGiftsFeed)
 //  • Aggregates coins per sender_id via a local Map
 //  • Derives top-3 sorted list via useMemo — no re-sorts on every render
 //  • Initial snapshot via a small SSR-equivalent on mount (one DB read)
@@ -44,11 +44,11 @@ export function LiveGiftLeaderboard({ sessionId }: { sessionId: string }) {
     // We join profiles inline to get username + avatar without N+1.
     (async () => {
       const { data } = await supabase
-        .from('live_gifts')
+        .from('gift_transactions')
         .select(
-          'id, sender_id, coin_cost, sender:profiles!live_gifts_sender_id_fkey ( username, avatar_url )',
+          'id, sender_id, coin_cost, sender:profiles!gift_transactions_sender_id_fkey ( username, avatar_url )',
         )
-        .eq('session_id', sessionId)
+        .eq('live_session_id', sessionId)
         .order('created_at', { ascending: true });
 
       if (!data?.length) return;
@@ -86,8 +86,8 @@ export function LiveGiftLeaderboard({ sessionId }: { sessionId: string }) {
         {
           event: 'INSERT',
           schema: 'public',
-          table: 'live_gifts',
-          filter: `session_id=eq.${sessionId}`,
+          table: 'gift_transactions',
+          filter: `live_session_id=eq.${sessionId}`,
         },
         async (payload) => {
           const row = payload.new as {

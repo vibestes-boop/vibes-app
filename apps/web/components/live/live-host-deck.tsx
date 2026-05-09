@@ -362,7 +362,12 @@ export function LiveHostDeck({
       .channel(`host-summary-gifts-${session.id}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'live_gifts', filter: `session_id=eq.${session.id}` },
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'gift_transactions',
+          filter: `live_session_id=eq.${session.id}`,
+        },
         (payload) => {
           const row = payload.new as SessionGiftRow;
           setSummaryGifts((prev) => [row, ...prev]);

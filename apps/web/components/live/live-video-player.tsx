@@ -8,8 +8,9 @@ import {
   RemoteTrackPublication,
   RemoteTrack,
   Track,
+  VideoQuality,
 } from 'livekit-client';
-import { Loader2, Radio, VolumeX, Volume2, Maximize2 } from 'lucide-react';
+import { Check, Loader2, Maximize2, Radio, Settings2, Volume2, VolumeX } from 'lucide-react';
 import { createBrowserClient } from '@supabase/ssr';
 import { fetchLiveKitToken } from '@/app/actions/live';
 import { glassPillSolid } from '@/lib/ui/glass-pill';
@@ -35,6 +36,28 @@ import { cn } from '@/lib/utils';
 // -----------------------------------------------------------------------------
 
 type DuetLayout = 'top-bottom' | 'side-by-side';
+type PlayerQuality = 'auto' | 'medium' | 'low';
+type FitMode = 'contain' | 'cover';
+
+const PLAYER_QUALITY_LABELS: Record<PlayerQuality, string> = {
+  auto: 'Automatisch',
+  medium: 'Mittel',
+  low: 'Sparmodus',
+};
+
+function liveKitQualityFor(mode: PlayerQuality) {
+  if (mode === 'low') return VideoQuality.LOW;
+  if (mode === 'medium') return VideoQuality.MEDIUM;
+  return VideoQuality.HIGH;
+}
+
+function applyPublicationQuality(
+  publication: RemoteTrackPublication | null,
+  mode: PlayerQuality,
+) {
+  if (!publication || publication.kind !== Track.Kind.Video) return;
+  publication.setVideoQuality(liveKitQualityFor(mode));
+}
 
 function supaClient() {
   return createBrowserClient(
@@ -67,12 +90,18 @@ export function LiveVideoPlayer({
   const coVideoRef = useRef<HTMLVideoElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const roomRef = useRef<Room | null>(null);
+  const hostVideoPublicationRef = useRef<RemoteTrackPublication | null>(null);
+  const coHostVideoPublicationRef = useRef<RemoteTrackPublication | null>(null);
+  const playerQualityRef = useRef<PlayerQuality>('auto');
   const [phase, setPhase] = useState<'idle' | 'connecting' | 'live' | 'error' | 'ended'>(
     'connecting',
   );
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [muted, setMuted] = useState(true); // Auto-Play-Policy: Start muted, User tappt Unmute
   const [coHostActive, setCoHostActive] = useState(false); // true = CoHost publisht gerade Video
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [playerQuality, setPlayerQuality] = useState<PlayerQuality>('auto');
+  const [fitMode, setFitMode] = useState<FitMode>('contain');
 
   // v1.w.UI.210 — Layout state, driven by co-host-signals broadcast.
   // Default 'top-bottom' (vertical split); switches to 'side-by-side' for
@@ -164,9 +193,13 @@ export function LiveVideoPlayer({
       if (track.kind === Track.Kind.Video) {
         if (participant.identity === hostId) {
           // Host-Video → primärer Player
+          hostVideoPublicationRef.current = publication;
+          applyPublicationQuality(publication, playerQualityRef.current);
           if (videoRef.current) track.attach(videoRef.current);
         } else if (coHostId && participant.identity === coHostId) {
           // CoHost-Video → duet-slot (v1.w.UI.136, war zuvor ignoriert)
+          coHostVideoPublicationRef.current = publication;
+          applyPublicationQuality(publication, playerQualityRef.current);
           if (coVideoRef.current) {
             track.attach(coVideoRef.current);
             setCoHostActive(true);
@@ -189,7 +222,7 @@ export function LiveVideoPlayer({
 
     function onUnsubscribed(
       track: RemoteTrack,
-      _publication: RemoteTrackPublication,
+      publication: RemoteTrackPublication,
       participant: RemoteParticipant,
     ) {
       track.detach();
@@ -197,9 +230,13 @@ export function LiveVideoPlayer({
       if (track.kind === Track.Kind.Video) {
         if (participant.identity === hostId) {
           // Host hat Video gestoppt → zurück zu Loading-State (Session evtl. beendet)
+          if (hostVideoPublicationRef.current === publication) hostVideoPublicationRef.current = null;
           if (videoRef.current) videoRef.current.srcObject = null;
         } else if (coHostId && participant.identity === coHostId) {
           // CoHost hat Video gestoppt → duet-slot wieder ausblenden
+          if (coHostVideoPublicationRef.current === publication) {
+            coHostVideoPublicationRef.current = null;
+          }
           setCoHostActive(false);
         }
       }
@@ -223,6 +260,8 @@ export function LiveVideoPlayer({
       room.off(RoomEvent.Disconnected, onDisconnected);
       room.disconnect();
       roomRef.current = null;
+      hostVideoPublicationRef.current = null;
+      coHostVideoPublicationRef.current = null;
     };
 
   }, [roomName, hostId, coHostId]);
@@ -246,6 +285,22 @@ export function LiveVideoPlayer({
     }
   };
 
+  const handleQualityChange = (nextQuality: PlayerQuality) => {
+    playerQualityRef.current = nextQuality;
+    setPlayerQuality(nextQuality);
+    applyPublicationQuality(hostVideoPublicationRef.current, nextQuality);
+    applyPublicationQuality(coHostVideoPublicationRef.current, nextQuality);
+  };
+
+  const hostVideoClassName = cn(
+    'h-full w-full',
+    fitMode === 'cover' ? 'object-cover' : 'object-contain',
+  );
+  const splitVideoClassName = cn(
+    'h-full w-full',
+    fitMode === 'cover' ? 'object-cover' : 'object-contain',
+  );
+
   // -----------------------------------------------------------------------------
   // Render
   // -----------------------------------------------------------------------------
@@ -262,7 +317,7 @@ export function LiveVideoPlayer({
             <div className="absolute inset-y-0 left-0 w-1/2 overflow-hidden">
               <video
                 ref={videoRef}
-                className="h-full w-full object-cover"
+                className={splitVideoClassName}
                 autoPlay
                 playsInline
                 muted={muted}
@@ -277,7 +332,7 @@ export function LiveVideoPlayer({
             <div className="absolute inset-y-0 right-0 w-1/2 overflow-hidden">
               <video
                 ref={coVideoRef}
-                className="h-full w-full object-cover"
+                className={splitVideoClassName}
                 autoPlay
                 playsInline
                 muted={muted}
@@ -294,7 +349,7 @@ export function LiveVideoPlayer({
             <div className="absolute inset-x-0 top-0 h-1/2 overflow-hidden">
               <video
                 ref={videoRef}
-                className="h-full w-full object-cover"
+                className={splitVideoClassName}
                 autoPlay
                 playsInline
                 muted={muted}
@@ -309,7 +364,7 @@ export function LiveVideoPlayer({
             <div className="absolute inset-x-0 bottom-0 h-1/2 overflow-hidden">
               <video
                 ref={coVideoRef}
-                className="h-full w-full object-cover"
+                className={splitVideoClassName}
                 autoPlay
                 playsInline
                 muted={muted}
@@ -326,7 +381,7 @@ export function LiveVideoPlayer({
         <>
           <video
             ref={videoRef}
-            className="h-full w-full object-contain"
+            className={hostVideoClassName}
             autoPlay
             playsInline
             muted={muted}
@@ -372,10 +427,83 @@ export function LiveVideoPlayer({
       {/* Controls — unten rechts (v1.w.UI.15 glassPillSolid, B4 aus UI_AUDIT_WEB). */}
       {phase === 'live' && (
         <div className="pointer-events-none absolute inset-0">
-          <div className="pointer-events-auto absolute right-3 top-14 flex items-center gap-2">
+          <div className="pointer-events-auto absolute right-3 top-14 flex items-center gap-2 xl:bottom-28 xl:top-auto">
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setSettingsOpen((open) => !open)}
+                className={cn(glassPillSolid, 'rounded-full p-3 shadow-elevation-2')}
+                aria-label="Player-Einstellungen"
+                aria-expanded={settingsOpen}
+              >
+                <Settings2 className="h-5 w-5" />
+              </button>
+
+              {settingsOpen && (
+                <div className="absolute right-0 top-full mt-2 w-72 overflow-hidden rounded-2xl bg-zinc-950/92 text-white shadow-elevation-3 ring-1 ring-white/10 backdrop-blur-xl xl:bottom-full xl:top-auto xl:mb-2 xl:mt-0">
+                  <div className="border-b border-white/10 px-4 py-3">
+                    <p className="text-sm font-bold">Wiedergabe</p>
+                    <p className="mt-0.5 text-xs text-white/55">
+                      Qualität und Bildausschnitt für diesen Stream.
+                    </p>
+                  </div>
+
+                  <div className="space-y-1 p-2">
+                    <p className="px-2 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-white/45">
+                      Qualität
+                    </p>
+                    {(['auto', 'medium', 'low'] as const).map((quality) => (
+                      <button
+                        key={quality}
+                        type="button"
+                        onClick={() => handleQualityChange(quality)}
+                        className={cn(
+                          'flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition-colors',
+                          playerQuality === quality ? 'bg-white/12 text-white' : 'text-white/75 hover:bg-white/8',
+                        )}
+                      >
+                        <span>{PLAYER_QUALITY_LABELS[quality]}</span>
+                        {playerQuality === quality && <Check className="h-4 w-4" aria-hidden="true" />}
+                      </button>
+                    ))}
+
+                    <div className="my-2 h-px bg-white/10" />
+
+                    <p className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-white/45">
+                      Bild
+                    </p>
+                    <div className="grid grid-cols-2 gap-2 px-1 pb-1">
+                      <button
+                        type="button"
+                        onClick={() => setFitMode('contain')}
+                        className={cn(
+                          'rounded-xl px-3 py-2 text-sm font-semibold transition-colors',
+                          fitMode === 'contain' ? 'bg-white text-zinc-950' : 'bg-white/8 text-white/75 hover:bg-white/12',
+                        )}
+                      >
+                        Einpassen
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFitMode('cover')}
+                        className={cn(
+                          'rounded-xl px-3 py-2 text-sm font-semibold transition-colors',
+                          fitMode === 'cover' ? 'bg-white text-zinc-950' : 'bg-white/8 text-white/75 hover:bg-white/12',
+                        )}
+                      >
+                        Füllen
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
             <button
               type="button"
-              onClick={() => setMuted((m) => !m)}
+              onClick={() => {
+                setSettingsOpen(false);
+                setMuted((m) => !m);
+              }}
               className={cn(glassPillSolid, 'rounded-full p-3 shadow-elevation-2')}
               aria-label={muted ? 'Ton einschalten' : 'Stumm schalten'}
             >
@@ -383,7 +511,10 @@ export function LiveVideoPlayer({
             </button>
             <button
               type="button"
-              onClick={goFullscreen}
+              onClick={() => {
+                setSettingsOpen(false);
+                goFullscreen();
+              }}
               className={cn(glassPillSolid, 'rounded-full p-3 shadow-elevation-2')}
               aria-label="Vollbild"
             >

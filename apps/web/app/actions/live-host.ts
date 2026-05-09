@@ -405,6 +405,13 @@ export async function createLiveGiftGoal(
   targetCoins: number,
   label: string,
 ): Promise<ActionResult<{ goalId: string }>> {
+  if (
+    process.env.LIVE_GIFT_GOALS_ENABLED !== '1' &&
+    process.env.NEXT_PUBLIC_LIVE_GIFT_GOALS_ENABLED !== '1'
+  ) {
+    return { ok: false, error: 'Gift-Ziele sind noch nicht aktiviert.' };
+  }
+
   const host = await getHost();
   if (!host) return { ok: false, error: 'Bitte einloggen.' };
 
@@ -443,6 +450,13 @@ export async function createLiveGiftGoal(
 export async function closeActiveGiftGoal(
   sessionId: string,
 ): Promise<ActionResult<null>> {
+  if (
+    process.env.LIVE_GIFT_GOALS_ENABLED !== '1' &&
+    process.env.NEXT_PUBLIC_LIVE_GIFT_GOALS_ENABLED !== '1'
+  ) {
+    return { ok: false, error: 'Gift-Ziele sind noch nicht aktiviert.' };
+  }
+
   const host = await getHost();
   if (!host) return { ok: false, error: 'Bitte einloggen.' };
 

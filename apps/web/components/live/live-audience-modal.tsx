@@ -8,7 +8,7 @@
 //
 // Architecture (mirror of mobile ViewerListSheet.tsx):
 //  • Top-Gifter rows first (ranked 1…N, sorted by coin total for this session)
-//    fetched from `live_gifts` aggregated by sender_id.
+//    fetched from `gift_transactions` aggregated by sender_id.
 //  • Non-gifting chatters below (deduped from last 100 live_comments).
 //  • Each row: avatar, @username, rank badge, ❤️ host-follower badge, 🛡 mod badge.
 //  • Tap a row → mini profile card with Follow + mod grant/revoke (host only).
@@ -44,6 +44,7 @@ interface AudienceRow {
   rank: number | null;       // 1-based position in top-gifter list, null = non-gifter
   totalCoins: number;
   giftsCount: number;
+  isPresent: boolean;
 }
 
 interface ProfileCard {
@@ -51,6 +52,14 @@ interface ProfileCard {
   username: string;
   avatarUrl: string | null;
   bio: string | null;
+}
+
+interface PresenceRow {
+  user_id: string;
+  username: string | null;
+  avatar_url: string | null;
+  joined_at: string | null;
+  is_moderator: boolean | null;
 }
 
 export interface LiveAudienceModalProps {
@@ -402,29 +411,40 @@ export function LiveAudienceModal({
     setLoading(true);
 
     (async () => {
+      // 0. Active logged-in viewers. This RPC is intentionally optional while
+      // the migration rolls out; if it is missing, the modal falls back to the
+      // historic gift/chat audience below.
+      const audiencePromise = supabase.rpc('get_live_session_audience', {
+        p_session_id: sessionId,
+        p_limit: 100,
+      });
+
       // 1. Top gifters (aggregate coins per sender for this session)
-      const { data: giftsData } = await supabase
-        .from('live_gifts')
-        .select('sender_id, coin_cost, profiles!live_gifts_sender_id_fkey(id, username, avatar_url)')
-        .eq('session_id', sessionId)
-        .order('created_at', { ascending: false })
-        .limit(200);
-
-      // 2. Recent chatters (last 100 unique)
-      const { data: commentData } = await supabase
-        .from('live_comments')
-        .select('user_id, profiles!live_comments_user_id_fkey(id, username, avatar_url)')
-        .eq('session_id', sessionId)
-        .order('created_at', { ascending: false })
-        .limit(100);
-
-      // 3. Current moderators
-      const { data: modsData } = await supabase
-        .from('live_moderators')
-        .select('user_id')
-        .eq('session_id', sessionId);
+      const [audienceResult, { data: giftsData }, { data: commentData }, { data: modsData }] =
+        await Promise.all([
+          audiencePromise,
+          supabase
+            .from('gift_transactions')
+            .select('sender_id, coin_cost, profiles!gift_transactions_sender_id_fkey(id, username, avatar_url)')
+            .eq('live_session_id', sessionId)
+            .order('created_at', { ascending: false })
+            .limit(200),
+          supabase
+            .from('live_comments')
+            .select('user_id, profiles!live_comments_user_id_fkey(id, username, avatar_url)')
+            .eq('session_id', sessionId)
+            .order('created_at', { ascending: false })
+            .limit(100),
+          supabase
+            .from('live_moderators')
+            .select('user_id')
+            .eq('session_id', sessionId),
+        ]);
 
       if (cancelled) return;
+
+      const presenceRows = (audienceResult.data ?? []) as unknown as PresenceRow[];
+      const presentIds = new Set(presenceRows.map((row) => row.user_id));
 
       // Build gifter map (sum coins per sender)
       type GiftRow = { sender_id: string; coin_cost: number; profiles: { id: string; username: string; avatar_url: string | null } | null };
@@ -450,12 +470,29 @@ export function LiveAudienceModal({
           rank: idx + 1,
           totalCoins: info.totalCoins,
           giftsCount: info.giftsCount,
+          isPresent: presentIds.has(id),
         }));
 
-      // Build chatter rows (unique, non-gifter)
+      // Build active viewer rows (unique, non-gifter)
       const gifterIds = new Set(gifterMap.keys());
       type CommentRow = { user_id: string; profiles: { id: string; username: string; avatar_url: string | null } | null };
       const seenIds = new Set<string>(gifterIds);
+      const presentViewers: AudienceRow[] = [];
+      for (const viewer of presenceRows) {
+        if (!viewer.username || seenIds.has(viewer.user_id)) continue;
+        seenIds.add(viewer.user_id);
+        presentViewers.push({
+          id: viewer.user_id,
+          username: viewer.username,
+          avatarUrl: viewer.avatar_url,
+          rank: null,
+          totalCoins: 0,
+          giftsCount: 0,
+          isPresent: true,
+        });
+      }
+
+      // Build chatter rows (unique, non-gifter and non-present)
       const chatters: AudienceRow[] = [];
       for (const c of (commentData ?? []) as unknown as CommentRow[]) {
         if (!c.profiles || seenIds.has(c.user_id)) continue;
@@ -467,13 +504,17 @@ export function LiveAudienceModal({
           rank: null,
           totalCoins: 0,
           giftsCount: 0,
+          isPresent: false,
         });
       }
 
-      const merged = [...sortedGifters, ...chatters];
+      const merged = [...sortedGifters, ...presentViewers, ...chatters];
 
       // Mod IDs
-      const newModIds = new Set((modsData ?? []).map((r: { user_id: string }) => r.user_id));
+      const newModIds = new Set([
+        ...(modsData ?? []).map((r: { user_id: string }) => r.user_id),
+        ...presenceRows.filter((row) => row.is_moderator).map((row) => row.user_id),
+      ]);
       setModIds(newModIds);
 
       // Batch-query: which audience members follow the host?
@@ -616,6 +657,11 @@ export function LiveAudienceModal({
                           {modIds.has(row.id) && (
                             <span className="shrink-0 rounded-sm bg-violet-500/20 px-1 py-0 text-[9px] uppercase tracking-wider text-violet-300">
                               🛡 Mod
+                            </span>
+                          )}
+                          {row.isPresent && (
+                            <span className="shrink-0 rounded-full bg-emerald-500/15 px-1.5 py-0 text-[9px] font-semibold text-emerald-500">
+                              live
                             </span>
                           )}
                         </div>

@@ -5,6 +5,7 @@ import { createBrowserClient } from '@supabase/ssr';
 import { Send, ShieldAlert, Clock, Pin, PinOff } from 'lucide-react';
 import { sendLiveComment, timeoutChatUser, pinLiveComment, unpinLiveComment } from '@/app/actions/live';
 import type { LiveCommentWithAuthor } from '@/lib/data/live';
+import { cn } from '@/lib/utils';
 import { LiveChatUserPanel } from './live-chat-user-panel';
 import type { ChatUserInfo } from './live-chat-user-panel';
 
@@ -27,6 +28,9 @@ export interface LiveChatProps {
   isModerator: boolean;
   slowModeSeconds: number;
   ended: boolean;
+  allowComments?: boolean;
+  commentsLockedLabel?: string;
+  className?: string;
   /** v1.w.UI.226 — Local-only system messages injected by the host deck
    * (e.g. "🎉 @username folgt jetzt!"). Not persisted to DB — client-only
    * overlay inside the chat message list. Parity with native sendSystemEvent(). */
@@ -44,6 +48,9 @@ export function LiveChat({
   isModerator,
   slowModeSeconds,
   ended,
+  allowComments = true,
+  commentsLockedLabel = 'Kommentare sind deaktiviert.',
+  className,
   localSystemMessages,
 }: LiveChatProps) {
   const [comments, setComments] = useState<LiveCommentWithAuthor[]>(initialComments);
@@ -191,7 +198,7 @@ export function LiveChat({
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
     const trimmed = text.trim();
-    if (!trimmed || !viewerId || ended || cooldownLeft > 0) return;
+    if (!trimmed || !viewerId || ended || !allowComments || cooldownLeft > 0) return;
 
     setSendError(null);
     startTransition(async () => {
@@ -259,7 +266,7 @@ export function LiveChat({
   const [selectedChatUser, setSelectedChatUser] = useState<ChatUserInfo | null>(null);
 
   return (
-    <div className="relative flex flex-1 flex-col overflow-hidden rounded-xl border bg-card">
+    <div className={cn('relative flex flex-1 flex-col overflow-hidden rounded-xl border bg-card', className)}>
       {/* Header */}
       <div className="flex items-center justify-between border-b px-3 py-2">
         <h2 className="text-sm font-semibold">Chat</h2>
@@ -291,7 +298,7 @@ export function LiveChat({
       >
         {comments.length === 0 ? (
           <p className="pt-8 text-center text-xs text-muted-foreground">
-            Sei der Erste im Chat.
+            {ended ? 'Keine Kommentare in diesem Stream.' : 'Sei der Erste im Chat.'}
           </p>
         ) : (
           <>
@@ -333,10 +340,14 @@ export function LiveChat({
       </div>
 
       {/* Compose */}
-      {viewerId ? (
-        ended ? (
+      {ended ? (
+        <div className="border-t px-3 py-3 text-center text-xs text-muted-foreground">
+          Stream beendet.
+        </div>
+      ) : viewerId ? (
+        !allowComments ? (
           <div className="border-t px-3 py-3 text-center text-xs text-muted-foreground">
-            Stream beendet.
+            {commentsLockedLabel}
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="flex gap-2 border-t px-3 py-2">

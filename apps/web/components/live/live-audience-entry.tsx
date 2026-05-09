@@ -8,8 +8,13 @@
 // -----------------------------------------------------------------------------
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import { LiveViewerCount } from './live-viewer-count';
-import { LiveAudienceModal } from './live-audience-modal';
+
+const LiveAudienceModal = dynamic(
+  () => import('./live-audience-modal').then((mod) => mod.LiveAudienceModal),
+  { ssr: false },
+);
 
 export interface LiveAudienceEntryProps {
   sessionId: string;

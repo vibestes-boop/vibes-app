@@ -36,9 +36,15 @@ interface LiveGiftGoalViewerProps {
 
 export function LiveGiftGoalViewer({ sessionId, initialGoal }: LiveGiftGoalViewerProps) {
   const [goal, setGoal] = useState<ActiveGiftGoal | null>(initialGoal);
+  const giftGoalsEnabled = process.env.NEXT_PUBLIC_LIVE_GIFT_GOALS_ENABLED === '1';
 
   // ── Realtime: live_gift_goals UPDATE ──────────────────────────────────────
   useEffect(() => {
+    if (!giftGoalsEnabled) {
+      setGoal(null);
+      return;
+    }
+
     const db = supa();
     const ch = db
       .channel(`live-goal-viewer-${sessionId}`)
@@ -81,7 +87,7 @@ export function LiveGiftGoalViewer({ sessionId, initialGoal }: LiveGiftGoalViewe
     return () => {
       db.removeChannel(ch);
     };
-  }, [sessionId]);
+  }, [giftGoalsEnabled, sessionId]);
 
   if (!goal) return null;
 

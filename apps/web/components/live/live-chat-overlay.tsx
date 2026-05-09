@@ -31,7 +31,7 @@ import type { ChatUserInfo } from './live-chat-user-panel';
 // Mobile-Parity: watch/[id].tsx zeigt HOST / 🛡 MOD / ★ TOP Badges in der
 // CommentRow. Web hatte nur den HOST-Badge. Jetzt:
 //   • modIds Set — via live_moderators INSERT/DELETE Realtime
-//   • gifterMap Map<userId,coins> — via live_gifts INSERT + initial snapshot
+//   • gifterMap Map<userId,coins> — via gift_transactions INSERT + initial snapshot
 //   • topGifterIds = top-3 nach total coins (useMemo über gifterMap)
 // Beide Sets werden direkt in dieser Datei gehalten (kein shared hook) um
 // die beiden Chat-Varianten (Overlay vs. Sidebar) unabhängig zu halten.
@@ -249,6 +249,11 @@ export function LiveChatOverlay({
   // Aggregates coin totals per sender for ★ TOP badge on the top-3 chatters.
   // ---------------------------------------------------------------------------
   useEffect(() => {
+    if (ended) {
+      setGifterMap(new Map());
+      return;
+    }
+
     const supabase = createBrowserClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -258,9 +263,9 @@ export function LiveChatOverlay({
 
     // Initial snapshot — accumulate historical gifts so late-joiners see correct badges.
     supabase
-      .from('live_gifts')
+      .from('gift_transactions')
       .select('sender_id, coin_cost')
-      .eq('session_id', sessionId)
+      .eq('live_session_id', sessionId)
       .then(({ data }) => {
         if (cancelled || !data?.length) return;
         setGifterMap(() => {
@@ -276,7 +281,12 @@ export function LiveChatOverlay({
       .channel(`live-gifts-overlay-${sessionId}`)
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'live_gifts', filter: `session_id=eq.${sessionId}` },
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'gift_transactions',
+          filter: `live_session_id=eq.${sessionId}`,
+        },
         (payload) => {
           const { sender_id, coin_cost } = payload.new as { sender_id: string; coin_cost: number };
           if (sender_id && coin_cost) {
@@ -294,7 +304,7 @@ export function LiveChatOverlay({
       cancelled = true;
       supabase.removeChannel(ch);
     };
-  }, [sessionId]);
+  }, [ended, sessionId]);
 
   // ---------------------------------------------------------------------------
   // Send-Handler (identisch zur Sidebar-Variante inkl. Shadow-Ban-Ghost).

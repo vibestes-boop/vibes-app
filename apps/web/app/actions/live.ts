@@ -227,12 +227,10 @@ export async function sendLiveReaction(
 }
 
 // -----------------------------------------------------------------------------
-// sendLiveGift — delegiert an Native-RPC `send_gift`. Die RPC übernimmt:
+// sendLiveGift — delegiert an die produktive RPC `send_gift`. Die RPC übernimmt:
 //   • Coin-Abbuchung vom Sender (atomar)
 //   • Coin-Credit an Receiver (70/30 Split)
-//   • Insert nach `live_gifts`
-//   • DB-Notify → Trigger broadcastet auf `live:{id}` Event `gift`
-//   • Update `live_gift_goals` Progress (wenn aktiv)
+//   • Insert nach `gift_transactions`
 // -----------------------------------------------------------------------------
 
 export interface GiftSendResult {
@@ -245,7 +243,9 @@ const GIFT_ERROR_MESSAGES: Record<string, string> = {
   insufficient_coins: 'Nicht genug Coins. Lade dein Guthaben auf.',
   no_wallet: 'Dein Coin-Konto ist noch nicht initialisiert.',
   cannot_gift_self: 'Du kannst dir nicht selbst ein Geschenk machen.',
+  cannot_gift_yourself: 'Du kannst dir nicht selbst ein Geschenk machen.',
   gift_not_found: 'Geschenk ist nicht mehr verfügbar.',
+  gifts_disabled: 'Geschenke sind in diesem Live deaktiviert.',
   session_not_active: 'Session ist bereits beendet.',
   recipient_not_in_session: 'Empfänger ist nicht Teil dieser Session.',
 };
@@ -266,10 +266,9 @@ export async function sendLiveGift(
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc('send_gift', {
-    p_session_id: sessionId,
     p_recipient_id: recipientId,
+    p_live_session_id: sessionId,
     p_gift_id: giftId,
-    p_combo_key: comboKey,
   });
 
   if (error) {
@@ -280,15 +279,29 @@ export async function sendLiveGift(
     return { ok: false, error: 'Geschenk konnte nicht gesendet werden.' };
   }
 
-  const row = (data as { gift_log_id: string; new_balance: number; combo_key: string | null } | null) ?? null;
+  const row =
+    (data as {
+      success?: boolean;
+      error?: string;
+      gift_log_id?: string;
+      new_balance?: number;
+      combo_key?: string | null;
+    } | null) ?? null;
   if (!row) return { ok: false, error: 'Kein Rückgabewert von send_gift.' };
+  if (row.error) return { ok: false, error: GIFT_ERROR_MESSAGES[row.error] ?? row.error };
+  if (row.success === false) return { ok: false, error: 'Geschenk konnte nicht gesendet werden.' };
+
+  const newBalance = row.new_balance;
+  if (typeof newBalance !== 'number') {
+    return { ok: false, error: 'Coin-Stand konnte nicht gelesen werden.' };
+  }
 
   return {
     ok: true,
     data: {
-      giftLogId: row.gift_log_id,
-      newBalance: row.new_balance,
-      comboKey: row.combo_key ?? null,
+      giftLogId: row.gift_log_id ?? '',
+      newBalance,
+      comboKey: row.combo_key ?? comboKey,
     },
   };
 }
