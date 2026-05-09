@@ -281,7 +281,7 @@ export default async function LiveViewerPage({ params }: PageProps) {
            * `pointer-events-none` damit Video-Controls darunter klickbar
            * bleiben (Reserved für Phase 2 B4 Maximize).
            */}
-          <div className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/50 via-black/20 to-transparent" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/50 via-black/20 to-transparent xl:hidden" />
 
           <LiveViewerStageDeferredOverlays
             sessionId={id}
@@ -301,7 +301,7 @@ export default async function LiveViewerPage({ params }: PageProps) {
           />
 
           {/* Top-Bar: Back-Link links, WOZ-Badge + Melden rechts */}
-          <div className="absolute inset-x-3 top-3 flex items-center justify-between">
+          <div className="absolute inset-x-3 top-3 flex items-center justify-between xl:hidden">
             <Link
               href={'/live' as Route}
               className={cn(
@@ -342,7 +342,7 @@ export default async function LiveViewerPage({ params }: PageProps) {
 
           {/* Top-Left-Stack: Live-Badge + Viewer-Count + Host-Pill + Titel */}
           {!ended && (
-            <div className="absolute left-3 top-14 flex max-w-[75%] flex-col items-start gap-2">
+            <div className="absolute left-3 top-14 flex max-w-[75%] flex-col items-start gap-2 xl:hidden">
               <div className="flex items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 rounded-md bg-red-600 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white shadow-elevation-1">
                   <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
@@ -374,6 +374,75 @@ export default async function LiveViewerPage({ params }: PageProps) {
           )}
 
           </div>
+
+          {/* Desktop-Chrome — Metadaten und Controls sitzen auf der Stage,
+              nicht direkt auf dem Video. Mobil bleibt das kompakte Video-Overlay. */}
+          {!ended && (
+            <div className="hidden xl:pointer-events-none xl:absolute xl:inset-x-5 xl:top-5 xl:z-30 xl:flex xl:items-start xl:justify-between xl:gap-4">
+              <div className="pointer-events-auto flex max-w-[300px] flex-col items-start gap-2">
+                <Link
+                  href={'/live' as Route}
+                  className={cn(
+                    glassPillStrong,
+                    'inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold text-white/90 shadow-elevation-1 hover:text-white',
+                  )}
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                  Zurück
+                </Link>
+                <div className="flex items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 rounded-md bg-red-600 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wider text-white shadow-elevation-1">
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-white" />
+                    Live
+                  </span>
+                  <LiveAudienceEntry
+                    sessionId={id}
+                    initialCount={session.viewer_count ?? 0}
+                    hostId={session.host_id}
+                    viewerId={viewerId}
+                    isHost={isHost}
+                  />
+                </div>
+                <LiveHostPill
+                  session={session}
+                  viewerId={viewerId}
+                  initialFollowing={isFollowing}
+                />
+                {session.title && (
+                  <p className="line-clamp-2 max-w-full rounded-xl bg-black/35 px-3 py-1.5 text-[13px] font-medium text-white shadow-elevation-1 backdrop-blur-md">
+                    {session.title}
+                  </p>
+                )}
+                <LiveViewerDeferredGiftLeaderboard sessionId={id} />
+              </div>
+
+              <div className="pointer-events-auto flex items-center gap-2">
+                {session.women_only && (
+                  <span
+                    className={cn(
+                      glassPillStrong,
+                      'inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[11px] font-semibold text-rose-300 shadow-elevation-1',
+                    )}
+                    title="Dieser Stream ist nur für Frauen"
+                  >
+                    ♀ Nur Frauen
+                  </span>
+                )}
+                {viewerId && !isHost && (
+                  <Link
+                    href={`/live/${id}/report` as Route}
+                    className={cn(
+                      glassPillStrong,
+                      'inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-medium text-white/85 shadow-elevation-1 hover:text-white',
+                    )}
+                  >
+                    <Flag className="h-3 w-3" />
+                    Melden
+                  </Link>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Action-Bar — mobile über dem Video, Desktop als Stage-Dock wie ein Live-Viewer. */}
           {!ended && viewerId && (
