@@ -8,6 +8,13 @@ import type { LiveCommentWithAuthor } from '@/lib/data/live';
 import { cn } from '@/lib/utils';
 import { LiveChatUserPanel } from './live-chat-user-panel';
 import type { ChatUserInfo } from './live-chat-user-panel';
+import {
+  LIVE_COMMENT_BROADCAST_EVENT,
+  createOptimisticLiveComment,
+  mergeLiveComment,
+  replaceOptimisticLiveComment,
+  type LiveCommentBroadcastPayload,
+} from './live-chat-messages';
 
 // -----------------------------------------------------------------------------
 // LiveChat — Realtime-Chat via `live-comments-{id}` Broadcast (gleicher Channel
@@ -60,6 +67,7 @@ export function LiveChat({
   // v1.w.UI.139 — Slow-mode client-side countdown
   const [cooldownLeft, setCooldownLeft] = useState(0);
   const listRef = useRef<HTMLDivElement | null>(null);
+  const broadcastCommentRef = useRef<((comment: LiveCommentWithAuthor) => void) | null>(null);
 
   // -----------------------------------------------------------------------------
   // Realtime-Subscription auf `live_comments`-Inserts. Der Channel-Topic muss
@@ -72,14 +80,15 @@ export function LiveChat({
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     );
 
-    let channel: ReturnType<typeof supabase.channel> | null = null;
+    let changesChannel: ReturnType<typeof supabase.channel> | null = null;
+    let broadcastChannel: ReturnType<typeof supabase.channel> | null = null;
 
     try {
       const topic = `live-comments-chat-${sessionId}-${Date.now()}-${Math.random()
         .toString(36)
         .slice(2)}`;
 
-      channel = supabase
+      changesChannel = supabase
         .channel(topic)
         .on(
           'postgres_changes',
@@ -133,13 +142,7 @@ export function LiveChat({
                 : null,
             };
 
-            setComments((prev) => {
-              // Dedup (Optimistic-Update-Kollision)
-              if (prev.some((c) => c.id === withAuthor.id)) return prev;
-              const next = [...prev, withAuthor];
-              // Cap auf 500 Nachrichten im Memory
-              return next.length > 500 ? next.slice(-500) : next;
-            });
+            setComments((prev) => mergeLiveComment(prev, withAuthor));
           },
         )
         // v1.w.UI.139 — UPDATE: pinned state changes propagate in real-time
@@ -159,14 +162,33 @@ export function LiveChat({
           },
         )
         .subscribe();
+
+      broadcastChannel = supabase
+        .channel(`live-comments-broadcast-${sessionId}`, {
+          config: { broadcast: { ack: false, self: false } },
+        })
+        .on('broadcast', { event: LIVE_COMMENT_BROADCAST_EVENT }, (payload) => {
+          const incoming = (payload.payload as LiveCommentBroadcastPayload | null)?.comment;
+          if (!incoming?.id) return;
+          setComments((prev) => mergeLiveComment(prev, incoming));
+        })
+        .subscribe();
+
+      broadcastCommentRef.current = (comment) => {
+        void broadcastChannel?.send({
+          type: 'broadcast',
+          event: LIVE_COMMENT_BROADCAST_EVENT,
+          payload: { comment },
+        });
+      };
     } catch (error) {
       console.warn('[LiveChat] realtime subscription disabled', error);
     }
 
     return () => {
-      if (channel) {
-        supabase.removeChannel(channel);
-      }
+      broadcastCommentRef.current = null;
+      if (changesChannel) supabase.removeChannel(changesChannel);
+      if (broadcastChannel) supabase.removeChannel(broadcastChannel);
     };
   }, [sessionId]);
 
@@ -213,27 +235,29 @@ export function LiveChat({
     if (!trimmed || !viewerId || ended || !allowComments || cooldownLeft > 0) return;
 
     setSendError(null);
+    setText('');
+    const optimistic = createOptimisticLiveComment(sessionId, viewerId, trimmed);
+    setComments((prev) => mergeLiveComment(prev, optimistic));
+
     startTransition(async () => {
       const result = await sendLiveComment(sessionId, trimmed);
       if (!result.ok) {
+        setComments((prev) => prev.filter((comment) => comment.id !== optimistic.id));
+        setText((current) => (current.length > 0 ? current : trimmed));
         setSendError(result.error);
         return;
       }
-      setText('');
+
       if (slowModeSeconds > 0) setCooldownLeft(slowModeSeconds);
       // Bei Shadow-Ban: Lokal anzeigen, damit der Troll nicht merkt, dass
       // niemand ihn sieht. Native macht dasselbe.
       if (result.data.shadowBanned) {
-        const localGhost: LiveCommentWithAuthor = {
-          id: `ghost-${Date.now()}`,
-          session_id: sessionId,
-          user_id: viewerId,
-          body: trimmed,
-          created_at: new Date().toISOString(),
-          pinned: false,
-          author: null,
-        };
-        setComments((prev) => [...prev, localGhost]);
+        return;
+      }
+
+      if (result.data.comment) {
+        setComments((prev) => replaceOptimisticLiveComment(prev, optimistic.id, result.data.comment!));
+        broadcastCommentRef.current?.(result.data.comment);
       }
     });
   };

@@ -3,6 +3,7 @@
 import { revalidateTag } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { containsBlockedWord } from '@shared/moderation/words';
+import type { LiveCommentWithAuthor } from '@/lib/data/live';
 
 // -----------------------------------------------------------------------------
 // Live-Server-Actions — Viewer/Host/Moderator Interaktionen für `/live/[id]`.
@@ -103,7 +104,7 @@ const COMMENT_MAX_LEN = 200;
 export async function sendLiveComment(
   sessionId: string,
   rawText: string,
-): Promise<ActionResult<{ id: string | null; shadowBanned: boolean }>> {
+): Promise<ActionResult<{ id: string | null; shadowBanned: boolean; comment: LiveCommentWithAuthor | null }>> {
   const viewer = await getViewerId();
   if (!viewer) return { ok: false, error: 'Bitte einloggen.' };
 
@@ -136,7 +137,7 @@ export async function sendLiveComment(
       // Silent-drop: User bekommt `ok: true` zurück, Kommentar wird NICHT
       // persistiert/gebroadcastet. Das Client-UI zeigt ihn lokal in der
       // eigenen View (optimistic update), aber kein anderer sieht ihn.
-      return { ok: true, data: { id: null, shadowBanned: true } };
+      return { ok: true, data: { id: null, shadowBanned: true, comment: null } };
     }
   }
 
@@ -176,13 +177,25 @@ export async function sendLiveComment(
   const { data: inserted, error: insertErr } = await supabase
     .from('live_comments')
     .insert({ session_id: sessionId, user_id: viewer.id, text })
-    .select('id')
+    .select(
+      `id, session_id, user_id, body:text, created_at, pinned,
+       author:profiles!live_comments_user_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )`,
+    )
     .single();
 
   if (insertErr || !inserted)
     return { ok: false, error: insertErr?.message ?? 'Kommentar konnte nicht gesendet werden.' };
 
-  return { ok: true, data: { id: inserted.id as string, shadowBanned: false } };
+  const row = inserted as unknown as LiveCommentWithAuthor & { author: unknown };
+  const comment: LiveCommentWithAuthor = {
+    ...row,
+    pinned: row.pinned ?? false,
+    author: Array.isArray(row.author)
+      ? ((row.author[0] as LiveCommentWithAuthor['author']) ?? null)
+      : (row.author as LiveCommentWithAuthor['author']),
+  };
+
+  return { ok: true, data: { id: comment.id, shadowBanned: false, comment } };
 }
 
 // -----------------------------------------------------------------------------
@@ -561,14 +574,14 @@ export async function toggleFollowHost(
       .from('follows')
       .delete()
       .eq('follower_id', viewer.id)
-      .eq('followed_id', hostId);
+      .eq('following_id', hostId);
     if (error) return { ok: false, error: error.message };
     return { ok: true, data: { following: false } };
   }
 
   const { error } = await supabase.from('follows').upsert(
-    { follower_id: viewer.id, followed_id: hostId },
-    { onConflict: 'follower_id,followed_id', ignoreDuplicates: true },
+    { follower_id: viewer.id, following_id: hostId },
+    { onConflict: 'follower_id,following_id', ignoreDuplicates: true },
   );
   if (error) return { ok: false, error: error.message };
   return { ok: true, data: { following: true } };

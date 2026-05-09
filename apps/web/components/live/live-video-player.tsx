@@ -438,65 +438,6 @@ export function LiveVideoPlayer({
               >
                 <Settings2 className="h-5 w-5" />
               </button>
-
-              {settingsOpen && (
-                <div className="absolute right-0 top-full mt-2 w-72 overflow-hidden rounded-2xl bg-zinc-950/92 text-white shadow-elevation-3 ring-1 ring-white/10 backdrop-blur-xl xl:bottom-full xl:top-auto xl:mb-2 xl:mt-0">
-                  <div className="border-b border-white/10 px-4 py-3">
-                    <p className="text-sm font-bold">Wiedergabe</p>
-                    <p className="mt-0.5 text-xs text-white/55">
-                      Qualität und Bildausschnitt für diesen Stream.
-                    </p>
-                  </div>
-
-                  <div className="space-y-1 p-2">
-                    <p className="px-2 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-white/45">
-                      Qualität
-                    </p>
-                    {(['auto', 'medium', 'low'] as const).map((quality) => (
-                      <button
-                        key={quality}
-                        type="button"
-                        onClick={() => handleQualityChange(quality)}
-                        className={cn(
-                          'flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition-colors',
-                          playerQuality === quality ? 'bg-white/12 text-white' : 'text-white/75 hover:bg-white/8',
-                        )}
-                      >
-                        <span>{PLAYER_QUALITY_LABELS[quality]}</span>
-                        {playerQuality === quality && <Check className="h-4 w-4" aria-hidden="true" />}
-                      </button>
-                    ))}
-
-                    <div className="my-2 h-px bg-white/10" />
-
-                    <p className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-white/45">
-                      Bild
-                    </p>
-                    <div className="grid grid-cols-2 gap-2 px-1 pb-1">
-                      <button
-                        type="button"
-                        onClick={() => setFitMode('contain')}
-                        className={cn(
-                          'rounded-xl px-3 py-2 text-sm font-semibold transition-colors',
-                          fitMode === 'contain' ? 'bg-white text-zinc-950' : 'bg-white/8 text-white/75 hover:bg-white/12',
-                        )}
-                      >
-                        Einpassen
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setFitMode('cover')}
-                        className={cn(
-                          'rounded-xl px-3 py-2 text-sm font-semibold transition-colors',
-                          fitMode === 'cover' ? 'bg-white text-zinc-950' : 'bg-white/8 text-white/75 hover:bg-white/12',
-                        )}
-                      >
-                        Füllen
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
             <button
               type="button"
@@ -521,6 +462,65 @@ export function LiveVideoPlayer({
               <Maximize2 className="h-5 w-5" />
             </button>
           </div>
+
+          {settingsOpen && (
+            <div className="pointer-events-auto absolute right-3 top-28 z-30 max-h-[min(28rem,calc(100dvh-8rem))] w-[calc(100%-1.5rem)] max-w-72 overflow-y-auto rounded-2xl bg-zinc-950/92 text-white shadow-elevation-3 ring-1 ring-white/10 backdrop-blur-xl xl:bottom-44 xl:top-auto xl:max-w-80">
+              <div className="border-b border-white/10 px-4 py-3">
+                <p className="text-sm font-bold">Wiedergabe</p>
+                <p className="mt-0.5 text-xs text-white/55">
+                  Qualität und Bildausschnitt für diesen Stream.
+                </p>
+              </div>
+
+              <div className="space-y-1 p-2">
+                <p className="px-2 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-white/45">
+                  Qualität
+                </p>
+                {(['auto', 'medium', 'low'] as const).map((quality) => (
+                  <button
+                    key={quality}
+                    type="button"
+                    onClick={() => handleQualityChange(quality)}
+                    className={cn(
+                      'flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition-colors',
+                      playerQuality === quality ? 'bg-white/12 text-white' : 'text-white/75 hover:bg-white/8',
+                    )}
+                  >
+                    <span>{PLAYER_QUALITY_LABELS[quality]}</span>
+                    {playerQuality === quality && <Check className="h-4 w-4" aria-hidden="true" />}
+                  </button>
+                ))}
+
+                <div className="my-2 h-px bg-white/10" />
+
+                <p className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-white/45">
+                  Bild
+                </p>
+                <div className="grid grid-cols-2 gap-2 px-1 pb-1">
+                  <button
+                    type="button"
+                    onClick={() => setFitMode('contain')}
+                    className={cn(
+                      'rounded-xl px-3 py-2 text-sm font-semibold transition-colors',
+                      fitMode === 'contain' ? 'bg-white text-zinc-950' : 'bg-white/8 text-white/75 hover:bg-white/12',
+                    )}
+                  >
+                    Einpassen
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFitMode('cover')}
+                    className={cn(
+                      'rounded-xl px-3 py-2 text-sm font-semibold transition-colors',
+                      fitMode === 'cover' ? 'bg-white text-zinc-950' : 'bg-white/8 text-white/75 hover:bg-white/12',
+                    )}
+                  >
+                    Füllen
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

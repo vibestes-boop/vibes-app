@@ -378,7 +378,7 @@ export const getIsFollowingHost = cache(async (hostId: string): Promise<boolean>
     .from('follows')
     .select('follower_id')
     .eq('follower_id', user.id)
-    .eq('followed_id', hostId)
+    .eq('following_id', hostId)
     .maybeSingle();
   return !!data;
 });

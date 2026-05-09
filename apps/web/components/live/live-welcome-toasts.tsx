@@ -10,7 +10,7 @@
 //  • On mount (viewer only): calls `try_welcome_viewer` RPC after 800ms delay.
 //    RPC checks: is caller a follower or top-fan of the host? If yes, returns
 //    tier + profile data. Client then broadcasts `welcome-join` on the shared
-//    `live-comments-{sessionId}` channel so other viewers see the toast.
+//    `live-welcome-{sessionId}` channel so other viewers see the toast.
 //  • Subscribes to the same channel `welcome-join` broadcast events.
 //  • Maintains a FIFO queue (max 3) with per-entry TTL of 4s. Older entries
 //    auto-evict. Client-side dedup via seen-key Set.
@@ -64,7 +64,7 @@ export function LiveWelcomeToasts({
     let selfTimer: ReturnType<typeof setTimeout> | null = null;
 
     const channel = supabase
-      .channel(`live-comments-${sessionId}`)
+      .channel(`live-welcome-${sessionId}`)
       .on(
         'broadcast',
         { event: 'welcome-join' },
