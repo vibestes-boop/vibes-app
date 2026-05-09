@@ -320,8 +320,8 @@ export async function sendLiveGift(
 }
 
 // -----------------------------------------------------------------------------
-// voteOnLivePoll — delegiert an `vote_on_poll`. RPC übernimmt Dedup via
-// `live_poll_votes` PK + Broadcast der aktualisierten Aggregation.
+// voteOnLivePoll — schreibt direkt in `live_poll_votes`.
+// Die Datenbank schützt Dedup via PK `(poll_id, user_id)`.
 // -----------------------------------------------------------------------------
 
 export async function voteOnLivePoll(
@@ -335,15 +335,29 @@ export async function voteOnLivePoll(
     return { ok: false, error: 'Ungültige Option.' };
 
   const supabase = await createClient();
-  const { error } = await supabase.rpc('vote_on_poll', {
-    p_poll_id: pollId,
-    p_option_index: optionIndex,
+  const { data: poll, error: pollError } = await supabase
+    .from('live_polls')
+    .select('id, options, closed_at')
+    .eq('id', pollId)
+    .maybeSingle();
+
+  if (pollError) return { ok: false, error: pollError.message };
+  if (!poll) return { ok: false, error: 'Umfrage nicht gefunden.' };
+  if (poll.closed_at) return { ok: false, error: 'Umfrage ist bereits geschlossen.' };
+
+  const options = Array.isArray(poll.options) ? poll.options : [];
+  if (optionIndex >= options.length) return { ok: false, error: 'Ungültige Option.' };
+
+  const { error } = await supabase.from('live_poll_votes').insert({
+    poll_id: pollId,
+    user_id: viewer.id,
+    option_index: optionIndex,
   });
 
   if (error) {
-    if (error.message?.includes('already_voted'))
+    if (error.code === '23505' || error.message?.includes('duplicate key'))
       return { ok: false, error: 'Du hast schon abgestimmt.' };
-    if (error.message?.includes('poll_closed'))
+    if (error.message?.includes('closed'))
       return { ok: false, error: 'Umfrage ist bereits geschlossen.' };
     return { ok: false, error: error.message };
   }

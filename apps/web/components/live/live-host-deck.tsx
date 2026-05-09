@@ -68,6 +68,7 @@ import { LiveStickerLayer } from './live-sticker-layer';
 import { LivePlacedProductLayer } from './live-placed-product-layer';
 import { LiveGiftGoalViewer } from './live-gift-goal-viewer';
 import { LiveDuetInviteWatcher } from './live-duet-invite-watcher';
+import { LiveHostPollOverlay } from './live-host-poll-overlay';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 // v1.w.UI.207 — Sticker catalog (matches mobile StickerPicker categories)
@@ -1389,6 +1390,17 @@ export function LiveHostDeck({
                 Mobile parity: LivePlacedProductLayer in app/live/host.tsx. */}
             {phase === 'live' && (
               <LivePlacedProductLayer sessionId={session.id} isHost />
+            )}
+
+            {/* Host sieht die laufende Umfrage direkt auf dem Preview und kann
+                sie per Griff verschieben oder per Zahnrad verwalten. */}
+            {phase === 'live' && activePoll && (
+              <LiveHostPollOverlay
+                sessionId={session.id}
+                poll={activePoll}
+                hostId={hostId}
+                onManage={() => setPollSheetOpen(true)}
+              />
             )}
 
             {/* v1.w.UI.209 — Gift Goal overlay on host video (mobile parity: LiveGoalBar in host.tsx).

@@ -155,7 +155,8 @@ export const getLiveComments = cache(
 
 // -----------------------------------------------------------------------------
 // getActiveLivePoll — Aktuelle offene Umfrage + Vote-Counts + mein-Vote.
-// Nutzt den Native-RPC `get_active_poll(p_session_id)` → gleiches Shape.
+// Liest direkt aus den Tabellen, weil ältere Deploys zwar `get_active_poll`,
+// aber keine Vote-RPC hatten. So bleibt Web kompatibel mit dem echten Schema.
 // -----------------------------------------------------------------------------
 
 export interface ActiveLivePollSSR {
@@ -172,27 +173,48 @@ export interface ActiveLivePollSSR {
 export const getActiveLivePoll = cache(
   async (sessionId: string): Promise<ActiveLivePollSSR | null> => {
     const supabase = await createClient();
-    const { data, error } = await supabase.rpc('get_active_poll', {
-      p_session_id: sessionId,
-    });
-    if (error || !data) return null;
+    const { data: poll, error } = await supabase
+      .from('live_polls')
+      .select('id, question, options, created_at, closed_at')
+      .eq('session_id', sessionId)
+      .is('closed_at', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error || !poll) return null;
 
-    // RPC kann entweder Single-Object oder Array zurückgeben
-    const row = Array.isArray(data) ? data[0] : (data as Record<string, unknown>);
-    if (!row || !row.id) return null;
+    const options = Array.isArray(poll.options) ? (poll.options as string[]) : [];
+    const voteCounts = options.map(() => 0);
+
+    const [{ data: votes }, { data: auth }] = await Promise.all([
+      supabase
+        .from('live_poll_votes')
+        .select('option_index, user_id')
+        .eq('poll_id', poll.id),
+      supabase.auth.getUser(),
+    ]);
+
+    let myVote: number | null = null;
+    const viewerId = auth?.user?.id ?? null;
+    for (const vote of votes ?? []) {
+      const idx = Number(vote.option_index);
+      if (Number.isInteger(idx) && idx >= 0 && idx < voteCounts.length) {
+        voteCounts[idx] += 1;
+      }
+      if (viewerId && vote.user_id === viewerId && Number.isInteger(idx)) {
+        myVote = idx;
+      }
+    }
 
     return {
-      id: row.id as string,
-      question: (row.question as string) ?? '',
-      options: (row.options as string[]) ?? [],
-      created_at: (row.created_at as string) ?? new Date().toISOString(),
-      closed_at: (row.closed_at as string | null) ?? null,
-      vote_counts: (row.vote_counts as number[]) ?? [],
-      total_votes: (row.total_votes as number) ?? 0,
-      my_vote_index:
-        (row.my_vote_index as number | null) ??
-        (row.my_vote as number | null) ??
-        null,
+      id: poll.id as string,
+      question: poll.question ?? '',
+      options,
+      created_at: poll.created_at ?? new Date().toISOString(),
+      closed_at: poll.closed_at ?? null,
+      vote_counts: voteCounts,
+      total_votes: voteCounts.reduce((sum, count) => sum + count, 0),
+      my_vote_index: myVote,
     };
   },
 );

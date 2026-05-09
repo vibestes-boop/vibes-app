@@ -230,7 +230,7 @@ export default async function LiveViewerPage({ params }: PageProps) {
         />
 
         <div className="contents xl:flex xl:min-w-0 xl:flex-col xl:gap-5">
-        <section className="relative flex h-full w-full items-center justify-center xl:h-[calc(100dvh-2.5rem)] xl:min-w-0 xl:overflow-hidden xl:rounded-[18px] xl:bg-[#5b5148] xl:p-4 xl:pb-28 xl:shadow-elevation-4">
+        <section className="relative flex h-full w-full items-center justify-center xl:h-[calc(100dvh-2.5rem)] xl:min-w-0 xl:overflow-hidden xl:rounded-[18px] xl:bg-[#46515f] xl:p-4 xl:pb-28 xl:shadow-elevation-4">
           <div className="relative h-full w-full max-h-full md:aspect-[9/16] md:h-full md:w-auto md:max-w-full md:overflow-hidden md:rounded-2xl md:shadow-elevation-4 xl:max-w-[min(100%,640px)]">
             {/* Video-Layer — füllt den 9:16-Frame vollständig. Player selbst
                 nutzt object-contain, schwarze Letterboxes innerhalb des Frames
@@ -381,7 +381,7 @@ export default async function LiveViewerPage({ params }: PageProps) {
               <div
                 className={cn(
                   glassSurface,
-                  'mx-auto max-w-[980px] rounded-2xl shadow-elevation-2 [&>*]:!border-0 [&>*]:!bg-transparent xl:rounded-[18px] xl:bg-[#72675c]/90 xl:p-1 xl:ring-white/15',
+                  'mx-auto max-w-[980px] rounded-2xl shadow-elevation-2 [&>*]:!border-0 [&>*]:!bg-transparent xl:rounded-[18px] xl:bg-[#5d6878]/90 xl:p-1 xl:ring-white/15',
                 )}
               >
                 <LiveActionBar

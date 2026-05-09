@@ -4,8 +4,6 @@ import { useEffect, useRef, useState } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import { LivePollPanel } from './live-poll-panel';
 import type { ActiveLivePollSSR } from '@/lib/data/live';
-import { glassSurface } from '@/lib/ui/glass-pill';
-import { cn } from '@/lib/utils';
 
 // -----------------------------------------------------------------------------
 // LiveActivePollWatcher — v1.w.UI.143
@@ -21,8 +19,8 @@ import { cn } from '@/lib/utils';
 //     zeigt LivePollPanel noch 8s das "Beendet"-Badge, dann wird die Karte
 //     ausgeblendet
 //
-// Positionierung: dieselbe wie die bisherige statische Block
-// (absolute right-3 top-28) — kein Layout-Regressions-Risiko.
+// Positionierung: kompakte Karte in der rechten oberen Ecke. Der Inhalt ist
+// bewusst klein, damit er den Stream nicht verdeckt.
 //
 // Wichtig: LivePollPanel hat eine eigene UPDATE-Sub auf `id=eq.{poll.id}` für
 // Vote-Count-Updates. Der Watcher subscribed auf session_id-level (breiterer
@@ -47,6 +45,10 @@ export function LiveActivePollWatcher({
 
   // Ref for the dismiss-timer so we can clear it on unmount / fast re-open
   const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setCurrentPoll(initialPoll);
+  }, [initialPoll]);
 
   useEffect(() => {
     if (ended) return;
@@ -136,16 +138,12 @@ export function LiveActivePollWatcher({
   if (!currentPoll || ended) return null;
 
   return (
-    <div className="absolute right-3 top-28 w-64 max-w-[55%]">
-      <div className={cn(glassSurface, 'rounded-2xl p-1 shadow-elevation-2')}>
-        <div className="[&_h3]:text-white [&_.rounded-xl]:bg-transparent [&_.rounded-xl]:!border-0 [&_.rounded-xl]:!p-2">
-          <LivePollPanel
-            sessionId={sessionId}
-            poll={currentPoll}
-            viewerId={viewerId}
-          />
-        </div>
-      </div>
+    <div className="pointer-events-auto absolute right-3 top-24 z-30 w-[min(250px,calc(100%-1.5rem))] md:right-4 md:top-24 xl:right-4 xl:top-24 xl:w-[250px]">
+      <LivePollPanel
+        sessionId={sessionId}
+        poll={currentPoll}
+        viewerId={viewerId}
+      />
     </div>
   );
 }
