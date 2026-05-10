@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, useTransition, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type FormEvent } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import { Send, ShieldAlert, Clock, Pin, PinOff } from 'lucide-react';
 import { sendLiveComment, timeoutChatUser, pinLiveComment, unpinLiveComment } from '@/app/actions/live';
@@ -46,6 +46,53 @@ export interface LiveChatProps {
 
 const INPUT_MAX = 200;
 
+type LiveCommentHydrationRow = {
+  id: string;
+  session_id: string;
+  user_id: string;
+  body: string | null;
+  pinned: boolean | null;
+  created_at: string;
+  author:
+    | {
+        id: string;
+        username: string | null;
+        display_name: string | null;
+        avatar_url: string | null;
+        verified: boolean | null;
+      }
+    | Array<{
+        id: string;
+        username: string | null;
+        display_name: string | null;
+        avatar_url: string | null;
+        verified: boolean | null;
+      }>
+    | null;
+};
+
+function mapHydratedComment(row: LiveCommentHydrationRow): LiveCommentWithAuthor {
+  const author = Array.isArray(row.author) ? (row.author[0] ?? null) : row.author;
+
+  return {
+    id: row.id,
+    session_id: row.session_id,
+    user_id: row.user_id,
+    body: row.body ?? '',
+    pinned: Boolean(row.pinned),
+    created_at: row.created_at,
+    author: author
+      ? {
+          id: author.id,
+          username: author.username ?? '',
+          display_name: author.display_name,
+          avatar_url: author.avatar_url,
+          verified: Boolean(author.verified),
+        }
+      : null,
+  };
+}
+
 export function LiveChat({
   sessionId,
   initialComments,
@@ -68,6 +115,77 @@ export function LiveChat({
   const [cooldownLeft, setCooldownLeft] = useState(0);
   const listRef = useRef<HTMLDivElement | null>(null);
   const broadcastCommentRef = useRef<((comment: LiveCommentWithAuthor) => void) | null>(null);
+  const refreshInFlightRef = useRef(false);
+
+  const mergePersistedComments = useCallback((incoming: LiveCommentWithAuthor[]) => {
+    if (incoming.length === 0) return;
+    setComments((prev) => incoming.reduce((next, comment) => mergeLiveComment(next, comment), prev));
+  }, []);
+
+  // SSR-Daten erneut einmischen, wenn Next den Live-Tree nach einer Navigation
+  // wiederherstellt. Ohne diesen Sync kann der Host nach "Profil öffnen" per
+  // Back-Navigation mit leerem Client-State zurückkommen.
+  useEffect(() => {
+    setComments((prev) => {
+      const scoped = prev.filter((comment) => comment.session_id === sessionId);
+      return initialComments.reduce((next, comment) => mergeLiveComment(next, comment), scoped);
+    });
+  }, [initialComments, sessionId]);
+
+  const refreshPersistedComments = useCallback(async () => {
+    if (refreshInFlightRef.current) return;
+    refreshInFlightRef.current = true;
+
+    try {
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      );
+
+      const { data, error } = await supabase
+        .from('live_comments')
+        .select(
+          `id, session_id, user_id, body:text, pinned, created_at,
+           author:profiles!live_comments_user_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )`,
+        )
+        .eq('session_id', sessionId)
+        .order('created_at', { ascending: true })
+        .limit(120);
+
+      if (error) {
+        console.warn('[LiveChat] persisted comment refresh failed', error);
+        return;
+      }
+
+      const hydrated = ((data ?? []) as unknown as LiveCommentHydrationRow[]).map(mapHydratedComment);
+      mergePersistedComments(hydrated);
+    } finally {
+      refreshInFlightRef.current = false;
+    }
+  }, [mergePersistedComments, sessionId]);
+
+  useEffect(() => {
+    void refreshPersistedComments();
+  }, [refreshPersistedComments]);
+
+  useEffect(() => {
+    const refreshOnRestore = () => {
+      void refreshPersistedComments();
+    };
+    const refreshOnVisible = () => {
+      if (document.visibilityState === 'visible') void refreshPersistedComments();
+    };
+
+    window.addEventListener('pageshow', refreshOnRestore);
+    window.addEventListener('focus', refreshOnRestore);
+    document.addEventListener('visibilitychange', refreshOnVisible);
+
+    return () => {
+      window.removeEventListener('pageshow', refreshOnRestore);
+      window.removeEventListener('focus', refreshOnRestore);
+      document.removeEventListener('visibilitychange', refreshOnVisible);
+    };
+  }, [refreshPersistedComments]);
 
   // -----------------------------------------------------------------------------
   // Realtime-Subscription auf `live_comments`-Inserts. Der Channel-Topic muss
@@ -302,7 +420,7 @@ export function LiveChat({
   const [selectedChatUser, setSelectedChatUser] = useState<ChatUserInfo | null>(null);
 
   return (
-    <div className={cn('relative flex flex-1 flex-col overflow-hidden rounded-xl border bg-card', className)}>
+    <div className={cn('relative flex min-h-0 flex-1 flex-col overflow-visible rounded-xl border bg-card', className)}>
       {/* Header */}
       <div className="flex items-center justify-between border-b px-3 py-2">
         <h2 className="text-sm font-semibold">Chat</h2>
@@ -330,7 +448,7 @@ export function LiveChat({
       {/* Liste */}
       <div
         ref={listRef}
-        className="flex-1 space-y-2 overflow-y-auto px-3 py-2 text-sm"
+        className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 py-2 text-sm"
       >
         {comments.length === 0 ? (
           <p className="pt-8 text-center text-xs text-muted-foreground">
@@ -429,7 +547,7 @@ export function LiveChat({
           canModerate={canModerate}
           isHost={isHost}
           hostId={hostId}
-          className="absolute inset-x-2 bottom-[4.5rem] z-10"
+          className="absolute inset-x-2 bottom-[4.5rem] z-50"
           onClose={() => setSelectedChatUser(null)}
           onMention={(username) => {
             setText(`@${username} `);

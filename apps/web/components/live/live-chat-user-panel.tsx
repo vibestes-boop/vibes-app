@@ -10,7 +10,7 @@
 //
 // Positioning is controlled by the caller via the `className` prop:
 //   • overlay variant: "pointer-events-auto absolute bottom-full left-0 mb-2 w-64"
-//   • sidebar variant: "absolute inset-x-2 bottom-[4.5rem] z-10"
+//   • sidebar variant: "absolute inset-x-2 bottom-[4.5rem] z-50"
 // -----------------------------------------------------------------------------
 
 import { useEffect, useState, useTransition } from 'react';
@@ -128,7 +128,7 @@ export function LiveChatUserPanel({
   return (
     <div
       className={cn(
-        'overflow-hidden rounded-2xl bg-black/80 shadow-elevation-3 ring-1 ring-white/15 backdrop-blur-xl',
+        'max-h-[min(28rem,calc(100vh-2rem))] overflow-y-auto rounded-2xl bg-black/80 shadow-elevation-3 ring-1 ring-white/15 backdrop-blur-xl',
         className,
       )}
     >

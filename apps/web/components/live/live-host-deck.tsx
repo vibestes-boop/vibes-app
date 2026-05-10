@@ -1584,7 +1584,7 @@ export function LiveHostDeck({
         </div>
 
         {/* Right-Column — Chat */}
-        <aside className="flex min-h-[480px] flex-col border-l bg-card lg:h-full lg:overflow-hidden">
+        <aside className="relative z-30 flex min-h-[480px] min-w-0 flex-col border-l bg-card lg:h-full lg:overflow-visible">
           {/* v1.w.UI.198 + v1.w.UI.225 — Chat header: slow-mode + moderation controls */}
           <div className="border-b">
             {/* Row 1: Chat label + slow-mode buttons */}
@@ -1690,7 +1690,7 @@ export function LiveHostDeck({
               </div>
             )}
           </div>
-          <div className="flex-1 overflow-hidden">
+          <div className="relative z-30 flex min-h-0 flex-1 overflow-visible">
             <LiveChat
               sessionId={session.id}
               initialComments={initialComments}
