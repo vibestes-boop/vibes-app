@@ -973,7 +973,7 @@ export function LiveHostDeck({
   return (
     <div className="flex min-h-screen flex-col bg-background lg:h-screen lg:overflow-hidden">
       {/* Top-Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b bg-card px-4 py-3 lg:px-6">
+      <div className="relative z-50 flex flex-wrap items-center gap-3 overflow-visible border-b bg-card px-4 py-3 lg:px-6 xl:pr-[25rem]">
         <div className="flex min-w-0 items-center gap-3">
           <span
             className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold text-white ${
@@ -1015,7 +1015,7 @@ export function LiveHostDeck({
           </button>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="relative z-50 flex min-w-0 flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => setPollSheetOpen(true)}
@@ -1044,7 +1044,7 @@ export function LiveHostDeck({
             {/* Sticker picker popover */}
             {stickerPickerOpen && (
               <div
-                className="absolute bottom-full right-0 z-50 mb-2 w-72 overflow-hidden rounded-xl border bg-popover shadow-xl"
+                className="absolute left-0 top-full z-[80] mt-2 max-h-[calc(100vh-7rem)] w-72 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border bg-popover shadow-xl"
                 // Prevent mousedown from bubbling to document (would close picker)
                 onMouseDown={(e) => e.stopPropagation()}
               >
@@ -1106,7 +1106,7 @@ export function LiveHostDeck({
             {/* Product picker popover */}
             {productPickerOpen && (
               <div
-                className="absolute bottom-full right-0 z-50 mb-2 w-72 overflow-hidden rounded-xl border bg-popover shadow-xl"
+                className="absolute left-0 top-full z-[80] mt-2 max-h-[calc(100vh-7rem)] w-72 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border bg-popover shadow-xl"
                 onMouseDown={(e) => e.stopPropagation()}
               >
                 <div className="flex items-center justify-between border-b px-3 py-2">
