@@ -311,8 +311,12 @@ export function LiveChatOverlay({
         });
       });
 
+    const giftTopic = `live-gifts-overlay-${sessionId}-${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2)}`;
+
     const ch = supabase
-      .channel(`live-gifts-overlay-${sessionId}`)
+      .channel(giftTopic)
       .on(
         'postgres_changes',
         {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 
 // -----------------------------------------------------------------------------
@@ -75,6 +75,7 @@ export interface LiveGiftAnimationLayerProps {
  */
 export function LiveGiftAnimationLayer({ sessionId, onBurst }: LiveGiftAnimationLayerProps) {
   const [bursts, setBursts] = useState<LiveGiftBurst[]>([]);
+  const channelInstanceId = useRef(Math.random().toString(36).slice(2));
 
   const removeBurst = useCallback((id: string) => {
     setBursts((prev) => prev.filter((b) => b.id !== id));
@@ -86,68 +87,78 @@ export function LiveGiftAnimationLayer({ sessionId, onBurst }: LiveGiftAnimation
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     );
 
-    const channel = supabase
-      .channel(`live-gifts-anim-${sessionId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'gift_transactions',
-          filter: `live_session_id=eq.${sessionId}`,
-        },
-        async (payload) => {
-          const row = payload.new as {
-            id: string;
-            sender_id: string;
-            gift_id: string;
-            coin_cost: number;
-          };
+    let cancelled = false;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
 
-          // Sender + Gift-Metadata lazy nachladen — parallel.
-          const [{ data: senderData }, { data: giftData }] = await Promise.all([
-            supabase
-              .from('profiles')
-              .select('username, display_name')
-              .eq('id', row.sender_id)
-              .maybeSingle(),
-            supabase
-              .from('gift_catalog')
-              .select('name, emoji')
-              .eq('id', row.gift_id)
-              .maybeSingle(),
-          ]);
+    try {
+      channel = supabase
+        .channel(`live-gifts-anim-${sessionId}-${channelInstanceId.current}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'gift_transactions',
+            filter: `live_session_id=eq.${sessionId}`,
+          },
+          async (payload) => {
+            const row = payload.new as {
+              id: string;
+              sender_id: string;
+              gift_id: string;
+              coin_cost: number;
+            };
 
-          const sender = senderData as
-            | { username: string | null; display_name: string | null }
-            | null;
-          const gift = giftData as { name: string | null; emoji: string | null } | null;
+            // Sender + Gift-Metadata lazy nachladen — parallel.
+            const [{ data: senderData }, { data: giftData }] = await Promise.all([
+              supabase
+                .from('profiles')
+                .select('username, display_name')
+                .eq('id', row.sender_id)
+                .maybeSingle(),
+              supabase
+                .from('gift_catalog')
+                .select('name, emoji')
+                .eq('id', row.gift_id)
+                .maybeSingle(),
+            ]);
 
-          const burst: LiveGiftBurst = {
-            id: row.id,
-            senderName:
-              sender?.display_name?.trim() || sender?.username?.trim() || 'Unbekannt',
-            giftName: gift?.name?.trim() || 'Geschenk',
-            giftImage: null,
-            giftEmoji: gift?.emoji ?? null,
-            coinCost: row.coin_cost,
-            lane: (Math.floor(Math.random() * 3) as 0 | 1 | 2),
-            drift: -24 + Math.round(Math.random() * 48),
-          };
+            if (cancelled) return;
 
-          setBursts((prev) => {
-            const next = [...prev, burst];
-            return next.length > MAX_BURSTS ? next.slice(-MAX_BURSTS) : next;
-          });
-          onBurst?.(burst);
+            const sender = senderData as
+              | { username: string | null; display_name: string | null }
+              | null;
+            const gift = giftData as { name: string | null; emoji: string | null } | null;
 
-          window.setTimeout(() => removeBurst(burst.id), BURST_DURATION_MS);
-        },
-      )
-      .subscribe();
+            const burst: LiveGiftBurst = {
+              id: row.id,
+              senderName:
+                sender?.display_name?.trim() || sender?.username?.trim() || 'Unbekannt',
+              giftName: gift?.name?.trim() || 'Geschenk',
+              giftImage: null,
+              giftEmoji: gift?.emoji ?? null,
+              coinCost: row.coin_cost,
+              lane: (Math.floor(Math.random() * 3) as 0 | 1 | 2),
+              drift: -24 + Math.round(Math.random() * 48),
+            };
+
+            setBursts((prev) => {
+              const next = [...prev, burst];
+              return next.length > MAX_BURSTS ? next.slice(-MAX_BURSTS) : next;
+            });
+            onBurst?.(burst);
+
+            window.setTimeout(() => removeBurst(burst.id), BURST_DURATION_MS);
+          },
+        )
+        .subscribe();
+    } catch (error) {
+      console.warn('[LiveGiftAnimationLayer] realtime subscription disabled', error);
+    }
 
     return () => {
-      supabase.removeChannel(channel);
+      cancelled = true;
+      if (channel) supabase.removeChannel(channel);
     };
   }, [sessionId, onBurst, removeBurst]);
 

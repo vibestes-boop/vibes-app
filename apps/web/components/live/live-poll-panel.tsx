@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import { BarChart3, Check } from 'lucide-react';
 import { voteOnLivePoll } from '@/app/actions/live';
@@ -32,6 +32,7 @@ export function LivePollPanel({
   const [myVote, setMyVote] = useState<number | null>(initialPoll.my_vote_index ?? null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const channelInstanceId = useRef(Math.random().toString(36).slice(2));
 
   useEffect(() => {
     setPoll(initialPoll);
@@ -50,53 +51,59 @@ export function LivePollPanel({
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     );
 
-    const channel = supabase
-      .channel(`live-poll-${poll.id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'live_polls',
-          filter: `id=eq.${poll.id}`,
-        },
-        (payload) => {
-          const row = payload.new as Record<string, unknown>;
-          setPoll((prev) => ({
-            ...prev,
-            closed_at: (row.closed_at as string | null) ?? prev.closed_at,
-          }));
-        },
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'live_poll_votes',
-          filter: `poll_id=eq.${poll.id}`,
-        },
-        (payload) => {
-          const row = payload.new as { option_index?: number | null; user_id?: string | null };
-          const optionIndex = Number(row.option_index);
-          if (!Number.isInteger(optionIndex)) return;
-          setPoll((prev) => {
-            if (optionIndex < 0 || optionIndex >= prev.options.length) return prev;
-            const nextCounts = prev.options.map((_, index) => prev.vote_counts[index] ?? 0);
-            nextCounts[optionIndex] += 1;
-            return {
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    try {
+      channel = supabase
+        .channel(`live-poll-${poll.id}-${channelInstanceId.current}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'live_polls',
+            filter: `id=eq.${poll.id}`,
+          },
+          (payload) => {
+            const row = payload.new as Record<string, unknown>;
+            setPoll((prev) => ({
               ...prev,
-              vote_counts: nextCounts,
-              total_votes: nextCounts.reduce((sum, count) => sum + count, 0),
-            };
-          });
-          if (viewerId && row.user_id === viewerId) setMyVote(optionIndex);
-        },
-      )
-      .subscribe();
+              closed_at: (row.closed_at as string | null) ?? prev.closed_at,
+            }));
+          },
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'live_poll_votes',
+            filter: `poll_id=eq.${poll.id}`,
+          },
+          (payload) => {
+            const row = payload.new as { option_index?: number | null; user_id?: string | null };
+            const optionIndex = Number(row.option_index);
+            if (!Number.isInteger(optionIndex)) return;
+            setPoll((prev) => {
+              if (optionIndex < 0 || optionIndex >= prev.options.length) return prev;
+              const nextCounts = prev.options.map((_, index) => prev.vote_counts[index] ?? 0);
+              nextCounts[optionIndex] += 1;
+              return {
+                ...prev,
+                vote_counts: nextCounts,
+                total_votes: nextCounts.reduce((sum, count) => sum + count, 0),
+              };
+            });
+            if (viewerId && row.user_id === viewerId) setMyVote(optionIndex);
+          },
+        )
+        .subscribe();
+    } catch (error) {
+      console.warn('[LivePollPanel] realtime subscription disabled', error);
+    }
 
     return () => {
-      supabase.removeChannel(channel);
+      if (channel) supabase.removeChannel(channel);
     };
   }, [poll.id, sessionId, viewerId]);
 

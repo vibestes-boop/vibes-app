@@ -31,14 +31,12 @@ const MEDALS = ['🥇', '🥈', '🥉'] as const;
 
 export function LiveGiftLeaderboard({ sessionId }: { sessionId: string }) {
   const [gifters, setGifters] = useState<Map<string, GifterEntry>>(new Map());
-  const mounted = useRef(false);
+  const channelInstanceId = useRef(Math.random().toString(36).slice(2));
 
   // ── Initial snapshot: fetch existing gifts for this session on mount ──────
   useEffect(() => {
-    if (mounted.current) return;
-    mounted.current = true;
-
     const supabase = createClient();
+    let cancelled = false;
 
     // One-time read of all gifts in this session so late-joiners see history.
     // We join profiles inline to get username + avatar without N+1.
@@ -51,7 +49,7 @@ export function LiveGiftLeaderboard({ sessionId }: { sessionId: string }) {
         .eq('live_session_id', sessionId)
         .order('created_at', { ascending: true });
 
-      if (!data?.length) return;
+      if (cancelled || !data?.length) return;
 
       setGifters((prev) => {
         const next = new Map(prev);
@@ -79,69 +77,78 @@ export function LiveGiftLeaderboard({ sessionId }: { sessionId: string }) {
     })();
 
     // ── Realtime subscription for new gifts ────────────────────────────────
-    const channel = supabase
-      .channel(`live-gift-lb-${sessionId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'gift_transactions',
-          filter: `live_session_id=eq.${sessionId}`,
-        },
-        async (payload) => {
-          const row = payload.new as {
-            sender_id: string;
-            coin_cost: number;
-          };
+    let channel: ReturnType<typeof supabase.channel> | null = null;
 
-          // Lazy-load sender profile if new gifter
-          setGifters((prev) => {
-            const next = new Map(prev);
-            const existing = next.get(row.sender_id);
-            if (existing) {
-              // Already have profile data — just increment coins
-              next.set(row.sender_id, { ...existing, coins: existing.coins + row.coin_cost });
-              return next;
-            }
-            // New gifter — add with placeholder, profile fetched below
-            next.set(row.sender_id, {
-              sender_id: row.sender_id,
-              username: null,
-              avatar_url: null,
-              coins: row.coin_cost,
-            });
-            return next;
-          });
+    try {
+      channel = supabase
+        .channel(`live-gift-lb-${sessionId}-${channelInstanceId.current}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'gift_transactions',
+            filter: `live_session_id=eq.${sessionId}`,
+          },
+          async (payload) => {
+            const row = payload.new as {
+              sender_id: string;
+              coin_cost: number;
+            };
 
-          // Fetch profile for new gifter (runs outside setState)
-          const supabaseInner = createClient();
-          const { data: profile } = await supabaseInner
-            .from('profiles')
-            .select('username, avatar_url')
-            .eq('id', row.sender_id)
-            .maybeSingle();
-
-          if (profile) {
+            // Lazy-load sender profile if new gifter
             setGifters((prev) => {
               const next = new Map(prev);
-              const entry = next.get(row.sender_id);
-              if (entry) {
-                next.set(row.sender_id, {
-                  ...entry,
-                  username: (profile as { username: string | null }).username,
-                  avatar_url: (profile as { avatar_url: string | null }).avatar_url,
-                });
+              const existing = next.get(row.sender_id);
+              if (existing) {
+                // Already have profile data — just increment coins
+                next.set(row.sender_id, { ...existing, coins: existing.coins + row.coin_cost });
+                return next;
               }
+              // New gifter — add with placeholder, profile fetched below
+              next.set(row.sender_id, {
+                sender_id: row.sender_id,
+                username: null,
+                avatar_url: null,
+                coins: row.coin_cost,
+              });
               return next;
             });
-          }
-        },
-      )
-      .subscribe();
+
+            // Fetch profile for new gifter (runs outside setState)
+            const supabaseInner = createClient();
+            const { data: profile } = await supabaseInner
+              .from('profiles')
+              .select('username, avatar_url')
+              .eq('id', row.sender_id)
+              .maybeSingle();
+
+            if (cancelled) return;
+
+            if (profile) {
+              setGifters((prev) => {
+                const next = new Map(prev);
+                const entry = next.get(row.sender_id);
+                if (entry) {
+                  next.set(row.sender_id, {
+                    ...entry,
+                    username: (profile as { username: string | null }).username,
+                    avatar_url: (profile as { avatar_url: string | null }).avatar_url,
+                  });
+                }
+                return next;
+              });
+            }
+          },
+        )
+        .subscribe();
+    } catch (error) {
+      console.warn('[LiveGiftLeaderboard] realtime subscription disabled', error);
+    }
 
     return () => {
-      supabase.removeChannel(channel);
+      cancelled = true;
+      if (channel) supabase.removeChannel(channel);
     };
   }, [sessionId]);
 

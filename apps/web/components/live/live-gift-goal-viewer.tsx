@@ -15,7 +15,7 @@
 //  • Wenn goal.current_coins >= goal.target_coins → Celebrate-State (grün, ✓)
 // -----------------------------------------------------------------------------
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import { Target, Coins } from 'lucide-react';
 import type { ActiveGiftGoal } from '@/lib/data/live-host';
@@ -37,6 +37,7 @@ interface LiveGiftGoalViewerProps {
 export function LiveGiftGoalViewer({ sessionId, initialGoal }: LiveGiftGoalViewerProps) {
   const [goal, setGoal] = useState<ActiveGiftGoal | null>(initialGoal);
   const giftGoalsEnabled = process.env.NEXT_PUBLIC_LIVE_GIFT_GOALS_ENABLED === '1';
+  const channelInstanceId = useRef(Math.random().toString(36).slice(2));
 
   // ── Realtime: live_gift_goals UPDATE ──────────────────────────────────────
   useEffect(() => {
@@ -46,46 +47,54 @@ export function LiveGiftGoalViewer({ sessionId, initialGoal }: LiveGiftGoalViewe
     }
 
     const db = supa();
-    const ch = db
-      .channel(`live-goal-viewer-${sessionId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'live_gift_goals',
-          filter: `session_id=eq.${sessionId}`,
-        },
-        async () => {
-          // Re-fetch statt payload nutzen — payload enthält kein closed_at zuverlässig
-          const { data } = await db
-            .from('live_gift_goals')
-            .select('id, session_id, host_id, label, target_coins, current_coins, created_at')
-            .eq('session_id', sessionId)
-            .is('closed_at', null)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-          setGoal((data as ActiveGiftGoal | null) ?? null);
-        },
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'live_gift_goals',
-          filter: `session_id=eq.${sessionId}`,
-        },
-        (payload) => {
-          // Neues Ziel → sofort anzeigen
-          setGoal(payload.new as ActiveGiftGoal);
-        },
-      )
-      .subscribe();
+    let cancelled = false;
+    let ch: ReturnType<typeof db.channel> | null = null;
+
+    try {
+      ch = db
+        .channel(`live-goal-viewer-${sessionId}-${channelInstanceId.current}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'live_gift_goals',
+            filter: `session_id=eq.${sessionId}`,
+          },
+          async () => {
+            // Re-fetch statt payload nutzen — payload enthält kein closed_at zuverlässig
+            const { data } = await db
+              .from('live_gift_goals')
+              .select('id, session_id, host_id, label, target_coins, current_coins, created_at')
+              .eq('session_id', sessionId)
+              .is('closed_at', null)
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            if (!cancelled) setGoal((data as ActiveGiftGoal | null) ?? null);
+          },
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'live_gift_goals',
+            filter: `session_id=eq.${sessionId}`,
+          },
+          (payload) => {
+            // Neues Ziel → sofort anzeigen
+            if (!cancelled) setGoal(payload.new as ActiveGiftGoal);
+          },
+        )
+        .subscribe();
+    } catch (error) {
+      console.warn('[LiveGiftGoalViewer] realtime subscription disabled', error);
+    }
 
     return () => {
-      db.removeChannel(ch);
+      cancelled = true;
+      if (ch) db.removeChannel(ch);
     };
   }, [giftGoalsEnabled, sessionId]);
 
