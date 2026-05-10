@@ -230,12 +230,12 @@ export default async function LiveViewerPage({ params }: PageProps) {
         />
 
         <div className="contents xl:flex xl:min-w-0 xl:flex-col xl:gap-5">
-        <section className="relative flex h-full w-full items-center justify-center xl:h-[calc(100dvh-2.5rem)] xl:min-w-0 xl:overflow-hidden xl:rounded-[18px] xl:bg-[#46515f] xl:p-4 xl:pb-28 xl:shadow-elevation-4">
-          <div className="relative h-full w-full max-h-full md:aspect-[9/16] md:h-full md:w-auto md:max-w-full md:overflow-hidden md:rounded-2xl md:shadow-elevation-4 xl:max-w-[min(100%,640px)]">
+        <section className="relative flex h-full w-full items-center justify-center xl:h-[calc(100dvh-2.5rem)] xl:min-w-0 xl:overflow-visible xl:rounded-[18px] xl:bg-[#46515f] xl:p-4 xl:pb-28 xl:shadow-elevation-4">
+          <div className="relative h-full w-full max-h-full md:aspect-[9/16] md:h-full md:w-auto md:max-w-full md:overflow-hidden md:rounded-2xl md:shadow-elevation-4 xl:max-w-[min(100%,640px)] xl:overflow-visible">
             {/* Video-Layer — füllt den 9:16-Frame vollständig. Player selbst
                 nutzt object-contain, schwarze Letterboxes innerhalb des Frames
                 falls der tatsächliche Track-Aspect vom 9:16 abweicht. */}
-            <div className="absolute inset-0 bg-black">
+            <div className="absolute inset-0 overflow-hidden bg-black md:rounded-2xl xl:overflow-visible">
               {ended ? (
                 <div className="flex h-full w-full flex-col items-center justify-center gap-3 text-white">
                   {session.thumbnail_url && (

@@ -157,7 +157,7 @@ export function LivePollPanel({
           const count = poll.vote_counts?.[idx] ?? 0;
           const percent = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
           const isMyChoice = myVote === idx;
-          const showResults = myVote !== null || isClosed;
+          const showResults = readOnly || myVote !== null || isClosed;
 
           return (
             <button

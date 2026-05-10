@@ -42,8 +42,8 @@ import { createBrowserClient } from '@supabase/ssr';
 //   • Gift-Combo-Counter (×50). Wird auf Web erst sichtbar wenn Combos
 //     als eigene Broadcast-Events kommen — aktuell kommt jeder Send
 //     als einzelner INSERT, also ist jeder Burst = 1 Geschenk.
-//   • Host-Deck-Mount. Der Host hat `live-gifts-feed` als Control-Panel
-//     mit Top-Supporter + Goal — eine Pop-Up-Animation wäre dort noisy.
+//   • Heavy gift physics. Der Layer bleibt bewusst leicht, damit Host und
+//     Viewer denselben Effekt sehen ohne den Stream-Frame zu blockieren.
 // -----------------------------------------------------------------------------
 
 const MAX_BURSTS = 5;
@@ -69,6 +69,24 @@ export interface LiveGiftAnimationLayerProps {
   onBurst?: (burst: LiveGiftBurst) => void;
 }
 
+interface GiftBurstInput {
+  id: string;
+  senderName: string;
+  giftName: string;
+  giftImage?: string | null;
+  giftEmoji?: string | null;
+  coinCost: number;
+}
+
+interface LiveGiftSentEventDetail {
+  sessionId: string;
+  giftLogId?: string | null;
+  senderName?: string | null;
+  giftName: string;
+  giftEmoji?: string | null;
+  coinCost: number;
+}
+
 /**
  * Container-Komponente: hält Supabase-Subscription + Burst-State. Rendert
  * `LiveGiftAnimationView` mit der Live-Burst-Liste.
@@ -76,10 +94,41 @@ export interface LiveGiftAnimationLayerProps {
 export function LiveGiftAnimationLayer({ sessionId, onBurst }: LiveGiftAnimationLayerProps) {
   const [bursts, setBursts] = useState<LiveGiftBurst[]>([]);
   const channelInstanceId = useRef(Math.random().toString(36).slice(2));
+  const seenBurstIdsRef = useRef(new Set<string>());
 
   const removeBurst = useCallback((id: string) => {
     setBursts((prev) => prev.filter((b) => b.id !== id));
   }, []);
+
+  const spawnBurst = useCallback(
+    (input: GiftBurstInput) => {
+      if (seenBurstIdsRef.current.has(input.id)) return;
+      seenBurstIdsRef.current.add(input.id);
+
+      const burst: LiveGiftBurst = {
+        id: input.id,
+        senderName: input.senderName.trim() || 'Unbekannt',
+        giftName: input.giftName.trim() || 'Geschenk',
+        giftImage: input.giftImage ?? null,
+        giftEmoji: input.giftEmoji ?? null,
+        coinCost: input.coinCost,
+        lane: Math.floor(Math.random() * 3) as 0 | 1 | 2,
+        drift: -24 + Math.round(Math.random() * 48),
+      };
+
+      setBursts((prev) => {
+        const next = [...prev, burst];
+        return next.length > MAX_BURSTS ? next.slice(-MAX_BURSTS) : next;
+      });
+      onBurst?.(burst);
+
+      window.setTimeout(() => {
+        removeBurst(burst.id);
+        seenBurstIdsRef.current.delete(burst.id);
+      }, BURST_DURATION_MS);
+    },
+    [onBurst, removeBurst],
+  );
 
   useEffect(() => {
     const supabase = createBrowserClient(
@@ -130,7 +179,7 @@ export function LiveGiftAnimationLayer({ sessionId, onBurst }: LiveGiftAnimation
               | null;
             const gift = giftData as { name: string | null; emoji: string | null } | null;
 
-            const burst: LiveGiftBurst = {
+            spawnBurst({
               id: row.id,
               senderName:
                 sender?.display_name?.trim() || sender?.username?.trim() || 'Unbekannt',
@@ -138,17 +187,7 @@ export function LiveGiftAnimationLayer({ sessionId, onBurst }: LiveGiftAnimation
               giftImage: null,
               giftEmoji: gift?.emoji ?? null,
               coinCost: row.coin_cost,
-              lane: (Math.floor(Math.random() * 3) as 0 | 1 | 2),
-              drift: -24 + Math.round(Math.random() * 48),
-            };
-
-            setBursts((prev) => {
-              const next = [...prev, burst];
-              return next.length > MAX_BURSTS ? next.slice(-MAX_BURSTS) : next;
             });
-            onBurst?.(burst);
-
-            window.setTimeout(() => removeBurst(burst.id), BURST_DURATION_MS);
           },
         )
         .subscribe();
@@ -160,7 +199,26 @@ export function LiveGiftAnimationLayer({ sessionId, onBurst }: LiveGiftAnimation
       cancelled = true;
       if (channel) supabase.removeChannel(channel);
     };
-  }, [sessionId, onBurst, removeBurst]);
+  }, [sessionId, spawnBurst]);
+
+  useEffect(() => {
+    function handleLocalGift(event: Event) {
+      const detail = (event as CustomEvent<LiveGiftSentEventDetail>).detail;
+      if (!detail || detail.sessionId !== sessionId) return;
+
+      spawnBurst({
+        id: detail.giftLogId || `local-gift-${sessionId}-${Date.now()}`,
+        senderName: detail.senderName?.trim() || 'Du',
+        giftName: detail.giftName,
+        giftImage: null,
+        giftEmoji: detail.giftEmoji ?? null,
+        coinCost: detail.coinCost,
+      });
+    }
+
+    window.addEventListener('serlo:live-gift-sent', handleLocalGift);
+    return () => window.removeEventListener('serlo:live-gift-sent', handleLocalGift);
+  }, [sessionId, spawnBurst]);
 
   return <LiveGiftAnimationView bursts={bursts} />;
 }

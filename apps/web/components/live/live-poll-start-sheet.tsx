@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
+import { createBrowserClient } from '@supabase/ssr';
 import { X, Plus, Trash2, Loader2, BarChart3, Clock } from 'lucide-react';
 import { createLivePoll, closeLivePoll } from '@/app/actions/live-host';
 import type { ActiveLivePollSSR } from '@/lib/data/live';
@@ -254,12 +255,92 @@ export function LivePollStartSheet({
 // -----------------------------------------------------------------------------
 
 function ActivePollView({ poll }: { poll: ActiveLivePollSSR }) {
-  const total = poll.total_votes || 1; // Division-By-Zero Guard
+  const [livePoll, setLivePoll] = useState(poll);
+  const channelInstanceId = useRef(Math.random().toString(36).slice(2));
+
+  useEffect(() => {
+    setLivePoll(poll);
+  }, [poll]);
+
+  useEffect(() => {
+    const supabase = createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    );
+
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    try {
+      channel = supabase
+        .channel(`live-poll-sheet-${poll.id}-${channelInstanceId.current}`)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'live_polls',
+            filter: `id=eq.${poll.id}`,
+          },
+          (payload) => {
+            const row = payload.new as Partial<ActiveLivePollSSR>;
+            setLivePoll((current) => ({
+              ...current,
+              question: typeof row.question === 'string' ? row.question : current.question,
+              options: Array.isArray(row.options) ? (row.options as string[]) : current.options,
+              vote_counts: Array.isArray(row.vote_counts)
+                ? (row.vote_counts as number[])
+                : current.vote_counts,
+              total_votes:
+                typeof row.total_votes === 'number' ? row.total_votes : current.total_votes,
+              closed_at:
+                typeof row.closed_at === 'string' || row.closed_at === null
+                  ? row.closed_at
+                  : current.closed_at,
+            }));
+          },
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'live_poll_votes',
+            filter: `poll_id=eq.${poll.id}`,
+          },
+          (payload) => {
+            const row = payload.new as { option_index?: number | null };
+            const optionIndex = row.option_index;
+            if (typeof optionIndex !== 'number') return;
+
+            setLivePoll((current) => {
+              const voteCounts = current.options.map((_, idx) => current.vote_counts[idx] ?? 0);
+              if (optionIndex < 0 || optionIndex >= voteCounts.length) return current;
+              voteCounts[optionIndex] += 1;
+              return {
+                ...current,
+                vote_counts: voteCounts,
+                total_votes: voteCounts.reduce((sum, count) => sum + count, 0),
+              };
+            });
+          },
+        )
+        .subscribe();
+    } catch (err) {
+      console.warn('[LivePollStartSheet] realtime subscription disabled', err);
+    }
+
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+    };
+  }, [poll.id]);
+
+  const liveTotalVotes = livePoll.vote_counts.reduce((sum, count) => sum + (count ?? 0), 0);
+  const total = liveTotalVotes || 1; // Division-By-Zero Guard
   return (
     <div className="flex flex-col gap-3">
-      <p className="text-sm font-medium">{poll.question}</p>
-      {poll.options.map((opt, idx) => {
-        const count = poll.vote_counts[idx] ?? 0;
+      <p className="text-sm font-medium">{livePoll.question}</p>
+      {livePoll.options.map((opt, idx) => {
+        const count = livePoll.vote_counts[idx] ?? 0;
         const pct = Math.round((count / total) * 100);
         return (
           <div key={idx} className="flex flex-col gap-1">
@@ -279,7 +360,7 @@ function ActivePollView({ poll }: { poll: ActiveLivePollSSR }) {
         );
       })}
       <p className="text-[11px] text-muted-foreground">
-        {poll.total_votes} Stimmen · Läuft seit {new Date(poll.created_at).toLocaleTimeString('de-DE')}
+        {liveTotalVotes} Stimmen · Läuft seit {new Date(livePoll.created_at).toLocaleTimeString('de-DE')}
       </p>
     </div>
   );

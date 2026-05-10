@@ -131,6 +131,18 @@ export function LiveGiftPicker({
         return;
       }
       setBalance(result.data.newBalance);
+      window.dispatchEvent(
+        new CustomEvent('serlo:live-gift-sent', {
+          detail: {
+            sessionId,
+            giftLogId: result.data.giftLogId,
+            senderName: 'Du',
+            giftName: gift.name,
+            giftEmoji: gift.emoji,
+            coinCost: gift.coin_cost,
+          },
+        }),
+      );
       // Broadcast battle-gift score event
       if (isBattle && sendBattleGift) {
         sendBattleGift(battleTeam, gift.coin_cost);

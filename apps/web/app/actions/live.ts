@@ -178,7 +178,7 @@ export async function sendLiveComment(
     .from('live_comments')
     .insert({ session_id: sessionId, user_id: viewer.id, text })
     .select(
-      `id, session_id, user_id, body:text, created_at,
+      `id, session_id, user_id, body:text, pinned, created_at,
        author:profiles!live_comments_user_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )`,
     )
     .single();
@@ -189,7 +189,7 @@ export async function sendLiveComment(
   const row = inserted as unknown as LiveCommentWithAuthor & { author: unknown };
   const comment: LiveCommentWithAuthor = {
     ...row,
-    pinned: false,
+    pinned: Boolean(row.pinned),
     author: Array.isArray(row.author)
       ? ((row.author[0] as LiveCommentWithAuthor['author']) ?? null)
       : (row.author as LiveCommentWithAuthor['author']),
@@ -691,7 +691,7 @@ export async function pinLiveComment(
   const { data: commentRow, error: commentErr } = await supabase
     .from('live_comments')
     .select(
-      `id, session_id, user_id, body:text, created_at,
+      `id, session_id, user_id, body:text, pinned, created_at,
        author:profiles!live_comments_user_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )`,
     )
     .eq('session_id', sessionId)

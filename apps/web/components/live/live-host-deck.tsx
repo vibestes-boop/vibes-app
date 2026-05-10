@@ -69,6 +69,7 @@ import { LivePlacedProductLayer } from './live-placed-product-layer';
 import { LiveGiftGoalViewer } from './live-gift-goal-viewer';
 import { LiveDuetInviteWatcher } from './live-duet-invite-watcher';
 import { LiveHostPollOverlay } from './live-host-poll-overlay';
+import { LiveGiftAnimationLayer } from './live-gift-animation-layer';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 // v1.w.UI.207 — Sticker catalog (matches mobile StickerPicker categories)
@@ -1391,6 +1392,8 @@ export function LiveHostDeck({
             {phase === 'live' && (
               <LivePlacedProductLayer sessionId={session.id} isHost />
             )}
+
+            {phase === 'live' && <LiveGiftAnimationLayer sessionId={session.id} />}
 
             {/* Host sieht die laufende Umfrage direkt auf dem Preview und kann
                 sie per Griff verschieben oder per Zahnrad verwalten. */}

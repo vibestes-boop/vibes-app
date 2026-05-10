@@ -305,7 +305,7 @@ export function LiveVideoPlayer({
   // Render
   // -----------------------------------------------------------------------------
   return (
-    <div className="relative h-full w-full overflow-hidden bg-black">
+    <div className="relative h-full w-full overflow-hidden bg-black xl:overflow-visible">
 
       {/* ── Video-Layer ──────────────────────────────────────────────────── */}
       {coHostActive ? (
@@ -427,7 +427,7 @@ export function LiveVideoPlayer({
       {/* Controls — unten rechts (v1.w.UI.15 glassPillSolid, B4 aus UI_AUDIT_WEB). */}
       {phase === 'live' && (
         <div className="pointer-events-none absolute inset-0">
-          <div className="pointer-events-auto absolute right-3 top-14 flex items-center gap-2 xl:bottom-28 xl:top-auto">
+          <div className="pointer-events-auto absolute right-3 top-14 flex items-center gap-2 xl:bottom-2 xl:left-[calc(100%+0.875rem)] xl:right-auto xl:top-auto xl:flex-col">
             <div className="relative">
               <button
                 type="button"
@@ -464,7 +464,7 @@ export function LiveVideoPlayer({
           </div>
 
           {settingsOpen && (
-            <div className="pointer-events-auto absolute right-3 top-28 z-30 max-h-[min(28rem,calc(100dvh-8rem))] w-[calc(100%-1.5rem)] max-w-72 overflow-y-auto rounded-2xl bg-zinc-950/92 text-white shadow-elevation-3 ring-1 ring-white/10 backdrop-blur-xl xl:bottom-44 xl:top-auto xl:max-w-80">
+            <div className="pointer-events-auto absolute right-3 top-28 z-30 max-h-[min(28rem,calc(100dvh-8rem))] w-[calc(100%-1.5rem)] max-w-72 overflow-y-auto rounded-2xl bg-zinc-950/92 text-white shadow-elevation-3 ring-1 ring-white/10 backdrop-blur-xl xl:bottom-40 xl:left-[calc(100%+0.875rem)] xl:right-auto xl:top-auto xl:w-72 xl:max-w-80">
               <div className="border-b border-white/10 px-4 py-3">
                 <p className="text-sm font-bold">Wiedergabe</p>
                 <p className="mt-0.5 text-xs text-white/55">

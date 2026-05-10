@@ -132,7 +132,7 @@ export const getLiveComments = cache(
         // `body`, damit der LiveCommentWithAuthor-Typ + UI-Components den
         // lesbareren Namen behalten. Ohne Alias schlägt der SELECT still
         // fehl und die Chat-Initial-Liste kommt leer.
-        `id, session_id, user_id, body:text, created_at,
+        `id, session_id, user_id, body:text, pinned, created_at,
          author:profiles!live_comments_user_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )`,
       )
       .eq('session_id', sessionId)
@@ -144,7 +144,7 @@ export const getLiveComments = cache(
     return (data as unknown as (LiveCommentWithAuthor & { author: unknown })[])
       .map((r) => ({
         ...r,
-        pinned: false,
+        pinned: Boolean(r.pinned),
         author: Array.isArray(r.author)
           ? ((r.author[0] as LiveCommentWithAuthor['author']) ?? null)
           : (r.author as LiveCommentWithAuthor['author']),
