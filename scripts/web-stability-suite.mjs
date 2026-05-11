@@ -48,6 +48,12 @@ const steps = [
     cwd: repoRoot,
   },
   {
+    name: 'Live contracts',
+    cmd: 'npm',
+    args: ['run', 'stability:live-contracts'],
+    cwd: repoRoot,
+  },
+  {
     name: 'Auth interactions',
     cmd: 'npm',
     args: ['run', 'stability:auth', '--', '--skip-if-missing'],
