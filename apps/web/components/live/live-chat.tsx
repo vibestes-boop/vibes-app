@@ -547,7 +547,7 @@ export function LiveChat({
           canModerate={canModerate}
           isHost={isHost}
           hostId={hostId}
-          className="absolute inset-x-2 bottom-[4.5rem] z-50"
+          className="fixed bottom-24 right-4 z-[130] w-[min(22rem,calc(100vw-2rem))]"
           onClose={() => setSelectedChatUser(null)}
           onMention={(username) => {
             setText(`@${username} `);

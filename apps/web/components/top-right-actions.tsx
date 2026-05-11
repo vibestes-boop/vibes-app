@@ -34,6 +34,7 @@ import { glassPillBase, glassAvatarFallback } from '@/lib/ui/glass-pill';
 import { cn } from '@/lib/utils';
 import { DmInboxPill } from '@/components/layout/dm-inbox-pill';
 import { NotifBellPill } from '@/components/layout/notif-bell-pill';
+import { TopRightActionsFrame } from '@/components/top-right-actions-frame';
 
 // -----------------------------------------------------------------------------
 // TopRightActions — schwebender Cluster oben rechts über allen Seiten.
@@ -68,7 +69,7 @@ export async function TopRightActions() {
   const coinsFormatted = (balance?.coins ?? 0).toLocaleString(LOCALE_INTL[locale]);
 
   return (
-    <div className="pointer-events-none fixed right-3 top-3 z-40 flex items-center gap-2">
+    <TopRightActionsFrame>
       {user ? (
         <>
           <Link
@@ -227,6 +228,6 @@ export async function TopRightActions() {
           </Button>
         </>
       )}
-    </div>
+    </TopRightActionsFrame>
   );
 }

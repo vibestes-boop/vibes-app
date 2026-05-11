@@ -464,7 +464,7 @@ export function LiveVideoPlayer({
           </div>
 
           {settingsOpen && (
-            <div className="pointer-events-auto fixed bottom-32 right-4 z-[90] max-h-[min(30rem,calc(100dvh-8rem))] w-[min(20rem,calc(100vw-2rem))] overflow-y-auto rounded-2xl bg-zinc-950/92 text-white shadow-elevation-3 ring-1 ring-white/10 backdrop-blur-xl xl:right-[calc(24rem+1.5rem)]">
+            <div className="pointer-events-auto fixed bottom-32 right-4 z-[90] max-h-[min(30rem,calc(100dvh-8rem))] w-[min(20rem,calc(100vw-2rem))] overflow-y-auto rounded-2xl bg-zinc-950/92 text-white shadow-elevation-3 ring-1 ring-white/10 backdrop-blur-xl xl:absolute xl:bottom-2 xl:left-[calc(100%+4.25rem)] xl:right-auto xl:max-h-[min(24rem,calc(100dvh-6rem))] xl:w-72">
               <div className="border-b border-white/10 px-4 py-3">
                 <p className="text-sm font-bold">Wiedergabe</p>
                 <p className="mt-0.5 text-xs text-white/55">
