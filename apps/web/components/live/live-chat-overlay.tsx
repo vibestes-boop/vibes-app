@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, useTransition, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type FormEvent } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import { Send, ShieldAlert, Pin, PinOff } from 'lucide-react';
 import { sendLiveComment, timeoutChatUser, pinLiveComment, unpinLiveComment } from '@/app/actions/live';
@@ -15,6 +15,7 @@ import {
   replaceOptimisticLiveComment,
   type LiveCommentBroadcastPayload,
 } from './live-chat-messages';
+import { createLiveRealtimeTopic } from './realtime-topic';
 
 // -----------------------------------------------------------------------------
 // LiveChatOverlay — TikTok-style Chat als halbtransparentes Overlay. Ersetzt
@@ -66,6 +67,53 @@ const INPUT_MAX = 200;
 // 500 Messages war) rechtfertigt das harte Cap.
 const OVERLAY_VISIBLE = 30;
 
+type LiveCommentHydrationRow = {
+  id: string;
+  session_id: string;
+  user_id: string;
+  body: string | null;
+  pinned: boolean | null;
+  created_at: string;
+  author:
+    | {
+        id: string;
+        username: string | null;
+        display_name: string | null;
+        avatar_url: string | null;
+        verified: boolean | null;
+      }
+    | Array<{
+        id: string;
+        username: string | null;
+        display_name: string | null;
+        avatar_url: string | null;
+        verified: boolean | null;
+      }>
+    | null;
+};
+
+function mapHydratedComment(row: LiveCommentHydrationRow): LiveCommentWithAuthor {
+  const author = Array.isArray(row.author) ? (row.author[0] ?? null) : row.author;
+
+  return {
+    id: row.id,
+    session_id: row.session_id,
+    user_id: row.user_id,
+    body: row.body ?? '',
+    pinned: Boolean(row.pinned),
+    created_at: row.created_at,
+    author: author
+      ? {
+          id: author.id,
+          username: author.username ?? '',
+          display_name: author.display_name,
+          avatar_url: author.avatar_url,
+          verified: Boolean(author.verified),
+        }
+      : null,
+  };
+}
+
 export function LiveChatOverlay({
   sessionId,
   initialComments,
@@ -87,6 +135,74 @@ export function LiveChatOverlay({
   const [cooldownLeft, setCooldownLeft] = useState(0);
   const listRef = useRef<HTMLDivElement | null>(null);
   const broadcastCommentRef = useRef<((comment: LiveCommentWithAuthor) => void) | null>(null);
+  const refreshInFlightRef = useRef(false);
+
+  const mergePersistedComments = useCallback((incoming: LiveCommentWithAuthor[]) => {
+    if (incoming.length === 0) return;
+    setComments((prev) => incoming.reduce((next, comment) => mergeLiveComment(next, comment), prev));
+  }, []);
+
+  useEffect(() => {
+    setComments((prev) => {
+      const scoped = prev.filter((comment) => comment.session_id === sessionId);
+      return initialComments.reduce((next, comment) => mergeLiveComment(next, comment), scoped);
+    });
+  }, [initialComments, sessionId]);
+
+  const refreshPersistedComments = useCallback(async () => {
+    if (refreshInFlightRef.current) return;
+    refreshInFlightRef.current = true;
+
+    try {
+      const supabase = createBrowserClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      );
+
+      const { data, error } = await supabase
+        .from('live_comments')
+        .select(
+          `id, session_id, user_id, body:text, pinned, created_at,
+           author:profiles!live_comments_user_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )`,
+        )
+        .eq('session_id', sessionId)
+        .order('created_at', { ascending: true })
+        .limit(120);
+
+      if (error) {
+        console.warn('[LiveChatOverlay] persisted comment refresh failed', error);
+        return;
+      }
+
+      const hydrated = ((data ?? []) as unknown as LiveCommentHydrationRow[]).map(mapHydratedComment);
+      mergePersistedComments(hydrated);
+    } finally {
+      refreshInFlightRef.current = false;
+    }
+  }, [mergePersistedComments, sessionId]);
+
+  useEffect(() => {
+    void refreshPersistedComments();
+  }, [refreshPersistedComments]);
+
+  useEffect(() => {
+    const refreshOnRestore = () => {
+      void refreshPersistedComments();
+    };
+    const refreshOnVisible = () => {
+      if (document.visibilityState === 'visible') void refreshPersistedComments();
+    };
+
+    window.addEventListener('pageshow', refreshOnRestore);
+    window.addEventListener('focus', refreshOnRestore);
+    document.addEventListener('visibilitychange', refreshOnVisible);
+
+    return () => {
+      window.removeEventListener('pageshow', refreshOnRestore);
+      window.removeEventListener('focus', refreshOnRestore);
+      document.removeEventListener('visibilitychange', refreshOnVisible);
+    };
+  }, [refreshPersistedComments]);
 
   // v1.w.UI.191 — Mod IDs + top-gifter IDs for message badges.
   const [modIds, setModIds] = useState<Set<string>>(new Set());
@@ -253,7 +369,7 @@ export function LiveChatOverlay({
       });
 
     const ch = supabase
-      .channel(`live-mods-overlay-${sessionId}`)
+      .channel(createLiveRealtimeTopic('live-mods-overlay', sessionId))
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'live_moderators', filter: `session_id=eq.${sessionId}` },
@@ -650,7 +766,7 @@ function OverlayRow({
             <ShieldAlert className="h-3.5 w-3.5" aria-hidden="true" />
           </button>
           {menuOpen && (
-            <div className="absolute right-0 top-full z-10 mt-1 w-36 overflow-hidden rounded-xl bg-black/85 text-xs text-white shadow-elevation-3 ring-1 ring-white/10 backdrop-blur-md">
+            <div className="absolute bottom-full right-0 z-[80] mb-1 w-36 overflow-hidden rounded-xl bg-black/85 text-xs text-white shadow-elevation-3 ring-1 ring-white/10 backdrop-blur-md">
               {/* Pin / Unpin — v1.w.UI.139 */}
               <button
                 type="button"

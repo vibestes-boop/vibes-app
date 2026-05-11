@@ -15,12 +15,13 @@
 //  • Wenn goal.current_coins >= goal.target_coins → Celebrate-State (grün, ✓)
 // -----------------------------------------------------------------------------
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import { Target, Coins } from 'lucide-react';
 import type { ActiveGiftGoal } from '@/lib/data/live-host';
 import { glassSurface } from '@/lib/ui/glass-pill';
 import { cn } from '@/lib/utils';
+import { createLiveRealtimeTopic } from './realtime-topic';
 
 function supa() {
   return createBrowserClient(
@@ -37,7 +38,6 @@ interface LiveGiftGoalViewerProps {
 export function LiveGiftGoalViewer({ sessionId, initialGoal }: LiveGiftGoalViewerProps) {
   const [goal, setGoal] = useState<ActiveGiftGoal | null>(initialGoal);
   const giftGoalsEnabled = process.env.NEXT_PUBLIC_LIVE_GIFT_GOALS_ENABLED === '1';
-  const channelInstanceId = useRef(Math.random().toString(36).slice(2));
 
   // ── Realtime: live_gift_goals UPDATE ──────────────────────────────────────
   useEffect(() => {
@@ -52,7 +52,7 @@ export function LiveGiftGoalViewer({ sessionId, initialGoal }: LiveGiftGoalViewe
 
     try {
       ch = db
-        .channel(`live-goal-viewer-${sessionId}-${channelInstanceId.current}`)
+        .channel(createLiveRealtimeTopic('live-goal-viewer', sessionId))
         .on(
           'postgres_changes',
           {

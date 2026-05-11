@@ -22,6 +22,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { createLiveRealtimeTopic } from './realtime-topic';
 
 // Reference phone dimensions used when host placed the sticker
 const REF_W = 390;
@@ -84,7 +85,7 @@ export function LiveStickerLayer({ sessionId, isHost = false }: LiveStickerLayer
     void fetchStickers();
 
     const channel = supabase
-      .channel(`live-stickers-web-${sessionId}`)
+      .channel(createLiveRealtimeTopic('live-stickers-web', sessionId))
       .on(
         'postgres_changes',
         {

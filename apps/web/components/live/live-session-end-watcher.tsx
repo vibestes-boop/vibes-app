@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
+import { createLiveRealtimeTopic } from './realtime-topic';
 
 // -----------------------------------------------------------------------------
 // LiveSessionEndWatcher — v1.w.UI.144
@@ -50,7 +51,7 @@ export function LiveSessionEndWatcher({ sessionId, alreadyEnded }: LiveSessionEn
     let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 
     const channel = supabase
-      .channel(`live-session-end-${sessionId}`)
+      .channel(createLiveRealtimeTopic('live-session-end', sessionId))
       .on(
         'postgres_changes',
         {

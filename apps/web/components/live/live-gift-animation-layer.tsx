@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
+import { createLiveRealtimeTopic } from './realtime-topic';
 
 // -----------------------------------------------------------------------------
 // LiveGiftAnimationLayer — v1.w.UI.17 (B3 Web-Parity)
@@ -93,7 +94,6 @@ interface LiveGiftSentEventDetail {
  */
 export function LiveGiftAnimationLayer({ sessionId, onBurst }: LiveGiftAnimationLayerProps) {
   const [bursts, setBursts] = useState<LiveGiftBurst[]>([]);
-  const channelInstanceId = useRef(Math.random().toString(36).slice(2));
   const seenBurstIdsRef = useRef(new Set<string>());
 
   const removeBurst = useCallback((id: string) => {
@@ -141,7 +141,7 @@ export function LiveGiftAnimationLayer({ sessionId, onBurst }: LiveGiftAnimation
 
     try {
       channel = supabase
-        .channel(`live-gifts-anim-${sessionId}-${channelInstanceId.current}`)
+        .channel(createLiveRealtimeTopic('live-gifts-anim', sessionId))
         .on(
           'postgres_changes',
           {

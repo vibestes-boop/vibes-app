@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useTransition } from 'react';
 import { Gift, Target, Loader2, Plus, Check, Trash2 } from 'lucide-react';
 import { createBrowserClient } from '@supabase/ssr';
 import { createLiveGiftGoal, closeActiveGiftGoal } from '@/app/actions/live-host';
+import { createLiveRealtimeTopic } from './realtime-topic';
 
 function supa() {
   return createBrowserClient(
@@ -45,7 +46,7 @@ export function LiveGiftsFeed({ sessionId, initialGifts, initialGoal }: LiveGift
     const supabase = supa();
 
     const giftsChannel = supabase
-      .channel(`live-gifts-feed-${sessionId}`)
+      .channel(createLiveRealtimeTopic('live-gifts-feed', sessionId))
       .on(
         'postgres_changes',
         {
@@ -97,7 +98,7 @@ export function LiveGiftsFeed({ sessionId, initialGifts, initialGoal }: LiveGift
 
     const goalChannel = giftGoalsEnabled
       ? supabase
-          .channel(`live-goals-watch-${sessionId}`)
+          .channel(createLiveRealtimeTopic('live-goals-watch', sessionId))
           .on(
             'postgres_changes',
             {

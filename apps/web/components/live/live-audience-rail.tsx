@@ -20,6 +20,7 @@ import {
 import { toggleFollow } from '@/app/actions/engagement';
 import { timeoutChatUser } from '@/app/actions/live';
 import { cn } from '@/lib/utils';
+import { createLiveRealtimeTopic } from './realtime-topic';
 
 interface AudienceRailRow {
   id: string;
@@ -222,7 +223,7 @@ export function LiveAudienceRail({
     void loadRows();
 
     const channel = supabase
-      .channel(`live-audience-rail-${sessionId}`)
+      .channel(createLiveRealtimeTopic('live-audience-rail', sessionId))
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'live_comments', filter: `session_id=eq.${sessionId}` },

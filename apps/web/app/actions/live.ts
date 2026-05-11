@@ -320,8 +320,8 @@ export async function sendLiveGift(
 }
 
 // -----------------------------------------------------------------------------
-// voteOnLivePoll — schreibt direkt in `live_poll_votes`.
-// Die Datenbank schützt Dedup via PK `(poll_id, user_id)`.
+// voteOnLivePoll — läuft über die DB-RPC, damit Web und Native denselben
+// Dedup-/RLS-/Closed-Poll-Pfad nutzen.
 // -----------------------------------------------------------------------------
 
 export async function voteOnLivePoll(
@@ -348,10 +348,9 @@ export async function voteOnLivePoll(
   const options = Array.isArray(poll.options) ? poll.options : [];
   if (optionIndex >= options.length) return { ok: false, error: 'Ungültige Option.' };
 
-  const { error } = await supabase.from('live_poll_votes').insert({
-    poll_id: pollId,
-    user_id: viewer.id,
-    option_index: optionIndex,
+  const { error } = await supabase.rpc('vote_on_poll', {
+    p_poll_id: pollId,
+    p_option_index: optionIndex,
   });
 
   if (error) {

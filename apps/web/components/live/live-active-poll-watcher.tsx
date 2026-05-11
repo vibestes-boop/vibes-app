@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import { LivePollPanel } from './live-poll-panel';
 import type { ActiveLivePollSSR } from '@/lib/data/live';
+import { createLiveRealtimeTopic } from './realtime-topic';
 
 // -----------------------------------------------------------------------------
 // LiveActivePollWatcher — v1.w.UI.143
@@ -59,7 +60,7 @@ export function LiveActivePollWatcher({
     );
 
     const channel = supabase
-      .channel(`live-poll-watcher-${sessionId}`)
+      .channel(createLiveRealtimeTopic('live-poll-watcher', sessionId))
       // ── INSERT: Host startet eine neue Umfrage ─────────────────────────
       .on(
         'postgres_changes',

@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { createLiveRealtimeTopic } from './realtime-topic';
 
 // -----------------------------------------------------------------------------
 // LivePageRefresher — unsichtbare Client-Component auf /live.
@@ -51,7 +52,7 @@ export function LivePageRefresher({ sessionCount }: LivePageRefresherProps) {
     }
 
     const channel = client
-      .channel('live-sessions-discovery')
+      .channel(createLiveRealtimeTopic('live-sessions-discovery', 'global'))
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'live_sessions' },

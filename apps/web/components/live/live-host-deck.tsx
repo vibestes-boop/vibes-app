@@ -70,6 +70,7 @@ import { LiveGiftGoalViewer } from './live-gift-goal-viewer';
 import { LiveDuetInviteWatcher } from './live-duet-invite-watcher';
 import { LiveHostPollOverlay } from './live-host-poll-overlay';
 import { LiveGiftAnimationLayer } from './live-gift-animation-layer';
+import { createLiveRealtimeTopic } from './realtime-topic';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 // v1.w.UI.207 — Sticker catalog (matches mobile StickerPicker categories)
@@ -237,7 +238,7 @@ export function LiveHostDeck({
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     );
     const ch = sb
-      .channel(`host-follower-shoutout-${session.id}`)
+      .channel(createLiveRealtimeTopic('host-follower-shoutout', session.id))
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'follows', filter: `following_id=eq.${hostId}` },
@@ -341,7 +342,7 @@ export function LiveHostDeck({
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     );
     const ch = sb
-      .channel(`host-recording-${session.id}`)
+      .channel(createLiveRealtimeTopic('host-recording', session.id))
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'live_recordings', filter: `session_id=eq.${session.id}` },
@@ -361,7 +362,7 @@ export function LiveHostDeck({
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     );
     const ch = sb
-      .channel(`host-summary-gifts-${session.id}`)
+      .channel(createLiveRealtimeTopic('host-summary-gifts', session.id))
       .on(
         'postgres_changes',
         {
@@ -386,7 +387,7 @@ export function LiveHostDeck({
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     );
     const ch = sb
-      .channel(`host-summary-comments-${session.id}`)
+      .channel(createLiveRealtimeTopic('host-summary-comments', session.id))
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'live_comments', filter: `session_id=eq.${session.id}` },
@@ -973,7 +974,7 @@ export function LiveHostDeck({
   return (
     <div className="flex min-h-screen flex-col bg-background lg:h-screen lg:overflow-hidden">
       {/* Top-Bar */}
-      <div className="relative z-50 flex flex-wrap items-center gap-3 overflow-visible border-b bg-card px-4 py-3 lg:px-6 xl:pr-[25rem]">
+      <div className="relative z-50 flex flex-wrap items-center gap-3 overflow-visible border-b bg-card px-4 py-3 lg:px-6 xl:pr-[clamp(28rem,34vw,38rem)]">
         <div className="flex min-w-0 items-center gap-3">
           <span
             className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold text-white ${
@@ -1015,7 +1016,7 @@ export function LiveHostDeck({
           </button>
         </div>
 
-        <div className="relative z-50 flex min-w-0 flex-wrap items-center gap-2">
+        <div className="relative z-50 flex min-w-0 max-w-full flex-wrap items-center gap-2 xl:max-w-[calc(100vw-36rem)]">
           <button
             type="button"
             onClick={() => setPollSheetOpen(true)}
@@ -1044,7 +1045,7 @@ export function LiveHostDeck({
             {/* Sticker picker popover */}
             {stickerPickerOpen && (
               <div
-                className="absolute left-0 top-full z-[80] mt-2 max-h-[calc(100vh-7rem)] w-72 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border bg-popover shadow-xl"
+                className="fixed left-4 top-24 z-[120] mt-0 max-h-[calc(100dvh-8rem)] w-72 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border bg-popover shadow-xl"
                 // Prevent mousedown from bubbling to document (would close picker)
                 onMouseDown={(e) => e.stopPropagation()}
               >
@@ -1106,7 +1107,7 @@ export function LiveHostDeck({
             {/* Product picker popover */}
             {productPickerOpen && (
               <div
-                className="absolute left-0 top-full z-[80] mt-2 max-h-[calc(100vh-7rem)] w-72 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border bg-popover shadow-xl"
+                className="fixed left-4 top-24 z-[120] mt-0 max-h-[calc(100dvh-8rem)] w-72 max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl border bg-popover shadow-xl"
                 onMouseDown={(e) => e.stopPropagation()}
               >
                 <div className="flex items-center justify-between border-b px-3 py-2">

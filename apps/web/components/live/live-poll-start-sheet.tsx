@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useRef, useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import { X, Plus, Trash2, Loader2, BarChart3, Clock } from 'lucide-react';
 import { createLivePoll, closeLivePoll } from '@/app/actions/live-host';
 import type { ActiveLivePollSSR } from '@/lib/data/live';
+import { createLiveRealtimeTopic } from './realtime-topic';
 
 // -----------------------------------------------------------------------------
 // LivePollStartSheet — Modal zum Erstellen einer neuen Umfrage oder Schließen
@@ -256,7 +257,6 @@ export function LivePollStartSheet({
 
 function ActivePollView({ poll }: { poll: ActiveLivePollSSR }) {
   const [livePoll, setLivePoll] = useState(poll);
-  const channelInstanceId = useRef(Math.random().toString(36).slice(2));
 
   useEffect(() => {
     setLivePoll(poll);
@@ -272,7 +272,7 @@ function ActivePollView({ poll }: { poll: ActiveLivePollSSR }) {
 
     try {
       channel = supabase
-        .channel(`live-poll-sheet-${poll.id}-${channelInstanceId.current}`)
+        .channel(createLiveRealtimeTopic('live-poll-sheet', poll.id))
         .on(
           'postgres_changes',
           {

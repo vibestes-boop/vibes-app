@@ -626,7 +626,7 @@ function CommentRow({
             <ShieldAlert className="h-3.5 w-3.5" aria-hidden="true" />
           </button>
           {menuOpen && (
-            <div className="absolute right-0 top-full z-10 mt-1 w-36 overflow-hidden rounded-md border bg-popover text-xs shadow-lg">
+            <div className="absolute bottom-full right-0 z-[80] mb-1 w-36 overflow-hidden rounded-md border bg-popover text-xs shadow-lg">
               {/* Pin / Unpin — v1.w.UI.139 */}
               <button
                 type="button"

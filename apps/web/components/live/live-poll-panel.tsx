@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import { BarChart3, Check } from 'lucide-react';
 import { voteOnLivePoll } from '@/app/actions/live';
 import type { ActiveLivePollSSR } from '@/lib/data/live';
 import { cn } from '@/lib/utils';
+import { createLiveRealtimeTopic } from './realtime-topic';
 
 // -----------------------------------------------------------------------------
 // LivePollPanel — Umfrage-Anzeige + Voting. Realtime-Updates auf
@@ -32,7 +33,6 @@ export function LivePollPanel({
   const [myVote, setMyVote] = useState<number | null>(initialPoll.my_vote_index ?? null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  const channelInstanceId = useRef(Math.random().toString(36).slice(2));
 
   useEffect(() => {
     setPoll(initialPoll);
@@ -55,7 +55,7 @@ export function LivePollPanel({
 
     try {
       channel = supabase
-        .channel(`live-poll-${poll.id}-${channelInstanceId.current}`)
+        .channel(createLiveRealtimeTopic('live-poll', `${sessionId}-${poll.id}`))
         .on(
           'postgres_changes',
           {

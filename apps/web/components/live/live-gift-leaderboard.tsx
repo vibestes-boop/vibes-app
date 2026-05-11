@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 import { glassPillStrong } from '@/lib/ui/glass-pill';
+import { createLiveRealtimeTopic } from './realtime-topic';
 
 // -----------------------------------------------------------------------------
 // LiveGiftLeaderboard — Horizontal strip showing top 3 gifters during a stream.
@@ -31,7 +32,6 @@ const MEDALS = ['🥇', '🥈', '🥉'] as const;
 
 export function LiveGiftLeaderboard({ sessionId }: { sessionId: string }) {
   const [gifters, setGifters] = useState<Map<string, GifterEntry>>(new Map());
-  const channelInstanceId = useRef(Math.random().toString(36).slice(2));
 
   // ── Initial snapshot: fetch existing gifts for this session on mount ──────
   useEffect(() => {
@@ -81,7 +81,7 @@ export function LiveGiftLeaderboard({ sessionId }: { sessionId: string }) {
 
     try {
       channel = supabase
-        .channel(`live-gift-lb-${sessionId}-${channelInstanceId.current}`)
+        .channel(createLiveRealtimeTopic('live-gift-lb', sessionId))
         .on(
           'postgres_changes',
           {

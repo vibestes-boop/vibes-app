@@ -27,6 +27,7 @@ import type { Route } from 'next';
 import Image from 'next/image';
 import { ShoppingBag } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { createLiveRealtimeTopic } from './realtime-topic';
 
 const REF_W = 390;
 const REF_H = 844;
@@ -116,7 +117,7 @@ export function LivePlacedProductLayer({
     void fetch();
 
     const channel = supabase
-      .channel(`live-placed-products-web-${sessionId}`)
+      .channel(createLiveRealtimeTopic('live-placed-products-web', sessionId))
       .on(
         'postgres_changes',
         {

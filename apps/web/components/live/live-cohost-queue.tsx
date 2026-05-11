@@ -15,6 +15,7 @@ function supa() {
 import { acceptCoHostRequest, rejectCoHostRequest, kickCoHost, muteCoHost } from '@/app/actions/live-host';
 import type { DuetLayout } from '@/app/actions/live-host';
 import { setBattleStore } from './live-battle-store';
+import { createLiveRealtimeTopic } from './realtime-topic';
 
 // -----------------------------------------------------------------------------
 // LiveCoHostQueue — v1.w.UI.182 (layout picker + battle mode)
@@ -161,7 +162,7 @@ export function LiveCoHostQueue({ sessionId, hostId }: LiveCoHostQueueProps) {
     loadActive();
 
     const channel = supabase
-      .channel(`live-cohosts-watch-${sessionId}`)
+      .channel(createLiveRealtimeTopic('live-cohosts-watch', sessionId))
       .on(
         'postgres_changes',
         {

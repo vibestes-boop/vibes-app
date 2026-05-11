@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
+import { createLiveRealtimeTopic } from './realtime-topic';
 
 // -----------------------------------------------------------------------------
 // LiveCoHostWatcher — v1.w.UI.145
@@ -52,7 +53,7 @@ export function LiveCoHostWatcher({ sessionId, ended }: LiveCoHostWatcherProps) 
     };
 
     const channel = supabase
-      .channel(`live-cohost-watcher-${sessionId}`)
+      .channel(createLiveRealtimeTopic('live-cohost-watcher', sessionId))
       // CoHost genehmigt → neuer Teilnehmer auf der Bühne
       .on(
         'postgres_changes',
