@@ -365,11 +365,12 @@ export async function voteOnLivePoll(
 }
 
 // -----------------------------------------------------------------------------
-// CoHost-Signals — Request / Cancel / Leave via `co-host-signals-{id}` Channel.
+// CoHost-Signals — Request / Cancel / Leave.
 //
-// Native pattern: Viewer sendet Broadcast, Host-UI hört mit und zeigt Request
-// in Queue. Host akzeptiert → separate RPC `accept_cohost_request` (nicht hier,
-// das ist Host-Seite). Für den Viewer reicht Broadcast-send.
+// Der Broadcast bleibt für das Sofortgefühl erhalten, ist aber absichtlich nicht
+// mehr die Quelle der Wahrheit. Duett-/CoHost-Anfragen werden zusätzlich über
+// `live_duet_invites` persistiert, damit der Host sie nicht verpasst, wenn der
+// Realtime-Channel kurz getrennt war oder der Host gerade navigiert hat.
 // -----------------------------------------------------------------------------
 
 export async function requestCoHost(sessionId: string): Promise<ActionResult<null>> {
@@ -377,6 +378,21 @@ export async function requestCoHost(sessionId: string): Promise<ActionResult<nul
   if (!viewer) return { ok: false, error: 'Bitte einloggen.' };
 
   const supabase = await createClient();
+
+  const { data: inviteId, error: inviteError } = await supabase.rpc('create_duet_invite', {
+    p_session_id: sessionId,
+    p_invitee_id: viewer.id,
+    p_layout: 'side-by-side',
+    p_battle_duration: null,
+    p_message: null,
+  });
+
+  if (inviteError) {
+    return {
+      ok: false,
+      error: inviteError.message ?? 'Duett-Anfrage konnte nicht gesendet werden.',
+    };
+  }
 
   // Profile für Displayname holen (Host-Queue zeigt Username + Avatar)
   const { data: profile } = await supabase
@@ -395,12 +411,15 @@ export async function requestCoHost(sessionId: string): Promise<ActionResult<nul
       username: profile?.username ?? null,
       display_name: profile?.display_name ?? null,
       avatar_url: profile?.avatar_url ?? null,
+      invite_id: inviteId ?? null,
       ts: Date.now(),
     },
   });
   await supabase.removeChannel(channel);
 
-  if (res !== 'ok') return { ok: false, error: 'Request konnte nicht gesendet werden.' };
+  if (res !== 'ok') {
+    console.warn('[requestCoHost] Broadcast nach persistierter Anfrage fehlgeschlagen', res);
+  }
   return { ok: true, data: null };
 }
 
@@ -409,6 +428,21 @@ export async function cancelCoHostRequest(sessionId: string): Promise<ActionResu
   if (!viewer) return { ok: false, error: 'Bitte einloggen.' };
 
   const supabase = await createClient();
+
+  const { data: pendingInvites } = await supabase
+    .from('live_duet_invites')
+    .select('id')
+    .eq('session_id', sessionId)
+    .eq('invitee_id', viewer.id)
+    .eq('direction', 'viewer-to-host')
+    .eq('status', 'pending');
+
+  await Promise.all(
+    (pendingInvites ?? []).map((invite) =>
+      supabase.rpc('cancel_duet_invite', { p_invite_id: invite.id }),
+    ),
+  );
+
   const channel = supabase.channel(`co-host-signals-${sessionId}`);
   await channel.subscribe();
   const res = await channel.send({
@@ -418,7 +452,9 @@ export async function cancelCoHostRequest(sessionId: string): Promise<ActionResu
   });
   await supabase.removeChannel(channel);
 
-  if (res !== 'ok') return { ok: false, error: 'Cancel konnte nicht gesendet werden.' };
+  if (res !== 'ok') {
+    console.warn('[cancelCoHostRequest] Broadcast nach Cancel fehlgeschlagen', res);
+  }
   return { ok: true, data: null };
 }
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
+import type { AnimationItem } from 'lottie-web';
 import { createBrowserClient } from '@supabase/ssr';
 import { createLiveRealtimeTopic } from './realtime-topic';
 
@@ -8,8 +9,8 @@ import { createLiveRealtimeTopic } from './realtime-topic';
 // LiveGiftAnimationLayer — v1.w.UI.17 (B3 Web-Parity)
 //
 // Subscribed auf `gift_transactions` INSERT-Events für eine Session. Pro eingegangenem
-// Geschenk spawnt ein Card-Burst von unten-links nach oben mit leichtem
-// horizontalen Drift, bleibt ~3s sichtbar und räumt sich selbst auf.
+// Geschenk spawnt einen großen Stage-Burst mit Aura/Sparkles und leichtem
+// horizontalen Drift, bleibt ~4s sichtbar und räumt sich selbst auf.
 //
 // Warum nicht Broadcast `live:{id}` Event `gift`?
 //   Der bestehende `live-gifts-feed.tsx` (Host-Deck) subscribet auf
@@ -36,10 +37,9 @@ import { createLiveRealtimeTopic } from './realtime-topic';
 //   • Keyframes inline via `<style jsx global>`, kein Tailwind-Config-
 //     Eingriff — identisches Muster zu `live-reaction-overlay.tsx`.
 //
-// Bewusst NICHT hier:
-//   • Full-Lottie-Animations (wie Native). Web-Parität ist das Emoji/
-//     Image-Burst. Lottie kann nachgezogen werden wenn UX-Tests mehr
-//     Premium-Feel rechtfertigen (höheres Bundle-Kostenrisiko).
+// Bewusst leicht gehalten:
+//   • Lottie/Video-Assets werden lazy geladen: keine Player-Library im
+//     initialen Live-Bundle, aber echte Gift-Animation sobald ein Gift ankommt.
 //   • Gift-Combo-Counter (×50). Wird auf Web erst sichtbar wenn Combos
 //     als eigene Broadcast-Events kommen — aktuell kommt jeder Send
 //     als einzelner INSERT, also ist jeder Burst = 1 Geschenk.
@@ -48,14 +48,30 @@ import { createLiveRealtimeTopic } from './realtime-topic';
 // -----------------------------------------------------------------------------
 
 const MAX_BURSTS = 5;
-const BURST_DURATION_MS = 3200;
+const BURST_DURATION_MS = 4200;
+
+const LOCAL_GIFT_LOTTIE_URLS: Record<string, string> = {
+  rose: '/lottie/gifts/rose.json',
+  heart: '/lottie/gifts/heart.json',
+  diamond: '/lottie/gifts/diamond.json',
+  crown: '/lottie/gifts/crown.json',
+  trophy: '/lottie/gifts/trophy.json',
+  chechen_tower: '/lottie/gifts/chechen_tower.json',
+};
+
+const LOCAL_GIFT_VIDEO_URLS: Record<string, string> = {
+  chechen_tower_premium: '/gifts/chechen_tower_premium.mp4',
+};
 
 export interface LiveGiftBurst {
   id: string;
+  giftId: string | null;
   senderName: string;
   giftName: string;
   giftImage: string | null;
   giftEmoji?: string | null;
+  giftLottieUrl?: string | null;
+  giftVideoUrl?: string | null;
   coinCost: number;
   lane: 0 | 1 | 2;
   drift: number;
@@ -72,19 +88,23 @@ export interface LiveGiftAnimationLayerProps {
 
 interface GiftBurstInput {
   id: string;
+  giftId?: string | null;
   senderName: string;
   giftName: string;
   giftImage?: string | null;
   giftEmoji?: string | null;
+  giftLottieUrl?: string | null;
   coinCost: number;
 }
 
 interface LiveGiftSentEventDetail {
   sessionId: string;
   giftLogId?: string | null;
+  giftId?: string | null;
   senderName?: string | null;
   giftName: string;
   giftEmoji?: string | null;
+  giftLottieUrl?: string | null;
   coinCost: number;
 }
 
@@ -107,10 +127,13 @@ export function LiveGiftAnimationLayer({ sessionId, onBurst }: LiveGiftAnimation
 
       const burst: LiveGiftBurst = {
         id: input.id,
+        giftId: input.giftId ?? null,
         senderName: input.senderName.trim() || 'Unbekannt',
         giftName: input.giftName.trim() || 'Geschenk',
         giftImage: input.giftImage ?? null,
         giftEmoji: input.giftEmoji ?? null,
+        giftLottieUrl: resolveGiftLottieUrl(input.giftId, input.giftLottieUrl),
+        giftVideoUrl: resolveGiftVideoUrl(input.giftId),
         coinCost: input.coinCost,
         lane: Math.floor(Math.random() * 3) as 0 | 1 | 2,
         drift: -24 + Math.round(Math.random() * 48),
@@ -167,7 +190,7 @@ export function LiveGiftAnimationLayer({ sessionId, onBurst }: LiveGiftAnimation
                 .maybeSingle(),
               supabase
                 .from('gift_catalog')
-                .select('name, emoji')
+                .select('name, emoji, lottie_url')
                 .eq('id', row.gift_id)
                 .maybeSingle(),
             ]);
@@ -177,15 +200,19 @@ export function LiveGiftAnimationLayer({ sessionId, onBurst }: LiveGiftAnimation
             const sender = senderData as
               | { username: string | null; display_name: string | null }
               | null;
-            const gift = giftData as { name: string | null; emoji: string | null } | null;
+            const gift = giftData as
+              | { name: string | null; emoji: string | null; lottie_url: string | null }
+              | null;
 
             spawnBurst({
               id: row.id,
+              giftId: row.gift_id,
               senderName:
                 sender?.display_name?.trim() || sender?.username?.trim() || 'Unbekannt',
               giftName: gift?.name?.trim() || 'Geschenk',
               giftImage: null,
               giftEmoji: gift?.emoji ?? null,
+              giftLottieUrl: gift?.lottie_url ?? null,
               coinCost: row.coin_cost,
             });
           },
@@ -208,10 +235,12 @@ export function LiveGiftAnimationLayer({ sessionId, onBurst }: LiveGiftAnimation
 
       spawnBurst({
         id: detail.giftLogId || `local-gift-${sessionId}-${Date.now()}`,
+        giftId: detail.giftId ?? null,
         senderName: detail.senderName?.trim() || 'Du',
         giftName: detail.giftName,
         giftImage: null,
         giftEmoji: detail.giftEmoji ?? null,
+        giftLottieUrl: detail.giftLottieUrl ?? null,
         coinCost: detail.coinCost,
       });
     }
@@ -234,6 +263,20 @@ const LANE_LEFT: Record<0 | 1 | 2, string> = {
   2: 'left-[60%]',
 };
 
+function resolveGiftLottieUrl(giftId?: string | null, remoteUrl?: string | null): string | null {
+  if (giftId && LOCAL_GIFT_LOTTIE_URLS[giftId]) return LOCAL_GIFT_LOTTIE_URLS[giftId];
+  if (!remoteUrl) return null;
+
+  const trimmed = remoteUrl.trim();
+  if (trimmed.startsWith('/') || trimmed.startsWith('https://')) return trimmed;
+  return null;
+}
+
+function resolveGiftVideoUrl(giftId?: string | null): string | null {
+  if (!giftId) return null;
+  return LOCAL_GIFT_VIDEO_URLS[giftId] ?? null;
+}
+
 export function LiveGiftAnimationView({ bursts }: { bursts: LiveGiftBurst[] }) {
   return (
     <div
@@ -249,29 +292,59 @@ export function LiveGiftAnimationView({ bursts }: { bursts: LiveGiftBurst[] }) {
       <style jsx global>{`
         @keyframes gift-fly-up {
           0% {
-            transform: translate(0, 40px) scale(0.55);
+            transform: translate(-50%, 42px) scale(0.46) rotate(-5deg);
             opacity: 0;
+            filter: blur(4px);
           }
-          15% {
-            transform: translate(0, 0) scale(1.15);
+          12% {
+            transform: translate(-50%, 0) scale(1.18) rotate(2deg);
+            opacity: 1;
+            filter: blur(0);
+          }
+          28% {
+            transform: translate(-50%, -18px) scale(1) rotate(0);
             opacity: 1;
           }
-          25% {
-            transform: translate(0, -4px) scale(1);
-            opacity: 1;
-          }
-          85% {
-            transform: translate(var(--drift, 0), -240px) scale(1);
-            opacity: 0.85;
+          78% {
+            transform: translate(calc(-50% + var(--drift, 0)), -170px) scale(1.06);
+            opacity: 0.95;
           }
           100% {
-            transform: translate(var(--drift, 0), -280px) scale(0.9);
+            transform: translate(calc(-50% + var(--drift, 0)), -230px) scale(0.86);
             opacity: 0;
+            filter: blur(2px);
           }
         }
         .animate-gift-burst {
-          animation: gift-fly-up 3.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-          will-change: transform, opacity;
+          animation: gift-fly-up 4.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          will-change: transform, opacity, filter;
+        }
+        @keyframes gift-aura {
+          from {
+            transform: scale(0.92);
+            opacity: 0.62;
+          }
+          to {
+            transform: scale(1.16);
+            opacity: 0.22;
+          }
+        }
+        .animate-gift-aura {
+          animation: gift-aura 1.35s ease-out infinite alternate;
+        }
+        @keyframes gift-sparkle {
+          0%,
+          100% {
+            transform: translate3d(0, 0, 0) scale(0.72);
+            opacity: 0.35;
+          }
+          45% {
+            transform: translate3d(8px, -10px, 0) scale(1.15);
+            opacity: 1;
+          }
+        }
+        .gift-sparkle {
+          animation: gift-sparkle 1.35s ease-in-out infinite;
         }
       `}</style>
     </div>
@@ -279,17 +352,32 @@ export function LiveGiftAnimationView({ bursts }: { bursts: LiveGiftBurst[] }) {
 }
 
 // -----------------------------------------------------------------------------
-// LiveGiftBurstCard — einzelne schwebende Pille.
+// LiveGiftBurstCard — einzelne schwebende Stage-Gift-Card.
 // -----------------------------------------------------------------------------
 
 function LiveGiftBurstCard({ burst }: { burst: LiveGiftBurst }) {
   return (
     <div
-      className={`absolute bottom-24 ${LANE_LEFT[burst.lane]} flex max-w-[60%] items-center gap-2 animate-gift-burst rounded-full bg-gradient-to-r from-amber-400/95 to-pink-500/95 px-3 py-1.5 shadow-elevation-3 ring-1 ring-white/20 backdrop-blur-sm`}
+      className={`absolute bottom-[22%] ${LANE_LEFT[burst.lane]} isolate flex max-w-[min(28rem,74%)] items-center gap-3 animate-gift-burst rounded-[28px] bg-gradient-to-r from-amber-400/95 via-rose-400/95 to-pink-500/95 px-4 py-3 text-white shadow-elevation-3 ring-1 ring-white/35`}
       style={{ ['--drift' as string]: `${burst.drift}px` } as React.CSSProperties}
       data-testid="gift-burst"
     >
-      {burst.giftImage ? (
+      <span className="animate-gift-aura absolute -inset-5 -z-10 rounded-[34px] bg-gradient-to-r from-amber-300/35 via-white/20 to-pink-400/35 blur-xl" />
+      <span className="gift-sparkle absolute -left-2 -top-2 h-3 w-3 rounded-full bg-white/85 shadow-[0_0_18px_rgba(255,255,255,0.9)]" />
+      <span className="gift-sparkle absolute -right-1 top-1 h-2.5 w-2.5 rounded-full bg-yellow-200/90 shadow-[0_0_16px_rgba(253,224,71,0.85)] [animation-delay:180ms]" />
+      <span className="gift-sparkle absolute bottom-1 right-6 h-2 w-2 rounded-full bg-pink-100/90 shadow-[0_0_14px_rgba(251,207,232,0.9)] [animation-delay:360ms]" />
+
+      {burst.giftVideoUrl ? (
+        <video
+          src={burst.giftVideoUrl}
+          autoPlay
+          muted
+          playsInline
+          className="relative z-10 h-20 w-20 flex-shrink-0 rounded-2xl object-cover shadow-[0_14px_26px_rgba(0,0,0,0.36)] ring-1 ring-white/35"
+        />
+      ) : burst.giftLottieUrl ? (
+        <LiveGiftLottie src={burst.giftLottieUrl} fallback={burst.giftEmoji ?? '🎁'} />
+      ) : burst.giftImage ? (
         // Plain `<img>` bewusst: externe Gift-Assets sind nicht zwingend in
         // `next.config` allowlisted.
         // `live-gifts-feed.tsx` nutzt dasselbe Muster für Konsistenz.
@@ -297,19 +385,81 @@ function LiveGiftBurstCard({ burst }: { burst: LiveGiftBurst }) {
         <img
           src={burst.giftImage}
           alt=""
-          className="h-9 w-9 flex-shrink-0 object-contain drop-shadow-sm"
+          className="relative z-10 h-16 w-16 flex-shrink-0 object-contain drop-shadow-[0_12px_22px_rgba(0,0,0,0.35)]"
         />
       ) : (
-        <span className="text-3xl leading-none" aria-hidden="true">
+        <span className="relative z-10 text-6xl leading-none drop-shadow-[0_12px_22px_rgba(0,0,0,0.35)]" aria-hidden="true">
           {burst.giftEmoji ?? '🎁'}
         </span>
       )}
-      <div className="flex min-w-0 flex-col leading-tight">
-        <span className="truncate text-[11px] font-bold text-white">{burst.senderName}</span>
-        <span className="truncate text-[10px] text-white/95">
-          {burst.giftName} · 🪙 {burst.coinCost.toLocaleString('de-DE')}
+      <div className="relative z-10 flex min-w-0 flex-col leading-tight">
+        <span className="truncate text-sm font-extrabold text-white">{burst.senderName}</span>
+        <span className="truncate text-lg font-black text-white">
+          {burst.giftName}
+        </span>
+        <span className="mt-0.5 truncate text-xs font-bold text-white/95">
+          🪙 {burst.coinCost.toLocaleString('de-DE')}
         </span>
       </div>
     </div>
+  );
+}
+
+function LiveGiftLottie({ src, fallback }: { src: string; fallback: string }) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    if (!containerRef.current || failed) return;
+
+    let cancelled = false;
+    let animation: AnimationItem | null = null;
+
+    async function load() {
+      try {
+        const lottie = (await import('lottie-web')).default;
+        if (cancelled || !containerRef.current) return;
+
+        animation = lottie.loadAnimation({
+          container: containerRef.current,
+          renderer: 'svg',
+          loop: true,
+          autoplay: true,
+          path: src,
+          rendererSettings: {
+            preserveAspectRatio: 'xMidYMid meet',
+            progressiveLoad: true,
+          },
+        });
+        animation.addEventListener('data_failed', () => setFailed(true));
+      } catch (error) {
+        console.warn('[LiveGiftAnimationLayer] lottie animation unavailable', error);
+        if (!cancelled) setFailed(true);
+      }
+    }
+
+    load();
+    return () => {
+      cancelled = true;
+      animation?.destroy();
+    };
+  }, [failed, src]);
+
+  if (failed) {
+    return (
+      <span
+        className="relative z-10 text-6xl leading-none drop-shadow-[0_12px_22px_rgba(0,0,0,0.35)]"
+        aria-hidden="true"
+      >
+        {fallback}
+      </span>
+    );
+  }
+
+  return (
+    <div
+      ref={containerRef}
+      className="relative z-10 h-24 w-24 flex-shrink-0 drop-shadow-[0_14px_28px_rgba(0,0,0,0.38)]"
+    />
   );
 }

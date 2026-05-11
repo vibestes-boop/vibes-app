@@ -5,6 +5,11 @@ import Image from 'next/image';
 import { createBrowserClient } from '@supabase/ssr';
 import { Check, X, UserPlus, UserMinus, Mic, MicOff, VideoOff, LayoutTemplate } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { respondDuetInvite } from '@/app/actions/live';
+import { acceptCoHostRequest, rejectCoHostRequest, kickCoHost, muteCoHost } from '@/app/actions/live-host';
+import type { DuetLayout } from '@/app/actions/live-host';
+import { setBattleStore } from './live-battle-store';
+import { createLiveRealtimeTopic } from './realtime-topic';
 
 function supa() {
   return createBrowserClient(
@@ -12,17 +17,13 @@ function supa() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   );
 }
-import { acceptCoHostRequest, rejectCoHostRequest, kickCoHost, muteCoHost } from '@/app/actions/live-host';
-import type { DuetLayout } from '@/app/actions/live-host';
-import { setBattleStore } from './live-battle-store';
-import { createLiveRealtimeTopic } from './realtime-topic';
 
 // -----------------------------------------------------------------------------
 // LiveCoHostQueue — v1.w.UI.182 (layout picker + battle mode)
 //
 // Incoming-Requests-Flow:
-//   Viewer → sendet Broadcast `cohost-request` auf `co-host-signals-{id}` →
-//   Host-UI hier hört mit, zeigt Avatar + Name + Layout-Picker.
+//   Viewer → persistiert `live_duet_invites` + sendet Broadcast `cohost-request`.
+//   Host-UI hört auf beide Pfade, zeigt Avatar + Name + Layout-Picker.
 //   Host wählt Layout → Accept → acceptCoHostRequest broadcasts co-host-accepted
 //   with layout+battleDuration → viewers/host switch into the right mode.
 //
@@ -45,6 +46,7 @@ const BATTLE_DURATIONS = [
 ];
 
 interface PendingRequest {
+  invite_id?: string | null;
   user_id: string;
   username: string | null;
   display_name: string | null;
@@ -63,9 +65,75 @@ interface ActiveCoHost {
   video_muted: boolean;
 }
 
+interface PendingInviteRow {
+  id: string;
+  invitee_id: string;
+  created_at: string;
+}
+
+interface PendingProfileRow {
+  id: string;
+  username: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+}
+
 export interface LiveCoHostQueueProps {
   sessionId: string;
   hostId: string;
+}
+
+function upsertPendingRequest(prev: PendingRequest[], req: PendingRequest): PendingRequest[] {
+  const existing = prev.find((item) => item.user_id === req.user_id);
+  if (!existing) return [...prev, req].sort((a, b) => a.ts - b.ts);
+
+  return prev
+    .map((item) =>
+      item.user_id === req.user_id
+        ? {
+            ...item,
+            ...req,
+            invite_id: req.invite_id ?? item.invite_id ?? null,
+            ts: Math.min(item.ts, req.ts),
+          }
+        : item,
+    )
+    .sort((a, b) => a.ts - b.ts);
+}
+
+async function broadcastCoHostAcceptedSignal(
+  sessionId: string,
+  requesterId: string,
+  layout: DuetLayout,
+  battleDuration?: number,
+) {
+  const client = supa();
+  const channel = client.channel(`co-host-signals-${sessionId}`);
+  await channel.subscribe();
+  const res = await channel.send({
+    type: 'broadcast',
+    event: 'co-host-accepted',
+    payload: {
+      userId: requesterId,
+      layout,
+      ...(layout === 'battle' ? { battleDuration: battleDuration ?? 60 } : {}),
+    },
+  });
+  await client.removeChannel(channel);
+  return res;
+}
+
+async function broadcastCoHostRejectedSignal(sessionId: string, requesterId: string) {
+  const client = supa();
+  const channel = client.channel(`co-host-signals-${sessionId}`);
+  await channel.subscribe();
+  const res = await channel.send({
+    type: 'broadcast',
+    event: 'cohost-reject',
+    payload: { user_id: requesterId, ts: Date.now() },
+  });
+  await client.removeChannel(channel);
+  return res;
 }
 
 export function LiveCoHostQueue({ sessionId, hostId }: LiveCoHostQueueProps) {
@@ -82,6 +150,7 @@ export function LiveCoHostQueue({ sessionId, hostId }: LiveCoHostQueueProps) {
     channel.on('broadcast', { event: 'cohost-request' }, ({ payload }) => {
       const p = payload as {
         user_id: string;
+        invite_id?: string | null;
         username?: string | null;
         display_name?: string | null;
         avatar_url?: string | null;
@@ -89,18 +158,14 @@ export function LiveCoHostQueue({ sessionId, hostId }: LiveCoHostQueueProps) {
       };
       if (!p.user_id || p.user_id === hostId) return;
       setPending((prev) => {
-        // Dedup
-        if (prev.some((r) => r.user_id === p.user_id)) return prev;
-        return [
-          ...prev,
-          {
-            user_id: p.user_id,
-            username: p.username ?? null,
-            display_name: p.display_name ?? null,
-            avatar_url: p.avatar_url ?? null,
-            ts: p.ts ?? Date.now(),
-          },
-        ];
+        return upsertPendingRequest(prev, {
+          invite_id: p.invite_id ?? null,
+          user_id: p.user_id,
+          username: p.username ?? null,
+          display_name: p.display_name ?? null,
+          avatar_url: p.avatar_url ?? null,
+          ts: p.ts ?? Date.now(),
+        });
       });
     });
 
@@ -112,6 +177,89 @@ export function LiveCoHostQueue({ sessionId, hostId }: LiveCoHostQueueProps) {
     channel.subscribe();
 
     return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [sessionId, hostId]);
+
+  // -----------------------------------------------------------------------------
+  // Persistente Viewer→Host-Duett-Anfragen — Quelle der Wahrheit.
+  // -----------------------------------------------------------------------------
+  useEffect(() => {
+    const supabase = supa();
+    let cancelled = false;
+
+    async function loadPendingInvites() {
+      const { data: inviteRows } = await supabase
+        .from('live_duet_invites')
+        .select('id, invitee_id, created_at')
+        .eq('session_id', sessionId)
+        .eq('host_id', hostId)
+        .eq('direction', 'viewer-to-host')
+        .eq('status', 'pending')
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: true });
+
+      if (cancelled) return;
+
+      const invites = (inviteRows ?? []) as PendingInviteRow[];
+      const inviteeIds = Array.from(new Set(invites.map((invite) => invite.invitee_id)));
+      const profilesById = new Map<string, PendingProfileRow>();
+
+      if (inviteeIds.length > 0) {
+        const { data: profileRows } = await supabase
+          .from('profiles')
+          .select('id, username, display_name, avatar_url')
+          .in('id', inviteeIds);
+
+        ((profileRows ?? []) as PendingProfileRow[]).forEach((profile) => {
+          profilesById.set(profile.id, profile);
+        });
+      }
+
+      if (cancelled) return;
+
+      const rows: PendingRequest[] = invites.map((invite) => {
+        const profile = profilesById.get(invite.invitee_id);
+        return {
+          invite_id: invite.id,
+          user_id: invite.invitee_id,
+          username: profile?.username ?? null,
+          display_name: profile?.display_name ?? null,
+          avatar_url: profile?.avatar_url ?? null,
+          ts: new Date(invite.created_at).getTime(),
+        };
+      });
+
+      setPending((prev) => {
+        const persistentIds = new Set(rows.map((row) => row.user_id));
+        const retainedBroadcasts = prev.filter((row) => !row.invite_id || persistentIds.has(row.user_id));
+        return rows.reduce<PendingRequest[]>(
+          (next, row) => upsertPendingRequest(next, row),
+          retainedBroadcasts,
+        );
+      });
+    }
+
+    void loadPendingInvites();
+
+    const channel = supabase
+      .channel(createLiveRealtimeTopic('live-duet-requests-watch', sessionId))
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'live_duet_invites',
+          filter: `host_id=eq.${hostId}`,
+        },
+        () => {
+          void loadPendingInvites();
+        },
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
       supabase.removeChannel(channel);
     };
   }, [sessionId, hostId]);
@@ -256,16 +404,31 @@ function PendingRow({
   const doAccept = () => {
     if (!slotsAvailable) { setError('Alle Slots belegt.'); return; }
     startTransition(async () => {
-      const r = await acceptCoHostRequest(
-        sessionId, req.user_id, slotIndex, layout,
-        layout === 'battle' ? battleDuration : undefined,
-      );
+      setError(null);
+      const selectedBattleDuration = layout === 'battle' ? battleDuration : undefined;
+      const r = req.invite_id
+        ? await respondDuetInvite(req.invite_id, true)
+        : await acceptCoHostRequest(sessionId, req.user_id, slotIndex, layout, selectedBattleDuration);
+
       if (!r.ok) { setError(r.error); return; }
+
+      if (req.invite_id) {
+        const res = await broadcastCoHostAcceptedSignal(
+          sessionId,
+          req.user_id,
+          layout,
+          selectedBattleDuration,
+        );
+        if (res !== 'ok') {
+          setError('Anfrage akzeptiert, aber Viewer-Signal kam nicht sofort an.');
+        }
+      }
+
       // If battle, write to module-level store so LiveBattleBar is shown immediately
       if (layout === 'battle') {
         setBattleStore({ isBattle: true, durationSecs: battleDuration, secondsLeft: battleDuration });
       }
-      onAccept(layout, layout === 'battle' ? battleDuration : undefined);
+      onAccept(layout, selectedBattleDuration);
     });
   };
 
@@ -299,7 +462,25 @@ function PendingRow({
 
         <button
           type="button"
-          onClick={() => { startTransition(async () => { const r = await rejectCoHostRequest(sessionId, req.user_id); onReject(); if (!r.ok) setError(r.error); }); }}
+          onClick={() => {
+            startTransition(async () => {
+              setError(null);
+              const r = req.invite_id
+                ? await respondDuetInvite(req.invite_id, false, 'host-declined')
+                : await rejectCoHostRequest(sessionId, req.user_id);
+
+              if (!r.ok) {
+                setError(r.error);
+                return;
+              }
+
+              if (req.invite_id) {
+                await broadcastCoHostRejectedSignal(sessionId, req.user_id);
+              }
+
+              onReject();
+            });
+          }}
           disabled={isPending}
           className="inline-flex items-center rounded-md border px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-muted"
         >

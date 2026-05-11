@@ -28,6 +28,7 @@ import {
 function makeBurst(overrides: Partial<LiveGiftBurst> = {}): LiveGiftBurst {
   return {
     id: 'g-1',
+    giftId: null,
     senderName: 'Zaur',
     giftName: 'Rose',
     giftImage: null,
@@ -83,7 +84,8 @@ describe('LiveGiftAnimationView — Burst-Card Content', () => {
     );
     expect(screen.getByText('Aisha')).toBeInTheDocument();
     // de-DE formatiert 12500 als "12.500"
-    expect(screen.getByText(/Goldherz · 🪙 12\.500/)).toBeInTheDocument();
+    expect(screen.getByText('Goldherz')).toBeInTheDocument();
+    expect(screen.getByText(/12\.500/)).toBeInTheDocument();
   });
 
   it('rendert <img> wenn giftImage gesetzt ist', () => {

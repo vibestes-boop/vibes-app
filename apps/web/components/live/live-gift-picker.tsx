@@ -23,6 +23,7 @@ interface GiftCatalogRow {
   name: string;
   coin_cost: number;
   emoji: string | null;
+  lottie_url: string | null;
   color: string | null;
   season_tag: string | null;
   available_from: string | null;
@@ -71,7 +72,7 @@ export function LiveGiftPicker({
       const [catalogRes, authRes] = await Promise.all([
         supabase
           .from('gift_catalog')
-          .select('id, name, emoji, coin_cost, color, season_tag, available_from, available_until')
+          .select('id, name, emoji, lottie_url, coin_cost, color, season_tag, available_from, available_until')
           .order('sort_order', { ascending: true })
           .order('coin_cost', { ascending: true }),
         supabase.auth.getUser(),
@@ -136,9 +137,11 @@ export function LiveGiftPicker({
           detail: {
             sessionId,
             giftLogId: result.data.giftLogId,
+            giftId: gift.id,
             senderName: 'Du',
             giftName: gift.name,
             giftEmoji: gift.emoji,
+            giftLottieUrl: gift.lottie_url,
             coinCost: gift.coin_cost,
           },
         }),

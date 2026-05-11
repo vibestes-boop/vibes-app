@@ -464,16 +464,16 @@ export function LiveVideoPlayer({
           </div>
 
           {settingsOpen && (
-            <div className="pointer-events-auto fixed bottom-32 right-4 z-[90] max-h-[min(30rem,calc(100dvh-8rem))] w-[min(20rem,calc(100vw-2rem))] overflow-y-auto rounded-2xl bg-zinc-950/92 text-white shadow-elevation-3 ring-1 ring-white/10 backdrop-blur-xl xl:absolute xl:bottom-2 xl:left-[calc(100%+4.25rem)] xl:right-auto xl:max-h-[min(24rem,calc(100dvh-6rem))] xl:w-72">
-              <div className="border-b border-white/10 px-4 py-3">
+            <div className="pointer-events-auto fixed bottom-32 right-4 z-[90] max-h-[min(30rem,calc(100dvh-8rem))] w-[min(20rem,calc(100vw-2rem))] overflow-y-auto rounded-2xl border border-white/10 bg-[#07080d] text-white shadow-[0_24px_80px_rgba(0,0,0,0.65)] ring-1 ring-black/70 xl:absolute xl:bottom-2 xl:left-[calc(100%+4.25rem)] xl:right-auto xl:max-h-[min(24rem,calc(100dvh-6rem))] xl:w-72">
+              <div className="border-b border-white/12 px-4 py-3">
                 <p className="text-sm font-bold">Wiedergabe</p>
-                <p className="mt-0.5 text-xs text-white/55">
+                <p className="mt-0.5 text-xs text-white/70">
                   Qualität und Bildausschnitt für diesen Stream.
                 </p>
               </div>
 
               <div className="space-y-1 p-2">
-                <p className="px-2 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-white/45">
+                <p className="px-2 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wide text-white/60">
                   Qualität
                 </p>
                 {(['auto', 'medium', 'low'] as const).map((quality) => (
@@ -483,7 +483,7 @@ export function LiveVideoPlayer({
                     onClick={() => handleQualityChange(quality)}
                     className={cn(
                       'flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-sm transition-colors',
-                      playerQuality === quality ? 'bg-white/12 text-white' : 'text-white/75 hover:bg-white/8',
+                      playerQuality === quality ? 'bg-white/16 text-white' : 'text-white/85 hover:bg-white/10',
                     )}
                   >
                     <span>{PLAYER_QUALITY_LABELS[quality]}</span>
@@ -491,9 +491,9 @@ export function LiveVideoPlayer({
                   </button>
                 ))}
 
-                <div className="my-2 h-px bg-white/10" />
+                <div className="my-2 h-px bg-white/12" />
 
-                <p className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-white/45">
+                <p className="px-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-white/60">
                   Bild
                 </p>
                 <div className="grid grid-cols-2 gap-2 px-1 pb-1">
@@ -502,7 +502,7 @@ export function LiveVideoPlayer({
                     onClick={() => setFitMode('contain')}
                     className={cn(
                       'rounded-xl px-3 py-2 text-sm font-semibold transition-colors',
-                      fitMode === 'contain' ? 'bg-white text-zinc-950' : 'bg-white/8 text-white/75 hover:bg-white/12',
+                      fitMode === 'contain' ? 'bg-white text-zinc-950' : 'bg-white/10 text-white/85 hover:bg-white/14',
                     )}
                   >
                     Einpassen
@@ -512,7 +512,7 @@ export function LiveVideoPlayer({
                     onClick={() => setFitMode('cover')}
                     className={cn(
                       'rounded-xl px-3 py-2 text-sm font-semibold transition-colors',
-                      fitMode === 'cover' ? 'bg-white text-zinc-950' : 'bg-white/8 text-white/75 hover:bg-white/12',
+                      fitMode === 'cover' ? 'bg-white text-zinc-950' : 'bg-white/10 text-white/85 hover:bg-white/14',
                     )}
                   >
                     Füllen
