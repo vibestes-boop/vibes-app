@@ -12,9 +12,9 @@ import { renderHook, act } from '@testing-library/react';
 // zu simulieren. `removeChannel` wird für die Cleanup-Assertion getrackt.
 // -----------------------------------------------------------------------------
 
-let emit: ((payload: unknown) => void) | null = null;
-let removeChannelCalls = 0;
-let subscribeCalls = 0;
+let mockEmit: ((payload: unknown) => void) | null = null;
+let mockRemoveChannelCalls = 0;
+let mockSubscribeCalls = 0;
 
 interface MockChannel {
   on: jest.Mock;
@@ -26,19 +26,19 @@ jest.mock('@supabase/ssr', () => ({
     const channel: MockChannel = {
       on: jest.fn(
         (_eventType: string, _filter: unknown, handler: (arg: { payload: unknown }) => void) => {
-          emit = (payload) => handler({ payload });
+          mockEmit = (payload) => handler({ payload });
           return channel;
         },
       ),
       subscribe: jest.fn(() => {
-        subscribeCalls++;
+        mockSubscribeCalls++;
         return channel;
       }),
     };
     return {
       channel: jest.fn(() => channel),
       removeChannel: jest.fn(() => {
-        removeChannelCalls++;
+        mockRemoveChannelCalls++;
       }),
     };
   }),
@@ -47,9 +47,9 @@ jest.mock('@supabase/ssr', () => ({
 import { useRemoteReactions } from '../use-remote-reactions';
 
 beforeEach(() => {
-  emit = null;
-  removeChannelCalls = 0;
-  subscribeCalls = 0;
+  mockEmit = null;
+  mockRemoveChannelCalls = 0;
+  mockSubscribeCalls = 0;
 });
 
 describe('useRemoteReactions', () => {
@@ -57,10 +57,10 @@ describe('useRemoteReactions', () => {
     const { unmount } = renderHook(() =>
       useRemoteReactions({ sessionId: 'sess-1', viewerId: 'viewer-a' }),
     );
-    expect(subscribeCalls).toBe(1);
-    expect(removeChannelCalls).toBe(0);
+    expect(mockSubscribeCalls).toBe(1);
+    expect(mockRemoveChannelCalls).toBe(0);
     unmount();
-    expect(removeChannelCalls).toBe(1);
+    expect(mockRemoveChannelCalls).toBe(1);
   });
 
   it('emits burst for remote reaction from a different user', () => {
@@ -70,7 +70,7 @@ describe('useRemoteReactions', () => {
     expect(result.current.burst).toBeNull();
 
     act(() => {
-      emit?.({ reaction: 'fire', user_id: 'viewer-b', ts: Date.now() });
+      mockEmit?.({ reaction: 'fire', user_id: 'viewer-b', ts: Date.now() });
     });
 
     expect(result.current.burst).not.toBeNull();
@@ -84,7 +84,7 @@ describe('useRemoteReactions', () => {
     );
 
     act(() => {
-      emit?.({ reaction: 'heart', user_id: 'viewer-a', ts: Date.now() });
+      mockEmit?.({ reaction: 'heart', user_id: 'viewer-a', ts: Date.now() });
     });
 
     expect(result.current.burst).toBeNull();
@@ -96,17 +96,17 @@ describe('useRemoteReactions', () => {
     );
 
     act(() => {
-      emit?.({ reaction: 'rocket', user_id: 'viewer-b', ts: Date.now() });
+      mockEmit?.({ reaction: 'rocket', user_id: 'viewer-b', ts: Date.now() });
     });
     expect(result.current.burst).toBeNull();
 
     act(() => {
-      emit?.({ reaction: '', user_id: 'viewer-b', ts: Date.now() });
+      mockEmit?.({ reaction: '', user_id: 'viewer-b', ts: Date.now() });
     });
     expect(result.current.burst).toBeNull();
 
     act(() => {
-      emit?.(null);
+      mockEmit?.(null);
     });
     expect(result.current.burst).toBeNull();
   });
@@ -119,7 +119,7 @@ describe('useRemoteReactions', () => {
     const seen = new Set<number>();
     for (let i = 0; i < 20; i++) {
       act(() => {
-        emit?.({ reaction: 'clap', user_id: `viewer-${i}`, ts: Date.now() });
+        mockEmit?.({ reaction: 'clap', user_id: `viewer-${i}`, ts: Date.now() });
       });
       if (result.current.burst) seen.add(result.current.burst.id);
     }
@@ -132,7 +132,7 @@ describe('useRemoteReactions', () => {
     renderHook(() =>
       useRemoteReactions({ sessionId: 'sess-1', viewerId: 'viewer-a', enabled: false }),
     );
-    expect(subscribeCalls).toBe(0);
+    expect(mockSubscribeCalls).toBe(0);
   });
 
   it('passes through all 6 allowed reaction keys', () => {
@@ -142,7 +142,7 @@ describe('useRemoteReactions', () => {
     const keys = ['heart', 'fire', 'clap', 'laugh', 'wow', 'sad'] as const;
     for (const key of keys) {
       act(() => {
-        emit?.({ reaction: key, user_id: 'viewer-b', ts: Date.now() });
+        mockEmit?.({ reaction: key, user_id: 'viewer-b', ts: Date.now() });
       });
       expect(result.current.burst?.key).toBe(key);
     }

@@ -82,10 +82,10 @@ describe('LiveGiftAnimationView — Burst-Card Content', () => {
         ]}
       />,
     );
-    expect(screen.getByText('Aisha')).toBeInTheDocument();
+    expect(screen.getByText('Aisha')).not.toBeNull();
     // de-DE formatiert 12500 als "12.500"
-    expect(screen.getByText('Goldherz')).toBeInTheDocument();
-    expect(screen.getByText(/12\.500/)).toBeInTheDocument();
+    expect(screen.getByText('Goldherz')).not.toBeNull();
+    expect(screen.getByText(/12\.500/)).not.toBeNull();
   });
 
   it('rendert <img> wenn giftImage gesetzt ist', () => {

@@ -34,7 +34,7 @@ import { createLiveRealtimeTopic } from './realtime-topic';
 //   • Gesamt-Container `aria-hidden="true"` — Screen-Reader bekommen
 //     Gift-Info schon über `live-gifts-feed` (Host-Deck) bzw. kanonisch
 //     via `live_comments`-ähnliche Notify-Channels (Phase später).
-//   • Keyframes inline via `<style jsx global>`, kein Tailwind-Config-
+//   • Keyframes inline via `<style>`, kein Tailwind-Config-
 //     Eingriff — identisches Muster zu `live-reaction-overlay.tsx`.
 //
 // Bewusst leicht gehalten:
@@ -48,7 +48,7 @@ import { createLiveRealtimeTopic } from './realtime-topic';
 // -----------------------------------------------------------------------------
 
 const MAX_BURSTS = 5;
-const BURST_DURATION_MS = 4200;
+const BURST_DURATION_MS = 5200;
 
 const LOCAL_GIFT_LOTTIE_URLS: Record<string, string> = {
   rose: '/lottie/gifts/rose.json',
@@ -287,9 +287,8 @@ export function LiveGiftAnimationView({ bursts }: { bursts: LiveGiftBurst[] }) {
       {bursts.map((b) => (
         <LiveGiftBurstCard key={b.id} burst={b} />
       ))}
-      {/* Keyframes inline — identische Strategie zu `live-reaction-overlay.tsx`.
-          Vermeidet einen tailwind-config-Eingriff für einen so lokalen Effekt. */}
-      <style jsx global>{`
+      {/* Keyframes inline. Vermeidet einen tailwind-config-Eingriff für einen so lokalen Effekt. */}
+      <style>{`
         @keyframes gift-fly-up {
           0% {
             transform: translate(-50%, 42px) scale(0.46) rotate(-5deg);
@@ -316,7 +315,7 @@ export function LiveGiftAnimationView({ bursts }: { bursts: LiveGiftBurst[] }) {
           }
         }
         .animate-gift-burst {
-          animation: gift-fly-up 4.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          animation: gift-fly-up 5.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
           will-change: transform, opacity, filter;
         }
         @keyframes gift-aura {
@@ -356,9 +355,15 @@ export function LiveGiftAnimationView({ bursts }: { bursts: LiveGiftBurst[] }) {
 // -----------------------------------------------------------------------------
 
 function LiveGiftBurstCard({ burst }: { burst: LiveGiftBurst }) {
+  const hasVideoGift = Boolean(burst.giftVideoUrl);
+
   return (
     <div
-      className={`absolute bottom-[22%] ${LANE_LEFT[burst.lane]} isolate flex max-w-[min(28rem,74%)] items-center gap-3 animate-gift-burst rounded-[28px] bg-gradient-to-r from-amber-400/95 via-rose-400/95 to-pink-500/95 px-4 py-3 text-white shadow-elevation-3 ring-1 ring-white/35`}
+      className={`absolute bottom-[22%] ${LANE_LEFT[burst.lane]} isolate flex animate-gift-burst items-center text-white shadow-elevation-3 ring-1 ring-white/35 ${
+        hasVideoGift
+          ? 'max-w-[min(34rem,86%)] gap-4 rounded-[34px] bg-gradient-to-r from-amber-300/95 via-rose-400/95 to-pink-500/95 px-5 py-4'
+          : 'max-w-[min(28rem,74%)] gap-3 rounded-[28px] bg-gradient-to-r from-amber-400/95 via-rose-400/95 to-pink-500/95 px-4 py-3'
+      }`}
       style={{ ['--drift' as string]: `${burst.drift}px` } as React.CSSProperties}
       data-testid="gift-burst"
     >
@@ -372,8 +377,9 @@ function LiveGiftBurstCard({ burst }: { burst: LiveGiftBurst }) {
           src={burst.giftVideoUrl}
           autoPlay
           muted
+          loop
           playsInline
-          className="relative z-10 h-20 w-20 flex-shrink-0 rounded-2xl object-cover shadow-[0_14px_26px_rgba(0,0,0,0.36)] ring-1 ring-white/35"
+          className="relative z-10 h-28 w-28 flex-shrink-0 rounded-[1.35rem] object-cover shadow-[0_18px_36px_rgba(0,0,0,0.42)] ring-1 ring-white/40 sm:h-32 sm:w-32"
         />
       ) : burst.giftLottieUrl ? (
         <LiveGiftLottie src={burst.giftLottieUrl} fallback={burst.giftEmoji ?? '🎁'} />
@@ -393,8 +399,10 @@ function LiveGiftBurstCard({ burst }: { burst: LiveGiftBurst }) {
         </span>
       )}
       <div className="relative z-10 flex min-w-0 flex-col leading-tight">
-        <span className="truncate text-sm font-extrabold text-white">{burst.senderName}</span>
-        <span className="truncate text-lg font-black text-white">
+        <span className={hasVideoGift ? 'truncate text-base font-extrabold text-white' : 'truncate text-sm font-extrabold text-white'}>
+          {burst.senderName}
+        </span>
+        <span className={hasVideoGift ? 'truncate text-xl font-black text-white' : 'truncate text-lg font-black text-white'}>
           {burst.giftName}
         </span>
         <span className="mt-0.5 truncate text-xs font-bold text-white/95">

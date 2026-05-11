@@ -8,18 +8,20 @@
  * client-side Widget gemountet.
  */
 
-import { useDuetInviteInbox } from './use-duet-invite-inbox';
+import { useDuetInviteInbox, type DuetDirection } from './use-duet-invite-inbox';
 import { LiveDuetInviteModal } from './live-duet-invite-modal';
 
 interface Props {
   sessionId: string;
   viewerId:  string;
+  direction?: DuetDirection | 'any';
 }
 
-export function LiveDuetInviteWatcher({ sessionId, viewerId }: Props) {
+export function LiveDuetInviteWatcher({ sessionId, viewerId, direction = 'host-to-viewer' }: Props) {
   const { topInvite, isResponding, acceptInvite, declineInvite } = useDuetInviteInbox({
     sessionId,
     viewerId,
+    direction,
   });
 
   if (!topInvite) return null;

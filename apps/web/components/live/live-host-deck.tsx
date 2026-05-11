@@ -974,7 +974,7 @@ export function LiveHostDeck({
   return (
     <div className="flex min-h-screen flex-col bg-background lg:h-screen lg:overflow-hidden">
       {/* Top-Bar */}
-      <div className="relative z-50 flex flex-wrap items-center gap-3 overflow-visible border-b bg-card px-4 py-3 lg:px-6 xl:pr-[clamp(28rem,34vw,38rem)]">
+      <div className="relative z-50 flex flex-wrap items-center gap-3 overflow-visible border-b bg-card px-4 py-3 lg:px-6 xl:pr-[clamp(32rem,42vw,46rem)]">
         <div className="flex min-w-0 items-center gap-3">
           <span
             className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold text-white ${
@@ -1016,7 +1016,7 @@ export function LiveHostDeck({
           </button>
         </div>
 
-        <div className="relative z-50 flex min-w-0 max-w-full flex-wrap items-center gap-2 xl:max-w-[calc(100vw-36rem)]">
+        <div className="relative z-40 flex min-w-0 max-w-full flex-nowrap items-center gap-2 overflow-x-auto overscroll-x-contain pr-48 [-ms-overflow-style:none] [scrollbar-width:none] xl:max-w-[calc(100vw-44rem)] xl:pr-72 [&::-webkit-scrollbar]:hidden">
           <button
             type="button"
             onClick={() => setPollSheetOpen(true)}
@@ -1731,7 +1731,7 @@ export function LiveHostDeck({
           Der Watcher abonniert live_duet_invites mit invitee_id = hostId, was
           viewer-to-host Invites matcht (Host ist der Entscheider → invitee).
           Gleiche Komponente wie auf der Viewer-Seite — kein neuer Code nötig. */}
-      <LiveDuetInviteWatcher sessionId={session.id} viewerId={hostId} />
+      <LiveDuetInviteWatcher sessionId={session.id} viewerId={hostId} direction="viewer-to-host" />
 
       {/* Shortcut-Hinweis */}
       <div className="hidden items-center justify-center border-t bg-muted/40 px-4 py-1 text-[11px] text-muted-foreground lg:flex">

@@ -103,6 +103,8 @@ interface UseDuetInviteInboxOptions {
   sessionId: string;
   /** Viewer-UserId (null → nicht eingeloggt, Hook inaktiv). */
   viewerId:  string | null;
+  /** Welche Invite-Richtung diese Inbox empfangen soll. Viewer: host-to-viewer, Host: viewer-to-host. */
+  direction?: DuetDirection | 'any';
 }
 
 export interface UseDuetInviteInboxReturn {
@@ -116,23 +118,28 @@ export interface UseDuetInviteInboxReturn {
 export function useDuetInviteInbox({
   sessionId,
   viewerId,
+  direction = 'host-to-viewer',
 }: UseDuetInviteInboxOptions): UseDuetInviteInboxReturn {
   const [invites, setInvites]       = useState<DuetInvite[]>([]);
   const [isResponding, setRespond]  = useState(false);
   const dismissedRef                = useRef<Set<string>>(new Set());
 
-  // ── Initialer Fetch: offene host-to-viewer Invites für diese Session ────────
+  // ── Initialer Fetch: offene Invites für diese Session/Richtung ─────────────
   useEffect(() => {
     if (!viewerId || !sessionId) return;
 
     const supabase = createClient();
-    supabase
+    const query = supabase
       .from('live_duet_invites')
       .select(SELECT_COLS)
       .eq('status', 'pending')
-      .eq('direction', 'host-to-viewer')
       .eq('invitee_id', viewerId)
-      .eq('session_id', sessionId)
+      .eq('session_id', sessionId);
+
+    const filteredQuery =
+      direction === 'any' ? query : query.eq('direction', direction);
+
+    filteredQuery
       .order('created_at', { ascending: true })
       .then(({ data }) => {
         if (!data) return;
@@ -143,7 +150,7 @@ export function useDuetInviteInbox({
           .filter((inv) => !dismissedRef.current.has(inv.id));
         setInvites(mapped);
       });
-  }, [viewerId, sessionId]);
+  }, [viewerId, sessionId, direction]);
 
   // ── Realtime: neue INSERT für mich in dieser Session ───────────────────────
   useEffect(() => {
@@ -151,7 +158,7 @@ export function useDuetInviteInbox({
 
     const supabase = createClient();
     const ch = supabase
-      .channel(`duet-inbox-${viewerId}-${sessionId}`)
+      .channel(`duet-inbox-${viewerId}-${sessionId}-${direction}`)
       .on(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         'postgres_changes' as any,
@@ -165,7 +172,7 @@ export function useDuetInviteInbox({
           const raw = payload.new as unknown as RawInviteRow;
           if (
             raw.session_id !== sessionId ||
-            raw.direction  !== 'host-to-viewer' ||
+            (direction !== 'any' && raw.direction !== direction) ||
             raw.status     !== 'pending' ||
             dismissedRef.current.has(raw.id)
           ) return;
@@ -208,7 +215,7 @@ export function useDuetInviteInbox({
       .subscribe();
 
     return () => { supabase.removeChannel(ch); };
-  }, [viewerId, sessionId]);
+  }, [viewerId, sessionId, direction]);
 
   // ── Auto-Dismiss bei Ablauf ─────────────────────────────────────────────────
   useEffect(() => {

@@ -586,7 +586,35 @@ function CommentRow({
   onUserClick?: () => void;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [menuPosition, setMenuPosition] = useState<{ top: number; right: number } | null>(null);
+  const menuButtonRef = useRef<HTMLButtonElement | null>(null);
   const name = comment.author?.display_name ?? comment.author?.username ?? 'Anonym';
+
+  const updateMenuPosition = useCallback(() => {
+    const rect = menuButtonRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    const estimatedMenuHeight = comment.pinned ? 184 : 206;
+    setMenuPosition({
+      top: Math.max(8, rect.top - estimatedMenuHeight - 8),
+      right: Math.max(8, window.innerWidth - rect.right),
+    });
+  }, [comment.pinned]);
+
+  useEffect(() => {
+    if (!menuOpen) {
+      setMenuPosition(null);
+      return;
+    }
+
+    updateMenuPosition();
+    window.addEventListener('resize', updateMenuPosition);
+    window.addEventListener('scroll', updateMenuPosition, true);
+    return () => {
+      window.removeEventListener('resize', updateMenuPosition);
+      window.removeEventListener('scroll', updateMenuPosition, true);
+    };
+  }, [menuOpen, updateMenuPosition]);
 
   return (
     <div className="group relative flex items-start gap-2 rounded-md px-1 py-0.5 hover:bg-muted/40">
@@ -618,6 +646,7 @@ function CommentRow({
       {canModerate && (
         <div className="relative flex-shrink-0 opacity-0 transition-opacity group-hover:opacity-100">
           <button
+            ref={menuButtonRef}
             type="button"
             onClick={() => setMenuOpen((v) => !v)}
             className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -625,8 +654,11 @@ function CommentRow({
           >
             <ShieldAlert className="h-3.5 w-3.5" aria-hidden="true" />
           </button>
-          {menuOpen && (
-            <div className="absolute bottom-full right-0 z-[80] mb-1 w-36 overflow-hidden rounded-md border bg-popover text-xs shadow-lg">
+          {menuOpen && menuPosition && (
+            <div
+              className="fixed z-[170] w-44 overflow-hidden rounded-xl border border-border/80 bg-popover text-xs shadow-[0_18px_60px_rgba(0,0,0,0.28)]"
+              style={{ top: menuPosition.top, right: menuPosition.right }}
+            >
               {/* Pin / Unpin — v1.w.UI.139 */}
               <button
                 type="button"
