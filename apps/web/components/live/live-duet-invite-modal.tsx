@@ -68,8 +68,8 @@ function CircularCountdown({ total, current }: { total: number; current: number 
 interface Props {
   invite:      DuetInvite;
   isResponding:boolean;
-  onAccept:    (inviteId: string) => void;
-  onDecline:   (inviteId: string) => void;
+  onAccept:    (inviteId: string) => void | Promise<unknown>;
+  onDecline:   (inviteId: string) => void | Promise<unknown>;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
@@ -86,14 +86,19 @@ export function LiveDuetInviteModal({ invite, isResponding, onAccept, onDecline 
       setSeconds(Math.min(TOTAL_SECS, left));
       if (left <= 0) {
         clearInterval(interval);
-        onDecline(invite.id);
+        void onDecline(invite.id);
       }
     }, 1000);
     return () => clearInterval(interval);
   }, [invite, onDecline]);
 
-  const handleAccept  = useCallback(() => onAccept(invite.id),  [invite.id, onAccept]);
-  const handleDecline = useCallback(() => onDecline(invite.id), [invite.id, onDecline]);
+  const handleAccept = useCallback(() => {
+    void onAccept(invite.id);
+  }, [invite.id, onAccept]);
+
+  const handleDecline = useCallback(() => {
+    void onDecline(invite.id);
+  }, [invite.id, onDecline]);
 
   // Sender info: for host-to-viewer, sender is the host
   const senderName   = invite.direction === 'host-to-viewer' ? invite.hostUsername   : invite.inviteeUsername;
@@ -102,6 +107,8 @@ export function LiveDuetInviteModal({ invite, isResponding, onAccept, onDecline 
   const subline      = invite.direction === 'host-to-viewer'
     ? `@${senderName ?? '…'} lädt dich zum Duett ein`
     : `@${senderName ?? '…'} will in dein Duett einsteigen`;
+  const acceptLabel = invite.direction === 'viewer-to-host' ? 'Annehmen' : 'Beitreten';
+  const acceptingLabel = invite.direction === 'viewer-to-host' ? 'Nehme an...' : 'Trete bei...';
 
   return (
     /* Backdrop */
@@ -176,12 +183,12 @@ export function LiveDuetInviteModal({ invite, isResponding, onAccept, onDecline 
             {isResponding ? (
               <span className="flex items-center justify-center gap-1.5">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                …
+                {acceptingLabel}
               </span>
             ) : (
               <span className="flex items-center justify-center gap-1.5">
                 <Check className="h-3.5 w-3.5" />
-                Beitreten
+                {acceptLabel}
               </span>
             )}
           </button>

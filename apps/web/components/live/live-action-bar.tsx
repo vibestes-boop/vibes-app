@@ -81,6 +81,12 @@ type CoHostDecisionPayload = {
   guest_id?: string;
 };
 
+type DuetInviteStatusRow = {
+  direction?: string | null;
+  invitee_id?: string | null;
+  status?: string | null;
+};
+
 function coHostDecisionMatchesViewer(payload: unknown, viewerId: string) {
   if (!payload || typeof payload !== 'object') return false;
   const signal = payload as CoHostDecisionPayload;
@@ -144,6 +150,44 @@ export function LiveActionBar({
         setCoHostRequested(false);
         window.setTimeout(() => router.refresh(), 80);
       })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [alreadyCoHost, isHost, router, sessionId, viewerId]);
+
+  useEffect(() => {
+    if (!viewerId || isHost || alreadyCoHost) return;
+
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`duet-invite-status-${sessionId}-${viewerId}`)
+      .on(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        'postgres_changes' as any,
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'live_duet_invites',
+          filter: `session_id=eq.${sessionId}`,
+        },
+        (payload: { new: Record<string, unknown> }) => {
+          const row = payload.new as unknown as DuetInviteStatusRow;
+          if (row.direction !== 'viewer-to-host' || row.invitee_id !== viewerId) return;
+
+          if (row.status === 'accepted') {
+            setCoHostRequested(false);
+            window.setTimeout(() => router.refresh(), 100);
+            return;
+          }
+
+          if (row.status === 'declined' || row.status === 'cancelled' || row.status === 'expired') {
+            setCoHostRequested(false);
+            window.setTimeout(() => router.refresh(), 80);
+          }
+        },
+      )
       .subscribe();
 
     return () => {

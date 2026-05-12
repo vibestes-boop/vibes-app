@@ -21,8 +21,9 @@ import { createLiveRealtimeTopic } from './realtime-topic';
 // als Prop. Der Player-useEffect (depends on coHostId) re-läuft, reconnectet
 // zum LiveKit-Room und attacht den CoHost-Track im duet-slot.
 //
-// 1,5s-Debounce: INSERT + ggf. darauf folgender UPDATE kommen oft in kurzen
-// Burst (Request → Approve). Mehrere schnelle Events → ein Refresh.
+// Kurzer Debounce: INSERT + ggf. darauf folgender UPDATE kommen oft in kurzen
+// Bursts (Request → Approve). Mehrere schnelle Events → ein Refresh, aber der
+// Viewer soll die angenommene Duett-Anfrage ohne spürbare Pause sehen.
 //
 // Kein Watcher wenn `ended=true`: Session-Seite wird sowieso bald redirected.
 // -----------------------------------------------------------------------------
@@ -49,7 +50,7 @@ export function LiveCoHostWatcher({ sessionId, ended }: LiveCoHostWatcherProps) 
       debounceRef.current = setTimeout(() => {
         router.refresh();
         debounceRef.current = null;
-      }, 1500);
+      }, 300);
     };
 
     const channel = supabase

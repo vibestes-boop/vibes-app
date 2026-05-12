@@ -1,6 +1,6 @@
 'use server';
 
-import { revalidateTag } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { containsBlockedWord } from '@shared/moderation/words';
 import type { LiveCommentWithAuthor } from '@/lib/data/live';
@@ -836,8 +836,19 @@ export async function respondDuetInvite(
 
   if (error) return { ok: false, error: error.message };
   const row = Array.isArray(data) ? data[0] : data;
+  if (!row) {
+    return { ok: false, error: 'Duett-Anfrage konnte nicht aktualisiert werden.' };
+  }
+
   const result = row as RespondDuetInviteResult;
   await broadcastDuetInviteDecision(supabase, result, inviteId, accept, reason);
+
+  if (result.session_id) {
+    revalidateTag(`live-session:${result.session_id}`);
+    revalidatePath(`/live/${result.session_id}`);
+    revalidatePath(`/live/host/${result.session_id}`);
+  }
+
   return { ok: true, data: result };
 }
 
