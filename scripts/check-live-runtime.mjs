@@ -44,8 +44,15 @@ if (failures.length === 0) {
 }
 
 if (failures.length === 0 && sessions.length === 0) {
+  sessions = await fetchRecentLiveSessions(supabaseUrl.value, serviceRoleKey.value, limit);
+  if (sessions.length > 0) {
+    warnings.push('No active live sessions found; checked recent live sessions instead.');
+  }
+}
+
+if (failures.length === 0 && sessions.length === 0) {
   console.log('');
-  console.log('Live runtime smoke skipped: no active live sessions found.');
+  console.log('Live runtime smoke skipped: no active or recent live sessions found.');
   process.exit(0);
 }
 
@@ -98,7 +105,34 @@ async function fetchActiveLiveSessions(url, key, maxRows) {
     return [];
   }
 
-  return (data ?? []).map((row) => ({ ...row, source: 'supabase' }));
+  return (data ?? []).map((row) => ({ ...row, source: 'active' }));
+}
+
+async function fetchRecentLiveSessions(url, key, maxRows) {
+  const service = createClient(url, key, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    },
+    global: {
+      headers: {
+        'x-serlo-stability-check': 'live-runtime-recent',
+      },
+    },
+  });
+
+  const { data, error } = await service
+    .from('live_sessions')
+    .select('id,status,title,started_at,updated_at')
+    .order('updated_at', { ascending: false, nullsFirst: false })
+    .limit(maxRows);
+
+  if (error) {
+    failures.push(`[live_sessions] Could not fetch recent sessions: ${error.message}`);
+    return [];
+  }
+
+  return (data ?? []).map((row) => ({ ...row, source: 'recent' }));
 }
 
 async function runBrowserSmoke(sessions) {
@@ -152,7 +186,8 @@ async function smokeOneSession(browser, session) {
     } else if (actionableErrors.length > 0) {
       failures.push(`[live:${session.id}] Browser error(s): ${dedupe(actionableErrors).join(' | ')}`);
     } else {
-      checked.push(`/live/${session.id} ${status}`);
+      const label = session.source === 'recent' ? `recent ${session.status || 'unknown'}` : session.source;
+      checked.push(`/live/${session.id} ${status} (${label})`);
     }
 
     const noisyRealtimeErrors = [...pageErrors, ...consoleErrors].filter(isNoisyRealtimeWarning);
@@ -307,7 +342,9 @@ function formatError(error) {
 function printHelp() {
   console.log(`Usage: node scripts/check-live-runtime.mjs [--session-id UUID] [--limit N] [--no-fail]
 
-Opens active production /live/:id pages in a headless browser and fails on
-known live runtime errors such as React #310, schema-cache misses, missing
-live_comments.pinned, and late postgres_changes subscription crashes.`);
+Opens active production /live/:id pages in a headless browser. When no stream
+is active, it probes recent live pages so client-side exception screens still
+get caught overnight. Fails on known live runtime errors such as React #310,
+schema-cache misses, missing live_comments.pinned, and late postgres_changes
+subscription crashes.`);
 }
