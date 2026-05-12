@@ -5,9 +5,9 @@
  *
  * v1.w.UI.187 — Web-Parität zum mobilen `useDuettInbox` aus lib/useDuett.ts.
  *
- * Subscribed via Supabase Realtime auf `live_duet_invites` (INSERT + UPDATE)
- * gefiltert nach `invitee_id = viewerId`.  Zeigt immer das zeitlich erste
- * pending Invite (topInvite) an — das ist alles, was die Modal-UI braucht.
+ * Subscribed via Supabase Realtime auf `live_duet_invites` (INSERT + UPDATE).
+ * Viewer-Inboxen filtern nach `invitee_id`, Host-Inboxen fuer Viewer-Anfragen
+ * nach `host_id`. Zeigt immer das zeitlich erste pending Invite (topInvite) an.
  *
  * Accept / Decline rufen die Server-Action `respondDuetInvite` auf, die
  * wiederum die RPC `respond_duet_invite` triggert.  Nach erfolgreicher
@@ -82,6 +82,22 @@ const SELECT_COLS =
   'host:profiles!host_id(username, avatar_url), ' +
   'invitee:profiles!invitee_id(username, avatar_url)';
 
+function inviteBelongsToInbox(
+  row: Pick<RawInviteRow, 'direction' | 'host_id' | 'invitee_id'>,
+  viewerId: string,
+  direction: DuetDirection | 'any',
+): boolean {
+  if (direction === 'viewer-to-host') return row.host_id === viewerId;
+  if (direction === 'host-to-viewer') return row.invitee_id === viewerId;
+  return row.host_id === viewerId || row.invitee_id === viewerId;
+}
+
+function inboxColumnFor(direction: DuetDirection | 'any'): 'host_id' | 'invitee_id' | null {
+  if (direction === 'viewer-to-host') return 'host_id';
+  if (direction === 'host-to-viewer') return 'invitee_id';
+  return null;
+}
+
 export function secsLeft(invite: DuetInvite): number {
   return Math.max(0, Math.floor((new Date(invite.expiresAt).getTime() - Date.now()) / 1000));
 }
@@ -129,17 +145,19 @@ export function useDuetInviteInbox({
     if (!viewerId || !sessionId) return;
 
     const supabase = createClient();
-    const query = supabase
+    let query = supabase
       .from('live_duet_invites')
       .select(SELECT_COLS)
       .eq('status', 'pending')
-      .eq('invitee_id', viewerId)
       .eq('session_id', sessionId);
 
-    const filteredQuery =
-      direction === 'any' ? query : query.eq('direction', direction);
+    if (direction === 'any') {
+      query = query.or(`host_id.eq.${viewerId},invitee_id.eq.${viewerId}`);
+    } else {
+      query = query.eq('direction', direction).eq(inboxColumnFor(direction)!, viewerId);
+    }
 
-    filteredQuery
+    query
       .order('created_at', { ascending: true })
       .then(({ data }) => {
         if (!data) return;
@@ -147,6 +165,11 @@ export function useDuetInviteInbox({
         const mapped = (data as unknown as RawInviteRow[])
           .map(mapRow)
           .filter((inv) => new Date(inv.expiresAt).getTime() > now)
+          .filter((inv) => inviteBelongsToInbox({
+            direction: inv.direction,
+            host_id: inv.hostId,
+            invitee_id: inv.inviteeId,
+          }, viewerId, direction))
           .filter((inv) => !dismissedRef.current.has(inv.id));
         setInvites(mapped);
       });
@@ -157,22 +180,32 @@ export function useDuetInviteInbox({
     if (!viewerId || !sessionId) return;
 
     const supabase = createClient();
+    const realtimeColumn = inboxColumnFor(direction);
+    const realtimeFilter = realtimeColumn ? `${realtimeColumn}=eq.${viewerId}` : undefined;
+    const insertSubscription = {
+      event:  'INSERT',
+      schema: 'public',
+      table:  'live_duet_invites',
+      ...(realtimeFilter ? { filter: realtimeFilter } : {}),
+    };
+    const updateSubscription = {
+      event:  'UPDATE',
+      schema: 'public',
+      table:  'live_duet_invites',
+      ...(realtimeFilter ? { filter: realtimeFilter } : {}),
+    };
     const ch = supabase
       .channel(`duet-inbox-${viewerId}-${sessionId}-${direction}`)
       .on(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         'postgres_changes' as any,
-        {
-          event:  'INSERT',
-          schema: 'public',
-          table:  'live_duet_invites',
-          filter: `invitee_id=eq.${viewerId}`,
-        },
+        insertSubscription,
         (payload: { new: Record<string, unknown> }) => {
           const raw = payload.new as unknown as RawInviteRow;
           if (
             raw.session_id !== sessionId ||
             (direction !== 'any' && raw.direction !== direction) ||
+            !inviteBelongsToInbox(raw, viewerId, direction) ||
             raw.status     !== 'pending' ||
             dismissedRef.current.has(raw.id)
           ) return;
@@ -199,14 +232,15 @@ export function useDuetInviteInbox({
       .on(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         'postgres_changes' as any,
-        {
-          event:  'UPDATE',
-          schema: 'public',
-          table:  'live_duet_invites',
-          filter: `invitee_id=eq.${viewerId}`,
-        },
+        updateSubscription,
         (payload: { new: Record<string, unknown> }) => {
-          const updated = payload.new as { id: string; status: string };
+          const updated = payload.new as unknown as RawInviteRow;
+          if (
+            updated.session_id !== sessionId ||
+            (direction !== 'any' && updated.direction !== direction) ||
+            !inviteBelongsToInbox(updated, viewerId, direction)
+          ) return;
+
           if (updated.status !== 'pending') {
             setInvites((prev) => prev.filter((i) => i.id !== updated.id));
           }

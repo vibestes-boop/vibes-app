@@ -4,9 +4,9 @@
  * Unit-Tests für `components/live/live-gift-animation-layer.tsx` (v1.w.UI.17).
  *
  * Scope:
- *   - Presentational `LiveGiftAnimationView` rendert Container + N Cards
+ *   - Presentational `LiveGiftAnimationView` rendert Container + N Bursts
  *     proportional zur `bursts`-Prop-Länge
- *   - Jede Card zeigt Sender-Name, Gift-Name, Coin-Cost (toLocaleString('de-DE'))
+ *   - Jeder Burst zeigt Sender-Name, Gift-Name, Coin-Cost (toLocaleString('de-DE'))
  *   - `giftImage=null` rendert den 🎁-Fallback statt <img>
  *   - `giftImage` gesetzt rendert <img src=…> (kein <Image/>-Wrapper weil
  *     CDN-URLs nicht in next.config allowlisted sind)
@@ -25,6 +25,13 @@ import {
   type LiveGiftBurst,
 } from '../live-gift-animation-layer';
 
+beforeAll(() => {
+  Object.defineProperty(HTMLMediaElement.prototype, 'play', {
+    configurable: true,
+    value: jest.fn().mockResolvedValue(undefined),
+  });
+});
+
 function makeBurst(overrides: Partial<LiveGiftBurst> = {}): LiveGiftBurst {
   return {
     id: 'g-1',
@@ -32,6 +39,9 @@ function makeBurst(overrides: Partial<LiveGiftBurst> = {}): LiveGiftBurst {
     senderName: 'Zaur',
     giftName: 'Rose',
     giftImage: null,
+    giftEmoji: null,
+    giftLottieUrl: null,
+    giftVideoUrl: null,
     coinCost: 50,
     lane: 0,
     drift: 10,
@@ -50,12 +60,12 @@ describe('LiveGiftAnimationView — Container', () => {
     expect(layer.className).toContain('inset-0');
   });
 
-  it('zeigt keine Burst-Cards bei leerer bursts-Prop', () => {
+  it('zeigt keine Bursts bei leerer bursts-Prop', () => {
     render(<LiveGiftAnimationView bursts={[]} />);
     expect(screen.queryAllByTestId('gift-burst')).toHaveLength(0);
   });
 
-  it('rendert N Burst-Cards proportional zur bursts-Prop-Länge', () => {
+  it('rendert N Bursts proportional zur bursts-Prop-Länge', () => {
     render(
       <LiveGiftAnimationView
         bursts={[
@@ -69,7 +79,7 @@ describe('LiveGiftAnimationView — Container', () => {
   });
 });
 
-describe('LiveGiftAnimationView — Burst-Card Content', () => {
+describe('LiveGiftAnimationView — Burst Content', () => {
   it('zeigt Sender-Name, Gift-Name und Coin-Cost mit de-DE-Tausendertrenner', () => {
     render(
       <LiveGiftAnimationView
@@ -145,23 +155,29 @@ describe('LiveGiftAnimationView — Drift-CSS-Variable', () => {
   });
 });
 
-describe('LiveGiftAnimationView — Card-Styling-Invarianten', () => {
+describe('LiveGiftAnimationView — Styling-Invarianten', () => {
   it('trägt die animate-gift-burst-Klasse für die Keyframe-Animation', () => {
     render(<LiveGiftAnimationView bursts={[makeBurst()]} />);
     const card = screen.getByTestId('gift-burst');
     expect(card.className).toContain('animate-gift-burst');
   });
 
-  it('nutzt shadow-elevation-3 (Token aus dem Design-System)', () => {
-    render(<LiveGiftAnimationView bursts={[makeBurst()]} />);
-    const card = screen.getByTestId('gift-burst');
-    expect(card.className).toContain('shadow-elevation-3');
-  });
+  it('rendert Premium-Video-Geschenke als Stage-Video statt Burst-Karte', () => {
+    render(
+      <LiveGiftAnimationView
+        bursts={[
+          makeBurst({
+            giftId: 'chechen_tower_premium',
+            giftVideoUrl: '/gifts/chechen_tower_premium.mp4',
+          }),
+        ]}
+      />,
+    );
 
-  it('Gradient from-amber-400 via to-pink-500 als Brand-Look', () => {
-    render(<LiveGiftAnimationView bursts={[makeBurst()]} />);
-    const card = screen.getByTestId('gift-burst');
-    expect(card.className).toContain('from-amber-400/95');
-    expect(card.className).toContain('to-pink-500/95');
+    const stage = screen.getByTestId('premium-gift-stage');
+    const video = screen.getByTestId('premium-gift-video');
+    expect(stage).not.toBeNull();
+    expect(video.getAttribute('src')).toBe('/gifts/chechen_tower_premium.mp4');
+    expect(screen.queryByTestId('gift-burst')).toBeNull();
   });
 });

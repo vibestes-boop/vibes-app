@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
+import type { CSSProperties } from 'react';
 import type { AnimationItem } from 'lottie-web';
 import { createBrowserClient } from '@supabase/ssr';
 import { createLiveRealtimeTopic } from './realtime-topic';
@@ -49,6 +50,7 @@ import { createLiveRealtimeTopic } from './realtime-topic';
 
 const MAX_BURSTS = 5;
 const BURST_DURATION_MS = 5200;
+const PREMIUM_VIDEO_FALLBACK_MS = 30000;
 
 const LOCAL_GIFT_LOTTIE_URLS: Record<string, string> = {
   rose: '/lottie/gifts/rose.json',
@@ -94,6 +96,7 @@ interface GiftBurstInput {
   giftImage?: string | null;
   giftEmoji?: string | null;
   giftLottieUrl?: string | null;
+  giftVideoUrl?: string | null;
   coinCost: number;
 }
 
@@ -105,6 +108,7 @@ interface LiveGiftSentEventDetail {
   giftName: string;
   giftEmoji?: string | null;
   giftLottieUrl?: string | null;
+  giftVideoUrl?: string | null;
   coinCost: number;
 }
 
@@ -133,7 +137,7 @@ export function LiveGiftAnimationLayer({ sessionId, onBurst }: LiveGiftAnimation
         giftImage: input.giftImage ?? null,
         giftEmoji: input.giftEmoji ?? null,
         giftLottieUrl: resolveGiftLottieUrl(input.giftId, input.giftLottieUrl),
-        giftVideoUrl: resolveGiftVideoUrl(input.giftId),
+        giftVideoUrl: resolveGiftVideoUrl(input.giftId, input.giftVideoUrl),
         coinCost: input.coinCost,
         lane: Math.floor(Math.random() * 3) as 0 | 1 | 2,
         drift: -24 + Math.round(Math.random() * 48),
@@ -148,7 +152,7 @@ export function LiveGiftAnimationLayer({ sessionId, onBurst }: LiveGiftAnimation
       window.setTimeout(() => {
         removeBurst(burst.id);
         seenBurstIdsRef.current.delete(burst.id);
-      }, BURST_DURATION_MS);
+      }, burst.giftVideoUrl ? PREMIUM_VIDEO_FALLBACK_MS : BURST_DURATION_MS);
     },
     [onBurst, removeBurst],
   );
@@ -241,6 +245,7 @@ export function LiveGiftAnimationLayer({ sessionId, onBurst }: LiveGiftAnimation
         giftImage: null,
         giftEmoji: detail.giftEmoji ?? null,
         giftLottieUrl: detail.giftLottieUrl ?? null,
+        giftVideoUrl: detail.giftVideoUrl ?? null,
         coinCost: detail.coinCost,
       });
     }
@@ -249,7 +254,7 @@ export function LiveGiftAnimationLayer({ sessionId, onBurst }: LiveGiftAnimation
     return () => window.removeEventListener('serlo:live-gift-sent', handleLocalGift);
   }, [sessionId, spawnBurst]);
 
-  return <LiveGiftAnimationView bursts={bursts} />;
+  return <LiveGiftAnimationView bursts={bursts} onBurstDone={removeBurst} />;
 }
 
 // -----------------------------------------------------------------------------
@@ -272,20 +277,37 @@ function resolveGiftLottieUrl(giftId?: string | null, remoteUrl?: string | null)
   return null;
 }
 
-function resolveGiftVideoUrl(giftId?: string | null): string | null {
+function resolveGiftVideoUrl(giftId?: string | null, remoteUrl?: string | null): string | null {
+  if (remoteUrl) {
+    const trimmed = remoteUrl.trim();
+    if (trimmed.startsWith('/') || trimmed.startsWith('https://')) return trimmed;
+  }
   if (!giftId) return null;
   return LOCAL_GIFT_VIDEO_URLS[giftId] ?? null;
 }
 
-export function LiveGiftAnimationView({ bursts }: { bursts: LiveGiftBurst[] }) {
+interface LiveGiftAnimationViewProps {
+  bursts: LiveGiftBurst[];
+  onBurstDone?: (id: string) => void;
+}
+
+export function LiveGiftAnimationView({ bursts, onBurstDone }: LiveGiftAnimationViewProps) {
   return (
     <div
-      className="pointer-events-none absolute inset-0 z-20 overflow-hidden"
+      className="pointer-events-none absolute inset-0 z-30 overflow-hidden"
       aria-hidden="true"
       data-testid="gift-animation-layer"
     >
       {bursts.map((b) => (
-        <LiveGiftBurstCard key={b.id} burst={b} />
+        b.giftVideoUrl ? (
+          <LivePremiumGiftVideo
+            key={b.id}
+            burst={b}
+            onDone={() => onBurstDone?.(b.id)}
+          />
+        ) : (
+          <LiveGiftFloatingBurst key={b.id} burst={b} />
+        )
       ))}
       {/* Keyframes inline. Vermeidet einen tailwind-config-Eingriff für einen so lokalen Effekt. */}
       <style>{`
@@ -345,43 +367,43 @@ export function LiveGiftAnimationView({ bursts }: { bursts: LiveGiftBurst[] }) {
         .gift-sparkle {
           animation: gift-sparkle 1.35s ease-in-out infinite;
         }
+        @keyframes premium-gift-enter {
+          0% {
+            transform: translate3d(0, 48px, 0) scale(0.82);
+            opacity: 0;
+            filter: blur(10px);
+          }
+          100% {
+            transform: translate3d(0, 0, 0) scale(1);
+            opacity: 1;
+            filter: blur(0);
+          }
+        }
+        .animate-premium-gift {
+          animation: premium-gift-enter 1.25s ease-out both;
+        }
       `}</style>
     </div>
   );
 }
 
 // -----------------------------------------------------------------------------
-// LiveGiftBurstCard — einzelne schwebende Stage-Gift-Card.
+// LiveGiftFloatingBurst — normales Geschenk ohne Kartenfenster.
 // -----------------------------------------------------------------------------
 
-function LiveGiftBurstCard({ burst }: { burst: LiveGiftBurst }) {
-  const hasVideoGift = Boolean(burst.giftVideoUrl);
-
+function LiveGiftFloatingBurst({ burst }: { burst: LiveGiftBurst }) {
   return (
     <div
-      className={`absolute bottom-[22%] ${LANE_LEFT[burst.lane]} isolate flex animate-gift-burst items-center text-white shadow-elevation-3 ring-1 ring-white/35 ${
-        hasVideoGift
-          ? 'max-w-[min(34rem,86%)] gap-4 rounded-[34px] bg-gradient-to-r from-amber-300/95 via-rose-400/95 to-pink-500/95 px-5 py-4'
-          : 'max-w-[min(28rem,74%)] gap-3 rounded-[28px] bg-gradient-to-r from-amber-400/95 via-rose-400/95 to-pink-500/95 px-4 py-3'
-      }`}
-      style={{ ['--drift' as string]: `${burst.drift}px` } as React.CSSProperties}
+      className={`absolute bottom-[24%] ${LANE_LEFT[burst.lane]} isolate flex animate-gift-burst flex-col items-center text-center text-white`}
+      style={{ ['--drift' as string]: `${burst.drift}px` } as CSSProperties}
       data-testid="gift-burst"
     >
-      <span className="animate-gift-aura absolute -inset-5 -z-10 rounded-[34px] bg-gradient-to-r from-amber-300/35 via-white/20 to-pink-400/35 blur-xl" />
+      <span className="animate-gift-aura absolute left-1/2 top-1/2 -z-10 h-32 w-32 -translate-x-1/2 -translate-y-1/2 rounded-full bg-gradient-to-r from-amber-300/45 via-white/25 to-pink-400/45 blur-2xl" />
       <span className="gift-sparkle absolute -left-2 -top-2 h-3 w-3 rounded-full bg-white/85 shadow-[0_0_18px_rgba(255,255,255,0.9)]" />
       <span className="gift-sparkle absolute -right-1 top-1 h-2.5 w-2.5 rounded-full bg-yellow-200/90 shadow-[0_0_16px_rgba(253,224,71,0.85)] [animation-delay:180ms]" />
       <span className="gift-sparkle absolute bottom-1 right-6 h-2 w-2 rounded-full bg-pink-100/90 shadow-[0_0_14px_rgba(251,207,232,0.9)] [animation-delay:360ms]" />
 
-      {burst.giftVideoUrl ? (
-        <video
-          src={burst.giftVideoUrl}
-          autoPlay
-          muted
-          loop
-          playsInline
-          className="relative z-10 h-28 w-28 flex-shrink-0 rounded-[1.35rem] object-cover shadow-[0_18px_36px_rgba(0,0,0,0.42)] ring-1 ring-white/40 sm:h-32 sm:w-32"
-        />
-      ) : burst.giftLottieUrl ? (
+      {burst.giftLottieUrl ? (
         <LiveGiftLottie src={burst.giftLottieUrl} fallback={burst.giftEmoji ?? '🎁'} />
       ) : burst.giftImage ? (
         // Plain `<img>` bewusst: externe Gift-Assets sind nicht zwingend in
@@ -394,21 +416,71 @@ function LiveGiftBurstCard({ burst }: { burst: LiveGiftBurst }) {
           className="relative z-10 h-16 w-16 flex-shrink-0 object-contain drop-shadow-[0_12px_22px_rgba(0,0,0,0.35)]"
         />
       ) : (
-        <span className="relative z-10 text-6xl leading-none drop-shadow-[0_12px_22px_rgba(0,0,0,0.35)]" aria-hidden="true">
+        <span className="relative z-10 text-7xl leading-none drop-shadow-[0_12px_22px_rgba(0,0,0,0.48)]" aria-hidden="true">
           {burst.giftEmoji ?? '🎁'}
         </span>
       )}
-      <div className="relative z-10 flex min-w-0 flex-col leading-tight">
-        <span className={hasVideoGift ? 'truncate text-base font-extrabold text-white' : 'truncate text-sm font-extrabold text-white'}>
+      <div className="relative z-10 mt-2 flex max-w-52 flex-col leading-tight [text-shadow:0_2px_12px_rgba(0,0,0,0.85)]">
+        <span className="truncate text-sm font-extrabold text-white">
           {burst.senderName}
         </span>
-        <span className={hasVideoGift ? 'truncate text-xl font-black text-white' : 'truncate text-lg font-black text-white'}>
+        <span className="truncate text-lg font-black text-white">
           {burst.giftName}
         </span>
         <span className="mt-0.5 truncate text-xs font-bold text-white/95">
           🪙 {burst.coinCost.toLocaleString('de-DE')}
         </span>
       </div>
+    </div>
+  );
+}
+
+function LivePremiumGiftVideo({
+  burst,
+  onDone,
+}: {
+  burst: LiveGiftBurst;
+  onDone: () => void;
+}) {
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const doneRef = useRef(false);
+
+  const finish = useCallback(() => {
+    if (doneRef.current) return;
+    doneRef.current = true;
+    onDone();
+  }, [onDone]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    video.muted = false;
+    video.volume = 1;
+    const playPromise = video.play();
+    if (playPromise && typeof playPromise.catch === 'function') {
+      playPromise.catch(() => {
+        video.muted = true;
+        void video.play().catch(() => undefined);
+      });
+    }
+  }, [burst.giftVideoUrl]);
+
+  return (
+    <div
+      className="absolute inset-x-0 bottom-[8%] z-40 flex justify-center sm:bottom-[10%]"
+      data-testid="premium-gift-stage"
+    >
+      <video
+        ref={videoRef}
+        src={burst.giftVideoUrl ?? undefined}
+        autoPlay
+        playsInline
+        preload="auto"
+        onEnded={finish}
+        className="animate-premium-gift h-[46vh] min-h-[240px] max-h-[560px] w-auto max-w-[96%] object-contain drop-shadow-[0_28px_70px_rgba(0,0,0,0.62)]"
+        data-testid="premium-gift-video"
+      />
     </div>
   );
 }
