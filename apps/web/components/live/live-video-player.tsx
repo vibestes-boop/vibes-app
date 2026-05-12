@@ -120,7 +120,7 @@ export function LiveVideoPlayer({
     }
     const supa = supaClient();
     const ch = supa
-      .channel(`co-host-layout-${sessionId}`, {
+      .channel(`co-host-signals-${sessionId}`, {
         config: { broadcast: { ack: false, self: false } },
       })
       .on('broadcast', { event: 'co-host-accepted' }, ({ payload }) => {

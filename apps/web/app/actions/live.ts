@@ -780,6 +780,45 @@ export interface RespondDuetInviteResult {
   layout:     string;
 }
 
+async function broadcastDuetInviteDecision(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  row: RespondDuetInviteResult | null | undefined,
+  inviteId: string,
+  accept: boolean,
+  reason?: string,
+) {
+  if (!row?.session_id || !row?.guest_id) return;
+
+  const channel = supabase.channel(`co-host-signals-${row.session_id}`);
+  await channel.subscribe();
+  const result = await channel.send({
+    type: 'broadcast',
+    event: accept ? 'co-host-accepted' : 'cohost-reject',
+    payload: accept
+      ? {
+          userId: row.guest_id,
+          user_id: row.guest_id,
+          guest_id: row.guest_id,
+          invite_id: inviteId,
+          layout: row.layout ?? 'side-by-side',
+          ts: Date.now(),
+        }
+      : {
+          userId: row.guest_id,
+          user_id: row.guest_id,
+          guest_id: row.guest_id,
+          invite_id: inviteId,
+          reason: reason ?? 'declined',
+          ts: Date.now(),
+        },
+  });
+  await supabase.removeChannel(channel);
+
+  if (result !== 'ok') {
+    console.warn('[respondDuetInvite] Decision broadcast failed', result);
+  }
+}
+
 export async function respondDuetInvite(
   inviteId: string,
   accept: boolean,
@@ -797,7 +836,9 @@ export async function respondDuetInvite(
 
   if (error) return { ok: false, error: error.message };
   const row = Array.isArray(data) ? data[0] : data;
-  return { ok: true, data: row as RespondDuetInviteResult };
+  const result = row as RespondDuetInviteResult;
+  await broadcastDuetInviteDecision(supabase, result, inviteId, accept, reason);
+  return { ok: true, data: result };
 }
 
 // v1.w.UI.201 — Host: toggle live_sessions.shop_enabled.

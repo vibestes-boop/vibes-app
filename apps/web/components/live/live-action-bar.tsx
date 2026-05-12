@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import type { Route } from 'next';
 import {
   BarChart3,
@@ -25,6 +26,7 @@ import {
 } from 'lucide-react';
 import { sendLiveReaction, requestCoHost, cancelCoHostRequest, createLiveClipMarker } from '@/app/actions/live';
 import { cn } from '@/lib/utils';
+import { createClient } from '@/lib/supabase/client';
 import { LiveReactionOverlay } from './live-reaction-overlay';
 import { useRemoteReactions } from './use-remote-reactions';
 import type { ActiveCoHostSSR, ActiveLivePollSSR } from '@/lib/data/live';
@@ -73,6 +75,18 @@ const LivePollStartSheet = dynamic(
   { ssr: false },
 );
 
+type CoHostDecisionPayload = {
+  userId?: string;
+  user_id?: string;
+  guest_id?: string;
+};
+
+function coHostDecisionMatchesViewer(payload: unknown, viewerId: string) {
+  if (!payload || typeof payload !== 'object') return false;
+  const signal = payload as CoHostDecisionPayload;
+  return signal.userId === viewerId || signal.user_id === viewerId || signal.guest_id === viewerId;
+}
+
 export function LiveActionBar({
   sessionId,
   hostId,
@@ -97,6 +111,7 @@ export function LiveActionBar({
   const [shareOpen, setShareOpen] = useState(false);
   const [shareUrl, setShareUrl] = useState('');
   const [, startTransition] = useTransition();
+  const router = useRouter();
 
   // v1.w.UI.19 B6 — Remote Reactions von anderen Viewern. Das `sendLiveReaction`
   // server action broadcastet bereits seit v1.18.0 auf `live:{id}` Event
@@ -110,6 +125,31 @@ export function LiveActionBar({
   const { burst: remoteBurst } = useRemoteReactions({ sessionId, viewerId });
 
   const alreadyCoHost = cohosts.some((c) => c.user_id === viewerId);
+
+  useEffect(() => {
+    if (!viewerId || isHost || alreadyCoHost) return;
+
+    const supabase = createClient();
+    const channel = supabase
+      .channel(`co-host-signals-${sessionId}`, {
+        config: { broadcast: { ack: false, self: false } },
+      })
+      .on('broadcast', { event: 'co-host-accepted' }, ({ payload }) => {
+        if (!coHostDecisionMatchesViewer(payload, viewerId)) return;
+        setCoHostRequested(false);
+        window.setTimeout(() => router.refresh(), 80);
+      })
+      .on('broadcast', { event: 'cohost-reject' }, ({ payload }) => {
+        if (!coHostDecisionMatchesViewer(payload, viewerId)) return;
+        setCoHostRequested(false);
+        window.setTimeout(() => router.refresh(), 80);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [alreadyCoHost, isHost, router, sessionId, viewerId]);
 
   const handleReaction = (key: string) => {
     // Floating-Animation sofort (optimistic, kein await)
