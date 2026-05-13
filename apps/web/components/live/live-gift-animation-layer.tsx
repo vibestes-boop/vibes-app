@@ -50,7 +50,7 @@ import { createLiveRealtimeTopic } from './realtime-topic';
 
 const MAX_BURSTS = 5;
 const BURST_DURATION_MS = 5200;
-const PREMIUM_VIDEO_FALLBACK_MS = 30000;
+const PREMIUM_VIDEO_FALLBACK_MS = 120000;
 
 const LOCAL_GIFT_LOTTIE_URLS: Record<string, string> = {
   rose: '/lottie/gifts/rose.json',
@@ -64,6 +64,13 @@ const LOCAL_GIFT_LOTTIE_URLS: Record<string, string> = {
 const LOCAL_GIFT_VIDEO_URLS: Record<string, string> = {
   chechen_tower_premium: '/gifts/chechen_tower_premium.mp4',
 };
+
+const PREMIUM_GIFT_NAME_VIDEO_URLS: Array<{ pattern: RegExp; url: string }> = [
+  {
+    pattern: /(?:башня|tower).*premium|premium.*(?:башня|tower)/i,
+    url: LOCAL_GIFT_VIDEO_URLS.chechen_tower_premium,
+  },
+];
 
 export interface LiveGiftBurst {
   id: string;
@@ -137,7 +144,7 @@ export function LiveGiftAnimationLayer({ sessionId, onBurst }: LiveGiftAnimation
         giftImage: input.giftImage ?? null,
         giftEmoji: input.giftEmoji ?? null,
         giftLottieUrl: resolveGiftLottieUrl(input.giftId, input.giftLottieUrl),
-        giftVideoUrl: resolveGiftVideoUrl(input.giftId, input.giftVideoUrl),
+        giftVideoUrl: resolveGiftVideoUrl(input.giftId, input.giftVideoUrl, input.giftName),
         coinCost: input.coinCost,
         lane: Math.floor(Math.random() * 3) as 0 | 1 | 2,
         drift: -24 + Math.round(Math.random() * 48),
@@ -277,13 +284,24 @@ function resolveGiftLottieUrl(giftId?: string | null, remoteUrl?: string | null)
   return null;
 }
 
-function resolveGiftVideoUrl(giftId?: string | null, remoteUrl?: string | null): string | null {
+function resolveGiftVideoUrl(
+  giftId?: string | null,
+  remoteUrl?: string | null,
+  giftName?: string | null,
+): string | null {
   if (remoteUrl) {
     const trimmed = remoteUrl.trim();
     if (trimmed.startsWith('/') || trimmed.startsWith('https://')) return trimmed;
   }
-  if (!giftId) return null;
-  return LOCAL_GIFT_VIDEO_URLS[giftId] ?? null;
+
+  if (giftId && LOCAL_GIFT_VIDEO_URLS[giftId]) {
+    return LOCAL_GIFT_VIDEO_URLS[giftId];
+  }
+
+  const name = giftName?.trim();
+  if (!name) return null;
+
+  return PREMIUM_GIFT_NAME_VIDEO_URLS.find((entry) => entry.pattern.test(name))?.url ?? null;
 }
 
 interface LiveGiftAnimationViewProps {
@@ -292,10 +310,12 @@ interface LiveGiftAnimationViewProps {
 }
 
 export function LiveGiftAnimationView({ bursts, onBurstDone }: LiveGiftAnimationViewProps) {
+  const hasPremiumGift = bursts.some((burst) => Boolean(burst.giftVideoUrl));
+
   return (
     <div
       className="pointer-events-none absolute inset-0 z-30 overflow-hidden"
-      aria-hidden="true"
+      aria-hidden={hasPremiumGift ? undefined : 'true'}
       data-testid="gift-animation-layer"
     >
       {bursts.map((b) => (
@@ -444,6 +464,7 @@ function LivePremiumGiftVideo({
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const doneRef = useRef(false);
+  const [soundBlocked, setSoundBlocked] = useState(false);
 
   const finish = useCallback(() => {
     if (doneRef.current) return;
@@ -452,23 +473,45 @@ function LivePremiumGiftVideo({
   }, [onDone]);
 
   useEffect(() => {
+    const currentVideo = videoRef.current;
+    if (!currentVideo) return;
+
+    let cancelled = false;
+
+    async function startPlayback(currentVideo: HTMLVideoElement) {
+      try {
+        currentVideo.muted = false;
+        currentVideo.volume = 1;
+        await currentVideo.play();
+        if (!cancelled) setSoundBlocked(false);
+      } catch {
+        if (cancelled) return;
+        currentVideo.muted = true;
+        setSoundBlocked(true);
+        void currentVideo.play().catch(() => undefined);
+      }
+    }
+
+    void startPlayback(currentVideo);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [burst.giftVideoUrl]);
+
+  const enableSound = useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
 
     video.muted = false;
     video.volume = 1;
-    const playPromise = video.play();
-    if (playPromise && typeof playPromise.catch === 'function') {
-      playPromise.catch(() => {
-        video.muted = true;
-        void video.play().catch(() => undefined);
-      });
-    }
-  }, [burst.giftVideoUrl]);
+    setSoundBlocked(false);
+    void video.play().catch(() => setSoundBlocked(true));
+  }, []);
 
   return (
     <div
-      className="absolute inset-x-0 bottom-[8%] z-40 flex justify-center sm:bottom-[10%]"
+      className="absolute inset-x-0 bottom-[3%] z-50 flex h-[58%] items-end justify-center overflow-visible px-2 sm:bottom-[4%] sm:h-[62%]"
       data-testid="premium-gift-stage"
     >
       <video
@@ -478,9 +521,20 @@ function LivePremiumGiftVideo({
         playsInline
         preload="auto"
         onEnded={finish}
-        className="animate-premium-gift h-[46vh] min-h-[240px] max-h-[560px] w-auto max-w-[96%] object-contain drop-shadow-[0_28px_70px_rgba(0,0,0,0.62)]"
+        onError={finish}
+        className="animate-premium-gift h-full min-h-[220px] max-h-[720px] w-auto max-w-[118%] object-contain drop-shadow-[0_32px_90px_rgba(0,0,0,0.74)] sm:min-h-[260px]"
         data-testid="premium-gift-video"
       />
+      {soundBlocked ? (
+        <button
+          type="button"
+          onClick={enableSound}
+          className="pointer-events-auto absolute bottom-4 left-1/2 -translate-x-1/2 rounded-full bg-black/75 px-4 py-2 text-sm font-bold text-white shadow-lg backdrop-blur-md"
+          data-testid="premium-gift-sound-button"
+        >
+          Ton aktivieren
+        </button>
+      ) : null}
     </div>
   );
 }

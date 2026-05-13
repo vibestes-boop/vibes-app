@@ -174,10 +174,18 @@ describe('LiveGiftAnimationView — Styling-Invarianten', () => {
       />,
     );
 
+    const layer = screen.getByTestId('gift-animation-layer');
     const stage = screen.getByTestId('premium-gift-stage');
     const video = screen.getByTestId('premium-gift-video');
+    expect(layer.getAttribute('aria-hidden')).toBeNull();
     expect(stage).not.toBeNull();
+    expect(stage.className).toContain('h-[58%]');
+    expect(stage.className).toContain('overflow-visible');
+    expect(stage.className).toContain('z-50');
     expect(video.getAttribute('src')).toBe('/gifts/chechen_tower_premium.mp4');
+    expect(video.getAttribute('preload')).toBe('auto');
+    expect(video.className).toContain('max-h-[720px]');
+    expect(video.className).toContain('max-w-[118%]');
     expect(screen.queryByTestId('gift-burst')).toBeNull();
   });
 });

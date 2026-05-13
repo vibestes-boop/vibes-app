@@ -30,6 +30,14 @@ interface GiftCatalogRow {
   available_until: string | null;
 }
 
+const LOCAL_GIFT_VIDEO_URLS: Record<string, string> = {
+  chechen_tower_premium: '/gifts/chechen_tower_premium.mp4',
+};
+
+function getLocalGiftVideoUrl(giftId: string): string | null {
+  return LOCAL_GIFT_VIDEO_URLS[giftId] ?? null;
+}
+
 export interface LiveGiftPickerProps {
   sessionId: string;
   hostId: string;
@@ -142,6 +150,7 @@ export function LiveGiftPicker({
             giftName: gift.name,
             giftEmoji: gift.emoji,
             giftLottieUrl: gift.lottie_url,
+            giftVideoUrl: getLocalGiftVideoUrl(gift.id),
             coinCost: gift.coin_cost,
           },
         }),
