@@ -47,3 +47,6 @@ jobs:
 
       - name: Check weekly moderation health
         run: npm run moderation:health
+
+      - name: Check weekly governance health
+        run: npm run governance:health

@@ -1,0 +1,78 @@
+{
+  "generated_at": "2026-05-17",
+  "default_review_cadence": "weekly",
+  "areas": [
+    {
+      "area": "Data Lifecycle",
+      "owner": "Zaur / Founder",
+      "dashboard": "npm run integrity:weekly",
+      "alert": "weekly-integrity GitHub Action",
+      "runbook": "docs/stability/deployment-runbook.md",
+      "weekly_status": "docs/stability/weekly-review.md"
+    },
+    {
+      "area": "Web/Mobile Parity",
+      "owner": "Zaur / Founder",
+      "dashboard": "npm run audit:web-post-mutations && npm run release:gate -- --phase pre",
+      "alert": "release gate failure",
+      "runbook": "docs/stability/workspace-strategy.md",
+      "weekly_status": "docs/stability/weekly-review.md"
+    },
+    {
+      "area": "Feed/Algorithmus",
+      "owner": "Zaur / Founder",
+      "dashboard": "npm run product:health",
+      "alert": "weekly product review",
+      "runbook": "docs/stability/product-metrics.md",
+      "weekly_status": "docs/stability/weekly-review.md"
+    },
+    {
+      "area": "Push/Notifications",
+      "owner": "Zaur / Founder",
+      "dashboard": "weekly product review",
+      "alert": "manual incident review until push health is automated",
+      "runbook": "docs/stability/weekly-review.md",
+      "weekly_status": "docs/stability/weekly-review.md"
+    },
+    {
+      "area": "R2/Media",
+      "owner": "Zaur / Founder",
+      "dashboard": "npm run integrity:weekly",
+      "alert": "weekly-integrity GitHub Action",
+      "runbook": "docs/stability/deployment-runbook.md",
+      "weekly_status": "docs/stability/weekly-review.md"
+    },
+    {
+      "area": "Release/CI",
+      "owner": "Zaur / Founder",
+      "dashboard": "npm run release:gate -- --phase pre",
+      "alert": "release gate failure",
+      "runbook": "docs/stability/deployment-runbook.md",
+      "weekly_status": "docs/stability/weekly-review.md"
+    },
+    {
+      "area": "Moderation/Trust",
+      "owner": "Zaur / Founder",
+      "dashboard": "npm run moderation:health",
+      "alert": "weekly-integrity GitHub Action",
+      "runbook": "docs/stability/trust-safety.md",
+      "weekly_status": "docs/stability/weekly-review.md"
+    },
+    {
+      "area": "Cost Monitoring",
+      "owner": "Zaur / Founder",
+      "dashboard": "npm run cost:health",
+      "alert": "weekly-integrity GitHub Action",
+      "runbook": "docs/stability/cost-controls.md",
+      "weekly_status": "docs/stability/weekly-review.md"
+    },
+    {
+      "area": "Product Metrics",
+      "owner": "Zaur / Founder",
+      "dashboard": "npm run product:health",
+      "alert": "weekly product review",
+      "runbook": "docs/stability/product-metrics.md",
+      "weekly_status": "docs/stability/weekly-review.md"
+    }
+  ]
+}

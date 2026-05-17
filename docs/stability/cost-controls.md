@@ -41,8 +41,8 @@ npm run cost:health -- --ai-budget-cents 2500 --r2-objects-budget 20000
 
 ## Feature Rule
 
-Features that can create large variable cost need a feature flag, a monthly
-budget, and a rollback owner before launch. This includes AI generation, live
+Features that can create large variable cost need a feature flag, a monthly budget,
+and a rollback owner before launch. This includes AI generation, live
 streaming, video recording, high-volume uploads, and background jobs.
 
 If a feature crosses 70% of its budget, it moves to Improve before more scope is

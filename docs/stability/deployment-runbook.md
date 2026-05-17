@@ -100,6 +100,7 @@ npm run integrity:weekly
 npm run product:health
 npm run cost:health
 npm run moderation:health
+npm run governance:health
 ```
 
 It checks the production DB snapshot, queue age, failed queue rows, required
@@ -129,3 +130,6 @@ documented in `docs/stability/cost-controls.md`.
 Moderation-health covers pending reports, reports older than the 24h SLA,
 legacy report rows missing from the canonical moderation queue, and recent admin
 audit events. The operating rules live in `docs/stability/trust-safety.md`.
+
+Governance-health covers the owner matrix, weekly review process, feature
+intake requirements, and whether the weekly workflow runs every health layer.
