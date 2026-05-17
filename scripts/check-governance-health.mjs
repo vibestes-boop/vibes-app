@@ -118,6 +118,13 @@ validateTextFile('supabase/migrations/20260517224000_moderation_enforcement_heal
   'profile_shadowban_column',
   'live_mute_table',
 ]);
+validateTextFile('supabase/migrations/20260517231000_automated_spam_nsfw_moderation.sql', [
+  'classify_post_moderation',
+  'trg_posts_automated_moderation',
+  'moderation_auto_flags',
+  'auto_spam',
+  'auto_nsfw',
+]);
 validateTextFile('supabase/migrations/20260517225000_hide_moderated_authors_from_public_feeds.sql', [
   'get_public_feed_web',
   'get_public_feed_web_anon',

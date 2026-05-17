@@ -98,6 +98,7 @@ function printSnapshot(data) {
   const legacy = data.legacy_unqueued || {};
   const audit = data.admin_audit || {};
   const enforcement = data.enforcement || {};
+  const autoModeration = data.auto_moderation || {};
   const byType = reports.by_target_type || {};
 
   console.log('');
@@ -131,12 +132,21 @@ function printSnapshot(data) {
   console.log(`  - profile shadowban column: ${booleanLabel(enforcement.profile_shadowban_column)}`);
   console.log(`  - live mute table: ${booleanLabel(enforcement.live_mute_table)}`);
   console.log(`  - audit log table: ${booleanLabel(enforcement.audit_log_table)}`);
+
+  console.log('');
+  console.log('Auto Moderation:');
+  console.log(`  - classifier: ${booleanLabel(autoModeration.classifier_available)}`);
+  console.log(`  - posts trigger: ${booleanLabel(autoModeration.trigger_available)}`);
+  console.log(`  - signal table: ${booleanLabel(autoModeration.signal_table)}`);
+  console.log(`  - flags 7d: ${number(autoModeration.flags_7d)}`);
+  console.log(`  - pending auto reports: ${number(autoModeration.pending_auto_reports)}`);
 }
 
 function evaluateSnapshot(data) {
   const reports = data.content_reports || {};
   const legacy = data.legacy_unqueued || {};
   const enforcement = data.enforcement || {};
+  const autoModeration = data.auto_moderation || {};
 
   if (Number(reports.pending || 0) > maxPending) {
     failures.push(`[reports] Pending reports ${reports.pending} > ${maxPending}.`);
@@ -164,6 +174,12 @@ function evaluateSnapshot(data) {
   for (const [key, value] of Object.entries(enforcement)) {
     if (value !== true) {
       failures.push(`[enforcement] ${key} is not ready.`);
+    }
+  }
+
+  for (const key of ['classifier_available', 'trigger_available', 'signal_table']) {
+    if (autoModeration[key] !== true) {
+      failures.push(`[auto-moderation] ${key} is not ready.`);
     }
   }
 }

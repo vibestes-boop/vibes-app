@@ -102,6 +102,18 @@ Public profile discovery must follow the same rule. `get_public_profile_web`,
 fallbacks must not expose banned or shadowbanned profiles through profile pages,
 search suggestions, people discovery, or sitemap routes.
 
+## Automated Signals
+
+`classify_post_moderation` is the first automated spam/NSFW/scam layer for post
+captions, tags, media type, and media URLs. It is intentionally conservative:
+it creates `content_reports` rows with reasons `auto_spam`, `auto_nsfw`, or
+`auto_scam`, and writes the classifier signal into `moderation_auto_flags`. It
+does not remove content automatically.
+
+The posts trigger `trg_posts_automated_moderation` runs after insert/update and
+deduplicates automated reports for 30 days. `npm run moderation:health` verifies
+the classifier, trigger, and signal table are present.
+
 Status meaning:
 
 - `reviewed`: checked, no user-visible enforcement needed
