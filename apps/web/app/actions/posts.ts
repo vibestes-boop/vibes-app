@@ -16,8 +16,8 @@ import {
 //  1. Cross-Platform-Parität: Alle Mutationen schreiben in dieselben Tabellen
 //     und delegieren an die Native-RPCs (`schedule_post`, `upsert_post_draft`,
 //     `delete_post_draft`, `cancel_scheduled_post`, `reschedule_post`).
-//  2. Direkter Publish-Path (`publishPost`) schreibt mit RLS-Policy direkt in
-//     `posts` — kein Server-RPC nötig, Native macht's gleich.
+//  2. Direkter Publish-Path (`publishPost`) delegiert an `create_post`, damit
+//     Web und Native denselben serverseitigen Mutationspfad nutzen.
 //  3. R2-Upload: client-side via `supabase.functions.invoke('r2-sign')`. Wir
 //     stellen hier nur einen Server-Side-Proxy zur Verfügung (requestR2UploadUrl)
 //     für Flows die Server-Action-Kontext brauchen (Rate-Limit-Tracking).
@@ -161,31 +161,24 @@ export async function publishPost(
 
   const supabase = await createClient();
 
-  const row = {
-    author_id: viewer,
-    caption: caption.length > 0 ? caption : null,
-    tags: mergeTags(input.tags, caption),
-    media_url: input.mediaUrl,
-    media_type: input.mediaType,
-    thumbnail_url: input.thumbnailUrl ?? null,
-    audio_url: input.audioUrl ?? null,
-    audio_volume: typeof input.audioVolume === 'number' ? input.audioVolume : null,
-    privacy: input.privacy ?? 'public',
-    allow_comments: input.allowComments ?? true,
-    allow_download: input.allowDownload ?? false,
-    allow_duet: input.allowDuet ?? true,
-    women_only: input.womenOnly ?? false,
-    cover_time_ms: typeof input.coverTimeMs === 'number' ? input.coverTimeMs : null,
-    is_guild_post: input.isGuildPost ?? false,
-    guild_id: input.guildId ?? null,
-    aspect_ratio: input.aspectRatio ?? 'portrait',
-  };
-
-  const { data, error } = await supabase
-    .from('posts')
-    .insert(row)
-    .select('id')
-    .single();
+  const { data, error } = await supabase.rpc('create_post', {
+    p_caption: caption.length > 0 ? caption : null,
+    p_tags: mergeTags(input.tags, caption),
+    p_media_url: input.mediaUrl,
+    p_media_type: input.mediaType,
+    p_thumbnail_url: input.thumbnailUrl ?? null,
+    p_audio_url: input.audioUrl ?? null,
+    p_audio_volume: typeof input.audioVolume === 'number' ? input.audioVolume : null,
+    p_privacy: input.privacy ?? 'public',
+    p_allow_comments: input.allowComments ?? true,
+    p_allow_download: input.allowDownload ?? false,
+    p_allow_duet: input.allowDuet ?? true,
+    p_women_only: input.womenOnly ?? false,
+    p_cover_time_ms: typeof input.coverTimeMs === 'number' ? input.coverTimeMs : null,
+    p_is_guild_post: input.isGuildPost ?? false,
+    p_guild_id: input.guildId ?? null,
+    p_aspect_ratio: input.aspectRatio ?? 'portrait',
+  });
 
   if (error || !data) {
     return { ok: false, error: error?.message ?? 'Post fehlgeschlagen.' };
@@ -202,7 +195,7 @@ export async function publishPost(
     revalidateTag(PUBLIC_FEED_CACHE_TAG);
   }
 
-  return { ok: true, data: { id: data.id } };
+  return { ok: true, data: { id: String(data) } };
 }
 
 // -----------------------------------------------------------------------------
@@ -390,7 +383,7 @@ export async function deletePost(postId: string): Promise<ActionResult<null>> {
   if (!viewer) return { ok: false, error: 'Bitte einloggen.' };
 
   const supabase = await createClient();
-  const { error } = await supabase.from('posts').delete().eq('id', postId).eq('author_id', viewer);
+  const { error } = await supabase.rpc('delete_post', { p_post_id: postId });
   if (error) return { ok: false, error: error.message };
 
   // Feed-Routen invalidieren — der Post taucht im For-You und Following-Feed
@@ -468,20 +461,17 @@ export async function updatePost(
   const tags = mergeTags(input.tags, trimmed);
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from('posts')
-    .update({
-      caption: trimmed || null,
-      tags,
-      privacy: input.privacy,
-      allow_comments: input.allowComments,
-      allow_download: input.allowDownload,
-      allow_duet: input.allowDuet,
-      women_only: input.womenOnly,
-      aspect_ratio: input.aspectRatio,
-    })
-    .eq('id', postId)
-    .eq('author_id', viewer);
+  const { error } = await supabase.rpc('update_post', {
+    p_post_id: postId,
+    p_caption: trimmed || null,
+    p_tags: tags,
+    p_privacy: input.privacy,
+    p_allow_comments: input.allowComments,
+    p_allow_download: input.allowDownload,
+    p_allow_duet: input.allowDuet,
+    p_women_only: input.womenOnly,
+    p_aspect_ratio: input.aspectRatio,
+  });
 
   if (error) return { ok: false, error: error.message };
 
@@ -507,11 +497,11 @@ export async function patchPostCaption(
   );
 
   const supabase = await createClient();
-  const { error } = await supabase
-    .from('posts')
-    .update({ caption: trimmed || null, tags })
-    .eq('id', postId)
-    .eq('author_id', viewer);
+  const { error } = await supabase.rpc('update_post', {
+    p_post_id: postId,
+    p_caption: trimmed || null,
+    p_tags: tags,
+  });
 
   if (error) return { ok: false, error: error.message };
 
