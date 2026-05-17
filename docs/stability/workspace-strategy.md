@@ -50,5 +50,5 @@ Consolidation is possible, but it should be a planned migration:
 3. Decide whether the target is one monorepo or two repositories.
 4. Move only one ownership slice at a time.
 5. Keep `workspace:doctor`, `stability:native-backend`,
-   `stability:api-contracts`, `monitor:prod`, and `monitor:integrity` green
-   after each slice.
+   `stability:api-contracts`, `monitor:prod`, `monitor:integrity`, and
+   `product:health` green after each slice.

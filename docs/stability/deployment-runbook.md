@@ -97,6 +97,7 @@ The weekly job is intentionally deeper than the per-release gate:
 
 ```bash
 npm run integrity:weekly
+npm run product:health
 ```
 
 It checks the production DB snapshot, queue age, failed queue rows, required
@@ -114,3 +115,6 @@ Required GitHub secrets for the weekly R2 orphan check:
 
 If it reports orphan objects, either enqueue/delete them through the protected
 R2 cleanup flow or intentionally raise the threshold with a documented reason.
+
+The product-health report is not a deploy blocker by default. It is the input to
+the weekly product review and feature Keep / Improve / Kill decisions.

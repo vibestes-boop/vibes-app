@@ -38,3 +38,6 @@ jobs:
 
       - name: Check weekly production integrity
         run: npm run integrity:weekly
+
+      - name: Report weekly product health
+        run: npm run product:health
