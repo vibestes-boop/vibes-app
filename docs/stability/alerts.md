@@ -36,6 +36,11 @@ the run as red.
 
 ## Next Channels
 
-GitHub Issues are the first alert channel. Slack or email can be added later by
-posting the same failure summary to an incoming webhook after the GitHub issue
-step.
+GitHub Issues are the first alert channel. Slack is optional: set the repository
+secret `SLACK_WEBHOOK_URL` to post the same failure summary to an incoming
+webhook after the GitHub issue step. If the secret is missing, the workflow
+keeps GitHub Issues as the only alert channel.
+
+Email should be configured through Slack or GitHub notification rules unless a
+separate incident mailbox is needed. Do not add a second alert sink without an
+owner and unsubscribe path.

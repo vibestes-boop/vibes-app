@@ -31,6 +31,7 @@ jobs:
       CF_R2_SECRET_ACCESS_KEY: ${{ secrets.CF_R2_SECRET_ACCESS_KEY }}
       CF_R2_BUCKET: ${{ secrets.CF_R2_BUCKET }}
       CF_R2_PUBLIC_URL: ${{ secrets.CF_R2_PUBLIC_URL }}
+      SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -164,6 +165,53 @@ jobs:
                 labels,
               });
               core.notice(`Created alert issue #${created.data.number}: ${failed.join(', ')}`);
+            }
+
+      - name: Send Slack weekly health alert
+        if: |
+          env.SLACK_WEBHOOK_URL != '' &&
+          (
+            steps.integrity.outcome == 'failure' ||
+            steps.product.outcome == 'failure' ||
+            steps.cost.outcome == 'failure' ||
+            steps.moderation.outcome == 'failure' ||
+            steps.governance.outcome == 'failure' ||
+            steps.push_feed.outcome == 'failure' ||
+            steps.dashboard.outcome == 'failure' ||
+            steps.feature_freeze.outcome == 'failure'
+          )
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const outcomes = {
+              integrity: '${{ steps.integrity.outcome }}',
+              product: '${{ steps.product.outcome }}',
+              cost: '${{ steps.cost.outcome }}',
+              moderation: '${{ steps.moderation.outcome }}',
+              governance: '${{ steps.governance.outcome }}',
+              push_feed: '${{ steps.push_feed.outcome }}',
+              dashboard: '${{ steps.dashboard.outcome }}',
+              feature_freeze: '${{ steps.feature_freeze.outcome }}',
+            };
+            const failed = Object.entries(outcomes)
+              .filter(([, outcome]) => outcome === 'failure')
+              .map(([name]) => name);
+            const serverUrl = process.env.GITHUB_SERVER_URL || 'https://github.com';
+            const runUrl = `${serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const text = [
+              ':rotating_light: Weekly health guards failing',
+              `Repo: ${context.repo.owner}/${context.repo.repo}`,
+              `Run: ${runUrl}`,
+              `Failed: ${failed.join(', ')}`,
+              'Response: assign owner, update weekly review, keep affected broad feature rollout frozen.',
+            ].join('\n');
+            const response = await fetch(process.env.SLACK_WEBHOOK_URL, {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ text }),
+            });
+            if (!response.ok) {
+              core.setFailed(`Slack alert failed: ${response.status} ${await response.text()}`);
             }
 
       - name: Fail workflow when any guard failed

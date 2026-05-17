@@ -29,6 +29,7 @@ Disziplin abhaengt.
 | 16 | Niemand sieht das Gesamtsystem | Einzelchecks sind gruen, aber Trends und gelbe Risiken werden nicht gemeinsam betrachtet | Kein Ampel-Board fuer Weekly Review | `npm run health:dashboard` als Status-Board |
 | 17 | Feature Freeze bleibt nur ein Meeting-Satz | Neue Features werden trotz roter Stabilitaets-, Kosten- oder Trust-Signale gelauncht | Keine CLI-Bremse fuer breiten Feature-Rollout | `npm run feature:freeze` |
 | 18 | Feature Intake wird umgangen | Features starten ohne Owner, Zielmetrik, Rollback oder Monitoring | GitHub Issues/PRs tragen die Governance-Felder nicht | Feature-Request- und PR-Templates plus `npm run governance:health` |
+| 19 | Alerts werden uebersehen | GitHub Issue wird erstellt, aber niemand sieht es rechtzeitig | Kein zweiter Benachrichtigungskanal fuer Health-Fehler | Optionaler Slack Alert via `SLACK_WEBHOOK_URL` |
 
 ## Timeline des hypothetischen Scheiterns
 
@@ -130,6 +131,8 @@ regelmaessig erfuellt sind:
   Data-, Cost-, Moderation- oder Push/Feed-Signalen.
 - GitHub Feature Requests und Pull Requests enthalten die Feature-Intake-
   Felder, damit Governance im normalen Arbeitsfluss sichtbar bleibt.
+- Weekly-Health-Fehler koennen zusaetzlich in Slack landen, wenn
+  `SLACK_WEBHOOK_URL` als Repository Secret gesetzt ist.
 
 ## Naechste technische Guardrails
 
