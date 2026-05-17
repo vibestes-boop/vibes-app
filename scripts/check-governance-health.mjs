@@ -25,6 +25,7 @@ const REVIEW_REQUIRED_TEXT = [
   'npm run cost:health',
   'npm run moderation:health',
   'npm run governance:health',
+  'npm run push-feed:health',
   'Keep',
   'Improve',
   'Kill',
@@ -48,6 +49,7 @@ if (ownership) validateOwnership(ownership);
 validateTextFile('docs/stability/weekly-review.md', REVIEW_REQUIRED_TEXT);
 validateTextFile('docs/stability/feature-intake.md', INTAKE_REQUIRED_TEXT);
 validateTextFile('docs/stability/alerts.md', ['stability-alert', 'GitHub issue', 'continue-on-error']);
+validateTextFile('docs/stability/push-feed-health.md', ['npm run push-feed:health', 'Push Signals', 'Feed Signals']);
 validateTextFile('docs/stability/product-metrics.md', ['Keep', 'Improve', 'Kill', 'target metric', 'rollback plan']);
 validateTextFile('docs/stability/cost-controls.md', ['feature flag', 'monthly budget', 'rollback owner']);
 validateTextFile('docs/stability/trust-safety.md', ['SLA', 'admin_audit_log', 'content_reports']);
@@ -113,6 +115,7 @@ function validateWorkflow() {
     'npm run cost:health',
     'npm run moderation:health',
     'npm run governance:health',
+    'npm run push-feed:health',
   ]) {
     if (!workflow.includes(command)) {
       failures.push(`[workflow] Missing weekly command: ${command}.`);

@@ -65,13 +65,19 @@ jobs:
         continue-on-error: true
         run: npm run governance:health
 
+      - name: Check weekly push and feed health
+        id: push_feed
+        continue-on-error: true
+        run: npm run push-feed:health
+
       - name: Open or update weekly health alert
         if: |
           steps.integrity.outcome == 'failure' ||
           steps.product.outcome == 'failure' ||
           steps.cost.outcome == 'failure' ||
           steps.moderation.outcome == 'failure' ||
-          steps.governance.outcome == 'failure'
+          steps.governance.outcome == 'failure' ||
+          steps.push_feed.outcome == 'failure'
         uses: actions/github-script@v8
         with:
           script: |
@@ -83,6 +89,7 @@ jobs:
               cost: '${{ steps.cost.outcome }}',
               moderation: '${{ steps.moderation.outcome }}',
               governance: '${{ steps.governance.outcome }}',
+              push_feed: '${{ steps.push_feed.outcome }}',
             };
             const failed = Object.entries(outcomes)
               .filter(([, outcome]) => outcome === 'failure')
@@ -151,7 +158,8 @@ jobs:
           steps.product.outcome == 'failure' ||
           steps.cost.outcome == 'failure' ||
           steps.moderation.outcome == 'failure' ||
-          steps.governance.outcome == 'failure'
+          steps.governance.outcome == 'failure' ||
+          steps.push_feed.outcome == 'failure'
         run: |
           echo "One or more weekly health guards failed."
           exit 1

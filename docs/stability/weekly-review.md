@@ -13,6 +13,7 @@ npm run product:health
 npm run cost:health
 npm run moderation:health
 npm run governance:health
+npm run push-feed:health
 ```
 
 ## Status Board
@@ -58,6 +59,7 @@ Every weekly review records:
 
 - check outputs or links to the workflow run
 - open `stability-alert` GitHub issues
+- push/feed health status
 - Keep / Improve / Kill decisions
 - frozen areas and unblock owner
 - feature launches approved or rejected

@@ -101,6 +101,7 @@ npm run product:health
 npm run cost:health
 npm run moderation:health
 npm run governance:health
+npm run push-feed:health
 ```
 
 It checks the production DB snapshot, queue age, failed queue rows, required
@@ -133,6 +134,10 @@ audit events. The operating rules live in `docs/stability/trust-safety.md`.
 
 Governance-health covers the owner matrix, weekly review process, feature
 intake requirements, and whether the weekly workflow runs every health layer.
+
+Push-feed-health covers notification/push plumbing and public feed endpoint
+emptiness/error masking. The operating rules live in
+`docs/stability/push-feed-health.md`.
 
 Weekly alerting opens or updates a GitHub issue labeled `stability-alert` when
 any weekly health guard fails. Alert response rules live in

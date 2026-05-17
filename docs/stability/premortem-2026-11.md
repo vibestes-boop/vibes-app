@@ -25,6 +25,7 @@ Disziplin abhaengt.
 | 12 | Moderation bleibt eine UI statt ein Betriebssystem | Reports landen in Legacy-Tabellen, bleiben ueber 24h offen oder werden ohne Audit geschlossen | Report-Pfade schreiben in verschiedene Tabellen, Admin-Aktionen haben keinen Audit-Trail | `npm run moderation:health`, zentrale `content_reports` Queue, Admin-Audit-Log |
 | 13 | Ownership bleibt implizit | Jeder sieht rote Signale, aber niemand ist eindeutig verantwortlich | Guards existieren, aber ohne Owner, Review-Rhythmus und Feature-Intake | `npm run governance:health`, Owner-Matrix, Weekly Review, Feature Intake |
 | 14 | Alerts bleiben nur rote CI-Runs | Checks schlagen fehl, aber niemand arbeitet die Ursache ab | Keine Issue-/Owner-Eskalation bei Guard-Fehlschlag | `stability-alert` GitHub Issue aus dem Weekly Workflow |
+| 15 | Push/Feed-Gesundheit bleibt blind | Feeds liefern 200 mit leerem Payload oder Push-Dispatch ist still kaputt | Feed-Catches maskieren Fehler, Push-Trigger/Subscriptions werden nicht aggregiert | `npm run push-feed:health` gegen DB-Snapshot und Public Feed APIs |
 
 ## Timeline des hypothetischen Scheiterns
 
@@ -118,6 +119,8 @@ regelmaessig erfuellt sind:
   Feature Intake und Workflow-Abdeckung sind pruefbar.
 - Weekly-Health-Fehler erzeugen ein `stability-alert` GitHub Issue mit Owner-
   und Freeze-Regeln.
+- Push/Feed-Health-Report liegt woechentlich vor: Push-Token/Subscriptions,
+  Notifications, Trigger, Feed-Endpunkte und leere Feed-Antworten.
 
 ## Naechste technische Guardrails
 
