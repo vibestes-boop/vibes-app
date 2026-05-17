@@ -38,6 +38,17 @@ jobs:
       PROVIDER_COSTS_JSON: ${{ secrets.PROVIDER_COSTS_JSON }}
       PROVIDER_COSTS_FILE: ${{ secrets.PROVIDER_COSTS_FILE }}
       PROVIDER_BILLING_DIR: ${{ secrets.PROVIDER_BILLING_DIR }}
+      PROVIDER_BILLING_SOURCES_JSON: ${{ secrets.PROVIDER_BILLING_SOURCES_JSON }}
+      CLOUDFLARE_BILLING_URL: ${{ secrets.CLOUDFLARE_BILLING_URL }}
+      CLOUDFLARE_BILLING_BEARER_TOKEN: ${{ secrets.CLOUDFLARE_BILLING_BEARER_TOKEN }}
+      SUPABASE_BILLING_URL: ${{ secrets.SUPABASE_BILLING_URL }}
+      SUPABASE_BILLING_BEARER_TOKEN: ${{ secrets.SUPABASE_BILLING_BEARER_TOKEN }}
+      VERCEL_BILLING_URL: ${{ secrets.VERCEL_BILLING_URL }}
+      VERCEL_BILLING_BEARER_TOKEN: ${{ secrets.VERCEL_BILLING_BEARER_TOKEN }}
+      LIVEKIT_BILLING_URL: ${{ secrets.LIVEKIT_BILLING_URL }}
+      LIVEKIT_BILLING_BEARER_TOKEN: ${{ secrets.LIVEKIT_BILLING_BEARER_TOKEN }}
+      AI_BILLING_URL: ${{ secrets.AI_BILLING_URL }}
+      AI_BILLING_BEARER_TOKEN: ${{ secrets.AI_BILLING_BEARER_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -56,6 +67,10 @@ jobs:
         id: product
         continue-on-error: true
         run: npm run product:health
+
+      - name: Fetch provider billing exports
+        if: ${{ env.PROVIDER_BILLING_SOURCES_JSON != '' || env.CLOUDFLARE_BILLING_URL != '' || env.SUPABASE_BILLING_URL != '' || env.VERCEL_BILLING_URL != '' || env.LIVEKIT_BILLING_URL != '' || env.AI_BILLING_URL != '' }}
+        run: npm run cost:fetch-providers -- --github-env >> "$GITHUB_ENV"
 
       - name: Normalize provider billing exports
         if: ${{ env.PROVIDER_BILLING_DIR != '' }}

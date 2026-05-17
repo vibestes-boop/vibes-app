@@ -72,6 +72,7 @@ same 70% warning, 90% failure, and 100% critical thresholds.
 For provider-specific JSON/CSV exports, place files in one directory and run:
 
 ```bash
+npm run cost:fetch-providers -- --github-env
 npm run cost:collect-providers -- --dir ./billing-exports
 PROVIDER_BILLING_DIR=./billing-exports npm run cost:health
 ```
@@ -80,6 +81,33 @@ The collector infers the provider from the filename or row fields:
 Cloudflare/R2, Supabase, Vercel, LiveKit, OpenAI/AI, and `other`. It recognizes
 common money columns such as `total_cents`, `amount_cents`, `cost_cents`,
 `total`, `amount`, `cost`, `usage_cost`, and `invoice_total`.
+
+`cost:fetch-providers` can download exports directly from configured provider
+API endpoints before collection. Use either a full source list:
+
+```json
+[
+  {
+    "provider": "cloudflare-r2",
+    "url": "https://provider.example/billing/export",
+    "headers": { "authorization": "Bearer ..." },
+    "format": "json"
+  }
+]
+```
+
+or provider-specific shorthands:
+
+- `CLOUDFLARE_BILLING_URL`
+- `SUPABASE_BILLING_URL`
+- `VERCEL_BILLING_URL`
+- `LIVEKIT_BILLING_URL`
+- `AI_BILLING_URL`
+
+Each shorthand supports matching `*_BEARER_TOKEN`, `*_API_KEY`, `*_ACCOUNT_ID`,
+`*_METHOD`, `*_BODY`, and `*_FORMAT`. The weekly workflow downloads configured
+exports, writes only JSON/CSV files to `PROVIDER_BILLING_DIR`, then runs
+`npm run cost:health`.
 
 ## Feature Rule
 
@@ -122,7 +150,7 @@ Re-enable only after the rollback owner has documented the budget impact and
 The current guard should be upgraded with direct provider billing reads when
 those APIs are available in CI secrets:
 
-- Add CI jobs that download Cloudflare R2, Supabase, Vercel, LiveKit, and AI
-  billing exports into `PROVIDER_BILLING_DIR`
+- Add concrete billing endpoint URLs/tokens as GitHub Secrets for Cloudflare
+  R2, Supabase, Vercel, LiveKit, and AI spend
 - Keep provider API tokens out of logs; only normalized cents reach
   `npm run cost:health`

@@ -78,8 +78,10 @@ validateTextFile('docs/stability/cost-controls.md', [
   '100%',
   'PROVIDER_COSTS_JSON',
   'PROVIDER_BILLING_DIR',
+  'cost:fetch-providers',
   'COST_PROVIDER_BUDGET_CENTS',
 ]);
+validateTextFile('scripts/fetch-provider-billing.mjs', ['PROVIDER_BILLING_SOURCES_JSON', 'CLOUDFLARE_BILLING_URL', 'No secret values are printed']);
 validateTextFile('scripts/collect-provider-costs.mjs', ['--dir', 'PROVIDER_COSTS_JSON', 'readProviderBillingDir']);
 validateTextFile('scripts/lib/provider-costs.mjs', ['PROVIDER_BILLING_DIR', 'cloudflare_r2_cents', 'livekit_cents']);
 validateTextFile('docs/stability/trust-safety.md', ['SLA', 'admin_audit_log', 'content_reports', '/admin/reports', 'copyright', 'nsfw']);
