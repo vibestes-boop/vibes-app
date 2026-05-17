@@ -57,6 +57,7 @@ Feature freeze:
 Every weekly review records:
 
 - check outputs or links to the workflow run
+- open `stability-alert` GitHub issues
 - Keep / Improve / Kill decisions
 - frozen areas and unblock owner
 - feature launches approved or rejected

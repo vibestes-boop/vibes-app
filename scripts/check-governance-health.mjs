@@ -47,6 +47,7 @@ if (ownership) validateOwnership(ownership);
 
 validateTextFile('docs/stability/weekly-review.md', REVIEW_REQUIRED_TEXT);
 validateTextFile('docs/stability/feature-intake.md', INTAKE_REQUIRED_TEXT);
+validateTextFile('docs/stability/alerts.md', ['stability-alert', 'GitHub issue', 'continue-on-error']);
 validateTextFile('docs/stability/product-metrics.md', ['Keep', 'Improve', 'Kill', 'target metric', 'rollback plan']);
 validateTextFile('docs/stability/cost-controls.md', ['feature flag', 'monthly budget', 'rollback owner']);
 validateTextFile('docs/stability/trust-safety.md', ['SLA', 'admin_audit_log', 'content_reports']);
@@ -115,6 +116,11 @@ function validateWorkflow() {
   ]) {
     if (!workflow.includes(command)) {
       failures.push(`[workflow] Missing weekly command: ${command}.`);
+    }
+  }
+  for (const requiredText of ['issues: write', 'actions/github-script', 'stability-alert', 'continue-on-error']) {
+    if (!workflow.includes(requiredText)) {
+      failures.push(`[workflow] Missing alert wiring: ${requiredText}.`);
     }
   }
 }

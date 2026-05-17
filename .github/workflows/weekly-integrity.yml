@@ -10,6 +10,10 @@ concurrency:
   group: weekly-integrity-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+  issues: write
+
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
 
@@ -37,16 +41,117 @@ jobs:
           node-version: '24'
 
       - name: Check weekly production integrity
+        id: integrity
+        continue-on-error: true
         run: npm run integrity:weekly
 
       - name: Report weekly product health
+        id: product
+        continue-on-error: true
         run: npm run product:health
 
       - name: Check weekly cost health
+        id: cost
+        continue-on-error: true
         run: npm run cost:health
 
       - name: Check weekly moderation health
+        id: moderation
+        continue-on-error: true
         run: npm run moderation:health
 
       - name: Check weekly governance health
+        id: governance
+        continue-on-error: true
         run: npm run governance:health
+
+      - name: Open or update weekly health alert
+        if: |
+          steps.integrity.outcome == 'failure' ||
+          steps.product.outcome == 'failure' ||
+          steps.cost.outcome == 'failure' ||
+          steps.moderation.outcome == 'failure' ||
+          steps.governance.outcome == 'failure'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const title = 'Weekly health guards failing';
+            const labels = ['stability-alert'];
+            const outcomes = {
+              integrity: '${{ steps.integrity.outcome }}',
+              product: '${{ steps.product.outcome }}',
+              cost: '${{ steps.cost.outcome }}',
+              moderation: '${{ steps.moderation.outcome }}',
+              governance: '${{ steps.governance.outcome }}',
+            };
+            const failed = Object.entries(outcomes)
+              .filter(([, outcome]) => outcome === 'failure')
+              .map(([name]) => name);
+            const serverUrl = process.env.GITHUB_SERVER_URL || 'https://github.com';
+            const runUrl = `${serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = [
+              'The weekly production health workflow found failing guards.',
+              '',
+              `Run: ${runUrl}`,
+              `Branch: \`${context.ref}\``,
+              `Commit: \`${context.sha}\``,
+              '',
+              '## Outcomes',
+              '',
+              ...Object.entries(outcomes).map(([name, outcome]) => `- ${name}: \`${outcome}\``),
+              '',
+              '## Required Response',
+              '',
+              '- Assign the owner from `docs/stability/ownership.json`.',
+              '- Record the decision in `docs/stability/weekly-review.md`.',
+              '- Keep broad feature launches frozen while stability, data lifecycle, release, moderation, or cost is red.',
+            ].join('\n');
+            const { owner, repo } = context.repo;
+            try {
+              await github.rest.issues.createLabel({
+                owner,
+                repo,
+                name: labels[0],
+                color: 'b60205',
+                description: 'Automated stability and production health alert',
+              });
+            } catch (error) {
+              if (error.status !== 422) throw error;
+            }
+            const existing = await github.paginate(github.rest.issues.listForRepo, {
+              owner,
+              repo,
+              state: 'open',
+              labels: labels.join(','),
+              per_page: 100,
+            });
+            const issue = existing.find((candidate) => candidate.title === title);
+            if (issue) {
+              await github.rest.issues.createComment({
+                owner,
+                repo,
+                issue_number: issue.number,
+                body,
+              });
+              core.notice(`Updated existing alert issue #${issue.number}: ${failed.join(', ')}`);
+            } else {
+              const created = await github.rest.issues.create({
+                owner,
+                repo,
+                title,
+                body,
+                labels,
+              });
+              core.notice(`Created alert issue #${created.data.number}: ${failed.join(', ')}`);
+            }
+
+      - name: Fail workflow when any guard failed
+        if: |
+          steps.integrity.outcome == 'failure' ||
+          steps.product.outcome == 'failure' ||
+          steps.cost.outcome == 'failure' ||
+          steps.moderation.outcome == 'failure' ||
+          steps.governance.outcome == 'failure'
+        run: |
+          echo "One or more weekly health guards failed."
+          exit 1

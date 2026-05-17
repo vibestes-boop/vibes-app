@@ -24,6 +24,7 @@ Disziplin abhaengt.
 | 11 | Produktfokus bleibt Bauchgefuehl | Features werden gebaut, aber Creator kommen nicht wieder | Kein woechentlicher North-Star-/Retention-Report | `npm run product:health` als Start jedes Product Reviews |
 | 12 | Moderation bleibt eine UI statt ein Betriebssystem | Reports landen in Legacy-Tabellen, bleiben ueber 24h offen oder werden ohne Audit geschlossen | Report-Pfade schreiben in verschiedene Tabellen, Admin-Aktionen haben keinen Audit-Trail | `npm run moderation:health`, zentrale `content_reports` Queue, Admin-Audit-Log |
 | 13 | Ownership bleibt implizit | Jeder sieht rote Signale, aber niemand ist eindeutig verantwortlich | Guards existieren, aber ohne Owner, Review-Rhythmus und Feature-Intake | `npm run governance:health`, Owner-Matrix, Weekly Review, Feature Intake |
+| 14 | Alerts bleiben nur rote CI-Runs | Checks schlagen fehl, aber niemand arbeitet die Ursache ab | Keine Issue-/Owner-Eskalation bei Guard-Fehlschlag | `stability-alert` GitHub Issue aus dem Weekly Workflow |
 
 ## Timeline des hypothetischen Scheiterns
 
@@ -115,6 +116,8 @@ regelmaessig erfuellt sind:
   ueber 24h SLA, unqueued Legacy-Reports und Admin-Audit-Events.
 - Governance-Health-Report liegt woechentlich vor: Owner-Matrix, Weekly Review,
   Feature Intake und Workflow-Abdeckung sind pruefbar.
+- Weekly-Health-Fehler erzeugen ein `stability-alert` GitHub Issue mit Owner-
+  und Freeze-Regeln.
 
 ## Naechste technische Guardrails
 

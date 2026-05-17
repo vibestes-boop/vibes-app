@@ -133,3 +133,7 @@ audit events. The operating rules live in `docs/stability/trust-safety.md`.
 
 Governance-health covers the owner matrix, weekly review process, feature
 intake requirements, and whether the weekly workflow runs every health layer.
+
+Weekly alerting opens or updates a GitHub issue labeled `stability-alert` when
+any weekly health guard fails. Alert response rules live in
+`docs/stability/alerts.md`.
