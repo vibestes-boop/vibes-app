@@ -230,7 +230,9 @@ export async function getMyReviewAction(productId: string): Promise<ProductRevie
 
 const REPORT_REASONS = new Set([
   'spam',
+  'nsfw',
   'inappropriate',
+  'copyright',
   'counterfeit',
   'scam',
   'misleading',

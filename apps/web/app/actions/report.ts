@@ -3,6 +3,14 @@
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
+import {
+  POST_REPORT_REASON_VALUES,
+  USER_REPORT_REASON_VALUES,
+  type PostReportReason,
+  type UserReportReason,
+} from '@/lib/moderation/report-reasons';
+
+export type { PostReportReason, UserReportReason } from '@/lib/moderation/report-reasons';
 
 // -----------------------------------------------------------------------------
 // Post Reports / Not-Interested Server Actions (v1.w.UI.34)
@@ -29,13 +37,15 @@ export type ReportActionResult =
 
 const inputSchema = z.object({
   postId: z.string().uuid('Ungültige Post-ID.'),
+  reason: z.enum(POST_REPORT_REASON_VALUES).default('other'),
 });
 
 async function insertReport(
   postId: string,
-  reason: 'report' | 'not_interested',
+  action: 'report' | 'not_interested',
+  reportReason: PostReportReason = 'other',
 ): Promise<ReportActionResult> {
-  const parsed = inputSchema.safeParse({ postId });
+  const parsed = inputSchema.safeParse({ postId, reason: reportReason });
   if (!parsed.success) {
     return { ok: false, error: parsed.error.issues[0]?.message ?? 'Ungültige Eingabe.' };
   }
@@ -49,16 +59,16 @@ async function insertReport(
   }
 
   const { error, data } =
-    reason === 'report'
+    action === 'report'
       ? await supabase.rpc('create_report', {
           p_target_type: 'post',
           p_target_id: parsed.data.postId,
-          p_reason: 'report',
+          p_reason: parsed.data.reason,
         })
       : await supabase.from('post_reports').insert({
           reporter_id: user.id,
           post_id: parsed.data.postId,
-          reason,
+          reason: action,
         });
 
   // 23505 = Unique-Constraint = bereits gemeldet → silent success (idempotent).
@@ -68,21 +78,24 @@ async function insertReport(
       error: error.message ?? 'Aktion fehlgeschlagen.',
     };
   }
-  if (!error && reason === 'report' && (data as { error?: string } | null)?.error) {
+  if (!error && action === 'report' && (data as { error?: string } | null)?.error) {
     return { ok: false, error: (data as { error: string }).error };
   }
 
   // Bei not_interested: Feed-Cache revalidieren, damit der Post beim nächsten
   // Page-Load (oder router.refresh()) nicht mehr im For-You auftaucht.
-  if (reason === 'not_interested') {
+  if (action === 'not_interested') {
     revalidatePath('/');
   }
 
   return { ok: true };
 }
 
-export async function reportPost(postId: string): Promise<ReportActionResult> {
-  return insertReport(postId, 'report');
+export async function reportPost(
+  postId: string,
+  reason: PostReportReason = 'other',
+): Promise<ReportActionResult> {
+  return insertReport(postId, 'report', reason);
 }
 
 export async function markPostNotInteresting(postId: string): Promise<ReportActionResult> {
@@ -97,16 +110,9 @@ export async function markPostNotInteresting(postId: string): Promise<ReportActi
 
 const userReportSchema = z.object({
   targetUserId: z.string().uuid('Ungültige User-ID.'),
-  reason: z.enum(['spam', 'harassment', 'inappropriate', 'fake_account', 'other']),
+  reason: z.enum(USER_REPORT_REASON_VALUES),
   note: z.string().max(500).optional(),
 });
-
-export type UserReportReason =
-  | 'spam'
-  | 'harassment'
-  | 'inappropriate'
-  | 'fake_account'
-  | 'other';
 
 export async function reportUser(
   targetUserId: string,

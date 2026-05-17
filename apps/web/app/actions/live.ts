@@ -529,13 +529,16 @@ export async function fetchLiveKitToken(
 // -----------------------------------------------------------------------------
 
 const REPORT_REASONS = new Set([
+  'spam',
   'nudity',
+  'nsfw',
   'violence',
   'hate_speech',
   'harassment',
   'misinformation',
   'illegal',
   'self_harm',
+  'copyright',
   'other',
 ]);
 

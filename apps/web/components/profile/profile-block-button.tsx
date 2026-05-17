@@ -21,6 +21,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { blockUser } from '@/app/actions/blocks';
 import { reportUser, type UserReportReason } from '@/app/actions/report';
+import { USER_REPORT_REASONS } from '@/lib/moderation/report-reasons';
 
 // -----------------------------------------------------------------------------
 // ProfileBlockButton — v1.w.UI.54 / v1.w.UI.116.
@@ -30,14 +31,6 @@ import { reportUser, type UserReportReason } from '@/app/actions/report';
 //   • „Melden"     → öffnet Reason-Dialog; schreibt in user_reports
 //   • „Blockieren" → Bestätigungs-Dialog; Redirect zu /
 // -----------------------------------------------------------------------------
-
-const REPORT_REASONS: { value: UserReportReason; label: string }[] = [
-  { value: 'spam',          label: 'Spam oder irreführend' },
-  { value: 'harassment',    label: 'Belästigung oder Mobbing' },
-  { value: 'inappropriate', label: 'Unangemessene Inhalte' },
-  { value: 'fake_account',  label: 'Gefälschtes Konto' },
-  { value: 'other',         label: 'Anderer Grund' },
-];
 
 export function ProfileBlockButton({
   targetUserId,
@@ -143,7 +136,7 @@ export function ProfileBlockButton({
               <div className="space-y-2">
                 <p className="text-sm text-muted-foreground">Wähle den Grund für deine Meldung:</p>
                 <div className="flex flex-col gap-1.5">
-                  {REPORT_REASONS.map((r) => (
+                  {USER_REPORT_REASONS.map((r) => (
                     <label
                       key={r.value}
                       className="flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2.5 text-sm transition-colors hover:bg-muted has-[:checked]:border-primary has-[:checked]:bg-primary/5"

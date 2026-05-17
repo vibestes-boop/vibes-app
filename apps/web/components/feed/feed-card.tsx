@@ -32,6 +32,7 @@ import { toast } from 'sonner';
 import { reportPost, markPostNotInteresting } from '@/app/actions/report';
 import { deletePost, patchPostCaption } from '@/app/actions/posts';
 import { recordDwell } from '@/app/actions/engagement';
+import { POST_REPORT_REASONS, type PostReportReason } from '@/lib/moderation/report-reasons';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import {
@@ -298,6 +299,20 @@ export function FeedCard({
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
+
+  async function submitPostReport(reason: PostReportReason) {
+    setShowMoreMenu(false);
+    if (!viewerId) {
+      toast('Bitte zuerst anmelden.');
+      return;
+    }
+    const res = await reportPost(post.id, reason);
+    if (res.ok) {
+      toast('Danke für deine Meldung. Unser Team prüft das.');
+    } else {
+      toast.error(res.error);
+    }
+  }
 
   // Volume sync mit Video-Element
   useEffect(() => {
@@ -612,7 +627,7 @@ export function FeedCard({
             {showMoreMenu && (
               <div
                 role="menu"
-                className="absolute right-0 top-full mt-2 w-56 overflow-hidden rounded-xl bg-zinc-900/95 text-white shadow-xl ring-1 ring-white/10 backdrop-blur-md"
+                className="absolute right-0 top-full mt-2 max-h-[min(80vh,32rem)] w-56 overflow-y-auto rounded-xl bg-zinc-900/95 text-white shadow-xl ring-1 ring-white/10 backdrop-blur-md"
                 onClick={(e) => e.stopPropagation()}
               >
                 {/* v1.w.UI.34 — alle Items mit echter Funktionalität.
@@ -667,23 +682,17 @@ export function FeedCard({
                         }
                       }}
                     />
-                    <MoreMenuItem
-                      icon={<Flag className="h-4 w-4" />}
-                      label="Melden"
-                      onClick={async () => {
-                        setShowMoreMenu(false);
-                        if (!viewerId) {
-                          toast('Bitte zuerst anmelden.');
-                          return;
-                        }
-                        const res = await reportPost(post.id);
-                        if (res.ok) {
-                          toast('Danke für deine Meldung. Unser Team prüft das.');
-                        } else {
-                          toast.error(res.error);
-                        }
-                      }}
-                    />
+                    <div className="px-4 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-white/45">
+                      Melden
+                    </div>
+                    {POST_REPORT_REASONS.map((reason) => (
+                      <MoreMenuItem
+                        key={reason.value}
+                        icon={<Flag className="h-4 w-4" />}
+                        label={reason.label}
+                        onClick={() => void submitPostReport(reason.value)}
+                      />
+                    ))}
                   </>
                 )}
                 <MoreMenuItem

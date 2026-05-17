@@ -5,6 +5,14 @@ import { useRouter } from 'next/navigation';
 import { MoreHorizontal, EyeOff, Flag, Link as LinkIcon, ShieldOff } from 'lucide-react';
 import { toast } from 'sonner';
 import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -13,6 +21,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { reportPost, markPostNotInteresting } from '@/app/actions/report';
 import { blockUser } from '@/app/actions/blocks';
+import { POST_REPORT_REASONS, type PostReportReason } from '@/lib/moderation/report-reasons';
 
 // -----------------------------------------------------------------------------
 // PostViewerMenu — v1.w.UI.58
@@ -45,6 +54,9 @@ export function PostViewerMenu({
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportReason, setReportReason] = useState<PostReportReason>('spam');
+  const [reportDone, setReportDone] = useState(false);
 
   const requireAuth = () => {
     if (!isAuthenticated) {
@@ -74,8 +86,9 @@ export function PostViewerMenu({
     if (!requireAuth()) return;
     setPending(true);
     try {
-      const res = await reportPost(postId);
+      const res = await reportPost(postId, reportReason);
       if (res.ok) {
+        setReportDone(true);
         toast('Danke für deine Meldung. Unser Team prüft das.');
       } else {
         toast.error(res.error);
@@ -116,6 +129,7 @@ export function PostViewerMenu({
   };
 
   return (
+    <>
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
@@ -135,7 +149,12 @@ export function PostViewerMenu({
           <span>Kein Interesse</span>
         </DropdownMenuItem>
         <DropdownMenuItem
-          onSelect={(e) => { e.preventDefault(); void handleReport(); }}
+          onSelect={(e) => {
+            e.preventDefault();
+            if (!requireAuth()) return;
+            setReportDone(false);
+            setReportOpen(true);
+          }}
         >
           <Flag className="h-4 w-4" />
           <span>Melden</span>
@@ -157,5 +176,57 @@ export function PostViewerMenu({
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+    <Dialog open={reportOpen} onOpenChange={setReportOpen}>
+      <DialogContent className="max-w-sm">
+        <DialogHeader>
+          <DialogTitle>{reportDone ? 'Meldung eingereicht' : 'Post melden'}</DialogTitle>
+        </DialogHeader>
+        {reportDone ? (
+          <div className="py-4 text-center text-sm text-muted-foreground">
+            Danke für deine Meldung. Unser Team prüft sie so schnell wie möglich.
+          </div>
+        ) : (
+          <>
+            <div className="space-y-2">
+              <p className="text-sm text-muted-foreground">Wähle den Grund für deine Meldung:</p>
+              <div className="flex flex-col gap-1.5">
+                {POST_REPORT_REASONS.map((reason) => (
+                  <label
+                    key={reason.value}
+                    className="flex cursor-pointer items-center gap-2.5 rounded-lg border px-3 py-2.5 text-sm transition-colors hover:bg-muted has-[:checked]:border-primary has-[:checked]:bg-primary/5"
+                  >
+                    <input
+                      type="radio"
+                      name="post-report-reason"
+                      value={reason.value}
+                      checked={reportReason === reason.value}
+                      onChange={() => setReportReason(reason.value)}
+                      className="accent-primary"
+                    />
+                    {reason.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" size="sm" onClick={() => setReportOpen(false)} disabled={pending}>
+                Abbrechen
+              </Button>
+              <Button size="sm" onClick={() => void handleReport()} disabled={pending}>
+                {pending ? 'Wird gesendet…' : 'Melden'}
+              </Button>
+            </DialogFooter>
+          </>
+        )}
+        {reportDone && (
+          <DialogFooter>
+            <Button size="sm" onClick={() => setReportOpen(false)}>
+              Schließen
+            </Button>
+          </DialogFooter>
+        )}
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }

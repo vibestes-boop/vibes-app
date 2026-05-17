@@ -56,7 +56,8 @@ validateTextFile('docs/stability/push-feed-health.md', ['npm run push-feed:healt
 validateTextFile('docs/stability/health-dashboard.md', ['npm run health:dashboard', 'Green', 'Yellow', 'Red']);
 validateTextFile('docs/stability/product-metrics.md', ['Keep', 'Improve', 'Kill', 'target metric', 'rollback plan']);
 validateTextFile('docs/stability/cost-controls.md', ['feature flag', 'monthly budget', 'rollback owner']);
-validateTextFile('docs/stability/trust-safety.md', ['SLA', 'admin_audit_log', 'content_reports', '/admin/reports']);
+validateTextFile('docs/stability/trust-safety.md', ['SLA', 'admin_audit_log', 'content_reports', '/admin/reports', 'copyright', 'nsfw']);
+validateTextFile('apps/web/lib/moderation/report-reasons.ts', ['POST_REPORT_REASONS', 'copyright', 'nsfw']);
 validateTextFile('apps/web/app/admin/reports/page.tsx', ['getModerationHealth', 'AdminReportsClient']);
 validateTextFile('apps/web/app/admin/reports/admin-reports-client.tsx', [
   'ModerationHealthPanel',
