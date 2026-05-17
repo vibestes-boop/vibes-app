@@ -34,13 +34,25 @@ the run as red.
 - If an alert is accepted rather than fixed, the owner records the reason,
   expiry date, and rollback condition.
 
-## Next Channels
+## Slack Alerts
 
 GitHub Issues are the first alert channel. Slack is optional: set the repository
 secret `SLACK_WEBHOOK_URL` to post the same failure summary to an incoming
 webhook after the GitHub issue step. If the secret is missing, the workflow
 keeps GitHub Issues as the only alert channel.
 
-Email should be configured through Slack or GitHub notification rules unless a
-separate incident mailbox is needed. Do not add a second alert sink without an
-owner and unsubscribe path.
+## Email Alerts
+
+Email is optional and intended for a dedicated incident mailbox. Configure all
+three repository secrets to enable it:
+
+- `RESEND_API_KEY`
+- `HEALTH_ALERT_EMAIL_TO`
+- `HEALTH_ALERT_EMAIL_FROM`
+
+`HEALTH_ALERT_EMAIL_TO` may contain a comma-separated list. If any of the three
+secrets is missing, the workflow skips email and keeps GitHub Issues plus
+optional Slack as the active alert channels.
+
+Email alerts use the same failure summary as GitHub/Slack and must have an owner
+and unsubscribe path through the incident mailbox or distribution list settings.

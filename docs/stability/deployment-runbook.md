@@ -119,6 +119,8 @@ Required GitHub secrets for the weekly R2 orphan check:
 - `CF_R2_BUCKET`
 - `CF_R2_PUBLIC_URL`
 - Optional: `SLACK_WEBHOOK_URL` for Slack health alerts
+- Optional: `RESEND_API_KEY`, `HEALTH_ALERT_EMAIL_TO`,
+  `HEALTH_ALERT_EMAIL_FROM` for email health alerts
 
 If it reports orphan objects, either enqueue/delete them through the protected
 R2 cleanup flow or intentionally raise the threshold with a documented reason.

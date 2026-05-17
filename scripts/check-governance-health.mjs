@@ -51,7 +51,15 @@ if (ownership) validateOwnership(ownership);
 
 validateTextFile('docs/stability/weekly-review.md', REVIEW_REQUIRED_TEXT);
 validateTextFile('docs/stability/feature-intake.md', INTAKE_REQUIRED_TEXT);
-validateTextFile('docs/stability/alerts.md', ['stability-alert', 'GitHub issue', 'continue-on-error', 'SLACK_WEBHOOK_URL']);
+validateTextFile('docs/stability/alerts.md', [
+  'stability-alert',
+  'GitHub issue',
+  'continue-on-error',
+  'SLACK_WEBHOOK_URL',
+  'RESEND_API_KEY',
+  'HEALTH_ALERT_EMAIL_TO',
+  'HEALTH_ALERT_EMAIL_FROM',
+]);
 validateTextFile('docs/stability/push-feed-health.md', [
   'npm run push-feed:health',
   'Push Signals',
@@ -195,7 +203,17 @@ function validateWorkflow() {
       failures.push(`[workflow] Missing weekly command: ${command}.`);
     }
   }
-  for (const requiredText of ['issues: write', 'actions/github-script', 'stability-alert', 'continue-on-error', 'SLACK_WEBHOOK_URL']) {
+  for (const requiredText of [
+    'issues: write',
+    'actions/github-script',
+    'stability-alert',
+    'continue-on-error',
+    'SLACK_WEBHOOK_URL',
+    'RESEND_API_KEY',
+    'HEALTH_ALERT_EMAIL_TO',
+    'HEALTH_ALERT_EMAIL_FROM',
+    'Send email weekly health alert',
+  ]) {
     if (!workflow.includes(requiredText)) {
       failures.push(`[workflow] Missing alert wiring: ${requiredText}.`);
     }
