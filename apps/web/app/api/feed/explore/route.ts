@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server';
 import {
+  getFeedDataSource,
   getForYouFeed,
   getPublicForYouFeed,
+  getPublicForYouFeedDiagnostics,
   getExploreTrendingFeed,
   getExploreNewestFeed,
   getPublicExploreTrendingFeed,
+  getPublicExploreTrendingFeedDiagnostics,
   getPublicExploreNewestFeed,
+  getPublicExploreNewestFeedDiagnostics,
 } from '@/lib/data/feed';
 import {
   hasSupabaseAuthCookie,
@@ -40,6 +44,7 @@ export async function GET(request: Request) {
   const limit  = Math.min(48, Math.max(1, Number(url.searchParams.get('limit') ?? PAGE)));
   const rawSort = url.searchParams.get('sort') ?? 'forYou';
   const sort: SortMode = rawSort === 'trending' ? 'trending' : rawSort === 'newest' ? 'newest' : 'forYou';
+  const diagnostics = url.searchParams.get('diagnostics') === '1';
   const isAuthed = hasSupabaseAuthCookie(request);
   const headers = isAuthed
     ? privateNoStoreHeaders()
@@ -47,28 +52,58 @@ export async function GET(request: Request) {
 
   try {
     if (sort === 'trending') {
-      const { posts, hasMore } = isAuthed
+      const page = isAuthed
         ? await getExploreTrendingFeed(limit, offset)
-        : await getPublicExploreTrendingFeed(limit, offset);
-      return NextResponse.json({ posts, hasMore }, { headers });
+        : diagnostics
+          ? await getPublicExploreTrendingFeedDiagnostics(limit, offset)
+          : await getPublicExploreTrendingFeed(limit, offset);
+      return NextResponse.json({ posts: page.posts, hasMore: page.hasMore }, {
+        headers: {
+          ...headers,
+          ...(diagnostics ? { 'X-Feed-Data-Source': getFeedDataSource(page) ?? 'unknown' } : {}),
+        },
+      });
     }
 
     if (sort === 'newest') {
-      const { posts, hasMore } = isAuthed
+      const page = isAuthed
         ? await getExploreNewestFeed(limit, offset)
-        : await getPublicExploreNewestFeed(limit, offset);
-      return NextResponse.json({ posts, hasMore }, { headers });
+        : diagnostics
+          ? await getPublicExploreNewestFeedDiagnostics(limit, offset)
+          : await getPublicExploreNewestFeed(limit, offset);
+      return NextResponse.json({ posts: page.posts, hasMore: page.hasMore }, {
+        headers: {
+          ...headers,
+          ...(diagnostics ? { 'X-Feed-Data-Source': getFeedDataSource(page) ?? 'unknown' } : {}),
+        },
+      });
     }
 
     if (offset > 0) {
-      const { posts, hasMore } = isAuthed
+      const page = isAuthed
         ? await getExploreNewestFeed(limit, offset)
-        : await getPublicExploreNewestFeed(limit, offset);
-      return NextResponse.json({ posts, hasMore }, { headers });
+        : diagnostics
+          ? await getPublicExploreNewestFeedDiagnostics(limit, offset)
+          : await getPublicExploreNewestFeed(limit, offset);
+      return NextResponse.json({ posts: page.posts, hasMore: page.hasMore }, {
+        headers: {
+          ...headers,
+          ...(diagnostics ? { 'X-Feed-Data-Source': getFeedDataSource(page) ?? 'unknown' } : {}),
+        },
+      });
     }
 
-    const page = isAuthed ? await getForYouFeed({ limit }) : await getPublicForYouFeed({ limit });
-    return NextResponse.json({ posts: page, hasMore: page.length >= limit }, { headers });
+    const page = isAuthed
+      ? await getForYouFeed({ limit })
+      : diagnostics
+        ? await getPublicForYouFeedDiagnostics({ limit })
+        : await getPublicForYouFeed({ limit });
+    return NextResponse.json({ posts: page, hasMore: page.length >= limit }, {
+      headers: {
+        ...headers,
+        ...(diagnostics ? { 'X-Feed-Data-Source': getFeedDataSource(page) ?? 'unknown' } : {}),
+      },
+    });
   } catch {
     return NextResponse.json(
       { posts: [], hasMore: false },

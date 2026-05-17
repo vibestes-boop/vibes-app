@@ -52,7 +52,13 @@ if (ownership) validateOwnership(ownership);
 validateTextFile('docs/stability/weekly-review.md', REVIEW_REQUIRED_TEXT);
 validateTextFile('docs/stability/feature-intake.md', INTAKE_REQUIRED_TEXT);
 validateTextFile('docs/stability/alerts.md', ['stability-alert', 'GitHub issue', 'continue-on-error', 'SLACK_WEBHOOK_URL']);
-validateTextFile('docs/stability/push-feed-health.md', ['npm run push-feed:health', 'Push Signals', 'Feed Signals']);
+validateTextFile('docs/stability/push-feed-health.md', [
+  'npm run push-feed:health',
+  'Push Signals',
+  'Feed Signals',
+  'X-Feed-Data-Source',
+  'Feed RPC fallback',
+]);
 validateTextFile('docs/stability/health-dashboard.md', ['npm run health:dashboard', 'Green', 'Yellow', 'Red']);
 validateTextFile('docs/stability/product-metrics.md', ['Keep', 'Improve', 'Kill', 'target metric', 'rollback plan']);
 validateTextFile('docs/stability/cost-controls.md', [

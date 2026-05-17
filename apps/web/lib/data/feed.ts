@@ -144,6 +144,28 @@ type PublicFeedRpcRow = Omit<RawPostRow, 'author'> & {
   author_verified: boolean | null;
 };
 
+export type FeedDataSource = 'rpc' | 'postgrest-fallback' | 'error-empty';
+
+const FEED_DATA_SOURCE = Symbol.for('serlo.feedDataSource');
+
+type FeedSourceCarrier = {
+  [FEED_DATA_SOURCE]?: FeedDataSource;
+};
+
+function withFeedDataSource<T extends object>(value: T, source: FeedDataSource): T {
+  Object.defineProperty(value, FEED_DATA_SOURCE, {
+    value: source,
+    enumerable: false,
+    configurable: false,
+  });
+  return value;
+}
+
+export function getFeedDataSource(value: unknown): FeedDataSource | null {
+  if (!value || typeof value !== 'object') return null;
+  return (value as FeedSourceCarrier)[FEED_DATA_SOURCE] ?? null;
+}
+
 function normalizeRow(
   row: RawPostRow,
   liked: Set<string>,
@@ -288,9 +310,10 @@ export const getForYouFeed = cache(
         );
         const { liked, saved, following, reposted } = await batchEngagement(postIds, authorIds, viewerId);
 
-        return rows
+        const posts = rows
           .map((row) => normalizeRpcRow(row, liked, saved, following, reposted))
           .filter((p): p is FeedPost => p !== null);
+        return withFeedDataSource(posts, 'rpc');
       }
     } catch {
       // Migration may be absent in older environments. Fall back to the stable
@@ -314,7 +337,7 @@ export const getForYouFeed = cache(
     if (error) {
       // Sichtbar in Vercel-Logs — Schema-Drift oder RLS-Probleme nicht mehr silent.
       console.error('[feed] getForYouFeed query error:', error.code, error.message, error.details);
-      return [];
+      return withFeedDataSource([], 'error-empty');
     }
     if (!rows) {
       // Edge-Case: PostgREST liefert normalerweise `[]` — `null` ohne Error ist
@@ -324,7 +347,7 @@ export const getForYouFeed = cache(
         limit,
         excluded: excludeIds.length,
       });
-      return [];
+      return withFeedDataSource([], 'error-empty');
     }
 
     // Diagnose 0-Row-Szenario. Als `console.error` statt `.warn`, damit der
@@ -359,9 +382,10 @@ export const getForYouFeed = cache(
 
     const { liked, saved, following, reposted } = await batchEngagement(postIds, authorIds, viewerId);
 
-    return (rows as unknown as RawPostRow[])
+    const posts = (rows as unknown as RawPostRow[])
       .map((row) => normalizeRow(row, liked, saved, following, reposted))
       .filter((p): p is FeedPost => p !== null);
+    return withFeedDataSource(posts, 'postgrest-fallback');
   },
 );
 
@@ -384,9 +408,10 @@ async function fetchPublicForYouFeed(
         });
 
     if (!error && Array.isArray(data)) {
-      return (data as unknown as PublicFeedRpcRow[])
+      const posts = (data as unknown as PublicFeedRpcRow[])
         .map(normalizePublicRpcRow)
         .filter((p): p is FeedPost => p !== null);
+      return withFeedDataSource(posts, 'rpc');
     }
   } catch {
     // Migration may not be deployed yet. Fall back to the PostgREST join path.
@@ -407,12 +432,13 @@ async function fetchPublicForYouFeed(
   const { data: rows, error } = await query;
   if (error || !rows) {
     if (error) console.error('[feed] getPublicForYouFeed query error:', error.code, error.message, error.details);
-    return [];
+    return withFeedDataSource([], 'error-empty');
   }
 
-  return (rows as unknown as RawPostRow[])
+  const posts = (rows as unknown as RawPostRow[])
     .map((row) => normalizeRow(row, new Set(), new Set(), new Set(), new Set()))
     .filter((p): p is FeedPost => p !== null);
+  return withFeedDataSource(posts, 'postgrest-fallback');
 }
 
 const getCachedPublicForYouFeed = unstable_cache(
@@ -433,6 +459,12 @@ export const getPublicForYouFeed = cache(
     return fetchPublicForYouFeed({ limit, excludeIds, before });
   },
 );
+
+export async function getPublicForYouFeedDiagnostics(
+  opts: { limit?: number; excludeIds?: string[]; before?: string } = {},
+): Promise<FeedPost[]> {
+  return fetchPublicForYouFeed(opts);
+}
 
 // -----------------------------------------------------------------------------
 // getFollowingFeed — nur Posts von Leuten denen der User folgt.
@@ -1033,7 +1065,7 @@ export async function getExploreTrendingFeed(
     .order('id', { ascending: false })
     .range(offset, offset + limit - 1);
 
-  if (error || !data) return { posts: [], hasMore: false };
+  if (error || !data) return withFeedDataSource({ posts: [], hasMore: false }, 'error-empty');
 
   const rows = data as unknown as RawPostRow[];
   const postIds = rows.map((r) => r.id);
@@ -1053,7 +1085,7 @@ export async function getExploreTrendingFeed(
     .map((row) => normalizeRow(row, liked, saved, following, reposted))
     .filter((p): p is FeedPost => p !== null);
 
-  return { posts, hasMore: posts.length >= limit };
+  return withFeedDataSource({ posts, hasMore: posts.length >= limit }, 'postgrest-fallback');
 }
 
 // -----------------------------------------------------------------------------
@@ -1086,7 +1118,7 @@ export async function getExploreNewestFeed(
     .order('id', { ascending: false })
     .range(offset, offset + limit - 1);
 
-  if (error || !data) return { posts: [], hasMore: false };
+  if (error || !data) return withFeedDataSource({ posts: [], hasMore: false }, 'error-empty');
 
   const rows = data as unknown as RawPostRow[];
   const postIds = rows.map((r) => r.id);
@@ -1106,7 +1138,7 @@ export async function getExploreNewestFeed(
     .map((row) => normalizeRow(row, liked, saved, following, reposted))
     .filter((p): p is FeedPost => p !== null);
 
-  return { posts, hasMore: posts.length >= limit };
+  return withFeedDataSource({ posts, hasMore: posts.length >= limit }, 'postgrest-fallback');
 }
 
 export async function getPublicExploreTrendingFeed(
@@ -1123,6 +1155,20 @@ export async function getPublicExploreNewestFeed(
   return getCachedPublicExploreFeed('newest', limit, offset);
 }
 
+export async function getPublicExploreTrendingFeedDiagnostics(
+  limit = 12,
+  offset = 0,
+): Promise<ExplorePage> {
+  return fetchPublicExploreFeed('trending', limit, offset);
+}
+
+export async function getPublicExploreNewestFeedDiagnostics(
+  limit = 12,
+  offset = 0,
+): Promise<ExplorePage> {
+  return fetchPublicExploreFeed('newest', limit, offset);
+}
+
 async function fetchPublicExploreFeed(
   sortKey: ExploreSortKey,
   limit: number,
@@ -1134,7 +1180,7 @@ async function fetchPublicExploreFeed(
     const posts = fastRows
       .map(normalizePublicRpcRow)
       .filter((p): p is FeedPost => p !== null);
-    return { posts, hasMore: posts.length >= limit };
+    return withFeedDataSource({ posts, hasMore: posts.length >= limit }, 'rpc');
   }
 
   let query = supabase
@@ -1148,13 +1194,13 @@ async function fetchPublicExploreFeed(
     : query.order('created_at', { ascending: false }).order('id', { ascending: false });
 
   const { data, error } = await query;
-  if (error || !data) return { posts: [], hasMore: false };
+  if (error || !data) return withFeedDataSource({ posts: [], hasMore: false }, 'error-empty');
 
   const posts = (data as unknown as RawPostRow[])
     .map((row) => normalizeRow(row, new Set(), new Set(), new Set(), new Set()))
     .filter((p): p is FeedPost => p !== null);
 
-  return { posts, hasMore: posts.length >= limit };
+  return withFeedDataSource({ posts, hasMore: posts.length >= limit }, 'postgrest-fallback');
 }
 
 type ExploreSortKey = 'trending' | 'newest';
@@ -1202,7 +1248,7 @@ async function normalizeExploreRpcPage(
     .map((row) => normalizeRpcRow(row, liked, saved, following, reposted))
     .filter((p): p is FeedPost => p !== null);
 
-  return { posts, hasMore: posts.length >= limit };
+  return withFeedDataSource({ posts, hasMore: posts.length >= limit }, 'rpc');
 }
 
 // -----------------------------------------------------------------------------

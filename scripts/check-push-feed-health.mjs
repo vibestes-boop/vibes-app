@@ -10,6 +10,7 @@ const DEFAULT_MAX_STALE_PUSH_TOKENS = 50;
 const DEFAULT_MAX_STALE_WEB_SUBS = 50;
 const DEFAULT_MAX_VIDEO_WITHOUT_THUMBNAIL = 0;
 const DEFAULT_MAX_LATEST_PUBLIC_POST_AGE_DAYS = 30;
+const DEFAULT_MAX_FEED_RPC_FALLBACKS = 0;
 const FEED_TARGETS = [
   { label: 'explore.forYou', path: '/api/feed/explore?offset=0&limit={limit}&sort=forYou', shape: 'explore' },
   { label: 'explore.trending', path: '/api/feed/explore?offset=0&limit={limit}&sort=trending', shape: 'explore' },
@@ -48,6 +49,10 @@ const maxLatestPublicPostAgeDays = readPositiveInt(
   args.maxLatestPublicPostAgeDays,
   DEFAULT_MAX_LATEST_PUBLIC_POST_AGE_DAYS,
 );
+const maxFeedRpcFallbacks = readNonNegativeInt(
+  args.maxFeedRpcFallbacks,
+  DEFAULT_MAX_FEED_RPC_FALLBACKS,
+);
 const failures = [];
 const warnings = [];
 const checkedFeeds = [];
@@ -75,7 +80,7 @@ if (checkedFeeds.length > 0) {
   console.log('');
   console.log('Feed Endpoints:');
   for (const item of checkedFeeds) {
-    console.log(`  - ${item.label}: ${item.status}, posts=${item.posts}, cache=${item.cache || '(missing)'}`);
+    console.log(`  - ${item.label}: ${item.status}, posts=${item.posts}, source=${item.source || '(missing)'}, cache=${item.cache || '(missing)'}`);
   }
 }
 
@@ -191,8 +196,12 @@ function evaluateSnapshot(data) {
 }
 
 async function checkFeedEndpoints() {
+  let fallbackCount = 0;
+
   for (const target of FEED_TARGETS) {
-    const url = withBudgetBust(`${siteUrl}${target.path.replace('{limit}', String(feedLimit))}`);
+    const url = withBudgetBust(`${siteUrl}${target.path.replace('{limit}', String(feedLimit))}`, {
+      diagnostics: '1',
+    });
     const response = await fetchWithTimeout(url, {
       headers: { accept: 'application/json', 'user-agent': 'SerloPushFeedHealth/1.0' },
     });
@@ -222,12 +231,26 @@ async function checkFeedEndpoints() {
       failures.push(`[feed:${target.label}] One or more posts are missing ids.`);
     }
 
+    const source = response.headers.get('x-feed-data-source') || 'missing';
+    if (source === 'postgrest-fallback') fallbackCount += 1;
+    if (source === 'missing' || source === 'unknown') {
+      warnings.push(`[feed:${target.label}] Missing feed data-source diagnostics header. Deploy the diagnostics-enabled app to enforce fallback counts.`);
+    }
+    if (source === 'error-empty') {
+      failures.push(`[feed:${target.label}] Feed loader returned error-empty source.`);
+    }
+
     checkedFeeds.push({
       label: target.label,
       status: response.status,
       posts: posts.length,
       cache: response.headers.get('cache-control') || '',
+      source,
     });
+  }
+
+  if (fallbackCount > maxFeedRpcFallbacks) {
+    failures.push(`[feed] RPC fallback count ${fallbackCount} > ${maxFeedRpcFallbacks}.`);
   }
 }
 
@@ -299,8 +322,11 @@ function normalizeBase(value) {
   return String(value || '').replace(/\/+$/, '');
 }
 
-function withBudgetBust(url) {
+function withBudgetBust(url, params = {}) {
   const parsed = new URL(url);
+  for (const [key, value] of Object.entries(params)) {
+    parsed.searchParams.set(key, String(value));
+  }
   parsed.searchParams.set('health_bust', String(Date.now()));
   return parsed.toString();
 }
@@ -346,6 +372,7 @@ Options:
   --max-stale-web-subs <n>            Web push subscriptions older than 60d allowed (default ${DEFAULT_MAX_STALE_WEB_SUBS})
   --max-video-without-thumbnail <n>   Public video posts without thumbnail allowed (default ${DEFAULT_MAX_VIDEO_WITHOUT_THUMBNAIL})
   --max-latest-public-post-age-days <n> Warn when latest public post is older than this (default ${DEFAULT_MAX_LATEST_PUBLIC_POST_AGE_DAYS})
+  --max-feed-rpc-fallbacks <n>        Feed endpoint PostgREST fallbacks allowed (default ${DEFAULT_MAX_FEED_RPC_FALLBACKS})
   --skip-feed-endpoints               Only check the Supabase snapshot
 `);
 }

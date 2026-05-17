@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
-import { getForYouFeed, getPublicForYouFeed } from '@/lib/data/feed';
+import {
+  getFeedDataSource,
+  getForYouFeed,
+  getPublicForYouFeed,
+  getPublicForYouFeedDiagnostics,
+} from '@/lib/data/feed';
 import {
   hasSupabaseAuthCookie,
   privateNoStoreHeaders,
@@ -19,6 +24,7 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const limit = Number(url.searchParams.get('limit') ?? 10);
   const before = url.searchParams.get('before') ?? undefined;
+  const diagnostics = url.searchParams.get('diagnostics') === '1';
   const isAuthed = hasSupabaseAuthCookie(request);
   const headers = isAuthed
     ? privateNoStoreHeaders()
@@ -27,8 +33,15 @@ export async function GET(request: Request) {
   try {
     const posts = isAuthed
       ? await getForYouFeed({ limit, before })
-      : await getPublicForYouFeed({ limit, before });
-    return NextResponse.json(posts, { headers });
+      : diagnostics
+        ? await getPublicForYouFeedDiagnostics({ limit, before })
+        : await getPublicForYouFeed({ limit, before });
+    return NextResponse.json(posts, {
+      headers: {
+        ...headers,
+        ...(diagnostics ? { 'X-Feed-Data-Source': getFeedDataSource(posts) ?? 'unknown' } : {}),
+      },
+    });
   } catch {
     return NextResponse.json([], { status: 200, headers });
   }

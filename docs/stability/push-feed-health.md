@@ -34,13 +34,22 @@ The same guard checks:
 - age of the latest public post
 - `/api/feed/explore` for `forYou`, `trending`, and `newest`
 - `/api/feed/foryou`
+- app-code feed data source via `X-Feed-Data-Source`
+- Feed RPC fallback count, defaulting to zero tolerated fallbacks
 
 Feed endpoints must return at least three posts by default. This catches the
 failure mode where an API catch block returns an empty array with HTTP 200.
+They are checked with `diagnostics=1`, which bypasses public-feed caches and
+requires the loader to report `rpc`, `postgrest-fallback`, or `error-empty`.
+During rollout, a missing diagnostics header is a warning. Once the app deploy
+contains the header, `postgrest-fallback` is counted and compared with
+`--max-feed-rpc-fallbacks`.
 
 ## Response Rules
 
 - Empty public feeds block deploys and broad feature work.
+- Any unexpected Feed RPC fallback blocks deploys until the RPC path is restored
+  or the fallback allowance is explicitly raised for a controlled incident.
 - Public videos without thumbnails block media-heavy launches.
 - Stale push token spikes require cleanup or token lifecycle fixes.
 - Web push subscriptions with a missing DM trigger block Web Push rollout.
