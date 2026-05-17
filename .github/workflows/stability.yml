@@ -76,6 +76,26 @@ jobs:
       - name: Check Explore media budget
         run: node scripts/check-media-budget.mjs
 
+  backend-integrity:
+    name: backend integrity (production)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
+      - name: Check queue, cron, functions and media integrity
+        run: npm run monitor:integrity
+
   authenticated-interactions:
     name: authenticated interactions (production)
     runs-on: ubuntu-latest

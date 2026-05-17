@@ -17,6 +17,7 @@
     "images:thumbnails:backfill": "node ../../scripts/backfill-image-thumbnails.mjs",
     "stability:web": "node ../../scripts/web-stability-suite.mjs",
     "monitor:prod": "node ../../scripts/check-production-monitoring.mjs",
+    "monitor:integrity": "node ../../scripts/check-production-integrity.mjs",
     "stability:api-contracts": "node ../../scripts/check-api-contracts.mjs",
     "stability:auth": "node ../../scripts/check-auth-interactions.mjs",
     "stability:live-contracts": "node ../../scripts/check-live-contracts.mjs",

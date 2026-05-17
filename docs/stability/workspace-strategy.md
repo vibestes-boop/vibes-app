@@ -29,6 +29,7 @@ an explicit consolidation plan.
 cd /Users/zaurhatuev/vibes-app
 npm run workspace:doctor
 npm run stability:native-backend
+npm run monitor:integrity
 ```
 
 ## Current Source Of Truth
@@ -51,4 +52,5 @@ Consolidation is possible, but it should be a planned migration:
 3. Decide whether the target is one monorepo or two repositories.
 4. Move only one ownership slice at a time.
 5. Keep `workspace:doctor`, `stability:native-backend`,
-   `stability:api-contracts`, and `monitor:prod` green after each slice.
+   `stability:api-contracts`, `monitor:prod`, and `monitor:integrity` green
+   after each slice.

@@ -15,7 +15,7 @@ Disziplin abhaengt.
 | 2 | App und Web laufen auseinander | Posts/Uploads/Login funktionieren auf iOS, aber nicht im Web oder umgekehrt | Zwei lokale Projektpfade, Schema-Drift zwischen Mobile-DB und Web-Contract | Gemeinsame Contract-Tests fuer Feed/Post/Upload |
 | 3 | Env/Secrets bleiben fragil | Deploy ist gruen, aber Upload/Auth/R2 brechen in Prod | Mehrere `.env`-Dateien, fehlende R2/Supabase-Werte, manuelle Setup-Schritte | `npm run env:doctor -- --no-fail` lokal und in Release-Checkliste |
 | 4 | RLS/DB-Drift bleibt unsichtbar | APIs liefern leere Listen statt echte Fehler, Nutzer sehen "keine Posts" | Catch-Bloecke mit leeren Ergebnissen, RPC/Table-Drift | Kritische API-Errors loggen und bei Smoke-Tests sichtbar machen |
-| 5 | Observability fehlt | Nutzer melden Bugs per Screenshot, Ursache bleibt unklar | Sentry/PostHog optional oder leer | Sentry fuer Web+Native aktivieren, Upload/Feed/Login Fehlerquoten tracken |
+| 5 | Observability fehlt | Nutzer melden Bugs per Screenshot, Ursache bleibt unklar | Sentry/PostHog optional oder leer, Queue/Cron/Media-Zustand nur manuell sichtbar | `npm run monitor:integrity` prueft Queue, Cron, R2-Functions und kaputte Medienreferenzen |
 | 6 | Feature-Breite ueberholt Stabilitaet | Live, Shop, AI, Coins, Guilds, Feed wirken unfertig | Viele Produktflaechen, wenige automatische End-to-End-Checks | Stabilitaetsfenster: Speed, Upload, Auth, Feed vor neuen Grossfeatures |
 | 7 | Backups werden nicht restauriert getestet | Datenverlust oder kaputte Migration wird erst im Ernstfall entdeckt | Backup wird erwaehnt, Restore nicht geprobt | Monatlicher Restore-Test fuer Supabase + R2-Stichprobe |
 | 8 | Kosten/Bandbreite laufen weg | R2/egress/compute steigen schneller als Nutzung | Grosse Originalbilder und Video-Previews im Grid | Medienbudget, Cache-Control, Thumbnail-Backfills, Upload-Kompression |
@@ -99,6 +99,8 @@ regelmaessig erfuellt sind:
 - Native typecheck, lint und tests sind gruen.
 - Production-Smoke nach Deploy prueft `/`, `/explore`, Feed-API und Upload-Signatur.
 - Auth-Smoke loggt einen Testaccount ein, schreibt Kommentar/Like/Bookmark und raeumt danach auf.
+- Backend-Integrity-Monitor ist gruen: keine failed R2-Queue-Rows, `r2-delete-queue`
+  ist aktiv, R2-Functions antworten, aktuelle Medienreferenzen sind erreichbar.
 
 ## Naechste technische Guardrails
 
@@ -109,6 +111,8 @@ regelmaessig erfuellt sind:
 5. Auth-Interaction-Smoke nachts gegen Production mit Testaccount laufen lassen.
 6. Release-Checkliste fuer Vercel, Supabase, R2 und GitHub.
 7. Restore-Test dokumentieren und monatlich ausfuehren.
+8. Backend-Integrity-Monitor als Pflicht-Gate fuer Queue, Cron, Functions und
+   Medienreferenzen laufen lassen.
 
 ## Entscheidung
 
