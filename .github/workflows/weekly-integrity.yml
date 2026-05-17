@@ -35,6 +35,9 @@ jobs:
       RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
       HEALTH_ALERT_EMAIL_TO: ${{ secrets.HEALTH_ALERT_EMAIL_TO }}
       HEALTH_ALERT_EMAIL_FROM: ${{ secrets.HEALTH_ALERT_EMAIL_FROM }}
+      PROVIDER_COSTS_JSON: ${{ secrets.PROVIDER_COSTS_JSON }}
+      PROVIDER_COSTS_FILE: ${{ secrets.PROVIDER_COSTS_FILE }}
+      PROVIDER_BILLING_DIR: ${{ secrets.PROVIDER_BILLING_DIR }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -53,6 +56,10 @@ jobs:
         id: product
         continue-on-error: true
         run: npm run product:health
+
+      - name: Normalize provider billing exports
+        if: ${{ env.PROVIDER_BILLING_DIR != '' }}
+        run: npm run cost:collect-providers -- --dir "$PROVIDER_BILLING_DIR" --github-env >> "$GITHUB_ENV"
 
       - name: Check weekly cost health
         id: cost

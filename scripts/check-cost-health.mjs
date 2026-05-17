@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readProviderCosts } from './lib/provider-costs.mjs';
 
 const DEFAULT_TIMEOUT_MS = 8000;
 const DEFAULT_WARN_RATIO = 0.7;
@@ -38,10 +39,10 @@ const timeoutMs = readPositiveInt(args.timeoutMs, DEFAULT_TIMEOUT_MS);
 const warnRatio = readRatio(args.warnRatio, DEFAULT_WARN_RATIO);
 const failRatio = readRatio(args.failRatio, DEFAULT_FAIL_RATIO);
 const budgets = readBudgets();
-const providerCosts = readProviderCosts();
 const criticals = [];
 const failures = [];
 const warnings = [];
+const providerCosts = readProviderCosts({ repoRoot, args, env: process.env, failures, warnings });
 
 console.log('Cost health check');
 console.log('No secret values are printed.');
@@ -188,7 +189,7 @@ function evaluateBudgets(data) {
 
 function evaluateProviderCosts(providerCosts) {
   if (!providerCosts.available) {
-    warnings.push('[provider-costs] No actual provider cost input found. Set PROVIDER_COSTS_JSON or PROVIDER_COSTS_FILE after wiring billing exports.');
+    warnings.push('[provider-costs] No actual provider cost input found. Set PROVIDER_COSTS_JSON, PROVIDER_COSTS_FILE, or PROVIDER_BILLING_DIR after wiring billing exports.');
     return;
   }
 
@@ -233,49 +234,6 @@ function readBudgets() {
     edgeDbEventsBudget: readPositiveInt(args.edgeDbEventsBudget || process.env.COST_EDGE_DB_EVENTS_BUDGET, DEFAULTS.edgeDbEventsBudget),
     costPerMauBudgetCents: readPositiveInt(args.costPerMauBudgetCents || process.env.COST_PER_MAU_BUDGET_CENTS, DEFAULTS.costPerMauBudgetCents),
   };
-}
-
-function readProviderCosts() {
-  const raw = args.providerCostsJson || process.env.PROVIDER_COSTS_JSON || readProviderCostsFile();
-  if (!raw) return { available: false, total_cents: 0 };
-
-  try {
-    const parsed = JSON.parse(raw);
-    const costs = {
-      available: true,
-      generated_at: parsed.generated_at || null,
-      source: parsed.source || 'provider-costs-input',
-      cloudflare_r2_cents: readNonNegativeNumber(parsed.cloudflare_r2_cents),
-      supabase_cents: readNonNegativeNumber(parsed.supabase_cents),
-      vercel_cents: readNonNegativeNumber(parsed.vercel_cents),
-      livekit_cents: readNonNegativeNumber(parsed.livekit_cents),
-      ai_cents: readNonNegativeNumber(parsed.ai_cents),
-      other_cents: readNonNegativeNumber(parsed.other_cents),
-    };
-    costs.total_cents =
-      readOptionalNonNegativeNumber(parsed.total_cents) ??
-      costs.cloudflare_r2_cents +
-        costs.supabase_cents +
-        costs.vercel_cents +
-        costs.livekit_cents +
-        costs.ai_cents +
-        costs.other_cents;
-    return costs;
-  } catch (error) {
-    failures.push(`[provider-costs] PROVIDER_COSTS_JSON is invalid JSON: ${error.message}`);
-    return { available: false, total_cents: 0 };
-  }
-}
-
-function readProviderCostsFile() {
-  const file = args.providerCostsFile || process.env.PROVIDER_COSTS_FILE;
-  if (!file) return '';
-  const absolute = path.isAbsolute(file) ? file : path.join(repoRoot, file);
-  if (!fs.existsSync(absolute)) {
-    failures.push(`[provider-costs] PROVIDER_COSTS_FILE does not exist: ${file}`);
-    return '';
-  }
-  return fs.readFileSync(absolute, 'utf8');
 }
 
 function printProviderCosts(providerCosts) {
@@ -370,16 +328,6 @@ function readPositiveInt(value, fallback) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-function readNonNegativeNumber(value) {
-  return readOptionalNonNegativeNumber(value) ?? 0;
-}
-
-function readOptionalNonNegativeNumber(value) {
-  if (value === undefined || value === null || value === '') return null;
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed >= 0 ? parsed : Number.NaN;
-}
-
 function readRatio(value, fallback) {
   const parsed = Number.parseFloat(String(value ?? ''));
   return Number.isFinite(parsed) && parsed > 0 && parsed <= 1 ? parsed : fallback;
@@ -420,5 +368,6 @@ Budget options:
   --fail-ratio <n>                  Failure ratio 0-1 (default ${DEFAULT_FAIL_RATIO})
   --provider-costs-json <json>      Actual provider costs JSON input
   --provider-costs-file <path>      Path to actual provider costs JSON input
+  --provider-billing-dir <path>     Directory with provider JSON/CSV billing exports
 `);
 }

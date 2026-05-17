@@ -19,8 +19,8 @@ npm run cost:health
 - live session minutes and recording minutes
 - R2 cleanup queue rows and errors
 - DB activity proxy: posts, comments, likes, bookmarks, follows, post views
-- optional actual provider costs from `PROVIDER_COSTS_JSON` or
-  `PROVIDER_COSTS_FILE`
+- optional actual provider costs from `PROVIDER_COSTS_JSON`,
+  `PROVIDER_COSTS_FILE`, or `PROVIDER_BILLING_DIR`
 
 ## Budgets
 
@@ -45,9 +45,10 @@ npm run cost:health -- --ai-budget-cents 2500 --r2-objects-budget 20000
 
 ## Actual Provider Cost Input
 
-Provider billing APIs can feed exact monthly spend into `npm run cost:health`
-with `PROVIDER_COSTS_JSON` or `PROVIDER_COSTS_FILE`. This keeps the guard stable
-even when providers expose billing through different API jobs or exports.
+Provider billing APIs or scheduled exports can feed exact monthly spend into
+`npm run cost:health` with `PROVIDER_COSTS_JSON`, `PROVIDER_COSTS_FILE`, or
+`PROVIDER_BILLING_DIR`. This keeps the guard stable even when providers expose
+billing through different API jobs or exports.
 
 Expected shape:
 
@@ -67,6 +68,18 @@ Expected shape:
 If `total_cents` is omitted, the guard sums all provider fields. The combined
 actual provider spend is checked against `COST_PROVIDER_BUDGET_CENTS` with the
 same 70% warning, 90% failure, and 100% critical thresholds.
+
+For provider-specific JSON/CSV exports, place files in one directory and run:
+
+```bash
+npm run cost:collect-providers -- --dir ./billing-exports
+PROVIDER_BILLING_DIR=./billing-exports npm run cost:health
+```
+
+The collector infers the provider from the filename or row fields:
+Cloudflare/R2, Supabase, Vercel, LiveKit, OpenAI/AI, and `other`. It recognizes
+common money columns such as `total_cents`, `amount_cents`, `cost_cents`,
+`total`, `amount`, `cost`, `usage_cost`, and `invoice_total`.
 
 ## Feature Rule
 
@@ -109,8 +122,7 @@ Re-enable only after the rollback owner has documented the budget impact and
 The current guard should be upgraded with direct provider billing reads when
 those APIs are available in CI secrets:
 
-- Cloudflare R2 storage, class A/B operations, and egress
-- Supabase database, Edge Function, and storage usage
-- Vercel traffic and function duration
-- LiveKit participant minutes, egress, and recording storage
-- AI provider spend by feature
+- Add CI jobs that download Cloudflare R2, Supabase, Vercel, LiveKit, and AI
+  billing exports into `PROVIDER_BILLING_DIR`
+- Keep provider API tokens out of logs; only normalized cents reach
+  `npm run cost:health`

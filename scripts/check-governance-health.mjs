@@ -77,8 +77,11 @@ validateTextFile('docs/stability/cost-controls.md', [
   'live_recording_enabled',
   '100%',
   'PROVIDER_COSTS_JSON',
+  'PROVIDER_BILLING_DIR',
   'COST_PROVIDER_BUDGET_CENTS',
 ]);
+validateTextFile('scripts/collect-provider-costs.mjs', ['--dir', 'PROVIDER_COSTS_JSON', 'readProviderBillingDir']);
+validateTextFile('scripts/lib/provider-costs.mjs', ['PROVIDER_BILLING_DIR', 'cloudflare_r2_cents', 'livekit_cents']);
 validateTextFile('docs/stability/trust-safety.md', ['SLA', 'admin_audit_log', 'content_reports', '/admin/reports', 'copyright', 'nsfw']);
 validateTextFile('apps/web/lib/moderation/report-reasons.ts', ['POST_REPORT_REASONS', 'copyright', 'nsfw']);
 validateTextFile('apps/web/lib/feature-flags/server.ts', [
