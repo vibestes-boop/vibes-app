@@ -26,6 +26,7 @@ Disziplin abhaengt.
 | 13 | Ownership bleibt implizit | Jeder sieht rote Signale, aber niemand ist eindeutig verantwortlich | Guards existieren, aber ohne Owner, Review-Rhythmus und Feature-Intake | `npm run governance:health`, Owner-Matrix, Weekly Review, Feature Intake |
 | 14 | Alerts bleiben nur rote CI-Runs | Checks schlagen fehl, aber niemand arbeitet die Ursache ab | Keine Issue-/Owner-Eskalation bei Guard-Fehlschlag | `stability-alert` GitHub Issue aus dem Weekly Workflow |
 | 15 | Push/Feed-Gesundheit bleibt blind | Feeds liefern 200 mit leerem Payload oder Push-Dispatch ist still kaputt | Feed-Catches maskieren Fehler, Push-Trigger/Subscriptions werden nicht aggregiert | `npm run push-feed:health` gegen DB-Snapshot und Public Feed APIs |
+| 16 | Niemand sieht das Gesamtsystem | Einzelchecks sind gruen, aber Trends und gelbe Risiken werden nicht gemeinsam betrachtet | Kein Ampel-Board fuer Weekly Review | `npm run health:dashboard` als Status-Board |
 
 ## Timeline des hypothetischen Scheiterns
 
@@ -121,6 +122,8 @@ regelmaessig erfuellt sind:
   und Freeze-Regeln.
 - Push/Feed-Health-Report liegt woechentlich vor: Push-Token/Subscriptions,
   Notifications, Trigger, Feed-Endpunkte und leere Feed-Antworten.
+- Health-Dashboard liegt woechentlich vor: alle Health-Snapshots werden als
+  Green/Yellow/Red Status-Board zusammengefasst.
 
 ## Naechste technische Guardrails
 

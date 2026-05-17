@@ -14,6 +14,7 @@ npm run cost:health
 npm run moderation:health
 npm run governance:health
 npm run push-feed:health
+npm run health:dashboard
 ```
 
 ## Status Board
@@ -59,6 +60,7 @@ Every weekly review records:
 
 - check outputs or links to the workflow run
 - open `stability-alert` GitHub issues
+- health dashboard status board
 - push/feed health status
 - Keep / Improve / Kill decisions
 - frozen areas and unblock owner

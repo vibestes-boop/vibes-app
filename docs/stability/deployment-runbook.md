@@ -102,6 +102,7 @@ npm run cost:health
 npm run moderation:health
 npm run governance:health
 npm run push-feed:health
+npm run health:dashboard
 ```
 
 It checks the production DB snapshot, queue age, failed queue rows, required
@@ -138,6 +139,9 @@ intake requirements, and whether the weekly workflow runs every health layer.
 Push-feed-health covers notification/push plumbing and public feed endpoint
 emptiness/error masking. The operating rules live in
 `docs/stability/push-feed-health.md`.
+
+Health-dashboard summarizes all health snapshots as a traffic-light status
+board for the weekly review.
 
 Weekly alerting opens or updates a GitHub issue labeled `stability-alert` when
 any weekly health guard fails. Alert response rules live in
