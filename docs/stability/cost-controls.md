@@ -9,6 +9,7 @@ Run:
 
 ```bash
 npm run cost:health
+npm run cost:billing-secrets
 ```
 
 ## Current Signals
@@ -108,6 +109,11 @@ Each shorthand supports matching `*_BEARER_TOKEN`, `*_API_KEY`, `*_ACCOUNT_ID`,
 `*_METHOD`, `*_BODY`, and `*_FORMAT`. The weekly workflow downloads configured
 exports, writes only JSON/CSV files to `PROVIDER_BILLING_DIR`, then runs
 `npm run cost:health`.
+
+`npm run cost:billing-secrets` fails when no actual provider billing source is
+configured. The weekly workflow runs it before `cost:health`, so missing
+provider URL/token secrets create the same `stability-alert` issue as other
+red guards.
 
 ## Feature Rule
 

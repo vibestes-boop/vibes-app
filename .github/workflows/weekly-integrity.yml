@@ -68,6 +68,11 @@ jobs:
         continue-on-error: true
         run: npm run product:health
 
+      - name: Check provider billing secret configuration
+        id: provider_billing_secrets
+        continue-on-error: true
+        run: npm run cost:billing-secrets
+
       - name: Fetch provider billing exports
         if: ${{ env.PROVIDER_BILLING_SOURCES_JSON != '' || env.CLOUDFLARE_BILLING_URL != '' || env.SUPABASE_BILLING_URL != '' || env.VERCEL_BILLING_URL != '' || env.LIVEKIT_BILLING_URL != '' || env.AI_BILLING_URL != '' }}
         run: npm run cost:fetch-providers -- --github-env >> "$GITHUB_ENV"
@@ -110,6 +115,7 @@ jobs:
         if: |
           steps.integrity.outcome == 'failure' ||
           steps.product.outcome == 'failure' ||
+          steps.provider_billing_secrets.outcome == 'failure' ||
           steps.cost.outcome == 'failure' ||
           steps.moderation.outcome == 'failure' ||
           steps.governance.outcome == 'failure' ||
@@ -124,6 +130,7 @@ jobs:
             const outcomes = {
               integrity: '${{ steps.integrity.outcome }}',
               product: '${{ steps.product.outcome }}',
+              provider_billing_secrets: '${{ steps.provider_billing_secrets.outcome }}',
               cost: '${{ steps.cost.outcome }}',
               moderation: '${{ steps.moderation.outcome }}',
               governance: '${{ steps.governance.outcome }}',
@@ -198,6 +205,7 @@ jobs:
           (
             steps.integrity.outcome == 'failure' ||
             steps.product.outcome == 'failure' ||
+            steps.provider_billing_secrets.outcome == 'failure' ||
             steps.cost.outcome == 'failure' ||
             steps.moderation.outcome == 'failure' ||
             steps.governance.outcome == 'failure' ||
@@ -211,6 +219,7 @@ jobs:
             const outcomes = {
               integrity: '${{ steps.integrity.outcome }}',
               product: '${{ steps.product.outcome }}',
+              provider_billing_secrets: '${{ steps.provider_billing_secrets.outcome }}',
               cost: '${{ steps.cost.outcome }}',
               moderation: '${{ steps.moderation.outcome }}',
               governance: '${{ steps.governance.outcome }}',
@@ -247,6 +256,7 @@ jobs:
           (
             steps.integrity.outcome == 'failure' ||
             steps.product.outcome == 'failure' ||
+            steps.provider_billing_secrets.outcome == 'failure' ||
             steps.cost.outcome == 'failure' ||
             steps.moderation.outcome == 'failure' ||
             steps.governance.outcome == 'failure' ||
@@ -260,6 +270,7 @@ jobs:
             const outcomes = {
               integrity: '${{ steps.integrity.outcome }}',
               product: '${{ steps.product.outcome }}',
+              provider_billing_secrets: '${{ steps.provider_billing_secrets.outcome }}',
               cost: '${{ steps.cost.outcome }}',
               moderation: '${{ steps.moderation.outcome }}',
               governance: '${{ steps.governance.outcome }}',
@@ -309,6 +320,7 @@ jobs:
         if: |
           steps.integrity.outcome == 'failure' ||
           steps.product.outcome == 'failure' ||
+          steps.provider_billing_secrets.outcome == 'failure' ||
           steps.cost.outcome == 'failure' ||
           steps.moderation.outcome == 'failure' ||
           steps.governance.outcome == 'failure' ||

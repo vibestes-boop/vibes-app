@@ -22,6 +22,7 @@
     "integrity:weekly": "npm run monitor:integrity && node scripts/check-r2-orphan-media.mjs",
     "product:health": "node scripts/check-product-health.mjs",
     "cost:health": "node scripts/check-cost-health.mjs",
+    "cost:billing-secrets": "node scripts/check-provider-billing-secrets.mjs",
     "cost:fetch-providers": "node scripts/fetch-provider-billing.mjs",
     "cost:collect-providers": "node scripts/collect-provider-costs.mjs",
     "moderation:health": "node scripts/check-moderation-health.mjs",
