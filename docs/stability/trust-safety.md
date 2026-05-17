@@ -55,6 +55,15 @@ Operational review happens in `/admin/reports`. The page shows the canonical
 report count, recent audit activity, and direct links to actionable targets
 where possible.
 
+Direct enforcement actions go through `admin_enforce_content_report`, which:
+
+- verifies `profiles.is_admin`
+- removes reported posts through the canonical post delete path, including R2
+  cleanup queue trigger
+- bans reported profiles through `profiles.is_banned`
+- marks the report as `actioned`
+- writes an `admin_audit_log` entry
+
 Status meaning:
 
 - `reviewed`: checked, no user-visible enforcement needed

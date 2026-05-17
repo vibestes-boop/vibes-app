@@ -220,6 +220,28 @@ export async function adminResolveReport(
   return { ok: true };
 }
 
+export async function adminEnforceReport(
+  reportId: string,
+  action: 'remove_post' | 'ban_profile',
+  adminNote?: string,
+): Promise<ActionResult> {
+  const { supabase, error: authErr } = await requireAdmin();
+  if (authErr) return { ok: false, error: authErr };
+
+  const { data, error } = await supabase.rpc('admin_enforce_content_report', {
+    p_report_id: reportId,
+    p_action: action,
+    p_admin_note: adminNote ?? null,
+  });
+  if (error) return { ok: false, error: error.message };
+  if ((data as { error?: string } | null)?.error) return { ok: false, error: (data as { error: string }).error };
+  revalidatePath('/admin/reports');
+  revalidatePath('/admin/users');
+  revalidatePath('/');
+  revalidatePath('/following');
+  return { ok: true };
+}
+
 // ─── Seller balances ──────────────────────────────────────────────────────────
 
 export async function getSellerBalances(): Promise<SellerBalance[]> {

@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
-  getAdminReports, adminResolveReport,
+  getAdminReports, adminResolveReport, adminEnforceReport,
   type ContentReport,
   type ModerationHealth,
 } from '@/app/actions/admin';
@@ -96,6 +96,24 @@ export function AdminReportsClient({
     }
   }
 
+  async function handleEnforce(
+    report: ContentReport,
+    action: 'remove_post' | 'ban_profile',
+    note: string,
+  ) {
+    setActionId(report.id);
+    const result = await adminEnforceReport(report.id, action, note || undefined);
+    setActionId(null);
+
+    if (result.ok) {
+      setReports((prev) => prev.filter((r) => r.id !== report.id));
+      setExpandedId(null);
+      showToast(action === 'remove_post' ? 'Post entfernt und Report aktioniert' : 'Profil gesperrt und Report aktioniert', true);
+    } else {
+      showToast(`Fehler: ${result.error}`, false);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <ModerationHealthPanel health={health} />
@@ -148,6 +166,7 @@ export function AdminReportsClient({
                   setExpandedId((prev) => (prev === report.id ? null : report.id))
                 }
                 onResolve={(status, note) => handleResolve(report, status, note)}
+                onEnforce={(action, note) => handleEnforce(report, action, note)}
                 showActions={activeTab === 'pending'}
               />
             ))}
@@ -248,6 +267,7 @@ function ReportRow({
   expanded,
   onToggle,
   onResolve,
+  onEnforce,
   showActions,
 }: {
   report: ContentReport;
@@ -255,6 +275,7 @@ function ReportRow({
   expanded: boolean;
   onToggle: () => void;
   onResolve: (status: 'reviewed' | 'actioned' | 'dismissed', note: string) => void;
+  onEnforce: (action: 'remove_post' | 'ban_profile', note: string) => void;
   showActions: boolean;
 }) {
   const [note, setNote] = useState('');
@@ -361,6 +382,28 @@ function ReportRow({
             className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
           />
           <div className="flex gap-2">
+            {report.target_type === 'post' && (
+              <button
+                type="button"
+                onClick={() => onEnforce('remove_post', note)}
+                disabled={loading}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-100 disabled:opacity-50 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-400"
+              >
+                <XCircle className="h-3.5 w-3.5" />
+                Post entfernen
+              </button>
+            )}
+            {report.target_type === 'profile' && (
+              <button
+                type="button"
+                onClick={() => onEnforce('ban_profile', note)}
+                disabled={loading}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-100 disabled:opacity-50 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-400"
+              >
+                <XCircle className="h-3.5 w-3.5" />
+                Profil sperren
+              </button>
+            )}
             <button
               type="button"
               onClick={() => onResolve('actioned', note)}

@@ -62,6 +62,12 @@ validateTextFile('apps/web/app/admin/reports/admin-reports-client.tsx', [
   'ModerationHealthPanel',
   'Moderation-Health',
   'SLA',
+  'adminEnforceReport',
+]);
+validateTextFile('supabase/migrations/20260517214000_admin_enforcement_actions.sql', [
+  'admin_enforce_content_report',
+  'admin_audit_log',
+  'r2_delete_queue',
 ]);
 validateTextFile('scripts/check-feature-freeze.mjs', ['Feature freeze guard', 'north-star-zero-weeks']);
 validateTextFile('.github/ISSUE_TEMPLATE/feature_request.yml', [
