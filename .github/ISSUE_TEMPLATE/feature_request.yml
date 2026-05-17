@@ -1,0 +1,75 @@
+name: Feature request
+description: Propose a feature only after the operating risks are explicit.
+title: "[Feature]: "
+labels: ["feature-intake"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this before implementation starts. If any answer is unknown, the feature is not ready for rollout.
+  - type: input
+    id: owner
+    attributes:
+      label: Owner
+      description: Who is accountable for the feature decision, rollout, monitoring, and rollback?
+      placeholder: "Zaur / Founder"
+    validations:
+      required: true
+  - type: textarea
+    id: user_value
+    attributes:
+      label: Expected user value
+      description: What user problem does this solve?
+      placeholder: "Creators can..."
+    validations:
+      required: true
+  - type: textarea
+    id: target_metric
+    attributes:
+      label: Target metric
+      description: Which product metric should move, and what is the baseline?
+      placeholder: "North Star, creator activation, D7 retention, comments per post..."
+    validations:
+      required: true
+  - type: textarea
+    id: risks
+    attributes:
+      label: Risks
+      description: Cover cost, trust/safety, data lifecycle, web/mobile parity, and performance.
+      placeholder: |
+        Cost risk:
+        Trust or safety risk:
+        Data lifecycle risk:
+        Web/Mobile parity risk:
+        Performance risk:
+    validations:
+      required: true
+  - type: textarea
+    id: rollout
+    attributes:
+      label: Rollout and rollback
+      description: Include feature flag, rollout cohort, rollback plan, migrations, Edge Functions, and secrets.
+      placeholder: |
+        Feature flag:
+        Rollout cohort:
+        Rollback plan:
+        Migration required:
+        Edge Functions required:
+        Secrets required:
+    validations:
+      required: true
+  - type: textarea
+    id: monitoring
+    attributes:
+      label: Monitoring and freeze check
+      description: Name the dashboard/command, alert, success threshold, failure threshold, review date, and feature freeze result.
+      placeholder: |
+        Monitoring signal:
+        Dashboard or command:
+        Alert:
+        Feature freeze result:
+        Success threshold:
+        Failure threshold:
+        Review date:
+    validations:
+      required: true

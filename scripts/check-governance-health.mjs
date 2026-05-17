@@ -58,6 +58,19 @@ validateTextFile('docs/stability/product-metrics.md', ['Keep', 'Improve', 'Kill'
 validateTextFile('docs/stability/cost-controls.md', ['feature flag', 'monthly budget', 'rollback owner']);
 validateTextFile('docs/stability/trust-safety.md', ['SLA', 'admin_audit_log', 'content_reports']);
 validateTextFile('scripts/check-feature-freeze.mjs', ['Feature freeze guard', 'north-star-zero-weeks']);
+validateTextFile('.github/ISSUE_TEMPLATE/feature_request.yml', [
+  'Feature request',
+  'Owner',
+  'Expected user value',
+  'Target metric',
+  'Feature freeze result',
+]);
+validateTextFile('.github/pull_request_template.md', [
+  'Feature Governance',
+  'npm run governance:health',
+  'npm run feature:freeze',
+  'Feature freeze result',
+]);
 validateWorkflow();
 
 if (warnings.length > 0) {

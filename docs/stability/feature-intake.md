@@ -1,7 +1,9 @@
 # Feature Intake
 
 Use this for every new feature before implementation starts. If an answer is
-unknown, the feature is not ready for rollout.
+unknown, the feature is not ready for rollout. GitHub feature requests use the
+same fields in `.github/ISSUE_TEMPLATE/feature_request.yml`; pull requests use
+`.github/pull_request_template.md` to carry the decision into review.
 
 ## Proposal
 

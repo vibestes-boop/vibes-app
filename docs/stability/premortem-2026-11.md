@@ -28,6 +28,7 @@ Disziplin abhaengt.
 | 15 | Push/Feed-Gesundheit bleibt blind | Feeds liefern 200 mit leerem Payload oder Push-Dispatch ist still kaputt | Feed-Catches maskieren Fehler, Push-Trigger/Subscriptions werden nicht aggregiert | `npm run push-feed:health` gegen DB-Snapshot und Public Feed APIs |
 | 16 | Niemand sieht das Gesamtsystem | Einzelchecks sind gruen, aber Trends und gelbe Risiken werden nicht gemeinsam betrachtet | Kein Ampel-Board fuer Weekly Review | `npm run health:dashboard` als Status-Board |
 | 17 | Feature Freeze bleibt nur ein Meeting-Satz | Neue Features werden trotz roter Stabilitaets-, Kosten- oder Trust-Signale gelauncht | Keine CLI-Bremse fuer breiten Feature-Rollout | `npm run feature:freeze` |
+| 18 | Feature Intake wird umgangen | Features starten ohne Owner, Zielmetrik, Rollback oder Monitoring | GitHub Issues/PRs tragen die Governance-Felder nicht | Feature-Request- und PR-Templates plus `npm run governance:health` |
 
 ## Timeline des hypothetischen Scheiterns
 
@@ -127,6 +128,8 @@ regelmaessig erfuellt sind:
   Green/Yellow/Red Status-Board zusammengefasst.
 - Feature-Freeze Guard laeuft vor breiten Rollouts und blockiert bei roten
   Data-, Cost-, Moderation- oder Push/Feed-Signalen.
+- GitHub Feature Requests und Pull Requests enthalten die Feature-Intake-
+  Felder, damit Governance im normalen Arbeitsfluss sichtbar bleibt.
 
 ## Naechste technische Guardrails
 

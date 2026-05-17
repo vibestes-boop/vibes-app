@@ -72,6 +72,7 @@ Every weekly review records:
 
 ## Feature Intake
 
-New feature ideas use `docs/stability/feature-intake.md`. A feature is not
-eligible for build or rollout until it has an owner, target metric, user value,
-cost risk, rollback plan, and monitoring signal.
+New feature ideas use `docs/stability/feature-intake.md` or the GitHub feature
+request template. A feature is not eligible for build or rollout until it has
+an owner, target metric, user value, cost risk, rollback plan, monitoring
+signal, and feature-freeze result.
