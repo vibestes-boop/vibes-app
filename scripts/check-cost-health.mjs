@@ -8,6 +8,7 @@ const DEFAULT_FAIL_RATIO = 0.9;
 const DEFAULTS = {
   aiBudgetCents: 1000,
   trackedBudgetCents: 2500,
+  providerBudgetCents: 5000,
   liveMinutesBudget: 1000,
   recordingMinutesBudget: 300,
   mediaUploadsBudget: 1000,
@@ -37,6 +38,7 @@ const timeoutMs = readPositiveInt(args.timeoutMs, DEFAULT_TIMEOUT_MS);
 const warnRatio = readRatio(args.warnRatio, DEFAULT_WARN_RATIO);
 const failRatio = readRatio(args.failRatio, DEFAULT_FAIL_RATIO);
 const budgets = readBudgets();
+const providerCosts = readProviderCosts();
 const criticals = [];
 const failures = [];
 const warnings = [];
@@ -52,7 +54,9 @@ if (failures.length === 0) {
   snapshot = await fetchSnapshot();
   if (snapshot) {
     printSnapshot(snapshot);
+    printProviderCosts(providerCosts);
     evaluateBudgets(snapshot);
+    evaluateProviderCosts(providerCosts);
   }
 }
 
@@ -182,6 +186,22 @@ function evaluateBudgets(data) {
   }
 }
 
+function evaluateProviderCosts(providerCosts) {
+  if (!providerCosts.available) {
+    warnings.push('[provider-costs] No actual provider cost input found. Set PROVIDER_COSTS_JSON or PROVIDER_COSTS_FILE after wiring billing exports.');
+    return;
+  }
+
+  checkBudget('Actual provider cost', providerCosts.total_cents, budgets.providerBudgetCents, 'cents');
+
+  for (const provider of ['cloudflare_r2_cents', 'supabase_cents', 'vercel_cents', 'livekit_cents', 'ai_cents']) {
+    const value = Number(providerCosts[provider] || 0);
+    if (!Number.isFinite(value) || value < 0) {
+      failures.push(`[provider-costs] Invalid ${provider}: ${providerCosts[provider]}.`);
+    }
+  }
+}
+
 function checkBudget(label, rawActual, rawBudget, kind) {
   const actual = Number(rawActual || 0);
   const budget = Number(rawBudget || 0);
@@ -205,6 +225,7 @@ function readBudgets() {
   return {
     aiBudgetCents: readPositiveInt(args.aiBudgetCents || process.env.COST_AI_BUDGET_CENTS, DEFAULTS.aiBudgetCents),
     trackedBudgetCents: readPositiveInt(args.trackedBudgetCents || process.env.COST_TRACKED_BUDGET_CENTS, DEFAULTS.trackedBudgetCents),
+    providerBudgetCents: readPositiveInt(args.providerBudgetCents || process.env.COST_PROVIDER_BUDGET_CENTS, DEFAULTS.providerBudgetCents),
     liveMinutesBudget: readPositiveInt(args.liveMinutesBudget || process.env.COST_LIVE_MINUTES_BUDGET, DEFAULTS.liveMinutesBudget),
     recordingMinutesBudget: readPositiveInt(args.recordingMinutesBudget || process.env.COST_RECORDING_MINUTES_BUDGET, DEFAULTS.recordingMinutesBudget),
     mediaUploadsBudget: readPositiveInt(args.mediaUploadsBudget || process.env.COST_MEDIA_UPLOADS_BUDGET, DEFAULTS.mediaUploadsBudget),
@@ -212,6 +233,68 @@ function readBudgets() {
     edgeDbEventsBudget: readPositiveInt(args.edgeDbEventsBudget || process.env.COST_EDGE_DB_EVENTS_BUDGET, DEFAULTS.edgeDbEventsBudget),
     costPerMauBudgetCents: readPositiveInt(args.costPerMauBudgetCents || process.env.COST_PER_MAU_BUDGET_CENTS, DEFAULTS.costPerMauBudgetCents),
   };
+}
+
+function readProviderCosts() {
+  const raw = args.providerCostsJson || process.env.PROVIDER_COSTS_JSON || readProviderCostsFile();
+  if (!raw) return { available: false, total_cents: 0 };
+
+  try {
+    const parsed = JSON.parse(raw);
+    const costs = {
+      available: true,
+      generated_at: parsed.generated_at || null,
+      source: parsed.source || 'provider-costs-input',
+      cloudflare_r2_cents: readNonNegativeNumber(parsed.cloudflare_r2_cents),
+      supabase_cents: readNonNegativeNumber(parsed.supabase_cents),
+      vercel_cents: readNonNegativeNumber(parsed.vercel_cents),
+      livekit_cents: readNonNegativeNumber(parsed.livekit_cents),
+      ai_cents: readNonNegativeNumber(parsed.ai_cents),
+      other_cents: readNonNegativeNumber(parsed.other_cents),
+    };
+    costs.total_cents =
+      readOptionalNonNegativeNumber(parsed.total_cents) ??
+      costs.cloudflare_r2_cents +
+        costs.supabase_cents +
+        costs.vercel_cents +
+        costs.livekit_cents +
+        costs.ai_cents +
+        costs.other_cents;
+    return costs;
+  } catch (error) {
+    failures.push(`[provider-costs] PROVIDER_COSTS_JSON is invalid JSON: ${error.message}`);
+    return { available: false, total_cents: 0 };
+  }
+}
+
+function readProviderCostsFile() {
+  const file = args.providerCostsFile || process.env.PROVIDER_COSTS_FILE;
+  if (!file) return '';
+  const absolute = path.isAbsolute(file) ? file : path.join(repoRoot, file);
+  if (!fs.existsSync(absolute)) {
+    failures.push(`[provider-costs] PROVIDER_COSTS_FILE does not exist: ${file}`);
+    return '';
+  }
+  return fs.readFileSync(absolute, 'utf8');
+}
+
+function printProviderCosts(providerCosts) {
+  console.log('');
+  console.log('Actual Provider Costs:');
+  if (!providerCosts.available) {
+    console.log('  - status: missing input');
+    return;
+  }
+
+  console.log(`  - source: ${providerCosts.source}`);
+  if (providerCosts.generated_at) console.log(`  - generated: ${providerCosts.generated_at}`);
+  console.log(`  - total: ${money(providerCosts.total_cents)}`);
+  console.log(`  - Cloudflare R2: ${money(providerCosts.cloudflare_r2_cents)}`);
+  console.log(`  - Supabase: ${money(providerCosts.supabase_cents)}`);
+  console.log(`  - Vercel: ${money(providerCosts.vercel_cents)}`);
+  console.log(`  - LiveKit: ${money(providerCosts.livekit_cents)}`);
+  console.log(`  - AI: ${money(providerCosts.ai_cents)}`);
+  console.log(`  - other: ${money(providerCosts.other_cents)}`);
 }
 
 async function fetchWithTimeout(url, init = {}) {
@@ -287,6 +370,16 @@ function readPositiveInt(value, fallback) {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function readNonNegativeNumber(value) {
+  return readOptionalNonNegativeNumber(value) ?? 0;
+}
+
+function readOptionalNonNegativeNumber(value) {
+  if (value === undefined || value === null || value === '') return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : Number.NaN;
+}
+
 function readRatio(value, fallback) {
   const parsed = Number.parseFloat(String(value ?? ''));
   return Number.isFinite(parsed) && parsed > 0 && parsed <= 1 ? parsed : fallback;
@@ -316,6 +409,7 @@ Defaults warn at ${Math.round(DEFAULT_WARN_RATIO * 100)}%, fail at ${Math.round(
 Budget options:
   --ai-budget-cents <n>             AI image monthly budget (default ${DEFAULTS.aiBudgetCents})
   --tracked-budget-cents <n>        Total tracked monthly budget (default ${DEFAULTS.trackedBudgetCents})
+  --provider-budget-cents <n>       Actual provider monthly budget (default ${DEFAULTS.providerBudgetCents})
   --cost-per-mau-budget-cents <n>   Tracked cost per MAU budget (default ${DEFAULTS.costPerMauBudgetCents})
   --live-minutes-budget <n>         Live monthly minutes budget (default ${DEFAULTS.liveMinutesBudget})
   --recording-minutes-budget <n>    Recording monthly minutes budget (default ${DEFAULTS.recordingMinutesBudget})
@@ -324,5 +418,7 @@ Budget options:
   --edge-db-events-budget <n>       Edge/DB event proxy budget (default ${DEFAULTS.edgeDbEventsBudget})
   --warn-ratio <n>                  Warning ratio 0-1 (default ${DEFAULT_WARN_RATIO})
   --fail-ratio <n>                  Failure ratio 0-1 (default ${DEFAULT_FAIL_RATIO})
+  --provider-costs-json <json>      Actual provider costs JSON input
+  --provider-costs-file <path>      Path to actual provider costs JSON input
 `);
 }

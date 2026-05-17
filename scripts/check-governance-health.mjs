@@ -68,6 +68,8 @@ validateTextFile('docs/stability/cost-controls.md', [
   'Runtime Feature Flags',
   'live_recording_enabled',
   '100%',
+  'PROVIDER_COSTS_JSON',
+  'COST_PROVIDER_BUDGET_CENTS',
 ]);
 validateTextFile('docs/stability/trust-safety.md', ['SLA', 'admin_audit_log', 'content_reports', '/admin/reports', 'copyright', 'nsfw']);
 validateTextFile('apps/web/lib/moderation/report-reasons.ts', ['POST_REPORT_REASONS', 'copyright', 'nsfw']);

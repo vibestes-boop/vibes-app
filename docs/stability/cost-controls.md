@@ -19,6 +19,8 @@ npm run cost:health
 - live session minutes and recording minutes
 - R2 cleanup queue rows and errors
 - DB activity proxy: posts, comments, likes, bookmarks, follows, post views
+- optional actual provider costs from `PROVIDER_COSTS_JSON` or
+  `PROVIDER_COSTS_FILE`
 
 ## Budgets
 
@@ -27,6 +29,7 @@ Defaults warn at 70%, fail at 90%, and mark a separate critical failure at
 
 - `COST_AI_BUDGET_CENTS`
 - `COST_TRACKED_BUDGET_CENTS`
+- `COST_PROVIDER_BUDGET_CENTS`
 - `COST_PER_MAU_BUDGET_CENTS`
 - `COST_LIVE_MINUTES_BUDGET`
 - `COST_RECORDING_MINUTES_BUDGET`
@@ -39,6 +42,31 @@ The same values can be passed as CLI flags, for example:
 ```bash
 npm run cost:health -- --ai-budget-cents 2500 --r2-objects-budget 20000
 ```
+
+## Actual Provider Cost Input
+
+Provider billing APIs can feed exact monthly spend into `npm run cost:health`
+with `PROVIDER_COSTS_JSON` or `PROVIDER_COSTS_FILE`. This keeps the guard stable
+even when providers expose billing through different API jobs or exports.
+
+Expected shape:
+
+```json
+{
+  "generated_at": "2026-05-17T00:00:00Z",
+  "source": "billing-export",
+  "cloudflare_r2_cents": 0,
+  "supabase_cents": 0,
+  "vercel_cents": 0,
+  "livekit_cents": 0,
+  "ai_cents": 0,
+  "other_cents": 0
+}
+```
+
+If `total_cents` is omitted, the guard sums all provider fields. The combined
+actual provider spend is checked against `COST_PROVIDER_BUDGET_CENTS` with the
+same 70% warning, 90% failure, and 100% critical thresholds.
 
 ## Feature Rule
 
