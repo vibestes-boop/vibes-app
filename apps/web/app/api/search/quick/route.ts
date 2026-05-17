@@ -90,6 +90,9 @@ export async function GET(request: Request): Promise<NextResponse> {
     const fallback = await supabase
       .from('profiles')
       .select('id, username, display_name, avatar_url, verified:is_verified')
+      .eq('is_private', false)
+      .eq('is_banned', false)
+      .eq('is_shadow_banned', false)
       .or(`username.ilike.${like},display_name.ilike.${like}`)
       .order('created_at', { ascending: false })
       .limit(5);

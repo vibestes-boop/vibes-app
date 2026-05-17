@@ -67,6 +67,8 @@ type PublicProfileRow = {
   bio: string | null;
   is_verified: boolean | null;
   is_private?: boolean | null;
+  is_banned?: boolean | null;
+  is_shadow_banned?: boolean | null;
   website?: string | null;
   teip?: string | null;
 };
@@ -147,8 +149,10 @@ async function fetchPublicProfile(username: string): Promise<PublicProfile | nul
   const supabase = createPublicClient();
   const { data, error } = await supabase
     .from('profiles')
-    .select('id, username, display_name, avatar_url, bio, is_verified, is_private, website, teip')
+    .select('id, username, display_name, avatar_url, bio, is_verified, is_private, is_banned, is_shadow_banned, website, teip')
     .eq('username', normalizedUsername)
+    .eq('is_banned', false)
+    .eq('is_shadow_banned', false)
     .maybeSingle();
 
   if (error || !data) return null;
@@ -1355,7 +1359,9 @@ export const getProfileFollowers = cache(
     const { data: profiles } = await supabase
       .from('profiles')
       .select('id, username, display_name, avatar_url, verified:is_verified')
-      .in('id', ids);
+      .in('id', ids)
+      .eq('is_banned', false)
+      .eq('is_shadow_banned', false);
 
     const byId = new Map(
       (profiles ?? []).map((p) => [
@@ -1394,7 +1400,9 @@ export const getProfileFollowing = cache(
     const { data: profiles } = await supabase
       .from('profiles')
       .select('id, username, display_name, avatar_url, verified:is_verified')
-      .in('id', ids);
+      .in('id', ids)
+      .eq('is_banned', false)
+      .eq('is_shadow_banned', false);
 
     const byId = new Map(
       (profiles ?? []).map((p) => [

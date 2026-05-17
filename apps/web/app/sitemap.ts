@@ -43,6 +43,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const { data: profiles } = await supabase
       .from('profiles')
       .select('username, updated_at')
+      .eq('is_banned', false)
+      .eq('is_shadow_banned', false)
       .order('follower_count', { ascending: false })
       .limit(1000);
 

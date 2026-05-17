@@ -97,6 +97,11 @@ Public feed and post-detail RPCs must hide content from profiles where
 that the public Feed RPC path stays active; the SQL contract is guarded in
 `npm run governance:health`.
 
+Public profile discovery must follow the same rule. `get_public_profile_web`,
+`search_public_profiles_web`, `get_public_discover_people_web`, and their web
+fallbacks must not expose banned or shadowbanned profiles through profile pages,
+search suggestions, people discovery, or sitemap routes.
+
 Status meaning:
 
 - `reviewed`: checked, no user-visible enforcement needed

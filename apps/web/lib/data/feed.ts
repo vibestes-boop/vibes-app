@@ -64,7 +64,7 @@ const POST_COLUMNS =
   'id, user_id:author_id, caption, video_url:media_url, media_type, thumbnail_url, view_count, like_count, comment_count, hashtags:tags, allow_comments, allow_duet, allow_download, women_only, privacy, aspect_ratio, audio_url, audio_volume, created_at';
 
 const AUTHOR_JOIN =
-  'author:profiles!posts_author_id_fkey ( id, username, display_name, avatar_url, verified:is_verified )';
+  'author:profiles!posts_author_id_fkey ( id, username, display_name, avatar_url, verified:is_verified, is_banned, is_shadow_banned )';
 
 // Mobile-DB kennt diese Post-Felder nicht — beim Normalisieren mit Defaults
 // füllen, damit der Post-Contract komplett ist.
@@ -810,6 +810,8 @@ export const searchAll = cache(async (q: string, limit = 12): Promise<SearchResu
   const usersPromise = supabase
     .from('profiles')
     .select('id, username, display_name, avatar_url, verified:is_verified, created_at')
+    .eq('is_banned', false)
+    .eq('is_shadow_banned', false)
     .or(`username.ilike.${like},display_name.ilike.${like}`)
     .order('created_at', { ascending: false })
     .limit(limit);
@@ -916,6 +918,8 @@ export async function searchPaginated(
     const { data } = await supabase
       .from('profiles')
       .select('id, username, display_name, avatar_url, verified:is_verified')
+      .eq('is_banned', false)
+      .eq('is_shadow_banned', false)
       .or(`username.ilike.${like},display_name.ilike.${like}`)
       .order('created_at', { ascending: false })
       .range(offset, offset + SEARCH_PAGE_LIMIT - 1);
@@ -1001,6 +1005,8 @@ export async function getSuggestedFollowsPage(
   let query = supabase
     .from('profiles')
     .select('id, username, display_name, avatar_url, verified:is_verified, follower_count')
+    .eq('is_banned', false)
+    .eq('is_shadow_banned', false)
     .order('follower_count', { ascending: false })
     .range(offset, offset + limit - 1);
 
@@ -1306,6 +1312,9 @@ async function fetchPublicDiscoverPeople(limit = 12): Promise<DiscoverPerson[]> 
   const { data } = await supabase
     .from('profiles')
     .select('id, username, display_name, avatar_url, verified:is_verified')
+    .eq('is_private', false)
+    .eq('is_banned', false)
+    .eq('is_shadow_banned', false)
     .order('created_at', { ascending: false })
     .limit(limit);
 
@@ -1397,6 +1406,8 @@ export const getDiscoverPeople = cache(async (limit = 12): Promise<DiscoverPerso
       .from('profiles')
       .select('id, username, display_name, avatar_url, verified:is_verified')
       .eq('guild_id', guildId)
+      .eq('is_banned', false)
+      .eq('is_shadow_banned', false)
       .neq('id', userId)
       .limit(8);
     (guildUsers ?? []).forEach((u) =>
@@ -1434,6 +1445,8 @@ export const getDiscoverPeople = cache(async (limit = 12): Promise<DiscoverPerso
       .from('posts')
       .select('author_id, profiles!inner(id, username, display_name, avatar_url, verified:is_verified)')
       .contains('tags', [topTag])
+      .eq('profiles.is_banned', false)
+      .eq('profiles.is_shadow_banned', false)
       .neq('author_id', userId)
       .limit(20);
 
@@ -1454,6 +1467,8 @@ export const getDiscoverPeople = cache(async (limit = 12): Promise<DiscoverPerso
     const { data: newUsers } = await supabase
       .from('profiles')
       .select('id, username, display_name, avatar_url, verified:is_verified')
+      .eq('is_banned', false)
+      .eq('is_shadow_banned', false)
       .neq('id', userId)
       .order('created_at', { ascending: false })
       .limit(limit + excludeIds.size);

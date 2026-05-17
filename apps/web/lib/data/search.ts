@@ -59,6 +59,8 @@ export async function searchUsers(query: string, limit = 12): Promise<SearchUser
   const { data } = await supabase
     .from('profiles')
     .select('id, username, display_name, avatar_url, verified:is_verified')
+    .eq('is_banned', false)
+    .eq('is_shadow_banned', false)
     .or(`username.ilike.%${q}%,display_name.ilike.%${q}%`)
     .order('is_verified', { ascending: false })
     .limit(limit);
@@ -132,9 +134,11 @@ export async function searchPosts(query: string, limit = 20): Promise<SearchPost
     .select(
       `id, author_id, caption, media_url, thumbnail_url, view_count, created_at,
        like_count:likes(count),
-       author:profiles!posts_author_id_fkey(id, username, display_name, avatar_url, verified:is_verified)`,
+       author:profiles!posts_author_id_fkey!inner(id, username, display_name, avatar_url, verified:is_verified, is_banned, is_shadow_banned)`,
     )
     .ilike('caption', `%${q}%`)
+    .eq('author.is_banned', false)
+    .eq('author.is_shadow_banned', false)
     .order('view_count', { ascending: false })
     .limit(limit);
 

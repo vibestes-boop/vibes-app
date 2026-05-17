@@ -122,6 +122,13 @@ validateTextFile('supabase/migrations/20260517225000_hide_moderated_authors_from
   'is_banned',
   'is_shadow_banned',
 ]);
+validateTextFile('supabase/migrations/20260517230000_hide_moderated_profiles_from_public_discovery.sql', [
+  'get_public_profile_web',
+  'search_public_profiles_web',
+  'get_public_discover_people_web',
+  'is_banned',
+  'is_shadow_banned',
+]);
 validateTextFile('supabase/migrations/20260517220000_runtime_feature_flags.sql', [
   'live_streaming_enabled',
   'live_whip_ingress_enabled',
