@@ -92,6 +92,11 @@ Direct enforcement actions go through `admin_enforce_content_report`, which:
 - marks the report as `actioned`
 - writes an `admin_audit_log` entry
 
+Public feed and post-detail RPCs must hide content from profiles where
+`is_banned` or `is_shadow_banned` is true. `npm run push-feed:health` verifies
+that the public Feed RPC path stays active; the SQL contract is guarded in
+`npm run governance:health`.
+
 Status meaning:
 
 - `reviewed`: checked, no user-visible enforcement needed

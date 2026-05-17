@@ -113,6 +113,15 @@ validateTextFile('supabase/migrations/20260517224000_moderation_enforcement_heal
   'profile_shadowban_column',
   'live_mute_table',
 ]);
+validateTextFile('supabase/migrations/20260517225000_hide_moderated_authors_from_public_feeds.sql', [
+  'get_public_feed_web',
+  'get_public_feed_web_anon',
+  'get_public_feed_web_anon_first_page',
+  'get_public_explore_feed_web',
+  'get_public_post_web',
+  'is_banned',
+  'is_shadow_banned',
+]);
 validateTextFile('supabase/migrations/20260517220000_runtime_feature_flags.sql', [
   'live_streaming_enabled',
   'live_whip_ingress_enabled',
