@@ -1,11 +1,26 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Flag, CheckCircle, XCircle, Clock, Loader2, ChevronDown, ChevronUp } from 'lucide-react';
+import Link from 'next/link';
+import type { Route } from 'next';
+import {
+  Flag,
+  CheckCircle,
+  XCircle,
+  Clock,
+  Loader2,
+  ChevronDown,
+  ChevronUp,
+  AlertTriangle,
+  Activity,
+  ExternalLink,
+  ShieldCheck,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   getAdminReports, adminResolveReport,
   type ContentReport,
+  type ModerationHealth,
 } from '@/app/actions/admin';
 
 // -----------------------------------------------------------------------------
@@ -29,9 +44,11 @@ const TARGET_LABELS: Record<string, string> = {
 export function AdminReportsClient({
   initialReports,
   initialStatus,
+  health,
 }: {
   initialReports: ContentReport[];
   initialStatus: Status;
+  health: ModerationHealth | null;
 }) {
   const [activeTab, setActiveTab] = useState<Status>(initialStatus);
   const [reports, setReports]     = useState<ContentReport[]>(initialReports);
@@ -81,6 +98,8 @@ export function AdminReportsClient({
 
   return (
     <div className="space-y-4">
+      <ModerationHealthPanel health={health} />
+
       {/* Tabs */}
       <div className="flex gap-1 rounded-xl bg-muted/40 p-1">
         {TABS.map(({ label, value, icon: Icon }) => (
@@ -151,6 +170,76 @@ export function AdminReportsClient({
   );
 }
 
+// ─── ModerationHealthPanel ───────────────────────────────────────────────────
+
+function ModerationHealthPanel({ health }: { health: ModerationHealth | null }) {
+  if (!health) {
+    return (
+      <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300">
+        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+        <span>Moderation-Health konnte nicht geladen werden. Bitte `npm run moderation:health` prüfen.</span>
+      </div>
+    );
+  }
+
+  const reports = health.content_reports;
+  const legacy = health.legacy_unqueued;
+  const audit = health.admin_audit;
+  const red = reports.pending_over_sla > 0 || legacy.total > 0;
+  const yellow = !red && reports.pending > 0;
+  const statusLabel = red ? 'SLA blockiert' : yellow ? 'Queue offen' : 'Queue gesund';
+  const statusClass = red
+    ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-300'
+    : yellow
+      ? 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300'
+      : 'border-green-200 bg-green-50 text-green-700 dark:border-green-900/40 dark:bg-green-950/20 dark:text-green-300';
+
+  return (
+    <section className="space-y-3">
+      <div className={cn('flex items-start gap-3 rounded-xl border px-4 py-3', statusClass)}>
+        {red ? <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /> : <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />}
+        <div className="min-w-0">
+          <p className="text-sm font-semibold">{statusLabel}</p>
+          <p className="mt-0.5 text-xs opacity-85">
+            SLA {health.sla_hours}h · älteste offene Meldung {formatAge(reports.oldest_pending_age_seconds)}
+          </p>
+        </div>
+      </div>
+
+      <div className="grid gap-2 sm:grid-cols-4">
+        <HealthMetric label="Ausstehend" value={reports.pending} tone={reports.pending > 0 ? 'warn' : 'ok'} />
+        <HealthMetric label="Über SLA" value={reports.pending_over_sla} tone={reports.pending_over_sla > 0 ? 'danger' : 'ok'} />
+        <HealthMetric label="Legacy offen" value={legacy.total} tone={legacy.total > 0 ? 'danger' : 'ok'} />
+        <HealthMetric label="Audit 7d" value={audit.moderation_events_7d} tone="neutral" />
+      </div>
+    </section>
+  );
+}
+
+function HealthMetric({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: 'ok' | 'warn' | 'danger' | 'neutral';
+}) {
+  const toneClass = {
+    ok: 'text-green-600 dark:text-green-400',
+    warn: 'text-amber-600 dark:text-amber-400',
+    danger: 'text-red-600 dark:text-red-400',
+    neutral: 'text-foreground',
+  }[tone];
+
+  return (
+    <div className="rounded-xl border border-border bg-card px-3 py-2">
+      <div className={cn('text-lg font-bold tabular-nums', toneClass)}>{value}</div>
+      <div className="text-[11px] text-muted-foreground">{label}</div>
+    </div>
+  );
+}
+
 // ─── ReportRow ────────────────────────────────────────────────────────────────
 
 function ReportRow({
@@ -176,6 +265,8 @@ function ReportRow({
     actioned:  'bg-red-500/10 text-red-600 dark:text-red-400',
     dismissed: 'bg-muted text-muted-foreground',
   };
+  const targetHref = getTargetHref(report);
+  const isOverSla = report.status === 'pending' && ageHours(report.created_at) >= 24;
 
   return (
     <li>
@@ -197,6 +288,11 @@ function ReportRow({
             </span>
             <span className="text-xs text-muted-foreground">·</span>
             <span className="text-xs text-muted-foreground">{report.reason}</span>
+            {isOverSla && (
+              <span className="inline-flex items-center rounded-full bg-red-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-red-600 dark:text-red-400">
+                SLA
+              </span>
+            )}
             <span
               className={cn(
                 'inline-flex items-center rounded-full px-1.5 py-0.5 text-[10px] font-semibold',
@@ -219,6 +315,7 @@ function ReportRow({
                 day: 'numeric', month: 'short', year: 'numeric',
               })}
             </span>
+            <span>{formatAgeSince(report.created_at)}</span>
             <span className="font-mono text-[10px] opacity-50">{report.target_id.slice(0, 8)}…</span>
           </div>
           {report.admin_note && (
@@ -240,6 +337,22 @@ function ReportRow({
       {/* Resolve panel */}
       {expanded && showActions && (
         <div className="border-t border-border bg-muted/30 px-4 py-3 space-y-3">
+          {targetHref ? (
+            <Link
+              href={targetHref}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-foreground underline-offset-4 hover:underline"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Ziel öffnen
+              <ExternalLink className="h-3.5 w-3.5" />
+            </Link>
+          ) : (
+            <div className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Activity className="h-3.5 w-3.5" />
+              Kein direkter Ziel-Link für diesen Typ.
+            </div>
+          )}
           <textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
@@ -280,4 +393,32 @@ function ReportRow({
       )}
     </li>
   );
+}
+
+function getTargetHref(report: ContentReport): Route | null {
+  if (report.target_type === 'post') return `/p/${report.target_id}` as Route;
+  if (report.target_type === 'live') return `/live/${report.target_id}` as Route;
+  if (report.target_type === 'product') return `/shop/${report.target_id}` as Route;
+  return null;
+}
+
+function ageHours(date: string): number {
+  const timestamp = new Date(date).getTime();
+  if (!Number.isFinite(timestamp)) return 0;
+  return Math.max(0, (Date.now() - timestamp) / 3_600_000);
+}
+
+function formatAgeSince(date: string): string {
+  const hours = ageHours(date);
+  if (hours < 1) return 'gerade eben';
+  if (hours < 48) return `seit ${Math.floor(hours)}h`;
+  return `seit ${Math.floor(hours / 24)}d`;
+}
+
+function formatAge(seconds: number | null): string {
+  const value = Number(seconds || 0);
+  if (!Number.isFinite(value) || value <= 0) return 'keine';
+  const hours = value / 3600;
+  if (hours < 48) return `${Math.floor(hours)}h`;
+  return `${Math.floor(hours / 24)}d`;
 }

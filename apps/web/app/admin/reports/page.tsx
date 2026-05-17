@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { getAdminReports } from '@/app/actions/admin';
+import { getAdminReports, getModerationHealth } from '@/app/actions/admin';
 import { AdminReportsClient } from './admin-reports-client';
 
 // -----------------------------------------------------------------------------
@@ -15,6 +15,9 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 export default async function AdminReportsPage() {
-  const reports = await getAdminReports('pending');
-  return <AdminReportsClient initialReports={reports} initialStatus="pending" />;
+  const [reports, health] = await Promise.all([
+    getAdminReports('pending'),
+    getModerationHealth(),
+  ]);
+  return <AdminReportsClient initialReports={reports} initialStatus="pending" health={health} />;
 }

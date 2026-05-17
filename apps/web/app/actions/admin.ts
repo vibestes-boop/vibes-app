@@ -54,6 +54,28 @@ export interface ContentReport {
   reporter:    { username: string } | null;
 }
 
+export interface ModerationHealth {
+  sla_hours: number;
+  content_reports: {
+    total: number;
+    pending: number;
+    pending_over_sla: number;
+    oldest_pending_age_seconds: number | null;
+    reviewed_7d: number;
+    by_target_type: Record<string, number>;
+  };
+  legacy_unqueued: {
+    total: number;
+    post_reports: number;
+    user_reports: number;
+    live_reports: number;
+  };
+  admin_audit: {
+    events_7d: number;
+    moderation_events_7d: number;
+  };
+}
+
 export interface SellerBalance {
   seller_id:       string;
   username:        string;
@@ -170,6 +192,13 @@ export async function getAdminReports(
   const { data, error } = await q;
   if (error) return [];
   return (data ?? []) as unknown as ContentReport[];
+}
+
+export async function getModerationHealth(): Promise<ModerationHealth | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('moderation_health_snapshot');
+  if (error || !data || typeof data !== 'object') return null;
+  return data as ModerationHealth;
 }
 
 export async function adminResolveReport(

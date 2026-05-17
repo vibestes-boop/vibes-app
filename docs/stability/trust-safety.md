@@ -50,6 +50,11 @@ Admin report resolution goes through `admin_resolve_content_report`, which:
 - stores reviewer, review time, and note
 - writes an `admin_audit_log` entry
 
+Operational review happens in `/admin/reports`. The page shows the canonical
+`content_reports` queue, the moderation health/SLA summary, legacy unqueued
+report count, recent audit activity, and direct links to actionable targets
+where possible.
+
 Status meaning:
 
 - `reviewed`: checked, no user-visible enforcement needed
