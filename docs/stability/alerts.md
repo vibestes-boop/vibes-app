@@ -12,6 +12,9 @@ guard fails:
 - `npm run cost:health`
 - `npm run moderation:health`
 - `npm run governance:health`
+- `npm run push-feed:health`
+- `npm run health:dashboard`
+- `npm run feature:freeze`
 
 Alert issue:
 

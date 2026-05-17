@@ -27,6 +27,7 @@ const REVIEW_REQUIRED_TEXT = [
   'npm run governance:health',
   'npm run push-feed:health',
   'npm run health:dashboard',
+  'npm run feature:freeze',
   'Keep',
   'Improve',
   'Kill',
@@ -40,6 +41,7 @@ const INTAKE_REQUIRED_TEXT = [
   'Rollback plan:',
   'Monitoring signal:',
   'Feature flag:',
+  'Feature freeze result:',
 ];
 
 console.log('Governance health check');
@@ -55,6 +57,7 @@ validateTextFile('docs/stability/health-dashboard.md', ['npm run health:dashboar
 validateTextFile('docs/stability/product-metrics.md', ['Keep', 'Improve', 'Kill', 'target metric', 'rollback plan']);
 validateTextFile('docs/stability/cost-controls.md', ['feature flag', 'monthly budget', 'rollback owner']);
 validateTextFile('docs/stability/trust-safety.md', ['SLA', 'admin_audit_log', 'content_reports']);
+validateTextFile('scripts/check-feature-freeze.mjs', ['Feature freeze guard', 'north-star-zero-weeks']);
 validateWorkflow();
 
 if (warnings.length > 0) {
@@ -119,6 +122,7 @@ function validateWorkflow() {
     'npm run governance:health',
     'npm run push-feed:health',
     'npm run health:dashboard',
+    'npm run feature:freeze',
   ]) {
     if (!workflow.includes(command)) {
       failures.push(`[workflow] Missing weekly command: ${command}.`);

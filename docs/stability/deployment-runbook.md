@@ -103,6 +103,7 @@ npm run moderation:health
 npm run governance:health
 npm run push-feed:health
 npm run health:dashboard
+npm run feature:freeze
 ```
 
 It checks the production DB snapshot, queue age, failed queue rows, required
@@ -142,6 +143,9 @@ emptiness/error masking. The operating rules live in
 
 Health-dashboard summarizes all health snapshots as a traffic-light status
 board for the weekly review.
+
+Feature-freeze fails when production health requires pausing broad feature
+rollout.
 
 Weekly alerting opens or updates a GitHub issue labeled `stability-alert` when
 any weekly health guard fails. Alert response rules live in

@@ -75,6 +75,11 @@ jobs:
         continue-on-error: true
         run: npm run health:dashboard
 
+      - name: Check feature freeze guard
+        id: feature_freeze
+        continue-on-error: true
+        run: npm run feature:freeze
+
       - name: Open or update weekly health alert
         if: |
           steps.integrity.outcome == 'failure' ||
@@ -83,7 +88,8 @@ jobs:
           steps.moderation.outcome == 'failure' ||
           steps.governance.outcome == 'failure' ||
           steps.push_feed.outcome == 'failure' ||
-          steps.dashboard.outcome == 'failure'
+          steps.dashboard.outcome == 'failure' ||
+          steps.feature_freeze.outcome == 'failure'
         uses: actions/github-script@v8
         with:
           script: |
@@ -97,6 +103,7 @@ jobs:
               governance: '${{ steps.governance.outcome }}',
               push_feed: '${{ steps.push_feed.outcome }}',
               dashboard: '${{ steps.dashboard.outcome }}',
+              feature_freeze: '${{ steps.feature_freeze.outcome }}',
             };
             const failed = Object.entries(outcomes)
               .filter(([, outcome]) => outcome === 'failure')
@@ -167,7 +174,8 @@ jobs:
           steps.moderation.outcome == 'failure' ||
           steps.governance.outcome == 'failure' ||
           steps.push_feed.outcome == 'failure' ||
-          steps.dashboard.outcome == 'failure'
+          steps.dashboard.outcome == 'failure' ||
+          steps.feature_freeze.outcome == 'failure'
         run: |
           echo "One or more weekly health guards failed."
           exit 1

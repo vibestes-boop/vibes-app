@@ -26,6 +26,7 @@
     "governance:health": "node ../../scripts/check-governance-health.mjs",
     "push-feed:health": "node ../../scripts/check-push-feed-health.mjs",
     "health:dashboard": "node ../../scripts/health-dashboard.mjs",
+    "feature:freeze": "node ../../scripts/check-feature-freeze.mjs",
     "stability:api-contracts": "node ../../scripts/check-api-contracts.mjs",
     "stability:auth": "node ../../scripts/check-auth-interactions.mjs",
     "stability:live-contracts": "node ../../scripts/check-live-contracts.mjs",

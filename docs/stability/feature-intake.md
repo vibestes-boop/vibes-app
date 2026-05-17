@@ -35,6 +35,7 @@ unknown, the feature is not ready for rollout.
 - Monitoring signal:
 - Dashboard or command:
 - Alert:
+- Feature freeze result:
 - Success threshold:
 - Failure threshold:
 - Review date:

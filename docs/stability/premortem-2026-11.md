@@ -27,6 +27,7 @@ Disziplin abhaengt.
 | 14 | Alerts bleiben nur rote CI-Runs | Checks schlagen fehl, aber niemand arbeitet die Ursache ab | Keine Issue-/Owner-Eskalation bei Guard-Fehlschlag | `stability-alert` GitHub Issue aus dem Weekly Workflow |
 | 15 | Push/Feed-Gesundheit bleibt blind | Feeds liefern 200 mit leerem Payload oder Push-Dispatch ist still kaputt | Feed-Catches maskieren Fehler, Push-Trigger/Subscriptions werden nicht aggregiert | `npm run push-feed:health` gegen DB-Snapshot und Public Feed APIs |
 | 16 | Niemand sieht das Gesamtsystem | Einzelchecks sind gruen, aber Trends und gelbe Risiken werden nicht gemeinsam betrachtet | Kein Ampel-Board fuer Weekly Review | `npm run health:dashboard` als Status-Board |
+| 17 | Feature Freeze bleibt nur ein Meeting-Satz | Neue Features werden trotz roter Stabilitaets-, Kosten- oder Trust-Signale gelauncht | Keine CLI-Bremse fuer breiten Feature-Rollout | `npm run feature:freeze` |
 
 ## Timeline des hypothetischen Scheiterns
 
@@ -124,6 +125,8 @@ regelmaessig erfuellt sind:
   Notifications, Trigger, Feed-Endpunkte und leere Feed-Antworten.
 - Health-Dashboard liegt woechentlich vor: alle Health-Snapshots werden als
   Green/Yellow/Red Status-Board zusammengefasst.
+- Feature-Freeze Guard laeuft vor breiten Rollouts und blockiert bei roten
+  Data-, Cost-, Moderation- oder Push/Feed-Signalen.
 
 ## Naechste technische Guardrails
 
