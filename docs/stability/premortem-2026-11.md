@@ -101,6 +101,9 @@ regelmaessig erfuellt sind:
 - Auth-Smoke loggt einen Testaccount ein, schreibt Kommentar/Like/Bookmark und raeumt danach auf.
 - Backend-Integrity-Monitor ist gruen: keine failed R2-Queue-Rows, `r2-delete-queue`
   ist aktiv, R2-Functions antworten, aktuelle Medienreferenzen sind erreichbar.
+- Woechentlicher Integrity-Check ist gruen: keine Posts ohne Content, keine
+  failed Queue-Rows, keine zu alten pending Queue-Rows, keine R2-Objekte ohne
+  Post-Referenz.
 
 ## Naechste technische Guardrails
 

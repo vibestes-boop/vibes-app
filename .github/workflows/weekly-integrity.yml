@@ -1,0 +1,40 @@
+name: weekly-integrity
+
+on:
+  schedule:
+    # Sunday morning after the daily stability runs.
+    - cron: '43 6 * * 0'
+  workflow_dispatch:
+
+concurrency:
+  group: weekly-integrity-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+jobs:
+  production-integrity:
+    name: production integrity and R2 orphan media
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      CF_R2_ACCOUNT_ID: ${{ secrets.CF_R2_ACCOUNT_ID }}
+      CF_R2_ACCESS_KEY_ID: ${{ secrets.CF_R2_ACCESS_KEY_ID }}
+      CF_R2_SECRET_ACCESS_KEY: ${{ secrets.CF_R2_SECRET_ACCESS_KEY }}
+      CF_R2_BUCKET: ${{ secrets.CF_R2_BUCKET }}
+      CF_R2_PUBLIC_URL: ${{ secrets.CF_R2_PUBLIC_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node 24
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+
+      - name: Check weekly production integrity
+        run: npm run integrity:weekly

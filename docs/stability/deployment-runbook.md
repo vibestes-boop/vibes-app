@@ -90,3 +90,27 @@ This is the release completion signal. It checks:
 
 Paste the final `Release gate passed` line and commit SHA into the release
 notes. If any post-deploy gate fails, treat the release as incomplete.
+
+## 7. Weekly Integrity
+
+The weekly job is intentionally deeper than the per-release gate:
+
+```bash
+npm run integrity:weekly
+```
+
+It checks the production DB snapshot, queue age, failed queue rows, required
+cron jobs, Edge Function reachability, recent media URL health, and R2 bucket
+objects under `posts/` and `thumbnails/` that no longer belong to any post.
+
+Required GitHub secrets for the weekly R2 orphan check:
+
+- `SUPABASE_SERVICE_ROLE_KEY`
+- `CF_R2_ACCOUNT_ID`
+- `CF_R2_ACCESS_KEY_ID`
+- `CF_R2_SECRET_ACCESS_KEY`
+- `CF_R2_BUCKET`
+- `CF_R2_PUBLIC_URL`
+
+If it reports orphan objects, either enqueue/delete them through the protected
+R2 cleanup flow or intentionally raise the threshold with a documented reason.
