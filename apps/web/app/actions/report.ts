@@ -7,7 +7,8 @@ import { createClient } from '@/lib/supabase/server';
 // -----------------------------------------------------------------------------
 // Post Reports / Not-Interested Server Actions (v1.w.UI.34)
 //
-// Schreibt in `post_reports` (siehe supabase/reports.sql):
+// Moderationsmeldungen laufen zentral in `content_reports` via `create_report`.
+// Not-interested bleibt bewusst in `post_reports`, weil es Feed-Feedback ist:
 //   - reason='report'         → Moderations-Meldung
 //   - reason='not_interested' → Algorithmus-Feedback (Post wird aus For-You
 //                               raus-gefiltert)
@@ -47,11 +48,18 @@ async function insertReport(
     return { ok: false, error: 'Bitte zuerst anmelden.' };
   }
 
-  const { error } = await supabase.from('post_reports').insert({
-    reporter_id: user.id,
-    post_id: parsed.data.postId,
-    reason,
-  });
+  const { error, data } =
+    reason === 'report'
+      ? await supabase.rpc('create_report', {
+          p_target_type: 'post',
+          p_target_id: parsed.data.postId,
+          p_reason: 'report',
+        })
+      : await supabase.from('post_reports').insert({
+          reporter_id: user.id,
+          post_id: parsed.data.postId,
+          reason,
+        });
 
   // 23505 = Unique-Constraint = bereits gemeldet → silent success (idempotent).
   if (error && error.code !== '23505') {
@@ -59,6 +67,9 @@ async function insertReport(
       ok: false,
       error: error.message ?? 'Aktion fehlgeschlagen.',
     };
+  }
+  if (!error && reason === 'report' && (data as { error?: string } | null)?.error) {
+    return { ok: false, error: (data as { error: string }).error };
   }
 
   // Bei not_interested: Feed-Cache revalidieren, damit der Post beim nächsten
@@ -81,10 +92,7 @@ export async function markPostNotInteresting(postId: string): Promise<ReportActi
 // -----------------------------------------------------------------------------
 // reportUser — Meldet ein Nutzerprofil (v1.w.UI.116).
 //
-// Schreibt in `user_reports` (supabase/user_reports.sql):
-//   reason ∈ ('spam', 'harassment', 'inappropriate', 'fake_account', 'other')
-//
-// UNIQUE (reporter_id, reported_id, reason) → 23505 wird silent behandelt.
+// Schreibt zentral in `content_reports` via `create_report`.
 // -----------------------------------------------------------------------------
 
 const userReportSchema = z.object({
@@ -122,15 +130,20 @@ export async function reportUser(
     return { ok: false, error: 'Du kannst dich nicht selbst melden.' };
   }
 
-  const { error } = await supabase.from('user_reports').insert({
-    reporter_id: user.id,
-    reported_id: parsed.data.targetUserId,
-    reason: parsed.data.reason,
-    note: parsed.data.note ?? null,
+  const reportReason = parsed.data.note
+    ? `${parsed.data.reason}: ${parsed.data.note.slice(0, 80)}`
+    : parsed.data.reason;
+  const { error, data } = await supabase.rpc('create_report', {
+    p_target_type: 'profile',
+    p_target_id: parsed.data.targetUserId,
+    p_reason: reportReason,
   });
 
   if (error && error.code !== '23505') {
     return { ok: false, error: error.message ?? 'Meldung fehlgeschlagen.' };
+  }
+  if (!error && (data as { error?: string } | null)?.error) {
+    return { ok: false, error: (data as { error: string }).error };
   }
 
   revalidatePath(`/u/`);

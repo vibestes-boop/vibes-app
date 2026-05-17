@@ -14,13 +14,21 @@ export function useReport() {
   return useMutation({
     mutationFn: async ({ postId, reason }: { postId: string; reason: ReportReason }) => {
       if (!userId) throw new Error('Nicht eingeloggt');
-      const { error } = await supabase.from('post_reports').insert({
-        reporter_id: userId,
-        post_id: postId,
-        reason,
-      });
+      const { error, data } =
+        reason === 'report'
+          ? await supabase.rpc('create_report', {
+              p_target_type: 'post',
+              p_target_id: postId,
+              p_reason: 'report',
+            })
+          : await supabase.from('post_reports').insert({
+              reporter_id: userId,
+              post_id: postId,
+              reason,
+            });
       // Unique-Constraint-Fehler ignorieren (schon gemeldet)
       if (error && error.code !== '23505') throw error;
+      if (!error && reason === 'report' && (data as any)?.error) throw new Error((data as any).error);
     },
     onSuccess: (_data, { reason }) => {
       if (reason === 'not_interested') {
@@ -49,13 +57,14 @@ export function useReportUser() {
       reason: UserReportReason;
     }) => {
       if (!userId) throw new Error('Nicht eingeloggt');
-      const { error } = await supabase.from('user_reports').insert({
-        reporter_id: userId,
-        reported_id: reportedId,
-        reason,
+      const { error, data } = await supabase.rpc('create_report', {
+        p_target_type: 'profile',
+        p_target_id: reportedId,
+        p_reason: reason,
       });
       // Unique-Constraint → bereits gemeldet, kein Fehler anzeigen
       if (error && error.code !== '23505') throw error;
+      if (!error && (data as any)?.error) throw new Error((data as any).error);
     },
     onError: (err: any) => {
       if (err?.code !== '23505') {
@@ -64,4 +73,3 @@ export function useReportUser() {
     },
   });
 }
-

@@ -22,6 +22,7 @@ Disziplin abhaengt.
 | 9 | CI prueft nicht die echten Nutzerpfade | Tests gruen, Prod trotzdem kaputt | Unit-Tests stark, aber wenige Live-Smokes | Scheduled stability workflow gegen Production-Feed plus `npm run stability:auth` |
 | 10 | Release-Hygiene bleibt manuell | Deploys passieren aus falschem Ordner/Repo oder mit altem Branch | Zwei lokale Repos/Pfade und manuelle Vercel CLI-Schritte | `npm run release:gate` plus Deployment-Runbook als Standard |
 | 11 | Produktfokus bleibt Bauchgefuehl | Features werden gebaut, aber Creator kommen nicht wieder | Kein woechentlicher North-Star-/Retention-Report | `npm run product:health` als Start jedes Product Reviews |
+| 12 | Moderation bleibt eine UI statt ein Betriebssystem | Reports landen in Legacy-Tabellen, bleiben ueber 24h offen oder werden ohne Audit geschlossen | Report-Pfade schreiben in verschiedene Tabellen, Admin-Aktionen haben keinen Audit-Trail | `npm run moderation:health`, zentrale `content_reports` Queue, Admin-Audit-Log |
 
 ## Timeline des hypothetischen Scheiterns
 
@@ -109,6 +110,8 @@ regelmaessig erfuellt sind:
   D1/D7-Retention, Engagement-Raten und Time-to-First-Post.
 - Cost-Health-Report liegt woechentlich vor: AI-Kosten, Kosten pro MAU,
   Medien/R2, Live-Minuten, Recording-Minuten und Edge/DB-Usage-Proxies.
+- Moderation-Health-Report liegt woechentlich vor: pending Reports, Reports
+  ueber 24h SLA, unqueued Legacy-Reports und Admin-Audit-Events.
 
 ## Naechste technische Guardrails
 
@@ -125,6 +128,8 @@ regelmaessig erfuellt sind:
    verpflichtend machen.
 10. Cost-Health-Check fuer AI, R2/Media, Live/Recording und Edge/DB-Proxies
     woechentlich laufen lassen und teure Features hinter Flags halten.
+11. Moderation-Health-Check fuer Report-Queue, 24h SLA, Legacy-Report-Drift und
+    Admin-Audit-Log woechentlich laufen lassen.
 
 ## Entscheidung
 

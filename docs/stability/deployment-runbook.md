@@ -99,6 +99,7 @@ The weekly job is intentionally deeper than the per-release gate:
 npm run integrity:weekly
 npm run product:health
 npm run cost:health
+npm run moderation:health
 ```
 
 It checks the production DB snapshot, queue age, failed queue rows, required
@@ -124,3 +125,7 @@ Kill decisions.
 Cost-health covers tracked AI cost plus usage proxies for media, R2, live,
 recording, and DB activity. Budget thresholds live in environment variables
 documented in `docs/stability/cost-controls.md`.
+
+Moderation-health covers pending reports, reports older than the 24h SLA,
+legacy report rows missing from the canonical moderation queue, and recent admin
+audit events. The operating rules live in `docs/stability/trust-safety.md`.

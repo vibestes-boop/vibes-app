@@ -525,7 +525,7 @@ export async function fetchLiveKitToken(
 }
 
 // -----------------------------------------------------------------------------
-// reportLiveSession — `live_reports`-Tabelle. RLS sorgt für 1 Report/User/Session.
+// reportLiveSession — zentraler Moderations-Report via `create_report`.
 // -----------------------------------------------------------------------------
 
 const REPORT_REASONS = new Set([
@@ -553,17 +553,20 @@ export async function reportLiveSession(
   if (!checkCooldown(lastReport, cooldownKey, REPORT_COOLDOWN_MS))
     return { ok: false, error: 'Bitte kurz warten vor dem nächsten Report.' };
 
+  const reportReason = details ? `${reason}: ${details.slice(0, 80)}` : reason;
   const supabase = await createClient();
-  const { error } = await supabase.from('live_reports').insert({
-    session_id: sessionId,
-    reporter_id: viewer.id,
-    reason,
-    details: details?.slice(0, 500) ?? null,
+  const { error, data } = await supabase.rpc('create_report', {
+    p_target_type: 'live',
+    p_target_id: sessionId,
+    p_reason: reportReason,
   });
 
   if (error) {
     if (error.code === '23505') return { ok: false, error: 'Du hast diese Session bereits gemeldet.' };
     return { ok: false, error: error.message };
+  }
+  if ((data as { error?: string } | null)?.error) {
+    return { ok: false, error: (data as { error: string }).error };
   }
 
   return { ok: true, data: null };

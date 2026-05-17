@@ -13,16 +13,17 @@ import {
 // Parity mit app/admin/reports.tsx
 // -----------------------------------------------------------------------------
 
-type Status = 'pending' | 'reviewed' | 'dismissed';
+type Status = 'pending' | 'reviewed' | 'actioned' | 'dismissed';
 
 const TABS: { label: string; value: Status; icon: React.ComponentType<{ className?: string }> }[] = [
   { label: 'Ausstehend', value: 'pending',   icon: Clock },
   { label: 'Bearbeitet', value: 'reviewed',  icon: CheckCircle },
+  { label: 'Aktioniert', value: 'actioned',  icon: CheckCircle },
   { label: 'Abgelehnt',  value: 'dismissed', icon: XCircle },
 ];
 
 const TARGET_LABELS: Record<string, string> = {
-  post: 'Post', user: 'Nutzer', live: 'Live-Stream',
+  post: 'Post', profile: 'Profil', comment: 'Kommentar', live: 'Live-Stream', product: 'Produkt',
 };
 
 export function AdminReportsClient({
@@ -55,7 +56,7 @@ export function AdminReportsClient({
 
   async function handleResolve(
     report: ContentReport,
-    status: 'reviewed' | 'dismissed',
+    status: 'reviewed' | 'actioned' | 'dismissed',
     note: string,
   ) {
     setActionId(report.id);
@@ -65,7 +66,14 @@ export function AdminReportsClient({
     if (result.ok) {
       setReports((prev) => prev.filter((r) => r.id !== report.id));
       setExpandedId(null);
-      showToast(status === 'reviewed' ? 'Meldung bearbeitet' : 'Meldung abgelehnt', true);
+      showToast(
+        status === 'actioned'
+          ? 'Meldung aktioniert'
+          : status === 'reviewed'
+            ? 'Meldung bearbeitet'
+            : 'Meldung abgelehnt',
+        true,
+      );
     } else {
       showToast(`Fehler: ${result.error}`, false);
     }
@@ -157,7 +165,7 @@ function ReportRow({
   loading: boolean;
   expanded: boolean;
   onToggle: () => void;
-  onResolve: (status: 'reviewed' | 'dismissed', note: string) => void;
+  onResolve: (status: 'reviewed' | 'actioned' | 'dismissed', note: string) => void;
   showActions: boolean;
 }) {
   const [note, setNote] = useState('');
@@ -165,6 +173,7 @@ function ReportRow({
   const statusColor: Record<string, string> = {
     pending:   'bg-amber-500/10 text-amber-600 dark:text-amber-400',
     reviewed:  'bg-green-500/10 text-green-600 dark:text-green-400',
+    actioned:  'bg-red-500/10 text-red-600 dark:text-red-400',
     dismissed: 'bg-muted text-muted-foreground',
   };
 
@@ -194,7 +203,13 @@ function ReportRow({
                 statusColor[report.status],
               )}
             >
-              {report.status === 'pending' ? 'Ausstehend' : report.status === 'reviewed' ? 'Bearbeitet' : 'Abgelehnt'}
+              {report.status === 'pending'
+                ? 'Ausstehend'
+                : report.status === 'actioned'
+                  ? 'Aktioniert'
+                  : report.status === 'reviewed'
+                    ? 'Bearbeitet'
+                    : 'Abgelehnt'}
             </span>
           </div>
           <div className="mt-0.5 flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground">
@@ -235,12 +250,21 @@ function ReportRow({
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => onResolve('reviewed', note)}
+              onClick={() => onResolve('actioned', note)}
               disabled={loading}
               className="inline-flex items-center gap-1.5 rounded-lg border border-green-200 bg-green-50 px-3 py-1.5 text-xs font-medium text-green-600 transition-colors hover:bg-green-100 disabled:opacity-50 dark:border-green-900/40 dark:bg-green-950/20 dark:text-green-400"
             >
               <CheckCircle className="h-3.5 w-3.5" />
               Bearbeitet — Aktion durchgeführt
+            </button>
+            <button
+              type="button"
+              onClick={() => onResolve('reviewed', note)}
+              disabled={loading}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted disabled:opacity-50"
+            >
+              <CheckCircle className="h-3.5 w-3.5" />
+              Nur geprüft
             </button>
             <button
               type="button"

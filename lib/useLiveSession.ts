@@ -1030,11 +1030,12 @@ export async function reportLive(
 ): Promise<{ error: string | null }> {
   const { profile } = useAuthStore.getState();
   if (!profile) return { error: 'Nicht eingeloggt' };
-  const { error } = await supabase.from('live_reports').insert({
-    session_id: sessionId,
-    reporter_id: profile.id,
-    reason,
+  const { error, data } = await supabase.rpc('create_report', {
+    p_target_type: 'live',
+    p_target_id: sessionId,
+    p_reason: reason,
   });
+  if (!error && (data as any)?.error) return { error: (data as any).error };
   return { error: error?.message ?? null };
 }
 

@@ -44,10 +44,10 @@ export interface AdminUser {
 export interface ContentReport {
   id:          string;
   reporter_id: string;
-  target_type: 'post' | 'user' | 'live' | string;
+  target_type: 'post' | 'profile' | 'comment' | 'live' | 'product' | string;
   target_id:   string;
   reason:      string;
-  status:      'pending' | 'reviewed' | 'dismissed';
+  status:      'pending' | 'reviewed' | 'actioned' | 'dismissed';
   admin_note:  string | null;
   created_at:  string;
   reviewed_at: string | null;
@@ -158,7 +158,7 @@ export async function adminToggleAdmin(userId: string, isAdmin: boolean): Promis
 // ─── Reports ─────────────────────────────────────────────────────────────────
 
 export async function getAdminReports(
-  status?: 'pending' | 'reviewed' | 'dismissed',
+  status?: 'pending' | 'reviewed' | 'actioned' | 'dismissed',
 ): Promise<ContentReport[]> {
   const supabase = await createClient();
   let q = supabase
@@ -174,23 +174,19 @@ export async function getAdminReports(
 
 export async function adminResolveReport(
   reportId: string,
-  status: 'reviewed' | 'dismissed',
+  status: 'reviewed' | 'actioned' | 'dismissed',
   adminNote?: string,
 ): Promise<ActionResult> {
-  const { supabase, user, error: authErr } = await requireAdmin();
-  if (authErr || !user) return { ok: false, error: authErr ?? 'Auth-Fehler' };
+  const { supabase, error: authErr } = await requireAdmin();
+  if (authErr) return { ok: false, error: authErr };
 
-  const { error } = await supabase
-    .from('content_reports')
-    .update({
-      status,
-      admin_note:  adminNote ?? null,
-      reviewed_at: new Date().toISOString(),
-      reviewed_by: user.id,
-    })
-    .eq('id', reportId);
-
+  const { data, error } = await supabase.rpc('admin_resolve_content_report', {
+    p_report_id: reportId,
+    p_status: status,
+    p_admin_note: adminNote ?? null,
+  });
   if (error) return { ok: false, error: error.message };
+  if ((data as { error?: string } | null)?.error) return { ok: false, error: (data as { error: string }).error };
   revalidatePath('/admin/reports');
   return { ok: true };
 }

@@ -44,3 +44,6 @@ jobs:
 
       - name: Check weekly cost health
         run: npm run cost:health
+
+      - name: Check weekly moderation health
+        run: npm run moderation:health
