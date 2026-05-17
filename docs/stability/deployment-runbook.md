@@ -98,6 +98,7 @@ The weekly job is intentionally deeper than the per-release gate:
 ```bash
 npm run integrity:weekly
 npm run product:health
+npm run cost:health
 ```
 
 It checks the production DB snapshot, queue age, failed queue rows, required
@@ -116,5 +117,10 @@ Required GitHub secrets for the weekly R2 orphan check:
 If it reports orphan objects, either enqueue/delete them through the protected
 R2 cleanup flow or intentionally raise the threshold with a documented reason.
 
-The product-health report is not a deploy blocker by default. It is the input to
-the weekly product review and feature Keep / Improve / Kill decisions.
+The product-health and cost-health reports are not deploy blockers by default.
+They are the input to the weekly product review and feature Keep / Improve /
+Kill decisions.
+
+Cost-health covers tracked AI cost plus usage proxies for media, R2, live,
+recording, and DB activity. Budget thresholds live in environment variables
+documented in `docs/stability/cost-controls.md`.

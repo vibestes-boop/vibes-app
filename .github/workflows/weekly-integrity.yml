@@ -41,3 +41,6 @@ jobs:
 
       - name: Report weekly product health
         run: npm run product:health
+
+      - name: Check weekly cost health
+        run: npm run cost:health

@@ -18,7 +18,7 @@ Disziplin abhaengt.
 | 5 | Observability fehlt | Nutzer melden Bugs per Screenshot, Ursache bleibt unklar | Sentry/PostHog optional oder leer, Queue/Cron/Media-Zustand nur manuell sichtbar | `npm run monitor:integrity` prueft Queue, Cron, R2-Functions und kaputte Medienreferenzen |
 | 6 | Feature-Breite ueberholt Stabilitaet | Live, Shop, AI, Coins, Guilds, Feed wirken unfertig | Viele Produktflaechen, wenige automatische End-to-End-Checks | Stabilitaetsfenster: Speed, Upload, Auth, Feed vor neuen Grossfeatures |
 | 7 | Backups werden nicht restauriert getestet | Datenverlust oder kaputte Migration wird erst im Ernstfall entdeckt | Backup wird erwaehnt, Restore nicht geprobt | Monatlicher Restore-Test fuer Supabase + R2-Stichprobe |
-| 8 | Kosten/Bandbreite laufen weg | R2/egress/compute steigen schneller als Nutzung | Grosse Originalbilder und Video-Previews im Grid | Medienbudget, Cache-Control, Thumbnail-Backfills, Upload-Kompression |
+| 8 | Kosten/Bandbreite laufen weg | R2/egress/compute steigen schneller als Nutzung | Grosse Originalbilder, Video-Previews, AI und Live wachsen ohne Budgetsignal | `npm run cost:health` plus Medienbudget, Cache-Control, Thumbnail-Backfills, Upload-Kompression |
 | 9 | CI prueft nicht die echten Nutzerpfade | Tests gruen, Prod trotzdem kaputt | Unit-Tests stark, aber wenige Live-Smokes | Scheduled stability workflow gegen Production-Feed plus `npm run stability:auth` |
 | 10 | Release-Hygiene bleibt manuell | Deploys passieren aus falschem Ordner/Repo oder mit altem Branch | Zwei lokale Repos/Pfade und manuelle Vercel CLI-Schritte | `npm run release:gate` plus Deployment-Runbook als Standard |
 | 11 | Produktfokus bleibt Bauchgefuehl | Features werden gebaut, aber Creator kommen nicht wieder | Kein woechentlicher North-Star-/Retention-Report | `npm run product:health` als Start jedes Product Reviews |
@@ -107,6 +107,8 @@ regelmaessig erfuellt sind:
   Post-Referenz.
 - Product-Health-Report liegt woechentlich vor: North Star, WAU/MAU,
   D1/D7-Retention, Engagement-Raten und Time-to-First-Post.
+- Cost-Health-Report liegt woechentlich vor: AI-Kosten, Kosten pro MAU,
+  Medien/R2, Live-Minuten, Recording-Minuten und Edge/DB-Usage-Proxies.
 
 ## Naechste technische Guardrails
 
@@ -121,6 +123,8 @@ regelmaessig erfuellt sind:
    Medienreferenzen laufen lassen.
 9. Deployment-Runbook fuer App, SQL, Functions, Secrets, Cron und Verify
    verpflichtend machen.
+10. Cost-Health-Check fuer AI, R2/Media, Live/Recording und Edge/DB-Proxies
+    woechentlich laufen lassen und teure Features hinter Flags halten.
 
 ## Entscheidung
 

@@ -47,6 +47,10 @@ paused. Product review decisions use:
 - `Improve`: signal exists but conversion/quality is weak
 - `Kill`: no signal, high cost, or stability risk
 
+Cost decisions use the companion guard in `docs/stability/cost-controls.md`.
+Run `npm run cost:health` in the same weekly review before approving expensive
+AI, live, recording, or upload-heavy work.
+
 ## Current Limits
 
 D1/D7 retention is an approximation using first-party DB activity events:
