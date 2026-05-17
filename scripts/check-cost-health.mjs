@@ -37,6 +37,7 @@ const timeoutMs = readPositiveInt(args.timeoutMs, DEFAULT_TIMEOUT_MS);
 const warnRatio = readRatio(args.warnRatio, DEFAULT_WARN_RATIO);
 const failRatio = readRatio(args.failRatio, DEFAULT_FAIL_RATIO);
 const budgets = readBudgets();
+const criticals = [];
 const failures = [];
 const warnings = [];
 
@@ -55,15 +56,22 @@ if (failures.length === 0) {
   }
 }
 
+if (criticals.length > 0) {
+  console.log('');
+  console.error('Critical budget exhaustion:');
+  for (const critical of criticals) console.error(`  - ${critical}`);
+}
+
 if (warnings.length > 0) {
   console.log('');
   console.log('Warnings:');
   for (const warning of warnings) console.log(`  - ${warning}`);
 }
 
-if (failures.length > 0) {
+if (criticals.length > 0 || failures.length > 0) {
   console.log('');
   console.error('Cost health check failed:');
+  for (const critical of criticals) console.error(`  - ${critical}`);
   for (const failure of failures) console.error(`  - ${failure}`);
   process.exit(1);
 }
@@ -184,7 +192,9 @@ function checkBudget(label, rawActual, rawBudget, kind) {
   const formattedBudget = kind === 'cents' ? money(budget) : number(budget);
   const line = `${label}: ${formattedActual}/${formattedBudget} (${Math.round(ratio * 100)}%)`;
 
-  if (ratio >= failRatio) {
+  if (ratio >= 1) {
+    criticals.push(`[budget:critical] ${line}`);
+  } else if (ratio >= failRatio) {
     failures.push(`[budget] ${line}`);
   } else if (ratio >= warnRatio) {
     warnings.push(`[budget] ${line}`);
@@ -301,7 +311,7 @@ function printHelp() {
   console.log(`
 Usage: node scripts/check-cost-health.mjs [options]
 
-Defaults warn at ${Math.round(DEFAULT_WARN_RATIO * 100)}% and fail at ${Math.round(DEFAULT_FAIL_RATIO * 100)}% of budget.
+Defaults warn at ${Math.round(DEFAULT_WARN_RATIO * 100)}%, fail at ${Math.round(DEFAULT_FAIL_RATIO * 100)}%, and mark critical at 100% of budget.
 
 Budget options:
   --ai-budget-cents <n>             AI image monthly budget (default ${DEFAULTS.aiBudgetCents})

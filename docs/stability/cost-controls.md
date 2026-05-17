@@ -22,7 +22,8 @@ npm run cost:health
 
 ## Budgets
 
-Defaults warn at 70% and fail at 90%:
+Defaults warn at 70%, fail at 90%, and mark a separate critical failure at
+100%:
 
 - `COST_AI_BUDGET_CENTS`
 - `COST_TRACKED_BUDGET_CENTS`
@@ -47,7 +48,8 @@ streaming, video recording, high-volume uploads, and background jobs.
 
 If a feature crosses 70% of its budget, it moves to Improve before more scope is
 added. If it crosses 90%, new rollout stops until the owner lowers cost or
-raises the budget with a documented reason.
+raises the budget with a documented reason. If it reaches 100%, the owner must
+disable or narrow the relevant runtime feature flag before more rollout.
 
 ## Runtime Feature Flags
 

@@ -61,6 +61,7 @@ validateTextFile('docs/stability/cost-controls.md', [
   'rollback owner',
   'Runtime Feature Flags',
   'live_recording_enabled',
+  '100%',
 ]);
 validateTextFile('docs/stability/trust-safety.md', ['SLA', 'admin_audit_log', 'content_reports', '/admin/reports', 'copyright', 'nsfw']);
 validateTextFile('apps/web/lib/moderation/report-reasons.ts', ['POST_REPORT_REASONS', 'copyright', 'nsfw']);
