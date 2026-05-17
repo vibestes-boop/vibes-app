@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath, revalidateTag } from 'next/cache';
+import { requireRuntimeFeature } from '@/lib/feature-flags/server';
 import { createClient } from '@/lib/supabase/server';
 import { containsBlockedWord } from '@shared/moderation/words';
 import type { LiveCommentWithAuthor } from '@/lib/data/live';
@@ -866,6 +867,11 @@ export async function setLiveShopMode(
   sessionId: string,
   enabled: boolean,
 ): Promise<ActionResult<null>> {
+  if (enabled) {
+    const feature = await requireRuntimeFeature('live_shop_enabled');
+    if (!feature.ok) return feature;
+  }
+
   const supabase = await createClient();
   const { error } = await supabase.rpc('set_live_shop_mode', {
     p_session_id: sessionId,

@@ -1,6 +1,7 @@
 'use server';
 
 import { z } from 'zod';
+import { requireRuntimeFeature } from '@/lib/feature-flags/server';
 import { createClient } from '@/lib/supabase/server';
 
 // -----------------------------------------------------------------------------
@@ -158,6 +159,12 @@ export async function createWhipIngress(input: {
     return { ok: false, error: parsed.error.issues[0]?.message ?? 'Ungültige Eingabe.' };
   }
 
+  const liveFeature = await requireRuntimeFeature('live_streaming_enabled');
+  if (!liveFeature.ok) return { ok: false, error: liveFeature.error };
+
+  const whipFeature = await requireRuntimeFeature('live_whip_ingress_enabled');
+  if (!whipFeature.ok) return { ok: false, error: whipFeature.error };
+
   const result = await invokeFunction<{
     sessionId: string;
     roomName: string;
@@ -244,6 +251,9 @@ export async function getWhipStatus(sessionId: string): Promise<StatusResult> {
 // vorher „Stream beenden" klicken.
 // -----------------------------------------------------------------------------
 export async function rotateWhipIngress(): Promise<RotateWhipResult> {
+  const whipFeature = await requireRuntimeFeature('live_whip_ingress_enabled');
+  if (!whipFeature.ok) return { ok: false, error: whipFeature.error };
+
   const result = await invokeFunction<{
     ingressUrl: string;
     ingressStreamKey: string;

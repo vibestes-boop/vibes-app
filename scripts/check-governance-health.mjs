@@ -55,9 +55,23 @@ validateTextFile('docs/stability/alerts.md', ['stability-alert', 'GitHub issue',
 validateTextFile('docs/stability/push-feed-health.md', ['npm run push-feed:health', 'Push Signals', 'Feed Signals']);
 validateTextFile('docs/stability/health-dashboard.md', ['npm run health:dashboard', 'Green', 'Yellow', 'Red']);
 validateTextFile('docs/stability/product-metrics.md', ['Keep', 'Improve', 'Kill', 'target metric', 'rollback plan']);
-validateTextFile('docs/stability/cost-controls.md', ['feature flag', 'monthly budget', 'rollback owner']);
+validateTextFile('docs/stability/cost-controls.md', [
+  'feature flag',
+  'monthly budget',
+  'rollback owner',
+  'Runtime Feature Flags',
+  'live_recording_enabled',
+]);
 validateTextFile('docs/stability/trust-safety.md', ['SLA', 'admin_audit_log', 'content_reports', '/admin/reports', 'copyright', 'nsfw']);
 validateTextFile('apps/web/lib/moderation/report-reasons.ts', ['POST_REPORT_REASONS', 'copyright', 'nsfw']);
+validateTextFile('apps/web/lib/feature-flags/server.ts', [
+  'RUNTIME_FEATURE_FLAGS',
+  'live_streaming_enabled',
+  'live_whip_ingress_enabled',
+  'live_recording_enabled',
+  'live_shop_enabled',
+  'is_feature_enabled',
+]);
 validateTextFile('apps/web/app/admin/reports/page.tsx', ['getModerationHealth', 'AdminReportsClient']);
 validateTextFile('apps/web/app/admin/reports/admin-reports-client.tsx', [
   'ModerationHealthPanel',
@@ -69,6 +83,12 @@ validateTextFile('supabase/migrations/20260517214000_admin_enforcement_actions.s
   'admin_enforce_content_report',
   'admin_audit_log',
   'r2_delete_queue',
+]);
+validateTextFile('supabase/migrations/20260517220000_runtime_feature_flags.sql', [
+  'live_streaming_enabled',
+  'live_whip_ingress_enabled',
+  'live_recording_enabled',
+  'live_shop_enabled',
 ]);
 validateTextFile('scripts/check-feature-freeze.mjs', ['Feature freeze guard', 'north-star-zero-weeks']);
 validateTextFile('.github/ISSUE_TEMPLATE/feature_request.yml', [

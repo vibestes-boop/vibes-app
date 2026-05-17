@@ -49,6 +49,31 @@ If a feature crosses 70% of its budget, it moves to Improve before more scope is
 added. If it crosses 90%, new rollout stops until the owner lowers cost or
 raises the budget with a documented reason.
 
+## Runtime Feature Flags
+
+High variable-cost surfaces are guarded by `public.feature_flags` and the
+`is_feature_enabled(flag_key)` RPC. The Web server actions fail closed when the
+RPC cannot be checked.
+
+Current runtime flags:
+
+- `ai_image_enabled`
+- `live_streaming_enabled`
+- `live_whip_ingress_enabled`
+- `live_recording_enabled`
+- `live_shop_enabled`
+
+Emergency disable example:
+
+```sql
+UPDATE public.feature_flags
+SET enabled = false, updated_at = NOW()
+WHERE flag_key = 'live_recording_enabled';
+```
+
+Re-enable only after the rollback owner has documented the budget impact and
+`npm run cost:health` is green again.
+
 ## Next Provider Integrations
 
 The current guard should be upgraded with direct provider billing reads when

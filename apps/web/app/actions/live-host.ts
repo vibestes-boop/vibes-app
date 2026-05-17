@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { requireRuntimeFeature } from '@/lib/feature-flags/server';
 import type { ActionResult } from './live';
 
 // -----------------------------------------------------------------------------
@@ -59,6 +60,9 @@ export async function startLiveSession(
 ): Promise<ActionResult<StartLiveSessionResult>> {
   const host = await getHost();
   if (!host) return { ok: false, error: 'Bitte einloggen.' };
+
+  const feature = await requireRuntimeFeature('live_streaming_enabled');
+  if (!feature.ok) return feature;
 
   const supabase = await createClient();
 
@@ -489,6 +493,9 @@ export async function startLiveRecording(
 ): Promise<ActionResult<{ recordingId: string | null }>> {
   const host = await getHost();
   if (!host) return { ok: false, error: 'Bitte einloggen.' };
+
+  const feature = await requireRuntimeFeature('live_recording_enabled');
+  if (!feature.ok) return feature;
 
   const supabase = await createClient();
   const { data, error } = await supabase.functions.invoke('livekit-egress', {
