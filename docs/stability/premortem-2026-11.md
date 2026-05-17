@@ -20,7 +20,7 @@ Disziplin abhaengt.
 | 7 | Backups werden nicht restauriert getestet | Datenverlust oder kaputte Migration wird erst im Ernstfall entdeckt | Backup wird erwaehnt, Restore nicht geprobt | Monatlicher Restore-Test fuer Supabase + R2-Stichprobe |
 | 8 | Kosten/Bandbreite laufen weg | R2/egress/compute steigen schneller als Nutzung | Grosse Originalbilder und Video-Previews im Grid | Medienbudget, Cache-Control, Thumbnail-Backfills, Upload-Kompression |
 | 9 | CI prueft nicht die echten Nutzerpfade | Tests gruen, Prod trotzdem kaputt | Unit-Tests stark, aber wenige Live-Smokes | Scheduled stability workflow gegen Production-Feed plus `npm run stability:auth` |
-| 10 | Release-Hygiene bleibt manuell | Deploys passieren aus falschem Ordner/Repo oder mit altem Branch | Zwei lokale Repos/Pfade und manuelle Vercel CLI-Schritte | Ein dokumentierter Release-Pfad, PR/CI/Vercel als Standard |
+| 10 | Release-Hygiene bleibt manuell | Deploys passieren aus falschem Ordner/Repo oder mit altem Branch | Zwei lokale Repos/Pfade und manuelle Vercel CLI-Schritte | `npm run release:gate` plus Deployment-Runbook als Standard |
 
 ## Timeline des hypothetischen Scheiterns
 
@@ -113,6 +113,8 @@ regelmaessig erfuellt sind:
 7. Restore-Test dokumentieren und monatlich ausfuehren.
 8. Backend-Integrity-Monitor als Pflicht-Gate fuer Queue, Cron, Functions und
    Medienreferenzen laufen lassen.
+9. Deployment-Runbook fuer App, SQL, Functions, Secrets, Cron und Verify
+   verpflichtend machen.
 
 ## Entscheidung
 

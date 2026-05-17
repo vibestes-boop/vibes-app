@@ -27,9 +27,7 @@ an explicit consolidation plan.
 
 ```bash
 cd /Users/zaurhatuev/vibes-app
-npm run workspace:doctor
-npm run stability:native-backend
-npm run monitor:integrity
+npm run release:gate -- --phase pre
 ```
 
 ## Current Source Of Truth

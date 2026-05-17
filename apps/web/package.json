@@ -13,6 +13,7 @@
     "r2:cors": "node ../../scripts/configure-r2-cors.mjs",
     "r2:cache-control": "node ../../scripts/fix-r2-cache-control.mjs",
     "env:doctor": "node ../../scripts/env-doctor.mjs --scope web",
+    "release:gate": "node ../../scripts/release-gate.mjs",
     "thumbnails:backfill": "node ../../scripts/backfill-video-thumbnails.mjs",
     "images:thumbnails:backfill": "node ../../scripts/backfill-image-thumbnails.mjs",
     "stability:web": "node ../../scripts/web-stability-suite.mjs",
