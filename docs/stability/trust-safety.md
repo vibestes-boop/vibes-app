@@ -48,6 +48,8 @@ must be resolved with an audit note before enforcement.
 Legacy report tables may still exist for older flows or product feedback, but
 moderation reports must be mirrored into `content_reports`. The health check
 fails when it finds legacy reports that are not queued.
+It also verifies enforcement readiness: the audited enforcement RPC, profile
+ban/restrict/shadowban columns, live mute table, and admin audit table.
 
 ## SLA
 

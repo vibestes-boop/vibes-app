@@ -97,6 +97,7 @@ function printSnapshot(data) {
   const reports = data.content_reports || {};
   const legacy = data.legacy_unqueued || {};
   const audit = data.admin_audit || {};
+  const enforcement = data.enforcement || {};
   const byType = reports.by_target_type || {};
 
   console.log('');
@@ -121,11 +122,21 @@ function printSnapshot(data) {
   console.log('Admin Audit:');
   console.log(`  - events 7d: ${number(audit.events_7d)}`);
   console.log(`  - moderation events 7d: ${number(audit.moderation_events_7d)}`);
+
+  console.log('');
+  console.log('Enforcement Readiness:');
+  console.log(`  - RPC: ${booleanLabel(enforcement.rpc_available)}`);
+  console.log(`  - profile ban column: ${booleanLabel(enforcement.profile_ban_column)}`);
+  console.log(`  - profile restrict columns: ${booleanLabel(enforcement.profile_restrict_columns)}`);
+  console.log(`  - profile shadowban column: ${booleanLabel(enforcement.profile_shadowban_column)}`);
+  console.log(`  - live mute table: ${booleanLabel(enforcement.live_mute_table)}`);
+  console.log(`  - audit log table: ${booleanLabel(enforcement.audit_log_table)}`);
 }
 
 function evaluateSnapshot(data) {
   const reports = data.content_reports || {};
   const legacy = data.legacy_unqueued || {};
+  const enforcement = data.enforcement || {};
 
   if (Number(reports.pending || 0) > maxPending) {
     failures.push(`[reports] Pending reports ${reports.pending} > ${maxPending}.`);
@@ -148,6 +159,12 @@ function evaluateSnapshot(data) {
 
   if (Number(legacy.total || 0) > maxLegacyUnqueued) {
     failures.push(`[legacy] Unqueued legacy reports ${legacy.total} > ${maxLegacyUnqueued}.`);
+  }
+
+  for (const [key, value] of Object.entries(enforcement)) {
+    if (value !== true) {
+      failures.push(`[enforcement] ${key} is not ready.`);
+    }
   }
 }
 
@@ -232,6 +249,10 @@ function readNonNegativeInt(value, fallback) {
 function number(value) {
   const numeric = Number(value || 0);
   return Number.isFinite(numeric) ? new Intl.NumberFormat('en-US').format(numeric) : 'n/a';
+}
+
+function booleanLabel(value) {
+  return value === true ? 'yes' : 'no';
 }
 
 function formatAge(seconds) {

@@ -99,6 +99,12 @@ validateTextFile('supabase/migrations/20260517223000_extended_admin_enforcement_
   'mute_live_host',
   'admin_audit_log',
 ]);
+validateTextFile('supabase/migrations/20260517224000_moderation_enforcement_health.sql', [
+  'enforcement',
+  'profile_restrict_columns',
+  'profile_shadowban_column',
+  'live_mute_table',
+]);
 validateTextFile('supabase/migrations/20260517220000_runtime_feature_flags.sql', [
   'live_streaming_enabled',
   'live_whip_ingress_enabled',
