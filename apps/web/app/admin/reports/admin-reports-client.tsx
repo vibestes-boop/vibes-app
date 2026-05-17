@@ -15,6 +15,8 @@ import {
   Activity,
   ExternalLink,
   ShieldCheck,
+  EyeOff,
+  MessageCircleOff,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -29,6 +31,12 @@ import {
 // -----------------------------------------------------------------------------
 
 type Status = 'pending' | 'reviewed' | 'actioned' | 'dismissed';
+type EnforcementAction =
+  | 'remove_post'
+  | 'ban_profile'
+  | 'restrict_profile'
+  | 'shadowban_profile'
+  | 'mute_live_host';
 
 const TABS: { label: string; value: Status; icon: React.ComponentType<{ className?: string }> }[] = [
   { label: 'Ausstehend', value: 'pending',   icon: Clock },
@@ -39,6 +47,14 @@ const TABS: { label: string; value: Status; icon: React.ComponentType<{ classNam
 
 const TARGET_LABELS: Record<string, string> = {
   post: 'Post', profile: 'Profil', comment: 'Kommentar', live: 'Live-Stream', product: 'Produkt',
+};
+
+const ENFORCEMENT_LABELS: Record<EnforcementAction, string> = {
+  remove_post: 'Post entfernt',
+  ban_profile: 'Profil gesperrt',
+  restrict_profile: 'Profil beschränkt',
+  shadowban_profile: 'Profil shadowbanned',
+  mute_live_host: 'Live-Host stummgeschaltet',
 };
 
 export function AdminReportsClient({
@@ -98,7 +114,7 @@ export function AdminReportsClient({
 
   async function handleEnforce(
     report: ContentReport,
-    action: 'remove_post' | 'ban_profile',
+    action: EnforcementAction,
     note: string,
   ) {
     setActionId(report.id);
@@ -108,7 +124,7 @@ export function AdminReportsClient({
     if (result.ok) {
       setReports((prev) => prev.filter((r) => r.id !== report.id));
       setExpandedId(null);
-      showToast(action === 'remove_post' ? 'Post entfernt und Report aktioniert' : 'Profil gesperrt und Report aktioniert', true);
+      showToast(`${ENFORCEMENT_LABELS[action]} und Report aktioniert`, true);
     } else {
       showToast(`Fehler: ${result.error}`, false);
     }
@@ -275,7 +291,7 @@ function ReportRow({
   expanded: boolean;
   onToggle: () => void;
   onResolve: (status: 'reviewed' | 'actioned' | 'dismissed', note: string) => void;
-  onEnforce: (action: 'remove_post' | 'ban_profile', note: string) => void;
+  onEnforce: (action: EnforcementAction, note: string) => void;
   showActions: boolean;
 }) {
   const [note, setNote] = useState('');
@@ -394,14 +410,45 @@ function ReportRow({
               </button>
             )}
             {report.target_type === 'profile' && (
+              <>
+                <button
+                  type="button"
+                  onClick={() => onEnforce('ban_profile', note)}
+                  disabled={loading}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-100 disabled:opacity-50 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-400"
+                >
+                  <XCircle className="h-3.5 w-3.5" />
+                  Profil sperren
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onEnforce('restrict_profile', note)}
+                  disabled={loading}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-100 disabled:opacity-50 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300"
+                >
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  Profil beschränken
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onEnforce('shadowban_profile', note)}
+                  disabled={loading}
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted disabled:opacity-50"
+                >
+                  <EyeOff className="h-3.5 w-3.5" />
+                  Shadowban
+                </button>
+              </>
+            )}
+            {report.target_type === 'live' && (
               <button
                 type="button"
-                onClick={() => onEnforce('ban_profile', note)}
+                onClick={() => onEnforce('mute_live_host', note)}
                 disabled={loading}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-100 disabled:opacity-50 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-400"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-100 disabled:opacity-50 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300"
               >
-                <XCircle className="h-3.5 w-3.5" />
-                Profil sperren
+                <MessageCircleOff className="h-3.5 w-3.5" />
+                Live-Host stummschalten
               </button>
             )}
             <button

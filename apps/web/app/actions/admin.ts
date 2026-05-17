@@ -34,6 +34,9 @@ export interface AdminUser {
   is_verified:         boolean;
   is_admin:            boolean;
   is_banned:           boolean;
+  is_restricted:       boolean;
+  restricted_until:    string | null;
+  is_shadow_banned:    boolean;
   women_only_verified: boolean;
   is_creator:          boolean;
   created_at:          string;
@@ -222,7 +225,7 @@ export async function adminResolveReport(
 
 export async function adminEnforceReport(
   reportId: string,
-  action: 'remove_post' | 'ban_profile',
+  action: 'remove_post' | 'ban_profile' | 'restrict_profile' | 'shadowban_profile' | 'mute_live_host',
   adminNote?: string,
 ): Promise<ActionResult> {
   const { supabase, error: authErr } = await requireAdmin();

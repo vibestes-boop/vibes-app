@@ -93,6 +93,12 @@ validateTextFile('supabase/migrations/20260517214000_admin_enforcement_actions.s
   'admin_audit_log',
   'r2_delete_queue',
 ]);
+validateTextFile('supabase/migrations/20260517223000_extended_admin_enforcement_actions.sql', [
+  'restrict_profile',
+  'shadowban_profile',
+  'mute_live_host',
+  'admin_audit_log',
+]);
 validateTextFile('supabase/migrations/20260517220000_runtime_feature_flags.sql', [
   'live_streaming_enabled',
   'live_whip_ingress_enabled',
