@@ -131,6 +131,7 @@ function printSnapshot(data) {
   const native = push.native_tokens || {};
   const web = push.web_subscriptions || {};
   const notifications = push.notifications || {};
+  const backlog = notifications.recipient_backlog || {};
   const triggers = push.triggers || {};
   const feed = data.feed || {};
 
@@ -142,6 +143,14 @@ function printSnapshot(data) {
   console.log(`  - native tokens: available=${Boolean(native.available)}, total=${number(native.total)}, active_30d=${number(native.active_30d)}, stale_90d=${number(native.stale_90d)}`);
   console.log(`  - web subs: available=${Boolean(web.available)}, total=${number(web.total)}, active_60d=${number(web.active_60d)}, stale_60d=${number(web.stale_60d)}`);
   console.log(`  - notifications: available=${Boolean(notifications.available)}, 24h=${number(notifications.created_24h)}, 7d=${number(notifications.created_7d)}, unread=${number(notifications.unread_total)}, oldest_unread=${formatAge(notifications.oldest_unread_age_seconds)}`);
+  if (notifications.unread_30d_plus !== undefined || backlog.users_with_unread !== undefined) {
+    console.log(
+      `  - unread backlog: 30d+=${number(notifications.unread_30d_plus)}, 60d+=${number(notifications.unread_60d_plus)}, 90d+=${number(notifications.unread_90d_plus)}, users=${number(backlog.users_with_unread)}, max/user=${number(backlog.max_unread_for_one_user)}`,
+    );
+  }
+  if (notifications.by_type_unread && Object.keys(notifications.by_type_unread).length > 0) {
+    console.log(`  - unread by type: ${formatObjectCounts(notifications.by_type_unread)}`);
+  }
   console.log(`  - triggers: notification=${Boolean(triggers.notifications_push_trigger)}, web_dm=${Boolean(triggers.messages_web_push_trigger)}, pg_net=${Boolean(triggers.pg_net_available)}`);
 
   console.log('');
@@ -157,6 +166,7 @@ function evaluateSnapshot(data) {
   const native = push.native_tokens || {};
   const web = push.web_subscriptions || {};
   const notifications = push.notifications || {};
+  const backlog = notifications.recipient_backlog || {};
   const triggers = push.triggers || {};
   const feed = data.feed || {};
 
@@ -171,6 +181,12 @@ function evaluateSnapshot(data) {
   }
   if (!triggers.notifications_push_trigger) {
     warnings.push('[push] notifications push trigger is not active.');
+  }
+  if (Number(notifications.unread_60d_plus || 0) > 0) {
+    warnings.push(`[push] ${number(notifications.unread_60d_plus)} unread notification(s) are older than 60 days.`);
+  }
+  if (Number(backlog.max_unread_for_one_user || 0) > 100) {
+    warnings.push(`[push] One account has ${number(backlog.max_unread_for_one_user)} unread notification(s); review product behavior or cleanup.`);
   }
   if (web.available && Number(web.total || 0) > 0 && !triggers.messages_web_push_trigger) {
     failures.push('[push] web push subscriptions exist but DM web push trigger is not active.');
@@ -344,6 +360,12 @@ function readNonNegativeInt(value, fallback) {
 function number(value) {
   const numeric = Number(value || 0);
   return Number.isFinite(numeric) ? new Intl.NumberFormat('en-US').format(numeric) : 'n/a';
+}
+
+function formatObjectCounts(value) {
+  return Object.entries(value || {})
+    .map(([key, count]) => `${key}=${number(count)}`)
+    .join(', ');
 }
 
 function formatAge(seconds) {

@@ -1942,24 +1942,52 @@ function buildPushFeedArea(result: Awaited<ReturnType<typeof readRpcSnapshot>>):
   const nativeTokens = asRecord(push.native_tokens);
   const webSubscriptions = asRecord(push.web_subscriptions);
   const notifications = asRecord(push.notifications);
+  const unreadByType = asRecord(notifications.by_type_unread);
+  const recipientBacklog = asRecord(notifications.recipient_backlog);
   const totalPosts = toNumber(feed.public_posts_total);
   const videosMissingThumb = toNumber(feed.public_video_posts_without_thumbnail);
   const unread = toNumber(notifications.unread_total);
-  const status = totalPosts < 3 || videosMissingThumb > 0 ? 'red' : unread > 500 ? 'yellow' : 'green';
+  const unread30dPlus = toNumber(notifications.unread_30d_plus);
+  const unread60dPlus = toNumber(notifications.unread_60d_plus);
+  const unread90dPlus = toNumber(notifications.unread_90d_plus);
+  const usersWithUnread = toNumber(recipientBacklog.users_with_unread);
+  const maxUnreadForOneUser = toNumber(recipientBacklog.max_unread_for_one_user);
+  const liveUnread = toNumber(unreadByType.live);
+  const topUnreadType = topObjectCountLabel(unreadByType);
+  const status =
+    totalPosts < 3 || videosMissingThumb > 0
+      ? 'red'
+      : unread > 500 || unread60dPlus > 0 || maxUnreadForOneUser > 100
+        ? 'yellow'
+        : 'green';
+  const backlogSummary = unread30dPlus > 0 || maxUnreadForOneUser > 0
+    ? `, Unread ${unread} (${unread30dPlus} >30d, max/user ${maxUnreadForOneUser})`
+    : `, Unread ${unread}`;
 
   return {
     key: 'push-feed',
     label: 'Push & Feed',
     status,
-    summary: `Public Posts ${totalPosts}, Videos ohne Thumbnail ${videosMissingThumb}, Push Tokens ${toNumber(nativeTokens.total)}`,
+    summary: `Public Posts ${totalPosts}, Videos ohne Thumbnail ${videosMissingThumb}${backlogSummary}`,
     href: '/admin/command-center',
     detail: {
       public_posts_total: totalPosts,
       public_video_posts_without_thumbnail: videosMissingThumb,
       unread_notifications: unread,
+      unread_30d_plus: unread30dPlus,
+      unread_60d_plus: unread60dPlus,
+      unread_90d_plus: unread90dPlus,
+      unread_users: usersWithUnread,
+      max_unread_for_one_user: maxUnreadForOneUser,
+      top_unread_type: topUnreadType,
+      live_unread: liveUnread,
       native_tokens_total: toNumber(nativeTokens.total),
       web_subscriptions_total: toNumber(webSubscriptions.total),
-      next_action: unread > 500 ? 'Unread Backlog Review' : 'Push Token Review',
+      next_action: liveUnread > unread / 2
+        ? 'Live Notification Backlog Review'
+        : unread > 500
+          ? 'Unread Backlog Review'
+          : 'Push Token Review',
     },
   };
 }
@@ -2491,6 +2519,17 @@ function readAggregateCount(value: unknown): number {
     return toNumber(asRecord(value[0]).count);
   }
   return toNumber(asRecord(value).count);
+}
+
+function topObjectCountLabel(value: SnapshotObject): string {
+  const entries = Object.entries(value)
+    .map(([key, count]) => [key, toNumber(count)] as const)
+    .filter(([, count]) => count > 0)
+    .sort((a, b) => b[1] - a[1]);
+
+  if (entries.length === 0) return 'none';
+  const [key, count] = entries[0];
+  return `${key} (${count})`;
 }
 
 function toNumber(value: unknown): number {

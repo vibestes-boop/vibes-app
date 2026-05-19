@@ -18,10 +18,15 @@ The Supabase snapshot reports:
 - web push subscriptions and stale subscriptions older than 60 days
 - notification rows created in the last 24 hours and 7 days
 - unread notification backlog and oldest unread age
+- unread notification age buckets: older than 30, 60, and 90 days
+- unread backlog shape without PII: users with unread notifications, accounts
+  over 50/100 unread notifications, and max unread count for one account
+- unread notifications by type
 - required database triggers for notification and DM web-push dispatch
 - `pg_net` availability
 
-The check does not print token or endpoint values.
+The check does not print token, endpoint, recipient, e-mail, or notification
+content values.
 
 ## Feed Signals
 
@@ -52,4 +57,7 @@ contains the header, `postgrest-fallback` is counted and compared with
   or the fallback allowance is explicitly raised for a controlled incident.
 - Public videos without thumbnails block media-heavy launches.
 - Stale push token spikes require cleanup or token lifecycle fixes.
+- Unread notification backlogs older than 60 days are yellow review signals.
+  They should be handled by product policy or a deliberate cleanup, not by a
+  silent destructive script.
 - Web push subscriptions with a missing DM trigger block Web Push rollout.

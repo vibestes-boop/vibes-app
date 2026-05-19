@@ -26,6 +26,7 @@ const anonKey =
 const serviceKey = args.serviceRoleKey || readEnv('SUPABASE_SERVICE_ROLE_KEY');
 const siteUrl = normalizeBase(args.siteUrl || process.env.STABILITY_SITE_URL || DEFAULT_SITE_URL);
 const timeoutMs = readPositiveInt(args.timeoutMs, DEFAULT_TIMEOUT_MS);
+const rpcRetries = readPositiveInt(args.rpcRetries, 2);
 const rows = [];
 const failures = [];
 
@@ -78,23 +79,42 @@ console.log('');
 console.log('Production health dashboard passed.');
 
 async function fetchRpc(name) {
-  const response = await fetchWithTimeout(`${supabaseUrl}/rest/v1/rpc/${name}`, {
-    method: 'POST',
-    headers: {
-      accept: 'application/json',
-      apikey: anonKey,
-      authorization: `Bearer ${anonKey}`,
-      'content-type': 'application/json',
-    },
-    body: '{}',
-  });
-  const text = await response.text();
-  if (!response.ok) return { ok: false, status: response.status, error: summarize(text), data: null };
-  try {
-    return { ok: true, status: response.status, data: JSON.parse(text), error: '' };
-  } catch {
-    return { ok: false, status: response.status, error: 'invalid JSON', data: null };
+  let lastResult = { ok: false, status: 0, error: 'not attempted', data: null };
+
+  for (let attempt = 1; attempt <= rpcRetries; attempt += 1) {
+    try {
+      const response = await fetchWithTimeout(`${supabaseUrl}/rest/v1/rpc/${name}`, {
+        method: 'POST',
+        headers: {
+          accept: 'application/json',
+          apikey: anonKey,
+          authorization: `Bearer ${anonKey}`,
+          'content-type': 'application/json',
+        },
+        body: '{}',
+      });
+      const text = await response.text();
+      if (!response.ok) {
+        lastResult = { ok: false, status: response.status, error: summarize(text), data: null };
+      } else {
+        try {
+          return { ok: true, status: response.status, data: JSON.parse(text), error: '' };
+        } catch {
+          lastResult = { ok: false, status: response.status, error: 'invalid JSON', data: null };
+        }
+      }
+    } catch (error) {
+      lastResult = { ok: false, status: 0, error: error.message || 'request failed', data: null };
+    }
+
+    if (attempt < rpcRetries && isRetryableRpcError(lastResult)) {
+      await sleep(250 * attempt);
+      continue;
+    }
+    break;
   }
+
+  return lastResult;
 }
 
 async function fetchFeedEndpoint() {
@@ -309,6 +329,10 @@ function addPushFeed(result, feedEndpoint) {
   const web = push.web_subscriptions || {};
   const notifications = push.notifications || {};
   const triggers = push.triggers || {};
+  const backlog = notifications.recipient_backlog || {};
+  const hasBacklogDiagnostics =
+    notifications.unread_60d_plus !== undefined &&
+    backlog.max_unread_for_one_user !== undefined;
   const red =
     Number(feed.public_posts_total || 0) < 3 ||
     Number(feed.public_video_posts_without_thumbnail || 0) > 0 ||
@@ -319,11 +343,16 @@ function addPushFeed(result, feedEndpoint) {
   const yellow =
     !red &&
     (Number(notifications.unread_total || 0) > 500 ||
+      (hasBacklogDiagnostics && Number(notifications.unread_60d_plus || 0) > 0) ||
+      (hasBacklogDiagnostics && Number(backlog.max_unread_for_one_user || 0) > 100) ||
       (native.available && Number(native.total || 0) > 0 && Number(native.active_30d || 0) === 0));
+  const backlogSummary = hasBacklogDiagnostics
+    ? ` (${number(notifications.unread_60d_plus)} older 60d, max/user ${number(backlog.max_unread_for_one_user)})`
+    : '';
   addRow(
     'Push/Feed',
     red ? 'Red' : yellow ? 'Yellow' : 'Green',
-    `feed ${number(feedEndpoint.posts)} posts, unread ${number(notifications.unread_total)}, native active ${number(native.active_30d)}/${number(native.total)}`,
+    `feed ${number(feedEndpoint.posts)} posts, unread ${number(notifications.unread_total)}${backlogSummary}, native active ${number(native.active_30d)}/${number(native.total)}`,
     'npm run push-feed:health',
   );
 }
@@ -365,6 +394,22 @@ async function fetchWithTimeout(url, init = {}) {
   } finally {
     clearTimeout(timer);
   }
+}
+
+function isRetryableRpcError(result) {
+  if (!result) return true;
+  const error = String(result.error || '').toLowerCase();
+  return (
+    result.status === 0 ||
+    result.status >= 500 ||
+    error.includes('57014') ||
+    error.includes('statement timeout') ||
+    error.includes('canceling statement')
+  );
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 function loadEnv(root) {
@@ -476,5 +521,6 @@ Builds a traffic-light production health dashboard from existing health snapshot
 Options:
   --site-url <url>      Web app URL (default ${DEFAULT_SITE_URL})
   --timeout-ms <n>      Request timeout (default ${DEFAULT_TIMEOUT_MS})
+  --rpc-retries <n>     Retry transient Supabase RPC failures (default 2)
 `);
 }

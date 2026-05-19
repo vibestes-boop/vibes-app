@@ -25,3 +25,7 @@ Covered areas:
 
 The dashboard does not replace the detailed guards. It summarizes their
 snapshots so the weekly review can start with a single status board.
+
+Transient Supabase RPC timeouts are retried by default. A repeated timeout still
+turns the affected area red, but a single short-lived `57014` statement timeout
+does not make the whole dashboard noisy.
