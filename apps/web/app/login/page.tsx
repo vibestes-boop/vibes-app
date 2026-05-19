@@ -6,6 +6,7 @@ import { AlertCircle } from 'lucide-react';
 
 import { MagicLinkForm } from '@/components/auth/magic-link-form';
 import { OAuthButtons } from '@/components/auth/oauth-buttons';
+import { HashSessionRescue } from '@/components/auth/hash-session-rescue';
 import { getUser } from '@/lib/auth/session';
 import { getT } from '@/lib/i18n/server';
 
@@ -35,6 +36,7 @@ export default async function LoginPage({
 
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center bg-background px-6 py-16">
+      <HashSessionRescue />
       <div className="w-full max-w-sm space-y-8">
         <div className="space-y-2 text-center">
           <h1 className="font-serif text-4xl font-medium tracking-tight">{t('auth.loginTitle')}</h1>
