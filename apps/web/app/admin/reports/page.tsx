@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
-import { getAdminReports, getModerationHealth } from '@/app/actions/admin';
+import { redirect } from 'next/navigation';
+import { getAdminReports, getAdminRoleStatus, getModerationHealth } from '@/app/actions/admin';
 import { AdminReportsClient } from './admin-reports-client';
 
 // -----------------------------------------------------------------------------
@@ -15,6 +16,9 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 export default async function AdminReportsPage() {
+  const roles = await getAdminRoleStatus();
+  if (!roles.can_moderate) redirect('/admin');
+
   const [reports, health] = await Promise.all([
     getAdminReports('pending'),
     getModerationHealth(),

@@ -23,6 +23,7 @@ const supabaseUrl = normalizeBase(
 const anonKey =
   args.anonKey ||
   readEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'EXPO_PUBLIC_SUPABASE_ANON_KEY', 'SUPABASE_ANON_KEY');
+const serviceKey = args.serviceRoleKey || readEnv('SUPABASE_SERVICE_ROLE_KEY');
 const siteUrl = normalizeBase(args.siteUrl || process.env.STABILITY_SITE_URL || DEFAULT_SITE_URL);
 const timeoutMs = readPositiveInt(args.timeoutMs, DEFAULT_TIMEOUT_MS);
 const rows = [];
@@ -33,13 +34,18 @@ console.log('No secret values are printed.');
 
 if (!supabaseUrl) failures.push('[env] Missing NEXT_PUBLIC_SUPABASE_URL or EXPO_PUBLIC_SUPABASE_URL.');
 if (!anonKey) failures.push('[env] Missing NEXT_PUBLIC_SUPABASE_ANON_KEY or EXPO_PUBLIC_SUPABASE_ANON_KEY.');
+if (!serviceKey) failures.push('[env] Missing SUPABASE_SERVICE_ROLE_KEY for support/campaign/region guards.');
 
 if (failures.length === 0) {
-  const [integrity, product, cost, moderation, pushFeed, governance, feedEndpoint] = await Promise.all([
+  const [integrity, product, cost, moderation, support, campaigns, regions, thumbnails, pushFeed, governance, feedEndpoint] = await Promise.all([
     fetchRpc('production_integrity_snapshot'),
     fetchRpc('product_health_snapshot'),
     fetchRpc('cost_health_snapshot'),
     fetchRpc('moderation_health_snapshot'),
+    fetchAdminTable('admin_support_threads?select=id,status,priority,created_at,last_message_at&status=in.(open,pending)&limit=1000'),
+    fetchAdminTable('admin_campaigns?select=id,title,status,budget_cents,spend_cents,updated_at&limit=1000'),
+    fetchAdminTable(`admin_region_daily_metrics?select=country_code,country_name,metric_date,active_users,views,reports&metric_date=gte.${thirtyDaysAgo()}&limit=5000`),
+    fetchThumbnailTables(),
     fetchRpc('push_feed_health_snapshot'),
     checkGovernanceFiles(),
     fetchFeedEndpoint(),
@@ -49,6 +55,10 @@ if (failures.length === 0) {
   addProduct(product);
   addCost(cost);
   addModeration(moderation);
+  addSupport(support);
+  addCampaigns(campaigns);
+  addRegions(regions);
+  addThumbnails(thumbnails);
   addPushFeed(pushFeed, feedEndpoint);
   addGovernance(governance);
 }
@@ -105,6 +115,37 @@ async function fetchFeedEndpoint() {
   } catch (error) {
     return { ok: false, status: 0, posts: 0, error: error.message };
   }
+}
+
+async function fetchAdminTable(path) {
+  const response = await fetchWithTimeout(`${supabaseUrl}/rest/v1/${path}`, {
+    headers: {
+      accept: 'application/json',
+      apikey: serviceKey,
+      authorization: `Bearer ${serviceKey}`,
+    },
+  });
+  const text = await response.text();
+  if (!response.ok) return { ok: false, status: response.status, error: summarize(text), data: null };
+  try {
+    return { ok: true, status: response.status, data: JSON.parse(text), error: '' };
+  } catch {
+    return { ok: false, status: response.status, error: 'invalid JSON', data: null };
+  }
+}
+
+async function fetchThumbnailTables() {
+  const [posts, stories] = await Promise.all([
+    fetchAdminTable('posts?select=id,media_type,media_url,thumbnail_url,created_at&media_url=not.is.null&limit=5000'),
+    fetchAdminTable('stories?select=id,media_type,media_url,thumbnail_url,archived,created_at&media_url=not.is.null&archived=eq.false&limit=5000'),
+  ]);
+  if (!posts.ok) return { ok: false, error: `posts failed: ${posts.error}`, posts: [], stories: [] };
+  if (!stories.ok) return { ok: false, error: `stories failed: ${stories.error}`, posts: [], stories: [] };
+  return {
+    ok: true,
+    posts: Array.isArray(posts.data) ? posts.data : [],
+    stories: Array.isArray(stories.data) ? stories.data : [],
+  };
 }
 
 async function checkGovernanceFiles() {
@@ -198,6 +239,65 @@ function addModeration(result) {
     red ? 'Red' : yellow ? 'Yellow' : 'Green',
     `pending ${number(reports.pending)}, over SLA ${number(reports.pending_over_sla)}, legacy unqueued ${number(legacy.total)}`,
     'npm run moderation:health',
+  );
+}
+
+function addSupport(result) {
+  if (!result.ok) return addRow('Support Inbox', 'Red', `support table failed: ${result.error}`, 'npm run support:health');
+  const items = Array.isArray(result.data) ? result.data : [];
+  const overSla = items.filter((item) => new Date(item.created_at).getTime() < Date.now() - 24 * 60 * 60 * 1000).length;
+  const high = items.filter((item) => item.priority === 'high').length;
+  const status = overSla > 0 ? 'Red' : high > 0 || items.length > 10 ? 'Yellow' : 'Green';
+  addRow(
+    'Support Inbox',
+    status,
+    `open/pending ${number(items.length)}, over SLA ${number(overSla)}, high ${number(high)}`,
+    'npm run support:health',
+  );
+}
+
+function addCampaigns(result) {
+  if (!result.ok) return addRow('Campaigns', 'Red', `campaign table failed: ${result.error}`, 'npm run campaigns:health');
+  const items = Array.isArray(result.data) ? result.data : [];
+  const active = items.filter((item) => item.status === 'active').length;
+  const failed = items.filter((item) => item.status === 'failed').length;
+  const status = failed > 0 ? 'Red' : active > 0 ? 'Yellow' : 'Green';
+  addRow(
+    'Campaigns',
+    status,
+    `total ${number(items.length)}, active ${number(active)}, failed ${number(failed)}`,
+    'npm run campaigns:health',
+  );
+}
+
+function addRegions(result) {
+  if (!result.ok) return addRow('Regional Activity', 'Red', `region table failed: ${result.error}`, 'npm run regions:health');
+  const items = Array.isArray(result.data) ? result.data : [];
+  const countries = new Set(items.map((item) => item.country_code)).size;
+  const reports = items.reduce((sum, item) => sum + Number(item.reports || 0), 0);
+  const active = items.reduce((sum, item) => sum + Number(item.active_users || 0), 0);
+  const reportRate = active > 0 ? reports / active : 0;
+  const status = reportRate > 0.2 ? 'Red' : reports > 0 ? 'Yellow' : 'Green';
+  addRow(
+    'Regional Activity',
+    status,
+    `countries ${number(countries)}, active ${number(active)}, reports ${number(reports)}`,
+    'npm run regions:health',
+  );
+}
+
+function addThumbnails(result) {
+  if (!result.ok) return addRow('Media Thumbnails', 'Red', `thumbnail tables failed: ${result.error}`, 'npm run media:thumbnail-health');
+  const rows = [...result.posts, ...result.stories].filter((item) => item.media_url && item.archived !== true);
+  const missing = rows.filter((item) => !item.thumbnail_url);
+  const videoMissing = missing.filter((item) => item.media_type === 'video').length;
+  const imageMissing = missing.filter((item) => item.media_type === 'image').length;
+  const status = missing.length > 0 ? 'Red' : 'Green';
+  addRow(
+    'Media Thumbnails',
+    status,
+    `media rows ${number(rows.length)}, missing ${number(missing.length)} (video ${number(videoMissing)}, image ${number(imageMissing)})`,
+    'npm run media:thumbnail-health',
   );
 }
 
@@ -340,6 +440,12 @@ function ratio(actual, budget) {
   const a = Number(actual || 0);
   const b = Number(budget || 0);
   return Number.isFinite(a) && Number.isFinite(b) && b > 0 ? a / b : 0;
+}
+
+function thirtyDaysAgo() {
+  const date = new Date();
+  date.setUTCDate(date.getUTCDate() - 30);
+  return date.toISOString().slice(0, 10);
 }
 
 function pad(value, width) {

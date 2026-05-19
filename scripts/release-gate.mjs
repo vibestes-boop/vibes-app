@@ -80,6 +80,7 @@ async function runPostDeployGate() {
     '--require-public-endpoint-cdn-cache',
   ], repoRoot);
   runStep('Production media budget', 'npm', ['run', 'stability:media-budget'], repoRoot);
+  runStep('Production thumbnail health', 'npm', ['run', 'media:thumbnail-health'], repoRoot);
   runStep('Production backend integrity', 'npm', ['run', 'monitor:integrity'], repoRoot);
   runStep('Authenticated production smoke', 'npm', [
     'run',

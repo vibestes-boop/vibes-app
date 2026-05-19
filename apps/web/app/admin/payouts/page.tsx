@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
+import { redirect } from 'next/navigation';
 import { CreditCard, TrendingUp, Clock, Gem } from 'lucide-react';
-import { getSellerBalances } from '@/app/actions/admin';
+import { getAdminRoleStatus, getSellerBalances } from '@/app/actions/admin';
 
 // -----------------------------------------------------------------------------
 // /admin/payouts — Seller-Guthaben & Auszahlungs-Übersicht
@@ -19,6 +20,9 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 export default async function AdminPayoutsPage() {
+  const roles = await getAdminRoleStatus();
+  if (!roles.can_creator_ops) redirect('/admin');
+
   const sellers = await getSellerBalances();
 
   const totalDiamonds = sellers.reduce((s, r) => s + r.diamond_balance, 0);

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
-import { searchAdminUsers } from '@/app/actions/admin';
+import { redirect } from 'next/navigation';
+import { getAdminRoleStatus, getAdminUsersPageSnapshot } from '@/app/actions/admin';
 import { AdminUsersClient } from './admin-users-client';
 
 // -----------------------------------------------------------------------------
@@ -18,6 +19,9 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 export default async function AdminUsersPage() {
-  const initialUsers = await searchAdminUsers('');
-  return <AdminUsersClient initialUsers={initialUsers} />;
+  const roles = await getAdminRoleStatus();
+  if (!roles.can_admin) redirect('/admin');
+
+  const snapshot = await getAdminUsersPageSnapshot();
+  return <AdminUsersClient initialSnapshot={snapshot} />;
 }

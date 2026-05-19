@@ -91,6 +91,21 @@ jobs:
         continue-on-error: true
         run: npm run moderation:health
 
+      - name: Check weekly support health
+        id: support
+        continue-on-error: true
+        run: npm run support:health
+
+      - name: Check weekly campaign health
+        id: campaigns
+        continue-on-error: true
+        run: npm run campaigns:health
+
+      - name: Check weekly regional health
+        id: regions
+        continue-on-error: true
+        run: npm run regions:health
+
       - name: Check weekly governance health
         id: governance
         continue-on-error: true
@@ -118,6 +133,9 @@ jobs:
           steps.provider_billing_secrets.outcome == 'failure' ||
           steps.cost.outcome == 'failure' ||
           steps.moderation.outcome == 'failure' ||
+          steps.support.outcome == 'failure' ||
+          steps.campaigns.outcome == 'failure' ||
+          steps.regions.outcome == 'failure' ||
           steps.governance.outcome == 'failure' ||
           steps.push_feed.outcome == 'failure' ||
           steps.dashboard.outcome == 'failure' ||
@@ -133,6 +151,9 @@ jobs:
               provider_billing_secrets: '${{ steps.provider_billing_secrets.outcome }}',
               cost: '${{ steps.cost.outcome }}',
               moderation: '${{ steps.moderation.outcome }}',
+              support: '${{ steps.support.outcome }}',
+              campaigns: '${{ steps.campaigns.outcome }}',
+              regions: '${{ steps.regions.outcome }}',
               governance: '${{ steps.governance.outcome }}',
               push_feed: '${{ steps.push_feed.outcome }}',
               dashboard: '${{ steps.dashboard.outcome }}',
@@ -208,6 +229,9 @@ jobs:
             steps.provider_billing_secrets.outcome == 'failure' ||
             steps.cost.outcome == 'failure' ||
             steps.moderation.outcome == 'failure' ||
+            steps.support.outcome == 'failure' ||
+            steps.campaigns.outcome == 'failure' ||
+            steps.regions.outcome == 'failure' ||
             steps.governance.outcome == 'failure' ||
             steps.push_feed.outcome == 'failure' ||
             steps.dashboard.outcome == 'failure' ||
@@ -222,6 +246,9 @@ jobs:
               provider_billing_secrets: '${{ steps.provider_billing_secrets.outcome }}',
               cost: '${{ steps.cost.outcome }}',
               moderation: '${{ steps.moderation.outcome }}',
+              support: '${{ steps.support.outcome }}',
+              campaigns: '${{ steps.campaigns.outcome }}',
+              regions: '${{ steps.regions.outcome }}',
               governance: '${{ steps.governance.outcome }}',
               push_feed: '${{ steps.push_feed.outcome }}',
               dashboard: '${{ steps.dashboard.outcome }}',
@@ -259,6 +286,9 @@ jobs:
             steps.provider_billing_secrets.outcome == 'failure' ||
             steps.cost.outcome == 'failure' ||
             steps.moderation.outcome == 'failure' ||
+            steps.support.outcome == 'failure' ||
+            steps.campaigns.outcome == 'failure' ||
+            steps.regions.outcome == 'failure' ||
             steps.governance.outcome == 'failure' ||
             steps.push_feed.outcome == 'failure' ||
             steps.dashboard.outcome == 'failure' ||
@@ -273,6 +303,9 @@ jobs:
               provider_billing_secrets: '${{ steps.provider_billing_secrets.outcome }}',
               cost: '${{ steps.cost.outcome }}',
               moderation: '${{ steps.moderation.outcome }}',
+              support: '${{ steps.support.outcome }}',
+              campaigns: '${{ steps.campaigns.outcome }}',
+              regions: '${{ steps.regions.outcome }}',
               governance: '${{ steps.governance.outcome }}',
               push_feed: '${{ steps.push_feed.outcome }}',
               dashboard: '${{ steps.dashboard.outcome }}',
@@ -323,6 +356,9 @@ jobs:
           steps.provider_billing_secrets.outcome == 'failure' ||
           steps.cost.outcome == 'failure' ||
           steps.moderation.outcome == 'failure' ||
+          steps.support.outcome == 'failure' ||
+          steps.campaigns.outcome == 'failure' ||
+          steps.regions.outcome == 'failure' ||
           steps.governance.outcome == 'failure' ||
           steps.push_feed.outcome == 'failure' ||
           steps.dashboard.outcome == 'failure' ||

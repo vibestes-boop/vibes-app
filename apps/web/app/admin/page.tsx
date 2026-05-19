@@ -3,9 +3,9 @@ import type { Route } from 'next';
 import Link from 'next/link';
 import {
   Users, FileText, ShoppingBag, Flag,
-  TrendingUp, Zap, CreditCard, AlertTriangle,
+  TrendingUp, Zap, CreditCard, AlertTriangle, Activity,
 } from 'lucide-react';
-import { getAdminStats } from '@/app/actions/admin';
+import { getAdminRoleStatus, getAdminStats } from '@/app/actions/admin';
 
 // -----------------------------------------------------------------------------
 // /admin — Übersichts-Dashboard
@@ -22,7 +22,7 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 export default async function AdminOverviewPage() {
-  const stats = await getAdminStats();
+  const [stats, roles] = await Promise.all([getAdminStats(), getAdminRoleStatus()]);
 
   return (
     <div className="space-y-8">
@@ -38,7 +38,7 @@ export default async function AdminOverviewPage() {
             value={fmt(stats.total_users)}
             sub={`+${fmt(stats.new_users_7d)} diese Woche`}
             accent="#3b82f6"
-            href="/admin/users"
+            href={roles.can_admin ? '/admin/users' : undefined}
           />
           <StatCard
             icon={FileText}
@@ -57,7 +57,7 @@ export default async function AdminOverviewPage() {
             label="Bestellungen"
             value={fmt(stats.total_orders)}
             accent="#10b981"
-            href="/admin/payouts"
+            href={roles.can_creator_ops ? '/admin/payouts' : undefined}
           />
           <StatCard
             icon={TrendingUp}
@@ -71,7 +71,7 @@ export default async function AdminOverviewPage() {
             value={stats.pending_reports}
             accent={stats.pending_reports > 0 ? '#ef4444' : undefined}
             sub={stats.pending_reports > 0 ? 'Ausstehend' : 'Alles erledigt'}
-            href="/admin/reports"
+            href={roles.can_moderate ? '/admin/reports' : undefined}
           />
         </div>
       </section>
@@ -82,25 +82,39 @@ export default async function AdminOverviewPage() {
           Schnellzugriff
         </h2>
         <div className="grid gap-2 sm:grid-cols-3">
-          <QuickLink
-            href="/admin/users"
-            icon={Users}
-            title="Nutzerverwaltung"
-            desc="Suchen, sperren, verifizieren, Admin-Rechte"
-          />
-          <QuickLink
-            href="/admin/reports"
-            icon={Flag}
-            title="Meldungen"
-            desc="Inhalts-Reports bearbeiten und lösen"
-            badge={stats.pending_reports > 0 ? stats.pending_reports : undefined}
-          />
-          <QuickLink
-            href="/admin/payouts"
-            icon={CreditCard}
-            title="Auszahlungen"
-            desc="Seller-Guthaben und Auszahlungs-Anfragen"
-          />
+          {roles.can_operate && (
+            <QuickLink
+              href="/admin/command-center"
+              icon={Activity}
+              title="Command Center"
+              desc="Health, Product, Cost, Push/Feed und Release"
+            />
+          )}
+          {roles.can_admin && (
+            <QuickLink
+              href="/admin/users"
+              icon={Users}
+              title="Nutzerverwaltung"
+              desc="Suchen, sperren, verifizieren, Admin-Rechte"
+            />
+          )}
+          {roles.can_moderate && (
+            <QuickLink
+              href="/admin/reports"
+              icon={Flag}
+              title="Meldungen"
+              desc="Inhalts-Reports bearbeiten und lösen"
+              badge={stats.pending_reports > 0 ? stats.pending_reports : undefined}
+            />
+          )}
+          {roles.can_creator_ops && (
+            <QuickLink
+              href="/admin/payouts"
+              icon={CreditCard}
+              title="Auszahlungen"
+              desc="Seller-Guthaben und Auszahlungs-Anfragen"
+            />
+          )}
         </div>
       </section>
 
