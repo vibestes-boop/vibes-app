@@ -30,6 +30,13 @@ That report shows:
 - posts, views, and meaningful engagement in the last 30 days
 - concrete next actions for the creator activation review
 
+The operational review lives at `/admin/activation`. Creator Ops can turn a
+candidate into a real activation support case with
+`admin_create_activation_support_thread`. Those cases use the normal
+`/admin/support` queue with source `activation`, so outreach, follow-up,
+ownership, SLA, and audit history stay in the central admin workflow instead of
+becoming a separate spreadsheet.
+
 ## Weekly Review
 
 Review these metrics before approving new feature work:

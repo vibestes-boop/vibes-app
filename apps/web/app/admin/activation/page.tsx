@@ -12,6 +12,7 @@ import {
   Users,
 } from 'lucide-react';
 import {
+  adminCreateActivationSupportThread,
   getAdminRoleStatus,
   getCreatorActivationSnapshot,
   type CreatorActivationEngagementCandidate,
@@ -25,6 +26,11 @@ export const metadata: Metadata = {
 };
 
 export const dynamic = 'force-dynamic';
+
+async function submitActivationSupportThread(formData: FormData): Promise<void> {
+  'use server';
+  await adminCreateActivationSupportThread(formData);
+}
 
 export default async function AdminActivationPage() {
   const roles = await getAdminRoleStatus();
@@ -206,7 +212,7 @@ function FirstPostTable({ rows }: { rows: CreatorActivationFirstPostCandidate[] 
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[520px] border-collapse text-left text-xs">
+      <table className="w-full min-w-[640px] border-collapse text-left text-xs">
         <thead>
           <tr className="border-b border-slate-100 text-[11px] text-slate-500">
             <th className="pb-2 font-semibold">Nutzer</th>
@@ -226,7 +232,11 @@ function FirstPostTable({ rows }: { rows: CreatorActivationFirstPostCandidate[] 
                 {formatNumber(row.days_since_signup)}d
               </td>
               <td className="py-2 text-right">
-                <AdminUserLink username={row.username} />
+                <ActivationActions
+                  profileId={row.profile_id}
+                  username={row.username}
+                  kind="first_post"
+                />
               </td>
             </tr>
           ))}
@@ -243,7 +253,7 @@ function EngagementTable({ rows }: { rows: CreatorActivationEngagementCandidate[
 
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[620px] border-collapse text-left text-xs">
+      <table className="w-full min-w-[760px] border-collapse text-left text-xs">
         <thead>
           <tr className="border-b border-slate-100 text-[11px] text-slate-500">
             <th className="pb-2 font-semibold">Creator</th>
@@ -267,7 +277,11 @@ function EngagementTable({ rows }: { rows: CreatorActivationEngagementCandidate[
               <td className="py-2 pr-3 tabular-nums text-slate-700">{formatNumber(row.comments)}</td>
               <td className="py-2 pr-3 text-slate-600">{row.latest_post_at ? formatDateShort(row.latest_post_at) : '-'}</td>
               <td className="py-2 text-right">
-                <AdminUserLink username={row.username} />
+                <ActivationActions
+                  profileId={row.profile_id}
+                  username={row.username}
+                  kind="engagement"
+                />
               </td>
             </tr>
           ))}
@@ -305,6 +319,33 @@ function AdminUserLink({ username }: { username: string | null }) {
       Nutzer pruefen
       <ArrowRight className="h-3 w-3" />
     </Link>
+  );
+}
+
+function ActivationActions({
+  profileId,
+  username,
+  kind,
+}: {
+  profileId: string;
+  username: string | null;
+  kind: 'first_post' | 'engagement';
+}) {
+  return (
+    <div className="flex items-center justify-end gap-2">
+      <AdminUserLink username={username} />
+      <form action={submitActivationSupportThread}>
+        <input type="hidden" name="user_id" value={profileId} />
+        <input type="hidden" name="kind" value={kind} />
+        <button
+          type="submit"
+          disabled={!profileId}
+          className="inline-flex items-center rounded-md border border-blue-100 bg-blue-50 px-2 py-1 text-[11px] font-semibold text-blue-700 transition hover:border-blue-200 hover:bg-blue-100 disabled:cursor-not-allowed disabled:border-slate-100 disabled:bg-slate-50 disabled:text-slate-400"
+        >
+          Supportfall
+        </button>
+      </form>
+    </div>
   );
 }
 

@@ -82,6 +82,9 @@ validateTextFile('docs/stability/product-metrics.md', [
   'target metric',
   'rollback plan',
   'npm run product:activation',
+  '/admin/activation',
+  'admin_create_activation_support_thread',
+  '/admin/support',
 ]);
 validateTextFile('docs/stability/cost-controls.md', [
   'feature flag',
@@ -162,6 +165,12 @@ validateTextFile('supabase/migrations/20260517220000_runtime_feature_flags.sql',
   'live_whip_ingress_enabled',
   'live_recording_enabled',
   'live_shop_enabled',
+]);
+validateTextFile('supabase/migrations/20260519215000_activation_support_outreach.sql', [
+  'admin_create_activation_support_thread',
+  'activation.support_thread.create',
+  'creator_activation_recovery_snapshot',
+  'source = \'activation\'',
 ]);
 validateTextFile('scripts/check-feature-freeze.mjs', ['Feature freeze guard', 'north-star-zero-weeks']);
 validateTextFile('.github/ISSUE_TEMPLATE/feature_request.yml', [

@@ -417,6 +417,7 @@ export interface CreatorActivationSummary {
 }
 
 export interface CreatorActivationFirstPostCandidate {
+  profile_id: string;
   user_id: string;
   username: string | null;
   display_name: string | null;
@@ -425,6 +426,7 @@ export interface CreatorActivationFirstPostCandidate {
 }
 
 export interface CreatorActivationEngagementCandidate {
+  profile_id: string;
   user_id: string;
   username: string | null;
   display_name: string | null;
@@ -973,6 +975,33 @@ export async function adminResolveSupportThread(formData: FormData): Promise<Act
   return { ok: true };
 }
 
+export async function adminCreateActivationSupportThread(formData: FormData): Promise<ActionResult> {
+  const { supabase, roles, error: authErr } = await requireAdminRole('admin_console');
+  if (authErr) return { ok: false, error: authErr };
+  if (!roles.can_operate && !roles.can_creator_ops) return { ok: false, error: 'Keine ausreichende Berechtigung.' };
+
+  const userId = String(formData.get('user_id') ?? '').trim();
+  const kind = String(formData.get('kind') ?? 'first_post').trim() || 'first_post';
+  const bodyValue = String(formData.get('body') ?? '').trim();
+  const body = bodyValue.length > 0 ? bodyValue : null;
+
+  if (!userId) return { ok: false, error: 'Nutzer fehlt.' };
+  if (!['first_post', 'engagement'].includes(kind)) return { ok: false, error: 'Activation-Art ist nicht erlaubt.' };
+
+  const { data, error } = await supabase.rpc('admin_create_activation_support_thread', {
+    p_user_id: userId,
+    p_kind: kind,
+    p_body: body,
+  });
+  if (error) return { ok: false, error: error.message };
+  if ((data as { error?: string } | null)?.error) return { ok: false, error: (data as { error: string }).error };
+
+  revalidatePath('/admin/activation');
+  revalidatePath('/admin/support');
+  revalidatePath('/admin/command-center');
+  return { ok: true };
+}
+
 export async function getAdminCampaigns(): Promise<AdminCampaign[]> {
   const { supabase, error: authErr } = await requireAdminRole('operate');
   if (authErr) return [];
@@ -1508,6 +1537,7 @@ function buildCreatorActivationSnapshot(data: SnapshotObject): CreatorActivation
       meaningful_engagement_30d: toNumber(summary.meaningful_engagement_30d),
     },
     need_first_post: needFirstPost.map((item) => ({
+      profile_id: String(item.profile_id ?? item.user_id ?? ''),
       user_id: String(item.user_id ?? ''),
       username: typeof item.username === 'string' ? item.username : null,
       display_name: typeof item.display_name === 'string' ? item.display_name : null,
@@ -1515,6 +1545,7 @@ function buildCreatorActivationSnapshot(data: SnapshotObject): CreatorActivation
       days_since_signup: toNumber(item.days_since_signup),
     })),
     need_engagement: needEngagement.map((item) => ({
+      profile_id: String(item.profile_id ?? item.user_id ?? ''),
       user_id: String(item.user_id ?? ''),
       username: typeof item.username === 'string' ? item.username : null,
       display_name: typeof item.display_name === 'string' ? item.display_name : null,
