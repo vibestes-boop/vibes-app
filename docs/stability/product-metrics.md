@@ -17,6 +17,19 @@ Run:
 npm run product:health
 ```
 
+When North Star is `0`, run the activation recovery snapshot:
+
+```bash
+npm run product:activation
+```
+
+That report shows:
+
+- new users who still need a first post
+- creators who posted in the last 30 days but received no meaningful engagement
+- posts, views, and meaningful engagement in the last 30 days
+- concrete next actions for the creator activation review
+
 ## Weekly Review
 
 Review these metrics before approving new feature work:

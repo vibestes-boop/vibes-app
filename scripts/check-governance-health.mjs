@@ -62,6 +62,7 @@ validateTextFile('docs/stability/alerts.md', [
 ]);
 validateTextFile('docs/stability/push-feed-health.md', [
   'npm run push-feed:health',
+  'npm run push-feed:recover-live',
   'Push Signals',
   'Feed Signals',
   'X-Feed-Data-Source',
@@ -74,7 +75,14 @@ validateTextFile('docs/stability/admin-command-center-waves.md', [
   'Welle 6',
   'Spaeter Manuell Durch Den Account-Owner',
 ]);
-validateTextFile('docs/stability/product-metrics.md', ['Keep', 'Improve', 'Kill', 'target metric', 'rollback plan']);
+validateTextFile('docs/stability/product-metrics.md', [
+  'Keep',
+  'Improve',
+  'Kill',
+  'target metric',
+  'rollback plan',
+  'npm run product:activation',
+]);
 validateTextFile('docs/stability/cost-controls.md', [
   'feature flag',
   'monthly budget',

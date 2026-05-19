@@ -61,3 +61,28 @@ contains the header, `postgrest-fallback` is counted and compared with
   They should be handled by product policy or a deliberate cleanup, not by a
   silent destructive script.
 - Web push subscriptions with a missing DM trigger block Web Push rollout.
+
+## Live Notification Recovery
+
+Live notifications are fan-out events and can create badge pressure for inactive
+accounts. The database trigger now limits future live fan-out for a recipient
+when:
+
+- the same host already has an unread live notification for that recipient in
+  the last 7 days
+- the recipient already has 100 unread live/scheduled-live notifications in the
+  last 30 days
+- the recipient muted that live host
+
+Old live-notification backlog is recoverable through an explicit admin/operator
+tool. It dry-runs by default:
+
+```bash
+npm run push-feed:recover-live
+```
+
+Execute only after a product/ops decision:
+
+```bash
+npm run push-feed:recover-live -- --older-than-days 30 --execute
+```
