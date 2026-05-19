@@ -12,6 +12,7 @@ import {
   Flag,
   Megaphone,
   MessageSquare,
+  Rocket,
   Search,
   Sparkles,
   Users,
@@ -65,6 +66,7 @@ type QuickAction = {
 
 const QUICK_ACTIONS: QuickAction[] = [
   { label: 'Inhalte prüfen', href: '/admin/reports' as Route, icon: Search, role: 'moderate' },
+  { label: 'Creator aktivieren', href: '/admin/activation' as Route, icon: Rocket, role: 'operate' },
   { label: 'Nutzer suchen', href: '/admin/users' as Route, icon: Users, role: 'admin' },
   { label: 'Reports öffnen', href: '/admin/reports' as Route, icon: Flag, role: 'moderate' },
   { label: 'Regionen prüfen', href: '/admin/regions' as Route, icon: BarChart3, role: 'operate' },
@@ -112,7 +114,7 @@ export default async function AdminCommandCenterPage() {
       <section className="grid gap-3 xl:grid-cols-[1.15fr_0.85fr_1fr]">
         <CommandPanel title="Nutzerwachstum">
           <GrowthPanel area={productArea} series={snapshot.growth_series} />
-          <PanelLink href="/admin/command-center">Detaillierte Analytics</PanelLink>
+          <PanelLink href="/admin/activation">Activation Review</PanelLink>
         </CommandPanel>
 
         <CommandPanel title="Moderations-Uebersicht">
@@ -155,7 +157,7 @@ export default async function AdminCommandCenterPage() {
 
         <CommandPanel className="xl:col-span-5" title="Nutzerwachstum">
           <DetailRows area={productArea} emptyLabel="Product Health noch nicht verfuegbar." />
-          <PanelLink href="/admin/command-center">Detaillierte Analytics</PanelLink>
+          <PanelLink href="/admin/activation">Creator Activation oeffnen</PanelLink>
         </CommandPanel>
 
         <CommandPanel className="xl:col-span-8" title="Top Inhalte">

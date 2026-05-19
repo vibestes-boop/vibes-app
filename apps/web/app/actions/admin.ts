@@ -403,6 +403,50 @@ export interface CommandCenterArea {
   href?: string;
 }
 
+export interface CreatorActivationSummary {
+  new_users_30d: number;
+  users_without_first_post_30d: number;
+  posts_7d: number;
+  posts_30d: number;
+  active_creators_7d: number;
+  creators_with_posts_30d: number;
+  creators_with_zero_engagement_30d: number;
+  posts_with_meaningful_engagement_30d: number;
+  views_30d: number;
+  meaningful_engagement_30d: number;
+}
+
+export interface CreatorActivationFirstPostCandidate {
+  user_id: string;
+  username: string | null;
+  display_name: string | null;
+  created_at: string;
+  days_since_signup: number;
+}
+
+export interface CreatorActivationEngagementCandidate {
+  user_id: string;
+  username: string | null;
+  display_name: string | null;
+  posts_30d: number;
+  latest_post_at: string | null;
+  views: number;
+  likes: number;
+  comments: number;
+  bookmarks: number;
+  follows: number;
+}
+
+export interface CreatorActivationSnapshot {
+  generated_at: string;
+  status: 'ready' | 'error';
+  error?: string;
+  summary: CreatorActivationSummary;
+  need_first_post: CreatorActivationFirstPostCandidate[];
+  need_engagement: CreatorActivationEngagementCandidate[];
+  next_actions: string[];
+}
+
 type ActionResult<T = void> = { ok: true; data?: T } | { ok: false; error: string };
 export interface AdminRoleStatus {
   is_authenticated: boolean;
@@ -1188,6 +1232,17 @@ export async function getAdminCommandCenterSnapshot(): Promise<CommandCenterSnap
   };
 }
 
+export async function getCreatorActivationSnapshot(): Promise<CreatorActivationSnapshot> {
+  const { supabase, error: authErr } = await requireAdminRole('admin_console');
+  if (authErr) return emptyCreatorActivationSnapshot(authErr);
+
+  const result = await readRpcSnapshot(supabase, 'creator_activation_recovery_snapshot');
+  if (!result.ok) return emptyCreatorActivationSnapshot(result.error);
+  if (typeof result.data.error === 'string') return emptyCreatorActivationSnapshot(result.data.error);
+
+  return buildCreatorActivationSnapshot(result.data);
+}
+
 export async function adminResolveReport(
   reportId: string,
   status: 'reviewed' | 'actioned' | 'dismissed',
@@ -1426,6 +1481,75 @@ function emptyRegionSnapshot(status: CommandRegionSnapshot['status'], error?: st
     reports_30d: 0,
     latest: [],
     error,
+  };
+}
+
+function buildCreatorActivationSnapshot(data: SnapshotObject): CreatorActivationSnapshot {
+  const summary = asRecord(data.summary);
+  const needFirstPost = Array.isArray(data.need_first_post) ? data.need_first_post as SnapshotObject[] : [];
+  const needEngagement = Array.isArray(data.need_engagement) ? data.need_engagement as SnapshotObject[] : [];
+  const nextActions = Array.isArray(data.next_actions)
+    ? data.next_actions.map((item) => String(item)).filter(Boolean)
+    : [];
+
+  return {
+    generated_at: typeof data.generated_at === 'string' ? data.generated_at : new Date().toISOString(),
+    status: 'ready',
+    summary: {
+      new_users_30d: toNumber(summary.new_users_30d),
+      users_without_first_post_30d: toNumber(summary.users_without_first_post_30d),
+      posts_7d: toNumber(summary.posts_7d),
+      posts_30d: toNumber(summary.posts_30d),
+      active_creators_7d: toNumber(summary.active_creators_7d),
+      creators_with_posts_30d: toNumber(summary.creators_with_posts_30d),
+      creators_with_zero_engagement_30d: toNumber(summary.creators_with_zero_engagement_30d),
+      posts_with_meaningful_engagement_30d: toNumber(summary.posts_with_meaningful_engagement_30d),
+      views_30d: toNumber(summary.views_30d),
+      meaningful_engagement_30d: toNumber(summary.meaningful_engagement_30d),
+    },
+    need_first_post: needFirstPost.map((item) => ({
+      user_id: String(item.user_id ?? ''),
+      username: typeof item.username === 'string' ? item.username : null,
+      display_name: typeof item.display_name === 'string' ? item.display_name : null,
+      created_at: String(item.created_at ?? new Date().toISOString()),
+      days_since_signup: toNumber(item.days_since_signup),
+    })),
+    need_engagement: needEngagement.map((item) => ({
+      user_id: String(item.user_id ?? ''),
+      username: typeof item.username === 'string' ? item.username : null,
+      display_name: typeof item.display_name === 'string' ? item.display_name : null,
+      posts_30d: toNumber(item.posts_30d),
+      latest_post_at: typeof item.latest_post_at === 'string' ? item.latest_post_at : null,
+      views: toNumber(item.views),
+      likes: toNumber(item.likes),
+      comments: toNumber(item.comments),
+      bookmarks: toNumber(item.bookmarks),
+      follows: toNumber(item.follows),
+    })),
+    next_actions: nextActions,
+  };
+}
+
+function emptyCreatorActivationSnapshot(error?: string): CreatorActivationSnapshot {
+  return {
+    generated_at: new Date().toISOString(),
+    status: 'error',
+    error,
+    summary: {
+      new_users_30d: 0,
+      users_without_first_post_30d: 0,
+      posts_7d: 0,
+      posts_30d: 0,
+      active_creators_7d: 0,
+      creators_with_posts_30d: 0,
+      creators_with_zero_engagement_30d: 0,
+      posts_with_meaningful_engagement_30d: 0,
+      views_30d: 0,
+      meaningful_engagement_30d: 0,
+    },
+    need_first_post: [],
+    need_engagement: [],
+    next_actions: [],
   };
 }
 
@@ -1863,7 +1987,7 @@ function buildProductArea(result: Awaited<ReturnType<typeof readRpcSnapshot>>): 
     label: 'Product Health',
     status,
     summary: `North Star ${value}, Creator 7d ${activeCreators}, WAU/MAU ${toNumber(audience.wau)}/${toNumber(audience.mau)}`,
-    href: '/admin/command-center',
+    href: '/admin/activation',
     detail: {
       north_star: value,
       active_creators_7d: activeCreators,
