@@ -6,14 +6,13 @@
  * Scope: Author-Edit-Pfad für eigene Posts (Caption, Privacy,
  * Toggles inkl. women_only, aspect_ratio). Auth-Gate, Input-
  * Validierung (Caption-Length, Privacy-Whitelist, Aspect-Whitelist),
- * Ownership via doppeltem `.eq('author_id', viewer)` (defense-in-
- * depth zur RLS), Hashtag-Auto-Extraktion aus der Caption,
- * Supabase-Error-Pass-Through, revalidatePath nach Erfolg.
+ * zentrale Mutation via `update_post` RPC, Hashtag-Auto-Extraktion aus
+ * der Caption, Supabase-Error-Pass-Through, revalidatePath nach Erfolg.
  *
  * Mocking-Strategie identisch zu `profile.test.ts`:
  *  - `@/lib/supabase/server` wird komplett gestubbed
- *  - Inline-Builder fängt `from().update().eq().eq()` auf und
- *    capturet Payload + alle eq-Args
+ *  - Inline-Client fängt `rpc('update_post', args)` auf und capturet
+ *    RPC-Name + Payload
  *  - `next/headers` und `next/cache` neutralisiert
  *
  * Posts-Action ruft `supabase.auth.getUser()` direkt (kein
@@ -57,25 +56,21 @@ const mockRevalidatePath = revalidatePath as jest.MockedFunction<typeof revalida
 // -----------------------------------------------------------------------------
 // Mini-Supabase-Mock für den Update-Pfad.
 //
-// Chain: `from(table).update(payload).eq(c1, v1).eq(c2, v2)` — letzte `eq`
-// ist thenable und liefert `{ error }`. Der Mock capturet Tabelle, Payload
-// und alle eq-Calls für Assertions. `auth.getUser()` ist separat — gibt
-// den konfigurierten User (oder `null`) zurück.
+// Chain: `rpc('update_post', args)` liefert `{ error }`. Der Mock capturet
+// RPC-Name und Args für Assertions. `auth.getUser()` ist separat — gibt den
+// konfigurierten User (oder `null`) zurück.
 // -----------------------------------------------------------------------------
 
-interface UpdateBuilder {
-  _table: string;
-  _updatePayload: unknown;
-  _eqCalls: Array<[string, unknown]>;
-  update: jest.Mock;
-  eq: jest.Mock;
-  then: (onFulfilled: (value: { error: unknown }) => unknown) => Promise<unknown>;
+interface RpcCall {
+  name: string;
+  args: Record<string, unknown>;
 }
 
 interface SupabaseClientMock {
   auth: { getUser: jest.Mock };
   from: jest.Mock;
-  lastBuilder: () => UpdateBuilder | null;
+  rpc: jest.Mock;
+  lastRpcCall: () => RpcCall | null;
 }
 
 function makeSupabaseMock(opts: {
@@ -84,7 +79,7 @@ function makeSupabaseMock(opts: {
 } = {}): SupabaseClientMock {
   const { user = null, errorForUpdate = null } = opts;
 
-  let lastBuilder: UpdateBuilder | null = null;
+  let lastRpcCall: RpcCall | null = null;
 
   return {
     auth: {
@@ -93,26 +88,12 @@ function makeSupabaseMock(opts: {
         error: null,
       }),
     },
-    from: jest.fn((table: string) => {
-      const builder: UpdateBuilder = {
-        _table: table,
-        _updatePayload: undefined,
-        _eqCalls: [],
-        update: jest.fn((payload: unknown) => {
-          builder._updatePayload = payload;
-          return builder;
-        }),
-        eq: jest.fn((col: string, val: unknown) => {
-          builder._eqCalls.push([col, val]);
-          return builder;
-        }),
-        then: (onFulfilled) =>
-          Promise.resolve({ error: errorForUpdate }).then(onFulfilled),
-      };
-      lastBuilder = builder;
-      return builder;
+    from: jest.fn(),
+    rpc: jest.fn((name: string, args: Record<string, unknown> = {}) => {
+      lastRpcCall = { name, args };
+      return Promise.resolve({ error: errorForUpdate });
     }),
-    lastBuilder: () => lastBuilder,
+    lastRpcCall: () => lastRpcCall,
   };
 }
 
@@ -140,6 +121,13 @@ function makeInput(
   };
 }
 
+function lastUpdatePostArgs(client: SupabaseClientMock): Record<string, unknown> {
+  const call = client.lastRpcCall();
+  expect(call).not.toBeNull();
+  expect(call?.name).toBe('update_post');
+  return call?.args ?? {};
+}
+
 // -----------------------------------------------------------------------------
 // Auth-Gate
 // -----------------------------------------------------------------------------
@@ -152,8 +140,8 @@ describe('updatePost — Auth-Gate', () => {
     const result = await updatePost('post-1', makeInput());
 
     expect(result).toEqual({ ok: false, error: expect.any(String) });
-    // `from` darf NICHT aufgerufen werden — Auth-Gate kommt vor jeder Query.
-    expect(client.from).not.toHaveBeenCalled();
+    // `rpc` darf NICHT aufgerufen werden — Auth-Gate kommt vor jeder Mutation.
+    expect(client.rpc).not.toHaveBeenCalled();
     expect(mockRevalidatePath).not.toHaveBeenCalled();
   });
 });
@@ -174,7 +162,7 @@ describe('updatePost — Input-Validierung', () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error).toMatch(/Caption/i);
-    expect(client.from).not.toHaveBeenCalled();
+    expect(client.rpc).not.toHaveBeenCalled();
   });
 
   it('accepts caption at exactly 2000 chars', async () => {
@@ -201,7 +189,7 @@ describe('updatePost — Input-Validierung', () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error).toMatch(/Privacy/i);
-    expect(client.from).not.toHaveBeenCalled();
+    expect(client.rpc).not.toHaveBeenCalled();
   });
 
   it('accepts each valid privacy value (public/friends/private)', async () => {
@@ -212,8 +200,8 @@ describe('updatePost — Input-Validierung', () => {
       const result = await updatePost('post-1', makeInput({ privacy }));
       expect(result).toEqual({ ok: true, data: null });
 
-      const payload = client.lastBuilder()!._updatePayload as Record<string, unknown>;
-      expect(payload.privacy).toBe(privacy);
+      const args = lastUpdatePostArgs(client);
+      expect(args.p_privacy).toBe(privacy);
     }
   });
 
@@ -228,7 +216,7 @@ describe('updatePost — Input-Validierung', () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.error).toMatch(/Format/i);
-    expect(client.from).not.toHaveBeenCalled();
+    expect(client.rpc).not.toHaveBeenCalled();
   });
 });
 
@@ -240,7 +228,7 @@ describe('updatePost — Write-Pfad', () => {
   const USER_ID = 'user-42';
   const POST_ID = 'post-abc';
 
-  it('writes caption (trimmed) to posts.posts row scoped by id + author_id', async () => {
+  it('writes caption (trimmed) through update_post RPC scoped by post id', async () => {
     const client = makeSupabaseMock({ user: { id: USER_ID } });
     mockCreateClient.mockResolvedValue(client as never);
 
@@ -250,17 +238,11 @@ describe('updatePost — Write-Pfad', () => {
     );
 
     expect(result).toEqual({ ok: true, data: null });
-    expect(client.from).toHaveBeenCalledWith('posts');
+    expect(client.from).not.toHaveBeenCalled();
 
-    const builder = client.lastBuilder()!;
-    const payload = builder._updatePayload as Record<string, unknown>;
-    expect(payload.caption).toBe('hallo welt');
-
-    // BEIDE eq-Calls — `id` UND `author_id` (Ownership-Defense-in-Depth).
-    expect(builder._eqCalls).toEqual([
-      ['id', POST_ID],
-      ['author_id', USER_ID],
-    ]);
+    const args = lastUpdatePostArgs(client);
+    expect(args.p_post_id).toBe(POST_ID);
+    expect(args.p_caption).toBe('hallo welt');
   });
 
   it('coerces empty trimmed caption to null (so DB does not store "")', async () => {
@@ -269,8 +251,8 @@ describe('updatePost — Write-Pfad', () => {
 
     await updatePost(POST_ID, makeInput({ caption: '   ' }));
 
-    const payload = client.lastBuilder()!._updatePayload as Record<string, unknown>;
-    expect(payload.caption).toBeNull();
+    const args = lastUpdatePostArgs(client);
+    expect(args.p_caption).toBeNull();
   });
 
   it('persists privacy change (public → friends)', async () => {
@@ -280,8 +262,8 @@ describe('updatePost — Write-Pfad', () => {
     const result = await updatePost(POST_ID, makeInput({ privacy: 'friends' }));
     expect(result.ok).toBe(true);
 
-    const payload = client.lastBuilder()!._updatePayload as Record<string, unknown>;
-    expect(payload.privacy).toBe('friends');
+    const args = lastUpdatePostArgs(client);
+    expect(args.p_privacy).toBe('friends');
   });
 
   it('persists women_only toggle = true', async () => {
@@ -291,8 +273,8 @@ describe('updatePost — Write-Pfad', () => {
     const result = await updatePost(POST_ID, makeInput({ womenOnly: true }));
     expect(result.ok).toBe(true);
 
-    const payload = client.lastBuilder()!._updatePayload as Record<string, unknown>;
-    expect(payload.women_only).toBe(true);
+    const args = lastUpdatePostArgs(client);
+    expect(args.p_women_only).toBe(true);
   });
 
   it('persists women_only toggle = false (off-state, defense gegen partial-payload-bug)', async () => {
@@ -301,8 +283,8 @@ describe('updatePost — Write-Pfad', () => {
 
     await updatePost(POST_ID, makeInput({ womenOnly: false }));
 
-    const payload = client.lastBuilder()!._updatePayload as Record<string, unknown>;
-    expect(payload).toHaveProperty('women_only', false);
+    const args = lastUpdatePostArgs(client);
+    expect(args).toHaveProperty('p_women_only', false);
   });
 
   it('persists all toggle changes (allow_comments, allow_download, allow_duet, women_only)', async () => {
@@ -319,12 +301,12 @@ describe('updatePost — Write-Pfad', () => {
       }),
     );
 
-    const payload = client.lastBuilder()!._updatePayload as Record<string, unknown>;
-    expect(payload).toMatchObject({
-      allow_comments: false,
-      allow_download: true,
-      allow_duet: false,
-      women_only: true,
+    const args = lastUpdatePostArgs(client);
+    expect(args).toMatchObject({
+      p_allow_comments: false,
+      p_allow_download: true,
+      p_allow_duet: false,
+      p_women_only: true,
     });
   });
 
@@ -334,8 +316,8 @@ describe('updatePost — Write-Pfad', () => {
 
     await updatePost(POST_ID, makeInput({ aspectRatio: 'landscape' }));
 
-    const payload = client.lastBuilder()!._updatePayload as Record<string, unknown>;
-    expect(payload.aspect_ratio).toBe('landscape');
+    const args = lastUpdatePostArgs(client);
+    expect(args.p_aspect_ratio).toBe('landscape');
   });
 
   it('extracts hashtags from caption into tags column (lowercased, deduped)', async () => {
@@ -347,10 +329,10 @@ describe('updatePost — Write-Pfad', () => {
       makeInput({ caption: 'Yo #Foo and #bar then #FOO again' }),
     );
 
-    const payload = client.lastBuilder()!._updatePayload as Record<string, unknown>;
+    const args = lastUpdatePostArgs(client);
     // updatePost lowercases and dedupes, but keeps the # prefix (withHash pattern).
     // #FOO is a dup of #Foo → only one entry.
-    expect(payload.tags).toEqual(['#foo', '#bar']);
+    expect(args.p_tags).toEqual(['#foo', '#bar']);
   });
 
   it('writes empty tags array when caption has no hashtag', async () => {
@@ -359,8 +341,8 @@ describe('updatePost — Write-Pfad', () => {
 
     await updatePost(POST_ID, makeInput({ caption: 'just some plain text' }));
 
-    const payload = client.lastBuilder()!._updatePayload as Record<string, unknown>;
-    expect(payload.tags).toEqual([]);
+    const args = lastUpdatePostArgs(client);
+    expect(args.p_tags).toEqual([]);
   });
 });
 
@@ -369,20 +351,18 @@ describe('updatePost — Write-Pfad', () => {
 // -----------------------------------------------------------------------------
 
 describe('updatePost — Ownership-Check', () => {
-  it('always scopes UPDATE by author_id = viewer (defense-in-depth)', async () => {
+  it('delegates ownership enforcement to update_post RPC with viewer auth context', async () => {
     const client = makeSupabaseMock({ user: { id: 'attacker-id' } });
     mockCreateClient.mockResolvedValue(client as never);
 
-    // Simuliert: Angreifer ruft updatePost mit fremder Post-ID. `author_id`
-    // muss trotzdem die *eigene* Viewer-ID sein — RLS blockt dann den
-    // Update zusätzlich, aber der Test prüft den App-Layer-Guard.
+    // Simuliert: Angreifer ruft updatePost mit fremder Post-ID. Die App macht
+    // keine direkte Tabellenmutation mehr, sondern delegiert an den SECURITY
+    // DEFINER RPC, der auth.uid() serverseitig gegen den Author prüft.
     await updatePost('foreign-post-id', makeInput());
 
-    const builder = client.lastBuilder()!;
-    expect(builder._eqCalls).toEqual([
-      ['id', 'foreign-post-id'],
-      ['author_id', 'attacker-id'],
-    ]);
+    const args = lastUpdatePostArgs(client);
+    expect(args.p_post_id).toBe('foreign-post-id');
+    expect(args).not.toHaveProperty('p_author_id');
   });
 
   it('returns Supabase error message when RLS blocks the update (non-author)', async () => {
@@ -473,15 +453,15 @@ describe('updatePostCaption — alias', () => {
 
     expect(result).toEqual({ ok: true, data: null });
 
-    const payload = client.lastBuilder()!._updatePayload as Record<string, unknown>;
-    expect(payload).toMatchObject({
-      caption: 'edited caption',
-      privacy: 'public',
-      allow_comments: true,
-      allow_download: true,
-      allow_duet: true,
-      women_only: false,
-      aspect_ratio: 'portrait',
+    const args = lastUpdatePostArgs(client);
+    expect(args).toMatchObject({
+      p_caption: 'edited caption',
+      p_privacy: 'public',
+      p_allow_comments: true,
+      p_allow_download: true,
+      p_allow_duet: true,
+      p_women_only: false,
+      p_aspect_ratio: 'portrait',
     });
   });
 
@@ -491,6 +471,6 @@ describe('updatePostCaption — alias', () => {
 
     const result = await updatePostCaption('post-1', 'whatever');
     expect(result.ok).toBe(false);
-    expect(client.from).not.toHaveBeenCalled();
+    expect(client.rpc).not.toHaveBeenCalled();
   });
 });
