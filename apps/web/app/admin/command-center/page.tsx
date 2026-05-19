@@ -1,0 +1,1026 @@
+import type { Metadata } from 'next';
+import type { Route } from 'next';
+import Link from 'next/link';
+import { redirect } from 'next/navigation';
+import {
+  Activity,
+  AlertTriangle,
+  ArrowRight,
+  BarChart3,
+  CheckCircle2,
+  Download,
+  Flag,
+  Megaphone,
+  MessageSquare,
+  Search,
+  Sparkles,
+  Users,
+} from 'lucide-react';
+import {
+  getAdminCommandCenterSnapshot,
+  getAdminRoleStatus,
+  type AdminRoleStatus,
+  type CommandActivityItem,
+  type CommandCampaignSnapshot,
+  type CommandCenterArea,
+  type CommandMetric,
+  type CommandQueueItem,
+  type CommandReportCategory,
+  type CommandRegionSnapshot,
+  type CommandSupportInbox,
+  type CommandSystemRow,
+} from '@/app/actions/admin';
+import { GrowthPanel } from '@/app/admin/command-center/growth-panel';
+import { TopContentPanel } from '@/app/admin/command-center/top-content-panel';
+import { WORLD_COUNTRY_PATHS } from '@/lib/geo/world-country-paths';
+import { cn } from '@/lib/utils';
+
+export const metadata: Metadata = {
+  title: 'Admin - Command Center',
+  robots: { index: false, follow: false },
+};
+
+export const dynamic = 'force-dynamic';
+
+const METRIC_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  users: Users,
+  registrations: Users,
+  posts: Sparkles,
+  north_star: BarChart3,
+};
+
+const ACTIVITY_ICONS: Record<CommandActivityItem['kind'], React.ComponentType<{ className?: string }>> = {
+  post: Sparkles,
+  comment: MessageSquare,
+  report: Flag,
+};
+
+type QuickAction = {
+  label: string;
+  href: Route;
+  icon: React.ComponentType<{ className?: string }>;
+  role: 'admin' | 'moderate' | 'operate' | 'creator_ops';
+  disabled?: boolean;
+};
+
+const QUICK_ACTIONS: QuickAction[] = [
+  { label: 'Inhalte prüfen', href: '/admin/reports' as Route, icon: Search, role: 'moderate' },
+  { label: 'Nutzer suchen', href: '/admin/users' as Route, icon: Users, role: 'admin' },
+  { label: 'Reports öffnen', href: '/admin/reports' as Route, icon: Flag, role: 'moderate' },
+  { label: 'Regionen prüfen', href: '/admin/regions' as Route, icon: BarChart3, role: 'operate' },
+  { label: 'Support prüfen', href: '/admin/support' as Route, icon: MessageSquare, role: 'moderate' },
+  { label: 'Kampagnen', href: '/admin/campaigns' as Route, icon: Megaphone, role: 'operate' },
+  { label: 'Payouts prüfen', href: '/admin/payouts' as Route, icon: Download, role: 'creator_ops' },
+  { label: 'Systemstatus', href: '/admin/command-center' as Route, icon: AlertTriangle, role: 'operate' },
+];
+
+export default async function AdminCommandCenterPage() {
+  const roles = await getAdminRoleStatus();
+  if (!roles.can_operate) redirect('/admin');
+
+  const snapshot = await getAdminCommandCenterSnapshot();
+  const redCount = snapshot.areas.filter((area) => area.status === 'red').length;
+  const yellowCount = snapshot.areas.filter((area) => area.status === 'yellow').length;
+  const openAlerts = redCount + yellowCount;
+  const productArea = snapshot.areas.find((area) => area.key === 'product');
+  const pushFeedArea = snapshot.areas.find((area) => area.key === 'push-feed');
+  const moderationArea = snapshot.areas.find((area) => area.key === 'moderation');
+  const costArea = snapshot.areas.find((area) => area.key === 'cost');
+  const visibleQuickActions = QUICK_ACTIONS.filter((action) => canUseQuickAction(action.role, roles));
+
+  return (
+    <div className="space-y-3">
+      <section className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-slate-950 sm:text-2xl">
+            Social Media Admin Command Center
+          </h1>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Zentrale Steuerung fuer Moderation, Wachstum und Plattformkontrolle.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusBadge status={snapshot.overall_status} />
+          <div className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-600">
+            {openAlerts > 0 ? `${openAlerts} aktive Warnungen` : 'Keine aktiven Warnungen'}
+          </div>
+        </div>
+      </section>
+
+      <OperationalAlerts areas={snapshot.areas} />
+
+      <section className="grid gap-3 xl:grid-cols-[1.15fr_0.85fr_1fr]">
+        <CommandPanel title="Nutzerwachstum">
+          <GrowthPanel area={productArea} series={snapshot.growth_series} />
+          <PanelLink href="/admin/command-center">Detaillierte Analytics</PanelLink>
+        </CommandPanel>
+
+        <CommandPanel title="Moderations-Uebersicht">
+          <ModerationOverview area={moderationArea} queue={snapshot.moderation_queue} />
+          <PanelLink href="/admin/reports">Zur Moderation</PanelLink>
+        </CommandPanel>
+
+        <CommandPanel title="Gemeldete Inhalte nach Kategorie">
+          <ReportCategoryBreakdown categories={snapshot.report_categories} />
+          <PanelLink href="/admin/reports">Alle Kategorien anzeigen</PanelLink>
+        </CommandPanel>
+      </section>
+
+      <section className="grid gap-3 xl:grid-cols-[repeat(24,minmax(0,1fr))]">
+        <CommandPanel title="Plattform-Ueberblick" className="min-h-[190px] p-3.5 xl:col-span-10">
+          <div className="grid grid-cols-4 gap-2">
+            {snapshot.platform_metrics.map((metric) => (
+              <MetricCard key={metric.key} metric={metric} variant="overview" />
+            ))}
+          </div>
+        </CommandPanel>
+
+        <CommandPanel className="xl:col-span-6" title="Live-Aktivitaeten" action={<span className="rounded-full bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">Live</span>}>
+          <ActivityList items={snapshot.activity} />
+          <PanelLink href="/admin/command-center">Alle Aktivitaeten anzeigen</PanelLink>
+        </CommandPanel>
+
+        <CommandPanel
+          className="xl:col-span-8"
+          title="Moderations-Warteschlange"
+          action={<span className="rounded-lg bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">{snapshot.moderation_queue.length} sichtbar</span>}
+        >
+          <ModerationQueueTable rows={snapshot.moderation_queue} />
+          <PanelLink href="/admin/reports">Zur Moderation</PanelLink>
+        </CommandPanel>
+        <CommandPanel className="xl:col-span-5" title="Gemeldete Inhalte & Nutzer">
+          <DetailRows area={moderationArea} emptyLabel="Keine Moderationsdaten verfuegbar." />
+          <PanelLink href="/admin/reports">Alle Meldungen anzeigen</PanelLink>
+        </CommandPanel>
+
+        <CommandPanel className="xl:col-span-5" title="Nutzerwachstum">
+          <DetailRows area={productArea} emptyLabel="Product Health noch nicht verfuegbar." />
+          <PanelLink href="/admin/command-center">Detaillierte Analytics</PanelLink>
+        </CommandPanel>
+
+        <CommandPanel className="xl:col-span-8" title="Top Inhalte">
+          <TopContentPanel posts={snapshot.top_content} reels={snapshot.top_reels} stories={snapshot.top_stories} />
+          <PanelLink href="/admin/command-center">Alle Top Inhalte anzeigen</PanelLink>
+        </CommandPanel>
+
+        <CommandPanel className="xl:col-span-6" title="Kampagnen-Uebersicht">
+          <CampaignOverview campaigns={snapshot.campaigns} />
+          <PanelLink href="/admin/campaigns">Alle Kampagnen anzeigen</PanelLink>
+        </CommandPanel>
+      </section>
+
+      <section className="grid gap-3 xl:grid-cols-[1fr_1fr_0.9fr_1.2fr]">
+        <CommandPanel title="Nachrichten / Support-Posteingang">
+          <SupportInboxPreview support={snapshot.support_inbox} />
+          <PanelLink href="/admin/support">Posteingang oeffnen</PanelLink>
+        </CommandPanel>
+
+        <CommandPanel title="Trust & Safety">
+          <DetailRows area={moderationArea} emptyLabel="Noch nicht getrackt." />
+        </CommandPanel>
+
+        <CommandPanel title="Systemstatus">
+          <SystemRows rows={snapshot.system_rows} />
+          <PanelLink href="/admin/command-center">Statusseite anzeigen</PanelLink>
+        </CommandPanel>
+
+        <CommandPanel title="Schnellaktionen">
+          <QuickActionGrid actions={visibleQuickActions} />
+        </CommandPanel>
+      </section>
+
+      <section className="grid gap-3 xl:grid-cols-[0.9fr_0.95fr_1.45fr]">
+        <CommandPanel title="Kostenstatus">
+          <DetailRows area={costArea} emptyLabel="Cost Health noch nicht verfuegbar." />
+        </CommandPanel>
+        <CommandPanel title="Command-Center Hinweise">
+          <UnavailableRows
+            rows={buildCommandCenterHints(productArea, pushFeedArea)}
+          />
+        </CommandPanel>
+        <CommandPanel title="Regionale Aktivitaet" className="min-h-[430px]">
+          <RegionOverview regions={snapshot.regions} />
+          <PanelLink href="/admin/regions">Alle Regionen anzeigen</PanelLink>
+        </CommandPanel>
+      </section>
+
+      <p className="text-[11px] text-slate-500">
+        Aktualisiert: {formatDate(snapshot.generated_at)}
+      </p>
+    </div>
+  );
+}
+
+function CommandPanel({
+  title,
+  action,
+  className,
+  children,
+}: {
+  title: string;
+  action?: React.ReactNode;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className={cn('flex h-full flex-col rounded-lg border border-slate-200 bg-white p-2.5 shadow-sm', className)}>
+      <div className="mb-2 flex min-h-5 items-center justify-between gap-2">
+        <h2 className="text-xs font-bold text-slate-950">{title}</h2>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function OperationalAlerts({ areas }: { areas: CommandCenterArea[] }) {
+  const active = areas.filter((area) => area.status !== 'green');
+  if (active.length === 0) return null;
+
+  return (
+    <section className="grid gap-2 lg:grid-cols-2">
+      {active.map((area) => (
+        <Link
+          key={area.key}
+          href={(area.href ?? '/admin/command-center') as Route}
+          className={cn(
+            'rounded-lg border px-3 py-2 text-xs shadow-sm transition hover:bg-slate-50',
+            area.status === 'red'
+              ? 'border-red-200 bg-red-50/70 text-red-950'
+              : 'border-amber-200 bg-amber-50/70 text-amber-950',
+          )}
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="font-bold">{area.label}</div>
+              <div className="mt-0.5 text-[11px] opacity-80">{area.summary}</div>
+              <div className="mt-1 text-[11px] font-semibold">
+                Naechster Schritt: {String(area.detail.next_action ?? defaultNextAction(area))}
+              </div>
+            </div>
+            <ArrowRight className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          </div>
+        </Link>
+      ))}
+    </section>
+  );
+}
+
+function MetricCard({
+  metric,
+  variant = 'default',
+}: {
+  metric: CommandMetric;
+  variant?: 'default' | 'overview';
+}) {
+  const Icon = METRIC_ICONS[metric.key] || Activity;
+  const isOverview = variant === 'overview';
+  return (
+    <div
+      className={cn(
+        'rounded-lg border border-slate-200 bg-white',
+        isOverview ? 'min-h-[118px] min-w-0 px-2.5 py-2.5' : 'min-h-28 p-3',
+      )}
+    >
+      <div
+        className={cn(
+          'flex items-center justify-center rounded-full',
+          isOverview ? 'mb-3 h-8 w-8' : 'mb-4 h-9 w-9',
+          metricTone(metric.tone),
+        )}
+      >
+        <Icon className={cn('text-white', isOverview ? 'h-4 w-4' : 'h-4 w-4')} />
+      </div>
+      <div className={cn('truncate font-medium text-slate-500', isOverview ? 'text-[10px]' : 'text-[11px]')}>
+        {metric.label}
+      </div>
+      <div
+        className={cn(
+          'font-bold tabular-nums text-slate-950',
+          isOverview ? 'mt-1 text-lg leading-none' : 'mt-1 text-xl',
+        )}
+      >
+        {metric.value || 'Nicht verfuegbar'}
+      </div>
+      <div className={cn('truncate text-slate-500', isOverview ? 'mt-1.5 text-[10px]' : 'mt-1 text-[11px]')}>
+        {metric.sublabel}
+      </div>
+    </div>
+  );
+}
+
+function ActivityList({ items }: { items: CommandActivityItem[] }) {
+  if (items.length === 0) {
+    return <EmptyState label="Keine aktuellen Aktivitaeten verfuegbar." />;
+  }
+
+  return (
+    <div className="space-y-2.5">
+      {items.map((item) => {
+        const Icon = ACTIVITY_ICONS[item.kind];
+        return (
+          <div key={item.id} className="grid grid-cols-[2.45rem_1fr_auto] items-center gap-1.5 text-[11px]">
+            <div className="text-[10px] tabular-nums text-slate-500">{formatTime(item.created_at)}</div>
+            <div className="min-w-0">
+              <div className="truncate font-semibold text-slate-800">{item.label}</div>
+              <div className="truncate text-[10px] text-slate-500">{item.detail}</div>
+            </div>
+            <div className="flex h-5 w-5 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+              <Icon className="h-3 w-3" />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ModerationQueueTable({ rows }: { rows: CommandQueueItem[] }) {
+  if (rows.length === 0) {
+    return <EmptyState label="Keine offenen Reports in der Warteschlange." />;
+  }
+
+  return (
+    <AdminTable
+      columns={['Inhalt', 'Grund', 'Prioritaet', 'Wartezeit']}
+      rows={rows.map((row) => [
+        `${normalizeTargetType(row.target_type)} ${shortId(row.target_id)}`,
+        row.reason,
+        <PriorityBadge key={`${row.id}-priority`} priority={row.priority} />,
+        row.wait_label,
+      ])}
+    />
+  );
+}
+
+function AdminTable({
+  columns,
+  rows,
+}: {
+  columns: string[];
+  rows: React.ReactNode[][];
+}) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[430px] border-collapse text-left text-[10px]">
+        <thead>
+          <tr className="border-b border-slate-100 text-slate-500">
+            {columns.map((column) => (
+              <th key={column} className="pb-1.5 font-semibold">{column}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, rowIndex) => (
+            <tr key={rowIndex} className="border-b border-slate-100 last:border-0">
+              {row.map((cell, cellIndex) => (
+                <td key={`${rowIndex}-${cellIndex}`} className="py-1 pr-2 text-slate-700">
+                  {cell}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function DetailRows({
+  area,
+  emptyLabel,
+}: {
+  area?: CommandCenterArea;
+  emptyLabel: string;
+}) {
+  if (!area) return <EmptyState label={emptyLabel} />;
+  const entries = Object.entries(area.detail).slice(0, 5);
+  if (entries.length === 0) return <EmptyState label={emptyLabel} />;
+
+  return (
+    <div className="divide-y divide-slate-100">
+      {entries.map(([key, value]) => (
+        <div key={key} className="flex items-center justify-between gap-2 py-1 text-[11px]">
+          <span className="min-w-0 truncate text-slate-500">{humanizeKey(key)}</span>
+          <span className="shrink-0 font-semibold tabular-nums text-slate-900">{formatValue(value)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ModerationOverview({
+  area,
+  queue,
+}: {
+  area?: CommandCenterArea;
+  queue: CommandQueueItem[];
+}) {
+  const detail = area?.detail ?? {};
+  const pending = toNumber(detail.pending_reports);
+  const overSla = toNumber(detail.pending_over_sla);
+  const legacy = toNumber(detail.legacy_unqueued);
+  const audit = toNumber(detail.audit_events_7d);
+
+  return (
+    <div className="space-y-2">
+      <div className="grid grid-cols-4 gap-1.5">
+        <MiniKpi label="In Pruefung" value={pending} tone="blue" compact />
+        <MiniKpi label="Ueber SLA" value={overSla} tone={overSla > 0 ? 'red' : 'green'} compact />
+        <MiniKpi label="Legacy" value={legacy} tone={legacy > 0 ? 'amber' : 'green'} compact />
+        <MiniKpi label="Audit 7d" value={audit} tone="slate" compact />
+      </div>
+      <div>
+        <div className="mb-1.5 text-[10px] font-bold text-slate-700">Warteschlange</div>
+        <ModerationQueueTable rows={queue.slice(0, 4)} />
+      </div>
+    </div>
+  );
+}
+
+function ReportCategoryBreakdown({ categories }: { categories: CommandReportCategory[] }) {
+  const total = categories.reduce((sum, category) => sum + category.count, 0);
+
+  return (
+    <div className="grid gap-3 md:grid-cols-[0.8fr_1fr]">
+      <div className="flex items-center justify-center">
+        <div className="flex h-24 w-24 items-center justify-center rounded-full border-[14px] border-slate-200 bg-white">
+          <div className="text-center">
+            <div className="text-sm font-bold tabular-nums text-slate-950">{formatCompactNumber(total)}</div>
+            <div className="text-[9px] text-slate-500">30 Tage</div>
+          </div>
+        </div>
+      </div>
+      {categories.length === 0 ? (
+        <EmptyState label="Keine Report-Kategorien in den letzten 30 Tagen." />
+      ) : (
+        <div className="divide-y divide-slate-100">
+          {categories.slice(0, 5).map((category) => (
+            <div key={category.key} className="grid grid-cols-[1fr_auto] gap-2 py-1 text-[11px]">
+              <div className="min-w-0">
+                <div className="truncate font-semibold text-slate-700">{category.label}</div>
+                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                  <div className="h-full rounded-full bg-blue-600" style={{ width: `${category.percentage}%` }} />
+                </div>
+              </div>
+              <div className="text-right tabular-nums text-slate-500">
+                <div>{category.percentage}%</div>
+                <div className="text-[10px]">{formatCompactNumber(category.count)}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SupportInboxPreview({ support }: { support: CommandSupportInbox }) {
+  if (support.status === 'missing_model') {
+    return <EmptyState label="Support-Modell noch nicht deployed." />;
+  }
+
+  if (support.status === 'error') {
+    return <EmptyState label="Support-Daten konnten nicht geladen werden." />;
+  }
+
+  if (support.latest.length === 0) {
+    return (
+      <div className="space-y-2">
+        <div className="grid grid-cols-3 gap-1.5">
+          <MiniKpi label="Offen" value={support.open} tone="blue" compact />
+          <MiniKpi label="Wartend" value={support.pending} tone="amber" compact />
+          <MiniKpi label="SLA" value={support.over_sla} tone={support.over_sla > 0 ? 'red' : 'green'} compact />
+        </div>
+        <EmptyState label="Keine offenen Supportfaelle." />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="grid grid-cols-3 gap-1.5">
+        <MiniKpi label="Offen" value={support.open} tone="blue" compact />
+        <MiniKpi label="Wartend" value={support.pending} tone="amber" compact />
+        <MiniKpi label="SLA" value={support.over_sla} tone={support.over_sla > 0 ? 'red' : 'green'} compact />
+      </div>
+      <div className="space-y-1.5">
+        {support.latest.slice(0, 4).map((thread) => (
+          <div key={thread.id} className="grid grid-cols-[1fr_auto] gap-2 text-[11px]">
+            <div className="min-w-0">
+              <div className="truncate font-semibold text-slate-800">{thread.subject}</div>
+              <div className="truncate text-[10px] text-slate-500">
+                {thread.username ? `@${thread.username}` : 'Unbekannter Nutzer'} · {thread.priority}
+              </div>
+            </div>
+            <div className="text-right text-[10px] tabular-nums text-slate-500">
+              {thread.age_seconds === null ? '-' : formatDuration(thread.age_seconds)}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MiniKpi({
+  label,
+  value,
+  tone,
+  compact = false,
+}: {
+  label: string;
+  value: number;
+  tone: 'blue' | 'green' | 'amber' | 'red' | 'slate';
+  compact?: boolean;
+}) {
+  return (
+    <div className={cn('rounded-md border border-slate-200', compact ? 'px-1.5 py-1.5' : 'px-2 py-2')}>
+      <div className={cn('truncate font-semibold', compact ? 'text-[9px]' : 'text-[10px]', miniKpiTone(tone))}>{label}</div>
+      <div className={cn('mt-0.5 font-bold tabular-nums text-slate-950', compact ? 'text-sm' : 'text-lg')}>
+        {formatCompactNumber(value)}
+      </div>
+    </div>
+  );
+}
+
+function CampaignOverview({ campaigns }: { campaigns: CommandCampaignSnapshot }) {
+  if (campaigns.status === 'missing_model') {
+    return <EmptyState label="Kampagnen-Modell noch nicht deployed." />;
+  }
+
+  if (campaigns.status === 'error') {
+    return <EmptyState label="Kampagnen-Daten konnten nicht geladen werden." />;
+  }
+
+  if (campaigns.total === 0) {
+    return (
+      <div className="space-y-2">
+        <div className="grid grid-cols-4 gap-1.5">
+          <MiniKpi label="Aktiv" value={campaigns.active} tone="green" compact />
+          <MiniKpi label="Pausiert" value={campaigns.paused} tone="slate" compact />
+          <MiniKpi label="Fehler" value={campaigns.failed} tone={campaigns.failed > 0 ? 'red' : 'green'} compact />
+          <MiniKpi label="ROAS" value={0} tone="blue" compact />
+        </div>
+        <EmptyState label="Noch keine echten Kampagnen angelegt." />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="grid grid-cols-4 gap-1.5">
+        <MiniKpi label="Aktiv" value={campaigns.active} tone="green" compact />
+        <MiniKpi label="Spend 30d" value={Math.round(campaigns.spend_cents_30d / 100)} tone="blue" compact />
+        <MiniKpi label="Conv." value={campaigns.conversions_30d} tone="amber" compact />
+        <MiniKpi label="Fehler" value={campaigns.failed} tone={campaigns.failed > 0 ? 'red' : 'green'} compact />
+      </div>
+      {campaigns.latest.length === 0 ? (
+        <EmptyState label="Keine Kampagnen in der Liste." />
+      ) : (
+        <AdminTable
+          columns={['Kampagne', 'Status', 'Budget', 'Ergebnis 30d']}
+          rows={campaigns.latest.map((item) => [
+            item.title,
+            <CampaignStatusBadge key={`${item.id}-status`} status={item.status} />,
+            formatEuroCents(item.budget_cents),
+            campaignResultLabel(item),
+          ])}
+        />
+      )}
+    </div>
+  );
+}
+
+function RegionOverview({ regions }: { regions: CommandRegionSnapshot }) {
+  if (regions.status === 'missing_model') {
+    return <EmptyState label="Regionen-Modell noch nicht deployed." />;
+  }
+
+  if (regions.status === 'error') {
+    return <EmptyState label="Regionen-Daten konnten nicht geladen werden." />;
+  }
+
+  if (regions.latest.length === 0) {
+    return (
+      <div className="space-y-2">
+        <WorldActivityMap regions={regions.latest} />
+        <EmptyState label="Noch keine echten Regionen-Metriken. Unter /admin/regions eintragen oder importieren." />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="grid gap-2 md:grid-cols-[1.55fr_0.75fr]">
+        <WorldActivityMap regions={regions.latest} />
+        <div className="min-w-0">
+          <div className="grid max-w-[180px] grid-cols-3 gap-1">
+            <MiniKpi label="Profile" value={regions.total_profiles} tone="blue" compact />
+            <MiniKpi label="Views" value={regions.views_30d} tone="green" compact />
+            <MiniKpi label="Reports" value={regions.reports_30d} tone={regions.reports_30d > 0 ? 'amber' : 'green'} compact />
+          </div>
+          <div className="mt-2 divide-y divide-slate-100">
+            {regions.latest.slice(0, 5).map((region) => (
+              <div key={region.country_code} className="grid grid-cols-[1fr_auto] gap-2 py-1 text-[11px]">
+                <div className="min-w-0">
+                  <div className="truncate font-semibold text-slate-800">{region.country_name}</div>
+                  <div className="truncate text-[10px] text-slate-500">
+                    {region.country_code} · {formatCompactNumber(region.posts_30d)} Posts · {formatCompactNumber(region.active_users_30d)} aktiv
+                  </div>
+                </div>
+                <div className="text-right tabular-nums text-slate-700">
+                  {formatCompactNumber(region.total_profiles || region.active_users_30d)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WorldActivityMap({ regions }: { regions: CommandRegionSnapshot['latest'] }) {
+  const maxActive = Math.max(1, ...regions.map((region) => region.total_profiles || region.active_users_30d));
+  const regionByCode = new Map(regions.map((region) => [region.country_code, region]));
+  const activeCountries = WORLD_COUNTRY_PATHS
+    .map((country) => {
+      const code = WORLD_ATLAS_ID_TO_ISO2[country.id];
+      const region = code ? regionByCode.get(code) : undefined;
+      const mapValue = region ? region.total_profiles || region.active_users_30d : 0;
+      return { country, region, mapValue };
+    })
+    .filter((entry): entry is {
+      country: typeof WORLD_COUNTRY_PATHS[number];
+      region: CommandRegionSnapshot['latest'][number];
+      mapValue: number;
+    } => Boolean(entry.region) && entry.mapValue > 0);
+
+  return (
+    <div className="relative min-h-[300px] overflow-hidden rounded-md border border-slate-100 bg-gradient-to-b from-slate-100 to-white">
+      <svg viewBox="300 58 110 48" className="absolute inset-0 h-full w-full" role="img" aria-label="Regionale Aktivitaetskarte" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <filter id="regional-map-shadow" x="-5%" y="-5%" width="110%" height="110%">
+            <feDropShadow dx="0" dy="5" stdDeviation="4" floodColor="#94a3b8" floodOpacity="0.22" />
+          </filter>
+        </defs>
+        <g filter="url(#regional-map-shadow)">
+          {WORLD_COUNTRY_PATHS.map((country) => {
+            return (
+              <path
+                key={country.id}
+                d={country.d}
+                fill="#dbe7f3"
+                stroke="#ffffff"
+                strokeWidth="0.55"
+                vectorEffect="non-scaling-stroke"
+              >
+                <title>{country.name}</title>
+              </path>
+            );
+          })}
+        </g>
+        <g>
+          {activeCountries.map(({ country, region, mapValue }) => (
+            <path
+              key={`active-${country.id}`}
+              d={country.d}
+              fill={countryFill(mapValue, maxActive)}
+              stroke="#1d4ed8"
+              strokeWidth="1.2"
+              vectorEffect="non-scaling-stroke"
+            >
+              <title>{`${region.country_name}: ${formatCompactNumber(mapValue)} Profile/Aktive`}</title>
+            </path>
+          ))}
+        </g>
+      </svg>
+      <div className="absolute bottom-3 left-3 right-3 flex items-center justify-center gap-2 text-[9px] text-slate-500">
+        <span>Niedrig</span>
+        <span className="h-1.5 w-24 rounded-full bg-gradient-to-r from-blue-100 via-blue-300 to-blue-600" />
+        <span>Hoch</span>
+      </div>
+      {regions.length === 0 && (
+        <div className="absolute inset-0 flex items-center justify-center bg-white/35 text-[10px] font-semibold text-slate-400">
+          Wartet auf echte Regionsdaten
+        </div>
+      )}
+    </div>
+  );
+}
+
+function countryFill(value: number, maxValue: number): string {
+  if (value <= 0) return '#dbe7f3';
+  const ratio = Math.min(1, Math.max(0.18, value / Math.max(1, maxValue)));
+  if (ratio > 0.82) return '#1d4ed8';
+  if (ratio > 0.62) return '#2563eb';
+  if (ratio > 0.42) return '#3b82f6';
+  if (ratio > 0.24) return '#60a5fa';
+  return '#93c5fd';
+}
+
+const WORLD_ATLAS_ID_TO_ISO2: Record<string, string> = {
+  '032': 'AR',
+  '036': 'AU',
+  '040': 'AT',
+  '076': 'BR',
+  '124': 'CA',
+  '156': 'CN',
+  '203': 'CZ',
+  '208': 'DK',
+  '246': 'FI',
+  '250': 'FR',
+  '276': 'DE',
+  '300': 'GR',
+  '356': 'IN',
+  '360': 'ID',
+  '372': 'IE',
+  '380': 'IT',
+  '392': 'JP',
+  '410': 'KR',
+  '484': 'MX',
+  '528': 'NL',
+  '566': 'NG',
+  '578': 'NO',
+  '616': 'PL',
+  '620': 'PT',
+  '643': 'RU',
+  '682': 'SA',
+  '710': 'ZA',
+  '724': 'ES',
+  '752': 'SE',
+  '756': 'CH',
+  '792': 'TR',
+  '804': 'UA',
+  '818': 'EG',
+  '826': 'GB',
+  '840': 'US',
+};
+
+function SystemRows({ rows }: { rows: CommandSystemRow[] }) {
+  if (rows.length === 0) return <EmptyState label="Systemstatus nicht verfuegbar." />;
+
+  return (
+    <div className="space-y-1.5">
+      {rows.map((row) => (
+        <div key={row.key} className="flex items-center justify-between gap-2 rounded-md border border-slate-100 px-2 py-1">
+          <div className="min-w-0">
+            <div className="truncate text-[11px] font-semibold text-slate-800">{row.label}</div>
+            <div className="truncate text-[10px] text-slate-500">{row.summary}</div>
+          </div>
+          <StatusDot status={row.status} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function QuickActionGrid({
+  actions,
+}: {
+  actions: QuickAction[];
+}) {
+  if (actions.length === 0) return <EmptyState label="Keine Schnellaktionen fuer diese Rolle." />;
+
+  return (
+    <div className="grid grid-cols-2 gap-1.5">
+      {actions.map((action) => {
+        const Icon = action.icon;
+        return (
+          <Link
+            key={action.label}
+            href={action.href}
+            aria-disabled={action.disabled}
+            className={cn(
+              'flex min-h-14 flex-col items-center justify-center gap-1 rounded-md border border-slate-200 bg-white px-1.5 text-center text-[10px] font-semibold text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700',
+              action.disabled && 'pointer-events-none opacity-60',
+            )}
+          >
+            <Icon className={cn('h-4 w-4', action.label.includes('sperren') && 'text-red-500')} />
+            {action.label}
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
+function UnavailableRows({ rows }: { rows: [string, string][] }) {
+  return (
+    <div className="divide-y divide-slate-100">
+      {rows.map(([label, value]) => (
+        <div key={label} className="flex items-center justify-between gap-2 py-1 text-[11px]">
+          <span className="text-slate-500">{label}</span>
+          <span className="text-[10px] font-semibold text-slate-400">{value}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PanelLink({ href, children }: { href: Route; children: React.ReactNode }) {
+  return (
+    <div className="mt-auto flex justify-center border-t border-slate-100 pt-1.5">
+      <Link href={href} className="inline-flex items-center gap-1 text-[10px] font-semibold text-blue-600 hover:text-blue-800">
+        {children}
+        <ArrowRight className="h-3 w-3" />
+      </Link>
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: CommandCenterArea['status'] }) {
+  const copy = {
+    green: ['Stabil', CheckCircle2, 'border-emerald-200 bg-emerald-50 text-emerald-700'],
+    yellow: ['Beobachten', AlertTriangle, 'border-amber-200 bg-amber-50 text-amber-700'],
+    red: ['Eingreifen', AlertTriangle, 'border-red-200 bg-red-50 text-red-700'],
+  } as const;
+  const [label, Icon, className] = copy[status];
+  return (
+    <div className={cn('inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-xs font-semibold', className)}>
+      <Icon className="h-3.5 w-3.5" />
+      {label}
+    </div>
+  );
+}
+
+function StatusDot({ status }: { status: CommandCenterArea['status'] }) {
+  const className = status === 'green'
+    ? 'bg-emerald-500'
+    : status === 'yellow'
+      ? 'bg-amber-500'
+      : 'bg-red-500';
+  return <span className={cn('h-2 w-2 shrink-0 rounded-full', className)} />;
+}
+
+function PriorityBadge({ priority }: { priority: CommandQueueItem['priority'] }) {
+  const className = priority === 'Hoch'
+    ? 'bg-red-50 text-red-700'
+    : priority === 'Mittel'
+      ? 'bg-amber-50 text-amber-700'
+      : 'bg-emerald-50 text-emerald-700';
+  return <span className={cn('rounded px-1.5 py-0.5 text-[10px] font-semibold', className)}>{priority}</span>;
+}
+
+function CampaignStatusBadge({ status }: { status: string }) {
+  const className = status === 'active'
+    ? 'bg-emerald-50 text-emerald-700'
+    : status === 'failed'
+      ? 'bg-red-50 text-red-700'
+      : status === 'paused'
+        ? 'bg-slate-100 text-slate-600'
+        : 'bg-blue-50 text-blue-700';
+  return <span className={cn('rounded px-1.5 py-0.5 text-[10px] font-semibold', className)}>{humanizeKey(status)}</span>;
+}
+
+function EmptyState({ label }: { label: string }) {
+  return (
+    <div className="flex min-h-16 items-center justify-center rounded-md border border-dashed border-slate-200 px-2 text-center text-[11px] text-slate-500">
+      {label}
+    </div>
+  );
+}
+
+function metricTone(tone: CommandMetric['tone']): string {
+  switch (tone) {
+    case 'blue':
+      return 'bg-blue-500';
+    case 'green':
+      return 'bg-emerald-500';
+    case 'violet':
+      return 'bg-violet-500';
+    case 'amber':
+      return 'bg-amber-500';
+    case 'red':
+      return 'bg-red-500';
+    default:
+      return 'bg-slate-500';
+  }
+}
+
+function canUseQuickAction(role: QuickAction['role'], roles: AdminRoleStatus): boolean {
+  if (role === 'admin') return roles.can_admin;
+  if (role === 'moderate') return roles.can_moderate;
+  if (role === 'creator_ops') return roles.can_creator_ops;
+  return roles.can_operate;
+}
+
+function buildCommandCenterHints(
+  productArea?: CommandCenterArea,
+  pushFeedArea?: CommandCenterArea,
+): Array<[string, string]> {
+  const rows: Array<[string, string]> = [
+    ['Keine Demo-Zahlen', 'Nur echte Snapshots oder klare Leerzustaende'],
+    ['Mutierende Aktionen', 'Bleiben auf spezialisierten Admin-Seiten'],
+  ];
+
+  if (productArea?.status !== 'green') {
+    rows.push(['Product Recovery', productArea?.summary ?? 'Product Health pruefen']);
+  }
+
+  if (pushFeedArea?.status !== 'green') {
+    rows.push(['Push/Feed Recovery', pushFeedArea?.summary ?? 'Push/Feed Health pruefen']);
+  }
+
+  rows.push(['Naechste Datenmodelle', 'Support-Aktionen, Region-Import']);
+  return rows;
+}
+
+function defaultNextAction(area: CommandCenterArea): string {
+  if (area.key === 'product') return 'Creator Activation Review';
+  if (area.key === 'push-feed') return 'Unread Backlog und Push Tokens pruefen';
+  if (area.key === 'moderation') return 'Reports mit SLA-Verstoss bearbeiten';
+  if (area.key === 'cost') return 'Budget/Provider-Kosten pruefen';
+  if (area.key === 'data-lifecycle') return 'Integrity Queue und Cron pruefen';
+  return 'Owner-Runbook oeffnen';
+}
+
+function formatDate(value: string): string {
+  return new Intl.DateTimeFormat('de-DE', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value));
+}
+
+function formatTime(value: string): string {
+  return new Intl.DateTimeFormat('de-DE', {
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value));
+}
+
+function formatValue(value: string | number | boolean | null): string {
+  if (typeof value === 'number') return new Intl.NumberFormat('de-DE').format(value);
+  if (typeof value === 'boolean') return value ? 'Ja' : 'Nein';
+  if (value === null) return 'Nicht verfuegbar';
+  return value;
+}
+
+function formatCompactNumber(value: number): string {
+  return new Intl.NumberFormat('de-DE', { notation: 'compact', maximumFractionDigits: 1 }).format(value);
+}
+
+function formatEuroCents(cents: number): string {
+  return new Intl.NumberFormat('de-DE', {
+    style: 'currency',
+    currency: 'EUR',
+    maximumFractionDigits: 0,
+  }).format(cents / 100);
+}
+
+function campaignResultLabel(item: CommandCampaignSnapshot['latest'][number]): string {
+  if (item.conversions_30d > 0) return `${formatCompactNumber(item.conversions_30d)} Conv.`;
+  if (item.clicks_30d > 0) return `${formatCompactNumber(item.clicks_30d)} Klicks`;
+  if (item.impressions_30d > 0) return `${formatCompactNumber(item.impressions_30d)} Impr.`;
+  if (item.revenue_cents_30d > 0) return formatEuroCents(item.revenue_cents_30d);
+  return 'Noch keine Metriken';
+}
+
+function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${Math.floor(seconds)}s`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 48) return `${hours}h`;
+  return `${Math.floor(hours / 24)}d`;
+}
+
+function toNumber(value: unknown): number {
+  const number = Number(value ?? 0);
+  return Number.isFinite(number) ? number : 0;
+}
+
+function miniKpiTone(tone: 'blue' | 'green' | 'amber' | 'red' | 'slate'): string {
+  switch (tone) {
+    case 'blue':
+      return 'text-blue-600';
+    case 'green':
+      return 'text-emerald-600';
+    case 'amber':
+      return 'text-amber-600';
+    case 'red':
+      return 'text-red-600';
+    default:
+      return 'text-slate-500';
+  }
+}
+
+function humanizeKey(key: string): string {
+  return key
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function normalizeTargetType(value: string): string {
+  if (value === 'post') return 'Post';
+  if (value === 'profile') return 'Profil';
+  if (value === 'comment') return 'Kommentar';
+  if (value === 'live') return 'Live';
+  if (value === 'product') return 'Produkt';
+  return value || 'Inhalt';
+}
+
+function shortId(value: string): string {
+  return value.slice(0, 8);
+}

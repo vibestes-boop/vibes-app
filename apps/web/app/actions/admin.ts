@@ -56,6 +56,32 @@ export interface AdminUserDirectoryItem extends AdminUser {
   risk_level: 'low' | 'medium' | 'high';
 }
 
+export type AdminUserStatusFilter = 'all' | 'active' | 'restricted' | 'banned';
+export type AdminUserRoleFilter = 'all' | 'admin' | 'moderator' | 'operator' | 'creator_ops' | 'creator' | 'user';
+export type AdminUserVerificationFilter = 'all' | 'verified' | 'unverified';
+export type AdminUserActivityFilter = 'all' | 'active_30d' | 'inactive_30d';
+export type AdminUserRiskFilter = 'all' | 'low' | 'medium' | 'high';
+export type AdminAssignableUserRole = Exclude<AdminUserRoleFilter, 'all'>;
+
+export interface AdminUserDirectoryQuery {
+  query?: string;
+  status?: AdminUserStatusFilter;
+  role?: AdminUserRoleFilter;
+  verification?: AdminUserVerificationFilter;
+  activity?: AdminUserActivityFilter;
+  risk?: AdminUserRiskFilter;
+  page?: number;
+  pageSize?: number;
+}
+
+export interface AdminUserDirectoryPage {
+  users: AdminUserDirectoryItem[];
+  page: number;
+  page_size: number;
+  total_count: number;
+  has_more: boolean;
+}
+
 export interface AdminUserManagementStats {
   total_users: number;
   active_users_30d: number;
@@ -70,6 +96,7 @@ export interface AdminUsersPageSnapshot {
   generated_at: string;
   stats: AdminUserManagementStats;
   users: AdminUserDirectoryItem[];
+  directory: AdminUserDirectoryPage;
 }
 
 export interface AdminUserIdentitySnapshot {
@@ -500,15 +527,58 @@ export async function getAdminUsersPageSnapshot(): Promise<AdminUsersPageSnapsho
   const { supabase, error: authErr } = await requireAdmin();
   if (authErr) return emptyAdminUsersPageSnapshot();
 
-  const [users, stats] = await Promise.all([
-    searchAdminUserDirectory(''),
+  const [directory, stats] = await Promise.all([
+    searchAdminUserDirectoryPage({ page: 1, pageSize: 20 }),
     readAdminUserManagementStats(supabase),
   ]);
 
   return {
     generated_at: new Date().toISOString(),
     stats,
-    users,
+    users: directory.users,
+    directory,
+  };
+}
+
+export async function searchAdminUserDirectoryPage(input: AdminUserDirectoryQuery = {}): Promise<AdminUserDirectoryPage> {
+  const { supabase, error: authErr } = await requireAdmin();
+  const query = normalizeAdminUserDirectoryQuery(input);
+  if (authErr) return emptyAdminUserDirectoryPage(query.page, query.pageSize);
+
+  const { data, error } = await supabase.rpc('admin_user_directory_page', {
+    p_query: query.query,
+    p_status: query.status,
+    p_role: query.role,
+    p_verification: query.verification,
+    p_activity: query.activity,
+    p_risk: query.risk,
+    p_limit: query.pageSize,
+    p_offset: (query.page - 1) * query.pageSize,
+  });
+
+  if (!error && Array.isArray(data)) {
+    return normalizeAdminUserDirectoryPage(data as SnapshotObject[], query.page, query.pageSize);
+  }
+
+  const fallbackUsers = await searchAdminUserDirectory(query.query);
+  const filteredUsers = fallbackUsers.filter((user) => {
+    if (query.status !== 'all' && adminUserStatusKey(user) !== query.status) return false;
+    if (query.role !== 'all' && adminUserRoleKey(user) !== query.role) return false;
+    if (query.verification === 'verified' && !user.is_verified) return false;
+    if (query.verification === 'unverified' && user.is_verified) return false;
+    if (query.activity !== 'all' && adminUserActivityKey(user) !== query.activity) return false;
+    if (query.risk !== 'all' && user.risk_level !== query.risk) return false;
+    return true;
+  });
+  const start = (query.page - 1) * query.pageSize;
+  const pageUsers = filteredUsers.slice(start, start + query.pageSize);
+
+  return {
+    users: pageUsers,
+    page: query.page,
+    page_size: query.pageSize,
+    total_count: filteredUsers.length,
+    has_more: start + pageUsers.length < filteredUsers.length,
   };
 }
 
@@ -679,6 +749,68 @@ export async function adminToggleAdmin(userId: string, isAdmin: boolean): Promis
   if (error) return { ok: false, error: error.message };
   await recordAdminUserAction(supabase, userId, isAdmin ? 'admin.user.make_admin' : 'admin.user.remove_admin', { is_admin: isAdmin });
   revalidatePath('/admin/users');
+  return { ok: true };
+}
+
+export async function adminSetUserRole(userId: string, role: AdminAssignableUserRole): Promise<ActionResult> {
+  const { supabase, user, error: authErr } = await requireAdmin();
+  if (authErr) return { ok: false, error: authErr };
+  if (!userId) return { ok: false, error: 'Nutzer-ID fehlt.' };
+  if (!['admin', 'moderator', 'operator', 'creator_ops', 'creator', 'user'].includes(role)) {
+    return { ok: false, error: 'Diese Rolle ist nicht erlaubt.' };
+  }
+  if (user?.id === userId && role !== 'admin') {
+    return { ok: false, error: 'Du kannst dir nicht selbst Admin-Rechte entziehen.' };
+  }
+
+  const patch = {
+    is_admin: role === 'admin',
+    is_moderator: role === 'moderator',
+    is_operator: role === 'operator',
+    is_creator_ops: role === 'creator_ops',
+    is_creator: role === 'creator',
+  };
+  const { error } = await supabase
+    .from('profiles')
+    .update(patch)
+    .eq('id', userId);
+
+  if (error) return { ok: false, error: error.message };
+  await recordAdminUserAction(supabase, userId, 'admin.user.set_role', { role, ...patch });
+  revalidatePath('/admin/users');
+  revalidatePath('/admin/command-center');
+  return { ok: true };
+}
+
+export async function adminSetUserSafetyState(
+  userId: string,
+  action: 'restrict' | 'unrestrict' | 'shadowban' | 'unshadowban',
+): Promise<ActionResult> {
+  const { supabase, error: authErr } = await requireAdmin();
+  if (authErr) return { ok: false, error: authErr };
+  if (!userId) return { ok: false, error: 'Nutzer-ID fehlt.' };
+
+  const restrictedUntil = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+  const patch =
+    action === 'restrict'
+      ? { is_restricted: true, restricted_until: restrictedUntil }
+      : action === 'unrestrict'
+        ? { is_restricted: false, restricted_until: null }
+        : action === 'shadowban'
+          ? { is_shadow_banned: true }
+          : { is_shadow_banned: false };
+
+  const { error } = await supabase
+    .from('profiles')
+    .update(patch)
+    .eq('id', userId);
+
+  if (error) return { ok: false, error: error.message };
+  await recordAdminUserAction(supabase, userId, `admin.user.${action}`, patch);
+  revalidatePath('/admin/users');
+  revalidatePath('/admin/reports');
+  revalidatePath('/admin/command-center');
+  revalidatePath('/');
   return { ok: true };
 }
 
@@ -1731,6 +1863,7 @@ function buildProductArea(result: Awaited<ReturnType<typeof readRpcSnapshot>>): 
     label: 'Product Health',
     status,
     summary: `North Star ${value}, Creator 7d ${activeCreators}, WAU/MAU ${toNumber(audience.wau)}/${toNumber(audience.mau)}`,
+    href: '/admin/command-center',
     detail: {
       north_star: value,
       active_creators_7d: activeCreators,
@@ -1738,6 +1871,7 @@ function buildProductArea(result: Awaited<ReturnType<typeof readRpcSnapshot>>): 
       mau: toNumber(audience.mau),
       d7_retained: toNumber(retention.d7_retained),
       d7_cohort: toNumber(retention.d7_cohort),
+      next_action: value <= 0 ? 'Creator Activation Review' : 'Weekly Product Review',
     },
   };
 }
@@ -1818,12 +1952,14 @@ function buildPushFeedArea(result: Awaited<ReturnType<typeof readRpcSnapshot>>):
     label: 'Push & Feed',
     status,
     summary: `Public Posts ${totalPosts}, Videos ohne Thumbnail ${videosMissingThumb}, Push Tokens ${toNumber(nativeTokens.total)}`,
+    href: '/admin/command-center',
     detail: {
       public_posts_total: totalPosts,
       public_video_posts_without_thumbnail: videosMissingThumb,
       unread_notifications: unread,
       native_tokens_total: toNumber(nativeTokens.total),
       web_subscriptions_total: toNumber(webSubscriptions.total),
+      next_action: unread > 500 ? 'Unread Backlog Review' : 'Push Token Review',
     },
   };
 }
@@ -2072,6 +2208,8 @@ async function readEventRows(
 }
 
 function emptyAdminUsersPageSnapshot(): AdminUsersPageSnapshot {
+  const directory = emptyAdminUserDirectoryPage(1, 20);
+
   return {
     generated_at: new Date().toISOString(),
     stats: {
@@ -2084,7 +2222,123 @@ function emptyAdminUsersPageSnapshot(): AdminUsersPageSnapshot {
       restricted_users: 0,
     },
     users: [],
+    directory,
   };
+}
+
+type NormalizedAdminUserDirectoryQuery = {
+  query: string;
+  status: AdminUserStatusFilter;
+  role: AdminUserRoleFilter;
+  verification: AdminUserVerificationFilter;
+  activity: AdminUserActivityFilter;
+  risk: AdminUserRiskFilter;
+  page: number;
+  pageSize: number;
+};
+
+function emptyAdminUserDirectoryPage(page: number, pageSize: number): AdminUserDirectoryPage {
+  return {
+    users: [],
+    page,
+    page_size: pageSize,
+    total_count: 0,
+    has_more: false,
+  };
+}
+
+function normalizeAdminUserDirectoryQuery(input: AdminUserDirectoryQuery): NormalizedAdminUserDirectoryQuery {
+  return {
+    query: String(input.query ?? '').trim().slice(0, 120),
+    status: pickAdminFilter(input.status, ['all', 'active', 'restricted', 'banned'], 'all'),
+    role: pickAdminFilter(input.role, ['all', 'admin', 'moderator', 'operator', 'creator_ops', 'creator', 'user'], 'all'),
+    verification: pickAdminFilter(input.verification, ['all', 'verified', 'unverified'], 'all'),
+    activity: pickAdminFilter(input.activity, ['all', 'active_30d', 'inactive_30d'], 'all'),
+    risk: pickAdminFilter(input.risk, ['all', 'low', 'medium', 'high'], 'all'),
+    page: clampInteger(input.page, 1, 500, 1),
+    pageSize: clampInteger(input.pageSize, 10, 100, 20),
+  };
+}
+
+function pickAdminFilter<T extends string>(value: unknown, allowed: readonly T[], fallback: T): T {
+  return allowed.includes(value as T) ? value as T : fallback;
+}
+
+function clampInteger(value: unknown, min: number, max: number, fallback: number): number {
+  const number = Number(value);
+  if (!Number.isFinite(number)) return fallback;
+  return Math.min(max, Math.max(min, Math.floor(number)));
+}
+
+function normalizeAdminUserDirectoryPage(
+  rows: SnapshotObject[],
+  page: number,
+  pageSize: number,
+): AdminUserDirectoryPage {
+  const users = rows.map(normalizeAdminUserDirectoryRow).filter((user) => user.id && user.username);
+  const totalCount = rows.length > 0 ? toNumber(rows[0].total_count) : 0;
+
+  return {
+    users,
+    page,
+    page_size: pageSize,
+    total_count: totalCount,
+    has_more: page * pageSize < totalCount,
+  };
+}
+
+function normalizeAdminUserDirectoryRow(row: SnapshotObject): AdminUserDirectoryItem {
+  return {
+    id: String(row.id ?? ''),
+    username: String(row.username ?? ''),
+    display_name: stringOrNull(row.display_name),
+    avatar_url: stringOrNull(row.avatar_url),
+    is_verified: Boolean(row.is_verified),
+    is_admin: Boolean(row.is_admin),
+    is_moderator: Boolean(row.is_moderator),
+    is_operator: Boolean(row.is_operator),
+    is_creator_ops: Boolean(row.is_creator_ops),
+    is_banned: Boolean(row.is_banned),
+    is_restricted: Boolean(row.is_restricted),
+    restricted_until: stringOrNull(row.restricted_until),
+    is_shadow_banned: Boolean(row.is_shadow_banned),
+    women_only_verified: Boolean(row.women_only_verified),
+    is_creator: Boolean(row.is_creator),
+    created_at: String(row.created_at ?? new Date(0).toISOString()),
+    post_count: toNumber(row.post_count),
+    follower_count: toNumber(row.follower_count),
+    comment_count: toNumber(row.comment_count),
+    report_count: toNumber(row.report_count),
+    last_activity_at: stringOrNull(row.last_activity_at),
+    risk_level: normalizeRiskLevel(row.risk_level),
+  };
+}
+
+function normalizeRiskLevel(value: unknown): AdminUserDirectoryItem['risk_level'] {
+  return value === 'high' || value === 'medium' || value === 'low' ? value : 'low';
+}
+
+function adminUserStatusKey(user: AdminUserDirectoryItem): AdminUserStatusFilter {
+  if (user.is_banned) return 'banned';
+  if (user.is_restricted || user.is_shadow_banned) return 'restricted';
+  return 'active';
+}
+
+function adminUserRoleKey(user: AdminUserDirectoryItem): AdminUserRoleFilter {
+  if (user.is_admin) return 'admin';
+  if (user.is_moderator) return 'moderator';
+  if (user.is_operator) return 'operator';
+  if (user.is_creator_ops) return 'creator_ops';
+  if (user.is_creator) return 'creator';
+  return 'user';
+}
+
+function adminUserActivityKey(user: AdminUserDirectoryItem): AdminUserActivityFilter {
+  if (!user.last_activity_at) return 'inactive_30d';
+  const activityWindowMs = 30 * 24 * 60 * 60 * 1000;
+  return Date.now() - new Date(user.last_activity_at).getTime() <= activityWindowMs
+    ? 'active_30d'
+    : 'inactive_30d';
 }
 
 function addString(target: Set<string>, value: unknown) {

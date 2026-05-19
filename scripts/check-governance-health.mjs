@@ -68,6 +68,12 @@ validateTextFile('docs/stability/push-feed-health.md', [
   'Feed RPC fallback',
 ]);
 validateTextFile('docs/stability/health-dashboard.md', ['npm run health:dashboard', 'Green', 'Yellow', 'Red']);
+validateTextFile('docs/stability/admin-command-center-waves.md', [
+  'Welle 0',
+  'Welle 1',
+  'Welle 6',
+  'Spaeter Manuell Durch Den Account-Owner',
+]);
 validateTextFile('docs/stability/product-metrics.md', ['Keep', 'Improve', 'Kill', 'target metric', 'rollback plan']);
 validateTextFile('docs/stability/cost-controls.md', [
   'feature flag',
