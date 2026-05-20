@@ -63,6 +63,7 @@ validateTextFile('docs/stability/alerts.md', [
 validateTextFile('docs/stability/push-feed-health.md', [
   'npm run push-feed:health',
   'npm run push-feed:recover-live',
+  'npm run push-feed:recover-stale',
   'Push Signals',
   'Feed Signals',
   'X-Feed-Data-Source',
@@ -171,6 +172,13 @@ validateTextFile('supabase/migrations/20260519215000_activation_support_outreach
   'activation.support_thread.create',
   'creator_activation_recovery_snapshot',
   'source = \'activation\'',
+]);
+validateTextFile('supabase/migrations/20260520001000_stale_notification_backlog_recovery.sql', [
+  'stale_notification_backlog_recovery',
+  'follow',
+  'like',
+  'comment',
+  'service_role/admin/operator',
 ]);
 validateTextFile('scripts/check-feature-freeze.mjs', ['Feature freeze guard', 'north-star-zero-weeks']);
 validateTextFile('.github/ISSUE_TEMPLATE/feature_request.yml', [

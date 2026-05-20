@@ -86,3 +86,14 @@ Execute only after a product/ops decision:
 ```bash
 npm run push-feed:recover-live -- --older-than-days 30 --execute
 ```
+
+Old low-risk activity badges are handled by a separate stale-notification
+recovery tool. It only targets explicit types and defaults to `follow`, `like`,
+`comment`, `live`, and `scheduled_live_reminder`; it does not delete
+notifications and does not touch DMs or gifts unless an operator deliberately
+passes different allowed types.
+
+```bash
+npm run push-feed:recover-stale
+npm run push-feed:recover-stale -- --older-than-days 60 --types follow --execute
+```
