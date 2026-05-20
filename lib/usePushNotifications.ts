@@ -1,10 +1,11 @@
 import * as Notifications from 'expo-notifications';
-import { useEffect,useRef } from 'react';
-import { Platform } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { AppState, Platform } from 'react-native';
 import { useAuthStore } from './authStore';
 
 // Expo Project ID aus app.json (für getExpoPushTokenAsync in Expo SDK 54 erforderlich)
 const EXPO_PROJECT_ID = '02ab536a-5836-4560-a5ec-2dfd6e059f90';
+const TOKEN_REFRESH_INTERVAL_MS = 12 * 60 * 60 * 1000;
 
 try {
   Notifications.setNotificationHandler({
@@ -23,7 +24,8 @@ try {
 export function usePushNotifications() {
   const notificationListener = useRef<Notifications.EventSubscription | null>(null);
   const responseListener    = useRef<Notifications.EventSubscription | null>(null);
-  const tokenRegistered     = useRef(false);
+  const tokenSyncInFlight   = useRef(false);
+  const lastTokenSync       = useRef<{ userId: string; at: number } | null>(null);
 
   // ── Reaktiv auf Session warten ────────────────────────────────────────────
   // useAuthStore.getState().session ist beim ersten Mount noch null (SecureStore
@@ -35,10 +37,21 @@ export function usePushNotifications() {
     if (Platform.OS === 'web') return;
     // Noch nicht eingeloggt → warten
     if (!session || !profile?.id) return;
-    // Bereits registriert in dieser Session → nicht nochmal
-    if (tokenRegistered.current) return;
 
-    const register = async () => {
+    let cancelled = false;
+
+    const register = async (force = false) => {
+      const previousSync = lastTokenSync.current;
+      if (
+        !force &&
+        previousSync?.userId === profile.id &&
+        Date.now() - previousSync.at < TOKEN_REFRESH_INTERVAL_MS
+      ) {
+        return;
+      }
+      if (tokenSyncInFlight.current) return;
+      tokenSyncInFlight.current = true;
+
       try {
         if (typeof Notifications.getPermissionsAsync !== 'function') return;
 
@@ -66,35 +79,75 @@ export function usePushNotifications() {
         }
 
         __DEV__ && console.log('[PushNotif] Token:', token);
-        tokenRegistered.current = true;
+        if (cancelled) return;
 
         // Direkt per REST in profiles speichern — kein Supabase-Client-Hang
         const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
         const supabaseKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
+        const baseHeaders = {
+          'Content-Type': 'application/json',
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${session.access_token}`,
+          'Prefer': 'return=minimal',
+        };
 
         const res = await fetch(`${supabaseUrl}/rest/v1/profiles?id=eq.${profile.id}`, {
           method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': supabaseKey,
-            'Authorization': `Bearer ${session.access_token}`,
-            'Prefer': 'return=minimal',
-          },
+          headers: baseHeaders,
           body: JSON.stringify({ push_token: token }),
         });
 
+        let pushTokensOk = true;
+        try {
+          const tokenRes = await fetch(`${supabaseUrl}/rest/v1/push_tokens?on_conflict=user_id,token`, {
+            method: 'POST',
+            headers: {
+              ...baseHeaders,
+              'Prefer': 'resolution=merge-duplicates,return=minimal',
+            },
+            body: JSON.stringify({
+              user_id: profile.id,
+              token,
+              platform: Platform.OS === 'ios' || Platform.OS === 'android' ? Platform.OS : 'other',
+              last_seen_at: new Date().toISOString(),
+            }),
+          });
+          pushTokensOk = tokenRes.ok;
+          if (!tokenRes.ok) {
+            const text = await tokenRes.text();
+            __DEV__ && console.warn('[PushNotif] ❌ push_tokens upsert fehlgeschlagen:', tokenRes.status, text.substring(0, 150));
+          }
+        } catch (err) {
+          pushTokensOk = false;
+          __DEV__ && console.warn('[PushNotif] ❌ push_tokens upsert Fehler:', (err as Error)?.message ?? err);
+        }
+
         if (res.ok) {
           __DEV__ && console.log('[PushNotif] ✅ Token in DB gespeichert:', token);
+          if (pushTokensOk) {
+            lastTokenSync.current = { userId: profile.id, at: Date.now() };
+          }
         } else {
           const text = await res.text();
           __DEV__ && console.warn('[PushNotif] ❌ PATCH fehlgeschlagen:', res.status, text.substring(0, 150));
         }
       } catch (err) {
         __DEV__ && console.log('[PushNotif] Fehler (Expo Go oder Stub):', (err as Error)?.message ?? err);
+      } finally {
+        tokenSyncInFlight.current = false;
       }
     };
 
     register();
+
+    const appStateSub = AppState.addEventListener('change', (nextState) => {
+      if (nextState === 'active') register();
+    });
+
+    return () => {
+      cancelled = true;
+      appStateSub.remove();
+    };
   }, [session, profile?.id]); // Re-fires wenn Session/Profile verfügbar wird
 
   // Notification Listeners

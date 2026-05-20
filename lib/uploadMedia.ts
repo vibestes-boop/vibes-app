@@ -9,7 +9,6 @@ type UploadResult = {
 // ── Limits ──────────────────────────────────────────────────────────────────
 const MAX_IMAGE_BYTES = 50 * 1024 * 1024;  //  50 MB
 const MAX_VIDEO_BYTES = 200 * 1024 * 1024;  // 200 MB
-const IMMUTABLE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function mimeToExt(mimeType: string): string {
@@ -116,7 +115,7 @@ async function uploadToR2(
     async () => {
       if (signal?.aborted) throw new Error('Upload abgebrochen.');
       const { data, error } = await supabase.functions.invoke('r2-sign', {
-        body: { key, contentType: mimeType, cacheControl: IMMUTABLE_CACHE_CONTROL },
+        body: { key, contentType: mimeType },
       });
       if (error || !data?.uploadUrl) {
         throw new Error(`Sign-Fehler: ${error?.message ?? 'Keine uploadUrl'}`);
@@ -146,7 +145,6 @@ async function uploadToR2(
           method: 'PUT',
           headers: {
             'Content-Type': mimeType,
-            'Cache-Control': IMMUTABLE_CACHE_CONTROL,
           },
           body: fileBuffer,
           signal,
