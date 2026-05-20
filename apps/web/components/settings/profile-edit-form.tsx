@@ -5,6 +5,7 @@ import { AtSign, CheckCircle2, AlertCircle, Globe, Mountain, ChevronDown, X } fr
 
 import { updateProfile } from '@/app/actions/profile';
 import { AvatarUploadField, type AvatarUploadFieldLabels } from '@/components/settings/avatar-upload-field';
+import { COUNTRY_OPTIONS } from '@/lib/geo/countries';
 import { cn } from '@/lib/utils';
 
 // -----------------------------------------------------------------------------
@@ -20,6 +21,7 @@ import { cn } from '@/lib/utils';
 const DISPLAY_NAME_MAX = 60;
 const BIO_MAX = 200;
 const WEBSITE_MAX = 200;
+const LOCATION_MAX = 80;
 
 // Full Chechen clan list (identical to mobile app/settings.tsx TEIP_LIST)
 const TEIP_LIST: string[] = [...new Set([
@@ -76,6 +78,9 @@ export interface ProfileEditFormProps {
   initialWebsite?: string;
   /** v1.w.UI.159 — Teip-Name oder null. */
   initialTeip?: string | null;
+  initialCountryCode?: string;
+  initialCity?: string;
+  initialRegionName?: string;
   /** Username wird readonly angezeigt; Rename ist out-of-scope. */
   username: string;
   /** v1.w.UI.21 — Aktuelle Avatar-URL aus DB; `null` wenn keiner gesetzt. */
@@ -90,6 +95,9 @@ export function ProfileEditForm({
   initialBio,
   initialWebsite = '',
   initialTeip = null,
+  initialCountryCode = '',
+  initialCity = '',
+  initialRegionName = '',
   username,
   initialAvatarUrl,
   userId,
@@ -99,6 +107,9 @@ export function ProfileEditForm({
   const [bio, setBio] = useState(initialBio);
   const [website, setWebsite] = useState(initialWebsite);
   const [teip, setTeip] = useState<string | null>(initialTeip);
+  const [countryCode, setCountryCode] = useState(initialCountryCode);
+  const [city, setCity] = useState(initialCity);
+  const [regionName, setRegionName] = useState(initialRegionName);
   const [teipOpen, setTeipOpen] = useState(false);
   const [teipSearch, setTeipSearch] = useState('');
   const teipDropdownRef = useRef<HTMLDivElement>(null);
@@ -126,8 +137,10 @@ export function ProfileEditForm({
   const displayNameTooLong = displayName.length > DISPLAY_NAME_MAX;
   const bioTooLong = bio.length > BIO_MAX;
   const websiteTooLong = website.length > WEBSITE_MAX;
+  const cityTooLong = city.length > LOCATION_MAX;
+  const regionNameTooLong = regionName.length > LOCATION_MAX;
   const displayNameEmpty = displayName.trim().length === 0;
-  const clientInvalid = displayNameTooLong || bioTooLong || websiteTooLong || displayNameEmpty;
+  const clientInvalid = displayNameTooLong || bioTooLong || websiteTooLong || cityTooLong || regionNameTooLong || displayNameEmpty;
 
   const filteredTeips = teipSearch.trim()
     ? TEIP_LIST.filter((t) => t.toLowerCase().includes(teipSearch.toLowerCase()))
@@ -142,6 +155,9 @@ export function ProfileEditForm({
     fd.set('bio', bio);
     fd.set('website', website);
     if (teip) fd.set('teip', teip);
+    fd.set('country_code', countryCode);
+    fd.set('city', city);
+    fd.set('region_name', regionName);
 
     startTransition(async () => {
       const result = await updateProfile(fd);
@@ -316,6 +332,86 @@ export function ProfileEditForm({
           />
         </div>
         <p className="text-xs text-muted-foreground">Dein Link im Profil (optional)</p>
+      </div>
+
+      {/* Freiwillige Region — keine IP-Ortung, nur explizite Nutzerangabe. */}
+      <div className="space-y-3 rounded-lg border border-border bg-muted/20 p-3">
+        <div>
+          <label htmlFor="profile-country" className="text-sm font-medium text-foreground">
+            Regionale Angabe
+          </label>
+          <p className="mt-1 text-xs leading-5 text-muted-foreground">
+            Freiwillig. Wird nur aggregiert fuer regionale Admin-Statistiken verwendet und kann jederzeit geloescht werden.
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="block space-y-1">
+            <span className="text-xs font-medium text-muted-foreground">Land</span>
+            <select
+              id="profile-country"
+              name="country_code"
+              value={countryCode}
+              onChange={(e) => {
+                const next = e.target.value;
+                setCountryCode(next);
+                if (!next) {
+                  setCity('');
+                  setRegionName('');
+                }
+              }}
+              className="h-10 w-full rounded-lg border border-border bg-background px-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-0"
+            >
+              <option value="">Nicht angeben</option>
+              {COUNTRY_OPTIONS.map((country) => (
+                <option key={country.code} value={country.code}>
+                  {country.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block space-y-1">
+            <span className="text-xs font-medium text-muted-foreground">Stadt</span>
+            <input
+              name="city"
+              type="text"
+              value={city}
+              onChange={(e) => setCity(e.target.value)}
+              disabled={!countryCode}
+              placeholder="z. B. Hamburg"
+              maxLength={LOCATION_MAX + 20}
+              aria-invalid={cityTooLong || undefined}
+              className={cn(
+                'h-10 w-full rounded-lg border bg-background px-3 text-sm transition-colors',
+                'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-0',
+                'disabled:cursor-not-allowed disabled:bg-muted/40 disabled:text-muted-foreground',
+                cityTooLong ? 'border-red-500' : 'border-border',
+              )}
+            />
+          </label>
+          <label className="block space-y-1 sm:col-span-2">
+            <span className="text-xs font-medium text-muted-foreground">Region / Bundesland</span>
+            <input
+              name="region_name"
+              type="text"
+              value={regionName}
+              onChange={(e) => setRegionName(e.target.value)}
+              disabled={!countryCode}
+              placeholder="z. B. Bayern"
+              maxLength={LOCATION_MAX + 20}
+              aria-invalid={regionNameTooLong || undefined}
+              className={cn(
+                'h-10 w-full rounded-lg border bg-background px-3 text-sm transition-colors',
+                'focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-0',
+                'disabled:cursor-not-allowed disabled:bg-muted/40 disabled:text-muted-foreground',
+                regionNameTooLong ? 'border-red-500' : 'border-border',
+              )}
+            />
+          </label>
+        </div>
+        <div className="flex justify-end gap-3 text-xs text-muted-foreground">
+          <span className={cityTooLong ? 'text-red-600 dark:text-red-400' : undefined}>{city.length}/{LOCATION_MAX}</span>
+          <span className={regionNameTooLong ? 'text-red-600 dark:text-red-400' : undefined}>{regionName.length}/{LOCATION_MAX}</span>
+        </div>
       </div>
 
       {/* Teip (Clan) — v1.w.UI.159 */}

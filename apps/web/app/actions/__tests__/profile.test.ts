@@ -181,6 +181,11 @@ describe('updateProfile — Write-Pfad', () => {
       bio: 'hello world',
       website: null,
       teip: null,
+      country_code: null,
+      country_name: null,
+      city: null,
+      region_name: null,
+      location_consent_at: null,
     });
     expect(builder!._eqCalls).toEqual([['id', 'user-42']]);
   });
@@ -198,6 +203,11 @@ describe('updateProfile — Write-Pfad', () => {
       bio: null,
       website: null,
       teip: null,
+      country_code: null,
+      country_name: null,
+      city: null,
+      region_name: null,
+      location_consent_at: null,
     });
   });
 
@@ -215,8 +225,38 @@ describe('updateProfile — Write-Pfad', () => {
     const payload = lastBuilder()!._updatePayload as Record<string, unknown>;
     expect(payload).not.toHaveProperty('username');
     expect(payload).not.toHaveProperty('avatar_url');
-    // v1.w.UI.159: website + teip are allowed fields (written as null when absent)
-    expect(Object.keys(payload).sort()).toEqual(['bio', 'display_name', 'teip', 'website']);
+    // Voluntary location fields are allowed, but username/avatar remain locked.
+    expect(Object.keys(payload).sort()).toEqual([
+      'bio',
+      'city',
+      'country_code',
+      'country_name',
+      'display_name',
+      'location_consent_at',
+      'region_name',
+      'teip',
+      'website',
+    ]);
+  });
+
+  it('stores voluntary region fields only when a supported country is selected', async () => {
+    const { client, lastBuilder } = makeSupabaseMock();
+    mockCreateClient.mockResolvedValue(client as never);
+
+    await updateProfile(makeFormData({
+      display_name: 'Alice',
+      bio: '',
+      country_code: 'DE',
+      city: 'Hamburg',
+      region_name: 'Hamburg',
+    }));
+
+    const payload = lastBuilder()!._updatePayload as Record<string, unknown>;
+    expect(payload.country_code).toBe('DE');
+    expect(payload.country_name).toBe('Deutschland');
+    expect(payload.city).toBe('Hamburg');
+    expect(payload.region_name).toBe('Hamburg');
+    expect(typeof payload.location_consent_at).toBe('string');
   });
 
   it('returns Supabase error message when update fails', async () => {

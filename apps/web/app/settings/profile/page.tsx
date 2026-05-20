@@ -11,6 +11,9 @@ import { ProfileEditForm } from '@/components/settings/profile-edit-form';
 type ProfileSettingsExtras = {
   website?: string | null;
   teip?: string | null;
+  country_code?: string | null;
+  city?: string | null;
+  region_name?: string | null;
 };
 
 // -----------------------------------------------------------------------------
@@ -75,6 +78,9 @@ export default async function ProfileSettingsPage() {
         initialBio={profile.bio ?? ''}
         initialWebsite={profileExtras.website ?? ''}
         initialTeip={profileExtras.teip ?? null}
+        initialCountryCode={profileExtras.country_code ?? ''}
+        initialCity={profileExtras.city ?? ''}
+        initialRegionName={profileExtras.region_name ?? ''}
         username={profile.username ?? ''}
         initialAvatarUrl={profile.avatar_url ?? null}
         userId={user.id}

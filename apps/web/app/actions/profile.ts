@@ -5,6 +5,7 @@ import { revalidatePath, revalidateTag } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { getUser } from '@/lib/auth/session';
 import { PUBLIC_PROFILE_CACHE_TAG } from '@/lib/cache/tags';
+import { COUNTRY_NAME_BY_CODE, normalizeCountryCode } from '@/lib/geo/countries';
 
 // -----------------------------------------------------------------------------
 // v1.w.UI.20 D7-Follow-up — Profil-Editor Server-Actions.
@@ -55,6 +56,7 @@ const websiteSchema = z
 // aber wir speichern auf Trust-Basis — kein Enum-Check serverseitig, die mobile
 // App macht es genauso).
 const teipSchema = z.string().trim().max(100, 'Teip-Name zu lang.').nullable();
+const locationTextSchema = z.string().trim().max(80, 'Ortsangabe darf maximal 80 Zeichen haben.');
 
 const updateProfileSchema = z.object({
   display_name: displayNameSchema,
@@ -63,6 +65,9 @@ const updateProfileSchema = z.object({
   bio: bioSchema,
   website: websiteSchema.optional(),
   teip: teipSchema.optional(),
+  country_code: z.string().trim().optional(),
+  city: locationTextSchema.optional(),
+  region_name: locationTextSchema.optional(),
 });
 
 export async function updateProfile(formData: FormData): Promise<ActionResult<null>> {
@@ -72,11 +77,19 @@ export async function updateProfile(formData: FormData): Promise<ActionResult<nu
   }
 
   const rawTeip = (formData.get('teip') as string | null)?.trim() || null;
+  const submittedCountryCode = String(formData.get('country_code') ?? '').trim();
+  const rawCountryCode = normalizeCountryCode(submittedCountryCode);
+  if (submittedCountryCode && !rawCountryCode) {
+    return { ok: false, error: 'Land ist nicht erlaubt.', field: 'country_code' };
+  }
   const parsed = updateProfileSchema.safeParse({
     display_name: formData.get('display_name'),
     bio: formData.get('bio'),
     website: formData.get('website') ?? '',
     teip: rawTeip,
+    country_code: rawCountryCode ?? '',
+    city: formData.get('city') ?? '',
+    region_name: formData.get('region_name') ?? '',
   });
 
   if (!parsed.success) {
@@ -89,6 +102,10 @@ export async function updateProfile(formData: FormData): Promise<ActionResult<nu
   }
 
   const supabase = await createClient();
+  const countryCode = parsed.data.country_code ? normalizeCountryCode(parsed.data.country_code) : null;
+  const countryName = countryCode ? COUNTRY_NAME_BY_CODE.get(countryCode) ?? null : null;
+  const city = countryCode && parsed.data.city ? parsed.data.city : null;
+  const regionName = countryCode && parsed.data.region_name ? parsed.data.region_name : null;
 
   // Username wird NICHT geschrieben (readonly im Editor) — explizit weglassen
   // damit ein manipulierter FormData-Body ihn nicht über die Hintertür ändert.
@@ -100,6 +117,11 @@ export async function updateProfile(formData: FormData): Promise<ActionResult<nu
       bio: parsed.data.bio.length > 0 ? parsed.data.bio : null,
       website: parsed.data.website && parsed.data.website.length > 0 ? parsed.data.website : null,
       teip: parsed.data.teip || null,
+      country_code: countryCode,
+      country_name: countryName,
+      city,
+      region_name: regionName,
+      location_consent_at: countryCode ? new Date().toISOString() : null,
     })
     .eq('id', user.id);
 
