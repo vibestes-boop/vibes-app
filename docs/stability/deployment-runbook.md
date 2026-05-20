@@ -3,6 +3,11 @@
 Use this runbook for every production release from the Web/Ops checkout:
 `/Users/zaurhatuev/vibes-app`.
 
+For iOS/TestFlight releases, also follow
+`docs/stability/ios-release-playbook.md`. The App Store source is
+`/Users/zaurhatuev/vibes-app`; `/Users/zaurhatuev/Desktop/vibes-app` is
+quarantined and must not be used for EAS production builds.
+
 ## 1. App Gate
 
 ```bash

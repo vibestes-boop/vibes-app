@@ -14,7 +14,10 @@ if (args.help) {
 
 const webRoot = path.resolve(args.webRoot || process.env.SERLO_WEB_REPO || repoRoot);
 const nativeRoot = path.resolve(
-  args.nativeRoot || process.env.SERLO_NATIVE_REPO || '/Users/zaurhatuev/Desktop/vibes-app',
+  args.nativeRoot || process.env.SERLO_NATIVE_REPO || repoRoot,
+);
+const legacyNativeRoot = path.resolve(
+  args.legacyNativeRoot || process.env.SERLO_LEGACY_NATIVE_REPO || '/Users/zaurhatuev/Desktop/vibes-app',
 );
 const failOnWarnings = args.failOnWarnings === true;
 
@@ -28,11 +31,13 @@ console.log(`Native root:  ${nativeRoot}`);
 
 const web = inspectRepo('web', webRoot);
 const native = inspectRepo('native', nativeRoot);
+const legacyNative = legacyNativeRoot !== nativeRoot ? inspectRepo('legacy-native', legacyNativeRoot) : null;
 
 printRepo('Web/Ops repo', web);
 printRepo('Native repo', native);
+if (legacyNative?.exists) printRepo('Legacy Native checkout (quarantined)', legacyNative);
 
-validateRoles(web, native);
+validateRoles(web, native, legacyNative);
 compareEnv(webRoot, nativeRoot);
 printDecision();
 
@@ -106,9 +111,11 @@ function printRepo(title, repo) {
   );
 }
 
-function validateRoles(web, native) {
+function validateRoles(web, native, legacyNative) {
   console.log('');
   console.log('Role validation:');
+
+  const consolidated = Boolean(web.gitRoot && native.gitRoot && web.gitRoot === native.gitRoot);
 
   requireMarker(web, 'appsWeb', 'apps/web package');
   requireMarker(web, 'supabase', 'Supabase migrations');
@@ -116,38 +123,51 @@ function validateRoles(web, native) {
   requireMarker(native, 'nativeAppJson', 'Expo app.json');
   requireMarker(native, 'topLevelApp', 'Expo app routes');
 
-  if (web.gitRoot && native.gitRoot && web.gitRoot === native.gitRoot) {
-    failures.push('[roles] Web/Ops root and Native root point to the same git checkout.');
+  if (consolidated) {
+    console.log('  - source model: consolidated Web/Ops + Native checkout');
+  } else {
+    console.log('  - source model: split Web/Ops and Native checkouts');
   }
 
-  if (web.remotes.join('\n') === native.remotes.join('\n')) {
+  if (!consolidated && web.remotes.join('\n') === native.remotes.join('\n')) {
     warnings.push('[roles] Both roots report the same remotes; verify whether the split is still intended.');
   }
 
-  if (web.markers.nativeAppJson || web.markers.topLevelApp) {
+  if (!consolidated && (web.markers.nativeAppJson || web.markers.topLevelApp)) {
     warnings.push(
       '[roles] Web/Ops repo also contains top-level native files. Treat apps/web, supabase and scripts as the active web/backend surface until the repos are intentionally consolidated.',
     );
   }
 
-  if (native.markers.appsWeb || native.markers.opsScripts) {
+  if (!consolidated && (native.markers.appsWeb || native.markers.opsScripts)) {
     warnings.push('[roles] Native repo contains web/ops markers. Keep deployments from the Web/Ops root only.');
+  }
+
+  if (legacyNative?.exists) {
+    warnings.push(
+      `[legacy-native] ${legacyNative.root} is quarantined for App Store builds. Do not run EAS production builds from this checkout.`,
+    );
+    if (legacyNative.statusLines.length > 0) {
+      warnings.push(
+        `[legacy-native] Quarantined checkout has ${legacyNative.statusLines.length} uncommitted file(s); preserve it, but do not deploy from it.`,
+      );
+    }
   }
 
   if (web.statusLines.length > 0) {
     warnings.push(`[web] Web/Ops repo has ${web.statusLines.length} uncommitted file(s). Commit before deploying.`);
   }
 
-  if (native.statusLines.length > 0) {
+  if (!consolidated && native.statusLines.length > 0) {
     warnings.push(
       `[native] Native repo has ${native.statusLines.length} uncommitted file(s). Do not overwrite, reset or merge it without an explicit backup.`,
     );
   }
 
-  console.log('  - web/backend source: apps/web + supabase + scripts in Web/Ops root');
-  console.log('  - native source: Expo app in Native root');
-  console.log('  - deploy rule: Vercel deploys only from Web/Ops root');
-  console.log('  - merge rule: no automatic cross-repo merge while Native has local changes');
+  console.log('  - web/backend source: apps/web + supabase + scripts in /Users/zaurhatuev/vibes-app');
+  console.log('  - native source: Expo app in /Users/zaurhatuev/vibes-app');
+  console.log('  - deploy rule: Vercel and EAS builds run only from /Users/zaurhatuev/vibes-app');
+  console.log('  - quarantine rule: /Users/zaurhatuev/Desktop/vibes-app is not an App Store build source');
 }
 
 function compareEnv(webRootPath, nativeRootPath) {
@@ -174,10 +194,10 @@ function compareEnv(webRootPath, nativeRootPath) {
 function printDecision() {
   console.log('');
   console.log('Operational decision:');
-  console.log('  - Keep both checkouts separate for now.');
-  console.log('  - Use /Users/zaurhatuev/vibes-app for web/backend/ops work.');
-  console.log('  - Use /Users/zaurhatuev/Desktop/vibes-app for native Expo work.');
-  console.log('  - Run npm run workspace:doctor before deploys or cross-repo changes.');
+  console.log('  - Use /Users/zaurhatuev/vibes-app as the single source for Web/Ops and Native releases.');
+  console.log('  - Treat /Users/zaurhatuev/Desktop/vibes-app as quarantined legacy context only.');
+  console.log('  - Run npm run workspace:doctor before deploys or cross-checkout work.');
+  console.log('  - Run npm run native:release-guard before any EAS iOS build.');
 }
 
 function requireMarker(repo, marker, label) {
@@ -318,6 +338,8 @@ function parseArgs(parts) {
     else if (part?.startsWith('--web-root=')) parsed.webRoot = part.slice('--web-root='.length);
     else if (part === '--native-root') parsed.nativeRoot = parts[++i];
     else if (part?.startsWith('--native-root=')) parsed.nativeRoot = part.slice('--native-root='.length);
+    else if (part === '--legacy-native-root') parsed.legacyNativeRoot = parts[++i];
+    else if (part?.startsWith('--legacy-native-root=')) parsed.legacyNativeRoot = part.slice('--legacy-native-root='.length);
   }
   return parsed;
 }
@@ -330,7 +352,10 @@ separate, point at the expected backend, and are safe to work with.
 
 Options:
   --web-root <path>       Web/Ops checkout. Default: current repository root.
-  --native-root <path>    Native checkout. Default: /Users/zaurhatuev/Desktop/vibes-app.
+  --native-root <path>    Native checkout. Default: current repository root.
+  --legacy-native-root <path>
+                           Quarantined legacy checkout to warn about.
+                           Default: /Users/zaurhatuev/Desktop/vibes-app.
   --fail-on-warnings      Treat role/dirty-state warnings as failures.
   -h, --help              Show this help.
 `);

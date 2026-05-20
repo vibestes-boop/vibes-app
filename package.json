@@ -17,6 +17,7 @@
     "stories:thumbnails:backfill": "node scripts/backfill-story-thumbnails.mjs",
     "env:doctor": "node scripts/env-doctor.mjs",
     "workspace:doctor": "node scripts/check-workspace-strategy.mjs",
+    "native:release-guard": "node scripts/check-ios-release-source.mjs",
     "release:gate": "node scripts/release-gate.mjs",
     "monitor:prod": "node scripts/check-production-monitoring.mjs",
     "monitor:integrity": "node scripts/check-production-integrity.mjs",
