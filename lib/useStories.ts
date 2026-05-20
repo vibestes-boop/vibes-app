@@ -216,9 +216,8 @@ export function useCreateStory() {
       if (interactive) {
         insertData.interactive = interactive;
       }
-      if (thumbnailUrl) {
-        insertData.thumbnail_url = thumbnailUrl;
-      }
+      const resolvedThumbnailUrl = thumbnailUrl || (mediaType === 'image' ? mediaUrl : null);
+      if (resolvedThumbnailUrl) insertData.thumbnail_url = resolvedThumbnailUrl;
       const { error } = await supabase.from('stories').insert(insertData);
       if (error) {
         __DEV__ && console.error('[useCreateStory] Insert error:', error);

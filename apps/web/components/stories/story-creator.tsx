@@ -57,6 +57,7 @@ export function StoryCreator({ viewerId }: StoryCreatorProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const [mediaUrl, setMediaUrl] = useState<string | null>(null);
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [uploadError, setUploadError] = useState<string | null>(null);
 
@@ -83,6 +84,7 @@ export function StoryCreator({ viewerId }: StoryCreatorProps) {
     setMediaType(mType);
     setPreviewUrl(url);
     setMediaUrl(null);
+    setThumbnailUrl(null);
     setUploadError(null);
     setUploadProgress(null);
   }, []);
@@ -93,6 +95,7 @@ export function StoryCreator({ viewerId }: StoryCreatorProps) {
     setMediaType(null);
     setPreviewUrl(null);
     setMediaUrl(null);
+    setThumbnailUrl(null);
     setUploadError(null);
     setUploadProgress(null);
   }, [previewUrl]);
@@ -134,6 +137,18 @@ export function StoryCreator({ viewerId }: StoryCreatorProps) {
 
       await putWithProgress(sig.data.uploadUrl, uploadBody, uploadMime, setUploadProgress);
       setMediaUrl(sig.data.publicUrl);
+
+      if (mediaType === 'image') {
+        setThumbnailUrl(sig.data.publicUrl);
+      } else {
+        const thumbnailBlob = await generateVideoThumbnailBlob(file);
+        const thumbnailKey = `thumbnails/stories/${viewerId}/story_${ts}.jpg`;
+        const thumbnailSig = await requestR2UploadUrl({ key: thumbnailKey, contentType: 'image/jpeg' });
+        if (!thumbnailSig.ok) throw new Error(thumbnailSig.error);
+        await putWithProgress(thumbnailSig.data.uploadUrl, thumbnailBlob, 'image/jpeg', () => undefined);
+        setThumbnailUrl(thumbnailSig.data.publicUrl);
+      }
+
       setUploadProgress(100);
     } catch (e) {
       setUploadError(e instanceof Error ? e.message : 'Upload fehlgeschlagen.');
@@ -171,6 +186,7 @@ export function StoryCreator({ viewerId }: StoryCreatorProps) {
         mediaUrl,
         mediaType,
         interactive,
+        thumbnailUrl,
       });
       setSubmitting(false);
       if (!res.ok) {
@@ -460,5 +476,61 @@ function putWithProgress(
     };
     xhr.onerror = () => reject(new Error('Netzwerkfehler beim Upload.'));
     xhr.send(body);
+  });
+}
+
+function generateVideoThumbnailBlob(file: File): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const video = document.createElement('video');
+    const cleanup = () => {
+      URL.revokeObjectURL(objectUrl);
+      video.removeAttribute('src');
+      video.load();
+    };
+
+    const fail = (message: string) => {
+      cleanup();
+      reject(new Error(message));
+    };
+
+    video.preload = 'metadata';
+    video.muted = true;
+    video.playsInline = true;
+    video.src = objectUrl;
+
+    video.onloadedmetadata = () => {
+      const targetTime = Math.min(0.5, Math.max(0, (video.duration || 1) - 0.1));
+      video.currentTime = targetTime;
+    };
+
+    video.onseeked = () => {
+      const width = video.videoWidth;
+      const height = video.videoHeight;
+      if (!width || !height) {
+        fail('Video-Thumbnail konnte nicht gelesen werden.');
+        return;
+      }
+      const scale = Math.min(720 / width, 1);
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.max(1, Math.round(width * scale));
+      canvas.height = Math.max(1, Math.round(height * scale));
+      const context = canvas.getContext('2d');
+      if (!context) {
+        fail('Video-Thumbnail konnte nicht erstellt werden.');
+        return;
+      }
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      canvas.toBlob((blob) => {
+        cleanup();
+        if (!blob) {
+          reject(new Error('Video-Thumbnail konnte nicht gespeichert werden.'));
+          return;
+        }
+        resolve(blob);
+      }, 'image/jpeg', 0.82);
+    };
+
+    video.onerror = () => fail('Video-Thumbnail konnte nicht aus dem Video erzeugt werden.');
   });
 }

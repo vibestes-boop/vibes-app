@@ -79,7 +79,8 @@ export async function createStory(
     media_url: mediaUrl,
     media_type: mediaType,
   };
-  if (thumbnailUrl) insertData.thumbnail_url = thumbnailUrl;
+  const resolvedThumbnailUrl = thumbnailUrl || (mediaType === 'image' ? mediaUrl : null);
+  if (resolvedThumbnailUrl) insertData.thumbnail_url = resolvedThumbnailUrl;
   if (interactive) insertData.interactive = interactive;
 
   const { data, error } = await supabase
