@@ -27,6 +27,13 @@ and is quarantined for App Store work.
 - Current fixed source commit: `b8f89e2 Fix native R2 uploads and push token refresh`
 - Required local source: `/Users/zaurhatuev/vibes-app`
 
+Check recent EAS history before deciding which build to install or submit:
+
+```bash
+cd /Users/zaurhatuev/vibes-app
+npm run native:builds:audit
+```
+
 ## Development Build Flow
 
 Use this when testing native fixes locally on a physical iPhone.
@@ -57,6 +64,7 @@ Do not run this while the app is untested locally.
 ```bash
 cd /Users/zaurhatuev/vibes-app
 npm run health:dashboard
+npm run native:builds:audit
 ```
 
 2. Confirm the production build identity and intended version:

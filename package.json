@@ -22,6 +22,7 @@
     "native:build:development": "node scripts/run-eas-ios-build.mjs --profile development",
     "native:build:production:check": "node scripts/run-eas-ios-build.mjs --profile production --expected-version 1.26.5 --expected-build-number 271 --check-only",
     "native:build:production": "node scripts/run-eas-ios-build.mjs --profile production --expected-version 1.26.5 --expected-build-number 271",
+    "native:builds:audit": "node scripts/check-eas-ios-builds.mjs",
     "release:gate": "node scripts/release-gate.mjs",
     "monitor:prod": "node scripts/check-production-monitoring.mjs",
     "monitor:integrity": "node scripts/check-production-integrity.mjs",
