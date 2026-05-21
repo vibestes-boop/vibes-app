@@ -8,6 +8,17 @@ For iOS/TestFlight releases, also follow
 `/Users/zaurhatuev/vibes-app`; `/Users/zaurhatuev/Desktop/vibes-app` is
 quarantined and must not be used for EAS production builds.
 
+Use the guarded npm commands for iOS builds:
+
+```bash
+npm run native:build:development
+npm run native:build:production:check
+npm run native:build:production
+```
+
+Do not use raw `npx eas build --platform ios --profile production` as the normal
+release path, because it bypasses the source/version guard.
+
 ## 1. App Gate
 
 ```bash

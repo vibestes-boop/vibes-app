@@ -33,8 +33,7 @@ Use this when testing native fixes locally on a physical iPhone.
 
 ```bash
 cd /Users/zaurhatuev/vibes-app
-npm run native:release-guard
-npx eas build --platform ios --profile development
+npm run native:build:development
 ```
 
 Install the generated internal development build on the iPhone. Then start
@@ -63,14 +62,17 @@ npm run health:dashboard
 2. Confirm the production build identity and intended version:
 
 ```bash
-npm run native:release-guard -- --profile production --expected-version 1.26.5 --expected-build-number 271
+npm run native:build:production:check
 ```
 
 3. Build for App Store Connect:
 
 ```bash
-npx eas build --platform ios --profile production
+npm run native:build:production
 ```
+
+The production build command is guarded and will fail while `app.json` is still
+below `1.26.5 (271)`.
 
 4. Submit only after confirming the EAS build was produced from the expected
 commit and build number:
