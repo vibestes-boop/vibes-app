@@ -359,6 +359,25 @@ export function useUserPosts(userId: string | null) {
   });
 }
 
+export function useHasUserPosted(userId: string | null) {
+  return useQuery({
+    queryKey: ['user-has-posted', userId],
+    queryFn: async () => {
+      if (!userId) return true;
+      const { count, error } = await supabase
+        .from('posts')
+        .select('id', { count: 'exact', head: true })
+        .eq('author_id', userId)
+        .limit(1);
+      if (error) throw error;
+      return Number(count ?? 0) > 0;
+    },
+    enabled: !!userId,
+    staleTime: 1000 * 60,
+    gcTime: 1000 * 60 * 5,
+  });
+}
+
 export type GuildInfo = {
   id: string;
   name: string;

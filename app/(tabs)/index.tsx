@@ -36,14 +36,14 @@ import { emptyFeedEngagementMaps,useFeedEngagement } from '@/lib/useFeedEngageme
 import type { LiveSession } from '@/lib/useLiveSession';
 import { useActiveLiveSessions } from '@/lib/useLiveSession';
 import { getTitleFromUrl } from '@/lib/useMusicPicker';
-import { useFollowingFeed,useTrendingFeed,useVibeFeed } from '@/lib/usePosts';
+import { useFollowingFeed,useHasUserPosted,useTrendingFeed,useVibeFeed } from '@/lib/usePosts';
 import { useGuildStories,type StoryGroup } from '@/lib/useStories';
 import { useTabRefreshStore,vibesFeedActions } from '@/lib/useTabRefresh';
 import { useVideoMute } from '@/lib/useVideoPreferences';
 import { impactAsync,ImpactFeedbackStyle } from 'expo-haptics';
 import { Image } from 'expo-image';
 import { useFocusEffect,useRouter } from 'expo-router';
-import { AlertTriangle,Clock,Search,SearchX,TrendingUp,Zap } from 'lucide-react-native';
+import { AlertTriangle,Clock,PlusCircle,Search,SearchX,TrendingUp,Zap } from 'lucide-react-native';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any;
 const _animNS = _animMod?.default ?? _animMod;
@@ -159,6 +159,7 @@ export default function VibeFeedScreen() {
 
   // Seed-Tag: gecacht mit useMemo — Date.now()/new Date() nicht bei jedem Render
   const profile = useAuthStore((s) => s.profile);
+  const { data: hasFirstPost = true, isLoading: loadingFirstPostState } = useHasUserPosted(profile?.id ?? null);
   const seedTag = useMemo(() => {
     if (!profile?.preferred_tags?.length) return null;
     const createdAt = profile.created_at ? new Date(profile.created_at).getTime() : null;
@@ -419,6 +420,12 @@ export default function VibeFeedScreen() {
   engagementMapsRef.current = engagementMaps;
 
   const { data: activeLives = [] } = useActiveLiveSessions();
+  const showFirstPostNudge =
+    !!profile &&
+    feedMode === 'foryou' &&
+    !loadingFirstPostState &&
+    hasFirstPost === false &&
+    !isError;
 
   // 🔴 Live-Karten alle 6 Posts in den Feed einfügen
   // Je mehr Likes ein Live hat, desto früher erscheint es (Heat Score bereits von useLiveSession sortiert)
@@ -670,6 +677,18 @@ export default function VibeFeedScreen() {
         </View>
       )}
 
+      {showFirstPostNudge && (
+        <FirstPostNudge
+          top={insets.top + 100}
+          onCreate={() => {
+            impactAsync(ImpactFeedbackStyle.Light);
+            router.push({
+              pathname: '/create',
+              params: { caption: 'Was sagt ihr dazu?' },
+            });
+          }}
+        />
+      )}
 
       <TuneMyVibeOverlay visible={overlayVisible} onClose={() => setOverlayVisible(false)} />
 
@@ -690,6 +709,73 @@ export default function VibeFeedScreen() {
           />
         </RNAnimated.View>
       )}
+    </View>
+  );
+}
+
+function FirstPostNudge({ top, onCreate }: { top: number; onCreate: () => void }) {
+  return (
+    <View
+      pointerEvents="box-none"
+      style={{
+        position: 'absolute',
+        left: 14,
+        right: 14,
+        top,
+        zIndex: 95,
+      }}
+    >
+      <View
+        style={{
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 12,
+          borderRadius: 18,
+          borderWidth: 1,
+          borderColor: 'rgba(255,255,255,0.14)',
+          backgroundColor: 'rgba(8,10,22,0.88)',
+          paddingHorizontal: 14,
+          paddingVertical: 12,
+          shadowColor: '#000',
+          shadowOpacity: 0.28,
+          shadowRadius: 18,
+          shadowOffset: { width: 0, height: 10 },
+        }}
+      >
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={{ color: '#fff', fontSize: 14, fontWeight: '800' }}>
+            Starte deinen ersten Vibe
+          </Text>
+          <Text
+            style={{
+              color: 'rgba(255,255,255,0.62)',
+              fontSize: 12,
+              lineHeight: 17,
+              marginTop: 2,
+            }}
+            numberOfLines={2}
+          >
+            Ein Bild oder kurzes Video mit einer Frage bekommt schneller echte Reaktionen.
+          </Text>
+        </View>
+        <Pressable
+          onPress={onCreate}
+          accessibilityRole="button"
+          accessibilityLabel="Ersten Post erstellen"
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 6,
+            borderRadius: 999,
+            backgroundColor: '#FFFFFF',
+            paddingHorizontal: 12,
+            paddingVertical: 9,
+          }}
+        >
+          <PlusCircle size={16} color="#070A16" strokeWidth={2.4} />
+          <Text style={{ color: '#070A16', fontSize: 12, fontWeight: '900' }}>Posten</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }

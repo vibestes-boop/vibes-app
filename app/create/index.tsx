@@ -1941,6 +1941,7 @@ export default function CreatePostScreen() {
       await queryClient.invalidateQueries({ queryKey: ['vibe-feed'] });
       await queryClient.invalidateQueries({ queryKey: ['guild-feed'] });
       await queryClient.invalidateQueries({ queryKey: ['user-posts', profile.id] });
+      await queryClient.invalidateQueries({ queryKey: ['user-has-posted', profile.id] });
       setShowSuccess(true);
     } catch (err: unknown) {
       if (err instanceof Error && err.name === 'AbortError') return;

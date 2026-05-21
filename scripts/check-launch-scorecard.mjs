@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const DEFAULT_SITE_URL = 'https://serlo-web.vercel.app';
 const DEFAULT_TIMEOUT_MS = 10000;
+const DEFAULT_RETRIES = 2;
 
 const TARGETS = {
   feedPosts: 12,
@@ -37,6 +38,7 @@ const anonKey =
 const serviceKey = args.serviceRoleKey || readEnv('SUPABASE_SERVICE_ROLE_KEY');
 const siteUrl = normalizeBase(args.siteUrl || process.env.STABILITY_SITE_URL || DEFAULT_SITE_URL);
 const timeoutMs = readPositiveInt(args.timeoutMs, DEFAULT_TIMEOUT_MS);
+const retries = readPositiveInt(args.retries, DEFAULT_RETRIES);
 const failures = [];
 
 console.log('Launch readiness scorecard');
@@ -249,27 +251,29 @@ function productGate(area, ok, summary) {
 }
 
 async function fetchRpc(name, key) {
-  try {
-    const response = await fetchWithTimeout(`${supabaseUrl}/rest/v1/rpc/${name}`, {
-      method: 'POST',
-      headers: {
-        accept: 'application/json',
-        apikey: key,
-        authorization: `Bearer ${key}`,
-        'content-type': 'application/json',
-      },
-      body: '{}',
-    });
-    const text = await response.text();
-    if (!response.ok) return { ok: false, status: response.status, error: summarize(text), data: null };
+  return withRetries(async () => {
     try {
-      return { ok: true, status: response.status, error: '', data: JSON.parse(text) };
-    } catch {
-      return { ok: false, status: response.status, error: 'invalid JSON', data: null };
+      const response = await fetchWithTimeout(`${supabaseUrl}/rest/v1/rpc/${name}`, {
+        method: 'POST',
+        headers: {
+          accept: 'application/json',
+          apikey: key,
+          authorization: `Bearer ${key}`,
+          'content-type': 'application/json',
+        },
+        body: '{}',
+      });
+      const text = await response.text();
+      if (!response.ok) return { ok: false, status: response.status, error: summarize(text), data: null };
+      try {
+        return { ok: true, status: response.status, error: '', data: JSON.parse(text) };
+      } catch {
+        return { ok: false, status: response.status, error: 'invalid JSON', data: null };
+      }
+    } catch (error) {
+      return { ok: false, status: 0, error: error.message || 'request failed', data: null };
     }
-  } catch (error) {
-    return { ok: false, status: 0, error: error.message || 'request failed', data: null };
-  }
+  });
 }
 
 async function fetchThumbnailTables() {
@@ -283,48 +287,62 @@ async function fetchThumbnailTables() {
 }
 
 async function fetchAdminTable(restPath) {
-  try {
-    const response = await fetchWithTimeout(`${supabaseUrl}/rest/v1/${restPath}`, {
-      headers: {
-        accept: 'application/json',
-        apikey: serviceKey,
-        authorization: `Bearer ${serviceKey}`,
-      },
-    });
-    const text = await response.text();
-    if (!response.ok) return { ok: false, status: response.status, error: summarize(text), data: [] };
+  return withRetries(async () => {
     try {
-      return { ok: true, status: response.status, error: '', data: JSON.parse(text) };
-    } catch {
-      return { ok: false, status: response.status, error: 'invalid JSON', data: [] };
+      const response = await fetchWithTimeout(`${supabaseUrl}/rest/v1/${restPath}`, {
+        headers: {
+          accept: 'application/json',
+          apikey: serviceKey,
+          authorization: `Bearer ${serviceKey}`,
+        },
+      });
+      const text = await response.text();
+      if (!response.ok) return { ok: false, status: response.status, error: summarize(text), data: [] };
+      try {
+        return { ok: true, status: response.status, error: '', data: JSON.parse(text) };
+      } catch {
+        return { ok: false, status: response.status, error: 'invalid JSON', data: [] };
+      }
+    } catch (error) {
+      return { ok: false, status: 0, error: error.message || 'request failed', data: [] };
     }
-  } catch (error) {
-    return { ok: false, status: 0, error: error.message || 'request failed', data: [] };
-  }
+  });
 }
 
 async function fetchFeedEndpoint() {
-  try {
-    const url = new URL(`${siteUrl}/api/feed/explore`);
-    url.searchParams.set('offset', '0');
-    url.searchParams.set('limit', String(TARGETS.feedPosts));
-    url.searchParams.set('sort', 'forYou');
-    url.searchParams.set('scorecard_bust', String(Date.now()));
-    const response = await fetchWithTimeout(url.toString(), {
-      headers: { accept: 'application/json', 'user-agent': 'SerloLaunchScorecard/1.0' },
-    });
-    const text = await response.text();
-    if (!response.ok) return { ok: false, status: response.status, posts: 0, error: summarize(text) };
-    const data = JSON.parse(text);
-    return {
-      ok: true,
-      status: response.status,
-      posts: Array.isArray(data?.posts) ? data.posts.length : 0,
-      error: '',
-    };
-  } catch (error) {
-    return { ok: false, status: 0, posts: 0, error: error.message || 'request failed' };
+  return withRetries(async () => {
+    try {
+      const url = new URL(`${siteUrl}/api/feed/explore`);
+      url.searchParams.set('offset', '0');
+      url.searchParams.set('limit', String(TARGETS.feedPosts));
+      url.searchParams.set('sort', 'forYou');
+      url.searchParams.set('scorecard_bust', String(Date.now()));
+      const response = await fetchWithTimeout(url.toString(), {
+        headers: { accept: 'application/json', 'user-agent': 'SerloLaunchScorecard/1.0' },
+      });
+      const text = await response.text();
+      if (!response.ok) return { ok: false, status: response.status, posts: 0, error: summarize(text) };
+      const data = JSON.parse(text);
+      return {
+        ok: true,
+        status: response.status,
+        posts: Array.isArray(data?.posts) ? data.posts.length : 0,
+        error: '',
+      };
+    } catch (error) {
+      return { ok: false, status: 0, posts: 0, error: error.message || 'request failed' };
+    }
+  });
+}
+
+async function withRetries(operation) {
+  let latest = { ok: false, status: 0, error: 'not attempted' };
+  for (let attempt = 1; attempt <= retries; attempt += 1) {
+    latest = await operation();
+    if (latest.ok || !isRetryable(latest) || attempt === retries) return latest;
+    await sleep(250 * attempt);
   }
+  return latest;
 }
 
 async function fetchWithTimeout(url, init = {}) {
@@ -388,6 +406,23 @@ function parseArgs(argv) {
   return parsed;
 }
 
+function isRetryable(result) {
+  const error = String(result?.error || '').toLowerCase();
+  return (
+    !result ||
+    result.status === 0 ||
+    result.status >= 500 ||
+    error.includes('aborted') ||
+    error.includes('57014') ||
+    error.includes('statement timeout') ||
+    error.includes('canceling statement')
+  );
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function readEnv(...names) {
   for (const name of names) {
     if (process.env[name]) return process.env[name];
@@ -434,6 +469,7 @@ gate is ready.
 Options:
   --site-url <url>      Web app URL (default ${DEFAULT_SITE_URL})
   --timeout-ms <n>      Request timeout (default ${DEFAULT_TIMEOUT_MS})
+  --retries <n>         Retry transient production reads (default ${DEFAULT_RETRIES})
   --strict              Exit non-zero unless PRIVATE_COHORT_READY
   -h, --help            Show this help
 `);
