@@ -8,7 +8,7 @@
  * the caller's own user folder.
  *
  * POST body: { key: string, contentType: string, cacheControl?: string }
- * Response:  { uploadUrl: string, publicUrl: string }
+ * Response:  { uploadUrl: string, publicUrl: string, uploadHeaders: Record<string, string> }
  *
  * AWS Signature V4 spec:
  *   https://docs.aws.amazon.com/general/latest/gr/sigv4-create-canonical-request.html
@@ -123,9 +123,12 @@ async function generatePresignedUrl(
   const encodedKey  = key.split('/').map(s => rfc3986Encode(s)).join('/');
   const canonicalUri = `/${R2_BUCKET}/${encodedKey}`;
 
-  const signedHeaders = cacheControl
-    ? 'cache-control;content-type;host'
-    : 'content-type;host';
+  // Keep the presigned URL tolerant of platform header normalization.
+  // React Native/iOS can subtly rewrite Content-Type during binary PUTs, and
+  // signing that header causes SignatureDoesNotMatch even when the user is
+  // allowed to upload to this key. The auth/key checks above enforce ownership;
+  // the content headers are returned as guidance but not part of the signature.
+  const signedHeaders = 'host';
 
   // Canonical query string — must be sorted and RFC-3986 encoded
   const queryParams: Record<string, string> = {
@@ -137,11 +140,8 @@ async function generatePresignedUrl(
   };
   const canonicalQueryString = buildCanonicalQueryString(queryParams);
 
-  // Canonical headers — must be trimmed lowercase, sorted alphabetically
-  // content-type MUST exactly match what the client will send in the PUT request
-  const canonicalHeaders = cacheControl
-    ? `cache-control:${cacheControl.trim()}\ncontent-type:${contentType.trim()}\nhost:${host}\n`
-    : `content-type:${contentType.trim()}\nhost:${host}\n`;
+  // Canonical headers — must be trimmed lowercase, sorted alphabetically.
+  const canonicalHeaders = `host:${host}\n`;
 
   const canonicalRequest = [
     'PUT',
@@ -235,8 +235,10 @@ Deno.serve(async (req: Request) => {
 
     const uploadUrl = await generatePresignedUrl(key, contentType, cacheControl);
     const publicUrl = `${R2_PUBLIC_URL}/${key}`;
+    const uploadHeaders: Record<string, string> = { 'Content-Type': contentType };
+    if (cacheControl) uploadHeaders['Cache-Control'] = cacheControl;
 
-    return new Response(JSON.stringify({ uploadUrl, publicUrl }), {
+    return new Response(JSON.stringify({ uploadUrl, publicUrl, uploadHeaders }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err) {

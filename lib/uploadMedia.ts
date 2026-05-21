@@ -6,6 +6,12 @@ type UploadResult = {
   path: string;
 };
 
+type R2SignResult = {
+  uploadUrl: string;
+  publicUrl: string;
+  uploadHeaders?: Record<string, string>;
+};
+
 // ── Limits ──────────────────────────────────────────────────────────────────
 const MAX_IMAGE_BYTES = 50 * 1024 * 1024;  //  50 MB
 const MAX_VIDEO_BYTES = 200 * 1024 * 1024;  // 200 MB
@@ -38,6 +44,23 @@ function isVideo(mimeType: string): boolean {
  */
 function normalizeMime(raw: string | null | undefined): string {
   return (raw || 'image/jpeg').trim();
+}
+
+function getHeaderValue(headers: Record<string, string> | undefined, name: string): string | undefined {
+  if (!headers) return undefined;
+  const entry = Object.entries(headers).find(([key]) => key.toLowerCase() === name.toLowerCase());
+  return entry?.[1]?.trim();
+}
+
+function normalizeUploadHeaders(
+  headers: Record<string, string> | undefined,
+  fallbackContentType: string,
+): Record<string, string> {
+  const contentType = getHeaderValue(headers, 'content-type') || fallbackContentType;
+  const cacheControl = getHeaderValue(headers, 'cache-control');
+  return cacheControl
+    ? { 'Content-Type': contentType, 'Cache-Control': cacheControl }
+    : { 'Content-Type': contentType };
 }
 
 // ── Retry with exponential backoff ───────────────────────────────────────────
@@ -111,7 +134,7 @@ async function uploadToR2(
   onProgress?.(15);
 
   // ── 2) Get presigned URL from Edge Function (with retry) ────────────────
-  const { uploadUrl, publicUrl } = await withRetry(
+  const { uploadUrl, publicUrl, uploadHeaders } = await withRetry(
     async () => {
       if (signal?.aborted) throw new Error('Upload abgebrochen.');
       const { data, error } = await supabase.functions.invoke('r2-sign', {
@@ -120,7 +143,7 @@ async function uploadToR2(
       if (error || !data?.uploadUrl) {
         throw new Error(`Sign-Fehler: ${error?.message ?? 'Keine uploadUrl'}`);
       }
-      return data as { uploadUrl: string; publicUrl: string };
+      return data as R2SignResult;
     },
     3,
     (attempt, err) => {
@@ -143,9 +166,7 @@ async function uploadToR2(
         if (signal?.aborted) throw new Error('Upload abgebrochen.');
         const res = await fetch(uploadUrl, {
           method: 'PUT',
-          headers: {
-            'Content-Type': mimeType,
-          },
+          headers: normalizeUploadHeaders(uploadHeaders, mimeType),
           body: fileBuffer,
           signal,
         });

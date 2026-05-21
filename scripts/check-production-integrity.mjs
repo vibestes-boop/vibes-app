@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -10,6 +11,8 @@ const DEFAULT_MAX_EMPTY_POSTS = 0;
 const DEFAULT_MAX_BROKEN_MEDIA = 0;
 const DEFAULT_MEDIA_SAMPLE = 12;
 const REQUIRED_CRON_JOBS = ['r2-delete-queue'];
+const R2_UPLOAD_SMOKE_CONTENT_TYPE = 'image/jpeg';
+const R2_UPLOAD_SMOKE_BODY = Buffer.from('serlo-r2-upload-smoke\n');
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = parseArgs(process.argv.slice(2));
@@ -28,6 +31,9 @@ const supabaseUrl = normalizeBase(
 const anonKey =
   args.anonKey ||
   readEnv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'EXPO_PUBLIC_SUPABASE_ANON_KEY', 'SUPABASE_ANON_KEY');
+const serviceKey = args.serviceRoleKey || readEnv('SUPABASE_SERVICE_ROLE_KEY');
+const authEmail = args.email || readEnv('STABILITY_AUTH_EMAIL');
+const authPassword = args.password || readEnv('STABILITY_AUTH_PASSWORD');
 const timeoutMs = readPositiveInt(args.timeoutMs, DEFAULT_TIMEOUT_MS);
 const maxPending = readNonNegativeInt(args.maxPending, DEFAULT_MAX_PENDING);
 const maxError = readNonNegativeInt(args.maxError, DEFAULT_MAX_ERROR);
@@ -180,6 +186,112 @@ async function checkEdgeFunctions() {
   console.log(`  - r2-sign OPTIONS: ${r2SignOptions.status}`);
   if (!r2SignOptions.ok) {
     failures.push(`[function:r2-sign] OPTIONS failed: ${r2SignOptions.status}.`);
+  }
+
+  if (!args.skipR2UploadSmoke) {
+    await checkR2UploadSmoke();
+  }
+}
+
+async function checkR2UploadSmoke() {
+  if (!authEmail || !authPassword) {
+    warnings.push('[function:r2-sign] PUT smoke skipped because STABILITY_AUTH_EMAIL/PASSWORD are missing.');
+    return;
+  }
+
+  const auth = await fetchJson(`${supabaseUrl}/auth/v1/token?grant_type=password`, {
+    method: 'POST',
+    headers: {
+      apikey: anonKey,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ email: authEmail, password: authPassword }),
+  });
+
+  if (!auth.ok || !auth.data?.access_token || !auth.data?.user?.id) {
+    failures.push(`[function:r2-sign] Authenticated PUT smoke login failed: ${auth.status} ${auth.error || ''}`.trim());
+    return;
+  }
+
+  const cases = [
+    {
+      label: 'ios-content-type',
+      signBody: { contentType: R2_UPLOAD_SMOKE_CONTENT_TYPE },
+      putHeaders: { 'Content-Type': `${R2_UPLOAD_SMOKE_CONTENT_TYPE}; charset=utf-8` },
+    },
+    {
+      label: 'cache-control-tolerant',
+      signBody: {
+        contentType: R2_UPLOAD_SMOKE_CONTENT_TYPE,
+        cacheControl: 'public, max-age=31536000, immutable',
+      },
+      putHeaders: { 'Content-Type': R2_UPLOAD_SMOKE_CONTENT_TYPE },
+    },
+  ];
+  const uploadedKeys = [];
+  const summaries = [];
+
+  try {
+    for (const testCase of cases) {
+      const key = `avatars/${auth.data.user.id}/integrity-smoke/${Date.now()}-${crypto.randomUUID()}.jpg`;
+      const sign = await fetchJson(`${supabaseUrl}/functions/v1/r2-sign`, {
+        method: 'POST',
+        headers: {
+          apikey: anonKey,
+          authorization: `Bearer ${auth.data.access_token}`,
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ key, ...testCase.signBody }),
+      });
+
+      if (!sign.ok || !sign.data?.uploadUrl) {
+        failures.push(
+          `[function:r2-sign] ${testCase.label} signing failed: ${sign.status} ${sign.error || ''}`.trim(),
+        );
+        continue;
+      }
+
+      const signedHeaders = readSignedHeaders(sign.data.uploadUrl);
+      const upload = await fetchText(sign.data.uploadUrl, {
+        method: 'PUT',
+        headers: testCase.putHeaders,
+        body: R2_UPLOAD_SMOKE_BODY,
+      });
+      summaries.push(`${testCase.label} signedHeaders=${signedHeaders} put=${upload.status}`);
+
+      if (!upload.ok) {
+        failures.push(
+          `[function:r2-sign] ${testCase.label} PUT failed: ${upload.status} ${upload.error || ''}`.trim(),
+        );
+      } else {
+        uploadedKeys.push(key);
+      }
+    }
+  } finally {
+    await cleanupR2SmokeObjects(uploadedKeys);
+  }
+
+  console.log(`  - r2-sign PUT smoke: ${summaries.join('; ') || 'not run'}`);
+}
+
+async function cleanupR2SmokeObjects(keys) {
+  if (keys.length === 0) return;
+  if (!serviceKey) {
+    warnings.push('[function:r2-sign] PUT smoke cleanup skipped because SUPABASE_SERVICE_ROLE_KEY is missing.');
+    return;
+  }
+
+  const cleanup = await fetchJson(`${supabaseUrl}/functions/v1/r2-delete`, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${serviceKey}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ keys }),
+  });
+
+  if (!cleanup.ok || cleanup.data?.ok !== true) {
+    warnings.push(`[function:r2-sign] PUT smoke cleanup failed: ${cleanup.status} ${cleanup.error || ''}`.trim());
   }
 }
 
@@ -365,6 +477,14 @@ function formatAge(seconds) {
   return `${Math.round(value / 60)}m`;
 }
 
+function readSignedHeaders(uploadUrl) {
+  try {
+    return new URL(uploadUrl).searchParams.get('X-Amz-SignedHeaders') || '(missing)';
+  } catch {
+    return '(invalid-url)';
+  }
+}
+
 function summarizeError(text) {
   if (!text) return '';
   try {
@@ -394,6 +514,9 @@ Options:
   --media-sample <n>              Recent media URL sample size (default ${DEFAULT_MEDIA_SAMPLE})
   --required-cron-jobs <csv>      Required pg_cron jobs (default ${REQUIRED_CRON_JOBS.join(',')})
   --skip-functions                Skip Edge Function probes
+  --skip-r2-upload-smoke          Skip authenticated r2-sign PUT smoke
+  --email <email>                 Override STABILITY_AUTH_EMAIL for authenticated PUT smoke
+  --password <password>           Override STABILITY_AUTH_PASSWORD for authenticated PUT smoke
   --timeout-ms <n>                Request timeout (default ${DEFAULT_TIMEOUT_MS})
 `);
 }
