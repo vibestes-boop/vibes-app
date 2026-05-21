@@ -15,7 +15,7 @@ const KNOWN_INVALID_STORE_BUILD_IDS = new Set(['242c5893-d2b5-460e-b6b7-9edb7212
 const TESTFLIGHT_FALLBACK_VERSION = '1.26.3';
 const TESTFLIGHT_FALLBACK_BUILD_NUMBER = '268';
 const NEXT_STORE_VERSION = '1.26.5';
-const NEXT_STORE_BUILD_NUMBER = '271';
+const NEXT_STORE_BUILD_NUMBER = '272';
 
 if (args.help) {
   printHelp();
@@ -157,7 +157,7 @@ function auditStoreBuilds(builds) {
 
   console.log(`  - latest store build: ${latestStore.appVersion} (${latestStore.appBuildVersion}) ${shortId(latestStore.id)}`);
   console.log(`  - current fallback: ${TESTFLIGHT_FALLBACK_VERSION} (${TESTFLIGHT_FALLBACK_BUILD_NUMBER})`);
-  console.log(`  - next candidate after device QA: ${NEXT_STORE_VERSION} (${NEXT_STORE_BUILD_NUMBER})`);
+  console.log(`  - current App Store Connect candidate: ${NEXT_STORE_VERSION} (${NEXT_STORE_BUILD_NUMBER})`);
 
   for (const build of storeBuilds) {
     if (KNOWN_INVALID_STORE_BUILD_IDS.has(build.id)) {

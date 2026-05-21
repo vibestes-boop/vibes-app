@@ -15,7 +15,7 @@ const EXPECTED_PROJECT_ID = '02ab536a-5836-4560-a5ec-2dfd6e059f90';
 const EXPECTED_IOS_BUNDLE_ID = 'com.vibesapp.vibes';
 const EXPECTED_IOS_SCHEME = 'vibes';
 const MIN_NEXT_STORE_VERSION = '1.26.5';
-const MIN_NEXT_STORE_BUILD_NUMBER = 271;
+const MIN_NEXT_STORE_BUILD_NUMBER = 272;
 
 if (args.help) {
   printHelp();
@@ -270,6 +270,6 @@ Options:
 
 Examples:
   npm run native:release-guard
-  npm run native:release-guard -- --profile production --expected-version 1.26.5 --expected-build-number 271
+  npm run native:release-guard -- --profile production --expected-version 1.26.5 --expected-build-number 272
 `);
 }

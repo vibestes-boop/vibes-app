@@ -23,7 +23,7 @@ and is quarantined for App Store work.
 
 - TestFlight fallback: `1.26.3 (268)`
 - Bad invalidated build: `1.26.4 (270)`
-- Next production/TestFlight candidate: `1.26.5 (271)`
+- Current App Store Connect candidate: `1.26.5 (272)`
 - Current fixed source commit: `b8f89e2 Fix native R2 uploads and push token refresh`
 - Required local source: `/Users/zaurhatuev/vibes-app`
 
@@ -80,7 +80,7 @@ npm run native:build:production
 ```
 
 The production build command is guarded and will fail while `app.json` is still
-below `1.26.5 (271)`.
+below `1.26.5 (272)`.
 
 4. Submit only after confirming the EAS build was produced from the expected
 commit and build number:
@@ -106,7 +106,7 @@ Stop immediately if any of these happen:
 - Git remote is not `vibestes-boop/vibes-app`.
 - EAS project id is not `02ab536a-5836-4560-a5ec-2dfd6e059f90`.
 - Bundle id is not `com.vibesapp.vibes`.
-- Production version/build is lower than `1.26.5 (271)`.
+- Production version/build is lower than `1.26.5 (272)`.
 - Working tree is dirty before a production build.
 - The latest EAS build points at `/Users/zaurhatuev/Desktop/vibes-app`,
   `MyxcuH2025/vibes-app`, or a stale commit.
