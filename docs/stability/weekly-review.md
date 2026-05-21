@@ -9,6 +9,7 @@ Run from `/Users/zaurhatuev/vibes-app`:
 
 ```bash
 npm run integrity:weekly
+npm run launch:scorecard
 npm run product:health
 npm run cost:health
 npm run moderation:health
@@ -62,6 +63,7 @@ Every weekly review records:
 - check outputs or links to the workflow run
 - open `stability-alert` GitHub issues
 - health dashboard status board
+- launch scorecard decision
 - feature freeze guard result
 - push/feed health status
 - Keep / Improve / Kill decisions

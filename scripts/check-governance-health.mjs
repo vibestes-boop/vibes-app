@@ -21,6 +21,7 @@ const REQUIRED_AREAS = [
 const REQUIRED_OWNER_FIELDS = ['area', 'owner', 'dashboard', 'alert', 'runbook', 'weekly_status'];
 const REVIEW_REQUIRED_TEXT = [
   'npm run integrity:weekly',
+  'npm run launch:scorecard',
   'npm run product:health',
   'npm run cost:health',
   'npm run moderation:health',
@@ -32,6 +33,7 @@ const REVIEW_REQUIRED_TEXT = [
   'Improve',
   'Kill',
   'Feature freeze',
+  'launch scorecard decision',
 ];
 const INTAKE_REQUIRED_TEXT = [
   'Owner:',
@@ -70,6 +72,13 @@ validateTextFile('docs/stability/push-feed-health.md', [
   'Feed RPC fallback',
 ]);
 validateTextFile('docs/stability/health-dashboard.md', ['npm run health:dashboard', 'Green', 'Yellow', 'Red']);
+validateTextFile('docs/stability/launch-scorecard.md', [
+  'npm run launch:scorecard',
+  'BLOCKED_FIX_STABILITY',
+  'INVITE_GATE_CLOSED',
+  'PRIVATE_COHORT_READY',
+  '/admin/activation',
+]);
 validateTextFile('docs/stability/admin-command-center-waves.md', [
   'Welle 0',
   'Welle 1',

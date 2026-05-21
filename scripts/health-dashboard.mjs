@@ -38,9 +38,23 @@ if (!anonKey) failures.push('[env] Missing NEXT_PUBLIC_SUPABASE_ANON_KEY or EXPO
 if (!serviceKey) failures.push('[env] Missing SUPABASE_SERVICE_ROLE_KEY for support/campaign/region guards.');
 
 if (failures.length === 0) {
-  const [integrity, product, cost, moderation, support, campaigns, regions, thumbnails, pushFeed, governance, feedEndpoint] = await Promise.all([
+  const [
+    integrity,
+    product,
+    activation,
+    cost,
+    moderation,
+    support,
+    campaigns,
+    regions,
+    thumbnails,
+    pushFeed,
+    governance,
+    feedEndpoint,
+  ] = await Promise.all([
     fetchRpc('production_integrity_snapshot'),
     fetchRpc('product_health_snapshot'),
+    fetchServiceRpc('creator_activation_recovery_snapshot'),
     fetchRpc('cost_health_snapshot'),
     fetchRpc('moderation_health_snapshot'),
     fetchAdminTable('admin_support_threads?select=id,status,priority,created_at,last_message_at&status=in.(open,pending)&limit=1000'),
@@ -54,6 +68,7 @@ if (failures.length === 0) {
 
   addIntegrity(integrity);
   addProduct(product);
+  addLaunchReadiness(product, activation, pushFeed, thumbnails, feedEndpoint);
   addCost(cost);
   addModeration(moderation);
   addSupport(support);
@@ -79,6 +94,14 @@ console.log('');
 console.log('Production health dashboard passed.');
 
 async function fetchRpc(name) {
+  return fetchRpcWithKey(name, anonKey);
+}
+
+async function fetchServiceRpc(name) {
+  return fetchRpcWithKey(name, serviceKey);
+}
+
+async function fetchRpcWithKey(name, key) {
   let lastResult = { ok: false, status: 0, error: 'not attempted', data: null };
 
   for (let attempt = 1; attempt <= rpcRetries; attempt += 1) {
@@ -87,8 +110,8 @@ async function fetchRpc(name) {
         method: 'POST',
         headers: {
           accept: 'application/json',
-          apikey: anonKey,
-          authorization: `Bearer ${anonKey}`,
+          apikey: key,
+          authorization: `Bearer ${key}`,
           'content-type': 'application/json',
         },
         body: '{}',
@@ -221,6 +244,66 @@ function addProduct(result) {
     status,
     `north star ${number(value)}, WAU/MAU ${number(audience.wau)}/${number(audience.mau)}, D7 ${number(retention.d7_retained)}/${number(retention.d7_cohort)}`,
     'npm run product:health',
+  );
+}
+
+function addLaunchReadiness(productResult, activationResult, pushFeedResult, thumbnailsResult, feedEndpoint) {
+  if (!productResult.ok) {
+    return addRow('Launch Readiness', 'Red', `product RPC failed: ${productResult.error}`, 'npm run launch:scorecard');
+  }
+  if (!activationResult.ok) {
+    return addRow('Launch Readiness', 'Red', `activation RPC failed: ${activationResult.error}`, 'npm run launch:scorecard');
+  }
+  if (!pushFeedResult.ok) {
+    return addRow('Launch Readiness', 'Red', `push/feed RPC failed: ${pushFeedResult.error}`, 'npm run launch:scorecard');
+  }
+  if (!thumbnailsResult.ok) {
+    return addRow('Launch Readiness', 'Red', `thumbnail tables failed: ${thumbnailsResult.error}`, 'npm run launch:scorecard');
+  }
+
+  const product = productResult.data || {};
+  const activation = activationResult.data || {};
+  const pushFeed = pushFeedResult.data || {};
+  const northStar = product.north_star || {};
+  const audience = product.audience || {};
+  const summary = activation.summary || {};
+  const native = pushFeed.push?.native_tokens || {};
+  const rows = [...thumbnailsResult.posts, ...thumbnailsResult.stories].filter((item) => item.media_url && item.archived !== true);
+  const missingThumbnails = rows.filter((item) => !item.thumbnail_url).length;
+  const newUsers = Number(summary.new_users_30d || 0);
+  const withoutFirstPost = Number(summary.users_without_first_post_30d || 0);
+  const firstPostUsers = Math.max(newUsers - withoutFirstPost, 0);
+  const firstPostRate = newUsers > 0 ? firstPostUsers / newUsers : 0;
+  const activeCreators = Number(northStar.active_creators_7d || 0);
+  const northStarValue = Number(northStar.value || 0);
+  const wau = Number(audience.wau || 0);
+  const nativeActive = Number(native.active_30d || 0);
+  const feedPosts = Number(feedEndpoint.posts || 0);
+
+  const blockers = [];
+  if (!feedEndpoint.ok || feedPosts < 12) blockers.push(`feed ${number(feedPosts)}/12`);
+  if (missingThumbnails > 0) blockers.push(`missing media ${number(missingThumbnails)}`);
+  if (nativeActive < 1) blockers.push(`native push ${number(nativeActive)}/1`);
+
+  const risks = [];
+  if (northStarValue < 1) risks.push(`north star ${number(northStarValue)}/1`);
+  if (activeCreators < 2) risks.push(`creators ${number(activeCreators)}/2`);
+  if (firstPostRate < 0.4) risks.push(`first post ${formatPercent(firstPostRate)}/40%`);
+  if (wau < 5) risks.push(`WAU ${number(wau)}/5`);
+
+  const status = blockers.length > 0 ? 'Red' : risks.length > 0 ? 'Yellow' : 'Green';
+  const decision = blockers.length > 0
+    ? 'blocked'
+    : risks.length > 0
+      ? 'invite gate closed'
+      : 'private cohort ready';
+  const context = blockers.length > 0 ? blockers.join(', ') : risks.join(', ');
+
+  addRow(
+    'Launch Readiness',
+    status,
+    `${decision}: first-post ${number(firstPostUsers)}/${number(newUsers)} (${formatPercent(firstPostRate)}), creators ${number(activeCreators)}, WAU ${number(wau)}${context ? `; ${context}` : ''}`,
+    'npm run launch:scorecard',
   );
 }
 
@@ -500,6 +583,11 @@ function pad(value, width) {
 function number(value) {
   const numeric = Number(value || 0);
   return Number.isFinite(numeric) ? new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 }).format(numeric) : 'n/a';
+}
+
+function formatPercent(value) {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? `${Math.round(numeric * 1000) / 10}%` : 'n/a';
 }
 
 function money(cents) {

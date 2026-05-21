@@ -15,6 +15,7 @@ Run:
 
 ```bash
 npm run product:health
+npm run launch:scorecard
 ```
 
 When North Star is `0`, run the activation recovery snapshot:
@@ -70,6 +71,11 @@ paused. Product review decisions use:
 Cost decisions use the companion guard in `docs/stability/cost-controls.md`.
 Run `npm run cost:health` in the same weekly review before approving expensive
 AI, live, recording, or upload-heavy work.
+
+The invite gate lives in `docs/stability/launch-scorecard.md`. A green product
+health check does not automatically mean Serlo is ready for more users. Invite
+only when `npm run launch:scorecard` returns `PRIVATE_COHORT_READY`; otherwise
+the week is spent on first-post conversion, creator replies, and retention.
 
 ## Current Limits
 
