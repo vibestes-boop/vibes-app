@@ -46,6 +46,14 @@ function AuthGuard() {
   }, [useAuthStore]);
 
   useEffect(() => {
+    if (!hydrated || initialized) return;
+    const cached = useAuthStore.getState();
+    if (cached.session?.user && cached.profile?.id === cached.session.user.id) {
+      useAuthStore.setState({ initialized: true });
+    }
+  }, [hydrated, initialized, useAuthStore]);
+
+  useEffect(() => {
     const safetyTimer = setTimeout(() => {
       useAuthStore.setState({ initialized: true });
     }, 2500);

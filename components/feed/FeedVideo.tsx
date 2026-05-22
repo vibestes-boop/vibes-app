@@ -1,7 +1,7 @@
 import { AVPlaybackStatus,ResizeMode,Video } from 'expo-av';
 import { Image } from 'expo-image';
-import { forwardRef,useCallback,useEffect,useImperativeHandle,useRef,useState } from 'react';
-import { Animated,StyleSheet,View } from 'react-native';
+import { forwardRef,useCallback,useEffect,useImperativeHandle,useMemo,useRef,useState } from 'react';
+import { Animated,Platform,StyleSheet,View } from 'react-native';
 import { useAnimatedStyle,useSharedValue,withRepeat,withSequence,withTiming } from 'react-native-reanimated';
 import { USE_EXPO_VIDEO,VideoView,useVideoPlayer } from './expoVideo';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -84,10 +84,32 @@ export const NativeFeedVideo = forwardRef<FeedVideoSeekHandle, {
   const isMutedRef = useRef(isMuted);
   shouldPlayRef.current = shouldPlay;
   isMutedRef.current = isMuted;
+  const source = useMemo(
+    () => ({
+      uri,
+      contentType: 'progressive' as const,
+      useCaching: true,
+    }),
+    [uri]
+  );
 
-  const player = useVideoPlayer(uri, (p: any) => {
+  const player = useVideoPlayer(source, (p: any) => {
     p.loop = true;
     p.muted = isMutedRef.current;
+    try {
+      p.bufferOptions = Platform.select({
+        ios: {
+          preferredForwardBufferDuration: 0.4,
+          waitsToMinimizeStalling: false,
+        },
+        default: {
+          preferredForwardBufferDuration: 0.75,
+          minBufferForPlayback: 0.25,
+          maxBufferBytes: 8 * 1024 * 1024,
+          prioritizeTimeOverSizeThreshold: true,
+        },
+      });
+    } catch { /* older native runtimes may ignore bufferOptions */ }
     if (shouldPlayRef.current) {
       try {
         const maybePromise = p.play?.();

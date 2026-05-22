@@ -69,11 +69,13 @@ export type LiveReaction = {
 };
 
 // ─── Aktive Lives laden (für StoriesRow im Feed — TikTok/Instagram Stil) ──────
-export function useActiveLiveSessions() {
+export function useActiveLiveSessions(options: { enabled?: boolean } = {}) {
   const queryClient = useQueryClient();
+  const enabled = options.enabled ?? true;
 
   // Realtime: sofort reagieren wenn ein Live startet / endet
   useEffect(() => {
+    if (!enabled) return;
     const channel = supabase
       .channel('live-sessions-realtime')
       .on(
@@ -87,7 +89,7 @@ export function useActiveLiveSessions() {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [queryClient]);
+  }, [enabled, queryClient]);
 
   return useQuery<LiveSession[]>({
     queryKey: ['live-sessions-active'],
@@ -130,6 +132,7 @@ export function useActiveLiveSessions() {
         })
         .sort((a, b) => b._heatScore - a._heatScore) as LiveSession[];
     },
+    enabled,
     staleTime: 30_000,           // 30s frisch — Realtime übernimmt primär
     refetchInterval: 30_000,     // Backup: alle 30s neu laden falls Realtime-Event verloren geht
     refetchIntervalInBackground: false,

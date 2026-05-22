@@ -29,8 +29,9 @@ export type StoryGroup = {
 };
 
 // Stories der eigenen Guild (letzte 24h), gruppiert nach Nutzer
-export function useGuildStories() {
+export function useGuildStories(options: { enabled?: boolean } = {}) {
   const userId = useAuthStore((s) => s.profile?.id);
+  const enabled = options.enabled ?? true;
 
   return useQuery<StoryGroup[]>({
     queryKey: ['guild-stories', userId],
@@ -141,7 +142,7 @@ export function useGuildStories() {
         return 0;
       });
     },
-    enabled: !!userId,
+    enabled: enabled && !!userId,
     staleTime: 1000 * 60,
     gcTime: 1000 * 60 * 5,
     refetchOnMount: true,        // Nur wenn stale (>60s) — nicht bei jedem Tab-Fokus

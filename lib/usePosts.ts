@@ -34,7 +34,7 @@ export type PostWithAuthor = {
   women_only?: boolean;
 };
 
-const FEED_PAGE_SIZE = 15;
+const FEED_PAGE_SIZE = 12;
 
 // Mindestanzahl frischer Posts bevor seen-Content recycelt wird
 const SEEN_FALLBACK_THRESHOLD = 5;
@@ -58,6 +58,22 @@ export function useVibeFeed(activeTag: string | null = null) {
 
     queryFn: async ({ pageParam }) => {
       const excludeIds = pageParam as string[];
+      const isInitialUntunedPage = excludeIds.length === 0 && !activeTag;
+
+      if (isInitialUntunedPage) {
+        const { data: fastData, error: fastError } = await supabase.rpc('get_vibe_feed', {
+          explore_weight: committedExplore,
+          brain_weight:   committedBrain,
+          result_limit:   FEED_PAGE_SIZE,
+          filter_tag:     null,
+          include_seen:   true,
+          exclude_ids:    null,
+        });
+
+        if (!fastError && Array.isArray(fastData) && fastData.length > 0) {
+          return fastData as PostWithAuthor[];
+        }
+      }
 
       // ─── Schritt 1: Nur ungesehene Posts ──────────────────────────────────
       const { data: freshData, error: rpcError } = await supabase.rpc('get_vibe_feed', {
@@ -140,7 +156,7 @@ export function useVibeFeed(activeTag: string | null = null) {
 
 // ─── Trending Feed (Top Posts nach Dwell-Score) ───────────────────────────────
 // Wird gezeigt wenn der personalisierte Feed leer ist (neue User ohne Follows)
-export function useTrendingFeed() {
+export function useTrendingFeed(options: { enabled?: boolean } = {}) {
   return useQuery<PostWithAuthor[]>({
     queryKey: ['trending-feed'],
     queryFn: async () => {
@@ -168,18 +184,19 @@ export function useTrendingFeed() {
         final_score:   p.dwell_time_score ?? 0,
       })) as PostWithAuthor[];
     },
+    enabled: options.enabled ?? true,
     staleTime: 1000 * 60 * 5, // 5 min Cache — Trending ändert sich langsamer
   });
 }
 
 // ─── Following Feed (Posts von gefolgten Usern) ───────────────────────────────
 // Zeigt nur Posts von Usern denen der eingeloggte User folgt — chronologisch.
-export function useFollowingFeed() {
+export function useFollowingFeed(options: { enabled?: boolean } = {}) {
   const userId = useAuthStore((s) => s.profile?.id);
 
   return useInfiniteQuery<PostWithAuthor[]>({
     queryKey: ['following-feed', userId],
-    enabled: !!userId,
+    enabled: !!userId && (options.enabled ?? true),
     initialPageParam: [] as string[],
     getNextPageParam: (lastPage, allPages) => {
       if (lastPage.length < FEED_PAGE_SIZE) return undefined;

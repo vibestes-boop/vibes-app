@@ -65,6 +65,7 @@ export default function VibeFeedScreen() {
   const { isMuted, toggleMute } = useVideoMute();
   const [hasNewPosts, setHasNewPosts] = useState(false);
   const [feedMode, setFeedMode] = useState<'foryou' | 'following'>('foryou');
+  const [secondaryQueriesEnabled, setSecondaryQueriesEnabled] = useState(false);
 
   // ── TikTok-Style: Finger-folgendes Profil-Panel ─────────────────────
   // Refs wegen stale closure (PanResponder wird nur einmal erstellt)
@@ -192,7 +193,9 @@ export default function VibeFeedScreen() {
     isFetchingNextPage: fetchingNextForyou,
   } = useVibeFeed(activeTag);
   // Trending-Feed: Fallback für neue User ohne Follows / Dwell-History
-  const { data: trendingPosts } = useTrendingFeed();
+  const { data: trendingPosts } = useTrendingFeed({
+    enabled: feedMode === 'foryou' && secondaryQueriesEnabled,
+  });
 
   // Following-Feed
   const {
@@ -204,7 +207,9 @@ export default function VibeFeedScreen() {
     fetchNextPage: fetchNextFollowing,
     hasNextPage: hasNextFollowing,
     isFetchingNextPage: fetchingNextFollowing,
-  } = useFollowingFeed();
+  } = useFollowingFeed({
+    enabled: feedMode === 'following',
+  });
 
   // Aktiver Feed basierend auf Modus
   const isLoading         = feedMode === 'foryou' ? foryouLoading    : followingLoading;
@@ -251,7 +256,9 @@ export default function VibeFeedScreen() {
     },
   ]);
   const viewabilityConfigCallbackPairs = viewabilityConfigCallbackPairsRef.current;
-  const { data: storyGroups = [], refetch: refetchStories } = useGuildStories();
+  const { data: storyGroups = [], refetch: refetchStories } = useGuildStories({
+    enabled: secondaryQueriesEnabled,
+  });
   const storyGroupMap = useMemo(() => new Map(storyGroups.map((g) => [g.userId, g])), [storyGroups]);
   const openStory = useStoryViewerStore((s) => s.open);
   const handleOpenStory = useCallback(
@@ -294,7 +301,7 @@ export default function VibeFeedScreen() {
   useFocusEffect(
     useCallback(() => {
       setScreenFocused(true);
-      refetchStories();
+      if (secondaryQueriesEnabled) refetchStories();
       lastFetchedAt.current = new Date().toISOString();
 
       const channel = supabase
@@ -317,7 +324,7 @@ export default function VibeFeedScreen() {
         setScreenFocused(false);
         supabase.removeChannel(channel);
       };
-    }, [refetchStories, showBanner])
+    }, [refetchStories, secondaryQueriesEnabled, showBanner])
   );
 
   // ── Tab-Tap Refresh: Scroll-to-top + Refetch wenn Vibes-Button gedrückt ────────
@@ -390,6 +397,12 @@ export default function VibeFeedScreen() {
     [activePosts]
   );
 
+  useEffect(() => {
+    if (secondaryQueriesEnabled || feedData.length === 0) return;
+    const t = setTimeout(() => setSecondaryQueriesEnabled(true), 900);
+    return () => clearTimeout(t);
+  }, [feedData.length, secondaryQueriesEnabled]);
+
   // Fix 2: Proaktiver Prefetch — erste 5 Thumbnails + Avatar-URLs sobald Feed geladen
   // Expo-Image batcht das intern — keine Race Conditions, keine doppelten Requests
   useEffect(() => {
@@ -414,7 +427,9 @@ export default function VibeFeedScreen() {
 
   const postIds = useMemo(() => feedData.map((p) => p.id), [feedData]);
   const authorIds = useMemo(() => feedData.map((p) => p.authorId).filter((id): id is string => !!id), [feedData]);
-  const { data: engagementMaps = emptyFeedEngagementMaps() } = useFeedEngagement(postIds, authorIds);
+  const { data: engagementMaps = emptyFeedEngagementMaps() } = useFeedEngagement(postIds, authorIds, {
+    enabled: secondaryQueriesEnabled,
+  });
 
   // Feed-IDs in Store speichern — Post-Detailseite nutzt dies für Swipe-Navigation
   const setFeedNavPostIds = useFeedNavStore((s) => s.setPostIds);
@@ -423,8 +438,9 @@ export default function VibeFeedScreen() {
   }, [postIds, setFeedNavPostIds]);
 
   // Refs für PanResponder aktuell halten (kein stale closure)
+  const activePlaybackItemId = visibleItemId ?? (screenFocused ? (feedData[0]?.id ?? null) : null);
   feedDataRef.current = feedData;
-  visibleItemIdRef.current = visibleItemId;
+  visibleItemIdRef.current = activePlaybackItemId;
 
   // ─── Volatile Refs für renderItem ────────────────────────────────────────────
   // Diese Werte ändern sich häufig (bei jedem Scroll, Mute-Toggle, Engagement-Update)
@@ -438,7 +454,9 @@ export default function VibeFeedScreen() {
   const engagementMapsRef = useRef(engagementMaps);
   engagementMapsRef.current = engagementMaps;
 
-  const { data: activeLives = [] } = useActiveLiveSessions();
+  const { data: activeLives = [] } = useActiveLiveSessions({
+    enabled: secondaryQueriesEnabled,
+  });
   const showFirstPostNudge =
     !!profile &&
     feedMode === 'foryou' &&
@@ -569,7 +587,7 @@ export default function VibeFeedScreen() {
       <FlatList
         ref={listRef}
         data={feedRows}
-        extraData={`${visibleItemId ?? ''}:${screenFocused ? '1' : '0'}:${isMuted ? '1' : '0'}`}
+        extraData={`${activePlaybackItemId ?? ''}:${screenFocused ? '1' : '0'}:${isMuted ? '1' : '0'}`}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         pagingEnabled

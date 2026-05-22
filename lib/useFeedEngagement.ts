@@ -77,8 +77,13 @@ async function fetchCommentCounts(postIds: string[]): Promise<Record<string, num
   return out;
 }
 
-export function useFeedEngagement(postIds: string[], authorIds: string[]) {
+export function useFeedEngagement(
+  postIds: string[],
+  authorIds: string[],
+  options: { enabled?: boolean } = {},
+) {
   const userId = useAuthStore((s) => s.profile?.id);
+  const enabled = options.enabled ?? true;
   const sortedIds = useMemo(() => [...postIds].sort().join('|'), [postIds]);
   const sortedAuthors = useMemo(() => [...new Set(authorIds.filter(Boolean))].sort().join('|'), [authorIds]);
 
@@ -138,7 +143,7 @@ export function useFeedEngagement(postIds: string[], authorIds: string[]) {
         followingByAuthor,
       };
     },
-    enabled: !!userId && postIds.length > 0,
+    enabled: enabled && !!userId && postIds.length > 0,
     staleTime: 1000 * 45,
     gcTime: 1000 * 60 * 3,
   });
