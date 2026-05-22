@@ -152,6 +152,9 @@ function checkEasProfile(profileConfig) {
     if (profileConfig.developmentClient === true || profileConfig.distribution === 'internal') {
       failures.push('production profile must not be a development/internal build.');
     }
+    if (profileConfig.channel !== 'production') {
+      failures.push('production profile must set channel="production" so JS-only fixes can ship via EAS Update.');
+    }
     if (profileConfig.autoIncrement !== true) {
       warnings.push('production profile does not autoIncrement; verify App Store build numbers manually.');
     }

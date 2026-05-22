@@ -159,7 +159,17 @@ export default function VibeFeedScreen() {
 
   // Seed-Tag: gecacht mit useMemo — Date.now()/new Date() nicht bei jedem Render
   const profile = useAuthStore((s) => s.profile);
-  const { data: hasFirstPost = true, isLoading: loadingFirstPostState } = useHasUserPosted(profile?.id ?? null);
+  const [firstPostNudgeQueryEnabled, setFirstPostNudgeQueryEnabled] = useState(false);
+  useEffect(() => {
+    setFirstPostNudgeQueryEnabled(false);
+    if (!profile?.id || feedMode !== 'foryou') return;
+    const t = setTimeout(() => setFirstPostNudgeQueryEnabled(true), 1200);
+    return () => clearTimeout(t);
+  }, [profile?.id, feedMode]);
+  const { data: hasFirstPost = true, isLoading: loadingFirstPostState } = useHasUserPosted(
+    profile?.id ?? null,
+    firstPostNudgeQueryEnabled
+  );
   const seedTag = useMemo(() => {
     if (!profile?.preferred_tags?.length) return null;
     const createdAt = profile.created_at ? new Date(profile.created_at).getTime() : null;
@@ -393,6 +403,15 @@ export default function VibeFeedScreen() {
     }
   }, [feedData]);
 
+  // Cold start: erster Feed-Post soll sofort aktiv sein, nicht erst nach FlatList-Viewability.
+  useEffect(() => {
+    if (!screenFocused || feedData.length === 0) return;
+    setVisibleItemId((current) => {
+      if (current && feedData.some((post) => post.id === current)) return current;
+      return feedData[0]?.id ?? current;
+    });
+  }, [feedData, screenFocused]);
+
   const postIds = useMemo(() => feedData.map((p) => p.id), [feedData]);
   const authorIds = useMemo(() => feedData.map((p) => p.authorId).filter((id): id is string => !!id), [feedData]);
   const { data: engagementMaps = emptyFeedEngagementMaps() } = useFeedEngagement(postIds, authorIds);
@@ -550,6 +569,7 @@ export default function VibeFeedScreen() {
       <FlatList
         ref={listRef}
         data={feedRows}
+        extraData={`${visibleItemId ?? ''}:${screenFocused ? '1' : '0'}:${isMuted ? '1' : '0'}`}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         pagingEnabled

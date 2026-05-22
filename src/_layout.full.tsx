@@ -59,7 +59,15 @@ function AuthGuard() {
           data: { session: import('@supabase/supabase-js').Session | null };
         }) => {
           setSession(session);
-          if (session?.user) await fetchProfile(session.user.id);
+          if (session?.user) {
+            const cachedProfile = useAuthStore.getState().profile;
+            if (cachedProfile?.id === session.user.id) {
+              useAuthStore.setState({ initialized: true });
+              void fetchProfile(session.user.id);
+              return;
+            }
+            await fetchProfile(session.user.id);
+          }
           useAuthStore.setState({ initialized: true });
         },
       )

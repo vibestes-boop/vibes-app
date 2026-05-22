@@ -495,6 +495,8 @@ export const FeedItem = React.memo(function FeedItem({
   // ── Musik-Track: Inline Audio-Playback (expo-av) ──────────────────────────
   // Lautstärke kommt aus DB (audio_volume), gesetzt vom Creator im Picker
   const audioSoundRef = useRef<any>(null);
+  const isMutedRef = useRef(isMuted);
+  isMutedRef.current = isMuted;
   const audioUrl = typeof item.audioUrl === 'string' && item.audioUrl.startsWith('http')
     ? item.audioUrl
     : null;
@@ -528,11 +530,10 @@ export const FeedItem = React.memo(function FeedItem({
         if (cancelled) return;
         const { sound } = await Audio.Sound.createAsync(
           { uri: audioUrl },
-          { isLooping: true, volume: audioVolume },  // ← vom Creator gesetzt
+          { isLooping: true, volume: isMutedRef.current ? 0 : audioVolume, shouldPlay: true },
         );
         if (cancelled) { sound.unloadAsync?.(); return; }
         audioSoundRef.current = sound;
-        await sound.playAsync();
         __DEV__ && console.log('[FeedAudio] ✅ Spielt mit Vol:', audioVolume);
       } catch (err) {
         __DEV__ && console.warn('[FeedAudio] ❌ Fehler:', err);
@@ -545,8 +546,7 @@ export const FeedItem = React.memo(function FeedItem({
       audioSoundRef.current?.unloadAsync?.().catch(() => {});
       audioSoundRef.current = null;
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [audioUrl, shouldPlayVideo]);
+  }, [audioUrl, audioVolume, shouldPlayVideo]);
 
   // Mute/Unmute: Lautstärke der Musik live anpassen wenn User den Button drückt
   useEffect(() => {

@@ -80,11 +80,25 @@ export const NativeFeedVideo = forwardRef<FeedVideoSeekHandle, {
   thumbnailUrl?: string | null;
 }>(function NativeFeedVideo({ uri, shouldPlay, isMuted, onProgress, thumbnailUrl }, ref) {
   const [ready, setReady] = useState(false);
+  const shouldPlayRef = useRef(shouldPlay);
+  const isMutedRef = useRef(isMuted);
+  shouldPlayRef.current = shouldPlay;
+  isMutedRef.current = isMuted;
 
   const player = useVideoPlayer(uri, (p: any) => {
     p.loop = true;
-    p.muted = isMuted;
+    p.muted = isMutedRef.current;
+    if (shouldPlayRef.current) {
+      try {
+        const maybePromise = p.play?.();
+        maybePromise?.catch?.(() => {});
+      } catch { /* ignore early native player races */ }
+    }
   });
+
+  useEffect(() => {
+    setReady(false);
+  }, [uri]);
 
   // Expose seek via ref
   useImperativeHandle(ref, () => ({

@@ -81,16 +81,17 @@ export const useAuthStore = create<AuthStore>()(
       fetchProfile: async (userId: string) => {
         try {
           const accessToken = get().session?.access_token;
+          const cachedProfile = get().profile;
           if (!accessToken) {
             if (__DEV__) console.warn('[auth] fetchProfile: kein Access-Token');
-            set({ profile: null });
+            if (cachedProfile?.id !== userId) set({ profile: null });
             return;
           }
           const profile = await fetchProfileViaRest(userId, accessToken);
-          set({ profile });
+          if (profile || cachedProfile?.id !== userId) set({ profile });
         } catch (e) {
           if (__DEV__) console.warn('[auth] fetchProfile failed', e);
-          set({ profile: null });
+          if (get().profile?.id !== userId) set({ profile: null });
         }
       },
 

@@ -359,7 +359,7 @@ export function useUserPosts(userId: string | null) {
   });
 }
 
-export function useHasUserPosted(userId: string | null) {
+export function useHasUserPosted(userId: string | null, enabled = true) {
   return useQuery({
     queryKey: ['user-has-posted', userId],
     queryFn: async () => {
@@ -372,7 +372,7 @@ export function useHasUserPosted(userId: string | null) {
       if (error) throw error;
       return Number(count ?? 0) > 0;
     },
-    enabled: !!userId,
+    enabled: enabled && !!userId,
     staleTime: 1000 * 60,
     gcTime: 1000 * 60 * 5,
   });
