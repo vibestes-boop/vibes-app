@@ -29,6 +29,7 @@ export function VideoGridThumb({ uri, thumbnailUrl, style }: Props) {
           source={{ uri: thumbnailUrl }}
           style={StyleSheet.absoluteFill}
           contentFit="cover"
+          cachePolicy="memory-disk"
           transition={150}
           placeholder={{ blurhash: 'L00000fQfQfQfQfQfQfQfQfQfQfQ' }}
         />

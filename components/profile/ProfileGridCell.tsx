@@ -74,6 +74,7 @@ export function ProfileGridCell({
             source={{ uri: post.media_url! }}
             style={s.cellImg}
             contentFit="cover"
+            cachePolicy="memory-disk"
             transition={200}
             placeholder={{ blurhash: 'L00000fQfQfQfQfQfQfQfQfQfQfQ' }}
             onError={() => setImageError(true)}

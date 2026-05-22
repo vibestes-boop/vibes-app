@@ -124,6 +124,7 @@ export function FeedCard({
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const activePlaybackRef = useRef({ postId: post.id, active: false });
   const [isPaused, setIsPaused] = useState(false);
   const [progress, setProgress] = useState(0);
   // v1.w.UI.11 Phase C — Kommentar-Open-State lebt nicht mehr lokal in der
@@ -382,6 +383,15 @@ export function FeedCard({
     if (isImage) return;
     const v = videoRef.current;
     if (!v) return;
+    const previous = activePlaybackRef.current;
+    const wasActive = previous.postId === post.id ? previous.active : false;
+    activePlaybackRef.current = { postId: post.id, active: isActive };
+    if (isActive && (!wasActive || previous.postId !== post.id)) {
+      v.currentTime = 0;
+      setProgress(0);
+      const a = audioRef.current;
+      if (a) a.currentTime = 0;
+    }
     if (isActive && !isPaused) {
       v.muted = muted;
       void v.play().catch(() => {
@@ -390,7 +400,7 @@ export function FeedCard({
     } else {
       v.pause();
     }
-  }, [isActive, isPaused, muted, isImage]);
+  }, [isActive, isPaused, muted, isImage, post.id]);
 
   // v1.w.UI.211 — Audio-Track Play/Pause (parallel zu Video, parity mit Mobile).
   // audio_url = vom Creator im Musik-Picker gewählter Track. Browser-Autoplay-

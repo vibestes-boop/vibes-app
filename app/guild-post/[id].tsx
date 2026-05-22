@@ -178,6 +178,23 @@ function GuildPostDetailItem({
   const handleProgress = useCallback((p: number) => progressBarRef.current?.setProgress(p), []);
   const handleSeek    = useCallback((frac: number) => videoSeekRef.current?.seek(frac), []);
   const handleSeekEnd = useCallback((frac: number) => videoSeekRef.current?.seek(frac), []);
+  const [restartSignal, setRestartSignal] = useState(0);
+  const visibilityRef = useRef({ id: post.id, visible: false });
+
+  useEffect(() => {
+    const previous = visibilityRef.current;
+    const wasVisible = previous.id === post.id ? previous.visible : false;
+    visibilityRef.current = { id: post.id, visible: isActive };
+
+    if (!isVideo) return;
+    if (isActive && (!wasVisible || previous.id !== post.id)) {
+      progressBarRef.current?.setProgress(0);
+      setRestartSignal((signal) => signal + 1);
+    }
+    if (!isActive && wasVisible) {
+      progressBarRef.current?.setProgress(0);
+    }
+  }, [post.id, isVideo, isActive]);
 
   const handleScreenTap = useCallback((evt: { nativeEvent: { locationX: number; locationY: number } }) => {
     const now = Date.now();
@@ -236,6 +253,7 @@ function GuildPostDetailItem({
               shouldPlay={isActive}
               isMuted={isMuted}
               onProgress={handleProgress}
+              restartSignal={restartSignal}
             />
           ) : (
             <FallbackFeedVideo
@@ -244,6 +262,7 @@ function GuildPostDetailItem({
               shouldPlay={isActive}
               isMuted={isMuted}
               onProgress={handleProgress}
+              restartSignal={restartSignal}
             />
           )
         ) : (

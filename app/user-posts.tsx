@@ -222,6 +222,23 @@ function PostCard({
     : '';
 
   const isVideo = item.media_type === 'video';
+  const [restartSignal, setRestartSignal] = useState(0);
+  const visibilityRef = useRef({ id: item.id, visible: false });
+
+  useEffect(() => {
+    const previous = visibilityRef.current;
+    const wasVisible = previous.id === item.id ? previous.visible : false;
+    visibilityRef.current = { id: item.id, visible: isVisible };
+
+    if (!isVideo) return;
+    if (isVisible && (!wasVisible || previous.id !== item.id)) {
+      progressBarRef.current?.setProgress(0);
+      setRestartSignal((signal) => signal + 1);
+    }
+    if (!isVisible && wasVisible) {
+      progressBarRef.current?.setProgress(0);
+    }
+  }, [item.id, isVideo, isVisible]);
 
   // ── Multiple Floating Hearts (Tap-to-Like) ────────────────────────────
   const { liked: tapLiked, toggle: tapToggleLike } = useLike(item.id);
@@ -269,6 +286,7 @@ function PostCard({
               shouldPlay={isVisible}
               isMuted={isMuted}
               onProgress={handleProgress}
+              restartSignal={restartSignal}
             />
           ) : (
             <FallbackFeedVideo
@@ -277,10 +295,11 @@ function PostCard({
               shouldPlay={isVisible}
               isMuted={isMuted}
               onProgress={handleProgress}
+              restartSignal={restartSignal}
             />
           )
         ) : (
-          <Image source={{ uri: item.media_url }} style={StyleSheet.absoluteFill} contentFit="cover" />
+          <Image source={{ uri: item.media_url }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" />
         )
       ) : (
         <LinearGradient colors={['#0A0A0A', '#1a0533', '#0d1f4a']} style={StyleSheet.absoluteFill} />
@@ -344,7 +363,7 @@ function PostCard({
         >
           <View style={s.avatarSmall}>
             {item.avatar_url
-              ? <Image source={{ uri: item.avatar_url }} style={s.avatarSmallImg} />
+              ? <Image source={{ uri: item.avatar_url }} style={s.avatarSmallImg} cachePolicy="memory-disk" />
               : <Text style={s.avatarText}>{item.username?.[0]?.toUpperCase() ?? '?'}</Text>
             }
           </View>
@@ -388,7 +407,7 @@ function PostCard({
       >
         <View style={s.commentBarInner}>
           {profile?.avatar_url ? (
-            <Image source={{ uri: profile.avatar_url }} style={s.commentBarAvatar} contentFit="cover" />
+            <Image source={{ uri: profile.avatar_url }} style={s.commentBarAvatar} contentFit="cover" cachePolicy="memory-disk" />
           ) : (
             <View style={[s.commentBarAvatar, s.commentBarAvatarFallback]}>
               <Text style={s.commentBarInitial}>{(profile?.username ?? '?')[0].toUpperCase()}</Text>

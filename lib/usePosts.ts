@@ -370,9 +370,9 @@ export function useUserPosts(userId: string | null) {
       })) as UserPost[];
     },
     enabled: !!userId,
-    staleTime: 0,              // Immer fresh beim Tab-Wechsel
-    gcTime: 1000 * 60 * 5,
-    refetchOnMount: 'always',  // Beim Mount immer neu laden
+    staleTime: 1000 * 60 * 2,
+    gcTime: 1000 * 60 * 60 * 24,
+    refetchOnMount: true,      // Cache sofort zeigen, dann bei Bedarf frisch laden
   });
 }
 

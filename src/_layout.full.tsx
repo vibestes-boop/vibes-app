@@ -449,11 +449,16 @@ export default function RootLayoutFull() {
         persistOptions={{
           persister: persisterRef.current,
           maxAge: 24 * 60 * 60 * 1000,  // 24 Stunden
-          // Nur Feed-Queries persistieren — kein Schreiben von Auth-sensiblen Daten
+          // Nur öffentliche Read-Queries persistieren — kein Schreiben von Auth-sensiblen Daten.
+          // Profile/Profil-Posts bleiben so bei schwachem Netz sichtbar und laden im Hintergrund frisch nach.
           dehydrateOptions: {
             shouldDehydrateQuery: (query) => {
               const key = query.queryKey[0];
-              return key === 'vibe-feed' || key === 'trending-feed';
+              return key === 'vibe-feed'
+                || key === 'trending-feed'
+                || key === 'following-feed'
+                || key === 'user-posts'
+                || key === 'bookmarked-posts';
             },
           },
         }}

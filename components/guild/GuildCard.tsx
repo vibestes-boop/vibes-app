@@ -11,7 +11,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Bookmark,Heart,MessageCircle,Share2,Volume2,VolumeX } from 'lucide-react-native';
-import React,{ useCallback,useEffect,useMemo,useState } from 'react';
+import React,{ useCallback,useEffect,useMemo,useRef,useState } from 'react';
 import { Pressable,StyleSheet,Text,View } from 'react-native';
 import {
 useAnimatedStyle,
@@ -56,6 +56,8 @@ export const GuildCard = React.memo(function GuildCard({
   const isVideo = post.media_type === 'video';
   const scale = useSharedValue(1);
   const [c0, c1] = guildColors;
+  const [restartSignal, setRestartSignal] = useState(0);
+  const visibilityRef = useRef({ id: post.id, visible: false });
 
   const bgGradientColors = useMemo(() => [`${c0}30`, colors.bg.elevated, `${c1}20`] as [string, string, string], [c0, c1, colors.bg.elevated]);
   const overlayGradientColors = useMemo(() => [`${c0}40`, colors.bg.elevated, `${c1}30`] as [string, string, string], [c0, c1, colors.bg.elevated]);
@@ -79,6 +81,16 @@ export const GuildCard = React.memo(function GuildCard({
       Image.prefetch?.(post.media_url).catch(() => { /* ignorieren */ });
     }
   }, [isVisible, post.media_url, isVideo]);
+
+  useEffect(() => {
+    const previous = visibilityRef.current;
+    const wasVisible = previous.id === post.id ? previous.visible : false;
+    visibilityRef.current = { id: post.id, visible: isVisible };
+    if (!isVideo) return;
+    if (isVisible && (!wasVisible || previous.id !== post.id)) {
+      setRestartSignal((signal) => signal + 1);
+    }
+  }, [post.id, isVideo, isVisible]);
 
   const goToPost = useCallback(() => {
     router.push({ pathname: '/guild-post/[id]', params: { id: post.id } });
@@ -107,9 +119,9 @@ export const GuildCard = React.memo(function GuildCard({
             {isVideo ? (
               <>
                 {USE_EXPO_VIDEO ? (
-                  <NativeFeedVideo uri={post.media_url} shouldPlay={isVisible} isMuted={isMuted} onProgress={() => { }} />
+                  <NativeFeedVideo uri={post.media_url} shouldPlay={isVisible} isMuted={isMuted} onProgress={() => { }} restartSignal={restartSignal} />
                 ) : (
-                  <FallbackFeedVideo uri={post.media_url} shouldPlay={isVisible} isMuted={isMuted} onProgress={() => { }} />
+                  <FallbackFeedVideo uri={post.media_url} shouldPlay={isVisible} isMuted={isMuted} onProgress={() => { }} restartSignal={restartSignal} />
                 )}
               </>
             ) : (

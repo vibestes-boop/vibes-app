@@ -283,6 +283,8 @@ export default function PostDetailScreen() {
   const handleProgress = useCallback((p: number) => progressBarRef.current?.setProgress(p), []);
   const handleSeek     = useCallback((frac: number) => videoSeekRef.current?.seek(frac), []);
   const handleSeekEnd  = useCallback((frac: number) => videoSeekRef.current?.seek(frac), []);
+  const [restartSignal, setRestartSignal] = useState(0);
+  const focusPlaybackRef = useRef({ mediaUrl: '', focused: false });
 
   // ── TikTok-Style: Finger-folgendes Profil-Panel (identisch zu Vibes-Feed) ──
   const SCREEN_W = Dimensions.get('window').width;
@@ -364,6 +366,22 @@ export default function PostDetailScreen() {
   const lastTapPos = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const muteTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isVideo = (post?.media_type ?? previewType) === 'video';
+  const currentMediaUrl = post?.media_url ?? previewUrl ?? '';
+
+  useEffect(() => {
+    const previous = focusPlaybackRef.current;
+    const wasFocused = previous.mediaUrl === currentMediaUrl ? previous.focused : false;
+    focusPlaybackRef.current = { mediaUrl: currentMediaUrl, focused: screenFocused };
+
+    if (!isVideo || !currentMediaUrl) return;
+    if (screenFocused && (!wasFocused || previous.mediaUrl !== currentMediaUrl)) {
+      progressBarRef.current?.setProgress(0);
+      setRestartSignal((signal) => signal + 1);
+    }
+    if (!screenFocused && wasFocused) {
+      progressBarRef.current?.setProgress(0);
+    }
+  }, [currentMediaUrl, isVideo, screenFocused]);
 
   const spawnHeart = useCallback((x: number, y: number) => {
     const newId = heartIdRef.current++;
@@ -605,6 +623,7 @@ export default function PostDetailScreen() {
                 shouldPlay={screenFocused}
                 isMuted={isMuted}
                 onProgress={handleProgress}
+                restartSignal={restartSignal}
               />
             ) : (
               <FallbackFeedVideo
@@ -613,6 +632,7 @@ export default function PostDetailScreen() {
                 shouldPlay={screenFocused}
                 isMuted={isMuted}
                 onProgress={handleProgress}
+                restartSignal={restartSignal}
               />
             )
           ) : (

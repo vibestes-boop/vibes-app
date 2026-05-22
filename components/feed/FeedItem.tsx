@@ -586,13 +586,27 @@ export const FeedItem = React.memo(function FeedItem({
   // Pause/Play via Tap
   const [isPaused, setIsPaused] = useState(false);
   const [showPlayFlash, setShowPlayFlash] = useState<'pause' | 'play' | null>(null);
+  const [restartSignal, setRestartSignal] = useState(0);
+  const progressBarRef = useRef<VideoProgressHandle>(null);
+  const visibilityRef = useRef({ id: item.id, visible: false });
 
-  // Wenn Video aus dem Viewport verschwindet → Pause-State zurücksetzen
-  const prevShouldPlay = useRef(shouldPlayVideo);
-  if (prevShouldPlay.current !== shouldPlayVideo) {
-    prevShouldPlay.current = shouldPlayVideo;
-    if (!shouldPlayVideo && isPaused) setIsPaused(false);
-  }
+  // Wenn ein Video erneut in den Viewport kommt, startet es wie TikTok bei 0.
+  // Das ist nur ein Seek im bestehenden Player; der Medien-Cache bleibt erhalten.
+  useEffect(() => {
+    const previous = visibilityRef.current;
+    const wasVisible = previous.id === item.id ? previous.visible : false;
+    visibilityRef.current = { id: item.id, visible: shouldPlayVideo };
+
+    if (!isVideo) return;
+    if (shouldPlayVideo && (!wasVisible || previous.id !== item.id)) {
+      progressBarRef.current?.setProgress(0);
+      setRestartSignal((signal) => signal + 1);
+    }
+    if (!shouldPlayVideo && wasVisible) {
+      if (isPaused) setIsPaused(false);
+      progressBarRef.current?.setProgress(0);
+    }
+  }, [item.id, isVideo, shouldPlayVideo, isPaused]);
 
   const actualShouldPlay = shouldPlayVideo && !isPaused && !commentsOpen && !shareOpen && !optionsOpen && !longPressOpen;
 
@@ -666,7 +680,6 @@ export const FeedItem = React.memo(function FeedItem({
   };
 
   // handleProgress delegiert an isolierte VideoProgressBar — FeedItem re-rendert NICHT bei Video-Ticks
-  const progressBarRef = useRef<VideoProgressHandle>(null);
   const handleProgress = useCallback((p: number) => progressBarRef.current?.setProgress(p), []);
 
   // Seek-Ref: FeedVideo exposed seek(fraction) für den scrubbbaren Fortschrittsbalken
@@ -719,6 +732,7 @@ export const FeedItem = React.memo(function FeedItem({
               isMuted={isMuted}
               onProgress={handleProgress}
               thumbnailUrl={item.thumbnailUrl}
+              restartSignal={restartSignal}
             />
           ) : (
             <FallbackFeedVideo
@@ -728,6 +742,7 @@ export const FeedItem = React.memo(function FeedItem({
               isMuted={isMuted}
               onProgress={handleProgress}
               thumbnailUrl={item.thumbnailUrl}
+              restartSignal={restartSignal}
             />
           )
         )}

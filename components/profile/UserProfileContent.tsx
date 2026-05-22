@@ -13,6 +13,7 @@ import { VibeScoreRing } from '@/components/profile/VibeScoreRing';
 import { AvatarZoomViewer } from '@/components/ui/AvatarZoomViewer';
 import { StoryRingAvatar } from '@/components/ui/StoryRingAvatar';
 import { VideoGridThumb } from '@/components/ui/VideoGridThumb';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuthStore } from '@/lib/authStore';
 import { supabase } from '@/lib/supabase';
 import { useBattleStats } from '@/lib/useBattleStats';
@@ -108,6 +109,17 @@ type PostThumb = {
   caption: string | null;
   dwell_time_score?: number;
   thumbnail_url?: string | null; // Statisches Thumbnail für Videos
+};
+
+const PUBLIC_PROFILE_CACHE_VERSION = 1;
+const PUBLIC_PROFILE_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
+type CachedPublicProfile = {
+  version: number;
+  cachedAt: number;
+  profile: PublicProfile;
+  posts: PostThumb[];
+  postCount: number;
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -326,27 +338,64 @@ export function UserProfileContent({ userId, onBack }: Props) {
     avatarScale.value = 0.6;
     avatarOpacity.value = 0;
     let canceled = false;
+    const cacheKey = `vibes-public-profile:${id}:v${PUBLIC_PROFILE_CACHE_VERSION}`;
+    let showedCache = false;
 
-    Promise.all([
-      supabase.from('profiles')
-        .select('id, username, bio, website, avatar_url, guild_id, is_private, is_verified, teip, guilds(name)')
-        .eq('id', id).single(),
-      supabase.from('posts')
-        .select('id, media_url, media_type, caption, dwell_time_score, thumbnail_url')
-        .eq('author_id', id).order('created_at', { ascending: false }).limit(30),
-      supabase.from('posts')
-        .select('id', { count: 'exact', head: true }).eq('author_id', id),
-    ]).then(([{ data: p, error: pErr }, { data: ps }, { count }]) => {
-      if (canceled) return;
-      if (pErr || !p) { setLoading(false); return; }
-      const raw = p as any;
-      setProfile({ ...(raw as PublicProfile), guild_name: raw?.guilds?.name ?? null });
-      setPosts((ps ?? []) as PostThumb[]);
-      setPostCount(count ?? (ps ?? []).length);
+    const revealProfile = (nextProfile: PublicProfile, nextPosts: PostThumb[], nextCount: number) => {
+      setProfile(nextProfile);
+      setPosts(nextPosts);
+      setPostCount(nextCount);
       setLoading(false);
       avatarScale.value = withSpring(1, { damping: 13, stiffness: 160 });
       avatarOpacity.value = withTiming(1, { duration: 280 });
-    });
+    };
+
+    (async () => {
+      try {
+        const cachedRaw = await AsyncStorage.getItem(cacheKey);
+        if (!canceled && cachedRaw) {
+          const cached = JSON.parse(cachedRaw) as CachedPublicProfile;
+          const freshEnough = cached.version === PUBLIC_PROFILE_CACHE_VERSION
+            && Date.now() - cached.cachedAt < PUBLIC_PROFILE_CACHE_TTL_MS;
+          if (freshEnough && cached.profile?.id === id) {
+            showedCache = true;
+            revealProfile(cached.profile, cached.posts ?? [], cached.postCount ?? cached.posts?.length ?? 0);
+          }
+        }
+      } catch { /* Cache darf nie das Profil blockieren. */ }
+
+      try {
+        const [{ data: p, error: pErr }, { data: ps }, { count }] = await Promise.all([
+          supabase.from('profiles')
+            .select('id, username, bio, website, avatar_url, guild_id, is_private, is_verified, teip, guilds(name)')
+            .eq('id', id).single(),
+          supabase.from('posts')
+            .select('id, media_url, media_type, caption, dwell_time_score, thumbnail_url')
+            .eq('author_id', id).order('created_at', { ascending: false }).limit(30),
+          supabase.from('posts')
+            .select('id', { count: 'exact', head: true }).eq('author_id', id),
+        ]);
+        if (canceled) return;
+        if (pErr || !p) {
+          if (!showedCache) setLoading(false);
+          return;
+        }
+        const raw = p as any;
+        const freshProfile = { ...(raw as PublicProfile), guild_name: raw?.guilds?.name ?? null };
+        const freshPosts = (ps ?? []) as PostThumb[];
+        const freshCount = count ?? freshPosts.length;
+        revealProfile(freshProfile, freshPosts, freshCount);
+        AsyncStorage.setItem(cacheKey, JSON.stringify({
+          version: PUBLIC_PROFILE_CACHE_VERSION,
+          cachedAt: Date.now(),
+          profile: freshProfile,
+          posts: freshPosts,
+          postCount: freshCount,
+        } satisfies CachedPublicProfile)).catch(() => {});
+      } catch {
+        if (!canceled && !showedCache) setLoading(false);
+      }
+    })();
 
     return () => { canceled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -912,6 +961,7 @@ export function UserProfileContent({ userId, onBack }: Props) {
                       source={{ uri: product.cover_url }}
                       style={StyleSheet.absoluteFill}
                       contentFit="cover"
+                      cachePolicy="memory-disk"
                       blurRadius={25}
                     />
                     <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.18)' }]} />
@@ -919,6 +969,7 @@ export function UserProfileContent({ userId, onBack }: Props) {
                       source={{ uri: product.cover_url }}
                       style={StyleSheet.absoluteFill}
                       contentFit="contain"
+                      cachePolicy="memory-disk"
                     />
                   </>
                 ) : (
@@ -966,7 +1017,7 @@ export function UserProfileContent({ userId, onBack }: Props) {
                   style={StyleSheet.absoluteFill}
                 />
               ) : (
-                <Image source={{ uri: item.media_url }} style={StyleSheet.absoluteFill} contentFit="cover" />
+                <Image source={{ uri: item.media_url }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" />
               )
             ) : (
               <LinearGradient colors={['#1a0533', '#0d1040']} style={[StyleSheet.absoluteFill, s.textThumb]}>
@@ -1184,4 +1235,3 @@ const pm = StyleSheet.create({
     color: 'rgba(255,255,255,0.38)', fontSize: 12, lineHeight: 16,
   },
 });
-

@@ -78,7 +78,8 @@ export const NativeFeedVideo = forwardRef<FeedVideoSeekHandle, {
   isMuted: boolean;
   onProgress: (p: number) => void;
   thumbnailUrl?: string | null;
-}>(function NativeFeedVideo({ uri, shouldPlay, isMuted, onProgress, thumbnailUrl }, ref) {
+  restartSignal?: number;
+}>(function NativeFeedVideo({ uri, shouldPlay, isMuted, onProgress, thumbnailUrl, restartSignal = 0 }, ref) {
   const [ready, setReady] = useState(false);
   const shouldPlayRef = useRef(shouldPlay);
   const isMutedRef = useRef(isMuted);
@@ -140,6 +141,18 @@ export const NativeFeedVideo = forwardRef<FeedVideoSeekHandle, {
     else player.pause();
   }, [shouldPlay, player]);
 
+  // TikTok-Parity: Wenn ein Post erneut sichtbar wird, startet er wieder bei 0.
+  // Die Mediendatei bleibt dabei im nativen/HTTP-Cache; wir laden sie nicht neu.
+  useEffect(() => {
+    if (!player || restartSignal <= 0 || !shouldPlay) return;
+    try {
+      player.currentTime = 0;
+      onProgress(0);
+      const maybePromise = player.play?.();
+      maybePromise?.catch?.(() => {});
+    } catch { /* ignore native player races */ }
+  }, [restartSignal, shouldPlay, player, onProgress]);
+
   // Explizit stoppen + freigeben beim Unmount (verhindert Audio-Leak beim Tab-Wechsel)
   useEffect(() => {
     return () => {
@@ -193,7 +206,8 @@ export const FallbackFeedVideo = forwardRef<FeedVideoSeekHandle, {
   isMuted: boolean;
   onProgress: (p: number) => void;
   thumbnailUrl?: string | null;
-}>(function FallbackFeedVideo({ uri, shouldPlay, isMuted, onProgress, thumbnailUrl }, ref) {
+  restartSignal?: number;
+}>(function FallbackFeedVideo({ uri, shouldPlay, isMuted, onProgress, thumbnailUrl, restartSignal = 0 }, ref) {
   const [loaded, setLoaded] = useState(false);
   const videoRef = useRef<Video>(null);
   const durationMs = useRef(0);
@@ -214,6 +228,15 @@ export const FallbackFeedVideo = forwardRef<FeedVideoSeekHandle, {
       onProgress((status.positionMillis ?? 0) / status.durationMillis);
     }
   }, [onProgress]);
+
+  useEffect(() => {
+    if (!videoRef.current || restartSignal <= 0 || !shouldPlay) return;
+    onProgress(0);
+    videoRef.current
+      .setPositionAsync(0)
+      .then(() => videoRef.current?.playAsync?.())
+      .catch(() => {});
+  }, [restartSignal, shouldPlay, onProgress]);
 
   return (
     <View style={StyleSheet.absoluteFill}>
