@@ -26,6 +26,28 @@ import {
 
 export const dynamic = 'force-dynamic';
 
+const HOME_SIDEBAR_TIMEOUT_MS = 300;
+
+async function withTimeout<T>(
+  promise: Promise<T>,
+  fallback: T,
+  timeoutMs = HOME_SIDEBAR_TIMEOUT_MS,
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const safePromise = promise.catch(() => fallback);
+
+  try {
+    return await Promise.race([
+      safePromise,
+      new Promise<T>((resolve) => {
+        timer = setTimeout(() => resolve(fallback), timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
+
 export default async function HomePage() {
   const user = await getUser();
 
@@ -73,38 +95,44 @@ export default async function HomePage() {
   // Following/Stories/Trending werden nicht auf `/` vorgerendert: sie sind im
   // ersten "Für dich"-Viewport unsichtbar und haben vorher den Cold-Start mit
   // zusätzlichen Supabase-Roundtrips verlängert.
-  const [
-    forYou,
-    suggested,
-    followedAccounts,
-    viewerIsAdmin,
-  ] = await Promise.all([
-    getForYouFeed({ limit: 6 }),
-    getSuggestedFollows(5),
-    getMyFollowedAccounts({ limit: 5 }),
-    (async () => {
-      const { data } = await supabase
-        .from('profiles')
-        .select('is_admin')
-        .eq('id', user.id)
-        .maybeSingle();
-      return Boolean((data as { is_admin?: boolean } | null)?.is_admin);
-    })(),
+  const forYouPromise = getForYouFeed({ limit: 6 });
+  const sidebarPromise = Promise.all([
+    withTimeout(getSuggestedFollows(5), []),
+    withTimeout(getMyFollowedAccounts({ limit: 5 }), []),
+    withTimeout(
+      (async () => {
+        const { data } = await supabase
+          .from('profiles')
+          .select('is_admin')
+          .eq('id', user.id)
+          .maybeSingle();
+        return Boolean((data as { is_admin?: boolean } | null)?.is_admin);
+      })(),
+      false,
+    ),
   ]);
 
+  const forYou = await forYouPromise;
+  const [suggested, followedAccounts, viewerIsAdmin] = await sidebarPromise;
+
   const firstForYouPost = forYou[0];
-  const firstForYouPosterUrl =
+  const firstForYouMediaPreloadUrl =
     firstForYouPost?.media_type === 'video'
       ? getOptimizedImageUrl(firstForYouPost.thumbnail_url, FEED_VIDEO_POSTER_WIDTH)
+      : firstForYouPost?.media_type === 'image'
+        ? getOptimizedImageUrl(
+            firstForYouPost.thumbnail_url || firstForYouPost.video_url,
+            FEED_VIDEO_POSTER_WIDTH,
+          )
       : undefined;
 
   return (
     <>
-      {firstForYouPosterUrl && (
+      {firstForYouMediaPreloadUrl && (
         <link
           rel="preload"
           as="image"
-          href={firstForYouPosterUrl}
+          href={firstForYouMediaPreloadUrl}
           fetchPriority="high"
         />
       )}

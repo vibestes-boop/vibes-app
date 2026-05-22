@@ -828,8 +828,9 @@ export function FeedCard({
               poster={optimizedPosterUrl}
               loop
               muted={muted}
+              autoPlay={isActive && !isPaused}
               playsInline
-              preload={isActive ? 'metadata' : 'none'}
+              preload={isActive ? 'auto' : shouldLoadMedia ? 'metadata' : 'none'}
               onTimeUpdate={(e) => {
                 const v = e.currentTarget;
                 if (v.duration > 0) setProgress((v.currentTime / v.duration) * 100);
@@ -867,7 +868,7 @@ export function FeedCard({
               ref={audioRef}
               src={audioUrl}
               loop
-              preload="none"
+              preload={isActive ? 'auto' : 'none'}
               aria-hidden="true"
               className="hidden"
             />
