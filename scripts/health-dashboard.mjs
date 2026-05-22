@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const DEFAULT_TIMEOUT_MS = 10000;
 const DEFAULT_SITE_URL = 'https://serlo-web.vercel.app';
+const MEDIA_SCAN_BYTES = 2 * 1024 * 1024;
 const STATUS_ORDER = { Green: 0, Yellow: 1, Red: 2 };
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -74,6 +75,7 @@ if (failures.length === 0) {
   addSupport(support);
   addCampaigns(campaigns);
   addRegions(regions);
+  addMediaPlayback(feedEndpoint);
   addThumbnails(thumbnails);
   addPushFeed(pushFeed, feedEndpoint);
   addGovernance(governance);
@@ -149,15 +151,59 @@ async function fetchFeedEndpoint() {
     const text = await response.text();
     if (!response.ok) return { ok: false, status: response.status, posts: 0, error: summarize(text) };
     const data = JSON.parse(text);
+    const posts = Array.isArray(data?.posts) ? data.posts : [];
+    const playback = await inspectFeedPlayback(posts);
     return {
       ok: true,
       status: response.status,
-      posts: Array.isArray(data?.posts) ? data.posts.length : 0,
+      posts: posts.length,
+      playback,
       error: '',
     };
   } catch (error) {
     return { ok: false, status: 0, posts: 0, error: error.message };
   }
+}
+
+async function inspectFeedPlayback(posts) {
+  const summary = {
+    videos: 0,
+    slowVideos: 0,
+    scanErrors: 0,
+    missingThumbnails: 0,
+  };
+
+  for (const post of posts) {
+    const mediaType = post.media_type ?? post.mediaType ?? null;
+    if (mediaType !== 'video') continue;
+    summary.videos += 1;
+
+    const thumbnailUrl = post.thumbnail_url ?? post.thumbnailUrl ?? null;
+    const mediaUrl = post.media_url ?? post.mediaUrl ?? post.video_url ?? post.videoUrl ?? null;
+    if (!thumbnailUrl) summary.missingThumbnails += 1;
+    if (!mediaUrl) {
+      summary.scanErrors += 1;
+      continue;
+    }
+
+    try {
+      const response = await fetchWithTimeout(mediaUrl, {
+        headers: { range: `bytes=0-${MEDIA_SCAN_BYTES - 1}`, accept: '*/*' },
+      });
+      if (!response.ok) {
+        summary.scanErrors += 1;
+        continue;
+      }
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      const inspection = inspectMp4FastStart(bytes);
+      if (inspection.status === 'slow-start') summary.slowVideos += 1;
+      else if (inspection.status === 'unknown') summary.scanErrors += 1;
+    } catch {
+      summary.scanErrors += 1;
+    }
+  }
+
+  return summary;
 }
 
 async function fetchAdminTable(path) {
@@ -270,6 +316,7 @@ function addLaunchReadiness(productResult, activationResult, pushFeedResult, thu
   const native = pushFeed.push?.native_tokens || {};
   const rows = [...thumbnailsResult.posts, ...thumbnailsResult.stories].filter((item) => item.media_url && item.archived !== true);
   const missingThumbnails = rows.filter((item) => !item.thumbnail_url).length;
+  const slowVideos = Number(feedEndpoint.playback?.slowVideos || 0);
   const newUsers = Number(summary.new_users_30d || 0);
   const withoutFirstPost = Number(summary.users_without_first_post_30d || 0);
   const firstPostUsers = Math.max(newUsers - withoutFirstPost, 0);
@@ -282,6 +329,7 @@ function addLaunchReadiness(productResult, activationResult, pushFeedResult, thu
 
   const blockers = [];
   if (!feedEndpoint.ok || feedPosts < 12) blockers.push(`feed ${number(feedPosts)}/12`);
+  if (slowVideos > 0) blockers.push(`slow videos ${number(slowVideos)}`);
   if (missingThumbnails > 0) blockers.push(`missing media ${number(missingThumbnails)}`);
   if (nativeActive < 1) blockers.push(`native push ${number(nativeActive)}/1`);
 
@@ -404,6 +452,29 @@ function addThumbnails(result) {
   );
 }
 
+function addMediaPlayback(feedEndpoint) {
+  if (!feedEndpoint.ok) {
+    return addRow('Media Playback', 'Red', `feed endpoint failed: ${feedEndpoint.error}`, 'npm run media:playback-health');
+  }
+  const playback = feedEndpoint.playback || {};
+  const videos = Number(playback.videos || 0);
+  const slowVideos = Number(playback.slowVideos || 0);
+  const scanErrors = Number(playback.scanErrors || 0);
+  const missingThumbnails = Number(playback.missingThumbnails || 0);
+  const status =
+    slowVideos > 0 || scanErrors > 0 || missingThumbnails > 0
+      ? 'Red'
+      : videos === 0
+        ? 'Yellow'
+        : 'Green';
+  addRow(
+    'Media Playback',
+    status,
+    `videos ${number(videos)}, slow ${number(slowVideos)}, scan errors ${number(scanErrors)}, missing thumbnails ${number(missingThumbnails)}`,
+    'npm run media:playback-health',
+  );
+}
+
 function addPushFeed(result, feedEndpoint) {
   if (!result.ok) return addRow('Push/Feed', 'Red', `push/feed RPC failed: ${result.error}`, 'npm run push-feed:health');
   const push = result.data?.push || {};
@@ -477,6 +548,55 @@ async function fetchWithTimeout(url, init = {}) {
   } finally {
     clearTimeout(timer);
   }
+}
+
+function inspectMp4FastStart(bytes) {
+  const scannedBytes = Math.min(bytes.byteLength, MEDIA_SCAN_BYTES);
+  if (scannedBytes < 16) return { status: 'unknown', reason: 'file too small' };
+
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  let offset = 0;
+  let moovOffset = null;
+  let mdatOffset = null;
+
+  while (offset + 8 <= scannedBytes) {
+    const box = readMp4Box(view, offset, scannedBytes);
+    if (!box) break;
+    if (box.type === 'moov') moovOffset = offset;
+    if (box.type === 'mdat') mdatOffset = offset;
+    if (moovOffset !== null && mdatOffset !== null) break;
+    offset += box.size;
+  }
+
+  if (moovOffset !== null && (mdatOffset === null || moovOffset < mdatOffset)) {
+    return { status: 'fast-start', reason: 'moov before mdat' };
+  }
+  if (mdatOffset !== null && (moovOffset === null || mdatOffset < moovOffset)) {
+    return { status: 'slow-start', reason: 'mdat before moov' };
+  }
+  return { status: 'unknown', reason: 'moov/mdat not found' };
+}
+
+function readMp4Box(view, offset, scannedBytes) {
+  const size32 = view.getUint32(offset, false);
+  const type = readAscii(view, offset + 4, 4);
+  if (!type) return null;
+  if (size32 === 0) return { type, size: scannedBytes - offset };
+  if (size32 === 1) {
+    if (offset + 16 > scannedBytes) return null;
+    const high = view.getUint32(offset + 8, false);
+    const low = view.getUint32(offset + 12, false);
+    return { type, size: high > 0 ? scannedBytes - offset : low };
+  }
+  if (size32 < 8) return null;
+  return { type, size: size32 };
+}
+
+function readAscii(view, offset, length) {
+  if (offset + length > view.byteLength) return null;
+  let out = '';
+  for (let index = 0; index < length; index += 1) out += String.fromCharCode(view.getUint8(offset + index));
+  return out;
 }
 
 function isRetryableRpcError(result) {

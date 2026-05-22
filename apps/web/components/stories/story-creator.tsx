@@ -18,6 +18,12 @@ import { requestR2UploadUrl } from '@/app/actions/posts';
 import { createStory } from '@/app/actions/stories';
 import { cn } from '@/lib/utils';
 import { compressImage, extensionForMime } from '@/lib/image/compress';
+import {
+  detectUploadMediaKind,
+  getUploadMediaExtension,
+  getUploadMediaMime,
+  validateVideoUploadFile,
+} from '@/lib/media/video-upload-guard';
 
 // -----------------------------------------------------------------------------
 // <StoryCreator /> — Upload + Poll-Builder für neue Stories.
@@ -72,13 +78,29 @@ export function StoryCreator({ viewerId }: StoryCreatorProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   // ── File-Handling ──
-  const onFileChosen = useCallback((f: File) => {
+  const onFileChosen = useCallback(async (f: File) => {
+    setUploadError(null);
+
+    const kind = detectUploadMediaKind(f);
+    if (!kind) {
+      setUploadError('Nur Bilder oder Videos.');
+      return;
+    }
+
     if (f.size > MAX_FILE_BYTES) {
       setUploadError('Datei zu groß (max 100 MB).');
       return;
     }
 
-    const mType: MediaType = f.type.startsWith('video') ? 'video' : 'image';
+    if (kind === 'video') {
+      const validation = await validateVideoUploadFile(f);
+      if (!validation.ok) {
+        setUploadError(validation.error);
+        return;
+      }
+    }
+
+    const mType: MediaType = kind;
     const url = URL.createObjectURL(f);
     setFile(f);
     setMediaType(mType);
@@ -108,15 +130,18 @@ export function StoryCreator({ viewerId }: StoryCreatorProps) {
     try {
       const ts = Date.now();
 
+      if (mediaType === 'video') {
+        const validation = await validateVideoUploadFile(file);
+        if (!validation.ok) throw new Error(validation.error);
+      }
+
       // Image-Compression-Pass (v1.w.12.7): Story-Bilder werden browser-seitig
       // komprimiert bevor sie hochgeladen werden. Stories werden ohnehin auf
       // 9:16-Mobile-Viewport dargestellt, das 48-MP-Original bringt da nichts.
       // Videos bleiben unberührt (ffmpeg.wasm-Scope).
       let uploadBody: Blob = file;
-      let uploadMime = file.type || (mediaType === 'video' ? 'video/mp4' : 'image/jpeg');
-      let uploadExt = (file.name.split('.').pop() || (mediaType === 'video' ? 'mp4' : 'jpg'))
-        .toLowerCase()
-        .slice(0, 5);
+      let uploadMime = getUploadMediaMime(file);
+      let uploadExt = getUploadMediaExtension(file);
 
       if (mediaType === 'image') {
         const result = await compressImage(file, { maxEdge: 1920, quality: 0.82 });
@@ -410,7 +435,7 @@ function Dropzone({
   onFileChosen,
 }: {
   inputRef: React.Ref<HTMLInputElement>;
-  onFileChosen: (f: File) => void;
+  onFileChosen: (f: File) => void | Promise<void>;
 }) {
   const [dragging, setDragging] = useState(false);
 

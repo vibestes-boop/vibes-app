@@ -23,6 +23,12 @@ import {
 import { cn } from '@/lib/utils';
 import { compressImage, extensionForMime } from '@/lib/image/compress';
 import {
+  detectUploadMediaKind,
+  getUploadMediaExtension,
+  getUploadMediaMime,
+  validateVideoUploadFile,
+} from '@/lib/media/video-upload-guard';
+import {
   publishPost,
   schedulePost,
   saveDraft,
@@ -151,16 +157,16 @@ export function CreateEditor({ viewerId, initialDraft }: Props) {
   }, [localPreviewUrl]);
 
   // ---------- File Selection ----------
-  const onFileChosen = useCallback((f: File) => {
+  const onFileChosen = useCallback(async (f: File) => {
     setUploadError(null);
     setToast(null);
 
-    const isVideo = f.type.startsWith('video/');
-    const isImage = f.type.startsWith('image/');
-    if (!isVideo && !isImage) {
+    const kind = detectUploadMediaKind(f);
+    if (!kind) {
       setUploadError('Nur Bilder oder Videos.');
       return;
     }
+    const isVideo = kind === 'video';
     const maxBytes = isVideo ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES;
     if (f.size > maxBytes) {
       setUploadError(
@@ -169,6 +175,14 @@ export function CreateEditor({ viewerId, initialDraft }: Props) {
           : `Bild zu groß (max ${Math.round(MAX_IMAGE_BYTES / 1024 / 1024)} MB).`,
       );
       return;
+    }
+
+    if (isVideo) {
+      const validation = await validateVideoUploadFile(f);
+      if (!validation.ok) {
+        setUploadError(validation.error);
+        return;
+      }
     }
 
     // Vorherige Preview-URL aufräumen
@@ -261,6 +275,11 @@ export function CreateEditor({ viewerId, initialDraft }: Props) {
       try {
         const ts = Date.now();
 
+        if (mType === 'video') {
+          const validation = await validateVideoUploadFile(f);
+          if (!validation.ok) throw new Error(validation.error);
+        }
+
         // Image-Compression-Pass (v1.w.12.7): Bilder werden browser-seitig
         // auf Longest-Edge 1920px runterskaliert + WebP (Fallback JPEG) mit
         // Quality 0.82 re-encoded, bevor sie als PUT zu R2 gehen. Videos
@@ -268,10 +287,8 @@ export function CreateEditor({ viewerId, initialDraft }: Props) {
         // `compressImage` ist defensiv: bei jedem Fehler + wenn das Original
         // bereits kleiner wäre, gibt es das Original unverändert zurück.
         let uploadBody: Blob = f;
-        let uploadMime = f.type || fallbackMime(mType, (f.name.split('.').pop() || 'jpg').toLowerCase().slice(0, 5));
-        let uploadExt = (f.name.split('.').pop() || (mType === 'video' ? 'mp4' : 'jpg'))
-          .toLowerCase()
-          .slice(0, 5);
+        let uploadMime = getUploadMediaMime(f);
+        let uploadExt = getUploadMediaExtension(f);
 
         if (mType === 'image') {
           const result = await compressImage(f, { maxEdge: 1920, quality: 0.82 });
@@ -299,31 +316,25 @@ export function CreateEditor({ viewerId, initialDraft }: Props) {
 
         let thumbUrl: string | null = null;
         if (mType === 'video') {
-          try {
-            const thumbBlob = await extractVideoFrameBlob(f, coverTimeMs ?? 0);
-            if (thumbBlob) {
-              const thumbKey = `thumbnails/${viewerId}/${ts}.jpg`;
-              const thumbSig = await requestR2UploadUrl({
-                key: thumbKey,
-                contentType: 'image/jpeg',
-                cacheControl,
-              });
-              if (thumbSig.ok) {
-                await putWithProgress(
-                  thumbSig.data.uploadUrl,
-                  thumbBlob,
-                  'image/jpeg',
-                  () => {
-                    /* ignore thumb progress */
-                  },
-                  cacheControl,
-                );
-                thumbUrl = thumbSig.data.publicUrl;
-              }
-            }
-          } catch {
-            // Thumbnail ist best-effort — Post funktioniert auch ohne.
-          }
+          const thumbBlob = await extractVideoFrameBlob(f, coverTimeMs ?? 0);
+          if (!thumbBlob) throw new Error('Video-Thumbnail konnte nicht erstellt werden.');
+          const thumbKey = `thumbnails/${viewerId}/${ts}.jpg`;
+          const thumbSig = await requestR2UploadUrl({
+            key: thumbKey,
+            contentType: 'image/jpeg',
+            cacheControl,
+          });
+          if (!thumbSig.ok) throw new Error(thumbSig.error);
+          await putWithProgress(
+            thumbSig.data.uploadUrl,
+            thumbBlob,
+            'image/jpeg',
+            () => {
+              /* ignore thumb progress */
+            },
+            cacheControl,
+          );
+          thumbUrl = thumbSig.data.publicUrl;
         } else if (mType === 'image') {
           // Bei Bild-Posts ist das hochgeladene Bild selbst das Thumbnail.
           // Wichtig: ohne das wäre thumbnail_url NULL → Profil-Grid zeigt
@@ -1503,17 +1514,6 @@ function ScheduleModal({
 // =============================================================================
 // Helpers
 // =============================================================================
-
-function fallbackMime(t: MediaType, ext: string): string {
-  if (t === 'video') {
-    if (ext === 'mov') return 'video/quicktime';
-    if (ext === 'webm') return 'video/webm';
-    return 'video/mp4';
-  }
-  if (ext === 'png') return 'image/png';
-  if (ext === 'webp') return 'image/webp';
-  return 'image/jpeg';
-}
 
 function putWithProgress(
   url: string,

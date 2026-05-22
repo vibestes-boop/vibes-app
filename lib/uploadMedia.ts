@@ -1,5 +1,13 @@
 import { useAuthStore } from './authStore';
 import { supabase } from './supabase';
+import {
+  extensionForMediaMime,
+  inspectMp4FastStart,
+  isVideoMime,
+  isWebmMime,
+  normalizeMediaMime,
+  VIDEO_FAST_START_ERROR,
+} from '../shared/media/videoFastStart';
 
 type UploadResult = {
   url: string;
@@ -15,26 +23,15 @@ type R2SignResult = {
 // ── Limits ──────────────────────────────────────────────────────────────────
 const MAX_IMAGE_BYTES = 50 * 1024 * 1024;  //  50 MB
 const MAX_VIDEO_BYTES = 200 * 1024 * 1024;  // 200 MB
+const IMMUTABLE_MEDIA_CACHE = 'public, max-age=31536000, immutable';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function mimeToExt(mimeType: string): string {
-  if (mimeType.includes('png')) return 'png';
-  if (mimeType.includes('webp')) return 'webp';
-  if (mimeType.includes('gif')) return 'gif';
-  if (mimeType.includes('mp4')) return 'mp4';
-  if (mimeType.includes('quicktime')) return 'mov';
-  if (mimeType.includes('mov')) return 'mov';
-  if (mimeType.includes('video')) return 'mp4';
-  return 'jpg';
+  return extensionForMediaMime(mimeType);
 }
 
 function isVideo(mimeType: string): boolean {
-  return (
-    mimeType.includes('video') ||
-    mimeType.includes('mp4') ||
-    mimeType.includes('mov') ||
-    mimeType.includes('quicktime')
-  );
+  return isVideoMime(mimeType);
 }
 
 /**
@@ -42,8 +39,8 @@ function isVideo(mimeType: string): boolean {
  * Uses || (not ??) to also catch empty strings that iOS sometimes returns.
  * Trims whitespace to prevent canonical header mismatches with the signed value.
  */
-function normalizeMime(raw: string | null | undefined): string {
-  return (raw || 'image/jpeg').trim();
+function normalizeMime(raw: string | null | undefined, uriOrName?: string | null): string {
+  return normalizeMediaMime(raw, uriOrName);
 }
 
 function getHeaderValue(headers: Record<string, string> | undefined, name: string): string | undefined {
@@ -61,6 +58,38 @@ function normalizeUploadHeaders(
   return cacheControl
     ? { 'Content-Type': contentType, 'Cache-Control': cacheControl }
     : { 'Content-Type': contentType };
+}
+
+async function assertUploadMediaHealthy(
+  localUri: string,
+  mimeType: string,
+  fileBuffer: ArrayBuffer,
+  signal?: AbortSignal,
+): Promise<void> {
+  if (!isVideo(mimeType)) return;
+
+  if (isWebmMime(mimeType)) {
+    throw new Error('Bitte lade ein MP4- oder MOV-Video hoch. WebM startet auf iOS nicht zuverlaessig im Feed.');
+  }
+
+  const inspection = inspectMp4FastStart(fileBuffer, mimeType);
+  if (inspection.status === 'slow-start') {
+    throw new Error(VIDEO_FAST_START_ERROR);
+  }
+
+  if (signal?.aborted) throw new Error('Upload abgebrochen.');
+
+  try {
+    const VideoThumbnails = await import('expo-video-thumbnails');
+    const { uri } = await VideoThumbnails.getThumbnailAsync(localUri, {
+      time: 0,
+      quality: 0.25,
+    });
+    if (!uri) throw new Error('missing thumbnail uri');
+  } catch (err) {
+    __DEV__ && console.warn('[media-upload-health]', err);
+    throw new Error('Video konnte nicht gelesen werden. Bitte waehle oder exportiere die Datei neu.');
+  }
 }
 
 // ── Retry with exponential backoff ───────────────────────────────────────────
@@ -114,7 +143,7 @@ async function uploadToR2(
   }
 
   // Normalize once — used for both signing AND the PUT Content-Type header.
-  const mimeType = normalizeMime(rawMimeType);
+  const mimeType = normalizeMime(rawMimeType, localUri);
 
   // ── 1) Fetch local file & validate size ─────────────────────────────────
   const fileRes = await fetch(localUri, { signal });
@@ -131,6 +160,7 @@ async function uploadToR2(
       `Datei zu groß: ${fileMB} MB (Maximum: ${limitMB} MB für ${isVideo(mimeType) ? 'Videos' : 'Bilder'})`,
     );
   }
+  await assertUploadMediaHealthy(localUri, mimeType, fileBuffer, signal);
   onProgress?.(15);
 
   // ── 2) Get presigned URL from Edge Function (with retry) ────────────────
@@ -138,7 +168,7 @@ async function uploadToR2(
     async () => {
       if (signal?.aborted) throw new Error('Upload abgebrochen.');
       const { data, error } = await supabase.functions.invoke('r2-sign', {
-        body: { key, contentType: mimeType },
+        body: { key, contentType: mimeType, cacheControl: IMMUTABLE_MEDIA_CACHE },
       });
       if (error || !data?.uploadUrl) {
         throw new Error(`Sign-Fehler: ${error?.message ?? 'Keine uploadUrl'}`);
@@ -201,7 +231,7 @@ export async function uploadPostMedia(
   onProgress?: (pct: number) => void,
   signal?: AbortSignal,
 ): Promise<UploadResult> {
-  const resolvedMime = normalizeMime(mimeType);
+  const resolvedMime = normalizeMime(mimeType, localUri);
   const ext = mimeToExt(resolvedMime);
   const folder = isVideo(resolvedMime) ? 'videos' : 'images';
   const key = `posts/${folder}/${userId}/${Date.now()}.${ext}`;

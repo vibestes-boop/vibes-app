@@ -31,6 +31,7 @@ export default function CreateStoryScreen() {
 
   const [mediaUri, setMediaUri] = useState<string | null>(null);
   const [mediaType, setMediaType] = useState<'image' | 'video'>('image');
+  const [mediaMimeType, setMediaMimeType] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
   // ── Poll-State ────────────────────────────────────────────────────────────────
@@ -56,6 +57,7 @@ export default function CreateStoryScreen() {
       const asset = result.assets[0];
       setMediaUri(asset.uri);
       setMediaType(asset.type === 'video' ? 'video' : 'image');
+      setMediaMimeType(asset.mimeType ?? null);
     }
   }, []);
 
@@ -64,7 +66,7 @@ export default function CreateStoryScreen() {
     if (!mediaUri || !profile) return;
     setUploading(true);
     try {
-      const mimeType = mediaType === 'video' ? 'video/mp4' : 'image/jpeg';
+      const mimeType = mediaMimeType ?? (mediaType === 'video' ? 'video/mp4' : 'image/jpeg');
       const { url: publicUrl } = await uploadPostMedia(profile.id, mediaUri, mimeType);
 
       // Für Videos: Thumbnail aus erstem Frame generieren
@@ -95,7 +97,7 @@ export default function CreateStoryScreen() {
     } finally {
       setUploading(false);
     }
-  }, [mediaUri, mediaType, profile, createStory, router, pollActive, pollQuestion, pollOption0, pollOption1]);
+  }, [mediaUri, mediaType, mediaMimeType, profile, createStory, router, pollActive, pollQuestion, pollOption0, pollOption1]);
 
   return (
     <KeyboardAvoidingView
