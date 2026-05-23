@@ -50,6 +50,7 @@ if (!serviceKey) failures.push('[env] Missing SUPABASE_SERVICE_ROLE_KEY.');
 
 let scorecard = null;
 if (failures.length === 0) {
+  const legal = checkLegalReadiness();
   const [product, activation, pushFeed, thumbnails, feedEndpoint] = await Promise.all([
     fetchRpc('product_health_snapshot', anonKey),
     fetchRpc('creator_activation_recovery_snapshot', serviceKey),
@@ -58,7 +59,7 @@ if (failures.length === 0) {
     fetchFeedEndpoint(),
   ]);
 
-  scorecard = buildScorecard({ product, activation, pushFeed, thumbnails, feedEndpoint });
+  scorecard = buildScorecard({ product, activation, pushFeed, thumbnails, feedEndpoint, legal });
   printScorecard(scorecard);
 }
 
@@ -78,7 +79,7 @@ if (args.strict && scorecard?.decision !== 'PRIVATE_COHORT_READY') {
 console.log('');
 console.log('Launch readiness scorecard passed.');
 
-function buildScorecard({ product, activation, pushFeed, thumbnails, feedEndpoint }) {
+function buildScorecard({ product, activation, pushFeed, thumbnails, feedEndpoint, legal }) {
   const gates = [];
 
   addDependencyGate(gates, 'Product snapshot', product, 'product_health_snapshot');
@@ -86,6 +87,12 @@ function buildScorecard({ product, activation, pushFeed, thumbnails, feedEndpoin
   addDependencyGate(gates, 'Push/feed snapshot', pushFeed, 'push_feed_health_snapshot');
   addDependencyGate(gates, 'Thumbnail tables', thumbnails, 'media thumbnail tables');
   addDependencyGate(gates, 'Feed endpoint', feedEndpoint, '/api/feed/explore');
+
+  gates.push(technicalGate(
+    'Legal public surface',
+    legal.ok,
+    legal.summary,
+  ));
 
   const productData = product.data || {};
   const activationData = activation.data || {};
@@ -274,6 +281,26 @@ async function fetchRpc(name, key) {
       return { ok: false, status: 0, error: error.message || 'request failed', data: null };
     }
   });
+}
+
+function checkLegalReadiness() {
+  const blockers = [
+    ['apps/web/app/imprint/page.tsx', /\[(Firmierung|Straße Hausnummer|PLZ Ort|Vor- und Nachname|HRB-Nummer|Amtsgericht|DE X+)\]|TODO:\s*(Vollständige Anschrift|Geschäftsführung|Handelsregister|Redaktionell)|PLACEHOLDER/],
+    ['apps/web/app/privacy/page.tsx', /Boilerplate-Starter|anwaltlich \+ DPO prüfen/],
+    ['apps/web/app/terms/page.tsx', /Boilerplate-Starting-Point|MUSS dieser von einem Anwalt/],
+  ];
+  const failing = [];
+
+  for (const [relativePath, pattern] of blockers) {
+    const absolutePath = path.join(repoRoot, relativePath);
+    if (!fs.existsSync(absolutePath) || pattern.test(fs.readFileSync(absolutePath, 'utf8'))) {
+      failing.push(relativePath);
+    }
+  }
+
+  return failing.length === 0
+    ? { ok: true, summary: 'public legal pages contain no launch placeholders' }
+    : { ok: false, summary: `${failing.length} legal page(s) still need real launch details/review` };
 }
 
 async function fetchThumbnailTables() {

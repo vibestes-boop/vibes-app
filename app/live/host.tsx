@@ -987,6 +987,23 @@ function HostUI({
     );
   }, [revokeCoHostById]);
 
+  const reportGuest = useCallback(async (userId: string, reason: string) => {
+    try {
+      const { data, error } = await supabase.rpc('create_report', {
+        p_target_type: 'profile',
+        p_target_id: userId,
+        p_reason: reason,
+      });
+      const rpcError = error ? null : ((data as { error?: string } | null)?.error ?? null);
+      if (error || rpcError) {
+        throw new Error(error?.message ?? rpcError ?? 'Meldung fehlgeschlagen.');
+      }
+      Alert.alert('Danke', 'Meldung wurde an Moderation übermittelt.');
+    } catch (error: any) {
+      Alert.alert('Melden fehlgeschlagen', error?.message ?? 'Bitte später erneut versuchen.');
+    }
+  }, []);
+
   // Long-Press ActionSheet auf Kachel: feinere Optionen für aktiven Duet-Partner.
   // Für Grid-Guests nur Kick (Mute über Broadcast ist nur für activeCoHostId).
   const showTileActionSheet = useCallback((userId: string, username: string) => {
@@ -1027,15 +1044,25 @@ function HostUI({
     buttons.push({
       text: '🚩 Melden',
       onPress: () => {
-        // TODO: Echten Report-Flow wenn Report-RPC verfügbar; bis dahin nur Toast.
-        Alert.alert('Danke', 'Meldung wurde an Moderation übermittelt.');
+        Alert.alert(
+          '🚩 Gast melden',
+          `Warum möchtest du @${username} melden?`,
+          [
+            { text: 'Spam / Werbung', onPress: () => reportGuest(userId, 'spam') },
+            { text: 'Belästigung', onPress: () => reportGuest(userId, 'harassment') },
+            { text: 'Unangemessener Inhalt', onPress: () => reportGuest(userId, 'inappropriate') },
+            { text: 'Fake Account', onPress: () => reportGuest(userId, 'fake_account') },
+            { text: 'Sonstiges', onPress: () => reportGuest(userId, 'other') },
+            { text: 'Abbrechen', style: 'cancel' },
+          ],
+        );
       },
     });
 
     buttons.push({ text: 'Abbrechen', style: 'cancel' });
 
     Alert.alert(`@${username}`, 'Aktionen für diesen Gast:', buttons);
-  }, [activeCoHostId, coHostMutedAudio, coHostMutedVideo, muteCoHost, revokeCoHostById]);
+  }, [activeCoHostId, coHostMutedAudio, coHostMutedVideo, muteCoHost, reportGuest, revokeCoHostById]);
 
   // Phase 1.1: Runtime Layout-Switcher — Host kann Layout live wechseln,
   // während ein Duet aktiv ist. Beim Wechsel nach "battle" wird eine neue

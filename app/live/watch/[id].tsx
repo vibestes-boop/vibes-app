@@ -2148,7 +2148,11 @@ function WatchUIContent({
                     key={reason}
                     style={s.reportOption}
                     onPress={async () => {
-                      await reportLive(sessionId, reason);
+                      const result = await reportLive(sessionId, reason);
+                      if (result.error) {
+                        Alert.alert('Melden fehlgeschlagen', result.error);
+                        return;
+                      }
                       setReportSent(true);
                     }}
                   >

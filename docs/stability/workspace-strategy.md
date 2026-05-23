@@ -41,8 +41,12 @@ For a production/TestFlight build, require the intended App Store version and
 build number explicitly:
 
 ```bash
-npm run native:release-guard -- --profile production --expected-version 1.26.5 --expected-build-number 272
+npm run native:release-guard -- --profile production --expected-version 1.26.6 --expected-build-number 275
 ```
+
+Before ending a long debugging or release session, update
+`/Users/zaurhatuev/vibes-app/handoff.md`. New sessions should read that file
+before touching EAS, App Store Connect, Vercel, Supabase, or production data.
 
 ## Current Source Of Truth
 

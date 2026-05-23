@@ -28,6 +28,7 @@
     "monitor:prod": "node scripts/check-production-monitoring.mjs",
     "monitor:integrity": "node scripts/check-production-integrity.mjs",
     "integrity:weekly": "npm run monitor:integrity && node scripts/check-r2-orphan-media.mjs",
+    "legal:readiness": "node scripts/check-legal-readiness.mjs",
     "launch:scorecard": "node scripts/check-launch-scorecard.mjs",
     "product:health": "node scripts/check-product-health.mjs",
     "product:activation": "node scripts/check-creator-activation.mjs",

@@ -19,11 +19,17 @@ npm run native:build:production
 Do not use raw `npx eas build --platform ios --profile production` as the normal
 release path, because it bypasses the source/version guard.
 
+For long debugging or release sessions, update
+`/Users/zaurhatuev/vibes-app/handoff.md` before stopping. New sessions must read
+that file before touching Vercel, Supabase, EAS, TestFlight, or App Store
+Connect.
+
 ## 1. App Gate
 
 ```bash
 cd /Users/zaurhatuev/vibes-app
 npm run release:gate -- --phase pre
+npm run launch:scorecard
 ```
 
 For high-risk frontend changes, include the production build:
@@ -144,6 +150,11 @@ R2 cleanup flow or intentionally raise the threshold with a documented reason.
 The product-health and cost-health reports are not deploy blockers by default.
 They are the input to the weekly product review and feature Keep / Improve /
 Kill decisions.
+
+`launch:scorecard` is the invite gate, not the technical deploy gate. A web or
+native fix may still ship while the decision is `INVITE_GATE_CLOSED`, but no
+broader user invites should happen until the scorecard reaches
+`PRIVATE_COHORT_READY`.
 
 Cost-health covers tracked AI cost plus usage proxies for media, R2, live,
 recording, and DB activity. Budget thresholds live in environment variables
