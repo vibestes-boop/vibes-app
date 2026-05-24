@@ -16,13 +16,16 @@
 // -----------------------------------------------------------------------------
 
 // Bump bei jeder signifikanten SW-Änderung — Activate-Phase purged dann
-// alte Caches. v2 = Push-Handler-Support (v1.w.12.4).
-const CACHE_VERSION = 'serlo-v2';
+// alte Caches. v3 = brand icon PNG fallbacks.
+const CACHE_VERSION = 'serlo-v3';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE_URLS = [
   OFFLINE_URL,
   '/icon.svg',
+  '/icon-192.png',
+  '/icon-512.png',
+  '/apple-touch-icon.png',
 ];
 
 self.addEventListener('install', (event) => {
