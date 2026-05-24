@@ -110,6 +110,8 @@ export function useStoryHighlights(userId: string | null) {
     },
     enabled: !!userId,
     staleTime: 1000 * 60 * 5,
+    gcTime: 24 * 60 * 60 * 1000,
+    placeholderData: (previousData) => previousData,
   });
 }
 
@@ -151,8 +153,9 @@ async function fetchHighlightsLegacy(userId: string): Promise<StoryHighlight[]> 
 }
 
 // ── Eigene Stories für den Highlight-Picker (alle — aktive + archivierte) ─────
-export function useMyStoryArchive() {
+export function useMyStoryArchive(options: { enabled?: boolean } = {}) {
   const userId = useAuthStore((s) => s.profile?.id);
+  const enabled = options.enabled ?? true;
 
   return useQuery({
     queryKey: ['my-story-archive', userId],
@@ -175,14 +178,16 @@ export function useMyStoryArchive() {
       }
       return (data ?? []).filter((s: any) => !!s.media_url);
     },
-    enabled: !!userId,
+    enabled: enabled && !!userId,
     staleTime: 1000 * 60 * 2,
+    gcTime: 1000 * 60 * 30,
   });
 }
 
 // ── Eigene Posts für den Highlight-Picker ─────────────────────────────────────
-export function useMyPostsForHighlight() {
+export function useMyPostsForHighlight(options: { enabled?: boolean } = {}) {
   const userId = useAuthStore((s) => s.profile?.id);
+  const enabled = options.enabled ?? true;
 
   return useQuery({
     queryKey: ['my-posts-for-highlight', userId],
@@ -204,8 +209,9 @@ export function useMyPostsForHighlight() {
       }
       return (data ?? []).filter((p: any) => !!p.media_url);
     },
-    enabled: !!userId,
+    enabled: enabled && !!userId,
     staleTime: 1000 * 60 * 2,
+    gcTime: 1000 * 60 * 30,
   });
 }
 

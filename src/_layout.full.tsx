@@ -442,6 +442,21 @@ export default function RootLayoutFull() {
     return () => clearTimeout(t);
   }, []);
 
+  const persistedQueryKeys = new Set([
+    'vibe-feed',
+    'trending-feed',
+    'following-feed',
+    'guild-feed',
+    'guild-info',
+    'guild-member-count',
+    'guild-stories',
+    'story-highlights',
+    'shop-products',
+    'saved-products',
+    'user-posts',
+    'bookmarked-posts',
+  ]);
+
   return (
     <ErrorBoundary>
       <PersistQueryClientProvider
@@ -454,11 +469,7 @@ export default function RootLayoutFull() {
           dehydrateOptions: {
             shouldDehydrateQuery: (query) => {
               const key = query.queryKey[0];
-              return key === 'vibe-feed'
-                || key === 'trending-feed'
-                || key === 'following-feed'
-                || key === 'user-posts'
-                || key === 'bookmarked-posts';
+              return typeof key === 'string' && persistedQueryKeys.has(key);
             },
           },
         }}

@@ -325,10 +325,11 @@ export function useGuildFeed() {
         is_liked:      likedSet.has(p.id),
       })) as GuildPost[];
     },
-    staleTime: 0,              // Immer fresh — Guild-Feed soll nie gecacht bleiben
-    gcTime:    1000 * 60 * 5,
-    refetchOnWindowFocus: true,
-    refetchOnMount: 'always',
+    staleTime: 1000 * 45,
+    gcTime:    1000 * 60 * 30,
+    refetchOnWindowFocus: false,
+    refetchOnMount: true,
+    placeholderData: (previousData) => previousData,
   });
 }
 
@@ -417,5 +418,7 @@ export function useGuildInfo(guildId: string | null) {
     },
     enabled: !!guildId,
     staleTime: 1000 * 60 * 10,
+    gcTime: 24 * 60 * 60 * 1000,
+    placeholderData: (previousData) => previousData,
   });
 }

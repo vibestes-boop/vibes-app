@@ -14,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback,useEffect,useRef,useState } from 'react';
 import {
 Animated,
+ActivityIndicator,
 Dimensions,
 KeyboardAvoidingView,
 Modal,
@@ -48,11 +49,13 @@ function formatDate(iso: string) {
 }
 
 export function HighlightPickerSheet({
-  visible, stories, posts = [], onClose, onConfirm,
+  visible, stories, posts = [], loadingStories = false, loadingPosts = false, onClose, onConfirm,
 }: {
   visible: boolean;
   stories: StoryItem[];
   posts?: StoryItem[];
+  loadingStories?: boolean;
+  loadingPosts?: boolean;
   onClose: () => void;
   /** items: alle ausgewählten Medien (mind. 1), title: vergebener Name */
   onConfirm: (items: HighlightItem[], title: string) => void;
@@ -65,6 +68,7 @@ export function HighlightPickerSheet({
   const [activeTab, setActiveTab] = useState<'stories' | 'posts'>('stories');
 
   const currentItems = activeTab === 'stories' ? stories : posts;
+  const isCurrentTabLoading = activeTab === 'stories' ? loadingStories : loadingPosts;
 
   const sheetY = useRef(new Animated.Value(SCREEN_H)).current;
 
@@ -235,7 +239,14 @@ export function HighlightPickerSheet({
             {/* Story-Auswahl Grid — Multi-Select */}
             {step === 'pick' && (
               <View style={styles.grid}>
-                {currentItems.length === 0 ? (
+                {isCurrentTabLoading ? (
+                  <View style={styles.loadingTab}>
+                    <ActivityIndicator color="#FFFFFF" size="small" />
+                    <Text style={styles.emptyTabText}>
+                      {activeTab === 'stories' ? 'Stories werden geladen…' : 'Posts werden geladen…'}
+                    </Text>
+                  </View>
+                ) : currentItems.length === 0 ? (
                   <Text style={styles.emptyTabText}>
                     {activeTab === 'stories' ? 'Keine Stories vorhanden.' : 'Keine Posts mit Medien.'}
                   </Text>
@@ -254,6 +265,7 @@ export function HighlightPickerSheet({
                               source={{ uri: item.thumbnail_url || item.media_url }}
                               style={StyleSheet.absoluteFill}
                               contentFit="cover"
+                              cachePolicy="memory-disk"
                             />
                             <View style={styles.dateBadge}>
                               <Text style={styles.dateText}>{formatDate(item.created_at)}</Text>
@@ -286,6 +298,7 @@ export function HighlightPickerSheet({
                       source={{ uri: coverItem.thumbnail_url || coverItem.media_url }}
                       style={styles.previewThumb}
                       contentFit="cover"
+                      cachePolicy="memory-disk"
                     />
                     <LinearGradient colors={['transparent', 'rgba(0,0,0,0.5)']} style={StyleSheet.absoluteFill} />
                     {selCount > 1 && (
@@ -432,5 +445,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingVertical: 40,
     paddingHorizontal: 32,
+  },
+  loadingTab: {
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 40,
   },
 });

@@ -92,18 +92,16 @@ export default function GuildScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [guildRefreshTick]);
 
-  // Stilles Hintergrund-Refetch bei Fokus + Video-Steuerung:
-  // - Bei Fokus: Screen als aktiv markieren → Videos dürfen spielen
-  // - Bei Blur (Navigation weg): isScreenFocused = false → alle Videos stoppen sofort
+  // Fokus steuert nur Video-Playback. Daten kommen sofort aus React-Query-Cache
+  // und werden durch staleTime, Pull-to-refresh oder Tab-refresh aktualisiert.
   useFocusEffect(
     useCallback(() => {
       setIsScreenFocused(true);
-      refetch();
       return () => {
         // Screen verliert Fokus (z.B. Navigation zur Detailseite)
         setIsScreenFocused(false);
       };
-    }, [refetch]),
+    }, []),
   );
 
   // User-initiierter Pull-to-Refresh — einzige Stelle die den Spinner aktiviert

@@ -106,14 +106,19 @@ export function useShopProducts(opts?: {
   category?:  ProductCategory;
   limit?:     number;
 }) {
+  const limit = opts?.limit ?? 30;
   return useQuery<Product[]>({
-    queryKey: ['shop-products', opts?.sellerId, opts?.category],
-    staleTime: 3 * 60 * 1000,
+    queryKey: ['shop-products', opts?.sellerId ?? null, opts?.category ?? null, limit],
+    staleTime: 5 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
+    placeholderData: (previousData) => previousData,
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_shop_products', {
         p_seller_id: opts?.sellerId ?? null,
         p_category:  opts?.category  ?? null,
-        p_limit:     opts?.limit     ?? 30,
+        p_limit:     limit,
         p_offset:    0,
       });
       if (error) throw error;

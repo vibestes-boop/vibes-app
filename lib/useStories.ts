@@ -143,10 +143,11 @@ export function useGuildStories(options: { enabled?: boolean } = {}) {
       });
     },
     enabled: enabled && !!userId,
-    staleTime: 1000 * 60,
-    gcTime: 1000 * 60 * 5,
-    refetchOnMount: true,        // Nur wenn stale (>60s) — nicht bei jedem Tab-Fokus
+    staleTime: 1000 * 60 * 2,
+    gcTime: 1000 * 60 * 30,
+    refetchOnMount: true,        // Nur wenn stale (>2min) — nicht bei jedem Tab-Fokus
     refetchOnWindowFocus: false,
+    placeholderData: (previousData) => previousData,
   });
 }
 

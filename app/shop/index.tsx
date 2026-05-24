@@ -124,29 +124,17 @@ function ProductCard({ product, onPress, colors }: {
       accessibilityRole="button"
       accessibilityLabel={product.title}
     >
-      {/* ── Bild (3:4 Hochformat, TikTok-Style Blur-Fill) ──
-          Karten behalten konsistente 3:4-Höhe, aber das Bild wird nie
-          beschnitten: geblurrte Kopie füllt den Rahmen, Original oben
-          drauf mit `contain`. Funktioniert für Landscape, Portrait,
-          Square — immer volles Produkt sichtbar. */}
+      {/* ── Bild (3:4 Hochformat) ──
+          Ein einzelner Decode pro Karte hält den Shop beim Öffnen spürbar leichter. */}
       <View style={card.imgWrap}>
         {product.cover_url ? (
-          <>
-            <Image
-              source={{ uri: product.cover_url }}
-              style={card.imgBg}
-              contentFit="cover"
-              blurRadius={25}
-              transition={150}
-            />
-            <View style={card.imgDim} />
-            <Image
-              source={{ uri: product.cover_url }}
-              style={card.imgFg}
-              contentFit="contain"
-              transition={250}
-            />
-          </>
+          <Image
+            source={{ uri: product.cover_url }}
+            style={card.imgFg}
+            contentFit="contain"
+            transition={120}
+            cachePolicy="memory-disk"
+          />
         ) : (
           <View style={[card.imgFill, card.imgFallback, { backgroundColor: colors.bg.primary }]}>
             <ShoppingBag size={36} color={colors.text.muted} strokeWidth={1.2} />
@@ -207,6 +195,7 @@ function ProductCard({ product, onPress, colors }: {
               source={{ uri: product.seller_avatar }}
               style={card.sellerAvatar}
               contentFit="cover"
+              cachePolicy="memory-disk"
             />
           ) : (
             <View style={[card.sellerAvatar, { backgroundColor: colors.bg.primary }]} />
@@ -281,21 +270,15 @@ const card = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,
   },
-  // 3:4-Rahmen auf dem Container — Blur-Background + Foreground-Image
-  // teilen sich dieselbe Bounding-Box. overflow:hidden schneidet den
-  // Blur an der Karten-Kante sauber ab.
+  // 3:4-Rahmen auf dem Container; das Produktbild wird vollständig sichtbar
+  // und nur einmal dekodiert.
   imgWrap: {
     position: 'relative',
     width: '100%',
     aspectRatio: 3 / 4,
     overflow: 'hidden',
-    backgroundColor: '#000',
+    backgroundColor: '#0B0B0E',
   },
-  imgBg: { ...StyleSheet.absoluteFillObject },
-  // Leichte Abdunklung über dem Blur — macht den Foreground-Rand klarer
-  // und verhindert dass knallige Landscape-Fotos den Rahmen optisch
-  // überstrahlen. 18% reicht, nicht zu dunkel.
-  imgDim: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.18)' },
   imgFg: { ...StyleSheet.absoluteFillObject },
   // Fallback wenn kein Bild gesetzt: füllt komplett
   imgFill: { ...StyleSheet.absoluteFillObject },
@@ -697,6 +680,10 @@ export default function ShopScreen() {
           columnWrapperStyle={s.gridRow}
           contentContainerStyle={[s.gridContent, { paddingBottom: insets.bottom + 48 }]}
           showsVerticalScrollIndicator={false}
+          initialNumToRender={6}
+          maxToRenderPerBatch={6}
+          windowSize={5}
+          removeClippedSubviews
           refreshControl={
             <RefreshControl
               refreshing={isRefetching}

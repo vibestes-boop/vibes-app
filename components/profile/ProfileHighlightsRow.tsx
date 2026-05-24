@@ -67,6 +67,7 @@ function HighlightBubble({
             source={{ uri: highlight.thumbnail_url || highlight.media_url }}
             style={StyleSheet.absoluteFill}
             contentFit="cover"
+            cachePolicy="memory-disk"
           />
         ) : null}
         <LinearGradient
@@ -93,10 +94,11 @@ export function ProfileHighlightsRow({
   const { data: highlights = [], isLoading } = useStoryHighlights(userId);
   const { mutate: removeHighlight } = useRemoveHighlight();
   const { mutate: addHighlight, isPending: isAdding } = useAddHighlight();
-  const { data: storyArchive = [] } = useMyStoryArchive();
-  const { data: postArchive = [] } = useMyPostsForHighlight();
   const openViewer = useStoryViewerStore((s) => s.open);
   const [pickerVisible, setPickerVisible] = useState(false);
+  const archiveEnabled = isOwn && pickerVisible;
+  const { data: storyArchive = [], isLoading: isStoryArchiveLoading } = useMyStoryArchive({ enabled: archiveEnabled });
+  const { data: postArchive = [], isLoading: isPostArchiveLoading } = useMyPostsForHighlight({ enabled: archiveEnabled });
 
   // ── Highlight-Liste → StoryGroup konvertieren ─────────────────────────────
   const toGroup = (h: StoryHighlight): StoryGroup => {
@@ -223,6 +225,8 @@ export function ProfileHighlightsRow({
         visible={pickerVisible}
         stories={storyArchive}
         posts={postArchive}
+        loadingStories={isStoryArchiveLoading}
+        loadingPosts={isPostArchiveLoading}
         onClose={() => setPickerVisible(false)}
         onConfirm={handlePickerConfirm}
       />
