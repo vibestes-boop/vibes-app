@@ -8,7 +8,7 @@
  */
 
 import { AIImageSheet } from '@/components/ai/AIImageSheet';
-import { uploadPostMedia } from '@/lib/uploadMedia';
+import { uploadProductImage } from '@/lib/uploadMedia';
 import { useCoinsWallet } from '@/lib/useGifts';
 import {
 useCreateProduct,
@@ -125,7 +125,7 @@ export default function MyShopScreen() {
       const uri = result.assets[0].uri;
       const mimeType = result.assets[0].mimeType ?? 'image/jpeg';
       const user = (await import('@/lib/authStore')).useAuthStore.getState().user;
-      const { url } = await uploadPostMedia(user?.id ?? 'anon', uri, mimeType);
+      const { url } = await uploadProductImage(user?.id ?? 'anon', uri, mimeType);
       setForm(f => ({ ...f, cover_url: url }));
     } catch {
       Alert.alert('Upload fehlgeschlagen', 'Bitte nochmal versuchen.');
@@ -157,7 +157,7 @@ export default function MyShopScreen() {
       const user = (await import('@/lib/authStore')).useAuthStore.getState().user;
       const urls = await Promise.all(
         result.assets.map(async (asset) => {
-          const { url } = await uploadPostMedia(user?.id ?? 'anon', asset.uri, asset.mimeType ?? 'image/jpeg');
+          const { url } = await uploadProductImage(user?.id ?? 'anon', asset.uri, asset.mimeType ?? 'image/jpeg');
           return url;
         })
       );

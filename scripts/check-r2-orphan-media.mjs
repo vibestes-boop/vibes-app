@@ -9,7 +9,7 @@ const SERVICE = 's3';
 const DEFAULT_MAX_ORPHANS = 0;
 const DEFAULT_MAX_SCANNED = 5000;
 const DEFAULT_TIMEOUT_MS = 12000;
-const DEFAULT_PREFIXES = ['posts/', 'thumbnails/'];
+const DEFAULT_PREFIXES = ['posts/', 'products/', 'thumbnails/'];
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = parseArgs(process.argv.slice(2));
 
@@ -56,13 +56,13 @@ if (missing.length > 0) {
 }
 
 if (failures.length === 0) {
-  const referencedKeys = await loadReferencedPostMediaKeys();
+  const referencedKeys = await loadReferencedMediaKeys();
   const bucketKeys = await listBucketKeys();
   const orphans = bucketKeys.filter((key) => !referencedKeys.has(key));
 
   console.log('');
   console.log('Summary:');
-  console.log(`  - referenced post media keys: ${referencedKeys.size}`);
+  console.log(`  - referenced media keys: ${referencedKeys.size}`);
   console.log(`  - scanned R2 objects: ${bucketKeys.length}`);
   console.log(`  - orphan R2 objects: ${orphans.length}`);
 
@@ -95,8 +95,18 @@ if (failures.length > 0) {
 console.log('');
 console.log('R2 orphan media check passed.');
 
-async function loadReferencedPostMediaKeys() {
+async function loadReferencedMediaKeys() {
   const keys = new Set();
+
+  await loadPostMediaKeys(keys);
+  await loadStoryMediaKeys(keys);
+  await loadStoryHighlightMediaKeys(keys);
+  await loadProductMediaKeys(keys);
+
+  return keys;
+}
+
+async function loadPostMediaKeys(keys) {
   let offset = 0;
   const pageSize = 1000;
 
@@ -129,8 +139,131 @@ async function loadReferencedPostMediaKeys() {
     if (rows.length < pageSize) break;
     offset += rows.length;
   }
+}
 
-  return keys;
+async function loadStoryMediaKeys(keys) {
+  let offset = 0;
+  const pageSize = 1000;
+
+  while (true) {
+    const url =
+      `${env.supabaseUrl}/rest/v1/stories?select=id,media_url,thumbnail_url` +
+      `&or=(media_url.not.is.null,thumbnail_url.not.is.null)` +
+      `&order=created_at.desc&limit=${pageSize}&offset=${offset}`;
+    const response = await fetchWithTimeout(url, {
+      headers: {
+        accept: 'application/json',
+        apikey: env.serviceRoleKey,
+        authorization: `Bearer ${env.serviceRoleKey}`,
+      },
+    });
+
+    const text = await response.text();
+    if (!response.ok) {
+      throw new Error(`Supabase stories query failed (${response.status}): ${summarize(text)}`);
+    }
+
+    const rows = JSON.parse(text);
+    for (const row of rows) {
+      for (const value of [row.media_url, row.thumbnail_url]) {
+        const key = keyFromPublicUrl(value);
+        if (key) keys.add(key);
+      }
+    }
+
+    if (rows.length < pageSize) break;
+    offset += rows.length;
+  }
+}
+
+async function loadStoryHighlightMediaKeys(keys) {
+  let offset = 0;
+  const pageSize = 1000;
+
+  while (true) {
+    const url =
+      `${env.supabaseUrl}/rest/v1/story_highlights?select=id,media_url,thumbnail_url,items` +
+      `&order=created_at.desc&limit=${pageSize}&offset=${offset}`;
+    const response = await fetchWithTimeout(url, {
+      headers: {
+        accept: 'application/json',
+        apikey: env.serviceRoleKey,
+        authorization: `Bearer ${env.serviceRoleKey}`,
+      },
+    });
+
+    const text = await response.text();
+    if (!response.ok) {
+      // Older deployments may not have story_highlights yet; do not make the
+      // orphan scanner destructive just because an optional surface is absent.
+      if (response.status === 404) return;
+      throw new Error(`Supabase story_highlights query failed (${response.status}): ${summarize(text)}`);
+    }
+
+    const rows = JSON.parse(text);
+    for (const row of rows) {
+      for (const value of [row.media_url, row.thumbnail_url]) {
+        const key = keyFromPublicUrl(value);
+        if (key) keys.add(key);
+      }
+      addKeysFromJsonMedia(row.items, keys);
+    }
+
+    if (rows.length < pageSize) break;
+    offset += rows.length;
+  }
+}
+
+async function loadProductMediaKeys(keys) {
+  let offset = 0;
+  const pageSize = 1000;
+
+  while (true) {
+    const url =
+      `${env.supabaseUrl}/rest/v1/products?select=id,cover_url,image_urls,file_url` +
+      `&order=created_at.desc&limit=${pageSize}&offset=${offset}`;
+    const response = await fetchWithTimeout(url, {
+      headers: {
+        accept: 'application/json',
+        apikey: env.serviceRoleKey,
+        authorization: `Bearer ${env.serviceRoleKey}`,
+      },
+    });
+
+    const text = await response.text();
+    if (!response.ok) {
+      throw new Error(`Supabase products query failed (${response.status}): ${summarize(text)}`);
+    }
+
+    const rows = JSON.parse(text);
+    for (const row of rows) {
+      for (const value of [row.cover_url, row.file_url, ...(Array.isArray(row.image_urls) ? row.image_urls : [])]) {
+        const key = keyFromPublicUrl(value);
+        if (key) keys.add(key);
+      }
+    }
+
+    if (rows.length < pageSize) break;
+    offset += rows.length;
+  }
+}
+
+function addKeysFromJsonMedia(value, keys) {
+  if (!value) return;
+  if (Array.isArray(value)) {
+    for (const item of value) addKeysFromJsonMedia(item, keys);
+    return;
+  }
+  if (typeof value !== 'object') return;
+
+  for (const key of ['media_url', 'thumbnail_url', 'url']) {
+    const mediaKey = keyFromPublicUrl(value[key]);
+    if (mediaKey) keys.add(mediaKey);
+  }
+
+  for (const nested of Object.values(value)) {
+    if (nested && typeof nested === 'object') addKeysFromJsonMedia(nested, keys);
+  }
 }
 
 async function listBucketKeys() {

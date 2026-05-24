@@ -239,6 +239,24 @@ export async function uploadPostMedia(
 }
 
 /**
+ * Shop-Produktbilder getrennt von Feed-Posts ablegen. Dadurch bleiben sie
+ * leichter auditierbar und werden vom R2-Orphan-Scanner als Produkt-Medien
+ * geschützt.
+ */
+export async function uploadProductImage(
+  userId: string,
+  localUri: string,
+  mimeType?: string | null,
+  onProgress?: (pct: number) => void,
+  signal?: AbortSignal,
+): Promise<UploadResult> {
+  const resolvedMime = normalizeMime(mimeType, localUri);
+  const ext = mimeToExt(resolvedMime);
+  const key = `products/images/${userId}/${Date.now()}.${ext}`;
+  return uploadToR2(key, localUri, resolvedMime, onProgress, signal);
+}
+
+/**
  * Video-Thumbnail direkt hochladen (bereits generiertes Bild-URI)
  * Internes Hilfsmittel — wird von generateAndUploadThumbnail genutzt.
  */

@@ -30,7 +30,7 @@ Star,
 Truck,
 X,
 } from 'lucide-react-native';
-import { useCallback,useMemo,useState } from 'react';
+import { useCallback,useEffect,useMemo,useState } from 'react';
 import {
 FlatList,
 Modal,
@@ -108,6 +108,12 @@ function ProductCard({ product, onPress, colors }: {
     : 0;
 
   const showFreeShipping = product.free_shipping && product.category === 'physical';
+  const primaryImageUrl = product.cover_url ?? product.image_urls?.[0] ?? null;
+  const [imageFailed, setImageFailed] = useState(false);
+
+  useEffect(() => {
+    setImageFailed(false);
+  }, [primaryImageUrl]);
 
   // „NEU"-Badge: Produkt ist < 48h alt (nur wenn kein Sale, damit nichts überlappt)
   const isNew = !hasSale
@@ -127,13 +133,14 @@ function ProductCard({ product, onPress, colors }: {
       {/* ── Bild (3:4 Hochformat) ──
           Ein einzelner Decode pro Karte hält den Shop beim Öffnen spürbar leichter. */}
       <View style={card.imgWrap}>
-        {product.cover_url ? (
+        {primaryImageUrl && !imageFailed ? (
           <Image
-            source={{ uri: product.cover_url }}
+            source={{ uri: primaryImageUrl }}
             style={card.imgFg}
-            contentFit="contain"
+            contentFit="cover"
             transition={120}
             cachePolicy="memory-disk"
+            onError={() => setImageFailed(true)}
           />
         ) : (
           <View style={[card.imgFill, card.imgFallback, { backgroundColor: colors.bg.primary }]}>
