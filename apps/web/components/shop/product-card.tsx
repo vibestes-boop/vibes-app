@@ -1,9 +1,9 @@
 import Link from 'next/link';
-import Image from 'next/image';
 import type { Route } from 'next';
 import { MapPin, Truck, Camera, Sparkles, BadgeCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { StarDisplay } from './star-display';
+import { ProductImage } from './product-image';
 import type { ShopProduct } from '@/lib/data/shop';
 
 // -----------------------------------------------------------------------------
@@ -81,35 +81,7 @@ export function ProductCard({
     >
       {/* Hero-Bild 3:4 mit Blur-Fill */}
       <div className="relative aspect-[3/4] w-full overflow-hidden bg-muted">
-        {cover ? (
-          <>
-            {/* Layer 1: Blur-Background */}
-            <Image
-              src={cover}
-              alt=""
-              fill
-              priority={priority}
-              className="scale-110 object-cover blur-xl"
-              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-              aria-hidden
-            />
-            {/* Layer 2: Dim-Overlay */}
-            <div className="absolute inset-0 bg-black/30" />
-            {/* Layer 3: Contain-Foreground */}
-            <Image
-              src={cover}
-              alt={product.title}
-              fill
-              priority={priority}
-              className="object-contain"
-              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-            />
-          </>
-        ) : (
-          <div className="flex h-full items-center justify-center bg-gradient-to-br from-muted to-muted-foreground/10 text-6xl">
-            {product.category === 'digital' ? '💾' : product.category === 'service' ? '✨' : '📦'}
-          </div>
-        )}
+        <ProductImage cover={cover} title={product.title} category={product.category} priority={priority} />
 
         {/*
          * Badge-Konsolidierung (UI-Phase 3, C2): nur noch ZWEI Ecken belegt,
