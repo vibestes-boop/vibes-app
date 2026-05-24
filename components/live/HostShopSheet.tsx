@@ -17,10 +17,10 @@
  */
 
 import { useHostShopProducts } from '@/lib/useLiveShopMode';
+import { ProductCoverImage } from '@/components/shop/ProductCoverImage';
 import type { Product } from '@/lib/useShop';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
-import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { Package,ShoppingBag,X as XIcon } from 'lucide-react-native';
 import React,{ useCallback } from 'react';
@@ -143,13 +143,7 @@ function ProductCard({
       ]}
     >
       <View style={card.imgWrap}>
-        {product.cover_url ? (
-          <Image source={product.cover_url} style={card.img} contentFit="cover" />
-        ) : (
-          <View style={[card.img, card.imgFallback]}>
-            <ShoppingBag size={30} color="rgba(255,255,255,0.3)" strokeWidth={1.2} />
-          </View>
-        )}
+        <ProductCoverImage uri={product.cover_url} category={product.category} style={card.img} iconSize={30} />
 
         {isSoldOut && (
           <View style={card.soldOut}>

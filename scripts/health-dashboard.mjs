@@ -49,6 +49,7 @@ if (failures.length === 0) {
     campaigns,
     regions,
     thumbnails,
+    productMedia,
     pushFeed,
     governance,
     feedEndpoint,
@@ -62,6 +63,7 @@ if (failures.length === 0) {
     fetchAdminTable('admin_campaigns?select=id,title,status,budget_cents,spend_cents,updated_at&limit=1000'),
     fetchAdminTable(`admin_region_daily_metrics?select=country_code,country_name,metric_date,active_users,views,reports&metric_date=gte.${thirtyDaysAgo()}&limit=5000`),
     fetchThumbnailTables(),
+    fetchProductMediaHealth(),
     fetchRpc('push_feed_health_snapshot'),
     checkGovernanceFiles(),
     fetchFeedEndpoint(),
@@ -77,6 +79,7 @@ if (failures.length === 0) {
   addRegions(regions);
   addMediaPlayback(feedEndpoint);
   addThumbnails(thumbnails);
+  addProductMedia(productMedia);
   addPushFeed(pushFeed, feedEndpoint);
   addGovernance(governance);
 }
@@ -234,6 +237,33 @@ async function fetchThumbnailTables() {
     ok: true,
     posts: Array.isArray(posts.data) ? posts.data : [],
     stories: Array.isArray(stories.data) ? stories.data : [],
+  };
+}
+
+async function fetchProductMediaHealth() {
+  const result = await fetchAdminTable('products?select=id,title,category,cover_url,image_urls,is_active,created_at&is_active=eq.true&limit=5000');
+  if (!result.ok) return { ok: false, error: result.error };
+
+  const products = Array.isArray(result.data) ? result.data : [];
+  const mediaItems = [];
+  let withoutMedia = 0;
+
+  for (const product of products) {
+    const urls = collectProductMediaUrls(product);
+    if (urls.length === 0) {
+      withoutMedia += 1;
+      continue;
+    }
+    mediaItems.push(...urls.map((item) => ({ ...item, productId: product.id })));
+  }
+
+  const checks = await Promise.all(mediaItems.map(checkProductMediaUrl));
+  return {
+    ok: true,
+    activeProducts: products.length,
+    productsWithoutMedia: withoutMedia,
+    mediaUrls: mediaItems.length,
+    brokenUrls: checks.filter((item) => !item.ok),
   };
 }
 
@@ -452,6 +482,22 @@ function addThumbnails(result) {
   );
 }
 
+function addProductMedia(result) {
+  if (!result.ok) return addRow('Shop Media', 'Red', `product media failed: ${result.error}`, 'npm run shop:media-health');
+  const broken = result.brokenUrls || [];
+  const withoutMedia = Number(result.productsWithoutMedia || 0);
+  const status = broken.length > 0 ? 'Red' : withoutMedia > 0 ? 'Yellow' : 'Green';
+  const brokenSummary = broken.length > 0
+    ? `, broken sample ${broken.slice(0, 3).map((item) => item.productId).join(', ')}`
+    : '';
+  addRow(
+    'Shop Media',
+    status,
+    `active ${number(result.activeProducts)}, media URLs ${number(result.mediaUrls)}, missing media ${number(withoutMedia)}, broken ${number(broken.length)}${brokenSummary}`,
+    'npm run shop:media-health',
+  );
+}
+
 function addMediaPlayback(feedEndpoint) {
   if (!feedEndpoint.ok) {
     return addRow('Media Playback', 'Red', `feed endpoint failed: ${feedEndpoint.error}`, 'npm run media:playback-health');
@@ -547,6 +593,65 @@ async function fetchWithTimeout(url, init = {}) {
     return await fetch(url, { ...init, signal: controller.signal });
   } finally {
     clearTimeout(timer);
+  }
+}
+
+function collectProductMediaUrls(row) {
+  const items = [];
+  if (isHttpUrl(row.cover_url)) items.push({ kind: 'cover', url: row.cover_url });
+  for (const url of parseUrlArray(row.image_urls)) {
+    if (isHttpUrl(url) && url !== row.cover_url) items.push({ kind: 'gallery', url });
+  }
+  return items;
+}
+
+async function checkProductMediaUrl(item) {
+  try {
+    const head = await fetchWithTimeout(item.url, {
+      method: 'HEAD',
+      headers: { accept: 'image/*,*/*;q=0.8', 'user-agent': 'SerloHealthDashboard/1.0' },
+    });
+    if (head.ok) return { ok: true, ...item };
+    if (![403, 405, 501].includes(head.status)) {
+      return { ok: false, status: head.status, url: sanitizeUrl(item.url), ...item };
+    }
+
+    const get = await fetchWithTimeout(item.url, {
+      headers: {
+        accept: 'image/*,*/*;q=0.8',
+        range: 'bytes=0-0',
+        'user-agent': 'SerloHealthDashboard/1.0',
+      },
+    });
+    return get.ok
+      ? { ok: true, ...item }
+      : { ok: false, status: get.status, url: sanitizeUrl(item.url), ...item };
+  } catch (error) {
+    return { ok: false, status: summarize(error.message || 'request failed'), url: sanitizeUrl(item.url), ...item };
+  }
+}
+
+function parseUrlArray(value) {
+  if (Array.isArray(value)) return value.filter((item) => typeof item === 'string' && item.length > 0);
+  if (typeof value !== 'string' || value.length === 0) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter((item) => typeof item === 'string' && item.length > 0) : [];
+  } catch {
+    return [value];
+  }
+}
+
+function isHttpUrl(value) {
+  return typeof value === 'string' && /^https?:\/\//i.test(value);
+}
+
+function sanitizeUrl(value) {
+  try {
+    const parsed = new URL(value);
+    return `${parsed.hostname}${parsed.pathname}`.slice(0, 160);
+  } catch {
+    return String(value || '').slice(0, 160);
   }
 }
 

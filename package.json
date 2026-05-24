@@ -45,6 +45,7 @@
     "push-feed:recover-live": "node scripts/recover-live-notification-backlog.mjs",
     "push-feed:recover-stale": "node scripts/recover-stale-notification-backlog.mjs",
     "health:dashboard": "node scripts/health-dashboard.mjs",
+    "shop:media-health": "node scripts/check-product-media-health.mjs",
     "media:faststart-repair": "node scripts/repair-video-faststart.mjs",
     "media:playback-health": "node scripts/check-media-playback-health.mjs",
     "media:thumbnail-health": "node scripts/check-thumbnail-health.mjs",

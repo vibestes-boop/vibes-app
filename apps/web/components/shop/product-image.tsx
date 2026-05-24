@@ -3,18 +3,20 @@
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 
-type ProductCategory = 'digital' | 'physical' | 'service';
-
 export function ProductImage({
   cover,
   title,
   category,
   priority = false,
+  sizes = '(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw',
+  fallbackClassName = 'text-6xl',
 }: {
   cover: string | null;
   title: string;
-  category: ProductCategory;
+  category: string;
   priority?: boolean;
+  sizes?: string;
+  fallbackClassName?: string;
 }) {
   const [failed, setFailed] = useState(false);
 
@@ -24,7 +26,7 @@ export function ProductImage({
 
   if (!cover || failed) {
     return (
-      <div className="flex h-full items-center justify-center bg-gradient-to-br from-muted to-muted-foreground/10 text-6xl">
+      <div className={`flex h-full items-center justify-center bg-gradient-to-br from-muted to-muted-foreground/10 ${fallbackClassName}`}>
         {category === 'digital' ? '💾' : category === 'service' ? '✨' : '📦'}
       </div>
     );
@@ -38,7 +40,7 @@ export function ProductImage({
         fill
         priority={priority}
         className="scale-110 object-cover blur-xl"
-        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+        sizes={sizes}
         aria-hidden
         onError={() => setFailed(true)}
       />
@@ -49,7 +51,7 @@ export function ProductImage({
         fill
         priority={priority}
         className="object-contain"
-        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+        sizes={sizes}
         onError={() => setFailed(true)}
       />
     </>

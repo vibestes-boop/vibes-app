@@ -15,13 +15,14 @@
  * - More-Menu (Speichern, Melden, Hilfe)
  */
 
+import { ProductCoverImage } from '@/components/shop/ProductCoverImage';
 import { StarDisplay } from '@/components/shop/ReviewSheet';
 import { useAuthStore } from '@/lib/authStore';
 import { supabase } from '@/lib/supabase';
 import { useCoinsWallet } from '@/lib/useGifts';
 import { useOrCreateConversation,useSendMessage } from '@/lib/useMessages';
 import { useProductReviews } from '@/lib/useProductReviews';
-import { REPORT_REASONS,useBuyProduct,useReportProduct,useSavedProduct,useShopProducts,type Product,type ReportReason } from '@/lib/useShop';
+import { REPORT_REASONS,useBuyProduct,useReportProduct,useSavedProduct,useShopProducts,type Product,type ProductCategory,type ReportReason } from '@/lib/useShop';
 import { useTheme } from '@/lib/useTheme';
 import { useQuery } from '@tanstack/react-query';
 import * as Clipboard from 'expo-clipboard';
@@ -199,7 +200,7 @@ const fsg = StyleSheet.create({
 // "above the fold" sichtbar ist).
 
 function ImageCarousel({
-  images, width, activeIndex, onIndexChange, onTap, onScrollRef, colors,
+  images, width, activeIndex, onIndexChange, onTap, onScrollRef, colors, category,
 }: {
   images: string[];
   width: number;
@@ -208,6 +209,7 @@ function ImageCarousel({
   onTap: (index: number) => void;
   onScrollRef: (ref: ScrollView | null) => void;
   colors: any;
+  category?: ProductCategory;
 }) {
   const CAROUSEL_HEIGHT = Math.round(width * 1.0); // 1:1 Hero
 
@@ -251,8 +253,9 @@ function ImageCarousel({
             {/* 2. Dim-Overlay */}
             <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.22)' }]} />
             {/* 3. Vordergrund (contain) */}
-            <Image
-              source={{ uri }}
+            <ProductCoverImage
+              uri={uri}
+              category={category}
               style={StyleSheet.absoluteFillObject}
               contentFit="contain"
               transition={200}
@@ -289,12 +292,13 @@ function ImageCarousel({
 // ─── Thumbnail-Strip unter dem Hero-Bild ──────────────────────────────────────
 
 function ThumbnailStrip({
-  images, activeIndex, onSelect, colors,
+  images, activeIndex, onSelect, colors, category,
 }: {
   images: string[];
   activeIndex: number;
   onSelect: (i: number) => void;
   colors: any;
+  category?: ProductCategory;
 }) {
   if (images.length <= 1) return null;
   return (
@@ -317,8 +321,9 @@ function ThumbnailStrip({
               },
             ]}
           >
-            <Image
-              source={{ uri }}
+            <ProductCoverImage
+              uri={uri}
+              category={category}
               style={StyleSheet.absoluteFillObject}
               contentFit="cover"
               transition={150}
@@ -488,9 +493,7 @@ function ShareSheet({ product, onClose, colors }: { product: Product; onClose: (
 
           {/* Produkt-Preview */}
           <View style={ss.productPreview}>
-            {product.cover_url
-              ? <Image source={{ uri: product.cover_url }} style={ss.previewImg} contentFit="cover" />
-              : <View style={[ss.previewImg, { backgroundColor: 'rgba(255,255,255,0.06)' }]} />}
+            <ProductCoverImage uri={product.cover_url} category={product.category} style={ss.previewImg} iconSize={18} />
             <View style={{ flex: 1 }}>
               <Text style={ss.previewTitle} numberOfLines={2}>{product.title}</Text>
               <Text style={ss.previewPrice}>🪙 {product.price_coins.toLocaleString('de-DE')} Coins</Text>
@@ -832,6 +835,7 @@ export default function ProductDetailScreen() {
           onScrollRef={(r) => { carouselRef.current = r; }}
           onTap={(i) => { setFullscreenIdx(i); setShowFullscreen(true); }}
           colors={colors}
+          category={product.category}
         />
 
         {/* 1b. Thumbnail-Strip (nur bei > 1 Bild) */}
@@ -843,6 +847,7 @@ export default function ProductDetailScreen() {
             carouselRef.current?.scrollTo({ x: i * width, animated: true });
           }}
           colors={colors}
+          category={product.category}
         />
 
         {/* 2. Preis + Sale-Badge + Merken */}
@@ -1168,13 +1173,7 @@ export default function ProductDetailScreen() {
               Kauf bestätigen
             </Text>
             <View style={[s.confirmProduct, { backgroundColor: bgAccent, borderColor: colors.border.subtle }]}>
-              {product.cover_url ? (
-                <Image source={{ uri: product.cover_url }} style={s.confirmThumb} contentFit="cover" />
-              ) : (
-                <View style={[s.confirmThumb, { backgroundColor: bgAccent, alignItems: 'center', justifyContent: 'center' }]}>
-                  <ShoppingBag size={20} color={colors.text.muted} />
-                </View>
-              )}
+              <ProductCoverImage uri={product.cover_url} category={product.category} style={s.confirmThumb} iconSize={20} />
               <View style={{ flex: 1, gap: 8 }}>
                 <Text style={{ fontSize: 14, fontWeight: '700', color: colors.text.primary }} numberOfLines={2}>{product.title}</Text>
                 <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6, flexWrap: 'wrap' }}>

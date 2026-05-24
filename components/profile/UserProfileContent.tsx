@@ -10,6 +10,7 @@ import { BattleHistoryList } from '@/components/profile/BattleHistoryList';
 import { ProfileHighlightsRow } from '@/components/profile/ProfileHighlightsRow';
 import { ProfileShareSheet } from '@/components/profile/ProfileShareSheet';
 import { VibeScoreRing } from '@/components/profile/VibeScoreRing';
+import { ProductCoverImage } from '@/components/shop/ProductCoverImage';
 import { AvatarZoomViewer } from '@/components/ui/AvatarZoomViewer';
 import { StoryRingAvatar } from '@/components/ui/StoryRingAvatar';
 import { VideoGridThumb } from '@/components/ui/VideoGridThumb';
@@ -954,29 +955,13 @@ export function UserProfileContent({ userId, onBack }: Props) {
                 style={[s.gridItem, { backgroundColor: colors.bg.elevated }]}
                 onPress={() => router.push({ pathname: '/shop/[id]', params: { id: product.id } })}
               >
-                {product.cover_url ? (
-                  <>
-                    {/* 3-Layer Blur-Fill, konsistent mit app/shop/index.tsx + app/shop/[id].tsx */}
-                    <Image
-                      source={{ uri: product.cover_url }}
-                      style={StyleSheet.absoluteFill}
-                      contentFit="cover"
-                      cachePolicy="memory-disk"
-                      blurRadius={25}
-                    />
-                    <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.18)' }]} />
-                    <Image
-                      source={{ uri: product.cover_url }}
-                      style={StyleSheet.absoluteFill}
-                      contentFit="contain"
-                      cachePolicy="memory-disk"
-                    />
-                  </>
-                ) : (
-                  <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
-                    <ShoppingBag size={28} color={colors.text.muted} strokeWidth={1.2} />
-                  </View>
-                )}
+                <ProductCoverImage
+                  uri={product.cover_url}
+                  category={product.category}
+                  style={StyleSheet.absoluteFill}
+                  contentFit="cover"
+                  iconSize={28}
+                />
                 {salePrice != null && (
                   <View style={s.shopSaleBadge}>
                     <Text style={s.shopSaleBadgeText}>

@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Route } from 'next';
-import Image from 'next/image';
 import { Bookmark, BookmarkCheck, Coins, Loader2, CheckCircle2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -11,6 +10,7 @@ import { cn } from '@/lib/utils';
 import { QuantityStepper } from './quantity-stepper';
 import { useBuyProduct, useToggleSaveProduct } from '@/hooks/use-shop';
 import type { ShopProduct } from '@/lib/data/shop';
+import { ProductImage } from './product-image';
 
 // -----------------------------------------------------------------------------
 // BuyBar — Call-to-Action-Block für die Produkt-Detail-Seite.
@@ -175,15 +175,7 @@ export function BuyBar({
               <div className="space-y-4">
                 <div className="flex items-center gap-3 rounded-lg bg-muted/60 p-3">
                   <div className="relative h-14 w-14 flex-none overflow-hidden rounded-md bg-muted">
-                    {product.cover_url && (
-                      <Image
-                        src={product.cover_url}
-                        alt=""
-                        fill
-                        className="object-cover"
-                        sizes="56px"
-                      />
-                    )}
+                    <ProductImage cover={product.cover_url} title={product.title} category={product.category} sizes="56px" fallbackClassName="text-xl" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="line-clamp-2 text-sm font-medium">{product.title}</div>

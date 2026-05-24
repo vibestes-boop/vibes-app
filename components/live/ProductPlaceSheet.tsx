@@ -9,10 +9,10 @@
  * stattdessen "platziert") — Double-Pin ist durch Unique-Index geblockt.
  */
 
+import { ProductCoverImage } from '@/components/shop/ProductCoverImage';
 import { useMyProducts,type Product } from '@/lib/useShop';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
-import { Image } from 'expo-image';
 import { Check,Package,X as XIcon } from 'lucide-react-native';
 import React from 'react';
 import {
@@ -96,13 +96,7 @@ export function ProductPlaceSheet({
                       { opacity: isPlaced ? 0.55 : pressed ? 0.7 : 1 },
                     ]}
                   >
-                    {p.cover_url ? (
-                      <Image source={p.cover_url} style={styles.rowCover} contentFit="cover" />
-                    ) : (
-                      <View style={[styles.rowCover, styles.rowCoverPlaceholder]}>
-                        <Package size={22} color="rgba(255,255,255,0.45)" />
-                      </View>
-                    )}
+                    <ProductCoverImage uri={p.cover_url} category={p.category} style={styles.rowCover} iconSize={22} />
                     <View style={styles.rowBody}>
                       <Text style={styles.rowTitle} numberOfLines={1}>{p.title}</Text>
                       <Text style={styles.rowPrice}>

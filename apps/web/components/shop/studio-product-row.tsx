@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import type { Route } from 'next';
 import { useState } from 'react';
 import { Edit, Trash2, Eye, EyeOff, ExternalLink, MoreHorizontal, Loader2 } from 'lucide-react';
@@ -17,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { useToggleProductActive, useDeleteProduct } from '@/hooks/use-shop';
 import { cn } from '@/lib/utils';
 import type { ShopProduct } from '@/lib/data/shop';
+import { ProductImage } from './product-image';
 
 // -----------------------------------------------------------------------------
 // StudioProductRow — eine Zeile in der Studio-Liste. Thumbnail, Titel, Status-
@@ -37,11 +37,7 @@ export function StudioProductRow({ product }: { product: ShopProduct }) {
       <div className="flex items-center gap-4 p-4">
         {/* Thumb */}
         <div className="relative h-16 w-16 flex-none overflow-hidden rounded-lg bg-muted">
-          {product.cover_url ? (
-            <Image src={product.cover_url} alt="" fill className="object-cover" sizes="64px" />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-2xl">📦</div>
-          )}
+          <ProductImage cover={product.cover_url} title={product.title} category={product.category} sizes="64px" fallbackClassName="text-2xl" />
           {!product.is_active && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/60">
               <EyeOff className="h-5 w-5 text-white" />

@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import Image from 'next/image';
 import { ChevronLeft, ChevronRight, Camera } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { ProductImage } from './product-image';
 
 // -----------------------------------------------------------------------------
 // ImageCarousel für Produkt-Detail.
@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 // - Previous/Next Chevrons auf Hover (desktop)
 // -----------------------------------------------------------------------------
 
-export function ImageCarousel({ images, alt }: { images: string[]; alt: string }) {
+export function ImageCarousel({ images, alt, category }: { images: string[]; alt: string; category: string }) {
   const [active, setActive] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -57,25 +57,13 @@ export function ImageCarousel({ images, alt }: { images: string[]; alt: string }
         >
           {images.map((src, i) => (
             <div key={`${src}-${i}`} className="relative h-full w-full flex-none snap-center">
-              {/* Layer 1: Blur-BG */}
-              <Image
-                src={src}
-                alt=""
-                fill
-                className="scale-110 object-cover blur-2xl"
-                sizes="(max-width: 1024px) 100vw, 600px"
-                aria-hidden
-                priority={i === 0}
-              />
-              <div className="absolute inset-0 bg-black/25" />
-              {/* Layer 2: Contain */}
-              <Image
-                src={src}
-                alt={alt}
-                fill
-                className="object-contain"
+              <ProductImage
+                cover={src}
+                title={alt}
+                category={category}
                 sizes="(max-width: 1024px) 100vw, 600px"
                 priority={i === 0}
+                fallbackClassName="text-6xl"
               />
             </div>
           ))}
@@ -133,7 +121,13 @@ export function ImageCarousel({ images, alt }: { images: string[]; alt: string }
                   on ? 'border-primary' : 'border-transparent opacity-60 hover:opacity-100',
                 )}
               >
-                <Image src={src} alt="" fill className="object-cover" sizes="64px" />
+                <ProductImage
+                  cover={src}
+                  title=""
+                  category={category}
+                  sizes="64px"
+                  fallbackClassName="text-2xl"
+                />
               </button>
             );
           })}

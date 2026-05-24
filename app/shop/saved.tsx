@@ -5,11 +5,11 @@
  */
 
 import { useSavedProduct,useSavedProducts,type SavedProduct } from '@/lib/useShop';
+import { ProductCoverImage } from '@/components/shop/ProductCoverImage';
 import { useTheme } from '@/lib/useTheme';
 import { impactAsync,ImpactFeedbackStyle } from 'expo-haptics';
-import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { ArrowLeft,Bookmark,ShoppingBag } from 'lucide-react-native';
+import { ArrowLeft,Bookmark } from 'lucide-react-native';
 import { useCallback } from 'react';
 import {
 ActivityIndicator,
@@ -37,13 +37,7 @@ function SavedCard({ product, onPress, colors }: {
       onPress={onPress}
       accessibilityRole="button"
     >
-      {product.cover_url ? (
-        <Image source={{ uri: product.cover_url }} style={card.img} contentFit="cover" transition={200} />
-      ) : (
-        <View style={[card.img, { backgroundColor: colors.bg.primary, alignItems: 'center', justifyContent: 'center' }]}>
-          <ShoppingBag size={28} color={colors.text.muted} strokeWidth={1.3} />
-        </View>
-      )}
+      <ProductCoverImage uri={product.cover_url} category={product.category} style={card.img} transition={200} />
 
       {/* Unsave-Button */}
       <Pressable

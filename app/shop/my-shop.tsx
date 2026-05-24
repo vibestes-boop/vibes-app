@@ -8,6 +8,7 @@
  */
 
 import { AIImageSheet } from '@/components/ai/AIImageSheet';
+import { ProductCoverImage } from '@/components/shop/ProductCoverImage';
 import { uploadProductImage } from '@/lib/uploadMedia';
 import { useCoinsWallet } from '@/lib/useGifts';
 import {
@@ -20,7 +21,6 @@ type Product,type ProductCategory,
 } from '@/lib/useShop';
 import { useTheme } from '@/lib/useTheme';
 import { impactAsync,ImpactFeedbackStyle } from 'expo-haptics';
-import { Image } from 'expo-image';
 import { launchImageLibraryAsync,MediaTypeOptions,requestMediaLibraryPermissionsAsync } from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
@@ -433,13 +433,7 @@ function ProductCard({
       ]}
     >
       {/* Cover */}
-      {product.cover_url ? (
-        <Image source={{ uri: product.cover_url }} style={s.cardCover} contentFit="cover" />
-      ) : (
-        <View style={[s.cardCoverPlaceholder, { backgroundColor: colors.bg.primary }]}>
-          <CatIcon size={28} color={colors.text.muted} strokeWidth={1.5} />
-        </View>
-      )}
+      <ProductCoverImage uri={product.cover_url} category={product.category} style={s.cardCover} iconSize={28} />
 
       {/* Inhalt */}
       <View style={s.cardBody}>
@@ -548,7 +542,7 @@ function ProductFormSheet({
           {uploadingCover ? (
             <ActivityIndicator color={colors.accent.primary} />
           ) : form.cover_url ? (
-            <Image source={{ uri: form.cover_url }} style={s.coverPreview} contentFit="cover" />
+            <ProductCoverImage uri={form.cover_url} category={form.category} style={s.coverPreview} />
           ) : (
             <View style={{ alignItems: 'center', gap: 8 }}>
               <ImageIcon size={32} color={colors.text.muted} strokeWidth={1.5} />
@@ -590,7 +584,7 @@ function ProductFormSheet({
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.galleryScroll} contentContainerStyle={{ gap: 8, paddingRight: 4 }}>
             {(form.image_urls ?? []).map((url, idx) => (
               <View key={url + idx} style={s.galleryThumbWrap}>
-                <Image source={{ uri: url }} style={s.galleryThumb} contentFit="cover" />
+                <ProductCoverImage uri={url} category={form.category} style={s.galleryThumb} iconSize={18} />
                 <Pressable
                   style={[s.galleryRemoveBtn, { backgroundColor: 'rgba(0,0,0,0.6)' }]}
                   onPress={() => onRemoveGalleryImage(idx)}
@@ -822,7 +816,6 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   cardCover: { width: 88, height: 104 },
-  cardCoverPlaceholder: { width: 88, height: 104, alignItems: 'center', justifyContent: 'center' },
   cardBody:  { flex: 1, padding: 12, gap: 6 },
   cardRow:   { flexDirection: 'row', alignItems: 'center', gap: 6 },
   cardTitle: { flex: 1, fontSize: 15, fontWeight: '700' },

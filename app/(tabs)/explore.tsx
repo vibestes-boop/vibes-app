@@ -9,6 +9,7 @@ ExploreTagChips,
 ExploreUserRow,
 getExploreStyles,
 } from '@/components/explore';
+import { ProductCoverImage } from '@/components/shop/ProductCoverImage';
 import { useDiscoverPeople } from '@/lib/useDiscoverPeople';
 import {
 EXPLORE_FALLBACK_TAGS,
@@ -27,7 +28,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams,useRouter } from 'expo-router';
 import { ChevronRight,SearchX,ShoppingBag,Tag } from 'lucide-react-native';
 import { useCallback,useEffect,useRef,useState } from 'react';
-import { ActivityIndicator,Pressable,Image as RNImage,ScrollView as RNScrollView,StyleSheet,Text,View } from 'react-native';
+import { ActivityIndicator,Pressable,ScrollView as RNScrollView,StyleSheet,Text,View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 /** Verzögert den Wert um `delay` ms — verhindert eine Query pro Tastendruck */
@@ -215,17 +216,7 @@ export default function ExploreScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={product.title}
               >
-                {product.cover_url ? (
-                  <RNImage
-                    source={{ uri: product.cover_url }}
-                    style={shopChipStyle.cover}
-                    resizeMode="cover"
-                  />
-                ) : (
-                  <View style={[shopChipStyle.coverPlaceholder, { backgroundColor: colors.bg.primary }]}>
-                    <ShoppingBag size={16} color={colors.text.muted} strokeWidth={1.5} />
-                  </View>
-                )}
+                <ProductCoverImage uri={product.cover_url} category={product.category} style={shopChipStyle.cover} iconSize={16} />
                 <Text style={[shopChipStyle.title, { color: colors.text.primary }]} numberOfLines={1}>{product.title}</Text>
                 <Text style={[shopChipStyle.price, { color: colors.accent.primary }]}>🪙 {product.price_coins}</Text>
               </Pressable>

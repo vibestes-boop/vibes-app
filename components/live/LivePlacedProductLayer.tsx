@@ -13,12 +13,12 @@
  *   • Tap auf Karte → öffnet `/shop/{productId}` (Produkt-Detail)
  */
 
+import { ProductCoverImage } from '@/components/shop/ProductCoverImage';
 import { useLiveOverlayPosition } from '@/lib/useLiveOverlayPosition';
 import type { PlacedProduct } from '@/lib/useLivePlacedProducts';
 import * as Haptics from 'expo-haptics';
-import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { Package,ShoppingBag } from 'lucide-react-native';
+import { ShoppingBag } from 'lucide-react-native';
 import React,{ useCallback } from 'react';
 import { Pressable,StyleSheet,Text,View } from 'react-native';
 import { DraggableOverlay,type DraggablePosition } from './DraggableOverlay';
@@ -111,13 +111,7 @@ function PlacedProductCard({
           { opacity: pressed && !isHost ? 0.8 : 1 },
         ]}
       >
-        {product.coverUrl ? (
-          <Image source={product.coverUrl} style={styles.cover} contentFit="cover" />
-        ) : (
-          <View style={[styles.cover, styles.coverPlaceholder]}>
-            <Package size={22} color="rgba(255,255,255,0.45)" />
-          </View>
-        )}
+        <ProductCoverImage uri={product.coverUrl} category={product.category} style={styles.cover} iconSize={22} />
 
         <View style={styles.body}>
           <Text style={styles.title} numberOfLines={2}>{product.title}</Text>

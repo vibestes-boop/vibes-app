@@ -205,7 +205,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
         {/* Left: Image-Carousel */}
         <div>
-          <ImageCarousel images={images} alt={product.title} />
+          <ImageCarousel images={images} alt={product.title} category={product.category} />
         </div>
 
         {/* Right: Info */}

@@ -8,19 +8,16 @@
  *  3. LiveShopHostPanel  — Host: eigene Produkte auswählen + pinnen
  */
 
+import { ProductCoverImage } from '@/components/shop/ProductCoverImage';
 import { useCoinsWallet } from '@/lib/useGifts';
 import type { PinnedProduct,ProductSoldEvent } from '@/lib/useLiveShopping';
 import { useBuyProduct,useMyProducts,type Product } from '@/lib/useShop';
 import { BlurView } from 'expo-blur';
 import { impactAsync,ImpactFeedbackStyle,notificationAsync,NotificationFeedbackType } from 'expo-haptics';
-import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import {
-Box,
 ChevronRight,
-FileText,
 ShoppingBag,
-Wrench,
 X
 } from 'lucide-react-native';
 import { useCallback,useState } from 'react';
@@ -82,10 +79,6 @@ export function PinnedProductPill({ product, onBought, viewerUsername }: PinnedP
     }
   }, [buyProduct, product, onBought, viewerUsername, router]);
 
-  const CatIcon = product.category === 'digital' ? FileText
-    : product.category === 'physical' ? Box
-    : Wrench;
-
   return (
     <>
       <Pressable
@@ -102,13 +95,7 @@ export function PinnedProductPill({ product, onBought, viewerUsername }: PinnedP
         <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
 
         {/* Cover */}
-        {product.coverUrl ? (
-          <Image source={{ uri: product.coverUrl }} style={s.pillCover} contentFit="cover" />
-        ) : (
-          <View style={s.pillCoverPlaceholder}>
-            <CatIcon size={18} color="rgba(255,255,255,0.6)" strokeWidth={1.5} />
-          </View>
-        )}
+        <ProductCoverImage uri={product.coverUrl} category={product.category} style={s.pillCover} iconSize={18} />
 
         {/* Info */}
         <View style={s.pillInfo}>
@@ -261,13 +248,7 @@ export function LiveShopHostPanel({
                     style={[s.hostProduct, isPinned && s.hostProductPinned]}
                     onPress={() => handlePin(item)}
                   >
-                    {item.cover_url ? (
-                      <Image source={{ uri: item.cover_url }} style={s.hostProductCover} contentFit="cover" />
-                    ) : (
-                      <View style={s.hostProductCoverPlaceholder}>
-                        <ShoppingBag size={16} color="rgba(255,255,255,0.4)" strokeWidth={1.5} />
-                      </View>
-                    )}
+                    <ProductCoverImage uri={item.cover_url} category={item.category} style={s.hostProductCover} iconSize={16} />
                     <View style={s.hostProductInfo}>
                       <Text style={s.hostProductTitle} numberOfLines={1}>{item.title}</Text>
                       <Text style={s.hostProductPrice}>🪙 {item.price_coins.toLocaleString('de-DE')}</Text>

@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import type { Route } from 'next';
 import { useState, useTransition } from 'react';
 import { Check, Truck, XCircle, RotateCcw, Loader2 } from 'lucide-react';
@@ -16,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { updateOrderStatus } from '@/app/actions/shop';
 import { cn } from '@/lib/utils';
 import type { ShopOrder } from '@/lib/data/shop';
+import { ProductImage } from './product-image';
 
 // -----------------------------------------------------------------------------
 // OrderRow — zeigt eine Bestellung und erlaubt dem Verkäufer Status-Wechsel.
@@ -70,17 +70,13 @@ export function OrderRow({
     <div className="flex items-start gap-4 p-4">
       {/* Thumb */}
       <div className="relative h-16 w-16 flex-none overflow-hidden rounded-lg bg-muted">
-        {order.product?.cover_url ? (
-          <Image
-            src={order.product.cover_url}
-            alt=""
-            fill
-            className="object-cover"
-            sizes="64px"
-          />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-2xl">📦</div>
-        )}
+        <ProductImage
+          cover={order.product?.cover_url ?? null}
+          title={order.product?.title ?? ''}
+          category={order.product?.category ?? 'physical'}
+          sizes="64px"
+          fallbackClassName="text-2xl"
+        />
       </div>
 
       {/* Info */}

@@ -3,9 +3,9 @@
  * Meine Bestellungen — Käufer-Ansicht + Verkäufer-Ansicht
  */
 import { ReviewSheet } from '@/components/shop/ReviewSheet';
+import { ProductCoverImage } from '@/components/shop/ProductCoverImage';
 import { useMyReview } from '@/lib/useProductReviews';
 import { useDownloadDigitalProduct,useMyOrders,type Order } from '@/lib/useShop';
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import {
 ArrowLeft,
@@ -14,7 +14,6 @@ Clock,
 Coins,
 Download,
 FileText,
-Package,
 RefreshCw,
 ShoppingBag,
 Star,
@@ -83,17 +82,7 @@ function OrderCard({ order, role }: { order: Order; role: 'buyer' | 'seller' }) 
   return (
     <View style={sx.card}>
       {/* Cover */}
-      {product?.cover_url ? (
-        <Image
-          source={{ uri: product.cover_url }}
-          style={sx.cover}
-          contentFit="cover"
-        />
-      ) : (
-        <View style={[sx.cover, sx.coverFallback]}>
-          <Package size={28} color="rgba(255,255,255,0.3)" />
-        </View>
-      )}
+      <ProductCoverImage uri={product?.cover_url} category={product?.category} style={sx.cover} />
 
       {/* Info */}
       <View style={sx.info}>
@@ -360,11 +349,6 @@ const sx = StyleSheet.create({
   cover: {
     width: 90,
     height: 90,
-  },
-  coverFallback: {
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   info: {
     flex: 1,

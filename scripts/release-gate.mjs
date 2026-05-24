@@ -82,6 +82,7 @@ async function runPostDeployGate() {
   runStep('Production media budget', 'npm', ['run', 'stability:media-budget'], repoRoot);
   runStep('Production media playback health', 'npm', ['run', 'media:playback-health'], repoRoot);
   runStep('Production thumbnail health', 'npm', ['run', 'media:thumbnail-health'], repoRoot);
+  runStep('Production shop media health', 'npm', ['run', 'shop:media-health'], repoRoot);
   runStep('Production backend integrity', 'npm', ['run', 'monitor:integrity'], repoRoot);
   runStep('Authenticated production smoke', 'npm', [
     'run',
