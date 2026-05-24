@@ -15,7 +15,7 @@ const EXPECTED_PROJECT_ID = '02ab536a-5836-4560-a5ec-2dfd6e059f90';
 const EXPECTED_IOS_BUNDLE_ID = 'com.vibesapp.vibes';
 const EXPECTED_IOS_SCHEME = 'vibes';
 const MIN_NEXT_STORE_VERSION = '1.26.6';
-const MIN_NEXT_STORE_BUILD_NUMBER = 276;
+const MIN_NEXT_STORE_BUILD_NUMBER = 277;
 
 if (args.help) {
   printHelp();
@@ -155,8 +155,8 @@ function checkEasProfile(profileConfig) {
     if (profileConfig.channel !== 'production') {
       failures.push('production profile must set channel="production" so JS-only fixes can ship via EAS Update.');
     }
-    if (profileConfig.autoIncrement !== true) {
-      warnings.push('production profile does not autoIncrement; verify App Store build numbers manually.');
+    if (profileConfig.autoIncrement === true) {
+      warnings.push('production profile autoIncrement is enabled; the EAS build number can differ from the guarded app.json value.');
     }
   }
 }
@@ -273,6 +273,6 @@ Options:
 
 Examples:
   npm run native:release-guard
-  npm run native:release-guard -- --profile production --expected-version 1.26.6 --expected-build-number 276
+  npm run native:release-guard -- --profile production --expected-version 1.26.6 --expected-build-number 277
 `);
 }

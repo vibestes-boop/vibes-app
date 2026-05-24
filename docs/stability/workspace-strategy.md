@@ -41,7 +41,7 @@ For a production/TestFlight build, require the intended App Store version and
 build number explicitly:
 
 ```bash
-npm run native:release-guard -- --profile production --expected-version 1.26.6 --expected-build-number 276
+npm run native:release-guard -- --profile production --expected-version 1.26.6 --expected-build-number 277
 ```
 
 Before ending a long debugging or release session, update
