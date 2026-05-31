@@ -9,17 +9,9 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
-// -----------------------------------------------------------------------------
 // /privacy — Datenschutzerklärung nach DSGVO / BDSG.
-//
-// Deckt ab: Kontakt, Kategorien personenbezogener Daten, Zwecke, Rechts-
-// grundlagen, Empfänger, Speicherdauer, Betroffenenrechte, Dritt-Dienste
-// (Supabase, Stripe, Cloudflare R2, LiveKit, Sentry, PostHog).
-//
-// ⚠️ Disclaimer: Boilerplate-Starter. Vor Launch anwaltlich + DPO prüfen.
-// -----------------------------------------------------------------------------
 
-const EFFECTIVE_DATE = '20. April 2026';
+const EFFECTIVE_DATE = '31. Mai 2026';
 
 export default function PrivacyPage() {
   return (
@@ -30,16 +22,29 @@ export default function PrivacyPage() {
         </p>
         <h1 className="mt-1 text-3xl font-semibold">Datenschutzerklärung</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Stand: <time dateTime="2026-04-20">{EFFECTIVE_DATE}</time>
+          Stand: <time dateTime="2026-05-31">{EFFECTIVE_DATE}</time>
         </p>
       </header>
 
       <section>
         <h2>1. Verantwortlicher</h2>
         <p>
-          Verantwortlicher im Sinne der Datenschutz-Grundverordnung (DSGVO) ist
-          der Betreiber der Serlo-Plattform. Die vollständigen Kontaktdaten
-          entnehmen Sie bitte unserem{' '}
+          Verantwortlicher im Sinne der Datenschutz-Grundverordnung (DSGVO) ist:
+        </p>
+        <p>
+          Zaur Hatuev<br />
+          Steiner Ring 64<br />
+          82538 Geretsried<br />
+          Deutschland
+        </p>
+        <p>
+          E-Mail: <a href="mailto:hallo@serlo.app">hallo@serlo.app</a>
+          <br />
+          Datenschutzanfragen:{' '}
+          <a href="mailto:datenschutz@serlo.app">datenschutz@serlo.app</a>
+        </p>
+        <p>
+          Weitere Anbieterangaben finden Sie im{' '}
           <Link href={'/imprint' as Route}>Impressum</Link>.
         </p>
       </section>
@@ -107,8 +112,10 @@ export default function PrivacyPage() {
       <section>
         <h2>4. Empfänger und Auftragsverarbeiter</h2>
         <p>
-          Wir nutzen folgende Dienstleister als Auftragsverarbeiter nach Art. 28
-          DSGVO. Entsprechende Verträge sind abgeschlossen:
+          Wir nutzen folgende Dienstleister zur Bereitstellung, Absicherung und
+          Weiterentwicklung der Plattform. Soweit erforderlich erfolgt die
+          Einbindung auf Grundlage eines Auftragsverarbeitungsvertrags nach
+          Art. 28 DSGVO oder geeigneter Garantien für Drittlandübermittlungen:
         </p>
         <dl>
           <dt>
@@ -209,7 +216,8 @@ export default function PrivacyPage() {
         <p>
           Datenexport und Kontolöschung können Sie direkt über{' '}
           <Link href={'/settings' as Route}>die Einstellungen → Konto &
-          Datenschutz</Link> anstoßen.
+          Datenschutz</Link>{' '}
+          anstoßen.
         </p>
       </section>
 

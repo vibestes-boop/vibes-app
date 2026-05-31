@@ -9,18 +9,9 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
-// -----------------------------------------------------------------------------
 // /terms — Allgemeine Geschäftsbedingungen (AGB).
-//
-// Statisch, prerender-friendly. Stand-Datum inline, Änderungshistorie als
-// kleine Tabelle unten. Kein Client-JS nötig.
-//
-// ⚠️ Disclaimer: Dieser Text ist ein Boilerplate-Starting-Point. Vor Public-
-// Launch MUSS dieser von einem Anwalt mit Plattform-Erfahrung geprüft werden
-// (DE: speziell TMG / TDDDG / Plattform-Regulierung / DSA).
-// -----------------------------------------------------------------------------
 
-const EFFECTIVE_DATE = '20. April 2026';
+const EFFECTIVE_DATE = '31. Mai 2026';
 
 export default function TermsPage() {
   return (
@@ -33,7 +24,7 @@ export default function TermsPage() {
           Allgemeine Geschäftsbedingungen
         </h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Stand: <time dateTime="2026-04-20">{EFFECTIVE_DATE}</time>
+          Stand: <time dateTime="2026-05-31">{EFFECTIVE_DATE}</time>
         </p>
       </header>
 
@@ -41,10 +32,11 @@ export default function TermsPage() {
         <h2>§ 1 Geltungsbereich</h2>
         <p>
           Diese Allgemeinen Geschäftsbedingungen (nachfolgend &bdquo;AGB&quot;) regeln das
-          Vertragsverhältnis zwischen der Serlo-Plattform (nachfolgend
-          &bdquo;Serlo&quot; oder &bdquo;Anbieter&quot;) und den Nutzerinnen und Nutzern
-          (nachfolgend &bdquo;Nutzer&quot;) der über <code>serlo.app</code> und zugehörige
-          Subdomains bereitgestellten Web- und Mobil-Dienste. Abweichende
+          Vertragsverhältnis zwischen Zaur Hatuev, handelnd unter Serlo
+          (nachfolgend &bdquo;Serlo&quot; oder &bdquo;Anbieter&quot;), und den Nutzerinnen
+          und Nutzern (nachfolgend &bdquo;Nutzer&quot;) der über
+          <code>serlo.app</code> und zugehörige Subdomains bereitgestellten Web-
+          und Mobil-Dienste. Abweichende
           Bedingungen des Nutzers werden nicht anerkannt, es sei denn, der
           Anbieter stimmt ihrer Geltung ausdrücklich schriftlich zu.
         </p>
@@ -153,7 +145,7 @@ export default function TermsPage() {
           sowie für Schäden an Leben, Körper und Gesundheit. Im Übrigen ist
           die Haftung auf den bei Vertragsschluss vorhersehbaren, vertrags-
           typischen Schaden begrenzt. Für nutzergenerierte Inhalte haftet
-          Serlo nach Maßgabe der §§ 7 ff. TMG bzw. des Digital Services Act
+          Serlo nach Maßgabe der §§ 7 ff. DDG bzw. des Digital Services Act
           (DSA).
         </p>
       </section>

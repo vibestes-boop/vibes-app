@@ -9,15 +9,7 @@ export const metadata: Metadata = {
   robots: { index: true, follow: true },
 };
 
-// -----------------------------------------------------------------------------
-// /imprint — Impressum nach § 5 DDG (Digitale-Dienste-Gesetz, ab 2024 Nach-
-// folger des TMG) + § 18 MStV (Rundfunkstaatsvertrag für journalistisch-
-// redaktionelle Inhalte).
-//
-// ⚠️ PLACEHOLDER — Zaur muss vor Launch echte Anschrift / Vertretungsberechtigte /
-// USt-ID / Registernummer eintragen. Die Felder sind als TODO-Kommentare
-// markiert.
-// -----------------------------------------------------------------------------
+// /imprint — Anbieterkennzeichnung nach § 5 DDG + § 18 Abs. 2 MStV.
 
 export default function ImprintPage() {
   return (
@@ -35,21 +27,17 @@ export default function ImprintPage() {
       <section>
         <h2>Anbieter</h2>
         <p>
-          {/* TODO: Vollständige Anschrift vor Go-Live eintragen */}
-          Serlo<br />
-          [Firmierung]<br />
-          [Straße Hausnummer]<br />
-          [PLZ Ort]<br />
+          Zaur Hatuev<br />
+          handelnd unter Serlo<br />
+          Steiner Ring 64<br />
+          82538 Geretsried<br />
           Deutschland
         </p>
       </section>
 
       <section>
-        <h2>Vertretungsberechtigte</h2>
-        <p>
-          {/* TODO: Geschäftsführung eintragen */}
-          [Vor- und Nachname der Geschäftsführung]
-        </p>
+        <h2>Vertretungsberechtigt</h2>
+        <p>Zaur Hatuev</p>
       </section>
 
       <section>
@@ -73,18 +61,20 @@ export default function ImprintPage() {
       <section>
         <h2>Registereintrag und Umsatzsteuer</h2>
         <p>
-          {/* TODO: Handelsregister + USt-ID eintragen falls GmbH/UG */}
-          Handelsregister: [HRB-Nummer], [Amtsgericht]<br />
-          Umsatzsteuer-ID nach § 27a UStG: [DE XXXXXXXXX]
+          Kein Handelsregistereintrag.
+          <br />
+          Eine Umsatzsteuer-Identifikationsnummer nach § 27a UStG wurde nicht
+          erteilt.
         </p>
       </section>
 
       <section>
         <h2>Redaktionell Verantwortlich nach § 18 Abs. 2 MStV</h2>
         <p>
-          {/* TODO: Redaktionell Verantwortliche Person */}
-          [Vor- und Nachname]<br />
-          [Anschrift — kann mit Anbieter-Anschrift identisch sein]
+          Zaur Hatuev<br />
+          Steiner Ring 64<br />
+          82538 Geretsried<br />
+          Deutschland
         </p>
       </section>
 
