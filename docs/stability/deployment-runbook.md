@@ -75,6 +75,12 @@ Confirm runtime secrets in their owning systems:
 - Vercel Web: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
   public R2 URL/env used by media checks, and stability test-user secrets when
   auth smoke should run.
+- Vercel Web observability: `NEXT_PUBLIC_SENTRY_DSN` for browser capture,
+  `SENTRY_DSN` for server capture, and `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`,
+  `SENTRY_PROJECT` when source maps should upload during Vercel builds.
+  Keep `SENTRY_ENABLE_EDGE` unset unless a preview deploy explicitly proves
+  Edge Sentry is safe; the project previously hit Edge runtime crashes from
+  eager Sentry imports.
 - Native: `EXPO_PUBLIC_SUPABASE_URL` and `EXPO_PUBLIC_SUPABASE_ANON_KEY` must
   match Web/Ops fingerprints.
 

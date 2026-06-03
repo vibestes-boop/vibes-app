@@ -1,9 +1,11 @@
+import fs from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = parseArgs(process.argv.slice(2));
+const appJson = readJson('app.json')?.expo || {};
 
 const EXPECTED_PROJECT_ID = '02ab536a-5836-4560-a5ec-2dfd6e059f90';
 const EXPECTED_OWNER = 'zaurhat';
@@ -14,8 +16,8 @@ const SAFE_DEVELOPMENT_BUILD_NUMBER = '268';
 const KNOWN_INVALID_STORE_BUILD_IDS = new Set(['242c5893-d2b5-460e-b6b7-9edb72121132']);
 const TESTFLIGHT_FALLBACK_VERSION = '1.26.3';
 const TESTFLIGHT_FALLBACK_BUILD_NUMBER = '268';
-const NEXT_STORE_VERSION = '1.26.6';
-const NEXT_STORE_BUILD_NUMBER = '277';
+const NEXT_STORE_VERSION = String(appJson.version || 'unknown');
+const NEXT_STORE_BUILD_NUMBER = String(appJson.ios?.buildNumber || 'unknown');
 
 if (args.help) {
   printHelp();
@@ -159,6 +161,16 @@ function auditStoreBuilds(builds) {
   console.log(`  - current fallback: ${TESTFLIGHT_FALLBACK_VERSION} (${TESTFLIGHT_FALLBACK_BUILD_NUMBER})`);
   console.log(`  - current App Store Connect candidate: ${NEXT_STORE_VERSION} (${NEXT_STORE_BUILD_NUMBER})`);
 
+  if (
+    latestStore.appVersion !== NEXT_STORE_VERSION ||
+    latestStore.appBuildVersion !== NEXT_STORE_BUILD_NUMBER
+  ) {
+    warnings.push(
+      `Latest Store build ${latestStore.appVersion} (${latestStore.appBuildVersion}) does not match ` +
+        `current app.json ${NEXT_STORE_VERSION} (${NEXT_STORE_BUILD_NUMBER}). Build or assign the intended candidate before release.`,
+    );
+  }
+
   for (const build of storeBuilds) {
     if (KNOWN_INVALID_STORE_BUILD_IDS.has(build.id)) {
       warnings.push(
@@ -198,6 +210,14 @@ function cleanCliNoise(value) {
     .filter((line) => !line.includes('eas-cli@') && !line.includes('Proceeding with outdated version'))
     .join(' ')
     .trim();
+}
+
+function readJson(relativePath) {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(repoRoot, relativePath), 'utf8'));
+  } catch {
+    return null;
+  }
 }
 
 function shortId(value) {

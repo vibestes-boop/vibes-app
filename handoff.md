@@ -1,101 +1,102 @@
 # Serlo / Vibes Handoff
 
-Last updated: 2026-05-23
+Last updated: 2026-06-03
 
 ## Goal
 
-Keep Serlo stable enough for a tiny private cohort before broader invites.
-Prioritize release hygiene, activation, reliable uploads/playback, and a
-credible product surface over new large features.
+Keep Serlo technically reliable before broader public use. Current focus is
+release hygiene, production observability, media/upload reliability, App Store
+build provenance, and maintainable code structure.
 
 ## Source Of Truth
 
 - Active repo: `/Users/zaurhatuev/vibes-app`
 - Active branch: `main`
-- Current release commit: `6a462c8 Restart feed videos on re-entry and cache profiles`
+- Current release commit before this hardening pass: `f177a4c Fill public legal launch details`
 - Web production: `https://serlo-web.vercel.app`
-- Native version: `Serlo 1.26.6 (275)`
+- Native app identity: `Serlo 1.26.6 (279)`
+- EAS project id: `02ab536a-5836-4560-a5ec-2dfd6e059f90`
+- iOS bundle id: `com.vibesapp.vibes`
 - Quarantined legacy checkout: `/Users/zaurhatuev/Desktop/vibes-app`
 
 Do not build, submit, deploy, or run production commands from the quarantined
 legacy checkout.
 
-## Current State
+## Current Technical State
 
-- Git working tree was clean before this handoff/runbook update.
-- Root tests passed: `67/67`.
-- Web tests passed: `283/283`.
-- Root and Web typecheck/lint passed.
-- `npm run health:dashboard` passed.
-- `npm run native:release-guard` passed before the handoff update.
-- `npm run launch:scorecard` now passes with decision `BLOCKED_FIX_STABILITY`
-  because legal pages still contain launch placeholders/review disclaimers.
-- After this update, `node scripts/check-ios-release-source.mjs --profile development --allow-dirty`,
-  `npm run workspace:doctor`, root/Web typecheck, and root/Web lint passed.
-- Root tests passed: `67/67`; Web tests passed: `283/283`.
-- `npm run legal:readiness` fails intentionally until the public legal pages
-  contain real operator details and reviewed policy text.
+- Git working tree was clean before the 2026-06-03 hardening pass.
+- `npm run release:gate` passed on 2026-06-03.
+- `npm run health:dashboard` passed on 2026-06-03.
+- `npm run native:release-guard` passed from `/Users/zaurhatuev/vibes-app`.
+- `npm run native:builds:audit` passed and reports latest Store build
+  `1.26.6 (279)`.
+- Production Web route/API/media/auth/integrity checks are green.
+- R2 upload smoke is included in production integrity and passed.
+- Media playback health is green: checked videos are fast-start.
+- Shop media health is green: active products have reachable media URLs.
+- Legal readiness is no longer blocked by placeholder text.
 
-The app is technically usable, but the invite gate remains closed. First blocker
-is legal readiness; after that, activation is still thin because first-post
-conversion, creator supply, and WAU are below private-cohort targets.
+## Current Hardening Changes In Progress
 
-## Open Risks
+- Build audit now reads the current App Store Connect candidate from `app.json`
+  instead of a hard-coded stale number.
+- iOS release guard minimum Store build has been raised to `1.26.6 (279)`.
+- iOS release docs and workspace strategy examples now use build `279`.
+- Web `instrumentation.ts` now dynamically initializes Sentry for Node runtime
+  when a DSN exists. Edge Sentry remains opt-in through `SENTRY_ENABLE_EDGE=1`
+  to avoid the previous eager-import Edge crash.
+- Deployment runbook now documents the required Vercel Sentry env vars and the
+  rule to keep `SENTRY_ENABLE_EDGE` unset until preview verification.
 
-- First-post conversion is too low for real invites.
-- Creator supply is below target.
-- WAU is below target.
-- Public legal imprint still has TODO fields.
-- Legal readiness is now guarded by `npm run legal:readiness` and by the
-  launch scorecard local gate.
-- RevenueCat webhook has Phase 3 Apple/Google verification TODOs.
-- Live host guest reports now use `create_report`; still needs manual smoke on
-  a real live session.
-- App icon/brand polish should improve before broader user invites.
+## Open Technical Risks
 
-## Release Rules
+- Web Sentry requires Vercel env vars to actually emit events:
+  `NEXT_PUBLIC_SENTRY_DSN` and/or `SENTRY_DSN`, plus source-map upload vars
+  `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`.
+- Edge Sentry should remain disabled until a preview deploy proves it no longer
+  triggers the old `__dirname` crash.
+- Very large modules increase regression risk:
+  `app/live/host.tsx`, `app/live/watch/[id].tsx`, `app/create/index.tsx`,
+  and `apps/web/app/actions/admin.ts`.
+- The legacy Desktop checkout still exists and is dirty. It is preserved only
+  for historical context.
+- RevenueCat webhook still has phase-3 Apple/Google server-verification TODOs;
+  paid flows should stay out of launch scope until this is resolved.
+- `typedRoutes` is disabled in `apps/web/next.config.mjs` until route pushes and
+  redirects are migrated to typed `Route` usage.
 
-Before any Web deploy:
+## Required Commands Before Web Release
 
 ```bash
 cd /Users/zaurhatuev/vibes-app
-npm run release:gate -- --phase pre
+npm run release:gate
+npm run health:dashboard
 ```
 
-Before any iOS/TestFlight/App Store build:
+## Required Commands Before iOS/TestFlight/App Store Build
 
 ```bash
 cd /Users/zaurhatuev/vibes-app
-npm run native:release-guard -- --profile production --expected-version 1.26.6 --expected-build-number 275
-npm run launch:scorecard
+npm run native:builds:audit
+npm run native:build:production:check
+npm run release:gate
 ```
 
 Use guarded build commands only:
 
 ```bash
-npm run native:build:production:check
 npm run native:build:production
 ```
 
-## Next Work
+Never use raw `npx eas build --platform ios --profile production` as the normal
+release path.
 
-1. Finish and commit the handoff/runbook update.
-2. Follow `docs/stability/recovery-waves.md` from Wave 1 through Wave 5.
-3. Complete legal imprint/privacy/terms review before broader public launch.
-4. Smoke-test the real live guest report flow before pushing Live/Guild growth.
-5. Keep invite gate closed until first-post conversion, creators, and WAU pass
-   scorecard targets.
-6. Create the next TestFlight/App Store build only after release guards,
-   health dashboard, launch scorecard, and manual smoke checks are clean.
+## Next Technical Work
 
-## Manual Smoke Checklist
-
-- Login/session persists.
-- Feed opens quickly and first video starts fast.
-- Avatar upload works.
-- Story image/video post works.
-- Post image/video upload works.
-- Like/comment/bookmark work.
-- Push token is active.
-- Profile and foreign profile render on weak network.
-- App Store/TestFlight build comes from `/Users/zaurhatuev/vibes-app`.
+1. Finish this hardening pass and commit it.
+2. Verify Sentry instrumentation with typecheck, lint, and build.
+3. Run `native:builds:audit`, `native:release-guard`, `release:gate`, and
+   `health:dashboard` after the edits.
+4. If checks pass, push to `origin/main`.
+5. Next refactor wave: extract narrow hooks/components from the largest native
+   screens, starting with create/upload flow and live watch/host state.

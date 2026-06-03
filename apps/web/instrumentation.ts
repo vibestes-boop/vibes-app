@@ -1,22 +1,54 @@
 // -----------------------------------------------------------------------------
-// Next.js 15 `instrumentation.ts` — canonical integration point for Sentry.
+// Next.js 15 instrumentation hook.
 //
-// TEMPORARILY NO-OP bis Sentry-Env-Vars (NEXT_PUBLIC_SENTRY_DSN, SENTRY_DSN,
-// SENTRY_AUTH_TOKEN, SENTRY_ORG, SENTRY_PROJECT) in Vercel gesetzt sind.
-//
-// Hintergrund: Der synchrone Top-Level-Re-Export `captureRequestError` und
-// der `import * as Sentry from '@sentry/nextjs'` in sentry.edge.config.ts
-// pullen das komplette `@sentry/nextjs`-Package in jede Runtime — auch Edge.
-// `@sentry/nextjs` referenziert intern `__dirname` (Node-Global), das im
-// V8-Isolate der Edge-Middleware nicht existiert → ReferenceError → 500.
-//
-// Zum Re-Aktivieren von Sentry:
-//   1. Env-Vars in Vercel setzen (Production + Preview)
-//   2. Diesen File auf die Version vor Commit [deploy-fix] zurücksetzen:
-//      `git show HEAD~N:apps/web/instrumentation.ts > apps/web/instrumentation.ts`
-//   3. Redeploy
+// Keep Sentry imports dynamic so the Edge runtime does not eagerly pull the full
+// Node-oriented package graph. Node server errors are enabled when a DSN exists.
+// Edge capture remains opt-in because the project previously hit an Edge
+// `__dirname` runtime crash from eager Sentry imports.
 // -----------------------------------------------------------------------------
 
+type RequestErrorContext = {
+  routerKind?: string;
+  routePath?: string;
+  routeType?: string;
+  renderSource?: string;
+  revalidateReason?: string;
+};
+
+type RequestLike = {
+  method?: string;
+  url?: string;
+  headers?: unknown;
+};
+
 export async function register(): Promise<void> {
-  // noop — Sentry deaktiviert bis Env-Vars gesetzt sind.
+  if (!hasSentryDsn()) return;
+
+  if (process.env.NEXT_RUNTIME === 'nodejs') {
+    await import('./sentry.server.config');
+    return;
+  }
+
+  if (process.env.NEXT_RUNTIME === 'edge' && process.env.SENTRY_ENABLE_EDGE === '1') {
+    await import('./sentry.edge.config');
+  }
+}
+
+export async function onRequestError(
+  error: unknown,
+  request: RequestLike,
+  context: RequestErrorContext,
+): Promise<void> {
+  if (!hasSentryDsn()) return;
+
+  if (process.env.NEXT_RUNTIME === 'edge' && process.env.SENTRY_ENABLE_EDGE !== '1') {
+    return;
+  }
+
+  const Sentry = await import('@sentry/nextjs');
+  Sentry.captureRequestError(error, request as never, context as never);
+}
+
+function hasSentryDsn(): boolean {
+  return Boolean(process.env.SENTRY_DSN || process.env.NEXT_PUBLIC_SENTRY_DSN);
 }
