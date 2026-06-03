@@ -10,6 +10,7 @@ import {
   getPublicDiscoverPeople,
 } from '@/lib/data/feed';
 import type { DiscoverReason } from '@/lib/data/feed';
+import { hasSupabaseAuthCookie } from '@/lib/auth/cookies';
 import { getUser, getProfile } from '@/lib/auth/session';
 import { getPublicShopPreviewProducts } from '@/lib/data/shop';
 import { FollowButton } from '@/components/profile/follow-button';
@@ -118,9 +119,10 @@ export default async function ExplorePage() {
 }
 
 async function ExploreDeferredSections({ suggestedPeopleTitle }: { suggestedPeopleTitle: string }) {
+  const hasAuthCookie = await hasSupabaseAuthCookie();
   const [topProducts, viewer] = await Promise.all([
     getPublicShopPreviewProducts(6).catch(() => []),
-    getUser(),
+    hasAuthCookie ? getUser() : Promise.resolve(null),
   ]);
   const [people, profile] = await Promise.all([
     viewer ? getDiscoverPeople(12) : getPublicDiscoverPeople(12),

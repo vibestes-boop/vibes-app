@@ -6,12 +6,10 @@ import { Toaster } from 'sonner';
 import { QueryProvider } from '@/providers/query-provider';
 import { ThemeProvider } from '@/providers/theme-provider';
 import { PostHogProvider } from '@/providers/posthog-provider';
-import { TopRightActions } from '@/components/top-right-actions';
+import { AppAuthShell } from '@/components/app-auth-shell';
 import { ConsentBanner } from '@/components/consent/consent-banner';
 import { AnalyticsConsentGate } from '@/components/consent/analytics-consent-gate';
 import { ServiceWorkerRegistrar } from '@/components/pwa/service-worker-registrar';
-import { MobileBottomNav } from '@/components/mobile-bottom-nav';
-import { getUser } from '@/lib/auth/session';
 import { I18nProvider } from '@/lib/i18n/client';
 import { getI18n } from '@/lib/i18n/server';
 import { LOCALE_HTML_LANG } from '@/lib/i18n/config';
@@ -97,10 +95,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // (kein Flash-of-Untranslated-Content beim Client-Mount).
   const { locale, messages } = await getI18n();
 
-  // Mobile-Bottom-Nav braucht im Root nur den Auth-State. Profil-Ziel und
-  // Unread-Badges werden nicht mehr auf dem kritischen ersten Render-Pfad
-  // gelesen: `/profile` redirected bei Klick, Badges refreshen clientseitig.
-  const bottomNavUser = await getUser();
   return (
     <html
       lang={LOCALE_HTML_LANG[locale]}
@@ -137,7 +131,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                  * (Coins + Avatar-Dropdown für logged-in, Login/Signup für
                  * logged-out). Auf Mobile rendert MobileBottomNav unten.
                  */}
-                <TopRightActions />
+                <AppAuthShell />
                 {/*
                  * `id="main-content"` ist das Skip-Link-Target. KEIN `<main>`-
                  * Tag hier, weil einzelne Pages (settings, studio, shop, explore,
@@ -159,9 +153,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 >
                   {children}
                 </div>
-                <MobileBottomNav
-                  isAuthed={!!bottomNavUser}
-                />
                 <Suspense fallback={null}>
                   <PostHogProvider />
                 </Suspense>

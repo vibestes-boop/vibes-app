@@ -78,16 +78,16 @@ function isActive(pathname: string, href: string): boolean {
 export function MobileBottomNav({
   isAuthed,
 }: {
-  isAuthed: boolean;
+  isAuthed: boolean | null;
 }) {
   const { t } = useI18n();
   const pathname = usePathname();
-  const { data: unreadCounts } = useUnreadShellCounts(isAuthed ? 'mobile' : null);
+  const { data: unreadCounts } = useUnreadShellCounts(isAuthed === true ? 'mobile' : null);
   const unreadCount = unreadCounts.dms + unreadCounts.notifications;
 
-  const slots = isAuthed
-    ? SLOTS_AUTHED
-    : SLOTS_ANON;
+  const slots = isAuthed === false
+    ? SLOTS_ANON
+    : SLOTS_AUTHED;
 
   return (
     <nav

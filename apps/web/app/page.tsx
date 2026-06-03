@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { LandingPage } from '@/components/landing-page';
 import { HomeFeedShell } from '@/components/feed/home-feed-shell';
+import { hasSupabaseAuthCookie } from '@/lib/auth/cookies';
 import { getUser } from '@/lib/auth/session';
 import {
   getForYouFeed,
@@ -49,7 +50,8 @@ async function withTimeout<T>(
 }
 
 export default async function HomePage() {
-  const user = await getUser();
+  const hasAuthCookie = await hasSupabaseAuthCookie();
+  const user = hasAuthCookie ? await getUser() : null;
 
   if (!user) {
     const [liveNow, trendingPosts] = await Promise.all([

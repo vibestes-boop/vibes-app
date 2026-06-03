@@ -7,6 +7,7 @@ export const metadata: Metadata = {
 };
 
 import { redirect } from 'next/navigation';
+import { hasSupabaseAuthCookie } from '@/lib/auth/cookies';
 import { getUser } from '@/lib/auth/session';
 import { getDraft } from '@/lib/data/posts';
 import { CreateEditor } from '@/components/create/create-editor';
@@ -26,7 +27,8 @@ interface PageProps {
 }
 
 export default async function CreatePage({ searchParams }: PageProps) {
-  const user = await getUser();
+  const hasAuthCookie = await hasSupabaseAuthCookie();
+  const user = hasAuthCookie ? await getUser() : null;
   if (!user) redirect('/login?next=/create');
 
   const { draftId } = await searchParams;
