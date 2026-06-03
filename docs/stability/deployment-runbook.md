@@ -87,6 +87,12 @@ Confirm runtime secrets in their owning systems:
 Do not paste secret values into release notes. Use fingerprints or OK/DIFF
 output from `npm run workspace:doctor`.
 
+Verify observability env names without printing values:
+
+```bash
+npm run observability:health -- --vercel-production
+```
+
 ## 5. Cron
 
 Required production cron jobs:

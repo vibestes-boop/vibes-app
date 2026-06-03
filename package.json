@@ -40,6 +40,7 @@
     "support:health": "node scripts/check-support-health.mjs",
     "campaigns:health": "node scripts/check-campaign-health.mjs",
     "regions:health": "node scripts/check-region-health.mjs",
+    "observability:health": "node scripts/check-observability-health.mjs",
     "governance:health": "node scripts/check-governance-health.mjs",
     "push-feed:health": "node scripts/check-push-feed-health.mjs",
     "push-feed:recover-live": "node scripts/recover-live-notification-backlog.mjs",

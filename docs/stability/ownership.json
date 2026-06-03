@@ -73,6 +73,14 @@
       "alert": "weekly product review and stability-alert GitHub Issue",
       "runbook": "docs/stability/product-metrics.md",
       "weekly_status": "docs/stability/weekly-review.md"
+    },
+    {
+      "area": "Observability",
+      "owner": "Zaur / Founder",
+      "dashboard": "npm run observability:health",
+      "alert": "weekly-integrity GitHub Action and stability-alert GitHub Issue",
+      "runbook": "docs/stability/deployment-runbook.md",
+      "weekly_status": "docs/stability/weekly-review.md"
     }
   ]
 }

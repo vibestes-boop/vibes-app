@@ -16,6 +16,7 @@ const REQUIRED_AREAS = [
   'Moderation/Trust',
   'Cost Monitoring',
   'Product Metrics',
+  'Observability',
 ];
 
 const REQUIRED_OWNER_FIELDS = ['area', 'owner', 'dashboard', 'alert', 'runbook', 'weekly_status'];
@@ -25,6 +26,7 @@ const REVIEW_REQUIRED_TEXT = [
   'npm run product:health',
   'npm run cost:health',
   'npm run moderation:health',
+  'npm run observability:health',
   'npm run governance:health',
   'npm run push-feed:health',
   'npm run health:dashboard',
@@ -264,6 +266,7 @@ function validateWorkflow() {
     'npm run product:health',
     'npm run cost:health',
     'npm run moderation:health',
+    'npm run observability:health',
     'npm run governance:health',
     'npm run push-feed:health',
     'npm run health:dashboard',

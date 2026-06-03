@@ -24,6 +24,7 @@
     "product:health": "node ../../scripts/check-product-health.mjs",
     "cost:health": "node ../../scripts/check-cost-health.mjs",
     "moderation:health": "node ../../scripts/check-moderation-health.mjs",
+    "observability:health": "node ../../scripts/check-observability-health.mjs",
     "governance:health": "node ../../scripts/check-governance-health.mjs",
     "push-feed:health": "node ../../scripts/check-push-feed-health.mjs",
     "health:dashboard": "node ../../scripts/health-dashboard.mjs",

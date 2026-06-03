@@ -49,6 +49,15 @@ jobs:
       LIVEKIT_BILLING_BEARER_TOKEN: ${{ secrets.LIVEKIT_BILLING_BEARER_TOKEN }}
       AI_BILLING_URL: ${{ secrets.AI_BILLING_URL }}
       AI_BILLING_BEARER_TOKEN: ${{ secrets.AI_BILLING_BEARER_TOKEN }}
+      NEXT_PUBLIC_SENTRY_DSN: ${{ secrets.NEXT_PUBLIC_SENTRY_DSN }}
+      SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+      SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
+      NEXT_PUBLIC_POSTHOG_KEY: ${{ secrets.NEXT_PUBLIC_POSTHOG_KEY }}
+      NEXT_PUBLIC_POSTHOG_HOST: ${{ secrets.NEXT_PUBLIC_POSTHOG_HOST }}
+      SUPABASE_QUERY_TIMING: ${{ secrets.SUPABASE_QUERY_TIMING }}
+      SERLO_TIMING_LOGS: ${{ secrets.SERLO_TIMING_LOGS }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -90,6 +99,11 @@ jobs:
         id: moderation
         continue-on-error: true
         run: npm run moderation:health
+
+      - name: Check weekly observability health
+        id: observability
+        continue-on-error: true
+        run: npm run observability:health
 
       - name: Check weekly support health
         id: support
@@ -133,6 +147,7 @@ jobs:
           steps.provider_billing_secrets.outcome == 'failure' ||
           steps.cost.outcome == 'failure' ||
           steps.moderation.outcome == 'failure' ||
+          steps.observability.outcome == 'failure' ||
           steps.support.outcome == 'failure' ||
           steps.campaigns.outcome == 'failure' ||
           steps.regions.outcome == 'failure' ||
@@ -151,6 +166,7 @@ jobs:
               provider_billing_secrets: '${{ steps.provider_billing_secrets.outcome }}',
               cost: '${{ steps.cost.outcome }}',
               moderation: '${{ steps.moderation.outcome }}',
+              observability: '${{ steps.observability.outcome }}',
               support: '${{ steps.support.outcome }}',
               campaigns: '${{ steps.campaigns.outcome }}',
               regions: '${{ steps.regions.outcome }}',
@@ -229,6 +245,7 @@ jobs:
             steps.provider_billing_secrets.outcome == 'failure' ||
             steps.cost.outcome == 'failure' ||
             steps.moderation.outcome == 'failure' ||
+            steps.observability.outcome == 'failure' ||
             steps.support.outcome == 'failure' ||
             steps.campaigns.outcome == 'failure' ||
             steps.regions.outcome == 'failure' ||
@@ -246,6 +263,7 @@ jobs:
               provider_billing_secrets: '${{ steps.provider_billing_secrets.outcome }}',
               cost: '${{ steps.cost.outcome }}',
               moderation: '${{ steps.moderation.outcome }}',
+              observability: '${{ steps.observability.outcome }}',
               support: '${{ steps.support.outcome }}',
               campaigns: '${{ steps.campaigns.outcome }}',
               regions: '${{ steps.regions.outcome }}',
@@ -286,6 +304,7 @@ jobs:
             steps.provider_billing_secrets.outcome == 'failure' ||
             steps.cost.outcome == 'failure' ||
             steps.moderation.outcome == 'failure' ||
+            steps.observability.outcome == 'failure' ||
             steps.support.outcome == 'failure' ||
             steps.campaigns.outcome == 'failure' ||
             steps.regions.outcome == 'failure' ||
@@ -303,6 +322,7 @@ jobs:
               provider_billing_secrets: '${{ steps.provider_billing_secrets.outcome }}',
               cost: '${{ steps.cost.outcome }}',
               moderation: '${{ steps.moderation.outcome }}',
+              observability: '${{ steps.observability.outcome }}',
               support: '${{ steps.support.outcome }}',
               campaigns: '${{ steps.campaigns.outcome }}',
               regions: '${{ steps.regions.outcome }}',
@@ -356,6 +376,7 @@ jobs:
           steps.provider_billing_secrets.outcome == 'failure' ||
           steps.cost.outcome == 'failure' ||
           steps.moderation.outcome == 'failure' ||
+          steps.observability.outcome == 'failure' ||
           steps.support.outcome == 'failure' ||
           steps.campaigns.outcome == 'failure' ||
           steps.regions.outcome == 'failure' ||

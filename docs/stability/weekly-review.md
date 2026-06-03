@@ -13,6 +13,7 @@ npm run launch:scorecard
 npm run product:health
 npm run cost:health
 npm run moderation:health
+npm run observability:health -- --vercel-production
 npm run governance:health
 npm run push-feed:health
 npm run health:dashboard
@@ -38,6 +39,7 @@ Required areas are defined in `docs/stability/ownership.json`:
 - Moderation/Trust
 - Cost Monitoring
 - Product Metrics
+- Observability
 
 ## Decision Rules
 
@@ -65,6 +67,7 @@ Every weekly review records:
 - health dashboard status board
 - launch scorecard decision
 - feature freeze guard result
+- observability health status
 - push/feed health status
 - Keep / Improve / Kill decisions
 - frozen areas and unblock owner

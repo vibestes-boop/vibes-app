@@ -12,7 +12,8 @@ build provenance, and maintainable code structure.
 
 - Active repo: `/Users/zaurhatuev/vibes-app`
 - Active branch: `main`
-- Current release commit before this hardening pass: `f177a4c Fill public legal launch details`
+- Current release commit before this observability pass:
+  `104af88 Harden release observability and iOS guards`
 - Web production: `https://serlo-web.vercel.app`
 - Native app identity: `Serlo 1.26.6 (279)`
 - EAS project id: `02ab536a-5836-4560-a5ec-2dfd6e059f90`
@@ -27,6 +28,11 @@ legacy checkout.
 - Git working tree was clean before the 2026-06-03 hardening pass.
 - `npm run release:gate` passed on 2026-06-03.
 - `npm run health:dashboard` passed on 2026-06-03.
+- `npm run observability:health` passed on 2026-06-03 and reports Yellow until
+  Sentry/PostHog envs are intentionally configured.
+- `npm run observability:health -- --vercel-production` passed on 2026-06-03;
+  Vercel Production has timing log env names, but no Sentry runtime/source-map
+  env names yet.
 - `npm run native:release-guard` passed from `/Users/zaurhatuev/vibes-app`.
 - `npm run native:builds:audit` passed and reports latest Store build
   `1.26.6 (279)`.
@@ -36,7 +42,7 @@ legacy checkout.
 - Shop media health is green: active products have reachable media URLs.
 - Legal readiness is no longer blocked by placeholder text.
 
-## Current Hardening Changes In Progress
+## Latest Hardening Changes
 
 - Build audit now reads the current App Store Connect candidate from `app.json`
   instead of a hard-coded stale number.
@@ -47,6 +53,10 @@ legacy checkout.
   to avoid the previous eager-import Edge crash.
 - Deployment runbook now documents the required Vercel Sentry env vars and the
   rule to keep `SENTRY_ENABLE_EDGE` unset until preview verification.
+- Observability health now has a dedicated guard and dashboard row. It reports
+  local/Vercel env name presence without printing secret values.
+- Observability now has an ownership entry and runs in the weekly integrity
+  workflow.
 
 ## Open Technical Risks
 
@@ -70,6 +80,7 @@ legacy checkout.
 ```bash
 cd /Users/zaurhatuev/vibes-app
 npm run release:gate
+npm run observability:health -- --vercel-production
 npm run health:dashboard
 ```
 
@@ -93,10 +104,10 @@ release path.
 
 ## Next Technical Work
 
-1. Finish this hardening pass and commit it.
-2. Verify Sentry instrumentation with typecheck, lint, and build.
-3. Run `native:builds:audit`, `native:release-guard`, `release:gate`, and
-   `health:dashboard` after the edits.
-4. If checks pass, push to `origin/main`.
-5. Next refactor wave: extract narrow hooks/components from the largest native
+1. Configure Sentry DSN envs in Vercel Preview/Production, then run
+   `npm run observability:health -- --vercel-production --strict` only after
+   the source-map secrets are also ready.
+2. Keep `SENTRY_ENABLE_EDGE` unset until a preview deploy proves Edge routes
+   are safe.
+3. Next refactor wave: extract narrow hooks/components from the largest native
    screens, starting with create/upload flow and live watch/host state.

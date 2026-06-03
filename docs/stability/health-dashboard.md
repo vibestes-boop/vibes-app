@@ -22,6 +22,7 @@ Covered areas:
 - Cost Monitoring
 - Moderation/Trust
 - Push/Feed
+- Observability
 - Governance
 
 The dashboard does not replace the detailed guards. It summarizes their
@@ -33,3 +34,14 @@ the full invite decision.
 Transient Supabase RPC timeouts are retried by default. A repeated timeout still
 turns the affected area red, but a single short-lived `57014` statement timeout
 does not make the whole dashboard noisy.
+
+`Observability` stays yellow when Sentry is not configured. Run the focused
+check before release reviews:
+
+```bash
+npm run observability:health
+npm run observability:health -- --vercel-production
+```
+
+The focused check prints only whether env names are present, never secret
+values.

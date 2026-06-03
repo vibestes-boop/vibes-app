@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 const DEFAULT_TIMEOUT_MS = 10000;
 const DEFAULT_SITE_URL = 'https://serlo-web.vercel.app';
 const MEDIA_SCAN_BYTES = 2 * 1024 * 1024;
+const GOVERNANCE_REQUIRED_AREAS = 10;
 const STATUS_ORDER = { Green: 0, Yellow: 1, Red: 2 };
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -30,6 +31,7 @@ const timeoutMs = readPositiveInt(args.timeoutMs, DEFAULT_TIMEOUT_MS);
 const rpcRetries = readPositiveInt(args.rpcRetries, 2);
 const rows = [];
 const failures = [];
+const observability = checkObservabilityEnv();
 
 console.log('Production health dashboard');
 console.log('No secret values are printed.');
@@ -72,6 +74,7 @@ if (failures.length === 0) {
   addIntegrity(integrity);
   addProduct(product);
   addLaunchReadiness(product, activation, pushFeed, thumbnails, feedEndpoint);
+  addObservability(observability);
   addCost(cost);
   addModeration(moderation);
   addSupport(support);
@@ -285,6 +288,42 @@ async function checkGovernanceFiles() {
   return { ok: missing.length === 0, missing, ownerAreas };
 }
 
+function checkObservabilityEnv() {
+  const runtimeDsn = Boolean(readEnv('NEXT_PUBLIC_SENTRY_DSN', 'SENTRY_DSN'));
+  const sourceMapKeys = ['SENTRY_AUTH_TOKEN', 'SENTRY_ORG', 'SENTRY_PROJECT'];
+  const missingSourceMapKeys = sourceMapKeys.filter((key) => !readEnv(key));
+  const sourceMapState =
+    missingSourceMapKeys.length === 0
+      ? 'complete'
+      : missingSourceMapKeys.length === sourceMapKeys.length
+        ? 'missing'
+        : 'partial';
+  const edgeEnabled = process.env.SENTRY_ENABLE_EDGE === '1';
+  const posthogState =
+    readEnv('NEXT_PUBLIC_POSTHOG_KEY') && readEnv('NEXT_PUBLIC_POSTHOG_HOST')
+      ? 'complete'
+      : readEnv('NEXT_PUBLIC_POSTHOG_KEY', 'NEXT_PUBLIC_POSTHOG_HOST')
+        ? 'partial'
+        : 'missing';
+  const timingLogs = Boolean(
+    readEnv(
+      'SUPABASE_QUERY_TIMING',
+      'NEXT_PUBLIC_SUPABASE_QUERY_TIMING',
+      'SERLO_TIMING_LOGS',
+      'SERVER_ACTION_TIMING',
+    ),
+  );
+
+  return {
+    runtimeDsn,
+    sourceMapState,
+    missingSourceMapKeys,
+    edgeEnabled,
+    posthogState,
+    timingLogs,
+  };
+}
+
 function addIntegrity(result) {
   if (!result.ok) return addRow('Data Lifecycle', 'Red', `integrity RPC failed: ${result.error}`, 'production_integrity_snapshot');
   const data = result.data || {};
@@ -382,6 +421,29 @@ function addLaunchReadiness(productResult, activationResult, pushFeedResult, thu
     status,
     `${decision}: first-post ${number(firstPostUsers)}/${number(newUsers)} (${formatPercent(firstPostRate)}), creators ${number(activeCreators)}, WAU ${number(wau)}${context ? `; ${context}` : ''}`,
     'npm run launch:scorecard',
+  );
+}
+
+function addObservability(result) {
+  const red = result.edgeEnabled && !result.runtimeDsn;
+  const yellow =
+    !red &&
+    (!result.runtimeDsn ||
+      result.sourceMapState !== 'complete' ||
+      result.edgeEnabled ||
+      result.posthogState === 'partial');
+  const warnings = [];
+
+  if (!result.runtimeDsn) warnings.push('Sentry DSN missing');
+  if (result.sourceMapState !== 'complete') warnings.push(`source maps ${result.sourceMapState}`);
+  if (result.edgeEnabled) warnings.push('Edge Sentry enabled');
+  if (result.posthogState === 'partial') warnings.push('PostHog partial');
+
+  addRow(
+    'Observability',
+    red ? 'Red' : yellow ? 'Yellow' : 'Green',
+    `local env ${warnings.length ? warnings.join(', ') : 'Sentry runtime/source maps configured'}, timing logs ${result.timingLogs ? 'on' : 'off'}`,
+    'npm run observability:health',
   );
 }
 
@@ -558,11 +620,11 @@ function addPushFeed(result, feedEndpoint) {
 }
 
 function addGovernance(result) {
-  const status = result.ok && result.ownerAreas >= 9 ? 'Green' : 'Red';
+  const status = result.ok && result.ownerAreas >= GOVERNANCE_REQUIRED_AREAS ? 'Green' : 'Red';
   addRow(
     'Governance',
     status,
-    `owner areas ${number(result.ownerAreas)}/9${result.missing?.length ? `, missing ${result.missing.join(', ')}` : ''}`,
+    `owner areas ${number(result.ownerAreas)}/${GOVERNANCE_REQUIRED_AREAS}${result.missing?.length ? `, missing ${result.missing.join(', ')}` : ''}`,
     'npm run governance:health',
   );
 }

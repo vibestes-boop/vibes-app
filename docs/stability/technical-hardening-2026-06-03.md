@@ -11,7 +11,7 @@ current hardening priorities.
   Web lint, production route smoke, API contracts, media budget, media playback,
   thumbnails, shop media, backend integrity, and authenticated interactions.
 - `health:dashboard` reports production health across lifecycle, cost,
-  moderation, support, regions, media, shop, and governance.
+  moderation, support, regions, media, shop, observability, and governance.
 - R2 direct-upload signing is protected by authenticated smoke tests.
 - Native production builds use guarded npm commands with source/version checks.
 - Latest Store/TestFlight build observed by EAS audit is `1.26.6 (279)`.
@@ -38,6 +38,10 @@ current hardening priorities.
   a DSN exists, while keeping Edge Sentry disabled unless `SENTRY_ENABLE_EDGE=1`.
 - Deployment runbook now lists the required Vercel Sentry env vars and the
   Edge-Sentry opt-in rule.
+- `npm run observability:health` checks local and optional Vercel Production
+  observability env names without printing secret values, and the summary is
+  now visible in `npm run health:dashboard`.
+- Observability now has an owner-matrix entry and a weekly workflow guard.
 - `handoff.md` was refreshed with the current release source, build identity,
   checks, and next technical work.
 - `npm --prefix apps/web run build` passes. The build still prints a known
@@ -46,8 +50,8 @@ current hardening priorities.
 
 ## Next Hardening Wave
 
-1. Verify Web Sentry on a Vercel preview with `NEXT_PUBLIC_SENTRY_DSN` and
-   `SENTRY_DSN` set.
+1. Set and verify Web Sentry on Vercel Preview/Production with
+   `NEXT_PUBLIC_SENTRY_DSN` and `SENTRY_DSN`.
 2. Add source-map upload secrets only after the Sentry project is confirmed:
    `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`.
 3. Keep `SENTRY_ENABLE_EDGE` unset until preview proves Edge routes are safe.
@@ -63,6 +67,7 @@ Before Web release:
 
 ```bash
 npm run release:gate
+npm run observability:health -- --vercel-production
 npm run health:dashboard
 ```
 
