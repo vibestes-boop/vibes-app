@@ -1,17 +1,28 @@
-'use client';
+"use client";
 
-import { useState, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
-import type { Route } from 'next';
-import Image from 'next/image';
-import { Loader2, X, Plus, Info, Sparkles } from 'lucide-react';
-import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-import { createProduct, updateProduct } from '@/app/actions/shop';
-import { AIImageSheet } from '@/components/ai/ai-image-sheet';
-import type { ProductCategory } from '@shared/types';
-import type { ShopProduct } from '@/lib/data/shop';
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import type { Route } from "next";
+import Image from "next/image";
+import {
+  Loader2,
+  X,
+  Plus,
+  Info,
+  Sparkles,
+  Package,
+  FileText,
+  Gem,
+  Coins,
+  type LucideIcon,
+} from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { createProduct, updateProduct } from "@/app/actions/shop";
+import { AIImageSheet } from "@/components/ai/ai-image-sheet";
+import type { ProductCategory } from "@shared/types";
+import type { ShopProduct } from "@/lib/data/shop";
 
 // -----------------------------------------------------------------------------
 // ProductForm — shared Create/Edit. Keine react-hook-form Abhängigkeit hier,
@@ -23,11 +34,26 @@ import type { ShopProduct } from '@/lib/data/shop';
 // kommt mit Phase 8 (Create-Flow). Bis dahin: User pasted URLs.
 // -----------------------------------------------------------------------------
 
-const CATEGORIES: Array<{ id: ProductCategory; label: string; hint: string }> = [
-  { id: 'physical', label: '📦 Physisch', hint: 'Wird verschickt.' },
-  { id: 'digital', label: '💾 Digital', hint: 'Download-Link.' },
-  { id: 'service', label: '✨ Service', hint: 'Kontaktaufnahme nach Kauf.' },
-  { id: 'collectible', label: '💎 Collectible', hint: 'Sammelobjekt.' },
+const CATEGORIES: Array<{
+  id: ProductCategory;
+  label: string;
+  hint: string;
+  Icon: LucideIcon;
+}> = [
+  {
+    id: "physical",
+    label: "Physisch",
+    hint: "Wird verschickt.",
+    Icon: Package,
+  },
+  { id: "digital", label: "Digital", hint: "Download-Link.", Icon: FileText },
+  {
+    id: "service",
+    label: "Service",
+    hint: "Kontaktaufnahme nach Kauf.",
+    Icon: Sparkles,
+  },
+  { id: "collectible", label: "Collectible", hint: "Sammelobjekt.", Icon: Gem },
 ];
 
 interface FormState {
@@ -47,30 +73,30 @@ interface FormState {
 function fromProduct(p: ShopProduct | null): FormState {
   if (!p) {
     return {
-      title: '',
-      description: '',
-      category: 'digital',
-      price_coins: '',
-      sale_price_coins: '',
-      stock: '-1',
-      cover_url: '',
+      title: "",
+      description: "",
+      category: "digital",
+      price_coins: "",
+      sale_price_coins: "",
+      stock: "-1",
+      cover_url: "",
       image_urls: [],
       free_shipping: false,
-      location: '',
+      location: "",
       women_only: false,
     };
   }
   return {
     title: p.title,
-    description: p.description ?? '',
+    description: p.description ?? "",
     category: p.category,
     price_coins: p.price_coins.toString(),
-    sale_price_coins: p.sale_price_coins?.toString() ?? '',
+    sale_price_coins: p.sale_price_coins?.toString() ?? "",
     stock: p.stock.toString(),
-    cover_url: p.cover_url ?? '',
+    cover_url: p.cover_url ?? "",
     image_urls: p.image_urls,
     free_shipping: p.free_shipping,
-    location: p.location ?? '',
+    location: p.location ?? "",
     women_only: p.women_only,
   };
 }
@@ -78,15 +104,16 @@ function fromProduct(p: ShopProduct | null): FormState {
 export function ProductForm({ existing }: { existing: ShopProduct | null }) {
   const router = useRouter();
   const [form, setForm] = useState<FormState>(fromProduct(existing));
-  const [imageInput, setImageInput] = useState('');
+  const [imageInput, setImageInput] = useState("");
   const [isPending, startTransition] = useTransition();
   // v1.28.0: AI-Image-Sheet für Mockups ohne eigenes Foto
   const [aiSheetOpen, setAiSheetOpen] = useState(false);
 
   const price = Number(form.price_coins || 0);
-  const salePrice = form.sale_price_coins ? Number(form.sale_price_coins) : null;
-  const salePercent =
-    salePrice && price > 0 ? Math.round(((price - salePrice) / price) * 100) : null;
+  const salePrice = form.sale_price_coins
+    ? Number(form.sale_price_coins)
+    : null;
+  const hasSale = salePrice !== null && price > 0;
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -97,20 +124,20 @@ export function ProductForm({ existing }: { existing: ShopProduct | null }) {
     try {
       new URL(trimmed);
     } catch {
-      toast.error('Ungültige URL');
+      toast.error("Ungültige URL");
       return;
     }
     if (form.image_urls.length >= 10) {
-      toast.error('Maximal 10 Bilder');
+      toast.error("Maximal 10 Bilder");
       return;
     }
-    update('image_urls', [...form.image_urls, trimmed]);
-    setImageInput('');
+    update("image_urls", [...form.image_urls, trimmed]);
+    setImageInput("");
   };
 
   const removeImage = (i: number) => {
     update(
-      'image_urls',
+      "image_urls",
       form.image_urls.filter((_, idx) => idx !== i),
     );
   };
@@ -121,7 +148,9 @@ export function ProductForm({ existing }: { existing: ShopProduct | null }) {
       description: form.description.trim() || null,
       category: form.category,
       price_coins: Number(form.price_coins),
-      sale_price_coins: form.sale_price_coins ? Number(form.sale_price_coins) : null,
+      sale_price_coins: form.sale_price_coins
+        ? Number(form.sale_price_coins)
+        : null,
       stock: Number(form.stock),
       cover_url: form.cover_url.trim() || null,
       image_urls: form.image_urls,
@@ -141,11 +170,11 @@ export function ProductForm({ existing }: { existing: ShopProduct | null }) {
       }
 
       if (existing) {
-        toast.success('Produkt aktualisiert');
-        router.push('/studio/shop' as Route);
+        toast.success("Produkt aktualisiert");
+        router.push("/studio/shop" as Route);
       } else {
         const newId = (result.data as { id: string }).id;
-        toast.success('Produkt angelegt');
+        toast.success("Produkt angelegt");
         router.push(`/shop/${newId}` as Route);
       }
     });
@@ -160,23 +189,29 @@ export function ProductForm({ existing }: { existing: ShopProduct | null }) {
           <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
             {CATEGORIES.map((c) => {
               const active = form.category === c.id;
+              const Icon = c.Icon;
               return (
                 <button
                   key={c.id}
                   type="button"
                   onClick={() => {
-                    update('category', c.id);
-                    if (c.id !== 'physical') update('free_shipping', false);
+                    update("category", c.id);
+                    if (c.id !== "physical") update("free_shipping", false);
                   }}
                   className={cn(
-                    'flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors',
+                    "flex flex-col items-start gap-1 rounded-lg border p-3 text-left transition-colors",
                     active
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border hover:bg-muted/40',
+                      ? "border-primary bg-primary/5"
+                      : "border-border hover:bg-muted/40",
                   )}
                 >
-                  <div className="text-sm font-medium">{c.label}</div>
-                  <div className="text-[11px] text-muted-foreground">{c.hint}</div>
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <Icon className="h-4 w-4 text-muted-foreground" />
+                    {c.label}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {c.hint}
+                  </div>
                 </button>
               );
             })}
@@ -192,7 +227,7 @@ export function ProductForm({ existing }: { existing: ShopProduct | null }) {
             id="title"
             type="text"
             value={form.title}
-            onChange={(e) => update('title', e.target.value)}
+            onChange={(e) => update("title", e.target.value)}
             placeholder="z.B. „Tschetschenisches Kochbuch 2026"
             maxLength={80}
             className="mt-1.5 h-10 w-full rounded-md border bg-background px-3 text-sm outline-none focus:border-ring"
@@ -210,7 +245,7 @@ export function ProductForm({ existing }: { existing: ShopProduct | null }) {
           <textarea
             id="description"
             value={form.description}
-            onChange={(e) => update('description', e.target.value)}
+            onChange={(e) => update("description", e.target.value)}
             placeholder="Was bekommen Käufer? Details zu Versand, Inhalt, Zustand …"
             rows={6}
             maxLength={2000}
@@ -232,18 +267,18 @@ export function ProductForm({ existing }: { existing: ShopProduct | null }) {
               type="number"
               min={1}
               value={form.price_coins}
-              onChange={(e) => update('price_coins', e.target.value)}
+              onChange={(e) => update("price_coins", e.target.value)}
               placeholder="1000"
               className="mt-1.5 h-10 w-full rounded-md border bg-background px-3 text-sm tabular-nums outline-none focus:border-ring"
             />
           </div>
           <div>
             <label htmlFor="sale-price" className="text-sm font-medium">
-              Angebotspreis (Coins){' '}
+              Angebotspreis (Coins){" "}
               <span className="text-muted-foreground">· optional</span>
-              {salePercent !== null && (
-                <span className="ml-2 rounded bg-red-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-red-600 dark:text-red-400">
-                  −{salePercent}%
+              {hasSale && (
+                <span className="ml-2 rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                  Angebot
                 </span>
               )}
             </label>
@@ -252,7 +287,7 @@ export function ProductForm({ existing }: { existing: ShopProduct | null }) {
               type="number"
               min={1}
               value={form.sale_price_coins}
-              onChange={(e) => update('sale_price_coins', e.target.value)}
+              onChange={(e) => update("sale_price_coins", e.target.value)}
               placeholder="700"
               className="mt-1.5 h-10 w-full rounded-md border bg-background px-3 text-sm tabular-nums outline-none focus:border-ring"
             />
@@ -269,7 +304,7 @@ export function ProductForm({ existing }: { existing: ShopProduct | null }) {
               id="stock"
               type="number"
               value={form.stock}
-              onChange={(e) => update('stock', e.target.value)}
+              onChange={(e) => update("stock", e.target.value)}
               placeholder="-1 = unbegrenzt"
               className="mt-1.5 h-10 w-full rounded-md border bg-background px-3 text-sm tabular-nums outline-none focus:border-ring"
             />
@@ -286,7 +321,7 @@ export function ProductForm({ existing }: { existing: ShopProduct | null }) {
               id="location"
               type="text"
               value={form.location}
-              onChange={(e) => update('location', e.target.value)}
+              onChange={(e) => update("location", e.target.value)}
               placeholder="z.B. Berlin, Europe, Worldwide"
               maxLength={120}
               className="mt-1.5 h-10 w-full rounded-md border bg-background px-3 text-sm outline-none focus:border-ring"
@@ -300,7 +335,7 @@ export function ProductForm({ existing }: { existing: ShopProduct | null }) {
           <input
             type="url"
             value={form.cover_url}
-            onChange={(e) => update('cover_url', e.target.value)}
+            onChange={(e) => update("cover_url", e.target.value)}
             placeholder="https://…"
             className="mt-1.5 h-10 w-full rounded-md border bg-background px-3 text-sm outline-none focus:border-ring"
           />
@@ -322,7 +357,9 @@ export function ProductForm({ existing }: { existing: ShopProduct | null }) {
                 type="url"
                 value={imageInput}
                 onChange={(e) => setImageInput(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addImage())}
+                onKeyDown={(e) =>
+                  e.key === "Enter" && (e.preventDefault(), addImage())
+                }
                 placeholder="https://…"
                 className="h-10 flex-1 rounded-md border bg-background px-3 text-sm outline-none focus:border-ring"
               />
@@ -334,8 +371,17 @@ export function ProductForm({ existing }: { existing: ShopProduct | null }) {
             {form.image_urls.length > 0 && (
               <div className="mt-3 grid grid-cols-4 gap-2 sm:grid-cols-5">
                 {form.image_urls.map((src, i) => (
-                  <div key={i} className="group relative aspect-square overflow-hidden rounded-md bg-muted">
-                    <Image src={src} alt="" fill className="object-cover" sizes="120px" />
+                  <div
+                    key={i}
+                    className="group relative aspect-square overflow-hidden rounded-md bg-muted"
+                  >
+                    <Image
+                      src={src}
+                      alt=""
+                      fill
+                      className="object-cover"
+                      sizes="120px"
+                    />
                     <button
                       type="button"
                       onClick={() => removeImage(i)}
@@ -356,14 +402,15 @@ export function ProductForm({ existing }: { existing: ShopProduct | null }) {
             <input
               type="checkbox"
               checked={form.free_shipping}
-              disabled={form.category !== 'physical'}
-              onChange={(e) => update('free_shipping', e.target.checked)}
-              className="h-4 w-4 accent-emerald-500"
+              disabled={form.category !== "physical"}
+              onChange={(e) => update("free_shipping", e.target.checked)}
+              className="h-4 w-4 accent-foreground"
             />
             <div className="flex-1">
               <div className="text-sm font-medium">Gratis Versand</div>
               <div className="text-xs text-muted-foreground">
-                Nur für physische Produkte — wird als grüne Pille angezeigt.
+                Nur für physische Produkte — wird als diskrete Kennzeichnung
+                angezeigt.
               </div>
             </div>
           </label>
@@ -372,8 +419,8 @@ export function ProductForm({ existing }: { existing: ShopProduct | null }) {
             <input
               type="checkbox"
               checked={form.women_only}
-              onChange={(e) => update('women_only', e.target.checked)}
-              className="h-4 w-4 accent-pink-500"
+              onChange={(e) => update("women_only", e.target.checked)}
+              className="h-4 w-4 accent-foreground"
             />
             <div className="flex-1">
               <div className="text-sm font-medium">Nur für Frauen</div>
@@ -388,18 +435,22 @@ export function ProductForm({ existing }: { existing: ShopProduct | null }) {
         <div className="flex gap-2">
           <Button
             variant="outline"
-            onClick={() => router.push('/studio/shop' as Route)}
+            onClick={() => router.push("/studio/shop" as Route)}
             disabled={isPending}
           >
             Abbrechen
           </Button>
-          <Button onClick={handleSubmit} disabled={isPending} className="flex-1">
+          <Button
+            onClick={handleSubmit}
+            disabled={isPending}
+            className="flex-1"
+          >
             {isPending ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : existing ? (
-              'Änderungen speichern'
+              "Änderungen speichern"
             ) : (
-              'Produkt anlegen'
+              "Produkt anlegen"
             )}
           </Button>
         </div>
@@ -409,25 +460,25 @@ export function ProductForm({ existing }: { existing: ShopProduct | null }) {
       <AIImageSheet
         open={aiSheetOpen}
         onOpenChange={setAiSheetOpen}
-        onUseImage={(url) => update('cover_url', url)}
+        onUseImage={(url) => update("cover_url", url)}
         purpose="shop_mockup"
         defaultSize="1024x1024"
         title="Produktbild mit KI"
         promptPlaceholder="z.B. „Schwarzer Hoodie auf weißem Studio-Hintergrund, minimalistisch, Produktfoto"
         suggestions={
-          form.category === 'physical'
+          form.category === "physical"
             ? [
-                'Minimalistisches Produktfoto auf weißem Studio-Hintergrund',
-                'Handwerk-Produkt auf Holzmaserung, warmes Licht',
+                "Minimalistisches Produktfoto auf weißem Studio-Hintergrund",
+                "Handwerk-Produkt auf Holzmaserung, warmes Licht",
               ]
-            : form.category === 'digital'
+            : form.category === "digital"
               ? [
-                  'Flat-Design-Icon für Digital-Produkt, moderne Farben',
-                  'Abstrakter Verlauf mit Text-Overlay-Placeholder',
+                  "Flat-Design-Icon für Digital-Produkt, moderne Farben",
+                  "Abstrakter Verlauf mit Text-Overlay-Placeholder",
                 ]
               : [
-                  'Professionelle Portrait-Szene, soft light',
-                  'Abstrakte Komposition für Service-Thumbnail',
+                  "Professionelle Portrait-Szene, soft light",
+                  "Abstrakte Komposition für Service-Thumbnail",
                 ]
         }
       />
@@ -449,28 +500,32 @@ export function ProductForm({ existing }: { existing: ShopProduct | null }) {
                   sizes="300px"
                 />
               ) : (
-                <div className="flex h-full items-center justify-center text-4xl opacity-60">
-                  📦
+                <div className="flex h-full items-center justify-center">
+                  <Package
+                    className="h-10 w-10 text-muted-foreground/45"
+                    strokeWidth={1.75}
+                  />
                 </div>
               )}
-              {salePercent !== null && (
-                <span className="absolute left-2 top-2 rounded bg-red-500 px-1.5 py-0.5 text-[10px] font-semibold text-white">
-                  −{salePercent}%
+              {hasSale && (
+                <span className="absolute left-2 top-2 rounded border border-white/25 bg-black/65 px-1.5 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
+                  Angebot
                 </span>
               )}
             </div>
             <div className="p-3">
               <div className="line-clamp-2 min-h-[2.5rem] text-sm font-medium">
-                {form.title || 'Dein Produkt-Titel'}
+                {form.title || "Dein Produkt-Titel"}
               </div>
               <div className="mt-1 text-base font-semibold tabular-nums">
-                🪙{' '}
-                {(form.sale_price_coins ? Number(form.sale_price_coins) : price).toLocaleString(
-                  'de-DE',
-                )}
+                <Coins className="mr-1 inline h-3.5 w-3.5 text-muted-foreground" />
+                {(form.sale_price_coins
+                  ? Number(form.sale_price_coins)
+                  : price
+                ).toLocaleString("de-DE")}
                 {salePrice && (
                   <span className="ml-1 text-xs text-muted-foreground line-through">
-                    {price.toLocaleString('de-DE')}
+                    {price.toLocaleString("de-DE")}
                   </span>
                 )}
               </div>

@@ -4,7 +4,7 @@ import { useRef, useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { ReactNode } from 'react';
-import { Grid3x3, Play } from 'lucide-react';
+import { Grid3x3, Heart, Pin, Play } from 'lucide-react';
 import type { Post } from '@shared/types';
 import { cn } from '@/lib/utils';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -36,9 +36,15 @@ function formatCount(n: number): string {
 function PostGridItem({ post }: { post: Post }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoReady, setVideoReady] = useState(false);
+  const [thumbnailFailed, setThumbnailFailed] = useState(false);
   const inferredImage = /\.(?:avif|gif|jpe?g|png|webp)(?:[?#].*)?$/i.test(post.video_url);
   const previewImageUrl = post.thumbnail_url ?? (inferredImage ? post.video_url : null);
+  const showThumbnail = !!previewImageUrl && !thumbnailFailed;
   const canPreviewVideo = !inferredImage && post.video_url.length > 0;
+
+  useEffect(() => {
+    setThumbnailFailed(false);
+  }, [previewImageUrl]);
 
   const handleMouseEnter = useCallback(() => {
     if (!canPreviewVideo) return;
@@ -53,7 +59,7 @@ function PostGridItem({ post }: { post: Post }) {
     const v = videoRef.current;
     if (!v) return;
     v.pause();
-    if (!previewImageUrl) {
+    if (!showThumbnail) {
       try {
         v.currentTime = Math.min(0.1, Number.isFinite(v.duration) ? v.duration / 10 : 0.1);
       } catch {
@@ -63,10 +69,10 @@ function PostGridItem({ post }: { post: Post }) {
       return;
     }
     setVideoReady(false);
-  }, [canPreviewVideo, previewImageUrl]);
+  }, [canPreviewVideo, showThumbnail]);
 
   const handleLoadedMetadata = useCallback(() => {
-    if (previewImageUrl || !canPreviewVideo) return;
+    if (showThumbnail || !canPreviewVideo) return;
     const v = videoRef.current;
     if (!v) return;
     try {
@@ -74,7 +80,7 @@ function PostGridItem({ post }: { post: Post }) {
     } catch {
       // Some browsers block seeking until enough data is buffered.
     }
-  }, [canPreviewVideo, previewImageUrl]);
+  }, [canPreviewVideo, showThumbnail]);
 
   // v1.w.UI.205 — respect the stored aspect ratio (portrait/landscape/square).
   const aspectClass =
@@ -96,7 +102,7 @@ function PostGridItem({ post }: { post: Post }) {
         onMouseLeave={handleMouseLeave}
       >
         {/* Static thumbnail — fades out once video is ready */}
-        {previewImageUrl ? (
+        {showThumbnail ? (
           <Image
             src={previewImageUrl}
             alt=""
@@ -106,6 +112,7 @@ function PostGridItem({ post }: { post: Post }) {
               'object-cover transition-opacity duration-300',
               videoReady ? 'opacity-0' : 'opacity-100',
             )}
+            onError={() => setThumbnailFailed(true)}
           />
         ) : (
           <div
@@ -124,8 +131,8 @@ function PostGridItem({ post }: { post: Post }) {
               src={post.video_url}
               muted
               playsInline
-              preload={previewImageUrl ? 'none' : 'metadata'}
-              poster={previewImageUrl ?? undefined}
+              preload={showThumbnail ? 'none' : 'metadata'}
+              poster={showThumbnail ? previewImageUrl : undefined}
               loop
               onLoadedMetadata={handleLoadedMetadata}
               onLoadedData={() => setVideoReady(true)}
@@ -143,7 +150,7 @@ function PostGridItem({ post }: { post: Post }) {
         {/* v1.w.UI.179 — Pin badge oben links */}
         {post.is_pinned && (
           <div className="pointer-events-none absolute left-1.5 top-1.5 z-10 rounded-full bg-black/60 px-1.5 py-0.5 text-[10px] leading-none text-white backdrop-blur-sm">
-            📌
+            <Pin className="h-3 w-3 fill-current" />
           </div>
         )}
 
@@ -155,8 +162,8 @@ function PostGridItem({ post }: { post: Post }) {
           </span>
           {/* v1.w.UI.169 — WOZ badge on thumbnail */}
           {post.women_only && (
-            <span className="text-xs leading-none" aria-label="Women Only" title="Women-Only Zone">
-              🌸
+            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-pink-500/80 text-white" aria-label="Women Only" title="Women-Only Zone">
+              <Heart className="h-3 w-3 fill-current" />
             </span>
           )}
         </div>

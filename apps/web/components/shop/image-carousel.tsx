@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useState, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Camera } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { ProductImage } from './product-image';
+import { useState, useRef, useEffect } from "react";
+import { ChevronLeft, ChevronRight, Camera, Package } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { ProductImage } from "./product-image";
 
 // -----------------------------------------------------------------------------
 // ImageCarousel für Produkt-Detail.
@@ -13,7 +13,15 @@ import { ProductImage } from './product-image';
 // - Previous/Next Chevrons auf Hover (desktop)
 // -----------------------------------------------------------------------------
 
-export function ImageCarousel({ images, alt, category }: { images: string[]; alt: string; category: string }) {
+export function ImageCarousel({
+  images,
+  alt,
+  category,
+}: {
+  images: string[];
+  alt: string;
+  category: string;
+}) {
   const [active, setActive] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -21,7 +29,7 @@ export function ImageCarousel({ images, alt, category }: { images: string[]; alt
     const c = containerRef.current;
     if (!c) return;
     const width = c.clientWidth;
-    c.scrollTo({ left: width * idx, behavior: 'smooth' });
+    c.scrollTo({ left: width * idx, behavior: "smooth" });
   };
 
   const onScroll = () => {
@@ -39,8 +47,11 @@ export function ImageCarousel({ images, alt, category }: { images: string[]; alt
 
   if (images.length === 0) {
     return (
-      <div className="flex aspect-square w-full items-center justify-center rounded-xl bg-muted text-6xl">
-        📦
+      <div className="flex aspect-square w-full items-center justify-center rounded-xl bg-muted">
+        <Package
+          className="h-12 w-12 text-muted-foreground/45"
+          strokeWidth={1.75}
+        />
       </div>
     );
   }
@@ -53,10 +64,13 @@ export function ImageCarousel({ images, alt, category }: { images: string[]; alt
           ref={containerRef}
           onScroll={onScroll}
           className="scrollbar-hide flex h-full w-full snap-x snap-mandatory overflow-x-auto"
-          style={{ scrollbarWidth: 'none' }}
+          style={{ scrollbarWidth: "none" }}
         >
           {images.map((src, i) => (
-            <div key={`${src}-${i}`} className="relative h-full w-full flex-none snap-center">
+            <div
+              key={`${src}-${i}`}
+              className="relative h-full w-full flex-none snap-center"
+            >
               <ProductImage
                 cover={src}
                 title={alt}
@@ -85,7 +99,7 @@ export function ImageCarousel({ images, alt, category }: { images: string[]; alt
               onClick={() => scrollTo(Math.max(0, active - 1))}
               disabled={active === 0}
               className={cn(
-                'absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white opacity-0 transition-opacity hover:bg-black/70 group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-0',
+                "absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white opacity-0 transition-opacity hover:bg-black/70 group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-0",
               )}
               aria-label="Vorheriges Bild"
             >
@@ -96,7 +110,7 @@ export function ImageCarousel({ images, alt, category }: { images: string[]; alt
               onClick={() => scrollTo(Math.min(images.length - 1, active + 1))}
               disabled={active === images.length - 1}
               className={cn(
-                'absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white opacity-0 transition-opacity hover:bg-black/70 group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-0',
+                "absolute right-3 top-1/2 -translate-y-1/2 rounded-full bg-black/50 p-2 text-white opacity-0 transition-opacity hover:bg-black/70 group-hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-0",
               )}
               aria-label="Nächstes Bild"
             >
@@ -108,7 +122,10 @@ export function ImageCarousel({ images, alt, category }: { images: string[]; alt
 
       {/* Thumbnails */}
       {images.length > 1 && (
-        <div className="scrollbar-hide flex gap-2 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
+        <div
+          className="scrollbar-hide flex gap-2 overflow-x-auto pb-1"
+          style={{ scrollbarWidth: "none" }}
+        >
           {images.map((src, i) => {
             const on = i === active;
             return (
@@ -117,8 +134,10 @@ export function ImageCarousel({ images, alt, category }: { images: string[]; alt
                 type="button"
                 onClick={() => scrollTo(i)}
                 className={cn(
-                  'relative h-16 w-16 flex-none overflow-hidden rounded-md border-2 transition-opacity',
-                  on ? 'border-primary' : 'border-transparent opacity-60 hover:opacity-100',
+                  "relative h-16 w-16 flex-none overflow-hidden rounded-md border-2 transition-opacity",
+                  on
+                    ? "border-primary"
+                    : "border-transparent opacity-60 hover:opacity-100",
                 )}
               >
                 <ProductImage

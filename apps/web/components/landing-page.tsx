@@ -35,7 +35,19 @@ export function LandingPage({ featured, liveNow, trendingPosts }: LandingPagePro
   return (
     <main className="min-h-dvh bg-background" data-testid="public-landing">
       {/* Hero */}
-      <section className="container mx-auto flex flex-col items-center py-20 text-center lg:py-32">
+      <section className="container mx-auto flex flex-col items-center px-4 py-16 text-center sm:py-20 lg:py-28">
+        <Link href="/" className="mb-5 flex items-center gap-3 rounded-full border border-border bg-card px-3 py-2 shadow-sm">
+          <Image
+            src="/icon.svg"
+            alt="Serlo"
+            width={36}
+            height={36}
+            className="h-9 w-9 rounded-xl"
+            priority
+          />
+          <span className="pr-1 text-sm font-semibold tracking-tight">Serlo</span>
+        </Link>
+
         <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-sm text-slate-600 dark:text-muted-foreground">
           <Sparkles className="h-3.5 w-3.5 text-brand-gold" />
           {liveNow.length > 0
@@ -43,13 +55,13 @@ export function LandingPage({ featured, liveNow, trendingPosts }: LandingPagePro
             : 'Web-Beta · Live & Shop'}
         </div>
 
-        <h1 className="max-w-3xl text-5xl font-bold tracking-tight md:text-7xl">
+        <h1 className="max-w-3xl text-4xl font-bold tracking-tight sm:text-5xl md:text-7xl">
           Live. Shop. Community.
           <br />
           <span className="text-slate-600 dark:text-muted-foreground">Jetzt auch im Browser.</span>
         </h1>
 
-        <p className="mt-6 max-w-xl text-lg text-slate-600 dark:text-muted-foreground">
+        <p className="mt-6 max-w-xl text-base leading-7 text-slate-600 dark:text-muted-foreground sm:text-lg">
           Die Serlo Web-Version. Streame in 1080p60 vom PC, verkaufe professionell im Shop,
           folge deiner Community — ohne App-Download.
         </p>

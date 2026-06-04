@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import type { SupabaseClient, User } from '@supabase/supabase-js';
 import {
   LogOut,
@@ -56,6 +56,7 @@ async function loadBrowserSupabase(): Promise<SupabaseClient> {
 }
 
 export function AppAuthShell() {
+  const pathname = usePathname();
   const [state, setState] = useState<AuthShellState>({
     status: 'loading',
     user: null,
@@ -150,10 +151,18 @@ export function AppAuthShell() {
     };
   }, [getSupabase, loadAccount]);
 
+  const hideGlobalChrome =
+    pathname === '/login' ||
+    pathname === '/signup' ||
+    pathname?.startsWith('/auth/') ||
+    pathname?.startsWith('/reset-password');
+
   return (
     <>
-      <TopRightActionsClient state={state} getSupabase={getSupabase} />
-      <MobileBottomNav isAuthed={state.status === 'anonymous' ? false : state.status === 'authenticated' ? true : null} />
+      {!hideGlobalChrome && <TopRightActionsClient state={state} getSupabase={getSupabase} />}
+      {!hideGlobalChrome && (
+        <MobileBottomNav isAuthed={state.status === 'anonymous' ? false : state.status === 'authenticated' ? true : null} />
+      )}
     </>
   );
 }

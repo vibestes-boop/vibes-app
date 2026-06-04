@@ -1,8 +1,8 @@
-import type { Metadata } from 'next';
-import type { Route } from 'next';
-import Link from 'next/link';
-import Image from 'next/image';
-import { redirect } from 'next/navigation';
+import type { Metadata } from "next";
+import type { Route } from "next";
+import Link from "next/link";
+import Image from "next/image";
+import { redirect } from "next/navigation";
 import {
   Package,
   Clock,
@@ -13,11 +13,12 @@ import {
   ArrowLeft,
   ShoppingBag,
   ChevronRight,
-} from 'lucide-react';
+  Coins,
+} from "lucide-react";
 
-import { getMyOrders, type ShopOrder } from '@/lib/data/shop';
-import { getUser } from '@/lib/auth/session';
-import { ReviewDialog } from '@/components/shop/review-dialog';
+import { getMyOrders, type ShopOrder } from "@/lib/data/shop";
+import { getUser } from "@/lib/auth/session";
+import { ReviewDialog } from "@/components/shop/review-dialog";
 
 // -----------------------------------------------------------------------------
 // /shop/orders — Käufer-Bestellhistorie.
@@ -26,53 +27,56 @@ import { ReviewDialog } from '@/components/shop/review-dialog';
 // -----------------------------------------------------------------------------
 
 export const metadata: Metadata = {
-  title: 'Meine Bestellungen — Serlo Shop',
-  description: 'Deine Bestellhistorie im Serlo Shop.',
+  title: "Meine Bestellungen — Serlo Shop",
+  description: "Deine Bestellhistorie im Serlo Shop.",
   robots: { index: false },
 };
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 // ─── Status config ────────────────────────────────────────────────────────────
 
 const STATUS_CFG = {
   pending: {
-    label: 'Ausstehend',
+    label: "Ausstehend",
     icon: Clock,
-    className: 'text-amber-600 bg-amber-500/10 border-amber-500/30 dark:text-amber-400',
+    className: "border-border bg-muted/60 text-muted-foreground",
   },
   completed: {
-    label: 'Abgeschlossen',
+    label: "Abgeschlossen",
     icon: CheckCircle2,
-    className: 'text-emerald-600 bg-emerald-500/10 border-emerald-500/30 dark:text-emerald-400',
+    className: "border-foreground bg-foreground text-background",
   },
   cancelled: {
-    label: 'Storniert',
+    label: "Storniert",
     icon: XCircle,
-    className: 'text-red-600 bg-red-500/10 border-red-500/30 dark:text-red-400',
+    className: "border-border bg-muted/60 text-muted-foreground",
   },
   refunded: {
-    label: 'Erstattet',
+    label: "Erstattet",
     icon: RefreshCw,
-    className: 'text-violet-600 bg-violet-500/10 border-violet-500/30 dark:text-violet-400',
+    className: "border-border bg-muted/60 text-muted-foreground",
   },
-} as const satisfies Record<ShopOrder['status'], { label: string; icon: typeof Clock; className: string }>;
+} as const satisfies Record<
+  ShopOrder["status"],
+  { label: string; icon: typeof Clock; className: string }
+>;
 
 const CAT_LABELS: Record<string, string> = {
-  digital: '📁 Digital',
-  physical: '📦 Physisch',
-  service: '🛠️ Service',
-  preset: '🎨 Preset',
-  video: '🎬 Video',
+  digital: "Digital",
+  physical: "Physisch",
+  service: "Service",
+  preset: "Preset",
+  video: "Video",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('de-DE', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
+  return new Date(iso).toLocaleDateString("de-DE", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
   });
 }
 
@@ -82,11 +86,12 @@ function OrderRow({ order }: { order: ShopOrder }) {
   const cfg = STATUS_CFG[order.status] ?? STATUS_CFG.pending;
   const Icon = cfg.icon;
   const product = order.product;
-  const catLabel = CAT_LABELS[product?.category ?? ''] ?? '📦 Produkt';
-  const isDigital = product?.category === 'digital';
-  const canDownload = isDigital && order.status === 'completed' && !!order.download_url;
+  const catLabel = CAT_LABELS[product?.category ?? ""] ?? "Produkt";
+  const isDigital = product?.category === "digital";
+  const canDownload =
+    isDigital && order.status === "completed" && !!order.download_url;
   // Buyer can review any completed order — mirrors native canReview logic.
-  const canReview = order.status === 'completed';
+  const canReview = order.status === "completed";
 
   return (
     <div className="flex items-start gap-4 rounded-xl border border-border bg-card p-4 shadow-elevation-1 transition-colors hover:bg-card/80">
@@ -95,7 +100,7 @@ function OrderRow({ order }: { order: ShopOrder }) {
         {product?.cover_url ? (
           <Image
             src={product.cover_url}
-            alt={product.title ?? ''}
+            alt={product.title ?? ""}
             fill
             className="object-cover"
             sizes="64px"
@@ -114,9 +119,11 @@ function OrderRow({ order }: { order: ShopOrder }) {
             href={`/shop/${order.product_id}` as Route}
             className="line-clamp-2 text-sm font-medium leading-snug hover:underline"
           >
-            {product?.title ?? 'Unbekanntes Produkt'}
+            {product?.title ?? "Unbekanntes Produkt"}
           </Link>
-          <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${cfg.className}`}>
+          <span
+            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium ${cfg.className}`}
+          >
             <Icon className="h-3 w-3" />
             {cfg.label}
           </span>
@@ -125,7 +132,10 @@ function OrderRow({ order }: { order: ShopOrder }) {
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
           <span>{catLabel}</span>
           {order.quantity > 1 && <span>· {order.quantity}×</span>}
-          <span>· 🪙 {order.total_coins.toLocaleString('de-DE')}</span>
+          <span className="inline-flex items-center gap-1">
+            · <Coins className="h-3 w-3" />{" "}
+            {order.total_coins.toLocaleString("de-DE")}
+          </span>
           <span>· {formatDate(order.created_at)}</span>
         </div>
 
@@ -178,32 +188,38 @@ function OrderRow({ order }: { order: ShopOrder }) {
 
 export default async function ShopOrdersPage() {
   const user = await getUser();
-  if (!user) redirect('/login?next=/shop/orders');
+  if (!user) redirect("/login?next=/shop/orders");
 
-  const orders = await getMyOrders('buyer', 100);
+  const orders = await getMyOrders("buyer", 100);
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-8 sm:px-6">
       {/* Header */}
       <div className="mb-6">
         <Link
-          href={'/shop' as Route}
+          href={"/shop" as Route}
           className="mb-4 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4" />
           Zurück zum Shop
         </Link>
-        <h1 className="text-2xl font-bold tracking-tight">Meine Bestellungen</h1>
+        <h1 className="text-2xl font-bold tracking-tight">
+          Meine Bestellungen
+        </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Deine Käufe im Serlo Shop — digitale Produkte kannst du hier direkt herunterladen.
+          Deine Käufe im Serlo Shop — digitale Produkte kannst du hier direkt
+          herunterladen.
         </p>
       </div>
 
       {/* List */}
       {orders.length === 0 ? (
         <div className="flex min-h-[280px] flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-border bg-muted/20 px-6 py-16 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-background shadow-elevation-2 ring-1 ring-amber-500/20">
-            <ShoppingBag className="h-8 w-8 text-amber-500" strokeWidth={1.75} />
+          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-background shadow-elevation-2 ring-1 ring-border">
+            <ShoppingBag
+              className="h-8 w-8 text-muted-foreground"
+              strokeWidth={1.75}
+            />
           </div>
           <div className="max-w-xs">
             <p className="text-base font-semibold">Noch keine Bestellungen</p>
@@ -212,7 +228,7 @@ export default async function ShopOrdersPage() {
             </p>
           </div>
           <Link
-            href={'/shop' as Route}
+            href={"/shop" as Route}
             className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
           >
             <ShoppingBag className="h-4 w-4" />
@@ -222,7 +238,8 @@ export default async function ShopOrdersPage() {
       ) : (
         <div className="space-y-3">
           <p className="text-xs text-muted-foreground">
-            {orders.length} {orders.length === 1 ? 'Bestellung' : 'Bestellungen'}
+            {orders.length}{" "}
+            {orders.length === 1 ? "Bestellung" : "Bestellungen"}
           </p>
           {orders.map((order) => (
             <OrderRow key={order.id} order={order} />

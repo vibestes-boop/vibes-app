@@ -1,16 +1,27 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import type { Route } from 'next';
-import { Bookmark, BookmarkCheck, Coins, Loader2, CheckCircle2 } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { cn } from '@/lib/utils';
-import { QuantityStepper } from './quantity-stepper';
-import { useBuyProduct, useToggleSaveProduct } from '@/hooks/use-shop';
-import type { ShopProduct } from '@/lib/data/shop';
-import { ProductImage } from './product-image';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import type { Route } from "next";
+import {
+  Bookmark,
+  BookmarkCheck,
+  Coins,
+  Loader2,
+  CheckCircle2,
+} from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { QuantityStepper } from "./quantity-stepper";
+import { useBuyProduct, useToggleSaveProduct } from "@/hooks/use-shop";
+import type { ShopProduct } from "@/lib/data/shop";
+import { ProductImage } from "./product-image";
 
 // -----------------------------------------------------------------------------
 // BuyBar — Call-to-Action-Block für die Produkt-Detail-Seite.
@@ -28,13 +39,13 @@ import { ProductImage } from './product-image';
 // zwischen beiden, Mutationen sind idempotent auf DB-Level.
 // -----------------------------------------------------------------------------
 
-export type BuyBarVariant = 'sticky' | 'inline';
+export type BuyBarVariant = "sticky" | "inline";
 
 export function BuyBar({
   product,
   viewerId,
   coinBalance,
-  variant = 'sticky',
+  variant = "sticky",
   className,
 }: {
   product: ShopProduct;
@@ -46,7 +57,10 @@ export function BuyBar({
   const router = useRouter();
   const [qty, setQty] = useState(1);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [result, setResult] = useState<{ orderId: string; newBalance: number } | null>(null);
+  const [result, setResult] = useState<{
+    orderId: string;
+    newBalance: number;
+  } | null>(null);
 
   const save = useToggleSaveProduct();
   const buy = useBuyProduct({
@@ -67,14 +81,16 @@ export function BuyBar({
 
   const handleBuy = () => {
     if (!viewerId) {
-      router.push(`/login?next=${encodeURIComponent(`/shop/${product.id}`)}` as Route);
+      router.push(
+        `/login?next=${encodeURIComponent(`/shop/${product.id}`)}` as Route,
+      );
       return;
     }
     if (isOwn || soldOut) return;
     setConfirmOpen(true);
   };
 
-  const isInline = variant === 'inline';
+  const isInline = variant === "inline";
 
   return (
     <>
@@ -84,15 +100,15 @@ export function BuyBar({
       <div
         className={cn(
           isInline
-            ? 'rounded-xl border border-border/60 bg-card p-3 shadow-elevation-1 dark:border-border/30'
-            : 'sticky bottom-0 left-0 right-0 z-20 border-t bg-background/90 px-4 py-3 backdrop-blur-md lg:px-6',
+            ? "rounded-xl border border-border/60 bg-card p-3 shadow-elevation-1 dark:border-border/30"
+            : "sticky bottom-0 left-0 right-0 z-20 border-t bg-background/90 px-4 py-3 backdrop-blur-md lg:px-6",
           className,
         )}
       >
         <div
           className={cn(
-            'flex items-center gap-3',
-            isInline ? '' : 'mx-auto max-w-5xl',
+            "flex items-center gap-3",
+            isInline ? "" : "mx-auto max-w-5xl",
           )}
         >
           {/* Merken */}
@@ -100,15 +116,20 @@ export function BuyBar({
             type="button"
             onClick={() =>
               viewerId
-                ? save.mutate({ productId: product.id, saved: product.saved_by_me })
-                : router.push(`/login?next=${encodeURIComponent(`/shop/${product.id}`)}` as Route)
+                ? save.mutate({
+                    productId: product.id,
+                    saved: product.saved_by_me,
+                  })
+                : router.push(
+                    `/login?next=${encodeURIComponent(`/shop/${product.id}`)}` as Route,
+                  )
             }
             disabled={save.isPending}
             className={cn(
-              'flex h-12 w-12 flex-none items-center justify-center rounded-full border bg-card transition-colors hover:bg-muted',
-              product.saved_by_me && 'text-primary',
+              "flex h-12 w-12 flex-none items-center justify-center rounded-full border bg-card transition-colors hover:bg-muted",
+              product.saved_by_me && "text-primary",
             )}
-            aria-label={product.saved_by_me ? 'Nicht mehr merken' : 'Merken'}
+            aria-label={product.saved_by_me ? "Nicht mehr merken" : "Merken"}
           >
             {product.saved_by_me ? (
               <BookmarkCheck className="h-5 w-5 fill-current" />
@@ -119,7 +140,13 @@ export function BuyBar({
 
           {/* Quantity-Stepper */}
           {showStepper && (
-            <QuantityStepper value={qty} onChange={setQty} min={1} max={maxQty} className="h-12" />
+            <QuantityStepper
+              value={qty}
+              onChange={setQty}
+              min={1}
+              max={maxQty}
+              className="h-12"
+            />
           )}
 
           {/* Big-CTA */}
@@ -128,29 +155,29 @@ export function BuyBar({
             onClick={handleBuy}
             disabled={soldOut || isOwn || buy.isPending}
             className={cn(
-              'flex h-12 flex-1 items-center justify-between gap-3 rounded-full px-4 text-sm font-semibold text-primary-foreground transition-colors disabled:cursor-not-allowed disabled:opacity-60',
+              "flex h-12 flex-1 items-center justify-between gap-3 rounded-full px-4 text-sm font-semibold text-primary-foreground transition-colors disabled:cursor-not-allowed disabled:opacity-60",
               soldOut || isOwn
-                ? 'bg-muted text-muted-foreground'
+                ? "bg-muted text-muted-foreground"
                 : !canAfford && viewerId
-                  ? 'bg-amber-500 hover:bg-amber-600'
-                  : 'bg-primary hover:bg-primary/90',
+                  ? "border border-border bg-card text-foreground hover:bg-muted"
+                  : "bg-primary hover:bg-primary/90",
             )}
           >
             <span className="inline-flex items-center gap-1.5 tabular-nums">
               <Coins className="h-4 w-4" />
-              {totalCost.toLocaleString('de-DE')}
+              {totalCost.toLocaleString("de-DE")}
             </span>
             <span className="h-5 w-px bg-current/30" aria-hidden />
             <span>
               {soldOut
-                ? 'Ausverkauft'
+                ? "Ausverkauft"
                 : isOwn
-                  ? 'Dein Produkt'
+                  ? "Dein Produkt"
                   : !viewerId
-                    ? 'Einloggen zum Kaufen'
+                    ? "Einloggen zum Kaufen"
                     : !canAfford
-                      ? 'Coins aufladen'
-                      : 'Jetzt kaufen'}
+                      ? "Coins aufladen"
+                      : "Jetzt kaufen"}
             </span>
           </button>
         </div>
@@ -166,7 +193,11 @@ export function BuyBar({
       >
         <DialogContent>
           {result ? (
-            <SuccessPanel result={result} product={product} onClose={() => setConfirmOpen(false)} />
+            <SuccessPanel
+              result={result}
+              product={product}
+              onClose={() => setConfirmOpen(false)}
+            />
           ) : (
             <>
               <DialogHeader>
@@ -175,21 +206,30 @@ export function BuyBar({
               <div className="space-y-4">
                 <div className="flex items-center gap-3 rounded-lg bg-muted/60 p-3">
                   <div className="relative h-14 w-14 flex-none overflow-hidden rounded-md bg-muted">
-                    <ProductImage cover={product.cover_url} title={product.title} category={product.category} sizes="56px" fallbackClassName="text-xl" />
+                    <ProductImage
+                      cover={product.cover_url}
+                      title={product.title}
+                      category={product.category}
+                      sizes="56px"
+                      fallbackClassName="text-xl"
+                    />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="line-clamp-2 text-sm font-medium">{product.title}</div>
+                    <div className="line-clamp-2 text-sm font-medium">
+                      {product.title}
+                    </div>
                     <div className="mt-0.5 text-xs text-muted-foreground">
                       {qty}× · @{product.seller.username}
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm font-semibold tabular-nums">
-                      🪙 {totalCost.toLocaleString('de-DE')}
+                    <div className="inline-flex items-center gap-1 text-sm font-semibold tabular-nums">
+                      <Coins className="h-3.5 w-3.5 text-muted-foreground" />
+                      {totalCost.toLocaleString("de-DE")}
                     </div>
                     {qty > 1 && (
                       <div className="text-[11px] text-muted-foreground tabular-nums">
-                        ({qty}× {effPrice.toLocaleString('de-DE')})
+                        ({qty}× {effPrice.toLocaleString("de-DE")})
                       </div>
                     )}
                   </div>
@@ -197,26 +237,33 @@ export function BuyBar({
 
                 <div className="rounded-lg border p-3 text-sm">
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Aktuelles Guthaben</span>
-                    <span className="tabular-nums">🪙 {coinBalance.toLocaleString('de-DE')}</span>
+                    <span className="text-muted-foreground">
+                      Aktuelles Guthaben
+                    </span>
+                    <span className="inline-flex items-center gap-1 tabular-nums">
+                      <Coins className="h-3.5 w-3.5 text-muted-foreground" />
+                      {coinBalance.toLocaleString("de-DE")}
+                    </span>
                   </div>
                   <div className="mt-1 flex items-center justify-between">
                     <span className="text-muted-foreground">Nach Kauf</span>
                     <span
                       className={cn(
-                        'tabular-nums font-medium',
-                        !canAfford && 'text-red-500',
+                        "inline-flex items-center gap-1 tabular-nums font-medium",
+                        !canAfford && "text-foreground",
                       )}
                     >
-                      🪙 {(coinBalance - totalCost).toLocaleString('de-DE')}
+                      <Coins className="h-3.5 w-3.5 text-muted-foreground" />
+                      {(coinBalance - totalCost).toLocaleString("de-DE")}
                     </span>
                   </div>
                 </div>
 
                 {!canAfford && (
-                  <div className="rounded-lg bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-400">
-                    Dir fehlen {(totalCost - coinBalance).toLocaleString('de-DE')} Coins. Lade
-                    Guthaben im Coin-Shop auf.
+                  <div className="rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+                    Dir fehlen{" "}
+                    {(totalCost - coinBalance).toLocaleString("de-DE")} Coins.
+                    Lade Guthaben im Coin-Shop auf.
                   </div>
                 )}
 
@@ -231,12 +278,14 @@ export function BuyBar({
                   <Button
                     className="flex-1"
                     disabled={!canAfford || buy.isPending}
-                    onClick={() => buy.mutate({ productId: product.id, quantity: qty })}
+                    onClick={() =>
+                      buy.mutate({ productId: product.id, quantity: qty })
+                    }
                   >
                     {buy.isPending ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
-                      'Bestätigen'
+                      "Bestätigen"
                     )}
                   </Button>
                 </div>
@@ -267,8 +316,8 @@ function SuccessPanel({
       <div>
         <h3 className="text-lg font-semibold">Kauf erfolgreich</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          Bestellung für &bdquo;{product.title}&quot; gespeichert. Neues Guthaben: 🪙{' '}
-          {result.newBalance.toLocaleString('de-DE')}
+          Bestellung für &bdquo;{product.title}&quot; gespeichert. Neues
+          Guthaben: {result.newBalance.toLocaleString("de-DE")} Coins.
         </p>
       </div>
       <div className="flex w-full gap-2">
@@ -279,7 +328,7 @@ function SuccessPanel({
           className="flex-1"
           onClick={() => {
             onClose();
-            router.push('/studio/orders' as Route);
+            router.push("/studio/orders" as Route);
           }}
         >
           Meine Käufe

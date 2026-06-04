@@ -1,22 +1,36 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import type { Route } from 'next';
-import { useState } from 'react';
-import { Edit, Trash2, Eye, EyeOff, ExternalLink, MoreHorizontal, Loader2 } from 'lucide-react';
+import Link from "next/link";
+import type { Route } from "next";
+import { useState } from "react";
+import {
+  Edit,
+  Trash2,
+  Eye,
+  EyeOff,
+  ExternalLink,
+  MoreHorizontal,
+  Loader2,
+  Coins,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { useToggleProductActive, useDeleteProduct } from '@/hooks/use-shop';
-import { cn } from '@/lib/utils';
-import type { ShopProduct } from '@/lib/data/shop';
-import { ProductImage } from './product-image';
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { useToggleProductActive, useDeleteProduct } from "@/hooks/use-shop";
+import { cn } from "@/lib/utils";
+import type { ShopProduct } from "@/lib/data/shop";
+import { ProductImage } from "./product-image";
 
 // -----------------------------------------------------------------------------
 // StudioProductRow — eine Zeile in der Studio-Liste. Thumbnail, Titel, Status-
@@ -30,14 +44,24 @@ export function StudioProductRow({ product }: { product: ShopProduct }) {
 
   const eff = product.sale_price_coins ?? product.price_coins;
   const stockLabel =
-    product.stock === -1 ? '∞' : product.stock === 0 ? 'Aus' : product.stock.toString();
+    product.stock === -1
+      ? "∞"
+      : product.stock === 0
+        ? "Aus"
+        : product.stock.toString();
 
   return (
     <>
       <div className="flex items-center gap-4 p-4">
         {/* Thumb */}
         <div className="relative h-16 w-16 flex-none overflow-hidden rounded-lg bg-muted">
-          <ProductImage cover={product.cover_url} title={product.title} category={product.category} sizes="64px" fallbackClassName="text-2xl" />
+          <ProductImage
+            cover={product.cover_url}
+            title={product.title}
+            category={product.category}
+            sizes="64px"
+            fallbackClassName="text-2xl"
+          />
           {!product.is_active && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/60">
               <EyeOff className="h-5 w-5 text-white" />
@@ -56,25 +80,28 @@ export function StudioProductRow({ product }: { product: ShopProduct }) {
             </Link>
             <span
               className={cn(
-                'rounded-full px-2 py-0.5 text-[11px] font-medium',
+                "rounded-full px-2 py-0.5 text-[11px] font-medium",
                 product.is_active
-                  ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
-                  : 'bg-muted text-muted-foreground',
+                  ? "bg-foreground text-background"
+                  : "bg-muted text-muted-foreground",
               )}
             >
-              {product.is_active ? 'Aktiv' : 'Inaktiv'}
+              {product.is_active ? "Aktiv" : "Inaktiv"}
             </span>
             <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
               {product.category}
             </span>
             {product.sale_price_coins !== null && (
-              <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-[11px] text-red-600 dark:text-red-400">
-                Sale
+              <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                Angebot
               </span>
             )}
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground tabular-nums">
-            <span>🪙 {eff.toLocaleString('de-DE')}</span>
+            <span className="inline-flex items-center gap-1">
+              <Coins className="h-3 w-3" />
+              {eff.toLocaleString("de-DE")}
+            </span>
             <span>Stock: {stockLabel}</span>
             <span>{product.sold_count}× verkauft</span>
             {product.review_count > 0 && (
@@ -108,7 +135,10 @@ export function StudioProductRow({ product }: { product: ShopProduct }) {
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onSelect={() =>
-                toggle.mutate({ productId: product.id, nextActive: !product.is_active })
+                toggle.mutate({
+                  productId: product.id,
+                  nextActive: !product.is_active,
+                })
               }
               disabled={toggle.isPending}
             >
@@ -143,11 +173,15 @@ export function StudioProductRow({ product }: { product: ShopProduct }) {
             <DialogTitle>Produkt löschen?</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            &bdquo;{product.title}&quot; wird dauerhaft entfernt. Diese Aktion kann nicht rückgängig gemacht
-            werden.
+            &bdquo;{product.title}&quot; wird dauerhaft entfernt. Diese Aktion
+            kann nicht rückgängig gemacht werden.
           </p>
           <div className="mt-4 flex gap-2">
-            <Button variant="outline" className="flex-1" onClick={() => setConfirmDelete(false)}>
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={() => setConfirmDelete(false)}
+            >
               Abbrechen
             </Button>
             <Button
@@ -160,7 +194,11 @@ export function StudioProductRow({ product }: { product: ShopProduct }) {
                 });
               }}
             >
-              {del.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Löschen'}
+              {del.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Löschen"
+              )}
             </Button>
           </div>
         </DialogContent>

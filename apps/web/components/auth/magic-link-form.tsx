@@ -96,7 +96,6 @@ export function MagicLinkForm({ mode = 'login' }: { mode?: 'login' | 'signup' })
                 <Input
                   type="email"
                   autoComplete="email"
-                  autoFocus
                   placeholder={t('auth.emailPlaceholder')}
                   data-testid="auth-email-input"
                   {...field}

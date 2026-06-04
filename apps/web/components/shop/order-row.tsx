@@ -1,45 +1,53 @@
-'use client';
+"use client";
 
-import Link from 'next/link';
-import type { Route } from 'next';
-import { useState, useTransition } from 'react';
-import { Check, Truck, XCircle, RotateCcw, Loader2 } from 'lucide-react';
-import { toast } from 'sonner';
+import Link from "next/link";
+import type { Route } from "next";
+import { useState, useTransition } from "react";
+import {
+  Check,
+  Truck,
+  XCircle,
+  RotateCcw,
+  Loader2,
+  Coins,
+  MessageCircle,
+} from "lucide-react";
+import { toast } from "sonner";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { Button } from '@/components/ui/button';
-import { updateOrderStatus } from '@/app/actions/shop';
-import { cn } from '@/lib/utils';
-import type { ShopOrder } from '@/lib/data/shop';
-import { ProductImage } from './product-image';
+} from "@/components/ui/dropdown-menu";
+import { Button } from "@/components/ui/button";
+import { updateOrderStatus } from "@/app/actions/shop";
+import { cn } from "@/lib/utils";
+import type { ShopOrder } from "@/lib/data/shop";
+import { ProductImage } from "./product-image";
 
 // -----------------------------------------------------------------------------
 // OrderRow — zeigt eine Bestellung und erlaubt dem Verkäufer Status-Wechsel.
 // -----------------------------------------------------------------------------
 
-const STATUS_LABELS: Record<ShopOrder['status'], string> = {
-  pending: 'Offen',
-  completed: 'Abgeschlossen',
-  cancelled: 'Storniert',
-  refunded: 'Rückerstattet',
+const STATUS_LABELS: Record<ShopOrder["status"], string> = {
+  pending: "Offen",
+  completed: "Abgeschlossen",
+  cancelled: "Storniert",
+  refunded: "Rückerstattet",
 };
 
-const STATUS_STYLES: Record<ShopOrder['status'], string> = {
-  pending: 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
-  completed: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
-  cancelled: 'bg-muted text-muted-foreground',
-  refunded: 'bg-red-500/10 text-red-600 dark:text-red-400',
+const STATUS_STYLES: Record<ShopOrder["status"], string> = {
+  pending: "border border-border bg-muted/60 text-muted-foreground",
+  completed: "bg-foreground text-background",
+  cancelled: "bg-muted text-muted-foreground",
+  refunded: "bg-muted text-muted-foreground",
 };
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('de-DE', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
+  return new Date(iso).toLocaleDateString("de-DE", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
   });
 }
 
@@ -48,12 +56,12 @@ export function OrderRow({
   role,
 }: {
   order: ShopOrder;
-  role: 'buyer' | 'seller';
+  role: "buyer" | "seller";
 }) {
   const [isPending, startTransition] = useTransition();
   const [status, setStatus] = useState(order.status);
 
-  const changeStatus = (next: ShopOrder['status']) => {
+  const changeStatus = (next: ShopOrder["status"]) => {
     if (next === status) return;
     startTransition(async () => {
       const result = await updateOrderStatus(order.id, next);
@@ -72,8 +80,8 @@ export function OrderRow({
       <div className="relative h-16 w-16 flex-none overflow-hidden rounded-lg bg-muted">
         <ProductImage
           cover={order.product?.cover_url ?? null}
-          title={order.product?.title ?? ''}
-          category={order.product?.category ?? 'physical'}
+          title={order.product?.title ?? ""}
+          category={order.product?.category ?? "physical"}
           sizes="64px"
           fallbackClassName="text-2xl"
         />
@@ -96,7 +104,7 @@ export function OrderRow({
           )}
           <span
             className={cn(
-              'rounded-full px-2 py-0.5 text-[11px] font-medium',
+              "rounded-full px-2 py-0.5 text-[11px] font-medium",
               STATUS_STYLES[status],
             )}
           >
@@ -109,22 +117,25 @@ export function OrderRow({
               href={`/u/${order.counterparty.username}` as Route}
               className="hover:text-foreground hover:underline"
             >
-              {role === 'buyer' ? '← ' : '→ '}
-              @{order.counterparty.username}
+              {role === "buyer" ? "← " : "→ "}@{order.counterparty.username}
             </Link>
           ) : (
             <span>— Nutzer gelöscht</span>
           )}
-          <span>🪙 {order.total_coins.toLocaleString('de-DE')}</span>
+          <span className="inline-flex items-center gap-1">
+            <Coins className="h-3 w-3" />
+            {order.total_coins.toLocaleString("de-DE")}
+          </span>
           {order.quantity > 1 && <span>×{order.quantity}</span>}
           <span>{formatDate(order.created_at)}</span>
         </div>
         {order.delivery_notes && (
           <div className="mt-2 line-clamp-2 rounded bg-muted/60 px-2 py-1.5 text-xs">
-            💬 {order.delivery_notes}
+            <MessageCircle className="mr-1 inline h-3 w-3 align-[-2px] text-muted-foreground" />
+            {order.delivery_notes}
           </div>
         )}
-        {order.download_url && order.product?.category === 'digital' && (
+        {order.download_url && order.product?.category === "digital" && (
           <a
             href={order.download_url}
             target="_blank"
@@ -137,34 +148,31 @@ export function OrderRow({
       </div>
 
       {/* Action */}
-      {role === 'seller' && (
+      {role === "seller" && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm" disabled={isPending}>
               {isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
-                'Status ändern'
+                "Status ändern"
               )}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem onSelect={() => changeStatus('pending')}>
+            <DropdownMenuItem onSelect={() => changeStatus("pending")}>
               <Truck className="h-4 w-4" />
               Als offen markieren
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => changeStatus('completed')}>
+            <DropdownMenuItem onSelect={() => changeStatus("completed")}>
               <Check className="h-4 w-4" />
               Abschließen
             </DropdownMenuItem>
-            <DropdownMenuItem onSelect={() => changeStatus('cancelled')}>
+            <DropdownMenuItem onSelect={() => changeStatus("cancelled")}>
               <XCircle className="h-4 w-4" />
               Stornieren
             </DropdownMenuItem>
-            <DropdownMenuItem
-              className="text-red-600 focus:text-red-600"
-              onSelect={() => changeStatus('refunded')}
-            >
+            <DropdownMenuItem onSelect={() => changeStatus("refunded")}>
               <RotateCcw className="h-4 w-4" />
               Rückerstatten
             </DropdownMenuItem>

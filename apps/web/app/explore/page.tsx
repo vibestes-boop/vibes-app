@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { Route } from 'next';
 import { Suspense } from 'react';
-import { Hash, Flame, TrendingUp, Compass, Users, Sparkles, ShoppingBag, ChevronRight } from 'lucide-react';
+import { Hash, Flame, TrendingUp, Compass, Users, Sparkles, ShoppingBag, ChevronRight, Coins } from 'lucide-react';
 import {
   getPublicTrendingHashtags,
   getPublicForYouFeed,
@@ -68,7 +68,20 @@ export default async function ExplorePage() {
         </h2>
 
         {hashtags.length === 0 ? (
-          <p className="text-sm text-muted-foreground">{t('explore.noHashtags')}</p>
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground">
+                <Hash className="h-5 w-5" strokeWidth={1.8} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold">Noch keine starken Trends</p>
+                <p className="mt-1 max-w-xl text-sm text-muted-foreground">
+                  Sobald mehrere Posts und Gespräche denselben Hashtag tragen,
+                  erscheint hier eine kuratierte Trend-Liste statt eines leeren Feeds.
+                </p>
+              </div>
+            </div>
+          </div>
         ) : (
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
             {hashtags.map((h, idx) => (
@@ -254,7 +267,10 @@ async function ExploreDeferredSections({ suggestedPeopleTitle }: { suggestedPeop
                     {product.title}
                   </p>
                   <p className="text-[11px] font-semibold text-brand-gold">
-                    🪙 {(product.sale_price_coins ?? product.price_coins).toLocaleString('de-DE')}
+                    <span className="inline-flex items-center gap-1">
+                      <Coins className="h-3 w-3" />
+                      {(product.sale_price_coins ?? product.price_coins).toLocaleString('de-DE')}
+                    </span>
                   </p>
                 </div>
               </Link>
@@ -270,8 +286,8 @@ async function ExploreDeferredSections({ suggestedPeopleTitle }: { suggestedPeop
             href={'/women-only' as Route}
             className="group flex items-center gap-4 overflow-hidden rounded-2xl border border-pink-500/30 bg-gradient-to-r from-pink-500/10 via-rose-500/5 to-violet-500/10 p-5 transition-all hover:border-pink-500/50 hover:from-pink-500/15 hover:to-violet-500/15"
           >
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-pink-500/20 to-violet-500/20 ring-1 ring-pink-500/30 text-2xl">
-              🌸
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-pink-500/20 to-violet-500/20 text-pink-500 ring-1 ring-pink-500/30">
+              <Sparkles className="h-5 w-5" strokeWidth={1.8} />
             </div>
             <div className="min-w-0 flex-1">
               <p className="font-semibold text-pink-600 dark:text-pink-400">
@@ -307,9 +323,9 @@ function formatCount(n: number, locale: Locale): string {
 // Labels aus useDiscoverPeople.ts. Kleine Pill unter dem Avatar-Namen.
 
 const REASON_LABELS: Record<DiscoverReason, string> = {
-  guild: '🏛 Gleiche Guild',
-  interests: '🏷 Interessen',
-  new: '✨ Neu',
+  guild: 'Gleicher Pod',
+  interests: 'Interessen',
+  new: 'Neu',
 };
 
 const REASON_CLASSES: Record<DiscoverReason, string> = {

@@ -15,7 +15,7 @@
 
 import { useState, useTransition, useEffect } from 'react';
 import Image from 'next/image';
-import { X, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Loader2, ChevronLeft, ChevronRight, Camera } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { deleteHighlight } from '@/app/actions/highlights';
 import { toast } from 'sonner';
@@ -37,6 +37,7 @@ function HighlightBubble({
   onDelete: (id: string) => void;
 }) {
   const [isDeleting, startTransition] = useTransition();
+  const [coverFailed, setCoverFailed] = useState(false);
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -46,6 +47,10 @@ function HighlightBubble({
   };
 
   const cover = highlight.thumbnail_url ?? highlight.media_url;
+
+  useEffect(() => {
+    setCoverFailed(false);
+  }, [cover]);
 
   return (
     <div className="group relative flex shrink-0 flex-col items-center gap-1.5">
@@ -60,17 +65,20 @@ function HighlightBubble({
         )}
         aria-label={`Highlight: ${highlight.title}`}
       >
-        {/* Background gradient fallback */}
-        <div className="absolute inset-0 bg-gradient-to-br from-purple-400 to-indigo-600" />
+        {/* Intentional fallback; avoids the "broken image placeholder" look. */}
+        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-800">
+          <Camera className="h-5 w-5 text-white/55" strokeWidth={1.8} />
+        </div>
 
         {/* Cover image */}
-        {cover ? (
+        {cover && !coverFailed ? (
           <Image
             src={cover}
             alt={highlight.title}
             fill
             className="object-cover"
             sizes="66px"
+            onError={() => setCoverFailed(true)}
           />
         ) : null}
 

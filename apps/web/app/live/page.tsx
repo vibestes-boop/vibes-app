@@ -326,34 +326,44 @@ function LiveSessionCard({
 
 function EmptyState({ isAuthed }: { isAuthed: boolean }) {
   return (
-    <div className="flex flex-col items-center justify-center gap-5 rounded-xl border border-dashed py-24 text-center">
-      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-500/10">
-        <Radio className="h-8 w-8 text-red-500/70" />
+    <div className="flex flex-col items-center justify-center gap-5 rounded-2xl border bg-card px-4 py-14 text-center shadow-sm sm:py-16">
+      <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-red-500/20 bg-red-500/10">
+        <Radio className="h-7 w-7 text-red-500/70" />
       </div>
       <div className="space-y-1">
         <h3 className="text-lg font-semibold">Gerade läuft kein Stream</h3>
         <p className="max-w-sm text-sm text-muted-foreground">
           {isAuthed
-            ? 'Sei der Erste — starte jetzt deinen eigenen Live-Stream direkt im Browser.'
-            : 'Komm später wieder vorbei oder melde dich an, um selbst live zu gehen.'}
+            ? 'Starte einen Stream oder schau dir Replays an, bis der nächste Creator live geht.'
+            : 'Schau dir Replays an oder melde dich an, um selbst live zu gehen.'}
         </p>
       </div>
-      {isAuthed ? (
+      <div className="flex flex-col gap-2 sm:flex-row">
         <Link
-          href={'/live/start' as Route}
-          className="inline-flex items-center gap-2 rounded-full bg-red-600 px-6 py-2.5 text-sm font-semibold text-white shadow transition-opacity hover:opacity-90"
+          href={'/live/replays' as Route}
+          className="inline-flex items-center justify-center gap-2 rounded-full border px-5 py-2.5 text-sm font-medium hover:bg-muted"
         >
-          <Video className="h-4 w-4" />
-          Jetzt live gehen
+          <PlayCircle className="h-4 w-4" />
+          Replays ansehen
         </Link>
-      ) : (
-        <Link
-          href={'/login?next=/live/start' as Route}
-          className="inline-flex items-center gap-2 rounded-full border px-6 py-2.5 text-sm font-medium hover:bg-muted"
-        >
-          Einloggen &amp; live gehen
-        </Link>
-      )}
+        {isAuthed ? (
+          <Link
+            href={'/live/start' as Route}
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-red-600 px-5 py-2.5 text-sm font-semibold text-white shadow transition-opacity hover:opacity-90"
+          >
+            <Video className="h-4 w-4" />
+            Stream starten
+          </Link>
+        ) : (
+          <Link
+            href={'/login?next=/live/start' as Route}
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-sm font-semibold text-background hover:bg-foreground/90"
+          >
+            <Video className="h-4 w-4" />
+            Live gehen
+          </Link>
+        )}
+      </div>
     </div>
   );
 }

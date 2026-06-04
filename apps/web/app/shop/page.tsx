@@ -1,30 +1,34 @@
-import type { Metadata } from 'next';
-import Link from 'next/link';
-import type { Route } from 'next';
-import { Store, Bookmark, Coins, Package, ShoppingBag } from 'lucide-react';
-import { ShopGrid } from '@/components/shop/shop-grid';
-import { ShopFilters } from '@/components/shop/shop-filters';
-import { ShopSearchInput } from '@/components/shop/shop-search-input';
-import { EmptyState as CanonicalEmptyState } from '@/components/ui/empty-state';
-import { getShopProducts, getMyCoinBalance, type ShopCatalogParams } from '@/lib/data/shop';
-import { getUser } from '@/lib/auth/session';
-import { getT, getLocale } from '@/lib/i18n/server';
-import { LOCALE_INTL } from '@/lib/i18n/config';
-import type { ProductCategory } from '@shared/types';
+import type { Metadata } from "next";
+import Link from "next/link";
+import type { Route } from "next";
+import { Store, Bookmark, Coins, Package, ShoppingBag } from "lucide-react";
+import { ShopGrid } from "@/components/shop/shop-grid";
+import { ShopFilters } from "@/components/shop/shop-filters";
+import { ShopSearchInput } from "@/components/shop/shop-search-input";
+import { EmptyState as CanonicalEmptyState } from "@/components/ui/empty-state";
+import {
+  getShopProducts,
+  getMyCoinBalance,
+  type ShopCatalogParams,
+} from "@/lib/data/shop";
+import { getUser } from "@/lib/auth/session";
+import { getT, getLocale } from "@/lib/i18n/server";
+import { LOCALE_INTL } from "@/lib/i18n/config";
+import type { ProductCategory } from "@shared/types";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getT();
   return {
-    title: t('shop.metaTitle'),
-    description: t('shop.metaDescription'),
+    title: t("shop.metaTitle"),
+    description: t("shop.metaDescription"),
     openGraph: {
-      title: t('shop.ogTitle'),
-      description: t('shop.ogDescription'),
+      title: t("shop.ogTitle"),
+      description: t("shop.ogDescription"),
     },
   };
 }
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 // -----------------------------------------------------------------------------
 // Katalog-Seite. URL-Query-Parameters steuern Category/Sort/Sale/Shipping/
@@ -45,13 +49,14 @@ export default async function ShopCatalogPage({ searchParams }: PageProps) {
   };
 
   const params: ShopCatalogParams = {
-    category: (pick('category') as ProductCategory | 'all' | undefined) ?? 'all',
-    sort: (pick('sort') as ShopCatalogParams['sort']) ?? 'popular',
-    onSaleOnly: pick('sale') === '1',
-    freeShippingOnly: pick('shipping') === '1',
-    minPrice: pick('min') ? Number(pick('min')) : undefined,
-    maxPrice: pick('max') ? Number(pick('max')) : undefined,
-    q: pick('q') ?? undefined,
+    category:
+      (pick("category") as ProductCategory | "all" | undefined) ?? "all",
+    sort: (pick("sort") as ShopCatalogParams["sort"]) ?? "popular",
+    onSaleOnly: pick("sale") === "1",
+    freeShippingOnly: pick("shipping") === "1",
+    minPrice: pick("min") ? Number(pick("min")) : undefined,
+    maxPrice: pick("max") ? Number(pick("max")) : undefined,
+    q: pick("q") ?? undefined,
     limit: 24,
   };
 
@@ -73,36 +78,38 @@ export default async function ShopCatalogPage({ searchParams }: PageProps) {
           <div>
             <h1 className="flex items-center gap-2 text-2xl font-semibold">
               <Store className="h-6 w-6 text-primary" />
-              {t('shop.title')}
+              {t("shop.title")}
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              {products.length === 0 ? t('shop.noMatches') : t('shop.browseCatalog')}
+              {products.length === 0
+                ? t("shop.noMatches")
+                : t("shop.browseCatalog")}
             </p>
           </div>
 
           <div className="flex items-center gap-2">
             {balance !== null && (
               <div className="inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1.5 text-sm font-medium tabular-nums">
-                <Coins className="h-4 w-4 text-amber-500" />
+                <Coins className="h-4 w-4 text-muted-foreground" />
                 {balance.toLocaleString(LOCALE_INTL[locale])}
               </div>
             )}
             {user && (
               <Link
-                href={'/shop/orders' as Route}
+                href={"/shop/orders" as Route}
                 className="inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted"
               >
                 <Package className="h-4 w-4" />
-                {t('shop.myOrders')}
+                {t("shop.myOrders")}
               </Link>
             )}
             {user && (
               <Link
-                href={'/shop/saved' as Route}
+                href={"/shop/saved" as Route}
                 className="inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted"
               >
                 <Bookmark className="h-4 w-4" />
-                {t('shop.saved')}
+                {t("shop.saved")}
               </Link>
             )}
           </div>
@@ -110,7 +117,7 @@ export default async function ShopCatalogPage({ searchParams }: PageProps) {
 
         {/* Such-Box */}
         <div className="mb-6 max-w-md">
-          <ShopSearchInput initialQuery={params.q ?? ''} />
+          <ShopSearchInput initialQuery={params.q ?? ""} />
         </div>
 
         {/* Grid */}
@@ -129,8 +136,8 @@ async function EmptyState() {
   return (
     <CanonicalEmptyState
       icon={<ShoppingBag className="h-8 w-8" strokeWidth={1.75} />}
-      title={t('shop.emptyTitle')}
-      description={t('shop.emptyHint')}
+      title={t("shop.emptyTitle")}
+      description={t("shop.emptyHint")}
       size="md"
       bordered
     />

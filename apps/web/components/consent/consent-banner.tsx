@@ -71,14 +71,14 @@ export function ConsentBanner() {
         'fixed z-50 rounded-2xl border border-border bg-card/95 shadow-2xl backdrop-blur-lg',
         compactImmersiveBanner
           ? 'inset-x-3 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] p-2.5 md:inset-x-auto md:bottom-4 md:left-4 md:max-w-[360px] xl:bottom-5 xl:left-5'
-          : 'inset-x-2 bottom-2 mx-auto max-w-3xl p-4 sm:inset-x-4 sm:p-5',
+          : 'inset-x-3 bottom-3 mx-auto max-h-[42dvh] max-w-2xl overflow-y-auto p-3 sm:inset-x-4 sm:max-h-none sm:p-5',
       )}
     >
       <div className={cn('flex items-start gap-3', compactImmersiveBanner && 'items-center')}>
         <div
           className={cn(
             'flex shrink-0 items-center justify-center rounded-full bg-brand-gold/15 text-brand-gold',
-            compactImmersiveBanner ? 'hidden h-9 w-9 sm:flex' : 'h-10 w-10',
+            compactImmersiveBanner ? 'hidden h-9 w-9 sm:flex' : 'hidden h-10 w-10 sm:flex',
           )}
         >
           <ShieldCheck className={compactImmersiveBanner ? 'h-4 w-4' : 'h-5 w-5'} />
@@ -94,12 +94,12 @@ export function ConsentBanner() {
             id="consent-desc"
             className={cn(
               'mt-1 text-muted-foreground',
-              compactImmersiveBanner ? 'hidden text-xs sm:block' : 'text-sm',
+              compactImmersiveBanner ? 'hidden text-xs sm:block' : 'line-clamp-2 text-xs leading-5 sm:line-clamp-none sm:text-sm',
             )}
           >
             {compactImmersiveBanner
               ? 'Essenzielle Cookies halten Login und Sicherheit am Laufen. Analytics nur mit Zustimmung.'
-              : 'Wir nutzen technisch notwendige Cookies, damit Login, Session und Sicherheit funktionieren. Für Produkt-Analytics und Marketing brauchen wir deine Einwilligung. Die Wahl kannst du jederzeit in den Einstellungen ändern.'}
+              : 'Essenzielle Cookies halten Login, Session und Sicherheit am Laufen. Produkt-Analytics und Marketing nutzen wir nur mit deiner Zustimmung; ändern kannst du die Wahl jederzeit in den Einstellungen.'}
           </p>
 
           {showDetails && (
@@ -127,10 +127,10 @@ export function ConsentBanner() {
 
           <div
             className={cn(
-              'flex items-center justify-between gap-2',
+              'gap-2',
               compactImmersiveBanner
-                ? 'mt-2 overflow-x-auto [scrollbar-width:none] md:flex-wrap md:overflow-visible [&::-webkit-scrollbar]:hidden'
-                : 'mt-4 flex-wrap',
+                ? 'mt-2 flex items-center justify-between overflow-x-auto [scrollbar-width:none] md:flex-wrap md:overflow-visible [&::-webkit-scrollbar]:hidden'
+                : 'mt-3 grid grid-cols-2 sm:mt-4 sm:flex sm:items-center sm:justify-between sm:flex-wrap',
             )}
           >
             <Link
@@ -143,20 +143,30 @@ export function ConsentBanner() {
               Datenschutzerklärung
             </Link>
 
-            <div className={cn('flex items-center gap-2', (!compactImmersiveBanner || showDetails) && 'flex-wrap', compactImmersiveBanner && 'md:flex-wrap')}>
+            <div className={cn('col-span-2 grid grid-cols-2 gap-2 sm:flex sm:items-center', (!compactImmersiveBanner || showDetails) && 'sm:flex-wrap', compactImmersiveBanner && 'md:flex-wrap')}>
               <button
                 type="button"
                 onClick={() => setShowDetails((v) => !v)}
-                className="shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted sm:px-3"
+                className="col-span-2 shrink-0 rounded-lg px-2.5 py-2 text-xs font-medium text-muted-foreground hover:bg-muted sm:col-span-1 sm:py-1.5 sm:px-3"
               >
-                {showDetails ? 'Zusammenklappen' : compactImmersiveBanner ? 'Details' : 'Details anzeigen'}
+                {showDetails ? 'Zusammenklappen' : compactImmersiveBanner ? 'Details' : (
+                  <>
+                    <span className="sm:hidden">Details</span>
+                    <span className="hidden sm:inline">Details anzeigen</span>
+                  </>
+                )}
               </button>
               <button
                 type="button"
                 onClick={() => commit({ analytics: false, marketing: false })}
-                className="shrink-0 rounded-lg border border-border bg-background px-2.5 py-1.5 text-xs font-medium hover:bg-muted sm:px-3"
+                className="shrink-0 rounded-lg border border-border bg-background px-2.5 py-2 text-xs font-medium hover:bg-muted sm:py-1.5 sm:px-3"
               >
-                {compactImmersiveBanner ? 'Essenziell' : 'Nur essenziell'}
+                {compactImmersiveBanner ? 'Essenziell' : (
+                  <>
+                    <span className="sm:hidden">Essenziell</span>
+                    <span className="hidden sm:inline">Nur essenziell</span>
+                  </>
+                )}
               </button>
               {showDetails ? (
                 <button
@@ -164,7 +174,7 @@ export function ConsentBanner() {
                   onClick={() =>
                     commit({ analytics: analyticsOn, marketing: marketingOn })
                   }
-                  className="shrink-0 rounded-lg bg-primary px-2.5 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 sm:px-3"
+                  className="shrink-0 rounded-lg bg-primary px-2.5 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 sm:py-1.5 sm:px-3"
                 >
                   Auswahl speichern
                 </button>
@@ -172,9 +182,14 @@ export function ConsentBanner() {
                 <button
                   type="button"
                   onClick={() => commit({ analytics: true, marketing: true })}
-                  className="shrink-0 rounded-lg bg-primary px-2.5 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90 sm:px-3"
+                  className="shrink-0 rounded-lg bg-primary px-2.5 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 sm:py-1.5 sm:px-3"
                 >
-                  {compactImmersiveBanner ? 'Akzeptieren' : 'Alle akzeptieren'}
+                  {compactImmersiveBanner ? 'Akzeptieren' : (
+                    <>
+                      <span className="sm:hidden">Akzeptieren</span>
+                      <span className="hidden sm:inline">Alle akzeptieren</span>
+                    </>
+                  )}
                 </button>
               )}
             </div>

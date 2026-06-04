@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import type { Route } from 'next';
@@ -37,10 +38,23 @@ export default async function LoginPage({
   return (
     <main className="flex min-h-dvh flex-col items-center justify-center bg-background px-6 py-16">
       <HashSessionRescue />
-      <div className="w-full max-w-sm space-y-8">
-        <div className="space-y-2 text-center">
-          <h1 className="font-serif text-4xl font-medium tracking-tight">{t('auth.loginTitle')}</h1>
+      <div className="w-full max-w-[300px] space-y-8 sm:max-w-sm">
+        <div className="space-y-4 text-center">
+          <Link href="/" className="mx-auto flex w-fit items-center gap-3 rounded-full border border-border bg-card px-3 py-2 shadow-sm">
+            <Image
+              src="/icon.svg"
+              alt="Serlo"
+              width={36}
+              height={36}
+              className="h-9 w-9 rounded-xl"
+              priority
+            />
+            <span className="pr-1 text-sm font-semibold tracking-tight">Serlo</span>
+          </Link>
+          <div className="space-y-2">
+          <h1 className="text-4xl font-bold tracking-tight">{t('auth.loginTitle')}</h1>
           <p className="text-sm text-muted-foreground">{t('auth.loginWelcome')}</p>
+          </div>
         </div>
 
         {params.error ? (

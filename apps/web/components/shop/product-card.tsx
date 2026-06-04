@@ -1,10 +1,17 @@
-import Link from 'next/link';
-import type { Route } from 'next';
-import { MapPin, Truck, Camera, Sparkles, BadgeCheck } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { StarDisplay } from './star-display';
-import { ProductImage } from './product-image';
-import type { ShopProduct } from '@/lib/data/shop';
+import Link from "next/link";
+import type { Route } from "next";
+import {
+  MapPin,
+  Truck,
+  Camera,
+  Sparkles,
+  BadgeCheck,
+  Coins,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { StarDisplay } from "./star-display";
+import { ProductImage } from "./product-image";
+import type { ShopProduct } from "@/lib/data/shop";
 
 // -----------------------------------------------------------------------------
 // ProductCard — Kanonisches 3:4 Grid-Tile für alle Shop-Listen.
@@ -26,11 +33,6 @@ function effectivePrice(p: ShopProduct): number {
   return p.sale_price_coins ?? p.price_coins;
 }
 
-function salePercent(p: ShopProduct): number | null {
-  if (p.sale_price_coins == null) return null;
-  return Math.round(((p.price_coins - p.sale_price_coins) / p.price_coins) * 100);
-}
-
 function isNew(p: ShopProduct): boolean {
   const ts = new Date(p.created_at).getTime();
   if (!Number.isFinite(ts)) return false;
@@ -48,8 +50,7 @@ export function ProductCard({
   priority?: boolean;
 }) {
   const eff = effectivePrice(product);
-  const discount = salePercent(product);
-  const isSale = discount !== null;
+  const isSale = product.sale_price_coins != null;
   const fresh = !isSale && isNew(product);
 
   const cover = product.cover_url ?? product.image_urls[0] ?? null;
@@ -65,23 +66,28 @@ export function ProductCard({
         // Light-Mode-Fallback für Shadow-Sichtbarkeit (`dark:border-border/30`
         // macht die Border im Dark-Mode fast weg, weil Shadow dort via Border-
         // Kontrast statt via Alpha funktioniert — siehe tailwind.config Tokens).
-        'group relative block overflow-hidden rounded-xl bg-card',
-        'border border-border/60 dark:border-border/30',
-        'shadow-elevation-1',
+        "group relative block overflow-hidden rounded-xl bg-card",
+        "border border-border/60 dark:border-border/30",
+        "shadow-elevation-1",
         // Hover-Lift (duration-base ~200ms mit out-expo-Easing = TikTok-Snap).
         // `translate-y`-Verschiebung kommt aus transform, nicht aus margin —
         // damit keine Layout-Shift auftritt und die GPU composited statt neu
         // paintet.
-        'transition-all duration-base ease-out-expo',
-        'hover:-translate-y-0.5 hover:shadow-elevation-2',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
-        !product.is_active && 'opacity-60',
+        "transition-all duration-base ease-out-expo",
+        "hover:-translate-y-0.5 hover:shadow-elevation-2",
+        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+        !product.is_active && "opacity-60",
         className,
       )}
     >
       {/* Hero-Bild 3:4 mit Blur-Fill */}
       <div className="relative aspect-[3/4] w-full overflow-hidden bg-muted">
-        <ProductImage cover={cover} title={product.title} category={product.category} priority={priority} />
+        <ProductImage
+          cover={cover}
+          title={product.title}
+          category={product.category}
+          priority={priority}
+        />
 
         {/*
          * Badge-Konsolidierung (UI-Phase 3, C2): nur noch ZWEI Ecken belegt,
@@ -98,16 +104,15 @@ export function ProductCard({
         {(isSale || fresh) && (
           <span
             className={cn(
-              'absolute left-2 top-2 inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-semibold text-white shadow-sm',
-              isSale ? 'bg-red-500' : 'bg-indigo-500',
+              "absolute left-2 top-2 inline-flex items-center gap-1 rounded-md border border-white/25 bg-black/65 px-2 py-0.5 text-xs font-semibold text-white shadow-sm backdrop-blur-sm",
             )}
           >
             {isSale ? (
-              `−${discount}%`
+              "Angebot"
             ) : (
               <>
                 <Sparkles className="h-3 w-3" />
-                NEU
+                Neu
               </>
             )}
           </span>
@@ -118,8 +123,8 @@ export function ProductCard({
             Ausverkauft
           </span>
         ) : lowStock ? (
-          <span className="absolute right-2 top-2 rounded-md bg-amber-500/95 px-2 py-0.5 text-[11px] font-semibold text-white shadow-sm">
-            Nur noch {product.stock}
+          <span className="absolute right-2 top-2 rounded-md border border-white/25 bg-black/55 px-2 py-0.5 text-[11px] font-semibold text-white shadow-sm backdrop-blur-sm">
+            {product.stock === 1 ? "1 verfügbar" : `${product.stock} verfügbar`}
           </span>
         ) : gallerySize > 1 ? (
           <span className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-md bg-black/60 px-2 py-0.5 text-xs font-medium text-white backdrop-blur-sm">
@@ -144,7 +149,9 @@ export function ProductCard({
             statt als eigener Badge in der Bild-Ecke (vgl. C2-Konsolidierung). */}
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <span className="truncate">@{product.seller.username}</span>
-          {product.seller.verified && <BadgeCheck className="h-3 w-3 flex-none text-sky-500" />}
+          {product.seller.verified && (
+            <BadgeCheck className="h-3 w-3 flex-none text-sky-500" />
+          )}
           {product.women_only && (
             <span
               className="flex-none font-semibold text-pink-500"
@@ -163,7 +170,10 @@ export function ProductCard({
 
         {/* Stars */}
         {product.review_count > 0 && (
-          <StarDisplay rating={product.avg_rating} count={product.review_count} />
+          <StarDisplay
+            rating={product.avg_rating}
+            count={product.review_count}
+          />
         )}
 
         {/* Location + Gratis-Versand */}
@@ -175,8 +185,8 @@ export function ProductCard({
                 <span className="truncate">{product.location}</span>
               </span>
             )}
-            {product.free_shipping && product.category === 'physical' && (
-              <span className="inline-flex items-center gap-1 rounded bg-emerald-500/10 px-1.5 py-0.5 text-emerald-600 dark:text-emerald-400">
+            {product.free_shipping && product.category === "physical" && (
+              <span className="inline-flex items-center gap-1 rounded border border-border/60 bg-muted/40 px-1.5 py-0.5 text-muted-foreground">
                 <Truck className="h-3 w-3" />
                 Gratis
               </span>
@@ -184,48 +194,18 @@ export function ProductCard({
           </div>
         )}
 
-        {/* Stock-Bar (C7 aus UI_AUDIT)
-            Nur sichtbar wenn `stock <= 5 && stock > 0` (kein Spoiler bei
-            voller Verfügbarkeit, kein Konflikt mit Ausverkauft-Badge).
-            Progress-Berechnung: Bei stock=5 → 100% (voller Amber-Balken),
-            bei stock=1 → 20% (dünner roter Rest). Farb-Gradient von Amber→Rot
-            signalisiert Knappheit (cold-to-hot-Metapher). Caption
-            ("Nur noch N übrig") ist redundant zum Bottom-Right-Badge aber
-            bewusst unter der Progress — die Bar allein sagt „es wird knapp",
-            die Zahl sagt „wie knapp". Beide zusammen schaffen das Urgency-
-            Signal das der Audit als fehlend markierte (vorher nur das
-            kleine Pill-Badge oben). */}
-        {product.stock > 0 && product.stock <= 5 && (
-          <div className="mt-1" aria-live="polite">
-            <div className="h-2 overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-amber-400 to-red-500 transition-all"
-                style={{ width: `${(product.stock / 5) * 100}%` }}
-              />
-            </div>
-            <div className="mt-1 text-[11px] font-medium text-amber-600 dark:text-amber-400">
-              Nur noch {product.stock} übrig
-            </div>
-          </div>
-        )}
-
         {/* Preis + Sold */}
         <div className="mt-1 flex items-end justify-between gap-2">
           <div className="flex items-baseline gap-1.5">
-            <span
-              className={cn(
-                // Preis = primärer Haken auf der Karte, deshalb font-bold (nicht
-                // nur -semibold). Inter rendert 700 deutlich präsenter als 600
-                // — hilft Scan-Ability in dichten Grid-Listen.
-                'text-base font-bold tabular-nums',
-                isSale && 'text-red-500',
-              )}
-            >
-              🪙 {eff.toLocaleString('de-DE')}
+            <span className="text-base font-bold tabular-nums text-foreground">
+              <span className="inline-flex items-center gap-1">
+                <Coins className="h-3.5 w-3.5 text-muted-foreground" />
+                {eff.toLocaleString("de-DE")}
+              </span>
             </span>
             {isSale && (
               <span className="text-xs text-muted-foreground line-through tabular-nums">
-                {product.price_coins.toLocaleString('de-DE')}
+                {product.price_coins.toLocaleString("de-DE")}
               </span>
             )}
           </div>
