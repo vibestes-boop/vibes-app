@@ -1,6 +1,6 @@
-import type { Metadata } from 'next';
-import Link from 'next/link';
-import type { Route } from 'next';
+import type { Metadata } from "next";
+import Link from "next/link";
+import type { Route } from "next";
 import {
   Gem,
   ShoppingBag,
@@ -11,16 +11,16 @@ import {
   CheckCircle2,
   RotateCcw,
   PauseCircle,
-} from 'lucide-react';
+} from "lucide-react";
 import {
   getCreatorEarnings,
   getCreatorGiftHistory,
   getShopRevenue,
   getShopOrdersDetailed,
   type Period,
-} from '@/lib/data/studio';
-import { PeriodTabs } from '@/components/studio/period-tabs';
-import { cn } from '@/lib/utils';
+} from "@/lib/data/studio";
+import { PeriodTabs } from "@/components/studio/period-tabs";
+import { cn } from "@/lib/utils";
 
 // -----------------------------------------------------------------------------
 // /studio/revenue — Einnahmen-Übersicht: Gifts + Shop-Verkäufe.
@@ -38,11 +38,11 @@ import { cn } from '@/lib/utils';
 // -----------------------------------------------------------------------------
 
 export const metadata: Metadata = {
-  title: 'Einnahmen',
-  description: 'Gift- + Shop-Umsätze. CSV-Export für Accounting.',
+  title: "Einnahmen",
+  description: "Gift- + Shop-Umsätze. CSV-Export für Accounting.",
 };
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 const VALID_PERIODS: Period[] = [7, 28, 90];
 
@@ -85,28 +85,28 @@ export default async function StudioRevenuePage({
         <BigMetricCard
           icon={Gem}
           label="Diamanten-Balance"
-          value={(earnings?.diamondsBalance ?? 0).toLocaleString('de-DE')}
-          unit="💎"
+          value={(earnings?.diamondsBalance ?? 0).toLocaleString("de-DE")}
+          unit="Diamanten"
           tint="primary"
         />
         <BigMetricCard
           icon={TrendingUp}
           label="Diamanten (Periode)"
-          value={`+${totalDiamondsPeriod.toLocaleString('de-DE')}`}
-          unit="💎"
+          value={`+${totalDiamondsPeriod.toLocaleString("de-DE")}`}
+          unit="Diamanten"
           tint="success"
         />
         <BigMetricCard
           icon={ShoppingBag}
           label="Shop-Umsatz (Periode)"
-          value={totalShopCoins.toLocaleString('de-DE')}
-          unit="🪙"
+          value={totalShopCoins.toLocaleString("de-DE")}
+          unit="Coins"
           tint="warning"
         />
         <BigMetricCard
           icon={Coins}
           label="Shop-Verkäufe"
-          value={shopRevenue.completedOrders.toLocaleString('de-DE')}
+          value={shopRevenue.completedOrders.toLocaleString("de-DE")}
           unit="Orders"
           tint="muted"
         />
@@ -119,25 +119,25 @@ export default async function StudioRevenuePage({
           <StatusPill
             icon={CheckCircle2}
             label="Abgeschlossen"
-            value={`🪙 ${shopRevenue.totalCoinsEarned.toLocaleString('de-DE')}`}
+            value={`${shopRevenue.totalCoinsEarned.toLocaleString("de-DE")} Coins`}
             accent="success"
           />
           <StatusPill
             icon={PauseCircle}
             label="Ausstehend"
-            value={`🪙 ${shopRevenue.pendingCoins.toLocaleString('de-DE')}`}
+            value={`${shopRevenue.pendingCoins.toLocaleString("de-DE")} Coins`}
             accent="warning"
           />
           <StatusPill
             icon={RotateCcw}
             label="Erstattet"
-            value={`🪙 ${shopRevenue.refundedCoins.toLocaleString('de-DE')}`}
+            value={`${shopRevenue.refundedCoins.toLocaleString("de-DE")} Coins`}
             accent="danger"
           />
           <StatusPill
             icon={CreditCard}
             label="Einmalige Käufer"
-            value={shopRevenue.uniqueBuyers.toLocaleString('de-DE')}
+            value={shopRevenue.uniqueBuyers.toLocaleString("de-DE")}
             accent="muted"
           />
         </div>
@@ -160,7 +160,7 @@ export default async function StudioRevenuePage({
                 Noch keine Gifts. Gehe live — dann kommen sie.
               </p>
               <Link
-                href={'/studio/live' as Route}
+                href={"/studio/live" as Route}
                 className="mt-1 inline-flex items-center gap-1.5 rounded-full border bg-background px-3 py-1 text-xs font-medium hover:bg-muted"
               >
                 Zur Live-Historie
@@ -173,23 +173,24 @@ export default async function StudioRevenuePage({
                   key={`${g.createdAt}-${i}`}
                   className="flex items-center gap-3 px-4 py-3"
                 >
-                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-muted text-2xl">
-                    {g.giftEmoji}
+                  <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full border bg-background">
+                    <Gem className="h-5 w-5 text-muted-foreground" />
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 text-sm">
                       <span className="truncate font-medium">{g.giftName}</span>
-                      <span className="inline-flex items-center gap-0.5 rounded-full bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-sky-600 dark:text-sky-400">
-                        💎 {g.diamondValue.toLocaleString('de-DE')}
+                      <span className="inline-flex items-center gap-1 rounded-full border bg-background px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">
+                        <Gem className="h-3 w-3" />
+                        {g.diamondValue.toLocaleString("de-DE")}
                       </span>
                     </div>
                     <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                      von {g.senderName ?? '–'} ·{' '}
-                      {new Date(g.createdAt).toLocaleString('de-DE', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit',
+                      von {g.senderName ?? "–"} ·{" "}
+                      {new Date(g.createdAt).toLocaleString("de-DE", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        hour: "2-digit",
+                        minute: "2-digit",
                       })}
                     </div>
                   </div>
@@ -219,7 +220,7 @@ export default async function StudioRevenuePage({
                 Noch keine Shop-Verkäufe in diesem Zeitraum.
               </p>
               <Link
-                href={'/studio/shop/new' as Route}
+                href={"/studio/shop/new" as Route}
                 className="mt-1 inline-flex items-center gap-1.5 rounded-full border bg-background px-3 py-1 text-xs font-medium hover:bg-muted"
               >
                 Produkt anlegen
@@ -239,17 +240,20 @@ export default async function StudioRevenuePage({
                 </thead>
                 <tbody>
                   {shopOrders.map((o) => (
-                    <tr key={o.id} className="border-b last:border-b-0 hover:bg-muted/40">
+                    <tr
+                      key={o.id}
+                      className="border-b last:border-b-0 hover:bg-muted/40"
+                    >
                       <td className="whitespace-nowrap px-4 py-2 align-middle text-xs tabular-nums text-muted-foreground">
-                        {new Date(o.createdAt).toLocaleDateString('de-DE', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: '2-digit',
+                        {new Date(o.createdAt).toLocaleDateString("de-DE", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "2-digit",
                         })}
                       </td>
                       <td className="px-4 py-2 align-middle">
                         <div className="max-w-[20ch] truncate">
-                          {o.productTitle ?? '–'}
+                          {o.productTitle ?? "–"}
                           {o.quantity > 1 && (
                             <span className="ml-1 text-xs text-muted-foreground">
                               × {o.quantity}
@@ -259,11 +263,14 @@ export default async function StudioRevenuePage({
                       </td>
                       <td className="px-4 py-2 align-middle">
                         <div className="max-w-[16ch] truncate text-xs text-muted-foreground">
-                          {o.buyerUsername ? `@${o.buyerUsername}` : '–'}
+                          {o.buyerUsername ? `@${o.buyerUsername}` : "–"}
                         </div>
                       </td>
                       <td className="px-4 py-2 text-right align-middle tabular-nums">
-                        🪙 {o.totalCoins.toLocaleString('de-DE')}
+                        <span className="inline-flex items-center justify-end gap-1">
+                          <Coins className="h-3.5 w-3.5 text-muted-foreground" />
+                          {o.totalCoins.toLocaleString("de-DE")}
+                        </span>
                       </td>
                       <td className="px-4 py-2 align-middle">
                         <OrderStatusPill status={o.status} />
@@ -278,17 +285,18 @@ export default async function StudioRevenuePage({
       </section>
 
       {/* Payout-Hinweis */}
-      <section className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4">
+      <section className="rounded-xl border bg-card p-4">
         <div className="flex items-start gap-3">
-          <Gem className="h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+          <Gem className="h-5 w-5 shrink-0 text-muted-foreground" />
           <div className="min-w-0 flex-1">
             <h3 className="text-sm font-semibold">Auszahlung beantragen</h3>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Ab 2.500 💎 (≈ 50 €) kannst du eine Auszahlung per SEPA-Überweisung oder PayPal beantragen.
+              Ab 2.500 Diamanten (≈ 50 €) kannst du eine Auszahlung per
+              SEPA-Überweisung oder PayPal beantragen.
             </p>
             <Link
-              href={'/studio/revenue/payout' as Route}
-              className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-amber-500 px-3 py-1 text-xs font-semibold text-white hover:bg-amber-600"
+              href={"/studio/revenue/payout" as Route}
+              className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-foreground px-3 py-1 text-xs font-semibold text-background hover:bg-foreground/90"
             >
               <CreditCard className="h-3 w-3" />
               Zur Auszahlung
@@ -315,18 +323,23 @@ function BigMetricCard({
   label: string;
   value: string;
   unit: string;
-  tint: 'primary' | 'success' | 'warning' | 'muted';
+  tint: "primary" | "success" | "warning" | "muted";
 }) {
   const bg = {
-    primary: 'bg-primary/10 text-primary',
-    success: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-    warning: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
-    muted: 'bg-muted text-muted-foreground',
+    primary: "bg-foreground text-background",
+    success: "bg-muted text-muted-foreground",
+    warning: "bg-muted text-muted-foreground",
+    muted: "bg-muted text-muted-foreground",
   }[tint];
 
   return (
     <div className="flex items-start gap-3 rounded-xl border bg-card p-4">
-      <div className={cn('grid h-10 w-10 shrink-0 place-items-center rounded-lg', bg)}>
+      <div
+        className={cn(
+          "grid h-10 w-10 shrink-0 place-items-center rounded-lg",
+          bg,
+        )}
+      >
         <Icon className="h-5 w-5" />
       </div>
       <div className="min-w-0 flex-1">
@@ -351,17 +364,17 @@ function StatusPill({
   icon: typeof Gem;
   label: string;
   value: string;
-  accent: 'success' | 'warning' | 'danger' | 'muted';
+  accent: "success" | "warning" | "danger" | "muted";
 }) {
   const cls = {
-    success: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
-    warning: 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
-    danger: 'bg-red-500/10 text-red-700 dark:text-red-400',
-    muted: 'bg-muted text-muted-foreground',
+    success: "border border-border bg-muted/50 text-foreground",
+    warning: "border border-border bg-muted/50 text-foreground",
+    danger: "border border-border bg-muted/50 text-foreground",
+    muted: "border border-border bg-muted/50 text-foreground",
   }[accent];
 
   return (
-    <div className={cn('rounded-lg p-3', cls)}>
+    <div className={cn("rounded-lg p-3", cls)}>
       <div className="flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide">
         <Icon className="h-3.5 w-3.5" />
         {label}
@@ -374,27 +387,30 @@ function StatusPill({
 function OrderStatusPill({ status }: { status: string }) {
   const map: Record<string, { label: string; className: string }> = {
     completed: {
-      label: 'OK',
-      className: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+      label: "OK",
+      className: "bg-foreground text-background",
     },
     pending: {
-      label: 'Wartend',
-      className: 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
+      label: "Wartend",
+      className: "bg-muted text-muted-foreground",
     },
     cancelled: {
-      label: 'Storno',
-      className: 'bg-muted text-muted-foreground',
+      label: "Storno",
+      className: "bg-muted text-muted-foreground",
     },
     refunded: {
-      label: 'Erstattet',
-      className: 'bg-red-500/10 text-red-700 dark:text-red-400',
+      label: "Erstattet",
+      className: "bg-muted text-muted-foreground",
     },
   };
-  const m = map[status] ?? { label: status, className: 'bg-muted text-muted-foreground' };
+  const m = map[status] ?? {
+    label: status,
+    className: "bg-muted text-muted-foreground",
+  };
   return (
     <span
       className={cn(
-        'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium',
+        "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium",
         m.className,
       )}
     >

@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useState, useTransition, useEffect } from 'react';
-import Link from 'next/link';
-import type { Route } from 'next';
+import { useState, useTransition, useEffect } from "react";
+import Link from "next/link";
+import type { Route } from "next";
 import {
   ArrowLeft,
   Gem,
@@ -13,8 +13,13 @@ import {
   Clock,
   Loader2,
   Euro,
-} from 'lucide-react';
-import { requestPayout, getMyPayoutRequests, getMyDiamondsBalance, type PayoutRequest } from '@/app/actions/payout';
+} from "lucide-react";
+import {
+  requestPayout,
+  getMyPayoutRequests,
+  getMyDiamondsBalance,
+  type PayoutRequest,
+} from "@/app/actions/payout";
 
 // -----------------------------------------------------------------------------
 // /studio/revenue/payout — v1.w.UI.157
@@ -26,7 +31,7 @@ import { requestPayout, getMyPayoutRequests, getMyDiamondsBalance, type PayoutRe
 //   2. Formular: IBAN oder PayPal + optionale Notiz
 //   3. Vergangene Auszahlungsanfragen (Status-Badge)
 //
-// Gating: Nur zugänglich wenn diamonds_balance >= MIN_PAYOUT (2.500 💎 ≈ 50 €).
+// Gating: Nur zugänglich wenn diamonds_balance >= MIN_PAYOUT (2.500 Diamanten ≈ 50 €).
 // Bei offenem Request wird das Formular deaktiviert.
 //
 // Client-Component weil wir reaktiven Form-State brauchen (method-Switch,
@@ -35,40 +40,42 @@ import { requestPayout, getMyPayoutRequests, getMyDiamondsBalance, type PayoutRe
 // -----------------------------------------------------------------------------
 
 const MIN_PAYOUT = 2_500;
-const RATE       = 0.02;
+const RATE = 0.02;
 
-const STATUS_LABEL: Record<PayoutRequest['status'], string> = {
-  pending:    'Ausstehend',
-  processing: 'In Bearbeitung',
-  paid:       'Ausgezahlt',
-  rejected:   'Abgelehnt',
+const STATUS_LABEL: Record<PayoutRequest["status"], string> = {
+  pending: "Ausstehend",
+  processing: "In Bearbeitung",
+  paid: "Ausgezahlt",
+  rejected: "Abgelehnt",
 };
 
-const STATUS_COLOR: Record<PayoutRequest['status'], string> = {
-  pending:    'bg-amber-500/15 text-amber-600 dark:text-amber-400',
-  processing: 'bg-blue-500/15 text-blue-600 dark:text-blue-400',
-  paid:       'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400',
-  rejected:   'bg-rose-500/15 text-rose-500',
+const STATUS_COLOR: Record<PayoutRequest["status"], string> = {
+  pending: "border border-border bg-muted/50 text-foreground",
+  processing: "border border-border bg-muted/50 text-foreground",
+  paid: "bg-foreground text-background",
+  rejected: "border border-border bg-muted/50 text-foreground",
 };
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('de-DE', {
-    day: '2-digit', month: '2-digit', year: 'numeric',
+  return new Date(iso).toLocaleDateString("de-DE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
   });
 }
 
 export default function PayoutPage() {
-  const [balance, setBalance]           = useState<number | null>(null);
+  const [balance, setBalance] = useState<number | null>(null);
   const [pastRequests, setPastRequests] = useState<PayoutRequest[]>([]);
-  const [loading, setLoading]           = useState(true);
+  const [loading, setLoading] = useState(true);
 
-  const [method,    setMethod]    = useState<'iban' | 'paypal'>('iban');
-  const [iban,      setIban]      = useState('');
-  const [paypal,    setPaypal]    = useState('');
-  const [note,      setNote]      = useState('');
-  const [success,   setSuccess]   = useState(false);
-  const [error,     setError]     = useState<string | null>(null);
-  const [pending,   startTransition] = useTransition();
+  const [method, setMethod] = useState<"iban" | "paypal">("iban");
+  const [iban, setIban] = useState("");
+  const [paypal, setPaypal] = useState("");
+  const [note, setNote] = useState("");
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
 
   useEffect(() => {
     async function load() {
@@ -83,17 +90,17 @@ export default function PayoutPage() {
     load();
   }, [success]);
 
-  const euroAmount = balance !== null ? (balance * RATE).toFixed(2) : '–';
+  const euroAmount = balance !== null ? (balance * RATE).toFixed(2) : "–";
   const eligible = (balance ?? 0) >= MIN_PAYOUT;
   const hasPending = pastRequests.some(
-    (r) => r.status === 'pending' || r.status === 'processing',
+    (r) => r.status === "pending" || r.status === "processing",
   );
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
     const fd = new FormData(e.currentTarget);
-    fd.set('balance', String(balance ?? 0));
+    fd.set("balance", String(balance ?? 0));
     startTransition(async () => {
       const result = await requestPayout(fd);
       if (!result.ok) {
@@ -101,9 +108,9 @@ export default function PayoutPage() {
         return;
       }
       setSuccess(true);
-      setIban('');
-      setPaypal('');
-      setNote('');
+      setIban("");
+      setPaypal("");
+      setNote("");
     });
   }
 
@@ -111,7 +118,7 @@ export default function PayoutPage() {
     <div className="mx-auto max-w-2xl px-4 py-6 lg:px-0">
       {/* Back */}
       <Link
-        href={'/studio/revenue' as Route}
+        href={"/studio/revenue" as Route}
         className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
       >
         <ArrowLeft className="h-4 w-4" />
@@ -120,23 +127,30 @@ export default function PayoutPage() {
 
       <h1 className="mb-1 text-2xl font-semibold">Auszahlung beantragen</h1>
       <p className="mb-6 text-sm text-muted-foreground">
-        Deine Diamanten werden manuell bearbeitet und per SEPA oder PayPal ausgezahlt.
-        Der Mindestauszahlungsbetrag beträgt {MIN_PAYOUT.toLocaleString('de-DE')} 💎 (≈ {(MIN_PAYOUT * RATE).toFixed(0)} €).
+        Deine Diamanten werden manuell bearbeitet und per SEPA oder PayPal
+        ausgezahlt. Der Mindestauszahlungsbetrag beträgt{" "}
+        {MIN_PAYOUT.toLocaleString("de-DE")} Diamanten (≈{" "}
+        {(MIN_PAYOUT * RATE).toFixed(0)} €).
       </p>
 
       {/* Balance Card */}
       <div className="mb-6 rounded-xl border bg-card p-5">
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/15 text-amber-500">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
             <Gem className="h-6 w-6" />
           </div>
           <div>
-            <p className="text-xs text-muted-foreground">Dein Diamanten-Guthaben</p>
+            <p className="text-xs text-muted-foreground">
+              Dein Diamanten-Guthaben
+            </p>
             {loading ? (
               <div className="mt-1 h-6 w-32 animate-pulse rounded bg-muted" />
             ) : (
               <p className="text-2xl font-bold">
-                {(balance ?? 0).toLocaleString('de-DE')} 💎
+                <span className="inline-flex items-center gap-1.5">
+                  <Gem className="h-5 w-5 text-muted-foreground" />
+                  {(balance ?? 0).toLocaleString("de-DE")}
+                </span>
                 <span className="ml-2 text-base font-normal text-muted-foreground">
                   ≈ {euroAmount} €
                 </span>
@@ -146,11 +160,16 @@ export default function PayoutPage() {
         </div>
 
         {!loading && !eligible && (
-          <div className="mt-3 flex items-start gap-2 rounded-lg bg-amber-500/10 px-3 py-2.5 text-sm text-amber-600 dark:text-amber-400">
+          <div className="mt-3 flex items-start gap-2 rounded-lg border bg-muted/40 px-3 py-2.5 text-sm text-muted-foreground">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>
-              Du hast noch nicht genug Diamanten für eine Auszahlung. Dir fehlen noch{' '}
-              <strong>{(MIN_PAYOUT - (balance ?? 0)).toLocaleString('de-DE')} 💎</strong>.
+              Du hast noch nicht genug Diamanten für eine Auszahlung. Dir fehlen
+              noch{" "}
+              <strong className="text-foreground">
+                {(MIN_PAYOUT - (balance ?? 0)).toLocaleString("de-DE")}{" "}
+                Diamanten
+              </strong>
+              .
             </span>
           </div>
         )}
@@ -158,30 +177,34 @@ export default function PayoutPage() {
 
       {/* Success */}
       {success ? (
-        <div className="mb-6 flex items-start gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-5">
-          <CheckCircle2 className="h-6 w-6 shrink-0 text-emerald-500" />
+        <div className="mb-6 flex items-start gap-3 rounded-xl border bg-card p-5">
+          <CheckCircle2 className="h-6 w-6 shrink-0 text-foreground" />
           <div>
-            <p className="font-semibold text-emerald-600 dark:text-emerald-400">Anfrage eingegangen!</p>
+            <p className="font-semibold">Anfrage eingegangen!</p>
             <p className="mt-0.5 text-sm text-muted-foreground">
-              Deine Auszahlungsanfrage wurde erfolgreich gesendet. Wir bearbeiten sie manuell
-              und melden uns per E-Mail sobald die Überweisung ausgelöst wurde (in der Regel 3–5 Werktage).
+              Deine Auszahlungsanfrage wurde erfolgreich gesendet. Wir
+              bearbeiten sie manuell und melden uns per E-Mail sobald die
+              Überweisung ausgelöst wurde (in der Regel 3–5 Werktage).
             </p>
           </div>
         </div>
       ) : (
         /* Form */
-        <form onSubmit={onSubmit} className="mb-8 rounded-xl border bg-card p-5">
+        <form
+          onSubmit={onSubmit}
+          className="mb-8 rounded-xl border bg-card p-5"
+        >
           <h2 className="mb-4 text-sm font-semibold">Zahlungsdetails</h2>
 
           {/* Method toggle */}
           <div className="mb-4 flex gap-2">
             <button
               type="button"
-              onClick={() => setMethod('iban')}
+              onClick={() => setMethod("iban")}
               className={`flex flex-1 items-center justify-center gap-2 rounded-lg border py-2.5 text-sm font-medium transition-colors ${
-                method === 'iban'
-                  ? 'border-primary bg-primary/5 text-foreground'
-                  : 'border-border text-muted-foreground hover:bg-muted'
+                method === "iban"
+                  ? "border-primary bg-primary/5 text-foreground"
+                  : "border-border text-muted-foreground hover:bg-muted"
               }`}
             >
               <CreditCard className="h-4 w-4" />
@@ -189,11 +212,11 @@ export default function PayoutPage() {
             </button>
             <button
               type="button"
-              onClick={() => setMethod('paypal')}
+              onClick={() => setMethod("paypal")}
               className={`flex flex-1 items-center justify-center gap-2 rounded-lg border py-2.5 text-sm font-medium transition-colors ${
-                method === 'paypal'
-                  ? 'border-primary bg-primary/5 text-foreground'
-                  : 'border-border text-muted-foreground hover:bg-muted'
+                method === "paypal"
+                  ? "border-primary bg-primary/5 text-foreground"
+                  : "border-border text-muted-foreground hover:bg-muted"
               }`}
             >
               <Mail className="h-4 w-4" />
@@ -203,29 +226,36 @@ export default function PayoutPage() {
 
           <input type="hidden" name="method" value={method} />
 
-          {method === 'iban' ? (
+          {method === "iban" ? (
             <div className="mb-4">
-              <label htmlFor="payout-iban" className="mb-1.5 block text-sm font-medium">
-                IBAN <span className="text-rose-500">*</span>
+              <label
+                htmlFor="payout-iban"
+                className="mb-1.5 block text-sm font-medium"
+              >
+                IBAN <span className="text-muted-foreground">*</span>
               </label>
               <input
                 id="payout-iban"
                 name="iban"
                 type="text"
                 value={iban}
-                onChange={(e) => setIban(e.target.value.replace(/\s/g, ''))}
+                onChange={(e) => setIban(e.target.value.replace(/\s/g, ""))}
                 placeholder="DE89 3704 0044 0532 0130 00"
                 required
                 className="w-full rounded-lg border bg-background px-3 py-2 font-mono text-sm uppercase tracking-wider focus:outline-none focus:ring-2 focus:ring-ring"
               />
               <p className="mt-1 text-xs text-muted-foreground">
-                Die IBAN wird niemals öffentlich gespeichert — nur für die einmalige Überweisung verwendet.
+                Die IBAN wird niemals öffentlich gespeichert — nur für die
+                einmalige Überweisung verwendet.
               </p>
             </div>
           ) : (
             <div className="mb-4">
-              <label htmlFor="payout-paypal" className="mb-1.5 block text-sm font-medium">
-                PayPal-E-Mail <span className="text-rose-500">*</span>
+              <label
+                htmlFor="payout-paypal"
+                className="mb-1.5 block text-sm font-medium"
+              >
+                PayPal-E-Mail <span className="text-muted-foreground">*</span>
               </label>
               <input
                 id="payout-paypal"
@@ -242,9 +272,14 @@ export default function PayoutPage() {
 
           {/* Note */}
           <div className="mb-4">
-            <label htmlFor="payout-note" className="mb-1.5 block text-sm font-medium">
-              Notiz{' '}
-              <span className="text-xs font-normal text-muted-foreground">(optional)</span>
+            <label
+              htmlFor="payout-note"
+              className="mb-1.5 block text-sm font-medium"
+            >
+              Notiz{" "}
+              <span className="text-xs font-normal text-muted-foreground">
+                (optional)
+              </span>
             </label>
             <textarea
               id="payout-note"
@@ -264,33 +299,39 @@ export default function PayoutPage() {
               <div className="flex items-center justify-between">
                 <span className="text-muted-foreground">Auszahlungsbetrag</span>
                 <span className="font-semibold">
-                  {(balance ?? 0).toLocaleString('de-DE')} 💎 = <span className="text-emerald-600 dark:text-emerald-400">{euroAmount} €</span>
+                  <span className="inline-flex items-center gap-1">
+                    <Gem className="h-4 w-4 text-muted-foreground" />
+                    {(balance ?? 0).toLocaleString("de-DE")} Diamanten
+                  </span>{" "}
+                  = <span className="text-foreground">{euroAmount} €</span>
                 </span>
               </div>
               <p className="mt-1.5 text-xs text-muted-foreground">
-                70% Gift-Anteil nach Serlo-Gebühren. Steuerlich als Einnahme zu deklarieren.
+                70% Gift-Anteil nach Serlo-Gebühren. Steuerlich als Einnahme zu
+                deklarieren.
               </p>
             </div>
           )}
 
           {error && (
-            <div className="mb-4 flex items-start gap-2 rounded-lg bg-rose-500/10 px-3 py-2.5 text-sm text-rose-500">
+            <div className="mb-4 flex items-start gap-2 rounded-lg border bg-muted/40 px-3 py-2.5 text-sm text-foreground">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
               {error}
             </div>
           )}
 
           {hasPending && (
-            <div className="mb-4 flex items-start gap-2 rounded-lg bg-amber-500/10 px-3 py-2.5 text-sm text-amber-600 dark:text-amber-400">
+            <div className="mb-4 flex items-start gap-2 rounded-lg border bg-muted/40 px-3 py-2.5 text-sm text-muted-foreground">
               <Clock className="mt-0.5 h-4 w-4 shrink-0" />
-              Du hast bereits eine offene Auszahlungsanfrage. Warte bis diese bearbeitet wurde.
+              Du hast bereits eine offene Auszahlungsanfrage. Warte bis diese
+              bearbeitet wurde.
             </div>
           )}
 
           <button
             type="submit"
             disabled={pending || !eligible || hasPending || loading}
-            className="mt-1 inline-flex w-full items-center justify-center gap-2 rounded-full bg-amber-500 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-amber-600 disabled:opacity-50"
+            className="mt-1 inline-flex w-full items-center justify-center gap-2 rounded-full bg-foreground py-2.5 text-sm font-semibold text-background transition-colors hover:bg-foreground/90 disabled:opacity-50"
           >
             {pending ? (
               <>
@@ -310,22 +351,34 @@ export default function PayoutPage() {
       {/* Past requests */}
       {pastRequests.length > 0 && (
         <section>
-          <h2 className="mb-3 text-sm font-semibold text-muted-foreground">Meine Anfragen</h2>
+          <h2 className="mb-3 text-sm font-semibold text-muted-foreground">
+            Meine Anfragen
+          </h2>
           <ul className="overflow-hidden rounded-xl border bg-card">
             {pastRequests.map((r) => (
-              <li key={r.id} className="flex items-center gap-3 px-4 py-3 [&:not(:last-child)]:border-b">
+              <li
+                key={r.id}
+                className="flex items-center gap-3 px-4 py-3 [&:not(:last-child)]:border-b"
+              >
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-medium">
-                      {r.diamonds_amount.toLocaleString('de-DE')} 💎 → {r.euro_amount.toFixed(2)} €
+                    <span className="inline-flex items-center gap-1 text-sm font-medium">
+                      <Gem className="h-3.5 w-3.5 text-muted-foreground" />
+                      {r.diamonds_amount.toLocaleString("de-DE")} Diamanten
+                      <span className="text-muted-foreground">→</span>
+                      {r.euro_amount.toFixed(2)} €
                     </span>
-                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${STATUS_COLOR[r.status]}`}>
+                    <span
+                      className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold ${STATUS_COLOR[r.status]}`}
+                    >
                       {STATUS_LABEL[r.status]}
                     </span>
                   </div>
                   <p className="mt-0.5 text-[11px] text-muted-foreground">
-                    {r.iban ? `IBAN: ${r.iban.slice(0, 8)}…` : `PayPal: ${r.paypal_email}`}
-                    {' · '}
+                    {r.iban
+                      ? `IBAN: ${r.iban.slice(0, 8)}…`
+                      : `PayPal: ${r.paypal_email}`}
+                    {" · "}
                     {formatDate(r.created_at)}
                   </p>
                   {r.admin_note && (
