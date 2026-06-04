@@ -28,6 +28,7 @@ import {
 export const dynamic = 'force-dynamic';
 
 const HOME_SIDEBAR_TIMEOUT_MS = 300;
+const HOME_PUBLIC_DYNAMIC_TIMEOUT_MS = 250;
 
 async function withTimeout<T>(
   promise: Promise<T>,
@@ -55,8 +56,8 @@ export default async function HomePage() {
 
   if (!user) {
     const [liveNow, trendingPosts] = await Promise.all([
-      getCachedActiveLiveSessions(4).catch(() => []),
-      getPublicForYouFeed({ limit: 6 }).catch(() => []),
+      withTimeout(getCachedActiveLiveSessions(4), [], HOME_PUBLIC_DYNAMIC_TIMEOUT_MS),
+      withTimeout(getPublicForYouFeed({ limit: 6 }), [], HOME_PUBLIC_DYNAMIC_TIMEOUT_MS),
     ]);
     // ── JSON-LD: WebSite + SearchAction ─────────────────────────────────────
     // Enables Google Sitelinks Searchbox in search results. Only on the public
