@@ -28,6 +28,7 @@ const R2_PUBLIC_URL    = Deno.env.get('R2_PUBLIC_URL')!;
 const ALLOWED_OWNED_PREFIXES = [
   'posts/videos',
   'posts/images',
+  'products/images',
   'thumbnails',
   'avatars',
   'voice-samples',

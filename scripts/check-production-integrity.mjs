@@ -216,11 +216,23 @@ async function checkR2UploadSmoke() {
   const cases = [
     {
       label: 'ios-content-type',
+      keyPrefix: 'avatars',
       signBody: { contentType: R2_UPLOAD_SMOKE_CONTENT_TYPE },
       putHeaders: { 'Content-Type': `${R2_UPLOAD_SMOKE_CONTENT_TYPE}; charset=utf-8` },
     },
     {
       label: 'cache-control-tolerant',
+      keyPrefix: 'avatars',
+      signBody: {
+        contentType: R2_UPLOAD_SMOKE_CONTENT_TYPE,
+        cacheControl: 'public, max-age=31536000, immutable',
+      },
+      putHeaders: { 'Content-Type': R2_UPLOAD_SMOKE_CONTENT_TYPE },
+    },
+    {
+      label: 'product-image-prefix-sign',
+      keyPrefix: 'products/images',
+      signOnly: true,
       signBody: {
         contentType: R2_UPLOAD_SMOKE_CONTENT_TYPE,
         cacheControl: 'public, max-age=31536000, immutable',
@@ -233,7 +245,7 @@ async function checkR2UploadSmoke() {
 
   try {
     for (const testCase of cases) {
-      const key = `avatars/${auth.data.user.id}/integrity-smoke/${Date.now()}-${crypto.randomUUID()}.jpg`;
+      const key = `${testCase.keyPrefix}/${auth.data.user.id}/integrity-smoke/${Date.now()}-${crypto.randomUUID()}.jpg`;
       const sign = await fetchJson(`${supabaseUrl}/functions/v1/r2-sign`, {
         method: 'POST',
         headers: {
@@ -252,6 +264,11 @@ async function checkR2UploadSmoke() {
       }
 
       const signedHeaders = readSignedHeaders(sign.data.uploadUrl);
+      if (testCase.signOnly) {
+        summaries.push(`${testCase.label} signedHeaders=${signedHeaders}`);
+        continue;
+      }
+
       const upload = await fetchText(sign.data.uploadUrl, {
         method: 'PUT',
         headers: testCase.putHeaders,

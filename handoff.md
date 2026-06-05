@@ -68,6 +68,10 @@ legacy checkout.
 - Very large modules increase regression risk:
   `app/live/host.tsx`, `app/live/watch/[id].tsx`, `app/create/index.tsx`,
   and `apps/web/app/actions/admin.ts`.
+- The deployed `r2-delete` Edge Function is active, but its source is not
+  present under `supabase/functions/` in this checkout. Bring it back into the
+  repo before changing delete behavior; current production cleanup rejected a
+  `products/images/...` smoke object path.
 - The legacy Desktop checkout still exists and is dirty. It is preserved only
   for historical context.
 - RevenueCat webhook still has phase-3 Apple/Google server-verification TODOs;
