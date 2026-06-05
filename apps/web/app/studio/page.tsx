@@ -1,7 +1,7 @@
-import type { Metadata } from 'next';
-import Link from 'next/link';
-import Image from 'next/image';
-import type { Route } from 'next';
+import type { Metadata } from "next";
+import Link from "next/link";
+import Image from "next/image";
+import type { Route } from "next";
 import {
   TrendingUp,
   TrendingDown,
@@ -15,12 +15,12 @@ import {
   FileText,
   Radio,
   ShoppingBag,
-  Flame,
   ArrowRight,
   Film,
   Image as ImageIcon,
-} from 'lucide-react';
-import { getProfile } from '@/lib/auth/session';
+  LayoutDashboard,
+} from "lucide-react";
+import { getProfile } from "@/lib/auth/session";
 import {
   getCreatorOverview,
   getCreatorEarnings,
@@ -31,12 +31,12 @@ import {
   getMyDraftsCount,
   getShopRevenue,
   type Period,
-} from '@/lib/data/studio';
-import { cn } from '@/lib/utils';
-import { PeriodTabs } from '@/components/studio/period-tabs';
-import { getT, getLocale } from '@/lib/i18n/server';
-import { LOCALE_INTL, type Locale } from '@/lib/i18n/config';
-import type { TranslationKey } from '@/lib/i18n/translate';
+} from "@/lib/data/studio";
+import { cn } from "@/lib/utils";
+import { PeriodTabs } from "@/components/studio/period-tabs";
+import { getT, getLocale } from "@/lib/i18n/server";
+import { LOCALE_INTL, type Locale } from "@/lib/i18n/config";
+import type { TranslationKey } from "@/lib/i18n/translate";
 
 // -----------------------------------------------------------------------------
 // /studio — Creator-Dashboard-Root.
@@ -55,16 +55,19 @@ import type { TranslationKey } from '@/lib/i18n/translate';
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getT();
   return {
-    title: t('studio.metaTitle'),
-    description: t('studio.metaDescription'),
+    title: t("studio.metaTitle"),
+    description: t("studio.metaDescription"),
   };
 }
 
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 const VALID_PERIODS: Period[] = [7, 28, 90];
 
-type Translator = (key: TranslationKey, vars?: Record<string, string | number>) => string;
+type Translator = (
+  key: TranslationKey,
+  vars?: Record<string, string | number>,
+) => string;
 
 export default async function StudioDashboardPage({
   searchParams,
@@ -77,23 +80,34 @@ export default async function StudioDashboardPage({
     ? (requestedPeriod as Period)
     : 28;
 
-  const [profile, overview, earnings, topPosts, giftHistory, liveCount, scheduled, draftsCount, shopRevenue, t, locale] =
-    await Promise.all([
-      getProfile(),
-      getCreatorOverview(period),
-      getCreatorEarnings(period),
-      getCreatorTopPosts('views', 5),
-      getCreatorGiftHistory(5),
-      getMyLiveSessionsCount(period),
-      getMyScheduledCount(),
-      getMyDraftsCount(),
-      getShopRevenue(period),
-      getT(),
-      getLocale(),
-    ]);
+  const [
+    profile,
+    overview,
+    earnings,
+    topPosts,
+    giftHistory,
+    liveCount,
+    scheduled,
+    draftsCount,
+    shopRevenue,
+    t,
+    locale,
+  ] = await Promise.all([
+    getProfile(),
+    getCreatorOverview(period),
+    getCreatorEarnings(period),
+    getCreatorTopPosts("views", 5),
+    getCreatorGiftHistory(5),
+    getMyLiveSessionsCount(period),
+    getMyScheduledCount(),
+    getMyDraftsCount(),
+    getShopRevenue(period),
+    getT(),
+    getLocale(),
+  ]);
 
   const username =
-    profile?.display_name ?? profile?.username ?? t('studio.creatorFallback');
+    profile?.display_name ?? profile?.username ?? t("studio.creatorFallback");
   const intl = LOCALE_INTL[locale];
 
   return (
@@ -101,14 +115,16 @@ export default async function StudioDashboardPage({
       {/* Header */}
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <div className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
-            <Flame className="h-3 w-3" />
-            {t('studio.badge')}
+          <div className="inline-flex items-center gap-1.5 rounded-full border bg-card px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+            <LayoutDashboard className="h-3 w-3" />
+            {t("studio.badge")}
           </div>
           <h1 className="mt-2 text-2xl font-semibold sm:text-3xl">
-            {t('studio.greeting', { name: username })}
+            {t("studio.greeting", { name: username })}
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">{t('studio.subtitle')}</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {t("studio.subtitle")}
+          </p>
         </div>
         <PeriodTabs period={period} basePath="/studio" />
       </header>
@@ -119,11 +135,11 @@ export default async function StudioDashboardPage({
       {/* KPI Grid */}
       <section>
         <h2 className="mb-3 text-sm font-semibold text-muted-foreground">
-          {t('studio.reachTitle')}
+          {t("studio.reachTitle")}
         </h2>
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <KpiCard
-            label={t('studio.kpiViews')}
+            label={t("studio.kpiViews")}
             icon={Eye}
             value={overview?.totalViews ?? 0}
             prev={overview?.prevViews ?? 0}
@@ -131,7 +147,7 @@ export default async function StudioDashboardPage({
             intl={intl}
           />
           <KpiCard
-            label={t('studio.kpiLikes')}
+            label={t("studio.kpiLikes")}
             icon={Heart}
             value={overview?.totalLikes ?? 0}
             prev={overview?.prevLikes ?? 0}
@@ -139,7 +155,7 @@ export default async function StudioDashboardPage({
             intl={intl}
           />
           <KpiCard
-            label={t('studio.kpiComments')}
+            label={t("studio.kpiComments")}
             icon={MessageCircle}
             value={overview?.totalComments ?? 0}
             prev={overview?.prevComments ?? 0}
@@ -147,7 +163,7 @@ export default async function StudioDashboardPage({
             intl={intl}
           />
           <KpiCard
-            label={t('studio.kpiNewFollowers')}
+            label={t("studio.kpiNewFollowers")}
             icon={UserPlus}
             value={overview?.newFollowers ?? 0}
             prev={overview?.prevFollowers ?? 0}
@@ -167,46 +183,48 @@ export default async function StudioDashboardPage({
       {/* Content Planning Row */}
       <section>
         <h2 className="mb-3 text-sm font-semibold text-muted-foreground">
-          {t('studio.planningTitle')}
+          {t("studio.planningTitle")}
         </h2>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <PlanningCard
-            href={'/studio/scheduled' as Route}
+            href={"/studio/scheduled" as Route}
             icon={Clock}
-            label={t('studio.planScheduledLabel')}
+            label={t("studio.planScheduledLabel")}
             primary={scheduled.pending}
             secondary={
               scheduled.failed > 0
-                ? t('studio.planScheduledErrors', { count: scheduled.failed })
-                : t('studio.planScheduledActive')
+                ? t("studio.planScheduledErrors", { count: scheduled.failed })
+                : t("studio.planScheduledActive")
             }
-            accent={scheduled.failed > 0 ? 'danger' : 'primary'}
+            accent={scheduled.failed > 0 ? "danger" : "primary"}
             intl={intl}
           />
           <PlanningCard
-            href={'/studio/drafts' as Route}
+            href={"/studio/drafts" as Route}
             icon={FileText}
-            label={t('studio.planDraftsLabel')}
+            label={t("studio.planDraftsLabel")}
             primary={draftsCount}
-            secondary={t('studio.planDraftsHint')}
+            secondary={t("studio.planDraftsHint")}
             accent="muted"
             intl={intl}
           />
           <PlanningCard
-            href={'/studio/live' as Route}
+            href={"/studio/live" as Route}
             icon={Radio}
-            label={t('studio.planLiveLabel')}
+            label={t("studio.planLiveLabel")}
             primary={liveCount}
-            secondary={t('studio.planLiveHint', { days: period })}
+            secondary={t("studio.planLiveHint", { days: period })}
             accent="danger"
             intl={intl}
           />
           <PlanningCard
-            href={'/studio/shop' as Route}
+            href={"/studio/shop" as Route}
             icon={ShoppingBag}
-            label={t('studio.planShopLabel')}
-            primary={`🪙 ${shopRevenue.totalCoinsEarned.toLocaleString(intl)}`}
-            secondary={t('studio.planShopHint', { count: shopRevenue.completedOrders })}
+            label={t("studio.planShopLabel")}
+            primary={`${shopRevenue.totalCoinsEarned.toLocaleString(intl)} Coins`}
+            secondary={t("studio.planShopHint", {
+              count: shopRevenue.completedOrders,
+            })}
             accent="success"
             intl={intl}
           />
@@ -216,23 +234,30 @@ export default async function StudioDashboardPage({
       {/* Two-Column: Top-Posts + Recent Gifts */}
       <section className="grid gap-4 lg:grid-cols-2">
         <TopPostsPanel posts={topPosts} t={t} intl={intl} />
-        <RecentGiftsPanel gifts={giftHistory} t={t} locale={locale} intl={intl} />
+        <RecentGiftsPanel
+          gifts={giftHistory}
+          t={t}
+          locale={locale}
+          intl={intl}
+        />
       </section>
 
       {/* CTA Row */}
-      <section className="rounded-xl border bg-gradient-to-br from-primary/5 to-transparent p-5">
+      <section className="rounded-xl border bg-card p-5">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h3 className="text-base font-semibold">{t('studio.moreDetails')}</h3>
+            <h3 className="text-base font-semibold">
+              {t("studio.moreDetails")}
+            </h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              {t('studio.moreDetailsHint')}
+              {t("studio.moreDetailsHint")}
             </p>
           </div>
           <Link
-            href={'/studio/analytics' as Route}
-            className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+            href={"/studio/analytics" as Route}
+            className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-sm font-medium text-background hover:bg-foreground/90"
           >
-            {t('studio.toAnalytics')}
+            {t("studio.toAnalytics")}
             <ArrowRight className="h-4 w-4" />
           </Link>
         </div>
@@ -259,33 +284,30 @@ function DiamondsHero({
   const gifts = earnings?.periodGifts ?? 0;
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border bg-gradient-to-br from-sky-500/10 via-fuchsia-500/5 to-amber-500/10 p-5 sm:p-6">
-      <div className="absolute -right-10 -top-10 grid h-40 w-40 place-items-center text-[160px] opacity-10">
-        💎
-      </div>
-      <div className="relative flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className="rounded-xl border bg-card p-5 sm:p-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
             <Gem className="h-3.5 w-3.5" />
-            {t('studio.diamondBalance')}
+            {t("studio.diamondBalance")}
           </div>
           <div className="mt-1 text-3xl font-bold tabular-nums sm:text-4xl">
-            💎 {balance.toLocaleString(intl)}
+            {balance.toLocaleString(intl)}
           </div>
           <div className="mt-1 text-xs text-muted-foreground">
             {period > 0
-              ? t('studio.periodGiftsLine', {
+              ? t("studio.periodGiftsLine", {
                   amount: period.toLocaleString(intl),
                   gifts: gifts.toLocaleString(intl),
                 })
-              : t('studio.noGiftsPeriod')}
+              : t("studio.noGiftsPeriod")}
           </div>
         </div>
         <Link
-          href={'/studio/revenue' as Route}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-full border bg-background/50 px-4 py-2 text-sm font-medium backdrop-blur-md hover:bg-background"
+          href={"/studio/revenue" as Route}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-full border bg-background px-4 py-2 text-sm font-medium hover:bg-muted"
         >
-          {t('studio.earningsDetails')}
+          {t("studio.earningsDetails")}
           <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
@@ -313,9 +335,10 @@ function KpiCard({
   intl: string;
 }) {
   const delta = prev > 0 ? ((value - prev) / prev) * 100 : value > 0 ? 100 : 0;
-  const trend = delta > 1 ? 'up' : delta < -1 ? 'down' : 'flat';
+  const trend = delta > 1 ? "up" : delta < -1 ? "down" : "flat";
 
-  const TrendIcon = trend === 'up' ? TrendingUp : trend === 'down' ? TrendingDown : Minus;
+  const TrendIcon =
+    trend === "up" ? TrendingUp : trend === "down" ? TrendingDown : Minus;
 
   return (
     <div className="flex flex-col gap-2 rounded-xl border bg-card p-4">
@@ -326,20 +349,19 @@ function KpiCard({
         </span>
         <span
           className={cn(
-            'inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium tabular-nums',
-            trend === 'up' && 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-            trend === 'down' && 'bg-red-500/10 text-red-600 dark:text-red-400',
-            trend === 'flat' && 'bg-muted text-muted-foreground',
+            "inline-flex items-center gap-0.5 rounded-full border bg-muted/40 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground",
           )}
         >
           <TrendIcon className="h-3 w-3" />
-          {delta > 0 ? '+' : ''}
+          {delta > 0 ? "+" : ""}
           {delta.toFixed(0)}%
         </span>
       </div>
-      <div className="text-2xl font-semibold tabular-nums">{value.toLocaleString(intl)}</div>
+      <div className="text-2xl font-semibold tabular-nums">
+        {value.toLocaleString(intl)}
+      </div>
       <div className="text-[11px] text-muted-foreground">
-        {t('studio.kpiPrev', { value: prev.toLocaleString(intl) })}
+        {t("studio.kpiPrev", { value: prev.toLocaleString(intl) })}
       </div>
     </div>
   );
@@ -359,17 +381,20 @@ function EngagementRateCard({
   intl: string;
 }) {
   const views = overview?.totalViews ?? 0;
-  const interactions = (overview?.totalLikes ?? 0) + (overview?.totalComments ?? 0);
+  const interactions =
+    (overview?.totalLikes ?? 0) + (overview?.totalComments ?? 0);
   const rate = views > 0 ? (interactions / views) * 100 : 0;
 
   return (
     <div className="rounded-xl border bg-card p-4">
       <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        {t('studio.engagementRate')}
+        {t("studio.engagementRate")}
       </div>
-      <div className="mt-1 text-2xl font-semibold tabular-nums">{rate.toFixed(2)}%</div>
+      <div className="mt-1 text-2xl font-semibold tabular-nums">
+        {rate.toFixed(2)}%
+      </div>
       <div className="mt-1 text-[11px] text-muted-foreground">
-        {t('studio.engagementHint', {
+        {t("studio.engagementHint", {
           interactions: interactions.toLocaleString(intl),
           views: views.toLocaleString(intl),
         })}
@@ -386,28 +411,31 @@ function EarningsSummaryCard({
   t: Translator;
 }) {
   const top = earnings?.topGiftName;
-  const emoji = earnings?.topGiftEmoji;
 
   return (
     <div className="rounded-xl border bg-card p-4">
       <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        {t('studio.topGift')}
+        {t("studio.topGift")}
       </div>
       {top ? (
         <>
           <div className="mt-1 flex items-center gap-2 text-2xl font-semibold">
-            <span>{emoji ?? '🎁'}</span>
+            <span className="grid h-8 w-8 place-items-center rounded-full border bg-background">
+              <Gem className="h-4 w-4 text-muted-foreground" />
+            </span>
             <span className="truncate">{top}</span>
           </div>
           <div className="mt-1 text-[11px] text-muted-foreground">
-            {t('studio.topSupporter', { name: earnings?.topGifterName ?? '–' })}
+            {t("studio.topSupporter", { name: earnings?.topGifterName ?? "–" })}
           </div>
         </>
       ) : (
         <>
-          <div className="mt-1 text-2xl font-semibold text-muted-foreground">–</div>
+          <div className="mt-1 text-2xl font-semibold text-muted-foreground">
+            –
+          </div>
           <div className="mt-1 text-[11px] text-muted-foreground">
-            {t('studio.noGiftsPeriodShort')}
+            {t("studio.noGiftsPeriodShort")}
           </div>
         </>
       )}
@@ -430,13 +458,13 @@ function FollowerSummaryCard({
   return (
     <div className="rounded-xl border bg-card p-4">
       <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        {t('studio.followerLabel')}
+        {t("studio.followerLabel")}
       </div>
       <div className="mt-1 text-2xl font-semibold tabular-nums">
         {total.toLocaleString(intl)}
       </div>
       <div className="mt-1 text-[11px] text-muted-foreground">
-        {t('studio.followerAdded', { added: added.toLocaleString(intl) })}
+        {t("studio.followerAdded", { added: added.toLocaleString(intl) })}
       </div>
     </div>
   );
@@ -460,40 +488,28 @@ function PlanningCard({
   label: string;
   primary: number | string;
   secondary: string;
-  accent: 'primary' | 'danger' | 'success' | 'muted';
+  accent: "primary" | "danger" | "success" | "muted";
   intl: string;
 }) {
-  const accentRing = {
-    primary: 'ring-primary/30 bg-primary/5',
-    danger: 'ring-red-500/30 bg-red-500/5',
-    success: 'ring-emerald-500/30 bg-emerald-500/5',
-    muted: 'ring-muted',
-  }[accent];
-
-  const iconColor = {
-    primary: 'text-primary',
-    danger: 'text-red-500',
-    success: 'text-emerald-500',
-    muted: 'text-muted-foreground',
-  }[accent];
-
   return (
     <Link
       href={href}
       className={cn(
-        'group flex items-center justify-between gap-3 rounded-xl border p-4 transition-colors hover:ring-2',
-        accentRing,
+        "group flex items-center justify-between gap-3 rounded-xl border bg-card p-4 transition-colors hover:bg-muted/40",
+        accent === "danger" && "border-border",
       )}
     >
       <div className="min-w-0">
         <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-          <Icon className={cn('h-3.5 w-3.5', iconColor)} />
+          <Icon className="h-3.5 w-3.5" />
           {label}
         </div>
         <div className="mt-1 text-xl font-semibold tabular-nums">
-          {typeof primary === 'number' ? primary.toLocaleString(intl) : primary}
+          {typeof primary === "number" ? primary.toLocaleString(intl) : primary}
         </div>
-        <div className="mt-0.5 text-[11px] text-muted-foreground">{secondary}</div>
+        <div className="mt-0.5 text-[11px] text-muted-foreground">
+          {secondary}
+        </div>
       </div>
       <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
     </Link>
@@ -516,23 +532,26 @@ function TopPostsPanel({
   return (
     <div className="rounded-xl border bg-card">
       <div className="flex items-center justify-between border-b px-4 py-3">
-        <h3 className="text-sm font-semibold">{t('studio.topPostsTitle')}</h3>
+        <h3 className="text-sm font-semibold">{t("studio.topPostsTitle")}</h3>
         <Link
-          href={'/studio/analytics' as Route}
+          href={"/studio/analytics" as Route}
           className="text-xs text-muted-foreground hover:text-foreground"
         >
-          {t('studio.allLink')}
+          {t("studio.allLink")}
         </Link>
       </div>
       {posts.length === 0 ? (
         <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
-          <Flame className="h-8 w-8 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">{t('studio.topPostsEmpty')}</p>
+          <Film className="h-8 w-8 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">
+            {t("studio.topPostsEmpty")}
+          </p>
         </div>
       ) : (
         <ul className="divide-y">
           {posts.map((p) => {
-            const thumb = p.thumbnailUrl ?? (p.mediaType === 'image' ? p.mediaUrl : null);
+            const thumb =
+              p.thumbnailUrl ?? (p.mediaType === "image" ? p.mediaUrl : null);
             return (
               <li key={p.postId}>
                 <Link
@@ -541,10 +560,16 @@ function TopPostsPanel({
                 >
                   <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-muted">
                     {thumb ? (
-                      <Image src={thumb} alt="" fill className="object-cover" sizes="56px" />
+                      <Image
+                        src={thumb}
+                        alt=""
+                        fill
+                        className="object-cover"
+                        sizes="56px"
+                      />
                     ) : (
                       <div className="grid h-full w-full place-items-center text-muted-foreground">
-                        {p.mediaType === 'video' ? (
+                        {p.mediaType === "video" ? (
                           <Film className="h-5 w-5" />
                         ) : (
                           <ImageIcon className="h-5 w-5" />
@@ -559,7 +584,7 @@ function TopPostsPanel({
                     <div className="truncate text-sm">
                       {p.caption?.trim() || (
                         <span className="italic text-muted-foreground">
-                          {t('studio.noCaption')}
+                          {t("studio.noCaption")}
                         </span>
                       )}
                     </div>
@@ -606,18 +631,22 @@ function RecentGiftsPanel({
   return (
     <div className="rounded-xl border bg-card">
       <div className="flex items-center justify-between border-b px-4 py-3">
-        <h3 className="text-sm font-semibold">{t('studio.recentGiftsTitle')}</h3>
+        <h3 className="text-sm font-semibold">
+          {t("studio.recentGiftsTitle")}
+        </h3>
         <Link
-          href={'/studio/revenue' as Route}
+          href={"/studio/revenue" as Route}
           className="text-xs text-muted-foreground hover:text-foreground"
         >
-          {t('studio.allLink')}
+          {t("studio.allLink")}
         </Link>
       </div>
       {gifts.length === 0 ? (
         <div className="flex flex-col items-center gap-2 px-4 py-10 text-center">
           <Gem className="h-8 w-8 text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">{t('studio.recentGiftsEmpty')}</p>
+          <p className="text-sm text-muted-foreground">
+            {t("studio.recentGiftsEmpty")}
+          </p>
         </div>
       ) : (
         <ul className="divide-y">
@@ -626,19 +655,20 @@ function RecentGiftsPanel({
               key={`${g.createdAt}-${i}`}
               className="flex items-center gap-3 px-4 py-3"
             >
-              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-muted text-2xl">
-                {g.giftEmoji}
+              <div className="grid h-10 w-10 shrink-0 place-items-center rounded-full border bg-background">
+                <Gem className="h-5 w-5 text-muted-foreground" />
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 text-sm">
                   <span className="truncate font-medium">{g.giftName}</span>
-                  <span className="inline-flex items-center gap-0.5 rounded-full bg-sky-500/10 px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-sky-600 dark:text-sky-400">
-                    💎 {g.diamondValue.toLocaleString(intl)}
+                  <span className="inline-flex items-center gap-1 rounded-full border bg-background px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground">
+                    <Gem className="h-3 w-3" />
+                    {g.diamondValue.toLocaleString(intl)}
                   </span>
                 </div>
                 <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
-                  {t('studio.giftFrom', {
-                    name: g.senderName ?? '–',
+                  {t("studio.giftFrom", {
+                    name: g.senderName ?? "–",
                     relative: formatRelative(g.createdAt, t, locale),
                   })}
                 </div>
@@ -659,12 +689,15 @@ function RecentGiftsPanel({
 function formatRelative(iso: string, t: Translator, locale: Locale): string {
   const then = new Date(iso).getTime();
   const diff = Date.now() - then;
-  if (diff < 60_000) return t('studio.timeJustNow');
-  if (diff < 3_600_000) return t('studio.timeMinAgo', { n: Math.floor(diff / 60_000) });
-  if (diff < 86_400_000) return t('studio.timeHourAgo', { n: Math.floor(diff / 3_600_000) });
-  if (diff < 7 * 86_400_000) return t('studio.timeDayAgo', { n: Math.floor(diff / 86_400_000) });
+  if (diff < 60_000) return t("studio.timeJustNow");
+  if (diff < 3_600_000)
+    return t("studio.timeMinAgo", { n: Math.floor(diff / 60_000) });
+  if (diff < 86_400_000)
+    return t("studio.timeHourAgo", { n: Math.floor(diff / 3_600_000) });
+  if (diff < 7 * 86_400_000)
+    return t("studio.timeDayAgo", { n: Math.floor(diff / 86_400_000) });
   return new Date(iso).toLocaleDateString(LOCALE_INTL[locale], {
-    day: '2-digit',
-    month: '2-digit',
+    day: "2-digit",
+    month: "2-digit",
   });
 }
