@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
-import { Lock, ShieldCheck, Video, Heart, Users, Sparkles } from 'lucide-react';
+import { Lock, ShieldCheck, Video, Heart, Users } from 'lucide-react';
 
 import { getProfile } from '@/lib/auth/session';
 import { getWOZFeed } from '@/lib/data/public';
@@ -22,7 +22,7 @@ import { WozActivateForm } from '@/components/women-only/woz-activate-form';
 // -----------------------------------------------------------------------------
 
 export const metadata: Metadata = {
-  title: 'Women-Only Zone 🌸 — Serlo',
+  title: 'Women-Only Zone — Serlo',
   description: 'Ein geschützter Raum nur für Frauen auf Serlo.',
   robots: { index: false },
 };
@@ -67,15 +67,15 @@ function WozOnboardingScreen() {
       {/* Hero */}
       <div className="mb-8 text-center">
         <div className="mb-4 flex justify-center">
-          <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-pink-500/20 to-violet-500/20 ring-2 ring-pink-500/30">
-            <span className="text-4xl">🌸</span>
+          <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-muted text-muted-foreground ring-1 ring-border">
+            <ShieldCheck className="h-9 w-9" strokeWidth={1.6} />
           </div>
         </div>
-        <h1 className="bg-gradient-to-r from-pink-500 to-violet-500 bg-clip-text text-3xl font-bold tracking-tight text-transparent">
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">
           Women-Only Zone
         </h1>
         <p className="mt-3 text-muted-foreground">
-          Ein geschützter Raum auf Serlo — nur für Frauen, nur für dich.
+          Ein separater Bereich mit Verifizierung, klaren Regeln und geschützter Sichtbarkeit.
         </p>
       </div>
 
@@ -86,7 +86,7 @@ function WozOnboardingScreen() {
             key={title}
             className="flex items-start gap-3 rounded-xl border border-border bg-card p-4"
           >
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-pink-500/10 text-pink-500">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
               <Icon className="h-4.5 w-4.5" strokeWidth={1.75} />
             </div>
             <div>
@@ -101,7 +101,7 @@ function WozOnboardingScreen() {
       <div className="flex flex-col items-center gap-2">
         <WozActivateForm />
         <p className="mt-1 text-xs text-muted-foreground">
-          Kostenlos · Sofortiger Zugang · Jederzeit widerrufbar
+          Kostenlos prüfbar · Zugang nur nach Verifizierung · Jederzeit widerrufbar
         </p>
       </div>
     </main>
@@ -117,8 +117,8 @@ async function WozFeedScreen() {
     <main className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
       {/* Header */}
       <header className="mb-6 flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-pink-500/20 to-violet-500/20 ring-1 ring-pink-500/30">
-          <span className="text-xl">🌸</span>
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-muted text-muted-foreground ring-1 ring-border">
+          <ShieldCheck className="h-5 w-5" strokeWidth={1.75} />
         </div>
         <div>
           <h1 className="text-xl font-bold tracking-tight">Women-Only Zone</h1>
@@ -127,7 +127,7 @@ async function WozFeedScreen() {
           </p>
         </div>
         <div className="ml-auto">
-          <span className="inline-flex items-center gap-1 rounded-full bg-pink-500/10 px-2.5 py-1 text-xs font-medium text-pink-600 dark:text-pink-400">
+          <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
             <ShieldCheck className="h-3 w-3" />
             Verifiziert
           </span>
@@ -139,7 +139,7 @@ async function WozFeedScreen() {
         posts={posts}
         emptyTitle="Noch keine WOZ-Posts"
         emptyDescription="Sei die Erste — lade ein Video hoch und markiere es als Women-Only."
-        emptyIcon={<Sparkles className="h-7 w-7" strokeWidth={1.75} />}
+        emptyIcon={<ShieldCheck className="h-7 w-7" strokeWidth={1.75} />}
       />
     </main>
   );

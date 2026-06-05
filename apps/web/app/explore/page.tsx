@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { Route } from 'next';
 import { Suspense } from 'react';
-import { Hash, Flame, TrendingUp, Compass, Users, Sparkles, ShoppingBag, ChevronRight, Coins } from 'lucide-react';
+import { Hash, Flame, TrendingUp, Compass, Users, ShieldCheck, ShoppingBag, ChevronRight, Coins } from 'lucide-react';
 import {
   getPublicTrendingHashtags,
   getPublicForYouFeed,
@@ -54,7 +54,7 @@ export default async function ExplorePage() {
     <main className="container mx-auto max-w-6xl px-4 py-8">
       <header className="mb-8">
         <h1 className="flex items-center gap-2 text-3xl font-bold tracking-tight">
-          <Compass className="h-7 w-7 text-brand-gold" />
+          <Compass className="h-7 w-7 text-muted-foreground" />
           {t('explore.title')}
         </h1>
         <p className="mt-2 text-muted-foreground">{t('explore.subtitle')}</p>
@@ -63,7 +63,7 @@ export default async function ExplorePage() {
       {/* Trending Hashtags */}
       <section className="mb-12">
         <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
-          <Flame className="h-5 w-5 text-brand-danger" />
+          <Flame className="h-5 w-5 text-muted-foreground" />
           {t('explore.trendingHashtags')}
         </h2>
 
@@ -153,7 +153,7 @@ async function ExploreDeferredSections({ suggestedPeopleTitle }: { suggestedPeop
       {people.length > 0 && (
         <section className="mb-12">
           <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
-            <Users className="h-5 w-5 text-brand-gold" />
+            <Users className="h-5 w-5 text-muted-foreground" />
             {suggestedPeopleTitle}
           </h2>
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
@@ -224,7 +224,7 @@ async function ExploreDeferredSections({ suggestedPeopleTitle }: { suggestedPeop
         <section className="mb-12">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-lg font-semibold">
-              <ShoppingBag className="h-5 w-5 text-brand-gold" />
+              <ShoppingBag className="h-5 w-5 text-muted-foreground" />
               Shop
             </h2>
             <Link
@@ -257,7 +257,7 @@ async function ExploreDeferredSections({ suggestedPeopleTitle }: { suggestedPeop
                     </div>
                   )}
                   {product.sale_price_coins && (
-                    <span className="absolute left-1.5 top-1.5 rounded bg-red-500 px-1 py-0.5 text-[9px] font-bold text-white">
+                    <span className="absolute left-1.5 top-1.5 rounded bg-foreground px-1 py-0.5 text-[9px] font-bold text-background">
                       SALE
                     </span>
                   )}
@@ -266,9 +266,9 @@ async function ExploreDeferredSections({ suggestedPeopleTitle }: { suggestedPeop
                   <p className="line-clamp-2 text-[11px] font-medium leading-tight text-foreground">
                     {product.title}
                   </p>
-                  <p className="text-[11px] font-semibold text-brand-gold">
+                  <p className="text-[11px] font-semibold text-foreground">
                     <span className="inline-flex items-center gap-1">
-                      <Coins className="h-3 w-3" />
+                      <Coins className="h-3 w-3 text-muted-foreground" />
                       {(product.sale_price_coins ?? product.price_coins).toLocaleString('de-DE')}
                     </span>
                   </p>
@@ -284,27 +284,27 @@ async function ExploreDeferredSections({ suggestedPeopleTitle }: { suggestedPeop
         <section className="mb-12">
           <Link
             href={'/women-only' as Route}
-            className="group flex items-center gap-4 overflow-hidden rounded-2xl border border-pink-500/30 bg-gradient-to-r from-pink-500/10 via-rose-500/5 to-violet-500/10 p-5 transition-all hover:border-pink-500/50 hover:from-pink-500/15 hover:to-violet-500/15"
+            className="group flex items-center gap-4 rounded-2xl border border-border bg-card p-5 transition-colors hover:border-foreground/20"
           >
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-pink-500/20 to-violet-500/20 text-pink-500 ring-1 ring-pink-500/30">
-              <Sparkles className="h-5 w-5" strokeWidth={1.8} />
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground ring-1 ring-border">
+              <ShieldCheck className="h-5 w-5" strokeWidth={1.8} />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="font-semibold text-pink-600 dark:text-pink-400">
+              <p className="font-semibold text-foreground">
                 Women-Only Zone
                 {isWozVerified && (
-                  <span className="ml-2 inline-flex items-center gap-0.5 rounded-full bg-pink-500/15 px-1.5 py-0.5 text-[10px] font-medium text-pink-600 dark:text-pink-400">
+                  <span className="ml-2 inline-flex items-center gap-0.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
                     Mitglied
                   </span>
                 )}
               </p>
               <p className="mt-0.5 truncate text-sm text-muted-foreground">
                 {isWozVerified
-                  ? 'Dein geschützter Raum — exklusive Posts nur für dich'
-                  : 'Ein geschützter Raum nur für Frauen — kostenlos beitreten'}
+                  ? 'Dein geschützter Raum mit kuratierten Posts'
+                  : 'Geschützter Bereich mit separater Verifizierung'}
               </p>
             </div>
-            <Sparkles className="h-5 w-5 shrink-0 text-pink-400 transition-transform group-hover:scale-110" />
+            <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
           </Link>
         </section>
       )}
@@ -319,7 +319,7 @@ function formatCount(n: number, locale: Locale): string {
 }
 
 // ── Discover Reason Badge (v1.w.UI.231) ────────────────────────────────────────
-// Parity mit native "🏛 Gleiche Guild" / "🏷 Gleiche Interessen" / "✨ Neu"
+// Parity mit native discover reasons.
 // Labels aus useDiscoverPeople.ts. Kleine Pill unter dem Avatar-Namen.
 
 const REASON_LABELS: Record<DiscoverReason, string> = {
@@ -329,9 +329,9 @@ const REASON_LABELS: Record<DiscoverReason, string> = {
 };
 
 const REASON_CLASSES: Record<DiscoverReason, string> = {
-  guild: 'bg-brand-gold/10 text-brand-gold',
-  interests: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
-  new: 'bg-sky-500/10 text-sky-600 dark:text-sky-400',
+  guild: 'bg-muted text-muted-foreground',
+  interests: 'bg-muted text-muted-foreground',
+  new: 'bg-muted text-muted-foreground',
 };
 
 function DiscoverReasonBadge({ reason }: { reason: DiscoverReason }) {
