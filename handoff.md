@@ -1,6 +1,6 @@
 # Serlo / Vibes Handoff
 
-Last updated: 2026-06-03
+Last updated: 2026-06-05
 
 ## Goal
 
@@ -12,8 +12,8 @@ build provenance, and maintainable code structure.
 
 - Active repo: `/Users/zaurhatuev/vibes-app`
 - Active branch: `main`
-- Current release commit before this observability pass:
-  `104af88 Harden release observability and iOS guards`
+- Current release commit:
+  `ae97834 Refine creator and shop UI surfaces`
 - Web production: `https://serlo-web.vercel.app`
 - Native app identity: `Serlo 1.26.6 (279)`
 - EAS project id: `02ab536a-5836-4560-a5ec-2dfd6e059f90`
@@ -26,8 +26,9 @@ legacy checkout.
 ## Current Technical State
 
 - Git working tree was clean before the 2026-06-03 hardening pass.
-- `npm run release:gate` passed on 2026-06-03.
-- `npm run health:dashboard` passed on 2026-06-03.
+- `npm run release:gate` passed on 2026-06-05 after the latest production
+  deploy.
+- `npm run health:dashboard` passed on 2026-06-05.
 - `npm run observability:health` passed on 2026-06-03 and reports Yellow until
   Sentry/PostHog envs are intentionally configured.
 - `npm run observability:health -- --vercel-production` passed on 2026-06-03;
@@ -36,14 +37,29 @@ legacy checkout.
 - `npm run native:release-guard` passed from `/Users/zaurhatuev/vibes-app`.
 - `npm run native:builds:audit` passed and reports latest Store build
   `1.26.6 (279)`.
-- Production Web route/API/media/auth/integrity checks are green.
-- R2 upload smoke is included in production integrity and passed.
+- Production Web route/API/media/playback/auth/integrity checks are green.
+- R2 upload smoke is included in production integrity and passed. It now covers
+  iOS content-type signing, cache-control tolerance, and product-image prefix
+  signing.
 - Media playback health is green: checked videos are fast-start.
 - Shop media health is green: active products have reachable media URLs.
 - Legal readiness is no longer blocked by placeholder text.
 
 ## Latest Hardening Changes
 
+- `r2-sign` now allows `products/images/...` object keys, fixing product image
+  upload signing parity with the native/web product upload client.
+- Production integrity now checks the product image signing contract without
+  leaving product smoke files behind.
+- Explore and Women-Only public pages were toned down: no pink/violet hero
+  styling, no decorative gradient badges, and more restrained trust-oriented
+  copy.
+- Creator/shop UI cleanup wave: Studio Live, Studio Analytics,
+  Studio Shop Analytics, product cards, and Women-Only activation now use
+  neutral system styling instead of generator-like red/orange/pink gradients and
+  emoji metrics.
+- Vercel production is aliased to `https://serlo-web.vercel.app`; latest
+  inspected deployment was Ready under the `serlo-web` project.
 - Build audit now reads the current App Store Connect candidate from `app.json`
   instead of a hard-coded stale number.
 - iOS release guard minimum Store build has been raised to `1.26.6 (279)`.
@@ -60,6 +76,9 @@ legacy checkout.
 
 ## Open Technical Risks
 
+- Product readiness remains the main risk, not infrastructure:
+  `health:dashboard` is still Yellow for Product Metrics, Launch Readiness,
+  Observability, and Push/Feed.
 - Web Sentry requires Vercel env vars to actually emit events:
   `NEXT_PUBLIC_SENTRY_DSN` and/or `SENTRY_DSN`, plus source-map upload vars
   `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`.
@@ -108,10 +127,16 @@ release path.
 
 ## Next Technical Work
 
-1. Configure Sentry DSN envs in Vercel Preview/Production, then run
+1. Continue the UI-quality audit on high-traffic surfaces not yet cleaned:
+   profile/feed overlays, live viewer/host controls, create flow, coin shop, and
+   notifications. Keep changes scoped and verify each wave with typecheck, lint,
+   production deploy, release gate, and health dashboard.
+2. Configure Sentry DSN envs in Vercel Preview/Production, then run
    `npm run observability:health -- --vercel-production --strict` only after
    the source-map secrets are also ready.
-2. Keep `SENTRY_ENABLE_EDGE` unset until a preview deploy proves Edge routes
+3. Keep `SENTRY_ENABLE_EDGE` unset until a preview deploy proves Edge routes
    are safe.
-3. Next refactor wave: extract narrow hooks/components from the largest native
+4. Recover the deployed `r2-delete` source into `supabase/functions/` before
+   changing cleanup semantics.
+5. Next refactor wave: extract narrow hooks/components from the largest native
    screens, starting with create/upload flow and live watch/host state.
