@@ -920,20 +920,20 @@ export function FeedCard({
       <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col gap-2 p-4 pb-6 text-white">
         {/* v1.w.UI.169 — WOZ badge: only visible to verified members (RLS-enforced) */}
         {post.women_only && (
-          <span className="pointer-events-none inline-flex w-fit items-center gap-1 rounded-full bg-pink-500/25 px-2.5 py-0.5 text-[11px] font-semibold text-pink-200 ring-1 ring-pink-400/40 backdrop-blur-sm">
-            🌸 Women Only
+          <span className="pointer-events-none inline-flex w-fit items-center gap-1 rounded-full bg-black/45 px-2.5 py-0.5 text-[11px] font-semibold text-white/90 ring-1 ring-white/20 backdrop-blur-sm">
+            Women-Only
           </span>
         )}
         {/* v1.w.UI.172 — audience badge: shown only on restricted posts so author
             (who sees own friends/private posts) gets a visual reminder */}
         {post.privacy === 'friends' && (
           <span className="pointer-events-none inline-flex w-fit items-center gap-1 rounded-full bg-black/40 px-2.5 py-0.5 text-[11px] font-semibold text-white/90 ring-1 ring-white/20 backdrop-blur-sm">
-            👥 Freunde
+            Freunde
           </span>
         )}
         {post.privacy === 'private' && (
           <span className="pointer-events-none inline-flex w-fit items-center gap-1 rounded-full bg-black/40 px-2.5 py-0.5 text-[11px] font-semibold text-white/90 ring-1 ring-white/20 backdrop-blur-sm">
-            🔒 Nur ich
+            Privat
           </span>
         )}
         <div className="flex items-center gap-2">
@@ -942,7 +942,7 @@ export function FeedCard({
             className="flex items-center gap-1 text-sm font-semibold"
           >
             @{post.author.username}
-            {post.author.verified && <BadgeCheck className="h-4 w-4 text-brand-gold" />}
+            {post.author.verified && <BadgeCheck className="h-4 w-4 text-white/80" />}
           </Link>
           {!isSelf && !post.following_author && viewerId && (
             <button
@@ -1063,7 +1063,7 @@ export function FeedCard({
               />
             )}
             <div
-              className="relative h-full bg-brand-gold transition-[width]"
+              className="relative h-full bg-white transition-[width]"
               style={{ width: `${progress}%` }}
             >
               {/* Thumb (Drag-Indikator) — sichtbar on hover oder während
@@ -1114,7 +1114,7 @@ export function FeedCard({
               followMut.mutate({ userId: post.author.id, following: post.following_author });
             }}
             aria-label="Folgen"
-            className="absolute -bottom-1.5 left-1/2 flex h-5 w-5 -translate-x-1/2 items-center justify-center rounded-full bg-red-500 text-white shadow-elevation-1 ring-2 ring-background transition-transform duration-fast ease-out-expo hover:scale-110 disabled:opacity-60"
+            className="absolute -bottom-1.5 left-1/2 flex h-5 w-5 -translate-x-1/2 items-center justify-center rounded-full bg-foreground text-background shadow-elevation-1 ring-2 ring-background transition-transform duration-fast ease-out-expo hover:scale-110 disabled:opacity-60"
             disabled={followMut.isPending}
           >
             <Plus className="h-3.5 w-3.5" aria-hidden="true" />
@@ -1145,7 +1145,7 @@ export function FeedCard({
         icon={
           post.allow_comments ? (
             <MessageCircle
-              className={cn('h-7 w-7', isCommentsOpenForThisPost && 'fill-brand-gold text-brand-gold')}
+              className={cn('h-7 w-7', isCommentsOpenForThisPost && 'fill-foreground text-foreground')}
               aria-hidden="true"
             />
           ) : (
@@ -1176,7 +1176,7 @@ export function FeedCard({
           <Bookmark
             className={cn(
               'h-7 w-7',
-              post.saved_by_me && 'fill-brand-gold text-brand-gold',
+              post.saved_by_me && 'fill-foreground text-foreground',
             )}
             aria-hidden="true"
           />
@@ -1195,7 +1195,7 @@ export function FeedCard({
         <ActionButton
           icon={
             <Repeat2
-              className={cn('h-6 w-6', post.reposted_by_me && 'text-emerald-400')}
+              className={cn('h-6 w-6', post.reposted_by_me && 'text-foreground')}
               aria-hidden="true"
             />
           }

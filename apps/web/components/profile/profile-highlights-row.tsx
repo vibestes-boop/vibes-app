@@ -7,7 +7,7 @@
 // Parity mit native components/profile/ProfileHighlightsRow.tsx.
 //
 // Features:
-//  • 66×66 circular bubbles with cover image + gradient + title
+//  • 66×66 circular bubbles with cover image + title
 //  • Click → HighlightViewerDialog (lightbox for that highlight's media)
 //  • Own profile: hover/focus reveals × delete button (via deleteHighlight action)
 //  • Hidden when no highlights (no empty-state clutter on other people's profiles)
@@ -66,8 +66,8 @@ function HighlightBubble({
         aria-label={`Highlight: ${highlight.title}`}
       >
         {/* Intentional fallback; avoids the "broken image placeholder" look. */}
-        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-zinc-950 via-zinc-900 to-zinc-800">
-          <Camera className="h-5 w-5 text-white/55" strokeWidth={1.8} />
+        <div className="absolute inset-0 flex items-center justify-center bg-muted">
+          <Camera className="h-5 w-5 text-muted-foreground" strokeWidth={1.8} />
         </div>
 
         {/* Cover image */}
@@ -205,8 +205,8 @@ function HighlightViewerDialog({
               />
             )
           ) : (
-            <div className="flex h-full items-center justify-center bg-gradient-to-br from-purple-600 to-indigo-800">
-              <span className="text-4xl">✨</span>
+            <div className="flex h-full items-center justify-center bg-muted text-muted-foreground">
+              <Camera className="h-10 w-10" strokeWidth={1.5} />
             </div>
           )}
         </div>

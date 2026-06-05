@@ -32,8 +32,8 @@ function formatRelative(iso: string): string {
 }
 
 const RESULT_CONFIG = {
-  won:  { label: 'Gewonnen', icon: Trophy, className: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
-  lost: { label: 'Verloren', icon: X,      className: 'bg-red-500/10 text-red-600 dark:text-red-400' },
+  won:  { label: 'Gewonnen', icon: Trophy, className: 'bg-muted text-foreground' },
+  lost: { label: 'Verloren', icon: X,      className: 'bg-muted text-foreground' },
   draw: { label: 'Unentschieden', icon: Minus, className: 'bg-muted text-muted-foreground' },
 };
 
@@ -45,8 +45,8 @@ function initials(name: string | null, username: string | null): string {
 export function BattleList({ battles }: { battles: BattleRecord[] }) {
   if (battles.length === 0) {
     return (
-      <div className="flex min-h-[260px] flex-col items-center justify-center gap-4 rounded-2xl bg-gradient-to-br from-violet-500/15 via-indigo-500/10 to-sky-500/5 px-6 py-14 text-center">
-        <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-background shadow-elevation-2 ring-1 ring-violet-500/20">
+      <div className="flex min-h-[260px] flex-col items-center justify-center gap-4 rounded-2xl border bg-card px-6 py-14 text-center">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl border bg-muted text-muted-foreground">
           <Swords className="h-8 w-8 text-foreground/80" strokeWidth={1.75} />
         </div>
         <div className="max-w-sm">
@@ -70,8 +70,8 @@ export function BattleList({ battles }: { battles: BattleRecord[] }) {
       <div className="mb-4 flex items-center gap-4 rounded-xl border border-border bg-card px-4 py-3">
         <Swords className="h-4 w-4 shrink-0 text-muted-foreground" />
         <div className="flex gap-5 text-sm">
-          <span><span className="font-semibold text-emerald-600 dark:text-emerald-400">{won}</span> <span className="text-muted-foreground">Siege</span></span>
-          <span><span className="font-semibold text-red-600 dark:text-red-400">{lost}</span> <span className="text-muted-foreground">Niederlagen</span></span>
+          <span><span className="font-semibold">{won}</span> <span className="text-muted-foreground">Siege</span></span>
+          <span><span className="font-semibold">{lost}</span> <span className="text-muted-foreground">Niederlagen</span></span>
           <span><span className="font-semibold">{draw}</span> <span className="text-muted-foreground">Unentschieden</span></span>
         </div>
       </div>
@@ -115,9 +115,7 @@ export function BattleList({ battles }: { battles: BattleRecord[] }) {
               {/* Score + Duration */}
               <div className="shrink-0 text-right">
                 <p className="text-sm font-semibold tabular-nums">
-                  <span className={b.result === 'won' ? 'text-emerald-600 dark:text-emerald-400' : b.result === 'lost' ? 'text-red-600 dark:text-red-400' : ''}>
-                    {b.my_score.toLocaleString('de-DE')}
-                  </span>
+                  <span>{b.my_score.toLocaleString('de-DE')}</span>
                   <span className="mx-1 text-muted-foreground">:</span>
                   <span>{b.opponent_score.toLocaleString('de-DE')}</span>
                 </p>

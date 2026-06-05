@@ -267,17 +267,10 @@ export default async function ProfilePage({
                 {displayName}
               </h1>
               {profile.verified && (
-                // Verified-Badge auf TikTok-Blau umgestellt (D3 aus UI_AUDIT).
-                // Vorher: `fill-brand-gold text-background` — Gold-Stroke mit
-                // Background-Farbe als Inner-Tint war sehr dezent, besonders
-                // auf hellem Theme kaum vom Namen abgesetzt. Neu: Sky-Blue-Fill
-                // mit Weiß-Innen — die universelle „Verified"-Farbgebung die
-                // TikTok/X/Meta alle übernommen haben. Gleiches Pattern nutzt
-                // die Messages-Liste und der Feed bereits (`text-sky-500` auf
-                // den kleineren Check-Icons), damit ist die Seitenweiten-
-                // Semantik konsistent.
+                // Neutrales Verified-Signal: sichtbar, aber nicht als fremder
+                // Social-App-Farbcode dominant.
                 <BadgeCheck
-                  className="h-5 w-5 fill-sky-500 text-white dark:text-background"
+                  className="h-5 w-5 fill-foreground text-background"
                   aria-label={t('profile.verifiedBadge')}
                 />
               )}
@@ -591,47 +584,30 @@ export default async function ProfilePage({
 //   1. Ein pro Tab passendes Icon (Heart/ShoppingBag/Swords — matcht die
 //      jeweiligen Tab-Icons, sodass der User sofort sieht „das ist der
 //      leere Likes-Tab, nicht eine generische Fehlerseite").
-//   2. Gradient-Glow-Background (pink-500 → red-500 → amber-400, je nach Icon
-//      leicht getinted) statt `bg-muted` — fühlt sich TikTok-brand-freundlich
-//      an, nicht wie ein 404.
-//   3. Ring + Shadow-Elevation damit das Icon-Plate leicht „schwebt" statt
-//      flach im Dashed-Box zu kleben. Ring-Color inner-weiß (ring-background)
-//      + outer-tinted (ring-pink/ring-amber) ist ein Standard-„Halo"-Trick.
-//   4. `border-dashed border-border` → weg, stattdessen dezenter
-//      `bg-muted/30`-Wash. Dashed-Borders sind ein Legacy-Signal für
-//      „Placeholder" und billig.
+//   2. Ruhiger Card-State statt dekorativer Farbflaechen. Leere Tabs sollen
+//      wie ein echter Zustand wirken, nicht wie ein Marketing-Placeholder.
 // -----------------------------------------------------------------------------
 
 type EmptyIcon = 'likes' | 'reposts' | 'shop' | 'battles' | 'lives';
 
 const EMPTY_ICON_MAP: Record<
   EmptyIcon,
-  { Icon: typeof Heart; gradient: string; ring: string }
+  { Icon: typeof Heart }
 > = {
   likes: {
     Icon: Heart,
-    gradient: 'from-pink-500/15 via-rose-500/10 to-red-500/5',
-    ring: 'ring-pink-500/20',
   },
   reposts: {
     Icon: Repeat2,
-    gradient: 'from-emerald-500/15 via-teal-500/10 to-cyan-500/5',
-    ring: 'ring-emerald-500/20',
   },
   shop: {
     Icon: ShoppingBag,
-    gradient: 'from-amber-500/15 via-orange-500/10 to-red-500/5',
-    ring: 'ring-amber-500/20',
   },
   battles: {
     Icon: Swords,
-    gradient: 'from-violet-500/15 via-indigo-500/10 to-sky-500/5',
-    ring: 'ring-violet-500/20',
   },
   lives: {
     Icon: Radio,
-    gradient: 'from-red-500/15 via-rose-500/10 to-pink-500/5',
-    ring: 'ring-red-500/20',
   },
 };
 
@@ -644,15 +620,13 @@ function EmptyPanelInfo({
   title: string;
   hint: string;
 }) {
-  const { Icon, gradient, ring } = EMPTY_ICON_MAP[icon];
+  const { Icon } = EMPTY_ICON_MAP[icon];
   return (
     <div
-      className={`relative flex min-h-[260px] flex-col items-center justify-center gap-4 overflow-hidden rounded-2xl bg-gradient-to-br ${gradient} bg-card/50 px-6 py-14 text-center`}
+      className="relative flex min-h-[260px] flex-col items-center justify-center gap-4 overflow-hidden rounded-2xl border bg-card px-6 py-14 text-center"
     >
-      <div
-        className={`flex h-16 w-16 items-center justify-center rounded-2xl bg-background shadow-elevation-2 ring-1 ${ring}`}
-      >
-        <Icon className="h-8 w-8 text-foreground/80" strokeWidth={1.75} />
+      <div className="flex h-16 w-16 items-center justify-center rounded-2xl border bg-muted text-muted-foreground">
+        <Icon className="h-8 w-8" strokeWidth={1.75} />
       </div>
       <div className="max-w-sm">
         <p className="text-base font-semibold">{title}</p>

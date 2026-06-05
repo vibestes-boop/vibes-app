@@ -74,7 +74,7 @@ export function ScheduledRowActions({ scheduledId, currentPublishAt }: Props) {
         disabled={isPending}
         className={cn(
           cancelConfirming
-            ? 'inline-flex h-9 items-center gap-1.5 rounded-full bg-red-500 px-3 text-xs font-medium text-white hover:bg-red-600'
+            ? 'inline-flex h-9 items-center gap-1.5 rounded-full bg-foreground px-3 text-xs font-medium text-background hover:bg-foreground/90'
             : 'grid h-9 w-9 place-items-center rounded-full border text-muted-foreground hover:bg-muted hover:text-foreground',
           isPending && 'opacity-50',
         )}

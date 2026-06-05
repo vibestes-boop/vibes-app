@@ -376,7 +376,7 @@ function FeedSidebarRight({
                     className="flex items-center gap-1 truncate text-sm font-semibold hover:underline"
                   >
                     @{s.username}
-                    {s.verified && <BadgeCheck className="h-3.5 w-3.5 text-brand-gold" />}
+                    {s.verified && <BadgeCheck className="h-3.5 w-3.5 text-muted-foreground" />}
                   </Link>
                   <div className="truncate text-xs text-muted-foreground">
                     {s.display_name ?? `${s.follower_count} Follower`}
@@ -457,8 +457,8 @@ function ForYouEmptyState({
       <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-6 shadow-elevation-1">
         {/* Icon + heading */}
         <div className="mb-5 flex flex-col items-center gap-2 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-gold/10">
-            <Sparkles className="h-7 w-7 text-brand-gold" />
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted">
+            <Sparkles className="h-7 w-7 text-muted-foreground" />
           </div>
           <h2 className="text-lg font-semibold">Willkommen auf Serlo!</h2>
           <p className="text-sm text-muted-foreground">
@@ -486,7 +486,7 @@ function ForYouEmptyState({
                   >
                     @{s.username}
                     {s.verified && (
-                      <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-brand-gold" />
+                      <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                     )}
                   </Link>
                   {s.follower_count > 0 && (
@@ -521,7 +521,7 @@ function ForYouEmptyState({
         {/* Primary CTA: Explore */}
         <Link
           href={'/explore' as Route}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-gold px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-gold/90"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition-colors hover:bg-foreground/90"
         >
           <Compass className="h-4 w-4" />
           Accounts &amp; Videos entdecken
@@ -591,7 +591,7 @@ function FollowingEmptyState({
                     className="flex items-center gap-1 truncate text-sm font-semibold hover:underline"
                   >
                     @{s.username}
-                    {s.verified && <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-brand-gold" />}
+                    {s.verified && <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />}
                   </Link>
                   {s.follower_count > 0 && (
                     <div className="text-xs text-muted-foreground">
@@ -622,7 +622,7 @@ function FollowingEmptyState({
         {/* Explore CTA */}
         <Link
           href={'/explore' as Route}
-          className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-gold px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-brand-gold/90"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition-colors hover:bg-foreground/90"
         >
           <Compass className="h-4 w-4" />
           Neue Accounts entdecken
