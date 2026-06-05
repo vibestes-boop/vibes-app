@@ -38,7 +38,7 @@ export function WozActivateForm() {
         type="button"
         onClick={handleActivate}
         disabled={isPending}
-        className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-pink-500 to-violet-500 px-6 py-3 text-base font-semibold text-white shadow-md transition-all hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+        className="inline-flex items-center gap-2 rounded-xl bg-foreground px-6 py-3 text-base font-semibold text-background transition-colors hover:bg-foreground/90 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {isPending ? (
           <Loader2 className="h-5 w-5 animate-spin" />

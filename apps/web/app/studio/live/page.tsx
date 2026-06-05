@@ -80,7 +80,7 @@ export default async function StudioLivePage() {
         {!activeSession && (
           <Link
             href={'/live/start' as Route}
-            className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-br from-red-500 to-red-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:from-red-600 hover:to-red-700"
+            className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-sm font-semibold text-background hover:bg-foreground/90"
           >
             <Plus className="h-4 w-4" />
             Live gehen
@@ -90,10 +90,10 @@ export default async function StudioLivePage() {
 
       {/* Aktive Session */}
       {activeSession && (
-        <section className="mb-6 rounded-xl border-2 border-red-500/50 bg-red-500/5 p-4">
+        <section className="mb-6 rounded-xl border bg-card p-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-red-500 px-2.5 py-1 text-xs font-semibold text-white">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-2.5 py-1 text-xs font-semibold text-background">
                 <Radio className="h-3 w-3 animate-pulse" />
                 LIVE
               </span>
@@ -107,7 +107,7 @@ export default async function StudioLivePage() {
             </div>
             <Link
               href={`/live/host/${activeSession.id}` as Route}
-              className="inline-flex items-center gap-1.5 rounded-full bg-red-500 px-4 py-2 text-sm font-semibold text-white hover:bg-red-600"
+              className="inline-flex items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-sm font-semibold text-background hover:bg-foreground/90"
             >
               <Settings className="h-4 w-4" />
               Zurück ins Deck
@@ -181,7 +181,7 @@ function ScheduledLiveRow({ row }: { row: ScheduledLiveRow }) {
   const isReminded = row.status === 'reminded';
   return (
     <li className="flex items-center gap-3 px-4 py-3 [&:not(:last-child)]:border-b">
-      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${isReminded ? 'bg-amber-500/15 text-amber-500' : 'bg-primary/10 text-primary'}`}>
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
         {isReminded ? <BellRing className="h-4 w-4" /> : <CalendarDays className="h-4 w-4" />}
       </div>
       <div className="min-w-0 flex-1">
@@ -191,7 +191,7 @@ function ScheduledLiveRow({ row }: { row: ScheduledLiveRow }) {
       {row.status === 'reminded' && (
         <Link
           href={'/live/start' as Route}
-          className="mr-1 inline-flex items-center gap-1 rounded-full bg-red-500 px-2.5 py-1 text-xs font-semibold text-white hover:bg-red-600"
+          className="mr-1 inline-flex items-center gap-1 rounded-full bg-foreground px-2.5 py-1 text-xs font-semibold text-background hover:bg-foreground/90"
         >
           <Radio className="h-3 w-3" />
           Live gehen
@@ -203,9 +203,9 @@ function ScheduledLiveRow({ row }: { row: ScheduledLiveRow }) {
 }
 
 const BATTLE_CHIP: Record<BattleResult, { label: string; className: string }> = {
-  win:  { label: 'Gewonnen', className: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' },
-  loss: { label: 'Verloren', className: 'bg-rose-500/15 text-rose-500' },
-  draw: { label: 'Unentschieden', className: 'bg-amber-500/15 text-amber-600 dark:text-amber-400' },
+  win:  { label: 'Gewonnen', className: 'border border-border bg-background text-foreground' },
+  loss: { label: 'Verloren', className: 'border border-border bg-background text-foreground' },
+  draw: { label: 'Unentschieden', className: 'border border-border bg-background text-foreground' },
 };
 
 function fmtNum(n: number): string {
@@ -231,8 +231,8 @@ function PastSessionCard({ session }: { session: PastSession }) {
               className="object-cover"
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/10 to-primary/5">
-              <Radio className="h-10 w-10 text-primary/40" />
+            <div className="flex h-full w-full items-center justify-center bg-muted">
+              <Radio className="h-10 w-10 text-muted-foreground/50" />
             </div>
           )}
 
@@ -274,9 +274,9 @@ function PastSessionCard({ session }: { session: PastSession }) {
           {(session.total_gift_diamonds > 0 || session.comment_count > 0) && (
             <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
               {session.total_gift_diamonds > 0 && (
-                <span className="inline-flex items-center gap-0.5 text-amber-500">
+                <span className="inline-flex items-center gap-0.5">
                   <Gem className="h-3 w-3" />
-                  {fmtNum(session.total_gift_diamonds)} 💎
+                  {fmtNum(session.total_gift_diamonds)}
                 </span>
               )}
               {session.comment_count > 0 && (

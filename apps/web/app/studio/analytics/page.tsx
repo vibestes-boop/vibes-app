@@ -290,7 +290,7 @@ function StatBigCard({
 }) {
   const iconBg = {
     primary: 'bg-primary/10 text-primary',
-    success: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+    success: 'bg-muted text-muted-foreground',
     muted: 'bg-muted text-muted-foreground',
   }[accent];
 

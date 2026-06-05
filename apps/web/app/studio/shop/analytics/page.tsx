@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Route } from 'next';
-import { ArrowLeft, BarChart3, TrendingUp } from 'lucide-react';
+import { ArrowLeft, BarChart3, Coins, TrendingUp } from 'lucide-react';
 import { getShopAnalytics } from '@/lib/data/shop';
 import { getUser } from '@/lib/auth/session';
 import { StarDisplay } from '@/components/shop/star-display';
@@ -54,7 +54,8 @@ export default async function ShopAnalyticsPage() {
         <StatCard label="Verkaufte Einheiten" value={totalSold.toLocaleString('de-DE')} />
         <StatCard
           label="Netto-Umsatz"
-          value={`🪙 ${totalRevenue.toLocaleString('de-DE')}`}
+          value={totalRevenue.toLocaleString('de-DE')}
+          icon={Coins}
           highlight
         />
       </div>
@@ -62,7 +63,9 @@ export default async function ShopAnalyticsPage() {
       {/* Ranking */}
       {rows.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed py-20 text-center">
-          <div className="text-5xl">📊</div>
+          <div className="grid h-14 w-14 place-items-center rounded-full border bg-muted text-muted-foreground">
+            <BarChart3 className="h-7 w-7" />
+          </div>
           <h3 className="text-lg font-semibold">Noch keine Daten</h3>
           <p className="max-w-md text-sm text-muted-foreground">
             Leg Produkte an und teil deinen Shop — sobald jemand etwas kauft, siehst du hier
@@ -115,7 +118,10 @@ export default async function ShopAnalyticsPage() {
                       <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground tabular-nums">
                         <span>{row.sold_count}× verkauft</span>
                         <span className="font-medium text-foreground">
-                          🪙 {row.revenue_coins.toLocaleString('de-DE')}
+                          <span className="inline-flex items-center gap-1">
+                            <Coins className="h-3.5 w-3.5 text-muted-foreground" />
+                            {row.revenue_coins.toLocaleString('de-DE')}
+                          </span>
                         </span>
                         {row.review_count > 0 && row.avg_rating !== null && (
                           <span className="inline-flex items-center gap-1">
@@ -127,7 +133,7 @@ export default async function ShopAnalyticsPage() {
                       {/* Revenue-Bar */}
                       <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">
                         <div
-                          className="h-full rounded-full bg-gradient-to-r from-primary to-primary/70 transition-all"
+                          className="h-full rounded-full bg-foreground transition-all"
                           style={{ width: `${bar}%` }}
                         />
                       </div>
@@ -151,22 +157,25 @@ export default async function ShopAnalyticsPage() {
 function StatCard({
   label,
   value,
+  icon: Icon,
   highlight = false,
 }: {
   label: string;
   value: string;
+  icon?: typeof BarChart3;
   highlight?: boolean;
 }) {
   return (
     <div
       className={
         highlight
-          ? 'rounded-xl border border-primary/20 bg-primary/5 p-4'
+          ? 'rounded-xl border bg-card p-4'
           : 'rounded-xl border bg-card p-4'
       }
     >
-      <div className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-        {label}
+      <div className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {Icon && <Icon className="h-3.5 w-3.5" />}
+        <span>{label}</span>
       </div>
       <div className="mt-1 text-xl font-semibold tabular-nums">{value}</div>
     </div>

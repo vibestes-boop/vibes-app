@@ -1,13 +1,6 @@
 import Link from "next/link";
 import type { Route } from "next";
-import {
-  MapPin,
-  Truck,
-  Camera,
-  Sparkles,
-  BadgeCheck,
-  Coins,
-} from "lucide-react";
+import { MapPin, Truck, Camera, BadgeCheck, Coins } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StarDisplay } from "./star-display";
 import { ProductImage } from "./product-image";
@@ -111,7 +104,7 @@ export function ProductCard({
               "Angebot"
             ) : (
               <>
-                <Sparkles className="h-3 w-3" />
+                <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />
                 Neu
               </>
             )}
@@ -150,11 +143,11 @@ export function ProductCard({
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <span className="truncate">@{product.seller.username}</span>
           {product.seller.verified && (
-            <BadgeCheck className="h-3 w-3 flex-none text-sky-500" />
+            <BadgeCheck className="h-3 w-3 flex-none text-muted-foreground" />
           )}
           {product.women_only && (
             <span
-              className="flex-none font-semibold text-pink-500"
+              className="flex-none text-muted-foreground"
               title="Nur für Frauen"
               aria-label="Nur für Frauen"
             >
