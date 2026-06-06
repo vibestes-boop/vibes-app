@@ -16,29 +16,10 @@ import type { GuildWithMeta } from '@/lib/data/guilds';
 // Weiter zu /onboarding/interests.
 // -----------------------------------------------------------------------------
 
-// Pod accent colors — mapped from native GUILD_COLORS
-const GUILD_ACCENT: Record<string, string> = {
-  'Pod Alpha': '#CCCCCC',
-  'Pod Beta':  '#38BDF8',
-  'Pod Gamma': '#34D399',
-  'Pod Delta': '#FBBF24',
-  'Pod Epsilon': '#F87171',
-};
-
-const GUILD_BG: Record<string, string> = {
-  'Pod Alpha': 'rgba(204,204,204,0.08)',
-  'Pod Beta':  'rgba(56,189,248,0.08)',
-  'Pod Gamma': 'rgba(52,211,153,0.08)',
-  'Pod Delta': 'rgba(251,191,36,0.08)',
-  'Pod Epsilon': 'rgba(248,113,113,0.08)',
-};
-
 export function GuildPickerForm({ guilds, next }: { guilds: GuildWithMeta[]; next: string }) {
   const router = useRouter();
   const [selected, setSelected] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-
-  const accent = selected ? (GUILD_ACCENT[guilds.find((g) => g.id === selected)?.name ?? ''] ?? '#CCCCCC') : null;
 
   const handleSubmit = () => {
     if (!selected) return;
@@ -58,31 +39,23 @@ export function GuildPickerForm({ guilds, next }: { guilds: GuildWithMeta[]; nex
       <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {guilds.map((guild) => {
           const isSelected = selected === guild.id;
-          const accentColor = GUILD_ACCENT[guild.name] ?? '#CCCCCC';
-          const bgColor     = GUILD_BG[guild.name]    ?? 'rgba(204,204,204,0.08)';
 
           return (
             <li key={guild.id}>
               <button
                 type="button"
                 onClick={() => setSelected(guild.id)}
-                className="group w-full rounded-xl border p-4 text-left transition-all duration-150"
-                style={{
-                  borderColor: isSelected ? accentColor : 'hsl(var(--border))',
-                  backgroundColor: isSelected ? bgColor : 'transparent',
-                }}
+                className={[
+                  'group w-full rounded-xl border p-4 text-left transition-colors duration-150',
+                  isSelected
+                    ? 'border-foreground bg-muted'
+                    : 'border-border bg-transparent hover:bg-muted/60',
+                ].join(' ')}
               >
                 <div className="flex items-start gap-3">
-                  {/* Color dot */}
-                  <div
-                    className="mt-0.5 h-3 w-3 shrink-0 rounded-full"
-                    style={{ backgroundColor: accentColor }}
-                  />
+                  <div className="mt-0.5 h-3 w-3 shrink-0 rounded-full bg-muted-foreground" />
                   <div className="min-w-0 flex-1">
-                    <p
-                      className="font-semibold leading-tight"
-                      style={{ color: isSelected ? accentColor : undefined }}
-                    >
+                    <p className="font-semibold leading-tight">
                       {guild.name}
                     </p>
                     {guild.description && (
@@ -98,11 +71,7 @@ export function GuildPickerForm({ guilds, next }: { guilds: GuildWithMeta[]; nex
                         {guild.vibe_tags.slice(0, 3).map((tag) => (
                           <span
                             key={tag}
-                            className="rounded-full border px-1.5 py-0.5 text-[10px] font-medium"
-                            style={{
-                              borderColor: isSelected ? accentColor : 'hsl(var(--border))',
-                              color: isSelected ? accentColor : undefined,
-                            }}
+                            className="rounded-full border border-border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
                           >
                             #{tag}
                           </span>
@@ -112,13 +81,14 @@ export function GuildPickerForm({ guilds, next }: { guilds: GuildWithMeta[]; nex
                   </div>
                   {/* Checkmark */}
                   <div
-                    className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors"
-                    style={{
-                      borderColor: isSelected ? accentColor : 'hsl(var(--border))',
-                      backgroundColor: isSelected ? accentColor : 'transparent',
-                    }}
+                    className={[
+                      'mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors',
+                      isSelected
+                        ? 'border-foreground bg-foreground'
+                        : 'border-border bg-transparent',
+                    ].join(' ')}
                   >
-                    {isSelected && <Check className="h-3 w-3 text-black" strokeWidth={3} />}
+                    {isSelected && <Check className="h-3 w-3 text-background" strokeWidth={3} />}
                   </div>
                 </div>
               </button>
@@ -132,11 +102,7 @@ export function GuildPickerForm({ guilds, next }: { guilds: GuildWithMeta[]; nex
         type="button"
         onClick={handleSubmit}
         disabled={!selected || isPending}
-        className="flex w-full items-center justify-center gap-2 rounded-full py-3 text-sm font-semibold transition-opacity disabled:opacity-40"
-        style={{
-          backgroundColor: accent ?? 'hsl(var(--primary))',
-          color: '#000',
-        }}
+        className="flex w-full items-center justify-center gap-2 rounded-full bg-foreground py-3 text-sm font-semibold text-background transition-opacity hover:bg-foreground/90 disabled:opacity-40"
       >
         {isPending ? (
           <Loader2 className="h-4 w-4 animate-spin" />

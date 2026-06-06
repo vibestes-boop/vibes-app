@@ -30,7 +30,7 @@ export default async function OnboardingPage({
     <main className="flex min-h-dvh flex-col items-center justify-center bg-background px-6 py-16">
       <div className="w-full max-w-sm space-y-8">
         <div className="space-y-3 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-brand-gold/10 text-brand-gold">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
             <Sparkles className="h-5 w-5" />
           </div>
           <h1 className="font-serif text-4xl font-medium tracking-tight">Willkommen</h1>

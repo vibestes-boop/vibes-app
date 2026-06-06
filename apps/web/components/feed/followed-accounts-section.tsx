@@ -128,7 +128,7 @@ function AccountRow({ account }: { account: FollowedAccount }) {
         <div className="flex items-center gap-1 truncate text-[13px] font-semibold text-foreground">
           <span className="truncate">{label}</span>
           {account.verified && (
-            <BadgeCheck className="h-3 w-3 shrink-0 text-brand-gold" aria-label="Verifiziert" />
+            <BadgeCheck className="h-3 w-3 shrink-0 text-muted-foreground" aria-label="Verifiziert" />
           )}
         </div>
         <div className="truncate text-[11px] text-muted-foreground">@{account.username}</div>
@@ -301,7 +301,7 @@ function AccountRowFull({
         <div className="flex items-center gap-1 truncate text-sm font-semibold text-foreground">
           <span className="truncate">{label}</span>
           {account.verified && (
-            <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-brand-gold" aria-label="Verifiziert" />
+            <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-label="Verifiziert" />
           )}
         </div>
         <div className="truncate text-xs text-muted-foreground">@{account.username}</div>

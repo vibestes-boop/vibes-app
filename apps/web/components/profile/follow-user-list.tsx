@@ -126,7 +126,7 @@ export function FollowUserList({
                   <div className="flex items-center gap-1 truncate text-sm font-semibold">
                     {displayName}
                     {u.verified && (
-                      <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-brand-gold" />
+                      <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                     )}
                   </div>
                   <div className="truncate text-xs text-muted-foreground">

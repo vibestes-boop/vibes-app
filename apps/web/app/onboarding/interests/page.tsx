@@ -44,7 +44,7 @@ export default async function OnboardingInterestsPage({
       <div className="w-full max-w-lg space-y-8">
         {/* Header */}
         <div className="space-y-3 text-center">
-          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-brand-gold/10 text-brand-gold">
+          <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
             <Sparkles className="h-5 w-5" />
           </div>
           <h1 className="font-serif text-4xl font-medium tracking-tight">Was interessiert dich?</h1>
@@ -57,7 +57,7 @@ export default async function OnboardingInterestsPage({
         <div className="flex items-center justify-center gap-2">
           <span className="h-1.5 w-6 rounded-full bg-muted" />
           <span className="h-1.5 w-6 rounded-full bg-muted" />
-          <span className="h-1.5 w-6 rounded-full bg-brand-gold" />
+          <span className="h-1.5 w-6 rounded-full bg-foreground" />
           <span className="h-1.5 w-6 rounded-full bg-muted" />
         </div>
 

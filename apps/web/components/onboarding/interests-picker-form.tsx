@@ -15,23 +15,23 @@ import { setOnboardingInterests } from '@/app/actions/auth';
 // Weiter zu /onboarding/follow nach Bestätigung.
 // -----------------------------------------------------------------------------
 
-const INTERESTS: { tag: string; emoji: string; color: string }[] = [
-  { tag: 'Musik',       emoji: '🎵', color: '#FFFFFF' },
-  { tag: 'Sport',       emoji: '⚽', color: '#34D399' },
-  { tag: 'Kunst',       emoji: '🎨', color: '#F472B6' },
-  { tag: 'Tech',        emoji: '💻', color: '#60A5FA' },
-  { tag: 'Gaming',      emoji: '🎮', color: '#FB923C' },
-  { tag: 'Reisen',      emoji: '✈️', color: '#FBBF24' },
-  { tag: 'Fitness',     emoji: '💪', color: '#A3E635' },
-  { tag: 'Mode',        emoji: '👗', color: '#E879F9' },
-  { tag: 'Kochen',      emoji: '🍳', color: '#FCA5A5' },
-  { tag: 'Tanz',        emoji: '💃', color: '#818CF8' },
-  { tag: 'Comedy',      emoji: '😂', color: '#FDE68A' },
-  { tag: 'Natur',       emoji: '🌿', color: '#6EE7B7' },
-  { tag: 'Bildung',     emoji: '📚', color: '#BAE6FD' },
-  { tag: 'Familie',     emoji: '👨‍👩‍👧', color: '#FCA5A5' },
-  { tag: 'Autos',       emoji: '🚗', color: '#9CA3AF' },
-  { tag: 'Tschetschenien', emoji: '🏔️', color: '#F59E0B' },
+const INTERESTS = [
+  'Musik',
+  'Sport',
+  'Kunst',
+  'Tech',
+  'Gaming',
+  'Reisen',
+  'Fitness',
+  'Mode',
+  'Kochen',
+  'Tanz',
+  'Comedy',
+  'Natur',
+  'Bildung',
+  'Familie',
+  'Autos',
+  'Tschetschenien',
 ];
 
 const MIN_TAGS = 3;
@@ -71,21 +71,20 @@ export function InterestsPickerForm({ next }: { next: string }) {
     <div className="space-y-6">
       {/* Tag grid */}
       <div className="flex flex-wrap gap-2">
-        {INTERESTS.map(({ tag, emoji, color }) => {
+        {INTERESTS.map((tag) => {
           const isSelected = selected.has(tag);
           return (
             <button
               key={tag}
               type="button"
               onClick={() => toggle(tag)}
-              className="flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-all duration-100"
-              style={{
-                borderColor: isSelected ? color : 'hsl(var(--border))',
-                backgroundColor: isSelected ? `${color}18` : 'transparent',
-                color: isSelected ? color : undefined,
-              }}
+              className={[
+                'flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium transition-colors duration-100',
+                isSelected
+                  ? 'border-foreground bg-foreground text-background'
+                  : 'border-border text-muted-foreground hover:bg-muted hover:text-foreground',
+              ].join(' ')}
             >
-              <span>{emoji}</span>
               {tag}
             </button>
           );
@@ -106,7 +105,7 @@ export function InterestsPickerForm({ next }: { next: string }) {
         type="button"
         onClick={handleSubmit}
         disabled={selected.size < MIN_TAGS || isPending}
-        className="flex w-full items-center justify-center gap-2 rounded-full bg-brand-gold py-3 text-sm font-semibold text-black transition-opacity disabled:opacity-40"
+        className="flex w-full items-center justify-center gap-2 rounded-full bg-foreground py-3 text-sm font-semibold text-background transition-opacity hover:bg-foreground/90 disabled:opacity-40"
       >
         {isPending ? (
           <Loader2 className="h-4 w-4 animate-spin" />

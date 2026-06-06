@@ -84,7 +84,7 @@ export function PeopleList({
   if (people.length === 0) {
     return (
       <p className="py-16 text-center text-sm text-muted-foreground">
-        Keine Accounts zu entdecken — du folgst bereits allen. 🎉
+        Keine Accounts zu entdecken. Du folgst bereits allen sichtbaren Accounts.
       </p>
     );
   }
@@ -114,7 +114,7 @@ export function PeopleList({
                     <p className="flex items-center justify-center gap-1 truncate text-sm font-semibold leading-tight">
                       {person.display_name ?? person.username}
                       {person.verified && (
-                        <BadgeCheck className="inline h-3.5 w-3.5 shrink-0 text-brand-gold" />
+                        <BadgeCheck className="inline h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                       )}
                     </p>
                     <p className="truncate text-xs text-muted-foreground">

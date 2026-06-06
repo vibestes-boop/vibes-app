@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { Route } from 'next';
-import { Users, Hash, ArrowRight, Crown, Sparkles } from 'lucide-react';
+import { Users, Hash, ArrowRight } from 'lucide-react';
 
 import { getUser } from '@/lib/auth/session';
 import { getAllGuilds, getMyGuildId } from '@/lib/data/guilds';
@@ -28,37 +28,32 @@ export const revalidate = 60;
 
 const POD_PRESENTATION: Record<
   string,
-  { title: string; description: string; tags: string[]; accent: string }
+  { title: string; description: string; tags: string[] }
 > = {
   'Pod Alpha': {
     title: 'Code & Design',
     description: 'Für Builder, Produktideen, Setups und kreative Experimente mit Technik.',
     tags: ['Tech', 'Design', 'AI'],
-    accent: 'from-sky-500/12 to-violet-500/10',
   },
   'Pod Beta': {
     title: 'Art & Sound',
     description: 'Für Musik, visuelle Kultur, Fotografie und alles, was Atmosphäre trägt.',
     tags: ['Art', 'Music', 'Photo'],
-    accent: 'from-pink-500/12 to-rose-500/10',
   },
   'Pod Delta': {
     title: 'Gaming & Shows',
     description: 'Für Gaming-Clips, Streams, Challenges und Entertainment-Formate.',
     tags: ['Gaming', 'Shows', 'Humor'],
-    accent: 'from-amber-500/12 to-red-500/10',
   },
   'Pod Gamma': {
     title: 'Travel & Life',
     description: 'Für Orte, Alltag, Bewegung und Momente außerhalb des Screens.',
     tags: ['Travel', 'Nature', 'Life'],
-    accent: 'from-emerald-500/12 to-teal-500/10',
   },
   'Pod Omega': {
     title: 'Style & Taste',
     description: 'Für Food, Fashion, kleine Shops und persönlichen Geschmack.',
     tags: ['Food', 'Fashion', 'Shop'],
-    accent: 'from-indigo-500/12 to-fuchsia-500/10',
   },
 };
 
@@ -103,20 +98,18 @@ export default async function GuildsPage() {
               key={guild.id}
               href={`/g/${guild.id}` as Route}
               className={`group relative flex min-h-[190px] flex-col overflow-hidden rounded-2xl border bg-card p-5 transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-elevation-2 ${
-                isMine ? 'border-brand-gold/60 ring-1 ring-brand-gold/30' : 'border-border'
+                isMine ? 'border-foreground/30 ring-1 ring-foreground/10' : 'border-border'
               }`}
             >
-              <div className={`absolute inset-0 bg-gradient-to-br ${presentation?.accent ?? 'from-muted/60 to-transparent'} opacity-80`} />
-              <div className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-border/60 bg-background/75 text-muted-foreground shadow-sm">
-                <Sparkles className="h-5 w-5" strokeWidth={1.8} />
+              <div className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-muted text-muted-foreground">
+                <Users className="h-5 w-5" strokeWidth={1.8} />
               </div>
 
               <div className="flex items-start justify-between gap-2">
                 <div className="relative mt-4 flex items-center gap-2">
                   <h2 className="text-lg font-semibold">{displayTitle}</h2>
                   {isMine && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-brand-gold/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-brand-gold">
-                      <Crown className="h-3 w-3" />
+                    <span className="inline-flex items-center gap-1 rounded-full bg-foreground px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-background">
                       Dein Pod
                     </span>
                   )}

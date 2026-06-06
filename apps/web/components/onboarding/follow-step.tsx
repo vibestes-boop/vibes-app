@@ -15,7 +15,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import type { Route } from 'next';
-import { Check, Loader2, Users } from 'lucide-react';
+import { BadgeCheck, Check, Loader2, Users } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
@@ -85,9 +85,7 @@ function AccountCard({
           <p className="truncate text-sm font-semibold leading-tight text-foreground">
             {person.display_name ?? person.username}
             {person.verified && (
-              <span className="ml-1 inline-block h-3.5 w-3.5 rounded-full bg-brand-gold text-[9px] leading-[14px] text-white" aria-label="Verifiziert">
-                ✓
-              </span>
+              <BadgeCheck className="ml-1 inline h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-label="Verifiziert" />
             )}
           </p>
           <p className="truncate text-xs text-muted-foreground">@{person.username}</p>

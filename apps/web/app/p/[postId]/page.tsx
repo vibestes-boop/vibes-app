@@ -302,7 +302,7 @@ export default async function PostDetailPage({
                   <span className="truncate font-semibold">{authorName}</span>
                   {post.author.verified && (
                     <BadgeCheck
-                      className="h-4 w-4 shrink-0 fill-brand-gold text-background"
+                      className="h-4 w-4 shrink-0 fill-foreground text-background"
                       aria-label="Verifiziert"
                     />
                   )}
@@ -477,8 +477,8 @@ export default async function PostDetailPage({
           <div className="mt-4 space-y-3">
             {/* v1.w.UI.169 — WOZ badge: only visible to RLS-verified members */}
             {post.women_only && (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-pink-500/30 bg-pink-500/10 px-3 py-1 text-xs font-semibold text-pink-600 dark:text-pink-400">
-                🌸 Women-Only Zone
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground">
+                Women-Only
               </span>
             )}
           <div className="flex flex-wrap items-center gap-4">
