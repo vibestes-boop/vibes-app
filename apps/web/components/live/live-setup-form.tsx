@@ -351,7 +351,7 @@ export function LiveSetupForm() {
             <button
               type="button"
               onClick={() => setAiSheetOpen(true)}
-              className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-transform hover:scale-[1.02]"
+              className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-full bg-foreground px-4 py-2.5 text-sm font-semibold text-background transition-colors hover:bg-foreground/90"
             >
               <Sparkles className="h-4 w-4" />
               {thumbnailUrl ? 'Anderes Cover' : 'Mit KI erstellen'}
@@ -394,7 +394,7 @@ export function LiveSetupForm() {
             />
             <div className="flex-1">
               <p className="flex items-center gap-1.5 text-sm font-medium">
-                <ShieldCheck className="h-4 w-4 text-green-500" />
+                <ShieldCheck className="h-4 w-4 text-muted-foreground" />
                 Chat-Moderation
               </p>
               <p className="text-xs text-muted-foreground">
@@ -412,7 +412,7 @@ export function LiveSetupForm() {
             />
             <div className="flex-1">
               <p className="flex items-center gap-1.5 text-sm font-medium">
-                <MessageCircle className="h-4 w-4 text-blue-500" />
+                <MessageCircle className="h-4 w-4 text-muted-foreground" />
                 Kommentare erlaubt
               </p>
               <p className="text-xs text-muted-foreground">
@@ -430,7 +430,7 @@ export function LiveSetupForm() {
             />
             <div className="flex-1">
               <p className="flex items-center gap-1.5 text-sm font-medium">
-                <Gem className="h-4 w-4 text-amber-500" />
+                <Gem className="h-4 w-4 text-muted-foreground" />
                 Geschenke erlaubt
               </p>
               <p className="text-xs text-muted-foreground">
@@ -441,7 +441,7 @@ export function LiveSetupForm() {
 
           <label
             className={`flex items-start gap-3 rounded-lg border px-3 py-2 cursor-pointer transition-colors ${
-              womenOnly ? 'border-rose-400/60 bg-rose-500/5' : 'bg-card'
+              womenOnly ? 'border-foreground bg-muted' : 'bg-card'
             }`}
           >
             <input
@@ -451,8 +451,8 @@ export function LiveSetupForm() {
               className="mt-0.5 h-4 w-4"
             />
             <div className="flex-1">
-              <p className={`flex items-center gap-1.5 text-sm font-medium ${womenOnly ? 'text-rose-500' : ''}`}>
-                <Heart className={`h-4 w-4 ${womenOnly ? 'text-rose-500' : 'text-rose-400'}`} />
+              <p className="flex items-center gap-1.5 text-sm font-medium">
+                <Heart className="h-4 w-4 text-muted-foreground" />
                 Nur Frauen (WOZ)
               </p>
               <p className="text-xs text-muted-foreground">
@@ -464,7 +464,7 @@ export function LiveSetupForm() {
           {/* v1.w.UI.188 — Followers-only chat */}
           <label
             className={`flex items-start gap-3 rounded-lg border px-3 py-2 cursor-pointer transition-colors ${
-              followersOnlyChat ? 'border-green-400/60 bg-green-500/5' : 'bg-card'
+              followersOnlyChat ? 'border-foreground bg-muted' : 'bg-card'
             }`}
           >
             <input
@@ -474,8 +474,8 @@ export function LiveSetupForm() {
               className="mt-0.5 h-4 w-4"
             />
             <div className="flex-1">
-              <p className={`flex items-center gap-1.5 text-sm font-medium ${followersOnlyChat ? 'text-green-600 dark:text-green-400' : ''}`}>
-                <UserCheck className={`h-4 w-4 ${followersOnlyChat ? 'text-green-500' : 'text-green-500/60'}`} />
+              <p className="flex items-center gap-1.5 text-sm font-medium">
+                <UserCheck className="h-4 w-4 text-muted-foreground" />
                 Nur Follower chatten
               </p>
               <p className="text-xs text-muted-foreground">
@@ -495,7 +495,7 @@ export function LiveSetupForm() {
           type="button"
           onClick={handleGoLive}
           disabled={isPending || !!permissionError}
-          className="inline-flex items-center justify-center gap-2 rounded-full bg-gradient-to-br from-red-500 to-red-600 px-4 py-3 text-sm font-semibold text-white shadow-md transition-transform hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex items-center justify-center gap-2 rounded-full bg-foreground px-4 py-3 text-sm font-semibold text-background transition-colors hover:bg-foreground/90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isPending ? (
             <>

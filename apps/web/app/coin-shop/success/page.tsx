@@ -123,15 +123,15 @@ export default async function CoinShopSuccessPage({ searchParams }: Props) {
       {/* Order-Summary */}
       <div className="rounded-2xl border border-border bg-card p-6">
         <div className="mb-4 flex items-center gap-3 border-b border-border pb-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-gold/10">
-            <Coins className="h-5 w-5 text-brand-gold" />
+          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+            <Coins className="h-5 w-5 text-muted-foreground" />
           </div>
           <div className="flex-1">
             <p className="text-xs text-muted-foreground">Coin-Paket</p>
             <p className="font-semibold">
               {total.toLocaleString('de-DE')} Coins
               {order.bonus_coins > 0 && (
-                <span className="ml-1 text-xs font-medium text-brand-gold">
+                <span className="ml-1 text-xs font-medium text-muted-foreground">
                   (inkl. {order.bonus_coins.toLocaleString('de-DE')} Bonus)
                 </span>
               )}

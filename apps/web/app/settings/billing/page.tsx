@@ -158,12 +158,12 @@ export default async function BillingPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
-                          <Coins className="h-3.5 w-3.5 text-brand-gold" />
+                          <Coins className="h-3.5 w-3.5 text-muted-foreground" />
                           <span className="font-medium">
                             {total.toLocaleString(intl)} {t('billing.coinsUnit')}
                           </span>
                           {o.bonus_coins > 0 && (
-                            <span className="text-[11px] text-brand-gold">
+                            <span className="text-[11px] text-muted-foreground">
                               (+{o.bonus_coins.toLocaleString(intl)})
                             </span>
                           )}
@@ -254,13 +254,13 @@ function WalletCard({
   cta?: { href: string; label: string };
 }) {
   const toneClasses = {
-    gold: 'border-brand-gold/30 bg-brand-gold/5',
-    blue: 'border-sky-500/30 bg-sky-500/5',
+    gold: 'border-border bg-card',
+    blue: 'border-border bg-card',
     muted: 'border-border bg-card',
   }[tone];
   const iconClasses = {
-    gold: 'text-brand-gold',
-    blue: 'text-sky-500',
+    gold: 'text-muted-foreground',
+    blue: 'text-muted-foreground',
     muted: 'text-muted-foreground',
   }[tone];
 

@@ -233,8 +233,8 @@ export function LiveGiftsFeed({ sessionId, initialGifts, initialGoal }: LiveGift
 
       {/* Top-Supporter */}
       {topSupporter && (
-        <div className="flex items-center gap-2 rounded-lg bg-gradient-to-br from-yellow-500/10 to-orange-500/10 px-3 py-2 text-xs">
-          <span className="text-base">🏆</span>
+        <div className="flex items-center gap-2 rounded-lg border bg-card px-3 py-2 text-xs">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">#1</span>
           <div className="min-w-0 flex-1">
             <p className="truncate font-medium">{topSupporter.username ?? 'Unbekannt'}</p>
             <p className="text-muted-foreground">
@@ -275,7 +275,7 @@ export function LiveGiftsFeed({ sessionId, initialGifts, initialGoal }: LiveGift
                   <span className="font-medium">{g.gift?.name ?? 'Geschenk'}</span>
                 </p>
                 <p className="text-[10px] tabular-nums text-muted-foreground">
-                  🪙 {g.coin_cost.toLocaleString('de-DE')} ·{' '}
+                  {g.coin_cost.toLocaleString('de-DE')} Coins ·{' '}
                   {new Date(g.created_at).toLocaleTimeString('de-DE', {
                     hour: '2-digit',
                     minute: '2-digit',

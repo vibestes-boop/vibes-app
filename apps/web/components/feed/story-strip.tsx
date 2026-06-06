@@ -131,7 +131,7 @@ function OwnStoryCard({
           className={cn(
             'rounded-full p-[2px]',
             hasStory && hasUnviewed
-              ? 'bg-gradient-to-tr from-amber-400 via-rose-500 to-fuchsia-500'
+              ? 'bg-foreground'
               : hasStory
                 ? 'bg-muted'
                 : 'bg-transparent',
@@ -147,7 +147,7 @@ function OwnStoryCard({
           </div>
         </div>
         {!hasStory && (
-          <span className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border-2 border-background bg-brand-gold text-white">
+          <span className="absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full border-2 border-background bg-foreground text-background">
             <Plus className="h-3 w-3" strokeWidth={3} />
           </span>
         )}
@@ -201,7 +201,7 @@ function StoryCard({
             className={cn(
               'rounded-full p-[2px]',
               hasUnviewed
-                ? 'bg-gradient-to-tr from-amber-400 via-rose-500 to-fuchsia-500'
+                ? 'bg-foreground'
                 : 'bg-muted',
             )}
           >

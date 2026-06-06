@@ -52,7 +52,7 @@ export default async function CoinShopPage() {
     <div className="mx-auto w-full max-w-[1100px] px-4 pb-20 pt-6 lg:px-6 lg:pt-10">
       {/* ─── Hero ─────────────────────────────────────────────────────────── */}
       <header className="mb-8 lg:mb-12">
-        <div className="inline-flex items-center gap-1.5 rounded-full border border-brand-gold/30 bg-brand-gold/10 px-3 py-1 text-xs font-medium text-brand-gold">
+        <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
           <Sparkles className="h-3 w-3" />
           Web-Bonus: bis zu +33% mehr Coins
         </div>
@@ -67,7 +67,7 @@ export default async function CoinShopPage() {
 
         {user && balance && (
           <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2">
-            <Coins className="h-4 w-4 text-brand-gold" />
+            <Coins className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm font-medium">
               Aktuell: {balance.coins.toLocaleString('de-DE')} Coins
             </span>
@@ -92,7 +92,7 @@ export default async function CoinShopPage() {
       {/* ─── Zahlungsarten + Trust ────────────────────────────────────────── */}
       <section className="mt-12 grid grid-cols-1 gap-4 lg:grid-cols-3">
         <div className="rounded-xl border border-border bg-card p-5">
-          <ShieldCheck className="mb-2 h-5 w-5 text-emerald-500" />
+          <ShieldCheck className="mb-2 h-5 w-5 text-muted-foreground" />
           <h3 className="text-sm font-semibold">Sichere Zahlung</h3>
           <p className="mt-1 text-xs text-muted-foreground">
             Kein Konto bei uns nötig — alle Zahlungsdaten laufen direkt über
@@ -122,11 +122,11 @@ export default async function CoinShopPage() {
       <section className="mt-8 rounded-xl border border-border bg-muted/30 p-5 text-xs text-muted-foreground">
         <ul className="grid grid-cols-1 gap-1.5 md:grid-cols-2">
           <li className="flex items-start gap-1.5">
-            <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
+            <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             Coins werden sofort nach erfolgreicher Zahlung gutgeschrieben.
           </li>
           <li className="flex items-start gap-1.5">
-            <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
+            <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             Rechnung + Beleg findest du unter&nbsp;
             <Link href="/settings/billing" className="underline hover:text-foreground">
               Einstellungen &rarr; Bezahlungen
@@ -134,12 +134,12 @@ export default async function CoinShopPage() {
             .
           </li>
           <li className="flex items-start gap-1.5">
-            <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
+            <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             Coins sind synchron zwischen Web und App — kaufe hier, nutze im
             Stream.
           </li>
           <li className="flex items-start gap-1.5">
-            <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
+            <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
             Gekaufte Coins sind nicht übertragbar und nicht rücker&shy;stattbar
             nach Verwendung.
           </li>

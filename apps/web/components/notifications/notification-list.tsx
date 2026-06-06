@@ -38,7 +38,7 @@ import { createClient } from '@/lib/supabase/client';
 //  3. Link zum jeweiligen Deep-Target (Post, Profil, Live-Session)
 // -----------------------------------------------------------------------------
 
-// ── Icon + Farbe pro Notification-Typ ────────────────────────────────────────
+// ── Icon pro Notification-Typ ─────────────────────────────────────────────────
 
 type NotifMeta = {
   icon: typeof Heart;
@@ -47,21 +47,21 @@ type NotifMeta = {
 };
 
 const TYPE_META: Record<NotificationType, NotifMeta> = {
-  like:        { icon: Heart,         color: 'text-red-500',    bg: 'bg-red-500/10' },
-  comment:     { icon: MessageCircle, color: 'text-blue-500',   bg: 'bg-blue-500/10' },
-  follow:      { icon: UserPlus,      color: 'text-green-500',  bg: 'bg-green-500/10' },
-  mention:     { icon: AtSign,        color: 'text-violet-500', bg: 'bg-violet-500/10' },
-  dm:          { icon: MessageCircle, color: 'text-blue-400',   bg: 'bg-blue-400/10' },
-  gift:        { icon: Gift,          color: 'text-amber-500',  bg: 'bg-amber-500/10' },
-  live:                    { icon: Radio,     color: 'text-rose-500',    bg: 'bg-rose-500/10' },
-  live_invite:             { icon: Users,     color: 'text-indigo-500',  bg: 'bg-indigo-500/10' },
-  follow_request:          { icon: UserPlus,     color: 'text-amber-500',   bg: 'bg-amber-500/10' },
-  follow_request_accepted: { icon: UserCheck,    color: 'text-green-500',   bg: 'bg-green-500/10' },
-  new_order:               { icon: ShoppingBag,  color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-  comment_like:            { icon: Heart,        color: 'text-pink-400',    bg: 'bg-pink-400/10' },
-  repost:                  { icon: Repeat2,      color: 'text-teal-500',    bg: 'bg-teal-500/10' },
-  story_reaction:          { icon: Camera,       color: 'text-fuchsia-500', bg: 'bg-fuchsia-500/10' },
-  guild:                   { icon: Users,        color: 'text-sky-500',     bg: 'bg-sky-500/10' },
+  like:        { icon: Heart,         color: 'text-muted-foreground', bg: 'bg-muted' },
+  comment:     { icon: MessageCircle, color: 'text-muted-foreground', bg: 'bg-muted' },
+  follow:      { icon: UserPlus,      color: 'text-muted-foreground', bg: 'bg-muted' },
+  mention:     { icon: AtSign,        color: 'text-muted-foreground', bg: 'bg-muted' },
+  dm:          { icon: MessageCircle, color: 'text-muted-foreground', bg: 'bg-muted' },
+  gift:        { icon: Gift,          color: 'text-muted-foreground', bg: 'bg-muted' },
+  live:                    { icon: Radio,        color: 'text-muted-foreground', bg: 'bg-muted' },
+  live_invite:             { icon: Users,        color: 'text-muted-foreground', bg: 'bg-muted' },
+  follow_request:          { icon: UserPlus,     color: 'text-muted-foreground', bg: 'bg-muted' },
+  follow_request_accepted: { icon: UserCheck,    color: 'text-muted-foreground', bg: 'bg-muted' },
+  new_order:               { icon: ShoppingBag,  color: 'text-muted-foreground', bg: 'bg-muted' },
+  comment_like:            { icon: Heart,        color: 'text-muted-foreground', bg: 'bg-muted' },
+  repost:                  { icon: Repeat2,      color: 'text-muted-foreground', bg: 'bg-muted' },
+  story_reaction:          { icon: Camera,       color: 'text-muted-foreground', bg: 'bg-muted' },
+  guild:                   { icon: Users,        color: 'text-muted-foreground', bg: 'bg-muted' },
 };
 
 // ── Notification-Text pro Typ ─────────────────────────────────────────────────
@@ -415,7 +415,7 @@ export function NotificationList({
                       e.preventDefault();
                       void handleRespondRequest(n.id, n.sender!.id, true);
                     }}
-                    className="flex h-8 w-8 items-center justify-center rounded-full border border-emerald-500/40 bg-emerald-500/10 text-emerald-500 transition-colors hover:bg-emerald-500/20 disabled:opacity-50"
+                    className="flex h-8 w-8 items-center justify-center rounded-full border border-border bg-foreground text-background transition-colors hover:bg-foreground/90 disabled:opacity-50"
                   >
                     <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
                   </button>

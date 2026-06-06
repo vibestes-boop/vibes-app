@@ -3,7 +3,7 @@
 // -----------------------------------------------------------------------------
 // <LiveWelcomeToasts /> — v1.w.UI.192
 //
-// TikTok-Style "✨ @user hat den Stream betreten" toast-stack on the live
+// Kompakter "@user hat den Stream betreten" toast-stack on the live
 // viewer page. Mobile parity: components/live/WelcomeToast.tsx + lib/useLiveWelcome.ts
 //
 // Architecture (mirror of mobile):
@@ -177,9 +177,7 @@ export function LiveWelcomeToasts({
             'flex animate-in fade-in slide-in-from-left-4 duration-300',
             'max-w-[85%] items-center gap-2 self-start',
             'rounded-2xl px-3 py-1.5 backdrop-blur-md',
-            t.tier === 'top_fan'
-              ? 'bg-amber-500/20 ring-1 ring-amber-300/40'
-              : 'bg-violet-500/20 ring-1 ring-violet-300/30',
+            'bg-black/55 ring-1 ring-white/10',
           )}
         >
           {/* Avatar */}
@@ -193,8 +191,7 @@ export function LiveWelcomeToasts({
           ) : (
             <div
               className={cn(
-                'flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[9px] font-bold text-white',
-                t.tier === 'top_fan' ? 'bg-amber-500/70' : 'bg-violet-500/70',
+                'flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/15 text-[9px] font-bold text-white',
               )}
             >
               {t.username.charAt(0).toUpperCase()}
@@ -202,7 +199,6 @@ export function LiveWelcomeToasts({
           )}
 
           <span className="text-[12px] font-medium leading-snug text-white">
-            {t.tier === 'top_fan' ? '👑' : '✨'}{' '}
             <span className="font-semibold">@{t.username}</span>
             {' '}
             <span className="opacity-80">hat den Stream betreten</span>

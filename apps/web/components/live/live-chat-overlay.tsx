@@ -546,9 +546,9 @@ export function LiveChatOverlay({
     <div className={cn('pointer-events-none relative flex flex-col gap-2', className)}>
       {/* Pinned (immer sichtbar, nicht vom Mask-Fade betroffen) */}
       {pinned && (
-        <div className="pointer-events-auto max-w-[85%] self-start rounded-2xl bg-amber-500/90 px-3 py-1.5 text-[13px] text-white shadow-elevation-2 backdrop-blur-md ring-1 ring-white/20">
+        <div className="pointer-events-auto max-w-[85%] self-start rounded-2xl bg-black/70 px-3 py-1.5 text-[13px] text-white shadow-elevation-2 backdrop-blur-md ring-1 ring-white/20">
           <span className="mr-1.5 text-[10px] font-semibold uppercase tracking-wider text-white/80">
-            📌 Pin
+            Pin
           </span>
           <span className="font-semibold">
             {pinned.author?.username ?? 'Anonym'}:
@@ -630,7 +630,7 @@ export function LiveChatOverlay({
             <button
               type="submit"
               disabled={isPending || !text.trim() || cooldownLeft > 0}
-              className="relative inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-rose-500 text-white shadow-elevation-2 transition-all duration-fast ease-out-expo hover:bg-rose-600 disabled:opacity-40"
+              className="relative inline-flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-white text-black shadow-elevation-2 transition-all duration-fast ease-out-expo hover:bg-white/90 disabled:opacity-40"
               aria-label="Senden"
             >
               {cooldownLeft > 0 ? (
@@ -713,9 +713,9 @@ function OverlayRow({
         className={cn(
           'min-w-0 rounded-2xl px-3 py-1.5 text-[13px] leading-snug text-white shadow-elevation-1 backdrop-blur-md',
           isHostMsg
-            ? 'bg-amber-500/25 ring-1 ring-amber-300/40'
+            ? 'bg-black/65 ring-1 ring-white/20'
             : isModMsg
-              ? 'bg-violet-500/20 ring-1 ring-violet-300/30'
+              ? 'bg-black/60 ring-1 ring-white/15'
               : 'bg-black/55 ring-1 ring-white/10',
         )}
       >
@@ -731,22 +731,22 @@ function OverlayRow({
         >
           {name}
           {isHostMsg && (
-            <span className="rounded-sm bg-amber-300/30 px-1 py-0.5 text-[8px] uppercase tracking-wider text-amber-100">
+            <span className="rounded-sm bg-white/15 px-1 py-0.5 text-[8px] uppercase tracking-wider text-white/75">
               Host
             </span>
           )}
           {isModMsg && (
-            <span className="rounded-sm bg-violet-400/30 px-1 py-0.5 text-[8px] uppercase tracking-wider text-violet-200">
-              🛡 Mod
+            <span className="rounded-sm bg-white/15 px-1 py-0.5 text-[8px] uppercase tracking-wider text-white/75">
+              Mod
             </span>
           )}
           {isTopGifterMsg && (
-            <span className="rounded-sm bg-yellow-400/25 px-1 py-0.5 text-[8px] font-bold uppercase tracking-wider text-yellow-200">
-              ★ Top
+            <span className="rounded-sm bg-white/15 px-1 py-0.5 text-[8px] font-bold uppercase tracking-wider text-white/75">
+              Top
             </span>
           )}
           {comment.author?.verified && (
-            <span className="inline-flex h-3 w-3 items-center justify-center rounded-full bg-blue-500 text-[8px] font-bold text-white">
+            <span className="inline-flex h-3 w-3 items-center justify-center rounded-full bg-white/15 text-[8px] font-bold text-white/85">
               ✓
             </span>
           )}
