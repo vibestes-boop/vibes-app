@@ -479,7 +479,7 @@ export default function ChatScreen() {
       const { url } = await uploadPostMedia(userId, asset.uri, mimeType);
       await sendMessage({ conversationId, content: '', postId: null, imageUrl: url });
     } catch (e: any) {
-      Alert.alert('Fehler', e?.message ?? 'Bild konnte nicht gesendet werden.');
+      Alert.alert('Bild senden fehlgeschlagen', e?.message ?? 'Das Bild konnte nicht gesendet werden. Prüfe deine Verbindung.');
     } finally {
       setImageUploading(false);
     }
@@ -492,7 +492,7 @@ export default function ChatScreen() {
     try {
       await sendMessage({ conversationId, content: '', postId: null, imageUrl: gifUrl });
     } catch (e: any) {
-      Alert.alert('Fehler', e?.message ?? 'GIF konnte nicht gesendet werden.');
+      Alert.alert('GIF senden fehlgeschlagen', e?.message ?? 'Das GIF konnte nicht gesendet werden. Prüfe deine Verbindung.');
     }
   }, [conversationId, sendMessage]);
 

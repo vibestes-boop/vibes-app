@@ -8,6 +8,7 @@
  * Route: /guild-post/[id]
  * Navigation von: GuildCard (tap auf Media), guild.tsx
  */
+import { LC } from '@/lib/liveColors';
 import type { VideoProgressHandle } from '@/components/feed/FeedItem';
 import { VideoProgressBar } from '@/components/feed/FeedItem';
 import type { FeedVideoSeekHandle } from '@/components/feed/FeedVideo';
@@ -338,8 +339,8 @@ function GuildPostDetailItem({
         {/* Like */}
         <Animated.View style={animatedHeartStyle}>
           <Pressable onPress={handleLike} style={itemStyles.actionItem} hitSlop={10}>
-            <Heart size={28} color={liked ? '#F43F5E' : '#fff'} fill={liked ? '#F43F5E' : 'transparent'} strokeWidth={1.8} />
-            <Text style={[itemStyles.actionCount, liked && { color: '#F43F5E' }]}>{count}</Text>
+            <Heart size={28} color={liked ? LC.accent.rose : '#fff'} fill={liked ? LC.accent.rose : 'transparent'} strokeWidth={1.8} />
+            <Text style={[itemStyles.actionCount, liked && { color: LC.accent.rose }]}>{count}</Text>
           </Pressable>
         </Animated.View>
 

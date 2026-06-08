@@ -49,6 +49,10 @@
     --brand-warning:        35 92% 50%;         /* D97706 */
     --brand-danger:         0 72% 51%;          /* DC2626 light / EF4444 dark */
     --brand-purple:         272 75% 48%;        /* 9333EA light / A855F7 dark */
+    --brand-rose:           350 89% 60%;        /* E11D48 light / F43F5E dark — WOZ / Like */
+    /* Live Battle-Farben */
+    --battle-host:          340 100% 59%;       /* FF2D6D — Team Host */
+    --battle-guest:         190 100% 42%;       /* 00D4FF — Team Guest */
   }
 
   .dark {
@@ -85,6 +89,9 @@
     --brand-warning:        38 92% 50%;         /* F59E0B */
     --brand-danger:         0 84% 60%;          /* EF4444 */
     --brand-purple:         271 91% 65%;        /* A855F7 */
+    --brand-rose:           350 89% 60%;        /* F43F5E — WOZ / Like */
+    --battle-host:          340 100% 59%;       /* FF2D6D */
+    --battle-guest:         190 100% 42%;       /* 00D4FF */
   }
 }
 

@@ -28,6 +28,7 @@ import { UserProfileContent } from '@/components/profile/UserProfileContent';
 import { CategoryFilter } from '@/components/ui/CategoryFilter';
 import TuneMyVibeOverlay from '@/components/ui/TuneMyVibeOverlay';
 import { useAuthStore } from '@/lib/authStore';
+import { useTheme } from '@/lib/useTheme';
 import { useFeedNavStore } from '@/lib/feedNavStore';
 import { useStoryViewerStore } from '@/lib/storyViewerStore';
 import { supabase } from '@/lib/supabase';
@@ -55,6 +56,7 @@ type FeedRow =
 
 
 export default function VibeFeedScreen() {
+  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const listRef = useRef<FlatList>(null);
@@ -542,18 +544,18 @@ export default function VibeFeedScreen() {
       {/* Ganz leerer Feed — "Für dich" Mode */}
       {feedMode === 'foryou' && !isLoading && !isError && feedRows.length === 0 && !activeTag && !isTrending && (
         <View style={[styles.emptyTag, { gap: 16 }]}>
-          <Zap size={56} color="#A855F7" strokeWidth={1.5} />
+          <Zap size={56} color={colors.accent.secondary} strokeWidth={1.5} />
           <Text style={styles.emptyTagTitle}>Willkommen bei Serlo! ✨</Text>
           <Text style={styles.emptyTagSub}>
             Folge anderen oder poste deinen ersten Vibe — dein Feed füllt sich automatisch.
           </Text>
           <Pressable
             onPress={() => router.push('/(tabs)/explore')}
-            style={[styles.emptyTagBtn, { backgroundColor: 'rgba(168,85,247,0.2)', borderColor: 'rgba(168,85,247,0.4)', borderWidth: 1 }]}
+            style={[styles.emptyTagBtn, { backgroundColor: `${colors.accent.secondary}33`, borderColor: `${colors.accent.secondary}66`, borderWidth: 1 }]}
             accessibilityRole="button"
             accessibilityLabel="Explore öffnen"
           >
-            <Text style={[styles.emptyTagBtnText, { color: '#A855F7' }]}>Explore öffnen</Text>
+            <Text style={[styles.emptyTagBtnText, { color: colors.accent.secondary }]}>Explore öffnen</Text>
           </Pressable>
         </View>
       )}

@@ -209,8 +209,8 @@ export function LiveGiftPicker({
                 onClick={() => setBattleTeam('host')}
                 className={`rounded-full px-3 py-1 transition-all ${
                   battleTeam === 'host'
-                    ? 'bg-[#FF2D6D] text-white shadow-sm'
-                    : 'border border-[#FF2D6D]/40 text-[#FF2D6D] hover:bg-[#FF2D6D]/10'
+                    ? 'bg-battle-host text-white shadow-sm'
+                    : 'border border-battle-host/40 text-battle-host hover:bg-battle-host/10'
                 }`}
               >
                 🔴 {hostName}
@@ -220,8 +220,8 @@ export function LiveGiftPicker({
                 onClick={() => setBattleTeam('guest')}
                 className={`rounded-full px-3 py-1 transition-all ${
                   battleTeam === 'guest'
-                    ? 'bg-[#00D4FF] text-black shadow-sm'
-                    : 'border border-[#00D4FF]/40 text-[#00D4FF] hover:bg-[#00D4FF]/10'
+                    ? 'bg-battle-guest text-black shadow-sm'
+                    : 'border border-battle-guest/40 text-battle-guest hover:bg-battle-guest/10'
                 }`}
               >
                 🔵 {activeCoHost?.profile?.username ?? 'Guest'}
@@ -340,7 +340,7 @@ function GiftCard({
       onClick={onSelect}
       className={`group relative flex flex-col items-center gap-1 rounded-xl border p-2 transition-all ${
         selected
-          ? 'border-primary bg-primary/10 shadow-md xl:border-[#ff4f80] xl:bg-[#ff4f80]/14'
+          ? 'border-primary bg-primary/10 shadow-md xl:border-battle-host xl:bg-battle-host/[0.14]'
           : 'hover:border-muted-foreground/50 xl:border-white/10 xl:bg-white/[0.06] xl:hover:border-white/25 xl:hover:bg-white/[0.09]'
       }`}
     >

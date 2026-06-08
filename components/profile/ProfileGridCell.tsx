@@ -48,6 +48,9 @@ export function ProfileGridCell({
   const showFallback = !post.media_url || imageError;
   const viewCount = post.view_count ?? 0;
 
+  const isVideo = post.media_type === 'video';
+  const captionSnippet = post.caption?.slice(0, 60) ?? '';
+
   return (
     <Pressable
       style={s.cell}
@@ -60,6 +63,13 @@ export function ProfileGridCell({
       onPress={onPress}
       onLongPress={onLongPress}
       delayLongPress={400}
+      accessibilityRole="button"
+      accessibilityLabel={
+        isVideo
+          ? `Video${captionSnippet ? `: ${captionSnippet}` : ''}`
+          : `Foto${captionSnippet ? `: ${captionSnippet}` : ''}`
+      }
+      accessibilityHint={isVideo ? 'Doppeltippen um Video abzuspielen' : 'Doppeltippen um Foto zu öffnen'}
     >
       <Animated.View style={[StyleSheet.absoluteFill, animStyle]}>
         {!showFallback && post.media_type === 'video' && (

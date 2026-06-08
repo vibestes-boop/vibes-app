@@ -14,6 +14,8 @@
  *     Follower beim Tap auf den Reminder-Push direkt in diese Session kommen.
  */
 import { AIImageSheet } from '@/components/ai/AIImageSheet';
+import { LC } from '@/lib/liveColors';
+import { FONT_SIZE,FONT_WEIGHT,RADII,SPACE } from '@/lib/tokens';
 import ExpoGoPlaceholder from '@/components/live/ExpoGoPlaceholder';
 import { useLiveHost } from '@/lib/useLiveSession';
 import {
@@ -417,7 +419,7 @@ export default function LiveStartScreen() {
                     <View style={ss.divider} />
                     <View style={ss.row}>
                       <View>
-                        <Text style={[ss.rowTitle, womenOnly && { color: '#F43F5E' }]}>
+                        <Text style={[ss.rowTitle, womenOnly && { color: LC.accent.rose }]}>
                           🌸 Women-Only Live
                         </Text>
                         <Text style={ss.rowSub}>
@@ -427,8 +429,8 @@ export default function LiveStartScreen() {
                       <Switch
                         value={womenOnly}
                         onValueChange={setWomenOnly}
-                        trackColor={{ false: '#E5E7EB', true: 'rgba(244,63,94,0.4)' }}
-                        thumbColor={womenOnly ? '#F43F5E' : '#9CA3AF'}
+                        trackColor={{ false: '#E5E7EB', true: `${LC.accent.rose}66` }}
+                        thumbColor={womenOnly ? LC.accent.rose : LC.text.muted}
                         ios_backgroundColor="#E5E7EB"
                       />
                     </View>
@@ -645,19 +647,19 @@ function PlanSheet({
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#000' },
+  root: { flex: 1, backgroundColor: LC.black },
 
   topBar: {
     flexDirection: 'row',
-    paddingHorizontal: 16,
+    paddingHorizontal: SPACE.base,
     zIndex: 20,
   },
-  iconBtn: { width: 40, height: 40, borderRadius: 20, overflow: 'hidden' },
+  iconBtn: { width: 40, height: 40, borderRadius: RADII.full, overflow: 'hidden' },
   iconBtnBlur: {
-    width: 40, height: 40, borderRadius: 20,
+    width: 40, height: 40, borderRadius: RADII.full,
     alignItems: 'center', justifyContent: 'center',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: LC.border.default,
     overflow: 'hidden',
   },
 
@@ -665,17 +667,17 @@ const s = StyleSheet.create({
     position: 'absolute', top: '40%', left: 32, right: 32, alignItems: 'center',
   },
   permBtn: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    paddingVertical: 13, paddingHorizontal: 24,
-    borderRadius: 14, borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.3)',
+    backgroundColor: LC.bg.input,
+    paddingVertical: 13, paddingHorizontal: SPACE.xl,
+    borderRadius: RADII.md, borderWidth: StyleSheet.hairlineWidth,
+    borderColor: LC.border.strong,
   },
-  permBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  permBtnText: { color: LC.text.primary, fontWeight: FONT_WEIGHT.bold, fontSize: FONT_SIZE.md },
 
   // Bottom
   bottomArea: {
     position: 'absolute', left: 0, right: 0, bottom: 0,
-    alignItems: 'center', gap: 14, paddingHorizontal: 20,
+    alignItems: 'center', gap: 14, paddingHorizontal: SPACE.lg,
   },
   toolbar: {
     flexDirection: 'row',
@@ -685,66 +687,66 @@ const s = StyleSheet.create({
   },
   toolbarBtn: { alignItems: 'center', gap: 6 },
   toolbarBtnBlur: {
-    width: 52, height: 52, borderRadius: 26,
+    width: 52, height: 52, borderRadius: RADII.full,
     alignItems: 'center', justifyContent: 'center',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.18)',
+    borderColor: LC.border.subtle,
     overflow: 'hidden',
   },
   toolbarBtnLabel: {
-    color: 'rgba(255,255,255,0.8)', fontSize: 11, fontWeight: '600',
+    color: LC.text.secondary, fontSize: FONT_SIZE.xs, fontWeight: FONT_WEIGHT.semibold,
   },
 
-  liveBtn: { width: '100%', borderRadius: 18, overflow: 'hidden', shadowColor: '#FF2D55', shadowOpacity: 0.45, shadowRadius: 14, elevation: 8 },
+  liveBtn: { width: '100%', borderRadius: 18, overflow: 'hidden', shadowColor: LC.accent.live, shadowOpacity: 0.45, shadowRadius: 14, elevation: 8 },
   liveBtnDisabled: { opacity: 0.55 },
-  liveBtnGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 17 },
-  liveDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#fff' },
-  liveBtnText: { color: '#fff', fontSize: 17, fontWeight: '800', letterSpacing: 0.3 },
+  liveBtnGradient: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: SPACE.sm, paddingVertical: 17 },
+  liveDot: { width: 8, height: 8, borderRadius: RADII.full, backgroundColor: LC.white },
+  liveBtnText: { color: LC.text.primary, fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.bold, letterSpacing: 0.3 },
 
   planBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 7, paddingVertical: 10, paddingHorizontal: 16,
-    borderRadius: 14, borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.22)',
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    gap: 7, paddingVertical: SPACE.sm, paddingHorizontal: SPACE.base,
+    borderRadius: RADII.md, borderWidth: StyleSheet.hairlineWidth,
+    borderColor: LC.border.default,
+    backgroundColor: LC.whiteSubtle,
   },
-  planBtnText: { color: 'rgba(255,255,255,0.92)', fontSize: 13, fontWeight: '700', letterSpacing: 0.2 },
+  planBtnText: { color: LC.text.secondary, fontSize: FONT_SIZE.sm, fontWeight: FONT_WEIGHT.bold, letterSpacing: 0.2 },
 
-  hint: { color: 'rgba(255,255,255,0.4)', fontSize: 12, textAlign: 'center' },
+  hint: { color: LC.text.faint, fontSize: FONT_SIZE.xs, textAlign: 'center' },
 
   countdownWrap: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center', zIndex: 30 },
-  countdownText: { fontSize: 120, fontWeight: '900', color: 'rgba(255,255,255,0.9)', textShadowColor: '#FF2D55', textShadowRadius: 30 },
+  countdownText: { fontSize: 120, fontWeight: FONT_WEIGHT.bold, color: LC.text.primary, textShadowColor: LC.accent.live, textShadowRadius: 30 },
 });
 
-// ─── Settings Sheet Styles ────────────────────────────────────────────────────
+// ─── Settings Sheet Styles (Light-Mode Sheet — weißer Hintergrund) ────────────
 const ss = StyleSheet.create({
-  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  backdrop: { flex: 1, backgroundColor: LC.bg.dimOverlay, justifyContent: 'flex-end' },
   sheet: {
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 22,
     borderTopRightRadius: 22,
     paddingTop: 10,
-    paddingHorizontal: 20,
+    paddingHorizontal: SPACE.lg,
   },
-  handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: '#D1D5DB', alignSelf: 'center', marginBottom: 20 },
-  title: { fontSize: 18, fontWeight: '800', color: '#111827', marginBottom: 20, letterSpacing: -0.3 },
+  handle: { width: 36, height: 4, borderRadius: RADII.full, backgroundColor: '#D1D5DB', alignSelf: 'center', marginBottom: SPACE.lg },
+  title: { fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.bold, color: '#111827', marginBottom: SPACE.lg, letterSpacing: -0.3 },
 
-  section: { marginBottom: 20 },
-  sectionLabel: { fontSize: 11, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.6, marginBottom: 8 },
+  section: { marginBottom: SPACE.lg },
+  sectionLabel: { fontSize: FONT_SIZE.xs, fontWeight: FONT_WEIGHT.bold, color: '#9CA3AF', letterSpacing: 0.6, marginBottom: SPACE.sm },
 
   inputRow: {
     backgroundColor: '#F9FAFB',
-    borderRadius: 14,
+    borderRadius: RADII.md,
     borderWidth: 1,
     borderColor: '#E5E7EB',
     paddingHorizontal: 14,
     paddingVertical: 2,
   },
-  input: { fontSize: 15, color: '#111827', paddingVertical: 11 },
+  input: { fontSize: FONT_SIZE.md, color: '#111827', paddingVertical: 11 },
 
   settingsCard: {
     backgroundColor: '#F9FAFB',
-    borderRadius: 14,
+    borderRadius: RADII.md,
     borderWidth: 1,
     borderColor: '#E5E7EB',
     overflow: 'hidden',
@@ -753,123 +755,123 @@ const ss = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
+    paddingHorizontal: SPACE.base,
     paddingVertical: 13,
   },
-  rowTitle: { fontSize: 15, fontWeight: '600', color: '#111827', marginBottom: 1 },
-  rowSub: { fontSize: 12, color: '#9CA3AF' },
-  divider: { height: StyleSheet.hairlineWidth, backgroundColor: '#E5E7EB', marginLeft: 16 },
+  rowTitle: { fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.semibold, color: '#111827', marginBottom: 1 },
+  rowSub: { fontSize: FONT_SIZE.xs, color: '#9CA3AF' },
+  divider: { height: StyleSheet.hairlineWidth, backgroundColor: '#E5E7EB', marginLeft: SPACE.base },
 
   doneBtn: {
     backgroundColor: '#111827',
-    borderRadius: 16,
+    borderRadius: RADII.lg,
     paddingVertical: 14,
     alignItems: 'center',
-    marginTop: 4,
+    marginTop: SPACE.xs,
   },
-  doneBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  doneBtnText: { color: '#fff', fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.bold },
 
   // Cover-Row (KI-Cover)
-  coverRow: { flexDirection: 'row', gap: 12, alignItems: 'center' },
+  coverRow: { flexDirection: 'row', gap: SPACE.md, alignItems: 'center' },
   coverPreview: {
-    width: 72, height: 108, borderRadius: 12, overflow: 'hidden',
+    width: 72, height: 108, borderRadius: RADII.md, overflow: 'hidden',
     backgroundColor: '#F3F4F6', borderWidth: 1, borderColor: '#E5E7EB',
   },
   coverImg: { width: '100%', height: '100%' },
   coverEmpty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  coverActions: { flex: 1, gap: 8 },
+  coverActions: { flex: 1, gap: SPACE.sm },
   coverAIBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 6, backgroundColor: '#8b5cf6', borderRadius: 12,
+    gap: 6, backgroundColor: LC.accent.purple, borderRadius: RADII.md,
     paddingVertical: 11, paddingHorizontal: 14,
   },
-  coverAIBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
-  coverRemoveBtn: { alignSelf: 'flex-start', paddingVertical: 4, paddingHorizontal: 2 },
-  coverRemoveText: { color: '#9CA3AF', fontSize: 12, fontWeight: '600' },
+  coverAIBtnText: { color: LC.white, fontSize: FONT_SIZE.sm, fontWeight: FONT_WEIGHT.bold },
+  coverRemoveBtn: { alignSelf: 'flex-start', paddingVertical: SPACE.xs, paddingHorizontal: 2 },
+  coverRemoveText: { color: '#9CA3AF', fontSize: FONT_SIZE.xs, fontWeight: FONT_WEIGHT.semibold },
 });
 
 // ─── Plan-Sheet Styles ──────────────────────────────────────────────────────
 const ps = StyleSheet.create({
   backdrop: {
-    flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end',
+    flex: 1, backgroundColor: LC.bg.dimOverlay, justifyContent: 'flex-end',
   },
   sheet: {
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 22,
     borderTopRightRadius: 22,
     paddingTop: 10,
-    paddingHorizontal: 20,
+    paddingHorizontal: SPACE.lg,
   },
   handle: {
-    width: 36, height: 4, borderRadius: 2, backgroundColor: '#D1D5DB',
+    width: 36, height: 4, borderRadius: RADII.full, backgroundColor: '#D1D5DB',
     alignSelf: 'center', marginBottom: 14,
   },
   heading: {
-    fontSize: 18, fontWeight: '800', color: '#111827',
+    fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.bold, color: '#111827',
     textAlign: 'center', letterSpacing: -0.3,
   },
   sub: {
-    fontSize: 12, fontWeight: '500', color: '#6B7280',
-    textAlign: 'center', marginTop: 4, marginBottom: 14,
+    fontSize: FONT_SIZE.xs, fontWeight: FONT_WEIGHT.medium, color: '#6B7280',
+    textAlign: 'center', marginTop: SPACE.xs, marginBottom: 14,
   },
 
   titlePreview: {
     backgroundColor: '#F9FAFB',
-    borderRadius: 12,
+    borderRadius: RADII.md,
     borderWidth: 1,
     borderColor: '#E5E7EB',
-    paddingHorizontal: 12, paddingVertical: 9,
-    marginBottom: 10,
+    paddingHorizontal: SPACE.md, paddingVertical: 9,
+    marginBottom: SPACE.sm,
   },
   titlePreviewLabel: {
-    fontSize: 10, fontWeight: '700', color: '#9CA3AF',
+    fontSize: 10, fontWeight: FONT_WEIGHT.bold, color: '#9CA3AF',
     letterSpacing: 0.6, marginBottom: 3,
   },
-  titlePreviewText: { fontSize: 14, fontWeight: '700', color: '#111827' },
+  titlePreviewText: { fontSize: FONT_SIZE.sm, fontWeight: FONT_WEIGHT.bold, color: '#111827' },
 
   dateCard: {
     backgroundColor: '#F9FAFB',
-    borderRadius: 14, borderWidth: 1, borderColor: '#E5E7EB',
-    paddingVertical: 14, paddingHorizontal: 16,
-    alignItems: 'center', gap: 4,
+    borderRadius: RADII.md, borderWidth: 1, borderColor: '#E5E7EB',
+    paddingVertical: 14, paddingHorizontal: SPACE.base,
+    alignItems: 'center', gap: SPACE.xs,
   },
-  dateBig: { fontSize: 22, fontWeight: '900', color: '#111827', letterSpacing: -0.6 },
-  dateHint: { fontSize: 12, fontWeight: '600', color: '#6B7280' },
+  dateBig: { fontSize: FONT_SIZE.xl, fontWeight: FONT_WEIGHT.bold, color: '#111827', letterSpacing: -0.6 },
+  dateHint: { fontSize: FONT_SIZE.xs, fontWeight: FONT_WEIGHT.semibold, color: '#6B7280' },
 
   sectionLabel: {
-    fontSize: 10, fontWeight: '700', color: '#9CA3AF',
-    letterSpacing: 0.8, marginTop: 14, marginBottom: 8, paddingLeft: 2,
+    fontSize: 10, fontWeight: FONT_WEIGHT.bold, color: '#9CA3AF',
+    letterSpacing: 0.8, marginTop: 14, marginBottom: SPACE.sm, paddingLeft: 2,
   },
 
-  presetRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  presetRow: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACE.sm },
   preset: {
     backgroundColor: '#F9FAFB',
-    borderRadius: 999, borderWidth: 1, borderColor: '#E5E7EB',
-    paddingHorizontal: 12, paddingVertical: 7,
+    borderRadius: RADII.full, borderWidth: 1, borderColor: '#E5E7EB',
+    paddingHorizontal: SPACE.md, paddingVertical: 7,
   },
-  presetText: { fontSize: 12, fontWeight: '700', color: '#111827' },
+  presetText: { fontSize: FONT_SIZE.xs, fontWeight: FONT_WEIGHT.bold, color: '#111827' },
 
-  stepperRow: { flexDirection: 'row', gap: 8 },
+  stepperRow: { flexDirection: 'row', gap: SPACE.sm },
   stepper: {
     flex: 1,
     backgroundColor: '#F9FAFB',
-    borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB',
-    alignItems: 'center', paddingVertical: 8, gap: 4,
+    borderRadius: RADII.md, borderWidth: 1, borderColor: '#E5E7EB',
+    alignItems: 'center', paddingVertical: SPACE.sm, gap: SPACE.xs,
   },
   stepperBtn: {
     width: 28, height: 28, alignItems: 'center', justifyContent: 'center',
   },
-  stepperLabel: { fontSize: 11, fontWeight: '700', color: '#111827' },
+  stepperLabel: { fontSize: FONT_SIZE.xs, fontWeight: FONT_WEIGHT.bold, color: '#111827' },
 
-  actions: { flexDirection: 'row', gap: 10, marginTop: 16 },
+  actions: { flexDirection: 'row', gap: SPACE.sm, marginTop: SPACE.base },
   btn: {
-    flex: 1, borderRadius: 14, paddingVertical: 13, alignItems: 'center',
+    flex: 1, borderRadius: RADII.md, paddingVertical: 13, alignItems: 'center',
   },
   btnGhost: {
     backgroundColor: '#F9FAFB',
     borderWidth: 1, borderColor: '#E5E7EB',
   },
-  btnGhostText: { fontSize: 14, fontWeight: '700', color: '#111827' },
+  btnGhostText: { fontSize: FONT_SIZE.sm, fontWeight: FONT_WEIGHT.bold, color: '#111827' },
   btnPrimary: { backgroundColor: '#111827' },
-  btnPrimaryText: { fontSize: 14, fontWeight: '800', color: '#FFFFFF' },
+  btnPrimaryText: { fontSize: FONT_SIZE.sm, fontWeight: FONT_WEIGHT.bold, color: '#FFFFFF' },
 });

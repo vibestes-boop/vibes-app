@@ -1,4 +1,6 @@
 import { Image as ExpoImage } from 'expo-image';
+import { MessagesSkeleton } from '@/components/messages/MessagesSkeleton';
+import { FONT_SIZE,FONT_WEIGHT,RADII,SPACE } from '@/lib/tokens';
 import { useCallback,useEffect,useMemo,useState } from 'react';
 import {
 ActivityIndicator,
@@ -291,6 +293,12 @@ function NewMessageModal({ visible, onClose }: { visible: boolean; onClose: () =
   );
 }
 
+/** Stabiler Separator — kein inline-Closure damit FlashList nicht re-mounted */
+function ConvSeparator() {
+  const { colors } = useTheme();
+  return <View style={[styles.separator, { backgroundColor: colors.border.subtle }]} />;
+}
+
 export default function MessagesScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
@@ -425,9 +433,7 @@ export default function MessagesScreen() {
       {isLoading && convs.length === 0 ? (
         <>
           {ListHeader}
-          <View style={styles.center}>
-            <ActivityIndicator color="#FFFFFF" size="large" />
-          </View>
+          <MessagesSkeleton count={8} />
         </>
       ) : (
         <FlashList
@@ -455,7 +461,9 @@ export default function MessagesScreen() {
           }
           contentContainerStyle={{ paddingBottom: insets.bottom + 80 }}
           showsVerticalScrollIndicator={false}
-          ItemSeparatorComponent={() => <View style={[styles.separator, { backgroundColor: colors.border.subtle }]} />}
+          keyboardDismissMode="on-drag"
+          keyboardShouldPersistTaps="handled"
+          ItemSeparatorComponent={ConvSeparator}
           refreshControl={
             <RefreshControl
               refreshing={isRefreshingAny}
@@ -475,20 +483,20 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingHorizontal: SPACE.lg,
+    paddingVertical: SPACE.md,
     borderBottomWidth: StyleSheet.hairlineWidth,
     // borderBottomColor via inline
   },
-  title: { fontSize: 22, fontWeight: '800', letterSpacing: -0.5, flex: 1 }, // color via inline
+  title: { fontSize: FONT_SIZE.xl, fontWeight: FONT_WEIGHT.bold, letterSpacing: -0.5, flex: 1 }, // color via inline
   composeBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, paddingBottom: 60 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', marginTop: 8 }, // color via inline
-  emptyDesc: { fontSize: 14, textAlign: 'center', maxWidth: 240, lineHeight: 20 }, // color via inline
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: SPACE.md, paddingBottom: 60 },
+  emptyTitle: { fontSize: FONT_SIZE.lg, fontWeight: FONT_WEIGHT.bold, marginTop: SPACE.sm }, // color via inline
+  emptyDesc: { fontSize: FONT_SIZE.sm, textAlign: 'center', maxWidth: 240, lineHeight: 20 }, // color via inline
   item: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 18,
+    paddingHorizontal: SPACE.base,
     paddingVertical: 11,
     gap: 14,
     position: 'relative',
@@ -504,7 +512,7 @@ const styles = StyleSheet.create({
   avatar: { width: 60, height: 60, borderRadius: 30, borderWidth: 0 },
   avatarWithRing: { width: 52, height: 52, borderRadius: 26, borderWidth: 0, position: 'absolute', top: 4, left: 4 },
   avatarFallback: { alignItems: 'center', justifyContent: 'center' },
-  avatarInitial: { fontSize: 22, fontWeight: '700' },
+  avatarInitial: { fontSize: FONT_SIZE.xl, fontWeight: FONT_WEIGHT.bold },
   // Story-Ring: Instagram-Style Gradient-Rand
   storyRing: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
@@ -525,7 +533,7 @@ const styles = StyleSheet.create({
     borderRadius: 4, paddingHorizontal: 4, paddingVertical: 1,
     borderWidth: 1.5, borderColor: '#050508',
   },
-  liveBadgeText: { color: '#fff', fontSize: 8, fontWeight: '800', letterSpacing: 0.5 },
+  liveBadgeText: { color: '#fff', fontSize: FONT_SIZE.xs, fontWeight: FONT_WEIGHT.bold, letterSpacing: 0.5 },
   // Selbst-Chat "Meine Notizen"
   avatarSelf: { backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.18)' },
   selfChatLabel: { flexDirection: 'row', alignItems: 'center', flex: 1 },
@@ -537,17 +545,17 @@ const styles = StyleSheet.create({
   },
   textWrap: { flex: 1, gap: 3 },
   nameRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  username: { fontSize: 15, fontWeight: '600', letterSpacing: -0.1 },
-  usernameUnread: { fontWeight: '700' },
+  username: { fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.semibold, letterSpacing: -0.1 },
+  usernameUnread: { fontWeight: FONT_WEIGHT.bold },
   preview: { fontSize: 13.5, lineHeight: 18 },
-  previewUnread: { fontWeight: '500' },
-  timeText: { fontSize: 12 },
+  previewUnread: { fontWeight: FONT_WEIGHT.medium },
+  timeText: { fontSize: FONT_SIZE.xs },
   badge: {
-    minWidth: 20, height: 20, borderRadius: 10,
+    minWidth: 20, height: 20, borderRadius: RADII.full,
     backgroundColor: '#007AFF', alignItems: 'center', justifyContent: 'center',
-    paddingHorizontal: 5,
+    paddingHorizontal: SPACE.xs,
   },
-  badgeText: { color: '#FFFFFF', fontSize: 11, fontWeight: '800' },
+  badgeText: { color: '#FFFFFF', fontSize: FONT_SIZE.xs, fontWeight: FONT_WEIGHT.bold },
   separator: { height: StyleSheet.hairlineWidth, marginLeft: 84 },
   emptyBtn: {
     marginTop: 14,

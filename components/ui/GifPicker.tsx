@@ -26,7 +26,7 @@ const ITEM_W = (W - 4) / 2;
 
 // Giphy API — kostenloses Konto unter https://developers.giphy.com/
 // API Key in .env als EXPO_PUBLIC_GIPHY_API_KEY eintragen
-const GIPHY_KEY = process.env.EXPO_PUBLIC_GIPHY_API_KEY ?? 'GlVGYHkr3WSBnllca54iNt0yFbjz7L65'; // public test key
+const GIPHY_KEY = process.env.EXPO_PUBLIC_GIPHY_API_KEY ?? '';
 const GIPHY_BASE = 'https://api.giphy.com/v1/gifs';
 
 type GifResult = {

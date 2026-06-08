@@ -164,16 +164,16 @@ export default function ExploreScreen() {
         >
           <LinearGradient
             colors={canAccessWomenOnly
-              ? ['rgba(244,63,94,0.15)', 'rgba(168,85,247,0.15)']
-              : ['rgba(244,63,94,0.08)', 'rgba(168,85,247,0.08)']}
+              ? [`${colors.accent.rose}26`, `${colors.accent.secondary}26`]
+              : [`${colors.accent.rose}14`, `${colors.accent.secondary}14`]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
-            style={[wozBannerStyle.inner, { borderColor: canAccessWomenOnly ? 'rgba(244,63,94,0.35)' : colors.border.subtle }]}
+            style={[wozBannerStyle.inner, { borderColor: canAccessWomenOnly ? `${colors.accent.rose}59` : colors.border.subtle }]}
           >
             <View style={wozBannerStyle.left}>
               <Text style={wozBannerStyle.emoji}>🌸</Text>
               <View>
-                <Text style={[wozBannerStyle.title, { color: canAccessWomenOnly ? '#F43F5E' : colors.text.primary }]}>
+                <Text style={[wozBannerStyle.title, { color: canAccessWomenOnly ? colors.accent.rose : colors.text.primary }]}>
                   {canAccessWomenOnly ? 'Women-Only Zone' : 'Women-Only Zone beitreten'}
                 </Text>
                 <Text style={[wozBannerStyle.sub, { color: colors.text.muted }]}>
@@ -181,7 +181,7 @@ export default function ExploreScreen() {
                 </Text>
               </View>
             </View>
-            <ChevronRight size={20} color={canAccessWomenOnly ? '#F43F5E' : colors.text.muted} strokeWidth={2} />
+            <ChevronRight size={20} color={canAccessWomenOnly ? colors.accent.rose : colors.text.muted} strokeWidth={2} />
           </LinearGradient>
         </Pressable>
       )}
@@ -294,6 +294,7 @@ export default function ExploreScreen() {
   );
 }
 
+// ─── Alle Screen-lokalen Styles in einem einzigen Block ────────────────────────
 const emptyBtnStyle = StyleSheet.create({
   btn: {
     marginTop: 10,
@@ -308,24 +309,22 @@ const emptyBtnStyle = StyleSheet.create({
 });
 
 const shopChipStyle = StyleSheet.create({
-  chip: {
-    width: 120, borderRadius: 14, borderWidth: 1, overflow: 'hidden',
-  },
-  cover: { width: 120, height: 100 },
+  chip:             { width: 120, borderRadius: 14, borderWidth: 1, overflow: 'hidden' },
+  cover:            { width: 120, height: 100 },
   coverPlaceholder: { width: 120, height: 100, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 12, fontWeight: '700', paddingHorizontal: 8, paddingTop: 6, lineHeight: 16 },
-  price: { fontSize: 11, fontWeight: '800', paddingHorizontal: 8, paddingBottom: 8, paddingTop: 2 },
+  title:            { fontSize: 12, fontWeight: '700', paddingHorizontal: 8, paddingTop: 6, lineHeight: 16 },
+  price:            { fontSize: 11, fontWeight: '700', paddingHorizontal: 8, paddingBottom: 8, paddingTop: 2 },
 });
 
 const wozBannerStyle = StyleSheet.create({
-  btn: { marginHorizontal: 16, marginBottom: 10, borderRadius: 16, overflow: 'hidden' },
+  btn:   { marginHorizontal: 16, marginBottom: 10, borderRadius: 16, overflow: 'hidden' },
   inner: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingVertical: 14,
     borderRadius: 16, borderWidth: 1,
   },
-  left: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  left:  { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
   emoji: { fontSize: 26 },
-  title: { fontSize: 14, fontWeight: '800', marginBottom: 2 },
+  title: { fontSize: 14, fontWeight: '700', marginBottom: 2 },
   sub:   { fontSize: 12, fontWeight: '500' },
 });

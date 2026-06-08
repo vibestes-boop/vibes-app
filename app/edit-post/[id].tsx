@@ -188,7 +188,7 @@ export default function EditPostScreen() {
               <Text style={[styles.label, { marginTop: 24, color: colors.text.secondary }]}>Women-Only</Text>
               <View style={[styles.womenOnlyRow, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
                 <View style={{ flex: 1 }}>
-                  <Text style={{ fontSize: 15, fontWeight: '600', color: womenOnly ? '#F43F5E' : colors.text.primary }}>
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: womenOnly ? colors.accent.rose : colors.text.primary }}>
                     {womenOnly ? '🌸 Nur für Frauen aktiv' : '🌸 Women-Only'}
                   </Text>
                   <Text style={{ fontSize: 12, color: colors.text.muted, marginTop: 2 }}>
@@ -198,8 +198,8 @@ export default function EditPostScreen() {
                 <Switch
                   value={womenOnly}
                   onValueChange={setWomenOnly}
-                  trackColor={{ false: 'rgba(0,0,0,0.1)', true: 'rgba(244,63,94,0.5)' }}
-                  thumbColor={womenOnly ? '#F43F5E' : '#ccc'}
+                  trackColor={{ false: 'rgba(0,0,0,0.1)', true: `${colors.accent.rose}80` }}
+                  thumbColor={womenOnly ? colors.accent.rose : '#ccc'}
                 />
               </View>
             </>

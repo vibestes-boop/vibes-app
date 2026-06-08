@@ -37,8 +37,8 @@ function winnerLabel(winner: BattleWinner, hostName: string, coHostName: string)
   return '🤝 Unentschieden!';
 }
 
-const HOST_COLOR = '#FF2D6D';
-const GUEST_COLOR = '#00D4FF';
+const HOST_COLOR  = 'hsl(var(--battle-host))';
+const GUEST_COLOR = 'hsl(var(--battle-guest))';
 
 interface LiveBattleBarProps {
   state: Pick<

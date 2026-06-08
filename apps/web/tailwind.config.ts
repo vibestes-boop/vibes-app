@@ -67,6 +67,11 @@ export default {
           warning: 'hsl(var(--brand-warning))',
           danger:  'hsl(var(--brand-danger))',
           purple:  'hsl(var(--brand-purple))',
+          rose:    'hsl(var(--brand-rose))',
+        },
+        battle: {
+          host:    'hsl(var(--battle-host))',
+          guest:   'hsl(var(--battle-guest))',
         },
       },
       borderRadius: {

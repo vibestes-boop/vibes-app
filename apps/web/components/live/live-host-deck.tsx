@@ -1252,7 +1252,7 @@ export function LiveHostDeck({
 
             {/* v1.w.UI.224 — End-of-stream summary panel (parity with native host.tsx summary modal) */}
             {phase === 'ended' && (
-              <div className="absolute inset-0 z-50 flex flex-col overflow-y-auto bg-gradient-to-b from-[#0D0D18] via-[#0f0020] to-[#0D0D18] text-white">
+              <div className="absolute inset-0 z-50 flex flex-col overflow-y-auto bg-gradient-to-b from-[hsl(var(--card))] via-[hsl(270,100%,6%)] to-[hsl(var(--card))] text-white">
                 {/* Header */}
                 <div className="flex-shrink-0 border-b border-white/10 px-6 py-4">
                   <p className="text-xs text-white/50">

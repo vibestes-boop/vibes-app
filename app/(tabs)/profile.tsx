@@ -10,6 +10,7 @@ ProfileStudioHeader,
 type ProfilePostGridItem,
 type ProfileTab
 } from '@/components/profile';
+import { ProfileGridSkeleton } from '@/components/profile/ProfileGridSkeleton';
 import { getProfileStyles } from '@/components/profile/profileStyles';
 import { useAuthStore } from '@/lib/authStore';
 import { useStoryViewerStore } from '@/lib/storyViewerStore';
@@ -308,7 +309,7 @@ export default function ProfileScreen() {
         numColumns={GRID_COLUMNS}
         columnWrapperStyle={{ gap: GRID_GAP }}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: insets.bottom + 100 }}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 100, gap: GRID_GAP }}
         refreshControl={
           <RefreshControl
             refreshing={isRefreshing}
@@ -408,13 +409,9 @@ export default function ProfileScreen() {
 
             // ─ Vibes leer ─
           ) : activeTab === 'vibes' && loadingPosts ? (
-            <View style={s.empty}>
-              <ActivityIndicator color="#FFFFFF" />
-            </View>
+            <ProfileGridSkeleton count={9} />
           ) : activeTab === 'saved' && loadingSaved ? (
-            <View style={s.empty}>
-              <ActivityIndicator color="#FBBF24" />
-            </View>
+            <ProfileGridSkeleton count={9} />
           ) : activeTab === 'vibes' ? (
             <View style={s.empty}>
               <Sparkles size={40} color="rgba(255,255,255,0.25)" />

@@ -13,6 +13,7 @@
  *   Back-Button, Host-Header, Share-Button, View-Count.
  */
 
+import { LC } from '@/lib/liveColors';
 import { supabase } from '@/lib/supabase';
 import { useSessionClipHotspots } from '@/lib/useLiveClips';
 import {
@@ -201,7 +202,7 @@ export default function ReplayScreen() {
   if (byRecId.isLoading && byIdAsSession.isLoading && meta.isLoading) {
     return (
       <View style={[s.root, s.center]}>
-        <ActivityIndicator color="#8b5cf6" size="large" />
+        <ActivityIndicator color={LC.accent.purple} size="large" />
       </View>
     );
   }

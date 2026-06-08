@@ -519,8 +519,8 @@ function PendingRow({
                   onClick={() => setBattleDuration(d.secs)}
                   className={`rounded-full px-2.5 py-1 text-[11px] font-medium transition-colors ${
                     battleDuration === d.secs
-                      ? 'bg-[#FF2D6D] text-white'
-                      : 'border border-[#FF2D6D]/30 text-[#FF2D6D] hover:bg-[#FF2D6D]/10'
+                      ? 'bg-battle-host text-white'
+                      : 'border border-battle-host/30 text-battle-host hover:bg-battle-host/10'
                   }`}
                 >
                   {d.label}

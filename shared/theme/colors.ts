@@ -29,6 +29,7 @@ export interface ThemeColors {
     success:   string;
     warning:   string;
     gold:      string;
+    rose:      string;  // Women-Only-Zone / Like-Heart — #F43F5E (dark) / #E11D48 (light)
   };
   border: {
     default: string;
@@ -70,6 +71,7 @@ export const darkColors: ThemeColors = {
     success:   '#22C55E',
     warning:   '#F59E0B',
     gold:      '#FBBF24',
+    rose:      '#F43F5E',
   },
   border: {
     default: 'rgba(255,255,255,0.08)',
@@ -111,6 +113,7 @@ export const lightColors: ThemeColors = {
     success:   '#16A34A',
     warning:   '#D97706',
     gold:      '#D97706',
+    rose:      '#E11D48',
   },
   border: {
     default: 'rgba(0,0,0,0.08)',

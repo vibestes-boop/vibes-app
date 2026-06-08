@@ -4,7 +4,7 @@
  * - LiveKit: echtes Video-Streaming (braucht Dev-Build: npx expo run:ios)
  * - Supabase Realtime: Kommentare & Reaktionen
  */
-import { impactAsync,ImpactFeedbackStyle } from 'expo-haptics';
+import { impactAsync,ImpactFeedbackStyle,notificationAsync,NotificationFeedbackType } from 'expo-haptics';
 import { Image } from "expo-image";
 import * as ImagePicker from 'expo-image-picker';
 import { useKeepAwake } from 'expo-keep-awake';
@@ -41,6 +41,7 @@ import { useCallback,useContext,useEffect,useMemo,useRef,useState } from "react"
 import {
 Alert,
 AppState,
+type DimensionValue,
 FlatList,
 Keyboard,
 KeyboardAvoidingView,
@@ -51,7 +52,8 @@ ScrollView,
 StyleSheet,
 Text,
 TextInput,
-View
+View,
+type ViewStyle,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -71,6 +73,7 @@ import { DuettInviteModal } from "@/components/live/DuettInviteModal";
 import ExpoGoPlaceholder from "@/components/live/ExpoGoPlaceholder";
 import { GiftAnimation } from "@/components/live/GiftAnimation";
 import { LiveGoalBar } from "@/components/live/LiveGoalBar";
+import { LiveGoalSheet } from "@/components/live/LiveGoalSheet";
 import { LivePlacedProductLayer } from "@/components/live/LivePlacedProductLayer";
 import { LivePollOverlay } from "@/components/live/LivePollOverlay";
 import { LivePollStartSheet } from "@/components/live/LivePollStartSheet";
@@ -118,6 +121,8 @@ type LiveComment,
 import { useLiveShopMode,useLiveShopModeActions } from "@/lib/useLiveShopMode";
 import { useLiveShoppingHost } from "@/lib/useLiveShopping";
 import { useActiveStickers,useStickerActions } from "@/lib/useLiveStickers";
+import { usePrompt } from "@/lib/promptCrossPlatform";
+import type { TrackReference } from "@livekit/components-core";
 import type { Participant,TrackPublication } from "livekit-client";
 // v1.24 — Welcome-Toast beim Live-Join für Follower + Top-Fans
 import { WelcomeToast } from "@/components/live/WelcomeToast";
@@ -256,11 +261,7 @@ function HostControls({ onCameraSwitch }: { onCameraSwitch?: (isFront: boolean) 
 //    (z.B. wenn CoHostSplitView bei Duet-Start remountet).
 function LocalCameraView({ isFrontCamera }: { isFrontCamera: boolean }) {
   const room = useContext(RoomContext);
-  const [trackRef, setTrackRef] = useState<{
-    participant: Participant;
-    publication: TrackPublication;
-    source: Track.Source;
-  } | null>(null);
+  const [trackRef, setTrackRef] = useState<TrackReference | null>(null);
 
   useEffect(() => {
     if (!room) return;
@@ -269,7 +270,7 @@ function LocalCameraView({ isFrontCamera }: { isFrontCamera: boolean }) {
     const syncInitial = () => {
       const pub = room.localParticipant?.getTrackPublication(Track.Source.Camera);
       if (pub?.track) {
-        setTrackRef({ participant: room.localParticipant as any, publication: pub, source: Track.Source.Camera });
+        setTrackRef({ participant: room.localParticipant, publication: pub, source: Track.Source.Camera });
       }
     };
     syncInitial();
@@ -298,8 +299,8 @@ function LocalCameraView({ isFrontCamera }: { isFrontCamera: boolean }) {
   if (!trackRef) return null;
   return (
     <VideoTrack
-      trackRef={trackRef as any}
-      style={StyleSheet.absoluteFill as any}
+      trackRef={trackRef}
+      style={StyleSheet.absoluteFill as ViewStyle}
       objectFit="cover"
       mirror={isFrontCamera}
     />
@@ -311,11 +312,7 @@ function LocalCameraView({ isFrontCamera }: { isFrontCamera: boolean }) {
 // Hört auf Remote-Tracks des aktiven Co-Hosts (Participant Identity = userId)
 function RemoteCoHostVideoView({ coHostUserId }: { coHostUserId: string }) {
   const room = useContext(RoomContext);
-  const [trackRef, setTrackRef] = useState<{
-    participant: Participant;
-    publication: TrackPublication;
-    source: Track.Source;
-  } | null>(null);
+  const [trackRef, setTrackRef] = useState<TrackReference | null>(null);
 
   useEffect(() => {
     if (!room || !coHostUserId) return;
@@ -352,8 +349,8 @@ function RemoteCoHostVideoView({ coHostUserId }: { coHostUserId: string }) {
   }
   return (
     <VideoTrack
-      trackRef={trackRef as any}
-      style={StyleSheet.absoluteFill as any}
+      trackRef={trackRef}
+      style={StyleSheet.absoluteFill as ViewStyle}
       objectFit="cover"
     />
   );
@@ -383,6 +380,13 @@ function HostUI({
   const [hostWords, setHostWords] = useState<string[]>(
     session?.moderation_words ?? []
   );
+
+  // ── Cross-Platform Prompt (ersetzt Alert.prompt — funktioniert auf iOS + Android) ─
+  const { show: showPrompt } = usePrompt();
+
+  // ── LiveGoalSheet State ──────────────────────────────────────────────────────────
+  const [goalSheetVisible, setGoalSheetVisible] = useState(false);
+  const [goalSheetType, setGoalSheetType] = useState<'gift_value' | 'likes'>('gift_value');
 
   // ── Nur-Follower-Chat ────────────────────────────────────────────────────────────
   const [followersOnlyChat, setFollowersOnlyChat] = useState(
@@ -414,12 +418,13 @@ function HostUI({
     await updateModeration(sessionId, next, hostWords);
   };
 
-  /** Host fügt eigene Wörter hinzu (Alert-Prompt) */
+  /** Host fügt eigene Wörter hinzu — Cross-Platform (iOS + Android) */
   const addHostWords = () => {
-    Alert.prompt(
-      'Eigene Wörter sperren',
-      'Wörter kommagetrennt eingeben (z.B. Schimpfwort1, Schimpfwort2)',
-      async (input) => {
+    showPrompt({
+      title: 'Eigene Wörter sperren',
+      message: 'Wörter kommagetrennt eingeben (z.B. Schimpfwort1, Schimpfwort2)',
+      placeholder: 'Schimpfwort1, Schimpfwort2',
+      onConfirm: async (input) => {
         if (!input?.trim()) return;
         const newWords = input
           .split(',')
@@ -429,8 +434,7 @@ function HostUI({
         setHostWords(merged);
         await updateModeration(sessionId, moderationEnabled, merged);
       },
-      'plain-text'
-    );
+    });
   };
 
   // ─── Co-Host ────────────────────────────────────────────────────────────────
@@ -463,7 +467,7 @@ function HostUI({
   // Grid-Mode Detection + Dimensionen.
   const isGridMode = activeLayout === 'grid-2x2' || activeLayout === 'grid-3x3';
   const gridCols   = activeLayout === 'grid-3x3' ? 3 : 2;
-  const gridTilePct = `${100 / gridCols}%`;
+  const gridTilePct: DimensionValue = `${100 / gridCols}%`;
 
   // (StableLocalCameraView entfernt: war deklariert aber nie referenziert.
   // Die lokale Kamera wird direkt inline als <LocalCameraView/> gerendert.)
@@ -1127,28 +1131,11 @@ function HostUI({
     if (isBattleActive) startBattle();
   }, [isBattleActive, startBattle]); // Bug 5 Fix: startBattle als Dependency
 
+  /** Öffnet LiveGoalSheet — Cross-Platform (iOS + Android) */
   const promptGoalDetails = useCallback((type: 'gift_value' | 'likes') => {
-    const typeLabel = type === 'gift_value' ? 'Coin-Ziel' : 'Like-Ziel';
-    Alert.prompt(
-      `${typeLabel} — Zielwert`,
-      `Wie viele ${type === 'gift_value' ? 'Coins' : 'Likes'} sollen erreicht werden?`,
-      (targetStr) => {
-        const target = parseInt(targetStr?.trim() ?? '', 10);
-        if (!target || target <= 0) return;
-        Alert.prompt(
-          '🎁 Was machst du als Belohnung?',
-          'Kurze Beschreibung (z.B. "Ich tanze 30 Sek")',
-          async (title) => {
-            if (!title?.trim()) return;
-            await setLiveGoal(sessionId, { type, target, title: title.trim() });
-            sendSystemEvent(`🎯 Neues Ziel: ${title.trim()} — ${target} ${type === 'gift_value' ? '💎 Coins' : '❤️ Likes'}!`);
-          },
-          'plain-text'
-        );
-      },
-      'plain-text'
-    );
-  }, [sendSystemEvent, sessionId]);
+    setGoalSheetType(type);
+    setGoalSheetVisible(true);
+  }, []);
 
   /** Host öffnet Goal-Setup Dialog */
   const setupGoal = useCallback(() => {
@@ -1422,9 +1409,9 @@ function HostUI({
     list.push({
       key:         'poll',
       label:       'Umfrage',
-      icon:        <BarChart3 size={26} stroke={activePoll ? '#a78bfa' : '#fff'} strokeWidth={2.2} />,
+      icon:        <BarChart3 size={26} stroke={activePoll ? LC.accent.purpleLight : '#fff'} strokeWidth={2.2} />,
       active:      !!activePoll,
-      accentColor: '#8b5cf6',
+      accentColor: LC.accent.purple,
       onPress:     () => setPollSheetVisible(true),
     });
 
@@ -1729,7 +1716,7 @@ function HostUI({
           !activeCoHostId || activeLayout === 'pip'
             ? StyleSheet.absoluteFill
             : isGridMode
-              ? { position: 'absolute', top: 0, left: 0, width: gridTilePct as any, height: gridTilePct as any, overflow: 'hidden', backgroundColor: '#000' }
+              ? { position: 'absolute', top: 0, left: 0, width: gridTilePct, height: gridTilePct, overflow: 'hidden', backgroundColor: '#000' }
               : (activeLayout === 'side-by-side' || activeLayout === 'battle')
                 // TikTok-Style: Videos kompakt in oberer Hälfte (13%..55%), Rest frei für Chat/UI
                 // v1.22.0 (UX): vorher 10%..70% wirkte zu hoch/lang — TikTok Battle sitzt kürzer.
@@ -1814,8 +1801,8 @@ function HostUI({
                 position: 'absolute',
                 top:    `${(100 / gridCols) * row}%`,
                 left:   `${(100 / gridCols) * col}%`,
-                width:  gridTilePct as any,
-                height: gridTilePct as any,
+                width:  gridTilePct,
+                height: gridTilePct,
                 overflow: 'hidden',
                 backgroundColor: '#0d0d1a',
                 borderWidth: 0.5,
@@ -2018,8 +2005,8 @@ function HostUI({
           </Pressable>
           {/* Geschenk-Indikator — zeigt Anzahl empfangener Geschenke */}
           {incomingGifts.length > 0 && (
-            <View style={[s.controlBtn, { backgroundColor: 'rgba(244,63,94,0.35)' }]}>
-              <Gift size={20} stroke="#f43f5e" strokeWidth={2.2} />
+            <View style={[s.controlBtn, { backgroundColor: `${LC.accent.rose}59` }]}>
+              <Gift size={20} stroke={LC.accent.rose} strokeWidth={2.2} />
             </View>
           )}
 
@@ -2398,7 +2385,7 @@ function HostUI({
             die TopBar (TikTok-parity). Alter bottom-left Block entfernt. */}
 
         {/* Gepinnter Kommentar — sichtbar für alle über dem Feed */}
-        {pinnedComment && !(pinnedComment as any).isSystem && (
+        {pinnedComment && !pinnedComment.isSystem && (
           <Pressable
             style={s.pinnedBanner}
             onPress={() => pinComment(null)}
@@ -2630,7 +2617,7 @@ function HostUI({
                 </View>
                 <View style={s.summaryStatDivider} />
                 <View style={s.summaryStatItem}>
-                  <Text style={s.summaryStatNum}>{fmtNum(comments.filter(c => !(c as any).isSystem).length)}</Text>
+                  <Text style={s.summaryStatNum}>{fmtNum(comments.filter(c => !c.isSystem).length)}</Text>
                   <Text style={s.summaryStatLabel}>Kommentare</Text>
                 </View>
                 {totalGiftCoins > 0 && (
@@ -2669,12 +2656,12 @@ function HostUI({
             )}
 
             {/* Top-Kommentatoren Rangliste — ALLE angezeigt (scrollbar) */}
-            {comments.filter(c => !(c as any).isSystem && c.profiles).length > 0 && (
+            {comments.filter(c => !c.isSystem && c.profiles).length > 0 && (
               <View style={s.summaryLeaderCard}>
                 <Text style={s.summaryLeaderTitle}>🏆 Top Kommentatoren</Text>
                 {Object.entries(
                   comments
-                    .filter(c => !(c as any).isSystem && c.profiles?.username)
+                    .filter(c => !c.isSystem && c.profiles?.username)
                     .reduce((acc: Record<string, { username: string; avatar?: string | null; count: number }>, c) => {
                       const uid = c.user_id;
                       if (!acc[uid]) acc[uid] = { username: c.profiles!.username, avatar: c.profiles!.avatar_url, count: 0 };
@@ -2758,6 +2745,17 @@ function HostUI({
         onAccept={handleRequestAccept}
         onDecline={handleRequestDecline}
         onDismiss={handleRequestDismiss}
+      />
+
+      {/* LiveGoalSheet — Cross-Platform Ersatz für Alert.prompt (Android-safe) */}
+      <LiveGoalSheet
+        type={goalSheetType}
+        visible={goalSheetVisible}
+        onClose={() => setGoalSheetVisible(false)}
+        onSubmit={async ({ target, title }) => {
+          await setLiveGoal(sessionId, { type: goalSheetType, target, title });
+          sendSystemEvent(`🎯 Neues Ziel: ${title} — ${target} ${goalSheetType === 'gift_value' ? '💎 Coins' : '❤️ Likes'}!`);
+        }}
       />
     </KeyboardAvoidingView>
   );
@@ -2860,6 +2858,9 @@ export default function LiveHostScreen() {
           room.disconnect();
           return;
         }
+
+        // Stream erfolgreich gestartet — Erfolgs-Feedback für den Host
+        notificationAsync(NotificationFeedbackType.Success).catch(() => {});
 
         // expo-camera freisetzen: 2500 ms nach connect warten
         await new Promise<void>((r) => setTimeout(r, 2500));
@@ -3074,8 +3075,10 @@ const s = StyleSheet.create({
     justifyContent: "flex-end",
     paddingBottom: 120,
     zIndex: 5,
+    // pointerEvents ist kein StyleSheet-Property in RN-Typen → als any nötig
+    // TODO: pointerEvents als View-Prop herausnehmen (SW-14 Rest)
     pointerEvents: "none",
-  } as any,
+  } as any, // eslint-disable-line @typescript-eslint/no-explicit-any
   reactionBubble: {
     position: "absolute",
     bottom: 0,
@@ -3347,7 +3350,7 @@ const s = StyleSheet.create({
     paddingVertical: 1,
     borderRadius: 4,
   },
-  commentBadgeHost:   { backgroundColor: 'rgba(244,63,94,0.9)' },   // Pink/Red — Host
+  commentBadgeHost:   { backgroundColor: `${LC.accent.rose}E6` },    // Rose — Host
   commentBadgeMod:    { backgroundColor: 'rgba(59,130,246,0.9)' },  // Blue    — Mod
   commentBadgeGifter: { backgroundColor: 'rgba(250,204,21,0.9)' },  // Gold    — Top Gifter
   commentBadgeText: {

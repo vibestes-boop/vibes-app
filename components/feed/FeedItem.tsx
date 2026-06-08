@@ -26,6 +26,7 @@ VolumeX
 import {
 Easing,
 Extrapolation,
+cancelAnimation,
 interpolate,
 useAnimatedStyle,
 useSharedValue,
@@ -250,17 +251,21 @@ const { height: SCREEN_H } = Dimensions.get('window');
 const COMMENTS_PEEK_H = Math.round(SCREEN_H * 0.22);
 
 // ─── Music Vinyl Badge ─────────────────────────────────────────────────────────
-function MusicVinylBadge({ trackTitle }: { trackTitle: string }) {
+function MusicVinylBadge({ trackTitle, isActive }: { trackTitle: string; isActive: boolean }) {
   const rotation = useSharedValue(0);
 
   useEffect(() => {
-    rotation.value = withRepeat(
-      withTiming(360, { duration: 4000, easing: Easing.linear }),
-      -1,
-      false,
-    );
+    if (isActive) {
+      rotation.value = withRepeat(
+        withTiming(360, { duration: 4000, easing: Easing.linear }),
+        -1,
+        false,
+      );
+    } else {
+      cancelAnimation(rotation);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [isActive]);
 
   const spinStyle = useAnimatedStyle(() => ({
     transform: [{ rotate: `${rotation.value}deg` }],
@@ -969,7 +974,7 @@ export const FeedItem = React.memo(function FeedItem({
 
         {/* ── Musik-Badge (TikTok-Style rotierendes Vinyl) ── */}
         {item.audioTitle && (
-          <MusicVinylBadge trackTitle={item.audioTitle} />
+          <MusicVinylBadge trackTitle={item.audioTitle} isActive={shouldPlayVideo} />
         )}
 
       </View>

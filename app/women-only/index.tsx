@@ -7,6 +7,7 @@
  */
 
 import { WomenOnlyVerificationSheet } from '@/components/women-only/WomenOnlyVerificationSheet';
+import { LC } from '@/lib/liveColors';
 import { supabase } from '@/lib/supabase';
 import { useTheme } from '@/lib/useTheme';
 import { useWomenOnly } from '@/lib/useWomenOnly';
@@ -74,7 +75,7 @@ export default function WomenOnlyScreen() {
     <View style={[styles.root, { backgroundColor: colors.bg.primary }]}>
       {/* Header */}
       <LinearGradient
-        colors={['#F43F5E', '#A855F7']}
+        colors={[LC.accent.rose, LC.accent.purple]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 0 }}
         style={[styles.header, { paddingTop: insets.top + 10 }]}
@@ -153,7 +154,7 @@ function VerifiedContent({ colors, insets }: { colors: any; insets: any }) {
   if (isLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color="#F43F5E" size="large" />
+        <ActivityIndicator color={LC.accent.rose} size="large" />
       </View>
     );
   }
@@ -184,13 +185,13 @@ function VerifiedContent({ colors, insets }: { colors: any; insets: any }) {
         <RefreshControl
           refreshing={isRefetching}
           onRefresh={refetch}
-          tintColor="#F43F5E"
+          tintColor={LC.accent.rose}
         />
       }
       ListHeaderComponent={() => (
-        <View style={[styles.verifiedBanner, { backgroundColor: 'rgba(244,63,94,0.08)', borderColor: 'rgba(244,63,94,0.2)' }]}>
-          <ShieldCheck size={16} color="#F43F5E" strokeWidth={2} />
-          <Text style={[styles.verifiedBannerText, { color: '#F43F5E' }]}>
+        <View style={[styles.verifiedBanner, { backgroundColor: `${LC.accent.rose}14`, borderColor: `${LC.accent.rose}33` }]}>
+          <ShieldCheck size={16} color={LC.accent.rose} strokeWidth={2} />
+          <Text style={[styles.verifiedBannerText, { color: LC.accent.rose }]}>
             Nur für verifizierte Frauen · RLS-geschützt
           </Text>
         </View>
@@ -215,7 +216,7 @@ function GateContent({ onJoin }: { onJoin: () => void }) {
     <View style={styles.gateRoot}>
       {/* Hero */}
       <LinearGradient
-        colors={['rgba(244,63,94,0.12)', 'rgba(168,85,247,0.08)', 'transparent']}
+        colors={[`${LC.accent.rose}1F`, `${LC.accent.purple}14`, 'transparent']}
         style={styles.gateHero}
       >
         <Text style={styles.gateEmoji}>🌸</Text>
@@ -238,7 +239,7 @@ function GateContent({ onJoin }: { onJoin: () => void }) {
 
       {/* Verifikations-Info */}
       <View style={styles.infoBox}>
-        <Lock size={14} color="rgba(244,63,94,0.7)" strokeWidth={2} />
+        <Lock size={14} color={`${LC.accent.rose}B3`} strokeWidth={2} />
         <Text style={styles.infoText}>
           Sofortzugang durch Selbstdeklaration. Keine Upload-Pflicht.
           Falsche Angaben = dauerhafter Account-Ban (AGB §3).
@@ -248,7 +249,7 @@ function GateContent({ onJoin }: { onJoin: () => void }) {
       {/* CTA */}
       <Pressable onPress={onJoin} style={styles.joinBtn} accessibilityRole="button">
         <LinearGradient
-          colors={['#F43F5E', '#A855F7']}
+          colors={[LC.accent.rose, LC.accent.purple]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0 }}
           style={styles.joinBtnGradient}
@@ -319,11 +320,11 @@ const styles = StyleSheet.create({
   gateEmoji: { fontSize: 56, marginBottom: 12 },
   gateTitle: {
     fontSize: 28, fontWeight: '900', letterSpacing: -0.5,
-    color: '#F43F5E', marginBottom: 8,
+    color: LC.accent.rose, marginBottom: 8,
   },
   gateSub: {
     fontSize: 14, textAlign: 'center', lineHeight: 22,
-    color: 'rgba(244,63,94,0.7)',
+    color: `${LC.accent.rose}B3`,
   },
 
   featureList: { gap: 14, marginBottom: 24 },
@@ -333,8 +334,8 @@ const styles = StyleSheet.create({
 
   infoBox: {
     flexDirection: 'row', gap: 10, alignItems: 'flex-start',
-    backgroundColor: 'rgba(244,63,94,0.06)',
-    borderRadius: 12, borderWidth: 1, borderColor: 'rgba(244,63,94,0.15)',
+    backgroundColor: `${LC.accent.rose}0F`,
+    borderRadius: 12, borderWidth: 1, borderColor: `${LC.accent.rose}26`,
     padding: 14, marginBottom: 24,
   },
   infoText: { flex: 1, fontSize: 12, lineHeight: 18, color: 'rgba(180,180,190,0.8)' },

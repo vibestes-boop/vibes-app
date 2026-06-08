@@ -5,6 +5,7 @@
 
 import { supabase } from '@/lib/supabase';
 import { useCoinsWallet } from '@/lib/useGifts';
+import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React,{ useEffect,useRef,useState } from 'react';
@@ -99,10 +100,33 @@ export default function CoinShopScreen() {
       await Purchases.purchasePackage(pkg);
       await new Promise(r => setTimeout(r, 1500));
       await refetch();
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       Alert.alert('🎉 Danke!', `${selectedPkg.coins} Borz Coins wurden gutgeschrieben.`);
-    } catch (err: any) {
-      if (err?.userCancelled) return;
-      Alert.alert('Fehler', 'Kauf konnte nicht abgeschlossen werden.');
+    } catch (err: unknown) {
+      // err.userCancelled: RevenueCat setzt diesen Flag wenn User abbricht — kein Alert
+      if ((err as Record<string, unknown>)?.userCancelled) return;
+
+      // RevenueCat strukturierte Fehlercodes auswerten
+      const rcCode = (err as Record<string, unknown>)?.code as number | undefined;
+      // PurchasesErrorCode: 2 = NetworkError, 7 = PaymentPending
+      if (rcCode === 2) {
+        Alert.alert(
+          'Keine Verbindung',
+          'Prüfe deine Internetverbindung und versuche es erneut.',
+          [{ text: 'Erneut versuchen', onPress: handleBuy }, { text: 'Abbrechen', style: 'cancel' }]
+        );
+      } else if (rcCode === 7) {
+        Alert.alert(
+          'Zahlung ausstehend',
+          'Deine Zahlung wird gerade verarbeitet. Die Coins werden in Kürze gutgeschrieben.'
+        );
+      } else {
+        Alert.alert(
+          'Kauf fehlgeschlagen',
+          'Ein unerwarteter Fehler ist aufgetreten. Versuche es in ein paar Minuten erneut oder kontaktiere den Support.',
+          [{ text: 'OK' }]
+        );
+      }
     } finally {
       setPurchasing(false);
     }
@@ -212,7 +236,7 @@ export default function CoinShopScreen() {
               const { Purchases } = require('react-native-purchases');
               await Purchases.restorePurchases(); await refetch();
               Alert.alert('✅', 'Käufe wiederhergestellt.');
-            } catch { Alert.alert('Fehler', 'Wiederherstellung fehlgeschlagen.'); }
+            } catch { Alert.alert('Wiederherstellung fehlgeschlagen', 'Bitte prüfe deine Internetverbindung und versuche es erneut. Wenn das Problem anhält, kontaktiere den Support.'); }
           }} style={s.restoreBtn}>
             <Text style={s.restoreText}>Käufe wiederherstellen</Text>
           </Pressable>

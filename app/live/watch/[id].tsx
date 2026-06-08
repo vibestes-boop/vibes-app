@@ -8,6 +8,7 @@ import { useWomenOnly } from '@/lib/useWomenOnly';
 import * as Sentry from '@sentry/react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams,useRouter } from 'expo-router';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { BarChart3,Heart,Scissors,Search,Send,Share2,ShoppingBag,Smile,Users,Video,Volume2,VolumeX,X } from 'lucide-react-native';
@@ -483,11 +484,11 @@ function WatchUI({ sessionId, onRequestPublisherUpgrade }: WatchUIProps) {
     return (
       <View style={{ flex: 1, backgroundColor: '#0A0A0F' }}>
         <LinearGradient
-          colors={['rgba(244,63,94,0.2)', 'rgba(168,85,247,0.1)', 'transparent']}
+          colors={[`${LC.accent.rose}33`, `${LC.accent.purple}1A`, 'transparent']}
           style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 }}
         >
           <Text style={{ fontSize: 56, marginBottom: 20 }}>🔒</Text>
-          <Text style={{ color: '#F43F5E', fontSize: 24, fontWeight: '900', textAlign: 'center', marginBottom: 8 }}>
+          <Text style={{ color: LC.accent.rose, fontSize: 24, fontWeight: '900', textAlign: 'center', marginBottom: 8 }}>
             Women-Only Live
           </Text>
           <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, textAlign: 'center', lineHeight: 22, marginBottom: 40 }}>
@@ -495,9 +496,9 @@ function WatchUI({ sessionId, onRequestPublisherUpgrade }: WatchUIProps) {
           </Text>
           <Pressable
             onPress={() => router.back()}
-            style={{ backgroundColor: 'rgba(244,63,94,0.15)', borderWidth: 1, borderColor: 'rgba(244,63,94,0.4)', borderRadius: 16, paddingHorizontal: 28, paddingVertical: 14 }}
+            style={{ backgroundColor: `${LC.accent.rose}26`, borderWidth: 1, borderColor: `${LC.accent.rose}66`, borderRadius: 16, paddingHorizontal: 28, paddingVertical: 14 }}
           >
-            <Text style={{ color: '#F43F5E', fontSize: 15, fontWeight: '700' }}>Zurück</Text>
+            <Text style={{ color: LC.accent.rose, fontSize: 15, fontWeight: '700' }}>Zurück</Text>
           </Pressable>
         </LinearGradient>
       </View>
@@ -2077,6 +2078,7 @@ function WatchUIContent({
       <GiftPicker
         visible={giftPickerVisible}
         onClose={() => setGiftPickerVisible(false)}
+        onGiftSent={() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)}
         recipientId={session?.host_id ?? ''}
         recipientName={session?.profiles?.username ?? ''}
         liveSessionId={sessionId}
@@ -2902,7 +2904,7 @@ const s = StyleSheet.create({
     paddingVertical: 1,
     borderRadius: 4,
   },
-  commentBadgeHost:   { backgroundColor: 'rgba(244,63,94,0.9)' },
+  commentBadgeHost:   { backgroundColor: `${LC.accent.rose}E6` },
   commentBadgeMod:    { backgroundColor: 'rgba(59,130,246,0.9)' },
   commentBadgeGifter: { backgroundColor: 'rgba(250,204,21,0.9)' },
   commentBadgeText: {
@@ -3167,11 +3169,11 @@ const s = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(244,63,94,0.2)',
+    backgroundColor: `${LC.accent.rose}33`,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: 'rgba(244,63,94,0.5)',
+    borderColor: `${LC.accent.rose}80`,
   },
   giftBtnEmoji: { fontSize: 20 },
 });

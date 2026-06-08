@@ -48,7 +48,7 @@ export function LandingPage({ featured, liveNow, trendingPosts }: LandingPagePro
           <span className="pr-1 text-sm font-semibold tracking-tight">Serlo</span>
         </Link>
 
-        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-sm text-slate-600 dark:text-muted-foreground">
+        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-sm text-muted-foreground">
           <Sparkles className="h-3.5 w-3.5 text-brand-gold" />
           {liveNow.length > 0
             ? `${liveNow.length} Stream${liveNow.length === 1 ? '' : 's'} jetzt live`
@@ -58,10 +58,10 @@ export function LandingPage({ featured, liveNow, trendingPosts }: LandingPagePro
         <h1 className="max-w-3xl text-4xl font-bold tracking-tight sm:text-5xl md:text-7xl">
           Live. Shop. Community.
           <br />
-          <span className="text-slate-600 dark:text-muted-foreground">Jetzt auch im Browser.</span>
+          <span className="text-muted-foreground">Jetzt auch im Browser.</span>
         </h1>
 
-        <p className="mt-6 max-w-xl text-base leading-7 text-slate-600 dark:text-muted-foreground sm:text-lg">
+        <p className="mt-6 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">
           Die Serlo Web-Version. Streame in 1080p60 vom PC, verkaufe professionell im Shop,
           folge deiner Community — ohne App-Download.
         </p>
@@ -175,7 +175,7 @@ export function LandingPage({ featured, liveNow, trendingPosts }: LandingPagePro
               <Compass className="h-5 w-5 text-brand-gold" />
               Creator entdecken
             </h2>
-            <span className="text-xs text-slate-600 dark:text-muted-foreground">
+            <span className="text-xs text-muted-foreground">
               Klick auf einen Account — kein Login nötig
             </span>
           </div>
@@ -208,7 +208,7 @@ export function LandingPage({ featured, liveNow, trendingPosts }: LandingPagePro
       )}
 
       <footer className="border-t border-border">
-        <div className="container mx-auto flex flex-col items-center justify-between gap-4 py-8 text-sm text-slate-600 dark:text-muted-foreground md:flex-row">
+        <div className="container mx-auto flex flex-col items-center justify-between gap-4 py-8 text-sm text-muted-foreground md:flex-row">
           <span>© {new Date().getFullYear()} Serlo</span>
           <nav className="flex gap-6">
             <Link href={'/terms' as Route} className="hover:text-foreground">AGB</Link>
@@ -314,12 +314,12 @@ function ValueCard({
         <div className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
           {icon}
         </div>
-        <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-slate-600 dark:text-muted-foreground">
+        <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
           {badge}
         </span>
       </div>
       <h3 className="text-xl font-semibold">{title}</h3>
-      <p className="mt-2 text-sm leading-relaxed text-slate-600 dark:text-muted-foreground">{description}</p>
+      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{description}</p>
     </article>
   );
 }

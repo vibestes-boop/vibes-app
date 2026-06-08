@@ -2,6 +2,7 @@ import { AIImageSheet } from '@/components/ai/AIImageSheet';
 import { VoiceSetupSheet } from '@/components/profile/VoiceSetupSheet';
 import { WomenOnlyVerificationSheet } from '@/components/women-only/WomenOnlyVerificationSheet';
 import { useAuthStore } from '@/lib/authStore';
+import { usePrompt } from '@/lib/promptCrossPlatform';
 import { supabase } from '@/lib/supabase';
 import { uploadAvatar } from '@/lib/uploadMedia';
 import { useNotificationPrefs } from '@/lib/useNotificationPrefs';
@@ -112,6 +113,7 @@ export default function SettingsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { profile, setProfile } = useAuthStore();
+  const { show: showPrompt } = usePrompt();
 
   const [username, setUsername] = useState(profile?.username ?? '');
   const [bio, setBio] = useState(profile?.bio ?? '');
@@ -215,8 +217,11 @@ export default function SettingsScreen() {
   };
 
   const handleChangePassword = () => {
-    Alert.prompt('Passwort ändern', 'Gib dein neues Passwort ein (mindestens 8 Zeichen):',
-      async (newPassword) => {
+    showPrompt({
+      title: 'Passwort ändern',
+      message: 'Gib dein neues Passwort ein (mindestens 8 Zeichen):',
+      secureText: true,
+      onConfirm: async (newPassword) => {
         if (!newPassword) return;
         if (newPassword.length < 8) { Alert.alert('Zu kurz', 'Das Passwort muss mindestens 8 Zeichen haben.'); return; }
         setChangingPw(true);
@@ -224,19 +229,24 @@ export default function SettingsScreen() {
         setChangingPw(false);
         if (error) Alert.alert('Fehler', error.message);
         else Alert.alert('Passwort geändert ✓', 'Dein Passwort wurde erfolgreich aktualisiert.');
-      }, 'secure-text');
+      },
+    });
   };
 
   const handleChangeEmail = () => {
-    Alert.prompt('E-Mail ändern', 'Gib deine neue E-Mail-Adresse ein:',
-      async (newEmail) => {
+    showPrompt({
+      title: 'E-Mail ändern',
+      message: 'Gib deine neue E-Mail-Adresse ein:',
+      keyboardType: 'email-address',
+      onConfirm: async (newEmail) => {
         if (!newEmail || !newEmail.includes('@')) { Alert.alert('Ungültig', 'Bitte gib eine gültige E-Mail-Adresse ein.'); return; }
         setChangingEmail(true);
         const { error } = await supabase.auth.updateUser({ email: newEmail.trim() });
         setChangingEmail(false);
         if (error) Alert.alert('Fehler', error.message);
         else Alert.alert('Link gesendet ✓', 'Bitte prüfe dein Postfach und bestätige die Änderung.');
-      }, 'plain-text', undefined, 'email-address');
+      },
+    });
   };
 
   const handleLogout = () => {
@@ -431,11 +441,11 @@ export default function SettingsScreen() {
         <SectionLabel label="Women-Only Zone 🌸" colors={colors} />
         <View style={[s.card, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
           <View style={[s.rowItem, { paddingVertical: 14 }]}>
-            <View style={[s.rowIcon, { backgroundColor: canAccessWomenOnly ? 'rgba(244,63,94,0.12)' : colors.bg.elevated }]}>
+            <View style={[s.rowIcon, { backgroundColor: canAccessWomenOnly ? `${colors.accent.rose}1F` : colors.bg.elevated }]}>
               <Text style={{ fontSize: 16 }}>🌸</Text>
             </View>
             <View style={s.rowBody}>
-              <Text style={[s.rowTitle, { color: canAccessWomenOnly ? '#F43F5E' : colors.text.primary }]}>
+              <Text style={[s.rowTitle, { color: canAccessWomenOnly ? colors.accent.rose : colors.text.primary }]}>
                 {canAccessWomenOnly ? 'Women-Only Zone aktiv ✓' : 'Women-Only Zone'}
               </Text>
               <Text style={[s.rowSub, { color: colors.text.muted }]}>
@@ -465,7 +475,7 @@ export default function SettingsScreen() {
               </Pressable>
             ) : (
               <Pressable
-                style={[s.saveBtn, { backgroundColor: '#F43F5E', paddingHorizontal: 12, paddingVertical: 8 }]}
+                style={[s.saveBtn, { backgroundColor: colors.accent.rose, paddingHorizontal: 12, paddingVertical: 8 }]}
                 onPress={() => setShowWomenOnly(true)}
                 accessibilityRole="button"
               >
@@ -622,18 +632,18 @@ export default function SettingsScreen() {
               accessibilityRole="button"
               accessibilityLabel={profile?.is_creator ? 'Creator Studio öffnen' : 'Creator werden'}
             >
-              <View style={[s.rowIcon, { backgroundColor: 'rgba(168,85,247,0.12)' }]}>
-                <Sparkles size={15} color="#A855F7" strokeWidth={2} />
+              <View style={[s.rowIcon, { backgroundColor: `${colors.accent.secondary}1F` }]}>
+                <Sparkles size={15} color={colors.accent.secondary} strokeWidth={2} />
               </View>
               <View style={s.rowBody}>
-                <Text style={[s.rowTitle, { color: '#A855F7' }]}>
+                <Text style={[s.rowTitle, { color: colors.accent.secondary }]}>
                   {profile?.is_creator ? 'Creator Studio' : 'Creator werden ✦'}
                 </Text>
                 <Text style={[s.rowSub, { color: colors.text.muted }]}>
                   {profile?.is_creator ? 'Einnahmen, Analytics, Top Posts' : 'Kostenlos · Sofortzugang · Monetarisierung'}
                 </Text>
               </View>
-              <ChevronRight size={16} stroke="#A855F7" strokeWidth={2} />
+              <ChevronRight size={16} stroke={colors.accent.secondary} strokeWidth={2} />
             </Pressable>
             <View style={[s.sep, { backgroundColor: colors.border.subtle, marginLeft: 56 }]} />
           </>
@@ -689,7 +699,7 @@ export default function SettingsScreen() {
           </Pressable>
           <View style={[s.sep, { backgroundColor: colors.border.subtle, marginLeft: 56 }]} />
 
-          <Pressable style={[s.rowItem, { paddingVertical: 14 }]} onPress={() => Linking.openURL('https://serlo.social/privacy').catch(() => {})} accessibilityRole="link">
+          <Pressable style={[s.rowItem, { paddingVertical: 14 }]} onPress={() => Linking.openURL('https://serlo.social/terms').catch(() => {})} accessibilityRole="link">
             <View style={[s.rowIcon, { backgroundColor: colors.bg.elevated }]}>
               <ExternalLink size={15} stroke={colors.icon.default} strokeWidth={2} />
             </View>
