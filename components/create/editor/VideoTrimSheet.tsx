@@ -4,17 +4,18 @@ import { getThumbnailAsync } from 'expo-video-thumbnails';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, TouchableWithoutFeedback, View } from 'react-native';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+// Hooks/Helper als STATISCHE Named-Imports — damit das Reanimated-Babel-Plugin
+// die Worklets korrekt transformiert (bewährtes Muster wie in camera.tsx & 20+
+// anderen Dateien). require()-only brach die Worklet-Verarbeitung → UI-Thread-
+// Crash "undefined is not a function" in withDelay/withTiming.onStart.
+import { useSharedValue, useAnimatedStyle, runOnJS } from 'react-native-reanimated';
 
-// Reanimated via require (Hermes HBC Kompatibilität)
+// require() NUR für den Animated.View-Namespace (Default-Export) — verhindert
+// den dokumentierten Hermes-HBC-Crash beim Default-Import.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any;
 const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
-// Reanimated-Hooks sind Top-Level-Named-Exports, NICHT auf .default (= _animNS).
-// Im echten Build (Metro bundlet src/index als ESM) liegen sie auf _animMod;
-// aus _animNS destrukturiert wären sie undefined → "undefined is not a function".
-const _animHooks = _animMod && _animMod.useSharedValue ? _animMod : _animNS;
-const { useSharedValue, useAnimatedStyle, runOnJS } = _animHooks ?? _animMod;
 
 import { SW } from './sharedStyles';
 

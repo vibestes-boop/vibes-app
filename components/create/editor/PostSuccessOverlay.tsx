@@ -1,23 +1,25 @@
 import { CheckCircle } from 'lucide-react-native';
 import React, { useEffect } from 'react';
 import { Easing, Modal, StyleSheet, Text, View } from 'react-native';
-
-// Reanimated via require (Hermes HBC Kompatibilität)
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const _animMod = require('react-native-reanimated') as any;
-const _animNS = _animMod?.default ?? _animMod;
-const Animated = { View: _animNS?.View ?? _animMod?.View };
-// Reanimated-Hooks/Helper sind Top-Level-Named-Exports, NICHT auf .default
-// (= _animNS). Im echten Build sonst undefined → "undefined is not a function".
-const _animHooks = _animMod && _animMod.useSharedValue ? _animMod : _animNS;
-const {
+// Hooks/Helper als STATISCHE Named-Imports — damit das Reanimated-Babel-Plugin
+// die Worklets korrekt transformiert (bewährtes Muster wie in camera.tsx & 20+
+// anderen Dateien). require()-only brach die Worklet-Verarbeitung → UI-Thread-
+// Crash "undefined is not a function" in withDelay/withSequence.onStart.
+import {
   useSharedValue,
   useAnimatedStyle,
   withDelay,
   withSequence,
   withSpring,
   withTiming,
-} = _animHooks ?? _animMod;
+} from 'react-native-reanimated';
+
+// require() NUR für den Animated.View-Namespace (Default-Export) — verhindert
+// den dokumentierten Hermes-HBC-Crash beim Default-Import.
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const _animMod = require('react-native-reanimated') as any;
+const _animNS = _animMod?.default ?? _animMod;
+const Animated = { View: _animNS?.View ?? _animMod?.View };
 
 const CONFETTI_COLORS = ['#FFFFFF','#A855F7','#F472B6','#FB923C','#34D399','#FBBF24','#60A5FA','#F87171'];
 
