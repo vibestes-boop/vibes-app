@@ -17,6 +17,7 @@ import { ProfileTabs, type ProfileTab } from '@/components/profile/profile-tabs'
 import { FollowButton } from '@/components/profile/follow-button';
 import { CreatorTipButton } from '@/components/profile/creator-tip-button';
 import { LiveRingAvatar } from '@/components/profile/live-ring-avatar';
+import { ProfileShareButton } from '@/components/profile/profile-share-button';
 import { MuteHostButton } from '@/components/profile/mute-host-button';
 import { ProfileHighlightsRow } from '@/components/profile/profile-highlights-row';
 import { getProfileHighlights } from '@/lib/data/story-highlights';
@@ -297,6 +298,10 @@ export default async function ProfilePage({
                 username={profile.username}
                 targetUserId={profile.id}
               />
+              {/* Self-Aktion-Parität zur Mobile-App: Teilen neben Bearbeiten */}
+              {isSelf && (
+                <ProfileShareButton username={profile.username} displayName={displayName} />
+              )}
               {/* v1.w.UI.54: Block-Option für fremde eingeloggte User */}
               {viewer && !isSelf && (
                 <ProfileBlockButton
