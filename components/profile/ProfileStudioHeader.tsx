@@ -23,10 +23,7 @@ export function ProfileStudioHeader({
   const s = getProfileStyles(colors);
   return (
     <View style={[s.header, { paddingTop }]}>
-      <View>
-        <Text style={s.studioLabel}>Studio</Text>
-        <Text style={s.handle}>@{username}</Text>
-      </View>
+      <Text style={s.handle}>@{username}</Text>
       <View style={s.headerRight}>
         <HeaderButton icon={Bell} onPress={onNotifications} badge={unreadNotifs} />
         <HeaderButton icon={Settings} onPress={onSettings} />

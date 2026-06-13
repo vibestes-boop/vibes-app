@@ -76,10 +76,10 @@ function buildStyles(c: ThemeColors) {
     profileTop: {
       flexDirection: 'row',
       alignItems: 'center',
-      paddingHorizontal: 20,
+      paddingHorizontal: 16,   // einheitliches 16er-Raster (vorher 20 → bruch mit Buttons/Tabs)
       paddingTop: 12,
-      paddingBottom: 16,
-      gap: 20,
+      paddingBottom: 14,
+      gap: 18,
       backgroundColor: c.bg.secondary,   // weiße Karte
     },
     avatarWrap: { position: 'relative' },
@@ -95,7 +95,7 @@ function buildStyles(c: ThemeColors) {
       height: 82,
       borderRadius: 41,
       overflow: 'hidden',
-      backgroundColor: c.bg.primary,  // Gap zwischen Ring und Avatar — passt zum Seitenhintergrund
+      backgroundColor: c.bg.secondary,  // Gap passt zur Karten-Fläche (vorher bg.primary → farbiger Donut)
     },
     avatarImg: { width: '100%', height: '100%' },
     avatarFallback: { flex: 1, alignItems: 'center', justifyContent: 'center' },
@@ -147,26 +147,36 @@ function buildStyles(c: ThemeColors) {
 
     // ── Bio Section ───────────────────────────────────────────
     bioSection: {
-      paddingHorizontal: 20,
-      paddingBottom: 14,
+      paddingHorizontal: 16,             // einheitliches Raster
+      paddingBottom: 12,
       paddingTop: 2,
-      gap: 4,
-      backgroundColor: c.bg.secondary,   // fortsetzung der weißen Karte
-      borderBottomWidth: StyleSheet.hairlineWidth,
-      borderBottomColor: c.border.subtle,
-    },
+      gap: 5,
+      backgroundColor: c.bg.secondary,   // fortsetzung der Karte — KEIN borderBottom mehr
+    },                                   // (durchgehende Fläche statt gestapelter Bänder)
     nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
-    displayName: { color: c.text.primary, fontSize: 16, fontWeight: '800', letterSpacing: -0.3 },
+    displayName: { color: c.text.primary, fontSize: 17, fontWeight: '800', letterSpacing: -0.3 },
     verifiedBadge: {
       width: 20,
       height: 20,
       borderRadius: 10,
-      backgroundColor: 'rgba(255,255,255,0.10)',
-      borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.18)',
+      backgroundColor: c.bg.elevated,    // Theme-Token statt hartem Weiß (Light-Mode!)
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.border.default,
       alignItems: 'center',
       justifyContent: 'center',
     },
+
+    // ── Konsolidierte Meta-Zeile (Teip · WOZ · Battle · Resonanz) ──
+    // Ersetzt die früheren 4 verstreuten Chips/Emoji um den Namen herum.
+    metaRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      flexWrap: 'wrap',
+      gap: 12,
+      marginTop: 2,
+    },
+    metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+    metaText: { color: c.text.muted, fontSize: 12, fontWeight: '500' },
     bio: {
       color: c.text.secondary,
       fontSize: 13,
@@ -412,7 +422,7 @@ function buildStyles(c: ThemeColors) {
 export const profileStyles = buildStyles({
   bg: { primary: '#050508', secondary: '#0D0D0D', elevated: '#1A1A1A', input: '#111111', subtle: 'rgba(255,255,255,0.04)' },
   text: { primary: '#FFFFFF', secondary: '#9CA3AF', muted: '#4B5563', inverse: '#FFFFFF' },
-  accent: { primary: '#FFFFFF', secondary: '#A855F7', danger: '#EF4444', success: '#22C55E', warning: '#F59E0B', gold: '#FBBF24' },
+  accent: { primary: '#FFFFFF', secondary: '#A855F7', danger: '#EF4444', success: '#22C55E', warning: '#F59E0B', gold: '#FBBF24', rose: '#F43F5E' },
   border: { default: 'rgba(255,255,255,0.08)', subtle: 'rgba(255,255,255,0.04)', strong: 'rgba(255,255,255,0.16)' },
   icon: { default: '#9CA3AF', muted: '#4B5563', active: '#FFFFFF', inactive: '#6B7280' },
   tabBar: { bg: '#050508', border: 'rgba(255,255,255,0.06)', active: '#FFFFFF', inactive: '#6B7280' },

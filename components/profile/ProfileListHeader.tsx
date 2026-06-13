@@ -3,7 +3,7 @@ import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { BarChart,BarChart2,Bookmark,CheckCircle2,ChevronRight,Edit3,FileText,Grid3X3,Link,MoreHorizontal,Package,Repeat2,Share2,Shield,ShoppingBag,Sparkles,Swords } from 'lucide-react-native';
+import { BarChart,BarChart2,Bookmark,CheckCircle2,ChevronRight,Edit3,FileText,Flower2,Grid3X3,Link,MoreHorizontal,Mountain,Package,Repeat2,Share2,Shield,ShoppingBag,Sparkles,Swords,Zap } from 'lucide-react-native';
 import { useState } from 'react';
 import { Linking,Modal,Pressable,Text,View } from 'react-native';
 
@@ -64,18 +64,18 @@ function ProfileActionRow({
     <>
       {/* ── 3 Primär-Buttons + Tools-Button ─────────────────────────── */}
       <View style={msx.row}>
-        {/* Edit */}
+        {/* Edit — gefüllter Primär-Button (Theme-invertiert: dunkel→hell/hell→dunkel) */}
         <Pressable
-          style={({ pressed }) => [msx.primaryBtn, pressed && { opacity: 0.75 }]}
+          style={({ pressed }) => [msx.primaryBtn, { backgroundColor: colors.text.primary, borderColor: 'transparent' }, pressed && { opacity: 0.8 }]}
           onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onEditProfile(); }}
         >
-          <Edit3 size={14} color={colors.text.primary} strokeWidth={2.5} />
-          <Text style={[msx.primaryText, { color: colors.text.primary }]}>Bearbeiten</Text>
+          <Edit3 size={14} color={colors.bg.primary} strokeWidth={2.5} />
+          <Text style={[msx.primaryText, { color: colors.bg.primary }]}>Profil bearbeiten</Text>
         </Pressable>
 
-        {/* Teilen */}
+        {/* Teilen — Outline */}
         <Pressable
-          style={({ pressed }) => [msx.secondaryBtn, pressed && { opacity: 0.75 }]}
+          style={({ pressed }) => [msx.secondaryBtn, { backgroundColor: 'transparent', borderColor: colors.border.strong }, pressed && { opacity: 0.75 }]}
           onPress={() => {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
             setShareOpen(true);
@@ -97,14 +97,14 @@ function ProfileActionRow({
           />
         )}
 
-        {/* Coins */}
+        {/* Coins — gleich große Icon-Button wie Tools (einheitliche Reihe) */}
         {onBuyCoins && (
           <Pressable
-            style={({ pressed }) => [msx.iconBtn, pressed && { opacity: 0.6 }]}
+            style={({ pressed }) => [msx.iconBtn, { backgroundColor: colors.bg.elevated, borderWidth: 1, borderColor: colors.border.subtle, borderRadius: 14 }, pressed && { opacity: 0.6 }]}
             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onBuyCoins(); }}
             accessibilityLabel="Coins kaufen"
           >
-            <Image source={require('@/assets/borz-coin.png')} style={{ width: 28, height: 28 }} contentFit="contain" />
+            <Image source={require('@/assets/borz-coin.png')} style={{ width: 22, height: 22 }} contentFit="contain" />
           </Pressable>
         )}
 
@@ -392,93 +392,20 @@ export function ProfileListHeader({
         </View>
       </View>
 
-      {/* ── Battle-Bilanz (v1.16.0) ── */}
-      {showBattleStats && battleStats && (
-        <View style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 8,
-          paddingHorizontal: 20,
-          marginTop: -4,
-          marginBottom: 10,
-        }}>
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: 6,
-            backgroundColor: colors.bg.elevated,
-            borderWidth: 1,
-            borderColor: colors.border.default,
-            paddingHorizontal: 10,
-            paddingVertical: 5,
-            borderRadius: 12,
-          }}>
-            <Text style={{ fontSize: 12 }}>⚔️</Text>
-            <Text style={{ color: colors.text.primary, fontSize: 12, fontWeight: '700' }}>
-              {battleStats.wins}
-              <Text style={{ color: colors.text.muted, fontWeight: '500' }}>W</Text>
-              {'  ·  '}
-              {battleStats.losses}
-              <Text style={{ color: colors.text.muted, fontWeight: '500' }}>L</Text>
-              {battleStats.draws > 0 ? (
-                <>
-                  {'  ·  '}
-                  {battleStats.draws}
-                  <Text style={{ color: colors.text.muted, fontWeight: '500' }}>D</Text>
-                </>
-              ) : null}
-            </Text>
-            {battleStats.winRate !== null && battleStats.totalBattles >= 3 && (
-              <Text style={{ color: colors.text.muted, fontSize: 11, fontWeight: '600', marginLeft: 2 }}>
-                {battleStats.winRate}%
-              </Text>
-            )}
-          </View>
-        </View>
-      )}
-
       {/* ── Name + Bio ── */}
       <View style={s.bioSection}>
-        {/* Zeile 1: Username + Badges + Resonanz-Chip rechts */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1, flexWrap: 'wrap' }}>
-            <Text style={s.displayName} numberOfLines={1}>{profile?.username ?? '…'}</Text>
-            {profile?.is_verified && (
-              <View style={s.verifiedBadge}>
-                <CheckCircle2 size={14} color="#FBBF24" fill="rgba(251,191,36,0.15)" strokeWidth={2.5} />
-              </View>
-            )}
-            {!profile?.is_verified && profile?.guild_id && (
-              <View style={s.verifiedBadge}>
-                <Shield size={10} color="#FFFFFF" strokeWidth={2.5} />
-              </View>
-            )}
-            {/* Women-Only Zone Badge */}
-            {profile?.women_only_verified && (
-              <Text style={{ fontSize: 14 }}>🌸</Text>
-            )}
-            {/* Clan/Teip auf gleicher Zeile wenn kurz genug */}
-            {profile?.teip && (
-              <View style={{
-                flexDirection: 'row', alignItems: 'center', gap: 4,
-                backgroundColor: colors.bg.elevated, borderRadius: 10,
-                paddingHorizontal: 8, paddingVertical: 3,
-                borderWidth: 1, borderColor: colors.border.default,
-              }}>
-                <Text style={{ fontSize: 11 }}>🏔️</Text>
-                <Text style={{ color: colors.text.primary, fontSize: 11, fontWeight: '600' }}>
-                  {profile.teip}
-                </Text>
-              </View>
-            )}
-          </View>
-          {/* Resonanz-Chip rechts auf selber Zeile */}
-          <View style={[s.resonanzChip, { marginTop: 0, marginBottom: 0, backgroundColor: colors.bg.elevated, borderColor: colors.border.default }]}>
-            <Text style={s.resonanzDot}>⚡</Text>
-            <Text style={[s.resonanzText, { color: colors.text.primary }]}>
-              {loadingPosts ? '…' : `${avgDwell}%`}
-            </Text>
-          </View>
+        {/* Name + EIN Badge (Verified › Guild) — keine Chip-Wolke mehr */}
+        <View style={s.nameRow}>
+          <Text style={s.displayName} numberOfLines={1}>{profile?.username ?? '…'}</Text>
+          {profile?.is_verified ? (
+            <View style={s.verifiedBadge}>
+              <CheckCircle2 size={13} color={colors.accent.secondary} strokeWidth={2.5} />
+            </View>
+          ) : profile?.guild_id ? (
+            <View style={s.verifiedBadge}>
+              <Shield size={11} color={colors.text.secondary} strokeWidth={2.5} />
+            </View>
+          ) : null}
         </View>
 
         {profile?.bio ? (
@@ -494,12 +421,41 @@ export function ProfileListHeader({
             style={s.websiteRow}
             hitSlop={8}
           >
-            <Link size={11} color="#FFFFFF" strokeWidth={2} />
+            <Link size={12} color={colors.accent.primary} strokeWidth={2} />
             <Text style={s.websiteText} numberOfLines={1}>
               {profile.website!.replace(/^https?:\/\//, '')}
             </Text>
           </Pressable>
         ) : null}
+
+        {/* Konsolidierte Meta-Zeile: ein Icon-System, dezent (Resonanz · Battle · Teip · WOZ) */}
+        <View style={s.metaRow}>
+          <View style={s.metaItem}>
+            <Zap size={12} color={colors.text.muted} strokeWidth={2} />
+            <Text style={s.metaText}>{loadingPosts ? '…' : `${avgDwell}%`} Resonanz</Text>
+          </View>
+          {showBattleStats && battleStats && (
+            <View style={s.metaItem}>
+              <Swords size={12} color={colors.text.muted} strokeWidth={2} />
+              <Text style={s.metaText}>
+                {battleStats.wins}–{battleStats.losses}
+                {battleStats.winRate !== null && battleStats.totalBattles >= 3 ? ` · ${battleStats.winRate}%` : ''}
+              </Text>
+            </View>
+          )}
+          {profile?.teip ? (
+            <View style={s.metaItem}>
+              <Mountain size={12} color={colors.text.muted} strokeWidth={2} />
+              <Text style={s.metaText}>{profile.teip}</Text>
+            </View>
+          ) : null}
+          {profile?.women_only_verified ? (
+            <View style={s.metaItem}>
+              <Flower2 size={12} color="#F472B6" strokeWidth={2} />
+              <Text style={s.metaText}>Women-Only</Text>
+            </View>
+          ) : null}
+        </View>
       </View>
 
 

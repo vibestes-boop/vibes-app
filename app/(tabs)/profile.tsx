@@ -414,13 +414,13 @@ export default function ProfileScreen() {
             <ProfileGridSkeleton count={9} />
           ) : activeTab === 'vibes' ? (
             <View style={s.empty}>
-              <Sparkles size={40} color="rgba(255,255,255,0.25)" />
+              <Sparkles size={40} color={colors.icon.muted} />
               <Text style={s.emptyTitle}>Noch keine Vibes</Text>
               <Text style={s.emptySub}>Erstelle deinen ersten Post über das + unten.</Text>
             </View>
           ) : (
             <View style={s.empty}>
-              <Bookmark size={40} color="rgba(255,255,255,0.25)" />
+              <Bookmark size={40} color={colors.icon.muted} />
               <Text style={s.emptyTitle}>Noch nichts gespeichert</Text>
               <Text style={s.emptySub}>Tippe auf das Lesezeichen-Symbol bei einem Post.</Text>
             </View>
