@@ -415,7 +415,7 @@ export default function ProfileScreen() {
           ) : activeTab === 'vibes' ? (
             <View style={s.empty}>
               <Sparkles size={40} color={colors.icon.muted} />
-              <Text style={s.emptyTitle}>Noch keine Vibes</Text>
+              <Text style={s.emptyTitle}>Noch keine Posts</Text>
               <Text style={s.emptySub}>Erstelle deinen ersten Post über das + unten.</Text>
             </View>
           ) : (

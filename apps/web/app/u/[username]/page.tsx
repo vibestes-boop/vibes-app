@@ -276,7 +276,9 @@ export default async function ProfilePage({
               )}
             </div>
 
-            <div className="text-sm text-muted-foreground">@{profile.username}</div>
+            {profile.display_name && (
+              <div className="text-sm text-muted-foreground">@{profile.username}</div>
+            )}
 
             <div className="flex items-center gap-6 pt-1">
               <StatPill label={t('profile.statPosts')}     value={profile.post_count}      locale={locale} />
@@ -343,7 +345,7 @@ export default async function ProfilePage({
             {profile.teip && (
               <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
                 <Mountain className="h-3.5 w-3.5 shrink-0" />
-                🏔️ {profile.teip}
+                {profile.teip}
               </span>
             )}
           </div>

@@ -394,12 +394,13 @@ export function ProfileListHeader({
 
       {/* ── Name + Bio ── */}
       <View style={s.bioSection}>
-        {/* Name + EIN Badge (Verified › Guild) — keine Chip-Wolke mehr */}
+        {/* Name-Hierarchie wie Web: Anzeigename groß + @username dezent. Ein Badge,
+            neutrale Farbe (text.primary) — konsistent mit Web (fill-foreground). */}
         <View style={s.nameRow}>
-          <Text style={s.displayName} numberOfLines={1}>{profile?.username ?? '…'}</Text>
+          <Text style={s.displayName} numberOfLines={1}>{profile?.display_name ?? `@${profile?.username ?? '…'}`}</Text>
           {profile?.is_verified ? (
             <View style={s.verifiedBadge}>
-              <CheckCircle2 size={13} color={colors.accent.secondary} strokeWidth={2.5} />
+              <CheckCircle2 size={13} color={colors.text.primary} strokeWidth={2.5} />
             </View>
           ) : profile?.guild_id ? (
             <View style={s.verifiedBadge}>
@@ -407,6 +408,9 @@ export function ProfileListHeader({
             </View>
           ) : null}
         </View>
+        {profile?.display_name ? (
+          <Text style={{ color: colors.text.muted, fontSize: 13 }}>@{profile.username}</Text>
+        ) : null}
 
         {profile?.bio ? (
           <Text style={s.bio} numberOfLines={3}>{profile.bio}</Text>
