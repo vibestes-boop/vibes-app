@@ -1,11 +1,15 @@
 import { CheckCircle } from 'lucide-react-native';
 import React, { useEffect } from 'react';
-import { Easing, Modal, StyleSheet, Text, View } from 'react-native';
+import { Modal, StyleSheet, Text, View } from 'react-native';
 // Hooks/Helper als STATISCHE Named-Imports — damit das Reanimated-Babel-Plugin
 // die Worklets korrekt transformiert (bewährtes Muster wie in camera.tsx & 20+
 // anderen Dateien). require()-only brach die Worklet-Verarbeitung → UI-Thread-
 // Crash "undefined is not a function" in withDelay/withSequence.onStart.
+// WICHTIG: Easing AUS REANIMATED (worklet-kompatibel), NICHT aus 'react-native'
+// — RN's Easing läuft auf dem JS-Thread und ist im UI-Worklet undefined →
+// crasht in withTiming(step/onStart). Das war die eigentliche Crash-Ursache.
 import {
+  Easing,
   useSharedValue,
   useAnimatedStyle,
   withDelay,
