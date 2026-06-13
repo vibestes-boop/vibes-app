@@ -483,8 +483,8 @@ export function ProfileListHeader({
       {/* ── Tab-Bar ── */}
       <View style={s.tabRow}>
         {((showBattleStats
-            ? ['vibes', 'saved', 'analytics', 'drafts', 'reposts', 'battles']
-            : ['vibes', 'saved', 'analytics', 'drafts', 'reposts']) as ProfileTab[]
+            ? ['vibes', 'saved', 'shop', 'analytics', 'drafts', 'reposts', 'battles']
+            : ['vibes', 'saved', 'shop', 'analytics', 'drafts', 'reposts']) as ProfileTab[]
         ).map((tab) => {
           const active = activeTab === tab;
           return (
@@ -506,6 +506,8 @@ export function ProfileListHeader({
                 <FileText size={24} color={active ? colors.accent.primary : colors.icon.inactive} strokeWidth={2} />
               ) : tab === 'reposts' ? (
                 <Repeat2 size={24} color={active ? colors.accent.primary : colors.icon.inactive} strokeWidth={2} />
+              ) : tab === 'shop' ? (
+                <ShoppingBag size={24} color={active ? colors.accent.primary : colors.icon.inactive} strokeWidth={2} />
               ) : (
                 <Swords size={24} color={active ? colors.accent.primary : colors.icon.inactive} strokeWidth={2} />
               )}

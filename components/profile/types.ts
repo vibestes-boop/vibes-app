@@ -1,4 +1,4 @@
-export type ProfileTab = 'vibes' | 'saved' | 'analytics' | 'drafts' | 'reposts' | 'battles';
+export type ProfileTab = 'vibes' | 'saved' | 'shop' | 'analytics' | 'drafts' | 'reposts' | 'battles';
 
 
 export type ProfilePostGridItem = {

@@ -378,6 +378,20 @@ function buildStyles(c: ThemeColors) {
     },
 
     cellImg: { width: '100%', height: '100%' },
+
+    // ── Shop-Tab Produkt-Overlays (gespiegelt aus UserProfileContent) ──
+    shopSaleBadge: {
+      position: 'absolute', top: 6, left: 6,
+      backgroundColor: '#EF4444', borderRadius: 5,
+      paddingHorizontal: 5, paddingVertical: 2,
+    },
+    shopSaleBadgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
+    shopPricePill: {
+      position: 'absolute', left: 6, right: 6, bottom: 6,
+      backgroundColor: 'rgba(0,0,0,0.65)', borderRadius: 8,
+      paddingHorizontal: 7, paddingVertical: 4,
+    },
+    shopPriceText: { color: '#fff', fontSize: 11, fontWeight: '800', letterSpacing: 0.1 },
     cellText: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 10, backgroundColor: c.bg.secondary },
     cellCaption: { color: c.text.muted, fontSize: 10, textAlign: 'center', lineHeight: 15 },
 

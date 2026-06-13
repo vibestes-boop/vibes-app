@@ -35,10 +35,13 @@ import {
 Bookmark,
 FileText,
 PlusCircle,Sparkles,
+ShoppingBag,
 Trash2
 } from 'lucide-react-native';
 import { useCallback,useEffect,useMemo,useRef,useState } from 'react';
-import { ActivityIndicator,Alert,FlatList,Pressable,RefreshControl,Text,View } from 'react-native';
+import { ActivityIndicator,Alert,FlatList,Pressable,RefreshControl,StyleSheet,Text,View } from 'react-native';
+import { useShopProducts,type Product } from '@/lib/useShop';
+import { ProductCoverImage } from '@/components/shop/ProductCoverImage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // ─ fmtNum: re-exported from useAnalytics ─ (local duplicate removed to avoid conflict)
@@ -62,6 +65,8 @@ export default function ProfileScreen() {
 
   const { data: posts = [], isLoading: loadingPosts, refetch: refetchPosts } = useUserPosts(profile?.id ?? null);
   const { data: savedPosts = [], isLoading: loadingSaved } = useBookmarkedPosts();
+  // Shop-Tab: eigene aktive Produkte (gleiche Sicht wie auf dem öffentlichen Profil)
+  const { data: shopProducts = [] } = useShopProducts({ sellerId: profile?.id, limit: 60 });
 
   const handleRefresh = useCallback(async () => {
     setIsRefreshing(true);
@@ -204,7 +209,8 @@ export default function ProfileScreen() {
   const rawListData: ProfilePostGridItem[] = activeTab === 'vibes' ? (posts as ProfilePostGridItem[])
     : activeTab === 'saved' ? (savedPosts as unknown as ProfilePostGridItem[])
       : activeTab === 'reposts' ? repostedPosts
-        : []; // analytics + drafts → separater Renderer
+        : activeTab === 'shop' ? (shopProducts as unknown as ProfilePostGridItem[])
+          : []; // analytics + drafts → separater Renderer
 
   // Leere Placeholder-Items auffüllen damit die letzte Reihe immer vollständig ist.
   // Verhindert dass 2 Items die letzte Spalte aufteilen (Instagram-Verhalten).
@@ -233,6 +239,38 @@ export default function ProfileScreen() {
     // Placeholder: leere transparente Zelle für unvollständige letzte Reihe
     if ((item as any).__isPlaceholder) {
       return <View style={s.gridCell} />;
+    }
+
+    // Shop-Tab: Produkt-Kachel statt Post (gespiegelt aus UserProfileContent)
+    if (activeTabRef.current === 'shop') {
+      const product = item as unknown as Product;
+      const salePrice = product.sale_price_coins != null && product.sale_price_coins < product.price_coins
+        ? product.sale_price_coins : null;
+      const shownPrice = salePrice ?? product.price_coins;
+      return (
+        <View style={s.gridCell}>
+          <Pressable
+            style={s.cell}
+            onPress={() => router.push({ pathname: '/shop/[id]', params: { id: product.id } })}
+          >
+            <ProductCoverImage
+              uri={product.cover_url}
+              category={product.category}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+              iconSize={28}
+            />
+            {salePrice != null && (
+              <View style={s.shopSaleBadge}>
+                <Text style={s.shopSaleBadgeText}>-{Math.round((1 - salePrice / product.price_coins) * 100)}%</Text>
+              </View>
+            )}
+            <View style={s.shopPricePill}>
+              <Text style={s.shopPriceText} numberOfLines={1}>🪙 {shownPrice.toLocaleString('de-DE')}</Text>
+            </View>
+          </Pressable>
+        </View>
+      );
     }
 
     return (
@@ -417,6 +455,12 @@ export default function ProfileScreen() {
               <Sparkles size={40} color={colors.icon.muted} />
               <Text style={s.emptyTitle}>Noch keine Posts</Text>
               <Text style={s.emptySub}>Erstelle deinen ersten Post über das + unten.</Text>
+            </View>
+          ) : activeTab === 'shop' ? (
+            <View style={s.empty}>
+              <ShoppingBag size={40} color={colors.icon.muted} />
+              <Text style={s.emptyTitle}>Noch keine Produkte</Text>
+              <Text style={s.emptySub}>Lege dein erstes Produkt über „Mein Shop" in den Tools an.</Text>
             </View>
           ) : (
             <View style={s.empty}>
