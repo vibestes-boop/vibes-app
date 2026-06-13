@@ -6,7 +6,6 @@ import {
   isVideoMime,
   isWebmMime,
   normalizeMediaMime,
-  VIDEO_FAST_START_ERROR,
 } from '../shared/media/videoFastStart';
 
 type UploadResult = {
@@ -72,9 +71,16 @@ async function assertUploadMediaHealthy(
     throw new Error('Bitte lade ein MP4- oder MOV-Video hoch. WebM startet auf iOS nicht zuverlaessig im Feed.');
   }
 
+  // Fast-Start-Inspektion bleibt (Telemetrie), aber slow-start wird NICHT mehr
+  // hart geblockt: iOS-Kamera-Aufnahmen sind systembedingt slow-start
+  // (AVFoundation schreibt das moov-Atom ans Datei-Ende), und es gibt keine
+  // On-Device-Remux-Lib → der Block machte Video-Posten auf iOS unmöglich.
+  // Das Video spielt im Feed trotzdem (AVPlayer holt moov per HTTP-Range);
+  // nur der Instant-Feed-Start ist nicht optimiert. Echte Fast-Start-
+  // Optimierung gehört server-seitig beim Ingest, nicht als Client-Block.
   const inspection = inspectMp4FastStart(fileBuffer, mimeType);
   if (inspection.status === 'slow-start') {
-    throw new Error(VIDEO_FAST_START_ERROR);
+    __DEV__ && console.warn('[media-upload] slow-start Video erlaubt (kein Client-Remux möglich):', inspection.reason);
   }
 
   if (signal?.aborted) throw new Error('Upload abgebrochen.');
