@@ -24,18 +24,19 @@ Bookmark,
 Eye,
 Heart,
 MessageCircle,
-Pencil,
+MoreHorizontal,
 Share2,
-Trash2,
 Volume2,
 VolumeX
 } from 'lucide-react-native';
 import { useCallback,useEffect,useRef,useState } from 'react';
 import {
+ActionSheetIOS,
 ActivityIndicator,
 Alert,
 Dimensions,
 FlatList,
+Platform,
 Pressable,
 Animated as RNAnimated,
 StyleSheet,
@@ -321,14 +322,36 @@ function PostCard({
         />
       ))}
 
-      {/* Owner-Aktionen oben rechts */}
+      {/* Owner-Aktionen oben rechts — 3-Punkte-Menü (konsistent mit dem Feed) */}
       {isOwner && (
         <View style={[s.ownerRow, { top: insets.top + 8 }]}>
-          <Pressable onPress={() => onEdit(item.id)} style={s.ownerBtn} hitSlop={8}>
-            <Pencil size={17} stroke="#FFFFFF" strokeWidth={2} />
-          </Pressable>
-          <Pressable onPress={() => onDelete(item.id)} style={[s.ownerBtn, s.ownerBtnDanger]} hitSlop={8}>
-            <Trash2 size={17} stroke="#F87171" strokeWidth={2} />
+          <Pressable
+            onPress={() => {
+              const edit = () => onEdit(item.id);
+              const del = () => onDelete(item.id);
+              if (Platform.OS === 'ios') {
+                ActionSheetIOS.showActionSheetWithOptions(
+                  {
+                    options: ['Abbrechen', 'Bearbeiten', 'Löschen'],
+                    destructiveButtonIndex: 2,
+                    cancelButtonIndex: 0,
+                    userInterfaceStyle: 'dark',
+                  },
+                  (i) => { if (i === 1) edit(); else if (i === 2) del(); },
+                );
+              } else {
+                Alert.alert('Post', undefined, [
+                  { text: 'Bearbeiten', onPress: edit },
+                  { text: 'Löschen', style: 'destructive', onPress: del },
+                  { text: 'Abbrechen', style: 'cancel' },
+                ]);
+              }
+            }}
+            style={s.ownerBtn}
+            hitSlop={8}
+            accessibilityLabel="Post-Optionen"
+          >
+            <MoreHorizontal size={20} stroke="#FFFFFF" strokeWidth={2} />
           </Pressable>
         </View>
       )}
@@ -503,8 +526,10 @@ export default function UserPostsScreen() {
       // Modus: alle Posts eines Users
       supabase
         .from('posts')
-        .select('id, caption, media_url, media_type, tags, created_at, author_id, view_count, profiles!author_id(username, avatar_url)')
+        .select('id, caption, media_url, media_type, tags, created_at, author_id, view_count, is_pinned, profiles!author_id(username, avatar_url)')
         .eq('author_id', userId)
+        // Gleiche Reihenfolge wie useUserPosts (Grid): gepinnt zuerst → Index passt
+        .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false })
         .then(({ data, error }) => {
           if (error) { setLoadError(error.message); setLoading(false); return; }

@@ -362,6 +362,9 @@ export function useUserPosts(userId: string | null) {
           comment_count:comments(count)
         `)
         .eq('author_id', userId)
+        // Gepinnter Post zuerst (is_pinned=true vor false), dann nach Datum —
+        // Grid + /user-posts-Viewer nutzen dieselbe Reihenfolge → Index stimmt.
+        .order('is_pinned', { ascending: false })
         .order('created_at', { ascending: false });
       if (error) throw error;
       return ((data ?? []) as any[]).map((p) => ({
