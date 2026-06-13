@@ -67,29 +67,49 @@ export function useStoryHighlights(userId: string | null) {
       const highlights = (rows ?? []) as any[];
       if (highlights.length === 0) return [];
 
-      // Schritt 2: Für Highlights ohne direkte media_url → aus stories nachladen
-      const missingMediaIds = highlights
-        .filter((h) => !h.media_url && h.story_id)
+      // Schritt 2: media_url / Cover-Thumbnail aus Quell-Tabellen nachladen.
+      // Wichtig: Video-Highlights ohne thumbnail_url würden sonst die rohe
+      // .mp4-URL als Cover bekommen → expo-image kann das nicht rendern →
+      // leere Blase. Wir holen das echte Poster-Thumbnail aus stories/posts.
+      type SrcMedia = { media_url: string; media_type: string; thumbnail_url: string };
+
+      const missingStoryIds = highlights
+        .filter((h) => (!h.media_url || !h.thumbnail_url) && h.story_id)
         .map((h) => h.story_id) as string[];
+      const missingPostIds = highlights
+        .filter((h) => (!h.media_url || !h.thumbnail_url) && h.post_id)
+        .map((h) => h.post_id) as string[];
 
-      let fallbackMap: Record<string, { media_url: string; media_type: string }> = {};
+      const storyMap: Record<string, SrcMedia> = {};
+      const postMap: Record<string, SrcMedia> = {};
 
-      if (missingMediaIds.length > 0) {
+      if (missingStoryIds.length > 0) {
         const { data: storiesData } = await supabase
           .from('stories')
-          .select('id, media_url, media_type')
-          .in('id', missingMediaIds);
-
+          .select('id, media_url, media_type, thumbnail_url')
+          .in('id', missingStoryIds);
         for (const s of storiesData ?? []) {
-          if (s.id) fallbackMap[s.id] = { media_url: s.media_url ?? '', media_type: s.media_type ?? 'image' };
+          if (s.id) storyMap[s.id] = { media_url: s.media_url ?? '', media_type: s.media_type ?? 'image', thumbnail_url: s.thumbnail_url ?? '' };
+        }
+      }
+
+      if (missingPostIds.length > 0) {
+        const { data: postsData } = await supabase
+          .from('posts')
+          .select('id, media_url, media_type, thumbnail_url')
+          .in('id', missingPostIds);
+        for (const p of postsData ?? []) {
+          if (p.id) postMap[p.id] = { media_url: p.media_url ?? '', media_type: p.media_type ?? 'image', thumbnail_url: p.thumbnail_url ?? '' };
         }
       }
 
       return highlights.map((h) => {
-        const fallback = h.story_id ? fallbackMap[h.story_id] : null;
+        const fallback = (h.story_id ? storyMap[h.story_id] : null) ?? (h.post_id ? postMap[h.post_id] : null);
         const coverUrl  = h.media_url  ?? fallback?.media_url  ?? '';
         const coverType = (h.media_type ?? fallback?.media_type ?? 'image') as 'image' | 'video';
-        const coverThumb = h.thumbnail_url ?? '';
+        // Cover-Thumbnail: gespeichertes → Quell-Tabellen-Thumbnail → für Bilder
+        // die media_url selbst (rendert direkt), für Videos sonst leer.
+        const coverThumb = h.thumbnail_url || fallback?.thumbnail_url || (coverType === 'image' ? coverUrl : '');
         // items: aus DB-JSONB oder Fallback-Cover als Single-Item
         const items: HighlightItem[] = Array.isArray(h.items) && h.items.length > 0
           ? h.items

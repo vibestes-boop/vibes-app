@@ -6,6 +6,7 @@ import { router } from 'expo-router';
 import { BarChart,BarChart2,Bookmark,CheckCircle2,ChevronRight,Edit3,FileText,Flower2,Grid3X3,Heart,Link,MoreHorizontal,Mountain,Package,Repeat2,Share2,Shield,ShoppingBag,Sparkles,Swords,Zap } from 'lucide-react-native';
 import { useState } from 'react';
 import { Dimensions,Linking,Modal,Pressable,ScrollView,Text,View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Fixe Tab-Breite: 5 Tabs füllen die Zeile, weitere scrollen horizontal —
 // skaliert für die wachsende Tab-Zahl (Parität durch Ergänzen).
@@ -20,31 +21,53 @@ import { getProfileStyles } from './profileStyles';
 import type { ProfileTab } from './types';
 
 // ─── Tools Bottom-Sheet mit Menü-Einträgen (Instagram/TikTok Pattern) ──────────
-function MenuRow({
-  icon: Icon,
-  iconColor,
-  iconBg,
-  label,
-  sub,
-  onPress,
-}: {
-  icon: any; iconColor: string; iconBg: string;
+type ToolItem = {
+  icon: any; tint: string;
   label: string; sub?: string; onPress: () => void;
+};
+
+function MenuRow({
+  item, colors, showDivider,
+}: {
+  item: ToolItem; colors: any; showDivider: boolean;
 }) {
+  const { icon: Icon, tint, label, sub, onPress } = item;
   return (
     <Pressable
       onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onPress(); }}
-      style={({ pressed }) => [msx.menuRow, pressed && { backgroundColor: 'rgba(255,255,255,0.04)' }]}
+      style={({ pressed }) => [
+        msx.menuRow,
+        showDivider && { borderTopWidth: 1, borderTopColor: colors.border.subtle },
+        pressed && { backgroundColor: colors.bg.subtle },
+      ]}
     >
-      <View style={[msx.menuIcon, { backgroundColor: iconBg }]}>
-        <Icon size={18} color={iconColor} strokeWidth={1.8} />
+      <View style={[msx.menuIcon, { backgroundColor: tint + '22' }]}>
+        <Icon size={19} color={tint} strokeWidth={2} />
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={msx.menuLabel}>{label}</Text>
-        {sub ? <Text style={msx.menuSub}>{sub}</Text> : null}
+        <Text style={[msx.menuLabel, { color: colors.text.primary }]}>{label}</Text>
+        {sub ? <Text style={[msx.menuSub, { color: colors.text.secondary }]}>{sub}</Text> : null}
       </View>
-      <ChevronRight size={16} color="rgba(255,255,255,0.2)" />
+      <ChevronRight size={18} color={colors.text.muted} strokeWidth={2} />
     </Pressable>
+  );
+}
+
+function ToolSection({
+  title, items, colors, style,
+}: {
+  title: string; items: ToolItem[]; colors: any; style?: any;
+}) {
+  if (items.length === 0) return null;
+  return (
+    <View style={style}>
+      <Text style={[msx.sectionLabel, { color: colors.text.muted }]}>{title}</Text>
+      <View style={[msx.card, { backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle }]}>
+        {items.map((item, i) => (
+          <MenuRow key={item.label} item={item} colors={colors} showDivider={i > 0} />
+        ))}
+      </View>
+    </View>
   );
 }
 
@@ -60,6 +83,7 @@ function ProfileActionRow({
 }) {
   const [toolsOpen, setToolsOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const insets = useSafeAreaInsets();
   const hasShopTools = !!(onMyShop || onSavedProducts || onMyOrders);
   const hasCreatorTools = !!(onCreatorStudio || onCreatorStats);
   const hasTools = hasShopTools || hasCreatorTools;
@@ -133,61 +157,52 @@ function ProfileActionRow({
         onRequestClose={() => setToolsOpen(false)}
       >
         <Pressable style={msx.backdrop} onPress={() => setToolsOpen(false)} />
-        <View style={msx.sheet}>
-          {/* Handle */}
-          <View style={msx.handle} />
-          <Text style={msx.sheetTitle}>Tools</Text>
+        <View style={[
+          msx.sheet,
+          { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle, paddingBottom: insets.bottom + 12 },
+        ]}>
+          <View style={[msx.handle, { backgroundColor: colors.border.strong }]} />
+          <Text style={[msx.sheetTitle, { color: colors.text.primary }]}>Tools</Text>
 
-          {/* Shop-Bereich */}
-          {hasShopTools && (
-            <>
-              <Text style={msx.sectionLabel}>🛍️ Shop</Text>
-              {onMyShop && (
-                <MenuRow
-                  icon={Package} iconColor="#A855F7" iconBg="rgba(168,85,247,0.12)"
-                  label="Mein Shop" sub="Produkte verwalten & erstellen"
-                  onPress={() => { setToolsOpen(false); onMyShop(); }}
-                />
-              )}
-              {onSavedProducts && (
-                <MenuRow
-                  icon={Bookmark} iconColor="#1D9BF0" iconBg="rgba(29,155,240,0.12)"
-                  label="Gespeicherte Produkte" sub="Merkliste anzeigen"
-                  onPress={() => { setToolsOpen(false); onSavedProducts(); }}
-                />
-              )}
-              {onMyOrders && (
-                <MenuRow
-                  icon={ShoppingBag} iconColor="#F59E0B" iconBg="rgba(245,158,11,0.12)"
-                  label="Bestellungen & Verkäufe" sub="Käufe und Einnahmen"
-                  onPress={() => { setToolsOpen(false); onMyOrders(); }}
-                />
-              )}
-            </>
-          )}
+          <ToolSection
+            title="Shop"
+            colors={colors}
+            items={[
+              onMyShop && {
+                icon: Package, tint: colors.accent.secondary,
+                label: 'Mein Shop', sub: 'Produkte verwalten & erstellen',
+                onPress: () => { setToolsOpen(false); onMyShop(); },
+              },
+              onSavedProducts && {
+                icon: Bookmark, tint: '#1D9BF0',
+                label: 'Gespeicherte Produkte', sub: 'Merkliste anzeigen',
+                onPress: () => { setToolsOpen(false); onSavedProducts(); },
+              },
+              onMyOrders && {
+                icon: ShoppingBag, tint: colors.accent.warning,
+                label: 'Bestellungen & Verkäufe', sub: 'Käufe und Einnahmen',
+                onPress: () => { setToolsOpen(false); onMyOrders(); },
+              },
+            ].filter(Boolean) as ToolItem[]}
+          />
 
-          {/* Creator-Bereich */}
-          {hasCreatorTools && (
-            <>
-              <Text style={[msx.sectionLabel, hasShopTools && { marginTop: 8 }]}>⚡ Creator</Text>
-              {onCreatorStudio && (
-                <MenuRow
-                  icon={Sparkles} iconColor="#A855F7" iconBg="rgba(168,85,247,0.12)"
-                  label="Creator Studio" sub="Live-Einstellungen, Duet & mehr"
-                  onPress={() => { setToolsOpen(false); onCreatorStudio(); }}
-                />
-              )}
-              {onCreatorStats && (
-                <MenuRow
-                  icon={BarChart} iconColor="#22C55E" iconBg="rgba(34,197,94,0.12)"
-                  label="Creator Dashboard" sub="Statistiken, Follower & Einnahmen"
-                  onPress={() => { setToolsOpen(false); onCreatorStats(); }}
-                />
-              )}
-            </>
-          )}
-
-          <View style={{ height: 24 }} />
+          <ToolSection
+            title="Creator"
+            colors={colors}
+            style={hasShopTools ? { marginTop: 18 } : undefined}
+            items={[
+              onCreatorStudio && {
+                icon: Sparkles, tint: colors.accent.secondary,
+                label: 'Creator Studio', sub: 'Live-Einstellungen, Duet & mehr',
+                onPress: () => { setToolsOpen(false); onCreatorStudio(); },
+              },
+              onCreatorStats && {
+                icon: BarChart, tint: colors.accent.success,
+                label: 'Creator Dashboard', sub: 'Statistiken, Follower & Einnahmen',
+                onPress: () => { setToolsOpen(false); onCreatorStats(); },
+              },
+            ].filter(Boolean) as ToolItem[]}
+          />
         </View>
       </Modal>
     </>
@@ -223,34 +238,36 @@ const msx = {
     flex: 1, backgroundColor: 'rgba(0,0,0,0.55)',
   },
   sheet: {
-    backgroundColor: '#141419',
-    borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    paddingHorizontal: 16, paddingTop: 12,
-    borderTopWidth: 1, borderColor: 'rgba(255,255,255,0.07)',
+    borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    paddingHorizontal: 16, paddingTop: 10,
+    borderTopWidth: 1,
   },
   handle: {
-    alignSelf: 'center' as const, width: 36, height: 4,
-    borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.2)', marginBottom: 14,
+    alignSelf: 'center' as const, width: 40, height: 5,
+    borderRadius: 3, marginBottom: 16,
   },
   sheetTitle: {
-    color: '#fff', fontSize: 16, fontWeight: '700' as const,
-    letterSpacing: 0.2, marginBottom: 12,
+    fontSize: 22, fontWeight: '800' as const,
+    letterSpacing: -0.4, marginBottom: 18, paddingHorizontal: 2,
   },
   sectionLabel: {
-    color: 'rgba(255,255,255,0.4)', fontSize: 11, fontWeight: '700' as const,
-    letterSpacing: 0.6, textTransform: 'uppercase' as const,
-    marginBottom: 4, marginTop: 4, paddingHorizontal: 4,
+    fontSize: 12, fontWeight: '700' as const,
+    letterSpacing: 0.5, textTransform: 'uppercase' as const,
+    marginBottom: 8, paddingHorizontal: 4,
+  },
+  card: {
+    borderRadius: 18, borderWidth: 1, overflow: 'hidden' as const,
   },
   menuRow: {
-    flexDirection: 'row' as const, alignItems: 'center' as const, gap: 12,
-    paddingVertical: 12, paddingHorizontal: 8, borderRadius: 14,
+    flexDirection: 'row' as const, alignItems: 'center' as const, gap: 14,
+    paddingVertical: 13, paddingHorizontal: 14,
   },
   menuIcon: {
-    width: 40, height: 40, borderRadius: 12,
+    width: 38, height: 38, borderRadius: 11,
     alignItems: 'center' as const, justifyContent: 'center' as const,
   },
-  menuLabel: { color: '#fff', fontSize: 15, fontWeight: '600' as const },
-  menuSub: { color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 1 },
+  menuLabel: { fontSize: 15.5, fontWeight: '600' as const, letterSpacing: -0.1 },
+  menuSub: { fontSize: 12.5, marginTop: 2 },
 };
 
 export function ProfileListHeader({

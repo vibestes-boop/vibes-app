@@ -1,7 +1,7 @@
 import { supabase } from '@/lib/supabase';
 import { useAddHighlight } from '@/lib/useStoryHighlights';
 import { useTheme } from '@/lib/useTheme';
-import { BarChart2,Bookmark,Pencil,Pin,PinOff,Trash2 } from 'lucide-react-native';
+import { BarChart2,Bookmark,Pencil,Pin,PinOff,Share2,Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
 import { ActivityIndicator,Modal,Pressable,StyleSheet,Text,View } from 'react-native';
 import { HighlightNameSheet } from './HighlightNameSheet';
@@ -14,18 +14,20 @@ type PostStats = {
 };
 
 export function PostManageModal({
-  visible, postId, mediaUrl, mediaType = 'video',
-  isPinned = false, onClose, onEdit, onDelete, onTogglePin,
+  visible, postId, mediaUrl, mediaType = 'video', thumbnailUrl,
+  isPinned = false, onClose, onEdit, onDelete, onTogglePin, onShare,
 }: {
   visible: boolean;
   postId: string;
   mediaUrl?: string;
   mediaType?: string;
+  thumbnailUrl?: string | null;
   isPinned?: boolean;
   onClose: () => void;
   onEdit: () => void;
   onDelete: () => void;
   onTogglePin?: () => void;
+  onShare?: () => void;
 }) {
   const [stats, setStats] = useState<PostStats | null>(null);
   const [loadingStats, setLoadingStats] = useState(false);
@@ -55,7 +57,8 @@ export function PostManageModal({
       items: [{
         media_url:     mediaUrl ?? '',
         media_type:    (mediaType === 'video' ? 'video' : 'image') as 'image' | 'video',
-        thumbnail_url: null,
+        // Video braucht ein Poster-Thumbnail als Cover; Bild rendert media_url direkt
+        thumbnail_url: thumbnailUrl ?? (mediaType === 'video' ? null : mediaUrl ?? null),
       }],
       title,
     });
@@ -85,6 +88,14 @@ export function PostManageModal({
           <Pressable style={s.modalOverlay} onPress={handleClose}>
             <Pressable style={s.modalContent} onPress={(e) => e.stopPropagation()}>
               <Text style={s.modalTitle}>Post verwalten</Text>
+
+              {/* Teilen — unter den 3 Punkten, wie bei TikTok */}
+              {onShare && (
+                <Pressable style={s.modalItem} onPress={() => { handleClose(); onShare(); }}>
+                  <Share2 size={18} color="#9CA3AF" strokeWidth={2} />
+                  <Text style={s.modalItemText}>Teilen</Text>
+                </Pressable>
+              )}
 
               {/* Statistiken */}
               <Pressable style={s.modalItem} onPress={loadStats}>

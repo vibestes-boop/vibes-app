@@ -1,4 +1,5 @@
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Tabs,useRouter } from 'expo-router';
 import { Plus,User,Zap } from 'lucide-react-native';
 import { useEffect } from 'react';
@@ -82,13 +83,13 @@ function TabBarItem({
       accessibilityState={{ selected: isFocused }}
     >
       <Animated.View style={[styles.tabIconWrapper, animatedStyle]}>
-        <View style={{ position: 'relative', width: 24, height: 24, alignItems: 'center', justifyContent: 'center' }}>
+        <View style={{ position: 'relative', width: 28, height: 28, alignItems: 'center', justifyContent: 'center' }}>
           {!isRefreshing && (
             <Animated.View style={[{ position: 'absolute' }, iconAnimStyle]}>
               <Icon
-                size={24}
+                size={27}
                 color={isFocused ? colors.tabBar.active : colors.tabBar.inactive}
-                strokeWidth={isFocused ? 0 : 1.8}
+                strokeWidth={isFocused ? 0 : 1.9}
                 fill={isFocused ? colors.tabBar.active : 'transparent'}
               />
             </Animated.View>
@@ -120,7 +121,7 @@ function TabBarItem({
 // ── Zentraler Create-Button ──────────────────────────────────────────────────
 function CreateTabButton({ onPress }: { onPress: () => void }) {
   const scale = useSharedValue(1);
-  const { colors } = useTheme();
+  const { colors, isDark } = useTheme();
 
   const animStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -129,26 +130,38 @@ function CreateTabButton({ onPress }: { onPress: () => void }) {
   const handlePress = () => {
     impactAsync(ImpactFeedbackStyle.Medium);
     scale.value = withSequence(
-      withTiming(0.88, { duration: 60 }),
-      withTiming(1.05, { duration: 80 }),
-      withTiming(1, { duration: 80 }),
+      withTiming(0.9, { duration: 60 }),
+      withTiming(1.06, { duration: 90 }),
+      withTiming(1, { duration: 90 }),
     );
     onPress();
   };
 
-  const shadowBorderColor = colors.text.primary;
-  const btnBg = colors.text.primary;
+  // Theme-adaptiver 3D-Pill: heller Glanz-Verlauf im Dark-Mode, dunkler im Light-Mode.
+  // Verlauf top→bottom simuliert eine von oben beleuchtete, angehobene Fläche.
+  const gradColors = isDark
+    ? (['#F3F3F8', '#DEDEE5', '#B9BAC6'] as const)
+    : (['#3B475C', '#1A2336', '#070C16'] as const);
   const iconColor = colors.bg.primary;
+  const highlightColor = isDark ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.18)';
 
   return (
     <Pressable onPress={handlePress} style={styles.createTab} accessibilityLabel="Post erstellen">
       <Animated.View style={[styles.createOuter, animStyle]}>
-        {/* Offset-Border-Layer — Neo-Brutalist Tiefe */}
-        <View style={[styles.createShadowLayer, { borderColor: shadowBorderColor }]} />
-        {/* Haupt-Button */}
-        <View style={[styles.createBtn, { backgroundColor: btnBg }]}>
-          <Plus size={20} color={iconColor} strokeWidth={3} />
-        </View>
+        {/* Kontaktschatten — erdet den schwebenden Button */}
+        <View style={styles.createContactShadow} />
+        {/* Haupt-Button mit vertikalem Verlauf (3D-Glanz) + weicher Lift-Schatten */}
+        <LinearGradient
+          colors={gradColors}
+          locations={[0, 0.55, 1]}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={[styles.createBtn, isDark ? styles.createLiftDark : styles.createLiftLight]}
+        >
+          {/* Spekular-Highlight oben — fängt das Licht, glänzende Oberfläche */}
+          <View style={[styles.createHighlight, { backgroundColor: highlightColor }]} />
+          <Plus size={22} color={iconColor} strokeWidth={3.2} />
+        </LinearGradient>
       </Animated.View>
     </Pressable>
   );
@@ -350,35 +363,56 @@ const styles = StyleSheet.create({
     flex: 1.4,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingBottom: 4,
+    paddingBottom: 10,   // hebt den Button leicht über die Leiste → schwebt
   },
-  // Wrapper für Neo-Brutalist Offset-Effekt
   createOuter: {
-    width: 56,
-    height: 36,
+    width: 60,
+    height: 42,
     position: 'relative',
   },
-  // Offset-Border darunter (rechts+unten versetzt)
-  createShadowLayer: {
+  // Weicher Kontaktschatten direkt unter dem Button → erdet ihn auf der Leiste
+  createContactShadow: {
     position: 'absolute',
-    top: 3,
-    left: 3,
-    right: -3,
-    bottom: -3,
-    borderRadius: 11,
-    borderWidth: 2,
-    backgroundColor: 'transparent',
+    left: 8, right: 8, bottom: -3,
+    height: 16,
+    borderRadius: 12,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 7,
+    elevation: 6,
   },
-  // Haupt-Button (volle Fläche, leicht angehoben)
+  // Haupt-Button (Verlauf-Fläche)
   createBtn: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderRadius: 11,
+    top: 0, left: 0, right: 0, bottom: 0,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  // Spekular-Highlight (Glas-Reflexion am oberen Rand)
+  createHighlight: {
+    position: 'absolute',
+    top: 2, left: 7, right: 7,
+    height: 10,
+    borderRadius: 7,
+  },
+  // Lift Dark-Mode: zarter heller Rand-Glow → schwebt über der dunklen Leiste
+  createLiftDark: {
+    shadowColor: '#FFFFFF',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.22,
+    shadowRadius: 7,
+    elevation: 10,
+  },
+  // Lift Light-Mode: klassischer dunkler Schlagschatten
+  createLiftLight: {
+    shadowColor: '#0B1120',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.32,
+    shadowRadius: 7,
+    elevation: 10,
   },
 });
 

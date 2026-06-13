@@ -7,8 +7,10 @@
  */
 import { VideoProgressBar,type VideoProgressHandle } from '@/components/feed/FeedItem';
 import { FallbackFeedVideo,NativeFeedVideo,USE_EXPO_VIDEO,type FeedVideoSeekHandle } from '@/components/feed/FeedVideo';
+import { PostManageModal } from '@/components/profile/PostManageModal';
 import CommentsSheet from '@/components/ui/CommentsSheet';
 import { useAuthStore } from '@/lib/authStore';
+import { useTogglePinPost } from '@/lib/usePostManagement';
 import { supabase } from '@/lib/supabase';
 import { useBookmark } from '@/lib/useBookmark';
 import { useCommentCount } from '@/lib/useComments';
@@ -31,12 +33,10 @@ VolumeX
 } from 'lucide-react-native';
 import { useCallback,useEffect,useRef,useState } from 'react';
 import {
-ActionSheetIOS,
 ActivityIndicator,
 Alert,
 Dimensions,
 FlatList,
-Platform,
 Pressable,
 Animated as RNAnimated,
 StyleSheet,
@@ -70,6 +70,8 @@ type PostItem = {
   username: string | null;
   avatar_url: string | null;
   view_count: number;
+  is_pinned?: boolean;
+  thumbnail_url?: string | null;
 };
 
 function formatViews(n: number): string {
@@ -195,8 +197,7 @@ function PostCard({
   onMuteToggle,
   isOwner,
   onOpenComments,
-  onDelete,
-  onEdit,
+  onManage,
 }: {
   item: PostItem;
   isVisible: boolean;
@@ -204,8 +205,7 @@ function PostCard({
   onMuteToggle: () => void;
   isOwner: boolean;
   onOpenComments: (postId: string) => void;
-  onDelete: (postId: string) => void;
-  onEdit: (postId: string) => void;
+  onManage: (item: PostItem) => void;
 }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -322,40 +322,6 @@ function PostCard({
         />
       ))}
 
-      {/* Owner-Aktionen oben rechts — 3-Punkte-Menü (konsistent mit dem Feed) */}
-      {isOwner && (
-        <View style={[s.ownerRow, { top: insets.top + 8 }]}>
-          <Pressable
-            onPress={() => {
-              const edit = () => onEdit(item.id);
-              const del = () => onDelete(item.id);
-              if (Platform.OS === 'ios') {
-                ActionSheetIOS.showActionSheetWithOptions(
-                  {
-                    options: ['Abbrechen', 'Bearbeiten', 'Löschen'],
-                    destructiveButtonIndex: 2,
-                    cancelButtonIndex: 0,
-                    userInterfaceStyle: 'dark',
-                  },
-                  (i) => { if (i === 1) edit(); else if (i === 2) del(); },
-                );
-              } else {
-                Alert.alert('Post', undefined, [
-                  { text: 'Bearbeiten', onPress: edit },
-                  { text: 'Löschen', style: 'destructive', onPress: del },
-                  { text: 'Abbrechen', style: 'cancel' },
-                ]);
-              }
-            }}
-            style={s.ownerBtn}
-            hitSlop={8}
-            accessibilityLabel="Post-Optionen"
-          >
-            <MoreHorizontal size={20} stroke="#FFFFFF" strokeWidth={2} />
-          </Pressable>
-        </View>
-      )}
-
       {/* Rechte Aktionen — über Kommentar-Leiste */}
       <View style={[s.rightActions, { bottom: commentBarH + 8 }]}>
         {isVideo && (
@@ -371,11 +337,25 @@ function PostCard({
         <LikeBtn postId={item.id} />
         <CommentBtn postId={item.id} onPress={() => onOpenComments(item.id)} />
         <BookmarkBtn postId={item.id} />
-        <Pressable style={s.actionBtn} onPress={() => sharePost(item.id, item.caption)}>
-          <View style={s.actionBtnInner}>
-            <Share2 size={24} color="#FFFFFF" strokeWidth={1.8} />
-          </View>
-        </Pressable>
+        {isOwner ? (
+          /* Eigene Posts: 3-Punkte-Menü unten rechts — Teilen + Verwalten als Untermenü (TikTok-Stil) */
+          <Pressable
+            style={s.actionBtn}
+            onPress={() => onManage(item)}
+            hitSlop={8}
+            accessibilityLabel="Post-Optionen"
+          >
+            <View style={s.actionBtnInner}>
+              <MoreHorizontal size={24} color="#FFFFFF" strokeWidth={2} />
+            </View>
+          </Pressable>
+        ) : (
+          <Pressable style={s.actionBtn} onPress={() => sharePost(item.id, item.caption)}>
+            <View style={s.actionBtnInner}>
+              <Share2 size={24} color="#FFFFFF" strokeWidth={1.8} />
+            </View>
+          </Pressable>
+        )}
       </View>
 
       {/* Unten: Avatar, Caption, Tags */}
@@ -478,7 +458,9 @@ export default function UserPostsScreen() {
   const [visibleIndex, setVisibleIndex] = useState(Number(startIndex ?? '0'));
   const [isMuted, setIsMuted] = useState(false);
   const [commentsPostId, setCommentsPostId] = useState<string | null>(null);
+  const [manageItem, setManageItem] = useState<PostItem | null>(null);
   const [screenFocused, setScreenFocused] = useState(true);
+  const { mutate: togglePin } = useTogglePinPost();
 
   const flatRef = useRef<FlatList>(null);
   const initialIdx = Number(startIndex ?? '0');
@@ -498,7 +480,7 @@ export default function UserPostsScreen() {
       // Modus: direkte Post-IDs (Saved / Reposts)
       supabase
         .from('posts')
-        .select('id, caption, media_url, media_type, tags, created_at, author_id, view_count, profiles!author_id(username, avatar_url)')
+        .select('id, caption, media_url, media_type, tags, created_at, author_id, view_count, is_pinned, thumbnail_url, profiles!author_id(username, avatar_url)')
         .in('id', ids)
         .then(({ data, error }) => {
           if (error) { setLoadError(error.message); setLoading(false); return; }
@@ -516,6 +498,8 @@ export default function UserPostsScreen() {
               created_at: p.created_at,
               author_id: p.author_id,
               view_count: p.view_count ?? 0,
+              is_pinned: p.is_pinned ?? false,
+              thumbnail_url: p.thumbnail_url ?? null,
               username: p.profiles?.username ?? null,
               avatar_url: p.profiles?.avatar_url ?? null,
             }));
@@ -526,7 +510,7 @@ export default function UserPostsScreen() {
       // Modus: alle Posts eines Users
       supabase
         .from('posts')
-        .select('id, caption, media_url, media_type, tags, created_at, author_id, view_count, is_pinned, profiles!author_id(username, avatar_url)')
+        .select('id, caption, media_url, media_type, tags, created_at, author_id, view_count, is_pinned, thumbnail_url, profiles!author_id(username, avatar_url)')
         .eq('author_id', userId)
         // Gleiche Reihenfolge wie useUserPosts (Grid): gepinnt zuerst → Index passt
         .order('is_pinned', { ascending: false })
@@ -542,6 +526,8 @@ export default function UserPostsScreen() {
             created_at: p.created_at,
             author_id: p.author_id,
             view_count: p.view_count ?? 0,
+            is_pinned: p.is_pinned ?? false,
+            thumbnail_url: p.thumbnail_url ?? null,
             username: p.profiles?.username ?? null,
             avatar_url: p.profiles?.avatar_url ?? null,
           }));
@@ -636,8 +622,7 @@ export default function UserPostsScreen() {
               onMuteToggle={() => setIsMuted((m) => !m)}
               isOwner={item.author_id === profile?.id}
               onOpenComments={setCommentsPostId}
-              onDelete={handleDelete}
-              onEdit={handleEdit}
+              onManage={setManageItem}
             />
           )}
           pagingEnabled
@@ -675,6 +660,45 @@ export default function UserPostsScreen() {
             onClose={() => setCommentsPostId(null)}
           />
         )}
+
+        {/* Eigene Posts: 3-Punkte-Untermenü (Teilen + Verwalten), TikTok-Stil */}
+        {manageItem && (
+          <PostManageModal
+            visible
+            postId={manageItem.id}
+            mediaUrl={manageItem.media_url ?? undefined}
+            mediaType={manageItem.media_type}
+            thumbnailUrl={manageItem.thumbnail_url}
+            isPinned={manageItem.is_pinned ?? false}
+            onClose={() => setManageItem(null)}
+            onShare={() => sharePost(manageItem.id, manageItem.caption)}
+            onEdit={() => handleEdit(manageItem.id)}
+            onDelete={() => handleDelete(manageItem.id)}
+            onTogglePin={() => {
+              const target = manageItem;
+              const next = !(target.is_pinned ?? false);
+              togglePin(
+                { postId: target.id, currentlyPinned: target.is_pinned ?? false },
+                {
+                  onSuccess: () => {
+                    // Nur ein Post darf gepinnt sein: beim Anpinnen alle anderen lösen
+                    setPosts((prev) =>
+                      prev.map((p) =>
+                        p.id === target.id
+                          ? { ...p, is_pinned: next }
+                          : next
+                          ? { ...p, is_pinned: false }
+                          : p
+                      )
+                    );
+                    queryClient.invalidateQueries({ queryKey: ['user-posts', userId] });
+                    queryClient.invalidateQueries({ queryKey: ['vibe-feed'] });
+                  },
+                }
+              );
+            }}
+          />
+        )}
     </View>
   );
 }
@@ -697,14 +721,6 @@ const s = StyleSheet.create({
     borderRadius: 20,
   },
   counterText: { color: 'rgba(255,255,255,0.75)', fontSize: 13, fontWeight: '600' },
-
-  ownerRow: { position: 'absolute', right: 16, zIndex: 20, flexDirection: 'row', gap: 8 },
-  ownerBtn: {
-    width: 38, height: 38, borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.10)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  ownerBtnDanger: { backgroundColor: 'rgba(248,113,113,0.15)' },
 
   rightActions: { position: 'absolute', right: 14, gap: 18, alignItems: 'center', zIndex: 10 },
   actionBtn: { alignItems: 'center' },

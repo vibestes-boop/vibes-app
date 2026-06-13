@@ -55,7 +55,7 @@ export default function ProfileScreen() {
   const { profile, signOut } = useAuthStore();
 
   const [activeTab, setActiveTab] = useState<ProfileTab>('vibes');
-  const [managePost, setManagePost] = useState<{ id: string; media_url?: string; media_type?: string } | null>(null);
+  const [managePost, setManagePost] = useState<{ id: string; media_url?: string; media_type?: string; thumbnail_url?: string | null } | null>(null);
   const [repostedPosts, setRepostedPosts] = useState<ProfilePostGridItem[]>([]);
   const [likedPosts, setLikedPosts] = useState<ProfilePostGridItem[]>([]);
   const [loadingLiked, setLoadingLiked] = useState(false);
@@ -207,7 +207,7 @@ export default function ProfileScreen() {
   }, [profile?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePostLongPress = (item: ProfilePostGridItem) =>
-    setManagePost({ id: item.id, media_url: item.media_url ?? undefined, media_type: item.media_type ?? undefined });
+    setManagePost({ id: item.id, media_url: item.media_url ?? undefined, media_type: item.media_type ?? undefined, thumbnail_url: item.thumbnail_url ?? null });
 
   const handleEditPost = (postId: string) => {
     router.push({ pathname: '/edit-post/[id]', params: { id: postId } });
@@ -524,6 +524,7 @@ export default function ProfileScreen() {
         postId={managePost?.id ?? ''}
         mediaUrl={managePost?.media_url}
         mediaType={managePost?.media_type}
+        thumbnailUrl={managePost?.thumbnail_url}
         isPinned={managePost?.id === pinnedPostId}
         onClose={() => setManagePost(null)}
         onEdit={() => managePost && handleEditPost(managePost.id)}

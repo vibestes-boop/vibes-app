@@ -12,7 +12,6 @@ type AnalyticsPeriod,type ContentSortBy,
 import { useTheme } from '@/lib/useTheme';
 import { impactAsync,ImpactFeedbackStyle } from 'expo-haptics';
 import { Image } from 'expo-image';
-import { LinearGradient } from 'expo-linear-gradient';
 import {
 ArrowDownRight,
 ArrowUpRight,
@@ -52,8 +51,8 @@ function TrendChip({ delta }: { delta: number | null }) {
   if (!d) return <View style={s.trendNeutral}><Minus size={9} color={colors.text.muted} strokeWidth={2.5} /><Text style={[s.trendText, { color: colors.text.muted }]}>—</Text></View>;
   const positive = d.positive;
   const Icon = positive ? ArrowUpRight : ArrowDownRight;
-  const color = positive ? '#16A34A' : '#DC2626';
-  const bg    = positive ? 'rgba(22,163,74,0.09)' : 'rgba(220,38,38,0.09)';
+  const color = positive ? colors.accent.success : colors.accent.danger;
+  const bg    = positive ? 'rgba(34,197,94,0.10)' : 'rgba(239,68,68,0.10)';
   return (
     <View style={[s.trendChip, { backgroundColor: bg }]}>
       <Icon size={9} color={color} strokeWidth={2.5} />
@@ -87,10 +86,10 @@ function KpiCard({ Icon, label, value, delta, sub }: {
 function EngagementBar({ rate, colors }: { rate: number; colors: any }) {
   const pct = Math.min(rate, 100);
   const quality =
-    pct >= 6 ? { label: 'Ausgezeichnet', color: '#16A34A' }
+    pct >= 6 ? { label: 'Ausgezeichnet', color: colors.accent.success }
     : pct >= 3 ? { label: 'Gut', color: colors.text.primary }
     : pct >= 1 ? { label: 'Durchschnittlich', color: colors.text.secondary }
-    : { label: 'Niedrig', color: '#DC2626' };
+    : { label: 'Niedrig', color: colors.accent.danger };
 
   return (
     <View style={[s.engCard, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
@@ -254,47 +253,45 @@ function EarningsPanel({ userId, period, colors }: { userId: string | null; peri
 
   return (
     <View style={ep.container}>
-      {/* Header */}
-      <LinearGradient
-        colors={['rgba(244,63,94,0.12)', 'rgba(168,85,247,0.08)']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[ep.walletCard, { borderColor: 'rgba(244,63,94,0.2)' }]}
-      >
+      {/* Wallet-Card — solide Fläche, konsistent mit den übrigen Cards */}
+      <View style={[ep.walletCard, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
         {/* Wallet-Stand */}
         <View style={ep.walletHeader}>
           <View style={ep.walletLeft}>
             <Text style={[ep.walletLabel, { color: colors.text.muted }]}>WALLET-STAND</Text>
-            <Text style={ep.walletBalance}>
+            <Text style={[ep.walletBalance, { color: colors.text.primary }]}>
               {isLoading ? '…' : fmtNum(earnings?.diamonds_balance ?? 0)}
             </Text>
-            <Text style={[ep.walletSub, { color: colors.text.muted }]}>
-              {'💎 Diamonds ≈ ' + euroValue + ' €'}
-            </Text>
+            <View style={ep.walletSubRow}>
+              <Gem size={12} color={colors.accent.rose} strokeWidth={2} />
+              <Text style={[ep.walletSub, { color: colors.text.muted }]}>
+                {'Diamonds · ≈ ' + euroValue + ' €'}
+              </Text>
+            </View>
           </View>
-          <View style={ep.walletIcon}>
-            <Gem size={28} color="#F43F5E" strokeWidth={1.5} />
+          <View style={[ep.walletIcon, { backgroundColor: colors.accent.rose + '1A' }]}>
+            <Gem size={24} color={colors.accent.rose} strokeWidth={1.8} />
           </View>
         </View>
 
-        {/* Periode-Stats */}
-        <View style={ep.periodRow}>
+        {/* Periode-Stats — eingebettetes Panel */}
+        <View style={[ep.periodRow, { backgroundColor: colors.bg.elevated }]}>
           <View style={ep.periodStat}>
-            <Text style={ep.periodValue}>
+            <Text style={[ep.periodValue, { color: colors.text.primary }]}>
               {isLoading ? '…' : fmtNum(earnings?.period_diamonds ?? 0)}
             </Text>
-            <Text style={[ep.periodLabel, { color: colors.text.muted }]}>💎 Verdient</Text>
+            <Text style={[ep.periodLabel, { color: colors.text.muted }]}>Verdient</Text>
           </View>
-          <View style={[ep.periodDivider, { backgroundColor: 'rgba(244,63,94,0.15)' }]} />
+          <View style={[ep.periodDivider, { backgroundColor: colors.border.subtle }]} />
           <View style={ep.periodStat}>
-            <Text style={ep.periodValue}>
+            <Text style={[ep.periodValue, { color: colors.text.primary }]}>
               {isLoading ? '…' : fmtNum(earnings?.period_gifts ?? 0)}
             </Text>
             <Text style={[ep.periodLabel, { color: colors.text.muted }]}>Gifts erhalten</Text>
           </View>
-          <View style={[ep.periodDivider, { backgroundColor: 'rgba(244,63,94,0.15)' }]} />
+          <View style={[ep.periodDivider, { backgroundColor: colors.border.subtle }]} />
           <View style={ep.periodStat}>
-            <Text style={ep.periodValue}>{periodEuro} €</Text>
+            <Text style={[ep.periodValue, { color: colors.text.primary }]}>{periodEuro} €</Text>
             <Text style={[ep.periodLabel, { color: colors.text.muted }]}>Auszahlbar</Text>
           </View>
         </View>
@@ -303,26 +300,26 @@ function EarningsPanel({ userId, period, colors }: { userId: string | null; peri
         {(earnings?.top_gift_name || earnings?.top_gifter_name) && (
           <View style={ep.topRow}>
             {earnings.top_gift_name && (
-              <View style={ep.topBadge}>
+              <View style={[ep.topBadge, { backgroundColor: colors.bg.elevated }]}>
                 <Text style={ep.topBadgeEmoji}>{earnings.top_gift_emoji ?? '🎁'}</Text>
-                <View>
+                <View style={{ flex: 1 }}>
                   <Text style={[ep.topBadgeLabel, { color: colors.text.muted }]}>Top Gift</Text>
-                  <Text style={[ep.topBadgeValue, { color: colors.text.primary }]}>{earnings.top_gift_name}</Text>
+                  <Text style={[ep.topBadgeValue, { color: colors.text.primary }]} numberOfLines={1}>{earnings.top_gift_name}</Text>
                 </View>
               </View>
             )}
             {earnings.top_gifter_name && (
-              <View style={ep.topBadge}>
+              <View style={[ep.topBadge, { backgroundColor: colors.bg.elevated }]}>
                 <Text style={ep.topBadgeEmoji}>🏆</Text>
-                <View>
+                <View style={{ flex: 1 }}>
                   <Text style={[ep.topBadgeLabel, { color: colors.text.muted }]}>Top Sender</Text>
-                  <Text style={[ep.topBadgeValue, { color: colors.text.primary }]}>@{earnings.top_gifter_name}</Text>
+                  <Text style={[ep.topBadgeValue, { color: colors.text.primary }]} numberOfLines={1}>@{earnings.top_gifter_name}</Text>
                 </View>
               </View>
             )}
           </View>
         )}
-      </LinearGradient>
+      </View>
 
       {/* Gift-Historie */}
       {history.length > 0 && (
@@ -339,7 +336,7 @@ function EarningsPanel({ userId, period, colors }: { userId: string | null; peri
                   {item.gift_name} <Text style={{ color: colors.text.muted, fontWeight: '400' }}>von @{item.sender_name}</Text>
                 </Text>
               </View>
-              <Text style={[ep.historyDiamonds, { color: '#F43F5E' }]}>+{item.diamond_value} 💎</Text>
+              <Text style={[ep.historyDiamonds, { color: colors.accent.rose }]}>+{item.diamond_value} 💎</Text>
             </View>
           ))}
         </View>
@@ -355,22 +352,22 @@ const ep = StyleSheet.create({
     padding: 20, gap: 16,
   },
   walletHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  walletLeft: { gap: 4 },
-  walletLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 1 },
-  walletBalance: { fontSize: 36, fontWeight: '900', color: '#F43F5E', letterSpacing: -1.5 },
-  walletSub: { fontSize: 12 },
+  walletLeft: { gap: 4, flex: 1 },
+  walletLabel: { fontSize: 11, fontWeight: '600', letterSpacing: 0.8 },
+  walletBalance: { fontSize: 38, fontWeight: '800', letterSpacing: -1 },
+  walletSubRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
+  walletSub: { fontSize: 12.5, fontWeight: '500' },
   walletIcon: {
-    width: 52, height: 52, borderRadius: 26,
-    backgroundColor: 'rgba(244,63,94,0.1)',
+    width: 48, height: 48, borderRadius: 24,
     alignItems: 'center', justifyContent: 'center',
   },
-  periodRow: { flexDirection: 'row', gap: 0 },
+  periodRow: { flexDirection: 'row', borderRadius: 14, paddingVertical: 14, paddingHorizontal: 4 },
   periodStat: { flex: 1, alignItems: 'center', gap: 4 },
-  periodValue: { fontSize: 18, fontWeight: '800', color: '#F43F5E', letterSpacing: -0.5 },
-  periodLabel: { fontSize: 10, fontWeight: '500', textAlign: 'center' },
-  periodDivider: { width: 1, marginVertical: 2 },
+  periodValue: { fontSize: 18, fontWeight: '700', letterSpacing: -0.3 },
+  periodLabel: { fontSize: 11, fontWeight: '500', textAlign: 'center' },
+  periodDivider: { width: StyleSheet.hairlineWidth, marginVertical: 4 },
   topRow: { flexDirection: 'row', gap: 12 },
-  topBadge: { flex: 1, flexDirection: 'row', gap: 10, alignItems: 'center', backgroundColor: 'rgba(244,63,94,0.07)', borderRadius: 12, padding: 10 },
+  topBadge: { flex: 1, flexDirection: 'row', gap: 10, alignItems: 'center', borderRadius: 12, padding: 10 },
   topBadgeEmoji: { fontSize: 20 },
   topBadgeLabel: { fontSize: 10, fontWeight: '600' },
   topBadgeValue: { fontSize: 13, fontWeight: '700' },

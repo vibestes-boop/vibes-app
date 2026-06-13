@@ -124,8 +124,7 @@ function ProductCard({ product, onPress, colors }: {
       onPress={onPress}
       style={({ pressed }) => [
         card.wrap,
-        { backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle },
-        pressed && { opacity: 0.92, transform: [{ scale: 0.985 }] },
+        pressed && { opacity: 0.7 },
       ]}
       accessibilityRole="button"
       accessibilityLabel={product.title}
@@ -271,18 +270,18 @@ function ProductCard({ product, onPress, colors }: {
 }
 
 const card = StyleSheet.create({
+  // Keine Karten-Box mehr: Produkte liegen durchgehend auf dem Seiten-BG
+  // (TikTok-Shop-Stil). Nur das Bild ist abgerundet, Text flush darunter.
   wrap: {
     width: '100%',
-    borderRadius: 14,
-    overflow: 'hidden',
-    borderWidth: StyleSheet.hairlineWidth,
   },
   // 3:4-Rahmen auf dem Container; das Produktbild wird vollständig sichtbar
-  // und nur einmal dekodiert.
+  // und nur einmal dekodiert. Abgerundet — ersetzt die alte Karten-Rundung.
   imgWrap: {
     position: 'relative',
     width: '100%',
     aspectRatio: 3 / 4,
+    borderRadius: 14,
     overflow: 'hidden',
     backgroundColor: '#0B0B0E',
   },
@@ -337,7 +336,7 @@ const card = StyleSheet.create({
     borderRadius: 10, paddingHorizontal: 6, paddingVertical: 3,
   },
 
-  info: { padding: 10, gap: 5 },
+  info: { paddingTop: 8, paddingHorizontal: 2, gap: 5 },
   sellerRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   sellerAvatar: { width: 16, height: 16, borderRadius: 8 },
   sellerName: { fontSize: 10, flex: 1 },
@@ -371,13 +370,13 @@ const card = StyleSheet.create({
 
 function SkeletonCard({ colors }: { colors: any }) {
   return (
-    <View style={[card.wrap, { backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle }]}>
-      <View style={[card.imgWrap, { backgroundColor: colors.bg.primary }]} />
+    <View style={card.wrap}>
+      <View style={[card.imgWrap, { backgroundColor: colors.bg.elevated }]} />
       <View style={card.info}>
-        <View style={[sk.line, { width: '50%', backgroundColor: colors.bg.primary }]} />
-        <View style={[sk.line, { width: '90%', backgroundColor: colors.bg.primary, height: 14 }]} />
-        <View style={[sk.line, { width: '70%', backgroundColor: colors.bg.primary, height: 14 }]} />
-        <View style={[sk.line, { width: '40%', backgroundColor: colors.bg.primary, marginTop: 4 }]} />
+        <View style={[sk.line, { width: '50%', backgroundColor: colors.bg.elevated }]} />
+        <View style={[sk.line, { width: '90%', backgroundColor: colors.bg.elevated, height: 14 }]} />
+        <View style={[sk.line, { width: '70%', backgroundColor: colors.bg.elevated, height: 14 }]} />
+        <View style={[sk.line, { width: '40%', backgroundColor: colors.bg.elevated, marginTop: 4 }]} />
       </View>
     </View>
   );
@@ -657,7 +656,7 @@ export default function ShopScreen() {
               <SkeletonCard colors={colors} />
             </View>
           )}
-          ItemSeparatorComponent={() => <View style={{ height: 6 }} />}
+          ItemSeparatorComponent={() => <View style={{ height: 18 }} />}
           scrollEnabled={false}
         />
       ) : filtered.length === 0 ? (
@@ -713,7 +712,7 @@ export default function ShopScreen() {
               </View>
             );
           }}
-          ItemSeparatorComponent={() => <View style={{ height: 6 }} />}
+          ItemSeparatorComponent={() => <View style={{ height: 18 }} />}
         />
       )}
 
@@ -827,8 +826,8 @@ const s = StyleSheet.create({
   resultRow: { paddingHorizontal: 16, paddingTop: 2, paddingBottom: 2 },
   resultText: { fontSize: 12, fontWeight: '500' },
 
-  gridContent: { paddingHorizontal: 6, paddingTop: 6 },
-  gridRow: { gap: 6 },
+  gridContent: { paddingHorizontal: 10, paddingTop: 8 },
+  gridRow: { gap: 10 },
   gridCell: { flex: 1 },
 
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, paddingHorizontal: 32 },
