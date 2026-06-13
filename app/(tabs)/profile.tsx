@@ -34,6 +34,7 @@ import { useRouter } from 'expo-router';
 import {
 Bookmark,
 FileText,
+Heart,
 PlusCircle,Sparkles,
 ShoppingBag,
 Trash2
@@ -56,6 +57,8 @@ export default function ProfileScreen() {
   const [activeTab, setActiveTab] = useState<ProfileTab>('vibes');
   const [managePost, setManagePost] = useState<{ id: string; media_url?: string; media_type?: string } | null>(null);
   const [repostedPosts, setRepostedPosts] = useState<ProfilePostGridItem[]>([]);
+  const [likedPosts, setLikedPosts] = useState<ProfilePostGridItem[]>([]);
+  const [loadingLiked, setLoadingLiked] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   // Analytics: Period-Picker + Content-Sort
   const [analyticsPeriod, setAnalyticsPeriod] = useState<AnalyticsPeriod>(28);
@@ -138,6 +141,27 @@ export default function ProfileScreen() {
     if (activeTab === 'reposts') loadReposts();
   }, [activeTab, profile?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Likes lazy laden (gespiegelt aus UserProfileContent)
+  useEffect(() => {
+    if (activeTab !== 'likes' || !profile?.id) return;
+    if (likedPosts.length > 0) return;
+    setLoadingLiked(true);
+    supabase
+      .from('likes')
+      .select('post_id, posts(id, media_url, media_type, caption, thumbnail_url)')
+      .eq('user_id', profile.id)
+      .order('created_at', { ascending: false })
+      .limit(60)
+      .then(({ data }) => {
+        const mapped = (data ?? [])
+          .map((r: any) => r.posts)
+          .filter(Boolean)
+          .map((p: any) => ({ id: p.id, media_url: p.media_url, media_type: p.media_type, caption: p.caption, thumbnail_url: p.thumbnail_url ?? null }));
+        setLikedPosts(mapped as ProfilePostGridItem[]);
+        setLoadingLiked(false);
+      });
+  }, [activeTab, profile?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // ── Supabase Realtime: INSERT + DELETE auf reposts ─────────────────────
   // Voraussetzung: reposts_realtime.sql in Supabase ausgeführt
   useEffect(() => {
@@ -207,10 +231,11 @@ export default function ProfileScreen() {
 
   // Analytics und Drafts haben eigene Overlay-Renderer, nicht in der FlashList
   const rawListData: ProfilePostGridItem[] = activeTab === 'vibes' ? (posts as ProfilePostGridItem[])
-    : activeTab === 'saved' ? (savedPosts as unknown as ProfilePostGridItem[])
-      : activeTab === 'reposts' ? repostedPosts
-        : activeTab === 'shop' ? (shopProducts as unknown as ProfilePostGridItem[])
-          : []; // analytics + drafts → separater Renderer
+    : activeTab === 'likes' ? likedPosts
+      : activeTab === 'saved' ? (savedPosts as unknown as ProfilePostGridItem[])
+        : activeTab === 'reposts' ? repostedPosts
+          : activeTab === 'shop' ? (shopProducts as unknown as ProfilePostGridItem[])
+            : []; // analytics + drafts → separater Renderer
 
   // Leere Placeholder-Items auffüllen damit die letzte Reihe immer vollständig ist.
   // Verhindert dass 2 Items die letzte Spalte aufteilen (Instagram-Verhalten).
@@ -288,10 +313,12 @@ export default function ProfileScreen() {
                 },
               });
             } else {
-              // Saved / Reposts: gleiche TikTok-Scroll-Ansicht wie Vibes-Tab
+              // Saved / Likes / Reposts: gleiche TikTok-Scroll-Ansicht wie Vibes-Tab
               const currentList = activeTabRef.current === 'saved'
                 ? (savedPosts as unknown as ProfilePostGridItem[])
-                : repostedPosts;
+                : activeTabRef.current === 'likes'
+                  ? likedPosts
+                  : repostedPosts;
               const ids = currentList.map((p) => p.id).join(',');
               router.push({
                 pathname: '/user-posts',
@@ -450,6 +477,8 @@ export default function ProfileScreen() {
             <ProfileGridSkeleton count={9} />
           ) : activeTab === 'saved' && loadingSaved ? (
             <ProfileGridSkeleton count={9} />
+          ) : activeTab === 'likes' && loadingLiked ? (
+            <ProfileGridSkeleton count={9} />
           ) : activeTab === 'vibes' ? (
             <View style={s.empty}>
               <Sparkles size={40} color={colors.icon.muted} />
@@ -461,6 +490,12 @@ export default function ProfileScreen() {
               <ShoppingBag size={40} color={colors.icon.muted} />
               <Text style={s.emptyTitle}>Noch keine Produkte</Text>
               <Text style={s.emptySub}>Lege dein erstes Produkt über „Mein Shop" in den Tools an.</Text>
+            </View>
+          ) : activeTab === 'likes' ? (
+            <View style={s.empty}>
+              <Heart size={40} color={colors.icon.muted} />
+              <Text style={s.emptyTitle}>Noch nichts geliket</Text>
+              <Text style={s.emptySub}>Posts, die dir gefallen, erscheinen hier.</Text>
             </View>
           ) : (
             <View style={s.empty}>

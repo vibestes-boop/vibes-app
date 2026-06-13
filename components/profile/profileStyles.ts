@@ -358,7 +358,8 @@ function buildStyles(c: ThemeColors) {
       backgroundColor: c.bg.secondary,
     },
     tabBtn: {
-      flex: 1,
+      // Breite kommt inline aus TAB_WIDTH (scrollbare Leiste) — kein flex:1 mehr,
+      // da flex in einer horizontalen ScrollView zu 0 kollabieren würde.
       alignItems: 'center',
       justifyContent: 'center',
       paddingVertical: 12,

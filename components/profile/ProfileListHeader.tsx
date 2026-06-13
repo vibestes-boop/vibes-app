@@ -3,9 +3,13 @@ import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { BarChart,BarChart2,Bookmark,CheckCircle2,ChevronRight,Edit3,FileText,Flower2,Grid3X3,Link,MoreHorizontal,Mountain,Package,Repeat2,Share2,Shield,ShoppingBag,Sparkles,Swords,Zap } from 'lucide-react-native';
+import { BarChart,BarChart2,Bookmark,CheckCircle2,ChevronRight,Edit3,FileText,Flower2,Grid3X3,Heart,Link,MoreHorizontal,Mountain,Package,Repeat2,Share2,Shield,ShoppingBag,Sparkles,Swords,Zap } from 'lucide-react-native';
 import { useState } from 'react';
-import { Linking,Modal,Pressable,Text,View } from 'react-native';
+import { Dimensions,Linking,Modal,Pressable,ScrollView,Text,View } from 'react-native';
+
+// Fixe Tab-Breite: 5 Tabs füllen die Zeile, weitere scrollen horizontal —
+// skaliert für die wachsende Tab-Zahl (Parität durch Ergänzen).
+const TAB_WIDTH = Dimensions.get('window').width / 5;
 
 import { ProfileShareSheet } from '@/components/profile/ProfileShareSheet';
 import { AvatarZoomViewer } from '@/components/ui/AvatarZoomViewer';
@@ -480,11 +484,16 @@ export function ProfileListHeader({
       {/* ── Story Highlights ── */}
       <ProfileHighlightsRow userId={profile?.id ?? null} isOwn />
 
-      {/* ── Tab-Bar ── */}
-      <View style={s.tabRow}>
+      {/* ── Tab-Bar (horizontal scrollbar — skaliert mit wachsender Tab-Zahl) ── */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={s.tabRow}
+        contentContainerStyle={{ flexGrow: 1 }}
+      >
         {((showBattleStats
-            ? ['vibes', 'saved', 'shop', 'analytics', 'drafts', 'reposts', 'battles']
-            : ['vibes', 'saved', 'shop', 'analytics', 'drafts', 'reposts']) as ProfileTab[]
+            ? ['vibes', 'likes', 'saved', 'shop', 'analytics', 'drafts', 'reposts', 'battles']
+            : ['vibes', 'likes', 'saved', 'shop', 'analytics', 'drafts', 'reposts']) as ProfileTab[]
         ).map((tab) => {
           const active = activeTab === tab;
           return (
@@ -494,10 +503,12 @@ export function ProfileListHeader({
                 Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 onTabChange(tab);
               }}
-              style={[s.tabBtn, active && s.tabBtnActive]}
+              style={[s.tabBtn, { width: TAB_WIDTH }, active && s.tabBtnActive]}
             >
               {tab === 'vibes' ? (
                 <Grid3X3 size={24} color={active ? colors.accent.primary : colors.icon.inactive} strokeWidth={2} />
+              ) : tab === 'likes' ? (
+                <Heart size={24} color={active ? colors.accent.primary : colors.icon.inactive} strokeWidth={2} fill={active ? colors.accent.primary : 'transparent'} />
               ) : tab === 'saved' ? (
                 <Bookmark size={24} color={active ? colors.accent.primary : colors.icon.inactive} strokeWidth={2} fill={active ? colors.accent.primary : 'transparent'} />
               ) : tab === 'analytics' ? (
@@ -514,7 +525,7 @@ export function ProfileListHeader({
             </Pressable>
           );
         })}
-      </View>
+      </ScrollView>
     </>
   );
 }
