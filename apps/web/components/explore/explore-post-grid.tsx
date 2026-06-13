@@ -153,6 +153,8 @@ export function ExplorePostGrid({
                 mediaType={p.media_type}
                 caption={p.caption}
                 authorUsername={p.author.username}
+                authorDisplayName={p.author.display_name}
+                authorAvatarUrl={p.author.avatar_url}
                 viewCount={p.view_count ?? 0}
                 fallbackInitial={fallbackInitial}
                 womenOnly={p.women_only}

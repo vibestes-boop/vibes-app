@@ -49,7 +49,7 @@ export function DmInboxPill({ initialCount, viewerId }: DmInboxPillProps) {
       {count > 0 && (
         <span
           aria-hidden="true"
-          className="absolute -right-0.5 -top-0.5 flex min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white"
+          className="absolute -right-0.5 -top-0.5 flex min-w-[16px] items-center justify-center rounded-full bg-brand-purple px-1 text-[10px] font-bold leading-none text-white"
           style={{ minHeight: '16px' }}
         >
           {formatBadge(count)}

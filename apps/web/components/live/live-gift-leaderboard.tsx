@@ -190,7 +190,7 @@ export function LiveGiftLeaderboard({ sessionId }: { sessionId: string }) {
               unoptimized
             />
           ) : (
-            <div className="flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-[9px] font-bold uppercase text-white">
+            <div className="flex h-5 w-5 items-center justify-center rounded-full bg-white/20 text-[10px] font-bold uppercase text-white">
               {(entry.username ?? '?').slice(0, 1).toUpperCase()}
             </div>
           )}

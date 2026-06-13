@@ -128,7 +128,7 @@ export function FollowerGrowthChart({ points }: Props) {
             x={l.x}
             y={H - 2}
             textAnchor={i === 0 ? 'start' : i === labels.length - 1 ? 'end' : 'middle'}
-            className="fill-muted-foreground text-[9px]"
+            className="fill-muted-foreground text-[10px]"
           >
             {l.text}
           </text>
@@ -139,7 +139,7 @@ export function FollowerGrowthChart({ points }: Props) {
           x={W - PADDING_X}
           y={PADDING_Y + 8}
           textAnchor="end"
-          className="fill-muted-foreground text-[9px]"
+          className="fill-muted-foreground text-[10px]"
         >
           max {maxY.toLocaleString('de-DE')}
         </text>

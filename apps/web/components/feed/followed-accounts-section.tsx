@@ -53,17 +53,18 @@ export function FollowedAccountsSection({
 
   if (initial.length === 0) {
     return (
-      <section aria-label="Gefolgte Accounts" className="px-3">
-        <h2 className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
-          <Users className="h-3.5 w-3.5" />
+      <section aria-label="Gefolgte Accounts" className="flex flex-col gap-0.5">
+        <h2 className="px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
           Konten, denen ich folge
         </h2>
         <Link
           href={'/explore' as Route}
-          className="flex items-center gap-2 rounded-md px-1 py-1.5 text-xs text-muted-foreground hover:text-foreground"
+          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-muted"
         >
-          <Compass className="h-4 w-4" />
-          <span>Accounts entdecken</span>
+          <span className="flex w-8 shrink-0 justify-center">
+            <Compass className="h-5 w-5" />
+          </span>
+          <span className="truncate">Accounts entdecken</span>
         </Link>
       </section>
     );
@@ -72,9 +73,8 @@ export function FollowedAccountsSection({
   const canRevealMore = initial.length >= revealAllThreshold;
 
   return (
-    <section aria-label="Gefolgte Accounts" className="flex flex-col gap-1 px-1">
-      <h2 className="mb-1 flex items-center gap-1.5 px-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
-        <Users className="h-3.5 w-3.5" />
+    <section aria-label="Gefolgte Accounts" className="flex flex-col gap-0.5">
+      <h2 className="px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
         Konten, denen ich folge
       </h2>
 
@@ -90,9 +90,12 @@ export function FollowedAccountsSection({
         <button
           type="button"
           onClick={() => setSheetOpen(true)}
-          className="mt-0.5 self-start rounded-md px-2 py-1.5 text-xs font-medium text-primary hover:bg-muted/60"
+          className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted"
         >
-          Alle anzeigen
+          <span className="flex w-8 shrink-0 justify-center">
+            <Users className="h-5 w-5" />
+          </span>
+          <span className="truncate">Alle anzeigen</span>
         </button>
       )}
 
@@ -117,21 +120,22 @@ function AccountRow({ account }: { account: FollowedAccount }) {
   return (
     <Link
       href={`/u/${account.username}` as Route}
-      className="flex items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors hover:bg-muted"
+      className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors hover:bg-muted"
       aria-label={`Profil von @${account.username}`}
     >
-      <Avatar className="h-8 w-8 shrink-0">
-        <AvatarImage src={account.avatar_url ?? undefined} alt="" />
-        <AvatarFallback className="text-[11px]">{initials}</AvatarFallback>
-      </Avatar>
+      <span className="flex w-8 shrink-0 justify-center">
+        <Avatar className="h-5 w-5">
+          <AvatarImage src={account.avatar_url ?? undefined} alt="" />
+          <AvatarFallback className="text-[10px]">{initials}</AvatarFallback>
+        </Avatar>
+      </span>
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-1 truncate text-[13px] font-semibold text-foreground">
+        <div className="flex items-center gap-1 truncate text-sm text-foreground">
           <span className="truncate">{label}</span>
           {account.verified && (
-            <BadgeCheck className="h-3 w-3 shrink-0 text-muted-foreground" aria-label="Verifiziert" />
+            <BadgeCheck className="h-3.5 w-3.5 shrink-0" aria-label="Verifiziert" />
           )}
         </div>
-        <div className="truncate text-[11px] text-muted-foreground">@{account.username}</div>
       </div>
     </Link>
   );

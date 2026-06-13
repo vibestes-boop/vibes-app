@@ -190,7 +190,7 @@ function GuildFeedCard({ post }: { post: GuildFeedPost }) {
           <div className="mb-1.5 flex items-center gap-1.5">
             <Avatar className="h-5 w-5 shrink-0 ring-1 ring-white/30">
               <AvatarImage src={post.author.avatar_url ?? undefined} alt="" />
-              <AvatarFallback className="text-[9px]">
+              <AvatarFallback className="text-[10px]">
                 {username.slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>

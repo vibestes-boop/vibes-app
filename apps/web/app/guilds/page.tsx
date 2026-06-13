@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { Route } from 'next';
-import { Users, Hash, ArrowRight } from 'lucide-react';
+import { Users, Hash, ArrowRight, Code2, Palette, Gamepad2, Compass, Sparkles } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 
 import { getUser } from '@/lib/auth/session';
 import { getAllGuilds, getMyGuildId } from '@/lib/data/guilds';
@@ -28,32 +29,47 @@ export const revalidate = 60;
 
 const POD_PRESENTATION: Record<
   string,
-  { title: string; description: string; tags: string[] }
+  { title: string; description: string; tags: string[]; icon: LucideIcon; accent: string; iconBg: string }
 > = {
   'Pod Alpha': {
     title: 'Code & Design',
     description: 'Für Builder, Produktideen, Setups und kreative Experimente mit Technik.',
     tags: ['Tech', 'Design', 'AI'],
+    icon: Code2,
+    accent: '#6366f1',       // Indigo
+    iconBg: 'rgba(99,102,241,0.12)',
   },
   'Pod Beta': {
     title: 'Art & Sound',
     description: 'Für Musik, visuelle Kultur, Fotografie und alles, was Atmosphäre trägt.',
     tags: ['Art', 'Music', 'Photo'],
+    icon: Palette,
+    accent: '#A855F7',       // Purple (Brand-Akzent)
+    iconBg: 'rgba(168,85,247,0.12)',
   },
   'Pod Delta': {
     title: 'Gaming & Shows',
     description: 'Für Gaming-Clips, Streams, Challenges und Entertainment-Formate.',
     tags: ['Gaming', 'Shows', 'Humor'],
+    icon: Gamepad2,
+    accent: '#f97316',       // Orange
+    iconBg: 'rgba(249,115,22,0.12)',
   },
   'Pod Gamma': {
     title: 'Travel & Life',
     description: 'Für Orte, Alltag, Bewegung und Momente außerhalb des Screens.',
     tags: ['Travel', 'Nature', 'Life'],
+    icon: Compass,
+    accent: '#22c55e',       // Green
+    iconBg: 'rgba(34,197,94,0.12)',
   },
   'Pod Omega': {
     title: 'Style & Taste',
     description: 'Für Food, Fashion, kleine Shops und persönlichen Geschmack.',
     tags: ['Food', 'Fashion', 'Shop'],
+    icon: Sparkles,
+    accent: '#F43F5E',       // Rose (Brand-Rose)
+    iconBg: 'rgba(244,63,94,0.12)',
   },
 };
 
@@ -92,24 +108,39 @@ export default async function GuildsPage() {
           const displayTitle = presentation?.title ?? guild.name;
           const displayDescription = presentation?.description ?? guild.description;
           const displayTags = presentation?.tags ?? guild.vibe_tags;
+          const PodIcon = presentation?.icon ?? Users;
+          const accent = presentation?.accent ?? '#6B7280';
+          const iconBg = presentation?.iconBg ?? 'rgba(107,114,128,0.12)';
 
           return (
             <Link
               key={guild.id}
               href={`/g/${guild.id}` as Route}
-              className={`group relative flex min-h-[190px] flex-col overflow-hidden rounded-2xl border bg-card p-5 transition-all hover:-translate-y-0.5 hover:border-foreground/20 hover:shadow-elevation-2 ${
-                isMine ? 'border-foreground/30 ring-1 ring-foreground/10' : 'border-border'
+              style={isMine ? { borderColor: `${accent}50` } : undefined}
+              className={`group relative flex min-h-[190px] flex-col overflow-hidden rounded-2xl border bg-card p-5 transition-all hover:-translate-y-0.5 hover:shadow-elevation-2 ${
+                isMine ? 'ring-1' : 'border-border'
               }`}
             >
-              <div className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-border bg-muted text-muted-foreground">
-                <Users className="h-5 w-5" strokeWidth={1.8} />
+              {/* Subtiler Farbakzent-Gradient oben */}
+              <div
+                className="pointer-events-none absolute inset-x-0 top-0 h-[3px] rounded-t-2xl"
+                style={{ backgroundColor: accent }}
+              />
+              <div
+                className="relative flex h-10 w-10 items-center justify-center rounded-xl"
+                style={{ backgroundColor: iconBg }}
+              >
+                <PodIcon className="h-5 w-5" style={{ color: accent }} strokeWidth={1.8} />
               </div>
 
               <div className="flex items-start justify-between gap-2">
                 <div className="relative mt-4 flex items-center gap-2">
                   <h2 className="text-lg font-semibold">{displayTitle}</h2>
                   {isMine && (
-                    <span className="inline-flex items-center gap-1 rounded-full bg-foreground px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-background">
+                    <span
+                      className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white"
+                      style={{ backgroundColor: accent }}
+                    >
                       Dein Pod
                     </span>
                   )}

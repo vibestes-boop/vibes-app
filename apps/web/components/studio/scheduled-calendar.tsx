@@ -88,7 +88,7 @@ export function ScheduledCalendar({ monthStart, monthEnd, posts }: Props) {
               {dayPosts.length > 3 && (
                 <Link
                   href={'/create/scheduled' as Route}
-                  className="truncate rounded bg-muted px-1 py-0.5 text-[9px] font-medium text-muted-foreground hover:bg-muted/80"
+                  className="truncate rounded bg-muted px-1 py-0.5 text-[10px] font-medium text-muted-foreground hover:bg-muted/80"
                 >
                   + {dayPosts.length - 3} weitere
                 </Link>

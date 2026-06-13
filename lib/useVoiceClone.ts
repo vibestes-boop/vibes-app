@@ -115,7 +115,7 @@ export function useVoiceClone(): UseVoiceCloneReturn {
         }
       }, 100);
     } catch (err: any) {
-      console.error('[useVoiceClone] startRecording:', err);
+      __DEV__ && console.error('[useVoiceClone] startRecording:', err);
       setErrorMsg(err?.message ?? 'Aufnahme konnte nicht gestartet werden.');
       setCloneState('error');
     }
@@ -152,7 +152,7 @@ export function useVoiceClone(): UseVoiceCloneReturn {
         throw new Error('Keine Aufnahme-URI');
       }
     } catch (err: any) {
-      console.error('[useVoiceClone] stopRecording:', err);
+      __DEV__ && console.error('[useVoiceClone] stopRecording:', err);
       setErrorMsg(err?.message ?? 'Aufnahme konnte nicht gespeichert werden.');
       setCloneState('error');
     }
@@ -183,7 +183,7 @@ export function useVoiceClone(): UseVoiceCloneReturn {
         }
       });
     } catch (err) {
-      console.error('[useVoiceClone] playPreview:', err);
+      __DEV__ && console.error('[useVoiceClone] playPreview:', err);
       setIsPlaying(false);
     }
   }, [localUri]);
@@ -221,7 +221,7 @@ export function useVoiceClone(): UseVoiceCloneReturn {
       setSavedUrl(publicUrl);
       setCloneState('saved');
     } catch (err: any) {
-      console.error('[useVoiceClone] uploadAndSave:', err);
+      __DEV__ && console.error('[useVoiceClone] uploadAndSave:', err);
       setErrorMsg(err?.message ?? 'Upload fehlgeschlagen.');
       setCloneState('error');
     }
@@ -242,7 +242,7 @@ export function useVoiceClone(): UseVoiceCloneReturn {
       setLocalUri(null);
       setCloneState('idle');
     } catch (err: any) {
-      console.error('[useVoiceClone] deleteVoice:', err);
+      __DEV__ && console.error('[useVoiceClone] deleteVoice:', err);
     }
   }, [profile, setProfile]);
 

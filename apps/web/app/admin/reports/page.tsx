@@ -1,3 +1,4 @@
+import type { Route } from 'next';
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { getAdminReports, getAdminRoleStatus, getModerationHealth } from '@/app/actions/admin';
@@ -17,7 +18,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function AdminReportsPage() {
   const roles = await getAdminRoleStatus();
-  if (!roles.can_moderate) redirect('/admin');
+  if (!roles.can_moderate) redirect('/admin' as Route);
 
   const [reports, health] = await Promise.all([
     getAdminReports('pending'),

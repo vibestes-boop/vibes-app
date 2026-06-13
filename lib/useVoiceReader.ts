@@ -118,7 +118,7 @@ export function useVoiceReader(
 
       if (!res.ok) {
         const errBody = await res.text();
-        console.error(`[VoiceReader] ❌ HTTP ${res.status}:`, errBody);
+        __DEV__ && console.error(`[VoiceReader] ❌ HTTP ${res.status}:`, errBody);
         return null;
       }
 
@@ -129,7 +129,7 @@ export function useVoiceReader(
 
     } catch (err: unknown) {
       if ((err as Error)?.name === 'AbortError') return null;
-      console.error('[VoiceReader] Fetch error:', err);
+      __DEV__ && console.error('[VoiceReader] Fetch error:', err);
       return null;
     } finally {
       isFetchingRef.current = false;
@@ -153,7 +153,7 @@ export function useVoiceReader(
         onStopped: () => { if (isMountedRef.current) setState('idle'); },
       });
     } catch (err) {
-      console.error('[useVoiceReader] Speech error:', err);
+      __DEV__ && console.error('[useVoiceReader] Speech error:', err);
       if (isMountedRef.current) setState('error');
     }
   }, [text]);
@@ -176,7 +176,7 @@ export function useVoiceReader(
       player.play();
       setState('playing');
     } catch (err) {
-      console.error('[VoiceReader] Playback error:', err);
+      __DEV__ && console.error('[VoiceReader] Playback error:', err);
       if (isMountedRef.current) playSpeech();
     }
   }, [fetchAudioUrl, player, playSpeech]);

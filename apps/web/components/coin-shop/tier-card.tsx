@@ -72,7 +72,7 @@ export function CoinShopTierCard({ tier, signedIn, coinsPerEuro, total, priceLab
         <div
           className={`absolute -top-2.5 right-4 inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${
             isHighlight
-              ? 'bg-brand-gold text-background'
+              ? 'bg-brand-purple text-white'
               : 'bg-primary text-primary-foreground'
           }`}
         >
@@ -120,7 +120,7 @@ export function CoinShopTierCard({ tier, signedIn, coinsPerEuro, total, priceLab
         disabled={pending}
         className={`mt-5 flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors ${
           isHighlight
-            ? 'bg-brand-gold text-background hover:bg-brand-gold/90'
+            ? 'bg-brand-purple text-white hover:bg-brand-purple/90'
             : 'bg-primary text-primary-foreground hover:bg-primary/90'
         } disabled:cursor-not-allowed disabled:opacity-60`}
       >

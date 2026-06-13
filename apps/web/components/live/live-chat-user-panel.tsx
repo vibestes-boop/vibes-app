@@ -148,7 +148,7 @@ export function LiveChatUserPanel({
             </div>
           )}
           {user.verified && (
-            <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-[8px] font-bold text-white ring-1 ring-black/60">
+            <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-blue-500 text-[10px] font-bold text-white ring-1 ring-black/60">
               ✓
             </span>
           )}

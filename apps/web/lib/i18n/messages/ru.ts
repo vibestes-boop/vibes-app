@@ -328,6 +328,7 @@ const ruMessages = {
     navAria: 'Навигация студии',
     navDashboard: 'Дашборд',
     navAnalytics: 'Аналитика',
+    navRealtime: 'Leistung in Echtzeit',
     navRevenue: 'Доходы',
     navScheduled: 'Запланировано',
     navDrafts: 'Черновики',

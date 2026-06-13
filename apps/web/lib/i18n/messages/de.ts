@@ -347,8 +347,9 @@ const deMessages = {
   studio: {
     // Sub-Nav (StudioSubNav Client-Component — liest per useI18n())
     navAria: "Studio-Navigation",
-    navDashboard: "Dashboard",
-    navAnalytics: "Analytics",
+    navDashboard: "Startseite",
+    navAnalytics: "Analyse",
+    navRealtime: "Leistung in Echtzeit",
     navRevenue: "Einnahmen",
     navScheduled: "Geplant",
     navDrafts: "Entwürfe",

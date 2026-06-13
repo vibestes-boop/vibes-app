@@ -56,10 +56,29 @@ export async function signInWithMagicLink(formData: FormData): Promise<ActionRes
   });
 
   if (error) {
-    return { ok: false, error: error.message };
+    return { ok: false, error: mapOtpError(error) };
   }
 
   return { ok: true, message: 'Check deine Emails — wir haben dir einen Anmelde-Link geschickt.' };
+}
+
+/**
+ * GoTrue-Fehler → verständliche deutsche Meldung. Der rohe Text („Error
+ * sending magic link email") hilft niemandem; SMTP-Ausfall und Rate-Limit
+ * sind die zwei realen Fälle.
+ */
+function mapOtpError(error: { message: string; status?: number; code?: string }): string {
+  const msg = error.message.toLowerCase();
+  if (error.code === 'over_email_send_rate_limit' || msg.includes('rate limit')) {
+    return 'Zu viele Anfragen — bitte warte eine Minute und versuch es erneut.';
+  }
+  if (msg.includes('sending') || error.status === 500) {
+    return 'Der E-Mail-Versand ist gerade gestört. Bitte nutze „Mit Google weiter" oder versuch es später erneut.';
+  }
+  if (msg.includes('signups not allowed') || msg.includes('signup')) {
+    return 'Registrierung per E-Mail ist derzeit deaktiviert.';
+  }
+  return error.message;
 }
 
 // -----------------------------------------------------------------------------
@@ -98,7 +117,7 @@ export async function signOut(): Promise<never> {
   const supabase = await createClient();
   await supabase.auth.signOut();
   revalidatePath('/', 'layout');
-  redirect('/');
+  redirect('/' as Route);
 }
 
 // -----------------------------------------------------------------------------

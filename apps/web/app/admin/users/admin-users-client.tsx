@@ -307,8 +307,8 @@ export function AdminUsersClient({ initialSnapshot }: { initialSnapshot: AdminUs
     <div className="space-y-4">
       <section className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-slate-950">Nutzerverwaltung</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          <h1 className="text-2xl font-bold text-foreground">Nutzerverwaltung</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
             Verwalte Nutzer, Rollen, Verifizierung, Sicherheit und Aktivitaet deiner Plattform.
           </p>
         </div>
@@ -340,18 +340,18 @@ export function AdminUsersClient({ initialSnapshot }: { initialSnapshot: AdminUs
       </section>
 
       <section className="grid gap-3 xl:grid-cols-[1fr_320px]">
-        <div className="rounded-lg border border-slate-200 bg-white shadow-sm">
-          <div className="flex flex-wrap items-center gap-2 border-b border-slate-100 p-3">
+        <div className="rounded-lg border border-border bg-card shadow-sm">
+          <div className="flex flex-wrap items-center gap-2 border-b border-border/60 p-3">
             <div className="relative min-w-[260px] flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
               <input
                 type="search"
                 value={query}
                 onChange={(event) => handleSearch(event.target.value)}
                 placeholder="Suche nach Name, Username oder ID"
-                className="h-9 w-full rounded-md border border-slate-200 bg-white pl-9 pr-3 text-sm outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+                className="h-9 w-full rounded-md border border-border bg-card pl-9 pr-3 text-sm outline-none focus:border-blue-300 focus:ring-2 focus:ring-ring/20"
               />
-              {searching && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-slate-400" />}
+              {searching && <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground/70" />}
             </div>
             <FilterSelect
               label="Status"
@@ -424,7 +424,7 @@ export function AdminUsersClient({ initialSnapshot }: { initialSnapshot: AdminUs
                 ['high', 'Hoch'],
               ]}
             />
-            <button type="button" disabled={!hasActiveFilters} onClick={resetFilters} className="h-9 px-2 text-xs font-semibold text-blue-600 disabled:opacity-50">
+            <button type="button" disabled={!hasActiveFilters} onClick={resetFilters} className="h-9 px-2 text-xs font-semibold text-blue-600 dark:text-blue-400 disabled:opacity-50">
               Filter zuruecksetzen
             </button>
           </div>
@@ -432,7 +432,7 @@ export function AdminUsersClient({ initialSnapshot }: { initialSnapshot: AdminUs
           <div className="overflow-x-auto">
             <table className="w-full min-w-[900px] text-left text-xs">
               <thead>
-                <tr className="border-b border-slate-100 bg-slate-50 text-[11px] text-slate-500">
+                <tr className="border-b border-border/60 bg-muted/50 text-[11px] text-muted-foreground">
                   <th className="px-4 py-3 font-bold">Nutzer</th>
                   <th className="px-3 py-3 font-bold">Rolle</th>
                   <th className="px-3 py-3 font-bold">Status</th>
@@ -444,13 +444,13 @@ export function AdminUsersClient({ initialSnapshot }: { initialSnapshot: AdminUs
                   <th className="px-4 py-3 text-right font-bold">Aktionen</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-border/60">
                 {users.map((user) => (
                   <tr
                     key={user.id}
                     className={cn(
-                      'cursor-pointer bg-white transition hover:bg-blue-50/40',
-                      selectedUser?.id === user.id && 'bg-blue-50/70',
+                      'cursor-pointer bg-card transition hover:bg-blue-500/10/40',
+                      selectedUser?.id === user.id && 'bg-blue-500/10/70',
                     )}
                     onClick={() => setSelectedId(user.id)}
                   >
@@ -466,14 +466,14 @@ export function AdminUsersClient({ initialSnapshot }: { initialSnapshot: AdminUs
                     <td className="px-3 py-3">
                       {user.is_verified ? <SmallBadge tone="blue" label="Verifiziert" /> : <SmallBadge tone="slate" label="Nein" />}
                     </td>
-                    <td className="px-3 py-3 tabular-nums text-slate-600">{formatDate(user.created_at)}</td>
-                    <td className="px-3 py-3 text-slate-600">{user.last_activity_at ? relativeTime(user.last_activity_at) : 'Noch nicht getrackt'}</td>
-                    <td className="px-3 py-3 text-right tabular-nums font-semibold text-slate-800">{formatNumber(user.post_count)}</td>
-                    <td className="px-3 py-3 text-right tabular-nums font-semibold text-slate-800">{formatNumber(user.report_count)}</td>
+                    <td className="px-3 py-3 tabular-nums text-muted-foreground">{formatDate(user.created_at)}</td>
+                    <td className="px-3 py-3 text-muted-foreground">{user.last_activity_at ? relativeTime(user.last_activity_at) : 'Noch nicht getrackt'}</td>
+                    <td className="px-3 py-3 text-right tabular-nums font-semibold text-foreground">{formatNumber(user.post_count)}</td>
+                    <td className="px-3 py-3 text-right tabular-nums font-semibold text-foreground">{formatNumber(user.report_count)}</td>
                     <td className="px-4 py-3 text-right">
                       <button
                         type="button"
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-slate-200 text-slate-500 hover:bg-slate-50"
+                        className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-muted/50"
                         aria-label={`Aktionen fuer ${user.username}`}
                       >
                         {actionId === user.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
@@ -483,7 +483,7 @@ export function AdminUsersClient({ initialSnapshot }: { initialSnapshot: AdminUs
                 ))}
                 {users.length === 0 && (
                   <tr>
-                    <td colSpan={9} className="px-4 py-10 text-center text-sm text-slate-500">
+                    <td colSpan={9} className="px-4 py-10 text-center text-sm text-muted-foreground">
                       Keine Nutzer fuer diese Suche oder Filter gefunden.
                     </td>
                   </tr>
@@ -492,14 +492,14 @@ export function AdminUsersClient({ initialSnapshot }: { initialSnapshot: AdminUs
             </table>
           </div>
 
-          <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3 text-xs text-slate-500">
+          <div className="flex items-center justify-between border-t border-border/60 px-4 py-3 text-xs text-muted-foreground">
             <span>{pageRangeLabel(page, users.length, totalCount)}</span>
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 disabled={page <= 1 || searching}
                 onClick={() => loadDirectory({ page: page - 1 })}
-                className="h-8 rounded-md border border-slate-200 px-2 font-semibold text-slate-700 disabled:opacity-40"
+                className="h-8 rounded-md border border-border px-2 font-semibold text-foreground/80 disabled:opacity-40"
               >
                 Zurueck
               </button>
@@ -508,7 +508,7 @@ export function AdminUsersClient({ initialSnapshot }: { initialSnapshot: AdminUs
                 type="button"
                 disabled={!hasMore || searching}
                 onClick={() => loadDirectory({ page: page + 1 })}
-                className="h-8 rounded-md border border-slate-200 px-2 font-semibold text-slate-700 disabled:opacity-40"
+                className="h-8 rounded-md border border-border px-2 font-semibold text-foreground/80 disabled:opacity-40"
               >
                 Weiter
               </button>
@@ -573,19 +573,19 @@ function UserDetailPanel({
 }) {
   if (!user) {
     return (
-      <aside className="rounded-lg border border-slate-200 bg-white p-4 text-sm text-slate-500 shadow-sm">
+      <aside className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground shadow-sm">
         Keine Nutzer ausgewaehlt.
       </aside>
     );
   }
 
   return (
-    <aside className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <aside className="rounded-lg border border-border bg-card p-4 shadow-sm">
       <div className="flex items-start gap-3">
         <Avatar user={user} size="lg" />
         <div className="min-w-0 flex-1">
-          <h2 className="truncate text-lg font-bold text-slate-950">{user.display_name || user.username}</h2>
-          <p className="truncate text-sm text-slate-500">@{user.username}</p>
+          <h2 className="truncate text-lg font-bold text-foreground">{user.display_name || user.username}</h2>
+          <p className="truncate text-sm text-muted-foreground">@{user.username}</p>
           <div className="mt-2 flex flex-wrap gap-1.5">
             <RoleBadge user={user} />
             <StatusPill user={user} />
@@ -594,21 +594,21 @@ function UserDetailPanel({
         </div>
       </div>
 
-      <div className="mt-4 border-t border-slate-100 pt-4 text-xs">
+      <div className="mt-4 border-t border-border/60 pt-4 text-xs">
         <InfoRow label="Registriert seit" value={formatDate(user.created_at)} />
         <InfoRow label="Letzte Aktivitaet" value={user.last_activity_at ? relativeTime(user.last_activity_at) : 'Noch nicht getrackt'} />
         <InfoRow label="Letzter Login" value={detail?.identity?.last_sign_in_at ? relativeTime(detail.identity.last_sign_in_at) : detailLoading ? 'Laedt...' : 'Noch nicht verfuegbar'} muted={!detail?.identity?.last_sign_in_at} />
         <InfoRow label="Nutzer-ID" value={shortId(user.id)} />
       </div>
 
-      <div className="mt-4 grid grid-cols-3 overflow-hidden rounded-lg border border-slate-200 text-center">
+      <div className="mt-4 grid grid-cols-3 overflow-hidden rounded-lg border border-border text-center">
         <MiniStat label="Beitraege" value={user.post_count} />
         <MiniStat label="Kommentare" value={user.comment_count} />
         <MiniStat label="Reports" value={user.report_count} />
       </div>
 
       <div className="mt-5">
-        <h3 className="text-sm font-bold text-slate-900">Sicherheitsstatus</h3>
+        <h3 className="text-sm font-bold text-foreground">Sicherheitsstatus</h3>
         <div className="mt-2 space-y-2 text-xs">
           <InfoRow label="Risiko-Level" value={riskLabel(user.risk_level)} valueClassName={riskText(user.risk_level)} />
           <InfoRow label="Account gesperrt" value={user.is_banned ? 'Ja' : 'Nein'} />
@@ -623,8 +623,8 @@ function UserDetailPanel({
 
       <div className="mt-5">
         <div className="flex items-center justify-between gap-2">
-          <h3 className="text-sm font-bold text-slate-900">Letzte Aktionen</h3>
-          {detailLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" />}
+          <h3 className="text-sm font-bold text-foreground">Letzte Aktionen</h3>
+          {detailLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground/70" />}
         </div>
         <AuditTimeline items={detail?.audit ?? []} loading={detailLoading} />
       </div>
@@ -636,13 +636,13 @@ function UserDetailPanel({
         >
           Profil oeffnen
         </Link>
-        <label className="block text-xs font-semibold text-slate-700">
+        <label className="block text-xs font-semibold text-foreground/80">
           Rolle aendern
           <select
             value={userRoleKey(user)}
             disabled={loading}
             onChange={(event) => onRoleChange(user, event.target.value as AdminAssignableUserRole)}
-            className="mt-1 h-9 w-full rounded-md border border-slate-200 bg-white px-2 text-xs font-semibold outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100 disabled:opacity-50"
+            className="mt-1 h-9 w-full rounded-md border border-border bg-card px-2 text-xs font-semibold outline-none focus:border-blue-300 focus:ring-2 focus:ring-ring/20 disabled:opacity-50"
           >
             <option value="user">User</option>
             <option value="creator">Creator</option>
@@ -716,18 +716,18 @@ function InviteUserDialog({
   onSubmit: () => void;
 }) {
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/30 p-4">
-      <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-5 shadow-xl">
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 p-4">
+      <div className="w-full max-w-md rounded-lg border border-border bg-card p-5 shadow-xl">
         <div>
-          <h2 className="text-lg font-bold text-slate-950">Nutzer einladen</h2>
-          <p className="mt-1 text-sm text-slate-500">
+          <h2 className="text-lg font-bold text-foreground">Nutzer einladen</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
             Sendet eine Supabase-Einladung per E-Mail. Der Nutzer landet danach im Onboarding.
           </p>
         </div>
 
         <div className="mt-5 space-y-4">
           {manualLink && (
-            <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            <div className="rounded-md border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-900 dark:text-amber-300">
               <div className="font-bold">E-Mail konnte nicht gesendet werden.</div>
               <p className="mt-1 text-xs">
                 Supabase hat aber einen Invite-Link erzeugt. Kopiere ihn und sende ihn manuell.
@@ -735,7 +735,7 @@ function InviteUserDialog({
               <textarea
                 readOnly
                 value={manualLink}
-                className="mt-3 h-20 w-full rounded-md border border-amber-200 bg-white p-2 text-xs text-slate-700"
+                className="mt-3 h-20 w-full rounded-md border border-amber-500/30 bg-card p-2 text-xs text-foreground/80"
               />
               <button
                 type="button"
@@ -747,23 +747,23 @@ function InviteUserDialog({
             </div>
           )}
 
-          <label className="block text-sm font-semibold text-slate-700">
+          <label className="block text-sm font-semibold text-foreground/80">
             E-Mail
             <input
               type="email"
               value={email}
               onChange={(event) => onEmailChange(event.target.value)}
               placeholder="name@example.com"
-              className="mt-1 h-10 w-full rounded-md border border-slate-200 px-3 text-sm outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+              className="mt-1 h-10 w-full rounded-md border border-border px-3 text-sm outline-none focus:border-blue-300 focus:ring-2 focus:ring-ring/20"
             />
           </label>
 
-          <label className="block text-sm font-semibold text-slate-700">
+          <label className="block text-sm font-semibold text-foreground/80">
             Start-Rolle
             <select
               value={role}
               onChange={(event) => onRoleChange(event.target.value)}
-              className="mt-1 h-10 w-full rounded-md border border-slate-200 bg-white px-3 text-sm outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+              className="mt-1 h-10 w-full rounded-md border border-border bg-card px-3 text-sm outline-none focus:border-blue-300 focus:ring-2 focus:ring-ring/20"
             >
               <option value="user">User</option>
               <option value="creator">Creator</option>
@@ -779,7 +779,7 @@ function InviteUserDialog({
             type="button"
             onClick={onClose}
             disabled={loading}
-            className="h-9 rounded-md border border-slate-200 px-3 text-xs font-bold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
+            className="h-9 rounded-md border border-border px-3 text-xs font-bold text-foreground/80 hover:bg-muted/50 disabled:opacity-50"
           >
             Abbrechen
           </button>
@@ -801,18 +801,18 @@ function InviteUserDialog({
 function TopSearch({ value, loading, onChange }: { value: string; loading: boolean; onChange: (value: string) => void }) {
   return (
     <div className="relative w-full sm:w-72">
-      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
       <input
         type="search"
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder="Suchen..."
-        className="h-9 w-full rounded-md border border-slate-200 bg-white pl-9 pr-9 text-sm outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+        className="h-9 w-full rounded-md border border-border bg-card pl-9 pr-9 text-sm outline-none focus:border-blue-300 focus:ring-2 focus:ring-ring/20"
       />
       {loading ? (
-        <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-slate-400" />
+        <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground/70" />
       ) : (
-        <span className="absolute right-2 top-1/2 -translate-y-1/2 rounded border border-slate-200 px-1 text-[10px] font-semibold text-slate-400">
+        <span className="absolute right-2 top-1/2 -translate-y-1/2 rounded border border-border px-1 text-[10px] font-semibold text-muted-foreground/70">
           ⌘ K
         </span>
       )}
@@ -834,17 +834,17 @@ function StatCard({
   tone: 'blue' | 'green' | 'violet' | 'red' | 'amber';
 }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+    <div className="rounded-lg border border-border bg-card p-3 shadow-sm">
       <div className="flex items-center gap-3">
         <div className={cn('flex h-9 w-9 items-center justify-center rounded-full', statTone(tone))}>
           <Icon className="h-4 w-4" />
         </div>
         <div className="min-w-0">
-          <div className="truncate text-[11px] font-semibold text-slate-500">{label}</div>
-          <div className="text-lg font-bold tabular-nums text-slate-950">{formatNumber(value)}</div>
+          <div className="truncate text-[11px] font-semibold text-muted-foreground">{label}</div>
+          <div className="text-lg font-bold tabular-nums text-foreground">{formatNumber(value)}</div>
         </div>
       </div>
-      <div className="mt-2 text-[10px] text-slate-500">{sublabel}</div>
+      <div className="mt-2 text-[10px] text-muted-foreground">{sublabel}</div>
     </div>
   );
 }
@@ -865,7 +865,7 @@ function ToolbarButton({
       type="button"
       disabled={disabled}
       onClick={onClick}
-      className="inline-flex h-9 items-center gap-2 rounded-md border border-slate-200 bg-white px-3 text-xs font-bold text-slate-700 shadow-sm disabled:opacity-60"
+      className="inline-flex h-9 items-center gap-2 rounded-md border border-border bg-card px-3 text-xs font-bold text-foreground/80 shadow-sm disabled:opacity-60"
     >
       <Icon className="h-4 w-4" />
       {label}
@@ -890,7 +890,7 @@ function FilterSelect({
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-9 appearance-none rounded-md border border-slate-200 bg-white py-0 pl-3 pr-8 text-xs font-semibold text-slate-700 outline-none focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+        className="h-9 appearance-none rounded-md border border-border bg-card py-0 pl-3 pr-8 text-xs font-semibold text-foreground/80 outline-none focus:border-blue-300 focus:ring-2 focus:ring-ring/20"
       >
         {options.map(([optionValue, optionLabel]) => (
           <option key={optionValue} value={optionValue}>
@@ -898,7 +898,7 @@ function FilterSelect({
           </option>
         ))}
       </select>
-      <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-slate-400" />
+      <ChevronDown className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-muted-foreground/70" />
     </label>
   );
 }
@@ -908,8 +908,8 @@ function UserIdentity({ user }: { user: AdminUserDirectoryItem }) {
     <div className="flex min-w-0 items-center gap-3">
       <Avatar user={user} />
       <div className="min-w-0">
-        <div className="truncate font-bold text-slate-900">{user.display_name || user.username}</div>
-        <div className="truncate text-[11px] text-slate-500">@{user.username}</div>
+        <div className="truncate font-bold text-foreground">{user.display_name || user.username}</div>
+        <div className="truncate text-[11px] text-muted-foreground">@{user.username}</div>
       </div>
     </div>
   );
@@ -918,11 +918,11 @@ function UserIdentity({ user }: { user: AdminUserDirectoryItem }) {
 function Avatar({ user, size = 'sm' }: { user: AdminUserDirectoryItem; size?: 'sm' | 'lg' }) {
   const className = size === 'lg' ? 'h-16 w-16' : 'h-9 w-9';
   return (
-    <div className={cn('relative shrink-0 overflow-hidden rounded-full bg-slate-100', className)}>
+    <div className={cn('relative shrink-0 overflow-hidden rounded-full bg-muted', className)}>
       {user.avatar_url ? (
         <Image src={user.avatar_url} alt={user.username} fill className="object-cover" />
       ) : (
-        <span className="flex h-full w-full items-center justify-center text-sm font-bold uppercase text-slate-500">
+        <span className="flex h-full w-full items-center justify-center text-sm font-bold uppercase text-muted-foreground">
           {user.username.slice(0, 2)}
         </span>
       )}
@@ -961,9 +961,9 @@ function SmallBadge({
 
 function MiniStat({ label, value }: { label: string; value: number }) {
   return (
-    <div className="border-r border-slate-200 px-2 py-3 last:border-r-0">
-      <div className="text-base font-bold tabular-nums text-slate-950">{formatNumber(value)}</div>
-      <div className="mt-0.5 text-[10px] text-slate-500">{label}</div>
+    <div className="border-r border-border px-2 py-3 last:border-r-0">
+      <div className="text-base font-bold tabular-nums text-foreground">{formatNumber(value)}</div>
+      <div className="mt-0.5 text-[10px] text-muted-foreground">{label}</div>
     </div>
   );
 }
@@ -981,8 +981,8 @@ function InfoRow({
 }) {
   return (
     <div className="flex items-center justify-between gap-3 py-1.5">
-      <span className="text-slate-500">{label}</span>
-      <span className={cn('truncate text-right font-semibold text-slate-800', muted && 'text-slate-400', valueClassName)}>{value}</span>
+      <span className="text-muted-foreground">{label}</span>
+      <span className={cn('truncate text-right font-semibold text-foreground', muted && 'text-muted-foreground/70', valueClassName)}>{value}</span>
     </div>
   );
 }
@@ -1001,10 +1001,10 @@ function ActionButton({
   disabled?: boolean;
 }) {
   const styles = {
-    danger: 'border-red-200 bg-red-50 text-red-600 hover:bg-red-100',
-    success: 'border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-100',
-    blue: 'border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100',
-    amber: 'border-amber-200 bg-amber-50 text-amber-600 hover:bg-amber-100',
+    danger: 'border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400 hover:bg-red-500/15',
+    success: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/15',
+    blue: 'border-blue-500/30 bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-500/15',
+    amber: 'border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400 hover:bg-amber-500/15',
   };
   return (
     <button
@@ -1022,7 +1022,7 @@ function ActionButton({
 function AuditTimeline({ items, loading }: { items: AdminUserDetailSnapshot['audit']; loading: boolean }) {
   if (loading) {
     return (
-      <div className="mt-2 rounded-md border border-slate-200 px-3 py-4 text-center text-xs text-slate-500">
+      <div className="mt-2 rounded-md border border-border px-3 py-4 text-center text-xs text-muted-foreground">
         Audit-Timeline wird geladen...
       </div>
     );
@@ -1030,7 +1030,7 @@ function AuditTimeline({ items, loading }: { items: AdminUserDetailSnapshot['aud
 
   if (items.length === 0) {
     return (
-      <div className="mt-2 rounded-md border border-dashed border-slate-200 px-3 py-4 text-center text-xs text-slate-500">
+      <div className="mt-2 rounded-md border border-dashed border-border px-3 py-4 text-center text-xs text-muted-foreground">
         Noch keine Admin-Aktionen fuer diesen Nutzer.
       </div>
     );
@@ -1039,15 +1039,15 @@ function AuditTimeline({ items, loading }: { items: AdminUserDetailSnapshot['aud
   return (
     <ol className="mt-2 space-y-2">
       {items.slice(0, 6).map((item) => (
-        <li key={item.id} className="rounded-md border border-slate-100 bg-slate-50 px-3 py-2 text-xs">
+        <li key={item.id} className="rounded-md border border-border/60 bg-muted/50 px-3 py-2 text-xs">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <div className="truncate font-bold text-slate-800">{adminActionLabel(item.action)}</div>
-              <div className="mt-0.5 truncate text-slate-500">
+              <div className="truncate font-bold text-foreground">{adminActionLabel(item.action)}</div>
+              <div className="mt-0.5 truncate text-muted-foreground">
                 {item.actor_username ? `von @${item.actor_username}` : 'System/Admin'} · {relativeTime(item.created_at)}
               </div>
             </div>
-            <span className="shrink-0 text-[10px] font-semibold text-slate-400">{formatDate(item.created_at)}</span>
+            <span className="shrink-0 text-[10px] font-semibold text-muted-foreground/70">{formatDate(item.created_at)}</span>
           </div>
         </li>
       ))}
@@ -1057,24 +1057,24 @@ function AuditTimeline({ items, loading }: { items: AdminUserDetailSnapshot['aud
 
 function statTone(tone: 'blue' | 'green' | 'violet' | 'red' | 'amber') {
   const tones = {
-    blue: 'bg-blue-50 text-blue-600',
-    green: 'bg-emerald-50 text-emerald-600',
-    violet: 'bg-violet-50 text-violet-600',
-    red: 'bg-red-50 text-red-600',
-    amber: 'bg-amber-50 text-amber-600',
+    blue: 'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+    green: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+    violet: 'bg-violet-500/10 text-violet-600 dark:text-violet-400',
+    red: 'bg-red-500/10 text-red-600 dark:text-red-400',
+    amber: 'bg-amber-500/10 text-amber-600 dark:text-amber-400',
   };
   return tones[tone];
 }
 
 function badgeTone(tone: 'blue' | 'green' | 'red' | 'amber' | 'violet' | 'teal' | 'slate') {
   const tones = {
-    blue: 'bg-blue-50 text-blue-700',
-    green: 'bg-emerald-50 text-emerald-700',
-    red: 'bg-red-50 text-red-700',
-    amber: 'bg-amber-50 text-amber-700',
-    violet: 'bg-violet-50 text-violet-700',
-    teal: 'bg-teal-50 text-teal-700',
-    slate: 'bg-slate-100 text-slate-600',
+    blue: 'bg-blue-500/10 text-blue-700 dark:text-blue-400',
+    green: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+    red: 'bg-red-500/10 text-red-700 dark:text-red-400',
+    amber: 'bg-amber-500/10 text-amber-700 dark:text-amber-400',
+    violet: 'bg-violet-500/10 text-violet-700 dark:text-violet-400',
+    teal: 'bg-teal-500/10 text-teal-700 dark:text-teal-400',
+    slate: 'bg-muted text-muted-foreground',
   };
   return tones[tone];
 }
@@ -1086,9 +1086,9 @@ function riskLabel(risk: AdminUserDirectoryItem['risk_level']) {
 }
 
 function riskText(risk: AdminUserDirectoryItem['risk_level']) {
-  if (risk === 'high') return 'text-red-600';
-  if (risk === 'medium') return 'text-amber-600';
-  return 'text-emerald-600';
+  if (risk === 'high') return 'text-red-600 dark:text-red-400';
+  if (risk === 'medium') return 'text-amber-600 dark:text-amber-400';
+  return 'text-emerald-600 dark:text-emerald-400';
 }
 
 function formatNumber(value: number) {

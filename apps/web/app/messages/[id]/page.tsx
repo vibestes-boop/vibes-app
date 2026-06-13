@@ -62,13 +62,14 @@ export default async function ConversationPage({ params, searchParams }: PagePro
     : header.other_user.display_name ?? `@${header.other_user.username}`;
 
   return (
-    <div className="mx-auto flex h-[calc(100dvh-4rem)] w-full max-w-3xl flex-col">
+    <div className="flex h-dvh w-full flex-col">
       {/* relative: ConversationSearch positioniert ihr Overlay absolut relativ zu diesem Container */}
       <header className="relative flex items-center gap-3 border-b bg-background/95 px-4 py-3 backdrop-blur">
+        {/* Zurück-Pfeil — nur auf Mobile (Desktop hat die Konversationsliste links) */}
         <Link
           href={'/messages' as Route}
           aria-label="Zurück zur Liste"
-          className="grid h-9 w-9 place-items-center rounded-full transition-colors hover:bg-muted"
+          className="md:hidden grid h-9 w-9 place-items-center rounded-full transition-colors hover:bg-muted"
         >
           <ArrowLeft className="h-5 w-5" />
         </Link>

@@ -51,7 +51,7 @@ export default async function SearchPage({
   ]);
 
   return (
-    <main className="container mx-auto max-w-4xl px-4 py-8">
+    <main className="container mx-auto max-w-4xl px-4 pb-8 pt-16 sm:pt-8">
       <header className="mb-6">
         <h1 className="flex items-center gap-2 text-3xl font-bold tracking-tight">
           <Search className="h-7 w-7" />

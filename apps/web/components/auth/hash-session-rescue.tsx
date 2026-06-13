@@ -1,5 +1,6 @@
 'use client';
 
+import type { Route } from 'next';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
@@ -44,7 +45,7 @@ export function HashSessionRescue() {
       });
 
       if (!cancelled && !error) {
-        router.replace(next);
+        router.replace(next as Route);
       }
     }
 

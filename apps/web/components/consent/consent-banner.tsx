@@ -77,7 +77,7 @@ export function ConsentBanner() {
       <div className={cn('flex items-start gap-3', compactImmersiveBanner && 'items-center')}>
         <div
           className={cn(
-            'flex shrink-0 items-center justify-center rounded-full bg-brand-gold/15 text-brand-gold',
+            'flex shrink-0 items-center justify-center rounded-full bg-primary/10 text-foreground',
             compactImmersiveBanner ? 'hidden h-9 w-9 sm:flex' : 'hidden h-10 w-10 sm:flex',
           )}
         >
@@ -235,7 +235,7 @@ function Row({
         className={cn(
           'relative mt-0.5 inline-flex h-5 w-9 shrink-0 items-center rounded-full border border-border transition-colors',
           checked
-            ? 'bg-brand-gold/90 border-brand-gold'
+            ? 'bg-primary border-primary'
             : 'bg-muted',
           disabled && 'cursor-not-allowed opacity-80',
         )}
@@ -251,7 +251,7 @@ function Row({
         <p className="text-xs font-semibold">
           {title}
           {disabled && (
-            <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[9px] uppercase tracking-wider">
+            <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[10px] uppercase tracking-wider">
               immer aktiv
             </span>
           )}

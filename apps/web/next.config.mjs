@@ -15,9 +15,8 @@ const nextConfig = {
   reactStrictMode: true,
   htmlLimitedBots,
   // Moved out of experimental in Next.js 15.5+
-  // Temporarily disabled to unblock deploy — re-enable post-launch
-  // once all dynamic router.push/redirect calls are migrated to `as Route`.
-  typedRoutes: false,
+  // Alle router.push/redirect-Calls wurden auf `as Route` migriert (SW-09).
+  typedRoutes: true,
   // ESLint wird separat via `npm run lint` als explizites Release-Gate geprüft.
   // Next.js 15 deprecates `next lint`; die App nutzt deshalb ESLint CLI mit
   // `apps/web/eslint.config.mjs`.
@@ -89,6 +88,8 @@ const nextConfig = {
       { protocol: 'https', hostname: '**.livekit.cloud' },
       { protocol: 'https', hostname: 'avatars.githubusercontent.com' }, // OAuth fallback
       { protocol: 'https', hostname: 'lh3.googleusercontent.com' },     // Google OAuth
+      { protocol: 'https', hostname: '**.giphy.com' },                  // Giphy GIFs in Messages
+      { protocol: 'https', hostname: '**.cdninstagram.com' },           // Instagram CDN
     ],
   },
   // Security-Headers — shippen zusätzlich in jedem Response

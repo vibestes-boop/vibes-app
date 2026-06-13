@@ -60,6 +60,8 @@ export type LiveComment = {
     username: string;
     avatar_url: string | null;
   } | null;
+  /** UI-only: true für synthetische System-Events (Join-Hinweis etc.) — wird nicht in DB gespeichert */
+  isSystem?: boolean;
 };
 
 export type LiveReaction = {

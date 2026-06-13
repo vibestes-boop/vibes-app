@@ -340,6 +340,7 @@ const ceMessages = {
     navAria: 'Студин навигаци',
     navDashboard: 'Дашборд',
     navAnalytics: 'Аналитика',
+    navRealtime: 'Leistung in Echtzeit',
     navRevenue: 'Мах-хаам',
     navScheduled: 'Дагадеш',
     navDrafts: 'Черновикш',

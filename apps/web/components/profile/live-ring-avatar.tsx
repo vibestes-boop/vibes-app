@@ -124,7 +124,7 @@ export function LiveRingAvatar({
             Rote Fill + weiße Typo = TikTok/IG-Signatur. */}
         <span
           aria-hidden
-          className="pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 rounded-md bg-red-600 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider text-white shadow-elevation-2"
+          className="pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 rounded-md bg-red-600 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-elevation-2"
         >
           {liveBadgeLabel}
         </span>

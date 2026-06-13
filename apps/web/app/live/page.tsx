@@ -53,11 +53,12 @@ export default async function LiveIndexPage() {
   const totalViewers = sessions.reduce((acc, s) => acc + (s.viewer_count ?? 0), 0);
 
   return (
-    <div className="mx-auto max-w-[1600px] px-4 py-6 lg:px-8">
+    <div className="mx-auto max-w-[1600px] px-4 pb-6 pt-16 lg:px-8 lg:pt-6">
       {/* Unsichtbare Client-Shell: hält die Liste via Realtime + 30s-Polling frisch */}
       <LivePageRefresher sessionCount={sessions.length} />
 
-      <header className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      {/* lg:pr-48 — Clearance zu den floatenden Top-Right-Pills (Coins/DM/Avatar bzw. Login-CTAs) */}
+      <header className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between lg:pr-48">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-semibold">
             <span className="relative flex h-3 w-3">
@@ -93,7 +94,7 @@ export default async function LiveIndexPage() {
           {isAuthed ? (
             <Link
               href={'/live/start' as Route}
-              className="inline-flex items-center gap-2 rounded-full bg-red-600 px-4 py-1.5 text-sm font-semibold text-white shadow-sm transition-opacity hover:opacity-90"
+              className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-1.5 text-sm font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-85"
             >
               <Video className="h-4 w-4" />
               Stream starten
@@ -327,8 +328,8 @@ function LiveSessionCard({
 function EmptyState({ isAuthed }: { isAuthed: boolean }) {
   return (
     <div className="flex flex-col items-center justify-center gap-5 rounded-2xl border bg-card px-4 py-14 text-center shadow-sm sm:py-16">
-      <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-red-500/20 bg-red-500/10">
-        <Radio className="h-7 w-7 text-red-500/70" />
+      <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-border bg-muted">
+        <Radio className="h-7 w-7 text-muted-foreground/60" />
       </div>
       <div className="space-y-1">
         <h3 className="text-lg font-semibold">Gerade läuft kein Stream</h3>
@@ -349,7 +350,7 @@ function EmptyState({ isAuthed }: { isAuthed: boolean }) {
         {isAuthed ? (
           <Link
             href={'/live/start' as Route}
-            className="inline-flex items-center justify-center gap-2 rounded-full bg-red-600 px-5 py-2.5 text-sm font-semibold text-white shadow transition-opacity hover:opacity-90"
+            className="inline-flex items-center justify-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground shadow transition-opacity hover:opacity-85"
           >
             <Video className="h-4 w-4" />
             Stream starten

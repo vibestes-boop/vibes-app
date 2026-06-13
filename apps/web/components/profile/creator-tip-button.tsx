@@ -128,7 +128,7 @@ export function CreatorTipButton({
       <DialogTrigger asChild>
         <button
           type="button"
-          className="inline-flex items-center gap-1.5 rounded-full bg-rose-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-rose-500/90"
+          className="inline-flex items-center gap-1.5 rounded-full bg-brand-rose px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-rose/90"
         >
           <Heart className="h-4 w-4 fill-current" />
           Unterstützen
@@ -138,7 +138,7 @@ export function CreatorTipButton({
       <DialogContent className="sm:max-w-[420px]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Heart className="h-4 w-4 text-rose-500" />
+            <Heart className="h-4 w-4 text-brand-rose" />
             @{recipientName} unterstützen
           </DialogTitle>
           <DialogDescription>
@@ -162,8 +162,8 @@ export function CreatorTipButton({
                     }}
                     className={`flex flex-col items-center rounded-lg border px-2 py-2 text-xs font-medium transition-colors ${
                       isActive
-                        ? 'border-rose-500 bg-rose-500/10 text-rose-500'
-                        : 'border-border bg-card hover:border-rose-500/50'
+                        ? 'border-brand-rose bg-brand-rose/10 text-brand-rose'
+                        : 'border-border bg-card hover:border-brand-rose/50'
                     }`}
                   >
                     <Coins className="mb-0.5 h-3.5 w-3.5" />
@@ -212,7 +212,7 @@ export function CreatorTipButton({
                 onChange={(e) => setMessage(e.target.value.slice(0, 140))}
                 rows={2}
                 placeholder="Danke für den Content!"
-                className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm outline-none placeholder:text-muted-foreground/70 focus:border-rose-500/60"
+                className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm outline-none placeholder:text-muted-foreground/70 focus:border-brand-rose/60"
               />
               <p className="mt-0.5 text-right text-[10px] text-muted-foreground">
                 {message.length}/140
@@ -246,7 +246,7 @@ export function CreatorTipButton({
             )}
 
             {error && (
-              <div className="flex items-start gap-2 rounded-lg border border-rose-500/30 bg-rose-500/5 px-3 py-2 text-xs text-rose-500">
+              <div className="flex items-start gap-2 rounded-lg border border-brand-rose/30 bg-brand-rose/5 px-3 py-2 text-xs text-brand-rose">
                 <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                 <span>{error}</span>
               </div>
@@ -264,7 +264,7 @@ export function CreatorTipButton({
                 type="button"
                 onClick={handleSubmit}
                 disabled={pending || effectiveAmount < 1}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-rose-500 px-4 py-2 text-sm font-semibold text-white hover:bg-rose-500/90 disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-brand-rose px-4 py-2 text-sm font-semibold text-white hover:bg-brand-rose/90 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {pending ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -293,8 +293,8 @@ export function CreatorTipButton({
 
         {stage === 'error' && (
           <div className="flex flex-col items-center gap-3 py-6">
-            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-rose-500/10">
-              <X className="h-8 w-8 text-rose-500" />
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-rose/10">
+              <X className="h-8 w-8 text-brand-rose" />
             </div>
             <p className="text-center text-sm font-semibold">Konnte nicht gesendet werden</p>
             <p className="max-w-[300px] text-center text-xs text-muted-foreground">

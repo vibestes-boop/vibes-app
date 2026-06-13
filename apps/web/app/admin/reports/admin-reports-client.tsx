@@ -210,7 +210,7 @@ export function AdminReportsClient({
 function ModerationHealthPanel({ health }: { health: ModerationHealth | null }) {
   if (!health) {
     return (
-      <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300">
+      <div className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300">
         <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
         <span>Moderation-Health konnte nicht geladen werden. Bitte `npm run moderation:health` prüfen.</span>
       </div>
@@ -224,10 +224,10 @@ function ModerationHealthPanel({ health }: { health: ModerationHealth | null }) 
   const yellow = !red && reports.pending > 0;
   const statusLabel = red ? 'SLA blockiert' : yellow ? 'Queue offen' : 'Queue gesund';
   const statusClass = red
-    ? 'border-red-200 bg-red-50 text-red-700 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-300'
+    ? 'border-red-500/30 bg-red-500/10 text-red-700 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-300'
     : yellow
-      ? 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300'
-      : 'border-green-200 bg-green-50 text-green-700 dark:border-green-900/40 dark:bg-green-950/20 dark:text-green-300';
+      ? 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300'
+      : 'border-green-500/30 bg-green-500/10 text-green-700 dark:border-green-900/40 dark:bg-green-950/20 dark:text-green-300';
 
   return (
     <section className="space-y-3">
@@ -403,7 +403,7 @@ function ReportRow({
                 type="button"
                 onClick={() => onEnforce('remove_post', note)}
                 disabled={loading}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-100 disabled:opacity-50 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-400"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 transition-colors hover:bg-red-500/15 disabled:opacity-50 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-400"
               >
                 <XCircle className="h-3.5 w-3.5" />
                 Post entfernen
@@ -415,7 +415,7 @@ function ReportRow({
                   type="button"
                   onClick={() => onEnforce('ban_profile', note)}
                   disabled={loading}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-100 disabled:opacity-50 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-400"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 transition-colors hover:bg-red-500/15 disabled:opacity-50 dark:border-red-900/40 dark:bg-red-950/20 dark:text-red-400"
                 >
                   <XCircle className="h-3.5 w-3.5" />
                   Profil sperren
@@ -424,7 +424,7 @@ function ReportRow({
                   type="button"
                   onClick={() => onEnforce('restrict_profile', note)}
                   disabled={loading}
-                  className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-100 disabled:opacity-50 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300"
+                  className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-700 dark:text-amber-400 transition-colors hover:bg-amber-500/15 disabled:opacity-50 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300"
                 >
                   <AlertTriangle className="h-3.5 w-3.5" />
                   Profil beschränken
@@ -445,7 +445,7 @@ function ReportRow({
                 type="button"
                 onClick={() => onEnforce('mute_live_host', note)}
                 disabled={loading}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 transition-colors hover:bg-amber-100 disabled:opacity-50 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-medium text-amber-700 dark:text-amber-400 transition-colors hover:bg-amber-500/15 disabled:opacity-50 dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-300"
               >
                 <MessageCircleOff className="h-3.5 w-3.5" />
                 Live-Host stummschalten
@@ -455,7 +455,7 @@ function ReportRow({
               type="button"
               onClick={() => onResolve('actioned', note)}
               disabled={loading}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-green-200 bg-green-50 px-3 py-1.5 text-xs font-medium text-green-600 transition-colors hover:bg-green-100 disabled:opacity-50 dark:border-green-900/40 dark:bg-green-950/20 dark:text-green-400"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-1.5 text-xs font-medium text-green-600 dark:text-green-400 transition-colors hover:bg-green-500/15 disabled:opacity-50 dark:border-green-900/40 dark:bg-green-950/20 dark:text-green-400"
             >
               <CheckCircle className="h-3.5 w-3.5" />
               Bearbeitet — Aktion durchgeführt

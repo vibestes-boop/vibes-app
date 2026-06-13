@@ -615,7 +615,7 @@ function ActiveRow({ coHost, sessionId }: { coHost: ActiveCoHost; sessionId: str
               {initial}
             </div>
           )}
-          <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-primary-foreground">
+          <span className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[10px] font-bold text-primary-foreground">
             {coHost.slot_index}
           </span>
         </div>

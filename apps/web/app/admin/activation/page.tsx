@@ -34,7 +34,7 @@ async function submitActivationSupportThread(formData: FormData): Promise<void> 
 
 export default async function AdminActivationPage() {
   const roles = await getAdminRoleStatus();
-  if (!roles.can_operate && !roles.can_creator_ops) redirect('/admin');
+  if (!roles.can_operate && !roles.can_creator_ops) redirect('/admin' as Route);
 
   const snapshot = await getCreatorActivationSnapshot();
   const summary = snapshot.summary;
@@ -47,14 +47,14 @@ export default async function AdminActivationPage() {
     <div className="space-y-4">
       <section className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <div className="inline-flex items-center gap-2 rounded-full bg-blue-50 px-2.5 py-1 text-[11px] font-semibold text-blue-700">
+          <div className="inline-flex items-center gap-2 rounded-full bg-blue-500/10 px-2.5 py-1 text-[11px] font-semibold text-blue-700 dark:text-blue-400">
             <Rocket className="h-3.5 w-3.5" />
             Product Recovery
           </div>
-          <h1 className="mt-2 text-2xl font-bold text-slate-950">
+          <h1 className="mt-2 text-2xl font-bold text-foreground">
             Creator Activation Review
           </h1>
-          <p className="mt-1 max-w-2xl text-sm text-slate-500">
+          <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
             Echte Backend-Signale fuer North Star, erste Posts und Creator mit fehlendem Engagement.
           </p>
         </div>
@@ -62,7 +62,7 @@ export default async function AdminActivationPage() {
           <StatusPill ready={northStarReady} />
           <Link
             href="/admin/command-center"
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:border-blue-200 hover:text-blue-700"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground/80 shadow-sm transition hover:border-blue-500/30 hover:text-blue-700 dark:hover:text-blue-400"
           >
             Command Center
             <ArrowRight className="h-3.5 w-3.5" />
@@ -71,7 +71,7 @@ export default async function AdminActivationPage() {
       </section>
 
       {snapshot.status === 'error' && (
-        <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm font-medium text-red-800">
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm font-medium text-red-800 dark:text-red-300">
           Creator-Activation-Snapshot konnte nicht geladen werden: {snapshot.error ?? 'Unbekannter Fehler'}
         </div>
       )}
@@ -149,7 +149,7 @@ export default async function AdminActivationPage() {
         </Panel>
       </section>
 
-      <p className="text-[11px] text-slate-500">
+      <p className="text-[11px] text-muted-foreground">
         Aktualisiert: {formatDate(snapshot.generated_at)}
       </p>
     </div>
@@ -166,11 +166,11 @@ function Panel({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+    <section className="rounded-lg border border-border bg-card p-3 shadow-sm">
       <div className="mb-3 flex items-center justify-between gap-3">
-        <h2 className="text-sm font-bold text-slate-950">{title}</h2>
+        <h2 className="text-sm font-bold text-foreground">{title}</h2>
         {action && (
-          <span className="rounded-full bg-slate-100 px-2 py-1 text-[11px] font-semibold text-slate-600">
+          <span className="rounded-full bg-muted px-2 py-1 text-[11px] font-semibold text-muted-foreground">
             {action}
           </span>
         )}
@@ -194,13 +194,13 @@ function KpiCard({
   tone: 'blue' | 'green' | 'amber' | 'violet';
 }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+    <div className="rounded-lg border border-border bg-card p-3 shadow-sm">
       <div className={cn('mb-3 flex h-9 w-9 items-center justify-center rounded-full text-white', toneClass(tone))}>
         <Icon className="h-4 w-4" />
       </div>
-      <div className="text-[11px] font-semibold text-slate-500">{label}</div>
-      <div className="mt-1 text-2xl font-bold tabular-nums text-slate-950">{formatNumber(value)}</div>
-      <div className="mt-1 text-[11px] text-slate-500">{sub}</div>
+      <div className="text-[11px] font-semibold text-muted-foreground">{label}</div>
+      <div className="mt-1 text-2xl font-bold tabular-nums text-foreground">{formatNumber(value)}</div>
+      <div className="mt-1 text-[11px] text-muted-foreground">{sub}</div>
     </div>
   );
 }
@@ -214,7 +214,7 @@ function FirstPostTable({ rows }: { rows: CreatorActivationFirstPostCandidate[] 
     <div className="overflow-x-auto">
       <table className="w-full min-w-[640px] border-collapse text-left text-xs">
         <thead>
-          <tr className="border-b border-slate-100 text-[11px] text-slate-500">
+          <tr className="border-b border-border/60 text-[11px] text-muted-foreground">
             <th className="pb-2 font-semibold">Nutzer</th>
             <th className="pb-2 font-semibold">Registriert</th>
             <th className="pb-2 font-semibold">Wartet seit</th>
@@ -223,12 +223,12 @@ function FirstPostTable({ rows }: { rows: CreatorActivationFirstPostCandidate[] 
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={`${row.user_id}-${row.username ?? 'unknown'}`} className="border-b border-slate-100 last:border-0">
+            <tr key={`${row.user_id}-${row.username ?? 'unknown'}`} className="border-b border-border/60 last:border-0">
               <td className="py-2 pr-3">
                 <UserLabel username={row.username} displayName={row.display_name} fallback={row.user_id} />
               </td>
-              <td className="py-2 pr-3 text-slate-600">{formatDateShort(row.created_at)}</td>
-              <td className="py-2 pr-3 font-semibold tabular-nums text-slate-900">
+              <td className="py-2 pr-3 text-muted-foreground">{formatDateShort(row.created_at)}</td>
+              <td className="py-2 pr-3 font-semibold tabular-nums text-foreground">
                 {formatNumber(row.days_since_signup)}d
               </td>
               <td className="py-2 text-right">
@@ -255,7 +255,7 @@ function EngagementTable({ rows }: { rows: CreatorActivationEngagementCandidate[
     <div className="overflow-x-auto">
       <table className="w-full min-w-[760px] border-collapse text-left text-xs">
         <thead>
-          <tr className="border-b border-slate-100 text-[11px] text-slate-500">
+          <tr className="border-b border-border/60 text-[11px] text-muted-foreground">
             <th className="pb-2 font-semibold">Creator</th>
             <th className="pb-2 font-semibold">Posts</th>
             <th className="pb-2 font-semibold">Views</th>
@@ -267,15 +267,15 @@ function EngagementTable({ rows }: { rows: CreatorActivationEngagementCandidate[
         </thead>
         <tbody>
           {rows.map((row) => (
-            <tr key={`${row.user_id}-${row.username ?? 'unknown'}`} className="border-b border-slate-100 last:border-0">
+            <tr key={`${row.user_id}-${row.username ?? 'unknown'}`} className="border-b border-border/60 last:border-0">
               <td className="py-2 pr-3">
                 <UserLabel username={row.username} displayName={row.display_name} fallback={row.user_id} />
               </td>
-              <td className="py-2 pr-3 tabular-nums text-slate-700">{formatNumber(row.posts_30d)}</td>
-              <td className="py-2 pr-3 tabular-nums text-slate-700">{formatNumber(row.views)}</td>
-              <td className="py-2 pr-3 tabular-nums text-slate-700">{formatNumber(row.likes)}</td>
-              <td className="py-2 pr-3 tabular-nums text-slate-700">{formatNumber(row.comments)}</td>
-              <td className="py-2 pr-3 text-slate-600">{row.latest_post_at ? formatDateShort(row.latest_post_at) : '-'}</td>
+              <td className="py-2 pr-3 tabular-nums text-foreground/80">{formatNumber(row.posts_30d)}</td>
+              <td className="py-2 pr-3 tabular-nums text-foreground/80">{formatNumber(row.views)}</td>
+              <td className="py-2 pr-3 tabular-nums text-foreground/80">{formatNumber(row.likes)}</td>
+              <td className="py-2 pr-3 tabular-nums text-foreground/80">{formatNumber(row.comments)}</td>
+              <td className="py-2 pr-3 text-muted-foreground">{row.latest_post_at ? formatDateShort(row.latest_post_at) : '-'}</td>
               <td className="py-2 text-right">
                 <ActivationActions
                   profileId={row.profile_id}
@@ -302,10 +302,10 @@ function UserLabel({
 }) {
   return (
     <div className="min-w-0">
-      <div className="truncate font-semibold text-slate-900">
+      <div className="truncate font-semibold text-foreground">
         {displayName || (username ? `@${username}` : fallback)}
       </div>
-      <div className="truncate text-[11px] text-slate-500">
+      <div className="truncate text-[11px] text-muted-foreground">
         {username ? `@${username}` : fallback}
       </div>
     </div>
@@ -315,7 +315,7 @@ function UserLabel({
 function AdminUserLink({ username }: { username: string | null }) {
   const href = username ? (`/admin/users?q=${encodeURIComponent(username)}` as Route) : ('/admin/users' as Route);
   return (
-    <Link href={href} className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 hover:text-blue-800">
+    <Link href={href} className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">
       Nutzer pruefen
       <ArrowRight className="h-3 w-3" />
     </Link>
@@ -340,7 +340,7 @@ function ActivationActions({
         <button
           type="submit"
           disabled={!profileId}
-          className="inline-flex items-center rounded-md border border-blue-100 bg-blue-50 px-2 py-1 text-[11px] font-semibold text-blue-700 transition hover:border-blue-200 hover:bg-blue-100 disabled:cursor-not-allowed disabled:border-slate-100 disabled:bg-slate-50 disabled:text-slate-400"
+          className="inline-flex items-center rounded-md border border-blue-500/20 bg-blue-500/10 px-2 py-1 text-[11px] font-semibold text-blue-700 dark:text-blue-400 transition hover:border-blue-500/30 hover:bg-blue-500/15 disabled:cursor-not-allowed disabled:border-border/60 disabled:bg-muted/50 disabled:text-muted-foreground/70"
         >
           Supportfall
         </button>
@@ -359,7 +359,7 @@ function ActionList({ actions, northStarReady }: { actions: string[]; northStarR
   return (
     <div className="space-y-2">
       {displayActions.map((action) => (
-        <div key={action} className="flex items-start gap-2 rounded-md border border-slate-100 px-2 py-2 text-xs text-slate-700">
+        <div key={action} className="flex items-start gap-2 rounded-md border border-border/60 px-2 py-2 text-xs text-foreground/80">
           <CheckCircle2 className={cn('mt-0.5 h-3.5 w-3.5 shrink-0', northStarReady ? 'text-emerald-500' : 'text-amber-500')} />
           <span>{translateAction(action)}</span>
         </div>
@@ -370,17 +370,17 @@ function ActionList({ actions, northStarReady }: { actions: string[]; northStarR
 
 function Insight({ label, value, detail }: { label: string; value: string; detail: string }) {
   return (
-    <div className="rounded-md border border-slate-100 bg-slate-50 px-3 py-2">
-      <div className="text-[11px] font-semibold text-slate-500">{label}</div>
-      <div className="mt-1 text-lg font-bold text-slate-950">{value}</div>
-      <div className="mt-1 text-[11px] leading-5 text-slate-500">{detail}</div>
+    <div className="rounded-md border border-border/60 bg-muted/50 px-3 py-2">
+      <div className="text-[11px] font-semibold text-muted-foreground">{label}</div>
+      <div className="mt-1 text-lg font-bold text-foreground">{value}</div>
+      <div className="mt-1 text-[11px] leading-5 text-muted-foreground">{detail}</div>
     </div>
   );
 }
 
 function EmptyState({ label }: { label: string }) {
   return (
-    <div className="flex min-h-28 items-center justify-center rounded-md border border-dashed border-slate-200 px-3 text-center text-sm text-slate-500">
+    <div className="flex min-h-28 items-center justify-center rounded-md border border-dashed border-border px-3 text-center text-sm text-muted-foreground">
       {label}
     </div>
   );
@@ -392,8 +392,8 @@ function StatusPill({ ready }: { ready: boolean }) {
       className={cn(
         'inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-semibold',
         ready
-          ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-          : 'border-amber-200 bg-amber-50 text-amber-700',
+          ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400'
+          : 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400',
       )}
     >
       {ready ? 'North Star aktiv' : 'Activation beobachten'}

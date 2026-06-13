@@ -38,7 +38,7 @@ export function PeakHoursHeatmap({ cells }: Props) {
               <div
                 key={h}
                 className={cn(
-                  'text-center text-[9px] tabular-nums text-muted-foreground',
+                  'text-center text-[10px] tabular-nums text-muted-foreground',
                   h % 3 !== 0 && 'opacity-0',
                 )}
               >

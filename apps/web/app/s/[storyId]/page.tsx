@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Route } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
@@ -199,7 +199,7 @@ export default async function StoryPage({
             {viewers.map((v) => {
               const name = v.display_name ?? v.username ?? 'Unbekannt';
               const initials = name.slice(0, 2).toUpperCase();
-              const href = v.username ? `/u/${v.username}` : undefined;
+              const href = v.username ? `/u/${v.username}` as Route : undefined;
               const viewedDate = new Date(v.viewed_at);
               const timeLabel = viewedDate.toLocaleTimeString('de-DE', {
                 hour: '2-digit',

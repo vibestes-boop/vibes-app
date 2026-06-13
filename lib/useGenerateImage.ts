@@ -195,7 +195,7 @@ export async function markAIImageConsumed(generationId: string): Promise<void> {
       p_generation_id: generationId,
     });
     if (error && __DEV__) {
-      console.warn('[markAIImageConsumed] RPC failed:', error.message);
+__DEV__ && console.warn('[markAIImageConsumed] RPC failed:', error.message);
     }
   } catch (e) {
     if (__DEV__) console.warn('[markAIImageConsumed] throw:', e);

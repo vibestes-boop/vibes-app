@@ -191,7 +191,7 @@ export function LiveWelcomeToasts({
           ) : (
             <div
               className={cn(
-                'flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/15 text-[9px] font-bold text-white',
+                'flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/15 text-[10px] font-bold text-white',
               )}
             >
               {t.username.charAt(0).toUpperCase()}

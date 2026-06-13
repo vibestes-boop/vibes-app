@@ -120,13 +120,13 @@ export default async function AdminOverviewPage() {
 
       {/* Warning if pending reports */}
       {stats.pending_reports > 0 && (
-        <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900/40 dark:bg-amber-950/20">
+        <div className="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 dark:border-amber-900/40 dark:bg-amber-950/20">
           <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
           <div className="text-sm">
             <span className="font-medium text-amber-700 dark:text-amber-400">
               {stats.pending_reports} offene Meldung{stats.pending_reports !== 1 ? 'en' : ''}
             </span>
-            <span className="ml-1 text-amber-600/80 dark:text-amber-500/80">
+            <span className="ml-1 text-amber-600 dark:text-amber-400/80 dark:text-amber-500/80">
               warten auf Überprüfung.{' '}
               <Link href="/admin/reports" className="underline underline-offset-2 hover:text-amber-700 dark:hover:text-amber-400">
                 Jetzt ansehen →

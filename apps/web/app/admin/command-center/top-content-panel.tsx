@@ -35,8 +35,8 @@ export function TopContentPanel({
             className={cn(
               'rounded-md px-2 py-1 text-[10px] font-bold transition-colors',
               selectedMode === tab.mode
-                ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-100'
-                : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800',
+                ? 'bg-blue-500/10 text-blue-700 dark:text-blue-400 ring-1 ring-blue-500/20'
+                : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
             )}
             aria-pressed={selectedMode === tab.mode}
           >
@@ -46,13 +46,13 @@ export function TopContentPanel({
       </div>
 
       {items.length === 0 ? (
-        <div className="flex min-h-24 items-center justify-center rounded-md border border-dashed border-slate-200 px-3 text-center text-[11px] text-slate-500">
+        <div className="flex min-h-24 items-center justify-center rounded-md border border-dashed border-border px-3 text-center text-[11px] text-muted-foreground">
           Top Inhalte fuer diesen Bereich noch nicht verfuegbar.
         </div>
       ) : (
-        <table className="w-full min-w-0 table-fixed text-left text-[9px]">
+        <table className="w-full min-w-0 table-fixed text-left text-[10px]">
           <thead>
-            <tr className="border-b border-slate-100 text-slate-500">
+            <tr className="border-b border-border/60 text-muted-foreground">
               <th className="w-5 pb-1.5 font-semibold">#</th>
               <th className="pb-1.5 font-semibold">Inhalt</th>
               <th className="w-12 pb-1.5 text-right font-semibold">Likes</th>
@@ -62,31 +62,31 @@ export function TopContentPanel({
           </thead>
           <tbody>
             {items.map((item, index) => (
-              <tr key={item.id} className="border-b border-slate-100 last:border-0">
-                <td className="py-1.5 pr-1 align-middle font-bold tabular-nums text-slate-400">{index + 1}</td>
+              <tr key={item.id} className="border-b border-border/60 last:border-0">
+                <td className="py-1.5 pr-1 align-middle font-bold tabular-nums text-muted-foreground/70">{index + 1}</td>
                 <td className="min-w-0 py-1.5 pr-1.5">
                   <div className="flex min-w-0 items-center gap-1.5">
-                    <div className="h-7 w-7 shrink-0 overflow-hidden rounded bg-slate-100">
+                    <div className="h-7 w-7 shrink-0 overflow-hidden rounded bg-muted">
                       {item.thumbnail_url ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={item.thumbnail_url} alt="" className="h-full w-full object-cover" loading="lazy" />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-slate-400">
+                        <div className="flex h-full w-full items-center justify-center text-[10px] font-bold text-muted-foreground/70">
                           {index + 1}
                         </div>
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="truncate font-bold leading-4 text-slate-800">{item.title}</div>
-                      <div className="truncate text-[9px] leading-3 text-slate-500">
+                      <div className="truncate font-bold leading-4 text-foreground">{item.title}</div>
+                      <div className="truncate text-[10px] leading-3 text-muted-foreground">
                         {item.author_username ? `von @${item.author_username}` : formatDate(item.created_at)}
                       </div>
                     </div>
                   </div>
                 </td>
-                <td className="py-1.5 text-right align-middle font-semibold tabular-nums text-slate-700">{formatCompactNumber(item.likes)}</td>
-                <td className="py-1.5 text-right align-middle font-semibold tabular-nums text-slate-700">{formatCompactNumber(item.comments)}</td>
-                <td className="py-1.5 text-right align-middle font-semibold tabular-nums text-slate-700">
+                <td className="py-1.5 text-right align-middle font-semibold tabular-nums text-foreground/80">{formatCompactNumber(item.likes)}</td>
+                <td className="py-1.5 text-right align-middle font-semibold tabular-nums text-foreground/80">{formatCompactNumber(item.comments)}</td>
+                <td className="py-1.5 text-right align-middle font-semibold tabular-nums text-foreground/80">
                   {item.engagement_rate === null ? '-' : `${Math.round(item.engagement_rate * 100)}%`}
                 </td>
               </tr>

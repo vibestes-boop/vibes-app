@@ -103,7 +103,7 @@ export function LiveHostPill({
         <span className="truncate">{hostName}</span>
         {session.host?.verified && (
           <span
-            className="inline-flex h-3 w-3 flex-none items-center justify-center rounded-full bg-sky-500 text-[8px] font-bold text-white"
+            className="inline-flex h-3 w-3 flex-none items-center justify-center rounded-full bg-sky-500 text-[9px] font-bold text-white"
             aria-label="Verifiziert"
           >
             ✓

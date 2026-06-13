@@ -210,7 +210,7 @@ export function LiveHostShopBadge({
       >
         <ShoppingBag className="h-5 w-5 text-white" strokeWidth={1.8} />
         {productCount > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[9px] font-bold text-white ring-1 ring-black/40">
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-600 text-[10px] font-bold text-white ring-1 ring-black/40">
             {productCount > 99 ? '99+' : productCount}
           </span>
         )}

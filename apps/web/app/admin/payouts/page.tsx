@@ -1,3 +1,4 @@
+import type { Route } from 'next';
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import { redirect } from 'next/navigation';
@@ -21,7 +22,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function AdminPayoutsPage() {
   const roles = await getAdminRoleStatus();
-  if (!roles.can_creator_ops) redirect('/admin');
+  if (!roles.can_creator_ops) redirect('/admin' as Route);
 
   const sellers = await getSellerBalances();
 

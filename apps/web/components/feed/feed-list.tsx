@@ -38,9 +38,16 @@ export interface FeedListProps {
   feedKey?: string;
   /** Optionaler Header-Slot, z.B. Tabs/Filter auf Mobile. */
   header?: React.ReactNode;
+  /**
+   * Wenn true: alle Videos in dieser Liste werden zwangsweise pausiert,
+   * unabhängig vom activeIdx. Nutzen: wenn der Tab/Container mit CSS `hidden`
+   * versteckt wird (display:none) feuert der IntersectionObserver nicht mehr
+   * → activeIdx bleibt bei 0 → Video läuft weiter. forcePaused schneidet das ab.
+   */
+  forcePaused?: boolean;
 }
 
-export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }: FeedListProps) {
+export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header, forcePaused = false }: FeedListProps) {
   // TanStack-Cache für den Feed — feed-key-scoped, damit For-You und Following
   // jeweils ihren eigenen Cache-Slot haben und sich nicht gegenseitig überschreiben.
   // Mutations in `use-engagement` nutzen `setQueriesData({ queryKey: ['feed'] }, …)`
@@ -521,7 +528,7 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header }:
                   <FeedCard
                     post={row.post}
                     viewerId={viewerId}
-                    isActive={idx === activeIdx}
+                    isActive={idx === activeIdx && !forcePaused}
                     shouldLoadMedia={distanceFromActive <= 1}
                     muted={muted}
                     onMuteToggle={onMuteToggle}

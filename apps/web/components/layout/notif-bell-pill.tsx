@@ -1,10 +1,10 @@
 'use client';
 
-import Link from 'next/link';
 import { Bell } from 'lucide-react';
 import { glassPillBase } from '@/lib/ui/glass-pill';
 import { cn } from '@/lib/utils';
 import { useUnreadShellCounts } from '@/components/layout/use-unread-shell-counts';
+import { useNotificationsDrawer } from '@/lib/notifications-drawer-store';
 
 // -----------------------------------------------------------------------------
 // NotifBellPill — Glass-Pill-Link zu /notifications mit Unread-Badge.
@@ -32,9 +32,12 @@ export function NotifBellPill({ initialCount, viewerId }: NotifBellPillProps) {
   });
   const count = counts.notifications;
 
+  const { toggleDrawer } = useNotificationsDrawer();
+
   return (
-    <Link
-      href="/notifications"
+    <button
+      type="button"
+      onClick={toggleDrawer}
       aria-label={
         count > 0
           ? `Benachrichtigungen — ${count} ungelesen`
@@ -49,12 +52,12 @@ export function NotifBellPill({ initialCount, viewerId }: NotifBellPillProps) {
       {count > 0 && (
         <span
           aria-hidden="true"
-          className="absolute -right-0.5 -top-0.5 flex min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white"
+          className="absolute -right-0.5 -top-0.5 flex min-w-[16px] items-center justify-center rounded-full bg-brand-purple px-1 text-[10px] font-bold leading-none text-white"
           style={{ minHeight: '16px' }}
         >
           {formatBadge(count)}
         </span>
       )}
-    </Link>
+    </button>
   );
 }

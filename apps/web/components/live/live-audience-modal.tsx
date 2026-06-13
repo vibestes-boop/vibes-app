@@ -650,17 +650,17 @@ export function LiveAudienceModal({
                         <div className="flex items-center gap-1.5 truncate">
                           <span className="truncate text-sm font-medium">@{row.username}</span>
                           {hostFollowers.has(row.id) && (
-                            <span className="shrink-0 rounded-full bg-pink-500/15 px-1 py-0 text-[9px] font-semibold text-pink-400">
+                            <span className="shrink-0 rounded-full bg-pink-500/15 px-1 py-0 text-[10px] font-semibold text-pink-400">
                               ❤️ Follower
                             </span>
                           )}
                           {modIds.has(row.id) && (
-                            <span className="shrink-0 rounded-sm bg-violet-500/20 px-1 py-0 text-[9px] uppercase tracking-wider text-violet-300">
+                            <span className="shrink-0 rounded-sm bg-violet-500/20 px-1 py-0 text-[10px] uppercase tracking-wider text-violet-300">
                               🛡 Mod
                             </span>
                           )}
                           {row.isPresent && (
-                            <span className="shrink-0 rounded-full bg-emerald-500/15 px-1.5 py-0 text-[9px] font-semibold text-emerald-500">
+                            <span className="shrink-0 rounded-full bg-emerald-500/15 px-1.5 py-0 text-[10px] font-semibold text-emerald-500">
                               live
                             </span>
                           )}

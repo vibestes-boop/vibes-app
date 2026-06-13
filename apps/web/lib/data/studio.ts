@@ -504,3 +504,34 @@ export const getMyDraftsCount = cache(async (): Promise<number> => {
 
   return count ?? 0;
 });
+
+// -----------------------------------------------------------------------------
+// getMyLiveSessions — Eigene vergangene Live-Sessions für LIVE-Analyse-Tabelle.
+// -----------------------------------------------------------------------------
+
+export interface MyLiveSession {
+  id: string;
+  title: string | null;
+  thumbnail_url: string | null;
+  started_at: string | null;
+  ended_at: string | null;
+  duration_secs: number | null;
+  viewer_count: number | null;
+  peak_viewer_count: number | null;
+  status: string | null;
+}
+
+export const getMyLiveSessions = cache(async (limit = 50): Promise<MyLiveSession[]> => {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data } = await supabase
+    .from('live_sessions')
+    .select('id, title, thumbnail_url, started_at, ended_at, duration_secs, viewer_count, peak_viewer_count:peak_viewers, status')
+    .eq('host_id', user.id)
+    .order('started_at', { ascending: false })
+    .limit(limit);
+
+  return (data ?? []) as MyLiveSession[];
+});

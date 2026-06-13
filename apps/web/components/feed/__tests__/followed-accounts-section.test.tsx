@@ -90,12 +90,12 @@ describe('FollowedAccountsSection', () => {
     jest.resetAllMocks();
   });
 
-  it('rendert bis zu 5 Rows mit Username + Display-Name', () => {
+  it('rendert bis zu 5 Rows mit Display-Name (einzeilig, Username im aria-label)', () => {
     const accounts = [makeAccount(1), makeAccount(2, { verified: true }), makeAccount(3)];
     render(<FollowedAccountsSection initial={accounts} />);
 
     expect(screen.getByText('User 1')).toBeInTheDocument();
-    expect(screen.getByText('@user1')).toBeInTheDocument();
+    expect(screen.getByLabelText('Profil von @user1')).toBeInTheDocument();
     expect(screen.getByText('User 2')).toBeInTheDocument();
     expect(screen.getByText('User 3')).toBeInTheDocument();
   });

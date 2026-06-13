@@ -1,5 +1,6 @@
 'use client';
 
+import type { Route } from 'next';
 import { useRef, useState, useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { MoreHorizontal, Trash2, Link as LinkIcon, Pencil, Loader2, Globe, Users, Lock, Pin, PinOff } from 'lucide-react';
@@ -153,7 +154,7 @@ export function PostAuthorMenu({
                 const res = await deletePost(postId);
                 if (res.ok) {
                   toast('Post gelöscht.');
-                  router.push(`/u/${authorUsername}`);
+                  router.push(`/u/${authorUsername}` as Route);
                 } else {
                   setIsDeleting(false);
                   toast.error(res.error ?? 'Löschen fehlgeschlagen.');

@@ -217,7 +217,7 @@ function StoryCard({
         )}
         {/* LIVE badge */}
         {liveSessionId && (
-          <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 rounded-sm bg-red-500 px-1 py-0 text-[8px] font-bold uppercase tracking-widest text-white">
+          <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 rounded-sm bg-red-500 px-1 py-0 text-[10px] font-bold uppercase tracking-widest text-white">
             Live
           </span>
         )}
@@ -257,7 +257,7 @@ function LiveOnlyCard({
             </Avatar>
           </div>
         </div>
-        <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 rounded-sm bg-red-500 px-1 py-0 text-[8px] font-bold uppercase tracking-widest text-white">
+        <span className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 rounded-sm bg-red-500 px-1 py-0 text-[10px] font-bold uppercase tracking-widest text-white">
           Live
         </span>
       </div>

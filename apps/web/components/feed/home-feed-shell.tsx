@@ -76,6 +76,8 @@ export interface HomeFeedShellProps {
   trendingHashtags?: TrendingHashtag[];
   /** Server-resolved admin flag for the desktop sidebar admin entry. */
   viewerIsAdmin?: boolean;
+  /** Profil-Daten für den Avatar-Button in der Sidebar. */
+  viewerProfile?: import('./feed-sidebar').SidebarViewerProfile | null;
 }
 
 type TabKey = 'foryou' | 'following';
@@ -102,6 +104,7 @@ function HomeFeedShellBody({
   followedAccounts,
   trendingHashtags,
   viewerIsAdmin = false,
+  viewerProfile,
 }: HomeFeedShellProps) {
   const [tab, setTab] = useState<TabKey>(initialTab);
   const { commentsOpenForPostId, closeComments } = useFeedInteraction();
@@ -187,6 +190,7 @@ function HomeFeedShellBody({
       <aside className="hidden border-r border-border xl:block">
         <FeedSidebar
           viewerId={viewerId}
+          viewerProfile={viewerProfile}
           followedAccounts={followedAccounts}
           viewerIsAdmin={viewerIsAdmin}
         />
@@ -244,6 +248,7 @@ function HomeFeedShellBody({
                 initialPosts={initialForYou}
                 viewerId={viewerId}
                 feedKey="foryou"
+                forcePaused={tab !== 'foryou'}
               />
             )}
           </div>
@@ -259,6 +264,7 @@ function HomeFeedShellBody({
                   initialPosts={followingPosts}
                   viewerId={viewerId}
                   feedKey="following"
+                  forcePaused={tab !== 'following'}
                 />
               )}
             </div>

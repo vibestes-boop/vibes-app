@@ -1,5 +1,6 @@
 'use client';
 
+import type { Route } from 'next';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { MoreHorizontal, EyeOff, Flag, Link as LinkIcon, ShieldOff } from 'lucide-react';
@@ -119,7 +120,7 @@ export function PostViewerMenu({
       const res = await blockUser(targetUserId);
       if (res.ok) {
         toast.success(`@${targetUsername} wurde blockiert.`);
-        router.push('/');
+        router.push('/' as Route);
       } else {
         toast.error(res.error);
       }

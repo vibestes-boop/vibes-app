@@ -1,5 +1,6 @@
 'use client';
 
+import type { Route } from 'next';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -57,7 +58,7 @@ export default function AcceptInvitePage() {
         return;
       }
 
-      router.replace(next);
+      router.replace(next as Route);
     }
 
     void acceptInvite();

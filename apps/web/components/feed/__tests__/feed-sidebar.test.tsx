@@ -29,6 +29,7 @@ function renderWithQueryClient(ui: React.ReactElement) {
 
 jest.mock('next/navigation', () => ({
   usePathname: () => '/',
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), refresh: jest.fn() }),
 }));
 
 // UnreadShellCounts nutzt Server Actions plus delayed polling; fuer die
@@ -74,9 +75,14 @@ jest.mock('@/components/feed/admin-nav-link', () => ({
   AdminNavLink: () => null,
 }));
 
+// Notifications-Drawer-Store (zustand) — Sidebar braucht nur toggle + open.
+jest.mock('@/lib/notifications-drawer-store', () => ({
+  useNotificationsDrawer: () => ({ toggleDrawer: jest.fn(), open: false }),
+}));
+
 describe('FeedSidebar — Layout-Reset (v1.w.UI.10) Struktur', () => {
-  const PRIMARY_LABELS = ['Für dich', 'Folge ich', 'Entdecken', 'Live', 'Messages', 'Benachrichtigungen'];
-  const SECONDARY_LABELS = ['Shop', 'Pods', 'Creator Studio'];
+  const PRIMARY_LABELS = ['Für dich', 'Folge ich', 'Freunde', 'Entdecken', 'Live', 'Messages', 'Benachrichtigungen', 'Profil'];
+  const SECONDARY_LABELS = ['Shop', 'Pods', 'Women-Only Zone', 'Creator Studio'];
   const REMOVED_LABELS = [
     'Entwürfe',
     'Geplant',
@@ -89,16 +95,16 @@ describe('FeedSidebar — Layout-Reset (v1.w.UI.10) Struktur', () => {
     'Post erstellen',
   ];
 
-  it('rendert genau 6 Primary-Nav-Items', () => {
+  it('rendert alle Primary-Nav-Items (inkl. Benachrichtigungen-Button + Profil)', () => {
     renderWithQueryClient(<FeedSidebar viewerId="viewer-1" />);
     for (const label of PRIMARY_LABELS) {
       expect(screen.getByText(label)).toBeInTheDocument();
     }
   });
 
-  it('rendert genau 3 Secondary-Nav-Items unter „Weiteres"-Header', () => {
+  it('rendert die Secondary-Nav-Items unter „Weiteres"-Header', () => {
     // v1.w.UI.12 — Header umbenannt von „Mehr" → „Weiteres", damit der neue
-    // MoreMenu-Footer-Trigger (Text: „Mehr") keine Doppelbelegung hat.
+    // MoreMenu-Trigger (Text: „Mehr") keine Doppelbelegung hat.
     renderWithQueryClient(<FeedSidebar viewerId="viewer-1" />);
     expect(screen.getByText('Weiteres')).toBeInTheDocument();
     for (const label of SECONDARY_LABELS) {
@@ -125,14 +131,15 @@ describe('FeedSidebar — Layout-Reset (v1.w.UI.10) Struktur', () => {
     const ctaLink = screen.getByRole('link', { name: /Neuen Post erstellen/i });
     expect(ctaLink).toHaveAttribute('aria-disabled', 'true');
 
-    // „Folge ich" + „Messages" + „Benachrichtigungen" + „Creator Studio"
-    // sind requiresAuth → disabled wenn kein Viewer.
+    // „Folge ich" + „Messages" + „Creator Studio" sind requiresAuth →
+    // disabled wenn kein Viewer. Benachrichtigungen (Drawer-Button) und Profil
+    // rendern logged-out gar nicht.
     const folgeIch = screen.getByText('Folge ich').closest('a');
     expect(folgeIch).toHaveAttribute('aria-disabled', 'true');
     const messages = screen.getByText('Messages').closest('a');
     expect(messages).toHaveAttribute('aria-disabled', 'true');
-    const benachrichtigungen = screen.getByText('Benachrichtigungen').closest('a');
-    expect(benachrichtigungen).toHaveAttribute('aria-disabled', 'true');
+    expect(screen.queryByText('Benachrichtigungen')).not.toBeInTheDocument();
+    expect(screen.queryByText('Profil')).not.toBeInTheDocument();
     const creatorStudio = screen.getByText('Creator Studio').closest('a');
     expect(creatorStudio).toHaveAttribute('aria-disabled', 'true');
 

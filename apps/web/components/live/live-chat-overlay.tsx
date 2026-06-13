@@ -731,22 +731,22 @@ function OverlayRow({
         >
           {name}
           {isHostMsg && (
-            <span className="rounded-sm bg-white/15 px-1 py-0.5 text-[8px] uppercase tracking-wider text-white/75">
+            <span className="rounded-sm bg-white/15 px-1 py-0.5 text-[10px] uppercase tracking-wider text-white/75">
               Host
             </span>
           )}
           {isModMsg && (
-            <span className="rounded-sm bg-white/15 px-1 py-0.5 text-[8px] uppercase tracking-wider text-white/75">
+            <span className="rounded-sm bg-white/15 px-1 py-0.5 text-[10px] uppercase tracking-wider text-white/75">
               Mod
             </span>
           )}
           {isTopGifterMsg && (
-            <span className="rounded-sm bg-white/15 px-1 py-0.5 text-[8px] font-bold uppercase tracking-wider text-white/75">
+            <span className="rounded-sm bg-white/15 px-1 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white/75">
               Top
             </span>
           )}
           {comment.author?.verified && (
-            <span className="inline-flex h-3 w-3 items-center justify-center rounded-full bg-white/15 text-[8px] font-bold text-white/85">
+            <span className="inline-flex h-3 w-3 items-center justify-center rounded-full bg-white/15 text-[9px] font-bold text-white/85">
               ✓
             </span>
           )}

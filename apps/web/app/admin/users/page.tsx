@@ -1,3 +1,4 @@
+import type { Route } from 'next';
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { getAdminRoleStatus, getAdminUsersPageSnapshot } from '@/app/actions/admin';
@@ -20,7 +21,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function AdminUsersPage() {
   const roles = await getAdminRoleStatus();
-  if (!roles.can_admin) redirect('/admin');
+  if (!roles.can_admin) redirect('/admin' as Route);
 
   const snapshot = await getAdminUsersPageSnapshot();
   return <AdminUsersClient initialSnapshot={snapshot} />;

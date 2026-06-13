@@ -629,12 +629,12 @@ function CommentRow({
         >
           {name}
           {isHostMsg && (
-            <span className="ml-1 rounded-sm bg-primary/20 px-1 py-0.5 text-[9px] uppercase tracking-wider text-primary">
+            <span className="ml-1 rounded-sm bg-primary/20 px-1 py-0.5 text-[10px] uppercase tracking-wider text-primary">
               Host
             </span>
           )}
           {comment.author?.verified && (
-            <span className="ml-1 inline-flex h-3 w-3 items-center justify-center rounded-full bg-blue-500 text-[8px] font-bold text-white">
+            <span className="ml-1 inline-flex h-3 w-3 items-center justify-center rounded-full bg-blue-500 text-[9px] font-bold text-white">
               ✓
             </span>
           )}

@@ -103,7 +103,7 @@ export function ProfileTabs({
     <div
       role="tablist"
       aria-label={labels.tablist}
-      className="sticky top-14 z-30 flex items-stretch justify-around border-b-2 border-border/60 bg-background/80 backdrop-blur-md"
+      className="sticky top-0 z-30 flex items-stretch justify-around border-b-2 border-border/60 bg-background/80 backdrop-blur-md"
     >
       {TABS.map(({ key, label, icon: Icon }) => {
         const isActive = key === active;

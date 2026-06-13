@@ -1,3 +1,4 @@
+import type { Route } from 'next';
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { CheckCircle2, Clock, MessageSquare, Send } from 'lucide-react';
@@ -21,7 +22,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function AdminSupportPage() {
   const roles = await getAdminRoleStatus();
-  if (!roles.can_moderate) redirect('/admin');
+  if (!roles.can_moderate) redirect('/admin' as Route);
 
   const threads = await getAdminSupportThreads();
   const messagesByThread = await getAdminSupportMessages(threads.map((thread) => thread.id));
@@ -43,8 +44,8 @@ export default async function AdminSupportPage() {
     <div className="space-y-4">
       <section className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-950">Support Inbox</h1>
-          <p className="mt-1 text-xs text-slate-500">
+          <h1 className="text-xl font-bold text-foreground">Support Inbox</h1>
+          <p className="mt-1 text-xs text-muted-foreground">
             Echte Supportfaelle mit Antwort- und Status-Workflow. Mutationen laufen ueber Admin-RPCs.
           </p>
         </div>
@@ -56,8 +57,8 @@ export default async function AdminSupportPage() {
       </section>
 
       {threads.length === 0 ? (
-        <section className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
-          <div className="flex min-h-32 items-center justify-center rounded-md border border-dashed border-slate-200 px-3 text-center text-xs text-slate-500">
+        <section className="rounded-lg border border-border bg-card p-3 shadow-sm">
+          <div className="flex min-h-32 items-center justify-center rounded-md border border-dashed border-border px-3 text-center text-xs text-muted-foreground">
             Keine offenen Supportfaelle.
           </div>
         </section>
@@ -90,13 +91,13 @@ function SupportThreadPanel({
   resolveAction: (formData: FormData) => Promise<void>;
 }) {
   return (
-    <article className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+    <article className="rounded-lg border border-border bg-card p-3 shadow-sm">
       <div className="grid gap-3 lg:grid-cols-[1fr_18rem]">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-start justify-between gap-2 border-b border-slate-100 pb-2">
+          <div className="flex flex-wrap items-start justify-between gap-2 border-b border-border/60 pb-2">
             <div className="min-w-0">
-              <h2 className="truncate text-sm font-bold text-slate-950">{thread.subject}</h2>
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+              <h2 className="truncate text-sm font-bold text-foreground">{thread.subject}</h2>
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
                 <span>{thread.username ? `@${thread.username}` : 'Unbekannter Nutzer'}</span>
                 <span>{thread.source}</span>
                 <span className="inline-flex items-center gap-1">
@@ -113,7 +114,7 @@ function SupportThreadPanel({
 
           <div className="mt-2 space-y-2">
             {messages.length === 0 ? (
-              <div className="rounded-md border border-dashed border-slate-200 px-3 py-4 text-center text-xs text-slate-500">
+              <div className="rounded-md border border-dashed border-border px-3 py-4 text-center text-xs text-muted-foreground">
                 Noch keine Nachrichten geladen.
               </div>
             ) : (
@@ -124,11 +125,11 @@ function SupportThreadPanel({
           </div>
         </div>
 
-        <div className="space-y-3 rounded-md border border-slate-100 bg-slate-50 p-2.5">
+        <div className="space-y-3 rounded-md border border-border/60 bg-muted/50 p-2.5">
           <form action={replyAction} className="space-y-2">
             <input type="hidden" name="thread_id" value={thread.id} />
             <label className="block">
-              <span className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase text-slate-500">
+              <span className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase text-muted-foreground">
                 <MessageSquare className="h-3 w-3" />
                 Antwort
               </span>
@@ -138,7 +139,7 @@ function SupportThreadPanel({
                 maxLength={4000}
                 rows={4}
                 placeholder="Antwort an den Supportfall..."
-                className="w-full resize-none rounded-md border border-slate-200 bg-white px-2.5 py-2 text-xs outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                className="w-full resize-none rounded-md border border-border bg-card px-2.5 py-2 text-xs outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
               />
             </label>
             <button
@@ -150,17 +151,17 @@ function SupportThreadPanel({
             </button>
           </form>
 
-          <form action={resolveAction} className="space-y-2 border-t border-slate-200 pt-2">
+          <form action={resolveAction} className="space-y-2 border-t border-border pt-2">
             <input type="hidden" name="thread_id" value={thread.id} />
             <label className="block">
-              <span className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase text-slate-500">
+              <span className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase text-muted-foreground">
                 <CheckCircle2 className="h-3 w-3" />
                 Status
               </span>
               <select
                 name="status"
                 defaultValue={thread.status}
-                className="h-8 w-full rounded-md border border-slate-200 bg-white px-2 text-xs outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                className="h-8 w-full rounded-md border border-border bg-card px-2 text-xs outline-none focus:border-ring focus:ring-2 focus:ring-ring/20"
               >
                 <option value="open">Open</option>
                 <option value="pending">Pending</option>
@@ -170,7 +171,7 @@ function SupportThreadPanel({
             </label>
             <button
               type="submit"
-              className="h-8 w-full rounded-md border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
+              className="h-8 w-full rounded-md border border-border bg-card px-3 text-xs font-semibold text-foreground/80 transition hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-emerald-700 dark:hover:text-emerald-400"
             >
               Status setzen
             </button>
@@ -188,10 +189,10 @@ function MessageBubble({ message }: { message: AdminSupportMessage }) {
       <div
         className={cn(
           'max-w-[86%] rounded-lg px-3 py-2 text-xs',
-          isAdmin ? 'bg-blue-600 text-white' : 'border border-slate-200 bg-white text-slate-700',
+          isAdmin ? 'bg-blue-600 text-white' : 'border border-border bg-card text-foreground/80',
         )}
       >
-        <div className={cn('mb-1 text-[10px] font-semibold', isAdmin ? 'text-blue-100' : 'text-slate-500')}>
+        <div className={cn('mb-1 text-[10px] font-semibold', isAdmin ? 'text-blue-100' : 'text-muted-foreground')}>
           {message.sender_username ? `@${message.sender_username}` : humanize(message.sender_type)} · {formatDate(message.created_at)}
         </div>
         <p className="whitespace-pre-wrap leading-5">{message.body}</p>
@@ -210,9 +211,9 @@ function SummaryPill({
   tone: 'blue' | 'green' | 'amber' | 'red';
 }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 shadow-sm">
+    <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-sm">
       <div className={cn('text-[10px] font-semibold uppercase', toneClass(tone))}>{label}</div>
-      <div className="mt-1 text-sm font-bold tabular-nums text-slate-950">{value}</div>
+      <div className="mt-1 text-sm font-bold tabular-nums text-foreground">{value}</div>
     </div>
   );
 }
@@ -235,18 +236,18 @@ function statusTone(status: string): 'blue' | 'green' | 'amber' | 'slate' {
 }
 
 function toneClass(tone: 'blue' | 'green' | 'amber' | 'red'): string {
-  if (tone === 'green') return 'text-emerald-600';
-  if (tone === 'amber') return 'text-amber-600';
-  if (tone === 'red') return 'text-red-600';
-  return 'text-blue-600';
+  if (tone === 'green') return 'text-emerald-600 dark:text-emerald-400';
+  if (tone === 'amber') return 'text-amber-600 dark:text-amber-400';
+  if (tone === 'red') return 'text-red-600 dark:text-red-400';
+  return 'text-blue-600 dark:text-blue-400';
 }
 
 function badgeClass(tone: 'blue' | 'green' | 'amber' | 'red' | 'slate'): string {
-  if (tone === 'green') return 'bg-emerald-50 text-emerald-700';
-  if (tone === 'amber') return 'bg-amber-50 text-amber-700';
-  if (tone === 'red') return 'bg-red-50 text-red-700';
-  if (tone === 'blue') return 'bg-blue-50 text-blue-700';
-  return 'bg-slate-100 text-slate-600';
+  if (tone === 'green') return 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400';
+  if (tone === 'amber') return 'bg-amber-500/10 text-amber-700 dark:text-amber-400';
+  if (tone === 'red') return 'bg-red-500/10 text-red-700 dark:text-red-400';
+  if (tone === 'blue') return 'bg-blue-500/10 text-blue-700 dark:text-blue-400';
+  return 'bg-muted text-muted-foreground';
 }
 
 function formatDate(value: string): string {

@@ -1,3 +1,4 @@
+import type { Route } from 'next';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -37,14 +38,14 @@ export default async function FollowingFeedPage() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect('/');
+    redirect('/' as Route);
   }
 
   // Gleiches Prefetch-Muster wie `/`:
   // - For-You wird geprefetcht, damit der Tab-Switch keine Ladeverzögerung hat.
   // - Following ist hier der Primär-Tab → eager laden.
   // - FollowedAccounts für die Sidebar-Section (v1.w.UI.11 Phase B).
-  const [forYou, following, suggested, followedAccounts, trendingHashtags, viewerIsAdmin] = await Promise.all([
+  const [forYou, following, suggested, followedAccounts, trendingHashtags, profileRow] = await Promise.all([
     getForYouFeed({ limit: 10 }),
     getFollowingFeed({ limit: 10 }),
     getSuggestedFollows(5),
@@ -53,12 +54,14 @@ export default async function FollowingFeedPage() {
     (async () => {
       const { data } = await supabase
         .from('profiles')
-        .select('is_admin')
+        .select('username, display_name, avatar_url, is_admin')
         .eq('id', user.id)
         .maybeSingle();
-      return Boolean((data as { is_admin?: boolean } | null)?.is_admin);
+      return data as { username: string | null; display_name: string | null; avatar_url: string | null; is_admin?: boolean } | null;
     })(),
   ]);
+  const viewerIsAdmin = Boolean(profileRow?.is_admin);
+  const viewerProfile = profileRow ? { username: profileRow.username, display_name: profileRow.display_name, avatar_url: profileRow.avatar_url } : null;
 
   return (
     <HomeFeedShell
@@ -69,6 +72,7 @@ export default async function FollowingFeedPage() {
       followedAccounts={followedAccounts}
       trendingHashtags={trendingHashtags}
       viewerIsAdmin={viewerIsAdmin}
+      viewerProfile={viewerProfile}
       initialTab="following"
     />
   );

@@ -1,5 +1,6 @@
 'use client';
 
+import type { Route } from 'next';
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Lock, Loader2, CheckCircle2, Eye, EyeOff, AlertCircle } from 'lucide-react';
@@ -49,7 +50,7 @@ export function ResetPasswordForm() {
       }
       setSuccess(true);
       // Brief pause so the success state is visible before navigating.
-      setTimeout(() => router.replace('/'), 1800);
+      setTimeout(() => router.replace('/' as Route), 1800);
     });
   }
 

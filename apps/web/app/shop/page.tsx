@@ -72,7 +72,7 @@ export default async function ShopCatalogPage({ searchParams }: PageProps) {
     <div className="mx-auto grid max-w-[1600px] grid-cols-1 gap-0 lg:grid-cols-[260px_1fr]">
       <ShopFilters />
 
-      <main className="min-w-0 px-4 py-6 lg:px-8">
+      <main className="min-w-0 px-4 pb-6 pt-16 sm:pt-6 lg:px-8">
         {/* Header */}
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>

@@ -34,6 +34,8 @@ export function ExploreVideoCard({
   mediaType,
   caption,
   authorUsername,
+  authorDisplayName,
+  authorAvatarUrl,
   viewCount,
   fallbackInitial,
   womenOnly = false,
@@ -44,6 +46,8 @@ export function ExploreVideoCard({
   mediaType?: 'image' | 'video' | null;
   caption: string | null;
   authorUsername: string;
+  authorDisplayName?: string | null;
+  authorAvatarUrl?: string | null;
   viewCount: number;
   fallbackInitial: string;
   /** v1.w.UI.170 — show 🌸 badge on Women-Only Zone posts */
@@ -53,10 +57,13 @@ export function ExploreVideoCard({
   const viewsLabel = i18n?.t('explore.views') ?? 'Views';
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoReady, setVideoReady] = useState(false);
+  // Wenn das Thumbnail nicht lädt (z. B. Image-Optimizer-Timeout), fällt die
+  // Kachel auf den gestylten Gradient-Placeholder zurück statt schwarz/broken.
+  const [imgFailed, setImgFailed] = useState(false);
   const inferredImage =
     mediaType === 'image' ||
     (!mediaType && /\.(?:avif|gif|jpe?g|png|webp)(?:[?#].*)?$/i.test(videoUrl));
-  const previewImageUrl = thumbnailUrl ?? (inferredImage ? videoUrl : null);
+  const previewImageUrl = imgFailed ? null : (thumbnailUrl ?? (inferredImage ? videoUrl : null));
   const canPreviewVideo = !inferredImage && videoUrl.length > 0;
 
   const handleMouseEnter = useCallback(() => {
@@ -95,43 +102,47 @@ export function ExploreVideoCard({
     }
   }, [previewImageUrl]);
 
-  return (
-    <Link
-      href={`/p/${id}` as Route}
-      prefetch={false}
-      className="group relative block aspect-[9/16] overflow-hidden rounded-lg bg-black"
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-    >
-      {/* Static thumbnail */}
-      {previewImageUrl ? (
-        <Image
-          src={previewImageUrl}
-          alt={caption ?? 'Post'}
-          fill
-          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 220px"
-          className={cn(
-            'h-full w-full object-cover transition-opacity duration-300',
-            canPreviewVideo && videoReady ? 'opacity-0' : 'opacity-100',
-          )}
-          loading="lazy"
-        />
-      ) : (
-        <div
-          className={cn(
-            'absolute inset-0 flex items-center justify-center bg-gradient-to-br from-zinc-800 via-zinc-900 to-black transition-opacity duration-300',
-            canPreviewVideo && videoReady ? 'opacity-0' : 'opacity-100',
-          )}
-        >
-          <Compass className="h-10 w-10 text-white/20" aria-hidden />
-          <span className="absolute text-2xl font-bold tabular-nums text-white/40">
-            {fallbackInitial}
-          </span>
-        </div>
-      )}
+  const authorInitial = (authorDisplayName ?? authorUsername).slice(0, 1).toUpperCase() || '•';
 
-      {canPreviewVideo && (
-        <>
+  return (
+    <div className="flex flex-col gap-2">
+      {/* Video thumbnail card */}
+      <Link
+        href={`/p/${id}` as Route}
+        prefetch={false}
+        className="group relative block aspect-[9/16] overflow-hidden rounded-lg bg-black"
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+      >
+        {/* Static thumbnail */}
+        {previewImageUrl ? (
+          <Image
+            src={previewImageUrl}
+            alt={caption ?? 'Post'}
+            fill
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 220px"
+            className={cn(
+              'h-full w-full object-cover transition-opacity duration-300',
+              canPreviewVideo && videoReady ? 'opacity-0' : 'opacity-100',
+            )}
+            loading="lazy"
+            onError={() => setImgFailed(true)}
+          />
+        ) : (
+          <div
+            className={cn(
+              'absolute inset-0 flex items-center justify-center bg-gradient-to-br from-zinc-800 via-zinc-900 to-black transition-opacity duration-300',
+              canPreviewVideo && videoReady ? 'opacity-0' : 'opacity-100',
+            )}
+          >
+            <Compass className="h-10 w-10 text-white/20" aria-hidden />
+            <span className="absolute text-2xl font-bold tabular-nums text-white/40">
+              {fallbackInitial}
+            </span>
+          </div>
+        )}
+
+        {canPreviewVideo && (
           <video
             ref={videoRef}
             src={videoUrl}
@@ -149,22 +160,48 @@ export function ExploreVideoCard({
               videoReady ? 'opacity-100' : 'opacity-0',
             )}
           />
-        </>
-      )}
-
-      {/* Overlay */}
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent p-2 text-xs text-white">
-        {/* v1.w.UI.170 — WOZ badge */}
-        {womenOnly && (
-          <div className="mb-1">
-            <span className="text-xs leading-none" aria-label="Women Only" title="Women-Only Zone">🌸</span>
-          </div>
         )}
-        <div className="truncate font-medium">@{authorUsername}</div>
-        <div className="text-white/70">
-          {formatCount(viewCount)} {viewsLabel}
+
+        {/* View count + WOZ badge overlay (top of card) */}
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent px-2 pb-2 pt-6">
+          {womenOnly && (
+            <span className="text-xs leading-none" aria-label="Women Only" title="Women-Only Zone">🌸</span>
+          )}
+          <div className="text-[11px] text-white/80">
+            {formatCount(viewCount)} {viewsLabel}
+          </div>
         </div>
-      </div>
-    </Link>
+      </Link>
+
+      {/* Author info below card — TikTok style */}
+      <Link
+        href={`/u/${authorUsername}` as Route}
+        prefetch={false}
+        className="flex items-center gap-2 px-0.5 hover:opacity-80"
+      >
+        {/* Avatar */}
+        <span className="shrink-0">
+          {authorAvatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={authorAvatarUrl}
+              alt={authorDisplayName ?? authorUsername}
+              className="h-7 w-7 rounded-full object-cover"
+              loading="lazy"
+            />
+          ) : (
+            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-muted text-[11px] font-bold text-muted-foreground">
+              {authorInitial}
+            </span>
+          )}
+        </span>
+        {/* Name */}
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[12px] font-semibold leading-tight text-foreground">
+            {authorDisplayName ?? authorUsername}
+          </span>
+        </span>
+      </Link>
+    </div>
   );
 }

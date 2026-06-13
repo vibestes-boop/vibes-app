@@ -48,7 +48,7 @@ export function GrowthPanel({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-4 text-[10px] text-slate-500">
+        <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
           <span className="inline-flex items-center gap-1">
             <span className="h-2 w-2 rounded-full bg-blue-600" />
             Neue Registrierungen
@@ -61,7 +61,7 @@ export function GrowthPanel({
         <select
           value={range}
           onChange={(event) => setRange(event.target.value as CommandGrowthRange)}
-          className="h-7 rounded-md border border-slate-200 bg-white px-2 text-[10px] font-semibold text-slate-700 outline-none transition focus:border-blue-300 focus:ring-2 focus:ring-blue-100"
+          className="h-7 rounded-md border border-border bg-card px-2 text-[10px] font-semibold text-foreground/80 outline-none transition focus:border-blue-300 focus:ring-2 focus:ring-ring/20"
           aria-label="Zeitraum fuer Nutzerwachstum"
         >
           {RANGE_OPTIONS.map((option) => (
@@ -72,7 +72,7 @@ export function GrowthPanel({
         </select>
       </div>
 
-      <div className="relative h-36 overflow-hidden rounded-lg border border-slate-100 bg-slate-50/80">
+      <div className="relative h-36 overflow-hidden rounded-lg border border-border/60 bg-muted/40">
         {points.length > 0 ? (
           <svg className="absolute inset-0 h-full w-full" viewBox={`0 0 ${CHART.width} ${CHART.height}`} preserveAspectRatio="none" aria-hidden="true">
             <defs>
@@ -130,11 +130,11 @@ export function GrowthPanel({
             </g>
           </svg>
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center text-[11px] font-medium text-slate-400">
+          <div className="absolute inset-0 flex items-center justify-center text-[11px] font-medium text-muted-foreground/70">
             Zeitreihe noch nicht verfuegbar
           </div>
         )}
-        <div className="absolute inset-x-0 bottom-2 h-3 text-[9px] font-medium text-slate-400">
+        <div className="absolute inset-x-0 bottom-2 h-3 text-[10px] font-medium text-muted-foreground/70">
           {axisTicks.map((tick) => (
             <span
               key={`${tick.label}-${tick.x}`}
@@ -148,13 +148,13 @@ export function GrowthPanel({
       </div>
 
       <div className="grid grid-cols-2 gap-2 text-[11px]">
-        <div className="rounded-md bg-slate-50 px-2 py-1">
-          <div className="text-slate-500">Creator 7d</div>
-          <div className="font-bold tabular-nums text-slate-900">{formatCompactNumber(activeCreators)}</div>
+        <div className="rounded-md bg-muted/50 px-2 py-1">
+          <div className="text-muted-foreground">Creator 7d</div>
+          <div className="font-bold tabular-nums text-foreground">{formatCompactNumber(activeCreators)}</div>
         </div>
-        <div className="rounded-md bg-slate-50 px-2 py-1">
-          <div className="text-slate-500">North Star</div>
-          <div className="font-bold tabular-nums text-slate-900">{formatCompactNumber(northStar)}</div>
+        <div className="rounded-md bg-muted/50 px-2 py-1">
+          <div className="text-muted-foreground">North Star</div>
+          <div className="font-bold tabular-nums text-foreground">{formatCompactNumber(northStar)}</div>
         </div>
       </div>
     </div>

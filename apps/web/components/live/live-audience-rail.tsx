@@ -322,7 +322,7 @@ function AudienceRailItem({
         <p className="flex min-w-0 items-center gap-1 text-xs font-semibold text-foreground">
           <span className="truncate">{row.displayName}</span>
           {row.verified && (
-            <span className="grid h-3.5 w-3.5 shrink-0 place-items-center rounded-full bg-sky-500 text-[8px] font-bold text-white">
+            <span className="grid h-3.5 w-3.5 shrink-0 place-items-center rounded-full bg-sky-500 text-[9px] font-bold text-white">
               ✓
             </span>
           )}
@@ -445,7 +445,7 @@ function AudienceProfileCard({
           <p className="flex min-w-0 items-center gap-1 text-sm font-bold text-foreground">
             <span className="truncate">{row.displayName}</span>
             {row.verified && (
-              <span className="grid h-4 w-4 shrink-0 place-items-center rounded-full bg-sky-500 text-[9px] font-bold text-white">
+              <span className="grid h-4 w-4 shrink-0 place-items-center rounded-full bg-sky-500 text-[10px] font-bold text-white">
                 ✓
               </span>
             )}

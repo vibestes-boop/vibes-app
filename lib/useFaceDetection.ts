@@ -95,7 +95,7 @@ export function useFaceDetection() {
       return result;
 
     } catch (err) {
-      console.error('[FaceDetection] Fehler:', err);
+__DEV__ && console.error('[FaceDetection] Fehler:', err);
       return { found: false };
     } finally {
       setIsDetecting(false);

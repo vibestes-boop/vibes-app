@@ -276,6 +276,10 @@ function PushNotificationsProvider() {
   return null;
 }
 
+// ─── PromptProvider (cross-platform Alert.prompt) ────────────────────────────
+const { PromptProvider } =
+  require('@/lib/promptCrossPlatform') as typeof import('@/lib/promptCrossPlatform');
+
 // ─── ThemeProvider ───────────────────────────────────────────────────────────
 // Liest iOS-System-Präferenz und synct sie in den themeStore.
 function ThemeProvider({ children }: { children: React.ReactNode }) {
@@ -475,6 +479,7 @@ export default function RootLayoutFull() {
         }}
       >
         <ThemeProvider>
+          <PromptProvider>
           <GestureHandlerRootView style={{ flex: 1 }}>
           <AuthGuard />
           <PushNotificationsProvider />
@@ -560,7 +565,8 @@ export default function RootLayoutFull() {
               options={{ headerShown: false, animation: 'none', presentation: 'fullScreenModal' }}
             />
           </Stack>
-        </GestureHandlerRootView>
+          </GestureHandlerRootView>
+          </PromptProvider>
         </ThemeProvider>
       </PersistQueryClientProvider>
     </ErrorBoundary>

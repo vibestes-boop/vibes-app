@@ -218,7 +218,7 @@ export default async function GuildDetailPage({ params }: Props) {
                     <div className="flex items-center gap-2 p-2">
                       <Avatar className="h-7 w-7 shrink-0 ring-2 ring-red-500/60">
                         <AvatarImage src={session.host.avatar_url ?? undefined} alt="" />
-                        <AvatarFallback className="text-[9px]">
+                        <AvatarFallback className="text-[10px]">
                           {(session.host.username ?? '?').slice(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>

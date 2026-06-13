@@ -9,13 +9,20 @@
  * 2. In RevenueCat Dashboard → Integrations → Webhooks:
  *    URL: https://<project>.supabase.co/functions/v1/revenuecat-webhook
  *    Authorization: Bearer <REVENUECAT_WEBHOOK_SECRET>
- * 3. Supabase Secret setzen:
- *    npx supabase secrets set REVENUECAT_WEBHOOK_SECRET=dein-geheimes-passwort
+ * 3. Supabase Secrets setzen:
+ *    npx supabase secrets set REVENUECAT_WEBHOOK_SECRET=...
  *
- * Audit Phase 2 #7 Härtungen:
- *  - Replay-Schutz via event_timestamp_ms (max 10 Min Alter)
- *  - Rate-Limit per User (max 20 Gutschriften/Stunde) via coin_purchases
- *  - Receipt-Verify-Scaffold (Apple/Google Store-API-Check via ENV-Flag aktivierbar)
+ * Phase 3 — Apple/Google Server-Verifikation:
+ *   Apple:  APP_STORE_KEY_ID, APP_STORE_ISSUER_ID, APP_STORE_PRIVATE_KEY (PEM, base64)
+ *   Google: GOOGLE_PLAY_SERVICE_ACCOUNT_JSON (base64-encoded JSON)
+ *   Aktivierung: ENABLE_RECEIPT_VERIFY=true
+ *
+ * Sicherheitsschichten (von außen nach innen):
+ *  1. Bearer-Auth (REVENUECAT_WEBHOOK_SECRET)
+ *  2. Replay-Schutz (max 10 Min Alter, kein Future-Timestamp)
+ *  3. Rate-Limit (max 20 Gutschriften/Stunde pro User)
+ *  4. Idempotenz (transaction_id eindeutig in coin_purchases)
+ *  5. Apple/Google Store-API Receipt-Verify (Phase 3, opt-in via ENV)
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -30,60 +37,306 @@ const PRODUCT_COINS: Record<string, number> = {
 
 // Events die eine Gutschrift auslösen
 const PURCHASE_EVENTS = new Set([
-  'NON_SUBSCRIPTION_PURCHASE', // Consumable Kauf
-  'INITIAL_PURCHASE',           // Erster Kauf (Sicherheit)
+  'NON_SUBSCRIPTION_PURCHASE',
+  'INITIAL_PURCHASE',
 ]);
 
 // ─── Härtungs-Konstanten ──────────────────────────────────────────────────────
-const MAX_EVENT_AGE_MS   = 10 * 60 * 1000; // 10 Min — älter = Replay-Verdacht
-const RATE_LIMIT_PER_HR  = 20;              // max Gutschriften pro User pro Stunde
-const RATE_LIMIT_WINDOW  = '1 hour';        // Postgres Interval-String
+const MAX_EVENT_AGE_MS  = 10 * 60 * 1000; // 10 Min
+const RATE_LIMIT_PER_HR = 20;
 
-// ─── Apple/Google Receipt-Verify-Scaffold ────────────────────────────────────
-/**
- * Aktivierung: env var ENABLE_RECEIPT_VERIFY=true setzen, dann die
- * unten stehenden verifyAppleReceipt/verifyGoogleReceipt-Implementationen
- * vervollständigen (benötigt zusätzliche Secrets — siehe jeweilige Funktion).
- *
- * Solange OFF: Verhalten identisch zum alten Webhook (RevenueCat wird
- * vertraut). Kein Regression-Risiko beim Deploy.
- */
 const RECEIPT_VERIFY_ENABLED = Deno.env.get('ENABLE_RECEIPT_VERIFY') === 'true';
 
+// ─── Apple App Store Server API ───────────────────────────────────────────────
+/**
+ * Verifiziert einen Apple In-App-Kauf via App Store Server API v1.
+ *
+ * Benötigte Secrets (Supabase):
+ *   APP_STORE_KEY_ID     — Key ID aus App Store Connect (10 Zeichen)
+ *   APP_STORE_ISSUER_ID  — Issuer ID aus App Store Connect (UUID)
+ *   APP_STORE_PRIVATE_KEY — Private Key (.p8), base64-encoded PEM ohne Header/Footer
+ *
+ * Wie bekomme ich die Keys?
+ *   App Store Connect → Users and Access → Integrations → In-App Purchase
+ *   → Generate Key → .p8 herunterladen, Key ID + Issuer ID notieren.
+ *
+ * npx supabase secrets set \
+ *   APP_STORE_KEY_ID=XXXXXXXXXX \
+ *   APP_STORE_ISSUER_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx \
+ *   APP_STORE_PRIVATE_KEY="$(cat AuthKey_XXXXXXXXXX.p8 | grep -v '^-' | tr -d '\n')"
+ */
 async function verifyAppleReceipt(
   transactionId: string,
   productId: string,
 ): Promise<{ valid: boolean; reason?: string }> {
-  // TODO(phase3): App Store Server API integration
-  // - Secrets nötig: APP_STORE_CONNECT_KEY_ID, APP_STORE_CONNECT_ISSUER_ID, APP_STORE_CONNECT_PRIVATE_KEY
-  // - Endpoint: https://api.storekit.itunes.apple.com/inApps/v1/transactions/{transactionId}
-  // - JWT-signed Request (ES256)
-  // - Response validieren: productId match, revocationDate NULL, transactionId match
-  console.warn(`[RC Webhook] verifyAppleReceipt Stub — txn=${transactionId} product=${productId}`);
-  return { valid: true, reason: 'stub_not_implemented' };
+  const keyId     = Deno.env.get('APP_STORE_KEY_ID');
+  const issuerId  = Deno.env.get('APP_STORE_ISSUER_ID');
+  const privKeyB64= Deno.env.get('APP_STORE_PRIVATE_KEY');
+
+  if (!keyId || !issuerId || !privKeyB64) {
+    console.warn('[RC Webhook] Apple-Verify: Secrets fehlen — skip');
+    return { valid: true, reason: 'secrets_missing_skip' };
+  }
+
+  try {
+    // ── JWT für App Store Server API bauen (ES256) ──────────────────────────
+    const header  = { alg: 'ES256', kid: keyId, typ: 'JWT' };
+    const now     = Math.floor(Date.now() / 1000);
+    const payload = {
+      iss: issuerId,
+      iat: now,
+      exp: now + 60,           // 1 Minute — nur für diesen Request
+      aud: 'appstoreconnect-v1',
+      bid: 'com.vibesapp.vibes',
+    };
+
+    const b64url = (obj: unknown) =>
+      btoa(JSON.stringify(obj))
+        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+
+    const signingInput = `${b64url(header)}.${b64url(payload)}`;
+
+    // PEM rekonstruieren (base64-decodierter raw PKCS#8)
+    const rawKey  = Uint8Array.from(atob(privKeyB64), c => c.charCodeAt(0));
+    const cryptoKey = await crypto.subtle.importKey(
+      'pkcs8', rawKey,
+      { name: 'ECDSA', namedCurve: 'P-256' },
+      false, ['sign'],
+    );
+
+    const sig = await crypto.subtle.sign(
+      { name: 'ECDSA', hash: 'SHA-256' },
+      cryptoKey,
+      new TextEncoder().encode(signingInput),
+    );
+
+    const sigB64 = btoa(String.fromCharCode(...new Uint8Array(sig)))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+
+    const jwt = `${signingInput}.${sigB64}`;
+
+    // ── App Store Server API anfragen ───────────────────────────────────────
+    // Produktion: api.storekit.itunes.apple.com
+    // Sandbox:    api.storekit-sandbox.itunes.apple.com
+    const url = `https://api.storekit.itunes.apple.com/inApps/v1/transactions/${transactionId}`;
+    const resp = await fetch(url, {
+      headers: { Authorization: `Bearer ${jwt}` },
+    });
+
+    if (resp.status === 404) {
+      // Transaktion nicht in Prod → Sandbox versuchen
+      const sandboxResp = await fetch(
+        `https://api.storekit-sandbox.itunes.apple.com/inApps/v1/transactions/${transactionId}`,
+        { headers: { Authorization: `Bearer ${jwt}` } },
+      );
+      if (!sandboxResp.ok) {
+        console.error(`[RC Webhook] Apple Sandbox 404: txn=${transactionId}`);
+        return { valid: false, reason: `apple_txn_not_found_status_${sandboxResp.status}` };
+      }
+      const sandboxData = await sandboxResp.json();
+      return validateAppleTransactionData(sandboxData, transactionId, productId);
+    }
+
+    if (!resp.ok) {
+      console.error(`[RC Webhook] Apple API Error ${resp.status}: txn=${transactionId}`);
+      return { valid: false, reason: `apple_api_error_${resp.status}` };
+    }
+
+    const data = await resp.json();
+    return validateAppleTransactionData(data, transactionId, productId);
+
+  } catch (err) {
+    console.error('[RC Webhook] verifyAppleReceipt Fehler:', err);
+    // Bei technischem Fehler: fail-open (Coin wird trotzdem gutgeschrieben)
+    // Besser ein legitimer Kauf geht durch als ein echter User frustriert wird.
+    // Idempotenz + Rate-Limit schützen vor Missbrauch.
+    return { valid: true, reason: 'verify_error_fail_open' };
+  }
 }
 
+function validateAppleTransactionData(
+  data: any,
+  transactionId: string,
+  productId: string,
+): { valid: boolean; reason?: string } {
+  // App Store Server API v1 gibt signedTransactionInfo zurück (JWS).
+  // Für einfache Validierung: das decoded payload prüfen.
+  // Vollständige JWS-Signatur-Prüfung wäre Additional Security,
+  // aber da wir das API selbst angefragt haben (MITM durch Apple), reicht das.
+  const txn = data?.signedTransactionInfo
+    ? parseJwsPayload(data.signedTransactionInfo)
+    : data;
+
+  if (!txn) return { valid: false, reason: 'apple_no_transaction_data' };
+
+  // Produkt-ID muss übereinstimmen
+  if (txn.productId && txn.productId !== productId) {
+    console.error(`[RC Webhook] Apple: Produkt-ID Mismatch — erwartet=${productId} bekommen=${txn.productId}`);
+    return { valid: false, reason: 'apple_product_id_mismatch' };
+  }
+
+  // Kauf darf nicht revoked sein
+  if (txn.revocationDate) {
+    console.error(`[RC Webhook] Apple: Transaktion revoked — txn=${transactionId}`);
+    return { valid: false, reason: 'apple_transaction_revoked' };
+  }
+
+  return { valid: true };
+}
+
+/** Dekodiert den Payload-Teil eines JWS (base64url, kein Verify) */
+function parseJwsPayload(jws: string): any {
+  try {
+    const parts = jws.split('.');
+    if (parts.length < 2) return null;
+    const b64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+    return JSON.parse(atob(b64));
+  } catch {
+    return null;
+  }
+}
+
+// ─── Google Play Developer API ───────────────────────────────────────────────
+/**
+ * Verifiziert einen Google Play Kauf via androidpublisher API v3.
+ *
+ * Benötigtes Secret:
+ *   GOOGLE_PLAY_SERVICE_ACCOUNT_JSON — base64-encoded Service Account JSON
+ *
+ * Service Account anlegen:
+ *   Google Cloud Console → IAM → Service Accounts → Create
+ *   → Key (JSON) downloaden
+ *   Google Play Console → Setup → API Access → Grant Access → Permissions: "View financial data"
+ *
+ * npx supabase secrets set \
+ *   GOOGLE_PLAY_SERVICE_ACCOUNT_JSON="$(base64 -i service-account.json)"
+ */
 async function verifyGoogleReceipt(
   purchaseToken: string,
   productId: string,
   packageName: string,
 ): Promise<{ valid: boolean; reason?: string }> {
-  // TODO(phase3): Google Play Developer API integration
-  // - Secrets nötig: GOOGLE_PLAY_SERVICE_ACCOUNT_JSON (OAuth2-key)
-  // - Endpoint: https://androidpublisher.googleapis.com/androidpublisher/v3/applications/{packageName}/purchases/products/{productId}/tokens/{purchaseToken}
-  // - Response validieren: purchaseState === 0 (purchased), acknowledgementState ok
-  console.warn(`[RC Webhook] verifyGoogleReceipt Stub — token=${purchaseToken.slice(0, 8)}… product=${productId}`);
-  return { valid: true, reason: 'stub_not_implemented' };
+  const saJsonB64 = Deno.env.get('GOOGLE_PLAY_SERVICE_ACCOUNT_JSON');
+
+  if (!saJsonB64) {
+    console.warn('[RC Webhook] Google-Verify: GOOGLE_PLAY_SERVICE_ACCOUNT_JSON fehlt — skip');
+    return { valid: true, reason: 'secrets_missing_skip' };
+  }
+
+  try {
+    // ── Service Account JSON dekodieren ──────────────────────────────────────
+    const saJson = JSON.parse(atob(saJsonB64));
+    const accessToken = await getGoogleAccessToken(saJson);
+
+    if (!accessToken) {
+      console.error('[RC Webhook] Google: Kein Access Token erhalten');
+      return { valid: true, reason: 'google_auth_failed_fail_open' };
+    }
+
+    // ── androidpublisher API anfragen ─────────────────────────────────────────
+    const url = `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${packageName}/purchases/products/${productId}/tokens/${purchaseToken}`;
+    const resp = await fetch(url, {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+
+    if (!resp.ok) {
+      console.error(`[RC Webhook] Google API Error ${resp.status}: token=${purchaseToken.slice(0, 8)}…`);
+      // 404 = Token nicht gefunden → echter Fraud-Indikator
+      if (resp.status === 404) {
+        return { valid: false, reason: 'google_purchase_not_found' };
+      }
+      // Andere Fehler: fail-open (Quota, Netzwerk, etc.)
+      return { valid: true, reason: `google_api_error_${resp.status}_fail_open` };
+    }
+
+    const purchase = await resp.json();
+
+    // purchaseState: 0 = Purchased, 1 = Canceled, 2 = Pending
+    if (purchase.purchaseState !== 0) {
+      console.error(`[RC Webhook] Google: Kauf nicht abgeschlossen — state=${purchase.purchaseState}`);
+      return { valid: false, reason: `google_purchase_state_${purchase.purchaseState}` };
+    }
+
+    // consumptionState: 0 = Not consumed, 1 = Consumed
+    // Consumables müssen consumed werden; RevenueCat macht das normalerweise.
+    // Wir akzeptieren beide States (RC kann vor oder nach Webhook consumieren).
+
+    return { valid: true };
+
+  } catch (err) {
+    console.error('[RC Webhook] verifyGoogleReceipt Fehler:', err);
+    return { valid: true, reason: 'verify_error_fail_open' };
+  }
+}
+
+/** Holt einen Google OAuth2 Access Token via Service Account (JWT flow) */
+async function getGoogleAccessToken(sa: any): Promise<string | null> {
+  try {
+    const now    = Math.floor(Date.now() / 1000);
+    const header  = { alg: 'RS256', typ: 'JWT' };
+    const payload = {
+      iss:   sa.client_email,
+      scope: 'https://www.googleapis.com/auth/androidpublisher',
+      aud:   'https://oauth2.googleapis.com/token',
+      iat:   now,
+      exp:   now + 60,
+    };
+
+    const b64url = (obj: unknown) =>
+      btoa(JSON.stringify(obj))
+        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+
+    const signingInput = `${b64url(header)}.${b64url(payload)}`;
+
+    // RSA Private Key laden (PKCS#8 PEM → SubtleCrypto)
+    const pemBody = sa.private_key
+      .replace('-----BEGIN PRIVATE KEY-----', '')
+      .replace('-----END PRIVATE KEY-----', '')
+      .replace(/\s/g, '');
+    const rawKey = Uint8Array.from(atob(pemBody), c => c.charCodeAt(0));
+    const cryptoKey = await crypto.subtle.importKey(
+      'pkcs8', rawKey,
+      { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+      false, ['sign'],
+    );
+
+    const sig = await crypto.subtle.sign(
+      'RSASSA-PKCS1-v1_5',
+      cryptoKey,
+      new TextEncoder().encode(signingInput),
+    );
+    const sigB64 = btoa(String.fromCharCode(...new Uint8Array(sig)))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+
+    const jwt = `${signingInput}.${sigB64}`;
+
+    // Token gegen Google OAuth2 eintauschen
+    const tokenResp = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+        assertion:  jwt,
+      }),
+    });
+
+    if (!tokenResp.ok) return null;
+    const tokenData = await tokenResp.json();
+    return tokenData.access_token ?? null;
+
+  } catch (err) {
+    console.error('[RC Webhook] getGoogleAccessToken Fehler:', err);
+    return null;
+  }
 }
 
 // ─── Hauptlogik ───────────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
-  // ── Authorization prüfen ──────────────────────────────────────────────────
+  // ── Authorization ────────────────────────────────────────────────────────────
   const webhookSecret = Deno.env.get('REVENUECAT_WEBHOOK_SECRET');
   if (webhookSecret) {
-    const authHeader = req.headers.get('authorization') ?? '';
-    const token = authHeader.replace('Bearer ', '');
+    const token = (req.headers.get('authorization') ?? '').replace('Bearer ', '');
     if (token !== webhookSecret) {
       console.error('[RC Webhook] Unauthorized');
       return new Response('Unauthorized', { status: 401 });
@@ -95,58 +348,45 @@ Deno.serve(async (req: Request) => {
   }
 
   let body: any;
-  try {
-    body = await req.json();
-  } catch {
-    return new Response('Invalid JSON', { status: 400 });
-  }
+  try { body = await req.json(); }
+  catch { return new Response('Invalid JSON', { status: 400 }); }
 
   const event = body?.event;
-  if (!event) {
-    return new Response('No event', { status: 400 });
-  }
+  if (!event) return new Response('No event', { status: 400 });
 
   const eventType: string = event.type ?? '';
   console.log(`[RC Webhook] Event: ${eventType}`);
 
-  // ── Replay-Schutz: Event-Alter prüfen ─────────────────────────────────────
-  // RevenueCat sendet event_timestamp_ms. Fehlt das Feld → tolerant akzeptieren
-  // (keine Regression für ältere RC-Versionen), aber loggen.
+  // ── Replay-Schutz ────────────────────────────────────────────────────────────
   const eventTsMs: number | null = typeof event.event_timestamp_ms === 'number'
-    ? event.event_timestamp_ms
-    : null;
+    ? event.event_timestamp_ms : null;
   if (eventTsMs !== null) {
     const ageMs = Date.now() - eventTsMs;
     if (ageMs > MAX_EVENT_AGE_MS) {
-      console.warn(`[RC Webhook] Event zu alt: ${ageMs}ms — Replay-Verdacht`);
-      return new Response(JSON.stringify({ ok: false, error: 'event_too_old', age_ms: ageMs }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
+      console.warn(`[RC Webhook] Event zu alt: ${ageMs}ms`);
+      return new Response(JSON.stringify({ ok: false, error: 'event_too_old' }), {
+        status: 400, headers: { 'Content-Type': 'application/json' },
       });
     }
     if (ageMs < -60_000) {
-      // Future-timestamps (> 1 Min in die Zukunft) sind verdächtig
       console.warn(`[RC Webhook] Event-Timestamp in der Zukunft: ${-ageMs}ms`);
       return new Response(JSON.stringify({ ok: false, error: 'event_future' }), {
-        status: 400,
-        headers: { 'Content-Type': 'application/json' },
+        status: 400, headers: { 'Content-Type': 'application/json' },
       });
     }
-  } else {
-    console.warn('[RC Webhook] Kein event_timestamp_ms im Event (alte RC-Version?)');
   }
 
-  // ── Nur Purchase-Events verarbeiten ──────────────────────────────────────
+  // ── Nur Purchase-Events verarbeiten ──────────────────────────────────────────
   if (!PURCHASE_EVENTS.has(eventType)) {
-    console.log(`[RC Webhook] Ignoriert: ${eventType}`);
     return new Response(JSON.stringify({ ok: true, skipped: true }), {
       headers: { 'Content-Type': 'application/json' },
     });
   }
 
-  // ── Produkt-ID und Coins ermitteln ────────────────────────────────────────
-  const productId: string = event.product_id ?? '';
-  const coinsToCredit = PRODUCT_COINS[productId];
+  // ── Produkt + User ────────────────────────────────────────────────────────────
+  const productId    : string = event.product_id ?? '';
+  const coinsToCredit         = PRODUCT_COINS[productId];
+  const appUserId    : string = event.app_user_id ?? '';
 
   if (!coinsToCredit) {
     console.warn(`[RC Webhook] Unbekannte Produkt-ID: ${productId}`);
@@ -154,54 +394,39 @@ Deno.serve(async (req: Request) => {
       headers: { 'Content-Type': 'application/json' },
     });
   }
-
-  // ── User-ID ermitteln (RevenueCat App User ID = Supabase User ID) ─────────
-  const appUserId: string = event.app_user_id ?? '';
-  const supabaseUserId = appUserId;
-
   if (!appUserId || appUserId.startsWith('$RC')) {
     console.warn(`[RC Webhook] Kein App User ID: ${appUserId}`);
     return new Response(JSON.stringify({ ok: false, error: 'no_user_id' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
+      status: 400, headers: { 'Content-Type': 'application/json' },
     });
   }
 
-  // ── Supabase Admin Client ────────────────────────────────────────────────
+  // ── Supabase Admin Client ─────────────────────────────────────────────────────
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   );
 
-  // ── Rate-Limit: max N Gutschriften pro User pro Stunde ───────────────────
-  // Nutzt existierende coin_purchases Tabelle. Defense-in-depth gegen den
-  // (unwahrscheinlichen) Fall, dass Webhook-Secret leakt + Angreifer Spam sendet.
+  // ── Rate-Limit ────────────────────────────────────────────────────────────────
   const { count: recentCount, error: rateLimitError } = await supabase
     .from('coin_purchases')
     .select('id', { count: 'exact', head: true })
-    .eq('user_id', supabaseUserId)
+    .eq('user_id', appUserId)
     .gte('created_at', new Date(Date.now() - 60 * 60 * 1000).toISOString());
 
-  if (rateLimitError) {
-    console.warn('[RC Webhook] Rate-Limit-Check fehlgeschlagen:', rateLimitError.message);
-    // Nicht fatal — weiter verarbeiten (Rate-Limit ist defense-in-depth)
-  } else if ((recentCount ?? 0) >= RATE_LIMIT_PER_HR) {
-    console.warn(`[RC Webhook] Rate-Limit: User ${supabaseUserId} hat ${recentCount} Käufe im letzten ${RATE_LIMIT_WINDOW}`);
-    return new Response(JSON.stringify({ ok: false, error: 'rate_limit_exceeded', recent_count: recentCount }), {
-      status: 429,
-      headers: { 'Content-Type': 'application/json' },
+  if (!rateLimitError && (recentCount ?? 0) >= RATE_LIMIT_PER_HR) {
+    console.warn(`[RC Webhook] Rate-Limit: User ${appUserId} hat ${recentCount} Käufe/h`);
+    return new Response(JSON.stringify({ ok: false, error: 'rate_limit_exceeded' }), {
+      status: 429, headers: { 'Content-Type': 'application/json' },
     });
   }
 
-  // ── Idempotenz-Check: Transaktion schon verarbeitet? ─────────────────────
+  // ── Idempotenz ────────────────────────────────────────────────────────────────
   const transactionId: string = event.transaction_id ?? event.id ?? '';
   if (transactionId) {
     const { data: existing } = await supabase
-      .from('coin_purchases')
-      .select('id')
-      .eq('transaction_id', transactionId)
-      .maybeSingle();
-
+      .from('coin_purchases').select('id')
+      .eq('transaction_id', transactionId).maybeSingle();
     if (existing) {
       console.log(`[RC Webhook] Transaktion bereits verarbeitet: ${transactionId}`);
       return new Response(JSON.stringify({ ok: true, duplicate: true }), {
@@ -210,51 +435,48 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  // ── Optional: Apple/Google Receipt-Verify ────────────────────────────────
+  // ── Apple/Google Receipt-Verify (Phase 3) ─────────────────────────────────────
   if (RECEIPT_VERIFY_ENABLED) {
     const store: string = event.store ?? '';
     if (store === 'APP_STORE' || store === 'MAC_APP_STORE') {
       const result = await verifyAppleReceipt(transactionId, productId);
       if (!result.valid) {
-        console.error(`[RC Webhook] Apple Receipt invalid: ${result.reason}`);
+        console.error(`[RC Webhook] Apple Receipt ungültig: ${result.reason}`);
         return new Response(JSON.stringify({ ok: false, error: 'apple_receipt_invalid', reason: result.reason }), {
-          status: 403,
-          headers: { 'Content-Type': 'application/json' },
+          status: 403, headers: { 'Content-Type': 'application/json' },
         });
       }
     } else if (store === 'PLAY_STORE') {
-      const purchaseToken: string = event.purchase_token ?? event.transaction_id ?? '';
+      const purchaseToken: string = event.purchase_token ?? transactionId;
       const packageName:   string = event.package_name ?? 'com.vibesapp.vibes';
       const result = await verifyGoogleReceipt(purchaseToken, productId, packageName);
       if (!result.valid) {
-        console.error(`[RC Webhook] Google Receipt invalid: ${result.reason}`);
+        console.error(`[RC Webhook] Google Receipt ungültig: ${result.reason}`);
         return new Response(JSON.stringify({ ok: false, error: 'google_receipt_invalid', reason: result.reason }), {
-          status: 403,
-          headers: { 'Content-Type': 'application/json' },
+          status: 403, headers: { 'Content-Type': 'application/json' },
         });
       }
     } else {
-      console.warn(`[RC Webhook] Unbekannter Store: ${store} — skip Verify`);
+      console.warn(`[RC Webhook] Unbekannter Store: ${store} — Receipt-Verify übersprungen`);
     }
   }
 
-  // ── Coins gutschreiben (UPSERT + Increment) ───────────────────────────────
+  // ── Coins gutschreiben ────────────────────────────────────────────────────────
   const { error: walletError } = await supabase.rpc('credit_coins', {
-    p_user_id: supabaseUserId,
+    p_user_id: appUserId,
     p_coins:   coinsToCredit,
   });
 
   if (walletError) {
     console.error('[RC Webhook] Wallet-Update fehlgeschlagen:', walletError);
     return new Response(JSON.stringify({ ok: false, error: walletError.message }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
+      status: 500, headers: { 'Content-Type': 'application/json' },
     });
   }
 
-  // ── Kauf-Log speichern (für Idempotenz + Support + Rate-Limit) ────────────
+  // ── Kauf-Log ──────────────────────────────────────────────────────────────────
   await supabase.from('coin_purchases').insert({
-    user_id:        supabaseUserId,
+    user_id:        appUserId,
     product_id:     productId,
     coins_credited: coinsToCredit,
     transaction_id: transactionId,
@@ -264,7 +486,7 @@ Deno.serve(async (req: Request) => {
     if (error) console.warn('[RC Webhook] Log-Insert fehlgeschlagen:', error.message);
   });
 
-  console.log(`[RC Webhook] OK ${coinsToCredit} Coins für User ${supabaseUserId} gutgeschrieben`);
+  console.log(`[RC Webhook] ✅ ${coinsToCredit} Coins für User ${appUserId} gutgeschrieben`);
   return new Response(JSON.stringify({ ok: true, coins_credited: coinsToCredit }), {
     headers: { 'Content-Type': 'application/json' },
   });

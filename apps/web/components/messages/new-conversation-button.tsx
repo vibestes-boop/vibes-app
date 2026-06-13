@@ -1,5 +1,6 @@
 'use client';
 
+import type { Route } from 'next';
 import { useState, useTransition, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createBrowserClient } from '@supabase/ssr';
@@ -93,7 +94,7 @@ function UserPickerModal({ onClose }: { onClose: () => void }) {
         const res = await getOrCreateConversation(userId);
         if (!res.ok) return;
         onClose();
-        router.push(`/messages/${res.data.id}`);
+        router.push(`/messages/${res.data.id}` as Route);
       });
     },
     [router, onClose],

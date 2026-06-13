@@ -63,3 +63,6 @@ vibes-web/
 # Remotion render outputs
 apps/remotion/out/*
 !apps/remotion/out/.gitkeep
+
+# Code backups (erstellt via cp *.backup-YYYYMMDD_HHMMSS)
+*.backup-*

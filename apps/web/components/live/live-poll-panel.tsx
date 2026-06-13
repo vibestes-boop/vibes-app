@@ -146,7 +146,7 @@ export function LivePollPanel({
           {poll.question}
         </h3>
         {isClosed && (
-          <span className="rounded-full bg-white/10 px-2 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white/70">
+          <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white/70">
             Beendet
           </span>
         )}

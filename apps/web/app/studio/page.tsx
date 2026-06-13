@@ -108,23 +108,38 @@ export default async function StudioDashboardPage({
 
   const username =
     profile?.display_name ?? profile?.username ?? t("studio.creatorFallback");
+  const avatarUrl = (profile as unknown as { avatar_url?: string | null } | null)?.avatar_url ?? null;
+  const avatarInitial = username.slice(0, 1).toUpperCase();
   const intl = LOCALE_INTL[locale];
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Header */}
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <div className="inline-flex items-center gap-1.5 rounded-full border bg-card px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
-            <LayoutDashboard className="h-3 w-3" />
-            {t("studio.badge")}
+      {/* Header — TikTok-style: Avatar + Greeting links, Period-Tabs rechts */}
+      <header className="flex flex-col gap-4 rounded-xl border bg-card p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
+        <div className="flex items-center gap-4">
+          {/* Avatar */}
+          {avatarUrl ? (
+            <Image
+              src={avatarUrl}
+              alt={username}
+              width={64}
+              height={64}
+              className="h-16 w-16 shrink-0 rounded-full object-cover ring-2 ring-border"
+            />
+          ) : (
+            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-muted text-2xl font-bold text-muted-foreground ring-2 ring-border">
+              {avatarInitial}
+            </div>
+          )}
+          {/* Greeting */}
+          <div>
+            <h1 className="text-xl font-semibold sm:text-2xl">
+              {t("studio.greeting", { name: username })}
+            </h1>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              {t("studio.subtitle")}
+            </p>
           </div>
-          <h1 className="mt-2 text-2xl font-semibold sm:text-3xl">
-            {t("studio.greeting", { name: username })}
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
-            {t("studio.subtitle")}
-          </p>
         </div>
         <PeriodTabs period={period} basePath="/studio" />
       </header>
@@ -132,42 +147,47 @@ export default async function StudioDashboardPage({
       {/* Diamonds Hero */}
       <DiamondsHero earnings={earnings} t={t} intl={intl} />
 
-      {/* KPI Grid */}
-      <section>
-        <h2 className="mb-3 text-sm font-semibold text-muted-foreground">
-          {t("studio.reachTitle")}
-        </h2>
-        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <KpiCard
+      {/* KPI Strip — TikTok-style: horizontale Reihe "Der letzten N Tage" */}
+      <section className="rounded-xl border bg-card">
+        <div className="flex items-center justify-between border-b px-5 py-3">
+          <h2 className="text-sm font-semibold text-muted-foreground">
+            {t("studio.reachTitle")} · {period} Tage
+          </h2>
+          <Link
+            href={"/studio/analytics" as Route}
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+          >
+            {t("studio.allLink")}
+            <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+        <div className="grid grid-cols-2 divide-x divide-y sm:grid-cols-4 sm:divide-y-0">
+          <KpiCell
             label={t("studio.kpiViews")}
             icon={Eye}
             value={overview?.totalViews ?? 0}
             prev={overview?.prevViews ?? 0}
-            t={t}
             intl={intl}
           />
-          <KpiCard
+          <KpiCell
             label={t("studio.kpiLikes")}
             icon={Heart}
             value={overview?.totalLikes ?? 0}
             prev={overview?.prevLikes ?? 0}
-            t={t}
             intl={intl}
           />
-          <KpiCard
+          <KpiCell
             label={t("studio.kpiComments")}
             icon={MessageCircle}
             value={overview?.totalComments ?? 0}
             prev={overview?.prevComments ?? 0}
-            t={t}
             intl={intl}
           />
-          <KpiCard
+          <KpiCell
             label={t("studio.kpiNewFollowers")}
             icon={UserPlus}
             value={overview?.newFollowers ?? 0}
             prev={overview?.prevFollowers ?? 0}
-            t={t}
             intl={intl}
           />
         </div>
@@ -310,6 +330,51 @@ function DiamondsHero({
           {t("studio.earningsDetails")}
           <ArrowRight className="h-4 w-4" />
         </Link>
+      </div>
+    </div>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// KpiCell — TikTok-style horizontale Stat-Zelle ohne Border-Card-Look
+// -----------------------------------------------------------------------------
+
+function KpiCell({
+  label,
+  icon: Icon,
+  value,
+  prev,
+  intl,
+}: {
+  label: string;
+  icon: typeof Eye;
+  value: number;
+  prev: number;
+  intl: string;
+}) {
+  const delta = prev > 0 ? ((value - prev) / prev) * 100 : value > 0 ? 100 : 0;
+  const trend = delta > 1 ? "up" : delta < -1 ? "down" : "flat";
+  const TrendIcon = trend === "up" ? TrendingUp : trend === "down" ? TrendingDown : Minus;
+
+  return (
+    <div className="flex flex-col gap-1 px-5 py-4">
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Icon className="h-3.5 w-3.5 shrink-0" />
+        <span className="truncate font-medium">{label}</span>
+      </div>
+      <div className="flex items-end gap-2">
+        <span className="text-2xl font-bold tabular-nums">
+          {value.toLocaleString(intl)}
+        </span>
+        <span
+          className={cn(
+            "mb-0.5 inline-flex items-center gap-0.5 text-[11px] font-medium tabular-nums",
+            trend === "up" ? "text-green-500" : trend === "down" ? "text-red-500" : "text-muted-foreground",
+          )}
+        >
+          <TrendIcon className="h-3 w-3" />
+          {delta > 0 ? "+" : ""}{delta.toFixed(0)}%
+        </span>
       </div>
     </div>
   );

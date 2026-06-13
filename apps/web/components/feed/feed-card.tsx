@@ -832,7 +832,7 @@ export function FeedCard({
         >
           {canLoadMedia ? (
             <video
-              {...(isActive ? { fetchpriority: 'high' } : {})}
+              {...(isActive ? { fetchPriority: 'high' } : {})}
               ref={videoRef}
               src={post.video_url}
               poster={optimizedPosterUrl}

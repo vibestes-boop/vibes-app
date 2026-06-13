@@ -82,50 +82,56 @@ export default async function MessagesPage() {
   const liveByUserId = new Map(liveSessions.map((s) => [s.host_id, s.id]));
 
   return (
-    <div className="mx-auto flex min-h-[calc(100dvh-4rem)] w-full max-w-3xl flex-col py-6">
-      <header className="mb-4 flex items-center justify-between px-4 md:px-6">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-semibold">
-            <MessageCircle className="h-6 w-6 text-primary" />
+    <>
+      {/* Mobile: vollständige Konversationsliste (md: hidden da Panel übernimmt) */}
+      <div className="flex min-h-dvh flex-col md:hidden">
+        <header className="mb-4 flex items-center justify-between px-4 py-4">
+          <h1 className="flex items-center gap-2 text-xl font-semibold">
+            <MessageCircle className="h-5 w-5 text-primary" />
             {t('messages.title')}
           </h1>
-          {conversations.length > 0 && (
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              {`${conversations.length} Unterhaltung${conversations.length === 1 ? '' : 'en'}`}
-            </p>
-          )}
+          <NewConversationButton />
+        </header>
+        <div className="mb-3">
+          <StoryStrip />
         </div>
-        <NewConversationButton />
-      </header>
-
-      {/* ── Story + Live Strip (v1.w.UI.230) ──────────────────────────────── */}
-      <div className="-mx-0 mb-4">
-        <StoryStrip />
+        {conversations.length === 0 ? (
+          <div className="px-4">
+            <EmptyState />
+          </div>
+        ) : (
+          <ul className="flex-1 divide-y divide-border/60">
+            {conversations.map((c) => {
+              const story = c.is_self ? null : storyByUserId.get(c.other_user_id) ?? null;
+              const liveSessionId = c.is_self ? null : liveByUserId.get(c.other_user_id) ?? null;
+              return (
+                <ConversationRow
+                  key={c.id}
+                  conv={c}
+                  hasUnviewedStory={!!story?.hasUnviewed}
+                  hasSeenStory={!!story && !story.hasUnviewed}
+                  liveSessionId={liveSessionId ?? null}
+                />
+              );
+            })}
+          </ul>
+        )}
       </div>
 
-      {conversations.length === 0 ? (
-        <div className="px-4 md:px-6">
-          <EmptyState />
+      {/* Desktop: Empty-State (Konversationsliste im Panel links) */}
+      <div className="hidden h-full flex-col items-center justify-center gap-4 md:flex">
+        <div className="flex h-16 w-16 items-center justify-center rounded-2xl border bg-muted">
+          <MessageCircle className="h-8 w-8 text-muted-foreground/60" strokeWidth={1.5} />
         </div>
-      ) : (
-        // Edge-to-edge Liste (v1.w.UI.1 — D1 aus UI_AUDIT).
-        <ul className="-mx-0 flex-1 divide-y divide-border/60">
-          {conversations.map((c) => {
-            const story = c.is_self ? null : storyByUserId.get(c.other_user_id) ?? null;
-            const liveSessionId = c.is_self ? null : liveByUserId.get(c.other_user_id) ?? null;
-            return (
-              <ConversationRow
-                key={c.id}
-                conv={c}
-                hasUnviewedStory={!!story?.hasUnviewed}
-                hasSeenStory={!!story && !story.hasUnviewed}
-                liveSessionId={liveSessionId ?? null}
-              />
-            );
-          })}
-        </ul>
-      )}
-    </div>
+        <div className="text-center">
+          <p className="font-semibold">Wähle eine Unterhaltung</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Klicke links auf eine Konversation um sie zu öffnen.
+          </p>
+        </div>
+        <NewConversationButton />
+      </div>
+    </>
   );
 }
 
@@ -190,7 +196,7 @@ function ConversationRow({
 
           {/* LIVE-Badge (unten, mittig) */}
           {liveSessionId && !conv.is_self && (
-            <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-sm bg-red-500 px-1 py-px text-[8px] font-bold uppercase tracking-widest text-white">
+            <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-sm bg-red-500 px-1 py-px text-[10px] font-bold uppercase tracking-widest text-white">
               Live
             </span>
           )}

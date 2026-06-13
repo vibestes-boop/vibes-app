@@ -106,17 +106,19 @@ export default async function HomePage() {
       (async () => {
         const { data } = await supabase
           .from('profiles')
-          .select('is_admin')
+          .select('username, display_name, avatar_url, is_admin')
           .eq('id', user.id)
           .maybeSingle();
-        return Boolean((data as { is_admin?: boolean } | null)?.is_admin);
+        return data as { username: string | null; display_name: string | null; avatar_url: string | null; is_admin?: boolean } | null;
       })(),
-      false,
+      null,
     ),
   ]);
 
   const forYou = await forYouPromise;
-  const [suggested, followedAccounts, viewerIsAdmin] = await sidebarPromise;
+  const [suggested, followedAccounts, profileRow] = await sidebarPromise;
+  const viewerIsAdmin = Boolean(profileRow?.is_admin);
+  const viewerProfile = profileRow ? { username: profileRow.username, display_name: profileRow.display_name, avatar_url: profileRow.avatar_url } : null;
 
   const firstForYouPost = forYou[0];
   const firstForYouMediaPreloadUrl =
@@ -146,6 +148,7 @@ export default async function HomePage() {
         suggested={suggested}
         followedAccounts={followedAccounts}
         viewerIsAdmin={viewerIsAdmin}
+        viewerProfile={viewerProfile}
       />
     </>
   );

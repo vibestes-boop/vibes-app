@@ -1,3 +1,4 @@
+import type { Route } from 'next';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
@@ -37,10 +38,10 @@ interface Props {
 
 export default async function CoinShopSuccessPage({ searchParams }: Props) {
   const user = await getUser();
-  if (!user) redirect('/login?next=/coin-shop');
+  if (!user) redirect('/login?next=/coin-shop' as Route);
 
   const { session_id: sessionId } = await searchParams;
-  if (!sessionId) redirect('/coin-shop');
+  if (!sessionId) redirect('/coin-shop' as Route);
 
   const order = await getMyCoinOrderBySession(sessionId);
 

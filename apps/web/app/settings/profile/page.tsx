@@ -40,7 +40,7 @@ export default async function ProfileSettingsPage() {
   const [user, profile, t] = await Promise.all([getUser(), getProfile(), getT()]);
 
   if (!user) {
-    redirect('/login?next=/settings/profile');
+    redirect('/login?next=/settings/profile' as Route);
   }
 
   // Edge case: User eingeloggt aber `profiles`-Row fehlt (Onboarding noch nicht
@@ -48,7 +48,7 @@ export default async function ProfileSettingsPage() {
   // dorthin, damit er zuerst einen Username claimt; danach kann er sein Profil
   // bearbeiten.
   if (!profile) {
-    redirect('/onboarding/username');
+    redirect('/onboarding/username' as Route);
   }
 
   const profileExtras = profile as typeof profile & ProfileSettingsExtras;

@@ -1,5 +1,6 @@
 'use client';
 
+import type { Route } from 'next';
 import { useRouter } from 'next/navigation';
 import { useTransition } from 'react';
 import { MessageCircle, Loader2 } from 'lucide-react';
@@ -31,7 +32,7 @@ export function SellerChatButton({ sellerId, productId }: Props) {
         console.warn('conversation create failed', res.error);
         return;
       }
-      router.push(`/messages/${res.data.id}?productId=${productId}`);
+      router.push(`/messages/${res.data.id}?productId=${productId}` as Route);
     });
   };
 

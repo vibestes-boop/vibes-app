@@ -323,8 +323,9 @@ const enMessages = {
 
   studio: {
     navAria: 'Studio navigation',
-    navDashboard: 'Dashboard',
+    navDashboard: 'Home',
     navAnalytics: 'Analytics',
+    navRealtime: 'Real-time Performance',
     navRevenue: 'Revenue',
     navScheduled: 'Scheduled',
     navDrafts: 'Drafts',

@@ -1,5 +1,6 @@
 'use client';
 
+import type { Route } from 'next';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ShieldOff, MoreHorizontal, Flag } from 'lucide-react';
@@ -62,7 +63,7 @@ export function ProfileBlockButton({
         return;
       }
       toast.success(`@${targetUsername} wurde blockiert.`);
-      router.push('/');
+      router.push('/' as Route);
     } finally {
       setPending(false);
     }

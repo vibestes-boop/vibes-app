@@ -1,5 +1,6 @@
 'use client';
 
+import type { Route } from 'next';
 import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
@@ -31,6 +32,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { LocaleSwitcher } from '@/components/locale-switcher';
 import { MobileBottomNav } from '@/components/mobile-bottom-nav';
+import { NotificationsDrawer } from '@/components/notifications/notifications-drawer';
 import { TopRightActionsFrame } from '@/components/top-right-actions-frame';
 import { DmInboxPill } from '@/components/layout/dm-inbox-pill';
 import { NotifBellPill } from '@/components/layout/notif-bell-pill';
@@ -157,12 +159,16 @@ export function AppAuthShell() {
     pathname?.startsWith('/auth/') ||
     pathname?.startsWith('/reset-password');
 
+  const viewerId = state.status === 'authenticated' ? state.user.id : null;
+
   return (
     <>
       {!hideGlobalChrome && <TopRightActionsClient state={state} getSupabase={getSupabase} />}
       {!hideGlobalChrome && (
         <MobileBottomNav isAuthed={state.status === 'anonymous' ? false : state.status === 'authenticated' ? true : null} />
       )}
+      {/* Globale Notifications-Drawer — immer gemountet, öffnet sich per Zustand-Store */}
+      <NotificationsDrawer viewerId={viewerId} />
     </>
   );
 }
@@ -180,7 +186,7 @@ function TopRightActionsClient({
   async function handleSignOut() {
     const supabase = await getSupabase();
     await supabase.auth.signOut();
-    router.push('/');
+    router.push('/' as Route);
     router.refresh();
   }
 
@@ -225,23 +231,35 @@ function TopRightActionsClient({
 
   return (
     <TopRightActionsFrame>
-      <Link
-        href="/coin-shop"
-        aria-label={t('header.coinsAria', { count: coinsFormatted })}
-        title={t('header.topUpCoins')}
-        className={cn(
-          glassPillBase,
-          'pointer-events-auto hidden h-9 items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold sm:flex',
-        )}
-      >
-        <Coins className="h-4 w-4 text-brand-gold" aria-hidden="true" />
-        <span aria-hidden="true">{coinsFormatted}</span>
-        <span aria-hidden="true" className="text-[10px] text-white/70">
-          +
+      {/*
+       * Kompakt-Stack: Coins/DM/Bell rücken hinter den Avatar (je ~40% vom
+       * rechten Nachbarn verdeckt, -mr-3.5 = 14px bei 36px-Pills) und fahren
+       * bei Hover über die Gruppe auf ihre normalen Positionen auseinander.
+       * Paint-Order = DOM-Order: Avatar (letztes Kind) liegt oben.
+       */}
+      <div className="group pointer-events-auto flex items-center">
+        <Link
+          href="/coin-shop"
+          aria-label={t('header.coinsAria', { count: coinsFormatted })}
+          title={t('header.topUpCoins')}
+          className={cn(
+            glassPillBase,
+            'hidden h-9 items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold sm:flex',
+            '-mr-3.5 transition-[margin] duration-200 group-hover:mr-2',
+          )}
+        >
+          <Coins className="h-4 w-4 text-brand-gold" aria-hidden="true" />
+          <span aria-hidden="true">{coinsFormatted}</span>
+          <span aria-hidden="true" className="text-[10px] text-white/70">
+            +
+          </span>
+        </Link>
+        <span className="-mr-3.5 flex transition-[margin] duration-200 group-hover:mr-2">
+          <DmInboxPill initialCount={0} viewerId={user.id} />
         </span>
-      </Link>
-      <DmInboxPill initialCount={0} viewerId={user.id} />
-      <NotifBellPill initialCount={0} viewerId={user.id} />
+        <span className="-mr-3.5 flex transition-[margin] duration-200 group-hover:mr-2">
+          <NotifBellPill initialCount={0} viewerId={user.id} />
+        </span>
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -347,6 +365,7 @@ function TopRightActionsClient({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      </div>
     </TopRightActionsFrame>
   );
 }

@@ -13,33 +13,38 @@
 
 @layer base {
   :root {
-    --background:           0 0% 96%;           /* F5F5F5 */
-    --foreground:           222 47% 11%;        /* 0F172A */
+    /*
+     * Light-Palette: warme Stone-Töne statt blaustichiger Slate-Grays
+     * (TikTok-Look). muted-foreground bewusst dunkler (38% statt 46%),
+     * damit Sidebar-Icons/-Labels nicht blass-grau wirken.
+     */
+    --background:           30 14% 97%;         /* warmes Off-White */
+    --foreground:           24 10% 10%;         /* warmes Near-Black (Stone-950) */
 
-    --card:                 0 0% 100%;          /* FFFFFF */
-    --card-foreground:      222 47% 11%;
+    --card:                 40 20% 99%;         /* warmes Weiß */
+    --card-foreground:      24 10% 10%;
 
-    --popover:              0 0% 100%;
-    --popover-foreground:   222 47% 11%;
+    --popover:              40 20% 99%;
+    --popover-foreground:   24 10% 10%;
 
     --primary:              0 0% 0%;            /* Schwarz auf Weiß (TikTok-Stil) */
     --primary-foreground:   0 0% 100%;
 
-    --secondary:            210 40% 96%;
-    --secondary-foreground: 222 47% 11%;
+    --secondary:            30 8% 94%;
+    --secondary-foreground: 24 10% 10%;
 
-    --muted:                210 40% 96%;
-    --muted-foreground:     215 16% 46%;
+    --muted:                30 8% 94%;
+    --muted-foreground:     28 8% 38%;
 
-    --accent:               210 40% 96%;
-    --accent-foreground:    222 47% 11%;
+    --accent:               30 8% 94%;
+    --accent-foreground:    24 10% 10%;
 
     --destructive:          0 72% 51%;          /* DC2626 */
     --destructive-foreground: 0 0% 100%;
 
-    --border:               214 20% 91%;        /* rgba(0,0,0,0.08) Approx */
-    --input:                210 33% 97%;        /* F8F8F8 */
-    --ring:                 222 47% 11%;
+    --border:               30 8% 89%;
+    --input:                30 12% 96%;
+    --ring:                 24 10% 10%;
 
     --radius: 0.625rem;
 

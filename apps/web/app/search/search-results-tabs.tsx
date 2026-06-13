@@ -254,7 +254,7 @@ export function SearchResultsTabs({ q, results, viewerId, followingSet, initialT
                     )}
                   </div>
                   <div className="truncate text-xs text-muted-foreground">
-                    {u.display_name ?? '—'} · {formatCount(u.follower_count ?? 0)} Follower
+                    {u.display_name ?? u.username} · {formatCount(u.follower_count ?? 0)} Follower
                   </div>
                 </Link>
                 <FollowButton

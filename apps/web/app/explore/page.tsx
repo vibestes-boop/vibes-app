@@ -51,7 +51,7 @@ export default async function ExplorePage() {
   ]);
 
   return (
-    <main className="container mx-auto max-w-6xl px-4 py-8">
+    <main className="container mx-auto max-w-6xl px-4 pb-8 pt-16 sm:pt-8">
       <header className="mb-8">
         <h1 className="flex items-center gap-2 text-3xl font-bold tracking-tight">
           <Compass className="h-7 w-7 text-muted-foreground" />
@@ -257,7 +257,7 @@ async function ExploreDeferredSections({ suggestedPeopleTitle }: { suggestedPeop
                     </div>
                   )}
                   {product.sale_price_coins && (
-                    <span className="absolute left-1.5 top-1.5 rounded bg-foreground px-1 py-0.5 text-[9px] font-bold text-background">
+                    <span className="absolute left-1.5 top-1.5 rounded bg-foreground px-1 py-0.5 text-[10px] font-bold text-background">
                       SALE
                     </span>
                   )}

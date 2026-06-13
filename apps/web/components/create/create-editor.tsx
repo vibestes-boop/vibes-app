@@ -1,5 +1,6 @@
 'use client';
 
+import type { Route } from 'next';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from 'react';
@@ -404,7 +405,7 @@ export function CreateEditor({ viewerId, initialDraft }: Props) {
       }
       setToast({ kind: 'ok', msg: 'Post ist live.' });
       // Nach kurzer Verzögerung zur Post-URL
-      setTimeout(() => router.push(`/p/${res.data.id}`), 700);
+      setTimeout(() => router.push(`/p/${res.data.id}` as Route), 700);
     });
   };
 

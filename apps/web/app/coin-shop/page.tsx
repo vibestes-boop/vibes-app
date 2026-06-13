@@ -1,3 +1,4 @@
+import type { Route } from 'next';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
@@ -45,7 +46,7 @@ export default async function CoinShopPage() {
     // Kein einziges Tier konfiguriert → fail-soft: Redirect auf Startseite
     // mit leerer UI wirkt unseriös, und Dev-Setup ohne Seed ist der
     // wahrscheinlichste Fall.
-    redirect('/');
+    redirect('/' as Route);
   }
 
   return (

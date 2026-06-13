@@ -57,7 +57,7 @@ export default async function StudioModerationPage() {
       {/* Header */}
       <header>
         <h1 className="flex items-center gap-2 text-2xl font-semibold sm:text-3xl">
-          <ShieldBan className="h-7 w-7 text-red-500" />
+          <ShieldBan className="h-7 w-7 text-foreground" />
           Moderation
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">

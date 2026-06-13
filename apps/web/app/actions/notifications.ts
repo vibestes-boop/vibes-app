@@ -15,6 +15,13 @@ export async function getUnreadNotificationCount(): Promise<number> {
 // Notifications Server Actions — v1.w.UI.38
 // -----------------------------------------------------------------------------
 
+// getNotificationsClient — Server Action Wrapper für den Drawer (Client-Components
+// können `getNotifications` aus lib/data nicht direkt nutzen — nur Server Actions).
+export async function getNotificationsClient() {
+  const { getNotifications } = await import('@/lib/data/notifications');
+  return getNotifications();
+}
+
 // markAllNotificationsRead — Alle ungelesenen Notifications des eingeloggten
 // Users als gelesen markieren. Wird beim Öffnen der /notifications-Seite
 // aufgerufen (Client-Component via useEffect, einmalig).

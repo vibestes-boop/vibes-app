@@ -1,3 +1,4 @@
+import type { Route } from 'next';
 import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
@@ -22,7 +23,7 @@ export default async function ResetPasswordPage() {
 
   if (!user) {
     // Recovery-Session fehlt oder abgelaufen — Recovery-Link erneut anfordern.
-    redirect('/auth/forgot-password?error=Session+abgelaufen');
+    redirect('/auth/forgot-password?error=Session+abgelaufen' as Route);
   }
 
   return (

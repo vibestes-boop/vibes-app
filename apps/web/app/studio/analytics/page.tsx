@@ -2,7 +2,19 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Route } from 'next';
-import { Eye, Clock3, Users, Film, Image as ImageIcon } from 'lucide-react';
+import {
+  Eye,
+  Clock3,
+  Users,
+  Film,
+  Image as ImageIcon,
+  BarChart2,
+  Globe,
+  MapPin,
+  UserCircle2,
+  Users2,
+  TrendingUp,
+} from 'lucide-react';
 import {
   getFollowerGrowth,
   getPeakHours,
@@ -17,19 +29,6 @@ import { PeakHoursHeatmap } from '@/components/studio/peak-hours-heatmap';
 import { EmptyState } from '@/components/ui/empty-state';
 import { cn } from '@/lib/utils';
 
-// -----------------------------------------------------------------------------
-// /studio/analytics — Detail-Charts die im Dashboard keinen Platz haben.
-//
-// Inhalt:
-// - Follower-Growth als kompaktes SVG-Line/Bar-Chart.
-// - Peak-Hours-Heatmap 7×24 (Wochentag × Stunde, `engagement_count` als Zelle).
-// - Watch-Time-Estimate-Panel (Gesamt-Sekunden, Views, avg/View).
-// - Top-Posts-Tabelle mit sortierbaren Spalten via `?sort=views|likes|comments`.
-//
-// Charts sind reine SSR-Renderings — kein Chart-Lib, nur Tailwind + SVG. Damit
-// kein Client-Bundle-Overhead und identische Experience ohne JS.
-// -----------------------------------------------------------------------------
-
 export const metadata: Metadata = {
   title: 'Analytics',
   description: 'Detaillierte Creator-Metriken — Follower-Wachstum, Peak-Hours, Watch-Time.',
@@ -41,10 +40,22 @@ const VALID_PERIODS: Period[] = [7, 28, 90];
 const VALID_SORTS = ['views', 'likes', 'comments'] as const;
 type Sort = (typeof VALID_SORTS)[number];
 
+const VALID_TABS = ['viewers', 'rewards'] as const;
+type Tab = (typeof VALID_TABS)[number];
+
+function periodDateRange(period: Period): string {
+  const end = new Date();
+  const start = new Date();
+  start.setDate(end.getDate() - period + 1);
+  const fmt = (d: Date) =>
+    d.toLocaleDateString('de-DE', { day: 'numeric', month: 'long', year: 'numeric' });
+  return `${fmt(start)} – ${fmt(end)}`;
+}
+
 export default async function StudioAnalyticsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ period?: string; sort?: string }>;
+  searchParams: Promise<{ period?: string; sort?: string; tab?: string }>;
 }) {
   const sp = await searchParams;
   const requestedPeriod = Number(sp.period);
@@ -53,6 +64,7 @@ export default async function StudioAnalyticsPage({
     : 28;
 
   const sort: Sort = VALID_SORTS.includes(sp.sort as Sort) ? (sp.sort as Sort) : 'views';
+  const tab: Tab = VALID_TABS.includes(sp.tab as Tab) ? (sp.tab as Tab) : 'viewers';
 
   const [growth, peakHours, watchTime, topPosts, overview] = await Promise.all([
     getFollowerGrowth(period),
@@ -62,87 +74,155 @@ export default async function StudioAnalyticsPage({
     getCreatorOverview(period),
   ]);
 
+  const views = watchTime?.totalViews ?? 0;
+  const newFollowers = overview?.newFollowers ?? 0;
+  const totalFollowers = overview?.totalFollowers ?? 0;
+  const liveDuration = watchTime?.totalSecondsEst ?? 0;
+  // Diamonds placeholder — no real data source yet, use 0
+  const diamonds = 0;
+  // Likes proxy: use newFollowers * some factor or just 0
+  const likes = 0;
+
   return (
     <div className="flex flex-col gap-6">
-      {/* Header */}
+      {/* ── Header ── */}
       <header className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-2xl font-semibold sm:text-3xl">Analytics</h1>
+          <h1 className="text-2xl font-semibold sm:text-3xl">Übersicht</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Detaillierte Metriken für den gewählten Zeitraum.
+            Deine LIVE-Performance auf einen Blick.
           </p>
         </div>
         <PeriodTabs period={period} basePath="/studio/analytics" />
       </header>
 
-      {/* Follower-Growth */}
-      <section className="rounded-xl border bg-card p-4">
-        <div className="mb-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-base font-semibold">Follower-Wachstum</h2>
-            <p className="text-xs text-muted-foreground">
-              Neue Follower pro Tag im Zeitraum — zeigt Spikes bei viralen Posts.
-            </p>
-          </div>
-          <div className="text-right">
-            <div className="text-xs text-muted-foreground">Neu in {period} T</div>
-            <div className="text-lg font-semibold tabular-nums">
-              +{(overview?.newFollowers ?? 0).toLocaleString('de-DE')}
-            </div>
-          </div>
+      {/* ── Schlüsselmetriken card ── */}
+      <section className="rounded-xl border bg-card">
+        {/* Card header */}
+        <div className="border-b px-5 pt-4 pb-3">
+          <h2 className="text-base font-semibold">Schlüsselmetriken</h2>
         </div>
-        <FollowerGrowthChart points={growth} />
+
+        {/* Tab row 1: Viewers | Rewards */}
+        <div className="flex items-center gap-1 border-b px-5 py-2">
+          <TabLink
+            label="Zuschauer*innen"
+            tabKey="viewers"
+            currentTab={tab}
+            period={period}
+            sort={sort}
+          />
+          <TabLink
+            label="Belohnungen"
+            tabKey="rewards"
+            currentTab={tab}
+            period={period}
+            sort={sort}
+          />
+        </div>
+
+        {/* Filter + date row */}
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b px-5 py-2.5">
+          <div className="flex items-center gap-1.5">
+            <FilterPill label="Alle" active />
+            <FilterPill label="Von Followern" active={false} />
+          </div>
+          <span className="text-xs text-muted-foreground tabular-nums">
+            {periodDateRange(period)}
+          </span>
+        </div>
+
+        {/* Metric cells — 4 col divide-x */}
+        <div className="grid grid-cols-2 divide-x divide-y sm:grid-cols-4 sm:divide-y-0">
+          <MetricCell
+            label="Aufrufe"
+            icon={Eye}
+            value={views.toLocaleString('de-DE')}
+            sub="Views gesamt"
+          />
+          <MetricCell
+            label="Diamanten"
+            icon={BarChart2}
+            value={diamonds.toLocaleString('de-DE')}
+            sub="Erhaltene Geschenke"
+          />
+          <MetricCell
+            label="Gefällt mir"
+            icon={TrendingUp}
+            value={likes.toLocaleString('de-DE')}
+            sub="Interaktion"
+          />
+          <MetricCell
+            label="LIVE-Dauer"
+            icon={Clock3}
+            value={formatDuration(liveDuration)}
+            sub="Aktivität"
+          />
+        </div>
+
+        {/* Chart area */}
+        <div className="border-t px-5 py-4">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="text-xs font-medium text-muted-foreground">
+              Follower-Wachstum · Neu in {period} T:{' '}
+              <strong className="text-foreground">+{newFollowers.toLocaleString('de-DE')}</strong>
+            </span>
+            <span className="text-xs text-muted-foreground">
+              Gesamt: {totalFollowers.toLocaleString('de-DE')}
+            </span>
+          </div>
+          {growth.length > 0 ? (
+            <FollowerGrowthChart points={growth} />
+          ) : (
+            <div className="flex h-28 flex-col items-center justify-center gap-2 rounded-lg bg-muted/30 text-muted-foreground">
+              <BarChart2 className="h-6 w-6 opacity-40" />
+              <span className="text-xs">Nicht genügend Daten</span>
+            </div>
+          )}
+        </div>
       </section>
 
-      {/* Watch-Time Estimate */}
-      <section className="grid gap-3 md:grid-cols-3">
-        <StatBigCard
-          icon={Clock3}
-          label="Watch-Time (geschätzt)"
-          primary={formatDuration(watchTime?.totalSecondsEst ?? 0)}
-          secondary="Summe aller Views × 8s Schätzung (Native-Parität)"
-          accent="primary"
-        />
-        <StatBigCard
-          icon={Eye}
-          label="Views"
-          primary={(watchTime?.totalViews ?? 0).toLocaleString('de-DE')}
-          secondary={`Ø ${Math.round(watchTime?.avgSecondsPerView ?? 8).toLocaleString('de-DE')}s/View`}
-          accent="muted"
-        />
-        <StatBigCard
-          icon={Users}
-          label="Gesamt-Follower"
-          primary={(overview?.totalFollowers ?? 0).toLocaleString('de-DE')}
-          secondary={`+${(overview?.newFollowers ?? 0).toLocaleString('de-DE')} im Zeitraum`}
-          accent="success"
-        />
+      {/* ── Lerne deine Zuschauer*innen kennen ── */}
+      <section className="rounded-xl border bg-card">
+        <div className="border-b px-5 py-3">
+          <h2 className="text-base font-semibold">Lerne deine Zuschauer*innen kennen</h2>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Mehr Einblicke nach mehr LIVE-Aktivität.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 divide-x divide-y sm:grid-cols-4 sm:divide-y-0">
+          <AudienceInsightCell icon={Globe} label="Traffic-Quelle" />
+          <AudienceInsightCell icon={MapPin} label="Land oder Region" />
+          <AudienceInsightCell icon={UserCircle2} label="Alter" />
+          <AudienceInsightCell icon={Users2} label="Geschlecht" />
+        </div>
       </section>
 
-      {/* Peak-Hours-Heatmap */}
+      {/* ── Peak-Hours Heatmap ── */}
       <section className="rounded-xl border bg-card p-4">
         <div className="mb-4">
           <h2 className="text-base font-semibold">Peak-Hours</h2>
           <p className="text-xs text-muted-foreground">
-            Wann ist dein Publikum am aktivsten? Je dunkler, desto mehr Likes + Kommentare
-            kommen in diesem Stundenslot.
+            Wann ist dein Publikum am aktivsten? Je dunkler, desto mehr Likes + Kommentare kommen
+            in diesem Stundenslot.
           </p>
         </div>
         <PeakHoursHeatmap cells={peakHours} />
       </section>
 
-      {/* Top-Posts-Table mit Sort-Links */}
+      {/* ── Top-Posts ── */}
       <section className="rounded-xl border bg-card">
         <div className="flex items-center justify-between border-b px-4 py-3">
           <h2 className="text-base font-semibold">Top-Posts</h2>
           <div className="flex items-center gap-1 rounded-full border p-1 text-xs">
-            <SortPill label="Views" sortKey="views" currentSort={sort} period={period} />
-            <SortPill label="Likes" sortKey="likes" currentSort={sort} period={period} />
+            <SortPill label="Views" sortKey="views" currentSort={sort} period={period} tab={tab} />
+            <SortPill label="Likes" sortKey="likes" currentSort={sort} period={period} tab={tab} />
             <SortPill
               label="Kommentare"
               sortKey="comments"
               currentSort={sort}
               period={period}
+              tab={tab}
             />
           </div>
         </div>
@@ -245,19 +325,102 @@ export default async function StudioAnalyticsPage({
 // Sub-Components
 // -----------------------------------------------------------------------------
 
+function TabLink({
+  label,
+  tabKey,
+  currentTab,
+  period,
+  sort,
+}: {
+  label: string;
+  tabKey: Tab;
+  currentTab: Tab;
+  period: Period;
+  sort: Sort;
+}) {
+  const active = tabKey === currentTab;
+  const href = `/studio/analytics?period=${period}&sort=${sort}&tab=${tabKey}` as Route;
+  return (
+    <Link
+      href={href}
+      scroll={false}
+      className={cn(
+        'rounded-md px-3 py-1.5 text-sm transition-colors',
+        active
+          ? 'bg-muted font-semibold text-foreground'
+          : 'text-muted-foreground hover:text-foreground',
+      )}
+    >
+      {label}
+    </Link>
+  );
+}
+
+function FilterPill({ label, active }: { label: string; active: boolean }) {
+  return (
+    <span
+      className={cn(
+        'rounded-full px-3 py-1 text-xs font-medium',
+        active
+          ? 'bg-foreground text-background'
+          : 'border text-muted-foreground hover:text-foreground cursor-pointer',
+      )}
+    >
+      {label}
+    </span>
+  );
+}
+
+function MetricCell({
+  label,
+  icon: Icon,
+  value,
+  sub,
+}: {
+  label: string;
+  icon: typeof Eye;
+  value: string;
+  sub: string;
+}) {
+  return (
+    <div className="flex flex-col gap-1 px-5 py-4">
+      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <Icon className="h-3.5 w-3.5 shrink-0" />
+        <span className="truncate font-medium">{label}</span>
+      </div>
+      <div className="text-2xl font-bold tabular-nums">{value}</div>
+      <div className="text-[11px] text-muted-foreground">{sub}</div>
+    </div>
+  );
+}
+
+function AudienceInsightCell({ icon: Icon, label }: { icon: typeof Globe; label: string }) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-2 px-4 py-8 text-center">
+      <div className="grid h-10 w-10 place-items-center rounded-full bg-muted text-muted-foreground">
+        <Icon className="h-5 w-5" strokeWidth={1.5} />
+      </div>
+      <div className="text-xs font-medium">{label}</div>
+      <div className="text-[11px] text-muted-foreground">Nicht genügend Daten</div>
+    </div>
+  );
+}
+
 function SortPill({
   label,
   sortKey,
   currentSort,
   period,
+  tab,
 }: {
   label: string;
   sortKey: Sort;
   currentSort: Sort;
   period: Period;
+  tab: Tab;
 }) {
   const active = sortKey === currentSort;
-  const href = `/studio/analytics?period=${period}&sort=${sortKey}` as Route;
+  const href = `/studio/analytics?period=${period}&sort=${sortKey}&tab=${tab}` as Route;
 
   return (
     <Link

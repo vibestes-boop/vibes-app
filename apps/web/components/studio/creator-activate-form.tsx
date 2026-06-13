@@ -7,6 +7,7 @@
 // on success. Matches mobile creator/activate.tsx UX: one tap, instant access.
 // -----------------------------------------------------------------------------
 
+import type { Route } from 'next';
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Sparkles } from 'lucide-react';
@@ -24,10 +25,10 @@ export function CreatorActivateForm() {
       const res = await activateCreator();
       if (res.ok) {
         setSuccess(true);
-        router.push('/studio');
+        router.push('/studio' as Route);
         router.refresh();
       } else if (res.error === 'not_authenticated') {
-        router.push('/login?next=/studio/activate');
+        router.push('/login?next=/studio/activate' as Route);
       } else {
         setError(res.error ?? 'Aktivierung fehlgeschlagen. Bitte versuche es nochmal.');
       }

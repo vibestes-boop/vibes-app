@@ -1,5 +1,6 @@
 'use server';
 
+import type { Route } from 'next';
 import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
@@ -232,5 +233,5 @@ export async function deleteMyAccount(
   await supabase.auth.signOut();
 
   revalidatePath('/', 'layout');
-  redirect('/?account-deleted=1');
+  redirect('/?account-deleted=1' as Route);
 }
