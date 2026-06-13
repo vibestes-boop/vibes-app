@@ -1545,3 +1545,47 @@ export async function getWOZFeedPage(
   if (error || !data) return [];
   return (data as unknown as PostRowMobile[]).map(toPost);
 }
+
+// -----------------------------------------------------------------------------
+// getProfileMeta — leichte best-effort Zusatzsignale für die Profil-Meta-Zeile
+// (Women-Only + Battle-Bilanz). Bewusst SEPARAT von get_public_profile_web,
+// damit ein Fehler hier das Profil-Laden nicht beeinflusst. Beide Quellen sind
+// vom anon-Client lesbar (verifiziert). Resonanz (Ø-Dwell) fehlt absichtlich:
+// PostgREST-Aggregate sind projektweit deaktiviert → bräuchte eine eigene RPC.
+// -----------------------------------------------------------------------------
+
+export type ProfileMeta = {
+  womenOnly: boolean;
+  battle: { wins: number; losses: number; draws: number; total: number; winRate: number | null } | null;
+};
+
+export async function getProfileMeta(userId: string): Promise<ProfileMeta> {
+  try {
+    const supabase = createPublicClient();
+    const [wozRes, battleRes] = await Promise.all([
+      supabase.from('profiles').select('women_only_verified').eq('id', userId).maybeSingle(),
+      supabase.from('user_battle_stats').select('wins, losses, draws, total_battles').eq('user_id', userId).maybeSingle(),
+    ]);
+
+    const womenOnly = !!(wozRes.data as { women_only_verified?: boolean } | null)?.women_only_verified;
+
+    let battle: ProfileMeta['battle'] = null;
+    const b = battleRes.data as { wins?: number; losses?: number; draws?: number; total_battles?: number } | null;
+    if (b && (b.total_battles ?? 0) > 0) {
+      const wins = b.wins ?? 0;
+      const losses = b.losses ?? 0;
+      const decided = wins + losses;
+      battle = {
+        wins,
+        losses,
+        draws: b.draws ?? 0,
+        total: b.total_battles ?? 0,
+        winRate: decided > 0 && (b.total_battles ?? 0) >= 3 ? Math.round((wins / decided) * 100) : null,
+      };
+    }
+
+    return { womenOnly, battle };
+  } catch {
+    return { womenOnly: false, battle: null };
+  }
+}

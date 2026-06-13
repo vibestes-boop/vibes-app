@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { BadgeCheck, Heart, Repeat2, ShoppingBag, Swords, Globe, Mountain, Radio, Bookmark } from 'lucide-react';
+import { BadgeCheck, Heart, Repeat2, ShoppingBag, Swords, Globe, Mountain, Radio, Bookmark, Flower2 } from 'lucide-react';
 
-import { getPublicProfile, getProfilePosts, getProfileLikedPosts, getProfileReposts, getBattleHistory, getFollowStateForViewer, getBookmarkedPosts, type ProfileSortKey } from '@/lib/data/public';
+import { getPublicProfile, getProfilePosts, getProfileLikedPosts, getProfileReposts, getBattleHistory, getFollowStateForViewer, getBookmarkedPosts, getProfileMeta, type ProfileSortKey } from '@/lib/data/public';
 import { getUserReplays } from '@/lib/data/live';
 import { getUser } from '@/lib/auth/session';
 import { getCoinBalanceForViewer } from '@/lib/data/payments';
@@ -193,7 +193,7 @@ export default async function ProfilePage({
   const viewerId = viewer?.id ?? null;
   const isSelf = viewerId === profile.id;
 
-  const [followState, posts, reposts, shopProducts, battles, replays, balance, hostMuted, highlights] = await Promise.all([
+  const [followState, posts, reposts, shopProducts, battles, replays, balance, hostMuted, highlights, meta] = await Promise.all([
     viewerId && !isSelf
       ? getFollowStateForViewer(profile.id, viewerId)
       : Promise.resolve({ following: false, pendingRequest: false }),
@@ -205,6 +205,8 @@ export default async function ProfilePage({
     viewerId ? getCoinBalanceForViewer(viewerId) : Promise.resolve(null),
     viewerId && !isSelf ? isHostMutedForViewer(profile.id, viewerId) : Promise.resolve(false),
     getProfileHighlights(profile.id),
+    // Meta-Zeile (Battle-Bilanz + Women-Only) — best-effort, additiv
+    getProfileMeta(profile.id),
   ]);
 
   const [likedPosts, savedPosts] = await Promise.all([
@@ -333,8 +335,9 @@ export default async function ProfilePage({
           </p>
         )}
 
-        {/* Website + Teip — v1.w.UI.160 */}
-        {(profile.website || profile.teip) && (
+        {/* Meta-Zeile: Website · Battle · Teip · Women-Only — Parität zur Mobile-App.
+            (Resonanz fehlt noch: PostgREST-Aggregate projektweit aus → eigene RPC nötig.) */}
+        {(profile.website || profile.teip || meta.battle || meta.womenOnly) && (
           <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5">
             {profile.website && (
               <a
@@ -347,10 +350,23 @@ export default async function ProfilePage({
                 {profile.website.replace(/^https?:\/\//, '').replace(/\/$/, '')}
               </a>
             )}
+            {meta.battle && (
+              <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+                <Swords className="h-3.5 w-3.5 shrink-0" />
+                {meta.battle.wins}–{meta.battle.losses}
+                {meta.battle.winRate !== null ? ` · ${meta.battle.winRate}%` : ''}
+              </span>
+            )}
             {profile.teip && (
               <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
                 <Mountain className="h-3.5 w-3.5 shrink-0" />
                 {profile.teip}
+              </span>
+            )}
+            {meta.womenOnly && (
+              <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
+                <Flower2 className="h-3.5 w-3.5 shrink-0 text-pink-400" />
+                Women-Only
               </span>
             )}
           </div>
