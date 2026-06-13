@@ -7,6 +7,9 @@ import { Easing, Modal, StyleSheet, Text, View } from 'react-native';
 const _animMod = require('react-native-reanimated') as any;
 const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
+// Reanimated-Hooks/Helper sind Top-Level-Named-Exports, NICHT auf .default
+// (= _animNS). Im echten Build sonst undefined → "undefined is not a function".
+const _animHooks = _animMod && _animMod.useSharedValue ? _animMod : _animNS;
 const {
   useSharedValue,
   useAnimatedStyle,
@@ -14,7 +17,7 @@ const {
   withSequence,
   withSpring,
   withTiming,
-} = _animNS ?? _animMod;
+} = _animHooks ?? _animMod;
 
 const CONFETTI_COLORS = ['#FFFFFF','#A855F7','#F472B6','#FB923C','#34D399','#FBBF24','#60A5FA','#F87171'];
 

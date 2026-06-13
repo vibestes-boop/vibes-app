@@ -111,6 +111,7 @@ export function AvatarUploadField({
       const signed = await requestR2UploadUrl({
         key,
         contentType: compressed.mimeType,
+        contentLength: compressed.blob.size,
       });
 
       if (!signed.ok) {
@@ -188,7 +189,7 @@ export function AvatarUploadField({
       const key = `avatars/${userId}/ai-${Date.now()}.${ext}`;
 
       // (3) Presigned R2 upload URL.
-      const signed = await requestR2UploadUrl({ key, contentType: compressed.mimeType });
+      const signed = await requestR2UploadUrl({ key, contentType: compressed.mimeType, contentLength: compressed.blob.size });
       if (!signed.ok) {
         setError(signed.error || labels.errorSign);
         setProgress(null);

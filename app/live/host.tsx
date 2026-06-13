@@ -58,6 +58,7 @@ type ViewStyle,
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { supabase } from "@/lib/supabase";
+import { LC } from "@/lib/liveColors";
 import { RoomContext } from "@livekit/components-react";
 import {
 AudioSession,

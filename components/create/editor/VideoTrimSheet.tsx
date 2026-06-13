@@ -10,7 +10,11 @@ import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-g
 const _animMod = require('react-native-reanimated') as any;
 const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
-const { useSharedValue, useAnimatedStyle, runOnJS } = _animNS ?? _animMod;
+// Reanimated-Hooks sind Top-Level-Named-Exports, NICHT auf .default (= _animNS).
+// Im echten Build (Metro bundlet src/index als ESM) liegen sie auf _animMod;
+// aus _animNS destrukturiert wären sie undefined → "undefined is not a function".
+const _animHooks = _animMod && _animMod.useSharedValue ? _animMod : _animNS;
+const { useSharedValue, useAnimatedStyle, runOnJS } = _animHooks ?? _animMod;
 
 import { SW } from './sharedStyles';
 

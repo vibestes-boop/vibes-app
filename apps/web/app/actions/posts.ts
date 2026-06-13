@@ -556,6 +556,8 @@ export interface R2SignInput {
   contentType: string;
   /** Optionaler Objekt-Cache-Control-Header; muss beim PUT identisch gesendet werden. */
   cacheControl?: string;
+  /** Optionale Datei-Größe in Bytes — Edge-Function prüft gegen Kategorie-Limit. */
+  contentLength?: number;
 }
 
 export interface R2SignResult {
@@ -601,6 +603,12 @@ export async function requestR2UploadUrl(
   ) {
     return { ok: false, error: 'Ungültiger Cache-Control-Header.' };
   }
+  if (
+    input.contentLength !== undefined &&
+    (!Number.isInteger(input.contentLength) || input.contentLength <= 0)
+  ) {
+    return { ok: false, error: 'Ungültige Dateigröße.' };
+  }
 
   const supabase = await createClient();
   const { data, error } = await supabase.functions.invoke('r2-sign', {
@@ -608,6 +616,7 @@ export async function requestR2UploadUrl(
       key: input.key,
       contentType: input.contentType,
       cacheControl: input.cacheControl,
+      contentLength: input.contentLength,
     },
   });
 

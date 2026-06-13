@@ -7,8 +7,17 @@
  * Requires a valid Supabase user JWT. The requested object key must live inside
  * the caller's own user folder.
  *
- * POST body: { key: string, contentType: string, cacheControl?: string }
- * Response:  { uploadUrl: string, publicUrl: string, uploadHeaders: Record<string, string> }
+ * POST body: { key, contentType, cacheControl?, contentLength? }
+ * Response:  { uploadUrl, publicUrl, uploadHeaders }
+ *
+ * Hardening (Defense-in-Depth, zusätzlich zu Auth + Owner-Key-Check):
+ *   • Content-Type/Extension-Denylist gegen aktive Inhalte (SVG/HTML/XML/JS),
+ *     die R2 von der pub-*.r2.dev-Origin als ausführbares Dokument ausliefern
+ *     würde → Stored-XSS. Bild-Prefixes erzwingen image/*.
+ *   • contentLength (optional): serverseitige Größen-Guardrail pro Kategorie.
+ *     Deklarativ — voll kryptografisch erzwingbar via signiertem Content-Length
+ *     (unsere Clients senden fixe-Länge-Bodies, daher safe) ODER Pflichtfeld,
+ *     sobald alte App-Versionen (< 1.26.9, ohne contentLength) ausgelaufen sind.
  *
  * AWS Signature V4 spec:
  *   https://docs.aws.amazon.com/general/latest/gr/sigv4-create-canonical-request.html
@@ -33,6 +42,52 @@ const ALLOWED_OWNED_PREFIXES = [
   'avatars',
   'voice-samples',
 ] as const;
+
+// Prefixes deren Objekte als Bild eingebettet/angezeigt werden — hier MUSS der
+// Content-Type ein Bild sein (kein Video/Audio/sonstwas).
+const IMAGE_ONLY_PREFIXES = ['posts/images', 'products/images', 'thumbnails', 'avatars'] as const;
+
+// Aktive Inhalte, die der Browser beim direkten Aufruf der R2-URL als
+// ausführbares Dokument rendert (Stored-XSS-Vektor auf der r2.dev-Origin).
+// Denylist statt Allowlist, weil Audio/Video viele legitime MIME-Varianten
+// haben (z.B. `audio/webm;codecs=opus`) — die aktive-Content-Menge ist
+// dagegen klein und bekannt.
+const DANGEROUS_CONTENT_TYPES = [
+  'image/svg+xml',
+  'text/html',
+  'application/xhtml+xml',
+  'text/xml',
+  'application/xml',
+  'application/javascript',
+  'text/javascript',
+  'application/x-php',
+  'text/x-php',
+];
+const DANGEROUS_EXTENSIONS = [
+  'svg', 'svgz', 'html', 'htm', 'xhtml', 'xml', 'js', 'mjs',
+  'php', 'phtml', 'php5', 'phar', 'jsp', 'asp', 'aspx', 'htaccess',
+];
+
+// Datei-Größen-Obergrenzen pro Kategorie (serverseitige Guardrail).
+const MAX_BYTES_VIDEO = 200 * 1024 * 1024; // 200 MB
+const MAX_BYTES_AUDIO = 30 * 1024 * 1024;  // 30 MB
+const MAX_BYTES_IMAGE = 50 * 1024 * 1024;  // 50 MB
+
+function maxBytesForKey(key: string): number {
+  if (key.startsWith('posts/videos/')) return MAX_BYTES_VIDEO;
+  if (key.startsWith('voice-samples/')) return MAX_BYTES_AUDIO;
+  return MAX_BYTES_IMAGE;
+}
+
+// Content-Type ohne Parameter (`audio/webm;codecs=opus` → `audio/webm`).
+function baseContentType(ct: string): string {
+  return ct.split(';')[0].trim().toLowerCase();
+}
+
+function keyExtension(key: string): string {
+  const dot = key.lastIndexOf('.');
+  return dot >= 0 ? key.slice(dot + 1).toLowerCase() : '';
+}
 
 // ── HMAC-SHA256 signing helper ──────────────────────────────────────────────
 async function hmacSign(key: Uint8Array, message: string): Promise<Uint8Array> {
@@ -199,7 +254,12 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const body = await req.json() as { key?: unknown; contentType?: unknown; cacheControl?: unknown };
+    const body = await req.json() as {
+      key?: unknown;
+      contentType?: unknown;
+      cacheControl?: unknown;
+      contentLength?: unknown;
+    };
     const key         = typeof body.key === 'string'         ? body.key.trim()         : '';
     const contentType = typeof body.contentType === 'string' ? body.contentType.trim() : '';
     const cacheControl =
@@ -225,6 +285,53 @@ Deno.serve(async (req: Request) => {
         status: 403,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
+    }
+
+    // ── A) Content-Type / Extension Hardening (Defense-in-Depth gegen
+    //       Stored-XSS via SVG/HTML, die R2 von der pub-*.r2.dev-Origin
+    //       als aktives Dokument ausliefern würde) ────────────────────────────
+    const baseCt = baseContentType(contentType);
+    const ext    = keyExtension(key);
+
+    if (DANGEROUS_CONTENT_TYPES.includes(baseCt) || DANGEROUS_EXTENSIONS.includes(ext)) {
+      return new Response(JSON.stringify({ error: 'Disallowed content type' }), {
+        status: 415,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Bild-Prefixes (Avatar/Post-Bild/Produkt-Bild/Thumbnail) dürfen NUR Bilder
+    // sein — schließt aus, dass z.B. ein Avatar als text/* oder application/*
+    // hochgeladen wird.
+    const isImagePrefix = IMAGE_ONLY_PREFIXES.some((p) => key.startsWith(`${p}/`));
+    if (isImagePrefix && !baseCt.startsWith('image/')) {
+      return new Response(JSON.stringify({ error: 'Image content type required' }), {
+        status: 415,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // ── B) Größen-Guardrail: wenn der Client die Datei-Größe deklariert,
+    //       gegen die Kategorie-Obergrenze prüfen. Optional, damit bereits
+    //       ausgelieferte App-Versionen (ohne contentLength) weiter funktionieren.
+    //       Hinweis: rein deklarativ — kryptografische Erzwingung via signiertem
+    //       Content-Length ist der dokumentierte Folgeschritt (siehe Kopf-Doku).
+    let contentLength: number | undefined;
+    if (body.contentLength !== undefined && body.contentLength !== null) {
+      const n = Number(body.contentLength);
+      if (!Number.isInteger(n) || n <= 0) {
+        return new Response(JSON.stringify({ error: 'Invalid contentLength' }), {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      if (n > maxBytesForKey(key)) {
+        return new Response(JSON.stringify({ error: 'File too large' }), {
+          status: 413,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      contentLength = n;
     }
 
     if (cacheControl && (cacheControl.length > 255 || /[\r\n]/.test(cacheControl))) {

@@ -168,7 +168,9 @@ async function uploadToR2(
     async () => {
       if (signal?.aborted) throw new Error('Upload abgebrochen.');
       const { data, error } = await supabase.functions.invoke('r2-sign', {
-        body: { key, contentType: mimeType, cacheControl: IMMUTABLE_MEDIA_CACHE },
+        // contentLength: serverseitige Größen-Guardrail (Edge-Function prüft
+        // gegen Kategorie-Limit). fileBuffer hat fixe Länge → exakt + verlässlich.
+        body: { key, contentType: mimeType, cacheControl: IMMUTABLE_MEDIA_CACHE, contentLength: fileBuffer.byteLength },
       });
       if (error || !data?.uploadUrl) {
         throw new Error(`Sign-Fehler: ${error?.message ?? 'Keine uploadUrl'}`);

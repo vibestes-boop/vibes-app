@@ -4,6 +4,7 @@
  * Braucht Dev-Build: npx expo run:ios / npx expo run:android
  */
 import { useClipNow } from '@/lib/useLiveClips';
+import { LC } from '@/lib/liveColors';
 import { useWomenOnly } from '@/lib/useWomenOnly';
 import * as Sentry from '@sentry/react-native';
 import { Image } from 'expo-image';
