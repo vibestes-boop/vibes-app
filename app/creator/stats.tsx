@@ -111,9 +111,10 @@ function TopProducts({ userId }: { userId: string }) {
   useEffect(() => {
     supabase
       .from('products')
-      .select('id, title, cover_url, price_coins, total_sales')
-      .eq('creator_id', userId)
-      .order('total_sales', { ascending: false })
+      // DB: seller_id + sold_count (nicht creator_id/total_sales) — auf erwarteten Namen aliasen.
+      .select('id, title, cover_url, price_coins, total_sales:sold_count')
+      .eq('seller_id', userId)
+      .order('sold_count', { ascending: false })
       .limit(3)
       .then(({ data }) => setProducts(data ?? []));
   }, [userId]);

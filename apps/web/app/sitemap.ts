@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { createClient } from '@/lib/supabase/server';
+import { getTrendingHashtags } from '@/lib/data/feed';
 
 // -----------------------------------------------------------------------------
 // sitemap.xml — dynamisch generiert.
@@ -42,16 +43,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // Profile
     const { data: profiles } = await supabase
       .from('profiles')
-      .select('username, updated_at')
+      .select('username, created_at')
       .eq('is_banned', false)
       .eq('is_shadow_banned', false)
-      .order('follower_count', { ascending: false })
+      .order('created_at', { ascending: false })
       .limit(1000);
 
     const profileRoutes: MetadataRoute.Sitemap =
       (profiles ?? []).map((p) => ({
         url: `${baseUrl}/u/${p.username}`,
-        lastModified: p.updated_at ? new Date(p.updated_at) : undefined,
+        lastModified: p.created_at ? new Date(p.created_at) : undefined,
         changeFrequency: 'weekly' as const,
         priority: 0.7,
       }));
@@ -87,14 +88,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.65,
       }));
 
-    // Trending Hashtags — Top 200 nach Post-Count
-    const { data: hashtags } = await supabase
-      .from('post_hashtags')
-      .select('tag')
-      .limit(200);
-
-    // Deduplizieren und als Set → unique Tags
-    const uniqueTags = [...new Set((hashtags ?? []).map((h) => h.tag as string))];
+    // Trending Hashtags — Top 200 (Quelle: posts.tags via getTrendingHashtags;
+    // die früher abgefragte Tabelle `post_hashtags` existiert nicht in der DB).
+    const trending = await getTrendingHashtags(200);
+    const uniqueTags = [...new Set(trending.map((h) => h.tag))];
     const hashtagRoutes: MetadataRoute.Sitemap = uniqueTags.map((tag) => ({
       url: `${baseUrl}/t/${encodeURIComponent(tag)}`,
       changeFrequency: 'daily' as const,

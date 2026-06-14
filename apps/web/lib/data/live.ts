@@ -375,9 +375,10 @@ export const getClipMarkers = cache(
     const supabase = await createClient();
     const { data } = await supabase
       .from('live_clip_markers')
-      .select('id, session_id, user_id, position_secs, label, created_at')
+      // DB-Spalten heißen ts_secs/note — auf die im Code erwarteten Namen aliasen.
+      .select('id, session_id, user_id, position_secs:ts_secs, label:note, created_at')
       .eq('session_id', sessionId)
-      .order('position_secs', { ascending: true });
+      .order('ts_secs', { ascending: true });
     if (!data) return [];
     return data as ClipMarker[];
   },
