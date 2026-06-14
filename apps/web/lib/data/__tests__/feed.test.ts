@@ -56,6 +56,7 @@ import { createSupabaseMock, type SupabaseMockConfig } from '@/test-utils/supaba
 import {
   getForYouFeed,
   getFollowingFeed,
+  getFriendsFeed,
   getPublicForYouFeed,
   getExploreTrendingFeed,
   getExploreNewestFeed,
@@ -597,6 +598,69 @@ describe('getFollowingFeed', () => {
 });
 
 // -----------------------------------------------------------------------------
+// getFriendsFeed — „Freunde": nur GEGENSEITIGE Follows (Schnittmenge aus
+// „wem ich folge" und „wer mir folgt"). Abgrenzung zu getFollowingFeed.
+// -----------------------------------------------------------------------------
+
+describe('getFriendsFeed', () => {
+  it('returns [] when viewer is not signed in', async () => {
+    setupSupabase({ auth: { user: null } });
+    expect(await getFriendsFeed()).toEqual([]);
+  });
+
+  it('returns [] when viewer follows nobody', async () => {
+    setupSupabase({
+      auth: { user: { id: 'viewer-1' } },
+      tables: { follows: { data: [], error: null } },
+    });
+    expect(await getFriendsFeed()).toEqual([]);
+  });
+
+  it('returns [] when following and followers are disjoint (keine Schnittmenge)', async () => {
+    // following_id = wem ich folge; follower_id = wer mir folgt.
+    // Ich folge u1, aber mir folgt nur u2 → kein gegenseitiger Follow.
+    setupSupabase({
+      auth: { user: { id: 'viewer-1' } },
+      tables: {
+        follows: { data: [{ following_id: 'u1', follower_id: 'u2' }], error: null },
+        posts: { data: [makeRawPost({ author: { ...makeRawPost().author, id: 'u1' } })], error: null },
+        likes: { data: [], error: null },
+        bookmarks: { data: [], error: null },
+      },
+    });
+    // mutualIds === [] → früher Return, posts werden gar nicht erst geladen.
+    expect(await getFriendsFeed()).toEqual([]);
+  });
+
+  it('returns only posts from mutual follows, marked following_author: true', async () => {
+    // u1 ist gegenseitig (in following UND followers), u2/u3 nur einseitig.
+    setupSupabase({
+      auth: { user: { id: 'viewer-1' } },
+      tables: {
+        follows: {
+          data: [
+            { following_id: 'u1', follower_id: 'u1' }, // mutual ✓
+            { following_id: 'u2', follower_id: 'u3' }, // einseitig
+          ],
+          error: null,
+        },
+        posts: {
+          data: [makeRawPost({ id: 'p-mutual', author: { ...makeRawPost().author, id: 'u1' } })],
+          error: null,
+        },
+        likes: { data: [], error: null },
+        bookmarks: { data: [], error: null },
+      },
+    });
+
+    const result = await getFriendsFeed();
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('p-mutual');
+    expect(result[0].following_author).toBe(true);
+  });
+});
+
+// -----------------------------------------------------------------------------
 // getSuggestedFollows
 // -----------------------------------------------------------------------------
 
@@ -971,7 +1035,9 @@ describe('getSuggestedFollowsPage', () => {
     const result = await getSuggestedFollowsPage(0);
 
     expect(result.people).toHaveLength(2);
-    expect(result.people[0]).toMatchObject({ id: 'u1', follower_count: 100, verified: true });
+    // follower_count ist immer 0 (Placeholder): die Spalte profiles.follower_count
+    // existiert nicht — würde sie selektiert/sortiert, scheitert die ganze Query.
+    expect(result.people[0]).toMatchObject({ id: 'u1', follower_count: 0, verified: true });
     expect(result.people[1]).toMatchObject({ id: 'u2', follower_count: 0, verified: false });
     // Anon: no follows lookup
     expect(client._calls.tables.follows).toBeUndefined();
