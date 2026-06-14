@@ -17,6 +17,27 @@ const nextConfig = {
   // Moved out of experimental in Next.js 15.5+
   // Alle router.push/redirect-Calls wurden auf `as Route` migriert (SW-09).
   typedRoutes: true,
+  // -------------------------------------------------------------------------
+  // Client-seitiger Router-Cache (In-Memory, pro Session).
+  //
+  // Next.js 15 setzt den Default für dynamische Seiten auf `dynamic: 0` →
+  // jede Navigation zu einer dynamischen Route (force-dynamic / cookies /
+  // getUser) löst einen frischen Server-Roundtrip aus, auch bei „Zurück/Vor".
+  // Das ist der Hauptgrund für „mal schnell, mal langsam" beim Umschalten.
+  //
+  // Mit `dynamic: 30` werden bereits gerenderte dynamische Segmente 30s lang
+  // wiederverwendet → Hin-und-Herwechseln und schnelle Re-Navigation fühlen
+  // sich konsistent instant an. Trade-off: bei Rück-Navigation innerhalb von
+  // 30s sieht man ggf. einen leicht veralteten Stand (für Feed/Notifications
+  // unkritisch, da Client-seitig via TanStack Query / Realtime nachgezogen).
+  // `static: 300` = Next-Default für statische Segmente (explizit gesetzt).
+  // -------------------------------------------------------------------------
+  experimental: {
+    staleTimes: {
+      dynamic: 30,
+      static: 300,
+    },
+  },
   // ESLint wird separat via `npm run lint` als explizites Release-Gate geprüft.
   // Next.js 15 deprecates `next lint`; die App nutzt deshalb ESLint CLI mit
   // `apps/web/eslint.config.mjs`.
