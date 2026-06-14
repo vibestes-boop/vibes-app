@@ -131,6 +131,7 @@ const { colors } = useTheme();
 7. **Supabase Migrations**: SQL-Dateien in `/supabase/*.sql` — immer `IF NOT EXISTS` nutzen
 8. **LiveKit Token**: `supabase/functions/livekit-token/index.ts` — Guests brauchen `canPublish: true`
 9. **Migration-Dateipfad & -Naming**: Neue Migrations IMMER unter `supabase/migrations/` mit **14-stelligem Timestamp-Prefix** `YYYYMMDDHHMMSS_<slug>.sql` (z. B. `20260428100000_post_aspect_ratio.sql`). Niemals lose unter `supabase/` und niemals nur 8-stellig — `supabase db push` ignoriert sonst still die Datei und das Schema-Tracking läuft auseinander.
+10. **Schema-Wahrheit**: `supabase/SCHEMA.md` (+ Roh-Dump `supabase/schema_live.sql`) ist die **Source of Truth** für reale Tabellen/Spalten der Live-DB. **Vor jeder neuen Spalten-Referenz im Code dort prüfen** — `profiles` hat z. B. KEIN `follower_count` (nur via Aggregation über `follows`). Neu generieren: `pg_dump "<connection-uri>" --schema=public --schema-only --no-owner --no-privileges -f supabase/schema_live.sql`, dann das Parse-Skript für `SCHEMA.md`. Die alten, manuell aufgesetzten Basis-SQL-Dateien liegen archiviert unter `supabase/_legacy/` (nicht mehr maßgeblich).
 
 ---
 
