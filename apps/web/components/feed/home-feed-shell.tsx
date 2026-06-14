@@ -54,6 +54,8 @@ export interface HomeFeedShellProps {
   viewerId: string | null;
   initialForYou: FeedPost[];
   initialFollowing: FeedPost[] | null; // null = noch nicht geladen
+  /** „Freunde"-Feed (gegenseitige Follows). null/undefined = lazy beim Tab-Switch. */
+  initialFriends?: FeedPost[] | null;
   suggested: SuggestedFollow[];
   storyStripSlot?: ReactNode;
   /**
@@ -80,7 +82,7 @@ export interface HomeFeedShellProps {
   viewerProfile?: import('./feed-sidebar').SidebarViewerProfile | null;
 }
 
-type TabKey = 'foryou' | 'following';
+type TabKey = 'foryou' | 'following' | 'friends';
 
 export function HomeFeedShell(props: HomeFeedShellProps) {
   // Provider MUSS außen sein — sonst können FeedCards innerhalb der
@@ -98,6 +100,7 @@ function HomeFeedShellBody({
   viewerId,
   initialForYou,
   initialFollowing,
+  initialFriends = null,
   suggested,
   storyStripSlot,
   initialTab = 'foryou',
@@ -125,13 +128,29 @@ function HomeFeedShellBody({
 
   const followingPosts = followingQuery.data ?? initialFollowing ?? [];
 
+  // „Freunde"-Feed (gegenseitige Follows) — gleiches Lazy-Muster wie Following.
+  const friendsQuery = useQuery<FeedPost[]>({
+    queryKey: ['feed', 'friends'],
+    enabled: tab === 'friends' && initialFriends === null,
+    initialData: initialFriends ?? undefined,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const res = await fetch('/api/feed/friends', { cache: 'no-store' });
+      if (!res.ok) throw new Error('Feed konnte nicht geladen werden');
+      return (await res.json()) as FeedPost[];
+    },
+  });
+
+  const friendsPosts = friendsQuery.data ?? initialFriends ?? [];
+
   // `allowComments` für den offenen Post auflösen — wir suchen in beiden
   // Tab-Listen, damit der Panel-Content auch nach Tab-Wechsel korrekt bleibt
   // (der User kann z.B. einen Post auf For-You öffnen und dann auf
   // Following switchen — Panel bleibt offen und zeigt weiterhin den Post).
   const activePost: FeedPost | undefined = commentsOpenForPostId
     ? initialForYou.find((p) => p.id === commentsOpenForPostId) ??
-      followingPosts.find((p) => p.id === commentsOpenForPostId)
+      followingPosts.find((p) => p.id === commentsOpenForPostId) ??
+      friendsPosts.find((p) => p.id === commentsOpenForPostId)
     : undefined;
   // Fallback: wenn der Post aus der aktuellen Liste rausgescrollt ist (weil
   // pagination nachgeladen hat) nehmen wir `true` als sichersten Default —
@@ -237,6 +256,12 @@ function HomeFeedShellBody({
             disabled={!viewerId}
             onClick={() => setTab('following')}
           />
+          <FeedTabButton
+            label="Freunde"
+            active={tab === 'friends'}
+            disabled={!viewerId}
+            onClick={() => setTab('friends')}
+          />
         </div>
 
         <div className="min-h-0 flex-1">
@@ -265,6 +290,23 @@ function HomeFeedShellBody({
                   viewerId={viewerId}
                   feedKey="following"
                   forcePaused={tab !== 'following'}
+                />
+              )}
+            </div>
+          </div>
+          <div className={cn('flex h-full flex-col', tab !== 'friends' && 'hidden')}>
+            {storyStripSlot ? <div className="shrink-0">{storyStripSlot}</div> : null}
+            <div className="min-h-0 flex-1">
+              {friendsQuery.isFetching && friendsPosts.length === 0 ? (
+                <FollowingSkeleton />
+              ) : !friendsQuery.isFetching && friendsPosts.length === 0 ? (
+                <FollowingEmptyState suggested={suggested} viewerId={viewerId} />
+              ) : (
+                <FeedList
+                  initialPosts={friendsPosts}
+                  viewerId={viewerId}
+                  feedKey="friends"
+                  forcePaused={tab !== 'friends'}
                 />
               )}
             </div>

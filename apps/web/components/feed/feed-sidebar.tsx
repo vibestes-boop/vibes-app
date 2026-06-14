@@ -53,7 +53,7 @@ interface NavItem {
 const PRIMARY_NAV: NavItem[] = [
   { label: 'Für dich', href: '/' as Route, icon: Home },
   { label: 'Folge ich', href: '/following' as Route, icon: UserRound, requiresAuth: true },
-  { label: 'Freunde', href: '/people' as Route, icon: Users },
+  { label: 'Freunde', href: '/friends' as Route, icon: Users, requiresAuth: true },
   { label: 'Entdecken', href: '/explore' as Route, icon: Compass },
   { label: 'Live', href: '/live' as Route, icon: Radio },
   { label: 'Messages', href: '/messages' as Route, icon: MessageCircle, requiresAuth: true },

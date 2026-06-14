@@ -510,6 +510,64 @@ export const getFollowingFeed = cache(
 );
 
 // -----------------------------------------------------------------------------
+// getFriendsFeed — „Freunde"-Feed: Videos von GEGENSEITIGEN Follows (mutual).
+//
+// Unterschied zu getFollowingFeed (einseitig: alle, denen ich folge): hier nur
+// Accounts, denen ich folge UND die mir zurückfolgen — also die echte „Freunde"-
+// Teilmenge im TikTok-Sinn (tiktok.com/friends). = Schnittmenge aus der Liste
+// „wem ich folge" und „wer mir folgt".
+// -----------------------------------------------------------------------------
+export const getFriendsFeed = cache(
+  async (opts: { limit?: number; before?: string } = {}): Promise<FeedPost[]> => {
+    const { limit = 10, before } = opts;
+    const supabase = await createClient();
+    const user = await getUser();
+    if (!user) return [];
+
+    // (1) Wem ICH folge   (2) wer MIR folgt  → Schnittmenge = Freunde
+    const [{ data: following, error: e1 }, { data: followers, error: e2 }] = await Promise.all([
+      supabase.from('follows').select('following_id').eq('follower_id', user.id),
+      supabase.from('follows').select('follower_id').eq('following_id', user.id),
+    ]);
+    if (e1 || e2 || !following || !followers || following.length === 0 || followers.length === 0) {
+      return [];
+    }
+
+    const followingIds = new Set(following.map((f) => f.following_id as string));
+    const mutualIds = Array.from(
+      new Set(
+        followers
+          .map((f) => f.follower_id as string)
+          .filter((id) => followingIds.has(id)),
+      ),
+    );
+    if (mutualIds.length === 0) return [];
+
+    let query = supabase
+      .from('posts')
+      .select(`${POST_COLUMNS}, ${AUTHOR_JOIN}`)
+      .in('author_id', mutualIds)
+      .eq('privacy', 'public')
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    if (before) query = query.lt('created_at', before);
+
+    const { data: rows, error } = await query;
+    if (error || !rows) return [];
+
+    const postIds = rows.map((r) => r.id as string);
+    const { liked, saved, reposted } = await batchEngagement(postIds, mutualIds, user.id);
+
+    // Freunde sind per Definition gefolgte Accounts → following_author = true
+    const followingSet = new Set(mutualIds);
+
+    return (rows as unknown as RawPostRow[])
+      .map((row) => normalizeRow(row, liked, saved, followingSet, reposted))
+      .filter((p): p is FeedPost => p !== null);
+  },
+);
+
+// -----------------------------------------------------------------------------
 // getSuggestedFollows — Right-Sidebar: Top-Creator denen der User noch nicht folgt.
 //
 // Achtung: Mobile-DB-`profiles` hat KEINE `follower_count`-Spalte (siehe auch
