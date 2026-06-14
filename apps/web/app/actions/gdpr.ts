@@ -113,7 +113,7 @@ export async function exportMyData(): Promise<ActionResult<UserDataExport>> {
       supabase.from('profiles').select('*').eq('id', uid).maybeSingle(),
     ),
     safeSelect('posts', () =>
-      supabase.from('posts').select('*').eq('user_id', uid),
+      supabase.from('posts').select('*').eq('author_id', uid),
     ),
     safeSelect('comments', () =>
       supabase.from('comments').select('*').eq('user_id', uid),

@@ -49,7 +49,7 @@ function useCreatorStats(userId: string | null) {
           supabase.from('follows').select('*', { count: 'exact', head: true })
             .eq('following_id', userId)
             .gte('created_at', new Date(Date.now() - 7 * 86400_000).toISOString()),
-          supabase.from('posts').select('like_count').eq('user_id', userId),
+          supabase.from('posts').select('like_count').eq('author_id', userId),
           supabase.from('live_sessions')
             .select('peak_viewers, like_count')
             .eq('host_id', userId)
