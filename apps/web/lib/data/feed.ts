@@ -1002,20 +1002,31 @@ export async function getSuggestedFollowsPage(
     if (follows) excludeIds.push(...follows.map((f) => f.following_id as string));
   }
 
+  // WICHTIG: `profiles.follower_count` existiert NICHT als Spalte (wird nur in
+  // der Admin-Directory-View per COUNT über `follows` berechnet). Früher wurde
+  // hier danach selektiert UND sortiert → PostgREST-Spaltenfehler → `data=null`
+  // → /people blieb dauerhaft leer (mit irreführender „du folgst allen"-Meldung).
+  // Fix: nach `created_at` sortieren (neueste Accounts zuerst, wie
+  // getSuggestedFollows) und follower_count als Platzhalter 0 zurückgeben.
   let query = supabase
     .from('profiles')
-    .select('id, username, display_name, avatar_url, verified:is_verified, follower_count')
+    .select('id, username, display_name, avatar_url, verified:is_verified, created_at')
     .eq('is_banned', false)
     .eq('is_shadow_banned', false)
-    .order('follower_count', { ascending: false })
+    .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1);
 
   if (excludeIds.length > 0) {
     query = query.not('id', 'in', `(${excludeIds.join(',')})`);
   }
 
-  const { data } = await query;
-  if (!data) return { people: [], hasMore: false };
+  const { data, error } = await query;
+  if (error || !data) {
+    if (error && process.env.NODE_ENV !== 'production') {
+      console.warn('[getSuggestedFollowsPage]', error.message);
+    }
+    return { people: [], hasMore: false };
+  }
 
   const people = (data as Array<{
     id: string;
@@ -1023,14 +1034,13 @@ export async function getSuggestedFollowsPage(
     display_name: string | null;
     avatar_url: string | null;
     verified: boolean | null;
-    follower_count: number | null;
   }>).map((p) => ({
     id: p.id,
     username: p.username,
     display_name: p.display_name,
     avatar_url: p.avatar_url,
     verified: p.verified ?? false,
-    follower_count: p.follower_count ?? 0,
+    follower_count: 0, // profiles.follower_count existiert nicht → Platzhalter (PeopleList blendet 0 aus)
   }));
 
   return { people, hasMore: people.length >= limit };
