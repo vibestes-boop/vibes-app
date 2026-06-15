@@ -83,13 +83,14 @@ const CAT_META = {
   service:  { label: 'Service',  icon: Wrench,   delivery: 'Creator meldet sich nach Kauf' },
 };
 
+// Warme Stimme — siehe Design-Gesetz in CLAUDE.md (Fehler → Mikro-Freude).
 const BUY_ERRORS: Record<string, string> = {
-  insufficient_coins: 'Nicht genug Coins.',
-  no_wallet:          'Wallet nicht gefunden.',
-  cannot_buy_own:     'Du kannst dein eigenes Produkt nicht kaufen.',
-  product_not_found:  'Produkt nicht mehr verfügbar.',
-  out_of_stock:       'Leider ausverkauft.',
-  network_error:      'Netzwerkfehler. Bitte nochmal versuchen.',
+  insufficient_coins: 'Fast! Dafür reichen deine Coins nicht ganz — kurz aufladen? 🪙',
+  no_wallet:          'Dein Coin-Konto wird gerade eingerichtet — gleich geht’s 🪙',
+  cannot_buy_own:     'Das ist dein eigenes Produkt 😄',
+  product_not_found:  'Das Produkt ist leider weg 🙈',
+  out_of_stock:       'Ausverkauft — war wohl beliebt 🔥',
+  network_error:      'Kurz die Verbindung verloren — nochmal versuchen? 🙂',
 };
 
 // ─── v1.26.3: Effektiver Preis = Angebot falls gesetzt, sonst Original ───────

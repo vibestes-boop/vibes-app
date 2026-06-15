@@ -66,16 +66,17 @@ export function PinnedProductPill({ product, onBought, viewerUsername }: PinnedP
       // Reset nach 3s
       setTimeout(() => setBought(false), 3000);
     } else if (result.error === 'insufficient_coins') {
+      // Warme Stimme — siehe Design-Gesetz in CLAUDE.md (Fehler → Mikro-Freude → Verkauf).
       Alert.alert(
-        'Nicht genug Coins',
-        'Coins jetzt aufladen?',
+        'Fast! 🪙',
+        'Dafür reichen deine Coins nicht ganz — kurz aufladen?',
         [
-          { text: 'Nein', style: 'cancel' },
-          { text: 'Coins kaufen', onPress: () => router.push('/coin-shop' as any) },
+          { text: 'Später', style: 'cancel' },
+          { text: 'Aufladen', onPress: () => router.push('/coin-shop' as any) },
         ]
       );
     } else {
-      Alert.alert('Fehler', 'Kauf fehlgeschlagen.');
+      Alert.alert('Hat nicht geklappt 🙈', 'Kauf hat gerade nicht funktioniert — nochmal versuchen?');
     }
   }, [buyProduct, product, onBought, viewerUsername, router]);
 

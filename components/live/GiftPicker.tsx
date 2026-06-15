@@ -288,13 +288,14 @@ export function GiftPicker({
       setSelectedGift(null);
       onClose();
     } else {
+      // Warme Stimme — siehe Design-Gesetz in CLAUDE.md (Fehler → Mikro-Freude).
       const messages: Record<string, string> = {
-        insufficient_coins:   `Nicht genug Coins. Du hast ${formatCoins(coins)}, benötigst ${formatCoins(selectedGift.coinCost)}.`,
-        no_wallet:            'Wallet nicht gefunden. Bitte melde dich erneut an.',
-        cannot_gift_yourself: 'Du kannst dir selbst keine Geschenke senden.',
-        gift_not_found:       'Dieses Geschenk ist leider nicht verfügbar. Bitte starte die App neu.',
-        gifts_disabled:       'Geschenke sind für diesen Stream deaktiviert.',
-        network_error:        'Verbindungsfehler. Bitte versuche es erneut.',
+        insufficient_coins:   `Fast! Dir fehlen noch ${formatCoins(Math.max(0, selectedGift.coinCost - coins))} 🪙 — kurz aufladen?`,
+        no_wallet:            'Dein Coin-Konto wird gerade eingerichtet — gleich geht’s 🪙',
+        cannot_gift_yourself: 'Dir selbst schenken? Süß — aber das geht nicht 😄',
+        gift_not_found:       'Das Geschenk gibt’s gerade nicht mehr 🎁',
+        gifts_disabled:       'Geschenke sind in diesem Live gerade aus 🤫',
+        network_error:        'Kurz die Verbindung verloren — nochmal versuchen? 🙂',
       };
       const msg = messages[result.error] ?? (__DEV__ ? `Fehler: ${result.error}` : 'Ein Fehler ist aufgetreten. Bitte versuche es erneut.');
       // In DEV: echten Supabase-Error anhängen damit wir die Ursache sofort sehen

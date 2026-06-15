@@ -74,13 +74,14 @@ export interface BuyResult {
   newBalance: number;
 }
 
+// Warme Stimme — siehe Design-Gesetz in CLAUDE.md (Fehler → Mikro-Freude).
 const BUY_ERROR_MESSAGES: Record<string, string> = {
-  insufficient_coins: 'Nicht genug Coins. Lade dein Guthaben auf.',
-  no_wallet: 'Dein Coin-Konto ist noch nicht initialisiert.',
-  cannot_buy_own: 'Du kannst dein eigenes Produkt nicht kaufen.',
-  product_not_found: 'Produkt nicht mehr verfügbar.',
-  out_of_stock: 'Ausverkauft.',
-  network_error: 'Verbindungsfehler — bitte nochmal versuchen.',
+  insufficient_coins: 'Fast! Dafür reichen deine Coins nicht ganz — kurz aufladen? 🪙',
+  no_wallet: 'Dein Coin-Konto wird gerade eingerichtet — gleich geht’s 🪙',
+  cannot_buy_own: 'Das ist dein eigenes Produkt 😄',
+  product_not_found: 'Das Produkt ist leider weg 🙈',
+  out_of_stock: 'Ausverkauft — war wohl beliebt 🔥',
+  network_error: 'Kurz die Verbindung verloren — nochmal versuchen? 🙂',
 };
 
 export async function buyProduct(

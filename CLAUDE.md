@@ -120,6 +120,28 @@ const { colors } = useTheme();
 
 ---
 
+## 🎉 Design-Gesetz: Die freundliche App (Joy & Retention)
+
+> **VERBINDLICH für jeden neuen Screen, jede Komponente, jede Fehlermeldung.**
+> Serlo soll sich anfühlen wie ein wohlwollender Freund aus der Community —
+> warm, knapp, mit Augenzwinkern. Das ist unser Wettbewerbsvorteil gegen TikTok
+> (Nähe + Kultur: Teip, Women-Only, Tschetschenisch). Vorbild: der Ton von
+> Claude/Cursor (freundlich, feiert Erfolge, nimmt Fehler mit Humor).
+
+**Die 4 Gesetze:**
+1. **Hochs lauter machen.** Jeder Erfolgs-Peak (erster Post, Gift erhalten, Kauf, Streak-Tag, Meilenstein, Live-Goal) bekommt eine Mikro-Feier: **Number-Rollup** (Coins/Diamanten/Likes zählen hoch, nie fertiger Wert) + **Spring-Physik** (Reanimated) + **Erfolgs-Haptik** (`Haptics.notificationAsync(Success)`) + ggf. Skia-Partikel/Lottie. Auge + Hand zusammen.
+2. **Tiefs wärmer machen.** Fehler-/Leer-/Netzwerk-Zustände **NIE** kalt/technisch („Error", „Keine X"). Immer warm + handlungsleitend + 1 passendes Emoji. Beispiel: nicht „Nicht genug Coins" → sondern **„Fast! Dir fehlen noch X 🪙 — kurz aufladen?"** (Fehler → Mikro-Freude → ggf. Verkauf). Klarheit bleibt Pflicht (was tun?).
+3. **Maßhalten.** Nur **Peaks** feiern, nicht jeden Tap — Überdosis stumpft Dopamin ab (NN/g). Geld-/kritische Texte: warm, aber nie flapsig-unklar.
+4. **Ethische Linie (nicht verhandelbar).** Wir bauen **gesunde Bindung** (Freude, Zugehörigkeit, Mastery), **keine schädliche Sucht**. Verboten: Streak-Angst/-Erpressung, Pay-to-Win-Zwang, FOMO-Ausbeutung, Endlos-Scroll-Fallen. Junge, enge Community → Backlash-Risiko. Streak-Schutz **still** anwenden (Duolingo-Prinzip: Schneeflocke statt Panik-Popup). „Du warst lange aktiv, gönn dir Pause 🙂" bindet stärker als Druck.
+
+**Konkrete Pflicht-Patterns:**
+- Warme Stimme existiert schon punktuell (z. B. „Schreib die erste Nachricht 👋") → **konsistent** überall anwenden.
+- Belohnungs-Zahlen immer animiert hochzählen + Haptik.
+- Erste Session: erste Wert-Erfahrung in **<60 Sek**, erster Like/Follow wird gefeiert (entscheidet D1-Retention).
+- Status/Identität sichtbar machen (Teip ⛰️, Verifiziert ✓, Top-Gifter 👑, Streak 🔥) — und teilbar (Share-Karte = Mini-Werbespot).
+
+---
+
 ## ⚠️ Wichtige Regeln & Gotchas
 
 1. **Kein `tailwind`** — StyleSheet only

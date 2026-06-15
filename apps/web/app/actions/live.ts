@@ -253,15 +253,16 @@ export interface GiftSendResult {
   comboKey: string | null;
 }
 
+// Warme Stimme — siehe Design-Gesetz in CLAUDE.md.
 const GIFT_ERROR_MESSAGES: Record<string, string> = {
-  insufficient_coins: 'Nicht genug Coins. Lade dein Guthaben auf.',
-  no_wallet: 'Dein Coin-Konto ist noch nicht initialisiert.',
-  cannot_gift_self: 'Du kannst dir nicht selbst ein Geschenk machen.',
-  cannot_gift_yourself: 'Du kannst dir nicht selbst ein Geschenk machen.',
-  gift_not_found: 'Geschenk ist nicht mehr verfügbar.',
-  gifts_disabled: 'Geschenke sind in diesem Live deaktiviert.',
-  session_not_active: 'Session ist bereits beendet.',
-  recipient_not_in_session: 'Empfänger ist nicht Teil dieser Session.',
+  insufficient_coins: 'Fast! Dafür reichen deine Coins nicht ganz — kurz aufladen? 🪙',
+  no_wallet: 'Dein Coin-Konto wird gerade eingerichtet — gleich geht’s 🪙',
+  cannot_gift_self: 'Dir selbst schenken? Süß — aber das geht nicht 😄',
+  cannot_gift_yourself: 'Dir selbst schenken? Süß — aber das geht nicht 😄',
+  gift_not_found: 'Das Geschenk gibt’s gerade nicht mehr 🎁',
+  gifts_disabled: 'Geschenke sind in diesem Live gerade aus 🤫',
+  session_not_active: 'Der Stream ist schon vorbei 👋',
+  recipient_not_in_session: 'Die Person ist nicht mehr im Stream 👀',
 };
 
 export async function sendLiveGift(

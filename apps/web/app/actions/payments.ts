@@ -107,11 +107,11 @@ export interface TipResult {
 }
 
 const TIP_ERROR_MESSAGES: Record<string, string> = {
-  unauthenticated: 'Bitte einloggen.',
-  cannot_tip_self: 'Du kannst dich nicht selbst unterstützen.',
-  invalid_amount: 'Ungültiger Coin-Betrag.',
-  message_too_long: 'Nachricht zu lang (max 140 Zeichen).',
-  insufficient_coins: 'Nicht genug Coins. Lade dein Guthaben auf.',
+  unauthenticated: 'Kurz einloggen, dann geht’s los 🙂',
+  cannot_tip_self: 'Dich selbst unterstützen? Lieb — aber das geht nicht 😄',
+  invalid_amount: 'Der Betrag passt noch nicht ganz 🪙',
+  message_too_long: 'Etwas kürzer fassen? (max 140 Zeichen) ✍️',
+  insufficient_coins: 'Fast! Dafür reichen deine Coins nicht ganz — kurz aufladen? 🪙',
 };
 
 export async function sendCreatorTip(
