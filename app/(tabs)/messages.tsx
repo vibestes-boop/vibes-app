@@ -445,9 +445,9 @@ export default function MessagesScreen() {
           ListEmptyComponent={
             <View style={styles.center}>
               <MessageCircle size={52} color={colors.icon.muted} strokeWidth={1.2} />
-              <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>Noch keine Nachrichten</Text>
+              <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>Noch still hier 👋</Text>
               <Text style={[styles.emptyDesc, { color: colors.text.muted }]}>
-                Starte eine Konversation mit jemandem aus der Community.
+                Schreib jemandem aus der Community — der erste Schritt ist der schönste.
               </Text>
               <Pressable
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowNew(true); }}

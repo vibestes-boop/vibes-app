@@ -402,9 +402,9 @@ export default function NotificationsScreen() {
       ) : notifs.length === 0 ? (
         <View style={styles.center}>
           <Bell size={52} color={colors.icon.muted} strokeWidth={1.5} />
-          <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>Noch keine Aktivität</Text>
+          <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>Noch ruhig hier 🔔</Text>
           <Text style={[styles.emptyDesc, { color: colors.text.muted }]}>
-            Hier siehst du Likes, Kommentare und neue Follower.
+            Likes, Kommentare und neue Follower landen hier — bald geht’s los.
           </Text>
           <Pressable
             onPress={() => router.push('/(tabs)/explore' as never)}

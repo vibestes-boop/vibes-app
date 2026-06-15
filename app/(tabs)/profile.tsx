@@ -482,26 +482,26 @@ export default function ProfileScreen() {
           ) : activeTab === 'vibes' ? (
             <View style={s.empty}>
               <Sparkles size={40} color={colors.icon.muted} />
-              <Text style={s.emptyTitle}>Noch keine Posts</Text>
-              <Text style={s.emptySub}>Erstelle deinen ersten Post über das + unten.</Text>
+              <Text style={s.emptyTitle}>Dein erster Vibe wartet 🎬</Text>
+              <Text style={s.emptySub}>Tipp auf + und zeig der Community, was du draufhast.</Text>
             </View>
           ) : activeTab === 'shop' ? (
             <View style={s.empty}>
               <ShoppingBag size={40} color={colors.icon.muted} />
-              <Text style={s.emptyTitle}>Noch keine Produkte</Text>
-              <Text style={s.emptySub}>Lege dein erstes Produkt über „Mein Shop" in den Tools an.</Text>
+              <Text style={s.emptyTitle}>Dein Shop ist noch leer 🛍️</Text>
+              <Text style={s.emptySub}>Leg dein erstes Produkt über „Mein Shop" in den Tools an.</Text>
             </View>
           ) : activeTab === 'likes' ? (
             <View style={s.empty}>
               <Heart size={40} color={colors.icon.muted} />
-              <Text style={s.emptyTitle}>Noch nichts geliket</Text>
-              <Text style={s.emptySub}>Posts, die dir gefallen, erscheinen hier.</Text>
+              <Text style={s.emptyTitle}>Noch nichts geliket ❤️</Text>
+              <Text style={s.emptySub}>Was dir gefällt, sammelt sich hier.</Text>
             </View>
           ) : (
             <View style={s.empty}>
               <Bookmark size={40} color={colors.icon.muted} />
-              <Text style={s.emptyTitle}>Noch nichts gespeichert</Text>
-              <Text style={s.emptySub}>Tippe auf das Lesezeichen-Symbol bei einem Post.</Text>
+              <Text style={s.emptyTitle}>Noch nichts gespeichert 🔖</Text>
+              <Text style={s.emptySub}>Tipp das Lesezeichen bei einem Post — dann ist es hier.</Text>
             </View>
           )
         }

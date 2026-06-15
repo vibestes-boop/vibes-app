@@ -243,7 +243,7 @@ export default function ExploreScreen() {
       ) : postsToShow.length === 0 && isSearching ? (
         <View style={styles.emptyWrap}>
           <SearchX size={48} color="rgba(255,255,255,0.3)" />
-          <Text style={styles.emptyText}>{`Keine Posts gefunden für „${debouncedQuery}"`}</Text>
+          <Text style={styles.emptyText}>{`Dazu finde ich nichts 🔍 — probier was anderes für „${debouncedQuery}"`}</Text>
           <Pressable
             onPress={() => setQuery('')}
             style={emptyBtnStyle.btn}
@@ -256,7 +256,7 @@ export default function ExploreScreen() {
       ) : postsToShow.length === 0 && activeTag ? (
         <View style={styles.emptyWrap}>
           <Tag size={48} color="rgba(255,255,255,0.3)" />
-          <Text style={styles.emptyText}>{`Noch keine Posts mit Tag „${activeTag}"`}</Text>
+          <Text style={styles.emptyText}>{`Zu „${activeTag}" ist noch nichts dabei 🏷️ — bald bestimmt!`}</Text>
           <Pressable
             onPress={() => setActiveTag(null)}
             style={emptyBtnStyle.btn}
