@@ -72,6 +72,10 @@ function normalizeText(s: string): string {
   return s
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')
+    // Zero-Width-/unsichtbare Zeichen strippen (schlie\u00dft den "f\u200buck"-Bypass:
+    // ZWSP/ZWNJ/ZWJ/Word-Joiner/BOM/Soft-Hyphen zwischen Buchstaben faken
+    // Wortgrenzen). In Chat-W\u00f6rtern kein legitimer Zweck \u2192 keine False-Positives.
+    .replace(/[\u200b-\u200d\u2060\ufeff\u00ad]/g, '')
     .toLowerCase()
     .trim();
 }

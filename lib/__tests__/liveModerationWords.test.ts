@@ -37,6 +37,12 @@ describe('containsBlockedWord — positives', () => {
     // NFKD-Normalisierung entfernt Zalgo-Combining-Marks
     ['f\u0334u\u0334c\u0334k\u0334 off', 'Zalgo: f̴u̴c̴k̴'],
     ['a\u0301rschloch', 'Diakritika: árschloch'],
+    // Zero-Width-/unsichtbare Zeichen (Härtung): faken Wortgrenzen zwischen
+    // Buchstaben → müssen vor dem Matching gestrippt werden.
+    ['f​uck off', 'Zero-Width-Space: f​uck'],
+    ['a‍rschloch', 'Zero-Width-Joiner: a‍rschloch'],
+    ['f­uck this', 'Soft-Hyphen: f­uck'],
+    ['fu﻿ck', 'BOM zwischen Buchstaben'],
   ];
 
   it.each(cases)('blocks: %s (%s)', (text) => {
