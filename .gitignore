@@ -9,6 +9,9 @@ dist/
 web-build/
 expo-env.d.ts
 
+# Claude Code (lokales Tooling)
+.claude/
+
 # Native
 .kotlin/
 *.orig.*
