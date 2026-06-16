@@ -570,7 +570,11 @@ export default function CreateCameraScreen() {
           facing={cameraFacing}
           flash={flash}
           mode={isPhoto ? 'picture' : 'video'}
-          videoQuality="1080p"
+          // 720p statt 1080p: im vertikalen Handy-Feed praktisch nicht
+          // unterscheidbar, aber ~2× kleinere Dateien → schnelleres Laden
+          // (vor allem im Mobilfunknetz) und weniger R2-Storage. Reine
+          // JS-Prop → OTA-fähig, kein Rebuild.
+          videoQuality="720p"
           mirror={cameraFacing === 'front'}
         />
       )}

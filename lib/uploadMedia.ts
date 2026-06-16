@@ -229,8 +229,52 @@ async function uploadToR2(
 }
 
 /**
+ * Video on-device komprimieren, BEVOR es zu R2 geht.
+ *
+ * Ein rohes Handy-Video (1080p, hohe Bitrate) wiegt schnell 14–60 MB. Das
+ * bremst den Feed-Start (vor allem im Mobilfunknetz), kostet die User
+ * Upload-Daten und füllt R2. `react-native-compressor` re-encodet das Video
+ * nativ (AVAssetExportSession auf iOS, MediaCodec auf Android) → typischerweise
+ * 3–5× kleiner, bei für einen Phone-Feed nicht sichtbarem Qualitätsverlust.
+ *
+ * Best-effort: schlägt die Komprimierung fehl (exotischer Codec, OOM, Cancel),
+ * laden wir das Original hoch statt den Post zu blockieren. Gibt das (ggf.
+ * neue) lokale URI zurück.
+ */
+async function compressVideoForUpload(
+  localUri: string,
+  onProgress?: (pct: number) => void,
+  signal?: AbortSignal,
+): Promise<string> {
+  if (signal?.aborted) throw new Error('Upload abgebrochen.');
+  try {
+    const { Video } = await import('react-native-compressor');
+    const compressedUri = await Video.compress(
+      localUri,
+      {
+        // 'auto' wählt Bitrate/Resolution adaptiv.
+        compressionMethod: 'auto',
+        // Längste Kante auf ~720p deckeln (Portrait 720×1280) — scharf genug
+        // für den Feed, aber deutlich leichter als 1080p.
+        maxSize: 1280,
+        // 0 = IMMER komprimieren. Sonst überspringt die Lib Dateien unter ihrer
+        // Default-Schwelle (16 MB) — und genau unsere ~14-MB-Clips blieben roh.
+        minimumFileSizeForCompress: 0,
+      },
+      (progress) => onProgress?.(Math.round(progress * 100)),
+    );
+    return compressedUri || localUri;
+  } catch (err) {
+    __DEV__ && console.warn('[compressVideoForUpload] Fallback auf Original:', err);
+    return localUri;
+  }
+}
+
+/**
  * Post-Medien: Videos UND Bilder → Cloudflare R2
  * (0€ Egress — kein Supabase Storage mehr für neue Uploads)
+ *
+ * Videos werden vorher on-device komprimiert (s. compressVideoForUpload).
  */
 export async function uploadPostMedia(
   userId: string,
@@ -240,9 +284,33 @@ export async function uploadPostMedia(
   signal?: AbortSignal,
 ): Promise<UploadResult> {
   const resolvedMime = normalizeMime(mimeType, localUri);
+
+  if (isVideo(resolvedMime)) {
+    // Progress gesplittet: Komprimieren 0–40 %, Upload 40–100 %.
+    // Negative Werte (Retry-Signal an die UI) werden unverändert durchgereicht.
+    const compressedUri = await compressVideoForUpload(
+      localUri,
+      (p) => onProgress?.(p < 0 ? p : Math.round(p * 0.4)),
+      signal,
+    );
+    // react-native-compressor schreibt immer ein H.264-MP4 → Mime/Extension auf
+    // mp4 normalisieren, wenn tatsächlich komprimiert wurde. (mov→mp4 ist ein
+    // Bonus: mp4 startet im Feed zuverlässiger als mov.)
+    const didCompress = compressedUri !== localUri;
+    const videoMime = didCompress ? 'video/mp4' : resolvedMime;
+    const videoExt = didCompress ? 'mp4' : mimeToExt(resolvedMime);
+    const key = `posts/videos/${userId}/${Date.now()}.${videoExt}`;
+    return uploadToR2(
+      key,
+      compressedUri,
+      videoMime,
+      (p) => onProgress?.(p < 0 ? p : 40 + Math.round(p * 0.6)),
+      signal,
+    );
+  }
+
   const ext = mimeToExt(resolvedMime);
-  const folder = isVideo(resolvedMime) ? 'videos' : 'images';
-  const key = `posts/${folder}/${userId}/${Date.now()}.${ext}`;
+  const key = `posts/images/${userId}/${Date.now()}.${ext}`;
   return uploadToR2(key, localUri, resolvedMime, onProgress, signal);
 }
 
