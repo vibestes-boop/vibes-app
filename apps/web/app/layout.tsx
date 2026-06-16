@@ -47,6 +47,13 @@ const inter = Inter({
 const SITE_DESCRIPTION =
   'Serlo — die Social-Video-Plattform. Live-Streaming vom PC, Marktplatz für Händler, Community-Feed.';
 
+// R2-Public-Origin: hier liegen Feed-Videos (und Poster-Quellen). Ohne
+// Vorverbindung zahlt der erste Medien-Request DNS + TLS-Setup mitten im
+// kritischen LCP-Pfad. preconnect öffnet die Verbindung bereits beim HTML-Parse.
+// Bewusst OHNE crossOrigin: `<video src>` lädt non-CORS — eine CORS-Vorverbindung
+// landete im falschen Connection-Pool und würde nicht wiederverwendet.
+const R2_MEDIA_ORIGIN = 'https://pub-35c122d523ba4396b15392ace804c19b.r2.dev';
+
 export const metadata: Metadata = {
   title: {
     default:  'Serlo — Live, Feed, Shop',
@@ -102,6 +109,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       className={inter.variable}
     >
       <body className="min-h-dvh bg-background font-sans text-foreground antialiased">
+        {/* Medien-Origin früh vorverbinden (Video-LCP). React 19 hoistet
+            preconnect/dns-prefetch automatisch in den <head>. */}
+        <link rel="preconnect" href={R2_MEDIA_ORIGIN} />
+        <link rel="dns-prefetch" href={R2_MEDIA_ORIGIN} />
         <ThemeProvider
           attribute="class"
           defaultTheme="system"

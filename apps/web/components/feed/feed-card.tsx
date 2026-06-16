@@ -840,7 +840,7 @@ export function FeedCard({
               muted={muted}
               autoPlay={isActive && !isPaused}
               playsInline
-              preload={isActive ? 'auto' : shouldLoadMedia ? 'metadata' : 'none'}
+              preload={isActive || shouldLoadMedia ? 'metadata' : 'none'}
               onTimeUpdate={(e) => {
                 const v = e.currentTarget;
                 if (v.duration > 0) setProgress((v.currentTime / v.duration) * 100);
