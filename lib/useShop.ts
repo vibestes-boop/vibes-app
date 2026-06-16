@@ -215,7 +215,6 @@ export type BuyResult =
 export function useBuyProduct() {
   const [isBuying, setIsBuying] = useState(false);
   const qc = useQueryClient();
-  const user = useAuthStore((s) => s.user);
 
   const buyProduct = useCallback(async (
     productId: string,
@@ -236,22 +235,7 @@ export function useBuyProduct() {
         qc.invalidateQueries({ queryKey: ['shop-products'] }),
       ]);
 
-      // Verkäufer benachrichtigen (fire & forget)
-      supabase
-        .from('products')
-        .select('title, creator_id')
-        .eq('id', productId)
-        .single()
-        .then(({ data: product }) => {
-          if (!product?.creator_id || !user?.id) return;
-          supabase.from('notifications').insert({
-            recipient_id:  product.creator_id,
-            sender_id:     user.id,
-            type:          'new_order',
-            product_name:  product.title,
-            comment_text:  product.title,
-          }).then();
-        });
+      // Verkäufer-Benachrichtigung erledigt die buy_product-RPC serverseitig.
 
       return { success: true, orderId: data.order_id, newBalance: data.new_balance };
     } catch {
@@ -259,7 +243,7 @@ export function useBuyProduct() {
     } finally {
       setIsBuying(false);
     }
-  }, [qc, user]);
+  }, [qc]);
 
   return { buyProduct, isBuying };
 }
