@@ -52,7 +52,8 @@ const LazyCommentPanel = dynamic(
 
 export interface HomeFeedShellProps {
   viewerId: string | null;
-  initialForYou: FeedPost[];
+  /** null = Server hat NICHT vorab geladen → Shell holt den Feed client-seitig (Skelett). */
+  initialForYou: FeedPost[] | null;
   initialFollowing: FeedPost[] | null; // null = noch nicht geladen
   /** „Freunde"-Feed (gegenseitige Follows). null/undefined = lazy beim Tab-Switch. */
   initialFriends?: FeedPost[] | null;
@@ -143,12 +144,32 @@ function HomeFeedShellBody({
 
   const friendsPosts = friendsQuery.data ?? initialFriends ?? [];
 
+  // „Für dich"-Feed: client-seitig nachladen (gleiches Muster wie Following/
+  // Friends), damit die Shell — Sidebar, Tab-Pills, Buttons — NICHT auf den
+  // SSR-Feed-Query warten muss. initialForYou === null heißt: der Server hat
+  // bewusst nichts vorab geladen → wir holen den Feed im Client und zeigen
+  // solange nur in der Feed-Fläche ein Skelett. Das war der Haupt-Blocker:
+  // vorher hing die komplette Seite (auch Buttons/Sidebar) hinter diesem Query.
+  const forYouQuery = useQuery<FeedPost[]>({
+    queryKey: ['feed', 'foryou'],
+    enabled: tab === 'foryou' && initialForYou === null,
+    initialData: initialForYou ?? undefined,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const res = await fetch('/api/feed/foryou?limit=10', { cache: 'no-store' });
+      if (!res.ok) throw new Error('Feed konnte nicht geladen werden');
+      return (await res.json()) as FeedPost[];
+    },
+  });
+
+  const forYouPosts = forYouQuery.data ?? initialForYou ?? [];
+
   // `allowComments` für den offenen Post auflösen — wir suchen in beiden
   // Tab-Listen, damit der Panel-Content auch nach Tab-Wechsel korrekt bleibt
   // (der User kann z.B. einen Post auf For-You öffnen und dann auf
   // Following switchen — Panel bleibt offen und zeigt weiterhin den Post).
   const activePost: FeedPost | undefined = commentsOpenForPostId
-    ? initialForYou.find((p) => p.id === commentsOpenForPostId) ??
+    ? forYouPosts.find((p) => p.id === commentsOpenForPostId) ??
       followingPosts.find((p) => p.id === commentsOpenForPostId) ??
       friendsPosts.find((p) => p.id === commentsOpenForPostId)
     : undefined;
@@ -266,11 +287,13 @@ function HomeFeedShellBody({
 
         <div className="min-h-0 flex-1">
           <div className={cn('h-full', tab !== 'foryou' && 'hidden')}>
-            {initialForYou.length === 0 ? (
+            {forYouQuery.isFetching && forYouPosts.length === 0 ? (
+              <FollowingSkeleton />
+            ) : forYouPosts.length === 0 ? (
               <ForYouEmptyState suggested={suggested} viewerId={viewerId} />
             ) : (
               <FeedList
-                initialPosts={initialForYou}
+                initialPosts={forYouPosts}
                 viewerId={viewerId}
                 feedKey="foryou"
                 forcePaused={tab !== 'foryou'}

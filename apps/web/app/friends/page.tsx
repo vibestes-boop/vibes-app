@@ -10,7 +10,6 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { HomeFeedShell } from '@/components/feed/home-feed-shell';
 import {
-  getForYouFeed,
   getFriendsFeed,
   getMyFollowedAccounts,
   getSuggestedFollows,
@@ -41,8 +40,9 @@ export default async function FriendsFeedPage() {
     redirect('/' as Route);
   }
 
-  const [forYou, friends, suggested, followedAccounts, trendingHashtags, profileRow] = await Promise.all([
-    getForYouFeed({ limit: 10 }),
+  // Freunde ist hier der Primär-Tab → eager (SSR). For-You ist nicht aktiv →
+  // client-seitig nachladen (initialForYou={null}), kein SSR-Block dafür.
+  const [friends, suggested, followedAccounts, trendingHashtags, profileRow] = await Promise.all([
     getFriendsFeed({ limit: 10 }),
     getSuggestedFollows(5),
     getMyFollowedAccounts({ limit: 5 }),
@@ -62,7 +62,7 @@ export default async function FriendsFeedPage() {
   return (
     <HomeFeedShell
       viewerId={user.id}
-      initialForYou={forYou}
+      initialForYou={null}
       initialFollowing={null}
       initialFriends={friends}
       suggested={suggested}

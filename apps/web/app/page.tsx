@@ -4,16 +4,11 @@ import { HomeFeedShell } from '@/components/feed/home-feed-shell';
 import { hasSupabaseAuthCookie } from '@/lib/auth/cookies';
 import { getUser } from '@/lib/auth/session';
 import {
-  getForYouFeed,
   getPublicForYouFeed,
   getMyFollowedAccounts,
   getSuggestedFollows,
 } from '@/lib/data/feed';
 import { getCachedActiveLiveSessions } from '@/lib/data/live';
-import {
-  FEED_VIDEO_POSTER_WIDTH,
-  getOptimizedImageUrl,
-} from '@/lib/media/optimized-image-url';
 
 /**
  * `/` Home-Route.
@@ -93,13 +88,13 @@ export default async function HomePage() {
 
   const supabase = await createClient();
 
-  // Logged-in: Feed-Shell mit schlankem SSR-Prefetch.
-  // For-You ist der sichtbare Initial-Load und bleibt deshalb im kritischen Pfad.
-  // Following/Stories/Trending werden nicht auf `/` vorgerendert: sie sind im
-  // ersten "Für dich"-Viewport unsichtbar und haben vorher den Cold-Start mit
-  // zusätzlichen Supabase-Roundtrips verlängert.
-  const forYouPromise = getForYouFeed({ limit: 6 });
-  const sidebarPromise = Promise.all([
+  // Logged-in: Feed-Shell SOFORT rendern. Der For-You-Feed wird NICHT mehr
+  // server-seitig abgewartet — das war der Haupt-Blocker: bei kaltem Function-
+  // Start + DB-Query blieb die ganze Seite (auch Buttons + Sidebar) sekundenlang
+  // im Skelett. Die Shell holt den Feed jetzt client-seitig (initialForYou={null})
+  // und zeigt solange nur in der Feed-Fläche ein Skelett. Nur die schlanken
+  // Sidebar-/Profil-Daten bleiben SSR (bounded via withTimeout, ~300ms).
+  const [suggested, followedAccounts, profileRow] = await Promise.all([
     withTimeout(getSuggestedFollows(5), []),
     withTimeout(getMyFollowedAccounts({ limit: 5 }), []),
     withTimeout(
@@ -114,42 +109,18 @@ export default async function HomePage() {
       null,
     ),
   ]);
-
-  const forYou = await forYouPromise;
-  const [suggested, followedAccounts, profileRow] = await sidebarPromise;
   const viewerIsAdmin = Boolean(profileRow?.is_admin);
   const viewerProfile = profileRow ? { username: profileRow.username, display_name: profileRow.display_name, avatar_url: profileRow.avatar_url } : null;
 
-  const firstForYouPost = forYou[0];
-  const firstForYouMediaPreloadUrl =
-    firstForYouPost?.media_type === 'video'
-      ? getOptimizedImageUrl(firstForYouPost.thumbnail_url, FEED_VIDEO_POSTER_WIDTH)
-      : firstForYouPost?.media_type === 'image'
-        ? getOptimizedImageUrl(
-            firstForYouPost.thumbnail_url || firstForYouPost.video_url,
-            FEED_VIDEO_POSTER_WIDTH,
-          )
-      : undefined;
-
   return (
-    <>
-      {firstForYouMediaPreloadUrl && (
-        <link
-          rel="preload"
-          as="image"
-          href={firstForYouMediaPreloadUrl}
-          fetchPriority="high"
-        />
-      )}
-      <HomeFeedShell
-        viewerId={user.id}
-        initialForYou={forYou}
-        initialFollowing={null}
-        suggested={suggested}
-        followedAccounts={followedAccounts}
-        viewerIsAdmin={viewerIsAdmin}
-        viewerProfile={viewerProfile}
-      />
-    </>
+    <HomeFeedShell
+      viewerId={user.id}
+      initialForYou={null}
+      initialFollowing={null}
+      suggested={suggested}
+      followedAccounts={followedAccounts}
+      viewerIsAdmin={viewerIsAdmin}
+      viewerProfile={viewerProfile}
+    />
   );
 }

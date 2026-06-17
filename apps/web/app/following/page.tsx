@@ -10,7 +10,6 @@ import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { HomeFeedShell } from '@/components/feed/home-feed-shell';
 import {
-  getForYouFeed,
   getFollowingFeed,
   getMyFollowedAccounts,
   getSuggestedFollows,
@@ -41,12 +40,11 @@ export default async function FollowingFeedPage() {
     redirect('/' as Route);
   }
 
-  // Gleiches Prefetch-Muster wie `/`:
-  // - For-You wird geprefetcht, damit der Tab-Switch keine Ladeverzögerung hat.
-  // - Following ist hier der Primär-Tab → eager laden.
-  // - FollowedAccounts für die Sidebar-Section (v1.w.UI.11 Phase B).
-  const [forYou, following, suggested, followedAccounts, trendingHashtags, profileRow] = await Promise.all([
-    getForYouFeed({ limit: 10 }),
+  // Following ist hier der Primär-Tab → eager (SSR) laden für schnellen
+  // First-Paint. For-You ist nicht aktiv → wird client-seitig nachgeladen
+  // (initialForYou={null}), kein SSR-Block mehr dafür.
+  // FollowedAccounts für die Sidebar-Section (v1.w.UI.11 Phase B).
+  const [following, suggested, followedAccounts, trendingHashtags, profileRow] = await Promise.all([
     getFollowingFeed({ limit: 10 }),
     getSuggestedFollows(5),
     getMyFollowedAccounts({ limit: 5 }),
@@ -66,7 +64,7 @@ export default async function FollowingFeedPage() {
   return (
     <HomeFeedShell
       viewerId={user.id}
-      initialForYou={forYou}
+      initialForYou={null}
       initialFollowing={following}
       suggested={suggested}
       followedAccounts={followedAccounts}
