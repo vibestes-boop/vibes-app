@@ -320,6 +320,14 @@ export default function CreatePostScreen() {
       if (mediaUrl && mediaType === 'image' && insertedRows?.id) {
         moderate(insertedRows.id, mediaUrl);
       }
+      if (mediaUrl && mediaType === 'video' && insertedRows?.id) {
+        // Bunny-ABR-Ingest anstoßen (fire & forget). R2 bleibt Sofort-Quelle;
+        // Bunny zieht das Video aus der R2-URL + transkodiert im Hintergrund zu
+        // HLS. Fehler bewusst ignoriert — der R2-Fallback trägt den Post.
+        supabase.functions
+          .invoke('bunny-ingest', { body: { postId: insertedRows.id, videoUrl: mediaUrl } })
+          .catch(() => { /* R2-Fallback bleibt aktiv */ });
+      }
       if (activeCloudDraftId) {
         try { await deleteCloudDraft(activeCloudDraftId); } catch {}
       }
