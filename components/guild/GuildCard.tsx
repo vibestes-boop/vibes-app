@@ -117,13 +117,17 @@ export const GuildCard = React.memo(function GuildCard({
 
             {/* Media */}
             {isVideo ? (
-              <>
-                {USE_EXPO_VIDEO ? (
+              // Decoder-schonend: den Video-Player NUR für die sichtbare Karte
+              // mounten. Off-Screen/recycelte FlashList-Zellen zeigen nur den
+              // Gradient-Placeholder darunter → höchstens 1 aktiver Video-Decoder
+              // → kein Schwarz-Screen beim schnellen Scrollen (Hardware-Limit).
+              isVisible ? (
+                USE_EXPO_VIDEO ? (
                   <NativeFeedVideo uri={post.media_url} shouldPlay={isVisible} isMuted={isMuted} onProgress={() => { }} restartSignal={restartSignal} />
                 ) : (
                   <FallbackFeedVideo uri={post.media_url} shouldPlay={isVisible} isMuted={isMuted} onProgress={() => { }} restartSignal={restartSignal} />
-                )}
-              </>
+                )
+              ) : null
             ) : (
               <Image source={{ uri: post.media_url }} style={v.mediaImg} contentFit="cover" />
             )}
