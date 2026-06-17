@@ -79,19 +79,25 @@ export const NativeFeedVideo = forwardRef<FeedVideoSeekHandle, {
   onProgress: (p: number) => void;
   thumbnailUrl?: string | null;
   restartSignal?: number;
-}>(function NativeFeedVideo({ uri, shouldPlay, isMuted, onProgress, thumbnailUrl, restartSignal = 0 }, ref) {
+  bunnyVideoId?: string | null;
+}>(function NativeFeedVideo({ uri, shouldPlay, isMuted, onProgress, thumbnailUrl, restartSignal = 0, bunnyVideoId }, ref) {
   const [ready, setReady] = useState(false);
+  // Bunny-HLS bevorzugen, bei Fehler (noch nicht transkodiert / kaputt) auf R2
+  // zurückfallen — R2 ist die garantierte Quelle, also kann nichts brechen.
+  const hlsUrl = bunnyVideoId ? `https://vz-6857f4f1-6d5.b-cdn.net/${bunnyVideoId}/playlist.m3u8` : null;
+  const [useHls, setUseHls] = useState(!!hlsUrl);
+  const useHlsRef = useRef(useHls);
+  useHlsRef.current = useHls;
+  useEffect(() => { setUseHls(!!hlsUrl); }, [hlsUrl, uri]);
   const shouldPlayRef = useRef(shouldPlay);
   const isMutedRef = useRef(isMuted);
   shouldPlayRef.current = shouldPlay;
   isMutedRef.current = isMuted;
   const source = useMemo(
-    () => ({
-      uri,
-      contentType: 'progressive' as const,
-      useCaching: true,
-    }),
-    [uri]
+    () => (useHls && hlsUrl
+      ? { uri: hlsUrl, contentType: 'hls' as const, useCaching: true }
+      : { uri, contentType: 'progressive' as const, useCaching: true }),
+    [useHls, hlsUrl, uri]
   );
 
   const player = useVideoPlayer(source, (p: any) => {
@@ -169,6 +175,11 @@ export const NativeFeedVideo = forwardRef<FeedVideoSeekHandle, {
     if (!player) return;
     const sub = player.addListener('statusChange', (s: any) => {
       if (s.status === 'readyToPlay') setReady(true);
+      else if (s.status === 'error' && useHlsRef.current) {
+        // HLS fehlgeschlagen (z.B. noch nicht fertig transkodiert) → R2-Fallback.
+        setUseHls(false);
+        setReady(false);
+      }
     });
     // setInterval-Poll statt riskantes timeUpdate-Event:
     // Polls alle 250ms den aktuellen Zeitstempel — zuverlässig auf allen Geräten

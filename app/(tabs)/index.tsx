@@ -34,6 +34,7 @@ import { useStoryViewerStore } from '@/lib/storyViewerStore';
 import { supabase } from '@/lib/supabase';
 import { useDwellTracker } from '@/lib/useDwellTracker';
 import { emptyFeedEngagementMaps,useFeedEngagement } from '@/lib/useFeedEngagement';
+import { useFeedBunny } from '@/lib/useFeedBunny';
 import type { LiveSession } from '@/lib/useLiveSession';
 import { useActiveLiveSessions } from '@/lib/useLiveSession';
 import { getTitleFromUrl } from '@/lib/useMusicPicker';
@@ -428,6 +429,8 @@ export default function VibeFeedScreen() {
   }, [feedData, screenFocused]);
 
   const postIds = useMemo(() => feedData.map((p) => p.id), [feedData]);
+  // Bunny-HLS-IDs per Post-ID anreichern (separat vom Feed-RPC).
+  const bunnyByPost = useFeedBunny(postIds);
   const authorIds = useMemo(() => feedData.map((p) => p.authorId).filter((id): id is string => !!id), [feedData]);
   const { data: engagementMaps = emptyFeedEngagementMaps() } = useFeedEngagement(postIds, authorIds, {
     enabled: secondaryQueriesEnabled,
@@ -472,6 +475,8 @@ export default function VibeFeedScreen() {
   storyGroupMapRef.current = storyGroupMap;
   const engagementMapsRef = useRef(engagementMaps);
   engagementMapsRef.current = engagementMaps;
+  const bunnyByPostRef = useRef(bunnyByPost);
+  bunnyByPostRef.current = bunnyByPost;
 
   const { data: activeLives = [] } = useActiveLiveSessions({
     enabled: secondaryQueriesEnabled,
@@ -526,6 +531,7 @@ export default function VibeFeedScreen() {
           onOpenStory={handleOpenStory}
           onOpenTune={onOpenTune}
           engagement={engagementMapsRef.current}
+          bunnyVideoId={bunnyByPostRef.current[postData.id] ?? null}
         />
       );
     },

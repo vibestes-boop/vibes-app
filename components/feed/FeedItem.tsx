@@ -476,6 +476,7 @@ export const FeedItem = React.memo(function FeedItem({
   onOpenStory,
   onOpenTune,
   engagement,
+  bunnyVideoId,
 }: {
   item: FeedItemData;
   shouldPlayVideo: boolean;
@@ -485,6 +486,7 @@ export const FeedItem = React.memo(function FeedItem({
   onOpenStory?: (g: StoryGroup) => void;
   onOpenTune?: () => void;
   engagement: FeedEngagementMaps;
+  bunnyVideoId?: string | null;
 }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -738,6 +740,7 @@ export const FeedItem = React.memo(function FeedItem({
               onProgress={handleProgress}
               thumbnailUrl={item.thumbnailUrl}
               restartSignal={restartSignal}
+              bunnyVideoId={bunnyVideoId}
             />
           ) : (
             <FallbackFeedVideo
