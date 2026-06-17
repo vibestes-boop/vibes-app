@@ -112,6 +112,14 @@ const nextConfig = {
       { protocol: 'https', hostname: '**.giphy.com' },                  // Giphy GIFs in Messages
       { protocol: 'https', hostname: '**.cdninstagram.com' },           // Instagram CDN
     ],
+    // AVIF zuerst — ~20–30% kleiner als WebP, spürbar im Mobilfunknetz; der
+    // Optimizer fällt automatisch auf WebP/Original zurück, wo AVIF fehlt.
+    formats: ['image/avif', 'image/webp'],
+    // R2-Medien tragen bereits `Cache-Control: immutable` (1 J) + timestamped
+    // URLs → lange TTL ist sicher. Hebt zusätzlich den Cache-Floor für Dritt-
+    // Bilder (OAuth-Avatare, Giphy, IG) an → weniger /_next/image-Funktions-
+    // aufrufe bei Wachstum (Edge-Cache statt Re-Transform). 31 Tage.
+    minimumCacheTTL: 2678400,
   },
   // Security-Headers — shippen zusätzlich in jedem Response
   async redirects() {
