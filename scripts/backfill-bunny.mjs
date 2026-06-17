@@ -23,7 +23,7 @@ import { fileURLToPath } from 'node:url';
 import { createClient } from '@supabase/supabase-js';
 
 const REPO_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-for (const f of ['.env', '.env.local']) loadEnv(path.join(REPO_ROOT, f));
+for (const f of ['.env', '.env.local', 'apps/web/.env.local']) loadEnv(path.join(REPO_ROOT, f));
 
 const args = parseArgs(process.argv.slice(2));
 const apply = Boolean(args.apply);
