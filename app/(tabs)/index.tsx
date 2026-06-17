@@ -444,6 +444,23 @@ export default function VibeFeedScreen() {
   feedDataRef.current = feedData;
   visibleItemIdRef.current = activePlaybackItemId;
 
+  // Rolling-Prefetch: die nächsten 3 Poster + Avatare AB dem aktiven Item
+  // vorausladen → beim Weiterscrollen erscheint das Bild SOFORT, auch tief im
+  // Feed (der einmalige First-5-Prefetch oben deckt nur den Kaltstart ab). Reine
+  // expo-image-Prefetch — kein Video-Decoder, daher kein Risiko auf schwachen
+  // Geräten (Decoder-Limit). Das nächste VIDEO buffert bereits über windowSize
+  // vor; expo-video hat keine JS-Prefetch-API, daher hier bewusst nur Poster.
+  useEffect(() => {
+    if (!activePlaybackItemId || feedData.length === 0) return;
+    const idx = feedData.findIndex((p) => p.id === activePlaybackItemId);
+    if (idx < 0) return;
+    const urls = feedData
+      .slice(idx + 1, idx + 4)
+      .flatMap((p) => [p.thumbnailUrl, p.mediaType === 'image' ? p.mediaUrl : null, p.avatarUrl])
+      .filter((u): u is string => !!u);
+    if (urls.length > 0) Image.prefetch?.(urls).catch(() => { /* ignorieren */ });
+  }, [activePlaybackItemId, feedData]);
+
   // ─── Volatile Refs für renderItem ────────────────────────────────────────────
   // Diese Werte ändern sich häufig (bei jedem Scroll, Mute-Toggle, Engagement-Update)
   // Als Refs gehalten → renderItem bleibt stabil → keine unnötigen FeedItem-Re-Renders
