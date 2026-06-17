@@ -1,8 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { LandingPage } from '@/components/landing-page';
 import { HomeFeedShell } from '@/components/feed/home-feed-shell';
-import { hasSupabaseAuthCookie } from '@/lib/auth/cookies';
-import { getUser } from '@/lib/auth/session';
 import {
   getPublicForYouFeed,
   getMyFollowedAccounts,
@@ -46,10 +44,19 @@ async function withTimeout<T>(
 }
 
 export default async function HomePage() {
-  const hasAuthCookie = await hasSupabaseAuthCookie();
-  const user = hasAuthCookie ? await getUser() : null;
+  // Auth NICHT über getUser(): das validiert bei JEDEM Load gegen Supabase übers
+  // Netz (ohne Middleware-Refresh hier) → Haupt-Bremser + Rate-Limit-Auslöser bei
+  // schnellen Reloads. getSession() liest die Session aus dem Cookie — kein
+  // Netzwerk bei gültigem Token. viewerId dient nur dem UI-Rendering; die echte
+  // Security erzwingt RLS server-seitig bei jeder Mutation/Query. (Bei
+  // abgelaufenem Token refresht getSession einmalig.)
+  const supabase = await createClient();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+  const userId = session?.user?.id ?? null;
 
-  if (!user) {
+  if (!userId) {
     const [liveNow, trendingPosts] = await Promise.all([
       withTimeout(getCachedActiveLiveSessions(4), [], HOME_PUBLIC_DYNAMIC_TIMEOUT_MS),
       withTimeout(getPublicForYouFeed({ limit: 6 }), [], HOME_PUBLIC_DYNAMIC_TIMEOUT_MS),
@@ -86,8 +93,6 @@ export default async function HomePage() {
     );
   }
 
-  const supabase = await createClient();
-
   // Logged-in: Feed-Shell SOFORT rendern. Der For-You-Feed wird NICHT mehr
   // server-seitig abgewartet — das war der Haupt-Blocker: bei kaltem Function-
   // Start + DB-Query blieb die ganze Seite (auch Buttons + Sidebar) sekundenlang
@@ -102,7 +107,7 @@ export default async function HomePage() {
         const { data } = await supabase
           .from('profiles')
           .select('username, display_name, avatar_url, is_admin')
-          .eq('id', user.id)
+          .eq('id', userId)
           .maybeSingle();
         return data as { username: string | null; display_name: string | null; avatar_url: string | null; is_admin?: boolean } | null;
       })(),
@@ -114,7 +119,7 @@ export default async function HomePage() {
 
   return (
     <HomeFeedShell
-      viewerId={user.id}
+      viewerId={userId}
       initialForYou={null}
       initialFollowing={null}
       suggested={suggested}
