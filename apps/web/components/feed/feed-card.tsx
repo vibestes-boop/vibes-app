@@ -272,6 +272,49 @@ export function FeedCard({
       v.removeEventListener('loadeddata', update);
     };
   }, [post.video_url, post.thumbnail_url, isImage, canLoadMedia]);
+
+  // ── Bunny HLS-Playback (mit R2-Fallback) ──────────────────────────────────
+  // Bei vorhandener bunny_video_id über adaptives HLS abspielen: Safari/iOS
+  // nativ, Chrome/Firefox via hls.js (dynamisch geladen). Schlägt HLS fehl (noch
+  // nicht transkodiert / kaputt), fällt das <video> auf die R2-URL zurück. Der
+  // `src` wird hier verwaltet (NICHT als JSX-Attribut), damit hls.js per MSE
+  // attachen kann; ohne bunny_video_id genau wie bisher = R2.
+  const hlsUrl = post.bunny_video_id
+    ? `https://vz-6857f4f1-6d5.b-cdn.net/${post.bunny_video_id}/playlist.m3u8`
+    : null;
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video || isImage || !canLoadMedia) return;
+    const r2 = post.video_url;
+    const fallbackToR2 = () => {
+      if (r2 && video.getAttribute('src') !== r2) { video.src = r2; video.load(); }
+    };
+
+    if (!hlsUrl) { fallbackToR2(); return; }
+
+    // Safari / iOS: natives HLS direkt über src.
+    if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = hlsUrl;
+      const onErr = () => fallbackToR2();
+      video.addEventListener('error', onErr, { once: true });
+      return () => video.removeEventListener('error', onErr);
+    }
+
+    // Chrome / Firefox: hls.js (per MSE).
+    let hls: import('hls.js').default | null = null;
+    let cancelled = false;
+    void import('hls.js').then(({ default: Hls }) => {
+      if (cancelled) return;
+      if (!Hls.isSupported()) { fallbackToR2(); return; }
+      hls = new Hls({ maxBufferLength: 10 });
+      hls.loadSource(hlsUrl);
+      hls.attachMedia(video);
+      hls.on(Hls.Events.ERROR, (_evt, data) => {
+        if (data.fatal) { hls?.destroy(); hls = null; fallbackToR2(); }
+      });
+    }).catch(() => fallbackToR2());
+    return () => { cancelled = true; if (hls) { hls.destroy(); hls = null; } };
+  }, [hlsUrl, post.video_url, isImage, canLoadMedia]);
   // Container folgt IMMER dem detektierten Ratio (Default 9/16 während Loading).
   // Sizing-Strategie hängt davon ab, ob das Medium breiter als 9:16 ist:
   //   - Ratio > 9/16 → width-bound (`w-full h-auto`) — Karte füllt die Spalte
@@ -834,7 +877,6 @@ export function FeedCard({
             <video
               {...(isActive ? { fetchPriority: 'high' } : {})}
               ref={videoRef}
-              src={post.video_url}
               poster={optimizedPosterUrl}
               loop
               muted={muted}

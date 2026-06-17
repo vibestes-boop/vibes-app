@@ -54,6 +54,11 @@ export interface FeedPost extends Post {
   audio_url: string | null;
   // v1.w.UI.211 — audio track volume 0–1; null means use default (0.8).
   audio_volume: number | null;
+  // Bunny Stream ABR: HLS-guid + Status. Der Player nutzt Bunny-HLS wenn die
+  // guid gesetzt ist und fällt bei Fehler auf R2 (video_url) zurück. Optional,
+  // weil nicht jeder FeedPost-Konstruktor (RPC/Fixtures) die Felder liefert.
+  bunny_video_id?: string | null;
+  bunny_status?: string | null;
 }
 
 // PostgREST-Aliase: user_id:author_id, video_url:media_url, hashtags:tags
@@ -61,7 +66,7 @@ export interface FeedPost extends Post {
 // `media_type` ist unaliased weil der Name in beiden Schemata identisch ist.
 // `share_count` existiert in der Mobile-DB nicht und wird unten auf 0 defaulted.
 const POST_COLUMNS =
-  'id, user_id:author_id, caption, video_url:media_url, media_type, thumbnail_url, view_count, like_count, comment_count, hashtags:tags, allow_comments, allow_duet, allow_download, women_only, privacy, aspect_ratio, audio_url, audio_volume, created_at';
+  'id, user_id:author_id, caption, video_url:media_url, media_type, thumbnail_url, view_count, like_count, comment_count, hashtags:tags, allow_comments, allow_duet, allow_download, women_only, privacy, aspect_ratio, audio_url, audio_volume, bunny_video_id, bunny_status, created_at';
 
 const AUTHOR_JOIN =
   'author:profiles!posts_author_id_fkey ( id, username, display_name, avatar_url, verified:is_verified, is_banned, is_shadow_banned )';
@@ -212,6 +217,10 @@ function normalizeRow(
     // v1.w.UI.211 — background audio track; null for posts without music.
     audio_url: row.audio_url ?? null,
     audio_volume: typeof row.audio_volume === 'number' ? row.audio_volume : null,
+    // Bunny ABR — nur im PostgREST-Select-Pfad vorhanden; RPC-Rows liefern es
+    // nicht → null → Player nutzt R2 (kein Regress).
+    bunny_video_id: (row as { bunny_video_id?: string | null }).bunny_video_id ?? null,
+    bunny_status: (row as { bunny_status?: string | null }).bunny_status ?? null,
   };
 }
 
