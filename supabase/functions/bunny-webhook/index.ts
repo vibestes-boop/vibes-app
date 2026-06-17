@@ -42,10 +42,10 @@ Deno.serve(async (req: Request) => {
   const status = Number(body.Status);
   if (!guid) return new Response('no guid', { status: 200 });
 
-  // 4 = Finished (HLS ready) · 5/6 = Error. Andere Stati = noch in Arbeit → ignorieren.
+  // 3 = Finished · 4 = Resolution finished (beide abspielbar) → ready · 5 = Error.
   let newStatus: 'ready' | 'failed' | null = null;
-  if (status === 4) newStatus = 'ready';
-  else if (status === 5 || status === 6) newStatus = 'failed';
+  if (status === 3 || status === 4) newStatus = 'ready';
+  else if (status === 5) newStatus = 'failed';
   if (!newStatus) return new Response('ignored', { status: 200 });
 
   const admin = createClient(SUPABASE_URL, SERVICE_ROLE);
@@ -66,7 +66,7 @@ Deno.serve(async (req: Request) => {
     );
     if (v.ok) {
       const data = await v.json() as { title?: string };
-      const m = (data.title ?? '').match(/^serlo:(.+)$/);
+      const m = (data.title ?? '').match(/^serlo-(.+)$/);
       if (m) {
         await admin
           .from('posts')

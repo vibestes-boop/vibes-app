@@ -86,7 +86,7 @@ Deno.serve(async (req: Request) => {
     {
       method: 'POST',
       headers: { AccessKey: BUNNY_API_KEY, 'Content-Type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ url: videoUrl, title: `serlo:${postId}` }),
+      body: JSON.stringify({ url: videoUrl, title: `serlo-${postId}` }),
     },
   );
   if (!res.ok) {
@@ -94,6 +94,22 @@ Deno.serve(async (req: Request) => {
     return json({ error: `Bunny fetch failed (${res.status})`, detail: detail.slice(0, 300) }, 502);
   }
 
-  await admin.from('posts').update({ bunny_status: 'pending' }).eq('id', postId);
-  return json({ ok: true, status: 'pending' });
+  // guid via Titel-Suche holen — /videos/fetch liefert keine guid zurück. So
+  // kann der Client die HLS-URL bauen, OHNE auf einen Webhook angewiesen zu sein
+  // (der Player probiert HLS und fällt sonst auf R2 zurück).
+  let guid: string | null = null;
+  try {
+    const list = await fetch(
+      `https://video.bunnycdn.com/library/${BUNNY_LIBRARY_ID}/videos?search=${encodeURIComponent(`serlo-${postId}`)}&itemsPerPage=1&orderBy=date`,
+      { headers: { AccessKey: BUNNY_API_KEY, Accept: 'application/json' } },
+    );
+    if (list.ok) {
+      const data = await list.json() as { items?: Array<{ guid?: string; title?: string }> };
+      guid = data.items?.find((v) => v.title === `serlo-${postId}`)?.guid
+          ?? data.items?.[0]?.guid ?? null;
+    }
+  } catch { /* guid bleibt null → Client nutzt R2-Fallback */ }
+
+  await admin.from('posts').update({ bunny_video_id: guid, bunny_status: 'pending' }).eq('id', postId);
+  return json({ ok: true, status: 'pending', guid });
 });
