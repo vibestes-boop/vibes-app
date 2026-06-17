@@ -39,10 +39,13 @@ export const GuildCard = React.memo(function GuildCard({
   post,
   guildColors,
   isVisible = false,
+  shouldMountVideo = true,
 }: {
   post: GuildPost;
   guildColors: [string, string];
   isVisible?: boolean;
+  // Fenster-Mounting: nur sichtbar ± 1 → echter Video-Player; sonst Thumbnail.
+  shouldMountVideo?: boolean;
 }) {
   const router = useRouter();
   const { colors } = useTheme();
@@ -117,16 +120,19 @@ export const GuildCard = React.memo(function GuildCard({
 
             {/* Media */}
             {isVideo ? (
-              // Decoder-schonend: den Video-Player NUR für die sichtbare Karte
-              // mounten. Off-Screen/recycelte FlashList-Zellen zeigen nur den
-              // Gradient-Placeholder darunter → höchstens 1 aktiver Video-Decoder
-              // → kein Schwarz-Screen beim schnellen Scrollen (Hardware-Limit).
-              isVisible ? (
+              // Fenster-Mounting (wie der Haupt-Feed mit windowSize=3): echten
+              // Video-Player nur für sichtbar ± 1 mounten → vorab-gebuffert →
+              // zuverlässiges Autoplay + höchstens ~3 Decoder (kein Schwarz beim
+              // schnellen Scrollen). Weiter entfernte Karten zeigen das Thumbnail
+              // (kein Decoder). thumbnailUrl gibt's auch dem Player → Poster sofort.
+              shouldMountVideo ? (
                 USE_EXPO_VIDEO ? (
-                  <NativeFeedVideo uri={post.media_url} shouldPlay={isVisible} isMuted={isMuted} onProgress={() => { }} restartSignal={restartSignal} />
+                  <NativeFeedVideo uri={post.media_url} shouldPlay={isVisible} isMuted={isMuted} onProgress={() => { }} thumbnailUrl={post.thumbnail_url} restartSignal={restartSignal} />
                 ) : (
-                  <FallbackFeedVideo uri={post.media_url} shouldPlay={isVisible} isMuted={isMuted} onProgress={() => { }} restartSignal={restartSignal} />
+                  <FallbackFeedVideo uri={post.media_url} shouldPlay={isVisible} isMuted={isMuted} onProgress={() => { }} thumbnailUrl={post.thumbnail_url} restartSignal={restartSignal} />
                 )
+              ) : post.thumbnail_url ? (
+                <Image source={{ uri: post.thumbnail_url }} style={v.mediaImg} contentFit="cover" />
               ) : null
             ) : (
               <Image source={{ uri: post.media_url }} style={v.mediaImg} contentFit="cover" />
