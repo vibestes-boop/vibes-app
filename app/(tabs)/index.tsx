@@ -431,6 +431,11 @@ export default function VibeFeedScreen() {
   const postIds = useMemo(() => feedData.map((p) => p.id), [feedData]);
   // Bunny-HLS-IDs per Post-ID anreichern (separat vom Feed-RPC).
   const bunnyByPost = useFeedBunny(postIds);
+  // Signal für extraData: ändert sich 0→N, sobald die (async) Bunny-IDs ankommen.
+  // Ohne dieses Signal rendern die bereits sichtbaren Top-Posts mit bunnyVideoId=null
+  // (R2) und schalten — weil renderItem aus einem Ref liest — erst beim nächsten
+  // Scroll auf HLS. Mit dem Signal re-rendern sie sofort beim Eintreffen der IDs.
+  const bunnyReadyCount = Object.keys(bunnyByPost).length;
   const authorIds = useMemo(() => feedData.map((p) => p.authorId).filter((id): id is string => !!id), [feedData]);
   const { data: engagementMaps = emptyFeedEngagementMaps() } = useFeedEngagement(postIds, authorIds, {
     enabled: secondaryQueriesEnabled,
@@ -612,7 +617,7 @@ export default function VibeFeedScreen() {
       <FlatList
         ref={listRef}
         data={feedRows}
-        extraData={`${activePlaybackItemId ?? ''}:${screenFocused ? '1' : '0'}:${isMuted ? '1' : '0'}`}
+        extraData={`${activePlaybackItemId ?? ''}:${screenFocused ? '1' : '0'}:${isMuted ? '1' : '0'}:${bunnyReadyCount}`}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         pagingEnabled

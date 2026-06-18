@@ -94,8 +94,12 @@ export const NativeFeedVideo = forwardRef<FeedVideoSeekHandle, {
   shouldPlayRef.current = shouldPlay;
   isMutedRef.current = isMuted;
   const source = useMemo(
+    // WICHTIG: useCaching NUR für progressive R2-Dateien. expo-video unterstützt
+    // KEIN Caching für HLS/m3u8 — useCaching:true auf einer HLS-Quelle wirft beim
+    // Start einen 'error'-Status → unser Fallback unten schaltet sofort auf R2.
+    // Das war die Ursache, warum HLS (trotz erreichbarer 200er-Playlist) nie lief.
     () => (useHls && hlsUrl
-      ? { uri: hlsUrl, contentType: 'hls' as const, useCaching: true }
+      ? { uri: hlsUrl, contentType: 'hls' as const }
       : { uri, contentType: 'progressive' as const, useCaching: true }),
     [useHls, hlsUrl, uri]
   );
