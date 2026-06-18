@@ -48,7 +48,6 @@ export default function GuildScreen() {
   const [viewMode, setViewMode] = useState<GuildViewMode>("feed");
   const [isUploading, setIsUploading] = useState(false);
   const [visiblePostId, setVisiblePostId] = useState<string | null>(null);
-  const [visibleIndex, setVisibleIndex] = useState(0);
   const [isScreenFocused, setIsScreenFocused] = useState(true);
 
   const { data: memberCount } = useGuildMemberCount(profile?.guild_id);
@@ -61,10 +60,9 @@ export default function GuildScreen() {
   // Viewability: Video spielt nur wenn Karte zu ≥60% sichtbar
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
   const onViewableItemsChanged = useCallback(
-    ({ viewableItems }: { viewableItems: { item: GuildPost; isViewable: boolean; index: number | null }[] }) => {
+    ({ viewableItems }: { viewableItems: { item: GuildPost; isViewable: boolean }[] }) => {
       const first = viewableItems.find((vi) => vi.isViewable);
       setVisiblePostId(first?.item.id ?? null);
-      if (typeof first?.index === 'number') setVisibleIndex(first.index);
     },
     []
   );
@@ -186,15 +184,14 @@ export default function GuildScreen() {
   }, [profile?.id, createStory, isUploading]);
 
   const renderItem = useCallback(
-    ({ item, index }: { item: GuildPost; index: number }) => (
+    ({ item }: { item: GuildPost }) => (
       <GuildCard
         post={item}
         guildColors={guildColorPair}
         isVisible={item.id === visiblePostId && isScreenFocused}
-        shouldMountVideo={Math.abs(index - visibleIndex) <= 1}
       />
     ),
-    [guildColorPair, visiblePostId, visibleIndex, isScreenFocused],
+    [guildColorPair, visiblePostId, isScreenFocused],
   );
 
   const ListHeader = useCallback(
