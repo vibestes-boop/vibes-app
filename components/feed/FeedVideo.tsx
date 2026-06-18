@@ -71,6 +71,13 @@ function ThumbnailPreview({ uri, videoReady }: { uri: string; videoReady: boolea
   );
 }
 
+// Resume-Speicher: merkt sich die Abspielposition LANGER Videos (>= RESUME_MIN_SEC)
+// pro Quelle (uri), damit sie beim Zurückscrollen an der Stelle weiterlaufen.
+// Kurze Clips starten weiterhin bei 0 (TikTok-Parity). Modul-Level → überlebt
+// Unmount/Remount beim Aus-dem-Fenster-Scrollen. Eine Zahl pro Video → minimal.
+const RESUME_MIN_SEC = 60;
+const videoResumePos = new Map<string, number>();
+
 // ─── NativeFeedVideo (expo-video) ────────────────────────────────────────────
 export const NativeFeedVideo = forwardRef<FeedVideoSeekHandle, {
   uri: string;
@@ -151,13 +158,17 @@ export const NativeFeedVideo = forwardRef<FeedVideoSeekHandle, {
     else player.pause();
   }, [shouldPlay, player]);
 
-  // TikTok-Parity: Wenn ein Post erneut sichtbar wird, startet er wieder bei 0.
-  // Die Mediendatei bleibt dabei im nativen/HTTP-Cache; wir laden sie nicht neu.
+  // Erneut sichtbar: KURZE Clips (< RESUME_MIN_SEC) starten bei 0 (TikTok-Parity),
+  // LANGE Videos (>= RESUME_MIN_SEC) laufen an Ort und Stelle weiter — kein Reset.
+  // (Bei frischem Mount/Quellen-Wechsel stellt readyToPlay die gemerkte Stelle her.)
   useEffect(() => {
     if (!player || restartSignal <= 0 || !shouldPlay) return;
     try {
-      player.currentTime = 0;
-      onProgress(0);
+      const dur = player.duration ?? 0;
+      if (dur > 0 && dur < RESUME_MIN_SEC) {
+        player.currentTime = 0;
+        onProgress(0);
+      }
       const maybePromise = player.play?.();
       maybePromise?.catch?.(() => {});
     } catch { /* ignore native player races */ }
@@ -180,6 +191,13 @@ export const NativeFeedVideo = forwardRef<FeedVideoSeekHandle, {
     const sub = player.addListener('statusChange', (s: any) => {
       if (s.status === 'readyToPlay') {
         setReady(true);
+        // Resume: langes Video an gemerkter Stelle fortsetzen (frischer Mount /
+        // Quellen-Wechsel R2→HLS). Kurze Clips haben keine gemerkte Position → 0.
+        const dur = player.duration ?? 0;
+        const saved = videoResumePos.get(uri);
+        if (dur >= RESUME_MIN_SEC && saved != null && saved > 0 && saved < dur - 2) {
+          try { player.currentTime = saved; } catch { /* ignore */ }
+        }
         // Autoplay nachholen: Wenn der Player nach einem Quellen-Wechsel R2→HLS
         // NEU erzeugt wird, war shouldPlay evtl. schon true, bevor die HLS-Quelle
         // geladen war → das frühe play() lief ins Leere (erstes Video startete erst
@@ -198,13 +216,24 @@ export const NativeFeedVideo = forwardRef<FeedVideoSeekHandle, {
     const timer = setInterval(() => {
       const dur = player.duration;
       const cur = player.currentTime;
-      if (dur > 0) onProgress(cur / dur);
+      if (dur > 0) {
+        onProgress(cur / dur);
+        // Position langer Videos merken (für Resume beim Zurückscrollen).
+        // FIFO-Cap (200) gegen unbegrenztes Wachstum bei sehr langen Sessions.
+        if (dur >= RESUME_MIN_SEC && cur > 0 && cur < dur - 2) {
+          if (videoResumePos.size > 200 && !videoResumePos.has(uri)) {
+            const firstKey = videoResumePos.keys().next().value;
+            if (firstKey !== undefined) videoResumePos.delete(firstKey);
+          }
+          videoResumePos.set(uri, cur);
+        }
+      }
     }, 250);
     return () => {
       sub.remove();
       clearInterval(timer);
     };
-  }, [player, onProgress]);
+  }, [player, onProgress, uri]);
 
   return (
     <View style={StyleSheet.absoluteFill}>
