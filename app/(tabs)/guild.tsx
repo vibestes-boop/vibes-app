@@ -23,12 +23,11 @@ type StoryGroup,
 } from "@/lib/useStories";
 import { guildFeedActions,useTabRefreshStore } from "@/lib/useTabRefresh";
 import { useTheme } from "@/lib/useTheme";
-import { FlashList } from "@shopify/flash-list";
 import { Image } from "expo-image";
 import { launchImageLibraryAsync } from "expo-image-picker";
 import { useFocusEffect,useRouter } from "expo-router";
 import { useCallback,useEffect,useMemo,useRef,useState } from "react";
-import { ActivityIndicator,Alert,StyleSheet,Text,View } from "react-native";
+import { ActivityIndicator,Alert,FlatList,StyleSheet,Text,View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function GuildScreen() {
@@ -53,7 +52,7 @@ export default function GuildScreen() {
   const { data: memberCount } = useGuildMemberCount(profile?.guild_id);
   const [membersOpen, setMembersOpen] = useState(false);
   const { data: activeLives = [] } = useActiveLiveSessions();
-  const listRef = useRef<FlashList<GuildPost>>(null);
+  const listRef = useRef<FlatList<GuildPost>>(null);
   const setGuildRefreshing = useTabRefreshStore((s) => s.setGuildRefreshing);
   const guildRefreshTick = useTabRefreshStore((s) => s.guildRefreshTick);
 
@@ -260,12 +259,15 @@ export default function GuildScreen() {
           />
         </>
       ) : (
-        <FlashList
+        <FlatList
           ref={listRef}
           data={posts}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          estimatedItemSize={500}
+          windowSize={3}
+          maxToRenderPerBatch={3}
+          initialNumToRender={3}
+          removeClippedSubviews
           contentContainerStyle={
             posts.length === 0
               ? { paddingBottom: insets.bottom, paddingTop: 8 }
