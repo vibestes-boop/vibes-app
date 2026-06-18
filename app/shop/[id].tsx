@@ -78,9 +78,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 // ─── Konstanten ───────────────────────────────────────────────────────────────
 
 const CAT_META = {
-  digital:  { label: 'Digital',  icon: FileText, delivery: 'Sofortiger Download' },
-  physical: { label: 'Physisch', icon: Box,      delivery: 'Lieferung per DM mit Creator' },
-  service:  { label: 'Service',  icon: Wrench,   delivery: 'Creator meldet sich nach Kauf' },
+  digital:  { label: 'Digital',  icon: FileText, delivery: 'Sofortiger Download nach dem Kauf' },
+  physical: { label: 'Physisch', icon: Box,      delivery: 'Lieferung per DM mit dem Verkäufer' },
+  service:  { label: 'Service',  icon: Wrench,   delivery: 'Verkäufer meldet sich nach dem Kauf' },
 };
 
 // Warme Stimme — siehe Design-Gesetz in CLAUDE.md (Fehler → Mikro-Freude).
@@ -851,9 +851,26 @@ export default function ProductDetailScreen() {
           category={product.category}
         />
 
-        {/* 2. Preis + Sale-Badge + Merken */}
+        {/* 2. Titel + Kategorie-Chips (Hierarchie: Produktname zuerst, wie bei Profi-Shops) */}
+        <View style={s.titleSection}>
+          <Text style={[s.title, { color: colors.text.primary }]}>{product.title}</Text>
+          <View style={{ flexDirection: 'row', gap: 7, flexWrap: 'wrap' }}>
+            <View style={[s.chip, { backgroundColor: bgAccent, borderColor: colors.border.subtle }]}>
+              <CatIcon size={11} color={colors.text.muted} strokeWidth={2} />
+              <Text style={[s.chipText, { color: colors.text.muted }]}>{catMeta?.label}</Text>
+            </View>
+            {product.women_only && (
+              <View style={[s.chip, { backgroundColor: bgAccent, borderColor: colors.border.subtle }]}>
+                <Text style={{ fontSize: 11 }}>🌸</Text>
+                <Text style={[s.chipText, { color: colors.text.muted }]}>Women-Only</Text>
+              </View>
+            )}
+          </View>
+        </View>
+
+        {/* 3. Preis + Sale-Badge */}
         <View style={s.priceSection}>
-          {/* Preis-Zeile: Sale-Prozent-Badge + Preis (evtl. rot) + Merken-Btn */}
+          {/* Preis-Zeile: Sale-Prozent-Badge + Preis (evtl. rot) */}
           <View style={s.priceRow}>
             <View style={{ flex: 1, gap: 6 }}>
               {percentOff != null && (
@@ -880,24 +897,6 @@ export default function ProductDetailScreen() {
                 )}
               </View>
             </View>
-            <Pressable
-              onPress={async () => {
-                impactAsync(ImpactFeedbackStyle.Light);
-                await toggleSave();
-              }}
-              hitSlop={14}
-              style={[s.bookmarkBtn, {
-                backgroundColor: saved ? colors.text.primary : bgAccent,
-                borderColor: colors.border.subtle,
-              }]}
-            >
-              <Bookmark
-                size={18}
-                color={saved ? colors.bg.primary : colors.text.primary}
-                fill={saved ? colors.bg.primary : 'transparent'}
-                strokeWidth={2}
-              />
-            </Pressable>
           </View>
 
           {/* Promo-Pills */}
@@ -967,7 +966,9 @@ export default function ProductDetailScreen() {
                   <BadgeCheck size={14} color={colors.text.primary} strokeWidth={2} />
                 )}
               </View>
-              <Text style={[s.sellerSub, { color: colors.text.muted }]}>{product.sold_count} Verkäufe</Text>
+              <Text style={[s.sellerSub, { color: colors.text.muted }]}>
+                {product.sold_count > 0 ? `${product.sold_count} Verkäufe` : 'Neu im Shop'}
+              </Text>
             </View>
           </Pressable>
 
@@ -994,41 +995,26 @@ export default function ProductDetailScreen() {
             onPress={() => router.push({ pathname: '/user/[id]', params: { id: product.seller_id } } as any)}
             style={[s.sellerShopBtn, { backgroundColor: colors.text.primary }]}
           >
-            <Text style={[s.sellerShopText, { color: colors.bg.primary }]}>Shop</Text>
+            <Text style={[s.sellerShopText, { color: colors.bg.primary }]}>Zum Shop</Text>
           </Pressable>
         </View>
 
-        <View style={[s.divider, { backgroundColor: colors.border.subtle }]} />
-
-        {/* 4. Produktinfos */}
-        <View style={s.section}>
-          {/* Titel */}
-          <Text style={[s.title, { color: colors.text.primary }]}>{product.title}</Text>
-
-          {/* Kategorie + WOZ Chips */}
-          <View style={{ flexDirection: 'row', gap: 7, flexWrap: 'wrap' }}>
-            <View style={[s.chip, { backgroundColor: bgAccent, borderColor: colors.border.subtle }]}>
-              <CatIcon size={11} color={colors.text.muted} strokeWidth={2} />
-              <Text style={[s.chipText, { color: colors.text.muted }]}>{catMeta?.label}</Text>
+        {/* 4. Beschreibung (nur falls vorhanden) */}
+        {product.description ? (
+          <>
+            <View style={[s.divider, { backgroundColor: colors.border.subtle }]} />
+            <View style={s.section}>
+              <Description text={product.description} colors={colors} />
             </View>
-            {product.women_only && (
-              <View style={[s.chip, { backgroundColor: bgAccent, borderColor: colors.border.subtle }]}>
-                <Text style={{ fontSize: 11 }}>🌸</Text>
-                <Text style={[s.chipText, { color: colors.text.muted }]}>Women-Only</Text>
-              </View>
-            )}
-          </View>
-
-          {/* Beschreibung */}
-          {product.description && <Description text={product.description} colors={colors} />}
-        </View>
+          </>
+        ) : null}
 
         {/* 5. Stock-Bar */}
         {product.stock >= 0 && (
           <>
             <View style={[s.divider, { backgroundColor: colors.border.subtle }]} />
             <View style={s.section}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: (isLowStock || product.stock === 0) ? 10 : 0 }}>
                 <Text style={[s.sectionLabel, { color: colors.text.primary }]}>Verfügbarkeit</Text>
                 <View style={[s.stockLabel, {
                   backgroundColor: product.stock === 0
@@ -1045,13 +1031,15 @@ export default function ProductDetailScreen() {
                   </Text>
                 </View>
               </View>
-              <View style={[s.stockBg, { backgroundColor: bgAccent }]}>
-                <View style={[s.stockFill, {
-                  width: product.stock === 0 ? ('100%' as any)
-                    : (`${Math.min(100, product.stock / Math.max(product.stock + product.sold_count, 1) * 100)}%` as any),
-                  backgroundColor: product.stock === 0 ? '#EF4444' : isLowStock ? '#F59E0B' : '#22C55E',
-                }]} />
-              </View>
+              {(isLowStock || product.stock === 0) && (
+                <View style={[s.stockBg, { backgroundColor: bgAccent }]}>
+                  <View style={[s.stockFill, {
+                    width: product.stock === 0 ? ('100%' as any)
+                      : (`${Math.min(100, Math.max(10, product.stock / Math.max(product.stock + product.sold_count, 1) * 100))}%` as any),
+                    backgroundColor: product.stock === 0 ? '#EF4444' : '#F59E0B',
+                  }]} />
+                </View>
+              )}
             </View>
           </>
         )}
@@ -1328,8 +1316,10 @@ const s = StyleSheet.create({
   sellerHeaderAvatar: { width: 26, height: 26, borderRadius: 13 },
   sellerHeaderName: { fontSize: 13, fontWeight: '700', flexShrink: 1 },
 
+  // Titel-Sektion (Produktname zuerst, über dem Preis — Profi-Shop-Hierarchie)
+  titleSection: { paddingHorizontal: 16, paddingTop: 16, gap: 10 },
   // Preis
-  priceSection: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 14, gap: 10 },
+  priceSection: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 14, gap: 10 },
   priceRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 },
 
   // Sale-Prozent-Badge über dem Preis
@@ -1382,7 +1372,7 @@ const s = StyleSheet.create({
 
   chip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 10, borderWidth: 1 },
   chipText: { fontSize: 11, fontWeight: '600' },
-  title: { fontSize: 18, fontWeight: '600', lineHeight: 25 },
+  title: { fontSize: 20, fontWeight: '700', lineHeight: 27 },
 
   // Stock
   stockBg: { height: 6, borderRadius: 3, overflow: 'hidden' },
