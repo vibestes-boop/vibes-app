@@ -181,6 +181,7 @@ type PostDetail = {
   author_id: string;
   audio_url: string | null;
   audio_volume: number | null;
+  bunny_video_id: string | null;
   profiles: { username: string; avatar_url: string | null } | null;
 };
 
@@ -470,7 +471,7 @@ export default function PostDetailScreen() {
         // Jetzt: ~150ms (ein Round-Trip mit JOIN).
         const { data: postData, error: postErr } = await supabase
           .from('posts')
-          .select('id, caption, media_url, media_type, tags, created_at, author_id, audio_url, audio_volume, profiles!author_id(username, avatar_url)')
+          .select('id, caption, media_url, media_type, tags, created_at, author_id, audio_url, audio_volume, bunny_video_id, profiles!author_id(username, avatar_url)')
           .eq('id', id)
           .single();
 
@@ -489,6 +490,7 @@ export default function PostDetailScreen() {
           tags: postData.tags ?? [],
           audio_url: (postData as any).audio_url ?? null,
           audio_volume: (postData as any).audio_volume ?? null,
+          bunny_video_id: (postData as any).bunny_video_id ?? null,
           profiles: profileData,
         } as PostDetail);
         // Ref setzen für PanResponder (stale-closure-sicher)
@@ -624,6 +626,7 @@ export default function PostDetailScreen() {
                 isMuted={isMuted}
                 onProgress={handleProgress}
                 restartSignal={restartSignal}
+                bunnyVideoId={post?.bunny_video_id ?? null}
               />
             ) : (
               <FallbackFeedVideo

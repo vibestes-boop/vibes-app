@@ -72,6 +72,7 @@ type PostItem = {
   view_count: number;
   is_pinned?: boolean;
   thumbnail_url?: string | null;
+  bunny_video_id?: string | null;
 };
 
 function formatViews(n: number): string {
@@ -288,6 +289,8 @@ function PostCard({
               isMuted={isMuted}
               onProgress={handleProgress}
               restartSignal={restartSignal}
+              thumbnailUrl={item.thumbnail_url}
+              bunnyVideoId={item.bunny_video_id ?? null}
             />
           ) : (
             <FallbackFeedVideo
@@ -480,7 +483,7 @@ export default function UserPostsScreen() {
       // Modus: direkte Post-IDs (Saved / Reposts)
       supabase
         .from('posts')
-        .select('id, caption, media_url, media_type, tags, created_at, author_id, view_count, is_pinned, thumbnail_url, profiles!author_id(username, avatar_url)')
+        .select('id, caption, media_url, media_type, tags, created_at, author_id, view_count, is_pinned, thumbnail_url, bunny_video_id, profiles!author_id(username, avatar_url)')
         .in('id', ids)
         .then(({ data, error }) => {
           if (error) { setLoadError(error.message); setLoading(false); return; }
@@ -500,6 +503,7 @@ export default function UserPostsScreen() {
               view_count: p.view_count ?? 0,
               is_pinned: p.is_pinned ?? false,
               thumbnail_url: p.thumbnail_url ?? null,
+              bunny_video_id: p.bunny_video_id ?? null,
               username: p.profiles?.username ?? null,
               avatar_url: p.profiles?.avatar_url ?? null,
             }));
@@ -510,7 +514,7 @@ export default function UserPostsScreen() {
       // Modus: alle Posts eines Users
       supabase
         .from('posts')
-        .select('id, caption, media_url, media_type, tags, created_at, author_id, view_count, is_pinned, thumbnail_url, profiles!author_id(username, avatar_url)')
+        .select('id, caption, media_url, media_type, tags, created_at, author_id, view_count, is_pinned, thumbnail_url, bunny_video_id, profiles!author_id(username, avatar_url)')
         .eq('author_id', userId)
         // Gleiche Reihenfolge wie useUserPosts (Grid): gepinnt zuerst → Index passt
         .order('is_pinned', { ascending: false })
@@ -528,6 +532,7 @@ export default function UserPostsScreen() {
             view_count: p.view_count ?? 0,
             is_pinned: p.is_pinned ?? false,
             thumbnail_url: p.thumbnail_url ?? null,
+            bunny_video_id: p.bunny_video_id ?? null,
             username: p.profiles?.username ?? null,
             avatar_url: p.profiles?.avatar_url ?? null,
           }));

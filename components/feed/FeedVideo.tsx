@@ -178,8 +178,16 @@ export const NativeFeedVideo = forwardRef<FeedVideoSeekHandle, {
   useEffect(() => {
     if (!player) return;
     const sub = player.addListener('statusChange', (s: any) => {
-      if (s.status === 'readyToPlay') setReady(true);
-      else if (s.status === 'error' && useHlsRef.current) {
+      if (s.status === 'readyToPlay') {
+        setReady(true);
+        // Autoplay nachholen: Wenn der Player nach einem Quellen-Wechsel R2→HLS
+        // NEU erzeugt wird, war shouldPlay evtl. schon true, bevor die HLS-Quelle
+        // geladen war → das frühe play() lief ins Leere (erstes Video startete erst
+        // nach Scroll). Sobald die Quelle bereit ist + sichtbar: jetzt abspielen.
+        if (shouldPlayRef.current) {
+          try { player.play?.(); } catch { /* ignore native race */ }
+        }
+      } else if (s.status === 'error' && useHlsRef.current) {
         // HLS fehlgeschlagen (z.B. noch nicht fertig transkodiert) → R2-Fallback.
         setUseHls(false);
         setReady(false);

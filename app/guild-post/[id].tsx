@@ -255,6 +255,8 @@ function GuildPostDetailItem({
               isMuted={isMuted}
               onProgress={handleProgress}
               restartSignal={restartSignal}
+              thumbnailUrl={post.thumbnail_url}
+              bunnyVideoId={post.bunny_video_id ?? null}
             />
           ) : (
             <FallbackFeedVideo

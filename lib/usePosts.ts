@@ -277,6 +277,7 @@ export type GuildPost = {
   comment_count: number;  // Batch-geladen, kein N+1
   like_count: number;     // Batch-geladen, kein N+1
   is_liked: boolean;      // Batch-geladen, kein N+1
+  bunny_video_id: string | null; // Batch-geladen (HLS), kein N+1
 };
 
 export function useGuildFeed() {
@@ -289,19 +290,20 @@ export function useGuildFeed() {
         result_limit: 20,
       });
       if (error) throw error;
-      const posts = (data as Omit<GuildPost, 'comment_count' | 'like_count' | 'is_liked'>[]) ?? [];
+      const posts = (data as Omit<GuildPost, 'comment_count' | 'like_count' | 'is_liked' | 'bunny_video_id'>[]) ?? [];
 
       if (posts.length === 0) return [] as GuildPost[];
 
       const postIds = posts.map((p) => p.id);
 
-      // ── Batch-Fetch aller Counts in ZWEI parallelen Calls, nicht 40 ──
-      const [commentCountRes, likeCountRes, likedRes] = await Promise.all([
+      // ── Batch-Fetch aller Counts + Bunny-HLS-IDs parallel, nicht N+1 ──
+      const [commentCountRes, likeCountRes, likedRes, bunnyRes] = await Promise.all([
         supabase.rpc('get_post_comment_counts', { p_post_ids: postIds }),
         supabase.rpc('get_post_like_counts',    { p_post_ids: postIds }),
         userId
           ? supabase.from('likes').select('post_id').eq('user_id', userId).in('post_id', postIds)
           : Promise.resolve({ data: [] as { post_id: string }[] }),
+        supabase.from('posts').select('id, bunny_video_id').in('id', postIds).not('bunny_video_id', 'is', null),
       ]);
 
       const commentMap: Record<string, number> = {};
@@ -318,11 +320,17 @@ export function useGuildFeed() {
         ((likedRes as any).data ?? []).map((r: { post_id: string }) => r.post_id)
       );
 
+      const bunnyMap: Record<string, string> = {};
+      for (const row of ((bunnyRes as any).data ?? []) as { id: string; bunny_video_id: string | null }[]) {
+        if (row.bunny_video_id) bunnyMap[row.id] = row.bunny_video_id;
+      }
+
       return posts.map((p) => ({
         ...p,
         comment_count: commentMap[p.id] ?? 0,
         like_count:    likeMap[p.id]    ?? 0,
         is_liked:      likedSet.has(p.id),
+        bunny_video_id: bunnyMap[p.id] ?? null,
       })) as GuildPost[];
     },
     staleTime: 1000 * 45,
