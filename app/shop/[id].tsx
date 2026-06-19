@@ -923,12 +923,12 @@ export default function ProductDetailScreen() {
         </View>
 
         {/* 4. Info-Zeile (3 Spalten): Lieferung | Bewertung | Lager */}
-        <View style={[s.infoRow, { borderColor: colors.border.subtle }]}>
+        <View style={[s.infoRow, { borderColor: colors.border.default }]}>
           <View style={s.infoCol}>
             <Text style={[s.infoLabel, { color: colors.text.muted }]}>Lieferung</Text>
             <Text style={[s.infoValue, { color: colors.text.primary }]} numberOfLines={1}>{deliveryShort}</Text>
           </View>
-          <View style={[s.infoCol, s.infoColMid, { borderColor: colors.border.subtle }]}>
+          <View style={[s.infoCol, s.infoColMid, { borderColor: colors.border.default }]}>
             <Text style={[s.infoLabel, { color: colors.text.muted }]}>Bewertung</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
               {reviewCount > 0 && <Star size={12} color={colors.text.primary} strokeWidth={2} />}
@@ -937,7 +937,7 @@ export default function ProductDetailScreen() {
               </Text>
             </View>
           </View>
-          <View style={[s.infoCol, s.infoColMid, { borderColor: colors.border.subtle }]}>
+          <View style={[s.infoCol, s.infoColMid, { borderColor: colors.border.default }]}>
             <Text style={[s.infoLabel, { color: colors.text.muted }]}>Lager</Text>
             <Text style={[s.infoValue, { color: colors.text.primary }]} numberOfLines={1}>{stockShort}</Text>
           </View>
@@ -1307,9 +1307,9 @@ const s = StyleSheet.create({
   locText: { fontSize: 12 },
 
   // Info-Zeile (3 Spalten, Etsy-Stil)
-  infoRow: { flexDirection: 'row', marginHorizontal: 16, marginTop: 14, borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth },
+  infoRow: { flexDirection: 'row', marginHorizontal: 16, marginTop: 14, borderTopWidth: 1, borderBottomWidth: 1 },
   infoCol: { flex: 1, paddingVertical: 9 },
-  infoColMid: { borderLeftWidth: StyleSheet.hairlineWidth, paddingLeft: 13 },
+  infoColMid: { borderLeftWidth: 1, paddingLeft: 13 },
   infoLabel: { fontSize: 11, marginBottom: 2 },
   infoValue: { fontSize: 13, fontWeight: '600' },
 
