@@ -23,6 +23,7 @@ Check,
 Flame,
 MapPin,
 Package,
+Plus,
 Search,
 ShoppingBag,
 Sparkles,
@@ -752,6 +753,16 @@ export default function ShopScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* ── „Verkaufen"-FAB: schnellster Weg zum Produkt-Erstellen ── */}
+      <Pressable
+        onPress={() => router.push('/shop/my-shop?create=1' as any)}
+        style={[s.sellFab, { bottom: insets.bottom + 62, backgroundColor: colors.text.primary }]}
+        accessibilityLabel="Produkt verkaufen"
+      >
+        <Plus size={18} color={colors.bg.primary} strokeWidth={2.6} />
+        <Text style={[s.sellFabText, { color: colors.bg.primary }]}>Verkaufen</Text>
+      </Pressable>
     </View>
   );
 }
@@ -760,6 +771,16 @@ export default function ShopScreen() {
 
 const s = StyleSheet.create({
   root: { flex: 1 },
+
+  // „Verkaufen"-FAB (schwebt unten rechts über der Bottom-Nav)
+  sellFab: {
+    position: 'absolute', right: 16,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 16, paddingVertical: 12, borderRadius: 26,
+    shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 }, elevation: 5,
+  },
+  sellFabText: { fontSize: 14, fontWeight: '700' },
 
   header: {
     flexDirection: 'row', alignItems: 'center',

@@ -146,6 +146,9 @@ export function useCreateProduct() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['my-products'] });
+      // #3-Fix: auch den öffentlichen Shop-Browse/Explore invalidieren, sonst
+      // erscheint ein neu erstelltes Produkt erst nach Ablauf der staleTime.
+      qc.invalidateQueries({ queryKey: ['shop-products'] });
     },
   });
 }

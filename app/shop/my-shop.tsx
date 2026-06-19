@@ -23,7 +23,7 @@ import { useTheme } from '@/lib/useTheme';
 import { impactAsync,ImpactFeedbackStyle } from 'expo-haptics';
 import { launchImageLibraryAsync,MediaTypeOptions,requestMediaLibraryPermissionsAsync } from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams,useRouter } from 'expo-router';
 import {
 ArrowLeft,
 Box,
@@ -40,7 +40,7 @@ Sparkles,
 Trash2,
 Wrench,X
 } from 'lucide-react-native';
-import { useCallback,useState } from 'react';
+import { useCallback,useEffect,useState } from 'react';
 import {
 ActivityIndicator,
 Alert,
@@ -89,6 +89,8 @@ const EMPTY_FORM: CreateProductInput = {
 export default function MyShopScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  // ?create=1 → Erstellen-Sheet direkt öffnen (Schnell-Einstieg vom Shop-FAB)
+  const params = useLocalSearchParams<{ create?: string }>();
   const { colors } = useTheme();
   const { diamonds } = useCoinsWallet();
 
@@ -107,6 +109,16 @@ export default function MyShopScreen() {
 
   // v1.28.0: AI-Image-Sheet für Produkt-Mockups ohne eigenes Foto
   const [showAISheet, setShowAISheet] = useState(false);
+
+  // Schnell-Einstieg: kommt der User mit ?create=1 (Shop-„Verkaufen"-FAB), das
+  // Erstellen-Sheet sofort öffnen — ein Tap vom Shop bis zum Formular.
+  useEffect(() => {
+    if (params.create === '1') {
+      setEditingId(null);
+      setForm(EMPTY_FORM);
+      setShowSheet(true);
+    }
+  }, [params.create]);
 
   // ── Cover hochladen ───────────────────────────────────────────────────────
 
@@ -216,6 +228,8 @@ export default function MyShopScreen() {
 
   const handleSave = useCallback(async () => {
     if (!form.title.trim()) { Alert.alert('Titel fehlt'); return; }
+    // #2-Fix: Titelbild ist mit * als Pflicht markiert → jetzt auch erzwungen.
+    if (!form.cover_url) { Alert.alert('Titelbild fehlt', 'Füge ein Titelbild hinzu — oder erstelle eins mit KI.'); return; }
     if (form.price_coins < 1) { Alert.alert('Preis muss mindestens 1 Coin sein'); return; }
     // v1.26.3: Angebotspreis muss kleiner als regulärer Preis sein (und > 0)
     if (form.sale_price_coins != null) {
@@ -652,7 +666,7 @@ function ProductFormSheet({
             style={[s.priceInput, { color: colors.text.primary }]}
             keyboardType="number-pad"
             value={String(form.price_coins)}
-            onChangeText={(t) => setForm(f => ({ ...f, price_coins: Math.max(1, parseInt(t) || 0) }))}
+            onChangeText={(t) => setForm(f => ({ ...f, price_coins: Math.min(1_000_000, Math.max(1, parseInt(t.replace(/[^0-9]/g, ''), 10) || 0)) }))}
           />
           <Text style={[s.priceHint, { color: colors.text.muted }]}>
             ≈ {((form.price_coins / 100) * 0.70).toFixed(2)} € für dich
