@@ -16,7 +16,6 @@
  */
 
 import { ProductCoverImage } from '@/components/shop/ProductCoverImage';
-import { StarDisplay } from '@/components/shop/ReviewSheet';
 import { useAuthStore } from '@/lib/authStore';
 import { supabase } from '@/lib/supabase';
 import { useCoinsWallet } from '@/lib/useGifts';
@@ -53,7 +52,7 @@ Send,
 Share2,
 ShoppingBag,
 ShoppingCart,
-Truck,
+Star,
 Wrench,
 X,
 } from 'lucide-react-native';
@@ -106,6 +105,37 @@ function salePercent(p: Product): number | null {
   return Math.round((1 - p.sale_price_coins / p.price_coins) * 100);
 }
 
+// ─── CoinIcon — kleine goldene Borz-Münze (ersetzt den 🪙-Emoji überall) ──────
+
+function CoinIcon({ size = 18, dim = false }: { size?: number; dim?: boolean }) {
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        borderRadius: size / 2,
+        backgroundColor: dim ? '#D8D8DA' : '#E6B422',
+        borderWidth: Math.max(1, Math.round(size * 0.07)),
+        borderColor: dim ? '#BEBEC0' : '#B98A00',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      <Text
+        style={{
+          fontSize: Math.round(size * 0.58),
+          fontWeight: '700',
+          lineHeight: Math.round(size * 0.72),
+          color: dim ? '#8A8A8C' : '#5E4600',
+          includeFontPadding: false,
+        }}
+      >
+        B
+      </Text>
+    </View>
+  );
+}
+
 // ─── Preis-Formatter: große Ganzzahl + kleine Dezimalstelle ──────────────────
 
 function PriceDisplay({
@@ -122,7 +152,7 @@ function PriceDisplay({
   const isLarge = size === 'large';
   return (
     <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 1 }}>
-      <Text style={{ fontSize: isLarge ? 12 : 11, fontWeight: '700', color }}>🪙</Text>
+      <CoinIcon size={isLarge ? 18 : 14} />
       <Text style={{
         fontSize: isLarge ? 36 : 20,
         fontWeight: '700',
@@ -693,7 +723,6 @@ export default function ProductDetailScreen() {
   const isLowStock   = product ? product.stock !== -1 && product.stock > 0 && product.stock <= 5 : false;
   const maxQty       = product ? (product.stock === -1 ? 99 : Math.max(1, product.stock)) : 1;
   const catMeta      = product ? CAT_META[product.category] : null;
-  const CatIcon      = catMeta ? (CAT_META[product!.category].icon) : ShoppingBag;
   const images = product ? [
     ...(product.cover_url  ? [product.cover_url]    : []),
     ...(product.image_urls ?? []),
@@ -779,6 +808,20 @@ export default function ProductDetailScreen() {
   const bgMain    = colors.bg.secondary;
   const bgAccent  = colors.bg.subtle;
 
+  // ── Etsy-Minimal: kompakte Werte für Subline + 3-Spalten-Infozeile ──
+  const subline = [
+    catMeta?.label,
+    product.women_only ? 'Women-Only' : null,
+    product.sold_count > 0 ? `${product.sold_count.toLocaleString('de-DE')}× verkauft` : null,
+  ].filter(Boolean).join(' · ');
+  const deliveryShort = product.category === 'physical'
+    ? (product.free_shipping ? 'Gratis' : 'Per DM')
+    : product.category === 'digital' ? 'Sofort' : 'Nach Kauf';
+  const stockShort = product.stock === -1 ? 'Auf Lager'
+    : product.stock === 0 ? 'Ausverkauft'
+    : isLowStock ? `Nur ${product.stock}`
+    : `${product.stock}`;
+
   return (
     <View style={[s.root, { backgroundColor: bgMain }]}>
 
@@ -851,101 +894,57 @@ export default function ProductDetailScreen() {
           category={product.category}
         />
 
-        {/* 2. Titel + Kategorie-Chips (Hierarchie: Produktname zuerst, wie bei Profi-Shops) */}
+        {/* 2. Titel + Subline (Kategorie · Verkäufe) */}
         <View style={s.titleSection}>
           <Text style={[s.title, { color: colors.text.primary }]}>{product.title}</Text>
-          <View style={{ flexDirection: 'row', gap: 7, flexWrap: 'wrap' }}>
-            <View style={[s.chip, { backgroundColor: bgAccent, borderColor: colors.border.subtle }]}>
-              <CatIcon size={11} color={colors.text.muted} strokeWidth={2} />
-              <Text style={[s.chipText, { color: colors.text.muted }]}>{catMeta?.label}</Text>
-            </View>
-            {product.women_only && (
-              <View style={[s.chip, { backgroundColor: bgAccent, borderColor: colors.border.subtle }]}>
-                <Text style={{ fontSize: 11 }}>🌸</Text>
-                <Text style={[s.chipText, { color: colors.text.muted }]}>Women-Only</Text>
-              </View>
-            )}
-          </View>
+          {!!subline && (
+            <Text style={[s.subline, { color: colors.text.muted }]} numberOfLines={1}>{subline}</Text>
+          )}
         </View>
 
-        {/* 3. Preis + Sale-Badge */}
+        {/* 3. Preis (monochrom): Coin + Preis + durchgestrichener Alt-Preis + −% */}
         <View style={s.priceSection}>
-          {/* Preis-Zeile: Sale-Prozent-Badge + Preis (evtl. rot) */}
-          <View style={s.priceRow}>
-            <View style={{ flex: 1, gap: 6 }}>
-              {percentOff != null && (
-                <View style={s.saleBadge}>
-                  <Text style={s.saleBadgeText}>-{percentOff}%</Text>
-                </View>
-              )}
-              <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
-                <PriceDisplay
-                  coins={effPrice}
-                  color={percentOff != null ? '#EF4444' : colors.text.primary}
-                />
-                {percentOff != null && (
-                  <Text
-                    style={{
-                      fontSize: 15,
-                      fontWeight: '600',
-                      color: colors.text.muted,
-                      textDecorationLine: 'line-through',
-                    }}
-                  >
-                    🪙 {product.price_coins.toLocaleString('de-DE')}
-                  </Text>
-                )}
-              </View>
+          <View style={s.priceRow2}>
+            <CoinIcon size={18} />
+            <Text style={[s.priceNow, { color: colors.text.primary }]}>{effPrice.toLocaleString('de-DE')}</Text>
+            {percentOff != null && (
+              <>
+                <Text style={[s.priceOld, { color: colors.text.muted }]}>{product.price_coins.toLocaleString('de-DE')}</Text>
+                <Text style={[s.priceOff, { color: colors.text.muted }]}>−{percentOff} %</Text>
+              </>
+            )}
+          </View>
+          {!!product.location && (
+            <View style={s.locRow}>
+              <MapPin size={12} color={colors.text.muted} strokeWidth={2} />
+              <Text style={[s.locText, { color: colors.text.muted }]} numberOfLines={1}>{product.location}</Text>
+            </View>
+          )}
+        </View>
+
+        {/* 4. Info-Zeile (3 Spalten): Lieferung | Bewertung | Lager */}
+        <View style={[s.infoRow, { borderColor: colors.border.subtle }]}>
+          <View style={s.infoCol}>
+            <Text style={[s.infoLabel, { color: colors.text.muted }]}>Lieferung</Text>
+            <Text style={[s.infoValue, { color: colors.text.primary }]} numberOfLines={1}>{deliveryShort}</Text>
+          </View>
+          <View style={[s.infoCol, s.infoColMid, { borderColor: colors.border.subtle }]}>
+            <Text style={[s.infoLabel, { color: colors.text.muted }]}>Bewertung</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+              {reviewCount > 0 && <Star size={12} color={colors.text.primary} strokeWidth={2} />}
+              <Text style={[s.infoValue, { color: colors.text.primary }]} numberOfLines={1}>
+                {reviewCount > 0 && avgRating != null ? `${avgRating.toFixed(1)} (${reviewCount})` : 'Neu'}
+              </Text>
             </View>
           </View>
-
-          {/* Promo-Pills */}
-          <View style={s.pillRow}>
-            {product.sold_count > 0 && (
-              <View style={[s.pill, { backgroundColor: 'rgba(239,68,68,0.12)', borderColor: 'rgba(239,68,68,0.25)' }]}>
-                <Text style={[s.pillText, { color: '#EF4444' }]}>
-                  🔥 {product.sold_count.toLocaleString('de-DE')}× gekauft
-                </Text>
-              </View>
-            )}
-            {isLowStock && (
-              <View style={[s.pill, { backgroundColor: 'rgba(245,158,11,0.12)', borderColor: 'rgba(245,158,11,0.25)' }]}>
-                <Text style={[s.pillText, { color: '#F59E0B' }]}>
-                  ⚡ Nur noch {product.stock} übrig
-                </Text>
-              </View>
-            )}
-            {product.category === 'physical' && product.free_shipping && (
-              <View style={[s.pill, { backgroundColor: 'rgba(34,197,94,0.12)', borderColor: 'rgba(34,197,94,0.25)', flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
-                <Truck size={11} color="#22C55E" strokeWidth={2.2} />
-                <Text style={[s.pillText, { color: '#22C55E' }]}>Gratis Versand</Text>
-              </View>
-            )}
-            {product.location && (
-              <View style={[s.pill, { backgroundColor: bgAccent, borderColor: colors.border.subtle, flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
-                <MapPin size={11} color={colors.text.muted} strokeWidth={2.2} />
-                <Text style={[s.pillText, { color: colors.text.muted }]}>{product.location}</Text>
-              </View>
-            )}
-          </View>
-
-          {/* Bewertungs-Zeile */}
-          <StarDisplay rating={avgRating} count={reviewCount} />
-
-          {/* Versand/Lieferzeile */}
-          <View style={s.deliveryRow}>
-            <Truck size={13} color={colors.text.muted} strokeWidth={2} />
-            <Text style={[s.deliveryText, { color: colors.text.muted }]}>
-              {catMeta?.delivery}
-            </Text>
+          <View style={[s.infoCol, s.infoColMid, { borderColor: colors.border.subtle }]}>
+            <Text style={[s.infoLabel, { color: colors.text.muted }]}>Lager</Text>
+            <Text style={[s.infoValue, { color: colors.text.primary }]} numberOfLines={1}>{stockShort}</Text>
           </View>
         </View>
 
-        <View style={[s.divider, { backgroundColor: colors.border.subtle }]} />
-
-        {/* 3. Seller-Karte (v1.26.5: Chat-Button zusätzlich) */}
-        <View style={s.sellerCard}>
-          {/* Avatar + Infos öffnen das Profil */}
+        {/* 5. Verkäufer (kompakt) */}
+        <View style={s.sellerRow}>
           <Pressable
             style={s.sellerInner}
             onPress={() => router.push({ pathname: '/user/[id]', params: { id: product.seller_id } } as any)}
@@ -954,17 +953,13 @@ export default function ProductDetailScreen() {
               <Image source={{ uri: product.seller_avatar }} style={s.sellerAvatar} contentFit="cover" />
             ) : (
               <View style={[s.sellerAvatar, { backgroundColor: bgAccent, alignItems: 'center', justifyContent: 'center' }]}>
-                <Text style={{ fontSize: 20 }}>👤</Text>
+                <Text style={{ fontSize: 16 }}>👤</Text>
               </View>
             )}
             <View style={s.sellerInfo}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                <Text style={[s.sellerName, { color: colors.text.primary }]}>
-                  @{product.seller_username}
-                </Text>
-                {product.seller_verified && (
-                  <BadgeCheck size={14} color={colors.text.primary} strokeWidth={2} />
-                )}
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Text style={[s.sellerName, { color: colors.text.primary }]}>@{product.seller_username}</Text>
+                {product.seller_verified && <BadgeCheck size={13} color={colors.text.primary} strokeWidth={2} />}
               </View>
               <Text style={[s.sellerSub, { color: colors.text.muted }]}>
                 {product.sold_count > 0 ? `${product.sold_count} Verkäufe` : 'Neu im Shop'}
@@ -972,77 +967,34 @@ export default function ProductDetailScreen() {
             </View>
           </Pressable>
 
-          {/* Chat-Button (Icon-Circle) — DM öffnen, nicht eigenes Produkt */}
           {product.seller_id !== currentUserId && (
             <Pressable
               onPress={handleChatSeller}
               disabled={isChatOpening}
-              style={[s.sellerChatBtn, {
-                borderColor: colors.border.subtle,
-                backgroundColor: bgAccent,
-              }]}
+              style={[s.sellerChatBtn, { borderColor: colors.border.subtle }]}
               hitSlop={6}
             >
               {isChatOpening
                 ? <ActivityIndicator color={colors.text.primary} size="small" />
-                : <MessageCircle size={18} color={colors.text.primary} strokeWidth={2} />
-              }
+                : <MessageCircle size={16} color={colors.text.primary} strokeWidth={2} />}
             </Pressable>
           )}
 
-          {/* Shop-Button — führt zum Profil (Shop-Tab) */}
           <Pressable
             onPress={() => router.push({ pathname: '/user/[id]', params: { id: product.seller_id } } as any)}
-            style={[s.sellerShopBtn, { backgroundColor: colors.text.primary }]}
+            style={[s.sellerShopBtn, { borderColor: colors.border.subtle }]}
           >
-            <Text style={[s.sellerShopText, { color: colors.bg.primary }]}>Zum Shop</Text>
+            <Text style={[s.sellerShopText, { color: colors.text.primary }]}>Zum Shop</Text>
           </Pressable>
         </View>
 
-        {/* 4. Beschreibung (nur falls vorhanden) */}
+        {/* 6. Beschreibung (nur falls vorhanden) */}
         {product.description ? (
-          <>
-            <View style={[s.divider, { backgroundColor: colors.border.subtle }]} />
-            <View style={s.section}>
-              <Description text={product.description} colors={colors} />
-            </View>
-          </>
+          <View style={s.descSection}>
+            <Text style={[s.descLabel, { color: colors.text.muted }]}>Beschreibung</Text>
+            <Description text={product.description} colors={colors} />
+          </View>
         ) : null}
-
-        {/* 5. Stock-Bar */}
-        {product.stock >= 0 && (
-          <>
-            <View style={[s.divider, { backgroundColor: colors.border.subtle }]} />
-            <View style={s.section}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: (isLowStock || product.stock === 0) ? 10 : 0 }}>
-                <Text style={[s.sectionLabel, { color: colors.text.primary }]}>Verfügbarkeit</Text>
-                <View style={[s.stockLabel, {
-                  backgroundColor: product.stock === 0
-                    ? 'rgba(239,68,68,0.12)'
-                    : isLowStock
-                    ? 'rgba(245,158,11,0.12)'
-                    : 'rgba(34,197,94,0.12)',
-                }]}>
-                  <Text style={{
-                    fontSize: 11, fontWeight: '600',
-                    color: product.stock === 0 ? '#EF4444' : isLowStock ? '#F59E0B' : '#22C55E',
-                  }}>
-                    {product.stock === 0 ? 'Ausverkauft' : `${product.stock} auf Lager`}
-                  </Text>
-                </View>
-              </View>
-              {(isLowStock || product.stock === 0) && (
-                <View style={[s.stockBg, { backgroundColor: bgAccent }]}>
-                  <View style={[s.stockFill, {
-                    width: product.stock === 0 ? ('100%' as any)
-                      : (`${Math.min(100, Math.max(10, product.stock / Math.max(product.stock + product.sold_count, 1) * 100))}%` as any),
-                    backgroundColor: product.stock === 0 ? '#EF4444' : '#F59E0B',
-                  }]} />
-                </View>
-              )}
-            </View>
-          </>
-        )}
       </ScrollView>
 
       {/* ─── Sticky Buy-Bar: Qty-Stepper + Merken + Big-CTA (Preis-Pill) ── */}
@@ -1136,13 +1088,17 @@ export default function ProductDetailScreen() {
             ) : isOutOfStock ? (
               <Text style={[s.buyBtnText, { color: colors.text.muted }]}>Ausverkauft</Text>
             ) : !canAfford ? (
-              <Text style={[s.buyBtnText, { color: colors.text.primary }]}>🪙 Aufladen</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <CoinIcon size={16} />
+                <Text style={[s.buyBtnText, { color: colors.text.primary }]}>Aufladen</Text>
+              </View>
             ) : (
-              // v1.26.4: Preis-Pill links | Trennstrich | "Jetzt kaufen" rechts
+              // Preis-Pill links | Trennstrich | "Jetzt kaufen" rechts
               <View style={s.buyBtnSplit}>
-                <View style={s.buyPricePill}>
+                <View style={[s.buyPricePill, { gap: 5 }]}>
+                  <CoinIcon size={16} />
                   <Text style={[s.buyPriceText, { color: colors.bg.primary }]}>
-                    🪙 {totalCost.toLocaleString('de-DE')}
+                    {totalCost.toLocaleString('de-DE')}
                   </Text>
                 </View>
                 <View style={[s.buyDivider, { backgroundColor: colors.bg.primary, opacity: 0.25 }]} />
@@ -1169,7 +1125,7 @@ export default function ProductDetailScreen() {
                   <PriceDisplay coins={totalCost} color={colors.text.primary} size="medium" />
                   {quantity > 1 && (
                     <Text style={{ fontSize: 11, fontWeight: '600', color: colors.text.muted }}>
-                      ({quantity}× 🪙 {effPrice.toLocaleString('de-DE')})
+                      ({quantity}× {effPrice.toLocaleString('de-DE')})
                     </Text>
                   )}
                 </View>
@@ -1177,9 +1133,12 @@ export default function ProductDetailScreen() {
             </View>
             <View style={[s.confirmBalance, { backgroundColor: bgAccent, borderColor: colors.border.subtle }]}>
               <Text style={{ fontSize: 12, color: colors.text.muted }}>Guthaben nach Kauf</Text>
-              <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text.primary }}>
-                🪙 {(coins - totalCost).toLocaleString('de-DE')}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                <CoinIcon size={14} />
+                <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text.primary }}>
+                  {(coins - totalCost).toLocaleString('de-DE')}
+                </Text>
+              </View>
             </View>
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <Pressable style={[s.confirmCancelBtn, { borderColor: colors.border.subtle }]} onPress={() => setShowConfirm(false)}>
@@ -1320,64 +1279,43 @@ const s = StyleSheet.create({
   titleSection: { paddingHorizontal: 16, paddingTop: 16, gap: 10 },
   // Preis
   priceSection: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 14, gap: 10 },
-  priceRow: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 },
 
-  // Sale-Prozent-Badge über dem Preis
-  saleBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#EF4444',
-    paddingHorizontal: 8, paddingVertical: 3,
-    borderRadius: 6,
-  },
-  saleBadgeText: {
-    color: '#fff', fontSize: 11, fontWeight: '700', letterSpacing: 0.2,
-  },
-
-  bookmarkBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1,
-  },
-
-  // Promo Pills
-  pillRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  pill: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, borderWidth: 1 },
-  pillText: { fontSize: 12, fontWeight: '700' },
-
-  deliveryRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  deliveryText: { fontSize: 12 },
-
-  // v1.26.6: Hairline-Divider statt 8px-Block (TikTok-Style auf weißem bg)
-  divider: { height: StyleSheet.hairlineWidth, marginHorizontal: 16 },
-
-  // Seller
-  sellerCard: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 14 },
-  sellerInner: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  sellerAvatar: { width: 46, height: 46, borderRadius: 23 },
-  sellerInfo: { flex: 1, gap: 3 },
-  sellerName: { fontSize: 14, fontWeight: '700' },
-  sellerSub: { fontSize: 11 },
-  // v1.26.5: Chat-Icon-Circle neben dem Shop-Pill
+  // Seller (kompakt)
+  sellerRow: { flexDirection: 'row', alignItems: 'center', gap: 9, paddingHorizontal: 16, paddingVertical: 13 },
+  sellerInner: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  sellerAvatar: { width: 34, height: 34, borderRadius: 17 },
+  sellerInfo: { flex: 1, gap: 2 },
+  sellerName: { fontSize: 13, fontWeight: '600' },
+  sellerSub: { fontSize: 11, marginTop: 1 },
   sellerChatBtn: {
-    width: 38, height: 38, borderRadius: 19,
+    width: 32, height: 32, borderRadius: 16,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1,
+    borderWidth: 0.5,
   },
-  sellerShopBtn: { paddingHorizontal: 16, paddingVertical: 9, borderRadius: 20 },
+  sellerShopBtn: { paddingHorizontal: 13, paddingVertical: 7, borderRadius: 18, borderWidth: 0.5 },
   sellerShopText: { fontSize: 12, fontWeight: '600' },
 
-  // Section
-  section: { paddingHorizontal: 16, paddingVertical: 16, gap: 12 },
-  sectionLabel: { fontSize: 14, fontWeight: '600' },
+  title: { fontSize: 17, fontWeight: '600', lineHeight: 22 },
+  subline: { fontSize: 12, marginTop: 4 },
 
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 9, paddingVertical: 5, borderRadius: 10, borderWidth: 1 },
-  chipText: { fontSize: 11, fontWeight: '600' },
-  title: { fontSize: 20, fontWeight: '700', lineHeight: 27 },
+  // Preis (monochrom: Coin + Preis + durchgestrichener Alt-Preis + −%)
+  priceRow2: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
+  priceNow: { fontSize: 22, fontWeight: '700', letterSpacing: -0.5 },
+  priceOld: { fontSize: 13, textDecorationLine: 'line-through' },
+  priceOff: { fontSize: 13, fontWeight: '600' },
+  locRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  locText: { fontSize: 12 },
 
-  // Stock
-  stockBg: { height: 6, borderRadius: 3, overflow: 'hidden' },
-  stockFill: { height: 6, borderRadius: 3 },
-  stockLabel: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  // Info-Zeile (3 Spalten, Etsy-Stil)
+  infoRow: { flexDirection: 'row', marginHorizontal: 16, marginTop: 14, borderTopWidth: StyleSheet.hairlineWidth, borderBottomWidth: StyleSheet.hairlineWidth },
+  infoCol: { flex: 1, paddingVertical: 9 },
+  infoColMid: { borderLeftWidth: StyleSheet.hairlineWidth, paddingLeft: 13 },
+  infoLabel: { fontSize: 11, marginBottom: 2 },
+  infoValue: { fontSize: 13, fontWeight: '600' },
+
+  // Beschreibung
+  descSection: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 4, gap: 6 },
+  descLabel: { fontSize: 12, fontWeight: '600' },
 
   // Buy Bar
   buyBar: { position: 'absolute', bottom: 0, left: 0, right: 0, paddingTop: 10, paddingHorizontal: 16, borderTopWidth: StyleSheet.hairlineWidth },
