@@ -9,7 +9,7 @@
 
 import { AIImageSheet } from '@/components/ai/AIImageSheet';
 import { ProductCoverImage } from '@/components/shop/ProductCoverImage';
-import { uploadProductImage } from '@/lib/uploadMedia';
+import { uploadDigitalFile,uploadProductImage } from '@/lib/uploadMedia';
 import { useCoinsWallet } from '@/lib/useGifts';
 import {
 useCreateProduct,
@@ -56,6 +56,19 @@ TextInput,
 View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+// ─── expo-document-picker LAZY laden (OTA-sicher) ─────────────────────────────
+// Wie der expo-video-Wrapper: try/require, damit ein OTA-Bundle NICHT crasht,
+// falls das Native-Modul (noch) nicht im laufenden Build steckt. Die Datei-
+// Auswahl aktiviert sich erst nach einem EAS-Rebuild (HAS_DOCUMENT_PICKER=true).
+let DocumentPicker: any = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  DocumentPicker = require('expo-document-picker');
+} catch {
+  /* Expo Go / Build ohne das Modul */
+}
+const HAS_DOCUMENT_PICKER = !!DocumentPicker?.getDocumentAsync;
 
 // ─── Kategorie-Optionen ───────────────────────────────────────────────────────
 
@@ -185,6 +198,30 @@ export default function MyShopScreen() {
     setForm(f => ({ ...f, image_urls: (f.image_urls ?? []).filter((_, i) => i !== idx) }));
   }, []);
 
+  // ── Digitale Datei (PDF/ZIP/…) → privater Supabase-Bucket `digital-products` ──
+  const [uploadingFile, setUploadingFile] = useState(false);
+
+  const pickDigitalFile = useCallback(async () => {
+    if (!HAS_DOCUMENT_PICKER) {
+      Alert.alert('Bald verfügbar', 'Die Datei-Auswahl ist nach dem nächsten App-Update verfügbar.');
+      return;
+    }
+    try {
+      // getDocumentAsync außerhalb des Builds (Native-Modul fehlt) wirft → fangen
+      const res = await DocumentPicker.getDocumentAsync({ type: '*/*', copyToCacheDirectory: true, multiple: false });
+      if (res.canceled || !res.assets?.[0]) return;
+      const asset = res.assets[0];
+      setUploadingFile(true);
+      const user = (await import('@/lib/authStore')).useAuthStore.getState().user;
+      const { url } = await uploadDigitalFile(user?.id ?? 'anon', asset.uri, asset.name ?? 'datei', asset.mimeType);
+      setForm(f => ({ ...f, file_url: url }));
+    } catch (e: any) {
+      Alert.alert('Datei nicht hinzugefügt', e?.message ?? 'Bitte App aktualisieren und erneut versuchen.');
+    } finally {
+      setUploadingFile(false);
+    }
+  }, []);
+
   // ── Sheet öffnen: Create-Mode ─────────────────────────────────────────────
 
   const openCreateSheet = useCallback(() => {
@@ -230,6 +267,12 @@ export default function MyShopScreen() {
     if (!form.title.trim()) { Alert.alert('Titel fehlt'); return; }
     // #2-Fix: Titelbild ist mit * als Pflicht markiert → jetzt auch erzwungen.
     if (!form.cover_url) { Alert.alert('Titelbild fehlt', 'Füge ein Titelbild hinzu — oder erstelle eins mit KI.'); return; }
+    // #1-Fix: digitales Produkt braucht eine Datei (erst erzwingen, wenn der
+    // Datei-Picker im Build verfügbar ist — pre-Rebuild kein Block).
+    if (form.category === 'digital' && HAS_DOCUMENT_PICKER && !form.file_url) {
+      Alert.alert('Datei fehlt', 'Lade die digitale Datei hoch, die die Käuferin nach dem Kauf erhält.');
+      return;
+    }
     if (form.price_coins < 1) { Alert.alert('Preis muss mindestens 1 Coin sein'); return; }
     // v1.26.3: Angebotspreis muss kleiner als regulärer Preis sein (und > 0)
     if (form.sale_price_coins != null) {
@@ -347,6 +390,8 @@ export default function MyShopScreen() {
           onPickGallery={pickGalleryImages}
           uploadingGallery={uploadingGallery}
           onRemoveGalleryImage={removeGalleryImage}
+          onPickFile={pickDigitalFile}
+          uploadingFile={uploadingFile}
           onOpenAI={() => setShowAISheet(true)}
           onSubmit={handleSave}
           isSaving={isSaving}
@@ -506,6 +551,7 @@ function ProductFormSheet({
   form, setForm, isEditMode,
   onPickCover, uploadingCover,
   onPickGallery, uploadingGallery, onRemoveGalleryImage,
+  onPickFile, uploadingFile,
   onOpenAI,
   onSubmit, isSaving, onClose, colors, insets,
 }: {
@@ -517,6 +563,8 @@ function ProductFormSheet({
   onPickGallery: () => void;
   uploadingGallery: boolean;
   onRemoveGalleryImage: (idx: number) => void;
+  onPickFile: () => void;
+  uploadingFile: boolean;
   onOpenAI: () => void;
   onSubmit: () => void;
   isSaving: boolean;
@@ -633,6 +681,39 @@ function ProductFormSheet({
             );
           })}
         </View>
+
+        {/* Digitale Datei — nur für digitale Produkte (Path A) */}
+        {form.category === 'digital' && (
+          <>
+            <Text style={[s.label, { color: colors.text.primary }]}>
+              <FileText size={12} color={colors.text.primary} /> Digitale Datei *
+            </Text>
+            <Pressable
+              onPress={onPickFile}
+              disabled={uploadingFile}
+              style={[s.filePicker, { borderColor: colors.border.subtle, backgroundColor: colors.bg.elevated }]}
+            >
+              {uploadingFile ? (
+                <ActivityIndicator color={colors.accent.primary} />
+              ) : form.file_url ? (
+                <>
+                  <FileText size={18} color="#22C55E" strokeWidth={2} />
+                  <Text style={[s.fileText, { color: colors.text.primary }]} numberOfLines={1}>Datei angehängt · Ersetzen</Text>
+                </>
+              ) : (
+                <>
+                  <FileText size={18} color={colors.text.muted} strokeWidth={1.8} />
+                  <Text style={[s.fileText, { color: colors.text.muted }]} numberOfLines={1}>
+                    {HAS_DOCUMENT_PICKER ? 'Datei auswählen (PDF, ZIP … · max 50 MB)' : 'Verfügbar nach App-Update'}
+                  </Text>
+                </>
+              )}
+            </Pressable>
+            <Text style={[s.fileHint, { color: colors.text.muted }]}>
+              Die Käuferin lädt diese Datei nach dem Kauf sicher herunter.
+            </Text>
+          </>
+        )}
 
         {/* Titel */}
         <Text style={[s.label, { color: colors.text.primary }]}>Produktname *</Text>
@@ -872,6 +953,15 @@ const s = StyleSheet.create({
   },
   coverPreview: { width: '100%', height: '100%' },
   coverHint:    { fontSize: 13 },
+
+  // Digitale Datei (Path A)
+  filePicker: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    borderRadius: 12, borderWidth: 1.5, borderStyle: 'dashed',
+    paddingHorizontal: 14, paddingVertical: 16,
+  },
+  fileText: { fontSize: 13, fontWeight: '600', flexShrink: 1 },
+  fileHint: { fontSize: 11, marginTop: 6 },
 
   aiPickerBtn: {
     flexDirection: 'row',

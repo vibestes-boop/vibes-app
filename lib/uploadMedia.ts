@@ -333,6 +333,45 @@ export async function uploadProductImage(
 }
 
 /**
+ * Digitale Produktdatei (PDF/ZIP/…) in den PRIVATEN Supabase-Storage-Bucket
+ * `digital-products` hochladen — NICHT R2, weil der Download-Vertrag
+ * (`generate_download_url` + `createSignedUrl`) genau diesen Bucket erwartet.
+ *
+ * Rückgabe-`url` hat das Format `…/object/public/digital-products/<path>`,
+ * damit die RPC daraus per Regex den Storage-Pfad extrahieren kann. Der Bucket
+ * ist privat → der „public"-URL-String funktioniert NICHT direkt; der Käufer
+ * bekommt nach Kauf eine kurzlebige Signed URL (RLS-gegated).
+ */
+const MAX_DIGITAL_FILE_BYTES = 50 * 1024 * 1024; // 50 MB
+
+export async function uploadDigitalFile(
+  userId: string,
+  localUri: string,
+  fileName: string,
+  mimeType?: string | null,
+): Promise<UploadResult> {
+  const fileRes = await fetch(localUri);
+  if (!fileRes.ok) throw new Error(`Datei nicht lesbar (${fileRes.status})`);
+  const buf = await fileRes.arrayBuffer();
+  if (buf.byteLength > MAX_DIGITAL_FILE_BYTES) {
+    const mb = (buf.byteLength / 1024 / 1024).toFixed(1);
+    throw new Error(`Datei zu groß: ${mb} MB (Maximum: 50 MB)`);
+  }
+  const safeExt = (fileName.split('.').pop() ?? 'bin')
+    .toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 8) || 'bin';
+  const path = `${userId}/${Date.now()}.${safeExt}`;
+  const contentType = mimeType || 'application/octet-stream';
+
+  const { error } = await supabase.storage
+    .from('digital-products')
+    .upload(path, buf, { contentType, upsert: false });
+  if (error) throw new Error(`Upload fehlgeschlagen: ${error.message}`);
+
+  const url = supabase.storage.from('digital-products').getPublicUrl(path).data.publicUrl;
+  return { url, path };
+}
+
+/**
  * Video-Thumbnail direkt hochladen (bereits generiertes Bild-URI)
  * Internes Hilfsmittel — wird von generateAndUploadThumbnail genutzt.
  */
