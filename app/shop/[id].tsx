@@ -1276,9 +1276,9 @@ const s = StyleSheet.create({
   sellerHeaderName: { fontSize: 13, fontWeight: '700', flexShrink: 1 },
 
   // Titel-Sektion (Produktname zuerst, über dem Preis — Profi-Shop-Hierarchie)
-  titleSection: { paddingHorizontal: 16, paddingTop: 16, gap: 10 },
+  titleSection: { paddingHorizontal: 16, paddingTop: 14 },
   // Preis
-  priceSection: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 14, gap: 10 },
+  priceSection: { paddingHorizontal: 16, paddingTop: 6, paddingBottom: 10, gap: 6 },
 
   // Seller (kompakt)
   sellerRow: { flexDirection: 'row', alignItems: 'center', gap: 9, paddingHorizontal: 16, paddingVertical: 13 },
@@ -1295,8 +1295,8 @@ const s = StyleSheet.create({
   sellerShopBtn: { paddingHorizontal: 13, paddingVertical: 7, borderRadius: 18, borderWidth: 0.5 },
   sellerShopText: { fontSize: 12, fontWeight: '600' },
 
-  title: { fontSize: 17, fontWeight: '600', lineHeight: 22 },
-  subline: { fontSize: 12, marginTop: 4 },
+  title: { fontSize: 17, fontWeight: '600', lineHeight: 21 },
+  subline: { fontSize: 12, marginTop: 2 },
 
   // Preis (monochrom: Coin + Preis + durchgestrichener Alt-Preis + −%)
   priceRow2: { flexDirection: 'row', alignItems: 'center', gap: 8, flexWrap: 'wrap' },
@@ -1307,7 +1307,7 @@ const s = StyleSheet.create({
   locText: { fontSize: 12 },
 
   // Info-Zeile (3 Spalten, Etsy-Stil)
-  infoRow: { flexDirection: 'row', marginHorizontal: 16, marginTop: 14, borderTopWidth: 1, borderBottomWidth: 1 },
+  infoRow: { flexDirection: 'row', marginHorizontal: 16, marginTop: 12, borderTopWidth: 1, borderBottomWidth: 1 },
   infoCol: { flex: 1, paddingVertical: 9 },
   infoColMid: { borderLeftWidth: 1, paddingLeft: 13 },
   infoLabel: { fontSize: 11, marginBottom: 2 },
