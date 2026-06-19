@@ -287,6 +287,7 @@ export async function createProduct(
       sale_price_coins: parse.data.sale_price_coins ?? null,
       stock: parse.data.stock,
       cover_url: parse.data.cover_url ?? null,
+      file_url: parse.data.file_url ?? null,
       image_urls: parse.data.image_urls,
       free_shipping: parse.data.free_shipping,
       location: parse.data.location ?? null,

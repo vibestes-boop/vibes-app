@@ -21,8 +21,11 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { createProduct, updateProduct } from "@/app/actions/shop";
 import { AIImageSheet } from "@/components/ai/ai-image-sheet";
+import { createClient } from "@/lib/supabase/client";
 import type { ProductCategory } from "@shared/types";
 import type { ShopProduct } from "@/lib/data/shop";
+
+const MAX_DIGITAL_FILE_BYTES = 50 * 1024 * 1024; // 50 MB
 
 // -----------------------------------------------------------------------------
 // ProductForm — shared Create/Edit. Keine react-hook-form Abhängigkeit hier,
@@ -64,6 +67,7 @@ interface FormState {
   sale_price_coins: string;
   stock: string;
   cover_url: string;
+  file_url: string;
   image_urls: string[];
   free_shipping: boolean;
   location: string;
@@ -80,6 +84,7 @@ function fromProduct(p: ShopProduct | null): FormState {
       sale_price_coins: "",
       stock: "-1",
       cover_url: "",
+      file_url: "",
       image_urls: [],
       free_shipping: false,
       location: "",
@@ -94,6 +99,7 @@ function fromProduct(p: ShopProduct | null): FormState {
     sale_price_coins: p.sale_price_coins?.toString() ?? "",
     stock: p.stock.toString(),
     cover_url: p.cover_url ?? "",
+    file_url: p.file_url ?? "",
     image_urls: p.image_urls,
     free_shipping: p.free_shipping,
     location: p.location ?? "",
@@ -117,6 +123,56 @@ export function ProductForm({ existing }: { existing: ShopProduct | null }) {
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
+
+  // Digitale Datei → privater Supabase-Bucket `digital-products` (Browser-Upload).
+  // Käufer:in lädt nach dem Kauf eine kurzlebige Signed URL (RLS-gegated).
+  const [uploadingFile, setUploadingFile] = useState(false);
+
+  async function handleDigitalFilePick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // reset → dieselbe Datei erneut wählbar
+    if (!file) return;
+    if (file.size > MAX_DIGITAL_FILE_BYTES) {
+      toast.error("Datei zu groß (max. 50 MB)");
+      return;
+    }
+    setUploadingFile(true);
+    try {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("Bitte einloggen.");
+        return;
+      }
+      const ext =
+        (file.name.split(".").pop() ?? "bin")
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, "")
+          .slice(0, 8) || "bin";
+      const path = `${user.id}/${Date.now()}.${ext}`;
+      const { error } = await supabase.storage
+        .from("digital-products")
+        .upload(path, file, {
+          upsert: false,
+          contentType: file.type || "application/octet-stream",
+        });
+      if (error) {
+        toast.error(`Upload fehlgeschlagen: ${error.message}`);
+        return;
+      }
+      const url = supabase.storage
+        .from("digital-products")
+        .getPublicUrl(path).data.publicUrl;
+      update("file_url", url);
+      toast.success("Datei hochgeladen");
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Upload fehlgeschlagen");
+    } finally {
+      setUploadingFile(false);
+    }
+  }
 
   const addImage = () => {
     const trimmed = imageInput.trim();
@@ -153,6 +209,7 @@ export function ProductForm({ existing }: { existing: ShopProduct | null }) {
         : null,
       stock: Number(form.stock),
       cover_url: form.cover_url.trim() || null,
+      file_url: form.file_url.trim() || null,
       image_urls: form.image_urls,
       free_shipping: form.free_shipping,
       location: form.location.trim() || null,
@@ -217,6 +274,47 @@ export function ProductForm({ existing }: { existing: ShopProduct | null }) {
             })}
           </div>
         </section>
+
+        {/* Digitale Datei — nur für digitale Produkte (Path A) */}
+        {form.category === "digital" && (
+          <section>
+            <label className="text-sm font-medium">Digitale Datei *</label>
+            <input
+              id="digital-file"
+              type="file"
+              className="hidden"
+              onChange={handleDigitalFilePick}
+            />
+            <button
+              type="button"
+              onClick={() =>
+                document.getElementById("digital-file")?.click()
+              }
+              disabled={uploadingFile}
+              className={cn(
+                "mt-1.5 flex h-12 w-full items-center justify-center gap-2 rounded-md border border-dashed bg-background px-3 text-sm transition-colors hover:bg-muted disabled:opacity-60",
+                form.file_url ? "text-foreground" : "text-muted-foreground",
+              )}
+            >
+              {uploadingFile ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <FileText className="h-4 w-4" />
+              )}
+              {uploadingFile
+                ? "Lädt hoch …"
+                : form.file_url
+                  ? "Datei angehängt · Ersetzen"
+                  : "Datei auswählen (PDF, ZIP … · max. 50 MB)"}
+            </button>
+            <div className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
+              <Info className="h-3 w-3" />
+              <span>
+                Käufer:innen laden diese Datei nach dem Kauf sicher herunter.
+              </span>
+            </div>
+          </section>
+        )}
 
         {/* Titel */}
         <section>

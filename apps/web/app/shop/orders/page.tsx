@@ -9,7 +9,6 @@ import {
   CheckCircle2,
   XCircle,
   RefreshCw,
-  Download,
   ArrowLeft,
   ShoppingBag,
   ChevronRight,
@@ -19,6 +18,7 @@ import {
 import { getMyOrders, type ShopOrder } from "@/lib/data/shop";
 import { getUser } from "@/lib/auth/session";
 import { ReviewDialog } from "@/components/shop/review-dialog";
+import { DigitalDownloadButton } from "@/components/shop/digital-download-button";
 
 // -----------------------------------------------------------------------------
 // /shop/orders — Käufer-Bestellhistorie.
@@ -88,8 +88,9 @@ function OrderRow({ order }: { order: ShopOrder }) {
   const product = order.product;
   const catLabel = CAT_LABELS[product?.category ?? ""] ?? "Produkt";
   const isDigital = product?.category === "digital";
-  const canDownload =
-    isDigital && order.status === "completed" && !!order.download_url;
+  // Download dynamisch via generate_download_url + Signed URL (privater Bucket) —
+  // NICHT mehr order.download_url (das wurde nie gefüllt + Bucket ist privat).
+  const canDownload = isDigital && order.status === "completed";
   // Buyer can review any completed order — mirrors native canReview logic.
   const canReview = order.status === "completed";
 
@@ -159,17 +160,7 @@ function OrderRow({ order }: { order: ShopOrder }) {
 
         {/* Actions */}
         <div className="flex flex-wrap items-center gap-2 pt-0.5">
-          {canDownload && (
-            <a
-              href={order.download_url!}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-opacity hover:opacity-90"
-            >
-              <Download className="h-3.5 w-3.5" />
-              Herunterladen
-            </a>
-          )}
+          {canDownload && <DigitalDownloadButton orderId={order.id} />}
           {canReview && <ReviewDialog productId={order.product_id} />}
           <Link
             href={`/shop/${order.product_id}` as Route}

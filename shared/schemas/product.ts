@@ -17,6 +17,7 @@ const productBaseSchema = z.object({
   sale_price_coins: z.number().int().positive().nullable().optional(),
   stock:            z.number().int().min(-1).max(999_999), // -1 = unlimited
   cover_url:        z.string().url().nullable().optional(),
+  file_url:         z.string().url().nullable().optional(), // digitale Produktdatei (Supabase Storage: digital-products)
   image_urls:       z.array(z.string().url()).max(10).default([]),
   free_shipping:    z.boolean().default(false),
   location:         z.string().trim().max(120).nullable().optional(),

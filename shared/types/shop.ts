@@ -10,6 +10,7 @@ export interface Product {
   sale_price_coins: number | null;
   stock: number; // -1 = unlimited
   cover_url: string | null;
+  file_url: string | null; // digitale Produktdatei (Supabase Storage: digital-products)
   image_urls: string[];
   free_shipping: boolean;
   location: string | null;
