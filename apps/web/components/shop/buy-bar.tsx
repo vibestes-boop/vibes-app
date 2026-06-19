@@ -67,7 +67,10 @@ export function BuyBar({
     onSuccess: (r) => {
       setResult(r);
       setQty(1);
-      // Modal bleibt offen und zeigt den Erfolg — Caller kann dann schließen
+      // Modal bleibt offen und zeigt den Erfolg — Caller kann dann schließen.
+      // router.refresh() lädt die Server-Daten neu, damit das Coin-Badge oben
+      // (server-gerendert) sofort den neuen Saldo zeigt statt den alten.
+      router.refresh();
     },
   });
 
@@ -328,7 +331,7 @@ function SuccessPanel({
           className="flex-1"
           onClick={() => {
             onClose();
-            router.push("/studio/orders" as Route);
+            router.push("/shop/orders" as Route);
           }}
         >
           Meine Käufe
