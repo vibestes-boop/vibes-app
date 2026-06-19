@@ -199,6 +199,15 @@ export function ProductForm({ existing }: { existing: ShopProduct | null }) {
   };
 
   const handleSubmit = () => {
+    // Parität mit Mobile: Titelbild + (bei digital) Datei sind Pflicht.
+    if (!form.cover_url.trim()) {
+      toast.error("Titelbild fehlt — Cover-URL einfügen oder mit KI erstellen.");
+      return;
+    }
+    if (form.category === "digital" && !form.file_url.trim()) {
+      toast.error("Lade die digitale Datei hoch, die Käufer:innen erhalten.");
+      return;
+    }
     const payload = {
       title: form.title.trim(),
       description: form.description.trim() || null,

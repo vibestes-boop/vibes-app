@@ -13,7 +13,7 @@ const productBaseSchema = z.object({
   title:            z.string().trim().min(3, 'Titel mindestens 3 Zeichen').max(80),
   description:      z.string().trim().max(2000).optional().nullable(),
   category:         productCategoryEnum,
-  price_coins:      z.number().int().positive().max(10_000_000),
+  price_coins:      z.number().int().positive().max(1_000_000),
   sale_price_coins: z.number().int().positive().nullable().optional(),
   stock:            z.number().int().min(-1).max(999_999), // -1 = unlimited
   cover_url:        z.string().url().nullable().optional(),
@@ -31,6 +31,8 @@ type ProductRefineInput = {
   sale_price_coins?: number | null;
   category?: z.infer<typeof productCategoryEnum>;
   free_shipping?: boolean;
+  cover_url?: string | null;
+  file_url?: string | null;
 };
 
 // -----------------------------------------------------------------------------
@@ -58,9 +60,24 @@ const refineFreeShippingErr = {
   message: 'Gratis-Versand nur bei physischen Produkten',
 };
 
+// Konsistenz mit Mobile (my-shop.tsx handleSave): Titelbild ist Pflicht, und ein
+// digitales Produkt braucht eine hochgeladene Datei (sonst Download ins Leere).
+// Nur auf dem Create-Schema — beim Edit (.partial()) bleiben die Felder optional.
+const refineCoverRequired: (d: ProductRefineInput) => unknown = (d) => !!d.cover_url;
+const refineCoverErr = { path: ['cover_url'], message: 'Titelbild erforderlich' };
+
+const refineDigitalNeedsFile: (d: ProductRefineInput) => unknown = (d) =>
+  d.category !== 'digital' || !!d.file_url;
+const refineDigitalFileErr = {
+  path: ['file_url'],
+  message: 'Digitale Produkte brauchen eine hochgeladene Datei',
+};
+
 export const productCreateSchema = productBaseSchema
   .refine(refineSalePriceLessThanPrice, refineSalePriceErr)
-  .refine(refineFreeShippingPhysicalOnly, refineFreeShippingErr);
+  .refine(refineFreeShippingPhysicalOnly, refineFreeShippingErr)
+  .refine(refineCoverRequired, refineCoverErr)
+  .refine(refineDigitalNeedsFile, refineDigitalFileErr);
 export type ProductCreateInput = z.infer<typeof productCreateSchema>;
 
 export const productUpdateSchema = productBaseSchema
