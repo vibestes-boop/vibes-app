@@ -147,8 +147,10 @@ Deno.serve(async (req) => {
   form.set('metadata[tier_id]', tier.id);
   form.set('metadata[coins]', String(tier.coins));
   form.set('metadata[bonus_coins]', String(tier.bonus_coins));
-  // Automatic Payment Methods = Apple/Google/Card/Link
-  form.set('automatic_payment_methods[enabled]', 'true');
+  // Zahlungsarten NICHT setzen — `automatic_payment_methods` ist ein
+  // PaymentIntent-Parameter, NICHT für Checkout-Sessions (führte zu Stripe 400
+  // "unknown parameter"). Checkout nutzt automatisch die im Stripe-Dashboard
+  // aktivierten Methoden (Card/Apple/Google/Link/Klarna/SEPA).
   // Invoice immer aktiv — wichtig für Accounting
   form.set('invoice_creation[enabled]', 'true');
   form.set('invoice_creation[invoice_data][description]',
