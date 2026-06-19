@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { Route } from "next";
-import { Store, Bookmark, Coins, Package, ShoppingBag } from "lucide-react";
+import { Store, Bookmark, Coins, Package, ShoppingBag, Plus } from "lucide-react";
 import { ShopGrid } from "@/components/shop/shop-grid";
 import { ShopFilters } from "@/components/shop/shop-filters";
 import { ShopSearchInput } from "@/components/shop/shop-search-input";
@@ -93,6 +93,15 @@ export default async function ShopCatalogPage({ searchParams }: PageProps) {
                 <Coins className="h-4 w-4 text-muted-foreground" />
                 {balance.toLocaleString(LOCALE_INTL[locale])}
               </div>
+            )}
+            {user && (
+              <Link
+                href={"/studio/shop/new" as Route}
+                className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3.5 py-1.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
+              >
+                <Plus className="h-4 w-4" />
+                Verkaufen
+              </Link>
             )}
             {user && (
               <Link
