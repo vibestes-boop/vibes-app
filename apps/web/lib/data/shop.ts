@@ -497,13 +497,17 @@ export const getMyCoinBalance = cache(async (): Promise<number> => {
   } = await supabase.auth.getUser();
   if (!user) return 0;
 
+  // FIX: Der Coin-Saldo lebt in `coins_wallets` (Spalte `coins`), NICHT in
+  // `profiles.coins_balance` (existiert nicht → lieferte immer 0). Dadurch zeigte
+  // das Kauf-Modal „Aktuelles Guthaben: 0", obwohl Header/Coin-Shop (die schon
+  // `coins_wallets` lesen) korrekt 10.000 anzeigten.
   const { data } = await supabase
-    .from('profiles')
-    .select('coins_balance')
-    .eq('id', user.id)
+    .from('coins_wallets')
+    .select('coins')
+    .eq('user_id', user.id)
     .maybeSingle();
 
-  return (data?.coins_balance as number | undefined) ?? 0;
+  return (data?.coins as number | undefined) ?? 0;
 });
 
 // -----------------------------------------------------------------------------
