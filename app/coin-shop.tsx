@@ -101,7 +101,7 @@ export default function CoinShopScreen() {
       await new Promise(r => setTimeout(r, 1500));
       await refetch();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('🎉 Danke!', `${selectedPkg.coins} Borz Coins wurden gutgeschrieben.`);
+      Alert.alert('🎉 Danke!', `${selectedPkg.coins} Serlo Coins wurden gutgeschrieben.`);
     } catch (err: unknown) {
       // err.userCancelled: RevenueCat setzt diesen Flag wenn User abbricht — kein Alert
       if ((err as Record<string, unknown>)?.userCancelled) return;
@@ -162,7 +162,7 @@ export default function CoinShopScreen() {
               source={SERLO_COIN}
               style={[s.heroCoin, { transform: [{ scale: coinScale }] }]}
             />
-            <Text style={s.heroTitle}>Borz Coins</Text>
+            <Text style={s.heroTitle}>Serlo Coins</Text>
             <Text style={s.heroSub}>Sende Geschenke an Creator im Livestream</Text>
           </View>
 

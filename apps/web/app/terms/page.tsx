@@ -49,7 +49,7 @@ export default function TermsPage() {
           Kern-Funktionalitäten umfasst: Video-Feed mit For-You- und Following-
           Algorithmus, Stories mit 24-Stunden-Sichtbarkeit, Live-Streaming,
           Direktnachrichten, Pods (Community-Gruppen), In-App-Marktplatz (Shop),
-          virtuelle Währung (&bdquo;Borz-Coins&quot;) und Geschenksystem.
+          virtuelle Währung (&bdquo;Serlo Coins&quot;) und Geschenksystem.
         </p>
         <p>
           Serlo behält sich vor, einzelne Funktionen zu ändern, zu erweitern
@@ -105,10 +105,10 @@ export default function TermsPage() {
       </section>
 
       <section>
-        <h2>§ 5 Borz-Coins und digitale Geschenke</h2>
+        <h2>§ 5 Serlo Coins und digitale Geschenke</h2>
         <ol>
           <li>
-            Borz-Coins sind eine plattform-interne virtuelle Währung ohne
+            Serlo Coins sind eine plattform-interne virtuelle Währung ohne
             gesetzlichen Auszahlungs-Anspruch. Der Erwerb erfolgt über die
             jeweilige App-Store-Abrechnung oder über Stripe auf der Web-
             Version.

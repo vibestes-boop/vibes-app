@@ -440,7 +440,7 @@ export function AnalyticsTab({
           {/* ── Engagement Rate ── */}
           <EngagementBar rate={overview?.engagement_rate ?? 0} colors={colors} />
 
-          {/* ── Einnahmen (BorzCoins / Diamonds) ── */}
+          {/* ── Einnahmen (Serlo Coins / Diamonds) ── */}
           <SectionLabel label={`Einnahmen · ${period} Tage`} colors={colors} />
           <EarningsPanel userId={userId} period={period} colors={colors} />
 

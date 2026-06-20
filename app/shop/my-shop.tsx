@@ -746,7 +746,7 @@ function ProductFormSheet({
         />
 
         {/* Preis */}
-        <Text style={[s.label, { color: colors.text.primary }]}>Preis (BorzCoins)</Text>
+        <Text style={[s.label, { color: colors.text.primary }]}>Preis (Serlo Coins)</Text>
         <View style={[s.priceRow, { backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle }]}>
           <CoinIcon size={18} />
           <TextInput
