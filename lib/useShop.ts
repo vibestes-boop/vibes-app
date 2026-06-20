@@ -24,7 +24,7 @@ import { Linking } from 'react-native';
 
 // ─── Typen ────────────────────────────────────────────────────────────────────
 
-export type ProductCategory = 'digital' | 'physical' | 'service';
+export type ProductCategory = 'digital' | 'physical' | 'service' | 'collectible';
 
 export interface Product {
   id:          string;

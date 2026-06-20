@@ -29,6 +29,7 @@ ArrowLeft,
 Box,
 ChevronRight,
 FileText,
+Gem,
 Image as ImageIcon,
 Images,
 MapPin,
@@ -73,9 +74,10 @@ const HAS_DOCUMENT_PICKER = !!DocumentPicker?.getDocumentAsync;
 // ─── Kategorie-Optionen ───────────────────────────────────────────────────────
 
 const CATEGORIES: { key: ProductCategory; label: string; icon: any; desc: string }[] = [
-  { key: 'digital',  label: 'Digital',   icon: FileText, desc: 'PDF, Rezept, Preset, Tutorial' },
-  { key: 'physical', label: 'Physisch',  icon: Box,      desc: 'Merchandise, Handwerk, Fashion' },
-  { key: 'service',  label: 'Service',   icon: Wrench,   desc: 'Coaching, Beratung, Custom Order' },
+  { key: 'digital',    label: 'Digital',     icon: FileText, desc: 'PDF, Rezept, Preset, Tutorial' },
+  { key: 'physical',   label: 'Physisch',    icon: Box,      desc: 'Merchandise, Handwerk, Fashion' },
+  { key: 'service',    label: 'Service',     icon: Wrench,   desc: 'Coaching, Beratung, Custom Order' },
+  { key: 'collectible', label: 'Collectible', icon: Gem,     desc: 'Limitiertes Sammelobjekt' },
 ];
 
 // ─── Leerer Initialzustand ────────────────────────────────────────────────────

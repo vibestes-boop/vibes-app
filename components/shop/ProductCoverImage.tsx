@@ -4,7 +4,7 @@ import { ShoppingBag } from 'lucide-react-native';
 import { useEffect,useState } from 'react';
 import { StyleProp,StyleSheet,Text,View,ViewStyle } from 'react-native';
 
-type ProductCategory = 'digital' | 'physical' | 'service';
+type ProductCategory = 'digital' | 'physical' | 'service' | 'collectible';
 
 export function ProductCoverImage({
   uri,
@@ -54,6 +54,7 @@ export function ProductCoverImage({
 function categoryLabel(category: ProductCategory) {
   if (category === 'digital') return 'Digital';
   if (category === 'service') return 'Service';
+  if (category === 'collectible') return 'Collectible';
   return 'Shop';
 }
 

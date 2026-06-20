@@ -41,6 +41,7 @@ Check,
 CheckCircle,
 ChevronDown,ChevronUp,FileText,
 Flag,
+Gem,
 HelpCircle,
 MapPin,
 MessageCircle,
@@ -77,9 +78,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 // ─── Konstanten ───────────────────────────────────────────────────────────────
 
 const CAT_META = {
-  digital:  { label: 'Digital',  icon: FileText, delivery: 'Sofortiger Download nach dem Kauf' },
-  physical: { label: 'Physisch', icon: Box,      delivery: 'Lieferung per DM mit dem Verkäufer' },
-  service:  { label: 'Service',  icon: Wrench,   delivery: 'Verkäufer meldet sich nach dem Kauf' },
+  digital:     { label: 'Digital',     icon: FileText, delivery: 'Sofortiger Download nach dem Kauf' },
+  physical:    { label: 'Physisch',    icon: Box,      delivery: 'Lieferung per DM mit dem Verkäufer' },
+  service:     { label: 'Service',     icon: Wrench,   delivery: 'Verkäufer meldet sich nach dem Kauf' },
+  collectible: { label: 'Collectible', icon: Gem,      delivery: 'Lieferung per DM mit dem Verkäufer' },
 };
 
 // Warme Stimme — siehe Design-Gesetz in CLAUDE.md (Fehler → Mikro-Freude).

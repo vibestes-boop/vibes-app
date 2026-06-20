@@ -54,6 +54,7 @@ const CAT_LABELS: Record<string, string> = {
   digital: '📁 Digital',
   physical: '📦 Physisch',
   service: '🛠️ Service',
+  collectible: '💎 Collectible',
   preset: '🎨 Preset',
   video: '🎬 Video',
 };

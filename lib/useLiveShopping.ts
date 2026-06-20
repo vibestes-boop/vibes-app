@@ -20,7 +20,7 @@ export interface PinnedProduct {
   title:     string;
   price:     number;
   coverUrl:  string | null;
-  category:  'digital' | 'physical' | 'service';
+  category:  'digital' | 'physical' | 'service' | 'collectible';
 }
 
 export interface ProductSoldEvent {

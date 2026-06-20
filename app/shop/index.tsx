@@ -47,10 +47,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 // ─── Konstanten ──────────────────────────────────────────────────────────────
 
 const CATEGORIES: { key: ProductCategory | 'all'; emoji: string; label: string }[] = [
-  { key: 'all',      emoji: '🛍',  label: 'Alle'     },
-  { key: 'digital',  emoji: '💾',  label: 'Digital'  },
-  { key: 'physical', emoji: '📦',  label: 'Physisch' },
-  { key: 'service',  emoji: '✨',  label: 'Service'  },
+  { key: 'all',         emoji: '🛍',  label: 'Alle'        },
+  { key: 'digital',     emoji: '💾',  label: 'Digital'     },
+  { key: 'physical',    emoji: '📦',  label: 'Physisch'    },
+  { key: 'service',     emoji: '✨',  label: 'Service'     },
+  { key: 'collectible', emoji: '💎',  label: 'Collectible' },
 ];
 
 type SortKey = 'popular' | 'newest' | 'price_asc' | 'price_desc';
