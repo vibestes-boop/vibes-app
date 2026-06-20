@@ -15,6 +15,7 @@
  * - More-Menu (Speichern, Melden, Hilfe)
  */
 
+import { CoinIcon } from '@/components/ui/CoinIcon';
 import { ProductCoverImage } from '@/components/shop/ProductCoverImage';
 import { useAuthStore } from '@/lib/authStore';
 import { supabase } from '@/lib/supabase';
@@ -107,36 +108,7 @@ function salePercent(p: Product): number | null {
   return Math.round((1 - p.sale_price_coins / p.price_coins) * 100);
 }
 
-// ─── CoinIcon — kleine goldene Borz-Münze (ersetzt den 🪙-Emoji überall) ──────
-
-function CoinIcon({ size = 18, dim = false }: { size?: number; dim?: boolean }) {
-  return (
-    <View
-      style={{
-        width: size,
-        height: size,
-        borderRadius: size / 2,
-        backgroundColor: dim ? '#D8D8DA' : '#E6B422',
-        borderWidth: Math.max(1, Math.round(size * 0.07)),
-        borderColor: dim ? '#BEBEC0' : '#B98A00',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <Text
-        style={{
-          fontSize: Math.round(size * 0.58),
-          fontWeight: '700',
-          lineHeight: Math.round(size * 0.72),
-          color: dim ? '#8A8A8C' : '#5E4600',
-          includeFontPadding: false,
-        }}
-      >
-        B
-      </Text>
-    </View>
-  );
-}
+// CoinIcon: zentrale SERLO-Münze, importiert aus @/components/ui/CoinIcon
 
 // ─── Preis-Formatter: große Ganzzahl + kleine Dezimalstelle ──────────────────
 
@@ -529,7 +501,10 @@ function ShareSheet({ product, onClose, colors }: { product: Product; onClose: (
             <ProductCoverImage uri={product.cover_url} category={product.category} style={ss.previewImg} iconSize={18} />
             <View style={{ flex: 1 }}>
               <Text style={ss.previewTitle} numberOfLines={2}>{product.title}</Text>
-              <Text style={ss.previewPrice}>🪙 {product.price_coins.toLocaleString('de-DE')} Coins</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                <CoinIcon size={13} />
+                <Text style={ss.previewPrice}>{product.price_coins.toLocaleString('de-DE')} Coins</Text>
+              </View>
             </View>
             <Pressable onPress={onClose} hitSlop={12}>
               <X size={20} color="rgba(255,255,255,0.4)" />

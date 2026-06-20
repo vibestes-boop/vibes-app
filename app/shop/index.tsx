@@ -11,6 +11,7 @@
  * - Coin-Balance Hero-Pill im Header
  */
 
+import { CoinIcon } from '@/components/ui/CoinIcon';
 import { useCoinsWallet } from '@/lib/useGifts';
 import { useShopProducts,type Product,type ProductCategory } from '@/lib/useShop';
 import { useTheme } from '@/lib/useTheme';
@@ -247,9 +248,12 @@ function ProductCard({ product, onPress, colors }: {
         {/* Preis-Zeile: aktueller Preis (+ durchgestrichener Vorpreis bei Sale) + Sold-Pill */}
         <View style={card.footer}>
           <View style={card.priceCol}>
-            <Text style={[card.price, { color: hasSale ? '#EF4444' : colors.text.primary }]}>
-              🪙 {currentPrice.toLocaleString('de-DE')}
-            </Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+              <CoinIcon size={13} />
+              <Text style={[card.price, { color: hasSale ? '#EF4444' : colors.text.primary }]}>
+                {currentPrice.toLocaleString('de-DE')}
+              </Text>
+            </View>
             {hasSale && (
               <Text style={[card.priceOld, { color: colors.text.muted }]}>
                 {product.price_coins.toLocaleString('de-DE')}
@@ -509,7 +513,7 @@ export default function ShopScreen() {
             <View style={s.headerRight}>
               {/* Coin-Balance */}
               <View style={[s.coinPill, { backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle }]}>
-                <Text style={{ fontSize: 14 }}>🪙</Text>
+                <CoinIcon size={15} />
                 <Text style={[s.coinText, { color: colors.text.primary }]}>
                   {coins.toLocaleString('de-DE')}
                 </Text>

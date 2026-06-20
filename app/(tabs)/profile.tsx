@@ -10,6 +10,7 @@ ProfileStudioHeader,
 type ProfilePostGridItem,
 type ProfileTab
 } from '@/components/profile';
+import { CoinIcon } from '@/components/ui/CoinIcon';
 import { ProfileGridSkeleton } from '@/components/profile/ProfileGridSkeleton';
 import { getProfileStyles } from '@/components/profile/profileStyles';
 import { useAuthStore } from '@/lib/authStore';
@@ -290,8 +291,9 @@ export default function ProfileScreen() {
                 <Text style={s.shopSaleBadgeText}>-{Math.round((1 - salePrice / product.price_coins) * 100)}%</Text>
               </View>
             )}
-            <View style={s.shopPricePill}>
-              <Text style={s.shopPriceText} numberOfLines={1}>🪙 {shownPrice.toLocaleString('de-DE')}</Text>
+            <View style={[s.shopPricePill, { flexDirection: 'row', alignItems: 'center', gap: 3 }]}>
+              <CoinIcon size={12} />
+              <Text style={s.shopPriceText} numberOfLines={1}>{shownPrice.toLocaleString('de-DE')}</Text>
             </View>
           </Pressable>
         </View>

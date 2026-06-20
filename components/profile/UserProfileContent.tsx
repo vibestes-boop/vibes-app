@@ -6,6 +6,7 @@
  *   - app/user/[id].tsx (Route-Wrapper)
  *   - app/(tabs)/index.tsx (Swipe-Panel, folgt dem Finger)
  */
+import { CoinIcon } from '@/components/ui/CoinIcon';
 import { BattleHistoryList } from '@/components/profile/BattleHistoryList';
 import { ProfileHighlightsRow } from '@/components/profile/ProfileHighlightsRow';
 import { ProfileShareSheet } from '@/components/profile/ProfileShareSheet';
@@ -969,9 +970,10 @@ export function UserProfileContent({ userId, onBack }: Props) {
                     </Text>
                   </View>
                 )}
-                <View style={s.shopPricePill}>
+                <View style={[s.shopPricePill, { flexDirection: 'row', alignItems: 'center', gap: 3 }]}>
+                  <CoinIcon size={12} />
                   <Text style={s.shopPriceText} numberOfLines={1}>
-                    🪙 {shownPrice.toLocaleString('de-DE')}
+                    {shownPrice.toLocaleString('de-DE')}
                   </Text>
                 </View>
               </Pressable>

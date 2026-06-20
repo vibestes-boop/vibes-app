@@ -132,7 +132,7 @@ function ProfileActionRow({
             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onBuyCoins(); }}
             accessibilityLabel="Coins kaufen"
           >
-            <Image source={require('@/assets/borz-coin.png')} style={{ width: 22, height: 22 }} contentFit="contain" />
+            <Image source={require('@/assets/serlo-coin.png')} style={{ width: 22, height: 22 }} contentFit="contain" />
           </Pressable>
         )}
 

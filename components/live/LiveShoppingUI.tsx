@@ -8,6 +8,7 @@
  *  3. LiveShopHostPanel  — Host: eigene Produkte auswählen + pinnen
  */
 
+import { CoinIcon } from '@/components/ui/CoinIcon';
 import { ProductCoverImage } from '@/components/shop/ProductCoverImage';
 import { useCoinsWallet } from '@/lib/useGifts';
 import type { PinnedProduct,ProductSoldEvent } from '@/lib/useLiveShopping';
@@ -101,7 +102,10 @@ export function PinnedProductPill({ product, onBought, viewerUsername }: PinnedP
         {/* Info */}
         <View style={s.pillInfo}>
           <Text style={s.pillTitle} numberOfLines={1}>{product.title}</Text>
-          <Text style={s.pillPrice}>🪙 {product.price.toLocaleString('de-DE')} Coins</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+            <CoinIcon size={13} />
+            <Text style={s.pillPrice}>{product.price.toLocaleString('de-DE')} Coins</Text>
+          </View>
         </View>
 
         {/* Aktion */}
@@ -126,7 +130,10 @@ export function PinnedProductPill({ product, onBought, viewerUsername }: PinnedP
           <View style={s.confirmSheet}>
             <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
             <Text style={s.confirmTitle}>{product.title}</Text>
-            <Text style={s.confirmPrice}>🪙 {product.price.toLocaleString('de-DE')} Coins</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
+              <CoinIcon size={16} />
+              <Text style={s.confirmPrice}>{product.price.toLocaleString('de-DE')} Coins</Text>
+            </View>
             <Text style={s.confirmBalance}>
               Guthaben: {coins.toLocaleString('de-DE')} → {(coins - product.price).toLocaleString('de-DE')}
             </Text>
@@ -167,7 +174,10 @@ export function ProductSoldBanner({ events }: ProductSoldBannerProps) {
         <Text style={s.soldBannerUser} numberOfLines={1}>@{latest.buyerUsername}</Text>
         <Text style={s.soldBannerProduct} numberOfLines={1}>{`hat "${latest.productTitle}" gekauft!`}</Text>
       </View>
-      <Text style={s.soldBannerCoins}>🪙 {latest.quantity}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+        <CoinIcon size={13} />
+        <Text style={s.soldBannerCoins}>{latest.quantity}</Text>
+      </View>
     </View>
   );
 }
@@ -252,7 +262,10 @@ export function LiveShopHostPanel({
                     <ProductCoverImage uri={item.cover_url} category={item.category} style={s.hostProductCover} iconSize={16} />
                     <View style={s.hostProductInfo}>
                       <Text style={s.hostProductTitle} numberOfLines={1}>{item.title}</Text>
-                      <Text style={s.hostProductPrice}>🪙 {item.price_coins.toLocaleString('de-DE')}</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                        <CoinIcon size={12} />
+                        <Text style={s.hostProductPrice}>{item.price_coins.toLocaleString('de-DE')}</Text>
+                      </View>
                     </View>
                     {isPinned ? (
                       <View style={s.pinnedBadge}><Text style={s.pinnedBadgeText}>LIVE 📌</Text></View>

@@ -5,6 +5,7 @@
  * Unterstützt Light & Dark Mode. Coin-Balance + Katalog + Senden.
  */
 
+import { CoinIcon } from '@/components/ui/CoinIcon';
 import { formatCoins,RARITY_META,type GiftItem,type GiftRarity } from '@/lib/gifts';
 import { useGiftCatalog } from '@/lib/useGiftCatalog';
 import { useCoinsWallet,useSendGift } from '@/lib/useGifts';
@@ -160,7 +161,7 @@ function GiftCardComponent({
 
       {/* Cost */}
       <View style={card.costRow}>
-        <Text style={card.coinGlyph}>🪙</Text>
+        <CoinIcon size={12} />
         <Text style={[card.cost, !canAfford && card.costLow]}>
           {formatCoins(gift.coinCost)}
         </Text>
@@ -369,7 +370,7 @@ export function GiftPicker({
                 <ActivityIndicator size="small" color="#f59e0b" />
               ) : (
                 <View style={[s.balancePill, isDark ? s.balancePillDark : s.balancePillLight]}>
-                  <Text style={s.balanceCoin}>🪙</Text>
+                  <CoinIcon size={15} />
                   <Text style={[s.balanceNum, { color: isDark ? '#FCD34D' : '#B45309' }]}>
                     {formatCoins(coins)}
                   </Text>

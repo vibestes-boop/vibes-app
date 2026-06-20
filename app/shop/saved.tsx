@@ -4,6 +4,7 @@
  * Erreichbar über: More-Menu → "Gespeicherte ansehen"
  */
 
+import { CoinIcon } from '@/components/ui/CoinIcon';
 import { useSavedProduct,useSavedProducts,type SavedProduct } from '@/lib/useShop';
 import { ProductCoverImage } from '@/components/shop/ProductCoverImage';
 import { useTheme } from '@/lib/useTheme';
@@ -51,7 +52,10 @@ function SavedCard({ product, onPress, colors }: {
       <View style={card.info}>
         <Text style={[card.title, { color: colors.text.primary }]} numberOfLines={2}>{product.title}</Text>
         <View style={card.footer}>
-          <Text style={[card.price, { color: colors.text.primary }]}>🪙 {product.price_coins.toLocaleString('de-DE')}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+            <CoinIcon size={13} />
+            <Text style={[card.price, { color: colors.text.primary }]}>{product.price_coins.toLocaleString('de-DE')}</Text>
+          </View>
           <Text style={[card.seller, { color: colors.text.muted }]}>@{product.seller_username}</Text>
         </View>
       </View>

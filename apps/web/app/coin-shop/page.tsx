@@ -2,7 +2,7 @@ import type { Route } from 'next';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { Coins, Check, Sparkles, ShieldCheck, CreditCard, Apple } from 'lucide-react';
+import { Check, Sparkles, ShieldCheck, CreditCard, Apple } from 'lucide-react';
 
 import { getUser } from '@/lib/auth/session';
 import {
@@ -13,6 +13,7 @@ import {
   coinsPerEuro,
 } from '@/lib/data/payments';
 import { CoinShopTierCard } from '@/components/coin-shop/tier-card';
+import { CoinIcon } from '@/components/ui/coin-icon';
 
 // -----------------------------------------------------------------------------
 // /coin-shop — öffentliche Pricing-Grid-Seite.
@@ -68,7 +69,7 @@ export default async function CoinShopPage() {
 
         {user && balance && (
           <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2">
-            <Coins className="h-4 w-4 text-muted-foreground" />
+            <CoinIcon className="h-4 w-4" />
             <span className="text-sm font-medium">
               Aktuell: {balance.coins.toLocaleString('de-DE')} Coins
             </span>

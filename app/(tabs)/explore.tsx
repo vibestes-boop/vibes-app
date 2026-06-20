@@ -9,6 +9,7 @@ ExploreTagChips,
 ExploreUserRow,
 getExploreStyles,
 } from '@/components/explore';
+import { CoinIcon } from '@/components/ui/CoinIcon';
 import { ProductCoverImage } from '@/components/shop/ProductCoverImage';
 import { useDiscoverPeople } from '@/lib/useDiscoverPeople';
 import {
@@ -218,7 +219,10 @@ export default function ExploreScreen() {
               >
                 <ProductCoverImage uri={product.cover_url} category={product.category} style={shopChipStyle.cover} iconSize={16} />
                 <Text style={[shopChipStyle.title, { color: colors.text.primary }]} numberOfLines={1}>{product.title}</Text>
-                <Text style={[shopChipStyle.price, { color: colors.accent.primary }]}>🪙 {product.price_coins}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                  <CoinIcon size={12} />
+                  <Text style={[shopChipStyle.price, { color: colors.accent.primary }]}>{product.price_coins}</Text>
+                </View>
               </Pressable>
             ))}
           </RNScrollView>

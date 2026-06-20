@@ -29,7 +29,7 @@ const COIN_PACKAGES = [
   { id: 'com.vibesapp.vibes.coins_3000', coins: 3000, price: 19.99, priceStr: '19,99 €', badge: 'Top Wert', savings: '50% mehr' },
 ];
 
-const BORZ_COIN = require('../assets/borz-coin.png');
+const SERLO_COIN = require('../assets/serlo-coin.png');
 
 export default function CoinShopScreen() {
   const insets = useSafeAreaInsets();
@@ -141,7 +141,7 @@ export default function CoinShopScreen() {
         </Pressable>
         <Text style={s.headerTitle}>Coins aufladen</Text>
         <View style={s.balancePill}>
-          <Image source={BORZ_COIN} style={{ width: 18, height: 18 }} />
+          <Image source={SERLO_COIN} style={{ width: 18, height: 18 }} />
           {walletLoading
             ? <ActivityIndicator size="small" color="#F5A623" />
             : <Text style={s.balanceText}>{coins.toLocaleString('de-DE')}</Text>
@@ -159,7 +159,7 @@ export default function CoinShopScreen() {
           {/* Coin hero */}
           <View style={s.heroArea}>
             <Animated.Image
-              source={BORZ_COIN}
+              source={SERLO_COIN}
               style={[s.heroCoin, { transform: [{ scale: coinScale }] }]}
             />
             <Text style={s.heroTitle}>Borz Coins</Text>
@@ -190,7 +190,7 @@ export default function CoinShopScreen() {
                       <Text style={s.checkmarkText}>✓</Text>
                     </View>
                   )}
-                  <Image source={BORZ_COIN} style={s.cardCoin} />
+                  <Image source={SERLO_COIN} style={s.cardCoin} />
                   <Text style={[s.cardAmount, isSel && s.cardAmountSel]}>
                     {pkg.coins >= 1000 ? `${pkg.coins / 1000}K` : pkg.coins}
                   </Text>
@@ -253,7 +253,7 @@ export default function CoinShopScreen() {
           <View style={{ gap: 2 }}>
             <Text style={s.totalLabel}>Gesamt</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-              <Image source={BORZ_COIN} style={{ width: 16, height: 16 }} />
+              <Image source={SERLO_COIN} style={{ width: 16, height: 16 }} />
               <Text style={s.totalCoins}>{selectedPkg.coins.toLocaleString('de-DE')} Coins</Text>
             </View>
           </View>
@@ -269,7 +269,7 @@ export default function CoinShopScreen() {
               ? <ActivityIndicator color="#F5A623" />
               : (
                 <>
-                  <Image source={BORZ_COIN} style={{ width: 20, height: 20 }} />
+                  <Image source={SERLO_COIN} style={{ width: 20, height: 20 }} />
                   <Text style={s.buyBtnText}>Kaufen · {selectedPkg.priceStr}</Text>
                 </>
               )

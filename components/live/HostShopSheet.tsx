@@ -16,6 +16,7 @@
  * useLiveShopMode.shopEnabled + lokalem UI-State.
  */
 
+import { CoinIcon } from '@/components/ui/CoinIcon';
 import { useHostShopProducts } from '@/lib/useLiveShopMode';
 import { ProductCoverImage } from '@/components/shop/ProductCoverImage';
 import type { Product } from '@/lib/useShop';
@@ -160,9 +161,12 @@ function ProductCard({
       <View style={card.info}>
         <Text style={card.title} numberOfLines={2}>{product.title}</Text>
         <View style={card.footer}>
-          <Text style={card.price}>
-            🪙 {product.price_coins.toLocaleString('de-DE')}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+            <CoinIcon size={13} />
+            <Text style={card.price}>
+              {product.price_coins.toLocaleString('de-DE')}
+            </Text>
+          </View>
           {product.sold_count > 0 && (
             <Text style={card.sold}>
               {product.sold_count >= 1000

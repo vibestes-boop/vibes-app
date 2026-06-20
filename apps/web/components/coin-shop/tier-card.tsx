@@ -2,9 +2,10 @@
 
 import { useTransition, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Coins, Loader2, Sparkles } from 'lucide-react';
+import { Loader2, Sparkles } from 'lucide-react';
 
 import { startCheckout } from '@/app/actions/payments';
+import { CoinIcon } from '@/components/ui/coin-icon';
 import type { CoinPricingTier } from '@/lib/data/payments';
 
 // -----------------------------------------------------------------------------
@@ -83,7 +84,7 @@ export function CoinShopTierCard({ tier, signedIn, coinsPerEuro, total, priceLab
 
       {/* Coin-Count */}
       <div className="mb-1 flex items-baseline gap-2">
-        <Coins className="h-5 w-5 text-brand-gold" />
+        <CoinIcon className="h-5 w-5" />
         <span className="text-3xl font-bold tracking-tight">
           {total.toLocaleString('de-DE')}
         </span>

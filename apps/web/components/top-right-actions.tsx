@@ -81,7 +81,8 @@ export async function TopRightActions() {
               'pointer-events-auto hidden h-9 items-center gap-1.5 rounded-full px-3.5 text-xs font-semibold sm:flex',
             )}
           >
-            <Coins className="h-4 w-4 text-brand-gold" aria-hidden="true" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/serlo-coin.png" alt="" aria-hidden="true" className="h-4 w-4 object-contain" />
             <span aria-hidden="true">{coinsFormatted}</span>
             <span aria-hidden="true" className="text-[10px] text-white/70">
               +

@@ -7,6 +7,7 @@
  * - Produkt löschen
  */
 
+import { CoinIcon } from '@/components/ui/CoinIcon';
 import { AIImageSheet } from '@/components/ai/AIImageSheet';
 import { ProductCoverImage } from '@/components/shop/ProductCoverImage';
 import { uploadDigitalFile,uploadProductImage } from '@/lib/uploadMedia';
@@ -515,9 +516,12 @@ function ProductCard({
             <CatIcon size={11} color={colors.text.muted} strokeWidth={2} />
             <Text style={[s.catLabel, { color: colors.text.muted }]}>{catMeta?.label}</Text>
           </View>
-          <Text style={[s.cardPrice, { color: colors.accent.primary }]}>
-            🪙 {product.price_coins.toLocaleString('de-DE')}
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+            <CoinIcon size={13} />
+            <Text style={[s.cardPrice, { color: colors.accent.primary }]}>
+              {product.price_coins.toLocaleString('de-DE')}
+            </Text>
+          </View>
         </View>
         <View style={s.cardStats}>
           <Text style={[s.cardStat, { color: colors.text.muted }]}>{product.sold_count} verkauft</Text>
@@ -744,7 +748,7 @@ function ProductFormSheet({
         {/* Preis */}
         <Text style={[s.label, { color: colors.text.primary }]}>Preis (BorzCoins)</Text>
         <View style={[s.priceRow, { backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle }]}>
-          <Text style={{ fontSize: 18 }}>🪙</Text>
+          <CoinIcon size={18} />
           <TextInput
             style={[s.priceInput, { color: colors.text.primary }]}
             keyboardType="number-pad"
@@ -786,7 +790,7 @@ function ProductFormSheet({
           <Percent size={12} color={colors.text.primary} /> Angebot (optional)
         </Text>
         <View style={[s.priceRow, { backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle }]}>
-          <Text style={{ fontSize: 18 }}>🪙</Text>
+          <CoinIcon size={18} />
           <TextInput
             style={[s.priceInput, { color: colors.text.primary }]}
             keyboardType="number-pad"
