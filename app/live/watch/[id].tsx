@@ -651,7 +651,7 @@ function WatchUIContent({
     try {
       await Share.share({
         message: `Schau dir @${host?.username ?? ''} live an auf Serlo! 🎥`,
-        url: `https://serlo.social/live/${sessionId}`,
+        url: `https://serlo-web.vercel.app/live/${sessionId}`,
       });
     } catch {}
   };

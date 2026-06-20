@@ -690,7 +690,7 @@ export default function SettingsScreen() {
           </Pressable>
           <View style={[s.sep, { backgroundColor: colors.border.subtle, marginLeft: 56 }]} />
 
-          <Pressable style={[s.rowItem, { paddingVertical: 14 }]} onPress={() => Linking.openURL('https://serlo.social/privacy').catch(() => {})} accessibilityRole="link">
+          <Pressable style={[s.rowItem, { paddingVertical: 14 }]} onPress={() => Linking.openURL('https://serlo-web.vercel.app/privacy').catch(() => {})} accessibilityRole="link">
             <View style={[s.rowIcon, { backgroundColor: colors.bg.elevated }]}>
               <ExternalLink size={15} stroke={colors.icon.default} strokeWidth={2} />
             </View>
@@ -699,7 +699,7 @@ export default function SettingsScreen() {
           </Pressable>
           <View style={[s.sep, { backgroundColor: colors.border.subtle, marginLeft: 56 }]} />
 
-          <Pressable style={[s.rowItem, { paddingVertical: 14 }]} onPress={() => Linking.openURL('https://serlo.social/terms').catch(() => {})} accessibilityRole="link">
+          <Pressable style={[s.rowItem, { paddingVertical: 14 }]} onPress={() => Linking.openURL('https://serlo-web.vercel.app/terms').catch(() => {})} accessibilityRole="link">
             <View style={[s.rowIcon, { backgroundColor: colors.bg.elevated }]}>
               <ExternalLink size={15} stroke={colors.icon.default} strokeWidth={2} />
             </View>

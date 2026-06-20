@@ -171,11 +171,11 @@ export default function RegisterScreen() {
           {/* Apple UGC (1.2): EULA-Zustimmung + Null-Toleranz-Hinweis */}
           <Text style={styles.legalText}>
             Mit „Account erstellen" stimmst du den{' '}
-            <Text style={styles.legalLink} onPress={() => Linking.openURL('https://serlo.social/terms').catch(() => {})}>
+            <Text style={styles.legalLink} onPress={() => Linking.openURL('https://serlo-web.vercel.app/terms').catch(() => {})}>
               Nutzungsbedingungen
             </Text>
             {' '}und der{' '}
-            <Text style={styles.legalLink} onPress={() => Linking.openURL('https://serlo.social/privacy').catch(() => {})}>
+            <Text style={styles.legalLink} onPress={() => Linking.openURL('https://serlo-web.vercel.app/privacy').catch(() => {})}>
               Datenschutzerklärung
             </Text>
             {' '}zu. Null-Toleranz für anstößige Inhalte und missbräuchliche Nutzer.
