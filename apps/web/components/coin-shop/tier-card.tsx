@@ -83,8 +83,8 @@ export function CoinShopTierCard({ tier, signedIn, coinsPerEuro, total, priceLab
       )}
 
       {/* Coin-Count */}
-      <div className="mb-1 flex items-baseline gap-2">
-        <CoinIcon className="h-5 w-5" />
+      <div className="mb-1 flex items-center gap-2">
+        <CoinIcon className="h-8 w-8 drop-shadow-[0_2px_6px_rgba(0,0,0,0.18)]" />
         <span className="text-3xl font-bold tracking-tight">
           {total.toLocaleString('de-DE')}
         </span>

@@ -53,7 +53,15 @@ export default async function CoinShopPage() {
   return (
     <div className="mx-auto w-full max-w-[1100px] px-4 pb-20 pt-6 lg:px-6 lg:pt-10">
       {/* ─── Hero ─────────────────────────────────────────────────────────── */}
-      <header className="mb-8 lg:mb-12">
+      <header className="mb-10 flex flex-col items-center text-center lg:mb-14">
+        {/* Marken-Coin mit warmem Glow — premium Hero-Moment (Parität zur App) */}
+        <div className="relative mb-6 mt-2">
+          <div
+            aria-hidden="true"
+            className="absolute left-1/2 top-1/2 -z-10 h-32 w-32 -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand-gold/30 blur-3xl"
+          />
+          <CoinIcon className="h-28 w-28 drop-shadow-[0_12px_32px_rgba(0,0,0,0.28)] lg:h-32 lg:w-32" />
+        </div>
         <div className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
           <Sparkles className="h-3 w-3" />
           Web-Bonus: bis zu +33% mehr Coins
@@ -69,7 +77,7 @@ export default async function CoinShopPage() {
 
         {user && balance && (
           <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-2">
-            <CoinIcon className="h-4 w-4" />
+            <CoinIcon className="h-5 w-5" />
             <span className="text-sm font-medium">
               Aktuell: {balance.coins.toLocaleString('de-DE')} Coins
             </span>
