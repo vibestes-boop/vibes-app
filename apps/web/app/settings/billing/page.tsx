@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { CoinIcon } from '@/components/ui/coin-icon';
 import {
-  Coins,
   Diamond,
   Gift,
   Receipt,
@@ -79,7 +79,7 @@ export default async function BillingPage() {
       {/* ─── Wallet-Cards ───────────────────────────────────────────────── */}
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <WalletCard
-          icon={<Coins className="h-5 w-5" />}
+          icon={<CoinIcon className="h-5 w-5" />}
           label={t('billing.walletCoinsLabel')}
           value={coins.toLocaleString(intl)}
           hint={t('billing.walletCoinsHint')}
@@ -158,7 +158,7 @@ export default async function BillingPage() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
-                          <Coins className="h-3.5 w-3.5 text-muted-foreground" />
+                          <CoinIcon className="h-3.5 w-3.5 text-muted-foreground" />
                           <span className="font-medium">
                             {total.toLocaleString(intl)} {t('billing.coinsUnit')}
                           </span>

@@ -1,5 +1,5 @@
 import { Skeleton } from '@/components/ui/skeleton';
-import { Coins } from 'lucide-react';
+import { CoinIcon } from '@/components/ui/coin-icon';
 
 export default function CoinShopLoading() {
   return (
@@ -7,7 +7,7 @@ export default function CoinShopLoading() {
       {/* Header */}
       <div className="mb-8 text-center space-y-2">
         <div className="flex justify-center">
-          <Coins className="h-10 w-10 text-muted-foreground/30" />
+          <CoinIcon className="h-10 w-10 opacity-30" />
         </div>
         <Skeleton className="mx-auto h-8 w-40" />
         <Skeleton className="mx-auto h-4 w-64" />

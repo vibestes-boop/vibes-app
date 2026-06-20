@@ -3,7 +3,8 @@
 import Link from 'next/link';
 import type { Route } from 'next';
 import { usePathname, useRouter } from 'next/navigation';
-import { ArrowLeft, Radio, Video, Wrench, PlayCircle, Coins, ChevronDown } from 'lucide-react';
+import { CoinIcon } from '@/components/ui/coin-icon';
+import { ArrowLeft, Radio, Video, Wrench, PlayCircle, ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
 
@@ -89,7 +90,7 @@ export function LiveBrowseSidebar({ isAuthed, liveSessions }: LiveBrowseSidebarP
         href={'/coin-shop' as Route}
         className="mx-1 mt-3 flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-85"
       >
-        <Coins className="h-4 w-4" />
+        <CoinIcon className="h-4 w-4" />
         Münzen holen
       </Link>
 

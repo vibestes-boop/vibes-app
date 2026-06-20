@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { Route } from "next";
 import Image from "next/image";
+import { CoinIcon } from '@/components/ui/coin-icon';
 import {
   Loader2,
   X,
@@ -13,7 +14,6 @@ import {
   Package,
   FileText,
   Gem,
-  Coins,
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -625,7 +625,7 @@ export function ProductForm({ existing }: { existing: ShopProduct | null }) {
                 {form.title || "Dein Produkt-Titel"}
               </div>
               <div className="mt-1 text-base font-semibold tabular-nums">
-                <Coins className="mr-1 inline h-3.5 w-3.5 text-muted-foreground" />
+                <CoinIcon className="mr-1 inline h-3.5 w-3.5 text-muted-foreground" />
                 {(form.sale_price_coins
                   ? Number(form.sale_price_coins)
                   : price

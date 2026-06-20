@@ -13,6 +13,7 @@ import {
   createLocalAudioTrack,
   createLocalScreenTracks,
 } from 'livekit-client';
+import { CoinIcon } from '@/components/ui/coin-icon';
 import {
   Loader2,
   Radio,
@@ -33,7 +34,6 @@ import {
   Smile,
   X,
   Package,
-  Coins,
   Heart,
   MessageCircle,
   Trophy,
@@ -1156,7 +1156,7 @@ export function LiveHostDeck({
                               <div className="min-w-0 flex-1">
                                 <p className="truncate text-sm font-medium">{p.title}</p>
                                 <p className="text-xs text-amber-600 dark:text-amber-400">
-                                  <Coins className="mr-0.5 inline h-3 w-3" />
+                                  <CoinIcon className="mr-0.5 inline h-3 w-3" />
                                   {price.toLocaleString('de-DE')}
                                 </p>
                               </div>
@@ -1277,7 +1277,7 @@ export function LiveHostDeck({
                     { icon: <Users className="h-4 w-4" />, value: peakCount.toLocaleString('de-DE'), label: 'Peak' },
                     { icon: <Heart className="h-4 w-4 text-rose-400" />, value: ((session as unknown as Record<string, unknown>).like_count as number ?? 0).toLocaleString('de-DE'), label: 'Likes' },
                     { icon: <MessageCircle className="h-4 w-4 text-sky-400" />, value: summaryCommentCount.toLocaleString('de-DE'), label: 'Kommentare' },
-                    { icon: <Coins className="h-4 w-4 text-yellow-400" />, value: totalGiftCoins.toLocaleString('de-DE'), label: 'Coins 🪙' },
+                    { icon: <CoinIcon className="h-4 w-4 text-yellow-400" />, value: totalGiftCoins.toLocaleString('de-DE'), label: 'Coins 🪙' },
                   ].map(({ icon, value, label }) => (
                     <div key={label} className="flex flex-col items-center gap-0.5 py-4 px-2">
                       <span className="text-white/60">{icon}</span>
@@ -1304,7 +1304,7 @@ export function LiveHostDeck({
                             </AvatarFallback>
                           </Avatar>
                           <span className="flex-1 truncate text-sm">@{g.username}</span>
-                          <span className="text-sm font-semibold text-yellow-400">{g.total.toLocaleString('de-DE')} 🪙</span>
+                          <span className="text-sm font-semibold text-yellow-400">{g.total.toLocaleString('de-DE')} <CoinIcon className="ml-0.5 inline h-3.5 w-3.5 align-[-0.15em]" /></span>
                         </div>
                       ))}
                     </div>

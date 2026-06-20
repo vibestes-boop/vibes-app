@@ -1,8 +1,8 @@
 import Link from 'next/link';
 import type { Route } from 'next';
+import { CoinIcon } from '@/components/ui/coin-icon';
 import {
   ArrowLeft,
-  Coins,
   Compass,
   MoreHorizontal,
   Radio,
@@ -90,7 +90,7 @@ export function LiveDesktopSidebar({
           'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-rose-500',
         )}
       >
-        <Coins className="h-4 w-4" aria-hidden="true" />
+        <CoinIcon className="h-4 w-4" aria-hidden="true" />
         <span>Münzen holen</span>
         {typeof coinBalance === 'number' && (
           <span className="ml-1 rounded-full bg-white/20 px-2 py-0.5 text-[11px] tabular-nums">

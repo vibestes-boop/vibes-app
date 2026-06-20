@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import type { Route } from "next";
+import { CoinIcon } from '@/components/ui/coin-icon';
 import {
   BadgeCheck,
   MapPin,
@@ -12,7 +13,6 @@ import {
   Wrench,
   Gem,
   ShoppingBag,
-  Coins,
 } from "lucide-react";
 import { ImageCarousel } from "@/components/shop/image-carousel";
 import { BuyBar } from "@/components/shop/buy-bar";
@@ -259,7 +259,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
             {/* Preis */}
             <div className="flex items-baseline gap-3">
               <span className="inline-flex items-center gap-2 text-4xl font-bold tabular-nums text-foreground">
-                <Coins className="h-7 w-7 text-muted-foreground" />
+                <CoinIcon className="h-7 w-7 text-muted-foreground" />
                 {eff.toLocaleString("de-DE")}
               </span>
               {isSale && (

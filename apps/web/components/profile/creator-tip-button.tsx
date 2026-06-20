@@ -3,7 +3,8 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Heart, Coins, Loader2, CheckCircle2, AlertCircle, X } from 'lucide-react';
+import { CoinIcon } from '@/components/ui/coin-icon';
+import { Heart, Loader2, CheckCircle2, AlertCircle, X } from 'lucide-react';
 
 import { sendCreatorTip } from '@/app/actions/payments';
 import {
@@ -166,7 +167,7 @@ export function CreatorTipButton({
                         : 'border-border bg-card hover:border-brand-rose/50'
                     }`}
                   >
-                    <Coins className="mb-0.5 h-3.5 w-3.5" />
+                    <CoinIcon className="mb-0.5 h-3.5 w-3.5" />
                     {preset.toLocaleString('de-DE')}
                   </button>
                 );
@@ -182,7 +183,7 @@ export function CreatorTipButton({
                 Eigener Betrag
               </label>
               <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2">
-                <Coins className="h-4 w-4 text-brand-gold" />
+                <CoinIcon className="h-4 w-4 text-brand-gold" />
                 <input
                   id="custom-amount"
                   type="number"
@@ -312,7 +313,7 @@ export function CreatorTipButton({
                 href="/coin-shop"
                 className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
               >
-                <Coins className="h-3 w-3" />
+                <CoinIcon className="h-3 w-3" />
                 Coins aufladen
               </Link>
             </div>

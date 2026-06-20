@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useTransition } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
-import { X, Coins, Loader2 } from 'lucide-react';
+import { CoinIcon } from '@/components/ui/coin-icon';
+import { X, Loader2 } from 'lucide-react';
 import { sendLiveGift } from '@/app/actions/live';
 import type { ActiveCoHostSSR } from '@/lib/data/live';
 import { useBattleStore } from './live-battle-store';
@@ -184,7 +185,7 @@ export function LiveGiftPicker({
           <div className="flex items-center gap-3">
             {balance !== null && (
               <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-sm tabular-nums xl:bg-white/10">
-                <Coins className="h-4 w-4 text-amber-500" />
+                <CoinIcon className="h-4 w-4 text-amber-500" />
                 {balance.toLocaleString('de-DE')}
               </span>
             )}
@@ -293,7 +294,7 @@ export function LiveGiftPicker({
               {selected ? (
                 <>
                   <span className="font-semibold text-foreground xl:text-white">{selected.name}</span> ·{' '}
-                  <Coins className="inline h-3 w-3 text-amber-500" />{' '}
+                  <CoinIcon className="inline h-3 w-3 text-amber-500" />{' '}
                   {selected.coin_cost.toLocaleString('de-DE')}
                 </>
               ) : (
@@ -352,7 +353,7 @@ function GiftCard({
       </div>
       <p className="line-clamp-1 w-full text-center text-[11px] font-medium xl:text-white/90">{gift.name}</p>
       <p className="inline-flex items-center gap-0.5 text-[11px] font-semibold tabular-nums text-amber-600 dark:text-amber-400 xl:text-amber-300">
-        <Coins className="h-2.5 w-2.5" />
+        <CoinIcon className="h-2.5 w-2.5" />
         {gift.coin_cost.toLocaleString('de-DE')}
       </p>
     </button>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { CoinIcon } from '@/components/ui/coin-icon';
 import type { CSSProperties } from 'react';
 import type { AnimationItem } from 'lottie-web';
 import { createBrowserClient } from '@supabase/ssr';
@@ -448,7 +449,7 @@ function LiveGiftFloatingBurst({ burst }: { burst: LiveGiftBurst }) {
           {burst.giftName}
         </span>
         <span className="mt-0.5 truncate text-xs font-bold text-white/95">
-          🪙 {burst.coinCost.toLocaleString('de-DE')}
+          <CoinIcon className="mr-0.5 inline h-3.5 w-3.5 align-[-0.15em]" />{burst.coinCost.toLocaleString('de-DE')}
         </span>
       </div>
     </div>

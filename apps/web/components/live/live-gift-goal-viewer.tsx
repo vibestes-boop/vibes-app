@@ -17,7 +17,8 @@
 
 import { useEffect, useState } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
-import { Target, Coins } from 'lucide-react';
+import { CoinIcon } from '@/components/ui/coin-icon';
+import { Target } from 'lucide-react';
 import type { ActiveGiftGoal } from '@/lib/data/live-host';
 import { glassSurface } from '@/lib/ui/glass-pill';
 import { cn } from '@/lib/utils';
@@ -121,7 +122,7 @@ export function LiveGiftGoalViewer({ sessionId, initialGoal }: LiveGiftGoalViewe
 
       {/* Coin count */}
       <div className="flex items-center gap-1 text-[10px] text-white/70">
-        <Coins className="h-3 w-3 flex-shrink-0" />
+        <CoinIcon className="h-3 w-3 flex-shrink-0" />
         <span>
           {goal.current_coins.toLocaleString('de-DE')}
           <span className="text-white/40"> / {goal.target_coins.toLocaleString('de-DE')}</span>

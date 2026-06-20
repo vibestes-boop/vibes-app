@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { XCircle, ArrowLeft, Coins } from 'lucide-react';
+import { CoinIcon } from '@/components/ui/coin-icon';
+import { XCircle, ArrowLeft } from 'lucide-react';
 
 // -----------------------------------------------------------------------------
 // /coin-shop/cancelled — Landing wenn der User den Stripe-Checkout abbricht.
@@ -33,7 +34,7 @@ export default function CoinShopCancelledPage() {
           href="/coin-shop"
           className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-primary-foreground hover:bg-primary/90"
         >
-          <Coins className="h-4 w-4" />
+          <CoinIcon className="h-4 w-4" />
           Zurück zum Coin-Shop
         </Link>
         <Link

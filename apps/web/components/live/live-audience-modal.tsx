@@ -27,6 +27,7 @@
 // -----------------------------------------------------------------------------
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { CoinIcon } from '@/components/ui/coin-icon';
 import { createBrowserClient } from '@supabase/ssr';
 import type { Route } from 'next';
 import Link from 'next/link';
@@ -667,7 +668,7 @@ export function LiveAudienceModal({
                         </div>
                         {row.totalCoins > 0 && (
                           <span className="text-[11px] text-muted-foreground">
-                            🪙 {fmtCoins(row.totalCoins)} ({row.giftsCount}×)
+                            <CoinIcon className="mr-0.5 inline h-3.5 w-3.5 align-[-0.15em]" />{fmtCoins(row.totalCoins)} ({row.giftsCount}×)
                           </span>
                         )}
                       </div>
@@ -694,7 +695,7 @@ export function LiveAudienceModal({
                   {selfRank}
                 </span>
                 <span className="text-muted-foreground">
-                  Dein Rang · 🪙 {fmtCoins(selfRow?.totalCoins ?? 0)}
+                  Dein Rang · <CoinIcon className="mr-0.5 inline h-3.5 w-3.5 align-[-0.15em]" />{fmtCoins(selfRow?.totalCoins ?? 0)}
                 </span>
               </div>
             ) : (

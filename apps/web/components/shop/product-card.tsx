@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Route } from "next";
-import { MapPin, Truck, Camera, BadgeCheck, Coins } from "lucide-react";
+import { CoinIcon } from '@/components/ui/coin-icon';
+import { MapPin, Truck, Camera, BadgeCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { StarDisplay } from "./star-display";
 import { ProductImage } from "./product-image";
@@ -192,7 +193,7 @@ export function ProductCard({
           <div className="flex items-baseline gap-1.5">
             <span className="text-base font-bold tabular-nums text-foreground">
               <span className="inline-flex items-center gap-1">
-                <Coins className="h-3.5 w-3.5 text-muted-foreground" />
+                <CoinIcon className="h-3.5 w-3.5 text-muted-foreground" />
                 {eff.toLocaleString("de-DE")}
               </span>
             </span>

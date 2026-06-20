@@ -2,7 +2,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import type { Route } from 'next';
 import { Suspense } from 'react';
-import { Hash, Flame, TrendingUp, Compass, Users, ShieldCheck, ShoppingBag, ChevronRight, Coins } from 'lucide-react';
+import { CoinIcon } from '@/components/ui/coin-icon';
+import { Hash, Flame, TrendingUp, Compass, Users, ShieldCheck, ShoppingBag, ChevronRight } from 'lucide-react';
 import {
   getPublicTrendingHashtags,
   getPublicForYouFeed,
@@ -268,7 +269,7 @@ async function ExploreDeferredSections({ suggestedPeopleTitle }: { suggestedPeop
                   </p>
                   <p className="text-[11px] font-semibold text-foreground">
                     <span className="inline-flex items-center gap-1">
-                      <Coins className="h-3 w-3 text-muted-foreground" />
+                      <CoinIcon className="h-3 w-3 text-muted-foreground" />
                       {(product.sale_price_coins ?? product.price_coins).toLocaleString('de-DE')}
                     </span>
                   </p>

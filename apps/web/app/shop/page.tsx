@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { Route } from "next";
-import { Store, Bookmark, Coins, Package, ShoppingBag, Plus } from "lucide-react";
+import { CoinIcon } from '@/components/ui/coin-icon';
+import { Store, Bookmark, Package, ShoppingBag, Plus } from "lucide-react";
 import { ShopGrid } from "@/components/shop/shop-grid";
 import { ShopFilters } from "@/components/shop/shop-filters";
 import { ShopSearchInput } from "@/components/shop/shop-search-input";
@@ -90,7 +91,7 @@ export default async function ShopCatalogPage({ searchParams }: PageProps) {
           <div className="flex items-center gap-2">
             {balance !== null && (
               <div className="inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1.5 text-sm font-medium tabular-nums">
-                <Coins className="h-4 w-4 text-muted-foreground" />
+                <CoinIcon className="h-4 w-4 text-muted-foreground" />
                 {balance.toLocaleString(LOCALE_INTL[locale])}
               </div>
             )}

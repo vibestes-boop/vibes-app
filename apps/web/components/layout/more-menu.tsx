@@ -5,10 +5,10 @@ import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import type { Route } from 'next';
 import { useTheme } from 'next-themes';
+import { CoinIcon } from '@/components/ui/coin-icon';
 import {
   MoreHorizontal,
   Settings,
-  Coins,
   Moon,
   Sun,
   LogOut,
@@ -57,7 +57,7 @@ export function MoreMenu({
 
   const items: Item[] = [
     { label: 'Einstellungen',     href: '/settings' as Route,        icon: <Settings className="h-5 w-5" /> },
-    { label: 'Coins',             href: '/coin-shop' as Route,       icon: <Coins className="h-5 w-5" /> },
+    { label: 'Coins',             href: '/coin-shop' as Route,       icon: <CoinIcon className="h-5 w-5" /> },
     { label: 'Gespeichert',       href: '/saved' as Route,           icon: <Bookmark className="h-5 w-5" /> },
     { label: 'Profil bearbeiten', href: '/settings/profile' as Route, icon: <User className="h-5 w-5" /> },
     {

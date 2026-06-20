@@ -3,10 +3,10 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Route } from "next";
+import { CoinIcon } from '@/components/ui/coin-icon';
 import {
   Bookmark,
   BookmarkCheck,
-  Coins,
   Loader2,
   CheckCircle2,
 } from "lucide-react";
@@ -167,7 +167,7 @@ export function BuyBar({
             )}
           >
             <span className="inline-flex items-center gap-1.5 tabular-nums">
-              <Coins className="h-4 w-4" />
+              <CoinIcon className="h-4 w-4" />
               {totalCost.toLocaleString("de-DE")}
             </span>
             <span className="h-5 w-px bg-current/30" aria-hidden />
@@ -227,7 +227,7 @@ export function BuyBar({
                   </div>
                   <div className="text-right">
                     <div className="inline-flex items-center gap-1 text-sm font-semibold tabular-nums">
-                      <Coins className="h-3.5 w-3.5 text-muted-foreground" />
+                      <CoinIcon className="h-3.5 w-3.5 text-muted-foreground" />
                       {totalCost.toLocaleString("de-DE")}
                     </div>
                     {qty > 1 && (
@@ -244,7 +244,7 @@ export function BuyBar({
                       Aktuelles Guthaben
                     </span>
                     <span className="inline-flex items-center gap-1 tabular-nums">
-                      <Coins className="h-3.5 w-3.5 text-muted-foreground" />
+                      <CoinIcon className="h-3.5 w-3.5 text-muted-foreground" />
                       {coinBalance.toLocaleString("de-DE")}
                     </span>
                   </div>
@@ -256,7 +256,7 @@ export function BuyBar({
                         !canAfford && "text-foreground",
                       )}
                     >
-                      <Coins className="h-3.5 w-3.5 text-muted-foreground" />
+                      <CoinIcon className="h-3.5 w-3.5 text-muted-foreground" />
                       {(coinBalance - totalCost).toLocaleString("de-DE")}
                     </span>
                   </div>

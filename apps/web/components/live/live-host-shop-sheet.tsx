@@ -16,7 +16,8 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { Route } from 'next';
-import { X, ShoppingBag, Package, Coins } from 'lucide-react';
+import { CoinIcon } from '@/components/ui/coin-icon';
+import { X, ShoppingBag, Package } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { glassPillStrong } from '@/lib/ui/glass-pill';
 import { cn } from '@/lib/utils';
@@ -158,7 +159,7 @@ export function LiveHostShopSheet({ hostId, hostUsername, onClose }: LiveHostSho
                         {p.title}
                       </p>
                       <div className="mt-0.5 flex items-center gap-1">
-                        <Coins className="h-3 w-3 text-amber-400" />
+                        <CoinIcon className="h-3 w-3 text-amber-400" />
                         <span className="text-[11px] font-semibold text-amber-400">
                           {price.toLocaleString()}
                         </span>

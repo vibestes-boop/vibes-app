@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { Route } from "next";
 import { useState } from "react";
+import { CoinIcon } from '@/components/ui/coin-icon';
 import {
   Edit,
   Trash2,
@@ -11,7 +12,6 @@ import {
   ExternalLink,
   MoreHorizontal,
   Loader2,
-  Coins,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -99,7 +99,7 @@ export function StudioProductRow({ product }: { product: ShopProduct }) {
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground tabular-nums">
             <span className="inline-flex items-center gap-1">
-              <Coins className="h-3 w-3" />
+              <CoinIcon className="h-3 w-3" />
               {eff.toLocaleString("de-DE")}
             </span>
             <span>Stock: {stockLabel}</span>

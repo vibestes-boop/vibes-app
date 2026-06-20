@@ -22,6 +22,7 @@
 // -----------------------------------------------------------------------------
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { CoinIcon } from '@/components/ui/coin-icon';
 import Link from 'next/link';
 import type { Route } from 'next';
 import Image from 'next/image';
@@ -269,7 +270,7 @@ export function LivePlacedProductLayer({
                   {p.title}
                 </p>
                 <p className="mt-0.5 text-[10px] leading-none text-amber-400 font-semibold">
-                  🪙 {displayPrice.toLocaleString('de-DE')}
+                  <CoinIcon className="mr-0.5 inline h-3.5 w-3.5 align-[-0.15em]" />{displayPrice.toLocaleString('de-DE')}
                 </p>
               </div>
             </div>

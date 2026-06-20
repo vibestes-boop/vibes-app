@@ -1,9 +1,9 @@
 import Link from 'next/link';
+import { CoinIcon } from '@/components/ui/coin-icon';
 import {
   LogOut,
   Settings,
   User as UserIcon,
-  Coins,
   Receipt,
   LayoutDashboard,
   Users,
@@ -177,7 +177,7 @@ export async function TopRightActions() {
               </DropdownMenuItem>
               <DropdownMenuItem asChild>
                 <Link href="/coin-shop">
-                  <Coins className="h-4 w-4" />
+                  <CoinIcon className="h-4 w-4" />
                   <span>Coin-Shop</span>
                 </Link>
               </DropdownMenuItem>

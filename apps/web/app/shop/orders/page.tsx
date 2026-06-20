@@ -3,6 +3,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import Image from "next/image";
 import { redirect } from "next/navigation";
+import { CoinIcon } from '@/components/ui/coin-icon';
 import {
   Package,
   Clock,
@@ -12,7 +13,6 @@ import {
   ArrowLeft,
   ShoppingBag,
   ChevronRight,
-  Coins,
 } from "lucide-react";
 
 import { getMyOrders, type ShopOrder } from "@/lib/data/shop";
@@ -134,7 +134,7 @@ function OrderRow({ order }: { order: ShopOrder }) {
           <span>{catLabel}</span>
           {order.quantity > 1 && <span>· {order.quantity}×</span>}
           <span className="inline-flex items-center gap-1">
-            · <Coins className="h-3 w-3" />{" "}
+            · <CoinIcon className="h-3 w-3" />{" "}
             {order.total_coins.toLocaleString("de-DE")}
           </span>
           <span>· {formatDate(order.created_at)}</span>

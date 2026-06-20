@@ -3,13 +3,13 @@
 import Link from "next/link";
 import type { Route } from "next";
 import { useState, useTransition } from "react";
+import { CoinIcon } from '@/components/ui/coin-icon';
 import {
   Check,
   Truck,
   XCircle,
   RotateCcw,
   Loader2,
-  Coins,
   MessageCircle,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -123,7 +123,7 @@ export function OrderRow({
             <span>— Nutzer gelöscht</span>
           )}
           <span className="inline-flex items-center gap-1">
-            <Coins className="h-3 w-3" />
+            <CoinIcon className="h-3 w-3" />
             {order.total_coins.toLocaleString("de-DE")}
           </span>
           {order.quantity > 1 && <span>×{order.quantity}</span>}

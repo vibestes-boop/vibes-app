@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ShoppingBag, X, FileText, Box, Wrench, Coins, Pin, PinOff } from 'lucide-react';
+import { CoinIcon } from '@/components/ui/coin-icon';
+import { ShoppingBag, X, FileText, Box, Wrench, Pin, PinOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import type { RealtimeChannel } from '@supabase/supabase-js';
@@ -249,7 +250,7 @@ export function LivePinnedProductPill({
           </p>
           <p className="mt-0.5 flex items-center gap-1 text-[11px] text-white/70">
             <CatIcon category={product.category} />
-            <Coins className="h-3 w-3 text-brand-gold" />
+            <CoinIcon className="h-3 w-3 text-brand-gold" />
             <span className="font-medium text-brand-gold">
               {product.price.toLocaleString('de-DE')}
             </span>
@@ -406,7 +407,7 @@ export function LiveShopHostPanel({
             <div className="min-w-0 flex-1">
               <p className="line-clamp-1 text-xs font-medium">{p.title}</p>
               <p className="text-[11px] text-muted-foreground">
-                🪙 {p.price_coins.toLocaleString('de-DE')}
+                <CoinIcon className="mr-0.5 inline h-3.5 w-3.5 align-[-0.15em]" />{p.price_coins.toLocaleString('de-DE')}
               </p>
             </div>
             <button

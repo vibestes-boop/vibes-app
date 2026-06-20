@@ -5,11 +5,11 @@ import Link from 'next/link';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import type { SupabaseClient, User } from '@supabase/supabase-js';
+import { CoinIcon } from '@/components/ui/coin-icon';
 import {
   LogOut,
   Settings,
   User as UserIcon,
-  Coins,
   Receipt,
   LayoutDashboard,
   Users,
@@ -248,7 +248,7 @@ function TopRightActionsClient({
             '-mr-3.5 transition-[margin] duration-200 group-hover:mr-2',
           )}
         >
-          <Coins className="h-4 w-4 text-brand-gold" aria-hidden="true" />
+          <CoinIcon className="h-4 w-4 text-brand-gold" aria-hidden="true" />
           <span aria-hidden="true">{coinsFormatted}</span>
           <span aria-hidden="true" className="text-[10px] text-white/70">
             +
@@ -338,7 +338,7 @@ function TopRightActionsClient({
           </DropdownMenuItem>
           <DropdownMenuItem asChild>
             <Link href="/coin-shop">
-              <Coins className="h-4 w-4" />
+              <CoinIcon className="h-4 w-4" />
               <span>Coin-Shop</span>
             </Link>
           </DropdownMenuItem>

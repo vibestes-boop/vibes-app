@@ -2,7 +2,8 @@ import type { Route } from 'next';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { CheckCircle2, Coins, Clock, AlertCircle, ArrowRight, FileText, Receipt } from 'lucide-react';
+import { CoinIcon } from '@/components/ui/coin-icon';
+import { CheckCircle2, Clock, AlertCircle, ArrowRight, FileText, Receipt } from 'lucide-react';
 
 import { getUser } from '@/lib/auth/session';
 import {
@@ -125,7 +126,7 @@ export default async function CoinShopSuccessPage({ searchParams }: Props) {
       <div className="rounded-2xl border border-border bg-card p-6">
         <div className="mb-4 flex items-center gap-3 border-b border-border pb-4">
           <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-            <Coins className="h-5 w-5 text-muted-foreground" />
+            <CoinIcon className="h-5 w-5 text-muted-foreground" />
           </div>
           <div className="flex-1">
             <p className="text-xs text-muted-foreground">Coin-Paket</p>
