@@ -9,6 +9,8 @@
 import { useAuthStore } from '@/lib/authStore';
 import { supabase } from '@/lib/supabase';
 import { useOrCreateConversation,useSendMessage } from '@/lib/useMessages';
+import { useReportUser } from '@/lib/useReport';
+import { useBlockUser } from '@/lib/useBlock';
 import { useQuery } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
@@ -59,6 +61,15 @@ export function ProfileShareSheet({ visible, onClose, userId, username, avatarUr
 
   const { mutateAsync: getOrCreateConv } = useOrCreateConversation();
   const { mutateAsync: sendMsg }         = useSendMessage();
+  const { mutate: reportUser }           = useReportUser();
+  const { block }                        = useBlockUser(userId);
+
+  // ── Apple UGC (1.2): Profil melden / sperren — echte Aktionen statt Stub ──
+  const doReportUser = (reason: 'spam' | 'harassment' | 'inappropriate') => {
+    reportUser({ reportedId: userId, reason });
+    onClose();
+    Alert.alert('Danke', 'Meldung eingegangen — wir prüfen das.');
+  };
 
   // Follower/Following laden für "Senden an"
   const { data: users = [] } = useQuery<ShareTarget[]>({
@@ -291,10 +302,11 @@ export function ProfileShareSheet({ visible, onClose, userId, username, avatarUr
                 <Pressable
                   style={ss.actionRow}
                   onPress={() => {
-                    onClose();
-                    Alert.alert('Melden', `@${username ?? 'User'} melden?`, [
+                    Alert.alert(`@${username ?? 'User'} melden`, 'Warum meldest du dieses Profil?', [
+                      { text: 'Spam', onPress: () => doReportUser('spam') },
+                      { text: 'Belästigung', onPress: () => doReportUser('harassment') },
+                      { text: 'Unangemessen', onPress: () => doReportUser('inappropriate') },
                       { text: 'Abbrechen', style: 'cancel' },
-                      { text: 'Melden', style: 'destructive', onPress: () => {} },
                     ]);
                   }}
                 >
@@ -305,10 +317,9 @@ export function ProfileShareSheet({ visible, onClose, userId, username, avatarUr
                 <Pressable
                   style={[ss.actionRow, { borderBottomWidth: 0 }]}
                   onPress={() => {
-                    onClose();
-                    Alert.alert('Sperren', `@${username ?? 'User'} sperren?`, [
+                    Alert.alert(`@${username ?? 'User'} sperren?`, 'Dieser Nutzer kann dir dann nicht mehr folgen oder schreiben.', [
                       { text: 'Abbrechen', style: 'cancel' },
-                      { text: 'Sperren', style: 'destructive', onPress: () => {} },
+                      { text: 'Sperren', style: 'destructive', onPress: () => { block.mutate(); onClose(); Alert.alert('Gesperrt', `@${username ?? 'User'} wurde gesperrt.`); } },
                     ]);
                   }}
                 >

@@ -1,5 +1,5 @@
 import { setStringAsync as clipboardSetString } from 'expo-clipboard';
-import { AtSign,Copy,Heart,Send,Trash2,Video,X } from 'lucide-react-native';
+import { AtSign,Copy,Flag,Heart,Send,Trash2,Video,X } from 'lucide-react-native';
 import { memo,useCallback,useEffect,useRef,useState } from 'react';
 import {
 ActivityIndicator,
@@ -39,6 +39,7 @@ import { RichText } from '@/components/ui/RichText';
 import { useAuthStore } from '@/lib/authStore';
 import { useCommentLike,useCommentLikesBatch,type CommentLikesMap } from '@/lib/useCommentLike';
 import { useAddComment,useCommentReplies,useComments,useDeleteComment,type Comment } from '@/lib/useComments';
+import { useReportComment } from '@/lib/useReport';
 import { useExploreUserSearch } from '@/lib/useExplore';
 import { useTheme } from '@/lib/useTheme';
 import * as Haptics from 'expo-haptics';
@@ -371,6 +372,16 @@ function SheetInner({
     ]);
   }, [deleteComment]);
 
+  const { mutate: reportComment } = useReportComment();
+  const handleReportComment = useCallback((comment: Comment) => {
+    Alert.alert('Kommentar melden', 'Warum meldest du diesen Kommentar?', [
+      { text: 'Spam', onPress: () => { reportComment({ commentId: comment.id, reason: 'spam' }); Alert.alert('Danke', 'Meldung eingegangen — wir prüfen das.'); } },
+      { text: 'Belästigung', onPress: () => { reportComment({ commentId: comment.id, reason: 'harassment' }); Alert.alert('Danke', 'Meldung eingegangen — wir prüfen das.'); } },
+      { text: 'Unangemessen', onPress: () => { reportComment({ commentId: comment.id, reason: 'inappropriate' }); Alert.alert('Danke', 'Meldung eingegangen — wir prüfen das.'); } },
+      { text: 'Abbrechen', style: 'cancel' },
+    ]);
+  }, [reportComment]);
+
   const handleReplyWithVideo = useCallback((username: string) => {
     setText(`@${username} `);
     inputRef.current?.focus();
@@ -586,6 +597,7 @@ function SheetInner({
         comment={actionSheetComment}
         isOwn={actionSheetComment?.user_id === profile?.id}
         onDelete={() => actionSheetComment && handleDelete(actionSheetComment.id)}
+        onReport={() => actionSheetComment && handleReportComment(actionSheetComment)}
         onCopy={() => { }}
         onReplyWithVideo={handleReplyWithVideo}
         bottomInset={insets.bottom}
@@ -600,6 +612,7 @@ function CommentActionSheet({
   comment,
   isOwn,
   onDelete,
+  onReport,
   onCopy,
   onReplyWithVideo,
   bottomInset = 24,
@@ -609,6 +622,7 @@ function CommentActionSheet({
   comment: Comment | null;
   isOwn: boolean;
   onDelete: () => void;
+  onReport: () => void;
   onCopy: (text: string) => void;
   onReplyWithVideo: (username: string) => void;
   bottomInset?: number;
@@ -657,6 +671,14 @@ function CommentActionSheet({
               <Text style={styles.actionSheetItemText}>Mit Video antworten</Text>
             </Pressable>
           </View>
+          {!isOwn && (
+            <View style={styles.actionSheetGroup}>
+              <Pressable style={styles.actionSheetItem} onPress={() => { onReport(); onClose(); }}>
+                <Flag size={20} stroke="#EF4444" strokeWidth={2} />
+                <Text style={styles.actionSheetItemTextDestructive}>Melden</Text>
+              </Pressable>
+            </View>
+          )}
         </Pressable>
       </Pressable>
     </Modal>

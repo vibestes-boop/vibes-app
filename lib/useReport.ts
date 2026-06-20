@@ -44,6 +44,36 @@ export function useReport() {
   });
 }
 
+// ─── Kommentar melden (Apple UGC 1.2) ─────────────────────────────────────────
+export function useReportComment() {
+  const userId = useAuthStore((s) => s.profile?.id);
+
+  return useMutation({
+    mutationFn: async ({
+      commentId,
+      reason,
+    }: {
+      commentId: string;
+      reason: UserReportReason;
+    }) => {
+      if (!userId) throw new Error('Nicht eingeloggt');
+      const { error, data } = await supabase.rpc('create_report', {
+        p_target_type: 'comment',
+        p_target_id: commentId,
+        p_reason: reason,
+      });
+      // Unique-Constraint → bereits gemeldet, kein Fehler anzeigen
+      if (error && error.code !== '23505') throw error;
+      if (!error && (data as any)?.error) throw new Error((data as any).error);
+    },
+    onError: (err: any) => {
+      if (err?.code !== '23505') {
+        Alert.alert('Fehler', err?.message ?? 'Melden fehlgeschlagen.');
+      }
+    },
+  });
+}
+
 // ─── User-Profil melden (Apple App Store Pflicht) ─────────────────────────────
 export function useReportUser() {
   const userId = useAuthStore((s) => s.profile?.id);

@@ -9,6 +9,7 @@ import {
 ActivityIndicator,
 Alert,
 KeyboardAvoidingView,
+Linking,
 Platform,
 Pressable,
 ScrollView,
@@ -167,6 +168,19 @@ export default function RegisterScreen() {
             }
           </Pressable>
 
+          {/* Apple UGC (1.2): EULA-Zustimmung + Null-Toleranz-Hinweis */}
+          <Text style={styles.legalText}>
+            Mit „Account erstellen" stimmst du den{' '}
+            <Text style={styles.legalLink} onPress={() => Linking.openURL('https://serlo.social/terms').catch(() => {})}>
+              Nutzungsbedingungen
+            </Text>
+            {' '}und der{' '}
+            <Text style={styles.legalLink} onPress={() => Linking.openURL('https://serlo.social/privacy').catch(() => {})}>
+              Datenschutzerklärung
+            </Text>
+            {' '}zu. Null-Toleranz für anstößige Inhalte und missbräuchliche Nutzer.
+          </Text>
+
           {/* ── Apple Sign-In Divider ── */}
           <View style={styles.dividerRow}>
             <View style={styles.dividerLine} />
@@ -263,6 +277,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.3,
+  },
+  legalText: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 12,
+    lineHeight: 17,
+    textAlign: 'center',
+    marginTop: 14,
+    paddingHorizontal: 4,
+  },
+  legalLink: {
+    color: 'rgba(255,255,255,0.85)',
+    textDecorationLine: 'underline',
   },
   loginLink: {
     alignItems: 'center',
