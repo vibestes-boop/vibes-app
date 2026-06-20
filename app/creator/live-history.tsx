@@ -133,9 +133,9 @@ export default function CreatorLiveHistoryScreen() {
                 colors={colors}
               />
               <SummaryChip
-                icon={<Text style={{ fontSize: 11 }}>💎</Text>}
-                label="Diamonds"
-                value={fmtNum(summary.totalDiamonds)}
+                icon={<Text style={{ fontSize: 11 }}>💶</Text>}
+                label="Einnahmen"
+                value={`${(summary.totalDiamonds * 0.02).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`}
                 colors={colors}
               />
             </View>
@@ -272,8 +272,8 @@ function LiveRow({
           colors={colors}
         />
         <StatItem
-          icon={<Text style={{ fontSize: 11 }}>💎</Text>}
-          value={fmtNum(item.total_gift_diamonds)}
+          icon={<Text style={{ fontSize: 11 }}>💶</Text>}
+          value={`${(item.total_gift_diamonds * 0.02).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`}
           colors={colors}
         />
         <StatItem

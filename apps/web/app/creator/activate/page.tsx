@@ -34,7 +34,7 @@ const BENEFITS = [
   { icon: ShoppingBag, label: 'Mini-Shop',        desc: 'Verkaufe Produkte direkt in deinem Profil' },
   { icon: Video,       label: 'Live-Shopping',    desc: 'Präsentiere Produkte live im Stream' },
   { icon: TrendingUp,  label: 'Creator Studio',   desc: 'Vollständiges Analytics-Dashboard' },
-  { icon: Diamond,     label: 'Auszahlung',       desc: 'Ab 2.500 💎 (~50€) auszahlbar' },
+  { icon: Diamond,     label: 'Auszahlung',       desc: 'Ab 50 € auszahlbar' },
 ] as const;
 
 export default async function CreatorActivatePage() {

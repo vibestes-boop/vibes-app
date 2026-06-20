@@ -134,7 +134,7 @@ export default async function PrivacyPage() {
         <p className="mb-4 text-sm text-muted-foreground">
           Beim Löschen werden dein Profil, alle Posts, Kommentare, Likes, Follows,
           Nachrichten, Stories und Shop-Daten unwiderruflich entfernt. Coins,
-          Diamanten-Guthaben und offene Bestellungen verfallen. Veröffentlichte
+          Einnahmen und offene Bestellungen verfallen. Veröffentlichte
           Nachrichten in Gruppen-Chats bleiben ggf. anonymisiert erhalten, wenn
           andere Teilnehmer sie zitiert haben.
         </p>

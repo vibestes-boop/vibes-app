@@ -174,7 +174,7 @@ const enMessages = {
     walletCoinsLabel: 'Coins',
     walletCoinsHint: 'for gifts + shop purchases',
     walletCoinsCta: 'Top up',
-    walletDiamondsLabel: 'Diamonds',
+    walletDiamondsLabel: 'Earnings',
     walletDiamondsHint: 'received from fans',
     walletGiftedLabel: 'Gifted',
     walletGiftedHint: 'coins total',
@@ -349,7 +349,7 @@ const enMessages = {
     kpiNewFollowers: 'New followers',
     kpiPrev: 'before: {value}',
 
-    diamondBalance: 'Diamond balance',
+    diamondBalance: 'Earnings',
     periodGiftsLine: '+{amount} this period ({gifts} gifts)',
     noGiftsPeriod: 'No gifts in the selected period',
     earningsDetails: 'Earnings details',

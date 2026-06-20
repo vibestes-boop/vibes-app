@@ -57,7 +57,7 @@ export default async function RealtimePage() {
 function NotLiveState() {
   const metrics = [
     { label: 'Gesamtaufrufe',              icon: Eye },
-    { label: 'Diamanten',                  icon: Gem },
+    { label: 'Einnahmen',                  icon: Gem },
     { label: 'Schenkende',                 icon: Users },
     { label: 'Neue Follower*innen',        icon: UserPlus },
     { label: 'Likes',                      icon: Heart },
@@ -101,7 +101,7 @@ function NotLiveState() {
             Gesamtaufrufe
           </span>
           <span className="rounded-full px-3 py-1 text-sm font-medium text-muted-foreground">
-            Diamanten
+            Einnahmen
           </span>
           <div className="ml-auto flex items-center gap-3 text-xs text-muted-foreground">
             <span className="flex items-center gap-1.5">

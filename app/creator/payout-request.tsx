@@ -22,7 +22,8 @@ View,
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const MIN_PAYOUT = 2500;
-const RATE       = 0.02; // 1 Diamond = 2 Cent
+const RATE       = 0.02; // 1 Punkt = 2 Cent
+const fmtEuro = (points: number) => (points * RATE).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
 
 export default function PayoutRequestScreen() {
   const insets   = useSafeAreaInsets();
@@ -82,7 +83,7 @@ export default function PayoutRequestScreen() {
           </View>
           <Text style={[s.successTitle, { color: colors.text.primary }]}>Anfrage gestellt</Text>
           <Text style={[s.successSub, { color: colors.text.muted }]}>
-            {balance} 💎 ≈ {euroAmount}€{'\n'}
+            {fmtEuro(balance)}{'\n'}
             Bearbeitung: 5–10 Werktage
           </Text>
           <Pressable
@@ -121,14 +122,14 @@ export default function PayoutRequestScreen() {
           <View style={{ flex: 1 }}>
             <Text style={[s.balanceLabel, { color: colors.text.muted }]}>Verfügbar</Text>
             <Text style={[s.balanceValue, { color: colors.text.primary }]}>
-              {fmtNum(balance)} 💎
+              {fmtEuro(balance)}
             </Text>
-            <Text style={[s.balanceEur, { color: colors.text.muted }]}>≈ {euroAmount}€</Text>
+            <Text style={[s.balanceEur, { color: colors.text.muted }]}>{fmtNum(balance)} Punkte</Text>
           </View>
           {!eligible && (
             <View style={[s.warningPill, { backgroundColor: colors.bg.primary, borderColor: colors.border.subtle }]}>
               <Text style={[s.warningPillText, { color: colors.text.muted }]}>
-                Noch {fmtNum(MIN_PAYOUT - balance)} 💎
+                Noch {fmtEuro(MIN_PAYOUT - balance)}
               </Text>
             </View>
           )}
@@ -139,7 +140,7 @@ export default function PayoutRequestScreen() {
           <View style={[s.infoBox, { backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle }]}>
             <AlertCircle size={14} color={colors.text.muted} strokeWidth={2} />
             <Text style={[s.infoText, { color: colors.text.muted }]}>
-              Mindestbetrag: {fmtNum(MIN_PAYOUT)} 💎 ≈ {(MIN_PAYOUT * RATE).toFixed(0)}€.
+              Mindestbetrag: {fmtEuro(MIN_PAYOUT)}.
             </Text>
           </View>
         )}
@@ -220,7 +221,7 @@ export default function PayoutRequestScreen() {
         </Pressable>
 
         <Text style={[s.disclaimer, { color: colors.text.muted }]}>
-          5–10 Werktage Bearbeitung ·  Min. {fmtNum(MIN_PAYOUT)} 💎 ≈ {(MIN_PAYOUT * RATE).toFixed(0)}€
+          5–10 Werktage Bearbeitung ·  Min. {fmtEuro(MIN_PAYOUT)}
         </Text>
       </ScrollView>
     </KeyboardAvoidingView>

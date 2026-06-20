@@ -134,15 +134,15 @@ export default function CreatorDashboard() {
       {/* ── Hero: Diamonds + Name ────────────────────────────────── */}
       <View style={[s.hero, { borderBottomColor: colors.border.subtle }]}>
         <View>
-          <Text style={[s.heroLabel, { color: colors.text.muted }]}>Dein Guthaben</Text>
+          <Text style={[s.heroLabel, { color: colors.text.muted }]}>Deine Einnahmen</Text>
           <View style={s.heroRow}>
             <Text style={[s.heroValue, { color: colors.text.primary }]}>
-              {ea ? fmtNum(ea.diamonds_balance) : '–'}
+              {ea ? fmtEuro(ea.diamonds_balance) : '–'}
             </Text>
-            <Text style={[s.heroCurrency, { color: colors.text.muted }]}>💎</Text>
           </View>
           <Text style={[s.heroSub, { color: colors.text.muted }]}>
-            {profile?.display_name ?? profile?.username ?? ''}
+            {ea ? `${fmtNum(ea.diamonds_balance)} Punkte` : ''}
+            {(profile?.display_name ?? profile?.username) ? `  ·  ${profile?.display_name ?? profile?.username}` : ''}
           </Text>
         </View>
         <Pressable
@@ -207,7 +207,7 @@ export default function CreatorDashboard() {
                 <SectionLabel title="Einnahmen" colors={colors} />
                 <View style={[s.table, { borderColor: colors.border.subtle }]}>
                   <EarningsRow emoji="🎁" label="Gifts empfangen" value={`${ea.period_gifts}`} colors={colors} last={false} />
-                  <EarningsRow emoji="💎" label="Diamonds diesen Zeitraum" value={`+${fmtNum(ea.period_diamonds)}`} colors={colors} last={false} />
+                  <EarningsRow emoji="💶" label="Einnahmen diesen Zeitraum" value={`+${fmtEuro(ea.period_diamonds)}`} colors={colors} last={false} />
                   <EarningsRow emoji="⭐" label={ea.top_gift_name ? `${ea.top_gift_emoji} ${ea.top_gift_name}` : 'Kein Gift'} label2="Beliebtestes Gift" colors={colors} last={false} />
                   <EarningsRow emoji="👑" label={ea.top_gifter_name ?? '–'} label2="Top Supporter" colors={colors} last />
                 </View>
@@ -229,7 +229,7 @@ export default function CreatorDashboard() {
                         <Text style={[s.giftSender, { color: colors.text.primary }]}>@{g.sender_name}</Text>
                         <Text style={[s.giftName, { color: colors.text.muted }]}>{g.gift_emoji} {g.gift_name}</Text>
                       </View>
-                      <Text style={[s.giftValue, { color: colors.text.primary }]}>+{g.diamond_value} 💎</Text>
+                      <Text style={[s.giftValue, { color: colors.text.primary }]}>+{fmtEuro(g.diamond_value)}</Text>
                     </View>
                   ))}
                 </View>
@@ -427,6 +427,10 @@ function StatChip({ icon, value, colors }: { icon: string; value: string; colors
 }
 
 const MIN_PAYOUT = 2500;
+const RATE = 0.02; // 1 Punkt = 2 Cent → € im Vordergrund (seriöse Einnahmen-Darstellung)
+function fmtEuro(points: number): string {
+  return (points * RATE).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+}
 function PayoutBar({ ea, colors, router }: { ea: any; colors: any; router: any }) {
   const balance = ea?.diamonds_balance ?? 0;
   const eligible = balance >= MIN_PAYOUT;
@@ -436,10 +440,10 @@ function PayoutBar({ ea, colors, router }: { ea: any; colors: any; router: any }
     <View style={[s.payoutCard, { backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle }]}>
       <View style={s.payoutTop}>
         <Text style={[s.payoutBalance, { color: colors.text.primary }]}>
-          {fmtNum(balance)} 💎
+          {fmtEuro(balance)}
         </Text>
         <Text style={[s.payoutMin, { color: colors.text.muted }]}>
-          von {fmtNum(MIN_PAYOUT)} 💎 Minimum
+          von {fmtEuro(MIN_PAYOUT)} Minimum
         </Text>
       </View>
       {/* Progress */}
@@ -453,7 +457,7 @@ function PayoutBar({ ea, colors, router }: { ea: any; colors: any; router: any }
         accessibilityRole="button"
       >
         <Text style={[s.payoutBtnText, { color: eligible ? colors.bg.primary : colors.text.muted }]}>
-          {eligible ? 'Auszahlung beantragen →' : `Noch ${fmtNum(MIN_PAYOUT - balance)} 💎`}
+          {eligible ? 'Auszahlung beantragen →' : `Noch ${fmtEuro(MIN_PAYOUT - balance)}`}
         </Text>
       </Pressable>
     </View>

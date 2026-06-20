@@ -186,7 +186,7 @@ const deMessages = {
     walletCoinsLabel: "Coins",
     walletCoinsHint: "für Gifts + Shop-Käufe",
     walletCoinsCta: "Aufladen",
-    walletDiamondsLabel: "Diamanten",
+    walletDiamondsLabel: "Einnahmen",
     walletDiamondsHint: "von Fans erhalten",
     walletGiftedLabel: "Verschenkt",
     walletGiftedHint: "Coins insgesamt",
@@ -377,7 +377,7 @@ const deMessages = {
     kpiPrev: "vorher: {value}",
 
     // Diamonds-Hero
-    diamondBalance: "Diamanten",
+    diamondBalance: "Einnahmen",
     periodGiftsLine: "+{amount} in diesem Zeitraum ({gifts} Gifts)",
     noGiftsPeriod: "Keine Gifts in diesem Zeitraum",
     earningsDetails: "Einnahmen öffnen",

@@ -85,16 +85,16 @@ export default async function StudioRevenuePage({
       <section className="grid gap-3 md:grid-cols-4">
         <BigMetricCard
           icon={Gem}
-          label="Diamanten-Balance"
-          value={(earnings?.diamondsBalance ?? 0).toLocaleString("de-DE")}
-          unit="Diamanten"
+          label="Einnahmen"
+          value={((earnings?.diamondsBalance ?? 0) * 0.02).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+          unit="€"
           tint="primary"
         />
         <BigMetricCard
           icon={TrendingUp}
-          label="Diamanten (Periode)"
-          value={`+${totalDiamondsPeriod.toLocaleString("de-DE")}`}
-          unit="Diamanten"
+          label="Einnahmen (Periode)"
+          value={`+${(totalDiamondsPeriod * 0.02).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`}
+          unit="€"
           tint="success"
         />
         <BigMetricCard
@@ -292,7 +292,7 @@ export default async function StudioRevenuePage({
           <div className="min-w-0 flex-1">
             <h3 className="text-sm font-semibold">Auszahlung beantragen</h3>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Ab 2.500 Diamanten (≈ 50 €) kannst du eine Auszahlung per
+              Ab 50 € kannst du eine Auszahlung per
               SEPA-Überweisung oder PayPal beantragen.
             </p>
             <Link

@@ -127,10 +127,9 @@ export default function PayoutPage() {
 
       <h1 className="mb-1 text-2xl font-semibold">Auszahlung beantragen</h1>
       <p className="mb-6 text-sm text-muted-foreground">
-        Deine Diamanten werden manuell bearbeitet und per SEPA oder PayPal
+        Deine Einnahmen werden manuell bearbeitet und per SEPA oder PayPal
         ausgezahlt. Der Mindestauszahlungsbetrag beträgt{" "}
-        {MIN_PAYOUT.toLocaleString("de-DE")} Diamanten (≈{" "}
-        {(MIN_PAYOUT * RATE).toFixed(0)} €).
+        {(MIN_PAYOUT * RATE).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €.
       </p>
 
       {/* Balance Card */}
@@ -141,18 +140,15 @@ export default function PayoutPage() {
           </div>
           <div>
             <p className="text-xs text-muted-foreground">
-              Dein Diamanten-Guthaben
+              Deine Einnahmen
             </p>
             {loading ? (
               <div className="mt-1 h-6 w-32 animate-pulse rounded bg-muted" />
             ) : (
               <p className="text-2xl font-bold">
-                <span className="inline-flex items-center gap-1.5">
-                  <Gem className="h-5 w-5 text-muted-foreground" />
-                  {(balance ?? 0).toLocaleString("de-DE")}
-                </span>
+                {((balance ?? 0) * RATE).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                 <span className="ml-2 text-base font-normal text-muted-foreground">
-                  ≈ {euroAmount} €
+                  {(balance ?? 0).toLocaleString("de-DE")} Punkte
                 </span>
               </p>
             )}
@@ -163,11 +159,10 @@ export default function PayoutPage() {
           <div className="mt-3 flex items-start gap-2 rounded-lg border bg-muted/40 px-3 py-2.5 text-sm text-muted-foreground">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <span>
-              Du hast noch nicht genug Diamanten für eine Auszahlung. Dir fehlen
+              Du hast noch nicht genug Einnahmen für eine Auszahlung. Dir fehlen
               noch{" "}
               <strong className="text-foreground">
-                {(MIN_PAYOUT - (balance ?? 0)).toLocaleString("de-DE")}{" "}
-                Diamanten
+                {((MIN_PAYOUT - (balance ?? 0)) * RATE).toLocaleString("de-DE", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
               </strong>
               .
             </span>
@@ -301,7 +296,7 @@ export default function PayoutPage() {
                 <span className="font-semibold">
                   <span className="inline-flex items-center gap-1">
                     <Gem className="h-4 w-4 text-muted-foreground" />
-                    {(balance ?? 0).toLocaleString("de-DE")} Diamanten
+                    {(balance ?? 0).toLocaleString("de-DE")} Punkte
                   </span>{" "}
                   = <span className="text-foreground">{euroAmount} €</span>
                 </span>
@@ -364,7 +359,7 @@ export default function PayoutPage() {
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="inline-flex items-center gap-1 text-sm font-medium">
                       <Gem className="h-3.5 w-3.5 text-muted-foreground" />
-                      {r.diamonds_amount.toLocaleString("de-DE")} Diamanten
+                      {r.diamonds_amount.toLocaleString("de-DE")} Punkte
                       <span className="text-muted-foreground">→</span>
                       {r.euro_amount.toFixed(2)} €
                     </span>

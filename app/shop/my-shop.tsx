@@ -340,10 +340,9 @@ export default function MyShopScreen() {
             {products.length} Produkt{products.length !== 1 ? 'e' : ''}
           </Text>
         </View>
-        {/* Diamonds-Balance */}
+        {/* Einnahmen-Balance (€) */}
         <View style={[s.diamondPill, { backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle }]}>
-          <Text style={{ fontSize: 14 }}>💎</Text>
-          <Text style={[s.diamondText, { color: colors.text.primary }]}>{diamonds.toLocaleString('de-DE')}</Text>
+          <Text style={[s.diamondText, { color: colors.text.primary }]}>{(diamonds * 0.02).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</Text>
         </View>
         {/* Neues Produkt erstellen */}
         <Pressable

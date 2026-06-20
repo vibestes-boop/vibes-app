@@ -143,7 +143,7 @@ export function CreatorTipButton({
             @{recipientName} unterstützen
           </DialogTitle>
           <DialogDescription>
-            Sende einmalig Coins — 85% landen als Diamanten beim Creator.
+            Sende einmalig Coins — 85% landen als Einnahmen beim Creator.
           </DialogDescription>
         </DialogHeader>
 

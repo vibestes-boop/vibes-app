@@ -52,7 +52,7 @@ export function RealtimeStatsClient({ sessionId, initialViewerCount }: Props) {
 
   const metrics = [
     { label: 'Gesamtaufrufe',              icon: Eye,           value: viewers },
-    { label: 'Diamanten',                  icon: Gem,           value: 0 },
+    { label: 'Einnahmen',                  icon: Gem,           value: 0, isEuro: true },
     { label: 'Schenkende',                 icon: Users,         value: 0 },
     { label: 'Neue Follower*innen',        icon: UserPlus,      value: 0 },
     { label: 'Likes',                      icon: Heart,         value: 0 },
@@ -80,14 +80,16 @@ export function RealtimeStatsClient({ sessionId, initialViewerCount }: Props) {
       </div>
 
       <div className="grid grid-cols-2 gap-x-8 gap-y-5 sm:grid-cols-4">
-        {metrics.map(({ label, icon: Icon, value, highlight }) => (
+        {metrics.map(({ label, icon: Icon, value, highlight, isEuro }) => (
           <div key={label} className="flex flex-col gap-1">
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
               <Icon className="h-3.5 w-3.5 shrink-0" />
               <span>{label}</span>
             </div>
             <span className={highlight ? 'text-xl font-bold text-red-500' : 'text-xl font-semibold'}>
-              {value.toLocaleString('de-DE')}
+              {isEuro
+                ? `${(value * 0.02).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`
+                : value.toLocaleString('de-DE')}
             </span>
           </div>
         ))}

@@ -104,7 +104,7 @@ export default async function AdminPayoutsPage() {
 
                   {/* Diamonds */}
                   <span className="text-right text-sm font-semibold tabular-nums text-purple-600 dark:text-purple-400">
-                    💎 {seller.diamond_balance.toLocaleString('de-DE')}
+                    {(seller.diamond_balance * 0.02).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
                   </span>
 
                   {/* Total earned */}

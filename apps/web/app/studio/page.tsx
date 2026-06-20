@@ -312,7 +312,7 @@ function DiamondsHero({
             {t("studio.diamondBalance")}
           </div>
           <div className="mt-1 text-3xl font-bold tabular-nums sm:text-4xl">
-            {balance.toLocaleString(intl)}
+            {(balance * 0.02).toLocaleString(intl, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €
           </div>
           <div className="mt-1 text-xs text-muted-foreground">
             {period > 0

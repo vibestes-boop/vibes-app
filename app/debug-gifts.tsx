@@ -139,7 +139,7 @@ export default function DebugGiftsScreen() {
               </View>
               <View style={s.walletItem}>
                 <Text style={[s.walletValue, { color: '#60A5FA' }]}>{diamonds.toLocaleString()}</Text>
-                <Text style={s.walletLabel}>💎 Diamonds</Text>
+                <Text style={s.walletLabel}>Einnahmen</Text>
               </View>
             </View>
           )}

@@ -141,9 +141,9 @@ export default async function StudioAnalyticsPage({
             sub="Views gesamt"
           />
           <MetricCell
-            label="Diamanten"
+            label="Einnahmen"
             icon={BarChart2}
-            value={diamonds.toLocaleString('de-DE')}
+            value={`${(diamonds * 0.02).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`}
             sub="Erhaltene Geschenke"
           />
           <MetricCell

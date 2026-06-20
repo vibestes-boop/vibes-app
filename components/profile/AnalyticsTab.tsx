@@ -258,14 +258,14 @@ function EarningsPanel({ userId, period, colors }: { userId: string | null; peri
         {/* Wallet-Stand */}
         <View style={ep.walletHeader}>
           <View style={ep.walletLeft}>
-            <Text style={[ep.walletLabel, { color: colors.text.muted }]}>WALLET-STAND</Text>
+            <Text style={[ep.walletLabel, { color: colors.text.muted }]}>EINNAHMEN</Text>
             <Text style={[ep.walletBalance, { color: colors.text.primary }]}>
-              {isLoading ? '…' : fmtNum(earnings?.diamonds_balance ?? 0)}
+              {isLoading ? '…' : `${euroValue} €`}
             </Text>
             <View style={ep.walletSubRow}>
               <Gem size={12} color={colors.accent.rose} strokeWidth={2} />
               <Text style={[ep.walletSub, { color: colors.text.muted }]}>
-                {'Diamonds · ≈ ' + euroValue + ' €'}
+                {fmtNum(earnings?.diamonds_balance ?? 0) + ' Punkte'}
               </Text>
             </View>
           </View>
@@ -278,7 +278,7 @@ function EarningsPanel({ userId, period, colors }: { userId: string | null; peri
         <View style={[ep.periodRow, { backgroundColor: colors.bg.elevated }]}>
           <View style={ep.periodStat}>
             <Text style={[ep.periodValue, { color: colors.text.primary }]}>
-              {isLoading ? '…' : fmtNum(earnings?.period_diamonds ?? 0)}
+              {isLoading ? '…' : `${((earnings?.period_diamonds ?? 0) * 0.02).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`}
             </Text>
             <Text style={[ep.periodLabel, { color: colors.text.muted }]}>Verdient</Text>
           </View>
@@ -336,7 +336,7 @@ function EarningsPanel({ userId, period, colors }: { userId: string | null; peri
                   {item.gift_name} <Text style={{ color: colors.text.muted, fontWeight: '400' }}>von @{item.sender_name}</Text>
                 </Text>
               </View>
-              <Text style={[ep.historyDiamonds, { color: colors.accent.rose }]}>+{item.diamond_value} 💎</Text>
+              <Text style={[ep.historyDiamonds, { color: colors.accent.rose }]}>+{(item.diamond_value * 0.02).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</Text>
             </View>
           ))}
         </View>

@@ -89,7 +89,7 @@ export default async function BillingPage() {
         <WalletCard
           icon={<Diamond className="h-5 w-5" />}
           label={t('billing.walletDiamondsLabel')}
-          value={diamonds.toLocaleString(intl)}
+          value={`${(diamonds * 0.02).toLocaleString(intl, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`}
           hint={t('billing.walletDiamondsHint')}
           tone="blue"
         />

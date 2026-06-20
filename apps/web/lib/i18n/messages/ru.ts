@@ -177,7 +177,7 @@ const ruMessages = {
     walletCoinsLabel: 'Монеты',
     walletCoinsHint: 'на подарки и покупки',
     walletCoinsCta: 'Пополнить',
-    walletDiamondsLabel: 'Бриллианты',
+    walletDiamondsLabel: 'Доходы',
     walletDiamondsHint: 'получены от фанатов',
     walletGiftedLabel: 'Подарено',
     walletGiftedHint: 'монет всего',
@@ -352,7 +352,7 @@ const ruMessages = {
     kpiNewFollowers: 'Новые подписчики',
     kpiPrev: 'ранее: {value}',
 
-    diamondBalance: 'Баланс бриллиантов',
+    diamondBalance: 'Баланс доходов',
     periodGiftsLine: '+{amount} за этот период ({gifts} подарков)',
     noGiftsPeriod: 'За выбранный период подарков нет',
     earningsDetails: 'Детали доходов',
