@@ -92,8 +92,12 @@ export function LiveRingAvatar({
   // Fall 1: nicht live. Standard-Avatar mit dezentem background-Ring.
   if (!live) {
     return (
-      <Avatar className={cn(sizeClassName, 'ring-4 ring-background', className)}>
-        <AvatarImage src={src ?? undefined} alt={alt} />
+      <Avatar className={cn(sizeClassName, 'group/avatar ring-4 ring-background', className)}>
+        <AvatarImage
+          src={src ?? undefined}
+          alt={alt}
+          className="transition-transform duration-300 ease-out group-hover/avatar:scale-110"
+        />
         <AvatarFallback className="text-2xl">{fallback}</AvatarFallback>
       </Avatar>
     );
@@ -114,8 +118,12 @@ export function LiveRingAvatar({
         )}
       >
         <span className="block rounded-full bg-background p-[2px]">
-          <Avatar className={cn(sizeClassName, 'block')}>
-            <AvatarImage src={src ?? undefined} alt={alt} />
+          <Avatar className={cn(sizeClassName, 'group/avatar block')}>
+            <AvatarImage
+              src={src ?? undefined}
+              alt={alt}
+              className="transition-transform duration-300 ease-out group-hover/avatar:scale-110"
+            />
             <AvatarFallback className="text-2xl">{fallback}</AvatarFallback>
           </Avatar>
         </span>

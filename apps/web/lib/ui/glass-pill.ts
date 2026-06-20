@@ -37,10 +37,10 @@ export const glassPillBase = [
   'bg-black/40 ring-1 ring-white/10 backdrop-blur-md',
   // Text-Default
   'text-white',
-  // Motion
-  'transition-colors duration-base ease-out-expo',
-  // Hover
-  'hover:bg-black/60 hover:ring-white/20',
+  // Motion — animiert Surface + Transform (für den Hover-Zoom je Badge)
+  'transition-[background-color,box-shadow,transform] duration-base ease-out-expo',
+  // Hover — Surface heller + dezenter Einzel-Zoom (jedes Badge zoomt bei eigenem Hover)
+  'hover:bg-black/60 hover:ring-white/20 hover:scale-110',
   // Radix data-state=open — gleiche visuelle Hervorhebung wie Hover
   'data-[state=open]:bg-black/60 data-[state=open]:ring-white/20',
   // Keyboard-Focus (override für schwebende Elemente — kein ring-offset)
