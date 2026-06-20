@@ -7,12 +7,12 @@ import { CoinIcon } from '@/components/ui/coin-icon';
 import {
   BadgeCheck,
   MapPin,
-  Truck,
   Package,
   Download,
   Wrench,
   Gem,
   ShoppingBag,
+  Star,
 } from "lucide-react";
 import { ImageCarousel } from "@/components/shop/image-carousel";
 import { BuyBar } from "@/components/shop/buy-bar";
@@ -134,12 +134,42 @@ export default async function ProductDetailPage({ params }: PageProps) {
     (s): s is string => typeof s === "string" && s.length > 0,
   );
   const catMeta = CATEGORY_META[product.category];
-  const CatIcon = catMeta?.icon ?? Package;
 
   const eff = product.sale_price_coins ?? product.price_coins;
   const isSale = product.sale_price_coins !== null;
 
   const others = moreFromSeller.filter((p) => p.id !== product.id).slice(0, 4);
+
+  // ── Etsy-Minimal (Parität zur Mobile-Detailseite): Subline + 3-Spalten-Infozeile ──
+  const percentOff = isSale
+    ? Math.round((1 - eff / product.price_coins) * 100)
+    : null;
+  const isLowStock = product.stock > 0 && product.stock <= 5;
+  const subline = [
+    catMeta?.label ?? product.category,
+    product.women_only ? "Women-Only" : null,
+    product.sold_count > 0
+      ? `${product.sold_count.toLocaleString("de-DE")}× verkauft`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const deliveryShort =
+    product.category === "physical"
+      ? product.free_shipping
+        ? "Gratis"
+        : "Per DM"
+      : product.category === "digital"
+        ? "Sofort"
+        : "Nach Kauf";
+  const stockShort =
+    product.stock === -1
+      ? "Auf Lager"
+      : product.stock === 0
+        ? "Ausverkauft"
+        : isLowStock
+          ? `Nur ${product.stock}`
+          : `${product.stock}`;
 
   // ── JSON-LD: Product schema ──────────────────────────────────────────────
   // Ermöglicht Google Rich-Snippets (Bewertungssterne, Preis-Hint) in den
@@ -216,93 +246,78 @@ export default async function ProductDetailPage({ params }: PageProps) {
 
           {/* Right: Info */}
           <div className="flex flex-col gap-5">
-            {/* Category + Sale-Badge */}
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1 text-xs font-medium">
-                <CatIcon className="h-3.5 w-3.5" />
-                {catMeta?.label ?? product.category}
-              </span>
-              {isSale && (
-                <span className="rounded-full border border-border bg-muted px-3 py-1 text-xs font-semibold text-foreground">
-                  Angebot
-                </span>
-              )}
-              {product.women_only && (
-                <span className="rounded-full border border-border bg-muted px-3 py-1 text-xs font-medium text-foreground">
-                  ♀ Nur für Frauen
-                </span>
+            {/* Titel zuerst (Etsy-Minimal) + Subline: Kategorie · Women-Only · Verkäufe */}
+            <div>
+              <h1 className="text-2xl font-semibold leading-tight md:text-3xl">
+                {product.title}
+              </h1>
+              {subline && (
+                <p className="mt-1.5 text-sm text-muted-foreground">{subline}</p>
               )}
             </div>
 
-            {/* Titel */}
-            <h1 className="text-2xl font-semibold leading-tight md:text-3xl">
-              {product.title}
-            </h1>
-
-            {/* Rating */}
-            {product.review_count > 0 && (
-              <Link
-                href="#reviews"
-                className="inline-flex items-center gap-2 text-sm"
-              >
-                <StarDisplay
-                  rating={product.avg_rating}
-                  count={product.review_count}
-                />
-                <span className="text-muted-foreground underline-offset-4 hover:underline">
-                  {product.review_count} Bewertung
-                  {product.review_count === 1 ? "" : "en"}
+            {/* Preis (monochrom): Coin + Preis + Alt-Preis + −% · Ort darunter */}
+            <div>
+              <div className="flex items-baseline gap-3">
+                <span className="inline-flex items-center gap-2 text-4xl font-bold tabular-nums text-foreground">
+                  <CoinIcon className="h-7 w-7" />
+                  {eff.toLocaleString("de-DE")}
                 </span>
-              </Link>
-            )}
-
-            {/* Preis */}
-            <div className="flex items-baseline gap-3">
-              <span className="inline-flex items-center gap-2 text-4xl font-bold tabular-nums text-foreground">
-                <CoinIcon className="h-7 w-7 text-muted-foreground" />
-                {eff.toLocaleString("de-DE")}
-              </span>
-              {isSale && (
-                <span className="text-lg text-muted-foreground line-through tabular-nums">
-                  {product.price_coins.toLocaleString("de-DE")}
-                </span>
-              )}
-            </div>
-
-            {/* Info-Pills: Versand, Ort, Sold-Count */}
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              {product.free_shipping && product.category === "physical" && (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 px-3 py-1 text-muted-foreground">
-                  <Truck className="h-3.5 w-3.5" />
-                  Gratis Versand
-                </span>
-              )}
+                {isSale && (
+                  <>
+                    <span className="text-lg text-muted-foreground line-through tabular-nums">
+                      {product.price_coins.toLocaleString("de-DE")}
+                    </span>
+                    {percentOff !== null && (
+                      <span className="text-sm font-medium text-muted-foreground">
+                        −{percentOff} %
+                      </span>
+                    )}
+                  </>
+                )}
+              </div>
               {product.location && (
-                <span className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1">
+                <div className="mt-1.5 inline-flex items-center gap-1.5 text-sm text-muted-foreground">
                   <MapPin className="h-3.5 w-3.5" />
                   {product.location}
-                </span>
-              )}
-              {product.sold_count > 0 && (
-                <span className="rounded-full border px-3 py-1 text-muted-foreground">
-                  {product.sold_count.toLocaleString("de-DE")}× verkauft
-                </span>
-              )}
-              {product.stock > 0 && product.stock <= 5 && (
-                <span className="rounded-full border border-border bg-muted/40 px-3 py-1 text-muted-foreground">
-                  {product.stock === 1
-                    ? "1 verfügbar"
-                    : `${product.stock} verfügbar`}
-                </span>
+                </div>
               )}
             </div>
 
-            {/* Delivery-Hinweis */}
-            {catMeta && (
-              <p className="text-sm text-muted-foreground">
-                {catMeta.delivery}
-              </p>
-            )}
+            {/* 3-Spalten-Infozeile: Lieferung | Bewertung | Lager */}
+            <div className="grid grid-cols-3 overflow-hidden rounded-xl border border-border">
+              <div className="px-4 py-3">
+                <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Lieferung
+                </div>
+                <div className="mt-0.5 truncate text-sm font-medium text-foreground">
+                  {deliveryShort}
+                </div>
+              </div>
+              <div className="border-l border-border px-4 py-3">
+                <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Bewertung
+                </div>
+                <div className="mt-0.5 flex items-center gap-1 truncate text-sm font-medium text-foreground">
+                  {product.review_count > 0 && product.avg_rating !== null ? (
+                    <>
+                      <Star className="h-3 w-3 fill-current" />
+                      {product.avg_rating.toFixed(1)} ({product.review_count})
+                    </>
+                  ) : (
+                    "Neu"
+                  )}
+                </div>
+              </div>
+              <div className="border-l border-border px-4 py-3">
+                <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Lager
+                </div>
+                <div className="mt-0.5 truncate text-sm font-medium text-foreground">
+                  {stockShort}
+                </div>
+              </div>
+            </div>
 
             {/*
             Seller-Karte — bewusst FLACH, KEIN Nested-Link:
@@ -369,7 +384,12 @@ export default async function ProductDetailPage({ params }: PageProps) {
               nativem <details>. Eigene Client-Komponente, weil die Animation
               eine gemessene Ziel-Höhe braucht. */}
             {product.description && (
-              <ProductDescription text={product.description} />
+              <div>
+                <div className="mb-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Beschreibung
+                </div>
+                <ProductDescription text={product.description} />
+              </div>
             )}
 
             {/* Inline Buy-CTA (Desktop) — direkt in der Info-Column. Mobile
