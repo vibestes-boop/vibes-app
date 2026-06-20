@@ -268,7 +268,7 @@ function TopRightActionsClient({
             aria-label={t('header.accountMenu')}
             className={cn(
               glassPillBase,
-              'pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full p-0.5',
+              'pointer-events-auto flex h-9 w-9 items-center justify-center rounded-full p-0.5 hover:!scale-125',
             )}
           >
             <Avatar className="h-8 w-8">

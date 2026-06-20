@@ -27,7 +27,7 @@
 | Animationen | **Reanimated 3** + **Skia** (@shopify/react-native-skia) |
 | Styling | **React Native StyleSheet** (kein Tailwind) — Dark/Light via `useTheme()` |
 | Push | **Expo Notifications** |
-| In-App Kauf | **RevenueCat** (Borz Coins) |
+| In-App Kauf | **RevenueCat** (Serlo Coins) |
 | Monitoring | **Sentry** |
 | Deploy | **EAS Build + Submit** |
 

@@ -47,16 +47,16 @@
   - [x] `verify_functions.sql` → ✅ Daten gesund (Max Score 4.24, 24 Gaming-Logs)
 - [x] **EAS Production Build iOS v1.6.0** → ✅ Build #199 eingereicht (07.04.2026)
 
-### 💰 Monetarisierung — Borz Coins IAP ✅ (09.04.2026)
+### 💰 Monetarisierung — Serlo Coins IAP ✅ (09.04.2026)
 - [x] RevenueCat SDK integriert (`react-native-purchases`)
 - [x] RevenueCat Projekt konfiguriert (App Store Connect .p8 Key verknüpft)
 - [x] 4 Consumable IAP Produkte in App Store Connect erstellt:
-  - `com.vibesapp.vibes.coins_100` → 100 Borz Coins — 0,99€
-  - `com.vibesapp.vibes.coins_500` → 500 Borz Coins — 3,99€
-  - `com.vibesapp.vibes.coins_1200` → 1200 Borz Coins — 8,99€
-  - `com.vibesapp.vibes.coins_3000` → 3000 Borz Coins — 19,99€
+  - `com.vibesapp.vibes.coins_100` → 100 Serlo Coins — 0,99€
+  - `com.vibesapp.vibes.coins_500` → 500 Serlo Coins — 3,99€
+  - `com.vibesapp.vibes.coins_1200` → 1200 Serlo Coins — 8,99€
+  - `com.vibesapp.vibes.coins_3000` → 3000 Serlo Coins — 19,99€
 - [x] RevenueCat Offerings konfiguriert (`default` Offering mit 4 Packages)
-- [x] Borz Coin Icon erstellt (Wolf-Münze, Gold, Premium Design)
+- [x] Serlo Coin Icon erstellt (Wolf-Münze, Gold, Premium Design)
 - [x] **Coin Shop UI** — TikTok-inspirierter Shop (Grid, Selected State, Payment Methods)
 - [x] Navigation zu Coin Shop (aus Profil + aus Gift-Panel im Livestream)
 - [x] Supabase `coin_purchases` Tabelle (Idempotenz-Log für Käufe)
@@ -65,7 +65,7 @@
   - RevenueCat → Supabase → `coins_wallets` automatisch nach Kauf
   - Webhook "Serlo Coin Credits" → Active in RevenueCat
 - [x] Bundle ID auf `com.vibesapp.vibes` korrigiert (war fälschlicherweise `com.serloapp.serlo`)
-- [x] **EAS Build v1.8.0** (Build #203) gestartet — mit Borz Coin + Coin Shop
+- [x] **EAS Build v1.8.0** (Build #203) gestartet — mit Serlo Coin + Coin Shop
 
 ### 📋 Noch offen für v1.8.0:
 - [ ] IAPs zur App-Version in App Store Connect hinzufügen
@@ -140,7 +140,7 @@
 ### 💰 Monetarisierung v2 (Q3 2026)
 - [ ] Creator Monetarisierung — Diamonds → echtes Geld auszahlen
 - [ ] Auszahlungs-System (Supabase → Stripe → Creator-Bankkonto)
-- [ ] Borz Coins v2 — Lootboxen, saisonale Geschenke, limitierte Items
+- [ ] Serlo Coins v2 — Lootboxen, saisonale Geschenke, limitierte Items
 - [ ] Abonnements (Creator-Badge, exklusive Inhalte)
 - [ ] Werbe-System (Promoted Posts)
 
@@ -178,7 +178,7 @@
 
 - Vibes API für Third-Party-Integrationen
 - Podcast / Audio-Only Mode
-- Borz Coins Marktplatz (User kaufen/tauschen)
+- Serlo Coins Marktplatz (User kaufen/tauschen)
 - Kollaborative Playlists / Sammlungen
 - Vibes für Creators (separater Creator-Modus)
 - Skia RuntimeEffect Shader-Editor (In-App Filter selbst erstellen)
