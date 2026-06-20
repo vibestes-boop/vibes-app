@@ -4,7 +4,6 @@ import type { Route } from "next";
 import {
   Gem,
   ShoppingBag,
-  Coins,
   TrendingUp,
   Download,
   CreditCard,
@@ -12,6 +11,8 @@ import {
   RotateCcw,
   PauseCircle,
 } from "lucide-react";
+import type { ComponentType } from "react";
+import { CoinIcon } from "@/components/ui/coin-icon";
 import {
   getCreatorEarnings,
   getCreatorGiftHistory,
@@ -104,7 +105,7 @@ export default async function StudioRevenuePage({
           tint="warning"
         />
         <BigMetricCard
-          icon={Coins}
+          icon={CoinIcon}
           label="Shop-Verkäufe"
           value={shopRevenue.completedOrders.toLocaleString("de-DE")}
           unit="Orders"
@@ -268,7 +269,7 @@ export default async function StudioRevenuePage({
                       </td>
                       <td className="px-4 py-2 text-right align-middle tabular-nums">
                         <span className="inline-flex items-center justify-end gap-1">
-                          <Coins className="h-3.5 w-3.5 text-muted-foreground" />
+                          <CoinIcon className="h-3.5 w-3.5" />
                           {o.totalCoins.toLocaleString("de-DE")}
                         </span>
                       </td>
@@ -319,7 +320,7 @@ function BigMetricCard({
   unit,
   tint,
 }: {
-  icon: typeof Gem;
+  icon: ComponentType<{ className?: string }>;
   label: string;
   value: string;
   unit: string;
@@ -361,7 +362,7 @@ function StatusPill({
   value,
   accent,
 }: {
-  icon: typeof Gem;
+  icon: ComponentType<{ className?: string }>;
   label: string;
   value: string;
   accent: "success" | "warning" | "danger" | "muted";

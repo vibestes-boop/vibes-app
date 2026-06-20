@@ -3,7 +3,9 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Route } from 'next';
-import { ArrowLeft, BarChart3, Coins, TrendingUp } from 'lucide-react';
+import { ArrowLeft, BarChart3, TrendingUp } from 'lucide-react';
+import type { ComponentType } from 'react';
+import { CoinIcon } from '@/components/ui/coin-icon';
 import { getShopAnalytics } from '@/lib/data/shop';
 import { getUser } from '@/lib/auth/session';
 import { StarDisplay } from '@/components/shop/star-display';
@@ -55,7 +57,7 @@ export default async function ShopAnalyticsPage() {
         <StatCard
           label="Netto-Umsatz"
           value={totalRevenue.toLocaleString('de-DE')}
-          icon={Coins}
+          icon={CoinIcon}
           highlight
         />
       </div>
@@ -119,7 +121,7 @@ export default async function ShopAnalyticsPage() {
                         <span>{row.sold_count}× verkauft</span>
                         <span className="font-medium text-foreground">
                           <span className="inline-flex items-center gap-1">
-                            <Coins className="h-3.5 w-3.5 text-muted-foreground" />
+                            <CoinIcon className="h-3.5 w-3.5" />
                             {row.revenue_coins.toLocaleString('de-DE')}
                           </span>
                         </span>
@@ -162,7 +164,7 @@ function StatCard({
 }: {
   label: string;
   value: string;
-  icon?: typeof BarChart3;
+  icon?: ComponentType<{ className?: string }>;
   highlight?: boolean;
 }) {
   return (

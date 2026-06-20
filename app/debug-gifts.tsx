@@ -5,6 +5,7 @@
  */
 
 import { GiftAnimation } from '@/components/live/GiftAnimation';
+import { CoinIcon } from '@/components/ui/CoinIcon';
 import { useAuthStore } from '@/lib/authStore';
 import { GIFT_BY_ID,GIFT_CATALOG,type GiftItem } from '@/lib/gifts';
 import { supabase } from '@/lib/supabase';
@@ -131,7 +132,10 @@ export default function DebugGiftsScreen() {
             <View style={s.walletRow}>
               <View style={s.walletItem}>
                 <Text style={s.walletValue}>{coins.toLocaleString()}</Text>
-                <Text style={s.walletLabel}>🪙 Coins</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                  <CoinIcon size={12} />
+                  <Text style={s.walletLabel}>Coins</Text>
+                </View>
               </View>
               <View style={s.walletItem}>
                 <Text style={[s.walletValue, { color: '#60A5FA' }]}>{diamonds.toLocaleString()}</Text>
@@ -165,7 +169,10 @@ export default function DebugGiftsScreen() {
                     : <Text style={s.giftEmoji}>{g.emoji}</Text>
                   }
                   <Text style={[s.giftName, !canAfford && { color: '#4B5563' }]}>{g.name}</Text>
-                  <Text style={[s.giftCost, !canAfford && { color: '#4B5563' }]}>🪙 {g.coinCost}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                    <CoinIcon size={12} dim={!canAfford} />
+                    <Text style={[s.giftCost, !canAfford && { color: '#4B5563' }]}>{g.coinCost}</Text>
+                  </View>
                 </Pressable>
               );
             })}

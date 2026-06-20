@@ -6,7 +6,6 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   BarChart3,
-  Coins,
   CalendarDays,
   FileText,
   Radio,
@@ -15,16 +14,17 @@ import {
   ShieldBan,
   ChevronDown,
   Activity,
-  type LucideIcon,
 } from 'lucide-react';
+import type { ComponentType } from 'react';
 import { cn } from '@/lib/utils';
+import { CoinIcon } from '@/components/ui/coin-icon';
 import { useI18n } from '@/lib/i18n/client';
 import type { TranslationKey } from '@/lib/i18n/translate';
 
 export interface StudioNavItem {
   labelKey: TranslationKey;
   href: Route;
-  icon: LucideIcon;
+  icon: ComponentType<{ className?: string }>;
   /** Sub-items — on desktop they appear indented when the parent is active. */
   children?: { label: string; href: Route }[];
 }
@@ -41,7 +41,7 @@ const STUDIO_NAV: StudioNavItem[] = [
     ],
   },
   { labelKey: 'studio.navRealtime',   href: '/studio/realtime' as Route,    icon: Activity },
-  { labelKey: 'studio.navRevenue',    href: '/studio/revenue' as Route,     icon: Coins },
+  { labelKey: 'studio.navRevenue',    href: '/studio/revenue' as Route,     icon: CoinIcon },
   { labelKey: 'studio.navScheduled',  href: '/studio/scheduled' as Route,   icon: CalendarDays },
   { labelKey: 'studio.navDrafts',     href: '/studio/drafts' as Route,      icon: FileText },
   { labelKey: 'studio.navLive',       href: '/studio/live' as Route,        icon: Radio },

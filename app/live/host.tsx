@@ -6,6 +6,7 @@
  */
 import { impactAsync,ImpactFeedbackStyle,notificationAsync,NotificationFeedbackType } from 'expo-haptics';
 import { Image } from "expo-image";
+import { CoinIcon } from '@/components/ui/CoinIcon';
 import * as ImagePicker from 'expo-image-picker';
 import { useKeepAwake } from 'expo-keep-awake';
 import { LinearGradient } from "expo-linear-gradient";
@@ -2404,7 +2405,10 @@ function HostUI({
                     <View style={s.summaryStatDivider} />
                     <View style={s.summaryStatItem}>
                       <Text style={s.summaryStatNum}>{fmtNum(totalGiftCoins)}</Text>
-                      <Text style={s.summaryStatLabel}>Coins 🪙</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                        <Text style={s.summaryStatLabel}>Coins</Text>
+                        <CoinIcon size={11} />
+                      </View>
                     </View>
                   </>
                 )}
@@ -2428,7 +2432,10 @@ function HostUI({
                       </View>
                     )}
                     <Text style={s.summaryLeaderName}>@{g.username}</Text>
-                    <Text style={s.summaryLeaderCount}>{fmtNum(g.totalCoins)} 🪙</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                      <Text style={s.summaryLeaderCount}>{fmtNum(g.totalCoins)}</Text>
+                      <CoinIcon size={11} />
+                    </View>
                   </View>
                 ))}
               </View>

@@ -1,4 +1,5 @@
 import type { Route } from 'next';
+import { CoinIcon } from '@/components/ui/coin-icon';
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import { redirect } from 'next/navigation';
@@ -108,7 +109,7 @@ export default async function AdminPayoutsPage() {
 
                   {/* Total earned */}
                   <span className="text-right text-sm tabular-nums text-foreground">
-                    🪙 {seller.total_earned.toLocaleString('de-DE')}
+                    <CoinIcon className="mr-0.5 inline h-3.5 w-3.5 align-[-0.15em]" />{seller.total_earned.toLocaleString('de-DE')}
                   </span>
 
                   {/* Pending orders */}
