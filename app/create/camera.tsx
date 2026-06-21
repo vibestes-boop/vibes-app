@@ -24,12 +24,15 @@ import { useCallback,useEffect,useRef,useState } from 'react';
 import {
 Alert,
 Dimensions,
+Keyboard,
 Pressable,
 StatusBar,
 StyleSheet,
 Text,
+TextInput,
 View,
 } from 'react-native';
+import ViewShot from 'react-native-view-shot';
 import {
 useAnimatedStyle,
 useSharedValue,
@@ -47,7 +50,7 @@ const Animated = { View: _animNS?.View ?? _animMod?.View };
 const { width: SCREEN_W } = Dimensions.get('window');
 
 // ─── Typen ─────────────────────────────────────────────────────────────────────
-type CaptureMode = '60s' | '15s' | 'foto';
+type CaptureMode = '60s' | '15s' | 'foto' | 'text';
 type StudioMode = 'vibe' | 'studio' | 'live';
 type AspectRatio = '9:16' | '1:1' | '16:9';
 
@@ -61,6 +64,12 @@ const CAPTURE_MODES: { key: CaptureMode; label: string }[] = [
   { key: '60s', label: '60s' },
   { key: '15s', label: '15s' },
   { key: 'foto', label: 'Foto' },
+  { key: 'text', label: 'Text' },
+];
+
+// Hintergrund-Verläufe für Text-Posts (TikTok-Stil)
+const TEXT_BG_COLORS: string[] = [
+  '#1D1D26', '#A78BFA', '#F472B6', '#FB7185', '#FBBF24', '#34D399', '#38BDF8', '#000000', '#FFFFFF',
 ];
 
 const STUDIO_MODES: { key: StudioMode; label: string; icon: React.ReactNode }[] = [
@@ -375,6 +384,31 @@ export default function CreateCameraScreen() {
 
   const cameraRef = useRef<CameraView>(null);
 
+  // ── Text-Modus (Text-auf-Farbe-Post) ──────────────────────────────────
+  const [textContent, setTextContent] = useState('');
+  const [textBgIndex, setTextBgIndex] = useState(0);
+  const textShotRef = useRef<ViewShot>(null);
+  const textBg = TEXT_BG_COLORS[textBgIndex];
+  // Heller Hintergrund → dunkler Text, sonst weiß
+  const textColor = (textBg === '#FFFFFF' || textBg === '#FBBF24') ? '#111111' : '#FFFFFF';
+
+  const handleTextDone = useCallback(async () => {
+    if (!textContent.trim()) { Alert.alert('Schreib was 🙂', 'Tippe deinen Text ein.'); return; }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Keyboard.dismiss();
+    await new Promise((r) => setTimeout(r, 380));   // Tastatur einfahren lassen, sonst landet sie im Bild
+    try {
+      const uri = await textShotRef.current?.capture?.();
+      if (uri) {
+        router.replace({ pathname: '/create', params: { mediaUri: uri, mediaType: 'image' } });
+      } else {
+        Alert.alert('Schade', 'Text-Post konnte nicht erstellt werden.');
+      }
+    } catch {
+      Alert.alert('Schade', 'Text-Post konnte nicht erstellt werden.');
+    }
+  }, [textContent, router]);
+
   useEffect(() => {
     if (!cameraPermission?.granted) requestCameraPermission();
     if (!micPermission?.granted) requestMicPermission();
@@ -497,6 +531,7 @@ export default function CreateCameraScreen() {
   // Hooks MÜSSEN vor jedem early return stehen (React Rules of Hooks)
   const isFocused = useIsFocused();
   const isPhoto = captureMode === 'foto';
+  const isText = captureMode === 'text';
 
   // Permission Screen
   if (!cameraPermission?.granted) {
@@ -551,6 +586,40 @@ export default function CreateCameraScreen() {
       )}
 
 
+
+      {/* ── Text-Modus Composer (Text-auf-Farbe → view-shot → Post) ── */}
+      {isText && (
+        <View style={[StyleSheet.absoluteFill, { zIndex: 5 }]} pointerEvents="box-none">
+          <ViewShot ref={textShotRef} style={StyleSheet.absoluteFill} options={{ format: 'jpg', quality: 0.95, result: 'tmpfile' }}>
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: textBg, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 }]}>
+              <TextInput
+                value={textContent}
+                onChangeText={setTextContent}
+                placeholder="Tippe deinen Text…"
+                placeholderTextColor={textColor === '#FFFFFF' ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.4)'}
+                multiline
+                autoFocus
+                maxLength={400}
+                style={{ color: textColor, fontSize: 30, fontWeight: '800', textAlign: 'center' }}
+              />
+            </View>
+          </ViewShot>
+        </View>
+      )}
+
+      {/* Hintergrundfarben — Geschwister mit hohem zIndex (über den Bottom-Controls),
+          außerhalb des ViewShot → landen NICHT im Bild */}
+      {isText && (
+        <View style={[s.textSwatchRow, { bottom: insets.bottom + 250, zIndex: 11 }]}>
+          {TEXT_BG_COLORS.map((c, i) => (
+            <Pressable
+              key={c}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setTextBgIndex(i); }}
+              style={[s.textSwatch, { backgroundColor: c }, i === textBgIndex && s.textSwatchActive]}
+            />
+          ))}
+        </View>
+      )}
 
       {/* ── Countdown-Overlay ── */}
       {countdown > 0 && (
@@ -625,6 +694,7 @@ export default function CreateCameraScreen() {
       />
 
       {/* ── Rechte Tool-Leiste — gleicher Look wie der Editor (Icon + Label) ── */}
+      {!isText && (
       <View style={[s.tools, { top: insets.top + 72 }]}>
         <Pressable style={s.toolBtn} onPress={flipCamera}>
           <RotateCcw size={24} color="#fff" strokeWidth={1.8} />
@@ -670,6 +740,7 @@ export default function CreateCameraScreen() {
           <Text style={s.toolLabel}>Effekte</Text>
         </Pressable>
       </View>
+      )}
 
       {/* ── Unterer Bereich ── */}
       <View style={[s.bottom, { paddingBottom: insets.bottom + 12 }]}>
@@ -729,11 +800,11 @@ export default function CreateCameraScreen() {
                 />
               </Pressable>
 
-              {/* Mitte: Aufnahme-Button */}
+              {/* Mitte: Aufnahme-Button (im Text-Modus = „Fertig", erstellt den Text-Post) */}
               <VibesRecordButton
                 isRecording={isRecording}
-                isPhoto={isPhoto}
-                onPress={takePhoto}
+                isPhoto={isPhoto || isText}
+                onPress={isText ? handleTextDone : takePhoto}
                 onLongPress={startRecording}
                 onPressOut={stopRecording}
               />
@@ -912,6 +983,25 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+
+  // Text-Modus: Hintergrundfarb-Swatches
+  textSwatchRow: {
+    position: 'absolute',
+    left: 0, right: 0,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    gap: 10,
+    paddingHorizontal: 24,
+  },
+  textSwatch: {
+    width: 28, height: 28, borderRadius: 14,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.5)',
+  },
+  textSwatchActive: {
+    borderWidth: 3, borderColor: '#fff',
+    transform: [{ scale: 1.15 }],
   },
 
   // Permission Screen
