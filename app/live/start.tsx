@@ -37,9 +37,13 @@ import {
 CalendarClock,
 ChevronDown,
 ChevronUp,
+Gift,
 ImageIcon,
+MessageCircle,
+Pencil,
 RefreshCw,Settings,
 Sparkles,
+Tag,
 X,
 } from 'lucide-react-native';
 import { useEffect,useRef,useState } from 'react';
@@ -125,6 +129,19 @@ export default function LiveStartScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setFollowersOnly(a === 'followers');
     setWomenOnly(a === 'women');
+  };
+  // Setup-Karte: Publikum-Tile zeigt den Wert + tippt durch die Optionen
+  // (Öffentlich → Nur Follower → [Nur Frauen, falls berechtigt] → zurück).
+  const audienceMeta =
+    audience === 'women'
+      ? { emoji: '🌸', label: 'Nur Frauen' }
+      : audience === 'followers'
+      ? { emoji: '👥', label: 'Nur Follower' }
+      : { emoji: '🌍', label: 'Öffentlich' };
+  const cycleAudience = () => {
+    if (audience === 'public') setAudience('followers');
+    else if (audience === 'followers') setAudience(canAccessWomenOnly ? 'women' : 'public');
+    else setAudience('public');
   };
 
   // Cover aus der Galerie wählen (Alternative zur KI — funktioniert auch ohne AI-Backend)
@@ -280,13 +297,25 @@ export default function LiveStartScreen() {
         </View>
       )}
 
-      {/* ── Top Bar: X-Button ── */}
-      <View style={[s.topBar, { paddingTop: insets.top + 10 }]}>
+      {/* ── Top Bar: X links · Umdrehen + Einstellungen rechts ── */}
+      <View style={[s.topBar, { paddingTop: insets.top + 10, justifyContent: 'space-between', alignItems: 'center' }]}>
         <Pressable style={s.iconBtn} onPress={() => router.back()} hitSlop={12}>
           <BlurView intensity={55} tint="dark" style={s.iconBtnBlur}>
             <X size={19} stroke="#fff" strokeWidth={2.5} />
           </BlurView>
         </Pressable>
+        <View style={{ flexDirection: 'row', gap: 10 }}>
+          <Pressable style={s.iconBtn} onPress={flipCamera} hitSlop={12}>
+            <BlurView intensity={55} tint="dark" style={s.iconBtnBlur}>
+              <RefreshCw size={18} stroke="#fff" strokeWidth={2} />
+            </BlurView>
+          </Pressable>
+          <Pressable style={s.iconBtn} onPress={() => setSettingsSheet(true)} hitSlop={12}>
+            <BlurView intensity={55} tint="dark" style={s.iconBtnBlur}>
+              <Settings size={18} stroke="#fff" strokeWidth={2} />
+            </BlurView>
+          </Pressable>
+        </View>
       </View>
 
       {/* ── Kamera-Erlaubnis-Banner ── */}
@@ -301,14 +330,78 @@ export default function LiveStartScreen() {
       {/* ── Bottom Area ── */}
       <View style={[s.bottomArea, { paddingBottom: insets.bottom + 20 }]}>
 
-        {/* Icon-Toolbar: Umdrehen + Einstellungen */}
-        <View style={s.toolbar}>
-          <ToolbarBtn icon={<RefreshCw size={22} stroke="#fff" strokeWidth={1.8} />} label="Umdrehen" onPress={flipCamera} />
-          <ToolbarBtn
-            icon={<Settings size={22} stroke="#fff" strokeWidth={1.8} />}
-            label="Einstellungen"
-            onPress={() => setSettingsSheet(true)}
-          />
+        {/* Setup-Karte: Konfiguration direkt sichtbar (statt im Zahnrad versteckt) */}
+        <View style={s.setupCard}>
+          {/* Titel */}
+          <Pressable style={s.titleRow} onPress={() => setSettingsSheet(true)}>
+            <Animated.View style={[s.titleDot, dotStyle]} />
+            <Text
+              style={[s.titleText, !title.trim() && { color: LC.text.muted, fontWeight: FONT_WEIGHT.medium }]}
+              numberOfLines={1}
+            >
+              {title.trim() || 'Titel hinzufügen'}
+            </Text>
+            <Pencil size={15} stroke={LC.text.muted} strokeWidth={2} />
+          </Pressable>
+
+          {/* Publikum + Kategorie */}
+          <View style={s.tileRow}>
+            <Pressable style={s.tile} onPress={cycleAudience}>
+              <Text style={s.tileEmoji}>{audienceMeta.emoji}</Text>
+              <View style={s.tileTextCol}>
+                <Text style={s.tileLabel}>Publikum</Text>
+                <Text style={s.tileValue} numberOfLines={1}>{audienceMeta.label}</Text>
+              </View>
+            </Pressable>
+            <Pressable style={s.tile} onPress={() => setSettingsSheet(true)}>
+              <Tag size={18} stroke={LC.text.secondary} strokeWidth={2} />
+              <View style={s.tileTextCol}>
+                <Text style={s.tileLabel}>Kategorie</Text>
+                <Text style={s.tileValue} numberOfLines={1}>{category ?? 'Wählen'}</Text>
+              </View>
+            </Pressable>
+          </View>
+
+          {/* Cover */}
+          <Pressable style={s.coverRow} onPress={() => setSettingsSheet(true)}>
+            <View style={s.coverThumb}>
+              {thumbnailUrl ? (
+                <ExpoImage source={{ uri: thumbnailUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
+              ) : (
+                <ImageIcon size={18} stroke={LC.text.muted} strokeWidth={1.8} />
+              )}
+            </View>
+            <View style={s.tileTextCol}>
+              <Text style={s.coverTitle}>{thumbnailUrl ? 'Cover gesetzt' : 'Cover wählen'}</Text>
+              <Text style={s.coverSub} numberOfLines={1}>Galerie oder mit KI</Text>
+            </View>
+            <View style={s.aiChip}>
+              <Sparkles size={12} stroke={LC.accent.purpleLight} strokeWidth={2} />
+              <Text style={s.aiChipText}>KI</Text>
+            </View>
+          </Pressable>
+
+          {/* Toggles: Kommentare / Geschenke */}
+          <View style={s.tileRow}>
+            <Pressable
+              style={[s.toggleChip, allowComments && s.toggleChipOn]}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setAllowComments((v) => !v); }}
+            >
+              <MessageCircle size={15} stroke={allowComments ? LC.accent.success : LC.text.muted} strokeWidth={2} />
+              <Text style={[s.toggleText, allowComments && { color: LC.text.primary }]}>
+                Kommentare {allowComments ? 'an' : 'aus'}
+              </Text>
+            </Pressable>
+            <Pressable
+              style={[s.toggleChip, allowGifts && s.toggleChipOn]}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setAllowGifts((v) => !v); }}
+            >
+              <Gift size={15} stroke={allowGifts ? LC.accent.success : LC.text.muted} strokeWidth={2} />
+              <Text style={[s.toggleText, allowGifts && { color: LC.text.primary }]}>
+                Geschenke {allowGifts ? 'an' : 'aus'}
+              </Text>
+            </Pressable>
+          </View>
         </View>
 
         {/* LIVE gehen Button */}
@@ -568,20 +661,6 @@ export default function LiveStartScreen() {
   );
 }
 
-// ─── Toolbar Button ─────────────────────────────────────────────────────────
-function ToolbarBtn({
-  icon, label, onPress,
-}: { icon: React.ReactNode; label: string; onPress: () => void }) {
-  return (
-    <Pressable style={s.toolbarBtn} onPress={onPress} hitSlop={8}>
-      <BlurView intensity={50} tint="dark" style={s.toolbarBtnBlur}>
-        {icon}
-      </BlurView>
-      <Text style={s.toolbarBtnLabel}>{label}</Text>
-    </Pressable>
-  );
-}
-
 // ─── Plan-Sheet: Zeitpunkt wählen ───────────────────────────────────────────
 
 function presetOptions(): { label: string; at: Date }[] {
@@ -767,23 +846,57 @@ const s = StyleSheet.create({
     position: 'absolute', left: 0, right: 0, bottom: 0,
     alignItems: 'center', gap: 14, paddingHorizontal: SPACE.lg,
   },
-  toolbar: {
-    flexDirection: 'row',
-    gap: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  toolbarBtn: { alignItems: 'center', gap: 6 },
-  toolbarBtnBlur: {
-    width: 52, height: 52, borderRadius: RADII.full,
-    alignItems: 'center', justifyContent: 'center',
+  // ── Setup-Karte (Konfiguration direkt auf dem Screen) ───────────────────────
+  setupCard: {
+    width: '100%',
+    backgroundColor: LC.bg.panel,
+    borderRadius: 18,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: LC.border.subtle,
-    overflow: 'hidden',
+    padding: 11,
+    gap: 8,
   },
-  toolbarBtnLabel: {
-    color: LC.text.secondary, fontSize: FONT_SIZE.xs, fontWeight: FONT_WEIGHT.semibold,
+  titleRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 9,
+    backgroundColor: LC.whiteSubtle, borderRadius: 12,
+    paddingVertical: 11, paddingHorizontal: 12,
   },
+  titleDot: { width: 8, height: 8, borderRadius: RADII.full, backgroundColor: LC.accent.live },
+  titleText: { flex: 1, color: LC.text.primary, fontSize: FONT_SIZE.md, fontWeight: FONT_WEIGHT.semibold },
+  tileRow: { flexDirection: 'row', gap: 8 },
+  tile: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 9,
+    backgroundColor: LC.whiteSubtle, borderRadius: 12,
+    paddingVertical: 10, paddingHorizontal: 11,
+  },
+  tileEmoji: { fontSize: 17 },
+  tileTextCol: { flex: 1, minWidth: 0 },
+  tileLabel: { color: LC.text.muted, fontSize: FONT_SIZE.xs, marginBottom: 1 },
+  tileValue: { color: LC.text.primary, fontSize: FONT_SIZE.sm, fontWeight: FONT_WEIGHT.semibold },
+  coverRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: LC.whiteSubtle, borderRadius: 12,
+    paddingVertical: 9, paddingHorizontal: 11,
+  },
+  coverThumb: {
+    width: 38, height: 38, borderRadius: 9, overflow: 'hidden',
+    backgroundColor: LC.bg.input, alignItems: 'center', justifyContent: 'center',
+  },
+  coverTitle: { color: LC.text.primary, fontSize: FONT_SIZE.sm, fontWeight: FONT_WEIGHT.semibold },
+  coverSub: { color: LC.text.muted, fontSize: FONT_SIZE.xs, marginTop: 1 },
+  aiChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: 'rgba(168,85,247,0.22)', paddingVertical: 4, paddingHorizontal: 9,
+    borderRadius: 8,
+  },
+  aiChipText: { color: LC.accent.purpleLight, fontSize: FONT_SIZE.xs, fontWeight: FONT_WEIGHT.semibold },
+  toggleChip: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    backgroundColor: LC.whiteSubtle, borderRadius: 10, paddingVertical: 9,
+    borderWidth: StyleSheet.hairlineWidth, borderColor: LC.border.subtle,
+  },
+  toggleChipOn: { backgroundColor: 'rgba(34,197,94,0.14)', borderColor: 'rgba(34,197,94,0.4)' },
+  toggleText: { color: LC.text.muted, fontSize: FONT_SIZE.xs, fontWeight: FONT_WEIGHT.semibold },
 
   liveBtn: { width: '100%', borderRadius: 18, overflow: 'hidden', shadowColor: LC.accent.live, shadowOpacity: 0.45, shadowRadius: 14, elevation: 8 },
   liveBtnDisabled: { opacity: 0.55 },
