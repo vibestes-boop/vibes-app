@@ -492,11 +492,11 @@ export default function RootLayoutFull() {
             <Stack.Screen name="(onboarding)" />
             <Stack.Screen
               name="create/index"
-              // fullScreenModal statt modal: KEINE Swipe-down-zum-Schließen-Geste mehr.
-              // Die kollidierte mit dem Ziehen von Text-/Sticker-Overlays (PanResponder)
-              // → beim Verschieben nach unten wanderte sonst der ganze Editor weg.
-              // Schließen weiterhin über das X oben links.
-              options={{ presentation: 'fullScreenModal', animation: 'none', gestureEnabled: false }}
+              // presentation:'modal' (bewährt, Buttons funktionieren) + gestureEnabled:false:
+              // deaktiviert NUR die iOS-Swipe-down-zum-Schließen-Geste, die mit dem Ziehen
+              // von Text-/Sticker-Overlays (PanResponder) kollidierte. fullScreenModal hatte
+              // die Buttons unbrauchbar gemacht → zurückgenommen. Schließen weiter über das X.
+              options={{ presentation: 'modal', animation: 'none', gestureEnabled: false }}
             />
             <Stack.Screen name="post/[id]" options={{ animation: 'slide_from_right' }} />
             <Stack.Screen
