@@ -95,6 +95,9 @@ export function useGenerateImage() {
         } catch {
           // Body nicht lesbar/JSON — fällt auf default message zurück
         }
+        // Rohe Ursache für Debugging (z.B. fehlender OPENAI_API_KEY) — die
+        // UI zeigt eine warme Meldung, hier bleibt die technische Wahrheit.
+        __DEV__ && console.log('[generate-image] error:', code, '|', message);
         setLastError(message);
         return { ok: false, code, error: message };
       }

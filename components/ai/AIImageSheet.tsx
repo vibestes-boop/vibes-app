@@ -96,6 +96,12 @@ function prettyError(code: string, fallback: string): string {
     case 'network_error':
       return 'Keine Verbindung. Prüfe dein Internet.';
     default:
+      // Die generische Supabase-Transport-Meldung ("non-2xx status code") ist
+      // kalt + nichtssagend (Design-Gesetz: Tiefs wärmer machen). Warm ersetzen,
+      // echte Server-Messages aber durchlassen.
+      if (/non-2xx status code/i.test(fallback)) {
+        return 'Das Cover ließ sich gerade nicht erstellen 😕 — versuch es gleich nochmal.';
+      }
       return fallback;
   }
 }
@@ -350,7 +356,9 @@ export function AIImageSheet({
                           <Text
                             style={[
                               s.sizeChipText,
-                              { color: isActive ? '#fff' : colors.text.primary },
+                              // accent.primary ist invers (weiß im Dark-, schwarz im
+                              // Light-Mode) → Text muss bg.primary sein, sonst weiß-auf-weiß.
+                              { color: isActive ? colors.bg.primary : colors.text.primary },
                             ]}
                           >
                             {sizeLabel(sz)}
@@ -398,8 +406,8 @@ export function AIImageSheet({
                 disabled={isGenerating}
                 style={[s.actionBtn, { backgroundColor: colors.accent.primary }]}
               >
-                <Check size={16} color="#fff" strokeWidth={2.5} />
-                <Text style={[s.actionBtnText, { color: '#fff' }]}>Bild verwenden</Text>
+                <Check size={16} color={colors.bg.primary} strokeWidth={2.5} />
+                <Text style={[s.actionBtnText, { color: colors.bg.primary }]}>Bild verwenden</Text>
               </Pressable>
             </>
           ) : (
@@ -416,13 +424,13 @@ export function AIImageSheet({
             >
               {isGenerating ? (
                 <>
-                  <ActivityIndicator color="#fff" size="small" />
-                  <Text style={[s.actionBtnText, { color: '#fff' }]}>Generiere…</Text>
+                  <ActivityIndicator color={colors.bg.primary} size="small" />
+                  <Text style={[s.actionBtnText, { color: colors.bg.primary }]}>Generiere…</Text>
                 </>
               ) : (
                 <>
-                  <Sparkles size={16} color="#fff" strokeWidth={2} />
-                  <Text style={[s.actionBtnText, { color: '#fff' }]}>Bild generieren</Text>
+                  <Sparkles size={16} color={colors.bg.primary} strokeWidth={2} />
+                  <Text style={[s.actionBtnText, { color: colors.bg.primary }]}>Bild generieren</Text>
                 </>
               )}
             </Pressable>
