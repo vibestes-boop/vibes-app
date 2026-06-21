@@ -7,7 +7,7 @@ launchImageLibraryAsync,
 requestMediaLibraryPermissionsAsync,
 } from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams,useRouter } from 'expo-router';
 import { ArrowLeft,BarChart2,ImagePlus,Send,Type,X } from 'lucide-react-native';
 import { useCallback,useState } from 'react';
 import {
@@ -29,8 +29,10 @@ export default function CreateStoryScreen() {
   const { profile } = useAuthStore();
   const { mutateAsync: createStory } = useCreateStory();
 
-  const [mediaUri, setMediaUri] = useState<string | null>(null);
-  const [mediaType, setMediaType] = useState<'image' | 'video'>('image');
+  // Optional von außen (z.B. Text-Modus) ein fertiges Bild durchreichen → Picker überspringen
+  const params = useLocalSearchParams<{ mediaUri?: string; mediaType?: string }>();
+  const [mediaUri, setMediaUri] = useState<string | null>(params.mediaUri ?? null);
+  const [mediaType, setMediaType] = useState<'image' | 'video'>(params.mediaType === 'video' ? 'video' : 'image');
   const [mediaMimeType, setMediaMimeType] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 

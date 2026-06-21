@@ -457,6 +457,25 @@ export default function CreateCameraScreen() {
     }
   }, [textContent, router]);
 
+  // Text als Story posten → Capture → vorhandener Story-Screen (mit Bild vorbefüllt)
+  const handleTextStory = useCallback(async () => {
+    if (!textContent.trim()) { Alert.alert('Schreib was 🙂', 'Tippe deinen Text ein.'); return; }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Keyboard.dismiss();
+    await new Promise((r) => setTimeout(r, 380));
+    try {
+      const uri = await textShotRef.current?.capture?.();
+      if (uri) {
+        const fileUri = uri.startsWith('file://') ? uri : `file://${uri}`;
+        router.push({ pathname: '/create-story', params: { mediaUri: fileUri, mediaType: 'image' } });
+      } else {
+        Alert.alert('Schade', 'Story konnte nicht erstellt werden.');
+      }
+    } catch {
+      Alert.alert('Schade', 'Story konnte nicht erstellt werden.');
+    }
+  }, [textContent, router]);
+
   useEffect(() => {
     if (!cameraPermission?.granted) requestCameraPermission();
     if (!micPermission?.granted) requestMicPermission();
@@ -876,8 +895,11 @@ export default function CreateCameraScreen() {
             <CaptureSwitcher modes={CAPTURE_MODES} active={captureMode} onChange={setCaptureMode} />
 
             {isText ? (
-              /* ── Text-Modus: klarer „Weiter"-Post-Button statt Kamera-Aufnahme ── */
+              /* ── Text-Modus: „Deine Story" + „Weiter" (TikTok-Stil) statt Kamera-Aufnahme ── */
               <View style={s.textPostRow}>
+                <Pressable onPress={handleTextStory} style={s.textStoryBtn}>
+                  <Text style={s.textStoryBtnText}>Deine Story</Text>
+                </Pressable>
                 <Pressable onPress={handleTextDone} style={s.textPostBtn}>
                   <Text style={s.textPostBtnText}>Weiter</Text>
                   <ChevronRight size={18} color="#000" strokeWidth={2.5} />
@@ -1075,20 +1097,30 @@ const s = StyleSheet.create({
     height: 58,
   },
 
-  // Text-Modus: „Weiter"-Post-Button (weiße Pille wie im Editor)
+  // Text-Modus: „Deine Story" + „Weiter"-Buttons
   textPostRow: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 32,
+    gap: 12,
+    paddingHorizontal: 20,
     minHeight: 90,
   },
+  textStoryBtn: {
+    paddingVertical: 14,
+    paddingHorizontal: 22,
+    borderRadius: 30,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.6)',
+  },
+  textStoryBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   textPostBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     backgroundColor: '#fff',
     paddingVertical: 14,
-    paddingHorizontal: 40,
+    paddingHorizontal: 34,
     borderRadius: 30,
   },
   textPostBtnText: { color: '#000', fontSize: 16, fontWeight: '800' },
