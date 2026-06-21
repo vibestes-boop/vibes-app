@@ -388,9 +388,19 @@ export default function CreateCameraScreen() {
   const [textContent, setTextContent] = useState('');
   const [textBgIndex, setTextBgIndex] = useState(0);
   const textShotRef = useRef<ViewShot>(null);
+  const textInputRef = useRef<TextInput>(null);
   const textBg = TEXT_BG_COLORS[textBgIndex];
   // Heller Hintergrund → dunkler Text, sonst weiß
   const textColor = (textBg === '#FFFFFF' || textBg === '#FBBF24') ? '#111111' : '#FFFFFF';
+
+  // Tastatur-Höhe tracken → Swatches sitzen ÜBER der Tastatur (nicht verdeckt)
+  const [kbHeight, setKbHeight] = useState(0);
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardWillShow', (e) => setKbHeight(e.endCoordinates?.height ?? 0));
+    const showD = Keyboard.addListener('keyboardDidShow', (e) => setKbHeight(e.endCoordinates?.height ?? 0));
+    const hide = Keyboard.addListener('keyboardWillHide', () => setKbHeight(0));
+    return () => { show.remove(); showD.remove(); hide.remove(); };
+  }, []);
 
   const handleTextDone = useCallback(async () => {
     if (!textContent.trim()) { Alert.alert('Schreib was 🙂', 'Tippe deinen Text ein.'); return; }
@@ -591,8 +601,13 @@ export default function CreateCameraScreen() {
       {isText && (
         <View style={[StyleSheet.absoluteFill, { zIndex: 5 }]} pointerEvents="box-none">
           <ViewShot ref={textShotRef} style={StyleSheet.absoluteFill} options={{ format: 'jpg', quality: 0.95, result: 'tmpfile' }}>
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: textBg, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 }]}>
+            {/* Hintergrund tippbar: Tastatur offen → zu; geschlossen → wieder fokussieren (weiter bearbeiten) */}
+            <Pressable
+              onPress={() => { if (kbHeight > 0) Keyboard.dismiss(); else textInputRef.current?.focus(); }}
+              style={[StyleSheet.absoluteFill, { backgroundColor: textBg, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 }]}
+            >
               <TextInput
+                ref={textInputRef}
                 value={textContent}
                 onChangeText={setTextContent}
                 placeholder="Tippe deinen Text…"
@@ -600,17 +615,16 @@ export default function CreateCameraScreen() {
                 multiline
                 autoFocus
                 maxLength={400}
-                style={{ color: textColor, fontSize: 30, fontWeight: '800', textAlign: 'center' }}
+                style={{ color: textColor, fontSize: 30, fontWeight: '800', textAlign: 'center', alignSelf: 'stretch' }}
               />
-            </View>
+            </Pressable>
           </ViewShot>
         </View>
       )}
 
-      {/* Hintergrundfarben — Geschwister mit hohem zIndex (über den Bottom-Controls),
-          außerhalb des ViewShot → landen NICHT im Bild */}
-      {isText && (
-        <View style={[s.textSwatchRow, { bottom: insets.bottom + 250, zIndex: 11 }]}>
+      {/* Hintergrundfarben — NUR bei offener Tastatur, direkt darüber (außerhalb ViewShot → nicht im Bild) */}
+      {isText && kbHeight > 0 && (
+        <View style={[s.textSwatchRow, { bottom: kbHeight + 12, zIndex: 11 }]}>
           {TEXT_BG_COLORS.map((c, i) => (
             <Pressable
               key={c}
@@ -659,29 +673,35 @@ export default function CreateCameraScreen() {
           </Text>
         </View>
 
-        {/* Sound — Echter Music Picker */}
-        <Pressable
-          style={s.topBtn}
-          hitSlop={8}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            setShowMusicPicker(true);
-          }}
-        >
-          <View style={[s.soundPill, selectedTrack && s.soundPillActive]}>
-            <Music2
-              size={13}
-              color="#fff"
-              strokeWidth={2}
-            />
-            <Text
-              style={s.soundText}
-              numberOfLines={1}
-            >
-              {selectedTrack ? selectedTrack.title : 'Sound'}
-            </Text>
-          </View>
-        </Pressable>
+        {/* Rechts: im Text-Modus mit offener Tastatur „Fertig" (Tastatur zu), sonst Sound */}
+        {isText && kbHeight > 0 ? (
+          <Pressable style={s.topBtn} hitSlop={10} onPress={() => Keyboard.dismiss()}>
+            <Text style={s.doneText}>Fertig</Text>
+          </Pressable>
+        ) : (
+          <Pressable
+            style={s.topBtn}
+            hitSlop={8}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              setShowMusicPicker(true);
+            }}
+          >
+            <View style={[s.soundPill, selectedTrack && s.soundPillActive]}>
+              <Music2
+                size={13}
+                color="#fff"
+                strokeWidth={2}
+              />
+              <Text
+                style={s.soundText}
+                numberOfLines={1}
+              >
+                {selectedTrack ? selectedTrack.title : 'Sound'}
+              </Text>
+            </View>
+          </Pressable>
+        )}
       </View>
 
       {/* Music Picker Sheet */}
@@ -923,6 +943,10 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(167,139,250,0.35)',
   },
   soundText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  doneText: {
+    color: '#fff', fontSize: 16, fontWeight: '800',
+    textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3,
+  },
 
   // Tools — cleaner Editor-Look (Icon + Label, kein Glas-Pill) → konsistent vor/nach dem Foto
   tools: {
