@@ -1,142 +1,156 @@
-# Serlo / Vibes Handoff
+# Handoff — Serlo/Vibes (Stand 21. Juni 2026)
 
-Last updated: 2026-06-05
+> Übergabe für den Wechsel in einen neuen Chat. **Vollständig.** Gedächtnis-Dateien
+> (`~/.claude/.../memory/`) laden automatisch — dieses Doku ergänzt sie mit Session-Detail.
+> (Ersetzt den Handoff vom 2026-06-20.)
 
-## Goal
+---
 
-Keep Serlo technically reliable before broader public use. Current focus is
-release hygiene, production observability, media/upload reliability, App Store
-build provenance, and maintainable code structure.
+## 0. Schnell-Status (das Wichtigste zuerst)
 
-## Source Of Truth
+| Bereich | Stand |
+|---|---|
+| **Repo / Branch** | `/Users/zaurhatuev/vibes-app` · `main` (Push-Remote: `vibestes-boop/vibes-app`) |
+| **Letzter Commit** | `9b6a766` (gepusht) |
+| **Letzte Mobile-OTA** | `97ad0e6c` — **Runtime 1.29.0** (branch `production`) |
+| **Mobile-Build** | **v1.29.0 / iOS-Build 285 (versionCode 46) → in TestFlight** (vom User gebaut). **NICHT im App Store released!** Alle OTAs dieser Session zielen auf **Runtime 1.29.0** (nur dieser Build hat sie). |
+| **NEU nativ in 1.29.0** | `react-native-view-shot@4.0.3` (für Compositing/Text-Modus) → deshalb der neue Build. |
+| **Web (apps/web)** | deployt via **Vercel** auf Push zu `main` (`serlo-web.vercel.app`) |
+| **DB-Migrationen** | 3 dieser Session **angewandt** (§3); 1 für laufendes Feature **noch zu schreiben** (§4 „B") |
+| **EAS project id** | `02ab536a-5836-4560-a5ec-2dfd6e059f90` · **iOS bundle** `com.vibesapp.vibes` · EAS-Account `zaurhat` |
+| **GERADE IN ARBEIT** | **„Nur Follower"-Zuschauen** (Live-Publikum) — investigiert, **noch nicht gebaut** (§4 „B" = sofort fortsetzbar) |
 
-- Active repo: `/Users/zaurhatuev/vibes-app`
-- Active branch: `main`
-- Current release commit:
-  `ae97834 Refine creator and shop UI surfaces`
-- Web production: `https://serlo-web.vercel.app`
-- Native app identity: `Serlo 1.26.6 (279)`
-- EAS project id: `02ab536a-5836-4560-a5ec-2dfd6e059f90`
-- iOS bundle id: `com.vibesapp.vibes`
-- Quarantined legacy checkout: `/Users/zaurhatuev/Desktop/vibes-app`
+⚠️ **Quarantäne:** Alter Checkout `/Users/zaurhatuev/Desktop/vibes-app` — NIEMALS bauen/deployen/pushen.
 
-Do not build, submit, deploy, or run production commands from the quarantined
-legacy checkout.
+---
 
-## Current Technical State
+## 1. Was diese Session gebaut wurde (Create-Flow + Live, alles 1.29.0)
 
-- Git working tree was clean before the 2026-06-03 hardening pass.
-- `npm run release:gate` passed on 2026-06-05 after the latest production
-  deploy.
-- `npm run health:dashboard` passed on 2026-06-05.
-- `npm run observability:health` passed on 2026-06-03 and reports Yellow until
-  Sentry/PostHog envs are intentionally configured.
-- `npm run observability:health -- --vercel-production` passed on 2026-06-03;
-  Vercel Production has timing log env names, but no Sentry runtime/source-map
-  env names yet.
-- `npm run native:release-guard` passed from `/Users/zaurhatuev/vibes-app`.
-- `npm run native:builds:audit` passed and reports latest Store build
-  `1.26.6 (279)`.
-- Production Web route/API/media/playback/auth/integrity checks are green.
-- R2 upload smoke is included in production integrity and passed. It now covers
-  iOS content-type signing, cache-control tolerance, and product-image prefix
-  signing.
-- Media playback health is green: checked videos are fast-start.
-- Shop media health is green: active products have reachable media URLs.
-- Legal readiness is no longer blocked by placeholder text.
+### A) Web: ShareButtons Hydration-Fix
+- `apps/web/components/share/share-buttons.tsx`: absolute URL aus `NEXT_PUBLIC_SITE_URL` statt `window.origin` (war Hydration-Mismatch + relative/kaputte Share-Links). Commit `2597496`.
 
-## Latest Hardening Changes
+### B) Kommentar-System-Überarbeitung (Mobile, OTA)
+- `lib/useComments.ts` nutzt jetzt die RPC **`get_post_comments_web`** (1 Query: Text + like_count + liked_by_me + reply_count + Author) statt 1+2+N. N+1-Like-Sturm weg (`useToggleCommentLike`-Cache-Mutation). `lib/useCommentLike.ts` bekam `enabled`-Flag.
+- `components/ui/CommentsSheet.tsx`: reply_count-Gate (kein „Antworten anzeigen" ohne Antworten), Light-Mode-Farben gefixt (war weiß-auf-weiß), Reply-isOwn-Fix, Reply sofort sichtbar/löschbar (Expand-State nach SheetInner geliftet, reply_count optimistisch), Like als rechte Spalte, neueste-zuerst, **Sort-Header** (Neueste/Top/Von Creator) mit Anzahl.
+- **Migration** `20260621130000_fix_comments_insert_policy_spoofing.sql` ✅ (doppelte permissive INSERT-Policy zusammengeführt — schloss Impersonation + allow_comments-Umgehung).
 
-- `r2-sign` now allows `products/images/...` object keys, fixing product image
-  upload signing parity with the native/web product upload client.
-- Production integrity now checks the product image signing contract without
-  leaving product smoke files behind.
-- Explore and Women-Only public pages were toned down: no pink/violet hero
-  styling, no decorative gradient badges, and more restrained trust-oriented
-  copy.
-- Creator/shop UI cleanup wave: Studio Live, Studio Analytics,
-  Studio Shop Analytics, product cards, and Women-Only activation now use
-  neutral system styling instead of generator-like red/orange/pink gradients and
-  emoji metrics.
-- Vercel production is aliased to `https://serlo-web.vercel.app`; latest
-  inspected deployment was Ready under the `serlo-web` project.
-- Build audit now reads the current App Store Connect candidate from `app.json`
-  instead of a hard-coded stale number.
-- iOS release guard minimum Store build has been raised to `1.26.6 (279)`.
-- iOS release docs and workspace strategy examples now use build `279`.
-- Web `instrumentation.ts` now dynamically initializes Sentry for Node runtime
-  when a DSN exists. Edge Sentry remains opt-in through `SENTRY_ENABLE_EDGE=1`
-  to avoid the previous eager-import Edge crash.
-- Deployment runbook now documents the required Vercel Sentry env vars and the
-  rule to keep `SENTRY_ENABLE_EDGE` unset until preview verification.
-- Observability health now has a dedicated guard and dashboard row. It reports
-  local/Vercel env name presence without printing secret values.
-- Observability now has an ownership entry and runs in the weekly integrity
-  workflow.
+### C) Create-Flow (Editor + Kamera) — alles OTA außer view-shot
+- **Toolbar-Konsistenz + Icon-Fixes** (`app/create/camera.tsx` + `app/create/index.tsx`): Capture-Toolbar an Editor-Look angeglichen (Icon+Label); Editor-Icons gefixt (Drehen=RotateCw, Anpassen=SlidersHorizontal, Filter=Palette).
+- **Bild-Crop FREI** (`components/create/editor/CropSheet.tsx`): ziehbarer + größenveränderbarer Rahmen (Move + 4 Eck-Griffe), Aspect-Presets, pixel-genau via **Skia-Offscreen** (`Skia.Surface.MakeOffscreen` + `drawImageRect`).
+- **Cover/Thumbnail-Picker** (`components/create/editor/CoverPickerSheet.tsx`): Video-Startbild aus Filmstrip wählen → `generateAndUploadThumbnail(…, timeMs)`.
+- **Editor-Swipe-Fix**: `/create/index` von `presentation:'modal'` → **`'card'`** (`src/_layout.full.tsx`) — modal-Swipe-down kollidierte mit Sticker/Text-Ziehen. ⚠️ `fullScreenModal` hatte die Buttons tot gemacht → NICHT nehmen.
+- **Filter + Drehen/Spiegeln werden ins Bild gebrannt** (`lib/bakeImageEdits.ts`): vor Upload via Skia-Offscreen (Filter-Matrix wie Vorschau + Rotation). **WICHTIG-Fund:** imperatives `canvas.drawImage` wendet ColorFilter NICHT an → **`drawImageRect`** nutzen (wie Crop). Defensiv mit Fallback aufs Rohbild.
+- **Kamera TikTok-clean** (`camera.tsx`): Button-Umrandungen/Glasmorphism/Lila-Gradient raus, transparenter Bottom-Bereich.
+- **Entfernt (wie „Zeichnen"):** „Zeichnen"-Button + **„Effekte"-Button** (AR-Kamera via vision-camera — sprang auf Frontkamera, eigene UI, Live-Filter kaputt). Code bleibt dormant.
 
-## Open Technical Risks
+### D) view-shot Compositing + TEXT-Modus (nativ, in 1.29.0)
+- `react-native-view-shot` installiert. `app/create/index.tsx`: Editor-Vorschau in `<ViewShot>`; beim Posten eines Bildes **mit Overlays** → `capture()` → MP4… nein, **Bild** mit Text/Sticker drin (Hybrid: während Capture Skia→normales Bild getauscht, Filter vorab gebacken). **Kritischer Fix:** view-shot liefert Pfad **ohne `file://`** → ergänzen, sonst „Invalid URL" beim Upload.
+- **TEXT-Modus** (`camera.tsx`): TEXT-Tab, Composer (Einzelfarben **+ Gradient-Kreis**, Schrift-Stile Klassisch/Serif/Neon/Mono, Ausrichtung), Tastatur schließen (Hintergrund/„Fertig"), Swatches über Tastatur, **„Deine Story" + „Weiter"**-Buttons. „Deine Story" → `create-story.tsx` (nimmt jetzt `mediaUri`-Param).
+- **Status:** Vom User getestet → Foto+Text/Sticker posten ✅, Text-Post ✅, Filter ✅. **Bekannte Grenze:** animierte Sticker werden im Foto-Post statisch (Standbild).
 
-- Product readiness remains the main risk, not infrastructure:
-  `health:dashboard` is still Yellow for Product Metrics, Launch Readiness,
-  Observability, and Push/Feed.
-- Web Sentry requires Vercel env vars to actually emit events:
-  `NEXT_PUBLIC_SENTRY_DSN` and/or `SENTRY_DSN`, plus source-map upload vars
-  `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`.
-- Edge Sentry should remain disabled until a preview deploy proves it no longer
-  triggers the old `__dirname` crash.
-- Very large modules increase regression risk:
-  `app/live/host.tsx`, `app/live/watch/[id].tsx`, `app/create/index.tsx`,
-  and `apps/web/app/actions/admin.ts`.
-- The deployed `r2-delete` Edge Function is active, but its source is not
-  present under `supabase/functions/` in this checkout. Bring it back into the
-  repo before changing delete behavior; current production cleanup rejected a
-  `products/images/...` smoke object path.
-- The legacy Desktop checkout still exists and is dirty. It is preserved only
-  for historical context.
-- RevenueCat webhook still has phase-3 Apple/Google server-verification TODOs;
-  paid flows should stay out of launch scope until this is resolved.
-- `typedRoutes` is disabled in `apps/web/next.config.mjs` until route pushes and
-  redirects are migrated to typed `Route` usage.
+### E) Live-Einstellungen (`app/live/start.tsx`)
+- **Cover aus Galerie** (zusätzlich zu „Mit KI"): Picker → `uploadPostMedia` → `thumbnail_url`. Mit Lade-Spinner.
+- **Kategorie/Thema-Chips** (Talk/Musik/Gaming/…) → `live_sessions.category` (Spalte existierte schon, `startSession` nimmt `category` durch). Scheduled-Lives noch ohne category.
+- **KI-Cover-Fehlermeldung** (`lib/useGenerateImage.ts`): liest jetzt `error.context.json()` (RN-Response) statt `.body` → echte Ursache sichtbar statt „non-2xx". **Eigentlicher KI-Fix = Config:** `OPENAI_API_KEY` in Supabase-Secrets + OpenAI-Billing (User-Aktion). KI-Bilder kosten Geld/Bild (Limit 3/Tag,10/Woche) — Galerie ist gratis & Default.
 
-## Required Commands Before Web Release
+### Sicherheits-Fixes (App-Store-Vorbereitung, früher in der Session)
+- `20260621120000_drop_debug_coin_backdoors.sql` ✅ (kritisch: `add_test_coins` war für `authenticated` offen → Coins minten).
+- `20260621121000_harden_notifications_insert.sql` ✅ (notif-INSERT auf `sender_id=auth.uid()`).
+- Debug-Screen `app/debug-gifts.tsx` gelöscht, 7-Tap-Debug-Gesten in settings entfernt.
+
+---
+
+## 2. Deploy-Workflow (unverändert, nur Runtime jetzt 1.29.0)
 
 ```bash
-cd /Users/zaurhatuev/vibes-app
-npm run release:gate
-npm run observability:health -- --vercel-production
-npm run health:dashboard
+# IMMER aus /Users/zaurhatuev/vibes-app
+
+# Mobile OTA (reines JS) — EAS_BUILD=1 ZWINGEND. Targets Runtime = app.json version (jetzt 1.29.0)
+EAS_BUILD=1 npx eas update --branch production --message "..." --non-interactive
+#   → OTA gilt NUR für den 1.29.0-Build (285). Ältere Builds (1.28.0) ziehen sie NICHT.
+
+# Native Build (nur bei nativen Änderungen / neuen Deps) — autoIncrement=false → version+buildNumber+versionCode manuell
+#   app.json: version 1.29.0, ios.buildNumber 285, android.versionCode 46 (schon gesetzt; nächster Build hochzählen!)
+npx eas build --platform ios --profile production
+npx eas submit --platform ios --latest
+#   ⚠️ Apple verlangte zuletzt „Program License Agreement" akzeptieren (developer.apple.com/account) — sonst 403 beim Build.
+
+# Push zu GitHub (PAT aus .env.local, NIE echoen)
+TOKEN=$(grep -E '^GITHUB_TOKEN=' .env.local | cut -d= -f2-)
+git push "https://x-access-token:${TOKEN}@github.com/vibestes-boop/vibes-app.git" HEAD:main
+
+# Edge Functions
+npx supabase functions deploy <name>
+npx supabase functions deploy <webhook> --no-verify-jwt
 ```
+- **DB-Migrationen:** `.sql` unter `supabase/migrations/` (14-stellig `YYYYMMDDHHMMSS_slug.sql`), **Zaur führt sie im Supabase-SQL-Editor aus**.
+- **Verifizieren vor Commit** (Zaur: „commits kosten Geld"). tsc-Baseline = **2 vorbestehende Fehler** (`rose`-Farbe in explore/guild-Styles, harmlos) — alles darüber ist neu.
 
-## Required Commands Before iOS/TestFlight/App Store Build
+---
 
-```bash
-cd /Users/zaurhatuev/vibes-app
-npm run native:builds:audit
-npm run native:build:production:check
-npm run release:gate
-```
+## 3. Angewandte DB-Migrationen (diese Session, bestätigt)
+- `20260621120000_drop_debug_coin_backdoors.sql` ✅
+- `20260621121000_harden_notifications_insert.sql` ✅
+- `20260621130000_fix_comments_insert_policy_spoofing.sql` ✅
 
-Use guarded build commands only:
+---
 
-```bash
-npm run native:build:production
-```
+## 4. OFFENE PUNKTE / Nächste Schritte
 
-Never use raw `npx eas build --platform ios --profile production` as the normal
-release path.
+### B) ⭐ GERADE IN ARBEIT: „Nur Follower"-Zuschauen (Live-Publikum-Picker)
+**Ziel:** Live kann auf „nur Follower" gestellt werden → nur Follower des Hosts bekommen ein LiveKit-Token (Nicht-Follower auch per Direktlink draußen).
+**Investigation-Ergebnisse (bereit umzusetzen):**
+1. **Migration nötig:** `live_sessions` Spalte **`followers_only boolean default false`** (analog `women_only`). *(Noch NICHT geschrieben.)*
+2. **Durchsetzung** in `supabase/functions/livekit-token/index.ts`: Function bekommt `{ roomName, isHost, isCoHost }` + `userId` aus JWT. Für **Viewer** (nicht Host, nicht CoHost) ergänzen: Session per `room_name`+`status=active` holen → `select=host_id,followers_only`. Wenn `followers_only===true`: in **`follows`** prüfen `follower_id=eq.{userId}&following_id=eq.{host_id}&limit=1`; wenn leer → **403** (kein Token). Vorlage: die bestehenden Host/CoHost-403-Blöcke (Zeilen ~121–186).
+   - `follows`-Spalten: `id, follower_id, following_id, created_at`.
+   - Function nutzt `serviceRoleKey` für REST-Reads (RLS-bypass) — Follow-Check genauso.
+3. **Client `lib/useLiveSession.ts`:** `startSession`-options + insert um `followers_only` erweitern (genau wie diese Session `category` ergänzt wurde — Zeilen ~340 options-Typ + ~371 insert).
+4. **Client `app/live/start.tsx`:** „Wer kann zuschauen"-Zeile (aktuell **toter** Pressable, nur Deko) zu echtem Picker machen: Öffentlich / Nur Follower / Nur Frauen (mutually exclusive; Nur Frauen = bestehendes `womenOnly`, nur wenn `canAccessWomenOnly`). `followers_only` an `startSession` durchreichen.
+5. **Viewer-Seite `app/live/watch/[id].tsx`:** 403 beim Token-Fetch sauber abfangen → freundlicher „Nur für Follower 🙂 — folge zuerst"-Screen statt Crash.
+6. Deploy: `supabase functions deploy livekit-token` + Migration (User) + OTA.
 
-## Next Technical Work
+### Weitere offene Punkte
+1. **1.29.0 in App Store releasen** — Build nur in TestFlight. User wollte erst „viele UI-Baustellen" fixen (Create-Flow + Live = erledigt; ggf. mehr). Vor Einreichen: Export-Compliance + „Zur Prüfung hinzufügen". Demo-Account + Review-Notes lagen für 1.28.0 schon bereit.
+2. **KI-Cover:** User soll `OPENAI_API_KEY`-Secret prüfen/setzen (+ OpenAI-Billing). Erst echte Fehlermeldung checken (App neu öffnen → KI-Cover versuchen → Text steht jetzt da dank `9b6a766`).
+3. **Animierte Sticker im Post = Video (C1) — AUFGESCHOBEN bis Umsatz.** Render-Dienst **fertig & committed** unter `services/sticker-video/` (Node+ffmpeg, Dockerfile, README), aber **bewusst NICHT deployed** (laufende Compute-Kosten skalieren mit Usern → Pleite-Risiko ohne Einnahmen). Stufe 2 (Client) + TODO „Sticker-Pinch-Scale persistent machen" siehe Memory `vibes-create-overlay-compositing`.
+4. **Web-Shop-Detailseite** ans Mobile-Minimal angleichen (kosmetisch, aus alter Liste).
 
-1. Continue the UI-quality audit on high-traffic surfaces not yet cleaned:
-   profile/feed overlays, live viewer/host controls, create flow, coin shop, and
-   notifications. Keep changes scoped and verify each wave with typecheck, lint,
-   production deploy, release gate, and health dashboard.
-2. Configure Sentry DSN envs in Vercel Preview/Production, then run
-   `npm run observability:health -- --vercel-production --strict` only after
-   the source-map secrets are also ready.
-3. Keep `SENTRY_ENABLE_EDGE` unset until a preview deploy proves Edge routes
-   are safe.
-4. Recover the deployed `r2-delete` source into `supabase/functions/` before
-   changing cleanup semantics.
-5. Next refactor wave: extract narrow hooks/components from the largest native
-   screens, starting with create/upload flow and live watch/host state.
+---
+
+## 5. Wichtige Gotchas / Architektur (diese Session relevant)
+- **Runtime 1.29.0** (`runtimeVersion.policy=appVersion`): OTAs gelten nur für Build 285. Native Änderungen (neue Deps) brauchen neuen Build + version-Bump.
+- **view-shot `capture()` liefert Pfad OHNE `file://`** → immer ergänzen vor fetch/Upload (sonst „Invalid URL"). Gilt für Crop/Compositing/Text-Modus.
+- **Skia imperatives Compositing:** `drawImageRect` (nicht `drawImage`) für ColorFilter; `MakeImageFromEncoded`(via `Skia.Data.fromBase64`) zum Decoden; `Surface.MakeOffscreen` + `encodeToBase64(3=JPEG, q)`; Datei via `expo-file-system/legacy` `writeAsStringAsync(..., {encoding: EncodingType.Base64})`.
+- **Editor-Präsentation = `card`** (nicht modal/fullScreenModal) wegen Gesten/Buttons.
+- **`react-native-skia` Text-APIs existieren** (FontMgr.System, ParagraphBuilder, drawText) — für Skia-only-Textrender (falls je nötig).
+- **Sehr große Module** (Regressionsrisiko): `app/live/host.tsx`, `app/live/watch/[id].tsx`, `app/create/index.tsx`, `app/create/camera.tsx`.
+- **Pre-existing tsc-Fehler (harmlos, Baseline=2):** `'rose'` in `components/explore/exploreStyles.ts` + `components/guild/guildStyles.ts`.
+
+---
+
+## 6. Übernommen aus altem Handoff (noch gültig)
+- **Stripe Web-Coin-Shop** funktioniert (Test-Modus). Go-Live = `sk_live_`/Live-Webhook tauschen. Functions `create-checkout-session`(verify_jwt) + `stripe-webhook`(--no-verify-jwt) deployed.
+- **Digitale Lieferung „Path A"**: Bucket `digital-products` (privat, Supabase Storage — NICHT R2). Bilder/Videos → R2.
+- **Coin-Saldo in `coins_wallets`** (`coins`/`diamonds`/`user_id`), NICHT `profiles.coins_balance`.
+- **Web baut isoliert** (Vercel): neue Web-Deps mit `cd apps/web && npm run build` prüfen.
+- **`r2-delete` Edge Function:** deployed, aber Source fehlt unter `supabase/functions/` → vor Delete-Änderungen zurückholen.
+- **`SCHEMA.md`** (`supabase/SCHEMA.md`) = Source-of-Truth für reale Spalten. `profiles` hat KEIN `follower_count`.
+- **„Geld seriöser machen"** (Borz→Coins, Diamanten→Einnahmen) — vorgeschlagen, vom User damals dismissed; ggf. wieder aufgreifen.
+
+---
+
+## 7. Gedächtnis + Doku
+`~/.claude/projects/-Users-zaurhatuev-vibes-app/memory/` (lädt automatisch):
+- **`vibes-create-overlay-compositing.md`** ← wichtig für diese Session (view-shot, Text-Modus, Sticker-Video-Defer, Zeichnen/Effekte entfernt)
+- `vibes-ota-eas-update-stubs.md` (EAS_BUILD=1!) · `vibes-reanimated-static-import.md`
+- `vibes-shop-digital-delivery.md` · `vibes-stripe-coinshop.md` · `vibes-video-perf-strategy.md` · `vibes-web-deps-isolation.md` · `macos-tcc-desktop-preview.md`
+
+Projekt-Doku: **`CLAUDE.md`** (Tech-Stack, Struktur, Design-Gesetz „freundliche App", Migrations-Regeln).
+
+---
+
+## 8. Über Zaur
+- Solo-Gründer, deutschsprachig. Serlo/Vibes = TikTok-artige App für die tschetschenische Community, in Produktion (App Store).
+- Bevorzugt knapp/direkt, eine Sache pro Commit, warm. **Kostenbewusst** (deshalb Sticker-Video + teure Infra bis Umsatz aufgeschoben). Will Fixes **verifiziert + ausgeliefert**.
+- Testet Mobile selbst auf dem Gerät (ich kann Mobile nicht rendern) → iterativ: bauen/OTA → er testet → Feedback. Macht DB-Migrationen + Secrets selbst im Dashboard.
+- **Credentials (OpenAI/Stripe-Keys, PAT) gibt er NIE in den Chat** — setzt sie selbst.
