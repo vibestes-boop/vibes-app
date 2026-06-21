@@ -37,8 +37,8 @@ type SharedValue,
 
 import { RichText } from '@/components/ui/RichText';
 import { useAuthStore } from '@/lib/authStore';
-import { useCommentLike,useCommentLikesBatch,type CommentLikesMap } from '@/lib/useCommentLike';
-import { useAddComment,useCommentReplies,useComments,useDeleteComment,type Comment } from '@/lib/useComments';
+import { useCommentLike } from '@/lib/useCommentLike';
+import { useAddComment,useCommentReplies,useComments,useDeleteComment,useToggleCommentLike,type Comment } from '@/lib/useComments';
 import { useReportComment } from '@/lib/useReport';
 import { useExploreUserSearch } from '@/lib/useExplore';
 import { useTheme } from '@/lib/useTheme';
@@ -313,16 +313,17 @@ function SheetInner({
   const addComment = useAddComment(postId);
   const deleteComment = useDeleteComment(postId);
 
-  // ── N+1-Fix: Alle Comment-Likes in 2 Queries statt 2×N ──────────────────
-  // useMemo verhindert neue Array-Referenz bei jedem Render (würde Batch-Query neu triggern)
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { useMemo } = require('react') as typeof import('react');
-  const commentIds = useMemo(
-    () => (comments ?? []).map((c) => c.id),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [(comments ?? []).map((c) => c.id).join(',')]
+  // ── N+1-Fix: Like-Daten kommen jetzt direkt aus useComments (RPC) ────────
+  // Top-Level-Likes werden über diese Mutation im ['comments', postId]-Cache
+  // optimistisch getoggelt → kein Per-Row-Like-Query mehr.
+  const toggleCommentLike = useToggleCommentLike(postId);
+  const handleTopLevelLike = useCallback(
+    (commentId: string, liked: boolean) => {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      toggleCommentLike.mutate({ commentId, liked });
+    },
+    [toggleCommentLike],
   );
-  const likeMap = useCommentLikesBatch(commentIds);
 
   const [text, setText] = useState('');
   const [lastSentId, setLastSentId] = useState<string | null>(null);
@@ -345,6 +346,7 @@ function SheetInner({
   const handleSend = useCallback(() => {
     const trimmed = text.trim();
     if (!trimmed || addComment.isPending) return;
+    const wasReply = !!replyTo;
     setText('');
     setReplyTo(null);
     setMentionQuery(null);
@@ -357,13 +359,17 @@ function SheetInner({
         onSuccess: (newComment) => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
           setLastSentId(newComment.id);
-          timersRef.current.push(setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 50));
+          // Top-Level-Kommentare landen oben (neueste zuerst) → nach oben scrollen.
+          // Replies bleiben verschachtelt → Position nicht wegspringen lassen.
+          if (!wasReply) {
+            timersRef.current.push(setTimeout(() => listRef.current?.scrollToOffset({ offset: 0, animated: true }), 50));
+          }
           timersRef.current.push(setTimeout(() => setLastSentId(null), 1200));
         },
         onError: () => setText(trimmed),
       }
     );
-  }, [text, addComment, replyTo?.id]);
+  }, [text, addComment, replyTo?.id, replyTo]);
 
   const handleDelete = useCallback((commentId: string) => {
     Alert.alert('Kommentar löschen', 'Möchtest du diesen Kommentar wirklich löschen?', [
@@ -444,25 +450,26 @@ function SheetInner({
         comment={item}
         postId={postId}
         isOwn={item.user_id === profile?.id}
+        currentUserId={profile?.id}
         timeAgo={timeAgo(item.created_at)}
         onDelete={handleDelete}
         onReply={handleReplyTo}
         onLongPress={handleLongPressComment}
         isHighlighted={item.id === lastSentId}
         onUserPress={onUserPress}
-        likeMap={likeMap}
+        onTopLevelLike={handleTopLevelLike}
       />
     ),
-    [postId, profile?.id, handleDelete, handleReplyTo, handleLongPressComment, lastSentId, onUserPress, likeMap],
+    [postId, profile?.id, handleDelete, handleReplyTo, handleLongPressComment, lastSentId, onUserPress, handleTopLevelLike],
   );
 
   return (
     <View style={[{ flex: 1 }, { backgroundColor: colors.bg.secondary }]}>
       {/* Handle + Header */}
       <View>
-        <View style={styles.handle} />
-        <View style={styles.header}>
-          <Text style={styles.headerTitle}>Kommentare</Text>
+        <View style={[styles.handle, { backgroundColor: colors.border.default }]} />
+        <View style={[styles.header, { borderBottomColor: colors.border.subtle }]}>
+          <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Kommentare</Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Pressable onPress={onClose} style={styles.closeBtn}>
               <X size={18} stroke="#6B7280" strokeWidth={2} />
@@ -504,7 +511,7 @@ function SheetInner({
 
       {/* @Mention Autocomplete Dropdown */}
       {showMentions && (
-        <View style={styles.mentionList}>
+        <View style={[styles.mentionList, { backgroundColor: colors.bg.elevated, borderTopColor: colors.border.subtle }]}>
           {mentionUsers.slice(0, 5).map((user) => (
             <Pressable
               key={user.id}
@@ -518,7 +525,7 @@ function SheetInner({
                   <Text style={styles.mentionAvatarText}>{(user.username ?? '?')[0].toUpperCase()}</Text>
                 </View>
               )}
-              <Text style={styles.mentionUsername}>@{user.username}</Text>
+              <Text style={[styles.mentionUsername, { color: colors.text.primary }]}>@{user.username}</Text>
               {user.bio ? <Text style={styles.mentionBio} numberOfLines={1}>{user.bio}</Text> : null}
             </Pressable>
           ))}
@@ -528,8 +535,8 @@ function SheetInner({
       {/* Reply-Banner */}
       {replyTo && (
         <View style={styles.replyBanner}>
-          <Text style={styles.replyBannerText}>
-            Antwort an <Text style={styles.replyBannerUsername}>@{replyTo.username}</Text>
+          <Text style={[styles.replyBannerText, { color: colors.text.muted }]}>
+            Antwort an <Text style={[styles.replyBannerUsername, { color: colors.text.primary }]}>@{replyTo.username}</Text>
           </Text>
           <Pressable onPress={clearReply} hitSlop={10}>
             <X size={14} stroke="#9CA3AF" strokeWidth={2.5} />
@@ -699,17 +706,20 @@ function CommentRowComponent({
   comment,
   postId,
   isOwn,
+  currentUserId,
   timeAgo,
   onDelete,
   onReply,
   onLongPress,
   isHighlighted,
   onUserPress,
-  likeMap,
+  onTopLevelLike,
 }: {
   comment: Comment;
   postId: string;
   isOwn: boolean;
+  /** Eingeloggter User — für korrektes isOwn bei verschachtelten Replies */
+  currentUserId?: string;
   timeAgo: string;
   /** STABILE Handler (useCallback im Parent) — Row bindet sich selbst */
   onDelete: (commentId: string) => void;
@@ -717,17 +727,29 @@ function CommentRowComponent({
   onLongPress: (comment: Comment) => void;
   isHighlighted?: boolean;
   onUserPress?: (userId: string) => void;
-  likeMap?: CommentLikesMap;  // Batch-Daten aus SheetInner (Top-Level)
+  /** Nur für Top-Level gesetzt: Like-Toggle über den ['comments']-Cache.
+   *  Bei Replies undefined → Fallback auf useCommentLike-Einzelquery. */
+  onTopLevelLike?: (commentId: string, liked: boolean) => void;
 }) {
   const [showReplies, setShowReplies] = useState(false);
   const { data: replies = [] } = useCommentReplies(comment.id, showReplies);
   const { colors } = useTheme();
 
-  // Batch-Daten priorisieren (Top-Level Kommentare), Fallback auf Einzelquery (Replies)
-  const batchState = likeMap?.get(comment.id);
-  const { liked: likedSingle, count: countSingle, toggle } = useCommentLike(comment.id);
-  const liked = batchState?.liked ?? likedSingle;
-  const count = batchState?.count ?? countSingle;
+  // Top-Level (RPC liefert like_count) → Daten direkt aus dem Comment,
+  // Toggle via onTopLevelLike. Reply (kein like_count) → Einzelquery-Fallback.
+  const hasRpcLike = comment.like_count !== undefined;
+  const { liked: likedSingle, count: countSingle, toggle: toggleSingle } = useCommentLike(comment.id, { enabled: !hasRpcLike });
+  const liked = hasRpcLike ? !!comment.liked_by_me : likedSingle;
+  const count = hasRpcLike ? (comment.like_count ?? 0) : countSingle;
+  const handleToggleLike = useCallback(() => {
+    if (hasRpcLike) {
+      onTopLevelLike?.(comment.id, !!comment.liked_by_me);
+    } else {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      toggleSingle();
+    }
+  }, [hasRpcLike, onTopLevelLike, comment.id, comment.liked_by_me, toggleSingle]);
+  const replyCount = comment.reply_count ?? 0;
 
   const highlightOpacity = useSharedValue(0);
   useEffect(() => {
@@ -789,48 +811,48 @@ function CommentRowComponent({
             <Text style={[styles.commentTime, { color: colors.text.muted }]}>{timeAgo}</Text>
           </View>
           <RichText text={comment.text} style={[styles.commentText, { color: colors.text.secondary }]} />
-          {/* Aktionen: Antworten + Liken */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginTop: 4 }}>
-            <Pressable onPress={handleReply} style={styles.commentReplyBtn} hitSlop={8}>
-              <Text style={styles.commentReplyText}>Antworten</Text>
-            </Pressable>
-            {/* Like-Button */}
+          {/* Antworten-Link (Like sitzt rechts als eigene Spalte) */}
+          <Pressable onPress={handleReply} style={styles.commentReplyBtn} hitSlop={8}>
+            <Text style={[styles.commentReplyText, { color: colors.text.muted }]}>Antworten</Text>
+          </Pressable>
+
+          {/* Antworten-Toggle — NUR wenn es tatsächlich Antworten gibt, mit Anzahl (TikTok-Stil) */}
+          {replyCount > 0 && (
             <Pressable
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                toggle();
-              }}
+              onPress={() => setShowReplies((v) => !v)}
               hitSlop={8}
-              style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}
-              accessibilityRole="button"
-              accessibilityLabel={liked ? 'Kommentar nicht mehr liken' : 'Kommentar liken'}
+              style={styles.repliesToggle}
             >
-              <Heart
-                size={13}
-                color={liked ? '#F472B6' : colors.icon.muted}
-                fill={liked ? '#F472B6' : 'transparent'}
-                strokeWidth={2}
-              />
-              {count > 0 && (
-                <Text style={{ color: liked ? '#F472B6' : colors.text.muted, fontSize: 11, fontWeight: '600' }}>
-                  {count}
-                </Text>
-              )}
+              <View style={[styles.repliesToggleLine, { backgroundColor: colors.border.default }]} />
+              <Text style={[styles.repliesToggleText, { color: colors.text.muted }]}>
+                {showReplies
+                  ? 'Antworten ausblenden'
+                  : `${replyCount} ${replyCount === 1 ? 'Antwort' : 'Antworten'} anzeigen`}
+              </Text>
             </Pressable>
-          </View>
+          )}
         </View>
 
-        {/* Antworten Toggle */}
-        {replies.length > 0 && showReplies && (
-          <Pressable onPress={() => setShowReplies(false)} hitSlop={8} style={{ marginLeft: 4, marginTop: 2 }}>
-            <Text style={{ color: colors.text.secondary, fontSize: 12, fontWeight: '600' }}>Antworten ausblenden</Text>
-          </Pressable>
-        )}
-        {!showReplies && (
-          <Pressable onPress={() => setShowReplies(true)} hitSlop={8} style={{ marginLeft: 4, marginTop: 2 }}>
-            <Text style={{ color: colors.text.muted, fontSize: 12 }}>── Antworten anzeigen</Text>
-          </Pressable>
-        )}
+        {/* Like-Spalte rechts (TikTok-Stil): Herz + Anzahl vertikal */}
+        <Pressable
+          onPress={handleToggleLike}
+          hitSlop={8}
+          style={styles.likeColumn}
+          accessibilityRole="button"
+          accessibilityLabel={liked ? 'Kommentar nicht mehr liken' : 'Kommentar liken'}
+        >
+          <Heart
+            size={18}
+            color={liked ? '#F472B6' : colors.icon.muted}
+            fill={liked ? '#F472B6' : 'transparent'}
+            strokeWidth={2}
+          />
+          {count > 0 && (
+            <Text style={[styles.likeColumnCount, { color: liked ? '#F472B6' : colors.text.muted }]}>
+              {count}
+            </Text>
+          )}
+        </Pressable>
       </Animated.View>
 
       {/* eingerückte Antworten */}
@@ -839,7 +861,8 @@ function CommentRowComponent({
           <CommentRow
             comment={reply}
             postId={postId}
-            isOwn={reply.user_id === comment.user_id}
+            isOwn={reply.user_id === currentUserId}
+            currentUserId={currentUserId}
             timeAgo={(() => {
               const diff = (Date.now() - new Date(reply.created_at).getTime()) / 1000;
               if (diff < 60) return 'gerade eben';
@@ -1054,6 +1077,36 @@ const styles = StyleSheet.create({
   commentReplyText: {
     color: 'rgba(255,255,255,0.35)',
     fontSize: 12,
+    fontWeight: '600',
+  },
+
+  // ── Like-Spalte rechts (TikTok-Stil) ──────────────────────────────
+  likeColumn: {
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: 3,
+    paddingTop: 2,
+    minWidth: 30,
+    flexShrink: 0,
+  },
+  likeColumnCount: {
+    fontSize: 11,
+    fontWeight: '600',
+  },
+
+  // ── Antworten-Toggle (nur wenn Antworten existieren) ──────────────
+  repliesToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8,
+  },
+  repliesToggleLine: {
+    width: 24,
+    height: StyleSheet.hairlineWidth,
+  },
+  repliesToggleText: {
+    fontSize: 13,
     fontWeight: '600',
   },
 

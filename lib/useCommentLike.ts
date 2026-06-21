@@ -18,7 +18,11 @@ export type CommentLikeState = {
 };
 
 // ── Hook ───────────────────────────────────────────────────────────────────
-export function useCommentLike(commentId: string) {
+// opts.enabled=false → Display+Toggle bleiben nutzbar, aber der Like-Query
+// feuert NICHT (für Top-Level-Kommentare, deren Like-Daten schon aus der RPC
+// get_post_comments_web kommen). Verhindert den N+1-Like-Sturm pro Zeile.
+export function useCommentLike(commentId: string, opts?: { enabled?: boolean }) {
+  const queryEnabled = opts?.enabled ?? true;
   const queryClient = useQueryClient();
   const userId = useAuthStore((s) => s.profile?.id);
 
@@ -43,7 +47,7 @@ export function useCommentLike(commentId: string) {
       return { count: count ?? 0, liked: !!myLike };
     },
     staleTime: 30_000,
-    enabled: !!commentId,
+    enabled: queryEnabled && !!commentId,
   });
 
   const liked = data?.liked ?? false;

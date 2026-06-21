@@ -13,9 +13,16 @@ export type Comment = {
   created_at: string;
   parent_id: string | null;
   reply_count?: number;
+  // Like-Daten kommen bei Top-Level-Kommentaren direkt aus der RPC
+  // (get_post_comments_web) → kein N+1 mehr. Bei Replies undefined → Fallback
+  // auf die Einzelquery in useCommentLike.
+  like_count?: number;
+  liked_by_me?: boolean;
   profiles: {
     username: string;
     avatar_url: string | null;
+    display_name?: string | null;
+    verified?: boolean;
   } | null;
 };
 
@@ -69,17 +76,42 @@ export function useCommentCount(postId: string, batchCount?: number) {
 
 
 export function useComments(postId: string, enabled: boolean = true) {
+  const userId = useAuthStore((s) => s.profile?.id);
   return useQuery({
     queryKey: ['comments', postId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('comments')
-        .select('*, profiles(username, avatar_url)')
-        .eq('post_id', postId)
-        .is('parent_id', null)           // Nur Top-Level Kommentare
-        .order('created_at', { ascending: true });
+      // EINE Query statt 1 + 2 + N: get_post_comments_web liefert Text,
+      // like_count, liked_by_me UND reply_count pro Top-Level-Kommentar
+      // (gleiche RPC, die das Web nutzt). Killt den N+1-Like-Sturm und
+      // befüllt reply_count (→ „Antworten anzeigen" nur wenn es welche gibt).
+      const { data, error } = await supabase.rpc('get_post_comments_web', {
+        p_post_id: postId,
+        p_limit: 100,
+        p_viewer_id: userId ?? null,
+      });
       if (error) throw error;
-      return (data as Comment[]) ?? [];
+      const rows = (data ?? []) as Array<Record<string, any>>;
+      return rows
+        .map((r): Comment => ({
+          id: r.id,
+          post_id: r.post_id,
+          user_id: r.user_id,
+          text: r.body ?? '',
+          created_at: r.created_at,
+          parent_id: r.parent_id ?? null,
+          reply_count: Number(r.reply_count ?? 0),
+          like_count: Number(r.like_count ?? 0),
+          liked_by_me: !!r.liked_by_me,
+          profiles: {
+            username: r.author_username,
+            avatar_url: r.author_avatar_url,
+            display_name: r.author_display_name,
+            verified: !!r.author_verified,
+          },
+        }))
+        // Neueste zuerst (TikTok-Stil) — RPC liefert bereits DESC, hier explizit
+        // garantiert. Neue Kommentare werden beim Senden vorne eingefügt.
+        .sort((a, b) => b.created_at.localeCompare(a.created_at));
     },
     staleTime: 1000 * 60,
     enabled,
@@ -124,6 +156,9 @@ export function useAddComment(postId: string) {
 
       const newComment: Comment = {
         ...inserted,
+        reply_count: 0,
+        like_count: 0,
+        liked_by_me: false,
         profiles: {
           username: profile.username,
           avatar_url: profile.avatar_url ?? null,
@@ -142,11 +177,16 @@ export function useAddComment(postId: string) {
         text,
         parent_id: parentId ?? null,
         created_at: new Date().toISOString(),
+        reply_count: 0,
+        like_count: 0,
+        liked_by_me: false,
         profiles: { username: profile.username ?? 'Du', avatar_url: profile.avatar_url ?? null },
       };
-      queryClient.setQueryData<Comment[]>(cacheKey, (old) =>
-        old ? [...old, optimistic] : [optimistic]
-      );
+      queryClient.setQueryData<Comment[]>(cacheKey, (old) => {
+        if (!old) return [optimistic];
+        // Top-Level: neueste zuerst → vorne einfügen. Replies: chronologisch → hinten.
+        return parentId ? [...old, optimistic] : [optimistic, ...old];
+      });
       if (!parentId) queryClient.setQueryData<number>(['comment-count', postId], (old) => (old ?? 0) + 1);
       return { previous, cacheKey };
     },
@@ -260,6 +300,59 @@ export function useDeleteComment(postId: string) {
       );
       queryClient.setQueryData<number>(['comment-count', postId], (old) => Math.max(0, (old ?? 1) - 1));
       if (userId) queryClient.invalidateQueries({ queryKey: ['feed-engagement', userId] });
+    },
+  });
+}
+
+/**
+ * useToggleCommentLike
+ *
+ * Like/Unlike für TOP-LEVEL-Kommentare. Display-State lebt direkt im
+ * ['comments', postId]-Cache (aus get_post_comments_web) → der Toggle
+ * mutiert dort optimistisch `liked_by_me` + `like_count`. Dadurch kein
+ * eigener Per-Row-Like-Query mehr (vorheriger N+1). Replies nutzen weiter
+ * useCommentLike (on-demand, kleine N).
+ */
+export function useToggleCommentLike(postId: string) {
+  const queryClient = useQueryClient();
+  const userId = useAuthStore((s) => s.profile?.id);
+
+  return useMutation({
+    mutationFn: async ({ commentId, liked }: { commentId: string; liked: boolean }) => {
+      if (!userId) throw new Error('Nicht eingeloggt');
+      if (liked) {
+        const { error } = await supabase
+          .from('comment_likes')
+          .delete()
+          .eq('comment_id', commentId)
+          .eq('user_id', userId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('comment_likes')
+          .insert({ comment_id: commentId, user_id: userId });
+        if (error) throw error;
+      }
+    },
+    onMutate: ({ commentId, liked }: { commentId: string; liked: boolean }) => {
+      const key = ['comments', postId];
+      const prev = queryClient.getQueryData<Comment[]>(key);
+      queryClient.setQueryData<Comment[]>(key, (old) =>
+        old?.map((c) =>
+          c.id === commentId
+            ? {
+                ...c,
+                liked_by_me: !liked,
+                like_count: Math.max(0, (c.like_count ?? 0) + (liked ? -1 : 1)),
+              }
+            : c
+        ) ?? []
+      );
+      return { prev };
+    },
+    onError: (_err, _vars, context) => {
+      const prev = (context as { prev?: Comment[] } | undefined)?.prev;
+      if (prev) queryClient.setQueryData(['comments', postId], prev);
     },
   });
 }
