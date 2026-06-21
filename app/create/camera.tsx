@@ -67,9 +67,17 @@ const CAPTURE_MODES: { key: CaptureMode; label: string }[] = [
   { key: 'text', label: 'Text' },
 ];
 
-// Hintergrund-Verläufe für Text-Posts (TikTok-Stil)
+// Hintergrund-Farben für Text-Posts (TikTok-Stil)
 const TEXT_BG_COLORS: string[] = [
   '#1D1D26', '#A78BFA', '#F472B6', '#FB7185', '#FBBF24', '#34D399', '#38BDF8', '#000000', '#FFFFFF',
+];
+
+// Kuratierte Gradient-Paare (sehen besser aus als Zufalls-Hex). Der Kreis-Button würfelt.
+const TEXT_GRADIENTS: [string, string][] = [
+  ['#FF6B6B', '#FFD93D'], ['#6A11CB', '#2575FC'], ['#11998E', '#38EF7D'],
+  ['#F857A6', '#FF5858'], ['#4776E6', '#8E54E9'], ['#FC5C7D', '#6A82FB'],
+  ['#00C9FF', '#92FE9D'], ['#F7971E', '#FFD200'], ['#1A2980', '#26D0CE'],
+  ['#EE0979', '#FF6A00'], ['#7F00FF', '#E100FF'], ['#16A085', '#F4D03F'],
 ];
 
 const STUDIO_MODES: { key: StudioMode; label: string; icon: React.ReactNode }[] = [
@@ -387,11 +395,25 @@ export default function CreateCameraScreen() {
   // ── Text-Modus (Text-auf-Farbe-Post) ──────────────────────────────────
   const [textContent, setTextContent] = useState('');
   const [textBgIndex, setTextBgIndex] = useState(0);
+  const [textGradient, setTextGradient] = useState<[string, string] | null>(null);  // null = Einzelfarbe
   const textShotRef = useRef<ViewShot>(null);
   const textInputRef = useRef<TextInput>(null);
   const textBg = TEXT_BG_COLORS[textBgIndex];
-  // Heller Hintergrund → dunkler Text, sonst weiß
-  const textColor = (textBg === '#FFFFFF' || textBg === '#FBBF24') ? '#111111' : '#FFFFFF';
+  // Bei Gradient immer weißer Text; sonst heller BG → dunkler Text
+  const textColor = textGradient ? '#FFFFFF' : (textBg === '#FFFFFF' || textBg === '#FBBF24') ? '#111111' : '#FFFFFF';
+
+  // Kreis-Button: würfelt einen neuen Gradient (anders als der aktuelle)
+  const rollGradient = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setTextGradient((prev) => {
+      let next = TEXT_GRADIENTS[Math.floor(Math.random() * TEXT_GRADIENTS.length)];
+      if (prev) {
+        let guard = 0;
+        while (next[0] === prev[0] && guard++ < 6) next = TEXT_GRADIENTS[Math.floor(Math.random() * TEXT_GRADIENTS.length)];
+      }
+      return next;
+    });
+  }, []);
 
   // Tastatur-Höhe tracken → Swatches sitzen ÜBER der Tastatur (nicht verdeckt)
   const [kbHeight, setKbHeight] = useState(0);
@@ -606,8 +628,14 @@ export default function CreateCameraScreen() {
             {/* Hintergrund tippbar: Tastatur offen → zu; geschlossen → wieder fokussieren (weiter bearbeiten) */}
             <Pressable
               onPress={() => { if (kbHeight > 0) Keyboard.dismiss(); else textInputRef.current?.focus(); }}
-              style={[StyleSheet.absoluteFill, { backgroundColor: textBg, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 }]}
+              style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 }]}
             >
+              {/* Hintergrund (Gradient oder Einzelfarbe) hinter dem Text */}
+              {textGradient ? (
+                <LinearGradient colors={textGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} pointerEvents="none" />
+              ) : (
+                <View style={[StyleSheet.absoluteFill, { backgroundColor: textBg }]} pointerEvents="none" />
+              )}
               <TextInput
                 ref={textInputRef}
                 value={textContent}
@@ -627,11 +655,19 @@ export default function CreateCameraScreen() {
       {/* Hintergrundfarben — NUR bei offener Tastatur, direkt darüber (außerhalb ViewShot → nicht im Bild) */}
       {isText && kbHeight > 0 && (
         <View style={[s.textSwatchRow, { bottom: kbHeight + 12, zIndex: 11 }]}>
+          {/* Kreis-Button → zufälliger Gradient-Hintergrund */}
+          <Pressable onPress={rollGradient} style={[s.textSwatch, { overflow: 'hidden' }, textGradient && s.textSwatchActive]}>
+            <LinearGradient
+              colors={textGradient ?? ['#FF6B6B', '#6A82FB']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+          </Pressable>
           {TEXT_BG_COLORS.map((c, i) => (
             <Pressable
               key={c}
-              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setTextBgIndex(i); }}
-              style={[s.textSwatch, { backgroundColor: c }, i === textBgIndex && s.textSwatchActive]}
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setTextGradient(null); setTextBgIndex(i); }}
+              style={[s.textSwatch, { backgroundColor: c }, !textGradient && i === textBgIndex && s.textSwatchActive]}
             />
           ))}
         </View>
