@@ -14,6 +14,8 @@
  *     Follower beim Tap auf den Reminder-Push direkt in diese Session kommen.
  */
 import { AIImageSheet } from '@/components/ai/AIImageSheet';
+import { useAuthStore } from '@/lib/authStore';
+import { uploadPostMedia } from '@/lib/uploadMedia';
 import { LC } from '@/lib/liveColors';
 import { FONT_SIZE,FONT_WEIGHT,RADII,SPACE } from '@/lib/tokens';
 import ExpoGoPlaceholder from '@/components/live/ExpoGoPlaceholder';
@@ -28,6 +30,7 @@ import { BlurView } from 'expo-blur';
 import { CameraView,useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import { Image as ExpoImage } from 'expo-image';
+import { launchImageLibraryAsync,requestMediaLibraryPermissionsAsync } from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams,useRouter } from 'expo-router';
 import {
@@ -35,6 +38,7 @@ CalendarClock,
 ChevronDown,
 ChevronRight,
 ChevronUp,
+ImageIcon,
 RefreshCw,Settings,
 Sparkles,
 X,
@@ -101,9 +105,40 @@ export default function LiveStartScreen() {
   // gespeichert und später u.a. als Vorschau in der Explore/Home-Live-Row genutzt.
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
   const [showAISheet, setShowAISheet] = useState(false);
+  const [coverUploading, setCoverUploading] = useState(false);
+  const { profile } = useAuthStore();
 
   const dotOpacity = useSharedValue(1);
   const dotStyle = useAnimatedStyle(() => ({ opacity: dotOpacity.value }));
+
+  // Cover aus der Galerie wählen (Alternative zur KI — funktioniert auch ohne AI-Backend)
+  const pickCoverFromGallery = async () => {
+    if (!profile || coverUploading) return;
+    try {
+      const { status } = await requestMediaLibraryPermissionsAsync();
+      if (status === 'denied') {
+        Alert.alert('Zugriff verweigert', 'Bitte erlaube in den Einstellungen den Zugriff auf deine Fotos.');
+        return;
+      }
+      const result = await launchImageLibraryAsync({
+        mediaTypes: ['images'] as any,
+        allowsEditing: true,
+        aspect: [3, 4],
+        quality: 0.85,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+      const asset = result.assets[0];
+      setCoverUploading(true);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      const { url } = await uploadPostMedia(profile.id, asset.uri, asset.mimeType ?? undefined);
+      setThumbnailUrl(url);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {
+      Alert.alert('Hmm', 'Cover konnte nicht hochgeladen werden — versuch es nochmal. 🙂');
+    } finally {
+      setCoverUploading(false);
+    }
+  };
 
   const flipCamera = () => {
     setFacing((f) => (f === 'front' ? 'back' : 'front'));
@@ -352,23 +387,38 @@ export default function LiveStartScreen() {
                   )}
                 </View>
                 <View style={ss.coverActions}>
-                  <Pressable
-                    style={ss.coverAIBtn}
-                    onPress={() => {
-                      setSettingsSheet(false);
-                      // kleiner Delay damit die Settings-Sheet-Animation weg ist,
-                      // bevor das AI-Sheet reinslidet (sonst visueller Stack-Jank)
-                      setTimeout(() => setShowAISheet(true), 260);
-                    }}
-                  >
-                    <Sparkles size={15} stroke="#fff" strokeWidth={2} />
-                    <Text style={ss.coverAIBtnText}>
-                      {thumbnailUrl ? 'Anderes Cover' : 'Mit KI erstellen'}
-                    </Text>
-                  </Pressable>
+                  <View style={ss.coverBtnRow}>
+                    <Pressable
+                      style={[ss.coverAIBtn, coverUploading && ss.coverBtnDisabled]}
+                      disabled={coverUploading}
+                      onPress={() => {
+                        setSettingsSheet(false);
+                        // kleiner Delay damit die Settings-Sheet-Animation weg ist,
+                        // bevor das AI-Sheet reinslidet (sonst visueller Stack-Jank)
+                        setTimeout(() => setShowAISheet(true), 260);
+                      }}
+                    >
+                      <Sparkles size={15} stroke="#fff" strokeWidth={2} />
+                      <Text style={ss.coverAIBtnText}>Mit KI</Text>
+                    </Pressable>
+                    <Pressable
+                      style={[ss.coverGalleryBtn, coverUploading && ss.coverBtnDisabled]}
+                      disabled={coverUploading}
+                      onPress={pickCoverFromGallery}
+                    >
+                      {coverUploading ? (
+                        <ActivityIndicator size="small" color="#111827" />
+                      ) : (
+                        <>
+                          <ImageIcon size={15} stroke="#111827" strokeWidth={2} />
+                          <Text style={ss.coverGalleryBtnText}>Galerie</Text>
+                        </>
+                      )}
+                    </Pressable>
+                  </View>
                   {thumbnailUrl && (
                     <Pressable style={ss.coverRemoveBtn} onPress={() => setThumbnailUrl(null)}>
-                      <Text style={ss.coverRemoveText}>Entfernen</Text>
+                      <Text style={ss.coverRemoveText}>Cover entfernen</Text>
                     </Pressable>
                   )}
                 </View>
@@ -780,12 +830,23 @@ const ss = StyleSheet.create({
   coverImg: { width: '100%', height: '100%' },
   coverEmpty: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   coverActions: { flex: 1, gap: SPACE.sm },
+  coverBtnRow: { flexDirection: 'row', gap: SPACE.sm },
   coverAIBtn: {
+    flex: 1,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     gap: 6, backgroundColor: LC.accent.purple, borderRadius: RADII.md,
-    paddingVertical: 11, paddingHorizontal: 14,
+    paddingVertical: 11, paddingHorizontal: 10,
   },
   coverAIBtnText: { color: LC.white, fontSize: FONT_SIZE.sm, fontWeight: FONT_WEIGHT.bold },
+  coverGalleryBtn: {
+    flex: 1,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    gap: 6, backgroundColor: '#F3F4F6', borderRadius: RADII.md,
+    borderWidth: 1, borderColor: '#E5E7EB',
+    paddingVertical: 11, paddingHorizontal: 10,
+  },
+  coverGalleryBtnText: { color: '#111827', fontSize: FONT_SIZE.sm, fontWeight: FONT_WEIGHT.bold },
+  coverBtnDisabled: { opacity: 0.5 },
   coverRemoveBtn: { alignSelf: 'flex-start', paddingVertical: SPACE.xs, paddingHorizontal: 2 },
   coverRemoveText: { color: '#9CA3AF', fontSize: FONT_SIZE.xs, fontWeight: FONT_WEIGHT.semibold },
 });
