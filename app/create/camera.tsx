@@ -653,12 +653,13 @@ export default function CreateCameraScreen() {
         onClose={() => setShowMusicPicker(false)}
       />
 
-      {/* ── Rechte Glassmorphism Tool-Leiste ── */}
+      {/* ── Rechte Tool-Leiste — gleicher Look wie der Editor (Icon + Label) ── */}
       <View style={[s.tools, { top: insets.top + 72 }]}>
         <Pressable style={s.toolBtn} onPress={flipCamera}>
-          <RotateCcw size={20} color="#fff" strokeWidth={1.8} />
+          <RotateCcw size={24} color="#fff" strokeWidth={1.8} />
+          <Text style={s.toolLabel}>Wenden</Text>
         </Pressable>
-        <View style={s.toolDivider} />
+
         <Pressable
           style={[s.toolBtn, cameraFacing === 'front' && s.toolBtnDisabled]}
           onPress={() => {
@@ -671,27 +672,22 @@ export default function CreateCameraScreen() {
           }}
         >
           {flash === 'on'
-            ? <Zap size={20} color="#FFE434" fill="#FFE434" strokeWidth={1.8} />
+            ? <Zap size={24} color="#FFE434" fill="#FFE434" strokeWidth={1.8} />
             : <ZapOff
-                size={20}
-                color={cameraFacing === 'front' ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.6)'}
+                size={24}
+                color={cameraFacing === 'front' ? 'rgba(255,255,255,0.3)' : '#fff'}
                 strokeWidth={1.8}
               />
           }
+          <Text style={s.toolLabel}>Blitz</Text>
         </Pressable>
-        <View style={s.toolDivider} />
+
         <Pressable style={s.toolBtn} onPress={cycleTimer}>
-          <Timer
-            size={20}
-            color={'rgba(255,255,255,0.6)'}
-            strokeWidth={1.8}
-          />
-          {timerSec > 0 && (
-            <Text style={s.timerBadge}>{timerSec}s</Text>
-          )}
+          <Timer size={24} color="#fff" strokeWidth={1.8} />
+          <Text style={s.toolLabel}>{timerSec > 0 ? `Timer · ${timerSec}s` : 'Timer'}</Text>
         </Pressable>
-        <View style={s.toolDivider} />
-        {/* ── AR Filter Button ── */}
+
+        {/* ── Effekte (AR) ── */}
         <Pressable
           style={s.toolBtn}
           onPress={() => {
@@ -699,7 +695,8 @@ export default function CreateCameraScreen() {
             router.push('/create/ar-camera' as any);
           }}
         >
-          <Sparkles size={20} color="rgba(168,85,247,0.9)" strokeWidth={1.8} />
+          <Sparkles size={24} color="#fff" strokeWidth={1.8} />
+          <Text style={s.toolLabel}>Effekte</Text>
         </Pressable>
       </View>
 
@@ -893,36 +890,33 @@ const s = StyleSheet.create({
   },
   soundText: { color: '#fff', fontSize: 12, fontWeight: '700' },
 
-  // Tools — Glassmorphism Pill
+  // Tools — cleaner Editor-Look (Icon + Label, kein Glas-Pill) → konsistent vor/nach dem Foto
   tools: {
     position: 'absolute',
-    right: 14,
-    backgroundColor: 'rgba(0,0,0,0.65)',
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
-    paddingVertical: 4,
+    right: 10,
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: 22,
     zIndex: 10,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 12,
-    elevation: 12,
   },
   toolBtn: {
-    width: 44,
-    height: 44,
     alignItems: 'center',
     justifyContent: 'center',
+    width: 50,
+    paddingVertical: 2,
+  },
+  toolLabel: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 10,
+    fontWeight: '700',
+    marginTop: 4,
+    textAlign: 'center',
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   toolBtnDisabled: {
     opacity: 0.35,
-  },
-  toolDivider: {
-    height: 1,
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    marginHorizontal: 8,
   },
 
   // Bottom Container — Glassmorphism Panel

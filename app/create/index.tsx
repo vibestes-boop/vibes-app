@@ -62,12 +62,12 @@ import { useVideoPlayer,VideoView } from 'expo-video';
 import {
   ChevronRight,
   Music2,
+  Palette,
   Pencil,
+  RotateCw,
   Scissors,
   Settings2,
-  CheckCircle,
-  FlipHorizontal,
-  Sliders,
+  SlidersHorizontal,
   Smile,
   Sparkles,
   Type,
@@ -621,7 +621,7 @@ export default function CreatePostScreen() {
         </Pressable>
 
         <Pressable style={[s.sideBtn, !!activeFilter && s.sideBtnActive]} onPress={() => setShowFilterSheet(true)}>
-          <Sliders size={26} color="#fff" strokeWidth={1.8} />
+          <Palette size={26} color="#fff" strokeWidth={1.8} />
           {!!activeFilter && <View style={s.sideBtnDot} />}
           <Text style={s.sideLabel}>Filter</Text>
         </Pressable>
@@ -633,13 +633,13 @@ export default function CreatePostScreen() {
         </Pressable>
 
         <Pressable style={[s.sideBtn, (adjustValues.brightness !== 0 || adjustValues.contrast !== 0 || adjustValues.saturation !== 0) && s.sideBtnActive]} onPress={() => setShowAdjustSheet(true)}>
-          <FlipHorizontal size={26} color="#fff" strokeWidth={1.8} />
+          <SlidersHorizontal size={26} color="#fff" strokeWidth={1.8} />
           {(adjustValues.brightness !== 0 || adjustValues.contrast !== 0) && <View style={s.sideBtnDot} />}
           <Text style={s.sideLabel}>Anpassen</Text>
         </Pressable>
 
         <Pressable style={[s.sideBtn, (rotateState.rotation !== 0 || rotateState.flipH) && s.sideBtnActive]} onPress={() => setShowRotateSheet(true)}>
-          <CheckCircle size={26} color="#fff" strokeWidth={1.8} />
+          <RotateCw size={26} color="#fff" strokeWidth={1.8} />
           {(rotateState.rotation !== 0 || rotateState.flipH) && <View style={s.sideBtnDot} />}
           <Text style={s.sideLabel}>Drehen</Text>
         </Pressable>
