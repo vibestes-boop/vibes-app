@@ -1,4 +1,4 @@
-# Handoff — Serlo/Vibes (Stand 21. Juni 2026)
+# Handoff — Serlo/Vibes (Stand 22. Juni 2026)
 
 > 📍 **Dieses Dokument: `/Users/zaurhatuev/vibes-app/handoff.md`**
 > Arbeite NUR in diesem Repo: **`/Users/zaurhatuev/vibes-app`** (Branch `main`).
@@ -15,14 +15,14 @@
 | Bereich | Stand |
 |---|---|
 | **Repo / Branch** | `/Users/zaurhatuev/vibes-app` · `main` (Push-Remote: `vibestes-boop/vibes-app`) |
-| **Letzter Commit** | `68c7c72` (gepusht) |
-| **Letzte Mobile-OTA** | `68c7c72` — **Runtime 1.29.0** (branch `production`, Group `82fe358a`) |
+| **Letzter Commit** | `91e7570` (gepusht) |
+| **Letzte Mobile-OTA** | `91e7570` — **Runtime 1.29.0** (branch `production`, Group `c9601ff4`) · 4 OTAs am 22.06. (§1c) |
 | **Mobile-Build** | **v1.29.0 / iOS-Build 285 (versionCode 46) → in TestFlight** (vom User gebaut). **NICHT im App Store released!** Alle OTAs dieser Session zielen auf **Runtime 1.29.0** (nur dieser Build hat sie). |
 | **NEU nativ in 1.29.0** | `react-native-view-shot@4.0.3` (für Compositing/Text-Modus) → deshalb der neue Build. |
 | **Web (apps/web)** | deployt via **Vercel** auf Push zu `main` (`serlo-web.vercel.app`) |
 | **DB-Migrationen** | 4 dieser Session **angewandt** (§3) — zuletzt `followers_only` |
 | **EAS project id** | `02ab536a-5836-4560-a5ec-2dfd6e059f90` · **iOS bundle** `com.vibesapp.vibes` · EAS-Account `zaurhat` |
-| **GERADE IN ARBEIT** | — (zuletzt: **„Nur Follower"-Zuschauen** komplett gebaut + ausgeliefert, §4 „B") |
+| **GERADE IN ARBEIT** | — (zuletzt: **UI-Politur-Session** §1c — „Nur Follower", Kontrast-Fixes, Creator-Tools, LIVE-Setup, Studio-Hub, alles ausgeliefert) |
 
 ⚠️ **Quarantäne:** Alter Checkout `/Users/zaurhatuev/Desktop/vibes-app` — NIEMALS bauen/deployen/pushen.
 
@@ -96,6 +96,37 @@ Der User war kurz vor dem Einreichen von 1.28.0, hat dann aber den neuen Build (
 ### Domain / E-Mail (Stolperfallen)
 - **`serlo.social` + `serlo.app` sind TOT** (kein DNS/000). **Nur `serlo-web.vercel.app` lebt** (200). Alle Links + ASC-Felder darauf gezeigt. (serlo.ch geplant, wenn verfügbar.)
 - **E-Mail-Versand kaputt** (Supabase SMTP/Resend) → echte User können sich per E-Mail-Link nicht registrieren. Workaround Demo: Account direkt in Supabase Auth + Auto-Confirm. **Offen: SMTP/Resend fixen** (sonst keine E-Mail-Registrierung für echte User).
+
+---
+
+## 1c. UI-Politur-Session (22. Juni 2026) — alle OTA, Runtime 1.29.0
+
+> Nach dem „Nur Follower"-Feature (§4 B) eine Reihe UI-Fixes/Redesigns auf Basis von User-Screenshots. Alle JS-only → via OTA ausgeliefert. tsc-Baseline durchgehend = 2 (rose, harmlos).
+
+### Kontrast-Bugs auf dunklen Flächen (Light-Theme-Farben auf Schwarz)
+- **„Folge ich"-Empty-State** (`components/feed/FollowingEmptyState.tsx`, Commit `c0c66cc`): Feed-Hintergrund ist immer `#000` (TikTok-Stil, `feedStyles.container`), Komponente nutzte aber `useTheme()` → im Light-Mode Titel + Explore-Button dunkel-auf-schwarz = unsichtbar. Auf **feste Hell-auf-Dunkel-Palette** (`FEED`) umgestellt, `useTheme` entfernt. **Muster-Lernen:** Komponenten, die über dem immer-schwarzen Feed liegen, dürfen keine theme-abhängigen Farben nutzen.
+- **KI-Cover-Sheet** (`components/ai/AIImageSheet.tsx` + `lib/useGenerateImage.ts`, Commit `34189ad`): `colors.accent.primary` ist **invers** (weiß im Dark-, schwarz im Light-Mode); Buttons hatten Text/Icon hart `#fff` → im Dark-Mode weiß-auf-weiß (Format-Pill + „Generieren" unsichtbar). Fix: Text/Icon auf accent.primary-Buttons = `colors.bg.primary`. Kalte „non-2xx"-Meldung → warm (Design-Gesetz), rohe Ursache als `__DEV__`-Log. **KI-Generierung selbst schlägt weiter fehl bis `OPENAI_API_KEY` gesetzt ist** (§4.2, User-Aktion) — nur die UI ist gefixt.
+
+### Creator-Tools-Sheet Redesign (`components/live/CreatorToolsSheet.tsx` + `app/live/host.tsx`, Commit `02887e2`)
+- Flaches graues 3-Spalten-Raster → **gruppierte 2-spaltige Quer-Kacheln** mit dauerhaft farbigem Icon-Chip + Status-Zeile + klarem Aktiv-Zustand (accent-Tint + Rahmen + Status). `CreatorToolItem` um `group` + `status` erweitert; host.tsx-Tools befüllt (Sektionen: Engagement/Verkaufen/Stream & Chat/Co-Host/Battle); zustandskodierte Labels zu stabilen Nomen vereinfacht. Optionaler Header-`subtitle` (Zuschauerzahl).
+
+### LIVE-Setup-Karte (`app/live/start.tsx`, Commit `a672249`, OTA `4f1f1250`)
+- „LIVE gehen" wirkte leer (Config im Zahnrad versteckt). Neu: **Setup-Karte über dem Live-Button** mit Titel · Publikum (tippt durch 🌍→👥→🌸) · Kategorie · Cover · Kommentare/Geschenke-Toggles direkt sichtbar. Umdrehen + Zahnrad nach oben rechts. Einstellungs-Sheet bleibt als „Erweitert". Toter `ToolbarBtn` + Styles raus.
+
+### Studio-Hub (`app/create/camera.tsx`, Commit `91e7570`, OTA `c9601ff4`)
+- Studio-Landing war karg + vermischte Text-Composer mit Medien-Picker (weil `captureMode='text'` über Tab-Wechsel erhalten blieb). Neu: **Hub mit zwei Karten** „Aus Galerie" (→ Editor) + „Text-Post", **Format**-Auswahl, **„Im Editor"-Leiste** (Zuschneiden/Filter/Text/Sticker/Cover — macht die vorhandene Editor-Tiefe sichtbar), **„Entwürfe fortsetzen"** → `/creator/drafts`.
+  - **Bewusst:** „Text-Post" springt in den bestehenden **Vibe-Text-Composer** (`setStudioMode('vibe')+setCaptureMode('text')`) statt ihn zu duplizieren. `handleStudioModeChange` resettet beim Studio-Wechsel ein übernommenes `text` → Hub zeigt sauber. Entwürfe-Zeile **navigiert nur** (keine Inline-Thumbnails → keine Query auf den heißen Kamera-Screen).
+  - **Design-Haltung dokumentiert:** TikTok-Feature-Parität *nicht* angestrebt (Kosten-/Scope-Falle + Edge = Community/Kultur). Studio = fokussierter Hub, der vorhandene Tiefe sichtbar macht.
+
+### OTAs dieser Session (alle Runtime 1.29.0, iOS+Android)
+- `82fe358a` — „Nur Follower"-Publikum (§4 B)
+- `7c223edb` — Folge-ich-Kontrast + KI-Cover-Buttons + Creator-Tools-Redesign
+- `4f1f1250` — LIVE-Setup-Karte
+- `c9601ff4` — Studio-Hub
+
+### Offen / nächste UI-Ideen (optional)
+- Studio-Entwürfe-Zeile mit echten Thumbnails (braucht `usePostDraftsCloud`-Query auf dem Kamera-Screen).
+- Creator-Tools „AN"-Pill (bewusst weggelassen — Aktiv-Zustand trägt schon Tint+Rahmen+Status).
 
 ---
 
