@@ -513,12 +513,12 @@ const styles = StyleSheet.create({
   avatarWithRing: { width: 52, height: 52, borderRadius: 26, borderWidth: 0, position: 'absolute', top: 4, left: 4 },
   avatarFallback: { alignItems: 'center', justifyContent: 'center' },
   avatarInitial: { fontSize: FONT_SIZE.xl, fontWeight: FONT_WEIGHT.bold },
-  // Story-Ring: Instagram-Style Gradient-Rand
+  // Story-Ring: Foto-Feed-Style Gradient-Rand
   storyRing: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
     borderRadius: 32, borderWidth: 2.5,
   },
-  storyRingActive: { borderColor: '#E1306C' }, // Instagram Gradient-Farbe (vereinfacht)
+  storyRingActive: { borderColor: '#E1306C' }, // Foto-Feed Gradient-Farbe (vereinfacht)
   storyRingSeen: { borderColor: 'rgba(255,255,255,0.25)' },
   // Live-Ring: roter leuchtender Rand
   liveRing: {

@@ -10,7 +10,7 @@ import { createLiveRealtimeTopic } from './realtime-topic';
 // -----------------------------------------------------------------------------
 // LiveGiftLeaderboard — Horizontal strip showing top 3 gifters during a stream.
 //
-// v1.w.UI.176 — Mobile parity: TikTok/Serlo native show a ranked "top gifters"
+// v1.w.UI.176 — Mobile parity: Short-Video/Serlo native show a ranked "top gifters"
 // row overlaid on the stream so viewers know who the biggest supporters are.
 //
 // Architecture:

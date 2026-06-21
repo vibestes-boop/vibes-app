@@ -1,14 +1,14 @@
 /**
  * LiveReactionIcon — Custom Serlo/Vibes Live-Reactions
  *
- * TikTok-style in-house reactions. Keine Apple-Smileys — alles pure SVG mit
+ * Short-Video-style in-house reactions. Keine Apple-Smileys — alles pure SVG mit
  * Gradients + Highlights für den premium look.
  *
  * Mapping: Emoji-String (broadcast payload) → SVG-Component.
  * Fallback: unbekanntes Emoji → schlichter Text (damit ältere Clients die
  * Reaktion trotzdem sehen).
  *
- * Reaction-Set (TikTok-ähnlich, April 2026):
+ * Reaction-Set (Short-Video-ähnlich, April 2026):
  *   ❤️  love       — Herz
  *   🔥  fire       — Flamme
  *   🤣  laugh      — Lachen mit Tränen

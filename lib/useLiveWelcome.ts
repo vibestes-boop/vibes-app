@@ -1,7 +1,7 @@
 /**
  * lib/useLiveWelcome.ts
  *
- * v1.24.0 — TikTok-Style Welcome-Toast beim Live-Join
+ * v1.24.0 — Short-Video-Style Welcome-Toast beim Live-Join
  *
  * Zeigt "✨ @username hat den Stream betreten" am unteren Rand des
  * Chats, wenn ein Follower oder Top-Fan die Session betritt. Das

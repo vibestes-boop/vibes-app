@@ -1,6 +1,6 @@
 /**
  * ViewerListSheet.tsx
- * TikTok-style multi-layer viewer system:
+ * Short-Video-style multi-layer viewer system:
  * 1. Viewer List (bottom sheet with all viewers)
  * 2. User Profile Mini-Sheet (opens on top when viewer is tapped)
  * 3. Report Flow (flag icon → select what to report)

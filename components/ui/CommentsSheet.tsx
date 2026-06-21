@@ -53,7 +53,7 @@ const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-// TikTok: Post-Preview oben (~22%), Sheet darunter
+// Short-Video: Post-Preview oben (~22%), Sheet darunter
 const SHEET_TOP = SCREEN_HEIGHT * 0.22;
 
 function useKeyboardOffset() {

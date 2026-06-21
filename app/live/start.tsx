@@ -1,6 +1,6 @@
 /**
  * live/start.tsx
- * TikTok-style Live-Vorbereitung:
+ * Short-Video-style Live-Vorbereitung:
  * - Kamera-Preview fullscreen
  * - Bottom-Toolbar: Umdrehen + Einstellungen
  * - Einstellungen als weißes Bottom-Sheet

@@ -31,7 +31,7 @@ export const CATEGORIES: Category[] = [
   { id: 'sport',        label: 'Sport',        emoji: '⚡', gradient: ['#000', '#000'] },
 ];
 
-// ── Einzelne Tab-Komponente (TikTok-Stil: nur Text + Unterstrich) ─────────────
+// ── Einzelne Tab-Komponente (Short-Video-Stil: nur Text + Unterstrich) ─────────────
 function Tab({
   label,
   isActive,
@@ -67,7 +67,7 @@ function Tab({
         >
           {label}
         </Text>
-        {/* TikTok-Stil: weißer Unterstrich unter aktivem Tab */}
+        {/* Short-Video-Stil: weißer Unterstrich unter aktivem Tab */}
         {isActive && <View style={s.tabUnderline} />}
       </Pressable>
     </Animated.View>
@@ -157,7 +157,7 @@ const s = StyleSheet.create({
     color: 'rgba(255,255,255,0.88)',
   },
 
-  // TikTok-Stil: kurzer weißer Balken unter aktivem Tab
+  // Short-Video-Stil: kurzer weißer Balken unter aktivem Tab
   tabUnderline: {
     width: 20,
     height: 2,

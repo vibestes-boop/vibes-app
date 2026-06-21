@@ -18,7 +18,7 @@ import {
 import { createLiveRealtimeTopic } from './realtime-topic';
 
 // -----------------------------------------------------------------------------
-// LiveChatOverlay — TikTok-style Chat als halbtransparentes Overlay. Ersetzt
+// LiveChatOverlay — Short-Video-style Chat als halbtransparentes Overlay. Ersetzt
 // die Sidebar-Variante (`LiveChat`) im Viewer-Page. Unterschiede zur Sidebar:
 //
 //  • Render: Message-Pills statt Listrows. `bg-black/55 backdrop-blur-md`

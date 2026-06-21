@@ -3,7 +3,7 @@
 // -----------------------------------------------------------------------------
 // <LiveAudienceModal /> — v1.w.UI.195
 //
-// TikTok-style audience viewer sheet. Opens when the viewer-count pill is
+// Short-Video-style audience viewer sheet. Opens when the viewer-count pill is
 // tapped on the /live/[id] viewer page.
 //
 // Architecture (mirror of mobile ViewerListSheet.tsx):

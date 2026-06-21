@@ -17,7 +17,7 @@ import type { FollowedAccount } from '@/lib/data/feed';
 import { cn } from '@/lib/utils';
 
 // -----------------------------------------------------------------------------
-// FollowedAccountsSection — TikTok-Parity-Sidebar-Sektion „Konten, denen ich
+// FollowedAccountsSection — Short-Video-Parity-Sidebar-Sektion „Konten, denen ich
 // folge" (v1.w.UI.11 Phase B).
 //
 // Zeigt bis zu `initial.length` (SSR-gefetcht, Default 5) Rows der Accounts
@@ -30,7 +30,7 @@ import { cn } from '@/lib/utils';
 // gerendert.
 //
 // Empty-State (kein einziger Follow): dezenter Hinweis + Link zu `/explore`.
-// TikTok zeigt in dem Fall gar keine Sektion — aber ein freundlicher Pointer
+// Short-Video zeigt in dem Fall gar keine Sektion — aber ein freundlicher Pointer
 // ins Explore ist hier die bessere UX, weil die Sektion sonst verschwinden
 // und der User nicht lernt, dass sie existiert.
 // -----------------------------------------------------------------------------

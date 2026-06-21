@@ -1,5 +1,5 @@
 /**
- * app/shop/index.tsx — Shop: 2-Spalten Grid, TikTok-inspired
+ * app/shop/index.tsx — Shop: 2-Spalten Grid, Short-Video-inspired
  *
  * v1.26.3 Richer Cards + UI-Polish (v1.26.4):
  * - 3:4 Hochformat-Karten, Sterne-Rating
@@ -277,7 +277,7 @@ function ProductCard({ product, onPress, colors }: {
 
 const card = StyleSheet.create({
   // Keine Karten-Box mehr: Produkte liegen durchgehend auf dem Seiten-BG
-  // (TikTok-Shop-Stil). Nur das Bild ist abgerundet, Text flush darunter.
+  // (Short-Video-Shop-Stil). Nur das Bild ist abgerundet, Text flush darunter.
   wrap: {
     width: '100%',
   },

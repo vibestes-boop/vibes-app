@@ -1,6 +1,6 @@
 /**
  * CreatePostSettings.tsx
- * Post-Einstellungen wie bei TikTok:
+ * Post-Einstellungen wie bei Short-Video:
  * - Privatsphäre: Öffentlich / Freunde / Privat
  * - Toggles: Kommentare / Download / Duet
  */

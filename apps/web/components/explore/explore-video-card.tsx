@@ -173,7 +173,7 @@ export function ExploreVideoCard({
         </div>
       </Link>
 
-      {/* Author info below card — TikTok style */}
+      {/* Author info below card — Short-Video style */}
       <Link
         href={`/u/${authorUsername}` as Route}
         prefetch={false}

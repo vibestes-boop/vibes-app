@@ -1,7 +1,7 @@
 /**
  * components/live/BattleBar.tsx
  *
- * TikTok-Style Battle-Score-Bar — liegt FLUSH an der TOP-Kante der Videos.
+ * Short-Video-Style Battle-Score-Bar — liegt FLUSH an der TOP-Kante der Videos.
  *
  * Layout (v1.22.2):
  *   ┌───────────────────────────────────────────────┐
@@ -34,7 +34,7 @@ const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 const BAR_H           = 44;
 const UNDERLINE_H     = 4;
 
-// TikTok-Palette
+// Short-Video-Palette
 const HOST_COLOR      = '#FF2D6D'; // saturated pink
 const HOST_COLOR_SOFT = '#FF5D95';
 const GUEST_COLOR     = '#00D4FF'; // cyan
@@ -84,7 +84,7 @@ export function BattleBar({ state, top }: BattleBarProps) {
     extrapolate: 'clamp',
   });
 
-  // TikTok-Style: BattleBar sitzt DIREKT auf der Oberkante der Videos.
+  // Short-Video-Style: BattleBar sitzt DIREKT auf der Oberkante der Videos.
   // host.tsx + watch/[id].tsx positionieren Videos bei `top: '13%'` (side-by-side+battle).
   const barTop = top ?? Math.round(SCREEN_H * 0.13);
 

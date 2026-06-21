@@ -97,7 +97,7 @@ export function ProfileGridCell({
             </Text>
           </View>
         )}
-        {/* View Count — TikTok-Style "▷ 12.4K" unten links */}
+        {/* View Count — Short-Video-Style "▷ 12.4K" unten links */}
         {viewCount > 0 && !post.reposted_at && (
           <View style={gcs.viewCountWrap}>
             <Text style={gcs.viewCountText}>▷ {formatViews(viewCount)}</Text>

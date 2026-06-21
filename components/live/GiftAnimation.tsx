@@ -1,10 +1,10 @@
 /**
  * components/live/GiftAnimation.tsx
  *
- * TikTok-Style Gift Animations:
+ * Short-Video-Style Gift Animations:
  * - Normal (< 750 Coins):   Pill-Banner links unten
  * - Premium (>= 750 Coins): Untere Bildschirmhälfte, Animation steigt von unten auf,
- *                            oben transparent auslaufend — genau wie TikTok
+ *                            oben transparent auslaufend — genau wie Short-Video
  */
 
 import { type IncomingGift } from '@/lib/useGifts';
@@ -38,12 +38,12 @@ try {
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
-// Ab diesem Wert → Premium Fullscreen (TikTok-Style)
+// Ab diesem Wert → Premium Fullscreen (Short-Video-Style)
 const PREMIUM_THRESHOLD = 750;
 
 // Höhe des Premium-Overlays: untere 50% des Bildschirms (fullwidth)
 const GIFT_AREA_HEIGHT = SCREEN_H * 0.50;
-// ─── Premium Overlay — TikTok-Style mit echtem Transparency-Fade ──────────────
+// ─── Premium Overlay — Short-Video-Style mit echtem Transparency-Fade ──────────────
 // MaskedView + LinearGradient Maske = echter Per-Pixel Alpha Fade nach oben.
 // Lottie-Animationen haben transparenten Hintergrund → perfekt für diesen Effekt.
 
@@ -306,7 +306,7 @@ function GiftPill({ gift, index, pillsBottomOffset }: {
           )}
         </Animated.View>
 
-        {/* ─── Combo Counter ×N — TikTok-Style ─── */}
+        {/* ─── Combo Counter ×N — Short-Video-Style ─── */}
         {showCombo && (
           <Animated.View
             style={[styles.comboChip, { transform: [{ scale: comboScale }] }]}
@@ -430,7 +430,7 @@ export function GiftAnimation({ gifts, pillsBottomOffset = 280 }: GiftAnimationP
 
   return (
     <View style={styles.container} pointerEvents="none">
-      {/* Premium: letztes Geschenk gewinnt (wie TikTok) */}
+      {/* Premium: letztes Geschenk gewinnt (wie Short-Video) */}
       {premiumGifts.slice(-1).map((gift) => (
         <PremiumGiftOverlay key={gift.id} gift={gift} />
       ))}
@@ -509,7 +509,7 @@ const styles = StyleSheet.create({
     height: GIFT_AREA_HEIGHT * 0.20,
   },
 
-  // Sender-Pill links unten (wie TikTok)
+  // Sender-Pill links unten (wie Short-Video)
   premiumPill: {
     position: 'absolute',
     bottom: 72,

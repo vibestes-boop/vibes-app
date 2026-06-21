@@ -239,7 +239,7 @@ export default function ProfileScreen() {
             : []; // analytics + drafts → separater Renderer
 
   // Leere Placeholder-Items auffüllen damit die letzte Reihe immer vollständig ist.
-  // Verhindert dass 2 Items die letzte Spalte aufteilen (Instagram-Verhalten).
+  // Verhindert dass 2 Items die letzte Spalte aufteilen (Foto-Feed-Verhalten).
   const remainder = rawListData.length % GRID_COLUMNS;
   const listData: ProfilePostGridItem[] = remainder === 0
     ? rawListData
@@ -315,7 +315,7 @@ export default function ProfileScreen() {
                 },
               });
             } else {
-              // Saved / Likes / Reposts: gleiche TikTok-Scroll-Ansicht wie Vibes-Tab
+              // Saved / Likes / Reposts: gleiche Short-Video-Scroll-Ansicht wie Vibes-Tab
               const currentList = activeTabRef.current === 'saved'
                 ? (savedPosts as unknown as ProfilePostGridItem[])
                 : activeTabRef.current === 'likes'

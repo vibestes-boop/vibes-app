@@ -333,7 +333,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
           */}
             {/* Seller-Karte (C5) — vorher harte border+card, jetzt weiches
               muted-Surface mit Hairline-Ring; Avatar bekommt Background-
-              Ring (vgl. iOS Contact-Cards, TikTok Seller-Chips). Der Hover
+              Ring (vgl. iOS Contact-Cards, Short-Video Seller-Chips). Der Hover
               auf Avatar-/Name-Link bleibt sichtbar via ring-accent-Switch. */}
             <div className="flex items-center gap-3 rounded-xl bg-muted/40 p-4 ring-1 ring-black/5 dark:ring-white/10">
               <Link

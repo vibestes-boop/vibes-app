@@ -1,7 +1,7 @@
 /**
  * components/live/HostShopSheet.tsx
  *
- * v1.22.x — TikTok-Style Viewer-Katalog-Browser
+ * v1.22.x — Short-Video-Style Viewer-Katalog-Browser
  *
  * Öffnet sich, wenn der Viewer im Live-Stream unten auf die Shop-Tüte tippt.
  * Zeigt den gesamten aktiven Katalog des Hosts als 2-Spalten-Grid.

@@ -29,7 +29,7 @@ export const hostStyles = StyleSheet.create({
   },
   // v1.22.0: X-Button oben rechts pro Co-Host-Kachel (Host-only).
   // Klein aber gut tappable (hitSlop 10). Zurückhaltender Look: schwarz-
-  // transparent mit rotem Tint — TikTok-parity.
+  // transparent mit rotem Tint — Short-Video-parity.
   tileKickBtn: {
     position: 'absolute',
     top: 6,
@@ -135,14 +135,14 @@ export const hostStyles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  // ── Host TopBar (v1.22.0 TikTok-Style) ──
+  // ── Host TopBar (v1.22.0 Short-Video-Style) ──
   hostInfoLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     flex: 1,
   },
-  // v1.22.1 — TikTok-Parity: Avatar + Meta kompakter (42→32)
+  // v1.22.1 — Short-Video-Parity: Avatar + Meta kompakter (42→32)
   avatarRing: {
     borderRadius: 18,
     borderWidth: 1.5,
@@ -289,7 +289,7 @@ export const hostStyles = StyleSheet.create({
     paddingHorizontal: 12,
     zIndex: 10,
   },
-  // ── TikTok Comment Style: Avatar links, Name oben, Text darunter ──
+  // ── Short-Video Comment Style: Avatar links, Name oben, Text darunter ──
   commentRow: {
     marginBottom: 10,
     alignSelf: 'flex-start',

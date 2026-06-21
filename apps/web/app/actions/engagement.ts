@@ -540,7 +540,7 @@ export async function recordPostView(postId: string): Promise<void> {
 }
 
 // -----------------------------------------------------------------------------
-// toggleRepost — v1.w.UI.151: In-App-Repost (Repeat2) ähnlich TikTok.
+// toggleRepost — v1.w.UI.151: In-App-Repost (Repeat2) ähnlich Short-Video.
 //
 // Schreibt in die `reposts`-Tabelle (user_id, post_id). Eigene Posts dürfen
 // nicht repostet werden (Guard auch auf DB-Ebene sinnvoll, wir prüfen

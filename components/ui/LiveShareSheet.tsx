@@ -1,6 +1,6 @@
 /**
  * LiveShareSheet.tsx
- * TikTok-style 3-layer share bottom sheet for Live-Streams.
+ * Short-Video-style 3-layer share bottom sheet for Live-Streams.
  * Layer 1: In-app follower/following users
  * Layer 2: External apps (WhatsApp, Telegram, SMS, etc.)
  * Layer 3: Function buttons (Link kopieren, Story, Melden, etc.)

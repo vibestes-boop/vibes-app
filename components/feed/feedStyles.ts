@@ -112,7 +112,7 @@ export const vibeFeedScreenStyles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.12)',
   },
-  // ── Feed-Mode Toggle (TikTok-Style) ─────────────────────────────────
+  // ── Feed-Mode Toggle (Short-Video-Style) ─────────────────────────────────
   feedModeBar: {
     position: 'absolute',
     left: 0,

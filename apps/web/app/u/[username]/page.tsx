@@ -99,7 +99,7 @@ export async function generateMetadata({
 // `toLocaleString(1,234)`. Tausender-Trenner frisst horizontalen Space und
 // macht die drei Pills unterschiedlich breit, was den Stats-Row
 // ungleich-gewichtet. Kompakte Notation balanciert die Breiten visuell aus und
-// ist außerdem das TikTok-Signature-Pattern. Locale-separator (`.` in de-DE,
+// ist außerdem das Short-Video-Signature-Pattern. Locale-separator (`.` in de-DE,
 // `,` in en-US) kommt über ein kleines Replace nach dem toFixed.
 //
 // Gewicht-Shift: Value-Line `text-lg font-semibold` → `text-xl font-bold`
@@ -243,7 +243,7 @@ export default async function ProfilePage({
               aktuell eine Session hostet (Daten kommen via getPublicProfile
               aus `live_sessions`-Tabelle). Wenn live, wird der Avatar zum
               Link auf `/live/[sessionId]` — gleiche Affordance wie auf
-              TikTok/Instagram, wo man vom Profil direkt in den Stream
+              Short-Video/Foto-Feed, wo man vom Profil direkt in den Stream
               springt. Bei non-live User fällt die Komponente auf den
               bisherigen `ring-4 ring-background`-Look zurück, keine Layout-
               Änderung. */}

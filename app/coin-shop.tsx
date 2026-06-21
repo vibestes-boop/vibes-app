@@ -1,6 +1,6 @@
 /**
  * app/coin-shop.tsx — Serlo Coin Shop (Premium Design)
- * Eigener Stil: Cremig-hell, Gold-Akzent, dunkler Header, nicht TikTok-Kopie.
+ * Eigener Stil: Cremig-hell, Gold-Akzent, dunkler Header, nicht Short-Video-Kopie.
  */
 
 import { supabase } from '@/lib/supabase';

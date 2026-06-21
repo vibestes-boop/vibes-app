@@ -1,6 +1,6 @@
 /**
  * components/profile/ProfileShareSheet.tsx
- * TikTok-Style Share Sheet für Benutzerprofile
+ * Short-Video-Style Share Sheet für Benutzerprofile
  *
  * Layer 1: Follower-Liste (In-App DM)
  * Layer 2: Apps (WhatsApp, Telegram, Link kopieren, …)

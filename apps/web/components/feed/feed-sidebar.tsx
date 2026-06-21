@@ -36,10 +36,10 @@ import { useRouter } from 'next/navigation';
 // Dropdown im SiteHeader, nicht mehr permanent hier.
 //
 // Prominenter „Posten"-CTA sitzt oben im Sidebar-Stack als Primary-Action-Pill
-// (entspricht TikToks „+ Upload" auf Desktop). Damit fällt die DesktopNav
+// (entspricht Short-Videos „+ Upload" auf Desktop). Damit fällt die DesktopNav
 // Pill-Row im SiteHeader weg — keine Doppel-Navigation mehr.
 //
-// v1.w.UI.TikTok-Mehr: Clicking "Mehr" collapses sidebar to icon-only mode
+// v1.w.UI.Short-Video-Mehr: Clicking "Mehr" collapses sidebar to icon-only mode
 // and slides in a settings panel beside the icon strip.
 // -----------------------------------------------------------------------------
 
@@ -83,7 +83,7 @@ export function FeedSidebar({
   /** Profil-Daten für den Profil-Button mit Avatar. */
   viewerProfile?: SidebarViewerProfile | null;
   /**
-   * SSR-gefetchte Top-N gefolgte Accounts für den Sidebar-Bottom-Slot (TikTok-
+   * SSR-gefetchte Top-N gefolgte Accounts für den Sidebar-Bottom-Slot (Short-Video-
    * Parity v1.w.UI.11 Phase B). Wenn null/undefined: Sektion wird nicht
    * gerendert (Logged-out, oder Page hat den Prefetch nicht durchgereicht).
    */
@@ -107,7 +107,7 @@ export function FeedSidebar({
     <div className={cn(
       // Icon-Strip-Modus (Mehr-Panel offen): Sidebar wird w-20 (80px) schmal,
       // behält aber p-4 + px-3 der Items bei — dadurch bleiben alle Icons
-      // EXAKT an derselben Position wie im offenen Zustand (TikTok-Verhalten,
+      // EXAKT an derselben Position wie im offenen Zustand (Short-Video-Verhalten,
       // kein Springen). 80px = 16 (p-4) + 12 (px-3) + 24 (Icon) + 12 + 16.
       // bg-card, damit Strip + Panel eine durchgehende Fläche bilden.
       'sticky top-0 flex h-[100dvh] flex-col gap-2 overflow-y-auto p-4 transition-all duration-200',
@@ -160,7 +160,7 @@ export function FeedSidebar({
       )}
 
       {/* Upload-CTA — schwarzes Plus-Quadrat (identisch in beiden Modi),
-          daneben „Posten" als Label statt durchgezogener Button (TikTok-Stil) */}
+          daneben „Posten" als Label statt durchgezogener Button (Short-Video-Stil) */}
       <Link
         href={'/create' as Route}
         aria-disabled={!viewerId}
@@ -199,7 +199,7 @@ export function FeedSidebar({
               }
               className={cn(
                 'relative flex items-center gap-3 rounded-lg px-3 py-2 text-[15px] transition-colors',
-                // TikTok-Stil: Items schwarz, aktives Item in Brand-Farbe
+                // Short-Video-Stil: Items schwarz, aktives Item in Brand-Farbe
                 active
                   ? 'font-semibold text-brand-purple'
                   : 'text-foreground hover:bg-muted/60',
@@ -354,7 +354,7 @@ export function FeedSidebar({
       </div>
 
       {/*
-       * „Konten, denen ich folge" — TikTok-Parity-Sektion (v1.w.UI.11 Phase B).
+       * „Konten, denen ich folge" — Short-Video-Parity-Sektion (v1.w.UI.11 Phase B).
        * Nur für eingeloggte Viewer, nur wenn die Page den Prefetch durchreicht.
        * Hidden when more panel is open.
        */}

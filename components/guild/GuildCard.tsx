@@ -104,7 +104,7 @@ export const GuildCard = React.memo(function GuildCard({
     <View style={styles.card}>
       <View style={styles.cardBlur}>
 
-        {/* ── Media (volle Fläche) + Author-Overlay oben drauf (Instagram-Style) ── */}
+        {/* ── Media (volle Fläche) + Author-Overlay oben drauf (Foto-Feed-Style) ── */}
         {post.media_url ? (
           <Pressable onPress={goToPost} style={v.mediaWrap}>
             {/* Placeholder Gradient beim Laden */}
@@ -130,7 +130,7 @@ export const GuildCard = React.memo(function GuildCard({
 
 
 
-            {/* ── Author-Overlay oben links (Instagram-Style) ── */}
+            {/* ── Author-Overlay oben links (Foto-Feed-Style) ── */}
             <Pressable style={v.authorRow} onPress={goToAuthor} hitSlop={8}>
               {/* Mini Avatar */}
               <View style={v.miniAvatarWrap}>
@@ -273,10 +273,10 @@ export const GuildCard = React.memo(function GuildCard({
 
 // ── Lokale Styles — nur Media-Overlay-Elemente ─────────────────────────────
 const v = StyleSheet.create({
-  // Media container — Instagram Reels Format (3:4)
+  // Media container — Foto-Feed Reels Format (3:4)
   mediaWrap: {
     width: '100%',
-    aspectRatio: 3 / 4,     // Instagram Reels/Portrait — maximale Wirkung
+    aspectRatio: 3 / 4,     // Foto-Feed Reels/Portrait — maximale Wirkung
     overflow: 'hidden',
     position: 'relative',
   },
@@ -288,7 +288,7 @@ const v = StyleSheet.create({
     top: '60%',              // nur unteres Drittel abdunkeln
   },
 
-  // ── Instagram-Style Author Overlay ────────────────────────────────────────
+  // ── Foto-Feed-Style Author Overlay ────────────────────────────────────────
   authorRow: {
     position: 'absolute',
     top: 14,

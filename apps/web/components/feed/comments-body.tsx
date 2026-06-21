@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
 // CommentsBody — reine Kommentar-Liste + Compose-Form, ohne Wrapper-Chrome.
 // Wird von zwei Oberflächen konsumiert (v1.w.UI.11 Phase C):
 //  - CommentSheet: Radix-Dialog-Bottom-Sheet auf < xl (Mobile-Fallback).
-//  - CommentPanel: Inline-Spalte im HomeFeedShell-Grid auf xl+ (TikTok-Parity-
+//  - CommentPanel: Inline-Spalte im HomeFeedShell-Grid auf xl+ (Short-Video-Parity-
 //    Push-Layout — Comments verdrängen die rechte Sidebar statt zu überlagern).
 //
 // Das ausgelagerte Modul kennt weder Sheet noch Grid, weder Desktop noch

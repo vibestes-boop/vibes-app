@@ -123,7 +123,7 @@ export function LiveActionBar({
   // server action broadcastet bereits seit v1.18.0 auf `live:{id}` Event
   // `reaction`, aber niemand subscribed. Heißt: jeder Viewer sah NUR seine
   // eigenen schwebenden Hearts. Mit diesem Hook fliegen jetzt ALLE Reactions
-  // aller Viewer über den Screen — TikTok-Party-Feeling.
+  // aller Viewer über den Screen — Short-Video-Party-Feeling.
   //
   // Self-Filter läuft im Hook: payload.user_id === viewerId wird gedroppt
   // weil die lokale Optimistic-Burst bereits den Effekt zeigt (sonst Doppel-

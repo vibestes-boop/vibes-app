@@ -18,7 +18,7 @@ import { getOrCreateConversation, sendDirectMessage } from '@/app/actions/messag
 //   4. „Link kopieren"-Footer als Secondary-Aktion.
 //
 // Nach dem Senden bleibt das Sheet offen damit der User weitere Empfänger
-// wählen kann (TikTok-Parity: Multi-Send). Schließen via X oder Backdrop.
+// wählen kann (Short-Video-Parity: Multi-Send). Schließen via X oder Backdrop.
 //
 // Props:
 //   `post` — Minimalsubset aus FeedPost. Kein FeedPost-Import um Circular-

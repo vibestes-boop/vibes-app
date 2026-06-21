@@ -337,7 +337,7 @@ function LikeBtn({ storyId }: { storyId: string | undefined }) {
   );
 }
 
-// ── TikTok-Style Share Sheet ─────────────────────────────────────────────────
+// ── Short-Video-Style Share Sheet ─────────────────────────────────────────────────
 type ShareTarget = { id: string; username: string | null; avatar_url: string | null };
 
 const APP_SHARE_OPTIONS = [
@@ -602,7 +602,7 @@ function InAppShareModal({
   );
 }
 
-// ── TikTok-Style Story Kommentar-Sheet ─────────────────────────────────────────
+// ── Short-Video-Style Story Kommentar-Sheet ─────────────────────────────────────────
 
 function StoryCommentsSheet({
   visible,
@@ -990,7 +990,7 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
     outputRange: [0, segW],
   });
 
-  // ─ TikTok-style Tap-Flash ─
+  // ─ Short-Video-style Tap-Flash ─
   const flashLeft = useSharedValue(0);
   const flashRight = useSharedValue(0);
   const flashLeftStyle = useAnimatedStyle(() => ({ opacity: flashLeft.value }));
@@ -1015,7 +1015,7 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
   const handleTap = useCallback((pageX: number, pageY: number) => {
     const now = Date.now();
     if (now - lastTapRef.current < 300) {
-      // Doppel-Tap → like + Herz (kein Unlike bei Doppel-Tap, wie TikTok)
+      // Doppel-Tap → like + Herz (kein Unlike bei Doppel-Tap, wie Short-Video)
       if (tapTimerRef.current) { clearTimeout(tapTimerRef.current); tapTimerRef.current = null; }
       lastTapRef.current = 0;
       if (!storyLiked) toggleStoryLike();
@@ -1098,7 +1098,7 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
         />
       )}
 
-      {/* ── Vignetten: subtiler Gradient (wie TikTok — kein harter schwarzer Block) ── */}
+      {/* ── Vignetten: subtiler Gradient (wie Short-Video — kein harter schwarzer Block) ── */}
       <LinearGradient
         colors={['rgba(0,0,0,0.35)', 'rgba(0,0,0,0.05)', 'transparent']}
         style={styles.vignetteTop}
@@ -1307,7 +1307,7 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
         onClose={() => setShareOpen(false)}
       />
 
-      {/* ── TikTok-Style Kommentar-Sheet ── */}
+      {/* ── Short-Video-Style Kommentar-Sheet ── */}
       <StoryCommentsSheet
         visible={showComments}
         storyId={currentStory.id}
@@ -1459,7 +1459,7 @@ const styles = StyleSheet.create({
   },
 });
 
-// ── TikTok Share Sheet Styles ─────────────────────────────────────────────────
+// ── Short-Video Share Sheet Styles ─────────────────────────────────────────────────
 const ss = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.65)', justifyContent: 'flex-end' },
   sheet: {

@@ -6,7 +6,7 @@ export { SCREEN_HEIGHT,SCREEN_WIDTH };
 
 /**
  * Viewability nur fürs aktive Video: ohne minimumViewTime (Dwell nutzt weiter 500ms).
- * So wechselt Playback direkt beim Scrollen – TikTok-ähnlich.
+ * So wechselt Playback direkt beim Scrollen – Short-Video-ähnlich.
  */
 export const FEED_VIDEO_VIEWABILITY = {
   itemVisiblePercentThreshold: 55,

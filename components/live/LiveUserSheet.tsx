@@ -1,6 +1,6 @@
 /**
  * LiveUserSheet.tsx
- * TikTok-Style Bottom Sheet: Öffnet sich wenn man auf einen Kommentar-User tippt.
+ * Short-Video-Style Bottom Sheet: Öffnet sich wenn man auf einen Kommentar-User tippt.
  * Zeigt Profil-Info, Follow-Button, @ Erwähnen, Profil öffnen und User melden.
  * User bleibt dabei im Live-Stream — kein Navigation-Leave.
  */

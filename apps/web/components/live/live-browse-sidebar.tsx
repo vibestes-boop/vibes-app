@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import { useState } from 'react';
 
 // -----------------------------------------------------------------------------
-// LiveBrowseSidebar — TikTok-style Left-Sidebar für /live Browse-Pages.
+// LiveBrowseSidebar — Short-Video-style Left-Sidebar für /live Browse-Pages.
 //
 // Enthält:
 //  • Zurück-Button (zum Feed)

@@ -134,7 +134,7 @@ export const VideoProgressBar = React.memo(
             seekLockTimerRef.current = null;
           }
           setIsScrubbing(true);
-          // TikTok-Style: Merke aktuellen Fortschritt — Video springt NICHT zur Tipp-Position
+          // Short-Video-Style: Merke aktuellen Fortschritt — Video springt NICHT zur Tipp-Position
           scrubStartFractionRef.current = currentFractionRef.current;
           scrubProgress.current = currentFractionRef.current;
           RNAnimated.parallel([
@@ -597,7 +597,7 @@ export const FeedItem = React.memo(function FeedItem({
   const progressBarRef = useRef<VideoProgressHandle>(null);
   const visibilityRef = useRef({ id: item.id, visible: false });
 
-  // Wenn ein Video erneut in den Viewport kommt, startet es wie TikTok bei 0.
+  // Wenn ein Video erneut in den Viewport kommt, startet es wie Short-Video bei 0.
   // Das ist nur ein Seek im bestehenden Player; der Medien-Cache bleibt erhalten.
   useEffect(() => {
     const previous = visibilityRef.current;
@@ -618,7 +618,7 @@ export const FeedItem = React.memo(function FeedItem({
   const actualShouldPlay = shouldPlayVideo && !isPaused && !commentsOpen && !shareOpen && !optionsOpen && !longPressOpen;
 
 
-  // ── Media-Resize wenn Comments öffnet (TikTok-Style) ──────────────────────
+  // ── Media-Resize wenn Comments öffnet (Short-Video-Style) ──────────────────────
   // sheetProgress: 0 = geschlossen (Post voll), 1 = offen (Post klein)
   // Wird direkt von CommentsSheet gesteuert → perfekte Synchronisation
   const sheetProgress = useSharedValue(0);
@@ -670,7 +670,7 @@ export const FeedItem = React.memo(function FeedItem({
     lastTap.current = now;
     lastTapPos.current = pos;
 
-    // — Einfacher Tap: bei Video Pause/Play togglen (wie Instagram Reels) —
+    // — Einfacher Tap: bei Video Pause/Play togglen (wie Foto-Feed Reels) —
     if (isVideo) {
       navTimeoutRef.current = setTimeout(() => {
         navTimeoutRef.current = null;
@@ -773,7 +773,7 @@ export const FeedItem = React.memo(function FeedItem({
           />
         ))}
 
-        {/* Pause/Play Flash — kurzes visuelles Feedback beim Tap (wie Instagram Reels) */}
+        {/* Pause/Play Flash — kurzes visuelles Feedback beim Tap (wie Foto-Feed Reels) */}
         {showPlayFlash !== null && (
           <View style={feedFlashStyles.flashWrap} pointerEvents="none">
             {showPlayFlash === 'pause'
@@ -866,7 +866,7 @@ export const FeedItem = React.memo(function FeedItem({
         <View style={styles.authorRow}>
           <Pressable
             onPress={() => {
-              // TikTok-Style:
+              // Short-Video-Style:
               // • hasUnviewed → Story-Viewer öffnen
               // • alle gesehen (kein Ring) → direkt auf Profil
               if (storyGroup?.hasUnviewed && onOpenStory) {
@@ -905,7 +905,7 @@ export const FeedItem = React.memo(function FeedItem({
                 <Text style={styles.authorAvatarInitial}>{(item.author[1] ?? '?').toUpperCase()}</Text>
               </View>
             )}
-            {/* TikTok-Style: "+" nur wenn NOCH NICHT gefolgt. Entfolgen → nur auf dem Profil. */}
+            {/* Short-Video-Style: "+" nur wenn NOCH NICHT gefolgt. Entfolgen → nur auf dem Profil. */}
             {!isOwnProfile && !isFollowing && (
               <Pressable
                 onPress={() => {
@@ -953,7 +953,7 @@ export const FeedItem = React.memo(function FeedItem({
           )}
         </View>
 
-        {/* ── Caption + Hashtags — vertikal unterhalb des Nicknamens (TikTok-Style) ── */}
+        {/* ── Caption + Hashtags — vertikal unterhalb des Nicknamens (Short-Video-Style) ── */}
         {(item.caption || (item.tags && item.tags.length > 0)) && (
           <View style={styles.captionBlock}>
             {item.caption ? (
@@ -975,7 +975,7 @@ export const FeedItem = React.memo(function FeedItem({
           </View>
         )}
 
-        {/* ── Musik-Badge (TikTok-Style rotierendes Vinyl) ── */}
+        {/* ── Musik-Badge (Short-Video-Style rotierendes Vinyl) ── */}
         {item.audioTitle && (
           <MusicVinylBadge trackTitle={item.audioTitle} isActive={shouldPlayVideo} />
         )}
@@ -1066,7 +1066,7 @@ export const FeedItem = React.memo(function FeedItem({
 });
 
 
-// Pause/Play Flash-Feedback Styles (wie Instagram Reels)
+// Pause/Play Flash-Feedback Styles (wie Foto-Feed Reels)
 const feedFlashStyles = StyleSheet.create({
   flashWrap: {
     position: 'absolute',

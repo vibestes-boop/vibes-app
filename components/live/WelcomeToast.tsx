@@ -1,7 +1,7 @@
 /**
  * components/live/WelcomeToast.tsx
  *
- * v1.24.0 — TikTok-Style Welcome-Toast beim Live-Join
+ * v1.24.0 — Short-Video-Style Welcome-Toast beim Live-Join
  *
  * Rendert eine gestapelte Liste von "@user hat den Stream betreten"
  * Toasts am unteren Rand des Live-Screens (oberhalb der Chat-Input).

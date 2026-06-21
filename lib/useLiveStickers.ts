@@ -210,7 +210,7 @@ export function useStickerActions(sessionId: string | null | undefined) {
 }
 
 // ─── Curated Emoji-Katalog ──────────────────────────────────────────────────
-// TikTok-typisch: Hearts, Fire, Reactions, Symbole.
+// Short-Video-typisch: Hearts, Fire, Reactions, Symbole.
 
 export const STICKER_CATALOG: { category: string; emojis: string[] }[] = [
   {

@@ -73,7 +73,7 @@ function ThumbnailPreview({ uri, videoReady }: { uri: string; videoReady: boolea
 
 // Resume-Speicher: merkt sich die Abspielposition LANGER Videos (>= RESUME_MIN_SEC)
 // pro Quelle (uri), damit sie beim Zurückscrollen an der Stelle weiterlaufen.
-// Kurze Clips starten weiterhin bei 0 (TikTok-Parity). Modul-Level → überlebt
+// Kurze Clips starten weiterhin bei 0 (Short-Video-Parity). Modul-Level → überlebt
 // Unmount/Remount beim Aus-dem-Fenster-Scrollen. Eine Zahl pro Video → minimal.
 const RESUME_MIN_SEC = 60;
 const videoResumePos = new Map<string, number>();
@@ -158,7 +158,7 @@ export const NativeFeedVideo = forwardRef<FeedVideoSeekHandle, {
     else player.pause();
   }, [shouldPlay, player]);
 
-  // Erneut sichtbar: KURZE Clips (< RESUME_MIN_SEC) starten bei 0 (TikTok-Parity),
+  // Erneut sichtbar: KURZE Clips (< RESUME_MIN_SEC) starten bei 0 (Short-Video-Parity),
   // LANGE Videos (>= RESUME_MIN_SEC) laufen an Ort und Stelle weiter — kein Reset.
   // (Bei frischem Mount/Quellen-Wechsel stellt readyToPlay die gemerkte Stelle her.)
   useEffect(() => {

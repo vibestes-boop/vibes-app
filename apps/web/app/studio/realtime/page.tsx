@@ -51,7 +51,7 @@ export default async function RealtimePage() {
 }
 
 // -----------------------------------------------------------------------------
-// Not-Live placeholder — TikTok-style "Sieh dir die Metriken an wenn du LIVE bist"
+// Not-Live placeholder — Short-Video-style "Sieh dir die Metriken an wenn du LIVE bist"
 // -----------------------------------------------------------------------------
 
 function NotLiveState() {
@@ -68,7 +68,7 @@ function NotLiveState() {
 
   return (
     <>
-      {/* Metrics grid — all dashes, like TikTok when not live */}
+      {/* Metrics grid — all dashes, like Short-Video when not live */}
       <section className="rounded-xl border bg-card p-5">
         <div className="mb-1 flex items-center justify-between">
           <div>

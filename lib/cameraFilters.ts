@@ -1,7 +1,7 @@
 /**
  * Kamera-Filter Bibliothek v2.0
  *
- * Color-Filter: 22 professionelle Skia-ColorMatrix-Filter (Instagram-Stil)
+ * Color-Filter: 22 professionelle Skia-ColorMatrix-Filter (Foto-Feed-Stil)
  * Sticker:      15 animierte Emoji-Sticker mit ML Kit Face-Tracking
  * Frames:        6 Rahmen-Stile
  *
@@ -19,7 +19,7 @@ export type ColorFilterId =
   | 'none'
   // Klassiker
   | 'vivid' | 'vintage' | 'bw' | 'sepia' | 'cool' | 'warm' | 'glow'
-  // Instagram-Stil
+  // Foto-Feed-Stil
   | 'lark' | 'reyes' | 'juno' | 'ludwig' | 'nashville'
   | 'moon' | 'fade' | 'chrome' | 'valencia' | 'clarendon'
   // Kreativ
@@ -127,9 +127,9 @@ export const COLOR_FILTERS: Record<ColorFilterId, number[]> = {
     0, 0, 0, 1, 0,
   ],
 
-  // ── Instagram-Stil ─────────────────────────────────────────────────────────
+  // ── Foto-Feed-Stil ─────────────────────────────────────────────────────────
 
-  /** Lark: hell, luftig, leicht blau-grünlich, typisch Instagram-Portrait */
+  /** Lark: hell, luftig, leicht blau-grünlich, typisch Foto-Feed-Portrait */
   lark: [
     1.05, 0, 0, 0, 8,
     0, 1.0, 0.05, 0, 8,
@@ -145,7 +145,7 @@ export const COLOR_FILTERS: Record<ColorFilterId, number[]> = {
     0, 0, 0, 1, 0,
   ],
 
-  /** Juno: Teal-Blau-Schatten, kräftige Farben (TikTok-Aesthetic) */
+  /** Juno: Teal-Blau-Schatten, kräftige Farben (Short-Video-Aesthetic) */
   juno: [
     1.1, 0, 0, 0, 0,
     0.05, 1.1, 0.05, 0, 0,

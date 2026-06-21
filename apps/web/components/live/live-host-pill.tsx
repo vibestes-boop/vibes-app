@@ -12,7 +12,7 @@ import { glassSurfaceDense } from '@/lib/ui/glass-pill';
 import { cn } from '@/lib/utils';
 
 // -----------------------------------------------------------------------------
-// LiveHostPill — TikTok-style Identitäts-Pill für das Video-Overlay (v1.w.UI.1
+// LiveHostPill — Short-Video-style Identitäts-Pill für das Video-Overlay (v1.w.UI.1
 // — B5 aus UI_AUDIT_WEB). Rendert Avatar (28×28) + @Host-Name (+ Verified-
 // Badge) + inline Follow-CTA in einer zusammenhängenden rounded-full-Surface.
 //

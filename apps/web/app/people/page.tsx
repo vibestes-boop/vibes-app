@@ -8,7 +8,7 @@ import { PeopleList } from '@/components/people/people-list';
 // -----------------------------------------------------------------------------
 // /people — Accounts entdecken.
 //
-// Dedizierte Entdeckungs-Seite für User-Discovery (TikTok „For You"-People).
+// Dedizierte Entdeckungs-Seite für User-Discovery (Short-Video „For You"-People).
 // SSR: erste 24 Accounts (nach follower_count DESC, exkl. Self + bereits Gefolgte).
 // Client: IntersectionObserver infinite scroll via PeopleList.
 //

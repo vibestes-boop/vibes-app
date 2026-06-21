@@ -1,7 +1,7 @@
 /**
  * lib/useLiveShopMode.ts
  *
- * v1.22.x — TikTok-Style Live-Shop-Mode
+ * v1.22.x — Short-Video-Style Live-Shop-Mode
  *
  * Liest live_sessions.shop_enabled und subscribed auf Realtime-Updates,
  * damit Viewer sofort die Shop-Tüte sehen, wenn der Host den Modus

@@ -51,7 +51,7 @@ export type Message = {
   reply_to: ReplyPreview | null;   // inline join
   reactions: MessageReaction[];    // batch-geladen
   image_url: string | null;        // Bild-DM
-  story_media_url: string | null;  // Story-Antwort Thumbnail (TikTok-Style)
+  story_media_url: string | null;  // Story-Antwort Thumbnail (Short-Video-Style)
   story_author: string | null;     // @username des Story-Erstellers
 };
 

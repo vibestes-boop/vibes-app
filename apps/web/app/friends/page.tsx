@@ -18,7 +18,7 @@ import {
 
 /**
  * `/friends` — dedizierte Route für den „Freunde"-Feed (gegenseitige Follows,
- * TikTok-Modell). Reused denselben `HomeFeedShell` wie `/` und `/following`
+ * Short-Video-Modell). Reused denselben `HomeFeedShell` wie `/` und `/following`
  * und übergibt `initialTab="friends"`, damit Sidebar-Klick + Deep-Link direkt
  * im Freunde-Tab landen.
  *

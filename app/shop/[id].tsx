@@ -1,5 +1,5 @@
 /**
- * app/shop/[id].tsx — TikTok Shop-style Produkt-Detailseite
+ * app/shop/[id].tsx — Short-Video Shop-style Produkt-Detailseite
  *
  * Features:
  * - Header: Zurück | Seller-Name (truncated) | Suche | Teilen | Warenkorb | ···
@@ -398,7 +398,7 @@ function Description({ text, colors }: { text: string; colors: any }) {
   );
 }
 
-// ─── TikTok-Style Produkt-ShareSheet ───────────────────────────────────────
+// ─── Short-Video-Style Produkt-ShareSheet ───────────────────────────────────────
 
 type ShareTarget = { id: string; username: string | null; avatar_url: string | null };
 
@@ -777,7 +777,7 @@ export default function ProductDetailScreen() {
   const hasQtyRow = product.stock !== 0 && maxQty > 1;
   const buyBarH   = Math.max(insets.bottom, 14) + 80 + (hasQtyRow ? 52 : 0);
 
-  // v1.26.6: TikTok-Look — komplette Detailseite auf weißem Untergrund
+  // v1.26.6: Short-Video-Look — komplette Detailseite auf weißem Untergrund
   // (`bg.secondary`), nicht auf `bg.primary` (was in Light-Mode #F5F5F5
   // hellgrau ist). Dividers sind jetzt Hairline-Lines statt 8px-Stripes,
   // bg-Akzente nutzen `bg.subtle` damit Pills/Buttons in beiden Themes

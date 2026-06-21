@@ -10,7 +10,7 @@ import { FeedSidebar } from '@/components/feed/feed-sidebar';
 import { ConversationListPanel } from '@/components/messages/conversation-list-panel';
 
 // -----------------------------------------------------------------------------
-// /messages layout — TikTok-Style 3-Panel-Layout auf Desktop.
+// /messages layout — Short-Video-Style 3-Panel-Layout auf Desktop.
 //
 // Panels:
 //   1. FeedSidebar (260px, xl+) — globale Navigation

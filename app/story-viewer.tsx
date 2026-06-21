@@ -17,7 +17,7 @@ export default function StoryViewerScreen() {
     close();
     // Stories-Cache für aktuellen User invalidieren → Ring-Status aktualisiert sich beim Rückkehr
     queryClient.invalidateQueries({ queryKey: ['guild-stories', userId] });
-    // router.back() statt replace → bleibt dort wo man war (wie TikTok), Scroll-Position bleibt erhalten
+    // router.back() statt replace → bleibt dort wo man war (wie Short-Video), Scroll-Position bleibt erhalten
     router.back();
   }, [close, queryClient, userId]);
 

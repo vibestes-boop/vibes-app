@@ -6,7 +6,7 @@ import { GuildViewToggle } from './GuildViewToggle';
 import type { GuildViewMode } from './guildConstants';
 
 /**
- * Minimal Guild Header — TikTok/Instagram-Style.
+ * Minimal Guild Header — Short-Video/Foto-Feed-Style.
  * Guild-Name + klickbare Mitglieder-Zahl (links) + View-Toggle (rechts).
  */
 export function GuildRoomHeader({

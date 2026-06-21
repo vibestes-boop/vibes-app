@@ -1,7 +1,7 @@
 /**
  * lib/useDuett.ts
  *
- * v1.19.0 — Duett-System (TikTok-style).
+ * v1.19.0 — Duett-System (Short-Video-style).
  *
  * DB-gestützter Invite-Flow für 1-zu-1-Duette zusätzlich zum bestehenden
  * Broadcast-Layer aus `useCoHost.ts`. Beide Welten ergänzen sich:

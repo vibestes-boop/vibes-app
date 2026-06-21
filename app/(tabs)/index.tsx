@@ -70,7 +70,7 @@ export default function VibeFeedScreen() {
   const [feedMode, setFeedMode] = useState<'foryou' | 'following'>('foryou');
   const [secondaryQueriesEnabled, setSecondaryQueriesEnabled] = useState(false);
 
-  // ── TikTok-Style: Finger-folgendes Profil-Panel ─────────────────────
+  // ── Short-Video-Style: Finger-folgendes Profil-Panel ─────────────────────
   // Refs wegen stale closure (PanResponder wird nur einmal erstellt)
   const feedDataRef = useRef<FeedItemData[]>([]);
   const visibleItemIdRef = useRef<string | null>(null);
@@ -388,7 +388,7 @@ export default function VibeFeedScreen() {
         privacy: p.privacy ?? 'public',
         allowComments: p.allow_comments ?? true,
         allowDuet: p.allow_duet ?? true,
-        // Musik-Track (TikTok-Vinyl Badge + Feed-Audio)
+        // Musik-Track (Short-Video-Vinyl Badge + Feed-Audio)
         audioUrl: p.audio_url ?? null,
         audioTitle: getTitleFromUrl(p.audio_url),  // URL → Titel aus der lokalen Library
         audioVolume: p.audio_volume ?? 0.8,         // Lautstärke vom Creator eingestellt
@@ -734,7 +734,7 @@ export default function VibeFeedScreen() {
         </View>
       </View>
 
-      {/* ── Kategorie-Tabs (TikTok-Stil, nur Für-dich-Mode) ─────── */}
+      {/* ── Kategorie-Tabs (Short-Video-Stil, nur Für-dich-Mode) ─────── */}
       {feedMode === 'foryou' && (
         <View style={[styles.filterBar, { top: insets.top + 52 }]} pointerEvents="box-none">
           <CategoryFilter
@@ -760,7 +760,7 @@ export default function VibeFeedScreen() {
 
       <TuneMyVibeOverlay visible={overlayVisible} onClose={() => setOverlayVisible(false)} />
 
-      {/* ── TikTok Swipe: Echtes Profil folgt dem Finger ── */}
+      {/* ── Short-Video Swipe: Echtes Profil folgt dem Finger ── */}
       {profilePanel && (
         <RNAnimated.View
           style={{

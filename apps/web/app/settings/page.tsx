@@ -25,7 +25,7 @@ import { LOCALE_LABELS } from '@/lib/i18n/config';
 import { getProfile } from '@/lib/auth/session';
 
 // -----------------------------------------------------------------------------
-// /settings (Root) — v1.w.UI.18 D7 TikTok-Parity Settings-Overview.
+// /settings (Root) — v1.w.UI.18 D7 Short-Video-Parity Settings-Overview.
 //
 // v1.w.UI.163: Creator-Row hinzugefügt — zeigt "Creator Studio" (→ /studio)
 // für bestehende Creators, "Creator werden ✦" (→ /creator/activate) für alle

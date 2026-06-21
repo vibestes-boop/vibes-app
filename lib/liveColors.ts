@@ -82,7 +82,7 @@ export const LC = {
     blue:      '#3b82f6',
     /** Indigo — moderierter Status */
     indigo:    '#6366f1',
-    /** Live-Badge-Rot (TikTok-Stil) */
+    /** Live-Badge-Rot (Short-Video-Stil) */
     live:      '#FF2D55',
   },
 

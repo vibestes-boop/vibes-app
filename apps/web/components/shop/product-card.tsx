@@ -63,7 +63,7 @@ export function ProductCard({
         "group relative block overflow-hidden rounded-xl bg-card",
         "border border-border/60 dark:border-border/30",
         "shadow-elevation-1",
-        // Hover-Lift (duration-base ~200ms mit out-expo-Easing = TikTok-Snap).
+        // Hover-Lift (duration-base ~200ms mit out-expo-Easing = Short-Video-Snap).
         // `translate-y`-Verschiebung kommt aus transform, nicht aus margin —
         // damit keine Layout-Shift auftritt und die GPU composited statt neu
         // paintet.
@@ -235,7 +235,7 @@ export function ProductCardGridSkeleton({ count = 8 }: { count?: number }) {
   // Grid-Cap bei lg:4 (v1.w.UI.1 — C1 aus UI_AUDIT). Vorher: `2xl:grid-cols-5`.
   // Warum rausgenommen: auf 2560px-Displays produzierte 5-col-Layout extrem
   // schmale Cards (~200px Breite), die Blur-Fill-Aesthetic zerbröselt dort.
-  // TikTok-Shop cappt ebenfalls bei 4 pro Reihe mit großzügiger Breite-pro-Tile.
+  // Short-Video-Shop cappt ebenfalls bei 4 pro Reihe mit großzügiger Breite-pro-Tile.
   // Gap 3 → 4 (zusätzliche visuelle Ruhe zwischen Cards jetzt wo sie gelifted
   // sind und Hover-Shadow brauchen Clearance zum Nachbarn).
   return (

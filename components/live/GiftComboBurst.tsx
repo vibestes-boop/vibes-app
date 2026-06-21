@@ -1,7 +1,7 @@
 /**
  * components/live/GiftComboBurst.tsx
  *
- * v1.25.0 — TikTok-Style „×N COMBO!" Overlay
+ * v1.25.0 — Short-Video-Style „×N COMBO!" Overlay
  *
  * Ergänzt den bestehenden kleinen ×N-Chip in GiftPill: ab combo≥5 erscheint
  * rechts mittig ein großes, fettes Combo-Burst-Overlay. Je höher der Combo,

@@ -89,7 +89,7 @@ export function PostManageModal({
             <Pressable style={s.modalContent} onPress={(e) => e.stopPropagation()}>
               <Text style={s.modalTitle}>Post verwalten</Text>
 
-              {/* Teilen — unter den 3 Punkten, wie bei TikTok */}
+              {/* Teilen — unter den 3 Punkten, wie bei Short-Video */}
               {onShare && (
                 <Pressable style={s.modalItem} onPress={() => { handleClose(); onShare(); }}>
                   <Share2 size={18} color="#9CA3AF" strokeWidth={2} />

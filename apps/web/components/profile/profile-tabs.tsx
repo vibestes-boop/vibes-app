@@ -93,7 +93,7 @@ export function ProfileTabs({
     //   - Aktive Tab bekommt eigenen 2px-Underline via `after:`-Pseudo statt
     //     absolute-positioniertem `<span>` — funktioniert ohne Extra-Node in
     //     der Accessibility-Tree und ist resilienter gegen Padding-Anpassungen.
-    //   - Aktive Tab: `font-semibold` statt nur `font-medium` (TikTok/IG
+    //   - Aktive Tab: `font-semibold` statt nur `font-medium` (Short-Video/Foto-Feed
     //     markieren die aktive Tab visuell deutlicher — einfaches Farb-Switch
     //     reicht nicht auf hellem Theme).
     //   - Icon-Stroke beim aktiven Tab: `stroke-[2.25]` — gleiche Technik wie

@@ -508,7 +508,7 @@ const MessageBubble = memo(function MessageBubble({
 
   return (
     // Bubble-Breite von 78% → 72% (D2 aus UI_AUDIT).
-    // Grund: TikTok/iMessage/WhatsApp nutzen alle ~70%, bei 78% wirken längere
+    // Grund: Short-Video/iMessage/WhatsApp nutzen alle ~70%, bei 78% wirken längere
     // Messages (z.B. eingefügte Links) fast wie „Vollbreit"-Blocks und die
     // Owner/Peer-Alignment-Rhythmik geht verloren.
     <li className={`group flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
@@ -693,10 +693,10 @@ const MessageBubble = memo(function MessageBubble({
             {/*
               Picker-Elevation und Hover-Scale gedeckelt (D2 aus UI_AUDIT):
               `shadow-lg` → `shadow-elevation-3` (Design-Token der Web-App,
-              weicher, TikTok-typischer) und `hover:scale-125` → `hover:scale-110`.
+              weicher, Short-Video-typischer) und `hover:scale-125` → `hover:scale-110`.
               125% wirkte bei 6 Emojis in einer Reihe „wild" (der erste/letzte
               Emoji sprang beim Hover fast ins Nachbarpadding), 110% ist die
-              subtilere Pop-Größe die Apple Messages und TikTok nutzen.
+              subtilere Pop-Größe die Apple Messages und Short-Video nutzen.
             */}
             <div className="relative z-30 mt-1 flex gap-1.5 rounded-full border bg-card px-2.5 py-1.5 shadow-elevation-3">
               {REACTION_EMOJIS.map((e) => (

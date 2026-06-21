@@ -292,7 +292,7 @@ function MessageBubble({
                 onPress={() => onPostPress(msg.post!.id)}
               />
             )}
-            {/* ── TikTok-Style Story-Antwort: Label + Thumbnail + Text ── */}
+            {/* ── Short-Video-Style Story-Antwort: Label + Thumbnail + Text ── */}
             {hasStoryReply && (
               <Pressable
                 style={({ pressed }) => [styles.storyReplyWrap, pressed && { opacity: 0.82 }]}

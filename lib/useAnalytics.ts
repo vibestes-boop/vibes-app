@@ -271,7 +271,7 @@ export interface WatchTimeEstimate {
 
 /**
  * Grobe Watch-Time-Schätzung. Solange keine per-view-events persistiert
- * werden, rechnen wir total_views × 8s (TikTok-Median). Die UI zeigt
+ * werden, rechnen wir total_views × 8s (Short-Video-Median). Die UI zeigt
  * einen "Schätzung"-Hinweis.
  */
 export function useCreatorWatchTime(userId: string | null, days: AnalyticsPeriod = 28) {

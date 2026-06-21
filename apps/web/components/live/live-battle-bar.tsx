@@ -3,7 +3,7 @@
 // -----------------------------------------------------------------------------
 // LiveBattleBar — v1.w.UI.181
 //
-// TikTok-style split battle score bar. Positioned absolute at the top of the
+// Short-Video-style split battle score bar. Positioned absolute at the top of the
 // 9:16 video frame (below the top-bar controls). Pure CSS — no Animated.Value.
 //
 // Layout:

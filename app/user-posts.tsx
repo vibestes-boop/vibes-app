@@ -341,7 +341,7 @@ function PostCard({
         <CommentBtn postId={item.id} onPress={() => onOpenComments(item.id)} />
         <BookmarkBtn postId={item.id} />
         {isOwner ? (
-          /* Eigene Posts: 3-Punkte-Menü unten rechts — Teilen + Verwalten als Untermenü (TikTok-Stil) */
+          /* Eigene Posts: 3-Punkte-Menü unten rechts — Teilen + Verwalten als Untermenü (Short-Video-Stil) */
           <Pressable
             style={s.actionBtn}
             onPress={() => onManage(item)}
@@ -666,7 +666,7 @@ export default function UserPostsScreen() {
           />
         )}
 
-        {/* Eigene Posts: 3-Punkte-Untermenü (Teilen + Verwalten), TikTok-Stil */}
+        {/* Eigene Posts: 3-Punkte-Untermenü (Teilen + Verwalten), Short-Video-Stil */}
         {manageItem && (
           <PostManageModal
             visible

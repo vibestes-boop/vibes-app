@@ -36,7 +36,7 @@ const LazyCommentPanel = dynamic(
 // gerenderten <StoryStrip /> durch, damit die Shell ein Client-Component
 // bleiben kann ohne selber Auth-Reads zu machen). Seit v1.w.UI.10 wird der
 // Strip NUR im Following-Tab angezeigt — im „Für dich"-Feed ist er ausgeblendet
-// (TikTok-Referenz: dort gibt es auf For-You überhaupt keine Story-Row, und
+// (Short-Video-Referenz: dort gibt es auf For-You überhaupt keine Story-Row, und
 // unser For-You-Viewport soll denselben edge-to-edge Video-Flow bekommen).
 //
 // v1.w.UI.11 Phase C — Comment-Push-Layout:
@@ -242,7 +242,7 @@ function HomeFeedShellBody({
        * Seit v1.w.UI.10: Der frühere „Floating-Window"-Look (xl:m-3 +
        * xl:rounded-2xl + xl:shadow-elevation-3) ist weg. Das Video füllt auf
        * Desktop die komplette Center-Spalte zwischen Sidebar-Kante und rechter
-       * Discover-Column, ohne Rand, ohne Rundung, ohne Shadow — TikTok-parität.
+       * Discover-Column, ohne Rand, ohne Rundung, ohne Shadow — Short-Video-parität.
        *
        * v1.w.UI.22 (2026-04-25 Light-Mode-Fix): Die Center-Spalte folgt jetzt
        * dem Theme (`bg-background text-foreground`) statt hart auf
@@ -256,7 +256,7 @@ function HomeFeedShellBody({
        * Tab-Pills „Für dich / Folge ich" sind jetzt ein Floating-Overlay am
        * oberen Stage-Rand (absolute top-3 center, z-20). Das nimmt die früher
        * permanente h-12 Tab-Row aus dem Content-Flow heraus und gibt dem Video
-       * ~48px zusätzliche Höhe — direkt wie in TikToks Web-Viewer. Pill-
+       * ~48px zusätzliche Höhe — direkt wie in Short-Videos Web-Viewer. Pill-
        * Background bleibt `bg-black/35` weil sie immer über der schwarzen
        * Letterbox der FeedCard schwebt.
        */}

@@ -88,7 +88,7 @@ export default {
        *
        * Warum eigene Tokens statt Tailwind-Default-Shadows (`shadow-sm`, `shadow-md`):
        * Die Default-Werte nutzen eine pauschale 8%-Opacity und y-Offsets die auf
-       * weißem Canvas zu hart wirken. TikTok/Apple-Stil ist bewusst sanfter —
+       * weißem Canvas zu hart wirken. Short-Video/Apple-Stil ist bewusst sanfter —
        * niedrige Opacity (4-12%), breiter Blur, minimaler y-Offset. Dadurch wirken
        * Cards „float" statt „stamp".
        *
@@ -105,7 +105,7 @@ export default {
       },
       /**
        * Motion-System (v1.w.UI.1). Vier Duration-Stufen + eine Easing-Kurve.
-       * `out-expo` ist die TikTok/iOS-typische „schnell raus, sanft rein"-
+       * `out-expo` ist die Short-Video/iOS-typische „schnell raus, sanft rein"-
        * Bewegung — Finger-Snap-Feel, nicht linear-träge.
        *
        * Usage-Konvention:
@@ -133,7 +133,7 @@ export default {
           to:   { height: '0' },
         },
         // Like-Burst (v1.w.UI.4, A3) — leichter Scale-Pop des Heart-Icons
-        // beim Klick. Peak bei 40%, Undershoot bei 70% für den TikTok-
+        // beim Klick. Peak bei 40%, Undershoot bei 70% für den Short-Video-
         // typischen „snap back"-Feel, dann settle. Gesamt ~400ms.
         'heart-pop': {
           '0%':   { transform: 'scale(1)' },
@@ -174,9 +174,9 @@ export default {
        * (dieselbe Fallback-Kette wie vorher), deshalb ist der Wechsel non-breaking
        * auf Browsern/Netzen die `woff2` nicht servieren können.
        *
-       * Warum Inter und nicht weiter System-Font: TikTok/Instagram/Twitter/LinkedIn
+       * Warum Inter und nicht weiter System-Font: moderne Social-Apps
        * nutzen alle eine proprietäre Sans mit enger Metrik + stark ausgeglichenem
-       * x-Height (TikTok Sans, Proxima Nova, Twitter Chirp, Inter bei LinkedIn).
+       * x-Height (diverse Custom-Fonts moderner Apps).
        * System-Font rendert auf macOS/iOS als SF-Pro (okay), auf Windows als Segoe
        * UI (zu wide), auf Linux als DejaVu (visuell bricht sofort als „nicht
        * consumer-grade"). Inter gibt uns visuelle Konsistenz cross-platform.

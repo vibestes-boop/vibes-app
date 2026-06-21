@@ -39,7 +39,7 @@ import { TopRightActionsFrame } from '@/components/top-right-actions-frame';
 // -----------------------------------------------------------------------------
 // TopRightActions — schwebender Cluster oben rechts über allen Seiten.
 //
-// v1.w.UI.11 TikTok-Parity: Ersetzt die rechte Hälfte des früheren SiteHeader
+// v1.w.UI.11 Short-Video-Parity: Ersetzt die rechte Hälfte des früheren SiteHeader
 // (Coins-Pill + Avatar-Dropdown + Logout). Der komplette Header fällt weg; die
 // Sidebar übernimmt auf xl+ die Navigation, hier schweben nur noch die Account-
 // Actions als Glass-Pills über dem Content.

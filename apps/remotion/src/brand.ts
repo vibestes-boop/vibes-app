@@ -23,7 +23,7 @@ export const BRAND = {
   // Typography — Inter als primäre Font (via lib/fonts.ts geladen)
   fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif",
 
-  // Canvas — 9:16 Portrait (TikTok/Reels/Stories Standard)
+  // Canvas — 9:16 Portrait (Short-Video/Stories Standard)
   width: 1080,
   height: 1920,
   fps: 30,

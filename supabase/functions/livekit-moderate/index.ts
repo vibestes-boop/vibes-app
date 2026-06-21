@@ -38,7 +38,7 @@
  *   - Caller MUSS Host der Session sein (live_sessions.host_id).
  *     Keine Moderatoren/CoHosts hier erlaubt — Mute-Kompetenz ist host-only.
  *     (Mods können timeout/pin/slow-mode, aber das Steuern fremder Mikros
- *      bleibt beim Haupthost — wie auf TikTok.)
+ *      bleibt beim Haupthost — wie auf üblichen Live-Plattformen.)
  *   - Target MUSS aktiver CoHost der Session sein (live_cohosts, revoked_at IS NULL).
  *     Schutz gegen „Host mutet zufällige Viewer" via direkter API-Call.
  *   - Session MUSS status='active' sein.

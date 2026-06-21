@@ -1,7 +1,7 @@
 /**
  * components/live/CoHostSplitView.tsx
  *
- * TikTok-Style Split-Screen für Duet.
+ * Short-Video-Style Split-Screen für Duet.
  * Unterstützt zwei Layout-Varianten:
  *   'top-bottom'   — Host oben / Gast unten (vertikal geteilt)
  *   'side-by-side' — Host links / Gast rechts (50/50 horizontal)

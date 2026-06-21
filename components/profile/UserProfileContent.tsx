@@ -85,11 +85,11 @@ const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const AVATAR_SIZE = 88;  // Kompakter Avatar für die neue Instagram-Style Row
+const AVATAR_SIZE = 88;  // Kompakter Avatar für die neue Foto-Feed-Style Row
 const GRID_COLS = 3;
 const GRID_GAP = 2;
 const GRID_ITEM_WIDTH = (SCREEN_WIDTH - GRID_GAP * (GRID_COLS - 1)) / GRID_COLS;
-const GRID_ITEM_HEIGHT = GRID_ITEM_WIDTH * 5 / 4; // 4:5 Portrait-Format wie Instagram
+const GRID_ITEM_HEIGHT = GRID_ITEM_WIDTH * 5 / 4; // 4:5 Portrait-Format wie Foto-Feed
 
 type PublicProfile = {
   id: string;
@@ -452,7 +452,7 @@ export function UserProfileContent({ userId, onBack }: Props) {
     setTimeout(() => Alert.alert('✅ Gemeldet', 'Danke. Wir prüfen das Profil zeitnah.'), 300);
   };
 
-  // — TikTok-Style ⋯ Bottom Sheet (oben rechts)
+  // — Short-Video-Style ⋯ Bottom Sheet (oben rechts)
   const handleMore = () => {
     if (!profile) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -498,7 +498,7 @@ export function UserProfileContent({ userId, onBack }: Props) {
         )}
       </View>
 
-      {/* ── Profile Row: Avatar links + Inline Stats rechts (Instagram) ── */}
+      {/* ── Profile Row: Avatar links + Inline Stats rechts (Foto-Feed) ── */}
       <View style={s.profileRow}>
         <Pressable
           onLongPress={() => {
@@ -873,7 +873,7 @@ export function UserProfileContent({ userId, onBack }: Props) {
           </Pressable>
         </Pressable>
       </Modal>
-      {/* ── TikTok-Style Profil-Share-Sheet ───────────────────── */}
+      {/* ── Short-Video-Style Profil-Share-Sheet ───────────────────── */}
       <ProfileShareSheet
         visible={showProfileShareSheet}
         onClose={() => setShowProfileShareSheet(false)}
@@ -985,7 +985,7 @@ export function UserProfileContent({ userId, onBack }: Props) {
               // Posts-Tab: alle Posts des Users — userId-Modus
               router.push({ pathname: '/user-posts', params: { userId: id, startIndex: String(index), username: profile.username } });
             } else {
-              // Liked / Reposts: explizite IDs übergeben für TikTok-Scroll
+              // Liked / Reposts: explizite IDs übergeben für Short-Video-Scroll
               const currentList = activeTab === 'liked' ? likedPosts : repostedPosts;
               const ids = currentList.map((p) => p.id).join(',');
               router.push({ pathname: '/user-posts', params: { postIds: ids, startIndex: String(index), username: profile.username } });

@@ -1,6 +1,6 @@
 /**
  * app/create/camera.tsx
- * Vibes Creator Studio — eigene Identität, kein TikTok-Klon.
+ * Vibes Creator Studio — eigene Identität, kein Short-Video-Klon.
  *
  * 3 MODI unten (Vibes Design Language):
  *   VIBE  |  STUDIO  |  LIVE

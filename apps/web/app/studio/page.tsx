@@ -114,7 +114,7 @@ export default async function StudioDashboardPage({
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Header — TikTok-style: Avatar + Greeting links, Period-Tabs rechts */}
+      {/* Header — Short-Video-style: Avatar + Greeting links, Period-Tabs rechts */}
       <header className="flex flex-col gap-4 rounded-xl border bg-card p-5 sm:flex-row sm:items-center sm:justify-between sm:p-6">
         <div className="flex items-center gap-4">
           {/* Avatar */}
@@ -147,7 +147,7 @@ export default async function StudioDashboardPage({
       {/* Diamonds Hero */}
       <DiamondsHero earnings={earnings} t={t} intl={intl} />
 
-      {/* KPI Strip — TikTok-style: horizontale Reihe "Der letzten N Tage" */}
+      {/* KPI Strip — Short-Video-style: horizontale Reihe "Der letzten N Tage" */}
       <section className="rounded-xl border bg-card">
         <div className="flex items-center justify-between border-b px-5 py-3">
           <h2 className="text-sm font-semibold text-muted-foreground">
@@ -336,7 +336,7 @@ function DiamondsHero({
 }
 
 // -----------------------------------------------------------------------------
-// KpiCell — TikTok-style horizontale Stat-Zelle ohne Border-Card-Look
+// KpiCell — Short-Video-style horizontale Stat-Zelle ohne Border-Card-Look
 // -----------------------------------------------------------------------------
 
 function KpiCell({

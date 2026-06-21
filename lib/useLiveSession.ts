@@ -70,7 +70,7 @@ export type LiveReaction = {
   user_id: string;
 };
 
-// ─── Aktive Lives laden (für StoriesRow im Feed — TikTok/Instagram Stil) ──────
+// ─── Aktive Lives laden (für StoriesRow im Feed — Short-Video/Foto-Feed Stil) ──────
 export function useActiveLiveSessions(options: { enabled?: boolean } = {}) {
   const queryClient = useQueryClient();
   const enabled = options.enabled ?? true;
@@ -117,7 +117,7 @@ export function useActiveLiveSessions(options: { enabled?: boolean } = {}) {
       // - viewer_count ×5: stärkstes Signal (Echtzeit-Nachfrage)
       // - comment_count ×3: aktive Teilnahme > Likes (YouTube/Twitch research)
       // - like_count ×1: passives Signal, niedrigste Gewichtung
-      // - Early Boost ×1.5: TikTok-Prinzip: erste 15 Min bekommen Boost
+      // - Early Boost ×1.5: Short-Video-Prinzip: erste 15 Min bekommen Boost
       // - Time Decay ÷√(alter+1): Hacker News Prinzip — neue Lives haben Chance
       const now = Date.now();
       return unique

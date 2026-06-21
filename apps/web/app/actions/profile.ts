@@ -304,7 +304,7 @@ export async function deleteVoiceSample(): Promise<ActionResult<null>> {
 // setPrivateAccount — v1.w.UI.149 — privates Konto an/ausschalten.
 //
 // Bei Umschalten auf öffentlich werden ausstehende Follow-Requests automatisch
-// in echte Follows konvertiert (Parität zu TikTok: wenn du dein Konto öffnest,
+// in echte Follows konvertiert (Parität zu Short-Video: wenn du dein Konto öffnest,
 // werden ausstehende Anfragen direkt angenommen). Die DB hat dafür keine
 // automatische Trigger-Logik, daher erledigen wir es hier.
 // -----------------------------------------------------------------------------

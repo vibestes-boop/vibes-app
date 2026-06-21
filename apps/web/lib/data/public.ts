@@ -1458,7 +1458,7 @@ export const getViewerFollowingSet = cache(async (): Promise<Set<string>> => {
 //   2. posts IN (post_ids) → gemappt auf Post[]
 //
 // Öffentlich lesbar (RLS: SELECT true auf reposts — jeder kann sehen was
-// ein User geteilt hat, entspricht TikTok-Verhalten).
+// ein User geteilt hat, entspricht Short-Video-Verhalten).
 // -----------------------------------------------------------------------------
 
 export const getProfileReposts = cache(async (userId: string, limit = 48): Promise<Post[]> => {

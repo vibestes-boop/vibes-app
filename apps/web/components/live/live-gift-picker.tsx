@@ -15,7 +15,7 @@ import type { BattleTeam } from './live-battle-store';
 // Recipient-Logik:
 //  • Normal: Host = Recipient
 //  • Mit 1 aktivem CoHost (non-battle): Auswahl Host | CoHost (segmented control)
-//  • Battle-Mode: 🔴 HOST / 🔵 GUEST team picker (TikTok-style colored pills)
+//  • Battle-Mode: 🔴 HOST / 🔵 GUEST team picker (Short-Video-style colored pills)
 //    After a successful gift, broadcasts battle-gift event via store's sendBattleGift.
 // -----------------------------------------------------------------------------
 
@@ -200,7 +200,7 @@ export function LiveGiftPicker({
           </div>
         </div>
 
-        {/* Battle team picker — 🔴/🔵 TikTok-style pills */}
+        {/* Battle team picker — 🔴/🔵 Short-Video-style pills */}
         {isBattle && (
           <div className="flex items-center justify-center gap-2 border-b bg-black/5 px-4 py-2 dark:bg-white/5 xl:border-white/10 xl:bg-white/[0.04]">
             <span className="text-[11px] font-medium text-muted-foreground xl:text-white/55">Team wählen:</span>

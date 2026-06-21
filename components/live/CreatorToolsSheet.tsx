@@ -1,7 +1,7 @@
 /**
  * components/live/CreatorToolsSheet.tsx
  *
- * v1.22.0 — TikTok-Style "Creator Tools" Grid-Sheet.
+ * v1.22.0 — Short-Video-Style "Creator Tools" Grid-Sheet.
  *
  * Ein einzelner "+"-Button in der Host-Toolbar öffnet dieses Sheet; darin
  * sind alle Creator-Werkzeuge als Grid-Kacheln angeordnet (Poll, Sticker,
@@ -11,7 +11,7 @@
  * Vorteile:
  *   • Nicht-störend — Stream bleibt frei während Host nicht aktiv werkzelt
  *   • Skalierbar — weitere Tools (z.B. Q&A, Musik) passen einfach rein
- *   • TikTok-Parität — User sind das Pattern gewöhnt
+ *   • Short-Video-Parität — User sind das Pattern gewöhnt
  *
  * Konfiguration via `tools`-Array → jede Kachel definiert Icon, Label,
  * aktiver-Farbton, optionales Badge, Tap- und Long-Press-Handler.

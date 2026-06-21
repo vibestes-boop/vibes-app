@@ -523,7 +523,7 @@ export const getFollowingFeed = cache(
 //
 // Unterschied zu getFollowingFeed (einseitig: alle, denen ich folge): hier nur
 // Accounts, denen ich folge UND die mir zurückfolgen — also die echte „Freunde"-
-// Teilmenge im TikTok-Sinn (tiktok.com/friends). = Schnittmenge aus der Liste
+// Teilmenge im Short-Video-Sinn (Freunde-Feed). = Schnittmenge aus der Liste
 // „wem ich folge" und „wer mir folgt".
 // -----------------------------------------------------------------------------
 export const getFriendsFeed = cache(
@@ -596,10 +596,10 @@ export interface SuggestedFollow {
 }
 
 // -----------------------------------------------------------------------------
-// getMyFollowedAccounts — Sidebar-Section „Konten, denen ich folge" (TikTok-
+// getMyFollowedAccounts — Sidebar-Section „Konten, denen ich folge" (Short-Video-
 // Parity v1.w.UI.11 Phase B). Gibt die Profile zurück, denen der eingeloggte
 // Viewer aktuell folgt — sortiert nach Follow-Zeitpunkt (neueste zuerst,
-// passend zur TikTok-UX wo frische Follows oben stehen).
+// passend zur Short-Video-UX wo frische Follows oben stehen).
 //
 // Der Call läuft in zwei Schritten:
 //   1. `follows`-Lookup (follower_id = viewer) → Array von (following_id, created_at).

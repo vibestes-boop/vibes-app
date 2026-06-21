@@ -19,7 +19,7 @@ interface Props {
   /** Vollständige Liste für Modal */
   allGifters?: TopGifter[];
   /**
-   * v1.22.1 — TikTok-Style kompakte Variante für die TopBar:
+   * v1.22.1 — Short-Video-Style kompakte Variante für die TopBar:
    * zwei überlappende Avatare mit Coin-Badge. Öffnet auf Tap dasselbe Modal.
    */
   compact?: boolean;
@@ -36,7 +36,7 @@ export function TopGifterBadge({ topGifters, allGifters, compact }: Props) {
   return (
     <>
       {compact ? (
-        /* TikTok-Style: 2 Avatare überlappend, Coin-Badge unten */
+        /* Short-Video-Style: 2 Avatare überlappend, Coin-Badge unten */
         <Pressable
           onPress={() => setModalVisible(true)}
           style={s.compactWrap}
@@ -140,7 +140,7 @@ function fmtCoins(n: number): string {
 // ─── Styles ───────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  // v1.22.1 — kompakte TikTok-Style Variante (TopBar, rechts neben Viewer-Count)
+  // v1.22.1 — kompakte Short-Video-Style Variante (TopBar, rechts neben Viewer-Count)
   compactWrap: {
     flexDirection: 'row',
     alignItems: 'center',

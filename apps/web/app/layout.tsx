@@ -136,7 +136,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   Zum Hauptinhalt springen
                 </a>
                 {/*
-                 * v1.w.UI.11 TikTok-Parity: Kein SiteHeader mehr. Die
+                 * v1.w.UI.11 Short-Video-Parity: Kein SiteHeader mehr. Die
                  * FeedSidebar auf xl+ übernimmt die Navigation, TopRightActions
                  * schweben als Glass-Pills oben rechts über allen Seiten
                  * (Coins + Avatar-Dropdown für logged-in, Login/Signup für

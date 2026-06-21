@@ -1,7 +1,7 @@
 /**
  * ProfileHighlightsRow.tsx — Highlights 2.0
  *
- * • "+" öffnet visuellen Instagram-style Thumbnail-Picker (HighlightPickerSheet)
+ * • "+" öffnet visuellen Foto-Feed-style Thumbnail-Picker (HighlightPickerSheet)
  * • Stories UND Posts als Highlight speicherbar
  * • media_url direkt im Highlight gespeichert → läuft nicht ab
  * • Long-Press → Highlight löschen

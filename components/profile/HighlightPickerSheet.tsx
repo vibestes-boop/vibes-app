@@ -1,7 +1,7 @@
 /**
  * HighlightPickerSheet.tsx — Multi-Select
  *
- * • Mehrere Stories gleichzeitig auswählen (wie Instagram)
+ * • Mehrere Stories gleichzeitig auswählen (wie Foto-Feed)
  * • Auswahlzähler im Header
  * • Reihenfolge-Anzeige in der Kreis-Auswahl
  * • Cover = erste ausgewählte Story

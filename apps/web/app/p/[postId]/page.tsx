@@ -564,7 +564,7 @@ export default async function PostDetailPage({
         }
 
         // ── Portrait / Square-Layout: Media links | Sidebar rechts ─────────
-        // Kommentare in der Sidebar direkt unter Caption — TikTok-Web-Pattern.
+        // Kommentare in der Sidebar direkt unter Caption — Short-Video-Web-Pattern.
         // Mehr von @author ganz am Ende der Sidebar.
         return (
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">

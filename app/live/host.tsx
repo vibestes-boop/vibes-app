@@ -319,7 +319,7 @@ function HostUI({
   const { stickers: activeStickers } = useActiveStickers(sessionId);
   const { addSticker, moveSticker, removeSticker } = useStickerActions(sessionId);
   const [stickerPickerVisible, setStickerPickerVisible] = useState(false);
-  // v1.22.0 — TikTok-Style Creator-Tools-Grid (ersetzt 14-Button-Scroll-Leiste)
+  // v1.22.0 — Short-Video-Style Creator-Tools-Grid (ersetzt 14-Button-Scroll-Leiste)
   const [creatorToolsVisible, setCreatorToolsVisible] = useState(false);
 
   const handlePickSticker = useCallback((emoji: string) => {
@@ -448,7 +448,7 @@ function HostUI({
 
 
   // Co-Host Request-Sheet Sichtbarkeit: Sheet erscheint nur wenn kein Duet aktiv ist.
-  // Battle-Dauer + Layout werden jetzt im CoHostRequestSheet gewählt (TikTok-Style).
+  // Battle-Dauer + Layout werden jetzt im CoHostRequestSheet gewählt (Short-Video-Style).
   // Ersetzt den alten iOS-Alert.alert()-Flow mit grauen Default-Buttons.
   const showCoHostRequestSheet = Boolean(pendingRequest) && !activeCoHostId;
 
@@ -963,7 +963,7 @@ function HostUI({
   const soldEvents: import('@/lib/useLiveShopping').ProductSoldEvent[] = []; // Host hat kein soldEvents (nur Viewer)
   const [shopPanelVisible, setShopPanelVisible] = useState(false);
 
-  // ─── Live-Shop-Mode (TikTok-Style Katalog-Button) ─────────────────────────
+  // ─── Live-Shop-Mode (Short-Video-Style Katalog-Button) ─────────────────────────
   const { shopEnabled } = useLiveShopMode(sessionId);
   const { toggleShopMode, isToggling: isTogglingShopMode } = useLiveShopModeActions(sessionId);
 
@@ -1228,7 +1228,7 @@ function HostUI({
       onPress:     setupGoal,
     });
 
-    // ── Shop-Modus Toggle (TikTok-Style Katalog-Button für Viewer) ────
+    // ── Shop-Modus Toggle (Short-Video-Style Katalog-Button für Viewer) ────
     // Schaltet die Tüte in der Viewer-Bottom-Bar an/aus. Orthogonal zu
     // Featured-Product-Pill (shop-pin) und platzierten Karten (product-pin).
     list.push({
@@ -1498,8 +1498,8 @@ function HostUI({
             : isGridMode
               ? { position: 'absolute', top: 0, left: 0, width: gridTilePct, height: gridTilePct, overflow: 'hidden', backgroundColor: '#000' }
               : (activeLayout === 'side-by-side' || activeLayout === 'battle')
-                // TikTok-Style: Videos kompakt in oberer Hälfte (13%..55%), Rest frei für Chat/UI
-                // v1.22.0 (UX): vorher 10%..70% wirkte zu hoch/lang — TikTok Battle sitzt kürzer.
+                // Short-Video-Style: Videos kompakt in oberer Hälfte (13%..55%), Rest frei für Chat/UI
+                // v1.22.0 (UX): vorher 10%..70% wirkte zu hoch/lang — Short-Video Battle sitzt kürzer.
                 ? { position: 'absolute', top: '13%', height: '42%', right: 0, width: '50%', overflow: 'hidden', backgroundColor: '#000' }
                 : { position: 'absolute', bottom: 0, left: 0, right: 0, height: '50%', overflow: 'hidden', backgroundColor: '#000' }
         }
@@ -1527,8 +1527,8 @@ function HostUI({
           delayLongPress={350}
           style={
             (activeLayout === 'side-by-side' || activeLayout === 'battle')
-              // TikTok-Style: Videos kompakt in oberer Hälfte (13%..55%), Rest frei für Chat/UI
-              // v1.22.0 (UX): vorher 10%..70% wirkte zu hoch/lang — TikTok Battle sitzt kürzer.
+              // Short-Video-Style: Videos kompakt in oberer Hälfte (13%..55%), Rest frei für Chat/UI
+              // v1.22.0 (UX): vorher 10%..70% wirkte zu hoch/lang — Short-Video Battle sitzt kürzer.
               ? { position: 'absolute', top: '13%', height: '42%', left: 0, width: '50%', overflow: 'hidden', backgroundColor: '#0d0d1a' }
               : { position: 'absolute', top: 0, left: 0, right: 0, height: '50%', overflow: 'hidden', backgroundColor: '#0d0d1a' }
           }
@@ -1686,7 +1686,7 @@ function HostUI({
           aber seine Kinder (topBar, Overlays, Input …) bleiben interaktiv.
           Empty-Area-Taps fallen durch zum Tap-Herzen-Pressable darunter. */}
       <View style={{ flex: 1, zIndex: 2 }} pointerEvents="box-none">
-        {/* Oben — TikTok-Style (v1.22.0): Avatar + @Nick + ❤️ | LIVE-Pill | Gäste + Viewer + X */}
+        {/* Oben — Short-Video-Style (v1.22.0): Avatar + @Nick + ❤️ | LIVE-Pill | Gäste + Viewer + X */}
         <View style={[s.topBar, { paddingTop: insets.top + 2 }]}>
           <View style={s.hostInfoLeft}>
             <View style={s.avatarRing}>
@@ -1744,7 +1744,7 @@ function HostUI({
                 ))}
               </View>
             )}
-            {/* v1.22.1 — Top-Gifter kompakt oben rechts (TikTok-Style) */}
+            {/* v1.22.1 — Top-Gifter kompakt oben rechts (Short-Video-Style) */}
             {topGifters.length > 0 && (
               <TopGifterBadge compact topGifters={topGifters} allGifters={topGifters} />
             )}
@@ -1764,16 +1764,16 @@ function HostUI({
         {/* ── Mic/Cam/Flip Pills — oben LINKS (v1.16.0 UI-Polish)
               Vorher: rechter vertikaler Stack mit 13+ Buttons, verdeckt Grid.
               Jetzt: nur die 3 meistgenutzten Controls hier, Rest unten im
-              Action-Row über dem Input. Matcht TikTok/IG Live-UX. */}
+              Action-Row über dem Input. Matcht Short-Video/Foto-Feed Live-UX. */}
         <View style={[s.topLeftControls, { top: insets.top + 60 }]}>
           <HostControls onCameraSwitch={setIsFrontCamera} />
         </View>
 
-        {/* ── Action-Row (v1.22.0 TikTok-Style) — nur 3 Buttons sichtbar ──
+        {/* ── Action-Row (v1.22.0 Short-Video-Style) — nur 3 Buttons sichtbar ──
               Share, Moderation-Toggle und ein einzelner "+"-Button, der das
               Creator-Tools-Grid-Sheet öffnet. Alle früher sichtbaren 14+
               Buttons wurden ins Sheet verschoben (kontext-sensitiv). Das
-              hält den Stream ruhig und ist TikTok-parity.
+              hält den Stream ruhig und ist Short-Video-parity.
               Gift-Indicator bleibt sichtbar (Display-Only, kein Button). */}
         <View
           style={[s.bottomActionPos, { bottom: insets.bottom + 56 }]}
@@ -1814,7 +1814,7 @@ function HostUI({
             )}
           </Pressable>
 
-          {/* ➕ Creator-Tools-Sheet Opener (TikTok-Style, v1.22.0) — öffnet
+          {/* ➕ Creator-Tools-Sheet Opener (Short-Video-Style, v1.22.0) — öffnet
               Grid mit Poll, Sticker, Produkt, Goal, Shop, Record, Slow-Mode,
               Followers-only, Co-Host-Controls, Battle-End, Queue-Inbox. */}
           <Pressable
@@ -2162,7 +2162,7 @@ function HostUI({
         <View style={{ flex: 1 }} />
 
         {/* 🏆 Top Gifter Badge — v1.22.1: verschoben nach oben rechts in
-            die TopBar (TikTok-parity). Alter bottom-left Block entfernt. */}
+            die TopBar (Short-Video-parity). Alter bottom-left Block entfernt. */}
 
         {/* Gepinnter Kommentar — sichtbar für alle über dem Feed */}
         {pinnedComment && !pinnedComment.isSystem && (
@@ -2253,7 +2253,7 @@ function HostUI({
           alreadyPlacedIds={alreadyPlacedProductIds}
         />
 
-        {/* ➕ Creator-Tools-Sheet (v1.22.0) — TikTok-Style Grid mit allen
+        {/* ➕ Creator-Tools-Sheet (v1.22.0) — Short-Video-Style Grid mit allen
             Host-Werkzeugen. Ersetzt die frühere 14-Button-Scroll-Leiste. */}
         <CreatorToolsSheet
           visible={creatorToolsVisible}
@@ -2359,7 +2359,7 @@ function HostUI({
         }}
       />
 
-      {/* TikTok-Style Summary — Full Screen */}
+      {/* Short-Video-Style Summary — Full Screen */}
       <Modal visible={showSummary} animationType="slide" statusBarTranslucent>
         <View style={s.summaryScreen}>
           <LinearGradient
@@ -2490,7 +2490,7 @@ function HostUI({
           </View>
         </View>
       </Modal>
-      {/* TikTok-Style User Info Sheet — mit Duett-Invite-Button (Host-Modus) */}
+      {/* Short-Video-Style User Info Sheet — mit Duett-Invite-Button (Host-Modus) */}
       <LiveUserSheet
         userId={selectedUserId}
         onClose={() => setSelectedUserId(null)}
@@ -2523,7 +2523,7 @@ function HostUI({
         }}
       />
 
-      {/* v1.22.2: TikTok-Style Co-Host Request-Sheet (ersetzt altes iOS Alert.alert) */}
+      {/* v1.22.2: Short-Video-Style Co-Host Request-Sheet (ersetzt altes iOS Alert.alert) */}
       <CoHostRequestSheet
         visible={showCoHostRequestSheet}
         username={pendingRequest?.username ?? null}

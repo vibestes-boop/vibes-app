@@ -1,6 +1,6 @@
 /**
  * CreateSheet.tsx
- * TikTok-Style Creation Flow — Bottom Sheet mit 3 visuell reichen Karten.
+ * Short-Video-Style Creation Flow — Bottom Sheet mit 3 visuell reichen Karten.
  * Ersetzt den hässlichen Alert.alert Dialog.
  */
 import { LinearGradient } from 'expo-linear-gradient';

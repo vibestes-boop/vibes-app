@@ -54,7 +54,7 @@ export const createStyles = StyleSheet.create({
   imagePicker: {
     marginHorizontal: 16,
     marginVertical: 10,
-    aspectRatio: 9 / 16,          // TikTok-Hochformat-Vorschau
+    aspectRatio: 9 / 16,          // Short-Video-Hochformat-Vorschau
     borderRadius: 16,
     overflow: 'hidden',
     alignItems: 'center',

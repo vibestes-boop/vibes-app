@@ -6,7 +6,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { MoreMenu } from '../more-menu';
 
 // -----------------------------------------------------------------------------
-// MoreMenu — linksseitiges Drawer-Panel (TikTok-Parity).
+// MoreMenu — linksseitiges Drawer-Panel (Short-Video-Parity).
 //
 // Controlled Component: `open` + `onToggle`/`onClose` kommen vom Parent
 // (FeedSidebar). Tests fixieren:
@@ -64,7 +64,7 @@ describe('MoreMenu', () => {
     const dialog = screen.getByRole('dialog', { name: /Mehr Optionen/i, hidden: true });
     // Panel slidet INNERHALB eines overflow-hidden-Containers an der
     // Icon-Strip-Kante (left-14) — dadurch klappt es aus der Sidebar auf
-    // statt von außerhalb des Bildschirms hereinzurutschen (TikTok-Verhalten).
+    // statt von außerhalb des Bildschirms hereinzurutschen (Short-Video-Verhalten).
     expect(dialog.className).toContain('-translate-x-full');
     expect(dialog.className).toContain('pointer-events-none');
     const clip = dialog.parentElement!;

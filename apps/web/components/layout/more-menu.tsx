@@ -23,7 +23,7 @@ import { signOut } from '@/app/actions/auth';
 import { cn } from '@/lib/utils';
 
 // -----------------------------------------------------------------------------
-// MoreMenu — left-side sliding drawer panel (TikTok-style).
+// MoreMenu — left-side sliding drawer panel (Short-Video-style).
 //
 // Controlled component: open state + toggle/close callbacks come from the
 // parent (FeedSidebar). The panel slides in BESIDE the icon strip
@@ -110,7 +110,7 @@ export function MoreMenu({
           {/*
            * Clip-Container an der Kante der Icon-Leiste (left-20 = 80px).
            * overflow-hidden schneidet das Panel links ab, sodass es beim
-           * Öffnen aus der Sidebar HERAUSKLAPPT (TikTok-Verhalten) statt von
+           * Öffnen aus der Sidebar HERAUSKLAPPT (Short-Video-Verhalten) statt von
            * außerhalb des Bildschirms hereinzurutschen. w-72 statt w-64,
            * damit der rechte Schatten des Panels nicht mit abgeschnitten wird.
            */}

@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import type { ConversationPreview } from '@/lib/data/messages';
 
 // -----------------------------------------------------------------------------
-// ConversationListPanel — linke Sidebar im TikTok-Style Messages-Layout.
+// ConversationListPanel — linke Sidebar im Short-Video-Style Messages-Layout.
 //
 // - Zeigt alle Konversationen mit Avatar, Name, Preview, Timestamp
 // - Aktive Konversation via `usePathname()` hervorgehoben

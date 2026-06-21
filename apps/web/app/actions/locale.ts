@@ -13,7 +13,7 @@ import { revalidatePath } from 'next/cache';
 
 import { LOCALE_COOKIE, isLocale } from '@/lib/i18n/config';
 
-// 1 Jahr — passend zu Apple/TikTok-Pattern (Sprache ist Long-term-Preference,
+// 1 Jahr — passend zu Apple/Short-Video-Pattern (Sprache ist Long-term-Preference,
 // nicht per-Session). Cookie als httpOnly=false damit Client-Side-Scripts
 // den Wert auch lesen können (z.B. für `Intl.NumberFormat`-Locale-Pick).
 const ONE_YEAR_SECS = 60 * 60 * 24 * 365;

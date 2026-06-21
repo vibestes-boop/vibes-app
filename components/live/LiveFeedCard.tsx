@@ -1,7 +1,7 @@
 /**
- * LiveFeedCard.tsx — Echter Live-Video-Preview im Feed (TikTok-Style)
+ * LiveFeedCard.tsx — Echter Live-Video-Preview im Feed (Short-Video-Style)
  *
- * Wie TikTok: zeigt den echten Live-Stream direkt im Feed an (gemuted).
+ * Wie Short-Video: zeigt den echten Live-Stream direkt im Feed an (gemuted).
  * Beim Drücken öffnet sich die volle Watch-View mit Kommentaren, Input etc.
  *
  * WICHTIG:
@@ -265,7 +265,7 @@ export function LiveFeedCard({ session, isFollowing = false, isActive }: Props) 
         )}
       </View>
 
-      {/* ── Unten: "Tippe, um das LIVE anzusehen" (wie TikTok) ── */}
+      {/* ── Unten: "Tippe, um das LIVE anzusehen" (wie Short-Video) ── */}
       <View style={s.bottomHint}>
         {/* Pulsierender Avatar-Ring Indikator */}
         <RNAnimated.View
@@ -384,7 +384,7 @@ const s = StyleSheet.create({
   },
   statBadgeText: { color: '#fff', fontSize: 11, fontWeight: '700' },
 
-  // ── Unten: TikTok-"Tippe"-Hint ────────────────────────────────────────────────
+  // ── Unten: Short-Video-"Tippe"-Hint ────────────────────────────────────────────────
   bottomHint: {
     position: 'absolute',
     bottom: 110,   // über TabBar

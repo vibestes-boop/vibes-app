@@ -20,7 +20,7 @@ import { ProfileHighlightsRow } from './ProfileHighlightsRow';
 import { getProfileStyles } from './profileStyles';
 import type { ProfileTab } from './types';
 
-// ─── Tools Bottom-Sheet mit Menü-Einträgen (Instagram/TikTok Pattern) ──────────
+// ─── Tools Bottom-Sheet mit Menü-Einträgen (Foto-Feed/Short-Video Pattern) ──────────
 type ToolItem = {
   icon: any; tint: string;
   label: string; sub?: string; onPress: () => void;
@@ -332,7 +332,7 @@ export function ProfileListHeader({
         initials={avatarInitial}
         onClose={() => setAvatarZoomed(false)}
       />
-      {/* ── Avatar + Info (Instagram-Style) ── */}
+      {/* ── Avatar + Info (Foto-Feed-Style) ── */}
       <View style={s.profileTop}>
         {/* Avatar — Klick = Stories ansehen */}
         <Pressable
@@ -485,7 +485,7 @@ export function ProfileListHeader({
 
 
 
-      {/* ── Action-Buttons (Instagram-Style: 3 Primär + Tools-Menu) ── */}
+      {/* ── Action-Buttons (Foto-Feed-Style: 3 Primär + Tools-Menu) ── */}
       <ProfileActionRow
         profile={profile}
         colors={colors}

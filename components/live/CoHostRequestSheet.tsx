@@ -1,7 +1,7 @@
 /**
  * CoHostRequestSheet.tsx
  *
- * TikTok-Style Bottom-Sheet für eingehende Co-Host-Anfragen beim Host.
+ * Short-Video-Style Bottom-Sheet für eingehende Co-Host-Anfragen beim Host.
  * Ersetzt den alten `Alert.alert()`-Flow (grauer iOS-Default-Dialog).
  *
  * Flow:
@@ -85,7 +85,7 @@ export function CoHostRequestSheet({
   const slideY = useRef(new Animated.Value(500)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
 
-  // Avatar-Pulse (TikTok-Feeling)
+  // Avatar-Pulse (Short-Video-Feeling)
   const pulseScale = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {

@@ -7,7 +7,7 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 // Karte heraus ausgelöst werden, aber Shell-Level-Layout-Effekte haben
 // (v1.w.UI.11 Phase C).
 //
-// Erster Consumer: „Kommentare öffnen" — TikTok-Parity-Push-Layout. Wenn ein
+// Erster Consumer: „Kommentare öffnen" — Short-Video-Parity-Push-Layout. Wenn ein
 // User den Kommentar-Button in einer FeedCard drückt, soll auf Desktop (xl+)
 // die Center-Spalte schmaler werden und ein Comment-Panel die rechte Sidebar
 // ablösen. Auf Mobile / < xl bleibt das bisherige Sheet-Overlay bestehen. Der

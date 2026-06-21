@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 // Warum nicht mehr <details>?
 //   • `details` ist nativ, aber nicht animierbar (kein smooth-expand in Browsern
 //     ohne content-visibility; Safari spring-snaps).
-//   • Wir wollen einen TikTok/Instagram-artigen „mehr anzeigen…"-Fade: Text
+//   • Wir wollen einen Short-Video/Foto-Feed-artigen „mehr anzeigen…"-Fade: Text
 //     hat eine Collapsed-Höhe mit weichem Gradient-Mask am unteren Rand, der
 //     beim Ausklappen sanft wegblendet.
 //

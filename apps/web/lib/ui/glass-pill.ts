@@ -21,7 +21,7 @@
  *     was auf einem schwebenden Pill mit transparentem Umfeld optisch den
  *     Pill „spaltet" — hier `ring-offset-0` als bewusstes Override
  *   - Transition: 200ms (`duration-base`) mit `ease-out-expo` — dieselbe
- *     Motion-Kurve die TikTok/iOS für snappy Micro-Interactions verwendet
+ *     Motion-Kurve die Short-Video/iOS für snappy Micro-Interactions verwendet
  *
  * Anwendung: `className={cn(glassPillBase, 'h-9 px-3 text-xs font-semibold')}`.
  * Der Konsument liefert Größe, Padding und Typo — diese Utility liefert nur

@@ -1,5 +1,5 @@
 /**
- * Guild Post Detail — Instagram-Style vertikale Swipe-Navigation
+ * Guild Post Detail — Foto-Feed-Style vertikale Swipe-Navigation
  *
  * Eine vertikale FlatList mit pagingEnabled={true}.
  * Der Nutzer wischt hoch/runter um durch die Guild-Posts zu navigieren.
@@ -346,7 +346,7 @@ function GuildPostDetailItem({
           </Pressable>
         </Animated.View>
 
-        {/* Kommentar — öffnet CommentsSheet (Instagram-Style) */}
+        {/* Kommentar — öffnet CommentsSheet (Foto-Feed-Style) */}
         <Pressable
           onPress={() => {
             impactAsync(ImpactFeedbackStyle.Light);
@@ -564,7 +564,7 @@ export default function GuildPostDetailScreen() {
         removeClippedSubviews={true}
       />
 
-      {/* Linker Edge-Strip für Swipe-Back (wie iOS/TikTok) */}
+      {/* Linker Edge-Strip für Swipe-Back (wie iOS/Short-Video) */}
       <View
         style={{
           position: 'absolute',

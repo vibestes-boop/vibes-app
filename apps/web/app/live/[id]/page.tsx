@@ -41,7 +41,7 @@ import {
 import { cn } from '@/lib/utils';
 
 // -----------------------------------------------------------------------------
-// /live/[id] — der Viewer. TikTok-style Overlay-Architektur (Phase 2, B1+B2+B5):
+// /live/[id] — der Viewer. Short-Video-style Overlay-Architektur (Phase 2, B1+B2+B5):
 //
 //   ┌────────────────────────────────────────┐
 //   │ ← zurück       [melden]               │   ← top-bar (auf Canvas überlagert)
@@ -67,7 +67,7 @@ import { cn } from '@/lib/utils';
 // Auf Portrait-Mobile ist der 9:16 Canvas = Viewport, die Letterboxes fallen weg.
 // Auf breiten Desktops ist er ein zentrales Rechteck — der Rest des Canvas
 // bleibt dunkel (#0b0b10), erzeugt den „phone viewport in the middle"-Effekt,
-// den TikTok/YouTube-Shorts im Web ebenfalls nutzen.
+// den Short-Video/YouTube-Shorts im Web ebenfalls nutzen.
 // -----------------------------------------------------------------------------
 
 interface PageProps {

@@ -54,7 +54,7 @@ import {
 
 // Feed-Captions liegen auf dunkler Video-Overlay — default `text-primary`
 // würde gegen Schwarz/Video-Content zu blass werden. Weißer Link mit
-// Underline-On-Hover ist analog zum TikTok-Feed-Stil.
+// Underline-On-Hover ist analog zum Short-Video-Feed-Stil.
 const FEED_LINK_CLASS = 'font-semibold text-white underline-offset-2 hover:underline';
 
 const LazyPostShareDmSheet = dynamic(
@@ -77,7 +77,7 @@ const LazyVoiceReaderControl = dynamic(
 // Auto-Play via IntersectionObserver (≥60% sichtbar → play, sonst pause).
 // Muted-Default (Autoplay-Policy); globaler Mute-State kommt vom Parent.
 //
-// Aspect-Ratio-Verhalten (v1.w.UI.23 — TikTok-Parity für Querformat):
+// Aspect-Ratio-Verhalten (v1.w.UI.23 — Short-Video-Parity für Querformat):
 // Standard ist 9:16 (Hochformat-Phone-Video). Sobald `onLoadedMetadata`
 // des `<video>`-Elements feuert, kennen wir die echten Pixel-Dimensionen
 // und passen den Container dynamisch an:
@@ -130,7 +130,7 @@ export function FeedCard({
   // v1.w.UI.11 Phase C — Kommentar-Open-State lebt nicht mehr lokal in der
   // Karte, sondern im zentralen FeedInteractionContext. Grund: Auf xl+ soll
   // das Öffnen eines Comment-Panels die rechte Sidebar des HomeFeedShell
-  // ersetzen (TikTok-Parity-Push statt Overlay). Die Shell ist State-Owner,
+  // ersetzen (Short-Video-Parity-Push statt Overlay). Die Shell ist State-Owner,
   // die Karte ist nur Dispatcher. Ohne Provider (z.B. Isolated-Karten-Tests)
   // liefert der Hook einen no-op-Fallback, FeedCard rendert weiterhin
   // fehlerfrei.
@@ -189,7 +189,7 @@ export function FeedCard({
   const isSelf = viewerId === post.author.id;
   // Legacy-Rows (pre-media_type-Einführung) waren alle Videos — deshalb
   // defaulten wir auf 'video'. Explicit 'image' schaltet in den Bild-Render-
-  // Pfad (Instagram-style Standbild mit Video-ähnlichem Overlay).
+  // Pfad (Foto-Feed-style Standbild mit Video-ähnlichem Overlay).
   const isImage = post.media_type === 'image';
 
   const caption = post.caption ?? '';
@@ -325,14 +325,14 @@ export function FeedCard({
   // Loading-Default (9/16 exakt) → height-bound, also wie bisher solange
   // metadata noch nicht da.
   // -------------------------------------------------------------------------
-  // v1.w.UI.33 (TikTok-Player-Features): Volume-Slider, Scrubbing, More-Menu.
+  // v1.w.UI.33 (Short-Video-Player-Features): Volume-Slider, Scrubbing, More-Menu.
   //
   // Volume: separater Float (0-1) zusätzlich zum bestehenden mute-Toggle.
   //   - Wenn user am Slider zieht, wird volume gesetzt UND falls volume>0
   //     der Mute-State ausgeschaltet (oder umgekehrt). So bleiben die zwei
-  //     Konzepte konsistent (TikTok-Verhalten).
+  //     Konzepte konsistent (Short-Video-Verhalten).
   // Scrubbing: isSeeking flag während mousedown auf der Progress-Bar.
-  //   - Während aktivem Drag pausieren wir das Video nicht (TikTok-Style:
+  //   - Während aktivem Drag pausieren wir das Video nicht (Short-Video-Style:
   //     scrubbing zeigt den jeweils gezielten Frame, video pausiert nicht
   //     visuell). Sobald mouseup feuert, springen wir zur finalen Position.
   // More-Menu: einfaches Dropdown-Toggle. Outside-Click schließt es.
@@ -388,7 +388,7 @@ export function FeedCard({
 
   // Window-level mousemove/mouseup während aktivem Drag — damit der User
   // auch außerhalb der Progress-Bar weiterscrubben kann ohne den Drag zu
-  // verlieren (TikTok-Verhalten).
+  // verlieren (Short-Video-Verhalten).
   useEffect(() => {
     if (!isSeeking) return;
     const progressBar = document.querySelector<HTMLElement>(
@@ -532,7 +532,7 @@ export function FeedCard({
   };
 
   return (
-    // v1.w.UI.25 / v1.w.UI.28 (TikTok-Parity Iteration 6 — Stabilisierung):
+    // v1.w.UI.25 / v1.w.UI.28 (Short-Video-Parity Iteration 6 — Stabilisierung):
     // Flache Wrapper-Struktur: `h-full + items-end`. Card+Rail bottom-aligned
     // an Section-Bottom für ALLE Orientierungen.
     //
@@ -545,18 +545,18 @@ export function FeedCard({
     // die Section in den nächsten Post (User-bestätigt).
     //
     // Trade-off: Landscape-Cards sitzen am unteren Section-Rand statt
-    // mittig zentriert wie auf TikTok. Empty space oben ist akzeptabel,
+    // mittig zentriert wie auf Short-Video. Empty space oben ist akzeptabel,
     // overflow nach unten ist es nicht. Centering kann später via
     // JS-Measurement (ResizeObserver + explicit width/height) nachgeholt
     // werden — das ist die einzige bulletproof CSS-freie Variante für
     // gleichzeitig (a) Card centered, (b) Rail bottom-aligned mit Card,
     // (c) Snap-Scroll konsistent, (d) keine overflow.
     <div
-      // v1.w.UI.31 — Nested Wrapper für TikTok-Style-Centering bei Landscape:
+      // v1.w.UI.31 — Nested Wrapper für Short-Video-Style-Centering bei Landscape:
       //   - OUTER (`h-full items-center`): Card+Rail-Gruppe vertikal zentriert
       //     in der Section-Content-Area. Bei Portrait ist Inner-Höhe = section
       //     content area (h-full vererbt), centering ist no-op. Bei Landscape
-      //     ist Inner content-sized → Outer zentriert es vertikal → TikTok.
+      //     ist Inner content-sized → Outer zentriert es vertikal → Short-Video.
       //   - INNER (`items-end`): Card und Rail bottom-aligned ZUEINANDER. Egal
       //     ob in Portrait (= section bottom) oder Landscape (= card bottom
       //     im zentrierten Inner). Rail-Mute klebt immer am Card-Boden.
@@ -611,7 +611,7 @@ export function FeedCard({
       {/* v1.w.UI.33: Volume-Control top-left + More-Menu top-right.
           Beide nur für Videos (Images haben weder Audio noch Quality-Optionen).
           Beide z-30 damit über der Caption + Action-Rail visible bleiben.
-          Auf TikTok-Style sind sie semi-transparent + backdrop-blur, damit
+          Auf Short-Video-Style sind sie semi-transparent + backdrop-blur, damit
           sie dezent über dem Video-Content schweben. */}
       {!isImage && (
         <>
@@ -926,7 +926,7 @@ export function FeedCard({
             />
           )}
 
-          {/* Play-Overlay wenn pausiert — TikTok-Größe 96px statt vorher 80 */}
+          {/* Play-Overlay wenn pausiert — Short-Video-Größe 96px statt vorher 80 */}
           {isPaused && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-black/30" aria-hidden="true">
               <div className="flex h-24 w-24 items-center justify-center rounded-full bg-white/15 backdrop-blur-sm">
@@ -1096,7 +1096,7 @@ export function FeedCard({
             data-progress-bar
             className="relative h-[3px] w-full bg-white/20 transition-[height] duration-base ease-out-expo group-hover/card:h-[6px] group-hover/progress:h-[6px]"
           >
-            {/* Hover-Position-Indikator (TikTok zeigt eine helle Linie wo
+            {/* Hover-Position-Indikator (Short-Video zeigt eine helle Linie wo
                 gerade gehovered wird, vor dem eigentlichen Klick). */}
             {hoverProgress !== null && hoverProgress > progress && (
               <div
@@ -1124,7 +1124,7 @@ export function FeedCard({
       )}
     </article>
 
-    {/* Action-Rail (TikTok-Style — außerhalb der Card, nicht overlaid).
+    {/* Action-Rail (Short-Video-Style — außerhalb der Card, nicht overlaid).
         Größen-Skala bleibt wie zuvor (Avatar 56, Like/Comment/Bookmark 48,
         Share 44, Mute 40). Styles sind aber theme-aware: bg-foreground/10
         statt bg-white/10, text-foreground statt text-white. So passt der
@@ -1133,7 +1133,7 @@ export function FeedCard({
         damit der Avatar visuell vom Rail-Hintergrund abgesetzt ist (nicht
         auf einer dunklen Video-Letterbox wie zuvor). */}
     <aside className="pointer-events-auto flex shrink-0 flex-col items-center gap-5 pb-2 text-foreground">
-      {/* Avatar mit optionalem Follow-Plus (TikTok-Signature-Slot). */}
+      {/* Avatar mit optionalem Follow-Plus (Short-Video-Signature-Slot). */}
       <Link
         href={`/u/${post.author.username}` as Route}
         className="relative rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
@@ -1384,7 +1384,7 @@ export function FeedCard({
 }
 
 // -----------------------------------------------------------------------------
-// MoreMenuItem — Eintrag im 3-Punkte-Dropdown (TikTok-Style).
+// MoreMenuItem — Eintrag im 3-Punkte-Dropdown (Short-Video-Style).
 // Aktuell sind die meisten Items Stubs (Qualität, Untertitel, Kein Interesse,
 // Melden) — nur das visuelle Pattern ist da. Echte Implementierung kommt in
 // späteren Slices wenn die Backend-Endpunkte (z.B. report_post RPC) bereit

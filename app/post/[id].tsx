@@ -101,7 +101,7 @@ function FloatingHeart({ x, y, onDone }: { x: number; y: number; onDone: () => v
   );
 }
 
-// ─── Comment Input Bar (TikTok-Style) ───────────────────────────────────────
+// ─── Comment Input Bar (Short-Video-Style) ───────────────────────────────────────
 const COMMENT_BAR_H = 58;
 
 function CommentInputBar({
@@ -287,7 +287,7 @@ export default function PostDetailScreen() {
   const [restartSignal, setRestartSignal] = useState(0);
   const focusPlaybackRef = useRef({ mediaUrl: '', focused: false });
 
-  // ── TikTok-Style: Finger-folgendes Profil-Panel (identisch zu Vibes-Feed) ──
+  // ── Short-Video-Style: Finger-folgendes Profil-Panel (identisch zu Vibes-Feed) ──
   const SCREEN_W = Dimensions.get('window').width;
   const profileSlideX = useRef(new RNAnimated.Value(SCREEN_W)).current;
   const [profilePanel, setProfilePanel] = useState<{ authorId: string } | null>(null);
@@ -677,7 +677,7 @@ export default function PostDetailScreen() {
           />
         ))}
 
-        {/* 6. MUTE-FLASH — kurzes visuelles Feedback beim Tap (wie TikTok/Instagram) */}
+        {/* 6. MUTE-FLASH — kurzes visuelles Feedback beim Tap (wie Short-Video/Foto-Feed) */}
         {showMuteFlash !== null && (
           <View style={tapFeedbackStyles.muteFlash} pointerEvents="none">
             {showMuteFlash === 'muted'
@@ -790,7 +790,7 @@ export default function PostDetailScreen() {
             <Text style={styles.caption}>{displayCaption}</Text>
           ) : null}
 
-          {/* Musik-Badge (TikTok-Style rollender Text) */}
+          {/* Musik-Badge (Short-Video-Style rollender Text) */}
           {post?.audio_url && (
             <Pressable
               onPress={() => setIsMuted(m => !m)}
@@ -835,7 +835,7 @@ export default function PostDetailScreen() {
         )}
       </View>
 
-      {/* TikTok-Style Kommentar-Eingabeleiste */}
+      {/* Short-Video-Style Kommentar-Eingabeleiste */}
       {post && (
         <CommentInputBar
           postId={post.id}
@@ -845,7 +845,7 @@ export default function PostDetailScreen() {
         />
       )}
 
-      {/* TikTok-Style Profil-Panel — erscheint beim Linksswipe über den Post */}
+      {/* Short-Video-Style Profil-Panel — erscheint beim Linksswipe über den Post */}
       {profilePanel && (
         <RNAnimated.View
           style={[

@@ -75,7 +75,7 @@ import { useGiftStream,useTopGifters } from '@/lib/useGifts';
 import { useLiveShopping } from '@/lib/useLiveShopping';
 import { useLiveWelcome } from '@/lib/useLiveWelcome';
 import { useQueryClient } from '@tanstack/react-query';
-// v1.22.2 — Viewer-Seite: gleiche TikTok-Style Top-Zuschauer*innen Sheet wie Host.
+// v1.22.2 — Viewer-Seite: gleiche Short-Video-Style Top-Zuschauer*innen Sheet wie Host.
 import { BattleBar } from '@/components/live/BattleBar';
 import { DuettInviteModal } from '@/components/live/DuettInviteModal';
 import { HostShopSheet } from '@/components/live/HostShopSheet';
@@ -177,7 +177,7 @@ function RemoteVideoView({ hostAvatar, hostId }: { hostAvatar?: string | null; h
         style={StyleSheet.absoluteFill as any}
         objectFit="cover"
       />
-      {/* TikTok-Style "Live pausiert"-Overlay: erscheint wenn Host App wechselt */}
+      {/* Short-Video-Style "Live pausiert"-Overlay: erscheint wenn Host App wechselt */}
       {isCameraMuted && (
         <View style={StyleSheet.absoluteFill}>
           {/* Blurred Avatar als Hintergrund */}
@@ -288,7 +288,7 @@ function GridRemoteTile({ userId, username }: { userId: string; username: string
   );
 }
 
-// ─── TikTok-Style "Live beendet"-Overlay ──────────────────────────────────────
+// ─── Short-Video-Style "Live beendet"-Overlay ──────────────────────────────────────
 function LiveEndedOverlay({
   session,
   isFollowing,
@@ -1414,7 +1414,7 @@ function WatchUIContent({
     [hostUserIdForChat, sessionModIds, topGifterIdSet, canModerate, handleUserSelect, handleModerate],
   );
 
-  // TikTok-Style: Live beendet Overlay
+  // Short-Video-Style: Live beendet Overlay
   if (liveEnded) {
     return (
       <View style={{ flex: 1, backgroundColor: '#000' }}>
@@ -1458,8 +1458,8 @@ function WatchUIContent({
               : isGridMode
                 ? { position: 'absolute', top: 0, left: 0, width: gridTilePct as any, height: gridTilePct as any, overflow: 'hidden', backgroundColor: '#0d0d1a' }
                 : (coHostLayout === 'side-by-side' || coHostLayout === 'battle')
-                  // TikTok-Style: Videos kompakt in oberer Hälfte (13%..55%), Rest frei für Chat/UI
-                  // v1.22.0 (UX): vorher 10%..70% wirkte zu hoch/lang — TikTok Battle sitzt kürzer.
+                  // Short-Video-Style: Videos kompakt in oberer Hälfte (13%..55%), Rest frei für Chat/UI
+                  // v1.22.0 (UX): vorher 10%..70% wirkte zu hoch/lang — Short-Video Battle sitzt kürzer.
                   ? { position: 'absolute', top: '13%', height: '42%', left: 0, width: '50%', overflow: 'hidden', backgroundColor: '#0d0d1a' }
                   : { position: 'absolute', top: 0, left: 0, right: 0, height: '50%', overflow: 'hidden', backgroundColor: '#0d0d1a' }
           }
@@ -1532,8 +1532,8 @@ function WatchUIContent({
           <View
             style={
               (coHostLayout === 'side-by-side' || coHostLayout === 'battle')
-                // TikTok-Style: Videos kompakt in oberer Hälfte (13%..55%), Rest frei für Chat/UI
-                // v1.22.0 (UX): vorher 10%..70% wirkte zu hoch/lang — TikTok Battle sitzt kürzer.
+                // Short-Video-Style: Videos kompakt in oberer Hälfte (13%..55%), Rest frei für Chat/UI
+                // v1.22.0 (UX): vorher 10%..70% wirkte zu hoch/lang — Short-Video Battle sitzt kürzer.
                 ? { position: 'absolute', top: '13%', height: '42%', right: 0, width: '50%', overflow: 'hidden', backgroundColor: '#000' }
                 : { position: 'absolute', bottom: 0, left: 0, right: 0, height: '50%', overflow: 'hidden', backgroundColor: '#000' }
             }
@@ -1673,7 +1673,7 @@ function WatchUIContent({
       ))}
 
 
-      {/* ─── TopBar — v1.22.0 TikTok-Style Kompakt-Layout ─────────────── */}
+      {/* ─── TopBar — v1.22.0 Short-Video-Style Kompakt-Layout ─────────────── */}
       {/* Links: Avatar + (@name / ❤️ likes stacked) + Follow
           Rechts: Guest-Avatars + Viewer-Count + X */}
       <View style={[s.topBar, { paddingTop: insets.top + 10 }]}>
@@ -1699,7 +1699,7 @@ function WatchUIContent({
           </View>
         </View>
 
-        {/* ─ Follow-Pille direkt neben Name (TikTok-Style) ─ */}
+        {/* ─ Follow-Pille direkt neben Name (Short-Video-Style) ─ */}
         {!isOwnProfile && (
           <Pressable
             onPress={toggleFollow}
@@ -1739,7 +1739,7 @@ function WatchUIContent({
             </View>
           )}
 
-          {/* v1.22.1 — Top-Gifter kompakt oben rechts (TikTok-Style) */}
+          {/* v1.22.1 — Top-Gifter kompakt oben rechts (Short-Video-Style) */}
           {topGifters.length > 0 && (
             <TopGifterBadge compact topGifters={topGifters} />
           )}
@@ -1813,7 +1813,7 @@ function WatchUIContent({
       />
 
       {/* 🏆 Top Gifter Badge — v1.22.1: verschoben nach oben rechts in die
-          TopBar (TikTok-parity). Alter bottom-left Block entfernt. */}
+          TopBar (Short-Video-parity). Alter bottom-left Block entfernt. */}
 
       {/* v1.16.0: +125 statt +55 — macht Platz für die neue horizontale
           Action-Row (Heart/Volume/Share/CoHost), die jetzt unten sitzt. */}
@@ -2113,7 +2113,7 @@ function WatchUIContent({
         }
       />
 
-      {/* v1.22.2 — TikTok-Style Top-Zuschauer*innen Sheet (Viewer-Seite).
+      {/* v1.22.2 — Short-Video-Style Top-Zuschauer*innen Sheet (Viewer-Seite).
           Self-CTA "Geschenk senden" öffnet GiftPicker nach Close-Animation.
           v1.22.3 — hostId/hostName für Follower-Badge "❤️ {hostName}". */}
       <ViewerListSheet
@@ -2176,7 +2176,7 @@ function WatchUIContent({
         </Pressable>
       </Modal>
 
-      {/* TikTok-Style User Info Sheet */}
+      {/* Short-Video-Style User Info Sheet */}
       <LiveUserSheet
         userId={selectedUserId}
         onClose={() => setSelectedUserId(null)}
@@ -2190,7 +2190,7 @@ function WatchUIContent({
         }}
       />
 
-      {/* v1.22.x: Host-Shop-Katalog (TikTok-Style Tüte im Chat-Bar) */}
+      {/* v1.22.x: Host-Shop-Katalog (Short-Video-Style Tüte im Chat-Bar) */}
       <HostShopSheet
         visible={shopSheetVisible}
         onClose={() => setShopSheetVisible(false)}
@@ -2710,7 +2710,7 @@ const s = StyleSheet.create({
     gap: 6,
     flex: 1,
   },
-  // v1.22.1 — TikTok-Parity: Avatar + Meta kompakter (42→32)
+  // v1.22.1 — Short-Video-Parity: Avatar + Meta kompakter (42→32)
   avatarRing: {
     borderRadius: 18,
     borderWidth: 1.5,
@@ -2832,7 +2832,7 @@ const s = StyleSheet.create({
     maxHeight: 240, paddingHorizontal: 14, zIndex: 10,
   },
   // v1.16.0 UI-Polish: von vertikalem Rechts-Rail → horizontal über dem Input.
-  // TikTok/IG Live-Pattern: rechts bleibt frei für Grid-Tiles bei Multi-Guest.
+  // Short-Video/Foto-Feed Live-Pattern: rechts bleibt frei für Grid-Tiles bei Multi-Guest.
   rightActions: {
     position: 'absolute',
     left: 0,

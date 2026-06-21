@@ -31,7 +31,7 @@ type Props = {
 };
 
 
-// ─── Story-Bubble (mit optionalem Live-Override — TikTok-Prinzip) ─────────────
+// ─── Story-Bubble (mit optionalem Live-Override — Short-Video-Prinzip) ─────────────
 // Wenn liveSession gesetzt → roter LIVE-Ring statt Story-Ring, Klick → Live
 function StoryBubble({
   group,

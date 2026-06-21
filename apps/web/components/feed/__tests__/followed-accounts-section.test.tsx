@@ -7,7 +7,7 @@ import { FollowedAccountsSection } from '../followed-accounts-section';
 import type { FollowedAccount } from '@/lib/data/feed';
 
 // -----------------------------------------------------------------------------
-// FollowedAccountsSection — v1.w.UI.11 Phase B (TikTok-Parity Sidebar-Section
+// FollowedAccountsSection — v1.w.UI.11 Phase B (Short-Video-Parity Sidebar-Section
 // „Konten, denen ich folge"). Tests fixieren:
 //   - Top-N Rows werden gerendert (Name, @username, Verified-Badge wenn gesetzt)
 //   - Empty-State zeigt Explore-CTA, keine Row

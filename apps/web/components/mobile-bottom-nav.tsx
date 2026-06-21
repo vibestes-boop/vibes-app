@@ -4,7 +4,7 @@
 // MobileBottomNav — 5-Slot-Tab-Bar am unteren Viewport-Rand, nur sichtbar
 // unterhalb `md` (< 768px).
 //
-// Slot-Reihenfolge (TikTok-Parität, v1.w.UI.39):
+// Slot-Reihenfolge (Short-Video-Parität, v1.w.UI.39):
 //   Home | Explore | Create (Center) | Inbox | Profil
 //
 // „Inbox" ersetzt den früheren „Shop"-Slot. Shop bleibt über die FeedSidebar
@@ -14,7 +14,7 @@
 //
 // Unread-Badge: kombiniert Notifs + DMs, aber bewusst clientseitig nach dem
 // ersten Paint. So blockieren Count-RPCs nicht den initialen Root-Layout-Render.
-// Badge erscheint als roter Dot über dem Inbox-Icon (Instagram-Pattern) — keine
+// Badge erscheint als roter Dot über dem Inbox-Icon (Foto-Feed-Pattern) — keine
 // Zahl auf Mobile, zu wenig Platz bei kleinen Icons. Screen-Reader bekommt die
 // Zahl über aria-label.
 //

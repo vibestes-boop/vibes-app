@@ -23,7 +23,7 @@ export const DEFAULT_LOCALE: Locale = 'de';
 export const LOCALE_COOKIE = 'serlo-locale';
 
 // Für den Locale-Switcher in der UI. `native` = Eigenbezeichnung der Sprache
-// (so wie TikTok/Instagram's Locale-Pickers es handhaben — User erkennen
+// (so wie Short-Video/Foto-Feed's Locale-Pickers es handhaben — User erkennen
 // ihre Muttersprache schneller als den deutschen Namen).
 export const LOCALE_LABELS: Record<Locale, { native: string; de: string }> = {
   de: { native: 'Deutsch',     de: 'Deutsch' },

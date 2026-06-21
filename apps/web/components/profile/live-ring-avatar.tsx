@@ -13,11 +13,11 @@ import { cn } from '@/lib/utils';
  * bisherigen `ring-4 ring-background`-Hairline (wie der Profil-Hero ihn
  * vorher inline hatte).
  *
- * D3-Pattern aus UI_AUDIT_WEB: TikTok-Signatur-Farbverlauf (Pink → Rot →
+ * D3-Pattern aus UI_AUDIT_WEB: Short-Video-Signatur-Farbverlauf (Pink → Rot →
  * Amber) auf einem schmalen Ring um den kreisrunden Avatar, Inner-Background
  * in der Site-Theme-Farbe damit der Ring visuell als „Donut" liest und sich
  * nicht mit dem Avatar-Rand überlappt. Das rote „LIVE"-Pill überragt den
- * Avatar am unteren Rand — dieselbe Positionierung wie TikTok/Instagram.
+ * Avatar am unteren Rand — dieselbe Positionierung wie Short-Video/Foto-Feed.
  *
  * Warum kein einfaches `ring-4 ring-pink-500`? Ein solider Ring ist statisch,
  * der Gradient gibt dem Live-Indikator den „Puls/Aufmerksamkeit"-Effekt.
@@ -129,7 +129,7 @@ export function LiveRingAvatar({
         </span>
         {/* LIVE-Badge — unten mittig, überlappt den Ring leicht damit der
             Anker klar „auf" dem Avatar sitzt statt daneben zu schweben.
-            Rote Fill + weiße Typo = TikTok/IG-Signatur. */}
+            Rote Fill + weiße Typo = Short-Video/Foto-Feed-Signatur. */}
         <span
           aria-hidden
           className="pointer-events-none absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2 rounded-md bg-red-600 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white shadow-elevation-2"

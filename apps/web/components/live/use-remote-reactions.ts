@@ -11,7 +11,7 @@ import { createBrowserClient } from '@supabase/ssr';
 // Why: sendLiveReaction (app/actions/live.ts) already fires a broadcast
 // event `reaction` with payload `{ reaction, user_id, ts }`. Until now,
 // nobody subscribed to that on the client — each viewer saw ONLY their
-// OWN floating hearts. The TikTok-parity moment is the confetti-storm of
+// OWN floating hearts. The Short-Video-parity moment is the confetti-storm of
 // hundreds of strangers' reactions floating up in sync.
 //
 // Filters:

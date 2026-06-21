@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 // -----------------------------------------------------------------------------
 // <SettingsRow /> — v1.w.UI.18 D7.
 //
-// Apple-Settings/TikTok-Style flache Listen-Row mit Icon + Label + optionalem
+// Apple-Settings/Short-Video-Style flache Listen-Row mit Icon + Label + optionalem
 // Subtitle + entweder ChevronRight (wenn navigierbar via `href`) oder einem
 // rechten Slot (z.B. ThemeToggle, Locale-Label, Coming-Soon-Badge).
 //
