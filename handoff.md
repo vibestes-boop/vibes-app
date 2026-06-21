@@ -60,6 +60,41 @@
 
 ---
 
+## 1b. Früher in diesem Verlauf (vor dem Create-Flow — wichtig fürs Release)
+
+### App-Store-Einreichung (war für 1.28.0 vorbereitet → gilt jetzt für 1.29.0)
+Der User war kurz vor dem Einreichen von 1.28.0, hat dann aber den neuen Build (1.29.0) gemacht. **Diese ASC-Felder sind bereits gesetzt** und gelten weiter:
+- **Account-Löschung**: existiert in der App (Apple-Pflicht erfüllt).
+- **Datenschutz-Nutzungslabels**: ausgefüllt (Fotos/Videos, Benutzer-ID/Identifikatoren, Diagnose-/Crash-/Nutzungsdaten — je nach Zweck verlinkt).
+- **Altersfreigabe**: auf **16+** gesetzt (vorher 13).
+- **Demo-Account**: angelegt + getestet (E-Mail-Login war kaputt → Account **direkt in Supabase Auth mit Auto-Confirm** erstellt). **Review-Notes + Demo-Login in ASC eingetragen.**
+- **Support-URL**: `https://serlo-web.vercel.app/support` (Seite existiert: `apps/web/app/support/page.tsx`, `SUPPORT_EMAIL = brandwerkx@gmail.com`).
+- **Beschreibung** gefixt.
+- **OFFEN beim Einreichen**: **Export-Compliance** (Antwort: nutzt Verschlüsselung → Standard-HTTPS-Ausnahme → „Ja, qualifiziert für Ausnahme") → dann **„Zur Prüfung hinzufügen"**.
+- ⚠️ **Beim Einreichen von 1.29.0**: neue Version 1.29.0 in ASC anlegen, **Build 285** zuweisen, Export-Compliance, einreichen.
+
+### Serlo-Coin-Umbenennung — ERLEDIGT (nicht mehr „Borz")
+- Coin heißt jetzt offiziell **„Serlo Coin"** (vorher „Borz Coin"). **„Diamanten" → „Einnahmen"** mit **€ im Vordergrund** (User-Wahl). Docs + `CLAUDE.md` aktualisiert.
+- **Asset**: `assets/serlo-coin.png` + `apps/web/public/serlo-coin.png` (512×512, transparent). Shared-Komponenten: `components/ui/CoinIcon.tsx` (Mobile) + `apps/web/components/ui/coin-icon.tsx` (Web) — überall statt 🪙.
+- Web-Coin-Shop „premium" gemacht (Hero-Coin, größere Münzen).
+
+### Web-Fixes (Vercel, alle deployed)
+- **Post-Detailseite Medien zu groß** (`apps/web/app/p/[postId]/page.tsx`): `mediaMaxW` (`max-w-[400px]` portrait / `max-w-[520px]` square) auf Bild-Container + VideoPlayer.
+- **JSON-LD XSS-Schutz** (`apps/web/lib/seo/json-ld.ts`): `safeJsonLd()` escaped `<>&`.
+- **ShareButtons-Hydration** (siehe §1 A).
+- **Support-Seite** `/support` (siehe oben), überall verlinkt.
+- Markennamen (TikTok/Instagram) in Code-Kommentaren neutralisiert (Plagiat-/Penalty-Vorsorge).
+
+### Voll-Sicherheitsanalyse (App+Web+Backend) — Ergebnis: sicher
+- RLS-Abdeckung ~133 Tabellen aktiviert; Geld-RPCs nutzen `auth.uid()`+SECURITY DEFINER+FOR UPDATE; DMs participant-only; Webhooks verifizieren Signatur (Stripe) / Bearer (RevenueCat).
+- **Kritischer Fund + Fix**: `add_test_coins`/`debug_send_gift` waren für `authenticated` offen (Coins minten → Auszahlungsbetrug) → gedroppt (Migration `20260621120000`, §3). notifications-INSERT gehärtet (`20260621121000`). Debug-Screen + 7-Tap-Geste entfernt.
+
+### Domain / E-Mail (Stolperfallen)
+- **`serlo.social` + `serlo.app` sind TOT** (kein DNS/000). **Nur `serlo-web.vercel.app` lebt** (200). Alle Links + ASC-Felder darauf gezeigt. (serlo.ch geplant, wenn verfügbar.)
+- **E-Mail-Versand kaputt** (Supabase SMTP/Resend) → echte User können sich per E-Mail-Link nicht registrieren. Workaround Demo: Account direkt in Supabase Auth + Auto-Confirm. **Offen: SMTP/Resend fixen** (sonst keine E-Mail-Registrierung für echte User).
+
+---
+
 ## 2. Deploy-Workflow (unverändert, nur Runtime jetzt 1.29.0)
 
 ```bash
@@ -135,7 +170,7 @@ npx supabase functions deploy <webhook> --no-verify-jwt
 - **Web baut isoliert** (Vercel): neue Web-Deps mit `cd apps/web && npm run build` prüfen.
 - **`r2-delete` Edge Function:** deployed, aber Source fehlt unter `supabase/functions/` → vor Delete-Änderungen zurückholen.
 - **`SCHEMA.md`** (`supabase/SCHEMA.md`) = Source-of-Truth für reale Spalten. `profiles` hat KEIN `follower_count`.
-- **„Geld seriöser machen"** (Borz→Coins, Diamanten→Einnahmen) — vorgeschlagen, vom User damals dismissed; ggf. wieder aufgreifen.
+- **„Geld seriöser machen"** — diesen Verlauf ERLEDIGT (Borz Coin → **Serlo Coin**, Diamanten → **Einnahmen** mit € im Vordergrund; Asset + CoinIcon-Komponenten überall). Siehe §1b.
 
 ---
 
