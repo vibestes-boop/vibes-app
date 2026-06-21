@@ -76,18 +76,24 @@ export function useGenerateImage() {
       // `error.context.res`. Wir parsen das strukturiert damit die UI
       // code-spezifische Meldungen zeigen kann (Rate-Limit-Warnung etc.).
       if (error) {
-        // Versuche, die strukturierte Edge-Function-Response zu extrahieren
+        // Versuche, die strukturierte Edge-Function-Response zu extrahieren.
+        // WICHTIG (RN): error.context ist ein Response-Objekt → echten Body via
+        // .json()/.text() lesen (NICHT .body, das ist ein Stream). Sonst kommt nur
+        // die generische „Edge Function returned a non-2xx status code"-Meldung durch.
         let code = 'upstream_failed';
         let message = error.message ?? 'Bild-Generierung fehlgeschlagen.';
         try {
-          const ctx = (error as { context?: { body?: string } }).context;
-          if (ctx?.body) {
-            const parsed = JSON.parse(ctx.body) as { error?: { code?: string; message?: string } };
-            if (parsed.error?.code) code = parsed.error.code;
-            if (parsed.error?.message) message = parsed.error.message;
+          const ctx = (error as { context?: any }).context;
+          let parsed: { error?: { code?: string; message?: string } } | null = null;
+          if (ctx && typeof ctx.json === 'function') {
+            parsed = await ctx.json().catch(() => null);
+          } else if (ctx?.body && typeof ctx.body === 'string') {
+            parsed = JSON.parse(ctx.body);
           }
+          if (parsed?.error?.code) code = parsed.error.code;
+          if (parsed?.error?.message) message = parsed.error.message;
         } catch {
-          // Body war kein JSON — fällt auf default message zurück
+          // Body nicht lesbar/JSON — fällt auf default message zurück
         }
         setLastError(message);
         return { ok: false, code, error: message };
