@@ -19,7 +19,7 @@ import * as Haptics from 'expo-haptics';
 import { launchImageLibraryAsync,requestMediaLibraryPermissionsAsync } from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { AlignCenter,ChevronRight,ImageIcon,Music2,Radio,RotateCcw,Sparkles,Timer,Video,X,Zap,ZapOff } from 'lucide-react-native';
+import { AlignCenter,ChevronRight,Crop,FileText,ImageIcon,Music2,Palette,Radio,RotateCcw,Smile,Sparkles,Timer,Type,Video,X,Zap,ZapOff } from 'lucide-react-native';
 import { useCallback,useEffect,useRef,useState } from 'react';
 import {
 Alert,
@@ -592,6 +592,9 @@ export default function CreateCameraScreen() {
       router.push('/live/start' as any);
       return;
     }
+    // Studio-Hub zeigt zwei klare Wege — ein aus Vibe übernommener Text-Modus
+    // würde sonst den Text-Composer über den Hub legen. Zurücksetzen.
+    if (m === 'studio' && captureMode === 'text') setCaptureMode('15s');
     setStudioMode(m);
   };
 
@@ -846,10 +849,38 @@ export default function CreateCameraScreen() {
       <View style={[s.bottom, { paddingBottom: insets.bottom + 12 }]}>
 
         {studioMode === 'studio' ? (
-          /* ── STUDIO MODE: Minimal, professionell ── */
+          /* ── STUDIO HUB: zwei Wege + Format + Editor-Tiefe + Entwürfe ── */
           <View style={s.studioPanel}>
 
-            {/* Vorlagen: Aspect Ratio */}
+            {/* Neu erstellen: Galerie / Text */}
+            <Text style={s.studioSectionLabel}>Neu erstellen</Text>
+            <View style={s.studioCardRow}>
+              <Pressable onPress={openGallery} style={s.studioCard}>
+                <View style={[s.studioCardIcon, { backgroundColor: 'rgba(168,85,247,0.20)' }]}>
+                  <ImageIcon size={21} color="#C9B8F2" strokeWidth={1.8} />
+                </View>
+                <Text style={s.studioCardTitle}>Aus Galerie</Text>
+                <Text style={s.studioCardSub}>Foto · Video · Clip</Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  // Text-Composer ist ein Vibe-Feature → dorthin springen statt duplizieren
+                  setStudioMode('vibe');
+                  setCaptureMode('text');
+                }}
+                style={s.studioCard}
+              >
+                <View style={[s.studioCardIcon, { backgroundColor: 'rgba(34,197,94,0.18)' }]}>
+                  <Type size={21} color="#7CD992" strokeWidth={1.8} />
+                </View>
+                <Text style={s.studioCardTitle}>Text-Post</Text>
+                <Text style={s.studioCardSub}>Hintergrund · Schrift</Text>
+              </Pressable>
+            </View>
+
+            {/* Format */}
+            <Text style={s.studioSectionLabel}>Format</Text>
             <View style={s.studioAspectRow}>
               {ASPECT_PRESETS.map(p => (
                 <Pressable
@@ -867,17 +898,22 @@ export default function CreateCameraScreen() {
               ))}
             </View>
 
-            {/* Galerie CTA */}
-            <Pressable onPress={openGallery} style={s.studioPickBtn}>
-              <ImageIcon size={22} color="rgba(255,255,255,0.85)" strokeWidth={1.5} />
-              <View style={s.studioPickText}>
-                <Text style={s.studioPickTitle}>Medien auswählen</Text>
-                <Text style={s.studioPickSub}>Foto · Video · Clip</Text>
-              </View>
+            {/* Im Editor verfügbar — macht die vorhandene Tiefe sichtbar */}
+            <Text style={s.studioSectionLabel}>Im Editor</Text>
+            <View style={s.studioToolStrip}>
+              <View style={s.studioToolChip}><Crop size={14} color="rgba(255,255,255,0.8)" strokeWidth={2} /><Text style={s.studioToolChipText}>Zuschneiden</Text></View>
+              <View style={s.studioToolChip}><Palette size={14} color="rgba(255,255,255,0.8)" strokeWidth={2} /><Text style={s.studioToolChipText}>Filter</Text></View>
+              <View style={s.studioToolChip}><Type size={14} color="rgba(255,255,255,0.8)" strokeWidth={2} /><Text style={s.studioToolChipText}>Text</Text></View>
+              <View style={s.studioToolChip}><Smile size={14} color="rgba(255,255,255,0.8)" strokeWidth={2} /><Text style={s.studioToolChipText}>Sticker</Text></View>
+              <View style={s.studioToolChip}><ImageIcon size={14} color="rgba(255,255,255,0.8)" strokeWidth={2} /><Text style={s.studioToolChipText}>Cover</Text></View>
+            </View>
+
+            {/* Entwürfe fortsetzen → Cloud-Entwürfe */}
+            <Pressable onPress={() => router.push('/creator/drafts' as any)} style={s.studioDraftsBtn}>
+              <FileText size={18} color="rgba(255,255,255,0.8)" strokeWidth={1.8} />
+              <Text style={s.studioDraftsText}>Entwürfe fortsetzen</Text>
+              <ChevronRight size={18} color="rgba(255,255,255,0.5)" strokeWidth={2} />
             </Pressable>
-            <Text style={s.studioHint}>
-              Wähle aus deiner Galerie — Videos werden automatisch getrimmt
-            </Text>
           </View>
         ) : (
           /* ──────────────── VIBE MODE ──────────────── */
@@ -1196,38 +1232,45 @@ const s = StyleSheet.create({
     paddingBottom: 4,
     gap: 12,
   },
-  studioPickBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    paddingHorizontal: 20,
-    paddingVertical: 18,
-    borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    shadowColor: '#000',
-    shadowOpacity: 0.4,
-    shadowRadius: 10,
-  },
-  studioPickText: { gap: 2 },
-  studioPickTitle: {
-    color: '#fff',
-    fontSize: 15,
-    fontWeight: '700',
-    letterSpacing: 0.1,
-  },
-  studioPickSub: {
-    color: 'rgba(255,255,255,0.4)',
+  studioSectionLabel: {
+    color: 'rgba(255,255,255,0.45)',
     fontSize: 12,
-    fontWeight: '400',
+    fontWeight: '600',
+    marginLeft: 2,
+    marginBottom: -3,
   },
-  studioHint: {
-    color: 'rgba(255,255,255,0.4)',
-    fontSize: 11,
-    textAlign: 'center',
-    lineHeight: 16,
+  studioCardRow: { flexDirection: 'row', gap: 10 },
+  studioCard: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 16,
+    padding: 14,
   },
+  studioCardIcon: {
+    width: 42, height: 42, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+    marginBottom: 10,
+  },
+  studioCardTitle: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  studioCardSub: { color: 'rgba(255,255,255,0.45)', fontSize: 11.5, marginTop: 2 },
+  studioToolStrip: { flexDirection: 'row', flexWrap: 'wrap', gap: 7 },
+  studioToolChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderRadius: 999,
+    paddingVertical: 7, paddingHorizontal: 11,
+  },
+  studioToolChipText: { color: 'rgba(255,255,255,0.8)', fontSize: 11.5, fontWeight: '500' },
+  studioDraftsBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 14,
+    paddingVertical: 12, paddingHorizontal: 14,
+  },
+  studioDraftsText: { flex: 1, color: '#fff', fontSize: 13.5, fontWeight: '600' },
 
   // Aspect Ratio Vorlagen
   studioAspectRow: {
