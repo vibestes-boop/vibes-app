@@ -502,8 +502,11 @@ export default async function PostDetailPage({
 
         // Image-Container: aspect abhängig vom Format
         const imageAspectClass = isLandscape ? 'aspect-video' : isSquare ? 'aspect-square' : 'aspect-[9/16]';
+        // Hochformat/Quadrat auf breiten Screens begrenzen — sonst wird die Höhe
+        // (= Spaltenbreite × Seitenverhältnis) riesig (z.B. 9/16 auf 880px ≈ 1560px).
+        const mediaMaxW = isLandscape ? '' : isSquare ? 'max-w-[520px]' : 'max-w-[400px]';
         const mediaBlock = isImage ? (
-          <div className={`relative overflow-hidden rounded-lg bg-black ${imageAspectClass}`}>
+          <div className={`relative mx-auto w-full overflow-hidden rounded-lg bg-black ${imageAspectClass} ${mediaMaxW}`}>
             {post.video_url ? (
               /* eslint-disable-next-line @next/next/no-img-element */
               <img
@@ -533,6 +536,7 @@ export default async function PostDetailPage({
             loop={false}
             muted={false}
             aspect={videoAspect}
+            className={`mx-auto w-full ${mediaMaxW}`}
           />
         );
 
