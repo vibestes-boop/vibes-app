@@ -52,11 +52,15 @@ export async function bakeImageEdits(
       paint.setColorFilter(Skia.ColorFilter.MakeMatrix(skia20));
     }
 
+    const src = Skia.XYWHRect(0, 0, w, h);
+    const dst = Skia.XYWHRect(-w / 2, -h / 2, w, h);
     canvas.save();
     canvas.translate(outW / 2, outH / 2);
     if (rot !== 0) canvas.rotate(rot, 0, 0);
     if (edits.flipH) canvas.scale(-1, 1);
-    canvas.drawImage(img, -w / 2, -h / 2, paint);
+    // drawImageRect (das der Crop nachweislich nutzt) statt drawImage — das
+    // einfache drawImage wendete den ColorFilter nicht an (Drehen ging, Filter nicht).
+    canvas.drawImageRect(img, src, dst, paint);
     canvas.restore();
     surface.flush();
 
