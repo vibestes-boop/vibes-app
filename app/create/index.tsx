@@ -67,7 +67,6 @@ import {
   Image as CoverIcon,
   Music2,
   Palette,
-  Pencil,
   RotateCw,
   Scissors,
   Settings2,
@@ -645,11 +644,7 @@ export default function CreatePostScreen() {
           <Text style={s.sideLabel}>Filter</Text>
         </Pressable>
 
-        <Pressable style={[s.sideBtn, isDrawMode && s.sideBtnActive]} onPress={() => setIsDrawMode(d => !d)}>
-          <Pencil size={26} color="#fff" strokeWidth={1.8} />
-          {drawnPaths.length > 0 && <View style={s.sideBtnDot} />}
-          <Text style={s.sideLabel}>Zeichnen</Text>
-        </Pressable>
+        {/* Zeichnen-Button entfernt (funktionierte nicht) — Draw-Code bleibt dormant für später */}
 
         <Pressable style={[s.sideBtn, (adjustValues.brightness !== 0 || adjustValues.contrast !== 0 || adjustValues.saturation !== 0) && s.sideBtnActive]} onPress={() => setShowAdjustSheet(true)}>
           <SlidersHorizontal size={26} color="#fff" strokeWidth={1.8} />
