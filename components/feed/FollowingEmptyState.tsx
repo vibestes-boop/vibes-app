@@ -23,11 +23,11 @@ import { useCallback } from 'react';
 import {
 ActivityIndicator,
 Pressable,
-ScrollView,
 StyleSheet,
 Text,
 View,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Feste Palette für den immer-schwarzen Feed-Hintergrund (theme-unabhängig).
 const FEED = {
@@ -133,9 +133,11 @@ interface Props {
 
 export function FollowingEmptyState({ onExplore }: Props) {
   const { data: suggestions = [], isLoading } = useDiscoverPeople();
+  const insets = useSafeAreaInsets();
 
   return (
-    <View style={[s.root, { backgroundColor: 'transparent' }]}>
+    // paddingTop räumt unter die absolute Feed-Kopfleiste (Toggle bei insets.top, 52px hoch)
+    <View style={[s.root, { backgroundColor: 'transparent', paddingTop: insets.top + 64 }]}>
       {/* ── Illustration + Title ─── */}
       <View style={s.hero}>
         <View style={[s.iconRing, { backgroundColor: FEED.surface, borderColor: FEED.border }]}>
@@ -162,15 +164,13 @@ export function FollowingEmptyState({ onExplore }: Props) {
             Keine Empfehlungen verfügbar — schau im Explore-Tab vorbei.
           </Text>
         ) : (
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            style={{ maxHeight: 340 }}
-            contentContainerStyle={{ gap: 8 }}
-          >
+          // Karten fließen inline — der äußere ScrollView (Feed) scrollt; keine
+          // innere maxHeight-Begrenzung mehr (vorher nur ~2 User sichtbar).
+          <View style={{ gap: 8 }}>
             {suggestions.slice(0, 6).map((u) => (
               <SuggestedUserCard key={u.id} user={u} />
             ))}
-          </ScrollView>
+          </View>
         )}
       </View>
 
@@ -189,9 +189,7 @@ export function FollowingEmptyState({ onExplore }: Props) {
 // ─── Styles ──────────────────────────────────────────────────────────────────
 const s = StyleSheet.create({
   root: {
-    flex: 1,
     paddingHorizontal: 20,
-    paddingTop: 40,
     paddingBottom: 32,
   },
   hero: {
