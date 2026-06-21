@@ -15,14 +15,14 @@
 | Bereich | Stand |
 |---|---|
 | **Repo / Branch** | `/Users/zaurhatuev/vibes-app` · `main` (Push-Remote: `vibestes-boop/vibes-app`) |
-| **Letzter Commit** | `9b6a766` (gepusht) |
-| **Letzte Mobile-OTA** | `97ad0e6c` — **Runtime 1.29.0** (branch `production`) |
+| **Letzter Commit** | `68c7c72` (gepusht) |
+| **Letzte Mobile-OTA** | `68c7c72` — **Runtime 1.29.0** (branch `production`, Group `82fe358a`) |
 | **Mobile-Build** | **v1.29.0 / iOS-Build 285 (versionCode 46) → in TestFlight** (vom User gebaut). **NICHT im App Store released!** Alle OTAs dieser Session zielen auf **Runtime 1.29.0** (nur dieser Build hat sie). |
 | **NEU nativ in 1.29.0** | `react-native-view-shot@4.0.3` (für Compositing/Text-Modus) → deshalb der neue Build. |
 | **Web (apps/web)** | deployt via **Vercel** auf Push zu `main` (`serlo-web.vercel.app`) |
-| **DB-Migrationen** | 3 dieser Session **angewandt** (§3); 1 für laufendes Feature **noch zu schreiben** (§4 „B") |
+| **DB-Migrationen** | 4 dieser Session **angewandt** (§3) — zuletzt `followers_only` |
 | **EAS project id** | `02ab536a-5836-4560-a5ec-2dfd6e059f90` · **iOS bundle** `com.vibesapp.vibes` · EAS-Account `zaurhat` |
-| **GERADE IN ARBEIT** | **„Nur Follower"-Zuschauen** (Live-Publikum) — investigiert, **noch nicht gebaut** (§4 „B" = sofort fortsetzbar) |
+| **GERADE IN ARBEIT** | — (zuletzt: **„Nur Follower"-Zuschauen** komplett gebaut + ausgeliefert, §4 „B") |
 
 ⚠️ **Quarantäne:** Alter Checkout `/Users/zaurhatuev/Desktop/vibes-app` — NIEMALS bauen/deployen/pushen.
 
@@ -131,22 +131,20 @@ npx supabase functions deploy <webhook> --no-verify-jwt
 - `20260621120000_drop_debug_coin_backdoors.sql` ✅
 - `20260621121000_harden_notifications_insert.sql` ✅
 - `20260621130000_fix_comments_insert_policy_spoofing.sql` ✅
+- `20260621140000_live_followers_only_audience.sql` ✅ (Spalte `live_sessions.followers_only` + Partial-Index)
 
 ---
 
 ## 4. OFFENE PUNKTE / Nächste Schritte
 
-### B) ⭐ GERADE IN ARBEIT: „Nur Follower"-Zuschauen (Live-Publikum-Picker)
-**Ziel:** Live kann auf „nur Follower" gestellt werden → nur Follower des Hosts bekommen ein LiveKit-Token (Nicht-Follower auch per Direktlink draußen).
-**Investigation-Ergebnisse (bereit umzusetzen):**
-1. **Migration nötig:** `live_sessions` Spalte **`followers_only boolean default false`** (analog `women_only`). *(Noch NICHT geschrieben.)*
-2. **Durchsetzung** in `supabase/functions/livekit-token/index.ts`: Function bekommt `{ roomName, isHost, isCoHost }` + `userId` aus JWT. Für **Viewer** (nicht Host, nicht CoHost) ergänzen: Session per `room_name`+`status=active` holen → `select=host_id,followers_only`. Wenn `followers_only===true`: in **`follows`** prüfen `follower_id=eq.{userId}&following_id=eq.{host_id}&limit=1`; wenn leer → **403** (kein Token). Vorlage: die bestehenden Host/CoHost-403-Blöcke (Zeilen ~121–186).
-   - `follows`-Spalten: `id, follower_id, following_id, created_at`.
-   - Function nutzt `serviceRoleKey` für REST-Reads (RLS-bypass) — Follow-Check genauso.
-3. **Client `lib/useLiveSession.ts`:** `startSession`-options + insert um `followers_only` erweitern (genau wie diese Session `category` ergänzt wurde — Zeilen ~340 options-Typ + ~371 insert).
-4. **Client `app/live/start.tsx`:** „Wer kann zuschauen"-Zeile (aktuell **toter** Pressable, nur Deko) zu echtem Picker machen: Öffentlich / Nur Follower / Nur Frauen (mutually exclusive; Nur Frauen = bestehendes `womenOnly`, nur wenn `canAccessWomenOnly`). `followers_only` an `startSession` durchreichen.
-5. **Viewer-Seite `app/live/watch/[id].tsx`:** 403 beim Token-Fetch sauber abfangen → freundlicher „Nur für Follower 🙂 — folge zuerst"-Screen statt Crash.
-6. Deploy: `supabase functions deploy livekit-token` + Migration (User) + OTA.
+### B) ✅ ERLEDIGT + AUSGELIEFERT: „Nur Follower"-Zuschauen (Live-Publikum-Picker)
+**Ziel erreicht:** Live kann auf „nur Follower" gestellt werden → nur Follower des Hosts bekommen ein LiveKit-Token (Nicht-Follower auch per Direktlink draußen). Commit `68c7c72`, OTA Group `82fe358a`.
+- [x] **Migration** `20260621140000_live_followers_only_audience.sql` ✅ — Spalte `live_sessions.followers_only boolean default false` + Partial-Index. ⚠️ **NICHT verwechseln** mit dem bereits existierenden `followers_only_chat` (steuert nur Chat-Schreibrecht); `followers_only` steuert das **Zuschauen** (im COMMENT dokumentiert).
+- [x] **Durchsetzung** `supabase/functions/livekit-token/index.ts` (deployed): neuer **SEC-3-Block** nach Host/CoHost-Gates. Pure Viewer (`!isHost && !coHostApproved`): Session per `room_name`+`status=active` → `select=host_id,followers_only`. Wenn `followers_only===true` und nicht der Host selbst: `follows`-Check (`follower_id`/`following_id`); kein Treffer → **403** `{ error:'followers_only', message:… }`. **Rein additiv** — blockt nur im followers_only-Fall, öffentliches Verhalten unverändert.
+- [x] **Client `lib/useLiveSession.ts`:** `LiveSession`-Type + `startSession`-Option (`followersOnly`) + Insert um `followers_only` erweitert.
+- [x] **Client `app/live/start.tsx`:** toter „Wer kann zuschauen"-Pressable → echter Chip-Picker **🌍 Öffentlich / 👥 Nur Follower / 🌸 Nur Frauen** (mutually exclusive via `audience`/`setAudience`; „Nur Frauen" nur bei `canAccessWomenOnly`). Women-Only-Switch in den Picker integriert, `ChevronRight`-Import entfernt.
+- [x] **Viewer-Seite `app/live/watch/[id].tsx`:** 403 am Token-Catch erkannt (`msg.includes('followers_only')`) → `followersBlocked`-State → freundlicher **„🔒 Nur für Follower"**-Screen mit „Folgen & reinkommen"-Button (folgt via `useFollow` → Token mit 3×-Retry neu holen, weil follows-INSERT einen Moment braucht).
+- ⚠️ **Bewusste Scope-Grenze:** **Geplante Lives** (`submitSchedule` → `scheduleLive`) reichen `followers_only` **NICHT** durch — identisch zu `category` (dort ebenfalls offen). Wer „Nur Follower" + „Planen" wählt, verliert die Einstellung still. Nachziehen = Spalte in `scheduled_lives` + Durchreichen im Plan-Flow.
 
 ### Weitere offene Punkte
 1. **1.29.0 in App Store releasen** — Build nur in TestFlight. User wollte erst „viele UI-Baustellen" fixen (Create-Flow + Live = erledigt; ggf. mehr). Vor Einreichen: Export-Compliance + „Zur Prüfung hinzufügen". Demo-Account + Review-Notes lagen für 1.28.0 schon bereit.
