@@ -53,6 +53,7 @@ import {
 import { useAuthStore } from '@/lib/authStore';
 import type { ColorFilterId } from '@/lib/cameraFilters';
 import { supabase } from '@/lib/supabase';
+import { bakeImageEdits } from '@/lib/bakeImageEdits';
 import { generateAndUploadThumbnail,uploadPostMedia } from '@/lib/uploadMedia';
 import { useDrafts } from '@/lib/useDrafts';
 import type { MusicTrack } from '@/lib/useMusicPicker';
@@ -221,7 +222,19 @@ export default function CreatePostScreen() {
     const isVideo = mt === 'video';
     setUploading(true); setUploadPct(0);
     try {
-      const { url } = await uploadPostMedia(profile.id, image.uri, image.mimeType, (pct) => setUploadPct(pct), signal);
+      // Filter + Drehen/Spiegeln vor dem Upload ins Bild einbrennen (nur Bilder).
+      // bakeImageEdits ist defensiv: null bei Fehler → rohes Bild hochladen (kein Regress).
+      let uploadUri = image.uri;
+      let uploadMime = image.mimeType;
+      if (!isVideo) {
+        const baked = await bakeImageEdits(image.uri, {
+          filterId: activeFilter,
+          rotation: rotateState.rotation,
+          flipH: rotateState.flipH,
+        });
+        if (baked) { uploadUri = baked; uploadMime = 'image/jpeg'; }
+      }
+      const { url } = await uploadPostMedia(profile.id, uploadUri, uploadMime, (pct) => setUploadPct(pct), signal);
       let thumbnailUrl: string | null = null;
       if (isVideo) thumbnailUrl = await generateAndUploadThumbnail(profile.id, image.uri, signal, coverTimeMs);
       uploadedMediaRef.current = { url, thumbnailUrl };
@@ -229,7 +242,7 @@ export default function CreatePostScreen() {
     } finally {
       setUploading(false); setUploadPct(0);
     }
-  }, [profile, image, coverTimeMs]);
+  }, [profile, image, coverTimeMs, activeFilter, rotateState]);
 
   const addTextOverlay = (overlay: Omit<TextOverlay,'id'|'x'|'y'>) => {
     setTextOverlays(prev => [...prev, {
