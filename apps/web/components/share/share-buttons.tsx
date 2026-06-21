@@ -32,12 +32,15 @@ export function ShareButtons({
   const [dmOpen, setDmOpen] = useState(false);
 
   // Absolute URL aus relativem Input bauen (relative lässt native Share-Sheet
-  // auf einigen Plattformen fallen).
+  // auf einigen Plattformen fallen — und ein relativer wa.me/-Link ist tot).
+  // WICHTIG: deterministisch aus NEXT_PUBLIC_SITE_URL (wird zur Build-Zeit
+  // inline-ersetzt → identisch auf Server UND Client). Früher via
+  // window.location.origin → nur clientseitig → Hydration-Mismatch + der
+  // SSR-gerenderte Share-Link war relativ/kaputt.
+  const siteBase = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://serlo-web.vercel.app').replace(/\/$/, '');
   const absoluteUrl = url.startsWith('http')
     ? url
-    : typeof window !== 'undefined'
-      ? new URL(url, window.location.origin).toString()
-      : url;
+    : `${siteBase}${url.startsWith('/') ? '' : '/'}${url}`;
 
   const onCopy = async () => {
     try {
