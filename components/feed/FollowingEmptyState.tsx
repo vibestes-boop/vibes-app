@@ -4,10 +4,16 @@
  * Angezeigt wenn "Folge ich"-Feed leer ist.
  * Zeigt User-Empfehlungen mit Follow-Buttons direkt —
  * sodass der User ohne Tab-Wechsel jemanden folgen kann.
+ *
+ * ⚠️ Der Feed-Hintergrund ist IMMER schwarz (#000, TikTok-Stil — siehe
+ * feedStyles.container) unabhängig vom App-Theme. Darum nutzt dieser
+ * Empty-State eine FESTE Hell-auf-Dunkel-Palette (FEED) statt useTheme():
+ * im Light Mode war der Titel sonst dunkel auf Schwarz → unlesbar, und der
+ * Explore-Button verschwand komplett. Werte spiegeln die Feed-Overlay-
+ * Konvention (#FFFFFF / rgba(255,255,255,…)).
  */
 import { useDiscoverPeople,type DiscoverUser } from '@/lib/useDiscoverPeople';
 import { useFollow } from '@/lib/useFollow';
-import { useTheme } from '@/lib/useTheme';
 import { useQueryClient } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
@@ -23,10 +29,23 @@ Text,
 View,
 } from 'react-native';
 
+// Feste Palette für den immer-schwarzen Feed-Hintergrund (theme-unabhängig).
+const FEED = {
+  textPrimary:   '#FFFFFF',
+  textSecondary: 'rgba(255,255,255,0.75)',
+  textMuted:     'rgba(255,255,255,0.55)',
+  surface:       'rgba(255,255,255,0.08)',
+  surfaceStrong: 'rgba(255,255,255,0.14)',
+  border:        'rgba(255,255,255,0.12)',
+  borderStrong:  'rgba(255,255,255,0.22)',
+  ctaBg:         '#FFFFFF',
+  ctaText:       '#0A0A0A',
+  icon:          'rgba(255,255,255,0.85)',
+} as const;
+
 // ── Einzelne User-Karte ───────────────────────────────────────────────────────
 function SuggestedUserCard({ user }: { user: DiscoverUser }) {
   const router = useRouter();
-  const { colors } = useTheme();
   const queryClient = useQueryClient();
   const { isFollowing, toggle, isLoading } = useFollow(user.id);
 
@@ -48,7 +67,7 @@ function SuggestedUserCard({ user }: { user: DiscoverUser }) {
   };
 
   return (
-    <View style={[card.wrap, { backgroundColor: colors.bg.elevated, borderColor: colors.border.default }]}>
+    <View style={[card.wrap, { backgroundColor: FEED.surface, borderColor: FEED.border }]}>
       {/* Avatar */}
       <Pressable
         onPress={() => router.push({ pathname: '/user/[id]', params: { id: user.id } })}
@@ -57,8 +76,8 @@ function SuggestedUserCard({ user }: { user: DiscoverUser }) {
         {user.avatar_url ? (
           <Image source={{ uri: user.avatar_url }} style={StyleSheet.absoluteFill} contentFit="cover" />
         ) : (
-          <View style={[StyleSheet.absoluteFill, card.avatarFallback, { backgroundColor: colors.bg.subtle }]}>
-            <Text style={[card.avatarInitials, { color: colors.text.secondary }]}>{initials}</Text>
+          <View style={[StyleSheet.absoluteFill, card.avatarFallback, { backgroundColor: FEED.surfaceStrong }]}>
+            <Text style={[card.avatarInitials, { color: FEED.textSecondary }]}>{initials}</Text>
           </View>
         )}
       </Pressable>
@@ -68,11 +87,11 @@ function SuggestedUserCard({ user }: { user: DiscoverUser }) {
         style={card.info}
         onPress={() => router.push({ pathname: '/user/[id]', params: { id: user.id } })}
       >
-        <Text style={[card.username, { color: colors.text.primary }]} numberOfLines={1}>
+        <Text style={[card.username, { color: FEED.textPrimary }]} numberOfLines={1}>
           @{user.username}
         </Text>
-        <View style={[card.reasonPill, { backgroundColor: colors.bg.subtle }]}>
-          <Text style={[card.reasonText, { color: colors.text.muted }]}>
+        <View style={[card.reasonPill, { backgroundColor: FEED.surfaceStrong }]}>
+          <Text style={[card.reasonText, { color: FEED.textMuted }]}>
             {reasonLabel[user.reason]}
           </Text>
         </View>
@@ -85,21 +104,21 @@ function SuggestedUserCard({ user }: { user: DiscoverUser }) {
         style={[
           card.followBtn,
           isFollowing
-            ? { backgroundColor: colors.bg.subtle, borderWidth: 1, borderColor: colors.border.strong }
-            : { backgroundColor: colors.text.primary },
+            ? { backgroundColor: FEED.surfaceStrong, borderWidth: 1, borderColor: FEED.borderStrong }
+            : { backgroundColor: FEED.ctaBg },
         ]}
       >
         {isLoading ? (
-          <ActivityIndicator size="small" color={isFollowing ? colors.text.primary : colors.bg.primary} />
+          <ActivityIndicator size="small" color={isFollowing ? FEED.textPrimary : FEED.ctaText} />
         ) : isFollowing ? (
           <>
-            <CheckCircle2 size={12} color={colors.text.secondary} strokeWidth={2.5} />
-            <Text style={[card.followBtnText, { color: colors.text.secondary, fontSize: 11 }]}>Folgst du</Text>
+            <CheckCircle2 size={12} color={FEED.textSecondary} strokeWidth={2.5} />
+            <Text style={[card.followBtnText, { color: FEED.textSecondary, fontSize: 11 }]}>Folgst du</Text>
           </>
         ) : (
           <>
-            <UserPlus size={12} color={colors.bg.primary} strokeWidth={2.5} />
-            <Text style={[card.followBtnText, { color: colors.bg.primary }]}>Folgen</Text>
+            <UserPlus size={12} color={FEED.ctaText} strokeWidth={2.5} />
+            <Text style={[card.followBtnText, { color: FEED.ctaText }]}>Folgen</Text>
           </>
         )}
       </Pressable>
@@ -113,34 +132,33 @@ interface Props {
 }
 
 export function FollowingEmptyState({ onExplore }: Props) {
-  const { colors } = useTheme();
   const { data: suggestions = [], isLoading } = useDiscoverPeople();
 
   return (
     <View style={[s.root, { backgroundColor: 'transparent' }]}>
       {/* ── Illustration + Title ─── */}
       <View style={s.hero}>
-        <View style={[s.iconRing, { backgroundColor: colors.bg.elevated, borderColor: colors.border.default }]}>
-          <Users size={32} color={colors.icon.default} strokeWidth={1.5} />
+        <View style={[s.iconRing, { backgroundColor: FEED.surface, borderColor: FEED.border }]}>
+          <Users size={32} color={FEED.icon} strokeWidth={1.5} />
         </View>
-        <Text style={[s.title, { color: colors.text.primary }]}>Folge interessanten Leuten</Text>
-        <Text style={[s.sub, { color: colors.text.muted }]}>
+        <Text style={[s.title, { color: FEED.textPrimary }]}>Folge interessanten Leuten</Text>
+        <Text style={[s.sub, { color: FEED.textMuted }]}>
           Ihre neuesten Posts erscheinen{'\n'}hier chronologisch — kein Algorithmus.
         </Text>
       </View>
 
       {/* ── User-Empfehlungen ─────── */}
       <View style={s.section}>
-        <Text style={[s.sectionLabel, { color: colors.text.muted }]}>
+        <Text style={[s.sectionLabel, { color: FEED.textMuted }]}>
           Empfehlungen für dich
         </Text>
 
         {isLoading ? (
           <View style={s.loadingWrap}>
-            <ActivityIndicator color={colors.icon.muted} />
+            <ActivityIndicator color={FEED.textMuted} />
           </View>
         ) : suggestions.length === 0 ? (
-          <Text style={[s.noSuggestions, { color: colors.text.muted }]}>
+          <Text style={[s.noSuggestions, { color: FEED.textMuted }]}>
             Keine Empfehlungen verfügbar — schau im Explore-Tab vorbei.
           </Text>
         ) : (
@@ -159,10 +177,10 @@ export function FollowingEmptyState({ onExplore }: Props) {
       {/* ── Explore CTA ──────────── */}
       <Pressable
         onPress={onExplore}
-        style={[s.exploreBtn, { borderColor: colors.border.strong }]}
+        style={[s.exploreBtn, { borderColor: FEED.borderStrong }]}
       >
-        <Compass size={16} color={colors.text.secondary} strokeWidth={2} />
-        <Text style={[s.exploreBtnText, { color: colors.text.secondary }]}>Mehr im Explore-Tab entdecken</Text>
+        <Compass size={16} color={FEED.textSecondary} strokeWidth={2} />
+        <Text style={[s.exploreBtnText, { color: FEED.textSecondary }]}>Mehr im Explore-Tab entdecken</Text>
       </Pressable>
     </View>
   );
