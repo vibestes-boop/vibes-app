@@ -1,6 +1,6 @@
 import { setStringAsync as clipboardSetString } from 'expo-clipboard';
-import { AtSign,Copy,Flag,Heart,Send,Trash2,Video,X } from 'lucide-react-native';
-import { memo,useCallback,useEffect,useRef,useState } from 'react';
+import { AtSign,ChevronDown,Copy,Flag,Heart,ListFilter,Send,Trash2,Video,X } from 'lucide-react-native';
+import { memo,useCallback,useEffect,useMemo,useRef,useState } from 'react';
 import {
 ActivityIndicator,
 Alert,
@@ -330,6 +330,22 @@ function SheetInner({
   const [actionSheetComment, setActionSheetComment] = useState<Comment | null>(null);
   const [replyTo, setReplyTo] = useState<{ id: string; username: string } | null>(null);
 
+  // Replies-Expand zentral hier halten (statt lokal pro Row) → eine frische Antwort
+  // klappt den Strang sofort auf, ohne Reload.
+  const [expandedReplies, setExpandedReplies] = useState<Set<string>>(() => new Set());
+  const toggleReplies = useCallback((commentId: string) => {
+    setExpandedReplies((prev) => {
+      const next = new Set(prev);
+      if (next.has(commentId)) next.delete(commentId);
+      else next.add(commentId);
+      return next;
+    });
+  }, []);
+
+  // ── Sortierung/Filter (TikTok-Stil) ──────────────────────────────────────
+  const [sortMode, setSortMode] = useState<'neueste' | 'top' | 'creator'>('neueste');
+  const [sortMenuOpen, setSortMenuOpen] = useState(false);
+
   // ── @Mention Autocomplete ──────────────────────────────────
   const [, setMentionQuery] = useState<string | null>(null);
   const mentionDebounced = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -346,15 +362,18 @@ function SheetInner({
   const handleSend = useCallback(() => {
     const trimmed = text.trim();
     if (!trimmed || addComment.isPending) return;
-    const wasReply = !!replyTo;
+    const parentId = replyTo?.id;
+    const wasReply = !!parentId;
     setText('');
     setReplyTo(null);
     setMentionQuery(null);
     setDebouncedMention(null);
     Keyboard.dismiss();
     const tempId = `temp-${Date.now()}`;
+    // Bei einer Antwort den Strang sofort aufklappen → die neue Antwort ist direkt sichtbar.
+    if (parentId) setExpandedReplies((prev) => new Set(prev).add(parentId));
     addComment.mutate(
-      { text: trimmed, tempId, parentId: replyTo?.id },
+      { text: trimmed, tempId, parentId },
       {
         onSuccess: (newComment) => {
           Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -369,12 +388,12 @@ function SheetInner({
         onError: () => setText(trimmed),
       }
     );
-  }, [text, addComment, replyTo?.id, replyTo]);
+  }, [text, addComment, replyTo]);
 
-  const handleDelete = useCallback((commentId: string) => {
+  const handleDelete = useCallback((comment: Comment) => {
     Alert.alert('Kommentar löschen', 'Möchtest du diesen Kommentar wirklich löschen?', [
       { text: 'Abbrechen', style: 'cancel' },
-      { text: 'Löschen', style: 'destructive', onPress: () => deleteComment.mutate(commentId) },
+      { text: 'Löschen', style: 'destructive', onPress: () => deleteComment.mutate({ commentId: comment.id, parentId: comment.parent_id }) },
     ]);
   }, [deleteComment]);
 
@@ -458,10 +477,39 @@ function SheetInner({
         isHighlighted={item.id === lastSentId}
         onUserPress={onUserPress}
         onTopLevelLike={handleTopLevelLike}
+        isRepliesExpanded={expandedReplies.has(item.id)}
+        onToggleReplies={toggleReplies}
       />
     ),
-    [postId, profile?.id, handleDelete, handleReplyTo, handleLongPressComment, lastSentId, onUserPress, handleTopLevelLike],
+    [postId, profile?.id, handleDelete, handleReplyTo, handleLongPressComment, lastSentId, onUserPress, handleTopLevelLike, expandedReplies, toggleReplies],
   );
+
+  // Gesamtzahl inkl. Antworten (aus geladenen Daten) — für den Header.
+  const commentTotal = (comments ?? []).reduce((sum, c) => sum + 1 + (c.reply_count ?? 0), 0);
+
+  // Sortierte/gefilterte Top-Level-Liste je nach gewähltem Modus.
+  const sortedComments = useMemo(() => {
+    const list = comments ?? [];
+    if (sortMode === 'top') {
+      return [...list].sort(
+        (a, b) => (b.like_count ?? 0) - (a.like_count ?? 0) || b.created_at.localeCompare(a.created_at)
+      );
+    }
+    if (sortMode === 'creator' && creatorUserId) {
+      return list.filter((c) => c.user_id === creatorUserId);
+    }
+    return list; // 'neueste' — kommt bereits neueste-zuerst aus useComments
+  }, [comments, sortMode, creatorUserId]);
+
+  const sortOptions = useMemo(
+    () => [
+      { key: 'neueste' as const, label: 'Neueste' },
+      { key: 'top' as const, label: 'Top' },
+      ...(creatorUserId ? [{ key: 'creator' as const, label: 'Von Creator' }] : []),
+    ],
+    [creatorUserId]
+  );
+  const activeSortLabel = sortOptions.find((o) => o.key === sortMode)?.label ?? 'Neueste';
 
   return (
     <View style={[{ flex: 1 }, { backgroundColor: colors.bg.secondary }]}>
@@ -469,8 +517,20 @@ function SheetInner({
       <View>
         <View style={[styles.handle, { backgroundColor: colors.border.default }]} />
         <View style={[styles.header, { borderBottomColor: colors.border.subtle }]}>
-          <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Kommentare</Text>
+          <Text style={[styles.headerTitle, { color: colors.text.primary }]}>
+            {commentTotal > 0 ? `${commentTotal} ${commentTotal === 1 ? 'Kommentar' : 'Kommentare'}` : 'Kommentare'}
+          </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            {/* Sortier-Pille (TikTok-Stil) */}
+            <Pressable
+              onPress={() => setSortMenuOpen(true)}
+              style={[styles.sortPill, { backgroundColor: colors.bg.elevated }]}
+              hitSlop={6}
+            >
+              <ListFilter size={14} color={colors.text.secondary} strokeWidth={2} />
+              <Text style={[styles.sortPillText, { color: colors.text.secondary }]}>{activeSortLabel}</Text>
+              <ChevronDown size={13} color={colors.text.muted} strokeWidth={2} />
+            </Pressable>
             <Pressable onPress={onClose} style={styles.closeBtn}>
               <X size={18} stroke="#6B7280" strokeWidth={2} />
             </Pressable>
@@ -478,21 +538,57 @@ function SheetInner({
         </View>
       </View>
 
+      {/* Sort-Menü (Dropdown) */}
+      {sortMenuOpen && (
+        <Modal visible transparent animationType="fade" onRequestClose={() => setSortMenuOpen(false)}>
+          <Pressable style={styles.sortMenuOverlay} onPress={() => setSortMenuOpen(false)}>
+            <Pressable
+              style={[styles.sortMenu, { backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle, marginTop: SHEET_TOP + 52 }]}
+              onPress={(e) => e.stopPropagation()}
+            >
+              {sortOptions.map((opt, i) => {
+                const active = opt.key === sortMode;
+                return (
+                  <Pressable
+                    key={opt.key}
+                    onPress={() => {
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                      setSortMode(opt.key);
+                      setSortMenuOpen(false);
+                    }}
+                    style={[styles.sortMenuItem, i > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border.subtle }]}
+                  >
+                    <Text style={[styles.sortMenuItemText, { color: active ? colors.text.primary : colors.text.secondary, fontWeight: active ? '700' : '500' }]}>
+                      {opt.label}
+                    </Text>
+                    {active && <Text style={{ color: colors.text.primary, fontSize: 15 }}>✓</Text>}
+                  </Pressable>
+                );
+              })}
+            </Pressable>
+          </Pressable>
+        </Modal>
+      )}
+
       {/* Kommentarliste */}
       {isLoading ? (
         <View style={styles.center}>
           <ActivityIndicator color={colors.text.primary} />
         </View>
-      ) : comments?.length === 0 ? (
+      ) : sortedComments.length === 0 ? (
         <View style={styles.center}>
-          <Text style={[styles.emptyText, { color: colors.text.muted }]}>Noch keine Kommentare.</Text>
-          <Text style={[styles.emptySubText, { color: colors.text.muted }]}>Sei der Erste! 💬</Text>
+          <Text style={[styles.emptyText, { color: colors.text.muted }]}>
+            {sortMode === 'creator' ? 'Noch keine Kommentare vom Creator.' : 'Noch keine Kommentare.'}
+          </Text>
+          {sortMode !== 'creator' && (
+            <Text style={[styles.emptySubText, { color: colors.text.muted }]}>Sei der Erste! 💬</Text>
+          )}
         </View>
       ) : (
         <GestureDetector gesture={panForList}>
           <FlatList
             ref={listRef}
-            data={comments}
+            data={sortedComments}
             keyExtractor={(c) => c.id}
             contentContainerStyle={styles.commentsList}
             showsVerticalScrollIndicator={false}
@@ -603,7 +699,7 @@ function SheetInner({
         onClose={() => setActionSheetComment(null)}
         comment={actionSheetComment}
         isOwn={actionSheetComment?.user_id === profile?.id}
-        onDelete={() => actionSheetComment && handleDelete(actionSheetComment.id)}
+        onDelete={() => actionSheetComment && handleDelete(actionSheetComment)}
         onReport={() => actionSheetComment && handleReportComment(actionSheetComment)}
         onCopy={() => { }}
         onReplyWithVideo={handleReplyWithVideo}
@@ -714,6 +810,9 @@ function CommentRowComponent({
   isHighlighted,
   onUserPress,
   onTopLevelLike,
+  isReply,
+  isRepliesExpanded,
+  onToggleReplies,
 }: {
   comment: Comment;
   postId: string;
@@ -722,7 +821,7 @@ function CommentRowComponent({
   currentUserId?: string;
   timeAgo: string;
   /** STABILE Handler (useCallback im Parent) — Row bindet sich selbst */
-  onDelete: (commentId: string) => void;
+  onDelete: (comment: Comment) => void;
   onReply: (commentId: string, username: string) => void;
   onLongPress: (comment: Comment) => void;
   isHighlighted?: boolean;
@@ -730,8 +829,13 @@ function CommentRowComponent({
   /** Nur für Top-Level gesetzt: Like-Toggle über den ['comments']-Cache.
    *  Bei Replies undefined → Fallback auf useCommentLike-Einzelquery. */
   onTopLevelLike?: (commentId: string, liked: boolean) => void;
+  /** true für eingerückte Antwort-Zeilen → kleineres Avatar, dezenter */
+  isReply?: boolean;
+  /** Replies-Expand wird vom Parent (SheetInner) gehalten → sofortiges Auto-Aufklappen nach Antworten */
+  isRepliesExpanded?: boolean;
+  onToggleReplies?: (commentId: string) => void;
 }) {
-  const [showReplies, setShowReplies] = useState(false);
+  const showReplies = isRepliesExpanded ?? false;
   const { data: replies = [] } = useCommentReplies(comment.id, showReplies);
   const { colors } = useTheme();
 
@@ -780,8 +884,12 @@ function CommentRowComponent({
   // sie an die eigene `comment`-Identität. Per Item konstant, solange
   // sich das Comment-Objekt nicht ändert.
   const handleReply = useCallback(() => {
-    onReply(comment.id, comment.profiles?.username ?? 'unknown');
-  }, [onReply, comment.id, comment.profiles?.username]);
+    // Antwort immer an den Top-Level-Strang hängen (1-Level wie TikTok): bei einer
+    // Reply-Zeile auf deren parent_id zielen, sonst auf die eigene id. So bleiben
+    // Antworten-auf-Antworten im selben sichtbaren Thread.
+    const targetId = comment.parent_id ?? comment.id;
+    onReply(targetId, comment.profiles?.username ?? 'unknown');
+  }, [onReply, comment.parent_id, comment.id, comment.profiles?.username]);
 
   const handleLongPress = useCallback(() => {
     onLongPress(comment);
@@ -792,7 +900,7 @@ function CommentRowComponent({
       <Animated.View style={[styles.commentRow, highlightStyle]}>
         {/* Avatar — klickbar → Profil */}
         <Pressable onPress={handleUserPress} disabled={!onUserPress}>
-          <View style={styles.commentAvatar}>
+          <View style={[styles.commentAvatar, isReply && styles.commentAvatarReply]}>
             {comment.profiles?.avatar_url ? (
               <Image source={{ uri: comment.profiles.avatar_url }} style={styles.commentAvatarImage} />
             ) : (
@@ -819,7 +927,7 @@ function CommentRowComponent({
           {/* Antworten-Toggle — NUR wenn es tatsächlich Antworten gibt, mit Anzahl (TikTok-Stil) */}
           {replyCount > 0 && (
             <Pressable
-              onPress={() => setShowReplies((v) => !v)}
+              onPress={() => onToggleReplies?.(comment.id)}
               hitSlop={8}
               style={styles.repliesToggle}
             >
@@ -857,10 +965,11 @@ function CommentRowComponent({
 
       {/* eingerückte Antworten */}
       {showReplies && replies.map((reply) => (
-        <View key={reply.id} style={{ paddingLeft: 48, marginTop: -4 }}>
+        <View key={reply.id} style={styles.replyRowWrap}>
           <CommentRow
             comment={reply}
             postId={postId}
+            isReply
             isOwn={reply.user_id === currentUserId}
             currentUserId={currentUserId}
             timeAgo={(() => {
@@ -948,6 +1057,41 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  // ── Sortier-Pille + Menü ──────────────────────────────────────────
+  sortPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 11,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  sortPillText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  sortMenuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.25)',
+    alignItems: 'flex-end',
+    paddingRight: 16,
+  },
+  sortMenu: {
+    minWidth: 190,
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
+  },
+  sortMenuItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+  },
+  sortMenuItemText: {
+    fontSize: 15,
+  },
   center: {
     flex: 1,
     alignItems: 'center',
@@ -967,6 +1111,13 @@ const styles = StyleSheet.create({
     backgroundColor: '#E8E8ED',
     alignItems: 'center', justifyContent: 'center',
     overflow: 'hidden', flexShrink: 0,
+  },
+  commentAvatarReply: {
+    width: 26, height: 26, borderRadius: 13,
+  },
+  replyRowWrap: {
+    paddingLeft: 44,
+    marginTop: 14,
   },
   commentAvatarImage: { width: '100%', height: '100%', resizeMode: 'cover' },
   commentAvatarText: { color: '#555', fontSize: 13, fontWeight: '800' },

@@ -187,8 +187,17 @@ export function useAddComment(postId: string) {
         // Top-Level: neueste zuerst → vorne einfügen. Replies: chronologisch → hinten.
         return parentId ? [...old, optimistic] : [optimistic, ...old];
       });
-      if (!parentId) queryClient.setQueryData<number>(['comment-count', postId], (old) => (old ?? 0) + 1);
-      return { previous, cacheKey };
+      // Eltern-reply_count optimistisch hochzählen → „Antworten anzeigen" erscheint sofort.
+      let previousParents: Comment[] | undefined;
+      if (parentId) {
+        previousParents = queryClient.getQueryData<Comment[]>(['comments', postId]);
+        queryClient.setQueryData<Comment[]>(['comments', postId], (old) =>
+          old?.map((c) => (c.id === parentId ? { ...c, reply_count: (c.reply_count ?? 0) + 1 } : c)) ?? old
+        );
+      }
+      // Comment-Count zählt ALLE Kommentare (inkl. Replies, wie der DB-Trigger).
+      queryClient.setQueryData<number>(['comment-count', postId], (old) => (old ?? 0) + 1);
+      return { previous, cacheKey, previousParents };
     },
     onSuccess: async (newComment, { tempId, text, parentId }) => {
       // ── Optimistic cache update ────────────────────────────────────────
@@ -264,13 +273,17 @@ export function useAddComment(postId: string) {
         await supabase.from('notifications').insert(notificationsToInsert);
       }
     },
-    onError: (err: any, _vars, context) => {
-      const prev = (context as { previous?: Comment[]; cacheKey?: string[] })?.previous;
-      const key  = (context as { previous?: Comment[]; cacheKey?: string[] })?.cacheKey;
-      if (prev != null && key) {
-        queryClient.setQueryData(key, prev);
-        queryClient.setQueryData<number>(['comment-count', postId], (old) => Math.max(0, (old ?? 1) - 1));
+    onError: (err: any, vars, context) => {
+      const ctx = context as { previous?: Comment[]; cacheKey?: string[]; previousParents?: Comment[] } | undefined;
+      if (ctx?.previous != null && ctx.cacheKey) {
+        queryClient.setQueryData(ctx.cacheKey, ctx.previous);
       }
+      // Eltern-reply_count zurückrollen (nur bei Reply gesetzt)
+      if (vars.parentId && ctx?.previousParents) {
+        queryClient.setQueryData(['comments', postId], ctx.previousParents);
+      }
+      // Comment-Count wurde immer hochgezählt → immer wieder senken
+      queryClient.setQueryData<number>(['comment-count', postId], (old) => Math.max(0, (old ?? 1) - 1));
       // Vollständiges Error-Objekt loggen (wichtig für RLS-Diagnose)
       __DEV__ && console.error('[useAddComment] Fehler vollständig:', JSON.stringify(err, null, 2));
       const msg = err?.message || err?.details || err?.hint || err?.code || 'Unbekannter Fehler';
@@ -284,7 +297,7 @@ export function useDeleteComment(postId: string) {
   const userId = useAuthStore((s) => s.profile?.id);
 
   return useMutation({
-    mutationFn: async (commentId: string) => {
+    mutationFn: async ({ commentId }: { commentId: string; parentId?: string | null }) => {
       if (!userId) throw new Error('Nicht eingeloggt');
       const { error } = await supabase
         .from('comments')
@@ -294,10 +307,21 @@ export function useDeleteComment(postId: string) {
       if (error) throw error;
       return commentId;
     },
-    onSuccess: (deletedId) => {
-      queryClient.setQueryData<Comment[]>(['comments', postId], (old) =>
-        old ? old.filter((c) => c.id !== deletedId) : []
-      );
+    onSuccess: (deletedId, { parentId }) => {
+      if (parentId) {
+        // Reply: aus dem Replies-Cache entfernen + Eltern-reply_count senken
+        queryClient.setQueryData<Comment[]>(['comment-replies', parentId], (old) =>
+          old ? old.filter((c) => c.id !== deletedId) : []
+        );
+        queryClient.setQueryData<Comment[]>(['comments', postId], (old) =>
+          old?.map((c) => (c.id === parentId ? { ...c, reply_count: Math.max(0, (c.reply_count ?? 1) - 1) } : c)) ?? old
+        );
+      } else {
+        // Top-Level: aus der Hauptliste entfernen
+        queryClient.setQueryData<Comment[]>(['comments', postId], (old) =>
+          old ? old.filter((c) => c.id !== deletedId) : []
+        );
+      }
       queryClient.setQueryData<number>(['comment-count', postId], (old) => Math.max(0, (old ?? 1) - 1));
       if (userId) queryClient.invalidateQueries({ queryKey: ['feed-engagement', userId] });
     },
