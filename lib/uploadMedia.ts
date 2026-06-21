@@ -401,12 +401,13 @@ export async function generateAndUploadThumbnail(
   userId: string,
   videoUri: string,
   signal?: AbortSignal,
+  timeMs?: number,   // Cover-Frame-Zeit (ms); default 0 = erster Frame
 ): Promise<string | null> {
   try {
     // Dynamischer Import → kein Bundle-Problem falls Library fehlt
     const VideoThumbnails = await import('expo-video-thumbnails');
     const { uri: thumbUri } = await VideoThumbnails.getThumbnailAsync(videoUri, {
-      time: 0,     // Erster Frame
+      time: Math.max(0, Math.round(timeMs ?? 0)),  // gewählter Cover-Frame
       quality: 0.75,  // JPEG-Qualität — gut genug für Thumbnails
     });
 

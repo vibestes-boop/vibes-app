@@ -24,6 +24,7 @@ import { CreateProgressBar } from '@/components/create';
 import {
   AdjustSheet,
   type AdjustValues,
+  CoverPickerSheet,
   CropSheet,
   DetailsSheet,
   DrawCanvas,
@@ -63,6 +64,7 @@ import { useVideoPlayer,VideoView } from 'expo-video';
 import {
   ChevronRight,
   Crop,
+  Image as CoverIcon,
   Music2,
   Palette,
   Pencil,
@@ -144,6 +146,8 @@ export default function CreatePostScreen() {
   const [showAdjustSheet, setShowAdjustSheet]   = useState(false);
   const [showRotateSheet, setShowRotateSheet]   = useState(false);
   const [showCropSheet, setShowCropSheet]       = useState(false);
+  const [showCoverSheet, setShowCoverSheet]     = useState(false);
+  const [coverTimeMs, setCoverTimeMs]           = useState(0);
   const [textOverlays, setTextOverlays]         = useState<TextOverlay[]>([]);
   const [stickerOverlays, setStickerOverlays]   = useState<{ id: string; url: string; x: number; y: number }[]>([]);
   const [activeFilter, setActiveFilter]         = useState<ColorFilterId | null>(null);
@@ -220,13 +224,13 @@ export default function CreatePostScreen() {
     try {
       const { url } = await uploadPostMedia(profile.id, image.uri, image.mimeType, (pct) => setUploadPct(pct), signal);
       let thumbnailUrl: string | null = null;
-      if (isVideo) thumbnailUrl = await generateAndUploadThumbnail(profile.id, image.uri, signal);
+      if (isVideo) thumbnailUrl = await generateAndUploadThumbnail(profile.id, image.uri, signal, coverTimeMs);
       uploadedMediaRef.current = { url, thumbnailUrl };
       return { mediaUrl: url, thumbnailUrl, mediaType: mt };
     } finally {
       setUploading(false); setUploadPct(0);
     }
-  }, [profile, image]);
+  }, [profile, image, coverTimeMs]);
 
   const addTextOverlay = (overlay: Omit<TextOverlay,'id'|'x'|'y'>) => {
     setTextOverlays(prev => [...prev, {
@@ -673,6 +677,15 @@ export default function CreatePostScreen() {
           </Pressable>
         )}
 
+        {/* Cover — nur für Videos (Start-Frame fürs Feed-Thumbnail) */}
+        {isVideo && image && (
+          <Pressable style={[s.sideBtn, coverTimeMs > 0 && s.sideBtnActive]} onPress={() => setShowCoverSheet(true)}>
+            <CoverIcon size={26} color="#fff" strokeWidth={1.8} />
+            {coverTimeMs > 0 && <View style={s.sideBtnDot} />}
+            <Text style={s.sideLabel}>Cover</Text>
+          </Pressable>
+        )}
+
       </View>
 
       {/* ── Bottom-Buttons ───────────────────────────────────── */}
@@ -745,6 +758,18 @@ export default function CreatePostScreen() {
           uri={image.uri}
           onDone={applyCrop}
           onClose={() => setShowCropSheet(false)}
+        />
+      )}
+
+      {/* ── CoverPickerSheet (Video-Cover wählen) ────────────── */}
+      {image && isVideo && (
+        <CoverPickerSheet
+          visible={showCoverSheet}
+          uri={image.uri}
+          durationMs={image.duration}
+          initialTimeMs={coverTimeMs}
+          onDone={(t) => { setCoverTimeMs(t); setShowCoverSheet(false); }}
+          onClose={() => setShowCoverSheet(false)}
         />
       )}
 
