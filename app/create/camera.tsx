@@ -19,7 +19,7 @@ import * as Haptics from 'expo-haptics';
 import { launchImageLibraryAsync,requestMediaLibraryPermissionsAsync } from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { ImageIcon,Music2,Radio,RotateCcw,Sparkles,Timer,Video,X,Zap,ZapOff } from 'lucide-react-native';
+import { ChevronRight,ImageIcon,Music2,Radio,RotateCcw,Sparkles,Timer,Video,X,Zap,ZapOff } from 'lucide-react-native';
 import { useCallback,useEffect,useRef,useState } from 'react';
 import {
 Alert,
@@ -843,33 +843,43 @@ export default function CreateCameraScreen() {
             {/* Capture Mode Switcher als Pill */}
             <CaptureSwitcher modes={CAPTURE_MODES} active={captureMode} onChange={setCaptureMode} />
 
-            {/* Record Row — 3 Spalten gleichbreit → Aufnahme-Button exakt mittig */}
-            <View style={s.recordRow}>
-              {/* Links: Galerie */}
-              <Pressable onPress={openGallery} style={s.galleryBtn}>
-                <View style={s.galleryEmpty}>
-                  <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 9 }}>Galerie</Text>
-                </View>
-                <LinearGradient
-                  colors={['rgba(255,255,255,0.18)', 'rgba(168,85,247,0.3)']}
-                  style={[StyleSheet.absoluteFill, { borderRadius: 14 }]}
-                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-                  pointerEvents="none"
+            {isText ? (
+              /* ── Text-Modus: klarer „Weiter"-Post-Button statt Kamera-Aufnahme ── */
+              <View style={s.textPostRow}>
+                <Pressable onPress={handleTextDone} style={s.textPostBtn}>
+                  <Text style={s.textPostBtnText}>Weiter</Text>
+                  <ChevronRight size={18} color="#000" strokeWidth={2.5} />
+                </Pressable>
+              </View>
+            ) : (
+              /* Record Row — 3 Spalten gleichbreit → Aufnahme-Button exakt mittig */
+              <View style={s.recordRow}>
+                {/* Links: Galerie */}
+                <Pressable onPress={openGallery} style={s.galleryBtn}>
+                  <View style={s.galleryEmpty}>
+                    <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 9 }}>Galerie</Text>
+                  </View>
+                  <LinearGradient
+                    colors={['rgba(255,255,255,0.18)', 'rgba(168,85,247,0.3)']}
+                    style={[StyleSheet.absoluteFill, { borderRadius: 14 }]}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                    pointerEvents="none"
+                  />
+                </Pressable>
+
+                {/* Mitte: Aufnahme-Button */}
+                <VibesRecordButton
+                  isRecording={isRecording}
+                  isPhoto={isPhoto}
+                  onPress={takePhoto}
+                  onLongPress={startRecording}
+                  onPressOut={stopRecording}
                 />
-              </Pressable>
 
-              {/* Mitte: Aufnahme-Button (im Text-Modus = „Fertig", erstellt den Text-Post) */}
-              <VibesRecordButton
-                isRecording={isRecording}
-                isPhoto={isPhoto || isText}
-                onPress={isText ? handleTextDone : takePhoto}
-                onLongPress={startRecording}
-                onPressOut={stopRecording}
-              />
-
-              {/* Rechts: gleiche Breite wie Galerie → echter Ausgleich */}
-              <View style={s.recordRowSpacer} />
-            </View>
+                {/* Rechts: gleiche Breite wie Galerie → echter Ausgleich */}
+                <View style={s.recordRowSpacer} />
+              </View>
+            )}
           </>
         )}
 
@@ -1032,6 +1042,24 @@ const s = StyleSheet.create({
     width: 58,
     height: 58,
   },
+
+  // Text-Modus: „Weiter"-Post-Button (weiße Pille wie im Editor)
+  textPostRow: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+    minHeight: 90,
+  },
+  textPostBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#fff',
+    paddingVertical: 14,
+    paddingHorizontal: 40,
+    borderRadius: 30,
+  },
+  textPostBtnText: { color: '#000', fontSize: 16, fontWeight: '800' },
   galleryBtn: {
     width: 52,
     height: 52,
