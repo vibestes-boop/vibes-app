@@ -199,15 +199,8 @@ function StudioModePill({
 
   return (
     <View style={pill.container}>
-      {/* Sliding Hintergrund-Pill */}
-      <Animated.View style={[pill.activePill, { width: PILL_W }, pillStyle]}>
-        <LinearGradient
-          colors={['rgba(255,255,255,0.15)', 'rgba(168,85,247,0.25)']}
-          style={StyleSheet.absoluteFill}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-        />
-      </Animated.View>
+      {/* Sliding Aktiv-Indikator — dezent, kein Lila-Gradient (TikTok-clean) */}
+      <Animated.View style={[pill.activePill, { width: PILL_W }, pillStyle]} />
 
       {/* Mode Buttons */}
       {modes.map((m) => {
@@ -237,26 +230,16 @@ const pill = StyleSheet.create({
   container: {
     flexDirection: 'row',
     marginHorizontal: 24,
-    backgroundColor: 'rgba(0,0,0,0.65)',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
-    overflow: 'hidden',
     position: 'relative',
     height: 50,
-    shadowColor: '#000',
-    shadowOpacity: 0.5,
-    shadowRadius: 10,
   },
   activePill: {
     position: 'absolute',
-    top: 0,
+    top: 7,
     left: 0,
-    height: '100%',
-    borderRadius: 15,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
-    overflow: 'hidden',
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.16)',
   },
   btn: {
     flexDirection: 'row',
@@ -267,10 +250,13 @@ const pill = StyleSheet.create({
     zIndex: 1,
   },
   label: {
-    color: 'rgba(255,255,255,0.55)',
+    color: 'rgba(255,255,255,0.7)',
     fontSize: 12,
     fontWeight: '800',
     letterSpacing: 1.2,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   labelActive: {
     color: '#fff',
@@ -314,16 +300,11 @@ function CaptureSwitcher({
               Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
               onChange(m.key);
             }}
-            style={[cap.item, i < modes.length - 1 && cap.itemBorder]}
+            style={[cap.item, isActive && cap.itemActive]}
           >
             <Text style={[cap.label, isActive && cap.labelActive]}>
               {m.label}
             </Text>
-            {isActive && (
-              <View
-                style={cap.underline}
-              />
-            )}
           </Pressable>
         );
       })}
@@ -335,41 +316,31 @@ const cap = StyleSheet.create({
   pill: {
     flexDirection: 'row',
     alignSelf: 'center',
-    backgroundColor: 'rgba(0,0,0,0.65)',
-    borderRadius: 22,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
     marginBottom: 20,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
-  },
-  item: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    alignItems: 'center',
     gap: 4,
   },
-  itemBorder: {
-    borderRightWidth: 1,
-    borderRightColor: 'rgba(255,255,255,0.08)',
+  item: {
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    borderRadius: 18,
+    alignItems: 'center',
+  },
+  itemActive: {
+    backgroundColor: '#fff',
   },
   label: {
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-  labelActive: {
     color: '#fff',
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '700',
+    letterSpacing: 0.3,
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
-  underline: {
-    width: 18,
-    height: 2,
-    borderRadius: 1,
+  labelActive: {
+    color: '#000',
+    fontWeight: '800',
+    textShadowColor: 'transparent',
   },
 });
 
@@ -804,14 +775,12 @@ const s = StyleSheet.create({
   topBtnBg: {
     width: 38, height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center',
     justifyContent: 'center',
+    // Kein Background/Rahmen mehr (TikTok-clean) — Schatten hält das Icon lesbar
     shadowColor: '#000',
-    shadowOpacity: 0.4,
-    shadowRadius: 8,
+    shadowOpacity: 0.5,
+    shadowRadius: 6,
   },
   topTitleWrap: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   cyanDot: {
@@ -873,20 +842,14 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: 'rgba(0,0,0,0.65)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    borderRadius: 14,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    borderRadius: 16,
     paddingHorizontal: 12,
     paddingVertical: 7,
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
     maxWidth: 110,
   },
   soundPillActive: {
-    borderColor: 'rgba(167,139,250,0.6)',
-    backgroundColor: 'rgba(167,139,250,0.12)',
+    backgroundColor: 'rgba(167,139,250,0.35)',
   },
   soundText: { color: '#fff', fontSize: 12, fontWeight: '700' },
 
@@ -924,9 +887,7 @@ const s = StyleSheet.create({
     position: 'absolute',
     bottom: 0, left: 0, right: 0,
     zIndex: 10,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(255,255,255,0.1)',
+    // transparent (TikTok-clean) — Controls schweben über der Kamera
   },
   recordRow: {
     flexDirection: 'row',
@@ -939,16 +900,12 @@ const s = StyleSheet.create({
     height: 58,
   },
   galleryBtn: {
-    width: 58,
-    height: 58,
-    borderRadius: 14,
+    width: 52,
+    height: 52,
+    borderRadius: 10,
     overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.4)',
-    shadowColor: '#fff',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.15,
-    shadowRadius: 6,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.5)',
   },
   galleryEmpty: {
     flex: 1,
