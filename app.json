@@ -2,7 +2,7 @@
   "expo": {
     "name": "Serlo",
     "slug": "vibes",
-    "version": "1.28.0",
+    "version": "1.29.0",
     "scheme": "vibes",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -70,7 +70,7 @@
           "Default"
         ]
       },
-      "buildNumber": "284"
+      "buildNumber": "285"
     },
     "android": {
       "package": "app.serlo.social",
@@ -96,7 +96,7 @@
         "android.permission.ACCESS_MEDIA_LOCATION",
         "android.permission.READ_MEDIA_AUDIO"
       ],
-      "versionCode": 45
+      "versionCode": 46
     },
     "web": {
       "favicon": "./assets/favicon.png",

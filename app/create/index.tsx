@@ -53,6 +53,7 @@ import {
 import { useAuthStore } from '@/lib/authStore';
 import type { ColorFilterId } from '@/lib/cameraFilters';
 import { supabase } from '@/lib/supabase';
+import ViewShot from 'react-native-view-shot';
 import { bakeImageEdits } from '@/lib/bakeImageEdits';
 import { generateAndUploadThumbnail,uploadPostMedia } from '@/lib/uploadMedia';
 import { useDrafts } from '@/lib/useDrafts';
@@ -148,6 +149,11 @@ export default function CreatePostScreen() {
   const [showCropSheet, setShowCropSheet]       = useState(false);
   const [showCoverSheet, setShowCoverSheet]     = useState(false);
   const [coverTimeMs, setCoverTimeMs]           = useState(0);
+
+  // ── View-Shot Compositing (Text/Sticker ins Bild brennen) ──────────────
+  const shotRef = useRef<ViewShot>(null);
+  const [capturing, setCapturing]               = useState(false);  // swap Skia→normales Bild während Capture
+  const [captureUri, setCaptureUri]             = useState<string | null>(null);
   const [textOverlays, setTextOverlays]         = useState<TextOverlay[]>([]);
   const [stickerOverlays, setStickerOverlays]   = useState<{ id: string; url: string; x: number; y: number }[]>([]);
   const [activeFilter, setActiveFilter]         = useState<ColorFilterId | null>(null);
@@ -203,6 +209,27 @@ export default function CreatePostScreen() {
     })();
   }, [draftId, fetchDraft]);
 
+  // Brennt die Vorschau (Foto + Filter + Text + Sticker) via view-shot in ein Bild.
+  // Während des Captures wird das Skia-Bild durch ein normales Bild ersetzt (Filter
+  // vorab gebacken) → kein Skia-View im Capture-Baum → zuverlässig erfassbar, das Foto
+  // kann nicht „verschwinden". Null bei Fehler → Aufrufer fällt auf bakeImageEdits zurück.
+  const compositeViaCapture = useCallback(async (): Promise<string | null> => {
+    if (!image || image.type === 'video') return null;
+    const filterBaked = await bakeImageEdits(image.uri, { filterId: activeFilter, rotation: 0, flipH: false });
+    setCaptureUri(filterBaked ?? image.uri);
+    setCapturing(true);
+    await new Promise((r) => setTimeout(r, 160));   // einen Frame warten bis gerendert
+    try {
+      const uri = await shotRef.current?.capture?.();
+      return uri ?? null;
+    } catch (e) {
+      __DEV__ && console.warn('[compositeViaCapture]', e);
+      return null;
+    } finally {
+      setCapturing(false);
+    }
+  }, [image, activeFilter]);
+
   /** Sorgt dafür, dass das lokale Image zu R2 hochgeladen ist (Cache). Nutzt ggf. bestehende URL. */
   const ensureMediaUploaded = useCallback(async (signal: AbortSignal | undefined): Promise<{
     mediaUrl:     string | null;
@@ -222,17 +249,25 @@ export default function CreatePostScreen() {
     const isVideo = mt === 'video';
     setUploading(true); setUploadPct(0);
     try {
-      // Filter + Drehen/Spiegeln vor dem Upload ins Bild einbrennen (nur Bilder).
-      // bakeImageEdits ist defensiv: null bei Fehler → rohes Bild hochladen (kein Regress).
+      // Bild für den Upload zusammenrechnen (nur Bilder). Mit Text/Sticker/Zeichnung:
+      // via view-shot die fertige Vorschau einfangen. Sonst (oder bei Capture-Fehler):
+      // Filter + Drehen/Spiegeln via Skia backen. Beides defensiv → schlimmstenfalls
+      // rohes Bild (kein Regress).
       let uploadUri = image.uri;
       let uploadMime = image.mimeType;
       if (!isVideo) {
-        const baked = await bakeImageEdits(image.uri, {
-          filterId: activeFilter,
-          rotation: rotateState.rotation,
-          flipH: rotateState.flipH,
-        });
-        if (baked) { uploadUri = baked; uploadMime = 'image/jpeg'; }
+        const hasOverlays = textOverlays.length > 0 || stickerOverlays.length > 0 || drawnPaths.length > 0;
+        const composited = hasOverlays ? await compositeViaCapture() : null;
+        if (composited) {
+          uploadUri = composited; uploadMime = 'image/jpeg';
+        } else {
+          const baked = await bakeImageEdits(image.uri, {
+            filterId: activeFilter,
+            rotation: rotateState.rotation,
+            flipH: rotateState.flipH,
+          });
+          if (baked) { uploadUri = baked; uploadMime = 'image/jpeg'; }
+        }
       }
       const { url } = await uploadPostMedia(profile.id, uploadUri, uploadMime, (pct) => setUploadPct(pct), signal);
       let thumbnailUrl: string | null = null;
@@ -242,7 +277,7 @@ export default function CreatePostScreen() {
     } finally {
       setUploading(false); setUploadPct(0);
     }
-  }, [profile, image, coverTimeMs, activeFilter, rotateState]);
+  }, [profile, image, coverTimeMs, activeFilter, rotateState, textOverlays, stickerOverlays, drawnPaths, compositeViaCapture]);
 
   const addTextOverlay = (overlay: Omit<TextOverlay,'id'|'x'|'y'>) => {
     setTextOverlays(prev => [...prev, {
@@ -476,7 +511,8 @@ export default function CreatePostScreen() {
       {/* ── Fortschrittsbalken (Upload) ─────────────────────── */}
       <CreateProgressBar visible={uploading} progress={uploadPct} onCancel={handleCancel} />
 
-      {/* ── Vollbild-Vorschau (mit Transform: Rotate + Flip) ── */}
+      {/* ── Vollbild-Vorschau (mit Transform: Rotate + Flip) — in ViewShot für Compositing ── */}
+      <ViewShot ref={shotRef} style={s.preview} options={{ format: 'jpg', quality: 0.92, result: 'tmpfile' }}>
       <View style={[s.preview, {
         transform: [
           { rotate: `${rotateState.rotation}deg` },
@@ -491,6 +527,8 @@ export default function CreatePostScreen() {
               contentFit="cover"
               nativeControls={false}
             />
+          ) : capturing && captureUri ? (
+            <Image source={{ uri: captureUri }} style={StyleSheet.absoluteFill} contentFit="cover" />
           ) : (
             <SkiaFilteredImage uri={image.uri} filterId={activeFilter} />
           )
@@ -564,6 +602,7 @@ export default function CreatePostScreen() {
         </View>
 
       </View>
+      </ViewShot>
 
       {/* Trash Zone — außerhalb des Preview-Containers */}
       <TrashZone visible={isDraggingOverlay} isOver={isTrashHovered} />
