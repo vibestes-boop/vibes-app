@@ -2304,6 +2304,11 @@ export default function LiveWatchScreen() {
   const [lkToken, setLkToken] = useState<string | null>(null);
   const [lkUrl, setLkUrl] = useState<string | null>(null);
   const [tokenError, setTokenError] = useState(false);
+  // „Nur Follower"-Stream: Edge Function gab 403 zurück, weil der Viewer dem
+  // Host nicht folgt. Eigener freundlicher Screen statt generischem Fehler.
+  const [followersBlocked, setFollowersBlocked] = useState(false);
+  const [joiningAfterFollow, setJoiningAfterFollow] = useState(false);
+  const { isFollowing: amFollowingHost, toggle: toggleFollowHost } = useFollow(session?.host_id ?? null);
   // Guard: verhindert dass onError mehrfach feuert
   const isHandlingError = useRef(false);
 
@@ -2357,7 +2362,14 @@ export default function LiveWatchScreen() {
         setLkUrl(res.url);
       })
       .catch((err) => {
-        __DEV__ && console.log('[LiveWatch] Token fetch failed:', err?.message ?? String(err));
+        const msg = err?.message ?? String(err);
+        __DEV__ && console.log('[LiveWatch] Token fetch failed:', msg);
+        // „Nur Follower"-Stream: Edge Function liefert 403 mit error:'followers_only'.
+        // Kein echter Fehler → freundlicher Folge-Screen statt Crash/Retry-Loop.
+        if (msg.includes('followers_only')) {
+          setFollowersBlocked(true);
+          return;
+        }
         Sentry.captureException(err, {
           tags: { area: 'livewatch', stage: 'token-fetch' },
           extra: { roomName: session?.room_name, sessionId: id },
@@ -2438,6 +2450,59 @@ export default function LiveWatchScreen() {
           onBack={() => router.replace('/live/replays' as any)}
           isReplay
         />
+      </View>
+    );
+  }
+
+  // „Nur Follower"-Stream: Viewer folgt dem Host (noch) nicht → freundlicher
+  // Folge-Screen. Nach dem Folgen Token mit kurzem Retry neu holen (follows-
+  // INSERT braucht einen Moment bis er für die Edge Function sichtbar ist).
+  if (followersBlocked) {
+    return (
+      <View style={[s.root, { alignItems: 'center', justifyContent: 'center', gap: 14, padding: 28 }]}>
+        <Text style={{ fontSize: 46 }}>🔒</Text>
+        <Text style={{ color: '#fff', fontSize: 18, fontWeight: '800', textAlign: 'center' }}>
+          Nur für Follower
+        </Text>
+        <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 14, textAlign: 'center', lineHeight: 20 }}>
+          {session?.profiles?.username
+            ? `@${session.profiles.username} streamt nur für Follower 🙂\nFolge zuerst — dann bist du dabei.`
+            : 'Dieser Stream ist nur für Follower 🙂\nFolge zuerst — dann bist du dabei.'}
+        </Text>
+        <Pressable
+          disabled={joiningAfterFollow}
+          onPress={async () => {
+            if (joiningAfterFollow) return;
+            const room = session?.room_name;
+            if (!room) return;
+            setJoiningAfterFollow(true);
+            if (!amFollowingHost) toggleFollowHost();
+            // follows-INSERT ist optimistisch → bis zu 3× mit 400ms retryen,
+            // bis die Edge Function den neuen Follow sieht und ein Token gibt.
+            let ok = false;
+            for (let i = 0; i < 3 && !ok; i++) {
+              await new Promise((r) => setTimeout(r, 400));
+              try {
+                const res = await fetchLiveKitToken(room, false, false);
+                if (res) {
+                  setFollowersBlocked(false);
+                  setLkToken(res.token);
+                  setLkUrl(res.url);
+                  ok = true;
+                }
+              } catch { /* nochmal versuchen */ }
+            }
+            setJoiningAfterFollow(false);
+          }}
+          style={[s.backBtnCenter, { backgroundColor: '#FF2D55', marginTop: 6, paddingHorizontal: 28 }]}
+        >
+          <Text style={{ color: '#fff', fontWeight: '800', fontSize: 15 }}>
+            {joiningAfterFollow ? 'Moment …' : amFollowingHost ? '🔄 Erneut versuchen' : 'Folgen & reinkommen'}
+          </Text>
+        </Pressable>
+        <Pressable onPress={() => router.back()} style={s.backBtnCenter}>
+          <Text style={{ color: 'rgba(255,255,255,0.4)', fontWeight: '600' }}>Zurück</Text>
+        </Pressable>
       </View>
     );
   }

@@ -36,7 +36,6 @@ import { useLocalSearchParams,useRouter } from 'expo-router';
 import {
 CalendarClock,
 ChevronDown,
-ChevronRight,
 ChevronUp,
 ImageIcon,
 RefreshCw,Settings,
@@ -99,6 +98,9 @@ export default function LiveStartScreen() {
   const [allowComments, setAllowComments] = useState(params.allowComments !== '0');
   const [allowGifts, setAllowGifts] = useState(params.allowGifts !== '0');
   const [womenOnly, setWomenOnly] = useState(params.womenOnly === '1');
+  // „Nur Follower"-Publikum (Durchsetzung serverseitig in livekit-token).
+  // Mutually exclusive mit Women-Only — siehe setAudience/audience unten.
+  const [followersOnly, setFollowersOnly] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [cameraActive, setCameraActive] = useState(true);
   const [settingsSheet, setSettingsSheet] = useState(false);
@@ -114,6 +116,16 @@ export default function LiveStartScreen() {
 
   const dotOpacity = useSharedValue(1);
   const dotStyle = useAnimatedStyle(() => ({ opacity: dotOpacity.value }));
+
+  // ── Publikum-Auswahl: Öffentlich / Nur Follower / Nur Frauen ────────────────
+  // Genau eine Option aktiv. „Nur Frauen" nur für berechtigte Hosts sichtbar.
+  const audience: 'public' | 'followers' | 'women' =
+    womenOnly ? 'women' : followersOnly ? 'followers' : 'public';
+  const setAudience = (a: 'public' | 'followers' | 'women') => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setFollowersOnly(a === 'followers');
+    setWomenOnly(a === 'women');
+  };
 
   // Cover aus der Galerie wählen (Alternative zur KI — funktioniert auch ohne AI-Backend)
   const pickCoverFromGallery = async () => {
@@ -169,7 +181,7 @@ export default function LiveStartScreen() {
     setCountdown(null);
 
     try {
-      const result = await startSession(title, { allowComments, allowGifts, womenOnly, thumbnailUrl, category });
+      const result = await startSession(title, { allowComments, allowGifts, womenOnly, followersOnly, thumbnailUrl, category });
       if (!result) {
         Alert.alert('Fehler', 'Live konnte nicht gestartet werden. Bitte prüfe deine Verbindung.');
         return;
@@ -480,35 +492,38 @@ export default function LiveStartScreen() {
                   />
                 </View>
                 <View style={ss.divider} />
-                <Pressable style={[ss.row, { paddingRight: 4 }]}>
-                  <View>
-                    <Text style={ss.rowTitle}>Wer kann zuschauen</Text>
-                    <Text style={ss.rowSub}>Alle · Öffentlich</Text>
+                <View style={ss.audienceBlock}>
+                  <Text style={ss.rowTitle}>Wer kann zuschauen</Text>
+                  <Text style={ss.rowSub}>
+                    {audience === 'public'
+                      ? 'Alle · Öffentlich'
+                      : audience === 'followers'
+                      ? 'Nur deine Follower kommen rein'
+                      : 'Nur verifizierte Frauen kommen rein'}
+                  </Text>
+                  <View style={[ss.catWrap, { marginTop: 10 }]}>
+                    <Pressable
+                      onPress={() => setAudience('public')}
+                      style={[ss.catChip, audience === 'public' && ss.catChipActive]}
+                    >
+                      <Text style={[ss.catChipText, audience === 'public' && ss.catChipTextActive]}>🌍 Öffentlich</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => setAudience('followers')}
+                      style={[ss.catChip, audience === 'followers' && ss.catChipActive]}
+                    >
+                      <Text style={[ss.catChipText, audience === 'followers' && ss.catChipTextActive]}>👥 Nur Follower</Text>
+                    </Pressable>
+                    {canAccessWomenOnly && (
+                      <Pressable
+                        onPress={() => setAudience('women')}
+                        style={[ss.catChip, audience === 'women' && ss.catChipActive]}
+                      >
+                        <Text style={[ss.catChipText, audience === 'women' && ss.catChipTextActive]}>🌸 Nur Frauen</Text>
+                      </Pressable>
+                    )}
                   </View>
-                  <ChevronRight size={18} stroke="#C1C9D4" strokeWidth={2} />
-                </Pressable>
-                {canAccessWomenOnly && (
-                  <>
-                    <View style={ss.divider} />
-                    <View style={ss.row}>
-                      <View>
-                        <Text style={[ss.rowTitle, womenOnly && { color: LC.accent.rose }]}>
-                          🌸 Women-Only Live
-                        </Text>
-                        <Text style={ss.rowSub}>
-                          {womenOnly ? 'Nur verifizierte Frauen können zuschauen' : 'Für alle sichtbar'}
-                        </Text>
-                      </View>
-                      <Switch
-                        value={womenOnly}
-                        onValueChange={setWomenOnly}
-                        trackColor={{ false: '#E5E7EB', true: `${LC.accent.rose}66` }}
-                        thumbColor={womenOnly ? LC.accent.rose : LC.text.muted}
-                        ios_backgroundColor="#E5E7EB"
-                      />
-                    </View>
-                  </>
-                )}
+                </View>
               </View>
             </View>
 
@@ -874,6 +889,7 @@ const ss = StyleSheet.create({
   coverRemoveText: { color: '#9CA3AF', fontSize: FONT_SIZE.xs, fontWeight: FONT_WEIGHT.semibold },
 
   // Kategorie-Chips
+  audienceBlock: { paddingVertical: 8 },
   catWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACE.sm },
   catChip: {
     paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999,

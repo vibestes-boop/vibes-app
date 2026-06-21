@@ -44,6 +44,8 @@ export type LiveSession = {
   allow_gifts: boolean;
   /** Women-Only Stream: nur verifizierte Frauen können beitreten */
   women_only: boolean;
+  /** Nur-Follower-Publikum: wenn true bekommen nur Follower des Hosts ein LiveKit-Token (Zuschauen) */
+  followers_only: boolean;
   profiles: {
     username: string;
     avatar_url: string | null;
@@ -337,7 +339,7 @@ export function useLiveHost() {
 
   const startSession = async (
     title: string,
-    options?: { allowComments?: boolean; allowGifts?: boolean; womenOnly?: boolean; thumbnailUrl?: string | null; category?: string | null }
+    options?: { allowComments?: boolean; allowGifts?: boolean; womenOnly?: boolean; followersOnly?: boolean; thumbnailUrl?: string | null; category?: string | null }
   ): Promise<{ sessionId: string; token: string; url: string } | null> => {
     if (!profile) return null;
     setLoading(true);
@@ -365,6 +367,9 @@ export function useLiveHost() {
           allow_comments: options?.allowComments ?? true,
           allow_gifts:    options?.allowGifts ?? true,
           women_only:     options?.womenOnly ?? false,
+          // v1.30 — „Nur Follower"-Publikum: Durchsetzung in Edge Function
+          // livekit-token (Viewer ohne Follow bekommt 403, kein Token).
+          followers_only: options?.followersOnly ?? false,
           // v1.28.0 — AI-Generated Live-Thumbnail: Host kann im Vorbereitungs-
           // screen ein KI-Cover erzeugen lassen (Phase 3 AI-Image-Rollout).
           // Spalte existiert seit v1.18.0 (Live-Replay); hier nur neuer Writer.

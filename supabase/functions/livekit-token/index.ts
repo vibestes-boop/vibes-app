@@ -185,6 +185,52 @@ serve(async (req: Request) => {
       coHostApproved = true;
     }
 
+    // ── SEC 3: „Nur Follower"-Publikum durchsetzen ─────────────────────────
+    // Pure Viewer (kein Host, kein zugelassener Co-Host): Wenn der Host die
+    // Session auf „nur Follower" gestellt hat, bekommt nur ein Follower ein
+    // Token — auch per Direktlink bleibt ein Nicht-Follower draußen.
+    // Rein additiv: blockt ausschließlich im followers_only-Fall, das
+    // bestehende öffentliche Viewer-Verhalten bleibt unangetastet.
+    if (!isHost && !coHostApproved) {
+      const sessionResp = await fetch(
+        `${supabaseUrl}/rest/v1/live_sessions?room_name=eq.${encodeURIComponent(roomName)}&status=eq.active&select=host_id,followers_only&limit=1`,
+        {
+          headers: {
+            'apikey': serviceRoleKey,
+            'Authorization': `Bearer ${serviceRoleKey}`,
+          },
+        }
+      );
+      const sessions = await sessionResp.json() as { host_id: string; followers_only: boolean }[];
+      const session = sessions?.[0];
+      // Defensiv: der Host selbst (falls er ausnahmsweise als Viewer anfragt)
+      // wird nie aus seinem eigenen Stream gesperrt.
+      if (session?.followers_only === true && session.host_id !== userId) {
+        const followResp = await fetch(
+          `${supabaseUrl}/rest/v1/follows`
+          + `?follower_id=eq.${userId}`
+          + `&following_id=eq.${session.host_id}`
+          + `&select=follower_id&limit=1`,
+          {
+            headers: {
+              'apikey': serviceRoleKey,
+              'Authorization': `Bearer ${serviceRoleKey}`,
+            },
+          }
+        );
+        const follows = await followResp.json() as { follower_id: string }[];
+        if (!follows?.[0]) {
+          return new Response(
+            JSON.stringify({
+              error: 'followers_only',
+              message: 'Dieser Live-Stream ist nur für Follower 🙂 — folge zuerst.',
+            }),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
+    }
+
     const apiKey    = Deno.env.get('LIVEKIT_API_KEY')!;
     const apiSecret = Deno.env.get('LIVEKIT_API_SECRET')!;
     const lkUrl     = Deno.env.get('LIVEKIT_URL')!;
