@@ -1,5 +1,9 @@
 # Handoff — Serlo/Vibes (Stand 21. Juni 2026)
 
+> 📍 **Dieses Dokument: `/Users/zaurhatuev/vibes-app/handoff.md`**
+> Arbeite NUR in diesem Repo: **`/Users/zaurhatuev/vibes-app`** (Branch `main`).
+> ⚠️ NICHT verwechseln mit der Quarantäne-Kopie `/Users/zaurhatuev/Desktop/vibes-app/handoff.md` — die NIEMALS lesen/bauen/pushen.
+>
 > Übergabe für den Wechsel in einen neuen Chat. **Vollständig.** Gedächtnis-Dateien
 > (`~/.claude/.../memory/`) laden automatisch — dieses Doku ergänzt sie mit Session-Detail.
 > (Ersetzt den Handoff vom 2026-06-20.)
