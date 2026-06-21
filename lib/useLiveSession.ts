@@ -337,7 +337,7 @@ export function useLiveHost() {
 
   const startSession = async (
     title: string,
-    options?: { allowComments?: boolean; allowGifts?: boolean; womenOnly?: boolean; thumbnailUrl?: string | null }
+    options?: { allowComments?: boolean; allowGifts?: boolean; womenOnly?: boolean; thumbnailUrl?: string | null; category?: string | null }
   ): Promise<{ sessionId: string; token: string; url: string } | null> => {
     if (!profile) return null;
     setLoading(true);
@@ -369,6 +369,7 @@ export function useLiveHost() {
           // screen ein KI-Cover erzeugen lassen (Phase 3 AI-Image-Rollout).
           // Spalte existiert seit v1.18.0 (Live-Replay); hier nur neuer Writer.
           thumbnail_url:  options?.thumbnailUrl ?? null,
+          category:       options?.category ?? null,
         })
         .select('id')
         .single();

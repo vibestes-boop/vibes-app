@@ -72,6 +72,9 @@ const Animated = { View: _animNS?.View ?? _animMod?.View };
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const _cMod = require('expo-constants') as any; const Constants = _cMod?.default ?? _cMod;
 
+// Live-Kategorien (für Discovery/Explore) — Spalte live_sessions.category existiert bereits
+const LIVE_CATEGORIES = ['Talk', 'Musik', 'Gaming', 'Sport', 'Kochen', 'Beauty', 'Wissen', 'Reisen', 'Comedy'] as const;
+
 export default function LiveStartScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -104,6 +107,7 @@ export default function LiveStartScreen() {
   // live_sessions.thumbnail_url (Spalte existiert seit v1.18.0 Live-Replay)
   // gespeichert und später u.a. als Vorschau in der Explore/Home-Live-Row genutzt.
   const [thumbnailUrl, setThumbnailUrl] = useState<string | null>(null);
+  const [category, setCategory] = useState<string | null>(null);
   const [showAISheet, setShowAISheet] = useState(false);
   const [coverUploading, setCoverUploading] = useState(false);
   const { profile } = useAuthStore();
@@ -165,7 +169,7 @@ export default function LiveStartScreen() {
     setCountdown(null);
 
     try {
-      const result = await startSession(title, { allowComments, allowGifts, womenOnly, thumbnailUrl });
+      const result = await startSession(title, { allowComments, allowGifts, womenOnly, thumbnailUrl, category });
       if (!result) {
         Alert.alert('Fehler', 'Live konnte nicht gestartet werden. Bitte prüfe deine Verbindung.');
         return;
@@ -422,6 +426,25 @@ export default function LiveStartScreen() {
                     </Pressable>
                   )}
                 </View>
+              </View>
+            </View>
+
+            {/* Kategorie */}
+            <View style={ss.section}>
+              <Text style={ss.sectionLabel}>KATEGORIE</Text>
+              <View style={ss.catWrap}>
+                {LIVE_CATEGORIES.map((c) => {
+                  const active = category === c;
+                  return (
+                    <Pressable
+                      key={c}
+                      onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setCategory(active ? null : c); }}
+                      style={[ss.catChip, active && ss.catChipActive]}
+                    >
+                      <Text style={[ss.catChipText, active && ss.catChipTextActive]}>{c}</Text>
+                    </Pressable>
+                  );
+                })}
               </View>
             </View>
 
@@ -849,6 +872,16 @@ const ss = StyleSheet.create({
   coverBtnDisabled: { opacity: 0.5 },
   coverRemoveBtn: { alignSelf: 'flex-start', paddingVertical: SPACE.xs, paddingHorizontal: 2 },
   coverRemoveText: { color: '#9CA3AF', fontSize: FONT_SIZE.xs, fontWeight: FONT_WEIGHT.semibold },
+
+  // Kategorie-Chips
+  catWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACE.sm },
+  catChip: {
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999,
+    backgroundColor: '#F3F4F6', borderWidth: 1, borderColor: '#E5E7EB',
+  },
+  catChipActive: { backgroundColor: '#111827', borderColor: '#111827' },
+  catChipText: { fontSize: FONT_SIZE.sm, fontWeight: FONT_WEIGHT.semibold, color: '#374151' },
+  catChipTextActive: { color: '#fff' },
 });
 
 // ─── Plan-Sheet Styles ──────────────────────────────────────────────────────
