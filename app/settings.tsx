@@ -132,8 +132,6 @@ export default function SettingsScreen() {
   const { canAccessWomenOnly, deactivate } = useWomenOnly();
   const queryClient = useQueryClient();
   const { prefs: notifPrefs, setPrefs: setNotifPrefs } = useNotificationPrefs();
-  const [debugTaps, setDebugTaps] = useState(0);
-  const debugTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasVoice = !!(profile as any)?.voice_sample_url;
 
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -755,21 +753,11 @@ export default function SettingsScreen() {
         </Pressable>
 
         {/* ── Version ── */}
-        <Pressable
-          onPress={() => {
-            if (debugTimerRef.current) clearTimeout(debugTimerRef.current);
-            const next = debugTaps + 1;
-            setDebugTaps(next);
-            if (next >= 7) { setDebugTaps(0); router.push('/debug-gifts' as any); }
-            else debugTimerRef.current = setTimeout(() => setDebugTaps(0), 2000);
-          }}
-          hitSlop={12}
-        >
+        <View style={{ alignItems: 'center', paddingVertical: 4 }}>
           <Text style={[s.version, { color: colors.text.muted }]}>
             Serlo v{Constants.expoConfig?.version ?? '1.0.0'}
-            {debugTaps >= 3 && debugTaps < 7 ? `  •  ${7 - debugTaps}x` : ''}
           </Text>
-        </Pressable>
+        </View>
       </ScrollView>
 
       <VoiceSetupSheet visible={showVoiceSetup} onClose={() => setShowVoiceSetup(false)} />
