@@ -492,11 +492,14 @@ export default function RootLayoutFull() {
             <Stack.Screen name="(onboarding)" />
             <Stack.Screen
               name="create/index"
-              // presentation:'modal' (bewährt, Buttons funktionieren) + gestureEnabled:false:
-              // deaktiviert NUR die iOS-Swipe-down-zum-Schließen-Geste, die mit dem Ziehen
-              // von Text-/Sticker-Overlays (PanResponder) kollidierte. fullScreenModal hatte
-              // die Buttons unbrauchbar gemacht → zurückgenommen. Schließen weiter über das X.
-              options={{ presentation: 'modal', animation: 'none', gestureEnabled: false }}
+              // 'card' statt 'modal': der iOS-Modal hat eine native Swipe-down-zum-Schließen-
+              // Geste, die gestureEnabled:false NICHT zuverlässig abschaltet und die mit dem
+              // Ziehen von Text-/Sticker-Overlays (PanResponder) kollidierte (Editor wanderte
+              // mit runter). 'card' hat KEINE Dismiss-Geste, ist die App-Standard-Präsentation
+              // (Buttons funktionieren — anders als das vorher getestete 'fullScreenModal').
+              // slide_from_bottom behält die hochschiebende Optik; gestureEnabled:false killt
+              // auch das Edge-Back-Swipe. Schließen weiter über das X oben links.
+              options={{ presentation: 'card', animation: 'slide_from_bottom', gestureEnabled: false }}
             />
             <Stack.Screen name="post/[id]" options={{ animation: 'slide_from_right' }} />
             <Stack.Screen
