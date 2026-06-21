@@ -19,7 +19,7 @@ import * as Haptics from 'expo-haptics';
 import { launchImageLibraryAsync,requestMediaLibraryPermissionsAsync } from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { ChevronRight,ImageIcon,Music2,Radio,RotateCcw,Sparkles,Timer,Video,X,Zap,ZapOff } from 'lucide-react-native';
+import { AlignCenter,ChevronRight,ImageIcon,Music2,Radio,RotateCcw,Sparkles,Timer,Video,X,Zap,ZapOff } from 'lucide-react-native';
 import { useCallback,useEffect,useRef,useState } from 'react';
 import {
 Alert,
@@ -78,6 +78,16 @@ const TEXT_GRADIENTS: [string, string][] = [
   ['#F857A6', '#FF5858'], ['#4776E6', '#8E54E9'], ['#FC5C7D', '#6A82FB'],
   ['#00C9FF', '#92FE9D'], ['#F7971E', '#FFD200'], ['#1A2980', '#26D0CE'],
   ['#EE0979', '#FF6A00'], ['#7F00FF', '#E100FF'], ['#16A085', '#F4D03F'],
+];
+
+// Text-Ausrichtung + Schrift-Stile (System-Fonts → kein Asset nötig, im Capture sichtbar)
+const TEXT_ALIGNS = ['center', 'left', 'right'] as const;
+const ALIGN_LABEL: Record<(typeof TEXT_ALIGNS)[number], string> = { center: 'Mitte', left: 'Links', right: 'Rechts' };
+const TEXT_STYLES = [
+  { key: 'classic', label: 'Klassisch', fontFamily: undefined as string | undefined, fontWeight: '800' as const, fontStyle: 'normal' as const, glow: false },
+  { key: 'serif',   label: 'Serif',     fontFamily: 'Georgia',  fontWeight: '700' as const, fontStyle: 'italic' as const, glow: false },
+  { key: 'neon',    label: 'Neon',      fontFamily: undefined,  fontWeight: '800' as const, fontStyle: 'normal' as const, glow: true },
+  { key: 'mono',    label: 'Mono',      fontFamily: 'Courier',  fontWeight: '700' as const, fontStyle: 'normal' as const, glow: false },
 ];
 
 const STUDIO_MODES: { key: StudioMode; label: string; icon: React.ReactNode }[] = [
@@ -396,11 +406,15 @@ export default function CreateCameraScreen() {
   const [textContent, setTextContent] = useState('');
   const [textBgIndex, setTextBgIndex] = useState(0);
   const [textGradient, setTextGradient] = useState<[string, string] | null>(null);  // null = Einzelfarbe
+  const [alignIdx, setAlignIdx] = useState(0);   // 0 Mitte / 1 Links / 2 Rechts
+  const [styleIdx, setStyleIdx] = useState(0);   // Schrift-Stil-Index
   const textShotRef = useRef<ViewShot>(null);
   const textInputRef = useRef<TextInput>(null);
   const textBg = TEXT_BG_COLORS[textBgIndex];
   // Bei Gradient immer weißer Text; sonst heller BG → dunkler Text
   const textColor = textGradient ? '#FFFFFF' : (textBg === '#FFFFFF' || textBg === '#FBBF24') ? '#111111' : '#FFFFFF';
+  const textAlignMode = TEXT_ALIGNS[alignIdx];
+  const textStyle = TEXT_STYLES[styleIdx];
 
   // Kreis-Button: würfelt einen neuen Gradient (anders als der aktuelle)
   const rollGradient = useCallback(() => {
@@ -645,7 +659,11 @@ export default function CreateCameraScreen() {
                 multiline
                 autoFocus
                 maxLength={400}
-                style={{ color: textColor, fontSize: 30, fontWeight: '800', textAlign: 'center', alignSelf: 'stretch' }}
+                style={[
+                  { color: textColor, fontSize: 30, alignSelf: 'stretch', textAlign: textAlignMode,
+                    fontWeight: textStyle.fontWeight, fontStyle: textStyle.fontStyle, fontFamily: textStyle.fontFamily },
+                  textStyle.glow && { textShadowColor: textColor, textShadowOffset: { width: 0, height: 0 }, textShadowRadius: 14 },
+                ]}
               />
             </Pressable>
           </ViewShot>
@@ -798,6 +816,20 @@ export default function CreateCameraScreen() {
           <Text style={s.toolLabel}>Effekte</Text>
         </Pressable>
       </View>
+      )}
+
+      {/* ── Text-Modus: rechte Tool-Leiste (Schrift + Ausrichtung) ── */}
+      {isText && (
+        <View style={[s.tools, { top: insets.top + 72, zIndex: 11 }]}>
+          <Pressable style={s.toolBtn} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setStyleIdx((i) => (i + 1) % TEXT_STYLES.length); }}>
+            <Text style={{ color: '#fff', fontSize: 22, fontWeight: '900', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }}>Aa</Text>
+            <Text style={s.toolLabel}>{textStyle.label}</Text>
+          </Pressable>
+          <Pressable style={s.toolBtn} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setAlignIdx((i) => (i + 1) % TEXT_ALIGNS.length); }}>
+            <AlignCenter size={24} color="#fff" strokeWidth={1.8} />
+            <Text style={s.toolLabel}>{ALIGN_LABEL[textAlignMode]}</Text>
+          </Pressable>
+        </View>
       )}
 
       {/* ── Unterer Bereich ── */}
