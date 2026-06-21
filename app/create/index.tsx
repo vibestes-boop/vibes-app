@@ -575,7 +575,8 @@ export default function CreatePostScreen() {
         onDone={addTextOverlay}
         onCancel={() => setShowTextEditor(false)}
       />
-      {/* ── Top-Bar ──────────────────────────────────────────── */}
+      {/* ── Top-Bar (im Zeichnen-Modus ausgeblendet — DrawToolbar bringt eigene) ── */}
+      {!isDrawMode && (
       <View style={[s.topBar, { paddingTop: insets.top + 8 }]}>
         {/* Zurück */}
         <Pressable
@@ -614,8 +615,10 @@ export default function CreatePostScreen() {
           <Settings2 size={20} color="#fff" strokeWidth={2} />
         </Pressable>
       </View>
+      )}
 
-      {/* ── Rechte Tool-Sidebar (sauber, kein Hintergrund) ── */}
+      {/* ── Rechte Tool-Sidebar (im Zeichnen-Modus ausgeblendet) ── */}
+      {!isDrawMode && (
       <View style={[s.sidebar, { top: insets.top + 70 }]}>
 
         <Pressable onPress={() => setShowMusicPicker(true)} style={s.sideBtn}>
@@ -687,8 +690,10 @@ export default function CreatePostScreen() {
         )}
 
       </View>
+      )}
 
-      {/* ── Bottom-Buttons ───────────────────────────────────── */}
+      {/* ── Bottom-Buttons (im Zeichnen-Modus ausgeblendet) ───── */}
+      {!isDrawMode && (
       <View style={[s.bottomBar, { paddingBottom: insets.bottom + 16 }]}>
         {image && (
           <Pressable onPress={pickFromLibrary} style={s.thumbBtn}>
@@ -713,6 +718,7 @@ export default function CreatePostScreen() {
           </Pressable>
         </View>
       </View>
+      )}
 
       {/* ── MusicPickerSheet ────────────────────────────────── */}
       <MusicPickerSheet
