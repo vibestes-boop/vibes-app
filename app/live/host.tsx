@@ -1189,6 +1189,8 @@ function HostUI({
     list.push({
       key:         'poll',
       label:       'Umfrage',
+      group:       'Engagement',
+      status:      activePoll ? 'Läuft' : 'Starten',
       icon:        <BarChart3 size={26} stroke={activePoll ? LC.accent.purpleLight : '#fff'} strokeWidth={2.2} />,
       active:      !!activePoll,
       accentColor: LC.accent.purple,
@@ -1198,6 +1200,8 @@ function HostUI({
     list.push({
       key:         'sticker',
       label:       'Sticker',
+      group:       'Engagement',
+      status:      activeStickers.length > 0 ? `${activeStickers.length} aktiv` : 'Aus',
       icon:        <Smile size={26} stroke={activeStickers.length > 0 ? '#fbbf24' : '#fff'} strokeWidth={2.2} />,
       active:      activeStickers.length > 0,
       accentColor: '#fbbf24',
@@ -1208,6 +1212,8 @@ function HostUI({
     list.push({
       key:         'product-pin',
       label:       'Produkt',
+      group:       'Verkaufen',
+      status:      placedProducts.length > 0 ? `${placedProducts.length} platziert` : 'Anpinnen',
       icon:        <Tag size={26} stroke={placedProducts.length > 0 ? '#34d399' : '#fff'} strokeWidth={2.2} />,
       active:      placedProducts.length > 0,
       accentColor: '#22c55e',
@@ -1218,6 +1224,8 @@ function HostUI({
     list.push({
       key:         'goal',
       label:       'Ziel',
+      group:       'Engagement',
+      status:      goal?.reached ? 'Erreicht' : goal ? 'Läuft' : 'Aus',
       icon:        <Target
                      size={26}
                      stroke={goal?.reached ? '#4ade80' : goal ? '#fbbf24' : '#fff'}
@@ -1233,7 +1241,9 @@ function HostUI({
     // Featured-Product-Pill (shop-pin) und platzierten Karten (product-pin).
     list.push({
       key:         'shop-mode',
-      label:       shopEnabled ? 'Shop an' : 'Shop aus',
+      label:       'Shop',
+      group:       'Verkaufen',
+      status:      shopEnabled ? 'An · sichtbar' : 'Aus',
       icon:        <ShoppingBag
                      size={26}
                      stroke={shopEnabled ? '#34d399' : '#fff'}
@@ -1249,6 +1259,8 @@ function HostUI({
     list.push({
       key:         'shop-pin',
       label:       'Featured',
+      group:       'Verkaufen',
+      status:      shopPinnedProduct ? 'Aktiv' : 'Aus',
       icon:        <ShoppingBag size={26} stroke={shopPinnedProduct ? '#34d399' : '#fff'} strokeWidth={2.2} />,
       active:      !!shopPinnedProduct,
       accentColor: '#22c55e',
@@ -1257,7 +1269,9 @@ function HostUI({
 
     list.push({
       key:         'record',
-      label:       recActive ? 'Stop-REC' : 'Aufnahme',
+      label:       'Aufnahme',
+      group:       'Stream & Chat',
+      status:      recActive ? 'Läuft' : recStarting ? 'Startet…' : recStopping ? 'Stoppt…' : 'Aus',
       icon:        <Circle
                      size={26}
                      stroke={recActive ? '#ef4444' : '#fff'}
@@ -1273,7 +1287,9 @@ function HostUI({
     // —— Chat-Moderation-Feinschliff
     list.push({
       key:         'slow-mode',
-      label:       slowModeSeconds > 0 ? `Slow ${slowModeSeconds}s` : 'Slow-Mode',
+      label:       'Slow-Mode',
+      group:       'Stream & Chat',
+      status:      slowModeSeconds > 0 ? `${slowModeSeconds}s Cooldown` : 'Aus',
       icon:        <Timer size={26} stroke={slowModeSeconds > 0 ? '#fdba74' : '#fff'} strokeWidth={2.2} />,
       active:      slowModeSeconds > 0,
       accentColor: '#f97316',
@@ -1283,6 +1299,8 @@ function HostUI({
     list.push({
       key:         'followers-only',
       label:       'Nur Follower',
+      group:       'Stream & Chat',
+      status:      followersOnlyChat ? 'Chat geschützt' : 'Aus',
       icon:        <Users
                      size={26}
                      stroke={followersOnlyChat ? '#4ade80' : '#fff'}
@@ -1298,6 +1316,8 @@ function HostUI({
       list.push({
         key:         'queue',
         label:       'Anfragen',
+        group:       'Co-Host',
+        status:      `${queueDepth} wartet`,
         icon:        <Inbox size={26} stroke="#60a5fa" strokeWidth={2.2} />,
         accentColor: '#3b82f6',
         badge:       queueDepth,
@@ -1310,6 +1330,8 @@ function HostUI({
       list.push({
         key:         'duet-layout',
         label:       'Layout',
+        group:       'Co-Host',
+        status:      'Wechseln',
         icon:        <LayoutGrid size={26} stroke="#a5b4fc" strokeWidth={2.2} />,
         accentColor: '#6366f1',
         onPress:     showLayoutSwitcher,
@@ -1317,7 +1339,9 @@ function HostUI({
 
       list.push({
         key:         'cohost-mic',
-        label:       coHostMutedAudio ? 'Mic frei' : 'Co-Mic',
+        label:       'Co-Mic',
+        group:       'Co-Host',
+        status:      coHostMutedAudio ? 'Stumm' : 'Frei',
         icon:        coHostMutedAudio
                        ? <MicOff size={26} stroke="#fca5a5" strokeWidth={2.2} />
                        : <Mic size={26} stroke="#fff" strokeWidth={2.2} />,
@@ -1337,7 +1361,9 @@ function HostUI({
 
       list.push({
         key:         'cohost-cam',
-        label:       coHostMutedVideo ? 'Cam frei' : 'Co-Cam',
+        label:       'Co-Cam',
+        group:       'Co-Host',
+        status:      coHostMutedVideo ? 'Aus' : 'An',
         icon:        coHostMutedVideo
                        ? <CameraOff size={26} stroke="#fca5a5" strokeWidth={2.2} />
                        : <Camera size={26} stroke="#fff" strokeWidth={2.2} />,
@@ -1358,6 +1384,8 @@ function HostUI({
       list.push({
         key:          'duet-end',
         label:        'Duet beenden',
+        group:        'Co-Host',
+        status:       'Beenden',
         icon:         <Video size={26} stroke="#fca5a5" strokeWidth={2.2} />,
         destructive:  true,
         onPress:      () => {
@@ -1373,6 +1401,8 @@ function HostUI({
       list.push({
         key:         'battle-end',
         label:       'Battle-Stop',
+        group:       'Battle',
+        status:      'Beenden',
         icon:        <Zap size={26} stroke="#fde047" strokeWidth={2.2} />,
         accentColor: '#eab308',
         keepOpen:    true, // Alert öffnet sich ohnehin → Sheet bleibt für Confirm offen
@@ -2259,6 +2289,7 @@ function HostUI({
           visible={creatorToolsVisible}
           onClose={() => setCreatorToolsVisible(false)}
           tools={creatorTools}
+          subtitle={`Live · ${viewerCount} Zuschauer`}
         />
 
         {/* Kommentare */}
