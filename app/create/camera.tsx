@@ -823,17 +823,8 @@ export default function CreateCameraScreen() {
           <Text style={s.toolLabel}>{timerSec > 0 ? `Timer · ${timerSec}s` : 'Timer'}</Text>
         </Pressable>
 
-        {/* ── Effekte (AR) ── */}
-        <Pressable
-          style={s.toolBtn}
-          onPress={() => {
-            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            router.push('/create/ar-camera' as any);
-          }}
-        >
-          <Sparkles size={24} color="#fff" strokeWidth={1.8} />
-          <Text style={s.toolLabel}>Effekte</Text>
-        </Pressable>
+        {/* „Effekte" (AR-Kamera) entfernt — war buggy/verwirrend; AR-Code bleibt dormant.
+            Filter/Effekte gibt's im Editor nach dem Foto. */}
       </View>
       )}
 
