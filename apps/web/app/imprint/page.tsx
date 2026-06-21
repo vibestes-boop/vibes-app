@@ -45,15 +45,15 @@ export default function ImprintPage() {
         <dl>
           <dt>E-Mail</dt>
           <dd>
-            <a href="mailto:hallo@serlo.app">hallo@serlo.app</a>
+            <a href="mailto:brandwerkx@gmail.com">brandwerkx@gmail.com</a>
           </dd>
           <dt>Support</dt>
           <dd>
-            <a href="mailto:support@serlo.app">support@serlo.app</a>
+            <a href="mailto:brandwerkx@gmail.com">brandwerkx@gmail.com</a>
           </dd>
           <dt>Datenschutz</dt>
           <dd>
-            <a href="mailto:datenschutz@serlo.app">datenschutz@serlo.app</a>
+            <a href="mailto:brandwerkx@gmail.com">brandwerkx@gmail.com</a>
           </dd>
         </dl>
       </section>

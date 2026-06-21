@@ -223,8 +223,8 @@ export default async function BillingPage() {
         <p className="mt-1">
           {trans(t('billing.legalHint'), {
             supportEmail: (
-              <a href="mailto:support@serlo.app" className="underline hover:text-foreground">
-                support@serlo.app
+              <a href="mailto:brandwerkx@gmail.com" className="underline hover:text-foreground">
+                brandwerkx@gmail.com
               </a>
             ),
           })}

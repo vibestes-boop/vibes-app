@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 
 // /support — öffentliche Support-/Kontaktseite (App-Store Support-URL).
 
-const SUPPORT_EMAIL = 'hallo@serlo.app';
+const SUPPORT_EMAIL = 'brandwerkx@gmail.com';
 
 export default function SupportPage() {
   return (

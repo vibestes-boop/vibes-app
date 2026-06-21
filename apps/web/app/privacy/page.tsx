@@ -38,10 +38,10 @@ export default function PrivacyPage() {
           Deutschland
         </p>
         <p>
-          E-Mail: <a href="mailto:hallo@serlo.app">hallo@serlo.app</a>
+          E-Mail: <a href="mailto:brandwerkx@gmail.com">brandwerkx@gmail.com</a>
           <br />
           Datenschutzanfragen:{' '}
-          <a href="mailto:datenschutz@serlo.app">datenschutz@serlo.app</a>
+          <a href="mailto:brandwerkx@gmail.com">brandwerkx@gmail.com</a>
         </p>
         <p>
           Weitere Anbieterangaben finden Sie im{' '}
