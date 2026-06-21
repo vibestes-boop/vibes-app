@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { safeJsonLd } from '@/lib/seo/json-ld';
 import Link from 'next/link';
 import type { Route } from 'next';
 import { notFound } from 'next/navigation';
@@ -99,7 +100,7 @@ export default async function HashtagPage({ params }: PageProps) {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(collectionJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(collectionJsonLd) }}
       />
     <main className="mx-auto w-full max-w-5xl px-4 pb-16 pt-8 lg:px-6">
       {/* Header */}

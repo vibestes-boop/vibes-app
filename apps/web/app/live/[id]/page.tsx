@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { safeJsonLd } from '@/lib/seo/json-ld';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -210,7 +211,7 @@ export default async function LiveViewerPage({ params }: PageProps) {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(liveJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(liveJsonLd) }}
       />
     <main className="relative h-[100dvh] w-full overflow-hidden bg-[#0b0b10] xl:h-auto xl:min-h-[100dvh] xl:overflow-visible xl:bg-[#f7f7f8]">
       {/* Join/Leave Tracking — nur Client, kein UI */}

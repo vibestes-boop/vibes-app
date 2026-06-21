@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { safeJsonLd } from '@/lib/seo/json-ld';
 import Link from 'next/link';
 import type { Route } from 'next';
 import { notFound } from 'next/navigation';
@@ -126,7 +127,7 @@ export default async function GuildDetailPage({ params }: Props) {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(orgJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(orgJsonLd) }}
       />
     <div className="mx-auto w-full max-w-[1200px] px-4 pb-24 pt-6 lg:px-6">
       {/* ── Header ─────────────────────────────────────────────────────── */}

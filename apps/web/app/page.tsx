@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
+import { safeJsonLd } from '@/lib/seo/json-ld';
 import { LandingPage } from '@/components/landing-page';
 import { HomeFeedShell } from '@/components/feed/home-feed-shell';
 import {
@@ -86,7 +87,7 @@ export default async function HomePage() {
       <>
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(websiteJsonLd) }}
         />
         <LandingPage featured={[]} liveNow={liveNow} trendingPosts={trendingPosts} />
       </>

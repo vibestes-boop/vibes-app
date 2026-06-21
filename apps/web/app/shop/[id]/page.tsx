@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { safeJsonLd } from '@/lib/seo/json-ld';
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -221,7 +222,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(productJsonLd) }}
       />
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-6xl flex-col px-4 pb-0 pt-6 lg:px-6">
         {/* Breadcrumb */}

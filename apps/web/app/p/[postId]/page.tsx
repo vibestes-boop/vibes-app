@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { safeJsonLd } from '@/lib/seo/json-ld';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
@@ -277,7 +278,7 @@ export default async function PostDetailPage({
       <PostViewTracker postId={post.id} />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
       />
 
       {/* ── Wiederverwendbare Sidebar-Blöcke als JSX-Variablen ─────────────── */}

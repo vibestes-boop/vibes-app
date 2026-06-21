@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { safeJsonLd } from '@/lib/seo/json-ld';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -109,7 +110,7 @@ export default async function ReplayPage({ params }: PageProps) {
       {videoJsonLd && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(videoJsonLd) }}
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(videoJsonLd) }}
         />
       )}
       <div className="mx-auto max-w-[1400px] px-4 py-4 lg:px-8">

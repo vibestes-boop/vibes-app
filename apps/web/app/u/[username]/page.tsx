@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { safeJsonLd } from '@/lib/seo/json-ld';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { BadgeCheck, Heart, Repeat2, ShoppingBag, Swords, Globe, Mountain, Radio, Bookmark, Flower2 } from 'lucide-react';
@@ -233,7 +234,7 @@ export default async function ProfilePage({
     <main className="mx-auto max-w-3xl">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{ __html: safeJsonLd(jsonLd) }}
       />
 
       {/* ───── Hero ───── */}
