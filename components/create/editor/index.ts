@@ -1,4 +1,5 @@
 export * from './AdjustSheet';
+export * from './CropSheet';
 export * from './DetailsSheet';
 export * from './DrawTool';
 export * from './FilterSheet';

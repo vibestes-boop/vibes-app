@@ -24,6 +24,7 @@ import { CreateProgressBar } from '@/components/create';
 import {
   AdjustSheet,
   type AdjustValues,
+  CropSheet,
   DetailsSheet,
   DrawCanvas,
   DrawToolbar,
@@ -61,6 +62,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useVideoPlayer,VideoView } from 'expo-video';
 import {
   ChevronRight,
+  Crop,
   Music2,
   Palette,
   Pencil,
@@ -141,6 +143,7 @@ export default function CreatePostScreen() {
   const [showFilterSheet, setShowFilterSheet]   = useState(false);
   const [showAdjustSheet, setShowAdjustSheet]   = useState(false);
   const [showRotateSheet, setShowRotateSheet]   = useState(false);
+  const [showCropSheet, setShowCropSheet]       = useState(false);
   const [textOverlays, setTextOverlays]         = useState<TextOverlay[]>([]);
   const [stickerOverlays, setStickerOverlays]   = useState<{ id: string; url: string; x: number; y: number }[]>([]);
   const [activeFilter, setActiveFilter]         = useState<ColorFilterId | null>(null);
@@ -235,6 +238,15 @@ export default function CreatePostScreen() {
 
   const addSticker = (url: string) => setStickerOverlays(prev => [...prev, { id: `sticker-${Date.now()}`, url, x: 0.3, y: 0.3 }]);
   const removeSticker = (id: string) => setStickerOverlays(prev => prev.filter(o => o.id !== id));
+
+  // Zuschneiden anwenden: neues (lokales) Bild übernehmen + Upload-Cache invalidieren,
+  // damit das zugeschnittene Bild frisch hochgeladen wird.
+  const applyCrop = (croppedUri: string) => {
+    setShowCropSheet(false);
+    if (!image || croppedUri === image.uri) return;
+    uploadedMediaRef.current = { url: null, thumbnailUrl: null };
+    setImage({ ...image, uri: croppedUri });
+  };
 
   // Trash zone callbacks
   const handleDragStart = () => {
@@ -644,6 +656,14 @@ export default function CreatePostScreen() {
           <Text style={s.sideLabel}>Drehen</Text>
         </Pressable>
 
+        {/* Zuschneiden — nur für Bilder (v1: Seitenverhältnis-Center-Crop) */}
+        {!isVideo && image && (
+          <Pressable style={s.sideBtn} onPress={() => setShowCropSheet(true)}>
+            <Crop size={26} color="#fff" strokeWidth={1.8} />
+            <Text style={s.sideLabel}>Zuschneiden</Text>
+          </Pressable>
+        )}
+
         {/* Schneiden — nur für Videos */}
         {isVideo && (
           <Pressable style={[s.sideBtn, trimResult && s.sideBtnActive]} onPress={() => setShowTrimSheet(true)}>
@@ -717,6 +737,16 @@ export default function CreatePostScreen() {
         onChange={setRotateState}
         onClose={() => setShowRotateSheet(false)}
       />
+
+      {/* ── CropSheet (Bild zuschneiden) ─────────────────────── */}
+      {image && !isVideo && (
+        <CropSheet
+          visible={showCropSheet}
+          uri={image.uri}
+          onDone={applyCrop}
+          onClose={() => setShowCropSheet(false)}
+        />
+      )}
 
       {/* ── VideoTrimSheet ───────────────────────────────────── */}
       {isVideo && image && (
