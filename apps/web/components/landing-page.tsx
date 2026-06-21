@@ -214,6 +214,7 @@ export function LandingPage({ featured, liveNow, trendingPosts }: LandingPagePro
             <Link href={'/terms' as Route} className="hover:text-foreground">AGB</Link>
             <Link href={'/privacy' as Route} className="hover:text-foreground">Datenschutz</Link>
             <Link href={'/imprint' as Route} className="hover:text-foreground">Impressum</Link>
+            <Link href={'/support' as Route} className="hover:text-foreground">Support</Link>
           </nav>
         </div>
       </footer>

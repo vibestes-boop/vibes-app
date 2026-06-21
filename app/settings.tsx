@@ -706,6 +706,15 @@ export default function SettingsScreen() {
             <View style={s.rowBody}><Text style={[s.rowTitle, { color: colors.text.primary }]}>Nutzungsbedingungen</Text></View>
             <ChevronRight size={16} stroke={colors.icon.muted} strokeWidth={2} />
           </Pressable>
+          <View style={[s.sep, { backgroundColor: colors.border.subtle, marginLeft: 56 }]} />
+
+          <Pressable style={[s.rowItem, { paddingVertical: 14 }]} onPress={() => Linking.openURL('https://serlo-web.vercel.app/support').catch(() => {})} accessibilityRole="link">
+            <View style={[s.rowIcon, { backgroundColor: colors.bg.elevated }]}>
+              <ExternalLink size={15} stroke={colors.icon.default} strokeWidth={2} />
+            </View>
+            <View style={s.rowBody}><Text style={[s.rowTitle, { color: colors.text.primary }]}>Hilfe & Support</Text></View>
+            <ChevronRight size={16} stroke={colors.icon.muted} strokeWidth={2} />
+          </Pressable>
         </View>
 
         {/* ── Account ── */}

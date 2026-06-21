@@ -374,6 +374,9 @@ export function FeedSidebar({
             <Link href={'/terms' as Route} className="hover:text-foreground hover:underline">
               AGB
             </Link>
+            <Link href={'/support' as Route} className="hover:text-foreground hover:underline">
+              Support
+            </Link>
             <OpenConsentSettingsButton className="hover:text-foreground hover:underline">
               Cookie-Einstellungen
             </OpenConsentSettingsButton>

@@ -68,7 +68,7 @@ export function MoreMenu({
     },
     { label: 'Datenschutz',          href: '/privacy' as Route, icon: <Shield className="h-5 w-5" /> },
     { label: 'Nutzungsbedingungen',  href: '/terms' as Route,   icon: <FileText className="h-5 w-5" /> },
-    { label: 'Hilfe & Support',      href: '/help' as Route,    icon: <HelpCircle className="h-5 w-5" /> },
+    { label: 'Hilfe & Support',      href: '/support' as Route, icon: <HelpCircle className="h-5 w-5" /> },
   ];
 
   return (
