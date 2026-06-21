@@ -1,5 +1,4 @@
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Tabs,useRouter } from 'expo-router';
 import { Plus,User,Zap } from 'lucide-react-native';
 import { useEffect } from 'react';
@@ -118,10 +117,9 @@ function TabBarItem({
   );
 }
 
-// ── Zentraler Create-Button ──────────────────────────────────────────────────
+// ── Zentraler Create-Button (TikTok-Stil: breite Taste mit Farbversatz) ───────
 function CreateTabButton({ onPress }: { onPress: () => void }) {
   const scale = useSharedValue(1);
-  const { colors, isDark } = useTheme();
 
   const animStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -137,31 +135,17 @@ function CreateTabButton({ onPress }: { onPress: () => void }) {
     onPress();
   };
 
-  // Theme-adaptiver 3D-Pill: heller Glanz-Verlauf im Dark-Mode, dunkler im Light-Mode.
-  // Verlauf top→bottom simuliert eine von oben beleuchtete, angehobene Fläche.
-  const gradColors = isDark
-    ? (['#F3F3F8', '#DEDEE5', '#B9BAC6'] as const)
-    : (['#3B475C', '#1A2336', '#070C16'] as const);
-  const iconColor = colors.bg.primary;
-  const highlightColor = isDark ? 'rgba(255,255,255,0.95)' : 'rgba(255,255,255,0.18)';
-
+  // Breite Taste mit seitlichem Farbversatz (Serlo-Pink links-versetzt, Lila
+  // rechts-versetzt) + weiße Mitte + dunkles Plus. Bewusst NICHT TikToks
+  // cyan/rote Originalfarben (Trade-Dress). Sitzt flach auf Icon-Höhe.
   return (
     <Pressable onPress={handlePress} style={styles.createTab} accessibilityLabel="Post erstellen">
-      <Animated.View style={[styles.createOuter, animStyle]}>
-        {/* Kontaktschatten — erdet den schwebenden Button */}
-        <View style={styles.createContactShadow} />
-        {/* Haupt-Button mit vertikalem Verlauf (3D-Glanz) + weicher Lift-Schatten */}
-        <LinearGradient
-          colors={gradColors}
-          locations={[0, 0.55, 1]}
-          start={{ x: 0.5, y: 0 }}
-          end={{ x: 0.5, y: 1 }}
-          style={[styles.createBtn, isDark ? styles.createLiftDark : styles.createLiftLight]}
-        >
-          {/* Spekular-Highlight oben — fängt das Licht, glänzende Oberfläche */}
-          <View style={[styles.createHighlight, { backgroundColor: highlightColor }]} />
-          <Plus size={22} color={iconColor} strokeWidth={3.2} />
-        </LinearGradient>
+      <Animated.View style={[styles.createBtnWrap, animStyle]}>
+        <View style={[styles.createGlow, styles.createGlowLeft]} />
+        <View style={[styles.createGlow, styles.createGlowRight]} />
+        <View style={styles.createCenter}>
+          <Plus size={23} color="#111114" strokeWidth={3} />
+        </View>
       </Animated.View>
     </Pressable>
   );
@@ -312,8 +296,8 @@ const styles = StyleSheet.create({
   blurFallback: { backgroundColor: 'rgba(5,5,8,0.95)' },
   tabBarInner: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
-    paddingTop: 6,
+    alignItems: 'flex-start',
+    paddingTop: 9,
     paddingHorizontal: 4,
   },
   tabItem: {
@@ -359,60 +343,36 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     lineHeight: 11,
   },
+  // Create-Tab: gleiche Höhe wie die übrigen Icons (oben ausgerichtet, kein Float)
   createTab: {
-    flex: 1.4,
+    flex: 1.3,
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+  },
+  createBtnWrap: {
+    width: 50,
+    height: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingBottom: 10,   // hebt den Button leicht über die Leiste → schwebt
-  },
-  createOuter: {
-    width: 60,
-    height: 42,
     position: 'relative',
   },
-  // Weicher Kontaktschatten direkt unter dem Button → erdet ihn auf der Leiste
-  createContactShadow: {
+  // Seitlich versetzte Farbflächen → Farbversatz-Optik (TikTok-Stil)
+  createGlow: {
     position: 'absolute',
-    left: 8, right: 8, bottom: -3,
-    height: 16,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 7,
-    elevation: 6,
+    width: 44,
+    height: 30,
+    borderRadius: 10,
   },
-  // Haupt-Button (Verlauf-Fläche)
-  createBtn: {
-    position: 'absolute',
-    top: 0, left: 0, right: 0, bottom: 0,
-    borderRadius: 15,
+  createGlowLeft:  { left: 0,  backgroundColor: '#A855F7' },   // Lila links-versetzt
+  createGlowRight: { right: 0, backgroundColor: '#FF2D55' },   // Pink rechts-versetzt
+  // Weiße Mitte (oben, zentriert) mit dunklem Plus
+  createCenter: {
+    width: 44,
+    height: 30,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  // Spekular-Highlight (Glas-Reflexion am oberen Rand)
-  createHighlight: {
-    position: 'absolute',
-    top: 2, left: 7, right: 7,
-    height: 10,
-    borderRadius: 7,
-  },
-  // Lift Dark-Mode: zarter heller Rand-Glow → schwebt über der dunklen Leiste
-  createLiftDark: {
-    shadowColor: '#FFFFFF',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.22,
-    shadowRadius: 7,
-    elevation: 10,
-  },
-  // Lift Light-Mode: klassischer dunkler Schlagschatten
-  createLiftLight: {
-    shadowColor: '#0B1120',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.32,
-    shadowRadius: 7,
-    elevation: 10,
   },
 });
 
