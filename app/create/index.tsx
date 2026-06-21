@@ -221,7 +221,10 @@ export default function CreatePostScreen() {
     await new Promise((r) => setTimeout(r, 160));   // einen Frame warten bis gerendert
     try {
       const uri = await shotRef.current?.capture?.();
-      return uri ?? null;
+      if (!uri) return null;
+      // view-shot (result:'tmpfile') liefert einen nackten Pfad OHNE file://-Schema
+      // → fetch/Upload wirft sonst „Invalid URL". Schema ergänzen.
+      return uri.startsWith('file://') ? uri : `file://${uri}`;
     } catch (e) {
       __DEV__ && console.warn('[compositeViaCapture]', e);
       return null;

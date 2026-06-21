@@ -410,7 +410,9 @@ export default function CreateCameraScreen() {
     try {
       const uri = await textShotRef.current?.capture?.();
       if (uri) {
-        router.replace({ pathname: '/create', params: { mediaUri: uri, mediaType: 'image' } });
+        // view-shot liefert nackten Pfad ohne file://-Schema → ergänzen, sonst „Invalid URL"
+        const fileUri = uri.startsWith('file://') ? uri : `file://${uri}`;
+        router.replace({ pathname: '/create', params: { mediaUri: fileUri, mediaType: 'image' } });
       } else {
         Alert.alert('Schade', 'Text-Post konnte nicht erstellt werden.');
       }
