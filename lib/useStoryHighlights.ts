@@ -248,8 +248,23 @@ export function useAddHighlight() {
     mutationFn: async (source: HighlightSource) => {
       if (!userId) throw new Error('Nicht eingeloggt');
 
+      // Medien auf permanenten R2-Pfad highlights/… kopieren → überlebt den
+      // Story-Ablauf (sonst löscht der R2-Cleanup die referenzierte Datei und
+      // das Highlight zeigt auf eine tote URL). Best-effort: bei Fehler die
+      // Original-Items behalten, die Erstellung wird nie blockiert.
+      let items = source.items;
+      try {
+        const { data, error } = await supabase.functions.invoke('highlight-copy-media', {
+          body: { items: source.items },
+        });
+        const copied = (data as { items?: typeof source.items } | null)?.items;
+        if (!error && Array.isArray(copied) && copied.length === source.items.length) {
+          items = copied;
+        }
+      } catch { /* Original-Items behalten */ }
+
       // Cover = erstes Item
-      const cover = source.items[0];
+      const cover = items[0];
       if (!cover) throw new Error('Mindestens ein Medium erforderlich');
 
       const baseRow = {
@@ -262,7 +277,7 @@ export function useAddHighlight() {
         media_type:    cover.media_type,
         thumbnail_url: cover.thumbnail_url ?? null,
         // Alle Items als JSONB
-        items: source.items.map(i => ({
+        items: items.map(i => ({
           media_url:     i.media_url,
           media_type:    i.media_type,
           thumbnail_url: i.thumbnail_url ?? null,
