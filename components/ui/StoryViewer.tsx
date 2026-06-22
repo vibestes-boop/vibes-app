@@ -1,7 +1,6 @@
 import { Image } from 'expo-image';
 import { useCallback,useEffect,useRef,useState } from 'react';
 import {
-ActionSheetIOS,
 Alert,
 AppState,
 Dimensions,
@@ -792,6 +791,7 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
   const [storyIndex, setStoryIndex] = useState(0);
   const [replyText, setReplyText] = useState('');
   const [shareOpen, setShareOpen] = useState(false);
+  const [highlightMenuOpen, setHighlightMenuOpen] = useState(false);
   const [kbHeight, setKbHeight] = useState(0);
   const [replyMode, setReplyMode] = useState<'dm' | 'public'>('public');
   const [showEmojis, setShowEmojis] = useState(false);
@@ -824,21 +824,17 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
   // nur beim eigenen Highlight.
   const isOwnHighlight = !!group.isHighlight && !!group.highlightId && isOwnStory;
   const openHighlightMenu = () => {
+    if (!group.highlightId) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setHighlightMenuOpen(true);
+  };
+  const confirmDeleteHighlight = () => {
     const hid = group.highlightId;
     if (!hid) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const del = () => { removeHighlight(hid); onClose(); };
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
-        { options: ['Highlight löschen', 'Abbrechen'], destructiveButtonIndex: 0, cancelButtonIndex: 1, title: group.username ?? 'Highlight' },
-        (i) => { if (i === 0) del(); },
-      );
-    } else {
-      Alert.alert(group.username ?? 'Highlight', undefined, [
-        { text: 'Highlight löschen', style: 'destructive', onPress: del },
-        { text: 'Abbrechen', style: 'cancel' },
-      ]);
-    }
+    setHighlightMenuOpen(false);
+    removeHighlight(hid);
+    onClose();
   };
 
   // Bei Story-Wechsel (Tippen links/rechts oder Gruppe wechseln):
@@ -917,7 +913,7 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
     return () => sub.remove();
   }, []);
 
-  const isPaused = kbHeight > 0 || shareOpen || isHolding || isAppBackground || showComments;
+  const isPaused = kbHeight > 0 || shareOpen || highlightMenuOpen || isHolding || isAppBackground || showComments;
 
   // Hold-Handler: Fortschritt merken + Animation stoppen
   const handleHoldStart = useCallback(() => {
@@ -1336,6 +1332,30 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
         onClose={() => setShareOpen(false)}
       />
 
+      {/* ── Highlight-Menü (Instagram-Stil, eigenes Sheet statt Apple-ActionSheet) ── */}
+      <Modal visible={highlightMenuOpen} transparent animationType="fade" onRequestClose={() => setHighlightMenuOpen(false)}>
+        <Pressable style={ss.hlMenuOverlay} onPress={() => setHighlightMenuOpen(false)}>
+          <Pressable style={ss.hlMenuWrap} onPress={(e) => e.stopPropagation()}>
+            <View style={ss.hlMenuGroup}>
+              <Pressable
+                style={({ pressed }) => [ss.hlMenuRow, pressed && ss.hlMenuRowPressed]}
+                onPress={confirmDeleteHighlight}
+                accessibilityRole="button"
+              >
+                <Text style={ss.hlMenuRowDestructive}>Highlight löschen</Text>
+              </Pressable>
+            </View>
+            <Pressable
+              style={({ pressed }) => [ss.hlMenuGroup, ss.hlMenuRow, pressed && ss.hlMenuRowPressed]}
+              onPress={() => setHighlightMenuOpen(false)}
+              accessibilityRole="button"
+            >
+              <Text style={ss.hlMenuRowCancel}>Abbrechen</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {/* ── Short-Video-Style Kommentar-Sheet ── */}
       <StoryCommentsSheet
         visible={showComments}
@@ -1498,6 +1518,15 @@ const ss = StyleSheet.create({
   handle: { width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.18)', alignSelf: 'center', marginBottom: 14 },
   sectionLabel: { color: '#fff', fontSize: 15, fontWeight: '700', paddingHorizontal: 18, marginBottom: 10 },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.1)', marginVertical: 14, marginHorizontal: 18 },
+
+  // ── Highlight-Menü (Instagram-Stil) ──
+  hlMenuOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'flex-end' },
+  hlMenuWrap: { paddingHorizontal: 10, paddingBottom: 38, gap: 8 },
+  hlMenuGroup: { backgroundColor: '#1c1c22', borderRadius: 16, overflow: 'hidden' },
+  hlMenuRow: { height: 58, alignItems: 'center', justifyContent: 'center' },
+  hlMenuRowPressed: { backgroundColor: 'rgba(255,255,255,0.06)' },
+  hlMenuRowDestructive: { color: '#FF4D58', fontSize: 17, fontWeight: '600' },
+  hlMenuRowCancel: { color: '#fff', fontSize: 17, fontWeight: '700' },
 
   // ── Reihe 1: User-Suche & horizontale Liste ──
   searchRow: {
