@@ -30,12 +30,12 @@ const Animated = { View: _animNS?.View ?? _animMod?.View };
 
 const BLUE       = '#3B9EFF';
 const BLUE_SOFT  = 'rgba(59,158,255,0)';
-const BLUE_DIM   = 'rgba(59,158,255,0.28)';
+const BLUE_DIM   = 'rgba(59,158,255,0.55)';
 const HEAD_WHITE = '#EAF6FF';
 
 const P = 2400;        // ms pro Hin-und-Zurück
-const A = 42;          // Reiseweite (px ab Mitte)
-const W = 96;          // Schweif-Grundlänge (px)
+const A = 46;          // Reiseweite (px ab Mitte)
+const W = 150;         // Schweif-Grundlänge (px) — lang + sichtbar
 const H = 2.5;         // Schweif-Höhe
 const HEAD_W = 96;     // Kopf-SVG-Breite (lange horizontale Strahlen)
 const HEAD_H = 44;     // Kopf-SVG-Höhe
@@ -85,13 +85,13 @@ export function SerloLoader() {
         <Animated.View style={[s.trailWrap, trailStyle]}>
           <LinearGradient
             colors={[BLUE_SOFT, BLUE_DIM, BLUE, HEAD_WHITE]}
-            locations={[0, 0.4, 0.86, 1]}
+            locations={[0, 0.3, 0.72, 1]}
             start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }}
             style={s.trailGlow}
           />
           <LinearGradient
             colors={[BLUE_SOFT, BLUE_DIM, BLUE, HEAD_WHITE]}
-            locations={[0, 0.4, 0.86, 1]}
+            locations={[0, 0.3, 0.72, 1]}
             start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }}
             style={s.trailSharp}
           />
@@ -139,8 +139,8 @@ const s = StyleSheet.create({
   trailWrap: { position: 'absolute', right: 0, top: TRAIL_TOP, width: W, height: H, justifyContent: 'center' },
   trailSharp: { position: 'absolute', right: 0, left: 0, top: 0, height: H, borderRadius: H },
   trailGlow:  {
-    position: 'absolute', right: 0, left: 0, top: -2, height: H + 4, borderRadius: (H + 4) / 2,
-    opacity: 0.4,
+    position: 'absolute', right: 0, left: 0, top: -3, height: H + 6, borderRadius: (H + 6) / 2,
+    opacity: 0.55,
   },
   // Kopf zentriert auf dem Anker
   head: { position: 'absolute', right: -HEAD_W / 2, top: -HEAD_H / 2, width: HEAD_W, height: HEAD_H },

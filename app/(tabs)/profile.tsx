@@ -380,7 +380,7 @@ export default function ProfileScreen() {
         contentContainerStyle={{ paddingBottom: insets.bottom + 100, gap: GRID_GAP }}
         refreshControl={
           <RefreshControl
-            refreshing={isRefreshing}
+            refreshing={isRefreshing || loadingPosts}
             onRefresh={handleRefresh}
             tintColor="transparent"
             colors={['transparent']}
@@ -523,7 +523,7 @@ export default function ProfileScreen() {
       />
 
       {/* Lade-Beam statt nativem Refresh-Spinner (oben in der Refresh-Lücke) */}
-      {isRefreshing && (
+      {(isRefreshing || loadingPosts) && (
         <View
           style={{ position: 'absolute', left: 0, right: 0, top: insets.top + 66, alignItems: 'center', zIndex: 50 }}
           pointerEvents="none"
