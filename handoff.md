@@ -15,14 +15,14 @@
 | Bereich | Stand |
 |---|---|
 | **Repo / Branch** | `/Users/zaurhatuev/vibes-app` · `main` (Push-Remote: `vibestes-boop/vibes-app`) |
-| **Letzter Commit** | `c02f8e0` (gepusht) — Handoff/Simplify-Doku |
+| **Letzter Commit** | `219d3b7` (gepusht) — Highlight im Viewer löschen |
 | **Aktueller Build** | **v1.30.0 / iOS-Build 286 (versionCode 47)** — vom User gebaut + submitted, **auf Gerät (TestFlight)**, **Google-Login bestätigt funktionierend** ✅. Gebaut aus Commit `a07b9df` → enthält ALLE UI-Politur + Google-an. App-Store-Release-Status: beim User. |
 | **Runtime jetzt 1.30.0** | OTAs zielen ab `a07b9df` auf **Runtime 1.30.0** → erreichen Build 286. Build 285 (1.29.0) ist eingefroren. Letzte 1.29.0-OTA war `41f06c12` (vor dem Bump). Refactors nach `a07b9df` (Simplify Tier 1) sind verhaltensneutral, noch nicht ge-OTA't — kommen mit dem nächsten Build/OTA. |
 | **NEU nativ in 1.30.0** | `expo-web-browser` (Google-Login). (1.29.0 hatte `react-native-view-shot` neu.) |
 | **Web (apps/web)** | deployt via **Vercel** auf Push zu `main` (`serlo-web.vercel.app`) |
 | **DB-Migrationen** | 4 dieser Session **angewandt** (§3) — zuletzt `followers_only` |
 | **EAS project id** | `02ab536a-5836-4560-a5ec-2dfd6e059f90` · **iOS bundle** `com.vibesapp.vibes` · EAS-Account `zaurhat` |
-| **GERADE IN ARBEIT** | — (zuletzt: **UI-Politur-Session** §1c — „Nur Follower", Kontrast-Fixes, Creator-Tools, LIVE-Setup, Studio-Hub, alles ausgeliefert) |
+| **GERADE IN ARBEIT** | **SerloLoader-Lade-Animation** (§1d) — auf **Profil** live, **Rollout auf Shop/Guild/Feed offen**. Highlights (Cover/Durability/Löschen) erledigt. |
 
 ⚠️ **Quarantäne:** Alter Checkout `/Users/zaurhatuev/Desktop/vibes-app` — NIEMALS bauen/deployen/pushen.
 
@@ -162,16 +162,36 @@ Der User war kurz vor dem Einreichen von 1.28.0, hat dann aber den neuen Build (
   - `console.*`-Audit: 0 echte Treffer.
 - **⛔ Tier 2 bewusst DEFERRED — `<InitialsAvatar>`-Komponente:** ~51 Dateien haben einen eigenen Initialen-Avatar-Fallback (genau die Stelle der wiederkehrenden Light-Mode-Kontrast-Bugs). Eine geteilte Komponente = ein Ort für künftige Fixes. **NICHT vor dem 1.30.0-Release gemacht:** 51 Call-Sites mit unterschiedl. Größen/Ringen/Borders + dunkle vs. theme-adaptive Flächen → echtes Regressionsrisiko, quality-only. Plan wenn mal dran: Komponente mit `size`/`variant: 'theme'|'dark'`-Prop bauen, **batchweise** migrieren (8–10/Commit, je tsc-verifiziert), zuerst theme-adaptive High-Traffic-Screens (Profil, Messages, Likers, Guild). Tier 3 (Riesendateien splitten) bleibt tabu.
 
-### Offen / nächste Schritte
+### Offen / nächste Schritte (Gesamtübersicht, Stand Ende dieser Session)
+- **⭐ SerloLoader-Rollout** auf **Shop/Guild/Feed** (§1d) — Profil ist Pilot/live, die anderen zeigen noch den grauen nativen RefreshControl-Spinner.
 - **⭐ Resend-E-Mail fixen** (`docs/auth-setup.md` Schritt 1) — reine Supabase/Resend-Config, kein Build. (Google-Login ist ✅ live.)
 - **1.30.0 im App Store releasen** (Build 286) — Export-Compliance + „Zur Prüfung hinzufügen"; Demo-Account/Review-Notes lagen bereit.
-- Studio-Entwürfe-Zeile mit echten Thumbnails (braucht `usePostDraftsCloud`-Query auf dem Kamera-Screen).
-- Creator-Tools „AN"-Pill (bewusst weggelassen — Aktiv-Zustand trägt schon Tint+Rahmen+Status).
-- Simplify Tier 2 (`<InitialsAvatar>`) — deferred, siehe oben.
+- Highlight-**Cleanup beim Löschen** (kopierte `highlights/`-Datei mitlöschen — minimaler Storage-Leak) · optional „Aus Highlight entfernen" (Einzel-Item) + „Bearbeiten" (§1d).
+- Studio-Entwürfe-Zeile mit echten Thumbnails · Creator-Tools „AN"-Pill (bewusst weggelassen) · Simplify Tier 2 (`<InitialsAvatar>`, deferred).
 
 ---
 
-## 2. Deploy-Workflow (unverändert, nur Runtime jetzt 1.29.0)
+## 1d. Lade-Animation (SerloLoader) + Highlights (23. Juni, nach dem 1.30.0-Build)
+
+> Alles JS → per OTA auf Runtime 1.30.0 (Build 286). Davor noch **Simplify Tier 1**
+> committet (tote Migrations-Backups −114 Dateien; `timeAgo`→`lib/timeAgo.ts`,
+> `fmtNum`→`lib/formatNum.ts` dedupliziert). Tier 2 (`<InitialsAvatar>`, ~51 Dateien) bewusst deferred.
+
+### ⭐ SerloLoader — markeneigene Lade-Animation (`components/ui/SerloLoader.tsx`)
+- **Was:** Ein **blauer Lichtstrahl (`#3B9EFF`)** gleitet sanft hin und her; der Schweif streckt sich lang in der Mitte und zieht sich am Wendepunkt zusammen (Komet), ein **Glüh-Kopf mit feinen Stern-Strahlen** führt (Richtungs-Flip am kontrahierten Wendepunkt → unsichtbar). Procedural, kein Asset.
+- **Technik:** `react-native-svg` (Kopf: radialer Halo + Stern-Strahlen + **`<Filter><FeGaussianBlur>`** für weiches Glühen) + `expo-linear-gradient` (Schweif, 6 evenly-Stops) + **iOS-`shadowColor`-Glow** am Schweif + Reanimated (`translateX` + `scaleX`-Streckung + Flip; statische Imports lt. Memory `vibes-reanimated-static-import`). Tuning: `A=64` (Weg), `W=162` (Schweif), `P=2000` (Tempo), `H=1.5` (fein).
+- **WICHTIGES LEARNING:** RN kann **kein** CSS-Blur procedural → harte Kanten („2000er-Look"). Lösung = **`react-native-svg` Gauss-Blur-Filter** (iOS; Android-SVG-Blur evtl. limitiert) + iOS-Shadow-Glow. Ein PNG-Glow-Asset wäre 1:1, aber procedural reicht.
+- **Einsatz Profil (Pilot, `app/(tabs)/profile.tsx`):** Der graue Spinner oben war der **native iOS-`RefreshControl`** (Auto-Refresh beim Tab-Öffnen). **`tintColor="transparent"` versteckt ihn NICHT** (iOS zeigt ihn trotzdem grau — daher sah man Kreis + Beam gleichzeitig). **Fix:** `refreshing={false}` (nie nativer Spinner) + SerloLoader als **ListHeader-Element** während `isRefreshing || loadingPosts` (reserviert eigenen Platz, bg `bg.secondary` → Lade-Fläche matcht Content statt grauem `bg.primary`). Pull-to-Refresh läuft via `onRefresh` weiter. (`index.tsx`-Feed-RefreshControl + Guild-Overlay nutzen blau/SerloLoader aus einer frühen Iteration.)
+- **OFFEN — Rollout:** Dasselbe Muster (`refreshing={false}` + Beam im ListHeader + `bg.secondary`) auf **Shop, Guild, Feed** anwenden. Dort noch nativer grauer Spinner.
+
+### Highlights — Cover, Durability, Löschen
+- **Cover-Bug** (`lib/useStoryHighlights.ts`, `879d35a`): Multi-Item-Highlights aus dem Picker (`story_id=null`) zeigten nur lila → Cover wird jetzt zusätzlich aus **`items[0]`** abgeleitet (+ leere Strings durchfallen via `||`).
+- **⭐ Durability** (`092b43c`, **User hat Edge Function deployed** ✅): Highlights speicherten nur die Story-`media_url` (Referenz, keine Kopie) → Story läuft ab → R2-Cleanup löscht Datei → **tote URL** (lila Cover, kein Inhalt, durchgestrichener Play). **Fix:** neue Edge Function **`highlight-copy-media`** kopiert Medien per S3-CopyObject nach **`highlights/{userId}/…`** (Cleanup fasst nur `posts/thumbnails/avatars` an → bleibt). `useAddHighlight` ruft sie vor dem Insert (best-effort). Nutzt vorhandene R2-Secrets. **Alte kaputte Highlights = Dateien weg, nicht wiederherstellbar.** Details: Memory `vibes-highlights-media-durability`.
+- **Löschen im Viewer** (Instagram-Stil, `219d3b7`): `StoryGroup` um `isHighlight`/`highlightId` erweitert (`lib/useStories.ts`); `toGroup` setzt sie; **`StoryViewer`** zeigt bei eigenem Highlight einen **„..."-Button** (neben X) → iOS-`ActionSheet` (Android `Alert`) mit **„Highlight löschen"** → `useRemoveHighlight` + Viewer schließen. (Bestehende Long-Press-Löschung auf der Blase bleibt.) **OFFEN (optional):** „Aus Highlight entfernen" (Einzel-Item) + „Bearbeiten".
+
+---
+
+## 2. Deploy-Workflow (unverändert, nur Runtime jetzt 1.30.0)
 
 ```bash
 # IMMER aus /Users/zaurhatuev/vibes-app
@@ -181,7 +201,7 @@ EAS_BUILD=1 npx eas update --branch production --message "..." --non-interactive
 #   → OTA gilt NUR für den 1.29.0-Build (285). Ältere Builds (1.28.0) ziehen sie NICHT.
 
 # Native Build (nur bei nativen Änderungen / neuen Deps) — autoIncrement=false → version+buildNumber+versionCode manuell
-#   app.json: version 1.29.0, ios.buildNumber 285, android.versionCode 46 (schon gesetzt; nächster Build hochzählen!)
+#   app.json AKTUELL: version 1.30.0, ios.buildNumber 286, android.versionCode 47 (Build 286 ist live; nächster Build hochzählen!)
 npx eas build --platform ios --profile production
 npx eas submit --platform ios --latest
 #   ⚠️ Apple verlangte zuletzt „Program License Agreement" akzeptieren (developer.apple.com/account) — sonst 403 beim Build.
