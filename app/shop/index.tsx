@@ -187,10 +187,11 @@ function ProductCard({ product, onPress, colors }: {
           </View>
         )}
 
-        {/* Wenig Lager-Badge */}
+        {/* Wenig Lager — dezenter Glas-Chip (statt neon-Streifen) */}
         {isLowStock && !isSoldOut && (
           <View style={card.lowStock}>
-            <Text style={card.lowStockText}>⚡ Nur {product.stock} übrig</Text>
+            <Flame size={11} color="#FBBF24" strokeWidth={2.4} />
+            <Text style={card.lowStockText}>Nur {product.stock} übrig</Text>
           </View>
         )}
       </View>
@@ -304,26 +305,32 @@ const card = StyleSheet.create({
   soldOutText: { color: '#fff', fontSize: 11, fontWeight: '600', letterSpacing: 0.3 },
 
   lowStock: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    backgroundColor: 'rgba(245,158,11,0.92)',
-    paddingVertical: 5, alignItems: 'center',
+    position: 'absolute', bottom: 8, left: 8,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: 9, paddingVertical: 5,
+    borderRadius: 999,
   },
-  lowStockText: { color: '#fff', fontSize: 10, fontWeight: '600' },
+  lowStockText: { color: '#fff', fontSize: 10.5, fontWeight: '700', letterSpacing: 0.2 },
 
   saleBadge: {
     position: 'absolute', top: 8, left: 8,
     backgroundColor: '#EF4444',
-    paddingHorizontal: 7, paddingVertical: 3,
-    borderRadius: 6,
+    paddingHorizontal: 9, paddingVertical: 4,
+    borderRadius: 999,
+    shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 4, shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
-  saleBadgeText: { color: '#fff', fontSize: 11, fontWeight: '700', letterSpacing: 0.2 },
+  saleBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800', letterSpacing: 0.3 },
 
   newBadge: {
     position: 'absolute', top: 8, left: 8,
     flexDirection: 'row', alignItems: 'center', gap: 3,
     backgroundColor: '#6366F1',
-    paddingHorizontal: 7, paddingVertical: 3,
-    borderRadius: 6,
+    paddingHorizontal: 8, paddingVertical: 4,
+    borderRadius: 999,
+    shadowColor: '#000', shadowOpacity: 0.18, shadowRadius: 4, shadowOffset: { width: 0, height: 2 },
+    elevation: 3,
   },
   newBadgeText: { color: '#fff', fontSize: 10, fontWeight: '700', letterSpacing: 0.4 },
 
