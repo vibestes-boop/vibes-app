@@ -99,7 +99,7 @@ function buildStyles(c: ThemeColors) {
     },
     avatarImg: { width: '100%', height: '100%' },
     avatarFallback: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-    avatarInitial: { color: '#fff', fontSize: 30, fontWeight: '800' },
+    avatarInitial: { color: c.text.secondary, fontSize: 30, fontWeight: '800' },
     storyDot: {
       position: 'absolute',
       bottom: 4,

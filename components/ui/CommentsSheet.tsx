@@ -617,8 +617,8 @@ function SheetInner({
               {user.avatar_url ? (
                 <Image source={{ uri: user.avatar_url }} style={styles.mentionAvatar} contentFit="cover" />
               ) : (
-                <View style={[styles.mentionAvatar, styles.mentionAvatarFallback]}>
-                  <Text style={styles.mentionAvatarText}>{(user.username ?? '?')[0].toUpperCase()}</Text>
+                <View style={[styles.mentionAvatar, styles.mentionAvatarFallback, { backgroundColor: colors.bg.subtle }]}>
+                  <Text style={[styles.mentionAvatarText, { color: colors.text.secondary }]}>{(user.username ?? '?')[0].toUpperCase()}</Text>
                 </View>
               )}
               <Text style={[styles.mentionUsername, { color: colors.text.primary }]}>@{user.username}</Text>

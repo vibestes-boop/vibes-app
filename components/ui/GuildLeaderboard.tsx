@@ -110,8 +110,8 @@ function TopPostCard({
             {post.author_avatar ? (
               <Image source={{ uri: post.author_avatar }} style={card.avatar} />
             ) : (
-              <View style={[card.avatar, card.avatarFallback]}>
-                <Text style={card.avatarInitial}>{initial}</Text>
+              <View style={[card.avatar, card.avatarFallback, { backgroundColor: colors.bg.subtle }]}>
+                <Text style={[card.avatarInitial, { color: colors.text.secondary }]}>{initial}</Text>
               </View>
             )}
             <Text style={[card.username, { color: colors.text.secondary }]}>@{post.author_username ?? '?'}</Text>
@@ -186,8 +186,8 @@ function MemberRow({
         {member.avatar_url ? (
           <Image source={{ uri: member.avatar_url }} style={[member_s.avatar, { borderColor: colors.border.default }]} />
         ) : (
-          <View style={[member_s.avatar, member_s.avatarFallback, { borderColor: colors.border.default }]}>
-            <Text style={member_s.avatarInitial}>{initial}</Text>
+          <View style={[member_s.avatar, member_s.avatarFallback, { borderColor: colors.border.default, backgroundColor: colors.bg.subtle }]}>
+            <Text style={[member_s.avatarInitial, { color: colors.text.secondary }]}>{initial}</Text>
           </View>
         )}
 

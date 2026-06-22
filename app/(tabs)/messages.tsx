@@ -277,8 +277,8 @@ function NewMessageModal({ visible, onClose }: { visible: boolean; onClose: () =
                     <ExpoImage source={{ uri: item.avatar_url }} style={modal.avatar} contentFit="cover" cachePolicy="memory-disk" />
 
                   ) : (
-                    <View style={[modal.avatar, modal.avatarFallback]}>
-                      <Text style={modal.avatarInitial}>{initial}</Text>
+                    <View style={[modal.avatar, modal.avatarFallback, { backgroundColor: colors.bg.subtle }]}>
+                      <Text style={[modal.avatarInitial, { color: colors.text.secondary }]}>{initial}</Text>
                     </View>
                   )}
                   <Text style={[modal.userName, { color: colors.text.primary }]}>@{item.username ?? '?'}</Text>
