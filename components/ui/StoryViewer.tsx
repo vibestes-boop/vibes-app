@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
 import { useCallback,useEffect,useRef,useState } from 'react';
 import {
+ActionSheetIOS,
 Alert,
 AppState,
 Dimensions,
@@ -24,7 +25,7 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { Check,Copy,Download,Eye,EyeOff,Flag,Heart,Search as SearchIcon,Send,Share2,UserCheck,UserPlus,X } from 'lucide-react-native';
+import { Check,Copy,Download,Eye,EyeOff,Flag,Heart,MoreHorizontal,Search as SearchIcon,Send,Share2,UserCheck,UserPlus,X } from 'lucide-react-native';
 import {
 useAnimatedStyle,
 useSharedValue,
@@ -39,6 +40,7 @@ import { useFollow } from '@/lib/useFollow';
 import { useOrCreateConversation,useSendMessage } from '@/lib/useMessages';
 import type { Story,StoryGroup } from '@/lib/useStories';
 import { useMarkStoryViewed,useMyStoryVote,useStoryPollResults,useVoteStoryPoll } from '@/lib/useStories';
+import { useRemoveHighlight } from '@/lib/useStoryHighlights';
 import { useAddStoryComment,useStoryComments,type StoryComment } from '@/lib/useStoryComments';
 import { useMutation,useQuery,useQueryClient } from '@tanstack/react-query';
 import { ResizeMode,Video } from 'expo-av';
@@ -799,6 +801,7 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
   const { mutateAsync: getOrCreateConv } = useOrCreateConversation();
   const { mutateAsync: sendMsg, isPending: sending } = useSendMessage();
   const { mutateAsync: addComment, isPending: addingComment } = useAddStoryComment();
+  const { mutate: removeHighlight } = useRemoveHighlight();
 
   // Progress: RNAnimated (wie FeedItem.tsx) — zuverlässiger als Reanimated+CJS-Hack
   const progressAnim = useRef(new RNAnimated.Value(0)).current;
@@ -816,6 +819,27 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
 
   const { isFollowing, toggle: toggleFollow, isOwnProfile } =
     useFollow(currentStory?.user_id ?? null);
+
+  // Highlight-Verwaltung im Viewer (wie Instagram „..." → Lösch-Button unten) —
+  // nur beim eigenen Highlight.
+  const isOwnHighlight = !!group.isHighlight && !!group.highlightId && isOwnStory;
+  const openHighlightMenu = () => {
+    const hid = group.highlightId;
+    if (!hid) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    const del = () => { removeHighlight(hid); onClose(); };
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        { options: ['Highlight löschen', 'Abbrechen'], destructiveButtonIndex: 0, cancelButtonIndex: 1, title: group.username ?? 'Highlight' },
+        (i) => { if (i === 0) del(); },
+      );
+    } else {
+      Alert.alert(group.username ?? 'Highlight', undefined, [
+        { text: 'Highlight löschen', style: 'destructive', onPress: del },
+        { text: 'Abbrechen', style: 'cancel' },
+      ]);
+    }
+  };
 
   // Bei Story-Wechsel (Tippen links/rechts oder Gruppe wechseln):
   // → Kommentar-Sheet schließen, Emoji-Picker schließen, Reply-Text löschen
@@ -1153,6 +1177,11 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
           </Pressable>
         )}
 
+        {isOwnHighlight && (
+          <Pressable onPress={openHighlightMenu} style={styles.closeBtn} hitSlop={12} accessibilityLabel="Highlight verwalten">
+            <MoreHorizontal size={22} color="#fff" strokeWidth={2.5} />
+          </Pressable>
+        )}
         <Pressable onPress={onClose} style={styles.closeBtn} hitSlop={12}>
           <X size={22} color="#fff" strokeWidth={2.5} />
         </Pressable>

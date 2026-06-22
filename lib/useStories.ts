@@ -26,6 +26,10 @@ export type StoryGroup = {
   avatar_url: string | null;
   stories: Story[];
   hasUnviewed: boolean;
+  /** true wenn diese „Gruppe" eigentlich ein Highlight ist → Viewer zeigt Verwalten-Menü */
+  isHighlight?: boolean;
+  /** Highlight-ID (zum Löschen aus dem Viewer) */
+  highlightId?: string;
 };
 
 // Stories der eigenen Guild (letzte 24h), gruppiert nach Nutzer

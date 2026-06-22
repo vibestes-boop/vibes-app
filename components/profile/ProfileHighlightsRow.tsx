@@ -110,6 +110,8 @@ export function ProfileHighlightsRow({
       username: h.title,
       avatar_url: h.thumbnail_url || h.media_url,
       hasUnviewed: false,
+      isHighlight: true,
+      highlightId: h.id,
       stories: itemsToShow.map((item, idx) => ({
         // ✔ Echte story_id verwenden wenn verfügbar → useStoryLike kann Likes persistieren
         // Fallback auf h.id-idx nur für Post-Highlights ohne story_id
