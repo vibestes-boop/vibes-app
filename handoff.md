@@ -15,10 +15,10 @@
 | Bereich | Stand |
 |---|---|
 | **Repo / Branch** | `/Users/zaurhatuev/vibes-app` · `main` (Push-Remote: `vibestes-boop/vibes-app`) |
-| **Letzter Commit** | `a723cee` (gepusht) — Simplify Tier 1 (Dead-Code + Dedup) |
-| **Letzte Mobile-OTA** | `edbd3e3` — **Runtime 1.29.0** (branch `production`, Group `41f06c12`) · 11 OTAs am 22.06. (§1c) |
-| **Mobile-Build** | **v1.29.0 / iOS-Build 285 (versionCode 46) → in TestFlight** (vom User gebaut). **NICHT im App Store released!** Alle OTAs dieser Session zielen auf **Runtime 1.29.0** (nur dieser Build hat sie). |
-| **NEU nativ in 1.29.0** | `react-native-view-shot@4.0.3` (für Compositing/Text-Modus) → deshalb der neue Build. |
+| **Letzter Commit** | `c02f8e0` (gepusht) — Handoff/Simplify-Doku |
+| **Aktueller Build** | **v1.30.0 / iOS-Build 286 (versionCode 47)** — vom User gebaut + submitted, **auf Gerät (TestFlight)**, **Google-Login bestätigt funktionierend** ✅. Gebaut aus Commit `a07b9df` → enthält ALLE UI-Politur + Google-an. App-Store-Release-Status: beim User. |
+| **Runtime jetzt 1.30.0** | OTAs zielen ab `a07b9df` auf **Runtime 1.30.0** → erreichen Build 286. Build 285 (1.29.0) ist eingefroren. Letzte 1.29.0-OTA war `41f06c12` (vor dem Bump). Refactors nach `a07b9df` (Simplify Tier 1) sind verhaltensneutral, noch nicht ge-OTA't — kommen mit dem nächsten Build/OTA. |
+| **NEU nativ in 1.30.0** | `expo-web-browser` (Google-Login). (1.29.0 hatte `react-native-view-shot` neu.) |
 | **Web (apps/web)** | deployt via **Vercel** auf Push zu `main` (`serlo-web.vercel.app`) |
 | **DB-Migrationen** | 4 dieser Session **angewandt** (§3) — zuletzt `followers_only` |
 | **EAS project id** | `02ab536a-5836-4560-a5ec-2dfd6e059f90` · **iOS bundle** `com.vibesapp.vibes` · EAS-Account `zaurhat` |
@@ -124,7 +124,8 @@ Der User war kurz vor dem Einreichen von 1.28.0, hat dann aber den neuen Build (
 ### „Folge ich"-Empty-State Layout (`components/feed/FollowingEmptyState.tsx`, Commit `8337041`, OTA `3e801814`)
 - Inhalt überlappte die absolute Feed-Kopfleiste (Toggle bei `insets.top`, 52px) → Icon-Ring verdeckt. Fix: `paddingTop = insets.top + 64`. Innere `ScrollView` (maxHeight 340, verschachtelt → nur ~2 User) raus → Karten inline, äußerer Feed-Scroll übernimmt; `s.root flex:1` entfernt.
 
-### ⭐ Google-Login vorbereitet (Commit `10c4a41`, KEIN OTA — gated)
+### ✅ Google-Login LIVE (vorbereitet `10c4a41` → aktiviert `a07b9df`, in Build 286)
+- **Funktioniert** (vom User bestätigt). `ENABLE_GOOGLE_LOGIN=true`, Supabase Google-Provider + Web-OAuth-Client (Client-ID endet `…svd71tnoi`, hat Supabase-Callback) via Web-App schon konfiguriert, `vibes://login-callback` in Supabase-Redirect-URLs. Web-OAuth-Client genügte (kein nativer Client). Details unten waren der Vorbereitungs-Stand:
 - **Code fertig, aber AUS:** `lib/useGoogleSignIn.ts` (Supabase `signInWithOAuth('google')` + In-App-Browser `expo-web-browser`, Implicit-Flow → `setSession`). Buttons in Login + Register (geteiltes `components/ui/GoogleGlyph.tsx`).
 - **Gated hinter `ENABLE_GOOGLE_LOGIN=false`** + `expo-web-browser` lazy via `require` → OTA-sicher (kein Crash auf Build 285). `expo-web-browser` ist neue native Dep + Config-Plugin (`app.json`) → **braucht Rebuild**.
 - **Aktivierung = Dashboard-Config + Flag + Build:** Schritt-für-Schritt in **`docs/auth-setup.md`** (Resend-E-Mail-Fix + Google-Cloud-OAuth-Client + Supabase-Provider + Redirect `vibes://login-callback`). Web-OAuth-Client genügt (kein nativer iOS/Android-Client). Danach `ENABLE_GOOGLE_LOGIN=true` im Rebuild-Commit.
@@ -162,7 +163,8 @@ Der User war kurz vor dem Einreichen von 1.28.0, hat dann aber den neuen Build (
 - **⛔ Tier 2 bewusst DEFERRED — `<InitialsAvatar>`-Komponente:** ~51 Dateien haben einen eigenen Initialen-Avatar-Fallback (genau die Stelle der wiederkehrenden Light-Mode-Kontrast-Bugs). Eine geteilte Komponente = ein Ort für künftige Fixes. **NICHT vor dem 1.30.0-Release gemacht:** 51 Call-Sites mit unterschiedl. Größen/Ringen/Borders + dunkle vs. theme-adaptive Flächen → echtes Regressionsrisiko, quality-only. Plan wenn mal dran: Komponente mit `size`/`variant: 'theme'|'dark'`-Prop bauen, **batchweise** migrieren (8–10/Commit, je tsc-verifiziert), zuerst theme-adaptive High-Traffic-Screens (Profil, Messages, Likers, Guild). Tier 3 (Riesendateien splitten) bleibt tabu.
 
 ### Offen / nächste Schritte
-- **⭐ Google-Login aktivieren** (`docs/auth-setup.md`) + **Resend-E-Mail fixen** — beides User-Config; Google braucht zusätzlich Flag-Flip + Rebuild.
+- **⭐ Resend-E-Mail fixen** (`docs/auth-setup.md` Schritt 1) — reine Supabase/Resend-Config, kein Build. (Google-Login ist ✅ live.)
+- **1.30.0 im App Store releasen** (Build 286) — Export-Compliance + „Zur Prüfung hinzufügen"; Demo-Account/Review-Notes lagen bereit.
 - Studio-Entwürfe-Zeile mit echten Thumbnails (braucht `usePostDraftsCloud`-Query auf dem Kamera-Screen).
 - Creator-Tools „AN"-Pill (bewusst weggelassen — Aktiv-Zustand trägt schon Tint+Rahmen+Status).
 - Simplify Tier 2 (`<InitialsAvatar>`) — deferred, siehe oben.
