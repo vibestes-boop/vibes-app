@@ -8,6 +8,7 @@ type GuildViewMode,
 } from "@/components/guild";
 import { GuildMembersSheet } from "@/components/guild/GuildMembersSheet";
 import { GuildLeaderboard } from "@/components/ui/GuildLeaderboard";
+import { SerloLoader } from "@/components/ui/SerloLoader";
 import { StoriesRow } from "@/components/ui/StoriesRow";
 import { useAuthStore } from "@/lib/authStore";
 import { useGuildNavStore } from "@/lib/guildNavStore";
@@ -283,7 +284,7 @@ export default function GuildScreen() {
               <EmptyGuildState guildColors={guildColorPair} />
               {isLoading && (
                 <View style={styles.loadingOverlay}>
-                  <ActivityIndicator size="small" color={guildColorPair[0]} />
+                  <SerloLoader />
                 </View>
               )}
             </View>

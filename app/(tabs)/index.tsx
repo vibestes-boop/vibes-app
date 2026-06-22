@@ -647,7 +647,8 @@ export default function VibeFeedScreen() {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            tintColor="#FFFFFF"
+            tintColor="#3B9EFF"
+            colors={['#3B9EFF']}
             progressViewOffset={insets.top + 100}
           />
         }

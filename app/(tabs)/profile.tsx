@@ -381,8 +381,8 @@ export default function ProfileScreen() {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            tintColor="#FFFFFF"
-            colors={['#FFFFFF']}
+            tintColor="#3B9EFF"
+            colors={['#3B9EFF']}
           />
         }
         ListHeaderComponent={
