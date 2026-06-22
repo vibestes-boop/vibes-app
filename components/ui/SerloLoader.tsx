@@ -30,12 +30,11 @@ const Animated = { View: _animNS?.View ?? _animMod?.View };
 
 const BLUE       = '#3B9EFF';
 const BLUE_SOFT  = 'rgba(59,158,255,0)';
-const BLUE_DIM   = 'rgba(59,158,255,0.55)';
 const HEAD_WHITE = '#EAF6FF';
 
-const P = 2400;        // ms pro Hin-und-Zurück
-const A = 46;          // Reiseweite (px ab Mitte)
-const W = 150;         // Schweif-Grundlänge (px) — lang + sichtbar
+const P = 2000;        // ms pro Hin-und-Zurück (etwas schneller, weil weiterer Weg)
+const A = 64;          // Reiseweite (px ab Mitte) — weiterer Weg
+const W = 162;         // Schweif-Grundlänge (px) — langer Schweif
 const H = 2.5;         // Schweif-Höhe
 const HEAD_W = 96;     // Kopf-SVG-Breite (lange horizontale Strahlen)
 const HEAD_H = 44;     // Kopf-SVG-Höhe
@@ -84,14 +83,14 @@ export function SerloLoader() {
         {/* Schweif (zwei Lagen: scharf + weiter/fainter = Glow-Halo) */}
         <Animated.View style={[s.trailWrap, trailStyle]}>
           <LinearGradient
-            colors={[BLUE_SOFT, BLUE_DIM, BLUE, HEAD_WHITE]}
-            locations={[0, 0.3, 0.72, 1]}
+            colors={[BLUE_SOFT, 'rgba(59,158,255,0.22)', 'rgba(59,158,255,0.48)', 'rgba(59,158,255,0.78)', BLUE, HEAD_WHITE]}
+            locations={[0, 0.22, 0.44, 0.66, 0.88, 1]}
             start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }}
             style={s.trailGlow}
           />
           <LinearGradient
-            colors={[BLUE_SOFT, BLUE_DIM, BLUE, HEAD_WHITE]}
-            locations={[0, 0.3, 0.72, 1]}
+            colors={[BLUE_SOFT, 'rgba(59,158,255,0.22)', 'rgba(59,158,255,0.48)', 'rgba(59,158,255,0.78)', BLUE, HEAD_WHITE]}
+            locations={[0, 0.22, 0.44, 0.66, 0.88, 1]}
             start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }}
             style={s.trailSharp}
           />
