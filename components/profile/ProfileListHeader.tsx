@@ -125,14 +125,14 @@ function ProfileActionRow({
           />
         )}
 
-        {/* Coins — gleich große Icon-Button wie Tools (einheitliche Reihe) */}
+        {/* Coins — randlos, damit die Münze größer wirkt (wie im Shop-Header) */}
         {onBuyCoins && (
           <Pressable
-            style={({ pressed }) => [msx.iconBtn, { backgroundColor: colors.bg.elevated, borderWidth: 1, borderColor: colors.border.subtle, borderRadius: 14 }, pressed && { opacity: 0.6 }]}
+            style={({ pressed }) => [msx.iconBtn, pressed && { opacity: 0.6 }]}
             onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onBuyCoins(); }}
             accessibilityLabel="Coins kaufen"
           >
-            <Image source={require('@/assets/serlo-coin.png')} style={{ width: 22, height: 22 }} contentFit="contain" />
+            <Image source={require('@/assets/serlo-coin.png')} style={{ width: 32, height: 32 }} contentFit="contain" />
           </Pressable>
         )}
 
