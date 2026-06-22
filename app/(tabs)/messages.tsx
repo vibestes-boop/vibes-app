@@ -27,20 +27,10 @@ import { supabase } from '@/lib/supabase';
 import { useActiveLiveSessions } from '@/lib/useLiveSession';
 import { useConversations,useOrCreateConversation,type Conversation } from '@/lib/useMessages';
 import { useGuildStories,type StoryGroup } from '@/lib/useStories';
+import { timeAgo } from '@/lib/timeAgo';
 import { useTheme } from '@/lib/useTheme';
 import { useQuery,useQueryClient } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
-
-function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const m = Math.floor(diff / 60000);
-  const h = Math.floor(diff / 3600000);
-  const d = Math.floor(diff / 86400000);
-  if (d >= 1) return `${d}d`;
-  if (h >= 1) return `${h}h`;
-  if (m >= 1) return `${m}min`;
-  return 'Jetzt';
-}
 
 function ConvItem({
   item,
