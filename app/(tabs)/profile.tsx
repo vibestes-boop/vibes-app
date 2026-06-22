@@ -372,6 +372,7 @@ export default function ProfileScreen() {
 
       <FlatList
         key={activeTab}
+        style={{ backgroundColor: colors.bg.secondary }}
         data={listData}
         keyExtractor={(item) => item.id}
         numColumns={GRID_COLUMNS}
