@@ -15,7 +15,7 @@
 | Bereich | Stand |
 |---|---|
 | **Repo / Branch** | `/Users/zaurhatuev/vibes-app` · `main` (Push-Remote: `vibestes-boop/vibes-app`) |
-| **Letzter Commit** | `edbd3e3` (gepusht) — Light-Mode Kontrast-Sweep |
+| **Letzter Commit** | `a723cee` (gepusht) — Simplify Tier 1 (Dead-Code + Dedup) |
 | **Letzte Mobile-OTA** | `edbd3e3` — **Runtime 1.29.0** (branch `production`, Group `41f06c12`) · 11 OTAs am 22.06. (§1c) |
 | **Mobile-Build** | **v1.29.0 / iOS-Build 285 (versionCode 46) → in TestFlight** (vom User gebaut). **NICHT im App Store released!** Alle OTAs dieser Session zielen auf **Runtime 1.29.0** (nur dieser Build hat sie). |
 | **NEU nativ in 1.29.0** | `react-native-view-shot@4.0.3` (für Compositing/Text-Modus) → deshalb der neue Build. |
@@ -154,10 +154,18 @@ Der User war kurz vor dem Einreichen von 1.28.0, hat dann aber den neuen Build (
 - `71bad0e5` — Shop-Coin randlos + groß
 - `41f06c12` — Light-Mode Kontrast-Sweep (Avatar-Fallbacks)
 
+### Code-Hygiene / Simplify-Pass (22.06., Commits `0a33379` `9e73406` `a723cee`)
+- **Tier 1 erledigt** (reine Refactors, kein Verhalten geändert, laufen in den 1.30.0-Build):
+  - **114 tote Dateien** entfernt: 2× `supabase/migrations.backup.<epoch>/` (~110 alte SQL-Backups, ersetzt durch `supabase/migrations/`) + 3 untracked `*.backup-20260607`-Editor-Snapshots. (`lib/visionCamera.future.ts` BLEIBT — dormant AR-Code.)
+  - `timeAgo` (3 identische) → `lib/timeAgo.ts`; `fmtNum` (3 identische) → `lib/formatNum.ts` (`useAnalytics` re-exportiert). **Abweichende Formate bewusst gelassen** (Merge hätte UI-Text geändert).
+  - `console.*`-Audit: 0 echte Treffer.
+- **⛔ Tier 2 bewusst DEFERRED — `<InitialsAvatar>`-Komponente:** ~51 Dateien haben einen eigenen Initialen-Avatar-Fallback (genau die Stelle der wiederkehrenden Light-Mode-Kontrast-Bugs). Eine geteilte Komponente = ein Ort für künftige Fixes. **NICHT vor dem 1.30.0-Release gemacht:** 51 Call-Sites mit unterschiedl. Größen/Ringen/Borders + dunkle vs. theme-adaptive Flächen → echtes Regressionsrisiko, quality-only. Plan wenn mal dran: Komponente mit `size`/`variant: 'theme'|'dark'`-Prop bauen, **batchweise** migrieren (8–10/Commit, je tsc-verifiziert), zuerst theme-adaptive High-Traffic-Screens (Profil, Messages, Likers, Guild). Tier 3 (Riesendateien splitten) bleibt tabu.
+
 ### Offen / nächste Schritte
 - **⭐ Google-Login aktivieren** (`docs/auth-setup.md`) + **Resend-E-Mail fixen** — beides User-Config; Google braucht zusätzlich Flag-Flip + Rebuild.
 - Studio-Entwürfe-Zeile mit echten Thumbnails (braucht `usePostDraftsCloud`-Query auf dem Kamera-Screen).
 - Creator-Tools „AN"-Pill (bewusst weggelassen — Aktiv-Zustand trägt schon Tint+Rahmen+Status).
+- Simplify Tier 2 (`<InitialsAvatar>`) — deferred, siehe oben.
 
 ---
 
