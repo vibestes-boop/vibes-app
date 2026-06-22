@@ -15,8 +15,8 @@
 | Bereich | Stand |
 |---|---|
 | **Repo / Branch** | `/Users/zaurhatuev/vibes-app` · `main` (Push-Remote: `vibestes-boop/vibes-app`) |
-| **Letzter Commit** | `10c4a41` (gepusht) — Google-Login vorbereitet (gated, kein OTA) |
-| **Letzte Mobile-OTA** | `632cd47` — **Runtime 1.29.0** (branch `production`, Group `882d9ec9`) · 7 OTAs am 22.06. (§1c) |
+| **Letzter Commit** | `edbd3e3` (gepusht) — Light-Mode Kontrast-Sweep |
+| **Letzte Mobile-OTA** | `edbd3e3` — **Runtime 1.29.0** (branch `production`, Group `41f06c12`) · 11 OTAs am 22.06. (§1c) |
 | **Mobile-Build** | **v1.29.0 / iOS-Build 285 (versionCode 46) → in TestFlight** (vom User gebaut). **NICHT im App Store released!** Alle OTAs dieser Session zielen auf **Runtime 1.29.0** (nur dieser Build hat sie). |
 | **NEU nativ in 1.29.0** | `react-native-view-shot@4.0.3` (für Compositing/Text-Modus) → deshalb der neue Build. |
 | **Web (apps/web)** | deployt via **Vercel** auf Push zu `main` (`serlo-web.vercel.app`) |
@@ -130,6 +130,17 @@ Der User war kurz vor dem Einreichen von 1.28.0, hat dann aber den neuen Build (
 - **Aktivierung = Dashboard-Config + Flag + Build:** Schritt-für-Schritt in **`docs/auth-setup.md`** (Resend-E-Mail-Fix + Google-Cloud-OAuth-Client + Supabase-Provider + Redirect `vibes://login-callback`). Web-OAuth-Client genügt (kein nativer iOS/Android-Client). Danach `ENABLE_GOOGLE_LOGIN=true` im Rebuild-Commit.
 - **Warum:** Aktuell Signup nur via Apple (iOS) — **Android = kein funktionierender Signup-Weg** (E-Mail kaputt). Zielgruppe stark Android → vor Launch Show-Stopper. Empfehlung: Resend (Config, kein Build) sofort; Google mit nächstem geplanten Build bündeln.
 
+### Shop-Politur (`app/shop/index.tsx`, Commits `8b017b7` + `db1d509`)
+- **Karten-Badges entfeinert:** „-99%"-Sale flacher Block → Pill mit dezenter Tiefe (Shadow, bolder); „Nur N übrig" vollbreiter neon-oranger Streifen → **dunkler Glas-Chip** unten links + Flammen-Icon; NEU-Badge analog. OTA `6434f852`.
+- **Coin-Stand im Header:** kleines Coin (15px) im umrandeten Pill → **randlos + 28px** + größere Zahl. OTA `71bad0e5`. (Coin taucht auch in Profil-Aktionsleiste auf — dort noch klein, auf Zuruf angleichbar.)
+
+### Light-Mode Kontrast-Sweep (Commits `bae917b` + `edbd3e3`)
+- Proaktiver Pass gegen das wiederkehrende **Weiß-auf-weiß**-Muster (Memory `vibes-lightmode-contrast-bug`). Avatar-Initialen-Fallbacks (User ohne Bild → unsichtbar im Light-Mode) auf theme-adaptiven Flächen gefixt → `colors.bg.subtle` + `colors.text.secondary`:
+  - **Explore** Discover-Karten + Suchergebnis-Zeilen (`ExploreUserRow`, OTA `1eaba3d3`)
+  - **Kommentar-@Mention**, **Guild-Leaderboard** (Post+Mitglied), **Profil-Avatar** (`profileStyles`), **Messages-User-Such-Modal** (OTA `41f06c12`)
+- **Bewusst unberührt:** immer-dunkle Flächen (Story-Viewer, Feed-Stories-Row, Live-/Likers-/Viewer-/Profil-Share-Sheets) — dort ist Weiß korrekt, ein „Fix" hätte sie im Light-Mode gebrochen.
+- **Regel (Memory):** Komponente mit `colors.bg.*` als Fläche → Text/Icon/Fallback auch über `colors.*`. Über dem immer-schwarzen Feed (`feedStyles.container`=#000) umgekehrt: feste Hell-auf-Dunkel-Palette. Noch offen: tieferer Audit von beliebigem weißem **Text** (nicht nur Avatare) — breiter/riskanter, daher nicht im Sweep.
+
 ### OTAs dieser Session (alle Runtime 1.29.0, iOS+Android)
 - `82fe358a` — „Nur Follower"-Publikum (§4 B)
 - `7c223edb` — Folge-ich-Kontrast + KI-Cover-Buttons + Creator-Tools-Redesign
@@ -138,6 +149,10 @@ Der User war kurz vor dem Einreichen von 1.28.0, hat dann aber den neuen Build (
 - `c282fd6a` — Bottom-Nav TikTok-Stil (Icons aligned + neue Plus-Taste)
 - `3e801814` — Folge-ich-Empty-State Layout
 - `882d9ec9` — Plus-Taste Light-Mode schwarz
+- `1eaba3d3` — Explore-Avatar-Fallback Light-Mode sichtbar
+- `6434f852` — Shop-Badges entfeinert (Sale-Pill + Glas-Chip)
+- `71bad0e5` — Shop-Coin randlos + groß
+- `41f06c12` — Light-Mode Kontrast-Sweep (Avatar-Fallbacks)
 
 ### Offen / nächste Schritte
 - **⭐ Google-Login aktivieren** (`docs/auth-setup.md`) + **Resend-E-Mail fixen** — beides User-Config; Google braucht zusätzlich Flag-Flip + Rebuild.
