@@ -35,7 +35,7 @@ const HEAD_WHITE = '#EAF6FF';
 const P = 2000;        // ms pro Hin-und-Zurück (etwas schneller, weil weiterer Weg)
 const A = 64;          // Reiseweite (px ab Mitte) — weiterer Weg
 const W = 162;         // Schweif-Grundlänge (px) — langer Schweif
-const H = 2.5;         // Schweif-Höhe
+const H = 1.5;         // Schweif-Höhe — fein
 const HEAD_W = 96;     // Kopf-SVG-Breite (lange horizontale Strahlen)
 const HEAD_H = 44;     // Kopf-SVG-Höhe
 const EASE = Easing.inOut(Easing.ease);
@@ -109,18 +109,18 @@ export function SerloLoader() {
                 <Stop offset="1"    stopColor={BLUE}    stopOpacity={0} />
               </RadialGradient>
             </Defs>
-            {/* Weicher Halo */}
-            <Circle cx="48" cy="22" r="21" fill="url(#halo)" />
-            {/* Weich geblurrte Strahlen (Gauss-Blur → echtes weiches Licht) */}
+            {/* Weicher Halo (zart) */}
+            <Circle cx="48" cy="22" r="15" fill="url(#halo)" />
+            {/* Feine, weich geblurrte Strahlen */}
             <G filter="url(#soft)">
-              <Rect x="4"  y="21"   width="88" height="2"   fill="#DCEEFF" opacity={0.9} />
-              <Rect x="47" y="8"    width="2"  height="28"  fill="#DCEEFF" opacity={0.85} />
-              <Rect x="36" y="21.2" width="24" height="1.6" fill="#CFE8FF" opacity={0.6} transform="rotate(45 48 22)" />
-              <Rect x="36" y="21.2" width="24" height="1.6" fill="#CFE8FF" opacity={0.6} transform="rotate(-45 48 22)" />
+              <Rect x="6"    y="21.4" width="84" height="1.2" fill="#DCEEFF" opacity={0.85} />
+              <Rect x="47.4" y="11"   width="1.2" height="22" fill="#DCEEFF" opacity={0.8} />
+              <Rect x="38"   y="21.6" width="20" height="0.9" fill="#CFE8FF" opacity={0.5} transform="rotate(45 48 22)" />
+              <Rect x="38"   y="21.6" width="20" height="0.9" fill="#CFE8FF" opacity={0.5} transform="rotate(-45 48 22)" />
             </G>
-            {/* Weicher Kern-Glow + scharfer Kern */}
-            <Circle cx="48" cy="22" r="6"   fill="#fff" opacity={0.3} />
-            <Circle cx="48" cy="22" r="2.4" fill="#fff" />
+            {/* Weicher Kern-Glow + feiner scharfer Kern */}
+            <Circle cx="48" cy="22" r="4"   fill="#fff" opacity={0.28} />
+            <Circle cx="48" cy="22" r="1.6" fill="#fff" />
           </Svg>
         </View>
       </Animated.View>

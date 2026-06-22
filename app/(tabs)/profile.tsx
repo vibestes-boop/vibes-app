@@ -381,13 +381,19 @@ export default function ProfileScreen() {
         contentContainerStyle={{ paddingBottom: insets.bottom + 100, gap: GRID_GAP }}
         refreshControl={
           <RefreshControl
-            refreshing={isRefreshing || loadingPosts}
+            refreshing={false}
             onRefresh={handleRefresh}
             tintColor="transparent"
             colors={['transparent']}
           />
         }
         ListHeaderComponent={
+          <>
+            {(isRefreshing || loadingPosts) && (
+              <View style={{ paddingVertical: 26, alignItems: 'center', backgroundColor: colors.bg.secondary }}>
+                <SerloLoader />
+              </View>
+            )}
           <ProfileListHeader
             profile={profile}
             followCounts={followCounts}
@@ -418,6 +424,7 @@ export default function ProfileScreen() {
             activeTab={activeTab}
             onTabChange={setActiveTab}
           />
+          </>
         }
         renderItem={renderGridItem}
         ListEmptyComponent={
@@ -522,16 +529,6 @@ export default function ProfileScreen() {
           ) : null
         }
       />
-
-      {/* Lade-Beam statt nativem Refresh-Spinner (oben in der Refresh-Lücke) */}
-      {(isRefreshing || loadingPosts) && (
-        <View
-          style={{ position: 'absolute', left: 0, right: 0, top: insets.top + 66, alignItems: 'center', zIndex: 50 }}
-          pointerEvents="none"
-        >
-          <SerloLoader />
-        </View>
-      )}
 
       <PostManageModal
         visible={!!managePost}
