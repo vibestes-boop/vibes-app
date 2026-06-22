@@ -90,13 +90,15 @@ export function useDiscoverPeople() {
       }
 
       // ── 3. Fallback — neueste aktive User ─────────────────────────────────
+      // Breiter Pool (50), damit auch bei vielen schon-gefolgten Accounts noch
+      // ungefolgte Kandidaten übrig bleiben — addUser filtert Self + Following raus.
       if (results.length < 5) {
         const { data: newUsers } = await supabase
           .from('profiles')
           .select('id, username, avatar_url, bio')
           .neq('id', userId)
           .order('created_at', { ascending: false })
-          .limit(10);
+          .limit(50);
         (newUsers ?? []).forEach((u) => addUser(u, 'new'));
       }
 

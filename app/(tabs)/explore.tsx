@@ -24,12 +24,11 @@ type ExploreSortMode,
 import { useShopProducts } from '@/lib/useShop';
 import { useTheme } from '@/lib/useTheme';
 import { useWomenOnly } from '@/lib/useWomenOnly';
-import { FlashList } from '@shopify/flash-list';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams,useRouter } from 'expo-router';
 import { ChevronRight,SearchX,ShoppingBag,Tag } from 'lucide-react-native';
 import { useCallback,useEffect,useRef,useState } from 'react';
-import { ActivityIndicator,Pressable,ScrollView as RNScrollView,StyleSheet,Text,View } from 'react-native';
+import { ActivityIndicator,FlatList,Pressable,ScrollView as RNScrollView,StyleSheet,Text,View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 /** Verzögert den Wert um `delay` ms — verhindert eine Query pro Tastendruck */
@@ -271,30 +270,31 @@ export default function ExploreScreen() {
           </Pressable>
         </View>
       ) : (
-        <View style={{ flex: 1 }}>
-          <FlashList
-            data={postsToShow}
-            keyExtractor={(item) => item.id}
-            renderItem={renderGridItem}
-            numColumns={EXPLORE_GRID_COLS}
-            estimatedItemSize={130}
-            showsVerticalScrollIndicator={false}
-            contentContainerStyle={styles.grid}
-            onEndReached={() => {
-              if (!isSearching && hasNextPage && !isFetchingNextPage) {
-                fetchNextPage();
-              }
-            }}
-            onEndReachedThreshold={0.5}
-            ListFooterComponent={
-              isFetchingNextPage ? (
-                <View style={{ padding: 20, alignItems: 'center' }}>
-                  <ActivityIndicator color={colors.text.primary} />
-                </View>
-              ) : null
+        <FlatList
+          data={postsToShow}
+          keyExtractor={(item) => item.id}
+          renderItem={renderGridItem}
+          numColumns={EXPLORE_GRID_COLS}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.grid}
+          removeClippedSubviews
+          initialNumToRender={12}
+          maxToRenderPerBatch={9}
+          windowSize={7}
+          onEndReached={() => {
+            if (!isSearching && hasNextPage && !isFetchingNextPage) {
+              fetchNextPage();
             }
-          />
-        </View>
+          }}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            isFetchingNextPage ? (
+              <View style={{ padding: 20, alignItems: 'center' }}>
+                <ActivityIndicator color={colors.text.primary} />
+              </View>
+            ) : null
+          }
+        />
       )}
     </View>
   );
