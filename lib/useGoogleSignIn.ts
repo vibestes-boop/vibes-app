@@ -23,8 +23,8 @@
 import { Alert } from 'react-native';
 import { supabase } from './supabase';
 
-/** Solange kein Build mit expo-web-browser live ist: false halten (Button versteckt). */
-export const ENABLE_GOOGLE_LOGIN: boolean = false;
+/** Ab Build 286 (1.30.0) mit expo-web-browser nativ → aktiv. */
+export const ENABLE_GOOGLE_LOGIN: boolean = true;
 
 const REDIRECT_URL = 'vibes://login-callback';
 
