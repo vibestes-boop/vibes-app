@@ -579,7 +579,7 @@ export default function VibeFeedScreen() {
             Folge anderen oder poste deinen ersten Vibe — dein Feed füllt sich automatisch.
           </Text>
           <Pressable
-            onPress={() => router.push('/(tabs)/explore')}
+            onPress={() => router.navigate('/(tabs)/explore')}
             style={[styles.emptyTagBtn, { backgroundColor: `${colors.accent.secondary}33`, borderColor: `${colors.accent.secondary}66`, borderWidth: 1 }]}
             accessibilityRole="button"
             accessibilityLabel="Explore öffnen"
@@ -596,7 +596,7 @@ export default function VibeFeedScreen() {
           contentContainerStyle={{ flexGrow: 1 }}
         >
           <FollowingEmptyState
-            onExplore={() => router.push('/(tabs)/explore')}
+            onExplore={() => router.navigate('/(tabs)/explore')}
           />
         </ScrollView>
       )}
@@ -735,7 +735,7 @@ export default function VibeFeedScreen() {
           <Pressable
             onPress={() => {
               impactAsync(ImpactFeedbackStyle.Light);
-              router.push('/(tabs)/explore');
+              router.navigate('/(tabs)/explore');
             }}
             hitSlop={10}
             style={styles.feedSearchBtn}

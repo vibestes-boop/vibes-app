@@ -271,28 +271,30 @@ export default function ExploreScreen() {
           </Pressable>
         </View>
       ) : (
-        <FlashList
-          data={postsToShow}
-          keyExtractor={(item) => item.id}
-          renderItem={renderGridItem}
-          numColumns={EXPLORE_GRID_COLS}
-          estimatedItemSize={130}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.grid}
-          onEndReached={() => {
-            if (!isSearching && hasNextPage && !isFetchingNextPage) {
-              fetchNextPage();
+        <View style={{ flex: 1 }}>
+          <FlashList
+            data={postsToShow}
+            keyExtractor={(item) => item.id}
+            renderItem={renderGridItem}
+            numColumns={EXPLORE_GRID_COLS}
+            estimatedItemSize={130}
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={styles.grid}
+            onEndReached={() => {
+              if (!isSearching && hasNextPage && !isFetchingNextPage) {
+                fetchNextPage();
+              }
+            }}
+            onEndReachedThreshold={0.5}
+            ListFooterComponent={
+              isFetchingNextPage ? (
+                <View style={{ padding: 20, alignItems: 'center' }}>
+                  <ActivityIndicator color={colors.text.primary} />
+                </View>
+              ) : null
             }
-          }}
-          onEndReachedThreshold={0.5}
-          ListFooterComponent={
-            isFetchingNextPage ? (
-              <View style={{ padding: 20, alignItems: 'center' }}>
-                <ActivityIndicator color={colors.text.primary} />
-              </View>
-            ) : null
-          }
-        />
+          />
+        </View>
       )}
     </View>
   );
