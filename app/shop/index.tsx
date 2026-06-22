@@ -518,9 +518,9 @@ export default function ShopScreen() {
               <Text style={[s.headerTitle, { color: colors.text.primary }]}>Shop</Text>
             </View>
             <View style={s.headerRight}>
-              {/* Coin-Balance */}
-              <View style={[s.coinPill, { backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle }]}>
-                <CoinIcon size={15} />
+              {/* Coin-Balance — randlos, großes Coin (gut sichtbar) */}
+              <View style={s.coinRow}>
+                <CoinIcon size={28} />
                 <Text style={[s.coinText, { color: colors.text.primary }]}>
                   {coins.toLocaleString('de-DE')}
                 </Text>
@@ -812,12 +812,11 @@ const s = StyleSheet.create({
   cancelBtn: { paddingLeft: 4 },
   cancelText: { fontSize: 14, fontWeight: '600' },
 
-  coinPill: {
+  coinRow: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
-    paddingHorizontal: 11, paddingVertical: 7,
-    borderRadius: 20, borderWidth: 1,
+    paddingHorizontal: 2,
   },
-  coinText: { fontWeight: '600', fontSize: 13 },
+  coinText: { fontWeight: '700', fontSize: 16 },
 
   iconBtn: {
     width: 36, height: 36, borderRadius: 12, borderWidth: 1,
