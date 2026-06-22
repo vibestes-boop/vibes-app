@@ -32,13 +32,13 @@ const BLUE       = '#3B9EFF';
 const BLUE_SOFT  = 'rgba(59,158,255,0)';
 const HEAD_WHITE = '#EAF6FF';
 
-const P = 2000;        // ms pro Hin-und-Zurück (etwas schneller, weil weiterer Weg)
+const P = 2200;        // ms pro Hin-und-Zurück — minimal ruhiger = eleganter
 const A = 64;          // Reiseweite (px ab Mitte) — weiterer Weg
-const W = 162;         // Schweif-Grundlänge (px) — langer Schweif
-const H = 1.5;         // Schweif-Höhe — fein
+const W = 168;         // Schweif-Grundlänge (px) — langer Schweif
+const H = 1.15;        // Schweif-Höhe — noch feinerer Faden
 const HEAD_W = 96;     // Kopf-SVG-Breite (lange horizontale Strahlen)
 const HEAD_H = 44;     // Kopf-SVG-Höhe
-const EASE = Easing.inOut(Easing.ease);
+const EASE = Easing.inOut(Easing.sin);  // sanfteste Pendelbewegung (Sinus)
 
 export function SerloLoader() {
   const tx   = useSharedValue(-A);     // Kopf-Position
@@ -83,14 +83,14 @@ export function SerloLoader() {
         {/* Schweif (zwei Lagen: scharf + weiter/fainter = Glow-Halo) */}
         <Animated.View style={[s.trailWrap, trailStyle]}>
           <LinearGradient
-            colors={[BLUE_SOFT, 'rgba(59,158,255,0.22)', 'rgba(59,158,255,0.48)', 'rgba(59,158,255,0.78)', BLUE, HEAD_WHITE]}
-            locations={[0, 0.22, 0.44, 0.66, 0.88, 1]}
+            colors={[BLUE_SOFT, 'rgba(59,158,255,0.12)', 'rgba(59,158,255,0.32)', 'rgba(59,158,255,0.60)', BLUE, HEAD_WHITE]}
+            locations={[0, 0.32, 0.58, 0.80, 0.95, 1]}
             start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }}
             style={s.trailGlow}
           />
           <LinearGradient
-            colors={[BLUE_SOFT, 'rgba(59,158,255,0.22)', 'rgba(59,158,255,0.48)', 'rgba(59,158,255,0.78)', BLUE, HEAD_WHITE]}
-            locations={[0, 0.22, 0.44, 0.66, 0.88, 1]}
+            colors={[BLUE_SOFT, 'rgba(59,158,255,0.12)', 'rgba(59,158,255,0.32)', 'rgba(59,158,255,0.60)', BLUE, HEAD_WHITE]}
+            locations={[0, 0.32, 0.58, 0.80, 0.95, 1]}
             start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }}
             style={s.trailSharp}
           />
@@ -101,26 +101,26 @@ export function SerloLoader() {
           <Svg width={HEAD_W} height={HEAD_H} viewBox="0 0 96 44">
             <Defs>
               <Filter id="soft" x="-60%" y="-60%" width="220%" height="220%">
-                <FeGaussianBlur stdDeviation="2.4" />
+                <FeGaussianBlur stdDeviation="3" />
               </Filter>
               <RadialGradient id="halo" cx="50%" cy="50%" r="50%">
-                <Stop offset="0"    stopColor="#CFE8FF" stopOpacity={1} />
-                <Stop offset="0.35" stopColor={BLUE}    stopOpacity={0.55} />
+                <Stop offset="0"    stopColor="#CFE8FF" stopOpacity={0.92} />
+                <Stop offset="0.4"  stopColor={BLUE}    stopOpacity={0.4} />
                 <Stop offset="1"    stopColor={BLUE}    stopOpacity={0} />
               </RadialGradient>
             </Defs>
             {/* Weicher Halo (zart) */}
-            <Circle cx="48" cy="22" r="15" fill="url(#halo)" />
+            <Circle cx="48" cy="22" r="16.5" fill="url(#halo)" />
             {/* Feine, weich geblurrte Strahlen */}
             <G filter="url(#soft)">
-              <Rect x="6"    y="21.4" width="84" height="1.2" fill="#DCEEFF" opacity={0.85} />
-              <Rect x="47.4" y="11"   width="1.2" height="22" fill="#DCEEFF" opacity={0.8} />
-              <Rect x="38"   y="21.6" width="20" height="0.9" fill="#CFE8FF" opacity={0.5} transform="rotate(45 48 22)" />
-              <Rect x="38"   y="21.6" width="20" height="0.9" fill="#CFE8FF" opacity={0.5} transform="rotate(-45 48 22)" />
+              <Rect x="6"    y="21.5" width="84" height="1"   fill="#DCEEFF" opacity={0.7} />
+              <Rect x="47.5" y="12"   width="1"   height="20" fill="#DCEEFF" opacity={0.5} />
+              <Rect x="39"   y="21.65" width="18" height="0.8" fill="#CFE8FF" opacity={0.3} transform="rotate(45 48 22)" />
+              <Rect x="39"   y="21.65" width="18" height="0.8" fill="#CFE8FF" opacity={0.3} transform="rotate(-45 48 22)" />
             </G>
             {/* Weicher Kern-Glow + feiner scharfer Kern */}
-            <Circle cx="48" cy="22" r="4"   fill="#fff" opacity={0.28} />
-            <Circle cx="48" cy="22" r="1.6" fill="#fff" />
+            <Circle cx="48" cy="22" r="4.5" fill="#fff" opacity={0.2} />
+            <Circle cx="48" cy="22" r="1.4" fill="#fff" />
           </Svg>
         </View>
       </Animated.View>
@@ -142,11 +142,11 @@ const s = StyleSheet.create({
   trailWrap: { position: 'absolute', right: 0, top: TRAIL_TOP, width: W, height: H, justifyContent: 'center' },
   trailSharp: {
     position: 'absolute', right: 0, left: 0, top: 0, height: H, borderRadius: H,
-    shadowColor: BLUE, shadowOpacity: 0.85, shadowRadius: 5, shadowOffset: { width: 0, height: 0 },
+    shadowColor: BLUE, shadowOpacity: 0.7, shadowRadius: 6, shadowOffset: { width: 0, height: 0 },
   },
   trailGlow:  {
     position: 'absolute', right: 0, left: 0, top: -3, height: H + 6, borderRadius: (H + 6) / 2,
-    opacity: 0.55,
+    opacity: 0.45,
   },
   // Kopf zentriert auf dem Anker
   head: { position: 'absolute', right: -HEAD_W / 2, top: -HEAD_H / 2, width: HEAD_W, height: HEAD_H },

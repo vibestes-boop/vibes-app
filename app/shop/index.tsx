@@ -12,6 +12,7 @@
  */
 
 import { CoinIcon } from '@/components/ui/CoinIcon';
+import { SerloLoader } from '@/components/ui/SerloLoader';
 import { useCoinsWallet } from '@/lib/useGifts';
 import { useShopProducts,type Product,type ProductCategory } from '@/lib/useShop';
 import { useTheme } from '@/lib/useTheme';
@@ -703,11 +704,19 @@ export default function ShopScreen() {
           maxToRenderPerBatch={6}
           windowSize={5}
           removeClippedSubviews
+          ListHeaderComponent={
+            isRefetching ? (
+              <View style={{ paddingVertical: 22, alignItems: 'center', backgroundColor: colors.bg.secondary }}>
+                <SerloLoader />
+              </View>
+            ) : null
+          }
           refreshControl={
             <RefreshControl
-              refreshing={isRefetching}
+              refreshing={false}
               onRefresh={refetch}
-              tintColor={colors.text.primary}
+              tintColor="transparent"
+              colors={['transparent']}
             />
           }
           renderItem={({ item }) => {

@@ -26,6 +26,7 @@ import type { FeedItemData } from '@/components/feed/types';
 import { LiveFeedCard } from '@/components/live/LiveFeedCard';
 import { UserProfileContent } from '@/components/profile/UserProfileContent';
 import { CategoryFilter } from '@/components/ui/CategoryFilter';
+import { SerloLoader } from '@/components/ui/SerloLoader';
 import TuneMyVibeOverlay from '@/components/ui/TuneMyVibeOverlay';
 import { useAuthStore } from '@/lib/authStore';
 import { useTheme } from '@/lib/useTheme';
@@ -645,14 +646,24 @@ export default function VibeFeedScreen() {
         {...(Platform.OS === 'android' ? ({ overScrollMode: 'never' } as const) : {})}
         refreshControl={
           <RefreshControl
-            refreshing={isRefreshing}
+            refreshing={false}
             onRefresh={handleRefresh}
-            tintColor="#3B9EFF"
-            colors={['#3B9EFF']}
+            tintColor="transparent"
+            colors={['transparent']}
             progressViewOffset={insets.top + 100}
           />
         }
       />
+
+      {/* Pull-to-Refresh: markeneigener Beam statt nativem Spinner (Feed ist immer schwarz) */}
+      {isRefreshing && (
+        <View
+          style={{ position: 'absolute', left: 0, right: 0, top: insets.top + 58, alignItems: 'center', zIndex: 50 }}
+          pointerEvents="none"
+        >
+          <SerloLoader />
+        </View>
+      )}
 
       {/* Stories → jetzt in Nachrichten-Tab */}
 

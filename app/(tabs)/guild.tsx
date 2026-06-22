@@ -28,7 +28,7 @@ import { Image } from "expo-image";
 import { launchImageLibraryAsync } from "expo-image-picker";
 import { useFocusEffect,useRouter } from "expo-router";
 import { useCallback,useEffect,useMemo,useRef,useState } from "react";
-import { ActivityIndicator,Alert,FlatList,StyleSheet,Text,View } from "react-native";
+import { ActivityIndicator,Alert,FlatList,RefreshControl,StyleSheet,Text,View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function GuildScreen() {
@@ -218,6 +218,11 @@ export default function GuildScreen() {
             </View>
           )}
         </View>
+        {isPullRefreshing && (
+          <View style={{ paddingVertical: 22, alignItems: "center", backgroundColor: colors.bg.secondary }}>
+            <SerloLoader />
+          </View>
+        )}
       </>
     ),
     [
@@ -232,6 +237,7 @@ export default function GuildScreen() {
       styles.storiesWrap,
       styles.storiesDivider,
       colors,          // ← fehlte: Theme-Wechsel löst jetzt Re-Render aus
+      isPullRefreshing,
     ],
   );
 
@@ -289,8 +295,14 @@ export default function GuildScreen() {
               )}
             </View>
           }
-          refreshing={isPullRefreshing}
-          onRefresh={handlePullRefresh}
+          refreshControl={
+            <RefreshControl
+              refreshing={false}
+              onRefresh={handlePullRefresh}
+              tintColor="transparent"
+              colors={['transparent']}
+            />
+          }
           showsVerticalScrollIndicator={false}
         />
       )}
