@@ -105,15 +105,19 @@ export function useStoryHighlights(userId: string | null) {
 
       return highlights.map((h) => {
         const fallback = (h.story_id ? storyMap[h.story_id] : null) ?? (h.post_id ? postMap[h.post_id] : null);
-        const coverUrl  = h.media_url  ?? fallback?.media_url  ?? '';
-        const coverType = (h.media_type ?? fallback?.media_type ?? 'image') as 'image' | 'video';
-        // Cover-Thumbnail: gespeichertes → Quell-Tabellen-Thumbnail → für Bilder
+        // Multi-Item-Highlights (aus dem Picker) haben story_id/post_id = null →
+        // kein Quell-Fallback. Cover deshalb zusätzlich aus items[0] ziehen.
+        // `||` statt `??`, damit auch leere Strings durchfallen.
+        const dbItems = Array.isArray(h.items) && h.items.length > 0 ? (h.items as HighlightItem[]) : null;
+        const first   = dbItems?.[0];
+        const coverUrl  = h.media_url  || fallback?.media_url  || first?.media_url  || '';
+        const coverType = (h.media_type || fallback?.media_type || first?.media_type || 'image') as 'image' | 'video';
+        // Cover-Thumbnail: gespeichertes → Quell-Tabelle → items[0] → für Bilder
         // die media_url selbst (rendert direkt), für Videos sonst leer.
-        const coverThumb = h.thumbnail_url || fallback?.thumbnail_url || (coverType === 'image' ? coverUrl : '');
+        const coverThumb = h.thumbnail_url || fallback?.thumbnail_url || first?.thumbnail_url || (coverType === 'image' ? coverUrl : '');
         // items: aus DB-JSONB oder Fallback-Cover als Single-Item
-        const items: HighlightItem[] = Array.isArray(h.items) && h.items.length > 0
-          ? h.items
-          : [{ media_url: coverUrl, media_type: coverType, thumbnail_url: coverThumb }];
+        const items: HighlightItem[] = dbItems
+          ?? [{ media_url: coverUrl, media_type: coverType, thumbnail_url: coverThumb }];
         return {
           id:            h.id,
           user_id:       h.user_id,
