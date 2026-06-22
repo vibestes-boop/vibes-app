@@ -12,6 +12,7 @@ type ProfileTab
 } from '@/components/profile';
 import { CoinIcon } from '@/components/ui/CoinIcon';
 import { ProfileGridSkeleton } from '@/components/profile/ProfileGridSkeleton';
+import { SerloLoader } from '@/components/ui/SerloLoader';
 import { getProfileStyles } from '@/components/profile/profileStyles';
 import { useAuthStore } from '@/lib/authStore';
 import { useStoryViewerStore } from '@/lib/storyViewerStore';
@@ -381,8 +382,8 @@ export default function ProfileScreen() {
           <RefreshControl
             refreshing={isRefreshing}
             onRefresh={handleRefresh}
-            tintColor="#3B9EFF"
-            colors={['#3B9EFF']}
+            tintColor="transparent"
+            colors={['transparent']}
           />
         }
         ListHeaderComponent={
@@ -520,6 +521,16 @@ export default function ProfileScreen() {
           ) : null
         }
       />
+
+      {/* Lade-Beam statt nativem Refresh-Spinner (oben in der Refresh-Lücke) */}
+      {isRefreshing && (
+        <View
+          style={{ position: 'absolute', left: 0, right: 0, top: insets.top + 66, alignItems: 'center', zIndex: 50 }}
+          pointerEvents="none"
+        >
+          <SerloLoader />
+        </View>
+      )}
 
       <PostManageModal
         visible={!!managePost}
