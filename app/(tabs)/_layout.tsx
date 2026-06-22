@@ -120,10 +120,16 @@ function TabBarItem({
 // ── Zentraler Create-Button (TikTok-Stil: breite Taste mit Farbversatz) ───────
 function CreateTabButton({ onPress }: { onPress: () => void }) {
   const scale = useSharedValue(1);
+  const { isDark } = useTheme();
 
   const animStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
+
+  // Mitte kontrastiert mit der Leiste: Dark-Mode = weiße Mitte + dunkles Plus,
+  // Light-Mode = schwarze Mitte + weißes Plus (sonst blendet Weiß auf Weiß).
+  const centerBg  = isDark ? '#FFFFFF' : '#111114';
+  const plusColor = isDark ? '#111114' : '#FFFFFF';
 
   const handlePress = () => {
     impactAsync(ImpactFeedbackStyle.Medium);
@@ -143,8 +149,8 @@ function CreateTabButton({ onPress }: { onPress: () => void }) {
       <Animated.View style={[styles.createBtnWrap, animStyle]}>
         <View style={[styles.createGlow, styles.createGlowLeft]} />
         <View style={[styles.createGlow, styles.createGlowRight]} />
-        <View style={styles.createCenter}>
-          <Plus size={23} color="#111114" strokeWidth={3} />
+        <View style={[styles.createCenter, { backgroundColor: centerBg }]}>
+          <Plus size={23} color={plusColor} strokeWidth={3} />
         </View>
       </Animated.View>
     </Pressable>
