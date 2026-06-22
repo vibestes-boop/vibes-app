@@ -15,8 +15,8 @@
 | Bereich | Stand |
 |---|---|
 | **Repo / Branch** | `/Users/zaurhatuev/vibes-app` · `main` (Push-Remote: `vibestes-boop/vibes-app`) |
-| **Letzter Commit** | `91e7570` (gepusht) |
-| **Letzte Mobile-OTA** | `91e7570` — **Runtime 1.29.0** (branch `production`, Group `c9601ff4`) · 4 OTAs am 22.06. (§1c) |
+| **Letzter Commit** | `10c4a41` (gepusht) — Google-Login vorbereitet (gated, kein OTA) |
+| **Letzte Mobile-OTA** | `632cd47` — **Runtime 1.29.0** (branch `production`, Group `882d9ec9`) · 7 OTAs am 22.06. (§1c) |
 | **Mobile-Build** | **v1.29.0 / iOS-Build 285 (versionCode 46) → in TestFlight** (vom User gebaut). **NICHT im App Store released!** Alle OTAs dieser Session zielen auf **Runtime 1.29.0** (nur dieser Build hat sie). |
 | **NEU nativ in 1.29.0** | `react-native-view-shot@4.0.3` (für Compositing/Text-Modus) → deshalb der neue Build. |
 | **Web (apps/web)** | deployt via **Vercel** auf Push zu `main` (`serlo-web.vercel.app`) |
@@ -118,13 +118,29 @@ Der User war kurz vor dem Einreichen von 1.28.0, hat dann aber den neuen Build (
   - **Bewusst:** „Text-Post" springt in den bestehenden **Vibe-Text-Composer** (`setStudioMode('vibe')+setCaptureMode('text')`) statt ihn zu duplizieren. `handleStudioModeChange` resettet beim Studio-Wechsel ein übernommenes `text` → Hub zeigt sauber. Entwürfe-Zeile **navigiert nur** (keine Inline-Thumbnails → keine Query auf den heißen Kamera-Screen).
   - **Design-Haltung dokumentiert:** TikTok-Feature-Parität *nicht* angestrebt (Kosten-/Scope-Falle + Edge = Community/Kultur). Studio = fokussierter Hub, der vorhandene Tiefe sichtbar macht.
 
+### Bottom-Nav TikTok-Stil (`app/(tabs)/_layout.tsx`, Commits `d452c86` + `632cd47`)
+- Plus-Button schwebte (flex-end + Lift/3D-Verlauf) → Icons nicht auf einer Höhe. Fix: `tabBarInner` `flex-end`→`flex-start`, Plus sitzt flach auf Icon-Höhe. Neue Plus-Taste: breite Taste mit Farbversatz (**Serlo Pink+Lila**, NICHT TikToks cyan/rot — Trade-Dress). `632cd47`: Mitte theme-abhängig (Dark = weiß+dunkles Plus, **Light = schwarz+weißes Plus**, sonst weiß-auf-weiß). OTAs `c282fd6a` + `882d9ec9`.
+
+### „Folge ich"-Empty-State Layout (`components/feed/FollowingEmptyState.tsx`, Commit `8337041`, OTA `3e801814`)
+- Inhalt überlappte die absolute Feed-Kopfleiste (Toggle bei `insets.top`, 52px) → Icon-Ring verdeckt. Fix: `paddingTop = insets.top + 64`. Innere `ScrollView` (maxHeight 340, verschachtelt → nur ~2 User) raus → Karten inline, äußerer Feed-Scroll übernimmt; `s.root flex:1` entfernt.
+
+### ⭐ Google-Login vorbereitet (Commit `10c4a41`, KEIN OTA — gated)
+- **Code fertig, aber AUS:** `lib/useGoogleSignIn.ts` (Supabase `signInWithOAuth('google')` + In-App-Browser `expo-web-browser`, Implicit-Flow → `setSession`). Buttons in Login + Register (geteiltes `components/ui/GoogleGlyph.tsx`).
+- **Gated hinter `ENABLE_GOOGLE_LOGIN=false`** + `expo-web-browser` lazy via `require` → OTA-sicher (kein Crash auf Build 285). `expo-web-browser` ist neue native Dep + Config-Plugin (`app.json`) → **braucht Rebuild**.
+- **Aktivierung = Dashboard-Config + Flag + Build:** Schritt-für-Schritt in **`docs/auth-setup.md`** (Resend-E-Mail-Fix + Google-Cloud-OAuth-Client + Supabase-Provider + Redirect `vibes://login-callback`). Web-OAuth-Client genügt (kein nativer iOS/Android-Client). Danach `ENABLE_GOOGLE_LOGIN=true` im Rebuild-Commit.
+- **Warum:** Aktuell Signup nur via Apple (iOS) — **Android = kein funktionierender Signup-Weg** (E-Mail kaputt). Zielgruppe stark Android → vor Launch Show-Stopper. Empfehlung: Resend (Config, kein Build) sofort; Google mit nächstem geplanten Build bündeln.
+
 ### OTAs dieser Session (alle Runtime 1.29.0, iOS+Android)
 - `82fe358a` — „Nur Follower"-Publikum (§4 B)
 - `7c223edb` — Folge-ich-Kontrast + KI-Cover-Buttons + Creator-Tools-Redesign
 - `4f1f1250` — LIVE-Setup-Karte
 - `c9601ff4` — Studio-Hub
+- `c282fd6a` — Bottom-Nav TikTok-Stil (Icons aligned + neue Plus-Taste)
+- `3e801814` — Folge-ich-Empty-State Layout
+- `882d9ec9` — Plus-Taste Light-Mode schwarz
 
-### Offen / nächste UI-Ideen (optional)
+### Offen / nächste Schritte
+- **⭐ Google-Login aktivieren** (`docs/auth-setup.md`) + **Resend-E-Mail fixen** — beides User-Config; Google braucht zusätzlich Flag-Flip + Rebuild.
 - Studio-Entwürfe-Zeile mit echten Thumbnails (braucht `usePostDraftsCloud`-Query auf dem Kamera-Screen).
 - Creator-Tools „AN"-Pill (bewusst weggelassen — Aktiv-Zustand trägt schon Tint+Rahmen+Status).
 
