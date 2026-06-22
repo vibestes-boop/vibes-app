@@ -148,12 +148,8 @@ export function useFollowerGrowth(userId: string | null, days: AnalyticsPeriod =
   });
 }
 
-// ─── Hilfsfunktion: Zahlen formatieren ───────────────────────────────────────
-export function fmtNum(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000)     return `${(n / 1_000).toFixed(1)}K`;
-  return String(n);
-}
+// ─── Zahl-Formatierung (re-export aus lib/formatNum) ─────────────────────────
+export { fmtNum } from './formatNum';
 
 /** Rendert ein Delta z.B. "+12%" in grün oder "-5%" in rot */
 export function formatDelta(delta: number | null): { label: string; positive: boolean } | null {

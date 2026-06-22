@@ -32,6 +32,7 @@ withSequence,
 withTiming,
 } from 'react-native-reanimated';
 
+import { fmtNum } from '@/lib/formatNum';
 import type { LiveSession } from '@/lib/useLiveSession';
 import { fetchLiveKitToken } from '@/lib/useLiveSession';
 import {
@@ -54,11 +55,6 @@ interface Props {
   isActive: boolean; // nur verbinden wenn diese Card aktiv im Viewport ist
 }
 
-function fmtNum(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return String(n);
-}
 
 function formatDuration(startedAt: string): string {
   const minutes = Math.floor((Date.now() - new Date(startedAt).getTime()) / 60_000);

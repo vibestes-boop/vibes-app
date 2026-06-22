@@ -1,13 +1,8 @@
 import { useMutation,useQuery,useQueryClient } from '@tanstack/react-query';
 import { Alert } from 'react-native';
 import { useAuthStore } from './authStore';
+import { fmtNum } from './formatNum';
 import { supabase } from './supabase';
-
-function formatCount(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return String(n);
-}
 
 export type UseLikeBatch = { liked: boolean; count: number };
 
@@ -118,7 +113,7 @@ export function useLike(postId: string, batch?: UseLikeBatch | null) {
   return {
     liked,
     count,
-    formattedCount: formatCount(count),
+    formattedCount: fmtNum(count),
     toggle,
     isLoading: likePost.isPending || unlikePost.isPending,
   };
