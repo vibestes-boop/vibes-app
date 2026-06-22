@@ -29,8 +29,8 @@ export function ExploreUserRow({
         {user.avatar_url ? (
           <Image source={{ uri: user.avatar_url }} style={compactStyles.avatar} />
         ) : (
-          <View style={[compactStyles.avatar, compactStyles.avatarFallback]}>
-            <Text style={compactStyles.avatarText}>{initials}</Text>
+          <View style={[compactStyles.avatar, compactStyles.avatarFallback, { backgroundColor: colors.bg.subtle }]}>
+            <Text style={[compactStyles.avatarText, { color: colors.text.secondary }]}>{initials}</Text>
           </View>
         )}
         <Text style={[compactStyles.username, { color: colors.text.primary }]} numberOfLines={1}>@{user.username}</Text>
@@ -72,8 +72,8 @@ export function ExploreUserRow({
       {user.avatar_url ? (
         <Image source={{ uri: user.avatar_url }} style={styles.userAvatar} />
       ) : (
-        <View style={[styles.userAvatar, styles.userAvatarFallback]}>
-          <Text style={styles.userAvatarText}>{initials}</Text>
+        <View style={[styles.userAvatar, styles.userAvatarFallback, { backgroundColor: colors.bg.subtle }]}>
+          <Text style={[styles.userAvatarText, { color: colors.text.secondary }]}>{initials}</Text>
         </View>
       )}
       <View style={styles.userInfo}>
