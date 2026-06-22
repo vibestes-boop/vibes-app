@@ -13,7 +13,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
-import Svg, { Circle, Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, FeGaussianBlur, Filter, G, RadialGradient, Rect, Stop } from 'react-native-svg';
 import {
 Easing,
 useAnimatedStyle,
@@ -101,23 +101,27 @@ export function SerloLoader() {
         <View style={s.head}>
           <Svg width={HEAD_W} height={HEAD_H} viewBox="0 0 96 44">
             <Defs>
-              <RadialGradient id="g" cx="50%" cy="50%" r="50%">
-                <Stop offset="0"    stopColor={HEAD_WHITE} stopOpacity={0.95} />
-                <Stop offset="0.38" stopColor={BLUE}       stopOpacity={0.5} />
-                <Stop offset="0.72" stopColor={BLUE}       stopOpacity={0} />
+              <Filter id="soft" x="-60%" y="-60%" width="220%" height="220%">
+                <FeGaussianBlur stdDeviation="2.4" />
+              </Filter>
+              <RadialGradient id="halo" cx="50%" cy="50%" r="50%">
+                <Stop offset="0"    stopColor="#CFE8FF" stopOpacity={1} />
+                <Stop offset="0.35" stopColor={BLUE}    stopOpacity={0.55} />
+                <Stop offset="1"    stopColor={BLUE}    stopOpacity={0} />
               </RadialGradient>
             </Defs>
-            {/* Radialer Glow */}
-            <Circle cx="48" cy="22" r="22" fill="url(#g)" />
-            {/* Horizontaler Strahl (am längsten) */}
-            <Rect x="2" y="21.2" width="92" height="1.6" rx="0.8" fill={HEAD_WHITE} opacity={0.85} />
-            {/* Vertikaler Strahl */}
-            <Rect x="47.2" y="6" width="1.6" height="32" rx="0.8" fill={HEAD_WHITE} opacity={0.8} />
-            {/* Diagonalen (zart) */}
-            <Rect x="36" y="21.4" width="24" height="1.2" fill={HEAD_WHITE} opacity={0.45} transform="rotate(45 48 22)" />
-            <Rect x="36" y="21.4" width="24" height="1.2" fill={HEAD_WHITE} opacity={0.45} transform="rotate(-45 48 22)" />
-            {/* Heller Kern */}
-            <Circle cx="48" cy="22" r="2.6" fill="#fff" />
+            {/* Weicher Halo */}
+            <Circle cx="48" cy="22" r="21" fill="url(#halo)" />
+            {/* Weich geblurrte Strahlen (Gauss-Blur → echtes weiches Licht) */}
+            <G filter="url(#soft)">
+              <Rect x="4"  y="21"   width="88" height="2"   fill="#DCEEFF" opacity={0.9} />
+              <Rect x="47" y="8"    width="2"  height="28"  fill="#DCEEFF" opacity={0.85} />
+              <Rect x="36" y="21.2" width="24" height="1.6" fill="#CFE8FF" opacity={0.6} transform="rotate(45 48 22)" />
+              <Rect x="36" y="21.2" width="24" height="1.6" fill="#CFE8FF" opacity={0.6} transform="rotate(-45 48 22)" />
+            </G>
+            {/* Weicher Kern-Glow + scharfer Kern */}
+            <Circle cx="48" cy="22" r="6"   fill="#fff" opacity={0.3} />
+            <Circle cx="48" cy="22" r="2.4" fill="#fff" />
           </Svg>
         </View>
       </Animated.View>
@@ -137,7 +141,10 @@ const s = StyleSheet.create({
   anchor: { position: 'absolute', left: '50%', top: '50%', width: 0, height: 0 },
   // Schweif-Box: rechte Kante am Anker (right: 0), erstreckt sich nach links
   trailWrap: { position: 'absolute', right: 0, top: TRAIL_TOP, width: W, height: H, justifyContent: 'center' },
-  trailSharp: { position: 'absolute', right: 0, left: 0, top: 0, height: H, borderRadius: H },
+  trailSharp: {
+    position: 'absolute', right: 0, left: 0, top: 0, height: H, borderRadius: H,
+    shadowColor: BLUE, shadowOpacity: 0.85, shadowRadius: 5, shadowOffset: { width: 0, height: 0 },
+  },
   trailGlow:  {
     position: 'absolute', right: 0, left: 0, top: -3, height: H + 6, borderRadius: (H + 6) / 2,
     opacity: 0.55,
