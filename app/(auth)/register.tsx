@@ -1,5 +1,7 @@
+import { GoogleGlyph } from '@/components/ui/GoogleGlyph';
 import { supabase } from '@/lib/supabase';
 import { appleSignIn } from '@/lib/useAppleSignIn';
+import { ENABLE_GOOGLE_LOGIN,googleSignIn } from '@/lib/useGoogleSignIn';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link,useRouter } from 'expo-router';
@@ -76,6 +78,12 @@ export default function RegisterScreen() {
       [{ text: 'OK', onPress: () => router.replace('/(auth)/login') }]
     );
 
+  };
+
+  const handleGoogle = async () => {
+    setLoading(true);
+    await googleSignIn(); // Erster Google-Login = Signup; onAuthStateChange navigiert
+    setLoading(false);
   };
 
   return (
@@ -197,6 +205,21 @@ export default function RegisterScreen() {
               style={styles.appleBtn}
               onPress={appleSignIn}
             />
+          )}
+
+          {/* ── Google Sign-In (gated: erst ab Build mit expo-web-browser sichtbar) ── */}
+          {ENABLE_GOOGLE_LOGIN && (
+            <Pressable
+              onPress={handleGoogle}
+              disabled={loading}
+              style={styles.googleBtn}
+              accessibilityRole="button"
+              accessibilityLabel="Mit Google registrieren"
+              accessibilityState={{ disabled: loading }}
+            >
+              <GoogleGlyph />
+              <Text style={styles.googleBtnText}>Mit Google registrieren</Text>
+            </Pressable>
           )}
 
           <Link href="/(auth)/login" asChild>
@@ -322,5 +345,20 @@ const styles = StyleSheet.create({
   appleBtn: {
     width: '100%',
     height: 54,
+  },
+  googleBtn: {
+    width: '100%',
+    height: 54,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  googleBtnText: {
+    color: '#111114',
+    fontSize: 17,
+    fontWeight: '600',
   },
 });

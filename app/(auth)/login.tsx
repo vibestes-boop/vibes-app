@@ -1,5 +1,7 @@
+import { GoogleGlyph } from '@/components/ui/GoogleGlyph';
 import { supabase } from '@/lib/supabase';
 import { appleSignIn } from '@/lib/useAppleSignIn';
+import { ENABLE_GOOGLE_LOGIN,googleSignIn } from '@/lib/useGoogleSignIn';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Link } from 'expo-router';
@@ -46,6 +48,12 @@ export default function LoginScreen() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) Alert.alert('Login fehlgeschlagen', error.message);
+  };
+
+  const handleGoogle = async () => {
+    setLoading(true);
+    await googleSignIn(); // Erfolg → onAuthStateChange navigiert; Abbruch/Fehler im Hook behandelt
+    setLoading(false);
   };
 
   const handleForgotPassword = async () => {
@@ -174,6 +182,21 @@ export default function LoginScreen() {
           />
         )}
 
+        {/* ── Google Sign-In (gated: erst ab Build mit expo-web-browser sichtbar) ── */}
+        {ENABLE_GOOGLE_LOGIN && (
+          <Pressable
+            onPress={handleGoogle}
+            disabled={loading}
+            style={styles.googleBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Mit Google anmelden"
+            accessibilityState={{ disabled: loading }}
+          >
+            <GoogleGlyph />
+            <Text style={styles.googleBtnText}>Mit Google anmelden</Text>
+          </Pressable>
+        )}
+
         {/* ── Registrieren-Link ── */}
         <Link href="/(auth)/register" asChild>
           <Pressable
@@ -269,6 +292,22 @@ const styles = StyleSheet.create({
   appleBtn: {
     width: '100%',
     height: 54,
+  },
+  // ── Google Sign-In (gleicher Look wie der Apple-Button: weiß, 54 hoch) ──
+  googleBtn: {
+    width: '100%',
+    height: 54,
+    borderRadius: 16,
+    backgroundColor: '#FFFFFF',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+  },
+  googleBtnText: {
+    color: '#111114',
+    fontSize: 17,
+    fontWeight: '600',
   },
   registerLink: {
     alignItems: 'center',
