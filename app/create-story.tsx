@@ -8,6 +8,7 @@ requestMediaLibraryPermissionsAsync,
 } from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams,useRouter } from 'expo-router';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import { ArrowLeft,BarChart2,ImagePlus,Send,Type,X } from 'lucide-react-native';
 import { useCallback,useState } from 'react';
 import {
@@ -24,6 +25,7 @@ View,
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function CreateStoryScreen() {
+  useThemedStatusBar('light');
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { profile } = useAuthStore();

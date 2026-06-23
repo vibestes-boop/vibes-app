@@ -8,6 +8,7 @@ import { useCoinsWallet } from '@/lib/useGifts';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import React,{ useEffect,useRef,useState } from 'react';
 import {
 ActivityIndicator,
@@ -32,6 +33,7 @@ const COIN_PACKAGES = [
 const SERLO_COIN = require('../assets/serlo-coin.png');
 
 export default function CoinShopScreen() {
+  useThemedStatusBar('light');
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { coins, loading: walletLoading, refetch } = useCoinsWallet();

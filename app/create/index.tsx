@@ -7,6 +7,7 @@ requestMediaLibraryPermissionsAsync,
 type ImagePickerAsset,
 } from 'expo-image-picker';
 import { useLocalSearchParams,useRouter } from 'expo-router';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import React,{ useCallback,useEffect,useRef,useState } from 'react';
 import {
 Alert,
@@ -81,6 +82,7 @@ import {
 
 // ─── Haupt-Screen ────────────────────────────────────────────────────────────
 export default function CreatePostScreen() {
+  useThemedStatusBar('light');
   const router     = useRouter();
   const insets     = useSafeAreaInsets();
   const { profile } = useAuthStore();

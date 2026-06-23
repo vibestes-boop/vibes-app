@@ -11,6 +11,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams,useRouter } from 'expo-router';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import * as ScreenOrientation from 'expo-screen-orientation';
 import { BarChart3,Heart,Scissors,Search,Send,Share2,ShoppingBag,Smile,Users,Video,Volume2,VolumeX,X } from 'lucide-react-native';
 import { useCallback,useContext,useEffect,useMemo,useRef,useState } from 'react';
@@ -2294,6 +2295,7 @@ function WatchUIContent({
 
 // ─── Screen (lädt LiveKit Token dann verbindet) ───────────────────────────────
 export default function LiveWatchScreen() {
+  useThemedStatusBar('light');
   const { id, isReplay } = useLocalSearchParams<{ id: string; isReplay?: string }>();
   const isReplayMode = isReplay === '1';
   const router = useRouter();

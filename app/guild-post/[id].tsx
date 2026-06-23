@@ -26,6 +26,7 @@ import { impactAsync,ImpactFeedbackStyle } from 'expo-haptics';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams,useRouter } from 'expo-router';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import {
 ArrowLeft,
 Bookmark,
@@ -476,6 +477,7 @@ function GuildPostDetailItem({
 
 // ─── Haupt-Screen ─────────────────────────────────────────────────────────────
 export default function GuildPostDetailScreen() {
+  useThemedStatusBar('light');
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const { posts, guildColors } = useGuildNavStore();

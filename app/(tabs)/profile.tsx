@@ -29,6 +29,7 @@ import { useDeletePost,useTogglePinPost } from '@/lib/usePostManagement';
 import { useUserPosts } from '@/lib/usePosts';
 import { useGuildStories } from '@/lib/useStories';
 import { useTheme } from '@/lib/useTheme';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import { useFocusEffect } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import { impactAsync,ImpactFeedbackStyle } from 'expo-haptics';
@@ -50,6 +51,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 // ─ fmtNum: re-exported from useAnalytics ─ (local duplicate removed to avoid conflict)
 
 export default function ProfileScreen() {
+  useThemedStatusBar('auto');
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors } = useTheme();

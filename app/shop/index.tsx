@@ -16,6 +16,7 @@ import { SerloLoader } from '@/components/ui/SerloLoader';
 import { useCoinsWallet } from '@/lib/useGifts';
 import { useShopProducts,type Product,type ProductCategory } from '@/lib/useShop';
 import { useTheme } from '@/lib/useTheme';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import {
@@ -403,6 +404,7 @@ const sk = StyleSheet.create({
 // ─── Hauptscreen ─────────────────────────────────────────────────────────────
 
 export default function ShopScreen() {
+  useThemedStatusBar('auto');
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors } = useTheme();

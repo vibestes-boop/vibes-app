@@ -30,6 +30,7 @@ import { SerloLoader } from '@/components/ui/SerloLoader';
 import TuneMyVibeOverlay from '@/components/ui/TuneMyVibeOverlay';
 import { useAuthStore } from '@/lib/authStore';
 import { useTheme } from '@/lib/useTheme';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import { useFeedNavStore } from '@/lib/feedNavStore';
 import { useStoryViewerStore } from '@/lib/storyViewerStore';
 import { supabase } from '@/lib/supabase';
@@ -58,6 +59,7 @@ type FeedRow =
 
 
 export default function VibeFeedScreen() {
+  useThemedStatusBar('light');
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const router = useRouter();

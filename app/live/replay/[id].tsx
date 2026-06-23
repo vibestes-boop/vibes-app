@@ -25,6 +25,7 @@ import { useQuery } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { useLocalSearchParams,useRouter } from 'expo-router';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import { useVideoPlayer,VideoView } from 'expo-video';
 import {
 AlertCircle,
@@ -118,6 +119,7 @@ function fmtDuration(secs: number | null | undefined): string {
 // ─── Screen ─────────────────────────────────────────────────────────────────
 
 export default function ReplayScreen() {
+  useThemedStatusBar('light');
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();

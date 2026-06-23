@@ -4,8 +4,10 @@ import { useStoryViewerStore } from '@/lib/storyViewerStore';
 import { useQueryClient } from '@tanstack/react-query';
 import { router } from 'expo-router';
 import { useCallback,useEffect,useRef } from 'react';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 
 export default function StoryViewerScreen() {
+  useThemedStatusBar('light');
   const { group, allGroups, close, setGroup } = useStoryViewerStore();
   const queryClient = useQueryClient();
   const userId = useAuthStore((s) => s.profile?.id);

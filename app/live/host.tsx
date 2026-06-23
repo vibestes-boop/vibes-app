@@ -11,6 +11,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useKeepAwake } from 'expo-keep-awake';
 import { LinearGradient } from "expo-linear-gradient";
 import { useLocalSearchParams,useRouter } from "expo-router";
+import { useThemedStatusBar } from "@/lib/useThemedStatusBar";
 import * as ScreenOrientation from 'expo-screen-orientation';
 import {
 BarChart3,
@@ -2580,6 +2581,7 @@ function HostUI({
 
 
 export default function LiveHostScreen() {
+  useThemedStatusBar('light');
   const { sessionId, title, lkToken, lkUrl } = useLocalSearchParams<{
     sessionId: string;
     title?: string;

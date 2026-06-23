@@ -29,6 +29,7 @@ import { useConversations,useOrCreateConversation,type Conversation } from '@/li
 import { useGuildStories,type StoryGroup } from '@/lib/useStories';
 import { timeAgo } from '@/lib/timeAgo';
 import { useTheme } from '@/lib/useTheme';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import { useQuery,useQueryClient } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 
@@ -290,6 +291,7 @@ function ConvSeparator() {
 }
 
 export default function MessagesScreen() {
+  useThemedStatusBar('auto');
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const { preSelectUserId } = useLocalSearchParams<{ preSelectUserId?: string }>();

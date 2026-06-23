@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import { ArrowLeft,Clock,Eye,Play,Users } from 'lucide-react-native';
 import {
 ActivityIndicator,
@@ -167,6 +168,7 @@ function EmptyState() {
 
 // ─── Main Screen ─────────────────────────────────────────────────────────────
 export default function ReplaysScreen() {
+  useThemedStatusBar('light');
   const insets = useSafeAreaInsets();
   const { data: replays = [], isLoading, refetch, isRefetching } = useReplays();
 

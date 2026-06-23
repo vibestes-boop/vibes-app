@@ -23,6 +23,7 @@ type ExploreSortMode,
 } from '@/lib/useExplore';
 import { useShopProducts } from '@/lib/useShop';
 import { useTheme } from '@/lib/useTheme';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import { useWomenOnly } from '@/lib/useWomenOnly';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams,useRouter } from 'expo-router';
@@ -43,6 +44,7 @@ function useDebounce<T>(value: T, delay = 300): T {
 }
 
 export default function ExploreScreen() {
+  useThemedStatusBar('auto');
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const styles = getExploreStyles(colors);

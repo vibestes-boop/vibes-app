@@ -20,6 +20,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect,useLocalSearchParams,useRouter } from 'expo-router';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import {
 ArrowLeft,
 Bookmark,
@@ -444,6 +445,7 @@ function PostCard({
 // ─── Screen ──────────────────────────────────────────────────────────────────
 
 export default function UserPostsScreen() {
+  useThemedStatusBar('light');
   const { userId, startIndex, username, postIds } = useLocalSearchParams<{
     userId?: string;
     startIndex?: string;

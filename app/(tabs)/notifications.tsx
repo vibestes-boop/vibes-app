@@ -7,6 +7,7 @@ useNotifications,
 type AppNotification,
 } from "@/lib/useNotifications";
 import { useTheme } from '@/lib/useTheme';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import { FlashList } from "@shopify/flash-list";
 import { impactAsync,ImpactFeedbackStyle } from "expo-haptics";
 import { Image } from "expo-image";
@@ -323,6 +324,7 @@ function NotifCard({ item }: { item: AppNotification }) {
 // ── Hauptscreen ────────────────────────────────────────────────────────────
 
 export default function NotificationsScreen() {
+  useThemedStatusBar('auto');
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const {

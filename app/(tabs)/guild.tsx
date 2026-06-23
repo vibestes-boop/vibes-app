@@ -24,6 +24,7 @@ type StoryGroup,
 } from "@/lib/useStories";
 import { guildFeedActions,useTabRefreshStore } from "@/lib/useTabRefresh";
 import { useTheme } from "@/lib/useTheme";
+import { useThemedStatusBar } from "@/lib/useThemedStatusBar";
 import { Image } from "expo-image";
 import { launchImageLibraryAsync } from "expo-image-picker";
 import { useFocusEffect,useRouter } from "expo-router";
@@ -32,6 +33,7 @@ import { ActivityIndicator,Alert,FlatList,RefreshControl,StyleSheet,Text,View } 
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function GuildScreen() {
+  useThemedStatusBar('auto');
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const styles = getGuildStyles(colors);

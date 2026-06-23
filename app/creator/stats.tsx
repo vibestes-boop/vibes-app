@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { useMyOrders } from '@/lib/useShop';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import { ArrowLeft,ChevronRight,Eye,Heart,ShoppingBag,TrendingUp,Users,Video } from 'lucide-react-native';
 import { useEffect,useState } from 'react';
 import {
@@ -144,6 +145,7 @@ function TopProducts({ userId }: { userId: string }) {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function CreatorStatsScreen() {
+  useThemedStatusBar('light');
   const insets = useSafeAreaInsets();
   const { profile } = useAuthStore();
   const { stats, loading } = useCreatorStats(profile?.id ?? null);

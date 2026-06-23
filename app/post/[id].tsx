@@ -14,6 +14,7 @@ import { impactAsync,ImpactFeedbackStyle } from 'expo-haptics';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect,useLocalSearchParams,useRouter } from 'expo-router';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import { ArrowLeft,Bookmark,Heart,MessageCircle,Music2,Pencil,Send,Share2,Trash2,Volume2,VolumeX } from 'lucide-react-native';
 import { useCallback,useEffect,useRef,useState } from 'react';
 import {
@@ -256,6 +257,7 @@ function CommentButtonDetail({ postId, onPress }: { postId: string; onPress: () 
 }
 
 export default function PostDetailScreen() {
+  useThemedStatusBar('light');
   const { id, previewUrl, previewType, previewCaption, openComments } = useLocalSearchParams<{
     id: string;
     previewUrl?: string;
