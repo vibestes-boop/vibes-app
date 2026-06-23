@@ -21,21 +21,27 @@ import { useRouter } from 'expo-router';
 import {
 ArrowLeft,
 AtSign,
+BellOff,
 Camera,Check,
 ChevronRight,
 ExternalLink,
 FileText,
+Heart,
 Link,
 Lock,
 LogOut,
 Mail,
+MessageCircle,
 Mic,
+Radio,
+Repeat2,
 Shield,
 ShieldCheck,
 Sparkles,
 Sun,
 Trash2,
 User,Users,
+UserPlus,
 Zap
 } from 'lucide-react-native';
 import { useRef,useState } from 'react';
@@ -438,7 +444,7 @@ export default function SettingsScreen() {
         {/* ── Women-Only Zone ── */}
         <SectionLabel label="Women-Only Zone 🌸" colors={colors} />
         <View style={[s.card, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
-          <View style={[s.rowItem, { paddingVertical: 14 }]}>
+          <View style={[s.rowItem, { paddingVertical: 11 }]}>
             <View style={[s.rowIcon, { backgroundColor: canAccessWomenOnly ? `${colors.accent.rose}1F` : colors.bg.elevated }]}>
               <Text style={{ fontSize: 16 }}>🌸</Text>
             </View>
@@ -486,7 +492,7 @@ export default function SettingsScreen() {
         {/* ── Darstellung ── */}
         <SectionLabel label="Darstellung" colors={colors} />
         <View style={[s.card, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
-          <View style={[s.fieldRow, { alignItems: 'flex-start', paddingBottom: 16 }]}>
+          <View style={[s.fieldRow, { alignItems: 'flex-start', paddingBottom: 12 }]}>
             <View style={[s.fieldIcon, { backgroundColor: colors.bg.elevated }]}>
               <Sun size={14} stroke={colors.icon.default} strokeWidth={2} />
             </View>
@@ -513,6 +519,62 @@ export default function SettingsScreen() {
               </View>
             </View>
           </View>
+          <View style={[s.sep, { backgroundColor: colors.border.subtle, marginLeft: 56 }]} />
+          {/* Tab Bar gehört zur Darstellung (war fälschlich unter Privatsphäre) */}
+          <Pressable style={[s.rowItem, { paddingVertical: 11 }]} onPress={() => router.push('/settings/tab-bar' as any)} accessibilityRole="button">
+            <View style={[s.rowIcon, { backgroundColor: colors.bg.elevated }]}>
+              <Zap size={15} stroke={colors.icon.default} strokeWidth={2} />
+            </View>
+            <View style={s.rowBody}>
+              <Text style={[s.rowTitle, { color: colors.text.primary }]}>Tab Bar anpassen</Text>
+              <Text style={[s.rowSub, { color: colors.text.muted }]}>Wähle deine Schnellzugriffe</Text>
+            </View>
+            <ChevronRight size={16} stroke={colors.icon.muted} strokeWidth={2} />
+          </Pressable>
+        </View>
+
+        {/* ── Creator & Verwaltung ── */}
+        <SectionLabel label="Creator & Verwaltung" colors={colors} />
+        <View style={[s.card, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
+          <Pressable
+            style={[s.rowItem, { paddingVertical: 11 }]}
+            onPress={() => router.push(profile?.is_creator ? '/creator/dashboard' : '/creator/activate' as any)}
+            accessibilityRole="button"
+            accessibilityLabel={profile?.is_creator ? 'Creator Studio öffnen' : 'Creator werden'}
+          >
+            <View style={[s.rowIcon, { backgroundColor: `${colors.accent.secondary}1F` }]}>
+              <Sparkles size={15} color={colors.accent.secondary} strokeWidth={2} />
+            </View>
+            <View style={s.rowBody}>
+              <Text style={[s.rowTitle, { color: colors.accent.secondary }]}>
+                {profile?.is_creator ? 'Creator Studio' : 'Creator werden ✦'}
+              </Text>
+              <Text style={[s.rowSub, { color: colors.text.muted }]}>
+                {profile?.is_creator ? 'Einnahmen, Analytics, Top Posts' : 'Kostenlos · Sofortzugang · Monetarisierung'}
+              </Text>
+            </View>
+            <ChevronRight size={16} stroke={colors.accent.secondary} strokeWidth={2} />
+          </Pressable>
+          {(profile as any)?.is_admin && (
+            <>
+              <View style={[s.sep, { backgroundColor: colors.border.subtle, marginLeft: 56 }]} />
+              <Pressable
+                style={[s.rowItem, { paddingVertical: 11 }]}
+                onPress={() => router.push('/admin' as any)}
+                accessibilityRole="button"
+                accessibilityLabel="Admin Panel"
+              >
+                <View style={[s.rowIcon, { backgroundColor: 'rgba(99,102,241,0.12)' }]}>
+                  <ShieldCheck size={15} color="#6366F1" strokeWidth={2} />
+                </View>
+                <View style={s.rowBody}>
+                  <Text style={[s.rowTitle, { color: '#6366F1' }]}>Admin Panel</Text>
+                  <Text style={[s.rowSub, { color: colors.text.muted }]}>Nutzerverwaltung, Reports, Shop</Text>
+                </View>
+                <ChevronRight size={16} stroke="#6366F1" strokeWidth={2} />
+              </Pressable>
+            </>
+          )}
         </View>
 
         {/* ── KI-Stimme ── */}
@@ -536,16 +598,18 @@ export default function SettingsScreen() {
         <SectionLabel label="Benachrichtigungen" colors={colors} />
         <View style={[s.card, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
           {([
-            { key: 'likes',      label: 'Likes',          icon: '❤️', sub: 'Wenn jemand deinen Post liket' },
-            { key: 'comments',   label: 'Kommentare',     icon: '💬', sub: 'Wenn jemand kommentiert' },
-            { key: 'follows',    label: 'Neue Follower',  icon: '👤', sub: 'Wenn dir jemand folgt' },
-            { key: 'liveAlerts', label: 'Live-Streams',   icon: '🔴', sub: 'Wenn jemand live geht' },
-            { key: 'messages',   label: 'Nachrichten',    icon: '✉️', sub: 'Neue Direktnachrichten' },
-            { key: 'reposts',    label: 'Reposts',         icon: '🔁', sub: 'Wenn jemand deinen Post teilt' },
-          ] as const).map(({ key, label, icon, sub }, i, arr) => (
+            { key: 'likes',      label: 'Likes',          icon: Heart,         sub: 'Wenn jemand deinen Post liket' },
+            { key: 'comments',   label: 'Kommentare',     icon: MessageCircle, sub: 'Wenn jemand kommentiert' },
+            { key: 'follows',    label: 'Neue Follower',  icon: UserPlus,      sub: 'Wenn dir jemand folgt' },
+            { key: 'liveAlerts', label: 'Live-Streams',   icon: Radio,         sub: 'Wenn jemand live geht' },
+            { key: 'messages',   label: 'Nachrichten',    icon: Mail,          sub: 'Neue Direktnachrichten' },
+            { key: 'reposts',    label: 'Reposts',         icon: Repeat2,       sub: 'Wenn jemand deinen Post teilt' },
+          ] as const).map(({ key, label, icon: Icon, sub }, i, arr) => (
             <View key={key}>
-              <View style={[s.rowItem, { paddingVertical: 12 }]}>
-                <Text style={s.notifEmoji}>{icon}</Text>
+              <View style={[s.rowItem, { paddingVertical: 10 }]}>
+                <View style={[s.rowIcon, { backgroundColor: colors.bg.elevated }]}>
+                  <Icon size={16} stroke={colors.icon.default} strokeWidth={2} />
+                </View>
                 <View style={s.rowBody}>
                   <Text style={[s.rowTitle, { color: colors.text.primary }]}>{label}</Text>
                   <Text style={[s.rowSub, { color: colors.text.muted }]}>{sub}</Text>
@@ -558,17 +622,19 @@ export default function SettingsScreen() {
                   accessibilityLabel={`${label} Benachrichtigungen`}
                 />
               </View>
-              {i < arr.length - 1 && <View style={[s.sep, { backgroundColor: colors.border.subtle, marginLeft: 54 }]} />}
+              {i < arr.length - 1 && <View style={[s.sep, { backgroundColor: colors.border.subtle, marginLeft: 56 }]} />}
               {/* v1.17.0: Sub-Row unter "Live-Streams" für host-spezifische Mutes */}
               {key === 'liveAlerts' && notifPrefs.liveAlerts && (
                 <>
-                  <View style={[s.sep, { backgroundColor: colors.border.subtle, marginLeft: 54 }]} />
+                  <View style={[s.sep, { backgroundColor: colors.border.subtle, marginLeft: 56 }]} />
                   <Pressable
-                    style={[s.rowItem, { paddingVertical: 12 }]}
+                    style={[s.rowItem, { paddingVertical: 10 }]}
                     onPress={() => router.push('/settings/muted-live-hosts' as any)}
                     accessibilityRole="button"
                   >
-                    <Text style={s.notifEmoji}>🔕</Text>
+                    <View style={[s.rowIcon, { backgroundColor: colors.bg.elevated }]}>
+                      <BellOff size={16} stroke={colors.icon.default} strokeWidth={2} />
+                    </View>
                     <View style={s.rowBody}>
                       <Text style={[s.rowTitle, { color: colors.text.primary }]}>Einzelne Hosts stummschalten</Text>
                       <Text style={[s.rowSub, { color: colors.text.muted }]}>Pushes pro Creator an/aus</Text>
@@ -584,7 +650,7 @@ export default function SettingsScreen() {
         {/* ── Privatsphäre & Sicherheit ── */}
         <SectionLabel label="Privatsphäre & Sicherheit" colors={colors} />
         <View style={[s.card, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
-          <View style={[s.rowItem, { paddingVertical: 14 }]}>
+          <View style={[s.rowItem, { paddingVertical: 11 }]}>
             <View style={[s.rowIcon, { backgroundColor: colors.bg.elevated }]}>
               <Lock size={15} stroke={colors.icon.default} strokeWidth={2} />
             </View>
@@ -609,66 +675,7 @@ export default function SettingsScreen() {
           </View>
           <View style={[s.sep, { backgroundColor: colors.border.subtle, marginLeft: 56 }]} />
 
-          {/* Tab Bar anpassen */}
-          <Pressable style={[s.rowItem, { paddingVertical: 14 }]} onPress={() => router.push('/settings/tab-bar' as any)} accessibilityRole="button">
-            <View style={[s.rowIcon, { backgroundColor: colors.bg.elevated }]}>
-              <Zap size={15} stroke={colors.icon.default} strokeWidth={2} />
-            </View>
-            <View style={s.rowBody}>
-              <Text style={[s.rowTitle, { color: colors.text.primary }]}>Tab Bar anpassen</Text>
-              <Text style={[s.rowSub, { color: colors.text.muted }]}>Wähle deine Schnellzugriffe</Text>
-            </View>
-            <ChevronRight size={16} stroke={colors.icon.muted} strokeWidth={2} />
-          </Pressable>
-          <View style={[s.sep, { backgroundColor: colors.border.subtle, marginLeft: 56 }]} />
-
-          {/* Creator Studio (aktiv) ODER Creator werden (noch kein Creator) */}
-          <>
-            <Pressable
-              style={[s.rowItem, { paddingVertical: 14 }]}
-              onPress={() => router.push(profile?.is_creator ? '/creator/dashboard' : '/creator/activate' as any)}
-              accessibilityRole="button"
-              accessibilityLabel={profile?.is_creator ? 'Creator Studio öffnen' : 'Creator werden'}
-            >
-              <View style={[s.rowIcon, { backgroundColor: `${colors.accent.secondary}1F` }]}>
-                <Sparkles size={15} color={colors.accent.secondary} strokeWidth={2} />
-              </View>
-              <View style={s.rowBody}>
-                <Text style={[s.rowTitle, { color: colors.accent.secondary }]}>
-                  {profile?.is_creator ? 'Creator Studio' : 'Creator werden ✦'}
-                </Text>
-                <Text style={[s.rowSub, { color: colors.text.muted }]}>
-                  {profile?.is_creator ? 'Einnahmen, Analytics, Top Posts' : 'Kostenlos · Sofortzugang · Monetarisierung'}
-                </Text>
-              </View>
-              <ChevronRight size={16} stroke={colors.accent.secondary} strokeWidth={2} />
-            </Pressable>
-            <View style={[s.sep, { backgroundColor: colors.border.subtle, marginLeft: 56 }]} />
-          </>
-
-          {/* Admin-Panel — nur für Admins sichtbar */}
-          {(profile as any)?.is_admin && (
-            <>
-              <Pressable
-                style={[s.rowItem, { paddingVertical: 14 }]}
-                onPress={() => router.push('/admin' as any)}
-                accessibilityRole="button"
-                accessibilityLabel="Admin Panel"
-              >
-                <View style={[s.rowIcon, { backgroundColor: 'rgba(99,102,241,0.12)' }]}>
-                  <ShieldCheck size={15} color="#6366F1" strokeWidth={2} />
-                </View>
-                <View style={s.rowBody}>
-                  <Text style={[s.rowTitle, { color: '#6366F1' }]}>Admin Panel</Text>
-                  <Text style={[s.rowSub, { color: colors.text.muted }]}>Nutzerverwaltung, Reports, Shop</Text>
-                </View>
-                <ChevronRight size={16} stroke="#6366F1" strokeWidth={2} />
-              </Pressable>
-              <View style={[s.sep, { backgroundColor: colors.border.subtle, marginLeft: 56 }]} />
-            </>
-          )}
-
-          <Pressable style={[s.rowItem, { paddingVertical: 14 }]} onPress={() => router.push('/blocked-users' as any)} accessibilityRole="button">
+          <Pressable style={[s.rowItem, { paddingVertical: 11 }]} onPress={() => router.push('/blocked-users' as any)} accessibilityRole="button">
             <View style={[s.rowIcon, { backgroundColor: colors.bg.elevated }]}>
               <Shield size={15} stroke={colors.icon.default} strokeWidth={2} />
             </View>
@@ -679,46 +686,49 @@ export default function SettingsScreen() {
 
           {/* Phase 5b: Co-Host spezifische Blocks (DB-persistent, überlebt App-Restart).
               Separater Screen weil das eine andere Liste ist als die globalen User-Blocks. */}
-          <Pressable style={[s.rowItem, { paddingVertical: 14 }]} onPress={() => router.push('/cohost-blocks' as any)} accessibilityRole="button">
+          <Pressable style={[s.rowItem, { paddingVertical: 11 }]} onPress={() => router.push('/cohost-blocks' as any)} accessibilityRole="button">
             <View style={[s.rowIcon, { backgroundColor: colors.bg.elevated }]}>
               <ShieldCheck size={15} stroke={colors.icon.default} strokeWidth={2} />
             </View>
             <View style={s.rowBody}><Text style={[s.rowTitle, { color: colors.text.primary }]}>Co-Host Blocks</Text></View>
             <ChevronRight size={16} stroke={colors.icon.muted} strokeWidth={2} />
           </Pressable>
-          <View style={[s.sep, { backgroundColor: colors.border.subtle, marginLeft: 56 }]} />
+        </View>
 
-          <Pressable style={[s.rowItem, { paddingVertical: 14 }]} onPress={() => Linking.openURL('https://serlo-web.vercel.app/privacy').catch(() => {})} accessibilityRole="link">
+        {/* ── Rechtliches & Hilfe ── */}
+        <SectionLabel label="Rechtliches & Hilfe" colors={colors} />
+        <View style={[s.card, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
+          <Pressable style={[s.rowItem, { paddingVertical: 11 }]} onPress={() => Linking.openURL('https://serlo-web.vercel.app/privacy').catch(() => {})} accessibilityRole="link">
             <View style={[s.rowIcon, { backgroundColor: colors.bg.elevated }]}>
-              <ExternalLink size={15} stroke={colors.icon.default} strokeWidth={2} />
+              <FileText size={15} stroke={colors.icon.default} strokeWidth={2} />
             </View>
             <View style={s.rowBody}><Text style={[s.rowTitle, { color: colors.text.primary }]}>Datenschutzerklärung</Text></View>
-            <ChevronRight size={16} stroke={colors.icon.muted} strokeWidth={2} />
+            <ExternalLink size={15} stroke={colors.icon.muted} strokeWidth={2} />
           </Pressable>
           <View style={[s.sep, { backgroundColor: colors.border.subtle, marginLeft: 56 }]} />
 
-          <Pressable style={[s.rowItem, { paddingVertical: 14 }]} onPress={() => Linking.openURL('https://serlo-web.vercel.app/terms').catch(() => {})} accessibilityRole="link">
+          <Pressable style={[s.rowItem, { paddingVertical: 11 }]} onPress={() => Linking.openURL('https://serlo-web.vercel.app/terms').catch(() => {})} accessibilityRole="link">
             <View style={[s.rowIcon, { backgroundColor: colors.bg.elevated }]}>
-              <ExternalLink size={15} stroke={colors.icon.default} strokeWidth={2} />
+              <FileText size={15} stroke={colors.icon.default} strokeWidth={2} />
             </View>
             <View style={s.rowBody}><Text style={[s.rowTitle, { color: colors.text.primary }]}>Nutzungsbedingungen</Text></View>
-            <ChevronRight size={16} stroke={colors.icon.muted} strokeWidth={2} />
+            <ExternalLink size={15} stroke={colors.icon.muted} strokeWidth={2} />
           </Pressable>
           <View style={[s.sep, { backgroundColor: colors.border.subtle, marginLeft: 56 }]} />
 
-          <Pressable style={[s.rowItem, { paddingVertical: 14 }]} onPress={() => Linking.openURL('https://serlo-web.vercel.app/support').catch(() => {})} accessibilityRole="link">
+          <Pressable style={[s.rowItem, { paddingVertical: 11 }]} onPress={() => Linking.openURL('https://serlo-web.vercel.app/support').catch(() => {})} accessibilityRole="link">
             <View style={[s.rowIcon, { backgroundColor: colors.bg.elevated }]}>
-              <ExternalLink size={15} stroke={colors.icon.default} strokeWidth={2} />
+              <Mail size={15} stroke={colors.icon.default} strokeWidth={2} />
             </View>
             <View style={s.rowBody}><Text style={[s.rowTitle, { color: colors.text.primary }]}>Hilfe & Support</Text></View>
-            <ChevronRight size={16} stroke={colors.icon.muted} strokeWidth={2} />
+            <ExternalLink size={15} stroke={colors.icon.muted} strokeWidth={2} />
           </Pressable>
         </View>
 
         {/* ── Account ── */}
         <SectionLabel label="Account" colors={colors} />
         <View style={[s.card, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
-          <Pressable style={[s.rowItem, { paddingVertical: 14 }]} onPress={handleChangeEmail} disabled={changingEmail} accessibilityRole="button">
+          <Pressable style={[s.rowItem, { paddingVertical: 11 }]} onPress={handleChangeEmail} disabled={changingEmail} accessibilityRole="button">
             <View style={[s.rowIcon, { backgroundColor: colors.bg.elevated }]}>
               {changingEmail ? <ActivityIndicator size="small" color={colors.icon.default} /> : <Mail size={15} stroke={colors.icon.default} strokeWidth={2} />}
             </View>
@@ -727,7 +737,7 @@ export default function SettingsScreen() {
           </Pressable>
           <View style={[s.sep, { backgroundColor: colors.border.subtle, marginLeft: 56 }]} />
 
-          <Pressable style={[s.rowItem, { paddingVertical: 14 }]} onPress={handleChangePassword} disabled={changingPw} accessibilityRole="button">
+          <Pressable style={[s.rowItem, { paddingVertical: 11 }]} onPress={handleChangePassword} disabled={changingPw} accessibilityRole="button">
             <View style={[s.rowIcon, { backgroundColor: colors.bg.elevated }]}>
               {changingPw ? <ActivityIndicator size="small" color={colors.icon.default} /> : <Lock size={15} stroke={colors.icon.default} strokeWidth={2} />}
             </View>
@@ -790,7 +800,7 @@ function SectionLabel({ label, colors }: { label: string; colors: any }) {
   return <Text style={[sl.label, { color: colors.text.muted }]}>{label.toUpperCase()}</Text>;
 }
 const sl = StyleSheet.create({
-  label: { fontSize: 11, fontWeight: '700', letterSpacing: 0.9, paddingHorizontal: 20, marginBottom: 7, marginTop: 22 },
+  label: { fontSize: 11, fontWeight: '700', letterSpacing: 0.9, paddingHorizontal: 20, marginBottom: 6, marginTop: 15 },
 });
 
 // ── Styles ────────────────────────────────────────────────────────────────────
@@ -812,7 +822,7 @@ const s = StyleSheet.create({
   saveBtnText: { fontSize: 13, fontWeight: '700' },
 
   // Scroll
-  scroll: { paddingTop: 16 },
+  scroll: { paddingTop: 10 },
 
   // Avatar Card
   profileCard: {
@@ -845,7 +855,7 @@ const s = StyleSheet.create({
   // Field rows (edit)
   fieldRow: {
     flexDirection: 'row', alignItems: 'flex-start',
-    gap: 12, paddingHorizontal: 14, paddingTop: 14, paddingBottom: 10,
+    gap: 12, paddingHorizontal: 14, paddingTop: 12, paddingBottom: 9,
   },
   fieldIcon: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center', marginTop: 2 },
   fieldBody: { flex: 1, gap: 4 },
@@ -856,7 +866,7 @@ const s = StyleSheet.create({
   // Nav rows (pressable)
   rowItem: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingHorizontal: 14, paddingVertical: 14,
+    paddingHorizontal: 14, paddingVertical: 11,
   },
   rowIcon: { width: 32, height: 32, borderRadius: 10, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   rowBody: { flex: 1, gap: 2 },
@@ -879,13 +889,10 @@ const s = StyleSheet.create({
   themeBtn: { flex: 1, paddingVertical: 10, borderRadius: 12, alignItems: 'center', borderWidth: StyleSheet.hairlineWidth },
   themeBtnTxt: { fontSize: 12, fontWeight: '600' },
 
-  // Notifications
-  notifEmoji: { fontSize: 20, width: 32, textAlign: 'center' },
-
   // Danger
   dangerBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    marginHorizontal: 16, marginTop: 26, paddingVertical: 15,
+    marginHorizontal: 16, marginTop: 18, paddingVertical: 15,
     borderRadius: 18, borderWidth: StyleSheet.hairlineWidth,
   },
   dangerBtnText: { fontSize: 15, fontWeight: '700' },
