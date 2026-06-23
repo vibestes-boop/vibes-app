@@ -33,15 +33,15 @@ export default function RegisterScreen() {
 
   const handleRegister = async () => {
     if (!email || !password || !username) {
-      Alert.alert('Fehler', 'Bitte alle Felder ausfüllen.');
+      Alert.alert('Fast!', 'Füll bitte alle Felder aus 🙂');
       return;
     }
     if (username.length < 3) {
-      Alert.alert('Fehler', 'Username muss mindestens 3 Zeichen lang sein.');
+      Alert.alert('Fast!', 'Dein Username braucht mindestens 3 Zeichen ✏️');
       return;
     }
     if (password.length < 6) {
-      Alert.alert('Fehler', 'Passwort muss mindestens 6 Zeichen lang sein.');
+      Alert.alert('Fast!', 'Das Passwort braucht mindestens 6 Zeichen 🔒');
       return;
     }
 
@@ -59,9 +59,9 @@ export default function RegisterScreen() {
       setLoading(false);
       // Benutzername bereits vergeben
       if (error.message?.includes('duplicate') || (error as any).code === '23505') {
-        Alert.alert('Fehler', 'Dieser Benutzername ist bereits vergeben. Bitte wähle einen anderen.');
+        Alert.alert('Schon vergeben', 'Den Username gibt es leider schon — probier einen anderen ✏️');
       } else {
-        Alert.alert('Registrierung fehlgeschlagen', error.message);
+        Alert.alert('Hat nicht geklappt', error.message);
       }
       return;
     }

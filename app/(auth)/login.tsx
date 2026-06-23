@@ -41,13 +41,13 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Fehler', 'Bitte E-Mail und Passwort eingeben.');
+      Alert.alert('Fast!', 'Gib E-Mail und Passwort ein 🙂');
       return;
     }
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
-    if (error) Alert.alert('Login fehlgeschlagen', error.message);
+    if (error) Alert.alert('Login hat nicht geklappt', error.message);
   };
 
   const handleGoogle = async () => {
@@ -59,7 +59,7 @@ export default function LoginScreen() {
   const handleForgotPassword = async () => {
     const trimmedEmail = email.trim();
     if (!trimmedEmail) {
-      Alert.alert('E-Mail eingeben', 'Trage zuerst deine E-Mail-Adresse ein.');
+      Alert.alert('Fast!', 'Trag zuerst deine E-Mail ein 📧');
       return;
     }
     setLoading(true);
@@ -68,7 +68,7 @@ export default function LoginScreen() {
     });
     setLoading(false);
     if (error) {
-      Alert.alert('Fehler', error.message);
+      Alert.alert('Hat nicht geklappt', error.message);
     } else {
       setResetSent(true);
     }

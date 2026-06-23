@@ -124,8 +124,8 @@ export default function CoinShopScreen() {
         );
       } else {
         Alert.alert(
-          'Kauf fehlgeschlagen',
-          'Ein unerwarteter Fehler ist aufgetreten. Versuche es in ein paar Minuten erneut oder kontaktiere den Support.',
+          'Kauf hat nicht geklappt',
+          'Da ist leider was schiefgelaufen. Versuch es in ein paar Minuten nochmal — oder melde dich beim Support, wir helfen dir.',
           [{ text: 'OK' }]
         );
       }
@@ -237,8 +237,8 @@ export default function CoinShopScreen() {
 // eslint-disable-next-line @typescript-eslint/no-require-imports
               const { Purchases } = require('react-native-purchases');
               await Purchases.restorePurchases(); await refetch();
-              Alert.alert('✅', 'Käufe wiederhergestellt.');
-            } catch { Alert.alert('Wiederherstellung fehlgeschlagen', 'Bitte prüfe deine Internetverbindung und versuche es erneut. Wenn das Problem anhält, kontaktiere den Support.'); }
+              Alert.alert('Wiederhergestellt ✅', 'Deine Käufe sind zurück.');
+            } catch { Alert.alert('Wiederherstellung hat nicht geklappt', 'Prüf kurz deine Internetverbindung und versuch es nochmal. Hält das Problem an, ist der Support für dich da.'); }
           }} style={s.restoreBtn}>
             <Text style={s.restoreText}>Käufe wiederherstellen</Text>
           </Pressable>

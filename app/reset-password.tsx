@@ -36,15 +36,15 @@ export default function ResetPasswordScreen() {
 
   const handleReset = async () => {
     if (!password || !confirm) {
-      Alert.alert('Fehler', 'Bitte beide Felder ausfüllen.');
+      Alert.alert('Fast!', 'Füll bitte beide Felder aus 🙂');
       return;
     }
     if (password.length < 8) {
-      Alert.alert('Zu kurz', 'Das Passwort muss mindestens 8 Zeichen lang sein.');
+      Alert.alert('Etwas länger', 'Das Passwort braucht mindestens 8 Zeichen 🔒');
       return;
     }
     if (password !== confirm) {
-      Alert.alert('Nicht übereinstimmend', 'Die Passwörter stimmen nicht überein.');
+      Alert.alert('Stimmt noch nicht', 'Die beiden Passwörter sind nicht gleich 🔒');
       return;
     }
 
@@ -53,7 +53,7 @@ export default function ResetPasswordScreen() {
     setLoading(false);
 
     if (error) {
-      Alert.alert('Fehler', error.message);
+      Alert.alert('Hat nicht geklappt', error.message);
     } else {
       setDone(true);
       setTimeout(() => router.replace('/(tabs)'), 2200);
