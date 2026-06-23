@@ -592,9 +592,7 @@ export const postOptionsModalStyles = StyleSheet.create({
     borderRadius: 14,
   },
   iconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+    width: 30,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -31,7 +31,7 @@ function MenuRow({
 }: {
   item: ToolItem; colors: any; showDivider: boolean;
 }) {
-  const { icon: Icon, tint, label, sub, onPress } = item;
+  const { icon: Icon, label, sub, onPress } = item;
   return (
     <Pressable
       onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onPress(); }}
@@ -41,8 +41,8 @@ function MenuRow({
         pressed && { backgroundColor: colors.bg.subtle },
       ]}
     >
-      <View style={[msx.menuIcon, { backgroundColor: tint + '22' }]}>
-        <Icon size={19} color={tint} strokeWidth={2} />
+      <View style={msx.menuIcon}>
+        <Icon size={24} color={colors.text.primary} strokeWidth={2} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={[msx.menuLabel, { color: colors.text.primary }]}>{label}</Text>
@@ -263,7 +263,7 @@ const msx = {
     paddingVertical: 13, paddingHorizontal: 14,
   },
   menuIcon: {
-    width: 38, height: 38, borderRadius: 11,
+    width: 30,
     alignItems: 'center' as const, justifyContent: 'center' as const,
   },
   menuLabel: { fontSize: 15.5, fontWeight: '600' as const, letterSpacing: -0.1 },

@@ -159,8 +159,8 @@ export function PostOptionsModal({
             const IconComp = opt.icon;
             return (
               <Pressable key={opt.id} style={pos.row} onPress={() => handlePress(opt.id)}>
-                <View style={[pos.iconWrap, { backgroundColor: opt.bg }]}>
-                  <IconComp size={20} color={opt.color} strokeWidth={1.8} />
+                <View style={pos.iconWrap}>
+                  <IconComp size={24} color={opt.id === 'report' ? '#f87171' : '#fff'} strokeWidth={1.9} />
                 </View>
                 <View style={pos.textWrap}>
                   <Text style={[pos.rowLabel, { color: opt.id === 'report' ? '#f87171' : '#fff' }]}>{opt.label}</Text>
