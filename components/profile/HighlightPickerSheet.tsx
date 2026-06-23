@@ -66,8 +66,13 @@ export function HighlightPickerSheet({
   const [step, setStep] = useState<'pick' | 'name'>('pick');
   const [title, setTitle] = useState('');
   const [activeTab, setActiveTab] = useState<'stories' | 'posts'>('stories');
+  // Stories/Posts mit totem Medium (abgelaufen → R2-Cleanup → tote URL) ausblenden:
+  // sobald das Bild nicht lädt, fliegt die Kachel raus statt leer dazustehen.
+  const [failedIds, setFailedIds] = useState<Set<string>>(() => new Set());
 
-  const currentItems = activeTab === 'stories' ? stories : posts;
+  const visibleStories = stories.filter((s) => !failedIds.has(s.id));
+  const visiblePosts   = posts.filter((p) => !failedIds.has(p.id));
+  const currentItems = activeTab === 'stories' ? visibleStories : visiblePosts;
   const isCurrentTabLoading = activeTab === 'stories' ? loadingStories : loadingPosts;
 
   const sheetY = useRef(new Animated.Value(SCREEN_H)).current;
@@ -77,6 +82,7 @@ export function HighlightPickerSheet({
     setStep('pick');
     setTitle('');
     setActiveTab('stories');
+    setFailedIds(new Set());
   };
 
   // Entrance-Animation
@@ -222,7 +228,7 @@ export function HighlightPickerSheet({
                   onPress={() => { setSelected([]); setActiveTab('stories'); }}
                 >
                   <Text style={[styles.tabText, activeTab === 'stories' && styles.tabTextActive]}>
-                    Stories ({stories.length})
+                    Stories ({visibleStories.length})
                   </Text>
                 </Pressable>
                 <Pressable
@@ -230,7 +236,7 @@ export function HighlightPickerSheet({
                   onPress={() => { setSelected([]); setActiveTab('posts'); }}
                 >
                   <Text style={[styles.tabText, activeTab === 'posts' && styles.tabTextActive]}>
-                    Posts ({posts.length})
+                    Posts ({visiblePosts.length})
                   </Text>
                 </Pressable>
               </View>
@@ -266,6 +272,12 @@ export function HighlightPickerSheet({
                               style={StyleSheet.absoluteFill}
                               contentFit="cover"
                               cachePolicy="memory-disk"
+                              onError={() => setFailedIds((prev) => {
+                                if (prev.has(item.id)) return prev;
+                                const next = new Set(prev);
+                                next.add(item.id);
+                                return next;
+                              })}
                             />
                             <View style={styles.dateBadge}>
                               <Text style={styles.dateText}>{formatDate(item.created_at)}</Text>
