@@ -61,7 +61,7 @@ export default function DraftsScreen() {
           onPress: async () => {
             try { await deleteDraft(d.id); }
             catch (e: any) {
-              Alert.alert('Fehler', e?.message ?? 'Konnte nicht gelöscht werden.');
+              Alert.alert('Hat nicht geklappt', e?.message ?? 'Der Entwurf ließ sich nicht löschen — nochmal versuchen?');
             }
           },
         },

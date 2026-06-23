@@ -75,7 +75,7 @@ export default function ScheduledPostsScreen() {
           onPress: async () => {
             try { await cancelScheduledPost(post.id); }
             catch (e: any) {
-              Alert.alert('Fehler', e?.message ?? 'Konnte nicht abgebrochen werden.');
+              Alert.alert('Hat nicht geklappt', e?.message ?? 'Ließ sich nicht abbrechen — nochmal versuchen?');
             }
           },
         },
@@ -93,7 +93,7 @@ export default function ScheduledPostsScreen() {
       await reschedulePost(rescheduleTarget.id, newTime);
       setRescheduleTarget(null);
     } catch (e: any) {
-      Alert.alert('Fehler', e?.message ?? 'Konnte nicht umgeplant werden.');
+      Alert.alert('Hat nicht geklappt', e?.message ?? 'Ließ sich nicht umplanen — nochmal versuchen?');
     }
   };
 

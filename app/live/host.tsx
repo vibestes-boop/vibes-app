@@ -280,7 +280,7 @@ function HostUI({
           sendSystemEvent(`⏱️ Slow-Mode an: ${label} zwischen Messages.`);
         }
       } else {
-        Alert.alert('Fehler', 'Slow-Mode konnte nicht gesetzt werden. Bitte erneut versuchen.');
+        Alert.alert('Hat nicht geklappt', 'Slow-Mode ließ sich nicht setzen — gleich nochmal? 🙏');
       }
     };
     Alert.alert(
@@ -385,7 +385,7 @@ function HostUI({
             { text: 'Abbrechen', style: 'cancel' },
             { text: 'Beenden', style: 'destructive', onPress: async () => {
                 try { await stopRecording({ sessionId }); } catch (e: any) {
-                  Alert.alert('Fehler', e?.message ?? 'Konnte Aufnahme nicht stoppen');
+                  Alert.alert('Hat nicht geklappt', e?.message ?? 'Die Aufnahme ließ sich nicht stoppen — nochmal versuchen?');
                 }
               } },
           ],
@@ -393,14 +393,14 @@ function HostUI({
       } else {
         const roomName = session?.room_name;
         if (!roomName) {
-          Alert.alert('Fehler', 'Raum-Name nicht verfügbar');
+          Alert.alert('Hat nicht geklappt', 'Der Stream-Raum ist gerade nicht bereit — nochmal versuchen? 📡');
           return;
         }
         impactAsync(ImpactFeedbackStyle.Medium);
         await startRecording({ sessionId, roomName });
       }
     } catch (err: any) {
-      Alert.alert('Aufnahme fehlgeschlagen', err?.message ?? 'Unbekannter Fehler');
+      Alert.alert('Aufnahme hat nicht geklappt', err?.message ?? 'Da ging was schief — gleich nochmal?');
     }
   }, [sessionId, recActive, session?.room_name, startRecording, stopRecording]);
   const handleClosePoll = useCallback(() => {
@@ -785,7 +785,7 @@ function HostUI({
       }
       Alert.alert('Danke', 'Meldung wurde an Moderation übermittelt.');
     } catch (error: any) {
-      Alert.alert('Melden fehlgeschlagen', error?.message ?? 'Bitte später erneut versuchen.');
+      Alert.alert('Hat nicht geklappt', error?.message ?? 'Konnte die Meldung nicht senden — bitte später nochmal.');
     }
   }, []);
 

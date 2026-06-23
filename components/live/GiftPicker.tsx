@@ -303,7 +303,7 @@ export function GiftPicker({
       const detailSuffix = __DEV__ && 'detail' in result && result.detail
         ? `\n\n[DEV] ${result.detail}`
         : '';
-      Alert.alert('Fehler', msg + detailSuffix);
+      Alert.alert('Hat nicht geklappt', msg + detailSuffix);
     }
   }, [selectedGift, isSending, sendGift, effectiveRecipientId, liveSessionId, channelRef, onGiftSent, refetch, coins, onClose, battleMode, recipientChoice]);
 

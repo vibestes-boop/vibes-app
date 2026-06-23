@@ -2154,7 +2154,7 @@ function WatchUIContent({
                     onPress={async () => {
                       const result = await reportLive(sessionId, reason);
                       if (result.error) {
-                        Alert.alert('Melden fehlgeschlagen', result.error);
+                        Alert.alert('Hat nicht geklappt', result.error);
                         return;
                       }
                       setReportSent(true);

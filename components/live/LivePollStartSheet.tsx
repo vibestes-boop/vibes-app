@@ -91,7 +91,7 @@ export function LivePollStartSheet({ visible, onClose, sessionId, onCreated }: P
       reset();
       onClose();
     } catch (err: any) {
-      Alert.alert('Fehler', err?.message ?? 'Umfrage konnte nicht erstellt werden');
+      Alert.alert('Hat nicht geklappt', err?.message ?? 'Die Umfrage ließ sich nicht erstellen — nochmal versuchen?');
     }
   }, [canSubmit, isCreating, createPoll, sessionId, question, options, onCreated, reset, onClose]);
 

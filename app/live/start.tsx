@@ -200,7 +200,7 @@ export default function LiveStartScreen() {
     try {
       const result = await startSession(title, { allowComments, allowGifts, womenOnly, followersOnly, thumbnailUrl, category });
       if (!result) {
-        Alert.alert('Fehler', 'Live konnte nicht gestartet werden. Bitte prüfe deine Verbindung.');
+        Alert.alert('Hat nicht geklappt', 'Dein Live ist nicht gestartet — Verbindung prüfen und nochmal? 📡');
         return;
       }
 
@@ -226,7 +226,7 @@ export default function LiveStartScreen() {
       });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Unbekannter Fehler';
-      Alert.alert('Live-Fehler', msg);
+      Alert.alert('Live hat nicht geklappt', msg);
     }
   };
 
@@ -264,7 +264,7 @@ export default function LiveStartScreen() {
       router.replace('/creator/scheduled-lives' as never);
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Konnte nicht geplant werden.';
-      Alert.alert('Fehler', msg);
+      Alert.alert('Hat nicht geklappt', msg);
     }
   };
 

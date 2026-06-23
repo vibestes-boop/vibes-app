@@ -76,7 +76,7 @@ export default function ScheduledLivesScreen() {
           onPress: async () => {
             try { await cancelScheduledLive(live.id); }
             catch (e: any) {
-              Alert.alert('Fehler', e?.message ?? 'Konnte nicht abgesagt werden.');
+              Alert.alert('Hat nicht geklappt', e?.message ?? 'Ließ sich nicht absagen — nochmal versuchen?');
             }
           },
         },
@@ -94,7 +94,7 @@ export default function ScheduledLivesScreen() {
       await rescheduleLive(rescheduleTarget.id, newTime);
       setRescheduleTarget(null);
     } catch (e: any) {
-      Alert.alert('Fehler', e?.message ?? 'Konnte nicht umgeplant werden.');
+      Alert.alert('Hat nicht geklappt', e?.message ?? 'Ließ sich nicht umplanen — nochmal versuchen?');
     }
   };
 
