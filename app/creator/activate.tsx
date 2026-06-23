@@ -191,7 +191,7 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingBottom: 14, borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  headerTitle: { fontSize: 17, fontWeight: '800' },
+  headerTitle: { fontSize: 17, fontWeight: '600' },
   iconBtn: { width: 36, height: 36, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40, gap: 16 },
 
@@ -202,7 +202,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 12, paddingVertical: 6,
   },
   taglineBadgeText: { fontSize: 11, fontWeight: '700' },
-  taglineTitle: { fontSize: 32, fontWeight: '900', letterSpacing: -1, lineHeight: 38 },
+  taglineTitle: { fontSize: 32, fontWeight: '700', letterSpacing: -1, lineHeight: 38 },
   taglineSub: { fontSize: 15, lineHeight: 22 },
 
   sectionLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.8, marginBottom: 10 },
@@ -216,17 +216,17 @@ const s = StyleSheet.create({
   splitTable: { borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
   splitRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 13, gap: 0 },
   splitSrc:      { flex: 1, fontSize: 13, fontWeight: '600' },
-  splitCreator:  { fontSize: 15, fontWeight: '900', marginRight: 12 },
+  splitCreator:  { fontSize: 15, fontWeight: '700', marginRight: 12 },
   splitPlatform: { fontSize: 11, fontWeight: '500' },
 
   errorText: { color: '#EF4444', fontSize: 13, textAlign: 'center', marginTop: 8 },
 
   primaryBtn: { borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
-  primaryBtnText: { fontSize: 16, fontWeight: '800' },
+  primaryBtnText: { fontSize: 16, fontWeight: '600' },
 
   disclaimer: { fontSize: 11, textAlign: 'center', lineHeight: 18, marginTop: 14 },
 
   successIcon: { width: 72, height: 72, borderRadius: 24, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
-  successTitle: { fontSize: 26, fontWeight: '900', marginTop: 4 },
+  successTitle: { fontSize: 26, fontWeight: '700', marginTop: 4 },
   successSub: { fontSize: 15, textAlign: 'center', lineHeight: 22 },
 });

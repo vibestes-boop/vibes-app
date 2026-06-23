@@ -323,7 +323,7 @@ const card = StyleSheet.create({
     shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 4, shadowOffset: { width: 0, height: 2 },
     elevation: 3,
   },
-  saleBadgeText: { color: '#fff', fontSize: 11, fontWeight: '800', letterSpacing: 0.3 },
+  saleBadgeText: { color: '#fff', fontSize: 11, fontWeight: '600', letterSpacing: 0.3 },
 
   newBadge: {
     position: 'absolute', top: 8, left: 8,

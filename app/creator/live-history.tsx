@@ -459,7 +459,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 10, gap: 2,
   },
   summaryIcon: { flexDirection: 'row' },
-  summaryValue: { fontSize: 15, fontWeight: '900', letterSpacing: -0.4, marginTop: 4 },
+  summaryValue: { fontSize: 15, fontWeight: '700', letterSpacing: -0.4, marginTop: 4 },
   summaryLabel: { fontSize: 10, fontWeight: '600', letterSpacing: 0.2, marginTop: 1 },
 
   // Chart
@@ -503,14 +503,14 @@ const s = StyleSheet.create({
   },
   oppAvatar: { width: 22, height: 22, borderRadius: 11, overflow: 'hidden' },
   oppName: { flex: 1, fontSize: 12, fontWeight: '600' },
-  oppScore: { fontSize: 12, fontWeight: '800', letterSpacing: -0.2 },
+  oppScore: { fontSize: 12, fontWeight: '600', letterSpacing: -0.2 },
 
   // Battle-Chip
   battleChip: {
     flexDirection: 'row', alignItems: 'center', gap: 3,
     borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3,
   },
-  battleChipText: { fontSize: 10, fontWeight: '800' },
+  battleChipText: { fontSize: 10, fontWeight: '600' },
 
   // Replay-Chip (v1.18.0)
   replayChip: {
@@ -518,10 +518,10 @@ const s = StyleSheet.create({
     borderRadius: 6, paddingHorizontal: 6, paddingVertical: 3,
     borderWidth: StyleSheet.hairlineWidth,
   },
-  replayChipText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.3 },
+  replayChipText: { fontSize: 10, fontWeight: '600', letterSpacing: 0.3 },
 
   // Empty
   empty: { alignItems: 'center', gap: 10, paddingTop: 80, paddingHorizontal: 40 },
-  emptyTitle: { fontSize: 15, fontWeight: '800' },
+  emptyTitle: { fontSize: 15, fontWeight: '600' },
   emptyBody: { fontSize: 13, fontWeight: '500', textAlign: 'center', lineHeight: 19 },
 });

@@ -74,7 +74,7 @@ const card = StyleSheet.create({
   info: { padding: 10, gap: 4 },
   title: { fontSize: 13, fontWeight: '700', lineHeight: 18 },
   footer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  price: { fontSize: 13, fontWeight: '900' },
+  price: { fontSize: 13, fontWeight: '700' },
   seller: { fontSize: 10 },
 });
 
@@ -152,11 +152,11 @@ const s = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  title: { flex: 1, fontSize: 20, fontWeight: '800' },
+  title: { flex: 1, fontSize: 20, fontWeight: '600' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, padding: 40 },
-  emptyTitle: { fontSize: 18, fontWeight: '800', textAlign: 'center' },
+  emptyTitle: { fontSize: 18, fontWeight: '600', textAlign: 'center' },
   emptyText: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
   browseBtn: { paddingHorizontal: 24, paddingVertical: 13, borderRadius: 22, marginTop: 8 },
-  browseBtnText: { fontSize: 15, fontWeight: '800' },
+  browseBtnText: { fontSize: 15, fontWeight: '600' },
   countLabel: { fontSize: 12, paddingHorizontal: 4, paddingBottom: 8 },
 });

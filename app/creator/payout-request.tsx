@@ -235,13 +235,13 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingBottom: 14, borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  headerTitle: { fontSize: 17, fontWeight: '800' },
+  headerTitle: { fontSize: 17, fontWeight: '600' },
   iconBtn: { width: 36, height: 36, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40, gap: 16 },
 
   balanceCard: { flexDirection: 'row', alignItems: 'center', borderRadius: 16, borderWidth: StyleSheet.hairlineWidth, padding: 18, marginBottom: 14 },
   balanceLabel: { fontSize: 11, fontWeight: '600', letterSpacing: 0.3, marginBottom: 4 },
-  balanceValue: { fontSize: 32, fontWeight: '900', letterSpacing: -1 },
+  balanceValue: { fontSize: 32, fontWeight: '700', letterSpacing: -1 },
   balanceEur: { fontSize: 12, marginTop: 4 },
   warningPill: { borderRadius: 10, borderWidth: 1, paddingHorizontal: 10, paddingVertical: 6 },
   warningPillText: { fontSize: 11, fontWeight: '700' },
@@ -258,11 +258,11 @@ const s = StyleSheet.create({
   methodLabel: { fontSize: 13, fontWeight: '700' },
 
   primaryBtn: { borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginTop: 20 },
-  primaryBtnText: { fontSize: 15, fontWeight: '800' },
+  primaryBtnText: { fontSize: 15, fontWeight: '600' },
 
   disclaimer: { fontSize: 11, textAlign: 'center', lineHeight: 16, marginTop: 14 },
 
   successIcon: { width: 72, height: 72, borderRadius: 24, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
-  successTitle: { fontSize: 26, fontWeight: '900' },
+  successTitle: { fontSize: 26, fontWeight: '700' },
   successSub: { fontSize: 15, textAlign: 'center', lineHeight: 24 },
 });

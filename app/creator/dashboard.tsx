@@ -489,11 +489,11 @@ const s = StyleSheet.create({
   },
   heroLabel: { fontSize: 11, fontWeight: '600', letterSpacing: 0.3, marginBottom: 4 },
   heroRow: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
-  heroValue: { fontSize: 36, fontWeight: '900', letterSpacing: -1.5 },
+  heroValue: { fontSize: 36, fontWeight: '700', letterSpacing: -1.5 },
   heroCurrency: { fontSize: 20 },
   heroSub: { fontSize: 12, marginTop: 4 },
   payoutCta: { borderRadius: 12, paddingHorizontal: 16, paddingVertical: 10 },
-  payoutCtaText: { fontSize: 13, fontWeight: '800' },
+  payoutCtaText: { fontSize: 13, fontWeight: '600' },
 
   // Period Tabs
   periodRow: {
@@ -513,7 +513,7 @@ const s = StyleSheet.create({
     width: (W - 40 - 10) / 2,
     borderRadius: 14, borderWidth: 1, padding: 14, gap: 4,
   },
-  metricValue: { fontSize: 26, fontWeight: '900', letterSpacing: -1, marginTop: 8 },
+  metricValue: { fontSize: 26, fontWeight: '700', letterSpacing: -1, marginTop: 8 },
   metricLabel: { fontSize: 11, fontWeight: '600' },
   deltaBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, alignSelf: 'flex-start', borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2, marginTop: 2 },
   deltaText: { fontSize: 10, fontWeight: '700' },
@@ -521,7 +521,7 @@ const s = StyleSheet.create({
   // Engagement
   engagRow: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 11 },
   engagLabel: { flex: 1, fontSize: 13, fontWeight: '600' },
-  engagValue: { fontSize: 15, fontWeight: '900' },
+  engagValue: { fontSize: 15, fontWeight: '700' },
 
   // Table
   table: { borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, overflow: 'hidden' },
@@ -531,14 +531,14 @@ const s = StyleSheet.create({
   earningsEmoji: { fontSize: 16, width: 22 },
   earningsLabel2: { fontSize: 10, fontWeight: '600', letterSpacing: 0.2 },
   earningsLabel: { fontSize: 13, fontWeight: '600', marginTop: 1 },
-  earningsValue: { fontSize: 14, fontWeight: '800' },
+  earningsValue: { fontSize: 14, fontWeight: '600' },
 
   // Gift History
   giftRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 12 },
   giftAvatar: { width: 34, height: 34, borderRadius: 17, overflow: 'hidden' },
   giftSender: { fontSize: 13, fontWeight: '700' },
   giftName: { fontSize: 11, marginTop: 1 },
-  giftValue: { fontSize: 13, fontWeight: '800' },
+  giftValue: { fontSize: 13, fontWeight: '600' },
 
   // Posts
   postRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 12 },
@@ -562,7 +562,7 @@ const s = StyleSheet.create({
     paddingTop: 12, marginTop: 4,
   },
   watchTimeLabel: { flex: 1, fontSize: 12, fontWeight: '600' },
-  watchTimeValue: { fontSize: 14, fontWeight: '800' },
+  watchTimeValue: { fontSize: 14, fontWeight: '600' },
 
   // Nav-Row (für Live-Streams CTA)
   navRow: {
@@ -573,16 +573,16 @@ const s = StyleSheet.create({
     width: 34, height: 34, borderRadius: 10, borderWidth: 1,
     alignItems: 'center', justifyContent: 'center',
   },
-  navTitle: { fontSize: 14, fontWeight: '800' },
+  navTitle: { fontSize: 14, fontWeight: '600' },
   navSub: { fontSize: 11, fontWeight: '500', marginTop: 2 },
 
   // Payout
   payoutCard: { borderRadius: 16, borderWidth: 1, padding: 16, gap: 12 },
   payoutTop: { gap: 4 },
-  payoutBalance: { fontSize: 28, fontWeight: '900', letterSpacing: -1 },
+  payoutBalance: { fontSize: 28, fontWeight: '700', letterSpacing: -1 },
   payoutMin: { fontSize: 12, fontWeight: '500' },
   progressTrack: { height: 4, borderRadius: 2, overflow: 'hidden' },
   progressFill: { height: 4, borderRadius: 2, minWidth: 4 },
   payoutBtn: { borderRadius: 12, borderWidth: 1, paddingVertical: 13, alignItems: 'center' },
-  payoutBtnText: { fontSize: 14, fontWeight: '800' },
+  payoutBtnText: { fontSize: 14, fontWeight: '600' },
 });

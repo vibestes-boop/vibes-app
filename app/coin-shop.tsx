@@ -216,10 +216,10 @@ export default function CoinShopScreen() {
                 <Text style={[s.payChipText, { color: '#fff' }]}>🍎 Apple Pay</Text>
               </View>
               <View style={s.payChip}>
-                <Text style={[s.payChipText, { color: '#EB001B', fontWeight: '900' }]}>MC</Text>
+                <Text style={[s.payChipText, { color: '#EB001B', fontWeight: '700' }]}>MC</Text>
               </View>
               <View style={s.payChip}>
-                <Text style={[s.payChipText, { color: '#1A1F71', fontStyle: 'italic', fontWeight: '900' }]}>VISA</Text>
+                <Text style={[s.payChipText, { color: '#1A1F71', fontStyle: 'italic', fontWeight: '700' }]}>VISA</Text>
               </View>
               <View style={[s.payChip, { backgroundColor: '#003087' }]}>
                 <Text style={[s.payChipText, { color: '#fff' }]}>PayPal</Text>
@@ -310,11 +310,11 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: '#FFE0A0',
     paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16,
   },
-  balanceText: { color: '#8B6000', fontWeight: '800', fontSize: 13 },
+  balanceText: { color: '#8B6000', fontWeight: '600', fontSize: 13 },
 
   heroArea: { alignItems: 'center', paddingVertical: 24, gap: 6 },
   heroCoin: { width: 72, height: 72, marginBottom: 4 },
-  heroTitle: { color: '#1A1A1A', fontSize: 22, fontWeight: '800' },
+  heroTitle: { color: '#1A1A1A', fontSize: 22, fontWeight: '600' },
   heroSub: { color: '#999', fontSize: 13 },
 
   body: { flex: 1 },
@@ -347,17 +347,17 @@ const s = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 3, borderRadius: 8, zIndex: 1,
   },
   badgeGold: { backgroundColor: '#916A00' },
-  badgeText: { color: '#fff', fontSize: 9, fontWeight: '800' },
+  badgeText: { color: '#fff', fontSize: 9, fontWeight: '600' },
 
   checkmark: {
     position: 'absolute', top: 8, right: 8,
     width: 20, height: 20, borderRadius: 10,
     backgroundColor: GOLD, alignItems: 'center', justifyContent: 'center',
   },
-  checkmarkText: { color: '#fff', fontSize: 11, fontWeight: '900' },
+  checkmarkText: { color: '#fff', fontSize: 11, fontWeight: '700' },
 
   cardCoin: { width: 38, height: 38, marginBottom: 4 },
-  cardAmount: { color: '#1A1A1A', fontSize: 26, fontWeight: '800', lineHeight: 30 },
+  cardAmount: { color: '#1A1A1A', fontSize: 26, fontWeight: '600', lineHeight: 30 },
   cardAmountSel: { color: '#7C3AED' },
   cardCoinsLabel: { color: '#AAA', fontSize: 11 },
   cardPrice: { color: '#666', fontSize: 14, fontWeight: '600', marginTop: 4 },
@@ -406,12 +406,12 @@ const s = StyleSheet.create({
   },
   totalLabel: { color: '#999', fontSize: 12 },
   totalCoins: { color: '#1A1A1A', fontWeight: '700', fontSize: 14 },
-  totalPrice: { color: '#1A1A1A', fontSize: 22, fontWeight: '800' },
+  totalPrice: { color: '#1A1A1A', fontSize: 22, fontWeight: '600' },
 
   buyBtn: { borderRadius: 14, overflow: 'hidden' },
   buyBtnGrad: {
     paddingVertical: 16, alignItems: 'center', justifyContent: 'center',
     flexDirection: 'row', gap: 8,
   },
-  buyBtnText: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  buyBtnText: { color: '#fff', fontSize: 16, fontWeight: '600' },
 });

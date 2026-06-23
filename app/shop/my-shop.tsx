@@ -890,7 +890,7 @@ const s = StyleSheet.create({
     width: 38, height: 38, borderRadius: 19,
     alignItems: 'center', justifyContent: 'center',
   },
-  headerTitle: { fontSize: 18, fontWeight: '800' },
+  headerTitle: { fontSize: 18, fontWeight: '600' },
   headerSub:   { fontSize: 12, fontWeight: '500' },
   diamondPill: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
@@ -905,7 +905,7 @@ const s = StyleSheet.create({
   // Empty
   emptyWrap:     { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
   emptyIconWrap: { width: 80, height: 80, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  emptyTitle:    { fontSize: 20, fontWeight: '800', marginBottom: 8 },
+  emptyTitle:    { fontSize: 20, fontWeight: '600', marginBottom: 8 },
   emptySub:      { fontSize: 14, textAlign: 'center', lineHeight: 20, marginBottom: 24 },
   emptyBtn:      { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 14 },
   emptyBtnText:  { fontSize: 15, fontWeight: '700' },
@@ -923,7 +923,7 @@ const s = StyleSheet.create({
   cardMeta:  { flexDirection: 'row', alignItems: 'center', gap: 8 },
   catChip:   { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8 },
   catLabel:  { fontSize: 10, fontWeight: '600' },
-  cardPrice: { fontSize: 14, fontWeight: '800' },
+  cardPrice: { fontSize: 14, fontWeight: '600' },
   cardStats: { flexDirection: 'row', gap: 12 },
   cardStat:  { fontSize: 11 },
   cardActions: { flexDirection: 'column', alignItems: 'center', gap: 14, paddingHorizontal: 12 },
@@ -1002,7 +1002,7 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 8,
     borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 10,
   },
-  priceInput: { flex: 1, fontSize: 24, fontWeight: '800' },
+  priceInput: { flex: 1, fontSize: 24, fontWeight: '600' },
   priceHint:  { fontSize: 12 },
 
   stockRow:  { flexDirection: 'row', alignItems: 'center', gap: 8 },

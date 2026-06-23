@@ -299,7 +299,7 @@ const css = StyleSheet.create({
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end',
   },
   revLabel: { color: 'rgba(0,0,0,0.45)', fontSize: 11, fontWeight: '600', marginBottom: 4, letterSpacing: 0.3, textTransform: 'uppercase' },
-  revValue: { color: '#000', fontSize: 28, fontWeight: '800', letterSpacing: -0.5 },
+  revValue: { color: '#000', fontSize: 28, fontWeight: '600', letterSpacing: -0.5 },
   revSuffix: { fontSize: 14, fontWeight: '500', color: 'rgba(0,0,0,0.4)' },
   revLink: { flexDirection: 'row', alignItems: 'center', gap: 2, backgroundColor: 'rgba(0,0,0,0.06)', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
   revLinkText: { color: 'rgba(0,0,0,0.55)', fontSize: 12, fontWeight: '600' },

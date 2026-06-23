@@ -491,14 +491,14 @@ const s = StyleSheet.create({
     borderWidth: 1, alignItems: 'center', justifyContent: 'center',
     marginBottom: 4,
   },
-  emptyTitle: { fontSize: 17, fontWeight: '800' },
+  emptyTitle: { fontSize: 17, fontWeight: '600' },
   emptySub: { fontSize: 13, textAlign: 'center', lineHeight: 19 },
   emptyCta: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     borderRadius: 12, paddingHorizontal: 18, paddingVertical: 12,
     marginTop: 8,
   },
-  emptyCtaText: { fontSize: 13, fontWeight: '800' },
+  emptyCtaText: { fontSize: 13, fontWeight: '600' },
 });
 
 const ms = StyleSheet.create({
@@ -506,14 +506,14 @@ const ms = StyleSheet.create({
   sheetWrap: { flex: 1, justifyContent: 'flex-end' },
   sheet: { borderTopLeftRadius: 22, borderTopRightRadius: 22, borderTopWidth: 1, paddingTop: 10, paddingBottom: 16, paddingHorizontal: 16 },
   handle: { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 14 },
-  heading: { fontSize: 17, fontWeight: '800', textAlign: 'center' },
+  heading: { fontSize: 17, fontWeight: '600', textAlign: 'center' },
   sub: { fontSize: 12, textAlign: 'center', marginTop: 4, marginBottom: 8 },
 
   dateCard: {
     borderRadius: 14, borderWidth: 1, padding: 14, marginTop: 8,
     alignItems: 'center', gap: 4,
   },
-  dateBig: { fontSize: 22, fontWeight: '900', letterSpacing: -0.6 },
+  dateBig: { fontSize: 22, fontWeight: '700', letterSpacing: -0.6 },
   dateHint: { fontSize: 12, fontWeight: '600' },
 
   sectionLabel: { fontSize: 10, fontWeight: '700', letterSpacing: 0.8, marginTop: 14, marginBottom: 8, paddingLeft: 2 },
@@ -537,5 +537,5 @@ const ms = StyleSheet.create({
 
   actions: { flexDirection: 'row', gap: 10, marginTop: 16 },
   btn: { flex: 1, borderRadius: 12, borderWidth: 1, paddingVertical: 13, alignItems: 'center' },
-  btnText: { fontSize: 14, fontWeight: '800' },
+  btnText: { fontSize: 14, fontWeight: '600' },
 });

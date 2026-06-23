@@ -322,12 +322,12 @@ const s = StyleSheet.create({
     borderWidth: 1, alignItems: 'center', justifyContent: 'center',
     marginBottom: 4,
   },
-  emptyTitle: { fontSize: 17, fontWeight: '800' },
+  emptyTitle: { fontSize: 17, fontWeight: '600' },
   emptySub: { fontSize: 13, textAlign: 'center', lineHeight: 19 },
   emptyCta: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     borderRadius: 12, paddingHorizontal: 18, paddingVertical: 12,
     marginTop: 8,
   },
-  emptyCtaText: { fontSize: 13, fontWeight: '800' },
+  emptyCtaText: { fontSize: 13, fontWeight: '600' },
 });
