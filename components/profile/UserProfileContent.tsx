@@ -759,7 +759,7 @@ export function UserProfileContent({ userId, onBack }: Props) {
             {/* Header */}
             <View style={pm.header}>
               <View style={[pm.avatarCircle, { backgroundColor: colors.bg.subtle }]}>
-                <User size={18} color={colors.icon.default} strokeWidth={2} />
+                <User size={18} color={colors.text.primary} strokeWidth={2} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[pm.headerName, { color: colors.text.primary }]}>@{profile?.username}</Text>
@@ -773,8 +773,8 @@ export function UserProfileContent({ userId, onBack }: Props) {
             <View style={[pm.divider, { backgroundColor: colors.border.subtle }]} />
 
             <Pressable style={pm.row} onPress={() => { setShowProfileMenu(false); setTimeout(() => setShowProfileShareSheet(true), 250); }}>
-              <View style={[pm.iconBox, { backgroundColor: colors.bg.subtle }]}>
-                <Share2 size={20} color={colors.icon.default} strokeWidth={2} />
+              <View style={pm.iconBox}>
+                <Share2 size={20} color={colors.text.primary} strokeWidth={2} />
               </View>
               <View style={pm.rowText}>
                 <Text style={[pm.rowLabel, { color: colors.text.primary }]}>Profil teilen</Text>
@@ -791,10 +791,10 @@ export function UserProfileContent({ userId, onBack }: Props) {
                   toggleMuteHost.mutate({ hostId: id, mute: !isLivePushMuted });
                 }}
               >
-                <View style={[pm.iconBox, { backgroundColor: colors.bg.subtle }]}>
+                <View style={pm.iconBox}>
                   {isLivePushMuted
-                    ? <BellOff size={20} color={colors.icon.default} strokeWidth={2} />
-                    : <Bell    size={20} color={colors.icon.default} strokeWidth={2} />}
+                    ? <BellOff size={20} color={colors.text.primary} strokeWidth={2} />
+                    : <Bell    size={20} color={colors.text.primary} strokeWidth={2} />}
                 </View>
                 <View style={pm.rowText}>
                   <Text style={[pm.rowLabel, { color: colors.text.primary }]}>
@@ -810,9 +810,9 @@ export function UserProfileContent({ userId, onBack }: Props) {
             )}
 
             <Pressable style={pm.row} onPress={() => { setShowProfileMenu(false); setTimeout(handleBlock, 200); }}>
-              <View style={[pm.iconBox, { backgroundColor: colors.bg.subtle }]}>
+              <View style={pm.iconBox}>
                 {isBlocked
-                  ? <Shield size={20} color={colors.icon.default} strokeWidth={2} />
+                  ? <Shield size={20} color={colors.text.primary} strokeWidth={2} />
                   : <ShieldOff size={20} color={colors.accent.danger} strokeWidth={2} />}
               </View>
               <View style={pm.rowText}>
@@ -826,7 +826,7 @@ export function UserProfileContent({ userId, onBack }: Props) {
             </Pressable>
 
             <Pressable style={pm.row} onPress={() => { setShowProfileMenu(false); setTimeout(() => setShowReportSheet(true), 250); }}>
-              <View style={[pm.iconBox, { backgroundColor: colors.bg.subtle }]}>
+              <View style={pm.iconBox}>
                 <Flag size={20} color={colors.accent.danger} strokeWidth={2} />
               </View>
               <View style={pm.rowText}>
@@ -846,7 +846,7 @@ export function UserProfileContent({ userId, onBack }: Props) {
           <Pressable style={[pm.sheet, { backgroundColor: colors.bg.elevated, borderColor: colors.border.default }]} onPress={e => e.stopPropagation()}>
             <View style={[pm.handle, { backgroundColor: colors.border.strong }]} />
             <View style={pm.header}>
-              <View style={[pm.iconBox, { backgroundColor: colors.bg.subtle }]}>
+              <View style={pm.iconBox}>
                 <Flag size={18} color={colors.accent.danger} strokeWidth={2} />
               </View>
               <View style={{ flex: 1 }}>
@@ -860,8 +860,8 @@ export function UserProfileContent({ userId, onBack }: Props) {
             <View style={[pm.divider, { backgroundColor: colors.border.subtle }]} />
             {REPORT_REASONS.map(r => (
               <Pressable key={r.key} style={pm.row} onPress={() => handleReportUser(r.key)}>
-                <View style={[pm.iconBox, { backgroundColor: colors.bg.subtle }]}>
-                  <Flag size={18} color={colors.icon.default} strokeWidth={2} />
+                <View style={pm.iconBox}>
+                  <Flag size={18} color={colors.text.primary} strokeWidth={2} />
                 </View>
                 <View style={pm.rowText}>
                   <Text style={[pm.rowLabel, { color: colors.text.primary }]}>{r.label}</Text>

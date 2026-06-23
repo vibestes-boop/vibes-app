@@ -84,8 +84,8 @@ function ActionRow({
       style={({ pressed }) => [s.row, pressed && { opacity: 0.7 }]}
       onPress={onPress}
     >
-      <View style={[s.iconBox, { backgroundColor: bg }]}>
-        <Icon size={19} color={color} strokeWidth={1.9} />
+      <View style={s.iconBox}>
+        <Icon size={22} color={color} strokeWidth={1.9} />
       </View>
       <View style={s.rowText}>
         <Text style={[s.rowLabel, { color }]}>{label}</Text>
@@ -256,8 +256,6 @@ export default function PostLongPressSheet({
             icon={User}
             label={`@${authorName} besuchen`}
             sublabel="Profil & alle Posts ansehen"
-            color="#E2E8F0"
-            bg="rgba(255,255,255,0.07)"
             onPress={visitProfile}
           />
           {!isOwnProfile && (
@@ -265,8 +263,6 @@ export default function PostLongPressSheet({
               icon={isFollowing ? UserCheck : UserPlus}
               label={isFollowing ? `@${authorName} entfolgen` : `@${authorName} folgen`}
               sublabel={isFollowing ? 'Aus deinem Netzwerk entfernen' : 'Netzwerk erweitern'}
-              color={isFollowing ? '#4ade80' : '#60a5fa'}
-              bg={isFollowing ? 'rgba(74,222,128,0.1)' : 'rgba(96,165,250,0.1)'}
               onPress={() => { onToggleFollow(); onClose(); }}
             />
           )}
@@ -279,14 +275,12 @@ export default function PostLongPressSheet({
             icon={Link2}
             label="Link kopieren"
             sublabel="In die Zwischenablage"
-            bg="rgba(255,255,255,0.07)"
             onPress={copyLink}
           />
           <ActionRow
             icon={Download}
             label="Herunterladen"
             sublabel="Video / Bild auf dein Gerät"
-            bg="rgba(255,255,255,0.07)"
             onPress={handleDownload}
           />
 
@@ -298,8 +292,6 @@ export default function PostLongPressSheet({
                 icon={EyeOff}
                 label="Kein Interesse"
                 sublabel="Weniger solchen Content zeigen"
-                color="#9CA3AF"
-                bg="rgba(255,255,255,0.06)"
                 onPress={() => {
                   report({ postId, reason: 'not_interested' });
                   onClose();
@@ -311,7 +303,6 @@ export default function PostLongPressSheet({
                 label="Melden"
                 sublabel="Spam oder unangemessenen Inhalt"
                 color="#f87171"
-                bg="rgba(248,113,113,0.1)"
                 onPress={handleReport}
               />
             </>
