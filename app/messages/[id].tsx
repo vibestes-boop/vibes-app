@@ -343,7 +343,7 @@ function MessageBubble({
                 <>
                   {formatTime(msg.created_at)}
             {isOwn && (
-                <Text style={[styles.readTick, { color: isDark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.4)' }]}>{msg.read ? ' ✓✓' : ' ✓'}</Text>
+                <Text style={[styles.readTick, { color: 'rgba(255,255,255,0.7)' }]}>{msg.read ? ' ✓✓' : ' ✓'}</Text>
               )}
                 </>
               )}
