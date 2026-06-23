@@ -1,24 +1,26 @@
 /**
  * app/shop/orders.tsx
  * Meine Bestellungen — Käufer-Ansicht + Verkäufer-Ansicht
+ * Theme-aware (Dark/Light), Marken-CoinIcon, gepolierte Cards.
  */
-import { ReviewSheet } from '@/components/shop/ReviewSheet';
 import { ProductCoverImage } from '@/components/shop/ProductCoverImage';
+import { ReviewSheet } from '@/components/shop/ReviewSheet';
+import { CoinIcon } from '@/components/ui/CoinIcon';
 import { useMyReview } from '@/lib/useProductReviews';
+import { useTheme } from '@/lib/useTheme';
 import { useDownloadDigitalProduct,useMyOrders,type Order } from '@/lib/useShop';
 import { router } from 'expo-router';
 import {
 ArrowLeft,
 CheckCircle2,
 Clock,
-Coins,
 Download,
 FileText,
 RefreshCw,
 ShoppingBag,
 Star,
 Store,
-XCircle
+XCircle,
 } from 'lucide-react-native';
 import { useState } from 'react';
 import {
@@ -30,20 +32,22 @@ View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+type ThemeColors = ReturnType<typeof useTheme>['colors'];
+
 // ─── Status Badge ──────────────────────────────────────────────────────────────
 const STATUS_CONFIG = {
-  pending:   { label: 'Ausstehend',   color: '#F59E0B', icon: Clock },
+  pending:   { label: 'Ausstehend',    color: '#F59E0B', icon: Clock },
   completed: { label: 'Abgeschlossen', color: '#22C55E', icon: CheckCircle2 },
-  cancelled: { label: 'Storniert',    color: '#EF4444', icon: XCircle },
-  refunded:  { label: 'Erstattet',    color: '#8B5CF6', icon: RefreshCw },
+  cancelled: { label: 'Storniert',     color: '#EF4444', icon: XCircle },
+  refunded:  { label: 'Erstattet',     color: '#8B5CF6', icon: RefreshCw },
 };
 
 function StatusBadge({ status }: { status: Order['status'] }) {
   const cfg = STATUS_CONFIG[status] ?? STATUS_CONFIG.pending;
   const Icon = cfg.icon;
   return (
-    <View style={[sx.badge, { backgroundColor: cfg.color + '22', borderColor: cfg.color + '55' }]}>
-      <Icon size={11} color={cfg.color} />
+    <View style={[sx.badge, { backgroundColor: cfg.color + '1F' }]}>
+      <Icon size={11} color={cfg.color} strokeWidth={2.4} />
       <Text style={[sx.badgeText, { color: cfg.color }]}>{cfg.label}</Text>
     </View>
   );
@@ -51,16 +55,16 @@ function StatusBadge({ status }: { status: Order['status'] }) {
 
 // ─── Kategorie-Label ──────────────────────────────────────────────────────────
 const CAT_LABELS: Record<string, string> = {
-  digital: '📁 Digital',
-  physical: '📦 Physisch',
-  service: '🛠️ Service',
-  collectible: '💎 Collectible',
-  preset: '🎨 Preset',
-  video: '🎬 Video',
+  digital: 'Digital',
+  physical: 'Physisch',
+  service: 'Service',
+  collectible: 'Collectible',
+  preset: 'Preset',
+  video: 'Video',
 };
 
 // ─── Order Card ───────────────────────────────────────────────────────────────
-function OrderCard({ order, role }: { order: Order; role: 'buyer' | 'seller' }) {
+function OrderCard({ order, role, colors }: { order: Order; role: 'buyer' | 'seller'; colors: ThemeColors }) {
   const { download, isLoading } = useDownloadDigitalProduct();
   const [reviewOpen, setReviewOpen] = useState(false);
   const product = order.product as any;
@@ -72,7 +76,7 @@ function OrderCard({ order, role }: { order: Order; role: 'buyer' | 'seller' }) 
   const handleDownload = async () => {
     const result = await download(order.id);
     if (result.error) {
-      Alert.alert('Download fehlgeschlagen', 'Bitte versuche es erneut.');
+      Alert.alert('Hat nicht geklappt', 'Der Download ist fehlgeschlagen — versuch es nochmal. 🙏');
     }
   };
 
@@ -81,76 +85,78 @@ function OrderCard({ order, role }: { order: Order; role: 'buyer' | 'seller' }) 
   });
 
   return (
-    <View style={sx.card}>
-      {/* Cover */}
+    <View style={[sx.card, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
       <ProductCoverImage uri={product?.cover_url} category={product?.category} style={sx.cover} />
 
-      {/* Info */}
       <View style={sx.info}>
         <View style={sx.infoTop}>
-          <Text style={sx.productTitle} numberOfLines={2}>
+          <Text style={[sx.productTitle, { color: colors.text.primary }]} numberOfLines={2}>
             {product?.title ?? 'Unbekanntes Produkt'}
           </Text>
           <StatusBadge status={order.status} />
         </View>
 
         <View style={sx.metaRow}>
-          <Text style={sx.metaCat}>{CAT_LABELS[product?.category ?? ''] ?? '📦 Produkt'}</Text>
-          <Text style={sx.metaDot}>·</Text>
-          <Text style={sx.metaDate}>{formattedDate}</Text>
+          <Text style={[sx.metaCat, { color: colors.text.secondary }]}>
+            {CAT_LABELS[product?.category ?? ''] ?? 'Produkt'}
+          </Text>
+          <View style={[sx.metaDot, { backgroundColor: colors.text.muted }]} />
+          <Text style={[sx.metaDate, { color: colors.text.muted }]}>{formattedDate}</Text>
         </View>
 
         <View style={sx.priceRow}>
-          <Coins size={13} color="#F59E0B" />
-          <Text style={sx.price}>{order.total_coins.toLocaleString()} Coins</Text>
+          <CoinIcon size={15} />
+          <Text style={[sx.price, { color: colors.text.primary }]}>{order.total_coins.toLocaleString()}</Text>
           {order.quantity > 1 && (
-            <Text style={sx.qty}>×{order.quantity}</Text>
+            <Text style={[sx.qty, { color: colors.text.muted }]}>× {order.quantity}</Text>
           )}
         </View>
 
-        {/* Download Button */}
-        {canDownload && (
-          <Pressable
-            style={({ pressed }) => [sx.downloadBtn, pressed && { opacity: 0.7 }]}
-            onPress={handleDownload}
-            disabled={isLoading}
-          >
-            {isLoading
-              ? <ActivityIndicator size={13} color="#fff" />
-              : <Download size={13} color="#fff" />
-            }
-            <Text style={sx.downloadText}>Herunterladen</Text>
-          </Pressable>
-        )}
+        {/* Aktions-Buttons */}
+        {(canDownload || canReview) && (
+          <View style={sx.actionRow}>
+            {canDownload && (
+              <Pressable
+                style={({ pressed }) => [sx.primaryBtn, { backgroundColor: colors.accent.secondary }, pressed && { opacity: 0.8 }]}
+                onPress={handleDownload}
+                disabled={isLoading}
+              >
+                {isLoading
+                  ? <ActivityIndicator size={13} color={colors.text.inverse} />
+                  : <Download size={13} color={colors.text.inverse} strokeWidth={2.2} />
+                }
+                <Text style={[sx.primaryBtnText, { color: colors.text.inverse }]}>Herunterladen</Text>
+              </Pressable>
+            )}
 
-        {/* Bewertungs-Button */}
-        {canReview && (
-          <Pressable
-            style={({ pressed }) => [sx.reviewBtn, pressed && { opacity: 0.75 }]}
-            onPress={() => setReviewOpen(true)}
-          >
-            <Star
-              size={13}
-              color={myReview ? '#FFFFFF' : 'rgba(255,255,255,0.6)'}
-              fill={myReview ? '#FFFFFF' : 'transparent'}
-              strokeWidth={1.5}
-            />
-            <Text style={sx.reviewText}>
-              {myReview ? `Deine Bewertung: ${'★'.repeat(myReview.rating)}` : 'Bewerten'}
-            </Text>
-          </Pressable>
+            {canReview && (
+              <Pressable
+                style={({ pressed }) => [sx.ghostBtn, { backgroundColor: colors.bg.subtle, borderColor: colors.border.subtle }, pressed && { opacity: 0.75 }]}
+                onPress={() => setReviewOpen(true)}
+              >
+                <Star
+                  size={13}
+                  color={myReview ? colors.accent.gold : colors.text.secondary}
+                  fill={myReview ? colors.accent.gold : 'transparent'}
+                  strokeWidth={1.8}
+                />
+                <Text style={[sx.ghostBtnText, { color: colors.text.secondary }]}>
+                  {myReview ? `${'★'.repeat(myReview.rating)}` : 'Bewerten'}
+                </Text>
+              </Pressable>
+            )}
+          </View>
         )}
 
         {/* Liefernotiz */}
         {order.delivery_notes && (
-          <View style={sx.noteRow}>
-            <FileText size={12} color="rgba(255,255,255,0.4)" />
-            <Text style={sx.noteText} numberOfLines={2}>{order.delivery_notes}</Text>
+          <View style={[sx.noteRow, { backgroundColor: colors.bg.subtle }]}>
+            <FileText size={12} color={colors.text.muted} />
+            <Text style={[sx.noteText, { color: colors.text.secondary }]} numberOfLines={2}>{order.delivery_notes}</Text>
           </View>
         )}
       </View>
 
-      {/* Review Sheet */}
       {canReview && (
         <ReviewSheet
           productId={product?.id ?? ''}
@@ -165,29 +171,31 @@ function OrderCard({ order, role }: { order: Order; role: 'buyer' | 'seller' }) 
 }
 
 // ─── Empty State ──────────────────────────────────────────────────────────────
-function EmptyState({ role }: { role: 'buyer' | 'seller' }) {
+function EmptyState({ role, colors }: { role: 'buyer' | 'seller'; colors: ThemeColors }) {
   return (
     <View style={sx.empty}>
-      {role === 'buyer'
-        ? <ShoppingBag size={56} color="rgba(255,255,255,0.15)" />
-        : <Store size={56} color="rgba(255,255,255,0.15)" />
-      }
-      <Text style={sx.emptyTitle}>
+      <View style={[sx.emptyIconWrap, { backgroundColor: colors.bg.subtle }]}>
+        {role === 'buyer'
+          ? <ShoppingBag size={40} color={colors.text.muted} strokeWidth={1.6} />
+          : <Store size={40} color={colors.text.muted} strokeWidth={1.6} />
+        }
+      </View>
+      <Text style={[sx.emptyTitle, { color: colors.text.primary }]}>
         {role === 'buyer' ? 'Noch keine Käufe' : 'Noch keine Verkäufe'}
       </Text>
-      <Text style={sx.emptySub}>
+      <Text style={[sx.emptySub, { color: colors.text.secondary }]}>
         {role === 'buyer'
-          ? 'Entdecke Produkte im Shop und kaufe direkt mit Coins.'
-          : 'Sobald jemand dein Produkt kauft, erscheint es hier.'}
+          ? 'Entdecke Produkte im Shop und hol dir was Schönes mit Coins. 🛍️'
+          : 'Sobald jemand dein Produkt kauft, taucht es hier auf. 🎉'}
       </Text>
-      {role === 'buyer' && (
-        <Pressable
-          style={({ pressed }) => [sx.emptyBtn, pressed && { opacity: 0.7 }]}
-          onPress={() => router.back()}
-        >
-          <Text style={sx.emptyBtnText}>Zurück</Text>
-        </Pressable>
-      )}
+      <Pressable
+        style={({ pressed }) => [sx.emptyBtn, { backgroundColor: colors.accent.secondary }, pressed && { opacity: 0.85 }]}
+        onPress={() => (role === 'buyer' ? router.push('/(tabs)/shop' as any) : router.push('/shop/my-shop' as any))}
+      >
+        <Text style={[sx.emptyBtnText, { color: colors.text.inverse }]}>
+          {role === 'buyer' ? 'Zum Shop' : 'Produkt erstellen'}
+        </Text>
+      </Pressable>
     </View>
   );
 }
@@ -195,62 +203,74 @@ function EmptyState({ role }: { role: 'buyer' | 'seller' }) {
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function OrdersScreen() {
   const insets = useSafeAreaInsets();
+  const { colors } = useTheme();
   const [role, setRole] = useState<'buyer' | 'seller'>('buyer');
   const { data: orders = [], isLoading, refetch } = useMyOrders(role);
 
+  const totalCoins = orders.reduce((s, o) => s + o.total_coins, 0);
+
   return (
-    <View style={sx.root}>
+    <View style={[sx.root, { backgroundColor: colors.bg.primary }]}>
       {/* Header */}
-      <View style={[sx.header, { paddingTop: insets.top + 8 }]}>
+      <View style={[sx.header, { paddingTop: insets.top + 8, borderBottomColor: colors.border.subtle }]}>
         <Pressable onPress={() => router.back()} hitSlop={12} style={sx.backBtn}>
-          <ArrowLeft size={22} color="#fff" />
+          <ArrowLeft size={22} color={colors.text.primary} />
         </Pressable>
-        <Text style={sx.headerTitle}>Meine Bestellungen</Text>
+        <Text style={[sx.headerTitle, { color: colors.text.primary }]}>Meine Bestellungen</Text>
         <View style={{ width: 34 }} />
       </View>
 
-      {/* Tab Switch */}
-      <View style={sx.tabs}>
+      {/* Tab Switch (Segmented Control) */}
+      <View style={[sx.tabs, { backgroundColor: colors.bg.subtle }]}>
         <Pressable
-          style={[sx.tab, role === 'buyer' && sx.tabActive]}
+          style={[sx.tab, role === 'buyer' && [sx.tabActive, { backgroundColor: colors.bg.secondary }]]}
           onPress={() => setRole('buyer')}
         >
-          <ShoppingBag size={15} color={role === 'buyer' ? '#fff' : 'rgba(255,255,255,0.4)'} />
-          <Text style={[sx.tabText, role === 'buyer' && sx.tabTextActive]}>Käufe</Text>
+          <ShoppingBag size={15} color={role === 'buyer' ? colors.text.primary : colors.text.muted} strokeWidth={2} />
+          <Text style={[sx.tabText, { color: role === 'buyer' ? colors.text.primary : colors.text.muted }]}>Käufe</Text>
         </Pressable>
         <Pressable
-          style={[sx.tab, role === 'seller' && sx.tabActive]}
+          style={[sx.tab, role === 'seller' && [sx.tabActive, { backgroundColor: colors.bg.secondary }]]}
           onPress={() => setRole('seller')}
         >
-          <Store size={15} color={role === 'seller' ? '#fff' : 'rgba(255,255,255,0.4)'} />
-          <Text style={[sx.tabText, role === 'seller' && sx.tabTextActive]}>Verkäufe</Text>
+          <Store size={15} color={role === 'seller' ? colors.text.primary : colors.text.muted} strokeWidth={2} />
+          <Text style={[sx.tabText, { color: role === 'seller' ? colors.text.primary : colors.text.muted }]}>Verkäufe</Text>
         </Pressable>
       </View>
 
-      {/* Stats Bar */}
+      {/* Metrik-Karten */}
       {orders.length > 0 && (
-        <View style={sx.statsBar}>
-          <Text style={sx.statsText}>
-            {orders.length} {role === 'buyer' ? 'Kauf' : 'Verkauf'}{orders.length !== 1 ? role === 'buyer' ? 'käufe' : 'verkäufe' : ''}
-          </Text>
-          <Text style={sx.statsCoins}>
-            {orders.reduce((s, o) => s + o.total_coins, 0).toLocaleString()} Coins gesamt
-          </Text>
+        <View style={sx.metricsRow}>
+          <View style={[sx.metricCard, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
+            <Text style={[sx.metricNum, { color: colors.text.primary }]}>{orders.length}</Text>
+            <Text style={[sx.metricLabel, { color: colors.text.secondary }]}>
+              {role === 'buyer' ? (orders.length === 1 ? 'Kauf' : 'Käufe') : (orders.length === 1 ? 'Verkauf' : 'Verkäufe')}
+            </Text>
+          </View>
+          <View style={[sx.metricCard, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
+            <View style={sx.metricCoinRow}>
+              <CoinIcon size={17} />
+              <Text style={[sx.metricNum, { color: colors.text.primary }]}>{totalCoins.toLocaleString()}</Text>
+            </View>
+            <Text style={[sx.metricLabel, { color: colors.text.secondary }]}>
+              {role === 'buyer' ? 'Ausgegeben' : 'Einnahmen'}
+            </Text>
+          </View>
         </View>
       )}
 
       {/* List */}
       {isLoading ? (
         <View style={sx.loader}>
-          <ActivityIndicator color="#fff" size="large" />
+          <ActivityIndicator color={colors.accent.secondary} size="large" />
         </View>
       ) : (
         <FlatList
           data={orders}
           keyExtractor={(o) => o.id}
-          renderItem={({ item }) => <OrderCard order={item} role={role} />}
-          ListEmptyComponent={<EmptyState role={role} />}
-          contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 24 }}
+          renderItem={({ item }) => <OrderCard order={item} role={role} colors={colors} />}
+          ListEmptyComponent={<EmptyState role={role} colors={colors} />}
+          contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 24, flexGrow: 1 }}
           ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
           onRefresh={refetch}
           refreshing={isLoading}
@@ -261,27 +281,22 @@ export default function OrdersScreen() {
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
+// ─── Styles (nur Struktur — Farben kommen aus dem Theme) ─────────────────────────
 const sx = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: '#0A0A0F',
-  },
+  root: { flex: 1 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.06)',
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   backBtn: {
     width: 34, height: 34,
     alignItems: 'center', justifyContent: 'center',
   },
   headerTitle: {
-    color: '#fff',
     fontSize: 17,
     fontWeight: '700',
     letterSpacing: 0.2,
@@ -290,7 +305,7 @@ const sx = StyleSheet.create({
   tabs: {
     flexDirection: 'row',
     margin: 14,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    marginBottom: 8,
     borderRadius: 14,
     padding: 3,
     gap: 3,
@@ -305,32 +320,45 @@ const sx = StyleSheet.create({
     borderRadius: 11,
   },
   tabActive: {
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    shadowColor: '#000',
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   tabText: {
-    color: 'rgba(255,255,255,0.4)',
     fontSize: 13,
     fontWeight: '600',
   },
-  tabTextActive: {
-    color: '#fff',
-  },
-  // Stats
-  statsBar: {
+  // Metrics
+  metricsRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 10,
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingTop: 6,
+    paddingBottom: 4,
   },
-  statsText: {
-    color: 'rgba(255,255,255,0.5)',
+  metricCard: {
+    flex: 1,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    gap: 3,
+  },
+  metricCoinRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  metricNum: {
+    fontSize: 20,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+  metricLabel: {
     fontSize: 12,
     fontWeight: '500',
-  },
-  statsCoins: {
-    color: '#F59E0B',
-    fontSize: 12,
-    fontWeight: '600',
   },
   // Loading
   loader: {
@@ -340,21 +368,20 @@ const sx = StyleSheet.create({
   },
   // Card
   card: {
-    backgroundColor: 'rgba(255,255,255,0.04)',
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.07)',
+    borderWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
     overflow: 'hidden',
   },
   cover: {
-    width: 90,
-    height: 90,
+    width: 96,
+    height: '100%',
+    minHeight: 96,
   },
   info: {
     flex: 1,
     padding: 12,
-    gap: 5,
+    gap: 6,
   },
   infoTop: {
     flexDirection: 'row',
@@ -364,9 +391,8 @@ const sx = StyleSheet.create({
   },
   productTitle: {
     flex: 1,
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: '700',
+    fontSize: 14.5,
+    fontWeight: '600',
     lineHeight: 19,
   },
   // Badge
@@ -377,7 +403,6 @@ const sx = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
-    borderWidth: 1,
   },
   badgeText: {
     fontSize: 10,
@@ -388,115 +413,119 @@ const sx = StyleSheet.create({
   metaRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 7,
   },
   metaCat: {
-    color: 'rgba(255,255,255,0.45)',
-    fontSize: 11,
+    fontSize: 11.5,
     fontWeight: '500',
   },
   metaDot: {
-    color: 'rgba(255,255,255,0.2)',
-    fontSize: 11,
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    opacity: 0.6,
   },
   metaDate: {
-    color: 'rgba(255,255,255,0.35)',
-    fontSize: 11,
+    fontSize: 11.5,
+    fontWeight: '500',
   },
   // Price
   priceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
   },
   price: {
-    color: '#F59E0B',
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: '700',
+    letterSpacing: -0.2,
   },
   qty: {
-    color: 'rgba(255,255,255,0.35)',
-    fontSize: 12,
-    marginLeft: 2,
+    fontSize: 12.5,
+    fontWeight: '500',
+    marginLeft: 1,
   },
-  // Download
-  downloadBtn: {
+  // Actions
+  actionRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 4,
+    flexWrap: 'wrap',
+  },
+  primaryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: '#1D9BF0',
     borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    alignSelf: 'flex-start',
-    marginTop: 2,
+    paddingHorizontal: 13,
+    paddingVertical: 7,
   },
-  downloadText: {
-    color: '#fff',
-    fontSize: 12,
-    fontWeight: '700',
+  primaryBtnText: {
+    fontSize: 12.5,
+    fontWeight: '600',
   },
-  // Review
-  reviewBtn: {
+  ghostBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.07)',
     borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    alignSelf: 'flex-start',
-    marginTop: 2,
+    paddingHorizontal: 13,
+    paddingVertical: 7,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.12)',
   },
-  reviewText: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 12,
+  ghostBtnText: {
+    fontSize: 12.5,
     fontWeight: '600',
   },
   // Note
   noteRow: {
     flexDirection: 'row',
-    gap: 5,
+    gap: 6,
     alignItems: 'flex-start',
-    marginTop: 2,
+    marginTop: 4,
+    borderRadius: 10,
+    padding: 9,
   },
   noteText: {
     flex: 1,
-    color: 'rgba(255,255,255,0.35)',
-    fontSize: 11,
-    lineHeight: 15,
+    fontSize: 11.5,
+    lineHeight: 16,
   },
   // Empty
   empty: {
+    flex: 1,
     alignItems: 'center',
-    paddingTop: 80,
+    justifyContent: 'center',
     paddingHorizontal: 40,
-    gap: 12,
+    paddingBottom: 60,
+    gap: 14,
+  },
+  emptyIconWrap: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 2,
   },
   emptyTitle: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: '800',
+    fontSize: 19,
+    fontWeight: '700',
     textAlign: 'center',
   },
   emptySub: {
-    color: 'rgba(255,255,255,0.45)',
     fontSize: 14,
     textAlign: 'center',
     lineHeight: 20,
   },
   emptyBtn: {
-    marginTop: 8,
-    backgroundColor: '#EE1D52',
+    marginTop: 6,
     borderRadius: 14,
-    paddingHorizontal: 24,
-    paddingVertical: 12,
+    paddingHorizontal: 28,
+    paddingVertical: 13,
   },
   emptyBtnText: {
-    color: '#fff',
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: '600',
   },
 });
