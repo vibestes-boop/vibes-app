@@ -149,7 +149,7 @@ export function ProfileShareSheet({ visible, onClose, userId, username, avatarUr
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       onClose();
     } catch {
-      Alert.alert('Fehler', 'Profil konnte nicht gesendet werden.');
+      Alert.alert('Hat nicht geklappt', 'Das Profil ist nicht rausgegangen — nochmal versuchen? 🙏');
     }
     setSending(false);
   };

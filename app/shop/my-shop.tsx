@@ -156,7 +156,7 @@ export default function MyShopScreen() {
       const { url } = await uploadProductImage(user?.id ?? 'anon', uri, mimeType);
       setForm(f => ({ ...f, cover_url: url }));
     } catch {
-      Alert.alert('Upload fehlgeschlagen', 'Bitte nochmal versuchen.');
+      Alert.alert('Hat nicht geklappt', 'Der Upload ist nicht durchgegangen — nochmal versuchen? 📤');
     } finally {
       setUploadingCover(false);
     }
@@ -191,7 +191,7 @@ export default function MyShopScreen() {
       );
       setForm(f => ({ ...f, image_urls: [...(f.image_urls ?? []), ...urls].slice(0, 8) }));
     } catch {
-      Alert.alert('Upload fehlgeschlagen', 'Bitte nochmal versuchen.');
+      Alert.alert('Hat nicht geklappt', 'Der Upload ist nicht durchgegangen — nochmal versuchen? 📤');
     } finally {
       setUploadingGallery(false);
     }

@@ -457,7 +457,7 @@ function ShareSheet({ product, onClose, colors }: { product: Product; onClose: (
       }));
       notificationAsync(NotificationFeedbackType.Success);
       onClose();
-    } catch { Alert.alert('Fehler', 'Produkt konnte nicht gesendet werden.'); }
+    } catch { Alert.alert('Hat nicht geklappt', 'Das Produkt ist nicht rausgegangen — nochmal versuchen? 🙏'); }
     setSending(false);
   };
 

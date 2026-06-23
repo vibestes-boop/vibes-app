@@ -680,10 +680,10 @@ export default function ShopScreen() {
           <Text style={{ fontSize: 44 }}>🛒</Text>
           <Text style={[s.emptyText, { color: colors.text.muted }]}>
             {search.trim()
-              ? `Nichts gefunden für „${search}"`
+              ? `Zu „${search}" ist nichts dabei — anders suchen?`
               : activeFilterCount > 0
-                ? 'Keine Produkte mit diesen Filtern'
-                : 'Noch keine Produkte'}
+                ? 'Mit diesen Filtern ist nichts dabei — anders kombinieren?'
+                : 'Hier ist noch nichts — bald gibt es was zu shoppen'}
           </Text>
           {activeFilterCount > 0 && (
             <Pressable

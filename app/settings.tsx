@@ -665,7 +665,7 @@ export default function SettingsScreen() {
               onValueChange={async (val) => {
                 setIsPrivate(val);
                 const { error } = await supabase.from('profiles').update({ is_private: val }).eq('id', profile?.id ?? '');
-                if (error) { setIsPrivate(!val); Alert.alert('Fehler', 'Einstellung konnte nicht gespeichert werden.'); }
+                if (error) { setIsPrivate(!val); Alert.alert('Hat nicht geklappt', 'Die Einstellung wurde nicht gespeichert — gleich nochmal? 🙏'); }
                 else setProfile({ ...(profile as any), is_private: val });
               }}
               trackColor={{ false: colors.border.default, true: colors.text.primary }}

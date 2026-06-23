@@ -120,7 +120,7 @@ export function PostShareModal({
       setSearch('');
       onClose();
     } catch {
-      Alert.alert('Fehler', 'Post konnte nicht gesendet werden.');
+      Alert.alert('Hat nicht geklappt', 'Dein Post ist nicht rausgegangen — gleich nochmal? 🙏');
     } finally {
       setSending(false);
     }

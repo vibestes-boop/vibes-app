@@ -426,7 +426,7 @@ function InAppShareModal({
       setSearch('');
       onClose();
     } catch {
-      Alert.alert('Fehler', 'Story konnte nicht gesendet werden.');
+      Alert.alert('Hat nicht geklappt', 'Deine Story ist nicht rausgegangen — gleich nochmal? 🙏');
     } finally {
       setSending(false);
     }
@@ -491,7 +491,7 @@ function InAppShareModal({
             );
           } catch (err: any) {
             if (err?.message?.includes('cancel')) return; // User hat abgebrochen
-            Alert.alert('Fehler', 'Story konnte nicht gespeichert werden.');
+            Alert.alert('Hat nicht geklappt', 'Konnte die Story nicht speichern — nochmal versuchen? 💾');
           }
         })();
         break;
@@ -631,7 +631,7 @@ function StoryCommentsSheet({
       setText('');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {
-      Alert.alert('Fehler', 'Kommentar konnte nicht gesendet werden.');
+      Alert.alert('Hat nicht geklappt', 'Dein Kommentar ist nicht rausgegangen — nochmal tippen? 🙏');
     } finally {
       setSending(false);
     }
@@ -1073,7 +1073,7 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
       setReplyText('');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {
-      Alert.alert('Fehler', 'Nachricht konnte nicht gesendet werden.');
+      Alert.alert('Hat nicht geklappt', 'Deine Nachricht ist nicht rausgegangen — gleich nochmal? 🙏');
     }
   };
 
