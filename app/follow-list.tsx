@@ -54,11 +54,11 @@ function UserRow({ user, onPress }: { user: FollowUser; onPress: () => void }) {
           style={[s.followBtn, isFollowing && s.followBtnActive]}
         >
           {isLoading ? (
-            <ActivityIndicator size="small" color={isFollowing ? '#FFFFFF' : '#fff'} />
+            <ActivityIndicator size="small" color={isFollowing ? colors.text.primary : '#fff'} />
           ) : isFollowing ? (
             <>
-              <UserCheck size={13} color="#FFFFFF" strokeWidth={2.5} />
-              <Text style={[s.followBtnText, { color: '#FFFFFF' }]}>Folgst</Text>
+              <UserCheck size={13} color={colors.text.primary} strokeWidth={2.5} />
+              <Text style={[s.followBtnText, { color: colors.text.primary }]}>Folgst</Text>
             </>
           ) : (
             <>
@@ -121,7 +121,7 @@ export default function FollowListScreen() {
             <Text style={[s.tabText, mode === m && s.tabTextActive, { color: mode === m ? colors.text.primary : colors.text.muted }]}>
               {m === 'followers' ? 'Follower' : 'Following'}
             </Text>
-            <Text style={[s.tabCount, mode === m && s.tabCountActive]}>
+            <Text style={[s.tabCount, mode === m && s.tabCountActive, { color: mode === m ? colors.text.primary : colors.text.secondary }]}>
               {m === 'followers' ? followers.length : following.length}
             </Text>
           </Pressable>

@@ -108,7 +108,7 @@ function ConvItem({
         {hasStory && !isLive && (
           <View style={[
             styles.storyRing,
-            hasUnviewed ? styles.storyRingActive : styles.storyRingSeen,
+            hasUnviewed ? styles.storyRingActive : [styles.storyRingSeen, { borderColor: colors.border.strong }],
           ]} />
         )}
         {/* Live-Ring */}
@@ -216,7 +216,7 @@ function NewMessageModal({ visible, onClose }: { visible: boolean; onClose: () =
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <View style={[modal.sheet, { backgroundColor: colors.bg.primary }]}>
-        <View style={modal.handle} />
+        <View style={[modal.handle, { backgroundColor: colors.border.strong }]} />
         <View style={[modal.header, { borderBottomColor: colors.border.subtle }]}>
           <Text style={[modal.title, { color: colors.text.primary }]}>Neue Nachricht</Text>
           <Pressable onPress={onClose} style={modal.closeBtn} hitSlop={10}>
@@ -443,11 +443,11 @@ export default function MessagesScreen() {
               </Text>
               <Pressable
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowNew(true); }}
-                style={styles.emptyBtn}
+                style={[styles.emptyBtn, { borderColor: colors.border.default, backgroundColor: colors.bg.subtle }]}
                 accessibilityRole="button"
                 accessibilityLabel="Nutzer suchen und Nachricht senden"
               >
-                <Text style={styles.emptyBtnText}>Nutzer suchen</Text>
+                <Text style={[styles.emptyBtnText, { color: colors.text.primary }]}>Nutzer suchen</Text>
               </Pressable>
             </View>
           }
