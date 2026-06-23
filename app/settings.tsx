@@ -303,7 +303,7 @@ export default function SettingsScreen() {
           style={[s.headerBtn, { backgroundColor: colors.bg.elevated }]}
           accessibilityRole="button" accessibilityLabel="Zurück"
         >
-          <ArrowLeft size={18} stroke={colors.icon.default} strokeWidth={2.5} />
+          <ArrowLeft size={18} stroke={colors.text.primary} strokeWidth={2.5} />
         </Pressable>
         <Text style={[s.headerTitle, { color: colors.text.primary }]}>Einstellungen</Text>
         <Animated.View style={saveStyle}>
@@ -359,8 +359,8 @@ export default function SettingsScreen() {
         <View style={[s.card, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
 
           <View style={s.fieldRow}>
-            <View style={[s.fieldIcon, { backgroundColor: colors.bg.elevated }]}>
-              <AtSign size={14} stroke={colors.icon.default} strokeWidth={2} />
+            <View style={s.fieldIcon}>
+              <AtSign size={18} stroke={colors.text.primary} strokeWidth={2} />
             </View>
             <View style={s.fieldBody}>
               <Text style={[s.fieldLabel, { color: colors.text.muted }]}>Benutzername</Text>
@@ -375,8 +375,8 @@ export default function SettingsScreen() {
           <View style={[s.sep, { backgroundColor: colors.border.subtle, marginLeft: 56 }]} />
 
           <View style={s.fieldRow}>
-            <View style={[s.fieldIcon, { backgroundColor: colors.bg.elevated }]}>
-              <FileText size={14} stroke={colors.icon.default} strokeWidth={2} />
+            <View style={s.fieldIcon}>
+              <FileText size={18} stroke={colors.text.primary} strokeWidth={2} />
             </View>
             <View style={s.fieldBody}>
               <Text style={[s.fieldLabel, { color: colors.text.muted }]}>Bio · {bio.length}/150</Text>
@@ -392,8 +392,8 @@ export default function SettingsScreen() {
           <View style={[s.sep, { backgroundColor: colors.border.subtle, marginLeft: 56 }]} />
 
           <View style={s.fieldRow}>
-            <View style={[s.fieldIcon, { backgroundColor: colors.bg.elevated }]}>
-              <Users size={14} stroke={colors.icon.default} strokeWidth={2} />
+            <View style={s.fieldIcon}>
+              <Users size={18} stroke={colors.text.primary} strokeWidth={2} />
             </View>
             <View style={s.fieldBody}>
               <Text style={[s.fieldLabel, { color: colors.text.muted }]}>Тейп (Clan)</Text>
@@ -426,8 +426,8 @@ export default function SettingsScreen() {
           <View style={[s.sep, { backgroundColor: colors.border.subtle, marginLeft: 56 }]} />
 
           <View style={s.fieldRow}>
-            <View style={[s.fieldIcon, { backgroundColor: colors.bg.elevated }]}>
-              <Link size={14} stroke={colors.icon.default} strokeWidth={2} />
+            <View style={s.fieldIcon}>
+              <Link size={18} stroke={colors.text.primary} strokeWidth={2} />
             </View>
             <View style={s.fieldBody}>
               <Text style={[s.fieldLabel, { color: colors.text.muted }]}>Website</Text>
@@ -445,7 +445,7 @@ export default function SettingsScreen() {
         <SectionLabel label="Women-Only Zone 🌸" colors={colors} />
         <View style={[s.card, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
           <View style={[s.rowItem, { paddingVertical: 11 }]}>
-            <View style={[s.rowIcon, { backgroundColor: canAccessWomenOnly ? `${colors.accent.rose}1F` : colors.bg.elevated }]}>
+            <View style={s.rowIcon}>
               <Text style={{ fontSize: 16 }}>🌸</Text>
             </View>
             <View style={s.rowBody}>
@@ -493,8 +493,8 @@ export default function SettingsScreen() {
         <SectionLabel label="Darstellung" colors={colors} />
         <View style={[s.card, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
           <View style={[s.fieldRow, { alignItems: 'flex-start', paddingBottom: 12 }]}>
-            <View style={[s.fieldIcon, { backgroundColor: colors.bg.elevated }]}>
-              <Sun size={14} stroke={colors.icon.default} strokeWidth={2} />
+            <View style={s.fieldIcon}>
+              <Sun size={18} stroke={colors.text.primary} strokeWidth={2} />
             </View>
             <View style={{ flex: 1, gap: 10 }}>
               <Text style={[s.fieldLabel, { color: colors.text.muted }]}>Erscheinungsbild</Text>
@@ -522,8 +522,8 @@ export default function SettingsScreen() {
           <View style={[s.sep, { backgroundColor: colors.border.subtle, marginLeft: 56 }]} />
           {/* Tab Bar gehört zur Darstellung (war fälschlich unter Privatsphäre) */}
           <Pressable style={[s.rowItem, { paddingVertical: 11 }]} onPress={() => router.push('/settings/tab-bar' as any)} accessibilityRole="button">
-            <View style={[s.rowIcon, { backgroundColor: colors.bg.elevated }]}>
-              <Zap size={15} stroke={colors.icon.default} strokeWidth={2} />
+            <View style={s.rowIcon}>
+              <Zap size={18} stroke={colors.text.primary} strokeWidth={2} />
             </View>
             <View style={s.rowBody}>
               <Text style={[s.rowTitle, { color: colors.text.primary }]}>Tab Bar anpassen</Text>
@@ -542,8 +542,8 @@ export default function SettingsScreen() {
             accessibilityRole="button"
             accessibilityLabel={profile?.is_creator ? 'Creator Studio öffnen' : 'Creator werden'}
           >
-            <View style={[s.rowIcon, { backgroundColor: `${colors.accent.secondary}1F` }]}>
-              <Sparkles size={15} color={colors.accent.secondary} strokeWidth={2} />
+            <View style={s.rowIcon}>
+              <Sparkles size={18} color={colors.accent.secondary} strokeWidth={2} />
             </View>
             <View style={s.rowBody}>
               <Text style={[s.rowTitle, { color: colors.accent.secondary }]}>
@@ -564,8 +564,8 @@ export default function SettingsScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Admin Panel"
               >
-                <View style={[s.rowIcon, { backgroundColor: 'rgba(99,102,241,0.12)' }]}>
-                  <ShieldCheck size={15} color="#6366F1" strokeWidth={2} />
+                <View style={s.rowIcon}>
+                  <ShieldCheck size={18} color="#6366F1" strokeWidth={2} />
                 </View>
                 <View style={s.rowBody}>
                   <Text style={[s.rowTitle, { color: '#6366F1' }]}>Admin Panel</Text>
@@ -581,8 +581,8 @@ export default function SettingsScreen() {
         <SectionLabel label="KI-Stimme" colors={colors} />
         <View style={[s.card, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
           <Pressable style={s.rowItem} onPress={() => setShowVoiceSetup(true)} accessibilityRole="button">
-            <View style={[s.rowIcon, { backgroundColor: hasVoice ? 'rgba(167,139,250,0.12)' : colors.bg.elevated }]}>
-              <Mic size={15} stroke={hasVoice ? '#A78BFA' : colors.icon.default} strokeWidth={2} />
+            <View style={s.rowIcon}>
+              <Mic size={18} stroke={hasVoice ? '#A78BFA' : colors.text.primary} strokeWidth={2} />
             </View>
             <View style={s.rowBody}>
               <Text style={[s.rowTitle, { color: hasVoice ? '#A78BFA' : colors.text.primary }]}>Meine KI-Stimme</Text>
@@ -607,8 +607,8 @@ export default function SettingsScreen() {
           ] as const).map(({ key, label, icon: Icon, sub }, i, arr) => (
             <View key={key}>
               <View style={[s.rowItem, { paddingVertical: 10 }]}>
-                <View style={[s.rowIcon, { backgroundColor: colors.bg.elevated }]}>
-                  <Icon size={16} stroke={colors.icon.default} strokeWidth={2} />
+                <View style={s.rowIcon}>
+                  <Icon size={18} stroke={colors.text.primary} strokeWidth={2} />
                 </View>
                 <View style={s.rowBody}>
                   <Text style={[s.rowTitle, { color: colors.text.primary }]}>{label}</Text>
@@ -632,8 +632,8 @@ export default function SettingsScreen() {
                     onPress={() => router.push('/settings/muted-live-hosts' as any)}
                     accessibilityRole="button"
                   >
-                    <View style={[s.rowIcon, { backgroundColor: colors.bg.elevated }]}>
-                      <BellOff size={16} stroke={colors.icon.default} strokeWidth={2} />
+                    <View style={s.rowIcon}>
+                      <BellOff size={18} stroke={colors.text.primary} strokeWidth={2} />
                     </View>
                     <View style={s.rowBody}>
                       <Text style={[s.rowTitle, { color: colors.text.primary }]}>Einzelne Hosts stummschalten</Text>
@@ -651,8 +651,8 @@ export default function SettingsScreen() {
         <SectionLabel label="Privatsphäre & Sicherheit" colors={colors} />
         <View style={[s.card, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
           <View style={[s.rowItem, { paddingVertical: 11 }]}>
-            <View style={[s.rowIcon, { backgroundColor: colors.bg.elevated }]}>
-              <Lock size={15} stroke={colors.icon.default} strokeWidth={2} />
+            <View style={s.rowIcon}>
+              <Lock size={18} stroke={colors.text.primary} strokeWidth={2} />
             </View>
             <View style={s.rowBody}>
               <Text style={[s.rowTitle, { color: colors.text.primary }]}>Privates Profil</Text>
@@ -676,8 +676,8 @@ export default function SettingsScreen() {
           <View style={[s.sep, { backgroundColor: colors.border.subtle, marginLeft: 56 }]} />
 
           <Pressable style={[s.rowItem, { paddingVertical: 11 }]} onPress={() => router.push('/blocked-users' as any)} accessibilityRole="button">
-            <View style={[s.rowIcon, { backgroundColor: colors.bg.elevated }]}>
-              <Shield size={15} stroke={colors.icon.default} strokeWidth={2} />
+            <View style={s.rowIcon}>
+              <Shield size={18} stroke={colors.text.primary} strokeWidth={2} />
             </View>
             <View style={s.rowBody}><Text style={[s.rowTitle, { color: colors.text.primary }]}>Geblockte Nutzer</Text></View>
             <ChevronRight size={16} stroke={colors.icon.muted} strokeWidth={2} />
@@ -687,8 +687,8 @@ export default function SettingsScreen() {
           {/* Phase 5b: Co-Host spezifische Blocks (DB-persistent, überlebt App-Restart).
               Separater Screen weil das eine andere Liste ist als die globalen User-Blocks. */}
           <Pressable style={[s.rowItem, { paddingVertical: 11 }]} onPress={() => router.push('/cohost-blocks' as any)} accessibilityRole="button">
-            <View style={[s.rowIcon, { backgroundColor: colors.bg.elevated }]}>
-              <ShieldCheck size={15} stroke={colors.icon.default} strokeWidth={2} />
+            <View style={s.rowIcon}>
+              <ShieldCheck size={18} stroke={colors.text.primary} strokeWidth={2} />
             </View>
             <View style={s.rowBody}><Text style={[s.rowTitle, { color: colors.text.primary }]}>Co-Host Blocks</Text></View>
             <ChevronRight size={16} stroke={colors.icon.muted} strokeWidth={2} />
@@ -699,8 +699,8 @@ export default function SettingsScreen() {
         <SectionLabel label="Rechtliches & Hilfe" colors={colors} />
         <View style={[s.card, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
           <Pressable style={[s.rowItem, { paddingVertical: 11 }]} onPress={() => Linking.openURL('https://serlo-web.vercel.app/privacy').catch(() => {})} accessibilityRole="link">
-            <View style={[s.rowIcon, { backgroundColor: colors.bg.elevated }]}>
-              <FileText size={15} stroke={colors.icon.default} strokeWidth={2} />
+            <View style={s.rowIcon}>
+              <FileText size={18} stroke={colors.text.primary} strokeWidth={2} />
             </View>
             <View style={s.rowBody}><Text style={[s.rowTitle, { color: colors.text.primary }]}>Datenschutzerklärung</Text></View>
             <ExternalLink size={15} stroke={colors.icon.muted} strokeWidth={2} />
@@ -708,8 +708,8 @@ export default function SettingsScreen() {
           <View style={[s.sep, { backgroundColor: colors.border.subtle, marginLeft: 56 }]} />
 
           <Pressable style={[s.rowItem, { paddingVertical: 11 }]} onPress={() => Linking.openURL('https://serlo-web.vercel.app/terms').catch(() => {})} accessibilityRole="link">
-            <View style={[s.rowIcon, { backgroundColor: colors.bg.elevated }]}>
-              <FileText size={15} stroke={colors.icon.default} strokeWidth={2} />
+            <View style={s.rowIcon}>
+              <FileText size={18} stroke={colors.text.primary} strokeWidth={2} />
             </View>
             <View style={s.rowBody}><Text style={[s.rowTitle, { color: colors.text.primary }]}>Nutzungsbedingungen</Text></View>
             <ExternalLink size={15} stroke={colors.icon.muted} strokeWidth={2} />
@@ -717,8 +717,8 @@ export default function SettingsScreen() {
           <View style={[s.sep, { backgroundColor: colors.border.subtle, marginLeft: 56 }]} />
 
           <Pressable style={[s.rowItem, { paddingVertical: 11 }]} onPress={() => Linking.openURL('https://serlo-web.vercel.app/support').catch(() => {})} accessibilityRole="link">
-            <View style={[s.rowIcon, { backgroundColor: colors.bg.elevated }]}>
-              <Mail size={15} stroke={colors.icon.default} strokeWidth={2} />
+            <View style={s.rowIcon}>
+              <Mail size={18} stroke={colors.text.primary} strokeWidth={2} />
             </View>
             <View style={s.rowBody}><Text style={[s.rowTitle, { color: colors.text.primary }]}>Hilfe & Support</Text></View>
             <ExternalLink size={15} stroke={colors.icon.muted} strokeWidth={2} />
@@ -729,8 +729,8 @@ export default function SettingsScreen() {
         <SectionLabel label="Account" colors={colors} />
         <View style={[s.card, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
           <Pressable style={[s.rowItem, { paddingVertical: 11 }]} onPress={handleChangeEmail} disabled={changingEmail} accessibilityRole="button">
-            <View style={[s.rowIcon, { backgroundColor: colors.bg.elevated }]}>
-              {changingEmail ? <ActivityIndicator size="small" color={colors.icon.default} /> : <Mail size={15} stroke={colors.icon.default} strokeWidth={2} />}
+            <View style={s.rowIcon}>
+              {changingEmail ? <ActivityIndicator size="small" color={colors.text.primary} /> : <Mail size={18} stroke={colors.text.primary} strokeWidth={2} />}
             </View>
             <View style={s.rowBody}><Text style={[s.rowTitle, { color: colors.text.primary }]}>E-Mail ändern</Text></View>
             <ChevronRight size={16} stroke={colors.icon.muted} strokeWidth={2} />
@@ -738,8 +738,8 @@ export default function SettingsScreen() {
           <View style={[s.sep, { backgroundColor: colors.border.subtle, marginLeft: 56 }]} />
 
           <Pressable style={[s.rowItem, { paddingVertical: 11 }]} onPress={handleChangePassword} disabled={changingPw} accessibilityRole="button">
-            <View style={[s.rowIcon, { backgroundColor: colors.bg.elevated }]}>
-              {changingPw ? <ActivityIndicator size="small" color={colors.icon.default} /> : <Lock size={15} stroke={colors.icon.default} strokeWidth={2} />}
+            <View style={s.rowIcon}>
+              {changingPw ? <ActivityIndicator size="small" color={colors.text.primary} /> : <Lock size={18} stroke={colors.text.primary} strokeWidth={2} />}
             </View>
             <View style={s.rowBody}><Text style={[s.rowTitle, { color: colors.text.primary }]}>Passwort ändern</Text></View>
             <ChevronRight size={16} stroke={colors.icon.muted} strokeWidth={2} />
