@@ -570,6 +570,11 @@ const ALLOWED_KEY_PREFIXES = [
   'posts/videos/',
   'posts/images/',
   'thumbnails/',
+  // v1.w.UI — Shop-Produktbilder (Cover + Galerie). Key-Pattern:
+  // `products/images/{userId}/{timestamp}.{ext}`. `r2-sign` erlaubt diesen
+  // Prefix bereits (ALLOWED_OWNED_PREFIXES + IMAGE_ONLY_PREFIXES) — der
+  // ownerOk-Check unten erzwingt {userId} == Viewer-ID.
+  'products/images/',
   // v1.w.UI.21 — Avatar-Upload (Profil-Editor). Key-Pattern:
   // `avatars/{userId}/{timestamp}.{ext}`. Die `ownerOk`-Check unten
   // erzwingt dass `{userId}` == Viewer-ID — ein manipulierter Client
