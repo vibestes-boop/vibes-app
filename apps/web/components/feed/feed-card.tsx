@@ -421,6 +421,15 @@ export function FeedCard({
   // Letterbox.
   const isWiderThanPortrait = appliedRatio > 1;
 
+  // v1.w.UI.247 — Media-Objekt-Fit: Hochformat (Portrait/Square) füllt auf
+  // Mobile (< xl) den ganzen Screen randlos (object-cover, TikTok-Vollbild),
+  // ab xl wieder contained (aspect-geboxte Portrait-Karte wie auf Desktop).
+  // Querformat bleibt immer contained (zentriert) — sonst würde zu viel
+  // weggeschnitten.
+  const mediaObjectFit = isWiderThanPortrait
+    ? 'object-contain'
+    : 'object-cover xl:object-contain';
+
   // Auto-Play / Pause je nach `isActive` — nur für Videos relevant.
   useEffect(() => {
     if (isImage) return;
@@ -609,8 +618,15 @@ export function FeedCard({
       // `h-auto` schlummert. Garantierter Cap auf Viewport-Höhe.
       style={{ aspectRatio: appliedRatio, maxHeight: '100dvh' }}
       className={cn(
-        'group/card relative flex max-h-full overflow-hidden rounded-2xl bg-black',
-        isWiderThanPortrait ? 'min-w-0 flex-1 h-auto' : 'h-full w-auto shrink-0',
+        'group/card relative flex max-h-full overflow-hidden bg-black',
+        // v1.w.UI.247 — Hochformat auf Mobile als echtes Vollbild-Cover:
+        //   h-full w-full → Box = ganzer Screen (w-full überschreibt die
+        //   aspectRatio-Box) → randlos, keine schwarzen Balken / kein Blur-Rand.
+        //   rounded-none = edge-to-edge. Ab xl: w-auto → aspectRatio greift wieder
+        //   → zentrierte Portrait-Karte mit Rundung, exakt wie auf Desktop.
+        isWiderThanPortrait
+          ? 'min-w-0 flex-1 h-auto rounded-2xl'
+          : 'h-full w-full shrink-0 rounded-none xl:w-auto xl:rounded-2xl',
       )}
     >
       {/* v1.w.UI.33: Volume-Control top-left + More-Menu top-right.
@@ -857,7 +873,7 @@ export function FeedCard({
                     setMediaAspectRatio(img.naturalWidth / img.naturalHeight);
                   }
                 }}
-                className="object-contain"
+                className={mediaObjectFit}
               />
             </>
           ) : (
@@ -902,7 +918,7 @@ export function FeedCard({
               // Aspect-Ratio-Detection lebt im useEffect oben (nicht hier als
               // JSX-Prop), weil das Event bei gecachten Videos nicht zuverlässig
               // feuert.
-              className="h-full w-full object-contain"
+              className={cn('h-full w-full', mediaObjectFit)}
             />
           ) : post.thumbnail_url ? (
             <NextImage
@@ -911,7 +927,7 @@ export function FeedCard({
               aria-hidden="true"
               fill
               sizes="(max-width: 1279px) 100vw, 55vw"
-              className="object-contain"
+              className={mediaObjectFit}
             />
           ) : (
             <div className="h-full w-full bg-black" aria-hidden="true" />
