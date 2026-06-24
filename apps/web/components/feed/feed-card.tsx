@@ -583,7 +583,12 @@ export function FeedCard({
         // Portrait: h-full → inner = full section content area, card fills.
         // Landscape: kein h-full → inner content-sized, outer items-center
         //   zentriert das Group vertikal.
-        'flex w-full max-h-full max-w-full items-end justify-center gap-3',
+        // v1.w.UI.246 — `relative`: Positionierungs-Kontext für die Action-Rail,
+        // die auf Mobile (< xl) als absolute Overlay über dem Media schwebt
+        // (TikTok-Stil) statt als Flex-Geschwister daneben. Weil die Rail dort
+        // aus dem Flow fällt, zentriert sich eine Landscape-Karte wieder korrekt
+        // (kein Bottom-Drop mehr) und wird nie mehr off-screen geschoben.
+        'relative flex w-full max-h-full max-w-full items-end justify-center gap-3',
         isWiderThanPortrait ? '' : 'h-full',
       )}
     >
@@ -1132,7 +1137,7 @@ export function FeedCard({
         Avatar-Border + Plus-Ring nutzen `border-background`/`ring-background`
         damit der Avatar visuell vom Rail-Hintergrund abgesetzt ist (nicht
         auf einer dunklen Video-Letterbox wie zuvor). */}
-    <aside className="pointer-events-auto flex shrink-0 flex-col items-center gap-5 pb-2 text-foreground">
+    <aside className="pointer-events-auto absolute bottom-3 right-2 z-30 flex shrink-0 flex-col items-center gap-4 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.55)] xl:static xl:bottom-auto xl:right-auto xl:z-auto xl:gap-5 xl:pb-2 xl:text-foreground xl:drop-shadow-none">
       {/* Avatar mit optionalem Follow-Plus (Short-Video-Signature-Slot). */}
       <Link
         href={`/u/${post.author.username}` as Route}
@@ -1174,6 +1179,7 @@ export function FeedCard({
         onCountClick={post.like_count > 0 ? () => setLikersOpen(true) : undefined}
         iconClassName="h-7 w-7"
         circleClassName="h-12 w-12"
+        overlay
       />
 
       {/* Comment — 48px. Toggle-Verhalten (v1.w.UI.11 Phase C Follow-up):
@@ -1187,7 +1193,7 @@ export function FeedCard({
         icon={
           post.allow_comments ? (
             <MessageCircle
-              className={cn('h-7 w-7', isCommentsOpenForThisPost && 'fill-foreground text-foreground')}
+              className={cn('h-7 w-7', isCommentsOpenForThisPost && 'fill-current')}
               aria-hidden="true"
             />
           ) : (
@@ -1218,7 +1224,7 @@ export function FeedCard({
           <Bookmark
             className={cn(
               'h-7 w-7',
-              post.saved_by_me && 'fill-foreground text-foreground',
+              post.saved_by_me && 'fill-current',
             )}
             aria-hidden="true"
           />
@@ -1237,7 +1243,7 @@ export function FeedCard({
         <ActionButton
           icon={
             <Repeat2
-              className={cn('h-6 w-6', post.reposted_by_me && 'text-foreground')}
+              className={cn('h-6 w-6', post.reposted_by_me && 'text-current')}
               aria-hidden="true"
             />
           }
@@ -1284,7 +1290,7 @@ export function FeedCard({
           />
         ) : (
           <ActionButton
-            icon={<Volume2 className="h-5 w-5 text-foreground/70" aria-hidden="true" />}
+            icon={<Volume2 className="h-5 w-5 opacity-70" aria-hidden="true" />}
             label="Vorlesen"
             ariaLabel="Caption vorlesen"
             onClick={() => setVoiceReaderMounted(true)}
@@ -1468,9 +1474,11 @@ function ActionButton({
     >
       <span
         className={cn(
-          // Theme-aware: bg-foreground/10 ist im Light dunkles Grau, im Dark
-          // helles Grau — sichtbar auf Page-Background. (v1.w.UI.25)
-          'flex items-center justify-center rounded-full bg-foreground/10 transition-colors duration-base ease-out-expo group-hover/action:bg-foreground/20',
+          // v1.w.UI.246 — responsiv: Auf Mobile (< xl) schwebt der Rail als
+          // Overlay über dem Media → dunkler, halbtransparenter Kreis mit weißem
+          // Icon (TikTok). Ab xl sitzt der Rail neben der Karte auf Page-Background
+          // → theme-aware `bg-foreground/10` (im Light dunkles, im Dark helles Grau).
+          'flex items-center justify-center rounded-full bg-black/25 transition-colors duration-base ease-out-expo group-hover/action:bg-black/35 xl:bg-foreground/10 xl:group-hover/action:bg-foreground/20',
           circleClassName ?? 'h-11 w-11',
         )}
       >

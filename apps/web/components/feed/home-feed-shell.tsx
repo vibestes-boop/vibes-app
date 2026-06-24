@@ -264,7 +264,11 @@ function HomeFeedShellBody({
         <div
           role="tablist"
           aria-label="Feed-Quellen"
-          className="absolute left-1/2 top-3 z-20 flex -translate-x-1/2 items-center gap-6 rounded-full bg-black/70 px-5 py-1.5 backdrop-blur-md"
+          // v1.w.UI.246 — flachere, schlankere Pill: engeres gap/padding auf
+          // Mobile (war zu wuchtig), ab xl wieder etwas luftiger. Die Buttons
+          // selbst bekommen `whitespace-nowrap` damit „Für dich" / „Folge ich"
+          // nicht mehr auf zwei Zeilen umbrechen (Haupt-Ursache der Höhe).
+          className="absolute left-1/2 top-2.5 z-20 flex -translate-x-1/2 items-center gap-4 rounded-full bg-black/60 px-4 py-1 backdrop-blur-md xl:gap-6 xl:px-5"
         >
           <FeedTabButton
             label="Für dich"
@@ -727,7 +731,7 @@ function FeedTabButton({
       disabled={disabled}
       onClick={onClick}
       className={cn(
-        'border-b-2 px-0 py-1 text-sm font-semibold transition-colors duration-base ease-out-expo',
+        'whitespace-nowrap border-b-2 px-0 py-0.5 text-sm font-semibold transition-colors duration-base ease-out-expo',
         active
           ? 'border-white text-white'
           : 'border-transparent text-white/85 hover:text-white',

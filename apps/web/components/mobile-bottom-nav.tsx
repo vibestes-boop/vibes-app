@@ -122,7 +122,9 @@ export function MobileBottomNav({
                 : 'text-muted-foreground hover:text-foreground',
           );
           const innerContent = slot.primary ? (
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-elevation-2">
+            // v1.w.UI.246 — Serlo-Marken-Plus (Pink→Lila), konsistent mit der
+            // nativen App-Bottom-Nav (NICHT TikToks cyan/rot — Trade-Dress).
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-brand-rose to-brand-purple text-white shadow-elevation-2">
               <Icon className="h-5 w-5" aria-hidden="true" />
             </span>
           ) : (

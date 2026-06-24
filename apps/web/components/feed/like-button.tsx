@@ -62,6 +62,12 @@ export interface LikeButtonProps {
    * ist die Größe per Prop steuerbar, damit die Rail-Hierarchy stimmt.
    */
   circleClassName?: string;
+  /**
+   * v1.w.UI.246 — Overlay-Variante für den Feed-Rail auf Mobile: schwebt über
+   * dem Media → dunkler Kreis + weißes Herz (TikTok). Ab xl theme-aware wie
+   * bisher. Ohne das Flag (z.B. Post-Detail-Actions-Bar) bleibt alles wie zuvor.
+   */
+  overlay?: boolean;
 }
 
 export function LikeButton({
@@ -73,6 +79,7 @@ export function LikeButton({
   onCountClick,
   iconClassName,
   circleClassName,
+  overlay = false,
 }: LikeButtonProps) {
   // Monotonic-Key für den Partikel-Container — jeder Burst bekommt einen
   // frischen Key und wird damit neu gemountet, womit die Keyframes
@@ -102,9 +109,11 @@ export function LikeButton({
       className={cn(
         // Theme-aware Background (v1.w.UI.25 — Rail moved out of dark video):
         // bg-foreground/10 ist im Light dunkles Grau, im Dark helles Grau.
-        // Backdrop-blur entfernt — wir sind nicht mehr über transparentem
-        // Video-Content, also unnötig + minimaler Performance-Gewinn.
-        'relative flex items-center justify-center rounded-full bg-foreground/10 transition-colors duration-base ease-out-expo group-hover/like:bg-foreground/20',
+        // v1.w.UI.246 — overlay: auf Mobile dunkler Kreis über Media, ab xl theme.
+        'relative flex items-center justify-center rounded-full transition-colors duration-base ease-out-expo',
+        overlay
+          ? 'bg-black/25 group-hover/like:bg-black/35 xl:bg-foreground/10 xl:group-hover/like:bg-foreground/20'
+          : 'bg-foreground/10 group-hover/like:bg-foreground/20',
         circleClassName ?? 'h-12 w-12',
       )}
     >
@@ -120,9 +129,10 @@ export function LikeButton({
           aria-hidden="true"
           className={cn(
             iconClassName ?? 'h-7 w-7',
-            // Default: erbe Farbe vom Parent (text-foreground im Rail).
-            // Liked: rot überall.
-            'text-foreground transition-colors duration-fast ease-out-expo',
+            // Default: erbe Farbe vom Parent (text-foreground im Rail; im
+            // Overlay-Mobile weiß, ab xl wieder foreground). Liked: rot überall.
+            'transition-colors duration-fast ease-out-expo',
+            overlay ? 'text-white xl:text-foreground' : 'text-foreground',
             liked && 'fill-red-500 text-red-500',
           )}
         />
