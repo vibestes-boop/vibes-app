@@ -26,6 +26,9 @@ Zap,
 import { create } from 'zustand';
 import { createJSONStorage,persist } from 'zustand/middleware';
 
+import { useAuthStore } from './authStore';
+import { supabase } from './supabase';
+
 // Alle verfügbaren Tab-Features
 export type TabFeature =
   | 'guild'
@@ -102,6 +105,22 @@ export const ALL_TAB_FEATURES: TabFeature[] = [
   'guild', 'messages', 'shop', 'explore', 'notifications', 'live', 'women_only',
 ];
 
+const isTabFeature = (v: unknown): v is TabFeature =>
+  typeof v === 'string' && (ALL_TAB_FEATURES as string[]).includes(v);
+
+// DB-Sync (v1.x): Slot-Wahl wandert nach profiles.nav_slot_2/4, damit die Web-
+// Seite dieselbe Nav rendert. Best-effort — AsyncStorage hält den Wert lokal,
+// also bleibt die UI auch bei DB-Fehler/Offline funktionsfähig.
+async function persistSlotToDb(field: 'nav_slot_2' | 'nav_slot_4', value: TabFeature) {
+  const userId = useAuthStore.getState().user?.id;
+  if (!userId) return;
+  try {
+    await supabase.from('profiles').update({ [field]: value }).eq('id', userId);
+  } catch {
+    /* Spalte fehlt noch (Migration nicht angewandt) / offline → ignorieren */
+  }
+}
+
 // ─── Store ────────────────────────────────────────────────────────────────────
 
 interface TabBarStore {
@@ -111,6 +130,8 @@ interface TabBarStore {
   slot4: TabFeature;
   setSlot2: (f: TabFeature) => void;
   setSlot4: (f: TabFeature) => void;
+  /** Lädt die in der DB gespeicherte Slot-Wahl (bei Login). Best-effort. */
+  syncFromDb: () => Promise<void>;
 }
 
 export const useTabBarStore = create<TabBarStore>()(
@@ -118,8 +139,26 @@ export const useTabBarStore = create<TabBarStore>()(
     (set) => ({
       slot2: 'guild',
       slot4: 'shop',
-      setSlot2: (f) => set({ slot2: f }),
-      setSlot4: (f) => set({ slot4: f }),
+      setSlot2: (f) => { set({ slot2: f }); void persistSlotToDb('nav_slot_2', f); },
+      setSlot4: (f) => { set({ slot4: f }); void persistSlotToDb('nav_slot_4', f); },
+      syncFromDb: async () => {
+        const userId = useAuthStore.getState().user?.id;
+        if (!userId) return;
+        try {
+          const { data } = await supabase
+            .from('profiles')
+            .select('nav_slot_2, nav_slot_4')
+            .eq('id', userId)
+            .maybeSingle();
+          if (!data) return;
+          set((s) => ({
+            slot2: isTabFeature(data.nav_slot_2) ? data.nav_slot_2 : s.slot2,
+            slot4: isTabFeature(data.nav_slot_4) ? data.nav_slot_4 : s.slot4,
+          }));
+        } catch {
+          /* Spalte fehlt noch / offline → lokale Defaults behalten */
+        }
+      },
     }),
     {
       name: 'serlo-tab-bar',

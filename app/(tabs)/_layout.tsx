@@ -19,6 +19,7 @@ useTabBarStore,
 type TabFeature,
 type TabFeatureMeta,
 } from '@/lib/tabBarStore';
+import { useAuthStore } from '@/lib/authStore';
 import { useUnreadDMCount } from '@/lib/useMessages';
 import { useUnreadCount } from '@/lib/useNotifications';
 import { guildFeedActions,useTabRefreshStore,vibesFeedActions } from '@/lib/useTabRefresh';
@@ -172,6 +173,14 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   // Customizable Slots aus Store
   const slot2Feature = useTabBarStore((s) => s.slot2);
   const slot4Feature = useTabBarStore((s) => s.slot4);
+
+  // DB-Sync: bei Login die gespeicherte Slot-Wahl aus profiles laden, damit
+  // App + Web dieselbe Bottom-Nav zeigen. Best-effort (s. tabBarStore).
+  const syncNavFromDb = useTabBarStore((s) => s.syncFromDb);
+  const navUserId = useAuthStore((s) => s.user?.id);
+  useEffect(() => {
+    if (navUserId) void syncNavFromDb();
+  }, [navUserId, syncNavFromDb]);
 
   // Dynamische Tab-Konfiguration aus Store-Slots
   const slot2Meta = TAB_FEATURES[slot2Feature];

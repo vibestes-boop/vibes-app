@@ -4,20 +4,16 @@
 // MobileBottomNav — 5-Slot-Tab-Bar am unteren Viewport-Rand, nur sichtbar
 // unterhalb `md` (< 768px).
 //
-// Slot-Reihenfolge — Parität mit der nativen App-Bottom-Nav (lib/tabBarStore):
-//   Feed | Guild | Create (Center) | Shop | Profil
+// Slot-Modell — Parität mit der nativen App-Bottom-Nav (lib/tabBarStore):
+//   Feed (fest) | Slot 2 | Create (fest) | Slot 4 | Profil (fest)
 //
-// In der App sind Slot 2 (Guild) + Slot 4 (Shop) user-anpassbar; Slot 1/3/5
-// (Feed/Create/Profil) sind fest. Diese Defaults (Guild + Shop) spiegeln wir
-// hier 1:1. Die per-Account-Anpassung wird im nächsten Schritt DB-gesynct, dann
-// rendert das Web Slot 2/4 aus derselben Config wie die App.
+// Slot 2 + 4 sind in der App user-anpassbar und werden seit der nav_slot-
+// Migration nach `profiles.nav_slot_2/4` gesynct. Diese Komponente liest die
+// Wahl client-seitig und rendert dieselben Slots wie die App. Fallback (Spalten
+// noch leer / Migration nicht angewandt / nicht eingeloggt): guild / shop.
 //
-// Notifications („Inbox") sind aus der Bottom-Tab-Bar raus (in der App ebenfalls
-// kein Default-Slot) — auf Web weiterhin über die Glocke in der Kopfzeile
-// erreichbar.
-//
-// Auth-Gating: Create + Shop + Profil sind authOnly.
-// Logged-out: Feed | Explore | Shop (Fallback für anonyme Discovery).
+// Notifications („Inbox") sind kein Default-Slot (in der App ebenso) — auf Web
+// weiter über die Glocke in der Kopfzeile erreichbar.
 //
 // Safe-Area: `pb-[env(safe-area-inset-bottom)]` respektiert iOS-Home-Indicator.
 // -----------------------------------------------------------------------------
@@ -25,6 +21,8 @@
 import Link from 'next/link';
 import type { Route } from 'next';
 import { usePathname } from 'next/navigation';
+import { useMemo } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import {
   Home,
   Compass,
@@ -32,35 +30,40 @@ import {
   Users,
   User as UserIcon,
   ShoppingBag,
+  MessageCircle,
+  Bell,
+  Video,
+  Flower2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/lib/i18n/client';
-import type { TranslationKey } from '@/lib/i18n/translate';
+import { createClient } from '@/lib/supabase/client';
 
-type Slot = {
+// TabFeature-Keys aus lib/tabBarStore (App) — die anpassbaren Slot-2/4-Optionen.
+type NavFeature =
+  | 'guild'
+  | 'messages'
+  | 'shop'
+  | 'explore'
+  | 'notifications'
+  | 'live'
+  | 'women_only';
+
+const VALID_FEATURES: NavFeature[] = [
+  'guild', 'messages', 'shop', 'explore', 'notifications', 'live', 'women_only',
+];
+
+const asFeature = (v: unknown, fallback: NavFeature): NavFeature =>
+  typeof v === 'string' && (VALID_FEATURES as string[]).includes(v)
+    ? (v as NavFeature)
+    : fallback;
+
+type RenderSlot = {
   href: string;
-  labelKey: TranslationKey;
+  label: string;
   icon: typeof Home;
-  authOnly?: boolean;
-  /** "Create" ist der zentrale Primary-Slot, visuell hervorgehoben. */
   primary?: boolean;
 };
-
-// Authed-Reihenfolge: Feed | Guild | Create | Shop | Profil (App-Default-Parität)
-const SLOTS_AUTHED: Slot[] = [
-  { href: '/',        labelKey: 'nav.feed',    icon: Home },
-  { href: '/guilds',  labelKey: 'nav.guilds',  icon: Users },
-  { href: '/create',  labelKey: 'nav.create',  icon: PlusSquare,  authOnly: true, primary: true },
-  { href: '/shop',    labelKey: 'nav.shop',    icon: ShoppingBag, authOnly: true },
-  { href: '/profile', labelKey: 'nav.profile', icon: UserIcon,    authOnly: true },
-];
-
-// Logged-out: Feed | Explore | Shop (3 Slots — Create + Profil sind sinnlos)
-const SLOTS_ANON: Slot[] = [
-  { href: '/',        labelKey: 'nav.feed',    icon: Home },
-  { href: '/explore', labelKey: 'nav.explore', icon: Compass },
-  { href: '/shop',    labelKey: 'nav.shop',    icon: ShoppingBag },
-];
 
 function isActive(pathname: string, href: string): boolean {
   if (href === '/') return pathname === '/';
@@ -78,9 +81,61 @@ export function MobileBottomNav({
   const { t } = useI18n();
   const pathname = usePathname();
 
-  const slots = isAuthed === false
-    ? SLOTS_ANON
-    : SLOTS_AUTHED;
+  // Nav-Config aus der DB (Slot 2/4). Defensiv: schlägt der Read fehl (Spalte
+  // fehlt noch / nicht eingeloggt), bleibt `null` → Defaults greifen.
+  const { data: navConfig } = useQuery({
+    queryKey: ['mobile-nav-config'],
+    enabled: isAuthed === true,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return null;
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('nav_slot_2, nav_slot_4')
+        .eq('id', user.id)
+        .maybeSingle();
+      if (error) return null;
+      return data as { nav_slot_2: string | null; nav_slot_4: string | null } | null;
+    },
+  });
+
+  // TabFeature → Web-Route + Icon + Label. Spiegelt lib/tabBarStore (App).
+  const featureSlot = useMemo(() => {
+    return (f: NavFeature): RenderSlot => {
+      switch (f) {
+        case 'guild':         return { href: '/guilds',        icon: Users,         label: t('nav.guilds') };
+        case 'messages':      return { href: '/messages',      icon: MessageCircle, label: t('nav.messages') };
+        case 'shop':          return { href: '/shop',          icon: ShoppingBag,   label: t('nav.shop') };
+        case 'explore':       return { href: '/explore',       icon: Compass,       label: t('nav.explore') };
+        case 'notifications': return { href: '/notifications', icon: Bell,          label: t('nav.inbox') };
+        case 'live':          return { href: '/live',          icon: Video,         label: t('nav.live') };
+        case 'women_only':    return { href: '/women-only',    icon: Flower2,       label: 'WOZ' };
+      }
+    };
+  }, [t]);
+
+  const slots: RenderSlot[] = useMemo(() => {
+    if (isAuthed === false) {
+      // Logged-out: Feed | Explore | Shop (3 Slots).
+      return [
+        { href: '/',        label: t('nav.feed'),    icon: Home },
+        { href: '/explore', label: t('nav.explore'), icon: Compass },
+        { href: '/shop',    label: t('nav.shop'),    icon: ShoppingBag },
+      ];
+    }
+    // Authed: Feed | Slot2 | Create | Slot4 | Profil (Slot 2/4 aus DB, Default guild/shop).
+    return [
+      { href: '/',        label: t('nav.feed'),    icon: Home },
+      featureSlot(asFeature(navConfig?.nav_slot_2, 'guild')),
+      { href: '/create',  label: t('nav.create'),  icon: PlusSquare, primary: true },
+      featureSlot(asFeature(navConfig?.nav_slot_4, 'shop')),
+      { href: '/profile', label: t('nav.profile'), icon: UserIcon },
+    ];
+  }, [isAuthed, navConfig?.nav_slot_2, navConfig?.nav_slot_4, featureSlot, t]);
 
   return (
     <nav
@@ -92,20 +147,17 @@ export function MobileBottomNav({
       )}
     >
       <ul className="flex items-stretch justify-around">
-        {slots.map((slot) => {
+        {slots.map((slot, i) => {
           const Icon = slot.icon;
           const active = isActive(pathname, slot.href);
-          const label = t(slot.labelKey);
 
           const sharedClassName = cn(
             'flex h-14 flex-col items-center justify-center gap-0.5',
             'transition-colors duration-fast ease-out-expo',
             'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset',
-            slot.primary
+            slot.primary || active
               ? 'text-foreground'
-              : active
-                ? 'text-foreground'
-                : 'text-muted-foreground hover:text-foreground',
+              : 'text-muted-foreground hover:text-foreground',
           );
           const innerContent = slot.primary ? (
             // Serlo-Marken-Plus (Pink→Lila), konsistent mit der nativen
@@ -120,17 +172,17 @@ export function MobileBottomNav({
                 aria-hidden="true"
               />
               <span className={cn('text-[10px] leading-none', active ? 'font-semibold' : 'font-medium')}>
-                {label}
+                {slot.label}
               </span>
             </>
           );
 
           return (
-            <li key={slot.href} className="flex-1">
+            <li key={`${slot.href}-${i}`} className="flex-1">
               <Link
                 href={slot.href as Route}
                 aria-current={active ? 'page' : undefined}
-                aria-label={label}
+                aria-label={slot.label}
                 className={sharedClassName}
               >
                 {innerContent}
