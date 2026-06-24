@@ -388,15 +388,27 @@ export function FeedCard({
       `[data-post-id="${post.id}"] [data-progress-bar]`,
     );
     if (!progressBar) return;
-    const onMove = (e: MouseEvent) => {
+    // v1.w.UI.250 — Pointer-Events decken Maus UND Touch ab → Scrubbing per
+    // Finger funktioniert. `touchmove` zusätzlich mit { passive: false } als
+    // Fallback, falls ein Browser keine Pointer-Events am window liefert.
+    const onMove = (e: PointerEvent) => {
       seekToClientX(e.clientX, progressBar.getBoundingClientRect());
     };
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches[0]) seekToClientX(e.touches[0].clientX, progressBar.getBoundingClientRect());
+    };
     const onUp = () => setIsSeeking(false);
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onUp);
+    window.addEventListener('touchmove', onTouchMove, { passive: false });
+    window.addEventListener('touchend', onUp);
     return () => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onUp);
+      window.removeEventListener('touchmove', onTouchMove);
+      window.removeEventListener('touchend', onUp);
     };
   }, [isSeeking, post.id, seekToClientX]);
 
@@ -422,6 +434,15 @@ export function FeedCard({
   const mediaObjectFit = isWiderThanPortrait
     ? 'object-contain'
     : 'object-cover xl:object-contain';
+
+  // v1.w.UI.250 — Hochformat-Vollbild reicht auf Mobile hinter die fixed
+  // Bottom-Nav. Caption + Abspielbalken um Nav-Höhe (h-14 + Safe-Area) anheben,
+  // damit sie nicht verdeckt werden; ab md (Nav weg) zurück auf bottom-0.
+  // Querformat ist zentriert (Karte = nicht volle Höhe) → keine Nav-Kollision →
+  // bleibt bottom-0.
+  const overlayBottom = isWiderThanPortrait
+    ? 'bottom-0'
+    : 'bottom-[calc(3.5rem+env(safe-area-inset-bottom))] md:bottom-0';
 
   // Auto-Play / Pause je nach `isActive` — nur für Videos relevant.
   useEffect(() => {
@@ -987,7 +1008,7 @@ export function FeedCard({
           deshalb hier nur noch Username + Follow-Button in einer Zeile).
           v1.w.UI.25: `pr-20` entfernt — Rail liegt nicht mehr über der Card,
           Caption darf jetzt die volle Breite nutzen. */}
-      <div className="absolute inset-x-0 bottom-0 z-10 flex flex-col gap-2 p-4 pb-6 text-white">
+      <div className={cn('absolute inset-x-0 z-10 flex flex-col gap-2 p-4 pb-6 text-white', overlayBottom)}>
         {/* v1.w.UI.169 — WOZ badge: only visible to verified members (RLS-enforced) */}
         {post.women_only && (
           <span className="pointer-events-none inline-flex w-fit items-center gap-1 rounded-full bg-black/45 px-2.5 py-0.5 text-[11px] font-semibold text-white/90 ring-1 ring-white/20 backdrop-blur-sm">
@@ -1100,12 +1121,18 @@ export function FeedCard({
           - Auf hover sichtbarer Thumb-Knopf am Progress-Ende. */}
       {!isImage && (
         <div
-          // Wrapper mit größerem Hit-Target (py-2) damit die schmale Bar
-          // einfacher zu treffen ist mit der Maus. group/progress-Hover
-          // triggert den Thumb.
-          className="group/progress absolute inset-x-0 bottom-0 z-20 cursor-pointer py-2"
-          onMouseDown={(e) => {
+          // Wrapper mit großem Hit-Target (py-3) damit die schmale Bar mit
+          // Maus UND Finger leicht zu treffen ist. `touch-none` = touch-action:
+          // none → der Browser kapert die horizontale Drag-Geste nicht (kein
+          // Scroll), wir scrubben selbst. group/progress-Hover triggert den Thumb.
+          // v1.w.UI.250 — Pointer-Events statt Mouse → funktioniert auf Touch.
+          className={cn(
+            'group/progress absolute inset-x-0 z-20 cursor-pointer touch-none py-3',
+            overlayBottom,
+          )}
+          onPointerDown={(e) => {
             e.preventDefault();
+            e.stopPropagation();
             setIsSeeking(true);
             const bar = e.currentTarget.querySelector<HTMLElement>('[data-progress-bar]');
             if (bar) seekToClientX(e.clientX, bar.getBoundingClientRect());
@@ -1160,7 +1187,7 @@ export function FeedCard({
         Avatar-Border + Plus-Ring nutzen `border-background`/`ring-background`
         damit der Avatar visuell vom Rail-Hintergrund abgesetzt ist (nicht
         auf einer dunklen Video-Letterbox wie zuvor). */}
-    <aside className="pointer-events-auto absolute bottom-4 right-2 z-30 flex shrink-0 flex-col items-center gap-4 text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.85)] xl:static xl:bottom-auto xl:right-auto xl:z-auto xl:gap-5 xl:pb-2 xl:text-foreground xl:drop-shadow-none">
+    <aside className="pointer-events-auto absolute bottom-[calc(4rem+env(safe-area-inset-bottom))] right-2 z-30 flex shrink-0 flex-col items-center gap-4 text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.85)] md:bottom-4 xl:static xl:bottom-auto xl:right-auto xl:z-auto xl:gap-5 xl:pb-2 xl:text-foreground xl:drop-shadow-none">
       {/* Avatar mit optionalem Follow-Plus (Short-Video-Signature-Slot). */}
       <Link
         href={`/u/${post.author.username}` as Route}
