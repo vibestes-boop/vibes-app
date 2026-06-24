@@ -422,6 +422,30 @@ export async function deleteProduct(productId: string): Promise<ActionResult> {
   return { ok: true, data: null };
 }
 
+export async function bulkDeleteProducts(
+  productIds: string[],
+): Promise<ActionResult<{ deleted: number }>> {
+  const viewer = await getViewerId();
+  if (!viewer) return { ok: false, error: 'Bitte einloggen.' };
+  const ids = Array.from(new Set(productIds)).slice(0, 100);
+  if (ids.length === 0) return { ok: true, data: { deleted: 0 } };
+
+  const supabase = await createClient();
+  // `.eq('seller_id', …)` + RLS stellen sicher, dass nur eigene Produkte gelöscht
+  // werden. Dank Migration 20260624150000 klappt das auch bei Bestell-Historie.
+  const { error, count } = await supabase
+    .from('products')
+    .delete({ count: 'exact' })
+    .in('id', ids)
+    .eq('seller_id', viewer.id);
+
+  if (error) return { ok: false, error: error.message };
+
+  revalidatePath('/studio/shop');
+  revalidatePath('/shop');
+  return { ok: true, data: { deleted: count ?? 0 } };
+}
+
 export async function toggleProductActive(
   productId: string,
   nextActive: boolean,

@@ -5,7 +5,7 @@ import Image from 'next/image';
 import type { Route } from 'next';
 import { Plus, Package, BarChart3, ShoppingBag, Boxes } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { StudioProductRow } from '@/components/shop/studio-product-row';
+import { StudioProductList } from '@/components/shop/studio-product-list';
 import { getMyProducts } from '@/lib/data/shop';
 import { getUser, getIsAdmin } from '@/lib/auth/session';
 import { EmptyState } from '@/components/ui/empty-state';
@@ -103,11 +103,7 @@ export default async function StudioShopPage() {
           }
         />
       ) : (
-        <div className="divide-y rounded-xl border bg-card">
-          {products.map((p) => (
-            <StudioProductRow key={p.id} product={p} isAdmin={isAdmin} />
-          ))}
-        </div>
+        <StudioProductList products={products} isAdmin={isAdmin} />
       )}
     </div>
   );

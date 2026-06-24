@@ -14,6 +14,7 @@ import {
   Loader2,
   Boxes,
   Coins,
+  Check,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -46,9 +47,15 @@ import { ProductImage } from "./product-image";
 export function StudioProductRow({
   product,
   isAdmin = false,
+  selectable = false,
+  selected = false,
+  onToggleSelected,
 }: {
   product: ShopProduct;
   isAdmin?: boolean;
+  selectable?: boolean;
+  selected?: boolean;
+  onToggleSelected?: () => void;
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const toggle = useToggleProductActive();
@@ -67,6 +74,24 @@ export function StudioProductRow({
   return (
     <>
       <div className="flex items-center gap-4 p-4">
+        {/* Auswahl-Checkbox (nur im Auswahl-Modus) */}
+        {selectable && (
+          <button
+            type="button"
+            onClick={onToggleSelected}
+            aria-label={selected ? "Abwählen" : "Auswählen"}
+            aria-pressed={selected}
+            className={cn(
+              "flex h-5 w-5 flex-none items-center justify-center rounded-md border transition-colors",
+              selected
+                ? "border-primary bg-primary text-primary-foreground"
+                : "border-border bg-background hover:bg-muted",
+            )}
+          >
+            {selected && <Check className="h-3.5 w-3.5" />}
+          </button>
+        )}
+
         {/* Thumb */}
         <div className="relative h-16 w-16 flex-none overflow-hidden rounded-lg bg-muted">
           <ProductImage

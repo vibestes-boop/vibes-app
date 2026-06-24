@@ -10,6 +10,7 @@ import {
   reportProduct,
   toggleProductActive,
   deleteProduct,
+  bulkDeleteProducts,
   getMyReviewAction,
   expressProductInterest,
   setProductSaleMode,
@@ -135,6 +136,24 @@ export function useExpressProductInterest(opts?: { onSuccess?: () => void }) {
 // -----------------------------------------------------------------------------
 // useSetProductSaleMode — Admin-Schalter „Vorbestellung an/aus" im Studio.
 // -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// useBulkDeleteProducts — mehrere Produkte auf einmal löschen (Studio-Auswahl).
+// -----------------------------------------------------------------------------
+
+export function useBulkDeleteProducts() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (ids: string[]) => unwrap(await bulkDeleteProducts(ids)),
+    onSuccess: ({ deleted }) => {
+      toast.success(deleted === 1 ? '1 Produkt gelöscht' : `${deleted} Produkte gelöscht`);
+      qc.invalidateQueries({ queryKey: ['shop'] });
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Löschen fehlgeschlagen');
+    },
+  });
+}
 
 export function useSetProductSaleMode() {
   const qc = useQueryClient();
