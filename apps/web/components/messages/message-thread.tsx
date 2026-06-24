@@ -923,11 +923,21 @@ function Composer({
     if (!canSend || isPending) return;
     const content = text.trim();
     const imageUrlForSend = pendingImageUrl;
+    const productForSend = productShare;
+    // Produkt-Link ans Ende hängen — schon HIER berechnen, damit die optimistische
+    // Vorschau EXAKT der gesendeten Nachricht entspricht. Sonst weichen Vorschau
+    // (nur Text) und Realtime-Row (Text+Produkt) ab, die content-basierte Dedup
+    // greift nicht → die Nachricht erscheint doppelt.
+    const finalContent = productForSend
+      ? `${content ? content + '\n' : ''}🛍️ ${productForSend.title} — ${productPriceLabel(
+          productForSend,
+        )}\n/shop/${productForSend.id}`
+      : content;
     const optimistic: PendingMessage = {
       id: `pending-${Date.now()}-${Math.random().toString(36).slice(2)}`,
       conversation_id: conversationId,
       sender_id: viewerId,
-      content: content || (productShare ? `${productShare.title}` : null),
+      content: finalContent || null,
       // Optimistic: Object-URL für sofortige Vorschau; Realtime ersetzt mit DB-Row.
       image_url: imageUrlForSend ?? null,
       post_id: null,
@@ -949,16 +959,9 @@ function Composer({
     onSent(optimistic);
     setText('');
     clearPendingImage();
-    const productForSend = productShare;
     if (productForSend) onClearProductShare();
 
     startTransition(async () => {
-      // Wenn ein Produkt geteilt wird, hängen wir den Produkt-Link ans Ende an.
-      const finalContent = productForSend
-        ? `${content ? content + '\n' : ''}🛍️ ${productForSend.title} — ${productPriceLabel(
-            productForSend,
-          )}\n/shop/${productForSend.id}`
-        : content;
       const res = await sendDirectMessage({
         conversationId,
         content: finalContent || null,
