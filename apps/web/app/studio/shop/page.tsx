@@ -3,11 +3,11 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import type { Route } from 'next';
-import { Plus, Package, BarChart3, ShoppingBag } from 'lucide-react';
+import { Plus, Package, BarChart3, ShoppingBag, Boxes } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StudioProductRow } from '@/components/shop/studio-product-row';
 import { getMyProducts } from '@/lib/data/shop';
-import { getUser } from '@/lib/auth/session';
+import { getUser, getIsAdmin } from '@/lib/auth/session';
 import { EmptyState } from '@/components/ui/empty-state';
 
 export const metadata: Metadata = {
@@ -21,7 +21,8 @@ export default async function StudioShopPage() {
   const user = await getUser();
   if (!user) redirect('/login?next=/studio/shop');
 
-  const products = await getMyProducts();
+  const [products, isAdmin] = await Promise.all([getMyProducts(), getIsAdmin()]);
+  const hasPreorder = products.some((p) => p.sale_mode === 'preorder');
 
   const activeCount = products.filter((p) => p.is_active).length;
   const totalSold = products.reduce((s, p) => s + p.sold_count, 0);
@@ -43,7 +44,15 @@ export default async function StudioShopPage() {
             Lege Produkte an, ändere Preise, aktiviere oder deaktiviere Angebote.
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
+          {(isAdmin || hasPreorder) && (
+            <Button asChild variant="outline">
+              <Link href={'/studio/shop/preorders' as Route}>
+                <Boxes className="h-4 w-4" />
+                Vorbestellungen
+              </Link>
+            </Button>
+          )}
           <Button asChild variant="outline">
             <Link href={'/studio/shop/analytics' as Route}>
               <BarChart3 className="h-4 w-4" />
@@ -96,7 +105,7 @@ export default async function StudioShopPage() {
       ) : (
         <div className="divide-y rounded-xl border bg-card">
           {products.map((p) => (
-            <StudioProductRow key={p.id} product={p} />
+            <StudioProductRow key={p.id} product={p} isAdmin={isAdmin} />
           ))}
         </div>
       )}

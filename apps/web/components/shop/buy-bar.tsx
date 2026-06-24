@@ -19,7 +19,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { QuantityStepper } from "./quantity-stepper";
-import { useBuyProduct, useToggleSaveProduct } from "@/hooks/use-shop";
+import {
+  useBuyProduct,
+  useToggleSaveProduct,
+  useExpressProductInterest,
+} from "@/hooks/use-shop";
 import type { ShopProduct } from "@/lib/data/shop";
 import { ProductImage } from "./product-image";
 
@@ -63,6 +67,10 @@ export function BuyBar({
   } | null>(null);
 
   const save = useToggleSaveProduct();
+  const [preorderDone, setPreorderDone] = useState(false);
+  const interest = useExpressProductInterest({
+    onSuccess: () => setPreorderDone(true),
+  });
   const buy = useBuyProduct({
     onSuccess: (r) => {
       setResult(r);
@@ -94,6 +102,97 @@ export function BuyBar({
   };
 
   const isInline = variant === "inline";
+
+  // ── Vorbestellung / Sammelbestellung — KEIN Geld, nur Interesse vormerken. ──
+  if (product.sale_mode === "preorder") {
+    const isOwnP = viewerId === product.seller.id;
+    const handleVormerken = () => {
+      if (!viewerId) {
+        router.push(`/login?next=${encodeURIComponent(`/shop/${product.id}`)}` as Route);
+        return;
+      }
+      if (isOwnP) return;
+      interest.mutate({ productId: product.id, quantity: qty });
+    };
+    return (
+      <div
+        className={cn(
+          isInline
+            ? "rounded-xl border border-border/60 bg-card p-3 shadow-elevation-1 dark:border-border/30"
+            : "sticky bottom-0 left-0 right-0 z-20 border-t bg-background/90 px-4 py-3 backdrop-blur-md lg:px-6",
+          className,
+        )}
+      >
+        <div className={cn("flex flex-col gap-2", isInline ? "" : "mx-auto max-w-5xl")}>
+          <p className="text-xs leading-snug text-muted-foreground">
+            🤎 <span className="font-medium text-foreground">Sammelbestellung</span> — du zahlst
+            erst, wenn die Ware da ist. Trag dich ein, @{product.seller.username} meldet sich.
+          </p>
+          <div className="flex items-center gap-3">
+            {/* Merken */}
+            <button
+              type="button"
+              onClick={() =>
+                viewerId
+                  ? save.mutate({ productId: product.id, saved: product.saved_by_me })
+                  : router.push(`/login?next=${encodeURIComponent(`/shop/${product.id}`)}` as Route)
+              }
+              disabled={save.isPending}
+              className={cn(
+                "flex h-12 w-12 flex-none items-center justify-center rounded-full border bg-card transition-colors hover:bg-muted",
+                product.saved_by_me && "text-primary",
+              )}
+              aria-label={product.saved_by_me ? "Nicht mehr merken" : "Merken"}
+            >
+              {product.saved_by_me ? (
+                <BookmarkCheck className="h-5 w-5 fill-current" />
+              ) : (
+                <Bookmark className="h-5 w-5" />
+              )}
+            </button>
+
+            {/* Menge */}
+            <QuantityStepper value={qty} onChange={setQty} min={1} max={99} className="h-12" />
+
+            {/* Vormerken-CTA */}
+            <button
+              type="button"
+              onClick={handleVormerken}
+              disabled={isOwnP || interest.isPending}
+              className={cn(
+                "flex h-12 flex-1 items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60",
+                preorderDone
+                  ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                  : isOwnP
+                    ? "bg-muted text-muted-foreground"
+                    : "bg-primary text-primary-foreground hover:bg-primary/90",
+              )}
+            >
+              {interest.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : preorderDone ? (
+                <>
+                  <CheckCircle2 className="h-4 w-4" />
+                  Vorgemerkt
+                </>
+              ) : isOwnP ? (
+                "Dein Produkt"
+              ) : !viewerId ? (
+                "Einloggen zum Vormerken"
+              ) : (
+                "Vormerken"
+              )}
+            </button>
+          </div>
+          {preorderDone && (
+            <p className="text-xs leading-snug text-emerald-600 dark:text-emerald-400">
+              Eingetragen mit {qty}× — @{product.seller.username} meldet sich bei dir. 🤎
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>

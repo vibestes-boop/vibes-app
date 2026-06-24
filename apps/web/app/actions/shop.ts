@@ -334,6 +334,75 @@ export async function updateProduct(
   return { ok: true, data: null };
 }
 
+// -----------------------------------------------------------------------------
+// Vorbestellung / Sammelbestellung (Phase 0) — kein Geld.
+// -----------------------------------------------------------------------------
+
+export async function setProductSaleMode(
+  productId: string,
+  mode: 'coins' | 'preorder' | 'cash',
+): Promise<ActionResult> {
+  const viewer = await getViewerId();
+  if (!viewer) return { ok: false, error: 'Bitte einloggen.' };
+  if (!['coins', 'preorder', 'cash'].includes(mode)) {
+    return { ok: false, error: 'Ungültiger Modus.' };
+  }
+
+  const supabase = await createClient();
+  // Sicherheit erzwingen RLS (seller_id=auth.uid) + DB-Trigger (nur Admin darf
+  // <> coins). Hier nur das einfache Update — Nicht-Admins werden DB-seitig
+  // automatisch auf 'coins' zurückgestuft.
+  const { error } = await supabase
+    .from('products')
+    .update({ sale_mode: mode })
+    .eq('id', productId)
+    .eq('seller_id', viewer.id);
+
+  if (error) return { ok: false, error: error.message };
+
+  revalidateTag(`product:${productId}`);
+  revalidatePath('/studio/shop');
+  revalidatePath('/shop');
+  return { ok: true, data: null };
+}
+
+const PREORDER_ERROR_MESSAGES: Record<string, string> = {
+  not_authenticated: 'Bitte zuerst einloggen 🙂',
+  product_not_found: 'Das Produkt ist leider weg 🙈',
+  product_inactive: 'Das Produkt ist gerade nicht verfügbar.',
+  not_preorder: 'Dieses Produkt ist keine Vorbestellung.',
+  cannot_preorder_own: 'Das ist dein eigenes Produkt 😄',
+};
+
+export async function expressProductInterest(
+  productId: string,
+  quantity = 1,
+  note?: string,
+): Promise<ActionResult> {
+  const viewer = await getViewerId();
+  if (!viewer) return { ok: false, error: 'Bitte einloggen.' };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('express_product_interest', {
+    p_product_id: productId,
+    p_quantity: Math.max(1, Math.min(Math.round(quantity) || 1, 999)),
+    p_note: note?.trim() || null,
+  });
+
+  if (error) return { ok: false, error: 'Kurz die Verbindung verloren — nochmal? 🙂' };
+
+  const res = (data ?? {}) as { success?: boolean; error?: string };
+  if (!res.success) {
+    return {
+      ok: false,
+      error: PREORDER_ERROR_MESSAGES[res.error ?? ''] ?? 'Konnte nicht vormerken.',
+    };
+  }
+
+  revalidateTag(`product:${productId}`);
+  return { ok: true, data: null };
+}
+
 export async function deleteProduct(productId: string): Promise<ActionResult> {
   const viewer = await getViewerId();
   if (!viewer) return { ok: false, error: 'Bitte einloggen.' };

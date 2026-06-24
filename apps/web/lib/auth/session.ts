@@ -18,6 +18,25 @@ export const getUser = cache(async (): Promise<User | null> => {
 });
 
 /**
+ * Ist der aktuelle User Admin? (profiles.is_admin). Per-Request gecached.
+ * Gating z.B. für den Vorbestellungs-/sale_mode-Schalter im Shop-Studio.
+ * Die DB erzwingt es zusätzlich (Trigger) — das hier ist nur UI-Gating.
+ */
+export const getIsAdmin = cache(async (): Promise<boolean> => {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return false;
+  const { data } = await supabase
+    .from('profiles')
+    .select('is_admin')
+    .eq('id', user.id)
+    .maybeSingle();
+  return Boolean(data?.is_admin);
+});
+
+/**
  * Get the current user's profile row (username, avatar, display_name, bio).
  * Returns `null` if not authenticated OR no profile row exists (= onboarding pending).
  *

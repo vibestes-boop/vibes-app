@@ -44,6 +44,7 @@ export function ProductCard({
   priority?: boolean;
 }) {
   const eff = effectivePrice(product);
+  const isPreorder = product.sale_mode === "preorder";
   const isSale = product.sale_price_coins != null;
   const fresh = !isSale && isNew(product);
 
@@ -96,7 +97,11 @@ export function ProductCard({
          *     (siehe unten).
          * Damit bleibt immer eine diagonale Ecke frei und das Bild atmet.
          */}
-        {(isSale || fresh) && (
+        {isPreorder ? (
+          <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-md border border-white/25 bg-amber-600/85 px-2 py-0.5 text-xs font-semibold text-white shadow-sm backdrop-blur-sm">
+            Vorbestellung
+          </span>
+        ) : (isSale || fresh) ? (
           <span
             className={cn(
               "absolute left-2 top-2 inline-flex items-center gap-1 rounded-md border border-white/25 bg-black/65 px-2 py-0.5 text-xs font-semibold text-white shadow-sm backdrop-blur-sm",
@@ -111,7 +116,7 @@ export function ProductCard({
               </>
             )}
           </span>
-        )}
+        ) : null}
 
         {soldOut ? (
           <span className="absolute right-2 top-2 rounded-md bg-black/80 px-2 py-0.5 text-xs font-semibold text-white">

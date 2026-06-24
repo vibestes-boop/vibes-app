@@ -12,6 +12,8 @@ import {
   ExternalLink,
   MoreHorizontal,
   Loader2,
+  Boxes,
+  Coins,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -27,7 +29,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { useToggleProductActive, useDeleteProduct } from "@/hooks/use-shop";
+import {
+  useToggleProductActive,
+  useDeleteProduct,
+  useSetProductSaleMode,
+} from "@/hooks/use-shop";
 import { cn } from "@/lib/utils";
 import type { ShopProduct } from "@/lib/data/shop";
 import { ProductImage } from "./product-image";
@@ -37,10 +43,18 @@ import { ProductImage } from "./product-image";
 // Pill, Preis, Stock, Sold, Actions-Menü (Edit/Toggle/Delete).
 // -----------------------------------------------------------------------------
 
-export function StudioProductRow({ product }: { product: ShopProduct }) {
+export function StudioProductRow({
+  product,
+  isAdmin = false,
+}: {
+  product: ShopProduct;
+  isAdmin?: boolean;
+}) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const toggle = useToggleProductActive();
   const del = useDeleteProduct();
+  const setMode = useSetProductSaleMode();
+  const isPreorder = product.sale_mode === "preorder";
 
   const eff = product.sale_price_coins ?? product.price_coins;
   const stockLabel =
@@ -94,6 +108,11 @@ export function StudioProductRow({ product }: { product: ShopProduct }) {
             {product.sale_price_coins !== null && (
               <span className="rounded-full border border-border bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
                 Angebot
+              </span>
+            )}
+            {isPreorder && (
+              <span className="rounded-full bg-amber-600/15 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-400">
+                Vorbestellung
               </span>
             )}
           </div>
@@ -154,6 +173,29 @@ export function StudioProductRow({ product }: { product: ShopProduct }) {
                 </>
               )}
             </DropdownMenuItem>
+            {isAdmin && (
+              <DropdownMenuItem
+                onSelect={() =>
+                  setMode.mutate({
+                    productId: product.id,
+                    mode: isPreorder ? "coins" : "preorder",
+                  })
+                }
+                disabled={setMode.isPending}
+              >
+                {isPreorder ? (
+                  <>
+                    <Coins className="h-4 w-4" />
+                    Auf Coin-Verkauf
+                  </>
+                ) : (
+                  <>
+                    <Boxes className="h-4 w-4" />
+                    Als Vorbestellung
+                  </>
+                )}
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem
               className="text-destructive focus:text-destructive"

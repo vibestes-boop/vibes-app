@@ -10,6 +10,8 @@ import type { Product, ProductWithSeller, ProductCategory } from '@shared/types'
 // Kanonische Projektion für Catalog, Detail, Merchant-Storefront, Saved-List.
 // -----------------------------------------------------------------------------
 
+export type ProductSaleMode = 'coins' | 'preorder' | 'cash';
+
 export interface ShopProduct extends ProductWithSeller {
   stock: number;
   sold_count: number;
@@ -17,10 +19,13 @@ export interface ShopProduct extends ProductWithSeller {
   review_count: number;
   is_active: boolean;
   saved_by_me: boolean;
+  // 'coins' = Coin-Kauf (Standard) · 'preorder' = Sammelbestellung (kein Geld)
+  // · 'cash' = echtes Geld/Stripe (Phase 1). Default 'coins' (Fallback unten).
+  sale_mode: ProductSaleMode;
 }
 
 const PRODUCT_COLUMNS =
-  'id, seller_id, title, description, category, price_coins, sale_price_coins, stock, cover_url, image_urls, file_url, free_shipping, location, women_only, is_active, sold_count, avg_rating, review_count, created_at, updated_at';
+  'id, seller_id, title, description, category, price_coins, sale_price_coins, stock, cover_url, image_urls, file_url, free_shipping, location, women_only, is_active, sale_mode, sold_count, avg_rating, review_count, created_at, updated_at';
 
 const SELLER_JOIN = 'seller:profiles!products_seller_id_fkey ( id, username, avatar_url, verified:is_verified )';
 
@@ -31,6 +36,7 @@ type RawProductRow = Omit<Product, 'image_urls'> & {
   avg_rating: number | null;
   review_count: number | null;
   is_active: boolean;
+  sale_mode: ProductSaleMode | null;
 };
 
 export type ShopPreviewProduct = Pick<
@@ -49,6 +55,7 @@ function normalizeProduct(row: RawProductRow, saved: Set<string>): ShopProduct |
     avg_rating: row.avg_rating,
     review_count: row.review_count ?? 0,
     is_active: row.is_active,
+    sale_mode: row.sale_mode ?? 'coins',
     saved_by_me: saved.has(row.id),
   };
 }

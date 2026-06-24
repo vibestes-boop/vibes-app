@@ -11,9 +11,12 @@ import {
   toggleProductActive,
   deleteProduct,
   getMyReviewAction,
+  expressProductInterest,
+  setProductSaleMode,
   type ActionResult,
   type BuyResult,
 } from '@/app/actions/shop';
+import type { ProductSaleMode } from '@/lib/data/shop';
 import type { ShopProduct } from '@/lib/data/shop';
 
 // -----------------------------------------------------------------------------
@@ -104,6 +107,47 @@ export function useBuyProduct(opts?: { onSuccess?: (r: BuyResult) => void }) {
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : 'Kauf fehlgeschlagen');
+    },
+  });
+}
+
+// -----------------------------------------------------------------------------
+// useExpressProductInterest — „Vormerken" bei einer Sammelbestellung (kein Geld).
+// -----------------------------------------------------------------------------
+
+type InterestArgs = { productId: string; quantity: number; note?: string };
+
+export function useExpressProductInterest(opts?: { onSuccess?: () => void }) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ productId, quantity, note }: InterestArgs) =>
+      unwrap(await expressProductInterest(productId, quantity, note)),
+    onSuccess: (_d, vars) => {
+      qc.invalidateQueries({ queryKey: ['product', vars.productId] });
+      opts?.onSuccess?.();
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Konnte nicht vormerken');
+    },
+  });
+}
+
+// -----------------------------------------------------------------------------
+// useSetProductSaleMode — Admin-Schalter „Vorbestellung an/aus" im Studio.
+// -----------------------------------------------------------------------------
+
+export function useSetProductSaleMode() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ productId, mode }: { productId: string; mode: ProductSaleMode }) =>
+      unwrap(await setProductSaleMode(productId, mode)),
+    onSuccess: (_d, vars) => {
+      toast.success(vars.mode === 'preorder' ? 'Als Vorbestellung markiert' : 'Auf Coin-Verkauf gesetzt');
+      qc.invalidateQueries({ queryKey: ['shop'] });
+      qc.invalidateQueries({ queryKey: ['product', vars.productId] });
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Änderung fehlgeschlagen');
     },
   });
 }
