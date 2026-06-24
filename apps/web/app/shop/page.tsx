@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import type { Route } from "next";
 import { CoinIcon } from '@/components/ui/coin-icon';
@@ -73,7 +74,7 @@ export default async function ShopCatalogPage({ searchParams }: PageProps) {
     <div className="mx-auto grid max-w-[1600px] grid-cols-1 gap-0 lg:grid-cols-[260px_1fr]">
       <ShopFilters />
 
-      <main className="min-w-0 px-4 pb-6 pt-16 sm:pt-6 lg:px-8">
+      <main className="min-w-0 px-4 pb-6 pt-4 sm:pt-6 lg:px-8">
         {/* Header */}
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -88,39 +89,39 @@ export default async function ShopCatalogPage({ searchParams }: PageProps) {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* Vertikale Icon-über-Label-Chips (icon oben, Beschriftung unten) —
+              fit auf Mobile ohne horizontalen Überlauf. Coin groß + rahmenlos,
+              Zahl darunter. Auf sm+ rechts gruppiert. */}
+          <div className="flex items-stretch justify-around gap-1 sm:justify-end sm:gap-4">
             {balance !== null && (
-              <div className="inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1.5 text-sm font-medium tabular-nums">
-                <CoinIcon className="h-4 w-4 text-muted-foreground" />
-                {balance.toLocaleString(LOCALE_INTL[locale])}
+              <div className="flex flex-col items-center justify-center gap-1 px-1">
+                <CoinIcon className="h-8 w-8" />
+                <span className="text-[11px] font-semibold leading-none tabular-nums">
+                  {balance.toLocaleString(LOCALE_INTL[locale])}
+                </span>
               </div>
             )}
             {user && (
-              <Link
-                href={"/studio/shop/new" as Route}
-                className="inline-flex items-center gap-1.5 rounded-full bg-primary px-3.5 py-1.5 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
-              >
-                <Plus className="h-4 w-4" />
-                Verkaufen
-              </Link>
+              <ActionChip
+                href="/studio/shop/new"
+                label="Verkaufen"
+                icon={<Plus className="h-5 w-5" />}
+                primary
+              />
             )}
             {user && (
-              <Link
-                href={"/shop/orders" as Route}
-                className="inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted"
-              >
-                <Package className="h-4 w-4" />
-                {t("shop.myOrders")}
-              </Link>
+              <ActionChip
+                href="/shop/orders"
+                label={t("shop.myOrders")}
+                icon={<Package className="h-5 w-5" />}
+              />
             )}
             {user && (
-              <Link
-                href={"/shop/saved" as Route}
-                className="inline-flex items-center gap-1.5 rounded-full border bg-card px-3 py-1.5 text-sm font-medium hover:bg-muted"
-              >
-                <Bookmark className="h-4 w-4" />
-                {t("shop.saved")}
-              </Link>
+              <ActionChip
+                href="/shop/saved"
+                label={t("shop.saved")}
+                icon={<Bookmark className="h-5 w-5" />}
+              />
             )}
           </div>
         </div>
@@ -138,6 +139,39 @@ export default async function ShopCatalogPage({ searchParams }: PageProps) {
         )}
       </main>
     </div>
+  );
+}
+
+// Vertikaler Shop-Action-Chip: Icon-Kreis oben, Label darunter. `primary` =
+// Akzent-Kreis (Verkaufen-CTA), sonst dezenter `bg-muted`-Kreis.
+function ActionChip({
+  href,
+  icon,
+  label,
+  primary,
+}: {
+  href: string;
+  icon: ReactNode;
+  label: string;
+  primary?: boolean;
+}) {
+  return (
+    <Link
+      href={href as Route}
+      className="flex flex-col items-center gap-1 px-1"
+    >
+      <span
+        className={
+          "flex h-11 w-11 items-center justify-center rounded-full transition-opacity hover:opacity-90 " +
+          (primary ? "bg-primary text-primary-foreground" : "bg-muted text-foreground")
+        }
+      >
+        {icon}
+      </span>
+      <span className="whitespace-nowrap text-[11px] font-medium leading-none">
+        {label}
+      </span>
+    </Link>
   );
 }
 

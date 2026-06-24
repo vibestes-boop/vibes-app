@@ -238,7 +238,7 @@ export default async function ProfilePage({
       />
 
       {/* ───── Hero ───── */}
-      <section className="px-4 pb-4 pt-6 sm:px-6">
+      <section className="px-4 pb-4 pt-3 sm:px-6 sm:pt-6">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
           {/* v1.w.UI.16: Avatar mit Gradient-Ring + LIVE-Badge wenn der User
               aktuell eine Session hostet (Daten kommen via getPublicProfile
