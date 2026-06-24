@@ -74,8 +74,9 @@ export function ProductCard({
         className,
       )}
     >
-      {/* Hero-Bild 3:4 mit Blur-Fill */}
-      <div className="relative aspect-[3/4] w-full overflow-hidden bg-muted">
+      {/* Hero-Bild 1:1 (quadratisch) mit Blur-Fill — kompakter als 3:4,
+          damit die Karten nicht unnötig hoch werden. */}
+      <div className="relative aspect-square w-full overflow-hidden bg-muted">
         <ProductImage
           cover={cover}
           title={product.title}
@@ -138,7 +139,7 @@ export function ProductCard({
       </div>
 
       {/* Text-Bereich */}
-      <div className="flex flex-col gap-1.5 p-3">
+      <div className="flex flex-col gap-1 p-2.5">
         {/* Seller-Row — Women-Only wandert als diskretes ♀-Glyph hier rein,
             statt als eigener Badge in der Bild-Ecke (vgl. C2-Konsolidierung). */}
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -158,7 +159,7 @@ export function ProductCard({
         </div>
 
         {/* Titel */}
-        <h3 className="line-clamp-2 min-h-[2.5rem] text-sm font-medium leading-tight text-foreground">
+        <h3 className="line-clamp-2 min-h-[2.25rem] text-sm font-medium leading-tight text-foreground">
           {product.title}
         </h3>
 
@@ -221,8 +222,8 @@ export function ProductCard({
 export function ProductCardSkeleton() {
   return (
     <div className="overflow-hidden rounded-xl border border-border/60 bg-card shadow-elevation-1 dark:border-border/30">
-      <div className="aspect-[3/4] w-full animate-pulse bg-muted" />
-      <div className="flex flex-col gap-2 p-3">
+      <div className="aspect-square w-full animate-pulse bg-muted" />
+      <div className="flex flex-col gap-2 p-2.5">
         <div className="h-3 w-1/3 animate-pulse rounded bg-muted" />
         <div className="h-4 w-full animate-pulse rounded bg-muted" />
         <div className="h-3 w-2/3 animate-pulse rounded bg-muted" />
@@ -236,10 +237,10 @@ export function ProductCardGridSkeleton({ count = 8 }: { count?: number }) {
   // Warum rausgenommen: auf 2560px-Displays produzierte 5-col-Layout extrem
   // schmale Cards (~200px Breite), die Blur-Fill-Aesthetic zerbröselt dort.
   // Short-Video-Shop cappt ebenfalls bei 4 pro Reihe mit großzügiger Breite-pro-Tile.
-  // Gap 3 → 4 (zusätzliche visuelle Ruhe zwischen Cards jetzt wo sie gelifted
-  // sind und Hover-Shadow brauchen Clearance zum Nachbarn).
+  // Gaps minimal (Mobile gap-1.5, ab sm gap-2) — Produkte sollen groß/dicht sein;
+  // gap-2 lässt dem Hover-Shadow gerade genug Clearance zum Nachbarn.
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3 sm:gap-2 lg:grid-cols-4 lg:gap-2">
       {Array.from({ length: count }).map((_, i) => (
         <ProductCardSkeleton key={i} />
       ))}
