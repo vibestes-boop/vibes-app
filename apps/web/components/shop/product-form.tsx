@@ -14,6 +14,7 @@ import {
   Package,
   FileText,
   Gem,
+  Upload,
   type LucideIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -22,6 +23,8 @@ import { cn } from "@/lib/utils";
 import { createProduct, updateProduct } from "@/app/actions/shop";
 import { AIImageSheet } from "@/components/ai/ai-image-sheet";
 import { createClient } from "@/lib/supabase/client";
+import { requestR2UploadUrl } from "@/app/actions/posts";
+import { compressImage, extensionForMime } from "@/lib/image/compress";
 import type { ProductCategory } from "@shared/types";
 import type { ShopProduct } from "@/lib/data/shop";
 
@@ -171,6 +174,97 @@ export function ProductForm({ existing }: { existing: ShopProduct | null }) {
       toast.error(err instanceof Error ? err.message : "Upload fehlgeschlagen");
     } finally {
       setUploadingFile(false);
+    }
+  }
+
+  // Foto-Upload (Cover + Galerie) → R2 via presigned PUT (gleicher Weg wie
+  // Avatar/Post-Bilder). `products/images/{userId}/…` ist in r2-sign erlaubt.
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  async function uploadImageToR2(file: File): Promise<string | null> {
+    if (!file.type.startsWith("image/")) {
+      toast.error("Bitte ein Bild auswählen");
+      return null;
+    }
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error("Bild zu groß (max. 15 MB)");
+      return null;
+    }
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      toast.error("Bitte einloggen.");
+      return null;
+    }
+    const compressed = await compressImage(file, { maxEdge: 1600, quality: 0.85 });
+    const ext = extensionForMime(compressed.mimeType);
+    const key = `products/images/${user.id}/${Date.now()}-${Math.random()
+      .toString(36)
+      .slice(2, 8)}.${ext}`;
+    const signed = await requestR2UploadUrl({
+      key,
+      contentType: compressed.mimeType,
+      contentLength: compressed.blob.size,
+    });
+    if (!signed.ok) {
+      toast.error(signed.error || "Upload-Signatur fehlgeschlagen");
+      return null;
+    }
+    const putRes = await fetch(signed.data.uploadUrl, {
+      method: "PUT",
+      headers: { "Content-Type": compressed.mimeType },
+      body: compressed.blob,
+    });
+    if (!putRes.ok) {
+      toast.error("Upload fehlgeschlagen");
+      return null;
+    }
+    return signed.data.publicUrl;
+  }
+
+  async function handleCoverPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setUploadingImage(true);
+    try {
+      const url = await uploadImageToR2(file);
+      if (url) {
+        update("cover_url", url);
+        toast.success("Cover hochgeladen");
+      }
+    } finally {
+      setUploadingImage(false);
+    }
+  }
+
+  async function handleGalleryPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (files.length === 0) return;
+    setUploadingImage(true);
+    try {
+      let urls = [...form.image_urls];
+      let added = 0;
+      for (const file of files) {
+        if (urls.length >= 10) {
+          toast.error("Maximal 10 Bilder");
+          break;
+        }
+        const url = await uploadImageToR2(file);
+        if (url) {
+          urls = [...urls, url];
+          added += 1;
+        }
+      }
+      if (added > 0) {
+        update("image_urls", urls);
+        toast.success(added === 1 ? "Bild hinzugefügt" : `${added} Bilder hinzugefügt`);
+      }
+    } finally {
+      setUploadingImage(false);
     }
   }
 
@@ -438,27 +532,57 @@ export function ProductForm({ existing }: { existing: ShopProduct | null }) {
 
         {/* Bilder */}
         <section>
-          <label className="text-sm font-medium">Cover-Bild-URL</label>
+          <label className="text-sm font-medium">Cover-Bild</label>
           <input
             type="url"
             value={form.cover_url}
             onChange={(e) => update("cover_url", e.target.value)}
-            placeholder="https://…"
+            placeholder="Foto hochladen oder Bild-URL einfügen (https://…)"
             className="mt-1.5 h-10 w-full rounded-md border bg-background px-3 text-sm outline-none focus:border-ring"
           />
-          <button
-            type="button"
-            onClick={() => setAiSheetOpen(true)}
-            className="mt-2 inline-flex items-center gap-1.5 rounded-full border bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
-          >
-            <Sparkles className="h-3.5 w-3.5 text-primary" />
-            Mit KI erstellen
-          </button>
+          <input
+            id="cover-image-file"
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleCoverPick}
+          />
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => document.getElementById("cover-image-file")?.click()}
+              disabled={uploadingImage}
+              className="inline-flex items-center gap-1.5 rounded-full border bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted disabled:opacity-60"
+            >
+              {uploadingImage ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Upload className="h-3.5 w-3.5" />
+              )}
+              Foto hochladen
+            </button>
+            <button
+              type="button"
+              onClick={() => setAiSheetOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-full border bg-background px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-primary" />
+              Mit KI erstellen
+            </button>
+          </div>
 
           <div className="mt-4">
             <label className="text-sm font-medium">
               Gallery <span className="text-muted-foreground">· bis zu 10</span>
             </label>
+            <input
+              id="gallery-image-file"
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={handleGalleryPick}
+            />
             <div className="mt-1.5 flex gap-2">
               <input
                 type="url"
@@ -467,12 +591,25 @@ export function ProductForm({ existing }: { existing: ShopProduct | null }) {
                 onKeyDown={(e) =>
                   e.key === "Enter" && (e.preventDefault(), addImage())
                 }
-                placeholder="https://…"
+                placeholder="Foto hochladen oder URL (https://…)"
                 className="h-10 flex-1 rounded-md border bg-background px-3 text-sm outline-none focus:border-ring"
               />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => document.getElementById("gallery-image-file")?.click()}
+                disabled={uploadingImage}
+              >
+                {uploadingImage ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Upload className="h-4 w-4" />
+                )}
+                Foto
+              </Button>
               <Button type="button" variant="outline" onClick={addImage}>
                 <Plus className="h-4 w-4" />
-                Hinzufügen
+                URL
               </Button>
             </div>
             {form.image_urls.length > 0 && (
