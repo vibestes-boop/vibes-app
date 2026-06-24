@@ -105,6 +105,7 @@ function ProductCard({ product, onPress, colors }: {
   // Bilder-Count: cover_url + image_urls zusammen (1 + n)
   const imageCount = (product.cover_url ? 1 : 0) + (product.image_urls?.length ?? 0);
 
+  const isPreorder    = product.sale_mode === 'preorder';
   // Sale-State: aktueller Preis = sale_price wenn gesetzt; price_coins wird Vorpreis
   const hasSale       = product.sale_price_coins != null && product.sale_price_coins < product.price_coins;
   const currentPrice  = hasSale ? product.sale_price_coins! : product.price_coins;
@@ -152,15 +153,22 @@ function ProductCard({ product, onPress, colors }: {
           </View>
         )}
 
-        {/* Sale-Badge oben links (höchste Priorität) */}
-        {hasSale && (
+        {/* Vorbestellung-Badge oben links (höchste Priorität) */}
+        {isPreorder && (
+          <View style={[card.saleBadge, { backgroundColor: 'rgba(217,119,6,0.92)' }]}>
+            <Text style={card.saleBadgeText}>Vorbestellung</Text>
+          </View>
+        )}
+
+        {/* Sale-Badge oben links */}
+        {hasSale && !isPreorder && (
           <View style={card.saleBadge}>
             <Text style={card.saleBadgeText}>-{salePercent}%</Text>
           </View>
         )}
 
         {/* „NEU"-Badge oben links (wenn kein Sale) */}
-        {isNew && (
+        {isNew && !isPreorder && (
           <View style={card.newBadge}>
             <Sparkles size={10} color="#fff" strokeWidth={2.5} fill="#fff" />
             <Text style={card.newBadgeText}>NEU</Text>
@@ -248,29 +256,36 @@ function ProductCard({ product, onPress, colors }: {
           </View>
         )}
 
-        {/* Preis-Zeile: aktueller Preis (+ durchgestrichener Vorpreis bei Sale) + Sold-Pill */}
+        {/* Preis-Zeile: aktueller Preis (+ durchgestrichener Vorpreis bei Sale) + Sold-Pill.
+            Bei Vorbestellung: kein Coin-Preis (zahlbar bei Lieferung). */}
         <View style={card.footer}>
-          <View style={card.priceCol}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-              <CoinIcon size={13} />
-              <Text style={[card.price, { color: hasSale ? '#EF4444' : colors.text.primary }]}>
-                {currentPrice.toLocaleString('de-DE')}
-              </Text>
-            </View>
-            {hasSale && (
-              <Text style={[card.priceOld, { color: colors.text.muted }]}>
-                {product.price_coins.toLocaleString('de-DE')}
-              </Text>
-            )}
-          </View>
-          {product.sold_count > 0 && (
-            <View style={[card.soldPill, { backgroundColor: colors.bg.primary }]}>
-              <Text style={[card.sold, { color: colors.text.muted }]}>
-                {product.sold_count >= 1000
-                  ? `${(product.sold_count / 1000).toFixed(1)}K`
-                  : product.sold_count}× verkauft
-              </Text>
-            </View>
+          {isPreorder ? (
+            <Text style={[card.price, { color: '#B45309' }]}>Vormerken</Text>
+          ) : (
+            <>
+              <View style={card.priceCol}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                  <CoinIcon size={13} />
+                  <Text style={[card.price, { color: hasSale ? '#EF4444' : colors.text.primary }]}>
+                    {currentPrice.toLocaleString('de-DE')}
+                  </Text>
+                </View>
+                {hasSale && (
+                  <Text style={[card.priceOld, { color: colors.text.muted }]}>
+                    {product.price_coins.toLocaleString('de-DE')}
+                  </Text>
+                )}
+              </View>
+              {product.sold_count > 0 && (
+                <View style={[card.soldPill, { backgroundColor: colors.bg.primary }]}>
+                  <Text style={[card.sold, { color: colors.text.muted }]}>
+                    {product.sold_count >= 1000
+                      ? `${(product.sold_count / 1000).toFixed(1)}K`
+                      : product.sold_count}× verkauft
+                  </Text>
+                </View>
+              )}
+            </>
           )}
         </View>
       </View>

@@ -49,6 +49,9 @@ export interface Product {
   created_at:  string;
   avg_rating:   number | null; // Durchschnitt aus product_reviews
   review_count: number;        // Anzahl Bewertungen
+  // v1.x — Verkaufsart: 'coins' = Coin-Kauf (Standard) · 'preorder' =
+  // Sammelbestellung (kein Geld, „Vormerken") · 'cash' = echtes Geld (Phase 1).
+  sale_mode?: 'coins' | 'preorder' | 'cash';
   // Joined vom get_shop_products RPC
   seller_username?: string;
   seller_avatar?:   string;
@@ -249,6 +252,46 @@ export function useBuyProduct() {
   }, [qc]);
 
   return { buyProduct, isBuying };
+}
+
+// ─── Vorbestellung: Interesse vormerken (kein Geld) ──────────────────────────
+
+export type InterestError =
+  | 'not_authenticated' | 'product_not_found' | 'product_inactive'
+  | 'not_preorder' | 'cannot_preorder_own' | 'network_error';
+
+export type InterestResult =
+  | { success: true }
+  | { success: false; error: InterestError };
+
+export function useExpressInterest() {
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const qc = useQueryClient();
+
+  const expressInterest = useCallback(async (
+    productId: string,
+    quantity = 1,
+    note?: string,
+  ): Promise<InterestResult> => {
+    setIsSubmitting(true);
+    try {
+      const { data, error } = await supabase.rpc('express_product_interest', {
+        p_product_id: productId,
+        p_quantity:   Math.max(1, Math.min(Math.round(quantity) || 1, 999)),
+        p_note:       note?.trim() || null,
+      });
+      if (error || !data) return { success: false, error: 'network_error' };
+      if (!data.success) return { success: false, error: (data.error ?? 'network_error') as InterestError };
+      await qc.invalidateQueries({ queryKey: ['shop-products'] });
+      return { success: true };
+    } catch {
+      return { success: false, error: 'network_error' };
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [qc]);
+
+  return { expressInterest, isSubmitting };
 }
 
 // ─── Bestellungen laden ───────────────────────────────────────────────────────

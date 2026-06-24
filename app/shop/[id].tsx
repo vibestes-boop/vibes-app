@@ -22,7 +22,7 @@ import { supabase } from '@/lib/supabase';
 import { useCoinsWallet } from '@/lib/useGifts';
 import { useOrCreateConversation,useSendMessage } from '@/lib/useMessages';
 import { useProductReviews } from '@/lib/useProductReviews';
-import { REPORT_REASONS,useBuyProduct,useReportProduct,useSavedProduct,useShopProducts,type Product,type ProductCategory,type ReportReason } from '@/lib/useShop';
+import { REPORT_REASONS,useBuyProduct,useExpressInterest,useReportProduct,useSavedProduct,useShopProducts,type Product,type ProductCategory,type ReportReason } from '@/lib/useShop';
 import { useTheme } from '@/lib/useTheme';
 import { useQuery } from '@tanstack/react-query';
 import * as Clipboard from 'expo-clipboard';
@@ -93,6 +93,15 @@ const BUY_ERRORS: Record<string, string> = {
   product_not_found:  'Das Produkt ist leider weg 🙈',
   out_of_stock:       'Ausverkauft — war wohl beliebt 🔥',
   network_error:      'Kurz die Verbindung verloren — nochmal versuchen? 🙂',
+};
+
+const PREORDER_ERRORS: Record<string, string> = {
+  not_authenticated:   'Bitte zuerst einloggen 🙂',
+  product_not_found:   'Das Produkt ist leider weg 🙈',
+  product_inactive:    'Das Produkt ist gerade nicht verfügbar.',
+  not_preorder:        'Dieses Produkt ist keine Vorbestellung.',
+  cannot_preorder_own: 'Das ist dein eigenes Produkt 😄',
+  network_error:       'Kurz die Verbindung verloren — nochmal versuchen? 🙂',
 };
 
 // ─── v1.26.3: Effektiver Preis = Angebot falls gesetzt, sonst Original ───────
@@ -661,6 +670,7 @@ export default function ProductDetailScreen() {
 
   const { coins, refetch: refetchCoins }         = useCoinsWallet();
   const { buyProduct, isBuying }                  = useBuyProduct();
+  const { expressInterest, isSubmitting: isPreordering } = useExpressInterest();
   const { saved, toggle: toggleSave }             = useSavedProduct(id ?? '');
   const { report, isReporting }                   = useReportProduct();
   const { data: reviews = [] }                    = useProductReviews(id ?? null);
@@ -680,6 +690,7 @@ export default function ProductDetailScreen() {
   const [reportReason,   setReportReason]   = useState<ReportReason | null>(null);
   const [buyResult,      setBuyResult]      = useState<'success' | 'error' | null>(null);
   const [resultMsg,      setResultMsg]      = useState('');
+  const [preorderDone,   setPreorderDone]   = useState(false);
   // v1.26.4: Carousel-Index wird im Screen gehalten, damit der Thumbnail-Strip
   // tappable ist + programmatisch zum Bild gescrollt werden kann.
   const [activeImgIdx, setActiveImgIdx] = useState(0);
@@ -692,13 +703,15 @@ export default function ProductDetailScreen() {
   // = unbegrenzt). Wird unten in buyProduct(… , quantity) eingesetzt.
   const [quantity, setQuantity] = useState(1);
 
+  const isPreorder   = product?.sale_mode === 'preorder';
   const effPrice     = product ? effectivePrice(product) : 0;
   const percentOff   = product ? salePercent(product) : null;
   const totalCost    = effPrice * quantity;
   const canAfford    = product ? coins >= totalCost : false;
-  const isOutOfStock = product ? product.stock === 0 : false;
+  const isOutOfStock = product ? (!isPreorder && product.stock === 0) : false;
   const isLowStock   = product ? product.stock !== -1 && product.stock > 0 && product.stock <= 5 : false;
-  const maxQty       = product ? (product.stock === -1 ? 99 : Math.max(1, product.stock)) : 1;
+  // Vorbestellung: Menge frei wählbar (1–99), unabhängig vom Stock.
+  const maxQty       = product ? (isPreorder ? 99 : (product.stock === -1 ? 99 : Math.max(1, product.stock))) : 1;
   const catMeta      = product ? CAT_META[product.category] : null;
   const images = product ? [
     ...(product.cover_url  ? [product.cover_url]    : []),
@@ -758,6 +771,25 @@ export default function ProductDetailScreen() {
     }
   }, [product, buyProduct, refetchCoins, router, quantity]);
 
+  // Vorbestellung: Interesse vormerken (kein Geld, kein Confirm-Modal).
+  const handleVormerken = useCallback(async () => {
+    if (!product) return;
+    impactAsync(ImpactFeedbackStyle.Medium);
+    const result = await expressInterest(product.id, quantity);
+    if (result.success) {
+      await notificationAsync(NotificationFeedbackType.Success);
+      setPreorderDone(true);
+      setBuyResult('success');
+      setResultMsg('🤎 Vorgemerkt — der Verkäufer meldet sich!');
+      setTimeout(() => setBuyResult(null), 2500);
+    } else {
+      await notificationAsync(NotificationFeedbackType.Error);
+      setBuyResult('error');
+      setResultMsg(PREORDER_ERRORS[result.error] ?? 'Fehler.');
+      setTimeout(() => setBuyResult(null), 2500);
+    }
+  }, [product, expressInterest, quantity]);
+
   if (isLoading) {
     return <View style={[s.root, s.center, { backgroundColor: colors.bg.secondary }]}><ActivityIndicator color={colors.text.primary} size="large" /></View>;
   }
@@ -774,7 +806,7 @@ export default function ProductDetailScreen() {
 
   // Qty-Stepper-Zeile wird nur gerendert wenn maxQty > 1 und stock != 0 —
   // reservier entsprechend Scroll-Padding, damit Sticky-Bar nichts verdeckt.
-  const hasQtyRow = product.stock !== 0 && maxQty > 1;
+  const hasQtyRow = isPreorder || (product.stock !== 0 && maxQty > 1);
   const buyBarH   = Math.max(insets.bottom, 14) + 80 + (hasQtyRow ? 52 : 0);
 
   // v1.26.6: Short-Video-Look — komplette Detailseite auf weißem Untergrund
@@ -879,18 +911,25 @@ export default function ProductDetailScreen() {
           )}
         </View>
 
-        {/* 3. Preis (monochrom): Coin + Preis + durchgestrichener Alt-Preis + −% */}
+        {/* 3. Preis (monochrom): Coin + Preis + durchgestrichener Alt-Preis + −%.
+            Bei Vorbestellung: kein Coin-Preis (zahlbar bei Lieferung). */}
         <View style={s.priceSection}>
-          <View style={s.priceRow2}>
-            <CoinIcon size={18} />
-            <Text style={[s.priceNow, { color: colors.text.primary }]}>{effPrice.toLocaleString('de-DE')}</Text>
-            {percentOff != null && (
-              <>
-                <Text style={[s.priceOld, { color: colors.text.muted }]}>{product.price_coins.toLocaleString('de-DE')}</Text>
-                <Text style={[s.priceOff, { color: colors.text.muted }]}>−{percentOff} %</Text>
-              </>
-            )}
-          </View>
+          {isPreorder ? (
+            <Text style={[s.priceNow, { color: colors.text.primary, fontSize: 17 }]}>
+              🤎 Vorbestellung · Preis siehe Beschreibung
+            </Text>
+          ) : (
+            <View style={s.priceRow2}>
+              <CoinIcon size={18} />
+              <Text style={[s.priceNow, { color: colors.text.primary }]}>{effPrice.toLocaleString('de-DE')}</Text>
+              {percentOff != null && (
+                <>
+                  <Text style={[s.priceOld, { color: colors.text.muted }]}>{product.price_coins.toLocaleString('de-DE')}</Text>
+                  <Text style={[s.priceOff, { color: colors.text.muted }]}>−{percentOff} %</Text>
+                </>
+              )}
+            </View>
+          )}
           {!!product.location && (
             <View style={s.locRow}>
               <MapPin size={12} color={colors.text.muted} strokeWidth={2} />
@@ -980,8 +1019,8 @@ export default function ProductDetailScreen() {
         backgroundColor: bgMain,
         borderTopColor: colors.border.subtle,
       }]}>
-        {/* Zeile 1: Quantity-Stepper (nur für physisch/digital mit stock > 1) */}
-        {product.stock !== 0 && maxQty > 1 && (
+        {/* Zeile 1: Quantity-Stepper (physisch/digital mit stock > 1 — oder Vorbestellung) */}
+        {hasQtyRow && (
           <View style={s.qtyRow}>
             <Text style={[s.qtyLabel, { color: colors.text.muted }]}>Menge</Text>
             <View style={[s.qtyStepper, { backgroundColor: bgAccent, borderColor: colors.border.subtle }]}>
@@ -1042,6 +1081,21 @@ export default function ProductDetailScreen() {
             />
           </Pressable>
 
+          {isPreorder ? (
+            <Pressable
+              style={[s.buyBtn, { backgroundColor: preorderDone ? bgAccent : colors.text.primary }]}
+              onPress={handleVormerken}
+              disabled={isPreordering}
+            >
+              {isPreordering ? (
+                <ActivityIndicator color={colors.bg.primary} />
+              ) : preorderDone ? (
+                <Text style={[s.buyCtaText, { color: colors.text.primary }]}>✓ Vorgemerkt</Text>
+              ) : (
+                <Text style={[s.buyCtaText, { color: colors.bg.primary }]}>Vormerken</Text>
+              )}
+            </Pressable>
+          ) : (
           <Pressable
             style={[s.buyBtn, {
               backgroundColor: isOutOfStock
@@ -1083,6 +1137,7 @@ export default function ProductDetailScreen() {
               </View>
             )}
           </Pressable>
+          )}
         </View>
       </View>
 
