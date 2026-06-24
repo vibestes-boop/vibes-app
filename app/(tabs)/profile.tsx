@@ -38,7 +38,7 @@ import {
 Bookmark,
 FileText,
 Heart,
-PlusCircle,Sparkles,
+Sparkles,
 ShoppingBag,
 Trash2
 } from 'lucide-react-native';
@@ -517,18 +517,6 @@ export default function ProfileScreen() {
               <Text style={s.emptySub}>Tipp das Lesezeichen bei einem Post — dann ist es hier.</Text>
             </View>
           )
-        }
-        ListFooterComponent={
-          activeTab === 'vibes' && posts.length > 0 ? (
-            <Pressable
-              style={s.cellAdd}
-              onPress={() => router.push('/create')}
-              accessibilityRole="button"
-              accessibilityLabel="Neuen Post erstellen"
-            >
-              <PlusCircle size={24} color="rgba(255,255,255,0.1)" strokeWidth={1.2} />
-            </Pressable>
-          ) : null
         }
       />
 
