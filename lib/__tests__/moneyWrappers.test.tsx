@@ -45,7 +45,7 @@ jest.mock('@/lib/authStore', () => ({
 jest.mock('@sentry/react-native', () => ({ captureException: jest.fn() }));
 
 import { supabase } from '@/lib/supabase';
-import { useBuyProduct } from '@/lib/useShop';
+import { useBuyProduct, useDownloadDigitalProduct } from '@/lib/useShop';
 import { useSendGift } from '@/lib/useGifts';
 
 const rpc = supabase.rpc as jest.Mock;
@@ -100,6 +100,16 @@ describe('useBuyProduct — RPC-Vertrag', () => {
 
     expect(res).toEqual({ success: false, error: 'network_error' });
   });
+
+  it('reicht alle bekannten Server-Fehlercodes durch (Drift-Guard)', async () => {
+    const { result } = renderHook(() => useBuyProduct(), { wrapper });
+    for (const code of ['out_of_stock', 'cannot_buy_own', 'no_wallet', 'product_not_found'] as const) {
+      rpc.mockResolvedValueOnce({ data: { error: code }, error: null });
+      let res: unknown;
+      await act(async () => { res = await result.current.buyProduct('prod-1'); });
+      expect(res).toEqual({ success: false, error: code });
+    }
+  });
 });
 
 // -----------------------------------------------------------------------------
@@ -121,5 +131,31 @@ describe('useSendGift — RPC-Vertrag', () => {
       p_live_session_id: 'session-3',
       p_gift_id: 'gift-rose',
     });
+  });
+});
+
+// -----------------------------------------------------------------------------
+// useDownloadDigitalProduct → RPC generate_download_url (digitale Lieferung)
+// -----------------------------------------------------------------------------
+describe('useDownloadDigitalProduct — RPC-Vertrag', () => {
+  it('ruft generate_download_url mit p_order_id + reicht Server-Fehler durch', async () => {
+    rpc.mockResolvedValue({ data: { error: 'not_purchased' }, error: null });
+    const { result } = renderHook(() => useDownloadDigitalProduct(), { wrapper });
+
+    let res: unknown;
+    await act(async () => { res = await result.current.download('order-7'); });
+
+    expect(rpc).toHaveBeenCalledWith('generate_download_url', { p_order_id: 'order-7' });
+    expect(res).toEqual({ error: 'not_purchased' });
+  });
+
+  it('mappt RPC-Fehler auf rpc_error', async () => {
+    rpc.mockResolvedValue({ data: null, error: { message: 'boom' } });
+    const { result } = renderHook(() => useDownloadDigitalProduct(), { wrapper });
+
+    let res: unknown;
+    await act(async () => { res = await result.current.download('order-7'); });
+
+    expect(res).toEqual({ error: 'rpc_error' });
   });
 });
