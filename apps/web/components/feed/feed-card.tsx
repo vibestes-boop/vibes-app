@@ -681,7 +681,18 @@ export function FeedCard({
           </div>
 
           {/* 3-Punkte-Menü — top-right */}
-          <div className="absolute right-3 top-3 z-30" ref={moreMenuRef}>
+          {/* v1.w.UI.249 — Bei Hochformat-Vollbild liegt die Karten-Oberkante
+              unter dem fixen Kopf-Cluster (Chat/Glocke/Avatar, top-3 right-3).
+              Darum den More-Button dort auf Mobile/Tablet nach unten schieben
+              (top-16), ab xl wieder top-3. Querformat ist ohnehin zentriert →
+              keine Kollision → bleibt top-3. */}
+          <div
+            className={cn(
+              'absolute right-3 z-30',
+              isWiderThanPortrait ? 'top-3' : 'top-16 xl:top-3',
+            )}
+            ref={moreMenuRef}
+          >
             <button
               type="button"
               onClick={(e) => {

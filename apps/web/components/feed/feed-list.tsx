@@ -521,7 +521,11 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header, f
               //   format-Posts kaum sichtbar weil Article fast volle Höhe
               //   ausfüllt — py-4 macht es deutlich. Section-Höhe bleibt 100dvh,
               //   Content-Area ist 100dvh - 32px.
-              className="flex h-full max-h-[100dvh] w-full snap-start items-center justify-center overflow-hidden py-4"
+              // v1.w.UI.249 — Auf Mobile (< md) extra Bottom-Padding, damit das
+              //   Media-Ende (Caption + Abspielbalken + Rail) NICHT hinter der
+              //   fixed MobileBottomNav (h-14 + Safe-Area) verschwindet. Ab md
+              //   ist die Nav weg (md:hidden) → zurück auf py-4.
+              className="flex h-full max-h-[100dvh] w-full snap-start items-center justify-center overflow-hidden pt-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:py-4"
             >
               {row.kind === 'post' ? (
                 shouldMountInteractiveCard ? (
