@@ -6,6 +6,7 @@
 import { useAuthStore } from '@/lib/authStore';
 import { supabase } from '@/lib/supabase';
 import { fmtNum,useCreatorEarnings } from '@/lib/useAnalytics';
+import { MIN_PAYOUT_DIAMONDS as MIN_PAYOUT, formatPayoutEuro as fmtEuro, payoutEuroAmount, isPayoutEligible } from '@/lib/payout';
 import { useTheme } from '@/lib/useTheme';
 import { impactAsync,ImpactFeedbackStyle,notificationAsync,NotificationFeedbackType } from 'expo-haptics';
 import { useRouter } from 'expo-router';
@@ -21,9 +22,7 @@ View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const MIN_PAYOUT = 2500;
-const RATE       = 0.02; // 1 Punkt = 2 Cent
-const fmtEuro = (points: number) => (points * RATE).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+// Auszahlungs-Mathe (RATE 0.02, Min 2500) lebt jetzt getestet in lib/payout.ts.
 
 export default function PayoutRequestScreen() {
   const insets   = useSafeAreaInsets();
@@ -34,8 +33,7 @@ export default function PayoutRequestScreen() {
 
   const { data: ea } = useCreatorEarnings(userId, 28);
   const balance   = ea?.diamonds_balance ?? 0;
-  const euroAmount = (balance * RATE).toFixed(2);
-  const eligible  = balance >= MIN_PAYOUT;
+  const eligible  = isPayoutEligible(balance);
 
   const [method,    setMethod]    = useState<'iban' | 'paypal'>('iban');
   const [iban,      setIban]      = useState('');
@@ -57,7 +55,7 @@ export default function PayoutRequestScreen() {
       .insert({
         creator_id:      userId,
         diamonds_amount: balance,
-        euro_amount:     parseFloat(euroAmount),
+        euro_amount:     payoutEuroAmount(balance),
         iban:            method === 'iban'   ? iban.trim().toUpperCase()   : null,
         paypal_email:    method === 'paypal' ? paypal.trim().toLowerCase() : null,
         note:            note.trim() || null,
