@@ -1,12 +1,12 @@
-# Handoff — Serlo/Vibes (Stand 22. Juni 2026)
+# Handoff — Serlo/Vibes (Stand 24. Juni 2026)
 
-> 📍 **Dieses Dokument: `/Users/zaurhatuev/vibes-app/handoff.md`**
+> 📍 **Dieses Dokument: `/Users/zaurhatuev/vibes-app/handoff.md`** (= `HANDOFF.md`, APFS case-insensitive).
 > Arbeite NUR in diesem Repo: **`/Users/zaurhatuev/vibes-app`** (Branch `main`).
-> ⚠️ NICHT verwechseln mit der Quarantäne-Kopie `/Users/zaurhatuev/Desktop/vibes-app/handoff.md` — die NIEMALS lesen/bauen/pushen.
+> ⚠️ NICHT verwechseln mit der Quarantäne-Kopie `/Users/zaurhatuev/Desktop/vibes-app` — die NIEMALS lesen/bauen/pushen.
 >
 > Übergabe für den Wechsel in einen neuen Chat. **Vollständig.** Gedächtnis-Dateien
 > (`~/.claude/.../memory/`) laden automatisch — dieses Doku ergänzt sie mit Session-Detail.
-> (Ersetzt den Handoff vom 2026-06-20.)
+> (Ersetzt den Handoff vom 2026-06-22/23.)
 
 ---
 
@@ -14,272 +14,216 @@
 
 | Bereich | Stand |
 |---|---|
-| **Repo / Branch** | `/Users/zaurhatuev/vibes-app` · `main` (Push-Remote: `vibestes-boop/vibes-app`) |
-| **Letzter Commit** | `219d3b7` (gepusht) — Highlight im Viewer löschen |
-| **Aktueller Build** | **v1.30.0 / iOS-Build 286 (versionCode 47)** — vom User gebaut + submitted, **auf Gerät (TestFlight)**, **Google-Login bestätigt funktionierend** ✅. Gebaut aus Commit `a07b9df` → enthält ALLE UI-Politur + Google-an. App-Store-Release-Status: beim User. |
-| **Runtime jetzt 1.30.0** | OTAs zielen ab `a07b9df` auf **Runtime 1.30.0** → erreichen Build 286. Build 285 (1.29.0) ist eingefroren. Letzte 1.29.0-OTA war `41f06c12` (vor dem Bump). Refactors nach `a07b9df` (Simplify Tier 1) sind verhaltensneutral, noch nicht ge-OTA't — kommen mit dem nächsten Build/OTA. |
-| **NEU nativ in 1.30.0** | `expo-web-browser` (Google-Login). (1.29.0 hatte `react-native-view-shot` neu.) |
+| **Repo / Branch** | `/Users/zaurhatuev/vibes-app` · `main` · Working Tree **sauber** |
+| **Letzter Commit** | `7c4081b` — Geld-Tests (buy_product-Fehlercodes + generate_download_url-Vertrag) |
+| **Push-Stand** | ⚠️ Lokaler `origin/main`-**Tracking-Ref** steht auf `0242e63` (alt). **PAT-Pushes über die Ephemeral-URL aktualisieren diesen Ref NICHT** → der Tracking-Ref ist KEIN verlässlicher Indikator. Echten Stand per `git fetch origin && git log --oneline origin/main` prüfen; im Zweifel via PAT erneut pushen (§2). Die Geld-Test-Commits galten vor dieser Session als gepusht. |
+| **Aktueller Build** | **v1.30.0 / iOS-Build 286 (versionCode 47)** — auf Gerät (TestFlight), **Google-Login bestätigt funktionierend** ✅. App-Store-Release: beim User. |
+| **Runtime 1.30.0** | OTAs zielen auf **Runtime 1.30.0** → Build 286. Diese Session = **reines JS + Tests** → komplett OTA-fähig, **kein neuer Build nötig**. |
 | **Web (apps/web)** | deployt via **Vercel** auf Push zu `main` (`serlo-web.vercel.app`) |
-| **DB-Migrationen** | 4 dieser Session **angewandt** (§3) — zuletzt `followers_only` |
+| **DB-Migrationen** | **KEINE neuen** in dieser Session (24.6.). Zuletzt angewandt: `20260621140000_live_followers_only_audience.sql` (§3). |
+| **Tests** | **8 Suites grün** (`lib/__tests__/`): payout · moneyWrappers · creditCoins · gifts · liveFormat · liveModerationRpc · liveModerationWords · videoFastStart. `npm test` (jest-expo). |
 | **EAS project id** | `02ab536a-5836-4560-a5ec-2dfd6e059f90` · **iOS bundle** `com.vibesapp.vibes` · EAS-Account `zaurhat` |
-| **GERADE IN ARBEIT** | **SerloLoader-Lade-Animation** (§1d) — auf **Profil** live, **Rollout auf Shop/Guild/Feed offen**. Highlights (Cover/Durability/Löschen) erledigt. |
+| **GERADE IN ARBEIT** | Nichts mitten drin — Session sauber abgeschlossen. |
+| **🔴 NEU GEMELDET (ungelöst)** | **Web-Bug auf `serlo-web.vercel.app` am Handy**: (1) UI-Fehler in der mobilen Ansicht, (2) „Mit Google weiter" schlägt fehl → Supabase-Callback (`llymwqfgujwkoxzqxrlm.supabase.co`) liefert **„upstream request timeout"** + lädt `authorize.txt` (24 B) herunter statt zu redirecten. **Vom User als Info gemeldet, KEIN Fix beauftragt.** Diagnose-Leads in §5. |
 
 ⚠️ **Quarantäne:** Alter Checkout `/Users/zaurhatuev/Desktop/vibes-app` — NIEMALS bauen/deployen/pushen.
 
 ---
 
-## 1. Was diese Session gebaut wurde (Create-Flow + Live, alles 1.29.0)
+## 1. NEU diese Session (24. Juni 2026) — UI-Konsistenz, Wärme, Geld-Tests
 
-### A) Web: ShareButtons Hydration-Fix
-- `apps/web/components/share/share-buttons.tsx`: absolute URL aus `NEXT_PUBLIC_SITE_URL` statt `window.origin` (war Hydration-Mismatch + relative/kaputte Share-Links). Commit `2597496`.
+> Alles **JS-only oder reine Tests** → via OTA (Runtime 1.30.0) auslieferbar, kein Build.
+> tsc-Baseline durchgehend = **2 vorbestehende Fehler** (`rose`-Farbe in explore/guild-Styles, harmlos) — alles darüber wäre neu.
 
-### B) Kommentar-System-Überarbeitung (Mobile, OTA)
-- `lib/useComments.ts` nutzt jetzt die RPC **`get_post_comments_web`** (1 Query: Text + like_count + liked_by_me + reply_count + Author) statt 1+2+N. N+1-Like-Sturm weg (`useToggleCommentLike`-Cache-Mutation). `lib/useCommentLike.ts` bekam `enabled`-Flag.
-- `components/ui/CommentsSheet.tsx`: reply_count-Gate (kein „Antworten anzeigen" ohne Antworten), Light-Mode-Farben gefixt (war weiß-auf-weiß), Reply-isOwn-Fix, Reply sofort sichtbar/löschbar (Expand-State nach SheetInner geliftet, reply_count optimistisch), Like als rechte Spalte, neueste-zuerst, **Sort-Header** (Neueste/Top/Von Creator) mit Anzahl.
-- **Migration** `20260621130000_fix_comments_insert_policy_spoofing.sql` ✅ (doppelte permissive INSERT-Policy zusammengeführt — schloss Impersonation + allow_comments-Umgehung).
+### A) Einstellungen aufgeräumt (`c83b5b3`)
+- `app/settings.tsx`: konsistente Icons, klarere Gruppierung, kompakteres Layout. Wurde **Flaggschiff** für die app-weite Icon-Sprache (siehe C).
 
-### C) Create-Flow (Editor + Kamera) — alles OTA außer view-shot
-- **Toolbar-Konsistenz + Icon-Fixes** (`app/create/camera.tsx` + `app/create/index.tsx`): Capture-Toolbar an Editor-Look angeglichen (Icon+Label); Editor-Icons gefixt (Drehen=RotateCw, Anpassen=SlidersHorizontal, Filter=Palette).
-- **Bild-Crop FREI** (`components/create/editor/CropSheet.tsx`): ziehbarer + größenveränderbarer Rahmen (Move + 4 Eck-Griffe), Aspect-Presets, pixel-genau via **Skia-Offscreen** (`Skia.Surface.MakeOffscreen` + `drawImageRect`).
-- **Cover/Thumbnail-Picker** (`components/create/editor/CoverPickerSheet.tsx`): Video-Startbild aus Filmstrip wählen → `generateAndUploadThumbnail(…, timeMs)`.
-- **Editor-Swipe-Fix**: `/create/index` von `presentation:'modal'` → **`'card'`** (`src/_layout.full.tsx`) — modal-Swipe-down kollidierte mit Sticker/Text-Ziehen. ⚠️ `fullScreenModal` hatte die Buttons tot gemacht → NICHT nehmen.
-- **Filter + Drehen/Spiegeln werden ins Bild gebrannt** (`lib/bakeImageEdits.ts`): vor Upload via Skia-Offscreen (Filter-Matrix wie Vorschau + Rotation). **WICHTIG-Fund:** imperatives `canvas.drawImage` wendet ColorFilter NICHT an → **`drawImageRect`** nutzen (wie Crop). Defensiv mit Fallback aufs Rohbild.
-- **Kamera TikTok-clean** (`camera.tsx`): Button-Umrandungen/Glasmorphism/Lila-Gradient raus, transparenter Bottom-Bereich.
-- **Entfernt (wie „Zeichnen"):** „Zeichnen"-Button + **„Effekte"-Button** (AR-Kamera via vision-camera — sprang auf Frontkamera, eigene UI, Live-Filter kaputt). Code bleibt dormant.
+### B) Fonts entfettet (`12975a7`)
+- Creator- + Shop-Screens: `fontWeight 900→700` und `800→600` für Konsistenz mit dem leichteren Shop-Look (Fortsetzung der „Entfetten"-Linie aus v1.26.7). System-Font rendert die reduzierten Gewichte nativ.
 
-### D) view-shot Compositing + TEXT-Modus (nativ, in 1.29.0)
-- `react-native-view-shot` installiert. `app/create/index.tsx`: Editor-Vorschau in `<ViewShot>`; beim Posten eines Bildes **mit Overlays** → `capture()` → MP4… nein, **Bild** mit Text/Sticker drin (Hybrid: während Capture Skia→normales Bild getauscht, Filter vorab gebacken). **Kritischer Fix:** view-shot liefert Pfad **ohne `file://`** → ergänzen, sonst „Invalid URL" beim Upload.
-- **TEXT-Modus** (`camera.tsx`): TEXT-Tab, Composer (Einzelfarben **+ Gradient-Kreis**, Schrift-Stile Klassisch/Serif/Neon/Mono, Ausrichtung), Tastatur schließen (Hintergrund/„Fertig"), Swatches über Tastatur, **„Deine Story" + „Weiter"**-Buttons. „Deine Story" → `create-story.tsx` (nimmt jetzt `mediaUri`-Param).
-- **Status:** Vom User getestet → Foto+Text/Sticker posten ✅, Text-Post ✅, Filter ✅. **Bekannte Grenze:** animierte Sticker werden im Foto-Post statisch (Standbild).
+### C) Icon-Sprache app-weit etabliert (`1624061`, `b3efc7f`, `5d3da13`) → Memory `vibes-icon-language`
+- **Regel (jetzt verbindlich):** Lead-Icons **monochrom** (`colors.text.primary`), **OHNE Box/Chip**, ~18px, **kein Emoji als Icon**. Akzentfarbe NUR für destruktiv (rot) oder Marke (lila).
+- **Flaggschiff** `settings.tsx` (`1624061`) → Rollout auf **Long-Press-Sheet + Profil-Menü** (`b3efc7f`) und **Tools- + Post-Optionen-Sheets** (`5d3da13`).
+- **Offen:** weitere Sheets/Screens nach demselben Muster nachziehen (Rollout nicht abgeschlossen, aber Muster steht).
 
-### E) Live-Einstellungen (`app/live/start.tsx`)
-- **Cover aus Galerie** (zusätzlich zu „Mit KI"): Picker → `uploadPostMedia` → `thumbnail_url`. Mit Lade-Spinner.
-- **Kategorie/Thema-Chips** (Talk/Musik/Gaming/…) → `live_sessions.category` (Spalte existierte schon, `startSession` nimmt `category` durch). Scheduled-Lives noch ohne category.
-- **KI-Cover-Fehlermeldung** (`lib/useGenerateImage.ts`): liest jetzt `error.context.json()` (RN-Response) statt `.body` → echte Ursache sichtbar statt „non-2xx". **Eigentlicher KI-Fix = Config:** `OPENAI_API_KEY` in Supabase-Secrets + OpenAI-Billing (User-Aktion). KI-Bilder kosten Geld/Bild (Limit 3/Tag,10/Woche) — Galerie ist gratis & Default.
+### D) Light-Mode-Kontrast-Fixes (`9329c47`, `a2d12bb`) → Memory `vibes-lightmode-contrast-bug`
+- `9329c47`: unsichtbare **Weiß-auf-Weiß**-Elemente in **Messages** + **Follow-Liste** gefixt.
+- `a2d12bb`: **Read-Ticks** im Chat auf der eigenen (blauen) Bubble lesbar gemacht.
+- Bekanntes wiederkehrendes Muster: hartes `#FFFFFF`/`rgba(255,255,255)` auf theme-adaptiven Flächen → im Light-Mode unsichtbar. Fix immer via `colors.*`.
 
-### Sicherheits-Fixes (App-Store-Vorbereitung, früher in der Session)
-- `20260621120000_drop_debug_coin_backdoors.sql` ✅ (kritisch: `add_test_coins` war für `authenticated` offen → Coins minten).
-- `20260621121000_harden_notifications_insert.sql` ✅ (notif-INSERT auf `sender_id=auth.uid()`).
-- Debug-Screen `app/debug-gifts.tsx` gelöscht, 7-Tap-Debug-Gesten in settings entfernt.
+### E) Design-Gesetz „Tiefs wärmer machen" — 3 Batches (`389fe28`, `9b9157e`, `fb7ab51`)
+- Umsetzung des CLAUDE.md-Design-Gesetzes #2 (kalte Fehler/Empty-States → warm + handlungsleitend + 1 Emoji):
+  - **Batch 1** (`389fe28`): allgemeine kalte Fehler-/Empty-States.
+  - **Batch 2** (`9b9157e`): **Auth- + Coin-Fehler** (z. B. „Nicht genug Coins" → warme, verkaufsleitende Variante).
+  - **Batch 3** (`fb7ab51`): **Live-Host- + Creator-Fehler**.
+- Klarheit (was tun?) bleibt Pflicht; Geld-/kritische Texte warm aber nie flapsig-unklar.
 
----
+### F) Profil: leere „Post hinzufügen"-Footer-Kachel entfernt (`084d2a9`)
+- `app/(tabs)/profile.tsx`: die leere Platzhalter-Kachel am Ende des Post-Grids raus (sah aus wie ein Bug/toter Slot).
 
-## 1b. Früher in diesem Verlauf (vor dem Create-Flow — wichtig fürs Release)
-
-### App-Store-Einreichung (war für 1.28.0 vorbereitet → gilt jetzt für 1.29.0)
-Der User war kurz vor dem Einreichen von 1.28.0, hat dann aber den neuen Build (1.29.0) gemacht. **Diese ASC-Felder sind bereits gesetzt** und gelten weiter:
-- **Account-Löschung**: existiert in der App (Apple-Pflicht erfüllt).
-- **Datenschutz-Nutzungslabels**: ausgefüllt (Fotos/Videos, Benutzer-ID/Identifikatoren, Diagnose-/Crash-/Nutzungsdaten — je nach Zweck verlinkt).
-- **Altersfreigabe**: auf **16+** gesetzt (vorher 13).
-- **Demo-Account**: angelegt + getestet (E-Mail-Login war kaputt → Account **direkt in Supabase Auth mit Auto-Confirm** erstellt). **Review-Notes + Demo-Login in ASC eingetragen.**
-- **Support-URL**: `https://serlo-web.vercel.app/support` (Seite existiert: `apps/web/app/support/page.tsx`, `SUPPORT_EMAIL = brandwerkx@gmail.com`).
-- **Beschreibung** gefixt.
-- **OFFEN beim Einreichen**: **Export-Compliance** (Antwort: nutzt Verschlüsselung → Standard-HTTPS-Ausnahme → „Ja, qualifiziert für Ausnahme") → dann **„Zur Prüfung hinzufügen"**.
-- ⚠️ **Beim Einreichen von 1.29.0**: neue Version 1.29.0 in ASC anlegen, **Build 285** zuweisen, Export-Compliance, einreichen.
-
-### Serlo-Coin-Umbenennung — ERLEDIGT (nicht mehr „Borz")
-- Coin heißt jetzt offiziell **„Serlo Coin"** (vorher „Borz Coin"). **„Diamanten" → „Einnahmen"** mit **€ im Vordergrund** (User-Wahl). Docs + `CLAUDE.md` aktualisiert.
-- **Asset**: `assets/serlo-coin.png` + `apps/web/public/serlo-coin.png` (512×512, transparent). Shared-Komponenten: `components/ui/CoinIcon.tsx` (Mobile) + `apps/web/components/ui/coin-icon.tsx` (Web) — überall statt 🪙.
-- Web-Coin-Shop „premium" gemacht (Hero-Coin, größere Münzen).
-
-### Web-Fixes (Vercel, alle deployed)
-- **Post-Detailseite Medien zu groß** (`apps/web/app/p/[postId]/page.tsx`): `mediaMaxW` (`max-w-[400px]` portrait / `max-w-[520px]` square) auf Bild-Container + VideoPlayer.
-- **JSON-LD XSS-Schutz** (`apps/web/lib/seo/json-ld.ts`): `safeJsonLd()` escaped `<>&`.
-- **ShareButtons-Hydration** (siehe §1 A).
-- **Support-Seite** `/support` (siehe oben), überall verlinkt.
-- Markennamen (TikTok/Instagram) in Code-Kommentaren neutralisiert (Plagiat-/Penalty-Vorsorge).
-
-### Voll-Sicherheitsanalyse (App+Web+Backend) — Ergebnis: sicher
-- RLS-Abdeckung ~133 Tabellen aktiviert; Geld-RPCs nutzen `auth.uid()`+SECURITY DEFINER+FOR UPDATE; DMs participant-only; Webhooks verifizieren Signatur (Stripe) / Bearer (RevenueCat).
-- **Kritischer Fund + Fix**: `add_test_coins`/`debug_send_gift` waren für `authenticated` offen (Coins minten → Auszahlungsbetrug) → gedroppt (Migration `20260621120000`, §3). notifications-INSERT gehärtet (`20260621121000`). Debug-Screen + 7-Tap-Geste entfernt.
-
-### Domain / E-Mail (Stolperfallen)
-- **`serlo.social` + `serlo.app` sind TOT** (kein DNS/000). **Nur `serlo-web.vercel.app` lebt** (200). Alle Links + ASC-Felder darauf gezeigt. (serlo.ch geplant, wenn verfügbar.)
-- **E-Mail-Versand kaputt** (Supabase SMTP/Resend) → echte User können sich per E-Mail-Link nicht registrieren. Workaround Demo: Account direkt in Supabase Auth + Auto-Confirm. **Offen: SMTP/Resend fixen** (sonst keine E-Mail-Registrierung für echte User).
+### G) ⭐ Geld-Pfade jetzt getestet (`37bbffd`, `7c4081b`)
+- **`lib/payout.ts`** (NEU): Creator-Auszahlungs-Mathe als **pure, getestete Funktionen** aus `app/creator/payout-request.tsx` extrahiert (höchstes Finanzrisiko — echtes Geld verlässt das System). Wert-identisch zur alten Inline-Logik:
+  - `DIAMOND_RATE_EUR = 0.02` (1 Diamant = 2 Cent) · `MIN_PAYOUT_DIAMONDS = 2500` (= 50,00 €)
+  - `payoutEuroAmount(d)` = `parseFloat((d*0.02).toFixed(2))` (fängt Float-Drift ab) · `formatPayoutEuro(d)` (de-DE) · `isPayoutEligible(d)`
+- **`lib/__tests__/payout.test.ts`** (NEU, 6 Tests): Kurs (0/50/100/2500/12345), Float-Drift (7→0,14; 2501→50,02; ≤2 Nachkommastellen), Kurs-Regression-Guard (`0.02`), Eligibility-Schwellen, Locale-Format (`/50[.,]00\s*€/`).
+- **`lib/__tests__/moneyWrappers.test.tsx`** (erweitert, RPC-**Vertrags**-Tests mit chainable+thenable Supabase-Mock — fängt RPC-/Param-Namens-**Drift** ab, NICHT die SQL-Logik):
+  - `useBuyProduct` → ruft `buy_product` mit `{ p_product_id, p_quantity }` (Default 1), mappt `{success,order_id,new_balance}`→`{success,orderId,newBalance}`, `insufficient_coins`→`{success:false,error}`, RPC-Fehler→`network_error`, **Drift-Guard** über `out_of_stock|cannot_buy_own|no_wallet|product_not_found`.
+  - `useSendGift` → `send_gift` mit `{ p_recipient_id, p_live_session_id, p_gift_id }`.
+  - `useDownloadDigitalProduct` → `generate_download_url` mit `{ p_order_id }`, reicht `not_purchased` durch, RPC-Fehler→`rpc_error`.
+- **Warum so:** Diese Test-Klasse fängt genau die Drift-Bugs ab, die wir früher fanden (author_id/seller_id/sold_count). Echte SQL-Logik bräuchte pgTAP — bewusst nicht gemacht.
 
 ---
 
-## 1c. UI-Politur-Session (22. Juni 2026) — alle OTA, Runtime 1.29.0
+## 1b. Davor (23. Juni, nach dem 1.30.0-Build) — Loader-Rollout, Explore, Orders, Statusbar
 
-> Nach dem „Nur Follower"-Feature (§4 B) eine Reihe UI-Fixes/Redesigns auf Basis von User-Screenshots. Alle JS-only → via OTA ausgeliefert. tsc-Baseline durchgehend = 2 (rose, harmlos).
+> Alles JS → OTA-fähig auf Runtime 1.30.0. Schließt mehrere offene Punkte des alten Handoffs.
 
-### Kontrast-Bugs auf dunklen Flächen (Light-Theme-Farben auf Schwarz)
-- **„Folge ich"-Empty-State** (`components/feed/FollowingEmptyState.tsx`, Commit `c0c66cc`): Feed-Hintergrund ist immer `#000` (TikTok-Stil, `feedStyles.container`), Komponente nutzte aber `useTheme()` → im Light-Mode Titel + Explore-Button dunkel-auf-schwarz = unsichtbar. Auf **feste Hell-auf-Dunkel-Palette** (`FEED`) umgestellt, `useTheme` entfernt. **Muster-Lernen:** Komponenten, die über dem immer-schwarzen Feed liegen, dürfen keine theme-abhängigen Farben nutzen.
-- **KI-Cover-Sheet** (`components/ai/AIImageSheet.tsx` + `lib/useGenerateImage.ts`, Commit `34189ad`): `colors.accent.primary` ist **invers** (weiß im Dark-, schwarz im Light-Mode); Buttons hatten Text/Icon hart `#fff` → im Dark-Mode weiß-auf-weiß (Format-Pill + „Generieren" unsichtbar). Fix: Text/Icon auf accent.primary-Buttons = `colors.bg.primary`. Kalte „non-2xx"-Meldung → warm (Design-Gesetz), rohe Ursache als `__DEV__`-Log. **KI-Generierung selbst schlägt weiter fehl bis `OPENAI_API_KEY` gesetzt ist** (§4.2, User-Aktion) — nur die UI ist gefixt.
-
-### Creator-Tools-Sheet Redesign (`components/live/CreatorToolsSheet.tsx` + `app/live/host.tsx`, Commit `02887e2`)
-- Flaches graues 3-Spalten-Raster → **gruppierte 2-spaltige Quer-Kacheln** mit dauerhaft farbigem Icon-Chip + Status-Zeile + klarem Aktiv-Zustand (accent-Tint + Rahmen + Status). `CreatorToolItem` um `group` + `status` erweitert; host.tsx-Tools befüllt (Sektionen: Engagement/Verkaufen/Stream & Chat/Co-Host/Battle); zustandskodierte Labels zu stabilen Nomen vereinfacht. Optionaler Header-`subtitle` (Zuschauerzahl).
-
-### LIVE-Setup-Karte (`app/live/start.tsx`, Commit `a672249`, OTA `4f1f1250`)
-- „LIVE gehen" wirkte leer (Config im Zahnrad versteckt). Neu: **Setup-Karte über dem Live-Button** mit Titel · Publikum (tippt durch 🌍→👥→🌸) · Kategorie · Cover · Kommentare/Geschenke-Toggles direkt sichtbar. Umdrehen + Zahnrad nach oben rechts. Einstellungs-Sheet bleibt als „Erweitert". Toter `ToolbarBtn` + Styles raus.
-
-### Studio-Hub (`app/create/camera.tsx`, Commit `91e7570`, OTA `c9601ff4`)
-- Studio-Landing war karg + vermischte Text-Composer mit Medien-Picker (weil `captureMode='text'` über Tab-Wechsel erhalten blieb). Neu: **Hub mit zwei Karten** „Aus Galerie" (→ Editor) + „Text-Post", **Format**-Auswahl, **„Im Editor"-Leiste** (Zuschneiden/Filter/Text/Sticker/Cover — macht die vorhandene Editor-Tiefe sichtbar), **„Entwürfe fortsetzen"** → `/creator/drafts`.
-  - **Bewusst:** „Text-Post" springt in den bestehenden **Vibe-Text-Composer** (`setStudioMode('vibe')+setCaptureMode('text')`) statt ihn zu duplizieren. `handleStudioModeChange` resettet beim Studio-Wechsel ein übernommenes `text` → Hub zeigt sauber. Entwürfe-Zeile **navigiert nur** (keine Inline-Thumbnails → keine Query auf den heißen Kamera-Screen).
-  - **Design-Haltung dokumentiert:** TikTok-Feature-Parität *nicht* angestrebt (Kosten-/Scope-Falle + Edge = Community/Kultur). Studio = fokussierter Hub, der vorhandene Tiefe sichtbar macht.
-
-### Bottom-Nav TikTok-Stil (`app/(tabs)/_layout.tsx`, Commits `d452c86` + `632cd47`)
-- Plus-Button schwebte (flex-end + Lift/3D-Verlauf) → Icons nicht auf einer Höhe. Fix: `tabBarInner` `flex-end`→`flex-start`, Plus sitzt flach auf Icon-Höhe. Neue Plus-Taste: breite Taste mit Farbversatz (**Serlo Pink+Lila**, NICHT TikToks cyan/rot — Trade-Dress). `632cd47`: Mitte theme-abhängig (Dark = weiß+dunkles Plus, **Light = schwarz+weißes Plus**, sonst weiß-auf-weiß). OTAs `c282fd6a` + `882d9ec9`.
-
-### „Folge ich"-Empty-State Layout (`components/feed/FollowingEmptyState.tsx`, Commit `8337041`, OTA `3e801814`)
-- Inhalt überlappte die absolute Feed-Kopfleiste (Toggle bei `insets.top`, 52px) → Icon-Ring verdeckt. Fix: `paddingTop = insets.top + 64`. Innere `ScrollView` (maxHeight 340, verschachtelt → nur ~2 User) raus → Karten inline, äußerer Feed-Scroll übernimmt; `s.root flex:1` entfernt.
-
-### ✅ Google-Login LIVE (vorbereitet `10c4a41` → aktiviert `a07b9df`, in Build 286)
-- **Funktioniert** (vom User bestätigt). `ENABLE_GOOGLE_LOGIN=true`, Supabase Google-Provider + Web-OAuth-Client (Client-ID endet `…svd71tnoi`, hat Supabase-Callback) via Web-App schon konfiguriert, `vibes://login-callback` in Supabase-Redirect-URLs. Web-OAuth-Client genügte (kein nativer Client). Details unten waren der Vorbereitungs-Stand:
-- **Code fertig, aber AUS:** `lib/useGoogleSignIn.ts` (Supabase `signInWithOAuth('google')` + In-App-Browser `expo-web-browser`, Implicit-Flow → `setSession`). Buttons in Login + Register (geteiltes `components/ui/GoogleGlyph.tsx`).
-- **Gated hinter `ENABLE_GOOGLE_LOGIN=false`** + `expo-web-browser` lazy via `require` → OTA-sicher (kein Crash auf Build 285). `expo-web-browser` ist neue native Dep + Config-Plugin (`app.json`) → **braucht Rebuild**.
-- **Aktivierung = Dashboard-Config + Flag + Build:** Schritt-für-Schritt in **`docs/auth-setup.md`** (Resend-E-Mail-Fix + Google-Cloud-OAuth-Client + Supabase-Provider + Redirect `vibes://login-callback`). Web-OAuth-Client genügt (kein nativer iOS/Android-Client). Danach `ENABLE_GOOGLE_LOGIN=true` im Rebuild-Commit.
-- **Warum:** Aktuell Signup nur via Apple (iOS) — **Android = kein funktionierender Signup-Weg** (E-Mail kaputt). Zielgruppe stark Android → vor Launch Show-Stopper. Empfehlung: Resend (Config, kein Build) sofort; Google mit nächstem geplanten Build bündeln.
-
-### Shop-Politur (`app/shop/index.tsx`, Commits `8b017b7` + `db1d509`)
-- **Karten-Badges entfeinert:** „-99%"-Sale flacher Block → Pill mit dezenter Tiefe (Shadow, bolder); „Nur N übrig" vollbreiter neon-oranger Streifen → **dunkler Glas-Chip** unten links + Flammen-Icon; NEU-Badge analog. OTA `6434f852`.
-- **Coin-Stand im Header:** kleines Coin (15px) im umrandeten Pill → **randlos + 28px** + größere Zahl. OTA `71bad0e5`. (Coin taucht auch in Profil-Aktionsleiste auf — dort noch klein, auf Zuruf angleichbar.)
-
-### Light-Mode Kontrast-Sweep (Commits `bae917b` + `edbd3e3`)
-- Proaktiver Pass gegen das wiederkehrende **Weiß-auf-weiß**-Muster (Memory `vibes-lightmode-contrast-bug`). Avatar-Initialen-Fallbacks (User ohne Bild → unsichtbar im Light-Mode) auf theme-adaptiven Flächen gefixt → `colors.bg.subtle` + `colors.text.secondary`:
-  - **Explore** Discover-Karten + Suchergebnis-Zeilen (`ExploreUserRow`, OTA `1eaba3d3`)
-  - **Kommentar-@Mention**, **Guild-Leaderboard** (Post+Mitglied), **Profil-Avatar** (`profileStyles`), **Messages-User-Such-Modal** (OTA `41f06c12`)
-- **Bewusst unberührt:** immer-dunkle Flächen (Story-Viewer, Feed-Stories-Row, Live-/Likers-/Viewer-/Profil-Share-Sheets) — dort ist Weiß korrekt, ein „Fix" hätte sie im Light-Mode gebrochen.
-- **Regel (Memory):** Komponente mit `colors.bg.*` als Fläche → Text/Icon/Fallback auch über `colors.*`. Über dem immer-schwarzen Feed (`feedStyles.container`=#000) umgekehrt: feste Hell-auf-Dunkel-Palette. Noch offen: tieferer Audit von beliebigem weißem **Text** (nicht nur Avatare) — breiter/riskanter, daher nicht im Sweep.
-
-### OTAs dieser Session (alle Runtime 1.29.0, iOS+Android)
-- `82fe358a` — „Nur Follower"-Publikum (§4 B)
-- `7c223edb` — Folge-ich-Kontrast + KI-Cover-Buttons + Creator-Tools-Redesign
-- `4f1f1250` — LIVE-Setup-Karte
-- `c9601ff4` — Studio-Hub
-- `c282fd6a` — Bottom-Nav TikTok-Stil (Icons aligned + neue Plus-Taste)
-- `3e801814` — Folge-ich-Empty-State Layout
-- `882d9ec9` — Plus-Taste Light-Mode schwarz
-- `1eaba3d3` — Explore-Avatar-Fallback Light-Mode sichtbar
-- `6434f852` — Shop-Badges entfeinert (Sale-Pill + Glas-Chip)
-- `71bad0e5` — Shop-Coin randlos + groß
-- `41f06c12` — Light-Mode Kontrast-Sweep (Avatar-Fallbacks)
-
-### Code-Hygiene / Simplify-Pass (22.06., Commits `0a33379` `9e73406` `a723cee`)
-- **Tier 1 erledigt** (reine Refactors, kein Verhalten geändert, laufen in den 1.30.0-Build):
-  - **114 tote Dateien** entfernt: 2× `supabase/migrations.backup.<epoch>/` (~110 alte SQL-Backups, ersetzt durch `supabase/migrations/`) + 3 untracked `*.backup-20260607`-Editor-Snapshots. (`lib/visionCamera.future.ts` BLEIBT — dormant AR-Code.)
-  - `timeAgo` (3 identische) → `lib/timeAgo.ts`; `fmtNum` (3 identische) → `lib/formatNum.ts` (`useAnalytics` re-exportiert). **Abweichende Formate bewusst gelassen** (Merge hätte UI-Text geändert).
-  - `console.*`-Audit: 0 echte Treffer.
-- **⛔ Tier 2 bewusst DEFERRED — `<InitialsAvatar>`-Komponente:** ~51 Dateien haben einen eigenen Initialen-Avatar-Fallback (genau die Stelle der wiederkehrenden Light-Mode-Kontrast-Bugs). Eine geteilte Komponente = ein Ort für künftige Fixes. **NICHT vor dem 1.30.0-Release gemacht:** 51 Call-Sites mit unterschiedl. Größen/Ringen/Borders + dunkle vs. theme-adaptive Flächen → echtes Regressionsrisiko, quality-only. Plan wenn mal dran: Komponente mit `size`/`variant: 'theme'|'dark'`-Prop bauen, **batchweise** migrieren (8–10/Commit, je tsc-verifiziert), zuerst theme-adaptive High-Traffic-Screens (Profil, Messages, Likers, Guild). Tier 3 (Riesendateien splitten) bleibt tabu.
-
-### Offen / nächste Schritte (Gesamtübersicht, Stand Ende dieser Session)
-- **⭐ SerloLoader-Rollout** auf **Shop/Guild/Feed** (§1d) — Profil ist Pilot/live, die anderen zeigen noch den grauen nativen RefreshControl-Spinner.
-- **⭐ Resend-E-Mail fixen** (`docs/auth-setup.md` Schritt 1) — reine Supabase/Resend-Config, kein Build. (Google-Login ist ✅ live.)
-- **1.30.0 im App Store releasen** (Build 286) — Export-Compliance + „Zur Prüfung hinzufügen"; Demo-Account/Review-Notes lagen bereit.
-- Highlight-**Cleanup beim Löschen** (kopierte `highlights/`-Datei mitlöschen — minimaler Storage-Leak) · optional „Aus Highlight entfernen" (Einzel-Item) + „Bearbeiten" (§1d).
-- Studio-Entwürfe-Zeile mit echten Thumbnails · Creator-Tools „AN"-Pill (bewusst weggelassen) · Simplify Tier 2 (`<InitialsAvatar>`, deferred).
+- **⭐ SerloLoader-Rollout abgeschlossen** (`52cf13a`): markeneigene Lade-Animation (blauer Komet-Beam, procedural via `react-native-svg`-Gauss-Blur + Reanimated) jetzt auf **Shop, Guild, Feed** ausgerollt (war vorher nur Profil-Pilot). Muster: `refreshing={false}` (kein nativer grauer iOS-RefreshControl) + Beam im ListHeader + `bg.secondary`. **→ alter offener Punkt „SerloLoader-Rollout" ERLEDIGT.**
+- **Explore-Grid-Fix** (`16818b8`, `3c2d314`) → Memory `vibes-flashlist-numcolumns-bug`: FlashList 1.7 + `numColumns` + feste Item-Breite = einspaltig. Fix: 3-Spalten-Grid via **RN-FlatList** (wie Shop/Profil) + breiterer Discover-Pool; Suche aus Feed öffnet Tab sauber (`navigate`).
+- **Orders-Seite neugestaltet** (`0dd986c`): theme-aware, `CoinIcon`, Metrik-Karten.
+- **Status-Bar theme-aware** (`d45f819`) → Memory `vibes-statusbar-theme`: Icons waren global hart weiß (app.json `LightContent`) → im Light-Mode unsichtbar. Fix via Hook pro Screen — **jeder neue Screen muss ihn aufrufen**.
+- **Highlights**: leere Story-Vorlagen (totes Medium) aus dem Picker ausgeblendet (`e94c666`).
+- **Profil-Coin** randlos + größer 22→32px (`3cc9cb9`); Highlights-Lösch-Menü als Instagram-Style-Sheet (`76e6f60`).
 
 ---
 
-## 1d. Lade-Animation (SerloLoader) + Highlights (23. Juni, nach dem 1.30.0-Build)
+## 1c. Älterer Verlauf (22./23. Juni, kondensiert — Detail im Git + Memory)
 
-> Alles JS → per OTA auf Runtime 1.30.0 (Build 286). Davor noch **Simplify Tier 1**
-> committet (tote Migrations-Backups −114 Dateien; `timeAgo`→`lib/timeAgo.ts`,
-> `fmtNum`→`lib/formatNum.ts` dedupliziert). Tier 2 (`<InitialsAvatar>`, ~51 Dateien) bewusst deferred.
+> Hier nur die Anker, damit nichts verloren geht.
 
-### ⭐ SerloLoader — markeneigene Lade-Animation (`components/ui/SerloLoader.tsx`)
-- **Was:** Ein **blauer Lichtstrahl (`#3B9EFF`)** gleitet sanft hin und her; der Schweif streckt sich lang in der Mitte und zieht sich am Wendepunkt zusammen (Komet), ein **Glüh-Kopf mit feinen Stern-Strahlen** führt (Richtungs-Flip am kontrahierten Wendepunkt → unsichtbar). Procedural, kein Asset.
-- **Technik:** `react-native-svg` (Kopf: radialer Halo + Stern-Strahlen + **`<Filter><FeGaussianBlur>`** für weiches Glühen) + `expo-linear-gradient` (Schweif, 6 evenly-Stops) + **iOS-`shadowColor`-Glow** am Schweif + Reanimated (`translateX` + `scaleX`-Streckung + Flip; statische Imports lt. Memory `vibes-reanimated-static-import`). Tuning: `A=64` (Weg), `W=162` (Schweif), `P=2000` (Tempo), `H=1.5` (fein).
-- **WICHTIGES LEARNING:** RN kann **kein** CSS-Blur procedural → harte Kanten („2000er-Look"). Lösung = **`react-native-svg` Gauss-Blur-Filter** (iOS; Android-SVG-Blur evtl. limitiert) + iOS-Shadow-Glow. Ein PNG-Glow-Asset wäre 1:1, aber procedural reicht.
-- **Einsatz Profil (Pilot, `app/(tabs)/profile.tsx`):** Der graue Spinner oben war der **native iOS-`RefreshControl`** (Auto-Refresh beim Tab-Öffnen). **`tintColor="transparent"` versteckt ihn NICHT** (iOS zeigt ihn trotzdem grau — daher sah man Kreis + Beam gleichzeitig). **Fix:** `refreshing={false}` (nie nativer Spinner) + SerloLoader als **ListHeader-Element** während `isRefreshing || loadingPosts` (reserviert eigenen Platz, bg `bg.secondary` → Lade-Fläche matcht Content statt grauem `bg.primary`). Pull-to-Refresh läuft via `onRefresh` weiter. (`index.tsx`-Feed-RefreshControl + Guild-Overlay nutzen blau/SerloLoader aus einer frühen Iteration.)
-- **OFFEN — Rollout:** Dasselbe Muster (`refreshing={false}` + Beam im ListHeader + `bg.secondary`) auf **Shop, Guild, Feed** anwenden. Dort noch nativer grauer Spinner.
-
-### Highlights — Cover, Durability, Löschen
-- **Cover-Bug** (`lib/useStoryHighlights.ts`, `879d35a`): Multi-Item-Highlights aus dem Picker (`story_id=null`) zeigten nur lila → Cover wird jetzt zusätzlich aus **`items[0]`** abgeleitet (+ leere Strings durchfallen via `||`).
-- **⭐ Durability** (`092b43c`, **User hat Edge Function deployed** ✅): Highlights speicherten nur die Story-`media_url` (Referenz, keine Kopie) → Story läuft ab → R2-Cleanup löscht Datei → **tote URL** (lila Cover, kein Inhalt, durchgestrichener Play). **Fix:** neue Edge Function **`highlight-copy-media`** kopiert Medien per S3-CopyObject nach **`highlights/{userId}/…`** (Cleanup fasst nur `posts/thumbnails/avatars` an → bleibt). `useAddHighlight` ruft sie vor dem Insert (best-effort). Nutzt vorhandene R2-Secrets. **Alte kaputte Highlights = Dateien weg, nicht wiederherstellbar.** Details: Memory `vibes-highlights-media-durability`.
-- **Löschen im Viewer** (Instagram-Stil, `219d3b7`): `StoryGroup` um `isHighlight`/`highlightId` erweitert (`lib/useStories.ts`); `toGroup` setzt sie; **`StoryViewer`** zeigt bei eigenem Highlight einen **„..."-Button** (neben X) → iOS-`ActionSheet` (Android `Alert`) mit **„Highlight löschen"** → `useRemoveHighlight` + Viewer schließen. (Bestehende Long-Press-Löschung auf der Blase bleibt.) **OFFEN (optional):** „Aus Highlight entfernen" (Einzel-Item) + „Bearbeiten".
+- **Create-Flow** (Editor/Kamera): freier Bild-Crop (Skia-Offscreen `drawImageRect`), Cover/Thumbnail-Picker, Filter+Drehen ins Bild gebrannt (`lib/bakeImageEdits.ts`), TikTok-cleane Kamera, **TEXT-Modus** + **view-shot-Compositing** (Overlays ins Foto). „Zeichnen" + „Effekte" (AR) entfernt (dormant). → Memory `vibes-create-overlay-compositing`. **Bekannte Grenze:** animierte Sticker werden im Foto-Post statisch.
+- **Live**: „Nur Follower"-Publikum-Picker (Migration `…140000_live_followers_only_audience`, livekit-token-Durchsetzung), Cover aus Galerie, Kategorie-Chips, Creator-Tools-Sheet-Redesign, LIVE-Setup-Karte.
+- **Sicherheit (App-Store-Vorbereitung)**: `add_test_coins`/`debug_send_gift`-Backdoors gedroppt (`…120000`), notifications-INSERT gehärtet (`…121000`), Comments-INSERT-Spoofing-Policy gefixt (`…130000`), Debug-Screen + 7-Tap-Geste entfernt. RLS-Voll-Audit → sicher.
+- **Web (Vercel, deployed)**: ShareButtons-Hydration-Fix, Post-Detail-Medien-Größe, JSON-LD-XSS-Schutz, Support-Seite `/support`.
+- **Branding**: Coin = **„Serlo Coin"** (ex „Borz"), Diamanten → **„Einnahmen"** mit € im Vordergrund; `assets/serlo-coin.png` + `CoinIcon`-Komponenten (Mobile + Web) überall statt 🪙.
+- **Google-Login LIVE** (vorbereitet → aktiviert in Build 286). `expo-web-browser` (native Dep). Setup-Doku: `docs/auth-setup.md`.
+- **Highlights-Durability**: Edge Function `highlight-copy-media` kopiert Story-Medien nach `highlights/{userId}/…` (sonst löscht R2-Cleanup ablaufende Story → tote URL). User hat deployed ✅. → Memory `vibes-highlights-media-durability`.
+- **Simplify Tier 1** (reine Refactors): 114 tote Dateien weg; `timeAgo`→`lib/timeAgo.ts`, `fmtNum`→`lib/formatNum.ts`. **Tier 2 (`<InitialsAvatar>`, ~51 Dateien) bewusst DEFERRED** (Regressionsrisiko, quality-only). Tier 3 (Riesendateien splitten) tabu.
 
 ---
 
-## 2. Deploy-Workflow (unverändert, nur Runtime jetzt 1.30.0)
+## 2. Deploy-Workflow (Runtime 1.30.0)
 
 ```bash
 # IMMER aus /Users/zaurhatuev/vibes-app
 
-# Mobile OTA (reines JS) — EAS_BUILD=1 ZWINGEND. Targets Runtime = app.json version (jetzt 1.29.0)
+# Mobile OTA (reines JS) — EAS_BUILD=1 ZWINGEND (sonst landen Expo-Go-Stubs im Prod-OTA).
 EAS_BUILD=1 npx eas update --branch production --message "..." --non-interactive
-#   → OTA gilt NUR für den 1.29.0-Build (285). Ältere Builds (1.28.0) ziehen sie NICHT.
+#   → OTA gilt für den 1.30.0-Build (286). Diese Session ist komplett OTA-fähig.
 
 # Native Build (nur bei nativen Änderungen / neuen Deps) — autoIncrement=false → version+buildNumber+versionCode manuell
-#   app.json AKTUELL: version 1.30.0, ios.buildNumber 286, android.versionCode 47 (Build 286 ist live; nächster Build hochzählen!)
+#   app.json AKTUELL: version 1.30.0, ios.buildNumber 286, android.versionCode 47 (Build 286 live; nächster Build hochzählen!)
 npx eas build --platform ios --profile production
 npx eas submit --platform ios --latest
-#   ⚠️ Apple verlangte zuletzt „Program License Agreement" akzeptieren (developer.apple.com/account) — sonst 403 beim Build.
+#   ⚠️ Apple verlangte zuletzt „Program License Agreement" akzeptieren (developer.apple.com/account) — sonst 403.
 
-# Push zu GitHub (PAT aus .env.local, NIE echoen)
+# Push zu GitHub (PAT aus .env.local, NIE echoen/committen)
 TOKEN=$(grep -E '^GITHUB_TOKEN=' .env.local | cut -d= -f2-)
 git push "https://x-access-token:${TOKEN}@github.com/vibestes-boop/vibes-app.git" HEAD:main
+#   ⚠️ Dieser Push aktualisiert den lokalen origin/main-Tracking-Ref NICHT → Tracking-Ref bleibt scheinbar „hinterher".
 
 # Edge Functions
 npx supabase functions deploy <name>
 npx supabase functions deploy <webhook> --no-verify-jwt
 ```
 - **DB-Migrationen:** `.sql` unter `supabase/migrations/` (14-stellig `YYYYMMDDHHMMSS_slug.sql`), **Zaur führt sie im Supabase-SQL-Editor aus**.
-- **Verifizieren vor Commit** (Zaur: „commits kosten Geld"). tsc-Baseline = **2 vorbestehende Fehler** (`rose`-Farbe in explore/guild-Styles, harmlos) — alles darüber ist neu.
+- **Verifizieren vor Commit** (Zaur: „commits kosten Geld"): `npm run typecheck` (tsc-Baseline = 2 harmlose `rose`-Fehler) + `npm test` (8 Suites).
+- **Web baut isoliert** (Vercel): neue Web-Deps mit `cd apps/web && npm run build` prüfen (Memory `vibes-web-deps-isolation`).
 
 ---
 
-## 3. Angewandte DB-Migrationen (diese Session, bestätigt)
+## 3. Angewandte DB-Migrationen (Historie, bestätigt)
+Diese Session (24.6.): **keine**. Zuletzt (22./23.6.):
 - `20260621120000_drop_debug_coin_backdoors.sql` ✅
 - `20260621121000_harden_notifications_insert.sql` ✅
 - `20260621130000_fix_comments_insert_policy_spoofing.sql` ✅
-- `20260621140000_live_followers_only_audience.sql` ✅ (Spalte `live_sessions.followers_only` + Partial-Index)
+- `20260621140000_live_followers_only_audience.sql` ✅ (Spalte `live_sessions.followers_only` + Partial-Index; NICHT verwechseln mit `followers_only_chat`)
 
 ---
 
 ## 4. OFFENE PUNKTE / Nächste Schritte
 
-### B) ✅ ERLEDIGT + AUSGELIEFERT: „Nur Follower"-Zuschauen (Live-Publikum-Picker)
-**Ziel erreicht:** Live kann auf „nur Follower" gestellt werden → nur Follower des Hosts bekommen ein LiveKit-Token (Nicht-Follower auch per Direktlink draußen). Commit `68c7c72`, OTA Group `82fe358a`.
-- [x] **Migration** `20260621140000_live_followers_only_audience.sql` ✅ — Spalte `live_sessions.followers_only boolean default false` + Partial-Index. ⚠️ **NICHT verwechseln** mit dem bereits existierenden `followers_only_chat` (steuert nur Chat-Schreibrecht); `followers_only` steuert das **Zuschauen** (im COMMENT dokumentiert).
-- [x] **Durchsetzung** `supabase/functions/livekit-token/index.ts` (deployed): neuer **SEC-3-Block** nach Host/CoHost-Gates. Pure Viewer (`!isHost && !coHostApproved`): Session per `room_name`+`status=active` → `select=host_id,followers_only`. Wenn `followers_only===true` und nicht der Host selbst: `follows`-Check (`follower_id`/`following_id`); kein Treffer → **403** `{ error:'followers_only', message:… }`. **Rein additiv** — blockt nur im followers_only-Fall, öffentliches Verhalten unverändert.
-- [x] **Client `lib/useLiveSession.ts`:** `LiveSession`-Type + `startSession`-Option (`followersOnly`) + Insert um `followers_only` erweitert.
-- [x] **Client `app/live/start.tsx`:** toter „Wer kann zuschauen"-Pressable → echter Chip-Picker **🌍 Öffentlich / 👥 Nur Follower / 🌸 Nur Frauen** (mutually exclusive via `audience`/`setAudience`; „Nur Frauen" nur bei `canAccessWomenOnly`). Women-Only-Switch in den Picker integriert, `ChevronRight`-Import entfernt.
-- [x] **Viewer-Seite `app/live/watch/[id].tsx`:** 403 am Token-Catch erkannt (`msg.includes('followers_only')`) → `followersBlocked`-State → freundlicher **„🔒 Nur für Follower"**-Screen mit „Folgen & reinkommen"-Button (folgt via `useFollow` → Token mit 3×-Retry neu holen, weil follows-INSERT einen Moment braucht).
-- ⚠️ **Bewusste Scope-Grenze:** **Geplante Lives** (`submitSchedule` → `scheduleLive`) reichen `followers_only` **NICHT** durch — identisch zu `category` (dort ebenfalls offen). Wer „Nur Follower" + „Planen" wählt, verliert die Einstellung still. Nachziehen = Spalte in `scheduled_lives` + Durchreichen im Plan-Flow.
+### 🔴 Web-Auth/UI-Bug auf `serlo-web.vercel.app` (NEU gemeldet — siehe §5 für Details)
+Höchste neue Priorität, aber **noch nicht beauftragt zu fixen**. Erst mit Zaur klären, ob/wie.
 
-### Weitere offene Punkte
-1. **1.29.0 in App Store releasen** — Build nur in TestFlight. User wollte erst „viele UI-Baustellen" fixen (Create-Flow + Live = erledigt; ggf. mehr). Vor Einreichen: Export-Compliance + „Zur Prüfung hinzufügen". Demo-Account + Review-Notes lagen für 1.28.0 schon bereit.
-2. **KI-Cover:** User soll `OPENAI_API_KEY`-Secret prüfen/setzen (+ OpenAI-Billing). Erst echte Fehlermeldung checken (App neu öffnen → KI-Cover versuchen → Text steht jetzt da dank `9b6a766`).
-3. **Animierte Sticker im Post = Video (C1) — AUFGESCHOBEN bis Umsatz.** Render-Dienst **fertig & committed** unter `services/sticker-video/` (Node+ffmpeg, Dockerfile, README), aber **bewusst NICHT deployed** (laufende Compute-Kosten skalieren mit Usern → Pleite-Risiko ohne Einnahmen). Stufe 2 (Client) + TODO „Sticker-Pinch-Scale persistent machen" siehe Memory `vibes-create-overlay-compositing`.
-4. **Web-Shop-Detailseite** ans Mobile-Minimal angleichen (kosmetisch, aus alter Liste).
+### Release & Config (übernommen, noch gültig)
+1. **1.30.0 im App Store releasen** (Build 286, TestFlight): Export-Compliance („nutzt nur Standard-HTTPS-Verschlüsselung → qualifiziert für Ausnahme") + „Zur Prüfung hinzufügen". Demo-Account + Review-Notes lagen bereit, Alter 16+, Datenschutz-Labels gesetzt, Account-Löschung in App, Support-URL `serlo-web.vercel.app/support`.
+2. **Resend-E-Mail fixen** (`docs/auth-setup.md` Schritt 1): reine Supabase/Resend-Config, kein Build. **E-Mail-Versand ist kaputt** → echte User können sich per E-Mail-Link nicht registrieren (Android-Signup-Lücke; Google ist ✅, Apple nur iOS). Hängt eng mit dem Web-Auth-Bug zusammen — derselbe Supabase-Stack.
+3. **KI-Cover**: `OPENAI_API_KEY`-Secret + OpenAI-Billing setzen (User-Aktion); UI ist gefixt, Generierung schlägt bis dahin fehl.
+
+### Produkt / Backlog
+4. **Icon-Sprache-Rollout** auf restliche Sheets/Screens fortsetzen (Muster steht, §1 C).
+5. **„Tiefs wärmer"**-Sweep auf weitere Flächen fortsetzen, wo noch kalte Fehlertexte stehen.
+6. **Animierte Sticker im Post = Video — AUFGESCHOBEN bis Umsatz.** Render-Dienst fertig+committed unter `services/sticker-video/`, bewusst NICHT deployed (laufende Compute-Kosten). → Memory `vibes-create-overlay-compositing`.
+7. **Geplante Lives** reichen `followers_only` + `category` NICHT durch (still verloren) — nachziehen = Spalten in `scheduled_lives` + Plan-Flow.
+8. **Simplify Tier 2** (`<InitialsAvatar>`, ~51 Call-Sites) deferred — wenn, dann batchweise (8–10/Commit, je tsc-verifiziert), theme-adaptive High-Traffic-Screens zuerst.
 
 ---
 
-## 5. Wichtige Gotchas / Architektur (diese Session relevant)
-- **Runtime 1.29.0** (`runtimeVersion.policy=appVersion`): OTAs gelten nur für Build 285. Native Änderungen (neue Deps) brauchen neuen Build + version-Bump.
-- **view-shot `capture()` liefert Pfad OHNE `file://`** → immer ergänzen vor fetch/Upload (sonst „Invalid URL"). Gilt für Crop/Compositing/Text-Modus.
-- **Skia imperatives Compositing:** `drawImageRect` (nicht `drawImage`) für ColorFilter; `MakeImageFromEncoded`(via `Skia.Data.fromBase64`) zum Decoden; `Surface.MakeOffscreen` + `encodeToBase64(3=JPEG, q)`; Datei via `expo-file-system/legacy` `writeAsStringAsync(..., {encoding: EncodingType.Base64})`.
+## 5. 🔴 Detail: Web-Auth/UI-Bug (vom User gemeldet, NICHT beauftragt zu fixen)
+
+**Meldung (Zaur, Original):** „wenn man mit mobiletelefon die seite `https://serlo-web.vercel.app/` besucht hat es UI fehler und bei der ‚mit google weiter' gibt es auch fehler."
+
+**Symptom 1 — UI-Fehler in der mobilen Ansicht** der Web-App (`apps/web`). Noch nicht im Detail analysiert; mobile Responsive-Probleme auf der Landing/Login-Seite vermutet.
+
+**Symptom 2 — Google-OAuth („Mit Google weiter") schlägt fehl.** Mobile-Screenshot zeigt: `llymwqfgujwkoxzqxrlm.supabase.co` antwortet mit **„upstream request timeout"** und der Browser bietet **`authorize.txt` (24 Byte)** zum Download an, statt zum App-Callback weiterzuleiten. Der 24-B-Text-Download statt Redirect ist das klassische Zeichen, dass der **Supabase-Auth-Callback einen nicht-HTML-Body / Fehler** zurückgibt.
+
+**Bekannte OAuth-Config (aus dem vom User gelieferten Google-Signin-HTML):**
+- Supabase-Projekt: `llymwqfgujwkoxzqxrlm.supabase.co` (geteilt mit der Mobile-App)
+- Google client_id: `87313086885-6fmhjgfe6miu3kua0nlujh7svd71tnoi.apps.googleusercontent.com` (Web-Client, endet `…svd71tnoi` — **derselbe** wie Mobile)
+- redirect_uri: `https://llymwqfgujwkoxzqxrlm.supabase.co/auth/v1/callback`
+- Post-Auth-App-Redirect: `serlo-web.vercel.app/auth/callback?next=/`
+- scope: `email profile` · flowName `GeneralOAuthFlow`
+- Im Google-Chooser gezeigtes Konto: `vibestes@gmail.com`
+
+**Diagnose-Leads (Hypothesen, NICHT verifiziert):**
+1. **Supabase-Projekt schläft/Quota** — „upstream request timeout" am `/auth/v1/callback` deutet stark auf ein **pausiertes/überlastetes Supabase-Projekt** (Free-Tier-Auto-Pause) oder Auth-Service-Ausfall hin. **Zuerst prüfen:** Supabase-Dashboard → Projekt aktiv? Auth-Logs? Health? (Mobile-Google-Login funktionierte zuletzt ✅ — könnte ein neueres/temporäres Backend-Problem sein.)
+2. **Hängt evtl. mit dem kaputten E-Mail-Versand zusammen** (§4.2) — beides läuft über denselben Supabase-Auth-Stack; evtl. gemeinsame Ursache (Projekt-/Config-Zustand).
+3. **Web-`/auth/callback`-Route** (`apps/web/app/auth/callback/…`) prüfen, ob sie Code/Token korrekt verarbeitet, sobald der Supabase-Callback wieder antwortet.
+
+**Wichtig:** Bevor hier etwas geändert/deployed wird → **mit Zaur abstimmen** (er macht DB/Secrets/Dashboard selbst; Auth-Config ist sein Terrain). Kein Fix ohne Auftrag.
+
+---
+
+## 6. Wichtige Gotchas / Architektur
+- **Runtime 1.30.0** (`runtimeVersion.policy=appVersion`): OTAs gelten nur für Build 286. Native Änderungen (neue Deps) brauchen neuen Build + version-Bump.
+- **Reanimated:** Hooks/`with*` **statisch** importieren (nie require-only) — sonst UI-Thread-Worklet-Crash im Build (Memory `vibes-reanimated-static-import`).
+- **view-shot `capture()`** liefert Pfad **OHNE `file://`** → immer ergänzen vor fetch/Upload.
+- **Skia-Compositing:** `drawImageRect` (nicht `drawImage`) für ColorFilter; `Surface.MakeOffscreen` + `encodeToBase64`.
 - **Editor-Präsentation = `card`** (nicht modal/fullScreenModal) wegen Gesten/Buttons.
-- **`react-native-skia` Text-APIs existieren** (FontMgr.System, ParagraphBuilder, drawText) — für Skia-only-Textrender (falls je nötig).
+- **FlashList + `numColumns` + feste Item-Breite = einspaltig** → für Grids RN-FlatList (Memory `vibes-flashlist-numcolumns-bug`).
+- **Status-Bar:** `useThemedStatusBar`-Hook pro Screen aufrufen (Memory `vibes-statusbar-theme`).
+- **Light-Mode-Kontrast:** `colors.bg.*`-Fläche → Text/Icon/Fallback auch via `colors.*`. Über dem immer-schwarzen Feed (`feedStyles.container`=#000) umgekehrt: feste Hell-auf-Dunkel-Palette (Memory `vibes-lightmode-contrast-bug`).
+- **Icon-Sprache:** Lead-Icons monochrom (`colors.text.primary`), ohne Box, ~18px, kein Emoji; Akzent nur destruktiv/Marke (Memory `vibes-icon-language`).
 - **Sehr große Module** (Regressionsrisiko): `app/live/host.tsx`, `app/live/watch/[id].tsx`, `app/create/index.tsx`, `app/create/camera.tsx`.
 - **Pre-existing tsc-Fehler (harmlos, Baseline=2):** `'rose'` in `components/explore/exploreStyles.ts` + `components/guild/guildStyles.ts`.
 
 ---
 
-## 6. Übernommen aus altem Handoff (noch gültig)
-- **Stripe Web-Coin-Shop** funktioniert (Test-Modus). Go-Live = `sk_live_`/Live-Webhook tauschen. Functions `create-checkout-session`(verify_jwt) + `stripe-webhook`(--no-verify-jwt) deployed.
-- **Digitale Lieferung „Path A"**: Bucket `digital-products` (privat, Supabase Storage — NICHT R2). Bilder/Videos → R2.
+## 7. Übernommen (noch gültig)
+- **Stripe Web-Coin-Shop** funktioniert (Test-Modus). Go-Live = `sk_live_`/Live-Webhook tauschen. Functions `create-checkout-session`(verify_jwt) + `stripe-webhook`(--no-verify-jwt) deployed (Memory `vibes-stripe-coinshop`).
+- **Digitale Lieferung „Path A"**: Bucket `digital-products` (privat, Supabase Storage — NICHT R2). Bilder/Videos → R2 (Memory `vibes-shop-digital-delivery`).
 - **Coin-Saldo in `coins_wallets`** (`coins`/`diamonds`/`user_id`), NICHT `profiles.coins_balance`.
-- **Web baut isoliert** (Vercel): neue Web-Deps mit `cd apps/web && npm run build` prüfen.
 - **`r2-delete` Edge Function:** deployed, aber Source fehlt unter `supabase/functions/` → vor Delete-Änderungen zurückholen.
 - **`SCHEMA.md`** (`supabase/SCHEMA.md`) = Source-of-Truth für reale Spalten. `profiles` hat KEIN `follower_count`.
-- **„Geld seriöser machen"** — diesen Verlauf ERLEDIGT (Borz Coin → **Serlo Coin**, Diamanten → **Einnahmen** mit € im Vordergrund; Asset + CoinIcon-Komponenten überall). Siehe §1b.
+- **Domains:** `serlo.social`/`serlo.app` sind TOT — nur `serlo-web.vercel.app` lebt. Alle Links/ASC-Felder zeigen darauf. (serlo.ch geplant.)
+- **Video-Perf** (Memory `vibes-video-perf-strategy`): Web preconnect+`preload=metadata` live; Mobile 720p-Kompression; ABR/HLS (Bunny Stream) aufgeschoben bis Umsatz.
 
 ---
 
-## 7. Gedächtnis + Doku
-`~/.claude/projects/-Users-zaurhatuev-vibes-app/memory/` (lädt automatisch):
-- **`vibes-create-overlay-compositing.md`** ← wichtig für diese Session (view-shot, Text-Modus, Sticker-Video-Defer, Zeichnen/Effekte entfernt)
+## 8. Gedächtnis + Doku
+`~/.claude/projects/-Users-zaurhatuev-vibes-app/memory/` (lädt automatisch) — relevant diese Session:
+- `vibes-icon-language.md` · `vibes-lightmode-contrast-bug.md` · `vibes-statusbar-theme.md` · `vibes-flashlist-numcolumns-bug.md`
 - `vibes-ota-eas-update-stubs.md` (EAS_BUILD=1!) · `vibes-reanimated-static-import.md`
-- `vibes-shop-digital-delivery.md` · `vibes-stripe-coinshop.md` · `vibes-video-perf-strategy.md` · `vibes-web-deps-isolation.md` · `macos-tcc-desktop-preview.md`
+- `vibes-create-overlay-compositing.md` · `vibes-highlights-media-durability.md`
+- `vibes-shop-digital-delivery.md` · `vibes-stripe-coinshop.md` · `vibes-video-perf-strategy.md` · `vibes-web-deps-isolation.md`
 
-Projekt-Doku: **`CLAUDE.md`** (Tech-Stack, Struktur, Design-Gesetz „freundliche App", Migrations-Regeln).
+Projekt-Doku: **`CLAUDE.md`** (Tech-Stack, Struktur, Design-Gesetz „freundliche App", Migrations-Regeln, Icon-Sprache).
 
 ---
 
-## 8. Über Zaur
+## 9. Über Zaur
 - Solo-Gründer, deutschsprachig. Serlo/Vibes = TikTok-artige App für die tschetschenische Community, in Produktion (App Store).
-- Bevorzugt knapp/direkt, eine Sache pro Commit, warm. **Kostenbewusst** (deshalb Sticker-Video + teure Infra bis Umsatz aufgeschoben). Will Fixes **verifiziert + ausgeliefert**.
-- Testet Mobile selbst auf dem Gerät (ich kann Mobile nicht rendern) → iterativ: bauen/OTA → er testet → Feedback. Macht DB-Migrationen + Secrets selbst im Dashboard.
+- Bevorzugt knapp/direkt, **eine Sache pro Commit**, warm. **Kostenbewusst** (teure Infra/Sticker-Video bis Umsatz aufgeschoben; „commits kosten Geld" → vor Commit verifizieren). Will Fixes **verifiziert + ausgeliefert**.
+- Testet Mobile selbst auf dem Gerät (ich kann Mobile nicht rendern) → iterativ: OTA/Build → er testet → Feedback. Macht **DB-Migrationen + Secrets selbst** im Dashboard.
 - **Credentials (OpenAI/Stripe-Keys, PAT) gibt er NIE in den Chat** — setzt sie selbst.
