@@ -14,7 +14,7 @@
 import { CoinIcon } from '@/components/ui/CoinIcon';
 import { SerloLoader } from '@/components/ui/SerloLoader';
 import { useCoinsWallet } from '@/lib/useGifts';
-import { useShopProducts,type Product,type ProductCategory } from '@/lib/useShop';
+import { formatEur,useShopProducts,type Product,type ProductCategory } from '@/lib/useShop';
 import { useTheme } from '@/lib/useTheme';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import { Image } from 'expo-image';
@@ -260,7 +260,9 @@ function ProductCard({ product, onPress, colors }: {
             Bei Vorbestellung: kein Coin-Preis (zahlbar bei Lieferung). */}
         <View style={card.footer}>
           {isPreorder ? (
-            <Text style={[card.price, { color: '#B45309' }]}>Vormerken</Text>
+            <Text style={[card.price, { color: '#B45309' }]} numberOfLines={1}>
+              {formatEur(product.price_eur) ?? 'Vormerken'}
+            </Text>
           ) : (
             <>
               <View style={card.priceCol}>

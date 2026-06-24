@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { Route } from "next";
 import { CoinIcon } from '@/components/ui/coin-icon';
 import { MapPin, Truck, Camera, BadgeCheck } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatEur } from "@/lib/utils";
 import { StarDisplay } from "./star-display";
 import { ProductImage } from "./product-image";
 import type { ShopProduct } from "@/lib/data/shop";
@@ -194,10 +194,18 @@ export function ProductCard({
           </div>
         )}
 
-        {/* Preis + Sold — bei Vorbestellung kein Coin-Preis (zahlbar bei Lieferung). */}
+        {/* Preis + Sold — bei Vorbestellung Euro-Preis (zahlbar bei Lieferung),
+            Fallback „Vormerken" wenn kein Preis gesetzt. */}
         {isPreorder ? (
-          <div className="mt-1 text-sm font-medium text-amber-700 dark:text-amber-400">
-            Vormerken
+          <div className="mt-1 flex items-baseline gap-1.5 text-sm font-medium text-amber-700 dark:text-amber-400">
+            {formatEur(product.price_eur) ? (
+              <>
+                <span className="tabular-nums">{formatEur(product.price_eur)}</span>
+                <span className="text-xs font-normal text-muted-foreground">· Vormerken</span>
+              </>
+            ) : (
+              "Vormerken"
+            )}
           </div>
         ) : (
           <div className="mt-1 flex items-end justify-between gap-2">

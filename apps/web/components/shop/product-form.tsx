@@ -68,6 +68,7 @@ interface FormState {
   category: ProductCategory;
   price_coins: string;
   sale_price_coins: string;
+  price_eur: string;
   stock: string;
   cover_url: string;
   file_url: string;
@@ -85,6 +86,7 @@ function fromProduct(p: ShopProduct | null): FormState {
       category: "digital",
       price_coins: "",
       sale_price_coins: "",
+      price_eur: "",
       stock: "-1",
       cover_url: "",
       file_url: "",
@@ -100,6 +102,7 @@ function fromProduct(p: ShopProduct | null): FormState {
     category: p.category,
     price_coins: p.price_coins.toString(),
     sale_price_coins: p.sale_price_coins?.toString() ?? "",
+    price_eur: p.price_eur != null ? String(p.price_eur) : "",
     stock: p.stock.toString(),
     cover_url: p.cover_url ?? "",
     file_url: p.file_url ?? "",
@@ -123,6 +126,12 @@ export function ProductForm({ existing }: { existing: ShopProduct | null }) {
     ? Number(form.sale_price_coins)
     : null;
   const hasSale = salePrice !== null && price > 0;
+
+  // EUR-Preisfeld nur für Vorbestell-/Cash-Produkte (sale_mode <> 'coins').
+  // Der Modus wird im Studio-Row-Menü gesetzt (Admin); danach erscheint hier
+  // das Feld beim Bearbeiten. Coin-Produkte brauchen keinen Euro-Preis.
+  const isPreorderProduct =
+    existing?.sale_mode === "preorder" || existing?.sale_mode === "cash";
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -310,6 +319,7 @@ export function ProductForm({ existing }: { existing: ShopProduct | null }) {
       sale_price_coins: form.sale_price_coins
         ? Number(form.sale_price_coins)
         : null,
+      price_eur: form.price_eur ? Number(form.price_eur) : null,
       stock: Number(form.stock),
       cover_url: form.cover_url.trim() || null,
       file_url: form.file_url.trim() || null,
@@ -494,6 +504,34 @@ export function ProductForm({ existing }: { existing: ShopProduct | null }) {
             />
           </div>
         </section>
+
+        {/* Euro-Preis — nur für Vorbestell-/Cash-Produkte. */}
+        {isPreorderProduct && (
+          <section>
+            <label htmlFor="price-eur" className="text-sm font-medium">
+              Preis (€){" "}
+              <span className="text-muted-foreground">· für Vorbestellung</span>
+            </label>
+            <input
+              id="price-eur"
+              type="number"
+              min={0}
+              step={0.01}
+              inputMode="decimal"
+              value={form.price_eur}
+              onChange={(e) => update("price_eur", e.target.value)}
+              placeholder="z.B. 7.90"
+              className="mt-1.5 h-10 w-full rounded-md border bg-background px-3 text-sm tabular-nums outline-none focus:border-ring"
+            />
+            <div className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
+              <Info className="h-3 w-3" />
+              <span>
+                Wird auf Karte &amp; Detailseite als Preis angezeigt statt nur
+                im Beschreibungstext. Käufer:innen zahlen erst bei Lieferung.
+              </span>
+            </div>
+          </section>
+        )}
 
         {/* Stock + Location */}
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">

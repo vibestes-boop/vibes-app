@@ -25,7 +25,7 @@ export interface ShopProduct extends ProductWithSeller {
 }
 
 const PRODUCT_COLUMNS =
-  'id, seller_id, title, description, category, price_coins, sale_price_coins, stock, cover_url, image_urls, file_url, free_shipping, location, women_only, is_active, sale_mode, sold_count, avg_rating, review_count, created_at, updated_at';
+  'id, seller_id, title, description, category, price_coins, sale_price_coins, price_eur, stock, cover_url, image_urls, file_url, free_shipping, location, women_only, is_active, sale_mode, sold_count, avg_rating, review_count, created_at, updated_at';
 
 const SELLER_JOIN = 'seller:profiles!products_seller_id_fkey ( id, username, avatar_url, verified:is_verified )';
 

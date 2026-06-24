@@ -22,7 +22,7 @@ import { supabase } from '@/lib/supabase';
 import { useCoinsWallet } from '@/lib/useGifts';
 import { useOrCreateConversation,useSendMessage } from '@/lib/useMessages';
 import { useProductReviews } from '@/lib/useProductReviews';
-import { REPORT_REASONS,useBuyProduct,useExpressInterest,useReportProduct,useSavedProduct,useShopProducts,type Product,type ProductCategory,type ReportReason } from '@/lib/useShop';
+import { formatEur,REPORT_REASONS,useBuyProduct,useExpressInterest,useReportProduct,useSavedProduct,useShopProducts,type Product,type ProductCategory,type ReportReason } from '@/lib/useShop';
 import { useTheme } from '@/lib/useTheme';
 import { useQuery } from '@tanstack/react-query';
 import * as Clipboard from 'expo-clipboard';
@@ -915,9 +915,16 @@ export default function ProductDetailScreen() {
             Bei Vorbestellung: kein Coin-Preis (zahlbar bei Lieferung). */}
         <View style={s.priceSection}>
           {isPreorder ? (
-            <Text style={[s.priceNow, { color: colors.text.primary, fontSize: 17 }]}>
-              🤎 Vorbestellung · Preis siehe Beschreibung
-            </Text>
+            formatEur(product.price_eur) ? (
+              <View style={s.priceRow2}>
+                <Text style={[s.priceNow, { color: colors.text.primary }]}>{formatEur(product.price_eur)}</Text>
+                <Text style={[s.priceOff, { color: '#B45309' }]}>Vorbestellung · zahlbar bei Lieferung</Text>
+              </View>
+            ) : (
+              <Text style={[s.priceNow, { color: colors.text.primary, fontSize: 17 }]}>
+                🤎 Vorbestellung · Preis siehe Beschreibung
+              </Text>
+            )
           ) : (
             <View style={s.priceRow2}>
               <CoinIcon size={18} />

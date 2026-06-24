@@ -8,6 +8,10 @@ export interface Product {
   category: ProductCategory;
   price_coins: number;
   sale_price_coins: number | null;
+  // Echter Euro-Preis (optional). Relevant für sale_mode <> 'coins'
+  // (preorder/cash). Coin-Produkte lassen es null. UI zeigt es statt
+  // „Preis siehe Beschreibung".
+  price_eur: number | null;
   stock: number; // -1 = unlimited
   cover_url: string | null;
   file_url: string | null; // digitale Produktdatei (Supabase Storage: digital-products)

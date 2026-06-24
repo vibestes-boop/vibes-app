@@ -36,6 +36,10 @@ export interface Product {
   // gültige Verkaufspreis; price_coins bleibt „Originalpreis" für die
   // durchgestrichene Anzeige. buy_product RPC bucht sale_price_coins ab.
   sale_price_coins: number | null;
+  // Echter Euro-Preis (optional). Nur für Vorbestell-/Cash-Produkte
+  // (sale_mode <> 'coins') relevant — UI zeigt ihn statt „Preis siehe
+  // Beschreibung". Kommt via get_shop_products RPC als number zurück.
+  price_eur?: number | null;
   category:    ProductCategory;
   cover_url:   string | null;
   image_urls:  string[];         // Zusätzliche Bilder (Galerie)
@@ -80,6 +84,22 @@ export interface CreateProductInput {
   sale_price_coins?: number | null;  // < price_coins (DB-CHECK); null = kein Angebot
   free_shipping?:    boolean;        // nur relevant für category=physical
   location?:         string | null;  // Freitext-Ort, z.B. „Berlin, DE"
+}
+
+// ─── Euro-Preis-Formatter ─────────────────────────────────────────────────────
+// Ganze Beträge ohne Nachkommastellen (12 €), krumme mit zweien (7,90 €).
+// null/ungültig → null (Aufrufer rendert dann den Fallback).
+export function formatEur(value: number | null | undefined): string | null {
+  if (value == null) return null;
+  const n = Number(value);
+  if (!Number.isFinite(n)) return null;
+  const hasFraction = Math.round(n * 100) % 100 !== 0;
+  return (
+    n.toLocaleString('de-DE', {
+      minimumFractionDigits: hasFraction ? 2 : 0,
+      maximumFractionDigits: 2,
+    }) + ' €'
+  );
 }
 
 // ─── Eigene Produkte laden (Creator) ─────────────────────────────────────────

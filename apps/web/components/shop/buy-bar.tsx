@@ -17,7 +17,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, formatEur } from "@/lib/utils";
 import { QuantityStepper } from "./quantity-stepper";
 import {
   useBuyProduct,
@@ -124,6 +124,16 @@ export function BuyBar({
         )}
       >
         <div className={cn("flex flex-col gap-2", isInline ? "" : "mx-auto max-w-5xl")}>
+          {formatEur(product.price_eur) && (
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-bold tabular-nums text-foreground">
+                {formatEur(product.price_eur)}
+              </span>
+              <span className="text-xs font-medium text-amber-700 dark:text-amber-400">
+                Vorbestellung
+              </span>
+            </div>
+          )}
           <p className="text-xs leading-snug text-muted-foreground">
             🤎 <span className="font-medium text-foreground">Sammelbestellung</span> — du zahlst
             erst, wenn die Ware da ist. Trag dich ein, @{product.seller.username} meldet sich.

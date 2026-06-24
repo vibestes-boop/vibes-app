@@ -32,6 +32,7 @@ import {
   getMyCoinBalance,
 } from "@/lib/data/shop";
 import { getUser } from "@/lib/auth/session";
+import { formatEur } from "@/lib/utils";
 
 // -----------------------------------------------------------------------------
 // Product-Detail — /shop/[id]
@@ -261,9 +262,20 @@ export default async function ProductDetailPage({ params }: PageProps) {
             {/* Preis (monochrom): Coin + Preis + Alt-Preis + −% · Ort darunter */}
             <div>
               {isPreorder ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-600/15 px-3 py-1.5 text-sm font-medium text-amber-700 dark:text-amber-400">
-                  🤎 Vorbestellung · Preis siehe Beschreibung
-                </span>
+                formatEur(product.price_eur) ? (
+                  <div className="flex items-baseline gap-3">
+                    <span className="text-4xl font-bold tabular-nums text-foreground">
+                      {formatEur(product.price_eur)}
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-600/15 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-400">
+                      🤎 Vorbestellung · zahlbar bei Lieferung
+                    </span>
+                  </div>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-600/15 px-3 py-1.5 text-sm font-medium text-amber-700 dark:text-amber-400">
+                    🤎 Vorbestellung · Preis siehe Beschreibung
+                  </span>
+                )
               ) : (
                 <div className="flex items-baseline gap-3">
                   <span className="inline-flex items-center gap-2 text-4xl font-bold tabular-nums text-foreground">

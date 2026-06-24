@@ -35,7 +35,7 @@ import {
   useDeleteProduct,
   useSetProductSaleMode,
 } from "@/hooks/use-shop";
-import { cn } from "@/lib/utils";
+import { cn, formatEur } from "@/lib/utils";
 import type { ShopProduct } from "@/lib/data/shop";
 import { ProductImage } from "./product-image";
 
@@ -142,10 +142,16 @@ export function StudioProductRow({
             )}
           </div>
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground tabular-nums">
-            <span className="inline-flex items-center gap-1">
-              <CoinIcon className="h-3 w-3" />
-              {eff.toLocaleString("de-DE")}
-            </span>
+            {isPreorder && formatEur(product.price_eur) ? (
+              <span className="font-medium text-amber-700 dark:text-amber-400">
+                {formatEur(product.price_eur)}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1">
+                <CoinIcon className="h-3 w-3" />
+                {eff.toLocaleString("de-DE")}
+              </span>
+            )}
             <span>Stock: {stockLabel}</span>
             <span>{product.sold_count}× verkauft</span>
             {product.review_count > 0 && (
