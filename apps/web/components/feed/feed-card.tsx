@@ -67,10 +67,6 @@ const LazyPostLikersDialog = dynamic(
   { ssr: false },
 );
 
-const LazyVoiceReaderControl = dynamic(
-  () => import('./voice-reader-control').then((mod) => mod.VoiceReaderControl),
-  { ssr: false },
-);
 
 // -----------------------------------------------------------------------------
 // FeedCard — eine Video-Karte im vertikalen Feed.
@@ -192,7 +188,6 @@ export function FeedCard({
   // Pfad (Foto-Feed-style Standbild mit Video-ähnlichem Overlay).
   const isImage = post.media_type === 'image';
 
-  const caption = post.caption ?? '';
   const mediaSource = post.thumbnail_url || post.video_url || '';
   const optimizedPosterUrl = getOptimizedImageUrl(post.thumbnail_url, FEED_VIDEO_POSTER_WIDTH);
   const optimizedAuthorAvatarUrl = getOptimizedImageUrl(
@@ -200,8 +195,6 @@ export function FeedCard({
     FEED_ACTION_AVATAR_WIDTH,
     FEED_ACTION_AVATAR_QUALITY,
   );
-  const [voiceReaderMounted, setVoiceReaderMounted] = useState(false);
-  useEffect(() => setVoiceReaderMounted(false), [post.id]);
 
   // Detected media aspect-ratio (width/height). null = noch nicht geladen,
   // dann verwenden wir 9:16 als sicheren Default. Wird bei post.id-Wechsel
@@ -575,7 +568,12 @@ export function FeedCard({
       // Jetzt mit Hard Containment (overflow-hidden + max-h-[100dvh] auf
       // section UND outer + maxHeight inline auf article) kann das nicht mehr
       // passieren — Containment ist garantiert, Centering kann sicher rein.
-      className="flex h-full max-h-[100dvh] w-full max-w-full items-center justify-center overflow-hidden"
+      // v1.w.UI.248 — `relative`: Positionierungs-Kontext der Mobile-Action-Rail.
+      // Bewusst auf dem OUTER (volle Viewport-Section), NICHT auf dem Inner: so
+      // sitzt die Rail bei jeder Orientierung unten am Bildschirmrand (TikTok).
+      // Vorher am Inner verankert klebte sie bei Querformat am kurzen, zentrierten
+      // Card-Boden → Buttons schwebten zu weit oben über dem Video.
+      className="relative flex h-full max-h-[100dvh] w-full max-w-full items-center justify-center overflow-hidden"
       data-post-id={post.id}
       data-aspect-ratio={appliedRatio.toFixed(3)}
       data-orientation={isWiderThanPortrait ? 'wide' : 'portrait'}
@@ -592,12 +590,10 @@ export function FeedCard({
         // Portrait: h-full → inner = full section content area, card fills.
         // Landscape: kein h-full → inner content-sized, outer items-center
         //   zentriert das Group vertikal.
-        // v1.w.UI.246 — `relative`: Positionierungs-Kontext für die Action-Rail,
-        // die auf Mobile (< xl) als absolute Overlay über dem Media schwebt
-        // (TikTok-Stil) statt als Flex-Geschwister daneben. Weil die Rail dort
-        // aus dem Flow fällt, zentriert sich eine Landscape-Karte wieder korrekt
-        // (kein Bottom-Drop mehr) und wird nie mehr off-screen geschoben.
-        'relative flex w-full max-h-full max-w-full items-end justify-center gap-3',
+        // v1.w.UI.246/248 — Die Mobile-Action-Rail schwebt als absolute Overlay
+        // (Positionierungs-Kontext = OUTER, s.o.). Weil sie aus dem Flow fällt,
+        // zentriert sich eine Landscape-Karte wieder korrekt (kein Bottom-Drop).
+        'flex w-full max-h-full max-w-full items-end justify-center gap-3',
         isWiderThanPortrait ? '' : 'h-full',
       )}
     >
@@ -1153,7 +1149,7 @@ export function FeedCard({
         Avatar-Border + Plus-Ring nutzen `border-background`/`ring-background`
         damit der Avatar visuell vom Rail-Hintergrund abgesetzt ist (nicht
         auf einer dunklen Video-Letterbox wie zuvor). */}
-    <aside className="pointer-events-auto absolute bottom-3 right-2 z-30 flex shrink-0 flex-col items-center gap-4 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.55)] xl:static xl:bottom-auto xl:right-auto xl:z-auto xl:gap-5 xl:pb-2 xl:text-foreground xl:drop-shadow-none">
+    <aside className="pointer-events-auto absolute bottom-4 right-2 z-30 flex shrink-0 flex-col items-center gap-4 text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.85)] xl:static xl:bottom-auto xl:right-auto xl:z-auto xl:gap-5 xl:pb-2 xl:text-foreground xl:drop-shadow-none">
       {/* Avatar mit optionalem Follow-Plus (Short-Video-Signature-Slot). */}
       <Link
         href={`/u/${post.author.username}` as Route}
@@ -1282,38 +1278,9 @@ export function FeedCard({
         circleClassName="h-11 w-11"
       />
 
-      {/* Mute — 40px (ambient Control, am kleinsten) */}
-      {!isImage && (
-        <ActionButton
-          icon={muted ? <VolumeX className="h-5 w-5" aria-hidden="true" /> : <Volume2 className="h-5 w-5" aria-hidden="true" />}
-          label={muted ? 'Stumm' : 'Laut'}
-          ariaLabel={muted ? 'Ton einschalten' : 'Stummschalten'}
-          onClick={onMuteToggle}
-          circleClassName="h-10 w-10"
-        />
-      )}
-
-      {/* v1.w.UI.218 — Chatterbox TTS: Caption laut vorlesen (Creator-Stimme
-          wenn voice_sample_url gesetzt, sonst speechSynthesis-Fallback).
-          Nur anzeigen wenn Caption vorhanden. */}
-      {caption.length > 0 && (
-        voiceReaderMounted ? (
-          <LazyVoiceReaderControl
-            postId={post.id}
-            authorId={post.author.id}
-            caption={caption}
-            autoStart
-          />
-        ) : (
-          <ActionButton
-            icon={<Volume2 className="h-5 w-5 opacity-70" aria-hidden="true" />}
-            label="Vorlesen"
-            ariaLabel="Caption vorlesen"
-            onClick={() => setVoiceReaderMounted(true)}
-            circleClassName="h-10 w-10"
-          />
-        )
-      )}
+      {/* v1.w.UI.248 — Mute-Button hier ENTFERNT (Doppelung): die Stummschaltung
+          läuft über den Volume-Button oben links. „Vorlesen" (TTS) ebenfalls
+          entfernt — hat im Rail mehr verwirrt als geholfen. */}
     </aside>
 
     {/* CommentSheet / CommentPanel wird seit v1.w.UI.11 Phase C vom
@@ -1490,11 +1457,10 @@ function ActionButton({
     >
       <span
         className={cn(
-          // v1.w.UI.246 — responsiv: Auf Mobile (< xl) schwebt der Rail als
-          // Overlay über dem Media → dunkler, halbtransparenter Kreis mit weißem
-          // Icon (TikTok). Ab xl sitzt der Rail neben der Karte auf Page-Background
-          // → theme-aware `bg-foreground/10` (im Light dunkles, im Dark helles Grau).
-          'flex items-center justify-center rounded-full bg-black/25 transition-colors duration-base ease-out-expo group-hover/action:bg-black/35 xl:bg-foreground/10 xl:group-hover/action:bg-foreground/20',
+          // v1.w.UI.248 — Mobile (< xl): KEIN Kreis-Background (TikTok) → nur das
+          // weiße Icon + kräftiger Drop-Shadow (am Rail-Container) für Lesbarkeit
+          // über hellem wie dunklem Media. Ab xl: theme-aware Kreis neben der Karte.
+          'flex items-center justify-center rounded-full transition-colors duration-base ease-out-expo xl:bg-foreground/10 xl:group-hover/action:bg-foreground/20',
           circleClassName ?? 'h-11 w-11',
         )}
       >

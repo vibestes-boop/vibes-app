@@ -112,7 +112,7 @@ export function LikeButton({
         // v1.w.UI.246 — overlay: auf Mobile dunkler Kreis über Media, ab xl theme.
         'relative flex items-center justify-center rounded-full transition-colors duration-base ease-out-expo',
         overlay
-          ? 'bg-black/25 group-hover/like:bg-black/35 xl:bg-foreground/10 xl:group-hover/like:bg-foreground/20'
+          ? 'xl:bg-foreground/10 xl:group-hover/like:bg-foreground/20'
           : 'bg-foreground/10 group-hover/like:bg-foreground/20',
         circleClassName ?? 'h-12 w-12',
       )}
