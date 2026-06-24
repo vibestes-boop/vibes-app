@@ -194,27 +194,33 @@ export function ProductCard({
           </div>
         )}
 
-        {/* Preis + Sold */}
-        <div className="mt-1 flex items-end justify-between gap-2">
-          <div className="flex items-baseline gap-1.5">
-            <span className="text-base font-bold tabular-nums text-foreground">
-              <span className="inline-flex items-center gap-1">
-                <CoinIcon className="h-3.5 w-3.5 text-muted-foreground" />
-                {eff.toLocaleString("de-DE")}
+        {/* Preis + Sold — bei Vorbestellung kein Coin-Preis (zahlbar bei Lieferung). */}
+        {isPreorder ? (
+          <div className="mt-1 text-sm font-medium text-amber-700 dark:text-amber-400">
+            Vormerken
+          </div>
+        ) : (
+          <div className="mt-1 flex items-end justify-between gap-2">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-base font-bold tabular-nums text-foreground">
+                <span className="inline-flex items-center gap-1">
+                  <CoinIcon className="h-3.5 w-3.5 text-muted-foreground" />
+                  {eff.toLocaleString("de-DE")}
+                </span>
               </span>
-            </span>
-            {isSale && (
-              <span className="text-xs text-muted-foreground line-through tabular-nums">
-                {product.price_coins.toLocaleString("de-DE")}
+              {isSale && (
+                <span className="text-xs text-muted-foreground line-through tabular-nums">
+                  {product.price_coins.toLocaleString("de-DE")}
+                </span>
+              )}
+            </div>
+            {product.sold_count > 0 && (
+              <span className="text-[11px] text-muted-foreground tabular-nums">
+                {formatCount(product.sold_count)}× verkauft
               </span>
             )}
           </div>
-          {product.sold_count > 0 && (
-            <span className="text-[11px] text-muted-foreground tabular-nums">
-              {formatCount(product.sold_count)}× verkauft
-            </span>
-          )}
-        </div>
+        )}
       </div>
     </Link>
   );

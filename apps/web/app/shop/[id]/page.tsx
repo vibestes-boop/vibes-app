@@ -138,6 +138,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
 
   const eff = product.sale_price_coins ?? product.price_coins;
   const isSale = product.sale_price_coins !== null;
+  const isPreorder = product.sale_mode === "preorder";
 
   const others = moreFromSeller.filter((p) => p.id !== product.id).slice(0, 4);
 
@@ -259,24 +260,30 @@ export default async function ProductDetailPage({ params }: PageProps) {
 
             {/* Preis (monochrom): Coin + Preis + Alt-Preis + −% · Ort darunter */}
             <div>
-              <div className="flex items-baseline gap-3">
-                <span className="inline-flex items-center gap-2 text-4xl font-bold tabular-nums text-foreground">
-                  <CoinIcon className="h-7 w-7" />
-                  {eff.toLocaleString("de-DE")}
+              {isPreorder ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-600/15 px-3 py-1.5 text-sm font-medium text-amber-700 dark:text-amber-400">
+                  🤎 Vorbestellung · Preis siehe Beschreibung
                 </span>
-                {isSale && (
-                  <>
-                    <span className="text-lg text-muted-foreground line-through tabular-nums">
-                      {product.price_coins.toLocaleString("de-DE")}
-                    </span>
-                    {percentOff !== null && (
-                      <span className="text-sm font-medium text-muted-foreground">
-                        −{percentOff} %
+              ) : (
+                <div className="flex items-baseline gap-3">
+                  <span className="inline-flex items-center gap-2 text-4xl font-bold tabular-nums text-foreground">
+                    <CoinIcon className="h-7 w-7" />
+                    {eff.toLocaleString("de-DE")}
+                  </span>
+                  {isSale && (
+                    <>
+                      <span className="text-lg text-muted-foreground line-through tabular-nums">
+                        {product.price_coins.toLocaleString("de-DE")}
                       </span>
-                    )}
-                  </>
-                )}
-              </div>
+                      {percentOff !== null && (
+                        <span className="text-sm font-medium text-muted-foreground">
+                          −{percentOff} %
+                        </span>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
               {product.location && (
                 <div className="mt-1.5 inline-flex items-center gap-1.5 text-sm text-muted-foreground">
                   <MapPin className="h-3.5 w-3.5" />
