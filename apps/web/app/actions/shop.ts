@@ -404,6 +404,43 @@ export async function expressProductInterest(
   return { ok: true, data: null };
 }
 
+const NOTIFY_ERROR_MESSAGES: Record<string, string> = {
+  not_authenticated: 'Bitte zuerst einloggen 🙂',
+  empty_message: 'Schreib kurz eine Nachricht.',
+  message_too_long: 'Nachricht ist zu lang (max. 500 Zeichen).',
+  product_not_found: 'Das Produkt ist leider weg 🙈',
+  not_owner: 'Das ist nicht dein Produkt.',
+};
+
+// „Alle benachrichtigen" — schreibt allen Interessenten (status='interested') in
+// einem Rutsch eine DM und setzt sie auf 'notified' (kein erneutes Anschreiben
+// beim zweiten Klick). Läuft über die SECURITY-DEFINER-RPC (umgeht Cooldown +
+// product_preorders-RLS, Verkäufer-Identität wird in der RPC geprüft).
+export async function notifyPreorderBuyers(
+  productId: string,
+  message: string,
+): Promise<ActionResult<{ notified: number }>> {
+  const viewer = await getViewerId();
+  if (!viewer) return { ok: false, error: 'Bitte einloggen.' };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('notify_preorder_buyers', {
+    p_product_id: productId,
+    p_message: message,
+  });
+
+  if (error) return { ok: false, error: 'Kurz die Verbindung verloren — nochmal? 🙂' };
+
+  const res = (data ?? {}) as { success?: boolean; error?: string; notified?: number };
+  if (!res.success) {
+    return { ok: false, error: NOTIFY_ERROR_MESSAGES[res.error ?? ''] ?? 'Konnte nicht senden.' };
+  }
+
+  revalidatePath('/studio/shop/preorders');
+  revalidatePath('/messages');
+  return { ok: true, data: { notified: res.notified ?? 0 } };
+}
+
 export async function deleteProduct(productId: string): Promise<ActionResult> {
   const viewer = await getViewerId();
   if (!viewer) return { ok: false, error: 'Bitte einloggen.' };

@@ -7,6 +7,10 @@ import { createClient } from '@/lib/supabase/server';
 import { getUser } from '@/lib/auth/session';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import {
+  PreorderContactButton,
+  PreorderNotifyAllButton,
+} from '@/components/shop/preorder-contact';
 
 export const metadata: Metadata = {
   title: 'Vorbestellungen · Serlo',
@@ -85,18 +89,27 @@ export default async function PreordersPage() {
             const people = listMap.get(s.product_id) ?? [];
             const count = Number(s.interested_count);
             const qty = Number(s.total_quantity);
+            // Wie viele wurden noch NICHT angeschrieben (status='interested')?
+            const interestedCount = people.filter((p) => p.status === 'interested').length;
             return (
               <div key={s.product_id} className="rounded-xl border bg-card p-4">
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <Link
                     href={`/shop/${s.product_id}` as Route}
                     className="line-clamp-1 font-semibold hover:underline"
                   >
                     {s.title}
                   </Link>
-                  <span className="flex-none rounded-full bg-amber-600/15 px-2.5 py-1 text-xs font-medium text-amber-700 tabular-nums dark:text-amber-400">
-                    {count} {count === 1 ? 'Person' : 'Leute'} · {qty} Flaschen
-                  </span>
+                  <div className="flex flex-none items-center gap-2">
+                    <span className="rounded-full bg-amber-600/15 px-2.5 py-1 text-xs font-medium text-amber-700 tabular-nums dark:text-amber-400">
+                      {count} {count === 1 ? 'Person' : 'Leute'} · {qty} Flaschen
+                    </span>
+                    <PreorderNotifyAllButton
+                      productId={s.product_id}
+                      title={s.title}
+                      count={interestedCount}
+                    />
+                  </div>
                 </div>
 
                 {people.length === 0 ? (
@@ -106,7 +119,7 @@ export default async function PreordersPage() {
                 ) : (
                   <ul className="mt-3 divide-y">
                     {people.map((p) => (
-                      <li key={p.user_id} className="flex items-center gap-3 py-2">
+                      <li key={p.user_id} className="flex items-center gap-2.5 py-2">
                         <Avatar className="h-8 w-8">
                           <AvatarImage src={p.avatar_url ?? undefined} alt="" />
                           <AvatarFallback className="text-xs">
@@ -124,9 +137,15 @@ export default async function PreordersPage() {
                             </span>
                           ) : null}
                         </Link>
+                        {p.status === 'notified' ? (
+                          <span className="flex-none rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
+                            ✓ angeschrieben
+                          </span>
+                        ) : null}
                         <span className="flex-none text-sm font-semibold tabular-nums">
                           {p.quantity}×
                         </span>
+                        <PreorderContactButton buyerId={p.user_id} productId={s.product_id} />
                       </li>
                     ))}
                   </ul>

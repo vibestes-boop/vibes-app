@@ -1,0 +1,148 @@
+'use client';
+
+import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
+import type { Route } from 'next';
+import { MessageCircle, Loader2, Send } from 'lucide-react';
+import { toast } from 'sonner';
+import { getOrCreateConversation } from '@/app/actions/messages';
+import { notifyPreorderBuyers } from '@/app/actions/shop';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+
+// -----------------------------------------------------------------------------
+// Vorbestell-Kontakt — zwei Wege, einen Interessenten/alle zu erreichen.
+//
+// 1) PreorderContactButton: 1:1-DM mit einem Käufer (✉️-Icon pro Person).
+// 2) PreorderNotifyAllButton: schreibt ALLEN Interessenten (status='interested')
+//    in einem Rutsch dieselbe Nachricht und setzt sie auf 'notified'.
+// -----------------------------------------------------------------------------
+
+export function PreorderContactButton({
+  buyerId,
+  productId,
+}: {
+  buyerId: string;
+  productId: string;
+}) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+
+  const onClick = () => {
+    startTransition(async () => {
+      const res = await getOrCreateConversation(buyerId);
+      if (!res.ok) {
+        toast.error(res.error);
+        return;
+      }
+      router.push(`/messages/${res.data.id}?productId=${productId}` as Route);
+    });
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={isPending}
+      className="grid h-8 w-8 flex-none place-items-center rounded-full border bg-background transition-colors hover:bg-muted disabled:opacity-60"
+      aria-label="Anschreiben"
+      title="Anschreiben"
+    >
+      {isPending ? (
+        <Loader2 className="h-4 w-4 animate-spin" />
+      ) : (
+        <MessageCircle className="h-4 w-4" />
+      )}
+    </button>
+  );
+}
+
+export function PreorderNotifyAllButton({
+  productId,
+  title,
+  count,
+}: {
+  productId: string;
+  title: string;
+  count: number;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [message, setMessage] = useState(
+    `Hey! Deine Vorbestellung „${title}“ ist da 🎉 Zahlbar bei Lieferung — meld dich kurz, dann machen wir's klar.`,
+  );
+  const [isPending, startTransition] = useTransition();
+
+  if (count <= 0) return null;
+
+  const send = () => {
+    const msg = message.trim();
+    if (!msg) {
+      toast.error('Schreib kurz eine Nachricht.');
+      return;
+    }
+    startTransition(async () => {
+      const res = await notifyPreorderBuyers(productId, msg);
+      if (!res.ok) {
+        toast.error(res.error);
+        return;
+      }
+      setOpen(false);
+      toast.success(
+        res.data.notified > 0
+          ? `${res.data.notified} ${res.data.notified === 1 ? 'Person' : 'Leute'} angeschrieben 🎉`
+          : 'Alle wurden schon benachrichtigt.',
+      );
+      router.refresh();
+    });
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="inline-flex flex-none items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90"
+      >
+        <Send className="h-3.5 w-3.5" />
+        Alle anschreiben
+      </button>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Alle Interessenten anschreiben</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Schreibt allen {count} {count === 1 ? 'Person' : 'Leuten'}, die noch
+            nicht benachrichtigt wurden, dieselbe Nachricht als DM. Schon
+            benachrichtigte werden übersprungen.
+          </p>
+          <textarea
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            rows={4}
+            maxLength={500}
+            className="mt-1 w-full resize-none rounded-md border bg-background px-3 py-2 text-sm outline-none focus:border-ring"
+          />
+          <div className="mt-1 text-right text-[11px] text-muted-foreground tabular-nums">
+            {message.length} / 500
+          </div>
+          <div className="mt-2 flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={isPending}>
+              Abbrechen
+            </Button>
+            <Button onClick={send} disabled={isPending}>
+              {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : `An ${count} senden`}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
