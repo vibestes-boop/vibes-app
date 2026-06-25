@@ -1,5 +1,6 @@
 import { ImageResponse } from "next/og";
 import { getProduct } from "@/lib/data/shop";
+import { formatEur } from "@/lib/utils";
 
 // -----------------------------------------------------------------------------
 // /shop/[id]/opengraph-image — dynamisches OG-Bild für Produkt-Detail-Seiten.
@@ -31,8 +32,13 @@ export default async function Image({ params }: { params: { id: string } }) {
 
   if (!product) return fallback();
 
+  const isPreorder = product.sale_mode === "preorder";
   const effectivePrice = product.sale_price_coins ?? product.price_coins;
-  const priceLabel = `${effectivePrice.toLocaleString("de-DE")} Coins`;
+  const eurLabel = formatEur(product.price_eur);
+  // Vorbestellung zeigt € (zahlbar bei Lieferung), sonst Coins.
+  const priceLabel = isPreorder
+    ? eurLabel ?? "Vorbestellung"
+    : `${effectivePrice.toLocaleString("de-DE")} Coins`;
   const categoryLabel = CATEGORY_LABELS[product.category] ?? product.category;
   const sellerLabel = `@${product.seller.username}`;
   const titleFontSize =
@@ -91,14 +97,14 @@ export default async function Image({ params }: { params: { id: string } }) {
           </div>
         )}
 
-        {/* Sale badge */}
-        {product.sale_price_coins && (
+        {/* Status badge — Vorbestellung (höchste Priorität) oder Angebot */}
+        {(isPreorder || product.sale_price_coins) && (
           <div
             style={{
               position: "absolute",
               top: "20px",
               left: "20px",
-              background: "#111827",
+              background: isPreorder ? "#b45309" : "#111827",
               color: "#fff",
               fontSize: "22px",
               fontWeight: 700,
@@ -108,7 +114,7 @@ export default async function Image({ params }: { params: { id: string } }) {
               display: "flex",
             }}
           >
-            Angebot
+            {isPreorder ? "Vorbestellung" : "Angebot"}
           </div>
         )}
       </div>
@@ -204,7 +210,7 @@ export default async function Image({ params }: { params: { id: string } }) {
           >
             {priceLabel}
           </span>
-          {product.sale_price_coins && (
+          {!isPreorder && product.sale_price_coins && (
             <span
               style={{
                 fontSize: "28px",

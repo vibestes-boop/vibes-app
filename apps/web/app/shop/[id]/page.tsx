@@ -60,33 +60,36 @@ export async function generateMetadata({
     return { title: "Produkt nicht gefunden" };
   }
   const eff = product.sale_price_coins ?? product.price_coins;
+  // Preis-Label: Vorbestellung zeigt € (zahlbar bei Lieferung), sonst Coins.
+  const priceLabel =
+    product.sale_mode === "preorder"
+      ? formatEur(product.price_eur)
+        ? `${formatEur(product.price_eur)} · Vorbestellung`
+        : "Vorbestellung"
+      : `${eff.toLocaleString("de-DE")} Coins`;
   const title = `${product.title} · @${product.seller.username}`;
   const description =
     product.description?.slice(0, 160) ??
-    `Produkt von @${product.seller.username} für ${eff.toLocaleString("de-DE")} Coins.`;
-  const cover = product.cover_url ?? undefined;
+    `${product.title} von @${product.seller.username} — ${priceLabel}.`;
 
+  // Bewusst KEINE openGraph.images / twitter.images hier: das gebrandete
+  // 1200×630-Vorschaubild liefert die File-Convention `opengraph-image.tsx`
+  // (Cover + Titel + Preis). Explizite images würden das überschreiben.
   return {
     title,
     description,
     alternates: { canonical: `/shop/${id}` },
     openGraph: {
-      // Next's Metadata-API hat kein natives `product`-Type (facebook/OG macht das
-      // über OG-Extensions). `website` ist der safe-default; Preis + Verfügbarkeit
-      // kommunizieren wir über die Description, damit alle Scraper (Discord,
-      // WhatsApp, Telegram, FB) konsistent rendern.
       type: "website",
       title,
       description,
       url: `/shop/${id}`,
       siteName: "Serlo",
-      images: cover ? [{ url: cover, alt: product.title }] : undefined,
     },
     twitter: {
-      card: cover ? "summary_large_image" : "summary",
+      card: "summary_large_image",
       title,
       description,
-      images: cover ? [cover] : undefined,
     },
   };
 }

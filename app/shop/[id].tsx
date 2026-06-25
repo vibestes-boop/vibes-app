@@ -421,8 +421,16 @@ function ShareSheet({ product, onClose, colors }: { product: Product; onClose: (
   const { mutateAsync: getOrCreateConv } = useOrCreateConversation();
   const { mutateAsync: sendMsg }         = useSendMessage();
 
-  const productUrl  = `serlo://shop/${product.id}`;
-  const shareText   = `${product.title} — 🪙 ${product.price_coins.toLocaleString('de-DE')} Coins\n${productUrl}`;
+  // Geteilt wird der HTTPS-Web-Link (nicht serlo://), damit WhatsApp/Telegram/
+  // Insta eine echte Vorschau (Bild + Titel + Kurzbeschreibung) unfurlen — ein
+  // serlo://-Deep-Link kann von keinem Messenger als Vorschau gerendert werden.
+  const WEB_BASE    = 'https://serlo-web.vercel.app';
+  const isPreorderShare = product.sale_mode === 'preorder';
+  const priceLabel  = isPreorderShare
+    ? (formatEur(product.price_eur) ? `${formatEur(product.price_eur)} · Vorbestellung` : 'Vorbestellung')
+    : `🪙 ${product.price_coins.toLocaleString('de-DE')} Coins`;
+  const productUrl  = `${WEB_BASE}/shop/${product.id}`;
+  const shareText   = `${product.title} — ${priceLabel}\n${productUrl}`;
 
   const { data: users = [] } = useQuery<ShareTarget[]>({
     queryKey: ['product-share-users', currentUserId],
@@ -510,10 +518,16 @@ function ShareSheet({ product, onClose, colors }: { product: Product; onClose: (
             <ProductCoverImage uri={product.cover_url} category={product.category} style={ss.previewImg} iconSize={18} />
             <View style={{ flex: 1 }}>
               <Text style={ss.previewTitle} numberOfLines={2}>{product.title}</Text>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                <CoinIcon size={13} />
-                <Text style={ss.previewPrice}>{product.price_coins.toLocaleString('de-DE')} Coins</Text>
-              </View>
+              {isPreorderShare ? (
+                <Text style={[ss.previewPrice, { color: '#FBBF24' }]}>
+                  {formatEur(product.price_eur) ? `${formatEur(product.price_eur)} · Vorbestellung` : 'Vorbestellung'}
+                </Text>
+              ) : (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                  <CoinIcon size={13} />
+                  <Text style={ss.previewPrice}>{product.price_coins.toLocaleString('de-DE')} Coins</Text>
+                </View>
+              )}
             </View>
             <Pressable onPress={onClose} hitSlop={12}>
               <X size={20} color="rgba(255,255,255,0.4)" />
