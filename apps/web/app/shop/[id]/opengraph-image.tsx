@@ -41,6 +41,15 @@ export default async function Image({ params }: { params: { id: string } }) {
     : `${effectivePrice.toLocaleString("de-DE")} Coins`;
   const categoryLabel = CATEGORY_LABELS[product.category] ?? product.category;
   const sellerLabel = `@${product.seller.username}`;
+  // WICHTIG: Satori (@vercel/og) kann KEINE WebP-<img> einbetten → die Route lieferte
+  // bisher ein 0-Byte-PNG (WhatsApp „Bild lädt nicht"). Unsere Cover sind WebP, daher
+  // konvertieren wir on-the-fly nach JPEG über den Bild-Proxy images.weserv.nl. Schlägt
+  // der Proxy fehl, fällt das <img> weg und der Platzhalter rendert (kein Crash).
+  const coverJpeg = product.cover_url
+    ? `https://images.weserv.nl/?url=${encodeURIComponent(
+        product.cover_url.replace(/^https?:\/\//, ""),
+      )}&w=600&h=900&fit=cover&output=jpg`
+    : null;
   const titleFontSize =
     product.title.length > 60
       ? "40px"
@@ -71,9 +80,9 @@ export default async function Image({ params }: { params: { id: string } }) {
           overflow: "hidden",
         }}
       >
-        {product.cover_url ? (
+        {coverJpeg ? (
           <img
-            src={product.cover_url}
+            src={coverJpeg}
             alt=""
             width={420}
             height={630}
