@@ -24,6 +24,7 @@ import { ArrowLeft,ImagePlus,Play,Reply,Send,Trash2,User,X } from 'lucide-react-
 import { useCallback,useEffect,useMemo,useRef,useState } from 'react';
 import {
 ActivityIndicator,Alert,
+Dimensions,
 FlatList,
 KeyboardAvoidingView,
 Modal,
@@ -143,6 +144,32 @@ function ProductPreviewCard({ productId }: { productId: string }) {
           </View>
         )}
       </View>
+    </Pressable>
+  );
+}
+
+// ── Chat-Bild mit dynamischem Seitenverhältnis (kein Crop) ────────────────────
+// Vorher: fixes 9:14-Kästchen + contentFit cover → Querformat-Fotos wurden hart
+// beschnitten. Jetzt: echtes Verhältnis aus onLoad, gegen Extreme geclamped.
+function ChatImage({ uri, isOwn, onPress }: { uri: string; isOwn: boolean; onPress: () => void }) {
+  const [aspect, setAspect] = useState<number | null>(null);
+  const maxW = Math.round(Dimensions.get('window').width * 0.62);
+  const ratio = aspect ? Math.min(Math.max(aspect, 0.6), 1.9) : 0.8;
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[styles.imageBubble, { width: maxW, aspectRatio: ratio }, isOwn && styles.imageBubbleOwn]}
+    >
+      <Image
+        source={{ uri }}
+        style={styles.imageBubbleImg}
+        contentFit="cover"
+        onLoad={(e: any) => {
+          const w = e?.source?.width;
+          const h = e?.source?.height;
+          if (w && h) setAspect(w / h);
+        }}
+      />
     </Pressable>
   );
 }
@@ -403,16 +430,7 @@ function MessageBubble({
             )}
 
             {hasImage && (
-              <Pressable
-                onPress={onImagePress}
-                style={[styles.imageBubble, isOwn && styles.imageBubbleOwn]}
-              >
-                <Image
-                  source={{ uri: msg.image_url! }}
-                  style={styles.imageBubbleImg}
-                  contentFit="cover"
-                />
-              </Pressable>
+              <ChatImage uri={msg.image_url!} isOwn={isOwn} onPress={onImagePress} />
             )}
             {showText && (
               <Text style={[
@@ -971,7 +989,7 @@ const styles = StyleSheet.create({
     width: 240, padding: 8, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth,
     marginTop: 2,
   },
-  productCardImg: { width: 46, height: 46, borderRadius: 8 },
+  productCardImg: { width: 56, height: 56, borderRadius: 8 },
   productCardImgFallback: { alignItems: 'center', justifyContent: 'center' },
   productCardTitle: { fontSize: 13, fontWeight: '600', lineHeight: 17 },
   productCardPrice: { fontSize: 13, fontWeight: '700' },
@@ -999,10 +1017,8 @@ const styles = StyleSheet.create({
 
   // ── Image Bubble ──
   imageBubble: {
+    // Breite + aspectRatio werden dynamisch von <ChatImage> gesetzt (kein Crop).
     overflow: 'hidden', borderRadius: 18,
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-    width: Math.round(require('react-native').Dimensions.get('window').width * 0.62),
-    aspectRatio: 9 / 14,
   },
   imageBubbleOwn: { borderBottomRightRadius: 5 },
   imageBubbleImg: { width: '100%', height: '100%' },
