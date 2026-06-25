@@ -254,7 +254,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
           <div className="flex flex-col gap-5">
             {/* Titel zuerst (Etsy-Minimal) + Subline: Kategorie · Women-Only · Verkäufe */}
             <div>
-              <h1 className="text-2xl font-semibold leading-tight md:text-3xl">
+              <h1 className="text-xl font-semibold leading-snug md:text-2xl">
                 {product.title}
               </h1>
               {subline && (
@@ -266,8 +266,8 @@ export default async function ProductDetailPage({ params }: PageProps) {
             <div>
               {isPreorder ? (
                 formatEur(product.price_eur) ? (
-                  <div className="flex items-baseline gap-3">
-                    <span className="text-4xl font-bold tabular-nums text-foreground">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                    <span className="whitespace-nowrap text-3xl font-bold tabular-nums text-foreground">
                       {formatEur(product.price_eur)}
                     </span>
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-600/15 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-400">
@@ -280,9 +280,9 @@ export default async function ProductDetailPage({ params }: PageProps) {
                   </span>
                 )
               ) : (
-                <div className="flex items-baseline gap-3">
-                  <span className="inline-flex items-center gap-2 text-4xl font-bold tabular-nums text-foreground">
-                    <CoinIcon className="h-7 w-7" />
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                  <span className="inline-flex items-center gap-2 whitespace-nowrap text-3xl font-bold tabular-nums text-foreground">
+                    <CoinIcon className="h-6 w-6" />
                     {eff.toLocaleString("de-DE")}
                   </span>
                   {isSale && (

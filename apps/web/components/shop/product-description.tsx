@@ -24,7 +24,10 @@ import { cn } from '@/lib/utils';
 //     „Mehr"-Button versteckt (kein sinnloses Click-Target).
 // -----------------------------------------------------------------------------
 
-const COLLAPSED_MAX_PX = 128; // entspricht ~7 Zeilen bei text-sm/leading-relaxed
+// Großzügig: typische Produkt-/Parfüm-Beschreibungen (~10–14 Zeilen) sollen KOMPLETT
+// sichtbar sein, ohne dass man jedes Mal „Mehr" drücken muss. Der Collapse + „Mehr"-
+// Toggle greift erst bei echten Romanen (> ~24 Zeilen). UX-Feedback Zaur 25.06.
+const COLLAPSED_MAX_PX = 560;
 
 export function ProductDescription({
   text,
