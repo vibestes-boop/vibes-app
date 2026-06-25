@@ -538,12 +538,11 @@ const MessageBubble = memo(function MessageBubble({
   });
   // Geteilten Shop-Link aus dem Text ziehen → als Produktkarte rendern.
   const { productId: sharedProductId, text: sharedText } = parseProductShare(msg.content);
-  // „flush" = randlose Bubble (nur Bild/GIF/Produkt, kein Text) → WhatsApp-Stil:
-  // Medium füllt die Bubble, kein Farbrahmen, Zeit als dezente Zeile darunter.
-  const hasImageMsg = !!msg.image_url;
-  const isMediaOnly = hasImageMsg && !sharedText && !sharedProductId && !msg.story_media_url && !msg.post;
-  const isProductOnly = !!sharedProductId && !sharedText && !hasImageMsg && !msg.story_media_url && !msg.post;
-  const flush = isMediaOnly || isProductOnly;
+  // WhatsApp-Aufbau: Medien (Bild/GIF/Produkt) liegen randlos oben in einer
+  // overflow-hidden Bubble, Text + Uhrzeit in einem gepolsterten Footer darunter.
+  // Reines Bild (kein Text/Produkt) → kein Footer, Uhrzeit als Overlay aufs Bild.
+  const imageOnly =
+    !!msg.image_url && !sharedText && !sharedProductId && !msg.story_media_url && !msg.post;
 
   return (
     // Bubble-Breite von 78% → 72% (D2 aus UI_AUDIT).
@@ -565,107 +564,108 @@ const MessageBubble = memo(function MessageBubble({
           </div>
         )}
 
-        <div
-          className={`relative text-sm ${
-            flush
-              ? 'overflow-hidden rounded-2xl'
-              : `rounded-2xl px-3.5 py-2 shadow-sm ${
-                  isOwn
-                    ? 'rounded-br-md bg-brand-purple text-white'
-                    : 'rounded-bl-md bg-muted text-foreground'
-                }`
-          } ${msg.pending ? 'opacity-70' : ''}`}
-        >
-          {msg.image_url && (
-            <a
-              href={msg.image_url}
-              target="_blank"
-              rel="noreferrer"
-              className={`block overflow-hidden ${
-                flush ? 'rounded-2xl' : 'mb-1.5 rounded-xl'
-              }`}
-            >
-              <Image
-                src={msg.image_url}
-                alt=""
-                width={300}
-                height={300}
-                className="h-auto max-h-72 w-full object-cover"
-              />
-            </a>
-          )}
-
-          {/* Story-Reply-Karte — wird gezeigt wenn die Nachricht als Antwort auf
-              eine Story gesendet wurde (story_media_url enthält die Story-Media-URL).
-              Parität zu mobile storyReplyWrap (app/messages/[id].tsx). */}
-          {msg.story_media_url && (
-            <div className="mb-1.5 overflow-hidden rounded-xl border border-white/10 bg-black/20">
-              <p className={`px-2.5 pt-2 pb-1 text-[10px] opacity-60 ${isOwn ? 'text-primary-foreground' : 'text-foreground'}`}>
-                📸 Antwort auf Story
-              </p>
-              <Image
-                src={msg.story_media_url}
-                alt="Story"
-                width={200}
-                height={140}
-                className="h-36 w-full object-cover"
-              />
-            </div>
-          )}
-
-          {msg.post && (
-            <Link
-              href={`/p/${msg.post.id}` as Route}
-              className="mb-1 flex items-center gap-2 rounded-lg bg-black/10 p-2 text-xs hover:bg-black/20"
-            >
-              {msg.post.thumbnail_url && (
+        <div className="relative">
+          {/* Sichtbare Bubble — overflow-hidden klippt Medien an die Rundung. */}
+          <div
+            className={`overflow-hidden rounded-2xl shadow-sm ${
+              isOwn
+                ? 'rounded-br-md bg-neutral-700 text-white'
+                : 'rounded-bl-md bg-muted text-foreground'
+            } ${msg.pending ? 'opacity-70' : ''}`}
+          >
+            {/* Bild/GIF randlos oben; bei reinem Bild Uhrzeit als Overlay. */}
+            {msg.image_url && (
+              <a href={msg.image_url} target="_blank" rel="noreferrer" className="relative block">
                 <Image
-                  src={msg.post.thumbnail_url}
+                  src={msg.image_url}
                   alt=""
-                  width={32}
-                  height={48}
-                  className="h-12 w-8 flex-none rounded object-cover"
+                  width={300}
+                  height={300}
+                  className="block h-auto max-h-72 w-full object-cover"
                 />
-              )}
-              <div className="min-w-0 flex-1">
-                <div className="truncate font-medium">
-                  @{msg.post.author_username ?? '—'}
-                </div>
-                <div className="truncate opacity-80">{msg.post.caption ?? 'Video öffnen'}</div>
-              </div>
-            </Link>
-          )}
+                {imageOnly && (
+                  <span className="pointer-events-none absolute bottom-1.5 right-2 inline-flex items-center gap-1 rounded-md bg-black/55 px-1.5 py-0.5 text-[10px] text-white">
+                    <span suppressHydrationWarning>{time}</span>
+                    {isOwn && !msg.pending &&
+                      (msg.read ? (
+                        <CheckCheck className="h-3 w-3 stroke-[2.5]" />
+                      ) : (
+                        <Check className="h-3 w-3 stroke-[2.5]" />
+                      ))}
+                  </span>
+                )}
+              </a>
+            )}
 
-          {sharedText && <p className="whitespace-pre-wrap break-words">{sharedText}</p>}
+            {/* Produkt-Link — randlos volle Breite. */}
+            {sharedProductId && <ProductLinkCard productId={sharedProductId} flush />}
 
-          {sharedProductId && <ProductLinkCard productId={sharedProductId} flush={isProductOnly} />}
+            {/* Footer: Story/Post/Text + Uhrzeit (gepolstert). Entfällt bei reinem Bild. */}
+            {!imageOnly && (
+              <div className="px-3.5 py-2 text-sm">
+                {msg.story_media_url && (
+                  <div className="mb-1.5 overflow-hidden rounded-xl border border-white/10 bg-black/20">
+                    <p className={`px-2.5 pb-1 pt-2 text-[10px] opacity-60 ${isOwn ? 'text-white' : 'text-foreground'}`}>
+                      📸 Antwort auf Story
+                    </p>
+                    <Image
+                      src={msg.story_media_url}
+                      alt="Story"
+                      width={200}
+                      height={140}
+                      className="h-36 w-full object-cover"
+                    />
+                  </div>
+                )}
 
-          {/* Zeit IM Bubble nur bei Text-Bubbles; bei randlosen Medium-Bubbles
-              steht sie als dezente Zeile DARUNTER (siehe nach dem Bubble-Div). */}
-          {!flush && (
-            <div
-              className={`mt-0.5 flex items-center gap-1 text-[10px] ${
-                isOwn ? 'text-white/85' : 'text-muted-foreground'
-              }`}
-            >
-              {/* suppressHydrationWarning: toLocaleTimeString ist TZ-abhängig
-                  (Server UTC vs. Client) — kosmetischer Mismatch, nur Warning. */}
-              <span suppressHydrationWarning>{time}</span>
-              {isOwn && !msg.pending && (
-                <span
-                  aria-label={msg.read ? 'gelesen' : 'gesendet'}
-                  className={msg.read ? 'text-white' : ''}
+                {msg.post && (
+                  <Link
+                    href={`/p/${msg.post.id}` as Route}
+                    className="mb-1 flex items-center gap-2 rounded-lg bg-black/10 p-2 text-xs hover:bg-black/20"
+                  >
+                    {msg.post.thumbnail_url && (
+                      <Image
+                        src={msg.post.thumbnail_url}
+                        alt=""
+                        width={32}
+                        height={48}
+                        className="h-12 w-8 flex-none rounded object-cover"
+                      />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-medium">@{msg.post.author_username ?? '—'}</div>
+                      <div className="truncate opacity-80">{msg.post.caption ?? 'Video öffnen'}</div>
+                    </div>
+                  </Link>
+                )}
+
+                {sharedText && <p className="whitespace-pre-wrap break-words">{sharedText}</p>}
+
+                <div
+                  className={`mt-0.5 flex items-center gap-1 text-[10px] ${
+                    isOwn ? 'text-white/85' : 'text-muted-foreground'
+                  }`}
                 >
-                  {msg.read ? (
-                    <CheckCheck className="h-3 w-3 stroke-[2.5]" />
-                  ) : (
-                    <Check className="h-3 w-3 stroke-[2.5]" />
+                  {/* suppressHydrationWarning: toLocaleTimeString ist TZ-abhängig. */}
+                  <span suppressHydrationWarning>{time}</span>
+                  {isOwn && !msg.pending && (
+                    <span
+                      aria-label={msg.read ? 'gelesen' : 'gesendet'}
+                      className={msg.read ? 'text-white' : ''}
+                    >
+                      {msg.read ? (
+                        <CheckCheck className="h-3 w-3 stroke-[2.5]" />
+                      ) : (
+                        <Check className="h-3 w-3 stroke-[2.5]" />
+                      )}
+                    </span>
                   )}
-                </span>
-              )}
-            </div>
-          )}
+                </div>
+              </div>
+            )}
+          </div>
 
+          {/* Hover-Actions — AUSSERHALB der overflow-hidden Bubble (sonst geklippt). */}
           <div
             className={`absolute ${
               isOwn ? 'left-[-72px]' : 'right-[-72px]'
@@ -702,24 +702,6 @@ const MessageBubble = memo(function MessageBubble({
             )}
           </div>
         </div>
-
-        {/* Zeit unter randlosen Medium-Bubbles (Bild/GIF/Produkt) — dezent. */}
-        {flush && (
-          <div
-            className={`mt-0.5 flex items-center gap-1 px-1 text-[10px] text-muted-foreground ${
-              isOwn ? 'justify-end' : 'justify-start'
-            }`}
-          >
-            <span suppressHydrationWarning>{time}</span>
-            {isOwn && !msg.pending && (
-              msg.read ? (
-                <CheckCheck className="h-3 w-3 stroke-[2.5]" />
-              ) : (
-                <Check className="h-3 w-3 stroke-[2.5]" />
-              )
-            )}
-          </div>
-        )}
 
         {reactions.length > 0 && (
           <div className="mt-1 flex flex-wrap gap-1">

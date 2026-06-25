@@ -67,8 +67,8 @@ export function ProductLinkCard({
   return (
     <Link
       href={`/shop/${data.id}` as Route}
-      className={`flex items-center gap-2.5 border border-black/10 bg-background p-2 text-foreground transition-colors hover:bg-muted ${
-        flush ? 'w-full rounded-2xl' : 'mb-1 rounded-lg'
+      className={`flex items-center gap-2.5 bg-background p-2.5 text-foreground transition-colors hover:bg-muted ${
+        flush ? 'w-full rounded-t-2xl' : 'mb-1 rounded-lg border border-black/10'
       }`}
     >
       {data.cover_url ? (
