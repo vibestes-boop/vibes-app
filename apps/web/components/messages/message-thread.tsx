@@ -538,6 +538,12 @@ const MessageBubble = memo(function MessageBubble({
   });
   // Geteilten Shop-Link aus dem Text ziehen → als Produktkarte rendern.
   const { productId: sharedProductId, text: sharedText } = parseProductShare(msg.content);
+  // „flush" = randlose Bubble (nur Bild/GIF/Produkt, kein Text) → WhatsApp-Stil:
+  // Medium füllt die Bubble, kein Farbrahmen, Zeit als dezente Zeile darunter.
+  const hasImageMsg = !!msg.image_url;
+  const isMediaOnly = hasImageMsg && !sharedText && !sharedProductId && !msg.story_media_url && !msg.post;
+  const isProductOnly = !!sharedProductId && !sharedText && !hasImageMsg && !msg.story_media_url && !msg.post;
+  const flush = isMediaOnly || isProductOnly;
 
   return (
     // Bubble-Breite von 78% → 72% (D2 aus UI_AUDIT).
@@ -560,10 +566,14 @@ const MessageBubble = memo(function MessageBubble({
         )}
 
         <div
-          className={`relative rounded-2xl px-3.5 py-2 text-sm shadow-sm ${
-            isOwn
-              ? 'rounded-br-md bg-primary text-primary-foreground'
-              : 'rounded-bl-md bg-muted text-foreground'
+          className={`relative text-sm ${
+            flush
+              ? 'overflow-hidden rounded-2xl'
+              : `rounded-2xl px-3.5 py-2 shadow-sm ${
+                  isOwn
+                    ? 'rounded-br-md bg-brand-purple text-white'
+                    : 'rounded-bl-md bg-muted text-foreground'
+                }`
           } ${msg.pending ? 'opacity-70' : ''}`}
         >
           {msg.image_url && (
@@ -571,14 +581,16 @@ const MessageBubble = memo(function MessageBubble({
               href={msg.image_url}
               target="_blank"
               rel="noreferrer"
-              className="mb-1 block overflow-hidden rounded-lg"
+              className={`block overflow-hidden ${
+                flush ? 'rounded-2xl' : 'mb-1.5 rounded-xl'
+              }`}
             >
               <Image
                 src={msg.image_url}
                 alt=""
-                width={240}
-                height={240}
-                className="max-h-60 w-auto object-cover"
+                width={300}
+                height={300}
+                className="h-auto max-h-72 w-full object-cover"
               />
             </a>
           )}
@@ -626,40 +638,33 @@ const MessageBubble = memo(function MessageBubble({
 
           {sharedText && <p className="whitespace-pre-wrap break-words">{sharedText}</p>}
 
-          {sharedProductId && <ProductLinkCard productId={sharedProductId} />}
+          {sharedProductId && <ProductLinkCard productId={sharedProductId} flush={isProductOnly} />}
 
-          <div
-            className={`mt-0.5 flex items-center gap-1 text-[10px] ${
-              isOwn ? 'text-primary-foreground/85' : 'text-muted-foreground'
-            }`}
-          >
-            {/*
-              suppressHydrationWarning: `toLocaleTimeString('de-DE', …)` rendert
-              basierend auf der TZ des Prozesses — Server (Vercel Edge = UTC)
-              und Client (Europe/Berlin etc.) können auf Stunden-Grenzen um 1-2h
-              abweichen. Der Text-Mismatch ist kosmetisch (beide Strings sind
-              valide), nur der React-#418 Warning ist störend.
-            */}
-            <span suppressHydrationWarning>{time}</span>
-            {isOwn && !msg.pending && (
-              // Read-Receipt-Visibility verstärkt (D2 aus UI_AUDIT): `CheckCheck`
-              // bei gelesen bekommt die volle `text-primary-foreground`-Luminanz
-              // statt 70%, dazu +0.5px Stroke-Weight. Der Status ist genug wichtig
-              // für den Sender (bringt emotionale Konnotation — „angekommen vs
-              // wirklich gesehen") dass er nicht gegen den Bubble-Hintergrund
-              // verschwinden darf.
-              <span
-                aria-label={msg.read ? 'gelesen' : 'gesendet'}
-                className={msg.read ? 'text-primary-foreground' : ''}
-              >
-                {msg.read ? (
-                  <CheckCheck className="h-3 w-3 stroke-[2.5]" />
-                ) : (
-                  <Check className="h-3 w-3 stroke-[2.5]" />
-                )}
-              </span>
-            )}
-          </div>
+          {/* Zeit IM Bubble nur bei Text-Bubbles; bei randlosen Medium-Bubbles
+              steht sie als dezente Zeile DARUNTER (siehe nach dem Bubble-Div). */}
+          {!flush && (
+            <div
+              className={`mt-0.5 flex items-center gap-1 text-[10px] ${
+                isOwn ? 'text-white/85' : 'text-muted-foreground'
+              }`}
+            >
+              {/* suppressHydrationWarning: toLocaleTimeString ist TZ-abhängig
+                  (Server UTC vs. Client) — kosmetischer Mismatch, nur Warning. */}
+              <span suppressHydrationWarning>{time}</span>
+              {isOwn && !msg.pending && (
+                <span
+                  aria-label={msg.read ? 'gelesen' : 'gesendet'}
+                  className={msg.read ? 'text-white' : ''}
+                >
+                  {msg.read ? (
+                    <CheckCheck className="h-3 w-3 stroke-[2.5]" />
+                  ) : (
+                    <Check className="h-3 w-3 stroke-[2.5]" />
+                  )}
+                </span>
+              )}
+            </div>
+          )}
 
           <div
             className={`absolute ${
@@ -697,6 +702,24 @@ const MessageBubble = memo(function MessageBubble({
             )}
           </div>
         </div>
+
+        {/* Zeit unter randlosen Medium-Bubbles (Bild/GIF/Produkt) — dezent. */}
+        {flush && (
+          <div
+            className={`mt-0.5 flex items-center gap-1 px-1 text-[10px] text-muted-foreground ${
+              isOwn ? 'justify-end' : 'justify-start'
+            }`}
+          >
+            <span suppressHydrationWarning>{time}</span>
+            {isOwn && !msg.pending && (
+              msg.read ? (
+                <CheckCheck className="h-3 w-3 stroke-[2.5]" />
+              ) : (
+                <Check className="h-3 w-3 stroke-[2.5]" />
+              )
+            )}
+          </div>
+        )}
 
         {reactions.length > 0 && (
           <div className="mt-1 flex flex-wrap gap-1">

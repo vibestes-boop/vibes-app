@@ -26,7 +26,13 @@ interface MiniProduct {
   sale_mode: 'coins' | 'preorder' | 'cash' | null;
 }
 
-export function ProductLinkCard({ productId }: { productId: string }) {
+export function ProductLinkCard({
+  productId,
+  flush = false,
+}: {
+  productId: string;
+  flush?: boolean;
+}) {
   const { data, isLoading } = useQuery<MiniProduct | null>({
     queryKey: ['msg-product', productId],
     staleTime: 5 * 60 * 1000,
@@ -61,7 +67,9 @@ export function ProductLinkCard({ productId }: { productId: string }) {
   return (
     <Link
       href={`/shop/${data.id}` as Route}
-      className="mb-1 flex items-center gap-2.5 rounded-lg border border-black/10 bg-background p-2 text-foreground transition-colors hover:bg-muted"
+      className={`flex items-center gap-2.5 border border-black/10 bg-background p-2 text-foreground transition-colors hover:bg-muted ${
+        flush ? 'w-full rounded-2xl' : 'mb-1 rounded-lg'
+      }`}
     >
       {data.cover_url ? (
         <Image
