@@ -88,7 +88,7 @@ export default function Image() {
               height: '9px',
               borderRadius: '999px',
               background: '#f87171',
-              display: 'inline-block',
+              display: 'flex',
             }}
           />
           Serlo
@@ -118,7 +118,7 @@ export default function Image() {
               height: '8px',
               borderRadius: '999px',
               background: '#ffffff',
-              display: 'inline-block',
+              display: 'flex',
             }}
           />
           LIVE

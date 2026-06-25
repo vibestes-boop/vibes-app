@@ -1,5 +1,6 @@
 import { ImageResponse } from 'next/og';
 import { getLiveSession } from '@/lib/data/live';
+import { loadImageDataUri } from '@/lib/og-image';
 
 // -----------------------------------------------------------------------------
 // Dynamic OG-Image für /live/[id].
@@ -29,6 +30,12 @@ export default async function Image({ params }: { params: { id: string } }) {
   const title = session.title ?? 'Live Stream';
   const viewerCount = session.viewer_count ?? 0;
   const isLive = session.status === 'active';
+  // Thumbnail + Host-Avatar Satori-sicher vorab als JPEG-data-URI laden
+  // (WebP-tauglich); null → Karte ohne Foto statt Crash (siehe lib/og-image).
+  const [thumb, avatar] = await Promise.all([
+    loadImageDataUri(session.thumbnail_url, 800, 900),
+    loadImageDataUri(session.host?.avatar_url, 120, 120),
+  ]);
 
   return new ImageResponse(
     (
@@ -53,10 +60,10 @@ export default async function Image({ params }: { params: { id: string } }) {
             overflow: 'hidden',
           }}
         >
-          {session.thumbnail_url ? (
+          {thumb ? (
 
             <img
-              src={session.thumbnail_url}
+              src={thumb}
               alt=""
               width={560}
               height={630}
@@ -105,7 +112,7 @@ export default async function Image({ params }: { params: { id: string } }) {
                   height: '10px',
                   borderRadius: '999px',
                   background: '#ffffff',
-                  display: 'inline-block',
+                  display: 'flex',
                 }}
               />
               LIVE
@@ -162,7 +169,7 @@ export default async function Image({ params }: { params: { id: string } }) {
                 height: '10px',
                 borderRadius: '999px',
                 background: '#d4af37',
-                display: 'inline-block',
+                display: 'flex',
               }}
             />
             Serlo Live
@@ -192,10 +199,10 @@ export default async function Image({ params }: { params: { id: string } }) {
               gap: '18px',
             }}
           >
-            {session.host?.avatar_url ? (
+            {avatar ? (
 
               <img
-                src={session.host.avatar_url}
+                src={avatar}
                 alt=""
                 width={64}
                 height={64}
@@ -228,8 +235,7 @@ export default async function Image({ params }: { params: { id: string } }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <div style={{ fontSize: '26px', fontWeight: 600 }}>{hostName}</div>
               <div style={{ fontSize: '18px', color: '#8d8a99' }}>
-                @{session.host?.username}
-                {isLive && viewerCount > 0 ? ` · ${viewerCount.toLocaleString('de-DE')} Zuschauer` : ''}
+                {`@${session.host?.username ?? ''}${isLive && viewerCount > 0 ? ` · ${viewerCount.toLocaleString('de-DE')} Zuschauer` : ''}`}
               </div>
             </div>
           </div>

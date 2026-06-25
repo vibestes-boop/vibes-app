@@ -1,5 +1,6 @@
 import { ImageResponse } from 'next/og';
 import { getPost } from '@/lib/data/public';
+import { loadImageDataUri } from '@/lib/og-image';
 
 // -----------------------------------------------------------------------------
 // Dynamic OG-Image für /p/[postId].
@@ -21,6 +22,12 @@ export default async function Image({ params }: { params: { postId: string } }) 
 
   const authorName = post.author.display_name ?? `@${post.author.username}`;
   const caption = post.caption?.slice(0, 180) ?? '';
+  // Thumbnail + Avatar Satori-sicher vorab als JPEG-data-URI laden (WebP-tauglich);
+  // null → Karte ohne Foto (kein Crash, siehe lib/og-image).
+  const [thumb, avatar] = await Promise.all([
+    loadImageDataUri(post.thumbnail_url, 380, 630),
+    loadImageDataUri(post.author.avatar_url, 144, 144),
+  ]);
 
   return new ImageResponse(
     (
@@ -45,10 +52,10 @@ export default async function Image({ params }: { params: { postId: string } }) 
             overflow: 'hidden',
           }}
         >
-          {post.thumbnail_url ? (
+          {thumb ? (
 
             <img
-              src={post.thumbnail_url}
+              src={thumb}
               alt=""
               width={380}
               height={630}
@@ -119,7 +126,7 @@ export default async function Image({ params }: { params: { postId: string } }) 
                 height: '10px',
                 borderRadius: '999px',
                 background: '#d4af37',
-                display: 'inline-block',
+                display: 'flex',
               }}
             />
             Serlo
@@ -142,10 +149,10 @@ export default async function Image({ params }: { params: { postId: string } }) 
 
           {/* Bottom: Author */}
           <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', gap: '20px' }}>
-            {post.author.avatar_url ? (
+            {avatar ? (
 
               <img
-                src={post.author.avatar_url}
+                src={avatar}
                 alt=""
                 width={72}
                 height={72}
@@ -179,7 +186,7 @@ export default async function Image({ params }: { params: { postId: string } }) 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
               <div style={{ fontSize: '28px', fontWeight: 600 }}>{authorName}</div>
               <div style={{ fontSize: '20px', color: '#a7a3b1' }}>
-                @{post.author.username} · {formatCount(post.view_count)} Aufrufe
+                {`@${post.author.username} · ${formatCount(post.view_count)} Aufrufe`}
               </div>
             </div>
           </div>

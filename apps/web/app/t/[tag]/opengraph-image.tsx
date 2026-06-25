@@ -52,7 +52,7 @@ export default async function Image({ params }: { params: { tag: string } }) {
               height: '10px',
               borderRadius: '999px',
               background: '#d4af37',
-              display: 'inline-block',
+              display: 'flex',
             }}
           />
           Serlo
@@ -69,7 +69,7 @@ export default async function Image({ params }: { params: { tag: string } }) {
               color: '#d4af37',
             }}
           >
-            #{rawTag}
+            {`#${rawTag}`}
           </div>
           {rank >= 0 && (
             <div
@@ -82,7 +82,7 @@ export default async function Image({ params }: { params: { tag: string } }) {
               }}
             >
               <span style={{ fontSize: '28px' }}>📈</span>
-              <span>#{rank + 1} Trending auf Serlo</span>
+              <span>{`#${rank + 1} Trending auf Serlo`}</span>
             </div>
           )}
         </div>

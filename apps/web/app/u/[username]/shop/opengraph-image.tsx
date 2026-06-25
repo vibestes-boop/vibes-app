@@ -1,6 +1,7 @@
 import { ImageResponse } from 'next/og';
 import { getPublicProfile } from '@/lib/data/public';
 import { getMerchantProducts } from '@/lib/data/shop';
+import { loadImageDataUri } from '@/lib/og-image';
 
 // -----------------------------------------------------------------------------
 // /u/[username]/shop/opengraph-image — dynamisches OG-Bild für Merchant-Storefronts.
@@ -28,6 +29,8 @@ export default async function Image({ params }: { params: { username: string } }
   const productCount = products.length;
   const displayName = profile.display_name ?? `@${profile.username}`;
   const bio = profile.bio?.slice(0, 120) ?? null;
+  // Avatar Satori-sicher vorab als JPEG-data-URI laden (WebP-tauglich); null → Initialen.
+  const avatar = await loadImageDataUri(profile.avatar_url, 400, 400);
 
   return new ImageResponse(
     (
@@ -68,10 +71,10 @@ export default async function Image({ params }: { params: { username: string } }
           />
 
           {/* Avatar */}
-          {profile.avatar_url ? (
+          {avatar ? (
 
             <img
-              src={profile.avatar_url}
+              src={avatar}
               alt=""
               width={200}
               height={200}
@@ -164,7 +167,7 @@ export default async function Image({ params }: { params: { username: string } }
                 height: '9px',
                 borderRadius: '999px',
                 background: '#d4af37',
-                display: 'inline-block',
+                display: 'flex',
               }}
             />
             Serlo Shop
@@ -188,7 +191,7 @@ export default async function Image({ params }: { params: { username: string } }
                   fontWeight: 600,
                   padding: '4px 12px',
                   borderRadius: '999px',
-                  display: 'inline-flex',
+                  display: 'flex',
                 }}
               >
                 ✓ Verifiziert

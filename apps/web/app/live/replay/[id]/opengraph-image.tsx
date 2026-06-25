@@ -1,5 +1,6 @@
 import { ImageResponse } from 'next/og';
 import { getLiveSession } from '@/lib/data/live';
+import { loadImageDataUri } from '@/lib/og-image';
 
 // -----------------------------------------------------------------------------
 // Dynamic OG-Image für /live/replay/[id] — VOD-Replay-Seite.
@@ -31,6 +32,12 @@ export default async function Image({ params }: { params: Promise<{ id: string }
   const hostName = session.host?.display_name ?? `@${session.host?.username ?? 'Host'}`;
   const title = session.title ?? 'Live-Aufnahme';
   const peakViewers = session.peak_viewer_count ?? 0;
+  // Thumbnail + Host-Avatar Satori-sicher vorab als JPEG-data-URI laden
+  // (WebP-tauglich); null → Karte ohne Foto statt Crash (siehe lib/og-image).
+  const [thumb, avatar] = await Promise.all([
+    loadImageDataUri(session.thumbnail_url, 800, 900),
+    loadImageDataUri(session.host?.avatar_url, 120, 120),
+  ]);
 
   return new ImageResponse(
     (
@@ -55,10 +62,10 @@ export default async function Image({ params }: { params: Promise<{ id: string }
             overflow: 'hidden',
           }}
         >
-          {session.thumbnail_url ? (
+          {thumb ? (
 
             <img
-              src={session.thumbnail_url}
+              src={thumb}
               alt=""
               width={560}
               height={630}
@@ -153,7 +160,7 @@ export default async function Image({ params }: { params: Promise<{ id: string }
                 height: '10px',
                 borderRadius: '999px',
                 background: '#94a3b8',
-                display: 'inline-block',
+                display: 'flex',
               }}
             />
             Serlo Replay
@@ -206,10 +213,10 @@ export default async function Image({ params }: { params: Promise<{ id: string }
               gap: '18px',
             }}
           >
-            {session.host?.avatar_url ? (
+            {avatar ? (
 
               <img
-                src={session.host.avatar_url}
+                src={avatar}
                 alt=""
                 width={64}
                 height={64}

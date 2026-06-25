@@ -134,7 +134,7 @@ export default async function GuildOGImage({
               fontWeight: 600,
             }}
           >
-            👥 {membersLabel}
+            {`👥 ${membersLabel}`}
           </div>
           <div style={{ fontSize: 20, color: 'rgba(255,255,255,0.35)', fontWeight: 600 }}>
             Serlo

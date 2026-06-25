@@ -1,5 +1,6 @@
 import { ImageResponse } from 'next/og';
 import { getPublicProfile } from '@/lib/data/public';
+import { loadImageDataUri } from '@/lib/og-image';
 
 // -----------------------------------------------------------------------------
 // Dynamic OG-Image für /u/[username].
@@ -23,7 +24,8 @@ export default async function Image({ params }: { params: { username: string } }
   const bio = profile?.bio?.slice(0, 140) ?? 'Serlo — Live, Feed, Shop.';
   const followers = profile?.follower_count ?? 0;
   const posts = profile?.post_count ?? 0;
-  const avatarUrl = profile?.avatar_url;
+  // Avatar Satori-sicher vorab als JPEG-data-URI laden (WebP-tauglich); null → Initialen.
+  const avatar = await loadImageDataUri(profile?.avatar_url, 360, 360);
 
   return new ImageResponse(
     (
@@ -60,7 +62,7 @@ export default async function Image({ params }: { params: { username: string } }
               height: '10px',
               borderRadius: '999px',
               background: '#d4af37',
-              display: 'inline-block',
+              display: 'flex',
             }}
           />
           Serlo
@@ -68,11 +70,11 @@ export default async function Image({ params }: { params: { username: string } }
 
         {/* Avatar + Name */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '32px', marginTop: '120px' }}>
-          {avatarUrl ? (
+          {avatar ? (
             // Wichtig: IMG-Tag, nicht next/image — satori kennt kein Next-Image.
 
             <img
-              src={avatarUrl}
+              src={avatar}
               alt=""
               width={180}
               height={180}
@@ -107,7 +109,7 @@ export default async function Image({ params }: { params: { username: string } }
             <div style={{ fontSize: '56px', fontWeight: 700, lineHeight: 1.1 }}>
               {displayName}
             </div>
-            <div style={{ fontSize: '28px', color: '#a7a3b1' }}>@{username}</div>
+            <div style={{ fontSize: '28px', color: '#a7a3b1' }}>{`@${username}`}</div>
           </div>
         </div>
 
@@ -131,7 +133,7 @@ export default async function Image({ params }: { params: { username: string } }
           <Stat label="Follower" value={formatCount(followers)} />
           <Stat label="Posts"    value={formatCount(posts)} />
           <div style={{ marginLeft: 'auto', fontSize: '22px', color: '#a7a3b1' }}>
-            serlo.app/u/{username}
+            {`serlo.app/u/${username}`}
           </div>
         </div>
       </div>

@@ -67,7 +67,7 @@ export default function Image() {
               height: '9px',
               borderRadius: '999px',
               background: '#38bdf8',
-              display: 'inline-block',
+              display: 'flex',
             }}
           />
           Serlo

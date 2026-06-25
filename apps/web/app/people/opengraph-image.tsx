@@ -61,27 +61,29 @@ export default function Image() {
               height: '9px',
               borderRadius: '999px',
               background: '#f472b6',
-              display: 'inline-block',
+              display: 'flex',
             }}
           />
           Serlo
         </div>
 
         {/* Avatar circles decorative */}
-        {[
+        {([
           { top: 80, left: 80, size: 80, opacity: 0.3 },
           { top: 120, left: 200, size: 56, opacity: 0.2 },
           { top: 420, left: 60, size: 68, opacity: 0.25 },
           { top: 460, right: 80, size: 72, opacity: 0.2 },
           { top: 90, right: 180, size: 60, opacity: 0.2 },
-        ].map((c, i) => (
+        ] as Array<{ top: number; size: number; opacity: number; left?: number; right?: number }>).map((c, i) => (
           <div
             key={i}
             style={{
               position: 'absolute',
               top: `${c.top}px`,
-              left: c.left !== undefined ? `${c.left}px` : undefined,
-              right: (c as { right?: number }).right !== undefined ? `${(c as { right?: number }).right}px` : undefined,
+              // Satori crasht bei undefined-Style-Werten (.trim() auf undefined) →
+              // left/right nur setzen, wenn definiert.
+              ...(c.left !== undefined ? { left: `${c.left}px` } : {}),
+              ...(c.right !== undefined ? { right: `${c.right}px` } : {}),
               width: `${c.size}px`,
               height: `${c.size}px`,
               borderRadius: '999px',

@@ -71,7 +71,7 @@ export default function Image() {
             height: "9px",
             borderRadius: "999px",
             background: "#f9fafb",
-            display: "inline-block",
+            display: "flex",
           }}
         />
         Serlo
