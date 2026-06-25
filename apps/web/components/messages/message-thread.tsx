@@ -17,6 +17,7 @@ import type { Route } from 'next';
 import { createBrowserClient } from '@supabase/ssr';
 import { Send, ImagePlus, Loader2, Smile, CornerDownRight, X, Check, CheckCheck, Trash2 } from 'lucide-react';
 import { GifPicker } from './gif-picker';
+import { ProductLinkCard } from './product-link-card';
 import type {
   MessageWithContext,
   ReactionAggregate,
@@ -477,6 +478,33 @@ export function MessageThread({
 }
 
 // -----------------------------------------------------------------------------
+// Geteilte Shop-Links (/shop/<uuid>) im Nachrichtentext erkennen → als Karte
+// rendern statt als roher Text-Pfad. Funktioniert auch für ALTE Nachrichten,
+// weil wir den Inhalt parsen statt eine product_id-Spalte zu brauchen.
+// Format vom Composer: "[Text\n]🛍️ <titel> — <preis>\n/shop/<id>".
+// -----------------------------------------------------------------------------
+
+const SHOP_LINK_RE =
+  /\/shop\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i;
+
+function parseProductShare(content: string | null): {
+  productId: string | null;
+  text: string | null;
+} {
+  if (!content) return { productId: null, text: content };
+  const m = content.match(SHOP_LINK_RE);
+  if (!m) return { productId: null, text: content };
+  // Auto-angehängten Teaser-Block am Ende zeilenweise entfernen (robust gegen
+  // Emoji-Varianten): letzte /shop/-Zeile + die voranstehende 🛍-Teaser-Zeile.
+  const lines = content.split('\n');
+  if (lines.length && lines[lines.length - 1].trim().startsWith('/shop/')) lines.pop();
+  if (lines.length && lines[lines.length - 1].trimStart().startsWith('🛍')) lines.pop();
+  // Fallback: jeden übrig gebliebenen /shop/-Pfad rausnehmen.
+  const text = lines.join('\n').replace(SHOP_LINK_RE, '').trim();
+  return { productId: m[1], text: text.length > 0 ? text : null };
+}
+
+// -----------------------------------------------------------------------------
 // MessageBubble
 // -----------------------------------------------------------------------------
 
@@ -505,6 +533,8 @@ const MessageBubble = memo(function MessageBubble({
     hour: '2-digit',
     minute: '2-digit',
   });
+  // Geteilten Shop-Link aus dem Text ziehen → als Produktkarte rendern.
+  const { productId: sharedProductId, text: sharedText } = parseProductShare(msg.content);
 
   return (
     // Bubble-Breite von 78% → 72% (D2 aus UI_AUDIT).
@@ -591,7 +621,9 @@ const MessageBubble = memo(function MessageBubble({
             </Link>
           )}
 
-          {msg.content && <p className="whitespace-pre-wrap break-words">{msg.content}</p>}
+          {sharedText && <p className="whitespace-pre-wrap break-words">{sharedText}</p>}
+
+          {sharedProductId && <ProductLinkCard productId={sharedProductId} />}
 
           <div
             className={`mt-0.5 flex items-center gap-1 text-[10px] ${
