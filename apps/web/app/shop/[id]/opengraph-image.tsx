@@ -155,7 +155,7 @@ export default async function Image({ params }: { params: { id: string } }) {
               height: "9px",
               borderRadius: "999px",
               background: "#f9fafb",
-              display: "inline-block",
+              display: "flex",
             }}
           />
           Serlo Shop
@@ -178,7 +178,7 @@ export default async function Image({ params }: { params: { id: string } }) {
               fontWeight: 600,
               padding: "4px 14px",
               borderRadius: "999px",
-              display: "inline-flex",
+              display: "flex",
             }}
           >
             {categoryLabel}
