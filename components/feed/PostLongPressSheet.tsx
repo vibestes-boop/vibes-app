@@ -4,6 +4,7 @@
  * Groups actions into three sections: Quick Actions, Social, Safety.
  */
 import { setStringAsync as clipboardSetString } from 'expo-clipboard';
+import { webPostUrl } from '@/lib/webLinks';
 import {
 Bookmark,
 Download,
@@ -147,7 +148,7 @@ export default function PostLongPressSheet({
   const { bookmarked, toggle: toggleBookmark } = useBookmark(postId);
   const { mutate: report } = useReport();
 
-  const postLink = `https://vibes.app/post/${postId}`;
+  const postLink = webPostUrl(postId);
 
   const handleDownload = useCallback(async () => {
     if (!mediaUrl) {

@@ -1,12 +1,14 @@
 import { Alert,Platform,Share } from 'react-native';
 import { supabase } from './supabase';
+import { webPostUrl,webProfileUrl } from './webLinks';
 
 export async function sharePost(postId: string, caption?: string | null) {
   const text = caption
     ? `"${caption}" – entdeckt auf Vibes`
     : 'Schau dir diesen Vibe an!';
 
-  const url = `vibes://post/${postId}`;
+  // https-Web-Link (nicht vibes://) → unfurlt in WhatsApp/Telegram mit Vorschau.
+  const url = webPostUrl(postId);
 
   try {
     const content =
@@ -35,7 +37,8 @@ export async function shareUser(userId: string, username?: string | null) {
     ? `Schau dir @${username} auf Vibes an!`
     : 'Schau dir dieses Profil auf Vibes an!';
 
-  const url = `vibes://user/${userId}`;
+  // https-Web-Profil-Link (per Username) unfurlt; ohne Username Deeplink-Fallback.
+  const url = username ? webProfileUrl(username) : `vibes://user/${userId}`;
 
   try {
     const content =
@@ -87,8 +90,8 @@ export async function sharePostViaDM(
 
     // ── Nachricht senden: Post-Link als Text ──────────────────────────────
     const linkText = caption
-      ? `📎 Post: "${caption.substring(0, 50)}${caption.length > 50 ? '…' : ''}"\n🔗 vibes://post/${postId}`
-      : `📎 Post teilen\n🔗 vibes://post/${postId}`;
+      ? `📎 Post: "${caption.substring(0, 50)}${caption.length > 50 ? '…' : ''}"\n🔗 ${webPostUrl(postId)}`
+      : `📎 Post teilen\n🔗 ${webPostUrl(postId)}`;
 
     const { error: msgErr } = await supabase
       .from('messages')

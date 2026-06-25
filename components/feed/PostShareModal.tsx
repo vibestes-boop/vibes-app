@@ -1,4 +1,5 @@
 import { useAuthStore } from '@/lib/authStore';
+import { webPostUrl } from '@/lib/webLinks';
 import { supabase } from '@/lib/supabase';
 import { useOrCreateConversation,useSendMessage } from '@/lib/useMessages';
 import { useReport } from '@/lib/useReport';
@@ -84,7 +85,7 @@ export function PostShareModal({
     staleTime: 1000 * 60 * 5,
   });
 
-  const postLink = `https://vibes.app/post/${postId}`;
+  const postLink = webPostUrl(postId);
   const filtered = search.trim()
     ? users.filter((u) => u.username?.toLowerCase().includes(search.toLowerCase()))
     : users;

@@ -23,6 +23,7 @@ import { useCoinsWallet } from '@/lib/useGifts';
 import { useOrCreateConversation,useSendMessage } from '@/lib/useMessages';
 import { useProductReviews } from '@/lib/useProductReviews';
 import { formatEur,REPORT_REASONS,useBuyProduct,useExpressInterest,useReportProduct,useSavedProduct,useShopProducts,type Product,type ProductCategory,type ReportReason } from '@/lib/useShop';
+import { webProductUrl } from '@/lib/webLinks';
 import { useTheme } from '@/lib/useTheme';
 import { useQuery } from '@tanstack/react-query';
 import * as Clipboard from 'expo-clipboard';
@@ -424,12 +425,11 @@ function ShareSheet({ product, onClose, colors }: { product: Product; onClose: (
   // Geteilt wird der HTTPS-Web-Link (nicht serlo://), damit WhatsApp/Telegram/
   // Insta eine echte Vorschau (Bild + Titel + Kurzbeschreibung) unfurlen — ein
   // serlo://-Deep-Link kann von keinem Messenger als Vorschau gerendert werden.
-  const WEB_BASE    = 'https://serlo-web.vercel.app';
   const isPreorderShare = product.sale_mode === 'preorder';
   const priceLabel  = isPreorderShare
     ? (formatEur(product.price_eur) ? `${formatEur(product.price_eur)} · Vorbestellung` : 'Vorbestellung')
     : `🪙 ${product.price_coins.toLocaleString('de-DE')} Coins`;
-  const productUrl  = `${WEB_BASE}/shop/${product.id}`;
+  const productUrl  = webProductUrl(product.id);
   const shareText   = `${product.title} — ${priceLabel}\n${productUrl}`;
 
   const { data: users = [] } = useQuery<ShareTarget[]>({

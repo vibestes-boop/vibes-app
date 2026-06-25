@@ -1,4 +1,5 @@
 import { useReport } from '@/lib/useReport';
+import { webPostUrl } from '@/lib/webLinks';
 import { useSaveVideo } from '@/lib/useSaveVideo';
 import * as Haptics from 'expo-haptics';
 import {
@@ -40,7 +41,7 @@ export function PostOptionsModal({
     onClose();
     try {
       await Share.share({
-        message: `Schau dir diesen Vibe an! 🎬\nhttps://vibes-web-nine.vercel.app/post/${postId}`,
+        message: `Schau dir diesen Vibe an! 🎬\n${webPostUrl(postId)}`,
         title: `Vibe von @${authorName}`,
       });
     } catch { /* User cancelled */ }

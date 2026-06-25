@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { webProfileUrl } from '@/lib/webLinks';
 import { useCallback,useEffect,useRef,useState } from 'react';
 import {
 Alert,
@@ -389,7 +390,8 @@ function InAppShareModal({
     staleTime: 1000 * 60 * 5,
   });
 
-  const storyLink = `https://vibes.app/story/${storyUsername}`;
+  // Story-Medien laufen nach 24h ab → aufs Profil verlinken (existiert, hat OG).
+  const storyLink = webProfileUrl(storyUsername);
 
   const filtered = search.trim()
     ? users.filter((u) => u.username?.toLowerCase().includes(search.toLowerCase()))
