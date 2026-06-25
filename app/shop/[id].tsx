@@ -22,7 +22,7 @@ import { supabase } from '@/lib/supabase';
 import { useCoinsWallet } from '@/lib/useGifts';
 import { useOrCreateConversation,useSendMessage } from '@/lib/useMessages';
 import { useProductReviews } from '@/lib/useProductReviews';
-import { formatEur,REPORT_REASONS,useBuyProduct,useExpressInterest,useReportProduct,useSavedProduct,useShopProducts,type Product,type ProductCategory,type ReportReason } from '@/lib/useShop';
+import { formatEur,REPORT_REASONS,useBuyProduct,useExpressInterest,useMyPreorder,useReportProduct,useSavedProduct,useShopProducts,type Product,type ProductCategory,type ReportReason } from '@/lib/useShop';
 import { webProductUrl } from '@/lib/webLinks';
 import { useTheme } from '@/lib/useTheme';
 import { useQuery } from '@tanstack/react-query';
@@ -685,6 +685,7 @@ export default function ProductDetailScreen() {
   const { coins, refetch: refetchCoins }         = useCoinsWallet();
   const { buyProduct, isBuying }                  = useBuyProduct();
   const { expressInterest, isSubmitting: isPreordering } = useExpressInterest();
+  const { preordered, cancel: cancelPreorder, isCancelling, setPreordered } = useMyPreorder(id ?? '');
   const { saved, toggle: toggleSave }             = useSavedProduct(id ?? '');
   const { report, isReporting }                   = useReportProduct();
   const { data: reviews = [] }                    = useProductReviews(id ?? null);
@@ -785,6 +786,30 @@ export default function ProductDetailScreen() {
     }
   }, [product, buyProduct, refetchCoins, router, quantity]);
 
+  // Vormerkung zurücknehmen (unverbindlich → reversibel). Bestätigung per Alert.
+  const handleCancelPreorder = useCallback(() => {
+    Alert.alert(
+      'Vormerkung zurücknehmen?',
+      'Du wirst aus der Sammelbestellung entfernt — vormerken kannst du dich jederzeit wieder.',
+      [
+        { text: 'Abbrechen', style: 'cancel' },
+        {
+          text: 'Zurücknehmen',
+          style: 'destructive',
+          onPress: async () => {
+            const ok = await cancelPreorder();
+            if (ok) {
+              setPreorderDone(false);
+              await notificationAsync(NotificationFeedbackType.Success);
+            } else {
+              Alert.alert('Hat nicht geklappt', 'Bitte versuch es gleich nochmal 🙏');
+            }
+          },
+        },
+      ],
+    );
+  }, [cancelPreorder]);
+
   // Vorbestellung: Interesse vormerken (kein Geld, kein Confirm-Modal).
   const handleVormerken = useCallback(async () => {
     if (!product) return;
@@ -793,6 +818,7 @@ export default function ProductDetailScreen() {
     if (result.success) {
       await notificationAsync(NotificationFeedbackType.Success);
       setPreorderDone(true);
+      setPreordered(true);
       setBuyResult('success');
       setResultMsg('🤎 Vorgemerkt — der Verkäufer meldet sich!');
       setTimeout(() => setBuyResult(null), 2500);
@@ -1104,14 +1130,14 @@ export default function ProductDetailScreen() {
 
           {isPreorder ? (
             <Pressable
-              style={[s.buyBtn, { backgroundColor: preorderDone ? bgAccent : colors.text.primary }]}
-              onPress={handleVormerken}
-              disabled={isPreordering}
+              style={[s.buyBtn, { backgroundColor: (preordered || preorderDone) ? bgAccent : colors.text.primary }]}
+              onPress={(preordered || preorderDone) ? handleCancelPreorder : handleVormerken}
+              disabled={isPreordering || isCancelling}
             >
-              {isPreordering ? (
+              {(isPreordering || isCancelling) ? (
                 <ActivityIndicator color={colors.bg.primary} />
-              ) : preorderDone ? (
-                <Text style={[s.buyCtaText, { color: colors.text.primary }]}>✓ Vorgemerkt</Text>
+              ) : (preordered || preorderDone) ? (
+                <Text style={[s.buyCtaText, { color: colors.text.primary }]}>✓ Vorgemerkt · Zurücknehmen</Text>
               ) : (
                 <Text style={[s.buyCtaText, { color: colors.bg.primary }]}>Vormerken</Text>
               )}

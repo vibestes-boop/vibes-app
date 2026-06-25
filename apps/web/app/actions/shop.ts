@@ -441,6 +441,28 @@ export async function notifyPreorderBuyers(
   return { ok: true, data: { notified: res.notified ?? 0 } };
 }
 
+// Käufer nimmt seine eigene Vormerkung zurück (unverbindlich → muss reversibel
+// sein). RLS „preorders_owner_all" erlaubt dem Käufer das Löschen der eigenen
+// Zeile — keine RPC/Migration nötig.
+export async function cancelProductInterest(
+  productId: string,
+): Promise<ActionResult> {
+  const viewer = await getViewerId();
+  if (!viewer) return { ok: false, error: 'Bitte einloggen.' };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from('product_preorders')
+    .delete()
+    .eq('product_id', productId)
+    .eq('user_id', viewer.id);
+
+  if (error) return { ok: false, error: 'Kurz die Verbindung verloren — nochmal? 🙂' };
+
+  revalidateTag(`product:${productId}`);
+  return { ok: true, data: null };
+}
+
 export async function deleteProduct(productId: string): Promise<ActionResult> {
   const viewer = await getViewerId();
   if (!viewer) return { ok: false, error: 'Bitte einloggen.' };

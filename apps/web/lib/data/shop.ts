@@ -19,6 +19,9 @@ export interface ShopProduct extends ProductWithSeller {
   review_count: number;
   is_active: boolean;
   saved_by_me: boolean;
+  // Hat der Viewer dieses Produkt vorgemerkt? Nur auf der Detail-Seite (getProduct)
+  // befüllt; in Listen immer false (dort nicht gebraucht).
+  preordered_by_me: boolean;
   // 'coins' = Coin-Kauf (Standard) · 'preorder' = Sammelbestellung (kein Geld)
   // · 'cash' = echtes Geld/Stripe (Phase 1). Default 'coins' (Fallback unten).
   sale_mode: ProductSaleMode;
@@ -44,7 +47,11 @@ export type ShopPreviewProduct = Pick<
   'id' | 'title' | 'price_coins' | 'sale_price_coins' | 'cover_url'
 >;
 
-function normalizeProduct(row: RawProductRow, saved: Set<string>): ShopProduct | null {
+function normalizeProduct(
+  row: RawProductRow,
+  saved: Set<string>,
+  preordered?: Set<string>,
+): ShopProduct | null {
   const seller = Array.isArray(row.seller) ? row.seller[0] : row.seller;
   if (!seller) return null;
   return {
@@ -57,6 +64,7 @@ function normalizeProduct(row: RawProductRow, saved: Set<string>): ShopProduct |
     is_active: row.is_active,
     sale_mode: row.sale_mode ?? 'coins',
     saved_by_me: saved.has(row.id),
+    preordered_by_me: preordered?.has(row.id) ?? false,
   };
 }
 
@@ -213,7 +221,18 @@ export const getProduct = cache(async (productId: string): Promise<ShopProduct |
   if (error || !data) return null;
 
   const savedSet = await batchSaved([productId], viewerId);
-  return normalizeProduct(data as unknown as RawProductRow, savedSet);
+  // Hat der Viewer dieses Produkt vorgemerkt? (für den „Zurücknehmen"-Button)
+  let preorderedSet: Set<string> | undefined;
+  if (viewerId) {
+    const { data: pp } = await supabase
+      .from('product_preorders')
+      .select('product_id')
+      .eq('user_id', viewerId)
+      .eq('product_id', productId)
+      .maybeSingle();
+    if (pp) preorderedSet = new Set([productId]);
+  }
+  return normalizeProduct(data as unknown as RawProductRow, savedSet, preorderedSet);
 });
 
 // -----------------------------------------------------------------------------

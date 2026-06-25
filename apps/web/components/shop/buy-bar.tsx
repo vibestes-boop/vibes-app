@@ -23,6 +23,7 @@ import {
   useBuyProduct,
   useToggleSaveProduct,
   useExpressProductInterest,
+  useCancelProductInterest,
 } from "@/hooks/use-shop";
 import type { ShopProduct } from "@/lib/data/shop";
 import { ProductImage } from "./product-image";
@@ -68,8 +69,18 @@ export function BuyBar({
 
   const save = useToggleSaveProduct();
   const [preorderDone, setPreorderDone] = useState(false);
+  const [preorderCancelled, setPreorderCancelled] = useState(false);
   const interest = useExpressProductInterest({
-    onSuccess: () => setPreorderDone(true),
+    onSuccess: () => {
+      setPreorderDone(true);
+      setPreorderCancelled(false);
+    },
+  });
+  const cancelInterest = useCancelProductInterest({
+    onSuccess: () => {
+      setPreorderCancelled(true);
+      setPreorderDone(false);
+    },
   });
   const buy = useBuyProduct({
     onSuccess: (r) => {
@@ -106,6 +117,10 @@ export function BuyBar({
   // ── Vorbestellung / Sammelbestellung — KEIN Geld, nur Interesse vormerken. ──
   if (product.sale_mode === "preorder") {
     const isOwnP = viewerId === product.seller.id;
+    // Server-Flag ODER frisch in dieser Session vorgemerkt — solange nicht
+    // gerade zurückgenommen.
+    const isPreordered =
+      (product.preordered_by_me || preorderDone) && !preorderCancelled;
     const handleVormerken = () => {
       if (!viewerId) {
         router.push(`/login?next=${encodeURIComponent(`/shop/${product.id}`)}` as Route);
@@ -164,23 +179,23 @@ export function BuyBar({
             {/* Menge */}
             <QuantityStepper value={qty} onChange={setQty} min={1} max={99} className="h-12" />
 
-            {/* Vormerken-CTA */}
+            {/* Vormerken-CTA — wenn schon vorgemerkt: Status (kein Re-Trigger) */}
             <button
               type="button"
-              onClick={handleVormerken}
-              disabled={isOwnP || interest.isPending}
+              onClick={isPreordered ? undefined : handleVormerken}
+              disabled={isOwnP || interest.isPending || isPreordered}
               className={cn(
-                "flex h-12 flex-1 items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60",
-                preorderDone
-                  ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                "flex h-12 flex-1 items-center justify-center gap-2 rounded-full px-4 text-sm font-semibold transition-colors disabled:cursor-not-allowed",
+                isPreordered
+                  ? "bg-emerald-500/15 text-emerald-600 disabled:opacity-100 dark:text-emerald-400"
                   : isOwnP
-                    ? "bg-muted text-muted-foreground"
-                    : "bg-primary text-primary-foreground hover:bg-primary/90",
+                    ? "bg-muted text-muted-foreground disabled:opacity-60"
+                    : "bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-60",
               )}
             >
               {interest.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
-              ) : preorderDone ? (
+              ) : isPreordered ? (
                 <>
                   <CheckCircle2 className="h-4 w-4" />
                   Vorgemerkt
@@ -194,10 +209,20 @@ export function BuyBar({
               )}
             </button>
           </div>
-          {preorderDone && (
-            <p className="text-xs leading-snug text-emerald-600 dark:text-emerald-400">
-              Eingetragen mit {qty}× — @{product.seller.username} meldet sich bei dir. 🤎
-            </p>
+          {isPreordered && (
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs leading-snug text-emerald-600 dark:text-emerald-400">
+                Eingetragen — @{product.seller.username} meldet sich bei dir. 🤎
+              </p>
+              <button
+                type="button"
+                onClick={() => cancelInterest.mutate(product.id)}
+                disabled={cancelInterest.isPending}
+                className="flex-none text-xs font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline disabled:opacity-60"
+              >
+                {cancelInterest.isPending ? "…" : "Zurücknehmen"}
+              </button>
+            </div>
           )}
         </div>
       </div>

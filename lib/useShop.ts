@@ -314,6 +314,54 @@ export function useExpressInterest() {
   return { expressInterest, isSubmitting };
 }
 
+// ─── Vorbestellung: eigenen Status prüfen + zurücknehmen ─────────────────────
+// Unverbindliche Vormerkung muss reversibel sein. RLS „preorders_owner_all"
+// erlaubt dem Käufer Lesen + Löschen der eigenen Zeile — keine RPC nötig.
+
+export function useMyPreorder(productId: string) {
+  const user = useAuthStore((s) => s.user);
+  const qc   = useQueryClient();
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  const { data: preordered = false } = useQuery<boolean>({
+    queryKey: ['my-preorder', productId, user?.id],
+    enabled:  !!user?.id && !!productId,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('product_preorders')
+        .select('product_id')
+        .eq('product_id', productId)
+        .eq('user_id', user!.id)
+        .maybeSingle();
+      return !!data;
+    },
+  });
+
+  // Cache-Update statt Refetch — der Screen weiß sofort Bescheid.
+  const setPreordered = useCallback((val: boolean) => {
+    if (user?.id) qc.setQueryData(['my-preorder', productId, user.id], val);
+  }, [productId, user?.id, qc]);
+
+  const cancel = useCallback(async (): Promise<boolean> => {
+    if (!user?.id) return false;
+    setIsCancelling(true);
+    const { error } = await supabase
+      .from('product_preorders')
+      .delete()
+      .eq('product_id', productId)
+      .eq('user_id', user.id);
+    setIsCancelling(false);
+    if (!error) {
+      qc.setQueryData(['my-preorder', productId, user.id], false);
+      qc.invalidateQueries({ queryKey: ['shop-products'] });
+    }
+    return !error;
+  }, [productId, user?.id, qc]);
+
+  return { preordered, cancel, isCancelling, setPreordered };
+}
+
 // ─── Bestellungen laden ───────────────────────────────────────────────────────
 
 export interface Order {

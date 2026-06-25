@@ -13,6 +13,7 @@ import {
   bulkDeleteProducts,
   getMyReviewAction,
   expressProductInterest,
+  cancelProductInterest,
   setProductSaleMode,
   type ActionResult,
   type BuyResult,
@@ -129,6 +130,25 @@ export function useExpressProductInterest(opts?: { onSuccess?: () => void }) {
     },
     onError: (err) => {
       toast.error(err instanceof Error ? err.message : 'Konnte nicht vormerken');
+    },
+  });
+}
+
+// -----------------------------------------------------------------------------
+// useCancelProductInterest — „Vormerkung zurücknehmen" (unverbindlich, reversibel).
+// -----------------------------------------------------------------------------
+
+export function useCancelProductInterest(opts?: { onSuccess?: () => void }) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (productId: string) => unwrap(await cancelProductInterest(productId)),
+    onSuccess: (_d, productId) => {
+      toast.success('Vormerkung zurückgenommen');
+      qc.invalidateQueries({ queryKey: ['product', productId] });
+      opts?.onSuccess?.();
+    },
+    onError: (err) => {
+      toast.error(err instanceof Error ? err.message : 'Konnte nicht zurücknehmen');
     },
   });
 }
