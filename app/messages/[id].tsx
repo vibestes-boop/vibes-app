@@ -11,6 +11,10 @@ useTypingPresence,
 type Message,type PostPreview,
 } from '@/lib/useMessages';
 import { useTheme } from '@/lib/useTheme';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/lib/supabase';
+import { CoinIcon } from '@/components/ui/CoinIcon';
+import { formatEur } from '@/lib/useShop';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
@@ -57,6 +61,90 @@ function formatDay(dateStr: string): string {
   if (diff === 0) return 'Heute';
   if (diff === 1) return 'Gestern';
   return d.toLocaleDateString('de-DE', { day: '2-digit', month: 'short' });
+}
+
+// ── Geteilte Shop-Links (/shop/<uuid>) im Text → als Produktkarte rendern ─────
+// Parität zum Web (components/messages/product-link-card.tsx). Funktioniert auch
+// für ALTE Nachrichten, weil wir den Inhalt parsen statt eine product_id-Spalte
+// zu brauchen. Composer-Format: "[Text\n]🛍️ <titel> — <preis>\n/shop/<id>".
+const SHOP_LINK_RE =
+  /\/shop\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})/i;
+
+function parseProductShare(content: string | null | undefined): {
+  productId: string | null;
+  text: string | null;
+} {
+  if (!content) return { productId: null, text: content ?? null };
+  const m = content.match(SHOP_LINK_RE);
+  if (!m) return { productId: null, text: content };
+  const lines = content.split('\n');
+  if (lines.length && lines[lines.length - 1].trim().startsWith('/shop/')) lines.pop();
+  if (lines.length && lines[lines.length - 1].trimStart().startsWith('🛍')) lines.pop();
+  const text = lines.join('\n').replace(SHOP_LINK_RE, '').trim();
+  return { productId: m[1], text: text.length > 0 ? text : null };
+}
+
+// ── Produkt-Preview-Karte (im Chat geteilter Shop-Link) ───────────────────────
+function ProductPreviewCard({ productId }: { productId: string }) {
+  const { colors } = useTheme();
+  const router = useRouter();
+  const { data } = useQuery({
+    queryKey: ['msg-product', productId],
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('products')
+        .select('id, title, cover_url, price_coins, sale_price_coins, price_eur, sale_mode')
+        .eq('id', productId)
+        .maybeSingle();
+      return data as {
+        id: string; title: string; cover_url: string | null;
+        price_coins: number; sale_price_coins: number | null;
+        price_eur: number | null; sale_mode: string | null;
+      } | null;
+    },
+  });
+
+  if (!data) return null; // lädt noch / gelöscht → Text-Fallback bleibt
+
+  const isPreorder = data.sale_mode === 'preorder';
+  const eff = data.sale_price_coins ?? data.price_coins;
+
+  return (
+    <Pressable
+      onPress={() => router.push({ pathname: '/shop/[id]', params: { id: productId } } as any)}
+      style={({ pressed }) => [
+        styles.productCard,
+        { backgroundColor: colors.bg.primary, borderColor: colors.border.subtle },
+        pressed && { opacity: 0.85 },
+      ]}
+    >
+      {data.cover_url ? (
+        <Image source={{ uri: data.cover_url }} style={styles.productCardImg} contentFit="cover" />
+      ) : (
+        <View style={[styles.productCardImg, styles.productCardImgFallback, { backgroundColor: colors.bg.elevated }]}>
+          <Text style={{ fontSize: 18 }}>🛍️</Text>
+        </View>
+      )}
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={[styles.productCardTitle, { color: colors.text.primary }]} numberOfLines={2}>
+          {data.title}
+        </Text>
+        {isPreorder ? (
+          <Text style={[styles.productCardPrice, { color: '#B45309' }]}>
+            {formatEur(data.price_eur) ?? 'Vorbestellung'}
+          </Text>
+        ) : (
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 }}>
+            <CoinIcon size={12} />
+            <Text style={[styles.productCardPrice, { color: colors.text.primary }]}>
+              {eff.toLocaleString('de-DE')}
+            </Text>
+          </View>
+        )}
+      </View>
+    </Pressable>
+  );
 }
 
 // ── Post-Preview-Karte ───────────────────────────────────────────────────────
@@ -199,7 +287,10 @@ function MessageBubble({
   const hasPost = !!msg.post;
   const hasImage = !!msg.image_url;
   const hasStoryReply = !!msg.story_media_url;
-  const showText = msg.content && msg.content.trim().length > 0;
+  // Geteilten Shop-Link aus dem Text ziehen → als Produktkarte rendern.
+  const { productId: sharedProductId, text: sharedText } = parseProductShare(msg.content);
+  const hasProduct = !!sharedProductId;
+  const showText = !!sharedText && sharedText.trim().length > 0;
   const isSending = msg.id.startsWith('temp-');
   const { isDark } = useTheme();
 
@@ -278,8 +369,8 @@ function MessageBubble({
               isOwn
                 ? [styles.bubbleOwn, { backgroundColor: isDark ? '#2C2C2E' : '#007AFF' }]
                 : [styles.bubbleOther, { backgroundColor: isDark ? 'rgba(255,255,255,0.10)' : '#E9E9EB' }],
-              hasPost && styles.bubbleWithPost,
-              hasPost && styles.bubbleNoFrame,
+              (hasPost || (hasProduct && !showText)) && styles.bubbleWithPost,
+              (hasPost || (hasProduct && !showText)) && styles.bubbleNoFrame,
 
               hasImage && !showText && styles.bubbleWithImage,
               isSending && { opacity: 0.6 },
@@ -329,9 +420,10 @@ function MessageBubble({
                 { color: isDark ? 'rgba(255,255,255,0.88)' : '#1C1C1E' },
                 isOwn && { color: '#FFFFFF' },
               ]}>
-                {msg.content}
+                {sharedText}
               </Text>
             )}
+            {hasProduct && <ProductPreviewCard productId={sharedProductId!} />}
             <Text style={[
               styles.bubbleTime,
               { color: isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.4)' },
@@ -873,6 +965,16 @@ const styles = StyleSheet.create({
   typingLabel: { fontSize: 12, fontStyle: 'italic', color: '#8E8E93' },
 
   // ── PostPreviewCard ──
+  // Produkt-Karte (geteilter Shop-Link im Chat)
+  productCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    width: 240, padding: 8, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth,
+    marginTop: 2,
+  },
+  productCardImg: { width: 46, height: 46, borderRadius: 8 },
+  productCardImgFallback: { alignItems: 'center', justifyContent: 'center' },
+  productCardTitle: { fontSize: 13, fontWeight: '600', lineHeight: 17 },
+  productCardPrice: { fontSize: 13, fontWeight: '700' },
   previewCard: { borderRadius: 18, overflow: 'hidden', width: 230 },
   previewThumbWrap: { width: '100%', height: 160, position: 'relative' },
   previewThumb: { width: '100%', height: '100%' },
