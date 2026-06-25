@@ -246,7 +246,10 @@ export function MessageThread({
               (m) =>
                 m.pending &&
                 m.sender_id === raw.sender_id &&
-                m.content === raw.content &&
+                // null (optimistisch) und '' (DB) als gleich behandeln, sonst
+                // dedupt ein GIF/Bild nicht (content leer) → erscheint doppelt.
+                (m.content ?? '') === (raw.content ?? '') &&
+                (m.image_url ?? '') === (raw.image_url ?? '') &&
                 Math.abs(new Date(m.created_at).getTime() - nowMs) < 5000,
             );
             const enriched: MessageWithContext = { ...raw, reply_to: null, post: null };
@@ -666,7 +669,7 @@ const MessageBubble = memo(function MessageBubble({
             <button
               type="button"
               onClick={onReply}
-              className="grid h-7 w-7 place-items-center rounded-full bg-card shadow hover:bg-muted"
+              className="grid h-7 w-7 place-items-center rounded-full bg-card text-foreground shadow hover:bg-muted"
               aria-label="Antworten"
               title="Antworten"
             >
@@ -675,7 +678,7 @@ const MessageBubble = memo(function MessageBubble({
             <button
               type="button"
               onClick={onOpenPicker}
-              className="grid h-7 w-7 place-items-center rounded-full bg-card shadow hover:bg-muted"
+              className="grid h-7 w-7 place-items-center rounded-full bg-card text-foreground shadow hover:bg-muted"
               aria-label="Emoji-Reaktion hinzufügen"
               title="Reaktion"
             >
@@ -884,6 +887,9 @@ function Composer({
         .upload(path, file, { upsert: false, contentType: file.type });
 
       if (storageError) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.warn('[chat image upload]', storageError.message);
+        }
         setIsUploading(false);
         URL.revokeObjectURL(previewUrl);
         setPendingImagePreviewUrl(null);
