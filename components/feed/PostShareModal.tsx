@@ -111,7 +111,7 @@ export function PostShareModal({
           const convId = await getOrCreateConv(uid);
           await sendMsg({
             conversationId: convId,
-            content: `📸 ${caption} von @${postAuthor}`,
+            content: `📸 ${caption} von @${(postAuthor ?? '').replace(/^@+/, '')}`,
             postId,
           });
         })
@@ -129,11 +129,15 @@ export function PostShareModal({
 
   const handleAppShare = (id: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const text = postCaption ? `"${postCaption}" von @${postAuthor} auf Vibes` : `Post von @${postAuthor} auf Vibes`;
+    // Kurzer Teaser — die Vorschaukarte zeigt Titel + @user + Thumbnail bereits,
+    // der Text muss das NICHT wiederholen (kein "von @user auf Vibes", keine
+    // doppelte URL). Der Link steht auf eigener Zeile.
+    const teaser = postCaption ? `„${postCaption}"` : 'diesen Vibe';
+    const text = `Schau dir ${teaser} an 🎬`;
     switch (id) {
       case 'whatsapp':
         // wa.me erzeugt echten anklickbaren Link
-        Linking.openURL(`https://wa.me/?text=${encodeURIComponent(`${text}: ${postLink}`)}`).catch(() =>
+        Linking.openURL(`https://wa.me/?text=${encodeURIComponent(`${text}\n${postLink}`)}`).catch(() =>
           Alert.alert('WhatsApp nicht installiert')
         );
         break;
