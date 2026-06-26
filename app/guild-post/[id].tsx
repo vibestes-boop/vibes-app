@@ -20,6 +20,7 @@ import { useGuildNavStore } from '@/lib/guildNavStore';
 import { useBookmark } from '@/lib/useBookmark';
 import { useCommentCount } from '@/lib/useComments';
 import { useLike } from '@/lib/useLike';
+import { useVideoMute } from '@/lib/useVideoPreferences';
 import type { GuildPost } from '@/lib/usePosts';
 import { sharePost } from '@/lib/useShare';
 import { impactAsync,ImpactFeedbackStyle } from 'expo-haptics';
@@ -158,7 +159,9 @@ function GuildPostDetailItem({
   const [c0, c1] = guildColors;
   const isVideo = post.media_type === 'video';
   const [showComments, setShowComments] = useState(false);
-  const [isMuted, setIsMuted] = useState(true);
+  // Geteilter, persistenter Mute-Store (wie Feed + Guild-Karten): einmal laut →
+  // bleibt laut across Detail-Items (Swipe), Karten-Liste↔Detail, App-Neustart.
+  const { isMuted, toggleMute } = useVideoMute();
 
   // Vom Karten-Chat-Button: Kommentare nach kurzem Moment aufklappen (Video
   // startet erst, dann schrumpft es nahtlos in den Peek).
@@ -260,9 +263,9 @@ function GuildPostDetailItem({
       // Einfach-Tap = Mute toggle
       lastTapRef.current = now;
       lastTapPosRef.current = { x, y };
-      setIsMuted((m) => !m);
+      toggleMute();
     }
-  }, [liked, toggle, spawnHeart]);
+  }, [liked, toggle, spawnHeart, toggleMute]);
 
   const handleLike = useCallback(() => {
     scale.value = withSequence(
@@ -436,7 +439,7 @@ function GuildPostDetailItem({
 
         {/* Mute-Icon (Video) */}
         {isVideo && (
-          <Pressable onPress={() => setIsMuted((m) => !m)} style={itemStyles.actionItem} hitSlop={10}>
+          <Pressable onPress={toggleMute} style={itemStyles.actionItem} hitSlop={10}>
             {isMuted
               ? <VolumeX size={26} color="#fff" strokeWidth={1.8} />
               : <Volume2 size={26} color="#fff" strokeWidth={1.8} />}
