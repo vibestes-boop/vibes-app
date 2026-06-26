@@ -45,7 +45,7 @@ import { useTheme } from '@/lib/useTheme';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { FallbackFeedVideo,NativeFeedVideo,USE_EXPO_VIDEO } from '@/components/feed/FeedVideo';
+import { VideoGridThumb } from './VideoGridThumb';
 // reanimated: CJS require() vermeidet _interopRequireDefault Crash in Hermes HBC
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any;
@@ -53,8 +53,11 @@ const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-// Short-Video: Post-Preview oben (~22%), Sheet darunter
+// Klassisch (post/[id], Story, user-posts …): Standbild-Preview oben ~22%.
 const SHEET_TOP = SCREEN_HEIGHT * 0.22;
+// Feed seamlessPeek: größerer Video-Peek ~40% (muss mit FeedItem
+// COMMENTS_PEEK_FRAC übereinstimmen) → mehr Video, kleineres Kommentarfeld.
+const SHEET_TOP_SEAMLESS = SCREEN_HEIGHT * 0.40;
 
 function useKeyboardOffset() {
   const keyboardHeight = useSharedValue(0);
@@ -90,17 +93,19 @@ type Props = {
   creatorUserId?: string | null;
   /** Von FeedItem übergeben: steuert Post-Höhe synchron zum Sheet-Drag */
   sheetProgress?: SharedValue<number>;
-  /** TikTok-Style: Video im Preview-Frame oben weiterspielen lassen.
-      isMuted spiegelt den Feed/Guild-Mute-State; bunnyVideoId aktiviert HLS. */
-  isMuted?: boolean;
-  bunnyVideoId?: string | null;
+  /** Feed-Vollbild: Oberkante durchsichtig lassen, damit das DARUNTERLIEGENDE,
+      weiterlaufende (in-place geschrumpfte) Video durchscheint — kein zweiter
+      Player, kein Neustart. Ohne diese Flag: klassisches Overlay + Standbild. */
+  seamlessPeek?: boolean;
 };
 
 const CLOSE_DURATION = 300;
 const OPEN_DURATION = 250;
 const CLOSE_EASING = Easing.out(Easing.cubic);
 
-export default function CommentsSheet({ postId, visible, onClose, mediaUrl, mediaType, thumbnailUrl, onUserPress, creatorUserId, sheetProgress, isMuted, bunnyVideoId }: Props) {
+export default function CommentsSheet({ postId, visible, onClose, mediaUrl, mediaType, thumbnailUrl, onUserPress, creatorUserId, sheetProgress, seamlessPeek }: Props) {
+  // Feed-Peek (40%) vs. klassisch (22%) — bestimmt, wo das Sheet oben andockt.
+  const sheetTop = seamlessPeek ? SHEET_TOP_SEAMLESS : SHEET_TOP;
   const translateY = useSharedValue(SCREEN_HEIGHT);
   const overlayOpacity = useSharedValue(0);
   const contentOpacity = useSharedValue(0);
@@ -228,7 +233,7 @@ export default function CommentsSheet({ postId, visible, onClose, mediaUrl, medi
     position: 'absolute',
     left: 0,
     right: 0,
-    top: SHEET_TOP,
+    top: sheetTop,
     bottom: keyboardOffset.value,
     transform: [{ translateY: translateY.value }],
   }));
@@ -253,39 +258,20 @@ export default function CommentsSheet({ postId, visible, onClose, mediaUrl, medi
       onRequestClose={handleClose}
     >
       <GestureHandlerRootView style={{ flex: 1 }}>
-        {/* Hintergrund – sanftes Ein-/Ausblenden */}
+        {/* Hintergrund – Tap schließt. Im seamlessPeek-Modus KEIN Dim-Overlay,
+            damit das darunterliegende, weiterlaufende Video oben durchscheint. */}
         <Pressable style={StyleSheet.absoluteFill} onPress={handleClose}>
-          <Animated.View style={overlayStyle} pointerEvents="none" />
+          {!seamlessPeek && <Animated.View style={overlayStyle} pointerEvents="none" />}
         </Pressable>
 
         {/* Post + Sheet – gemeinsam ein-/ausblenden für weichen Übergang */}
         <Animated.View style={contentStyle} pointerEvents="box-none">
-          {mediaUrl && (
+          {/* Standbild-Preview oben nur im klassischen Modus. Bei seamlessPeek
+              zeigt der Feed sein eigenes, weiterlaufendes Video im Peek-Bereich. */}
+          {!seamlessPeek && mediaUrl && (
             <View style={styles.postPreviewFrame} pointerEvents="none">
               {mediaType === 'video' ? (
-                // TikTok-Style: Video läuft im verkleinerten Preview oben weiter
-                // (statt Standbild). NativeFeedVideo setzt via videoResumePos-Cache
-                // nahtlos dort fort, wo das Feed/Guild-Video pausiert wurde.
-                USE_EXPO_VIDEO ? (
-                  <NativeFeedVideo
-                    uri={mediaUrl}
-                    shouldPlay={visible}
-                    isMuted={isMuted ?? false}
-                    onProgress={() => {}}
-                    thumbnailUrl={thumbnailUrl}
-                    restartSignal={0}
-                    bunnyVideoId={bunnyVideoId ?? null}
-                  />
-                ) : (
-                  <FallbackFeedVideo
-                    uri={mediaUrl}
-                    shouldPlay={visible}
-                    isMuted={isMuted ?? false}
-                    onProgress={() => {}}
-                    thumbnailUrl={thumbnailUrl}
-                    restartSignal={0}
-                  />
-                )
+                <VideoGridThumb uri={mediaUrl} thumbnailUrl={thumbnailUrl} style={StyleSheet.absoluteFill} />
               ) : (
                 <Image source={{ uri: mediaUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
               )}
@@ -303,6 +289,7 @@ export default function CommentsSheet({ postId, visible, onClose, mediaUrl, medi
                 scrollAtTop={scrollAtTop}
                 panForList={panForList}
                 creatorUserId={creatorUserId}
+                sheetTop={sheetTop}
               />
             </Animated.View>
           </GestureDetector>
@@ -323,6 +310,7 @@ function SheetInner({
   scrollAtTop,
   panForList,
   creatorUserId,
+  sheetTop,
 }: {
   postId: string;
   onClose: () => void;
@@ -331,6 +319,7 @@ function SheetInner({
   scrollAtTop: SharedValue<number>;
   panForList: ReturnType<typeof Gesture.Pan>;
   creatorUserId?: string | null;
+  sheetTop: number;
 }) {
   const { profile } = useAuthStore();
   const insets = useSafeAreaInsets();
@@ -569,7 +558,7 @@ function SheetInner({
         <Modal visible transparent animationType="fade" onRequestClose={() => setSortMenuOpen(false)}>
           <Pressable style={styles.sortMenuOverlay} onPress={() => setSortMenuOpen(false)}>
             <Pressable
-              style={[styles.sortMenu, { backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle, marginTop: SHEET_TOP + 52 }]}
+              style={[styles.sortMenu, { backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle, marginTop: sheetTop + 52 }]}
               onPress={(e) => e.stopPropagation()}
             >
               {sortOptions.map((opt, i) => {

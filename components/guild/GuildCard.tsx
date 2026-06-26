@@ -119,9 +119,9 @@ export const GuildCard = React.memo(function GuildCard({
             {isVideo ? (
               <>
                 {USE_EXPO_VIDEO ? (
-                  <NativeFeedVideo uri={post.media_url} shouldPlay={isVisible && !showComments} isMuted={isMuted} onProgress={() => { }} thumbnailUrl={post.thumbnail_url} restartSignal={restartSignal} bunnyVideoId={post.bunny_video_id ?? null} />
+                  <NativeFeedVideo uri={post.media_url} shouldPlay={isVisible} isMuted={isMuted} onProgress={() => { }} thumbnailUrl={post.thumbnail_url} restartSignal={restartSignal} bunnyVideoId={post.bunny_video_id ?? null} />
                 ) : (
-                  <FallbackFeedVideo uri={post.media_url} shouldPlay={isVisible && !showComments} isMuted={isMuted} onProgress={() => { }} thumbnailUrl={post.thumbnail_url} restartSignal={restartSignal} />
+                  <FallbackFeedVideo uri={post.media_url} shouldPlay={isVisible} isMuted={isMuted} onProgress={() => { }} thumbnailUrl={post.thumbnail_url} restartSignal={restartSignal} />
                 )}
               </>
             ) : (
@@ -262,11 +262,6 @@ export const GuildCard = React.memo(function GuildCard({
         postId={post.id}
         visible={showComments}
         onClose={() => setShowComments(false)}
-        mediaUrl={post.media_url}
-        mediaType={post.media_type}
-        thumbnailUrl={post.thumbnail_url}
-        isMuted={isMuted}
-        bunnyVideoId={post.bunny_video_id ?? null}
         onUserPress={(userId) => {
           setShowComments(false);
           router.push({ pathname: '/user/[id]', params: { id: userId } });

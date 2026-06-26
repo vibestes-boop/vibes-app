@@ -87,7 +87,10 @@ export const NativeFeedVideo = forwardRef<FeedVideoSeekHandle, {
   thumbnailUrl?: string | null;
   restartSignal?: number;
   bunnyVideoId?: string | null;
-}>(function NativeFeedVideo({ uri, shouldPlay, isMuted, onProgress, thumbnailUrl, restartSignal = 0, bunnyVideoId }, ref) {
+  // 'cover' = Vollbild (Standard); 'contain' = ganzes Frame sichtbar (Kommentar-Peek).
+  // Display-only Prop → Wechsel lädt den Player NICHT neu (Wiedergabe läuft nahtlos weiter).
+  contentFit?: 'cover' | 'contain';
+}>(function NativeFeedVideo({ uri, shouldPlay, isMuted, onProgress, thumbnailUrl, restartSignal = 0, bunnyVideoId, contentFit = 'cover' }, ref) {
   const [ready, setReady] = useState(false);
   // Bunny-HLS bevorzugen, bei Fehler (noch nicht transkodiert / kaputt) auf R2
   // zurückfallen — R2 ist die garantierte Quelle, also kann nichts brechen.
@@ -240,7 +243,7 @@ export const NativeFeedVideo = forwardRef<FeedVideoSeekHandle, {
       <VideoView
         player={player}
         style={StyleSheet.absoluteFill}
-        contentFit="cover"
+        contentFit={contentFit}
         nativeControls={false}
       />
       {/* Thumbnail sofort anzeigen — faded aus wenn Video bereit */}
@@ -259,7 +262,8 @@ export const FallbackFeedVideo = forwardRef<FeedVideoSeekHandle, {
   onProgress: (p: number) => void;
   thumbnailUrl?: string | null;
   restartSignal?: number;
-}>(function FallbackFeedVideo({ uri, shouldPlay, isMuted, onProgress, thumbnailUrl, restartSignal = 0 }, ref) {
+  contentFit?: 'cover' | 'contain';
+}>(function FallbackFeedVideo({ uri, shouldPlay, isMuted, onProgress, thumbnailUrl, restartSignal = 0, contentFit = 'cover' }, ref) {
   const [loaded, setLoaded] = useState(false);
   const videoRef = useRef<Video>(null);
   const durationMs = useRef(0);
@@ -296,7 +300,7 @@ export const FallbackFeedVideo = forwardRef<FeedVideoSeekHandle, {
         ref={videoRef}
         source={{ uri }}
         style={StyleSheet.absoluteFill}
-        resizeMode={ResizeMode.COVER}
+        resizeMode={contentFit === 'contain' ? ResizeMode.CONTAIN : ResizeMode.COVER}
         isLooping
         shouldPlay={shouldPlay}
         isMuted={isMuted}

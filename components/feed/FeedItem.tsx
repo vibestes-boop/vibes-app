@@ -247,8 +247,10 @@ const pbStyles = StyleSheet.create({
 });
 
 const { height: SCREEN_H } = Dimensions.get('window');
-// Muss mit CommentsSheet SHEET_TOP (0.22) übereinstimmen:
-const COMMENTS_PEEK_H = Math.round(SCREEN_H * 0.22);
+// Muss mit CommentsSheet SHEET_TOP (0.40) übereinstimmen:
+// Video-Peek oben ~40% (größer = mehr Video, kleineres Kommentarfeld, TikTok-Proportion).
+const COMMENTS_PEEK_FRAC = 0.40;
+const COMMENTS_PEEK_H = Math.round(SCREEN_H * COMMENTS_PEEK_FRAC);
 
 // ─── Music Vinyl Badge ─────────────────────────────────────────────────────────
 function MusicVinylBadge({ trackTitle, isActive }: { trackTitle: string; isActive: boolean }) {
@@ -615,7 +617,9 @@ export const FeedItem = React.memo(function FeedItem({
     }
   }, [item.id, isVideo, shouldPlayVideo, isPaused]);
 
-  const actualShouldPlay = shouldPlayVideo && !isPaused && !commentsOpen && !shareOpen && !optionsOpen && !longPressOpen;
+  // commentsOpen pausiert NICHT mehr: das Video läuft beim Öffnen der Kommentare
+  // nahtlos weiter (derselbe Player) und schrumpft nur in den Peek-Bereich oben.
+  const actualShouldPlay = shouldPlayVideo && !isPaused && !shareOpen && !optionsOpen && !longPressOpen;
 
 
   // ── Media-Resize wenn Comments öffnet (Short-Video-Style) ──────────────────────
@@ -639,6 +643,12 @@ export const FeedItem = React.memo(function FeedItem({
       Extrapolation.CLAMP,
     ),
     overflow: 'hidden',
+  }));
+
+  // Overlays (Caption, Action-Buttons, Fortschrittsbalken) blenden aus, sobald
+  // die Kommentare aufgehen — der Peek oben zeigt dann nur das Video (TikTok).
+  const overlayFadeStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(sheetProgress.value, [0, 0.4], [1, 0], Extrapolation.CLAMP),
   }));
 
   const spawnHeart = useCallback((x: number, y: number) => {
@@ -741,6 +751,7 @@ export const FeedItem = React.memo(function FeedItem({
               thumbnailUrl={item.thumbnailUrl}
               restartSignal={restartSignal}
               bunnyVideoId={bunnyVideoId}
+              contentFit={commentsOpen ? 'contain' : 'cover'}
             />
           ) : (
             <FallbackFeedVideo
@@ -751,6 +762,7 @@ export const FeedItem = React.memo(function FeedItem({
               onProgress={handleProgress}
               thumbnailUrl={item.thumbnailUrl}
               restartSignal={restartSignal}
+              contentFit={commentsOpen ? 'contain' : 'cover'}
             />
           )
         )}
@@ -838,11 +850,7 @@ export const FeedItem = React.memo(function FeedItem({
         visible={commentsOpen}
         onClose={() => setCommentsOpen(false)}
         sheetProgress={sheetProgress}
-        mediaUrl={item.mediaUrl}
-        mediaType={item.mediaType}
-        thumbnailUrl={item.thumbnailUrl}
-        isMuted={isMuted}
-        bunnyVideoId={bunnyVideoId}
+        seamlessPeek
         creatorUserId={item.authorId}
         onUserPress={(userId) => {
           setCommentsOpen(false);
@@ -856,9 +864,9 @@ export const FeedItem = React.memo(function FeedItem({
         onClose={() => setLikersOpen(false)}
       />
 
-      <View
-        style={[styles.bottomInfo, { paddingBottom: insets.bottom + 52 }]}
-        pointerEvents="box-none"
+      <Animated.View
+        style={[styles.bottomInfo, { paddingBottom: insets.bottom + 52 }, overlayFadeStyle]}
+        pointerEvents={commentsOpen ? 'none' : 'box-none'}
       >
 
         <View style={styles.tagBadge}>
@@ -983,10 +991,10 @@ export const FeedItem = React.memo(function FeedItem({
           <MusicVinylBadge trackTitle={item.audioTitle} isActive={shouldPlayVideo} />
         )}
 
-      </View>
+      </Animated.View>
 
-      {/* Progress Bar — absolut über Tab-Bar */}
-      {isVideo && (
+      {/* Progress Bar — absolut über Tab-Bar; bei offenen Kommentaren ausgeblendet */}
+      {isVideo && !commentsOpen && (
         <VideoProgressBar
           ref={progressBarRef}
           postId={item.id}
@@ -996,7 +1004,10 @@ export const FeedItem = React.memo(function FeedItem({
         />
       )}
 
-      <View style={[styles.rightActions, { bottom: insets.bottom + 50 }]}>
+      <Animated.View
+        style={[styles.rightActions, { bottom: insets.bottom + 50 }, overlayFadeStyle]}
+        pointerEvents={commentsOpen ? 'none' : 'auto'}
+      >
         {/* Mute-Button — für Videos UND für Bild-Posts mit Musik-Track */}
         {(isVideo || audioUrl) && (
           <>
@@ -1062,7 +1073,7 @@ export const FeedItem = React.memo(function FeedItem({
             setOptionsOpen(true);
           }}
         />
-      </View>
+      </Animated.View>
 
     </Animated.View>
   );
