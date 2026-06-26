@@ -65,12 +65,103 @@ Deno.serve(async (req) => {
   const user = userRes.user;
 
   // ── Body ────────────────────────────────────────────────────────────────
-  let body: { tier_id?: string } = {};
+  let body: { tier_id?: string; order_id?: string } = {};
   try {
     body = await req.json();
   } catch {
     return json({ error: 'invalid_json' }, 400);
   }
+
+  // ── Produkt-Bezahlung (echte Ware, z.B. Parfüm) ──────────────────────────
+  // Unterschieden vom Coin-Kauf über `order_id` (= bestehende product_orders-
+  // Zeile im Status 'payment_requested'). Geld geht direkt auf Zaurs Stripe
+  // (er ist Verkäufer) — kein Connect in Phase 1. Webhook erkennt es an
+  // metadata.kind = 'product_order'.
+  if (body.order_id && typeof body.order_id === 'string') {
+    const adminClient = createClient(supabaseUrl, serviceRoleKey);
+
+    const { data: order } = await adminClient
+      .from('product_orders')
+      .select('id, buyer_id, status, amount_eur, currency, product_id')
+      .eq('id', body.order_id)
+      .maybeSingle();
+
+    if (!order) return json({ error: 'order_not_found' }, 404);
+    if (order.buyer_id !== user.id) return json({ error: 'not_authorized' }, 403);
+    if (order.status !== 'payment_requested') return json({ error: 'order_not_payable' }, 409);
+
+    const { data: product } = await adminClient
+      .from('products')
+      .select('title')
+      .eq('id', order.product_id)
+      .maybeSingle();
+
+    const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
+    if (!stripeKey) return json({ error: 'stripe_not_configured' }, 500);
+
+    const successUrl =
+      Deno.env.get('STRIPE_PRODUCT_SUCCESS_URL') ??
+      Deno.env.get('STRIPE_SUCCESS_URL') ??
+      'https://serlo-web.vercel.app/shop/success?session_id={CHECKOUT_SESSION_ID}';
+    const cancelUrl =
+      Deno.env.get('STRIPE_PRODUCT_CANCEL_URL') ??
+      Deno.env.get('STRIPE_CANCEL_URL') ??
+      'https://serlo-web.vercel.app/shop/cancelled';
+
+    const amountCents = Math.round(Number(order.amount_eur) * 100);
+    const pform = new URLSearchParams();
+    pform.set('mode', 'payment');
+    pform.set('success_url', successUrl);
+    pform.set('cancel_url', cancelUrl);
+    pform.set('client_reference_id', order.id);
+    pform.set('customer_email', user.email ?? '');
+    pform.set('metadata[kind]', 'product_order');
+    pform.set('metadata[order_id]', order.id);
+    // Versandadresse von Stripe Checkout einsammeln (DE/AT/CH) → Webhook speichert sie
+    pform.set('shipping_address_collection[allowed_countries][0]', 'DE');
+    pform.set('shipping_address_collection[allowed_countries][1]', 'AT');
+    pform.set('shipping_address_collection[allowed_countries][2]', 'CH');
+    pform.set('invoice_creation[enabled]', 'true');
+    pform.set('invoice_creation[invoice_data][description]', `Serlo: ${product?.title ?? 'Produkt'}`);
+    pform.set('line_items[0][price_data][currency]', order.currency ?? 'eur');
+    pform.set('line_items[0][price_data][unit_amount]', String(amountCents));
+    pform.set('line_items[0][price_data][product_data][name]', product?.title ?? 'Serlo Produkt');
+    pform.set('line_items[0][quantity]', '1');
+
+    const pStripeRes = await fetch(`${STRIPE_BASE_URL}/checkout/sessions`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${stripeKey}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Stripe-Version': STRIPE_API_VERSION,
+        'Idempotency-Key': `product-order-${order.id}`,
+      },
+      body: pform.toString(),
+    });
+
+    if (!pStripeRes.ok) {
+      const errBody = await pStripeRes.text();
+      console.error('[create-checkout-session] product stripe error', pStripeRes.status, errBody);
+      return json({ error: 'stripe_session_create_failed' }, 502);
+    }
+
+    const pSession = (await pStripeRes.json()) as {
+      id: string;
+      url: string;
+      payment_intent?: string | null;
+    };
+
+    await adminClient
+      .from('product_orders')
+      .update({
+        stripe_session_id: pSession.id,
+        stripe_payment_intent: pSession.payment_intent ?? null,
+      })
+      .eq('id', order.id);
+
+    return json({ order_id: order.id, session_id: pSession.id, url: pSession.url });
+  }
+
   const tierId = body.tier_id;
   if (!tierId || typeof tierId !== 'string') {
     return json({ error: 'invalid_tier_id' }, 400);

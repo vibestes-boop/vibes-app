@@ -120,6 +120,12 @@ async function handlePaid(admin: SupabaseClient, event: StripeEvent) {
     metadata?: Record<string, string>;
   };
 
+  // Produkt-Bestellung (echte Ware) → eigener Pfad (product_orders), kein Coin-Credit.
+  if (session.metadata?.kind === 'product_order') {
+    await handleProductOrderPaid(admin, event.data.object);
+    return;
+  }
+
   const orderId = session.client_reference_id ?? session.metadata?.order_id;
   if (!orderId) {
     console.warn('[stripe-webhook] no order_id in session.completed event');
@@ -247,6 +253,66 @@ async function handlePaid(admin: SupabaseClient, event: StripeEvent) {
   }
 }
 
+// ── Produkt-Bestellung bezahlt (echte Ware, z.B. Parfüm) ─────────────────────
+// Kein Coin-Credit — das Geld liegt direkt auf Zaurs Stripe (er = Verkäufer).
+// Claim-before-update: nur 'payment_requested' → 'paid' (idempotent gegen Retries).
+// Speichert die von Stripe Checkout eingesammelte Versandadresse.
+async function handleProductOrderPaid(admin: SupabaseClient, obj: unknown) {
+  const session = obj as {
+    id: string;
+    client_reference_id?: string;
+    payment_intent?: string;
+    metadata?: Record<string, string>;
+    shipping_details?: { name?: string; address?: Record<string, string> };
+    customer_details?: { name?: string; address?: Record<string, string> };
+  };
+
+  const orderId = session.client_reference_id ?? session.metadata?.order_id;
+  if (!orderId) {
+    console.warn('[stripe-webhook] product_order without order_id');
+    return;
+  }
+
+  const ship = session.shipping_details ?? session.customer_details;
+  const addr = ship?.address ?? {};
+  const street = [addr.line1, addr.line2].filter(Boolean).join(', ') || null;
+
+  const { data: claimed, error: claimErr } = await admin
+    .from('product_orders')
+    .update({
+      status: 'paid',
+      paid_at: new Date().toISOString(),
+      stripe_payment_intent: session.payment_intent ?? null,
+      ship_name: ship?.name ?? null,
+      ship_street: street,
+      ship_zip: addr.postal_code ?? null,
+      ship_city: addr.city ?? null,
+      ship_country: addr.country ?? null,
+    })
+    .eq('id', orderId)
+    .eq('status', 'payment_requested')
+    .select('id, buyer_id, seller_id');
+
+  if (claimErr) {
+    console.error('[stripe-webhook] product claim failed', claimErr);
+    throw new Error(`product_claim_failed: ${claimErr.message}`);
+  }
+
+  if (!claimed || claimed.length === 0) {
+    console.log(`[stripe-webhook] product order ${orderId} already paid/not payable — skip`);
+    return;
+  }
+
+  // Verkäufer informieren: bezahlt → bitte versenden
+  const row = claimed[0];
+  await admin.from('notifications').insert({
+    recipient_id: row.seller_id,
+    sender_id: row.buyer_id,
+    type: 'gift',
+    comment_text: 'Eine Bestellung wurde bezahlt — bitte versenden 📦',
+  });
+}
+
 async function handleFailed(admin: SupabaseClient, event: StripeEvent) {
   const session = event.data.object as {
     id: string;
@@ -297,15 +363,29 @@ async function handleRefunded(admin: SupabaseClient, event: StripeEvent) {
     .eq('stripe_payment_intent', charge.payment_intent)
     .maybeSingle();
 
-  if (!order) return;
+  if (order) {
+    await admin
+      .from('web_coin_orders')
+      .update({ status: 'refunded' })
+      .eq('id', order.id);
+    // NOTE: Coin-Rückbuchung ist bewusst nicht automatisiert. Coins könnten
+    // bereits ausgegeben (Gifts, Shop) sein. Support macht das per Hand.
+    return;
+  }
+
+  // Sonst: Produkt-Bestellung (echte Ware) via payment_intent
+  const { data: pOrder } = await admin
+    .from('product_orders')
+    .select('id')
+    .eq('stripe_payment_intent', charge.payment_intent)
+    .maybeSingle();
+
+  if (!pOrder) return;
 
   await admin
-    .from('web_coin_orders')
+    .from('product_orders')
     .update({ status: 'refunded' })
-    .eq('id', order.id);
-
-  // NOTE: Coin-Rückbuchung ist bewusst nicht automatisiert. Coins könnten
-  // bereits ausgegeben (Gifts, Shop) sein. Support macht das per Hand.
+    .eq('id', pOrder.id);
 }
 
 // ═════════════════════════════════════════════════════════════════════════════
