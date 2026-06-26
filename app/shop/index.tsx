@@ -76,7 +76,7 @@ const REAL_CATEGORIES: ProductCategory[] = ['physical', 'digital', 'service', 'c
 
 // Menü-Shortcuts (Navigation zu anderen Screens). Verkaufen bleibt der FAB.
 const SHORTCUTS: { key: string; label: string; Icon: typeof Package; route: string }[] = [
-  { key: 'orders', label: 'Bestellungen', Icon: Package, route: '/shop/orders'  },
+  { key: 'orders', label: 'Bestellungen', Icon: Package, route: '/shop/my-orders'  },
   { key: 'saved',  label: 'Favoriten',    Icon: Heart,   route: '/shop/saved'   },
   { key: 'coins',  label: 'Coins',        Icon: Coins,   route: '/coin-shop'    },
   { key: 'myshop', label: 'Mein Shop',    Icon: Store,   route: '/shop/my-shop' },

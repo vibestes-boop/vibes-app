@@ -578,3 +578,154 @@ export function useReportProduct() {
 
   return { report, isReporting };
 }
+
+// ─── Echtgeld-Bestellungen (physische Ware / Parfüm, Phase 1) ─────────────────
+// Getrennt vom coin-basierten Order-System (useMyOrders). Tabelle: product_orders.
+
+export type ProductOrderStatus =
+  | 'reserved' | 'payment_requested' | 'paid' | 'shipped'
+  | 'delivered' | 'cancelled' | 'refunded' | 'disputed';
+
+export interface ProductOrder {
+  id:               string;
+  buyer_id:         string;
+  seller_id:        string;
+  product_id:       string | null;
+  quantity:         number;
+  unit_price_eur:   number;
+  amount_eur:       number;
+  status:           ProductOrderStatus;
+  ship_name:        string | null;
+  ship_street:      string | null;
+  ship_zip:         string | null;
+  ship_city:        string | null;
+  ship_country:     string | null;
+  tracking_carrier: string | null;
+  tracking_number:  string | null;
+  created_at:       string;
+  paid_at:          string | null;
+  shipped_at:       string | null;
+  delivered_at:     string | null;
+  product?: { id: string; title: string; cover_url: string | null } | null;
+}
+
+const PRODUCT_ORDER_SELECT = '*, product:products(id, title, cover_url)';
+
+// Käufer: eigene Echtgeld-Bestellungen (Status + Tracking = Wiederkehr-Hook)
+export function useMyProductOrders() {
+  const user = useAuthStore((s) => s.user);
+  return useQuery<ProductOrder[]>({
+    queryKey: ['product-orders', 'buyer', user?.id],
+    enabled:  !!user?.id,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('product_orders')
+        .select(PRODUCT_ORDER_SELECT)
+        .eq('buyer_id', user!.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return (data ?? []) as ProductOrder[];
+    },
+  });
+}
+
+// Verkäufer: eingehende Echtgeld-Bestellungen (zum Versenden)
+export function useSellerProductOrders() {
+  const user = useAuthStore((s) => s.user);
+  return useQuery<ProductOrder[]>({
+    queryKey: ['product-orders', 'seller', user?.id],
+    enabled:  !!user?.id,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('product_orders')
+        .select(PRODUCT_ORDER_SELECT)
+        .eq('seller_id', user!.id)
+        .order('created_at', { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return (data ?? []) as ProductOrder[];
+    },
+  });
+}
+
+// Käufer: Bestellung bezahlen → Stripe Checkout öffnen
+export function usePayProductOrder() {
+  const [isPaying, setIsPaying] = useState(false);
+  const pay = useCallback(async (orderId: string): Promise<{ error?: string }> => {
+    setIsPaying(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('create-checkout-session', {
+        body: { order_id: orderId },
+      });
+      if (error || !data?.url) return { error: 'checkout_failed' };
+      await Linking.openURL(data.url as string);
+      return {};
+    } catch {
+      return { error: 'network_error' };
+    } finally {
+      setIsPaying(false);
+    }
+  }, []);
+  return { pay, isPaying };
+}
+
+// Käufer: Empfang bestätigen (shipped → delivered)
+export function useConfirmOrderDelivered() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (orderId: string) => {
+      const { data, error } = await supabase.rpc('confirm_order_delivered', { p_order_id: orderId });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      return data;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['product-orders'] }); },
+  });
+}
+
+// Verkäufer: „Ware ist da" → Zahlungsaufforderungen aus Vormerkungen erzeugen
+export function useMarkPreordersPayable() {
+  const qc = useQueryClient();
+  const [isWorking, setIsWorking] = useState(false);
+  const markPayable = useCallback(async (productId: string): Promise<{ created?: number; skipped?: number; error?: string }> => {
+    setIsWorking(true);
+    try {
+      const { data, error } = await supabase.rpc('mark_preorders_payable', { p_product_id: productId });
+      if (error) return { error: 'network_error' };
+      if ((data as any)?.error) return { error: (data as any).error };
+      qc.invalidateQueries({ queryKey: ['product-orders'] });
+      return { created: (data as any)?.created ?? 0, skipped: (data as any)?.skipped ?? 0 };
+    } finally {
+      setIsWorking(false);
+    }
+  }, [qc]);
+  return { markPayable, isWorking };
+}
+
+// Verkäufer: versendet (+ Tracking)
+export function useSetOrderShipped() {
+  const qc = useQueryClient();
+  const [isWorking, setIsWorking] = useState(false);
+  const setShipped = useCallback(async (
+    orderId: string, carrier?: string, tracking?: string,
+  ): Promise<{ error?: string }> => {
+    setIsWorking(true);
+    try {
+      const { data, error } = await supabase.rpc('set_order_shipped', {
+        p_order_id: orderId,
+        p_carrier:  carrier?.trim() || null,
+        p_tracking: tracking?.trim() || null,
+      });
+      if (error) return { error: 'network_error' };
+      if ((data as any)?.error) return { error: (data as any).error };
+      qc.invalidateQueries({ queryKey: ['product-orders'] });
+      return {};
+    } finally {
+      setIsWorking(false);
+    }
+  }, [qc]);
+  return { setShipped, isWorking };
+}
