@@ -158,7 +158,11 @@ function ChatImage({ uri, isOwn, onPress }: { uri: string; isOwn: boolean; onPre
   return (
     <Pressable
       onPress={onPress}
-      style={[styles.imageBubble, { width: maxW, aspectRatio: ratio }, isOwn && styles.imageBubbleOwn]}
+      style={[
+        styles.imageBubble,
+        { width: maxW, aspectRatio: ratio, alignSelf: isOwn ? 'flex-end' : 'flex-start' },
+        isOwn && styles.imageBubbleOwn,
+      ]}
     >
       <Image
         source={{ uri }}
@@ -387,7 +391,7 @@ function MessageBubble({
           </View>
         )}
 
-        <Animated.View style={bubbleAnim} {...panResponder.panHandlers}>
+        <Animated.View style={[bubbleAnim, { alignSelf: isOwn ? 'flex-end' : 'flex-start' }]} {...panResponder.panHandlers}>
           <Pressable
             onLongPress={onLongPress}
             delayLongPress={350}
