@@ -26,6 +26,12 @@ const _animMod = require('react-native-reanimated') as any;
 const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
 
+// Stabile No-op-Referenz: GuildCard nutzt onProgress nicht, aber eine INLINE
+// Funktion (() => {}) würde bei jedem Re-Render (z.B. Kommentar-Sheet auf/zu)
+// den Restart-Effekt in FeedVideo neu auslösen → kurze Clips springen auf 0.
+// Stabile Identität = kein spuriöser Video-Neustart.
+const NOOP_PROGRESS = (_p: number) => {};
+
 function formatRelativeTime(iso: string) {
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
@@ -133,9 +139,9 @@ export const GuildCard = React.memo(function GuildCard({
             {isVideo ? (
               <>
                 {USE_EXPO_VIDEO ? (
-                  <NativeFeedVideo uri={post.media_url} shouldPlay={isVisible} isMuted={isMuted} onProgress={() => { }} thumbnailUrl={post.thumbnail_url} restartSignal={restartSignal} bunnyVideoId={post.bunny_video_id ?? null} contentFit="contain" />
+                  <NativeFeedVideo uri={post.media_url} shouldPlay={isVisible} isMuted={isMuted} onProgress={NOOP_PROGRESS} thumbnailUrl={post.thumbnail_url} restartSignal={restartSignal} bunnyVideoId={post.bunny_video_id ?? null} contentFit="contain" />
                 ) : (
-                  <FallbackFeedVideo uri={post.media_url} shouldPlay={isVisible} isMuted={isMuted} onProgress={() => { }} thumbnailUrl={post.thumbnail_url} restartSignal={restartSignal} contentFit="contain" />
+                  <FallbackFeedVideo uri={post.media_url} shouldPlay={isVisible} isMuted={isMuted} onProgress={NOOP_PROGRESS} thumbnailUrl={post.thumbnail_url} restartSignal={restartSignal} contentFit="contain" />
                 )}
               </>
             ) : (
