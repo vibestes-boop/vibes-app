@@ -376,7 +376,9 @@ function MessageBubble({
   return (
     <View style={[styles.bubbleRow, isOwn && styles.bubbleRowOwn]}>
       {!isOwn && (
-        <Animated.View style={[styles.replyIcon, replyIconAnim]}>
+        // Absolut positioniert → reserviert keinen Flow-Platz, damit empfangene
+        // Bubbles am linken Rand kleben. Wird beim Swipe (Opacity) sichtbar.
+        <Animated.View style={[styles.replyIcon, replyIconAnim, { position: 'absolute', left: 0, bottom: 4, zIndex: 0 }]}>
           <Reply size={16} color="#FFFFFF" strokeWidth={2} />
         </Animated.View>
       )}
