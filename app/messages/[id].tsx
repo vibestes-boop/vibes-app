@@ -153,7 +153,7 @@ function ProductPreviewCard({ productId }: { productId: string }) {
 // beschnitten. Jetzt: echtes Verhältnis aus onLoad, gegen Extreme geclamped.
 function ChatImage({ uri, isOwn, onPress }: { uri: string; isOwn: boolean; onPress: () => void }) {
   const [aspect, setAspect] = useState<number | null>(null);
-  const maxW = Math.round(Dimensions.get('window').width * 0.62);
+  const maxW = Math.round(Dimensions.get('window').width * 0.74);
   const ratio = aspect ? Math.min(Math.max(aspect, 0.6), 1.9) : 0.8;
   return (
     <Pressable
@@ -394,7 +394,7 @@ function MessageBubble({
             style={({ pressed }) => [
               styles.bubble,
               isOwn
-                ? [styles.bubbleOwn, { backgroundColor: isDark ? '#2C2C2E' : '#007AFF' }]
+                ? [styles.bubbleOwn, { backgroundColor: isDark ? '#48484A' : '#404040' }]
                 : [styles.bubbleOther, { backgroundColor: isDark ? 'rgba(255,255,255,0.10)' : '#E9E9EB' }],
               (hasPost || (hasProduct && !showText)) && styles.bubbleWithPost,
               (hasPost || (hasProduct && !showText)) && styles.bubbleNoFrame,
@@ -869,7 +869,7 @@ const styles = StyleSheet.create({
   bubbleRow: { flexDirection: 'row', marginVertical: 1, alignItems: 'flex-end', gap: 6 },
   bubbleRowOwn: { justifyContent: 'flex-end' },
   bubble: {
-    maxWidth: '78%', borderRadius: 20, gap: 0, overflow: 'hidden',
+    maxWidth: '82%', borderRadius: 20, gap: 0, overflow: 'hidden',
   },
   bubbleWithPost: { paddingHorizontal: 0, paddingVertical: 0, gap: 0 },
   bubbleNoFrame: { backgroundColor: 'transparent' },
