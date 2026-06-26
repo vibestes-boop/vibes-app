@@ -51,9 +51,12 @@ Text,
 View,
 } from 'react-native';
 import {
+Extrapolation,
+interpolate,
 useAnimatedStyle,
 useSharedValue,
 withSequence,
+withSpring,
 withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -198,6 +201,24 @@ function GuildPostDetailItem({
     }
   }, [post.id, isVideo, isActive]);
 
+  // ── Seamless-Kommentare (wie Feed): Video schrumpft in den oberen ~40%,
+  //    läuft ununterbrochen weiter, Kommentare darunter. sheetProgress wird
+  //    beim Schließen direkt vom CommentsSheet (Drag) auf 0 zurückgefahren. ──
+  const sheetProgress = useSharedValue(0);
+  useEffect(() => {
+    if (showComments) {
+      sheetProgress.value = withSpring(1, { damping: 22, stiffness: 180, mass: 0.8 });
+    }
+  }, [showComments, sheetProgress]);
+
+  const mediaAnimStyle = useAnimatedStyle(() => ({
+    height: interpolate(sheetProgress.value, [0, 1], [ITEM_HEIGHT, ITEM_HEIGHT * 0.40], Extrapolation.CLAMP),
+    overflow: 'hidden',
+  }));
+  const overlayFadeStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(sheetProgress.value, [0, 0.4], [1, 0], Extrapolation.CLAMP),
+  }));
+
   const handleScreenTap = useCallback((evt: { nativeEvent: { locationX: number; locationY: number } }) => {
     const now = Date.now();
     const x = evt.nativeEvent.locationX;
@@ -245,30 +266,48 @@ function GuildPostDetailItem({
 
   return (
     <View style={[itemStyles.container, { height: ITEM_HEIGHT }]}>
-      {/* ── Hintergrund ── */}
+      {/* ── Hintergrund — schrumpft in den oberen Peek, wenn Kommentare offen ── */}
+      <Animated.View style={[itemStyles.mediaWrap, mediaAnimStyle]}>
       {post.media_url ? (
         isVideo ? (
-          USE_EXPO_VIDEO ? (
-            <NativeFeedVideo
-              ref={videoSeekRef}
-              uri={post.media_url}
-              shouldPlay={isActive}
-              isMuted={isMuted}
-              onProgress={handleProgress}
-              restartSignal={restartSignal}
-              thumbnailUrl={post.thumbnail_url}
-              bunnyVideoId={post.bunny_video_id ?? null}
-            />
-          ) : (
-            <FallbackFeedVideo
-              ref={videoSeekRef}
-              uri={post.media_url}
-              shouldPlay={isActive}
-              isMuted={isMuted}
-              onProgress={handleProgress}
-              restartSignal={restartSignal}
-            />
-          )
+          <>
+            {/* Blur-Fill hinter dem Video: füllt die Letterbox-Ränder (contain) */}
+            {post.thumbnail_url && (
+              <>
+                <Image
+                  source={{ uri: post.thumbnail_url }}
+                  style={StyleSheet.absoluteFill}
+                  contentFit="cover"
+                  blurRadius={30}
+                  priority={isActive ? 'high' : 'normal'}
+                />
+                <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.35)' }]} />
+              </>
+            )}
+            {USE_EXPO_VIDEO ? (
+              <NativeFeedVideo
+                ref={videoSeekRef}
+                uri={post.media_url}
+                shouldPlay={isActive}
+                isMuted={isMuted}
+                onProgress={handleProgress}
+                restartSignal={restartSignal}
+                thumbnailUrl={post.thumbnail_url}
+                bunnyVideoId={post.bunny_video_id ?? null}
+                contentFit="contain"
+              />
+            ) : (
+              <FallbackFeedVideo
+                ref={videoSeekRef}
+                uri={post.media_url}
+                shouldPlay={isActive}
+                isMuted={isMuted}
+                onProgress={handleProgress}
+                restartSignal={restartSignal}
+                contentFit="contain"
+              />
+            )}
+          </>
         ) : (
           <>
             {/* Blurred background — sofort aus Cache, Priority High wenn aktiv */}
@@ -297,6 +336,7 @@ function GuildPostDetailItem({
           end={{ x: 0.8, y: 1 }}
         />
       )}
+      </Animated.View>
 
       {/* Screen-Tap: Einfach-Tap = Mute/Unmute (Video), Doppel-Tap = Like */}
       <Pressable
@@ -314,8 +354,11 @@ function GuildPostDetailItem({
         />
       ))}
 
-      {/* ── Header ── */}
-      <View style={[itemStyles.header, { paddingTop: insets.top + 6 }]}>
+      {/* ── Header ── (blendet aus, wenn Kommentare offen) */}
+      <Animated.View
+        style={[itemStyles.header, { paddingTop: insets.top + 6 }, overlayFadeStyle]}
+        pointerEvents={showComments ? 'none' : 'box-none'}
+      >
         <Pressable onPress={onBack} style={itemStyles.backBtn} hitSlop={12}>
           <ArrowLeft size={22} color="#fff" strokeWidth={2.2} />
         </Pressable>
@@ -324,10 +367,13 @@ function GuildPostDetailItem({
           <Users size={11} color={c0} />
           <Text style={[itemStyles.guildBadgeText, { color: c0 }]}>Guild</Text>
         </View>
-      </View>
+      </Animated.View>
 
-      {/* ── Rechte Aktionen ── */}
-      <View style={[itemStyles.rightActions, { bottom: insets.bottom + 90 }]}>
+      {/* ── Rechte Aktionen ── (blendet aus, wenn Kommentare offen) */}
+      <Animated.View
+        style={[itemStyles.rightActions, { bottom: insets.bottom + 90 }, overlayFadeStyle]}
+        pointerEvents={showComments ? 'none' : 'box-none'}
+      >
         {/* Avatar mit Story-Ring */}
         <StoryRingAvatar
           userId={post.author_id}
@@ -385,10 +431,13 @@ function GuildPostDetailItem({
               : <Volume2 size={26} color="#fff" strokeWidth={1.8} />}
           </Pressable>
         )}
-      </View>
+      </Animated.View>
 
-      {/* ── Untere Info-Leiste ── */}
-      <View style={[itemStyles.bottomInfo, { paddingBottom: insets.bottom + 12 }]}>
+      {/* ── Untere Info-Leiste ── (blendet aus, wenn Kommentare offen) */}
+      <Animated.View
+        style={[itemStyles.bottomInfo, { paddingBottom: insets.bottom + 12 }, overlayFadeStyle]}
+        pointerEvents={showComments ? 'none' : 'box-none'}
+      >
         {/* Autor */}
         <Pressable
           style={itemStyles.authorRow}
@@ -414,11 +463,13 @@ function GuildPostDetailItem({
             ))}
           </View>
         ) : null}
-      </View>
+      </Animated.View>
 
       <CommentsSheet
         postId={post.id}
         visible={showComments}
+        seamlessPeek
+        sheetProgress={sheetProgress}
         onClose={() => setShowComments(false)}
         onUserPress={(userId) => {
           setShowComments(false);
@@ -426,8 +477,8 @@ function GuildPostDetailItem({
         }}
       />
 
-      {/* ── Video-Fortschrittsbalken — direkt über dem Kommentarfeld ── */}
-      {isVideo && (
+      {/* ── Video-Fortschrittsbalken — versteckt, wenn Kommentare offen ── */}
+      {isVideo && !showComments && (
         <VideoProgressBar
           ref={progressBarRef}
           postId={post.id}
@@ -437,7 +488,8 @@ function GuildPostDetailItem({
         />
       )}
 
-      {/* ── Fake-Kommentarfeld ── Öffnet CommentsSheet ── */}
+      {/* ── Fake-Kommentarfeld ── Öffnet CommentsSheet (versteckt, wenn offen) ── */}
+      {!showComments && (
       <Pressable
         style={[itemStyles.commentBarWrap, { paddingBottom: insets.bottom }]}
         onPress={() => {
@@ -471,6 +523,7 @@ function GuildPostDetailItem({
           </View>
         </View>
       </Pressable>
+      )}
     </View>
   );
 }
@@ -588,6 +641,13 @@ const itemStyles = StyleSheet.create({
     width: W,
     backgroundColor: '#050508',
     overflow: 'hidden',
+  },
+  mediaWrap: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#050508',
   },
   mainImage: {
     ...StyleSheet.absoluteFillObject,
