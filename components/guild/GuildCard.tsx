@@ -115,17 +115,31 @@ export const GuildCard = React.memo(function GuildCard({
               end={{ x: 0.8, y: 1 }}
             />
 
-            {/* Media */}
+            {/* Blur-Fill-Hintergrund: füllt die Ränder im 3:4-Rahmen, statt das
+                Medium (besonders Querformat) seitlich zu beschneiden. */}
+            {(isVideo ? post.thumbnail_url : post.media_url) && (
+              <>
+                <Image
+                  source={{ uri: isVideo ? post.thumbnail_url! : post.media_url! }}
+                  style={StyleSheet.absoluteFill}
+                  contentFit="cover"
+                  blurRadius={30}
+                />
+                <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.30)' }]} />
+              </>
+            )}
+
+            {/* Media — contain: ganzes Bild sichtbar, kein seitlicher Beschnitt */}
             {isVideo ? (
               <>
                 {USE_EXPO_VIDEO ? (
-                  <NativeFeedVideo uri={post.media_url} shouldPlay={isVisible} isMuted={isMuted} onProgress={() => { }} thumbnailUrl={post.thumbnail_url} restartSignal={restartSignal} bunnyVideoId={post.bunny_video_id ?? null} />
+                  <NativeFeedVideo uri={post.media_url} shouldPlay={isVisible} isMuted={isMuted} onProgress={() => { }} thumbnailUrl={post.thumbnail_url} restartSignal={restartSignal} bunnyVideoId={post.bunny_video_id ?? null} contentFit="contain" />
                 ) : (
-                  <FallbackFeedVideo uri={post.media_url} shouldPlay={isVisible} isMuted={isMuted} onProgress={() => { }} thumbnailUrl={post.thumbnail_url} restartSignal={restartSignal} />
+                  <FallbackFeedVideo uri={post.media_url} shouldPlay={isVisible} isMuted={isMuted} onProgress={() => { }} thumbnailUrl={post.thumbnail_url} restartSignal={restartSignal} contentFit="contain" />
                 )}
               </>
             ) : (
-              <Image source={{ uri: post.media_url }} style={v.mediaImg} contentFit="cover" />
+              <Image source={{ uri: post.media_url }} style={v.mediaImg} contentFit="contain" />
             )}
 
 
