@@ -723,6 +723,7 @@ export default function ChatScreen() {
                 data={messages}
                 keyExtractor={(item) => item.id}
                 renderItem={renderItem}
+                style={{ flex: 1, width: '100%' }}
                 contentContainerStyle={styles.listContent}
                 showsVerticalScrollIndicator={false}
                 scrollEventThrottle={16}
@@ -857,7 +858,7 @@ const styles = StyleSheet.create({
 
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyText: { fontSize: 15 },
-  listContent: { paddingHorizontal: 14, paddingVertical: 20, gap: 2, flexGrow: 1 },
+  listContent: { paddingHorizontal: 10, paddingVertical: 20, gap: 2, flexGrow: 1 },
 
   dayRow: { alignItems: 'center', marginVertical: 16 },
   dayText: {
@@ -866,7 +867,7 @@ const styles = StyleSheet.create({
   },
 
   // ── Bubble ──
-  bubbleRow: { flexDirection: 'row', marginVertical: 1, alignItems: 'flex-end', gap: 6 },
+  bubbleRow: { flexDirection: 'row', marginVertical: 1, alignItems: 'flex-end', gap: 6, width: '100%' },
   bubbleRowOwn: { justifyContent: 'flex-end' },
   bubble: {
     maxWidth: '82%', borderRadius: 20, gap: 0, overflow: 'hidden',
