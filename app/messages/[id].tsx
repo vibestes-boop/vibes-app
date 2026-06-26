@@ -383,7 +383,7 @@ function MessageBubble({
         </Animated.View>
       )}
 
-      <View style={{ maxWidth: Math.round(Dimensions.get('window').width * 0.82), alignItems: isOwn ? 'flex-end' : 'flex-start' }}>
+      <View style={{ maxWidth: Math.round(Dimensions.get('window').width * 0.82), alignSelf: isOwn ? 'flex-end' : 'flex-start', alignItems: isOwn ? 'flex-end' : 'flex-start' }}>
         {msg.reply_to && (
           <View style={[styles.replyPreview, isOwn && styles.replyPreviewOwn]}>
             <View style={[styles.replyBar, isOwn && styles.replyBarOwn]} />
@@ -873,7 +873,7 @@ const styles = StyleSheet.create({
   },
 
   // ── Bubble ──
-  bubbleRow: { flexDirection: 'row', marginVertical: 1, alignItems: 'flex-end', gap: 6, width: '100%' },
+  bubbleRow: { marginVertical: 1, width: '100%' },
   bubbleRowOwn: { justifyContent: 'flex-end' },
   bubble: {
     maxWidth: '100%', borderRadius: 20, gap: 0, overflow: 'hidden',
