@@ -185,15 +185,25 @@ export default function GuildScreen() {
     }
   }, [profile?.id, createStory, isUploading]);
 
+  // Beim Öffnen der Kommentare die getippte Karte sofort an den oberen Rand
+  // scrollen → das (weiterlaufende) Video sitzt dann im durchsichtigen Peek
+  // über dem Kommentar-Sheet (seamlessPeek). Kein zweiter Player, kein Neustart.
+  const scrollCardToTop = useCallback((index: number) => {
+    try { listRef.current?.scrollToIndex({ index, animated: false, viewPosition: 0 }); }
+    catch { /* scrollToIndex kann bei noch nicht gemessenem Item werfen — ignorieren */ }
+  }, []);
+
   const renderItem = useCallback(
-    ({ item }: { item: GuildPost }) => (
+    ({ item, index }: { item: GuildPost; index: number }) => (
       <GuildCard
         post={item}
         guildColors={guildColorPair}
         isVisible={item.id === visiblePostId && isScreenFocused}
+        index={index}
+        onOpenComments={scrollCardToTop}
       />
     ),
-    [guildColorPair, visiblePostId, isScreenFocused],
+    [guildColorPair, visiblePostId, isScreenFocused, scrollCardToTop],
   );
 
   const ListHeader = useCallback(
@@ -286,6 +296,15 @@ export default function GuildScreen() {
           automaticallyAdjustsScrollIndicatorInsets={false}
           viewabilityConfig={viewabilityConfig}
           onViewableItemsChanged={onViewableItemsChanged}
+          onScrollToIndexFailed={(info) => {
+            // Variable Kartenhöhen → scrollToIndex kann fehlschlagen. Grob zum
+            // geschätzten Offset springen, dann erneut versuchen.
+            listRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: false });
+            setTimeout(() => {
+              try { listRef.current?.scrollToIndex({ index: info.index, animated: false, viewPosition: 0 }); }
+              catch { /* ignorieren */ }
+            }, 60);
+          }}
           ListHeaderComponent={ListHeader}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>

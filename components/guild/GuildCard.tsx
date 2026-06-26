@@ -39,10 +39,15 @@ export const GuildCard = React.memo(function GuildCard({
   post,
   guildColors,
   isVisible = false,
+  index = 0,
+  onOpenComments,
 }: {
   post: GuildPost;
   guildColors: [string, string];
   isVisible?: boolean;
+  index?: number;
+  // Scrollt die Karte an den oberen Rand, wenn die Kommentare aufgehen.
+  onOpenComments?: (index: number) => void;
 }) {
   const router = useRouter();
   const { colors } = useTheme();
@@ -51,6 +56,10 @@ export const GuildCard = React.memo(function GuildCard({
   const { data: commentCount = 0 } = useCommentCount(post.id, post.comment_count);
   const { bookmarked, toggle: toggleBookmark } = useBookmark(post.id);
   const [showComments, setShowComments] = useState(false);
+  // Verhindert Video-Neustart, falls sich beim Scrollen (Kommentare öffnen)
+  // die Sichtbarkeit kurz ändert.
+  const showCommentsRef = useRef(false);
+  showCommentsRef.current = showComments;
   const [captionExpanded, setCaptionExpanded] = useState(false);
   const { isMuted, toggleMute } = useVideoMute();
   const isVideo = post.media_type === 'video';
@@ -87,7 +96,7 @@ export const GuildCard = React.memo(function GuildCard({
     const wasVisible = previous.id === post.id ? previous.visible : false;
     visibilityRef.current = { id: post.id, visible: isVisible };
     if (!isVideo) return;
-    if (isVisible && (!wasVisible || previous.id !== post.id)) {
+    if (isVisible && (!wasVisible || previous.id !== post.id) && !showCommentsRef.current) {
       setRestartSignal((signal) => signal + 1);
     }
   }, [post.id, isVideo, isVisible]);
@@ -119,9 +128,9 @@ export const GuildCard = React.memo(function GuildCard({
             {isVideo ? (
               <>
                 {USE_EXPO_VIDEO ? (
-                  <NativeFeedVideo uri={post.media_url} shouldPlay={isVisible} isMuted={isMuted} onProgress={() => { }} thumbnailUrl={post.thumbnail_url} restartSignal={restartSignal} bunnyVideoId={post.bunny_video_id ?? null} />
+                  <NativeFeedVideo uri={post.media_url} shouldPlay={isVisible || showComments} isMuted={isMuted} onProgress={() => { }} thumbnailUrl={post.thumbnail_url} restartSignal={restartSignal} bunnyVideoId={post.bunny_video_id ?? null} />
                 ) : (
-                  <FallbackFeedVideo uri={post.media_url} shouldPlay={isVisible} isMuted={isMuted} onProgress={() => { }} thumbnailUrl={post.thumbnail_url} restartSignal={restartSignal} />
+                  <FallbackFeedVideo uri={post.media_url} shouldPlay={isVisible || showComments} isMuted={isMuted} onProgress={() => { }} thumbnailUrl={post.thumbnail_url} restartSignal={restartSignal} />
                 )}
               </>
             ) : (
@@ -205,7 +214,11 @@ export const GuildCard = React.memo(function GuildCard({
             </Pressable>
           </Animated.View>
 
-          <Pressable onPress={() => setShowComments(true)} style={styles.actionBtn} hitSlop={10}>
+          <Pressable
+            onPress={() => { onOpenComments?.(index); setShowComments(true); }}
+            style={styles.actionBtn}
+            hitSlop={10}
+          >
             <MessageCircle size={22} color={colors.icon.default} />
             <Text style={styles.actionCount}>
               {commentCount >= 1000 ? `${(commentCount / 1000).toFixed(1)}K` : commentCount}
@@ -261,6 +274,7 @@ export const GuildCard = React.memo(function GuildCard({
       <CommentsSheet
         postId={post.id}
         visible={showComments}
+        seamlessPeek
         onClose={() => setShowComments(false)}
         onUserPress={(userId) => {
           setShowComments(false);

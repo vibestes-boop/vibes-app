@@ -712,13 +712,25 @@ export const FeedItem = React.memo(function FeedItem({
 
       {/* ── Hintergrund: Bild DIREKT in feedItem */}
       {item.mediaUrl && !isVideo && !imageError && (
-        <Image
-          source={{ uri: item.mediaUrl }}
-          style={StyleSheet.absoluteFill}
-          contentFit="cover"
-          cachePolicy="memory-disk"
-          onError={() => setImageError(true)}
-        />
+        <>
+          {/* Blur-Fill-Hintergrund: füllt die Ränder, statt das Foto zu beschneiden */}
+          <Image
+            source={{ uri: item.mediaUrl }}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            blurRadius={30}
+            cachePolicy="memory-disk"
+          />
+          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.35)' }]} />
+          {/* Foto vollständig (contain) — kein seitliches Abschneiden/Zoom mehr */}
+          <Image
+            source={{ uri: item.mediaUrl }}
+            style={StyleSheet.absoluteFill}
+            contentFit="contain"
+            cachePolicy="memory-disk"
+            onError={() => setImageError(true)}
+          />
+        </>
       )}
       {(!item.mediaUrl || imageError) && (
         <LinearGradient
@@ -740,6 +752,21 @@ export const FeedItem = React.memo(function FeedItem({
         accessibilityRole="button"
         accessibilityLabel={isVideo ? 'Doppeltippen zum Liken, gedrückt halten für Optionen' : 'Doppeltippen zum Liken, gedrückt halten für Optionen'}
       >
+        {/* Blur-Fill hinter dem Video: füllt die Letterbox-Ränder (contain),
+            statt das Video seitlich zu beschneiden/zoomen. */}
+        {item.mediaUrl && isVideo && item.thumbnailUrl && (
+          <>
+            <Image
+              source={{ uri: item.thumbnailUrl }}
+              style={StyleSheet.absoluteFill}
+              contentFit="cover"
+              blurRadius={30}
+              cachePolicy="memory-disk"
+            />
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.35)' }]} />
+          </>
+        )}
+
         {item.mediaUrl && isVideo && (
           USE_EXPO_VIDEO ? (
             <NativeFeedVideo
@@ -751,7 +778,7 @@ export const FeedItem = React.memo(function FeedItem({
               thumbnailUrl={item.thumbnailUrl}
               restartSignal={restartSignal}
               bunnyVideoId={bunnyVideoId}
-              contentFit={commentsOpen ? 'contain' : 'cover'}
+              contentFit="contain"
             />
           ) : (
             <FallbackFeedVideo
@@ -762,7 +789,7 @@ export const FeedItem = React.memo(function FeedItem({
               onProgress={handleProgress}
               thumbnailUrl={item.thumbnailUrl}
               restartSignal={restartSignal}
-              contentFit={commentsOpen ? 'contain' : 'cover'}
+              contentFit="contain"
             />
           )
         )}
