@@ -1,20 +1,22 @@
 /**
- * app/shop/index.tsx — Shop: 2-Spalten Grid, Short-Video-inspired
+ * app/shop/index.tsx — Shop (TikTok-inspiriertes Layout)
  *
- * v1.26.3 Richer Cards + UI-Polish (v1.26.4):
- * - 3:4 Hochformat-Karten, Sterne-Rating
- * - Sale-Badge, Bilder-Counter, Location, Gratis-Versand-Pill, NEU-Badge
- * - Kategorie-Chips (Fix: kein maxHeight-Clipping mehr)
- * - Filter-Chips (Nur Angebote / Gratis Versand / Frauen-Only)
- * - Sort-Sheet (Beliebt / Neueste / Preis ↑ / Preis ↓)
- * - Skeleton-Grid beim initialen Laden
- * - Coin-Balance Hero-Pill im Header
+ * Aufbau von oben nach unten:
+ *  1. Kopf: „Shop" + Coin-Balance
+ *  2. Volle Suchleiste (immer sichtbar)
+ *  3. Menü-Shortcuts (Icon + Label): Bestellungen · Favoriten · Coins · Mein Shop
+ *  4. Werbe-Banner-Karussell (auto-swipe + Finger, DB-gestützt → vermietbar)
+ *  5. Dünne Text-Kategorien ohne Icons (Unterstrich-Aktiv) + Sortier-Icon
+ *  6. Produkt-Grid (2 Spalten)
+ *
+ * Banner kommen aus `shop_banners` (Migration 20260626120000). Leere Liste /
+ * fehlende Tabelle → Karussell rendert einfach nicht (graceful).
  */
 
 import { CoinIcon } from '@/components/ui/CoinIcon';
 import { SerloLoader } from '@/components/ui/SerloLoader';
 import { useCoinsWallet } from '@/lib/useGifts';
-import { formatEur,useShopProducts,type Product,type ProductCategory } from '@/lib/useShop';
+import { formatEur, useShopBanners, useShopProducts, type Product, type ProductCategory, type ShopBanner } from '@/lib/useShop';
 import { useTheme } from '@/lib/useTheme';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import { Image } from 'expo-image';
@@ -23,7 +25,9 @@ import {
 ArrowDownUp,
 Camera,
 Check,
+Coins,
 Flame,
+Heart,
 MapPin,
 Package,
 Plus,
@@ -31,30 +35,51 @@ Search,
 ShoppingBag,
 Sparkles,
 Star,
+Store,
 Truck,
 X,
 } from 'lucide-react-native';
-import { useCallback,useEffect,useMemo,useState } from 'react';
+import { useCallback,useEffect,useMemo,useRef,useState } from 'react';
 import {
 FlatList,
 Modal,
+NativeScrollEvent,
+NativeSyntheticEvent,
 Pressable,
 RefreshControl,ScrollView,
 StyleSheet,
 Text,
 TextInput,
+useWindowDimensions,
 View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // ─── Konstanten ──────────────────────────────────────────────────────────────
 
-const CATEGORIES: { key: ProductCategory | 'all'; emoji: string; label: string }[] = [
-  { key: 'all',         emoji: '🛍',  label: 'Alle'        },
-  { key: 'digital',     emoji: '💾',  label: 'Digital'     },
-  { key: 'physical',    emoji: '📦',  label: 'Physisch'    },
-  { key: 'service',     emoji: '✨',  label: 'Service'     },
-  { key: 'collectible', emoji: '💎',  label: 'Collectible' },
+// Dünne Text-Kategorien. Mappt direkt auf vorhandene Daten — keine Migration:
+//  all → kein Filter · sale → Angebote · women → Frauen-Only ·
+//  physical/digital/service/collectible → echte Produkt-Kategorien (server-seitig)
+type TabKey = 'all' | 'sale' | 'physical' | 'digital' | 'service' | 'collectible' | 'women';
+
+const TABS: { key: TabKey; label: string }[] = [
+  { key: 'all',         label: 'Alle'      },
+  { key: 'sale',        label: 'Angebote'  },
+  { key: 'physical',    label: 'Physisch'  },
+  { key: 'digital',     label: 'Digital'   },
+  { key: 'service',     label: 'Service'   },
+  { key: 'collectible', label: 'Sammler'   },
+  { key: 'women',       label: 'Frauen'    },
+];
+
+const REAL_CATEGORIES: ProductCategory[] = ['physical', 'digital', 'service', 'collectible'];
+
+// Menü-Shortcuts (Navigation zu anderen Screens). Verkaufen bleibt der FAB.
+const SHORTCUTS: { key: string; label: string; Icon: typeof Package; route: string }[] = [
+  { key: 'orders', label: 'Bestellungen', Icon: Package, route: '/shop/orders'  },
+  { key: 'saved',  label: 'Favoriten',    Icon: Heart,   route: '/shop/saved'   },
+  { key: 'coins',  label: 'Coins',        Icon: Coins,   route: '/coin-shop'    },
+  { key: 'myshop', label: 'Mein Shop',    Icon: Store,   route: '/shop/my-shop' },
 ];
 
 type SortKey = 'popular' | 'newest' | 'price_asc' | 'price_desc';
@@ -69,6 +94,9 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
 // Produkt gilt 48h lang als „neu"
 const NEW_THRESHOLD_MS = 48 * 60 * 60 * 1000;
 
+// Skeleton-Platzhalter (6 Karten) während des initialen Ladens
+const SKELETON_DATA = Array.from({ length: 6 }, (_, i) => ({ id: `__sk${i}__` }));
+
 // ─── Helfer: Effektiver Preis (sale hat Vorrang) ─────────────────────────────
 
 function effectivePrice(p: Product): number {
@@ -76,6 +104,108 @@ function effectivePrice(p: Product): number {
     ? p.sale_price_coins
     : p.price_coins;
 }
+
+// ─── Werbe-Banner-Karussell (auto-swipe + Finger) ─────────────────────────────
+
+function BannerCarousel({ banners, onPress }: {
+  banners: ShopBanner[];
+  onPress: (b: ShopBanner) => void;
+}) {
+  const { width: winW } = useWindowDimensions();
+  const PAD = 16, GAP = 10;
+  const slideW = winW - PAD * 2;
+  const step = slideW + GAP;
+
+  const [idx, setIdx] = useState(0);
+  const ref = useRef<ScrollView>(null);
+
+  // Auto-Advance alle 3.5s — pausiert implizit nicht, ist aber bewusst dezent.
+  useEffect(() => {
+    if (banners.length <= 1) return;
+    const t = setInterval(() => {
+      setIdx((prev) => {
+        const next = (prev + 1) % banners.length;
+        ref.current?.scrollTo({ x: next * step, animated: true });
+        return next;
+      });
+    }, 3500);
+    return () => clearInterval(t);
+  }, [banners.length, step]);
+
+  const onMomentumEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    setIdx(Math.round(e.nativeEvent.contentOffset.x / step));
+  };
+
+  if (banners.length === 0) return null;
+
+  return (
+    <View style={bn.wrap}>
+      <ScrollView
+        ref={ref}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        decelerationRate="fast"
+        snapToInterval={step}
+        snapToAlignment="start"
+        disableIntervalMomentum
+        onMomentumScrollEnd={onMomentumEnd}
+        contentContainerStyle={{ paddingHorizontal: PAD }}
+      >
+        {banners.map((b) => (
+          <Pressable
+            key={b.id}
+            onPress={() => onPress(b)}
+            style={[bn.slide, { width: slideW, marginRight: GAP, backgroundColor: b.bg_color }]}
+            accessibilityRole="button"
+            accessibilityLabel={b.title}
+          >
+            {b.image_url ? (
+              <>
+                <Image
+                  source={{ uri: b.image_url }}
+                  style={StyleSheet.absoluteFill}
+                  contentFit="cover"
+                  cachePolicy="memory-disk"
+                />
+                <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.42)' }]} />
+              </>
+            ) : null}
+            <View style={bn.slideInner}>
+              {b.tag ? <Text style={bn.tag} numberOfLines={1}>{b.tag}</Text> : null}
+              <Text style={bn.title} numberOfLines={1}>{b.title}</Text>
+              {b.subtitle ? <Text style={bn.subtitle} numberOfLines={1}>{b.subtitle}</Text> : null}
+            </View>
+          </Pressable>
+        ))}
+      </ScrollView>
+
+      {banners.length > 1 && (
+        <View style={bn.dots}>
+          {banners.map((_, i) => (
+            <View key={i} style={[bn.dot, i === idx && bn.dotActive]} />
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
+const bn = StyleSheet.create({
+  wrap: { paddingTop: 4 },
+  slide: {
+    height: 116,
+    borderRadius: 14,
+    overflow: 'hidden',
+    justifyContent: 'center',
+  },
+  slideInner: { paddingHorizontal: 18 },
+  tag: { color: 'rgba(255,255,255,0.82)', fontSize: 11, fontWeight: '700', letterSpacing: 0.4, marginBottom: 3 },
+  title: { color: '#fff', fontSize: 18, fontWeight: '700', letterSpacing: -0.3 },
+  subtitle: { color: 'rgba(255,255,255,0.78)', fontSize: 12.5, fontWeight: '500', marginTop: 3 },
+  dots: { flexDirection: 'row', justifyContent: 'center', gap: 5, marginTop: 9 },
+  dot: { width: 5, height: 5, borderRadius: 3, backgroundColor: 'rgba(128,128,128,0.4)' },
+  dotActive: { width: 16, backgroundColor: 'rgba(160,160,160,0.95)' },
+});
 
 // ─── Inline Sterne-Anzeige ────────────────────────────────────────────────────
 
@@ -427,19 +557,25 @@ export default function ShopScreen() {
   const { colors } = useTheme();
   const { coins } = useCoinsWallet();
 
-  const [category, setCategory] = useState<ProductCategory | 'all'>('all');
-  const [search, setSearch] = useState('');
-  const [showSearch, setShowSearch] = useState(false);
+  const listRef = useRef<FlatList>(null);
 
-  // Filter & Sort (Client-seitig)
-  const [onSaleOnly,      setOnSaleOnly]      = useState(false);
-  const [freeShipOnly,    setFreeShipOnly]    = useState(false);
-  const [sortBy,          setSortBy]          = useState<SortKey>('popular');
-  const [sortSheetOpen,   setSortSheetOpen]   = useState(false);
+  const [activeTab, setActiveTab] = useState<TabKey>('all');
+  const [search, setSearch]       = useState('');
+
+  // Zusatz-Filter + Sortierung (über das Sheet erreichbar)
+  const [freeShipOnly,  setFreeShipOnly]  = useState(false);
+  const [sortBy,        setSortBy]        = useState<SortKey>('popular');
+  const [sortSheetOpen, setSortSheetOpen] = useState(false);
+
+  // Server-Kategorie nur für echte Produkt-Kategorien; all/sale/women → client-seitig
+  const serverCategory = REAL_CATEGORIES.includes(activeTab as ProductCategory)
+    ? (activeTab as ProductCategory)
+    : undefined;
 
   const { data: products = [], isLoading, refetch, isRefetching } = useShopProducts({
-    category: category === 'all' ? undefined : category,
+    category: serverCategory,
   });
+  const { data: banners = [] } = useShopBanners();
 
   // ── Filter + Sort pipeline ──
   const filtered = useMemo(() => {
@@ -455,12 +591,14 @@ export default function ShopScreen() {
       );
     }
 
-    // „Nur Angebote"-Filter
-    if (onSaleOnly) {
+    // Tab-abhängige Filter
+    if (activeTab === 'sale') {
       list = list.filter(p => p.sale_price_coins != null && p.sale_price_coins < p.price_coins);
+    } else if (activeTab === 'women') {
+      list = list.filter(p => p.women_only);
     }
 
-    // „Gratis Versand"-Filter (nur physische Produkte sinnvoll)
+    // „Gratis Versand"-Filter (aus dem Sheet)
     if (freeShipOnly) {
       list = list.filter(p => p.free_shipping && p.category === 'physical');
     }
@@ -482,191 +620,115 @@ export default function ShopScreen() {
     }
 
     return list;
-  }, [products, search, onSaleOnly, freeShipOnly, sortBy]);
+  }, [products, search, activeTab, freeShipOnly, sortBy]);
 
   // Spacer bei ungerader Anzahl — verhindert volle Breite für einzelne Karte
-  const gridData = useMemo<(Product | { id: '__spacer__' })[]>(() => {
+  const gridData = useMemo<(Product | { id: string })[]>(() => {
     if (filtered.length % 2 === 1) {
-      return [...filtered, { id: '__spacer__' as const }];
+      return [...filtered, { id: '__spacer__' }];
     }
     return filtered;
   }, [filtered]);
+
+  const listData = isLoading ? SKELETON_DATA : gridData;
 
   const handlePress = useCallback((p: Product) => {
     router.push({ pathname: '/shop/[id]', params: { id: p.id } } as any);
   }, [router]);
 
-  const activeFilterCount = (onSaleOnly ? 1 : 0) + (freeShipOnly ? 1 : 0);
-  const currentSortLabel  = SORT_OPTIONS.find(o => o.key === sortBy)?.label ?? 'Sort';
+  const selectTab = useCallback((key: TabKey) => {
+    setActiveTab(key);
+    listRef.current?.scrollToOffset({ offset: 0, animated: false });
+  }, []);
 
-  return (
-    <View style={[s.root, { backgroundColor: colors.bg.primary }]}>
+  // Banner-Tap: 'tab:<key>' wechselt die Kategorie, '/route' navigiert.
+  const handleBannerPress = useCallback((b: ShopBanner) => {
+    if (!b.link) return;
+    if (b.link.startsWith('tab:')) {
+      const key = b.link.slice(4) as TabKey;
+      if (TABS.some(t => t.key === key)) selectTab(key);
+    } else if (b.link.startsWith('/')) {
+      router.push(b.link as any);
+    }
+  }, [router, selectTab]);
 
-      {/* ── Header ── */}
-      <View style={[s.header, { paddingTop: insets.top + 10, borderBottomColor: colors.border.subtle }]}>
-        {showSearch ? (
-          <>
-            <View style={[s.searchBox, { backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle }]}>
-              <Search size={15} color={colors.text.muted} strokeWidth={2} />
-              <TextInput
-                style={[s.searchInput, { color: colors.text.primary }]}
-                placeholder="Produkte, Creator suchen…"
-                placeholderTextColor={colors.text.muted}
-                value={search}
-                onChangeText={setSearch}
-                autoFocus
-                returnKeyType="search"
-                clearButtonMode="while-editing"
-              />
-              {search.length > 0 && (
-                <Pressable onPress={() => setSearch('')} hitSlop={8}>
-                  <X size={14} color={colors.text.muted} strokeWidth={2.5} />
-                </Pressable>
-              )}
-            </View>
-            <Pressable
-              onPress={() => { setShowSearch(false); setSearch(''); }}
-              hitSlop={12}
-              style={s.cancelBtn}
-            >
-              <Text style={[s.cancelText, { color: colors.text.primary }]}>Abbrechen</Text>
-            </Pressable>
-          </>
-        ) : (
-          <>
-            <View style={s.headerLeft}>
-              <Text style={[s.headerTitle, { color: colors.text.primary }]}>Shop</Text>
-            </View>
-            <View style={s.headerRight}>
-              {/* Coin-Balance — randlos, großes Coin (gut sichtbar) */}
-              <View style={s.coinRow}>
-                <CoinIcon size={28} />
-                <Text style={[s.coinText, { color: colors.text.primary }]}>
-                  {coins.toLocaleString('de-DE')}
-                </Text>
-              </View>
-              {/* Suche */}
-              <Pressable
-                onPress={() => setShowSearch(true)}
-                style={[s.iconBtn, { backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle }]}
-                hitSlop={8}
-                accessibilityLabel="Suchen"
-              >
-                <Search size={17} color={colors.text.primary} strokeWidth={2} />
-              </Pressable>
-              {/* Bestellungen */}
-              <Pressable
-                onPress={() => router.push('/shop/orders' as any)}
-                style={[s.iconBtn, { backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle }]}
-                hitSlop={8}
-                accessibilityLabel="Meine Bestellungen"
-              >
-                <Package size={17} color={colors.text.primary} strokeWidth={1.8} />
-              </Pressable>
-            </View>
-          </>
-        )}
+  const resetAll = useCallback(() => {
+    setActiveTab('all'); setFreeShipOnly(false); setSearch('');
+  }, []);
+
+  const currentSortLabel = SORT_OPTIONS.find(o => o.key === sortBy)?.label ?? 'Sort';
+  const sortActive = sortBy !== 'popular' || freeShipOnly;
+
+  // ── Scrollbarer Kopf: Shortcuts → Banner → Tabs → Ergebnis-Zeile ──
+  const ListHeader = (
+    <View>
+      {isRefetching && (
+        <View style={s.refetchRow}>
+          <SerloLoader />
+        </View>
+      )}
+
+      {/* Menü-Shortcuts */}
+      <View style={s.shortcutRow}>
+        {SHORTCUTS.map(({ key, label, Icon, route }) => (
+          <Pressable
+            key={key}
+            onPress={() => router.push(route as any)}
+            style={({ pressed }) => [s.shortcut, pressed && { opacity: 0.55 }]}
+            hitSlop={6}
+            accessibilityRole="button"
+            accessibilityLabel={label}
+          >
+            <Icon size={22} color={colors.text.primary} strokeWidth={1.9} />
+            <Text style={[s.shortcutLabel, { color: colors.text.secondary }]} numberOfLines={1}>
+              {label}
+            </Text>
+          </Pressable>
+        ))}
       </View>
 
-      {/* ── Kategorie-Chips ── */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={s.chipScroll}
-        contentContainerStyle={s.catRow}
-      >
-        {CATEGORIES.map((c) => {
-          const isActive = category === c.key;
-          return (
-            <Pressable
-              key={c.key}
-              onPress={() => setCategory(c.key as any)}
-              style={[
-                s.catChip,
-                { borderColor: isActive ? colors.text.primary : colors.border.subtle },
-                isActive && { backgroundColor: colors.text.primary },
-              ]}
-              accessibilityRole="radio"
-              accessibilityState={{ checked: isActive }}
-            >
-              <Text style={s.catEmoji}>{c.emoji}</Text>
-              <Text style={[s.catLabel, { color: isActive ? colors.bg.primary : colors.text.primary }]}>
-                {c.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
+      {/* Werbe-Banner-Karussell (vermietbar) */}
+      <BannerCarousel banners={banners} onPress={handleBannerPress} />
 
-      {/* ── Filter + Sort Row ── */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        style={s.chipScroll}
-        contentContainerStyle={s.filterRow}
-      >
-        {/* Sort-Pill (öffnet Sheet) */}
+      {/* Dünne Text-Kategorien + Sortier-Icon */}
+      <View style={[s.tabBar, { borderBottomColor: colors.border.subtle }]}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={s.tabScroll}
+          contentContainerStyle={s.tabRow}
+        >
+          {TABS.map((t) => {
+            const active = activeTab === t.key;
+            return (
+              <Pressable key={t.key} onPress={() => selectTab(t.key)} style={s.tab} hitSlop={4}>
+                <Text style={[
+                  s.tabLabel,
+                  { color: active ? colors.text.primary : colors.text.muted, fontWeight: active ? '700' : '500' },
+                ]}>
+                  {t.label}
+                </Text>
+                <View style={[s.tabUnderline, { backgroundColor: active ? colors.text.primary : 'transparent' }]} />
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+
         <Pressable
           onPress={() => setSortSheetOpen(true)}
           style={[
-            s.filterChip,
-            { borderColor: colors.border.subtle, backgroundColor: colors.bg.elevated },
+            s.sortBtn,
+            { borderColor: sortActive ? colors.text.primary : colors.border.subtle, backgroundColor: colors.bg.elevated },
           ]}
-          accessibilityLabel="Sortierung ändern"
+          hitSlop={8}
+          accessibilityLabel="Sortieren & Filtern"
         >
-          <ArrowDownUp size={12} color={colors.text.primary} strokeWidth={2.2} />
-          <Text style={[s.filterLabel, { color: colors.text.primary }]}>{currentSortLabel}</Text>
+          <ArrowDownUp size={15} color={sortActive ? colors.text.primary : colors.text.muted} strokeWidth={2.2} />
         </Pressable>
+      </View>
 
-        {/* Nur Angebote */}
-        <Pressable
-          onPress={() => setOnSaleOnly(v => !v)}
-          style={[
-            s.filterChip,
-            { borderColor: onSaleOnly ? '#EF4444' : colors.border.subtle,
-              backgroundColor: onSaleOnly ? 'rgba(239,68,68,0.12)' : colors.bg.elevated },
-          ]}
-          accessibilityRole="switch"
-          accessibilityState={{ checked: onSaleOnly }}
-        >
-          <Flame size={12} color={onSaleOnly ? '#EF4444' : colors.text.primary} strokeWidth={2.2} fill={onSaleOnly ? '#EF4444' : 'transparent'} />
-          <Text style={[s.filterLabel, { color: onSaleOnly ? '#EF4444' : colors.text.primary }]}>
-            Nur Angebote
-          </Text>
-        </Pressable>
-
-        {/* Gratis Versand */}
-        <Pressable
-          onPress={() => setFreeShipOnly(v => !v)}
-          style={[
-            s.filterChip,
-            { borderColor: freeShipOnly ? '#22C55E' : colors.border.subtle,
-              backgroundColor: freeShipOnly ? 'rgba(34,197,94,0.12)' : colors.bg.elevated },
-          ]}
-          accessibilityRole="switch"
-          accessibilityState={{ checked: freeShipOnly }}
-        >
-          <Truck size={12} color={freeShipOnly ? '#22C55E' : colors.text.primary} strokeWidth={2.2} />
-          <Text style={[s.filterLabel, { color: freeShipOnly ? '#22C55E' : colors.text.primary }]}>
-            Gratis Versand
-          </Text>
-        </Pressable>
-
-        {/* Clear-Filter wenn mind. einer aktiv */}
-        {activeFilterCount > 0 && (
-          <Pressable
-            onPress={() => { setOnSaleOnly(false); setFreeShipOnly(false); }}
-            style={[s.filterChip, s.filterClear, { borderColor: colors.border.subtle }]}
-            accessibilityLabel="Filter zurücksetzen"
-          >
-            <X size={12} color={colors.text.muted} strokeWidth={2.4} />
-            <Text style={[s.filterLabel, { color: colors.text.muted }]}>Filter aus</Text>
-          </Pressable>
-        )}
-      </ScrollView>
-
-      {/* ── Ergebnis-Zeile ── */}
-      {!isLoading && filtered.length > 0 && (
+      {/* Ergebnis-Zeile */}
+      {!isLoading && (
         <View style={s.resultRow}>
           <Text style={[s.resultText, { color: colors.text.muted }]}>
             {filtered.length} Produkt{filtered.length !== 1 ? 'e' : ''}
@@ -674,90 +736,116 @@ export default function ShopScreen() {
           </Text>
         </View>
       )}
+    </View>
+  );
 
-      {/* ── Produkt-Grid ── */}
-      {isLoading ? (
-        // Skeleton-Grid: 6 Karten (3 Zeilen à 2) statt Spinning-Wheel
-        <FlatList
-          data={[0, 1, 2, 3, 4, 5]}
-          keyExtractor={i => String(i)}
-          numColumns={2}
-          columnWrapperStyle={s.gridRow}
-          contentContainerStyle={[s.gridContent, { paddingBottom: insets.bottom + 48 }]}
-          renderItem={() => (
-            <View style={s.gridCell}>
-              <SkeletonCard colors={colors} />
-            </View>
-          )}
-          ItemSeparatorComponent={() => <View style={{ height: 18 }} />}
-          scrollEnabled={false}
-        />
-      ) : filtered.length === 0 ? (
-        <View style={s.center}>
-          <Text style={{ fontSize: 44 }}>🛒</Text>
-          <Text style={[s.emptyText, { color: colors.text.muted }]}>
-            {search.trim()
-              ? `Zu „${search}" ist nichts dabei — anders suchen?`
-              : activeFilterCount > 0
-                ? 'Mit diesen Filtern ist nichts dabei — anders kombinieren?'
-                : 'Hier ist noch nichts — bald gibt es was zu shoppen'}
+  return (
+    <View style={[s.root, { backgroundColor: colors.bg.primary }]}>
+
+      {/* ── Fixierter Kopf: Titel + Coins ── */}
+      <View style={[s.header, { paddingTop: insets.top + 10 }]}>
+        <Text style={[s.headerTitle, { color: colors.text.primary }]}>Shop</Text>
+        <View style={s.coinRow}>
+          <CoinIcon size={26} />
+          <Text style={[s.coinText, { color: colors.text.primary }]}>
+            {coins.toLocaleString('de-DE')}
           </Text>
-          {activeFilterCount > 0 && (
-            <Pressable
-              onPress={() => { setOnSaleOnly(false); setFreeShipOnly(false); }}
-              style={[s.emptyAction, { backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle }]}
-            >
-              <Text style={[s.emptyActionText, { color: colors.text.primary }]}>Filter zurücksetzen</Text>
+        </View>
+      </View>
+
+      {/* ── Volle Suchleiste (immer sichtbar) ── */}
+      <View style={s.searchWrap}>
+        <View style={[s.searchBox, { backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle }]}>
+          <Search size={16} color={colors.text.muted} strokeWidth={2} />
+          <TextInput
+            style={[s.searchInput, { color: colors.text.primary }]}
+            placeholder="Düfte, Produkte, Creator suchen…"
+            placeholderTextColor={colors.text.muted}
+            value={search}
+            onChangeText={setSearch}
+            returnKeyType="search"
+            clearButtonMode="while-editing"
+          />
+          {search.length > 0 && (
+            <Pressable onPress={() => setSearch('')} hitSlop={8}>
+              <X size={15} color={colors.text.muted} strokeWidth={2.5} />
             </Pressable>
           )}
         </View>
-      ) : (
-        <FlatList
-          data={gridData}
-          keyExtractor={p => p.id}
-          numColumns={2}
-          columnWrapperStyle={s.gridRow}
-          contentContainerStyle={[s.gridContent, { paddingBottom: insets.bottom + 48 }]}
-          showsVerticalScrollIndicator={false}
-          initialNumToRender={6}
-          maxToRenderPerBatch={6}
-          windowSize={5}
-          removeClippedSubviews
-          ListHeaderComponent={
-            isRefetching ? (
-              <View style={{ paddingVertical: 22, alignItems: 'center', backgroundColor: colors.bg.secondary }}>
-                <SerloLoader />
-              </View>
-            ) : null
+      </View>
+
+      {/* ── Eine Liste: scrollbarer Kopf + Grid (oder Skeleton/Empty) ── */}
+      <FlatList
+        ref={listRef}
+        data={listData}
+        keyExtractor={(item) => (item as { id: string }).id}
+        numColumns={2}
+        columnWrapperStyle={s.gridRow}
+        contentContainerStyle={[s.gridContent, { paddingBottom: insets.bottom + 48 }]}
+        showsVerticalScrollIndicator={false}
+        initialNumToRender={6}
+        maxToRenderPerBatch={6}
+        windowSize={5}
+        removeClippedSubviews
+        keyboardShouldPersistTaps="handled"
+        ListHeaderComponent={ListHeader}
+        ListEmptyComponent={
+          isLoading ? null : (
+            <View style={s.center}>
+              <Text style={{ fontSize: 44 }}>🛒</Text>
+              <Text style={[s.emptyText, { color: colors.text.muted }]}>
+                {search.trim()
+                  ? `Zu „${search}" ist nichts dabei — anders suchen?`
+                  : (activeTab !== 'all' || freeShipOnly)
+                    ? 'Mit dieser Auswahl ist nichts dabei — anders kombinieren?'
+                    : 'Hier ist noch nichts — bald gibt es was zu shoppen'}
+              </Text>
+              {(activeTab !== 'all' || freeShipOnly || search.trim().length > 0) && (
+                <Pressable
+                  onPress={resetAll}
+                  style={[s.emptyAction, { backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle }]}
+                >
+                  <Text style={[s.emptyActionText, { color: colors.text.primary }]}>Zurücksetzen</Text>
+                </Pressable>
+              )}
+            </View>
+          )
+        }
+        refreshControl={
+          <RefreshControl
+            refreshing={false}
+            onRefresh={refetch}
+            tintColor="transparent"
+            colors={['transparent']}
+          />
+        }
+        renderItem={({ item }) => {
+          const id = (item as { id: string }).id;
+          if (id === '__spacer__') {
+            return <View style={s.gridCell} pointerEvents="none" />;
           }
-          refreshControl={
-            <RefreshControl
-              refreshing={false}
-              onRefresh={refetch}
-              tintColor="transparent"
-              colors={['transparent']}
-            />
-          }
-          renderItem={({ item }) => {
-            if ((item as { id: string }).id === '__spacer__') {
-              return <View style={s.gridCell} pointerEvents="none" />;
-            }
-            const product = item as Product;
+          if (id.startsWith('__sk')) {
             return (
               <View style={s.gridCell}>
-                <ProductCard
-                  product={product}
-                  onPress={() => handlePress(product)}
-                  colors={colors}
-                />
+                <SkeletonCard colors={colors} />
               </View>
             );
-          }}
-          ItemSeparatorComponent={() => <View style={{ height: 18 }} />}
-        />
-      )}
+          }
+          const product = item as Product;
+          return (
+            <View style={s.gridCell}>
+              <ProductCard
+                product={product}
+                onPress={() => handlePress(product)}
+                colors={colors}
+              />
+            </View>
+          );
+        }}
+        ItemSeparatorComponent={() => <View style={{ height: 18 }} />}
+      />
 
-      {/* ── Sort-Sheet ── */}
+      {/* ── Sort- & Filter-Sheet ── */}
       <Modal
         transparent
         visible={sortSheetOpen}
@@ -790,6 +878,23 @@ export default function ShopScreen() {
                 </Pressable>
               );
             })}
+
+            {/* Filter: Gratis Versand */}
+            <Text style={[s.sheetTitle, { color: colors.text.primary, marginTop: 18 }]}>Filter</Text>
+            <Pressable
+              onPress={() => setFreeShipOnly(v => !v)}
+              style={({ pressed }) => [s.sheetRow, { borderBottomColor: colors.border.subtle }, pressed && { opacity: 0.7 }]}
+              accessibilityRole="switch"
+              accessibilityState={{ checked: freeShipOnly }}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Truck size={16} color={freeShipOnly ? '#22C55E' : colors.text.primary} strokeWidth={2.2} />
+                <Text style={[s.sheetRowText, { color: colors.text.primary, fontWeight: freeShipOnly ? '700' : '500' }]}>
+                  Nur Gratis Versand
+                </Text>
+              </View>
+              {freeShipOnly && <Check size={18} color="#22C55E" strokeWidth={2.5} />}
+            </Pressable>
           </Pressable>
         </Pressable>
       </Modal>
@@ -823,74 +928,62 @@ const s = StyleSheet.create({
   sellFabText: { fontSize: 14, fontWeight: '700' },
 
   header: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingBottom: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingBottom: 8,
   },
-  headerLeft: { flex: 1 },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   headerTitle: { fontSize: 26, fontWeight: '700', letterSpacing: -0.8 },
+  coinRow: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 2 },
+  coinText: { fontWeight: '700', fontSize: 16 },
 
+  // Suchleiste (immer sichtbar)
+  searchWrap: { paddingHorizontal: 16, paddingTop: 4, paddingBottom: 10 },
   searchBox: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8,
+    flexDirection: 'row', alignItems: 'center', gap: 8,
     borderRadius: 14, borderWidth: 1,
     paddingHorizontal: 12, paddingVertical: 10,
   },
   searchInput: { flex: 1, fontSize: 14 },
-  cancelBtn: { paddingLeft: 4 },
-  cancelText: { fontSize: 14, fontWeight: '600' },
 
-  coinRow: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    paddingHorizontal: 2,
+  // Menü-Shortcuts
+  shortcutRow: {
+    flexDirection: 'row',
+    paddingHorizontal: 12, paddingTop: 2, paddingBottom: 12,
   },
-  coinText: { fontWeight: '700', fontSize: 16 },
+  shortcut: { flex: 1, alignItems: 'center', gap: 6 },
+  shortcutLabel: { fontSize: 11, fontWeight: '600' },
 
-  iconBtn: {
-    width: 36, height: 36, borderRadius: 12, borderWidth: 1,
+  // Refetch-Loader oben im Kopf
+  refetchRow: { paddingVertical: 14, alignItems: 'center' },
+
+  // Dünne Text-Kategorien
+  tabBar: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, marginTop: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  tabScroll: { flex: 1 },
+  tabRow: { gap: 18, alignItems: 'flex-end' },
+  tab: { alignItems: 'center' },
+  tabLabel: { fontSize: 14, lineHeight: 18, paddingBottom: 8, includeFontPadding: false },
+  tabUnderline: { height: 2, width: '100%', borderRadius: 1 },
+
+  sortBtn: {
+    width: 32, height: 32, borderRadius: 16, borderWidth: 1,
     alignItems: 'center', justifyContent: 'center',
+    marginLeft: 8, marginBottom: 6,
   },
 
-  // Wichtig: ScrollView in vertikalem Flex-Container hat per Default
-  // flex:1 und würde sonst den freien Platz einnehmen (Riesen-Gap zwischen
-  // Chip-Reihen). flexGrow:0/flexShrink:0 sorgen für intrinsische Höhe.
-  chipScroll: { flexGrow: 0, flexShrink: 0 },
-
-  // Kategorie-Chips — feste Höhe + explizite lineHeight für Emoji & Label
-  // verhindern Baseline-Misalignment und Descender-Clipping (g, p, y).
-  catRow: { paddingHorizontal: 16, paddingVertical: 10, gap: 8, alignItems: 'center' },
-  catChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: 14,
-    height: 38,              // feste Höhe → immer ausreichend für Text + Emoji
-    borderRadius: 20, borderWidth: 1,
-    alignSelf: 'flex-start',
-  },
-  catEmoji: { fontSize: 14, lineHeight: 20 },
-  catLabel: { fontSize: 13, fontWeight: '700', lineHeight: 18, includeFontPadding: false },
-
-  // Filter + Sort Row — darunter, etwas kompakter aber nicht zu flach
-  filterRow: { paddingHorizontal: 16, paddingTop: 2, paddingBottom: 8, gap: 6, alignItems: 'center' },
-  filterChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    paddingHorizontal: 11,
-    height: 32,              // feste Höhe → kein Clipping
-    borderRadius: 16, borderWidth: 1,
-    alignSelf: 'flex-start',
-  },
-  filterClear: {
-    backgroundColor: 'transparent',
-  },
-  filterLabel: { fontSize: 12, fontWeight: '700', lineHeight: 16, includeFontPadding: false },
-
-  resultRow: { paddingHorizontal: 16, paddingTop: 2, paddingBottom: 2 },
+  resultRow: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 2 },
   resultText: { fontSize: 12, fontWeight: '500' },
 
-  gridContent: { paddingHorizontal: 10, paddingTop: 8 },
-  gridRow: { gap: 10 },
+  // Kein horizontales Padding hier: es würde auch den ListHeader (inkl. Banner,
+  // das voll-bleed laufen soll) einrücken. Stattdessen polstern die Grid-Reihen
+  // selbst auf 16 — bündig mit dem fixierten Kopf/der Suchleiste.
+  gridContent: { paddingTop: 4 },
+  gridRow: { gap: 10, paddingHorizontal: 16 },
   gridCell: { flex: 1 },
 
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, paddingHorizontal: 32 },
+  center: { alignItems: 'center', justifyContent: 'center', gap: 12, paddingHorizontal: 32, paddingTop: 60 },
   emptyText: { fontSize: 15, textAlign: 'center', maxWidth: 240 },
   emptyAction: {
     paddingHorizontal: 16, paddingVertical: 10,

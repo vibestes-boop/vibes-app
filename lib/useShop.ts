@@ -66,6 +66,18 @@ export interface SavedProduct extends Product {
   saved_at: string;
 }
 
+// v1.x — Vermietbare Shop-Werbe-Banner (Karussell). DB: shop_banners.
+export interface ShopBanner {
+  id:         string;
+  tag:        string | null;
+  title:      string;
+  subtitle:   string | null;
+  image_url:  string | null;
+  bg_color:   string;
+  link:       string | null;   // '/route', '/route?x=y' oder 'tab:<key>'
+  sort_order: number;
+}
+
 export interface CreateProductInput {
   title:       string;
   description: string;
@@ -146,6 +158,25 @@ export function useShopProducts(opts?: {
       });
       if (error) throw error;
       return (data ?? []) as Product[];
+    },
+  });
+}
+
+// ─── Werbe-Banner (Karussell) ─────────────────────────────────────────────────
+// Vermietbare Fläche unter den Menü-Shortcuts. RPC filtert serverseitig auf
+// aktive + im Zeitfenster liegende Banner. Leere Liste → Karussell rendert nicht.
+
+export function useShopBanners() {
+  return useQuery<ShopBanner[]>({
+    queryKey: ['shop-banners'],
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_active_shop_banners');
+      // Vor der Migration existiert die RPC nicht → leise leer (kein Crash).
+      if (error) return [];
+      return (data ?? []) as ShopBanner[];
     },
   });
 }
