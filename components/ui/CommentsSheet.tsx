@@ -45,7 +45,7 @@ import { useTheme } from '@/lib/useTheme';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { VideoGridThumb } from './VideoGridThumb';
+import { FallbackFeedVideo,NativeFeedVideo,USE_EXPO_VIDEO } from '@/components/feed/FeedVideo';
 // reanimated: CJS require() vermeidet _interopRequireDefault Crash in Hermes HBC
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any;
@@ -90,13 +90,17 @@ type Props = {
   creatorUserId?: string | null;
   /** Von FeedItem übergeben: steuert Post-Höhe synchron zum Sheet-Drag */
   sheetProgress?: SharedValue<number>;
+  /** TikTok-Style: Video im Preview-Frame oben weiterspielen lassen.
+      isMuted spiegelt den Feed/Guild-Mute-State; bunnyVideoId aktiviert HLS. */
+  isMuted?: boolean;
+  bunnyVideoId?: string | null;
 };
 
 const CLOSE_DURATION = 300;
 const OPEN_DURATION = 250;
 const CLOSE_EASING = Easing.out(Easing.cubic);
 
-export default function CommentsSheet({ postId, visible, onClose, mediaUrl, mediaType, thumbnailUrl, onUserPress, creatorUserId, sheetProgress }: Props) {
+export default function CommentsSheet({ postId, visible, onClose, mediaUrl, mediaType, thumbnailUrl, onUserPress, creatorUserId, sheetProgress, isMuted, bunnyVideoId }: Props) {
   const translateY = useSharedValue(SCREEN_HEIGHT);
   const overlayOpacity = useSharedValue(0);
   const contentOpacity = useSharedValue(0);
@@ -259,7 +263,29 @@ export default function CommentsSheet({ postId, visible, onClose, mediaUrl, medi
           {mediaUrl && (
             <View style={styles.postPreviewFrame} pointerEvents="none">
               {mediaType === 'video' ? (
-                <VideoGridThumb uri={mediaUrl} thumbnailUrl={thumbnailUrl} style={StyleSheet.absoluteFill} />
+                // TikTok-Style: Video läuft im verkleinerten Preview oben weiter
+                // (statt Standbild). NativeFeedVideo setzt via videoResumePos-Cache
+                // nahtlos dort fort, wo das Feed/Guild-Video pausiert wurde.
+                USE_EXPO_VIDEO ? (
+                  <NativeFeedVideo
+                    uri={mediaUrl}
+                    shouldPlay={visible}
+                    isMuted={isMuted ?? false}
+                    onProgress={() => {}}
+                    thumbnailUrl={thumbnailUrl}
+                    restartSignal={0}
+                    bunnyVideoId={bunnyVideoId ?? null}
+                  />
+                ) : (
+                  <FallbackFeedVideo
+                    uri={mediaUrl}
+                    shouldPlay={visible}
+                    isMuted={isMuted ?? false}
+                    onProgress={() => {}}
+                    thumbnailUrl={thumbnailUrl}
+                    restartSignal={0}
+                  />
+                )
               ) : (
                 <Image source={{ uri: mediaUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
               )}

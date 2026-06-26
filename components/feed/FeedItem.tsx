@@ -840,6 +840,9 @@ export const FeedItem = React.memo(function FeedItem({
         sheetProgress={sheetProgress}
         mediaUrl={item.mediaUrl}
         mediaType={item.mediaType}
+        thumbnailUrl={item.thumbnailUrl}
+        isMuted={isMuted}
+        bunnyVideoId={bunnyVideoId}
         creatorUserId={item.authorId}
         onUserPress={(userId) => {
           setCommentsOpen(false);
