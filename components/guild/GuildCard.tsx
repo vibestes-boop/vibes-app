@@ -1,5 +1,4 @@
 import { FallbackFeedVideo,NativeFeedVideo,USE_EXPO_VIDEO } from '@/components/feed/FeedVideo';
-import CommentsSheet from '@/components/ui/CommentsSheet';
 import { useBookmark } from '@/lib/useBookmark';
 import { useCommentCount } from '@/lib/useComments';
 import { useLike } from '@/lib/useLike';
@@ -50,7 +49,6 @@ export const GuildCard = React.memo(function GuildCard({
   const { liked, count, toggle } = useLike(post.id, { liked: post.is_liked, count: post.like_count });
   const { data: commentCount = 0 } = useCommentCount(post.id, post.comment_count);
   const { bookmarked, toggle: toggleBookmark } = useBookmark(post.id);
-  const [showComments, setShowComments] = useState(false);
   const [captionExpanded, setCaptionExpanded] = useState(false);
   const { isMuted, toggleMute } = useVideoMute();
   const isVideo = post.media_type === 'video';
@@ -219,7 +217,14 @@ export const GuildCard = React.memo(function GuildCard({
             </Pressable>
           </Animated.View>
 
-          <Pressable onPress={() => setShowComments(true)} style={styles.actionBtn} hitSlop={10}>
+          {/* Kommentar → Vollbild-Detail mit auto-geöffneten Kommentaren
+              (dort schrumpft das Video nahtlos oben, läuft weiter; in der
+              Scroll-Liste selbst nicht ohne Neustart möglich). */}
+          <Pressable
+            onPress={() => router.push({ pathname: '/guild-post/[id]', params: { id: post.id, comments: '1' } })}
+            style={styles.actionBtn}
+            hitSlop={10}
+          >
             <MessageCircle size={22} color={colors.icon.default} />
             <Text style={styles.actionCount}>
               {commentCount >= 1000 ? `${(commentCount / 1000).toFixed(1)}K` : commentCount}
@@ -271,16 +276,6 @@ export const GuildCard = React.memo(function GuildCard({
         ) : null}
 
       </View>
-
-      <CommentsSheet
-        postId={post.id}
-        visible={showComments}
-        onClose={() => setShowComments(false)}
-        onUserPress={(userId) => {
-          setShowComments(false);
-          router.push({ pathname: '/user/[id]', params: { id: userId } });
-        }}
-      />
     </View>
   );
 });

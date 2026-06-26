@@ -144,11 +144,14 @@ function GuildPostDetailItem({
   guildColors,
   isActive,
   onBack,
+  autoOpenComments = false,
 }: {
   post: GuildPost;
   guildColors: [string, string];
   isActive: boolean;
   onBack: () => void;
+  // Kommentare beim Öffnen automatisch aufklappen (Navigation vom Karten-Chat-Button)
+  autoOpenComments?: boolean;
 }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -156,6 +159,14 @@ function GuildPostDetailItem({
   const isVideo = post.media_type === 'video';
   const [showComments, setShowComments] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
+
+  // Vom Karten-Chat-Button: Kommentare nach kurzem Moment aufklappen (Video
+  // startet erst, dann schrumpft es nahtlos in den Peek).
+  useEffect(() => {
+    if (!autoOpenComments) return;
+    const t = setTimeout(() => setShowComments(true), 350);
+    return () => clearTimeout(t);
+  }, [autoOpenComments]);
   const profile = useAuthStore((s) => s.profile);
 
   const { liked, count, toggle } = useLike(post.id, { liked: post.is_liked, count: post.like_count });
@@ -531,7 +542,7 @@ function GuildPostDetailItem({
 // ─── Haupt-Screen ─────────────────────────────────────────────────────────────
 export default function GuildPostDetailScreen() {
   useThemedStatusBar('light');
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, comments } = useLocalSearchParams<{ id: string; comments?: string }>();
   const router = useRouter();
   const { posts, guildColors } = useGuildNavStore();
   const listRef = useRef<FlatList<GuildPost>>(null);
@@ -560,9 +571,10 @@ export default function GuildPostDetailScreen() {
         guildColors={guildColors}
         isActive={index === activeIndex}
         onBack={() => router.back()}
+        autoOpenComments={item.id === id && comments === '1'}
       />
     ),
-    [guildColors, activeIndex, router]
+    [guildColors, activeIndex, router, id, comments]
   );
 
   const getItemLayout = useCallback((_: unknown, index: number) => ({
