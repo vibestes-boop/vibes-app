@@ -10,7 +10,7 @@
 import {
   formatEur,
   useMarkPreordersPayable,
-  useMyProducts,
+  useMyPreorderGroups,
   useSellerProductOrders,
   useSetOrderShipped,
   type ProductOrder,
@@ -19,7 +19,7 @@ import { useTheme } from '@/lib/useTheme';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import { router } from 'expo-router';
 import { ArrowLeft, Bell, CheckCircle2, Clock, PackageCheck, Truck } from 'lucide-react-native';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import {
 ActivityIndicator,
 Alert,
@@ -33,17 +33,19 @@ View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+function fmtDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' });
+}
+
 export default function FulfillmentScreen() {
   useThemedStatusBar('auto');
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
 
-  const { data: products = [] } = useMyProducts();
+  const { data: preorderGroups = [] } = useMyPreorderGroups();
   const { data: orders = [], isLoading } = useSellerProductOrders();
   const { markPayable, isWorking: isMarking } = useMarkPreordersPayable();
   const { setShipped, isWorking: isShipping } = useSetOrderShipped();
-
-  const preorderProducts = useMemo(() => products.filter((p) => p.sale_mode === 'preorder'), [products]);
 
   // Versand-Modal
   const [shipOrder, setShipOrder] = useState<ProductOrder | null>(null);
@@ -92,21 +94,27 @@ export default function FulfillmentScreen() {
         <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 40, gap: 22 }}>
 
           {/* A) Ware ist da → Zahlung anfordern */}
-          {preorderProducts.length > 0 && (
+          {preorderGroups.length > 0 && (
             <View style={{ gap: 10 }}>
               <Text style={[s.section, { color: colors.text.primary }]}>Ware ist da → Zahlung anfordern</Text>
-              {preorderProducts.map((p) => (
-                <View key={p.id} style={[s.row, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
-                  <View style={{ flex: 1, gap: 2 }}>
-                    <Text style={[s.rowTitle, { color: colors.text.primary }]} numberOfLines={1}>{p.title}</Text>
+              {preorderGroups.map((g) => (
+                <View key={g.id} style={[s.row, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
+                  <View style={{ flex: 1, gap: 3 }}>
+                    <Text style={[s.rowTitle, { color: colors.text.primary }]} numberOfLines={1}>{g.title}</Text>
                     <Text style={[s.rowSub, { color: colors.text.muted }]}>
-                      {formatEur(p.price_eur) ?? 'kein €-Preis gesetzt'}
+                      {formatEur(g.price_eur) ?? 'kein €-Preis gesetzt'}
+                      {'  ·  '}{g.people} {g.people === 1 ? 'Person' : 'Personen'} · {g.bottles} {g.bottles === 1 ? 'Flasche' : 'Flaschen'}
                     </Text>
+                    {g.buyers.length > 0 && (
+                      <Text style={[s.rowSub, { color: colors.text.muted }]} numberOfLines={1}>
+                        {g.buyers.map((u) => `@${u}`).join(', ')} · seit {fmtDate(g.first_at)}
+                      </Text>
+                    )}
                   </View>
                   <Pressable
-                    onPress={() => handleMarkPayable(p.id, p.title)}
-                    disabled={isMarking || p.price_eur == null}
-                    style={[s.smallBtn, { backgroundColor: colors.text.primary, opacity: (isMarking || p.price_eur == null) ? 0.5 : 1 }]}
+                    onPress={() => handleMarkPayable(g.id, g.title)}
+                    disabled={isMarking || g.price_eur == null}
+                    style={[s.smallBtn, { backgroundColor: colors.text.primary, opacity: (isMarking || g.price_eur == null) ? 0.5 : 1 }]}
                   >
                     <Bell size={13} color={colors.bg.primary} strokeWidth={2.4} />
                     <Text style={[s.smallBtnText, { color: colors.bg.primary }]}>Anfordern</Text>

@@ -729,3 +729,83 @@ export function useSetOrderShipped() {
   }, [qc]);
   return { setShipped, isWorking };
 }
+
+// Verkäufer: offene Vormerkungen gruppiert pro Produkt (für „Ware ist da") —
+// inkl. Personen, Flaschen, wer + seit wann. Parität mit Web getMyPreorderGroups.
+// WICHTIG: KEIN profiles-Embed — product_preorders.user_id zeigt auf auth.users,
+// nicht profiles (PostgREST findet die Beziehung nicht → PGRST200). Namen daher
+// separat per .in() laden.
+export interface PreorderGroup {
+  id:        string; // product id
+  title:     string;
+  price_eur: number | null;
+  people:    number;
+  bottles:   number;
+  buyers:    string[];
+  first_at:  string;
+}
+
+export function useMyPreorderGroups() {
+  const user = useAuthStore((s) => s.user);
+  return useQuery<PreorderGroup[]>({
+    queryKey: ['preorder-groups', user?.id],
+    enabled:  !!user?.id,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('product_preorders')
+        .select('product_id, user_id, quantity, created_at, product:products!inner(id, title, price_eur, seller_id)')
+        .eq('product.seller_id', user!.id)
+        .in('status', ['interested', 'notified'])
+        .order('created_at', { ascending: true });
+      if (error) throw error;
+
+      const rows = (data ?? []) as Array<{
+        product_id: string;
+        user_id: string;
+        quantity: number;
+        created_at: string;
+        product:
+          | { id: string; title: string; price_eur: number | null }
+          | { id: string; title: string; price_eur: number | null }[]
+          | null;
+      }>;
+
+      const userIds = [...new Set(rows.map((r) => r.user_id))];
+      const nameById = new Map<string, string>();
+      if (userIds.length > 0) {
+        const { data: profs } = await supabase
+          .from('profiles')
+          .select('id, username')
+          .in('id', userIds);
+        for (const p of profs ?? []) {
+          if (p.username) nameById.set(p.id as string, p.username as string);
+        }
+      }
+
+      const groups = new Map<string, PreorderGroup>();
+      for (const row of rows) {
+        const product = Array.isArray(row.product) ? row.product[0] : row.product;
+        if (!product) continue;
+        let g = groups.get(row.product_id);
+        if (!g) {
+          g = {
+            id: product.id,
+            title: product.title,
+            price_eur: product.price_eur,
+            people: 0,
+            bottles: 0,
+            buyers: [],
+            first_at: row.created_at,
+          };
+          groups.set(row.product_id, g);
+        }
+        g.people += 1;
+        g.bottles += row.quantity ?? 1;
+        const uname = nameById.get(row.user_id);
+        if (uname) g.buyers.push(uname);
+      }
+      return [...groups.values()];
+    },
+  });
+}

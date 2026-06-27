@@ -38,6 +38,12 @@ View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+function fmtDateTime(iso: string): string {
+  return new Date(iso).toLocaleString('de-DE', {
+    day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit',
+  });
+}
+
 const STATUS: Record<ProductOrderStatus, { label: string; color: string }> = {
   reserved:          { label: 'Vorgemerkt',   color: '#9CA3AF' },
   payment_requested: { label: 'Zahlung offen', color: '#F59E0B' },
@@ -104,6 +110,7 @@ export default function MyOrdersScreen() {
             <View style={[s.badge, { backgroundColor: st.color + '22' }]}>
               <Text style={[s.badgeText, { color: st.color }]}>{st.label}</Text>
             </View>
+            <Text style={[s.dateText, { color: colors.text.muted }]}>{fmtDateTime(o.created_at)}</Text>
           </View>
         </View>
 
@@ -215,6 +222,7 @@ const s = StyleSheet.create({
   amount: { fontSize: 15, fontWeight: '700' },
   badge: { alignSelf: 'flex-start', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, marginTop: 1 },
   badgeText: { fontSize: 11, fontWeight: '700' },
+  dateText: { fontSize: 11, fontWeight: '500', marginTop: 1 },
 
   payBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
