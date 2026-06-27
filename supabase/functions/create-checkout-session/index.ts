@@ -128,10 +128,14 @@ Deno.serve(async (req) => {
     pform.set('line_items[0][price_data][currency]', order.currency ?? 'eur');
     pform.set('line_items[0][price_data][unit_amount]', String(amountCents));
     pform.set('line_items[0][price_data][product_data][name]', product?.title ?? 'Serlo Produkt');
-    // Produktbild → Stripe-Checkout zeigt das Cover als Thumbnail (bis zu 8 erlaubt,
-    // wir nutzen 1). Muss eine öffentlich erreichbare HTTPS-URL sein (R2-Cover ist das).
+    // Produktbild → Stripe-Checkout zeigt das Cover als Thumbnail. Das R2-Cover
+    // ist WebP; manche Bild-Consumer rendern WebP nicht zuverlässig → on-the-fly
+    // über images.weserv.nl zu JPEG konvertieren (gleiches Muster wie die OG-Bilder).
     if (product?.cover_url) {
-      pform.set('line_items[0][price_data][product_data][images][0]', product.cover_url);
+      const coverJpg =
+        `https://images.weserv.nl/?url=${encodeURIComponent(product.cover_url.replace(/^https?:\/\//, ''))}` +
+        `&output=jpg&w=600&h=600&fit=cover`;
+      pform.set('line_items[0][price_data][product_data][images][0]', coverJpg);
     }
     // Kurz-Beschreibung (erste sinnvolle Zeile, gekappt) als Untertitel auf dem
     // Checkout. Lange Mehrzeilen-Texte würden die Zeile sonst überladen.

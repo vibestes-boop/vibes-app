@@ -21,6 +21,7 @@ CheckCheck,
 CreditCard,
 Gem,
 Heart,
+MapPin,
 MessageCircle,
 Package,
 Radio,
@@ -81,6 +82,8 @@ function actionLabel(n: AppNotification): string {
     case "order_payment_requested":
     case "order_paid":
     case "order_shipped":
+    case "order_cancelled":
+    case "order_address_updated":
       return n.comment_text ?? "Update zu deiner Bestellung";
     default:
       return "";
@@ -139,6 +142,8 @@ function TypeIcon({ type }: { type: AppNotification["type"] }) {
       order_payment_requested:  { Icon: CreditCard,    bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
       order_paid:               { Icon: Package,       bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
       order_shipped:            { Icon: Truck,         bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
+      order_cancelled:          { Icon: X,             bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
+      order_address_updated:    { Icon: MapPin,        bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
     } as Record<string, { Icon: React.ElementType; bg: string; color: string }>
   )[type] ?? { Icon: Bell, bg: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)" };
 
@@ -205,8 +210,13 @@ function NotifCard({ item }: { item: AppNotification }) {
       router.push({ pathname: "/user/[id]", params: { id: item.sender.id } });
     } else if (item.type === "new_order") {
       router.push('/shop/orders' as any);
-    } else if (item.type === "preorder_interest" || item.type === "order_paid") {
-      // Verkäufer-seitig: Vormerkungen / „bezahlt, bitte versenden" → Fulfillment
+    } else if (
+      item.type === "preorder_interest" ||
+      item.type === "order_paid" ||
+      item.type === "order_cancelled" ||
+      item.type === "order_address_updated"
+    ) {
+      // Verkäufer-seitig: Vormerkung / bezahlt / storniert / Adresse → Fulfillment
       router.push('/shop/fulfillment' as any);
     } else if (item.type === "order_payment_requested" || item.type === "order_shipped") {
       // Käufer-seitig: jetzt bezahlen / unterwegs → eigene Bestellungen

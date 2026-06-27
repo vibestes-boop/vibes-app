@@ -54,6 +54,12 @@ Deno.serve(async (req: Request) => {
       scheduled_live_reminder:   'live',
       gift:                      'gifts',
       new_order:                 'orders',
+      preorder_interest:         'orders',
+      order_payment_requested:   'orders',
+      order_paid:                'orders',
+      order_shipped:             'orders',
+      order_cancelled:           'orders',
+      order_address_updated:     'orders',
     };
     const prefKey = TYPE_TO_PREF[record.type];
     const prefs = recipient.notif_prefs as Record<string, boolean> | null;
@@ -87,6 +93,34 @@ Deno.serve(async (req: Request) => {
         body: record.comment_text
           ? `${actorName} startet in 15 Min: „${record.comment_text}"`
           : `${actorName} geht in 15 Minuten live!`,
+      },
+      // Bestell-Lebenszyklus (echtes Geld / Parfüm). comment_text trägt den
+      // fertigen Text aus den RPCs/Webhook — als Body verwenden wo sinnvoll.
+      preorder_interest: {
+        title: '🌸 Neue Vormerkung',
+        body: record.product_name
+          ? `${actorName} hat „${record.product_name}" vorgemerkt`
+          : `${actorName} hat ein Produkt vorgemerkt`,
+      },
+      order_payment_requested: {
+        title: '🌸 Dein Parfüm ist da',
+        body: record.comment_text ?? 'Jetzt bezahlen 🌸',
+      },
+      order_paid: {
+        title: '💶 Bestellung bezahlt',
+        body: `${actorName} hat bezahlt — bitte versenden 📦`,
+      },
+      order_shipped: {
+        title: '📦 Unterwegs',
+        body: record.comment_text ?? 'Dein Parfüm ist unterwegs 📦',
+      },
+      order_cancelled: {
+        title: '🚫 Bestellung storniert',
+        body: `${actorName} hat eine Bestellung storniert`,
+      },
+      order_address_updated: {
+        title: '📍 Adresse geändert',
+        body: `${actorName} hat die Lieferadresse aktualisiert`,
       },
     };
 
@@ -220,6 +254,16 @@ function deriveWebUrl(
       return hasActorUsername ? `/u/${actorName}` : '/';
     case 'new_order':
       return '/studio/orders';
+    // Käufer-seitige Bestell-Pings → eigene Bestellungen
+    case 'order_payment_requested':
+    case 'order_shipped':
+      return '/studio/orders?role=buyer';
+    // Verkäufer-seitige Bestell-Pings → Verkäufe
+    case 'order_paid':
+    case 'order_cancelled':
+    case 'order_address_updated':
+    case 'preorder_interest':
+      return '/studio/orders?role=seller';
     default:
       return '/';
   }
@@ -246,6 +290,15 @@ function deriveWebTag(record: NotificationPayload['record']): string {
       return `gift:${record.sender_id ?? 'unknown'}:${record.session_id ?? 'shop'}`;
     case 'new_order':
       return `new_order:${record.post_id ?? Date.now()}`;
+    // Bestell-Pings: jede Zustands-Änderung ist eigenständig → keine Sammel-
+    // Gruppierung, eindeutig pro Notification-Row.
+    case 'order_payment_requested':
+    case 'order_paid':
+    case 'order_shipped':
+    case 'order_cancelled':
+    case 'order_address_updated':
+    case 'preorder_interest':
+      return `${record.type}:${record.id}`;
     default:
       return record.type;
   }

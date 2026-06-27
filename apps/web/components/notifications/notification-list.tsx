@@ -24,6 +24,7 @@ import {
   CreditCard,
   Package,
   Truck,
+  MapPin,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -69,6 +70,8 @@ const TYPE_META: Record<NotificationType, NotifMeta> = {
   order_payment_requested: { icon: CreditCard,   color: 'text-muted-foreground', bg: 'bg-muted' },
   order_paid:              { icon: Package,       color: 'text-muted-foreground', bg: 'bg-muted' },
   order_shipped:           { icon: Truck,         color: 'text-muted-foreground', bg: 'bg-muted' },
+  order_cancelled:         { icon: X,             color: 'text-muted-foreground', bg: 'bg-muted' },
+  order_address_updated:   { icon: MapPin,        color: 'text-muted-foreground', bg: 'bg-muted' },
 };
 
 // ── Notification-Text pro Typ ─────────────────────────────────────────────────
@@ -103,6 +106,8 @@ function notifText(n: Notification): string {
     case 'order_payment_requested':
     case 'order_paid':
     case 'order_shipped':
+    case 'order_cancelled':
+    case 'order_address_updated':
       return n.comment_text
         ?? (n.product_name ? `Update zu „${n.product_name}"` : 'Update zu deiner Bestellung');
     case 'live':
@@ -156,6 +161,8 @@ function notifHref(n: Notification): Route {
     case 'new_order':
     case 'preorder_interest':
     case 'order_paid':
+    case 'order_cancelled':
+    case 'order_address_updated':
       return '/studio/orders?role=seller' as Route;
     case 'order_payment_requested':
     case 'order_shipped':

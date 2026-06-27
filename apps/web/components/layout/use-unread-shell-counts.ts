@@ -1,12 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
   getUnreadShellCounts,
   type UnreadShellCounts,
 } from '@/app/actions/unread-counts';
+import { createClient } from '@/lib/supabase/client';
 
 const EMPTY_COUNTS: UnreadShellCounts = {
   dms: 0,
@@ -18,6 +19,7 @@ export function useUnreadShellCounts(
   initialCounts: UnreadShellCounts = EMPTY_COUNTS,
 ) {
   const [afterFirstPaint, setAfterFirstPaint] = useState(false);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (!viewerId) {
@@ -31,6 +33,31 @@ export function useUnreadShellCounts(
 
     return () => window.clearTimeout(timeout);
   }, [viewerId]);
+
+  // Realtime: neue Benachrichtigung → Badge sofort aktualisieren (statt erst beim
+  // 120-Sek-Poll). Ohne das blieb der Glocken-Zähler leer, obwohl ein Ping da war.
+  useEffect(() => {
+    if (!viewerId) return;
+    const client = createClient();
+    const channel = client
+      .channel(`shell-counts-${viewerId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `recipient_id=eq.${viewerId}`,
+        },
+        () => {
+          void queryClient.invalidateQueries({ queryKey: ['unread-shell-counts'] });
+        },
+      )
+      .subscribe();
+    return () => {
+      client.removeChannel(channel);
+    };
+  }, [viewerId, queryClient]);
 
   return useQuery({
     queryKey: ['unread-shell-counts'],

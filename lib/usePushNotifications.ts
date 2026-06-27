@@ -197,6 +197,17 @@ export function usePushNotifications() {
           // Scheduled-Live-Reminder: Host ist noch nicht live (session_id=null).
           // Öffne Host-Profil — User sieht dort „geht gleich live" Banner.
           router.push({ pathname: '/user/[id]', params: { id: data.senderId } });
+        } else if (data?.type === 'order_payment_requested' || data?.type === 'order_shipped') {
+          // Käufer-seitig: jetzt bezahlen / unterwegs → eigene Bestellungen
+          router.push('/shop/my-orders');
+        } else if (
+          data?.type === 'order_paid' ||
+          data?.type === 'order_cancelled' ||
+          data?.type === 'order_address_updated' ||
+          data?.type === 'preorder_interest'
+        ) {
+          // Verkäufer-seitig → Fulfillment
+          router.push('/shop/fulfillment');
         }
       });
     } catch {

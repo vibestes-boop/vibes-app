@@ -38,7 +38,9 @@ export type NotificationType =
   | 'preorder_interest'
   | 'order_payment_requested'
   | 'order_paid'
-  | 'order_shipped';
+  | 'order_shipped'
+  | 'order_cancelled'
+  | 'order_address_updated';
 
 export interface NotificationSender {
   id: string;
