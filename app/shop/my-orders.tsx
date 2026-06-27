@@ -32,6 +32,7 @@ Truck,
 } from 'lucide-react-native';
 import { useState } from 'react';
 import { useOrCreateConversation } from '@/lib/useMessages';
+import { OrderReviewControl } from '@/components/shop/OrderReviewControl';
 import {
 ActivityIndicator,
 Alert,
@@ -225,10 +226,18 @@ export default function MyOrdersScreen() {
         )}
 
         {o.status === 'delivered' && (
-          <View style={s.deliveredRow}>
-            <CheckCircle2 size={14} color="#22C55E" strokeWidth={2.4} />
-            <Text style={[s.deliveredText, { color: '#22C55E' }]}>Geliefert — viel Freude 🌸</Text>
-          </View>
+          <>
+            <View style={s.deliveredRow}>
+              <CheckCircle2 size={14} color="#22C55E" strokeWidth={2.4} />
+              <Text style={[s.deliveredText, { color: '#22C55E' }]}>Geliefert — viel Freude 🌸</Text>
+            </View>
+            <OrderReviewControl
+              orderId={o.id}
+              role="buyer"
+              myReview={o.my_review}
+              receivedReview={o.received_review}
+            />
+          </>
         )}
 
         {o.status === 'paid' && (

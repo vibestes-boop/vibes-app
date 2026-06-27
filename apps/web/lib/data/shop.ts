@@ -601,6 +601,11 @@ export type ProductOrderStatus =
   | 'reserved' | 'payment_requested' | 'paid' | 'shipped'
   | 'delivered' | 'cancelled' | 'refunded' | 'disputed';
 
+export interface OrderReview {
+  rating: number;
+  comment: string | null;
+}
+
 export interface ProductOrderRow {
   id: string;
   buyer_id: string;
@@ -618,10 +623,36 @@ export interface ProductOrderRow {
   tracking_number: string | null;
   created_at: string;
   product: { id: string; title: string; cover_url: string | null } | null;
+  // Bewertungen (nur bei status='delivered' relevant). my_review = was ICH
+  // abgegeben habe, received_review = was die Gegenseite über mich schrieb.
+  my_review: OrderReview | null;
+  received_review: OrderReview | null;
 }
 
 const PRODUCT_ORDER_COLUMNS =
   'id, buyer_id, seller_id, product_id, quantity, amount_eur, status, ship_name, ship_street, ship_zip, ship_city, ship_country, tracking_carrier, tracking_number, created_at, product:products(id, title, cover_url)';
+
+// Bewertungen für eine Menge Bestellungen laden und nach order_id in
+// { mine, theirs } aufteilen (relativ zum Viewer).
+async function fetchOrderReviewsMap(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  orderIds: string[],
+  viewerId: string,
+): Promise<Map<string, { mine: OrderReview | null; theirs: OrderReview | null }>> {
+  const map = new Map<string, { mine: OrderReview | null; theirs: OrderReview | null }>();
+  if (orderIds.length === 0) return map;
+  const { data } = await supabase
+    .from('order_reviews')
+    .select('order_id, reviewer_id, rating, comment')
+    .in('order_id', orderIds);
+  for (const r of (data ?? []) as Array<{ order_id: string; reviewer_id: string; rating: number; comment: string | null }>) {
+    const entry = map.get(r.order_id) ?? { mine: null, theirs: null };
+    if (r.reviewer_id === viewerId) entry.mine = { rating: r.rating, comment: r.comment };
+    else entry.theirs = { rating: r.rating, comment: r.comment };
+    map.set(r.order_id, entry);
+  }
+  return map;
+}
 
 export async function getMyProductOrders(role: 'buyer' | 'seller'): Promise<ProductOrderRow[]> {
   const user = await getUser();
@@ -635,7 +666,19 @@ export async function getMyProductOrders(role: 'buyer' | 'seller'): Promise<Prod
     .order('created_at', { ascending: false })
     .limit(100);
   if (error || !data) return [];
-  return data as unknown as ProductOrderRow[];
+
+  const rows = data as unknown as ProductOrderRow[];
+  const reviewMap = await fetchOrderReviewsMap(
+    supabase,
+    rows.filter((o) => o.status === 'delivered').map((o) => o.id),
+    user.id,
+  );
+  for (const o of rows) {
+    const rv = reviewMap.get(o.id);
+    o.my_review = rv?.mine ?? null;
+    o.received_review = rv?.theirs ?? null;
+  }
+  return rows;
 }
 
 // Einzelne Echtgeld-Bestellung per Stripe-Session-ID — für /shop/success nach dem
@@ -654,7 +697,7 @@ export async function getMyProductOrderBySession(
     .eq('buyer_id', user.id)
     .maybeSingle();
   if (error || !data) return null;
-  return data as unknown as ProductOrderRow;
+  return { ...(data as unknown as ProductOrderRow), my_review: null, received_review: null };
 }
 
 // Offene Vormerkungen des Verkäufers, gruppiert pro Produkt (für „Ware ist da →

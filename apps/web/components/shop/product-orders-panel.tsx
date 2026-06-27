@@ -13,6 +13,7 @@ import {
   updateOrderShippingAddress,
 } from '@/app/actions/shop';
 import { getOrCreateConversation } from '@/app/actions/messages';
+import { OrderReviewControl } from './order-review';
 import type { ProductOrderRow, ProductOrderStatus } from '@/lib/data/shop';
 import { formatEur } from '@/lib/utils';
 import { ProductImage } from './product-image';
@@ -244,6 +245,16 @@ export function ProductOrdersPanel({ role, orders }: Props) {
                     {role === 'seller' ? 'Käufer anschreiben' : 'Verkäufer anschreiben'}
                   </button>
                 </div>
+
+                {/* Bewertung nach Lieferung (beidseitig) */}
+                {o.status === 'delivered' && (
+                  <OrderReviewControl
+                    orderId={o.id}
+                    role={role}
+                    myReview={o.my_review}
+                    receivedReview={o.received_review}
+                  />
+                )}
 
                 {/* Käufer · bezahlt: Lieferadresse anzeigen + ändern (bis zum Versand) */}
                 {role === 'buyer' && o.status === 'paid' && editAddrId !== o.id && (

@@ -680,6 +680,37 @@ export interface ShippingAddressInput {
   country: string;
 }
 
+const ORDER_REVIEW_ERRORS: Record<string, string> = {
+  order_not_found: 'Bestellung nicht gefunden.',
+  not_authorized: 'Das ist nicht deine Bestellung.',
+  not_delivered: 'Bewerten kannst du erst nach der Lieferung.',
+  invalid_rating: 'Bitte 1–5 Sterne wählen.',
+};
+
+// Bewertung abgeben (Käufer↔Verkäufer, nur nach Lieferung).
+export async function submitOrderReview(
+  orderId: string,
+  rating: number,
+  comment?: string,
+): Promise<ActionResult> {
+  const viewer = await getViewerId();
+  if (!viewer) return { ok: false, error: 'Bitte einloggen.' };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('submit_order_review', {
+    p_order_id: orderId,
+    p_rating: Math.round(rating),
+    p_comment: comment?.trim() || null,
+  });
+  if (error) return { ok: false, error: 'Kurz die Verbindung verloren — nochmal? 🙂' };
+
+  const res = (data ?? {}) as { success?: boolean; error?: string };
+  if (!res.success) return { ok: false, error: ORDER_REVIEW_ERRORS[res.error ?? ''] ?? 'Konnte nicht speichern.' };
+
+  revalidatePath('/studio/orders');
+  return { ok: true, data: null };
+}
+
 // Käufer: Lieferadresse ändern (nur solange bezahlt, noch nicht versendet).
 export async function updateOrderShippingAddress(
   orderId: string,

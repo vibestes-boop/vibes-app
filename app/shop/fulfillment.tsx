@@ -22,6 +22,7 @@ import { router } from 'expo-router';
 import { ArrowLeft, Bell, CheckCircle2, Clock, MessageCircle, Package, PackageCheck, Truck } from 'lucide-react-native';
 import { useState } from 'react';
 import { useOrCreateConversation } from '@/lib/useMessages';
+import { OrderReviewControl } from '@/components/shop/OrderReviewControl';
 import {
 ActivityIndicator,
 Alert,
@@ -204,15 +205,27 @@ export default function FulfillmentScreen() {
             <View style={{ gap: 8 }}>
               <Text style={[s.section, { color: colors.text.primary }]}>Versendet</Text>
               {shipped.map((o) => (
-                <View key={o.id} style={[s.miniRow]}>
-                  {o.status === 'delivered'
-                    ? <CheckCircle2 size={13} color="#22C55E" strokeWidth={2.2} />
-                    : <Truck size={13} color="#14B8A6" strokeWidth={2.2} />}
-                  <Text style={[s.miniText, { color: colors.text.muted }]} numberOfLines={1}>
-                    {o.product?.title ?? 'Produkt'}
-                    {o.tracking_number ? ` · ${o.tracking_number}` : ''}
-                    {o.status === 'delivered' ? ' · geliefert' : ''}
-                  </Text>
+                <View key={o.id} style={{ gap: 4 }}>
+                  <View style={[s.miniRow]}>
+                    {o.status === 'delivered'
+                      ? <CheckCircle2 size={13} color="#22C55E" strokeWidth={2.2} />
+                      : <Truck size={13} color="#14B8A6" strokeWidth={2.2} />}
+                    <Text style={[s.miniText, { color: colors.text.muted }]} numberOfLines={1}>
+                      {o.product?.title ?? 'Produkt'}
+                      {o.tracking_number ? ` · ${o.tracking_number}` : ''}
+                      {o.status === 'delivered' ? ' · geliefert' : ''}
+                    </Text>
+                  </View>
+                  {o.status === 'delivered' && (
+                    <View style={{ paddingLeft: 20 }}>
+                      <OrderReviewControl
+                        orderId={o.id}
+                        role="seller"
+                        myReview={o.my_review}
+                        receivedReview={o.received_review}
+                      />
+                    </View>
+                  )}
                 </View>
               ))}
             </View>

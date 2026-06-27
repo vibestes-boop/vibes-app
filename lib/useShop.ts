@@ -610,9 +610,40 @@ export interface ProductOrder {
   shipped_at:       string | null;
   delivered_at:     string | null;
   product?: { id: string; title: string; cover_url: string | null } | null;
+  // Bewertungen (nur bei status='delivered'). my_review = was ICH abgegeben habe,
+  // received_review = was die Gegenseite über mich schrieb.
+  my_review?:       OrderReview | null;
+  received_review?: OrderReview | null;
+}
+
+export interface OrderReview {
+  rating: number;
+  comment: string | null;
 }
 
 const PRODUCT_ORDER_SELECT = '*, product:products(id, title, cover_url)';
+
+// Bewertungen für gelieferte Bestellungen nachladen und an die Orders hängen.
+async function attachOrderReviews(orders: ProductOrder[], viewerId: string): Promise<void> {
+  const ids = orders.filter((o) => o.status === 'delivered').map((o) => o.id);
+  if (ids.length === 0) return;
+  const { data } = await supabase
+    .from('order_reviews')
+    .select('order_id, reviewer_id, rating, comment')
+    .in('order_id', ids);
+  const map = new Map<string, { mine: OrderReview | null; theirs: OrderReview | null }>();
+  for (const r of (data ?? []) as Array<{ order_id: string; reviewer_id: string; rating: number; comment: string | null }>) {
+    const e = map.get(r.order_id) ?? { mine: null, theirs: null };
+    if (r.reviewer_id === viewerId) e.mine = { rating: r.rating, comment: r.comment };
+    else e.theirs = { rating: r.rating, comment: r.comment };
+    map.set(r.order_id, e);
+  }
+  for (const o of orders) {
+    const e = map.get(o.id);
+    o.my_review = e?.mine ?? null;
+    o.received_review = e?.theirs ?? null;
+  }
+}
 
 // Käufer: eigene Echtgeld-Bestellungen (Status + Tracking = Wiederkehr-Hook)
 export function useMyProductOrders() {
@@ -629,7 +660,9 @@ export function useMyProductOrders() {
         .order('created_at', { ascending: false })
         .limit(50);
       if (error) throw error;
-      return (data ?? []) as ProductOrder[];
+      const orders = (data ?? []) as ProductOrder[];
+      await attachOrderReviews(orders, user!.id);
+      return orders;
     },
   });
 }
@@ -649,7 +682,9 @@ export function useSellerProductOrders() {
         .order('created_at', { ascending: false })
         .limit(100);
       if (error) throw error;
-      return (data ?? []) as ProductOrder[];
+      const orders = (data ?? []) as ProductOrder[];
+      await attachOrderReviews(orders, user!.id);
+      return orders;
     },
   });
 }
@@ -861,4 +896,22 @@ export function useUpdateOrderShippingAddress() {
     }
   }, [qc]);
   return { update, isWorking };
+}
+
+// Bewertung abgeben (Käufer↔Verkäufer, nur nach Lieferung — RPC erzwingt das).
+export function useSubmitOrderReview() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { orderId: string; rating: number; comment?: string }) => {
+      const { data, error } = await supabase.rpc('submit_order_review', {
+        p_order_id: vars.orderId,
+        p_rating: Math.round(vars.rating),
+        p_comment: vars.comment?.trim() || null,
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      return data;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['product-orders'] }); },
+  });
 }
