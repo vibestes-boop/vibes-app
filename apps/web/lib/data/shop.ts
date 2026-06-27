@@ -549,6 +549,7 @@ export interface ShopAnalyticsProduct {
   cover_url: string | null;
   sold_count: number;
   revenue_coins: number; // total coins the seller earned (70% cut approximation)
+  revenue_eur: number;   // Echtgeld-Umsatz (€) aus product_orders (paid+)
   avg_rating: number | null;
   review_count: number;
 }
@@ -581,12 +582,27 @@ export const getShopAnalytics = cache(async (): Promise<ShopAnalyticsProduct[]> 
     revenueByProduct.set(pid, (revenueByProduct.get(pid) ?? 0) + total);
   }
 
+  // Echtgeld-Umsatz (€) aus bezahlten/versendeten/gelieferten product_orders.
+  const { data: eurRows } = await supabase
+    .from('product_orders')
+    .select('product_id, amount_eur')
+    .eq('seller_id', user.id)
+    .in('status', ['paid', 'shipped', 'delivered']);
+
+  const eurByProduct = new Map<string, number>();
+  for (const r of eurRows ?? []) {
+    const pid = r.product_id as string | null;
+    if (!pid) continue;
+    eurByProduct.set(pid, (eurByProduct.get(pid) ?? 0) + Number(r.amount_eur ?? 0));
+  }
+
   return products.map((p) => ({
     product_id: p.id as string,
     title: p.title as string,
     cover_url: (p.cover_url as string | null) ?? null,
     sold_count: (p.sold_count as number | null) ?? 0,
     revenue_coins: Math.floor((revenueByProduct.get(p.id as string) ?? 0) * 0.7),
+    revenue_eur: eurByProduct.get(p.id as string) ?? 0,
     avg_rating: (p.avg_rating as number | null) ?? null,
     review_count: (p.review_count as number | null) ?? 0,
   }));

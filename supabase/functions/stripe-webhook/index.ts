@@ -291,7 +291,7 @@ async function handleProductOrderPaid(admin: SupabaseClient, obj: unknown) {
     })
     .eq('id', orderId)
     .eq('status', 'payment_requested')
-    .select('id, buyer_id, seller_id');
+    .select('id, buyer_id, seller_id, product_id, quantity');
 
   if (claimErr) {
     console.error('[stripe-webhook] product claim failed', claimErr);
@@ -303,8 +303,17 @@ async function handleProductOrderPaid(admin: SupabaseClient, obj: unknown) {
     return;
   }
 
-  // Verkäufer informieren: bezahlt → bitte versenden
   const row = claimed[0];
+  // Verkauf zählen (products.sold_count) — sonst bleibt das Parfüm auf „0× verkauft".
+  if (row?.product_id) {
+    try {
+      await admin.rpc('bump_product_sold_count', { p_product_id: row.product_id, p_qty: row.quantity ?? 1 });
+    } catch (e) {
+      console.warn('[stripe-webhook] sold_count bump failed (non-fatal):', e);
+    }
+  }
+
+  // Verkäufer informieren: bezahlt → bitte versenden
   await admin.from('notifications').insert({
     recipient_id: row.seller_id,
     sender_id: row.buyer_id,

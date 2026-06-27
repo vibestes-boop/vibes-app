@@ -22,7 +22,7 @@ import { supabase } from '@/lib/supabase';
 import { useCoinsWallet } from '@/lib/useGifts';
 import { useOrCreateConversation,useSendMessage } from '@/lib/useMessages';
 import { useProductReviews } from '@/lib/useProductReviews';
-import { formatEur,REPORT_REASONS,useBuyProduct,useExpressInterest,useMyPreorder,useReportProduct,useSavedProduct,useShopProducts,type Product,type ProductCategory,type ReportReason } from '@/lib/useShop';
+import { formatEur,REPORT_REASONS,useBuyProduct,useExpressInterest,useMyPreorder,useOrderRating,useReportProduct,useSavedProduct,useShopProducts,type Product,type ProductCategory,type ReportReason } from '@/lib/useShop';
 import { webProductUrl } from '@/lib/webLinks';
 import { useTheme } from '@/lib/useTheme';
 import { useQuery } from '@tanstack/react-query';
@@ -681,6 +681,7 @@ export default function ProductDetailScreen() {
 
   const { data: products = [], isLoading } = useShopProducts();
   const product = products.find(p => p.id === id);
+  const { data: sellerRating } = useOrderRating(product?.seller_id);
 
   const { coins, refetch: refetchCoins }         = useCoinsWallet();
   const { buyProduct, isBuying }                  = useBuyProduct();
@@ -1027,6 +1028,17 @@ export default function ProductDetailScreen() {
               <Text style={[s.sellerSub, { color: colors.text.muted }]}>
                 {product.sold_count > 0 ? `${product.sold_count} Verkäufe` : 'Neu im Shop'}
               </Text>
+              {sellerRating && sellerRating.sellerCount > 0 ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 }}>
+                  <Star size={11} color="#F59E0B" fill="#F59E0B" strokeWidth={2} />
+                  <Text style={[s.sellerSub, { color: colors.text.secondary, fontWeight: '700' }]}>
+                    {sellerRating.sellerAvg?.toFixed(1)}
+                  </Text>
+                  <Text style={[s.sellerSub, { color: colors.text.muted }]}>
+                    · {sellerRating.sellerCount} {sellerRating.sellerCount === 1 ? 'Bewertung' : 'Bewertungen'}
+                  </Text>
+                </View>
+              ) : null}
             </View>
           </Pressable>
 

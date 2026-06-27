@@ -30,6 +30,7 @@ import {
   getEligibleOrderForReview,
   getMerchantProducts,
   getMyCoinBalance,
+  getOrderRating,
 } from "@/lib/data/shop";
 import { getUser } from "@/lib/auth/session";
 import { formatEur } from "@/lib/utils";
@@ -125,13 +126,14 @@ export default async function ProductDetailPage({ params }: PageProps) {
   const product = await getProduct(id);
   if (!product) notFound();
 
-  const [reviews, myReview, eligibleOrderId, moreFromSeller, user] =
+  const [reviews, myReview, eligibleOrderId, moreFromSeller, user, sellerRating] =
     await Promise.all([
       getProductReviews(id),
       getMyReview(id),
       getEligibleOrderForReview(id),
       getMerchantProducts(product.seller_id, 8),
       getUser(),
+      getOrderRating(product.seller_id),
     ]);
   const balance = user ? await getMyCoinBalance() : 0;
 
@@ -383,9 +385,15 @@ export default async function ProductDetailPage({ params }: PageProps) {
                       <BadgeCheck className="h-4 w-4 text-sky-500" />
                     )}
                   </div>
-                  <div className="text-xs text-muted-foreground">
-                    Profil ansehen →
-                  </div>
+                  {sellerRating.sellerCount > 0 ? (
+                    <div className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+                      <StarDisplay rating={sellerRating.sellerAvg ?? 0} size={12} />
+                      <span className="font-medium text-foreground">{sellerRating.sellerAvg?.toFixed(1)}</span>
+                      <span>· {sellerRating.sellerCount} {sellerRating.sellerCount === 1 ? 'Bewertung' : 'Bewertungen'}</span>
+                    </div>
+                  ) : (
+                    <div className="text-xs text-muted-foreground">Profil ansehen →</div>
+                  )}
                 </div>
               </Link>
               {user && user.id !== product.seller_id && (

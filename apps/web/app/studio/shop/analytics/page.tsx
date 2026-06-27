@@ -6,6 +6,7 @@ import type { Route } from 'next';
 import { ArrowLeft, BarChart3, TrendingUp } from 'lucide-react';
 import type { ComponentType } from 'react';
 import { CoinIcon } from '@/components/ui/coin-icon';
+import { formatEur } from '@/lib/utils';
 import { getShopAnalytics } from '@/lib/data/shop';
 import { getUser } from '@/lib/auth/session';
 import { StarDisplay } from '@/components/shop/star-display';
@@ -26,6 +27,7 @@ export default async function ShopAnalyticsPage() {
 
   const totalSold = rows.reduce((s, r) => s + r.sold_count, 0);
   const totalRevenue = rows.reduce((s, r) => s + r.revenue_coins, 0);
+  const totalEur = rows.reduce((s, r) => s + r.revenue_eur, 0);
   const productsWithSales = rows.filter((r) => r.sold_count > 0).length;
   const maxRevenue = Math.max(1, ...sorted.map((r) => r.revenue_coins));
 
@@ -60,6 +62,9 @@ export default async function ShopAnalyticsPage() {
           icon={CoinIcon}
           highlight
         />
+        {totalEur > 0 && (
+          <StatCard label="Echtgeld-Umsatz" value={formatEur(totalEur) ?? '—'} highlight />
+        )}
       </div>
 
       {/* Ranking */}
@@ -119,12 +124,17 @@ export default async function ShopAnalyticsPage() {
                       </Link>
                       <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground tabular-nums">
                         <span>{row.sold_count}× verkauft</span>
-                        <span className="font-medium text-foreground">
-                          <span className="inline-flex items-center gap-1">
-                            <CoinIcon className="h-3.5 w-3.5" />
-                            {row.revenue_coins.toLocaleString('de-DE')}
+                        {row.revenue_coins > 0 && (
+                          <span className="font-medium text-foreground">
+                            <span className="inline-flex items-center gap-1">
+                              <CoinIcon className="h-3.5 w-3.5" />
+                              {row.revenue_coins.toLocaleString('de-DE')}
+                            </span>
                           </span>
-                        </span>
+                        )}
+                        {row.revenue_eur > 0 && (
+                          <span className="font-medium text-foreground">{formatEur(row.revenue_eur)}</span>
+                        )}
                         {row.review_count > 0 && row.avg_rating !== null && (
                           <span className="inline-flex items-center gap-1">
                             <StarDisplay rating={row.avg_rating} size={12} />
