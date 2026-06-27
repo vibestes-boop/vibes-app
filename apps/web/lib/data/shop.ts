@@ -588,3 +588,66 @@ export const getShopAnalytics = cache(async (): Promise<ShopAnalyticsProduct[]> 
     review_count: (p.review_count as number | null) ?? 0,
   }));
 });
+
+// -----------------------------------------------------------------------------
+// Echtgeld-Bestellungen (physische Ware / Parfüm, Phase 1) — Tabelle product_orders.
+// Getrennt vom coin-basierten Order-System (getMyOrders).
+// -----------------------------------------------------------------------------
+
+export type ProductOrderStatus =
+  | 'reserved' | 'payment_requested' | 'paid' | 'shipped'
+  | 'delivered' | 'cancelled' | 'refunded' | 'disputed';
+
+export interface ProductOrderRow {
+  id: string;
+  buyer_id: string;
+  seller_id: string;
+  product_id: string | null;
+  quantity: number;
+  amount_eur: number;
+  status: ProductOrderStatus;
+  ship_name: string | null;
+  ship_street: string | null;
+  ship_zip: string | null;
+  ship_city: string | null;
+  ship_country: string | null;
+  tracking_carrier: string | null;
+  tracking_number: string | null;
+  created_at: string;
+  product: { id: string; title: string; cover_url: string | null } | null;
+}
+
+const PRODUCT_ORDER_COLUMNS =
+  'id, buyer_id, seller_id, product_id, quantity, amount_eur, status, ship_name, ship_street, ship_zip, ship_city, ship_country, tracking_carrier, tracking_number, created_at, product:products(id, title, cover_url)';
+
+export async function getMyProductOrders(role: 'buyer' | 'seller'): Promise<ProductOrderRow[]> {
+  const user = await getUser();
+  if (!user) return [];
+  const supabase = await createClient();
+  const col = role === 'seller' ? 'seller_id' : 'buyer_id';
+  const { data, error } = await supabase
+    .from('product_orders')
+    .select(PRODUCT_ORDER_COLUMNS)
+    .eq(col, user.id)
+    .order('created_at', { ascending: false })
+    .limit(100);
+  if (error || !data) return [];
+  return data as unknown as ProductOrderRow[];
+}
+
+// Vorbestell-Produkte des Verkäufers (für „Ware ist da → Zahlung anfordern").
+export async function getMyPreorderProducts(): Promise<
+  { id: string; title: string; price_eur: number | null }[]
+> {
+  const user = await getUser();
+  if (!user) return [];
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('products')
+    .select('id, title, price_eur')
+    .eq('seller_id', user.id)
+    .eq('sale_mode', 'preorder')
+    .order('created_at', { ascending: false });
+  if (error || !data) return [];
+  return data as { id: string; title: string; price_eur: number | null }[];
+}

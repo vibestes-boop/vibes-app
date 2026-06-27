@@ -554,3 +554,89 @@ export async function updateOrderStatus(
   revalidatePath('/studio/orders');
   return { ok: true, data: null };
 }
+
+// ─── Echtgeld-Bestellungen (physische Ware / Parfüm, Phase 1) ────────────────
+
+const PRODUCT_PAY_ERRORS: Record<string, string> = {
+  order_not_found: 'Bestellung nicht gefunden.',
+  not_authorized: 'Das ist nicht deine Bestellung.',
+  order_not_payable: 'Diese Bestellung ist gerade nicht zahlbar.',
+  stripe_not_configured: 'Zahlungen vorübergehend nicht verfügbar.',
+  stripe_session_create_failed: 'Stripe-Checkout konnte nicht gestartet werden.',
+};
+
+// Käufer: bezahlen → Stripe-Checkout-URL (Client redirected danach).
+export async function payProductOrder(orderId: string): Promise<ActionResult<{ url: string }>> {
+  const viewer = await getViewerId();
+  if (!viewer) return { ok: false, error: 'Bitte einloggen.' };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.functions.invoke<{ url?: string; error?: string }>(
+    'create-checkout-session',
+    { body: { order_id: orderId } },
+  );
+
+  if (error) return { ok: false, error: 'Checkout konnte nicht gestartet werden.' };
+  if (!data || data.error || !data.url) {
+    return { ok: false, error: PRODUCT_PAY_ERRORS[data?.error ?? ''] ?? 'Checkout konnte nicht gestartet werden.' };
+  }
+  return { ok: true, data: { url: data.url } };
+}
+
+// Verkäufer: „Ware ist da" → Zahlungsaufforderungen aus Vormerkungen erzeugen.
+export async function markPreordersPayable(
+  productId: string,
+): Promise<ActionResult<{ created: number; skipped: number }>> {
+  const viewer = await getViewerId();
+  if (!viewer) return { ok: false, error: 'Bitte einloggen.' };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('mark_preorders_payable', { p_product_id: productId });
+  if (error) return { ok: false, error: 'Kurz die Verbindung verloren — nochmal? 🙂' };
+
+  const res = (data ?? {}) as { success?: boolean; error?: string; created?: number; skipped?: number };
+  if (!res.success) return { ok: false, error: res.error ?? 'Konnte nicht anfordern.' };
+
+  revalidatePath('/studio/orders');
+  return { ok: true, data: { created: res.created ?? 0, skipped: res.skipped ?? 0 } };
+}
+
+// Verkäufer: versendet (+ Tracking).
+export async function setOrderShipped(
+  orderId: string,
+  carrier?: string,
+  tracking?: string,
+): Promise<ActionResult> {
+  const viewer = await getViewerId();
+  if (!viewer) return { ok: false, error: 'Bitte einloggen.' };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('set_order_shipped', {
+    p_order_id: orderId,
+    p_carrier: carrier?.trim() || null,
+    p_tracking: tracking?.trim() || null,
+  });
+  if (error) return { ok: false, error: 'Kurz die Verbindung verloren — nochmal? 🙂' };
+
+  const res = (data ?? {}) as { success?: boolean; error?: string };
+  if (!res.success) return { ok: false, error: res.error ?? 'Konnte nicht aktualisieren.' };
+
+  revalidatePath('/studio/orders');
+  return { ok: true, data: null };
+}
+
+// Käufer: Empfang bestätigen (shipped → delivered).
+export async function confirmOrderDelivered(orderId: string): Promise<ActionResult> {
+  const viewer = await getViewerId();
+  if (!viewer) return { ok: false, error: 'Bitte einloggen.' };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('confirm_order_delivered', { p_order_id: orderId });
+  if (error) return { ok: false, error: 'Kurz die Verbindung verloren — nochmal? 🙂' };
+
+  const res = (data ?? {}) as { success?: boolean; error?: string };
+  if (!res.success) return { ok: false, error: res.error ?? 'Konnte nicht bestätigen.' };
+
+  revalidatePath('/studio/orders');
+  return { ok: true, data: null };
+}

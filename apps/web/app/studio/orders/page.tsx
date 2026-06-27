@@ -4,7 +4,8 @@ import Link from 'next/link';
 import type { Route } from 'next';
 import { ShoppingBag, ArrowLeft, PackageOpen } from 'lucide-react';
 import { OrderRow } from '@/components/shop/order-row';
-import { getMyOrders } from '@/lib/data/shop';
+import { ProductOrdersPanel } from '@/components/shop/product-orders-panel';
+import { getMyOrders, getMyProductOrders, getMyPreorderProducts } from '@/lib/data/shop';
 import { getUser } from '@/lib/auth/session';
 import { EmptyState } from '@/components/ui/empty-state';
 import { cn } from '@/lib/utils';
@@ -28,6 +29,8 @@ export default async function OrdersPage({ searchParams }: PageProps) {
   if (!user) redirect('/login?next=/studio/orders');
 
   const orders = await getMyOrders(role);
+  const productOrders = await getMyProductOrders(role);
+  const preorderProducts = role === 'seller' ? await getMyPreorderProducts() : [];
 
   const totalCoins = orders.reduce((s, o) => s + o.total_coins, 0);
   const completedCount = orders.filter((o) => o.status === 'completed').length;
@@ -80,7 +83,10 @@ export default async function OrdersPage({ searchParams }: PageProps) {
         </Link>
       </div>
 
-      {/* KPIs */}
+      {/* Echtgeld-Bestellungen (physische Ware) — neuer Phase-1-Flow */}
+      <ProductOrdersPanel role={role} orders={productOrders} preorderProducts={preorderProducts} />
+
+      {/* KPIs (Coin-/Digital-Bestellungen) */}
       {orders.length > 0 && (
         <div className="mb-6 grid grid-cols-3 gap-3">
           <StatBox label="Bestellungen" value={orders.length.toLocaleString('de-DE')} />
