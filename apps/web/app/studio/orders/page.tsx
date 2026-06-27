@@ -5,7 +5,7 @@ import type { Route } from 'next';
 import { ShoppingBag, ArrowLeft, PackageOpen } from 'lucide-react';
 import { OrderRow } from '@/components/shop/order-row';
 import { ProductOrdersPanel } from '@/components/shop/product-orders-panel';
-import { getMyOrders, getMyProductOrders, getMyPreorderProducts } from '@/lib/data/shop';
+import { getMyOrders, getMyProductOrders, getMyPreorderGroups } from '@/lib/data/shop';
 import { getUser } from '@/lib/auth/session';
 import { EmptyState } from '@/components/ui/empty-state';
 import { cn } from '@/lib/utils';
@@ -30,7 +30,7 @@ export default async function OrdersPage({ searchParams }: PageProps) {
 
   const orders = await getMyOrders(role);
   const productOrders = await getMyProductOrders(role);
-  const preorderProducts = role === 'seller' ? await getMyPreorderProducts() : [];
+  const preorderGroups = role === 'seller' ? await getMyPreorderGroups() : [];
 
   const totalCoins = orders.reduce((s, o) => s + o.total_coins, 0);
   const completedCount = orders.filter((o) => o.status === 'completed').length;
@@ -84,7 +84,7 @@ export default async function OrdersPage({ searchParams }: PageProps) {
       </div>
 
       {/* Echtgeld-Bestellungen (physische Ware) — neuer Phase-1-Flow */}
-      <ProductOrdersPanel role={role} orders={productOrders} preorderProducts={preorderProducts} />
+      <ProductOrdersPanel role={role} orders={productOrders} preorderGroups={preorderGroups} />
 
       {/* KPIs (Coin-/Digital-Bestellungen) */}
       {orders.length > 0 && (

@@ -9,8 +9,14 @@ import {
   payProductOrder,
   setOrderShipped,
 } from '@/app/actions/shop';
-import type { ProductOrderRow, ProductOrderStatus } from '@/lib/data/shop';
+import type { PreorderGroup, ProductOrderRow, ProductOrderStatus } from '@/lib/data/shop';
 import { formatEur } from '@/lib/utils';
+
+function fmtDateTime(iso: string): string {
+  return new Date(iso).toLocaleString('de-DE', {
+    day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit',
+  });
+}
 
 const STATUS: Record<ProductOrderStatus, { label: string; cls: string }> = {
   reserved:          { label: 'Vorgemerkt',   cls: 'bg-muted text-muted-foreground' },
@@ -26,15 +32,15 @@ const STATUS: Record<ProductOrderStatus, { label: string; cls: string }> = {
 interface Props {
   role: 'buyer' | 'seller';
   orders: ProductOrderRow[];
-  preorderProducts: { id: string; title: string; price_eur: number | null }[];
+  preorderGroups: PreorderGroup[];
 }
 
-export function ProductOrdersPanel({ role, orders, preorderProducts }: Props) {
+export function ProductOrdersPanel({ role, orders, preorderGroups }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
 
-  const hasSellerPreorders = role === 'seller' && preorderProducts.length > 0;
+  const hasSellerPreorders = role === 'seller' && preorderGroups.length > 0;
   if (orders.length === 0 && !hasSellerPreorders) return null;
 
   const onPay = (id: string) =>
@@ -93,17 +99,23 @@ export function ProductOrdersPanel({ role, orders, preorderProducts }: Props) {
       {hasSellerPreorders && (
         <div className="mb-4 space-y-2 rounded-xl border bg-card p-4">
           <div className="text-sm font-medium">Ware ist da → Zahlung anfordern</div>
-          {preorderProducts.map((p) => (
-            <div key={p.id} className="flex items-center justify-between gap-3">
+          {preorderGroups.map((g) => (
+            <div key={g.id} className="flex items-center justify-between gap-3 border-t pt-2 first:border-t-0 first:pt-0">
               <div className="min-w-0">
-                <div className="truncate text-sm font-medium">{p.title}</div>
+                <div className="truncate text-sm font-medium">{g.title}</div>
                 <div className="text-xs text-muted-foreground">
-                  {formatEur(p.price_eur) ?? 'kein €-Preis gesetzt'}
+                  {formatEur(g.price_eur) ?? 'kein €-Preis gesetzt'}
+                  {' · '}{g.people} {g.people === 1 ? 'Person' : 'Personen'} · {g.bottles} {g.bottles === 1 ? 'Flasche' : 'Flaschen'}
                 </div>
+                {g.buyers.length > 0 && (
+                  <div className="truncate text-xs text-muted-foreground">
+                    {g.buyers.map((u) => `@${u}`).join(', ')} · seit {fmtDateTime(g.first_at)}
+                  </div>
+                )}
               </div>
               <button
-                onClick={() => onMarkPayable(p.id, p.title)}
-                disabled={pending || p.price_eur == null}
+                onClick={() => onMarkPayable(g.id, g.title)}
+                disabled={pending || g.price_eur == null}
                 className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
               >
                 <Bell className="h-3.5 w-3.5" />
@@ -131,6 +143,7 @@ export function ProductOrdersPanel({ role, orders, preorderProducts }: Props) {
                     {role === 'seller' && o.status === 'paid' && addr(o) ? ` · ${addr(o)}` : ''}
                     {o.tracking_number ? ` · ${[o.tracking_carrier, o.tracking_number].filter(Boolean).join(' ')}` : ''}
                   </div>
+                  <div className="mt-0.5 text-xs text-muted-foreground">{fmtDateTime(o.created_at)}</div>
                 </div>
 
                 {/* Käufer-Aktionen */}

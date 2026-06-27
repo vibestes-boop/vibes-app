@@ -34,7 +34,8 @@ export type NotificationType =
   | 'comment_like'
   | 'repost'
   | 'story_reaction'
-  | 'guild';
+  | 'guild'
+  | 'preorder_interest';
 
 export interface NotificationSender {
   id: string;

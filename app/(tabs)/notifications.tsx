@@ -66,7 +66,11 @@ function actionLabel(n: AppNotification): string {
     case "gift":
       return n.gift_emoji && n.gift_name
         ? `hat dir ${n.gift_emoji} ${n.gift_name} geschickt!`
-        : "hat dir ein Geschenk geschickt 🎁";
+        : n.comment_text
+          ? n.comment_text
+          : "hat dir ein Geschenk geschickt 🎁";
+    case "preorder_interest":
+      return "hat ein Produkt vorgemerkt 🌸";
     case "new_order":
       return n.comment_text
         ? `hat bestellt: ${n.comment_text}`
@@ -190,6 +194,8 @@ function NotifCard({ item }: { item: AppNotification }) {
       router.push({ pathname: "/user/[id]", params: { id: item.sender.id } });
     } else if (item.type === "new_order") {
       router.push('/shop/orders' as any);
+    } else if (item.type === "preorder_interest") {
+      router.push('/shop/fulfillment' as any);
     } else if (item.type === "live" || item.type === "live_invite") {
       const sessionId = item.session_id;
       if (sessionId) {

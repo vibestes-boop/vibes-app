@@ -62,6 +62,7 @@ const TYPE_META: Record<NotificationType, NotifMeta> = {
   repost:                  { icon: Repeat2,      color: 'text-muted-foreground', bg: 'bg-muted' },
   story_reaction:          { icon: Camera,       color: 'text-muted-foreground', bg: 'bg-muted' },
   guild:                   { icon: Users,        color: 'text-muted-foreground', bg: 'bg-muted' },
+  preorder_interest:       { icon: ShoppingBag,  color: 'text-muted-foreground', bg: 'bg-muted' },
 };
 
 // ── Notification-Text pro Typ ─────────────────────────────────────────────────
@@ -86,7 +87,13 @@ function notifText(n: Notification): string {
     case 'gift':
       return n.gift_emoji && n.gift_name
         ? `${name} hat dir ${n.gift_emoji} ${n.gift_name} gesendet.`
-        : `${name} hat dir ein Geschenk gesendet.`;
+        : n.comment_text
+          ? n.comment_text
+          : `${name} hat dir ein Geschenk gesendet.`;
+    case 'preorder_interest':
+      return n.product_name
+        ? `${name} hat „${n.product_name}" vorgemerkt 🌸`
+        : `${name} hat ein Produkt vorgemerkt 🌸`;
     case 'live':
       return `${name} ist jetzt live.`;
     case 'live_invite':
@@ -136,6 +143,7 @@ function notifHref(n: Notification): Route {
         ? (`/u/${n.sender.username}` as Route)
         : ('/' as Route);
     case 'new_order':
+    case 'preorder_interest':
       return '/studio/orders?role=seller' as Route;
     case 'comment_like':
       return n.post_id ? (`/p/${n.post_id}` as Route) : ('/' as Route);

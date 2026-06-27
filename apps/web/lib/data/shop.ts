@@ -635,19 +635,57 @@ export async function getMyProductOrders(role: 'buyer' | 'seller'): Promise<Prod
   return data as unknown as ProductOrderRow[];
 }
 
-// Vorbestell-Produkte des Verkäufers (für „Ware ist da → Zahlung anfordern").
-export async function getMyPreorderProducts(): Promise<
-  { id: string; title: string; price_eur: number | null }[]
-> {
+// Offene Vormerkungen des Verkäufers, gruppiert pro Produkt (für „Ware ist da →
+// Zahlung anfordern"). Nur Produkte MIT offenen Vormerkern (interested/notified),
+// inkl. Anzahl Personen, Flaschen, wer + seit wann.
+export interface PreorderGroup {
+  id: string;
+  title: string;
+  price_eur: number | null;
+  people: number;
+  bottles: number;
+  buyers: string[];
+  first_at: string;
+}
+
+export async function getMyPreorderGroups(): Promise<PreorderGroup[]> {
   const user = await getUser();
   if (!user) return [];
   const supabase = await createClient();
   const { data, error } = await supabase
-    .from('products')
-    .select('id, title, price_eur')
-    .eq('seller_id', user.id)
-    .eq('sale_mode', 'preorder')
-    .order('created_at', { ascending: false });
+    .from('product_preorders')
+    .select('product_id, quantity, created_at, user:profiles(username), product:products!inner(id, title, price_eur, seller_id)')
+    .eq('product.seller_id', user.id)
+    .in('status', ['interested', 'notified'])
+    .order('created_at', { ascending: true });
+
   if (error || !data) return [];
-  return data as { id: string; title: string; price_eur: number | null }[];
+
+  const groups = new Map<string, PreorderGroup>();
+  for (const row of data as unknown as Array<{
+    product_id: string;
+    quantity: number;
+    created_at: string;
+    user: { username: string | null } | null;
+    product: { id: string; title: string; price_eur: number | null } | null;
+  }>) {
+    if (!row.product) continue;
+    let g = groups.get(row.product_id);
+    if (!g) {
+      g = {
+        id: row.product.id,
+        title: row.product.title,
+        price_eur: row.product.price_eur,
+        people: 0,
+        bottles: 0,
+        buyers: [],
+        first_at: row.created_at,
+      };
+      groups.set(row.product_id, g);
+    }
+    g.people += 1;
+    g.bottles += row.quantity ?? 1;
+    if (row.user?.username) g.buyers.push(row.user.username);
+  }
+  return [...groups.values()];
 }
