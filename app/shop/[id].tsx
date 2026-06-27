@@ -959,7 +959,7 @@ export default function ProductDetailScreen() {
             formatEur(product.price_eur) ? (
               <View style={s.priceRow2}>
                 <Text style={[s.priceNow, { color: colors.text.primary }]}>{formatEur(product.price_eur)}</Text>
-                <Text style={[s.priceOff, { color: '#B45309' }]}>Vorbestellung · zahlbar bei Lieferung</Text>
+                <Text style={[s.priceOff, { color: '#B45309' }]}>Vorbestellung · Zahlung bei Eintreffen</Text>
               </View>
             ) : (
               <Text style={[s.priceNow, { color: colors.text.primary, fontSize: 17 }]}>

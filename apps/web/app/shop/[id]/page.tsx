@@ -273,7 +273,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
                       {formatEur(product.price_eur)}
                     </span>
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-600/15 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-400">
-                      🤎 Vorbestellung · zahlbar bei Lieferung
+                      🤎 Vorbestellung · Zahlung bei Eintreffen
                     </span>
                   </div>
                 ) : (

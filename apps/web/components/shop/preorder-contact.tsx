@@ -75,7 +75,7 @@ export function PreorderNotifyAllButton({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState(
-    `Hey! Deine Vorbestellung „${title}“ ist da 🎉 Zahlbar bei Lieferung — meld dich kurz, dann machen wir's klar.`,
+    `Hey! Gute Nachrichten 🎉 Dein vorbestelltes „${title}“ ist bei mir eingetroffen. Du kannst es jetzt bezahlen — danach geht es direkt an dich raus. Meld dich kurz, dann machen wir's klar 🌸`,
   );
   const [isPending, startTransition] = useTransition();
 
