@@ -1,0 +1,22 @@
+# Supabase-Projekt-Konfiguration (nur Deploy-relevante Teile).
+# project_id = lokaler Bezeichner (Repo-Name), NICHT die Projekt-Ref.
+project_id = "vibes"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Externe Webhooks: MÜSSEN verify_jwt = false haben.
+# Diese Functions werden von Dritt-Diensten (Stripe / RevenueCat / Bunny) OHNE
+# Supabase-User-JWT aufgerufen — sie tragen eine eigene Signatur/Bearer-Auth im
+# Function-Code. Steht verify_jwt auf true (Default), weist Supabases Gateway den
+# Aufruf VOR dem Function-Code mit 401 ab → Zahlung/Webhook scheitert STILL.
+#
+# Diese Datei verankert das Flag im Repo, damit ein Deploy ohne `--no-verify-jwt`
+# es nicht erneut bricht (genau das ist am 2026-06-27 mit stripe-webhook passiert).
+# ─────────────────────────────────────────────────────────────────────────────
+[functions.stripe-webhook]
+verify_jwt = false
+
+[functions.revenuecat-webhook]
+verify_jwt = false
+
+[functions.bunny-webhook]
+verify_jwt = false
