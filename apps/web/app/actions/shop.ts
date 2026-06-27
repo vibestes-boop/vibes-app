@@ -680,6 +680,62 @@ export interface ShippingAddressInput {
   country: string;
 }
 
+const ORDER_DISPUTE_ERRORS: Record<string, string> = {
+  order_not_found: 'Bestellung nicht gefunden.',
+  not_authorized: 'Das ist nicht deine Bestellung.',
+  invalid_reason: 'Bitte einen Grund wählen.',
+  not_reportable: 'Ein Problem kannst du erst ab der Bezahlung melden.',
+  dispute_not_found: 'Meldung nicht gefunden.',
+};
+
+// Käufer/Verkäufer: Problem an einer Bestellung melden.
+export async function reportOrderDispute(
+  orderId: string,
+  reason: string,
+  detail?: string,
+): Promise<ActionResult> {
+  const viewer = await getViewerId();
+  if (!viewer) return { ok: false, error: 'Bitte einloggen.' };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('report_order_dispute', {
+    p_order_id: orderId,
+    p_reason: reason,
+    p_detail: detail?.trim() || null,
+  });
+  if (error) return { ok: false, error: 'Kurz die Verbindung verloren — nochmal? 🙂' };
+
+  const res = (data ?? {}) as { success?: boolean; error?: string };
+  if (!res.success) return { ok: false, error: ORDER_DISPUTE_ERRORS[res.error ?? ''] ?? 'Konnte nicht melden.' };
+
+  revalidatePath('/studio/orders');
+  return { ok: true, data: null };
+}
+
+// Admin: Streit-Meldung klären (oder verwerfen).
+export async function resolveOrderDispute(
+  disputeId: string,
+  resolution?: string,
+  dismiss = false,
+): Promise<ActionResult> {
+  const viewer = await getViewerId();
+  if (!viewer) return { ok: false, error: 'Bitte einloggen.' };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('resolve_order_dispute', {
+    p_dispute_id: disputeId,
+    p_resolution: resolution?.trim() || null,
+    p_dismiss: dismiss,
+  });
+  if (error) return { ok: false, error: 'Kurz die Verbindung verloren — nochmal? 🙂' };
+
+  const res = (data ?? {}) as { success?: boolean; error?: string };
+  if (!res.success) return { ok: false, error: ORDER_DISPUTE_ERRORS[res.error ?? ''] ?? 'Konnte nicht klären.' };
+
+  revalidatePath('/studio/orders');
+  return { ok: true, data: null };
+}
+
 const ORDER_REVIEW_ERRORS: Record<string, string> = {
   order_not_found: 'Bestellung nicht gefunden.',
   not_authorized: 'Das ist nicht deine Bestellung.',

@@ -14,6 +14,7 @@ import { Image } from "expo-image";
 import * as ExpoNotifications from 'expo-notifications';
 import { router,useFocusEffect } from "expo-router";
 import {
+AlertTriangle,
 AtSign,
 Bell,
 Check,
@@ -26,6 +27,7 @@ MessageCircle,
 Package,
 Radio,
 ShoppingBag,
+Star,
 Truck,
 UserPlus,
 X,
@@ -84,6 +86,8 @@ function actionLabel(n: AppNotification): string {
     case "order_shipped":
     case "order_cancelled":
     case "order_address_updated":
+    case "order_review":
+    case "order_dispute":
       return n.comment_text ?? "Update zu deiner Bestellung";
     default:
       return "";
@@ -144,6 +148,8 @@ function TypeIcon({ type }: { type: AppNotification["type"] }) {
       order_shipped:            { Icon: Truck,         bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
       order_cancelled:          { Icon: X,             bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
       order_address_updated:    { Icon: MapPin,        bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
+      order_review:             { Icon: Star,          bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
+      order_dispute:            { Icon: AlertTriangle, bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
     } as Record<string, { Icon: React.ElementType; bg: string; color: string }>
   )[type] ?? { Icon: Bell, bg: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)" };
 
@@ -220,6 +226,9 @@ function NotifCard({ item }: { item: AppNotification }) {
       router.push('/shop/fulfillment' as any);
     } else if (item.type === "order_payment_requested" || item.type === "order_shipped") {
       // Käufer-seitig: jetzt bezahlen / unterwegs → eigene Bestellungen
+      router.push('/shop/my-orders' as any);
+    } else if (item.type === "order_review" || item.type === "order_dispute") {
+      // Rolle nicht eindeutig → eigene Bestellungen (Header-Icon führt zu Verkäufen)
       router.push('/shop/my-orders' as any);
     } else if (item.type === "live" || item.type === "live_invite") {
       const sessionId = item.session_id;

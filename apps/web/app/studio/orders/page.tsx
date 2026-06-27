@@ -7,6 +7,7 @@ import { OrderRow } from '@/components/shop/order-row';
 import { ProductOrdersPanel } from '@/components/shop/product-orders-panel';
 import { getMyOrders, getMyProductOrders } from '@/lib/data/shop';
 import { getUser } from '@/lib/auth/session';
+import { createClient } from '@/lib/supabase/server';
 import { EmptyState } from '@/components/ui/empty-state';
 import { cn } from '@/lib/utils';
 
@@ -27,6 +28,14 @@ export default async function OrdersPage({ searchParams }: PageProps) {
 
   const user = await getUser();
   if (!user) redirect('/login?next=/studio/orders');
+
+  const supabase = await createClient();
+  const { data: prof } = await supabase
+    .from('profiles')
+    .select('is_admin')
+    .eq('id', user.id)
+    .maybeSingle();
+  const isAdmin = prof?.is_admin === true;
 
   const orders = await getMyOrders(role);
   const productOrders = await getMyProductOrders(role);
@@ -103,7 +112,7 @@ export default async function OrdersPage({ searchParams }: PageProps) {
       )}
 
       {/* Echtgeld-Bestellungen (physische Ware) — Phase-1-Flow */}
-      <ProductOrdersPanel role={role} orders={productOrders} />
+      <ProductOrdersPanel role={role} orders={productOrders} isAdmin={isAdmin} />
 
       {/* KPIs (Coin-/Digital-Bestellungen) */}
       {orders.length > 0 && (

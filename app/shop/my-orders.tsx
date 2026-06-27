@@ -33,6 +33,7 @@ Truck,
 import { useState } from 'react';
 import { useOrCreateConversation } from '@/lib/useMessages';
 import { OrderReviewControl } from '@/components/shop/OrderReviewControl';
+import { OrderDisputeControl } from '@/components/shop/OrderDisputeControl';
 import {
 ActivityIndicator,
 Alert,
@@ -268,6 +269,11 @@ export default function MyOrdersScreen() {
           <MessageCircle size={14} color={colors.text.muted} strokeWidth={2} />
           <Text style={[s.msgText, { color: colors.text.muted }]}>Verkäufer anschreiben</Text>
         </Pressable>
+
+        {/* Problem melden / Streit-Status (ab Bezahlung) */}
+        {(o.status === 'paid' || o.status === 'shipped' || o.status === 'delivered') && (
+          <OrderDisputeControl orderId={o.id} role="buyer" dispute={o.dispute} />
+        )}
       </View>
     );
   };

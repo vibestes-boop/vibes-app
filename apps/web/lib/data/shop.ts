@@ -606,6 +606,13 @@ export interface OrderReview {
   comment: string | null;
 }
 
+export interface OrderDispute {
+  id: string;
+  status: 'open' | 'resolved' | 'dismissed';
+  reason: string;
+  reporter_id: string;
+}
+
 export interface ProductOrderRow {
   id: string;
   buyer_id: string;
@@ -627,6 +634,8 @@ export interface ProductOrderRow {
   // abgegeben habe, received_review = was die Gegenseite über mich schrieb.
   my_review: OrderReview | null;
   received_review: OrderReview | null;
+  // Offene/erledigte Streit-Meldung an dieser Bestellung (falls vorhanden).
+  dispute: OrderDispute | null;
 }
 
 const PRODUCT_ORDER_COLUMNS =
@@ -654,6 +663,27 @@ async function fetchOrderReviewsMap(
   return map;
 }
 
+// Streit-Meldungen für eine Menge Bestellungen laden (open bevorzugt, sonst neueste).
+async function fetchOrderDisputesMap(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  orderIds: string[],
+): Promise<Map<string, OrderDispute>> {
+  const map = new Map<string, OrderDispute>();
+  if (orderIds.length === 0) return map;
+  const { data } = await supabase
+    .from('order_disputes')
+    .select('id, order_id, status, reason, reporter_id, created_at')
+    .in('order_id', orderIds)
+    .order('created_at', { ascending: false });
+  for (const d of (data ?? []) as Array<{ id: string; order_id: string; status: OrderDispute['status']; reason: string; reporter_id: string }>) {
+    const existing = map.get(d.order_id);
+    if (!existing || (d.status === 'open' && existing.status !== 'open')) {
+      map.set(d.order_id, { id: d.id, status: d.status, reason: d.reason, reporter_id: d.reporter_id });
+    }
+  }
+  return map;
+}
+
 export async function getMyProductOrders(role: 'buyer' | 'seller'): Promise<ProductOrderRow[]> {
   const user = await getUser();
   if (!user) return [];
@@ -673,10 +703,15 @@ export async function getMyProductOrders(role: 'buyer' | 'seller'): Promise<Prod
     rows.filter((o) => o.status === 'delivered').map((o) => o.id),
     user.id,
   );
+  const disputeMap = await fetchOrderDisputesMap(
+    supabase,
+    rows.filter((o) => ['paid', 'shipped', 'delivered'].includes(o.status)).map((o) => o.id),
+  );
   for (const o of rows) {
     const rv = reviewMap.get(o.id);
     o.my_review = rv?.mine ?? null;
     o.received_review = rv?.theirs ?? null;
+    o.dispute = disputeMap.get(o.id) ?? null;
   }
   return rows;
 }
@@ -697,7 +732,7 @@ export async function getMyProductOrderBySession(
     .eq('buyer_id', user.id)
     .maybeSingle();
   if (error || !data) return null;
-  return { ...(data as unknown as ProductOrderRow), my_review: null, received_review: null };
+  return { ...(data as unknown as ProductOrderRow), my_review: null, received_review: null, dispute: null };
 }
 
 // Offene Vormerkungen des Verkäufers, gruppiert pro Produkt (für „Ware ist da →

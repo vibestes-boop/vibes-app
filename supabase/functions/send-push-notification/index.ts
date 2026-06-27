@@ -60,6 +60,8 @@ Deno.serve(async (req: Request) => {
       order_shipped:             'orders',
       order_cancelled:           'orders',
       order_address_updated:     'orders',
+      order_review:              'orders',
+      order_dispute:             'orders',
     };
     const prefKey = TYPE_TO_PREF[record.type];
     const prefs = recipient.notif_prefs as Record<string, boolean> | null;
@@ -121,6 +123,14 @@ Deno.serve(async (req: Request) => {
       order_address_updated: {
         title: '📍 Adresse geändert',
         body: `${actorName} hat die Lieferadresse aktualisiert`,
+      },
+      order_review: {
+        title: '⭐ Neue Bewertung',
+        body: record.comment_text ?? `${actorName} hat dich bewertet`,
+      },
+      order_dispute: {
+        title: '⚠️ Problem gemeldet',
+        body: record.comment_text ?? 'Ein Problem mit einer Bestellung wurde gemeldet',
       },
     };
 
@@ -264,6 +274,9 @@ function deriveWebUrl(
     case 'order_address_updated':
     case 'preorder_interest':
       return '/studio/orders?role=seller';
+    case 'order_review':
+    case 'order_dispute':
+      return '/studio/orders';
     default:
       return '/';
   }
@@ -298,6 +311,8 @@ function deriveWebTag(record: NotificationPayload['record']): string {
     case 'order_cancelled':
     case 'order_address_updated':
     case 'preorder_interest':
+    case 'order_review':
+    case 'order_dispute':
       return `${record.type}:${record.id}`;
     default:
       return record.type;

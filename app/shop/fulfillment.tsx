@@ -23,6 +23,7 @@ import { ArrowLeft, Bell, CheckCircle2, Clock, MessageCircle, Package, PackageCh
 import { useState } from 'react';
 import { useOrCreateConversation } from '@/lib/useMessages';
 import { OrderReviewControl } from '@/components/shop/OrderReviewControl';
+import { OrderDisputeControl } from '@/components/shop/OrderDisputeControl';
 import {
 ActivityIndicator,
 Alert,
@@ -181,6 +182,7 @@ export default function FulfillmentScreen() {
                   <MessageCircle size={14} color={colors.text.muted} strokeWidth={2} />
                   <Text style={[s.msgText, { color: colors.text.muted }]}>Käufer anschreiben</Text>
                 </Pressable>
+                <OrderDisputeControl orderId={o.id} role="seller" dispute={o.dispute} />
               </View>
             ))}
           </View>
@@ -216,16 +218,17 @@ export default function FulfillmentScreen() {
                       {o.status === 'delivered' ? ' · geliefert' : ''}
                     </Text>
                   </View>
-                  {o.status === 'delivered' && (
-                    <View style={{ paddingLeft: 20 }}>
+                  <View style={{ paddingLeft: 20, gap: 4 }}>
+                    {o.status === 'delivered' && (
                       <OrderReviewControl
                         orderId={o.id}
                         role="seller"
                         myReview={o.my_review}
                         receivedReview={o.received_review}
                       />
-                    </View>
-                  )}
+                    )}
+                    <OrderDisputeControl orderId={o.id} role="seller" dispute={o.dispute} />
+                  </View>
                 </View>
               ))}
             </View>

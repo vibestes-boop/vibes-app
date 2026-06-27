@@ -614,11 +614,20 @@ export interface ProductOrder {
   // received_review = was die Gegenseite über mich schrieb.
   my_review?:       OrderReview | null;
   received_review?: OrderReview | null;
+  // Streit-Meldung an dieser Bestellung (open bevorzugt), falls vorhanden.
+  dispute?:         OrderDispute | null;
 }
 
 export interface OrderReview {
   rating: number;
   comment: string | null;
+}
+
+export interface OrderDispute {
+  id: string;
+  status: 'open' | 'resolved' | 'dismissed';
+  reason: string;
+  reporter_id: string;
 }
 
 const PRODUCT_ORDER_SELECT = '*, product:products(id, title, cover_url)';
@@ -645,6 +654,25 @@ async function attachOrderReviews(orders: ProductOrder[], viewerId: string): Pro
   }
 }
 
+// Streit-Meldungen an die Bestellungen hängen (open bevorzugt, sonst neueste).
+async function attachOrderDisputes(orders: ProductOrder[]): Promise<void> {
+  const ids = orders.filter((o) => ['paid', 'shipped', 'delivered'].includes(o.status)).map((o) => o.id);
+  if (ids.length === 0) return;
+  const { data } = await supabase
+    .from('order_disputes')
+    .select('id, order_id, status, reason, reporter_id, created_at')
+    .in('order_id', ids)
+    .order('created_at', { ascending: false });
+  const map = new Map<string, OrderDispute>();
+  for (const d of (data ?? []) as Array<{ id: string; order_id: string; status: OrderDispute['status']; reason: string; reporter_id: string }>) {
+    const ex = map.get(d.order_id);
+    if (!ex || (d.status === 'open' && ex.status !== 'open')) {
+      map.set(d.order_id, { id: d.id, status: d.status, reason: d.reason, reporter_id: d.reporter_id });
+    }
+  }
+  for (const o of orders) o.dispute = map.get(o.id) ?? null;
+}
+
 // Käufer: eigene Echtgeld-Bestellungen (Status + Tracking = Wiederkehr-Hook)
 export function useMyProductOrders() {
   const user = useAuthStore((s) => s.user);
@@ -662,6 +690,7 @@ export function useMyProductOrders() {
       if (error) throw error;
       const orders = (data ?? []) as ProductOrder[];
       await attachOrderReviews(orders, user!.id);
+      await attachOrderDisputes(orders);
       return orders;
     },
   });
@@ -684,6 +713,7 @@ export function useSellerProductOrders() {
       if (error) throw error;
       const orders = (data ?? []) as ProductOrder[];
       await attachOrderReviews(orders, user!.id);
+      await attachOrderDisputes(orders);
       return orders;
     },
   });
@@ -907,6 +937,24 @@ export function useSubmitOrderReview() {
         p_order_id: vars.orderId,
         p_rating: Math.round(vars.rating),
         p_comment: vars.comment?.trim() || null,
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      return data;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['product-orders'] }); },
+  });
+}
+
+// Problem an einer Bestellung melden (Käufer/Verkäufer, ab Bezahlung — RPC-Gate).
+export function useReportOrderDispute() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (vars: { orderId: string; reason: string; detail?: string }) => {
+      const { data, error } = await supabase.rpc('report_order_dispute', {
+        p_order_id: vars.orderId,
+        p_reason: vars.reason,
+        p_detail: vars.detail?.trim() || null,
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);

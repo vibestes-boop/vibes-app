@@ -40,7 +40,9 @@ export type NotificationType =
   | 'order_paid'
   | 'order_shipped'
   | 'order_cancelled'
-  | 'order_address_updated';
+  | 'order_address_updated'
+  | 'order_review'
+  | 'order_dispute';
 
 export interface NotificationSender {
   id: string;

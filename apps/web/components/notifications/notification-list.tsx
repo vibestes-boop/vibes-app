@@ -25,6 +25,8 @@ import {
   Package,
   Truck,
   MapPin,
+  Star,
+  AlertTriangle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -72,6 +74,8 @@ const TYPE_META: Record<NotificationType, NotifMeta> = {
   order_shipped:           { icon: Truck,         color: 'text-muted-foreground', bg: 'bg-muted' },
   order_cancelled:         { icon: X,             color: 'text-muted-foreground', bg: 'bg-muted' },
   order_address_updated:   { icon: MapPin,        color: 'text-muted-foreground', bg: 'bg-muted' },
+  order_review:            { icon: Star,          color: 'text-muted-foreground', bg: 'bg-muted' },
+  order_dispute:           { icon: AlertTriangle, color: 'text-muted-foreground', bg: 'bg-muted' },
 };
 
 // ── Notification-Text pro Typ ─────────────────────────────────────────────────
@@ -108,6 +112,8 @@ function notifText(n: Notification): string {
     case 'order_shipped':
     case 'order_cancelled':
     case 'order_address_updated':
+    case 'order_review':
+    case 'order_dispute':
       return n.comment_text
         ?? (n.product_name ? `Update zu „${n.product_name}"` : 'Update zu deiner Bestellung');
     case 'live':
@@ -167,6 +173,9 @@ function notifHref(n: Notification): Route {
     case 'order_payment_requested':
     case 'order_shipped':
       return '/studio/orders?role=buyer' as Route;
+    case 'order_review':
+    case 'order_dispute':
+      return '/studio/orders' as Route;
     case 'comment_like':
       return n.post_id ? (`/p/${n.post_id}` as Route) : ('/' as Route);
     case 'repost':

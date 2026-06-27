@@ -14,6 +14,7 @@ import {
 } from '@/app/actions/shop';
 import { getOrCreateConversation } from '@/app/actions/messages';
 import { OrderReviewControl } from './order-review';
+import { OrderDisputeControl } from './order-dispute';
 import type { ProductOrderRow, ProductOrderStatus } from '@/lib/data/shop';
 import { formatEur } from '@/lib/utils';
 import { ProductImage } from './product-image';
@@ -46,9 +47,10 @@ const STATUS: Record<ProductOrderStatus, { label: string; cls: string }> = {
 interface Props {
   role: 'buyer' | 'seller';
   orders: ProductOrderRow[];
+  isAdmin?: boolean;
 }
 
-export function ProductOrdersPanel({ role, orders }: Props) {
+export function ProductOrdersPanel({ role, orders, isAdmin = false }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
@@ -253,6 +255,16 @@ export function ProductOrdersPanel({ role, orders }: Props) {
                     role={role}
                     myReview={o.my_review}
                     receivedReview={o.received_review}
+                  />
+                )}
+
+                {/* Problem melden / Streit-Status (ab Bezahlung) */}
+                {(o.status === 'paid' || o.status === 'shipped' || o.status === 'delivered') && (
+                  <OrderDisputeControl
+                    orderId={o.id}
+                    role={role}
+                    dispute={o.dispute}
+                    isAdmin={isAdmin}
                   />
                 )}
 
