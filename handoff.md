@@ -1,4 +1,4 @@
-# Handoff — Serlo/Vibes (Stand 26. Juni 2026)
+# Handoff — Serlo/Vibes (Stand 27. Juni 2026)
 
 > 📍 **Dieses Dokument: `/Users/zaurhatuev/vibes-app/handoff.md`**
 > Arbeite NUR in diesem Repo: **`/Users/zaurhatuev/vibes-app`** (Branch `main`).
@@ -6,7 +6,8 @@
 >
 > Übergabe für den Wechsel in einen neuen Chat. Gedächtnis-Dateien
 > (`~/.claude/.../memory/`) laden automatisch — dieses Doku ergänzt sie mit Session-Detail.
-> (Ersetzt den Handoff vom 24.06.)
+> **Strategie/Finanz-Plan liegt im Brain** (gbrain): `decisions/2026-06-27-serlo-finanz-architektur`,
+> `decisions/2026-06-27-serlo-monetarisierung-roadmap`, `outputs/2026-06-27-serlo-geld-premortem`.
 
 ---
 
@@ -15,12 +16,13 @@
 | Bereich | Stand |
 |---|---|
 | **Repo / Branch** | `/Users/zaurhatuev/vibes-app` · `main` · Working Tree **sauber** |
-| **Letzter Commit** | `3b1cf8a` — Guild-Karten-Video kein Neustart (stabile onProgress). **Alle Session-Commits gepusht.** |
+| **Letzter Commit** | `5911990` — Vormerk-Benachrichtigung-Fix + Wer/Datum sichtbar. **Alle Session-Commits gepusht.** |
 | **Web (apps/web)** | deployt via **Vercel** auf Push zu `main`. **Live: `serlo-web.vercel.app` — ⚠️ OHNE `www`!** |
 | **App-Build** | v1.30.0 / iOS-Build 286 (TestFlight) · Runtime **1.30.0** |
-| **OTAs (26.6., diese Session)** | Viele JS-OTAs auf `production`: Shop-TikTok-Layout, Banner-Karussell, Seamless-Kommentare (Feed+Guild+Detail), contain+Blur-Fill überall, Guild-Video-Neustart-Fix. Letzte: `3b1cf8a`. Alle Runtime 1.30.0, iOS+Android. |
-| **DB-Migrationen (alle ✅ von Zaur ausgeführt)** | `20260624170000` product_price_eur · `20260625120000` notify_preorder_buyers · `20260625130000` chat_images_bucket · **`20260626120000` shop_banners** (vermietbare Werbe-Banner-Fläche) |
-| **GERADE IN ARBEIT** | **Mute/Lautstärke-Persistenz Guild-Detailansicht** — soll den globalen `useVideoMute`-Store nutzen statt lokalem State (siehe §3.1). Noch nicht gebaut, Zaur hat Verständnis-Check angefragt. |
+| **OTAs (26.–27.6.)** | Viele JS-OTAs auf `production`: Shop-TikTok-Layout, Banner-Karussell, Seamless-Kommentare, contain+Blur-Fill, Mute-Persistenz, **Phase-1 Echtgeld-Bestell-Frontend (my-orders + fulfillment)**, Vormerk-Notif-Fix. Letzte: `5911990`. Runtime 1.30.0, iOS+Android. |
+| **Edge Functions deployed (27.6.)** | `create-checkout-session` + `stripe-webhook` um **Produkt-Bezahlpfad** erweitert (metadata.kind='product_order'). |
+| **DB-Migrationen** | ✅ ausgeführt: `…170000` product_price_eur · `…120000` notify_preorder_buyers · `…130000` chat_images_bucket · `20260626120000` shop_banners · `20260627120000` shop_real_money_orders · `20260627130000` shop_order_flow_rpcs.  🔴 **NOCH AUSZUFÜHREN: `20260627140000_notification_types_orders.sql`** (sonst kommt die Vormerk-Benachrichtigung nicht an!). |
+| **GERADE IN ARBEIT** | **Phase-1 Echtgeld-Finanzsystem** (eigenes Parfüm, kein Connect) — Backend + App + Web **fertig & deployed**. Offen: Migration `…140000` ausführen, Stripe Test→Live, AGB/Recht. Siehe §1-J + §3. |
 | **Admin** | Zaur (`username='zaur'`, `profiles.is_admin = true`) — nötig fürs Vorbestell-Gate. |
 
 ⚠️ **Quarantäne:** `/Users/zaurhatuev/Desktop/vibes-app` — NIEMALS bauen/deployen/pushen.
@@ -73,6 +75,21 @@
 - **Guild-Karte** (`GuildCard.tsx`, Scroll-Liste): in-list `seamlessPeek` OHNE `sheetProgress`/Scroll (Instagram-Stil, Video bleibt sichtbar oben, kein Schrumpf — Scroll/Schrumpf würde via removeClippedSubviews remounten = Neustart). **Falle gefixt:** instabile `onProgress`-Prop (inline `()=>{}`) triggerte den Restart-Effekt in FeedVideo → Neustart bei jedem Re-Render. Lösung: stabile `NOOP_PROGRESS`-Konstante. Feed/Detail nutzen `useCallback` → waren nie betroffen.
 - **contain + Blur-Fill überall**: Feed, Guild-Karten, Guild-Detail zeigen Medien jetzt vollständig (`contentFit="contain"`) mit unscharfem Blur-Fill-Rand statt seitlichem Cover-Beschnitt (Querformat war abgeschnitten).
 
+### J) 💶 Phase-1 Echtgeld-Bestellsystem (physische Ware / Parfüm) — Backend + App + Web
+**Leitprinzip:** Echtes Geld läuft über **deinen Stripe** (du = Verkäufer, KEIN Connect in Phase 1). Strikt getrennt vom virtuellen Coin/Diamant-System. Marktplatz-nativ entworfen („du = Verkäufer #1") → Drittverkäufer später = nur Onboarding, kein Umbau. Architektur-Details: Brain `decisions/2026-06-27-serlo-finanz-architektur`.
+
+- **Parfüm-Bezahllogik (Zaurs Entscheidung):** Vormerken (0 €) → du sammelst → du bestellst beim Lieferanten (streckst EK vor) → Ware da → **User zahlt** → Versand. Status: `reserved → payment_requested → paid → shipped → delivered`.
+- **Migration `20260627120000_shop_real_money_orders.sql` ✅**: Tabellen `seller_accounts` (Zaur als #1, Provision 0; `platform_fee_bps`/`stripe_connect_id` für später) + `product_orders` (echte €-Bestellungen, Versand/Tracking/Stripe-Felder, Status-Maschine, RLS service-write/party-read).
+- **Migration `20260627130000_shop_order_flow_rpcs.sql` ✅**: SECURITY-DEFINER-RPCs `mark_preorders_payable(product)` (Ware da → erzeugt payment_requested-Orders aus Vormerkungen + Push), `set_order_shipped(order, carrier, tracking)`, `confirm_order_delivered(order)`.
+- **Edge Functions deployed**: `create-checkout-session` erkennt `{ order_id }` → Stripe-Checkout (€, Versandadresse via Stripe eingesammelt). `stripe-webhook` setzt `payment_requested → paid` (claim-before-update), speichert Adresse, benachrichtigt Verkäufer.
+- **App-Frontend**: `lib/useShop.ts` (ProductOrder-Typ + Hooks: useMyProductOrders, useSellerProductOrders, usePayProductOrder, useConfirmOrderDelivered, useMarkPreordersPayable, useSetOrderShipped). Screens: `app/shop/my-orders.tsx` (Käufer: bezahlen/tracken/Erhalten — Shop-Shortcut „Bestellungen" zeigt hierher), `app/shop/fulfillment.tsx` (Verkäufer: Ware-da + versendet). 
+- **Web-Frontend (Parität)**: `apps/web/lib/data/shop.ts` (getMyProductOrders, getMyPreorderGroups), `apps/web/app/actions/shop.ts` (payProductOrder, markPreordersPayable, setOrderShipped, confirmOrderDelivered), `apps/web/components/shop/product-orders-panel.tsx`, eingebunden in `apps/web/app/studio/orders/page.tsx` (Toggle Käufe/Verkäufe → Abschnitt „Echtgeld-Bestellungen").
+- **Vormerk-Benachrichtigung-Fix (`20260627140000`, 🔴 NOCH AUSFÜHREN)**: `express_product_interest` schrieb Notif `type='preorder_interest'`, war aber nicht in `notifications_type_check` → Insert scheiterte still. Migration erweitert den CHECK dynamisch. Renderer (App+Web) behandeln `preorder_interest`; `'gift'` fällt auf `comment_text` zurück (Bestell-Pings lesbar). „Ware ist da" (Web) zeigt jetzt **wer** (Namen) + Anzahl + seit-wann; Bestellzeilen mit Datum/Uhrzeit.
+
+> ⚠️ **NICHT kundenreif:** Stripe noch **Test-Modus** (Memory `vibes-stripe-coinshop`), **AGB/Widerruf/Impressum/GoBD fehlen**. Zum Testen bereit, nicht für echte Kunden-Zahlungen.
+
+> ⚠️ **Zwei Vorbestell-Oberflächen (verwirrend, sollte konsolidiert werden):** `/studio/shop/preorders` (ALT: „Alle anschreiben" = nur DM, keine Zahlung) vs `/studio/orders?role=seller` → „Ware ist da → Anfordern" (NEU: erzeugt bezahlbare Order). Idee: „Zahlung anfordern" auf die preorders-Seite holen.
+
 ---
 
 ## 2. 🌸 Parfüm-Preisstrategie (Entscheidungen — nicht neu auswürfeln)
@@ -83,19 +100,22 @@
 - **Anker NICHT über „Original kostet X" bei günstigen Düften** (oft teurer als Original/10 ml) — USP ist Öl/halal/Community, nicht Preis.
 - **Rabatte NIE stapeln** (−20 % Vorbesteller UND −30 % Willkommen = gefährlich auf der Einstiegsstufe). Beides existiert aktuell nur als TEXT, keine Rabatt-Engine im Code.
 - **Kein Streichpreis-Feld** (Geschmacks-/Rechts-Risiko Mondpreis) — nur Endpreis. Dringlichkeit via ehrlichen Text („nach Launch X €").
-- **Phasen**: 0 Vorbestellung (kein Geld) ✅ DONE · 1 Zaurs eigener Stripe-Direktverkauf (kein Connect) · 2 Marktplatz mit Connect (erst bei Verkäufer-Nachfrage). Geld-Architektur: Coins=nur digital (IAP-Pflicht), physisch=echtes Geld/Web/Stripe (Apple verbietet IAP für Physisches).
+- **Phasen**: 0 Vorbestellung (kein Geld) ✅ · 1 Zaurs eigener Stripe-Direktverkauf (kein Connect) **✅ GEBAUT (Test-Modus)** — siehe §1-J · 2 Marktplatz mit Connect+Escrow (erst bei Verkäufer-Nachfrage, „du = Verkäufer #1"-Architektur liegt schon). Geld-Architektur: Coins=nur digital (IAP-Pflicht), physisch=echtes Geld/Web/Stripe (Apple verbietet IAP für Physisches).
+- **Wachstums-Flywheel (Zaurs Plan)**: Parfüm = Türöffner → Sammelbestellung (nur Samstag-Fenster, „ist mein Parfüm da?"-Tracking = Wiederkehr-Hook) bringt User rein → zurückkehrende Käufer werden selbst **Verkäufer** → mehr Ware → mehr Käufer. Deshalb ist der Marktplatz Wachstumsmotor, nicht Nachgedanke.
+- **Geld-Pre-Mortem (wichtig):** Bei 0 Usern bringen alle plattform-abhängigen Einnahmen 0 €. Einzige funktionierende Quelle jetzt = Zaur verkauft sein Parfüm an selbst-reingebrachte Leute. **Erst Verkauf validieren, dann Maschine.** Coin-Ökonomie verdient aktuell nichts/Minus (70% Diamanten @ 0,02 € > Coin-Preis) → kalibrieren. Details: Brain `outputs/2026-06-27-serlo-geld-premortem` + `decisions/2026-06-27-serlo-monetarisierung-roadmap`.
 
 ---
 
 ## 3. 🚀 OFFEN / Nächste Schritte
 
-1. **Mute/Lautstärke-Persistenz Guild-Detail (NÄCHSTE Aufgabe, von Zaur angefragt)**: `app/guild-post/[id].tsx` → `GuildPostDetailItem` nutzt aktuell **lokalen** `useState(true)` für `isMuted` (jedes Pager-Item separat, default stumm). Soll stattdessen den **globalen** Store `useVideoMute()` aus `lib/useVideoPreferences.ts` nutzen (wie Feed + Guild-Karten schon). Effekt: einmal entstummt → bleibt entstummt across Detail-Items (Swipe), zwischen Karten-Liste↔Detail, und über App-Neustart (AsyncStorage). Fix = `const { isMuted, toggleMute } = useVideoMute();` statt local; alle `setIsMuted((m)=>!m)` → `toggleMute()`.
-2. **🚀 Parfüm-Launch**: 20–30 **Hero-Düfte** einstellen (Web Shop-Studio: anlegen → „Als Vorbestellung" → €-Preis), an Bruder + Community teilen (**Link OHNE www!**). Das ist der eigentliche nächste Schritt.
-3. **🔴 Google-Login-Bug** („upstream request timeout" am Supabase-Callback): nach Micro-Upgrade neu testen (war evtl. IO-Drosselung). `docs/auth-setup.md`.
-4. **E-Mail/Resend fixen** (offen seit langem): E-Mail-Versand kaputt → Android-Signup-Lücke. `docs/auth-setup.md` Schritt 1.
-5. **Phase 1 (Stripe-Direktverkauf)** bauen wenn Vorbestellung zieht.
-6. **Referral-System** erst manuell starten (Bruder ~10-15 %, Kunde ~10 % Erst-Rabatt), dann bauen.
-7. **App-Vorbestell-Dashboard** + App-Chat-Produktkarten-Politur optional.
+1. **🔴 SOFORT: Migration `20260627140000_notification_types_orders.sql` ausführen** (Supabase-SQL-Editor) — sonst kommt die Vormerk-Benachrichtigung nicht an. Reine CHECK-Erweiterung, leer-safe.
+2. **🚀 Parfüm-Launch / Phase 0 validieren**: Zaur verkauft erst **offline** (Community/Bruder, testet selbst), dann Leute in die App holen. 20–30 Hero-Düfte als Vorbestellung einstellen (Web Shop-Studio), Links teilen (**OHNE www!**). **Erst-Verkauf beweisen, bevor mehr gebaut wird.**
+3. **Stripe Test → Live** umstellen, sobald echte Kunden zahlen sollen: Keys `sk_live_`, Live-Webhook (Memory `vibes-stripe-coinshop` hat den Plan). VORHER **AGB + Widerruf + Impressum + GoBD-Rechnung** (Anwalt/Steuerberater) — kein Rechtsrat von mir.
+4. **UG (haftungsbeschränkt)** gründen, spätestens bevor Drittverkäufer (Phase 2) Geld über die Plattform bewegen. Kappt Privathaftung (Zaur angestellt). Steuerberater ab erstem stetigen Umsatz; §19 → Regelbesteuerung bei 22.000 €.
+5. **Coin-Ökonomie kalibrieren** (verdient aktuell nichts): Diamant-Quote 70%→~30-40%, Auszahlkurs/Coin-Preis so, dass Plattform ≥50% behält. Cashout über lizenzierten Rail. (Phase 2, wenn User da.)
+6. **Phase 2 — Marktplatz scharf schalten** (andere Verkäufer): Stripe Connect + KYC + Escrow + Dispute. Architektur liegt schon (seller_accounts, platform_fee). Erst bei echter Verkäufer-Nachfrage.
+7. **Polish-Backlog Finanz**: (a) Bestell-Lebenszyklus-Notifs nutzen noch `type='gift'`+comment_text statt eigener `order_*`-Typen (lesbar, aber generisches Icon) — optional auf order_payment_requested/order_paid/order_shipped umstellen (CHECK erlaubt sie schon). (b) Datum/Uhrzeit auch in App-`my-orders` (aktuell nur Web). (c) Zwei Vorbestell-Oberflächen konsolidieren (siehe §1-J Warnung).
+8. **Altlasten**: 🔴 Google-Login-Bug („upstream request timeout" am Supabase-Callback, `docs/auth-setup.md`) · E-Mail/Resend kaputt → Android-Signup-Lücke (`docs/auth-setup.md` Schritt 1) · Referral-System erst manuell (Bruder ~10-15 %, Kunde ~10 % Erst-Rabatt), dann bauen.
 
 ---
 
@@ -133,6 +153,9 @@ git push "https://x-access-token:${TOKEN}@github.com/vibestes-boop/vibes-app.git
 - **Chat-Bild-Upload** → Storage-Bucket `chat-images` (öffentlich, eigener-Ordner-RLS).
 - **App-Chat-Ausrichtung**: horizontale Bubble-Ausrichtung über **Spalten-Container + `alignSelf`** (in Row geht's nicht zuverlässig). Reply-Icon `position:absolute`.
 - **Coin-Saldo** in `coins_wallets` (`coins`/`diamonds`), NICHT `profiles.coins_balance`.
+- **ZWEI Bestell-Systeme nicht vermischen**: `orders` = coin/digital (total_coins) · `product_orders` = echtes € (amount_eur, Phase 1). Vormerkungen = `product_preorders`.
+- **`notifications.type` hat CHECK-Constraint** — neue Typen IMMER per Migration ergänzen, sonst scheitert der Insert **still** (RPCs haben `EXCEPTION WHEN OTHERS THEN NULL`). Dynamische Erweiterung: siehe `20260627140000`. Renderer (App `app/(tabs)/notifications.tsx` + Web `components/notifications/notification-list.tsx`) müssen den Typ auch kennen.
+- **Finanz-Prinzip**: nie fremdes Geld halten — echtes Geld über Stripe (Phase 1: Zaurs Account) / später Stripe Connect (lizenzierter PSP). Coins = nur digital.
 - **`supabase/SCHEMA.md`** = Source-of-Truth für reale Spalten (`profiles` hat KEIN `follower_count`).
 - **FlashList + numColumns** = einspaltig → Grids mit RN-FlatList. **Reanimated** statisch importieren. **Status-Bar** `useThemedStatusBar` pro Screen. **Light-Mode**: kein hartes Weiß auf theme-Flächen.
 - **Pre-existing tsc-Baseline = 2** (`'rose'` in explore/guild-Styles).
@@ -140,6 +163,7 @@ git push "https://x-access-token:${TOKEN}@github.com/vibestes-boop/vibes-app.git
 ---
 
 ## 6. 🧠 Gedächtnis + Über Zaur
-- Memory: `~/.claude/projects/-Users-zaurhatuev-vibes-app/memory/` (lädt automatisch). Relevant: `vibes-seamless-comments-video` (NEU — Video-läuft-beim-Kommentar + onProgress-Falle), `vibes-shop-banner-adspace` (vermietbare Banner), `vibes-og-image-satori`, `vibes-stripe-coinshop`, `vibes-shop-digital-delivery`, `vibes-ota-eas-update-stubs` (EAS_BUILD=1!), `vibes-reanimated-static-import`, `vibes-flashlist-numcolumns-bug`, `vibes-statusbar-theme`, `vibes-lightmode-contrast-bug`, `vibes-web-deps-isolation`.
+- **Strategie/Finanz im Brain (gbrain `~/brain`)**: `decisions/2026-06-27-serlo-finanz-architektur` (Geldfluss, „du=Verkäufer #1", Stripe-Connect-Zielbild, Parfüm-Bezahllogik), `decisions/2026-06-27-serlo-monetarisierung-roadmap` (8 Einnahmequellen, Phasen, Coin-Ökonomie-Warnung), `outputs/2026-06-27-serlo-geld-premortem`. Lesen via `mcp__gbrain__get_page` / `search`. Bei neuer Strategie-Entscheidung dort aktualisieren (`put_page` + `sync_brain`).
+- Memory: `~/.claude/projects/-Users-zaurhatuev-vibes-app/memory/` (lädt automatisch). Relevant: `vibes-seamless-comments-video` (Video-läuft-beim-Kommentar + onProgress-Falle), `vibes-shop-banner-adspace` (vermietbare Banner), `vibes-og-image-satori`, `vibes-stripe-coinshop`, `vibes-shop-digital-delivery`, `vibes-ota-eas-update-stubs` (EAS_BUILD=1!), `vibes-reanimated-static-import`, `vibes-flashlist-numcolumns-bug`, `vibes-statusbar-theme`, `vibes-lightmode-contrast-bug`, `vibes-web-deps-isolation`.
 - **Zaur**: Solo-Gründer, deutschsprachig (tschetschenische Community). **Kostenbewusst** (validieren vor bauen; „commits kosten Geld"). Macht **DB-Migrationen + Secrets + Compute selbst** im Dashboard. **Credentials/EK NIE im Chat oder in getrackten Dateien.** Testet Mobile auf dem Gerät → iterativ OTA → Feedback (App-Neustart nötig fürs OTA!). Bevorzugt knapp/direkt/warm, eine Sache pro Commit. Neues Geschäft: **Öl-Parfüm** (Sammelbestellung), Bruder + Community als Wachstums-/Reseller-Kanal.
 - **Verifikations-Grenze**: Web-Chat + App sind login-geschützt / nicht headless prüfbar — visuelle Bestätigung läuft über Zaurs Screenshots.
