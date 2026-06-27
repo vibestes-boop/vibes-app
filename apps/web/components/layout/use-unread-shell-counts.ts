@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import {
@@ -20,6 +20,11 @@ export function useUnreadShellCounts(
 ) {
   const [afterFirstPaint, setAfterFirstPaint] = useState(false);
   const queryClient = useQueryClient();
+  // Eindeutiger Channel-Name PRO Hook-Instanz. Der Hook läuft auf einer Seite
+  // mehrfach (Bell-Pill + DM-Pill + Sidebar); ein geteilter Name → Supabase ruft
+  // `.on()` auf einem schon subscribten Channel → wirft „cannot add postgres_changes
+  // callbacks after subscribe()" und crasht die Seite. Random-Suffix verhindert das.
+  const channelName = useRef(`shell-counts-${Math.random().toString(36).slice(2)}`).current;
 
   useEffect(() => {
     if (!viewerId) {
@@ -39,25 +44,35 @@ export function useUnreadShellCounts(
   useEffect(() => {
     if (!viewerId) return;
     const client = createClient();
-    const channel = client
-      .channel(`shell-counts-${viewerId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          filter: `recipient_id=eq.${viewerId}`,
-        },
-        () => {
-          void queryClient.invalidateQueries({ queryKey: ['unread-shell-counts'] });
-        },
-      )
-      .subscribe();
+    // Realtime ist optional — Fehler dürfen die Shell NIE crashen (try/catch).
+    let channel: ReturnType<typeof client.channel> | null = null;
+    try {
+      channel = client
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'notifications',
+            filter: `recipient_id=eq.${viewerId}`,
+          },
+          () => {
+            void queryClient.invalidateQueries({ queryKey: ['unread-shell-counts'] });
+          },
+        )
+        .subscribe();
+    } catch {
+      // Realtime nicht verfügbar → der 120-Sek-Poll hält den Badge trotzdem aktuell.
+    }
     return () => {
-      client.removeChannel(channel);
+      try {
+        if (channel) client.removeChannel(channel);
+      } catch {
+        /* noop */
+      }
     };
-  }, [viewerId, queryClient]);
+  }, [viewerId, queryClient, channelName]);
 
   return useQuery({
     queryKey: ['unread-shell-counts'],
