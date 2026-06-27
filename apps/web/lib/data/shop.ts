@@ -224,11 +224,14 @@ export const getProduct = cache(async (productId: string): Promise<ShopProduct |
   // Hat der Viewer dieses Produkt vorgemerkt? (für den „Zurücknehmen"-Button)
   let preorderedSet: Set<string> | undefined;
   if (viewerId) {
+    // Nur OFFENE Vormerkungen zählen als „vorgemerkt". Nach Durchlauf der
+    // Bestellung (shipped/cancelled) darf der Käufer erneut vormerken (Repeat-Kauf).
     const { data: pp } = await supabase
       .from('product_preorders')
       .select('product_id')
       .eq('user_id', viewerId)
       .eq('product_id', productId)
+      .in('status', ['interested', 'notified'])
       .maybeSingle();
     if (pp) preorderedSet = new Set([productId]);
   }

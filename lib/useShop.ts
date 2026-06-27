@@ -359,11 +359,14 @@ export function useMyPreorder(productId: string) {
     enabled:  !!user?.id && !!productId,
     staleTime: 30_000,
     queryFn: async () => {
+      // Nur OFFENE Vormerkungen zählen als „vorgemerkt" — nach Durchlauf der
+      // Bestellung (shipped/cancelled) darf erneut vorgemerkt werden (Repeat-Kauf).
       const { data } = await supabase
         .from('product_preorders')
         .select('product_id')
         .eq('product_id', productId)
         .eq('user_id', user!.id)
+        .in('status', ['interested', 'notified'])
         .maybeSingle();
       return !!data;
     },

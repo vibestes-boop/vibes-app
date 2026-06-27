@@ -16,6 +16,14 @@ import {
 import type { PreorderGroup, ProductOrderRow, ProductOrderStatus } from '@/lib/data/shop';
 import { formatEur } from '@/lib/utils';
 import { ProductImage } from './product-image';
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 
 function fmtDateTime(iso: string): string {
   return new Date(iso).toLocaleString('de-DE', {
@@ -46,6 +54,9 @@ export function ProductOrdersPanel({ role, orders, preorderGroups }: Props) {
   const [msg, setMsg] = useState<string | null>(null);
   const [editAddrId, setEditAddrId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: '', street: '', zip: '', city: '', country: 'DE' });
+  const [shipId, setShipId] = useState<string | null>(null);
+  const [shipForm, setShipForm] = useState({ carrier: 'DHL', tracking: '' });
+  const [confirmAction, setConfirmAction] = useState<{ id: string; kind: 'receive' | 'cancel' } | null>(null);
 
   const hasSellerPreorders = role === 'seller' && preorderGroups.length > 0;
   if (orders.length === 0 && !hasSellerPreorders) return null;
@@ -57,24 +68,35 @@ export function ProductOrdersPanel({ role, orders, preorderGroups }: Props) {
       window.location.href = r.data.url;
     });
 
-  const onConfirm = (id: string) => {
-    if (!window.confirm('Paket erhalten?')) return;
-    startTransition(async () => {
-      const r = await confirmOrderDelivered(id);
-      if (!r.ok) setMsg(r.error);
-      else { setMsg('Erhalt bestätigt ✓'); router.refresh(); }
-    });
-  };
+  // Eigenes UI statt window.confirm/prompt: Bestätigung läuft über <Dialog>.
+  const onConfirm = (id: string) => setConfirmAction({ id, kind: 'receive' });
 
   const onShip = (id: string) => {
-    const carrier = window.prompt('Versanddienst (z.B. DHL):', 'DHL') ?? '';
-    const tracking = window.prompt('Sendungsnummer (optional):', '') ?? '';
-    startTransition(async () => {
-      const r = await setOrderShipped(id, carrier, tracking);
-      if (!r.ok) setMsg(r.error);
-      else { setMsg('Als versendet markiert ✓'); router.refresh(); }
-    });
+    setShipForm({ carrier: 'DHL', tracking: '' });
+    setShipId(id);
   };
+
+  const submitShip = () =>
+    startTransition(async () => {
+      if (!shipId) return;
+      const r = await setOrderShipped(shipId, shipForm.carrier, shipForm.tracking);
+      if (!r.ok) { setMsg(r.error); return; }
+      setMsg('Als versendet markiert ✓');
+      setShipId(null);
+      router.refresh();
+    });
+
+  const runConfirm = () =>
+    startTransition(async () => {
+      if (!confirmAction) return;
+      const r = confirmAction.kind === 'receive'
+        ? await confirmOrderDelivered(confirmAction.id)
+        : await cancelProductOrder(confirmAction.id);
+      if (!r.ok) { setMsg(r.error); setConfirmAction(null); return; }
+      setMsg(confirmAction.kind === 'receive' ? 'Erhalt bestätigt ✓' : 'Bestellung storniert.');
+      setConfirmAction(null);
+      router.refresh();
+    });
 
   const onMarkPayable = (id: string, title: string) =>
     startTransition(async () => {
@@ -87,14 +109,7 @@ export function ProductOrdersPanel({ role, orders, preorderGroups }: Props) {
       router.refresh();
     });
 
-  const onCancel = (id: string) => {
-    if (!window.confirm('Bestellung wirklich stornieren?')) return;
-    startTransition(async () => {
-      const r = await cancelProductOrder(id);
-      if (!r.ok) setMsg(r.error);
-      else { setMsg('Bestellung storniert.'); router.refresh(); }
-    });
-  };
+  const onCancel = (id: string) => setConfirmAction({ id, kind: 'cancel' });
 
   const openAddrEdit = (o: ProductOrderRow) => {
     setForm({
@@ -346,6 +361,78 @@ export function ProductOrdersPanel({ role, orders, preorderGroups }: Props) {
           })}
         </div>
       )}
+
+      {/* Versand-Dialog (eigenes UI statt window.prompt) */}
+      <Dialog open={shipId !== null} onOpenChange={(o) => !o && setShipId(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Als versendet markieren</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Input
+              placeholder="Versanddienst (z.B. DHL)"
+              value={shipForm.carrier}
+              onChange={(e) => setShipForm((f) => ({ ...f, carrier: e.target.value }))}
+            />
+            <Input
+              placeholder="Sendungsnummer (optional)"
+              value={shipForm.tracking}
+              onChange={(e) => setShipForm((f) => ({ ...f, tracking: e.target.value }))}
+            />
+          </div>
+          <DialogFooter>
+            <button
+              onClick={() => setShipId(null)}
+              className="rounded-full border px-4 py-2 text-sm font-medium hover:bg-accent"
+            >
+              Abbrechen
+            </button>
+            <button
+              onClick={submitShip}
+              disabled={pending}
+              className="inline-flex items-center justify-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            >
+              <PackageCheck className="h-4 w-4" />
+              Versenden
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bestätigungs-Dialog: Erhalten / Stornieren (eigenes UI statt window.confirm) */}
+      <Dialog open={confirmAction !== null} onOpenChange={(o) => !o && setConfirmAction(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>
+              {confirmAction?.kind === 'receive' ? 'Paket erhalten?' : 'Bestellung stornieren?'}
+            </DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {confirmAction?.kind === 'receive'
+              ? 'Bestätige, dass dein Paket angekommen ist.'
+              : 'Solange noch nicht bezahlt ist, kannst du jederzeit absagen.'}
+          </p>
+          <DialogFooter>
+            <button
+              onClick={() => setConfirmAction(null)}
+              className="rounded-full border px-4 py-2 text-sm font-medium hover:bg-accent"
+            >
+              Abbrechen
+            </button>
+            <button
+              onClick={runConfirm}
+              disabled={pending}
+              className={`rounded-full px-4 py-2 text-sm font-medium disabled:opacity-50 ${
+                confirmAction?.kind === 'cancel'
+                  ? 'bg-red-600 text-white hover:bg-red-700'
+                  : 'bg-primary text-primary-foreground hover:bg-primary/90'
+              }`}
+            >
+              {confirmAction?.kind === 'receive' ? 'Ja, erhalten' : 'Stornieren'}
+            </button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
