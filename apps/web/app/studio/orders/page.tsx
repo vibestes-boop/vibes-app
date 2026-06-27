@@ -2,10 +2,10 @@ import type { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import type { Route } from 'next';
-import { ShoppingBag, ArrowLeft, PackageOpen } from 'lucide-react';
+import { ShoppingBag, ArrowLeft, PackageOpen, Boxes, ChevronRight } from 'lucide-react';
 import { OrderRow } from '@/components/shop/order-row';
 import { ProductOrdersPanel } from '@/components/shop/product-orders-panel';
-import { getMyOrders, getMyProductOrders, getMyPreorderGroups } from '@/lib/data/shop';
+import { getMyOrders, getMyProductOrders } from '@/lib/data/shop';
 import { getUser } from '@/lib/auth/session';
 import { EmptyState } from '@/components/ui/empty-state';
 import { cn } from '@/lib/utils';
@@ -30,7 +30,6 @@ export default async function OrdersPage({ searchParams }: PageProps) {
 
   const orders = await getMyOrders(role);
   const productOrders = await getMyProductOrders(role);
-  const preorderGroups = role === 'seller' ? await getMyPreorderGroups() : [];
 
   const totalCoins = orders.reduce((s, o) => s + o.total_coins, 0);
   const completedCount = orders.filter((o) => o.status === 'completed').length;
@@ -83,8 +82,28 @@ export default async function OrdersPage({ searchParams }: PageProps) {
         </Link>
       </div>
 
-      {/* Echtgeld-Bestellungen (physische Ware) — neuer Phase-1-Flow */}
-      <ProductOrdersPanel role={role} orders={productOrders} preorderGroups={preorderGroups} />
+      {/* Vorbestellungen werden separat verwaltet (Interesse sammeln, anschreiben,
+          Zahlung anfordern) → eine Oberfläche unter /studio/shop/preorders. */}
+      {role === 'seller' && (
+        <Link
+          href={'/studio/shop/preorders' as Route}
+          className="mb-6 flex items-center justify-between gap-3 rounded-xl border bg-card p-4 transition-colors hover:bg-accent"
+        >
+          <div className="flex min-w-0 items-center gap-3">
+            <Boxes className="h-5 w-5 flex-none text-primary" />
+            <div className="min-w-0">
+              <div className="text-sm font-medium">Vorbestellungen verwalten</div>
+              <div className="text-xs text-muted-foreground">
+                Interessenten anschreiben & „Ware ist da → Zahlung anfordern“
+              </div>
+            </div>
+          </div>
+          <ChevronRight className="h-4 w-4 flex-none text-muted-foreground" />
+        </Link>
+      )}
+
+      {/* Echtgeld-Bestellungen (physische Ware) — Phase-1-Flow */}
+      <ProductOrdersPanel role={role} orders={productOrders} />
 
       {/* KPIs (Coin-/Digital-Bestellungen) */}
       {orders.length > 0 && (

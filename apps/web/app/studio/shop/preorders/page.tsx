@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   PreorderContactButton,
   PreorderNotifyAllButton,
+  PreorderRequestPaymentButton,
 } from '@/components/shop/preorder-contact';
 
 export const metadata: Metadata = {
@@ -56,6 +57,19 @@ export default async function PreordersPage() {
   );
   const listMap = new Map(lists);
 
+  // €-Preis je Produkt (für „Zahlung anfordern"). get_my_preorder_summary liefert
+  // ihn nicht → separat aus products laden.
+  const priceMap = new Map<string, number | null>();
+  if (summary.length > 0) {
+    const { data: prods } = await supabase
+      .from('products')
+      .select('id, price_eur')
+      .in('id', summary.map((s) => s.product_id));
+    for (const p of prods ?? []) {
+      priceMap.set(p.id as string, (p.price_eur as number | null) ?? null);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 lg:px-6">
       <Link
@@ -71,8 +85,13 @@ export default async function PreordersPage() {
         Vorbestellungen
       </h1>
       <p className="mb-8 mt-1 text-sm text-muted-foreground">
-        Gesammeltes Interesse an deinen Sammelbestellungen — kein Geld geflossen.
-        Sobald genug zusammenkommt: bestellen, anschreiben, bei Lieferung kassieren.
+        Gesammeltes Interesse an deinen Sammelbestellungen. Schreib Interessenten
+        an („Alle anschreiben“) und sobald die Ware da ist, fordere die Zahlung an —
+        daraus werden bezahlbare Bestellungen, die du dann unter{' '}
+        <Link href={'/studio/orders?role=seller' as Route} className="font-medium text-foreground hover:underline">
+          Bestellungen
+        </Link>{' '}
+        versendest.
       </p>
 
       {summary.length === 0 ? (
@@ -100,7 +119,7 @@ export default async function PreordersPage() {
                   >
                     {s.title}
                   </Link>
-                  <div className="flex flex-none items-center gap-2">
+                  <div className="flex flex-wrap items-center justify-end gap-2">
                     <span className="rounded-full bg-amber-600/15 px-2.5 py-1 text-xs font-medium text-amber-700 tabular-nums dark:text-amber-400">
                       {count} {count === 1 ? 'Person' : 'Leute'} · {qty} Flaschen
                     </span>
@@ -108,6 +127,11 @@ export default async function PreordersPage() {
                       productId={s.product_id}
                       title={s.title}
                       count={interestedCount}
+                    />
+                    <PreorderRequestPaymentButton
+                      productId={s.product_id}
+                      title={s.title}
+                      priceEur={priceMap.get(s.product_id) ?? null}
                     />
                   </div>
                 </div>

@@ -3,10 +3,11 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Route } from 'next';
-import { MessageCircle, Loader2, Send } from 'lucide-react';
+import { MessageCircle, Loader2, Send, Bell } from 'lucide-react';
 import { toast } from 'sonner';
 import { getOrCreateConversation } from '@/app/actions/messages';
-import { notifyPreorderBuyers } from '@/app/actions/shop';
+import { markPreordersPayable, notifyPreorderBuyers } from '@/app/actions/shop';
+import { formatEur } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -139,6 +140,89 @@ export function PreorderNotifyAllButton({
             </Button>
             <Button onClick={send} disabled={isPending}>
               {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : `An ${count} senden`}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
+// -----------------------------------------------------------------------------
+// PreorderRequestPaymentButton — „Ware ist da → Zahlung anfordern".
+// Erzeugt aus den Vormerkungen bezahlbare Echtgeld-Bestellungen (mark_preorders_
+// payable) und schickt allen die „jetzt bezahlen"-Aufforderung. Braucht einen
+// €-Preis am Produkt; fehlt der, zeigt der Button einen Hinweis statt der Aktion.
+// -----------------------------------------------------------------------------
+
+export function PreorderRequestPaymentButton({
+  productId,
+  title,
+  priceEur,
+}: {
+  productId: string;
+  title: string;
+  priceEur: number | null;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
+
+  if (priceEur == null) {
+    return (
+      <span
+        className="inline-flex flex-none items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium text-muted-foreground"
+        title="Setze zuerst einen €-Preis am Produkt (Shop-Studio → Bearbeiten)."
+      >
+        <Bell className="h-3.5 w-3.5" />
+        €-Preis fehlt
+      </span>
+    );
+  }
+
+  const run = () => {
+    startTransition(async () => {
+      const res = await markPreordersPayable(productId);
+      if (!res.ok) {
+        toast.error(res.error);
+        return;
+      }
+      setOpen(false);
+      toast.success(
+        `„${title}“: ${res.data.created} Zahlungsaufforderung(en) gesendet` +
+          (res.data.skipped > 0 ? `, ${res.data.skipped} schon offen.` : '.'),
+      );
+      router.refresh();
+    });
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="inline-flex flex-none items-center gap-1.5 rounded-full bg-foreground px-3 py-1.5 text-xs font-semibold text-background transition-colors hover:bg-foreground/90"
+      >
+        <Bell className="h-3.5 w-3.5" />
+        Ware ist da → Zahlung anfordern
+      </button>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Zahlung anfordern</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Erzeugt für jede Vormerkung von „{title}“ eine bezahlbare Bestellung
+            (je {formatEur(priceEur)}) und schickt allen die „jetzt bezahlen“-
+            Aufforderung. Schon offene Bestellungen werden übersprungen.
+          </p>
+          <div className="mt-2 flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={isPending}>
+              Abbrechen
+            </Button>
+            <Button onClick={run} disabled={isPending}>
+              {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Anfordern'}
             </Button>
           </div>
         </DialogContent>
