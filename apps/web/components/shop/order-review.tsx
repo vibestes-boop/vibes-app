@@ -95,9 +95,10 @@ export function OrderReviewControl({
       <div className="flex items-center gap-2">
         {myReview ? (
           <>
+            <span className="text-xs text-muted-foreground">Deine Bewertung:</span>
             <Stars value={myReview.rating} />
             <button onClick={openDialog} className="text-xs font-medium text-muted-foreground hover:text-foreground">
-              Bewertung ändern
+              ändern
             </button>
           </>
         ) : (

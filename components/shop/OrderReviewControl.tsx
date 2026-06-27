@@ -81,6 +81,7 @@ export function OrderReviewControl({
     <View style={{ gap: 6, paddingTop: 4 }}>
       {myReview ? (
         <Pressable onPress={openModal} style={s.row} hitSlop={4}>
+          <Text style={[s.recvLabel, { color: colors.text.muted }]}>Deine Bewertung:</Text>
           <Stars value={myReview.rating} size={16} />
           <Text style={[s.link, { color: colors.text.muted }]}>· ändern</Text>
         </Pressable>

@@ -25,7 +25,7 @@ import { useHasPendingRequest,useSendFollowRequest,useWithdrawFollowRequest } fr
 import { useOrCreateConversation } from '@/lib/useMessages';
 import { useIsHostMuted,useToggleMuteHost } from '@/lib/useMutedLiveHosts';
 import { useReportUser } from '@/lib/useReport';
-import { useShopProducts,type Product } from '@/lib/useShop';
+import { useOrderRating,useShopProducts,type Product } from '@/lib/useShop';
 import { useTheme } from '@/lib/useTheme';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
@@ -47,6 +47,7 @@ Share2,
 Shield,
 ShieldOff,
 ShoppingBag,
+Star,
 Swords,
 Timer,
 User,
@@ -150,6 +151,9 @@ export function UserProfileContent({ userId, onBack }: Props) {
   // v1.17.0: Battle-History Tab nur zeigen wenn der User schon gebattled hat.
   const { data: battleStats } = useBattleStats(id);
   const showBattlesTab = !!battleStats && battleStats.totalBattles > 0;
+
+  // Order-Reputation (Verkäufer-/Käufer-Bewertung) — öffentlich.
+  const { data: orderRating } = useOrderRating(id);
 
   // v1.26.5: Shop-Tab — nur anzeigen wenn der User min. 1 aktives Produkt hat.
   // `useShopProducts({ sellerId })` filtert serverseitig via RPC-Parameter
@@ -570,6 +574,26 @@ export function UserProfileContent({ userId, onBack }: Props) {
         </View>
 
         {profile.bio ? <Text style={[s.bio, { color: colors.text.secondary }]}>{profile.bio}</Text> : null}
+
+        {/* Order-Reputation: Verkäufer-/Käufer-Bewertung */}
+        {orderRating && (orderRating.sellerCount > 0 || orderRating.buyerCount > 0) ? (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14, marginTop: 8 }}>
+            {orderRating.sellerCount > 0 ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                <Star size={14} color="#F59E0B" fill="#F59E0B" strokeWidth={2} />
+                <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text.primary }}>{orderRating.sellerAvg?.toFixed(1)}</Text>
+                <Text style={{ fontSize: 12.5, color: colors.text.muted }}>als Verkäufer · {orderRating.sellerCount}</Text>
+              </View>
+            ) : null}
+            {orderRating.buyerCount > 0 ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                <Star size={14} color="#F59E0B" fill="#F59E0B" strokeWidth={2} />
+                <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text.primary }}>{orderRating.buyerAvg?.toFixed(1)}</Text>
+                <Text style={{ fontSize: 12.5, color: colors.text.muted }}>als Käufer · {orderRating.buyerCount}</Text>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
         {profile.website ? (
           <Pressable
             onPress={() => {

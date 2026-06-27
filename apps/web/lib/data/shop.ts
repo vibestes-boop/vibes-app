@@ -613,6 +613,29 @@ export interface OrderDispute {
   reporter_id: string;
 }
 
+// Aggregierte Order-Bewertung eines Users (öffentliche Reputation) via RPC.
+export interface OrderRatingAgg {
+  sellerAvg: number | null;
+  sellerCount: number;
+  buyerAvg: number | null;
+  buyerCount: number;
+}
+
+export const getOrderRating = cache(async (userId: string): Promise<OrderRatingAgg> => {
+  const supabase = await createClient();
+  const { data } = await supabase.rpc('get_order_rating', { p_user_id: userId });
+  const row = (Array.isArray(data) ? data[0] : data) as
+    | { seller_avg: number | null; seller_count: number; buyer_avg: number | null; buyer_count: number }
+    | null
+    | undefined;
+  return {
+    sellerAvg: row?.seller_avg != null ? Number(row.seller_avg) : null,
+    sellerCount: Number(row?.seller_count ?? 0),
+    buyerAvg: row?.buyer_avg != null ? Number(row.buyer_avg) : null,
+    buyerCount: Number(row?.buyer_count ?? 0),
+  };
+});
+
 export interface ProductOrderRow {
   id: string;
   buyer_id: string;

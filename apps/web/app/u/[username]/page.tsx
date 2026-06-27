@@ -2,13 +2,13 @@ import type { Metadata } from 'next';
 import { safeJsonLd } from '@/lib/seo/json-ld';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { BadgeCheck, Heart, Repeat2, ShoppingBag, Swords, Globe, Mountain, Radio, Bookmark, Flower2 } from 'lucide-react';
+import { BadgeCheck, Heart, Repeat2, ShoppingBag, Swords, Globe, Mountain, Radio, Bookmark, Flower2, Star } from 'lucide-react';
 
 import { getPublicProfile, getProfilePosts, getProfileLikedPosts, getProfileReposts, getBattleHistory, getFollowStateForViewer, getBookmarkedPosts, getProfileMeta, type ProfileSortKey } from '@/lib/data/public';
 import { getUserReplays } from '@/lib/data/live';
 import { getUser } from '@/lib/auth/session';
 import { getCoinBalanceForViewer } from '@/lib/data/payments';
-import { getMerchantProducts } from '@/lib/data/shop';
+import { getMerchantProducts, getOrderRating } from '@/lib/data/shop';
 import { isHostMutedForViewer } from '@/lib/data/live-host';
 import { PostGrid } from '@/components/profile/post-grid';
 import { ProductCard } from '@/components/shop/product-card';
@@ -210,6 +210,9 @@ export default async function ProfilePage({
     getProfileMeta(profile.id),
   ]);
 
+  // Order-Reputation (Verkäufer-/Käufer-Bewertung) — öffentlich, best-effort.
+  const orderRating = await getOrderRating(profile.id);
+
   const [likedPosts, savedPosts] = await Promise.all([
     tab === 'likes' && isSelf ? getProfileLikedPosts(profile.id, 24) : Promise.resolve([]),
     tab === 'saved' && isSelf ? getBookmarkedPosts(48) : Promise.resolve([]),
@@ -334,6 +337,26 @@ export default async function ProfilePage({
           <p className="mt-6 whitespace-pre-line text-sm leading-relaxed text-foreground/90">
             {linkify(profile.bio)}
           </p>
+        )}
+
+        {/* Order-Reputation: Verkäufer-Bewertung (von Käufern) + Käufer-Bewertung (von Verkäufern) */}
+        {(orderRating.sellerCount > 0 || orderRating.buyerCount > 0) && (
+          <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm">
+            {orderRating.sellerCount > 0 && (
+              <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                <span className="font-semibold text-foreground">{orderRating.sellerAvg?.toFixed(1)}</span>
+                als Verkäufer · {orderRating.sellerCount} {orderRating.sellerCount === 1 ? 'Bewertung' : 'Bewertungen'}
+              </span>
+            )}
+            {orderRating.buyerCount > 0 && (
+              <span className="inline-flex items-center gap-1.5 text-muted-foreground">
+                <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                <span className="font-semibold text-foreground">{orderRating.buyerAvg?.toFixed(1)}</span>
+                als Käufer · {orderRating.buyerCount}
+              </span>
+            )}
+          </div>
         )}
 
         {/* Meta-Zeile: Website · Battle · Teip · Women-Only — Parität zur Mobile-App.
