@@ -78,6 +78,7 @@ export function FeedSidebar({
   viewerProfile,
   followedAccounts,
   viewerIsAdmin = false,
+  railCollapsible = false,
 }: {
   viewerId: string | null;
   /** Profil-Daten für den Profil-Button mit Avatar. */
@@ -89,10 +90,17 @@ export function FeedSidebar({
    */
   followedAccounts?: FollowedAccount[];
   viewerIsAdmin?: boolean;
+  /**
+   * v1.w.UI.x — Schmale-Rail-Modus: Sidebar startet icon-only (w-20) und klappt
+   * beim Hover als Overlay auf. Gesetzt auf Seiten mit eigener zweiter Sidebar
+   * (Shop-Katalog mit Filter-Spalte), damit nicht zwei breite Sidebars kollidieren.
+   */
+  railCollapsible?: boolean;
 }) {
   const pathname = usePathname();
   const router = useRouter();
   const isActive = (href: Route) => pathname === href;
+  const [hovered, setHovered] = useState(false);
 
   const { data: unreadCounts } = useUnreadShellCounts(viewerId);
   const unreadDms = unreadCounts.dms;
@@ -103,15 +111,23 @@ export function FeedSidebar({
   const closeMore = () => setMoreOpen(false);
   const toggleMore = () => setMoreOpen((v) => !v);
 
+  // Visuell icon-only, wenn entweder das Mehr-Panel offen ist ODER der Schmale-
+  // Rail-Modus aktiv ist und gerade NICHT gehovert wird (Hover klappt auf).
+  const iconOnly = moreOpen || (railCollapsible && !hovered);
+
   return (
-    <div className={cn(
-      // Icon-Strip-Modus (Mehr-Panel offen): Sidebar wird w-20 (80px) schmal,
-      // behält aber p-4 + px-3 der Items bei — dadurch bleiben alle Icons
-      // EXAKT an derselben Position wie im offenen Zustand (Short-Video-Verhalten,
-      // kein Springen). 80px = 16 (p-4) + 12 (px-3) + 24 (Icon) + 12 + 16.
-      // bg-card, damit Strip + Panel eine durchgehende Fläche bilden.
+    <div
+      onMouseEnter={railCollapsible ? () => setHovered(true) : undefined}
+      onMouseLeave={railCollapsible ? () => setHovered(false) : undefined}
+      className={cn(
+      // Icon-Strip-Modus: Sidebar wird w-20 (80px) schmal, behält aber p-4 + px-3
+      // der Items bei — Icons bleiben EXAKT an derselben Position (kein Springen).
       'sticky top-0 flex h-[100dvh] flex-col gap-2 overflow-y-auto p-4 transition-all duration-200',
-      moreOpen && 'w-20 bg-card',
+      // Schmale-Rail-Modus (Shop): feste Breiten + Overlay (z-40, bg, border),
+      // damit das Aufklappen den Content NICHT verschiebt. Sonst: nur Mehr-Panel.
+      railCollapsible
+        ? cn('z-40 border-r border-border bg-card', iconOnly ? 'w-20' : 'w-[260px] shadow-elevation-2')
+        : (moreOpen && 'w-20 bg-card'),
     )}>
       {/*
        * Brand-Logo ganz oben — seit v1.w.UI.11 ersetzt die Sidebar den globalen
@@ -123,12 +139,12 @@ export function FeedSidebar({
         aria-label="Serlo — zur Startseite"
         className="px-3 pt-1 font-serif text-2xl font-medium tracking-tight text-foreground hover:text-foreground/80"
       >
-        {moreOpen ? 'S' : 'Serlo'}
+        {iconOnly ? 'S' : 'Serlo'}
       </Link>
 
       {/* Suchfeld — im Icon-Strip-Modus nur das Lupen-Icon an identischer
           Stelle (h-9 = Input-Höhe, px-3 + h-4-Icon = Position des Input-Icons) */}
-      {moreOpen ? (
+      {iconOnly ? (
         <Link
           href={'/search' as Route}
           aria-label="Suchen"
@@ -173,7 +189,7 @@ export function FeedSidebar({
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-elevation-1">
           <Plus className="h-4 w-4" strokeWidth={2.5} />
         </span>
-        {!moreOpen && <span>Posten</span>}
+        {!iconOnly && <span>Posten</span>}
       </Link>
 
       {/* Primary Nav — inkl. Benachrichtigungen (Drawer) + Profil (Avatar) */}
@@ -206,15 +222,15 @@ export function FeedSidebar({
                 disabled && 'pointer-events-none opacity-40',
               )}
             >
-              {active && !moreOpen && (
+              {active && !iconOnly && (
                 <span aria-hidden="true" className="absolute left-0 h-5 w-[3px] rounded-r-full bg-brand-purple" />
               )}
               {/* w-8-Icon-Slot: alle Icons (verschiedene Größen) auf einer Mittelachse */}
               <span className="flex w-8 shrink-0 justify-center">
                 <Icon className="h-6 w-6" />
               </span>
-              {!moreOpen && <span className="flex-1 truncate">{item.label}</span>}
-              {!moreOpen && badgeCount > 0 && (
+              {!iconOnly && <span className="flex-1 truncate">{item.label}</span>}
+              {!iconOnly && badgeCount > 0 && (
                 <span
                   aria-hidden="true"
                   className="ml-auto flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-brand-purple px-1.5 text-[11px] font-semibold leading-none text-white"
@@ -239,14 +255,14 @@ export function FeedSidebar({
                 : 'text-foreground hover:bg-muted/60',
             )}
           >
-            {notifDrawerOpen && !moreOpen && (
+            {notifDrawerOpen && !iconOnly && (
               <span aria-hidden="true" className="absolute left-0 h-5 w-[3px] rounded-r-full bg-brand-purple" />
             )}
             <span className="flex w-8 shrink-0 justify-center">
               <Bell className="h-6 w-6" />
             </span>
-            {!moreOpen && <span className="flex-1 truncate text-left">Benachrichtigungen</span>}
-            {!moreOpen && unreadNotifs > 0 && (
+            {!iconOnly && <span className="flex-1 truncate text-left">Benachrichtigungen</span>}
+            {!iconOnly && unreadNotifs > 0 && (
               <span
                 aria-hidden="true"
                 className="ml-auto flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-brand-purple px-1.5 text-[11px] font-semibold leading-none text-white"
@@ -269,7 +285,7 @@ export function FeedSidebar({
                 : 'text-foreground hover:bg-muted/60',
             )}
           >
-            {(pathname.startsWith('/u/') || pathname === '/profile') && !moreOpen && (
+            {(pathname.startsWith('/u/') || pathname === '/profile') && !iconOnly && (
               <span aria-hidden="true" className="absolute left-0 h-5 w-[3px] rounded-r-full bg-brand-purple" />
             )}
             <span className="flex w-8 shrink-0 justify-center">
@@ -286,7 +302,7 @@ export function FeedSidebar({
                 </span>
               )}
             </span>
-            {!moreOpen && <span className="flex-1 truncate">Profil</span>}
+            {!iconOnly && <span className="flex-1 truncate">Profil</span>}
           </Link>
         )}
 
@@ -301,7 +317,7 @@ export function FeedSidebar({
       <div className="flex flex-col gap-1.5">
         <h2 className={cn(
           'px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80',
-          moreOpen && 'invisible',
+          iconOnly && 'invisible',
         )}>
           Weiteres
         </h2>
@@ -328,7 +344,7 @@ export function FeedSidebar({
                 <span className="flex w-8 shrink-0 justify-center">
                   <Icon className="h-5 w-5" />
                 </span>
-                {!moreOpen && <span className="truncate">{item.label}</span>}
+                {!iconOnly && <span className="truncate">{item.label}</span>}
               </Link>
             );
           })}
@@ -348,7 +364,7 @@ export function FeedSidebar({
             <span className="flex w-8 shrink-0 justify-center">
               <ShieldCheck className="h-5 w-5" />
             </span>
-            {!moreOpen && <span>Admin-Panel</span>}
+            {!iconOnly && <span>Admin-Panel</span>}
           </Link>
         )}
       </div>
@@ -358,12 +374,12 @@ export function FeedSidebar({
        * Nur für eingeloggte Viewer, nur wenn die Page den Prefetch durchreicht.
        * Hidden when more panel is open.
        */}
-      {viewerId && followedAccounts && !moreOpen && (
+      {viewerId && followedAccounts && !iconOnly && (
         <FollowedAccountsSection initial={followedAccounts} />
       )}
 
       <div className="mt-auto flex flex-col gap-1">
-        {!moreOpen && (
+        {!iconOnly && (
           <div className="flex flex-wrap gap-x-3 gap-y-1 px-3 text-[11px] text-muted-foreground/80">
             <Link href={'/imprint' as Route} className="hover:text-foreground hover:underline">
               Impressum

@@ -3,6 +3,7 @@ import { getUser } from '@/lib/auth/session';
 import { getMyFollowedAccounts } from '@/lib/data/feed';
 import { createClient } from '@/lib/supabase/server';
 import { FeedSidebar } from '@/components/feed/feed-sidebar';
+import { cn } from '@/lib/utils';
 
 // -----------------------------------------------------------------------------
 // FeedSidebarLayout — geteiltes Server-Layout: persistente FeedSidebar auf
@@ -11,7 +12,15 @@ import { FeedSidebar } from '@/components/feed/feed-sidebar';
 // Verwendung: in app/<route>/layout.tsx einfach durchreichen.
 // -----------------------------------------------------------------------------
 
-export async function FeedSidebarLayout({ children }: { children: ReactNode }) {
+export async function FeedSidebarLayout({
+  children,
+  railCollapsible = false,
+}: {
+  children: ReactNode;
+  /** Schmale Icon-Rail, die beim Hover aufklappt — für Seiten mit eigener
+   *  zweiter Sidebar (Shop-Katalog), damit nicht zwei breite Sidebars kollidieren. */
+  railCollapsible?: boolean;
+}) {
   const user = await getUser();
   const viewerId = user?.id ?? null;
 
@@ -39,13 +48,18 @@ export async function FeedSidebarLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-[1600px]">
-      {/* Left Sidebar — nur auf xl+ sichtbar */}
-      <aside className="hidden w-[260px] shrink-0 border-r border-border xl:block">
+      {/* Left Sidebar — nur auf xl+ sichtbar. railCollapsible: schmale Rail (w-20),
+          die per Hover-Overlay aufklappt (border/bg trägt dann die Sidebar selbst). */}
+      <aside className={cn(
+        'hidden shrink-0 xl:block',
+        railCollapsible ? 'w-20' : 'w-[260px] border-r border-border',
+      )}>
         <FeedSidebar
           viewerId={viewerId}
           viewerProfile={viewerProfile}
           followedAccounts={followedAccounts}
           viewerIsAdmin={viewerIsAdmin}
+          railCollapsible={railCollapsible}
         />
       </aside>
 

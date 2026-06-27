@@ -5,5 +5,7 @@ import { FeedSidebarLayout } from '@/components/feed/feed-sidebar-layout';
 // vorher gab es hier nur die Filter-Spalte ohne Weg zurück zum Feed.
 
 export default function ShopLayout({ children }: { children: ReactNode }) {
-  return <FeedSidebarLayout>{children}</FeedSidebarLayout>;
+  // Schmale Icon-Rail (klappt per Hover auf): der Shop hat eine eigene Filter-
+  // Sidebar — zwei breite Sidebars nebeneinander wären zu viel.
+  return <FeedSidebarLayout railCollapsible>{children}</FeedSidebarLayout>;
 }
