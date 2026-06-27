@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { Route } from 'next';
-import { CheckCircle2, Clock, CreditCard, MapPin, PackageCheck, Truck } from 'lucide-react';
+import { CheckCircle2, Clock, CreditCard, MapPin, MessageCircle, PackageCheck, Truck } from 'lucide-react';
 import {
   cancelProductOrder,
   confirmOrderDelivered,
@@ -12,6 +12,7 @@ import {
   setOrderShipped,
   updateOrderShippingAddress,
 } from '@/app/actions/shop';
+import { getOrCreateConversation } from '@/app/actions/messages';
 import type { ProductOrderRow, ProductOrderStatus } from '@/lib/data/shop';
 import { formatEur } from '@/lib/utils';
 import { ProductImage } from './product-image';
@@ -96,6 +97,13 @@ export function ProductOrdersPanel({ role, orders }: Props) {
     });
 
   const onCancel = (id: string) => setConfirmAction({ id, kind: 'cancel' });
+
+  const onMessage = (otherId: string, productId: string | null) =>
+    startTransition(async () => {
+      const r = await getOrCreateConversation(otherId);
+      if (!r.ok) { setMsg(r.error); return; }
+      router.push((`/messages/${r.data.id}` + (productId ? `?productId=${productId}` : '')) as Route);
+    });
 
   const openAddrEdit = (o: ProductOrderRow) => {
     setForm({
@@ -223,6 +231,18 @@ export function ProductOrdersPanel({ role, orders }: Props) {
                       <Truck className="h-4 w-4" /> versendet
                     </span>
                   )}
+                </div>
+
+                {/* Direktkontakt zur Gegenseite (Verzögerung, Rückfragen, Probleme) */}
+                <div className="mt-2">
+                  <button
+                    onClick={() => onMessage(role === 'seller' ? o.buyer_id : o.seller_id, o.product_id)}
+                    disabled={pending}
+                    className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground disabled:opacity-50"
+                  >
+                    <MessageCircle className="h-3.5 w-3.5" />
+                    {role === 'seller' ? 'Käufer anschreiben' : 'Verkäufer anschreiben'}
+                  </button>
                 </div>
 
                 {/* Käufer · bezahlt: Lieferadresse anzeigen + ändern (bis zum Versand) */}

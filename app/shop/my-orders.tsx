@@ -24,12 +24,14 @@ CheckCircle2,
 Clock,
 CreditCard,
 MapPin,
+MessageCircle,
 Package,
 ShoppingBag,
 Store,
 Truck,
 } from 'lucide-react-native';
 import { useState } from 'react';
+import { useOrCreateConversation } from '@/lib/useMessages';
 import {
 ActivityIndicator,
 Alert,
@@ -70,6 +72,16 @@ export default function MyOrdersScreen() {
   const confirmDelivered = useConfirmOrderDelivered();
   const cancelOrder = useCancelProductOrder();
   const { update: updateAddr, isWorking: isSavingAddr } = useUpdateOrderShippingAddress();
+  const orCreate = useOrCreateConversation();
+
+  const handleMessage = async (o: ProductOrder) => {
+    try {
+      const convId = await orCreate.mutateAsync(o.seller_id);
+      router.push({ pathname: '/messages/[id]', params: { id: convId } } as any);
+    } catch {
+      Alert.alert('Hoppla', 'Chat konnte gerade nicht geöffnet werden — gleich nochmal?');
+    }
+  };
 
   const [addrOrder, setAddrOrder] = useState<ProductOrder | null>(null);
   const [form, setForm] = useState({ name: '', street: '', zip: '', city: '', country: 'DE' });
@@ -241,6 +253,12 @@ export default function MyOrdersScreen() {
             </View>
           </>
         )}
+
+        {/* Direktkontakt zum Verkäufer (Rückfragen, Probleme) */}
+        <Pressable onPress={() => handleMessage(o)} style={s.msgRow} hitSlop={6}>
+          <MessageCircle size={14} color={colors.text.muted} strokeWidth={2} />
+          <Text style={[s.msgText, { color: colors.text.muted }]}>Verkäufer anschreiben</Text>
+        </Pressable>
       </View>
     );
   };
@@ -388,6 +406,9 @@ const s = StyleSheet.create({
 
   deliveredRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   deliveredText: { fontSize: 13, fontWeight: '600' },
+
+  msgRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingTop: 2 },
+  msgText: { fontSize: 12.5, fontWeight: '600' },
 
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 14, paddingHorizontal: 40, paddingTop: 80 },
   emptyText: { fontSize: 14, textAlign: 'center', lineHeight: 20 },

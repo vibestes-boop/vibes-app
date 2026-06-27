@@ -19,8 +19,9 @@ import { useTheme } from '@/lib/useTheme';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { ArrowLeft, Bell, CheckCircle2, Clock, Package, PackageCheck, Truck } from 'lucide-react-native';
+import { ArrowLeft, Bell, CheckCircle2, Clock, MessageCircle, Package, PackageCheck, Truck } from 'lucide-react-native';
 import { useState } from 'react';
+import { useOrCreateConversation } from '@/lib/useMessages';
 import {
 ActivityIndicator,
 Alert,
@@ -47,6 +48,16 @@ export default function FulfillmentScreen() {
   const { data: orders = [], isLoading } = useSellerProductOrders();
   const { markPayable, isWorking: isMarking } = useMarkPreordersPayable();
   const { setShipped, isWorking: isShipping } = useSetOrderShipped();
+  const orCreate = useOrCreateConversation();
+
+  const handleMessage = async (o: ProductOrder) => {
+    try {
+      const convId = await orCreate.mutateAsync(o.buyer_id);
+      router.push({ pathname: '/messages/[id]', params: { id: convId } } as any);
+    } catch {
+      Alert.alert('Hoppla', 'Chat konnte gerade nicht geöffnet werden — gleich nochmal?');
+    }
+  };
 
   // Versand-Modal
   const [shipOrder, setShipOrder] = useState<ProductOrder | null>(null);
@@ -165,6 +176,10 @@ export default function FulfillmentScreen() {
                   <PackageCheck size={15} color={colors.bg.primary} strokeWidth={2.4} />
                   <Text style={[s.shipBtnText, { color: colors.bg.primary }]}>Als versendet markieren</Text>
                 </Pressable>
+                <Pressable onPress={() => handleMessage(o)} style={s.msgRow} hitSlop={6}>
+                  <MessageCircle size={14} color={colors.text.muted} strokeWidth={2} />
+                  <Text style={[s.msgText, { color: colors.text.muted }]}>Käufer anschreiben</Text>
+                </Pressable>
               </View>
             ))}
           </View>
@@ -270,6 +285,8 @@ const s = StyleSheet.create({
   addr: { fontSize: 12.5, fontWeight: '500', lineHeight: 18 },
   shipBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, height: 44, borderRadius: 12, marginTop: 4 },
   shipBtnText: { fontSize: 14, fontWeight: '700' },
+  msgRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingTop: 8 },
+  msgText: { fontSize: 12.5, fontWeight: '600' },
 
   empty: { fontSize: 13, fontWeight: '500' },
   miniRow: { flexDirection: 'row', alignItems: 'center', gap: 7 },
