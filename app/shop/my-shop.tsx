@@ -20,6 +20,7 @@ useUpdateProduct,
 type CreateProductInput,
 type Product,type ProductCategory,
 } from '@/lib/useShop';
+import { useAuthStore } from '@/lib/authStore';
 import { useTheme } from '@/lib/useTheme';
 import { impactAsync,ImpactFeedbackStyle } from 'expo-haptics';
 import { launchImageLibraryAsync,MediaTypeOptions,requestMediaLibraryPermissionsAsync } from 'expo-image-picker';
@@ -98,6 +99,9 @@ const EMPTY_FORM: CreateProductInput = {
   sale_price_coins: null,
   free_shipping:    false,
   location:         null,
+  // Default: normaler Coin-Verkauf. Vorbestellung (€) per Schalter im Formular.
+  sale_mode:        'coins',
+  price_eur:        null,
 };
 
 // ─── Hauptscreen ──────────────────────────────────────────────────────────────
@@ -111,6 +115,9 @@ export default function MyShopScreen() {
   const params = useLocalSearchParams<{ create?: string; edit?: string }>();
   const { colors } = useTheme();
   const { diamonds } = useCoinsWallet();
+  // Vorbestellung (sale_mode<>'coins') ist admin-gated (DB-Trigger downgradet
+  // Nicht-Admins still auf 'coins') → der €-Schalter erscheint nur für Admins.
+  const isAdmin = useAuthStore((st) => st.profile?.is_admin) ?? false;
 
   const { data: products = [], isLoading } = useMyProducts();
   const { mutateAsync: createProduct, isPending: isCreating } = useCreateProduct();
@@ -256,6 +263,8 @@ export default function MyShopScreen() {
       sale_price_coins: product.sale_price_coins ?? null,
       free_shipping:    product.free_shipping ?? false,
       location:         product.location ?? null,
+      sale_mode:        product.sale_mode ?? 'coins',
+      price_eur:        product.price_eur ?? null,
     });
     setShowSheet(true);
   }, []);
@@ -292,16 +301,25 @@ export default function MyShopScreen() {
       Alert.alert('Datei fehlt', 'Lade die digitale Datei hoch, die die Käuferin nach dem Kauf erhält.');
       return;
     }
-    if (form.price_coins < 1) { Alert.alert('Preis muss mindestens 1 Coin sein'); return; }
-    // v1.26.3: Angebotspreis muss kleiner als regulärer Preis sein (und > 0)
-    if (form.sale_price_coins != null) {
-      if (form.sale_price_coins < 1) {
-        Alert.alert('Angebotspreis ungültig', 'Muss mindestens 1 Coin sein.');
+    const isPreorder = form.sale_mode === 'preorder';
+    if (isPreorder) {
+      // Vorbestellung: €-Preis ist Pflicht (Coin-Felder werden ignoriert).
+      if (form.price_eur == null || form.price_eur <= 0) {
+        Alert.alert('€-Preis fehlt', 'Setze für die Vorbestellung einen Preis in Euro (z.B. 7,90).');
         return;
       }
-      if (form.sale_price_coins >= form.price_coins) {
-        Alert.alert('Angebotspreis ungültig', 'Muss kleiner als der reguläre Preis sein.');
-        return;
+    } else {
+      if (form.price_coins < 1) { Alert.alert('Preis muss mindestens 1 Coin sein'); return; }
+      // v1.26.3: Angebotspreis muss kleiner als regulärer Preis sein (und > 0)
+      if (form.sale_price_coins != null) {
+        if (form.sale_price_coins < 1) {
+          Alert.alert('Angebotspreis ungültig', 'Muss mindestens 1 Coin sein.');
+          return;
+        }
+        if (form.sale_price_coins >= form.price_coins) {
+          Alert.alert('Angebotspreis ungültig', 'Muss kleiner als der reguläre Preis sein.');
+          return;
+        }
       }
     }
     try {
@@ -403,6 +421,7 @@ export default function MyShopScreen() {
           form={form}
           setForm={setForm}
           isEditMode={isEditMode}
+          isAdmin={isAdmin}
           onPickCover={pickCover}
           uploadingCover={uploadingCover}
           onPickGallery={pickGalleryImages}
@@ -569,7 +588,7 @@ function ProductCard({
 // und der Save-Button-Text; die Form-Felder sind identisch.
 
 function ProductFormSheet({
-  form, setForm, isEditMode,
+  form, setForm, isEditMode, isAdmin,
   onPickCover, uploadingCover,
   onPickGallery, uploadingGallery, onRemoveGalleryImage,
   onPickFile, uploadingFile,
@@ -579,6 +598,7 @@ function ProductFormSheet({
   form: CreateProductInput;
   setForm: React.Dispatch<React.SetStateAction<CreateProductInput>>;
   isEditMode: boolean;
+  isAdmin: boolean;
   onPickCover: () => void;
   uploadingCover: boolean;
   onPickGallery: () => void;
@@ -593,6 +613,22 @@ function ProductFormSheet({
   colors: any;
   insets: any;
 }) {
+  const isPreorder = form.sale_mode === 'preorder';
+  // €-Eingabe als String halten, damit Dezimal-Tippen (7,90) nicht abbricht.
+  // Re-sync nur, wenn sich price_eur extern ändert (Edit-Sheet öffnet ein anderes
+  // Produkt) — während des Tippens matchen parsed/current, also kein Cursor-Sprung.
+  const [eurText, setEurText] = useState(
+    form.price_eur != null ? String(form.price_eur).replace('.', ',') : '',
+  );
+  useEffect(() => {
+    const parsed = parseFloat(eurText.replace(',', '.'));
+    const current = isNaN(parsed) ? null : parsed;
+    if ((form.price_eur ?? null) !== current) {
+      setEurText(form.price_eur != null ? String(form.price_eur).replace('.', ',') : '');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.price_eur]);
+
   return (
     <KeyboardAvoidingView
       style={[s.sheetRoot, { backgroundColor: colors.bg.primary }]}
@@ -760,20 +796,71 @@ function ProductFormSheet({
           maxLength={500}
         />
 
-        {/* Preis */}
-        <Text style={[s.label, { color: colors.text.primary }]}>Preis (Serlo Coins)</Text>
-        <View style={[s.priceRow, { backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle }]}>
-          <CoinIcon size={18} />
-          <TextInput
-            style={[s.priceInput, { color: colors.text.primary }]}
-            keyboardType="number-pad"
-            value={String(form.price_coins)}
-            onChangeText={(t) => setForm(f => ({ ...f, price_coins: Math.min(1_000_000, Math.max(1, parseInt(t.replace(/[^0-9]/g, ''), 10) || 0)) }))}
-          />
-          <Text style={[s.priceHint, { color: colors.text.muted }]}>
-            ≈ {((form.price_coins / 100) * 0.70).toFixed(2)} € für dich
-          </Text>
-        </View>
+        {/* Vorbestellung-Schalter: €-Verkauf statt Coins (z.B. Parfüm).
+            Admin-gated — der DB-Trigger downgradet Nicht-Admins still auf 'coins',
+            also zeigen wir den Schalter nur Admins (bzw. wenn schon preorder). */}
+        {(isAdmin || isPreorder) && (
+          <View style={[s.wozRow, { borderColor: colors.border.subtle, backgroundColor: colors.bg.elevated }]}>
+            <View style={{ flex: 1 }}>
+              <Text style={[s.wozTitle, { color: colors.text.primary }]}>🌸 Vorbestellung (€)</Text>
+              <Text style={[s.wozSub, { color: colors.text.muted }]}>
+                Erst vormerken, später per Euro bezahlen — statt Coin-Kauf
+              </Text>
+            </View>
+            <Switch
+              value={isPreorder}
+              onValueChange={(on) => setForm(f => ({
+                ...f,
+                sale_mode: on ? 'preorder' : 'coins',
+                // Coin-Angebot ergibt bei €-Vorbestellung keinen Sinn → leeren
+                sale_price_coins: on ? null : f.sale_price_coins,
+              }))}
+              trackColor={{ false: colors.border.subtle, true: colors.accent.primary }}
+            />
+          </View>
+        )}
+
+        {/* Preis — Vorbestellung: €, sonst Coins */}
+        {isPreorder ? (
+          <>
+            <Text style={[s.label, { color: colors.text.primary }]}>Preis (€)</Text>
+            <View style={[s.priceRow, { backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle }]}>
+              <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text.primary }}>€</Text>
+              <TextInput
+                style={[s.priceInput, { color: colors.text.primary }]}
+                keyboardType="decimal-pad"
+                placeholder="z.B. 7,90"
+                placeholderTextColor={colors.text.muted}
+                value={eurText}
+                onChangeText={(t) => {
+                  const cleaned = t.replace(/[^0-9.,]/g, '');
+                  setEurText(cleaned);
+                  const n = parseFloat(cleaned.replace(',', '.'));
+                  setForm(f => ({ ...f, price_eur: isNaN(n) || n <= 0 ? null : Math.round(n * 100) / 100 }));
+                }}
+              />
+            </View>
+            <Text style={[s.priceHint, { color: colors.text.muted, marginTop: 6 }]}>
+              {'Wird beim „Zahlung anfordern“ abgebucht. Coin-Preis wird ignoriert.'}
+            </Text>
+          </>
+        ) : (
+          <>
+            <Text style={[s.label, { color: colors.text.primary }]}>Preis (Serlo Coins)</Text>
+            <View style={[s.priceRow, { backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle }]}>
+              <CoinIcon size={18} />
+              <TextInput
+                style={[s.priceInput, { color: colors.text.primary }]}
+                keyboardType="number-pad"
+                value={String(form.price_coins)}
+                onChangeText={(t) => setForm(f => ({ ...f, price_coins: Math.min(1_000_000, Math.max(1, parseInt(t.replace(/[^0-9]/g, ''), 10) || 0)) }))}
+              />
+              <Text style={[s.priceHint, { color: colors.text.muted }]}>
+                ≈ {((form.price_coins / 100) * 0.70).toFixed(2)} € für dich
+              </Text>
+            </View>
+          </>
+        )}
 
         {/* Stock */}
         <Text style={[s.label, { color: colors.text.primary }]}>Verfügbarkeit</Text>
@@ -800,29 +887,34 @@ function ProductFormSheet({
           )}
         </View>
 
-        {/* v1.26.3: Angebots-Preis — optional, muss < price_coins sein */}
-        <Text style={[s.label, { color: colors.text.primary }]}>
-          <Percent size={12} color={colors.text.primary} /> Angebot (optional)
-        </Text>
-        <View style={[s.priceRow, { backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle }]}>
-          <CoinIcon size={18} />
-          <TextInput
-            style={[s.priceInput, { color: colors.text.primary }]}
-            keyboardType="number-pad"
-            placeholder="kein Angebot"
-            placeholderTextColor={colors.text.muted}
-            value={form.sale_price_coins != null ? String(form.sale_price_coins) : ''}
-            onChangeText={(t) => {
-              const n = parseInt(t, 10);
-              setForm(f => ({ ...f, sale_price_coins: isNaN(n) || n <= 0 ? null : n }));
-            }}
-          />
-          {form.sale_price_coins != null && form.sale_price_coins < form.price_coins && (
-            <Text style={[s.priceHint, { color: '#22C55E', fontWeight: '700' }]}>
-              -{Math.round((1 - form.sale_price_coins / form.price_coins) * 100)}%
+        {/* v1.26.3: Angebots-Preis — optional, muss < price_coins sein.
+            Nur bei Coin-Produkten (bei €-Vorbestellung ausgeblendet). */}
+        {!isPreorder && (
+          <>
+            <Text style={[s.label, { color: colors.text.primary }]}>
+              <Percent size={12} color={colors.text.primary} /> Angebot (optional)
             </Text>
-          )}
-        </View>
+            <View style={[s.priceRow, { backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle }]}>
+              <CoinIcon size={18} />
+              <TextInput
+                style={[s.priceInput, { color: colors.text.primary }]}
+                keyboardType="number-pad"
+                placeholder="kein Angebot"
+                placeholderTextColor={colors.text.muted}
+                value={form.sale_price_coins != null ? String(form.sale_price_coins) : ''}
+                onChangeText={(t) => {
+                  const n = parseInt(t, 10);
+                  setForm(f => ({ ...f, sale_price_coins: isNaN(n) || n <= 0 ? null : n }));
+                }}
+              />
+              {form.sale_price_coins != null && form.sale_price_coins < form.price_coins && (
+                <Text style={[s.priceHint, { color: '#22C55E', fontWeight: '700' }]}>
+                  -{Math.round((1 - form.sale_price_coins / form.price_coins) * 100)}%
+                </Text>
+              )}
+            </View>
+          </>
+        )}
 
         {/* v1.26.3: Ort / Location — Freitext */}
         <Text style={[s.label, { color: colors.text.primary }]}>

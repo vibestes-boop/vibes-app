@@ -96,6 +96,11 @@ export interface CreateProductInput {
   sale_price_coins?: number | null;  // < price_coins (DB-CHECK); null = kein Angebot
   free_shipping?:    boolean;        // nur relevant für category=physical
   location?:         string | null;  // Freitext-Ort, z.B. „Berlin, DE"
+  // Verkaufsart: 'coins' = Coin-Kauf (Standard) · 'preorder' = €-Vorbestellung
+  // (erst vormerken, später per Stripe zahlen). price_eur ist nur bei 'preorder'
+  // relevant; PostgREST schreibt beide Spalten direkt (kein RPC).
+  sale_mode?:  'coins' | 'preorder' | 'cash';
+  price_eur?:  number | null;        // €-Preis bei Vorbestellung (> 0)
 }
 
 // ─── Euro-Preis-Formatter ─────────────────────────────────────────────────────
