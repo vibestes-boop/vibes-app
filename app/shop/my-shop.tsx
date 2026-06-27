@@ -42,7 +42,7 @@ Sparkles,
 Trash2,
 Wrench,X
 } from 'lucide-react-native';
-import { useCallback,useEffect,useState } from 'react';
+import { useCallback,useEffect,useRef,useState } from 'react';
 import {
 ActivityIndicator,
 Alert,
@@ -106,7 +106,9 @@ export default function MyShopScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   // ?create=1 → Erstellen-Sheet direkt öffnen (Schnell-Einstieg vom Shop-FAB)
-  const params = useLocalSearchParams<{ create?: string }>();
+  // ?edit=<id> → Edit-Sheet für dieses Produkt öffnen (vom „Bearbeiten" auf der
+  //              Produktseite, wenn der Besitzer sein eigenes Produkt ansieht)
+  const params = useLocalSearchParams<{ create?: string; edit?: string }>();
   const { colors } = useTheme();
   const { diamonds } = useCoinsWallet();
 
@@ -257,6 +259,20 @@ export default function MyShopScreen() {
     });
     setShowSheet(true);
   }, []);
+
+  // Deep-Link ?edit=<id> (vom „Bearbeiten" auf der Produktseite): sobald die
+  // Produkte geladen sind, das Edit-Sheet für das passende Produkt öffnen.
+  // Ref-Guard → geht nach dem Schließen nicht von selbst wieder auf.
+  const handledEditRef = useRef<string | null>(null);
+  useEffect(() => {
+    const editId = params.edit;
+    if (!editId || handledEditRef.current === editId) return;
+    const prod = products.find((p) => p.id === editId);
+    if (prod) {
+      handledEditRef.current = editId;
+      openEditSheet(prod);
+    }
+  }, [params.edit, products, openEditSheet]);
 
   const closeSheet = useCallback(() => {
     setShowSheet(false);

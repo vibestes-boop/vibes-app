@@ -14,6 +14,7 @@ import {
   Gem,
   ShoppingBag,
   Star,
+  Pencil,
 } from "lucide-react";
 import { ImageCarousel } from "@/components/shop/image-carousel";
 import { BuyBar } from "@/components/shop/buy-bar";
@@ -136,6 +137,10 @@ export default async function ProductDetailPage({ params }: PageProps) {
       getOrderRating(product.seller_id),
     ]);
   const balance = user ? await getMyCoinBalance() : 0;
+  // Eigenes Produkt → statt Buy-Bar ein „Bearbeiten" (führt zur vorhandenen
+  // Edit-Seite /studio/shop/[id]/edit). Greift überall, wo der Besitzer auf
+  // sein eigenes Produkt kommt (Profil-Shop, Shop-Liste, geteilter Link).
+  const isOwner = !!user && user.id === product.seller_id;
 
   const images = [product.cover_url, ...product.image_urls].filter(
     (s): s is string => typeof s === "string" && s.length > 0,
@@ -426,12 +431,22 @@ export default async function ProductDetailPage({ params }: PageProps) {
             {/* Inline Buy-CTA (Desktop) — direkt in der Info-Column. Mobile
               nutzt weiter die Sticky-Variante am Seiten-Ende (siehe unten). */}
             <div className="hidden lg:block">
-              <BuyBar
-                product={product}
-                viewerId={user?.id ?? null}
-                coinBalance={balance}
-                variant="inline"
-              />
+              {isOwner ? (
+                <Link
+                  href={`/studio/shop/${product.id}/edit` as Route}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-foreground px-4 py-3 text-sm font-semibold text-background transition hover:opacity-90"
+                >
+                  <Pencil className="h-4 w-4" />
+                  Produkt bearbeiten
+                </Link>
+              ) : (
+                <BuyBar
+                  product={product}
+                  viewerId={user?.id ?? null}
+                  coinBalance={balance}
+                  variant="inline"
+                />
+              )}
             </div>
           </div>
         </div>
@@ -484,12 +499,24 @@ export default async function ProductDetailPage({ params }: PageProps) {
           oben in der Info-Column (siehe `variant="inline"` weiter oben). */}
         <div className="mt-10 lg:hidden" />
         <div className="lg:hidden">
-          <BuyBar
-            product={product}
-            viewerId={user?.id ?? null}
-            coinBalance={balance}
-            variant="sticky"
-          />
+          {isOwner ? (
+            <div className="sticky bottom-0 left-0 right-0 z-20 border-t bg-background/90 px-4 py-3 backdrop-blur-md lg:px-6">
+              <Link
+                href={`/studio/shop/${product.id}/edit` as Route}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-foreground px-4 py-3 text-sm font-semibold text-background transition hover:opacity-90"
+              >
+                <Pencil className="h-4 w-4" />
+                Produkt bearbeiten
+              </Link>
+            </div>
+          ) : (
+            <BuyBar
+              product={product}
+              viewerId={user?.id ?? null}
+              coinBalance={balance}
+              variant="sticky"
+            />
+          )}
         </div>
       </div>
     </>

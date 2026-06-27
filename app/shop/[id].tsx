@@ -49,6 +49,7 @@ MapPin,
 MessageCircle,
 Minus,
 MoreHorizontal,
+Pencil,
 Plus,
 Search,
 Send,
@@ -720,6 +721,10 @@ export default function ProductDetailScreen() {
   const [quantity, setQuantity] = useState(1);
 
   const isPreorder   = product?.sale_mode === 'preorder';
+  // Eigenes Produkt → statt Kauf-/Vormerk-Aktion ein „Bearbeiten" (öffnet die
+  // vorhandene Edit-UI in my-shop via ?edit=<id>). Greift überall, wo man auf
+  // sein eigenes Produkt kommt (Profil-Shop, Shop-Liste, geteilter Link).
+  const isOwner      = !!product && !!currentUserId && product.seller_id === currentUserId;
   const effPrice     = product ? effectivePrice(product) : 0;
   const percentOff   = product ? salePercent(product) : null;
   const totalCost    = effPrice * quantity;
@@ -847,7 +852,7 @@ export default function ProductDetailScreen() {
 
   // Qty-Stepper-Zeile wird nur gerendert wenn maxQty > 1 und stock != 0 —
   // reservier entsprechend Scroll-Padding, damit Sticky-Bar nichts verdeckt.
-  const hasQtyRow = isPreorder || (product.stock !== 0 && maxQty > 1);
+  const hasQtyRow = !isOwner && (isPreorder || (product.stock !== 0 && maxQty > 1));
   const buyBarH   = Math.max(insets.bottom, 14) + 80 + (hasQtyRow ? 52 : 0);
 
   // v1.26.6: Short-Video-Look — komplette Detailseite auf weißem Untergrund
@@ -1120,7 +1125,21 @@ export default function ProductDetailScreen() {
           </View>
         )}
 
-        {/* Zeile 2: Merken (kleiner Circle) + Big Buy-CTA mit Preis-Pill innen */}
+        {/* Zeile 2: Owner → „Bearbeiten"; sonst Merken (Circle) + Big Buy-CTA */}
+        {isOwner ? (
+          <Pressable
+            style={[s.buyBtn, { backgroundColor: colors.text.primary }]}
+            onPress={() => {
+              impactAsync(ImpactFeedbackStyle.Medium);
+              router.push({ pathname: '/shop/my-shop', params: { edit: product.id } });
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+              <Pencil size={16} color={colors.bg.primary} strokeWidth={2.5} />
+              <Text style={[s.buyCtaText, { color: colors.bg.primary }]}>Produkt bearbeiten</Text>
+            </View>
+          </Pressable>
+        ) : (
         <View style={s.buyBarInner}>
           <Pressable
             style={[s.saveCircle, {
@@ -1198,6 +1217,7 @@ export default function ProductDetailScreen() {
           </Pressable>
           )}
         </View>
+        )}
       </View>
 
       {/* ─── Bestätigungs-Modal ── */}
