@@ -7,9 +7,11 @@ import { Store, Bookmark, Package, ShoppingBag, Plus } from "lucide-react";
 import { ShopGrid } from "@/components/shop/shop-grid";
 import { ShopFilters } from "@/components/shop/shop-filters";
 import { ShopSearchInput } from "@/components/shop/shop-search-input";
+import { BannerCarousel } from "@/components/shop/banner-carousel";
 import { EmptyState as CanonicalEmptyState } from "@/components/ui/empty-state";
 import {
   getShopProducts,
+  getShopBanners,
   getMyCoinBalance,
   type ShopCatalogParams,
 } from "@/lib/data/shop";
@@ -62,8 +64,9 @@ export default async function ShopCatalogPage({ searchParams }: PageProps) {
     limit: 24,
   };
 
-  const [products, user, t, locale] = await Promise.all([
+  const [products, banners, user, t, locale] = await Promise.all([
     getShopProducts(params),
+    getShopBanners(),
     getUser(),
     getT(),
     getLocale(),
@@ -136,6 +139,9 @@ export default async function ShopCatalogPage({ searchParams }: PageProps) {
             )}
           </div>
         </div>
+
+        {/* Werbe-Banner-Karussell (eigene Promos / vermietbare Fläche) */}
+        {banners.length > 0 && <BannerCarousel banners={banners} />}
 
         {/* Such-Box */}
         <div className="mb-6 max-w-md">

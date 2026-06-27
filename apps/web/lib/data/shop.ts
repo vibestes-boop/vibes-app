@@ -96,6 +96,33 @@ async function fetchPublicShopPreviewProducts(limit: number): Promise<ShopPrevie
   return data as ShopPreviewProduct[];
 }
 
+// -----------------------------------------------------------------------------
+// Werbe-Banner (Karussell auf der Shop-Katalog-Seite). Parität mit der App
+// (useShopBanners). Öffentlich lesbar via RPC get_active_shop_banners (filtert
+// serverseitig auf active + im Zeitfenster). Leere Liste → Karussell rendert nicht.
+// -----------------------------------------------------------------------------
+export interface ShopBanner {
+  id: string;
+  tag: string | null;
+  title: string;
+  subtitle: string | null;
+  image_url: string | null;
+  bg_color: string;
+  link: string | null; // '/route', '/route?x=y' oder 'tab:<key>'
+  sort_order: number;
+}
+
+export async function getShopBanners(): Promise<ShopBanner[]> {
+  const supabase = createPublicClient();
+  try {
+    const { data, error } = await supabase.rpc('get_active_shop_banners');
+    if (!error && Array.isArray(data)) return data as ShopBanner[];
+  } catch {
+    // RPC/Migration evtl. noch nicht deployt → leise leer.
+  }
+  return [];
+}
+
 const getCachedPublicShopPreviewProducts = unstable_cache(
   async (limit: number): Promise<ShopPreviewProduct[]> => fetchPublicShopPreviewProducts(limit),
   ['public-shop-preview-products'],
