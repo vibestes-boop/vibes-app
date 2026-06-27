@@ -572,8 +572,14 @@ export default function ShopScreen() {
     ? (activeTab as ProductCategory)
     : undefined;
 
+  // Limit 200 statt Default 30: Der App-Browse filtert/sortiert client-seitig,
+  // also muss genug Material geladen sein — sonst sind Produkte jenseits der
+  // ersten 30 unsichtbar (Suche/Sort greifen nur auf Geladenes). Pflaster bis zur
+  // echten Server-Query + Infinite-Scroll (Parität mit Web). 200 reicht für die
+  // Parfüm-Launch-Menge locker.
   const { data: products = [], isLoading, refetch, isRefetching } = useShopProducts({
     category: serverCategory,
+    limit: 200,
   });
   const { data: banners = [] } = useShopBanners();
 
