@@ -4,12 +4,14 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { Route } from 'next';
-import { Bell, CheckCircle2, Clock, CreditCard, PackageCheck, Truck } from 'lucide-react';
+import { Bell, CheckCircle2, Clock, CreditCard, MapPin, PackageCheck, Truck } from 'lucide-react';
 import {
+  cancelProductOrder,
   confirmOrderDelivered,
   markPreordersPayable,
   payProductOrder,
   setOrderShipped,
+  updateOrderShippingAddress,
 } from '@/app/actions/shop';
 import type { PreorderGroup, ProductOrderRow, ProductOrderStatus } from '@/lib/data/shop';
 import { formatEur } from '@/lib/utils';
@@ -42,6 +44,8 @@ export function ProductOrdersPanel({ role, orders, preorderGroups }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
+  const [editAddrId, setEditAddrId] = useState<string | null>(null);
+  const [form, setForm] = useState({ name: '', street: '', zip: '', city: '', country: 'DE' });
 
   const hasSellerPreorders = role === 'seller' && preorderGroups.length > 0;
   if (orders.length === 0 && !hasSellerPreorders) return null;
@@ -80,6 +84,35 @@ export function ProductOrdersPanel({ role, orders, preorderGroups }: Props) {
         `„${title}": ${r.data.created} Zahlungsaufforderung(en) gesendet` +
         (r.data.skipped > 0 ? `, ${r.data.skipped} schon offen.` : '.'),
       );
+      router.refresh();
+    });
+
+  const onCancel = (id: string) => {
+    if (!window.confirm('Bestellung wirklich stornieren?')) return;
+    startTransition(async () => {
+      const r = await cancelProductOrder(id);
+      if (!r.ok) setMsg(r.error);
+      else { setMsg('Bestellung storniert.'); router.refresh(); }
+    });
+  };
+
+  const openAddrEdit = (o: ProductOrderRow) => {
+    setForm({
+      name: o.ship_name ?? '',
+      street: o.ship_street ?? '',
+      zip: o.ship_zip ?? '',
+      city: o.ship_city ?? '',
+      country: o.ship_country ?? 'DE',
+    });
+    setEditAddrId(o.id);
+  };
+
+  const onSaveAddr = (id: string) =>
+    startTransition(async () => {
+      const r = await updateOrderShippingAddress(id, form);
+      if (!r.ok) { setMsg(r.error); return; }
+      setMsg('Adresse aktualisiert ✓');
+      setEditAddrId(null);
       router.refresh();
     });
 
@@ -145,80 +178,168 @@ export function ProductOrdersPanel({ role, orders, preorderGroups }: Props) {
           {orders.map((o) => {
             const st = STATUS[o.status] ?? STATUS.reserved;
             return (
-              <div key={o.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex min-w-0 items-start gap-3">
-                  {o.product ? (
-                    <Link
-                      href={`/shop/${o.product.id}` as Route}
-                      className="relative h-14 w-14 flex-none overflow-hidden rounded-lg bg-muted"
-                    >
-                      <ProductImage cover={o.product.cover_url} title={o.product.title} category="physical" sizes="56px" fallbackClassName="text-lg" />
-                    </Link>
-                  ) : (
-                    <div className="relative h-14 w-14 flex-none overflow-hidden rounded-lg bg-muted" />
-                  )}
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      {o.product ? (
-                        <Link href={`/shop/${o.product.id}` as Route} className="truncate font-medium hover:underline">
-                          {o.product.title}
-                        </Link>
-                      ) : (
-                        <span className="truncate font-medium">Produkt</span>
-                      )}
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${st.cls}`}>{st.label}</span>
+              <div key={o.id} className="p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex min-w-0 items-start gap-3">
+                    {o.product ? (
+                      <Link
+                        href={`/shop/${o.product.id}` as Route}
+                        className="relative h-14 w-14 flex-none overflow-hidden rounded-lg bg-muted"
+                      >
+                        <ProductImage cover={o.product.cover_url} title={o.product.title} category="physical" sizes="56px" fallbackClassName="text-lg" />
+                      </Link>
+                    ) : (
+                      <div className="relative h-14 w-14 flex-none overflow-hidden rounded-lg bg-muted" />
+                    )}
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        {o.product ? (
+                          <Link href={`/shop/${o.product.id}` as Route} className="truncate font-medium hover:underline">
+                            {o.product.title}
+                          </Link>
+                        ) : (
+                          <span className="truncate font-medium">Produkt</span>
+                        )}
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${st.cls}`}>{st.label}</span>
+                      </div>
+                      <div className="mt-0.5 text-sm text-muted-foreground">
+                        {formatEur(o.amount_eur) ?? '—'}{o.quantity > 1 ? ` · ${o.quantity}×` : ''}
+                        {role === 'seller' && o.status === 'paid' && addr(o) ? ` · ${addr(o)}` : ''}
+                        {o.tracking_number ? ` · ${[o.tracking_carrier, o.tracking_number].filter(Boolean).join(' ')}` : ''}
+                      </div>
+                      <div className="mt-0.5 text-xs text-muted-foreground">{fmtDateTime(o.created_at)}</div>
                     </div>
-                    <div className="mt-0.5 text-sm text-muted-foreground">
-                      {formatEur(o.amount_eur) ?? '—'}{o.quantity > 1 ? ` · ${o.quantity}×` : ''}
-                      {role === 'seller' && o.status === 'paid' && addr(o) ? ` · ${addr(o)}` : ''}
-                      {o.tracking_number ? ` · ${[o.tracking_carrier, o.tracking_number].filter(Boolean).join(' ')}` : ''}
-                    </div>
-                    <div className="mt-0.5 text-xs text-muted-foreground">{fmtDateTime(o.created_at)}</div>
                   </div>
+
+                  {/* Käufer-Aktionen */}
+                  {role === 'buyer' && o.status === 'payment_requested' && (
+                    <div className="flex shrink-0 items-center gap-2">
+                      <button
+                        onClick={() => onCancel(o.id)}
+                        disabled={pending}
+                        className="rounded-full px-3 py-2 text-sm font-medium text-muted-foreground hover:text-foreground disabled:opacity-50"
+                      >
+                        Doch nicht
+                      </button>
+                      <button
+                        onClick={() => onPay(o.id)}
+                        disabled={pending}
+                        className="inline-flex items-center justify-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                      >
+                        <CreditCard className="h-4 w-4" />
+                        Jetzt bezahlen
+                      </button>
+                    </div>
+                  )}
+                  {role === 'buyer' && o.status === 'shipped' && (
+                    <button
+                      onClick={() => onConfirm(o.id)}
+                      disabled={pending}
+                      className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50"
+                    >
+                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      Erhalten
+                    </button>
+                  )}
+                  {role === 'buyer' && o.status === 'paid' && (
+                    <span className="inline-flex shrink-0 items-center gap-1.5 text-sm text-muted-foreground">
+                      <Clock className="h-4 w-4" /> wird vorbereitet
+                    </span>
+                  )}
+
+                  {/* Verkäufer-Aktion */}
+                  {role === 'seller' && o.status === 'paid' && (
+                    <button
+                      onClick={() => onShip(o.id)}
+                      disabled={pending}
+                      className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                    >
+                      <PackageCheck className="h-4 w-4" />
+                      Als versendet markieren
+                    </button>
+                  )}
+                  {role === 'seller' && o.status === 'shipped' && (
+                    <span className="inline-flex shrink-0 items-center gap-1.5 text-sm text-muted-foreground">
+                      <Truck className="h-4 w-4" /> versendet
+                    </span>
+                  )}
                 </div>
 
-                {/* Käufer-Aktionen */}
-                {role === 'buyer' && o.status === 'payment_requested' && (
-                  <button
-                    onClick={() => onPay(o.id)}
-                    disabled={pending}
-                    className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                  >
-                    <CreditCard className="h-4 w-4" />
-                    Jetzt bezahlen
-                  </button>
-                )}
-                {role === 'buyer' && o.status === 'shipped' && (
-                  <button
-                    onClick={() => onConfirm(o.id)}
-                    disabled={pending}
-                    className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium hover:bg-accent disabled:opacity-50"
-                  >
-                    <CheckCircle2 className="h-4 w-4 text-green-600" />
-                    Erhalten
-                  </button>
-                )}
-                {role === 'buyer' && o.status === 'paid' && (
-                  <span className="inline-flex shrink-0 items-center gap-1.5 text-sm text-muted-foreground">
-                    <Clock className="h-4 w-4" /> wird vorbereitet
-                  </span>
+                {/* Käufer · bezahlt: Lieferadresse anzeigen + ändern (bis zum Versand) */}
+                {role === 'buyer' && o.status === 'paid' && editAddrId !== o.id && (
+                  <div className="mt-3 rounded-lg border bg-muted/30 p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 text-sm">
+                        <div className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+                          <MapPin className="h-3 w-3" /> Lieferadresse
+                        </div>
+                        <div className="mt-0.5">{addr(o) || 'Keine Adresse hinterlegt'}</div>
+                      </div>
+                      <button
+                        onClick={() => openAddrEdit(o)}
+                        className="shrink-0 text-xs font-medium text-primary hover:underline"
+                      >
+                        Adresse ändern
+                      </button>
+                    </div>
+                  </div>
                 )}
 
-                {/* Verkäufer-Aktion */}
-                {role === 'seller' && o.status === 'paid' && (
-                  <button
-                    onClick={() => onShip(o.id)}
-                    disabled={pending}
-                    className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-                  >
-                    <PackageCheck className="h-4 w-4" />
-                    Als versendet markieren
-                  </button>
-                )}
-                {role === 'seller' && o.status === 'shipped' && (
-                  <span className="inline-flex shrink-0 items-center gap-1.5 text-sm text-muted-foreground">
-                    <Truck className="h-4 w-4" /> versendet
-                  </span>
+                {/* Adress-Edit-Formular (nur bis zum Versand) */}
+                {editAddrId === o.id && (
+                  <div className="mt-3 rounded-lg border bg-card p-3">
+                    <div className="mb-2 text-xs font-medium text-muted-foreground">Lieferadresse ändern</div>
+                    <div className="grid grid-cols-1 gap-2 sm:grid-cols-6">
+                      <input
+                        className="rounded-lg border bg-background px-3 py-2 text-sm sm:col-span-6"
+                        placeholder="Name"
+                        value={form.name}
+                        onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
+                      />
+                      <input
+                        className="rounded-lg border bg-background px-3 py-2 text-sm sm:col-span-6"
+                        placeholder="Straße & Hausnummer"
+                        value={form.street}
+                        onChange={(e) => setForm((f) => ({ ...f, street: e.target.value }))}
+                      />
+                      <input
+                        className="rounded-lg border bg-background px-3 py-2 text-sm sm:col-span-2"
+                        placeholder="PLZ"
+                        value={form.zip}
+                        onChange={(e) => setForm((f) => ({ ...f, zip: e.target.value }))}
+                      />
+                      <input
+                        className="rounded-lg border bg-background px-3 py-2 text-sm sm:col-span-2"
+                        placeholder="Ort"
+                        value={form.city}
+                        onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
+                      />
+                      <select
+                        className="rounded-lg border bg-background px-3 py-2 text-sm sm:col-span-2"
+                        value={form.country}
+                        onChange={(e) => setForm((f) => ({ ...f, country: e.target.value }))}
+                      >
+                        <option value="DE">Deutschland</option>
+                        <option value="AT">Österreich</option>
+                        <option value="CH">Schweiz</option>
+                      </select>
+                    </div>
+                    <div className="mt-2 flex gap-2">
+                      <button
+                        onClick={() => onSaveAddr(o.id)}
+                        disabled={pending}
+                        className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                      >
+                        Speichern
+                      </button>
+                      <button
+                        onClick={() => setEditAddrId(null)}
+                        className="rounded-full border px-4 py-2 text-sm font-medium hover:bg-accent"
+                      >
+                        Abbrechen
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
             );

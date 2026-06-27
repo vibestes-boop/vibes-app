@@ -6,9 +6,11 @@
  */
 import {
   formatEur,
+  useCancelProductOrder,
   useConfirmOrderDelivered,
   useMyProductOrders,
   usePayProductOrder,
+  useUpdateOrderShippingAddress,
   type ProductOrder,
   type ProductOrderStatus,
 } from '@/lib/useShop';
@@ -21,19 +23,23 @@ ArrowLeft,
 CheckCircle2,
 Clock,
 CreditCard,
+MapPin,
 Package,
 ShoppingBag,
 Store,
 Truck,
 } from 'lucide-react-native';
+import { useState } from 'react';
 import {
 ActivityIndicator,
 Alert,
 FlatList,
+Modal,
 Pressable,
 RefreshControl,
 StyleSheet,
 Text,
+TextInput,
 View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -62,6 +68,11 @@ export default function MyOrdersScreen() {
   const { data: orders = [], isLoading, refetch, isRefetching } = useMyProductOrders();
   const { pay, isPaying } = usePayProductOrder();
   const confirmDelivered = useConfirmOrderDelivered();
+  const cancelOrder = useCancelProductOrder();
+  const { update: updateAddr, isWorking: isSavingAddr } = useUpdateOrderShippingAddress();
+
+  const [addrOrder, setAddrOrder] = useState<ProductOrder | null>(null);
+  const [form, setForm] = useState({ name: '', street: '', zip: '', city: '', country: 'DE' });
 
   const handlePay = async (o: ProductOrder) => {
     const res = await pay(o.id);
@@ -70,6 +81,46 @@ export default function MyOrdersScreen() {
     }
     // Bei Erfolg öffnet sich Stripe im Browser; nach Rückkehr aktualisiert die Liste.
   };
+
+  const handleCancel = (o: ProductOrder) => {
+    Alert.alert(
+      'Bestellung stornieren?',
+      'Solange noch nicht bezahlt ist, kannst du jederzeit absagen.',
+      [
+        { text: 'Behalten', style: 'cancel' },
+        {
+          text: 'Stornieren', style: 'destructive',
+          onPress: () => cancelOrder.mutate(o.id, {
+            onError: () => Alert.alert('Hoppla', 'Hat nicht geklappt — gleich nochmal?'),
+          }),
+        },
+      ],
+    );
+  };
+
+  const openAddr = (o: ProductOrder) => {
+    setForm({
+      name: o.ship_name ?? '', street: o.ship_street ?? '', zip: o.ship_zip ?? '',
+      city: o.ship_city ?? '', country: o.ship_country ?? 'DE',
+    });
+    setAddrOrder(o);
+  };
+
+  const saveAddr = async () => {
+    if (!addrOrder) return;
+    const res = await updateAddr(addrOrder.id, form);
+    if (res.error) {
+      Alert.alert('Hoppla', res.error === 'incomplete_address'
+        ? 'Bitte Name, Straße, PLZ und Ort ausfüllen.'
+        : 'Hat nicht geklappt — gleich nochmal?');
+      return;
+    }
+    setAddrOrder(null);
+  };
+
+  const addrText = (o: ProductOrder) =>
+    [o.ship_name, o.ship_street, [o.ship_zip, o.ship_city].filter(Boolean).join(' '), o.ship_country]
+      .filter(Boolean).join('\n');
 
   const handleConfirm = (o: ProductOrder) => {
     Alert.alert(
@@ -118,18 +169,26 @@ export default function MyOrdersScreen() {
           </View>
         </Pressable>
 
-        {/* Zahlung offen → bezahlen */}
+        {/* Zahlung offen → bezahlen oder doch absagen */}
         {o.status === 'payment_requested' && (
-          <Pressable
-            onPress={() => handlePay(o)}
-            disabled={isPaying}
-            style={[s.payBtn, { backgroundColor: colors.text.primary, opacity: isPaying ? 0.6 : 1 }]}
-          >
-            {isPaying
-              ? <ActivityIndicator size="small" color={colors.bg.primary} />
-              : <CreditCard size={16} color={colors.bg.primary} strokeWidth={2.4} />}
-            <Text style={[s.payBtnText, { color: colors.bg.primary }]}>Jetzt bezahlen</Text>
-          </Pressable>
+          <View style={s.actionRow}>
+            <Pressable
+              onPress={() => handleCancel(o)}
+              style={[s.cancelBtn, { borderColor: colors.border.subtle }]}
+            >
+              <Text style={[s.cancelText, { color: colors.text.muted }]}>Doch nicht</Text>
+            </Pressable>
+            <Pressable
+              onPress={() => handlePay(o)}
+              disabled={isPaying}
+              style={[s.payBtn, { flex: 1, backgroundColor: colors.text.primary, opacity: isPaying ? 0.6 : 1 }]}
+            >
+              {isPaying
+                ? <ActivityIndicator size="small" color={colors.bg.primary} />
+                : <CreditCard size={16} color={colors.bg.primary} strokeWidth={2.4} />}
+              <Text style={[s.payBtnText, { color: colors.bg.primary }]}>Jetzt bezahlen</Text>
+            </Pressable>
+          </View>
         )}
 
         {/* Unterwegs → Tracking + Empfang bestätigen */}
@@ -161,10 +220,26 @@ export default function MyOrdersScreen() {
         )}
 
         {o.status === 'paid' && (
-          <View style={s.trackRow}>
-            <Clock size={14} color={colors.text.muted} strokeWidth={2} />
-            <Text style={[s.trackText, { color: colors.text.muted }]}>Bezahlt — wird vorbereitet 📦</Text>
-          </View>
+          <>
+            <View style={s.trackRow}>
+              <Clock size={14} color={colors.text.muted} strokeWidth={2} />
+              <Text style={[s.trackText, { color: colors.text.muted }]}>Bezahlt — wird vorbereitet 📦</Text>
+            </View>
+            <View style={[s.addrBox, { borderColor: colors.border.subtle, backgroundColor: colors.bg.elevated }]}>
+              <View style={{ flex: 1, gap: 2 }}>
+                <View style={s.addrLabelRow}>
+                  <MapPin size={12} color={colors.text.muted} strokeWidth={2} />
+                  <Text style={[s.addrLabel, { color: colors.text.muted }]}>Lieferadresse</Text>
+                </View>
+                <Text style={[s.addrVal, { color: colors.text.secondary }]}>
+                  {addrText(o) || 'Keine Adresse hinterlegt'}
+                </Text>
+              </View>
+              <Pressable onPress={() => openAddr(o)} hitSlop={8}>
+                <Text style={[s.addrEdit, { color: colors.text.primary }]}>Ändern</Text>
+              </Pressable>
+            </View>
+          </>
         )}
       </View>
     );
@@ -206,6 +281,58 @@ export default function MyOrdersScreen() {
           }
         />
       )}
+
+      {/* Adresse ändern (nur bezahlt, noch nicht versendet) */}
+      <Modal transparent visible={!!addrOrder} animationType="fade" onRequestClose={() => setAddrOrder(null)}>
+        <Pressable style={s.backdrop} onPress={() => setAddrOrder(null)}>
+          <Pressable style={[s.sheet, { backgroundColor: colors.bg.elevated, paddingBottom: insets.bottom + 16 }]} onPress={(e) => e.stopPropagation()}>
+            <View style={s.sheetHandle} />
+            <Text style={[s.sheetTitle, { color: colors.text.primary }]}>Lieferadresse ändern</Text>
+            <TextInput
+              style={[s.input, { color: colors.text.primary, backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}
+              placeholder="Name" placeholderTextColor={colors.text.muted}
+              value={form.name} onChangeText={(v) => setForm((f) => ({ ...f, name: v }))}
+            />
+            <TextInput
+              style={[s.input, { color: colors.text.primary, backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}
+              placeholder="Straße & Hausnummer" placeholderTextColor={colors.text.muted}
+              value={form.street} onChangeText={(v) => setForm((f) => ({ ...f, street: v }))}
+            />
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <TextInput
+                style={[s.input, { flex: 1, color: colors.text.primary, backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}
+                placeholder="PLZ" placeholderTextColor={colors.text.muted} keyboardType="number-pad"
+                value={form.zip} onChangeText={(v) => setForm((f) => ({ ...f, zip: v }))}
+              />
+              <TextInput
+                style={[s.input, { flex: 2, color: colors.text.primary, backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}
+                placeholder="Ort" placeholderTextColor={colors.text.muted}
+                value={form.city} onChangeText={(v) => setForm((f) => ({ ...f, city: v }))}
+              />
+            </View>
+            <View style={s.countryRow}>
+              {(['DE', 'AT', 'CH'] as const).map((c) => (
+                <Pressable
+                  key={c}
+                  onPress={() => setForm((f) => ({ ...f, country: c }))}
+                  style={[s.countryChip, { borderColor: colors.border.subtle, backgroundColor: form.country === c ? colors.text.primary : 'transparent' }]}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: '700', color: form.country === c ? colors.bg.primary : colors.text.muted }}>{c}</Text>
+                </Pressable>
+              ))}
+            </View>
+            <Pressable
+              onPress={saveAddr}
+              disabled={isSavingAddr}
+              style={[s.payBtn, { backgroundColor: colors.text.primary, opacity: isSavingAddr ? 0.6 : 1, marginTop: 4 }]}
+            >
+              {isSavingAddr
+                ? <ActivityIndicator size="small" color={colors.bg.primary} />
+                : <Text style={[s.payBtnText, { color: colors.bg.primary }]}>Speichern</Text>}
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -234,6 +361,22 @@ const s = StyleSheet.create({
   },
   payBtnText: { fontSize: 14, fontWeight: '700' },
 
+  actionRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  cancelBtn: {
+    alignItems: 'center', justifyContent: 'center',
+    height: 44, paddingHorizontal: 16, borderRadius: 12, borderWidth: 1,
+  },
+  cancelText: { fontSize: 14, fontWeight: '600' },
+
+  addrBox: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
+    borderRadius: 12, borderWidth: 1, padding: 10,
+  },
+  addrLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  addrLabel: { fontSize: 11, fontWeight: '700' },
+  addrVal: { fontSize: 12.5, fontWeight: '500', lineHeight: 18 },
+  addrEdit: { fontSize: 13, fontWeight: '700' },
+
   trackRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   trackText: { fontSize: 12, fontWeight: '500', flex: 1 },
 
@@ -251,4 +394,12 @@ const s = StyleSheet.create({
 
   footerLink: { alignItems: 'center', paddingVertical: 18 },
   footerLinkText: { fontSize: 13, fontWeight: '600' },
+
+  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
+  sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 18, paddingTop: 10, gap: 10 },
+  sheetHandle: { width: 40, height: 4, borderRadius: 2, backgroundColor: 'rgba(128,128,128,0.4)', alignSelf: 'center', marginBottom: 8 },
+  sheetTitle: { fontSize: 16, fontWeight: '700', marginBottom: 2 },
+  input: { borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, height: 46, fontSize: 14 },
+  countryRow: { flexDirection: 'row', gap: 8 },
+  countryChip: { flex: 1, alignItems: 'center', justifyContent: 'center', height: 40, borderRadius: 10, borderWidth: 1 },
 });

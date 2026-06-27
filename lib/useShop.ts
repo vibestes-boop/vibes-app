@@ -809,3 +809,53 @@ export function useMyPreorderGroups() {
     },
   });
 }
+
+// Käufer: Bestellung stornieren (nur solange unbezahlt — RPC erzwingt das).
+export function useCancelProductOrder() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (orderId: string) => {
+      const { data, error } = await supabase.rpc('cancel_product_order', { p_order_id: orderId });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      return data;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['product-orders'] }); },
+  });
+}
+
+export interface ShippingAddressInput {
+  name: string;
+  street: string;
+  zip: string;
+  city: string;
+  country: string;
+}
+
+// Käufer: Lieferadresse ändern (nur solange bezahlt + nicht versendet — RPC-Gate).
+export function useUpdateOrderShippingAddress() {
+  const qc = useQueryClient();
+  const [isWorking, setIsWorking] = useState(false);
+  const update = useCallback(async (
+    orderId: string, addr: ShippingAddressInput,
+  ): Promise<{ error?: string }> => {
+    setIsWorking(true);
+    try {
+      const { data, error } = await supabase.rpc('update_order_shipping_address', {
+        p_order_id: orderId,
+        p_name: addr.name,
+        p_street: addr.street,
+        p_zip: addr.zip,
+        p_city: addr.city,
+        p_country: addr.country,
+      });
+      if (error) return { error: 'network_error' };
+      if ((data as any)?.error) return { error: (data as any).error };
+      qc.invalidateQueries({ queryKey: ['product-orders'] });
+      return {};
+    } finally {
+      setIsWorking(false);
+    }
+  }, [qc]);
+  return { update, isWorking };
+}

@@ -640,3 +640,68 @@ export async function confirmOrderDelivered(orderId: string): Promise<ActionResu
   revalidatePath('/studio/orders');
   return { ok: true, data: null };
 }
+
+const ORDER_CANCEL_ERRORS: Record<string, string> = {
+  order_not_found: 'Bestellung nicht gefunden.',
+  not_authorized: 'Das ist nicht deine Bestellung.',
+  already_paid: 'Schon bezahlt — eine Stornierung läuft über den Verkäufer (Rückerstattung). Schreib ihm kurz. 🙂',
+  not_cancellable: 'Diese Bestellung kann nicht mehr storniert werden.',
+};
+
+// Käufer: Bestellung stornieren (nur solange unbezahlt).
+export async function cancelProductOrder(orderId: string): Promise<ActionResult> {
+  const viewer = await getViewerId();
+  if (!viewer) return { ok: false, error: 'Bitte einloggen.' };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('cancel_product_order', { p_order_id: orderId });
+  if (error) return { ok: false, error: 'Kurz die Verbindung verloren — nochmal? 🙂' };
+
+  const res = (data ?? {}) as { success?: boolean; error?: string };
+  if (!res.success) return { ok: false, error: ORDER_CANCEL_ERRORS[res.error ?? ''] ?? 'Konnte nicht stornieren.' };
+
+  revalidatePath('/studio/orders');
+  return { ok: true, data: null };
+}
+
+const ORDER_ADDR_ERRORS: Record<string, string> = {
+  order_not_found: 'Bestellung nicht gefunden.',
+  not_authorized: 'Das ist nicht deine Bestellung.',
+  not_editable: 'Die Adresse ist nicht mehr änderbar (schon versendet).',
+  incomplete_address: 'Bitte Name, Straße, PLZ und Ort ausfüllen.',
+  country_not_supported: 'Versand aktuell nur nach DE, AT oder CH.',
+};
+
+export interface ShippingAddressInput {
+  name: string;
+  street: string;
+  zip: string;
+  city: string;
+  country: string;
+}
+
+// Käufer: Lieferadresse ändern (nur solange bezahlt, noch nicht versendet).
+export async function updateOrderShippingAddress(
+  orderId: string,
+  addr: ShippingAddressInput,
+): Promise<ActionResult> {
+  const viewer = await getViewerId();
+  if (!viewer) return { ok: false, error: 'Bitte einloggen.' };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('update_order_shipping_address', {
+    p_order_id: orderId,
+    p_name: addr.name,
+    p_street: addr.street,
+    p_zip: addr.zip,
+    p_city: addr.city,
+    p_country: addr.country,
+  });
+  if (error) return { ok: false, error: 'Kurz die Verbindung verloren — nochmal? 🙂' };
+
+  const res = (data ?? {}) as { success?: boolean; error?: string };
+  if (!res.success) return { ok: false, error: ORDER_ADDR_ERRORS[res.error ?? ''] ?? 'Konnte nicht speichern.' };
+
+  revalidatePath('/studio/orders');
+  return { ok: true, data: null };
+}
