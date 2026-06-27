@@ -3,7 +3,7 @@ import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { BarChart,BarChart2,Bookmark,CheckCircle2,ChevronRight,Edit3,FileText,Flower2,Grid3X3,Heart,Link,MoreHorizontal,Mountain,Package,Repeat2,Share2,Shield,ShoppingBag,Sparkles,Swords,Zap } from 'lucide-react-native';
+import { BarChart,BarChart2,Bookmark,CheckCircle2,ChevronRight,Edit3,FileText,Flower2,Grid3X3,Heart,Link,MoreHorizontal,Mountain,Package,Repeat2,Share2,Shield,ShoppingBag,Sparkles,Star,Swords,Zap } from 'lucide-react-native';
 import { useState } from 'react';
 import { Dimensions,Linking,Modal,Pressable,ScrollView,Text,View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,6 +15,7 @@ const TAB_WIDTH = Dimensions.get('window').width / 5;
 import { ProfileShareSheet } from '@/components/profile/ProfileShareSheet';
 import { AvatarZoomViewer } from '@/components/ui/AvatarZoomViewer';
 import { useBattleStats } from '@/lib/useBattleStats';
+import { useOrderRating } from '@/lib/useShop';
 import { useTheme } from '@/lib/useTheme';
 import { ProfileHighlightsRow } from './ProfileHighlightsRow';
 import { getProfileStyles } from './profileStyles';
@@ -324,6 +325,10 @@ export function ProfileListHeader({
   const { data: battleStats } = useBattleStats(profile?.id);
   const showBattleStats = !!battleStats && battleStats.totalBattles > 0;
 
+  // Order-Reputation (Verkäufer-/Käufer-Bewertung) — Parität mit Web /u/[username]
+  // und mit fremden Profilen (UserProfileContent). Nur zeigen wenn es Bewertungen gibt.
+  const { data: orderRating } = useOrderRating(profile?.id);
+
   return (
     <>
       <AvatarZoomViewer
@@ -481,6 +486,26 @@ export function ProfileListHeader({
             </View>
           ) : null}
         </View>
+
+        {/* Order-Reputation: Verkäufer-/Käufer-Bewertung (Parität mit Web + fremden Profilen) */}
+        {orderRating && (orderRating.sellerCount > 0 || orderRating.buyerCount > 0) ? (
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 14, marginTop: 8 }}>
+            {orderRating.sellerCount > 0 ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                <Star size={14} color="#F59E0B" fill="#F59E0B" strokeWidth={2} />
+                <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text.primary }}>{orderRating.sellerAvg?.toFixed(1)}</Text>
+                <Text style={{ fontSize: 12.5, color: colors.text.muted }}>als Verkäufer · {orderRating.sellerCount}</Text>
+              </View>
+            ) : null}
+            {orderRating.buyerCount > 0 ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                <Star size={14} color="#F59E0B" fill="#F59E0B" strokeWidth={2} />
+                <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text.primary }}>{orderRating.buyerAvg?.toFixed(1)}</Text>
+                <Text style={{ fontSize: 12.5, color: colors.text.muted }}>als Käufer · {orderRating.buyerCount}</Text>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
       </View>
 
 
