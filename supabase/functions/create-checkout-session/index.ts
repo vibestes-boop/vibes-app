@@ -92,7 +92,7 @@ Deno.serve(async (req) => {
 
     const { data: product } = await adminClient
       .from('products')
-      .select('title')
+      .select('title, cover_url, description')
       .eq('id', order.product_id)
       .maybeSingle();
 
@@ -128,6 +128,21 @@ Deno.serve(async (req) => {
     pform.set('line_items[0][price_data][currency]', order.currency ?? 'eur');
     pform.set('line_items[0][price_data][unit_amount]', String(amountCents));
     pform.set('line_items[0][price_data][product_data][name]', product?.title ?? 'Serlo Produkt');
+    // Produktbild → Stripe-Checkout zeigt das Cover als Thumbnail (bis zu 8 erlaubt,
+    // wir nutzen 1). Muss eine öffentlich erreichbare HTTPS-URL sein (R2-Cover ist das).
+    if (product?.cover_url) {
+      pform.set('line_items[0][price_data][product_data][images][0]', product.cover_url);
+    }
+    // Kurz-Beschreibung (erste sinnvolle Zeile, gekappt) als Untertitel auf dem
+    // Checkout. Lange Mehrzeilen-Texte würden die Zeile sonst überladen.
+    const shortDesc = String(product?.description ?? '')
+      .split('\n')
+      .map((l: string) => l.trim())
+      .filter(Boolean)[0]
+      ?.slice(0, 250);
+    if (shortDesc) {
+      pform.set('line_items[0][price_data][product_data][description]', shortDesc);
+    }
     pform.set('line_items[0][quantity]', '1');
 
     const pStripeRes = await fetch(`${STRIPE_BASE_URL}/checkout/sessions`, {
