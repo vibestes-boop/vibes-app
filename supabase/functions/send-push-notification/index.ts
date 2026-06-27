@@ -105,8 +105,8 @@ Deno.serve(async (req: Request) => {
           : `${actorName} hat ein Produkt vorgemerkt`,
       },
       order_payment_requested: {
-        title: '🌸 Dein Parfüm ist da',
-        body: record.comment_text ?? 'Jetzt bezahlen 🌸',
+        title: '💶 Zeit zu bezahlen',
+        body: record.comment_text ?? 'Deine Vorbestellung ist da — jetzt bezahlen 🌸',
       },
       order_paid: {
         title: '💶 Bestellung bezahlt',
