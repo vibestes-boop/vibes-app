@@ -7,6 +7,7 @@ import { CheckCircle2, Clock, AlertCircle, Package, ArrowRight } from 'lucide-re
 import { getUser } from '@/lib/auth/session';
 import { getMyProductOrderBySession } from '@/lib/data/shop';
 import { formatEur } from '@/lib/utils';
+import { ProductImage } from '@/components/shop/product-image';
 
 // -----------------------------------------------------------------------------
 // /shop/success — Landing nach erfolgreichem Stripe-Checkout einer ECHTGELD-
@@ -114,14 +115,29 @@ export default async function ShopSuccessPage({ searchParams }: Props) {
       {/* Order-Summary */}
       <div className="rounded-2xl border border-border bg-card p-6">
         <div className="mb-4 flex items-center gap-3 border-b border-border pb-4">
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
-            <Package className="h-5 w-5 text-muted-foreground" />
-          </div>
-          <div className="flex-1">
+          {order.product ? (
+            <Link
+              href={`/shop/${order.product.id}` as Route}
+              className="relative h-12 w-12 flex-none overflow-hidden rounded-lg bg-muted"
+            >
+              <ProductImage cover={order.product.cover_url} title={order.product.title} category="physical" sizes="48px" fallbackClassName="text-base" />
+            </Link>
+          ) : (
+            <div className="flex h-12 w-12 flex-none items-center justify-center rounded-lg bg-muted">
+              <Package className="h-5 w-5 text-muted-foreground" />
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
             <p className="text-xs text-muted-foreground">Produkt</p>
-            <p className="font-semibold">{order.product?.title ?? 'Bestellung'}</p>
+            {order.product ? (
+              <Link href={`/shop/${order.product.id}` as Route} className="block truncate font-semibold hover:underline">
+                {order.product.title}
+              </Link>
+            ) : (
+              <p className="font-semibold">Bestellung</p>
+            )}
           </div>
-          <p className="text-base font-semibold">
+          <p className="whitespace-nowrap text-base font-semibold">
             {formatEur(order.amount_eur) ?? '—'}
             {order.quantity > 1 && (
               <span className="ml-1 text-xs font-medium text-muted-foreground">

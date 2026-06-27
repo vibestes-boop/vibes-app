@@ -2,6 +2,8 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import type { Route } from 'next';
 import { Bell, CheckCircle2, Clock, CreditCard, PackageCheck, Truck } from 'lucide-react';
 import {
   confirmOrderDelivered,
@@ -11,6 +13,7 @@ import {
 } from '@/app/actions/shop';
 import type { PreorderGroup, ProductOrderRow, ProductOrderStatus } from '@/lib/data/shop';
 import { formatEur } from '@/lib/utils';
+import { ProductImage } from './product-image';
 
 function fmtDateTime(iso: string): string {
   return new Date(iso).toLocaleString('de-DE', {
@@ -101,17 +104,27 @@ export function ProductOrdersPanel({ role, orders, preorderGroups }: Props) {
           <div className="text-sm font-medium">Ware ist da → Zahlung anfordern</div>
           {preorderGroups.map((g) => (
             <div key={g.id} className="flex items-center justify-between gap-3 border-t pt-2 first:border-t-0 first:pt-0">
-              <div className="min-w-0">
-                <div className="truncate text-sm font-medium">{g.title}</div>
-                <div className="text-xs text-muted-foreground">
-                  {formatEur(g.price_eur) ?? 'kein €-Preis gesetzt'}
-                  {' · '}{g.people} {g.people === 1 ? 'Person' : 'Personen'} · {g.bottles} {g.bottles === 1 ? 'Flasche' : 'Flaschen'}
-                </div>
-                {g.buyers.length > 0 && (
-                  <div className="truncate text-xs text-muted-foreground">
-                    {g.buyers.map((u) => `@${u}`).join(', ')} · seit {fmtDateTime(g.first_at)}
+              <div className="flex min-w-0 items-center gap-3">
+                <Link
+                  href={`/shop/${g.id}` as Route}
+                  className="relative h-12 w-12 flex-none overflow-hidden rounded-lg bg-muted"
+                >
+                  <ProductImage cover={g.cover_url} title={g.title} category="physical" sizes="48px" fallbackClassName="text-base" />
+                </Link>
+                <div className="min-w-0">
+                  <Link href={`/shop/${g.id}` as Route} className="block truncate text-sm font-medium hover:underline">
+                    {g.title}
+                  </Link>
+                  <div className="text-xs text-muted-foreground">
+                    {formatEur(g.price_eur) ?? 'kein €-Preis gesetzt'}
+                    {' · '}{g.people} {g.people === 1 ? 'Person' : 'Personen'} · {g.bottles} {g.bottles === 1 ? 'Flasche' : 'Flaschen'}
                   </div>
-                )}
+                  {g.buyers.length > 0 && (
+                    <div className="truncate text-xs text-muted-foreground">
+                      {g.buyers.map((u) => `@${u}`).join(', ')} · seit {fmtDateTime(g.first_at)}
+                    </div>
+                  )}
+                </div>
               </div>
               <button
                 onClick={() => onMarkPayable(g.id, g.title)}
@@ -133,17 +146,35 @@ export function ProductOrdersPanel({ role, orders, preorderGroups }: Props) {
             const st = STATUS[o.status] ?? STATUS.reserved;
             return (
               <div key={o.id} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="truncate font-medium">{o.product?.title ?? 'Produkt'}</span>
-                    <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${st.cls}`}>{st.label}</span>
+                <div className="flex min-w-0 items-start gap-3">
+                  {o.product ? (
+                    <Link
+                      href={`/shop/${o.product.id}` as Route}
+                      className="relative h-14 w-14 flex-none overflow-hidden rounded-lg bg-muted"
+                    >
+                      <ProductImage cover={o.product.cover_url} title={o.product.title} category="physical" sizes="56px" fallbackClassName="text-lg" />
+                    </Link>
+                  ) : (
+                    <div className="relative h-14 w-14 flex-none overflow-hidden rounded-lg bg-muted" />
+                  )}
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      {o.product ? (
+                        <Link href={`/shop/${o.product.id}` as Route} className="truncate font-medium hover:underline">
+                          {o.product.title}
+                        </Link>
+                      ) : (
+                        <span className="truncate font-medium">Produkt</span>
+                      )}
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${st.cls}`}>{st.label}</span>
+                    </div>
+                    <div className="mt-0.5 text-sm text-muted-foreground">
+                      {formatEur(o.amount_eur) ?? '—'}{o.quantity > 1 ? ` · ${o.quantity}×` : ''}
+                      {role === 'seller' && o.status === 'paid' && addr(o) ? ` · ${addr(o)}` : ''}
+                      {o.tracking_number ? ` · ${[o.tracking_carrier, o.tracking_number].filter(Boolean).join(' ')}` : ''}
+                    </div>
+                    <div className="mt-0.5 text-xs text-muted-foreground">{fmtDateTime(o.created_at)}</div>
                   </div>
-                  <div className="mt-0.5 text-sm text-muted-foreground">
-                    {formatEur(o.amount_eur) ?? '—'}{o.quantity > 1 ? ` · ${o.quantity}×` : ''}
-                    {role === 'seller' && o.status === 'paid' && addr(o) ? ` · ${addr(o)}` : ''}
-                    {o.tracking_number ? ` · ${[o.tracking_carrier, o.tracking_number].filter(Boolean).join(' ')}` : ''}
-                  </div>
-                  <div className="mt-0.5 text-xs text-muted-foreground">{fmtDateTime(o.created_at)}</div>
                 </div>
 
                 {/* Käufer-Aktionen */}

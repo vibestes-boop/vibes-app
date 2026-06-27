@@ -660,6 +660,7 @@ export async function getMyProductOrderBySession(
 export interface PreorderGroup {
   id: string;
   title: string;
+  cover_url: string | null;
   price_eur: number | null;
   people: number;
   bottles: number;
@@ -677,22 +678,20 @@ export async function getMyPreorderGroups(): Promise<PreorderGroup[]> {
   // separat per .in() laden (gleiches Muster wie batchSaved).
   const { data, error } = await supabase
     .from('product_preorders')
-    .select('product_id, user_id, quantity, created_at, product:products!inner(id, title, price_eur, seller_id)')
+    .select('product_id, user_id, quantity, created_at, product:products!inner(id, title, cover_url, price_eur, seller_id)')
     .eq('product.seller_id', user.id)
     .in('status', ['interested', 'notified'])
     .order('created_at', { ascending: true });
 
   if (error || !data) return [];
 
+  type PreorderProduct = { id: string; title: string; cover_url: string | null; price_eur: number | null };
   type PreorderRow = {
     product_id: string;
     user_id: string;
     quantity: number;
     created_at: string;
-    product:
-      | { id: string; title: string; price_eur: number | null }
-      | { id: string; title: string; price_eur: number | null }[]
-      | null;
+    product: PreorderProduct | PreorderProduct[] | null;
   };
   const rows = data as unknown as PreorderRow[];
 
@@ -718,6 +717,7 @@ export async function getMyPreorderGroups(): Promise<PreorderGroup[]> {
       g = {
         id: product.id,
         title: product.title,
+        cover_url: product.cover_url,
         price_eur: product.price_eur,
         people: 0,
         bottles: 0,

@@ -92,7 +92,11 @@ export default function MyOrdersScreen() {
     const cover = o.product?.cover_url ?? null;
     return (
       <View style={[s.card, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
-        <View style={s.cardTop}>
+        <Pressable
+          style={s.cardTop}
+          onPress={() => o.product?.id && router.push(`/shop/${o.product.id}` as any)}
+          disabled={!o.product?.id}
+        >
           {cover ? (
             <Image source={{ uri: cover }} style={s.cover} contentFit="cover" cachePolicy="memory-disk" />
           ) : (
@@ -112,7 +116,7 @@ export default function MyOrdersScreen() {
             </View>
             <Text style={[s.dateText, { color: colors.text.muted }]}>{fmtDateTime(o.created_at)}</Text>
           </View>
-        </View>
+        </Pressable>
 
         {/* Zahlung offen → bezahlen */}
         {o.status === 'payment_requested' && (

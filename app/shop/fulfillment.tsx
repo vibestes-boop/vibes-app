@@ -17,8 +17,9 @@ import {
 } from '@/lib/useShop';
 import { useTheme } from '@/lib/useTheme';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { ArrowLeft, Bell, CheckCircle2, Clock, PackageCheck, Truck } from 'lucide-react-native';
+import { ArrowLeft, Bell, CheckCircle2, Clock, Package, PackageCheck, Truck } from 'lucide-react-native';
 import { useState } from 'react';
 import {
 ActivityIndicator,
@@ -99,7 +100,16 @@ export default function FulfillmentScreen() {
               <Text style={[s.section, { color: colors.text.primary }]}>Ware ist da → Zahlung anfordern</Text>
               {preorderGroups.map((g) => (
                 <View key={g.id} style={[s.row, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
-                  <View style={{ flex: 1, gap: 3 }}>
+                  <Pressable onPress={() => router.push(`/shop/${g.id}` as any)}>
+                    {g.cover_url ? (
+                      <Image source={{ uri: g.cover_url }} style={s.thumb} contentFit="cover" cachePolicy="memory-disk" />
+                    ) : (
+                      <View style={[s.thumb, s.thumbFallback, { backgroundColor: colors.bg.elevated }]}>
+                        <Package size={18} color={colors.text.muted} strokeWidth={1.6} />
+                      </View>
+                    )}
+                  </Pressable>
+                  <Pressable onPress={() => router.push(`/shop/${g.id}` as any)} style={{ flex: 1, gap: 3 }}>
                     <Text style={[s.rowTitle, { color: colors.text.primary }]} numberOfLines={1}>{g.title}</Text>
                     <Text style={[s.rowSub, { color: colors.text.muted }]}>
                       {formatEur(g.price_eur) ?? 'kein €-Preis gesetzt'}
@@ -110,7 +120,7 @@ export default function FulfillmentScreen() {
                         {g.buyers.map((u) => `@${u}`).join(', ')} · seit {fmtDate(g.first_at)}
                       </Text>
                     )}
-                  </View>
+                  </Pressable>
                   <Pressable
                     onPress={() => handleMarkPayable(g.id, g.title)}
                     disabled={isMarking || g.price_eur == null}
@@ -133,8 +143,23 @@ export default function FulfillmentScreen() {
               <Text style={[s.empty, { color: colors.text.muted }]}>Nichts zu versenden. 📭</Text>
             ) : toShip.map((o) => (
               <View key={o.id} style={[s.orderCard, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
-                <Text style={[s.rowTitle, { color: colors.text.primary }]} numberOfLines={1}>{o.product?.title ?? 'Produkt'}</Text>
-                <Text style={[s.rowSub, { color: colors.text.muted }]}>{formatEur(o.amount_eur)}{o.quantity > 1 ? ` · ${o.quantity}×` : ''}</Text>
+                <Pressable
+                  onPress={() => o.product?.id && router.push(`/shop/${o.product.id}` as any)}
+                  disabled={!o.product?.id}
+                  style={s.orderCardTop}
+                >
+                  {o.product?.cover_url ? (
+                    <Image source={{ uri: o.product.cover_url }} style={s.thumb} contentFit="cover" cachePolicy="memory-disk" />
+                  ) : (
+                    <View style={[s.thumb, s.thumbFallback, { backgroundColor: colors.bg.elevated }]}>
+                      <Package size={18} color={colors.text.muted} strokeWidth={1.6} />
+                    </View>
+                  )}
+                  <View style={{ flex: 1, gap: 2 }}>
+                    <Text style={[s.rowTitle, { color: colors.text.primary }]} numberOfLines={1}>{o.product?.title ?? 'Produkt'}</Text>
+                    <Text style={[s.rowSub, { color: colors.text.muted }]}>{formatEur(o.amount_eur)}{o.quantity > 1 ? ` · ${o.quantity}×` : ''}</Text>
+                  </View>
+                </Pressable>
                 <Text style={[s.addr, { color: colors.text.secondary }]}>{addr(o) || 'Keine Adresse'}</Text>
                 <Pressable onPress={() => openShip(o)} style={[s.shipBtn, { backgroundColor: colors.text.primary }]}>
                   <PackageCheck size={15} color={colors.bg.primary} strokeWidth={2.4} />
@@ -239,6 +264,9 @@ const s = StyleSheet.create({
   smallBtnText: { fontSize: 13, fontWeight: '700' },
 
   orderCard: { borderRadius: 14, borderWidth: 1, padding: 12, gap: 6 },
+  orderCardTop: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  thumb: { width: 46, height: 46, borderRadius: 10 },
+  thumbFallback: { alignItems: 'center', justifyContent: 'center' },
   addr: { fontSize: 12.5, fontWeight: '500', lineHeight: 18 },
   shipBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, height: 44, borderRadius: 12, marginTop: 4 },
   shipBtnText: { fontSize: 14, fontWeight: '700' },
