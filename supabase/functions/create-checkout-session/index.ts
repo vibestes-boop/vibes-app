@@ -99,13 +99,15 @@ Deno.serve(async (req) => {
     const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
     if (!stripeKey) return json({ error: 'stripe_not_configured' }, 500);
 
+    // WICHTIG: KEIN Fallback auf STRIPE_SUCCESS_URL/STRIPE_CANCEL_URL (= Coin-Shop-
+    // Seiten). Ein Parfüm-Kauf muss auf die dedizierte Produkt-Bestätigung
+    // (/shop/success) gehen, nicht auf „Coins gutgeschrieben". Nur ein eigener
+    // STRIPE_PRODUCT_*-Override oder der /shop-Default.
     const successUrl =
       Deno.env.get('STRIPE_PRODUCT_SUCCESS_URL') ??
-      Deno.env.get('STRIPE_SUCCESS_URL') ??
       'https://serlo-web.vercel.app/shop/success?session_id={CHECKOUT_SESSION_ID}';
     const cancelUrl =
       Deno.env.get('STRIPE_PRODUCT_CANCEL_URL') ??
-      Deno.env.get('STRIPE_CANCEL_URL') ??
       'https://serlo-web.vercel.app/shop/cancelled';
 
     const amountCents = Math.round(Number(order.amount_eur) * 100);

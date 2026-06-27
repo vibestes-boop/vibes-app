@@ -635,6 +635,25 @@ export async function getMyProductOrders(role: 'buyer' | 'seller'): Promise<Prod
   return data as unknown as ProductOrderRow[];
 }
 
+// Einzelne Echtgeld-Bestellung per Stripe-Session-ID — für /shop/success nach dem
+// Checkout-Redirect (?session_id=…). RLS (product_orders_party_read) + expliziter
+// buyer_id-Filter stellen sicher, dass nur der Käufer seine eigene Order sieht.
+export async function getMyProductOrderBySession(
+  sessionId: string,
+): Promise<ProductOrderRow | null> {
+  const user = await getUser();
+  if (!user) return null;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('product_orders')
+    .select(PRODUCT_ORDER_COLUMNS)
+    .eq('stripe_session_id', sessionId)
+    .eq('buyer_id', user.id)
+    .maybeSingle();
+  if (error || !data) return null;
+  return data as unknown as ProductOrderRow;
+}
+
 // Offene Vormerkungen des Verkäufers, gruppiert pro Produkt (für „Ware ist da →
 // Zahlung anfordern"). Nur Produkte MIT offenen Vormerkern (interested/notified),
 // inkl. Anzahl Personen, Flaschen, wer + seit wann.
@@ -652,30 +671,54 @@ export async function getMyPreorderGroups(): Promise<PreorderGroup[]> {
   const user = await getUser();
   if (!user) return [];
   const supabase = await createClient();
+  // WICHTIG: KEIN `user:profiles(username)`-Embed — `product_preorders.user_id`
+  // referenziert `auth.users`, NICHT `profiles`. PostgREST findet die Beziehung
+  // nicht (PGRST200) und 400t die GANZE Query → Panel blieb leer. Usernames daher
+  // separat per .in() laden (gleiches Muster wie batchSaved).
   const { data, error } = await supabase
     .from('product_preorders')
-    .select('product_id, quantity, created_at, user:profiles(username), product:products!inner(id, title, price_eur, seller_id)')
+    .select('product_id, user_id, quantity, created_at, product:products!inner(id, title, price_eur, seller_id)')
     .eq('product.seller_id', user.id)
     .in('status', ['interested', 'notified'])
     .order('created_at', { ascending: true });
 
   if (error || !data) return [];
 
-  const groups = new Map<string, PreorderGroup>();
-  for (const row of data as unknown as Array<{
+  type PreorderRow = {
     product_id: string;
+    user_id: string;
     quantity: number;
     created_at: string;
-    user: { username: string | null } | null;
-    product: { id: string; title: string; price_eur: number | null } | null;
-  }>) {
-    if (!row.product) continue;
+    product:
+      | { id: string; title: string; price_eur: number | null }
+      | { id: string; title: string; price_eur: number | null }[]
+      | null;
+  };
+  const rows = data as unknown as PreorderRow[];
+
+  // Usernames in einer eigenen Abfrage holen (FK-Embed nicht möglich, s.o.).
+  const userIds = [...new Set(rows.map((r) => r.user_id))];
+  const nameById = new Map<string, string>();
+  if (userIds.length > 0) {
+    const { data: profs } = await supabase
+      .from('profiles')
+      .select('id, username')
+      .in('id', userIds);
+    for (const p of profs ?? []) {
+      if (p.username) nameById.set(p.id as string, p.username as string);
+    }
+  }
+
+  const groups = new Map<string, PreorderGroup>();
+  for (const row of rows) {
+    const product = Array.isArray(row.product) ? row.product[0] : row.product;
+    if (!product) continue;
     let g = groups.get(row.product_id);
     if (!g) {
       g = {
-        id: row.product.id,
-        title: row.product.title,
-        price_eur: row.product.price_eur,
+        id: product.id,
+        title: product.title,
+        price_eur: product.price_eur,
         people: 0,
         bottles: 0,
         buyers: [],
@@ -685,7 +728,8 @@ export async function getMyPreorderGroups(): Promise<PreorderGroup[]> {
     }
     g.people += 1;
     g.bottles += row.quantity ?? 1;
-    if (row.user?.username) g.buyers.push(row.user.username);
+    const uname = nameById.get(row.user_id);
+    if (uname) g.buyers.push(uname);
   }
   return [...groups.values()];
 }
