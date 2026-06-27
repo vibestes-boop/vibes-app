@@ -69,6 +69,7 @@ interface FormState {
   price_coins: string;
   sale_price_coins: string;
   price_eur: string;
+  sale_mode: 'coins' | 'preorder' | 'cash';
   stock: string;
   cover_url: string;
   file_url: string;
@@ -87,6 +88,7 @@ function fromProduct(p: ShopProduct | null): FormState {
       price_coins: "",
       sale_price_coins: "",
       price_eur: "",
+      sale_mode: "coins",
       stock: "-1",
       cover_url: "",
       file_url: "",
@@ -103,6 +105,7 @@ function fromProduct(p: ShopProduct | null): FormState {
     price_coins: p.price_coins.toString(),
     sale_price_coins: p.sale_price_coins?.toString() ?? "",
     price_eur: p.price_eur != null ? String(p.price_eur) : "",
+    sale_mode: (p.sale_mode as FormState["sale_mode"]) ?? "coins",
     stock: p.stock.toString(),
     cover_url: p.cover_url ?? "",
     file_url: p.file_url ?? "",
@@ -113,7 +116,13 @@ function fromProduct(p: ShopProduct | null): FormState {
   };
 }
 
-export function ProductForm({ existing }: { existing: ShopProduct | null }) {
+export function ProductForm({
+  existing,
+  isAdmin = false,
+}: {
+  existing: ShopProduct | null;
+  isAdmin?: boolean;
+}) {
   const router = useRouter();
   const [form, setForm] = useState<FormState>(fromProduct(existing));
   const [imageInput, setImageInput] = useState("");
@@ -127,11 +136,10 @@ export function ProductForm({ existing }: { existing: ShopProduct | null }) {
     : null;
   const hasSale = salePrice !== null && price > 0;
 
-  // EUR-Preisfeld nur für Vorbestell-/Cash-Produkte (sale_mode <> 'coins').
-  // Der Modus wird im Studio-Row-Menü gesetzt (Admin); danach erscheint hier
-  // das Feld beim Bearbeiten. Coin-Produkte brauchen keinen Euro-Preis.
-  const isPreorderProduct =
-    existing?.sale_mode === "preorder" || existing?.sale_mode === "cash";
+  // EUR-Preisfeld + Vorbestell-Schalter folgen jetzt dem FORM-State (nicht mehr
+  // nur dem gespeicherten Produkt) → Admin kann die Vorbestellung direkt bei der
+  // Erstellung wählen. Coin-Felder werden im Vorbestell-Modus ausgeblendet.
+  const isPreorder = form.sale_mode === "preorder" || form.sale_mode === "cash";
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -311,15 +319,22 @@ export function ProductForm({ existing }: { existing: ShopProduct | null }) {
       toast.error("Lade die digitale Datei hoch, die Käufer:innen erhalten.");
       return;
     }
+    if (isPreorder && !(Number(form.price_eur) > 0)) {
+      toast.error("Setze für die Vorbestellung einen €-Preis (z.B. 7,90).");
+      return;
+    }
     const payload = {
       title: form.title.trim(),
       description: form.description.trim() || null,
       category: form.category,
-      price_coins: Number(form.price_coins),
+      // Bei €-Vorbestellung ist der Coin-Preis irrelevant + das Feld ausgeblendet
+      // → gültigen Default (1) senden, damit das Schema (price_coins > 0) passt.
+      price_coins: isPreorder ? (Number(form.price_coins) || 1) : Number(form.price_coins),
       sale_price_coins: form.sale_price_coins
         ? Number(form.sale_price_coins)
         : null,
       price_eur: form.price_eur ? Number(form.price_eur) : null,
+      sale_mode: form.sale_mode,
       stock: Number(form.stock),
       cover_url: form.cover_url.trim() || null,
       file_url: form.file_url.trim() || null,
@@ -467,46 +482,31 @@ export function ProductForm({ existing }: { existing: ShopProduct | null }) {
           </div>
         </section>
 
-        {/* Preise */}
-        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <div>
-            <label htmlFor="price" className="text-sm font-medium">
-              Preis (Coins)
-            </label>
+        {/* Vorbestellung-Schalter (Admin) — €-Verkauf statt Coins, direkt bei
+            Erstellung wählbar. Nicht-Admins sehen ihn nicht (DB-Trigger gated). */}
+        {(isAdmin || isPreorder) && (
+          <label className="flex cursor-pointer items-center gap-3 rounded-lg border p-3 hover:bg-muted/40">
             <input
-              id="price"
-              type="number"
-              min={1}
-              value={form.price_coins}
-              onChange={(e) => update("price_coins", e.target.value)}
-              placeholder="1000"
-              className="mt-1.5 h-10 w-full rounded-md border bg-background px-3 text-sm tabular-nums outline-none focus:border-ring"
+              type="checkbox"
+              checked={isPreorder}
+              onChange={(e) => {
+                update("sale_mode", e.target.checked ? "preorder" : "coins");
+                // Coin-Angebot ergibt bei €-Vorbestellung keinen Sinn → leeren
+                if (e.target.checked) update("sale_price_coins", "");
+              }}
+              className="h-4 w-4 accent-foreground"
             />
-          </div>
-          <div>
-            <label htmlFor="sale-price" className="text-sm font-medium">
-              Angebotspreis (Coins){" "}
-              <span className="text-muted-foreground">· optional</span>
-              {hasSale && (
-                <span className="ml-2 rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
-                  Angebot
-                </span>
-              )}
-            </label>
-            <input
-              id="sale-price"
-              type="number"
-              min={1}
-              value={form.sale_price_coins}
-              onChange={(e) => update("sale_price_coins", e.target.value)}
-              placeholder="700"
-              className="mt-1.5 h-10 w-full rounded-md border bg-background px-3 text-sm tabular-nums outline-none focus:border-ring"
-            />
-          </div>
-        </section>
+            <div className="flex-1">
+              <div className="text-sm font-medium">🌸 Vorbestellung (€)</div>
+              <div className="text-xs text-muted-foreground">
+                Erst vormerken, später per Euro bezahlen — statt Coin-Kauf.
+              </div>
+            </div>
+          </label>
+        )}
 
-        {/* Euro-Preis — nur für Vorbestell-/Cash-Produkte. */}
-        {isPreorderProduct && (
+        {/* Preise — Vorbestellung: €, sonst Coins */}
+        {isPreorder ? (
           <section>
             <label htmlFor="price-eur" className="text-sm font-medium">
               Preis (€){" "}
@@ -526,9 +526,46 @@ export function ProductForm({ existing }: { existing: ShopProduct | null }) {
             <div className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
               <Info className="h-3 w-3" />
               <span>
-                Wird auf Karte &amp; Detailseite als Preis angezeigt statt nur
-                im Beschreibungstext. Käufer:innen zahlen erst bei Lieferung.
+                Wird auf Karte &amp; Detailseite als Preis angezeigt. Käufer:innen
+                zahlen erst, sobald die Ware da ist. Coin-Preis wird ignoriert.
               </span>
+            </div>
+          </section>
+        ) : (
+          <section className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="price" className="text-sm font-medium">
+                Preis (Coins)
+              </label>
+              <input
+                id="price"
+                type="number"
+                min={1}
+                value={form.price_coins}
+                onChange={(e) => update("price_coins", e.target.value)}
+                placeholder="1000"
+                className="mt-1.5 h-10 w-full rounded-md border bg-background px-3 text-sm tabular-nums outline-none focus:border-ring"
+              />
+            </div>
+            <div>
+              <label htmlFor="sale-price" className="text-sm font-medium">
+                Angebotspreis (Coins){" "}
+                <span className="text-muted-foreground">· optional</span>
+                {hasSale && (
+                  <span className="ml-2 rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground">
+                    Angebot
+                  </span>
+                )}
+              </label>
+              <input
+                id="sale-price"
+                type="number"
+                min={1}
+                value={form.sale_price_coins}
+                onChange={(e) => update("sale_price_coins", e.target.value)}
+                placeholder="700"
+                className="mt-1.5 h-10 w-full rounded-md border bg-background px-3 text-sm tabular-nums outline-none focus:border-ring"
+              />
             </div>
           </section>
         )}
@@ -800,15 +837,25 @@ export function ProductForm({ existing }: { existing: ShopProduct | null }) {
                 {form.title || "Dein Produkt-Titel"}
               </div>
               <div className="mt-1 text-base font-semibold tabular-nums">
-                <CoinIcon className="mr-1 inline h-3.5 w-3.5 text-muted-foreground" />
-                {(form.sale_price_coins
-                  ? Number(form.sale_price_coins)
-                  : price
-                ).toLocaleString("de-DE")}
-                {salePrice && (
-                  <span className="ml-1 text-xs text-muted-foreground line-through">
-                    {price.toLocaleString("de-DE")}
+                {isPreorder ? (
+                  <span className="text-amber-700 dark:text-amber-400">
+                    {form.price_eur
+                      ? `${Number(form.price_eur).toLocaleString("de-DE", { minimumFractionDigits: 2 })} €`
+                      : "Vorbestellung"}
                   </span>
+                ) : (
+                  <>
+                    <CoinIcon className="mr-1 inline h-3.5 w-3.5 text-muted-foreground" />
+                    {(form.sale_price_coins
+                      ? Number(form.sale_price_coins)
+                      : price
+                    ).toLocaleString("de-DE")}
+                    {salePrice && (
+                      <span className="ml-1 text-xs text-muted-foreground line-through">
+                        {price.toLocaleString("de-DE")}
+                      </span>
+                    )}
+                  </>
                 )}
               </div>
             </div>

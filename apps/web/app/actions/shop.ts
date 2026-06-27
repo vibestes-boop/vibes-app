@@ -286,6 +286,8 @@ export async function createProduct(
       price_coins: parse.data.price_coins,
       sale_price_coins: parse.data.sale_price_coins ?? null,
       price_eur: parse.data.price_eur ?? null,
+      // Vorbestellung direkt bei Erstellung (Admin) — DB-Trigger gated Nicht-Admins.
+      sale_mode: parse.data.sale_mode ?? 'coins',
       stock: parse.data.stock,
       cover_url: parse.data.cover_url ?? null,
       file_url: parse.data.file_url ?? null,

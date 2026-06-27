@@ -5,7 +5,7 @@ import type { Route } from 'next';
 import { ArrowLeft, Edit } from 'lucide-react';
 import { ProductForm } from '@/components/shop/product-form';
 import { getProduct } from '@/lib/data/shop';
-import { getUser } from '@/lib/auth/session';
+import { getUser, getIsAdmin } from '@/lib/auth/session';
 
 export const metadata: Metadata = {
   title: 'Produkt bearbeiten · Shop-Studio',
@@ -29,6 +29,7 @@ export default async function EditProductPage({ params }: PageProps) {
   // Ownership-Check — Edit-Seite ist kein RLS-Gate, das sitzt auf dem
   // UPDATE. Aber wir wollen hier nicht die Form einer fremden Person zeigen.
   if (product.seller_id !== user.id) redirect('/studio/shop' as Route);
+  const isAdmin = await getIsAdmin();
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 lg:px-6">
@@ -48,7 +49,7 @@ export default async function EditProductPage({ params }: PageProps) {
         <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">&bdquo;{product.title}&quot;</p>
       </div>
 
-      <ProductForm existing={product} />
+      <ProductForm existing={product} isAdmin={isAdmin} />
     </div>
   );
 }

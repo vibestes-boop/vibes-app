@@ -4,7 +4,7 @@ import Link from 'next/link';
 import type { Route } from 'next';
 import { ArrowLeft, Plus } from 'lucide-react';
 import { ProductForm } from '@/components/shop/product-form';
-import { getUser } from '@/lib/auth/session';
+import { getUser, getIsAdmin } from '@/lib/auth/session';
 
 export const metadata: Metadata = {
   title: 'Neues Produkt · Shop-Studio',
@@ -16,6 +16,7 @@ export const dynamic = 'force-dynamic';
 export default async function NewProductPage() {
   const user = await getUser();
   if (!user) redirect('/login?next=/studio/shop/new');
+  const isAdmin = await getIsAdmin();
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8 lg:px-6">
@@ -37,7 +38,7 @@ export default async function NewProductPage() {
         </p>
       </div>
 
-      <ProductForm existing={null} />
+      <ProductForm existing={null} isAdmin={isAdmin} />
     </div>
   );
 }

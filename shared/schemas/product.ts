@@ -18,6 +18,9 @@ const productBaseSchema = z.object({
   // Echter Euro-Preis (Dezimal, z.B. 7.90). Nur für Vorbestell-/Cash-Produkte
   // relevant; Coin-Produkte lassen es null.
   price_eur:        z.number().positive().max(100_000).nullable().optional(),
+  // Verkaufsart. 'coins' = Coin-Kauf (Default) · 'preorder' = €-Vorbestellung ·
+  // 'cash'. Admin-gated (DB-Trigger stuft Nicht-Admins still auf 'coins' zurück).
+  sale_mode:        z.enum(['coins', 'preorder', 'cash']).optional(),
   stock:            z.number().int().min(-1).max(999_999), // -1 = unlimited
   cover_url:        z.string().url().nullable().optional(),
   file_url:         z.string().url().nullable().optional(), // digitale Produktdatei (Supabase Storage: digital-products)
