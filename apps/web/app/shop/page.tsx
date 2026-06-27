@@ -94,12 +94,16 @@ export default async function ShopCatalogPage({ searchParams }: PageProps) {
               Zahl darunter. Auf sm+ rechts gruppiert. */}
           <div className="flex items-stretch justify-around gap-1 sm:justify-end sm:gap-4">
             {balance !== null && (
-              <div className="flex flex-col items-center justify-center gap-1 px-1">
+              <Link
+                href={"/coin-shop" as Route}
+                className="flex flex-col items-center justify-center gap-1 px-1 transition-opacity hover:opacity-80"
+                title="Guthaben aufladen"
+              >
                 <CoinIcon className="h-8 w-8" />
                 <span className="text-[11px] font-semibold leading-none tabular-nums">
                   {balance.toLocaleString(LOCALE_INTL[locale])}
                 </span>
-              </div>
+              </Link>
             )}
             {user && (
               <ActionChip
@@ -107,6 +111,13 @@ export default async function ShopCatalogPage({ searchParams }: PageProps) {
                 label="Verkaufen"
                 icon={<Plus className="h-5 w-5" />}
                 primary
+              />
+            )}
+            {user && (
+              <ActionChip
+                href="/studio/shop"
+                label="Mein Shop"
+                icon={<Store className="h-5 w-5" />}
               />
             )}
             {user && (
