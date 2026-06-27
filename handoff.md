@@ -1,4 +1,4 @@
-# Handoff — Serlo/Vibes (Stand 27. Juni 2026)
+# Handoff — Serlo/Vibes (Stand 27. Juni 2026 · Session 2)
 
 > 📍 **Dieses Dokument: `/Users/zaurhatuev/vibes-app/handoff.md`**
 > Arbeite NUR in diesem Repo: **`/Users/zaurhatuev/vibes-app`** (Branch `main`).
@@ -16,16 +16,62 @@
 | Bereich | Stand |
 |---|---|
 | **Repo / Branch** | `/Users/zaurhatuev/vibes-app` · `main` · Working Tree **sauber** |
-| **Letzter Commit** | `5911990` — Vormerk-Benachrichtigung-Fix + Wer/Datum sichtbar. **Alle Session-Commits gepusht.** |
+| **Letzter Commit** | `eff18ad` — Echtgeld-Verkäufe zählen (sold_count + €-Umsatz) + Verkäufer-Bewertung auf Produktseite. **Alle Session-Commits gepusht & verifiziert (`git ls-remote`).** |
 | **Web (apps/web)** | deployt via **Vercel** auf Push zu `main`. **Live: `serlo-web.vercel.app` — ⚠️ OHNE `www`!** |
-| **App-Build** | v1.30.0 / iOS-Build 286 (TestFlight) · Runtime **1.30.0** |
-| **OTAs (26.–27.6.)** | Viele JS-OTAs auf `production`: Shop-TikTok-Layout, Banner-Karussell, Seamless-Kommentare, contain+Blur-Fill, Mute-Persistenz, **Phase-1 Echtgeld-Bestell-Frontend (my-orders + fulfillment)**, Vormerk-Notif-Fix. Letzte: `5911990`. Runtime 1.30.0, iOS+Android. |
-| **Edge Functions deployed (27.6.)** | `create-checkout-session` + `stripe-webhook` um **Produkt-Bezahlpfad** erweitert (metadata.kind='product_order'). |
-| **DB-Migrationen** | ✅ ausgeführt: `…170000` product_price_eur · `…120000` notify_preorder_buyers · `…130000` chat_images_bucket · `20260626120000` shop_banners · `20260627120000` shop_real_money_orders · `20260627130000` shop_order_flow_rpcs.  🔴 **NOCH AUSZUFÜHREN: `20260627140000_notification_types_orders.sql`** (sonst kommt die Vormerk-Benachrichtigung nicht an!). |
-| **GERADE IN ARBEIT** | **Phase-1 Echtgeld-Finanzsystem** (eigenes Parfüm, kein Connect) — Backend + App + Web **fertig & deployed**. Offen: Migration `…140000` ausführen, Stripe Test→Live, AGB/Recht. Siehe §1-J + §3. |
-| **Admin** | Zaur (`username='zaur'`, `profiles.is_admin = true`) — nötig fürs Vorbestell-Gate. |
+| **App-Build** | v1.30.0 / iOS-Build 286 (TestFlight) · Runtime **1.30.0**. OTAs ziehen nur beim **kalten App-Neustart**. |
+| **Letzte OTAs (27.6. Session 2)** | Viele JS-OTAs auf `production` (Runtime 1.30.0): Echtgeld-Bestellflow-Politur, Direktkontakt, Bewertungen, Dispute, Push-Korrektheit, „Echtgeld-Verkäufe zählen + Produkt-Bewertung". Stand = Commit `eff18ad`. |
+| **Edge Functions deployed** | `create-checkout-session` (Produkt-Checkout + Cover-Bild via weserv), `stripe-webhook` (→ paid + sold_count-Bump + Verkäufer-Notif), `send-push-notification` (alle Bestell-Notif-Typen). **Alle aktuell deployed.** |
+| **DB-Migrationen** | ✅ **ALLE ausgeführt** (Zaur im SQL-Editor) bis `20260628130000_echtgeld_sold_count.sql` + einmaliges sold_count-Backfill-UPDATE. Vollständige Liste Session 2 siehe §1.5. **Keine offene Migration.** |
+| **GERADE FERTIG** | **Komplettes Echtgeld-Bestell- & Vertrauens-System** (Phase 1, eigenes Parfüm, kein Connect) — Backend + App + Web **fertig & deployed & verifiziert**. Siehe §1.5. |
+| **Admin** | Zaur (`username='zaur'`, `profiles.is_admin = true`) — nötig fürs Vorbestell-Gate **und** Dispute-Klärung (`resolve_order_dispute`). |
 
 ⚠️ **Quarantäne:** `/Users/zaurhatuev/Desktop/vibes-app` — NIEMALS bauen/deployen/pushen.
+
+---
+
+## 1.5 🆕 Session 2 (27.6. später) — Echtgeld-Bestell- & Vertrauens-System KOMPLETT
+
+> Aufbauend auf §1-J. Der ganze Loop ist jetzt fertig + live (Web + App):
+> **Vormerken → „Ware ist da → Zahlung anfordern" → bezahlen (Stripe) → versenden+Tracking
+> → erhalten → bewerten (beidseitig) → Problem melden & klären.** Plus Direktkontakt jederzeit.
+
+### Was gebaut wurde
+- **Verkäufer-Vorbestell-Panel-Fix**: `getMyPreorderGroups` (Web) nutzte einen kaputten PostgREST-Embed `user:profiles(...)` (FK zeigt auf `auth.users`, nicht `profiles`) → PGRST200 → Panel leer. Fix: Usernamen separat per `.in()`. Memory: `vibes-postgrest-profiles-embed`.
+- **Checkout-Zielseiten**: `/shop/success` + `/shop/cancelled` (gab's nicht → 404/Coin-Seite). `create-checkout-session` vom Coin-`STRIPE_SUCCESS_URL`-Fallback entkoppelt + **Cover-Bild** an Stripe (WebP→JPEG via `images.weserv.nl`).
+- **Käufer-Aktionen**: Stornieren **vor** Zahlung (`cancel_product_order`, gibt Vormerkung frei) + **Lieferadresse ändern** solange `paid` (`update_order_shipping_address`). UI Web+App.
+- **Eigenes UI statt Browser-Dialoge**: Versand/Erhalten/Stornieren laufen über `<Dialog>` (Web) statt `window.prompt/confirm`.
+- **Repeat-Kauf**: „Vormerken" nach Lieferung wieder möglich (`useMyPreorder`/`preordered_by_me` zählen nur offene Vormerkungen; `mark_preorders_payable` blockt nur laufende, nicht gelieferte Orders).
+- **Vorbestell-Oberflächen konsolidiert**: `/studio/shop/preorders` ist die **einzige** Zentrale (Anschreiben + „Ware ist da → Zahlung anfordern"); der doppelte Block aus `/studio/orders` ist raus (Banner verlinkt hin).
+- **Direktkontakt** Käufer↔Verkäufer aus jeder Bestellung (DM-Button, Web+App).
+- **Bewertungen nach Lieferung** (beidseitig): `order_reviews` + `submit_order_review`. Anzeige auf der Bestellung (eigene + erhaltene) **und aggregiert als Reputation** auf dem **Profil** (`get_order_rating`) + auf der **Produktseite** (Seller-Karte).
+- **Dispute/Melden**: `order_disputes` + `report_order_dispute` (Partei, ab `paid`) + `resolve_order_dispute` (**Admin-only**). „In Klärung"-Banner; Admin klärt auf Web.
+- **Benachrichtigungen korrekt**: eigene Typen statt generisches `gift` — `order_payment_requested/paid/shipped/cancelled/address_updated/review/dispute` + `preorder_interest`. Push-Texte + Deep-Links + Live-Glocken-Badge.
+- **Echtgeld zählt jetzt**: `bump_product_sold_count` (Webhook beim Bezahlen) → `sold_count` auf Karten+Analytics; **€-Umsatz** in Shop-Analytics (`getShopAnalytics` aggregiert `product_orders.amount_eur`).
+
+### Migrationen Session 2 (✅ alle ausgeführt) — chronologisch
+`20260627150000` order_buyer_actions (cancel + address) · `20260627160000` repeat_preorder · `20260627170000` order_notification_types · `20260627180000` order_notif_types_2 (cancelled/address) · `20260628100000` order_reviews · `20260628110000` order_review_notify_and_disputes · `20260628120000` order_rating_aggregate · `20260628130000` echtgeld_sold_count. **+ einmaliges sold_count-Backfill-UPDATE** (manuell, nicht als Migration).
+
+### Schlüssel-Dateien
+- DB-RPCs (alle SECURITY DEFINER mit Identitäts-Check): siehe Migrationen oben.
+- Edge: `supabase/functions/{create-checkout-session,stripe-webhook,send-push-notification}/index.ts`.
+- Web-Daten/Actions: `apps/web/lib/data/shop.ts`, `apps/web/app/actions/shop.ts`.
+- Web-UI: `components/shop/{product-orders-panel,order-review,order-dispute,preorder-contact}.tsx`, `app/studio/orders/page.tsx`, `app/studio/shop/preorders/page.tsx`, `app/shop/[id]/page.tsx`, `app/u/[username]/page.tsx`, `app/studio/shop/analytics/page.tsx`, `app/shop/success/page.tsx`, `app/shop/cancelled/page.tsx`.
+- App-Hooks: `lib/useShop.ts` (ProductOrder+Reviews+Disputes+Rating-Hooks), `lib/useNotifications.ts`, `lib/usePushNotifications.ts`.
+- App-UI: `app/shop/{my-orders,fulfillment,[id]}.tsx`, `app/(tabs)/notifications.tsx`, `components/shop/{OrderReviewControl,OrderDisputeControl}.tsx`, `components/profile/UserProfileContent.tsx`.
+
+### Gotchas Session 2 (sonst Zeitfresser — auch als Memory gespeichert)
+- **3 Notification-Surfaces** (`vibes-three-notification-surfaces`): ein neuer `notifications.type` muss In-App (App+Web), Expo-Push **und** Web-Push kennen + im CHECK stehen, sonst falsche/generische Texte. Insert scheitert sonst **still** (RPCs `EXCEPTION WHEN OTHERS THEN NULL`).
+- **Realtime-Channel-Namen müssen pro Hook-Instanz eindeutig sein** (`useUnreadShellCounts` läuft mehrfach pro Seite) — geteilter Name → „cannot add postgres_changes callbacks after subscribe()" → **jede eingeloggte Seite crasht**. Fix: Random-Suffix + try/catch. (Hat diese Session einen Prod-Crash verursacht → gefixt in `43a117f`.)
+- **PostgREST-Embed** (`vibes-postgrest-profiles-embed`): `user:profiles(...)` 400t wenn die Tabelle auf `auth.users` FK't statt `profiles`.
+- **`sold_count`**: nur `buy_product` (Coins) zählte hoch — Echtgeld-Verkäufe brauchen den Webhook-Bump (sonst „0× verkauft"). Coin- vs €-Umsatz sind getrennte Einheiten (Analytics zeigt beide separat).
+- **ESLint `react/no-unescaped-entities`**: gerade `"` im JSX-Text bricht den Vercel-Build — deutsche typografische `„…"` nutzen.
+- **zsh + Inline-`#`-Kommentare** in Befehlen: zsh interpretiert `#` interaktiv NICHT als Kommentar → wird als Argument übergeben („Invalid Function name"). In Befehlen für Zaur keine Inline-Kommentare.
+
+### Offen / nächste Schritte (Echtgeld)
+- **Produktseite Verkäufer-Bewertung** ist gebaut; ggf. weitere Plätze (Shop-Karten) optional.
+- **Stripe Test→Live** + AGB/Widerruf/Impressum/GoBD **vor echten Kundenzahlungen** (Memory `vibes-stripe-coinshop`). Stripe-Branding (Logo/Farbe) im Dashboard.
+- **Auto-Refund** bei Storno nach Zahlung: bewusst NICHT gebaut (Phase 2 mit Recht). Aktuell: Käufer kontaktiert Verkäufer / Admin klärt Dispute manuell.
+- Bestell-KPI „Umsatz brutto" (`/studio/orders`) + „Einnahmen"-Seite sind **Coin**-denominiert (Echtgeld via Stripe-Dashboard + Shop-Analytics-€).
 
 ---
 
@@ -108,13 +154,13 @@
 
 ## 3. 🚀 OFFEN / Nächste Schritte
 
-1. **🔴 SOFORT: Migration `20260627140000_notification_types_orders.sql` ausführen** (Supabase-SQL-Editor) — sonst kommt die Vormerk-Benachrichtigung nicht an. Reine CHECK-Erweiterung, leer-safe.
-2. **🚀 Parfüm-Launch / Phase 0 validieren**: Zaur verkauft erst **offline** (Community/Bruder, testet selbst), dann Leute in die App holen. 20–30 Hero-Düfte als Vorbestellung einstellen (Web Shop-Studio), Links teilen (**OHNE www!**). **Erst-Verkauf beweisen, bevor mehr gebaut wird.**
+1. ✅ **ERLEDIGT (Session 2)**: Bestell-/Vertrauens-System komplett (Notif-Typen, Reviews, Dispute, Reputation, sold_count/€-Umsatz, Konsolidierung, Direktkontakt). Polish-Backlog von früher (§3.7 a/b/c) ist damit auch abgehakt. **Keine offene Migration.**
+2. **🚀 Parfüm-Launch / Phase 0 validieren** (= jetzt der eigentliche nächste Schritt): erst **offline** verkaufen (Community/Bruder), dann Leute in die App holen. 20–30 Hero-Düfte als Vorbestellung einstellen (Web Shop-Studio), Links teilen (**OHNE www!**). **Erst-Verkauf beweisen, bevor mehr gebaut wird.**
 3. **Stripe Test → Live** umstellen, sobald echte Kunden zahlen sollen: Keys `sk_live_`, Live-Webhook (Memory `vibes-stripe-coinshop` hat den Plan). VORHER **AGB + Widerruf + Impressum + GoBD-Rechnung** (Anwalt/Steuerberater) — kein Rechtsrat von mir.
 4. **UG (haftungsbeschränkt)** gründen, spätestens bevor Drittverkäufer (Phase 2) Geld über die Plattform bewegen. Kappt Privathaftung (Zaur angestellt). Steuerberater ab erstem stetigen Umsatz; §19 → Regelbesteuerung bei 22.000 €.
 5. **Coin-Ökonomie kalibrieren** (verdient aktuell nichts): Diamant-Quote 70%→~30-40%, Auszahlkurs/Coin-Preis so, dass Plattform ≥50% behält. Cashout über lizenzierten Rail. (Phase 2, wenn User da.)
 6. **Phase 2 — Marktplatz scharf schalten** (andere Verkäufer): Stripe Connect + KYC + Escrow + Dispute. Architektur liegt schon (seller_accounts, platform_fee). Erst bei echter Verkäufer-Nachfrage.
-7. **Polish-Backlog Finanz**: (a) Bestell-Lebenszyklus-Notifs nutzen noch `type='gift'`+comment_text statt eigener `order_*`-Typen (lesbar, aber generisches Icon) — optional auf order_payment_requested/order_paid/order_shipped umstellen (CHECK erlaubt sie schon). (b) Datum/Uhrzeit auch in App-`my-orders` (aktuell nur Web). (c) Zwei Vorbestell-Oberflächen konsolidieren (siehe §1-J Warnung).
+7. **Polish-Backlog Finanz** (Session 2 erledigt: eigene Notif-Typen ✅, App-`my-orders`-Datum ✅, Vorbestell-Konsolidierung ✅). **Noch offen/optional**: Stripe-Branding (Logo/Farbe im Dashboard); Streichpreis bewusst NICHT; Auto-Refund erst Phase 2.
 8. **Altlasten**: 🔴 Google-Login-Bug („upstream request timeout" am Supabase-Callback, `docs/auth-setup.md`) · E-Mail/Resend kaputt → Android-Signup-Lücke (`docs/auth-setup.md` Schritt 1) · Referral-System erst manuell (Bruder ~10-15 %, Kunde ~10 % Erst-Rabatt), dann bauen.
 
 ---
