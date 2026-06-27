@@ -778,6 +778,113 @@ export function useMarkPreordersPayable() {
   return { markPayable, isWorking };
 }
 
+// Verkäufer: Shop-Statistik (Parität mit Web getShopAnalytics) — pro Produkt
+// sold_count + Coin-Einnahmen (70% Anteil aus `orders`) + Echtgeld-Umsatz (€)
+// aus `product_orders` (paid/shipped/delivered). Reine Frontend-Aggregation
+// (kein RPC), seller-scoped via .eq('seller_id', …) + RLS.
+export interface ShopAnalyticsRow {
+  product_id:    string;
+  title:         string;
+  cover_url:     string | null;
+  sold_count:    number;
+  revenue_coins: number;
+  revenue_eur:   number;
+}
+export interface ShopAnalytics {
+  rows:              ShopAnalyticsRow[];
+  totalSold:         number;
+  totalRevenueCoins: number;
+  totalRevenueEur:   number;
+}
+
+export function useShopAnalytics() {
+  const user = useAuthStore((s) => s.user);
+  return useQuery<ShopAnalytics>({
+    queryKey: ['shop-analytics', user?.id],
+    enabled:  !!user?.id,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const sellerId = user!.id;
+
+      const { data: products } = await supabase
+        .from('products')
+        .select('id, title, cover_url, sold_count')
+        .eq('seller_id', sellerId);
+      const prods = (products ?? []) as Array<{ id: string; title: string; cover_url: string | null; sold_count: number | null }>;
+
+      // Coin-Einnahmen aus abgeschlossenen Coin-Käufen (70% Verkäufer-Anteil).
+      const { data: coinRows } = await supabase
+        .from('orders')
+        .select('product_id, total_coins')
+        .eq('seller_id', sellerId)
+        .eq('status', 'completed');
+      const coinByProduct = new Map<string, number>();
+      for (const r of coinRows ?? []) {
+        const pid = (r as any).product_id as string;
+        coinByProduct.set(pid, (coinByProduct.get(pid) ?? 0) + ((r as any).total_coins ?? 0));
+      }
+
+      // Echtgeld-Umsatz (€) aus bezahlten+ Bestellungen.
+      const { data: eurRows } = await supabase
+        .from('product_orders')
+        .select('product_id, amount_eur')
+        .eq('seller_id', sellerId)
+        .in('status', ['paid', 'shipped', 'delivered']);
+      const eurByProduct = new Map<string, number>();
+      for (const r of eurRows ?? []) {
+        const pid = (r as any).product_id as string | null;
+        if (!pid) continue;
+        eurByProduct.set(pid, (eurByProduct.get(pid) ?? 0) + Number((r as any).amount_eur ?? 0));
+      }
+
+      const rows: ShopAnalyticsRow[] = prods
+        .map((p) => ({
+          product_id:    p.id,
+          title:         p.title,
+          cover_url:     p.cover_url,
+          sold_count:    p.sold_count ?? 0,
+          revenue_coins: Math.round((coinByProduct.get(p.id) ?? 0) * 0.7),
+          revenue_eur:   eurByProduct.get(p.id) ?? 0,
+        }))
+        .sort((a, b) => (b.revenue_eur - a.revenue_eur) || (b.sold_count - a.sold_count));
+
+      return {
+        rows,
+        totalSold:         rows.reduce((s, r) => s + r.sold_count, 0),
+        totalRevenueCoins: rows.reduce((s, r) => s + r.revenue_coins, 0),
+        totalRevenueEur:   rows.reduce((s, r) => s + r.revenue_eur, 0),
+      };
+    },
+  });
+}
+
+// Verkäufer: alle offenen Vorbesteller eines Produkts per DM anschreiben
+// (notify_preorder_buyers: schreibt allen mit status='interested' eine DM +
+// setzt sie auf 'notified'; umgeht den DM-Cooldown + RLS via SECURITY DEFINER).
+// Reine DM/Heads-up — erzeugt KEINE bezahlbare Order (das macht markPayable).
+export function useNotifyPreorderBuyers() {
+  const qc = useQueryClient();
+  const [isWorking, setIsWorking] = useState(false);
+  const notifyBuyers = useCallback(async (
+    productId: string, message: string,
+  ): Promise<{ notified?: number; error?: string }> => {
+    setIsWorking(true);
+    try {
+      const { data, error } = await supabase.rpc('notify_preorder_buyers', {
+        p_product_id: productId,
+        p_message:    message,
+      });
+      if (error) return { error: 'network_error' };
+      if ((data as any)?.success === false) return { error: (data as any)?.error ?? 'failed' };
+      qc.invalidateQueries({ queryKey: ['preorder-groups'] });
+      return { notified: (data as any)?.notified ?? 0 };
+    } finally {
+      setIsWorking(false);
+    }
+  }, [qc]);
+  return { notifyBuyers, isWorking };
+}
+
 // Verkäufer: versendet (+ Tracking)
 export function useSetOrderShipped() {
   const qc = useQueryClient();

@@ -11,15 +11,17 @@ import {
   formatEur,
   useMarkPreordersPayable,
   useMyPreorderGroups,
+  useNotifyPreorderBuyers,
   useSellerProductOrders,
   useSetOrderShipped,
+  type PreorderGroup,
   type ProductOrder,
 } from '@/lib/useShop';
 import { useTheme } from '@/lib/useTheme';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { ArrowLeft, Bell, CheckCircle2, Clock, MessageCircle, Package, PackageCheck, Truck } from 'lucide-react-native';
+import { ArrowLeft, Bell, CheckCircle2, Clock, MessageCircle, Package, PackageCheck, Send, Truck } from 'lucide-react-native';
 import { useState } from 'react';
 import { useOrCreateConversation } from '@/lib/useMessages';
 import { OrderReviewControl } from '@/components/shop/OrderReviewControl';
@@ -50,7 +52,24 @@ export default function FulfillmentScreen() {
   const { data: orders = [], isLoading } = useSellerProductOrders();
   const { markPayable, isWorking: isMarking } = useMarkPreordersPayable();
   const { setShipped, isWorking: isShipping } = useSetOrderShipped();
+  const { notifyBuyers, isWorking: isNotifying } = useNotifyPreorderBuyers();
   const orCreate = useOrCreateConversation();
+
+  // „Anschreiben"-Modal (DM-Heads-up an alle Vorbesteller eines Produkts)
+  const [notifyGroup, setNotifyGroup] = useState<PreorderGroup | null>(null);
+  const [notifyMsg, setNotifyMsg] = useState('');
+  const openNotify = (g: PreorderGroup) => {
+    setNotifyGroup(g);
+    setNotifyMsg(`Hey! 🌸 Kurzes Update zu deiner Vorbestellung „${g.title}": Es geht voran — ich melde mich, sobald sie da ist. Danke fürs Vormerken!`);
+  };
+  const confirmNotify = async () => {
+    if (!notifyGroup) return;
+    const res = await notifyBuyers(notifyGroup.id, notifyMsg);
+    if (res.error) { Alert.alert('Hoppla', 'Hat nicht geklappt — gleich nochmal?'); return; }
+    const title = notifyGroup.title;
+    setNotifyGroup(null); setNotifyMsg('');
+    Alert.alert('Gesendet ✓', `${res.notified ?? 0} Vorbesteller von „${title}" angeschrieben.`);
+  };
 
   const handleMessage = async (o: ProductOrder) => {
     try {
@@ -134,14 +153,24 @@ export default function FulfillmentScreen() {
                       </Text>
                     )}
                   </Pressable>
-                  <Pressable
-                    onPress={() => handleMarkPayable(g.id, g.title)}
-                    disabled={isMarking || g.price_eur == null}
-                    style={[s.smallBtn, { backgroundColor: colors.text.primary, opacity: (isMarking || g.price_eur == null) ? 0.5 : 1 }]}
-                  >
-                    <Bell size={13} color={colors.bg.primary} strokeWidth={2.4} />
-                    <Text style={[s.smallBtnText, { color: colors.bg.primary }]}>Anfordern</Text>
-                  </Pressable>
+                  <View style={{ gap: 6 }}>
+                    <Pressable
+                      onPress={() => handleMarkPayable(g.id, g.title)}
+                      disabled={isMarking || g.price_eur == null}
+                      style={[s.smallBtn, { backgroundColor: colors.text.primary, opacity: (isMarking || g.price_eur == null) ? 0.5 : 1 }]}
+                    >
+                      <Bell size={13} color={colors.bg.primary} strokeWidth={2.4} />
+                      <Text style={[s.smallBtnText, { color: colors.bg.primary }]}>Anfordern</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => openNotify(g)}
+                      disabled={isNotifying}
+                      style={[s.smallBtnOutline, { borderColor: colors.border.strong, opacity: isNotifying ? 0.5 : 1 }]}
+                    >
+                      <Send size={13} color={colors.text.primary} strokeWidth={2.2} />
+                      <Text style={[s.smallBtnText, { color: colors.text.primary }]}>Anschreiben</Text>
+                    </Pressable>
+                  </View>
                 </View>
               ))}
             </View>
@@ -270,6 +299,40 @@ export default function FulfillmentScreen() {
           </Pressable>
         </Pressable>
       </Modal>
+
+      {/* Anschreiben-Modal (DM an alle Vorbesteller) */}
+      <Modal transparent visible={!!notifyGroup} animationType="fade" onRequestClose={() => setNotifyGroup(null)}>
+        <Pressable style={s.backdrop} onPress={() => setNotifyGroup(null)}>
+          <Pressable style={[s.sheet, { backgroundColor: colors.bg.elevated, paddingBottom: insets.bottom + 16 }]} onPress={(e) => e.stopPropagation()}>
+            <View style={s.sheetHandle} />
+            <Text style={[s.sheetTitle, { color: colors.text.primary }]} numberOfLines={1}>
+              Alle anschreiben{notifyGroup ? ` · ${notifyGroup.people}` : ''}
+            </Text>
+            <Text style={[s.rowSub, { color: colors.text.muted, marginBottom: 4 }]}>
+              Geht als persönliche Nachricht an alle, die „{notifyGroup?.title}" vorgemerkt haben.
+            </Text>
+            <TextInput
+              style={[s.input, { color: colors.text.primary, backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle, height: 120, paddingTop: 12, textAlignVertical: 'top' }]}
+              placeholder="Deine Nachricht …"
+              placeholderTextColor={colors.text.muted}
+              value={notifyMsg}
+              onChangeText={setNotifyMsg}
+              multiline
+              maxLength={500}
+            />
+            <Pressable
+              onPress={confirmNotify}
+              disabled={isNotifying || notifyMsg.trim().length === 0}
+              style={[s.shipBtn, { backgroundColor: colors.text.primary, opacity: (isNotifying || notifyMsg.trim().length === 0) ? 0.6 : 1, marginTop: 4 }]}
+            >
+              {isNotifying
+                ? <ActivityIndicator size="small" color={colors.bg.primary} />
+                : <Send size={15} color={colors.bg.primary} strokeWidth={2.4} />}
+              <Text style={[s.shipBtnText, { color: colors.bg.primary }]}>Senden</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
@@ -291,7 +354,8 @@ const s = StyleSheet.create({
   rowTitle: { fontSize: 14, fontWeight: '700' },
   rowSub: { fontSize: 12, fontWeight: '500' },
 
-  smallBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, height: 36, borderRadius: 10 },
+  smallBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingHorizontal: 12, height: 36, borderRadius: 10 },
+  smallBtnOutline: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingHorizontal: 12, height: 36, borderRadius: 10, borderWidth: 1, backgroundColor: 'transparent' },
   smallBtnText: { fontSize: 13, fontWeight: '700' },
 
   orderCard: { borderRadius: 14, borderWidth: 1, padding: 12, gap: 6 },

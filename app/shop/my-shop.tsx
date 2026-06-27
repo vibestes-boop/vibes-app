@@ -28,6 +28,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams,useRouter } from 'expo-router';
 import {
 ArrowLeft,
+BarChart3,
 Box,
 ChevronRight,
 FileText,
@@ -378,6 +379,14 @@ export default function MyShopScreen() {
         <View style={[s.diamondPill, { backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle }]}>
           <Text style={[s.diamondText, { color: colors.text.primary }]}>{(diamonds * 0.02).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</Text>
         </View>
+        {/* Shop-Statistik */}
+        <Pressable
+          style={[s.addBtn, { backgroundColor: colors.bg.elevated, borderWidth: 1, borderColor: colors.border.subtle, marginRight: 8 }]}
+          onPress={() => router.push('/shop/analytics' as any)}
+          accessibilityLabel="Shop-Statistik"
+        >
+          <BarChart3 size={18} color={colors.text.primary} strokeWidth={2.2} />
+        </Pressable>
         {/* Neues Produkt erstellen */}
         <Pressable
           style={[s.addBtn, { backgroundColor: colors.text.primary }]}
