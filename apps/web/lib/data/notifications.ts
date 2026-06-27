@@ -35,7 +35,10 @@ export type NotificationType =
   | 'repost'
   | 'story_reaction'
   | 'guild'
-  | 'preorder_interest';
+  | 'preorder_interest'
+  | 'order_payment_requested'
+  | 'order_paid'
+  | 'order_shipped';
 
 export interface NotificationSender {
   id: string;

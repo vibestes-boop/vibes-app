@@ -5,7 +5,7 @@ import { supabase } from './supabase';
 
 export type AppNotification = {
   id: string;
-  type: 'like' | 'comment' | 'follow' | 'live' | 'live_invite' | 'dm' | 'mention' | 'follow_request' | 'follow_request_accepted' | 'gift' | 'new_order' | 'preorder_interest';
+  type: 'like' | 'comment' | 'follow' | 'live' | 'live_invite' | 'dm' | 'mention' | 'follow_request' | 'follow_request_accepted' | 'gift' | 'new_order' | 'preorder_interest' | 'order_payment_requested' | 'order_paid' | 'order_shipped';
   read: boolean;
   created_at: string;
   comment_text: string | null;

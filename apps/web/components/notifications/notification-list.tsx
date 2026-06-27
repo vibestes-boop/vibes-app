@@ -21,6 +21,9 @@ import {
   X,
   Repeat2,
   Camera,
+  CreditCard,
+  Package,
+  Truck,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -63,6 +66,9 @@ const TYPE_META: Record<NotificationType, NotifMeta> = {
   story_reaction:          { icon: Camera,       color: 'text-muted-foreground', bg: 'bg-muted' },
   guild:                   { icon: Users,        color: 'text-muted-foreground', bg: 'bg-muted' },
   preorder_interest:       { icon: ShoppingBag,  color: 'text-muted-foreground', bg: 'bg-muted' },
+  order_payment_requested: { icon: CreditCard,   color: 'text-muted-foreground', bg: 'bg-muted' },
+  order_paid:              { icon: Package,       color: 'text-muted-foreground', bg: 'bg-muted' },
+  order_shipped:           { icon: Truck,         color: 'text-muted-foreground', bg: 'bg-muted' },
 };
 
 // ── Notification-Text pro Typ ─────────────────────────────────────────────────
@@ -94,6 +100,11 @@ function notifText(n: Notification): string {
       return n.product_name
         ? `${name} hat „${n.product_name}" vorgemerkt 🌸`
         : `${name} hat ein Produkt vorgemerkt 🌸`;
+    case 'order_payment_requested':
+    case 'order_paid':
+    case 'order_shipped':
+      return n.comment_text
+        ?? (n.product_name ? `Update zu „${n.product_name}"` : 'Update zu deiner Bestellung');
     case 'live':
       return `${name} ist jetzt live.`;
     case 'live_invite':
@@ -144,7 +155,11 @@ function notifHref(n: Notification): Route {
         : ('/' as Route);
     case 'new_order':
     case 'preorder_interest':
+    case 'order_paid':
       return '/studio/orders?role=seller' as Route;
+    case 'order_payment_requested':
+    case 'order_shipped':
+      return '/studio/orders?role=buyer' as Route;
     case 'comment_like':
       return n.post_id ? (`/p/${n.post_id}` as Route) : ('/' as Route);
     case 'repost':

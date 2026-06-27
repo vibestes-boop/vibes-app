@@ -308,7 +308,7 @@ async function handleProductOrderPaid(admin: SupabaseClient, obj: unknown) {
   await admin.from('notifications').insert({
     recipient_id: row.seller_id,
     sender_id: row.buyer_id,
-    type: 'gift',
+    type: 'order_paid',
     comment_text: 'Eine Bestellung wurde bezahlt — bitte versenden 📦',
   });
 }
