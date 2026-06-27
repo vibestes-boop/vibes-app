@@ -44,11 +44,20 @@ Trash2
 } from 'lucide-react-native';
 import { useCallback,useEffect,useMemo,useRef,useState } from 'react';
 import { ActivityIndicator,Alert,FlatList,Pressable,RefreshControl,StyleSheet,Text,View } from 'react-native';
-import { useShopProducts,type Product } from '@/lib/useShop';
+import { formatEur,useShopProducts,type Product } from '@/lib/useShop';
 import { ProductCoverImage } from '@/components/shop/ProductCoverImage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // ─ fmtNum: re-exported from useAnalytics ─ (local duplicate removed to avoid conflict)
+
+// Shop-Kachel-Overlay: Titel + Preis unten, lesbar auf jedem Cover (dunkler Scrim).
+const shopCellOverlay = {
+  position: 'absolute' as const, left: 6, right: 6, bottom: 6,
+  backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 8,
+  paddingHorizontal: 7, paddingVertical: 5, gap: 2,
+};
+const shopCellTitle = { color: '#fff', fontSize: 11, fontWeight: '700' as const, letterSpacing: 0.1 };
+const shopCellPrice = { color: '#fff', fontSize: 12, fontWeight: '800' as const, letterSpacing: 0.1 };
 
 export default function ProfileScreen() {
   useThemedStatusBar('auto');
@@ -273,9 +282,12 @@ export default function ProfileScreen() {
     // Shop-Tab: Produkt-Kachel statt Post (gespiegelt aus UserProfileContent)
     if (activeTabRef.current === 'shop') {
       const product = item as unknown as Product;
-      const salePrice = product.sale_price_coins != null && product.sale_price_coins < product.price_coins
+      const isPreorder = product.sale_mode === 'preorder';
+      const eur = formatEur(product.price_eur);
+      // Coin-Sale nur bei Coin-Produkten relevant — Vorbestellungen laufen über €.
+      const salePrice = !isPreorder && product.sale_price_coins != null && product.sale_price_coins < product.price_coins
         ? product.sale_price_coins : null;
-      const shownPrice = salePrice ?? product.price_coins;
+      const shownCoins = salePrice ?? product.price_coins;
       return (
         <View style={s.gridCell}>
           <Pressable
@@ -294,9 +306,17 @@ export default function ProfileScreen() {
                 <Text style={s.shopSaleBadgeText}>-{Math.round((1 - salePrice / product.price_coins) * 100)}%</Text>
               </View>
             )}
-            <View style={[s.shopPricePill, { flexDirection: 'row', alignItems: 'center', gap: 3 }]}>
-              <CoinIcon size={12} />
-              <Text style={s.shopPriceText} numberOfLines={1}>{shownPrice.toLocaleString('de-DE')}</Text>
+            {/* Titel + Preis (Vorbestellung = €, sonst Coins) */}
+            <View style={shopCellOverlay}>
+              <Text style={shopCellTitle} numberOfLines={1}>{product.title}</Text>
+              {isPreorder ? (
+                <Text style={shopCellPrice} numberOfLines={1}>{eur ?? 'Vormerken'}</Text>
+              ) : (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                  <CoinIcon size={12} />
+                  <Text style={shopCellPrice} numberOfLines={1}>{shownCoins.toLocaleString('de-DE')}</Text>
+                </View>
+              )}
             </View>
           </Pressable>
         </View>

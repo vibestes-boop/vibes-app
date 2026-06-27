@@ -25,7 +25,7 @@ import { useHasPendingRequest,useSendFollowRequest,useWithdrawFollowRequest } fr
 import { useOrCreateConversation } from '@/lib/useMessages';
 import { useIsHostMuted,useToggleMuteHost } from '@/lib/useMutedLiveHosts';
 import { useReportUser } from '@/lib/useReport';
-import { useOrderRating,useShopProducts,type Product } from '@/lib/useShop';
+import { formatEur,useOrderRating,useShopProducts,type Product } from '@/lib/useShop';
 import { useTheme } from '@/lib/useTheme';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
@@ -91,6 +91,15 @@ const GRID_COLS = 3;
 const GRID_GAP = 2;
 const GRID_ITEM_WIDTH = (SCREEN_WIDTH - GRID_GAP * (GRID_COLS - 1)) / GRID_COLS;
 const GRID_ITEM_HEIGHT = GRID_ITEM_WIDTH * 5 / 4; // 4:5 Portrait-Format wie Foto-Feed
+
+// Shop-Kachel-Overlay: Titel + Preis unten, lesbar auf jedem Cover (dunkler Scrim).
+const shopCellOverlay = {
+  position: 'absolute' as const, left: 6, right: 6, bottom: 6,
+  backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 8,
+  paddingHorizontal: 7, paddingVertical: 5, gap: 2,
+};
+const shopCellTitle = { color: '#fff', fontSize: 11, fontWeight: '700' as const, letterSpacing: 0.1 };
+const shopCellPrice = { color: '#fff', fontSize: 12, fontWeight: '800' as const, letterSpacing: 0.1 };
 
 type PublicProfile = {
   id: string;
@@ -971,10 +980,13 @@ export function UserProfileContent({ userId, onBack }: Props) {
           // v1.26.5: Shop-Tab → Produkt-Thumbnail statt Post-Thumbnail
           if (activeTab === 'shop') {
             const product = item as unknown as Product;
-            const salePrice = product.sale_price_coins != null && product.sale_price_coins < product.price_coins
+            const isPreorder = product.sale_mode === 'preorder';
+            const eur = formatEur(product.price_eur);
+            // Coin-Sale nur bei Coin-Produkten relevant — Vorbestellungen laufen über €.
+            const salePrice = !isPreorder && product.sale_price_coins != null && product.sale_price_coins < product.price_coins
               ? product.sale_price_coins
               : null;
-            const shownPrice = salePrice ?? product.price_coins;
+            const shownCoins = salePrice ?? product.price_coins;
             return (
               <Pressable
                 style={[s.gridItem, { backgroundColor: colors.bg.elevated }]}
@@ -994,11 +1006,17 @@ export function UserProfileContent({ userId, onBack }: Props) {
                     </Text>
                   </View>
                 )}
-                <View style={[s.shopPricePill, { flexDirection: 'row', alignItems: 'center', gap: 3 }]}>
-                  <CoinIcon size={12} />
-                  <Text style={s.shopPriceText} numberOfLines={1}>
-                    {shownPrice.toLocaleString('de-DE')}
-                  </Text>
+                {/* Titel + Preis (Vorbestellung = €, sonst Coins) */}
+                <View style={shopCellOverlay}>
+                  <Text style={shopCellTitle} numberOfLines={1}>{product.title}</Text>
+                  {isPreorder ? (
+                    <Text style={shopCellPrice} numberOfLines={1}>{eur ?? 'Vormerken'}</Text>
+                  ) : (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                      <CoinIcon size={12} />
+                      <Text style={shopCellPrice} numberOfLines={1}>{shownCoins.toLocaleString('de-DE')}</Text>
+                    </View>
+                  )}
                 </View>
               </Pressable>
             );
