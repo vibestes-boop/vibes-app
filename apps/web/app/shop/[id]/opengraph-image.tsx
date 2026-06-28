@@ -61,7 +61,10 @@ export default async function Image({ params }: { params: { id: string } }) {
         display: "flex",
         width: "100%",
         height: "100%",
-        background: "#0d0d12",
+        // Vorbestellung (Parfüm) bekommt warmes Branding statt kühlem Schwarz.
+        background: isPreorder
+          ? "linear-gradient(135deg, #241510 0%, #3a2417 52%, #160d07 100%)"
+          : "#0d0d12",
         color: "#ffffff",
         fontFamily: "system-ui, -apple-system, sans-serif",
       }}
@@ -229,6 +232,30 @@ export default async function Image({ params }: { params: { id: string } }) {
             </span>
           )}
         </div>
+
+        {/* Vorbestell-CTA — macht die geteilte Karte zum Mini-Werbespot */}
+        {isPreorder && (
+          <div style={{ display: "flex", flexDirection: "column", marginBottom: "8px" }}>
+            <div style={{ display: "flex" }}>
+              <span
+                style={{
+                  background: "#e0a44a",
+                  color: "#1a0f08",
+                  fontSize: "26px",
+                  fontWeight: 800,
+                  padding: "12px 28px",
+                  borderRadius: "999px",
+                  display: "flex",
+                }}
+              >
+                Jetzt vormerken
+              </span>
+            </div>
+            <span style={{ fontSize: "19px", color: "#d9b894", marginTop: "14px" }}>
+              Zahlung erst bei Lieferung · keine Vorkasse
+            </span>
+          </div>
+        )}
 
         {/* Sold count */}
         {product.sold_count > 0 && (
