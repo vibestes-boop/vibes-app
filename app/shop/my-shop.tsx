@@ -865,7 +865,7 @@ function ProductFormSheet({
                 onChangeText={(t) => setForm(f => ({ ...f, price_coins: Math.min(1_000_000, Math.max(1, parseInt(t.replace(/[^0-9]/g, ''), 10) || 0)) }))}
               />
               <Text style={[s.priceHint, { color: colors.text.muted }]}>
-                ≈ {((form.price_coins / 100) * 0.70).toFixed(2)} € für dich
+                ≈ {(form.price_coins * 0.0025).toFixed(2)} € für dich
               </Text>
             </View>
           </>

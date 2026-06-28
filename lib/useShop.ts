@@ -779,7 +779,7 @@ export function useMarkPreordersPayable() {
 }
 
 // Verkäufer: Shop-Statistik (Parität mit Web getShopAnalytics) — pro Produkt
-// sold_count + Coin-Einnahmen (70% Anteil aus `orders`) + Echtgeld-Umsatz (€)
+// sold_count + Coin-Einnahmen (12,5% Anteil aus `orders`, kalibriert) + Echtgeld-Umsatz (€)
 // aus `product_orders` (paid/shipped/delivered). Reine Frontend-Aggregation
 // (kein RPC), seller-scoped via .eq('seller_id', …) + RLS.
 export interface ShopAnalyticsRow {
@@ -812,7 +812,7 @@ export function useShopAnalytics() {
         .eq('seller_id', sellerId);
       const prods = (products ?? []) as Array<{ id: string; title: string; cover_url: string | null; sold_count: number | null }>;
 
-      // Coin-Einnahmen aus abgeschlossenen Coin-Käufen (70% Verkäufer-Anteil).
+      // Coin-Einnahmen aus abgeschlossenen Coin-Käufen (12,5% Verkäufer-Anteil, kalibriert).
       const { data: coinRows } = await supabase
         .from('orders')
         .select('product_id, total_coins')
@@ -843,7 +843,7 @@ export function useShopAnalytics() {
           title:         p.title,
           cover_url:     p.cover_url,
           sold_count:    p.sold_count ?? 0,
-          revenue_coins: Math.round((coinByProduct.get(p.id) ?? 0) * 0.7),
+          revenue_coins: Math.round((coinByProduct.get(p.id) ?? 0) * 0.125),
           revenue_eur:   eurByProduct.get(p.id) ?? 0,
         }))
         .sort((a, b) => (b.revenue_eur - a.revenue_eur) || (b.sold_count - a.sold_count));

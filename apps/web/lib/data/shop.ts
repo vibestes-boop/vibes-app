@@ -575,7 +575,7 @@ export interface ShopAnalyticsProduct {
   title: string;
   cover_url: string | null;
   sold_count: number;
-  revenue_coins: number; // total coins the seller earned (70% cut approximation)
+  revenue_coins: number; // Verkäufer-Ertrag aus Coin-Verkäufen ≈ Diamanten (12,5% Cut, kalibriert)
   revenue_eur: number;   // Echtgeld-Umsatz (€) aus product_orders (paid+)
   avg_rating: number | null;
   review_count: number;
@@ -595,7 +595,7 @@ export const getShopAnalytics = cache(async (): Promise<ShopAnalyticsProduct[]> 
 
   if (!products) return [];
 
-  // Revenue aus completed orders aufsummieren, dann mit 0.7 skalieren (Plattform-Anteil 30%).
+  // Revenue aus completed orders aufsummieren, dann mit 0.125 skalieren (kalibriert: Verkäufer 12,5%).
   const { data: revenueRows } = await supabase
     .from('orders')
     .select('product_id, total_coins')
@@ -628,7 +628,7 @@ export const getShopAnalytics = cache(async (): Promise<ShopAnalyticsProduct[]> 
     title: p.title as string,
     cover_url: (p.cover_url as string | null) ?? null,
     sold_count: (p.sold_count as number | null) ?? 0,
-    revenue_coins: Math.floor((revenueByProduct.get(p.id as string) ?? 0) * 0.7),
+    revenue_coins: Math.floor((revenueByProduct.get(p.id as string) ?? 0) * 0.125),
     revenue_eur: eurByProduct.get(p.id as string) ?? 0,
     avg_rating: (p.avg_rating as number | null) ?? null,
     review_count: (p.review_count as number | null) ?? 0,
