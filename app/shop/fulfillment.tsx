@@ -34,6 +34,7 @@ KeyboardAvoidingView,
 Modal,
 Platform,
 Pressable,
+RefreshControl,
 ScrollView,
 StyleSheet,
 Text,
@@ -63,8 +64,14 @@ export default function FulfillmentScreen() {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
 
-  const { data: preorderGroups = [] } = useMyPreorderGroups();
-  const { data: orders = [], isLoading } = useSellerProductOrders();
+  const { data: preorderGroups = [], refetch: refetchGroups } = useMyPreorderGroups();
+  const { data: orders = [], isLoading, refetch: refetchOrders } = useSellerProductOrders();
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([refetchGroups(), refetchOrders()]);
+    setRefreshing(false);
+  };
   const { markPayable, isWorking: isMarking } = useMarkPreordersPayable();
   const { setShipped, isWorking: isShipping } = useSetOrderShipped();
   const { notifyBuyers, isWorking: isNotifying } = useNotifyPreorderBuyers();
@@ -116,6 +123,32 @@ export default function FulfillmentScreen() {
   const waiting  = orders.filter((o) => o.status === 'payment_requested');
   const shipped  = orders.filter((o) => o.status === 'shipped' || o.status === 'delivered');
 
+  // „Ware ist da → Zahlung anfordern": pro Vorbestell-Gruppe ableiten, wer schon
+  // im Bestell-Pipeline ist. handled = angefordert/bezahlt/versandt/geliefert.
+  // Ein Produkt VERSCHWINDET hier, sobald niemand mehr offen (newCount) ist UND
+  // keine Zahlung mehr aussteht (waitingCount) — dann läuft alles unten weiter.
+  const HANDLED = new Set(['payment_requested', 'paid', 'shipped', 'delivered']);
+  const requestableGroups = preorderGroups
+    .map((g) => {
+      const groupOrders = orders.filter((o) => o.product_id === g.id && HANDLED.has(o.status));
+      const handledCount = groupOrders.length;
+      const waitingOrders = groupOrders.filter((o) => o.status === 'payment_requested');
+      const waitingCount = waitingOrders.length;
+      const newCount = Math.max(0, g.people - handledCount); // #2/#3 noch nicht angefordert
+      const lastRequestedAt = waitingOrders.reduce<string | null>(
+        (latest, o) => (!latest || o.created_at > latest ? o.created_at : latest),
+        null,
+      );
+      const requestedDone = handledCount > 0 || requested.has(g.id);
+      const hasNew = handledCount > 0 && newCount > 0;
+      return { g, handledCount, waitingCount, newCount, lastRequestedAt, requestedDone, hasNew };
+    })
+    // Sichtbar nur solange es noch was zu tun gibt: offene Vormerker ODER
+    // ausstehende Zahlung. Bezahlt+versandfertig → verschwindet hier, läuft unten
+    // in „Zu versenden" weiter. (Nicht aus `requested` ableiten — das ist
+    // Session-State und würde ein bezahltes Produkt fälschlich oben halten.)
+    .filter((x) => x.newCount > 0 || x.waitingCount > 0);
+
   const handleMarkPayable = async (productId: string, title: string) => {
     const res = await markPayable(productId);
     if (res.error) { Alert.alert('Hoppla 🙈', 'Hat nicht geklappt — gleich nochmal?'); return; }
@@ -163,25 +196,18 @@ export default function FulfillmentScreen() {
       {isLoading ? (
         <View style={s.center}><ActivityIndicator color={colors.text.primary} /></View>
       ) : (
-        <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 40, gap: 22 }}>
+        <ScrollView
+          contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 40, gap: 22 }}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.text.muted} />
+          }
+        >
 
           {/* A) Ware ist da → Zahlung anfordern */}
-          {preorderGroups.length > 0 && (
+          {requestableGroups.length > 0 && (
             <View style={{ gap: 10 }}>
               <Text style={[s.section, { color: colors.text.primary }]}>Ware ist da → Zahlung anfordern</Text>
-              {preorderGroups.map((g) => {
-                const groupWaiting = waiting.filter((o) => o.product_id === g.id);
-                const requestedCount = groupWaiting.length;
-                const requestedDone = requested.has(g.id) || requestedCount > 0;
-                // #2/#3: Vormerker, die noch KEINE Zahlungsanfrage haben (z.B. neu dazu).
-                const newCount = Math.max(0, g.people - requestedCount);
-                const hasNew = requestedDone && newCount > 0;
-                // #4: jüngste Zahlungsanfrage für dieses Produkt.
-                const lastRequestedAt = groupWaiting.reduce<string | null>(
-                  (latest, o) => (!latest || o.created_at > latest ? o.created_at : latest),
-                  null,
-                );
-                return (
+              {requestableGroups.map(({ g, waitingCount, newCount, lastRequestedAt, requestedDone, hasNew }) => (
                 <View key={g.id} style={[s.row, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
                   <Pressable onPress={() => router.push(`/shop/${g.id}` as any)}>
                     {g.cover_url ? (
@@ -203,14 +229,14 @@ export default function FulfillmentScreen() {
                         {g.buyers.map((u) => `@${u}`).join(', ')} · seit {fmtDate(g.first_at)}
                       </Text>
                     )}
-                    {/* #1 Zähler + #2/#3 neu + #4 Zeitstempel */}
-                    {requestedDone && (
+                    {/* #1 Zähler (wartende Zahlungen) + #2/#3 neu + #4 Zeitstempel */}
+                    {(waitingCount > 0 || hasNew) && (
                       <Text
                         style={[s.rowSub, { color: hasNew ? colors.text.primary : '#16A34A', fontWeight: '600' }]}
                         numberOfLines={1}
                       >
-                        ✓ {requestedCount} {requestedCount === 1 ? 'wartet' : 'warten'} auf Zahlung
-                        {hasNew ? ` · ${newCount} neu` : ''}
+                        {waitingCount > 0 ? `✓ ${waitingCount} ${waitingCount === 1 ? 'wartet' : 'warten'} auf Zahlung` : ''}
+                        {hasNew ? `${waitingCount > 0 ? ' · ' : ''}${newCount} neu` : ''}
                         {lastRequestedAt ? ` · ${timeAgo(lastRequestedAt)}` : ''}
                       </Text>
                     )}
@@ -245,8 +271,7 @@ export default function FulfillmentScreen() {
                     </Pressable>
                   </View>
                 </View>
-                );
-              })}
+              ))}
             </View>
           )}
 

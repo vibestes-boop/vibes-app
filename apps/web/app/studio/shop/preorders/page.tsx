@@ -82,24 +82,31 @@ export default async function PreordersPage() {
     }
   }
 
-  // Welche Produkte haben schon offene Zahlungsanfragen? → Button zeigt „Angefordert"
-  // (bleibt nach Reload), mit Anzahl (#1) + jüngstem Zeitpunkt (#4). Status
-  // 'payment_requested' = wartet auf Zahlung.
-  const requestedMap = new Map<string, { count: number; lastAt: string }>();
+  // Pro Produkt: wie viele Bestellungen schon „handled" (angefordert/bezahlt/
+  // versandt/geliefert) und wie viele warten noch auf Zahlung (payment_requested)
+  // + jüngster Anfrage-Zeitpunkt (#4). Ein Produkt verschwindet aus dieser Liste,
+  // sobald niemand mehr offen ist UND keine Zahlung mehr aussteht (alles bezahlt
+  // → läuft unter „Bestellungen" als Versand weiter).
+  const HANDLED = ['payment_requested', 'paid', 'shipped', 'delivered'];
+  const ordersMap = new Map<string, { handled: number; waiting: number; lastAt: string | null }>();
   if (summary.length > 0) {
     const { data: reqOrders } = await supabase
       .from('product_orders')
-      .select('product_id, created_at')
+      .select('product_id, status, created_at')
       .eq('seller_id', user.id)
-      .eq('status', 'payment_requested')
+      .in('status', HANDLED)
       .in('product_id', summary.map((s) => s.product_id));
     for (const o of reqOrders ?? []) {
       const pid = o.product_id as string | null;
       if (!pid) continue;
-      const at = o.created_at as string;
-      const cur = requestedMap.get(pid);
-      if (!cur) requestedMap.set(pid, { count: 1, lastAt: at });
-      else { cur.count += 1; if (at > cur.lastAt) cur.lastAt = at; }
+      const cur = ordersMap.get(pid) ?? { handled: 0, waiting: 0, lastAt: null };
+      cur.handled += 1;
+      if (o.status === 'payment_requested') {
+        cur.waiting += 1;
+        const at = o.created_at as string;
+        if (!cur.lastAt || at > cur.lastAt) cur.lastAt = at;
+      }
+      ordersMap.set(pid, cur);
     }
   }
 
@@ -143,9 +150,13 @@ export default async function PreordersPage() {
             const qty = Number(s.total_quantity);
             // Wie viele wurden noch NICHT angeschrieben (status='interested')?
             const interestedCount = people.filter((p) => p.status === 'interested').length;
-            const req = requestedMap.get(s.product_id);
-            const requestedCount = req?.count ?? 0;
-            const newCount = Math.max(0, count - requestedCount); // #2/#3
+            const ord = ordersMap.get(s.product_id);
+            const handledCount = ord?.handled ?? 0;
+            const waitingCount = ord?.waiting ?? 0;
+            const newCount = Math.max(0, count - handledCount); // #2/#3
+            // Verschwindet, sobald nichts mehr offen UND keine Zahlung aussteht
+            // (alles bezahlt → unten in „Bestellungen" als Versand).
+            if (newCount === 0 && waitingCount === 0) return null;
             return (
               <div key={s.product_id} className="rounded-xl border bg-card p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -168,19 +179,25 @@ export default async function PreordersPage() {
                       productId={s.product_id}
                       title={s.title}
                       priceEur={priceMap.get(s.product_id) ?? null}
-                      alreadyRequested={requestedCount > 0}
-                      requestedCount={requestedCount}
+                      requestedCount={handledCount}
+                      waitingCount={waitingCount}
                       peopleCount={count}
                     />
                   </div>
                 </div>
 
-                {/* #1 Zähler + #2/#3 neu + #4 Zeitstempel */}
-                {requestedCount > 0 && (
-                  <p className="mt-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                    ✓ {requestedCount} {requestedCount === 1 ? 'wartet' : 'warten'} auf Zahlung
-                    {newCount > 0 ? ` · ${newCount} neu` : ''}
-                    {req?.lastAt ? ` · zuletzt ${timeAgo(req.lastAt)}` : ''}
+                {/* #1 Zähler (wartende Zahlungen) + #2/#3 neu + #4 Zeitstempel */}
+                {(waitingCount > 0 || (handledCount > 0 && newCount > 0)) && (
+                  <p
+                    className={
+                      handledCount > 0 && newCount > 0
+                        ? 'mt-2 text-xs font-medium text-foreground'
+                        : 'mt-2 text-xs font-medium text-emerald-600 dark:text-emerald-400'
+                    }
+                  >
+                    {waitingCount > 0 ? `✓ ${waitingCount} ${waitingCount === 1 ? 'wartet' : 'warten'} auf Zahlung` : ''}
+                    {handledCount > 0 && newCount > 0 ? `${waitingCount > 0 ? ' · ' : ''}${newCount} neu` : ''}
+                    {ord?.lastAt ? ` · zuletzt ${timeAgo(ord.lastAt)}` : ''}
                   </p>
                 )}
 

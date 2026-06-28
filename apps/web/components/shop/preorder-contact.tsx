@@ -161,15 +161,18 @@ export function PreorderRequestPaymentButton({
   priceEur,
   alreadyRequested = false,
   requestedCount = 0,
+  waitingCount = 0,
   peopleCount = 0,
 }: {
   productId: string;
   title: string;
   priceEur: number | null;
   alreadyRequested?: boolean;
-  /** #1: wie viele Zahlungsanfragen offen sind. */
+  /** „handled" — angefordert/bezahlt/versandt/geliefert (für done + #2/#3). */
   requestedCount?: number;
-  /** Gesamtzahl Vormerker (für #2/#3: neu = people − angefordert). */
+  /** #1: wie viele Zahlungen noch ausstehen (payment_requested). */
+  waitingCount?: number;
+  /** Gesamtzahl Vormerker (für #2/#3: neu = people − handled). */
   peopleCount?: number;
 }) {
   const router = useRouter();
@@ -229,7 +232,7 @@ export function PreorderRequestPaymentButton({
           ? 'Ware ist da → Zahlung anfordern'
           : hasNew
             ? 'Erneut anfordern'
-            : `Angefordert${requestedCount > 0 ? ` · ${requestedCount}` : ''}`}
+            : `Angefordert${waitingCount > 0 ? ` · ${waitingCount}` : ''}`}
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
