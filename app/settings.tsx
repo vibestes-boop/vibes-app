@@ -184,8 +184,8 @@ export default function SettingsScreen() {
   const handleSave = async () => {
     if (!profile) return;
     const trimmedUsername = username.trim();
-    if (!trimmedUsername) { Alert.alert('Fehler', 'Benutzername darf nicht leer sein.'); return; }
-    if (trimmedUsername.length < 3) { Alert.alert('Fehler', 'Benutzername muss mindestens 3 Zeichen lang sein.'); return; }
+    if (!trimmedUsername) { Alert.alert('Kurz prüfen 👀', 'Dein Benutzername darf nicht leer sein.'); return; }
+    if (trimmedUsername.length < 3) { Alert.alert('Kurz prüfen 👀', 'Dein Benutzername braucht mindestens 3 Zeichen.'); return; }
     setSaving(true);
     try {
       let avatarUrl = profile.avatar_url;
@@ -204,7 +204,7 @@ export default function SettingsScreen() {
         .update({ username: trimmedUsername, bio: bio.trim() || null, website: website.trim() || null, avatar_url: avatarUrl, teip: teip || null })
         .eq('id', profile.id).select().single();
       if (error) {
-        if (error.code === '23505') Alert.alert('Fehler', 'Dieser Benutzername ist bereits vergeben.');
+        if (error.code === '23505') Alert.alert('Schon vergeben 🙈', 'Den Namen schnappt sich grad jemand anders — probier einen anderen.');
         else throw error;
         return;
       }
@@ -214,7 +214,7 @@ export default function SettingsScreen() {
       queryClient.invalidateQueries({ queryKey: ['guild-feed'] });
       Alert.alert('Gespeichert ✓', 'Dein Profil wurde aktualisiert.', [{ text: 'OK', onPress: () => router.back() }]);
     } catch (err: any) {
-      Alert.alert('Fehler', err?.message ?? 'Speichern fehlgeschlagen.');
+      Alert.alert('Hoppla 🙈', err?.message ?? 'Speichern ging nicht durch — gleich nochmal?');
     } finally {
       setSaving(false);
     }
@@ -231,7 +231,7 @@ export default function SettingsScreen() {
         setChangingPw(true);
         const { error } = await supabase.auth.updateUser({ password: newPassword });
         setChangingPw(false);
-        if (error) Alert.alert('Fehler', error.message);
+        if (error) Alert.alert('Hoppla 🙈', error.message);
         else Alert.alert('Passwort geändert ✓', 'Dein Passwort wurde erfolgreich aktualisiert.');
       },
     });
@@ -243,11 +243,11 @@ export default function SettingsScreen() {
       message: 'Gib deine neue E-Mail-Adresse ein:',
       keyboardType: 'email-address',
       onConfirm: async (newEmail) => {
-        if (!newEmail || !newEmail.includes('@')) { Alert.alert('Ungültig', 'Bitte gib eine gültige E-Mail-Adresse ein.'); return; }
+        if (!newEmail || !newEmail.includes('@')) { Alert.alert('E-Mail checken 📧', 'Die Adresse sieht noch nicht ganz richtig aus.'); return; }
         setChangingEmail(true);
         const { error } = await supabase.auth.updateUser({ email: newEmail.trim() });
         setChangingEmail(false);
-        if (error) Alert.alert('Fehler', error.message);
+        if (error) Alert.alert('Hoppla 🙈', error.message);
         else Alert.alert('Link gesendet ✓', 'Bitte prüfe dein Postfach und bestätige die Änderung.');
       },
     });
@@ -468,7 +468,7 @@ export default function SettingsScreen() {
                       { text: 'Abbrechen', style: 'cancel' },
                       { text: 'Verlassen', style: 'destructive', onPress: async () => {
                         const { error } = await deactivate();
-                        if (error) Alert.alert('Fehler', error);
+                        if (error) Alert.alert('Hoppla 🙈', error);
                       }},
                     ]
                   );

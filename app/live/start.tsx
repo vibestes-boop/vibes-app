@@ -248,7 +248,7 @@ export default function LiveStartScreen() {
 
   const submitSchedule = async (at: Date) => {
     if (at.getTime() < Date.now() + 5 * 60_000) {
-      Alert.alert('Ungültig', 'Zeitpunkt muss mindestens 5 Minuten in der Zukunft liegen.');
+      Alert.alert('Kurz später 🕒', 'Der Zeitpunkt muss mindestens 5 Minuten in der Zukunft liegen.');
       return;
     }
     try {

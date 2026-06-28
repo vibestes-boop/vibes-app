@@ -97,7 +97,7 @@ export default function CreateStoryScreen() {
         { text: 'OK', onPress: () => router.back() },
       ]);
     } catch (err: any) {
-      Alert.alert('Fehler', err?.message ?? 'Story konnte nicht erstellt werden.');
+      Alert.alert('Fast geschafft 🙈', err?.message ?? 'Deine Story ist nicht durchgegangen — kurz nochmal?');
     } finally {
       setUploading(false);
     }

@@ -161,7 +161,7 @@ export default function PostLongPressSheet({
       await Share.share({ url: mediaUrl, title: 'Vibes Post' });
     } catch (e: any) {
       if (e?.message !== 'User did not share') {
-        Alert.alert('Fehler', e?.message ?? 'Teilen fehlgeschlagen.');
+        Alert.alert('Hoppla 🙈', e?.message ?? 'Das Teilen ging nicht durch — gleich nochmal?');
       }
     }
   }, [mediaUrl, onClose]);

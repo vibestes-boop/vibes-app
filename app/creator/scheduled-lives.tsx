@@ -87,7 +87,7 @@ export default function ScheduledLivesScreen() {
   const handleRescheduleSave = async (newTime: Date) => {
     if (!rescheduleTarget) return;
     if (newTime.getTime() < Date.now() + 5 * 60_000) {
-      Alert.alert('Ungültig', 'Zeitpunkt muss mindestens 5 Minuten in der Zukunft liegen.');
+      Alert.alert('Kurz später 🕒', 'Der Zeitpunkt muss mindestens 5 Minuten in der Zukunft liegen.');
       return;
     }
     try {

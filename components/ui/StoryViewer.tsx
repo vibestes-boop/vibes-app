@@ -473,7 +473,7 @@ function InAppShareModal({
         (async () => {
           try {
             if (!storyMediaUrl) {
-              Alert.alert('Fehler', 'Kein Medium verfügbar.');
+              Alert.alert('Nichts da 🙈', 'Hier ist gerade kein Medium verfügbar.');
               return;
             }
             // Dateiendung ermitteln

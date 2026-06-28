@@ -314,11 +314,11 @@ export default function MyShopScreen() {
       // v1.26.3: Angebotspreis muss kleiner als regulärer Preis sein (und > 0)
       if (form.sale_price_coins != null) {
         if (form.sale_price_coins < 1) {
-          Alert.alert('Angebotspreis ungültig', 'Muss mindestens 1 Coin sein.');
+          Alert.alert('Preis kurz prüfen 👀', 'Der Angebotspreis muss mindestens 1 Coin sein.');
           return;
         }
         if (form.sale_price_coins >= form.price_coins) {
-          Alert.alert('Angebotspreis ungültig', 'Muss kleiner als der reguläre Preis sein.');
+          Alert.alert('Preis kurz prüfen 👀', 'Der Angebotspreis muss kleiner als der reguläre Preis sein.');
           return;
         }
       }
@@ -352,7 +352,7 @@ export default function MyShopScreen() {
           text: 'Löschen', style: 'destructive',
           onPress: async () => {
             try { await deleteProduct(product.id); }
-            catch { Alert.alert('Fehler', 'Löschen fehlgeschlagen.'); }
+            catch { Alert.alert('Hoppla 🙈', 'Das Löschen ging nicht durch — gleich nochmal?'); }
           },
         },
       ]

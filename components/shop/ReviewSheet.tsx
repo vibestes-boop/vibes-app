@@ -80,7 +80,7 @@ export function ReviewSheet({ productId, orderId, productTitle, visible, onClose
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       onClose();
     } catch (e: any) {
-      Alert.alert('Fehler', e.message ?? 'Bewertung konnte nicht gespeichert werden.');
+      Alert.alert('Hoppla 🙈', e.message ?? 'Deine Bewertung ging nicht durch — gleich nochmal?');
     }
   };
 

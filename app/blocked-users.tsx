@@ -46,7 +46,7 @@ function BlockedUserRow({ user }: { user: BlockedUser }) {
                 (old) => (old ?? []).filter((u) => u.id !== user.id)
               );
             } catch {
-              Alert.alert('Fehler', 'Entblocken fehlgeschlagen.');
+              Alert.alert('Hat nicht geklappt 🙈', 'Das Entblocken ging nicht durch — gleich nochmal?');
             } finally {
               setUnblocking(false);
             }

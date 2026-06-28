@@ -136,7 +136,7 @@ function CoHostBlockRow({ block, onUnblocked }: { block: CoHostBlock; onUnblocke
               onUnblocked();
             } catch (err) {
               __DEV__ && console.warn('[CoHostBlocks] unblock failed:', err);
-              Alert.alert('Fehler', 'Entblocken fehlgeschlagen. Bitte erneut versuchen.');
+              Alert.alert('Hat nicht geklappt 🙈', 'Das Entblocken ging nicht durch — gleich nochmal?');
             } finally {
               setUnblocking(false);
             }

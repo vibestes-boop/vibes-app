@@ -523,7 +523,7 @@ export function ARCameraScreen({ onMediaCaptured, onClose }: ARCameraScreenProps
       setCapturedPhoto(`file://${photo.path}`);
     } catch {
       triggerErrorHaptic();
-      Alert.alert('Fehler', 'Foto konnte nicht aufgenommen werden.');
+      Alert.alert('Hoppla 🙈', 'Das Foto hat nicht geklappt — gleich nochmal?');
     } finally {
       setIsBusy(false);
     }
@@ -543,7 +543,7 @@ export function ARCameraScreen({ onMediaCaptured, onClose }: ARCameraScreenProps
         onRecordingError: (err) => {
           setIsRecording(false);
           triggerErrorHaptic();
-          Alert.alert('Aufnahme fehlgeschlagen', err?.message ?? 'Bitte versuche es erneut.');
+          Alert.alert('Aufnahme hat gehakt 🙈', err?.message ?? 'Gleich nochmal versuchen?');
         },
       });
     } else {

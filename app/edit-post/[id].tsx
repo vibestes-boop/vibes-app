@@ -53,7 +53,7 @@ export default function EditPostScreen() {
       .single()
       .then(({ data, error }) => {
         if (error) {
-          Alert.alert('Fehler', 'Post konnte nicht geladen werden.');
+          Alert.alert('Hoppla 🙈', 'Der Post ließ sich nicht laden — gleich nochmal?');
           setLoading(false);
           return;
         }
@@ -81,7 +81,7 @@ export default function EditPostScreen() {
       await supabase.from('posts').update({ women_only: womenOnly }).eq('id', id);
       router.back();
     } catch {
-      Alert.alert('Fehler', 'Speichern fehlgeschlagen. Bitte versuche es erneut.');
+      Alert.alert('Hoppla 🙈', 'Speichern ging nicht durch — gleich nochmal?');
     }
   };
 

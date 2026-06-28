@@ -161,7 +161,7 @@ export function ProfileShareSheet({ visible, onClose, userId, username, avatarUr
       const conversationId = await getOrCreateConv(userId);
       router.push({ pathname: '/messages/[id]', params: { id: conversationId, otherUserId: userId, username: username ?? '' } } as any);
     } catch {
-      Alert.alert('Fehler', 'Konversation konnte nicht geöffnet werden.');
+      Alert.alert('Hoppla 🙈', 'Der Chat ließ sich grad nicht öffnen — gleich nochmal?');
     }
   };
 

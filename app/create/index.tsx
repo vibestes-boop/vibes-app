@@ -361,7 +361,7 @@ export default function CreatePostScreen() {
 
   const handlePost = async () => {
     if (!profile) return;
-    if (!image && !caption.trim()) { Alert.alert('Fehler', 'Füge ein Bild oder eine Caption hinzu.'); return; }
+    if (!image && !caption.trim()) { Alert.alert('Fast fertig ✨', 'Füg noch ein Bild oder eine Caption hinzu.'); return; }
     const controller = new AbortController();
     abortRef.current = controller;
     try {
@@ -458,7 +458,7 @@ export default function CreatePostScreen() {
       ]);
     } catch (err: unknown) {
       if (err instanceof Error && err.name === 'AbortError') return;
-      Alert.alert('Fehler', err instanceof Error ? err.message : 'Entwurf konnte nicht gespeichert werden.');
+      Alert.alert('Hoppla 🙈', err instanceof Error ? err.message : 'Der Entwurf ging nicht durch — gleich nochmal?');
     } finally {
       setDraftSavingBusy(false);
       setUploading(false); setUploadPct(0);
@@ -468,7 +468,7 @@ export default function CreatePostScreen() {
   // v1.20 — Post planen (Scheduler-Modal öffnet sich zuvor)
   const handleSchedule = async (publishAt: Date) => {
     if (!profile) return;
-    if (!image && !caption.trim()) { Alert.alert('Fehler', 'Füge ein Bild oder eine Caption hinzu.'); return; }
+    if (!image && !caption.trim()) { Alert.alert('Fast fertig ✨', 'Füg noch ein Bild oder eine Caption hinzu.'); return; }
     const controller = new AbortController();
     abortRef.current = controller;
     setSchedulingBusy(true);
@@ -502,7 +502,7 @@ export default function CreatePostScreen() {
       ]);
     } catch (err: unknown) {
       if (err instanceof Error && err.name === 'AbortError') return;
-      Alert.alert('Fehler', err instanceof Error ? err.message : 'Planung fehlgeschlagen.');
+      Alert.alert('Hoppla 🙈', err instanceof Error ? err.message : 'Die Planung ging nicht durch — gleich nochmal?');
     } finally {
       setSchedulingBusy(false);
       setUploading(false); setUploadPct(0);

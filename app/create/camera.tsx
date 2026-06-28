@@ -523,7 +523,7 @@ export default function CreateCameraScreen() {
       }
     } catch (e) {
       __DEV__ && console.warn('[openGallery]', e);
-      Alert.alert('Fehler', 'Galerie konnte nicht geöffnet werden.');
+      Alert.alert('Hoppla 🙈', 'Die Galerie ließ sich nicht öffnen — gleich nochmal?');
     }
   }, [captureMode, router, studioMode, aspectRatio, selectedTrack, audioVolume]);
 
@@ -534,7 +534,7 @@ export default function CreateCameraScreen() {
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.92 });
       if (photo?.uri) router.replace({ pathname: '/create', params: { mediaUri: photo.uri, mediaType: 'image', audioUrl: selectedTrack?.url ?? '', audioTitle: selectedTrack?.title ?? '', audioVolume: String(audioVolume) } });
     } catch {
-      Alert.alert('Fehler', 'Foto konnte nicht aufgenommen werden.');
+      Alert.alert('Hoppla 🙈', 'Das Foto hat nicht geklappt — gleich nochmal?');
     }
   }, [router, selectedTrack, audioVolume]);
 
