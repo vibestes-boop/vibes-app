@@ -20,9 +20,12 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import {
 ArrowLeft,
+Check,
 CheckCircle2,
 Clock,
+Copy,
 CreditCard,
+ExternalLink,
 MapPin,
 MessageCircle,
 Package,
@@ -30,6 +33,9 @@ ShoppingBag,
 Store,
 Truck,
 } from 'lucide-react-native';
+import * as Clipboard from 'expo-clipboard';
+import * as Haptics from 'expo-haptics';
+import { trackingUrl } from '@/lib/tracking';
 import { useState } from 'react';
 import { useOrCreateConversation } from '@/lib/useMessages';
 import { OrderReviewControl } from '@/components/shop/OrderReviewControl';
@@ -38,6 +44,7 @@ import {
 ActivityIndicator,
 Alert,
 FlatList,
+Linking,
 Modal,
 Pressable,
 RefreshControl,
@@ -52,6 +59,46 @@ function fmtDateTime(iso: string): string {
   return new Date(iso).toLocaleString('de-DE', {
     day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit',
   });
+}
+
+// Sendungsverfolgung — „Sendung verfolgen"-Chip (Carrier-Deeplink) + Kopier-Chip.
+function TrackingRow({ carrier, number, colors }: { carrier: string | null; number: string | null; colors: any }) {
+  const [copied, setCopied] = useState(false);
+  if (!carrier && !number) return null;
+  const url = number ? trackingUrl(carrier, number) : null;
+  const copy = async () => {
+    if (!number) return;
+    await Clipboard.setStringAsync(number);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 2 }}>
+      {url ? (
+        <Pressable onPress={() => Linking.openURL(url)} style={[s.trackChip, { borderColor: '#14B8A6', backgroundColor: 'rgba(20,184,166,0.10)' }]}>
+          <Truck size={13} color="#0F766E" strokeWidth={2.2} />
+          <Text style={{ color: '#0F766E', fontSize: 12, fontWeight: '600' }}>
+            Sendung verfolgen{carrier ? ` · ${carrier}` : ''}
+          </Text>
+          <ExternalLink size={11} color="#0F766E" strokeWidth={2.2} />
+        </Pressable>
+      ) : (
+        <View style={[s.trackChip, { borderColor: colors.border.subtle }]}>
+          <Truck size={13} color={colors.text.muted} strokeWidth={2.2} />
+          <Text style={{ color: colors.text.muted, fontSize: 12 }}>{[carrier, number].filter(Boolean).join(' · ')}</Text>
+        </View>
+      )}
+      {number && (
+        <Pressable onPress={copy} style={[s.trackChip, { borderColor: colors.border.subtle }]}>
+          {copied
+            ? <Check size={13} color="#22C55E" strokeWidth={2.6} />
+            : <Copy size={13} color={colors.text.muted} strokeWidth={2.2} />}
+          <Text style={{ color: colors.text.muted, fontSize: 12, fontVariant: ['tabular-nums'] }}>{number}</Text>
+        </Pressable>
+      )}
+    </View>
+  );
 }
 
 const STATUS: Record<ProductOrderStatus, { label: string; color: string }> = {
@@ -209,12 +256,7 @@ export default function MyOrdersScreen() {
         {o.status === 'shipped' && (
           <>
             {(o.tracking_carrier || o.tracking_number) && (
-              <View style={s.trackRow}>
-                <Truck size={14} color={colors.text.muted} strokeWidth={2} />
-                <Text style={[s.trackText, { color: colors.text.muted }]} numberOfLines={1}>
-                  {[o.tracking_carrier, o.tracking_number].filter(Boolean).join(' · ')}
-                </Text>
-              </View>
+              <TrackingRow carrier={o.tracking_carrier} number={o.tracking_number} colors={colors} />
             )}
             <Pressable
               onPress={() => handleConfirm(o)}
@@ -412,6 +454,7 @@ const s = StyleSheet.create({
 
   trackRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   trackText: { fontSize: 12, fontWeight: '500', flex: 1 },
+  trackChip: { flexDirection: 'row', alignItems: 'center', gap: 6, borderWidth: 1, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7 },
 
   confirmBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,

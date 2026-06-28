@@ -4,7 +4,8 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import type { Route } from 'next';
-import { CheckCircle2, Clock, CreditCard, MapPin, MessageCircle, PackageCheck, Truck } from 'lucide-react';
+import { Check, CheckCircle2, Clock, Copy, CreditCard, ExternalLink, MapPin, MessageCircle, PackageCheck, Truck } from 'lucide-react';
+import { trackingUrl } from '@/lib/tracking';
 import {
   cancelProductOrder,
   confirmOrderDelivered,
@@ -59,6 +60,13 @@ export function ProductOrdersPanel({ role, orders, isAdmin = false }: Props) {
   const [shipId, setShipId] = useState<string | null>(null);
   const [shipForm, setShipForm] = useState({ carrier: 'DHL', tracking: '' });
   const [confirmAction, setConfirmAction] = useState<{ id: string; kind: 'receive' | 'cancel' } | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const copyTracking = (orderId: string, number: string) => {
+    navigator.clipboard?.writeText(number).then(
+      () => { setCopiedId(orderId); setTimeout(() => setCopiedId((c) => (c === orderId ? null : c)), 2000); },
+      () => {},
+    );
+  };
 
   if (orders.length === 0) return null;
 
@@ -176,9 +184,43 @@ export function ProductOrdersPanel({ role, orders, isAdmin = false }: Props) {
                       <div className="mt-0.5 text-sm text-muted-foreground">
                         {formatEur(o.amount_eur) ?? '—'}{o.quantity > 1 ? ` · ${o.quantity}×` : ''}
                         {role === 'seller' && o.status === 'paid' && addr(o) ? ` · ${addr(o)}` : ''}
-                        {o.tracking_number ? ` · ${[o.tracking_carrier, o.tracking_number].filter(Boolean).join(' ')}` : ''}
                       </div>
                       <div className="mt-0.5 text-xs text-muted-foreground">{fmtDateTime(o.created_at)}</div>
+
+                      {/* Sendungsverfolgung — klickbarer Carrier-Deeplink + Kopieren */}
+                      {o.tracking_number && (
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                          {(() => {
+                            const url = trackingUrl(o.tracking_carrier, o.tracking_number);
+                            return url ? (
+                              <a
+                                href={url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 rounded-full border border-teal-500/40 bg-teal-500/10 px-3 py-1.5 text-xs font-medium text-teal-700 transition-colors hover:bg-teal-500/20 dark:text-teal-300"
+                              >
+                                <Truck className="h-3.5 w-3.5" />
+                                Sendung verfolgen{o.tracking_carrier ? ` · ${o.tracking_carrier}` : ''}
+                                <ExternalLink className="h-3 w-3 opacity-70" />
+                              </a>
+                            ) : (
+                              <span className="inline-flex items-center gap-1.5 rounded-full border bg-muted px-3 py-1.5 text-xs font-medium">
+                                <Truck className="h-3.5 w-3.5" />
+                                {o.tracking_carrier ? `${o.tracking_carrier} · ` : ''}Sendung
+                              </span>
+                            );
+                          })()}
+                          <button
+                            type="button"
+                            onClick={() => copyTracking(o.id, o.tracking_number!)}
+                            title="Sendungsnummer kopieren"
+                            className="inline-flex items-center gap-1.5 rounded-full border bg-background px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground"
+                          >
+                            {copiedId === o.id ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
+                            <span className="font-mono">{o.tracking_number}</span>
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
 
