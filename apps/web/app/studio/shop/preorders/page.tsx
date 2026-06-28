@@ -70,6 +70,21 @@ export default async function PreordersPage() {
     }
   }
 
+  // Welche Produkte haben schon eine offene Zahlungsanfrage? → Button zeigt „Angefordert"
+  // (bleibt auch nach Reload erhalten). Status 'payment_requested' = wartet auf Zahlung.
+  const requestedSet = new Set<string>();
+  if (summary.length > 0) {
+    const { data: reqOrders } = await supabase
+      .from('product_orders')
+      .select('product_id')
+      .eq('seller_id', user.id)
+      .eq('status', 'payment_requested')
+      .in('product_id', summary.map((s) => s.product_id));
+    for (const o of reqOrders ?? []) {
+      if (o.product_id) requestedSet.add(o.product_id as string);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-8 lg:px-6">
       <Link
@@ -132,6 +147,7 @@ export default async function PreordersPage() {
                       productId={s.product_id}
                       title={s.title}
                       priceEur={priceMap.get(s.product_id) ?? null}
+                      alreadyRequested={requestedSet.has(s.product_id)}
                     />
                   </div>
                 </div>

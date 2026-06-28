@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Route } from 'next';
-import { MessageCircle, Loader2, Send, Bell } from 'lucide-react';
+import { MessageCircle, Loader2, Send, Bell, CheckCircle2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { getOrCreateConversation } from '@/app/actions/messages';
 import { markPreordersPayable, notifyPreorderBuyers } from '@/app/actions/shop';
@@ -159,14 +159,19 @@ export function PreorderRequestPaymentButton({
   productId,
   title,
   priceEur,
+  alreadyRequested = false,
 }: {
   productId: string;
   title: string;
   priceEur: number | null;
+  alreadyRequested?: boolean;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [doneLocal, setDoneLocal] = useState(false);
   const [isPending, startTransition] = useTransition();
+  // „Angefordert"-Zustand: aus den Daten (offene Zahlungsanfrage) ODER sofort nach Klick.
+  const done = alreadyRequested || doneLocal;
 
   if (priceEur == null) {
     return (
@@ -188,9 +193,12 @@ export function PreorderRequestPaymentButton({
         return;
       }
       setOpen(false);
+      setDoneLocal(true);
       toast.success(
-        `„${title}“: ${res.data.created} Zahlungsaufforderung(en) gesendet` +
-          (res.data.skipped > 0 ? `, ${res.data.skipped} schon offen.` : '.'),
+        res.data.created === 0 && res.data.skipped > 0
+          ? `„${title}“: schon angefordert — ${res.data.skipped} warten auf Zahlung.`
+          : `„${title}“: ${res.data.created} Zahlungsaufforderung(en) gesendet` +
+              (res.data.skipped > 0 ? `, ${res.data.skipped} schon offen.` : '.'),
       );
       router.refresh();
     });
@@ -201,10 +209,14 @@ export function PreorderRequestPaymentButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex flex-none items-center gap-1.5 rounded-full bg-foreground px-3 py-1.5 text-xs font-semibold text-background transition-colors hover:bg-foreground/90"
+        className={
+          done
+            ? 'inline-flex flex-none items-center gap-1.5 rounded-full border border-emerald-500 px-3 py-1.5 text-xs font-semibold text-emerald-600 transition-colors hover:bg-emerald-500/10 dark:text-emerald-400'
+            : 'inline-flex flex-none items-center gap-1.5 rounded-full bg-foreground px-3 py-1.5 text-xs font-semibold text-background transition-colors hover:bg-foreground/90'
+        }
       >
-        <Bell className="h-3.5 w-3.5" />
-        Ware ist da → Zahlung anfordern
+        {done ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Bell className="h-3.5 w-3.5" />}
+        {done ? 'Angefordert' : 'Ware ist da → Zahlung anfordern'}
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>

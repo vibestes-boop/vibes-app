@@ -56,6 +56,9 @@ export default function FulfillmentScreen() {
   const { notifyBuyers, isWorking: isNotifying } = useNotifyPreorderBuyers();
   const orCreate = useOrCreateConversation();
 
+  // Welche Produkte wurden in dieser Session schon „angefordert" → Button sofort umschalten.
+  const [requested, setRequested] = useState<Set<string>>(new Set());
+
   // Eigenes Erfolgs-Banner (statt nativem Alert.alert) — warm + on-brand.
   const [flash, setFlash] = useState<string | null>(null);
   const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -98,14 +101,24 @@ export default function FulfillmentScreen() {
   const toShip   = orders.filter((o) => o.status === 'paid');
   const waiting  = orders.filter((o) => o.status === 'payment_requested');
   const shipped  = orders.filter((o) => o.status === 'shipped' || o.status === 'delivered');
+  // Produkte mit bereits offener Zahlungsanfrage → „Angefordert"-State bleibt auch nach Reload.
+  // (`requested` deckt zusätzlich den Sofort-Zustand direkt nach dem Klick ab.)
+  const requestedProductIds = new Set(
+    waiting.map((o) => o.product?.id).filter(Boolean) as string[],
+  );
 
   const handleMarkPayable = async (productId: string, title: string) => {
     const res = await markPayable(productId);
     if (res.error) { Alert.alert('Hoppla 🙈', 'Hat nicht geklappt — gleich nochmal?'); return; }
-    showFlash(
-      `Zahlung angefordert ✓ — ${res.created ?? 0} an Vorbesteller von „${title}"` +
-      ((res.skipped ?? 0) > 0 ? ` (${res.skipped} schon offen)` : ''),
-    );
+    setRequested((prev) => new Set(prev).add(productId));
+    if ((res.created ?? 0) === 0 && (res.skipped ?? 0) > 0) {
+      showFlash(`Schon angefordert ✓ — ${res.skipped} warten auf Zahlung`);
+    } else {
+      showFlash(
+        `Zahlung angefordert ✓ — ${res.created ?? 0} an Vorbesteller von „${title}"` +
+        ((res.skipped ?? 0) > 0 ? ` (${res.skipped} schon offen)` : ''),
+      );
+    }
   };
 
   const openShip = (o: ProductOrder) => { setShipOrder(o); setCarrier(o.tracking_carrier ?? ''); setTracking(o.tracking_number ?? ''); };
@@ -147,7 +160,9 @@ export default function FulfillmentScreen() {
           {preorderGroups.length > 0 && (
             <View style={{ gap: 10 }}>
               <Text style={[s.section, { color: colors.text.primary }]}>Ware ist da → Zahlung anfordern</Text>
-              {preorderGroups.map((g) => (
+              {preorderGroups.map((g) => {
+                const requestedDone = requested.has(g.id) || requestedProductIds.has(g.id);
+                return (
                 <View key={g.id} style={[s.row, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
                   <Pressable onPress={() => router.push(`/shop/${g.id}` as any)}>
                     {g.cover_url ? (
@@ -174,10 +189,20 @@ export default function FulfillmentScreen() {
                     <Pressable
                       onPress={() => handleMarkPayable(g.id, g.title)}
                       disabled={isMarking || g.price_eur == null}
-                      style={[s.smallBtn, { backgroundColor: colors.text.primary, opacity: (isMarking || g.price_eur == null) ? 0.5 : 1 }]}
+                      style={[
+                        s.smallBtn,
+                        requestedDone
+                          ? { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#22C55E' }
+                          : { backgroundColor: colors.text.primary },
+                        { opacity: (isMarking || g.price_eur == null) ? 0.5 : 1 },
+                      ]}
                     >
-                      <Bell size={13} color={colors.bg.primary} strokeWidth={2.4} />
-                      <Text style={[s.smallBtnText, { color: colors.bg.primary }]}>Anfordern</Text>
+                      {requestedDone
+                        ? <CheckCircle2 size={13} color="#22C55E" strokeWidth={2.6} />
+                        : <Bell size={13} color={colors.bg.primary} strokeWidth={2.4} />}
+                      <Text style={[s.smallBtnText, { color: requestedDone ? '#22C55E' : colors.bg.primary }]}>
+                        {requestedDone ? 'Angefordert' : 'Anfordern'}
+                      </Text>
                     </Pressable>
                     <Pressable
                       onPress={() => openNotify(g)}
@@ -189,7 +214,8 @@ export default function FulfillmentScreen() {
                     </Pressable>
                   </View>
                 </View>
-              ))}
+                );
+              })}
             </View>
           )}
 
