@@ -379,6 +379,14 @@ export default function MyShopScreen() {
         <View style={[s.diamondPill, { backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle }]}>
           <Text style={[s.diamondText, { color: colors.text.primary }]}>{(diamonds * 0.02).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</Text>
         </View>
+        {/* Bestellungen verwalten (Echtgeld: Zahlung anfordern, Tracking, versenden) */}
+        <Pressable
+          style={[s.addBtn, { backgroundColor: colors.bg.elevated, borderWidth: 1, borderColor: colors.border.subtle, marginRight: 8 }]}
+          onPress={() => router.push('/shop/fulfillment' as any)}
+          accessibilityLabel="Bestellungen verwalten"
+        >
+          <Package size={18} color={colors.text.primary} strokeWidth={2.2} />
+        </Pressable>
         {/* Shop-Statistik */}
         <Pressable
           style={[s.addBtn, { backgroundColor: colors.bg.elevated, borderWidth: 1, borderColor: colors.border.subtle, marginRight: 8 }]}

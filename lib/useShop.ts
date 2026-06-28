@@ -770,6 +770,9 @@ export function useMarkPreordersPayable() {
       if (error) return { error: 'network_error' };
       if ((data as any)?.error) return { error: (data as any).error };
       qc.invalidateQueries({ queryKey: ['product-orders'] });
+      // Auch die „Ware ist da → Zahlung anfordern"-Liste auffrischen, sonst bleibt
+      // die Gruppe stehen und der „Anfordern"-Button ändert sich nicht.
+      qc.invalidateQueries({ queryKey: ['preorder-groups'] });
       return { created: (data as any)?.created ?? 0, skipped: (data as any)?.skipped ?? 0 };
     } finally {
       setIsWorking(false);

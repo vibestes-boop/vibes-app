@@ -22,7 +22,8 @@ import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { ArrowLeft, Bell, CheckCircle2, Clock, MessageCircle, Package, PackageCheck, Send, Truck } from 'lucide-react-native';
-import { useState } from 'react';
+import * as Haptics from 'expo-haptics';
+import { useRef, useState } from 'react';
 import { useOrCreateConversation } from '@/lib/useMessages';
 import { OrderReviewControl } from '@/components/shop/OrderReviewControl';
 import { OrderDisputeControl } from '@/components/shop/OrderDisputeControl';
@@ -55,6 +56,16 @@ export default function FulfillmentScreen() {
   const { notifyBuyers, isWorking: isNotifying } = useNotifyPreorderBuyers();
   const orCreate = useOrCreateConversation();
 
+  // Eigenes Erfolgs-Banner (statt nativem Alert.alert) — warm + on-brand.
+  const [flash, setFlash] = useState<string | null>(null);
+  const flashTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showFlash = (msg: string) => {
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setFlash(msg);
+    if (flashTimer.current) clearTimeout(flashTimer.current);
+    flashTimer.current = setTimeout(() => setFlash(null), 2800);
+  };
+
   // „Anschreiben"-Modal (DM-Heads-up an alle Vorbesteller eines Produkts)
   const [notifyGroup, setNotifyGroup] = useState<PreorderGroup | null>(null);
   const [notifyMsg, setNotifyMsg] = useState('');
@@ -66,9 +77,8 @@ export default function FulfillmentScreen() {
     if (!notifyGroup) return;
     const res = await notifyBuyers(notifyGroup.id, notifyMsg);
     if (res.error) { Alert.alert('Hoppla', 'Hat nicht geklappt — gleich nochmal?'); return; }
-    const title = notifyGroup.title;
     setNotifyGroup(null); setNotifyMsg('');
-    Alert.alert('Gesendet ✓', `${res.notified ?? 0} Vorbesteller von „${title}" angeschrieben.`);
+    showFlash(`Angeschrieben ✓ — ${res.notified ?? 0} Vorbesteller`);
   };
 
   const handleMessage = async (o: ProductOrder) => {
@@ -91,11 +101,10 @@ export default function FulfillmentScreen() {
 
   const handleMarkPayable = async (productId: string, title: string) => {
     const res = await markPayable(productId);
-    if (res.error) { Alert.alert('Hoppla', 'Hat nicht geklappt — gleich nochmal?'); return; }
-    Alert.alert(
-      'Zahlung angefordert ✓',
-      `${res.created ?? 0} neue Zahlungsaufforderung(en) für „${title}" gesendet` +
-      ((res.skipped ?? 0) > 0 ? `, ${res.skipped} waren schon offen.` : '.'),
+    if (res.error) { Alert.alert('Hoppla 🙈', 'Hat nicht geklappt — gleich nochmal?'); return; }
+    showFlash(
+      `Zahlung angefordert ✓ — ${res.created ?? 0} an Vorbesteller von „${title}"` +
+      ((res.skipped ?? 0) > 0 ? ` (${res.skipped} schon offen)` : ''),
     );
   };
 
@@ -103,8 +112,9 @@ export default function FulfillmentScreen() {
   const confirmShip = async () => {
     if (!shipOrder) return;
     const res = await setShipped(shipOrder.id, carrier, tracking);
-    if (res.error) { Alert.alert('Hoppla', 'Hat nicht geklappt — gleich nochmal?'); return; }
+    if (res.error) { Alert.alert('Hoppla 🙈', 'Hat nicht geklappt — gleich nochmal?'); return; }
     setShipOrder(null); setCarrier(''); setTracking('');
+    showFlash('Als versendet markiert ✓');
   };
 
   const addr = (o: ProductOrder) =>
@@ -120,6 +130,13 @@ export default function FulfillmentScreen() {
         <Text style={[s.headerTitle, { color: colors.text.primary }]}>Bestellungen verwalten</Text>
         <View style={s.headerBtn} />
       </View>
+
+      {flash && (
+        <View style={[s.flash, { backgroundColor: colors.text.primary, top: insets.top + 52 }]} pointerEvents="none">
+          <CheckCircle2 size={15} color={colors.bg.primary} strokeWidth={2.6} />
+          <Text style={[s.flashText, { color: colors.bg.primary }]} numberOfLines={2}>{flash}</Text>
+        </View>
+      )}
 
       {isLoading ? (
         <View style={s.center}><ActivityIndicator color={colors.text.primary} /></View>
@@ -347,6 +364,14 @@ const s = StyleSheet.create({
   headerTitle: { fontSize: 17, fontWeight: '700' },
 
   section: { fontSize: 14, fontWeight: '700' },
+  flash: {
+    position: 'absolute', left: 14, right: 14, zIndex: 50,
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingVertical: 12, paddingHorizontal: 16, borderRadius: 14,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18, shadowRadius: 12, elevation: 8,
+  },
+  flashText: { flex: 1, fontSize: 13.5, fontWeight: '700' },
   row: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     borderRadius: 14, borderWidth: 1, padding: 12,
