@@ -27,6 +27,7 @@ import {
 } from "@/hooks/use-shop";
 import type { ShopProduct } from "@/lib/data/shop";
 import { ProductImage } from "./product-image";
+import { PreorderCelebrateDialog } from "./preorder-celebrate-dialog";
 
 // -----------------------------------------------------------------------------
 // BuyBar — Call-to-Action-Block für die Produkt-Detail-Seite.
@@ -70,10 +71,13 @@ export function BuyBar({
   const save = useToggleSaveProduct();
   const [preorderDone, setPreorderDone] = useState(false);
   const [preorderCancelled, setPreorderCancelled] = useState(false);
+  const [celebrateOpen, setCelebrateOpen] = useState(false);
   const interest = useExpressProductInterest({
     onSuccess: () => {
       setPreorderDone(true);
       setPreorderCancelled(false);
+      // Teilen-Loop: Feier + Teilen-Anstoß direkt am Peak (Wachstums-Flywheel).
+      setCelebrateOpen(true);
     },
   });
   const cancelInterest = useCancelProductInterest({
@@ -225,6 +229,11 @@ export function BuyBar({
             </div>
           )}
         </div>
+        <PreorderCelebrateDialog
+          open={celebrateOpen}
+          onOpenChange={setCelebrateOpen}
+          product={product}
+        />
       </div>
     );
   }
