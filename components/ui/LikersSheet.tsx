@@ -116,7 +116,7 @@ export function LikersSheet({ visible, postId, onClose }: Props) {
           ) : likers.length === 0 ? (
             <View style={ls.emptyWrap}>
               <Text style={ls.emptyIcon}>🤍</Text>
-              <Text style={ls.emptyText}>Noch keine Likes</Text>
+              <Text style={ls.emptyText}>Noch keine Likes ❤️</Text>
             </View>
           ) : (
             <FlatList

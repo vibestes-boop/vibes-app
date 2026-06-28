@@ -100,7 +100,7 @@ export function HostShopSheet({ visible, onClose, hostId, hostUsername }: Props)
           ) : products.length === 0 ? (
             <View style={styles.empty}>
               <Package size={40} color="rgba(255,255,255,0.35)" strokeWidth={1.4} />
-              <Text style={styles.emptyTitle}>Keine Produkte</Text>
+              <Text style={styles.emptyTitle}>Noch keine Produkte 🛍</Text>
               <Text style={styles.emptyText}>
                 {hostUsername ? `@${hostUsername}` : 'Der Host'} hat aktuell keine
                 Produkte im Shop.

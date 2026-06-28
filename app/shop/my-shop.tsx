@@ -485,7 +485,7 @@ function EmptyShop({ onAdd, colors }: { onAdd: () => void; colors: any }) {
       <View style={[s.emptyIconWrap, { backgroundColor: colors.bg.elevated }]}>
         <ShoppingBag size={40} color={colors.text.muted} strokeWidth={1.5} />
       </View>
-      <Text style={[s.emptyTitle, { color: colors.text.primary }]}>Noch keine Produkte</Text>
+      <Text style={[s.emptyTitle, { color: colors.text.primary }]}>Dein Shop ist noch leer 🛍</Text>
       <Text style={[s.emptySub, { color: colors.text.muted }]}>
         Erstelle dein erstes Produkt und fang an zu verkaufen.
       </Text>

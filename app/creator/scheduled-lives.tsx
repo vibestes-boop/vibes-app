@@ -296,7 +296,7 @@ function EmptyState({ colors, onCreate }: { colors: any; onCreate: () => void })
       <View style={[s.emptyIcon, { backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle }]}>
         <Radio size={28} color={colors.text.muted} strokeWidth={1.5} />
       </View>
-      <Text style={[s.emptyTitle, { color: colors.text.primary }]}>Noch keine geplanten Lives</Text>
+      <Text style={[s.emptyTitle, { color: colors.text.primary }]}>Noch kein Live geplant 📡</Text>
       <Text style={[s.emptySub, { color: colors.text.muted }]}>
         Plane deinen nächsten Stream — Follower bekommen 15 Minuten vorher einen Reminder.
       </Text>

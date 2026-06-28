@@ -216,7 +216,7 @@ export default function MessagesScreen() {
       ) : convs.length === 0 ? (
         <View style={styles.center}>
           <MessageCircle size={52} color={colors.icon.muted} strokeWidth={1.2} />
-          <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>Noch keine Nachrichten</Text>
+          <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>Noch keine Chats 👋</Text>
           <Text style={[styles.emptyDesc, { color: colors.text.muted }]}>
             {'Öffne ein Profil und tippe auf „Nachricht“ um zu starten.'}
           </Text>

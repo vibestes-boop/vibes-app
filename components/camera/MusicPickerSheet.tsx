@@ -379,7 +379,7 @@ export function MusicPickerSheet({ visible, selectedTrack, audioVolume, onSelect
           {activeTab === 'favoriten' && filteredTracks.length === 0 && (
             <View style={s.emptyFav}>
               <Text style={{ fontSize: 34 }}>♡</Text>
-              <Text style={s.emptyFavTxt}>Noch keine Favoriten</Text>
+              <Text style={s.emptyFavTxt}>Noch keine Favoriten ⭐</Text>
               <Text style={s.emptyFavSub}>Tippe das Herz-Symbol um Tracks zu speichern</Text>
             </View>
           )}

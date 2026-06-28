@@ -105,7 +105,7 @@ export default function ShopAnalyticsScreen() {
           ListEmptyComponent={
             <View style={s.empty}>
               <BarChart3 size={40} color={colors.icon.muted} strokeWidth={1.6} />
-              <Text style={[s.emptyTitle, { color: colors.text.primary }]}>Noch keine Daten</Text>
+              <Text style={[s.emptyTitle, { color: colors.text.primary }]}>Bald siehst du hier deine Zahlen 📊</Text>
               <Text style={[s.emptySub, { color: colors.text.muted }]}>
                 Sobald du Produkte verkaufst, siehst du hier Umsatz und Verkäufe.
               </Text>

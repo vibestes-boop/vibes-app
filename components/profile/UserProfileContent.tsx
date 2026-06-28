@@ -952,7 +952,7 @@ export function UserProfileContent({ userId, onBack }: Props) {
           ) : activeTab === 'shop' ? (
             <View style={s.emptyGrid}>
               <ShoppingBag size={36} stroke="#1F2937" strokeWidth={1.2} />
-              <Text style={[s.emptyTitle, { color: colors.text.secondary }]}>Noch keine Produkte</Text>
+              <Text style={[s.emptyTitle, { color: colors.text.secondary }]}>Noch kein Shop hier 🛍</Text>
               <Text style={[s.emptySub, { color: colors.text.muted }]}>
                 {profile?.username ?? 'Dieser User'} hat aktuell keinen aktiven Shop.
               </Text>

@@ -123,7 +123,7 @@ function FollowerChart({ data, colors, isDark }: { data: { day: string; new_foll
   if (data.length === 0) return (
     <View style={[s.emptyChart, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
       <TrendingUp size={22} color={colors.icon.muted} strokeWidth={1.5} />
-      <Text style={[s.emptyChartText, { color: colors.text.muted }]}>Noch keine Wachstums-Daten</Text>
+      <Text style={[s.emptyChartText, { color: colors.text.muted }]}>Noch keine Wachstums-Daten 📈</Text>
     </View>
   );
 
@@ -492,7 +492,7 @@ export function AnalyticsTab({
         ) : topPosts.length === 0 ? (
           <View style={s.noPosts}>
             <BarChart2 size={26} color={colors.icon.muted} strokeWidth={1.5} />
-            <Text style={[s.noPostsText, { color: colors.text.muted }]}>Noch keine Posts mit Daten</Text>
+            <Text style={[s.noPostsText, { color: colors.text.muted }]}>Noch keine Post-Daten 📊</Text>
             <Text style={[s.noPostsSub, { color: colors.text.muted }]}>Erstelle Posts und interagiere mit deiner Community</Text>
           </View>
         ) : (

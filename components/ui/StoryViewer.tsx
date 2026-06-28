@@ -668,7 +668,7 @@ function StoryCommentsSheet({
             {comments.length === 0 ? (
               <View style={sc.empty}>
                 <Text style={sc.emptyIcon}>💬</Text>
-                <Text style={sc.emptyText}>Noch keine Kommentare.</Text>
+                <Text style={sc.emptyText}>Noch keine Kommentare 💬 — sag was Nettes</Text>
                 <Text style={sc.emptyHint}>Sei der Erste!</Text>
               </View>
             ) : (

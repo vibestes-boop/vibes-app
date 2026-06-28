@@ -456,7 +456,7 @@ export default function ProfileScreen() {
               {drafts.length === 0 ? (
                 <View style={s.empty}>
                   <FileText size={40} color={colors.icon.muted} />
-                  <Text style={s.emptyTitle}>Keine Entwürfe</Text>
+                  <Text style={s.emptyTitle}>Noch keine Entwürfe ✏️</Text>
                   <Text style={s.emptySub}>Speichere einen Post als Entwurf, um ihn später zu veröffentlichen.</Text>
                 </View>
               ) : (

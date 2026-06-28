@@ -149,7 +149,7 @@ export function GuildMembersSheet({
         ) : members.length === 0 ? (
           <View style={s.center}>
             <Users size={48} color={colors.icon.muted} strokeWidth={1.5} />
-            <Text style={[s.emptyText, { color: colors.text.muted }]}>Noch keine Mitglieder</Text>
+            <Text style={[s.emptyText, { color: colors.text.muted }]}>Noch keine Mitglieder 👥</Text>
           </View>
         ) : (
           <FlatList

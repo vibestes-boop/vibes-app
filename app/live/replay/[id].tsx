@@ -223,7 +223,7 @@ export default function ReplayScreen() {
         </Pressable>
         <View style={[s.center, { flex: 1, paddingHorizontal: 32, gap: 12 }]}>
           <AlertCircle size={48} color="rgba(255,255,255,0.18)" />
-          <Text style={s.emptyTitle}>Kein Replay verfügbar</Text>
+          <Text style={s.emptyTitle}>Replay nicht verfügbar 📼</Text>
           <Text style={s.emptySub}>{statusMsg}</Text>
         </View>
       </View>

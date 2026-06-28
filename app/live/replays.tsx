@@ -158,7 +158,7 @@ function EmptyState() {
   return (
     <View style={css.empty}>
       <Clock size={52} color="rgba(255,255,255,0.12)" />
-      <Text style={css.emptyTitle}>Keine Replays</Text>
+      <Text style={css.emptyTitle}>Noch keine Replays 📼</Text>
       <Text style={css.emptySub}>
         Beendete Lives erscheinen hier sobald Hosts sie als Replay verfügbar machen.
       </Text>

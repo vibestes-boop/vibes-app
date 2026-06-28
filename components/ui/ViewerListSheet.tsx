@@ -580,7 +580,7 @@ export default function ViewerListSheet({
         ) : rows.length === 0 ? (
           <View style={s.emptyState}>
             <Text style={s.emptyEmoji}>👀</Text>
-            <Text style={s.emptyText}>Noch keine Zuschauer</Text>
+            <Text style={s.emptyText}>Noch keine Zuschauer 👀</Text>
           </View>
         ) : (
           <FlatList

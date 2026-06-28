@@ -73,7 +73,7 @@ export function ProductPlaceSheet({
           ) : activeProducts.length === 0 ? (
             <View style={styles.empty}>
               <Package size={36} color="rgba(255,255,255,0.45)" strokeWidth={1.6} />
-              <Text style={styles.emptyTitle}>Keine aktiven Produkte</Text>
+              <Text style={styles.emptyTitle}>Noch keine Produkte 🛍</Text>
               <Text style={styles.emptyText}>
                 Lege im Shop ein Produkt an, dann kannst du es hier im Live platzieren.
               </Text>

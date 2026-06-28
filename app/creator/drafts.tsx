@@ -217,7 +217,7 @@ function EmptyState({ colors, onCreate }: { colors: any; onCreate: () => void })
       <View style={[s.emptyIcon, { backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle }]}>
         <FileText size={28} color={colors.text.muted} strokeWidth={1.5} />
       </View>
-      <Text style={[s.emptyTitle, { color: colors.text.primary }]}>Keine Entwürfe</Text>
+      <Text style={[s.emptyTitle, { color: colors.text.primary }]}>Noch keine Entwürfe ✏️</Text>
       <Text style={[s.emptySub, { color: colors.text.muted }]}>
         Speichere Posts als Entwurf, um später weiterzumachen. Entwürfe werden auf all deinen Geräten synchronisiert.
       </Text>

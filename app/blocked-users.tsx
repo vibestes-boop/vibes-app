@@ -124,7 +124,7 @@ export default function BlockedUsersScreen() {
       ) : blockedUsers.length === 0 ? (
         <View style={styles.center}>
           <ShieldOff size={48} color={colors.icon.muted} strokeWidth={1.5} />
-          <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>Keine geblockten Nutzer</Text>
+          <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>Niemand blockiert 🤍</Text>
           <Text style={[styles.emptySubtitle, { color: colors.text.muted }]}>
             Nutzer die du blockst, kannst du hier verwalten.
           </Text>

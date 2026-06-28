@@ -245,7 +245,7 @@ export function LiveShopHostPanel({
           ) : activeProducts.length === 0 ? (
             <View style={s.hostEmpty}>
               <ShoppingBag size={32} color="rgba(255,255,255,0.3)" strokeWidth={1.5} />
-              <Text style={s.hostEmptyText}>Keine aktiven Produkte.{'\n'}Erstelle zuerst Produkte in deinem Shop.</Text>
+              <Text style={s.hostEmptyText}>Noch keine Produkte 🛍{'\n'}Erstelle zuerst welche in deinem Shop.</Text>
             </View>
           ) : (
             <FlatList

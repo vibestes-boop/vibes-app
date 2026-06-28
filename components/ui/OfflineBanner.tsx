@@ -55,7 +55,7 @@ export function OfflineBanner() {
     >
       <View style={styles.inner}>
         <WifiOff size={15} stroke="#fff" strokeWidth={2} />
-        <Text style={styles.text}>Keine Internetverbindung</Text>
+        <Text style={styles.text}>Du bist offline 📡</Text>
       </View>
     </AnimatedView>
   );

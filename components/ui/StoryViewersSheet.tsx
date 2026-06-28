@@ -102,7 +102,7 @@ export function StoryViewersSheet({ visible, storyId, onClose, onNavigateToProfi
           ) : viewers.length === 0 ? (
             <View style={sv.emptyWrap}>
               <Text style={sv.emptyIcon}>👀</Text>
-              <Text style={sv.emptyText}>Noch keine Aufrufe</Text>
+              <Text style={sv.emptyText}>Noch keine Aufrufe 👀</Text>
               <Text style={sv.emptyHint}>Sei gespannt!</Text>
             </View>
           ) : (

@@ -239,7 +239,7 @@ export default function CoHostBlocksScreen() {
       ) : blocks.length === 0 ? (
         <View style={styles.center}>
           <ShieldOff size={48} color={colors.icon.muted} strokeWidth={1.5} />
-          <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>Keine Co-Host Blocks</Text>
+          <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>Niemand gesperrt 🤍</Text>
           <Text style={[styles.emptySubtitle, { color: colors.text.muted }]}>
             Beim Rauswerfen eines Co-Hosts mit Grund landet er automatisch hier.
           </Text>

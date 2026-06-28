@@ -107,7 +107,7 @@ export default function SavedProductsScreen() {
       ) : saved.length === 0 ? (
         <View style={s.center}>
           <Bookmark size={52} color={colors.text.muted} strokeWidth={1.2} />
-          <Text style={[s.emptyTitle, { color: colors.text.primary }]}>Noch nichts gespeichert</Text>
+          <Text style={[s.emptyTitle, { color: colors.text.primary }]}>Noch nichts gemerkt 🔖</Text>
           <Text style={[s.emptyText, { color: colors.text.muted }]}>
             {'Tippe auf „Merken“ auf einem Produkt um es hier zu speichern.'}
           </Text>
