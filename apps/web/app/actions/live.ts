@@ -4,6 +4,7 @@ import { revalidatePath, revalidateTag } from 'next/cache';
 import { requireRuntimeFeature } from '@/lib/feature-flags/server';
 import { createClient } from '@/lib/supabase/server';
 import { containsBlockedWord } from '@shared/moderation/words';
+import { appReactionChannel, APP_REACTION_EVENT, REACTION_KEY_TO_EMOJI, type ReactionKey } from '@/lib/live-reactions';
 import type { LiveCommentWithAuthor } from '@/lib/data/live';
 
 // -----------------------------------------------------------------------------
@@ -226,12 +227,18 @@ export async function sendLiveReaction(
   }
 
   const supabase = await createClient();
-  const channel = supabase.channel(`live:${sessionId}`);
+  // Cross-Platform: auf dem App-Vertrag senden (`live-reactions-${id}` /
+  // `new-reaction`, Emoji-Payload), damit App-Viewer Web-Reaktionen sehen.
+  const channel = supabase.channel(appReactionChannel(sessionId));
   await channel.subscribe();
   const res = await channel.send({
     type: 'broadcast',
-    event: 'reaction',
-    payload: { reaction, user_id: viewer.id, ts: Date.now() },
+    event: APP_REACTION_EVENT,
+    payload: {
+      id: crypto.randomUUID(),
+      user_id: viewer.id,
+      emoji: REACTION_KEY_TO_EMOJI[reaction as ReactionKey],
+    },
   });
   // Channel sofort wieder schließen — für Broadcast reicht 1-shot.
   await supabase.removeChannel(channel);

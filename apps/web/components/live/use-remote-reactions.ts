@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
+import { appReactionChannel, APP_REACTION_EVENT, reactionEmojiToKey } from '@/lib/live-reactions';
 
 // -----------------------------------------------------------------------------
 // useRemoteReactions — subscribe to other viewers' reactions on the
@@ -38,8 +39,6 @@ export const REMOTE_REACTION_KEYS = [
 ] as const;
 
 export type RemoteReactionKey = (typeof REMOTE_REACTION_KEYS)[number];
-
-const ALLOWED = new Set<string>(REMOTE_REACTION_KEYS);
 
 export interface RemoteReactionBurst {
   key: RemoteReactionKey;
@@ -87,18 +86,22 @@ export function useRemoteReactions({
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     );
 
-    const channel = supabase.channel(`live:${sessionId}`);
+    // Cross-Platform: auf dem App-Vertrag hören (`live-reactions-${id}` /
+    // `new-reaction`, Emoji-Payload { id, user_id, emoji }). App-Viewer UND
+    // Web-Viewer senden jetzt beide hierher → Reaktionen kreuzen die Plattform.
+    const channel = supabase.channel(appReactionChannel(sessionId));
 
-    channel.on('broadcast', { event: 'reaction' }, ({ payload }) => {
+    channel.on('broadcast', { event: APP_REACTION_EVENT }, ({ payload }) => {
       const p = payload as {
-        reaction?: string;
+        id?: string;
         user_id?: string;
-        ts?: number;
+        emoji?: string;
       } | null;
-      if (!p) return;
-      if (!p.reaction || !ALLOWED.has(p.reaction)) return;
-      // Self-echo: LiveActionBar already fired the optimistic local burst.
+      if (!p || !p.emoji) return;
+      // Self-echo: eigene optimistische Reaction wurde lokal schon gezeigt.
       if (p.user_id && p.user_id === viewerId) return;
+
+      const key = reactionEmojiToKey(p.emoji);
 
       counterRef.current = (counterRef.current + 1) >>> 0;
       // Compose a unique id: high 16 bits = session-salt, next 16 bits =
@@ -108,7 +111,7 @@ export function useRemoteReactions({
         ((counterRef.current & 0xffff) << 4) ^
         (Date.now() & 0xfffff);
 
-      setBurst({ key: p.reaction as RemoteReactionKey, id });
+      setBurst({ key: key as RemoteReactionKey, id });
     });
 
     channel.subscribe();
