@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { CoinIcon } from '@/components/ui/coin-icon';
+import { RollupNumber } from '@/components/ui/rollup-number';
 import { CheckCircle2, Clock, AlertCircle, ArrowRight, FileText, Receipt } from 'lucide-react';
 
 import { getUser } from '@/lib/auth/session';
@@ -131,7 +132,8 @@ export default async function CoinShopSuccessPage({ searchParams }: Props) {
           <div className="flex-1">
             <p className="text-xs text-muted-foreground">Coin-Paket</p>
             <p className="font-semibold">
-              {total.toLocaleString('de-DE')} Coins
+              {/* Design-Gesetz §1: gekaufte Coins zählen beim Erscheinen hoch (Kauf-Peak). */}
+              <RollupNumber value={total} animateOnMount durationMs={900} /> Coins
               {order.bonus_coins > 0 && (
                 <span className="ml-1 text-xs font-medium text-muted-foreground">
                   (inkl. {order.bonus_coins.toLocaleString('de-DE')} Bonus)

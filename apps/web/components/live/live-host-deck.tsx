@@ -14,6 +14,7 @@ import {
   createLocalScreenTracks,
 } from 'livekit-client';
 import { CoinIcon } from '@/components/ui/coin-icon';
+import { RollupNumber } from '@/components/ui/rollup-number';
 import {
   Loader2,
   Radio,
@@ -1336,14 +1337,15 @@ export function LiveHostDeck({
                   {/* Stats row */}
                   <div className="grid grid-cols-4 divide-x divide-white/10 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04]">
                     {[
-                      { icon: <Users className="h-4 w-4" />, value: peakCount.toLocaleString('de-DE'), label: 'Peak' },
-                      { icon: <Heart className="h-4 w-4 text-rose-400" />, value: ((session as unknown as Record<string, unknown>).like_count as number ?? 0).toLocaleString('de-DE'), label: 'Likes' },
-                      { icon: <MessageCircle className="h-4 w-4 text-sky-400" />, value: summaryCommentCount.toLocaleString('de-DE'), label: 'Kommentare' },
-                      { icon: <CoinIcon className="h-4 w-4 text-yellow-400" />, value: totalGiftCoins.toLocaleString('de-DE'), label: 'Coins 🪙' },
+                      { icon: <Users className="h-4 w-4" />, value: peakCount, label: 'Peak' },
+                      { icon: <Heart className="h-4 w-4 text-rose-400" />, value: ((session as unknown as Record<string, unknown>).like_count as number ?? 0), label: 'Likes' },
+                      { icon: <MessageCircle className="h-4 w-4 text-sky-400" />, value: summaryCommentCount, label: 'Kommentare' },
+                      { icon: <CoinIcon className="h-4 w-4 text-yellow-400" />, value: totalGiftCoins, label: 'Coins 🪙' },
                     ].map(({ icon, value, label }) => (
                       <div key={label} className="flex flex-col items-center gap-0.5 px-2 py-4">
                         <span className="text-white/60">{icon}</span>
-                        <span className="text-lg font-bold leading-none">{value}</span>
+                        {/* Design-Gesetz §1: Stats zählen beim Erscheinen hoch (Peak-Feier). */}
+                        <RollupNumber value={value} animateOnMount durationMs={900} className="text-lg font-bold leading-none" />
                         <span className="text-[10px] text-white/50">{label}</span>
                       </div>
                     ))}
