@@ -7,6 +7,7 @@
 import { impactAsync,ImpactFeedbackStyle,notificationAsync,NotificationFeedbackType } from 'expo-haptics';
 import { Image } from "expo-image";
 import { CoinIcon } from '@/components/ui/CoinIcon';
+import { RollupNumber } from '@/components/ui/RollupNumber';
 import * as ImagePicker from 'expo-image-picker';
 import { useKeepAwake } from 'expo-keep-awake';
 import { LinearGradient } from "expo-linear-gradient";
@@ -2436,7 +2437,14 @@ function HostUI({
                   <>
                     <View style={s.summaryStatDivider} />
                     <View style={s.summaryStatItem}>
-                      <Text style={s.summaryStatNum}>{fmtNum(totalGiftCoins)}</Text>
+                      <RollupNumber
+                        key={showSummary ? 'gift-open' : 'gift-closed'}
+                        value={totalGiftCoins}
+                        style={s.summaryStatNum}
+                        format={fmtNum}
+                        animateOnMount
+                        duration={1000}
+                      />
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
                         <Text style={s.summaryStatLabel}>Coins</Text>
                         <CoinIcon size={11} />

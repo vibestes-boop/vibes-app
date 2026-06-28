@@ -3,6 +3,7 @@
  * Eigener Stil: Cremig-hell, Gold-Akzent, dunkler Header, nicht Short-Video-Kopie.
  */
 
+import { RollupNumber } from '@/components/ui/RollupNumber';
 import { supabase } from '@/lib/supabase';
 import { useCoinsWallet } from '@/lib/useGifts';
 import * as Haptics from 'expo-haptics';
@@ -146,7 +147,7 @@ export default function CoinShopScreen() {
           <Image source={SERLO_COIN} style={{ width: 18, height: 18 }} />
           {walletLoading
             ? <ActivityIndicator size="small" color="#F5A623" />
-            : <Text style={s.balanceText}>{coins.toLocaleString('de-DE')}</Text>
+            : <RollupNumber value={coins} style={s.balanceText} />
           }
         </View>
       </View>
