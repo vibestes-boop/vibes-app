@@ -17,16 +17,37 @@
 | Bereich | Stand |
 |---|---|
 | **Repo / Branch** | `/Users/zaurhatuev/vibes-app` · `main` · Working Tree **sauber** |
-| **Letzter Commit** | `3ddc5b4` — Erfolgs-Haptik beim Gift senden. **Alle Session-3-Commits gepusht & verifiziert (`git ls-remote`).** |
+| **Letzter Commit** | `ab54fc2` — Chat-Sync Cross-Platform-Fix. **Alle Session-3+4-Commits gepusht & verifiziert (`git ls-remote`).** |
 | **Web (apps/web)** | deployt via **Vercel** auf Push zu `main`. **Live: `serlo-web.vercel.app` — ⚠️ OHNE `www`!** |
 | **App-Build** | v1.30.0 / iOS-Build 286 (TestFlight) · Runtime **1.30.0**. OTAs ziehen nur beim **kalten App-Neustart**. |
-| **Letzte OTAs (28.6. Session 3)** | Viele JS-OTAs (Runtime 1.30.0): Bewertung-auf-eigenem-Profil, Shop-Kachel €+Titel, Echtgeld-Texte, „Produkt bearbeiten"-Button, App-Edit €/Vorbestell-Schalter, Browse-Limit 200, Vorbesteller-Anschreiben + Shop-Statistik, **Coin-Ökonomie-Anzeigen 12,5%**, Wärme-Pässe #1-3, Gift-Erfolgs-Haptik. Stand = `3ddc5b4`. |
+| **Letzte OTAs (28.6.)** | Session 4: **Number-Rollup** (Coin-Saldo + Stream-Earnings, OTA via `eas update`). Session 3: Bewertung-auf-eigenem-Profil, Shop-Kachel €+Titel, Echtgeld-Texte, „Produkt bearbeiten"-Button, App-Edit €/Vorbestell-Schalter, Browse-Limit 200, Vorbesteller-Anschreiben + Shop-Statistik, **Coin-Ökonomie-Anzeigen 12,5%**, Wärme-Pässe #1-3, Gift-Erfolgs-Haptik. |
 | **Edge Functions deployed** | `create-checkout-session`, `stripe-webhook`, `send-push-notification` (Push-Titel/Notif neu). **🔴 WICHTIG:** `stripe-webhook`+`revenuecat-webhook`+`bunny-webhook` neu deployt **mit `--no-verify-jwt`** (sonst 401-Gate → Zahlung scheitert STILL). Dauerhaft via **`supabase/config.toml`** (`verify_jwt=false`). Memory `vibes-edge-webhook-verify-jwt`. |
 | **DB-Migrationen** | ✅ **ALLE ausgeführt** (Zaur im SQL-Editor) bis `20260628150000_coin_economy_recalibration.sql`. Neu Session 3: `20260628140000_payment_request_notif_text` + `20260628150000_coin_economy_recalibration` (beide live). **Keine offene Migration.** |
-| **GERADE FERTIG** | Session 3 (Tiefe statt Breite): **Stripe-Webhook-401-Fix** (Prod-Incident), **Coin-Ökonomie kalibriert+live** (Plattform behält 50-70%), App/Web-Shop-Parität, **Wärme-Audit komplett** (~60 kalte Stellen warm) + Gift-Erfolgs-Haptik. Details §1.4. |
+| **GERADE FERTIG** | Session 4 (28.6. später, Tiefe + 2 Live-Bugs): **Number-Rollups** (App: Coin-Saldo + Stream-Earnings zählen hoch, OTA'd), **Web-Host-Hängen nach Stream-Ende gefixt** (Vollbild-Modal), **Chat-Sync Cross-Platform gefixt** (App-Viewer sahen Web-Host-Kommentare nicht live). Details §1.3. Davor Session 3 (§1.4): Webhook-401-Fix, Coin-Ökonomie, Shop-Parität, Wärme-Audit. |
 | **Admin** | Zaur (`username='zaur'`, `profiles.is_admin = true`) — nötig fürs Vorbestell-Gate **und** Dispute-Klärung (`resolve_order_dispute`). |
 
 ⚠️ **Quarantäne:** `/Users/zaurhatuev/Desktop/vibes-app` — NIEMALS bauen/deployen/pushen.
+
+---
+
+## 1.3 🆕 Session 4 (28.6. später) — Number-Rollups + 2 Live-Bugs (Web)
+
+> Tiefe-Pass (§1.4-Backlog „Number-Rollups") + zwei beim Geräte-Test entdeckte
+> Web-Live-Bugs. Keine DB-Migration, keine offene Migration.
+
+### ✨ Number-Rollups (App) — Belohnungs-Zahlen zählen hoch (Commit `170f6a3`, OTA'd)
+- Design-Gesetz §1 („Hochs lauter machen"): neue Komponente **`components/ui/RollupNumber.tsx`** — reiner `<Text>`-Drop-in, eased rAF-Tween (kein Reanimated/TextInput → kein Layout-/Breiten-Risiko). Default: animiert NUR bei Wert-Änderung (Peak), nicht beim Screen-Öffnen (Maßhalten §3). `animateOnMount`+`from` für Werte die beim Erscheinen schon feststehen.
+- Verdrahtet: **Coin-Saldo** in `app/coin-shop.tsx` (zählt nach Kauf-Refetch hoch) + **Diamanten-Earnings** in der Live-End-Zusammenfassung `app/live/host.tsx:2439` (`animateOnMount`, `key={showSummary}` erzwingt Remount pro Stream-Ende, da RN-`<Modal>` Kinder sonst dauerhaft gemountet hält).
+- **Bewusst NICHT** verdrahtet (Maßhalten): GiftPicker-Saldo beim Senden (Spend/Countdown, keine Feier), Creator-Dashboard-Diamanten (wiederholt geöffneter Stats-Screen → Überdosis).
+- ⚠️ **App-Coin-Rollup nur im echten App-Store-Build sichtbar** — im TestFlight/OTA-Build ist RevenueCat-IAP gesperrt („Nur im App Store"), Kauf bricht vor Coin-Gutschrift ab. Stream-Earnings-Rollup ist ohne IAP testbar. **Web hat den Rollup NICHT** (separater Codebase) — ggf. später portieren.
+
+### 🔴 Web-Bug 1: Host hängt nach „Stream beenden" fest (Commit `415181f`)
+- End-Zusammenfassung war `absolute inset-0` INNERHALB der `relative aspect-video`-Box (`live-host-deck.tsx:1255`) → auf Desktop höher als der Viewport, unterer Teil inkl. „Zum Studio"-Button von `lg:overflow-hidden` (Zeile 1218) abgeschnitten und nicht scrollbar. Auf **`fixed inset-0 z-[140]`** gehoben = echtes Vollbild-Modal (Parität mit nativem `host.tsx`). Verifiziert: kein `transform`-Vorfahre der `fixed` kapern würde.
+
+### 🔴 Web-Bug 2: App-Viewer sahen Web-Host-Chat nicht live (Commit `ab54fc2`)
+- **Cross-Platform-Vertragsbruch** — App & Web nutzen verschiedene Broadcast-Channel+Event für Live-Kommentare, und die App hört NUR Broadcast (kein postgres_changes). Memory: **`vibes-live-comments-cross-platform-realtime`** (volle Tabelle + Fix-Pattern dort).
+- **Fix (web-only, additiv):** jeder Web-Kommentar wird zusätzlich auf dem App-Vertrag gespiegelt (`toAppBroadcastComment` in `live-chat-messages.ts`, verkabelt in `live-chat.tsx` + `live-chat-overlay.tsx`). Web hört dort nicht mit → keine Doppelung.
+- **Noch ungebrückt (Scope):** System-Events („@x folgt jetzt!"), Delete-/Timeout-/Pin-Events web↔app. Coin-Saldo „Coins=0 nach Gift erhalten" ist **KEIN Bug** — Gifts geben **Diamanten** (Einnahmen), keine Coins.
 
 ---
 
@@ -64,7 +85,7 @@
 - Bewusst NICHT angefasst (maßhalten): Such-„nichts gefunden", AR-„kein Gesicht", „Kein Sound"-Option, schon-warme Texte, Login/Register (schon warm).
 
 ### Offene Tiefe-Punkte (optional — brauchen Geräte-Test/Entscheidung)
-- **Number-Rollups** (zählen Coins/Diamanten bei Belohnung hoch?) · **Parfüm-Kauf-+-Teilen-Loop** + Share-Karte polieren · echte **Server-Browse-Query** + Preisfilter (App, #2) · **Produkt-Review ⇄ Order-Review** konsolidieren (zwei komplementäre Systeme, kein Bug).
+- ✅ **Number-Rollups** erledigt (Session 4, §1.3 — App; Web-Port offen). · **Parfüm-Kauf-+-Teilen-Loop** + Share-Karte polieren (Web-ShareSheet steht schon, es fehlt der Post-Kauf-Feier-/Teilen-Moment) · echte **Server-Browse-Query** + Preisfilter (App, #2) · **Produkt-Review ⇄ Order-Review** konsolidieren (zwei komplementäre Systeme, kein Bug) · **Cross-Platform-Realtime** für System-/Delete-/Timeout-Events web↔app (§1.3).
 
 ---
 
