@@ -1,4 +1,4 @@
-# Handoff — Serlo/Vibes (Stand 27. Juni 2026 · Session 2)
+# Handoff — Serlo/Vibes (Stand 28. Juni 2026 · Session 3)
 
 > 📍 **Dieses Dokument: `/Users/zaurhatuev/vibes-app/handoff.md`**
 > Arbeite NUR in diesem Repo: **`/Users/zaurhatuev/vibes-app`** (Branch `main`).
@@ -7,7 +7,8 @@
 > Übergabe für den Wechsel in einen neuen Chat. Gedächtnis-Dateien
 > (`~/.claude/.../memory/`) laden automatisch — dieses Doku ergänzt sie mit Session-Detail.
 > **Strategie/Finanz-Plan liegt im Brain** (gbrain): `decisions/2026-06-27-serlo-finanz-architektur`,
-> `decisions/2026-06-27-serlo-monetarisierung-roadmap`, `outputs/2026-06-27-serlo-geld-premortem`.
+> `decisions/2026-06-27-serlo-monetarisierung-roadmap`, `decisions/2026-06-28-serlo-finanz-backlog`
+> (Restposten + Einnahmequellen 4-8: was geht / blockiert / Schritte), `outputs/2026-06-27-serlo-geld-premortem`.
 
 ---
 
@@ -16,16 +17,54 @@
 | Bereich | Stand |
 |---|---|
 | **Repo / Branch** | `/Users/zaurhatuev/vibes-app` · `main` · Working Tree **sauber** |
-| **Letzter Commit** | `eff18ad` — Echtgeld-Verkäufe zählen (sold_count + €-Umsatz) + Verkäufer-Bewertung auf Produktseite. **Alle Session-Commits gepusht & verifiziert (`git ls-remote`).** |
+| **Letzter Commit** | `3ddc5b4` — Erfolgs-Haptik beim Gift senden. **Alle Session-3-Commits gepusht & verifiziert (`git ls-remote`).** |
 | **Web (apps/web)** | deployt via **Vercel** auf Push zu `main`. **Live: `serlo-web.vercel.app` — ⚠️ OHNE `www`!** |
 | **App-Build** | v1.30.0 / iOS-Build 286 (TestFlight) · Runtime **1.30.0**. OTAs ziehen nur beim **kalten App-Neustart**. |
-| **Letzte OTAs (27.6. Session 2)** | Viele JS-OTAs auf `production` (Runtime 1.30.0): Echtgeld-Bestellflow-Politur, Direktkontakt, Bewertungen, Dispute, Push-Korrektheit, „Echtgeld-Verkäufe zählen + Produkt-Bewertung". Stand = Commit `eff18ad`. |
-| **Edge Functions deployed** | `create-checkout-session` (Produkt-Checkout + Cover-Bild via weserv), `stripe-webhook` (→ paid + sold_count-Bump + Verkäufer-Notif), `send-push-notification` (alle Bestell-Notif-Typen). **Alle aktuell deployed.** |
-| **DB-Migrationen** | ✅ **ALLE ausgeführt** (Zaur im SQL-Editor) bis `20260628130000_echtgeld_sold_count.sql` + einmaliges sold_count-Backfill-UPDATE. Vollständige Liste Session 2 siehe §1.5. **Keine offene Migration.** |
-| **GERADE FERTIG** | **Komplettes Echtgeld-Bestell- & Vertrauens-System** (Phase 1, eigenes Parfüm, kein Connect) — Backend + App + Web **fertig & deployed & verifiziert**. Siehe §1.5. |
+| **Letzte OTAs (28.6. Session 3)** | Viele JS-OTAs (Runtime 1.30.0): Bewertung-auf-eigenem-Profil, Shop-Kachel €+Titel, Echtgeld-Texte, „Produkt bearbeiten"-Button, App-Edit €/Vorbestell-Schalter, Browse-Limit 200, Vorbesteller-Anschreiben + Shop-Statistik, **Coin-Ökonomie-Anzeigen 12,5%**, Wärme-Pässe #1-3, Gift-Erfolgs-Haptik. Stand = `3ddc5b4`. |
+| **Edge Functions deployed** | `create-checkout-session`, `stripe-webhook`, `send-push-notification` (Push-Titel/Notif neu). **🔴 WICHTIG:** `stripe-webhook`+`revenuecat-webhook`+`bunny-webhook` neu deployt **mit `--no-verify-jwt`** (sonst 401-Gate → Zahlung scheitert STILL). Dauerhaft via **`supabase/config.toml`** (`verify_jwt=false`). Memory `vibes-edge-webhook-verify-jwt`. |
+| **DB-Migrationen** | ✅ **ALLE ausgeführt** (Zaur im SQL-Editor) bis `20260628150000_coin_economy_recalibration.sql`. Neu Session 3: `20260628140000_payment_request_notif_text` + `20260628150000_coin_economy_recalibration` (beide live). **Keine offene Migration.** |
+| **GERADE FERTIG** | Session 3 (Tiefe statt Breite): **Stripe-Webhook-401-Fix** (Prod-Incident), **Coin-Ökonomie kalibriert+live** (Plattform behält 50-70%), App/Web-Shop-Parität, **Wärme-Audit komplett** (~60 kalte Stellen warm) + Gift-Erfolgs-Haptik. Details §1.4. |
 | **Admin** | Zaur (`username='zaur'`, `profiles.is_admin = true`) — nötig fürs Vorbestell-Gate **und** Dispute-Klärung (`resolve_order_dispute`). |
 
 ⚠️ **Quarantäne:** `/Users/zaurhatuev/Desktop/vibes-app` — NIEMALS bauen/deployen/pushen.
+
+---
+
+## 1.4 🆕 Session 3 (28.6.) — Webhook-Fix, Coin-Ökonomie, Shop-Parität, Joy/Wärme
+
+> Reiner Politur-/Tiefe-Pass + ein Prod-Incident-Fix. **KEIN neues großes Feature.**
+> Zaurs Leitlinie diese Session: **Tiefe statt Breite.** Monetarisierungs-Breite
+> (Serlo Plus / Boost / Creator-Abos / Marktplatz-Connect / Affiliate) bewusst
+> **NICHT gebaut** → analysiert + im Brain `decisions/2026-06-28-serlo-finanz-backlog`
+> (was geht jetzt / blockiert / Schritte). Plus-vs-Boost-Analyse: Plus wäre der bessere
+> nächste Hebel, aber **erst wenn engagierter User-Kern da** — jetzt nichts davon.
+
+### 🔴 Prod-Incident: Stripe-Webhook 401 (Echtgeld scheiterte STILL)
+- Ein Session-2-Deploy hatte `stripe-webhook` OHNE `--no-verify-jwt` ausgerollt → Supabase-JWT-Gate wies Stripe mit **401** ab → Test-Käufe blieben auf `payment_requested` (Success-Seite hing auf „Zahlung wird bestätigt…"). Diagnose: Stripe-Dashboard (Test-Modus!) → Entwickler → Webhooks → Ereignisübermittlungen (401=Gate, 200=ok); hängende Events per „Erneut senden" befreien.
+- **Fix:** `stripe-webhook` + `revenuecat-webhook` + `bunny-webhook` neu deployt mit `--no-verify-jwt`; **`supabase/config.toml` neu angelegt** (`verify_jwt=false` pro Webhook) → überlebt jeden künftigen Deploy. End-to-end verifiziert (Soirée-Order ging durch). Memory: `vibes-edge-webhook-verify-jwt`.
+
+### 💰 Coin-Ökonomie kalibriert + LIVE (Migration `20260628150000`, ausgeführt)
+- War strukturell **defizitär** (Verdienen ~85% Gift / 70% Shop @ 0,02 €/Diamant > Coin-Preis 0,005-0,008 €). **Fix:** Diamant-**Verdienen → 12,5%** (`gift_catalog.diamond_value` generisch + `buy_product`-RPC), **Auszahlkurs 0,02 € unverändert** → q×R = 0,0025 €/Coin → **Plattform behält 50-70%** (brutto; netto enger wg. Apple-30%/Stripe-3%).
+- Anzeige-Fixes auf 12,5% nachgezogen: my-shop „≈ € für dich" (`price_coins*0.0025`), Shop-Statistik App (`lib/useShop` useShopAnalytics) + Web (`getShopAnalytics`). Brain-Roadmap „Coin=Minus" → als gelöst markiert.
+
+### 🛒 Shop — App/Web-Parität + Qualität
+- **Bewertung auf eigenem Profil** (`components/profile/ProfileListHeader.tsx`, war nur auf fremden Profilen).
+- **Shop-Kachel: €-Preis + Titel** bei Vorbestellung statt Coins — `app/(tabs)/profile.tsx` + `UserProfileContent.tsx`.
+- **Echtgeld-Texte** „Zahlung bei Eintreffen" statt „zahlbar bei Lieferung" (App+Web Produktseite) + DM-Vorlage (`preorder-contact.tsx`) + Notif-Text (Mig. `20260628140000`) + Push-Titel „💶 Zeit zu bezahlen".
+- **„Produkt bearbeiten"-Button** (Besitzer) auf Produktseite: App → `/shop/my-shop?edit=<id>` (Edit-Sheet), Web → `/studio/shop/[id]/edit`.
+- **App-Edit-Maske: €-Preis + Vorbestell-Schalter** (admin-gated, `my-shop.tsx`) · **Web: Vorbestellung direkt bei Erstellung** (`product-form.tsx` + `shared/schemas/product.ts` `sale_mode`). Vorbestellung ist via DB-Trigger `enforce_sale_mode_admin` **admin-only**.
+- **App-Shop-Browse-Limit 30→200** (`app/shop/index.tsx` — Pflaster; echte Server-Query/Infinite-Scroll bewusst aufgeschoben, Pflaster reicht).
+- **Vorbesteller-„Anschreiben"** in `app/shop/fulfillment.tsx` (RPC `notify_preorder_buyers`) + **Shop-Statistik-Screen** `app/shop/analytics.tsx` (BarChart3-Button im my-shop-Header).
+- **Web-Banner-Karussell** `apps/web/components/shop/banner-carousel.tsx` (RPC `get_active_shop_banners`) auf der Katalog-Seite (Parität mit App).
+- **Web-Shop: linke Nav als schmale Hover-Rail** — neues `railCollapsible`-Flag in `FeedSidebar`/`FeedSidebarLayout` (Default false → andere Routen unverändert), nur `app/shop/layout.tsx` setzt es. Klappt per Hover als Overlay auf (schiebt Content nicht).
+
+### ✨ Joy/Wärme-Audit (Tiefe, kein Feature) — KOMPLETT
+- **Wärme-Pass #1-3:** ~60 kalte Stellen warm gemacht — **33 Fehler-Alerts** („Hoppla 🙈 — gleich nochmal?"), **26 Leer-Zustände** („Dein Shop ist noch leer 🛍"), **Feed-Fehler** („Lädt gerade nicht 🌀"). Skript-gestützt (Text + 1 Emoji + „was tun?", Klarheit bleibt).
+- **Erfolgs-Haptik beim Gift senden** ergänzt (war stumm; `GiftPicker.tsx`). Andere Peaks (Like/Post/Kauf/Coins) feiern bereits.
+- Bewusst NICHT angefasst (maßhalten): Such-„nichts gefunden", AR-„kein Gesicht", „Kein Sound"-Option, schon-warme Texte, Login/Register (schon warm).
+
+### Offene Tiefe-Punkte (optional — brauchen Geräte-Test/Entscheidung)
+- **Number-Rollups** (zählen Coins/Diamanten bei Belohnung hoch?) · **Parfüm-Kauf-+-Teilen-Loop** + Share-Karte polieren · echte **Server-Browse-Query** + Preisfilter (App, #2) · **Produkt-Review ⇄ Order-Review** konsolidieren (zwei komplementäre Systeme, kein Bug).
 
 ---
 
@@ -154,11 +193,11 @@
 
 ## 3. 🚀 OFFEN / Nächste Schritte
 
-1. ✅ **ERLEDIGT (Session 2)**: Bestell-/Vertrauens-System komplett (Notif-Typen, Reviews, Dispute, Reputation, sold_count/€-Umsatz, Konsolidierung, Direktkontakt). Polish-Backlog von früher (§3.7 a/b/c) ist damit auch abgehakt. **Keine offene Migration.**
+1. ✅ **ERLEDIGT (Session 2)**: Bestell-/Vertrauens-System komplett. **ERLEDIGT (Session 3, §1.4)**: Stripe-Webhook-401-Fix, **Coin-Ökonomie kalibriert+live**, App/Web-Shop-Parität, **Wärme-Audit komplett** + Gift-Erfolgs-Haptik. **Keine offene Migration.**
 2. **🚀 Parfüm-Launch / Phase 0 validieren** (= jetzt der eigentliche nächste Schritt): erst **offline** verkaufen (Community/Bruder), dann Leute in die App holen. 20–30 Hero-Düfte als Vorbestellung einstellen (Web Shop-Studio), Links teilen (**OHNE www!**). **Erst-Verkauf beweisen, bevor mehr gebaut wird.**
 3. **Stripe Test → Live** umstellen, sobald echte Kunden zahlen sollen: Keys `sk_live_`, Live-Webhook (Memory `vibes-stripe-coinshop` hat den Plan). VORHER **AGB + Widerruf + Impressum + GoBD-Rechnung** (Anwalt/Steuerberater) — kein Rechtsrat von mir.
 4. **UG (haftungsbeschränkt)** gründen, spätestens bevor Drittverkäufer (Phase 2) Geld über die Plattform bewegen. Kappt Privathaftung (Zaur angestellt). Steuerberater ab erstem stetigen Umsatz; §19 → Regelbesteuerung bei 22.000 €.
-5. **Coin-Ökonomie kalibrieren** (verdient aktuell nichts): Diamant-Quote 70%→~30-40%, Auszahlkurs/Coin-Preis so, dass Plattform ≥50% behält. Cashout über lizenzierten Rail. (Phase 2, wenn User da.)
+5. ✅ **ERLEDIGT (Session 3): Coin-Ökonomie kalibriert + live** — Verdienen → 12,5%, Auszahlkurs 0,02 € unverändert → Plattform behält 50-70% (Mig. `20260628150000`). Optionale Feinjustierung wg. Apple-30%-Cut: Verdienen ~10% oder iOS-Coins teurer (nicht dringend). Cashout-Rail (Stripe-Connect-Payout) bleibt Phase 4.
 6. **Phase 2 — Marktplatz scharf schalten** (andere Verkäufer): Stripe Connect + KYC + Escrow + Dispute. Architektur liegt schon (seller_accounts, platform_fee). Erst bei echter Verkäufer-Nachfrage.
 7. **Polish-Backlog Finanz** (Session 2 erledigt: eigene Notif-Typen ✅, App-`my-orders`-Datum ✅, Vorbestell-Konsolidierung ✅). **Noch offen/optional**: Stripe-Branding (Logo/Farbe im Dashboard); Streichpreis bewusst NICHT; Auto-Refund erst Phase 2.
 8. **Altlasten**: 🔴 Google-Login-Bug („upstream request timeout" am Supabase-Callback, `docs/auth-setup.md`) · E-Mail/Resend kaputt → Android-Signup-Lücke (`docs/auth-setup.md` Schritt 1) · Referral-System erst manuell (Bruder ~10-15 %, Kunde ~10 % Erst-Rabatt), dann bauen.
@@ -209,7 +248,7 @@ git push "https://x-access-token:${TOKEN}@github.com/vibestes-boop/vibes-app.git
 ---
 
 ## 6. 🧠 Gedächtnis + Über Zaur
-- **Strategie/Finanz im Brain (gbrain `~/brain`)**: `decisions/2026-06-27-serlo-finanz-architektur` (Geldfluss, „du=Verkäufer #1", Stripe-Connect-Zielbild, Parfüm-Bezahllogik), `decisions/2026-06-27-serlo-monetarisierung-roadmap` (8 Einnahmequellen, Phasen, Coin-Ökonomie-Warnung), `outputs/2026-06-27-serlo-geld-premortem`. Lesen via `mcp__gbrain__get_page` / `search`. Bei neuer Strategie-Entscheidung dort aktualisieren (`put_page` + `sync_brain`).
-- Memory: `~/.claude/projects/-Users-zaurhatuev-vibes-app/memory/` (lädt automatisch). Relevant: `vibes-seamless-comments-video` (Video-läuft-beim-Kommentar + onProgress-Falle), `vibes-shop-banner-adspace` (vermietbare Banner), `vibes-og-image-satori`, `vibes-stripe-coinshop`, `vibes-shop-digital-delivery`, `vibes-ota-eas-update-stubs` (EAS_BUILD=1!), `vibes-reanimated-static-import`, `vibes-flashlist-numcolumns-bug`, `vibes-statusbar-theme`, `vibes-lightmode-contrast-bug`, `vibes-web-deps-isolation`.
+- **Strategie/Finanz im Brain (gbrain `~/brain`)**: `decisions/2026-06-27-serlo-finanz-architektur` (Geldfluss, „du=Verkäufer #1", Connect-Zielbild), `decisions/2026-06-27-serlo-monetarisierung-roadmap` (8 Einnahmequellen, Phasen; Coin-Ökonomie jetzt als gelöst markiert), `decisions/2026-06-28-serlo-finanz-backlog` (Restposten + Einnahmequellen 4-8: jetzt-möglich/blockiert/Schritte), `outputs/2026-06-27-serlo-geld-premortem`. Lesen via `mcp__gbrain__get_page`/`search`. ⚠️ Beim Aktualisieren: `put_page` MIT `type:`+`title:`+`tags:` im Frontmatter (sonst degradiert decision→concept); `add_timeline_entry` recompiliert NICHT → put_page nutzen + get_page verifizieren (Memory `gbrain-manual-edits-need-putpage`).
+- Memory: `~/.claude/projects/-Users-zaurhatuev-vibes-app/memory/` (lädt automatisch). Relevant: **`vibes-edge-webhook-verify-jwt`** (🔴 Webhooks brauchen `--no-verify-jwt`/config.toml — sonst 401, Zahlung scheitert still — NEU Session 3), `vibes-stripe-coinshop`, `vibes-shop-banner-adspace`, `vibes-seamless-comments-video`, `vibes-og-image-satori`, `vibes-shop-digital-delivery`, `vibes-ota-eas-update-stubs` (EAS_BUILD=1!), `vibes-reanimated-static-import`, `vibes-flashlist-numcolumns-bug`, `vibes-statusbar-theme`, `vibes-lightmode-contrast-bug`, `vibes-web-deps-isolation`, `gbrain-manual-edits-need-putpage`.
 - **Zaur**: Solo-Gründer, deutschsprachig (tschetschenische Community). **Kostenbewusst** (validieren vor bauen; „commits kosten Geld"). Macht **DB-Migrationen + Secrets + Compute selbst** im Dashboard. **Credentials/EK NIE im Chat oder in getrackten Dateien.** Testet Mobile auf dem Gerät → iterativ OTA → Feedback (App-Neustart nötig fürs OTA!). Bevorzugt knapp/direkt/warm, eine Sache pro Commit. Neues Geschäft: **Öl-Parfüm** (Sammelbestellung), Bruder + Community als Wachstums-/Reseller-Kanal.
 - **Verifikations-Grenze**: Web-Chat + App sind login-geschützt / nicht headless prüfbar — visuelle Bestätigung läuft über Zaurs Screenshots.
