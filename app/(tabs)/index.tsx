@@ -553,8 +553,8 @@ export default function VibeFeedScreen() {
       {isError && (
         <View style={styles.emptyTag}>
           <AlertTriangle size={52} color="#F59E0B" />
-          <Text style={styles.emptyTagTitle}>Feed-Fehler</Text>
-          <Text style={styles.emptyTagSub}>{(error as Error)?.message ?? 'Unbekannter Fehler — Pull zum Neu laden.'}</Text>
+          <Text style={styles.emptyTagTitle}>Lädt gerade nicht 🌀</Text>
+          <Text style={styles.emptyTagSub}>Zieh nach unten zum Neu laden 👇</Text>
         </View>
       )}
       {!isLoading && !isError && feedData.length === 0 && activeTag && (
