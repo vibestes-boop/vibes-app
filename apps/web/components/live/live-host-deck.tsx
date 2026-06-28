@@ -1251,97 +1251,109 @@ export function LiveHostDeck({
             )}
 
             {/* v1.w.UI.224 — End-of-stream summary panel (parity with native host.tsx summary modal) */}
+            {/* Hintergrund bewusst theme-UNABHÄNGIG dunkel (wie nativ): text-white
+                liest sich sonst im Light-Mode weiß-auf-weiß = unsichtbar. */}
             {phase === 'ended' && (
-              <div className="fixed inset-0 z-[140] flex flex-col overflow-y-auto bg-gradient-to-b from-[hsl(var(--card))] via-[hsl(270,100%,6%)] to-[hsl(var(--card))] text-white">
-                {/* Header */}
-                <div className="flex-shrink-0 border-b border-white/10 px-6 py-4">
-                  <p className="text-xs text-white/50">
-                    {new Date().toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                    {' · '}
-                    {(() => {
-                      const s = durationSecs;
-                      const h = Math.floor(s / 3600);
-                      const m = Math.floor((s % 3600) / 60);
-                      const sec = s % 60;
-                      if (h > 0) return `${h}h ${m}m`;
-                      if (m > 0) return `${m}m ${sec}s`;
-                      return `${sec}s`;
-                    })()}
-                  </p>
-                  <h2 className="mt-0.5 text-lg font-bold tracking-tight">LIVE wurde beendet</h2>
-                </div>
+              <div className="fixed inset-0 z-[140] overflow-y-auto bg-gradient-to-b from-[#0D0D18] via-[#1a0033] to-[#0D0D18] text-white">
+                {/* Immer sichtbarer Notausgang (oben rechts) */}
+                <button
+                  type="button"
+                  onClick={() => router.push('/studio/live' as Route)}
+                  aria-label="Schließen"
+                  className="fixed right-4 top-4 z-10 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white/80 transition-colors hover:bg-white/20 hover:text-white"
+                >
+                  <X className="h-5 w-5" />
+                </button>
 
-                {/* Stats row */}
-                <div className="flex-shrink-0 grid grid-cols-4 divide-x divide-white/10 border-b border-white/10">
-                  {[
-                    { icon: <Users className="h-4 w-4" />, value: peakCount.toLocaleString('de-DE'), label: 'Peak' },
-                    { icon: <Heart className="h-4 w-4 text-rose-400" />, value: ((session as unknown as Record<string, unknown>).like_count as number ?? 0).toLocaleString('de-DE'), label: 'Likes' },
-                    { icon: <MessageCircle className="h-4 w-4 text-sky-400" />, value: summaryCommentCount.toLocaleString('de-DE'), label: 'Kommentare' },
-                    { icon: <CoinIcon className="h-4 w-4 text-yellow-400" />, value: totalGiftCoins.toLocaleString('de-DE'), label: 'Coins 🪙' },
-                  ].map(({ icon, value, label }) => (
-                    <div key={label} className="flex flex-col items-center gap-0.5 py-4 px-2">
-                      <span className="text-white/60">{icon}</span>
-                      <span className="text-lg font-bold leading-none">{value}</span>
-                      <span className="text-[10px] text-white/50">{label}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Top gifters */}
-                {topGifters.length > 0 && (
-                  <div className="flex-shrink-0 border-b border-white/10 px-6 py-4">
-                    <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-yellow-400">
-                      <Trophy className="h-4 w-4" /> Top Spender
+                {/* Zentrierte, begrenzte Karte — kein Riesen-Leerraum mehr */}
+                <div className="mx-auto flex min-h-full w-full max-w-md flex-col justify-center gap-5 px-6 py-16">
+                  {/* Header */}
+                  <div className="text-center">
+                    <p className="text-xs text-white/50">
+                      {new Date().toLocaleDateString('de-DE', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      {' · '}
+                      {(() => {
+                        const s = durationSecs;
+                        const h = Math.floor(s / 3600);
+                        const m = Math.floor((s % 3600) / 60);
+                        const sec = s % 60;
+                        if (h > 0) return `${h}h ${m}m`;
+                        if (m > 0) return `${m}m ${sec}s`;
+                        return `${sec}s`;
+                      })()}
                     </p>
-                    <div className="space-y-2">
-                      {topGifters.map((g, i) => (
-                        <div key={g.userId} className="flex items-center gap-3">
-                          <span className="w-5 text-center text-xs font-bold text-white/40">#{i + 1}</span>
-                          <Avatar className="h-7 w-7 bg-white/20">
-                            {g.avatarUrl ? <AvatarImage src={g.avatarUrl} alt="" /> : null}
-                            <AvatarFallback className="bg-white/20 text-xs font-bold text-white">
-                              {g.username[0]?.toUpperCase() ?? '?'}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="flex-1 truncate text-sm">@{g.username}</span>
-                          <span className="text-sm font-semibold text-yellow-400">{g.total.toLocaleString('de-DE')} <CoinIcon className="ml-0.5 inline h-3.5 w-3.5 align-[-0.15em]" /></span>
-                        </div>
-                      ))}
-                    </div>
+                    <h2 className="mt-1 text-2xl font-bold tracking-tight">LIVE wurde beendet</h2>
                   </div>
-                )}
 
-                {/* Top commenters */}
-                {topCommenters.length > 0 && (
-                  <div className="flex-shrink-0 border-b border-white/10 px-6 py-4">
-                    <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-sky-400">
-                      <MessageCircle className="h-4 w-4" /> Top Kommentatoren
-                    </p>
-                    <div className="space-y-2">
-                      {topCommenters.map((c, i) => (
-                        <div key={c.userId} className="flex items-center gap-3">
-                          <span className="w-5 text-center text-xs font-bold text-white/40">#{i + 1}</span>
-                          <Avatar className="h-7 w-7 bg-white/20">
-                            {c.avatarUrl ? <AvatarImage src={c.avatarUrl} alt="" /> : null}
-                            <AvatarFallback className="bg-white/20 text-xs font-bold text-white">
-                              {c.username[0]?.toUpperCase() ?? '?'}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="flex-1 truncate text-sm">@{c.username}</span>
-                          <span className="text-sm font-semibold text-sky-400">{c.count}×</span>
-                        </div>
-                      ))}
-                    </div>
+                  {/* Stats row */}
+                  <div className="grid grid-cols-4 divide-x divide-white/10 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04]">
+                    {[
+                      { icon: <Users className="h-4 w-4" />, value: peakCount.toLocaleString('de-DE'), label: 'Peak' },
+                      { icon: <Heart className="h-4 w-4 text-rose-400" />, value: ((session as unknown as Record<string, unknown>).like_count as number ?? 0).toLocaleString('de-DE'), label: 'Likes' },
+                      { icon: <MessageCircle className="h-4 w-4 text-sky-400" />, value: summaryCommentCount.toLocaleString('de-DE'), label: 'Kommentare' },
+                      { icon: <CoinIcon className="h-4 w-4 text-yellow-400" />, value: totalGiftCoins.toLocaleString('de-DE'), label: 'Coins 🪙' },
+                    ].map(({ icon, value, label }) => (
+                      <div key={label} className="flex flex-col items-center gap-0.5 px-2 py-4">
+                        <span className="text-white/60">{icon}</span>
+                        <span className="text-lg font-bold leading-none">{value}</span>
+                        <span className="text-[10px] text-white/50">{label}</span>
+                      </div>
+                    ))}
                   </div>
-                )}
 
-                {/* Actions */}
-                <div className="flex-1" />
-                <div className="flex-shrink-0 p-6">
+                  {/* Top gifters */}
+                  {topGifters.length > 0 && (
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-4">
+                      <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-yellow-400">
+                        <Trophy className="h-4 w-4" /> Top Spender
+                      </p>
+                      <div className="space-y-2">
+                        {topGifters.map((g, i) => (
+                          <div key={g.userId} className="flex items-center gap-3">
+                            <span className="w-5 text-center text-xs font-bold text-white/40">#{i + 1}</span>
+                            <Avatar className="h-7 w-7 bg-white/20">
+                              {g.avatarUrl ? <AvatarImage src={g.avatarUrl} alt="" /> : null}
+                              <AvatarFallback className="bg-white/20 text-xs font-bold text-white">
+                                {g.username[0]?.toUpperCase() ?? '?'}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="flex-1 truncate text-sm">@{g.username}</span>
+                            <span className="text-sm font-semibold text-yellow-400">{g.total.toLocaleString('de-DE')} <CoinIcon className="ml-0.5 inline h-3.5 w-3.5 align-[-0.15em]" /></span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Top commenters */}
+                  {topCommenters.length > 0 && (
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-5 py-4">
+                      <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-sky-400">
+                        <MessageCircle className="h-4 w-4" /> Top Kommentatoren
+                      </p>
+                      <div className="space-y-2">
+                        {topCommenters.map((c, i) => (
+                          <div key={c.userId} className="flex items-center gap-3">
+                            <span className="w-5 text-center text-xs font-bold text-white/40">#{i + 1}</span>
+                            <Avatar className="h-7 w-7 bg-white/20">
+                              {c.avatarUrl ? <AvatarImage src={c.avatarUrl} alt="" /> : null}
+                              <AvatarFallback className="bg-white/20 text-xs font-bold text-white">
+                                {c.username[0]?.toUpperCase() ?? '?'}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="flex-1 truncate text-sm">@{c.username}</span>
+                            <span className="text-sm font-semibold text-sky-400">{c.count}×</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Primärer Ausgang — unübersehbar (Weiß auf Dunkel) */}
                   <button
                     type="button"
                     onClick={() => router.push('/studio/live' as Route)}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 py-3.5 text-sm font-semibold transition-colors hover:bg-white/20"
+                    className="mt-1 flex w-full items-center justify-center gap-2 rounded-xl bg-white py-3.5 text-sm font-semibold text-black transition-colors hover:bg-white/90"
                   >
                     Zum Studio <ArrowRight className="h-4 w-4" />
                   </button>
