@@ -10,6 +10,7 @@ import { formatCoins,RARITY_META,type GiftItem,type GiftRarity } from '@/lib/gif
 import { useGiftCatalog } from '@/lib/useGiftCatalog';
 import { useCoinsWallet,useSendGift } from '@/lib/useGifts';
 import type { RealtimeChannel } from '@supabase/supabase-js';
+import { notificationAsync,NotificationFeedbackType } from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { Sparkles } from 'lucide-react-native';
@@ -278,6 +279,8 @@ export function GiftPicker({
     const result = await sendGift(effectiveRecipientId, liveSessionId, selectedGift.id, channelRef);
 
     if (result.success) {
+      // Peak feiern: Erfolgs-Haptik beim gesendeten Geschenk (war vorher stumm).
+      notificationAsync(NotificationFeedbackType.Success);
       refetch();
       onGiftSent?.(selectedGift.id);
       // Battle-Scoring: NUR im echten battleMode Coins in Team-Score einzahlen.
