@@ -26,7 +26,7 @@ import { sharePost } from '@/lib/useShare';
 import { impactAsync,ImpactFeedbackStyle } from 'expo-haptics';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useLocalSearchParams,useRouter } from 'expo-router';
+import { useFocusEffect,useLocalSearchParams,useRouter } from 'expo-router';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import {
 ArrowLeft,
@@ -218,12 +218,28 @@ function GuildPostDetailItem({
   // ── Seamless-Kommentare (wie Feed): Video schrumpft in den oberen ~40%,
   //    läuft ununterbrochen weiter, Kommentare darunter. sheetProgress wird
   //    beim Schließen direkt vom CommentsSheet (Drag) auf 0 zurückgefahren. ──
+  // Merkt sich, dass wir die Kommentare nur fürs Profil-Aufrufen geschlossen
+  // haben → beim Zurückkommen (Focus) wieder öffnen, Medium bleibt klein.
+  const reopenCommentsRef = useRef(false);
   const sheetProgress = useSharedValue(0);
   useEffect(() => {
     if (showComments) {
       sheetProgress.value = withSpring(1, { damping: 22, stiffness: 180, mass: 0.8 });
+    } else if (!reopenCommentsRef.current) {
+      // Normales Schließen (X / Backdrop / nach Drag) → Medium wieder voll.
+      sheetProgress.value = withSpring(0, { damping: 22, stiffness: 180, mass: 0.8 });
     }
   }, [showComments, sheetProgress]);
+
+  // Beim Zurückkommen vom Profil: Kommentare wieder öffnen (Medium bleibt klein).
+  useFocusEffect(
+    useCallback(() => {
+      if (reopenCommentsRef.current) {
+        reopenCommentsRef.current = false;
+        setShowComments(true);
+      }
+    }, []),
+  );
 
   const mediaAnimStyle = useAnimatedStyle(() => ({
     height: interpolate(sheetProgress.value, [0, 1], [ITEM_HEIGHT, ITEM_HEIGHT * 0.40], Extrapolation.CLAMP),
@@ -486,6 +502,7 @@ function GuildPostDetailItem({
         sheetProgress={sheetProgress}
         onClose={() => setShowComments(false)}
         onUserPress={(userId) => {
+          reopenCommentsRef.current = true;
           setShowComments(false);
           router.push({ pathname: '/user/[id]', params: { id: userId } });
         }}

@@ -8,7 +8,7 @@ import { useLike } from '@/lib/useLike';
 import { useRepost,type UseRepostBatch } from '@/lib/useRepost';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useFocusEffect,useRouter } from 'expo-router';
 import {
 CheckCircle2,
 Heart,
@@ -493,6 +493,9 @@ export const FeedItem = React.memo(function FeedItem({
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [commentsOpen, setCommentsOpen] = useState(false);
+  // Merkt sich, dass wir die Kommentare nur fürs Profil-Aufrufen geschlossen
+  // haben → beim Zurückkommen (Screen-Focus) wieder öffnen, Video bleibt klein.
+  const reopenCommentsRef = useRef(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [longPressOpen, setLongPressOpen] = useState(false);
@@ -631,9 +634,23 @@ export const FeedItem = React.memo(function FeedItem({
   useEffect(() => {
     if (commentsOpen) {
       sheetProgress.value = withSpring(1, { damping: 22, stiffness: 180, mass: 0.8 });
+    } else if (!reopenCommentsRef.current) {
+      // Normales Schließen (X / Backdrop / nach Drag) → Video wieder voll.
+      // Beim Profil-Aufrufen bleibt es klein (reopenCommentsRef), weil wir gleich
+      // zurückkommen und die Kommentare erneut öffnen.
+      sheetProgress.value = withSpring(0, { damping: 22, stiffness: 180, mass: 0.8 });
     }
-    // Schließen passiert via sheetProgress direkt aus CommentsSheet (Drag)
   }, [commentsOpen, sheetProgress]);
+
+  // Beim Zurückkommen vom Profil: Kommentare wieder öffnen (Video bleibt klein).
+  useFocusEffect(
+    useCallback(() => {
+      if (reopenCommentsRef.current) {
+        reopenCommentsRef.current = false;
+        setCommentsOpen(true);
+      }
+    }, []),
+  );
 
   const mediaAnimStyle = useAnimatedStyle(() => ({
     height: interpolate(
@@ -880,6 +897,9 @@ export const FeedItem = React.memo(function FeedItem({
         seamlessPeek
         creatorUserId={item.authorId}
         onUserPress={(userId) => {
+          // Nur fürs Profil-Aufrufen schließen — beim Zurückkommen wieder öffnen,
+          // Video bleibt klein (kein „Lücken"-Zustand).
+          reopenCommentsRef.current = true;
           setCommentsOpen(false);
           router.push({ pathname: '/user/[id]', params: { id: userId } });
         }}

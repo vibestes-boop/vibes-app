@@ -10,7 +10,9 @@ import { useState } from 'react';
 import {
 ActivityIndicator,
 Alert,
+KeyboardAvoidingView,
 Modal,
+Platform,
 Pressable,
 StyleSheet,
 Text,
@@ -107,6 +109,7 @@ export function OrderReviewControl({
       ) : null}
 
       <Modal transparent visible={open} animationType="fade" onRequestClose={() => setOpen(false)}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <Pressable style={s.backdrop} onPress={() => setOpen(false)}>
           <Pressable style={[s.sheet, { backgroundColor: colors.bg.elevated }]} onPress={(e) => e.stopPropagation()}>
             <View style={s.handle} />
@@ -134,6 +137,7 @@ export function OrderReviewControl({
             </Pressable>
           </Pressable>
         </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );
