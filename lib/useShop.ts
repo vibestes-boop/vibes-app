@@ -430,6 +430,9 @@ export function useMyOrders(role: 'buyer' | 'seller' = 'buyer') {
         .from('orders')
         .select('*, product:products(id, title, cover_url, category, file_url)')
         .eq(col, user!.id)
+        // Stornierte Coin-Bestellungen ausblenden — meist alte Test-Käufe von
+        // gelöschten Produkten („Unbekanntes Produkt / Storniert"), reiner Ballast.
+        .neq('status', 'cancelled')
         .order('created_at', { ascending: false })
         .limit(50);
       if (error) throw error;
