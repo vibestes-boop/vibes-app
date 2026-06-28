@@ -413,7 +413,7 @@ function Description({ text, colors }: { text: string; colors: any }) {
 
 type ShareTarget = { id: string; username: string | null; avatar_url: string | null };
 
-function ShareSheet({ product, onClose, colors }: { product: Product; onClose: () => void; colors: any }) {
+function ShareSheet({ product, onClose, colors, celebrate = false }: { product: Product; onClose: () => void; colors: any; celebrate?: boolean }) {
   const currentUserId = useAuthStore((s) => s.profile?.id);
   const [search, setSearch]   = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -513,6 +513,17 @@ function ShareSheet({ product, onClose, colors }: { product: Product; onClose: (
 
           {/* Handle */}
           <View style={ss.handle} />
+
+          {/* Feier-Header nach erfolgreichem Vormerken (Teilen-Loop am Peak) */}
+          {celebrate && (
+            <View style={{ alignItems: 'center', paddingHorizontal: 22, paddingBottom: 14 }}>
+              <Text style={{ fontSize: 34 }}>🤎</Text>
+              <Text style={{ color: '#fff', fontSize: 19, fontWeight: '800', marginTop: 2 }}>Vorgemerkt!</Text>
+              <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, textAlign: 'center', marginTop: 5, lineHeight: 18 }}>
+                Teil es mit Freunden — je mehr mitmachen, desto eher startet die Sammelbestellung 🚀
+              </Text>
+            </View>
+          )}
 
           {/* Produkt-Preview */}
           <View style={ss.productPreview}>
@@ -700,6 +711,7 @@ export default function ProductDetailScreen() {
 
   const [showConfirm,    setShowConfirm]    = useState(false);
   const [showShare,      setShowShare]      = useState(false);
+  const [shareCelebrate, setShareCelebrate] = useState(false);
   const [showMore,       setShowMore]       = useState(false);
   const [showReport,     setShowReport]     = useState(false);
   const [showFullscreen, setShowFullscreen] = useState(false);
@@ -825,9 +837,10 @@ export default function ProductDetailScreen() {
       await notificationAsync(NotificationFeedbackType.Success);
       setPreorderDone(true);
       setPreordered(true);
-      setBuyResult('success');
-      setResultMsg('🤎 Vorgemerkt — der Verkäufer meldet sich!');
-      setTimeout(() => setBuyResult(null), 2500);
+      // Teilen-Loop: Feier + Teilen-Anstoß direkt am Peak (Wachstums-Flywheel).
+      // Reuse der ShareSheet mit celebrate-Header statt nur eines Toasts.
+      setShareCelebrate(true);
+      setShowShare(true);
     } else {
       await notificationAsync(NotificationFeedbackType.Error);
       setBuyResult('error');
@@ -1267,7 +1280,7 @@ export default function ProductDetailScreen() {
       </Modal>
 
       {/* ─── Share-Sheet ── */}
-      {showShare && <ShareSheet product={product} onClose={() => setShowShare(false)} colors={colors} />}
+      {showShare && <ShareSheet product={product} onClose={() => { setShowShare(false); setShareCelebrate(false); }} colors={colors} celebrate={shareCelebrate} />}
 
       {/* ─── More-Menu ── */}
       {showMore && (
