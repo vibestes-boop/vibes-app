@@ -361,6 +361,8 @@ export function LiveHostDeck({
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     );
+    // Sender, deren Profil schon nachgeladen wurde — verhindert Mehrfach-Fetches.
+    const fetchedSenders = new Set<string>();
     const ch = sb
       .channel(createLiveRealtimeTopic('host-summary-gifts', session.id))
       .on(
@@ -372,8 +374,28 @@ export function LiveHostDeck({
           filter: `live_session_id=eq.${session.id}`,
         },
         (payload) => {
-          const row = payload.new as SessionGiftRow;
+          // WAL-Row hat KEIN gejointes sender/gift-Profil (nur sender_id) →
+          // explizit null setzen statt blind casten, sonst zeigt Top-Spender "@?".
+          const raw = payload.new as Omit<SessionGiftRow, 'sender' | 'gift'>;
+          const row: SessionGiftRow = { ...raw, sender: null, gift: null };
           setSummaryGifts((prev) => [row, ...prev]);
+
+          // Sender-Profil nachladen und alle Gifts dieses Senders patchen.
+          if (raw.sender_id && !fetchedSenders.has(raw.sender_id)) {
+            fetchedSenders.add(raw.sender_id);
+            void sb
+              .from('profiles')
+              .select('username, avatar_url')
+              .eq('id', raw.sender_id)
+              .maybeSingle()
+              .then(({ data }) => {
+                if (!data) return;
+                const sender = { username: data.username as string, avatar_url: (data.avatar_url as string | null) ?? null };
+                setSummaryGifts((prev) =>
+                  prev.map((g) => (g.sender_id === raw.sender_id ? { ...g, sender } : g)),
+                );
+              });
+          }
         },
       )
       .subscribe();
@@ -386,24 +408,50 @@ export function LiveHostDeck({
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     );
+    // Autoren, deren Profil schon nachgeladen wurde — verhindert Mehrfach-Fetches.
+    const fetchedAuthors = new Set<string>();
     const ch = sb
       .channel(createLiveRealtimeTopic('host-summary-comments', session.id))
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'live_comments', filter: `session_id=eq.${session.id}` },
         (payload) => {
-          const row = payload.new as { sender_id?: string; username?: string; avatar_url?: string };
+          // WAL-Row der live_comments-Tabelle heißt user_id (NICHT sender_id) und
+          // enthält kein Profil — vorher las der Handler sender_id/username, die
+          // es nie gab → Top-Kommentatoren bekam live nie Einträge.
+          const row = payload.new as { user_id?: string };
           setSummaryCommentCount((n) => n + 1);
-          if (row.sender_id) {
-            setSummaryCommentAuthors((prev) => {
-              const idx = prev.findIndex((a) => a.userId === row.sender_id);
-              if (idx >= 0) {
-                const next = [...prev];
-                next[idx] = { ...next[idx], count: next[idx].count + 1 };
-                return next;
-              }
-              return [...prev, { userId: row.sender_id!, username: row.username ?? '?', avatarUrl: row.avatar_url ?? null, count: 1 }];
-            });
+          const uid = row.user_id;
+          if (!uid) return;
+
+          setSummaryCommentAuthors((prev) => {
+            const idx = prev.findIndex((a) => a.userId === uid);
+            if (idx >= 0) {
+              const next = [...prev];
+              next[idx] = { ...next[idx], count: next[idx].count + 1 };
+              return next;
+            }
+            return [...prev, { userId: uid, username: '?', avatarUrl: null, count: 1 }];
+          });
+
+          // Profil nachladen (einmal pro Autor) und Namen/Avatar einspielen.
+          if (!fetchedAuthors.has(uid)) {
+            fetchedAuthors.add(uid);
+            void sb
+              .from('profiles')
+              .select('username, avatar_url')
+              .eq('id', uid)
+              .maybeSingle()
+              .then(({ data }) => {
+                if (!data) return;
+                setSummaryCommentAuthors((prev) =>
+                  prev.map((a) =>
+                    a.userId === uid
+                      ? { ...a, username: (data.username as string) ?? '?', avatarUrl: (data.avatar_url as string | null) ?? null }
+                      : a,
+                  ),
+                );
+              });
           }
         },
       )
