@@ -10,6 +10,9 @@ import { LiveChatUserPanel } from './live-chat-user-panel';
 import type { ChatUserInfo } from './live-chat-user-panel';
 import {
   LIVE_COMMENT_BROADCAST_EVENT,
+  APP_LIVE_COMMENT_EVENT,
+  appLiveCommentChannelName,
+  toAppBroadcastComment,
   createOptimisticLiveComment,
   mergeLiveComment,
   replaceOptimisticLiveComment,
@@ -226,6 +229,7 @@ export function LiveChatOverlay({
 
     let changesChannel: ReturnType<typeof supabase.channel> | null = null;
     let broadcastChannel: ReturnType<typeof supabase.channel> | null = null;
+    let appBroadcastChannel: ReturnType<typeof supabase.channel> | null = null;
 
     try {
       const topic = `live-comments-overlay-${sessionId}-${Date.now()}-${Math.random()
@@ -309,11 +313,26 @@ export function LiveChatOverlay({
         })
         .subscribe();
 
+      // Cross-Platform-Bridge: native App-Viewer hören Live-Kommentare NUR über
+      // diesen Channel/Event (anderer Name als der Web-Broadcast oben, kein
+      // postgres_changes in der App). Web hört hier selbst NICHT mit → keine
+      // Doppelung. Gespiegelt wird unten in broadcastCommentRef.
+      appBroadcastChannel = supabase
+        .channel(appLiveCommentChannelName(sessionId), {
+          config: { broadcast: { ack: false, self: false } },
+        })
+        .subscribe();
+
       broadcastCommentRef.current = (comment) => {
         void broadcastChannel?.send({
           type: 'broadcast',
           event: LIVE_COMMENT_BROADCAST_EVENT,
           payload: { comment },
+        });
+        void appBroadcastChannel?.send({
+          type: 'broadcast',
+          event: APP_LIVE_COMMENT_EVENT,
+          payload: toAppBroadcastComment(comment),
         });
       };
     } catch (error) {
@@ -324,6 +343,7 @@ export function LiveChatOverlay({
       broadcastCommentRef.current = null;
       if (changesChannel) supabase.removeChannel(changesChannel);
       if (broadcastChannel) supabase.removeChannel(broadcastChannel);
+      if (appBroadcastChannel) supabase.removeChannel(appBroadcastChannel);
     };
   }, [sessionId]);
 
