@@ -30,7 +30,9 @@ import { OrderDisputeControl } from '@/components/shop/OrderDisputeControl';
 import {
 ActivityIndicator,
 Alert,
+KeyboardAvoidingView,
 Modal,
+Platform,
 Pressable,
 ScrollView,
 StyleSheet,
@@ -42,6 +44,18 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' });
+}
+
+// „zuletzt angefordert vor X" — kompakt (gerade eben / N Min / N Std / N Tagen).
+function timeAgo(iso: string): string {
+  const secs = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
+  if (secs < 60) return 'gerade eben';
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return `vor ${mins} Min`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `vor ${hrs} Std`;
+  const days = Math.floor(hrs / 24);
+  return `vor ${days} ${days === 1 ? 'Tag' : 'Tagen'}`;
 }
 
 export default function FulfillmentScreen() {
@@ -101,11 +115,6 @@ export default function FulfillmentScreen() {
   const toShip   = orders.filter((o) => o.status === 'paid');
   const waiting  = orders.filter((o) => o.status === 'payment_requested');
   const shipped  = orders.filter((o) => o.status === 'shipped' || o.status === 'delivered');
-  // Produkte mit bereits offener Zahlungsanfrage → „Angefordert"-State bleibt auch nach Reload.
-  // (`requested` deckt zusätzlich den Sofort-Zustand direkt nach dem Klick ab.)
-  const requestedProductIds = new Set(
-    waiting.map((o) => o.product?.id).filter(Boolean) as string[],
-  );
 
   const handleMarkPayable = async (productId: string, title: string) => {
     const res = await markPayable(productId);
@@ -161,7 +170,17 @@ export default function FulfillmentScreen() {
             <View style={{ gap: 10 }}>
               <Text style={[s.section, { color: colors.text.primary }]}>Ware ist da → Zahlung anfordern</Text>
               {preorderGroups.map((g) => {
-                const requestedDone = requested.has(g.id) || requestedProductIds.has(g.id);
+                const groupWaiting = waiting.filter((o) => o.product_id === g.id);
+                const requestedCount = groupWaiting.length;
+                const requestedDone = requested.has(g.id) || requestedCount > 0;
+                // #2/#3: Vormerker, die noch KEINE Zahlungsanfrage haben (z.B. neu dazu).
+                const newCount = Math.max(0, g.people - requestedCount);
+                const hasNew = requestedDone && newCount > 0;
+                // #4: jüngste Zahlungsanfrage für dieses Produkt.
+                const lastRequestedAt = groupWaiting.reduce<string | null>(
+                  (latest, o) => (!latest || o.created_at > latest ? o.created_at : latest),
+                  null,
+                );
                 return (
                 <View key={g.id} style={[s.row, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
                   <Pressable onPress={() => router.push(`/shop/${g.id}` as any)}>
@@ -184,24 +203,36 @@ export default function FulfillmentScreen() {
                         {g.buyers.map((u) => `@${u}`).join(', ')} · seit {fmtDate(g.first_at)}
                       </Text>
                     )}
+                    {/* #1 Zähler + #2/#3 neu + #4 Zeitstempel */}
+                    {requestedDone && (
+                      <Text
+                        style={[s.rowSub, { color: hasNew ? colors.text.primary : '#16A34A', fontWeight: '600' }]}
+                        numberOfLines={1}
+                      >
+                        ✓ {requestedCount} {requestedCount === 1 ? 'wartet' : 'warten'} auf Zahlung
+                        {hasNew ? ` · ${newCount} neu` : ''}
+                        {lastRequestedAt ? ` · ${timeAgo(lastRequestedAt)}` : ''}
+                      </Text>
+                    )}
                   </Pressable>
                   <View style={{ gap: 6 }}>
+                    {/* 3 Zustände: Anfordern (neu) · Erneut anfordern (neue dazu) · Angefordert ✓ */}
                     <Pressable
                       onPress={() => handleMarkPayable(g.id, g.title)}
                       disabled={isMarking || g.price_eur == null}
                       style={[
                         s.smallBtn,
-                        requestedDone
+                        (requestedDone && !hasNew)
                           ? { backgroundColor: 'transparent', borderWidth: 1, borderColor: '#22C55E' }
                           : { backgroundColor: colors.text.primary },
                         { opacity: (isMarking || g.price_eur == null) ? 0.5 : 1 },
                       ]}
                     >
-                      {requestedDone
+                      {(requestedDone && !hasNew)
                         ? <CheckCircle2 size={13} color="#22C55E" strokeWidth={2.6} />
                         : <Bell size={13} color={colors.bg.primary} strokeWidth={2.4} />}
-                      <Text style={[s.smallBtnText, { color: requestedDone ? '#22C55E' : colors.bg.primary }]}>
-                        {requestedDone ? 'Angefordert' : 'Anfordern'}
+                      <Text style={[s.smallBtnText, { color: (requestedDone && !hasNew) ? '#22C55E' : colors.bg.primary }]}>
+                        {!requestedDone ? 'Anfordern' : hasNew ? 'Erneut anfordern' : 'Angefordert'}
                       </Text>
                     </Pressable>
                     <Pressable
@@ -310,6 +341,7 @@ export default function FulfillmentScreen() {
 
       {/* Versand-Modal */}
       <Modal transparent visible={!!shipOrder} animationType="fade" onRequestClose={() => setShipOrder(null)}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <Pressable style={s.backdrop} onPress={() => setShipOrder(null)}>
           <Pressable style={[s.sheet, { backgroundColor: colors.bg.elevated, paddingBottom: insets.bottom + 16 }]} onPress={(e) => e.stopPropagation()}>
             <View style={s.sheetHandle} />
@@ -341,10 +373,12 @@ export default function FulfillmentScreen() {
             </Pressable>
           </Pressable>
         </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
       {/* Anschreiben-Modal (DM an alle Vorbesteller) */}
       <Modal transparent visible={!!notifyGroup} animationType="fade" onRequestClose={() => setNotifyGroup(null)}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <Pressable style={s.backdrop} onPress={() => setNotifyGroup(null)}>
           <Pressable style={[s.sheet, { backgroundColor: colors.bg.elevated, paddingBottom: insets.bottom + 16 }]} onPress={(e) => e.stopPropagation()}>
             <View style={s.sheetHandle} />
@@ -375,6 +409,7 @@ export default function FulfillmentScreen() {
             </Pressable>
           </Pressable>
         </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
     </View>
   );

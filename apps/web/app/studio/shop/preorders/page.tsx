@@ -20,6 +20,18 @@ export const metadata: Metadata = {
 
 export const dynamic = 'force-dynamic';
 
+// „zuletzt angefordert vor X" — kompakt.
+function timeAgo(iso: string): string {
+  const secs = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
+  if (secs < 60) return 'gerade eben';
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return `vor ${mins} Min`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `vor ${hrs} Std`;
+  const days = Math.floor(hrs / 24);
+  return `vor ${days} ${days === 1 ? 'Tag' : 'Tagen'}`;
+}
+
 type Summary = {
   product_id: string;
   title: string;
@@ -70,18 +82,24 @@ export default async function PreordersPage() {
     }
   }
 
-  // Welche Produkte haben schon eine offene Zahlungsanfrage? → Button zeigt „Angefordert"
-  // (bleibt auch nach Reload erhalten). Status 'payment_requested' = wartet auf Zahlung.
-  const requestedSet = new Set<string>();
+  // Welche Produkte haben schon offene Zahlungsanfragen? → Button zeigt „Angefordert"
+  // (bleibt nach Reload), mit Anzahl (#1) + jüngstem Zeitpunkt (#4). Status
+  // 'payment_requested' = wartet auf Zahlung.
+  const requestedMap = new Map<string, { count: number; lastAt: string }>();
   if (summary.length > 0) {
     const { data: reqOrders } = await supabase
       .from('product_orders')
-      .select('product_id')
+      .select('product_id, created_at')
       .eq('seller_id', user.id)
       .eq('status', 'payment_requested')
       .in('product_id', summary.map((s) => s.product_id));
     for (const o of reqOrders ?? []) {
-      if (o.product_id) requestedSet.add(o.product_id as string);
+      const pid = o.product_id as string | null;
+      if (!pid) continue;
+      const at = o.created_at as string;
+      const cur = requestedMap.get(pid);
+      if (!cur) requestedMap.set(pid, { count: 1, lastAt: at });
+      else { cur.count += 1; if (at > cur.lastAt) cur.lastAt = at; }
     }
   }
 
@@ -125,6 +143,9 @@ export default async function PreordersPage() {
             const qty = Number(s.total_quantity);
             // Wie viele wurden noch NICHT angeschrieben (status='interested')?
             const interestedCount = people.filter((p) => p.status === 'interested').length;
+            const req = requestedMap.get(s.product_id);
+            const requestedCount = req?.count ?? 0;
+            const newCount = Math.max(0, count - requestedCount); // #2/#3
             return (
               <div key={s.product_id} className="rounded-xl border bg-card p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -147,10 +168,21 @@ export default async function PreordersPage() {
                       productId={s.product_id}
                       title={s.title}
                       priceEur={priceMap.get(s.product_id) ?? null}
-                      alreadyRequested={requestedSet.has(s.product_id)}
+                      alreadyRequested={requestedCount > 0}
+                      requestedCount={requestedCount}
+                      peopleCount={count}
                     />
                   </div>
                 </div>
+
+                {/* #1 Zähler + #2/#3 neu + #4 Zeitstempel */}
+                {requestedCount > 0 && (
+                  <p className="mt-2 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                    ✓ {requestedCount} {requestedCount === 1 ? 'wartet' : 'warten'} auf Zahlung
+                    {newCount > 0 ? ` · ${newCount} neu` : ''}
+                    {req?.lastAt ? ` · zuletzt ${timeAgo(req.lastAt)}` : ''}
+                  </p>
+                )}
 
                 {people.length === 0 ? (
                   <p className="mt-3 text-sm text-muted-foreground">

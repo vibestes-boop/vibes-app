@@ -160,18 +160,27 @@ export function PreorderRequestPaymentButton({
   title,
   priceEur,
   alreadyRequested = false,
+  requestedCount = 0,
+  peopleCount = 0,
 }: {
   productId: string;
   title: string;
   priceEur: number | null;
   alreadyRequested?: boolean;
+  /** #1: wie viele Zahlungsanfragen offen sind. */
+  requestedCount?: number;
+  /** Gesamtzahl Vormerker (für #2/#3: neu = people − angefordert). */
+  peopleCount?: number;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [doneLocal, setDoneLocal] = useState(false);
   const [isPending, startTransition] = useTransition();
   // „Angefordert"-Zustand: aus den Daten (offene Zahlungsanfrage) ODER sofort nach Klick.
-  const done = alreadyRequested || doneLocal;
+  const done = alreadyRequested || doneLocal || requestedCount > 0;
+  // #2/#3: Vormerker, die noch KEINE Zahlungsanfrage haben (z.B. neu dazu).
+  const newCount = Math.max(0, peopleCount - requestedCount);
+  const hasNew = done && newCount > 0;
 
   if (priceEur == null) {
     return (
@@ -210,13 +219,17 @@ export function PreorderRequestPaymentButton({
         type="button"
         onClick={() => setOpen(true)}
         className={
-          done
+          (done && !hasNew)
             ? 'inline-flex flex-none items-center gap-1.5 rounded-full border border-emerald-500 px-3 py-1.5 text-xs font-semibold text-emerald-600 transition-colors hover:bg-emerald-500/10 dark:text-emerald-400'
             : 'inline-flex flex-none items-center gap-1.5 rounded-full bg-foreground px-3 py-1.5 text-xs font-semibold text-background transition-colors hover:bg-foreground/90'
         }
       >
-        {done ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Bell className="h-3.5 w-3.5" />}
-        {done ? 'Angefordert' : 'Ware ist da → Zahlung anfordern'}
+        {(done && !hasNew) ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Bell className="h-3.5 w-3.5" />}
+        {!done
+          ? 'Ware ist da → Zahlung anfordern'
+          : hasNew
+            ? 'Erneut anfordern'
+            : `Angefordert${requestedCount > 0 ? ` · ${requestedCount}` : ''}`}
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
