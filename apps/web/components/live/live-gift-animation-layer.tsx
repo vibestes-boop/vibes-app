@@ -18,9 +18,13 @@ import { createLiveRealtimeTopic } from './realtime-topic';
 //   Der bestehende `live-gifts-feed.tsx` (Host-Deck) subscribet auf
 //   `postgres_changes` INSERT — gleiche Pfad-Semantik. Eine zweite
 //   Broadcast-Subscription (selbe Daten, anderer Kanal) würde redundante
-//   Realtime-Slots verbrauchen. Wir halten uns an `postgres_changes` für
-//   die Web-Seite — das ist reproduzierbar, deduziert dieselben Felder,
-//   und der Trigger broadcasted trotzdem (Native-App nutzt Broadcast).
+//   Realtime-Slots verbrauchen. Wir halten uns auf der Web-EMPFANGS-Seite an
+//   `postgres_changes` — reproduzierbar, deduziert dieselben Felder.
+//   ⚠️ Es gibt KEINEN DB-Trigger, der Gifts auf `live:{id}` broadcastet. Die
+//   native App spielt Gift-Animationen NUR über diesen Broadcast ab und hört
+//   kein postgres_changes — deshalb spiegelt der Web-SENDER (live-gift-picker)
+//   jeden Gift zusätzlich auf `live:${id}` / event `gift` (GiftRealtimePayload),
+//   sonst sähen App-Hosts keine Web-Viewer-Gifts.
 //
 // Performance:
 //   • Max 5 concurrent bursts — ältere werden vorne abgeschnitten, damit

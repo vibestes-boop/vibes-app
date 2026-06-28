@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { createBrowserClient } from '@supabase/ssr';
 import { CoinIcon } from '@/components/ui/coin-icon';
 import { X, Loader2 } from 'lucide-react';
@@ -63,6 +63,17 @@ export function LiveGiftPicker({
   const [error, setError] = useState<string | null>(null);
   const [sentFlash, setSentFlash] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [me, setMe] = useState<{ id: string; username: string | null; avatar_url: string | null } | null>(null);
+
+  // Ein Client für die ganze Komponente (Laden + Cross-Platform-Gift-Broadcast).
+  const [supabase] = useState(() =>
+    createBrowserClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    ),
+  );
+  // Persistenter Broadcast-Channel auf dem App-Vertrag `live:${id}` / event `gift`.
+  const giftBroadcastRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
 
   const { isBattle, sendBattleGift } = useBattleStore();
   const activeCoHost = cohosts[0] ?? null;
@@ -72,11 +83,6 @@ export function LiveGiftPicker({
   // Katalog + Balance laden
   // -----------------------------------------------------------------------------
   useEffect(() => {
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    );
-
     async function load() {
       const [catalogRes, authRes] = await Promise.all([
         supabase
@@ -105,20 +111,36 @@ export function LiveGiftPicker({
         return;
       }
 
-      const { data: wallet, error: walletErr } = await supabase
-        .from('coins_wallets')
-        .select('coins')
-        .eq('user_id', userId)
-        .maybeSingle();
+      const [{ data: wallet, error: walletErr }, { data: profile }] = await Promise.all([
+        supabase.from('coins_wallets').select('coins').eq('user_id', userId).maybeSingle(),
+        supabase.from('profiles').select('username, avatar_url').eq('id', userId).maybeSingle(),
+      ]);
 
       if (walletErr) {
         console.warn('[LiveGiftPicker] coin balance unavailable', walletErr);
       }
       setBalance(typeof wallet?.coins === 'number' ? wallet.coins : 0);
+      setMe({ id: userId, username: profile?.username ?? null, avatar_url: profile?.avatar_url ?? null });
       setLoading(false);
     }
     load();
-  }, []);
+  }, [supabase]);
+
+  // Cross-Platform-Bridge: native App-Hosts spielen Gift-Animationen NUR über
+  // Broadcast `live:${id}` / event `gift` ab (kein postgres_changes für Gifts in
+  // der App). Web-Host nutzt postgres_changes, deshalb sah er App-Gifts — aber
+  // App-Hosts sahen Web-Gifts nicht. Persistenter Channel, gesendet in handleSend.
+  useEffect(() => {
+    const ch = supabase.channel(`live:${sessionId}`, {
+      config: { broadcast: { ack: false } },
+    });
+    ch.subscribe();
+    giftBroadcastRef.current = ch;
+    return () => {
+      giftBroadcastRef.current = null;
+      void supabase.removeChannel(ch);
+    };
+  }, [supabase, sessionId]);
 
   // -----------------------------------------------------------------------------
   // Send-Handler
@@ -156,6 +178,21 @@ export function LiveGiftPicker({
           },
         }),
       );
+      // Cross-Platform: native App-Host spielt das Gift-Video nur via diesen
+      // Broadcast (App-Payload-Form GiftRealtimePayload, giftId = gift_catalog-Slug).
+      void giftBroadcastRef.current?.send({
+        type: 'broadcast',
+        event: 'gift',
+        payload: {
+          senderId: me?.id ?? '',
+          senderName: me?.username ?? 'Jemand',
+          senderAvatar: me?.avatar_url ?? undefined,
+          giftId: gift.id,
+          sessionId,
+          comboCount: 1,
+          comboKey: `${me?.id ?? 'web'}-${gift.id}-${Date.now()}`,
+        },
+      });
       // Broadcast battle-gift score event
       if (isBattle && sendBattleGift) {
         sendBattleGift(battleTeam, gift.coin_cost);
