@@ -118,6 +118,9 @@ export function LiveChat({
   const [cooldownLeft, setCooldownLeft] = useState(0);
   const listRef = useRef<HTMLDivElement | null>(null);
   const broadcastCommentRef = useRef<((comment: LiveCommentWithAuthor) => void) | null>(null);
+  // App-Vertrag-Channel (`live-comments-${id}`) — auch für Mod-Events (Timeout/Pin),
+  // damit native App-Viewer auf Web-Host-Moderation reagieren (App hört nur Broadcast).
+  const appBroadcastRef = useRef<{ send: (msg: { type: 'broadcast'; event: string; payload: unknown }) => unknown } | null>(null);
   const refreshInFlightRef = useRef(false);
 
   const mergePersistedComments = useCallback((incoming: LiveCommentWithAuthor[]) => {
@@ -305,6 +308,7 @@ export function LiveChat({
           config: { broadcast: { ack: false, self: false } },
         })
         .subscribe();
+      appBroadcastRef.current = appBroadcastChannel;
 
       broadcastCommentRef.current = (comment) => {
         void broadcastChannel?.send({
@@ -324,6 +328,7 @@ export function LiveChat({
 
     return () => {
       broadcastCommentRef.current = null;
+      appBroadcastRef.current = null;
       if (changesChannel) supabase.removeChannel(changesChannel);
       if (broadcastChannel) supabase.removeChannel(broadcastChannel);
       if (appBroadcastChannel) supabase.removeChannel(appBroadcastChannel);
@@ -410,18 +415,35 @@ export function LiveChat({
       const result = await timeoutChatUser(sessionId, targetUserId, seconds);
       if (!result.ok) {
         setSendError(result.error);
+        return;
       }
+      // App-Vertrag spiegeln: native Viewer blenden den getimeouteten User aus.
+      appBroadcastRef.current?.send({
+        type: 'broadcast',
+        event: 'chat-timeout',
+        payload: { userId: targetUserId, untilTs: Date.now() + seconds * 1000 },
+      });
     });
   };
 
   // v1.w.UI.139 — Pin/Unpin handlers (for host + mods)
   const handlePin = (commentId: string) => {
     setComments((prev) => prev.map((c) => ({ ...c, pinned: c.id === commentId })));
+    const comment = comments.find((c) => c.id === commentId);
     startTransition(async () => {
       const result = await pinLiveComment(sessionId, commentId);
       if (!result.ok) {
         setComments((prev) => prev.map((c) => (c.id === commentId ? { ...c, pinned: false } : c)));
         setSendError(result.error);
+        return;
+      }
+      // App-Vertrag spiegeln: native Viewer zeigen den angepinnten Kommentar.
+      if (comment) {
+        appBroadcastRef.current?.send({
+          type: 'broadcast',
+          event: 'pin-comment',
+          payload: toAppBroadcastComment(comment),
+        });
       }
     });
   };
@@ -430,7 +452,12 @@ export function LiveChat({
     setComments((prev) => prev.map((c) => ({ ...c, pinned: false })));
     startTransition(async () => {
       const result = await unpinLiveComment(sessionId);
-      if (!result.ok) setSendError(result.error);
+      if (!result.ok) {
+        setSendError(result.error);
+        return;
+      }
+      // App-Vertrag spiegeln: native Viewer entfernen den Pin (null = unpin).
+      appBroadcastRef.current?.send({ type: 'broadcast', event: 'pin-comment', payload: null });
     });
   };
 
