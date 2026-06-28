@@ -436,7 +436,7 @@ export default function ProfileScreen() {
             onBuyCoins={() => router.push('/coin-shop' as any)}
             onMyShop={() => router.push('/shop/my-shop' as any)}
             onSavedProducts={() => router.push('/shop/saved' as any)}
-            onMyOrders={() => router.push('/shop/orders' as any)}
+            onMyOrders={() => router.push('/shop/my-orders' as any)}
             onCreatorStudio={profile?.is_creator ? () => router.push('/creator/dashboard' as any) : undefined}
             onCreatorStats={profile?.is_creator ? () => router.push('/creator/stats' as any) : undefined}
             avatarInitial={avatarInitial}

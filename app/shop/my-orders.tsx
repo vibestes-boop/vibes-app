@@ -341,6 +341,16 @@ export default function MyOrdersScreen() {
           renderItem={renderItem}
           contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 40, gap: 12 }}
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.text.muted} />}
+          ListHeaderComponent={
+            <Pressable
+              onPress={() => router.push('/shop/fulfillment' as any)}
+              style={[s.sellLink, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}
+            >
+              <Store size={16} color={colors.text.primary} strokeWidth={2.2} />
+              <Text style={[s.sellLinkText, { color: colors.text.primary, flex: 1 }]}>Meine Verkäufe verwalten</Text>
+              <Text style={[s.sellLinkText, { color: colors.text.muted }]}>→</Text>
+            </Pressable>
+          }
           ListEmptyComponent={
             <View style={s.center}>
               <Package size={44} color={colors.text.muted} strokeWidth={1.3} />
@@ -473,6 +483,12 @@ const s = StyleSheet.create({
 
   footerLink: { alignItems: 'center', paddingVertical: 18 },
   footerLinkText: { fontSize: 13, fontWeight: '600' },
+  sellLink: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingVertical: 12, paddingHorizontal: 14, marginBottom: 12,
+    borderRadius: 14, borderWidth: 1,
+  },
+  sellLinkText: { fontSize: 14, fontWeight: '600' },
 
   backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
   sheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: 18, paddingTop: 10, gap: 10 },

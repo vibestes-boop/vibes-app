@@ -256,10 +256,10 @@ export default function CreatorStatsScreen() {
         {/* Top Produkte */}
         {profile?.id && <TopProducts userId={profile.id} />}
 
-        {/* Bestellungen CTA */}
+        {/* Bestellungen CTA — Echtgeld-Bestellungen (Käufe + Verkäufe via Store-Icon) */}
         <Pressable
           style={({ pressed }) => [css.ordersBtn, pressed && { opacity: 0.7 }]}
-          onPress={() => router.push('/shop/orders' as any)}
+          onPress={() => router.push('/shop/my-orders' as any)}
         >
           <ShoppingBag size={16} color="rgba(255,255,255,0.7)" />
           <Text style={css.ordersBtnText}>Bestellungen & Verkäufe</Text>

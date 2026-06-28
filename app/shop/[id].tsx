@@ -924,7 +924,7 @@ export default function ProductDetailScreen() {
         <Pressable onPress={() => setShowShare(true)} hitSlop={12} style={s.headerBtn}>
           <Share2 size={19} color={colors.text.primary} strokeWidth={2} />
         </Pressable>
-        <Pressable onPress={() => router.push('/shop/orders' as any)} hitSlop={12} style={s.headerBtn}>
+        <Pressable onPress={() => router.push('/shop/my-orders' as any)} hitSlop={12} style={s.headerBtn}>
           <ShoppingCart size={19} color={colors.text.primary} strokeWidth={2} />
         </Pressable>
         <Pressable onPress={() => setShowMore(true)} hitSlop={12} style={s.headerBtn}>
