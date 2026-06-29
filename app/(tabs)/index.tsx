@@ -37,6 +37,7 @@ import { supabase } from '@/lib/supabase';
 import { useDwellTracker } from '@/lib/useDwellTracker';
 import { emptyFeedEngagementMaps,useFeedEngagement } from '@/lib/useFeedEngagement';
 import { useFeedBunny } from '@/lib/useFeedBunny';
+import { useFeedProducts } from '@/lib/useFeedProducts';
 import type { LiveSession } from '@/lib/useLiveSession';
 import { useActiveLiveSessions } from '@/lib/useLiveSession';
 import { getTitleFromUrl } from '@/lib/useMusicPicker';
@@ -439,6 +440,11 @@ export default function VibeFeedScreen() {
   // (R2) und schalten — weil renderItem aus einem Ref liest — erst beim nächsten
   // Scroll auf HLS. Mit dem Signal re-rendern sie sofort beim Eintreffen der IDs.
   const bunnyReadyCount = Object.keys(bunnyByPost).length;
+  // Shoppable Posts (#2): verknüpfte Produkte per Post-ID anreichern (separat
+  // vom Feed-RPC). Signal-Count für extraData, damit bereits sichtbare Posts
+  // die Produktkarte sofort beim Eintreffen rendern (wie bunnyReadyCount).
+  const productByPost = useFeedProducts(postIds);
+  const productReadyCount = Object.keys(productByPost).length;
   const authorIds = useMemo(() => feedData.map((p) => p.authorId).filter((id): id is string => !!id), [feedData]);
   const { data: engagementMaps = emptyFeedEngagementMaps() } = useFeedEngagement(postIds, authorIds, {
     enabled: secondaryQueriesEnabled,
@@ -485,6 +491,8 @@ export default function VibeFeedScreen() {
   engagementMapsRef.current = engagementMaps;
   const bunnyByPostRef = useRef(bunnyByPost);
   bunnyByPostRef.current = bunnyByPost;
+  const productByPostRef = useRef(productByPost);
+  productByPostRef.current = productByPost;
 
   const { data: activeLives = [] } = useActiveLiveSessions({
     enabled: secondaryQueriesEnabled,
@@ -540,6 +548,7 @@ export default function VibeFeedScreen() {
           onOpenTune={onOpenTune}
           engagement={engagementMapsRef.current}
           bunnyVideoId={bunnyByPostRef.current[postData.id] ?? null}
+          product={productByPostRef.current[postData.id] ?? null}
         />
       );
     },
@@ -620,7 +629,7 @@ export default function VibeFeedScreen() {
       <FlatList
         ref={listRef}
         data={feedRows}
-        extraData={`${activePlaybackItemId ?? ''}:${screenFocused ? '1' : '0'}:${isMuted ? '1' : '0'}:${bunnyReadyCount}`}
+        extraData={`${activePlaybackItemId ?? ''}:${screenFocused ? '1' : '0'}:${isMuted ? '1' : '0'}:${bunnyReadyCount}:${productReadyCount}`}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         pagingEnabled

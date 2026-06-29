@@ -62,6 +62,7 @@ import type { MusicTrack } from '@/lib/useMusicPicker';
 import { MUSIC_LIBRARY } from '@/lib/useMusicPicker';
 import { usePostDraftsCloud } from '@/lib/usePostDraftsCloud';
 import { useScheduledPosts } from '@/lib/useScheduledPosts';
+import { useMyProducts } from '@/lib/useShop';
 import { useQueryClient } from '@tanstack/react-query';
 import { useVideoPlayer,VideoView } from 'expo-video';
 import {
@@ -113,6 +114,9 @@ export default function CreatePostScreen() {
   // Caption & Tags (bearbeitet im DetailsSheet)
   const [caption, setCaption]           = useState(captionParam ?? '');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  // Shoppable Posts (#2): optionales Produkt zum Verknüpfen (eigene Shop-Produkte).
+  const { data: myProducts = [] } = useMyProducts();
+  const [linkedProductId, setLinkedProductId] = useState<string | null>(null);
   const [postSettings, setPostSettings] = useState<PostSettingsState>({
     privacy: 'public', allowComments: true, allowDownload: true, allowDuet: true, womenOnly: false,
   });
@@ -374,6 +378,9 @@ export default function CreatePostScreen() {
         media_type:     mediaType,
         thumbnail_url:  thumbnailUrl,
         tags:           selectedTags.map(t=>t.toLowerCase()),
+        // Nur mitschicken, wenn wirklich ein Produkt verknüpft wurde — so bricht
+        // normales Posten nicht, falls die product_id-Migration noch nicht läuft.
+        ...(linkedProductId ? { product_id: linkedProductId } : {}),
         is_guild_post:  false,
         guild_id:       profile.guild_id,
         audio_url:      currentAudioTrack?.url ?? null,
@@ -857,6 +864,9 @@ export default function CreatePostScreen() {
         onSaveDraft={handleSaveCloudDraft}
         busyDraft={draftSavingBusy}
         busySchedule={schedulingBusy}
+        products={myProducts.map((p) => ({ id: p.id, title: p.title, cover_url: p.cover_url ?? null }))}
+        linkedProductId={linkedProductId}
+        onLinkProduct={setLinkedProductId}
       />
 
       {/* v1.20 — Scheduler-Modal */}

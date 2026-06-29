@@ -7,6 +7,7 @@ import {
   Lock,
   MessageCircle,
   Repeat2,
+  ShoppingBag,
   Users,
 } from 'lucide-react-native';
 import React from 'react';
@@ -22,7 +23,10 @@ import {
   TouchableWithoutFeedback,
   View,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+export type LinkableProduct = { id: string; title: string; cover_url: string | null };
 
 import type { PostSettingsState } from '@/components/create';
 
@@ -32,6 +36,7 @@ export function DetailsSheet({
   visible, onClose, caption, onCaption, selectedTags, onToggleTag,
   settings, onSettings, onPost, uploading,
   onSchedule, onSaveDraft, busyDraft, busySchedule,
+  products, linkedProductId, onLinkProduct,
 }: {
   visible: boolean; onClose: () => void;
   caption: string; onCaption: (s: string) => void;
@@ -42,6 +47,10 @@ export function DetailsSheet({
   onSaveDraft?: () => void;
   busyDraft?: boolean;
   busySchedule?: boolean;
+  // Shoppable Posts (#2): eigene Shop-Produkte zum Verknüpfen.
+  products?: LinkableProduct[];
+  linkedProductId?: string | null;
+  onLinkProduct?: (id: string | null) => void;
 }) {
   const insets = useSafeAreaInsets();
   const privacyOptions = [
@@ -84,6 +93,33 @@ export function DetailsSheet({
               </Pressable>
             ))}
           </ScrollView>
+
+          {products && products.length > 0 && onLinkProduct && (
+            <>
+              <Text style={ds.sectionLabel}>Produkt verknüpfen</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={ds.tagScroll} contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}>
+                {products.map((p) => {
+                  const active = linkedProductId === p.id;
+                  return (
+                    <Pressable
+                      key={p.id}
+                      onPress={() => onLinkProduct(active ? null : p.id)}
+                      style={[ds.prod, active && ds.prodActive]}
+                    >
+                      {p.cover_url ? (
+                        <Image source={{ uri: p.cover_url }} style={ds.prodImg} contentFit="cover" />
+                      ) : (
+                        <View style={[ds.prodImg, ds.prodImgFallback]}>
+                          <ShoppingBag size={14} color="rgba(255,255,255,0.6)" strokeWidth={2} />
+                        </View>
+                      )}
+                      <Text style={[ds.prodText, active && ds.prodTextActive]} numberOfLines={1}>{p.title}</Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </>
+          )}
 
           <Text style={ds.sectionLabel}>Sichtbarkeit</Text>
           <View style={ds.privacyRow}>
@@ -172,6 +208,12 @@ const ds = StyleSheet.create({
   tagActive: { backgroundColor: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.3)' },
   tagText: { color: 'rgba(255,255,255,0.4)', fontSize: 13, fontWeight: '600' },
   tagTextActive: { color: '#fff' },
+  prod: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6, paddingLeft: 6, paddingRight: 12, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', maxWidth: 200 },
+  prodActive: { backgroundColor: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.35)' },
+  prodImg: { width: 30, height: 30, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.1)' },
+  prodImgFallback: { alignItems: 'center', justifyContent: 'center' },
+  prodText: { color: 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: '600', flexShrink: 1 },
+  prodTextActive: { color: '#fff' },
   privacyRow: { flexDirection: 'row', gap: 8, marginHorizontal: 16, marginBottom: 16 },
   privacyBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'transparent' },
   privacyBtnActive: { backgroundColor: 'rgba(255,255,255,0.12)', borderColor: 'rgba(255,255,255,0.2)' },
