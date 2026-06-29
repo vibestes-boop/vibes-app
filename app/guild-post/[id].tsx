@@ -45,6 +45,7 @@ ActivityIndicator,
 Dimensions,
 FlatList,
 PanResponder,
+Platform,
 Pressable,
 Animated as RNAnimated,
 StyleSheet,
@@ -648,7 +649,14 @@ export default function GuildPostDetailScreen() {
         windowSize={2}
         maxToRenderPerBatch={3}
         initialNumToRender={safeInitialNumToRender}
-        removeClippedSubviews={true}
+        // iOS: AUS — removeClippedSubviews clippt/re-attached das aktive Item beim
+        // Weg-/Zurück-Navigieren (Profilbesuch aus den Kommentaren). Das (a) lässt
+        // sheetProgress auf 1 hängen + den useFocusEffect-Reopen verpuffen (Video
+        // klein + schwarze Lücke, Kommentare zu) und (b) verhindert, dass die
+        // animierte Container-Höhe ans native Video-Frame durchpropagiert (Video
+        // bleibt voll groß → unten/seitlich abgeschnitten im Peek). Der Feed
+        // (app/(tabs)/index.tsx) nutzt aus genau diesem Grund nur Android.
+        removeClippedSubviews={Platform.OS === 'android'}
       />
 
       {/* Linker Edge-Strip für Swipe-Back (wie iOS/Short-Video) */}
