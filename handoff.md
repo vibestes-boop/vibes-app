@@ -1,4 +1,4 @@
-# Handoff — Serlo/Vibes (Stand 28. Juni 2026 · Session 3)
+# Handoff — Serlo/Vibes (Stand 29. Juni 2026 · Session 4–5)
 
 > 📍 **Dieses Dokument: `/Users/zaurhatuev/vibes-app/handoff.md`**
 > Arbeite NUR in diesem Repo: **`/Users/zaurhatuev/vibes-app`** (Branch `main`).
@@ -17,37 +17,67 @@
 | Bereich | Stand |
 |---|---|
 | **Repo / Branch** | `/Users/zaurhatuev/vibes-app` · `main` · Working Tree **sauber** |
-| **Letzter Commit** | `ab54fc2` — Chat-Sync Cross-Platform-Fix. **Alle Session-3+4-Commits gepusht & verifiziert (`git ls-remote`).** |
+| **Letzter Commit** | `98887db` — Kommentare-nach-Profilbesuch in GuildCard + post/[id]. **Alle Session-4–5-Commits gepusht & verifiziert (`git ls-remote`).** |
 | **Web (apps/web)** | deployt via **Vercel** auf Push zu `main`. **Live: `serlo-web.vercel.app` — ⚠️ OHNE `www`!** |
 | **App-Build** | v1.30.0 / iOS-Build 286 (TestFlight) · Runtime **1.30.0**. OTAs ziehen nur beim **kalten App-Neustart**. |
-| **Letzte OTAs (28.6.)** | Session 4: **Number-Rollup** (Coin-Saldo + Stream-Earnings, OTA via `eas update`). Session 3: Bewertung-auf-eigenem-Profil, Shop-Kachel €+Titel, Echtgeld-Texte, „Produkt bearbeiten"-Button, App-Edit €/Vorbestell-Schalter, Browse-Limit 200, Vorbesteller-Anschreiben + Shop-Statistik, **Coin-Ökonomie-Anzeigen 12,5%**, Wärme-Pässe #1-3, Gift-Erfolgs-Haptik. |
+| **🔴 OFFENER OTA** | **Viele App-Commits aus Session 5 sind committed+gepusht, aber NICHT alle ge-OTA't.** Beim Wiedereinstieg EINEN OTA ziehen, der den aktuellen Stand bündelt: `EAS_BUILD=1 npx eas update --branch production --message "session5"`. Web deployt automatisch (Vercel). |
 | **Edge Functions deployed** | `create-checkout-session`, `stripe-webhook`, `send-push-notification` (Push-Titel/Notif neu). **🔴 WICHTIG:** `stripe-webhook`+`revenuecat-webhook`+`bunny-webhook` neu deployt **mit `--no-verify-jwt`** (sonst 401-Gate → Zahlung scheitert STILL). Dauerhaft via **`supabase/config.toml`** (`verify_jwt=false`). Memory `vibes-edge-webhook-verify-jwt`. |
 | **DB-Migrationen** | ✅ **ALLE ausgeführt** (Zaur im SQL-Editor) bis `20260628150000_coin_economy_recalibration.sql`. Neu Session 3: `20260628140000_payment_request_notif_text` + `20260628150000_coin_economy_recalibration` (beide live). **Keine offene Migration.** |
-| **GERADE FERTIG** | Session 4 (28.6. später, Tiefe + 2 Live-Bugs): **Number-Rollups** (App: Coin-Saldo + Stream-Earnings zählen hoch, OTA'd), **Web-Host-Hängen nach Stream-Ende gefixt** (Vollbild-Modal), **Chat-Sync Cross-Platform gefixt** (App-Viewer sahen Web-Host-Kommentare nicht live). Details §1.3. Davor Session 3 (§1.4): Webhook-401-Fix, Coin-Ökonomie, Shop-Parität, Wärme-Audit. |
+| **GERADE FERTIG** | Session 4–5 (28.–29.6.): Number-Rollups, **Cross-Platform-Realtime-Parität** (Chat/Gifts/Timeout/Pin/Reaktionen App↔Web), **Parfüm-Teilen-Loop** (App+Web+OG-Karte), **Echtgeld-Bestellverwaltung poliert** (Anfordern-States, Pull-to-refresh, Tracking-Chip, Routing auf Echtgeld), Kommentar-nach-Profilbesuch-Bug (4 Flächen). Voll in §1.3. |
+| **🔴 NÄCHSTE AUFGABE (unterbrochen)** | **Schmale Hover-Sidebar (`railCollapsible`) auf weiteren Web-Seiten aktivieren.** Details + Lösung am Ende §1.3. |
 | **Admin** | Zaur (`username='zaur'`, `profiles.is_admin = true`) — nötig fürs Vorbestell-Gate **und** Dispute-Klärung (`resolve_order_dispute`). |
 
 ⚠️ **Quarantäne:** `/Users/zaurhatuev/Desktop/vibes-app` — NIEMALS bauen/deployen/pushen.
 
 ---
 
-## 1.3 🆕 Session 4 (28.6. später) — Number-Rollups + 2 Live-Bugs (Web)
+## 1.3 🆕 Session 4–5 (28.–29.6.) — Realtime-Parität, Joy, Echtgeld-Bestell-Politur
 
-> Tiefe-Pass (§1.4-Backlog „Number-Rollups") + zwei beim Geräte-Test entdeckte
-> Web-Live-Bugs. Keine DB-Migration, keine offene Migration.
+> Alles committed + gepusht + verifiziert. **App-Änderungen brauchen EINEN OTA**
+> (siehe Schnell-Status). Web deployt automatisch via Vercel. Keine offene DB-Migration.
 
-### ✨ Number-Rollups (App) — Belohnungs-Zahlen zählen hoch (Commit `170f6a3`, OTA'd)
-- Design-Gesetz §1 („Hochs lauter machen"): neue Komponente **`components/ui/RollupNumber.tsx`** — reiner `<Text>`-Drop-in, eased rAF-Tween (kein Reanimated/TextInput → kein Layout-/Breiten-Risiko). Default: animiert NUR bei Wert-Änderung (Peak), nicht beim Screen-Öffnen (Maßhalten §3). `animateOnMount`+`from` für Werte die beim Erscheinen schon feststehen.
-- Verdrahtet: **Coin-Saldo** in `app/coin-shop.tsx` (zählt nach Kauf-Refetch hoch) + **Diamanten-Earnings** in der Live-End-Zusammenfassung `app/live/host.tsx:2439` (`animateOnMount`, `key={showSummary}` erzwingt Remount pro Stream-Ende, da RN-`<Modal>` Kinder sonst dauerhaft gemountet hält).
-- **Bewusst NICHT** verdrahtet (Maßhalten): GiftPicker-Saldo beim Senden (Spend/Countdown, keine Feier), Creator-Dashboard-Diamanten (wiederholt geöffneter Stats-Screen → Überdosis).
-- ⚠️ **App-Coin-Rollup nur im echten App-Store-Build sichtbar** — im TestFlight/OTA-Build ist RevenueCat-IAP gesperrt („Nur im App Store"), Kauf bricht vor Coin-Gutschrift ab. Stream-Earnings-Rollup ist ohne IAP testbar. **Web hat den Rollup NICHT** (separater Codebase) — ggf. später portieren.
+### 🔴 NÄCHSTE AUFGABE (von Zaur unterbrochen) — schmale Sidebar auf mehr Seiten
+**Ziel:** Die schmale, per Hover aufklappende Sidebar (`railCollapsible`) soll auf diesen
+Web-Seiten erscheinen: `/admin`, `/studio`, `/woz`, `/live`, `/privacy`, `/settings/profile`,
+`/coin-shop`, `/settings`, `/create`.
+- **Mechanismus existiert schon:** `<FeedSidebarLayout railCollapsible>{children}</FeedSidebarLayout>`
+  → siehe **`apps/web/app/shop/layout.tsx:10`** (einzige Stelle, die es aktuell nutzt). Flag fließt in
+  `components/feed/feed-sidebar.tsx` (iconOnly wenn nicht gehovert) + `feed-sidebar-layout.tsx` (Rail `w-20`).
+- **Vorhandene Layouts** (Kinder dort wrappen): `app/admin/layout.tsx`, `app/studio/layout.tsx`,
+  `app/live/layout.tsx`, `app/settings/layout.tsx` (deckt `settings/profile` mit ab).
+- **Ohne Layout** (neues `layout.tsx` anlegen ODER Seite wrappen): `app/woz/page.tsx`,
+  `app/privacy/page.tsx`, `app/coin-shop/page.tsx`, `app/create/page.tsx`.
+- ⚠️ **GOTCHA:** `/studio` (und evtl. `/admin`, `/settings`) haben schon eine **eigene** sekundäre Nav.
+  Prüfen, ob `FeedSidebarLayout` dort eine **doppelte** Sidebar erzeugt — ggf. nur dort einsetzen, wo
+  noch keine globale Rail ist, oder das bestehende Layout entsprechend kombinieren. Pro Route einzeln testen
+  (Hover klappt als Overlay auf, schiebt Content nicht). tsc + `npm run build` grün halten.
 
-### 🔴 Web-Bug 1: Host hängt nach „Stream beenden" fest (Commit `415181f`)
-- End-Zusammenfassung war `absolute inset-0` INNERHALB der `relative aspect-video`-Box (`live-host-deck.tsx:1255`) → auf Desktop höher als der Viewport, unterer Teil inkl. „Zum Studio"-Button von `lg:overflow-hidden` (Zeile 1218) abgeschnitten und nicht scrollbar. Auf **`fixed inset-0 z-[140]`** gehoben = echtes Vollbild-Modal (Parität mit nativem `host.tsx`). Verifiziert: kein `transform`-Vorfahre der `fixed` kapern würde.
+### ✨ Number-Rollups (App, `170f6a3`, OTA'd) + Web-Port (`46b3541`/`27918e7`)
+- Design-Gesetz §1: neue `components/ui/RollupNumber.tsx` (App) + `apps/web/components/ui/rollup-number.tsx` (Web) — eased rAF-Tween, `<Text>`/`<span>`-Drop-in. Default animiert nur bei Wert-Änderung; `animateOnMount` für Werte die beim Erscheinen feststehen.
+- App: Coin-Saldo (coin-shop) + Stream-Earnings (`host.tsx`, `key={showSummary}` für Remount). Web: Stream-Summary-Stats + Coin-Kauf-Success-Seite.
+- ⚠️ App-Coin-Rollup nur im echten App-Store-Build sichtbar (TestFlight = IAP gesperrt). Header-Coin-Pille bewusst NICHT (lädt nur 1× → würde bei jedem Öffnen feiern).
 
-### 🔴 Web-Bug 2: App-Viewer sahen Web-Host-Chat nicht live (Commit `ab54fc2`)
-- **Cross-Platform-Vertragsbruch** — App & Web nutzen verschiedene Broadcast-Channel+Event für Live-Kommentare, und die App hört NUR Broadcast (kein postgres_changes). Memory: **`vibes-live-comments-cross-platform-realtime`** (volle Tabelle + Fix-Pattern dort).
-- **Fix (web-only, additiv):** jeder Web-Kommentar wird zusätzlich auf dem App-Vertrag gespiegelt (`toAppBroadcastComment` in `live-chat-messages.ts`, verkabelt in `live-chat.tsx` + `live-chat-overlay.tsx`). Web hört dort nicht mit → keine Doppelung.
-- **Noch ungebrückt (Scope):** System-Events („@x folgt jetzt!"), Delete-/Timeout-/Pin-Events web↔app. Coin-Saldo „Coins=0 nach Gift erhalten" ist **KEIN Bug** — Gifts geben **Diamanten** (Einnahmen), keine Coins.
+### 🌐 Cross-Platform-Realtime-Parität App↔Web (das große Thema dieser Session)
+**Muster:** App hört Live-Events oft NUR per Broadcast (kein postgres_changes) und mit ANDEREN Channel/Event-Namen als Web → Events kreuzten die Plattform nicht. Memory: **`vibes-live-comments-cross-platform-realtime`** (Tabelle + Fix-Pattern). Gebrückt:
+- **Chat** (`ab54fc2`): Web spiegelt Kommentare zusätzlich auf App-Vertrag (`toAppBroadcastComment` in `live-chat-messages.ts` → `live-chat.tsx` + `live-chat-overlay.tsx`).
+- **Gifts** (`8cf8205`): Web-Gift-Picker spiegelt auf `live:${id}`/`gift` (GiftRealtimePayload, giftId=gift_catalog-Slug). Es gibt KEINEN DB-Trigger (Code-Kommentar war falsch).
+- **Mod-Events Timeout/Pin** (`346b0ae`): Web spiegelt `chat-timeout`/`pin-comment` auf den App-Channel.
+- **Reaktionen/Herzen** (`6fa1395`): Web auf App-Vertrag vereinheitlicht — `apps/web/lib/live-reactions.ts` (Key↔Emoji-Mapping), `sendLiveReaction` + `useRemoteReactions` → `live-reactions-${id}`/`new-reaction`.
+- **CoHost geprüft = ok** (kein Fix): Requests laufen über DB (`live_duet_invites` + postgres_changes); Broadcast nur Nudge. Accept/Layout/End-Events matchen.
+- **Noch offen:** System-Events („@x folgt jetzt"), Delete-Kommentar web↔app (kein Web-Auslöser bzw. local-only).
+
+### 🛒 Echtgeld-Bestellverwaltung poliert (App + Web)
+- **„Anfordern"→„Angefordert ✓"** persistenter State (`58d8413`) + **Zähler/„Erneut anfordern"/Zeitstempel** (`0880808`). Logik: „handled" = `payment_requested+paid+shipped+delivered`; ein Produkt **verschwindet** aus „Ware ist da", sobald keine offenen Vormerker (newCount) UND keine wartende Zahlung (waitingCount) — läuft dann unten in „Zu versenden" (`931b362`). `mark_preorders_payable` ändert den Vormerk-Status NICHT → people-Count bleibt, Ableitung stimmt.
+- **Pull-to-refresh** auf `app/shop/fulfillment.tsx` (`931b362`). **Keyboard-Fix** (KeyboardAvoidingView) für Versand-/Anschreiben-/Review-Sheets (`0880808`/`7c66982`).
+- **Sendungsverfolgung** (`1d8490d`): klickbarer „Sendung verfolgen"-Chip (Carrier-Deeplink, `lib/tracking.ts` + `apps/web/lib/tracking.ts` — DHL/Hermes/DPD/GLS/UPS/FedEx/Post) + Kopier-Chip. App `my-orders` + Web `product-orders-panel`.
+- **Discoverability**: `/shop/fulfillment` jetzt über Mein-Shop-📦-Header erreichbar (Verkäufer); **„Bestellungen & Verkäufe" (Creator-Dashboard + Profil-Menü + Produktseiten-Warenkorb) auf Echtgeld umgeleitet** (`159b0f5`): → `/shop/my-orders` (Käufe) mit „Meine Verkäufe verwalten →"-Link zu `/shop/fulfillment`. Coin-`/shop/orders` nur noch Fußzeilen-Link. **Coin-Bestell-Friedhof**: stornierte Coin-Bestellungen ausgeblendet (`a4db32b`). Grund (Zaur): Coins werden nur bei ihm gekauft (für Geschenke→Diamanten-Auszahlung), nicht als Produkt verkauft → Coin-Käufe/Verkäufe-Seite unnötig.
+
+### 💜 Parfüm-Teilen-Loop (Umsatz-Flywheel)
+- **App** (`bc63046`): nach erfolgreichem Vormerken öffnet die ShareSheet mit Feier-Header (`celebrate`-Prop). **Web** (`46b3541`): neuer `PreorderCelebrateDialog` (Link/WhatsApp/Telegram/native Share). **OG-Karte** (`27918e7`): Vorbestell-OG-Bild aufgewertet (warmes Gradient + „Jetzt vormerken"-CTA + „Zahlung erst bei Lieferung"), gerendert verifiziert. End-to-end getestet (WhatsApp-Unfurl).
+
+### 🐛 Web-Stream-End + Feed-Kommentar-Bugs
+- **Web-Host-Hängen nach Stream-Ende** (`415181f` + Redesign): End-Zusammenfassung von `absolute inset-0` (in `aspect-video`-Box, abgeschnitten) auf `fixed inset-0 z-[140]` = echtes Vollbild + dunkler theme-unabhängiger BG (war im Light-Mode weiß-auf-weiß) + zentrierte Karte + prominenter Ausgang. Top-Spender/Kommentatoren-Namen werden in der Web-Summary jetzt nachgeladen (Realtime-WAL-Row hatte kein Profil-Join).
+- **Kommentare nach Profilbesuch kaputt** (`7c66982` + `98887db`): Tippte man in Kommentaren auf einen User → Profil → zurück, blieb das Medium klein (sheetProgress nie auf 0) + Kommentare zu. Fix in ALLEN 4 Flächen: `FeedItem`, `guild-post/[id]`, `GuildCard`, `post/[id]` — `reopenCommentsRef` + `useFocusEffect` öffnet Kommentare beim Zurück-Fokus wieder; sheetProgress-Screens bekommen `else`-Reset.
 
 ---
 
