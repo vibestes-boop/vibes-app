@@ -70,6 +70,7 @@ const TYPE_META: Record<NotificationType, NotifMeta> = {
   guild:                   { icon: Users,        color: 'text-muted-foreground', bg: 'bg-muted' },
   preorder_interest:       { icon: ShoppingBag,  color: 'text-muted-foreground', bg: 'bg-muted' },
   order_payment_requested: { icon: CreditCard,   color: 'text-muted-foreground', bg: 'bg-muted' },
+  order_payment_reminder:  { icon: CreditCard,   color: 'text-muted-foreground', bg: 'bg-muted' },
   order_paid:              { icon: Package,       color: 'text-muted-foreground', bg: 'bg-muted' },
   order_shipped:           { icon: Truck,         color: 'text-muted-foreground', bg: 'bg-muted' },
   order_cancelled:         { icon: X,             color: 'text-muted-foreground', bg: 'bg-muted' },
@@ -108,6 +109,7 @@ function notifText(n: Notification): string {
         ? `${name} hat „${n.product_name}" vorgemerkt 🌸`
         : `${name} hat ein Produkt vorgemerkt 🌸`;
     case 'order_payment_requested':
+    case 'order_payment_reminder':
     case 'order_paid':
     case 'order_shipped':
     case 'order_cancelled':
@@ -171,6 +173,7 @@ function notifHref(n: Notification): Route {
     case 'order_address_updated':
       return '/studio/orders?role=seller' as Route;
     case 'order_payment_requested':
+    case 'order_payment_reminder':
     case 'order_shipped':
       return '/studio/orders?role=buyer' as Route;
     case 'order_review':

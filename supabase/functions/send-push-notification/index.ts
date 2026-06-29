@@ -56,6 +56,7 @@ Deno.serve(async (req: Request) => {
       new_order:                 'orders',
       preorder_interest:         'orders',
       order_payment_requested:   'orders',
+      order_payment_reminder:    'orders',
       order_paid:                'orders',
       order_shipped:             'orders',
       order_cancelled:           'orders',
@@ -107,6 +108,10 @@ Deno.serve(async (req: Request) => {
       order_payment_requested: {
         title: '💶 Zeit zu bezahlen',
         body: record.comment_text ?? 'Deine Vorbestellung ist da — jetzt bezahlen 🌸',
+      },
+      order_payment_reminder: {
+        title: '🌸 Dein Parfüm wartet',
+        body: record.comment_text ?? 'Kurz bezahlen — dann geht deine Vorbestellung raus 🌸',
       },
       order_paid: {
         title: '💶 Bestellung bezahlt',

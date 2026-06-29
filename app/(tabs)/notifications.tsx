@@ -82,6 +82,7 @@ function actionLabel(n: AppNotification): string {
         ? `hat bestellt: ${n.comment_text}`
         : "hat ein Produkt in deinem Shop gekauft 🛍";
     case "order_payment_requested":
+    case "order_payment_reminder":
     case "order_paid":
     case "order_shipped":
     case "order_cancelled":
@@ -144,6 +145,7 @@ function TypeIcon({ type }: { type: AppNotification["type"] }) {
       new_order:                { Icon: ShoppingBag,   bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
       preorder_interest:        { Icon: ShoppingBag,   bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
       order_payment_requested:  { Icon: CreditCard,    bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
+      order_payment_reminder:   { Icon: CreditCard,    bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
       order_paid:               { Icon: Package,       bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
       order_shipped:            { Icon: Truck,         bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
       order_cancelled:          { Icon: X,             bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
@@ -224,8 +226,8 @@ function NotifCard({ item }: { item: AppNotification }) {
     ) {
       // Verkäufer-seitig: Vormerkung / bezahlt / storniert / Adresse → Fulfillment
       router.push('/shop/fulfillment' as any);
-    } else if (item.type === "order_payment_requested" || item.type === "order_shipped") {
-      // Käufer-seitig: jetzt bezahlen / unterwegs → eigene Bestellungen
+    } else if (item.type === "order_payment_requested" || item.type === "order_payment_reminder" || item.type === "order_shipped") {
+      // Käufer-seitig: jetzt bezahlen / Erinnerung / unterwegs → eigene Bestellungen
       router.push('/shop/my-orders' as any);
     } else if (item.type === "order_review" || item.type === "order_dispute") {
       // Rolle nicht eindeutig → eigene Bestellungen (Header-Icon führt zu Verkäufen)

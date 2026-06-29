@@ -37,6 +37,7 @@ export type NotificationType =
   | 'guild'
   | 'preorder_interest'
   | 'order_payment_requested'
+  | 'order_payment_reminder'
   | 'order_paid'
   | 'order_shipped'
   | 'order_cancelled'

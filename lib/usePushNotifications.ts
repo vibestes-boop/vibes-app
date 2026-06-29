@@ -199,6 +199,7 @@ export function usePushNotifications() {
           router.push({ pathname: '/user/[id]', params: { id: data.senderId } });
         } else if (
           data?.type === 'order_payment_requested' ||
+          data?.type === 'order_payment_reminder' ||
           data?.type === 'order_shipped' ||
           data?.type === 'order_review' ||
           data?.type === 'order_dispute'
