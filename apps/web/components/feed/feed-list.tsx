@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import NextImage from 'next/image';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { FeedCard } from './feed-card';
+import { useFeedProductLinks } from '@/lib/use-feed-product-links';
 import { WebLiveFeedCard, type LiveFeedSession } from './web-live-feed-card';
 import { useFeedInteraction } from './feed-interaction-context';
 import { useTogglePostLike } from '@/hooks/use-engagement';
@@ -64,6 +65,11 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header, f
     initialData: initialPosts,
     staleTime: Infinity,
   });
+
+  // Shoppable Posts (#2): verknüpfte Produkte zu allen geladenen Posts (inkl.
+  // infinite-scroll) → FeedCard rendert daraus die Produktkarte.
+  const feedPostIds = useMemo(() => (posts ?? []).map((p) => p.id), [posts]);
+  const productByPost = useFeedProductLinks(feedPostIds);
 
   const list = posts ?? initialPosts;
 
@@ -534,6 +540,7 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header, f
                     shouldLoadMedia={distanceFromActive <= 1}
                     muted={muted}
                     onMuteToggle={onMuteToggle}
+                    linkedProductId={productByPost[row.post.id] ?? null}
                   />
                 ) : (
                   <FeedPostPlaceholder post={row.post} />

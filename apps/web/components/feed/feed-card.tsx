@@ -44,6 +44,7 @@ import {
 import type { FeedPost } from '@/lib/data/feed';
 import { LikeButton } from './like-button';
 import { useFeedInteraction } from './feed-interaction-context';
+import { ProductLinkCard } from '@/components/messages/product-link-card';
 import { linkify } from '@/lib/linkify';
 import {
   FEED_ACTION_AVATAR_QUALITY,
@@ -95,6 +96,8 @@ export interface FeedCardProps {
   shouldLoadMedia?: boolean;
   muted: boolean;
   onMuteToggle: () => void;
+  /** Shoppable Posts (#2): verknüpftes Produkt → Karte unter der Caption. */
+  linkedProductId?: string | null;
 }
 
 function formatCount(n: number): string {
@@ -116,6 +119,7 @@ export function FeedCard({
   shouldLoadMedia = isActive,
   muted,
   onMuteToggle,
+  linkedProductId,
 }: FeedCardProps) {
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -1072,6 +1076,13 @@ export function FeedCard({
               {linkify(post.caption, { linkClassName: FEED_LINK_CLASS })}
             </p>
           ))}
+
+        {/* Shoppable Post (#2): verknüpftes Produkt → tappbare Karte */}
+        {linkedProductId && (
+          <div className="pointer-events-auto mt-2 max-w-[260px] overflow-hidden rounded-lg shadow-lg">
+            <ProductLinkCard productId={linkedProductId} />
+          </div>
+        )}
 
         {/* v1.w.UI.170 — hashtag chips are clickable links to /t/[tag] */}
         {post.hashtags.length > 0 && (
