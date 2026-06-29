@@ -22,7 +22,7 @@ import { supabase } from '@/lib/supabase';
 import { useCoinsWallet } from '@/lib/useGifts';
 import { useOrCreateConversation,useSendMessage } from '@/lib/useMessages';
 import { useProductReviews } from '@/lib/useProductReviews';
-import { formatEur,REPORT_REASONS,useBuyProduct,useExpressInterest,useMyPreorder,useOrderRating,useReportProduct,useSavedProduct,useShopProducts,type Product,type ProductCategory,type ReportReason } from '@/lib/useShop';
+import { formatEur,REPORT_REASONS,useBuyProduct,useExpressInterest,useMyPreorder,useOrderRating,useProduct,useReportProduct,useSavedProduct,useShopProducts,type Product,type ProductCategory,type ReportReason } from '@/lib/useShop';
 import { webProductUrl } from '@/lib/webLinks';
 import { useTheme } from '@/lib/useTheme';
 import { useQuery } from '@tanstack/react-query';
@@ -691,8 +691,14 @@ export default function ProductDetailScreen() {
   const { colors } = useTheme();
   const { width }  = useWindowDimensions();
 
-  const { data: products = [], isLoading } = useShopProducts();
-  const product = products.find(p => p.id === id);
+  // Browse-Liste (schnell, gecacht) — enthält aber nur die ersten N Produkte.
+  const { data: products = [], isLoading: listLoading } = useShopProducts();
+  const listProduct = products.find(p => p.id === id);
+  // Deep-Link-Fallback: ist das Produkt nicht in der Browse-Liste (Shoppable
+  // Post, geteilter Link, eigenes Produkt), direkt per ID nachladen.
+  const { data: fetchedProduct, isLoading: oneLoading } = useProduct(!listProduct && id ? id : null);
+  const product = listProduct ?? fetchedProduct ?? undefined;
+  const isLoading = listLoading || (!listProduct && !!id && oneLoading);
   const { data: sellerRating } = useOrderRating(product?.seller_id);
 
   const { coins, refetch: refetchCoins }         = useCoinsWallet();

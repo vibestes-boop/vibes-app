@@ -167,6 +167,38 @@ export function useShopProducts(opts?: {
   });
 }
 
+// ─── Einzelnes Produkt per ID (deep-link-fest) ────────────────────────────────
+// get_shop_products liefert nur eine begrenzte Browse-Liste (Limit + women_only-
+// Gate) → für Deep-Links (Shoppable Post, geteilter Link, eigenes Produkt) reicht
+// das nicht. Dieser Hook lädt das Produkt direkt per ID. RLS erlaubt: aktives
+// Produkt für alle (women_only-Gate greift weiter), eigenes Produkt immer (Owner-
+// Policy) — so sieht der Verkäufer auch sein eigenes verknüpftes Produkt.
+export function useProduct(productId: string | null) {
+  return useQuery<Product | null>({
+    queryKey: ['product', productId],
+    enabled: !!productId,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*, seller:profiles!seller_id (username, avatar_url, is_verified)')
+        .eq('id', productId)
+        .maybeSingle();
+      if (error || !data) return null;
+      const d = data as any;
+      return {
+        ...d,
+        image_urls:      d.image_urls ?? [],
+        avg_rating:      d.avg_rating ?? null,
+        review_count:    d.review_count ?? 0,
+        seller_username: d.seller?.username ?? undefined,
+        seller_avatar:   d.seller?.avatar_url ?? undefined,
+        seller_verified: d.seller?.is_verified ?? undefined,
+      } as Product;
+    },
+  });
+}
+
 // ─── Werbe-Banner (Karussell) ─────────────────────────────────────────────────
 // Vermietbare Fläche unter den Menü-Shortcuts. RPC filtert serverseitig auf
 // aktive + im Zeitfenster liegende Banner. Leere Liste → Karussell rendert nicht.
