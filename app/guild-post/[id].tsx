@@ -44,6 +44,7 @@ import {
 ActivityIndicator,
 Dimensions,
 FlatList,
+InteractionManager,
 PanResponder,
 Platform,
 Pressable,
@@ -223,22 +224,38 @@ function GuildPostDetailItem({
   // haben → beim Zurückkommen (Focus) wieder öffnen, Medium bleibt klein.
   const reopenCommentsRef = useRef(false);
   const sheetProgress = useSharedValue(0);
+  // Medium-Höhe STRIKT an showComments koppeln: geschlossen → IMMER voll (0),
+  // offen → klein (1). Früher blieb es bei einem Profilbesuch absichtlich klein
+  // (reopenCommentsRef-Guard), um beim Zurückkommen nicht zu „springen". Genau
+  // das war aber die Quelle des „kleines Video + schwarze Lücke"-Zustands, sobald
+  // der Reopen verpuffte (iOS: Kommentar-<Modal> über dem fullScreenModal nach
+  // dem Pop-Übergang). Jetzt unmöglich: zu = voll, offen = klein. Der Auto-Reopen
+  // unten bleibt Best-Effort — schlägt er fehl, sieht man den vollen Post (statt
+  // einer schwarzen Lücke) und kann erneut auf Kommentare tippen.
   useEffect(() => {
-    if (showComments) {
-      sheetProgress.value = withSpring(1, { damping: 22, stiffness: 180, mass: 0.8 });
-    } else if (!reopenCommentsRef.current) {
-      // Normales Schließen (X / Backdrop / nach Drag) → Medium wieder voll.
-      sheetProgress.value = withSpring(0, { damping: 22, stiffness: 180, mass: 0.8 });
-    }
+    sheetProgress.value = withSpring(showComments ? 1 : 0, { damping: 22, stiffness: 180, mass: 0.8 });
   }, [showComments, sheetProgress]);
 
   // Beim Zurückkommen vom Profil: Kommentare wieder öffnen (Medium bleibt klein).
+  // iOS-Falle: guild-post ist selbst als `fullScreenModal` präsentiert UND die
+  // Kommentare sind ein <Modal>. Das Sheet DIREKT nach dem Pop-Übergang von
+  // /user/[id] erneut zu präsentieren verschluckt iOS (Modal-über-Modal im
+  // Transition-Fenster) → Sheet wird nie sichtbar, sheetProgress bleibt auf 1
+  // → kleines Video + schwarze Lücke. Deshalb erst NACH Abschluss der
+  // Navigations-Animation re-präsentieren (runAfterInteractions + kleiner Puffer).
+  // Der Feed ist ein Tab (kein Modal) → dort reicht ein direkter Reopen.
   useFocusEffect(
     useCallback(() => {
-      if (reopenCommentsRef.current) {
-        reopenCommentsRef.current = false;
-        setShowComments(true);
-      }
+      if (!reopenCommentsRef.current) return;
+      reopenCommentsRef.current = false;
+      let timer: ReturnType<typeof setTimeout> | null = null;
+      const task = InteractionManager.runAfterInteractions(() => {
+        timer = setTimeout(() => setShowComments(true), 120);
+      });
+      return () => {
+        task.cancel();
+        if (timer) clearTimeout(timer);
+      };
     }, []),
   );
 
