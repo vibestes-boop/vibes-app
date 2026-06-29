@@ -20,6 +20,7 @@ import {
   CheckCircle2,
   Camera,
   Music2,
+  ShoppingBag,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { compressImage, extensionForMime } from '@/lib/image/compress';
@@ -82,17 +83,23 @@ const IMMUTABLE_MEDIA_CACHE = 'public, max-age=31536000, immutable';
 const ENABLE_R2_UPLOAD_CACHE_CONTROL =
   process.env.NEXT_PUBLIC_R2_UPLOAD_CACHE_CONTROL === '1';
 
+export type LinkableProduct = { id: string; title: string; cover_url: string | null };
+
 interface Props {
   viewerId: string;
   initialDraft: InitialDraft | null;
+  /** Shoppable Posts (#2): eigene Shop-Produkte zum Verknüpfen (vom Server). */
+  products?: LinkableProduct[];
 }
 
 const MAX_VIDEO_BYTES = 200 * 1024 * 1024;
 const MAX_IMAGE_BYTES = 50 * 1024 * 1024;
 const CAPTION_MAX_LEN = 2200;
 
-export function CreateEditor({ viewerId, initialDraft }: Props) {
+export function CreateEditor({ viewerId, initialDraft, products }: Props) {
   const router = useRouter();
+  // Shoppable Posts (#2): optional verknüpftes Produkt.
+  const [linkedProductId, setLinkedProductId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   // ---------- File / Upload State ----------
@@ -398,6 +405,7 @@ export function CreateEditor({ viewerId, initialDraft }: Props) {
         coverTimeMs,
         draftId,
         aspectRatio,
+        productId: linkedProductId,
       });
       if (!res.ok) {
         setToast({ kind: 'err', msg: res.error });
@@ -629,6 +637,39 @@ export function CreateEditor({ viewerId, initialDraft }: Props) {
           addTagFromInput={addTagFromInput}
           removeTag={removeTag}
         />
+
+        {/* Shoppable Post (#2): eigenes Produkt verknüpfen → Karte im Feed/Post */}
+        {products && products.length > 0 && (
+          <div>
+            <label className="mb-2 block text-sm font-medium">Produkt verknüpfen</label>
+            <div className="flex flex-wrap gap-2">
+              {products.map((p) => {
+                const active = linkedProductId === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setLinkedProductId(active ? null : p.id)}
+                    className={cn(
+                      'flex items-center gap-2 rounded-xl border px-2.5 py-1.5 text-sm transition-colors',
+                      active ? 'border-primary bg-primary/10 text-foreground' : 'bg-background text-muted-foreground hover:bg-muted/50',
+                    )}
+                  >
+                    {p.cover_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={p.cover_url} alt="" className="h-7 w-7 rounded object-cover" />
+                    ) : (
+                      <span className="grid h-7 w-7 place-items-center rounded bg-muted">
+                        <ShoppingBag className="h-4 w-4" />
+                      </span>
+                    )}
+                    <span className="max-w-[140px] truncate">{p.title}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Format-Picker — nur sichtbar wenn Media geladen */}
         {hasMedia && (

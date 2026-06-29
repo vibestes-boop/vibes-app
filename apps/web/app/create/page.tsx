@@ -10,6 +10,7 @@ import { redirect } from 'next/navigation';
 import { hasSupabaseAuthCookie } from '@/lib/auth/cookies';
 import { getUser } from '@/lib/auth/session';
 import { getDraft } from '@/lib/data/posts';
+import { getMyProducts } from '@/lib/data/shop';
 import { CreateEditor } from '@/components/create/create-editor';
 
 // -----------------------------------------------------------------------------
@@ -32,7 +33,14 @@ export default async function CreatePage({ searchParams }: PageProps) {
   if (!user) redirect('/login?next=/create');
 
   const { draftId } = await searchParams;
-  const draft = draftId ? await getDraft(draftId) : null;
+  const [draft, myProducts] = await Promise.all([
+    draftId ? getDraft(draftId) : Promise.resolve(null),
+    getMyProducts().catch(() => []),
+  ]);
+  // Shoppable Posts (#2): nur aktive eigene Produkte zum Verknüpfen anbieten.
+  const linkableProducts = myProducts
+    .filter((p) => p.is_active)
+    .map((p) => ({ id: p.id, title: p.title, cover_url: p.cover_url ?? null }));
 
   return (
     <div className="mx-auto w-full max-w-5xl px-4 pb-20 pt-6 lg:px-6">
@@ -47,6 +55,7 @@ export default async function CreatePage({ searchParams }: PageProps) {
 
       <CreateEditor
         viewerId={user.id}
+        products={linkableProducts}
         initialDraft={
           draft
             ? {
