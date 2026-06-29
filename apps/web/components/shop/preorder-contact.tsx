@@ -200,6 +200,12 @@ export function PreorderAnnounceButton({
             Alle, die „{title}“ vorgemerkt oder gespeichert haben, bekommen eine
             Benachrichtigung mit Link zum Produkt — „jetzt sichern, Fenster offen“.
           </p>
+          <p className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">Wann?</span> Wenn du eine neue
+            Runde öffnest (z. B. Lieferung ist da, „letzte Chance dieser Runde“). Das ist
+            reines Marketing an Interessenten — <span className="font-medium text-foreground">unabhängig
+            davon</span>, ob einzelne Bestellungen schon bezahlt/versandt sind.
+          </p>
           <div className="flex justify-end gap-2 pt-2">
             <Button variant="outline" onClick={() => setOpen(false)} disabled={isPending}>
               Abbrechen

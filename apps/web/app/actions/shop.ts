@@ -617,10 +617,13 @@ export async function announcePreorderRound(
     p_product_id: productId,
     p_message: message?.trim() ? message.trim() : null,
   });
-  if (error) return { ok: false, error: 'Kurz die Verbindung verloren — nochmal? 🙂' };
+  if (error) return { ok: false, error: `Konnte nicht ankündigen: ${error.message}` };
 
-  const res = (data ?? {}) as { success?: boolean; error?: string; notified?: number };
-  if (!res.success) return { ok: false, error: res.error ?? 'Konnte nicht ankündigen.' };
+  const res = (data ?? {}) as { success?: boolean; error?: string; detail?: string; notified?: number };
+  if (!res.success) {
+    // detail = echter SQL-Fehler (aus der robusten RPC) für die Diagnose.
+    return { ok: false, error: res.detail ? `Konnte nicht ankündigen: ${res.detail}` : (res.error ?? 'Konnte nicht ankündigen.') };
+  }
 
   revalidatePath('/studio/shop/preorders');
   return { ok: true, data: { notified: res.notified ?? 0 } };
