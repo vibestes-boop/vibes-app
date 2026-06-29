@@ -273,6 +273,8 @@ export default function PostDetailScreen() {
   const [post, setPost] = useState<PostDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [commentsOpen, setCommentsOpen] = useState(false);
+  // Nur fürs Profil-Aufrufen geschlossen → beim Zurückkommen wieder öffnen.
+  const reopenCommentsRef = useRef(false);
   const [screenFocused, setScreenFocused] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
   const [showMuteFlash, setShowMuteFlash] = useState<'muted' | 'unmuted' | null>(null);
@@ -507,6 +509,16 @@ export default function PostDetailScreen() {
 
       return () => setScreenFocused(false);
     }, [id, openComments])
+  );
+
+  // Beim Zurückkommen vom Profil: Kommentare wieder öffnen.
+  useFocusEffect(
+    useCallback(() => {
+      if (reopenCommentsRef.current) {
+        reopenCommentsRef.current = false;
+        setCommentsOpen(true);
+      }
+    }, []),
   );
 
   // ── Musik-Playback (expo-av) ─────────────────────────────────────────────
@@ -756,6 +768,7 @@ export default function PostDetailScreen() {
               visible={commentsOpen}
               onClose={() => setCommentsOpen(false)}
               onUserPress={(userId) => {
+                reopenCommentsRef.current = true;
                 setCommentsOpen(false);
                 router.push({ pathname: '/user/[id]', params: { id: userId } });
               }}

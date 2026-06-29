@@ -9,7 +9,7 @@ import { useTheme } from '@/lib/useTheme';
 import { useVideoMute } from '@/lib/useVideoPreferences';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { useFocusEffect,useRouter } from 'expo-router';
 import { Bookmark,Heart,MessageCircle,Share2,Volume2,VolumeX } from 'lucide-react-native';
 import React,{ useCallback,useEffect,useMemo,useRef,useState } from 'react';
 import { Pressable,StyleSheet,Text,View } from 'react-native';
@@ -57,6 +57,16 @@ export const GuildCard = React.memo(function GuildCard({
   const { data: commentCount = 0 } = useCommentCount(post.id, post.comment_count);
   const { bookmarked, toggle: toggleBookmark } = useBookmark(post.id);
   const [showComments, setShowComments] = useState(false);
+  // Nur fürs Profil-Aufrufen geschlossen → beim Zurückkommen wieder öffnen.
+  const reopenCommentsRef = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      if (reopenCommentsRef.current) {
+        reopenCommentsRef.current = false;
+        setShowComments(true);
+      }
+    }, []),
+  );
   const [captionExpanded, setCaptionExpanded] = useState(false);
   const { isMuted, toggleMute } = useVideoMute();
   const isVideo = post.media_type === 'video';
@@ -290,6 +300,7 @@ export const GuildCard = React.memo(function GuildCard({
         seamlessPeek
         onClose={() => setShowComments(false)}
         onUserPress={(userId) => {
+          reopenCommentsRef.current = true;
           setShowComments(false);
           router.push({ pathname: '/user/[id]', params: { id: userId } });
         }}
