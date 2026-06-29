@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase';
 import { uploadAvatar } from '@/lib/uploadMedia';
 import { useNotificationPrefs } from '@/lib/useNotificationPrefs';
 import { useWomenOnly } from '@/lib/useWomenOnly';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery,useQueryClient } from '@tanstack/react-query';
 import Constants from 'expo-constants';
 import { Image } from 'expo-image';
 import {
@@ -39,6 +39,7 @@ Shield,
 ShieldCheck,
 Sparkles,
 Sun,
+Share2,
 Trash2,
 User,Users,
 UserPlus,
@@ -50,6 +51,7 @@ ActivityIndicator,Alert,KeyboardAvoidingView,
 Linking,
 Platform,
 Pressable,ScrollView,
+Share,
 StyleSheet,
 Switch,
 Text,
@@ -137,6 +139,23 @@ export default function SettingsScreen() {
   const [showWomenOnly, setShowWomenOnly] = useState(false);
   const { canAccessWomenOnly, deactivate } = useWomenOnly();
   const queryClient = useQueryClient();
+  // #5 Referral — Einladungslink + Zähler.
+  const inviteUrl = profile?.username ? `https://serlo-web.vercel.app/i/${profile.username}` : null;
+  const { data: referralCount = 0 } = useQuery({
+    queryKey: ['referral-count', profile?.id],
+    enabled: !!profile?.id,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data } = await supabase.rpc('get_my_referral_count');
+      return (data as number | null) ?? 0;
+    },
+  });
+  const handleInvite = async () => {
+    if (!inviteUrl) return;
+    try {
+      await Share.share({ message: `Komm zu Serlo 🌸 — Videos, Live & Marktplatz aus der Community:\n${inviteUrl}` });
+    } catch { /* abgebrochen */ }
+  };
   const { prefs: notifPrefs, setPrefs: setNotifPrefs } = useNotificationPrefs();
   const hasVoice = !!(profile as any)?.voice_sample_url;
 
@@ -439,6 +458,25 @@ export default function SettingsScreen() {
               />
             </View>
           </View>
+        </View>
+
+        {/* ── Freunde einladen (#5 Referral) ── */}
+        <SectionLabel label="Freunde einladen" colors={colors} />
+        <View style={[s.card, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
+          <Pressable style={[s.rowItem, { paddingVertical: 11 }]} onPress={handleInvite} accessibilityRole="button" disabled={!inviteUrl}>
+            <View style={s.rowIcon}>
+              <UserPlus size={18} stroke={colors.text.primary} strokeWidth={2} />
+            </View>
+            <View style={s.rowBody}>
+              <Text style={[s.rowTitle, { color: colors.text.primary }]}>Freund:innen einladen</Text>
+              <Text style={[s.rowSub, { color: colors.text.muted }]}>
+                {referralCount > 0
+                  ? `${referralCount} ${referralCount === 1 ? 'Person ist' : 'Personen sind'} über dich dabei 🌸`
+                  : 'Teile deinen Link — bring die Community zusammen'}
+              </Text>
+            </View>
+            <Share2 size={16} stroke={colors.icon.muted} strokeWidth={2} />
+          </Pressable>
         </View>
 
         {/* ── Women-Only Zone ── */}

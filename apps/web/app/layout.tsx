@@ -7,6 +7,7 @@ import { QueryProvider } from '@/providers/query-provider';
 import { ThemeProvider } from '@/providers/theme-provider';
 import { PostHogProvider } from '@/providers/posthog-provider';
 import { AppAuthShell } from '@/components/app-auth-shell';
+import { ReferralClaimer } from '@/components/referral/referral-claimer';
 import { ConsentBanner } from '@/components/consent/consent-banner';
 import { AnalyticsConsentGate } from '@/components/consent/analytics-consent-gate';
 import { ServiceWorkerRegistrar } from '@/components/pwa/service-worker-registrar';
@@ -143,6 +144,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                  * logged-out). Auf Mobile rendert MobileBottomNav unten.
                  */}
                 <AppAuthShell />
+                <ReferralClaimer />
                 {/*
                  * `id="main-content"` ist das Skip-Link-Target. KEIN `<main>`-
                  * Tag hier, weil einzelne Pages (settings, studio, shop, explore,
