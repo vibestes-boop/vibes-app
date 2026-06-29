@@ -782,6 +782,19 @@ function publicPostRpcToPost(row: PublicPostRpcRow): PostWithAuthor | null {
   });
 }
 
+// Shoppable Posts (#2): die verknüpfte Produkt-ID eines Posts (oder null).
+// Separat vom get_public_post_web-RPC (der product_id nicht zurückgibt) — die
+// Produkt-Mini-Info lädt die Client-Komponente ProductLinkCard selbst per ID.
+export const getPostLinkedProductId = cache(async (postId: string): Promise<string | null> => {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('posts')
+    .select('product_id')
+    .eq('id', postId)
+    .maybeSingle();
+  return ((data as { product_id?: string | null } | null)?.product_id) ?? null;
+});
+
 export const getPost = cache(async (postId: string): Promise<PostWithAuthor | null> => {
   const supabase = await createClient();
 

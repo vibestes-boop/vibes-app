@@ -18,7 +18,9 @@ import {
   getPostInteractionStateForViewer,
   isFollowingForViewer,
   getProfilePosts,
+  getPostLinkedProductId,
 } from '@/lib/data/public';
+import { ProductLinkCard } from '@/components/messages/product-link-card';
 import { getProfile, getUser } from '@/lib/auth/session';
 import { ExploreVideoCard } from '@/components/explore/explore-video-card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -182,7 +184,7 @@ export default async function PostDetailPage({
   const viewerId = viewer?.id ?? null;
   const isSelf = viewerId === post.author.id;
   const canUseFastComments = post.comment_count <= INITIAL_COMMENT_LIMIT;
-  const [comments, interaction, authorPosts, viewerProfile, followingAuthor] = await Promise.all([
+  const [comments, interaction, authorPosts, viewerProfile, followingAuthor, linkedProductId] = await Promise.all([
     post.allow_comments
       ? canUseFastComments
         ? getPostCommentsFast(post.id, INITIAL_COMMENT_LIMIT, viewerId)
@@ -193,6 +195,8 @@ export default async function PostDetailPage({
     getProfilePosts(post.author.id, 7),
     viewer ? getProfile() : Promise.resolve(null),
     !isSelf && viewerId ? isFollowingForViewer(post.author.id, viewerId) : Promise.resolve(false),
+    // Shoppable Posts (#2): verknüpftes Produkt → Karte in der Detailseite.
+    getPostLinkedProductId(post.id),
   ]);
 
   // Aktuellen Post aus der "Mehr von"-Liste herausfiltern.
@@ -389,6 +393,14 @@ export default async function PostDetailPage({
           </div>
         ) : null;
 
+        // Shoppable Post (#2): verknüpftes Produkt → kompakte Karte → /shop/[id].
+        const productCard = linkedProductId ? (
+          <div className="rounded-xl border border-border bg-card p-4">
+            <div className="mb-2 text-sm font-semibold">Im Beitrag</div>
+            <ProductLinkCard productId={linkedProductId} />
+          </div>
+        ) : null;
+
         // Share-Karte
         const shareCard = (
           <div className="rounded-xl border border-border bg-card p-4">
@@ -555,6 +567,7 @@ export default async function PostDetailPage({
                 <div className="space-y-4">
                   {authorCard}
                   {captionCard}
+                  {productCard}
                   {commentsSection}
                 </div>
                 <aside className="space-y-4">
@@ -580,6 +593,7 @@ export default async function PostDetailPage({
             <aside className="space-y-5">
               {authorCard}
               {captionCard}
+              {productCard}
               {commentsSection}
               {shareCard}
               {moreCard}
