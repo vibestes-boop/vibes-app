@@ -1,4 +1,4 @@
-# Handoff — Serlo/Vibes (Stand 29. Juni 2026 · Session 4–5)
+# Handoff — Serlo/Vibes (Stand 29. Juni 2026 · Session 6)
 
 > 📍 **Dieses Dokument: `/Users/zaurhatuev/vibes-app/handoff.md`**
 > Arbeite NUR in diesem Repo: **`/Users/zaurhatuev/vibes-app`** (Branch `main`).
@@ -17,17 +17,61 @@
 | Bereich | Stand |
 |---|---|
 | **Repo / Branch** | `/Users/zaurhatuev/vibes-app` · `main` · Working Tree **sauber** |
-| **Letzter Commit** | `98887db` — Kommentare-nach-Profilbesuch in GuildCard + post/[id]. **Alle Session-4–5-Commits gepusht & verifiziert (`git ls-remote`).** |
+| **Letzter Commit** | `52cf8e1` — Fix „Ankündigen" (Notification-CHECK neu + robuste RPC). **Alle Session-6-Commits gepusht & verifiziert (`git ls-remote`).** |
 | **Web (apps/web)** | deployt via **Vercel** auf Push zu `main`. **Live: `serlo-web.vercel.app` — ⚠️ OHNE `www`!** |
-| **App-Build** | v1.30.0 / iOS-Build 286 (TestFlight) · Runtime **1.30.0**. OTAs ziehen nur beim **kalten App-Neustart**. |
-| **🔴 OFFENER OTA** | **Viele App-Commits aus Session 5 sind committed+gepusht, aber NICHT alle ge-OTA't.** Beim Wiedereinstieg EINEN OTA ziehen, der den aktuellen Stand bündelt: `EAS_BUILD=1 npx eas update --branch production --message "session5"`. Web deployt automatisch (Vercel). |
-| **Edge Functions deployed** | `create-checkout-session`, `stripe-webhook`, `send-push-notification` (Push-Titel/Notif neu). **🔴 WICHTIG:** `stripe-webhook`+`revenuecat-webhook`+`bunny-webhook` neu deployt **mit `--no-verify-jwt`** (sonst 401-Gate → Zahlung scheitert STILL). Dauerhaft via **`supabase/config.toml`** (`verify_jwt=false`). Memory `vibes-edge-webhook-verify-jwt`. |
-| **DB-Migrationen** | ✅ **ALLE ausgeführt** (Zaur im SQL-Editor) bis `20260628150000_coin_economy_recalibration.sql`. Neu Session 3: `20260628140000_payment_request_notif_text` + `20260628150000_coin_economy_recalibration` (beide live). **Keine offene Migration.** |
-| **GERADE FERTIG** | Session 4–5 (28.–29.6.): Number-Rollups, **Cross-Platform-Realtime-Parität** (Chat/Gifts/Timeout/Pin/Reaktionen App↔Web), **Parfüm-Teilen-Loop** (App+Web+OG-Karte), **Echtgeld-Bestellverwaltung poliert** (Anfordern-States, Pull-to-refresh, Tracking-Chip, Routing auf Echtgeld), Kommentar-nach-Profilbesuch-Bug (4 Flächen). Voll in §1.3. |
-| **🔴 NÄCHSTE AUFGABE (unterbrochen)** | **Schmale Hover-Sidebar (`railCollapsible`) auf weiteren Web-Seiten aktivieren.** Details + Lösung am Ende §1.3. |
-| **Admin** | Zaur (`username='zaur'`, `profiles.is_admin = true`) — nötig fürs Vorbestell-Gate **und** Dispute-Klärung (`resolve_order_dispute`). |
+| **App-Build** | v1.30.0 / iOS-Build 286 (TestFlight) · Runtime **1.30.0**. OTAs ziehen nur beim **kalten App-Neustart** (2× killen+öffnen — Update greift beim 2. Start). |
+| **Letzter OTA** | `7bb41482` (Commit `aa915fa`, Referral). **Danach NUR Web-Commits** (`c00c0c5` Web-Auslöser, `52cf8e1` Announce-Fix) → **kein offener App-OTA**. Bei nächster App-Änderung: `EAS_BUILD=1 npx eas update --branch production --message "…"`. |
+| **Edge Functions deployed** | `create-checkout-session`, `stripe-webhook`, **`send-push-notification`** (Session 6: neue Typen `order_payment_reminder` + `preorder_round_open` + `productId` in Push-Payload — von Zaur deployt). Webhooks `--no-verify-jwt` via `supabase/config.toml`. Memory `vibes-edge-webhook-verify-jwt`. |
+| **DB-Migrationen** | ✅ **ALLE ausgeführt** (Zaur). Neu Session 6: `20260629160000_post_product_link`, `…170000_payment_reminder`, `…180000_preorder_round_announce`, `…190000_referrals`, `…200000_announce_round_fix`. **Keine offene Migration.** |
+| **GERADE FERTIG (Session 6)** | **#2 Shoppable Posts** (App+Web komplett) · **#4 Auto-Zahlungserinnerung** (Cron) · **#4 „Sammelbestellung offen"** (App+Web-Auslöser) · **#5 Referral-Foundation** (Invite-Link+Attribution+Zähler) · Web schmale Sidebar auf 9 Routen · guild-post Reopen/Media-Fix · Vorbestell-Verwaltung admin-only. Voll in §1.2. |
+| **🔴 NÄCHSTE AUFGABE** | **Offen/empfohlen:** Referral-**Belohnung** (Geschäftsentscheidung) · App-Deep-Link-Attribution (Signup in App) + Web-Invite-Fläche · #1 Live-Shopping · #3 Guild-Commerce. Premortem: **erst validieren** (5 App-Vorbestellungen + Offline-Verkäufe laufen, 80 Flaschen in Lieferung). |
+| **Admin** | Zaur (`username='zaur'`, `profiles.is_admin = true`) — nötig fürs Vorbestell-Gate (jetzt admin-only!), Dispute-Klärung, „Ankündigen"/„Zahlung anfordern". |
 
 ⚠️ **Quarantäne:** `/Users/zaurhatuev/Desktop/vibes-app` — NIEMALS bauen/deployen/pushen.
+
+---
+
+## 1.2 🆕 Session 6 (29.6.) — Brücken aus der „App-Karte" + Fixes
+
+> Leitidee dieser Session: Die App hat **Breite**, aber die Features waren **Silos**.
+> Gebaut wurden die **Querverlinkungen** (Brücken), die den Akquise→Verkauf→Wiederkehr→
+> Weitersagen-Loop schließen — durch Zaurs Premortem-Brille (erst validieren). Alles
+> committed+gepusht+verifiziert. **App-Stand = OTA `7bb41482`; danach nur Web.**
+
+### ✅ #2 Shoppable Posts (Feed↔Shop) — App + Web KOMPLETT
+- **DB** `20260629160000_post_product_link`: `posts.product_id` + FK `posts_product_id_fkey` (ON DELETE SET NULL) + Partial-Index. Feed-RPCs unangetastet.
+- **Daten-Muster** (kein RPC-Umbau): Produktinfo per Sekundär-Fetch über den FK-Embed nachladen — `lib/useFeedProducts.ts` (App, Batch per Post-ID) + `apps/web/lib/use-feed-product-links.ts` (Web, deckt Infinite-Scroll). Post-Detail Web: `getPostLinkedProductId` (public.ts).
+- **Render** (überall dieselbe wiederverwendbare Karte): App `components/feed/ProductFeedChip.tsx` (Feed via FeedItem, `post/[id]`, `guild-post/[id]`). Web: bestehende `ProductLinkCard` (Chat) wiederverwendet in `feed-card.tsx` + `/p/[postId]` Post-Detail. Preorder zeigt €/„Vormerken", Coin-Produkt 🪙/„Ansehen".
+- **Erstellen**: App `DetailsSheet` Produkt-Picker (eigene Produkte) → `product_id` beim Insert (nur wenn verknüpft → Posten bleibt safe). Web `CreateEditor` Picker → `publishPost` trägt `product_id` per Best-Effort-Update nach `create_post` nach (kein RPC-Umbau).
+- **Deep-Link-Fix** (`332d414`): `app/shop/[id].tsx` suchte nur in der 30er-Browse-Liste (`useShopProducts`) → „Produkt nicht gefunden" bei verknüpften/geteilten/eigenen Produkten. Neuer `useProduct(id)` lädt direkt per ID (RLS: aktiv für alle, eigenes via Owner-Policy). Gilt für ALLE Deep-Links.
+
+### ✅ #4 Rückkanal — zwei Ausprägungen (App + Web)
+- **Auto-Zahlungserinnerung** (`20260629170000_payment_reminder`): stündlicher pg_cron `send_payment_reminders()` → 24h nach „Zahlung anfordern" EINE sanfte Erinnerung an unbezahlte `payment_requested`-Orders (`product_orders.reminded_at`-Gate = 1×, kein Spam). Typ `order_payment_reminder`.
+- **„Sammelbestellung offen"** (`20260629180000_preorder_round_announce` + Fix `…200000`): manueller Auslöser → pingt **Vormerker ∪ Speicherer** (`product_preorders` ∪ `saved_products`) mit Deep-Link aufs Produkt. RPC `announce_preorder_round(product, msg?)` (seller/admin-gate, robust mit EXCEPTION→`{error,detail}`). Typ `preorder_round_open`. **Auslöser:** App `fulfillment` „📣 Ankündigen", Web `/studio/shop/preorders` `PreorderAnnounceButton` (Dialog erklärt WANN: neue Runde, unabhängig vom Bestellstatus).
+- **Notification-Plumbing** (Memory `vibes-three-notification-surfaces`): beide Typen durch ALLE Surfaces — CHECK (dynamisch erweitert), `send-push-notification` (Titel/Body + `productId` jetzt in Push-`data`), App+Web In-App-Renderer (Text/Icon/Tap → my-orders bzw. /shop/[id]), Typ-Unions. Push feuert automatisch via `trg_push_notification` (AFTER INSERT auf notifications).
+
+### ✅ #5 Referral-Foundation (`20260629190000_referrals`) — Tracking, KEINE Belohnung
+- **Bewusst ohne Belohnungs-Engine** (Rabatte/Provisionen bleiben Zaurs manuelle Entscheidung). Nur wer-wen: `profiles.referred_by` + RPC `claim_referral(code)` (one-time, kein Selbst-Referral, code = Username) + `get_my_referral_count()`.
+- **Web**: `/i/[code]` warmes Invite-Landing → `ClaimOnMount` ruft Server-Action `claimReferral` (setzt Cookie ausgeloggt / attribuiert sofort eingeloggt). `ReferralClaimer` im Root-Layout (cookie-gated) holt die Attribution nach Signup nach. **Kein Eingriff in Auth/Onboarding.**
+- **App**: Einstellungen → „Freunde einladen" (teilt `serlo-web.vercel.app/i/<username>` + Zähler „N sind über dich dabei").
+- **Attribution v1 = Web-Signup** (Perfume-Conversion läuft eh über Web). **OFFEN:** App-Deep-Link-Attribution + Web-Invite-Fläche + Belohnung.
+
+### ✅ Weitere Fixes
+- **Web schmale Sidebar** (`railCollapsible`) auf 9 Routen (admin/studio/woz/live/privacy/settings/coin-shop/create) — Rail aus `FeedSidebarLayout` in wiederverwendbare `FeedSidebarRail` ausgelagert; admin = fixed Rail mit xl-Offset, live nur Browse (nicht Fullscreen).
+- **guild-post Reopen/Media-Fix** (`b3e9265`+`883a8a5`): „Kommentar nach Profilbesuch → kleines Video + schwarze Lücke". ECHTE Ursache war NICHT `removeClippedSubviews`, sondern: `guild-post/[id]` ist `presentation:'fullScreenModal'` + Kommentare sind ein `<Modal>` → iOS verschluckt das Re-Präsentieren nach dem Pop. Fix: Video-Höhe STRIKT an `showComments` gekoppelt (zu=voll, offen=klein) → kaputter Zustand unmöglich; Reopen verzögert via `InteractionManager`. Memory `vibes-seamless-comments-video` (Falle 3).
+- **Vorbestell-Verwaltung admin-only** (`92f3247`): Vorbestellung war einmalige Admin-Aktion (Parfüm). Alle Verwaltungs-Flächen jetzt admin-gated — Web `/studio/shop/preorders` (redirect), „Vorbestellungen verwalten"-Links; App `fulfillment` + Einstiege in my-shop/my-orders. Käufer-„Vormerken" bleibt (Verkaufsweg).
+
+### Schlüssel-Dateien Session 6
+- DB: `supabase/migrations/2026062916–20*.sql` (5 Stück, alle ausgeführt).
+- Daten: `lib/useFeedProducts.ts`, `lib/useShop.ts` (`useProduct`, `useAnnouncePreorderRound`), `apps/web/lib/use-feed-product-links.ts`, `apps/web/app/actions/{shop,referral}.ts`, `apps/web/lib/data/public.ts`.
+- App-UI: `components/feed/ProductFeedChip.tsx`, `app/shop/fulfillment.tsx`, `app/settings.tsx`, `app/(tabs)/notifications.tsx`, `lib/usePushNotifications.ts`, `lib/useNotifications.ts`, `app/post/[id].tsx`, `app/guild-post/[id].tsx`, `components/create/editor/DetailsSheet.tsx`.
+- Web-UI: `components/feed/{feed-list,feed-card}.tsx`, `components/shop/preorder-contact.tsx`, `components/referral/*`, `app/i/[code]/page.tsx`, `app/p/[postId]/page.tsx`, `components/notifications/notification-list.tsx`, `app/studio/shop/preorders/page.tsx`.
+
+### Session-6-Gotchas (für nächsten Chat)
+- **Feed-RPCs geben `product_id` NICHT zurück** → Produktinfo IMMER per Sekundär-Fetch über den FK-Embed nachladen (nie die `get_vibe_feed`/`get_public_feed`-RPCs umbauen).
+- **Neuer notifications.type** = 4 Stellen (CHECK dynamisch + `send-push-notification` messages/TYPE_TO_PREF + App-Renderer + Web-Renderer) + 2 Typ-Unions (`lib/useNotifications.ts`, `apps/web/lib/data/notifications.ts`). Push fließt automatisch (Trigger). Push-Deep-Link braucht das Feld in der Push-`data` (z.B. `productId`).
+- **Produkt-Deep-Link** überall via `useProduct(id)` (App) / direkter `/shop/[id]` — NIE auf der Browse-Liste basieren.
+- **„Ankündigen" ≠ Bestell-Aktion**: Marketing-Stups an Interessenten, unabhängig vom Zahlungsstatus. War anfangs verwirrend + hatte einen CHECK-Bug (gefixt `…200000`).
 
 ---
 
