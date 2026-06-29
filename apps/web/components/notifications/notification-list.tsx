@@ -69,6 +69,7 @@ const TYPE_META: Record<NotificationType, NotifMeta> = {
   story_reaction:          { icon: Camera,       color: 'text-muted-foreground', bg: 'bg-muted' },
   guild:                   { icon: Users,        color: 'text-muted-foreground', bg: 'bg-muted' },
   preorder_interest:       { icon: ShoppingBag,  color: 'text-muted-foreground', bg: 'bg-muted' },
+  preorder_round_open:     { icon: ShoppingBag,  color: 'text-muted-foreground', bg: 'bg-muted' },
   order_payment_requested: { icon: CreditCard,   color: 'text-muted-foreground', bg: 'bg-muted' },
   order_payment_reminder:  { icon: CreditCard,   color: 'text-muted-foreground', bg: 'bg-muted' },
   order_paid:              { icon: Package,       color: 'text-muted-foreground', bg: 'bg-muted' },
@@ -108,6 +109,11 @@ function notifText(n: Notification): string {
       return n.product_name
         ? `${name} hat „${n.product_name}" vorgemerkt 🌸`
         : `${name} hat ein Produkt vorgemerkt 🌸`;
+    case 'preorder_round_open':
+      return n.comment_text
+        ?? (n.product_name
+          ? `Sammelbestellung läuft: „${n.product_name}" 🌸`
+          : 'Eine Sammelbestellung ist offen 🌸');
     case 'order_payment_requested':
     case 'order_payment_reminder':
     case 'order_paid':
@@ -172,6 +178,8 @@ function notifHref(n: Notification): Route {
     case 'order_cancelled':
     case 'order_address_updated':
       return '/studio/orders?role=seller' as Route;
+    case 'preorder_round_open':
+      return (n.product_id ? `/shop/${n.product_id}` : '/shop') as Route;
     case 'order_payment_requested':
     case 'order_payment_reminder':
     case 'order_shipped':

@@ -9,6 +9,7 @@
  */
 import {
   formatEur,
+  useAnnouncePreorderRound,
   useMarkPreordersPayable,
   useMyPreorderGroups,
   useNotifyPreorderBuyers,
@@ -21,7 +22,7 @@ import { useTheme } from '@/lib/useTheme';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { ArrowLeft, Bell, CheckCircle2, Clock, MessageCircle, Package, PackageCheck, Send, Truck } from 'lucide-react-native';
+import { ArrowLeft, Bell, CheckCircle2, Clock, Megaphone, MessageCircle, Package, PackageCheck, Send, Truck } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useEffect, useRef, useState } from 'react';
 import { useOrCreateConversation } from '@/lib/useMessages';
@@ -82,6 +83,7 @@ export default function FulfillmentScreen() {
     setRefreshing(false);
   };
   const { markPayable, isWorking: isMarking } = useMarkPreordersPayable();
+  const { announce, isWorking: isAnnouncing } = useAnnouncePreorderRound();
   const { setShipped, isWorking: isShipping } = useSetOrderShipped();
   const { notifyBuyers, isWorking: isNotifying } = useNotifyPreorderBuyers();
   const orCreate = useOrCreateConversation();
@@ -170,6 +172,12 @@ export default function FulfillmentScreen() {
         ((res.skipped ?? 0) > 0 ? ` (${res.skipped} schon offen)` : ''),
       );
     }
+  };
+
+  const handleAnnounce = async (g: PreorderGroup) => {
+    const res = await announce(g.id);
+    if (res.error) { Alert.alert('Hoppla 🙈', 'Hat nicht geklappt — gleich nochmal?'); return; }
+    showFlash(`Sammelbestellung angekündigt 🌸 — ${res.notified ?? 0} erreicht`);
   };
 
   const openShip = (o: ProductOrder) => { setShipOrder(o); setCarrier(o.tracking_carrier ?? ''); setTracking(o.tracking_number ?? ''); };
@@ -282,6 +290,15 @@ export default function FulfillmentScreen() {
                     >
                       <Send size={13} color={colors.text.primary} strokeWidth={2.2} />
                       <Text style={[s.smallBtnText, { color: colors.text.primary }]}>Anschreiben</Text>
+                    </Pressable>
+                    {/* Sammelbestellung offen → Vormerker + Speicherer anpingen */}
+                    <Pressable
+                      onPress={() => handleAnnounce(g)}
+                      disabled={isAnnouncing}
+                      style={[s.smallBtnOutline, { borderColor: colors.border.strong, opacity: isAnnouncing ? 0.5 : 1 }]}
+                    >
+                      <Megaphone size={13} color={colors.text.primary} strokeWidth={2.2} />
+                      <Text style={[s.smallBtnText, { color: colors.text.primary }]}>Ankündigen</Text>
                     </Pressable>
                   </View>
                 </View>

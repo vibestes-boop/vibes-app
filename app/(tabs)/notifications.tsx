@@ -77,6 +77,8 @@ function actionLabel(n: AppNotification): string {
           : "hat dir ein Geschenk geschickt 🎁";
     case "preorder_interest":
       return "hat ein Produkt vorgemerkt 🌸";
+    case "preorder_round_open":
+      return n.comment_text ?? "Eine Sammelbestellung ist offen — jetzt sichern 🌸";
     case "new_order":
       return n.comment_text
         ? `hat bestellt: ${n.comment_text}`
@@ -144,6 +146,7 @@ function TypeIcon({ type }: { type: AppNotification["type"] }) {
       gift:                     { Icon: Gem,           bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
       new_order:                { Icon: ShoppingBag,   bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
       preorder_interest:        { Icon: ShoppingBag,   bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
+      preorder_round_open:      { Icon: ShoppingBag,   bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
       order_payment_requested:  { Icon: CreditCard,    bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
       order_payment_reminder:   { Icon: CreditCard,    bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
       order_paid:               { Icon: Package,       bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
@@ -216,6 +219,9 @@ function NotifCard({ item }: { item: AppNotification }) {
     } else if (item.type === "gift" && item.sender?.id) {
       // Gift → Sender-Profil öffnen
       router.push({ pathname: "/user/[id]", params: { id: item.sender.id } });
+    } else if (item.type === "preorder_round_open" && item.product_id) {
+      // Sammelbestellung offen → direkt aufs Produkt (vormerken/sichern)
+      router.push({ pathname: "/shop/[id]", params: { id: item.product_id } });
     } else if (item.type === "new_order") {
       router.push('/shop/orders' as any);
     } else if (

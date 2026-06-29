@@ -55,6 +55,7 @@ Deno.serve(async (req: Request) => {
       gift:                      'gifts',
       new_order:                 'orders',
       preorder_interest:         'orders',
+      preorder_round_open:       'orders',
       order_payment_requested:   'orders',
       order_payment_reminder:    'orders',
       order_paid:                'orders',
@@ -104,6 +105,13 @@ Deno.serve(async (req: Request) => {
         body: record.product_name
           ? `${actorName} hat „${record.product_name}" vorgemerkt`
           : `${actorName} hat ein Produkt vorgemerkt`,
+      },
+      preorder_round_open: {
+        title: '🌸 Sammelbestellung läuft',
+        body: record.comment_text
+          ?? (record.product_name
+            ? `„${record.product_name}" wird gerade gesammelt — jetzt sichern!`
+            : 'Eine Sammelbestellung ist offen — jetzt sichern!'),
       },
       order_payment_requested: {
         title: '💶 Zeit zu bezahlen',
@@ -167,6 +175,8 @@ Deno.serve(async (req: Request) => {
           // Gift-Bezug
           giftName:  record.gift_name,
           giftEmoji: record.gift_emoji,
+          // Produkt-Bezug (Shoppable-/Vorbestell-Benachrichtigungen)
+          productId: record.product_id,
         },
         sound: 'default',
         priority: 'high',

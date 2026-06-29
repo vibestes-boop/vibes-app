@@ -5,13 +5,14 @@ import { supabase } from './supabase';
 
 export type AppNotification = {
   id: string;
-  type: 'like' | 'comment' | 'follow' | 'live' | 'live_invite' | 'dm' | 'mention' | 'follow_request' | 'follow_request_accepted' | 'gift' | 'new_order' | 'preorder_interest' | 'order_payment_requested' | 'order_payment_reminder' | 'order_paid' | 'order_shipped' | 'order_cancelled' | 'order_address_updated' | 'order_review' | 'order_dispute';
+  type: 'like' | 'comment' | 'follow' | 'live' | 'live_invite' | 'dm' | 'mention' | 'follow_request' | 'follow_request_accepted' | 'gift' | 'new_order' | 'preorder_interest' | 'preorder_round_open' | 'order_payment_requested' | 'order_payment_reminder' | 'order_paid' | 'order_shipped' | 'order_cancelled' | 'order_address_updated' | 'order_review' | 'order_dispute';
   read: boolean;
   created_at: string;
   comment_text: string | null;
   post_id: string | null;
   session_id: string | null;       // für Live-Benachrichtigungen
   conversation_id: string | null;  // für DM-Benachrichtigungen
+  product_id: string | null;       // für Shop-/Vorbestell-Benachrichtigungen
   gift_name: string | null;        // für Gift-Benachrichtigungen
   gift_emoji: string | null;       // für Gift-Benachrichtigungen
   sender: {
@@ -59,7 +60,7 @@ export function useNotifications() {
         .from('notifications')
         .select(`
           id, type, read, created_at, comment_text, post_id, session_id, conversation_id,
-          gift_name, gift_emoji,
+          product_id, gift_name, gift_emoji,
           sender:sender_id ( id, username, avatar_url ),
           post:post_id ( media_url )
         `)
@@ -78,6 +79,7 @@ export function useNotifications() {
         post_id: n.post_id ?? null,
         session_id: n.session_id ?? null,
         conversation_id: n.conversation_id ?? null,
+        product_id:      n.product_id      ?? null,
         gift_name:       n.gift_name       ?? null,
         gift_emoji:      n.gift_emoji      ?? null,
         sender: n.sender ?? null,

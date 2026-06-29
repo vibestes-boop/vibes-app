@@ -36,6 +36,7 @@ export type NotificationType =
   | 'story_reaction'
   | 'guild'
   | 'preorder_interest'
+  | 'preorder_round_open'
   | 'order_payment_requested'
   | 'order_payment_reminder'
   | 'order_paid'
@@ -65,6 +66,7 @@ export interface Notification {
   gift_name: string | null;
   gift_emoji: string | null;
   product_name: string | null;
+  product_id: string | null;
 }
 
 // WICHTIG: kein `.trim()` und keine String-Konkatenation aufrufen — die
@@ -86,6 +88,7 @@ const NOTIF_COLUMNS = `
   gift_name,
   gift_emoji,
   product_name,
+  product_id,
   sender:profiles!notifications_sender_id_fkey (
     id,
     username,
@@ -144,6 +147,7 @@ export const getNotifications = cache(async (): Promise<Notification[]> => {
       gift_name: row.gift_name ?? null,
       gift_emoji: row.gift_emoji ?? null,
       product_name: row.product_name ?? null,
+      product_id: row.product_id ?? null,
     };
   });
 });
@@ -210,6 +214,7 @@ export async function getNotificationsPage(
       gift_name: row.gift_name ?? null,
       gift_emoji: row.gift_emoji ?? null,
       product_name: row.product_name ?? null,
+      product_id: row.product_id ?? null,
     };
   });
 }

@@ -900,6 +900,31 @@ export function useShopAnalytics() {
 // (notify_preorder_buyers: schreibt allen mit status='interested' eine DM +
 // setzt sie auf 'notified'; umgeht den DM-Cooldown + RLS via SECURITY DEFINER).
 // Reine DM/Heads-up — erzeugt KEINE bezahlbare Order (das macht markPayable).
+// „Sammelbestellung offen" ankündigen: pingt Vormerker + Speicherer eines
+// Produkts mit Deep-Link aufs Produkt (announce_preorder_round-RPC).
+export function useAnnouncePreorderRound() {
+  const qc = useQueryClient();
+  const [isWorking, setIsWorking] = useState(false);
+  const announce = useCallback(async (
+    productId: string, message?: string,
+  ): Promise<{ notified?: number; error?: string }> => {
+    setIsWorking(true);
+    try {
+      const { data, error } = await supabase.rpc('announce_preorder_round', {
+        p_product_id: productId,
+        p_message:    message ?? null,
+      });
+      if (error) return { error: 'network_error' };
+      if ((data as any)?.error) return { error: (data as any).error };
+      qc.invalidateQueries({ queryKey: ['preorder-groups'] });
+      return { notified: (data as any)?.notified ?? 0 };
+    } finally {
+      setIsWorking(false);
+    }
+  }, [qc]);
+  return { announce, isWorking };
+}
+
 export function useNotifyPreorderBuyers() {
   const qc = useQueryClient();
   const [isWorking, setIsWorking] = useState(false);
