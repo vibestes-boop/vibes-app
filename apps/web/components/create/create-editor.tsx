@@ -100,6 +100,7 @@ export function CreateEditor({ viewerId, initialDraft, products }: Props) {
   const router = useRouter();
   // Shoppable Posts (#2): optional verknüpftes Produkt.
   const [linkedProductId, setLinkedProductId] = useState<string | null>(null);
+  const [productQuery, setProductQuery] = useState('');
   const [isPending, startTransition] = useTransition();
 
   // ---------- File / Upload State ----------
@@ -638,36 +639,76 @@ export function CreateEditor({ viewerId, initialDraft, products }: Props) {
           removeTag={removeTag}
         />
 
-        {/* Shoppable Post (#2): eigenes Produkt verknüpfen → Karte im Feed/Post */}
+        {/* Shoppable Post (#2): eigenes Produkt verknüpfen → Karte im Feed/Post.
+            Kompakt: ausgewähltes Produkt als Chip ODER Suche + scrollbare Liste
+            (feste Höhe) — sonst wird die Seite bei vielen Produkten endlos lang. */}
         {products && products.length > 0 && (
           <div>
-            <label className="mb-2 block text-sm font-medium">Produkt verknüpfen</label>
-            <div className="flex flex-wrap gap-2">
-              {products.map((p) => {
-                const active = linkedProductId === p.id;
+            <label className="mb-2 block text-sm font-medium">
+              Produkt verknüpfen <span className="font-normal text-muted-foreground">(optional)</span>
+            </label>
+            {linkedProductId ? (
+              (() => {
+                const sel = products.find((p) => p.id === linkedProductId);
                 return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => setLinkedProductId(active ? null : p.id)}
-                    className={cn(
-                      'flex items-center gap-2 rounded-xl border px-2.5 py-1.5 text-sm transition-colors',
-                      active ? 'border-primary bg-primary/10 text-foreground' : 'bg-background text-muted-foreground hover:bg-muted/50',
-                    )}
-                  >
-                    {p.cover_url ? (
+                  <div className="flex items-center gap-2 rounded-xl border border-primary bg-primary/10 px-2.5 py-2">
+                    {sel?.cover_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
-                      <img src={p.cover_url} alt="" className="h-7 w-7 rounded object-cover" />
+                      <img src={sel.cover_url} alt="" className="h-7 w-7 flex-none rounded object-cover" />
                     ) : (
-                      <span className="grid h-7 w-7 place-items-center rounded bg-muted">
+                      <span className="grid h-7 w-7 flex-none place-items-center rounded bg-muted">
                         <ShoppingBag className="h-4 w-4" />
                       </span>
                     )}
-                    <span className="max-w-[140px] truncate">{p.title}</span>
-                  </button>
+                    <span className="flex-1 truncate text-sm">{sel?.title ?? 'Produkt'}</span>
+                    <button
+                      type="button"
+                      onClick={() => setLinkedProductId(null)}
+                      className="text-xs text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      entfernen
+                    </button>
+                  </div>
                 );
-              })}
-            </div>
+              })()
+            ) : (
+              <>
+                <input
+                  type="search"
+                  value={productQuery}
+                  onChange={(e) => setProductQuery(e.target.value)}
+                  placeholder="Produkt suchen…"
+                  className="mb-2 w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-ring"
+                />
+                <div className="max-h-44 space-y-0.5 overflow-y-auto rounded-lg border p-1">
+                  {(() => {
+                    const q = productQuery.trim().toLowerCase();
+                    const list = q ? products.filter((p) => p.title.toLowerCase().includes(q)) : products;
+                    if (list.length === 0) {
+                      return <p className="px-2 py-3 text-center text-xs text-muted-foreground">Nichts gefunden</p>;
+                    }
+                    return list.map((p) => (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => setLinkedProductId(p.id)}
+                        className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-sm transition-colors hover:bg-muted/60"
+                      >
+                        {p.cover_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={p.cover_url} alt="" className="h-7 w-7 flex-none rounded object-cover" />
+                        ) : (
+                          <span className="grid h-7 w-7 flex-none place-items-center rounded bg-muted">
+                            <ShoppingBag className="h-4 w-4" />
+                          </span>
+                        )}
+                        <span className="truncate">{p.title}</span>
+                      </button>
+                    ));
+                  })()}
+                </div>
+              </>
+            )}
           </div>
         )}
 

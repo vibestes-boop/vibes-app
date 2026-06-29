@@ -57,8 +57,24 @@ export default async function PreordersPage() {
 
   // Vorbestellungen sind eine reine Admin-Funktion (einmalige Sammelbestell-
   // Aktion, z.B. Parfüm). Normale Verkäufer haben keine Vorbestell-Verwaltung →
-  // zurück ins Shop-Studio.
-  if (!(await getIsAdmin())) redirect('/studio/shop');
+  // freundliches Inline-Panel statt redirect (robust, kein Loop/Fehler).
+  if (!(await getIsAdmin())) {
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-16 text-center">
+        <h1 className="text-xl font-semibold">Vorbestellungen</h1>
+        <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+          Sammelbestellungen verwaltet das Serlo-Team. Dein Shop läuft ganz normal
+          über das Shop-Studio.
+        </p>
+        <Link
+          href={'/studio/shop' as Route}
+          className="mt-6 inline-flex items-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
+        >
+          Zum Shop-Studio
+        </Link>
+      </div>
+    );
+  }
 
   const supabase = await createClient();
   const { data: summaryData } = await supabase.rpc('get_my_preorder_summary');
