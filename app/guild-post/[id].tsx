@@ -14,6 +14,8 @@ import { VideoProgressBar } from '@/components/feed/FeedItem';
 import type { FeedVideoSeekHandle } from '@/components/feed/FeedVideo';
 import { FallbackFeedVideo,NativeFeedVideo,USE_EXPO_VIDEO } from '@/components/feed/FeedVideo';
 import CommentsSheet from '@/components/ui/CommentsSheet';
+import { ProductFeedChip } from '@/components/feed/ProductFeedChip';
+import { useFeedProducts, type LinkedProduct } from '@/lib/useFeedProducts';
 import { StoryRingAvatar } from '@/components/ui/StoryRingAvatar';
 import { useAuthStore } from '@/lib/authStore';
 import { useGuildNavStore } from '@/lib/guildNavStore';
@@ -39,7 +41,7 @@ Users,
 Volume2,
 VolumeX,
 } from 'lucide-react-native';
-import React,{ useCallback,useEffect,useRef,useState } from 'react';
+import React,{ useCallback,useEffect,useMemo,useRef,useState } from 'react';
 import {
 ActivityIndicator,
 Dimensions,
@@ -148,6 +150,7 @@ function GuildPostDetailItem({
   isActive,
   onBack,
   autoOpenComments = false,
+  product,
 }: {
   post: GuildPost;
   guildColors: [string, string];
@@ -155,6 +158,8 @@ function GuildPostDetailItem({
   onBack: () => void;
   // Kommentare beim Öffnen automatisch aufklappen (Navigation vom Karten-Chat-Button)
   autoOpenComments?: boolean;
+  // Shoppable Post (#2): verknüpftes Produkt → tappbare Karte.
+  product?: LinkedProduct | null;
 }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -511,6 +516,9 @@ function GuildPostDetailItem({
             ))}
           </View>
         ) : null}
+
+        {/* Shoppable Post (#2): verknüpftes Produkt → tappbare Karte */}
+        {product && <ProductFeedChip product={product} style={{ marginTop: 8 }} />}
       </Animated.View>
 
       <CommentsSheet
@@ -591,6 +599,10 @@ export default function GuildPostDetailScreen() {
 
   const initialIndex = posts.findIndex((p) => p.id === id);
 
+  // Shoppable Post (#2): verknüpfte Produkte für alle Pager-Posts nachladen.
+  const guildPostIds = useMemo(() => posts.map((p) => p.id), [posts]);
+  const productByPost = useFeedProducts(guildPostIds);
+
   // ✅ Hooks VOR bedingtem Return (Rules of Hooks)
   const onViewableItemsChanged = useCallback(
     ({ viewableItems }: { viewableItems: { index: number | null }[] }) => {
@@ -610,9 +622,10 @@ export default function GuildPostDetailScreen() {
         isActive={index === activeIndex}
         onBack={() => router.back()}
         autoOpenComments={item.id === id && comments === '1'}
+        product={productByPost[item.id] ?? null}
       />
     ),
-    [guildColors, activeIndex, router, id, comments]
+    [guildColors, activeIndex, router, id, comments, productByPost]
   );
 
   const getItemLayout = useCallback((_: unknown, index: number) => ({

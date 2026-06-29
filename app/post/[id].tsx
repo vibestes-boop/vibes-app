@@ -4,6 +4,8 @@ import { UserProfileContent } from '@/components/profile/UserProfileContent';
 import CommentsSheet from '@/components/ui/CommentsSheet';
 import { useAuthStore } from '@/lib/authStore';
 import { useFeedNavStore } from '@/lib/feedNavStore';
+import { useFeedProducts } from '@/lib/useFeedProducts';
+import { ProductFeedChip } from '@/components/feed/ProductFeedChip';
 import { supabase } from '@/lib/supabase';
 import { useBookmark } from '@/lib/useBookmark';
 import { useAddComment,useCommentCount } from '@/lib/useComments';
@@ -428,6 +430,11 @@ export default function PostDetailScreen() {
     }
   }, [liked, tapToggleLike, spawnHeart, isVideo]);
 
+  // Shoppable Post (#2): verknüpftes Produkt für diesen Post (Batch-Hook mit 1 ID).
+  const postIdStr = Array.isArray(id) ? id[0] : (id ?? null);
+  const productByPost = useFeedProducts(postIdStr ? [postIdStr] : []);
+  const linkedProduct = postIdStr ? productByPost[postIdStr] : undefined;
+
   // ─── Swipe-Navigation (hoch = nächster Post, runter = vorheriger Post) ─────
   const feedNavPostIds = useFeedNavStore((s) => s.postIds);
   const currentIndex = feedNavPostIds.indexOf(Array.isArray(id) ? id[0] : (id ?? ''));
@@ -804,6 +811,9 @@ export default function PostDetailScreen() {
           {displayCaption ? (
             <Text style={styles.caption}>{displayCaption}</Text>
           ) : null}
+
+          {/* Shoppable Post (#2): verknüpftes Produkt → tappbare Karte */}
+          {linkedProduct && <ProductFeedChip product={linkedProduct} style={{ marginTop: 10 }} />}
 
           {/* Musik-Badge (Short-Video-Style rollender Text) */}
           {post?.audio_url && (

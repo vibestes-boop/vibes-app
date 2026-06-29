@@ -19,7 +19,6 @@ Pause,
 Play,
 Repeat2,
 Share2,
-ShoppingBag,
 Users,
 Volume2,
 VolumeX
@@ -60,6 +59,7 @@ import { PostShareModal } from './PostShareModal';
 
 import type { FeedItemData } from './types';
 import type { LinkedProduct } from '@/lib/useFeedProducts';
+import { ProductFeedChip } from './ProductFeedChip';
 // reanimated: CJS require() vermeidet _interopRequireDefault Crash in Hermes HBC
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any;
@@ -1039,40 +1039,7 @@ export const FeedItem = React.memo(function FeedItem({
         )}
 
         {/* ── Shoppable Post (#2): verknüpftes Produkt → tappbare Karte ── */}
-        {product && (() => {
-          const isPreorder = product.sale_mode === 'preorder';
-          const priceLabel = isPreorder
-            ? (product.price_eur != null ? `${product.price_eur.toFixed(2).replace('.', ',')} €` : 'Preis im Shop')
-            : `🪙 ${product.sale_price_coins ?? product.price_coins}`;
-          const ctaLabel = isPreorder ? 'Vormerken' : 'Ansehen';
-          return (
-            <Pressable
-              onPress={() => {
-                impactAsync(ImpactFeedbackStyle.Light);
-                router.push({ pathname: '/shop/[id]', params: { id: product.id } });
-              }}
-              style={styles.productChip}
-              accessibilityRole="button"
-              accessibilityLabel={`Produkt ansehen: ${product.title}`}
-            >
-              {product.cover_url ? (
-                <Image source={{ uri: product.cover_url }} style={styles.productChipImg} cachePolicy="memory-disk" contentFit="cover" />
-              ) : (
-                <View style={[styles.productChipImg, styles.productChipImgFallback]}>
-                  <ShoppingBag size={16} color="#fff" strokeWidth={2} />
-                </View>
-              )}
-              <View style={styles.productChipBody}>
-                <Text style={styles.productChipTitle} numberOfLines={1}>{product.title}</Text>
-                <Text style={styles.productChipPrice} numberOfLines={1}>{priceLabel}</Text>
-              </View>
-              <View style={styles.productChipCta}>
-                <ShoppingBag size={13} color="#0A0A0A" strokeWidth={2.4} />
-                <Text style={styles.productChipCtaText}>{ctaLabel}</Text>
-              </View>
-            </Pressable>
-          );
-        })()}
+        {product && <ProductFeedChip product={product} style={{ marginTop: 10 }} />}
 
         {/* ── Musik-Badge (Short-Video-Style rotierendes Vinyl) ── */}
         {item.audioTitle && (
