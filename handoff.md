@@ -17,12 +17,12 @@
 | Bereich | Stand |
 |---|---|
 | **Repo / Branch** | `/Users/zaurhatuev/vibes-app` · `main` · Working Tree **sauber** |
-| **Letzter Commit** | `86a4b30` — „Vormerken"→„Vorbestellen" + Preorders-Produktbilder. **Alle Session-6-Commits gepusht & verifiziert (`git ls-remote`).** |
+| **Letzter Commit** | `0a36a0f` — „Merken" benachrichtigt Verkäufer (`product_saved`). **Alle Session-6-Commits gepusht & verifiziert (`git ls-remote`).** |
 | **Web (apps/web)** | deployt via **Vercel** auf Push zu `main`. **Live: `serlo-web.vercel.app` — ⚠️ OHNE `www`!** |
 | **App-Build** | v1.30.0 / iOS-Build 286 (TestFlight) · Runtime **1.30.0**. OTAs ziehen nur beim **kalten App-Neustart** (2× killen+öffnen — Update greift beim 2. Start). |
-| **Letzter OTA** | `c28691d1` (Commit `86a4b30`, Vorbestellen-Umbenennung). **Kein offener App-OTA.** Bei nächster App-Änderung: `EAS_BUILD=1 npx eas update --branch production --message "…"`. |
-| **Edge Functions deployed** | `create-checkout-session`, `stripe-webhook`, **`send-push-notification`** (Session 6: Typen `order_payment_reminder` + `preorder_round_open` + `productId` in Push-Payload). **🟡 Optional offen:** preorder_interest-Push-Text sagt erst nach erneutem `deploy send-push-notification` „vorbestellt" (In-App-Text stimmt schon). Webhooks `--no-verify-jwt` via `supabase/config.toml`. Memory `vibes-edge-webhook-verify-jwt`. |
-| **DB-Migrationen** | ✅ **ALLE ausgeführt** (Zaur). Neu Session 6: `…160000_post_product_link`, `…170000_payment_reminder`, `…180000_preorder_round_announce`, `…190000_referrals`, `…200000_announce_round_fix`, `20260630000000_notifications_product_id` (🔴 Hotfix, s.u.). **Keine offene Migration.** |
+| **Letzter OTA** | `46fe46f5` (Commit `0a36a0f`, product_saved). **Kein offener App-OTA.** Bei nächster App-Änderung: `EAS_BUILD=1 npx eas update --branch production --message "…"`. |
+| **Edge Functions deployed** | `create-checkout-session`, `stripe-webhook`, **`send-push-notification`** ✅ aktuell deployt (Zaur) — alle Session-6-Typen (`order_payment_reminder`, `preorder_round_open`, `product_saved`) + „vorbestellt"-Texte + `productId` in Push-Payload. Webhooks `--no-verify-jwt` via `supabase/config.toml`. Memory `vibes-edge-webhook-verify-jwt`. |
+| **DB-Migrationen** | ✅ **ALLE ausgeführt** (Zaur). Neu Session 6: `…160000_post_product_link`, `…170000_payment_reminder`, `…180000_preorder_round_announce`, `…190000_referrals`, `…200000_announce_round_fix`, `…20260630000000_notifications_product_id` (🔴 Hotfix), `20260630010000_notify_on_save` (product_saved-Trigger). **Keine offene Migration.** |
 | **GERADE FERTIG (Session 6)** | **#2 Shoppable Posts** (App+Web komplett) · **#4 Auto-Zahlungserinnerung** (Cron) · **#4 „Sammelbestellung offen"** (App+Web-Auslöser) · **#5 Referral-Foundation** (Invite-Link+Attribution+Zähler) · Web schmale Sidebar auf 9 Routen · guild-post Reopen/Media-Fix · Vorbestell-Verwaltung admin-only. Voll in §1.2. |
 | **🔴 NÄCHSTE AUFGABE** | **Offen/empfohlen:** Referral-**Belohnung** (Geschäftsentscheidung) · App-Deep-Link-Attribution (Signup in App) + Web-Invite-Fläche · #1 Live-Shopping · #3 Guild-Commerce. Premortem: **erst validieren** (5 App-Vorbestellungen + Offline-Verkäufe laufen, 80 Flaschen in Lieferung). |
 | **Admin** | Zaur (`username='zaur'`, `profiles.is_admin = true`) — nötig fürs Vorbestell-Gate (jetzt admin-only!), Dispute-Klärung, „Ankündigen"/„Zahlung anfordern". |
@@ -79,6 +79,7 @@
 - **Web-Create Produkt-Picker kompakt**: war bei 30+ Produkten eine endlos lange Liste → jetzt Suchfeld + scrollbare Liste fester Höhe + Chip mit „entfernen".
 - **`/studio/shop/preorders` Non-Admin = Inline-Panel statt `redirect()`** (`04db7c8`): redirect() warf „Ups, da lief was schief" (vermutlich Sentry-Interferenz) → robustes Inline-„Nur Admin"-Panel.
 - **Preorders-Seite: Produkt-Cover je Karte** (war nur Titel).
+- **„Merken" benachrichtigt jetzt den Verkäufer** (`0a36a0f`, Migration `20260630010000_notify_on_save`): neuer Typ `product_saved` (weiches Interesse/Lead-Signal — Zaurs Wunsch). Umgesetzt als **Trigger `fn_notify_seller_on_save` AFTER INSERT auf `saved_products`** statt in RPC/Action → deckt App (RPC `toggle_save_product`) UND Web (direkter `saved_products`-upsert) ab; kein Ping aufs eigene Produkt; EXCEPTION-geschützt (Merken darf nie scheitern). Renderer/Push/Deep-Link (→ /shop/[id]) wie die anderen Shop-Typen. **Klartrennung jetzt: 🔖 Merken = weiches Interesse (pingt), „Vorbestellen" = verbindlich (pingt + erzeugt bezahlbare Bestellung).**
 
 ---
 
