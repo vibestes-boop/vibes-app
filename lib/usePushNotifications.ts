@@ -197,8 +197,8 @@ export function usePushNotifications() {
           // Scheduled-Live-Reminder: Host ist noch nicht live (session_id=null).
           // Öffne Host-Profil — User sieht dort „geht gleich live" Banner.
           router.push({ pathname: '/user/[id]', params: { id: data.senderId } });
-        } else if (data?.type === 'preorder_round_open' && data?.productId) {
-          // Sammelbestellung offen → direkt aufs Produkt
+        } else if ((data?.type === 'preorder_round_open' || data?.type === 'product_saved') && data?.productId) {
+          // Sammelbestellung offen / Produkt gemerkt → direkt aufs Produkt
           router.push({ pathname: '/shop/[id]', params: { id: String(data.productId) } });
         } else if (
           data?.type === 'order_payment_requested' ||

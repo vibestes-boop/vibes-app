@@ -16,6 +16,7 @@ import {
   Radio,
   Users,
   Bell,
+  Bookmark,
   ShoppingBag,
   Check,
   X,
@@ -70,6 +71,7 @@ const TYPE_META: Record<NotificationType, NotifMeta> = {
   guild:                   { icon: Users,        color: 'text-muted-foreground', bg: 'bg-muted' },
   preorder_interest:       { icon: ShoppingBag,  color: 'text-muted-foreground', bg: 'bg-muted' },
   preorder_round_open:     { icon: ShoppingBag,  color: 'text-muted-foreground', bg: 'bg-muted' },
+  product_saved:           { icon: Bookmark,     color: 'text-muted-foreground', bg: 'bg-muted' },
   order_payment_requested: { icon: CreditCard,   color: 'text-muted-foreground', bg: 'bg-muted' },
   order_payment_reminder:  { icon: CreditCard,   color: 'text-muted-foreground', bg: 'bg-muted' },
   order_paid:              { icon: Package,       color: 'text-muted-foreground', bg: 'bg-muted' },
@@ -109,6 +111,10 @@ function notifText(n: Notification): string {
       return n.product_name
         ? `${name} hat „${n.product_name}" vorbestellt 🌸`
         : `${name} hat ein Produkt vorbestellt 🌸`;
+    case 'product_saved':
+      return n.product_name
+        ? `${name} hat „${n.product_name}" gemerkt 🔖`
+        : `${name} hat dein Produkt gemerkt 🔖`;
     case 'preorder_round_open':
       return n.comment_text
         ?? (n.product_name
@@ -179,6 +185,7 @@ function notifHref(n: Notification): Route {
     case 'order_address_updated':
       return '/studio/orders?role=seller' as Route;
     case 'preorder_round_open':
+    case 'product_saved':
       return (n.product_id ? `/shop/${n.product_id}` : '/shop') as Route;
     case 'order_payment_requested':
     case 'order_payment_reminder':

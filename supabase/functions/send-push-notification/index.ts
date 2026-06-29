@@ -56,6 +56,7 @@ Deno.serve(async (req: Request) => {
       new_order:                 'orders',
       preorder_interest:         'orders',
       preorder_round_open:       'orders',
+      product_saved:             'orders',
       order_payment_requested:   'orders',
       order_payment_reminder:    'orders',
       order_paid:                'orders',
@@ -105,6 +106,12 @@ Deno.serve(async (req: Request) => {
         body: record.product_name
           ? `${actorName} hat „${record.product_name}" vorbestellt`
           : `${actorName} hat ein Produkt vorbestellt`,
+      },
+      product_saved: {
+        title: '🔖 Produkt gemerkt',
+        body: record.product_name
+          ? `${actorName} hat „${record.product_name}" gemerkt`
+          : `${actorName} hat dein Produkt gemerkt`,
       },
       preorder_round_open: {
         title: '🌸 Sammelbestellung läuft',
