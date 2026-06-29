@@ -391,7 +391,7 @@ function ProductCard({ product, onPress, colors }: {
         <View style={card.footer}>
           {isPreorder ? (
             <Text style={[card.price, { color: '#B45309' }]} numberOfLines={1}>
-              {formatEur(product.price_eur) ?? 'Vormerken'}
+              {formatEur(product.price_eur) ?? 'Vorbestellen'}
             </Text>
           ) : (
             <>

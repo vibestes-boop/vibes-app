@@ -76,7 +76,7 @@ function actionLabel(n: AppNotification): string {
           ? n.comment_text
           : "hat dir ein Geschenk geschickt 🎁";
     case "preorder_interest":
-      return "hat ein Produkt vorgemerkt 🌸";
+      return "hat ein Produkt vorbestellt 🌸";
     case "preorder_round_open":
       return n.comment_text ?? "Eine Sammelbestellung ist offen — jetzt sichern 🌸";
     case "new_order":

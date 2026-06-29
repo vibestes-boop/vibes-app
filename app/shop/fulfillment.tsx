@@ -106,7 +106,7 @@ export default function FulfillmentScreen() {
   const [notifyMsg, setNotifyMsg] = useState('');
   const openNotify = (g: PreorderGroup) => {
     setNotifyGroup(g);
-    setNotifyMsg(`Hey! 🌸 Kurzes Update zu deiner Vorbestellung „${g.title}": Es geht voran — ich melde mich, sobald sie da ist. Danke fürs Vormerken!`);
+    setNotifyMsg(`Hey! 🌸 Kurzes Update zu deiner Vorbestellung „${g.title}": Es geht voran — ich melde mich, sobald sie da ist. Danke fürs Vorbestellen!`);
   };
   const confirmNotify = async () => {
     if (!notifyGroup) return;

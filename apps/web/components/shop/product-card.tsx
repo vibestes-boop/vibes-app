@@ -201,10 +201,10 @@ export function ProductCard({
             {formatEur(product.price_eur) ? (
               <>
                 <span className="tabular-nums">{formatEur(product.price_eur)}</span>
-                <span className="text-xs font-normal text-muted-foreground">· Vormerken</span>
+                <span className="text-xs font-normal text-muted-foreground">· Vorbestellen</span>
               </>
             ) : (
-              "Vormerken"
+              "Vorbestellen"
             )}
           </div>
         ) : (

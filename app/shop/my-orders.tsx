@@ -103,7 +103,7 @@ function TrackingRow({ carrier, number, colors }: { carrier: string | null; numb
 }
 
 const STATUS: Record<ProductOrderStatus, { label: string; color: string }> = {
-  reserved:          { label: 'Vorgemerkt',   color: '#9CA3AF' },
+  reserved:          { label: 'Vorbestellt',  color: '#9CA3AF' },
   payment_requested: { label: 'Zahlung offen', color: '#F59E0B' },
   paid:              { label: 'Bezahlt',       color: '#3B82F6' },
   shipped:           { label: 'Unterwegs',     color: '#14B8A6' },

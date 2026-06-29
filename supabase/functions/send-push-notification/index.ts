@@ -101,10 +101,10 @@ Deno.serve(async (req: Request) => {
       // Bestell-Lebenszyklus (echtes Geld / Parfüm). comment_text trägt den
       // fertigen Text aus den RPCs/Webhook — als Body verwenden wo sinnvoll.
       preorder_interest: {
-        title: '🌸 Neue Vormerkung',
+        title: '🌸 Neue Vorbestellung',
         body: record.product_name
-          ? `${actorName} hat „${record.product_name}" vorgemerkt`
-          : `${actorName} hat ein Produkt vorgemerkt`,
+          ? `${actorName} hat „${record.product_name}" vorbestellt`
+          : `${actorName} hat ein Produkt vorbestellt`,
       },
       preorder_round_open: {
         title: '🌸 Sammelbestellung läuft',

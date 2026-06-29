@@ -21,7 +21,7 @@ export function ProductFeedChip({
   const priceLabel = isPreorder
     ? (product.price_eur != null ? `${product.price_eur.toFixed(2).replace('.', ',')} €` : 'Preis im Shop')
     : `🪙 ${product.sale_price_coins ?? product.price_coins}`;
-  const ctaLabel = isPreorder ? 'Vormerken' : 'Ansehen';
+  const ctaLabel = isPreorder ? 'Vorbestellen' : 'Ansehen';
 
   return (
     <Pressable

@@ -202,14 +202,14 @@ export function BuyBar({
               ) : isPreordered ? (
                 <>
                   <CheckCircle2 className="h-4 w-4" />
-                  Vorgemerkt
+                  Vorbestellt
                 </>
               ) : isOwnP ? (
                 "Dein Produkt"
               ) : !viewerId ? (
-                "Einloggen zum Vormerken"
+                "Einloggen zum Vorbestellen"
               ) : (
-                "Vormerken"
+                "Vorbestellen"
               )}
             </button>
           </div>

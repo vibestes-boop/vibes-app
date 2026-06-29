@@ -35,7 +35,7 @@ function fmtDateTime(iso: string): string {
 }
 
 const STATUS: Record<ProductOrderStatus, { label: string; cls: string }> = {
-  reserved:          { label: 'Vorgemerkt',   cls: 'bg-muted text-muted-foreground' },
+  reserved:          { label: 'Vorbestellt',  cls: 'bg-muted text-muted-foreground' },
   payment_requested: { label: 'Zahlung offen', cls: 'bg-amber-500/15 text-amber-600 dark:text-amber-400' },
   paid:              { label: 'Bezahlt',       cls: 'bg-blue-500/15 text-blue-600 dark:text-blue-400' },
   shipped:           { label: 'Unterwegs',     cls: 'bg-teal-500/15 text-teal-600 dark:text-teal-400' },

@@ -197,7 +197,7 @@ export function PreorderAnnounceButton({
             <DialogTitle>Sammelbestellung ankündigen</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
-            Alle, die „{title}“ vorgemerkt oder gespeichert haben, bekommen eine
+            Alle, die „{title}“ vorbestellt oder gespeichert haben, bekommen eine
             Benachrichtigung mit Link zum Produkt — „jetzt sichern, Fenster offen“.
           </p>
           <p className="rounded-lg bg-muted p-3 text-xs text-muted-foreground">

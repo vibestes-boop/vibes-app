@@ -310,7 +310,7 @@ export default function ProfileScreen() {
             <View style={shopCellOverlay}>
               <Text style={shopCellTitle} numberOfLines={1}>{product.title}</Text>
               {isPreorder ? (
-                <Text style={shopCellPrice} numberOfLines={1}>{eur ?? 'Vormerken'}</Text>
+                <Text style={shopCellPrice} numberOfLines={1}>{eur ?? 'Vorbestellen'}</Text>
               ) : (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
                   <CoinIcon size={12} />

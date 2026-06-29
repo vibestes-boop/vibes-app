@@ -518,7 +518,7 @@ function ShareSheet({ product, onClose, colors, celebrate = false }: { product: 
           {celebrate && (
             <View style={{ alignItems: 'center', paddingHorizontal: 22, paddingBottom: 14 }}>
               <Text style={{ fontSize: 34 }}>🤎</Text>
-              <Text style={{ color: '#fff', fontSize: 19, fontWeight: '800', marginTop: 2 }}>Vorgemerkt!</Text>
+              <Text style={{ color: '#fff', fontSize: 19, fontWeight: '800', marginTop: 2 }}>Vorbestellt!</Text>
               <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, textAlign: 'center', marginTop: 5, lineHeight: 18 }}>
                 Teil es mit Freunden — je mehr mitmachen, desto eher startet die Sammelbestellung 🚀
               </Text>
@@ -813,8 +813,8 @@ export default function ProductDetailScreen() {
   // Vormerkung zurücknehmen (unverbindlich → reversibel). Bestätigung per Alert.
   const handleCancelPreorder = useCallback(() => {
     Alert.alert(
-      'Vormerkung zurücknehmen?',
-      'Du wirst aus der Sammelbestellung entfernt — vormerken kannst du dich jederzeit wieder.',
+      'Vorbestellung zurücknehmen?',
+      'Du wirst aus der Sammelbestellung entfernt — vorbestellen kannst du jederzeit wieder.',
       [
         { text: 'Abbrechen', style: 'cancel' },
         {
@@ -1187,9 +1187,9 @@ export default function ProductDetailScreen() {
               {(isPreordering || isCancelling) ? (
                 <ActivityIndicator color={colors.bg.primary} />
               ) : (preordered || preorderDone) ? (
-                <Text style={[s.buyCtaText, { color: colors.text.primary }]}>✓ Vorgemerkt · Zurücknehmen</Text>
+                <Text style={[s.buyCtaText, { color: colors.text.primary }]}>✓ Vorbestellt · Zurücknehmen</Text>
               ) : (
-                <Text style={[s.buyCtaText, { color: colors.bg.primary }]}>Vormerken</Text>
+                <Text style={[s.buyCtaText, { color: colors.bg.primary }]}>Vorbestellen</Text>
               )}
             </Pressable>
           ) : (

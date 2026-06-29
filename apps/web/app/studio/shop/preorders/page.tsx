@@ -184,9 +184,17 @@ export default async function PreordersPage() {
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <Link
                     href={`/shop/${s.product_id}` as Route}
-                    className="line-clamp-1 font-semibold hover:underline"
+                    className="flex min-w-0 items-center gap-2.5 font-semibold hover:underline"
                   >
-                    {s.title}
+                    {s.cover_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={s.cover_url} alt="" className="h-9 w-9 flex-none rounded-lg object-cover" />
+                    ) : (
+                      <span className="grid h-9 w-9 flex-none place-items-center rounded-lg bg-muted">
+                        <Boxes className="h-4 w-4 text-muted-foreground" />
+                      </span>
+                    )}
+                    <span className="line-clamp-1">{s.title}</span>
                   </Link>
                   <div className="flex flex-wrap items-center justify-end gap-2">
                     <span className="rounded-full bg-amber-600/15 px-2.5 py-1 text-xs font-medium text-amber-700 tabular-nums dark:text-amber-400">
@@ -229,7 +237,7 @@ export default async function PreordersPage() {
 
                 {people.length === 0 ? (
                   <p className="mt-3 text-sm text-muted-foreground">
-                    Noch niemand vorgemerkt.
+                    Noch niemand vorbestellt.
                   </p>
                 ) : (
                   <ul className="mt-3 divide-y">

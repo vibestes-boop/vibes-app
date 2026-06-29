@@ -74,7 +74,7 @@ export function PreorderCelebrateDialog({
           <span className="text-4xl" aria-hidden="true">
             🤎
           </span>
-          <DialogTitle className="text-xl">Vorgemerkt!</DialogTitle>
+          <DialogTitle className="text-xl">Vorbestellt!</DialogTitle>
           <DialogDescription>
             Teil es mit Freunden — je mehr mitmachen, desto eher startet die
             Sammelbestellung 🚀

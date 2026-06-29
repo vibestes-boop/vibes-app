@@ -107,8 +107,8 @@ function notifText(n: Notification): string {
           : `${name} hat dir ein Geschenk gesendet.`;
     case 'preorder_interest':
       return n.product_name
-        ? `${name} hat „${n.product_name}" vorgemerkt 🌸`
-        : `${name} hat ein Produkt vorgemerkt 🌸`;
+        ? `${name} hat „${n.product_name}" vorbestellt 🌸`
+        : `${name} hat ein Produkt vorbestellt 🌸`;
     case 'preorder_round_open':
       return n.comment_text
         ?? (n.product_name
