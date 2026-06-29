@@ -17,12 +17,12 @@
 | Bereich | Stand |
 |---|---|
 | **Repo / Branch** | `/Users/zaurhatuev/vibes-app` · `main` · Working Tree **sauber** |
-| **Letzter Commit** | `52cf8e1` — Fix „Ankündigen" (Notification-CHECK neu + robuste RPC). **Alle Session-6-Commits gepusht & verifiziert (`git ls-remote`).** |
+| **Letzter Commit** | `86a4b30` — „Vormerken"→„Vorbestellen" + Preorders-Produktbilder. **Alle Session-6-Commits gepusht & verifiziert (`git ls-remote`).** |
 | **Web (apps/web)** | deployt via **Vercel** auf Push zu `main`. **Live: `serlo-web.vercel.app` — ⚠️ OHNE `www`!** |
 | **App-Build** | v1.30.0 / iOS-Build 286 (TestFlight) · Runtime **1.30.0**. OTAs ziehen nur beim **kalten App-Neustart** (2× killen+öffnen — Update greift beim 2. Start). |
-| **Letzter OTA** | `7bb41482` (Commit `aa915fa`, Referral). **Danach NUR Web-Commits** (`c00c0c5` Web-Auslöser, `52cf8e1` Announce-Fix) → **kein offener App-OTA**. Bei nächster App-Änderung: `EAS_BUILD=1 npx eas update --branch production --message "…"`. |
-| **Edge Functions deployed** | `create-checkout-session`, `stripe-webhook`, **`send-push-notification`** (Session 6: neue Typen `order_payment_reminder` + `preorder_round_open` + `productId` in Push-Payload — von Zaur deployt). Webhooks `--no-verify-jwt` via `supabase/config.toml`. Memory `vibes-edge-webhook-verify-jwt`. |
-| **DB-Migrationen** | ✅ **ALLE ausgeführt** (Zaur). Neu Session 6: `20260629160000_post_product_link`, `…170000_payment_reminder`, `…180000_preorder_round_announce`, `…190000_referrals`, `…200000_announce_round_fix`. **Keine offene Migration.** |
+| **Letzter OTA** | `c28691d1` (Commit `86a4b30`, Vorbestellen-Umbenennung). **Kein offener App-OTA.** Bei nächster App-Änderung: `EAS_BUILD=1 npx eas update --branch production --message "…"`. |
+| **Edge Functions deployed** | `create-checkout-session`, `stripe-webhook`, **`send-push-notification`** (Session 6: Typen `order_payment_reminder` + `preorder_round_open` + `productId` in Push-Payload). **🟡 Optional offen:** preorder_interest-Push-Text sagt erst nach erneutem `deploy send-push-notification` „vorbestellt" (In-App-Text stimmt schon). Webhooks `--no-verify-jwt` via `supabase/config.toml`. Memory `vibes-edge-webhook-verify-jwt`. |
+| **DB-Migrationen** | ✅ **ALLE ausgeführt** (Zaur). Neu Session 6: `…160000_post_product_link`, `…170000_payment_reminder`, `…180000_preorder_round_announce`, `…190000_referrals`, `…200000_announce_round_fix`, `20260630000000_notifications_product_id` (🔴 Hotfix, s.u.). **Keine offene Migration.** |
 | **GERADE FERTIG (Session 6)** | **#2 Shoppable Posts** (App+Web komplett) · **#4 Auto-Zahlungserinnerung** (Cron) · **#4 „Sammelbestellung offen"** (App+Web-Auslöser) · **#5 Referral-Foundation** (Invite-Link+Attribution+Zähler) · Web schmale Sidebar auf 9 Routen · guild-post Reopen/Media-Fix · Vorbestell-Verwaltung admin-only. Voll in §1.2. |
 | **🔴 NÄCHSTE AUFGABE** | **Offen/empfohlen:** Referral-**Belohnung** (Geschäftsentscheidung) · App-Deep-Link-Attribution (Signup in App) + Web-Invite-Fläche · #1 Live-Shopping · #3 Guild-Commerce. Premortem: **erst validieren** (5 App-Vorbestellungen + Offline-Verkäufe laufen, 80 Flaschen in Lieferung). |
 | **Admin** | Zaur (`username='zaur'`, `profiles.is_admin = true`) — nötig fürs Vorbestell-Gate (jetzt admin-only!), Dispute-Klärung, „Ankündigen"/„Zahlung anfordern". |
@@ -72,6 +72,13 @@
 - **Neuer notifications.type** = 4 Stellen (CHECK dynamisch + `send-push-notification` messages/TYPE_TO_PREF + App-Renderer + Web-Renderer) + 2 Typ-Unions (`lib/useNotifications.ts`, `apps/web/lib/data/notifications.ts`). Push fließt automatisch (Trigger). Push-Deep-Link braucht das Feld in der Push-`data` (z.B. `productId`).
 - **Produkt-Deep-Link** überall via `useProduct(id)` (App) / direkter `/shop/[id]` — NIE auf der Browse-Liste basieren.
 - **„Ankündigen" ≠ Bestell-Aktion**: Marketing-Stups an Interessenten, unabhängig vom Zahlungsstatus. War anfangs verwirrend + hatte einen CHECK-Bug (gefixt `…200000`).
+
+### Post-Test-Fixes (Zaurs Gerätetest, 30.6.)
+- **🔴 `notifications.product_id` fehlte komplett** (`20260630000000_notifications_product_id`): In Session 6 wurde `product_id` überall referenziert (announce-INSERT, App+Web-`getNotifications`-SELECT, Push-Payload), die Spalte existierte aber NIE (SCHEMA.md hatte mich getäuscht — notifications hat 14 Spalten, product_id war NICHT dabei). Folgen waren GROSS: (a) „Ankündigen" scheiterte, (b) **Notification-Liste auf App UND Web war LEER in Produktion** (SELECT mit product_id → Query-Fehler → `[]`), während der Unread-Count (eigene Query) weiterzählte → Badge „1" + Drawer leer. Fix: Spalte ergänzt (FK→products, ON DELETE SET NULL). **Lehre (CLAUDE.md Regel #10!): vor JEDER neuen notifications-Spalten-Referenz in `supabase/SCHEMA.md` prüfen — ein falscher Spaltenname im Listen-SELECT leert die Liste still, während ein separater Count weiterläuft.**
+- **„Vormerken" → „Vorbestellen"** (`86a4b30`): Käufer-Aktion + Status + Benachrichtigungs-Text app-/webweit umbenannt (kollidierte mit „Merken"/Bookmark; „Vorbestellen" klingt ernster/verbindlicher). DB-Status (`reserved`/`interested`) UNVERÄNDERT — reine Anzeige. preorder_interest-Text wird in den Renderern generiert (nicht in der RPC gespeichert) → nur Renderer + Edge-Push geändert.
+- **Web-Create Produkt-Picker kompakt**: war bei 30+ Produkten eine endlos lange Liste → jetzt Suchfeld + scrollbare Liste fester Höhe + Chip mit „entfernen".
+- **`/studio/shop/preorders` Non-Admin = Inline-Panel statt `redirect()`** (`04db7c8`): redirect() warf „Ups, da lief was schief" (vermutlich Sentry-Interferenz) → robustes Inline-„Nur Admin"-Panel.
+- **Preorders-Seite: Produkt-Cover je Karte** (war nur Titel).
 
 ---
 
