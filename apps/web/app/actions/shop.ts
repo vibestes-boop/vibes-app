@@ -603,6 +603,29 @@ export async function markPreordersPayable(
   return { ok: true, data: { created: res.created ?? 0, skipped: res.skipped ?? 0 } };
 }
 
+// Verkäufer/Admin: „Sammelbestellung offen" ankündigen → Vormerker + Speicherer
+// des Produkts bekommen eine Benachrichtigung (+ Push) mit Deep-Link aufs Produkt.
+export async function announcePreorderRound(
+  productId: string,
+  message?: string,
+): Promise<ActionResult<{ notified: number }>> {
+  const viewer = await getViewerId();
+  if (!viewer) return { ok: false, error: 'Bitte einloggen.' };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc('announce_preorder_round', {
+    p_product_id: productId,
+    p_message: message?.trim() ? message.trim() : null,
+  });
+  if (error) return { ok: false, error: 'Kurz die Verbindung verloren — nochmal? 🙂' };
+
+  const res = (data ?? {}) as { success?: boolean; error?: string; notified?: number };
+  if (!res.success) return { ok: false, error: res.error ?? 'Konnte nicht ankündigen.' };
+
+  revalidatePath('/studio/shop/preorders');
+  return { ok: true, data: { notified: res.notified ?? 0 } };
+}
+
 // Verkäufer: versendet (+ Tracking).
 export async function setOrderShipped(
   orderId: string,

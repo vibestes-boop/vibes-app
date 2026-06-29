@@ -3,10 +3,10 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Route } from 'next';
-import { MessageCircle, Loader2, Send, Bell, CheckCircle2 } from 'lucide-react';
+import { MessageCircle, Loader2, Send, Bell, CheckCircle2, Megaphone } from 'lucide-react';
 import { toast } from 'sonner';
 import { getOrCreateConversation } from '@/app/actions/messages';
-import { markPreordersPayable, notifyPreorderBuyers } from '@/app/actions/shop';
+import { announcePreorderRound, markPreordersPayable, notifyPreorderBuyers } from '@/app/actions/shop';
 import { formatEur } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import {
@@ -149,6 +149,72 @@ export function PreorderNotifyAllButton({
 }
 
 // -----------------------------------------------------------------------------
+// -----------------------------------------------------------------------------
+// PreorderAnnounceButton — „Sammelbestellung offen" ankündigen. Pingt alle, die
+// das Produkt vorgemerkt ODER gespeichert haben (announce_preorder_round), mit
+// Deep-Link aufs Produkt. Bestätigungs-Dialog, damit man nicht versehentlich
+// einen Massen-Ping auslöst.
+// -----------------------------------------------------------------------------
+
+export function PreorderAnnounceButton({
+  productId,
+  title,
+}: {
+  productId: string;
+  title: string;
+}) {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [isPending, startTransition] = useTransition();
+
+  const run = () => {
+    startTransition(async () => {
+      const res = await announcePreorderRound(productId);
+      if (!res.ok) {
+        toast.error(res.error);
+        return;
+      }
+      setOpen(false);
+      toast.success(`„${title}“: Sammelbestellung angekündigt 🌸 — ${res.data.notified} erreicht.`);
+      router.refresh();
+    });
+  };
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        className="inline-flex flex-none items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors hover:bg-accent"
+      >
+        <Megaphone className="h-3.5 w-3.5" />
+        Ankündigen
+      </button>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Sammelbestellung ankündigen</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Alle, die „{title}“ vorgemerkt oder gespeichert haben, bekommen eine
+            Benachrichtigung mit Link zum Produkt — „jetzt sichern, Fenster offen“.
+          </p>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button variant="outline" onClick={() => setOpen(false)} disabled={isPending}>
+              Abbrechen
+            </Button>
+            <Button onClick={run} disabled={isPending}>
+              {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Megaphone className="h-4 w-4" />}
+              Jetzt ankündigen
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 // PreorderRequestPaymentButton — „Ware ist da → Zahlung anfordern".
 // Erzeugt aus den Vormerkungen bezahlbare Echtgeld-Bestellungen (mark_preorders_
 // payable) und schickt allen die „jetzt bezahlen"-Aufforderung. Braucht einen

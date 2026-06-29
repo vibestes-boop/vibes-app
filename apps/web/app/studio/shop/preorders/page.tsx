@@ -8,6 +8,7 @@ import { getUser, getIsAdmin } from '@/lib/auth/session';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
+  PreorderAnnounceButton,
   PreorderContactButton,
   PreorderNotifyAllButton,
   PreorderRequestPaymentButton,
@@ -187,6 +188,10 @@ export default async function PreordersPage() {
                       requestedCount={handledCount}
                       waitingCount={waitingCount}
                       peopleCount={count}
+                    />
+                    <PreorderAnnounceButton
+                      productId={s.product_id}
+                      title={s.title}
                     />
                   </div>
                 </div>
