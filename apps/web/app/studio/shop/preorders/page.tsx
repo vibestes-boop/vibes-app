@@ -4,7 +4,7 @@ import Link from 'next/link';
 import type { Route } from 'next';
 import { Boxes, ArrowLeft } from 'lucide-react';
 import { createClient } from '@/lib/supabase/server';
-import { getUser } from '@/lib/auth/session';
+import { getUser, getIsAdmin } from '@/lib/auth/session';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
@@ -53,6 +53,11 @@ type Interest = {
 export default async function PreordersPage() {
   const user = await getUser();
   if (!user) redirect('/login?next=/studio/shop/preorders');
+
+  // Vorbestellungen sind eine reine Admin-Funktion (einmalige Sammelbestell-
+  // Aktion, z.B. Parfüm). Normale Verkäufer haben keine Vorbestell-Verwaltung →
+  // zurück ins Shop-Studio.
+  if (!(await getIsAdmin())) redirect('/studio/shop');
 
   const supabase = await createClient();
   const { data: summaryData } = await supabase.rpc('get_my_preorder_summary');

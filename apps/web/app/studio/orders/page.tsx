@@ -92,8 +92,10 @@ export default async function OrdersPage({ searchParams }: PageProps) {
       </div>
 
       {/* Vorbestellungen werden separat verwaltet (Interesse sammeln, anschreiben,
-          Zahlung anfordern) → eine Oberfläche unter /studio/shop/preorders. */}
-      {role === 'seller' && (
+          Zahlung anfordern) → eine Oberfläche unter /studio/shop/preorders.
+          Reine Admin-Funktion (Sammelbestell-Aktion, z.B. Parfüm) → normale
+          Verkäufer sehen den Einstieg nicht. */}
+      {role === 'seller' && isAdmin && (
         <Link
           href={'/studio/shop/preorders' as Route}
           className="mb-6 flex items-center justify-between gap-3 rounded-xl border bg-card p-4 transition-colors hover:bg-accent"

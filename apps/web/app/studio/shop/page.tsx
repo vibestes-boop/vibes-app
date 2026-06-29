@@ -22,7 +22,6 @@ export default async function StudioShopPage() {
   if (!user) redirect('/login?next=/studio/shop');
 
   const [products, isAdmin] = await Promise.all([getMyProducts(), getIsAdmin()]);
-  const hasPreorder = products.some((p) => p.sale_mode === 'preorder');
 
   const activeCount = products.filter((p) => p.is_active).length;
   const totalSold = products.reduce((s, p) => s + p.sold_count, 0);
@@ -45,7 +44,9 @@ export default async function StudioShopPage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {(isAdmin || hasPreorder) && (
+          {/* Vorbestell-Verwaltung: reine Admin-Funktion (Sammelbestell-Aktion,
+              z.B. Parfüm) — normale Verkäufer sehen den Einstieg nicht. */}
+          {isAdmin && (
             <Button asChild variant="outline">
               <Link href={'/studio/shop/preorders' as Route}>
                 <Boxes className="h-4 w-4" />

@@ -16,6 +16,7 @@ import {
 } from '@/lib/useShop';
 import { useTheme } from '@/lib/useTheme';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
+import { useAuthStore } from '@/lib/authStore';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import {
@@ -116,6 +117,10 @@ export default function MyOrdersScreen() {
   useThemedStatusBar('auto');
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
+  // Verkäufer-/Vorbestell-Verwaltung (fulfillment) ist eine reine Admin-Funktion
+  // (Sammelbestell-Aktion, z.B. Parfüm). Normale Käufer sehen die Verkaufs-
+  // Einstiege nicht — diese Seite bleibt für sie reine Käufer-Ansicht.
+  const isAdmin = useAuthStore((st) => st.profile?.is_admin) ?? false;
   const { data: orders = [], isLoading, refetch, isRefetching } = useMyProductOrders();
   const { pay, isPaying } = usePayProductOrder();
   const confirmDelivered = useConfirmOrderDelivered();
@@ -327,9 +332,13 @@ export default function MyOrdersScreen() {
           <ArrowLeft size={22} color={colors.text.primary} strokeWidth={2} />
         </Pressable>
         <Text style={[s.headerTitle, { color: colors.text.primary }]}>Meine Bestellungen</Text>
-        <Pressable onPress={() => router.push('/shop/fulfillment' as any)} hitSlop={10} style={s.headerBtn}>
-          <Store size={20} color={colors.text.primary} strokeWidth={2} />
-        </Pressable>
+        {isAdmin ? (
+          <Pressable onPress={() => router.push('/shop/fulfillment' as any)} hitSlop={10} style={s.headerBtn}>
+            <Store size={20} color={colors.text.primary} strokeWidth={2} />
+          </Pressable>
+        ) : (
+          <View style={s.headerBtn} />
+        )}
       </View>
 
       {isLoading ? (
@@ -342,14 +351,16 @@ export default function MyOrdersScreen() {
           contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 40, gap: 12 }}
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={colors.text.muted} />}
           ListHeaderComponent={
-            <Pressable
-              onPress={() => router.push('/shop/fulfillment' as any)}
-              style={[s.sellLink, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}
-            >
-              <Store size={16} color={colors.text.primary} strokeWidth={2.2} />
-              <Text style={[s.sellLinkText, { color: colors.text.primary, flex: 1 }]}>Meine Verkäufe verwalten</Text>
-              <Text style={[s.sellLinkText, { color: colors.text.muted }]}>→</Text>
-            </Pressable>
+            isAdmin ? (
+              <Pressable
+                onPress={() => router.push('/shop/fulfillment' as any)}
+                style={[s.sellLink, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}
+              >
+                <Store size={16} color={colors.text.primary} strokeWidth={2.2} />
+                <Text style={[s.sellLinkText, { color: colors.text.primary, flex: 1 }]}>Meine Verkäufe verwalten</Text>
+                <Text style={[s.sellLinkText, { color: colors.text.muted }]}>→</Text>
+              </Pressable>
+            ) : null
           }
           ListEmptyComponent={
             <View style={s.center}>

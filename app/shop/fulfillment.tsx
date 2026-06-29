@@ -23,8 +23,9 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { ArrowLeft, Bell, CheckCircle2, Clock, MessageCircle, Package, PackageCheck, Send, Truck } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useOrCreateConversation } from '@/lib/useMessages';
+import { useAuthStore } from '@/lib/authStore';
 import { OrderReviewControl } from '@/components/shop/OrderReviewControl';
 import { OrderDisputeControl } from '@/components/shop/OrderDisputeControl';
 import {
@@ -63,6 +64,14 @@ export default function FulfillmentScreen() {
   useThemedStatusBar('auto');
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
+
+  // Vorbestell-/Verkaufs-Verwaltung ist eine reine Admin-Funktion (einmalige
+  // Sammelbestell-Aktion, z.B. Parfüm). Deep-Link-Schutz: Nicht-Admins werden
+  // zurückgeschickt (die Einstiegspunkte sind ohnehin schon ausgeblendet).
+  const isAdmin = useAuthStore((st) => st.profile?.is_admin) ?? false;
+  useEffect(() => {
+    if (!isAdmin) router.back();
+  }, [isAdmin]);
 
   const { data: preorderGroups = [], refetch: refetchGroups } = useMyPreorderGroups();
   const { data: orders = [], isLoading, refetch: refetchOrders } = useSellerProductOrders();
@@ -175,6 +184,11 @@ export default function FulfillmentScreen() {
   const addr = (o: ProductOrder) =>
     [o.ship_name, o.ship_street, [o.ship_zip, o.ship_city].filter(Boolean).join(' '), o.ship_country]
       .filter(Boolean).join('\n');
+
+  // Nicht-Admins sehen nichts (der useEffect oben navigiert bereits zurück).
+  if (!isAdmin) {
+    return <View style={[s.root, { backgroundColor: colors.bg.primary }]} />;
+  }
 
   return (
     <View style={[s.root, { backgroundColor: colors.bg.primary }]}>
