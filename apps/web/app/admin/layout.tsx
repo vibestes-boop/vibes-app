@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { getAdminRoleStatus, getAdminSidebarBadges, type AdminRoleStatus, type AdminSidebarBadges } from '@/app/actions/admin';
 import { AdminSidebarNav, AdminMobileNav, type AdminNavItemData } from '@/components/admin/admin-nav';
+import { FeedSidebarRail } from '@/components/feed/feed-sidebar-rail';
 
 // Icons als String-Keys — werden in components/admin/admin-nav.tsx (Client)
 // auf Lucide-Komponenten gemappt (RSC-Grenze: keine Komponenten-Props).
@@ -75,7 +76,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="min-h-screen bg-muted/50 text-foreground">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-52 border-r border-border bg-card lg:flex lg:flex-col">
+      {/* Schmale Serlo-Rail ganz links (xl+, klappt per Hover-Overlay auf) —
+          fixed, damit sie zur fixed Admin-Sidebar passt. Diese + der Content
+          werden auf xl+ um die Rail-Breite (w-20) nach rechts versetzt. */}
+      <FeedSidebarRail railCollapsible className="fixed inset-y-0 left-0 z-40" />
+
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-52 border-r border-border bg-card lg:flex lg:flex-col xl:left-20">
         <div className="flex h-14 items-center gap-2.5 border-b border-border/60 px-4">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white">
             <Shield className="h-4 w-4" />
@@ -94,7 +100,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </div>
       </aside>
 
-      <div className="lg:pl-52">
+      <div className="lg:pl-52 xl:pl-72">
         <header className="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur">
           <div className="flex min-h-14 items-center gap-2.5 px-4 py-2.5 sm:px-5">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-border lg:hidden">

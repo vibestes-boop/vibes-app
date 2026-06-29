@@ -3,6 +3,7 @@ import { getUser } from '@/lib/auth/session';
 import { getActiveLiveSessions } from '@/lib/data/live';
 import { LiveLayoutShell } from '@/components/live/live-layout-shell';
 import type { LiveSidebarSession } from '@/components/live/live-browse-sidebar';
+import { FeedSidebarRail } from '@/components/feed/feed-sidebar-rail';
 
 // -----------------------------------------------------------------------------
 // /live layout — Server-Component mit Datenfetching.
@@ -26,8 +27,14 @@ export default async function LiveLayout({ children }: { children: ReactNode }) 
     title: s.title ?? null,
   }));
 
+  // Schmale Serlo-Rail (xl+) wird nur auf Browse-Seiten gerendert (LiveLayoutShell
+  // entscheidet client-seitig via Pathname — Fullscreen-Watch/Host bekommen keine).
   return (
-    <LiveLayoutShell liveSessions={liveSessions} isAuthed={!!user}>
+    <LiveLayoutShell
+      liveSessions={liveSessions}
+      isAuthed={!!user}
+      rail={<FeedSidebarRail railCollapsible />}
+    >
       {children}
     </LiveLayoutShell>
   );

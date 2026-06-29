@@ -7,6 +7,7 @@ import { User as UserIcon, Receipt, Shield, Bell, Home } from 'lucide-react';
 import { getUser } from '@/lib/auth/session';
 import { getT } from '@/lib/i18n/server';
 import type { TranslationKey } from '@/lib/i18n/translate';
+import { FeedSidebarLayout } from '@/components/feed/feed-sidebar-layout';
 
 // -----------------------------------------------------------------------------
 // /settings — Layout-Namespace für User-Einstellungen.
@@ -44,7 +45,9 @@ export default async function SettingsLayout({ children }: { children: ReactNode
   const [user, t] = await Promise.all([getUser(), getT()]);
   if (!user) redirect('/login?next=/settings');
 
+  // Schmale Serlo-Rail (xl+, klappt per Hover auf) links neben der Settings-Nav.
   return (
+    <FeedSidebarLayout railCollapsible>
     <div className="mx-auto w-full max-w-[1200px] px-4 pb-20 pt-4 lg:grid lg:grid-cols-[220px_1fr] lg:gap-6 lg:px-6 lg:pt-8">
       <aside className="mb-4 lg:mb-0">
         <nav className="flex flex-row gap-1 overflow-x-auto lg:flex-col">
@@ -74,5 +77,6 @@ export default async function SettingsLayout({ children }: { children: ReactNode
 
       <main className="min-w-0">{children}</main>
     </div>
+    </FeedSidebarLayout>
   );
 }

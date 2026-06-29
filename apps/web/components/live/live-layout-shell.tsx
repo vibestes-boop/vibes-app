@@ -25,15 +25,20 @@ interface LiveLayoutShellProps {
   children: React.ReactNode;
   liveSessions: LiveSidebarSession[];
   isAuthed: boolean;
+  /** Schmale Serlo-Rail (Server-Component) — links neben der Live-Sidebar.
+   *  Nur auf Browse-Pages; Fullscreen-Watch/Host rendern sie bewusst nicht. */
+  rail?: React.ReactNode;
 }
 
-export function LiveLayoutShell({ children, liveSessions, isAuthed }: LiveLayoutShellProps) {
+export function LiveLayoutShell({ children, liveSessions, isAuthed, rail }: LiveLayoutShellProps) {
   const pathname = usePathname();
 
   if (isFullscreen(pathname)) return <>{children}</>;
 
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-[1600px]">
+      {/* Schmale Serlo-Rail ganz links (xl+) — Weg zurück in den Rest der App */}
+      {rail}
       {/* Live-spezifische Sidebar — nur auf xl+, nur auf Browse-Pages */}
       <aside className="hidden w-[260px] shrink-0 border-r border-border xl:block">
         <LiveBrowseSidebar liveSessions={liveSessions} isAuthed={isAuthed} />

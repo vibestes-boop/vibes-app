@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import type { Route } from 'next';
 import { getUser, getProfile } from '@/lib/auth/session';
 import { StudioSubNav } from '@/components/studio/studio-sub-nav';
+import { FeedSidebarLayout } from '@/components/feed/feed-sidebar-layout';
 
 // -----------------------------------------------------------------------------
 // /studio — Layout für den Creator-Studio-Namespace.
@@ -35,14 +36,18 @@ export default async function StudioLayout({ children }: { children: ReactNode }
     redirect('/creator/activate' as Route);
   }
 
+  // Schmale Serlo-Rail (xl+, klappt per Hover auf) links neben der Studio-Sub-Nav
+  // — gleiche Strategie wie der Shop (zwei breite Sidebars wären zu viel).
   return (
-    <div className="mx-auto w-full max-w-[1400px] px-4 pb-20 pt-4 lg:grid lg:grid-cols-[220px_1fr] lg:gap-6 lg:px-6 lg:pt-6">
-      {/* Sub-Nav — horizontal scrollend auf Mobile, fest links auf Desktop */}
-      <aside className="mb-4 lg:mb-0">
-        <StudioSubNav />
-      </aside>
+    <FeedSidebarLayout railCollapsible>
+      <div className="mx-auto w-full max-w-[1400px] px-4 pb-20 pt-4 lg:grid lg:grid-cols-[220px_1fr] lg:gap-6 lg:px-6 lg:pt-6">
+        {/* Sub-Nav — horizontal scrollend auf Mobile, fest links auf Desktop */}
+        <aside className="mb-4 lg:mb-0">
+          <StudioSubNav />
+        </aside>
 
-      <main className="min-w-0">{children}</main>
-    </div>
+        <main className="min-w-0">{children}</main>
+      </div>
+    </FeedSidebarLayout>
   );
 }
