@@ -1,51 +1,114 @@
 /**
  * TabSlotSwitcher — „Wechsel-Karussell" für die anpassbaren Bottom-Nav-Slots.
  *
- * Long-Press auf Slot 2 oder Slot 4 (links/rechts vom Create-Button) öffnet ein
- * Tray-Karussell direkt über der Nav: scrollbare runde Feature-Chips. Tippen
- * tauscht den Slot sofort (persistiert via tabBarStore → AsyncStorage + DB).
+ * Long-Press auf Slot 2 oder Slot 4 öffnet ein HALBKREIS-Menü über der Nav:
+ * runde Feature-Chips fächern auf. Tap tauscht den Slot sofort (persistiert via
+ * tabBarStore → AsyncStorage + DB).
+ *
+ * Es werden nur Features angeboten, die NICHT bereits in der Nav stehen
+ * (Slot 2 + Slot 4 raus) — die Auswahl-Liste kommt fertig gefiltert als `options`.
  *
  * Cross-platform robust via transparentem <Modal> — überstehende Absolut-Overlays
- * bekommen auf Android keine Touches außerhalb der Eltern-Bounds; das Modal
- * portalt heraus und deckt den ganzen Screen ab (Backdrop-Tap schließt).
- *
- * Reanimated-Hooks STATISCH importiert (Memory vibes-reanimated-static-import);
- * Animated.View-Namespace via Hermes-sicherem require (wie app/(tabs)/_layout).
+ * bekommen auf Android keine Touches außerhalb der Eltern-Bounds (Memory
+ * vibes-android-overflow-touch-modal). Reanimated-Hooks STATISCH importiert
+ * (vibes-reanimated-static-import); Animated-Namespace via Hermes-sicherem require.
  */
 import { useEffect } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   useAnimatedStyle,
   useSharedValue,
   withTiming,
+  type SharedValue,
 } from 'react-native-reanimated';
-import { impactAsync, ImpactFeedbackStyle, notificationAsync, NotificationFeedbackType } from 'expo-haptics';
+import { notificationAsync, NotificationFeedbackType } from 'expo-haptics';
 
-import { ALL_TAB_FEATURES, TAB_FEATURES, type TabFeature } from '@/lib/tabBarStore';
+import { TAB_FEATURES, type TabFeature } from '@/lib/tabBarStore';
 import { useTheme } from '@/lib/useTheme';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any;
 const _animNS = _animMod?.default ?? _animMod;
-const Animated = { View: _animNS?.View as typeof View };
+const Animated = {
+  View: _animNS?.View as typeof View,
+  Text: _animNS?.Text as typeof Text,
+};
 
-// Serlo-Marken-Pink (konsistent mit Create-Button-Versatz + Screenshot-Vorlage).
-const PINK = '#FF2D55';
+const CIRCLE = 62;
+const CONTAINER = 80;
+
+// ── Einzelner Chip im Halbkreis (eigene Komponente → kein useAnimatedStyle in
+//    einer .map-Schleife, Rules-of-Hooks; Memory zu GiftAnimation). Fächert beim
+//    Öffnen vom Ursprung (Nähe Nav) zu seinem Zielpunkt auf. ────────────────────
+function ArcButton({
+  feature,
+  targetX,
+  targetY,
+  originX,
+  originY,
+  progress,
+  color,
+  onPress,
+}: {
+  feature: TabFeature;
+  targetX: number;
+  targetY: number;
+  originX: number;
+  originY: number;
+  progress: SharedValue<number>;
+  color: string;
+  onPress: () => void;
+}) {
+  const { colors } = useTheme();
+  const tx0 = originX - targetX;      // Start-Versatz X (zum Ursprung)
+  const ty0 = targetY - originY;      // Start-Versatz Y (startet tiefer, fährt hoch)
+
+  const aStyle = useAnimatedStyle(() => {
+    const p = progress.value;
+    return {
+      opacity: p,
+      transform: [
+        { translateX: tx0 * (1 - p) },
+        { translateY: ty0 * (1 - p) },
+        { scale: 0.6 + 0.4 * p },
+      ],
+    };
+  });
+
+  const meta = TAB_FEATURES[feature];
+  const Icon = meta.icon;
+
+  return (
+    <Animated.View
+      style={[
+        styles.arcItem,
+        { left: targetX - CONTAINER / 2, bottom: targetY - (CIRCLE + 22) / 2 },
+        aStyle,
+      ]}
+    >
+      <Pressable onPress={onPress} style={styles.arcPress} accessibilityRole="button" accessibilityLabel={meta.label}>
+        <View style={[styles.circle, { backgroundColor: color }]}>
+          <Icon size={26} color="#FFFFFF" strokeWidth={2} />
+        </View>
+        <Text numberOfLines={1} style={[styles.arcLabel, { color: colors.text.primary }]}>
+          {meta.label}
+        </Text>
+      </Pressable>
+    </Animated.View>
+  );
+}
 
 export function TabSlotSwitcher({
   slot,
-  currentFeature,
-  otherFeature,
+  options,
   onSelect,
   onClose,
 }: {
   /** 2 = links vom Create-Button, 4 = rechts. */
   slot: 2 | 4;
-  /** Aktuell in diesem Slot belegtes Feature (wird markiert). */
-  currentFeature: TabFeature;
-  /** Feature im jeweils anderen Slot (ausgegraut → keine Doppelung). */
-  otherFeature: TabFeature;
+  /** Bereits gefiltert: Features, die NICHT in der Nav stehen. */
+  options: TabFeature[];
   onSelect: (f: TabFeature) => void;
   onClose: () => void;
 }) {
@@ -54,24 +117,28 @@ export function TabSlotSwitcher({
   const progress = useSharedValue(0);
 
   useEffect(() => {
-    progress.value = withTiming(1, { duration: 180 });
+    progress.value = withTiming(1, { duration: 220 });
   }, [progress]);
 
   const backdropStyle = useAnimatedStyle(() => ({ opacity: progress.value * 0.5 }));
-  const trayStyle = useAnimatedStyle(() => ({
-    opacity: progress.value,
-    transform: [{ translateY: (1 - progress.value) * 18 }],
-  }));
+  const captionStyle = useAnimatedStyle(() => ({ opacity: progress.value }));
 
-  // Tray schwebt knapp über der echten Nav (Nav ≈ 56px + Safe-Area).
+  // Markenfarbe (Lila), theme-adaptiv — bewusst NICHT das rote/pinke Akzent.
+  const color = colors.accent.secondary;
+
+  const screenW = Dimensions.get('window').width;
+  const cx = screenW / 2;
   const navHeight = 56 + insets.bottom;
+  const originY = navHeight + 64;                 // Fächer-Ursprung (von unten)
+  const N = options.length;
+  const R = N <= 1 ? 0 : Math.min(140, screenW / 2 - 56);
 
-  const pick = (f: TabFeature) => {
-    if (f === otherFeature) return; // schon im anderen Tab → ignorieren
-    notificationAsync(NotificationFeedbackType.Success);
-    onSelect(f);
-    onClose();
-  };
+  const points = options.map((f, i) => {
+    const angleDeg = N === 1 ? 90 : 180 - (i * 180) / (N - 1);
+    const rad = (angleDeg * Math.PI) / 180;
+    return { f, x: cx + R * Math.cos(rad), y: originY + R * Math.sin(rad) };
+  });
+  const apexY = originY + R; // höchster Punkt (für Caption)
 
   return (
     <Modal transparent visible animationType="none" onRequestClose={onClose} statusBarTranslucent>
@@ -80,58 +147,27 @@ export function TabSlotSwitcher({
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Schließen" />
       </Animated.View>
 
-      {/* Tray-Karussell */}
-      <Animated.View
-        style={[
-          styles.tray,
-          { bottom: navHeight + 8, backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle },
-          trayStyle,
-        ]}
-      >
-        <Text style={[styles.caption, { color: colors.text.muted }]}>
-          {slot === 2 ? 'Linker Tab' : 'Rechter Tab'} · tippen zum Wechseln
-        </Text>
+      <Animated.Text style={[styles.caption, { bottom: apexY + 52, color: colors.text.muted }, captionStyle]}>
+        {slot === 2 ? 'Linker Tab' : 'Rechter Tab'} · tippen zum Wechseln
+      </Animated.Text>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
-          {ALL_TAB_FEATURES.map((f) => {
-            const meta = TAB_FEATURES[f];
-            const Icon = meta.icon;
-            const isCurrent = f === currentFeature;
-            const isTaken = f === otherFeature;
-            return (
-              <Pressable
-                key={f}
-                onPress={() => pick(f)}
-                disabled={isTaken}
-                style={styles.chip}
-                accessibilityRole="button"
-                accessibilityState={{ selected: isCurrent, disabled: isTaken }}
-              >
-                <View
-                  style={[
-                    styles.circle,
-                    { backgroundColor: PINK },
-                    isCurrent && styles.circleCurrent,
-                    isTaken && styles.circleTaken,
-                  ]}
-                >
-                  <Icon size={24} color="#FFFFFF" strokeWidth={2} />
-                </View>
-                <Text
-                  numberOfLines={1}
-                  style={[
-                    styles.chipLabel,
-                    { color: isTaken ? colors.text.muted : colors.text.primary },
-                    isCurrent && styles.chipLabelCurrent,
-                  ]}
-                >
-                  {meta.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
-      </Animated.View>
+      {points.map((p) => (
+        <ArcButton
+          key={p.f}
+          feature={p.f}
+          targetX={p.x}
+          targetY={p.y}
+          originX={cx}
+          originY={originY}
+          progress={progress}
+          color={color}
+          onPress={() => {
+            notificationAsync(NotificationFeedbackType.Success);
+            onSelect(p.f);
+            onClose();
+          }}
+        />
+      ))}
     </Modal>
   );
 }
@@ -140,57 +176,41 @@ const styles = StyleSheet.create({
   backdrop: {
     backgroundColor: '#000',
   },
-  tray: {
-    position: 'absolute',
-    left: 8,
-    right: 8,
-    borderRadius: 22,
-    borderWidth: StyleSheet.hairlineWidth,
-    paddingTop: 11,
-    paddingBottom: 13,
-    paddingHorizontal: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.28,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 14,
-  },
   caption: {
-    fontSize: 11,
-    fontWeight: '600',
+    position: 'absolute',
+    left: 0,
+    right: 0,
     textAlign: 'center',
-    marginBottom: 10,
+    fontSize: 12,
+    fontWeight: '600',
+    textShadowColor: 'rgba(0,0,0,0.5)',
+    textShadowRadius: 6,
   },
-  row: {
-    paddingHorizontal: 8,
-    gap: 16,
-    alignItems: 'flex-start',
+  arcItem: {
+    position: 'absolute',
+    width: CONTAINER,
+    alignItems: 'center',
   },
-  chip: {
-    width: 60,
+  arcPress: {
     alignItems: 'center',
     gap: 6,
   },
   circle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: CIRCLE,
+    height: CIRCLE,
+    borderRadius: CIRCLE / 2,
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
   },
-  circleCurrent: {
-    borderWidth: 3,
-    borderColor: '#FFFFFF',
-  },
-  circleTaken: {
-    opacity: 0.3,
-  },
-  chipLabel: {
+  arcLabel: {
     fontSize: 11,
-    fontWeight: '500',
-  },
-  chipLabelCurrent: {
-    color: PINK,
-    fontWeight: '700',
+    fontWeight: '600',
+    textShadowColor: 'rgba(0,0,0,0.55)',
+    textShadowRadius: 6,
   },
 });

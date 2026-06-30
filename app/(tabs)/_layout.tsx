@@ -14,6 +14,7 @@ withTiming,
 
 // expo-haptics: named imports (safe for Hermes)
 import {
+ALL_TAB_FEATURES,
 TAB_FEATURES,
 useTabBarStore,
 type TabFeature,
@@ -308,8 +309,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
       {switchSlot != null && (
         <TabSlotSwitcher
           slot={switchSlot}
-          currentFeature={switchSlot === 2 ? slot2Feature : slot4Feature}
-          otherFeature={switchSlot === 2 ? slot4Feature : slot2Feature}
+          options={ALL_TAB_FEATURES.filter((f) => f !== slot2Feature && f !== slot4Feature)}
           onSelect={(f) => (switchSlot === 2 ? setSlot2(f) : setSlot4(f))}
           onClose={() => setSwitchSlot(null)}
         />
