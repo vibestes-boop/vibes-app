@@ -14,6 +14,7 @@ import {
   Sparkles,
   LayoutDashboard,
   Mic,
+  UserPlus,
 } from 'lucide-react';
 
 import { SettingsRow } from '@/components/settings/settings-row';
@@ -112,6 +113,17 @@ export default async function SettingsOverviewPage() {
             testId="settings-row-creator-activate"
           />
         )}
+      </Section>
+
+      {/* Sektion 1a — Freund:innen einladen (#5 Referral, Web-Parität zur App) */}
+      <Section label="Community">
+        <SettingsRow
+          icon={UserPlus}
+          label="Freund:innen einladen"
+          subtitle="Teile deinen Link — bring die Community zusammen 🌸"
+          href={'/settings/invite' as Route}
+          testId="settings-row-invite"
+        />
       </Section>
 
       {/* Sektion 1b — Women-Only Zone 🌸 (v1.w.UI.189) */}
