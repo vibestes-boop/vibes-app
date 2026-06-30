@@ -1,7 +1,7 @@
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Tabs,useRouter } from 'expo-router';
 import { Plus,User,Zap } from 'lucide-react-native';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { ActivityIndicator,Pressable,StyleSheet,Text,View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 // react-native-reanimated: named imports (safe for Hermes)
@@ -19,6 +19,7 @@ useTabBarStore,
 type TabFeature,
 type TabFeatureMeta,
 } from '@/lib/tabBarStore';
+import { TabSlotSwitcher } from '@/components/nav/TabSlotSwitcher';
 import { useAuthStore } from '@/lib/authStore';
 import { useUnreadDMCount } from '@/lib/useMessages';
 import { useUnreadCount } from '@/lib/useNotifications';
@@ -173,6 +174,15 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   // Customizable Slots aus Store
   const slot2Feature = useTabBarStore((s) => s.slot2);
   const slot4Feature = useTabBarStore((s) => s.slot4);
+  const setSlot2 = useTabBarStore((s) => s.setSlot2);
+  const setSlot4 = useTabBarStore((s) => s.setSlot4);
+
+  // Long-Press auf einen wählbaren Slot → Wechsel-Karussell für diesen Slot.
+  const [switchSlot, setSwitchSlot] = useState<2 | 4 | null>(null);
+  const openSwitcher = (s: 2 | 4) => {
+    impactAsync(ImpactFeedbackStyle.Medium);
+    setSwitchSlot(s);
+  };
 
   // DB-Sync: bei Login die gespeicherte Slot-Wahl aus profiles laden, damit
   // App + Web dieselbe Bottom-Nav zeigen. Best-effort (s. tabBarStore).
@@ -259,7 +269,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
               }
               handleSlotPress(slot2Meta);
             }}
-            onLongPress={() => {}}
+            onLongPress={() => openSwitcher(2)}
             isRefreshing={slot2Feature === 'guild' && isGuildRefreshing}
           />
 
@@ -277,7 +287,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             isFocused={isSlot4Focused}
             badge={getBadge(slot4Feature)}
             onPress={() => handleSlotPress(slot4Meta)}
-            onLongPress={() => {}}
+            onLongPress={() => openSwitcher(4)}
           />
 
           {/* ── Slot 5: Profil (fest) ── */}
@@ -293,6 +303,17 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 
         </View>
       </View>
+
+      {/* Wechsel-Karussell — Long-Press auf Slot 2/4 öffnet es (eigenes Modal-Overlay). */}
+      {switchSlot != null && (
+        <TabSlotSwitcher
+          slot={switchSlot}
+          currentFeature={switchSlot === 2 ? slot2Feature : slot4Feature}
+          otherFeature={switchSlot === 2 ? slot4Feature : slot2Feature}
+          onSelect={(f) => (switchSlot === 2 ? setSlot2(f) : setSlot4(f))}
+          onClose={() => setSwitchSlot(null)}
+        />
+      )}
     </View>
   );
 }
