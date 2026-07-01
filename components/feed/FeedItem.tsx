@@ -87,6 +87,9 @@ export const VideoProgressBar = React.memo(
     // Fortschritt zum Zeitpunkt des Touch-Starts (für relative Berechnung)
     const scrubStartFractionRef = useRef(0);
     const scrubProgress = useRef(0);
+    // Zeitstempel des letzten Ticks — für flüssige Interpolation zwischen den
+    // (nur ~4×/s feuernden) onProgress-Events.
+    const lastTsRef = useRef(0);
     // Sperrt setProgress nach Release bis Video an Ziel angekommen ist (verhindert Sprung-Effekt)
     const seekLockRef = useRef(false);
     const seekLockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -113,9 +116,30 @@ export const VideoProgressBar = React.memo(
             return; // noch nicht am Ziel → Update ignorieren
           }
         }
+        const now = Date.now();
+        const dt = lastTsRef.current ? now - lastTsRef.current : 0;
+        const dp = p - currentFractionRef.current;
         currentFractionRef.current = p;
-        fillWidth.setValue(p * trackWidth.current);
-        thumbX.setValue(p * trackWidth.current);
+        lastTsRef.current = now;
+
+        // Sprung (Reset/Rückwärts/großer Vorwärts-Sprung/Seek) oder noch keine
+        // Track-Breite → sofort setzen, nicht interpolieren.
+        if (trackWidth.current === 0 || dt <= 0 || dt > 800 || dp < 0 || dp > 0.12) {
+          fillWidth.stopAnimation();
+          thumbX.stopAnimation();
+          fillWidth.setValue(p * trackWidth.current);
+          thumbX.setValue(p * trackWidth.current);
+          return;
+        }
+
+        // Flüssig gleiten: linear zur (leicht vorwärts extrapolierten) Position
+        // über das Tick-Intervall. Extrapolation = kein sichtbarer Lag bei kurzen
+        // Videos; die Bewegung ist kontinuierlich statt zu springen.
+        const predicted = Math.min(1, p + Math.max(0, dp));
+        const target = predicted * trackWidth.current;
+        const duration = Math.min(Math.max(dt, 100), 500);
+        RNAnimated.timing(fillWidth, { toValue: target, duration, easing: (t) => t, useNativeDriver: false }).start();
+        RNAnimated.timing(thumbX,   { toValue: target, duration, easing: (t) => t, useNativeDriver: false }).start();
       },
     }), [isScrubbing, fillWidth, thumbX]);
 

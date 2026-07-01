@@ -127,6 +127,10 @@ export function FeedCard({
   const activePlaybackRef = useRef({ postId: post.id, active: false });
   const [isPaused, setIsPaused] = useState(false);
   const [progress, setProgress] = useState(0);
+  // Vorheriger Fortschritt → smoothe Balken-Transition nur bei Vorwärts-Ticks
+  // (kein „Zurückspulen"-Effekt beim Loop/Reset).
+  const prevProgressRef = useRef(0);
+  useEffect(() => { prevProgressRef.current = progress; }, [progress]);
   // v1.w.UI.11 Phase C — Kommentar-Open-State lebt nicht mehr lokal in der
   // Karte, sondern im zentralen FeedInteractionContext. Grund: Auf xl+ soll
   // das Öffnen eines Comment-Panels die rechte Sidebar des HomeFeedShell
@@ -1171,7 +1175,14 @@ export function FeedCard({
               />
             )}
             <div
-              className="relative h-full bg-white transition-[width]"
+              className={cn(
+                'relative h-full bg-white',
+                // Smooth gleiten NUR bei Vorwärts-Ticks & nicht beim Scrubben —
+                // sonst würde der Balken beim Loop sichtbar „zurückspulen".
+                !isSeeking && progress >= prevProgressRef.current
+                  ? 'transition-[width] duration-300 ease-linear'
+                  : '',
+              )}
               style={{ width: `${progress}%` }}
             >
               {/* Thumb (Drag-Indikator) — sichtbar on hover oder während
