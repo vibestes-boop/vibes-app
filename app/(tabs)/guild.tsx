@@ -29,7 +29,7 @@ import { Image } from "expo-image";
 import { launchImageLibraryAsync } from "expo-image-picker";
 import { useFocusEffect,useRouter } from "expo-router";
 import { useCallback,useEffect,useMemo,useRef,useState } from "react";
-import { ActivityIndicator,Alert,FlatList,RefreshControl,StyleSheet,Text,View } from "react-native";
+import { ActivityIndicator,Alert,FlatList,RefreshControl,Share,StyleSheet,Text,View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function GuildScreen() {
@@ -126,6 +126,18 @@ export default function GuildScreen() {
     [guildName],
   );
 
+  // Einladen = primärer CTA solange die Guild klein ist — teilt den
+  // Referral-Link (#5) mit Guild-Kontext über das native Share-Sheet.
+  const handleInvite = useCallback(async () => {
+    if (!profile?.username) return;
+    const inviteUrl = `https://serlo-web.vercel.app/i/${profile.username}`;
+    try {
+      await Share.share({
+        message: `Komm in meine Guild „${guildName}" auf Serlo 🌸 — Videos, Live & Marktplatz aus der Community:\n${inviteUrl}`,
+      });
+    } catch { /* abgebrochen */ }
+  }, [profile?.username, guildName]);
+
   // Guild-Posts + Farben in Store speichern — Swipe-Detail liest daraus
   const setGuildNavPosts = useGuildNavStore((s) => s.setPosts);
   useEffect(() => {
@@ -207,6 +219,7 @@ export default function GuildScreen() {
             mode={viewMode}
             onToggle={setViewMode}
             onMembersPress={() => setMembersOpen(true)}
+            onInvitePress={handleInvite}
           />
           {viewMode === "feed" && (
             <View style={styles.storiesWrap}>
@@ -234,6 +247,7 @@ export default function GuildScreen() {
       storyGroups,
       openViewer,
       handleAddStory,
+      handleInvite,
       activeLives,
       viewMode,
       styles.storiesWrap,
@@ -261,6 +275,7 @@ export default function GuildScreen() {
             mode={viewMode}
             onToggle={setViewMode}
             onMembersPress={() => setMembersOpen(true)}
+            onInvitePress={handleInvite}
           />
           <GuildLeaderboard
             guildId={profile?.guild_id}
