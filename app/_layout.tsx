@@ -64,7 +64,7 @@ const qStyles = StyleSheet.create({
   title: {
     color: '#FFFFFF',
     fontSize: 22,
-    fontWeight: '900',
+    fontWeight: '700',
     textAlign: 'center',
   },
   line: {
@@ -112,7 +112,7 @@ export default function RootLayout() {
       const esm = String((mod as { __esModule?: boolean })?.__esModule);
       return (
         <View style={{ flex: 1, backgroundColor: '#CCCCCC', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-          <Text style={{ color: '#fff', fontSize: 16, fontWeight: '900', textAlign: 'center' }}>
+          <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700', textAlign: 'center' }}>
             ERR: kein gültiger Default-Export
           </Text>
           <Text style={{ color: '#BBF7D0', fontSize: 11, textAlign: 'center', marginTop: 12, fontFamily: 'monospace' }}>
@@ -131,7 +131,7 @@ export default function RootLayout() {
     const msg = e instanceof Error ? `${e.name}: ${e.message}` : String(e);
     return (
       <View style={{ flex: 1, backgroundColor: '#DC2626', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-        <Text style={{ color: '#fff', fontSize: 16, fontWeight: '900', textAlign: 'center' }}>
+        <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700', textAlign: 'center' }}>
           ERR: require(_layout.full) threw
         </Text>
         <Text style={{ color: '#FEE2E2', fontSize: 11, textAlign: 'center', marginTop: 12, fontFamily: 'monospace' }}>

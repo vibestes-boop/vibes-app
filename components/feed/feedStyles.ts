@@ -53,7 +53,7 @@ export const vibeFeedScreenStyles = StyleSheet.create({
   newPostsArrow: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '600',
   },
   emptyTag: {
     ...StyleSheet.absoluteFillObject,
@@ -63,7 +63,7 @@ export const vibeFeedScreenStyles = StyleSheet.create({
     gap: 12,
     paddingHorizontal: 40,
   },
-  emptyTagTitle: { color: '#FFFFFF', fontSize: 20, fontWeight: '800', textAlign: 'center' },
+  emptyTagTitle: { color: '#FFFFFF', fontSize: 20, fontWeight: '600', textAlign: 'center' },
   emptyTagSub: { color: 'rgba(255,255,255,0.4)', fontSize: 14, textAlign: 'center', lineHeight: 20 },
   emptyTagBtn: {
     marginTop: 4,
@@ -151,7 +151,7 @@ export const vibeFeedScreenStyles = StyleSheet.create({
   },
   feedModeTxtActive: {
     color: '#FFFFFF',
-    fontWeight: '800',
+    fontWeight: '600',
     textShadowColor: 'rgba(0,0,0,0.8)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
@@ -372,7 +372,7 @@ export const feedItemStyles = StyleSheet.create({
   followBadgePlus: {
     color: '#fff',
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: '600',
     lineHeight: 15,
   },
   authorName: {

@@ -225,7 +225,7 @@ const ds = StyleSheet.create({
   toggleText: { color: 'rgba(255,255,255,0.3)', fontSize: 11, fontWeight: '600' },
   toggleTextActive: { color: '#fff' },
   postBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#fff', marginHorizontal: 16, paddingVertical: 16, borderRadius: 16 },
-  postBtnText: { color: '#000', fontSize: 16, fontWeight: '800' },
+  postBtnText: { color: '#000', fontSize: 16, fontWeight: '600' },
   secondaryActions: { flexDirection: 'row', gap: 10, marginHorizontal: 16, marginTop: 10 },
   secondaryBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,

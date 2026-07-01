@@ -260,7 +260,7 @@ const styles = StyleSheet.create({
   title: {
     color:        '#fff',
     fontSize:     17,
-    fontWeight:   '800',
+    fontWeight:   '600',
     letterSpacing: 0.3,
   },
   subtitle: {
@@ -346,7 +346,7 @@ const styles = StyleSheet.create({
   badgeText: {
     color:          '#fff',
     fontSize:       10,
-    fontWeight:     '800',
+    fontWeight:     '600',
     letterSpacing:  0.2,
   },
 });

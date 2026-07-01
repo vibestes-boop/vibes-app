@@ -137,7 +137,7 @@ export const createStyles = StyleSheet.create({
   avatarSmallText: {
     color: '#fff',
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '600',
   },
   captionInput: {
     flex: 1,

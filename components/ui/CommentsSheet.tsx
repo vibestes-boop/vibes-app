@@ -1135,7 +1135,7 @@ const styles = StyleSheet.create({
     marginTop: 14,
   },
   commentAvatarImage: { width: '100%', height: '100%', resizeMode: 'cover' },
-  commentAvatarText: { color: '#555', fontSize: 13, fontWeight: '800' },
+  commentAvatarText: { color: '#555', fontSize: 13, fontWeight: '600' },
   commentBody: { flex: 1, gap: 4 },
   commentHeader: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   commentUsername: { fontSize: 13, fontWeight: '700' },
@@ -1160,7 +1160,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden', flexShrink: 0,
   },
   avatarTinyImage: { width: '100%', height: '100%', resizeMode: 'cover' },
-  avatarTinyText: { color: '#555', fontSize: 12, fontWeight: '800' },
+  avatarTinyText: { color: '#555', fontSize: 12, fontWeight: '600' },
   input: {
     flex: 1, fontSize: 14,
     maxHeight: 100, paddingVertical: 8, paddingHorizontal: 14,

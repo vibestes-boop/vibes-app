@@ -128,6 +128,6 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: '#1a1a2e',
   },
-  hostInitial: { color: '#fff', fontSize: 36, fontWeight: '800' },
+  hostInitial: { color: '#fff', fontSize: 36, fontWeight: '600' },
   connectingText: { color: 'rgba(255,255,255,0.45)', fontSize: 13, marginTop: 10 },
 });

@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     // borderBottomColor via inline
   },
-  title: { fontSize: 22, fontWeight: '800', letterSpacing: -0.5, flex: 1 }, // color via inline
+  title: { fontSize: 22, fontWeight: '600', letterSpacing: -0.5, flex: 1 }, // color via inline
   composeBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, paddingBottom: 60 },
   emptyTitle: { fontSize: 18, fontWeight: '700', marginTop: 8 }, // color via inline
@@ -292,7 +292,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF', alignItems: 'center', justifyContent: 'center',
     paddingHorizontal: 5,
   },
-  badgeText: { color: '#FFFFFF', fontSize: 11, fontWeight: '800' },
+  badgeText: { color: '#FFFFFF', fontSize: 11, fontWeight: '600' },
   separator: { height: StyleSheet.hairlineWidth, marginLeft: 80 }, // backgroundColor via inline
 });
 
@@ -305,7 +305,7 @@ const modal = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     // borderBottomColor via inline
   },
-  title: { flex: 1, fontSize: 18, fontWeight: '800' }, // color via inline
+  title: { flex: 1, fontSize: 18, fontWeight: '600' }, // color via inline
   closeBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
   searchBar: {
     flexDirection: 'row', alignItems: 'center', gap: 10,

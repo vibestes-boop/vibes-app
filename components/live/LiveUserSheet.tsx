@@ -415,9 +415,9 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarInitial: { color: '#fff', fontWeight: '800', fontSize: 22 },
+  avatarInitial: { color: '#fff', fontWeight: '600', fontSize: 22 },
   userInfo: { flex: 1, gap: 3 },
-  username: { color: '#fff', fontWeight: '800', fontSize: 16 },
+  username: { color: '#fff', fontWeight: '600', fontSize: 16 },
   bio: { color: 'rgba(255,255,255,0.6)', fontSize: 13 },
   statsRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
   stat: { color: 'rgba(255,255,255,0.55)', fontSize: 12 },
@@ -446,7 +446,7 @@ const s = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: '#FFFFFF',
   },
-  followBtnText: { color: '#000', fontWeight: '800', fontSize: 14 },
+  followBtnText: { color: '#000', fontWeight: '600', fontSize: 14 },
   followBtnTextActive: { color: '#FFFFFF' },
 
   iconBtn: {
@@ -481,7 +481,7 @@ const s = StyleSheet.create({
   },
   duetBtnText: {
     color: '#fff',
-    fontWeight: '800',
+    fontWeight: '600',
     fontSize: 14,
   },
 
@@ -506,7 +506,7 @@ const s = StyleSheet.create({
   },
   modBtnText: {
     color: '#fff',
-    fontWeight: '800',
+    fontWeight: '600',
     fontSize: 14,
   },
 

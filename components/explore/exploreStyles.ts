@@ -82,7 +82,7 @@ export const getExploreStyles = (c: ThemeColors) => StyleSheet.create({
     alignSelf: 'center',
     marginBottom: 18,
   },
-  sheetTitle: { color: c.text.primary, fontSize: 18, fontWeight: '800', marginBottom: 4 },
+  sheetTitle: { color: c.text.primary, fontSize: 18, fontWeight: '600', marginBottom: 4 },
   sheetSub: { color: c.text.muted, fontSize: 13, marginBottom: 20 },
   optionsList: { gap: 8 },
   optionRow: {

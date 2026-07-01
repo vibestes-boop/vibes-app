@@ -1016,7 +1016,7 @@ const styles = StyleSheet.create({
   previewCaption: { color: '#FFFFFF', fontSize: 12, fontWeight: '600', lineHeight: 16 },
   previewAuthor: { color: 'rgba(255,255,255,0.65)', fontSize: 10, fontWeight: '500' },
   vibesBadge: { backgroundColor: 'rgba(0,122,255,0.8)', paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8 },
-  vibesBadgeText: { color: '#fff', fontSize: 9, fontWeight: '800', letterSpacing: 0.5 },
+  vibesBadgeText: { color: '#fff', fontSize: 9, fontWeight: '600', letterSpacing: 0.5 },
   playOverlay: { position: 'absolute', inset: 0, alignItems: 'center', justifyContent: 'center' },
   playCircle: {
     width: 44, height: 44, borderRadius: 22,
@@ -1033,7 +1033,7 @@ const styles = StyleSheet.create({
   imageBubbleImg: { width: '100%', height: '100%' },
 
   imagePickerBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center', borderRadius: 18 },
-  gifLabel: { color: '#007AFF', fontSize: 12, fontWeight: '800', letterSpacing: 0.5 },
+  gifLabel: { color: '#007AFF', fontSize: 12, fontWeight: '600', letterSpacing: 0.5 },
 
   lightboxOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.95)', alignItems: 'center', justifyContent: 'center' },
   lightboxImage: { width: '100%', height: '85%' },

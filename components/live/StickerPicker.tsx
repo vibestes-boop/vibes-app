@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
   title: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '600',
     letterSpacing: 0.3,
   },
   closeBtn: {

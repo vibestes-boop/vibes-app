@@ -103,14 +103,14 @@ const to = StyleSheet.create({
   cancelBtn: { padding: 8 },
   cancelText: { color: '#fff', fontSize: 16, fontWeight: '500' },
   doneBtn: { backgroundColor: '#fff', paddingHorizontal: 20, paddingVertical: 8, borderRadius: 20 },
-  doneText: { color: '#000', fontSize: 15, fontWeight: '800' },
+  doneText: { color: '#000', fontSize: 15, fontWeight: '600' },
   previewArea: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
   textInput: { color: '#fff', textAlign: 'center', fontWeight: '700', width: '100%', textShadowColor: 'rgba(0,0,0,0.6)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
   controls: { paddingBottom: 40, gap: 12 },
   sizeRow: { paddingHorizontal: 16, gap: 8, alignItems: 'center' },
   sizeBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.12)' },
   sizeBtnActive: { backgroundColor: '#fff' },
-  sizeBtnText: { color: '#fff', fontWeight: '800' },
+  sizeBtnText: { color: '#fff', fontWeight: '600' },
   colorRow: { paddingHorizontal: 16, gap: 10, alignItems: 'center' },
   colorDot: { width: 32, height: 32, borderRadius: 16, borderWidth: 2, borderColor: 'transparent' },
   colorDotActive: { borderColor: '#fff', transform: [{ scale: 1.2 }] },
@@ -270,5 +270,5 @@ export function TextOverlayItem({
 
 const oi = StyleSheet.create({
   container: { position: 'absolute', top: 0, left: 0, zIndex: 20, alignSelf: 'flex-start', maxWidth: SW * 0.85 },
-  text: { fontWeight: '800', textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.7)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 },
+  text: { fontWeight: '600', textAlign: 'center', textShadowColor: 'rgba(0,0,0,0.7)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6 },
 });

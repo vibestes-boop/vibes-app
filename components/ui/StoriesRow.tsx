@@ -482,7 +482,7 @@ const styles = StyleSheet.create({
   liveBadgeText: {
     color: '#fff',
     fontSize: 8,
-    fontWeight: '900',
+    fontWeight: '700',
     letterSpacing: 1,
   },
   liveBubbleLabel: {

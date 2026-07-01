@@ -380,7 +380,7 @@ const styles = StyleSheet.create({
   badgeText: {
     color: '#FFFFFF',
     fontSize: 9,
-    fontWeight: '800',
+    fontWeight: '600',
     lineHeight: 11,
   },
   // Create-Tab: gleiche Höhe wie die übrigen Icons (oben ausgerichtet, kein Float)

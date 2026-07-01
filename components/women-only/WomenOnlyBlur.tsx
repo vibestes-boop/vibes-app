@@ -62,7 +62,7 @@ const s = StyleSheet.create({
   label: {
     color: '#fff',
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: '600',
     letterSpacing: -0.3,
   },
   sub: {

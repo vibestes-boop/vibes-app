@@ -123,7 +123,7 @@ const styles = StyleSheet.create({
   title: {
     color: '#FFFFFF',
     fontSize: 22,
-    fontWeight: '800',
+    fontWeight: '600',
     letterSpacing: -0.8,
     textAlign: 'center',
     marginTop: 8,

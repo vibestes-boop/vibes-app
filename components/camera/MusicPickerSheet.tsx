@@ -432,7 +432,7 @@ const s = StyleSheet.create({
   // Header
   header: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 16, paddingVertical: 10 },
   hIcon: { width: 44, height: 44, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
-  hTitle: { color: '#fff', fontSize: 16, fontWeight: '800', letterSpacing: -0.4 },
+  hTitle: { color: '#fff', fontSize: 16, fontWeight: '600', letterSpacing: -0.4 },
   hSub: { color: 'rgba(255,255,255,0.35)', fontSize: 12, marginTop: 2 },
   closeBtn: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center' },
 
@@ -445,7 +445,7 @@ const s = StyleSheet.create({
   tab: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 13, paddingVertical: 6, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' },
   tabActive: { backgroundColor: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.22)' },
   tabTxt: { color: 'rgba(255,255,255,0.38)', fontSize: 12, fontWeight: '600' },
-  tabTxtActive: { color: '#fff', fontWeight: '800' },
+  tabTxtActive: { color: '#fff', fontWeight: '600' },
 
   // No Sound
   noSound: { flexDirection: 'row', alignItems: 'center', gap: 10, marginHorizontal: 10, paddingHorizontal: 14, paddingVertical: 10, borderRadius: 14, marginBottom: 5 },

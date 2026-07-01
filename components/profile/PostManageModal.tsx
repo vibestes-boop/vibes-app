@@ -194,7 +194,7 @@ const localStyles = StyleSheet.create({
   },
   statsGrid:   { flexDirection: 'row', alignItems: 'center' },
   statCard:    { flex: 1, alignItems: 'center', gap: 4 },
-  statVal:     { color: '#0F172A', fontSize: 20, fontWeight: '800' },
+  statVal:     { color: '#0F172A', fontSize: 20, fontWeight: '600' },
   statLabel:   { color: '#6B7280', fontSize: 11, fontWeight: '600' },
   statDivider: {
     width: StyleSheet.hairlineWidth, height: 36,

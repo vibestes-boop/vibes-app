@@ -995,7 +995,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     overflow: 'hidden',
   },
-  avatarText: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  avatarText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   avatarSmallImage: { width: '100%', height: '100%', resizeMode: 'cover' },
   authorName: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
   dateText: { color: '#6B7280', fontSize: 11, marginTop: 1 },
@@ -1046,7 +1046,7 @@ const cb = StyleSheet.create({
     justifyContent: 'center',
     flexShrink: 0,
   },
-  avatarInitial: { color: '#fff', fontSize: 14, fontWeight: '800' },
+  avatarInitial: { color: '#fff', fontSize: 14, fontWeight: '600' },
   inputWrap: {
     flex: 1,
     backgroundColor: 'rgba(255,255,255,0.08)',

@@ -250,7 +250,7 @@ function StoryPollOverlay({
       borderWidth: 1,
       borderColor: 'rgba(255,255,255,0.1)',
     }}>
-      <Text style={{ color: '#fff', fontWeight: '800', fontSize: 15, textAlign: 'center' }}>
+      <Text style={{ color: '#fff', fontWeight: '600', fontSize: 15, textAlign: 'center' }}>
         {poll.question}
       </Text>
 
@@ -744,7 +744,7 @@ const sc = StyleSheet.create({
     marginBottom: 12,
   },
   title: {
-    color: '#fff', fontSize: 16, fontWeight: '800',
+    color: '#fff', fontSize: 16, fontWeight: '600',
     textAlign: 'center', marginBottom: 14,
   },
   list: { flex: 1, minHeight: 120 },

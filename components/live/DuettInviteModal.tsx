@@ -287,9 +287,9 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarInitial: { color: '#fff', fontWeight: '800', fontSize: 22 },
+  avatarInitial: { color: '#fff', fontWeight: '600', fontSize: 22 },
   headerText: { flex: 1, gap: 3 },
-  headline: { color: '#fff', fontWeight: '800', fontSize: 16 },
+  headline: { color: '#fff', fontWeight: '600', fontSize: 16 },
   subline: { color: 'rgba(255,255,255,0.65)', fontSize: 13, lineHeight: 18 },
 
   layoutRow: {
@@ -309,7 +309,7 @@ const s = StyleSheet.create({
   },
   layoutText: { color: '#fff', fontSize: 12, fontWeight: '600' },
   countdownChip: { backgroundColor: 'rgba(236,72,153,0.25)' },
-  countdownText: { color: '#FBCFE8', fontSize: 12, fontWeight: '800' },
+  countdownText: { color: '#FBCFE8', fontSize: 12, fontWeight: '600' },
 
   message: {
     color: 'rgba(255,255,255,0.7)',
@@ -344,6 +344,6 @@ const s = StyleSheet.create({
     borderRadius: 24,
     backgroundColor: '#fff',
   },
-  acceptText: { color: '#111827', fontWeight: '800', fontSize: 14 },
+  acceptText: { color: '#111827', fontWeight: '600', fontSize: 14 },
   btnDisabled: { opacity: 0.5 },
 });

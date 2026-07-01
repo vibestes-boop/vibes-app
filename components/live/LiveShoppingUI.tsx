@@ -303,9 +303,9 @@ const s = StyleSheet.create({
   pillTitle: { color: '#fff', fontSize: 13, fontWeight: '700' },
   pillPrice: { color: 'rgba(255,255,255,0.7)', fontSize: 11, marginTop: 2 },
   pillBuyBtn: { marginRight: 12, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12 },
-  pillBuyText: { fontSize: 13, fontWeight: '800' },
+  pillBuyText: { fontSize: 13, fontWeight: '600' },
   pillBoughtBadge: { marginRight: 12, paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12, backgroundColor: '#16A34A' },
-  pillBoughtText: { color: '#fff', fontSize: 12, fontWeight: '800' },
+  pillBoughtText: { color: '#fff', fontSize: 12, fontWeight: '600' },
 
   // Confirm
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
@@ -313,8 +313,8 @@ const s = StyleSheet.create({
     borderTopLeftRadius: 24, borderTopRightRadius: 24,
     padding: 24, gap: 10, alignItems: 'center', overflow: 'hidden',
   },
-  confirmTitle:   { color: '#fff', fontSize: 18, fontWeight: '800', textAlign: 'center' },
-  confirmPrice:   { color: '#FBBF24', fontSize: 26, fontWeight: '800' },
+  confirmTitle:   { color: '#fff', fontSize: 18, fontWeight: '600', textAlign: 'center' },
+  confirmPrice:   { color: '#FBBF24', fontSize: 26, fontWeight: '600' },
   confirmBalance: { color: 'rgba(255,255,255,0.5)', fontSize: 12 },
   confirmBtns: { flexDirection: 'row', gap: 12, marginTop: 8, width: '100%' },
   confirmCancel: {
@@ -323,7 +323,7 @@ const s = StyleSheet.create({
   },
   confirmCancelText: { color: 'rgba(255,255,255,0.6)', fontSize: 15, fontWeight: '600' },
   confirmBuy: { flex: 2, paddingVertical: 14, borderRadius: 14, alignItems: 'center', backgroundColor: '#fff' },
-  confirmBuyText: { color: '#000', fontSize: 15, fontWeight: '800' },
+  confirmBuyText: { color: '#000', fontSize: 15, fontWeight: '600' },
 
   // Sold Banner
   soldBanner: {
@@ -353,7 +353,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 20, paddingTop: 20, paddingBottom: 14,
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.1)',
   },
-  hostSheetTitle: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  hostSheetTitle: { color: '#fff', fontSize: 16, fontWeight: '600' },
   unpinBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     paddingHorizontal: 20, paddingVertical: 12,
@@ -379,5 +379,5 @@ const s = StyleSheet.create({
   pinnedBadge: {
     backgroundColor: '#16A34A', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8,
   },
-  pinnedBadgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
+  pinnedBadgeText: { color: '#fff', fontSize: 10, fontWeight: '600' },
 });

@@ -52,7 +52,7 @@ const badge = StyleSheet.create({
     paddingHorizontal: 8, paddingVertical: 4,
     borderRadius: 20, borderWidth: 1,
   },
-  pct: { fontSize: 12, fontWeight: '800' },
+  pct: { fontSize: 12, fontWeight: '600' },
   secs: { fontSize: 10, fontWeight: '500' },
 });
 
@@ -225,7 +225,7 @@ const member_s = StyleSheet.create({
   username: { fontSize: 14, fontWeight: '700' },
   sub: { fontSize: 11, marginTop: 2 },
   scoreWrap: { alignItems: 'flex-end' },
-  scoreNum: { color: '#34D399', fontSize: 18, fontWeight: '800' },
+  scoreNum: { color: '#34D399', fontSize: 18, fontWeight: '600' },
   scoreLabel: { fontSize: 10, marginTop: 1 },
 });
 
@@ -248,7 +248,7 @@ const sec = StyleSheet.create({
     width: 36, height: 36, borderRadius: 10,
     alignItems: 'center', justifyContent: 'center',
   },
-  title: { fontSize: 16, fontWeight: '800' },
+  title: { fontSize: 16, fontWeight: '600' },
   sub: { fontSize: 11, marginTop: 1 },
 });
 
@@ -349,7 +349,7 @@ const lb = StyleSheet.create({
   loadingText: { fontSize: 14 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 60, gap: 12, paddingHorizontal: 32 },
   emptyIcon: { fontSize: 48 },
-  emptyTitle: { fontSize: 18, fontWeight: '800' },
+  emptyTitle: { fontSize: 18, fontWeight: '600' },
   emptyDesc: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
   uspBanner: { borderRadius: 14, overflow: 'hidden', marginBottom: 20, borderWidth: 1, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 14, paddingVertical: 10 },
   uspText: { fontSize: 12, fontStyle: 'italic', flex: 1 },

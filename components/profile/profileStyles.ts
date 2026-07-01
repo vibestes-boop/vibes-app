@@ -40,7 +40,7 @@ function buildStyles(c: ThemeColors) {
     handle: {
       color: c.text.primary,
       fontSize: 18,
-      fontWeight: '800',
+      fontWeight: '600',
       letterSpacing: -0.4,
       marginTop: 1,
     },
@@ -70,7 +70,7 @@ function buildStyles(c: ThemeColors) {
       borderWidth: 1.5,
       borderColor: c.bg.primary,
     },
-    hBadgeText: { color: '#fff', fontSize: 7, fontWeight: '800' },
+    hBadgeText: { color: '#fff', fontSize: 7, fontWeight: '600' },
 
     // ── Profile Top (Avatar + Stats) ─────────────────────────
     profileTop: {
@@ -99,7 +99,7 @@ function buildStyles(c: ThemeColors) {
     },
     avatarImg: { width: '100%', height: '100%' },
     avatarFallback: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-    avatarInitial: { color: c.text.secondary, fontSize: 30, fontWeight: '800' },
+    avatarInitial: { color: c.text.secondary, fontSize: 30, fontWeight: '600' },
     storyDot: {
       position: 'absolute',
       bottom: 4,
@@ -128,7 +128,7 @@ function buildStyles(c: ThemeColors) {
     storyAddBadgeText: {
       color: c.bg.primary,
       fontSize: 14,
-      fontWeight: '800',
+      fontWeight: '600',
       lineHeight: 16,
       marginTop: -1,
     },
@@ -141,7 +141,7 @@ function buildStyles(c: ThemeColors) {
       justifyContent: 'space-around',
     },
     statItem: { alignItems: 'center', flex: 1 },
-    statNum: { color: c.text.primary, fontSize: 18, fontWeight: '800', letterSpacing: -0.5 },
+    statNum: { color: c.text.primary, fontSize: 18, fontWeight: '600', letterSpacing: -0.5 },
     statLabel: { color: c.text.muted, fontSize: 11, fontWeight: '500', marginTop: 2 },
     statDivider: { width: StyleSheet.hairlineWidth, height: 28, backgroundColor: c.border.subtle },
 
@@ -154,7 +154,7 @@ function buildStyles(c: ThemeColors) {
       backgroundColor: c.bg.secondary,   // fortsetzung der Karte — KEIN borderBottom mehr
     },                                   // (durchgehende Fläche statt gestapelter Bänder)
     nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },
-    displayName: { color: c.text.primary, fontSize: 17, fontWeight: '800', letterSpacing: -0.3 },
+    displayName: { color: c.text.primary, fontSize: 17, fontWeight: '600', letterSpacing: -0.3 },
     verifiedBadge: {
       width: 20,
       height: 20,
@@ -344,7 +344,7 @@ function buildStyles(c: ThemeColors) {
     metricDivider: { width: StyleSheet.hairlineWidth, backgroundColor: c.border.subtle, marginVertical: 14 },
     kachel: { flex: 1, alignItems: 'center', paddingVertical: 14, gap: 4 },
     kachelIcon: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
-    kachelValue: { color: c.text.primary, fontSize: 15, fontWeight: '800', letterSpacing: -0.3 },
+    kachelValue: { color: c.text.primary, fontSize: 15, fontWeight: '600', letterSpacing: -0.3 },
     kachelLabel: { color: c.text.muted, fontSize: 10, fontWeight: '600', letterSpacing: 0.5 },
 
     // ── Tab Bar ───────────────────────────────────────────────
@@ -386,13 +386,13 @@ function buildStyles(c: ThemeColors) {
       backgroundColor: '#EF4444', borderRadius: 5,
       paddingHorizontal: 5, paddingVertical: 2,
     },
-    shopSaleBadgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
+    shopSaleBadgeText: { color: '#fff', fontSize: 10, fontWeight: '600' },
     shopPricePill: {
       position: 'absolute', left: 6, right: 6, bottom: 6,
       backgroundColor: 'rgba(0,0,0,0.65)', borderRadius: 8,
       paddingHorizontal: 7, paddingVertical: 4,
     },
-    shopPriceText: { color: '#fff', fontSize: 11, fontWeight: '800', letterSpacing: 0.1 },
+    shopPriceText: { color: '#fff', fontSize: 11, fontWeight: '600', letterSpacing: 0.1 },
     cellText: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 10, backgroundColor: c.bg.secondary },
     cellCaption: { color: c.text.muted, fontSize: 10, textAlign: 'center', lineHeight: 15 },
 
@@ -427,7 +427,7 @@ function buildStyles(c: ThemeColors) {
     analyticsBarTrack: { height: 5, borderRadius: 3, backgroundColor: c.bg.subtle, overflow: 'hidden' },
     analyticsBarFill: { height: '100%', borderRadius: 3 },
     analyticsScore: { alignItems: 'center', minWidth: 44 },
-    analyticsScoreNum: { color: c.accent.primary, fontSize: 15, fontWeight: '800' },
+    analyticsScoreNum: { color: c.accent.primary, fontSize: 15, fontWeight: '600' },
     analyticsScoreLabel: { color: c.text.muted, fontSize: 10, fontWeight: '600', letterSpacing: 0.5, textTransform: 'uppercase' },
   });
 }

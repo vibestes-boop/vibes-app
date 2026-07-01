@@ -256,7 +256,7 @@ const s = StyleSheet.create({
   title: {
     color: '#fff',
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: '600',
     textAlign: 'center',
     marginBottom: 20,
     letterSpacing: 0.3,
@@ -298,7 +298,7 @@ const s = StyleSheet.create({
   cardLabel: {
     color: '#fff',
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: '600',
     letterSpacing: 0.2,
   },
   cardSub: {

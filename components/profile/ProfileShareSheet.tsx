@@ -366,7 +366,7 @@ const ss = StyleSheet.create({
   },
   headerProfile: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   headerAvatar: { width: 36, height: 36, borderRadius: 18 },
-  headerTitle: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  headerTitle: { color: '#fff', fontSize: 16, fontWeight: '600' },
   headerSub:   { color: 'rgba(255,255,255,0.4)', fontSize: 12, marginTop: 1 },
   closeBtn:    { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
 
@@ -403,7 +403,7 @@ const ss = StyleSheet.create({
     backgroundColor: '#fff', borderRadius: 14,
     marginHorizontal: 20, marginTop: 12, paddingVertical: 12,
   },
-  sendBtnText: { color: '#000', fontSize: 15, fontWeight: '800' },
+  sendBtnText: { color: '#000', fontSize: 15, fontWeight: '600' },
 
   // App-Icons
   appRow: { paddingHorizontal: 20, gap: 20, paddingVertical: 14 },

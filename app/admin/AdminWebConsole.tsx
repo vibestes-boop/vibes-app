@@ -150,11 +150,11 @@ const s = StyleSheet.create({
     justifyContent: 'center',
   },
   headerCenter: { alignItems: 'center' },
-  headerTitle: { fontSize: 17, fontWeight: '800' },
+  headerTitle: { fontSize: 17, fontWeight: '600' },
   headerSub: { fontSize: 11, marginTop: 1 },
   hero: { borderRadius: 18, borderWidth: 1, padding: 16, gap: 10 },
   heroIcon: { width: 42, height: 42, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
-  heroTitle: { fontSize: 20, fontWeight: '800', lineHeight: 25 },
+  heroTitle: { fontSize: 20, fontWeight: '600', lineHeight: 25 },
   heroText: { fontSize: 13, lineHeight: 19 },
   primaryBtn: {
     marginTop: 4,
@@ -166,8 +166,8 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
   },
-  primaryText: { fontSize: 14, fontWeight: '800' },
-  sectionTitle: { fontSize: 12, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 },
+  primaryText: { fontSize: 14, fontWeight: '600' },
+  sectionTitle: { fontSize: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
   row: {
     minHeight: 74,
     borderRadius: 16,
@@ -178,6 +178,6 @@ const s = StyleSheet.create({
     gap: 12,
   },
   rowIcon: { width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  rowTitle: { fontSize: 15, fontWeight: '800' },
+  rowTitle: { fontSize: 15, fontWeight: '600' },
   rowSub: { fontSize: 12, marginTop: 2, lineHeight: 16 },
 });

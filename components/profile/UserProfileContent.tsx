@@ -99,7 +99,7 @@ const shopCellOverlay = {
   paddingHorizontal: 7, paddingVertical: 5, gap: 2,
 };
 const shopCellTitle = { color: '#fff', fontSize: 11, fontWeight: '700' as const, letterSpacing: 0.1 };
-const shopCellPrice = { color: '#fff', fontSize: 12, fontWeight: '800' as const, letterSpacing: 0.1 };
+const shopCellPrice = { color: '#fff', fontSize: 12, fontWeight: '600' as const, letterSpacing: 0.1 };
 
 type PublicProfile = {
   id: string;
@@ -1096,7 +1096,7 @@ const s = StyleSheet.create({
     flex: 1, flexDirection: 'row', justifyContent: 'space-around',
   },
   statItem: { alignItems: 'center', gap: 2 },
-  statValue: { fontSize: 18, fontWeight: '800', letterSpacing: -0.5 }, // color via inline
+  statValue: { fontSize: 18, fontWeight: '600', letterSpacing: -0.5 }, // color via inline
   statLabel: { fontSize: 12, fontWeight: '500' }, // color via inline
 
   // ── User Info Section ───────────────────────────────────────
@@ -1109,10 +1109,10 @@ const s = StyleSheet.create({
   },
   avatarGap: { flex: 1, borderRadius: AVATAR_SIZE / 2, overflow: 'hidden' },
   avatarImg: { width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' },
-  avatarInitials: { color: '#fff', fontSize: 36, fontWeight: '800', letterSpacing: -1 },
+  avatarInitials: { color: '#fff', fontSize: 36, fontWeight: '600', letterSpacing: -1 },
   infoSection: { paddingHorizontal: 20, paddingBottom: 8, gap: 10 },   // backgroundColor via inline
   nameRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  username: { fontSize: 22, fontWeight: '800', letterSpacing: -0.7 }, // color via inline
+  username: { fontSize: 22, fontWeight: '600', letterSpacing: -0.7 }, // color via inline
   guildPill: {
     flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 5,
     alignSelf: 'flex-start', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20,
@@ -1174,7 +1174,7 @@ const s = StyleSheet.create({
     borderRadius: 5,
     paddingHorizontal: 5, paddingVertical: 2,
   },
-  shopSaleBadgeText: { color: '#fff', fontSize: 10, fontWeight: '900', letterSpacing: 0.1 },
+  shopSaleBadgeText: { color: '#fff', fontSize: 10, fontWeight: '700', letterSpacing: 0.1 },
   shopPricePill: {
     position: 'absolute', left: 6, right: 6, bottom: 6,
     backgroundColor: 'rgba(0,0,0,0.65)',
@@ -1182,7 +1182,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 7, paddingVertical: 4,
     alignSelf: 'flex-start',
   },
-  shopPriceText: { color: '#fff', fontSize: 11, fontWeight: '800', letterSpacing: 0.1 },
+  shopPriceText: { color: '#fff', fontSize: 11, fontWeight: '600', letterSpacing: 0.1 },
   textThumb: { flex: 1, padding: 10, alignItems: 'center', justifyContent: 'center' },
   textThumbCaption: { color: 'rgba(255,255,255,0.55)', fontSize: 11, textAlign: 'center', lineHeight: 16 },
   emptyGrid: { paddingVertical: 60, alignItems: 'center', gap: 10, paddingHorizontal: 40 },

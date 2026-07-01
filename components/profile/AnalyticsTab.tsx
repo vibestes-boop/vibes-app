@@ -354,7 +354,7 @@ const ep = StyleSheet.create({
   walletHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
   walletLeft: { gap: 4, flex: 1 },
   walletLabel: { fontSize: 11, fontWeight: '600', letterSpacing: 0.8 },
-  walletBalance: { fontSize: 38, fontWeight: '800', letterSpacing: -1 },
+  walletBalance: { fontSize: 38, fontWeight: '600', letterSpacing: -1 },
   walletSubRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
   walletSub: { fontSize: 12.5, fontWeight: '500' },
   walletIcon: {
@@ -548,7 +548,7 @@ const s = StyleSheet.create({
   },
   kpiTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
   kpiIconWrap: { width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-  kpiValue: { fontSize: 26, fontWeight: '800', letterSpacing: -1 },
+  kpiValue: { fontSize: 26, fontWeight: '600', letterSpacing: -1 },
   kpiLabel: { fontSize: 11, fontWeight: '500' },
   kpiSub: { fontSize: 10, marginTop: 2 },
 
@@ -569,7 +569,7 @@ const s = StyleSheet.create({
   engTitle: { fontSize: 14, fontWeight: '700' },
   engSub: { fontSize: 11, marginTop: 2 },
   engRateWrap: { alignItems: 'flex-end' },
-  engRate: { fontSize: 24, fontWeight: '800', letterSpacing: -1 },
+  engRate: { fontSize: 24, fontWeight: '600', letterSpacing: -1 },
   engQuality: { fontSize: 10, fontWeight: '600', letterSpacing: 0.3 },
   engTrack: { height: 6, borderRadius: 3, overflow: 'hidden' },
   engFill: { height: '100%', borderRadius: 3 },
@@ -639,6 +639,6 @@ const s = StyleSheet.create({
   completionPct: { fontSize: 9, fontWeight: '600', width: 24, textAlign: 'right' },
 
   metricWrap: { alignItems: 'flex-end', minWidth: 44 },
-  metricValue: { fontSize: 15, fontWeight: '800', letterSpacing: -0.5 },
+  metricValue: { fontSize: 15, fontWeight: '600', letterSpacing: -0.5 },
   metricLabel: { fontSize: 9, fontWeight: '500', marginTop: 1 },
 });

@@ -248,7 +248,7 @@ const msx = {
     borderRadius: 3, marginBottom: 16,
   },
   sheetTitle: {
-    fontSize: 22, fontWeight: '800' as const,
+    fontSize: 22, fontWeight: '600' as const,
     letterSpacing: -0.4, marginBottom: 18, paddingHorizontal: 2,
   },
   sectionLabel: {

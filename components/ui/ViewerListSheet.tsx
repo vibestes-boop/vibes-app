@@ -756,7 +756,7 @@ const s = StyleSheet.create({
   },
   rankNum: {
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: '600',
   },
   rankTop: { color: '#FF2E63' },           // Top 3 → pink
   rankRest: { color: 'rgba(255,255,255,0.45)' }, // Ab Platz 4 → grau
@@ -777,7 +777,7 @@ const s = StyleSheet.create({
   rankChipText: {
     color: '#FF6B8A',
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '600',
     letterSpacing: 0.2,
   },
   // v1.22.3 — Follower-Badge (User folgt dem Host)
@@ -788,7 +788,7 @@ const s = StyleSheet.create({
   followerChipText: {
     color: '#F87171',
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '600',
     letterSpacing: 0.2,
   },
   // v1.22.3 — Moderator-Badge (vom Host ernannt, session-scoped)
@@ -799,7 +799,7 @@ const s = StyleSheet.create({
   moderatorChipText: {
     color: '#60A5FA',
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '600',
     letterSpacing: 0.2,
   },
   rightCol: {
@@ -810,7 +810,7 @@ const s = StyleSheet.create({
   giftCountText: {
     color: '#fff',
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: '600',
   },
   coinHint: {
     color: 'rgba(255,255,255,0.4)',
@@ -848,7 +848,7 @@ const s = StyleSheet.create({
   selfCtaBtnText: {
     color: '#fff',
     fontSize: 13,
-    fontWeight: '800',
+    fontWeight: '600',
   },
 
   // ── Viewer Row ──
@@ -874,7 +874,7 @@ const s = StyleSheet.create({
   viewerAvatarLetter: {
     color: '#fff',
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '600',
   },
   viewerInfo: {
     flex: 1,
@@ -962,12 +962,12 @@ const s = StyleSheet.create({
   profileAvatarLetter: {
     color: '#fff',
     fontSize: 28,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   profileUsername: {
     color: '#fff',
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: '600',
   },
   profileBio: {
     color: 'rgba(255,255,255,0.45)',

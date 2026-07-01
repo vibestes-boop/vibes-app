@@ -259,7 +259,7 @@ const css = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
   },
   replayBadgeText: {
-    color: 'rgba(255,255,255,0.8)', fontSize: 10, fontWeight: '800', letterSpacing: 0.8,
+    color: 'rgba(255,255,255,0.8)', fontSize: 10, fontWeight: '600', letterSpacing: 0.8,
   },
 
   // Info

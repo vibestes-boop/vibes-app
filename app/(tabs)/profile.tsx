@@ -57,7 +57,7 @@ const shopCellOverlay = {
   paddingHorizontal: 7, paddingVertical: 5, gap: 2,
 };
 const shopCellTitle = { color: '#fff', fontSize: 11, fontWeight: '700' as const, letterSpacing: 0.1 };
-const shopCellPrice = { color: '#fff', fontSize: 12, fontWeight: '800' as const, letterSpacing: 0.1 };
+const shopCellPrice = { color: '#fff', fontSize: 12, fontWeight: '600' as const, letterSpacing: 0.1 };
 
 export default function ProfileScreen() {
   useThemedStatusBar('auto');

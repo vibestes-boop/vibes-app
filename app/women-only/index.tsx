@@ -278,11 +278,11 @@ const styles = StyleSheet.create({
   },
   headerCenter: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   headerEmoji: { fontSize: 18 },
-  headerTitle: { color: '#fff', fontSize: 17, fontWeight: '800' },
+  headerTitle: { color: '#fff', fontSize: 17, fontWeight: '600' },
 
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
 
-  emptyTitle: { fontSize: 20, fontWeight: '800', marginBottom: 8 },
+  emptyTitle: { fontSize: 20, fontWeight: '600', marginBottom: 8 },
   emptySub: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
 
   // Grid Cards
@@ -321,7 +321,7 @@ const styles = StyleSheet.create({
   },
   gateEmoji: { fontSize: 56, marginBottom: 12 },
   gateTitle: {
-    fontSize: 28, fontWeight: '900', letterSpacing: -0.5,
+    fontSize: 28, fontWeight: '700', letterSpacing: -0.5,
     color: LC.accent.rose, marginBottom: 8,
   },
   gateSub: {
@@ -344,5 +344,5 @@ const styles = StyleSheet.create({
 
   joinBtn: { borderRadius: 18, overflow: 'hidden' },
   joinBtnGradient: { paddingVertical: 18, alignItems: 'center' },
-  joinBtnText: { color: '#fff', fontSize: 17, fontWeight: '800', letterSpacing: -0.3 },
+  joinBtnText: { color: '#fff', fontSize: 17, fontWeight: '600', letterSpacing: -0.3 },
 });

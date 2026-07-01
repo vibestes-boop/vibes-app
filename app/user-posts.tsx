@@ -746,7 +746,7 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
   },
   avatarSmallImg: { width: '100%', height: '100%', resizeMode: 'cover' },
-  avatarText: { color: '#fff', fontSize: 14, fontWeight: '800' },
+  avatarText: { color: '#fff', fontSize: 14, fontWeight: '600' },
   authorName: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
   dateText: { color: '#6B7280', fontSize: 11, marginTop: 1 },
   caption: { color: 'rgba(255,255,255,0.85)', fontSize: 15, lineHeight: 22 },
@@ -776,7 +776,7 @@ const s = StyleSheet.create({
     flexShrink: 0,
   },
   commentAvatarImg: { width: '100%', height: '100%', resizeMode: 'cover' },
-  commentAvatarInitial: { color: '#fff', fontSize: 14, fontWeight: '800' },
+  commentAvatarInitial: { color: '#fff', fontSize: 14, fontWeight: '600' },
   commentInputWrap: {
     flex: 1,
     backgroundColor: 'rgba(255,255,255,0.08)',

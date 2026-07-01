@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
   title: {
     flex: 1,
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '600',
     color: '#e2e8f0',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
@@ -340,7 +340,7 @@ const styles = StyleSheet.create({
   resultPercent: {
     color: '#fff',
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '600',
     fontVariant: ['tabular-nums'],
     marginLeft: 6,
   },

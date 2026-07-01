@@ -128,7 +128,7 @@ const s = StyleSheet.create({
 
   summaryRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
   card: { flex: 1, borderRadius: 14, borderWidth: 1, padding: 12, gap: 4, alignItems: 'flex-start' },
-  cardValue: { fontSize: 17, fontWeight: '800', letterSpacing: -0.2 },
+  cardValue: { fontSize: 17, fontWeight: '600', letterSpacing: -0.2 },
   cardLabel: { fontSize: 11.5, fontWeight: '600' },
   coinRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
 
@@ -137,7 +137,7 @@ const s = StyleSheet.create({
   thumbFallback: { alignItems: 'center', justifyContent: 'center' },
   rowTitle: { fontSize: 14, fontWeight: '700' },
   rowSub: { fontSize: 12, fontWeight: '500' },
-  rowMoney: { fontSize: 14, fontWeight: '800' },
+  rowMoney: { fontSize: 14, fontWeight: '600' },
   rowCoins: { fontSize: 12, fontWeight: '600' },
 
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },

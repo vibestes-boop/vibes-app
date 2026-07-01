@@ -213,7 +213,7 @@ const s = StyleSheet.create({
   },
   tierChipText: {
     fontSize: 9.5,
-    fontWeight: '800',
+    fontWeight: '600',
     color: '#fff',
     letterSpacing: 0.4,
     textTransform: 'uppercase',

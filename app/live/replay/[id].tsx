@@ -378,7 +378,7 @@ const s = StyleSheet.create({
   replayBadgeText: {
     color: '#fff',
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '600',
     letterSpacing: 1.2,
   },
 

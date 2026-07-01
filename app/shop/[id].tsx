@@ -519,7 +519,7 @@ function ShareSheet({ product, onClose, colors, celebrate = false }: { product: 
           {celebrate && (
             <View style={{ alignItems: 'center', paddingHorizontal: 22, paddingBottom: 14 }}>
               <Text style={{ fontSize: 34 }}>🤎</Text>
-              <Text style={{ color: '#fff', fontSize: 19, fontWeight: '800', marginTop: 2 }}>Vorbestellt!</Text>
+              <Text style={{ color: '#fff', fontSize: 19, fontWeight: '600', marginTop: 2 }}>Vorbestellt!</Text>
               <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, textAlign: 'center', marginTop: 5, lineHeight: 18 }}>
                 Teil es mit Freunden — je mehr mitmachen, desto eher startet die Sammelbestellung 🚀
               </Text>

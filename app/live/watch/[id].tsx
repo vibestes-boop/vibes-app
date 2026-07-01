@@ -344,7 +344,7 @@ function LiveEndedOverlay({
             />
           ) : (
             <View style={[s2.endedAvatar, { backgroundColor: '#CCCCCC', alignItems: 'center', justifyContent: 'center' }]}>
-              <Text style={{ color: '#fff', fontSize: 36, fontWeight: '800' }}>
+              <Text style={{ color: '#fff', fontSize: 36, fontWeight: '600' }}>
                 {host?.username?.[0]?.toUpperCase() ?? '?'}
               </Text>
             </View>
@@ -417,7 +417,7 @@ const s2 = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'rgba(255,255,255,0.15)',
   },
-  endedUsername: { color: '#fff', fontSize: 18, fontWeight: '800', letterSpacing: 0.3 },
+  endedUsername: { color: '#fff', fontSize: 18, fontWeight: '600', letterSpacing: 0.3 },
   endedTitle: { color: 'rgba(255,255,255,0.85)', fontSize: 22, fontWeight: '700', textAlign: 'center' },
   endedSubtitle: { color: 'rgba(255,255,255,0.5)', fontSize: 14, textAlign: 'center', marginBottom: 8 },
   endedStats: {
@@ -432,7 +432,7 @@ const s2 = StyleSheet.create({
     marginBottom: 8,
   },
   endedStat: { alignItems: 'center', gap: 3, minWidth: 70 },
-  endedStatNum: { color: '#fff', fontSize: 22, fontWeight: '800' },
+  endedStatNum: { color: '#fff', fontSize: 22, fontWeight: '600' },
   endedStatLabel: { color: 'rgba(255,255,255,0.45)', fontSize: 11, fontWeight: '600' },
   endedStatDivider: { width: 1, height: 32, backgroundColor: 'rgba(255,255,255,0.15)', marginHorizontal: 8 },
   endedFollowBtn: {
@@ -444,7 +444,7 @@ const s2 = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.15)',
   },
-  endedFollowText: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  endedFollowText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   endedBackBtn: {
     width: '100%',
     backgroundColor: 'rgba(255,255,255,0.1)',
@@ -490,7 +490,7 @@ function WatchUI({ sessionId, onRequestPublisherUpgrade }: WatchUIProps) {
           style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 }}
         >
           <Text style={{ fontSize: 56, marginBottom: 20 }}>🔒</Text>
-          <Text style={{ color: LC.accent.rose, fontSize: 24, fontWeight: '900', textAlign: 'center', marginBottom: 8 }}>
+          <Text style={{ color: LC.accent.rose, fontSize: 24, fontWeight: '700', textAlign: 'center', marginBottom: 8 }}>
             Women-Only Live
           </Text>
           <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, textAlign: 'center', lineHeight: 22, marginBottom: 40 }}>
@@ -2463,7 +2463,7 @@ export default function LiveWatchScreen() {
     return (
       <View style={[s.root, { alignItems: 'center', justifyContent: 'center', gap: 14, padding: 28 }]}>
         <Text style={{ fontSize: 46 }}>🔒</Text>
-        <Text style={{ color: '#fff', fontSize: 18, fontWeight: '800', textAlign: 'center' }}>
+        <Text style={{ color: '#fff', fontSize: 18, fontWeight: '600', textAlign: 'center' }}>
           Nur für Follower
         </Text>
         <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 14, textAlign: 'center', lineHeight: 20 }}>
@@ -2498,7 +2498,7 @@ export default function LiveWatchScreen() {
           }}
           style={[s.backBtnCenter, { backgroundColor: '#FF2D55', marginTop: 6, paddingHorizontal: 28 }]}
         >
-          <Text style={{ color: '#fff', fontWeight: '800', fontSize: 15 }}>
+          <Text style={{ color: '#fff', fontWeight: '600', fontSize: 15 }}>
             {joiningAfterFollow ? 'Moment …' : amFollowingHost ? '🔄 Erneut versuchen' : 'Folgen & reinkommen'}
           </Text>
         </Pressable>
@@ -2683,7 +2683,7 @@ const s = StyleSheet.create({
     borderWidth: 3, borderColor: '#EF4444',
   },
   hostAvatarFallback: { backgroundColor: '#CCCCCC', alignItems: 'center', justifyContent: 'center' },
-  hostInitial: { color: '#fff', fontSize: 44, fontWeight: '900' },
+  hostInitial: { color: '#fff', fontSize: 44, fontWeight: '700' },
   connectingText: { color: 'rgba(255,255,255,0.4)', fontSize: 14, marginTop: 8 },
 
   reactionsLayer: {
@@ -2745,7 +2745,7 @@ const s = StyleSheet.create({
     elevation: 3,
   },
   liveDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: '#fff' },
-  liveLabel: { color: '#fff', fontWeight: '800', fontSize: 12, letterSpacing: 1.2 },
+  liveLabel: { color: '#fff', fontWeight: '600', fontSize: 12, letterSpacing: 1.2 },
   titleTextHeader: { flex: 1, color: '#fff', fontSize: 14, fontWeight: '600' },
   viewerBadge: {
     flexDirection: 'row',
@@ -2791,7 +2791,7 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center', justifyContent: 'center',
   },
-  hostInitialLg: { color: '#fff', fontWeight: '800', fontSize: 13 },
+  hostInitialLg: { color: '#fff', fontWeight: '600', fontSize: 13 },
   hostMeta: { gap: 1 },
   hostUsernameLg: {
     color: '#fff', fontWeight: '700', fontSize: 13,
@@ -2841,7 +2841,7 @@ const s = StyleSheet.create({
   guestAvatarMiniInitial: {
     color: '#fff',
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '600',
     textAlign: 'center',
     lineHeight: 20,
   },
@@ -2853,7 +2853,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 9, paddingVertical: 4, borderRadius: 12,
   },
   liveGreenDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: '#22C55E' },
-  liveLabelNew: { color: '#fff', fontWeight: '800', fontSize: 11, letterSpacing: 0.8 },
+  liveLabelNew: { color: '#fff', fontWeight: '600', fontSize: 11, letterSpacing: 0.8 },
   closeTopBtn: {
     width: 32, height: 32, borderRadius: 16,
     backgroundColor: 'rgba(0,0,0,0.45)',
@@ -2944,7 +2944,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  commentAvatarInitial: { color: '#fff', fontSize: 15, fontWeight: '800' },
+  commentAvatarInitial: { color: '#fff', fontSize: 15, fontWeight: '600' },
   commentStack: {
     flexShrink: 1,
     flexDirection: 'column',
@@ -2978,7 +2978,7 @@ const s = StyleSheet.create({
   commentBadgeText: {
     color: '#fff',
     fontSize: 9,
-    fontWeight: '900',
+    fontWeight: '700',
     letterSpacing: 0.2,
   },
   commentText: {
@@ -3046,7 +3046,7 @@ const s = StyleSheet.create({
   shopBagBadgeText: {
     color: '#fff',
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '600',
   },
 
   followBtn: {
@@ -3056,7 +3056,7 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   followBtnActive: { borderColor: '#4ade80', backgroundColor: 'rgba(74,222,128,0.2)' },
-  followBtnText: { color: '#fff', fontSize: 15, fontWeight: '900', lineHeight: 17 },
+  followBtnText: { color: '#fff', fontSize: 15, fontWeight: '700', lineHeight: 17 },
 
   muteBtn: {
     width: 36, height: 36, borderRadius: 18,
@@ -3148,7 +3148,7 @@ const s = StyleSheet.create({
     paddingVertical: 2,
     zIndex: 5,
   },
-  hdBadgeText: { color: 'rgba(255,255,255,0.55)', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
+  hdBadgeText: { color: 'rgba(255,255,255,0.55)', fontSize: 10, fontWeight: '600', letterSpacing: 1 },
 
   // Report Modal
   reportBackdrop: {
@@ -3165,7 +3165,7 @@ const s = StyleSheet.create({
     paddingBottom: 40,
     gap: 12,
   },
-  reportTitle: { color: '#fff', fontSize: 18, fontWeight: '800', textAlign: 'center' },
+  reportTitle: { color: '#fff', fontSize: 18, fontWeight: '600', textAlign: 'center' },
   reportSub: { color: 'rgba(255,255,255,0.55)', fontSize: 14, textAlign: 'center', marginBottom: 8 },
   reportOption: {
     backgroundColor: 'rgba(255,255,255,0.08)',
@@ -3187,7 +3187,7 @@ const s = StyleSheet.create({
     paddingVertical: 14,
     marginTop: 8,
   },
-  reportDoneText: { color: '#000', fontSize: 15, fontWeight: '800', textAlign: 'center' },
+  reportDoneText: { color: '#000', fontSize: 15, fontWeight: '600', textAlign: 'center' },
 
   // ── Emoji-Picker Bottom-Sheet ────────────────────────────────────────────────
   emojiPickerBackdrop: {

@@ -163,7 +163,7 @@ const s = StyleSheet.create({
   handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)', alignSelf: 'center', marginBottom: 20 },
 
   header: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 32 },
-  headerTitle: { color: '#fff', fontSize: 18, fontWeight: '800' },
+  headerTitle: { color: '#fff', fontSize: 18, fontWeight: '600' },
   headerSub:   { color: 'rgba(255,255,255,0.4)', fontSize: 13, marginTop: 2 },
   closeBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
 
@@ -189,7 +189,7 @@ const s = StyleSheet.create({
     paddingVertical: 16, marginTop: 8,
   },
   submitBtnDisabled: { opacity: 0.3 },
-  submitText: { color: '#000', fontSize: 16, fontWeight: '800' },
+  submitText: { color: '#000', fontSize: 16, fontWeight: '600' },
 
   // Inline Anzeige
   display: { flexDirection: 'row', alignItems: 'center', gap: 3 },

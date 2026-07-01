@@ -661,7 +661,7 @@ const card = StyleSheet.create({
   },
   seasonTitle: {
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '600',
     letterSpacing: 0.4,
     textTransform: 'uppercase',
   },
@@ -705,7 +705,7 @@ const s = StyleSheet.create({
     marginBottom: 14,
   },
   headerLeft: { gap: 1 },
-  title: { fontSize: 18, fontWeight: '800', letterSpacing: -0.3 },
+  title: { fontSize: 18, fontWeight: '600', letterSpacing: -0.3 },
   subtitle: { fontSize: 12, fontWeight: '500' },
   balanceRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   balancePill: {
@@ -716,7 +716,7 @@ const s = StyleSheet.create({
   balancePillDark:  { backgroundColor: 'rgba(245,158,11,0.12)' },
   balancePillLight: { backgroundColor: '#FEF3C7' },
   balanceCoin: { fontSize: 13 },
-  balanceNum: { fontSize: 13, fontWeight: '800' },
+  balanceNum: { fontSize: 13, fontWeight: '600' },
   addBtn: {
     paddingHorizontal: 12, paddingVertical: 5,
     borderRadius: 14,
@@ -748,7 +748,7 @@ const s = StyleSheet.create({
     // Border-Farbe wird inline gesetzt (Team-spezifisch)
   },
   teamEmoji: { fontSize: 22 },
-  teamLabel: { fontSize: 9, fontWeight: '800', letterSpacing: 0.8, marginBottom: 1 },
+  teamLabel: { fontSize: 9, fontWeight: '600', letterSpacing: 0.8, marginBottom: 1 },
   teamName:  { fontSize: 13, fontWeight: '700' },
   // v1.27.1 — Duet-Recipient-Picker (nicht-Battle). Segmented-Control-Optik.
   duetRow: {

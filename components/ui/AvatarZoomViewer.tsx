@@ -118,7 +118,7 @@ const styles = StyleSheet.create({
   initials: {
     color: '#fff',
     fontSize: IMG_SIZE * 0.3,
-    fontWeight: '800',
+    fontWeight: '600',
     letterSpacing: -2,
   },
   hint: {

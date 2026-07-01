@@ -112,7 +112,7 @@ export const hostStyles = StyleSheet.create({
   liveDot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: "#fff" },
   liveLabel: {
     color: "#fff",
-    fontWeight: "800",
+    fontWeight: "600",
     fontSize: 12,
     letterSpacing: 1.2,
   },
@@ -156,7 +156,7 @@ export const hostStyles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center', justifyContent: 'center',
   },
-  hostInitialLg: { color: '#fff', fontWeight: '800', fontSize: 13 },
+  hostInitialLg: { color: '#fff', fontWeight: '600', fontSize: 13 },
   hostMeta: { gap: 1 },
   hostUsernameLg: {
     color: '#fff', fontWeight: '700', fontSize: 13,
@@ -192,7 +192,7 @@ export const hostStyles = StyleSheet.create({
   guestAvatarMiniInitial: {
     color: '#fff',
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '600',
     textAlign: 'center',
     lineHeight: 20,
   },
@@ -313,7 +313,7 @@ export const hostStyles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  commentAvatarInitial: { color: '#fff', fontSize: 15, fontWeight: '800' },
+  commentAvatarInitial: { color: '#fff', fontSize: 15, fontWeight: '600' },
   // Vertikaler Stack: Name + Kommentar
   commentStack: {
     flexShrink: 1,
@@ -348,7 +348,7 @@ export const hostStyles = StyleSheet.create({
   commentBadgeText: {
     color: '#fff',
     fontSize: 9,
-    fontWeight: '900',
+    fontWeight: '700',
     letterSpacing: 0.2,
   },
   commentText: {
@@ -423,7 +423,7 @@ export const hostStyles = StyleSheet.create({
   summaryHeadline: {
     color: '#fff',
     fontSize: 26,
-    fontWeight: '900',
+    fontWeight: '700',
     letterSpacing: -0.5,
   },
   summarySeparator: {
@@ -453,7 +453,7 @@ export const hostStyles = StyleSheet.create({
   summaryStatNum: {
     color: '#FFFFFF',
     fontSize: 28,
-    fontWeight: '900',
+    fontWeight: '700',
     fontVariant: ['tabular-nums'],
   },
   summaryStatLabel: {
@@ -480,7 +480,7 @@ export const hostStyles = StyleSheet.create({
   summaryLeaderTitle: {
     color: '#fff',
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: '600',
     marginBottom: 4,
   },
   summaryLeaderRow: {
@@ -529,7 +529,7 @@ export const hostStyles = StyleSheet.create({
   summaryActionPrimaryText: {
     color: '#000',
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '600',
   },
   summaryActionSecondary: {
     backgroundColor: 'rgba(255,255,255,0.07)',
@@ -557,11 +557,11 @@ export const hostStyles = StyleSheet.create({
   summaryBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.75)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
   summaryCard: { backgroundColor: '#0f0f1a', borderRadius: 24, padding: 24, width: '100%', gap: 16 },
   summaryHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  summaryTitle: { color: '#fff', fontSize: 20, fontWeight: '800' },
+  summaryTitle: { color: '#fff', fontSize: 20, fontWeight: '600' },
   summaryDuration: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-around', width: '100%' },
   summaryItem: { alignItems: 'center', gap: 4 },
-  summaryValue: { color: '#FFFFFF', fontSize: 24, fontWeight: '900' },
+  summaryValue: { color: '#FFFFFF', fontSize: 24, fontWeight: '700' },
   summaryLabel: { color: 'rgba(255,255,255,0.45)', fontSize: 11, fontWeight: '600' },
   summaryDivider: { height: StyleSheet.hairlineWidth, backgroundColor: 'rgba(255,255,255,0.08)', width: '100%' },
   summaryActions: { gap: 10, width: '100%' },
@@ -578,7 +578,7 @@ export const hostStyles = StyleSheet.create({
     paddingHorizontal: 48,
     paddingVertical: 14,
   },
-  summaryBtnText: { color: "#fff", fontSize: 16, fontWeight: "800" },
+  summaryBtnText: { color: "#fff", fontSize: 16, fontWeight: "600" },
 
   // Pinned Comment Banner
   pinnedBanner: {
@@ -623,5 +623,5 @@ export const hostStyles = StyleSheet.create({
     paddingVertical: 2,
     zIndex: 5,
   },
-  hdBadgeText: { color: 'rgba(255,255,255,0.6)', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
+  hdBadgeText: { color: 'rgba(255,255,255,0.6)', fontSize: 10, fontWeight: '600', letterSpacing: 1 },
 });

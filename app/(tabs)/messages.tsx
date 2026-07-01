@@ -569,7 +569,7 @@ const modal = StyleSheet.create({
     paddingHorizontal: 20, paddingBottom: 16,
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.06)',
   },
-  title: { flex: 1, color: '#FFFFFF', fontSize: 18, fontWeight: '800' },
+  title: { flex: 1, color: '#FFFFFF', fontSize: 18, fontWeight: '600' },
   closeBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
   searchBar: {
     flexDirection: 'row', alignItems: 'center', gap: 10,

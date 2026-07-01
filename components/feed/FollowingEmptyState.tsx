@@ -204,7 +204,7 @@ const s = StyleSheet.create({
     marginBottom: 4,
   },
   title: {
-    fontSize: 20, fontWeight: '800', letterSpacing: -0.5, textAlign: 'center',
+    fontSize: 20, fontWeight: '600', letterSpacing: -0.5, textAlign: 'center',
   },
   sub: {
     fontSize: 14, lineHeight: 20, textAlign: 'center',

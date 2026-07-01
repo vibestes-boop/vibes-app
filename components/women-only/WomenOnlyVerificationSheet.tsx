@@ -321,7 +321,7 @@ const s = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontWeight: '800',
+    fontWeight: '600',
     letterSpacing: -0.5,
     textAlign: 'center',
     marginBottom: 8,

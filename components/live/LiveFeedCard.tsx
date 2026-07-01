@@ -326,7 +326,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  avatarInitial: { color: '#fff', fontWeight: '800', fontSize: 12 },
+  avatarInitial: { color: '#fff', fontWeight: '600', fontSize: 12 },
   username: {
     color: '#fff',
     fontSize: 14,
@@ -367,7 +367,7 @@ const s = StyleSheet.create({
     borderRadius: 8,
   },
   liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#fff' },
-  liveLabel: { color: '#fff', fontWeight: '900', fontSize: 11, letterSpacing: 1 },
+  liveLabel: { color: '#fff', fontWeight: '700', fontSize: 11, letterSpacing: 1 },
 
   statBadge: {
     flexDirection: 'row',

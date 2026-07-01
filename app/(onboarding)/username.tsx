@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
   stepActive: { backgroundColor: '#CCCCCC' },
   title: {
     fontSize: 32,
-    fontWeight: '800',
+    fontWeight: '600',
     color: '#FFFFFF',
     letterSpacing: -0.8,
     lineHeight: 40,

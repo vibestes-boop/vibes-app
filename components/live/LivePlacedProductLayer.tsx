@@ -176,7 +176,7 @@ const styles = StyleSheet.create({
   price: {
     color: '#fbbf24',
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '600',
     fontVariant: ['tabular-nums'],
   },
 });

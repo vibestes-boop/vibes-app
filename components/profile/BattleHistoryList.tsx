@@ -151,7 +151,7 @@ function BattleRow({ entry, colors }: { entry: BattleHistoryEntry; colors: any }
           style={{
             color: resultColor,
             fontSize: 16,
-            fontWeight: '800',
+            fontWeight: '600',
             fontVariant: ['tabular-nums'],
           }}
         >

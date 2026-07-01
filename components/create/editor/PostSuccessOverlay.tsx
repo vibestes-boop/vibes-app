@@ -78,6 +78,6 @@ export function PostSuccessOverlay({ visible, onDone }: { visible: boolean; onDo
 const suc = StyleSheet.create({
   bg: { flex:1, backgroundColor:'rgba(0,0,0,0.92)', alignItems:'center', justifyContent:'center', gap:20 },
   confetti: { position:'absolute', alignItems:'center', justifyContent:'center' },
-  title: { color:'#fff', fontSize:26, fontWeight:'900', letterSpacing:-0.5, textAlign:'center' },
+  title: { color:'#fff', fontSize:26, fontWeight:'700', letterSpacing:-0.5, textAlign:'center' },
   sub: { color:'rgba(255,255,255,0.5)', fontSize:15, textAlign:'center', marginTop:-8 },
 });

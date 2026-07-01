@@ -140,7 +140,7 @@ const compactStyles = StyleSheet.create({
   avatarText: {
     color: '#FFFFFF',
     fontSize: 20,
-    fontWeight: '800',
+    fontWeight: '600',
   },
   username: {
     color: '#fff',

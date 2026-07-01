@@ -232,7 +232,7 @@ const styles = StyleSheet.create({
   logoText: {
     color: '#FFFFFF',
     fontSize: 42,
-    fontWeight: '800',
+    fontWeight: '600',
     letterSpacing: -2,
   },
   tagline: {

@@ -156,7 +156,7 @@ const sv = StyleSheet.create({
     flex: 1,
     color: '#fff',
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '600',
   },
   closeBtn: {
     width: 32, height: 32, borderRadius: 16,
@@ -194,7 +194,7 @@ const sv = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.10)',
     alignItems: 'center', justifyContent: 'center',
   },
-  avatarText: { color: '#FFFFFF', fontSize: 16, fontWeight: '800' },
+  avatarText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
   textWrap: { flex: 1 },
   username: { color: '#fff', fontSize: 14, fontWeight: '700' },
   time: { color: 'rgba(255,255,255,0.35)', fontSize: 12, marginTop: 2 },

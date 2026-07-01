@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
     flex: 1,
     color: '#fff',
     fontSize: 17,
-    fontWeight: '800',
+    fontWeight: '600',
   },
   headerClose: {
     width: 32,
@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(139,92,246,0.25)',
     color: '#a78bfa',
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '600',
     textAlign: 'center',
     lineHeight: 22,
   },
@@ -301,7 +301,7 @@ const styles = StyleSheet.create({
   submitText: {
     color: '#fff',
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '600',
     letterSpacing: 0.3,
   },
 });

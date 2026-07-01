@@ -136,14 +136,14 @@ const sm = StyleSheet.create({
     paddingTop: 10, paddingHorizontal: 16, paddingBottom: 16,
   },
   handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)', alignSelf: 'center', marginBottom: 14 },
-  heading: { color: '#fff', fontSize: 17, fontWeight: '800', textAlign: 'center' },
+  heading: { color: '#fff', fontSize: 17, fontWeight: '600', textAlign: 'center' },
   sub: { color: 'rgba(255,255,255,0.4)', fontSize: 12, textAlign: 'center', marginTop: 4 },
   dateCard: {
     borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.05)',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
     padding: 14, marginTop: 12, alignItems: 'center',
   },
-  dateBig: { color: '#fff', fontSize: 22, fontWeight: '900', letterSpacing: -0.6 },
+  dateBig: { color: '#fff', fontSize: 22, fontWeight: '700', letterSpacing: -0.6 },
   sectionLabel: { color: 'rgba(255,255,255,0.35)', fontSize: 10, fontWeight: '700', letterSpacing: 0.8, marginTop: 14, marginBottom: 8 },
   presetRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   preset: {
@@ -169,10 +169,10 @@ const sm = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.04)',
     paddingVertical: 13, alignItems: 'center',
   },
-  btnGhostText: { color: '#fff', fontSize: 14, fontWeight: '800' },
+  btnGhostText: { color: '#fff', fontSize: 14, fontWeight: '600' },
   btnPrimary: {
     flex: 1, borderRadius: 12, backgroundColor: '#fff',
     paddingVertical: 13, alignItems: 'center',
   },
-  btnPrimaryText: { color: '#000', fontSize: 14, fontWeight: '800' },
+  btnPrimaryText: { color: '#000', fontSize: 14, fontWeight: '600' },
 });

@@ -59,7 +59,7 @@ export function LiveEndedOverlay({
             />
           ) : (
             <View style={[s2.endedAvatar, { backgroundColor: '#CCCCCC', alignItems: 'center', justifyContent: 'center' }]}>
-              <Text style={{ color: '#fff', fontSize: 36, fontWeight: '800' }}>
+              <Text style={{ color: '#fff', fontSize: 36, fontWeight: '600' }}>
                 {host?.username?.[0]?.toUpperCase() ?? '?'}
               </Text>
             </View>
@@ -132,7 +132,7 @@ const s2 = StyleSheet.create({
     borderWidth: 2,
     borderColor: 'rgba(255,255,255,0.15)',
   },
-  endedUsername: { color: '#fff', fontSize: 18, fontWeight: '800', letterSpacing: 0.3 },
+  endedUsername: { color: '#fff', fontSize: 18, fontWeight: '600', letterSpacing: 0.3 },
   endedTitle: { color: 'rgba(255,255,255,0.85)', fontSize: 22, fontWeight: '700', textAlign: 'center' },
   endedSubtitle: { color: 'rgba(255,255,255,0.5)', fontSize: 14, textAlign: 'center', marginBottom: 8 },
   endedStats: {
@@ -147,7 +147,7 @@ const s2 = StyleSheet.create({
     marginBottom: 8,
   },
   endedStat: { alignItems: 'center', gap: 3, minWidth: 70 },
-  endedStatNum: { color: '#fff', fontSize: 22, fontWeight: '800' },
+  endedStatNum: { color: '#fff', fontSize: 22, fontWeight: '600' },
   endedStatLabel: { color: 'rgba(255,255,255,0.45)', fontSize: 11, fontWeight: '600' },
   endedStatDivider: { width: 1, height: 32, backgroundColor: 'rgba(255,255,255,0.15)', marginHorizontal: 8 },
   endedFollowBtn: {
@@ -159,7 +159,7 @@ const s2 = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.15)',
   },
-  endedFollowText: { color: '#fff', fontSize: 16, fontWeight: '800' },
+  endedFollowText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   endedBackBtn: {
     width: '100%',
     backgroundColor: 'rgba(255,255,255,0.1)',

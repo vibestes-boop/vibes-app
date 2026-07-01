@@ -162,7 +162,7 @@ const handle = StyleSheet.create({
     position: 'absolute',
     color: '#fff',
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: '600',
     top: -22,
   },
   arrowLeft: { left: 3 },
@@ -556,7 +556,7 @@ const s = StyleSheet.create({
   nextBtnText: {
     color: '#fff',
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '600',
   },
 
   // Trim Area

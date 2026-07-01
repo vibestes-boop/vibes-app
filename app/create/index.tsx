@@ -1012,7 +1012,7 @@ const s = StyleSheet.create({
     flexDirection:'row', gap:6,
     shadowColor:'#fff', shadowOpacity:0.2, shadowRadius:12, shadowOffset:{width:0,height:0},
   },
-  nextBtnText: { color:'#000', fontSize:15, fontWeight:'900', letterSpacing:0.2 },
+  nextBtnText: { color:'#000', fontSize:15, fontWeight:'700', letterSpacing:0.2 },
 });
 
 // SH is exported from the barrel but not needed directly in this file

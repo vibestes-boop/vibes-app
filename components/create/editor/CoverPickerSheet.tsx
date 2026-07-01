@@ -133,7 +133,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 16, paddingBottom: 12,
   },
   headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { color: '#fff', fontSize: 17, fontWeight: '800' },
+  headerTitle: { color: '#fff', fontSize: 17, fontWeight: '600' },
   preview: { flex: 1, overflow: 'hidden', backgroundColor: '#000' },
   previewLoading: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
   stripWrap: { backgroundColor: '#000', paddingTop: 14 },

@@ -171,7 +171,7 @@ const styles = StyleSheet.create({
   title: {
     color: '#FFFFFF',
     fontSize: 32,
-    fontWeight: '800',
+    fontWeight: '600',
     letterSpacing: -1.5,
   },
   sub: {
@@ -217,7 +217,7 @@ const styles = StyleSheet.create({
   doneTitle: {
     color: '#FFFFFF',
     fontSize: 26,
-    fontWeight: '800',
+    fontWeight: '600',
     letterSpacing: -1,
   },
   doneSub: {

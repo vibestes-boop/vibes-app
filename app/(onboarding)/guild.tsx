@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
   stepActive: { backgroundColor: '#CCCCCC' },
   title: {
     fontSize: 32,
-    fontWeight: '800',
+    fontWeight: '600',
     color: '#FFFFFF',
     letterSpacing: -0.8,
     lineHeight: 40,
@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
   },
   guildName: {
     fontSize: 28,
-    fontWeight: '800',
+    fontWeight: '600',
     letterSpacing: -0.5,
   },
   sparkleRow: {
@@ -301,7 +301,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
   },
   fact: { alignItems: 'center', gap: 2 },
-  factNum: { fontSize: 18, fontWeight: '800' },
+  factNum: { fontSize: 18, fontWeight: '600' },
   factLabel: { fontSize: 11, color: 'rgba(255,255,255,0.35)', fontWeight: '500' },
   factDivider: {
     width: 1,

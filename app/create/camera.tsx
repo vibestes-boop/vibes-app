@@ -85,9 +85,9 @@ const TEXT_GRADIENTS: [string, string][] = [
 const TEXT_ALIGNS = ['center', 'left', 'right'] as const;
 const ALIGN_LABEL: Record<(typeof TEXT_ALIGNS)[number], string> = { center: 'Mitte', left: 'Links', right: 'Rechts' };
 const TEXT_STYLES = [
-  { key: 'classic', label: 'Klassisch', fontFamily: undefined as string | undefined, fontWeight: '800' as const, fontStyle: 'normal' as const, glow: false },
+  { key: 'classic', label: 'Klassisch', fontFamily: undefined as string | undefined, fontWeight: '600' as const, fontStyle: 'normal' as const, glow: false },
   { key: 'serif',   label: 'Serif',     fontFamily: 'Georgia',  fontWeight: '700' as const, fontStyle: 'italic' as const, glow: false },
-  { key: 'neon',    label: 'Neon',      fontFamily: undefined,  fontWeight: '800' as const, fontStyle: 'normal' as const, glow: true },
+  { key: 'neon',    label: 'Neon',      fontFamily: undefined,  fontWeight: '600' as const, fontStyle: 'normal' as const, glow: true },
   { key: 'mono',    label: 'Mono',      fontFamily: 'Courier',  fontWeight: '700' as const, fontStyle: 'normal' as const, glow: false },
 ];
 
@@ -280,7 +280,7 @@ const pill = StyleSheet.create({
   label: {
     color: 'rgba(255,255,255,0.7)',
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '600',
     letterSpacing: 1.2,
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 1 },
@@ -367,7 +367,7 @@ const cap = StyleSheet.create({
   },
   labelActive: {
     color: '#000',
-    fontWeight: '800',
+    fontWeight: '600',
     textShadowColor: 'transparent',
   },
 });
@@ -837,7 +837,7 @@ export default function CreateCameraScreen() {
       {isText && (
         <View style={[s.tools, { top: insets.top + 72, zIndex: 11 }]}>
           <Pressable style={s.toolBtn} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setStyleIdx((i) => (i + 1) % TEXT_STYLES.length); }}>
-            <Text style={{ color: '#fff', fontSize: 22, fontWeight: '900', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }}>Aa</Text>
+            <Text style={{ color: '#fff', fontSize: 22, fontWeight: '700', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }}>Aa</Text>
             <Text style={s.toolLabel}>{textStyle.label}</Text>
           </Pressable>
           <Pressable style={s.toolBtn} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setAlignIdx((i) => (i + 1) % TEXT_ALIGNS.length); }}>
@@ -1013,7 +1013,7 @@ const s = StyleSheet.create({
     shadowOpacity: 0.6,
     shadowRadius: 4,
   },
-  topTitle: { color: '#fff', fontSize: 17, fontWeight: '900', letterSpacing: -0.5 },
+  topTitle: { color: '#fff', fontSize: 17, fontWeight: '700', letterSpacing: -0.5 },
   topTitleSep: { color: 'rgba(255,255,255,0.3)', fontSize: 15, fontWeight: '400' },
   topTitleMode: { color: 'rgba(255,255,255,0.5)', fontSize: 13, fontWeight: '600' },
 
@@ -1028,7 +1028,7 @@ const s = StyleSheet.create({
   countdownNumber: {
     color: '#fff',
     fontSize: 120,
-    fontWeight: '900',
+    fontWeight: '700',
     letterSpacing: -4,
     textShadowColor: 'rgba(29,185,84,0.6)',
     textShadowOffset: { width: 0, height: 0 },
@@ -1075,7 +1075,7 @@ const s = StyleSheet.create({
   },
   soundText: { color: '#fff', fontSize: 12, fontWeight: '700' },
   doneText: {
-    color: '#fff', fontSize: 16, fontWeight: '800',
+    color: '#fff', fontSize: 16, fontWeight: '600',
     textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3,
   },
 
@@ -1152,7 +1152,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 34,
     borderRadius: 30,
   },
-  textPostBtnText: { color: '#000', fontSize: 16, fontWeight: '800' },
+  textPostBtnText: { color: '#000', fontSize: 16, fontWeight: '600' },
   galleryBtn: {
     width: 52,
     height: 52,
@@ -1205,7 +1205,7 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 24,
   },
-  permTitle: { color: '#fff', fontSize: 26, fontWeight: '900', marginBottom: 12, letterSpacing: -0.5 },
+  permTitle: { color: '#fff', fontSize: 26, fontWeight: '700', marginBottom: 12, letterSpacing: -0.5 },
   permSub: {
     color: 'rgba(255,255,255,0.45)',
     fontSize: 15,
@@ -1215,7 +1215,7 @@ const s = StyleSheet.create({
   },
   permBtn: { width: '100%', borderRadius: 16, overflow: 'hidden' },
   permBtnGrad: { paddingVertical: 16, alignItems: 'center', backgroundColor: '#fff', borderRadius: 14 },
-  permBtnText: { color: '#000', fontSize: 16, fontWeight: '900' },
+  permBtnText: { color: '#000', fontSize: 16, fontWeight: '700' },
 
   // Timer Badge
   timerBadge: {
@@ -1223,7 +1223,7 @@ const s = StyleSheet.create({
     bottom: 6,
     color: 'rgba(255,255,255,0.7)',
     fontSize: 9,
-    fontWeight: '800',
+    fontWeight: '600',
     letterSpacing: 0.2,
   },
 

@@ -553,7 +553,7 @@ const styles = StyleSheet.create({
     fontWeight: '400',
   },
   premiumPillGift: {
-    fontWeight: '800',
+    fontWeight: '600',
   },
 
   // ── Normal Pill-Banner ──
@@ -654,7 +654,7 @@ const styles = StyleSheet.create({
   comboNum: {
     color:      '#fbbf24',
     fontSize:   16,
-    fontWeight: '900',
+    fontWeight: '700',
     lineHeight: 20,
     letterSpacing: -0.5,
   },
@@ -662,7 +662,7 @@ const styles = StyleSheet.create({
   comboChipText: {
     color:      '#fff',
     fontSize:   13,
-    fontWeight: '900',
+    fontWeight: '700',
     letterSpacing: -0.3,
   },
 });

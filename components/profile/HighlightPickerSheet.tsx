@@ -393,7 +393,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.3)',
   },
   selectCircleActive: { backgroundColor: '#FFFFFF', borderColor: '#FFFFFF' },
-  selectNum: { color: '#000', fontSize: 12, fontWeight: '900' },
+  selectNum: { color: '#000', fontSize: 12, fontWeight: '700' },
 
   selectedOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(255,255,255,0.08)' },
 
@@ -403,7 +403,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(29,185,84,0.85)',
     paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4,
   },
-  coverBadgeText: { color: '#000', fontSize: 10, fontWeight: '800' },
+  coverBadgeText: { color: '#000', fontSize: 10, fontWeight: '600' },
 
   // Name-Step
   nameStep: { padding: 24, gap: 16 },

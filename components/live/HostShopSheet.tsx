@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
   title: {
     color: '#fff',
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: '600',
     letterSpacing: 0.2,
     flexShrink: 1,
   },
@@ -243,7 +243,7 @@ const styles = StyleSheet.create({
   countPillText: {
     color: '#fbbf24',
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '600',
   },
   closeBtn: {
     width: 30,
@@ -316,7 +316,7 @@ const card = StyleSheet.create({
   soldOutText: {
     color: '#fff',
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '600',
     letterSpacing: 0.3,
   },
   lowStock: {
@@ -331,7 +331,7 @@ const card = StyleSheet.create({
   lowStockText: {
     color: '#fff',
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '600',
   },
   info: {
     padding: 10,
@@ -352,7 +352,7 @@ const card = StyleSheet.create({
   price: {
     color: '#fbbf24',
     fontSize: 13,
-    fontWeight: '900',
+    fontWeight: '700',
   },
   sold: {
     color: 'rgba(255,255,255,0.5)',

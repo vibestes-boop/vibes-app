@@ -622,7 +622,7 @@ export default function VibeFeedScreen() {
             alignSelf: 'flex-start', marginLeft: 16,
           }}>
             <TrendingUp size={11} color="#fff" strokeWidth={2.5} />
-            <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800', letterSpacing: 0.5 }}>Trending</Text>
+            <Text style={{ color: '#fff', fontSize: 11, fontWeight: '600', letterSpacing: 0.5 }}>Trending</Text>
           </View>
         </View>
       )}
@@ -834,7 +834,7 @@ function FirstPostNudge({ top, onCreate }: { top: number; onCreate: () => void }
         }}
       >
         <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={{ color: '#fff', fontSize: 14, fontWeight: '800' }}>
+          <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>
             Starte deinen ersten Vibe
           </Text>
           <Text
@@ -864,7 +864,7 @@ function FirstPostNudge({ top, onCreate }: { top: number; onCreate: () => void }
           }}
         >
           <PlusCircle size={16} color="#070A16" strokeWidth={2.4} />
-          <Text style={{ color: '#070A16', fontSize: 12, fontWeight: '900' }}>Posten</Text>
+          <Text style={{ color: '#070A16', fontSize: 12, fontWeight: '700' }}>Posten</Text>
         </Pressable>
       </View>
     </View>

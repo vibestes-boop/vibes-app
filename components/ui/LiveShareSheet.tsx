@@ -564,7 +564,7 @@ const s = StyleSheet.create({
   checkBadgeText: {
     color: '#fff',
     fontSize: 10,
-    fontWeight: '800',
+    fontWeight: '600',
   },
   avatarFallback: {
     backgroundColor: '#CCCCCC',
@@ -574,7 +574,7 @@ const s = StyleSheet.create({
   avatarLetter: {
     color: '#fff',
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: '600',
   },
   userName: {
     color: 'rgba(255,255,255,0.7)',

@@ -50,7 +50,7 @@ const th = StyleSheet.create({
   wrap: { position: 'absolute', top: 0, width: HANDLE_W, height: 56, alignItems: 'center', justifyContent: 'center', zIndex: 10 },
   bar: { width: HANDLE_W, height: '100%', borderRadius: 4, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', gap: 3 },
   grip: { width: 2, height: 10, backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 1 },
-  arrow: { position: 'absolute', color: '#fff', fontSize: 18, fontWeight: '800', top: -22 },
+  arrow: { position: 'absolute', color: '#fff', fontSize: 18, fontWeight: '600', top: -22 },
   arrowL: { left: 3 },
   arrowR: { right: 3 },
 });
@@ -178,7 +178,7 @@ const tv = StyleSheet.create({
   badge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.07)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
   badgeText: { color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: '700', fontVariant: ['tabular-nums'] },
   badgeSel: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.15)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' },
-  badgeSelText: { color: '#fff', fontSize: 12, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  badgeSelText: { color: '#fff', fontSize: 12, fontWeight: '600', fontVariant: ['tabular-nums'] },
   stripOuter: { marginHorizontal: STRIP_PADDING, height: 56, position: 'relative', marginBottom: 16 },
   stripContainer: { height: 56, borderRadius: 8, overflow: 'hidden', borderWidth: 2, borderColor: 'rgba(255,255,255,0.1)' },
   frameSkel: { backgroundColor: 'rgba(255,255,255,0.06)' },
@@ -191,5 +191,5 @@ const tv = StyleSheet.create({
   speedTextActive: { color: '#fff' },
   hint: { color: 'rgba(255,255,255,0.25)', fontSize: 12, textAlign: 'center', marginBottom: 20 },
   doneBtn: { marginHorizontal: STRIP_PADDING, backgroundColor: '#fff', paddingVertical: 16, borderRadius: 16, alignItems: 'center' },
-  doneBtnText: { color: '#000', fontSize: 15, fontWeight: '800' },
+  doneBtnText: { color: '#000', fontSize: 15, fontWeight: '600' },
 });

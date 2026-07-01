@@ -355,7 +355,7 @@ const s = StyleSheet.create({
   },
   avatarInitial: {
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '600',
     color: '#fff',
   },
   senderName: {
@@ -383,7 +383,7 @@ const s = StyleSheet.create({
   },
   numberX: {
     fontSize: 22,
-    fontWeight: '900',
+    fontWeight: '700',
     letterSpacing: -1,
     textShadowColor: 'rgba(0,0,0,0.5)',
     textShadowOffset: { width: 0, height: 2 },
@@ -391,7 +391,7 @@ const s = StyleSheet.create({
   },
   numberValue: {
     fontSize: 44,
-    fontWeight: '900',
+    fontWeight: '700',
     letterSpacing: -2,
     lineHeight: 46,
     textShadowColor: 'rgba(0,0,0,0.55)',
@@ -409,7 +409,7 @@ const s = StyleSheet.create({
   },
   labelText: {
     fontSize: 13,
-    fontWeight: '900',
+    fontWeight: '700',
     letterSpacing: 2,
     textTransform: 'uppercase',
     textShadowColor: 'rgba(0,0,0,0.6)',

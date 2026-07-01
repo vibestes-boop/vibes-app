@@ -168,7 +168,7 @@ const s = StyleSheet.create({
   },
   title: {
     color: '#fff',
-    fontWeight: '800',
+    fontWeight: '600',
     fontSize: 17,
   },
   closeBtn: { padding: 4 },
@@ -261,5 +261,5 @@ const s = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
   },
-  submitText: { color: '#111827', fontWeight: '800', fontSize: 15 },
+  submitText: { color: '#111827', fontWeight: '600', fontSize: 15 },
 });

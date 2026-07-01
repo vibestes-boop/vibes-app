@@ -97,7 +97,7 @@ export function VibeScoreRing({ score, size = 72 }: { score: number; size?: numb
       >
         <Animated.Text
           style={[
-            { color: colors.text.primary, fontSize: size * 0.22, fontWeight: '800', letterSpacing: -0.5 },
+            { color: colors.text.primary, fontSize: size * 0.22, fontWeight: '600', letterSpacing: -0.5 },
             numberStyle,
           ]}
         >

@@ -316,7 +316,7 @@ const s = StyleSheet.create({
   timerText: {
     color:         '#fff',
     fontSize:      11,
-    fontWeight:    '800',
+    fontWeight:    '600',
     letterSpacing: 1.0,
     fontVariant:   ['tabular-nums'],
   },
@@ -357,7 +357,7 @@ const s = StyleSheet.create({
   },
   scoreText: {
     fontSize:         20,
-    fontWeight:       '900',
+    fontWeight:       '700',
     letterSpacing:    0.4,
     fontVariant:      ['tabular-nums'],
     textShadowColor:  'rgba(0,0,0,0.55)',
@@ -404,7 +404,7 @@ const s = StyleSheet.create({
   indicatorArrow: {
     color:      '#fff',
     fontSize:   11,
-    fontWeight: '900',
+    fontWeight: '700',
   },
 
   // ── Gewinner-Banner ───────────────────────────────────────────────────────
@@ -422,7 +422,7 @@ const s = StyleSheet.create({
   winnerText: {
     color:            '#FFD700',
     fontSize:         18,
-    fontWeight:       '900',
+    fontWeight:       '700',
     letterSpacing:    1,
     textShadowColor:  'rgba(0,0,0,0.8)',
     textShadowOffset: { width: 0, height: 2 },

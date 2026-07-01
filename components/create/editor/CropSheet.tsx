@@ -231,7 +231,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 16, paddingBottom: 12,
   },
   headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { color: '#fff', fontSize: 17, fontWeight: '800' },
+  headerTitle: { color: '#fff', fontSize: 17, fontWeight: '600' },
   preview: { flex: 1, overflow: 'hidden' },
   mask: { position: 'absolute', backgroundColor: 'rgba(0,0,0,0.55)' },
   frame: { position: 'absolute', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.95)' },

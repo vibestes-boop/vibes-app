@@ -361,7 +361,7 @@ const s = StyleSheet.create({
   avatarInitial: {
     color: '#fff',
     fontSize: 32,
-    fontWeight: '800',
+    fontWeight: '600',
   },
   videoBadge: {
     position: 'absolute',
@@ -381,7 +381,7 @@ const s = StyleSheet.create({
   headline: {
     color: '#fff',
     fontSize: 20,
-    fontWeight: '800',
+    fontWeight: '600',
     textAlign: 'center',
     marginBottom: 4,
   },
@@ -535,6 +535,6 @@ const s = StyleSheet.create({
   acceptText: {
     color: '#fff',
     fontSize: 15,
-    fontWeight: '800',
+    fontWeight: '600',
   },
 });

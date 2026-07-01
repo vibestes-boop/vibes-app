@@ -501,7 +501,7 @@ const styles = StyleSheet.create({
   title: {
     // color via inline (theme-aware)
     fontSize: 22,
-    fontWeight: "800",
+    fontWeight: "600",
     letterSpacing: -0.5,
   },
   markAllBtn: {

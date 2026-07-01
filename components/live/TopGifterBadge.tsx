@@ -178,7 +178,7 @@ const s = StyleSheet.create({
   },
   compactCoinText: {
     fontSize: 8.5,
-    fontWeight: '800',
+    fontWeight: '600',
     color: '#1f1300',
     letterSpacing: 0.2,
   },
@@ -254,7 +254,7 @@ const s = StyleSheet.create({
   },
   modalTitle: {
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '600',
     color: '#fbbf24',
     textAlign: 'center',
     marginBottom: 6,
