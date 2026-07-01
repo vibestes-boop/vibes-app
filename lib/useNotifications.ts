@@ -1,5 +1,4 @@
 import { useMutation,useQuery,useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
 import { useAuthStore } from './authStore';
 import { supabase } from './supabase';
 
@@ -25,31 +24,9 @@ export type AppNotification = {
 
 export function useNotifications() {
   const userId = useAuthStore((s) => s.profile?.id);
-  const queryClient = useQueryClient();
 
-  // Realtime: neue Notifications sofort anzeigen (kein Pull-to-Refresh nötig)
-  useEffect(() => {
-    if (!userId) return;
-
-    const channel = supabase
-      .channel(`notifications-rt-${userId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          filter: `recipient_id=eq.${userId}`,
-        },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['notifications', userId] });
-          queryClient.invalidateQueries({ queryKey: ['notifications-unread', userId] });
-        }
-      )
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [userId, queryClient]);
+  // Realtime läuft zentral in useNotificationsRealtime (Tab-Bar) — eine
+  // Subscription invalidiert alle notifications-Queries. Kein eigener Kanal hier.
 
   return useQuery<AppNotification[]>({
     queryKey: ['notifications', userId],

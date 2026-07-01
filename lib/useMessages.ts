@@ -95,7 +95,6 @@ export function useOrCreateConversation() {
 // ── Alle Konversationen des Users (1 RPC statt N+2 Queries) ──────────────
 export function useConversations() {
   const userId = useAuthStore((s) => s.profile?.id);
-  const queryClient = useQueryClient();
 
   const query = useQuery<Conversation[]>({
     queryKey: ['conversations', userId],
@@ -122,38 +121,9 @@ export function useConversations() {
     staleTime: 1000 * 30,
   });
 
-  // Realtime: neue eingehende DM → Conversations-Liste/Badge live updaten.
-  //
-  // KOSTEN-KRITISCH: NICHT table-wide auf `messages` lauschen. Ohne Filter bekam
-  // JEDER eingeloggte User in Echtzeit JEDE Nachricht der GESAMTEN Plattform
-  // zugestellt (der Tab-Bar-Badge hält diesen Hook dauerhaft gemountet) →
-  // Realtime-Messages skalierten mit aktive_User × alle_Nachrichten.
-  //
-  // Stattdessen der bereits per-User-gefilterte `notifications`-Kanal: jede DM
-  // erzeugt serverseitig eine notifications-Zeile (type='dm', recipient_id=
-  // Empfänger). Absender-Updates laufen über die Send-Mutation (invalidiert
-  // conversations), offene Chats über den messages-${conversationId}-Kanal.
-  useEffect(() => {
-    if (!userId) return;
-    const channel = supabase
-      .channel(`dm-inbox-${userId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          filter: `recipient_id=eq.${userId}`,
-        },
-        (payload: { new?: { type?: string } }) => {
-          if (payload?.new?.type !== 'dm') return;
-          queryClient.invalidateQueries({ queryKey: ['conversations', userId] });
-        },
-      )
-      .subscribe();
-    return () => { supabase.removeChannel(channel); };
-  }, [userId, queryClient]);
-
+  // Realtime läuft zentral in useNotificationsRealtime (Tab-Bar): eine
+  // notifications-Subscription invalidiert bei type='dm' auch ['conversations'].
+  // Absender-Updates via Send-Mutation, offener Chat via messages-${id}-Kanal.
   return query;
 }
 
@@ -341,17 +311,34 @@ export function useMarkMessagesRead(conversationId: string | null) {
       .rpc('mark_messages_read', { p_conversation_id: conversationId })
       .then(() => {
         queryClient.invalidateQueries({ queryKey: ['conversations', userId] });
+        queryClient.invalidateQueries({ queryKey: ['unread-dm-count', userId] });
       });
   }, [conversationId, userId, queryClient]);
 }
 
 // ── Ungelesene DM-Gesamtzahl ──────────────────────────────────────────────
-// Senior-Dev-Trick: Leite aus dem bereits gecachten useConversations ab.
-// → 0 extra DB-Queries, 0 Polling, auto-update via Realtime-Subscription.
+// KOSTEN: NICHT aus useConversations ableiten. Dieser Hook lebt in der Tab-Bar
+// (immer gemountet) — er würde sonst auf JEDER Session die volle Conversations-
+// Liste (mit Joins: profiles + last_msgs + unread_counts) laden, auch wenn der
+// User nie in die Nachrichten geht. Stattdessen der leichte COUNT-RPC
+// get_unread_shell_counts (existiert bereits, keine Migration) → nur eine Zahl.
+// Live-Aktualität via per-User-gefiltertem notifications('dm')-Kanal.
 export function useUnreadDMCount() {
-  const { data: conversations = [] } = useConversations();
-  const total = conversations.reduce((sum, c) => sum + (c.unread_count ?? 0), 0);
-  return { data: total };
+  const userId = useAuthStore((s) => s.profile?.id);
+
+  // Realtime läuft zentral in useNotificationsRealtime (Tab-Bar): eine
+  // notifications-Subscription invalidiert bei type='dm' auch ['unread-dm-count'].
+
+  return useQuery({
+    queryKey: ['unread-dm-count', userId],
+    enabled: !!userId,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_unread_shell_counts').single();
+      if (error || !data) return 0;
+      return Number((data as { unread_dms?: number | string }).unread_dms ?? 0);
+    },
+  });
 }
 
 // ── Typing-Indikator via Supabase Realtime Presence ───────────────────────

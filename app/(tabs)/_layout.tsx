@@ -24,6 +24,7 @@ import { TabSlotSwitcher } from '@/components/nav/TabSlotSwitcher';
 import { useAuthStore } from '@/lib/authStore';
 import { useUnreadDMCount } from '@/lib/useMessages';
 import { useUnreadCount } from '@/lib/useNotifications';
+import { useNotificationsRealtime } from '@/lib/useNotificationsRealtime';
 import { guildFeedActions,useTabRefreshStore,vibesFeedActions } from '@/lib/useTabRefresh';
 import { useTheme } from '@/lib/useTheme';
 import { impactAsync,ImpactFeedbackStyle } from 'expo-haptics';
@@ -165,6 +166,9 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors } = useTheme();
+  // EINE zentrale notifications-Realtime-Subscription für Glocke + DM-Liste +
+  // DM-Badge (statt drei parallele Kanäle auf dieselbe Tabelle).
+  useNotificationsRealtime();
   const { data: unreadDMs = 0 } = useUnreadDMCount();
   const { data: unreadNotifs = 0 } = useUnreadCount();
   const triggerVibesRefresh = useTabRefreshStore((s) => s.triggerVibesRefresh);
