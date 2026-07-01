@@ -122,14 +122,34 @@ export function useConversations() {
     staleTime: 1000 * 30,
   });
 
-  // Realtime: neue Nachrichten → Conversations-Liste updaten
+  // Realtime: neue eingehende DM → Conversations-Liste/Badge live updaten.
+  //
+  // KOSTEN-KRITISCH: NICHT table-wide auf `messages` lauschen. Ohne Filter bekam
+  // JEDER eingeloggte User in Echtzeit JEDE Nachricht der GESAMTEN Plattform
+  // zugestellt (der Tab-Bar-Badge hält diesen Hook dauerhaft gemountet) →
+  // Realtime-Messages skalierten mit aktive_User × alle_Nachrichten.
+  //
+  // Stattdessen der bereits per-User-gefilterte `notifications`-Kanal: jede DM
+  // erzeugt serverseitig eine notifications-Zeile (type='dm', recipient_id=
+  // Empfänger). Absender-Updates laufen über die Send-Mutation (invalidiert
+  // conversations), offene Chats über den messages-${conversationId}-Kanal.
   useEffect(() => {
     if (!userId) return;
     const channel = supabase
-      .channel('conversations-realtime')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => {
-        queryClient.invalidateQueries({ queryKey: ['conversations', userId] });
-      })
+      .channel(`dm-inbox-${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `recipient_id=eq.${userId}`,
+        },
+        (payload: { new?: { type?: string } }) => {
+          if (payload?.new?.type !== 'dm') return;
+          queryClient.invalidateQueries({ queryKey: ['conversations', userId] });
+        },
+      )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [userId, queryClient]);
