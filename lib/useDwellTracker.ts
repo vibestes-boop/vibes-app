@@ -37,18 +37,29 @@ export function useDwellTracker() {
 
     if (records.length === 0 && skipRecords.length === 0) return;
 
-    // Parallel senden – Fehler loggen, nicht crashen
-    await Promise.allSettled([
-      ...records.map(([postId, dwellMs]) =>
-        supabase.rpc('update_dwell_time', {
-          post_id: postId,
-          dwell_ms: Math.min(Math.round(dwellMs), MAX_DWELL_MS),
-        })
-      ),
-      ...skipRecords.map((postId) =>
-        supabase.rpc('record_skip', { p_post_id: postId })
-      )
-    ]);
+    // Ein Bulk-Call statt N Einzel-RPCs (heißester Schreibpfad der App: jeder
+    // Feed-Scroll jedes Users). Server ruft dieselben Funktionen in einer
+    // Schleife → identische Semantik.
+    const dwells = records.map(([postId, dwellMs]) => ({
+      post_id: postId,
+      dwell_ms: Math.min(Math.round(dwellMs), MAX_DWELL_MS),
+    }));
+
+    const { error } = await supabase.rpc('update_dwell_times_batch', {
+      p_dwells: dwells,
+      p_skips: skipRecords,
+    });
+
+    // Fallback: Migration noch nicht angewandt (RPC fehlt) → einzeln senden,
+    // damit Dwell-/Skip-Signale nie verloren gehen. Entfällt nach der Migration.
+    if (error) {
+      await Promise.allSettled([
+        ...dwells.map((d) =>
+          supabase.rpc('update_dwell_time', { post_id: d.post_id, dwell_ms: d.dwell_ms })
+        ),
+        ...skipRecords.map((postId) => supabase.rpc('record_skip', { p_post_id: postId })),
+      ]);
+    }
   }, []);
 
   // ── Sichtbare Posts in Batch übertragen ──────────────────
