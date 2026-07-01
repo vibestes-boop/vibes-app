@@ -36,6 +36,7 @@ import { NotificationsDrawer } from '@/components/notifications/notifications-dr
 import { TopRightActionsFrame } from '@/components/top-right-actions-frame';
 import { DmInboxPill } from '@/components/layout/dm-inbox-pill';
 import { NotifBellPill } from '@/components/layout/notif-bell-pill';
+import { useUnreadShellRealtime } from '@/components/layout/use-unread-shell-counts';
 import { useI18n } from '@/lib/i18n/client';
 import { LOCALE_INTL } from '@/lib/i18n/config';
 import { glassPillBase, glassAvatarFallback } from '@/lib/ui/glass-pill';
@@ -160,6 +161,10 @@ export function AppAuthShell() {
     pathname?.startsWith('/reset-password');
 
   const viewerId = state.status === 'authenticated' ? state.user.id : null;
+
+  // EINE geteilte Realtime-Subscription für alle Shell-Zähler (Pills + Sidebar)
+  // — statt drei duplizierter Kanäle pro User. Siehe use-unread-shell-counts.
+  useUnreadShellRealtime(viewerId);
 
   return (
     <>
