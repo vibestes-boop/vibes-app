@@ -330,13 +330,13 @@ const deMessages = {
     title: "Shop",
     metaTitle: "Shop — Entdecke kuratierte Produkte",
     metaDescription:
-      "Digital, physisch, Services und Collectibles — direkt von Creatorn der Serlo-Community. Mit Coins oder (in Kürze) per Karte bezahlen.",
+      "Digital, physisch, Services und Collectibles — direkt aus der Serlo-Community. Mit Coins oder (in Kürze) per Karte bezahlen.",
     ogTitle: "Serlo Shop",
-    ogDescription: "Kuratierte Produkte direkt von Creatorn.",
+    ogDescription: "Kuratierte Produkte direkt aus der Community.",
     // Interpolation {count} — Pluralformen muss jede Locale selbst im String regeln
     productCount: "{count} Produkte",
     noMatches: "Keine Produkte passen auf deine Filter.",
-    browseCatalog: "Entdecke Produkte von Creatorn.",
+    browseCatalog: "Entdecke Produkte aus der Community.",
     saved: "Gemerkt",
     myOrders: "Bestellungen",
     emptyTitle: "Keine Treffer",

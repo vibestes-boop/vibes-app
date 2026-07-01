@@ -138,7 +138,9 @@ export function BuyBar({
         className={cn(
           isInline
             ? "rounded-xl border border-border/60 bg-card p-3 shadow-elevation-1 dark:border-border/30"
-            : "sticky bottom-0 left-0 right-0 z-20 border-t bg-background/90 px-4 py-3 backdrop-blur-md lg:px-6",
+            : // bottom-Offset: schwebt über der MobileBottomNav (h-14 + Safe-Area);
+              // ab md ist die Nav weg → bottom-0.
+              "sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-20 border-t bg-background/90 px-4 py-3 backdrop-blur-md md:bottom-0 lg:px-6",
           className,
         )}
       >
@@ -206,9 +208,10 @@ export function BuyBar({
                 </>
               ) : isOwnP ? (
                 "Dein Produkt"
-              ) : !viewerId ? (
-                "Einloggen zum Vorbestellen"
               ) : (
+                // Auch ausgeloggt „Vorbestellen" — der Tap leitet zum Login
+                // (handleVormerken). Der lange Label „Einloggen zum
+                // Vorbestellen" lief 3-zeilig aus der h-12-Pille.
                 "Vorbestellen"
               )}
             </button>
@@ -247,7 +250,8 @@ export function BuyBar({
         className={cn(
           isInline
             ? "rounded-xl border border-border/60 bg-card p-3 shadow-elevation-1 dark:border-border/30"
-            : "sticky bottom-0 left-0 right-0 z-20 border-t bg-background/90 px-4 py-3 backdrop-blur-md lg:px-6",
+            : // bottom-Offset: siehe Preorder-Variante oben (MobileBottomNav-Höhe).
+              "sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-20 border-t bg-background/90 px-4 py-3 backdrop-blur-md md:bottom-0 lg:px-6",
           className,
         )}
       >
@@ -320,7 +324,7 @@ export function BuyBar({
                 : isOwn
                   ? "Dein Produkt"
                   : !viewerId
-                    ? "Einloggen zum Kaufen"
+                    ? "Jetzt kaufen" // Tap → Login-Redirect (handleBuy)
                     : !canAfford
                       ? "Coins aufladen"
                       : "Jetzt kaufen"}

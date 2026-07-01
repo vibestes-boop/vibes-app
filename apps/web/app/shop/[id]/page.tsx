@@ -236,7 +236,9 @@ export default async function ProductDetailPage({ params }: PageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: safeJsonLd(productJsonLd) }}
       />
-      <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-6xl flex-col px-4 pb-0 pt-6 lg:px-6">
+      {/* pt-14 mobile: Platz für die fixed Auth-/Account-Pills oben rechts
+          (top-3 + h-9 = 48px) — sonst verdecken sie den Breadcrumb. */}
+      <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-6xl flex-col px-4 pb-0 pt-14 lg:px-6 lg:pt-6">
         {/* Breadcrumb */}
         <nav className="mb-4 text-sm text-muted-foreground">
           <Link href={"/shop" as Route} className="hover:text-foreground">
@@ -496,11 +498,15 @@ export default async function ProductDetailPage({ params }: PageProps) {
         )}
 
         {/* Sticky BuyBar — nur Mobile. Desktop rendert die Inline-Variante
-          oben in der Info-Column (siehe `variant="inline"` weiter oben). */}
+          oben in der Info-Column (siehe `variant="inline"` weiter oben).
+          WICHTIG: Wrapper mit `contents`, damit der Sticky-Containing-Block
+          der Seiten-Container ist (sonst ist der kleine Wrapper die Grenze
+          und die Bar „klebt" nie — sie läge unsichtbar am Seitenende).
+          bottom-Offset = Höhe der MobileBottomNav (h-14 + Safe-Area). */}
         <div className="mt-10 lg:hidden" />
-        <div className="lg:hidden">
+        <div className="contents lg:hidden">
           {isOwner ? (
-            <div className="sticky bottom-0 left-0 right-0 z-20 border-t bg-background/90 px-4 py-3 backdrop-blur-md lg:px-6">
+            <div className="sticky bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-20 border-t bg-background/90 px-4 py-3 backdrop-blur-md md:bottom-0 lg:px-6">
               <Link
                 href={`/studio/shop/${product.id}/edit` as Route}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-foreground px-4 py-3 text-sm font-semibold text-background transition hover:opacity-90"
