@@ -27,6 +27,10 @@ export type Profile = {
   is_creator?: boolean | null;           // Creator-Status aktiviert
   display_name?: string | null;          // Anzeigename (optional)
   is_admin?: boolean | null;             // Admin-Zugang
+  // ── Bottom-Nav-Anpassung (Slot 2/4) ──────────────────────────
+  // Reiten auf dem select=* mit → tabBarStore liest sie ohne Extra-Query.
+  nav_slot_2?: string | null;
+  nav_slot_4?: string | null;
 };
 
 

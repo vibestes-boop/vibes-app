@@ -130,8 +130,11 @@ interface TabBarStore {
   slot4: TabFeature;
   setSlot2: (f: TabFeature) => void;
   setSlot4: (f: TabFeature) => void;
-  /** Lädt die in der DB gespeicherte Slot-Wahl (bei Login). Best-effort. */
-  syncFromDb: () => Promise<void>;
+  /**
+   * Übernimmt die Slot-Wahl aus dem BEREITS geladenen Profil (kein Extra-Read).
+   * Die Nav-Spalten reiten auf dem select=* mit, das authStore beim Login lädt.
+   */
+  hydrateFromProfile: () => void;
 }
 
 export const useTabBarStore = create<TabBarStore>()(
@@ -141,23 +144,16 @@ export const useTabBarStore = create<TabBarStore>()(
       slot4: 'shop',
       setSlot2: (f) => { set({ slot2: f }); void persistSlotToDb('nav_slot_2', f); },
       setSlot4: (f) => { set({ slot4: f }); void persistSlotToDb('nav_slot_4', f); },
-      syncFromDb: async () => {
-        const userId = useAuthStore.getState().user?.id;
-        if (!userId) return;
-        try {
-          const { data } = await supabase
-            .from('profiles')
-            .select('nav_slot_2, nav_slot_4')
-            .eq('id', userId)
-            .maybeSingle();
-          if (!data) return;
-          set((s) => ({
-            slot2: isTabFeature(data.nav_slot_2) ? data.nav_slot_2 : s.slot2,
-            slot4: isTabFeature(data.nav_slot_4) ? data.nav_slot_4 : s.slot4,
-          }));
-        } catch {
-          /* Spalte fehlt noch / offline → lokale Defaults behalten */
-        }
+      hydrateFromProfile: () => {
+        // KEIN Extra-Read: die Nav-Slots stehen im select=*, das authStore beim
+        // Login ohnehin lädt (authStore.fetchProfileViaRest). Wir lesen sie nur
+        // aus dem bereits im Speicher liegenden Profil-Objekt.
+        const profile = useAuthStore.getState().profile;
+        if (!profile) return;
+        set((s) => ({
+          slot2: isTabFeature(profile.nav_slot_2) ? profile.nav_slot_2 : s.slot2,
+          slot4: isTabFeature(profile.nav_slot_4) ? profile.nav_slot_4 : s.slot4,
+        }));
       },
     }),
     {

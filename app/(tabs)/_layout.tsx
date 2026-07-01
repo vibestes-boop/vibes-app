@@ -185,13 +185,13 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
     setSwitchSlot(s);
   };
 
-  // DB-Sync: bei Login die gespeicherte Slot-Wahl aus profiles laden, damit
-  // App + Web dieselbe Bottom-Nav zeigen. Best-effort (s. tabBarStore).
-  const syncNavFromDb = useTabBarStore((s) => s.syncFromDb);
-  const navUserId = useAuthStore((s) => s.user?.id);
+  // Slot-Wahl aus dem bereits geladenen Profil übernehmen (App↔Web-Parität) —
+  // KEIN Extra-Read, die Nav-Spalten kommen im Login-select=* mit (s. tabBarStore).
+  const hydrateNavSlots = useTabBarStore((s) => s.hydrateFromProfile);
+  const navProfile = useAuthStore((s) => s.profile);
   useEffect(() => {
-    if (navUserId) void syncNavFromDb();
-  }, [navUserId, syncNavFromDb]);
+    if (navProfile) hydrateNavSlots();
+  }, [navProfile, hydrateNavSlots]);
 
   // Dynamische Tab-Konfiguration aus Store-Slots
   const slot2Meta = TAB_FEATURES[slot2Feature];
