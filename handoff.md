@@ -12,6 +12,16 @@
 
 ---
 
+## 🚀 Neue Sitzung — Start hier
+
+- **Stand:** Session 6 komplett + von Zaur auf dem Gerät getestet. Alle Migrationen ausgeführt, `send-push-notification` deployt, Web live (Vercel), App auf letztem OTA. **Working Tree sauber, keine offene Migration, kein offener OTA.**
+- **Diese Session gebaut (die „Brücken" aus der App-Karte):** #2 Shoppable Posts (App+Web) · #4 Auto-Zahlungserinnerung (Cron) · #4 „Sammelbestellung offen" (Ankündigen, App+Web) · #5 Referral-Foundation (Invite-Link + Attribution + Zähler) · „Merken" pingt Verkäufer (`product_saved`) · „Vormerken"→„Vorbestellen" · plus Fixes (schmale Web-Sidebar, guild-post Reopen, Vorbestell-Verwaltung admin-only, `notifications.product_id`-Hotfix). Details: **§1.2**.
+- **Realer Kontext (wichtig fürs Priorisieren):** Zaur verkauft Parfüm **offline** (bereits verkauft), **80 Flaschen** in Lieferung, **5 App-Vorbestellungen** erfolgreich getestet. Premortem-Leitlinie: **erst validieren, dann mehr bauen.**
+- **Nächste sinnvolle Schritte (offen, keiner dringend):** Referral-**Belohnung** (Geschäftsentscheidung) · App-Deep-Link-Attribution + Web-Invite-Fläche · **#1 Live-Shopping** · **#3 Guild-Commerce**. Empfehlung vor Neubau: die Parfüm-Runde mit den 80 Flaschen einmal komplett durch die App laufen lassen.
+- **Git-Eigenheit dieser Umgebung:** Der lokale Reflog kann auf einen alten Tip zeigen, obwohl aller Session-Stand im HEAD-Tree + auf dem Remote (`vibestes-boop/vibes-app` `main`) liegt. Nicht erschrecken — mit `git show HEAD:<datei>` / `git ls-remote` prüfen statt dem Reflog trauen. Push wie gehabt via PAT aus `.env.local` (§4).
+
+---
+
 ## 0. Schnell-Status
 
 | Bereich | Stand |
