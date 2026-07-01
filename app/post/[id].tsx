@@ -785,6 +785,10 @@ export default function PostDetailScreen() {
 
         {/* Unten: Autor, Caption, Tags, Datum */}
         <View style={[styles.bottomInfo, { paddingBottom: insets.bottom + 8 }]}>
+          {/* Shoppable Post (#2): kompakte Produkt-Pille ÜBER dem Autor-Block,
+              damit Nickname + Caption an ihrer gewohnten Position bleiben */}
+          {linkedProduct && <ProductFeedChip product={linkedProduct} style={{ marginBottom: 10 }} />}
+
           <Pressable
             style={styles.authorRow}
             onPress={() => displayAuthorId && router.push({ pathname: '/user/[id]', params: { id: displayAuthorId } })}
@@ -811,9 +815,6 @@ export default function PostDetailScreen() {
           {displayCaption ? (
             <Text style={styles.caption}>{displayCaption}</Text>
           ) : null}
-
-          {/* Shoppable Post (#2): verknüpftes Produkt → tappbare Karte */}
-          {linkedProduct && <ProductFeedChip product={linkedProduct} style={{ marginTop: 10 }} />}
 
           {/* Musik-Badge (Short-Video-Style rollender Text) */}
           {post?.audio_url && (

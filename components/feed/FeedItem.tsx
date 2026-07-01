@@ -945,6 +945,10 @@ export const FeedItem = React.memo(function FeedItem({
         pointerEvents={commentsOpen ? 'none' : 'box-none'}
       >
 
+        {/* ── Shoppable Post (#2): kompakte Produkt-Pille ÜBER dem Autor-Block,
+            damit Nickname + Caption an ihrer gewohnten Position bleiben ── */}
+        {product && <ProductFeedChip product={product} style={{ marginBottom: 10 }} />}
+
         <View style={styles.tagBadge}>
           <View style={[styles.tagDot, { backgroundColor: item.accentColor }]} />
           <Text style={[styles.tagText, { color: item.accentColor }]}>{item.tag}</Text>
@@ -1061,9 +1065,6 @@ export const FeedItem = React.memo(function FeedItem({
             )}
           </View>
         )}
-
-        {/* ── Shoppable Post (#2): verknüpftes Produkt → tappbare Karte ── */}
-        {product && <ProductFeedChip product={product} style={{ marginTop: 10 }} />}
 
         {/* ── Musik-Badge (Short-Video-Style rotierendes Vinyl) ── */}
         {item.audioTitle && (

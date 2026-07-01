@@ -1,14 +1,18 @@
-import { ShoppingBag } from 'lucide-react-native';
+import { ChevronRight, ShoppingBag } from 'lucide-react-native';
 import { Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { impactAsync, ImpactFeedbackStyle } from 'expo-haptics';
 import type { LinkedProduct } from '@/lib/useFeedProducts';
 
-// Shoppable Posts (#2): tappbare Produktkarte über einem Post/Video. Geteilt
-// von Feed (FeedItem), Post-Detail (post/[id]) und Guild-Detail (guild-post/[id])
-// → konsistente Optik + ein Tap-Ziel (/shop/[id]). Vorbestellung zeigt € /
-// „Vormerken", Coin-Produkt 🪙 / „Ansehen".
+// Shoppable Posts (#2): kompakte tappbare Produkt-Pille über einem Post/Video.
+// Geteilt von Feed (FeedItem), Post-Detail (post/[id]) und Guild-Detail
+// (guild-post/[id]) → konsistente Optik + ein Tap-Ziel (/shop/[id]).
+//
+// Bewusst OHNE eigenen CTA-Button (TikTok-Anchor-Pattern): die ganze Pille
+// navigiert zur Produktseite, dort lebt der echte Kauf-/Vorbestell-CTA.
+// Und bewusst schlank (~36px): sitzt ÜBER der Autor-Zeile, damit Nickname +
+// Caption an ihrer gewohnten Position bleiben (nicht hochgedrückt werden).
 export function ProductFeedChip({
   product,
   style,
@@ -19,9 +23,8 @@ export function ProductFeedChip({
   const router = useRouter();
   const isPreorder = product.sale_mode === 'preorder';
   const priceLabel = isPreorder
-    ? (product.price_eur != null ? `${product.price_eur.toFixed(2).replace('.', ',')} €` : 'Preis im Shop')
+    ? (product.price_eur != null ? `${product.price_eur.toFixed(2).replace('.', ',')} €` : 'Vorbestellung')
     : `🪙 ${product.sale_price_coins ?? product.price_coins}`;
-  const ctaLabel = isPreorder ? 'Vorbestellen' : 'Ansehen';
 
   return (
     <Pressable
@@ -31,23 +34,18 @@ export function ProductFeedChip({
       }}
       style={[s.chip, style]}
       accessibilityRole="button"
-      accessibilityLabel={`Produkt ansehen: ${product.title}`}
+      accessibilityLabel={`Produkt ansehen: ${product.title}, ${priceLabel}`}
     >
       {product.cover_url ? (
         <Image source={{ uri: product.cover_url }} style={s.img} cachePolicy="memory-disk" contentFit="cover" />
       ) : (
         <View style={[s.img, s.imgFallback]}>
-          <ShoppingBag size={16} color="#fff" strokeWidth={2} />
+          <ShoppingBag size={13} color="#fff" strokeWidth={2} />
         </View>
       )}
-      <View style={s.body}>
-        <Text style={s.title} numberOfLines={1}>{product.title}</Text>
-        <Text style={s.price} numberOfLines={1}>{priceLabel}</Text>
-      </View>
-      <View style={s.cta}>
-        <ShoppingBag size={13} color="#0A0A0A" strokeWidth={2.4} />
-        <Text style={s.ctaText}>{ctaLabel}</Text>
-      </View>
+      <Text style={s.title} numberOfLines={1}>{product.title}</Text>
+      <Text style={s.price} numberOfLines={1}>{priceLabel}</Text>
+      <ChevronRight size={13} color="rgba(255,255,255,0.55)" strokeWidth={2.4} />
     </Pressable>
   );
 }
@@ -56,53 +54,36 @@ const s = StyleSheet.create({
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingVertical: 6,
-    paddingLeft: 6,
-    paddingRight: 10,
-    borderRadius: 14,
+    gap: 7,
+    paddingVertical: 4,
+    paddingLeft: 4,
+    paddingRight: 8,
+    borderRadius: 999,
     backgroundColor: 'rgba(0,0,0,0.42)',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.18)',
     alignSelf: 'flex-start',
-    maxWidth: '86%',
+    maxWidth: '80%',
   },
   img: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
+    width: 28,
+    height: 28,
+    borderRadius: 999,
     backgroundColor: 'rgba(255,255,255,0.1)',
   },
   imgFallback: {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  body: {
-    flexShrink: 1,
-    gap: 1,
-  },
   title: {
+    flexShrink: 1,
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '600',
   },
   price: {
-    color: 'rgba(255,255,255,0.75)',
+    color: '#FBBF24',
     fontSize: 12,
-    fontWeight: '500',
-  },
-  cta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-  },
-  ctaText: {
-    color: '#0A0A0A',
-    fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
   },
 });

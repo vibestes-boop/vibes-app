@@ -492,6 +492,10 @@ function GuildPostDetailItem({
         pointerEvents={showComments ? 'none' : 'box-none'}
       >
         {/* Autor */}
+        {/* Shoppable Post (#2): kompakte Produkt-Pille ÜBER dem Autor-Block,
+            damit Nickname + Caption an ihrer gewohnten Position bleiben */}
+        {product && <ProductFeedChip product={product} style={{ marginBottom: 8 }} />}
+
         <Pressable
           style={itemStyles.authorRow}
           onPress={() => router.push({ pathname: '/user/[id]', params: { id: post.author_id } })}
@@ -517,8 +521,6 @@ function GuildPostDetailItem({
           </View>
         ) : null}
 
-        {/* Shoppable Post (#2): verknüpftes Produkt → tappbare Karte */}
-        {product && <ProductFeedChip product={product} style={{ marginTop: 8 }} />}
       </Animated.View>
 
       <CommentsSheet
