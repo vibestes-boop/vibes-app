@@ -32,6 +32,7 @@ useAnimatedStyle,
 useSharedValue,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any;
 const _animNS = _animMod?.default ?? _animMod;
@@ -170,6 +171,7 @@ const handle = StyleSheet.create({
 
 // ─── Haupt TrimScreen ──────────────────────────────────────────────────────────
 export default function TrimScreen() {
+  useThemedStatusBar('light');
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { mediaUri } = useLocalSearchParams<{ mediaUri: string }>();

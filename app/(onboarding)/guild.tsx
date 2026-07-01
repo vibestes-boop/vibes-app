@@ -16,6 +16,7 @@ withSequence,
 withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
@@ -29,6 +30,7 @@ const GUILD_COLORS: Record<string, [string, string]> = {
 };
 
 export default function OnboardingGuild() {
+  useThemedStatusBar('light');
   const insets = useSafeAreaInsets();
   const { profile, fetchProfile } = useAuthStore();
   const [guildName, setGuildName] = useState<string | null>(null);

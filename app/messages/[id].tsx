@@ -42,6 +42,7 @@ useSharedValue,
 withSpring,withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 // reanimated: CJS require() vermeidet _interopRequireDefault Crash in Hermes HBC
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any;
@@ -482,6 +483,7 @@ function MessageBubble({
 
 // ── Haupt-Screen ─────────────────────────────────────────────────────────────
 export default function ChatScreen() {
+  useThemedStatusBar('auto');
   const { id: conversationId, username, avatarUrl, otherUserId } = useLocalSearchParams<{
     id: string;
     username: string;

@@ -57,6 +57,7 @@ Text,
 View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 
 const { width: W } = Dimensions.get('window');
 
@@ -71,6 +72,7 @@ const PERIODS: { label: string; value: AnalyticsPeriod }[] = [
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function CreatorDashboard() {
+  useThemedStatusBar('auto');
   const insets = useSafeAreaInsets();
   const router  = useRouter();
   const { colors } = useTheme();

@@ -26,6 +26,7 @@ Text,
 View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 
 const BENEFITS = [
   { icon: Gift,        label: 'Gift-Einnahmen',  desc: '70% aller Gifts gehen direkt an dich' },
@@ -36,6 +37,7 @@ const BENEFITS = [
 ];
 
 export default function CreatorActivateScreen() {
+  useThemedStatusBar('auto');
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors } = useTheme();

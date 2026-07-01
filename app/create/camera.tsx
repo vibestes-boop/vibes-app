@@ -42,6 +42,7 @@ withSpring,
 withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any;
 const _animNS = _animMod?.default ?? _animMod;
@@ -373,6 +374,7 @@ const cap = StyleSheet.create({
 
 // ─── Haupt Screen ──────────────────────────────────────────────────────────────
 export default function CreateCameraScreen() {
+  useThemedStatusBar('light');
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();

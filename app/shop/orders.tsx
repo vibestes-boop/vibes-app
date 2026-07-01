@@ -31,6 +31,7 @@ Text,
 View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 
 type ThemeColors = ReturnType<typeof useTheme>['colors'];
 
@@ -202,6 +203,7 @@ function EmptyState({ role, colors }: { role: 'buyer' | 'seller'; colors: ThemeC
 
 // ─── Main Screen ──────────────────────────────────────────────────────────────
 export default function OrdersScreen() {
+  useThemedStatusBar('auto');
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const [role, setRole] = useState<'buyer' | 'seller'>('buyer');

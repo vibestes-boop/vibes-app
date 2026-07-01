@@ -21,6 +21,7 @@ TextInput,TouchableOpacity,
 View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 
 function ConvItem({ item }: { item: Conversation }) {
   const hasUnread = item.unread_count > 0;
@@ -185,6 +186,7 @@ function NewMessageModal({ visible, onClose }: { visible: boolean; onClose: () =
 }
 
 export default function MessagesScreen() {
+  useThemedStatusBar('auto');
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const [showNew, setShowNew] = useState(false);

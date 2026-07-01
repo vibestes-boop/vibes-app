@@ -60,6 +60,7 @@ TextInput,
 View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 
 // ─── expo-document-picker LAZY laden (OTA-sicher) ─────────────────────────────
 // Wie der expo-video-Wrapper: try/require, damit ein OTA-Bundle NICHT crasht,
@@ -108,6 +109,7 @@ const EMPTY_FORM: CreateProductInput = {
 // ─── Hauptscreen ──────────────────────────────────────────────────────────────
 
 export default function MyShopScreen() {
+  useThemedStatusBar('auto');
   const insets = useSafeAreaInsets();
   const router = useRouter();
   // ?create=1 → Erstellen-Sheet direkt öffnen (Schnell-Einstieg vom Shop-FAB)

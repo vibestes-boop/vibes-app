@@ -36,10 +36,12 @@ Text,
 View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function DraftsScreen() {
+  useThemedStatusBar('auto');
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors } = useTheme();

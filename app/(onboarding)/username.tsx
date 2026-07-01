@@ -17,8 +17,10 @@ TextInput,
 View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 
 export default function OnboardingUsername() {
+  useThemedStatusBar('light');
   const insets = useSafeAreaInsets();
   const { profile, session } = useAuthStore();
 

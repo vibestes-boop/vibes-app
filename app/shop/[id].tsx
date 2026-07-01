@@ -77,6 +77,7 @@ useWindowDimensions,
 View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 
 // ─── Konstanten ───────────────────────────────────────────────────────────────
 
@@ -685,6 +686,7 @@ const mm = StyleSheet.create({
 // ─── Hauptscreen ─────────────────────────────────────────────────────────────
 
 export default function ProductDetailScreen() {
+  useThemedStatusBar('auto');
   const { id }     = useLocalSearchParams<{ id: string }>();
   const insets     = useSafeAreaInsets();
   const router     = useRouter();

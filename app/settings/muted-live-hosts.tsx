@@ -30,6 +30,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useMutedLiveHosts,useToggleMuteHost,type MutedHost } from '@/lib/useMutedLiveHosts';
 import { useTheme } from '@/lib/useTheme';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 
 // ─── Row ────────────────────────────────────────────────────────────
 
@@ -111,6 +112,7 @@ function MutedRow({
 // ─── Screen ─────────────────────────────────────────────────────────
 
 export default function MutedLiveHostsScreen() {
+  useThemedStatusBar('auto');
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors } = useTheme();

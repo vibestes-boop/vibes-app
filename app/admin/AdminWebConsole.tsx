@@ -1,5 +1,6 @@
 import { useAuthStore } from '@/lib/authStore';
 import { useTheme } from '@/lib/useTheme';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import { useRouter } from 'expo-router';
 import {
   ArrowLeft,
@@ -62,6 +63,7 @@ export function AdminWebConsole({
   const router = useRouter();
   const { colors } = useTheme();
   const { profile } = useAuthStore();
+  useThemedStatusBar('auto');
 
   function openPath(path: WebAdminPath) {
     const url = `${WEB_ADMIN_BASE.replace(/\/+$/, '')}${path}`;

@@ -21,6 +21,7 @@ Text,
 View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 
 function BlockedUserRow({ user }: { user: BlockedUser }) {
   const [unblocking, setUnblocking] = useState(false);
@@ -96,6 +97,7 @@ function BlockedUserRow({ user }: { user: BlockedUser }) {
 }
 
 export default function BlockedUsersScreen() {
+  useThemedStatusBar('auto');
   const insets = useSafeAreaInsets();
   const { data: blockedUsers = [], isLoading } = useBlockedUsers();
   const { colors } = useTheme();

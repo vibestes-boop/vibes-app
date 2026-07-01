@@ -42,12 +42,14 @@ View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg,{ Line,Rect } from 'react-native-svg';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 
 const { width: W } = Dimensions.get('window');
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function CreatorLiveHistoryScreen() {
+  useThemedStatusBar('auto');
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors } = useTheme();

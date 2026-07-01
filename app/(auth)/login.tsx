@@ -24,11 +24,13 @@ useAnimatedStyle,
 useSharedValue,
 withTiming,
 } from 'react-native-reanimated';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
 
 export default function LoginScreen() {
+  useThemedStatusBar('light');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);

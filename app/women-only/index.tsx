@@ -28,6 +28,7 @@ Text,
 View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const CARD_W = (SCREEN_W - 48) / 2;
@@ -65,6 +66,7 @@ function useWOZFeed() {
 // ─── Haupt-Screen ─────────────────────────────────────────────────────────────
 
 export default function WomenOnlyScreen() {
+  useThemedStatusBar('auto');
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors } = useTheme();

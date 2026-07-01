@@ -22,6 +22,7 @@ Text,
 View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 
 // ─── Produktkarte ─────────────────────────────────────────────────────────────
 
@@ -81,6 +82,7 @@ const card = StyleSheet.create({
 // ─── Hauptscreen ─────────────────────────────────────────────────────────────
 
 export default function SavedProductsScreen() {
+  useThemedStatusBar('auto');
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors } = useTheme();

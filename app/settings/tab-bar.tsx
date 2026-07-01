@@ -18,6 +18,7 @@ import { ArrowLeft,Check,Pin,Plus,User,Zap } from 'lucide-react-native';
 import React,{ useState } from 'react';
 import { Pressable,ScrollView,StyleSheet,Text,View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 
 // ─── Echter Tab Bar – Vorschau-Komponente (1:1 der echten CustomTabBar) ────────
 
@@ -137,6 +138,7 @@ function TabBarPreview({ slot2, slot4, colors }: {
 // ─── Haupt-Screen ─────────────────────────────────────────────────────────────
 
 export default function TabBarCustomizeScreen() {
+  useThemedStatusBar('auto');
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors } = useTheme();

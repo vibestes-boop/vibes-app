@@ -17,6 +17,7 @@ TextInput,
 View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 
 const SUGGESTED_TAGS = [
   'Tech', 'Design', 'AI', 'Art', 'Music',
@@ -31,6 +32,7 @@ type PostData = {
 };
 
 export default function EditPostScreen() {
+  useThemedStatusBar('auto');
   const { id } = useLocalSearchParams<{ id: string }>();
   const router  = useRouter();
   const insets  = useSafeAreaInsets();

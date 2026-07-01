@@ -30,6 +30,7 @@ Text,
 View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 
 // ─── Typen ───────────────────────────────────────────────────────────────
 interface CoHostBlock {
@@ -192,6 +193,7 @@ function CoHostBlockRow({ block, onUnblocked }: { block: CoHostBlock; onUnblocke
 
 // ─── Screen ──────────────────────────────────────────────────────────────
 export default function CoHostBlocksScreen() {
+  useThemedStatusBar('auto');
   const insets = useSafeAreaInsets();
   const { data: blocks = [], isLoading, refetch } = useCoHostBlocks();
   const { colors } = useTheme();

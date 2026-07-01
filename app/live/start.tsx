@@ -66,6 +66,7 @@ withSequence,
 withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 // react-native-reanimated: CJS require() vermeidet Hermes HBC Crash
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any;
@@ -79,6 +80,7 @@ const _cMod = require('expo-constants') as any; const Constants = _cMod?.default
 const LIVE_CATEGORIES = ['Talk', 'Musik', 'Gaming', 'Sport', 'Kochen', 'Beauty', 'Wissen', 'Reisen', 'Comedy'] as const;
 
 export default function LiveStartScreen() {
+  useThemedStatusBar('light');
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { startSession, loading } = useLiveHost();

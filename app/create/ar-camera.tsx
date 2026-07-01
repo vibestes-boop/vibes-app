@@ -11,6 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import React from 'react';
 import { StyleSheet,Text,TouchableOpacity,View } from 'react-native';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 
 // ─── Expo Go Detection ────────────────────────────────────────────────────────
 const isExpoGo = Constants.appOwnership === 'expo';
@@ -63,6 +64,7 @@ function ExpoGoPlaceholder({ onBack }: { onBack: () => void }) {
 
 // ─── Main Route ───────────────────────────────────────────────────────────────
 export default function ARCameraRoute() {
+  useThemedStatusBar('light');
   const router = useRouter();
 
   const handleClose = () => router.back();

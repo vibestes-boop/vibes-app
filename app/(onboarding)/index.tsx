@@ -11,6 +11,7 @@ withDelay,
 withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
@@ -75,6 +76,7 @@ function FeatureCard({
 }
 
 export default function OnboardingWelcome() {
+  useThemedStatusBar('light');
   const insets = useSafeAreaInsets();
 
   const logoOpacity = useSharedValue(0);

@@ -21,10 +21,12 @@ TextInput,
 View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 
 // Auszahlungs-Mathe (RATE 0.02, Min 2500) lebt jetzt getestet in lib/payout.ts.
 
 export default function PayoutRequestScreen() {
+  useThemedStatusBar('auto');
   const insets   = useSafeAreaInsets();
   const router   = useRouter();
   const { colors } = useTheme();

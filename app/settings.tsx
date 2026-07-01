@@ -60,6 +60,7 @@ View,
 } from 'react-native';
 import { useAnimatedStyle,useSharedValue,withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
@@ -118,6 +119,7 @@ const TEIP_LIST: string[] = [...new Set([
 ])].sort((a, b) => a.localeCompare(b, 'ru'));
 
 export default function SettingsScreen() {
+  useThemedStatusBar('auto');
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { profile, setProfile } = useAuthStore();

@@ -20,7 +20,9 @@ Text,
 TextInput,
 View,
 } from 'react-native';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 export default function RegisterScreen() {
+  useThemedStatusBar('light');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');

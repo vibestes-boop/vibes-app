@@ -14,6 +14,7 @@ Text,
 View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 
 type Mode = 'followers' | 'following';
 
@@ -73,6 +74,7 @@ function UserRow({ user, onPress }: { user: FollowUser; onPress: () => void }) {
 }
 
 export default function FollowListScreen() {
+  useThemedStatusBar('auto');
   const { userId, mode: initialMode, username } = useLocalSearchParams<{
     userId: string;
     mode: Mode;

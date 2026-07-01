@@ -22,6 +22,7 @@ useSharedValue,
 withDelay,withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View, Text: _animNS?.Text ?? _animMod?.Text };
@@ -45,6 +46,7 @@ const INTERESTS = [
 const MIN_SELECTED = 3;
 
 export default function OnboardingInterests() {
+  useThemedStatusBar('light');
   const insets = useSafeAreaInsets();
   const { profile } = useAuthStore();
   const [selected, setSelected] = useState<Set<string>>(new Set());
