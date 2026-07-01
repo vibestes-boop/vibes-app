@@ -35,8 +35,8 @@ const Animated = {
   Text: _animNS?.Text as typeof Text,
 };
 
-const CIRCLE = 62;
-const CONTAINER = 80;
+const CIRCLE = 56;
+const CONTAINER = 66;
 
 // ── Einzelner Chip im Halbkreis (eigene Komponente → kein useAnimatedStyle in
 //    einer .map-Schleife, Rules-of-Hooks; Memory zu GiftAnimation). Fächert beim
@@ -48,7 +48,6 @@ function ArcButton({
   originX,
   originY,
   progress,
-  color,
   onPress,
 }: {
   feature: TabFeature;
@@ -57,7 +56,6 @@ function ArcButton({
   originX: number;
   originY: number;
   progress: SharedValue<number>;
-  color: string;
   onPress: () => void;
 }) {
   const { colors } = useTheme();
@@ -83,15 +81,17 @@ function ArcButton({
     <Animated.View
       style={[
         styles.arcItem,
-        { left: targetX - CONTAINER / 2, bottom: targetY - (CIRCLE + 22) / 2 },
+        { left: targetX - CONTAINER / 2, bottom: targetY - CIRCLE / 2 },
         aStyle,
       ]}
     >
       <Pressable onPress={onPress} style={styles.arcPress} accessibilityRole="button" accessibilityLabel={meta.label}>
-        <View style={[styles.circle, { backgroundColor: color }]}>
-          <Icon size={26} color="#FFFFFF" strokeWidth={2} />
+        {/* Chip in der Original-Nav-Farbe (tabBar.bg): dark ≈ schwarz, light = weiß.
+            Icon im Kontrast dazu (tabBar.active). */}
+        <View style={[styles.circle, { backgroundColor: colors.tabBar.bg, borderColor: colors.tabBar.border }]}>
+          <Icon size={24} color={colors.tabBar.active} strokeWidth={2} />
         </View>
-        <Text numberOfLines={1} style={[styles.arcLabel, { color: colors.text.primary }]}>
+        <Text numberOfLines={1} style={styles.arcLabel}>
           {meta.label}
         </Text>
       </Pressable>
@@ -123,18 +123,18 @@ export function TabSlotSwitcher({
   const backdropStyle = useAnimatedStyle(() => ({ opacity: progress.value * 0.5 }));
   const captionStyle = useAnimatedStyle(() => ({ opacity: progress.value }));
 
-  // Markenfarbe (Lila), theme-adaptiv — bewusst NICHT das rote/pinke Akzent.
-  const color = colors.accent.secondary;
-
   const screenW = Dimensions.get('window').width;
   const cx = screenW / 2;
   const navHeight = 56 + insets.bottom;
-  const originY = navHeight + 64;                 // Fächer-Ursprung (von unten)
+  const originY = navHeight + 56;                 // Fächer-Ursprung (von unten)
   const N = options.length;
-  const R = N <= 1 ? 0 : Math.min(140, screenW / 2 - 56);
+  // Enger: kleinerer Radius + schmalerer Bogen (150° statt 180°, auf 90° zentriert).
+  const R = N <= 1 ? 0 : Math.min(104, screenW / 2 - 60);
+  const SPAN = 150;
+  const startAngle = 90 + SPAN / 2;
 
   const points = options.map((f, i) => {
-    const angleDeg = N === 1 ? 90 : 180 - (i * 180) / (N - 1);
+    const angleDeg = N === 1 ? 90 : startAngle - (i * SPAN) / (N - 1);
     const rad = (angleDeg * Math.PI) / 180;
     return { f, x: cx + R * Math.cos(rad), y: originY + R * Math.sin(rad) };
   });
@@ -160,7 +160,6 @@ export function TabSlotSwitcher({
           originX={cx}
           originY={originY}
           progress={progress}
-          color={color}
           onPress={() => {
             notificationAsync(NotificationFeedbackType.Success);
             onSelect(p.f);
@@ -193,7 +192,7 @@ const styles = StyleSheet.create({
   },
   arcPress: {
     alignItems: 'center',
-    gap: 6,
+    gap: 3,
   },
   circle: {
     width: CIRCLE,
@@ -201,6 +200,7 @@ const styles = StyleSheet.create({
     borderRadius: CIRCLE / 2,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
     shadowColor: '#000',
     shadowOpacity: 0.3,
     shadowRadius: 10,
@@ -208,9 +208,10 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   arcLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
-    textShadowColor: 'rgba(0,0,0,0.55)',
+    color: '#FFFFFF',
+    textShadowColor: 'rgba(0,0,0,0.6)',
     textShadowRadius: 6,
   },
 });
