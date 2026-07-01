@@ -25,7 +25,6 @@ import { FollowingEmptyState } from '@/components/feed/FollowingEmptyState';
 import type { FeedItemData } from '@/components/feed/types';
 import { LiveFeedCard } from '@/components/live/LiveFeedCard';
 import { UserProfileContent } from '@/components/profile/UserProfileContent';
-import { CategoryFilter } from '@/components/ui/CategoryFilter';
 import { SerloLoader } from '@/components/ui/SerloLoader';
 import TuneMyVibeOverlay from '@/components/ui/TuneMyVibeOverlay';
 import { useAuthStore } from '@/lib/authStore';
@@ -48,7 +47,7 @@ import { useVideoMute } from '@/lib/useVideoPreferences';
 import { impactAsync,ImpactFeedbackStyle } from 'expo-haptics';
 import { Image } from 'expo-image';
 import { useFocusEffect,useRouter } from 'expo-router';
-import { AlertTriangle,Clock,PlusCircle,Search,SearchX,TrendingUp,Zap } from 'lucide-react-native';
+import { AlertTriangle,PlusCircle,Search,SearchX,TrendingUp,Zap } from 'lucide-react-native';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any;
 const _animNS = _animMod?.default ?? _animMod;
@@ -88,14 +87,14 @@ export default function VibeFeedScreen() {
     () => { setProfilePanel(null); profilePanelRef.current = null; }
   );
 
-  // Y-Grenze: Swipes die IM Header-Bereich beginnen (Status Bar + Toggle + Tags)
+  // Y-Grenze: Swipes die IM Header-Bereich beginnen (Status Bar + Toggle)
   // sollen den Profil-Swipe NICHT auslösen.
-  // feedModeBar (52px) + CategoryFilter (46px) + Puffer = ~110px
+  // feedModeBar (52px) + Puffer = ~60px (Kategorie-Chips entfernt)
   const swipeTopBoundaryRef = useRef(150);
   // Bottom-Grenze: Progress Bar + Tab-Bar Bereich ausschließen (insets.bottom + 49 + 60px Buffer)
   const swipeBottomBoundaryRef = useRef(9999);
   useEffect(() => {
-    swipeTopBoundaryRef.current = insets.top + 110;
+    swipeTopBoundaryRef.current = insets.top + 60;
     // SCREEN_H - (insets.bottom + tab-bar 49px + hitArea 28px + 20px Puffer)
     swipeBottomBoundaryRef.current = SCREEN_HEIGHT - insets.bottom - 110;
   }, [insets.top, insets.bottom]);
@@ -613,7 +612,7 @@ export default function VibeFeedScreen() {
       )}
       {/* Trending-Badge: wird nur angezeigt wenn Trending-Feed aktiv ist */}
       {isTrending && (
-        <View style={[styles.filterBar, { top: insets.top + 92, pointerEvents: 'none' }]}>
+        <View style={[styles.filterBar, { top: insets.top + 56, pointerEvents: 'none' }]}>
 
           <View style={{
             flexDirection: 'row', alignItems: 'center', gap: 5,
@@ -696,8 +695,28 @@ export default function VibeFeedScreen() {
         style={[styles.feedModeBar, { top: insets.top }]}
         pointerEvents="box-none"
       >
-        {/* Links: Platzhalter für symmetrisches Zentrieren */}
-        <View style={{ width: 40 }} pointerEvents="none" />
+        {/* Links: LIVE-Einstieg (TikTok-Pattern) — nur wenn gerade jemand
+            streamt. activeLives ist Heat-Score-sortiert (beste Session zuerst)
+            und wird eh schon für die Feed-Live-Karten geladen → 0 Extra-Query.
+            Ohne Live: Spacer für symmetrisches Zentrieren des Toggles. */}
+        {activeLives.length > 0 ? (
+          <Pressable
+            onPress={() => {
+              impactAsync(ImpactFeedbackStyle.Light);
+              router.push({ pathname: '/live/watch/[id]' as any, params: { id: activeLives[0].id } });
+            }}
+            hitSlop={8}
+            style={styles.livePill}
+            pointerEvents="auto"
+            accessibilityRole="button"
+            accessibilityLabel="Live-Stream ansehen"
+          >
+            <View style={styles.liveDot} />
+            <Text style={styles.livePillText}>LIVE</Text>
+          </Pressable>
+        ) : (
+          <View style={{ width: 36 }} pointerEvents="none" />
+        )}
 
         {/* Mitte: "Für dich | Folge ich" Toggle */}
         <View style={styles.feedModeRow} pointerEvents="auto">
@@ -731,42 +750,23 @@ export default function VibeFeedScreen() {
           </Pressable>
         </View>
 
-        {/* Rechts: Suche + Replay Buttons */}
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }} pointerEvents="auto">
-          <Pressable
-            onPress={() => {
-              impactAsync(ImpactFeedbackStyle.Light);
-              router.push('/live/replays' as any);
-            }}
-            hitSlop={10}
-            style={styles.feedSearchBtn}
-          >
-            <Clock size={18} stroke="rgba(255,255,255,0.8)" strokeWidth={2} />
-          </Pressable>
-          <Pressable
-            onPress={() => {
-              impactAsync(ImpactFeedbackStyle.Light);
-              router.navigate('/(tabs)/explore');
-            }}
-            hitSlop={10}
-            style={styles.feedSearchBtn}
-            pointerEvents="auto"
-          >
-            <Search size={18} stroke="rgba(255,255,255,0.8)" strokeWidth={2} />
-          </Pressable>
-        </View>
+        {/* Rechts: Suche. (Replays-Uhr + Kategorie-Chips bewusst entfernt —
+            minimale Top-Zeile nach Short-Video-Standard: das Video ist das
+            Produkt. Themen-Browsing lebt in Entdecken, Replays im Live-Bereich.
+            activeTag bleibt als Onboarding-Seed erhalten, Empty-State hat
+            weiterhin den „Filter entfernen"-Ausweg.) */}
+        <Pressable
+          onPress={() => {
+            impactAsync(ImpactFeedbackStyle.Light);
+            router.navigate('/(tabs)/explore');
+          }}
+          hitSlop={10}
+          style={styles.feedSearchBtn}
+          pointerEvents="auto"
+        >
+          <Search size={18} stroke="rgba(255,255,255,0.8)" strokeWidth={2} />
+        </Pressable>
       </View>
-
-      {/* ── Kategorie-Tabs (Short-Video-Stil, nur Für-dich-Mode) ─────── */}
-      {feedMode === 'foryou' && (
-        <View style={[styles.filterBar, { top: insets.top + 52 }]} pointerEvents="box-none">
-          <CategoryFilter
-            activeTag={activeTag}
-            onSelect={(tag) => setActiveTag(tag === activeTag ? null : tag)}
-            hideForYou
-          />
-        </View>
-      )}
 
       {showFirstPostNudge && (
         <FirstPostNudge
