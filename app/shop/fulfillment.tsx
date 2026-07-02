@@ -9,9 +9,13 @@
  */
 import {
   formatEur,
+  useActivePreorderRound,
   useAnnouncePreorderRound,
+  useClosePreorderRound,
+  useCreatePreorderRound,
   useMarkPreordersPayable,
   useMyPreorderGroups,
+  useMyProducts,
   useNotifyPreorderBuyers,
   useSellerProductOrders,
   useSetOrderShipped,
@@ -22,7 +26,7 @@ import { useTheme } from '@/lib/useTheme';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { ArrowLeft, Bell, CheckCircle2, Clock, Megaphone, MessageCircle, Package, PackageCheck, Send, Truck } from 'lucide-react-native';
+import { ArrowLeft, Bell, CheckCircle2, Clock, Megaphone, MessageCircle, Package, PackageCheck, Send, Target, Truck } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useEffect, useRef, useState } from 'react';
 import { useOrCreateConversation } from '@/lib/useMessages';
@@ -47,6 +51,20 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function fmtDate(iso: string): string {
   return new Date(iso).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: '2-digit' });
+}
+
+// Nächster Samstag 23:59 (lokal) + optionale Extra-Wochen — Zaurs realer
+// Bestell-Rhythmus („Sammelbestellung nur Samstag").
+function nextSaturday(extraWeeks = 0): Date {
+  const d = new Date();
+  const daysUntilSat = (6 - d.getDay() + 7) % 7 || 7; // heute Samstag → nächster
+  d.setDate(d.getDate() + daysUntilSat + extraWeeks * 7);
+  d.setHours(23, 59, 0, 0);
+  return d;
+}
+
+function fmtDeadline(d: Date): string {
+  return d.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' });
 }
 
 // „zuletzt angefordert vor X" — kompakt (gerade eben / N Min / N Std / N Tagen).
@@ -87,6 +105,55 @@ export default function FulfillmentScreen() {
   const { setShipped, isWorking: isShipping } = useSetOrderShipped();
   const { notifyBuyers, isWorking: isNotifying } = useNotifyPreorderBuyers();
   const orCreate = useOrCreateConversation();
+
+  // ── Guild-Commerce: Sammelbestellungs-Runde ──────────────────────────────
+  const { data: activeRound, refetch: refetchRound } = useActivePreorderRound();
+  const { createRound, isWorking: isCreatingRound } = useCreatePreorderRound();
+  const { closeRound, isWorking: isClosingRound } = useClosePreorderRound();
+  const { data: myProducts = [] } = useMyProducts();
+  const preorderProducts = myProducts.filter((p) => p.sale_mode === 'preorder' && p.is_active);
+
+  const [roundSheetOpen, setRoundSheetOpen] = useState(false);
+  const [roundProductId, setRoundProductId] = useState<string | null>(null);
+  const [roundTarget, setRoundTarget] = useState('80');
+  const [roundWeeks, setRoundWeeks] = useState(0); // 0 = nächster Samstag, 1/2 = +Wochen
+
+  const openRoundSheet = () => {
+    setRoundProductId(preorderProducts[0]?.id ?? null);
+    setRoundTarget('80');
+    setRoundWeeks(0);
+    setRoundSheetOpen(true);
+  };
+  const confirmCreateRound = async () => {
+    if (!roundProductId) return;
+    const target = parseInt(roundTarget, 10);
+    if (!target || target < 1) { Alert.alert('Hoppla 🙈', 'Ziel-Menge fehlt — wie viele Flaschen?'); return; }
+    const res = await createRound(roundProductId, target, nextSaturday(roundWeeks));
+    if (res.error) { Alert.alert('Hoppla 🙈', 'Hat nicht geklappt — gleich nochmal?'); return; }
+    setRoundSheetOpen(false);
+    showFlash('Runde gestartet 🎯 — sichtbar in jeder Guild');
+    refetchRound();
+  };
+  const handleCloseRound = () => {
+    if (!activeRound) return;
+    Alert.alert(
+      'Runde schließen?',
+      `„${activeRound.title}" — ${activeRound.reserved_qty}/${activeRound.target_qty} gesammelt. Die Karte verschwindet aus den Guilds; die Vorbestellungen bleiben.`,
+      [
+        { text: 'Abbrechen', style: 'cancel' },
+        {
+          text: 'Schließen',
+          style: 'destructive',
+          onPress: async () => {
+            const res = await closeRound(activeRound.id);
+            if (res.error) { Alert.alert('Hoppla 🙈', 'Hat nicht geklappt — gleich nochmal?'); return; }
+            showFlash('Runde geschlossen ✓ — weiter mit „Zahlung anfordern"');
+            refetchRound();
+          },
+        },
+      ],
+    );
+  };
 
   // Welche Produkte wurden in dieser Session schon „angefordert" → Button sofort umschalten.
   const [requested, setRequested] = useState<Set<string>>(new Set());
@@ -224,6 +291,46 @@ export default function FulfillmentScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.text.muted} />
           }
         >
+
+          {/* 0) Sammelbestellungs-Runde (Guild-Commerce) */}
+          <View style={{ gap: 10 }}>
+            <Text style={[s.section, { color: colors.text.primary }]}>Sammelbestellungs-Runde</Text>
+            {activeRound ? (
+              <View style={[s.row, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
+                <View style={[s.thumb, s.thumbFallback, { backgroundColor: colors.bg.elevated }]}>
+                  <Target size={18} color="#FBBF24" strokeWidth={2} />
+                </View>
+                <View style={{ flex: 1, gap: 3 }}>
+                  <Text style={[s.rowTitle, { color: colors.text.primary }]} numberOfLines={1}>{activeRound.title}</Text>
+                  <Text style={[s.rowSub, { color: colors.text.muted }]}>
+                    {activeRound.reserved_qty}/{activeRound.target_qty} gesammelt · {activeRound.participant_count}{' '}
+                    {activeRound.participant_count === 1 ? 'Person' : 'Personen'} · bis {fmtDeadline(new Date(activeRound.closes_at))}
+                  </Text>
+                </View>
+                <Pressable
+                  onPress={handleCloseRound}
+                  disabled={isClosingRound}
+                  style={[s.smallBtnOutline, { borderColor: colors.border.strong, opacity: isClosingRound ? 0.5 : 1 }]}
+                >
+                  <Text style={[s.smallBtnText, { color: colors.text.primary }]}>Schließen</Text>
+                </Pressable>
+              </View>
+            ) : (
+              <Pressable
+                onPress={openRoundSheet}
+                disabled={preorderProducts.length === 0}
+                style={[s.smallBtn, { backgroundColor: colors.text.primary, alignSelf: 'flex-start', opacity: preorderProducts.length === 0 ? 0.5 : 1 }]}
+              >
+                <Target size={13} color={colors.bg.primary} strokeWidth={2.4} />
+                <Text style={[s.smallBtnText, { color: colors.bg.primary }]}>Runde starten</Text>
+              </Pressable>
+            )}
+            {!activeRound && preorderProducts.length === 0 && (
+              <Text style={[s.empty, { color: colors.text.muted }]}>
+                Braucht ein aktives Vorbestell-Produkt. 🧴
+              </Text>
+            )}
+          </View>
 
           {/* A) Ware ist da → Zahlung anfordern */}
           {requestableGroups.length > 0 && (
@@ -426,6 +533,88 @@ export default function FulfillmentScreen() {
                 ? <ActivityIndicator size="small" color={colors.bg.primary} />
                 : <PackageCheck size={15} color={colors.bg.primary} strokeWidth={2.4} />}
               <Text style={[s.shipBtnText, { color: colors.bg.primary }]}>Als versendet markieren</Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Runde-starten-Sheet (Guild-Commerce) */}
+      <Modal transparent visible={roundSheetOpen} animationType="fade" onRequestClose={() => setRoundSheetOpen(false)}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <Pressable style={s.backdrop} onPress={() => setRoundSheetOpen(false)}>
+          <Pressable style={[s.sheet, { backgroundColor: colors.bg.elevated, paddingBottom: insets.bottom + 16 }]} onPress={(e) => e.stopPropagation()}>
+            <View style={s.sheetHandle} />
+            <Text style={[s.sheetTitle, { color: colors.text.primary }]}>Sammelbestellungs-Runde starten</Text>
+            <Text style={[s.rowSub, { color: colors.text.muted, marginBottom: 2 }]}>
+              Erscheint als „Jetzt aktiv"-Karte in jeder Guild — mit Fortschritt und Mitbestellern. Tipp: danach „Ankündigen" drücken. 📣
+            </Text>
+
+            {/* Produkt wählen */}
+            {preorderProducts.length > 1 && (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexGrow: 0 }} contentContainerStyle={{ gap: 8 }}>
+                {preorderProducts.map((p) => (
+                  <Pressable
+                    key={p.id}
+                    onPress={() => setRoundProductId(p.id)}
+                    style={[
+                      s.smallBtnOutline,
+                      { borderColor: roundProductId === p.id ? colors.text.primary : colors.border.subtle },
+                    ]}
+                  >
+                    <Text style={[s.smallBtnText, { color: roundProductId === p.id ? colors.text.primary : colors.text.muted }]} numberOfLines={1}>
+                      {p.title.length > 24 ? `${p.title.slice(0, 24)}…` : p.title}
+                    </Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            )}
+            {preorderProducts.length === 1 && (
+              <Text style={[s.rowSub, { color: colors.text.secondary }]} numberOfLines={1}>🧴 {preorderProducts[0].title}</Text>
+            )}
+
+            {/* Ziel-Menge */}
+            <TextInput
+              style={[s.input, { color: colors.text.primary, backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}
+              placeholder="Ziel-Menge (z.B. 80)"
+              placeholderTextColor={colors.text.muted}
+              value={roundTarget}
+              onChangeText={setRoundTarget}
+              keyboardType="number-pad"
+              maxLength={4}
+            />
+
+            {/* Deadline: Samstags-Presets */}
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {([0, 1, 2] as const).map((w) => (
+                <Pressable
+                  key={w}
+                  onPress={() => setRoundWeeks(w)}
+                  style={[
+                    s.smallBtnOutline,
+                    { flex: 1, borderColor: roundWeeks === w ? colors.text.primary : colors.border.subtle },
+                  ]}
+                >
+                  <Text style={[s.smallBtnText, { color: roundWeeks === w ? colors.text.primary : colors.text.muted }]}>
+                    {w === 0
+                      ? `Sa. ${nextSaturday(0).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}`
+                      : `+${w} Wo.`}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <Pressable
+              onPress={confirmCreateRound}
+              disabled={isCreatingRound || !roundProductId}
+              style={[s.shipBtn, { backgroundColor: colors.text.primary, opacity: (isCreatingRound || !roundProductId) ? 0.6 : 1 }]}
+            >
+              {isCreatingRound
+                ? <ActivityIndicator size="small" color={colors.bg.primary} />
+                : <Target size={15} color={colors.bg.primary} strokeWidth={2.4} />}
+              <Text style={[s.shipBtnText, { color: colors.bg.primary }]}>
+                Runde starten · bis {fmtDeadline(nextSaturday(roundWeeks))}
+              </Text>
             </Pressable>
           </Pressable>
         </Pressable>

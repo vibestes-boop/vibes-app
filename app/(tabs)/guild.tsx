@@ -4,6 +4,7 @@ getGuildStyles,
 GUILD_COLORS,
 GuildCard,
 GuildRoomHeader,
+GuildRoundCard,
 type GuildViewMode,
 } from "@/components/guild";
 import { GuildMembersSheet } from "@/components/guild/GuildMembersSheet";
@@ -16,6 +17,7 @@ import { useStoryViewerStore } from "@/lib/storyViewerStore";
 import { generateAndUploadThumbnail,uploadPostMedia } from "@/lib/uploadMedia";
 import { useGuildMemberCount } from "@/lib/useGuildMemberCount";
 import { useActiveLiveSessions } from "@/lib/useLiveSession";
+import { useActivePreorderRound } from "@/lib/useShop";
 import { useGuildFeed,useGuildInfo,type GuildPost } from "@/lib/usePosts";
 import {
 useCreateStory,
@@ -55,6 +57,8 @@ export default function GuildScreen() {
   const { data: memberCount } = useGuildMemberCount(profile?.guild_id);
   const [membersOpen, setMembersOpen] = useState(false);
   const { data: activeLives = [] } = useActiveLiveSessions();
+  // Guild-Commerce: offene Sammelbestellungs-Runde → „Jetzt aktiv"-Karte
+  const { data: activeRound } = useActivePreorderRound();
   const listRef = useRef<FlatList<GuildPost>>(null);
   const setGuildRefreshing = useTabRefreshStore((s) => s.setGuildRefreshing);
   const guildRefreshTick = useTabRefreshStore((s) => s.guildRefreshTick);
@@ -221,6 +225,9 @@ export default function GuildScreen() {
             onMembersPress={() => setMembersOpen(true)}
             onInvitePress={handleInvite}
           />
+          {/* „Jetzt aktiv": offene Sammelbestellungs-Runde — der Grund, heute
+              in die Guild zu schauen. Keine Runde → Karte weg, Feed rückt hoch. */}
+          {viewMode === "feed" && activeRound && <GuildRoundCard round={activeRound} />}
           {viewMode === "feed" && (
             <View style={styles.storiesWrap}>
               <StoriesRow
@@ -249,6 +256,7 @@ export default function GuildScreen() {
       handleAddStory,
       handleInvite,
       activeLives,
+      activeRound,
       viewMode,
       styles.storiesWrap,
       styles.storiesDivider,

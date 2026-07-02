@@ -371,6 +371,8 @@ export function useExpressInterest() {
       if (error || !data) return { success: false, error: 'network_error' };
       if (!data.success) return { success: false, error: (data.error ?? 'network_error') as InterestError };
       await qc.invalidateQueries({ queryKey: ['shop-products'] });
+      // Guild-Runden-Karte: Fortschritt sofort auffrischen (RollupNumber zählt hoch)
+      qc.invalidateQueries({ queryKey: ['active-preorder-round'] });
       return { success: true };
     } catch {
       return { success: false, error: 'network_error' };
@@ -426,6 +428,8 @@ export function useMyPreorder(productId: string) {
     if (!error) {
       qc.setQueryData(['my-preorder', productId, user.id], false);
       qc.invalidateQueries({ queryKey: ['shop-products'] });
+      // Guild-Runden-Karte: Fortschritt/„Du bist dabei" zurücksetzen
+      qc.invalidateQueries({ queryKey: ['active-preorder-round'] });
     }
     return !error;
   }, [productId, user?.id, qc]);
@@ -795,6 +799,102 @@ export function useConfirmOrderDelivered() {
 }
 
 // Verkäufer: „Ware ist da" → Zahlungsaufforderungen aus Vormerkungen erzeugen
+// ─── Guild-Commerce: Sammelbestellungs-Runden ────────────────────────────────
+// Die „Runde" = Zaurs realer Bestell-Zyklus als Objekt (Ziel, Deadline,
+// Fortschritt). Guild zeigt sie als „Jetzt aktiv"-Karte; Vorbestellen selbst
+// läuft unverändert über express_product_interest.
+
+export interface PreorderRoundParticipant {
+  username:   string | null;
+  avatar_url: string | null;
+}
+
+export interface ActivePreorderRound {
+  id:                string;
+  product_id:        string;
+  title:             string;
+  target_qty:        number;
+  closes_at:         string;
+  status:            'open' | 'closed' | 'arrived';
+  reserved_qty:      number;
+  participant_count: number;
+  me_joined:         boolean;
+  participants:      PreorderRoundParticipant[];
+  product: {
+    id:        string;
+    title:     string;
+    cover_url: string | null;
+    price_eur: number | null;
+  } | null;
+}
+
+export function useActivePreorderRound() {
+  const user = useAuthStore((s) => s.user);
+  return useQuery<ActivePreorderRound | null>({
+    queryKey: ['active-preorder-round'],
+    enabled:  !!user?.id,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase.rpc('get_active_preorder_round');
+      // Fehler (z.B. Migration noch nicht ausgeführt) → Karte bleibt einfach weg.
+      if (error) return null;
+      return (data ?? null) as ActivePreorderRound | null;
+    },
+  });
+}
+
+export function useCreatePreorderRound() {
+  const qc = useQueryClient();
+  const [isWorking, setIsWorking] = useState(false);
+  const createRound = useCallback(async (
+    productId: string,
+    targetQty: number,
+    closesAt:  Date,
+    title?:    string,
+  ): Promise<{ roundId?: string; error?: string }> => {
+    setIsWorking(true);
+    try {
+      const { data, error } = await supabase.rpc('create_preorder_round', {
+        p_product_id: productId,
+        p_target_qty: Math.max(1, Math.min(Math.round(targetQty) || 1, 9999)),
+        p_closes_at:  closesAt.toISOString(),
+        p_title:      title?.trim() || null,
+      });
+      if (error) return { error: 'network_error' };
+      if (!(data as any)?.success) return { error: (data as any)?.error ?? 'network_error' };
+      qc.invalidateQueries({ queryKey: ['active-preorder-round'] });
+      return { roundId: (data as any).round_id };
+    } finally {
+      setIsWorking(false);
+    }
+  }, [qc]);
+  return { createRound, isWorking };
+}
+
+export function useClosePreorderRound() {
+  const qc = useQueryClient();
+  const [isWorking, setIsWorking] = useState(false);
+  const closeRound = useCallback(async (
+    roundId: string,
+    status: 'closed' | 'arrived' = 'closed',
+  ): Promise<{ error?: string }> => {
+    setIsWorking(true);
+    try {
+      const { data, error } = await supabase.rpc('close_preorder_round', {
+        p_round_id: roundId,
+        p_status:   status,
+      });
+      if (error) return { error: 'network_error' };
+      if (!(data as any)?.success) return { error: (data as any)?.error ?? 'network_error' };
+      qc.invalidateQueries({ queryKey: ['active-preorder-round'] });
+      return {};
+    } finally {
+      setIsWorking(false);
+    }
+  }, [qc]);
+  return { closeRound, isWorking };
+}
+
 export function useMarkPreordersPayable() {
   const qc = useQueryClient();
   const [isWorking, setIsWorking] = useState(false);
