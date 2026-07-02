@@ -1,0 +1,53 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# telegram-alert — schickt eine Telegram-Nachricht, wenn ein Workflow rot wird.
+#
+# No-Op ohne Secrets: Fehlen TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID, beendet
+# sich der Step still mit Erfolg — Workflows bleiben grün lauffähig, bis die
+# Secrets gesetzt sind (gleiche Philosophie wie der optionale Slack-Kanal).
+#
+# Einrichtung (einmalig, durch Zaur):
+#   1. Telegram → @BotFather → /newbot → z.B. "serlo_alerts_bot" → Token kopieren
+#   2. Dem neuen Bot in Telegram /start schreiben (sonst darf er dir nicht schreiben)
+#   3. Browser: https://api.telegram.org/bot<TOKEN>/getUpdates → "chat":{"id": ...}
+#   4. GitHub → Repo → Settings → Secrets and variables → Actions:
+#        TELEGRAM_BOT_TOKEN = <Token aus 1>
+#        TELEGRAM_CHAT_ID   = <id aus 3>
+# ─────────────────────────────────────────────────────────────────────────────
+name: telegram-alert
+description: Telegram-Ping bei rotem Workflow (no-op ohne Secrets)
+
+inputs:
+  bot-token:
+    description: Telegram-Bot-Token (Secret TELEGRAM_BOT_TOKEN)
+    required: false
+    default: ''
+  chat-id:
+    description: Ziel-Chat (Secret TELEGRAM_CHAT_ID)
+    required: false
+    default: ''
+  text:
+    description: Nachrichtentext
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Send Telegram message
+      shell: bash
+      env:
+        TG_TOKEN: ${{ inputs.bot-token }}
+        TG_CHAT: ${{ inputs.chat-id }}
+        TG_TEXT: ${{ inputs.text }}
+      run: |
+        if [ -z "$TG_TOKEN" ] || [ -z "$TG_CHAT" ]; then
+          echo "Telegram-Secrets nicht gesetzt — Alarm übersprungen (no-op)."
+          exit 0
+        fi
+        # disable_web_page_preview: der Run-Link soll keine Riesen-Vorschau ziehen
+        curl -sS --max-time 15 -X POST \
+          "https://api.telegram.org/bot${TG_TOKEN}/sendMessage" \
+          -d chat_id="${TG_CHAT}" \
+          -d disable_web_page_preview=true \
+          --data-urlencode text="$TG_TEXT" \
+          > /dev/null \
+          || echo "Telegram-Versand fehlgeschlagen (nicht fatal)."

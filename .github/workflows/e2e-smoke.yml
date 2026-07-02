@@ -61,3 +61,22 @@ jobs:
           path: apps/web/playwright-report/
           retention-days: 7
           if-no-files-found: ignore
+
+  # Telegram-Ping bei Rot (Security-/Monitoring-Ausbau 2026-07-02).
+  # `if: failure()` + needs auf alle Jobs = feuert, sobald irgendein Job rot ist.
+  # Ohne TELEGRAM_*-Secrets ist der Step ein No-Op (siehe Action-Doku).
+  telegram-alert:
+    name: telegram alert (bei rot)
+    if: failure()
+    needs: [web-production]
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Checkout (für lokale Action)
+        uses: actions/checkout@v4
+      - name: Telegram-Alarm senden
+        uses: ./.github/actions/telegram-alert
+        with:
+          bot-token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          chat-id: ${{ secrets.TELEGRAM_CHAT_ID }}
+          text: "🔴 e2e-smoke fehlgeschlagen auf ${{ github.ref_name }} — ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

@@ -81,3 +81,22 @@ jobs:
         # tsc beendet mit Exit 1 bei TS-Errors; npm run reicht den Exit-Code
         # 1:1 durch → Job rot, PR-Gate blockt.
         run: npm run typecheck
+
+  # Telegram-Ping bei Rot (Security-/Monitoring-Ausbau 2026-07-02).
+  # `if: failure()` + needs auf alle Jobs = feuert, sobald irgendein Job rot ist.
+  # Ohne TELEGRAM_*-Secrets ist der Step ein No-Op (siehe Action-Doku).
+  telegram-alert:
+    name: telegram alert (bei rot)
+    if: failure()
+    needs: [native, web]
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Checkout (für lokale Action)
+        uses: actions/checkout@v4
+      - name: Telegram-Alarm senden
+        uses: ./.github/actions/telegram-alert
+        with:
+          bot-token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          chat-id: ${{ secrets.TELEGRAM_CHAT_ID }}
+          text: "🔴 typecheck fehlgeschlagen auf ${{ github.ref_name }} — ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
