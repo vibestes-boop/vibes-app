@@ -18,10 +18,13 @@
  *   Aktivierung: ENABLE_RECEIPT_VERIFY=true
  *
  * Sicherheitsschichten (von außen nach innen):
- *  1. Bearer-Auth (REVENUECAT_WEBHOOK_SECRET)
+ *  1. Bearer-Auth (REVENUECAT_WEBHOOK_SECRET) — fail-closed: fehlt das
+ *     Secret, antwortet die Function 500 statt die Prüfung zu überspringen
  *  2. Replay-Schutz (max 10 Min Alter, kein Future-Timestamp)
  *  3. Rate-Limit (max 20 Gutschriften/Stunde pro User)
- *  4. Idempotenz (transaction_id eindeutig in coin_purchases)
+ *  4. Idempotenz-CLAIM: INSERT in coin_purchases (UNIQUE transaction_id)
+ *     VOR credit_coins — parallele Duplikat-Zustellungen verlieren am
+ *     Constraint (23505) und schreiben nicht doppelt gut
  *  5. Apple/Google Store-API Receipt-Verify (Phase 3, opt-in via ENV)
  */
 
@@ -333,14 +336,23 @@ async function getGoogleAccessToken(sa: any): Promise<string | null> {
 // ─── Hauptlogik ───────────────────────────────────────────────────────────────
 
 Deno.serve(async (req: Request) => {
-  // ── Authorization ────────────────────────────────────────────────────────────
+  // ── Authorization (fail-closed) ──────────────────────────────────────────────
+  // Die Function läuft mit verify_jwt=false (RevenueCat sendet kein Supabase-JWT)
+  // — die Bearer-Prüfung hier ist damit die EINZIGE Auth-Schicht. Fehlt das
+  // Secret in den Env-Vars, muss der Endpoint dicht sein (500), nicht offen:
+  // sonst kann jeder mit bekannter User-UUID gefälschte Purchase-Events posten
+  // und sich Coins gutschreiben (Security-Review 2026-07-02, Fund #1).
   const webhookSecret = Deno.env.get('REVENUECAT_WEBHOOK_SECRET');
-  if (webhookSecret) {
-    const token = (req.headers.get('authorization') ?? '').replace('Bearer ', '');
-    if (token !== webhookSecret) {
-      console.error('[RC Webhook] Unauthorized');
-      return new Response('Unauthorized', { status: 401 });
-    }
+  if (!webhookSecret) {
+    console.error('[RC Webhook] REVENUECAT_WEBHOOK_SECRET nicht gesetzt — Abbruch (fail-closed)');
+    return new Response(JSON.stringify({ ok: false, error: 'server_misconfigured' }), {
+      status: 500, headers: { 'Content-Type': 'application/json' },
+    });
+  }
+  const token = (req.headers.get('authorization') ?? '').replace('Bearer ', '');
+  if (token !== webhookSecret) {
+    console.error('[RC Webhook] Unauthorized');
+    return new Response('Unauthorized', { status: 401 });
   }
 
   if (req.method !== 'POST') {
@@ -421,19 +433,7 @@ Deno.serve(async (req: Request) => {
     });
   }
 
-  // ── Idempotenz ────────────────────────────────────────────────────────────────
   const transactionId: string = event.transaction_id ?? event.id ?? '';
-  if (transactionId) {
-    const { data: existing } = await supabase
-      .from('coin_purchases').select('id')
-      .eq('transaction_id', transactionId).maybeSingle();
-    if (existing) {
-      console.log(`[RC Webhook] Transaktion bereits verarbeitet: ${transactionId}`);
-      return new Response(JSON.stringify({ ok: true, duplicate: true }), {
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-  }
 
   // ── Apple/Google Receipt-Verify (Phase 3) ─────────────────────────────────────
   if (RECEIPT_VERIFY_ENABLED) {
@@ -461,6 +461,44 @@ Deno.serve(async (req: Request) => {
     }
   }
 
+  // ── Idempotenz-CLAIM (atomar, INSERT-first) ───────────────────────────────────
+  // Vorher: SELECT-Check → credit → Log-INSERT. Zwei parallele Zustellungen
+  // derselben Transaktion (RevenueCat sendet Duplikate!) sahen beide „nicht
+  // vorhanden" und schrieben BEIDE Coins gut — erst der zweite Log-INSERT
+  // scheiterte am UNIQUE (Security-Review 2026-07-02, Fund #3).
+  //
+  // Jetzt: Der INSERT in coin_purchases IST der Claim. Der UNIQUE-Constraint
+  // auf transaction_id entscheidet das Race — genau ein Delivery gewinnt,
+  // der Verlierer bekommt 23505 und skipt ohne Credit. Gleiche Mechanik wie
+  // claim-before-credit im stripe-webhook.
+  // Ohne transaction_id (sollte nie passieren): NULL kollidiert in Postgres
+  // nicht → kein Claim möglich, Verhalten wie bisher (best effort).
+  const { data: claim, error: claimError } = await supabase
+    .from('coin_purchases')
+    .insert({
+      user_id:        appUserId,
+      product_id:     productId,
+      coins_credited: coinsToCredit,
+      transaction_id: transactionId || null,
+      event_type:     eventType,
+      raw_event:      event,
+    })
+    .select('id')
+    .single();
+
+  if (claimError) {
+    if (claimError.code === '23505') {
+      console.log(`[RC Webhook] Transaktion bereits verarbeitet (Claim verloren): ${transactionId}`);
+      return new Response(JSON.stringify({ ok: true, duplicate: true }), {
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+    console.error('[RC Webhook] Claim-Insert fehlgeschlagen:', claimError.message);
+    return new Response(JSON.stringify({ ok: false, error: claimError.message }), {
+      status: 500, headers: { 'Content-Type': 'application/json' },
+    });
+  }
+
   // ── Coins gutschreiben ────────────────────────────────────────────────────────
   const { error: walletError } = await supabase.rpc('credit_coins', {
     p_user_id: appUserId,
@@ -468,23 +506,22 @@ Deno.serve(async (req: Request) => {
   });
 
   if (walletError) {
+    // Claim zurücknehmen, damit der RevenueCat-Retry sauber erneut durchläuft
+    // (sonst hielte die Claim-Zeile den Retry für ein Duplikat → User bekäme
+    // seine Coins nie). Scheitert auch das Delete → manuelle Klärung via Logs.
     console.error('[RC Webhook] Wallet-Update fehlgeschlagen:', walletError);
+    const { error: rollbackErr } = await supabase
+      .from('coin_purchases').delete().eq('id', claim.id);
+    if (rollbackErr) {
+      console.error(
+        `[RC Webhook] CRITICAL: Claim ${claim.id} (txn=${transactionId}) konnte nicht zurückgenommen werden — Coins NICHT gutgeschrieben, manuell klären!`,
+        rollbackErr,
+      );
+    }
     return new Response(JSON.stringify({ ok: false, error: walletError.message }), {
       status: 500, headers: { 'Content-Type': 'application/json' },
     });
   }
-
-  // ── Kauf-Log ──────────────────────────────────────────────────────────────────
-  await supabase.from('coin_purchases').insert({
-    user_id:        appUserId,
-    product_id:     productId,
-    coins_credited: coinsToCredit,
-    transaction_id: transactionId,
-    event_type:     eventType,
-    raw_event:      event,
-  }).then(({ error }) => {
-    if (error) console.warn('[RC Webhook] Log-Insert fehlgeschlagen:', error.message);
-  });
 
   console.log(`[RC Webhook] ✅ ${coinsToCredit} Coins für User ${appUserId} gutgeschrieben`);
   return new Response(JSON.stringify({ ok: true, coins_credited: coinsToCredit }), {
