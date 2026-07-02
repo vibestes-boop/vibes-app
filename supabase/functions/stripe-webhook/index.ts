@@ -120,6 +120,26 @@ async function handlePaid(admin: SupabaseClient, event: StripeEvent) {
     metadata?: Record<string, string>;
   };
 
+  // ── payment_status-Guard (Security-Review 2026-07-02, Fund #2) ─────────────
+  // Bei async-Zahlarten (SEPA-Lastschrift, Klarna) feuert
+  // `checkout.session.completed` SOFORT mit payment_status='unpaid' — das Geld
+  // ist da noch nicht eingezogen. Ohne diesen Guard wurden Coins/Ware als
+  // bezahlt markiert, bevor die Zahlung durch war; scheiterte sie später,
+  // blieb die Order fälschlich auf 'paid'. Gutschreiben nur bei 'paid'
+  // (bzw. 'no_payment_required' defensiv); sonst 200 quittieren und auf das
+  // separate `async_payment_succeeded`-Event warten (Handler existiert).
+  // Karten/Apple/Google Pay liefern immer 'paid' → Guard ist dort ein No-Op.
+  if (
+    session.payment_status &&
+    session.payment_status !== 'paid' &&
+    session.payment_status !== 'no_payment_required'
+  ) {
+    console.log(
+      `[stripe-webhook] ${event.type} mit payment_status='${session.payment_status}' — warte auf async_payment_succeeded (session ${session.id})`,
+    );
+    return;
+  }
+
   // Produkt-Bestellung (echte Ware) → eigener Pfad (product_orders), kein Coin-Credit.
   if (session.metadata?.kind === 'product_order') {
     await handleProductOrderPaid(admin, event.data.object);
