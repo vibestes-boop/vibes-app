@@ -32,14 +32,17 @@ describe('glassPillBase', () => {
   });
 
   it('nutzt duration-base + ease-out-expo als Motion-Kurve (v1.w.UI.1 Tokens)', () => {
-    expect(glassPillBase).toContain('transition-colors');
+    // Base animiert zusätzlich `transform` (Hover-Zoom je Badge) — daher die
+    // explizite Property-Liste statt `transition-colors`.
+    expect(glassPillBase).toContain('transition-[background-color,box-shadow,transform]');
     expect(glassPillBase).toContain('duration-base');
     expect(glassPillBase).toContain('ease-out-expo');
   });
 
-  it('definiert Hover-State mit höherer Bg-/Ring-Opacity', () => {
+  it('definiert Hover-State mit höherer Bg-/Ring-Opacity + Einzel-Zoom', () => {
     expect(glassPillBase).toContain('hover:bg-black/60');
     expect(glassPillBase).toContain('hover:ring-white/20');
+    expect(glassPillBase).toContain('hover:scale-110');
   });
 
   it('spiegelt Hover-State auf Radix-Open-State (data-[state=open])', () => {

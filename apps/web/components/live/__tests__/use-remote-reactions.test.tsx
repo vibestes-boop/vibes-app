@@ -6,10 +6,12 @@ import { renderHook, act } from '@testing-library/react';
 
 // -----------------------------------------------------------------------------
 // Minimaler Supabase-Broadcast-Mock. Die Kette sieht in Echt so aus:
-//   createBrowserClient(…).channel(`live:${id}`).on('broadcast', …).subscribe()
-// Der Hook registriert EIN Listener-Objekt auf `broadcast`/`reaction`. Unser
-// Mock captured das und stellt `emit(payload)` bereit, um incoming Reactions
-// zu simulieren. `removeChannel` wird für die Cleanup-Assertion getrackt.
+//   createBrowserClient(…).channel(`live-reactions-${id}`).on('broadcast', …).subscribe()
+// Der Hook registriert EIN Listener-Objekt auf `broadcast`/`new-reaction`
+// (App-Vertrag, Payload { id, user_id, emoji } — Cross-Platform-Brücke aus
+// lib/live-reactions.ts). Unser Mock captured das und stellt `emit(payload)`
+// bereit, um incoming Reactions zu simulieren. `removeChannel` wird für die
+// Cleanup-Assertion getrackt.
 // -----------------------------------------------------------------------------
 
 let mockEmit: ((payload: unknown) => void) | null = null;
@@ -45,6 +47,7 @@ jest.mock('@supabase/ssr', () => ({
 }));
 
 import { useRemoteReactions } from '../use-remote-reactions';
+import { REACTION_KEY_TO_EMOJI } from '@/lib/live-reactions';
 
 beforeEach(() => {
   mockEmit = null;
@@ -70,7 +73,7 @@ describe('useRemoteReactions', () => {
     expect(result.current.burst).toBeNull();
 
     act(() => {
-      mockEmit?.({ reaction: 'fire', user_id: 'viewer-b', ts: Date.now() });
+      mockEmit?.({ id: 'r-1', user_id: 'viewer-b', emoji: '🔥' });
     });
 
     expect(result.current.burst).not.toBeNull();
@@ -84,24 +87,24 @@ describe('useRemoteReactions', () => {
     );
 
     act(() => {
-      mockEmit?.({ reaction: 'heart', user_id: 'viewer-a', ts: Date.now() });
+      mockEmit?.({ id: 'r-2', user_id: 'viewer-a', emoji: '❤️' });
     });
 
     expect(result.current.burst).toBeNull();
   });
 
-  it('filters invalid reaction keys', () => {
+  it('filters payloads without emoji', () => {
     const { result } = renderHook(() =>
       useRemoteReactions({ sessionId: 'sess-1', viewerId: 'viewer-a' }),
     );
 
     act(() => {
-      mockEmit?.({ reaction: 'rocket', user_id: 'viewer-b', ts: Date.now() });
+      mockEmit?.({ id: 'r-3', user_id: 'viewer-b' });
     });
     expect(result.current.burst).toBeNull();
 
     act(() => {
-      mockEmit?.({ reaction: '', user_id: 'viewer-b', ts: Date.now() });
+      mockEmit?.({ id: 'r-4', user_id: 'viewer-b', emoji: '' });
     });
     expect(result.current.burst).toBeNull();
 
@@ -109,6 +112,20 @@ describe('useRemoteReactions', () => {
       mockEmit?.(null);
     });
     expect(result.current.burst).toBeNull();
+  });
+
+  it('maps unknown emojis defensively to heart', () => {
+    // Der App-Vertrag ist emoji-basiert — schickt ein zukünftiger App-Build
+    // ein Emoji außerhalb des Mappings, fällt reactionEmojiToKey auf 'heart'
+    // zurück statt die Reaction zu droppen.
+    const { result } = renderHook(() =>
+      useRemoteReactions({ sessionId: 'sess-1', viewerId: 'viewer-a' }),
+    );
+
+    act(() => {
+      mockEmit?.({ id: 'r-5', user_id: 'viewer-b', emoji: '🚀' });
+    });
+    expect(result.current.burst?.key).toBe('heart');
   });
 
   it('generates unique ids for concurrent remote bursts', () => {
@@ -119,7 +136,7 @@ describe('useRemoteReactions', () => {
     const seen = new Set<number>();
     for (let i = 0; i < 20; i++) {
       act(() => {
-        mockEmit?.({ reaction: 'clap', user_id: `viewer-${i}`, ts: Date.now() });
+        mockEmit?.({ id: `r-${i}`, user_id: `viewer-${i}`, emoji: '👏' });
       });
       if (result.current.burst) seen.add(result.current.burst.id);
     }
@@ -142,7 +159,7 @@ describe('useRemoteReactions', () => {
     const keys = ['heart', 'fire', 'clap', 'laugh', 'wow', 'sad'] as const;
     for (const key of keys) {
       act(() => {
-        mockEmit?.({ reaction: key, user_id: 'viewer-b', ts: Date.now() });
+        mockEmit?.({ id: `r-${key}`, user_id: 'viewer-b', emoji: REACTION_KEY_TO_EMOJI[key] });
       });
       expect(result.current.burst?.key).toBe(key);
     }

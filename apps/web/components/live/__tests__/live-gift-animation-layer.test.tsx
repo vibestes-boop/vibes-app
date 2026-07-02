@@ -7,7 +7,8 @@
  *   - Presentational `LiveGiftAnimationView` rendert Container + N Bursts
  *     proportional zur `bursts`-Prop-Länge
  *   - Jeder Burst zeigt Sender-Name, Gift-Name, Coin-Cost (toLocaleString('de-DE'))
- *   - `giftImage=null` rendert den 🎁-Fallback statt <img>
+ *   - `giftImage=null` rendert den 🎁-Fallback statt eines Gift-<img>
+ *     (die Coin-Cost-Zeile rendert unabhängig davon ihr CoinIcon-<img>)
  *   - `giftImage` gesetzt rendert <img src=…> (kein <Image/>-Wrapper weil
  *     CDN-URLs nicht in next.config allowlisted sind)
  *   - Lane-System: Burst mit lane=0/1/2 trägt die jeweilige `left-[X%]`-Klasse
@@ -104,9 +105,10 @@ describe('LiveGiftAnimationView — Burst Content', () => {
         bursts={[makeBurst({ giftImage: 'https://cdn.example.com/rose.png' })]}
       />,
     );
-    const img = container.querySelector('img');
+    // Selector auf src statt first-img: die Coin-Cost-Zeile rendert seit dem
+    // CoinIcon-Rollout ein eigenes <img src="/serlo-coin.png">.
+    const img = container.querySelector('img[src="https://cdn.example.com/rose.png"]');
     expect(img).not.toBeNull();
-    expect(img?.getAttribute('src')).toBe('https://cdn.example.com/rose.png');
     // Emoji-Fallback DARF nicht gleichzeitig mit <img> gerendert sein
     expect(container.textContent).not.toMatch(/🎁/);
   });
@@ -115,7 +117,11 @@ describe('LiveGiftAnimationView — Burst Content', () => {
     const { container } = render(
       <LiveGiftAnimationView bursts={[makeBurst({ giftImage: null })]} />,
     );
-    expect(container.querySelector('img')).toBeNull();
+    // Einziges <img> ist das CoinIcon der Kosten-Zeile — kein Gift-Bild.
+    const imgSrcs = Array.from(container.querySelectorAll('img')).map((img) =>
+      img.getAttribute('src'),
+    );
+    expect(imgSrcs).toEqual(['/serlo-coin.png']);
     expect(container.textContent).toContain('🎁');
   });
 });
