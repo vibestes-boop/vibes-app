@@ -185,7 +185,7 @@ export const getExploreStyles = (c: ThemeColors) => StyleSheet.create({
 export const exploreStyles = getExploreStyles({
   bg: { primary: '#050508', secondary: '#0D0D0D', elevated: '#1A1A1A', input: '#111', subtle: 'rgba(255,255,255,0.04)' },
   text: { primary: '#FFFFFF', secondary: '#9CA3AF', muted: '#4B5563', inverse: '#FFFFFF' },
-  accent: { primary: '#FFFFFF', secondary: '#A855F7', danger: '#EF4444', success: '#22C55E', warning: '#F59E0B', gold: '#FBBF24' },
+  accent: { primary: '#FFFFFF', secondary: '#A855F7', danger: '#EF4444', success: '#22C55E', warning: '#F59E0B', gold: '#FBBF24', rose: '#F43F5E' },
   border: { default: 'rgba(255,255,255,0.08)', subtle: 'rgba(255,255,255,0.04)', strong: 'rgba(255,255,255,0.18)' },
   icon: { default: '#9CA3AF', muted: '#4B5563', active: '#FFFFFF', inactive: '#6B7280' },
   tabBar: { bg: '#050508', border: 'rgba(255,255,255,0.06)', active: '#FFFFFF', inactive: '#6B7280' },
