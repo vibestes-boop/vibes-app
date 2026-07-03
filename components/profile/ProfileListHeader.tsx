@@ -3,7 +3,7 @@ import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { BarChart,BarChart2,Bookmark,CheckCircle2,ChevronRight,Edit3,FileText,Flower2,Grid3X3,Heart,Link,MoreHorizontal,Mountain,Package,Repeat2,Share2,Shield,ShoppingBag,Sparkles,Star,Swords,Zap } from 'lucide-react-native';
+import { BarChart,BarChart2,Bookmark,CheckCircle2,ChevronRight,Edit3,FileText,Flower2,Grid3X3,Heart,Link,MoreHorizontal,Mountain,Package,Repeat2,Share2,Shield,ShoppingBag,Sparkles,Star,Swords } from 'lucide-react-native';
 import { useState } from 'react';
 import { Dimensions,Linking,Modal,Pressable,ScrollView,Text,View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -286,7 +286,6 @@ export function ProfileListHeader({
   onCreatorStats,
   onMyOrders,
   avatarInitial,
-  avgDwell,
   postCount,
   loadingPosts,
   activeTab,
@@ -306,7 +305,6 @@ export function ProfileListHeader({
   onCreatorStats?: () => void;
   onMyOrders?: () => void;
   avatarInitial: string;
-  avgDwell: number;
   postCount: number;
   loadingPosts: boolean;
   activeTab: ProfileTab;
@@ -321,9 +319,11 @@ export function ProfileListHeader({
         : String(n);
 
   // v1.16.0: Battle-Bilanz aus dem user_battle_stats View.
-  // Nur anzeigen wenn der User schon mal an einem Battle teilgenommen hat — sonst Clutter.
+  // showBattleTab: der Battles-Tab erscheint sobald teilgenommen wurde.
+  // showBattleRecord: der Bilanz-Chip nur bei echtem W/L — „0–0" sah kaputt aus.
   const { data: battleStats } = useBattleStats(profile?.id);
-  const showBattleStats = !!battleStats && battleStats.totalBattles > 0;
+  const showBattleTab = !!battleStats && battleStats.totalBattles > 0;
+  const showBattleRecord = !!battleStats && (battleStats.wins > 0 || battleStats.losses > 0);
 
   // Order-Reputation (Verkäufer-/Käufer-Bewertung) — Parität mit Web /u/[username]
   // und mit fremden Profilen (UserProfileContent). Nur zeigen wenn es Bewertungen gibt.
@@ -458,34 +458,35 @@ export function ProfileListHeader({
           </Pressable>
         ) : null}
 
-        {/* Konsolidierte Meta-Zeile: ein Icon-System, dezent (Resonanz · Battle · Teip · WOZ) */}
-        <View style={s.metaRow}>
-          <View style={s.metaItem}>
-            <Zap size={12} color={colors.text.muted} strokeWidth={2} />
-            <Text style={s.metaText}>{loadingPosts ? '…' : `${avgDwell}%`} Resonanz</Text>
+        {/* Identitäts-Chips: nur echte Signale (Teip · Women-Only · Battle-Bilanz).
+            „Resonanz" (avgDwell) entfernt — interner Creator-Jargon, gehört in
+            Analytics, nicht auf das öffentliche Profil. Battle nur bei echter
+            Bilanz (sonst sah „0–0 · 0%" leer/kaputt aus). */}
+        {(profile?.teip || profile?.women_only_verified || showBattleRecord) ? (
+          <View style={s.metaRow}>
+            {profile?.teip ? (
+              <View style={s.metaChip}>
+                <Mountain size={13} color={colors.text.secondary} strokeWidth={2} />
+                <Text style={s.metaChipText}>{profile.teip}</Text>
+              </View>
+            ) : null}
+            {profile?.women_only_verified ? (
+              <View style={[s.metaChip, { backgroundColor: 'rgba(244,114,182,0.12)', borderColor: 'rgba(244,114,182,0.3)' }]}>
+                <Flower2 size={13} color="#F472B6" strokeWidth={2} />
+                <Text style={[s.metaChipText, { color: '#F472B6' }]}>Women-Only</Text>
+              </View>
+            ) : null}
+            {showBattleRecord && battleStats ? (
+              <View style={s.metaChip}>
+                <Swords size={13} color={colors.text.secondary} strokeWidth={2} />
+                <Text style={s.metaChipText}>
+                  {battleStats.wins}–{battleStats.losses}
+                  {battleStats.winRate !== null && battleStats.totalBattles >= 3 ? ` · ${battleStats.winRate}%` : ''}
+                </Text>
+              </View>
+            ) : null}
           </View>
-          {showBattleStats && battleStats && (
-            <View style={s.metaItem}>
-              <Swords size={12} color={colors.text.muted} strokeWidth={2} />
-              <Text style={s.metaText}>
-                {battleStats.wins}–{battleStats.losses}
-                {battleStats.winRate !== null && battleStats.totalBattles >= 3 ? ` · ${battleStats.winRate}%` : ''}
-              </Text>
-            </View>
-          )}
-          {profile?.teip ? (
-            <View style={s.metaItem}>
-              <Mountain size={12} color={colors.text.muted} strokeWidth={2} />
-              <Text style={s.metaText}>{profile.teip}</Text>
-            </View>
-          ) : null}
-          {profile?.women_only_verified ? (
-            <View style={s.metaItem}>
-              <Flower2 size={12} color="#F472B6" strokeWidth={2} />
-              <Text style={s.metaText}>Women-Only</Text>
-            </View>
-          ) : null}
-        </View>
+        ) : null}
 
         {/* Order-Reputation: Verkäufer-/Käufer-Bewertung (Parität mit Web + fremden Profilen) */}
         {orderRating && (orderRating.sellerCount > 0 || orderRating.buyerCount > 0) ? (
@@ -533,7 +534,7 @@ export function ProfileListHeader({
         style={s.tabRow}
         contentContainerStyle={{ flexGrow: 1 }}
       >
-        {((showBattleStats
+        {((showBattleTab
             ? ['vibes', 'likes', 'saved', 'shop', 'analytics', 'drafts', 'reposts', 'battles']
             : ['vibes', 'likes', 'saved', 'shop', 'analytics', 'drafts', 'reposts']) as ProfileTab[]
         ).map((tab) => {

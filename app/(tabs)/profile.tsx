@@ -43,7 +43,7 @@ Sparkles,
 ShoppingBag,
 Trash2
 } from 'lucide-react-native';
-import { useCallback,useEffect,useMemo,useRef,useState } from 'react';
+import { useCallback,useEffect,useRef,useState } from 'react';
 import { ActivityIndicator,Alert,FlatList,Pressable,RefreshControl,StyleSheet,Text,View } from 'react-native';
 import { formatEur,useShopProducts,type Product } from '@/lib/useShop';
 import { ProductCoverImage } from '@/components/shop/ProductCoverImage';
@@ -114,12 +114,6 @@ export default function ProfileScreen() {
   const hasStories = (myStoryGroup?.stories?.length ?? 0) > 0;
   // ownStoryViewed überschreibt den Cache-Wert sofort beim Ansehen
   const hasUnviewedStories = ownStoryViewed ? false : (myStoryGroup?.hasUnviewed ?? false);
-
-  const avgDwell = useMemo(() => {
-    if (posts.length === 0) return 0;
-    const sum = posts.reduce((acc, p) => acc + (p.dwell_time_score ?? 0), 0);
-    return Math.round((sum / posts.length) * 100);
-  }, [posts]);
 
   // ── loadReposts: immer frisch, zwei-Schritt-Query ───────────────────
   const loadReposts = useCallback(async () => {
@@ -441,7 +435,6 @@ export default function ProfileScreen() {
             onCreatorStudio={profile?.is_creator ? () => router.push('/creator/dashboard' as any) : undefined}
             onCreatorStats={profile?.is_creator ? () => router.push('/creator/stats' as any) : undefined}
             avatarInitial={avatarInitial}
-            avgDwell={avgDwell}
             postCount={postCount}
             loadingPosts={loadingPosts}
             activeTab={activeTab}

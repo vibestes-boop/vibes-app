@@ -172,11 +172,25 @@ function buildStyles(c: ThemeColors) {
       flexDirection: 'row',
       alignItems: 'center',
       flexWrap: 'wrap',
-      gap: 12,
-      marginTop: 2,
+      gap: 8,
+      marginTop: 8,
     },
     metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
     metaText: { color: c.text.muted, fontSize: 12, fontWeight: '500' },
+    // Identitäts-Chip (Teip / Women-Only / Battle): dezente Pille, gibt den
+    // Signalen mehr Präsenz als die alte gequetschte Icon-Text-Reihe.
+    metaChip: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 5,
+      paddingHorizontal: 10,
+      paddingVertical: 5,
+      borderRadius: 20,
+      backgroundColor: c.bg.subtle,
+      borderWidth: StyleSheet.hairlineWidth,
+      borderColor: c.border.subtle,
+    },
+    metaChipText: { color: c.text.secondary, fontSize: 12.5, fontWeight: '600' },
     bio: {
       color: c.text.secondary,
       fontSize: 13,
