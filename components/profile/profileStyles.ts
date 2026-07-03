@@ -77,23 +77,23 @@ function buildStyles(c: ThemeColors) {
       flexDirection: 'row',
       alignItems: 'center',
       paddingHorizontal: 16,   // einheitliches 16er-Raster (vorher 20 → bruch mit Buttons/Tabs)
-      paddingTop: 12,
-      paddingBottom: 14,
-      gap: 18,
+      paddingTop: 10,
+      paddingBottom: 10,
+      gap: 16,
       backgroundColor: c.bg.secondary,   // weiße Karte
     },
     avatarWrap: { position: 'relative' },
     avatarRing: {
-      width: 92,
-      height: 92,
-      borderRadius: 46,
+      width: 84,
+      height: 84,
+      borderRadius: 42,
       alignItems: 'center',
       justifyContent: 'center',
     },
     avatarGap: {
-      width: 82,
-      height: 82,
-      borderRadius: 41,
+      width: 75,
+      height: 75,
+      borderRadius: 37.5,
       overflow: 'hidden',
       backgroundColor: c.bg.secondary,  // Gap passt zur Karten-Fläche (vorher bg.primary → farbiger Donut)
     },
@@ -148,9 +148,9 @@ function buildStyles(c: ThemeColors) {
     // ── Bio Section ───────────────────────────────────────────
     bioSection: {
       paddingHorizontal: 16,             // einheitliches Raster
-      paddingBottom: 12,
+      paddingBottom: 10,
       paddingTop: 2,
-      gap: 5,
+      gap: 4,
       backgroundColor: c.bg.secondary,   // fortsetzung der Karte — KEIN borderBottom mehr
     },                                   // (durchgehende Fläche statt gestapelter Bänder)
     nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 2 },

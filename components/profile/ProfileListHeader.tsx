@@ -329,6 +329,14 @@ export function ProfileListHeader({
   // und mit fremden Profilen (UserProfileContent). Nur zeigen wenn es Bewertungen gibt.
   const { data: orderRating } = useOrderRating(profile?.id);
 
+  // Name-Hierarchie (TikTok-Muster): großer Name + kleiner @handle. Ohne
+  // gesetzten Anzeigenamen fällt der Name auf den kapitalisierten Username
+  // zurück (z. B. „Zaur") — verhindert das doppelte „@zaur" (oben im Header
+  // UND hier), das ohne Anzeigename entstand. @handle steht immer klein drunter.
+  const uname = profile?.username ?? '';
+  const displayName = profile?.display_name?.trim()
+    || (uname ? uname.charAt(0).toUpperCase() + uname.slice(1) : '…');
+
   return (
     <>
       <AvatarZoomViewer
@@ -423,7 +431,7 @@ export function ProfileListHeader({
         {/* Name-Hierarchie wie Web: Anzeigename groß + @username dezent. Ein Badge,
             neutrale Farbe (text.primary) — konsistent mit Web (fill-foreground). */}
         <View style={s.nameRow}>
-          <Text style={s.displayName} numberOfLines={1}>{profile?.display_name ?? `@${profile?.username ?? '…'}`}</Text>
+          <Text style={s.displayName} numberOfLines={1}>{displayName}</Text>
           {profile?.is_verified ? (
             <View style={s.verifiedBadge}>
               <CheckCircle2 size={13} color={colors.text.primary} strokeWidth={2.5} />
@@ -434,8 +442,8 @@ export function ProfileListHeader({
             </View>
           ) : null}
         </View>
-        {profile?.display_name ? (
-          <Text style={{ color: colors.text.muted, fontSize: 13 }}>@{profile.username}</Text>
+        {uname ? (
+          <Text style={{ color: colors.text.muted, fontSize: 13 }}>@{uname}</Text>
         ) : null}
 
         {profile?.bio ? (
