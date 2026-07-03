@@ -118,9 +118,17 @@ function CommentBtn({ postId, onPress }: { postId: string; onPress: () => void }
   return (
     <Pressable style={s.actionBtn} onPress={onPress}>
       <View style={s.actionBtnInner}>
-        {/* Klare Sprechblase (Umriss) statt solidem Blob — liest sofort als
-            „Kommentar". Gefüllte weiße Fläche + Schatten hält sie sichtbar. */}
-        <MessageCircle size={26} color="#FFFFFF" strokeWidth={2.3} />
+        {/* Gefüllte weiße Sprechblase mit 3 dunklen Punkten (klassisches
+            Kommentar-Icon) — volle weiße Fläche = maximal sichtbar, die Punkte
+            geben ihr sofort den „Chat"-Charakter. */}
+        <View style={s.bubbleWrap}>
+          <MessageCircle size={26} color="#FFFFFF" fill="#FFFFFF" strokeWidth={2} />
+          <View style={s.bubbleDots}>
+            <View style={s.bubbleDot} />
+            <View style={s.bubbleDot} />
+            <View style={s.bubbleDot} />
+          </View>
+        </View>
       </View>
       <Text style={s.actionCount}>{fmt}</Text>
     </Pressable>
@@ -745,6 +753,11 @@ const s = StyleSheet.create({
     color: '#FFFFFF', fontSize: 12, fontWeight: '700', marginTop: 2,
     textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3,
   },
+  // Kommentar-Blase: gefüllte weiße Blase + 3 dunkle Punkte (leicht nach oben,
+  // weil der Blasen-Schwanz unten sitzt → Punkte im Blasenkörper zentriert).
+  bubbleWrap: { width: 26, height: 26, alignItems: 'center', justifyContent: 'center' },
+  bubbleDots: { position: 'absolute', top: 9, flexDirection: 'row', gap: 2.5 },
+  bubbleDot: { width: 2.6, height: 2.6, borderRadius: 1.3, backgroundColor: '#111' },
 
   bottomInfo: { position: 'absolute', left: 0, right: 80, paddingHorizontal: 16, gap: 6, zIndex: 10 },
   authorRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
