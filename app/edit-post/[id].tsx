@@ -1,10 +1,12 @@
 import { supabase } from '@/lib/supabase';
 import { useUpdatePost } from '@/lib/usePostManagement';
+import { useMyProducts } from '@/lib/useShop';
 import { useTheme } from '@/lib/useTheme';
 import { useWomenOnly } from '@/lib/useWomenOnly';
+import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import { useLocalSearchParams,useRouter } from 'expo-router';
-import { ArrowLeft,Check,X } from 'lucide-react-native';
+import { ArrowLeft,Check,ShoppingBag,X } from 'lucide-react-native';
 import { useEffect,useState } from 'react';
 import {
 ActivityIndicator,Alert,KeyboardAvoidingView,Platform,
@@ -29,6 +31,7 @@ type PostData = {
   caption: string | null;
   tags: string[];
   women_only: boolean;
+  product_id: string | null;
 };
 
 export default function EditPostScreen() {
@@ -42,7 +45,11 @@ export default function EditPostScreen() {
   const [caption, setCaption]   = useState('');
   const [tags, setTags]         = useState<string[]>([]);
   const [womenOnly, setWomenOnly] = useState(false);
+  const [linkedProductId, setLinkedProductId] = useState<string | null>(null);
   const { canAccessWomenOnly } = useWomenOnly();
+
+  // Eigene Produkte für den „Produkt verknüpfen"-Picker (Shoppable Posts #2).
+  const { data: myProducts = [] } = useMyProducts();
 
   const { mutateAsync: updatePost, isPending: saving } = useUpdatePost();
 
@@ -50,7 +57,7 @@ export default function EditPostScreen() {
     if (!id) return;
     supabase
       .from('posts')
-      .select('caption, tags, women_only')
+      .select('caption, tags, women_only, product_id')
       .eq('id', id)
       .single()
       .then(({ data, error }) => {
@@ -63,6 +70,7 @@ export default function EditPostScreen() {
         setCaption(p?.caption ?? '');
         setTags(p?.tags ?? []);
         setWomenOnly(p?.women_only ?? false);
+        setLinkedProductId(p?.product_id ?? null);
         setLoading(false);
       });
   }, [id]);
@@ -79,8 +87,9 @@ export default function EditPostScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
       await updatePost({ postId: id, caption: caption.trim(), tags });
-      // women_only separat speichern (updatePost kennt das Feld nicht)
-      await supabase.from('posts').update({ women_only: womenOnly }).eq('id', id);
+      // women_only + product_id separat speichern (updatePost kennt sie nicht).
+      // product_id NULL = Verknüpfung entfernt (FK ist ON DELETE SET NULL).
+      await supabase.from('posts').update({ women_only: womenOnly, product_id: linkedProductId }).eq('id', id);
       router.back();
     } catch {
       Alert.alert('Hoppla 🙈', 'Speichern ging nicht durch — gleich nochmal?');
@@ -139,7 +148,6 @@ export default function EditPostScreen() {
               placeholderTextColor={colors.text.muted}
               multiline
               maxLength={300}
-              autoFocus
             />
             {caption.length > 0 && (
               <Pressable
@@ -183,6 +191,49 @@ export default function EditPostScreen() {
               );
             })}
           </View>
+
+          {/* Produkt verknüpfen (Shoppable Posts #2) — nur wenn eigene Produkte da sind.
+              Tippen verknüpft/entfernt; die Karte erscheint dann über dem Post. */}
+          {myProducts.length > 0 && (
+            <>
+              <Text style={[styles.label, { marginTop: 24, color: colors.text.secondary }]}>Produkt verknüpfen</Text>
+              <Text style={[styles.tagHint, { color: colors.text.muted }]}>
+                {linkedProductId ? 'Tippe das Produkt erneut, um es zu entfernen' : 'Optional — verlinke eins deiner Produkte'}
+              </Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingVertical: 2 }}>
+                {myProducts.map((p) => {
+                  const active = linkedProductId === p.id;
+                  return (
+                    <Pressable
+                      key={p.id}
+                      onPress={() => {
+                        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        setLinkedProductId(active ? null : p.id);
+                      }}
+                      style={[
+                        styles.prodChip,
+                        {
+                          backgroundColor: active ? colors.bg.elevated : colors.bg.subtle,
+                          borderColor: active ? colors.text.primary : colors.border.default,
+                        },
+                      ]}
+                    >
+                      {p.cover_url ? (
+                        <Image source={{ uri: p.cover_url }} style={styles.prodImg} contentFit="cover" cachePolicy="memory-disk" />
+                      ) : (
+                        <View style={[styles.prodImg, styles.prodImgFallback, { backgroundColor: colors.bg.elevated }]}>
+                          <ShoppingBag size={14} color={colors.text.muted} strokeWidth={2} />
+                        </View>
+                      )}
+                      <Text style={[styles.prodText, { color: active ? colors.text.primary : colors.text.secondary }]} numberOfLines={1}>
+                        {p.title}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </ScrollView>
+            </>
+          )}
 
           {/* Women-Only Toggle — nur für verifizierte Frauen */}
           {canAccessWomenOnly && (
@@ -304,5 +355,30 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 1,
     gap: 12,
+  },
+  prodChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingVertical: 6,
+    paddingLeft: 6,
+    paddingRight: 12,
+    borderRadius: 999,
+    borderWidth: 1,
+    maxWidth: 220,
+  },
+  prodImg: {
+    width: 30,
+    height: 30,
+    borderRadius: 999,
+  },
+  prodImgFallback: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  prodText: {
+    fontSize: 13.5,
+    fontWeight: '600',
+    flexShrink: 1,
   },
 });
