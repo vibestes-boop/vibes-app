@@ -1,4 +1,4 @@
-# Handoff — Serlo/Vibes (Stand 29. Juni 2026 · Session 6)
+# Handoff — Serlo/Vibes (Stand 3. Juli 2026 · Session 7)
 
 > 📍 **Dieses Dokument: `/Users/zaurhatuev/vibes-app/handoff.md`**
 > Arbeite NUR in diesem Repo: **`/Users/zaurhatuev/vibes-app`** (Branch `main`).
@@ -14,11 +14,12 @@
 
 ## 🚀 Neue Sitzung — Start hier
 
-- **Stand:** Session 6 komplett + von Zaur auf dem Gerät getestet. Alle Migrationen ausgeführt, `send-push-notification` deployt, Web live (Vercel), App auf letztem OTA. **Working Tree sauber, keine offene Migration, kein offener OTA.**
-- **Diese Session gebaut (die „Brücken" aus der App-Karte):** #2 Shoppable Posts (App+Web) · #4 Auto-Zahlungserinnerung (Cron) · #4 „Sammelbestellung offen" (Ankündigen, App+Web) · #5 Referral-Foundation (Invite-Link + Attribution + Zähler) · „Merken" pingt Verkäufer (`product_saved`) · „Vormerken"→„Vorbestellen" · plus Fixes (schmale Web-Sidebar, guild-post Reopen, Vorbestell-Verwaltung admin-only, `notifications.product_id`-Hotfix). Details: **§1.2**.
-- **Realer Kontext (wichtig fürs Priorisieren):** Zaur verkauft Parfüm **offline** (bereits verkauft), **80 Flaschen** in Lieferung, **5 App-Vorbestellungen** erfolgreich getestet. Premortem-Leitlinie: **erst validieren, dann mehr bauen.**
-- **Nächste sinnvolle Schritte (offen, keiner dringend):** Referral-**Belohnung** (Geschäftsentscheidung) · App-Deep-Link-Attribution + Web-Invite-Fläche · **#1 Live-Shopping** · **#3 Guild-Commerce**. Empfehlung vor Neubau: die Parfüm-Runde mit den 80 Flaschen einmal komplett durch die App laufen lassen.
-- **Git-Eigenheit dieser Umgebung:** Der lokale Reflog kann auf einen alten Tip zeigen, obwohl aller Session-Stand im HEAD-Tree + auf dem Remote (`vibestes-boop/vibes-app` `main`) liegt. Nicht erschrecken — mit `git show HEAD:<datei>` / `git ls-remote` prüfen statt dem Reflog trauen. Push wie gehabt via PAT aus `.env.local` (§4).
+- **Stand:** Session 7 = großer Sprint Richtung **App-Store-Launch** + UI-Politur + Sicherheit/Monitoring. Alle Migrationen ausgeführt, Functions deployt, **10+ OTAs raus**, Working Tree sauber. Letzter Commit `89b0c22`.
+- **🔴 UNMITTELBAR OFFEN (hier weitermachen):** **Overlay-Button-Design auf ALLE Post-Flächen ausrollen.** Ich habe die Buttons NUR auf `app/user-posts.tsx` finalisiert (das ist der Screen, den ein **Profil-Post-Klick** öffnet — NICHT `post/[id]`!). Zaur testet gerade den Look dort (bare weiße gefüllte Icons + Schatten, kein dunkler Kreis; Kommentar = gefüllte Blase mit 3 dunklen Punkten `bubbleDot`/`bubbleDots`, `top:9` ggf. justieren; `rightActions` gap 10, Pille 44). **Sobald Zaur „passt" sagt → exakt diese Werte auf `app/post/[id].tsx`, `app/guild-post/[id].tsx` und `components/feed/FeedItem.tsx` übertragen** (dort stehen noch die alten dunklen Kreise aus Commits 6f22f59/c9a3547/699b408). Details: **§1.1-C**.
+- **App-Store-Launch (Zaurs Hauptziel):** Technische Pflichtpunkte fast alle erledigt (§1.1-B). **Es fehlt: (1) frischer Production-Build 287** (app.json version/buildNumber hoch, `eas build --platform ios --profile production`), **(2) Zaurs ASC-Fleißarbeit** (Screenshots 1290×2796, Privacy-Labels, Altersfreigabe 17+, Demo-Account + Review-Notes). Der Coin-Shop ist per Feature-Flag versteckt (`lib/featureFlags.ts` `COIN_SHOP_ENABLED=false`) — Apple-Blocker weg.
+- **Realer Kontext:** Parfüm läuft **offline** (verkauft), 80 Flaschen in Lieferung, 5 App-Vorbestellungen getestet. Premortem: **erst validieren, dann mehr bauen.** Guild-Commerce v1 (Sammelbestellungs-Runden) ist gebaut + Migration ausgeführt — bereit für die 80er-Runde.
+- **Screenshots-Falle beim UI-Testen:** Overlay-Icons sehen im **Screenshot** sichtbar aus, auf dem **echten Display** (Reflexion/Helligkeit) aber nicht → dünne weiße Umrisse verschwinden. Lösung war: **solide gefüllte** Icons (mehr weiße Fläche) + Schatten. Beim UI-Debuggen immer Foto-vom-Display statt Screenshot vertrauen.
+- **Git-Push:** via PAT aus `.env.local` (§4). Lokaler Reflog kann alt aussehen — mit `git ls-remote` verifizieren, nicht dem Reflog trauen.
 
 ---
 
@@ -27,17 +28,73 @@
 | Bereich | Stand |
 |---|---|
 | **Repo / Branch** | `/Users/zaurhatuev/vibes-app` · `main` · Working Tree **sauber** |
-| **Letzter Commit** | `0a36a0f` — „Merken" benachrichtigt Verkäufer (`product_saved`). **Alle Session-6-Commits gepusht & verifiziert (`git ls-remote`).** |
-| **Web (apps/web)** | deployt via **Vercel** auf Push zu `main`. **Live: `serlo-web.vercel.app` — ⚠️ OHNE `www`!** |
-| **App-Build** | v1.30.0 / iOS-Build 286 (TestFlight) · Runtime **1.30.0**. OTAs ziehen nur beim **kalten App-Neustart** (2× killen+öffnen — Update greift beim 2. Start). |
-| **Letzter OTA** | `46fe46f5` (Commit `0a36a0f`, product_saved). **Kein offener App-OTA.** Bei nächster App-Änderung: `EAS_BUILD=1 npx eas update --branch production --message "…"`. |
-| **Edge Functions deployed** | `create-checkout-session`, `stripe-webhook`, **`send-push-notification`** ✅ aktuell deployt (Zaur) — alle Session-6-Typen (`order_payment_reminder`, `preorder_round_open`, `product_saved`) + „vorbestellt"-Texte + `productId` in Push-Payload. Webhooks `--no-verify-jwt` via `supabase/config.toml`. Memory `vibes-edge-webhook-verify-jwt`. |
-| **DB-Migrationen** | ✅ **ALLE ausgeführt** (Zaur). Neu Session 6: `…160000_post_product_link`, `…170000_payment_reminder`, `…180000_preorder_round_announce`, `…190000_referrals`, `…200000_announce_round_fix`, `…20260630000000_notifications_product_id` (🔴 Hotfix), `20260630010000_notify_on_save` (product_saved-Trigger). **Keine offene Migration.** |
-| **GERADE FERTIG (Session 6)** | **#2 Shoppable Posts** (App+Web komplett) · **#4 Auto-Zahlungserinnerung** (Cron) · **#4 „Sammelbestellung offen"** (App+Web-Auslöser) · **#5 Referral-Foundation** (Invite-Link+Attribution+Zähler) · Web schmale Sidebar auf 9 Routen · guild-post Reopen/Media-Fix · Vorbestell-Verwaltung admin-only. Voll in §1.2. |
-| **🔴 NÄCHSTE AUFGABE** | **Offen/empfohlen:** Referral-**Belohnung** (Geschäftsentscheidung) · App-Deep-Link-Attribution (Signup in App) + Web-Invite-Fläche · #1 Live-Shopping · #3 Guild-Commerce. Premortem: **erst validieren** (5 App-Vorbestellungen + Offline-Verkäufe laufen, 80 Flaschen in Lieferung). |
-| **Admin** | Zaur (`username='zaur'`, `profiles.is_admin = true`) — nötig fürs Vorbestell-Gate (jetzt admin-only!), Dispute-Klärung, „Ankündigen"/„Zahlung anfordern". |
+| **Letzter Commit** | `89b0c22` — user-posts Kommentar-Blase gefüllt mit Punkten. **Alle Session-7-Commits gepusht & verifiziert (`git ls-remote`).** |
+| **Web (apps/web)** | deployt via **Vercel** auf Push zu `main`. **Live: `serlo-web.vercel.app` — ⚠️ OHNE `www`!** Sentry-Web jetzt AKTIV (DSN in Vercel gesetzt, Source Maps laden). |
+| **App-Build** | v1.30.0 / iOS-Build 286 (TestFlight) · Runtime **1.30.0**. OTAs ziehen nur beim **kalten App-Neustart** (2× killen+öffnen — greift beim 2. Start). Channel `production` → Branch `production` verknüpft ✓. |
+| **Letzter OTA** | `89b0c22` (user-posts Kommentar-Blase). **Kein offener App-OTA außer dem UI-Rollout (§1.1-C).** Nächste App-Änderung: `EAS_BUILD=1 npx eas update --branch production --message "…"`. |
+| **Edge Functions deployed** | `create-checkout-session`, `stripe-webhook` (payment_status-Guard NEU), `revenuecat-webhook` (fail-closed + atomare Idempotenz NEU), `send-push-notification`. Webhooks `--no-verify-jwt` via `supabase/config.toml`. Memory `vibes-edge-webhook-verify-jwt` + `vibes-security-review-money`. |
+| **DB-Migrationen** | ✅ **ALLE ausgeführt** (Zaur). Neu Session 7: `20260702100000_guild_commerce_rounds` (Sammelbestellungs-Runden), `20260702120000_buy_product_quantity_guard` (Security). **Keine offene Migration.** |
+| **GERADE FERTIG (Session 7)** | UI-Politur (Statusbar-Rollout, Typo-Entfettung, Feed-Top-Zeile, Guild-Kopf, Profil-Kopf, Shoppable-Chip, Edit-Post) · **Guild-Commerce v1** (Runden) · **Security-Review + 4 Fixes** · **Monitoring-Vollausbau** (Sentry-Web, Telegram-CI-Alerts, UptimeRobot) · **Coin-Shop Feature-Flag** (App-Store) · **SecureStore-Crash-Fix** · Post-Overlay-Sichtbarkeit. Voll in §1.1. |
+| **🔴 NÄCHSTE AUFGABE** | **(1)** Overlay-Button-Design von `user-posts.tsx` auf `post/[id]`, `guild-post/[id]`, Feed ausrollen (§1.1-C, wartet auf Zaurs OK zum Look). **(2)** App-Store: Build 287 + ASC-Angaben (§1.1-B). |
+| **Monitoring** | Alles bewacht: UptimeRobot (3 Monitore), Sentry App+Web (Source Maps), Telegram-CI-Alerts (alle 5 Workflows), Stripe-Webhook-Mails. Doku: `docs/MONITORING.md`. CI-Baseline = **0 Fehler**, Rot ist echtes Signal. |
+| **Admin** | Zaur (`username='zaur'`, `profiles.is_admin = true`) — nötig fürs Vorbestell-/Runden-Gate, Dispute-Klärung, „Ankündigen"/„Zahlung anfordern". |
 
 ⚠️ **Quarantäne:** `/Users/zaurhatuev/Desktop/vibes-app` — NIEMALS bauen/deployen/pushen.
+
+---
+
+## 1.1 🆕 Session 7 (2.–3. Juli) — App-Store-Sprint · UI-Politur · Security · Monitoring
+
+> Riesen-Session. Alles committed + gepusht + verifiziert, viele OTAs raus.
+> Chronologische Commit-Kette: `08456a2 → 89b0c22` auf `main`.
+
+### A) UI-Politur (alles per OTA, tsc grün)
+- **Statusbar-Rollout** (`08456a2`): `useThemedStatusBar` auf ALLE ~30 fehlenden Screens ('auto'/'light'). Abdeckung jetzt vollständig (Memory `vibes-statusbar-theme`). Falle: Route+Embed-Komponenten (z.B. `UserProfileContent`) → Hook in den Route-Wrapper, nicht in die Embed-Komponente.
+- **Typo-Entfettung** (`05233e1`): app-weit `fontWeight` 900→700 / 800→600 (238 Stellen). Shop-Konvention aus v1.26.7 überall durchgezogen.
+- **Feed-Top-Zeile minimal** (`fab6e30`): Kategorie-Chips + Replay-Uhr RAUS (`CategoryFilter.tsx` gelöscht), stattdessen links **LIVE-Pill** (nur wenn jemand streamt, nutzt `useActiveLiveSessions`). Kopf jetzt: `[LIVE] Für dich|Folge ich [🔍]`. `activeTag`-Seed bleibt (Onboarding).
+- **Guild-Kopf eine Zeile** (`4763b38`): `[⚡ Name · Mitglieder | + Einladen | 🏆]`. Einladen = primärer CTA (teilt Referral-Link mit Guild-Kontext). Rangliste von Toggle-Leiste auf Trophy-Icon geschrumpft. `GuildViewToggle.tsx` gelöscht.
+- **Profil-Kopf entrümpelt** (`3564632`+`cf123fa`): „Resonanz"(avgDwell) raus (Jargon), leere Battle-Bilanz „0–0" versteckt, Meta-Zeile → Identitäts-Chips (Teip prominent, Women-Only rosa Pille). Anzeigename-Fallback (kapitalisierter Username → kein doppeltes „@zaur"). Kopf kompakter (Avatar 92→84, engere Paddings).
+- **Shoppable-Chip kompakt** (`3c8d7d8`): `ProductFeedChip` CTA-Button entfernt (ganze Pille navigiert), schlanke runde Pille, **ÜBER** dem Autor-Block (drückt Nickname nicht mehr hoch). Alle 3 Flächen (FeedItem, post/[id], guild-post/[id]).
+- **Web Mobile-Kauf-Funnel** (`bbe7e65`): Buy-Bar schwebt jetzt echt (`display:contents`-Wrapper + bottom-Offset über MobileBottomNav), CTA einzeilig („Vorbestellen"/„Jetzt kaufen" statt langer „Einloggen zum…"), Auth-Pills verdecken Kopfzeile nicht mehr (`pt-14`). „Creatorn"-Typo → „Community".
+- **Edit-Post** (`9e380fb`): `autoFocus` raus (Tastatur springt nicht mehr auf), **Produkt-Picker** ergänzt (lädt/speichert `product_id`, eigene Produkte als Pillen).
+
+### B) App-Store-Launch-Vorbereitung (Zaurs Hauptziel)
+- **Coin-Shop hinter Feature-Flag** (`db76725`): NEU `lib/featureFlags.ts` `COIN_SHOP_ENABLED=false`. Gated: Profil-„Coins", Shop-Shortcut, alle „Aufladen"-CTAs, GiftPicker-„+Coins", coin-shop.tsx Deep-Link-Guard (Redirect→Profil). **Grund:** IAP-Produkte in App Store Connect nicht eingereicht („Could not check") = sicherer 2.1-Ablehnungsgrund. Wieder-anschalten = 1 Zeile + OTA. Salden/Gift-System bleiben sichtbar (Apple-konform).
+- **ATT-String entfernt** (`fc80a46`): `NSUserTrackingUsageDescription` raus (kein Tracking-SDK) → Privacy-Label „Data Not Used to Track You".
+- **SecureStore-Background-Crash gefixt** (`c3be0ac`): `lib/supabase.ts` `getLargeItem` warf beim Backgrounding (Keychain gesperrt) → fatal. Fix: `keychainAccessible: AFTER_FIRST_UNLOCK` + try/catch. War 1 der 3 Sentry-Crashes.
+- **Pflicht-Status (alle verifiziert):** Permission-Strings ✓, Encryption-Flag ✓, Sign in with Apple ✓, Account-Löschung in-App ✓, UGC (Melden/Blockieren/Moderation) ✓, AGB/Datenschutz-Links ✓. `eas.json` submit `ascAppId` gesetzt ✓. Kein „Paid Apps Agreement" nötig (keine aktive IAP in v1).
+- **Die 3 Sentry-Crashes (analysiert):** (1) SecureStore-`get` → **gefixt**. (2) App Hang ~3s beim LiveKit-Reconnect → **KEIN Crash, kein Ablehnungsgrund** (Apple lehnt nur bei echten Crashes ab). (3) EXC_BAD_ACCESS beim Bild-Laden → 1 User auf Zaurs iPhone 16 Pro / iOS 26.6 (Beta), niedrige Freq, schwer ohne Geräte-Repro. Alle 3 sind Einzel-User-Edge-Cases.
+- **NOCH ZU TUN für Launch:** (1) Build 287 (`app.json` version/buildNumber hoch → `eas build --platform ios --profile production` → `eas submit`). Frisch von `main` bauen, damit das Coin-Flag IM Binary ist. (2) ASC: Screenshots (Plan: Feed/Live/Guild/Shop/Women-Only/Profil, deutsche Overlays, 1290×2796 — Zaur macht Roh-Screenshots, ich rahme sie), Privacy-Labels, Altersfreigabe **17+**, Kategorie Social, Demo-Account + Review-Notes.
+
+### C) 🔴 Post-Overlay-Buttons — WICHTIG, noch nicht fertig ausgerollt
+- **Der springende Punkt:** Ein **Profil-Post-Klick öffnet `app/user-posts.tsx`** (Multi-Bild-Pager „1/11" + …-Menü), **NICHT `app/post/[id].tsx`**! Ich habe zuerst versehentlich `post/[id]` poliert (Commits `6f22f59`/`c9a3547`/`699b408` — dort stehen jetzt dunkle Kreise + gefüllte Icons) → Zaur sah keine Änderung, weil er `user-posts` anschaut. Dann `user-posts.tsx` gefixt (`77ced75`/`806a22d`/`89b0c22`).
+- **Finaler Look auf `user-posts.tsx` (Zaur testet gerade):** KEIN dunkler Kreis (bare), solide **gefüllte weiße** Icons (`fill="#FFFFFF"`) + kräftiger Schatten (shadowOpacity 0.6), Größen 26 (Mute 23), `rightActions` gap 10, Pille 44. Kommentar = **gefüllte Blase + 3 dunkle Punkte** (`bubbleWrap`/`bubbleDots`/`bubbleDot`, `top:9` ggf. justieren wenn Punkte nicht mittig). Zähler weiß+Schatten. Autor/Caption/Tags Text-Schatten.
+- **🔴 TODO nach Zaurs „passt":** Genau diese Werte auf `app/post/[id].tsx` (dort noch dunkle Kreise), `app/guild-post/[id].tsx` und `components/feed/FeedItem.tsx` übertragen → **einheitlicher Look überall**. Screenshot-Falle beachten (echtes Display ≠ Screenshot).
+- **Bonus in post/[id] (nur dort, noch NICHT in user-posts):** Tap-to-Pause (statt Mute) + nahtloser Kommentar-Peek (Video schrumpft & läuft weiter, wie Feed) — Commits `6f22f59`/`4762917`. Falls user-posts das auch bekommen soll: gleiches Muster (`sheetProgress`+`seamlessPeek`) übertragen.
+
+### D) Guild-Commerce v1 (`172e830`, Migration ausgeführt)
+- **Sammelbestellungs-Runden** (#3 App-Karte): Migration `20260702100000_guild_commerce_rounds.sql` — Tabelle `preorder_rounds` (product, seller, title, target_qty, closes_at, status; `guild_id` ab Tag 1 dabei, v1 immer NULL = überall sichtbar). RPCs `create_preorder_round` (adoptiert bestehendes Interesse → zählt ab Sekunde 1), `close_preorder_round`, `get_active_preorder_round`. `product_preorders.round_id` + Trigger.
+- App: `lib/useShop.ts` (`useActivePreorderRound`/`useCreate`/`useClosePreorderRound`), `components/guild/GuildRoundCard.tsx` („Jetzt aktiv"-Karte, RollupNumber-Fortschritt), Start-Sheet in `app/shop/fulfillment.tsx` (Samstags-Presets). Bereit für die 80er-Runde.
+- **OFFEN:** Web-Parität der Runden-Karte (WhatsApp→Web-Neukunden sehen sie noch nicht).
+
+### E) Security-Review + 4 Fixes (2026-07-02, Memory `vibes-security-review-money`)
+- `91ac42a` RC-Webhook: **fail-closed** (fehlt `REVENUECAT_WEBHOOK_SECRET` → 500 statt Auth-Skip) + **atomare Idempotenz** (INSERT-first-Claim statt check-then-credit).
+- `b8e7d9a` Stripe-Webhook: **payment_status-Guard** (SEPA/Klarna feuern `completed` mit `unpaid` → nicht früh gutschreiben).
+- `3c9635c` Migration `buy_product_quantity_guard`: p_quantity 1..999 validiert (negative Menge hätte Coins gutgeschrieben).
+- **OFFEN vor Phase 2:** `seller_accounts`-RLS (`using(true)`) einschränken; Receipt-Verify aktivieren beim Coin-Launch; `[functions.bunny-webhook]` in config.toml zeigt auf gelöschte Function (erst prüfen ob remote noch deployed).
+
+### F) Monitoring-Vollausbau (2.–3. Juli, Memory `vibes-monitoring-setup`, Doku `docs/MONITORING.md`)
+- **Sentry-Web war KOMPLETT AUS** (DSN fehlte in Vercel!) → jetzt aktiv, 4 Vars in Vercel gesetzt (`NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_ORG=brandwerkx`, `SENTRY_PROJECT=javascript-react`, `SENTRY_AUTH_TOKEN`). Source Maps laden (Falle: Redeploy OHNE Build-Cache nötig, sonst keine Injection). App+Web teilen EIN Sentry-Projekt.
+- **Telegram-CI-Alerts** (`2769670`): `.github/actions/telegram-alert` + Job in allen 5 Workflows (`if:failure()`). Secrets `TELEGRAM_BOT_TOKEN`/`TELEGRAM_CHAT_ID` von Zaur gesetzt. Eigener Alert-Bot.
+- **rose-Baseline gefixt** (`ac07f2b`): die 2 Dauer-TS-Fehler (deprecated Legacy-Aliasse ohne `accent.rose`) → CI-Typecheck jetzt **0 Fehler**. Rot ist wieder ein echtes Signal.
+- **UptimeRobot**: 3 Monitore (`/`, `/shop`, Supabase `auth/v1/health?apikey=<anon>` als **Keyword**-Monitor auf `GoTrue` — HTTP-Monitor scheitert an HEAD/405/401!).
+- **Stripe**: Webhook-Fehler-Mails aktiv (Kommunikationseinstellungen → API-Tab). ⚠️ Zaur hat mehrere Stripe-Kontexte (brandwerkx + Sandboxes) — Serlo-Zahlungskonto via bekannte Test-Zahlung identifizieren.
+
+### Session-7-Gotchas
+- **Profil-Post → `user-posts.tsx`**, nicht `post/[id].tsx`. Immer prüfen, welchen Screen der User wirklich sieht, bevor man UI fixt.
+- **Screenshot ≠ echtes Display** bei Overlay-Sichtbarkeit. Dünne weiße Umrisse verschwinden real → solide gefüllte Icons.
+- **OTA-Debug:** Wenn „keine Änderung sichtbar": `npx eas channel:view production` (Channel→Branch+Runtime prüfen), NICHT sofort Code verdächtigen. Meist: falscher Screen oder nicht kalt neugestartet.
+- **`react/no-unescaped-entities`**: `„…"` im JSX-Text ist OK (deutsche Typo-Quotes), aber gerade `"` bricht den Web-Build.
 
 ---
 
