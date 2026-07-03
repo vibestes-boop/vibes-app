@@ -15,29 +15,44 @@ const memoryCache: Record<string, string> = {};
 // Lösung: Große Werte in 1800-Byte-Chunks aufteilen und separat speichern.
 const CHUNK_SIZE = 1800;
 
+// keychainAccessible: AFTER_FIRST_UNLOCK — der Keychain-Eintrag bleibt lesbar,
+// solange das Gerät seit dem Boot einmal entsperrt wurde, auch während die App
+// im Hintergrund läuft. Default (WHEN_UNLOCKED) sperrt den Zugriff beim
+// Backgrounding → `SecureStore.getItemAsync` wirft „Calling the 'get' function
+// has failed" (Crash-Fix 2026-07-03, Sentry EXC ExpoModules-'get').
+const KEYCHAIN_OPTS = { keychainAccessible: SecureStore.AFTER_FIRST_UNLOCK };
+
 async function setLargeItem(key: string, value: string): Promise<void> {
   const chunks = Math.ceil(value.length / CHUNK_SIZE);
-  await SecureStore.setItemAsync(`${key}__count`, String(chunks));
+  await SecureStore.setItemAsync(`${key}__count`, String(chunks), KEYCHAIN_OPTS);
   for (let i = 0; i < chunks; i++) {
     await SecureStore.setItemAsync(
       `${key}__${i}`,
-      value.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE)
+      value.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE),
+      KEYCHAIN_OPTS,
     );
   }
 }
 
 async function getLargeItem(key: string): Promise<string | null> {
-  const countStr = await SecureStore.getItemAsync(`${key}__count`);
-  if (!countStr) return null;
-  const count = parseInt(countStr, 10);
-  if (isNaN(count) || count <= 0) return null;
-  const chunks: string[] = [];
-  for (let i = 0; i < count; i++) {
-    const chunk = await SecureStore.getItemAsync(`${key}__${i}`);
-    if (chunk === null) return null;
-    chunks.push(chunk);
+  // Try/catch: Ein gesperrter Keychain (App im Hintergrund + Default-
+  // Accessibility auf Altdaten) darf NIE fatal werfen. Fehlschlag → null =
+  // „keine Session", non-fatal — Supabase lädt sie beim nächsten Foreground neu.
+  try {
+    const countStr = await SecureStore.getItemAsync(`${key}__count`);
+    if (!countStr) return null;
+    const count = parseInt(countStr, 10);
+    if (isNaN(count) || count <= 0) return null;
+    const chunks: string[] = [];
+    for (let i = 0; i < count; i++) {
+      const chunk = await SecureStore.getItemAsync(`${key}__${i}`);
+      if (chunk === null) return null;
+      chunks.push(chunk);
+    }
+    return chunks.join('');
+  } catch {
+    return null;
   }
-  return chunks.join('');
 }
 
 async function deleteLargeItem(key: string): Promise<void> {
