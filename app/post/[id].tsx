@@ -216,9 +216,9 @@ function LikeButtonDetail({ postId }: { postId: string }) {
         liked && { backgroundColor: 'rgba(238,29,82,0.18)' },
       ]}>
         <Heart
-          size={24}
+          size={28}
           stroke={liked ? '#EE1D52' : '#FFFFFF'}
-          strokeWidth={1.8}
+          strokeWidth={2.2}
           fill={liked ? '#EE1D52' : 'transparent'}
         />
       </Animated.View>
@@ -238,9 +238,9 @@ function BookmarkButtonDetail({ postId }: { postId: string }) {
         bookmarked && { backgroundColor: 'rgba(251,191,36,0.15)' },
       ]}>
         <Bookmark
-          size={24}
+          size={28}
           stroke={bookmarked ? '#FBBF24' : '#FFFFFF'}
-          strokeWidth={1.8}
+          strokeWidth={2.2}
           fill={bookmarked ? '#FBBF24' : 'transparent'}
         />
       </View>
@@ -254,7 +254,7 @@ function CommentButtonDetail({ postId, onPress }: { postId: string; onPress: () 
   return (
     <Pressable style={styles.actionBtn} onPress={onPress}>
       <View style={styles.actionBtnInner}>
-        <MessageCircle size={24} stroke="#FFFFFF" strokeWidth={1.8} />
+        <MessageCircle size={28} stroke="#FFFFFF" strokeWidth={2.2} />
       </View>
       <Text style={styles.actionCount}>{formatted}</Text>
     </Pressable>
@@ -761,7 +761,7 @@ export default function PostDetailScreen() {
         {/* Header */}
         <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
           <Pressable onPress={() => router.back()} style={styles.backBtn}>
-            <ArrowLeft size={20} stroke="#FFFFFF" strokeWidth={2} />
+            <ArrowLeft size={22} stroke="#FFFFFF" strokeWidth={2.4} />
           </Pressable>
 
           {isOwner && post && (
@@ -771,10 +771,10 @@ export default function PostDetailScreen() {
                 style={styles.editBtn}
                 hitSlop={8}
               >
-                <Pencil size={17} stroke="#FFFFFF" strokeWidth={2} />
+                <Pencil size={19} stroke="#FFFFFF" strokeWidth={2.2} />
               </Pressable>
               <Pressable onPress={handleDelete} style={styles.deleteBtn} hitSlop={8}>
-                <Trash2 size={17} stroke="#F87171" strokeWidth={2} />
+                <Trash2 size={19} stroke="#F87171" strokeWidth={2.2} />
               </Pressable>
             </View>
           )}
@@ -796,8 +796,8 @@ export default function PostDetailScreen() {
                 >
                   <View style={styles.actionBtnInner}>
                     {isMuted
-                      ? <VolumeX size={22} color="#FFFFFF" strokeWidth={2} />
-                      : <Volume2 size={22} color="#FFFFFF" strokeWidth={2} />}
+                      ? <VolumeX size={25} color="#FFFFFF" strokeWidth={2.2} />
+                      : <Volume2 size={25} color="#FFFFFF" strokeWidth={2.2} />}
                   </View>
                 </Pressable>
               )}
@@ -806,7 +806,7 @@ export default function PostDetailScreen() {
               <BookmarkButtonDetail postId={post.id} />
               <Pressable style={styles.actionBtn} onPress={() => sharePost(post.id, post.caption)}>
                 <View style={styles.actionBtnInner}>
-                  <Share2 size={24} stroke="#FFFFFF" strokeWidth={1.8} />
+                  <Share2 size={28} stroke="#FFFFFF" strokeWidth={2.2} />
                 </View>
               </Pressable>
             </Animated.View>
@@ -1015,22 +1015,27 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    // Dunkler Scrim statt fast-unsichtbarem Weiß-8% → weiße Icons poppen auf
-    // JEDEM Hintergrund (hell wie dunkel), TikTok-Prinzip. Plus Schatten für Tiefe.
-    backgroundColor: 'rgba(0,0,0,0.32)',
+    // Kräftiger dunkler Scrim → weiße Icons poppen auf JEDEM Hintergrund
+    // (hell wie dunkel). Starker Schatten gibt der Pille zusätzlich Tiefe,
+    // sodass sie auch auf sehr hellem Video klar abgesetzt ist (TikTok-Look).
+    backgroundColor: 'rgba(0,0,0,0.45)',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.35,
-    shadowRadius: 4,
-    elevation: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.55,
+    shadowRadius: 6,
+    elevation: 6,
   },
   actionCount: {
-    color: '#E5E7EB',
-    fontSize: 11,
-    fontWeight: '600',
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
     marginTop: 4,
+    // Dunkler Text-Schatten → Zahl bleibt auf hellem Video lesbar (TikTok).
+    textShadowColor: 'rgba(0,0,0,0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   bottomInfo: {
     position: 'absolute',
@@ -1057,11 +1062,18 @@ const styles = StyleSheet.create({
   },
   avatarText: { color: '#fff', fontSize: 16, fontWeight: '600' },
   avatarSmallImage: { width: '100%', height: '100%', resizeMode: 'cover' },
-  authorName: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
-  dateText: { color: '#6B7280', fontSize: 11, marginTop: 1 },
+  authorName: {
+    color: '#FFFFFF', fontSize: 15, fontWeight: '700',
+    textShadowColor: 'rgba(0,0,0,0.75)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3,
+  },
+  dateText: {
+    color: 'rgba(255,255,255,0.7)', fontSize: 11, marginTop: 1,
+    textShadowColor: 'rgba(0,0,0,0.6)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2,
+  },
   caption: {
-    color: 'rgba(255,255,255,0.85)',
+    color: '#FFFFFF',
     fontSize: 15,
+    textShadowColor: 'rgba(0,0,0,0.7)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3,
     lineHeight: 22,
     fontWeight: '400',
   },
@@ -1070,11 +1082,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.10)',
+    // Dunkler Scrim statt fast-durchsichtigem Weiß → Chip auf hellem Video sichtbar.
+    backgroundColor: 'rgba(0,0,0,0.4)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
+    borderColor: 'rgba(255,255,255,0.22)',
   },
-  tagText: { color: '#FFFFFF', fontSize: 12, fontWeight: '600' },
+  tagText: {
+    color: '#FFFFFF', fontSize: 12, fontWeight: '600',
+    textShadowColor: 'rgba(0,0,0,0.6)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2,
+  },
   musicBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     alignSelf: 'flex-start',
