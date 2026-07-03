@@ -1,3 +1,4 @@
+import { COIN_SHOP_ENABLED } from '@/lib/featureFlags';
 import {
 AnalyticsTab,
 BattleHistoryList,
@@ -433,7 +434,7 @@ export default function ProfileScreen() {
               router.push('/create-story' as any);
             }}
             onEditProfile={() => router.push('/settings')}
-            onBuyCoins={() => router.push('/coin-shop' as any)}
+            onBuyCoins={COIN_SHOP_ENABLED ? () => router.push('/coin-shop' as any) : undefined}
             onMyShop={() => router.push('/shop/my-shop' as any)}
             onSavedProducts={() => router.push('/shop/saved' as any)}
             onMyOrders={() => router.push('/shop/my-orders' as any)}

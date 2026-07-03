@@ -1,3 +1,4 @@
+import { COIN_SHOP_ENABLED } from '@/lib/featureFlags';
 /**
  * app/shop/[id].tsx — Short-Video Shop-style Produkt-Detailseite
  *
@@ -804,7 +805,7 @@ export default function ProductDetailScreen() {
       await notificationAsync(NotificationFeedbackType.Error);
       setBuyResult('error');
       setResultMsg(BUY_ERRORS[result.error] ?? 'Fehler.');
-      if (result.error === 'insufficient_coins') {
+      if (result.error === 'insufficient_coins' && COIN_SHOP_ENABLED) {
         setTimeout(() => { setBuyResult(null); router.push('/coin-shop' as any); }, 2000);
       } else {
         setTimeout(() => setBuyResult(null), 2500);
@@ -1207,7 +1208,11 @@ export default function ProductDetailScreen() {
             }]}
             onPress={() => {
               if (isOutOfStock) return;
-              if (!canAfford) { router.push('/coin-shop' as any); return; }
+              if (!canAfford) {
+                if (COIN_SHOP_ENABLED) { router.push('/coin-shop' as any); return; }
+                Alert.alert('Fast! 🪙', 'Dafür reichen deine Coins noch nicht ganz.');
+                return;
+              }
               impactAsync(ImpactFeedbackStyle.Medium);
               setShowConfirm(true);
             }}
@@ -1220,7 +1225,9 @@ export default function ProductDetailScreen() {
             ) : !canAfford ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <CoinIcon size={16} />
-                <Text style={[s.buyBtnText, { color: colors.text.primary }]}>Aufladen</Text>
+                <Text style={[s.buyBtnText, { color: colors.text.primary }]}>
+                  {COIN_SHOP_ENABLED ? 'Aufladen' : 'Nicht genug Coins'}
+                </Text>
               </View>
             ) : (
               // Preis-Pill links | Trennstrich | "Jetzt kaufen" rechts

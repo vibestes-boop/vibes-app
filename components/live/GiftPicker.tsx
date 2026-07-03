@@ -1,3 +1,4 @@
+import { COIN_SHOP_ENABLED } from '@/lib/featureFlags';
 /**
  * components/live/GiftPicker.tsx
  *
@@ -379,14 +380,16 @@ export function GiftPicker({
                   </Text>
                 </View>
               )}
-              <Pressable
-                style={[s.addBtn, isDark ? s.addBtnDark : s.addBtnLight]}
-                onPress={() => { onClose(); setTimeout(() => router.push('/coin-shop'), 300); }}
-              >
-                <Text style={[s.addBtnText, { color: isDark ? '#FCD34D' : '#92400E' }]}>
-                  + Coins
-                </Text>
-              </Pressable>
+              {COIN_SHOP_ENABLED && (
+                <Pressable
+                  style={[s.addBtn, isDark ? s.addBtnDark : s.addBtnLight]}
+                  onPress={() => { onClose(); setTimeout(() => router.push('/coin-shop'), 300); }}
+                >
+                  <Text style={[s.addBtnText, { color: isDark ? '#FCD34D' : '#92400E' }]}>
+                    + Coins
+                  </Text>
+                </Pressable>
+              )}
             </View>
           </View>
 

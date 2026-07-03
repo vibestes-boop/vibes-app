@@ -1,3 +1,4 @@
+import { COIN_SHOP_ENABLED } from '@/lib/featureFlags';
 /**
  * app/coin-shop.tsx — Serlo Coin Shop (Premium Design)
  * Eigener Stil: Cremig-hell, Gold-Akzent, dunkler Header, nicht Short-Video-Kopie.
@@ -8,7 +9,7 @@ import { supabase } from '@/lib/supabase';
 import { useCoinsWallet } from '@/lib/useGifts';
 import * as Haptics from 'expo-haptics';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
+import { Redirect, useRouter } from 'expo-router';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import React,{ useEffect,useRef,useState } from 'react';
 import {
@@ -33,7 +34,17 @@ const COIN_PACKAGES = [
 
 const SERLO_COIN = require('../assets/serlo-coin.png');
 
-export default function CoinShopScreen() {
+// Deep-Link-Guard (App-Store-v1): Solange der Coin-Shop deaktiviert ist,
+// führt auch ein direkter /coin-shop-Link nur zurück zum Profil — der Apple-
+// Reviewer darf nirgends auf nicht-eingereichte IAP-Produkte stoßen.
+// Wrapper-Pattern statt Early-Return im Screen, damit die Hook-Reihenfolge
+// der eigentlichen Komponente unangetastet bleibt.
+export default function CoinShopGate() {
+  if (!COIN_SHOP_ENABLED) return <Redirect href={'/(tabs)/profile' as any} />;
+  return <CoinShopScreen />;
+}
+
+function CoinShopScreen() {
   useThemedStatusBar('light');
   const insets = useSafeAreaInsets();
   const router = useRouter();

@@ -1,3 +1,4 @@
+import { COIN_SHOP_ENABLED } from '@/lib/featureFlags';
 /**
  * app/shop/index.tsx — Shop (TikTok-inspiriertes Layout)
  *
@@ -75,10 +76,11 @@ const TABS: { key: TabKey; label: string }[] = [
 const REAL_CATEGORIES: ProductCategory[] = ['physical', 'digital', 'service', 'collectible'];
 
 // Menü-Shortcuts (Navigation zu anderen Screens). Verkaufen bleibt der FAB.
+// Coins-Shortcut nur mit aktivem Coin-Shop (App-Store-v1: Flag aus).
 const SHORTCUTS: { key: string; label: string; Icon: typeof Package; route: string }[] = [
   { key: 'orders', label: 'Bestellungen', Icon: Package, route: '/shop/my-orders'  },
   { key: 'saved',  label: 'Favoriten',    Icon: Heart,   route: '/shop/saved'   },
-  { key: 'coins',  label: 'Coins',        Icon: Coins,   route: '/coin-shop'    },
+  ...(COIN_SHOP_ENABLED ? [{ key: 'coins', label: 'Coins', Icon: Coins, route: '/coin-shop' }] : []),
   { key: 'myshop', label: 'Mein Shop',    Icon: Store,   route: '/shop/my-shop' },
 ];
 

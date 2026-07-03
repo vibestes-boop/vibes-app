@@ -1,3 +1,4 @@
+import { COIN_SHOP_ENABLED } from '@/lib/featureFlags';
 /**
  * components/live/LiveShoppingUI.tsx
  *
@@ -68,13 +69,18 @@ export function PinnedProductPill({ product, onBought, viewerUsername }: PinnedP
       setTimeout(() => setBought(false), 3000);
     } else if (result.error === 'insufficient_coins') {
       // Warme Stimme — siehe Design-Gesetz in CLAUDE.md (Fehler → Mikro-Freude → Verkauf).
+      // Ohne Coin-Shop (App-Store-v1-Flag) kein Aufladen-CTA — nur die warme Info.
       Alert.alert(
         'Fast! 🪙',
-        'Dafür reichen deine Coins nicht ganz — kurz aufladen?',
-        [
-          { text: 'Später', style: 'cancel' },
-          { text: 'Aufladen', onPress: () => router.push('/coin-shop' as any) },
-        ]
+        COIN_SHOP_ENABLED
+          ? 'Dafür reichen deine Coins nicht ganz — kurz aufladen?'
+          : 'Dafür reichen deine Coins noch nicht ganz.',
+        COIN_SHOP_ENABLED
+          ? [
+              { text: 'Später', style: 'cancel' },
+              { text: 'Aufladen', onPress: () => router.push('/coin-shop' as any) },
+            ]
+          : [{ text: 'Ok' }]
       );
     } else {
       Alert.alert('Hat nicht geklappt 🙈', 'Kauf hat gerade nicht funktioniert — nochmal versuchen?');
@@ -88,7 +94,11 @@ export function PinnedProductPill({ product, onBought, viewerUsername }: PinnedP
         onPress={() => {
           if (bought) return;
           impactAsync(ImpactFeedbackStyle.Light);
-          if (!canAfford) { router.push('/coin-shop' as any); return; }
+          if (!canAfford) {
+            if (COIN_SHOP_ENABLED) { router.push('/coin-shop' as any); return; }
+            Alert.alert('Fast! 🪙', 'Dafür reichen deine Coins noch nicht ganz.');
+            return;
+          }
           setShowConfirm(true);
         }}
         accessibilityRole="button"
