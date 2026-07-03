@@ -324,19 +324,8 @@ function GuildPostDetailItem({
       {post.media_url ? (
         isVideo ? (
           <>
-            {/* Blur-Fill hinter dem Video: füllt die Letterbox-Ränder (contain) */}
-            {post.thumbnail_url && (
-              <>
-                <Image
-                  source={{ uri: post.thumbnail_url }}
-                  style={StyleSheet.absoluteFill}
-                  contentFit="cover"
-                  blurRadius={30}
-                  priority={isActive ? 'high' : 'normal'}
-                />
-                <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.35)' }]} />
-              </>
-            )}
+            {/* Letterbox-Ränder bleiben schwarz (mediaWrap-Hintergrund) — kein
+                Blur-Fill/Spiegelung mehr hinter dem contain-Video. */}
             {USE_EXPO_VIDEO ? (
               <NativeFeedVideo
                 ref={videoSeekRef}
@@ -363,15 +352,7 @@ function GuildPostDetailItem({
           </>
         ) : (
           <>
-            {/* Blurred background — sofort aus Cache, Priority High wenn aktiv */}
-            <Image
-              source={{ uri: post.media_url }}
-              style={[StyleSheet.absoluteFill, { opacity: 0.2 }]}
-              contentFit="cover"
-              blurRadius={18}
-              priority={isActive ? 'high' : 'normal'}
-            />
-            {/* Main image */}
+            {/* Kein Blur-Hintergrund mehr — Ränder bleiben schwarz (mediaWrap). */}
             <Image
               source={{ uri: post.media_url }}
               style={itemStyles.mainImage}

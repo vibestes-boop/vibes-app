@@ -759,16 +759,8 @@ export const FeedItem = React.memo(function FeedItem({
       {/* ── Hintergrund: Bild DIREKT in feedItem */}
       {item.mediaUrl && !isVideo && !imageError && (
         <>
-          {/* Blur-Fill-Hintergrund: füllt die Ränder, statt das Foto zu beschneiden */}
-          <Image
-            source={{ uri: item.mediaUrl }}
-            style={StyleSheet.absoluteFill}
-            contentFit="cover"
-            blurRadius={30}
-            cachePolicy="memory-disk"
-          />
-          <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.35)' }]} />
-          {/* Foto vollständig (contain) — kein seitliches Abschneiden/Zoom mehr */}
+          {/* Kein Blur-Fill mehr — Ränder bleiben schwarz (feedItem-Hintergrund).
+              Foto vollständig (contain), kein seitliches Abschneiden/Zoom. */}
           <Image
             source={{ uri: item.mediaUrl }}
             style={StyleSheet.absoluteFill}
@@ -798,21 +790,8 @@ export const FeedItem = React.memo(function FeedItem({
         accessibilityRole="button"
         accessibilityLabel={isVideo ? 'Doppeltippen zum Liken, gedrückt halten für Optionen' : 'Doppeltippen zum Liken, gedrückt halten für Optionen'}
       >
-        {/* Blur-Fill hinter dem Video: füllt die Letterbox-Ränder (contain),
-            statt das Video seitlich zu beschneiden/zoomen. */}
-        {item.mediaUrl && isVideo && item.thumbnailUrl && (
-          <>
-            <Image
-              source={{ uri: item.thumbnailUrl }}
-              style={StyleSheet.absoluteFill}
-              contentFit="cover"
-              blurRadius={30}
-              cachePolicy="memory-disk"
-            />
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(0,0,0,0.35)' }]} />
-          </>
-        )}
-
+        {/* Letterbox-Ränder bleiben schwarz (feedItem-Hintergrund) — kein
+            Blur-Fill/Spiegelung mehr hinter dem contain-Video. */}
         {item.mediaUrl && isVideo && (
           USE_EXPO_VIDEO ? (
             <NativeFeedVideo
