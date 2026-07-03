@@ -17,7 +17,7 @@ import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect,useLocalSearchParams,useRouter } from 'expo-router';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
-import { ArrowLeft,Bookmark,Heart,MessageCircle,Music2,Pencil,Send,Share2,Trash2,Volume2,VolumeX } from 'lucide-react-native';
+import { ArrowLeft,Bookmark,Heart,MessageCircle,Music2,Pause,Pencil,Play,Send,Share2,Trash2,Volume2,VolumeX } from 'lucide-react-native';
 import { useCallback,useEffect,useRef,useState } from 'react';
 import {
 ActivityIndicator,
@@ -279,7 +279,9 @@ export default function PostDetailScreen() {
   const reopenCommentsRef = useRef(false);
   const [screenFocused, setScreenFocused] = useState(true);
   const [isMuted, setIsMuted] = useState(false);
-  const [showMuteFlash, setShowMuteFlash] = useState<'muted' | 'unmuted' | null>(null);
+  const [isPaused, setIsPaused] = useState(false);
+  // Kurzer Play/Pause-Blitz in der Mitte beim Tap (Mute liegt auf dem eigenen Button).
+  const [showMuteFlash, setShowMuteFlash] = useState<'paused' | 'playing' | null>(null);
   const isOwner = post?.author_id === profile?.id;
   // Musik-Track Audio (expo-av — identisch zu FeedItem)
   const audioSoundRef = useRef<any>(null);
@@ -415,15 +417,16 @@ export default function PostDetailScreen() {
     lastTap.current = now;
     lastTapPos.current = pos;
 
-    // — Einfacher Tap: nach 260ms Mute/Unmute (wenn kein Doppel-Tap folgt) —
+    // — Einfacher Tap: nach 260ms Pause/Play togglen (wenn kein Doppel-Tap folgt) —
+    // Vorher togglte der Tap Mute — Mute liegt jetzt auf dem eigenen Button.
+    // Pause = TikTok-Standard: einmal tippen hält das Video an.
     if (isVideo) {
       muteTimeoutRef.current = setTimeout(() => {
         muteTimeoutRef.current = null;
-        setIsMuted((m) => {
-          const next = !m;
-          // Flash-Feedback: kurz anzeigen dann verstecken
-          setShowMuteFlash(next ? 'muted' : 'unmuted');
-          setTimeout(() => setShowMuteFlash(null), 700);
+        setIsPaused((p) => {
+          const next = !p;
+          setShowMuteFlash(next ? 'paused' : 'playing');
+          setTimeout(() => setShowMuteFlash(null), 600);
           return next;
         });
       }, DOUBLE_TAP_DELAY + 10);
@@ -643,7 +646,7 @@ export default function PostDetailScreen() {
               <NativeFeedVideo
                 ref={videoSeekRef}
                 uri={displayMediaUrl}
-                shouldPlay={screenFocused}
+                shouldPlay={screenFocused && !isPaused}
                 isMuted={isMuted}
                 onProgress={handleProgress}
                 restartSignal={restartSignal}
@@ -653,7 +656,7 @@ export default function PostDetailScreen() {
               <FallbackFeedVideo
                 ref={videoSeekRef}
                 uri={displayMediaUrl}
-                shouldPlay={screenFocused}
+                shouldPlay={screenFocused && !isPaused}
                 isMuted={isMuted}
                 onProgress={handleProgress}
                 restartSignal={restartSignal}
@@ -698,12 +701,18 @@ export default function PostDetailScreen() {
           />
         ))}
 
-        {/* 6. MUTE-FLASH — kurzes visuelles Feedback beim Tap (wie Short-Video/Foto-Feed) */}
+        {/* 6. PLAY/PAUSE-BLITZ beim Tap (kurz). Dazu ein PERSISTENTES Play-Icon,
+            solange pausiert ist (TikTok) — verschwindet erst beim Weiterspielen. */}
         {showMuteFlash !== null && (
           <View style={tapFeedbackStyles.muteFlash} pointerEvents="none">
-            {showMuteFlash === 'muted'
-              ? <VolumeX size={52} color="#fff" strokeWidth={1.6} />
-              : <Volume2 size={52} color="#fff" strokeWidth={1.6} />}
+            {showMuteFlash === 'paused'
+              ? <Pause size={52} color="#fff" fill="#fff" strokeWidth={1.6} />
+              : <Play size={52} color="#fff" fill="#fff" strokeWidth={1.6} />}
+          </View>
+        )}
+        {isVideo && isPaused && showMuteFlash === null && (
+          <View style={tapFeedbackStyles.muteFlash} pointerEvents="none">
+            <Play size={60} color="rgba(255,255,255,0.85)" fill="rgba(255,255,255,0.85)" strokeWidth={1.4} />
           </View>
         )}
 
@@ -756,8 +765,8 @@ export default function PostDetailScreen() {
                 >
                   <View style={styles.actionBtnInner}>
                     {isMuted
-                      ? <VolumeX size={22} color="rgba(255,255,255,0.7)" strokeWidth={1.8} />
-                      : <Volume2 size={22} color="rgba(255,255,255,0.7)" strokeWidth={1.8} />}
+                      ? <VolumeX size={22} color="#FFFFFF" strokeWidth={2} />
+                      : <Volume2 size={22} color="#FFFFFF" strokeWidth={2} />}
                   </View>
                 </Pressable>
               )}
@@ -940,17 +949,19 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: 'rgba(0,0,0,0.32)',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.35, shadowRadius: 4, elevation: 4,
   },
   deleteBtn: {
     width: 38,
     height: 38,
     borderRadius: 19,
-    backgroundColor: 'rgba(248,113,113,0.15)',
+    backgroundColor: 'rgba(0,0,0,0.32)',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.35, shadowRadius: 4, elevation: 4,
   },
   rightActions: {
     position: 'absolute',
@@ -963,9 +974,16 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    // Dunkler Scrim statt fast-unsichtbarem Weiß-8% → weiße Icons poppen auf
+    // JEDEM Hintergrund (hell wie dunkel), TikTok-Prinzip. Plus Schatten für Tiefe.
+    backgroundColor: 'rgba(0,0,0,0.32)',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.35,
+    shadowRadius: 4,
+    elevation: 4,
   },
   actionCount: {
     color: '#E5E7EB',
