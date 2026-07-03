@@ -219,7 +219,7 @@ function LikeButtonDetail({ postId }: { postId: string }) {
           size={28}
           stroke={liked ? '#EE1D52' : '#FFFFFF'}
           strokeWidth={2.2}
-          fill={liked ? '#EE1D52' : 'transparent'}
+          fill={liked ? '#EE1D52' : '#FFFFFF'}
         />
       </Animated.View>
       <Text style={[styles.actionCount, liked && { color: '#EE1D52' }]}>
@@ -241,7 +241,7 @@ function BookmarkButtonDetail({ postId }: { postId: string }) {
           size={28}
           stroke={bookmarked ? '#FBBF24' : '#FFFFFF'}
           strokeWidth={2.2}
-          fill={bookmarked ? '#FBBF24' : 'transparent'}
+          fill={bookmarked ? '#FBBF24' : '#FFFFFF'}
         />
       </View>
     </Pressable>
@@ -254,7 +254,7 @@ function CommentButtonDetail({ postId, onPress }: { postId: string; onPress: () 
   return (
     <Pressable style={styles.actionBtn} onPress={onPress}>
       <View style={styles.actionBtnInner}>
-        <MessageCircle size={28} stroke="#FFFFFF" strokeWidth={2.2} />
+        <MessageCircle size={28} stroke="#FFFFFF" strokeWidth={2.2} fill="#FFFFFF" />
       </View>
       <Text style={styles.actionCount}>{formatted}</Text>
     </Pressable>
