@@ -100,11 +100,7 @@ function LikeBtn({ postId }: { postId: string }) {
 
   return (
     <Pressable onPress={press} style={s.actionBtn}>
-      <Animated.View style={[
-        s.actionBtnInner,
-        anim,
-        liked && { backgroundColor: 'rgba(238,29,82,0.18)' },
-      ]}>
+      <Animated.View style={[s.actionBtnInner, anim]}>
         <Heart size={26} stroke={liked ? '#EE1D52' : '#FFFFFF'} strokeWidth={2} fill={liked ? '#EE1D52' : '#FFFFFF'} />
       </Animated.View>
       <Text style={[s.actionCount, liked && { color: '#EE1D52' }]}>{formattedCount}</Text>
@@ -742,15 +738,16 @@ const s = StyleSheet.create({
   rightActions: { position: 'absolute', right: 12, gap: 10, alignItems: 'center', zIndex: 10 },
   actionBtn: { alignItems: 'center' },
   actionBtnInner: {
-    width: 44, height: 44,
+    width: 44, height: 34,
     alignItems: 'center', justifyContent: 'center',
     // Kein Hintergrund-Kreis mehr (bare TikTok-Look). Die weißen Icons bleiben
     // dank kräftigem Schatten auf JEDEM Hintergrund sichtbar (der Schatten hüllt
     // die gefüllte Fläche in einen dunklen Halo, auch auf echtem Display).
+    // Höhe hugt das Icon (34 statt 44) → Zähler sitzt eng darunter.
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.6, shadowRadius: 5, elevation: 6,
   },
   actionCount: {
-    color: '#FFFFFF', fontSize: 12, fontWeight: '700', marginTop: 2,
+    color: '#FFFFFF', fontSize: 12, fontWeight: '700', marginTop: 1,
     textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3,
   },
   // Kommentar-Blase: gefüllte weiße Blase + 3 dunkle Punkte (leicht nach oben,

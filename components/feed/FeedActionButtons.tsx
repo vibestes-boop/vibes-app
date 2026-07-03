@@ -55,9 +55,9 @@ export function ActionButton({
     >
       <Animated.View style={[styles.actionBtnInner, animStyle]}>
         <Icon
-          size={26}
+          size={25}
           color={iconColor}
-          strokeWidth={active ? 0 : 1.8}
+          strokeWidth={active ? 0 : 2.2}
           fill={active && activeColor ? activeColor : 'transparent'}
         />
       </Animated.View>
@@ -100,7 +100,14 @@ export function CommentButton({
       accessibilityLabel={`Kommentare anzeigen, ${formatted} Kommentare`}
     >
       <Animated.View style={[styles.actionBtnInner, animStyle]}>
-        <MessageCircle size={26} color="#FFFFFF" strokeWidth={1.8} fill="rgba(255,255,255,0.12)" />
+        <Animated.View style={styles.bubbleWrap}>
+          <MessageCircle size={26} color="#FFFFFF" fill="#FFFFFF" strokeWidth={2} />
+          <Animated.View style={styles.bubbleDots}>
+            <Animated.View style={styles.bubbleDot} />
+            <Animated.View style={styles.bubbleDot} />
+            <Animated.View style={styles.bubbleDot} />
+          </Animated.View>
+        </Animated.View>
       </Animated.View>
       <Text style={styles.actionCount}>{formatted}</Text>
     </Pressable>
@@ -134,8 +141,8 @@ export function BookmarkButton({ postId, batchBookmarked }: { postId: string; ba
         <Bookmark
           size={26}
           stroke={bookmarked ? '#FBBF24' : '#FFFFFF'}
-          strokeWidth={1.8}
-          fill={bookmarked ? '#FBBF24' : 'transparent'}
+          strokeWidth={2}
+          fill={bookmarked ? '#FBBF24' : '#FFFFFF'}
         />
       </Animated.View>
     </Pressable>
@@ -176,16 +183,12 @@ export function LikeButton({
       accessibilityLabel={liked ? `Gefällt mir entfernen, ${formattedCount} Likes` : `Gefällt mir, ${formattedCount} Likes`}
       accessibilityState={{ selected: liked }}
     >
-      <Animated.View style={[
-        styles.actionBtnInner,
-        animStyle,
-        liked && { backgroundColor: 'rgba(238,29,82,0.18)' },
-      ]}>
+      <Animated.View style={[styles.actionBtnInner, animStyle]}>
         <Heart
           size={26}
           stroke={liked ? '#EE1D52' : '#FFFFFF'}
-          strokeWidth={1.8}
-          fill={liked ? '#EE1D52' : 'transparent'}
+          strokeWidth={2}
+          fill={liked ? '#EE1D52' : '#FFFFFF'}
         />
       </Animated.View>
       {onCountPress ? (

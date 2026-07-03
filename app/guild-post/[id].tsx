@@ -424,7 +424,7 @@ function GuildPostDetailItem({
 
       {/* ── Rechte Aktionen ── (blendet aus, wenn Kommentare offen) */}
       <Animated.View
-        style={[itemStyles.rightActions, { bottom: insets.bottom + 90 }, overlayFadeStyle]}
+        style={[itemStyles.rightActions, { bottom: insets.bottom + 56 }, overlayFadeStyle]}
         pointerEvents={showComments ? 'none' : 'box-none'}
       >
         {/* Avatar mit Story-Ring */}
@@ -441,7 +441,9 @@ function GuildPostDetailItem({
         {/* Like */}
         <Animated.View style={animatedHeartStyle}>
           <Pressable onPress={handleLike} style={itemStyles.actionItem} hitSlop={10}>
-            <Heart size={28} color={liked ? LC.accent.rose : '#fff'} fill={liked ? LC.accent.rose : 'transparent'} strokeWidth={1.8} />
+            <View style={itemStyles.iconWrap}>
+              <Heart size={26} stroke={liked ? LC.accent.rose : '#FFFFFF'} fill={liked ? LC.accent.rose : '#FFFFFF'} strokeWidth={2} />
+            </View>
             <Text style={[itemStyles.actionCount, liked && { color: LC.accent.rose }]}>{count}</Text>
           </Pressable>
         </Animated.View>
@@ -455,7 +457,16 @@ function GuildPostDetailItem({
           style={itemStyles.actionItem}
           hitSlop={10}
         >
-          <MessageCircle size={28} color="#fff" strokeWidth={1.8} />
+          <View style={itemStyles.iconWrap}>
+            <View style={itemStyles.bubbleWrap}>
+              <MessageCircle size={26} color="#FFFFFF" fill="#FFFFFF" strokeWidth={2} />
+              <View style={itemStyles.bubbleDots}>
+                <View style={itemStyles.bubbleDot} />
+                <View style={itemStyles.bubbleDot} />
+                <View style={itemStyles.bubbleDot} />
+              </View>
+            </View>
+          </View>
           <Text style={itemStyles.actionCount}>
             {commentCount >= 1000 ? `${(commentCount / 1000).toFixed(1)}K` : commentCount}
           </Text>
@@ -463,32 +474,38 @@ function GuildPostDetailItem({
 
         {/* Bookmark */}
         <Pressable onPress={toggleBookmark} style={itemStyles.actionItem} hitSlop={10}>
-          <Bookmark
-            size={28}
-            color={bookmarked ? '#FBBF24' : '#fff'}
-            fill={bookmarked ? '#FBBF24' : 'transparent'}
-            strokeWidth={1.8}
-          />
+          <View style={itemStyles.iconWrap}>
+            <Bookmark
+              size={26}
+              stroke={bookmarked ? '#FBBF24' : '#FFFFFF'}
+              fill={bookmarked ? '#FBBF24' : '#FFFFFF'}
+              strokeWidth={2}
+            />
+          </View>
         </Pressable>
 
         {/* Teilen */}
         <Pressable onPress={() => sharePost(post.id, post.caption)} style={itemStyles.actionItem} hitSlop={10}>
-          <Share2 size={28} color="#fff" strokeWidth={1.8} />
+          <View style={itemStyles.iconWrap}>
+            <Share2 size={25} color="#FFFFFF" strokeWidth={2.3} />
+          </View>
         </Pressable>
 
         {/* Mute-Icon (Video) */}
         {isVideo && (
           <Pressable onPress={toggleMute} style={itemStyles.actionItem} hitSlop={10}>
-            {isMuted
-              ? <VolumeX size={26} color="#fff" strokeWidth={1.8} />
-              : <Volume2 size={26} color="#fff" strokeWidth={1.8} />}
+            <View style={itemStyles.iconWrap}>
+              {isMuted
+                ? <VolumeX size={23} color="#FFFFFF" strokeWidth={0} fill="#FFFFFF" />
+                : <Volume2 size={23} color="#FFFFFF" strokeWidth={0} fill="#FFFFFF" />}
+            </View>
           </Pressable>
         )}
       </Animated.View>
 
       {/* ── Untere Info-Leiste ── (blendet aus, wenn Kommentare offen) */}
       <Animated.View
-        style={[itemStyles.bottomInfo, { paddingBottom: insets.bottom + 12 }, overlayFadeStyle]}
+        style={[itemStyles.bottomInfo, { bottom: insets.bottom + 54 }, overlayFadeStyle]}
         pointerEvents={showComments ? 'none' : 'box-none'}
       >
         {/* Autor */}
@@ -761,9 +778,9 @@ const itemStyles = StyleSheet.create({
   },
   rightActions: {
     position: 'absolute',
-    right: 14,
+    right: 12,
     alignItems: 'center',
-    gap: 18,
+    gap: 10,
     zIndex: 10,
   },
   avatarWrap: {
@@ -786,19 +803,38 @@ const itemStyles = StyleSheet.create({
   },
   actionItem: {
     alignItems: 'center',
-    gap: 3,
+  },
+  // Shadow-Wrapper: hüllt das gefüllte weiße Icon in einen dunklen Halo →
+  // sichtbar auf JEDEM Hintergrund (echtes Display, nicht nur Screenshot).
+  // Höhe hugt das Icon (34) → Zähler sitzt eng darunter.
+  iconWrap: {
+    width: 44,
+    height: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.6,
+    shadowRadius: 5,
+    elevation: 6,
   },
   actionCount: {
     color: '#fff',
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
+    marginTop: 1,
     textShadowColor: 'rgba(0,0,0,0.8)',
-    textShadowRadius: 4,
+    textShadowRadius: 3,
     textShadowOffset: { width: 0, height: 1 },
   },
+  // Kommentar-Blase: gefüllte weiße Blase + 3 dunkle Punkte.
+  bubbleWrap: { width: 26, height: 26, alignItems: 'center', justifyContent: 'center' },
+  bubbleDots: { position: 'absolute', top: 9, flexDirection: 'row', gap: 2.5 },
+  bubbleDot: { width: 2.6, height: 2.6, borderRadius: 1.3, backgroundColor: '#111' },
   bottomInfo: {
     position: 'absolute',
-    bottom: 80,   // Platz für die Kommentar-Eingabeleiste
+    // bottom wird inline gesetzt (insets.bottom + 54) → sitzt dicht über der
+    // Kommentar-Eingabeleiste (commentBarH 48 + 6px Luft), wie in user-posts.
     left: 0,
     right: 80,
     paddingHorizontal: 16,

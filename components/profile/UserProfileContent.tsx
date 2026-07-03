@@ -564,19 +564,6 @@ export function UserProfileContent({ userId, onBack }: Props) {
                 <Text style={[s.guildPillText, { color: colors.text.primary }]}>{profile.guild_name}</Text>
               </View>
             )}
-            {profile.teip && (
-              <View style={{
-                flexDirection: 'row', alignItems: 'center', gap: 4,
-                backgroundColor: colors.bg.elevated, borderRadius: 10,
-                paddingHorizontal: 8, paddingVertical: 3,
-                borderWidth: 1, borderColor: colors.border.default,
-              }}>
-                <Text style={{ fontSize: 11 }}>🏔️</Text>
-                <Text style={{ color: colors.text.primary, fontSize: 11, fontWeight: '600' }}>
-                  {profile.teip}
-                </Text>
-              </View>
-            )}
           </View>
           {/* Rechts: VibeScore Ring */}
           {!loading && <VibeScoreRing score={avgResonanz} size={48} />}

@@ -3,7 +3,7 @@ import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { BarChart,BarChart2,Bookmark,CheckCircle2,ChevronRight,Edit3,FileText,Flower2,Grid3X3,Heart,Link,MoreHorizontal,Mountain,Package,Repeat2,Share2,Shield,ShoppingBag,Sparkles,Star,Swords } from 'lucide-react-native';
+import { BarChart,BarChart2,Bookmark,CheckCircle2,ChevronRight,Edit3,FileText,Flower2,Grid3X3,Heart,Link,MoreHorizontal,Package,Repeat2,Share2,Shield,ShoppingBag,Sparkles,Star,Swords } from 'lucide-react-native';
 import { useState } from 'react';
 import { Dimensions,Linking,Modal,Pressable,ScrollView,Text,View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -334,8 +334,13 @@ export function ProfileListHeader({
   // zurück (z. B. „Zaur") — verhindert das doppelte „@zaur" (oben im Header
   // UND hier), das ohne Anzeigename entstand. @handle steht immer klein drunter.
   const uname = profile?.username ?? '';
-  const displayName = profile?.display_name?.trim()
+  const realName = profile?.display_name?.trim() ?? '';
+  const displayName = realName
     || (uname ? uname.charAt(0).toUpperCase() + uname.slice(1) : '…');
+  // @handle nur zeigen, wenn ein echter Anzeigename existiert. Ohne Anzeigename
+  // IST der große Name schon der (kapitalisierte) Username → die separate
+  // „@zaur"-Zeile wäre reine Dopplung/Platzverschwendung.
+  const showHandle = !!realName && !!uname;
 
   return (
     <>
@@ -442,7 +447,7 @@ export function ProfileListHeader({
             </View>
           ) : null}
         </View>
-        {uname ? (
+        {showHandle ? (
           <Text style={{ color: colors.text.muted, fontSize: 13 }}>@{uname}</Text>
         ) : null}
 
@@ -466,18 +471,13 @@ export function ProfileListHeader({
           </Pressable>
         ) : null}
 
-        {/* Identitäts-Chips: nur echte Signale (Teip · Women-Only · Battle-Bilanz).
-            „Resonanz" (avgDwell) entfernt — interner Creator-Jargon, gehört in
-            Analytics, nicht auf das öffentliche Profil. Battle nur bei echter
-            Bilanz (sonst sah „0–0 · 0%" leer/kaputt aus). */}
-        {(profile?.teip || profile?.women_only_verified || showBattleRecord) ? (
+        {/* Identitäts-Chips: nur echte Signale (Women-Only · Battle-Bilanz).
+            Teip/Clan entfernt (Zaur-Wunsch — keine Pflichtangabe, nicht auf dem
+            öffentlichen Profil). „Resonanz" (avgDwell) entfernt — interner
+            Creator-Jargon. Battle nur bei echter Bilanz (sonst sah „0–0 · 0%"
+            leer/kaputt aus). */}
+        {(profile?.women_only_verified || showBattleRecord) ? (
           <View style={s.metaRow}>
-            {profile?.teip ? (
-              <View style={s.metaChip}>
-                <Mountain size={13} color={colors.text.secondary} strokeWidth={2} />
-                <Text style={s.metaChipText}>{profile.teip}</Text>
-              </View>
-            ) : null}
             {profile?.women_only_verified ? (
               <View style={[s.metaChip, { backgroundColor: 'rgba(244,114,182,0.12)', borderColor: 'rgba(244,114,182,0.3)' }]}>
                 <Flower2 size={13} color="#F472B6" strokeWidth={2} />

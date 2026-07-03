@@ -304,21 +304,31 @@ export const feedItemStyles = StyleSheet.create({
     marginBottom: 6,
   },
   actionBtnInner: {
-    width: 48,
-    height: 44,
-    borderRadius: 24,
+    width: 44,
+    height: 34,
     alignItems: 'center',
     justifyContent: 'center',
+    // Bare TikTok-Look: kein Kreis. Gefüllte weiße Icons + Schatten-Halo →
+    // sichtbar auf jedem Hintergrund. Höhe hugt das Icon (34) → Zähler eng darunter.
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.6,
+    shadowRadius: 5,
+    elevation: 6,
   },
   actionCount: {
-    color: '#E5E7EB',
-    fontSize: 11,
-    fontWeight: '600',
-    marginTop: 2,
-    textShadowColor: 'rgba(0,0,0,0.9)',
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 1,
+    textShadowColor: 'rgba(0,0,0,0.8)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
+  // Kommentar-Blase: gefüllte weiße Blase + 3 dunkle Punkte.
+  bubbleWrap: { width: 26, height: 26, alignItems: 'center', justifyContent: 'center' },
+  bubbleDots: { position: 'absolute', top: 9, flexDirection: 'row', gap: 2.5 },
+  bubbleDot: { width: 2.6, height: 2.6, borderRadius: 1.3, backgroundColor: '#111' },
   bottomInfo: {
     paddingHorizontal: 20,
     paddingBottom: 0,  // wird dynamisch via insets gesetzt

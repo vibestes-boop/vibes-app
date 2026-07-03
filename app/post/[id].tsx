@@ -210,15 +210,11 @@ function LikeButtonDetail({ postId }: { postId: string }) {
 
   return (
     <Pressable onPress={handlePress} style={styles.actionBtn}>
-      <Animated.View style={[
-        styles.actionBtnInner,
-        animStyle,
-        liked && { backgroundColor: 'rgba(238,29,82,0.18)' },
-      ]}>
+      <Animated.View style={[styles.actionBtnInner, animStyle]}>
         <Heart
-          size={28}
+          size={26}
           stroke={liked ? '#EE1D52' : '#FFFFFF'}
-          strokeWidth={2.2}
+          strokeWidth={2}
           fill={liked ? '#EE1D52' : '#FFFFFF'}
         />
       </Animated.View>
@@ -233,14 +229,11 @@ function BookmarkButtonDetail({ postId }: { postId: string }) {
   const { bookmarked, toggle } = useBookmark(postId);
   return (
     <Pressable style={styles.actionBtn} onPress={toggle}>
-      <View style={[
-        styles.actionBtnInner,
-        bookmarked && { backgroundColor: 'rgba(251,191,36,0.15)' },
-      ]}>
+      <View style={styles.actionBtnInner}>
         <Bookmark
-          size={28}
+          size={26}
           stroke={bookmarked ? '#FBBF24' : '#FFFFFF'}
-          strokeWidth={2.2}
+          strokeWidth={2}
           fill={bookmarked ? '#FBBF24' : '#FFFFFF'}
         />
       </View>
@@ -254,7 +247,14 @@ function CommentButtonDetail({ postId, onPress }: { postId: string; onPress: () 
   return (
     <Pressable style={styles.actionBtn} onPress={onPress}>
       <View style={styles.actionBtnInner}>
-        <MessageCircle size={28} stroke="#FFFFFF" strokeWidth={2.2} fill="#FFFFFF" />
+        <View style={styles.bubbleWrap}>
+          <MessageCircle size={26} color="#FFFFFF" fill="#FFFFFF" strokeWidth={2} />
+          <View style={styles.bubbleDots}>
+            <View style={styles.bubbleDot} />
+            <View style={styles.bubbleDot} />
+            <View style={styles.bubbleDot} />
+          </View>
+        </View>
       </View>
       <Text style={styles.actionCount}>{formatted}</Text>
     </Pressable>
@@ -796,8 +796,8 @@ export default function PostDetailScreen() {
                 >
                   <View style={styles.actionBtnInner}>
                     {isMuted
-                      ? <VolumeX size={25} color="#FFFFFF" strokeWidth={2.2} />
-                      : <Volume2 size={25} color="#FFFFFF" strokeWidth={2.2} />}
+                      ? <VolumeX size={23} color="#FFFFFF" strokeWidth={0} fill="#FFFFFF" />
+                      : <Volume2 size={23} color="#FFFFFF" strokeWidth={0} fill="#FFFFFF" />}
                   </View>
                 </Pressable>
               )}
@@ -806,7 +806,7 @@ export default function PostDetailScreen() {
               <BookmarkButtonDetail postId={post.id} />
               <Pressable style={styles.actionBtn} onPress={() => sharePost(post.id, post.caption)}>
                 <View style={styles.actionBtnInner}>
-                  <Share2 size={28} stroke="#FFFFFF" strokeWidth={2.2} />
+                  <Share2 size={25} stroke="#FFFFFF" strokeWidth={2.3} />
                 </View>
               </Pressable>
             </Animated.View>
@@ -1006,37 +1006,41 @@ const styles = StyleSheet.create({
   },
   rightActions: {
     position: 'absolute',
-    right: 16,
-    gap: 4,
+    right: 12,
+    gap: 10,
     alignItems: 'center',
   },
-  actionBtn: { alignItems: 'center', marginBottom: 12 },
+  actionBtn: { alignItems: 'center' },
   actionBtnInner: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    // Kräftiger dunkler Scrim → weiße Icons poppen auf JEDEM Hintergrund
-    // (hell wie dunkel). Starker Schatten gibt der Pille zusätzlich Tiefe,
-    // sodass sie auch auf sehr hellem Video klar abgesetzt ist (TikTok-Look).
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    width: 44,
+    height: 34,
     alignItems: 'center',
     justifyContent: 'center',
+    // Kein Hintergrund-Kreis mehr (bare TikTok-Look). Die weißen Icons bleiben
+    // dank kräftigem Schatten auf JEDEM Hintergrund sichtbar (der Schatten hüllt
+    // die gefüllte Fläche in einen dunklen Halo, auch auf echtem Display).
+    // Höhe hugt das Icon (34 statt 44) → Zähler sitzt eng darunter.
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.55,
-    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.6,
+    shadowRadius: 5,
     elevation: 6,
   },
   actionCount: {
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '700',
-    marginTop: 4,
+    marginTop: 1,
     // Dunkler Text-Schatten → Zahl bleibt auf hellem Video lesbar (TikTok).
-    textShadowColor: 'rgba(0,0,0,0.75)',
+    textShadowColor: 'rgba(0,0,0,0.8)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
+  // Kommentar-Blase: gefüllte weiße Blase + 3 dunkle Punkte (leicht nach oben,
+  // weil der Blasen-Schwanz unten sitzt → Punkte im Blasenkörper zentriert).
+  bubbleWrap: { width: 26, height: 26, alignItems: 'center', justifyContent: 'center' },
+  bubbleDots: { position: 'absolute', top: 9, flexDirection: 'row', gap: 2.5 },
+  bubbleDot: { width: 2.6, height: 2.6, borderRadius: 1.3, backgroundColor: '#111' },
   bottomInfo: {
     position: 'absolute',
     bottom: 0,
