@@ -28,7 +28,6 @@
         "NSCameraUsageDescription": "Serlo braucht Kamera-Zugriff für Videos und Fotos.",
         "NSMicrophoneUsageDescription": "Serlo braucht Mikrofon-Zugriff für Video-Stories und Live-Streams.",
         "NSPhotoLibraryUsageDescription": "Serlo braucht Zugriff auf deine Fotos für Stories und Posts.",
-        "NSUserTrackingUsageDescription": "Für personalisierte Inhalte und Werbemessung nutzen wir anonyme Gerätedaten.",
         "NSLocationWhenInUseUsageDescription": "Standortdaten werden von einer verwendeten Bibliothek referenziert, aber von Serlo nicht aktiv genutzt.",
         "UIStatusBarStyle": "UIStatusBarStyleLightContent",
         "UIViewControllerBasedStatusBarAppearance": false,
