@@ -34,7 +34,7 @@ Text,
 TextInput,
 View,
 } from 'react-native';
-import { useAnimatedStyle,useSharedValue,withSequence,withTiming } from 'react-native-reanimated';
+import { Extrapolation,interpolate,useAnimatedStyle,useSharedValue,withSequence,withSpring,withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 // reanimated: CJS require() vermeidet _interopRequireDefault Crash in Hermes HBC
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -44,6 +44,9 @@ const Animated = { View: _animNS?.View ?? _animMod?.View };
 
 
 const { width: W, height: H } = Dimensions.get('window');
+// Muss mit CommentsSheet SHEET_TOP_SEAMLESS (0.40) übereinstimmen: das Video
+// schrumpft beim Kommentar-Öffnen auf diesen oberen Peek und läuft dort weiter.
+const COMMENTS_PEEK_H = Math.round(H * 0.40);
 
 // ─── Floating Heart — eigenständige Komponente pro Tap ────────────────────────
 type FloatingHeartItem = { id: number; x: number; y: number };
@@ -433,6 +436,26 @@ export default function PostDetailScreen() {
     }
   }, [liked, tapToggleLike, spawnHeart, isVideo]);
 
+  // ── Nahtloser Kommentar-Peek (wie im Feed) ──────────────────────────────────
+  // sheetProgress: 0 = Kommentare zu (Video voll), 1 = offen (Video schrumpft auf
+  // den oberen Peek und läuft WEITER — keine zweite Instanz, kein Neustart).
+  const sheetProgress = useSharedValue(0);
+  useEffect(() => {
+    if (commentsOpen) {
+      sheetProgress.value = withSpring(1, { damping: 22, stiffness: 180, mass: 0.8 });
+    } else if (!reopenCommentsRef.current) {
+      sheetProgress.value = withSpring(0, { damping: 22, stiffness: 180, mass: 0.8 });
+    }
+  }, [commentsOpen, sheetProgress]);
+  const mediaAnimStyle = useAnimatedStyle(() => ({
+    height: interpolate(sheetProgress.value, [0, 1], [H, COMMENTS_PEEK_H], Extrapolation.CLAMP),
+  }));
+  // Overlays (Aktionen, Autor/Caption, Fortschritt) faden aus, sobald die
+  // Kommentare aufgehen — der Peek zeigt dann nur das laufende Video.
+  const overlayFadeStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(sheetProgress.value, [0, 0.4], [1, 0], Extrapolation.CLAMP),
+  }));
+
   // Shoppable Post (#2): verknüpftes Produkt für diesen Post (Batch-Hook mit 1 ID).
   const postIdStr = Array.isArray(id) ? id[0] : (id ?? null);
   const productByPost = useFeedProducts(postIdStr ? [postIdStr] : []);
@@ -639,7 +662,11 @@ export default function PostDetailScreen() {
       {/* swipePanResponder auf den inneren View — übernimmt nur vertikale Gesten */}
       <View style={styles.container} {...swipePanResponder.panHandlers}>
 
-        {/* 1. BACKGROUND — Bilder als Geschwister (NICHT in Pressable) */}
+        {/* 1. BACKGROUND — als Ganzes in einer Animated-Layer, die beim
+            Kommentar-Öffnen auf den oberen Peek schrumpft (Video läuft weiter,
+            keine zweite Instanz). pointerEvents none → die Tap-Zone darunter
+            bekommt weiterhin alle Taps (Pause/Like). */}
+        <Animated.View style={[styles.mediaLayer, mediaAnimStyle]} pointerEvents="none">
         {displayMediaUrl ? (
           displayMediaType === 'video' ? (
             USE_EXPO_VIDEO ? (
@@ -672,7 +699,7 @@ export default function PostDetailScreen() {
               />
               <Image
                 source={{ uri: displayMediaUrl }}
-                style={styles.mainImage}
+                style={StyleSheet.absoluteFill}
                 contentFit="contain"
               />
             </>
@@ -683,9 +710,10 @@ export default function PostDetailScreen() {
             style={StyleSheet.absoluteFill}
           />
         )}
+        </Animated.View>
 
 
-        {/* 4. TAP-ZONE — Einfacher Tap = Mute/Unmute, Doppel-Tap = Like + Herz */}
+        {/* 4. TAP-ZONE — Einfacher Tap = Pause/Play, Doppel-Tap = Like + Herz */}
         <Pressable
           style={StyleSheet.absoluteFill}
           onPress={handleTap as any}
@@ -755,7 +783,10 @@ export default function PostDetailScreen() {
         {/* Rechte Aktionen — nur wenn Post aus DB geladen (brauchen post.id) */}
         {post && (
           <>
-            <View style={[styles.rightActions, { bottom: insets.bottom + 8 }]}>
+            <Animated.View
+              style={[styles.rightActions, { bottom: insets.bottom + 8 }, overlayFadeStyle]}
+              pointerEvents={commentsOpen ? 'none' : 'box-none'}
+            >
               {/* Mute-Button: erscheint wenn Video ODER Musik-Track vorhanden */}
               {(isVideo || post.audio_url) && (
                 <Pressable
@@ -778,10 +809,12 @@ export default function PostDetailScreen() {
                   <Share2 size={24} stroke="#FFFFFF" strokeWidth={1.8} />
                 </View>
               </Pressable>
-            </View>
+            </Animated.View>
             <CommentsSheet
               postId={post.id}
               visible={commentsOpen}
+              seamlessPeek
+              sheetProgress={sheetProgress}
               onClose={() => setCommentsOpen(false)}
               onUserPress={(userId) => {
                 reopenCommentsRef.current = true;
@@ -792,8 +825,11 @@ export default function PostDetailScreen() {
           </>
         )}
 
-        {/* Unten: Autor, Caption, Tags, Datum */}
-        <View style={[styles.bottomInfo, { paddingBottom: insets.bottom + 8 }]}>
+        {/* Unten: Autor, Caption, Tags, Datum — fadet mit den Kommentaren aus */}
+        <Animated.View
+          style={[styles.bottomInfo, { paddingBottom: insets.bottom + 8 }, overlayFadeStyle]}
+          pointerEvents={commentsOpen ? 'none' : 'box-none'}
+        >
           {/* Shoppable Post (#2): kompakte Produkt-Pille ÜBER dem Autor-Block,
               damit Nickname + Caption an ihrer gewohnten Position bleiben */}
           {linkedProduct && <ProductFeedChip product={linkedProduct} style={{ marginBottom: 10 }} />}
@@ -856,17 +892,19 @@ export default function PostDetailScreen() {
               ))}
             </View>
           )}
-        </View>
+        </Animated.View>
 
-        {/* Scrubbarer Fortschrittsbalken — wie Haupt-Feed, kein Sprung-Effekt */}
+        {/* Scrubbarer Fortschrittsbalken — fadet mit den Kommentaren aus */}
         {isVideo && (
-          <VideoProgressBar
-            ref={progressBarRef}
-            postId={Array.isArray(id) ? id[0] : (id ?? '')}
-            onSeek={handleSeek}
-            onSeekEnd={handleSeekEnd}
-            bottomOffset={insets.bottom + COMMENT_BAR_H + 6}
-          />
+          <Animated.View style={overlayFadeStyle} pointerEvents={commentsOpen ? 'none' : 'box-none'}>
+            <VideoProgressBar
+              ref={progressBarRef}
+              postId={Array.isArray(id) ? id[0] : (id ?? '')}
+              onSeek={handleSeek}
+              onSeekEnd={handleSeekEnd}
+              bottomOffset={insets.bottom + COMMENT_BAR_H + 6}
+            />
+          </Animated.View>
         )}
       </View>
 
@@ -903,6 +941,9 @@ export default function PostDetailScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
+  // Media-Layer: schrumpft beim Kommentar-Öffnen von H auf den oberen Peek.
+  // overflow hidden → das absoluteFill-Video/-Bild skaliert sauber in die Höhe.
+  mediaLayer: { position: 'absolute', top: 0, left: 0, right: 0, height: H, overflow: 'hidden' },
   center: {
     flex: 1,
     backgroundColor: '#000',
