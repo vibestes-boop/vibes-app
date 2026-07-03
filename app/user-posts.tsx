@@ -105,7 +105,7 @@ function LikeBtn({ postId }: { postId: string }) {
         anim,
         liked && { backgroundColor: 'rgba(238,29,82,0.18)' },
       ]}>
-        <Heart size={28} stroke={liked ? '#EE1D52' : '#FFFFFF'} strokeWidth={2.2} fill={liked ? '#EE1D52' : '#FFFFFF'} />
+        <Heart size={26} stroke={liked ? '#EE1D52' : '#FFFFFF'} strokeWidth={2} fill={liked ? '#EE1D52' : '#FFFFFF'} />
       </Animated.View>
       <Text style={[s.actionCount, liked && { color: '#EE1D52' }]}>{formattedCount}</Text>
     </Pressable>
@@ -118,7 +118,9 @@ function CommentBtn({ postId, onPress }: { postId: string; onPress: () => void }
   return (
     <Pressable style={s.actionBtn} onPress={onPress}>
       <View style={s.actionBtnInner}>
-        <MessageCircle size={28} stroke="#FFFFFF" strokeWidth={2.2} fill="#FFFFFF" />
+        {/* Klare Sprechblase (Umriss) statt solidem Blob — liest sofort als
+            „Kommentar". Gefüllte weiße Fläche + Schatten hält sie sichtbar. */}
+        <MessageCircle size={26} color="#FFFFFF" strokeWidth={2.3} />
       </View>
       <Text style={s.actionCount}>{fmt}</Text>
     </Pressable>
@@ -129,8 +131,8 @@ function BookmarkBtn({ postId }: { postId: string }) {
   const { bookmarked, toggle } = useBookmark(postId);
   return (
     <Pressable style={s.actionBtn} onPress={toggle}>
-      <View style={[s.actionBtnInner, bookmarked && { backgroundColor: 'rgba(251,191,36,0.15)' }]}>
-        <Bookmark size={28} stroke={bookmarked ? '#FBBF24' : '#FFFFFF'} strokeWidth={2.2} fill={bookmarked ? '#FBBF24' : '#FFFFFF'} />
+      <View style={s.actionBtnInner}>
+        <Bookmark size={26} stroke={bookmarked ? '#FBBF24' : '#FFFFFF'} strokeWidth={2} fill={bookmarked ? '#FBBF24' : '#FFFFFF'} />
       </View>
     </Pressable>
   );
@@ -332,8 +334,8 @@ function PostCard({
           <Pressable style={s.actionBtn} onPress={onMuteToggle} hitSlop={8}>
             <View style={s.actionBtnInner}>
               {isMuted
-                ? <VolumeX size={25} color="#FFFFFF" strokeWidth={0} fill="#FFFFFF" />
-                : <Volume2 size={25} color="#FFFFFF" strokeWidth={0} fill="#FFFFFF" />
+                ? <VolumeX size={23} color="#FFFFFF" strokeWidth={0} fill="#FFFFFF" />
+                : <Volume2 size={23} color="#FFFFFF" strokeWidth={0} fill="#FFFFFF" />
               }
             </View>
           </Pressable>
@@ -350,13 +352,13 @@ function PostCard({
             accessibilityLabel="Post-Optionen"
           >
             <View style={s.actionBtnInner}>
-              <MoreHorizontal size={26} color="#FFFFFF" strokeWidth={2.6} />
+              <MoreHorizontal size={24} color="#FFFFFF" strokeWidth={2.6} />
             </View>
           </Pressable>
         ) : (
           <Pressable style={s.actionBtn} onPress={() => sharePost(item.id, item.caption)}>
             <View style={s.actionBtnInner}>
-              <Share2 size={28} color="#FFFFFF" strokeWidth={2.4} />
+              <Share2 size={25} color="#FFFFFF" strokeWidth={2.3} />
             </View>
           </Pressable>
         )}
@@ -729,19 +731,19 @@ const s = StyleSheet.create({
   },
   counterText: { color: 'rgba(255,255,255,0.75)', fontSize: 13, fontWeight: '600' },
 
-  rightActions: { position: 'absolute', right: 14, gap: 18, alignItems: 'center', zIndex: 10 },
+  rightActions: { position: 'absolute', right: 12, gap: 10, alignItems: 'center', zIndex: 10 },
   actionBtn: { alignItems: 'center' },
   actionBtnInner: {
-    width: 48, height: 48, borderRadius: 24,
-    // Kräftiger dunkler Scrim + Schatten → gefüllte weiße Icons poppen auf
-    // JEDEM Hintergrund und auf echtem Display (nicht nur im Screenshot).
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    width: 44, height: 44,
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.55, shadowRadius: 6, elevation: 6,
+    // Kein Hintergrund-Kreis mehr (bare TikTok-Look). Die weißen Icons bleiben
+    // dank kräftigem Schatten auf JEDEM Hintergrund sichtbar (der Schatten hüllt
+    // die gefüllte Fläche in einen dunklen Halo, auch auf echtem Display).
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.6, shadowRadius: 5, elevation: 6,
   },
   actionCount: {
-    color: '#FFFFFF', fontSize: 12, fontWeight: '700', marginTop: 4,
-    textShadowColor: 'rgba(0,0,0,0.75)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3,
+    color: '#FFFFFF', fontSize: 12, fontWeight: '700', marginTop: 2,
+    textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3,
   },
 
   bottomInfo: { position: 'absolute', left: 0, right: 80, paddingHorizontal: 16, gap: 6, zIndex: 10 },
