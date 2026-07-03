@@ -105,7 +105,7 @@ function LikeBtn({ postId }: { postId: string }) {
         anim,
         liked && { backgroundColor: 'rgba(238,29,82,0.18)' },
       ]}>
-        <Heart size={24} stroke={liked ? '#EE1D52' : '#FFFFFF'} strokeWidth={1.8} fill={liked ? '#EE1D52' : 'transparent'} />
+        <Heart size={28} stroke={liked ? '#EE1D52' : '#FFFFFF'} strokeWidth={2.2} fill={liked ? '#EE1D52' : '#FFFFFF'} />
       </Animated.View>
       <Text style={[s.actionCount, liked && { color: '#EE1D52' }]}>{formattedCount}</Text>
     </Pressable>
@@ -118,7 +118,7 @@ function CommentBtn({ postId, onPress }: { postId: string; onPress: () => void }
   return (
     <Pressable style={s.actionBtn} onPress={onPress}>
       <View style={s.actionBtnInner}>
-        <MessageCircle size={24} stroke="#FFFFFF" strokeWidth={1.8} />
+        <MessageCircle size={28} stroke="#FFFFFF" strokeWidth={2.2} fill="#FFFFFF" />
       </View>
       <Text style={s.actionCount}>{fmt}</Text>
     </Pressable>
@@ -130,7 +130,7 @@ function BookmarkBtn({ postId }: { postId: string }) {
   return (
     <Pressable style={s.actionBtn} onPress={toggle}>
       <View style={[s.actionBtnInner, bookmarked && { backgroundColor: 'rgba(251,191,36,0.15)' }]}>
-        <Bookmark size={24} stroke={bookmarked ? '#FBBF24' : '#FFFFFF'} strokeWidth={1.8} fill={bookmarked ? '#FBBF24' : 'transparent'} />
+        <Bookmark size={28} stroke={bookmarked ? '#FBBF24' : '#FFFFFF'} strokeWidth={2.2} fill={bookmarked ? '#FBBF24' : '#FFFFFF'} />
       </View>
     </Pressable>
   );
@@ -332,8 +332,8 @@ function PostCard({
           <Pressable style={s.actionBtn} onPress={onMuteToggle} hitSlop={8}>
             <View style={s.actionBtnInner}>
               {isMuted
-                ? <VolumeX size={22} color="#FFFFFF" strokeWidth={0} fill="#FFFFFF" />
-                : <Volume2 size={22} color="#FFFFFF" strokeWidth={0} fill="#FFFFFF" />
+                ? <VolumeX size={25} color="#FFFFFF" strokeWidth={0} fill="#FFFFFF" />
+                : <Volume2 size={25} color="#FFFFFF" strokeWidth={0} fill="#FFFFFF" />
               }
             </View>
           </Pressable>
@@ -350,13 +350,13 @@ function PostCard({
             accessibilityLabel="Post-Optionen"
           >
             <View style={s.actionBtnInner}>
-              <MoreHorizontal size={24} color="#FFFFFF" strokeWidth={2} />
+              <MoreHorizontal size={26} color="#FFFFFF" strokeWidth={2.6} />
             </View>
           </Pressable>
         ) : (
           <Pressable style={s.actionBtn} onPress={() => sharePost(item.id, item.caption)}>
             <View style={s.actionBtnInner}>
-              <Share2 size={24} color="#FFFFFF" strokeWidth={1.8} />
+              <Share2 size={28} color="#FFFFFF" strokeWidth={2.4} />
             </View>
           </Pressable>
         )}
@@ -733,10 +733,16 @@ const s = StyleSheet.create({
   actionBtn: { alignItems: 'center' },
   actionBtnInner: {
     width: 48, height: 48, borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    // Kräftiger dunkler Scrim + Schatten → gefüllte weiße Icons poppen auf
+    // JEDEM Hintergrund und auf echtem Display (nicht nur im Screenshot).
+    backgroundColor: 'rgba(0,0,0,0.45)',
     alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.55, shadowRadius: 6, elevation: 6,
   },
-  actionCount: { color: '#E5E7EB', fontSize: 11, fontWeight: '600', marginTop: 4 },
+  actionCount: {
+    color: '#FFFFFF', fontSize: 12, fontWeight: '700', marginTop: 4,
+    textShadowColor: 'rgba(0,0,0,0.75)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3,
+  },
 
   bottomInfo: { position: 'absolute', left: 0, right: 80, paddingHorizontal: 16, gap: 6, zIndex: 10 },
   authorRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
@@ -747,16 +753,28 @@ const s = StyleSheet.create({
   },
   avatarSmallImg: { width: '100%', height: '100%', resizeMode: 'cover' },
   avatarText: { color: '#fff', fontSize: 14, fontWeight: '600' },
-  authorName: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
-  dateText: { color: '#6B7280', fontSize: 11, marginTop: 1 },
-  caption: { color: 'rgba(255,255,255,0.85)', fontSize: 15, lineHeight: 22 },
+  authorName: {
+    color: '#FFFFFF', fontSize: 15, fontWeight: '700',
+    textShadowColor: 'rgba(0,0,0,0.75)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3,
+  },
+  dateText: {
+    color: 'rgba(255,255,255,0.7)', fontSize: 11, marginTop: 1,
+    textShadowColor: 'rgba(0,0,0,0.6)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2,
+  },
+  caption: {
+    color: '#FFFFFF', fontSize: 15, lineHeight: 22,
+    textShadowColor: 'rgba(0,0,0,0.7)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3,
+  },
   tagsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   tagChip: {
     paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.10)',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)',
   },
-  tagText: { color: '#FFFFFF', fontSize: 12, fontWeight: '600' },
+  tagText: {
+    color: '#FFFFFF', fontSize: 12, fontWeight: '600',
+    textShadowColor: 'rgba(0,0,0,0.6)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 2,
+  },
 
   // Kommentar-Eingabeleiste
   commentBar: {
