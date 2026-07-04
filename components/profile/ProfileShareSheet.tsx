@@ -7,6 +7,7 @@
  * Layer 3: Aktionen (Melden, Sperren, QR-Code, Nachricht)
  */
 import { useAuthStore } from '@/lib/authStore';
+import { webProfileUrl } from '@/lib/webLinks';
 import { supabase } from '@/lib/supabase';
 import { useOrCreateConversation,useSendMessage } from '@/lib/useMessages';
 import { useReportUser } from '@/lib/useReport';
@@ -88,7 +89,10 @@ export function ProfileShareSheet({ visible, onClose, userId, username, avatarUr
     },
   });
 
-  const profileUrl = `serlo://user/${userId}`;
+  // HTTPS-Web-Link (unfurlt mit Vorschau in WhatsApp/Telegram) statt rohem
+  // serlo://-Deep-Link. Route ist username-basiert (/u/<username>) — der
+  // Fallback greift nur, falls (selten) kein Username vorliegt.
+  const profileUrl = username ? webProfileUrl(username) : `serlo://user/${userId}`;
   const profileText = username
     ? `Schau dir @${username} auf Serlo an!\n${profileUrl}`
     : `Schau dir dieses Profil auf Serlo an!\n${profileUrl}`;
@@ -290,7 +294,7 @@ export function ProfileShareSheet({ visible, onClose, userId, username, avatarUr
               style={ss.actionRow}
               onPress={() => {
                 onClose();
-                Share.share({ message: `${profileUrl}\nQR: serlo://qr/${userId}` });
+                Share.share({ message: profileText });
               }}
             >
               <View style={ss.actionIcon}><QrCode size={18} color="#fff" strokeWidth={1.8} /></View>
