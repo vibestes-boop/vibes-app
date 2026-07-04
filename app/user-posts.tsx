@@ -46,9 +46,12 @@ Text,
 View
 } from 'react-native';
 import {
+Extrapolation,
+interpolate,
 useAnimatedStyle,
 useSharedValue,
 withSequence,
+withSpring,
 withTiming
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -205,7 +208,6 @@ function PostCard({
   isMuted,
   onMuteToggle,
   isOwner,
-  onOpenComments,
   onManage,
   onShare,
 }: {
@@ -214,7 +216,6 @@ function PostCard({
   isMuted: boolean;
   onMuteToggle: () => void;
   isOwner: boolean;
-  onOpenComments: (postId: string) => void;
   onManage: (item: PostItem) => void;
   onShare: (item: PostItem) => void;
 }) {
@@ -286,9 +287,27 @@ function PostCard({
   // VideoProgressBar bottomOffset = insets.bottom + 52 (4px Drüber, identisch zu Guild)
   const commentBarH = 48 + insets.bottom;
 
+  // ── Nahtloser Kommentar-Peek (wie Feed/guild-post): Video schrumpft nach oben
+  //    (~40%) und spielt ununterbrochen weiter, Kommentare darunter. ──
+  const [commentsOpen, setCommentsOpen] = useState(false);
+  const sheetProgress = useSharedValue(0);
+  useEffect(() => {
+    sheetProgress.value = withSpring(commentsOpen ? 1 : 0, { damping: 22, stiffness: 180, mass: 0.8 });
+  }, [commentsOpen, sheetProgress]);
+
+  const mediaAnimStyle = useAnimatedStyle(() => ({
+    height: interpolate(sheetProgress.value, [0, 1], [H, H * 0.40], Extrapolation.CLAMP),
+  }));
+  const overlayFadeStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(sheetProgress.value, [0, 0.4], [1, 0], Extrapolation.CLAMP),
+  }));
+
   return (
-    <View style={{ width: W, height: H }}>
-      {/* Media */}
+    <View style={{ width: W, height: H, backgroundColor: '#000' }}>
+      {/* Media — vollständig (contain) auf schwarzem Grund, kein seitlicher
+          Cover-Beschnitt/Zoom mehr (Parität mit Feed + guild-post). Schrumpft
+          beim Öffnen der Kommentare nahtlos nach oben (mediaAnimStyle). */}
+      <Animated.View style={[s.mediaWrap, mediaAnimStyle]}>
       {item.media_url ? (
         isVideo ? (
           USE_EXPO_VIDEO ? (
@@ -301,6 +320,7 @@ function PostCard({
               restartSignal={restartSignal}
               thumbnailUrl={item.thumbnail_url}
               bunnyVideoId={item.bunny_video_id ?? null}
+              contentFit="contain"
             />
           ) : (
             <FallbackFeedVideo
@@ -310,14 +330,16 @@ function PostCard({
               isMuted={isMuted}
               onProgress={handleProgress}
               restartSignal={restartSignal}
+              contentFit="contain"
             />
           )
         ) : (
-          <Image source={{ uri: item.media_url }} style={StyleSheet.absoluteFill} contentFit="cover" cachePolicy="memory-disk" />
+          <Image source={{ uri: item.media_url }} style={StyleSheet.absoluteFill} contentFit="contain" cachePolicy="memory-disk" />
         )
       ) : (
         <LinearGradient colors={['#0A0A0A', '#1a0533', '#0d1f4a']} style={StyleSheet.absoluteFill} />
       )}
+      </Animated.View>
 
       {/* Doppeltap-Zone — kein einzelner Tap-Effekt, nur Doppeltap → Herz + Like */}
       <Pressable
@@ -335,8 +357,11 @@ function PostCard({
         />
       ))}
 
-      {/* Rechte Aktionen — über Kommentar-Leiste */}
-      <View style={[s.rightActions, { bottom: commentBarH + 8 }]}>
+      {/* Rechte Aktionen — über Kommentar-Leiste (faden aus, wenn Kommentare offen) */}
+      <Animated.View
+        style={[s.rightActions, { bottom: commentBarH + 8 }, overlayFadeStyle]}
+        pointerEvents={commentsOpen ? 'none' : 'box-none'}
+      >
         {isVideo && (
           <Pressable style={s.actionBtn} onPress={onMuteToggle} hitSlop={8}>
             <View style={s.actionBtnInner}>
@@ -348,7 +373,7 @@ function PostCard({
           </Pressable>
         )}
         <LikeBtn postId={item.id} />
-        <CommentBtn postId={item.id} onPress={() => onOpenComments(item.id)} />
+        <CommentBtn postId={item.id} onPress={() => setCommentsOpen(true)} />
         <BookmarkBtn postId={item.id} />
         {/* Ein einheitlicher Teilen-Button (kein Drei-Punkte mehr): eigene Posts
             öffnen das Verwalten-Sheet (Teilen/Bearbeiten/Löschen/Anpinnen),
@@ -363,10 +388,13 @@ function PostCard({
             <Share2 size={25} color="#FFFFFF" strokeWidth={2.3} />
           </View>
         </Pressable>
-      </View>
+      </Animated.View>
 
-      {/* Unten: Avatar, Caption, Tags */}
-      <View style={[s.bottomInfo, { bottom: commentBarH + 6 }]}>
+      {/* Unten: Avatar, Caption, Tags (faden aus, wenn Kommentare offen) */}
+      <Animated.View
+        style={[s.bottomInfo, { bottom: commentBarH + 6 }, overlayFadeStyle]}
+        pointerEvents={commentsOpen ? 'none' : 'box-none'}
+      >
         <Pressable
           style={s.authorRow}
           onPress={() => router.push({ pathname: '/user/[id]', params: { id: item.author_id } })}
@@ -406,12 +434,13 @@ function PostCard({
           <Eye size={13} color="rgba(255,255,255,0.45)" strokeWidth={2} />
           <Text style={s.viewCountText}>{formatViews(item.view_count)} Aufrufe</Text>
         </View>
-      </View>
+      </Animated.View>
 
-      {/* ── Kommentar-Leiste: absolut unten, wie Guild ── */}
+      {/* ── Kommentar-Leiste: absolut unten, wie Guild — versteckt, wenn offen ── */}
+      {!commentsOpen && (
       <Pressable
         style={[s.commentBarWrap, { paddingBottom: insets.bottom }]}
-        onPress={() => onOpenComments(item.id)}
+        onPress={() => setCommentsOpen(true)}
         accessibilityRole="button"
         accessibilityLabel="Kommentare anzeigen"
       >
@@ -428,9 +457,10 @@ function PostCard({
           </View>
         </View>
       </Pressable>
+      )}
 
       {/* ── VideoProgressBar — identisch zu Guild: bottomOffset = insets.bottom + 52 ── */}
-      {isVideo && (
+      {isVideo && !commentsOpen && (
         <VideoProgressBar
           ref={progressBarRef}
           postId={item.id}
@@ -439,6 +469,19 @@ function PostCard({
           bottomOffset={insets.bottom + 52}
         />
       )}
+
+      {/* ── Kommentare mit nahtlosem Peek (Video schrumpft & spielt weiter) ── */}
+      <CommentsSheet
+        postId={item.id}
+        visible={commentsOpen}
+        seamlessPeek
+        sheetProgress={sheetProgress}
+        onClose={() => setCommentsOpen(false)}
+        onUserPress={(userId) => {
+          setCommentsOpen(false);
+          router.push({ pathname: '/user/[id]', params: { id: userId } });
+        }}
+      />
     </View>
   );
 }
@@ -465,7 +508,6 @@ export default function UserPostsScreen() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [visibleIndex, setVisibleIndex] = useState(Number(startIndex ?? '0'));
   const [isMuted, setIsMuted] = useState(false);
-  const [commentsPostId, setCommentsPostId] = useState<string | null>(null);
   const [manageItem, setManageItem] = useState<PostItem | null>(null);
   const [shareItem, setShareItem] = useState<PostItem | null>(null);
   // Follow-Kontext des Profil-Autors (alle Posts hier gehören demselben User) —
@@ -636,7 +678,6 @@ export default function UserPostsScreen() {
               isMuted={isMuted}
               onMuteToggle={() => setIsMuted((m) => !m)}
               isOwner={item.author_id === profile?.id}
-              onOpenComments={setCommentsPostId}
               onManage={setManageItem}
               onShare={setShareItem}
             />
@@ -669,13 +710,8 @@ export default function UserPostsScreen() {
           viewabilityConfig={VIEWABILITY_CONFIG}
         />
 
-        {commentsPostId && (
-          <CommentsSheet
-            postId={commentsPostId}
-            visible
-            onClose={() => setCommentsPostId(null)}
-          />
-        )}
+        {/* Kommentare laufen jetzt pro PostCard (nahtloser Peek) — keine
+            Screen-Ebene mehr. */}
 
         {/* Eigene Posts: 3-Punkte-Untermenü (Teilen + Verwalten), Short-Video-Stil */}
         {manageItem && (
@@ -754,6 +790,9 @@ const s = StyleSheet.create({
   },
   counterText: { color: 'rgba(255,255,255,0.75)', fontSize: 13, fontWeight: '600' },
 
+  // Media-Wrapper: schrumpft beim Kommentar-Peek nach oben (Höhe animiert),
+  // Letterbox-Ränder bleiben schwarz.
+  mediaWrap: { position: 'absolute', top: 0, left: 0, right: 0, backgroundColor: '#000', overflow: 'hidden' },
   rightActions: { position: 'absolute', right: 12, gap: 16, alignItems: 'center', zIndex: 10 },
   actionBtn: { alignItems: 'center' },
   actionBtnInner: {
