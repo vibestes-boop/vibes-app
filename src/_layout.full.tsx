@@ -501,7 +501,10 @@ export default function RootLayoutFull() {
               // auch das Edge-Back-Swipe. Schließen weiter über das X oben links.
               options={{ presentation: 'card', animation: 'slide_from_bottom', gestureEnabled: false }}
             />
-            <Stack.Screen name="post/[id]" options={{ animation: 'slide_from_right' }} />
+            {/* slide_from_bottom: Swipe-zu-nächstem-Post (router.replace) kommt
+                vertikal von unten rein — wie im Feed, statt horizontal „von der
+                Seite" (war slide_from_right). */}
+            <Stack.Screen name="post/[id]" options={{ animation: 'slide_from_bottom' }} />
             <Stack.Screen
               name="guild-post/[id]"
               options={{
