@@ -2608,16 +2608,21 @@ export default function LiveHostScreen() {
       dynacast: true,          // Deaktiviert Tracks wenn kein Zuschauer → spart CPU/Bandwidth
       publishDefaults: {
         // ── Simulcast: 3 Qualitätsstufen, SFU wählt je nach Viewer-Bandbreite ──
+        // Untere Layer bleiben für schwache Zuschauer-Verbindungen (Adaptivität
+        // + Kosten bleiben vernünftig), nur die BESTE Stufe wurde auf 1080p
+        // angehoben (vorher 720p) → sichtbar schärfer auf starkem Netz.
         videoSimulcastLayers: [
-          new VideoPreset(360,  640,   300_000, 15),  // 360p / 300kbps / 15fps
-          new VideoPreset(540,  960,   800_000, 25),  // 540p / 800kbps / 25fps
-          new VideoPreset(720, 1280, 2_000_000, 30),  // 720p / 2Mbps   / 30fps
+          new VideoPreset(360,  640,   400_000, 20),  // 360p / 400kbps / 20fps (schwaches Netz)
+          new VideoPreset(720, 1280, 1_800_000, 30),  // 720p / 1.8Mbps / 30fps (Mittelklasse)
+          new VideoPreset(1080, 1920, 3_500_000, 30), // 1080p / 3.5Mbps / 30fps (starkes Netz)
         ],
         // ── Maximale Encoding-Qualität für den Host-Track ──
         videoEncoding: {
-          maxBitrate:   2_000_000,   // 2 Mbps → klares 720p auf starkem Netz
+          maxBitrate:   3_500_000,   // 3.5 Mbps → knackiges 1080p auf starkem Netz
           maxFramerate: 30,
         },
+        // Bei Netz-Engpass lieber Framerate senken als Auflösung → bleibt scharf.
+        degradationPreference: 'maintain-resolution',
         // ── Audio: klangliche Qualität für Sprache ──
         audioPreset: {
           maxBitrate: 32_000,   // 32 kbps, gut für Sprache
@@ -2711,11 +2716,13 @@ export default function LiveHostScreen() {
           if (!room.localParticipant) return;
         await room.localParticipant.setCameraEnabled(true, {
             facingMode: "user",
+            // 1080p-Capture: der Encoder kann nie schärfer sein als die Aufnahme.
+            // Vorher 720p → hat die Live-Qualität hart gedeckelt.
             resolution: {
-              width: 720,
-              height: 1280,
-              frameRate: 30,         // ← 30fps (vorher: 25fps)
-              aspectRatio: 1280 / 720,
+              width: 1080,
+              height: 1920,
+              frameRate: 30,
+              aspectRatio: 1920 / 1080,
             },
           });
         };
