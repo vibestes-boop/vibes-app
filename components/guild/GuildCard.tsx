@@ -149,9 +149,9 @@ export const GuildCard = React.memo(function GuildCard({
             {isVideo ? (
               <>
                 {USE_EXPO_VIDEO ? (
-                  <NativeFeedVideo uri={post.media_url} shouldPlay={isVisible} isMuted={isMuted} onProgress={NOOP_PROGRESS} thumbnailUrl={post.thumbnail_url} restartSignal={restartSignal} bunnyVideoId={post.bunny_video_id ?? null} contentFit="contain" />
+                  <NativeFeedVideo uri={post.media_url} shouldPlay={isVisible} isMuted={isMuted} onProgress={NOOP_PROGRESS} thumbnailUrl={post.thumbnail_url} restartSignal={restartSignal} bunnyVideoId={post.bunny_video_id ?? null} contentFit="contain" alwaysResume />
                 ) : (
-                  <FallbackFeedVideo uri={post.media_url} shouldPlay={isVisible} isMuted={isMuted} onProgress={NOOP_PROGRESS} thumbnailUrl={post.thumbnail_url} restartSignal={restartSignal} contentFit="contain" />
+                  <FallbackFeedVideo uri={post.media_url} shouldPlay={isVisible} isMuted={isMuted} onProgress={NOOP_PROGRESS} thumbnailUrl={post.thumbnail_url} restartSignal={restartSignal} contentFit="contain" alwaysResume />
                 )}
               </>
             ) : (

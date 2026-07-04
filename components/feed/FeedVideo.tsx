@@ -90,8 +90,14 @@ export const NativeFeedVideo = forwardRef<FeedVideoSeekHandle, {
   // 'cover' = Vollbild (Standard); 'contain' = ganzes Frame sichtbar (Kommentar-Peek).
   // Display-only Prop → Wechsel lädt den Player NICHT neu (Wiedergabe läuft nahtlos weiter).
   contentFit?: 'cover' | 'contain';
-}>(function NativeFeedVideo({ uri, shouldPlay, isMuted, onProgress, thumbnailUrl, restartSignal = 0, bunnyVideoId, contentFit = 'cover' }, ref) {
+  // alwaysResume: Position pro uri merken + wiederherstellen UNABHÄNGIG von der
+  // Länge (auch kurze Clips) und restartSignal setzt NICHT auf 0. Nur für den
+  // Guild-Karte→Detail-Übergang gesetzt — der Feed lässt es aus (Short-Video-Parity).
+  alwaysResume?: boolean;
+}>(function NativeFeedVideo({ uri, shouldPlay, isMuted, onProgress, thumbnailUrl, restartSignal = 0, bunnyVideoId, contentFit = 'cover', alwaysResume = false }, ref) {
   const [ready, setReady] = useState(false);
+  const alwaysResumeRef = useRef(alwaysResume);
+  alwaysResumeRef.current = alwaysResume;
   // Bunny-HLS bevorzugen, bei Fehler (noch nicht transkodiert / kaputt) auf R2
   // zurückfallen — R2 ist die garantierte Quelle, also kann nichts brechen.
   const hlsUrl = bunnyVideoId ? `https://vz-6857f4f1-6d5.b-cdn.net/${bunnyVideoId}/playlist.m3u8` : null;
@@ -168,7 +174,8 @@ export const NativeFeedVideo = forwardRef<FeedVideoSeekHandle, {
     if (!player || restartSignal <= 0 || !shouldPlay) return;
     try {
       const dur = player.duration ?? 0;
-      if (dur > 0 && dur < RESUME_MIN_SEC) {
+      // alwaysResume (Guild): kurze Clips NICHT auf 0 zurücksetzen → weiterspielen.
+      if (!alwaysResumeRef.current && dur > 0 && dur < RESUME_MIN_SEC) {
         player.currentTime = 0;
         onProgress(0);
       }
@@ -198,7 +205,7 @@ export const NativeFeedVideo = forwardRef<FeedVideoSeekHandle, {
         // Quellen-Wechsel R2→HLS). Kurze Clips haben keine gemerkte Position → 0.
         const dur = player.duration ?? 0;
         const saved = videoResumePos.get(uri);
-        if (dur >= RESUME_MIN_SEC && saved != null && saved > 0 && saved < dur - 2) {
+        if ((alwaysResumeRef.current || dur >= RESUME_MIN_SEC) && saved != null && saved > 0 && saved < dur - 2) {
           try { player.currentTime = saved; } catch { /* ignore */ }
         }
         // Autoplay nachholen: Wenn der Player nach einem Quellen-Wechsel R2→HLS
@@ -223,7 +230,7 @@ export const NativeFeedVideo = forwardRef<FeedVideoSeekHandle, {
         onProgress(cur / dur);
         // Position langer Videos merken (für Resume beim Zurückscrollen).
         // FIFO-Cap (200) gegen unbegrenztes Wachstum bei sehr langen Sessions.
-        if (dur >= RESUME_MIN_SEC && cur > 0 && cur < dur - 2) {
+        if ((alwaysResumeRef.current || dur >= RESUME_MIN_SEC) && cur > 0 && cur < dur - 2) {
           if (videoResumePos.size > 200 && !videoResumePos.has(uri)) {
             const firstKey = videoResumePos.keys().next().value;
             if (firstKey !== undefined) videoResumePos.delete(firstKey);
@@ -263,7 +270,8 @@ export const FallbackFeedVideo = forwardRef<FeedVideoSeekHandle, {
   thumbnailUrl?: string | null;
   restartSignal?: number;
   contentFit?: 'cover' | 'contain';
-}>(function FallbackFeedVideo({ uri, shouldPlay, isMuted, onProgress, thumbnailUrl, restartSignal = 0, contentFit = 'cover' }, ref) {
+  alwaysResume?: boolean;
+}>(function FallbackFeedVideo({ uri, shouldPlay, isMuted, onProgress, thumbnailUrl, restartSignal = 0, contentFit = 'cover', alwaysResume = false }, ref) {
   const [loaded, setLoaded] = useState(false);
   const videoRef = useRef<Video>(null);
   const durationMs = useRef(0);
@@ -286,13 +294,14 @@ export const FallbackFeedVideo = forwardRef<FeedVideoSeekHandle, {
   }, [onProgress]);
 
   useEffect(() => {
-    if (!videoRef.current || restartSignal <= 0 || !shouldPlay) return;
+    // alwaysResume (Guild): nicht auf 0 zurücksetzen — dort weiterspielen.
+    if (!videoRef.current || restartSignal <= 0 || !shouldPlay || alwaysResume) return;
     onProgress(0);
     videoRef.current
       .setPositionAsync(0)
       .then(() => videoRef.current?.playAsync?.())
       .catch(() => {});
-  }, [restartSignal, shouldPlay, onProgress]);
+  }, [restartSignal, shouldPlay, onProgress, alwaysResume]);
 
   return (
     <View style={StyleSheet.absoluteFill}>

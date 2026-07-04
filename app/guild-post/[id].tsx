@@ -340,6 +340,7 @@ function GuildPostDetailItem({
                 thumbnailUrl={post.thumbnail_url}
                 bunnyVideoId={post.bunny_video_id ?? null}
                 contentFit="contain"
+                alwaysResume
               />
             ) : (
               <FallbackFeedVideo
@@ -350,6 +351,7 @@ function GuildPostDetailItem({
                 onProgress={handleProgress}
                 restartSignal={restartSignal}
                 contentFit="contain"
+                alwaysResume
               />
             )}
           </>
