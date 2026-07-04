@@ -102,6 +102,9 @@ export default function VibeFeedScreen() {
   const swipePan = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (evt, g) =>
+        // Ist das Profil-Panel schon offen, darf der Links-Swipe es NICHT erneut
+        // auslösen — dann steuert nur backPan (Rechts-Swipe = zurück zu Home).
+        !profilePanelRef.current &&
         // Swipes im Header-Bereich (Tags, Toggle) NICHT abfangen
         evt.nativeEvent.pageY > swipeTopBoundaryRef.current &&
         // Swipes im Progress-Bar / Tab-Bar Bereich NICHT abfangen
