@@ -61,12 +61,16 @@ export function useVibeFeed(activeTag: string | null = null) {
       const isInitialUntunedPage = excludeIds.length === 0 && !activeTag;
 
       if (isInitialUntunedPage) {
+        // include_seen: false — seit Algorithmus v5 ist „seen" ein weicher
+        // Score-Penalty (×0.15) statt hartem Filter → die erste Seite kann nie
+        // leer sein UND Gesehenes rutscht nach hinten (Cross-Session-Novelty).
+        // Vorher true, was den Penalty auf Seite 1 deaktiviert hätte.
         const { data: fastData, error: fastError } = await supabase.rpc('get_vibe_feed', {
           explore_weight: committedExplore,
           brain_weight:   committedBrain,
           result_limit:   FEED_PAGE_SIZE,
           filter_tag:     null,
-          include_seen:   true,
+          include_seen:   false,
           exclude_ids:    null,
         });
 
