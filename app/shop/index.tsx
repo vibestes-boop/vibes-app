@@ -14,13 +14,17 @@ import { COIN_SHOP_ENABLED } from '@/lib/featureFlags';
  * fehlende Tabelle → Karussell rendert einfach nicht (graceful).
  */
 
+import { GuildRoundCard } from '@/components/guild';
 import { CoinIcon } from '@/components/ui/CoinIcon';
-import { SerloLoader } from '@/components/ui/SerloLoader';
+import { useAuthStore } from '@/lib/authStore';
+import { supabase } from '@/lib/supabase';
 import { useCoinsWallet } from '@/lib/useGifts';
-import { formatEur, useShopBanners, useShopProducts, type Product, type ProductCategory, type ShopBanner } from '@/lib/useShop';
+import { formatEur, useActivePreorderRound, useSavedProducts, useShopBanners, useShopProducts, type Product, type ProductCategory, type ShopBanner } from '@/lib/useShop';
 import { useTheme } from '@/lib/useTheme';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
+import { useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
+import { impactAsync, ImpactFeedbackStyle } from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import {
 ArrowDownUp,
@@ -226,10 +230,12 @@ function MiniStars({ rating, count, colors }: { rating?: number | null; count?: 
 
 // ─── Produktkarte ─────────────────────────────────────────────────────────────
 
-function ProductCard({ product, onPress, colors }: {
+function ProductCard({ product, onPress, colors, saved, onToggleSave }: {
   product: Product;
   onPress: () => void;
   colors: any;
+  saved: boolean;
+  onToggleSave: () => void;
 }) {
   const isLowStock = product.stock !== -1 && product.stock > 0 && product.stock <= 5;
   const isSoldOut  = product.stock === 0;
@@ -307,8 +313,25 @@ function ProductCard({ product, onPress, colors }: {
           </View>
         )}
 
-        {/* Bilder-Counter oben rechts — nur wenn > 1 Bild */}
-        {imageCount > 1 && (
+        {/* Merken-Herz oben rechts — Toggle direkt aus dem Grid */}
+        <Pressable
+          onPress={(e) => { e.stopPropagation?.(); onToggleSave(); }}
+          hitSlop={8}
+          style={card.saveBtn}
+          accessibilityRole="button"
+          accessibilityLabel={saved ? 'Aus Favoriten entfernen' : 'Merken'}
+          accessibilityState={{ selected: saved }}
+        >
+          <Heart
+            size={17}
+            color={saved ? '#EF4444' : '#fff'}
+            fill={saved ? '#EF4444' : 'transparent'}
+            strokeWidth={2.2}
+          />
+        </Pressable>
+
+        {/* Bilder-Counter unten links — nur wenn > 1 Bild und kein Lager-/Ausverkauft-Hinweis */}
+        {imageCount > 1 && !isLowStock && !isSoldOut && (
           <View style={card.imgCount}>
             <Camera size={10} color="#fff" strokeWidth={2.4} />
             <Text style={card.imgCountText}>{imageCount}</Text>
@@ -486,13 +509,21 @@ const card = StyleSheet.create({
   newBadgeText: { color: '#fff', fontSize: 10, fontWeight: '700', letterSpacing: 0.4 },
 
   imgCount: {
-    position: 'absolute', top: 8, right: 8,
+    position: 'absolute', bottom: 8, left: 8,
     flexDirection: 'row', alignItems: 'center', gap: 3,
     backgroundColor: 'rgba(0,0,0,0.55)',
     paddingHorizontal: 6, paddingVertical: 3,
     borderRadius: 10,
   },
   imgCountText: { color: '#fff', fontSize: 10, fontWeight: '600' },
+
+  // Merken-Herz oben rechts (Glas-Chip, damit weißes Herz auf hell/dunkel sitzt)
+  saveBtn: {
+    position: 'absolute', top: 6, right: 6,
+    width: 30, height: 30, borderRadius: 15,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(0,0,0,0.42)',
+  },
 
   wozBadge: {
     position: 'absolute', bottom: 8, right: 8,
@@ -579,11 +610,54 @@ export default function ShopScreen() {
   // ersten 30 unsichtbar (Suche/Sort greifen nur auf Geladenes). Pflaster bis zur
   // echten Server-Query + Infinite-Scroll (Parität mit Web). 200 reicht für die
   // Parfüm-Launch-Menge locker.
-  const { data: products = [], isLoading, refetch, isRefetching } = useShopProducts({
+  const { data: products = [], isLoading, refetch } = useShopProducts({
     category: serverCategory,
     limit: 200,
   });
   const { data: banners = [] } = useShopBanners();
+  const { data: activeRound } = useActivePreorderRound();
+
+  // ── Merken/Favoriten: eine Liste laden (statt 1 Query pro Karte) → Set ──
+  const { data: savedProducts = [] } = useSavedProducts();
+  const qc = useQueryClient();
+  const user = useAuthStore((st) => st.user);
+  const savedIds = useMemo(() => new Set(savedProducts.map((p) => p.id)), [savedProducts]);
+  // Optimistische Overrides, damit das Herz sofort reagiert
+  const [savedOverride, setSavedOverride] = useState<Record<string, boolean>>({});
+  const isSaved = useCallback(
+    (id: string) => savedOverride[id] ?? savedIds.has(id),
+    [savedOverride, savedIds],
+  );
+  const toggleSave = useCallback(async (id: string) => {
+    if (!user?.id) { router.push('/(auth)/login' as any); return; }
+    const next = !(savedOverride[id] ?? savedIds.has(id));
+    setSavedOverride((o) => ({ ...o, [id]: next }));
+    impactAsync(ImpactFeedbackStyle.Light);
+    try {
+      const { data, error } = await supabase.rpc('toggle_save_product', { p_product_id: id });
+      if (error) throw error;
+      const actual = (data as { saved: boolean } | null)?.saved ?? next;
+      setSavedOverride((o) => ({ ...o, [id]: actual }));
+      qc.invalidateQueries({ queryKey: ['saved-products', user.id] });
+    } catch {
+      setSavedOverride((o) => ({ ...o, [id]: !next })); // Rollback
+    }
+  }, [user?.id, savedOverride, savedIds, qc, router]);
+
+  // ── Pull-to-Refresh (sichtbar): Produkte + Merken-Liste neu laden ──
+  const [refreshing, setRefreshing] = useState(false);
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        refetch(),
+        qc.invalidateQueries({ queryKey: ['saved-products'] }),
+        qc.invalidateQueries({ queryKey: ['active-preorder-round'] }),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetch, qc]);
 
   // ── Filter + Sort pipeline ──
   const filtered = useMemo(() => {
@@ -670,12 +744,6 @@ export default function ShopScreen() {
   // ── Scrollbarer Kopf: Shortcuts → Banner → Tabs → Ergebnis-Zeile ──
   const ListHeader = (
     <View>
-      {isRefetching && (
-        <View style={s.refetchRow}>
-          <SerloLoader />
-        </View>
-      )}
-
       {/* Menü-Shortcuts */}
       <View style={s.shortcutRow}>
         {SHORTCUTS.map(({ key, label, Icon, route }) => (
@@ -694,6 +762,10 @@ export default function ShopScreen() {
           </Pressable>
         ))}
       </View>
+
+      {/* Aktive Sammelbestellungs-Runde (Parfüm-Flywheel) — nur wenn eine läuft.
+          Prominent im Shop, wo Käufer stöbern; navigiert direkt zum Produkt. */}
+      {activeRound && <GuildRoundCard round={activeRound} />}
 
       {/* Werbe-Banner-Karussell (vermietbar) */}
       <BannerCarousel banners={banners} onPress={handleBannerPress} />
@@ -821,10 +893,10 @@ export default function ShopScreen() {
         }
         refreshControl={
           <RefreshControl
-            refreshing={false}
-            onRefresh={refetch}
-            tintColor="transparent"
-            colors={['transparent']}
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.text.muted}
+            colors={[colors.text.primary]}
           />
         }
         renderItem={({ item }) => {
@@ -846,6 +918,8 @@ export default function ShopScreen() {
                 product={product}
                 onPress={() => handlePress(product)}
                 colors={colors}
+                saved={isSaved(product.id)}
+                onToggleSave={() => toggleSave(product.id)}
               />
             </View>
           );
@@ -959,9 +1033,6 @@ const s = StyleSheet.create({
   },
   shortcut: { flex: 1, alignItems: 'center', gap: 6 },
   shortcutLabel: { fontSize: 11, fontWeight: '600' },
-
-  // Refetch-Loader oben im Kopf
-  refetchRow: { paddingVertical: 14, alignItems: 'center' },
 
   // Dünne Text-Kategorien
   tabBar: {
