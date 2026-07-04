@@ -67,6 +67,8 @@ withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
+import { useTheme } from '@/lib/useTheme';
+import { GlassPanel, useCreateGlass } from '@/components/create/CreateGlass';
 // react-native-reanimated: CJS require() vermeidet Hermes HBC Crash
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any;
@@ -81,6 +83,8 @@ const LIVE_CATEGORIES = ['Talk', 'Musik', 'Gaming', 'Sport', 'Kochen', 'Beauty',
 
 export default function LiveStartScreen() {
   useThemedStatusBar('light');
+  const g = useCreateGlass();
+  const { colors } = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { startSession, loading } = useLiveHost();
@@ -332,79 +336,81 @@ export default function LiveStartScreen() {
       {/* ── Bottom Area ── */}
       <View style={[s.bottomArea, { paddingBottom: insets.bottom + 20 }]}>
 
-        {/* Setup-Karte: Konfiguration direkt sichtbar (statt im Zahnrad versteckt) */}
-        <View style={s.setupCard}>
+        {/* Setup-Karte: theme-aware Frosted-Glass (dark→dunkel, light→hell) */}
+        <GlassPanel style={s.setupCard} padding={14}>
+         <View style={{ gap: 10 }}>
           {/* Titel */}
-          <Pressable style={s.titleRow} onPress={() => setSettingsSheet(true)}>
+          <Pressable style={[s.titleRow, { backgroundColor: g.fill }]} onPress={() => setSettingsSheet(true)}>
             <Animated.View style={[s.titleDot, dotStyle]} />
             <Text
-              style={[s.titleText, !title.trim() && { color: LC.text.muted, fontWeight: FONT_WEIGHT.medium }]}
+              style={[s.titleText, { color: title.trim() ? g.textPrimary : g.textMuted }, !title.trim() && { fontWeight: FONT_WEIGHT.medium }]}
               numberOfLines={1}
             >
               {title.trim() || 'Titel hinzufügen'}
             </Text>
-            <Pencil size={15} stroke={LC.text.muted} strokeWidth={2} />
+            <Pencil size={15} stroke={g.textMuted} strokeWidth={2} />
           </Pressable>
 
           {/* Publikum + Kategorie */}
           <View style={s.tileRow}>
-            <Pressable style={s.tile} onPress={cycleAudience}>
+            <Pressable style={[s.tile, { backgroundColor: g.fill }]} onPress={cycleAudience}>
               <Text style={s.tileEmoji}>{audienceMeta.emoji}</Text>
               <View style={s.tileTextCol}>
-                <Text style={s.tileLabel}>Publikum</Text>
-                <Text style={s.tileValue} numberOfLines={1}>{audienceMeta.label}</Text>
+                <Text style={[s.tileLabel, { color: g.textMuted }]}>Publikum</Text>
+                <Text style={[s.tileValue, { color: g.textPrimary }]} numberOfLines={1}>{audienceMeta.label}</Text>
               </View>
             </Pressable>
-            <Pressable style={s.tile} onPress={() => setSettingsSheet(true)}>
-              <Tag size={18} stroke={LC.text.secondary} strokeWidth={2} />
+            <Pressable style={[s.tile, { backgroundColor: g.fill }]} onPress={() => setSettingsSheet(true)}>
+              <Tag size={18} stroke={colors.text.secondary} strokeWidth={2} />
               <View style={s.tileTextCol}>
-                <Text style={s.tileLabel}>Kategorie</Text>
-                <Text style={s.tileValue} numberOfLines={1}>{category ?? 'Wählen'}</Text>
+                <Text style={[s.tileLabel, { color: g.textMuted }]}>Kategorie</Text>
+                <Text style={[s.tileValue, { color: g.textPrimary }]} numberOfLines={1}>{category ?? 'Wählen'}</Text>
               </View>
             </Pressable>
           </View>
 
           {/* Cover */}
-          <Pressable style={s.coverRow} onPress={() => setSettingsSheet(true)}>
-            <View style={s.coverThumb}>
+          <Pressable style={[s.coverRow, { backgroundColor: g.fill }]} onPress={() => setSettingsSheet(true)}>
+            <View style={[s.coverThumb, { backgroundColor: g.fillHover }]}>
               {thumbnailUrl ? (
                 <ExpoImage source={{ uri: thumbnailUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
               ) : (
-                <ImageIcon size={18} stroke={LC.text.muted} strokeWidth={1.8} />
+                <ImageIcon size={18} stroke={g.textMuted} strokeWidth={1.8} />
               )}
             </View>
             <View style={s.tileTextCol}>
-              <Text style={s.coverTitle}>{thumbnailUrl ? 'Cover gesetzt' : 'Cover wählen'}</Text>
-              <Text style={s.coverSub} numberOfLines={1}>Galerie oder mit KI</Text>
+              <Text style={[s.coverTitle, { color: g.textPrimary }]}>{thumbnailUrl ? 'Cover gesetzt' : 'Cover wählen'}</Text>
+              <Text style={[s.coverSub, { color: g.textMuted }]} numberOfLines={1}>Galerie oder mit KI</Text>
             </View>
             <View style={s.aiChip}>
-              <Sparkles size={12} stroke={LC.accent.purpleLight} strokeWidth={2} />
-              <Text style={s.aiChipText}>KI</Text>
+              <Sparkles size={12} stroke={g.accent} strokeWidth={2} />
+              <Text style={[s.aiChipText, { color: g.accent }]}>KI</Text>
             </View>
           </Pressable>
 
           {/* Toggles: Kommentare / Geschenke */}
           <View style={s.tileRow}>
             <Pressable
-              style={[s.toggleChip, allowComments && s.toggleChipOn]}
+              style={[s.toggleChip, { backgroundColor: g.fill, borderColor: g.border }, allowComments && s.toggleChipOn]}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setAllowComments((v) => !v); }}
             >
-              <MessageCircle size={15} stroke={allowComments ? LC.accent.success : LC.text.muted} strokeWidth={2} />
-              <Text style={[s.toggleText, allowComments && { color: LC.text.primary }]}>
+              <MessageCircle size={15} stroke={allowComments ? LC.accent.success : g.textMuted} strokeWidth={2} />
+              <Text style={[s.toggleText, { color: allowComments ? g.textPrimary : g.textMuted }]}>
                 Kommentare {allowComments ? 'an' : 'aus'}
               </Text>
             </Pressable>
             <Pressable
-              style={[s.toggleChip, allowGifts && s.toggleChipOn]}
+              style={[s.toggleChip, { backgroundColor: g.fill, borderColor: g.border }, allowGifts && s.toggleChipOn]}
               onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setAllowGifts((v) => !v); }}
             >
-              <Gift size={15} stroke={allowGifts ? LC.accent.success : LC.text.muted} strokeWidth={2} />
-              <Text style={[s.toggleText, allowGifts && { color: LC.text.primary }]}>
+              <Gift size={15} stroke={allowGifts ? LC.accent.success : g.textMuted} strokeWidth={2} />
+              <Text style={[s.toggleText, { color: allowGifts ? g.textPrimary : g.textMuted }]}>
                 Geschenke {allowGifts ? 'an' : 'aus'}
               </Text>
             </Pressable>
           </View>
-        </View>
+         </View>
+        </GlassPanel>
 
         {/* LIVE gehen Button */}
         <Pressable
@@ -848,15 +854,9 @@ const s = StyleSheet.create({
     position: 'absolute', left: 0, right: 0, bottom: 0,
     alignItems: 'center', gap: 14, paddingHorizontal: SPACE.lg,
   },
-  // ── Setup-Karte (Konfiguration direkt auf dem Screen) ───────────────────────
+  // ── Setup-Karte: nur äußere Breite — Glas/Border/Padding liefert GlassPanel ──
   setupCard: {
     width: '100%',
-    backgroundColor: LC.bg.panel,
-    borderRadius: 18,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: LC.border.subtle,
-    padding: 11,
-    gap: 8,
   },
   titleRow: {
     flexDirection: 'row', alignItems: 'center', gap: 9,
