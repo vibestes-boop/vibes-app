@@ -1048,7 +1048,7 @@ export const FeedItem = React.memo(function FeedItem({
       )}
 
       <Animated.View
-        style={[styles.rightActions, { bottom: insets.bottom + 50 }, overlayFadeStyle]}
+        style={[styles.rightActions, { bottom: insets.bottom + 88 }, overlayFadeStyle]}
         pointerEvents={commentsOpen ? 'none' : 'auto'}
       >
         {/* Mute-Button — für Videos UND für Bild-Posts mit Musik-Track */}

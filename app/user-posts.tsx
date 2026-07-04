@@ -359,7 +359,7 @@ function PostCard({
 
       {/* Rechte Aktionen — über Kommentar-Leiste (faden aus, wenn Kommentare offen) */}
       <Animated.View
-        style={[s.rightActions, { bottom: commentBarH + 8 }, overlayFadeStyle]}
+        style={[s.rightActions, { bottom: commentBarH + 44 }, overlayFadeStyle]}
         pointerEvents={commentsOpen ? 'none' : 'box-none'}
       >
         {isVideo && (

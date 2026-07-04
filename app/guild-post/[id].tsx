@@ -410,7 +410,7 @@ function GuildPostDetailItem({
 
       {/* ── Rechte Aktionen ── (blendet aus, wenn Kommentare offen) */}
       <Animated.View
-        style={[itemStyles.rightActions, { bottom: insets.bottom + 56 }, overlayFadeStyle]}
+        style={[itemStyles.rightActions, { bottom: insets.bottom + 92 }, overlayFadeStyle]}
         pointerEvents={showComments ? 'none' : 'box-none'}
       >
         {/* Avatar mit Story-Ring */}
