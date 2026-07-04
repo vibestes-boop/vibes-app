@@ -17,6 +17,26 @@ if (!global.navigator) global.navigator = {} as Navigator;
 // @ts-ignore
 if (!global.navigator.userAgent) global.navigator.userAgent = 'react-native';
 
+// ── Crash-Guard: RNs deprecated `PushNotificationIOS` entschärfen ────────────
+// Der react-native-Getter `PushNotificationIOS` evaluiert beim Zugriff ein
+// Modul, das SOFORT crasht (`new NativeEventEmitter(null)`) — das native
+// Push-Modul ist nicht gelinkt (wir nutzen expo-notifications). Wenn etwas die
+// react-native-Exports durchläuft (z. B. Sentry beim Fehler-Kontext-Capture),
+// triggert der Getter genau diesen Crash → expo-updates ErrorRecovery-Rollback
+// (Sentry: "Invariant Violation: new NativeEventEmitter() requires a non-null
+// argument", ausgelöst über `get PushNotificationIOS`). Wir überschreiben den
+// Getter auf `undefined` + non-enumerable → weder Enumeration noch Zugriff
+// laden das crashende Modul. Nichts Legitimes nutzt RNs PushNotificationIOS.
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const RN = require('react-native');
+  Object.defineProperty(RN, 'PushNotificationIOS', {
+    configurable: true,
+    enumerable: false,
+    get: () => undefined,
+  });
+} catch { /* Getter evtl. nicht redefinierbar → ignorieren */ }
+
 // ── Sentry: Frühest mögliche Initialisierung (vor jeglichem React-Rendering) ──
 // DSN aus .env: EXPO_PUBLIC_SENTRY_DSN=https://xxx@xxx.ingest.sentry.io/xxx
 Sentry.init({
