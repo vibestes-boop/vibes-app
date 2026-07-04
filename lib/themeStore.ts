@@ -5,7 +5,10 @@
  * - resolved: 'dark' | 'light'          → tatsächlich aktiv
  * - colors: ThemeColors                 → aktuelle Token
  *
- * Standard: 'system' (folgt iOS Dark/Light automatisch)
+ * Standard: 'dark' — Dark Mode ist für ALLE User vorausgewählt (Marken-Look).
+ * Light erscheint nur, wenn der User in den Einstellungen aktiv umstellt.
+ * Bestehende 'system'-User werden per Migration (v2) auf 'dark' gehoben, damit
+ * niemand ungewollt im Light Mode landet, weil sein iOS gerade hell ist.
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -40,7 +43,7 @@ function resolveColors(
 export const useThemeStore = create<ThemeStore>()(
   persist(
     (set, get) => ({
-      mode: 'system',
+      mode: 'dark',
       _systemScheme: 'dark',
       resolved: 'dark',
       colors: darkColors,
@@ -59,9 +62,19 @@ export const useThemeStore = create<ThemeStore>()(
     }),
     {
       name: 'vibes-theme-v1',
+      version: 2,
       storage: createJSONStorage(() => AsyncStorage),
       // Nur mode persistieren — resolved wird beim Start neu berechnet
       partialize: (s) => ({ mode: s.mode }),
+      // v2: Dark-Mode-Default. Wer bisher auf 'system' war (nie aktiv gewählt),
+      // wird auf 'dark' migriert → landet nicht mehr ungewollt im Light Mode.
+      // Explizit gewähltes 'light'/'dark' bleibt unangetastet.
+      migrate: (persisted: any, version: number) => {
+        if (version < 2 && persisted?.mode === 'system') {
+          return { ...persisted, mode: 'dark' };
+        }
+        return persisted;
+      },
     },
   ),
 );
