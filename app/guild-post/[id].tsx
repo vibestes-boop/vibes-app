@@ -18,6 +18,7 @@ import { ProductFeedChip } from '@/components/feed/ProductFeedChip';
 import { useFeedProducts, type LinkedProduct } from '@/lib/useFeedProducts';
 import { PostShareModal } from '@/components/feed/PostShareModal';
 import { StoryRingAvatar } from '@/components/ui/StoryRingAvatar';
+import { UserProfileContent } from '@/components/profile/UserProfileContent';
 import { useAuthStore } from '@/lib/authStore';
 import { useFollow } from '@/lib/useFollow';
 import { useGuildNavStore } from '@/lib/guildNavStore';
@@ -626,6 +627,60 @@ export default function GuildPostDetailScreen() {
     }, [])
   );
 
+  // ── Profil-Swipe: Links-Wisch → Autor-Profil (1:1 wie Home-Feed) ─────────
+  // Der vertikale Pager bleibt unberührt (nur horizontal-dominante Gesten
+  // greifen). Solange das Panel offen ist, öffnet ein weiterer Links-Wisch es
+  // NICHT erneut — dann schließt nur der Rechts-Wisch (backPan) das Panel.
+  const profileSlideX = useRef(new RNAnimated.Value(W)).current;
+  const [profilePanel, setProfilePanel] = useState<{ authorId: string } | null>(null);
+  const profilePanelRef = useRef<{ authorId: string } | null>(null);
+  const postsRef = useRef(posts);
+  useEffect(() => { postsRef.current = posts; }, [posts]);
+  const activeIndexRef = useRef(activeIndex);
+  useEffect(() => { activeIndexRef.current = activeIndex; }, [activeIndex]);
+
+  const snapProfileIn  = () => RNAnimated.spring(profileSlideX, { toValue: 0, useNativeDriver: true, bounciness: 0, speed: 20 }).start();
+  const snapProfileOut = () => RNAnimated.spring(profileSlideX, { toValue: W, useNativeDriver: true, bounciness: 0, speed: 25 }).start(
+    () => { setProfilePanel(null); profilePanelRef.current = null; }
+  );
+
+  const swipePan = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, g) =>
+        !profilePanelRef.current && g.dx < -18 && Math.abs(g.dx) > Math.abs(g.dy) * 2.0,
+      onPanResponderGrant: () => {
+        const authorId = postsRef.current[activeIndexRef.current]?.author_id;
+        if (!authorId) return;
+        const panel = { authorId };
+        profilePanelRef.current = panel;
+        setProfilePanel(panel);
+        profileSlideX.setValue(W);
+      },
+      onPanResponderMove: (_, g) => {
+        if (!profilePanelRef.current) return;
+        profileSlideX.setValue(Math.max(0, W + g.dx));
+      },
+      onPanResponderRelease: (_, g) => {
+        if (!profilePanelRef.current) return;
+        if (g.dx < -(W * 0.35) || g.vx < -0.5) { impactAsync(ImpactFeedbackStyle.Medium); snapProfileIn(); }
+        else { snapProfileOut(); }
+      },
+      onPanResponderTerminate: () => snapProfileOut(),
+    })
+  ).current;
+
+  const backPan = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, g) => g.dx > 15 && Math.abs(g.dx) > Math.abs(g.dy) * 1.8,
+      onPanResponderMove: (_, g) => { profileSlideX.setValue(Math.min(W, Math.max(0, g.dx))); },
+      onPanResponderRelease: (_, g) => {
+        if (g.dx > W * 0.35 || g.vx > 0.5) { impactAsync(ImpactFeedbackStyle.Light); snapProfileOut(); }
+        else { snapProfileIn(); }
+      },
+      onPanResponderTerminate: () => snapProfileIn(),
+    })
+  ).current;
+
   const initialIndex = posts.findIndex((p) => p.id === id);
 
   // Shoppable Post (#2): verknüpfte Produkte für alle Pager-Posts nachladen.
@@ -648,13 +703,13 @@ export default function GuildPostDetailScreen() {
       <GuildPostDetailItem
         post={item}
         guildColors={guildColors}
-        isActive={index === activeIndex && screenFocused}
+        isActive={index === activeIndex && screenFocused && !profilePanel}
         onBack={() => router.back()}
         autoOpenComments={item.id === id && comments === '1'}
         product={productByPost[item.id] ?? null}
       />
     ),
-    [guildColors, activeIndex, screenFocused, router, id, comments, productByPost]
+    [guildColors, activeIndex, screenFocused, profilePanel, router, id, comments, productByPost]
   );
 
   const getItemLayout = useCallback((_: unknown, index: number) => ({
@@ -692,7 +747,7 @@ export default function GuildPostDetailScreen() {
   const safeInitialNumToRender = Math.max((initialIndex >= 0 ? initialIndex : 0) + 2, 3);
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#000' }}>
+    <View style={{ flex: 1, backgroundColor: '#000' }} {...swipePan.panHandlers}>
       <FlatList
         ref={listRef}
         data={posts}
@@ -730,6 +785,24 @@ export default function GuildPostDetailScreen() {
         }}
         {...edgePanResponder.panHandlers}
       />
+
+      {/* Short-Video Profil-Swipe: Autor-Profil folgt dem Finger (wie Home) */}
+      {profilePanel && (
+        <RNAnimated.View
+          style={{
+            position: 'absolute', inset: 0, zIndex: 400,
+            transform: [{ translateX: profileSlideX }],
+          }}
+          {...backPan.panHandlers}
+        >
+          {/* Schatten-Linie links (Tiefeneffekt) */}
+          <View style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 5, zIndex: 1, backgroundColor: 'rgba(0,0,0,0.5)' }} />
+          <UserProfileContent
+            userId={profilePanel.authorId}
+            onBack={snapProfileOut}
+          />
+        </RNAnimated.View>
+      )}
     </View>
   );
 }
