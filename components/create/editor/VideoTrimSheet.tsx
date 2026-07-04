@@ -17,7 +17,7 @@ const _animMod = require('react-native-reanimated') as any;
 const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
 
-import { SW } from './sharedStyles';
+import { SW, GlassSheet, useEditorSheet } from './sharedStyles';
 
 const STRIP_PADDING = 20;
 const STRIP_W = SW - STRIP_PADDING * 2;
@@ -113,21 +113,22 @@ export function VideoTrimSheet({
   const fmt = (s: number) => `${Math.floor(s)}:${String(Math.round((s % 1) * 10)).padStart(1, '0')}s`;
   const trimDur = Math.max(0, endSec - startSec);
 
+  const t = useEditorSheet();
   if (!visible) return null;
 
   return (
     <Modal transparent animationType="slide" visible={visible} statusBarTranslucent onRequestClose={onCancel}>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <TouchableWithoutFeedback onPress={onCancel}>
-          <View style={tv.overlay} />
+          <View style={t.overlay} />
         </TouchableWithoutFeedback>
-        <View style={tv.sheet}>
-          <View style={tv.handle} />
-          <Text style={tv.title}>Video kürzen</Text>
+        <GlassSheet style={tv.sheet}>
+          <View style={t.handle} />
+          <Text style={t.title}>Video kürzen</Text>
 
           <View style={tv.durRow}>
-            <View style={tv.badge}><Text style={tv.badgeText}>{fmt(startSec)} – {fmt(endSec)}</Text></View>
-            <View style={tv.badgeSel}><Text style={tv.badgeSelText}>{trimDur.toFixed(1)}s</Text></View>
+            <View style={[tv.badge, { backgroundColor: t.fill, borderColor: t.border }]}><Text style={[tv.badgeText, { color: t.textSecondary }]}>{fmt(startSec)} – {fmt(endSec)}</Text></View>
+            <View style={[tv.badgeSel, { backgroundColor: t.fillActive, borderColor: t.border }]}><Text style={[tv.badgeSelText, { color: t.text }]}>{trimDur.toFixed(1)}s</Text></View>
           </View>
 
           <View style={tv.stripOuter}>
@@ -149,47 +150,41 @@ export function VideoTrimSheet({
           <View style={tv.speedRow}>
             {([0.5, 1, 1.5, 2] as const).map(sp => (
               <Pressable key={sp} onPress={() => { setSpeedFactor(sp); try { player.playbackRate = sp; } catch { /* ignore */ } }}
-                style={[tv.speedBtn, speedFactor === sp && tv.speedBtnActive]}>
-                <Text style={[tv.speedText, speedFactor === sp && tv.speedTextActive]}>{sp}x</Text>
+                style={[tv.speedBtn, { backgroundColor: speedFactor === sp ? t.fillActive : t.fill }]}>
+                <Text style={[tv.speedText, { color: speedFactor === sp ? t.text : t.textMuted }]}>{sp}x</Text>
               </Pressable>
             ))}
           </View>
 
-          <Text style={tv.hint}>Ziehe die weißen Griffe um den Ausschnitt zu wählen</Text>
+          <Text style={[tv.hint, { color: t.textMuted }]}>Ziehe die weißen Griffe um den Ausschnitt zu wählen</Text>
 
           <Pressable
-            style={tv.doneBtn}
+            style={t.doneBtn}
             onPress={() => onDone({ startMs: Math.round(startSec * 1000), endMs: Math.round(endSec * 1000), speedFactor })}
           >
-            <Text style={tv.doneBtnText}>Übernehmen</Text>
+            <Text style={t.doneBtnText}>Übernehmen</Text>
           </Pressable>
-        </View>
+        </GlassSheet>
       </GestureHandlerRootView>
     </Modal>
   );
 }
 
 const tv = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)' },
-  sheet: { backgroundColor: '#0c0c16', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 12, paddingHorizontal: 0, paddingBottom: 40 },
-  handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)', alignSelf: 'center', marginBottom: 16 },
-  title: { color: '#fff', fontSize: 17, fontWeight: '700', paddingHorizontal: 20, marginBottom: 16 },
+  sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 12, paddingHorizontal: 0, paddingBottom: 40 },
   durRow: { flexDirection: 'row', gap: 10, paddingHorizontal: STRIP_PADDING, marginBottom: 14 },
-  badge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.07)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-  badgeText: { color: 'rgba(255,255,255,0.7)', fontSize: 12, fontWeight: '700', fontVariant: ['tabular-nums'] },
-  badgeSel: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.15)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)' },
-  badgeSelText: { color: '#fff', fontSize: 12, fontWeight: '600', fontVariant: ['tabular-nums'] },
+  badge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, borderWidth: 1 },
+  badgeText: { fontSize: 12, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  badgeSel: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, borderWidth: 1 },
+  badgeSelText: { fontSize: 12, fontWeight: '600', fontVariant: ['tabular-nums'] },
   stripOuter: { marginHorizontal: STRIP_PADDING, height: 56, position: 'relative', marginBottom: 16 },
+  // Strip-Interna liegen ÜBER den Video-Frames (Medium) → bewusst weiß in beiden Themes.
   stripContainer: { height: 56, borderRadius: 8, overflow: 'hidden', borderWidth: 2, borderColor: 'rgba(255,255,255,0.1)' },
   frameSkel: { backgroundColor: 'rgba(255,255,255,0.06)' },
   highlight: { position: 'absolute', top: 0, height: '100%', borderTopWidth: 2, borderBottomWidth: 2, borderColor: '#fff', zIndex: 5 },
   mask: { position: 'absolute', top: 0, height: '100%', backgroundColor: 'rgba(0,0,0,0.55)', zIndex: 4 },
   speedRow: { flexDirection: 'row', gap: 6, marginHorizontal: STRIP_PADDING, marginBottom: 12 },
-  speedBtn: { flex: 1, paddingVertical: 8, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center' },
-  speedBtnActive: { backgroundColor: 'rgba(255,255,255,0.18)' },
-  speedText: { color: 'rgba(255,255,255,0.4)', fontSize: 13, fontWeight: '700' },
-  speedTextActive: { color: '#fff' },
-  hint: { color: 'rgba(255,255,255,0.25)', fontSize: 12, textAlign: 'center', marginBottom: 20 },
-  doneBtn: { marginHorizontal: STRIP_PADDING, backgroundColor: '#fff', paddingVertical: 16, borderRadius: 16, alignItems: 'center' },
-  doneBtnText: { color: '#000', fontSize: 15, fontWeight: '600' },
+  speedBtn: { flex: 1, paddingVertical: 8, borderRadius: 10, alignItems: 'center' },
+  speedText: { fontSize: 13, fontWeight: '700' },
+  hint: { fontSize: 12, textAlign: 'center', marginBottom: 20 },
 });

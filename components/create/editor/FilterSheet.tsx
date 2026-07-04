@@ -5,7 +5,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, TouchableWithoutFeedbac
 import type { ColorFilterId } from '@/lib/cameraFilters';
 import { COLOR_FILTERS, FILTER_CATALOG } from '@/lib/cameraFilters';
 import { SkiaCanvas, SkiaColorMatrix, SkiaImage, SKIA_READY, useSkiaImage } from '@/lib/skiaLoader';
-import { shared, SH, SW } from './sharedStyles';
+import { GlassSheet, useEditorSheet, SH, SW } from './sharedStyles';
 
 // ─── Filter-Overlay System (View-basiert, für Expo Go) ──────────────────────
 export function extractFilterStyle(filterId: ColorFilterId | null): {
@@ -123,13 +123,14 @@ export function FilterSheet({ visible, mediaUri, currentId, onSelect, onClose }:
   onSelect: (id: ColorFilterId | null) => void;
   onClose: () => void;
 }) {
+  const t = useEditorSheet();
   if (!visible) return null;
   return (
     <Modal transparent animationType="slide" visible={visible} statusBarTranslucent onRequestClose={onClose}>
-      <TouchableWithoutFeedback onPress={onClose}><View style={shared.overlay} /></TouchableWithoutFeedback>
-      <View style={fs.sheet}>
-        <View style={shared.handle} />
-        <Text style={shared.title}>Filter</Text>
+      <TouchableWithoutFeedback onPress={onClose}><View style={t.overlay} /></TouchableWithoutFeedback>
+      <GlassSheet style={fs.sheet}>
+        <View style={t.handle} />
+        <Text style={t.title}>Filter</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={fs.row}>
           {COLOR_FILTER_LIST.map(preset => {
             const id = preset.id as ColorFilterId;
@@ -137,21 +138,20 @@ export function FilterSheet({ visible, mediaUri, currentId, onSelect, onClose }:
             return (
               <Pressable key={id} onPress={() => onSelect(id === 'none' ? null : id)} style={fs.item}>
                 <FilterThumb uri={mediaUri} filterId={id} size={80} active={isActive} />
-                <Text style={[fs.label, isActive && fs.labelActive]}>{preset.emoji} {preset.label}</Text>
+                <Text style={[fs.label, { color: isActive ? t.text : t.textMuted }]}>{preset.emoji} {preset.label}</Text>
               </Pressable>
             );
           })}
         </ScrollView>
-        <Pressable style={shared.doneBtn} onPress={onClose}><Text style={shared.doneBtnText}>Fertig ✓</Text></Pressable>
-      </View>
+        <Pressable style={t.doneBtn} onPress={onClose}><Text style={t.doneBtnText}>Fertig ✓</Text></Pressable>
+      </GlassSheet>
     </Modal>
   );
 }
 
 const fs = StyleSheet.create({
-  sheet: { backgroundColor: '#0c0c16', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 12, paddingBottom: 40 },
+  sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 12, paddingBottom: 40 },
   row: { paddingHorizontal: 16, gap: 14, paddingBottom: 16 },
   item: { alignItems: 'center', gap: 6 },
-  label: { color: 'rgba(255,255,255,0.4)', fontSize: 10, fontWeight: '700', marginTop: 2 },
-  labelActive: { color: '#fff' },
+  label: { fontSize: 10, fontWeight: '700', marginTop: 2 },
 });

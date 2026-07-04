@@ -29,6 +29,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export type LinkableProduct = { id: string; title: string; cover_url: string | null };
 
 import type { PostSettingsState } from '@/components/create';
+import { GlassSheet, useEditorSheet } from './sharedStyles';
 
 const TAG_OPTIONS = ['#vibes','#music','#chill','#art','#life','#travel','#food','#fitness','#coding','#fashion'];
 
@@ -53,6 +54,7 @@ export function DetailsSheet({
   onLinkProduct?: (id: string | null) => void;
 }) {
   const insets = useSafeAreaInsets();
+  const t = useEditorSheet();
   const privacyOptions = [
     { id: 'public',  label: 'Öffentlich',  icon: Globe },
     { id: 'friends', label: 'Freunde',      icon: Users },
@@ -67,36 +69,39 @@ export function DetailsSheet({
         <View style={ds.overlay} />
       </TouchableWithoutFeedback>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={ds.sheetWrap}>
-        <View style={[ds.sheet, { paddingBottom: insets.bottom + 16 }]}>
-          <View style={ds.handle} />
-          <Text style={ds.heading}>Details</Text>
+        <GlassSheet style={[ds.sheet, { paddingBottom: insets.bottom + 16 }]}>
+          <View style={[ds.handle, { backgroundColor: t.border }]} />
+          <Text style={[ds.heading, { color: t.text }]}>Details</Text>
 
           <TextInput
-            style={ds.captionInput}
+            style={[ds.captionInput, { backgroundColor: t.fill, color: t.text }]}
             placeholder="Was ist dein Vibe? #tags @mention"
-            placeholderTextColor="rgba(255,255,255,0.25)"
+            placeholderTextColor={t.textMuted}
             value={caption}
             onChangeText={onCaption}
             multiline
             maxLength={500}
           />
 
-          <Text style={ds.sectionLabel}>Tags</Text>
+          <Text style={[ds.sectionLabel, { color: t.textMuted }]}>Tags</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={ds.tagScroll} contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}>
-            {TAG_OPTIONS.map((tag) => (
-              <Pressable
-                key={tag}
-                onPress={() => onToggleTag(tag)}
-                style={[ds.tag, selectedTags.includes(tag) && ds.tagActive]}
-              >
-                <Text style={[ds.tagText, selectedTags.includes(tag) && ds.tagTextActive]}>{tag}</Text>
-              </Pressable>
-            ))}
+            {TAG_OPTIONS.map((tag) => {
+              const active = selectedTags.includes(tag);
+              return (
+                <Pressable
+                  key={tag}
+                  onPress={() => onToggleTag(tag)}
+                  style={[ds.tag, { backgroundColor: active ? t.fillActive : t.fill, borderColor: active ? t.accent : t.border }]}
+                >
+                  <Text style={[ds.tagText, { color: active ? t.text : t.textSecondary }]}>{tag}</Text>
+                </Pressable>
+              );
+            })}
           </ScrollView>
 
           {products && products.length > 0 && onLinkProduct && (
             <>
-              <Text style={ds.sectionLabel}>Produkt verknüpfen</Text>
+              <Text style={[ds.sectionLabel, { color: t.textMuted }]}>Produkt verknüpfen</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={ds.tagScroll} contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}>
                 {products.map((p) => {
                   const active = linkedProductId === p.id;
@@ -104,16 +109,16 @@ export function DetailsSheet({
                     <Pressable
                       key={p.id}
                       onPress={() => onLinkProduct(active ? null : p.id)}
-                      style={[ds.prod, active && ds.prodActive]}
+                      style={[ds.prod, { backgroundColor: active ? t.fillActive : t.fill, borderColor: active ? t.accent : t.border }]}
                     >
                       {p.cover_url ? (
                         <Image source={{ uri: p.cover_url }} style={ds.prodImg} contentFit="cover" />
                       ) : (
-                        <View style={[ds.prodImg, ds.prodImgFallback]}>
-                          <ShoppingBag size={14} color="rgba(255,255,255,0.6)" strokeWidth={2} />
+                        <View style={[ds.prodImg, ds.prodImgFallback, { backgroundColor: t.fill }]}>
+                          <ShoppingBag size={14} color={t.textSecondary} strokeWidth={2} />
                         </View>
                       )}
-                      <Text style={[ds.prodText, active && ds.prodTextActive]} numberOfLines={1}>{p.title}</Text>
+                      <Text style={[ds.prodText, { color: active ? t.text : t.textSecondary }]} numberOfLines={1}>{p.title}</Text>
                     </Pressable>
                   );
                 })}
@@ -121,18 +126,21 @@ export function DetailsSheet({
             </>
           )}
 
-          <Text style={ds.sectionLabel}>Sichtbarkeit</Text>
+          <Text style={[ds.sectionLabel, { color: t.textMuted }]}>Sichtbarkeit</Text>
           <View style={ds.privacyRow}>
-            {privacyOptions.map(({ id, label, icon: Icon }) => (
-              <Pressable
-                key={id}
-                onPress={() => onSettings({ ...settings, privacy: id })}
-                style={[ds.privacyBtn, settings.privacy === id && ds.privacyBtnActive]}
-              >
-                <Icon size={14} color={settings.privacy === id ? '#fff' : 'rgba(255,255,255,0.4)'} strokeWidth={2} />
-                <Text style={[ds.privacyText, settings.privacy === id && ds.privacyTextActive]}>{label}</Text>
-              </Pressable>
-            ))}
+            {privacyOptions.map(({ id, label, icon: Icon }) => {
+              const active = settings.privacy === id;
+              return (
+                <Pressable
+                  key={id}
+                  onPress={() => onSettings({ ...settings, privacy: id })}
+                  style={[ds.privacyBtn, { backgroundColor: active ? t.fillActive : t.fill, borderColor: active ? t.accent : 'transparent' }]}
+                >
+                  <Icon size={14} color={active ? t.text : t.textSecondary} strokeWidth={2} />
+                  <Text style={[ds.privacyText, { color: active ? t.text : t.textSecondary }]}>{label}</Text>
+                </Pressable>
+              );
+            })}
           </View>
 
           <View style={ds.toggleRow}>
@@ -140,25 +148,28 @@ export function DetailsSheet({
               { key: 'allowComments', icon: MessageCircle, label: 'Kommentare' },
               { key: 'allowDownload', icon: Download,       label: 'Download'    },
               { key: 'allowDuet',    icon: Repeat2,        label: 'Duet'        },
-            ] as const).map(({ key, icon: Icon, label }) => (
-              <Pressable
-                key={key}
-                onPress={() => onSettings({ ...settings, [key]: !settings[key as keyof PostSettingsState] })}
-                style={[ds.toggle, (settings[key as keyof PostSettingsState] as boolean) && ds.toggleActive]}
-              >
-                <Icon size={13} color={(settings[key as keyof PostSettingsState] as boolean) ? '#fff' : 'rgba(255,255,255,0.35)'} strokeWidth={2} />
-                <Text style={[ds.toggleText, (settings[key as keyof PostSettingsState] as boolean) && ds.toggleTextActive]}>{label}</Text>
-              </Pressable>
-            ))}
+            ] as const).map(({ key, icon: Icon, label }) => {
+              const active = settings[key as keyof PostSettingsState] as boolean;
+              return (
+                <Pressable
+                  key={key}
+                  onPress={() => onSettings({ ...settings, [key]: !settings[key as keyof PostSettingsState] })}
+                  style={[ds.toggle, { backgroundColor: active ? t.fillActive : t.fill }]}
+                >
+                  <Icon size={13} color={active ? t.text : t.textSecondary} strokeWidth={2} />
+                  <Text style={[ds.toggleText, { color: active ? t.text : t.textSecondary }]}>{label}</Text>
+                </Pressable>
+              );
+            })}
           </View>
 
           <Pressable
             onPress={() => { onClose(); onPost(); }}
             disabled={uploading}
-            style={({ pressed }) => [ds.postBtn, pressed && { opacity: 0.85 }]}
+            style={({ pressed }) => [ds.postBtn, { backgroundColor: t.accent }, pressed && { opacity: 0.85 }]}
           >
             <Text style={ds.postBtnText}>{uploading ? 'Wird hochgeladen…' : 'Jetzt posten'}</Text>
-            <ArrowRight size={18} color="#000" strokeWidth={2.5} />
+            <ArrowRight size={18} color="#FFFFFF" strokeWidth={2.5} />
           </Pressable>
 
           {(onSchedule || onSaveDraft) && (
@@ -167,10 +178,10 @@ export function DetailsSheet({
                 <Pressable
                   onPress={onSchedule}
                   disabled={uploading || busySchedule}
-                  style={({ pressed }) => [ds.secondaryBtn, pressed && { opacity: 0.85 }, (uploading || busySchedule) && { opacity: 0.5 }]}
+                  style={({ pressed }) => [ds.secondaryBtn, { backgroundColor: t.fill, borderColor: t.border }, pressed && { opacity: 0.85 }, (uploading || busySchedule) && { opacity: 0.5 }]}
                 >
-                  <ClockIcon size={14} color="#fff" strokeWidth={2} />
-                  <Text style={ds.secondaryBtnText}>
+                  <ClockIcon size={14} color={t.text} strokeWidth={2} />
+                  <Text style={[ds.secondaryBtnText, { color: t.text }]}>
                     {busySchedule ? 'Plane…' : 'Planen'}
                   </Text>
                 </Pressable>
@@ -179,17 +190,17 @@ export function DetailsSheet({
                 <Pressable
                   onPress={onSaveDraft}
                   disabled={uploading || busyDraft}
-                  style={({ pressed }) => [ds.secondaryBtn, pressed && { opacity: 0.85 }, (uploading || busyDraft) && { opacity: 0.5 }]}
+                  style={({ pressed }) => [ds.secondaryBtn, { backgroundColor: t.fill, borderColor: t.border }, pressed && { opacity: 0.85 }, (uploading || busyDraft) && { opacity: 0.5 }]}
                 >
-                  <FileTextIcon size={14} color="#fff" strokeWidth={2} />
-                  <Text style={ds.secondaryBtnText}>
+                  <FileTextIcon size={14} color={t.text} strokeWidth={2} />
+                  <Text style={[ds.secondaryBtnText, { color: t.text }]}>
                     {busyDraft ? 'Speichert…' : 'Entwurf'}
                   </Text>
                 </Pressable>
               )}
             </View>
           )}
-        </View>
+        </GlassSheet>
       </KeyboardAvoidingView>
     </Modal>
   );
@@ -198,39 +209,30 @@ export function DetailsSheet({
 const ds = StyleSheet.create({
   overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
   sheetWrap: { flex: 1, justifyContent: 'flex-end' },
-  sheet: { backgroundColor: '#0e0e18', borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 12, paddingHorizontal: 0 },
-  handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.15)', alignSelf: 'center', marginBottom: 16 },
-  heading: { color: '#fff', fontSize: 17, fontWeight: '700', paddingHorizontal: 20, marginBottom: 16 },
-  captionInput: { backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 14, marginHorizontal: 16, padding: 14, color: '#fff', fontSize: 15, minHeight: 80, textAlignVertical: 'top', marginBottom: 20 },
-  sectionLabel: { color: 'rgba(255,255,255,0.35)', fontSize: 11, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase', marginLeft: 20, marginBottom: 10 },
+  sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingTop: 12, paddingHorizontal: 0 },
+  handle: { width: 36, height: 4, borderRadius: 2, alignSelf: 'center', marginBottom: 16 },
+  heading: { fontSize: 17, fontWeight: '700', paddingHorizontal: 20, marginBottom: 16 },
+  captionInput: { borderRadius: 14, marginHorizontal: 16, padding: 14, fontSize: 15, minHeight: 80, textAlignVertical: 'top', marginBottom: 20 },
+  sectionLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase', marginLeft: 20, marginBottom: 10 },
   tagScroll: { marginBottom: 20 },
-  tag: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
-  tagActive: { backgroundColor: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.3)' },
-  tagText: { color: 'rgba(255,255,255,0.4)', fontSize: 13, fontWeight: '600' },
-  tagTextActive: { color: '#fff' },
-  prod: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6, paddingLeft: 6, paddingRight: 12, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', maxWidth: 200 },
-  prodActive: { backgroundColor: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.35)' },
-  prodImg: { width: 30, height: 30, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.1)' },
+  tag: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, borderWidth: 1 },
+  tagText: { fontSize: 13, fontWeight: '600' },
+  prod: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6, paddingLeft: 6, paddingRight: 12, borderRadius: 12, borderWidth: 1, maxWidth: 200 },
+  prodImg: { width: 30, height: 30, borderRadius: 8 },
   prodImgFallback: { alignItems: 'center', justifyContent: 'center' },
-  prodText: { color: 'rgba(255,255,255,0.6)', fontSize: 13, fontWeight: '600', flexShrink: 1 },
-  prodTextActive: { color: '#fff' },
+  prodText: { fontSize: 13, fontWeight: '600', flexShrink: 1 },
   privacyRow: { flexDirection: 'row', gap: 8, marginHorizontal: 16, marginBottom: 16 },
-  privacyBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'transparent' },
-  privacyBtnActive: { backgroundColor: 'rgba(255,255,255,0.12)', borderColor: 'rgba(255,255,255,0.2)' },
-  privacyText: { color: 'rgba(255,255,255,0.35)', fontSize: 12, fontWeight: '600' },
-  privacyTextActive: { color: '#fff' },
+  privacyBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 12, borderWidth: 1 },
+  privacyText: { fontSize: 12, fontWeight: '600' },
   toggleRow: { flexDirection: 'row', gap: 8, marginHorizontal: 16, marginBottom: 20 },
-  toggle: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 8, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.04)' },
-  toggleActive: { backgroundColor: 'rgba(255,255,255,0.12)' },
-  toggleText: { color: 'rgba(255,255,255,0.3)', fontSize: 11, fontWeight: '600' },
-  toggleTextActive: { color: '#fff' },
-  postBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#fff', marginHorizontal: 16, paddingVertical: 16, borderRadius: 16 },
-  postBtnText: { color: '#000', fontSize: 16, fontWeight: '600' },
+  toggle: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, paddingVertical: 8, borderRadius: 10 },
+  toggleText: { fontSize: 11, fontWeight: '600' },
+  postBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginHorizontal: 16, paddingVertical: 16, borderRadius: 16 },
+  postBtnText: { color: '#FFFFFF', fontSize: 16, fontWeight: '600' },
   secondaryActions: { flexDirection: 'row', gap: 10, marginHorizontal: 16, marginTop: 10 },
   secondaryBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.08)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
-    paddingVertical: 13, borderRadius: 14,
+    borderWidth: 1, paddingVertical: 13, borderRadius: 14,
   },
-  secondaryBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
+  secondaryBtnText: { fontSize: 13, fontWeight: '700' },
 });
