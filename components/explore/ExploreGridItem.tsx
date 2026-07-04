@@ -1,9 +1,14 @@
 import type { ExplorePostThumb } from '@/lib/useExplore';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
-import { Play } from 'lucide-react-native';
+import { Heart,Play } from 'lucide-react-native';
 import { Pressable,Text,View } from 'react-native';
 import { exploreStyles as styles } from './exploreStyles';
+
+/** 1234 → "1.2K", <1000 → "1234" */
+function fmtCount(n: number): string {
+  return n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}K` : String(n);
+}
 
 /**
  * ExploreGridItem — Performance-optimiert
@@ -16,6 +21,7 @@ import { exploreStyles as styles } from './exploreStyles';
  */
 export function ExploreGridItem({ item }: { item: ExplorePostThumb }) {
   const isVideo = item.media_type === 'video';
+  const likes = item.like_count ?? 0;
   return (
     <Pressable
       style={styles.gridItem}
@@ -35,6 +41,13 @@ export function ExploreGridItem({ item }: { item: ExplorePostThumb }) {
               <View style={styles.gridPlayBtn}>
                 <Play size={12} color="#fff" fill="#fff" />
               </View>
+            </View>
+          )}
+          {/* Like-Zahl unten links (TikTok-Stil) — nur bei populären Posts */}
+          {likes > 0 && (
+            <View style={styles.gridStat} pointerEvents="none">
+              <Heart size={11} color="#fff" fill="#fff" strokeWidth={0} />
+              <Text style={styles.gridStatText}>{fmtCount(likes)}</Text>
             </View>
           )}
         </>

@@ -27,9 +27,9 @@ import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import { useWomenOnly } from '@/lib/useWomenOnly';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams,useRouter } from 'expo-router';
-import { ChevronRight,SearchX,ShoppingBag,Tag } from 'lucide-react-native';
+import { ChevronRight,SearchX,ShoppingBag,Sparkles,Tag } from 'lucide-react-native';
 import { useCallback,useEffect,useRef,useState } from 'react';
-import { ActivityIndicator,FlatList,Pressable,ScrollView as RNScrollView,StyleSheet,Text,View } from 'react-native';
+import { ActivityIndicator,FlatList,Pressable,RefreshControl,ScrollView as RNScrollView,StyleSheet,Text,View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 /** Verzögert den Wert um `delay` ms — verhindert eine Query pro Tastendruck */
@@ -56,9 +56,10 @@ export default function ExploreScreen() {
   const [filterOpen, setFilterOpen] = useState(false);
 
   // Top Produkte für Shop-Sektion
-  const { data: topProducts = [] } = useShopProducts({ limit: 6 });
+  const { data: topProducts = [], refetch: refetchProducts } = useShopProducts({ limit: 6 });
   // WOZ-Status für Banner
   const { canAccessWomenOnly } = useWomenOnly();
+  const [refreshing, setRefreshing] = useState(false);
 
   // Hashtag-Deep-Link aus Feed: Tag direkt vorauswählen
   useEffect(() => {
@@ -75,14 +76,25 @@ export default function ExploreScreen() {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    refetch: refetchGrid,
   } = useExploreGrid(
     isSearching ? null : activeTag,
     sortMode
   );
-  const { data: trendingTags = EXPLORE_FALLBACK_TAGS } = useTrendingTags();
+  const { data: trendingTags = EXPLORE_FALLBACK_TAGS, refetch: refetchTags } = useTrendingTags();
   const { data: users } = useExploreUserSearch(debouncedQuery);
   const { data: foundPosts, isLoading: searchLoading } = useExplorePostSearch(debouncedQuery);
-  const { data: discoverUsers = [] } = useDiscoverPeople();
+  const { data: discoverUsers = [], refetch: refetchDiscover } = useDiscoverPeople();
+
+  // Pull-to-Refresh: Grid + Trends + Nutzer + Shop parallel neu laden
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([refetchGrid(), refetchTags(), refetchDiscover(), refetchProducts()]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetchGrid, refetchTags, refetchDiscover, refetchProducts]);
 
   const renderGridItem = useCallback(({ item }: { item: ExplorePostThumb }) => {
     if ((item as any).__isPlaceholder) {
@@ -105,25 +117,10 @@ export default function ExploreScreen() {
         } as unknown as ExplorePostThumb)),
       ];
 
-  return (
-    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.bg.primary }]}>
-      <ExploreSearchBar
-        query={query}
-        onQueryChange={(t) => {
-          setQuery(t);
-          setActiveTag(null);
-        }}
-        sortMode={sortMode}
-        onOpenSort={() => setFilterOpen(true)}
-      />
-
-      <ExploreSortModal
-        visible={filterOpen}
-        sortMode={sortMode}
-        onClose={() => setFilterOpen(false)}
-        onSelectSort={setSortMode}
-      />
-
+  // ── Alle Discovery-Sektionen als EIN scrollbarer Listenkopf (statt fixer
+  //    Kopfzeile) → die ganze Entdecken-Seite scrollt als eine Fläche. ──
+  const listHeader = (
+    <View>
       {!isSearching && (
         <ExploreTagChips tags={trendingTags} activeTag={activeTag} onSelectTag={setActiveTag} />
       )}
@@ -131,9 +128,10 @@ export default function ExploreScreen() {
       {/* Nutzer entdecken — nur wenn nicht gesucht wird */}
       {!isSearching && discoverUsers.length > 0 && (
         <View>
-          <Text style={[styles.sectionLabel, { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 6 }]}>
-            Nutzer entdecken
-          </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8 }}>
+            <Sparkles size={15} color={colors.text.primary} strokeWidth={2} />
+            <Text style={[styles.sectionLabel, { marginBottom: 0 }]}>Nutzer entdecken</Text>
+          </View>
           <RNScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -190,10 +188,10 @@ export default function ExploreScreen() {
 
       {!isSearching && topProducts.length > 0 && (
         <View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 6 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 10, paddingBottom: 8 }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
               <ShoppingBag size={15} color={colors.text.primary} strokeWidth={2} />
-              <Text style={[styles.sectionLabel, { paddingHorizontal: 0, paddingTop: 0, paddingBottom: 0 }]}>Shop</Text>
+              <Text style={[styles.sectionLabel, { marginBottom: 0 }]}>Shop</Text>
             </View>
             <Pressable
               onPress={() => router.navigate('/(tabs)/shop' as any)}
@@ -240,64 +238,96 @@ export default function ExploreScreen() {
           <View style={styles.sectionDivider} />
         </View>
       )}
+    </View>
+  );
 
-      {(gridLoading || searchLoading) && postsToShow.length === 0 ? (
-        <View style={styles.loadingWrap}>
-        <ActivityIndicator color={colors.text.primary} size="large" />
-        </View>
-      ) : postsToShow.length === 0 && isSearching ? (
-        <View style={styles.emptyWrap}>
-          <SearchX size={48} color="rgba(255,255,255,0.3)" />
-          <Text style={styles.emptyText}>{`Dazu finde ich nichts 🔍 — probier was anderes für „${debouncedQuery}"`}</Text>
-          <Pressable
-            onPress={() => setQuery('')}
-            style={emptyBtnStyle.btn}
-            accessibilityRole="button"
-            accessibilityLabel="Suche löschen"
-          >
-            <Text style={[emptyBtnStyle.btnText, { color: colors.text.primary }]}>Suche löschen</Text>
-          </Pressable>
-        </View>
-      ) : postsToShow.length === 0 && activeTag ? (
-        <View style={styles.emptyWrap}>
-          <Tag size={48} color="rgba(255,255,255,0.3)" />
-          <Text style={styles.emptyText}>{`Zu „${activeTag}" ist noch nichts dabei 🏷️ — bald bestimmt!`}</Text>
-          <Pressable
-            onPress={() => setActiveTag(null)}
-            style={emptyBtnStyle.btn}
-            accessibilityRole="button"
-            accessibilityLabel="Tag-Filter entfernen"
-          >
-            <Text style={[emptyBtnStyle.btnText, { color: colors.text.primary }]}>Filter entfernen</Text>
-          </Pressable>
-        </View>
-      ) : (
-        <FlatList
-          data={postsToShow}
-          keyExtractor={(item) => item.id}
-          renderItem={renderGridItem}
-          numColumns={EXPLORE_GRID_COLS}
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={styles.grid}
-          removeClippedSubviews
-          initialNumToRender={12}
-          maxToRenderPerBatch={9}
-          windowSize={7}
-          onEndReached={() => {
-            if (!isSearching && hasNextPage && !isFetchingNextPage) {
-              fetchNextPage();
-            }
-          }}
-          onEndReachedThreshold={0.5}
-          ListFooterComponent={
-            isFetchingNextPage ? (
-              <View style={{ padding: 20, alignItems: 'center' }}>
-                <ActivityIndicator color={colors.text.primary} />
-              </View>
-            ) : null
+  // Leer-/Ladezustand als ListEmptyComponent — bleibt unter dem Kopf sichtbar
+  const listEmpty = (gridLoading || searchLoading) ? (
+    <View style={styles.loadingWrap}>
+      <ActivityIndicator color={colors.text.primary} size="large" />
+    </View>
+  ) : isSearching ? (
+    <View style={styles.emptyWrap}>
+      <SearchX size={48} color="rgba(255,255,255,0.3)" />
+      <Text style={styles.emptyText}>{`Dazu finde ich nichts 🔍 — probier was anderes für „${debouncedQuery}"`}</Text>
+      <Pressable
+        onPress={() => setQuery('')}
+        style={emptyBtnStyle.btn}
+        accessibilityRole="button"
+        accessibilityLabel="Suche löschen"
+      >
+        <Text style={[emptyBtnStyle.btnText, { color: colors.text.primary }]}>Suche löschen</Text>
+      </Pressable>
+    </View>
+  ) : activeTag ? (
+    <View style={styles.emptyWrap}>
+      <Tag size={48} color="rgba(255,255,255,0.3)" />
+      <Text style={styles.emptyText}>{`Zu „${activeTag}" ist noch nichts dabei 🏷️ — bald bestimmt!`}</Text>
+      <Pressable
+        onPress={() => setActiveTag(null)}
+        style={emptyBtnStyle.btn}
+        accessibilityRole="button"
+        accessibilityLabel="Tag-Filter entfernen"
+      >
+        <Text style={[emptyBtnStyle.btnText, { color: colors.text.primary }]}>Filter entfernen</Text>
+      </Pressable>
+    </View>
+  ) : null;
+
+  return (
+    <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.bg.primary }]}>
+      <ExploreSearchBar
+        query={query}
+        onQueryChange={(t) => {
+          setQuery(t);
+          setActiveTag(null);
+        }}
+        sortMode={sortMode}
+        onOpenSort={() => setFilterOpen(true)}
+      />
+
+      <ExploreSortModal
+        visible={filterOpen}
+        sortMode={sortMode}
+        onClose={() => setFilterOpen(false)}
+        onSelectSort={setSortMode}
+      />
+
+      <FlatList
+        data={postsToShow}
+        keyExtractor={(item) => item.id}
+        renderItem={renderGridItem}
+        numColumns={EXPLORE_GRID_COLS}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={[styles.grid, postsToShow.length === 0 && { flexGrow: 1 }]}
+        ListHeaderComponent={listHeader}
+        ListEmptyComponent={listEmpty}
+        removeClippedSubviews
+        initialNumToRender={12}
+        maxToRenderPerBatch={9}
+        windowSize={7}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={colors.text.primary}
+            colors={[colors.accent.primary]}
+          />
+        }
+        onEndReached={() => {
+          if (!isSearching && hasNextPage && !isFetchingNextPage) {
+            fetchNextPage();
           }
-        />
-      )}
+        }}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          isFetchingNextPage ? (
+            <View style={{ padding: 20, alignItems: 'center' }}>
+              <ActivityIndicator color={colors.text.primary} />
+            </View>
+          ) : null
+        }
+      />
     </View>
   );
 }

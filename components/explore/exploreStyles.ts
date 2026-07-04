@@ -174,6 +174,17 @@ export const getExploreStyles = (c: ThemeColors) => StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.55)',
     alignItems: 'center', justifyContent: 'center',
   },
+  // Like-Zahl unten links auf dem Thumbnail (weiß + Schatten, sichtbar auf hell/dunkel)
+  gridStat: {
+    position: 'absolute', left: 6, bottom: 6,
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    // Schatten-Halo → weißes Herz bleibt auch auf hellen Thumbnails sichtbar
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.55, shadowRadius: 3, elevation: 4,
+  },
+  gridStatText: {
+    color: '#fff', fontSize: 11, fontWeight: '700',
+    textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3,
+  },
 
   loadingWrap: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   emptyWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12, paddingHorizontal: 32 },

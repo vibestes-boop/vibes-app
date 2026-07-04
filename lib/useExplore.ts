@@ -24,6 +24,8 @@ export type ExplorePostThumb = {
   media_url: string | null;
   media_type: string;
   caption: string | null;
+  like_count?: number | null;
+  view_count?: number | null;
 };
 
 export type ExploreUserResult = {
@@ -84,7 +86,7 @@ export function useExploreGrid(tag: string | null, sortMode: ExploreSortMode) {
 
       let q = supabase
         .from('posts')
-        .select('id, media_url, media_type, caption, dwell_time_score, created_at')
+        .select('id, media_url, media_type, caption, like_count, view_count, dwell_time_score, created_at')
         .not('media_url', 'is', null)
         .range(offset, offset + limit - 1);
 
@@ -152,7 +154,7 @@ export function useExplorePostSearch(query: string) {
       if (!query.trim()) return [];
       const { data, error } = await supabase
         .from('posts')
-        .select('id, media_url, media_type, caption')
+        .select('id, media_url, media_type, caption, like_count, view_count')
         .ilike('caption', `%${query.trim()}%`)
         .not('media_url', 'is', null)
         .limit(30);
