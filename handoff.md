@@ -1,4 +1,4 @@
-# Handoff — Serlo/Vibes (Stand 3. Juli 2026 · Session 7)
+# Handoff — Serlo/Vibes (Stand 4. Juli 2026 · Session 8)
 
 > 📍 **Dieses Dokument: `/Users/zaurhatuev/vibes-app/handoff.md`**
 > Arbeite NUR in diesem Repo: **`/Users/zaurhatuev/vibes-app`** (Branch `main`).
@@ -14,9 +14,13 @@
 
 ## 🚀 Neue Sitzung — Start hier
 
-- **Stand:** Session 7 = großer Sprint Richtung **App-Store-Launch** + UI-Politur + Sicherheit/Monitoring. Alle Migrationen ausgeführt, Functions deployt, **10+ OTAs raus**, Working Tree sauber. Letzter Commit `89b0c22`.
-- **🔴 UNMITTELBAR OFFEN (hier weitermachen):** **Overlay-Button-Design auf ALLE Post-Flächen ausrollen.** Ich habe die Buttons NUR auf `app/user-posts.tsx` finalisiert (das ist der Screen, den ein **Profil-Post-Klick** öffnet — NICHT `post/[id]`!). Zaur testet gerade den Look dort (bare weiße gefüllte Icons + Schatten, kein dunkler Kreis; Kommentar = gefüllte Blase mit 3 dunklen Punkten `bubbleDot`/`bubbleDots`, `top:9` ggf. justieren; `rightActions` gap 10, Pille 44). **Sobald Zaur „passt" sagt → exakt diese Werte auf `app/post/[id].tsx`, `app/guild-post/[id].tsx` und `components/feed/FeedItem.tsx` übertragen** (dort stehen noch die alten dunklen Kreise aus Commits 6f22f59/c9a3547/699b408). Details: **§1.1-C**.
-- **App-Store-Launch (Zaurs Hauptziel):** Technische Pflichtpunkte fast alle erledigt (§1.1-B). **Es fehlt: (1) frischer Production-Build 287** (app.json version/buildNumber hoch, `eas build --platform ios --profile production`), **(2) Zaurs ASC-Fleißarbeit** (Screenshots 1290×2796, Privacy-Labels, Altersfreigabe 17+, Demo-Account + Review-Notes). Der Coin-Shop ist per Feature-Flag versteckt (`lib/featureFlags.ts` `COIN_SHOP_ENABLED=false`) — Apple-Blocker weg.
+- **Stand:** Session 8 = großer UI/UX-Politur-Sprint (Post-Overlays, Video-Verhalten, Feed-Algorithmus **v5**, Create/Studio/Live-Redesign, Namens-Umbenennung, Dark-Default) + **ein Prod-Crash-Fix**. Alles committed + gepusht + verifiziert, viele OTAs raus. Working Tree sauber. Letzter Commit **`ce18a8f`**.
+- **🔴 UNMITTELBAR OFFEN (hier weitermachen):**
+  1. **App-Store Build 287** (Zaurs Hauptziel, s.u.) — alle technischen Pflichtpunkte erledigt, es fehlt nur der frische Build + ASC-Angaben.
+  2. **Create-Editor auf Glas-Sprache ziehen:** Studio + Live nutzen jetzt das geteilte theme-aware `components/create/CreateGlass.tsx` (GlassPanel + useCreateGlass). Der **Editor** (`app/create/index.tsx` + `components/create/editor/*`) ist noch NICHT drauf umgestellt — gleiches Modul anwenden für konsistente Optik.
+  3. **Crash in Sentry verifizieren:** PushNotificationIOS-Crash gefixt (`98ab7da`), in 1–2 Tagen prüfen ob die zwei Issues (`Invariant Violation` + `TypeError get PushNotificationIOS`) keine neuen Events mehr bekommen → dann Resolved markieren.
+- **⚠️ OTA-Rollback-Falle (Session 8 gelernt):** Der PushNotificationIOS-Crash hat auf Zaurs Gerät expo-updates-**Rollbacks** ausgelöst → er sah neue OTAs (Redesign etc.) tw. nicht („unverändert"). `fallbackToCacheTimeout: 0` (app.json) → OTA greift erst beim 2. Kaltstart. Bei hängender Rollback-Schleife: **App aus TestFlight neu installieren** (frischer Start → zieht die neueste gute Version). Sauber gelöst wäre Build 287 (alles fest im Binary).
+- **App-Store-Launch (Zaurs Hauptziel):** Technische Pflichtpunkte alle erledigt (§1.1-B). **Es fehlt: (1) frischer Production-Build 287** (app.json version/buildNumber hoch, `eas build --platform ios --profile production` — frisch von `main`, damit Coin-Flag + alle Session-8-Fixes im Binary), **(2) Zaurs ASC-Fleißarbeit** (Screenshots 1320×2868 für 6,9", Privacy-Labels, Altersfreigabe 17+, Demo-Account + Review-Notes). Coin-Shop per Feature-Flag versteckt (`lib/featureFlags.ts` `COIN_SHOP_ENABLED=false`). **Simulator-Screenshots gehen NICHT** (MLKit liefert nur x86_64-Sim-Binaries → auf Apple-Silicon-Sim nicht baubar; Geräte-Screenshots nehmen).
 - **Realer Kontext:** Parfüm läuft **offline** (verkauft), 80 Flaschen in Lieferung, 5 App-Vorbestellungen getestet. Premortem: **erst validieren, dann mehr bauen.** Guild-Commerce v1 (Sammelbestellungs-Runden) ist gebaut + Migration ausgeführt — bereit für die 80er-Runde.
 - **Screenshots-Falle beim UI-Testen:** Overlay-Icons sehen im **Screenshot** sichtbar aus, auf dem **echten Display** (Reflexion/Helligkeit) aber nicht → dünne weiße Umrisse verschwinden. Lösung war: **solide gefüllte** Icons (mehr weiße Fläche) + Schatten. Beim UI-Debuggen immer Foto-vom-Display statt Screenshot vertrauen.
 - **Git-Push:** via PAT aus `.env.local` (§4). Lokaler Reflog kann alt aussehen — mit `git ls-remote` verifizieren, nicht dem Reflog trauen.
@@ -28,18 +32,58 @@
 | Bereich | Stand |
 |---|---|
 | **Repo / Branch** | `/Users/zaurhatuev/vibes-app` · `main` · Working Tree **sauber** |
-| **Letzter Commit** | `89b0c22` — user-posts Kommentar-Blase gefüllt mit Punkten. **Alle Session-7-Commits gepusht & verifiziert (`git ls-remote`).** |
+| **Letzter Commit** | `ce18a8f` — Dark Mode als Standard für alle User. **Alle Session-8-Commits gepusht & verifiziert (`git ls-remote`).** |
 | **Web (apps/web)** | deployt via **Vercel** auf Push zu `main`. **Live: `serlo-web.vercel.app` — ⚠️ OHNE `www`!** Sentry-Web jetzt AKTIV (DSN in Vercel gesetzt, Source Maps laden). |
 | **App-Build** | v1.30.0 / iOS-Build 286 (TestFlight) · Runtime **1.30.0**. OTAs ziehen nur beim **kalten App-Neustart** (2× killen+öffnen — greift beim 2. Start). Channel `production` → Branch `production` verknüpft ✓. |
-| **Letzter OTA** | `89b0c22` (user-posts Kommentar-Blase). **Kein offener App-OTA außer dem UI-Rollout (§1.1-C).** Nächste App-Änderung: `EAS_BUILD=1 npx eas update --branch production --message "…"`. |
+| **Letzter OTA** | `ce18a8f` (Dark-Default). **Viele Session-8-OTAs raus, alle auf Runtime 1.30.0.** Nächste App-Änderung: `EAS_BUILD=1 npx eas update --branch production --message "…"`. ⚠️ OTA greift erst beim 2. Kaltstart (`fallbackToCacheTimeout: 0`). |
 | **Edge Functions deployed** | `create-checkout-session`, `stripe-webhook` (payment_status-Guard NEU), `revenuecat-webhook` (fail-closed + atomare Idempotenz NEU), `send-push-notification`. Webhooks `--no-verify-jwt` via `supabase/config.toml`. Memory `vibes-edge-webhook-verify-jwt` + `vibes-security-review-money`. |
-| **DB-Migrationen** | ✅ **ALLE ausgeführt** (Zaur). Neu Session 7: `20260702100000_guild_commerce_rounds` (Sammelbestellungs-Runden), `20260702120000_buy_product_quantity_guard` (Security). **Keine offene Migration.** |
-| **GERADE FERTIG (Session 7)** | UI-Politur (Statusbar-Rollout, Typo-Entfettung, Feed-Top-Zeile, Guild-Kopf, Profil-Kopf, Shoppable-Chip, Edit-Post) · **Guild-Commerce v1** (Runden) · **Security-Review + 4 Fixes** · **Monitoring-Vollausbau** (Sentry-Web, Telegram-CI-Alerts, UptimeRobot) · **Coin-Shop Feature-Flag** (App-Store) · **SecureStore-Crash-Fix** · Post-Overlay-Sichtbarkeit. Voll in §1.1. |
-| **🔴 NÄCHSTE AUFGABE** | **(1)** Overlay-Button-Design von `user-posts.tsx` auf `post/[id]`, `guild-post/[id]`, Feed ausrollen (§1.1-C, wartet auf Zaurs OK zum Look). **(2)** App-Store: Build 287 + ASC-Angaben (§1.1-B). |
+| **DB-Migrationen** | ✅ **ALLE ausgeführt** (Zaur). Neu Session 8: `20260704100000_feed_algorithm_v5` (Feed-Algo v5 — Seen-Penalty/Skip-Negativ/Decay-Cron/Jitter/Cold-Start/Wilson/Tag-Affinität; Migration hat `user_tag_affinity` initial befüllt + 2 pg_cron-Jobs geplant). **Keine offene Migration.** |
+| **GERADE FERTIG (Session 8)** | **Overlay-Buttons** vereinheitlicht (Feed/Guild/Profil/post-Detail: bare gefüllte Icons, Teilen+Optionen zu EINEM Sheet zusammengeführt, höher gesetzt) · **Blur-Fill→Schwarz** (contain) · **nahtloser Kommentar-Peek** in user-posts · **Video-Verhalten** (Feed pausiert bei Profil-Swipe, Guild Karte→Detail Resume via `alwaysResume`, guild-post pausiert bei Profil-Öffnen) · **Feed-Algorithmus v5** (Migration ausgeführt) · **Entdecken** (durchgehend scrollen, Pull-to-Refresh, Like-Zahlen) · **Shop** (Sammelbestellung-Karte, Merken-Herz, Refresh) · **Create/Studio/Live-Redesign** (theme-aware Glas `CreateGlass.tsx`) · **Profil-Teilen** HTTPS-Link · **PushNotificationIOS-Crash-Fix** · **Labels** Feed→Home, Guild→Clan, Vibe→Aufnahme · **Dark Mode Default** · **Live-Kamera 1080p**. Voll in §1.0.5. |
+| **🔴 NÄCHSTE AUFGABE** | **(1)** App-Store: Build 287 + ASC-Angaben (§1.1-B). **(2)** Create-**Editor** auf `CreateGlass` umstellen (Studio+Live schon drauf). **(3)** Sentry: PushNotificationIOS-Issues verifizieren/Resolved. |
 | **Monitoring** | Alles bewacht: UptimeRobot (3 Monitore), Sentry App+Web (Source Maps), Telegram-CI-Alerts (alle 5 Workflows), Stripe-Webhook-Mails. Doku: `docs/MONITORING.md`. CI-Baseline = **0 Fehler**, Rot ist echtes Signal. |
 | **Admin** | Zaur (`username='zaur'`, `profiles.is_admin = true`) — nötig fürs Vorbestell-/Runden-Gate, Dispute-Klärung, „Ankündigen"/„Zahlung anfordern". |
 
 ⚠️ **Quarantäne:** `/Users/zaurhatuev/Desktop/vibes-app` — NIEMALS bauen/deployen/pushen.
+
+---
+
+## 1.0.5 🆕 Session 8 (4. Juli) — UI/UX-Politur · Video · Feed-v5 · Create-Redesign · Crash-Fix
+
+> Alles committed + gepusht + verifiziert, viele OTAs raus (Runtime 1.30.0).
+> Commit-Kette grob: `14e6026 → ce18a8f` auf `main`.
+
+### A) Post-Overlay-Buttons vereinheitlicht + Teilen/Optionen zusammengeführt
+- **Einheitlicher bare-Look** auf `user-posts.tsx`, `post/[id].tsx`, `guild-post/[id].tsx`, Feed (`FeedActionButtons.tsx`/`feedStyles.ts`): gefüllte weiße Icons + Schatten, **kein Like-/Bookmark-Quadrat**, Kommentar = gefüllte Blase mit 3 Punkten, Zähler eng am Icon (Box-Höhe 34).
+- **Teilen + Drei-Punkte zu EINEM Sheet** (`PostShareModal` ist jetzt das universelle „Teilen + Optionen"-Sheet, owner-aware, mit „Tune my Vibe" + echtem Video-Speichern). Drei-Punkte-Button entfällt; `PostOptionsModal` gelöscht. post/[id] + guild-post nutzen jetzt via `useFollow` das reiche Sheet statt System-Teilen; user-posts eigene Posts → weiterhin `PostManageModal` (Bearbeiten/Löschen/Anpinnen).
+- **Overlay-Spalte höher gesetzt** (`+88`/`+92`/`commentBarH+44`) — Teilen klemmte im 28px-Seek-Hitbereich des Ladebalkens → Fehlklicks.
+- **Overlay-Icon-Abstand** vertikal erhöht (gap 10→16).
+
+### B) Medien-Darstellung + Video-Verhalten
+- **Blur-Fill → Schwarz:** Feed + guild-post + user-posts zeigen abweichende Formate jetzt `contain` auf schwarzem Grund (kein unscharfer Cover-„Spiegelungs"-Rand). Auch der **Create-Editor** (`FilterSheet` SkiaFilteredImage + VideoView) rendert `contain`.
+- **Nahtloser Kommentar-Peek in `user-posts`:** Video schrumpft nach oben (~40%) & spielt weiter (sheetProgress+seamlessPeek, wie guild-post) — Kommentare laufen jetzt pro PostCard.
+- **Guild-Detail-Layout-Fix:** bottomInfo hatte `bottom:80` UND paddingBottom gestapelt → Inhalt saß zu hoch; jetzt `commentBarH`-basiert.
+- **Video-Position:** (1) Feed pausiert beim Profil-Swipe, Resume beim Zurück (`shouldPlayVideo` + `!profilePanel` + extraData). (2) Guild **Karte→Detail spielt nahtlos weiter** — neues `alwaysResume`-Prop in `FeedVideo` (merkt/restauriert Position UNABHÄNGIG von Länge, restartSignal setzt nicht auf 0); nur GuildCard + guild-post setzen es, **Feed bleibt unverändert** (Short-Video-Parity). (3) guild-post pausiert Video, wenn ein Profil darüber geöffnet wird (`useFocusEffect` → `screenFocused`).
+
+### C) Feed-Algorithmus v5 (Migration `20260704100000`, ✅ ausgeführt)
+- Fixte drei tote Kreisläufe von v4: **Seen-Filter** las `seen_posts` (nie befüllt!) → jetzt `post_dwell_log` als **weicher Penalty ×0.15**; **`record_skip`** war Positiv-Signal (view_count++) → jetzt echtes Negativ (Dwell ×0.97, kein view_count); **`decay_dwell_scores`** war nie geplant → nächtlich 03:00.
+- Neu: **Jitter** (±15% im Sort), **Cold-Start-Boost** (junge Posts <14d, ≤+0.20), **Wilson-Popularity** (Like-Rate statt Roh-Counts), **Tag-Affinität** (`user_tag_affinity`, nächtlich 03:30 aus Likes+Dwell), **Community-Boosts** (Guild +0.05, DM +0.04, Shoppable +0.02). Client (`usePosts.ts`) sendet erste Seite jetzt `include_seen: false`. Memory `vibes-feed-algorithm-v5` teils veraltet → v5 ist neuer Stand.
+
+### D) Entdecken + Shop
+- **Entdecken** (`explore.tsx`): Sektionen in `ListHeaderComponent` → durchgehend scrollen (war fixer Kopf + gequetschtes Grid), **Pull-to-Refresh**, **Like-Zahl auf Thumbnails** (like_count/view_count in Query), Sparkles-Icon.
+- **Shop** (`shop/index.tsx`): aktive **Sammelbestellungs-Runde** (`GuildRoundCard`) prominent im Kopf, **Merken-Herz** auf jeder Karte (optimistisch, eine `useSavedProducts`-Liste), Pull-to-Refresh sichtbar (`refreshing`-State).
+
+### E) Create/Studio/Live-Redesign — theme-aware Glas
+- **Neues geteiltes Modul `components/create/CreateGlass.tsx`** (`GlassPanel` + `useCreateGlass`): frosted glass, **theme-aware** (dark→dunkel, light→hell, Blur+Scrim+Hairline-Border), Marken-Lila-Akzent, konsistente Typo/Chips/Segment/CTA. **Eine Quelle** für Studio, Editor, Live.
+- **Studio** (`create/camera.tsx`) + **Live-Setup** (`live/start.tsx`) darauf umgestellt (Panels, Mode-Switcher theme-aware Icons). Kontrast später angehoben (Scrim 0.86, Blur 55, Labels `text.secondary` — waren zu blass/murkig).
+- **🔴 Editor (`create/index.tsx` + `editor/*`) noch NICHT umgestellt** — nächster Schritt.
+
+### F) Sonstiges
+- **Profil-Teilen:** rohem `serlo://user/<uuid>` → HTTPS `webProfileUrl(username)` = `serlo-web.vercel.app/u/<username>` (unfurlt mit OG-Bild). Memory-Parität mit Post/Produkt.
+- **🔴 Prod-Crash-Fix (`98ab7da`):** `Invariant Violation: new NativeEventEmitter() requires a non-null argument` via `get PushNotificationIOS`. Ursache: etwas enumeriert die react-native-Exports (Fehler-Kontext-Capture) → RNs `PushNotificationIOS`-Getter lädt ein Modul, das crasht (natives Push nicht gelinkt, wir nutzen expo-notifications). Fix: Getter früh in `app/_layout.tsx` auf `undefined` + non-enumerable stubben. **Löste auf Zaurs Gerät die expo-updates-Rollbacks aus** (s. Start-hier OTA-Falle).
+- **Labels umbenannt** (nur sichtbar, interne Bezeichner/Routen/DB unberührt): **Feed→Home**, **Guild→Clan** (Tab-Label `tabBarStore` + alle sichtbaren Guild-Texte + Post-Badge), **Vibe→Aufnahme** (Create-Modus). Marke „Vibes"/„Vibe" (Post-Begriff) bleibt.
+- **Dark Mode Default** (`themeStore.ts`): Standard `'system'`→`'dark'` für alle, Persist-Migration v2 hebt bestehende `'system'`-User auf `'dark'`. Light nur bei aktiver Umstellung.
+- **Live-Kamera-Qualität** (`live/host.tsx`): 720p→**1080p-Capture** + 1080p-Top-Simulcast-Layer @ 3.5Mbps + `maintain-resolution`; untere Layer bleiben. Rückkamera-Flip existierte schon (behält 1080p). Braucht starken Host-Upload; Low-Light-Rauschen bleibt.
+- **Simulator-Screenshot-Versuch gescheitert:** MLKit-Pods setzen `EXCLUDED_ARCHS[iphonesimulator]=arm64` (nur x86_64-Sim-Binary) → auf Apple-Silicon-Sim nicht baubar. **App-Store-Screenshots vom echten Gerät nehmen** (1320×2868 für 6,9").
 
 ---
 
