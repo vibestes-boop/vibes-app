@@ -7,9 +7,11 @@
  */
 import { VideoProgressBar,type VideoProgressHandle } from '@/components/feed/FeedItem';
 import { FallbackFeedVideo,NativeFeedVideo,USE_EXPO_VIDEO,type FeedVideoSeekHandle } from '@/components/feed/FeedVideo';
+import { PostShareModal } from '@/components/feed/PostShareModal';
 import { PostManageModal } from '@/components/profile/PostManageModal';
 import CommentsSheet from '@/components/ui/CommentsSheet';
 import { useAuthStore } from '@/lib/authStore';
+import { useFollow } from '@/lib/useFollow';
 import { useTogglePinPost } from '@/lib/usePostManagement';
 import { supabase } from '@/lib/supabase';
 import { useBookmark } from '@/lib/useBookmark';
@@ -27,7 +29,6 @@ Bookmark,
 Eye,
 Heart,
 MessageCircle,
-MoreHorizontal,
 Share2,
 Volume2,
 VolumeX
@@ -206,6 +207,7 @@ function PostCard({
   isOwner,
   onOpenComments,
   onManage,
+  onShare,
 }: {
   item: PostItem;
   isVisible: boolean;
@@ -214,6 +216,7 @@ function PostCard({
   isOwner: boolean;
   onOpenComments: (postId: string) => void;
   onManage: (item: PostItem) => void;
+  onShare: (item: PostItem) => void;
 }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -347,25 +350,19 @@ function PostCard({
         <LikeBtn postId={item.id} />
         <CommentBtn postId={item.id} onPress={() => onOpenComments(item.id)} />
         <BookmarkBtn postId={item.id} />
-        {isOwner ? (
-          /* Eigene Posts: 3-Punkte-Menü unten rechts — Teilen + Verwalten als Untermenü (Short-Video-Stil) */
-          <Pressable
-            style={s.actionBtn}
-            onPress={() => onManage(item)}
-            hitSlop={8}
-            accessibilityLabel="Post-Optionen"
-          >
-            <View style={s.actionBtnInner}>
-              <MoreHorizontal size={24} color="#FFFFFF" strokeWidth={2.6} />
-            </View>
-          </Pressable>
-        ) : (
-          <Pressable style={s.actionBtn} onPress={() => sharePost(item.id, item.caption)}>
-            <View style={s.actionBtnInner}>
-              <Share2 size={25} color="#FFFFFF" strokeWidth={2.3} />
-            </View>
-          </Pressable>
-        )}
+        {/* Ein einheitlicher Teilen-Button (kein Drei-Punkte mehr): eigene Posts
+            öffnen das Verwalten-Sheet (Teilen/Bearbeiten/Löschen/Anpinnen),
+            fremde Posts das kombinierte Teilen-Sheet (Senden/Teilen/Folgen/Melden). */}
+        <Pressable
+          style={s.actionBtn}
+          onPress={() => (isOwner ? onManage(item) : onShare(item))}
+          hitSlop={8}
+          accessibilityLabel="Teilen und Optionen"
+        >
+          <View style={s.actionBtnInner}>
+            <Share2 size={25} color="#FFFFFF" strokeWidth={2.3} />
+          </View>
+        </Pressable>
       </View>
 
       {/* Unten: Avatar, Caption, Tags */}
@@ -470,6 +467,11 @@ export default function UserPostsScreen() {
   const [isMuted, setIsMuted] = useState(false);
   const [commentsPostId, setCommentsPostId] = useState<string | null>(null);
   const [manageItem, setManageItem] = useState<PostItem | null>(null);
+  const [shareItem, setShareItem] = useState<PostItem | null>(null);
+  // Follow-Kontext des Profil-Autors (alle Posts hier gehören demselben User) —
+  // fürs kombinierte Teilen-Sheet bei FREMDEN Posts.
+  const profileUserId = Array.isArray(userId) ? userId[0] : (userId ?? null);
+  const { isFollowing, toggle: toggleFollow, isOwnProfile } = useFollow(profileUserId);
   const [screenFocused, setScreenFocused] = useState(true);
   const { mutate: togglePin } = useTogglePinPost();
 
@@ -636,6 +638,7 @@ export default function UserPostsScreen() {
               isOwner={item.author_id === profile?.id}
               onOpenComments={setCommentsPostId}
               onManage={setManageItem}
+              onShare={setShareItem}
             />
           )}
           pagingEnabled
@@ -710,6 +713,22 @@ export default function UserPostsScreen() {
                 }
               );
             }}
+          />
+        )}
+
+        {/* Fremde Posts: kombiniertes Teilen-Sheet (Senden/Teilen/Folgen/Melden) */}
+        {shareItem && (
+          <PostShareModal
+            visible
+            postId={shareItem.id}
+            postCaption={shareItem.caption ?? undefined}
+            postAuthor={username ? String(username).replace(/^@+/, '') : ''}
+            isFollowing={isFollowing}
+            isOwnProfile={isOwnProfile}
+            onToggleFollow={toggleFollow}
+            mediaType={shareItem.media_type}
+            mediaUrl={shareItem.media_url ?? undefined}
+            onClose={() => setShareItem(null)}
           />
         )}
     </View>

@@ -16,15 +16,16 @@ import { FallbackFeedVideo,NativeFeedVideo,USE_EXPO_VIDEO } from '@/components/f
 import CommentsSheet from '@/components/ui/CommentsSheet';
 import { ProductFeedChip } from '@/components/feed/ProductFeedChip';
 import { useFeedProducts, type LinkedProduct } from '@/lib/useFeedProducts';
+import { PostShareModal } from '@/components/feed/PostShareModal';
 import { StoryRingAvatar } from '@/components/ui/StoryRingAvatar';
 import { useAuthStore } from '@/lib/authStore';
+import { useFollow } from '@/lib/useFollow';
 import { useGuildNavStore } from '@/lib/guildNavStore';
 import { useBookmark } from '@/lib/useBookmark';
 import { useCommentCount } from '@/lib/useComments';
 import { useLike } from '@/lib/useLike';
 import { useVideoMute } from '@/lib/useVideoPreferences';
 import type { GuildPost } from '@/lib/usePosts';
-import { sharePost } from '@/lib/useShare';
 import { impactAsync,ImpactFeedbackStyle } from 'expo-haptics';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -166,6 +167,8 @@ function GuildPostDetailItem({
   const [c0, c1] = guildColors;
   const isVideo = post.media_type === 'video';
   const [showComments, setShowComments] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const { isFollowing, toggle: toggleFollow, isOwnProfile } = useFollow(post.author_id ?? null);
   // Geteilter, persistenter Mute-Store (wie Feed + Guild-Karten): einmal laut →
   // bleibt laut across Detail-Items (Swipe), Karten-Liste↔Detail, App-Neustart.
   const { isMuted, toggleMute } = useVideoMute();
@@ -466,7 +469,7 @@ function GuildPostDetailItem({
         </Pressable>
 
         {/* Teilen */}
-        <Pressable onPress={() => sharePost(post.id, post.caption)} style={itemStyles.actionItem} hitSlop={10}>
+        <Pressable onPress={() => setShareOpen(true)} style={itemStyles.actionItem} hitSlop={10}>
           <View style={itemStyles.iconWrap}>
             <Share2 size={25} color="#FFFFFF" strokeWidth={2.3} />
           </View>
@@ -532,6 +535,19 @@ function GuildPostDetailItem({
           setShowComments(false);
           router.push({ pathname: '/user/[id]', params: { id: userId } });
         }}
+      />
+
+      <PostShareModal
+        visible={shareOpen}
+        postId={post.id}
+        postCaption={post.caption ?? undefined}
+        postAuthor={post.username ?? ''}
+        isFollowing={isFollowing}
+        isOwnProfile={isOwnProfile}
+        onToggleFollow={toggleFollow}
+        mediaType={post.media_type ?? undefined}
+        mediaUrl={post.media_url ?? undefined}
+        onClose={() => setShareOpen(false)}
       />
 
       {/* ── Video-Fortschrittsbalken — versteckt, wenn Kommentare offen ── */}

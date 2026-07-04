@@ -1,8 +1,10 @@
 import { VideoProgressBar,type VideoProgressHandle } from '@/components/feed/FeedItem';
 import { FallbackFeedVideo,NativeFeedVideo,USE_EXPO_VIDEO,type FeedVideoSeekHandle } from '@/components/feed/FeedVideo';
+import { PostShareModal } from '@/components/feed/PostShareModal';
 import { UserProfileContent } from '@/components/profile/UserProfileContent';
 import CommentsSheet from '@/components/ui/CommentsSheet';
 import { useAuthStore } from '@/lib/authStore';
+import { useFollow } from '@/lib/useFollow';
 import { useFeedNavStore } from '@/lib/feedNavStore';
 import { useFeedProducts } from '@/lib/useFeedProducts';
 import { ProductFeedChip } from '@/components/feed/ProductFeedChip';
@@ -10,7 +12,6 @@ import { supabase } from '@/lib/supabase';
 import { useBookmark } from '@/lib/useBookmark';
 import { useAddComment,useCommentCount } from '@/lib/useComments';
 import { useLike } from '@/lib/useLike';
-import { sharePost } from '@/lib/useShare';
 import { useQueryClient } from '@tanstack/react-query';
 import { impactAsync,ImpactFeedbackStyle } from 'expo-haptics';
 import { Image } from 'expo-image';
@@ -278,6 +279,7 @@ export default function PostDetailScreen() {
   const [post, setPost] = useState<PostDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [commentsOpen, setCommentsOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   // Nur fürs Profil-Aufrufen geschlossen → beim Zurückkommen wieder öffnen.
   const reopenCommentsRef = useRef(false);
   const [screenFocused, setScreenFocused] = useState(true);
@@ -286,6 +288,7 @@ export default function PostDetailScreen() {
   // Kurzer Play/Pause-Blitz in der Mitte beim Tap (Mute liegt auf dem eigenen Button).
   const [showMuteFlash, setShowMuteFlash] = useState<'paused' | 'playing' | null>(null);
   const isOwner = post?.author_id === profile?.id;
+  const { isFollowing, toggle: toggleFollow, isOwnProfile } = useFollow(post?.author_id ?? null);
   // Musik-Track Audio (expo-av — identisch zu FeedItem)
   const audioSoundRef = useRef<any>(null);
 
@@ -804,7 +807,7 @@ export default function PostDetailScreen() {
               <LikeButtonDetail postId={post.id} />
               <CommentButtonDetail postId={post.id} onPress={() => setCommentsOpen(true)} />
               <BookmarkButtonDetail postId={post.id} />
-              <Pressable style={styles.actionBtn} onPress={() => sharePost(post.id, post.caption)}>
+              <Pressable style={styles.actionBtn} onPress={() => setShareOpen(true)}>
                 <View style={styles.actionBtnInner}>
                   <Share2 size={25} stroke="#FFFFFF" strokeWidth={2.3} />
                 </View>
@@ -821,6 +824,18 @@ export default function PostDetailScreen() {
                 setCommentsOpen(false);
                 router.push({ pathname: '/user/[id]', params: { id: userId } });
               }}
+            />
+            <PostShareModal
+              visible={shareOpen}
+              postId={post.id}
+              postCaption={post.caption ?? undefined}
+              postAuthor={post.profiles?.username ?? ''}
+              isFollowing={isFollowing}
+              isOwnProfile={isOwnProfile}
+              onToggleFollow={toggleFollow}
+              mediaType={post.media_type ?? undefined}
+              mediaUrl={post.media_url ?? undefined}
+              onClose={() => setShareOpen(false)}
             />
           </>
         )}

@@ -13,7 +13,6 @@ import {
 CheckCircle2,
 Heart,
 Lock,
-MoreVertical,
 Music2,
 Pause,
 Play,
@@ -54,7 +53,6 @@ LikeButton
 import { feedItemStyles as styles } from './feedStyles';
 import { FallbackFeedVideo,NativeFeedVideo,USE_EXPO_VIDEO,type FeedVideoSeekHandle } from './FeedVideo';
 import PostLongPressSheet from './PostLongPressSheet';
-import { PostOptionsModal } from './PostOptionsModal';
 import { PostShareModal } from './PostShareModal';
 
 import type { FeedItemData } from './types';
@@ -526,7 +524,6 @@ export const FeedItem = React.memo(function FeedItem({
   // haben → beim Zurückkommen (Screen-Focus) wieder öffnen, Video bleibt klein.
   const reopenCommentsRef = useRef(false);
   const [shareOpen, setShareOpen] = useState(false);
-  const [optionsOpen, setOptionsOpen] = useState(false);
   const [longPressOpen, setLongPressOpen] = useState(false);
   const [likersOpen, setLikersOpen] = useState(false);
   // progress wurde in VideoProgressBar ausgelagert — kein Re-Render des ganzen FeedItem mehr
@@ -651,7 +648,7 @@ export const FeedItem = React.memo(function FeedItem({
 
   // commentsOpen pausiert NICHT mehr: das Video läuft beim Öffnen der Kommentare
   // nahtlos weiter (derselbe Player) und schrumpft nur in den Peek-Bereich oben.
-  const actualShouldPlay = shouldPlayVideo && !isPaused && !shareOpen && !optionsOpen && !longPressOpen;
+  const actualShouldPlay = shouldPlayVideo && !isPaused && !shareOpen && !longPressOpen;
 
 
   // ── Media-Resize wenn Comments öffnet (Short-Video-Style) ──────────────────────
@@ -861,23 +858,10 @@ export const FeedItem = React.memo(function FeedItem({
           toggleFollow();
           notificationAsync(NotificationFeedbackType.Success);
         }}
-        onClose={() => setShareOpen(false)}
-      />
-
-      <PostOptionsModal
-        visible={optionsOpen}
-        postId={item.id}
-        isFollowing={isFollowing}
-        isOwnProfile={isOwnProfile}
-        authorName={item.author}
+        onOpenTune={onOpenTune ? () => onOpenTune() : undefined}
         mediaType={item.mediaType ?? undefined}
         mediaUrl={item.mediaUrl ?? undefined}
-        onToggleFollow={() => {
-          toggleFollow();
-          notificationAsync(NotificationFeedbackType.Success);
-        }}
-        onOpenTune={() => onOpenTune?.()}
-        onClose={() => setOptionsOpen(false)}
+        onClose={() => setShareOpen(false)}
       />
 
       <PostLongPressSheet
@@ -1116,20 +1100,15 @@ export const FeedItem = React.memo(function FeedItem({
             }}
           />
         )}
+        {/* Teilen = ein Button, öffnet das kombinierte Sheet (Senden/Teilen +
+            Folgen/Melden/Tune/Speichern). Der frühere Drei-Punkte-Button ist
+            entfernt — alle Optionen leben jetzt im Teilen-Sheet. */}
         <ActionButton
           icon={Share2}
-          accessibilityLabel="Post teilen"
+          accessibilityLabel="Teilen und Optionen"
           onPress={() => {
             impactAsync(ImpactFeedbackStyle.Light);
             setShareOpen(true);
-          }}
-        />
-        <ActionButton
-          icon={MoreVertical}
-          accessibilityLabel="Weitere Optionen"
-          onPress={() => {
-            impactAsync(ImpactFeedbackStyle.Light);
-            setOptionsOpen(true);
           }}
         />
       </Animated.View>

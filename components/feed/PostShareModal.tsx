@@ -3,6 +3,7 @@ import { webPostUrl } from '@/lib/webLinks';
 import { supabase } from '@/lib/supabase';
 import { useOrCreateConversation,useSendMessage } from '@/lib/useMessages';
 import { useReport } from '@/lib/useReport';
+import { useSaveVideo } from '@/lib/useSaveVideo';
 import { useQuery } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
@@ -15,6 +16,7 @@ Flag,
 Search,
 Send,
 Share2,
+SlidersHorizontal,
 UserCheck,
 UserPlus,
 } from 'lucide-react-native';
@@ -51,6 +53,9 @@ export function PostShareModal({
   isOwnProfile,
   onToggleFollow,
   onClose,
+  onOpenTune,
+  mediaType,
+  mediaUrl,
 }: {
   visible: boolean;
   postId: string;
@@ -60,8 +65,14 @@ export function PostShareModal({
   isOwnProfile: boolean;
   onToggleFollow: () => void;
   onClose: () => void;
+  // Optional: "Tune my Vibe" (nur im Feed sinnvoll — Algorithmus anpassen)
+  onOpenTune?: () => void;
+  // Optional: echtes Video-Speichern in die Galerie (statt Stub)
+  mediaType?: string;
+  mediaUrl?: string;
 }) {
   const currentUserId = useAuthStore((s) => s.profile?.id);
+  const { saveVideo, isSaving } = useSaveVideo();
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [sending, setSending] = useState(false);
@@ -158,6 +169,7 @@ export function PostShareModal({
     }
   };
 
+  const hasSavableVideo = mediaType === 'video' && !!mediaUrl;
   const actionButtons = [
     ...(!isOwnProfile
       ? [
@@ -169,9 +181,19 @@ export function PostShareModal({
           },
         ]
       : []),
-    { id: 'notinterested', label: 'Kein Interesse', icon: EyeOff, color: '#6B7280' },
-    { id: 'report', label: 'Melden', icon: Flag, color: '#ef4444' },
-    { id: 'download', label: 'Speichern', icon: Download, color: '#6B7280' },
+    ...(onOpenTune
+      ? [{ id: 'tune', label: 'Tune my Vibe', icon: SlidersHorizontal, color: '#FFFFFF' }]
+      : []),
+    // Melden / Kein Interesse ergeben nur bei FREMDEN Posts Sinn.
+    ...(!isOwnProfile
+      ? [
+          { id: 'notinterested', label: 'Kein Interesse', icon: EyeOff, color: '#6B7280' },
+          { id: 'report', label: 'Melden', icon: Flag, color: '#ef4444' },
+        ]
+      : []),
+    ...(hasSavableVideo
+      ? [{ id: 'download', label: isSaving ? 'Speichern…' : 'Speichern', icon: Download, color: '#6B7280' }]
+      : []),
   ];
 
   const { mutate: reportPost } = useReport();
@@ -182,6 +204,9 @@ export function PostShareModal({
     switch (id) {
       case 'follow':
         onToggleFollow();
+        break;
+      case 'tune':
+        setTimeout(() => onOpenTune?.(), 80);
         break;
       case 'notinterested':
         reportPost({ postId, reason: 'not_interested' });
@@ -207,7 +232,7 @@ export function PostShareModal({
         ]);
         break;
       case 'download':
-        Alert.alert('Speichern', 'Download-Funktion kommt bald.');
+        if (mediaUrl) saveVideo(mediaUrl);
         break;
     }
   };
@@ -287,7 +312,7 @@ export function PostShareModal({
             })}
           </ScrollView>
 
-          <View style={pss.divider} />
+          {actionButtons.length > 0 && <View style={pss.divider} />}
 
           <View style={pss.actionRow}>
             {actionButtons.map((btn) => {
