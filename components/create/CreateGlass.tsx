@@ -38,11 +38,13 @@ export function GlassPanel({
         style as ViewStyle,
       ]}
     >
-      <BlurView intensity={40} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+      <BlurView intensity={55} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
       <View
         style={[
           StyleSheet.absoluteFill,
-          { backgroundColor: isDark ? 'rgba(16,16,22,0.58)' : 'rgba(255,255,255,0.66)' },
+          // Kräftigerer, leicht heller Scrim → das Panel liest sich als klare
+          // Fläche (nicht murkig-dunkel über der dunklen Kamera).
+          { backgroundColor: isDark ? 'rgba(30,30,38,0.86)' : 'rgba(252,252,253,0.86)' },
         ]}
       />
       <View style={{ padding }}>{children}</View>
@@ -54,13 +56,13 @@ export function GlassPanel({
 export function useCreateGlass() {
   const { colors, isDark } = useTheme();
   return useMemo(() => {
-    const fill      = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)';
-    const fillHover = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)';
+    const fill      = isDark ? 'rgba(255,255,255,0.11)' : 'rgba(0,0,0,0.06)';
+    const fillHover = isDark ? 'rgba(255,255,255,0.16)' : 'rgba(0,0,0,0.09)';
     return {
-      // Text
-      title:        { color: colors.text.primary, fontSize: 15, fontWeight: '600' as const },
-      sub:          { color: colors.text.muted,    fontSize: 11 },
-      sectionLabel: { color: colors.text.muted,    fontSize: 11, fontWeight: '600' as const, letterSpacing: 0.3, marginBottom: 8 },
+      // Text — hell genug, damit auch die dezenten Labels klar lesbar sind.
+      title:        { color: colors.text.primary,   fontSize: 15, fontWeight: '600' as const },
+      sub:          { color: colors.text.secondary, fontSize: 11.5 },
+      sectionLabel: { color: colors.text.secondary, fontSize: 12, fontWeight: '700' as const, letterSpacing: 0.4, marginBottom: 8 },
 
       // Option-Karte (Aus Galerie / Text-Post / …)
       card: {
