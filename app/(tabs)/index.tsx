@@ -539,7 +539,7 @@ export default function VibeFeedScreen() {
       return (
         <FeedItem
           item={postData}
-          shouldPlayVideo={screenFocusedRef.current && postData.id === visibleItemIdRef.current}
+          shouldPlayVideo={screenFocusedRef.current && postData.id === visibleItemIdRef.current && !profilePanelRef.current}
           isMuted={isMutedRef.current}
           onMuteToggle={onMuteToggle}
           storyGroup={postData.authorId ? storyGroupMapRef.current.get(postData.authorId) : undefined}
@@ -628,7 +628,7 @@ export default function VibeFeedScreen() {
       <FlatList
         ref={listRef}
         data={feedRows}
-        extraData={`${activePlaybackItemId ?? ''}:${screenFocused ? '1' : '0'}:${isMuted ? '1' : '0'}:${bunnyReadyCount}:${productReadyCount}`}
+        extraData={`${activePlaybackItemId ?? ''}:${screenFocused ? '1' : '0'}:${isMuted ? '1' : '0'}:${bunnyReadyCount}:${productReadyCount}:${profilePanel ? '1' : '0'}`}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         pagingEnabled
