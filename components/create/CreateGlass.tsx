@@ -112,10 +112,14 @@ export function useCreateGlass() {
         borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.14)',
       } as ViewStyle,
 
-      // Roh-Tokens für Sonderfälle
+      // Roh-Tokens für Sonderfälle. textMuted ist bewusst text.SECONDARY (nicht
+      // text.muted) — über dem Kamera-Glas müssen auch die „dezenten" Labels
+      // (Publikum/Kategorie/Titel …) klar lesbar bleiben; echtes muted verschwand.
       accent: colors.accent.primary,
       textPrimary: colors.text.primary,
-      textMuted: colors.text.muted,
+      textSecondary: colors.text.secondary,
+      textMuted: colors.text.secondary,
+      textFaint: colors.text.muted,
       border: colors.border.subtle,
       fill, fillHover, isDark,
     };
