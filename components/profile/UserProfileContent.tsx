@@ -700,7 +700,6 @@ export function UserProfileContent({ userId, onBack }: Props) {
           onPress={() => { setActiveTab('posts'); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
         >
           <Grid3X3 size={24} color={activeTab === 'posts' ? colors.text.primary : colors.icon.muted} strokeWidth={2} />
-          <Text style={[s.tabLabel, { color: activeTab === 'posts' ? colors.text.primary : colors.text.muted }]}>Posts</Text>
           {postCount > 0 && activeTab === 'posts' && (
             <View style={[s.gridCountPill, { backgroundColor: colors.bg.elevated }]}><Text style={[s.gridCountText, { color: colors.text.primary }]}>{postCount}</Text></View>
           )}
@@ -710,7 +709,6 @@ export function UserProfileContent({ userId, onBack }: Props) {
           onPress={() => { setActiveTab('liked'); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
         >
           <Heart size={24} color={activeTab === 'liked' ? '#F472B6' : colors.icon.muted} fill={activeTab === 'liked' ? '#F472B6' : 'transparent'} strokeWidth={2} />
-          <Text style={[s.tabLabel, { color: activeTab === 'liked' ? '#F472B6' : colors.text.muted }]}>Gefällt mir</Text>
         </Pressable>
         <Pressable
           style={[s.tab, activeTab === 'reposts' && [s.tabActive, { borderBottomColor: colors.text.primary }]]}
@@ -720,7 +718,6 @@ export function UserProfileContent({ userId, onBack }: Props) {
           }}
         >
           <Repeat2 size={24} color={activeTab === 'reposts' ? colors.text.primary : colors.icon.muted} strokeWidth={2} />
-          <Text style={[s.tabLabel, { color: activeTab === 'reposts' ? colors.text.primary : colors.text.muted }]}>Geteilt</Text>
         </Pressable>
         {showBattlesTab && (
           <Pressable
@@ -731,7 +728,6 @@ export function UserProfileContent({ userId, onBack }: Props) {
             }}
           >
             <Swords size={24} color={activeTab === 'battles' ? '#FF2E63' : colors.icon.muted} strokeWidth={2} />
-            <Text style={[s.tabLabel, { color: activeTab === 'battles' ? '#FF2E63' : colors.text.muted }]}>Battles</Text>
           </Pressable>
         )}
         {showShopTab && (
@@ -743,7 +739,6 @@ export function UserProfileContent({ userId, onBack }: Props) {
             }}
           >
             <ShoppingBag size={24} color={activeTab === 'shop' ? colors.text.primary : colors.icon.muted} strokeWidth={2} />
-            <Text style={[s.tabLabel, { color: activeTab === 'shop' ? colors.text.primary : colors.text.muted }]}>Shop</Text>
             {shopProducts.length > 0 && activeTab === 'shop' && (
               <View style={[s.gridCountPill, { backgroundColor: colors.bg.elevated }]}>
                 <Text style={[s.gridCountText, { color: colors.text.primary }]}>{shopProducts.length}</Text>
@@ -1148,7 +1143,6 @@ const s = StyleSheet.create({
   tabBar: { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(255,255,255,0.07)', marginTop: 8 },
   tab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 13, borderBottomWidth: 2, borderBottomColor: 'transparent' },
   tabActive: { borderBottomColor: 'transparent' },   // set inline via colors.text.primary
-  tabLabel: { color: '#6B7280', fontSize: 12, fontWeight: '700', letterSpacing: 0.5 },
   tabLabelActive: {},   // color set inline
   gridCountPill: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
   gridCountText: { fontSize: 11, fontWeight: '700' },
