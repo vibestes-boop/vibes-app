@@ -1007,7 +1007,7 @@ const styles = StyleSheet.create({
   rightActions: {
     position: 'absolute',
     right: 12,
-    gap: 10,
+    gap: 16,
     alignItems: 'center',
   },
   actionBtn: { alignItems: 'center' },

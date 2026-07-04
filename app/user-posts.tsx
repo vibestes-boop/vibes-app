@@ -735,7 +735,7 @@ const s = StyleSheet.create({
   },
   counterText: { color: 'rgba(255,255,255,0.75)', fontSize: 13, fontWeight: '600' },
 
-  rightActions: { position: 'absolute', right: 12, gap: 10, alignItems: 'center', zIndex: 10 },
+  rightActions: { position: 'absolute', right: 12, gap: 16, alignItems: 'center', zIndex: 10 },
   actionBtn: { alignItems: 'center' },
   actionBtnInner: {
     width: 44, height: 34,

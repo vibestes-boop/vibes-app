@@ -761,7 +761,7 @@ const itemStyles = StyleSheet.create({
     position: 'absolute',
     right: 12,
     alignItems: 'center',
-    gap: 10,
+    gap: 16,
     zIndex: 10,
   },
   avatarWrap: {

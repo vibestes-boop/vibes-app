@@ -301,7 +301,7 @@ export const feedItemStyles = StyleSheet.create({
   },
   actionBtn: {
     alignItems: 'center',
-    marginBottom: 6,
+    marginBottom: 12,
   },
   actionBtnInner: {
     width: 44,
