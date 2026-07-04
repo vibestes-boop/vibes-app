@@ -615,6 +615,17 @@ export default function GuildPostDetailScreen() {
     return idx >= 0 ? idx : 0;
   });
 
+  // Screen-Fokus: pausiert das Video, sobald ein Profil (/user/[id]) o.ä. darüber
+  // geöffnet wird — Ton läuft nicht im Hintergrund weiter. Zurück → resume
+  // (alwaysResume behält die Position). Muster wie Feed + post/[id].
+  const [screenFocused, setScreenFocused] = useState(true);
+  useFocusEffect(
+    useCallback(() => {
+      setScreenFocused(true);
+      return () => setScreenFocused(false);
+    }, [])
+  );
+
   const initialIndex = posts.findIndex((p) => p.id === id);
 
   // Shoppable Post (#2): verknüpfte Produkte für alle Pager-Posts nachladen.
@@ -637,13 +648,13 @@ export default function GuildPostDetailScreen() {
       <GuildPostDetailItem
         post={item}
         guildColors={guildColors}
-        isActive={index === activeIndex}
+        isActive={index === activeIndex && screenFocused}
         onBack={() => router.back()}
         autoOpenComments={item.id === id && comments === '1'}
         product={productByPost[item.id] ?? null}
       />
     ),
-    [guildColors, activeIndex, router, id, comments, productByPost]
+    [guildColors, activeIndex, screenFocused, router, id, comments, productByPost]
   );
 
   const getItemLayout = useCallback((_: unknown, index: number) => ({
