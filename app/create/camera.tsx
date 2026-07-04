@@ -43,6 +43,9 @@ withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
+import { useTheme } from '@/lib/useTheme';
+import { GlassPanel, useCreateGlass } from '@/components/create/CreateGlass';
+import { BlurView } from 'expo-blur';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any;
 const _animNS = _animMod?.default ?? _animMod;
@@ -91,10 +94,10 @@ const TEXT_STYLES = [
   { key: 'mono',    label: 'Mono',      fontFamily: 'Courier',  fontWeight: '700' as const, fontStyle: 'normal' as const, glow: false },
 ];
 
-const STUDIO_MODES: { key: StudioMode; label: string; icon: React.ReactNode }[] = [
-  { key: 'vibe', label: 'VIBE', icon: <Video size={16} color="#fff" strokeWidth={2} /> },
-  { key: 'studio', label: 'STUDIO', icon: <Sparkles size={16} color="#fff" strokeWidth={2} /> },
-  { key: 'live', label: 'LIVE', icon: <Radio size={16} color="#fff" strokeWidth={2} /> },
+const STUDIO_MODES: { key: StudioMode; label: string; Icon: typeof Video }[] = [
+  { key: 'vibe', label: 'VIBE', Icon: Video },
+  { key: 'studio', label: 'STUDIO', Icon: Sparkles },
+  { key: 'live', label: 'LIVE', Icon: Radio },
 ];
 
 // ─── Animierter Record Button ─────────────────────────────────────────────────
@@ -212,8 +215,9 @@ function StudioModePill({
   active: StudioMode;
   onChange: (m: StudioMode) => void;
 }) {
+  const { colors, isDark } = useTheme();
   const activeIdx = modes.findIndex((m) => m.key === active);
-  const PILL_W = (SCREEN_W - 48) / modes.length;
+  const PILL_W = (SCREEN_W - 48 - 8) / modes.length;
 
   const pillX = useSharedValue(activeIdx * PILL_W);
 
@@ -227,12 +231,20 @@ function StudioModePill({
 
   return (
     <View style={pill.container}>
-      {/* Sliding Aktiv-Indikator — dezent, kein Lila-Gradient (TikTok-clean) */}
-      <Animated.View style={[pill.activePill, { width: PILL_W }, pillStyle]} />
+      {/* Theme-aware Frosted-Glass-Leiste (dark→dunkel, light→hell) */}
+      <BlurView intensity={40} tint={isDark ? 'dark' : 'light'} style={[StyleSheet.absoluteFill, pill.glassClip]} />
+      <View style={[StyleSheet.absoluteFill, pill.glassClip, {
+        backgroundColor: isDark ? 'rgba(16,16,22,0.58)' : 'rgba(255,255,255,0.66)',
+        borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border.subtle,
+      }]} />
+
+      {/* Sliding Aktiv-Indikator */}
+      <Animated.View style={[pill.activePill, { width: PILL_W, backgroundColor: isDark ? 'rgba(255,255,255,0.16)' : 'rgba(0,0,0,0.10)' }, pillStyle]} />
 
       {/* Mode Buttons */}
       {modes.map((m) => {
         const isActive = m.key === active;
+        const iconColor = isActive ? colors.text.primary : colors.text.muted;
         return (
           <Pressable
             key={m.key}
@@ -243,8 +255,8 @@ function StudioModePill({
             style={[pill.btn, { width: PILL_W }]}
           >
             {m.key === 'live' && isActive && <LiveDot />}
-            {m.icon}
-            <Text style={[pill.label, isActive && pill.labelActive]}>
+            <m.Icon size={16} color={iconColor} strokeWidth={2} />
+            <Text style={[pill.label, { color: isActive ? colors.text.primary : colors.text.muted }]}>
               {m.label}
             </Text>
           </Pressable>
@@ -260,14 +272,16 @@ const pill = StyleSheet.create({
     marginHorizontal: 24,
     position: 'relative',
     height: 50,
+    borderRadius: 25,
+    paddingHorizontal: 4,
   },
+  glassClip: { borderRadius: 25 },
   activePill: {
     position: 'absolute',
     top: 7,
-    left: 0,
+    left: 4,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.16)',
   },
   btn: {
     flexDirection: 'row',
@@ -278,16 +292,9 @@ const pill = StyleSheet.create({
     zIndex: 1,
   },
   label: {
-    color: 'rgba(255,255,255,0.7)',
     fontSize: 12,
     fontWeight: '600',
     letterSpacing: 1.2,
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
-  },
-  labelActive: {
-    color: '#fff',
   },
 });
 
@@ -375,6 +382,7 @@ const cap = StyleSheet.create({
 // ─── Haupt Screen ──────────────────────────────────────────────────────────────
 export default function CreateCameraScreen() {
   useThemedStatusBar('light');
+  const g = useCreateGlass();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
@@ -852,17 +860,17 @@ export default function CreateCameraScreen() {
 
         {studioMode === 'studio' ? (
           /* ── STUDIO HUB: zwei Wege + Format + Editor-Tiefe + Entwürfe ── */
-          <View style={s.studioPanel}>
+          <GlassPanel style={s.studioPanel}>
 
             {/* Neu erstellen: Galerie / Text */}
-            <Text style={s.studioSectionLabel}>Neu erstellen</Text>
+            <Text style={g.sectionLabel}>Neu erstellen</Text>
             <View style={s.studioCardRow}>
-              <Pressable onPress={openGallery} style={s.studioCard}>
-                <View style={[s.studioCardIcon, { backgroundColor: 'rgba(168,85,247,0.20)' }]}>
-                  <ImageIcon size={21} color="#C9B8F2" strokeWidth={1.8} />
+              <Pressable onPress={openGallery} style={g.card}>
+                <View style={g.cardIcon}>
+                  <ImageIcon size={20} color={g.accent} strokeWidth={1.9} />
                 </View>
-                <Text style={s.studioCardTitle}>Aus Galerie</Text>
-                <Text style={s.studioCardSub}>Foto · Video · Clip</Text>
+                <Text style={g.title}>Aus Galerie</Text>
+                <Text style={g.sub}>Foto · Video · Clip</Text>
               </Pressable>
               <Pressable
                 onPress={() => {
@@ -871,52 +879,53 @@ export default function CreateCameraScreen() {
                   setStudioMode('vibe');
                   setCaptureMode('text');
                 }}
-                style={s.studioCard}
+                style={g.card}
               >
-                <View style={[s.studioCardIcon, { backgroundColor: 'rgba(34,197,94,0.18)' }]}>
-                  <Type size={21} color="#7CD992" strokeWidth={1.8} />
+                <View style={g.cardIcon}>
+                  <Type size={20} color={g.accent} strokeWidth={1.9} />
                 </View>
-                <Text style={s.studioCardTitle}>Text-Post</Text>
-                <Text style={s.studioCardSub}>Hintergrund · Schrift</Text>
+                <Text style={g.title}>Text-Post</Text>
+                <Text style={g.sub}>Hintergrund · Schrift</Text>
               </Pressable>
             </View>
 
             {/* Format */}
-            <Text style={s.studioSectionLabel}>Format</Text>
-            <View style={s.studioAspectRow}>
-              {ASPECT_PRESETS.map(p => (
-                <Pressable
-                  key={p.key}
-                  style={[s.studioAspectBtn, aspectRatio === p.key && s.studioAspectBtnActive]}
-                  onPress={() => {
-                    setAspectRatio(p.key);
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  }}
-                >
-                  <Text style={[s.studioAspectLabel, aspectRatio === p.key && s.studioAspectLabelActive]}>
-                    {p.label}
-                  </Text>
-                </Pressable>
-              ))}
+            <Text style={[g.sectionLabel, { marginTop: 14 }]}>Format</Text>
+            <View style={g.segTrack}>
+              {ASPECT_PRESETS.map(p => {
+                const active = aspectRatio === p.key;
+                return (
+                  <Pressable
+                    key={p.key}
+                    style={[g.segBtn, active && g.segBtnActive]}
+                    onPress={() => {
+                      setAspectRatio(p.key);
+                      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                    }}
+                  >
+                    <Text style={active ? g.segLabelActive : g.segLabel}>{p.label}</Text>
+                  </Pressable>
+                );
+              })}
             </View>
 
             {/* Im Editor verfügbar — macht die vorhandene Tiefe sichtbar */}
-            <Text style={s.studioSectionLabel}>Im Editor</Text>
+            <Text style={[g.sectionLabel, { marginTop: 14 }]}>Im Editor</Text>
             <View style={s.studioToolStrip}>
-              <View style={s.studioToolChip}><Crop size={14} color="rgba(255,255,255,0.8)" strokeWidth={2} /><Text style={s.studioToolChipText}>Zuschneiden</Text></View>
-              <View style={s.studioToolChip}><Palette size={14} color="rgba(255,255,255,0.8)" strokeWidth={2} /><Text style={s.studioToolChipText}>Filter</Text></View>
-              <View style={s.studioToolChip}><Type size={14} color="rgba(255,255,255,0.8)" strokeWidth={2} /><Text style={s.studioToolChipText}>Text</Text></View>
-              <View style={s.studioToolChip}><Smile size={14} color="rgba(255,255,255,0.8)" strokeWidth={2} /><Text style={s.studioToolChipText}>Sticker</Text></View>
-              <View style={s.studioToolChip}><ImageIcon size={14} color="rgba(255,255,255,0.8)" strokeWidth={2} /><Text style={s.studioToolChipText}>Cover</Text></View>
+              <View style={g.chip}><Crop size={14} color={g.chipIcon} strokeWidth={2} /><Text style={g.chipText}>Zuschneiden</Text></View>
+              <View style={g.chip}><Palette size={14} color={g.chipIcon} strokeWidth={2} /><Text style={g.chipText}>Filter</Text></View>
+              <View style={g.chip}><Type size={14} color={g.chipIcon} strokeWidth={2} /><Text style={g.chipText}>Text</Text></View>
+              <View style={g.chip}><Smile size={14} color={g.chipIcon} strokeWidth={2} /><Text style={g.chipText}>Sticker</Text></View>
+              <View style={g.chip}><ImageIcon size={14} color={g.chipIcon} strokeWidth={2} /><Text style={g.chipText}>Cover</Text></View>
             </View>
 
             {/* Entwürfe fortsetzen → Cloud-Entwürfe */}
-            <Pressable onPress={() => router.push('/creator/drafts' as any)} style={s.studioDraftsBtn}>
-              <FileText size={18} color="rgba(255,255,255,0.8)" strokeWidth={1.8} />
-              <Text style={s.studioDraftsText}>Entwürfe fortsetzen</Text>
-              <ChevronRight size={18} color="rgba(255,255,255,0.5)" strokeWidth={2} />
+            <Pressable onPress={() => router.push('/creator/drafts' as any)} style={[g.rowBtn, { marginTop: 14 }]}>
+              <FileText size={18} color={g.chipIcon} strokeWidth={1.8} />
+              <Text style={g.rowText}>Entwürfe fortsetzen</Text>
+              <ChevronRight size={18} color={g.textMuted} strokeWidth={2} />
             </Pressable>
-          </View>
+          </GlassPanel>
         ) : (
           /* ──────────────── VIBE MODE ──────────────── */
           <>
@@ -1228,11 +1237,9 @@ const s = StyleSheet.create({
   },
 
   // Studio Mode Panel — minimal
+  // Nur der äußere Rand — Blur/Scrim/Border/Padding liefert GlassPanel.
   studioPanel: {
-    paddingHorizontal: 24,
-    paddingTop: 4,
-    paddingBottom: 4,
-    gap: 12,
+    marginHorizontal: 10,
   },
   studioSectionLabel: {
     color: 'rgba(255,255,255,0.45)',
