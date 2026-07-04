@@ -55,14 +55,14 @@ function TabBarPreview({ slot2, slot4, colors }: {
       {/* Tab Bar — identisch mit der echten */}
       <View style={pb.inner}>
 
-        {/* Slot 1 — Feed (fest) */}
+        {/* Slot 1 — Home (Feed, fest) */}
         <View style={pb.tabItem}>
           <View style={pb.iconWrap}>
             <Zap size={22} color={colors.tabBar?.active ?? colors.text.primary}
               strokeWidth={0} fill={colors.tabBar?.active ?? colors.text.primary} />
           </View>
           <View style={[pb.activeDot, { backgroundColor: colors.tabBar?.active ?? colors.text.primary }]} />
-          <Text style={[pb.tabLabel, { color: colors.tabBar?.active ?? colors.text.primary }]}>Feed</Text>
+          <Text style={[pb.tabLabel, { color: colors.tabBar?.active ?? colors.text.primary }]}>Home</Text>
         </View>
 
         {/* Slot 2 — wählbar */}

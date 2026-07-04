@@ -131,14 +131,14 @@ export default function FulfillmentScreen() {
     const res = await createRound(roundProductId, target, nextSaturday(roundWeeks));
     if (res.error) { Alert.alert('Hoppla 🙈', 'Hat nicht geklappt — gleich nochmal?'); return; }
     setRoundSheetOpen(false);
-    showFlash('Runde gestartet 🎯 — sichtbar in jeder Guild');
+    showFlash('Runde gestartet 🎯 — sichtbar in jedem Clan');
     refetchRound();
   };
   const handleCloseRound = () => {
     if (!activeRound) return;
     Alert.alert(
       'Runde schließen?',
-      `„${activeRound.title}" — ${activeRound.reserved_qty}/${activeRound.target_qty} gesammelt. Die Karte verschwindet aus den Guilds; die Vorbestellungen bleiben.`,
+      `„${activeRound.title}" — ${activeRound.reserved_qty}/${activeRound.target_qty} gesammelt. Die Karte verschwindet aus den Clans; die Vorbestellungen bleiben.`,
       [
         { text: 'Abbrechen', style: 'cancel' },
         {
@@ -547,7 +547,7 @@ export default function FulfillmentScreen() {
             <View style={s.sheetHandle} />
             <Text style={[s.sheetTitle, { color: colors.text.primary }]}>Sammelbestellungs-Runde starten</Text>
             <Text style={[s.rowSub, { color: colors.text.muted, marginBottom: 2 }]}>
-              Erscheint als „Jetzt aktiv"-Karte in jeder Guild — mit Fortschritt und Mitbestellern. Tipp: danach „Ankündigen" drücken. 📣
+              Erscheint als „Jetzt aktiv"-Karte in jedem Clan — mit Fortschritt und Mitbestellern. Tipp: danach „Ankündigen" drücken. 📣
             </Text>
 
             {/* Produkt wählen */}

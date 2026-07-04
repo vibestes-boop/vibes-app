@@ -243,9 +243,9 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
       <View style={[styles.blurView, { backgroundColor: colors.tabBar.bg }]}>
         <View style={[styles.tabBarInner, { paddingBottom: Math.max(insets.bottom - 6, 2) }]}>
 
-          {/* ── Slot 1: Feed (fest) ── */}
+          {/* ── Slot 1: Home (Feed, fest) ── */}
           <TabBarItem
-            route={{ name: 'index', label: 'Feed', icon: Zap, pushTo: null, isCreate: false } as any}
+            route={{ name: 'index', label: 'Home', icon: Zap, pushTo: null, isCreate: false } as any}
             isFocused={isFeedFocused}
             onPress={() => {
               if (isFeedFocused) {

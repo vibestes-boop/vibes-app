@@ -278,7 +278,7 @@ export function GuildLeaderboard({
         <Text style={lb.emptyIcon}>🏆</Text>
         <Text style={[lb.emptyTitle, { color: colors.text.primary }]}>Noch keine Rangliste 🏆</Text>
         <Text style={[lb.emptyDesc, { color: colors.text.muted }]}>
-          Poste diese Woche im Guild-Room — deine Verweildauer entscheidet über den Platz.
+          Poste diese Woche in deinem Clan — deine Verweildauer entscheidet über den Platz.
         </Text>
       </View>
     );

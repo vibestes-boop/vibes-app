@@ -71,7 +71,7 @@ export function GuildRoomHeader({
             style={[s.inviteBtn, { backgroundColor: colors.text.primary }]}
             hitSlop={6}
             accessibilityRole="button"
-            accessibilityLabel="Freunde in die Guild einladen"
+            accessibilityLabel="Freunde in den Clan einladen"
           >
             <UserPlus size={13} color={colors.bg.primary} strokeWidth={2.4} />
             <Text style={[s.inviteText, { color: colors.bg.primary }]}>Einladen</Text>

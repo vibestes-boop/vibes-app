@@ -404,7 +404,7 @@ function GuildPostDetailItem({
 
         <View style={[itemStyles.guildBadge, { backgroundColor: `${c0}33` }]}>
           <Users size={11} color={c0} />
-          <Text style={[itemStyles.guildBadgeText, { color: c0 }]}>Guild</Text>
+          <Text style={[itemStyles.guildBadgeText, { color: c0 }]}>Clan</Text>
         </View>
       </Animated.View>
 

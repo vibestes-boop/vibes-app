@@ -11,7 +11,7 @@ export function EmptyGuildState({ guildColors }: { guildColors: [string, string]
       </LinearGradient>
       <Text style={styles.emptyTitle}>Euer Pod ist noch ruhig.</Text>
       <Text style={styles.emptySubtitle}>
-        Sei der Erste – poste etwas und wecke deinen Guild-Room auf.
+        Sei der Erste – poste etwas und wecke deinen Clan auf.
       </Text>
     </View>
   );

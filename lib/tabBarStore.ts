@@ -51,7 +51,7 @@ export interface TabFeatureMeta {
 export const TAB_FEATURES: Record<TabFeature, TabFeatureMeta> = {
   guild: {
     key:    'guild',
-    label:  'Guild',
+    label:  'Clan',
     icon:   Users,
     route:  'guild',
     isPush: false,

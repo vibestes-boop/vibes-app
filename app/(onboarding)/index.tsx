@@ -26,8 +26,8 @@ const FEATURES = [
   {
     icon: Users,
     color: '#34D399',
-    title: 'Dein eigener Guild',
-    desc: '150 Gleichgesinnte in deinem privaten Pod. Garantierte Sichtbarkeit, echte Verbindung.',
+    title: 'Dein eigener Clan',
+    desc: '150 Gleichgesinnte in deinem privaten Clan. Garantierte Sichtbarkeit, echte Verbindung.',
   },
   {
     icon: Heart,

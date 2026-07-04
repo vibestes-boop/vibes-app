@@ -128,7 +128,7 @@ export default function OnboardingGuild() {
           <View style={[styles.step, styles.stepActive]} />
         </View>
 
-        <Text style={styles.title}>Dein Guild wartet{'\n'}auf dich.</Text>
+        <Text style={styles.title}>Dein Clan wartet{'\n'}auf dich.</Text>
 
         {/* Guild Badge */}
         <Animated.View style={[styles.badgeWrap, badgeStyle]}>
@@ -163,7 +163,7 @@ export default function OnboardingGuild() {
           <Text style={styles.descText}>
             {guildDesc
               ? `Du bist Teil von „${guildName}" – ${guildDesc}. Hier siehst du jeden Post deiner 150 Gleichgesinnten, chronologisch und ohne Algorithmus.`
-              : 'Du wirst gleich deinem Guild zugewiesen...'}
+              : 'Du wirst gleich deinem Clan zugewiesen...'}
           </Text>
 
           <View style={styles.factRow}>

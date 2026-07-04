@@ -95,7 +95,7 @@ const TEXT_STYLES = [
 ];
 
 const STUDIO_MODES: { key: StudioMode; label: string; Icon: typeof Video }[] = [
-  { key: 'vibe', label: 'VIBE', Icon: Video },
+  { key: 'vibe', label: 'AUFNAHME', Icon: Video },
   { key: 'studio', label: 'STUDIO', Icon: Sparkles },
   { key: 'live', label: 'LIVE', Icon: Radio },
 ];
@@ -757,7 +757,7 @@ export default function CreateCameraScreen() {
           <Text style={s.topTitle}>Serlo</Text>
           <Text style={s.topTitleSep}> · </Text>
           <Text style={s.topTitleMode}>
-            {studioMode === 'vibe' ? 'Creator' : studioMode === 'studio' ? 'Studio' : 'Live'}
+            {studioMode === 'vibe' ? 'Aufnahme' : studioMode === 'studio' ? 'Studio' : 'Live'}
           </Text>
         </View>
 
