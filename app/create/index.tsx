@@ -536,11 +536,11 @@ export default function CreatePostScreen() {
             <VideoView
               player={videoPlayer}
               style={StyleSheet.absoluteFill}
-              contentFit="cover"
+              contentFit="contain"
               nativeControls={false}
             />
           ) : capturing && captureUri ? (
-            <Image source={{ uri: captureUri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+            <Image source={{ uri: captureUri }} style={StyleSheet.absoluteFill} contentFit="contain" />
           ) : (
             <SkiaFilteredImage uri={image.uri} filterId={activeFilter} />
           )

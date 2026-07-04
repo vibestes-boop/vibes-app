@@ -69,7 +69,9 @@ export function SkiaFilteredImage({ uri, filterId }: {
     const skia20 = matrix.map((v, i) => ((i + 1) % 5 === 0 ? v / 255 : v));
     return (
       <SkiaCanvas style={StyleSheet.absoluteFill}>
-        <SkiaImage image={image} x={0} y={0} width={SW} height={SH} fit="cover">
+        {/* contain: ganzes Medium sichtbar (kein seitlicher Cover-Beschnitt) —
+            zeigt die Vorschau so, wie der Post später im Feed erscheint. */}
+        <SkiaImage image={image} x={0} y={0} width={SW} height={SH} fit="contain">
           <SkiaColorMatrix matrix={skia20} />
         </SkiaImage>
       </SkiaCanvas>
@@ -77,7 +79,7 @@ export function SkiaFilteredImage({ uri, filterId }: {
   }
   return (
     <View style={StyleSheet.absoluteFill}>
-      <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="cover" />
+      <Image source={{ uri }} style={StyleSheet.absoluteFill} contentFit="contain" />
       <FilterOverlays filterId={filterId} />
     </View>
   );
