@@ -165,6 +165,28 @@ export function useAdminResolveReport() {
   });
 }
 
+/** Direktes Admin-Löschen eines Posts (protokolliert, ohne vorherige Meldung). */
+export function useAdminRemovePost() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ postId, reason }: { postId: string; reason?: string }) => {
+      const { data, error } = await supabase.rpc('admin_remove_post', {
+        p_post_id: postId,
+        p_reason:  reason ?? null,
+      });
+      if (error) throw error;
+      const res = data as { error?: string; success?: boolean } | null;
+      if (res?.error) throw new Error(res.error);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['vibe-feed'] });
+      qc.invalidateQueries({ queryKey: ['guild-feed'] });
+      qc.invalidateQueries({ queryKey: ['user-posts'] });
+      qc.invalidateQueries({ queryKey: ['admin-reports'] });
+    },
+  });
+}
+
 // ─── Shop-Bestellungen (Admin) ────────────────────────────────────────────────
 
 export interface AdminOrder {

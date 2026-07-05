@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import NextImage from 'next/image';
@@ -31,6 +32,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { reportPost, markPostNotInteresting } from '@/app/actions/report';
 import { deletePost, patchPostCaption } from '@/app/actions/posts';
+import { adminRemovePost, getViewerIsAdmin } from '@/app/actions/admin';
 import { recordDwell } from '@/app/actions/engagement';
 import { POST_REPORT_REASONS, type PostReportReason } from '@/lib/moderation/report-reasons';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -344,6 +346,13 @@ export function FeedCard({
   const [showVolumeSlider, setShowVolumeSlider] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const moreMenuRef = useRef<HTMLDivElement>(null);
+  // Admin-Status einmal cachen (geteilt über alle Karten via stabilem Key).
+  const { data: viewerIsAdmin } = useQuery({
+    queryKey: ['viewer-is-admin'],
+    queryFn: getViewerIsAdmin,
+    staleTime: Infinity,
+    enabled: !!viewerId,
+  });
 
   async function submitPostReport(reason: PostReportReason) {
     setShowMoreMenu(false);
@@ -803,6 +812,24 @@ export function FeedCard({
                         onClick={() => void submitPostReport(reason.value)}
                       />
                     ))}
+                    {viewerIsAdmin && (
+                      <MoreMenuItem
+                        icon={<Trash2 className="h-4 w-4" />}
+                        label="Entfernen (Admin)"
+                        destructive
+                        onClick={async () => {
+                          setShowMoreMenu(false);
+                          if (!confirm('Diesen Beitrag als Admin entfernen? Wird protokolliert.')) return;
+                          const res = await adminRemovePost(post.id);
+                          if (res.ok) {
+                            toast('Beitrag entfernt.');
+                            router.refresh();
+                          } else {
+                            toast.error(res.error ?? 'Entfernen fehlgeschlagen.');
+                          }
+                        }}
+                      />
+                    )}
                   </>
                 )}
                 <MoreMenuItem

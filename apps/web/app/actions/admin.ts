@@ -1313,6 +1313,35 @@ export async function adminEnforceReport(
   return { ok: true };
 }
 
+/** Schlanker Client-Check: ist der eingeloggte Nutzer Admin? (für UI-Gating). */
+export async function getViewerIsAdmin(): Promise<boolean> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+  const { data } = await supabase
+    .from('profiles')
+    .select('is_admin')
+    .eq('id', user.id)
+    .maybeSingle();
+  return Boolean((data as { is_admin?: boolean } | null)?.is_admin);
+}
+
+/** Direktes, protokolliertes Admin-Löschen eines Posts (ohne vorherige Meldung). */
+export async function adminRemovePost(postId: string, reason?: string): Promise<ActionResult> {
+  const { supabase, error: authErr } = await requireAdminRole('moderate');
+  if (authErr) return { ok: false, error: authErr };
+
+  const { data, error } = await supabase.rpc('admin_remove_post', {
+    p_post_id: postId,
+    p_reason: reason ?? null,
+  });
+  if (error) return { ok: false, error: error.message };
+  if ((data as { error?: string } | null)?.error) return { ok: false, error: (data as { error: string }).error };
+  revalidatePath('/');
+  revalidatePath('/following');
+  return { ok: true };
+}
+
 // ─── Seller balances ──────────────────────────────────────────────────────────
 
 export async function getSellerBalances(): Promise<SellerBalance[]> {

@@ -17,9 +17,11 @@ Search,
 Send,
 Share2,
 SlidersHorizontal,
+Trash2,
 UserCheck,
 UserPlus,
 } from 'lucide-react-native';
+import { useAdminRemovePost } from '@/lib/useAdmin';
 import { useState,type ElementType } from 'react';
 import {
 Alert,
@@ -72,6 +74,8 @@ export function PostShareModal({
   mediaUrl?: string;
 }) {
   const currentUserId = useAuthStore((s) => s.profile?.id);
+  const isAdmin = useAuthStore((s) => s.profile?.is_admin);
+  const { mutateAsync: adminRemovePost } = useAdminRemovePost();
   const { saveVideo, isSaving } = useSaveVideo();
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -194,6 +198,10 @@ export function PostShareModal({
     ...(hasSavableVideo
       ? [{ id: 'download', label: isSaving ? 'Speichern…' : 'Speichern', icon: Download, color: '#6B7280' }]
       : []),
+    // Admin-only: fremden Post direkt entfernen (protokolliert). Nicht am eigenen Post.
+    ...(isAdmin && !isOwnProfile
+      ? [{ id: 'adminremove', label: 'Entfernen (Admin)', icon: Trash2, color: '#ef4444' }]
+      : []),
   ];
 
   const { mutate: reportPost } = useReport();
@@ -233,6 +241,28 @@ export function PostShareModal({
         break;
       case 'download':
         if (mediaUrl) saveVideo(mediaUrl);
+        break;
+      case 'adminremove':
+        Alert.alert(
+          'Beitrag entfernen?',
+          'Der Post wird als Admin entfernt und protokolliert.',
+          [
+            { text: 'Abbrechen', style: 'cancel' },
+            {
+              text: 'Entfernen',
+              style: 'destructive',
+              onPress: async () => {
+                try {
+                  await adminRemovePost({ postId });
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                  Alert.alert('Entfernt', 'Der Beitrag wurde entfernt.');
+                } catch (e) {
+                  Alert.alert('Fehlgeschlagen', e instanceof Error ? e.message : 'Konnte nicht entfernt werden.');
+                }
+              },
+            },
+          ]
+        );
         break;
     }
   };
