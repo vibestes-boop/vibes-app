@@ -9,7 +9,11 @@ import { Loader2, AlertCircle } from 'lucide-react';
 // MP4 läuft direkt über das native <video>-Element.
 // -----------------------------------------------------------------------------
 
-type VideoState = 'loading' | 'playing' | 'error';
+// 'ready' = abspielbereit, aber (noch) nicht abspielend — z.B. autoPlay=false auf
+// der Post-Detailseite. Ohne diesen Zustand blieb der Lade-Spinner ewig hängen,
+// weil er nur bei 'playing' (onPlaying) verschwand und onPlaying ohne Autoplay
+// nie von allein feuert.
+type VideoState = 'loading' | 'ready' | 'playing' | 'error';
 
 export function VideoPlayer({
   src,
@@ -143,6 +147,14 @@ export function VideoPlayer({
         // Explizit kein `controlsList="nodownload"` — Download ist legitim, keine DRM-Ansprüche.
         onPlaying={() => setState('playing')}
         onWaiting={() => setState('loading')}
+        // Lade-Spinner ausblenden sobald das Video bereit ist — auch wenn der
+        // User (noch) nicht auf Play gedrückt hat. onLoadedMetadata ist der
+        // zuverlässige Auslöser bei preload="metadata" (Dauer/Poster stehen dann);
+        // onCanPlay/onLoadedData feuern zusätzlich sobald echte Frame-Daten da
+        // sind. Nur aus 'loading' heraus, damit 'playing' nicht zurückfällt.
+        onLoadedMetadata={() => setState((s) => (s === 'loading' ? 'ready' : s))}
+        onCanPlay={() => setState((s) => (s === 'loading' ? 'ready' : s))}
+        onLoadedData={() => setState((s) => (s === 'loading' ? 'ready' : s))}
         onError={() => {
           setState('error');
           setError('Das Video konnte nicht geladen werden.');
