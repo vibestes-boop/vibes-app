@@ -872,6 +872,9 @@ export async function getAdminReports(
   let q = supabase
     .from('content_reports')
     .select('*, reporter:profiles!reporter_id(username)')
+    // "Kein Interesse" ist ein Feed-Algorithmus-Signal, keine echte Meldung —
+    // gehört nicht in die Moderations-Queue.
+    .neq('reason', 'not_interested')
     .order('created_at', { ascending: false })
     .limit(60);
   if (status) q = q.eq('status', status);
