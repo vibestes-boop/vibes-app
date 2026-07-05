@@ -197,6 +197,17 @@ const sentryBuildOptions = {
 
   // Automatisches Vercel-Cron-Monitoring + Release-Injection.
   automaticVercelMonitors: true,
+
+  // Sentry-Störungen dürfen den Deploy nicht abreißen. Standardmäßig wirft der
+  // Sentry-Webpack-Plugin bei Fehlern (Source-Map-Upload / `releases new`) und
+  // bricht damit den ganzen Build ab — genau das ist am 2026-07-05 mit einem
+  // Sentry-504 (Gateway-Timeout) passiert. Mit diesem Handler wird der Fehler
+  // nur geloggt statt geworfen: der Deploy geht durch, im schlimmsten Fall
+  // fehlen für genau diesen einen Build die Source-Maps (Stack-Traces dann
+  // weniger symbolisiert — unkritisch, self-heals beim nächsten Deploy).
+  errorHandler: (err) => {
+    console.warn('[sentry] Build-Step fehlgeschlagen (Deploy läuft weiter):', err?.message ?? err);
+  },
 };
 
 // Wrapping NUR wenn eine DSN da ist — sonst kein Nutzen und der Wrapper
