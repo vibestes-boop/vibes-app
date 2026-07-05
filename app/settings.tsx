@@ -756,12 +756,12 @@ export default function SettingsScreen() {
           </Pressable>
           <View style={[s.sep, { backgroundColor: colors.border.subtle, marginLeft: 56 }]} />
 
-          <Pressable style={[s.rowItem, { paddingVertical: 11 }]} onPress={() => Linking.openURL('https://serlo-web.vercel.app/support').catch(() => {})} accessibilityRole="link">
+          <Pressable style={[s.rowItem, { paddingVertical: 11 }]} onPress={() => router.push('/support' as any)} accessibilityRole="button">
             <View style={s.rowIcon}>
               <Mail size={18} stroke={colors.text.primary} strokeWidth={2} />
             </View>
             <View style={s.rowBody}><Text style={[s.rowTitle, { color: colors.text.primary }]}>Hilfe & Support</Text></View>
-            <ExternalLink size={15} stroke={colors.icon.muted} strokeWidth={2} />
+            <ChevronRight size={15} stroke={colors.icon.muted} strokeWidth={2} />
           </Pressable>
         </View>
 

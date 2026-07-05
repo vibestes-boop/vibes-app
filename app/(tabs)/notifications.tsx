@@ -95,6 +95,10 @@ function actionLabel(n: AppNotification): string {
     case "order_review":
     case "order_dispute":
       return n.comment_text ?? "Update zu deiner Bestellung";
+    case "support_reply":
+      return n.comment_text
+        ? `hat auf deine Anfrage geantwortet: ${n.comment_text}`
+        : "hat auf deine Support-Anfrage geantwortet 💬";
     default:
       return "";
   }
@@ -159,6 +163,7 @@ function TypeIcon({ type }: { type: AppNotification["type"] }) {
       order_address_updated:    { Icon: MapPin,        bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
       order_review:             { Icon: Star,          bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
       order_dispute:            { Icon: AlertTriangle, bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
+      support_reply:            { Icon: MessageCircle, bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
     } as Record<string, { Icon: React.ElementType; bg: string; color: string }>
   )[type] ?? { Icon: Bell, bg: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)" };
 
@@ -242,6 +247,8 @@ function NotifCard({ item }: { item: AppNotification }) {
     } else if (item.type === "order_review" || item.type === "order_dispute") {
       // Rolle nicht eindeutig → eigene Bestellungen (Header-Icon führt zu Verkäufen)
       router.push('/shop/my-orders' as any);
+    } else if (item.type === "support_reply") {
+      router.push('/support' as any);
     } else if (item.type === "live" || item.type === "live_invite") {
       const sessionId = item.session_id;
       if (sessionId) {

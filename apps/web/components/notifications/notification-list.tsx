@@ -80,6 +80,7 @@ const TYPE_META: Record<NotificationType, NotifMeta> = {
   order_address_updated:   { icon: MapPin,        color: 'text-muted-foreground', bg: 'bg-muted' },
   order_review:            { icon: Star,          color: 'text-muted-foreground', bg: 'bg-muted' },
   order_dispute:           { icon: AlertTriangle, color: 'text-muted-foreground', bg: 'bg-muted' },
+  support_reply:           { icon: MessageCircle, color: 'text-muted-foreground', bg: 'bg-muted' },
 };
 
 // ── Notification-Text pro Typ ─────────────────────────────────────────────────
@@ -150,6 +151,10 @@ function notifText(n: Notification): string {
       return `${name} hat auf deine Story reagiert.`;
     case 'guild':
       return `Neue Aktivität in deiner Guild.`;
+    case 'support_reply':
+      return n.comment_text
+        ? `Antwort vom Team: „${n.comment_text}"`
+        : 'Das Team hat auf deine Support-Anfrage geantwortet 💬';
     default:
       return `Neue Aktivität von ${name}.`;
   }
@@ -194,6 +199,8 @@ function notifHref(n: Notification): Route {
     case 'order_review':
     case 'order_dispute':
       return '/studio/orders' as Route;
+    case 'support_reply':
+      return '/support' as Route;
     case 'comment_like':
       return n.post_id ? (`/p/${n.post_id}` as Route) : ('/' as Route);
     case 'repost':

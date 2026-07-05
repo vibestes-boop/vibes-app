@@ -217,6 +217,8 @@ export function usePushNotifications() {
         ) {
           // Verkäufer-seitig → Fulfillment
           router.push('/shop/fulfillment');
+        } else if (data?.type === 'support_reply') {
+          router.push('/support');
         }
       });
     } catch {

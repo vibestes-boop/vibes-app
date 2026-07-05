@@ -152,6 +152,10 @@ Deno.serve(async (req: Request) => {
         title: '⚠️ Problem gemeldet',
         body: record.comment_text ?? 'Ein Problem mit einer Bestellung wurde gemeldet',
       },
+      support_reply: {
+        title: '💬 Antwort vom Team',
+        body: record.comment_text ?? 'Das Team hat auf deine Support-Anfrage geantwortet',
+      },
     };
 
     const msg = messages[record.type] ?? { title: 'Neue Aktivität auf Vibes', body: '' };
