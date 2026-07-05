@@ -2,8 +2,9 @@
 
 import type { Route } from 'next';
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { MoreHorizontal, EyeOff, Flag, Link as LinkIcon, ShieldOff } from 'lucide-react';
+import { MoreHorizontal, EyeOff, Flag, Link as LinkIcon, ShieldOff, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -22,6 +23,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { reportPost, markPostNotInteresting } from '@/app/actions/report';
 import { blockUser } from '@/app/actions/blocks';
+import { adminRemovePost, getViewerIsAdmin } from '@/app/actions/admin';
 import { POST_REPORT_REASONS, type PostReportReason } from '@/lib/moderation/report-reasons';
 
 // -----------------------------------------------------------------------------
@@ -55,6 +57,12 @@ export function PostViewerMenu({
 }) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
+  const { data: viewerIsAdmin } = useQuery({
+    queryKey: ['viewer-is-admin'],
+    queryFn: getViewerIsAdmin,
+    staleTime: Infinity,
+    enabled: isAuthenticated,
+  });
   const [reportOpen, setReportOpen] = useState(false);
   const [reportReason, setReportReason] = useState<PostReportReason>('spam');
   const [reportDone, setReportDone] = useState(false);
@@ -106,6 +114,22 @@ export function PostViewerMenu({
       toast('Link kopiert.');
     } catch {
       toast.error('Kopieren fehlgeschlagen.');
+    }
+  };
+
+  const handleAdminRemove = async () => {
+    if (!window.confirm('Diesen Beitrag als Admin entfernen? Wird protokolliert.')) return;
+    setPending(true);
+    try {
+      const res = await adminRemovePost(postId);
+      if (res.ok) {
+        toast('Beitrag entfernt.');
+        router.push('/' as Route);
+      } else {
+        toast.error(res.error ?? 'Entfernen fehlgeschlagen.');
+      }
+    } finally {
+      setPending(false);
     }
   };
 
@@ -175,6 +199,18 @@ export function PostViewerMenu({
           <ShieldOff className="h-4 w-4" />
           <span>Blockieren</span>
         </DropdownMenuItem>
+        {viewerIsAdmin && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="text-destructive focus:text-destructive"
+              onSelect={(e) => { e.preventDefault(); void handleAdminRemove(); }}
+            >
+              <Trash2 className="h-4 w-4" />
+              <span>Entfernen (Admin)</span>
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
     <Dialog open={reportOpen} onOpenChange={setReportOpen}>
