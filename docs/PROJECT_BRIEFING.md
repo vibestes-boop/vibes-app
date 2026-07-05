@@ -3,6 +3,7 @@
 > Team-Onboarding · Aufbau, Finanzen, Technik, Sicherheit, Monitoring, Team, Marketing, Wachstum
 > Stand: Juli 2026 · Version 1.30.0 / Build 287
 > **PDF-Version:** [`Serlo-Team-Briefing.pdf`](Serlo-Team-Briefing.pdf)
+> **Zugriffs-/Konten-Karte:** [`ACCESS_MAP.md`](ACCESS_MAP.md)
 
 Dieses Dokument gibt einem neuen Teammitglied das vollständige Bild vom Projekt — in der Reihenfolge, in der man es lesen sollte.
 
@@ -115,6 +116,53 @@ Ein sich selbst verstärkender Kreislauf. Der Marktplatz ist **kein Nachgedanke,
 1. **Einstellungs-Priorität:** (1) Community- & Moderations-Lead → (2) zweiter Entwickler (entlastet Zaur im Backend/Web) → (3) Marketing/Growth. Recht/Steuer **sofort** extern.
 2. **Zuerst validieren:** Erst-Verkauf des Parfüms beweisen (Phase 1), dann Team hochfahren.
 3. **Parallel absichern:** UG + Rechtstexte + DSA-Meldewege, bevor Echtgeld über die Plattform fließt.
+
+---
+
+## 11. Glossar (Fachbegriffe kurz erklärt)
+
+**Technik**
+
+| Begriff | Erklärung |
+|---|---|
+| OTA-Update | App-Aktualisierung ohne neuen Store-Build — nur der Code wird getauscht. |
+| RLS (Row Level Security) | DB-Regeln, die pro Datenzeile festlegen, wer sie sehen/ändern darf. |
+| RPC (SECURITY DEFINER) | Serverseitige DB-Funktion mit fest hinterlegten Rechten und Identitätsprüfung. |
+| Edge Function | Kleines Server-Programm, das nah beim Nutzer läuft (z. B. Zahlungs-Logik). |
+| Realtime | Live-Übertragung von Daten — neue Kommentare erscheinen sofort. |
+| Webhook | Automatische Nachricht eines Dienstes an unseren Server bei einem Ereignis (z. B. „Zahlung erfolgt"). |
+| Idempotenz | Dieselbe Aktion doppelt ausgeführt wirkt nur einmal — kein Doppel-Buchen. |
+| fail-closed | Im Zweifel/Fehlerfall wird abgelehnt statt durchgelassen — die sichere Wahl. |
+| WebRTC | Technik für Echtzeit-Video/Audio (Live-Streaming). |
+| CDN | Netzwerk, das Medien weltweit schnell ausliefert. |
+| HLS | Videoformat, das sich an die Internetgeschwindigkeit anpasst. |
+| Feature-Flag | Schalter, um eine Funktion an-/auszuschalten, ohne neues Update. |
+| Shadow-Ban | Nutzer sieht seine Beiträge, andere aber nicht — stille Moderation. |
+
+**Geld & Recht**
+
+| Begriff | Erklärung |
+|---|---|
+| IAP (In-App-Kauf) | Kauf innerhalb der App über Apple/Google — für Digitales Pflicht. |
+| Escrow (Treuhand) | Geld wird gehalten, bis die Ware geliefert ist. |
+| Stripe Connect | Stripe-Funktion, um Geld an Drittverkäufer auszuzahlen. |
+| Take-Rate | Anteil, den die Plattform pro Verkauf behält. |
+| UG (haftungsbeschränkt) | Kleine Kapitalgesellschaft, begrenzt die Privathaftung. |
+| DSGVO | EU-Datenschutzgesetz. |
+| DSA (Digital Services Act) | EU-Gesetz, schreibt Moderation + Meldewege für Plattformen vor. |
+| GoBD | Deutsche Regeln für ordnungsgemäße digitale Buchführung/Rechnungen. |
+
+**Wachstum & Kennzahlen**
+
+| Begriff | Erklärung |
+|---|---|
+| KPI | Kennzahl, an der man Erfolg misst. |
+| Retention (D1/D7/D30) | Anteil der Nutzer, die nach 1/7/30 Tagen wiederkommen. |
+| DAU / MAU | Täglich / monatlich aktive Nutzer. |
+| GMV | Gesamtwarenwert, der über die Plattform verkauft wird. |
+| CAC / LTV | Kosten, einen Kunden zu gewinnen / Wert, den er über die Zeit bringt. |
+| Bus-Faktor | Zahl der Personen, deren Ausfall das Projekt lahmlegt (1 = riskant). |
+| Moat (Burggraben) | Vorteil, den Wettbewerber nicht leicht kopieren können. |
 
 ---
 

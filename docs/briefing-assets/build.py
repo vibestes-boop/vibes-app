@@ -217,6 +217,41 @@ td.c{text-align:center}
 <li><b>Parallel absichern:</b> UG + Rechtstexte + DSA-Meldewege, bevor Echtgeld &uuml;ber die Plattform flie&szlig;t.</li>
 </ul></div>
 
+<div class="section"><h2>11. Glossar (Fachbegriffe kurz erklärt)</h2>
+<table>
+<tr><td colspan="2" style="background:#eef2ff;font-weight:600">Technik</td></tr>
+<tr><td style="width:26%">OTA-Update</td><td>App-Aktualisierung ohne neuen Store-Build — nur der Code wird getauscht.</td></tr>
+<tr><td>RLS (Row Level Security)</td><td>DB-Regeln, die pro Datenzeile festlegen, wer sie sehen/ändern darf.</td></tr>
+<tr><td>RPC (SECURITY DEFINER)</td><td>Serverseitige DB-Funktion mit fest hinterlegten Rechten und Identitätsprüfung.</td></tr>
+<tr><td>Edge Function</td><td>Kleines Server-Programm, das nah beim Nutzer läuft (z. B. Zahlungs-Logik).</td></tr>
+<tr><td>Realtime</td><td>Live-Übertragung von Daten — neue Kommentare erscheinen sofort.</td></tr>
+<tr><td>Webhook</td><td>Automatische Nachricht eines Dienstes an unseren Server bei einem Ereignis (z. B. "Zahlung erfolgt").</td></tr>
+<tr><td>Idempotenz</td><td>Dieselbe Aktion doppelt ausgeführt wirkt nur einmal — kein Doppel-Buchen.</td></tr>
+<tr><td>fail-closed</td><td>Im Zweifel/Fehlerfall wird abgelehnt statt durchgelassen — die sichere Wahl.</td></tr>
+<tr><td>WebRTC</td><td>Technik für Echtzeit-Video/Audio (Live-Streaming).</td></tr>
+<tr><td>CDN</td><td>Netzwerk, das Medien weltweit schnell ausliefert.</td></tr>
+<tr><td>HLS</td><td>Videoformat, das sich an die Internetgeschwindigkeit anpasst.</td></tr>
+<tr><td>Feature-Flag</td><td>Schalter, um eine Funktion an-/auszuschalten, ohne neues Update.</td></tr>
+<tr><td>Shadow-Ban</td><td>Nutzer sieht seine Beiträge, andere aber nicht — stille Moderation.</td></tr>
+<tr><td colspan="2" style="background:#eef2ff;font-weight:600">Geld &amp; Recht</td></tr>
+<tr><td>IAP (In-App-Kauf)</td><td>Kauf innerhalb der App über Apple/Google — für Digitales Pflicht.</td></tr>
+<tr><td>Escrow (Treuhand)</td><td>Geld wird gehalten, bis die Ware geliefert ist.</td></tr>
+<tr><td>Stripe Connect</td><td>Stripe-Funktion, um Geld an Drittverkäufer auszuzahlen.</td></tr>
+<tr><td>Take-Rate</td><td>Anteil, den die Plattform pro Verkauf behält.</td></tr>
+<tr><td>UG (haftungsbeschränkt)</td><td>Kleine Kapitalgesellschaft, begrenzt die Privathaftung.</td></tr>
+<tr><td>DSGVO</td><td>EU-Datenschutzgesetz.</td></tr>
+<tr><td>DSA (Digital Services Act)</td><td>EU-Gesetz, schreibt Moderation + Meldewege für Plattformen vor.</td></tr>
+<tr><td>GoBD</td><td>Deutsche Regeln für ordnungsgemäße digitale Buchführung/Rechnungen.</td></tr>
+<tr><td colspan="2" style="background:#eef2ff;font-weight:600">Wachstum &amp; Kennzahlen</td></tr>
+<tr><td>KPI</td><td>Kennzahl, an der man Erfolg misst.</td></tr>
+<tr><td>Retention (D1/D7/D30)</td><td>Anteil der Nutzer, die nach 1/7/30 Tagen wiederkommen.</td></tr>
+<tr><td>DAU / MAU</td><td>Täglich / monatlich aktive Nutzer.</td></tr>
+<tr><td>GMV</td><td>Gesamtwarenwert, der über die Plattform verkauft wird.</td></tr>
+<tr><td>CAC / LTV</td><td>Kosten, einen Kunden zu gewinnen / Wert, den er über die Zeit bringt.</td></tr>
+<tr><td>Bus-Faktor</td><td>Zahl der Personen, deren Ausfall das Projekt lahmlegt (1 = riskant).</td></tr>
+<tr><td>Moat (Burggraben)</td><td>Vorteil, den Wettbewerber nicht leicht kopieren können.</td></tr>
+</table></div>
+
 </body></html>'''
 
 with open(f"{REPO}/docs/briefing.html", "w", encoding="utf-8") as f:
