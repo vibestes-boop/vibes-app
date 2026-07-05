@@ -1784,7 +1784,7 @@ async function readRecentComments(
 ): Promise<CommandActivityItem[]> {
   const { data, error } = await supabase
     .from('comments')
-    .select('id, post_id, content, created_at')
+    .select('id, post_id, text, created_at')
     .order('created_at', { ascending: false })
     .limit(4);
   if (error) return [];
@@ -1793,7 +1793,7 @@ async function readRecentComments(
     id: `comment-${row.id}`,
     kind: 'comment' as const,
     label: 'Neuer Kommentar',
-    detail: summarizeText(row.content, `zu Post ${shortId(row.post_id)}`),
+    detail: summarizeText(row.text, `zu Post ${shortId(row.post_id)}`),
     created_at: row.created_at,
   }));
 }
@@ -1804,6 +1804,7 @@ async function readRecentReports(
   const { data, error } = await supabase
     .from('content_reports')
     .select('id, target_type, reason, created_at')
+    .neq('reason', 'not_interested')
     .order('created_at', { ascending: false })
     .limit(4);
   if (error) return [];
@@ -1824,6 +1825,7 @@ async function readModerationQueue(
     .from('content_reports')
     .select('id, target_type, target_id, reason, created_at')
     .eq('status', 'pending')
+    .neq('reason', 'not_interested')
     .order('created_at', { ascending: true })
     .limit(6);
   if (error) return [];
@@ -1969,17 +1971,16 @@ async function readReportCategories(
   const { data, error } = await supabase
     .from('content_reports')
     .select('reason, created_at')
+    .neq('reason', 'not_interested')
     .gte('created_at', since)
     .limit(500);
   if (error) return [];
 
   const labels: Record<string, string> = {
     spam: 'Spam',
-    hate: 'Hassrede',
-    violence: 'Gewalt & Extremismus',
-    nsfw: 'Nacktheit / NSFW',
-    copyright: 'Copyright',
-    misinformation: 'Fehlinformation',
+    harassment: 'Belästigung / Hassrede',
+    inappropriate: 'Unangemessen / NSFW',
+    fake: 'Fake-Account',
     other: 'Sonstiges',
   };
   const counts = new Map<string, number>();
@@ -2177,11 +2178,15 @@ function buildPushFeedArea(result: Awaited<ReturnType<typeof readRpcSnapshot>>):
 }
 
 function buildReleaseArea(): CommandCenterArea {
+  // Statischer Verweis auf externe CI-Prozesse (GitHub Actions). Kein Live-
+  // Health-Check — der echte Rot/Grün-Status steht in GitHub Actions bzw. den
+  // Telegram-CI-Alerts, nicht hier. Die Summary macht das transparent, damit
+  // die Kachel keinen Live-Systemzustand vortäuscht.
   return {
     key: 'release',
     label: 'Release & Governance',
     status: 'green',
-    summary: 'Release Gate, Weekly Integrity und Feature Freeze sind als CI-Prozess aktiv.',
+    summary: 'Release-Gate & Weekly-Integrity laufen als GitHub-CI — Live-Status in GitHub Actions / Telegram-Alerts.',
     detail: {
       release_gate: 'npm run release:gate',
       weekly_integrity: 'weekly-integrity.yml',
@@ -2654,11 +2659,9 @@ function dayKey(value: string): string {
 function reportCategoryKey(reason: string | null | undefined): string {
   const normalized = (reason || '').toLowerCase();
   if (normalized.includes('spam')) return 'spam';
-  if (normalized.includes('hate') || normalized.includes('hass')) return 'hate';
-  if (normalized.includes('violence') || normalized.includes('gewalt') || normalized.includes('extrem')) return 'violence';
-  if (normalized.includes('nsfw') || normalized.includes('nackt') || normalized.includes('sexual')) return 'nsfw';
-  if (normalized.includes('copyright') || normalized.includes('urheber')) return 'copyright';
-  if (normalized.includes('misinformation') || normalized.includes('fehl')) return 'misinformation';
+  if (normalized.includes('harass') || normalized.includes('hate') || normalized.includes('hass') || normalized.includes('belästig') || normalized.includes('belastig')) return 'harassment';
+  if (normalized.includes('inappropriate') || normalized.includes('unangemessen') || normalized.includes('nsfw') || normalized.includes('nackt') || normalized.includes('sexual') || normalized.includes('violence') || normalized.includes('gewalt')) return 'inappropriate';
+  if (normalized.includes('fake')) return 'fake';
   return 'other';
 }
 

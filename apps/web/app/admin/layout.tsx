@@ -23,18 +23,18 @@ const NAV: {
   disabled?: boolean;
 }[] = [
   { label: 'Dashboard', href: '/admin/command-center' as Route, icon: 'home', canShow: (roles) => roles.can_operate },
-  { label: 'Live Feed', href: '/admin/command-center' as Route, icon: 'activity', canShow: (roles) => roles.can_operate },
+  { label: 'Live Feed', href: '/admin/live-feed' as Route, icon: 'activity', canShow: (roles) => roles.can_operate },
   { label: 'Nutzer', href: '/admin/users' as Route, icon: 'users', canShow: (roles) => roles.can_admin },
-  { label: 'Inhalte', href: '/admin/command-center' as Route, icon: 'message', canShow: (roles) => roles.can_operate },
+  { label: 'Inhalte', href: '/admin/content' as Route, icon: 'message', canShow: (roles) => roles.can_operate },
   { label: 'Moderation', href: '/admin/reports' as Route, icon: 'shield', canShow: (roles) => roles.can_moderate },
   { label: 'Meldungen', href: '/admin/reports' as Route, icon: 'flag', canShow: (roles) => roles.can_moderate, badge: (badges) => badges.reports_pending, badgeTone: 'red' },
   { label: 'Kampagnen', href: '/admin/campaigns' as Route, icon: 'megaphone', canShow: (roles) => roles.can_operate, badge: (badges) => badges.campaigns_active, badgeTone: 'blue' },
   { label: 'Nachrichten', href: '/admin/support' as Route, icon: 'message', canShow: (roles) => roles.can_moderate, badge: (badges) => badges.support_open, badgeTone: 'blue' },
   { label: 'Aktivierung', href: '/admin/activation' as Route, icon: 'rocket', canShow: (roles) => roles.can_operate || roles.can_creator_ops },
-  { label: 'Analytics', href: '/admin/command-center' as Route, icon: 'chart', canShow: (roles) => roles.can_operate },
-  { label: 'Sicherheit', href: '/admin/command-center' as Route, icon: 'lock', canShow: (roles) => roles.can_operate, badge: (badges) => badges.security_critical, badgeTone: 'amber' },
+  { label: 'Analytics', href: '/admin/analytics' as Route, icon: 'chart', canShow: (roles) => roles.can_operate },
+  { label: 'Sicherheit', href: '/admin/security' as Route, icon: 'lock', canShow: (roles) => roles.can_operate, badge: (badges) => badges.security_critical, badgeTone: 'amber' },
   { label: 'Auszahlungen', href: '/admin/payouts' as Route, icon: 'card', canShow: (roles) => roles.can_creator_ops },
-  { label: 'Einstellungen', href: '/admin' as Route, icon: 'settings', canShow: (roles) => roles.can_access_admin },
+  { label: 'Übersicht', href: '/admin' as Route, icon: 'settings', canShow: (roles) => roles.can_access_admin },
 ];
 
 const ROLE_LABEL: Record<AdminRoleStatus['primary_role'], string> = {
