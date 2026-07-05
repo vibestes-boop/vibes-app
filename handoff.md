@@ -1,4 +1,4 @@
-# Handoff — Serlo/Vibes (Stand 4. Juli 2026 · Session 8)
+# Handoff — Serlo/Vibes (Stand 5. Juli 2026 · Session 9)
 
 > 📍 **Dieses Dokument: `/Users/zaurhatuev/vibes-app/handoff.md`**
 > Arbeite NUR in diesem Repo: **`/Users/zaurhatuev/vibes-app`** (Branch `main`).
@@ -14,13 +14,13 @@
 
 ## 🚀 Neue Sitzung — Start hier
 
-- **Stand:** Session 8 = großer UI/UX-Politur-Sprint (Post-Overlays, Video-Verhalten, Feed-Algorithmus **v5**, Create/Studio/Live-Redesign, Namens-Umbenennung, Dark-Default) + **ein Prod-Crash-Fix**. Alles committed + gepusht + verifiziert, viele OTAs raus. Working Tree sauber. Letzter Commit **`ce18a8f`**.
+- **Stand:** Session 9 = **App-Store Build 287 gebaut + EINGEREICHT** (Apple prüft), Editor-Glas, Profil-Tabs icon-only, Home-/Clan-Profil-Swipe, Team-Doku (Briefing+PDF+Access-Map), großer **Admin-Command-Center-Ausbau** (4 Daten-Bugs + 4 neue Seiten + moderierbare Inhalte) und **In-App-Support-Kanal mit Antwort-Benachrichtigung**. Alles committed + gepusht + verifiziert, viele OTAs raus. Working Tree sauber. Letzter Commit **`2462477`**.
 - **🔴 UNMITTELBAR OFFEN (hier weitermachen):**
-  1. **App-Store Build 287** (Zaurs Hauptziel, s.u.) — alle technischen Pflichtpunkte erledigt, es fehlt nur der frische Build + ASC-Angaben.
-  2. **Create-Editor auf Glas-Sprache ziehen:** Studio + Live nutzen jetzt das geteilte theme-aware `components/create/CreateGlass.tsx` (GlassPanel + useCreateGlass). Der **Editor** (`app/create/index.tsx` + `components/create/editor/*`) ist noch NICHT drauf umgestellt — gleiches Modul anwenden für konsistente Optik.
-  3. **Crash in Sentry verifizieren:** PushNotificationIOS-Crash gefixt (`98ab7da`), in 1–2 Tagen prüfen ob die zwei Issues (`Invariant Violation` + `TypeError get PushNotificationIOS`) keine neuen Events mehr bekommen → dann Resolved markieren.
-- **⚠️ OTA-Rollback-Falle (Session 8 gelernt):** Der PushNotificationIOS-Crash hat auf Zaurs Gerät expo-updates-**Rollbacks** ausgelöst → er sah neue OTAs (Redesign etc.) tw. nicht („unverändert"). `fallbackToCacheTimeout: 0` (app.json) → OTA greift erst beim 2. Kaltstart. Bei hängender Rollback-Schleife: **App aus TestFlight neu installieren** (frischer Start → zieht die neueste gute Version). Sauber gelöst wäre Build 287 (alles fest im Binary).
-- **App-Store-Launch (Zaurs Hauptziel):** Technische Pflichtpunkte alle erledigt (§1.1-B). **Es fehlt: (1) frischer Production-Build 287** (app.json version/buildNumber hoch, `eas build --platform ios --profile production` — frisch von `main`, damit Coin-Flag + alle Session-8-Fixes im Binary), **(2) Zaurs ASC-Fleißarbeit** (Screenshots 1320×2868 für 6,9", Privacy-Labels, Altersfreigabe 17+, Demo-Account + Review-Notes). Coin-Shop per Feature-Flag versteckt (`lib/featureFlags.ts` `COIN_SHOP_ENABLED=false`). **Simulator-Screenshots gehen NICHT** (MLKit liefert nur x86_64-Sim-Binaries → auf Apple-Silicon-Sim nicht baubar; Geräte-Screenshots nehmen).
+  1. **App-Store-Prüfung läuft** — 1.30.0 / Build 287 ist bei Apple „Warten auf Prüfung" (eingereicht 5.7. 2:12). **Nichts zu tun außer warten** auf Apples Verdikt; bei Ablehnung Gründe im ASC lesen.
+  2. **Support-Loop testen** (nach diesem Deploy): App → Einstellungen → Hilfe & Support → schreiben → Web `/admin/support` antworten → Nutzer bekommt Push „💬 Antwort vom Team" + In-App. Migration + Edge-Function sind ausgeführt/deployt.
+  3. **Optional — Admin-Gegen-Loop:** Admin benachrichtigen, wenn eine **neue** Support-Anfrage reinkommt (damit schnell geantwortet wird). Noch nicht gebaut.
+- **⚠️ OTA-Rollback-Falle (Session 8 gelernt, weiter gültig):** `fallbackToCacheTimeout: 0` (app.json) → OTA greift erst beim **2. Kaltstart**. Bei hängender Rollback-Schleife: App aus TestFlight neu installieren. Build 287 (alles im Binary) entschärft das dauerhaft.
+- **App-Store-Launch (Zaurs Hauptziel — FAST DURCH):** Build 287 gebaut (`eas build … production` von `main`), Auto-Submit lief, ASC-Metadaten (Screenshots via PIL gerahmt: `~/Downloads/serlo-store/out/`, Privacy-Labels, 17+, Demo-Account, Review-Notes) von Zaur ausgefüllt → **eingereicht**. Coin-Shop per Feature-Flag versteckt (`lib/featureFlags.ts` `COIN_SHOP_ENABLED=false`). Version bewusst 1.30.0 gelassen (runtimeVersion `appVersion` → OTA-Runtime bleibt 1.30.0). **Simulator-Screenshots gehen NICHT** (MLKit x86_64-only) → Gerät + PIL-Rahmen genutzt.
 - **Realer Kontext:** Parfüm läuft **offline** (verkauft), 80 Flaschen in Lieferung, 5 App-Vorbestellungen getestet. Premortem: **erst validieren, dann mehr bauen.** Guild-Commerce v1 (Sammelbestellungs-Runden) ist gebaut + Migration ausgeführt — bereit für die 80er-Runde.
 - **Screenshots-Falle beim UI-Testen:** Overlay-Icons sehen im **Screenshot** sichtbar aus, auf dem **echten Display** (Reflexion/Helligkeit) aber nicht → dünne weiße Umrisse verschwinden. Lösung war: **solide gefüllte** Icons (mehr weiße Fläche) + Schatten. Beim UI-Debuggen immer Foto-vom-Display statt Screenshot vertrauen.
 - **Git-Push:** via PAT aus `.env.local` (§4). Lokaler Reflog kann alt aussehen — mit `git ls-remote` verifizieren, nicht dem Reflog trauen.
@@ -32,18 +32,55 @@
 | Bereich | Stand |
 |---|---|
 | **Repo / Branch** | `/Users/zaurhatuev/vibes-app` · `main` · Working Tree **sauber** |
-| **Letzter Commit** | `ce18a8f` — Dark Mode als Standard für alle User. **Alle Session-8-Commits gepusht & verifiziert (`git ls-remote`).** |
-| **Web (apps/web)** | deployt via **Vercel** auf Push zu `main`. **Live: `serlo-web.vercel.app` — ⚠️ OHNE `www`!** Sentry-Web jetzt AKTIV (DSN in Vercel gesetzt, Source Maps laden). |
-| **App-Build** | v1.30.0 / iOS-Build 286 (TestFlight) · Runtime **1.30.0**. OTAs ziehen nur beim **kalten App-Neustart** (2× killen+öffnen — greift beim 2. Start). Channel `production` → Branch `production` verknüpft ✓. |
-| **Letzter OTA** | `ce18a8f` (Dark-Default). **Viele Session-8-OTAs raus, alle auf Runtime 1.30.0.** Nächste App-Änderung: `EAS_BUILD=1 npx eas update --branch production --message "…"`. ⚠️ OTA greift erst beim 2. Kaltstart (`fallbackToCacheTimeout: 0`). |
-| **Edge Functions deployed** | `create-checkout-session`, `stripe-webhook` (payment_status-Guard NEU), `revenuecat-webhook` (fail-closed + atomare Idempotenz NEU), `send-push-notification`. Webhooks `--no-verify-jwt` via `supabase/config.toml`. Memory `vibes-edge-webhook-verify-jwt` + `vibes-security-review-money`. |
-| **DB-Migrationen** | ✅ **ALLE ausgeführt** (Zaur). Neu Session 8: `20260704100000_feed_algorithm_v5` (Feed-Algo v5 — Seen-Penalty/Skip-Negativ/Decay-Cron/Jitter/Cold-Start/Wilson/Tag-Affinität; Migration hat `user_tag_affinity` initial befüllt + 2 pg_cron-Jobs geplant). **Keine offene Migration.** |
-| **GERADE FERTIG (Session 8)** | **Overlay-Buttons** vereinheitlicht (Feed/Guild/Profil/post-Detail: bare gefüllte Icons, Teilen+Optionen zu EINEM Sheet zusammengeführt, höher gesetzt) · **Blur-Fill→Schwarz** (contain) · **nahtloser Kommentar-Peek** in user-posts · **Video-Verhalten** (Feed pausiert bei Profil-Swipe, Guild Karte→Detail Resume via `alwaysResume`, guild-post pausiert bei Profil-Öffnen) · **Feed-Algorithmus v5** (Migration ausgeführt) · **Entdecken** (durchgehend scrollen, Pull-to-Refresh, Like-Zahlen) · **Shop** (Sammelbestellung-Karte, Merken-Herz, Refresh) · **Create/Studio/Live-Redesign** (theme-aware Glas `CreateGlass.tsx`) · **Profil-Teilen** HTTPS-Link · **PushNotificationIOS-Crash-Fix** · **Labels** Feed→Home, Guild→Clan, Vibe→Aufnahme · **Dark Mode Default** · **Live-Kamera 1080p**. Voll in §1.0.5. |
-| **🔴 NÄCHSTE AUFGABE** | **(1)** App-Store: Build 287 + ASC-Angaben (§1.1-B). **(2)** Create-**Editor** auf `CreateGlass` umstellen (Studio+Live schon drauf). **(3)** Sentry: PushNotificationIOS-Issues verifizieren/Resolved. |
-| **Monitoring** | Alles bewacht: UptimeRobot (3 Monitore), Sentry App+Web (Source Maps), Telegram-CI-Alerts (alle 5 Workflows), Stripe-Webhook-Mails. Doku: `docs/MONITORING.md`. CI-Baseline = **0 Fehler**, Rot ist echtes Signal. |
-| **Admin** | Zaur (`username='zaur'`, `profiles.is_admin = true`) — nötig fürs Vorbestell-/Runden-Gate, Dispute-Klärung, „Ankündigen"/„Zahlung anfordern". |
+| **Letzter Commit** | `2462477` — In-App-Support-Kanal + Antwort-Benachrichtigung. **Alle Session-9-Commits gepusht & verifiziert (`git ls-remote`).** |
+| **Web (apps/web)** | deployt via **Vercel** auf Push zu `main`. **Live: `serlo-web.vercel.app` — ⚠️ OHNE `www`!** Sentry-Web AKTIV. |
+| **App-Build** | v1.30.0 / iOS-**Build 287** — **bei Apple eingereicht, „Warten auf Prüfung"** (5.7. 2:12). Runtime **1.30.0**. OTAs greifen beim 2. Kaltstart. Channel `production` → Branch `production` ✓. |
+| **Letzter OTA** | `2462477` (In-App-Support). **Viele Session-9-OTAs raus, alle Runtime 1.30.0.** Nächste App-Änderung: `EAS_BUILD=1 npx eas update --branch production --message "…"`. ⚠️ OTA greift erst beim 2. Kaltstart. |
+| **Edge Functions deployed** | `create-checkout-session`, `stripe-webhook`, `revenuecat-webhook`, `send-push-notification` (Session 9 **neu deployt**: kennt jetzt `support_reply`-Push). Webhooks `--no-verify-jwt` via `supabase/config.toml`. CLI war eingeloggt; Deploy via `npx supabase functions deploy <name> --project-ref llymwqfgujwkoxzqxrlm`. |
+| **DB-Migrationen** | ✅ **ALLE ausgeführt** (Zaur). Neu Session 9: `20260705120000_admin_remove_post`, `20260705130000_admin_audit_metadata_fix` (Bug: audit-log-Spalte heißt `metadata`, nicht `details` — blockierte Löschen/Enforce/Nutzer-Aktionen still), `20260705140000_support_reply_notification`. **Keine offene Migration.** |
+| **GERADE FERTIG (Session 9)** | **App-Store Build 287 gebaut + eingereicht** · **Editor-Bottom-Sheets auf theme-aware Glas** (`editor/sharedStyles.tsx` GlassSheet/useEditorSheet) · **Profil-Tabs icon-only** · **Home-Profil-Swipe-Fix** (kein Re-Open) + **Clan-Detail-Profil-Swipe** (Parität mit Home) · **direktes protokolliertes Admin-Löschen** fremder Posts (Mobile+Web, RPC `admin_remove_post`) · **`admin_audit_log`-metadata-Fix** (schaltet Löschen/Enforce/Nutzer-Aktionen frei) · **Command-Center-Ausbau**: 4 Daten-Bugs (Kommentare/Report-Kategorien/not_interested/Release-Stub), 4 neue Seiten (Live Feed, Inhalte, Analytics, Sicherheit), moderierbare Inhalte-Liste, Live-Feed-Auto-Refresh · **In-App-Support-Kanal** (`app/support.tsx` + Antwort→Push/In-App) · **Team-Doku** (`docs/PROJECT_BRIEFING.md` + PDF + `docs/ACCESS_MAP.md`). Voll in §1.0.4. |
+| **🔴 NÄCHSTE AUFGABE** | **(1)** App-Store-Prüfung abwarten (bei Ablehnung Gründe lesen). **(2)** Support-Loop end-to-end testen. **(3)** Optional: Admin-Benachrichtigung bei NEUER Support-Anfrage. |
+| **Monitoring** | Alles bewacht: UptimeRobot (3 Monitore), Sentry App+Web (Source Maps), Telegram-CI-Alerts (alle 5 Workflows), Stripe-Webhook-Mails. Doku: `docs/MONITORING.md`. CI-Baseline = **0 Fehler**. |
+| **Admin** | Zaur (`username='zaur'`, `profiles.is_admin = true`, `zaurhatu@gmail.com`, id `46c70dfb…`) — is_admin gewährt im Web-Panel ALLE Rechte (can_moderate/operate/admin). ⚠️ `auth.uid()` ist im SQL-Editor NULL → is_admin per E-Mail/Username prüfen, nicht via auth.uid(). |
 
 ⚠️ **Quarantäne:** `/Users/zaurhatuev/Desktop/vibes-app` — NIEMALS bauen/deployen/pushen.
+
+---
+
+## 1.0.4 🆕 Session 9 (5. Juli) — App-Store-Einreichung · Admin-Command-Center-Ausbau · In-App-Support
+
+> Alles committed + gepusht + verifiziert, viele OTAs raus (Runtime 1.30.0).
+> Commit-Kette grob: `07fba46 → 2462477` auf `main`.
+
+### A) App-Store Build 287 gebaut + eingereicht (Zaurs Hauptziel — durch!)
+- `app.json` buildNumber 286 → **287** (Version 1.30.0 gelassen; runtimeVersion `appVersion` → OTA-Runtime bleibt 1.30.0). `eas build --platform ios --profile production --auto-submit` von `main`. Signing + ASC-API-Key lagen auf EAS. Build fertig, Auto-Submit lief.
+- **ASC-Screenshots via PIL gerahmt**: WhatsApp-Rohbilder (1206×2622 = iPhone 16 Pro) auf 1320×2868 (6,9") + 1284×2778 (6,5") Leinwand mit Caption gerahmt — Skript + Assets in `~/Downloads/serlo-store/` (`frame.py`, `out/`, `out65/`). Home/Clan/Shop/Profil + 2 Live-Mockups. Ton „schlicht & ehrlich" (Zaur-Wahl), neutraler Dark-BG (kein Lila).
+- Review-Notes (Demo-Account `brandwerkx+applereview@gmail.com`), Privacy-Labels, 17+ — Zaur ausgefüllt → **eingereicht 5.7. 2:12, „Warten auf Prüfung"**.
+
+### B) Editor-Glas + Profil-Tabs + Swipe-Fixes (Mobile, OTA'd)
+- **Editor-Bottom-Sheets** (Filter/Anpassen/Drehen/Sticker/Kürzen/Details) auf theme-aware Glas via geteilter Quelle `components/create/editor/sharedStyles.tsx` (`GlassSheet` + `useEditorSheet()`, Primär-CTA Marken-Lila `accent.secondary`, Innen-Inhalt mit-konvertiert wg. Light-Mode). Werkzeug-Rail/Crop/Cover bleiben bare. Memory `vibes-create-glass-surface` aktualisiert.
+- **Profil-Tabs icon-only** (`UserProfileContent.tsx`, alle Profile — ProfileListHeader war schon icon-only).
+- **Home-Profil-Swipe-Fix** (`app/(tabs)/index.tsx`): `!profilePanelRef.current`-Guard in `swipePan` — auf offenem Profil öffnet Links-Wisch nicht erneut. **Clan-Detail-Profil-Swipe** neu gebaut (`app/guild-post/[id].tsx`, Parität mit Home).
+
+### C) Admin-Löschen fremder Posts + der metadata-Bug (Mobile+Web)
+- Löschen war autor-gebunden (`delete_post` + RLS). Neue RPC **`admin_remove_post(post_id, grund)`** (is_admin-gated, protokolliert, schließt offene Meldungen). UI: „Entfernen (Admin)" im PostShareModal (Mobile), Feed-Karten-More-Menü + Post-Detail-Menü (`post-viewer-menu.tsx`, Web).
+- **🔴 Wichtiger Bug**: `admin_audit_log` hat Spalte **`metadata`**, nicht `details`. `admin_remove_post` UND `admin_enforce_content_report` schrieben nach `details` → Laufzeitfehler rollte alles zurück → **Löschen/Enforce/Nutzer-Aktionen waren still blockiert**. Fix: `20260705130000_admin_audit_metadata_fix` (beide RPCs auf `metadata`). Merke: neue audit-log-Inserts IMMER `metadata`.
+
+### D) Command-Center-Ausbau (`/admin/command-center`)
+- **Erkenntnis**: Panel war viel vollständiger als gedacht — Reports-Enforce (Post entfernen/Profil sperren/beschränken/Shadowban/Live-Mute) und Nutzer-Aktionen (Bann/Verify/Admin/Restrict) waren **schon gebaut**, nur durch den metadata-Bug blockiert.
+- **4 Daten-Bugs** (`app/actions/admin.ts`): Live-Aktivität zeigte nie Kommentare (`comments.content` → echte Spalte `text`); Report-Kategorien passten nicht (Taxonomie an echte Gründe spam/harassment/inappropriate/fake/other); `not_interested` verschmutzte Moderations-Queue/Kategorien/Meldungen (in Readern + `getAdminReports` gefiltert); Release-Kachel fake-grün → ehrlich.
+- **4 tote Sidebar-Platzhalter** (zeigten aufs Dashboard) als **echte Seiten** gebaut: `/admin/{live-feed,content,analytics,security}` auf Basis des Snapshots + geteilte `components/admin/section-ui.tsx`. Nav umgehängt, „Einstellungen"→„Übersicht".
+- **Inhalte-Seite aktionsfähig**: `getAdminContentPosts` + `ContentModerationTable` (neueste Posts, Thumbnail, „Entfernen (Admin)" pro Post). **Live-Feed Auto-Refresh** (`AutoRefresh`, 20s).
+
+### E) In-App-Support-Kanal + Antwort-Benachrichtigung (Kern: „keine Rückmeldung" lösen)
+- Vorher: Support nur als statische Web-Kontaktseite, **kein** Support-View in der App, und `admin_reply_support_thread` benachrichtigte den Nutzer NICHT.
+- **DB** (`20260705140000_support_reply_notification`): `admin_reply_support_thread` erzeugt jetzt `support_reply`-Notification an den Nutzer (defensiv; Push via `trg_push_notification`); Typ im CHECK; neue RPC `add_user_support_message`. `create_support_thread` (Mai-Migration) wiederverwendet.
+- **Mobile**: `lib/useSupport.ts`, `app/support.tsx` (Chat-Ansicht + Start-Form), Settings-„Hilfe & Support" auf In-App, Notification-Renderer + Push-Deep-Link + Typ-Union. **Edge** `send-push-notification` kennt `support_reply` (immer zustellen, kein Pref-Gate) — **neu deployt**. **Web**: Notification-Typ-Union + Renderer + Deep-Link.
+- **Offen**: Admin-Gegen-Loop (Benachrichtigung bei NEUER Anfrage). Support-Thread-Ansicht ist Web-admin + Mobile-User; Web-User-View bleibt statische Kontaktseite.
+
+### F) Team-Doku + R2-Verifikation
+- **`docs/PROJECT_BRIEFING.md`** (+ druckfertige `docs/Serlo-Team-Briefing.pdf`, Diagramme als self-contained SVGs in `docs/briefing-assets/`, Build via `build.py` + Chrome-Print): Überblick/Architektur/Finanzen/Sicherheit/Monitoring/Team(Rollen×Phasen ~3-4→6-8→10-14)/Marketing/Wachstum/kritische Lücken + Glossar. **`docs/ACCESS_MAP.md`**: Dienste, Zugriffs-Matrix, Break-Glass — KEINE Secrets.
+- **R2-Cleanup verifiziert**: Löschen gibt Speicher frei (Queue `deleted:49`, 0 pending/error; Cron `r2-delete-queue` alle 5 Min). Kein Müll.
 
 ---
 
