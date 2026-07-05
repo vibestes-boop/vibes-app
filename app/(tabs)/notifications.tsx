@@ -23,6 +23,7 @@ CheckCheck,
 CreditCard,
 Gem,
 Heart,
+LifeBuoy,
 MapPin,
 MessageCircle,
 Package,
@@ -99,6 +100,10 @@ function actionLabel(n: AppNotification): string {
       return n.comment_text
         ? `hat auf deine Anfrage geantwortet: ${n.comment_text}`
         : "hat auf deine Support-Anfrage geantwortet 💬";
+    case "support_new":
+      return n.comment_text
+        ? `hat eine Support-Anfrage gestellt: ${n.comment_text}`
+        : "hat eine neue Support-Anfrage gestellt 🆘";
     default:
       return "";
   }
@@ -164,6 +169,7 @@ function TypeIcon({ type }: { type: AppNotification["type"] }) {
       order_review:             { Icon: Star,          bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
       order_dispute:            { Icon: AlertTriangle, bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
       support_reply:            { Icon: MessageCircle, bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
+      support_new:              { Icon: LifeBuoy,      bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
     } as Record<string, { Icon: React.ElementType; bg: string; color: string }>
   )[type] ?? { Icon: Bell, bg: "rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.6)" };
 

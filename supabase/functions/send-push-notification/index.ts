@@ -156,6 +156,10 @@ Deno.serve(async (req: Request) => {
         title: '💬 Antwort vom Team',
         body: record.comment_text ?? 'Das Team hat auf deine Support-Anfrage geantwortet',
       },
+      support_new: {
+        title: '🆘 Neue Support-Anfrage',
+        body: record.comment_text ?? `${actorName} braucht Hilfe`,
+      },
     };
 
     const msg = messages[record.type] ?? { title: 'Neue Aktivität auf Vibes', body: '' };

@@ -46,7 +46,8 @@ export type NotificationType =
   | 'order_address_updated'
   | 'order_review'
   | 'order_dispute'
-  | 'support_reply';
+  | 'support_reply'
+  | 'support_new';
 
 export interface NotificationSender {
   id: string;

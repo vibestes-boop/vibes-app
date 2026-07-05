@@ -28,6 +28,7 @@ import {
   MapPin,
   Star,
   AlertTriangle,
+  LifeBuoy,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -81,6 +82,7 @@ const TYPE_META: Record<NotificationType, NotifMeta> = {
   order_review:            { icon: Star,          color: 'text-muted-foreground', bg: 'bg-muted' },
   order_dispute:           { icon: AlertTriangle, color: 'text-muted-foreground', bg: 'bg-muted' },
   support_reply:           { icon: MessageCircle, color: 'text-muted-foreground', bg: 'bg-muted' },
+  support_new:             { icon: LifeBuoy,      color: 'text-muted-foreground', bg: 'bg-muted' },
 };
 
 // ── Notification-Text pro Typ ─────────────────────────────────────────────────
@@ -155,6 +157,10 @@ function notifText(n: Notification): string {
       return n.comment_text
         ? `Antwort vom Team: „${n.comment_text}"`
         : 'Das Team hat auf deine Support-Anfrage geantwortet 💬';
+    case 'support_new':
+      return n.comment_text
+        ? `Neue Support-Anfrage: „${n.comment_text}"`
+        : `${name} hat eine neue Support-Anfrage gestellt 🆘`;
     default:
       return `Neue Aktivität von ${name}.`;
   }
@@ -201,6 +207,8 @@ function notifHref(n: Notification): Route {
       return '/studio/orders' as Route;
     case 'support_reply':
       return '/support' as Route;
+    case 'support_new':
+      return '/admin/support' as Route;
     case 'comment_like':
       return n.post_id ? (`/p/${n.post_id}` as Route) : ('/' as Route);
     case 'repost':
