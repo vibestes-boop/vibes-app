@@ -1339,7 +1339,47 @@ export async function adminRemovePost(postId: string, reason?: string): Promise<
   if ((data as { error?: string } | null)?.error) return { ok: false, error: (data as { error: string }).error };
   revalidatePath('/');
   revalidatePath('/following');
+  revalidatePath('/admin/content');
   return { ok: true };
+}
+
+export interface AdminContentPost {
+  id: string;
+  caption: string | null;
+  thumbnail_url: string | null;
+  media_type: string | null;
+  author_id: string;
+  author_username: string | null;
+  created_at: string;
+  like_count: number;
+  comment_count: number;
+  view_count: number;
+}
+
+/** Neueste Posts für die Admin-Inhalte-Moderation (mit Autor + Kennzahlen). */
+export async function getAdminContentPosts(limit = 30): Promise<AdminContentPost[]> {
+  const { supabase, error: authErr } = await requireAdminRole('moderate');
+  if (authErr) return [];
+
+  const { data, error } = await supabase
+    .from('posts')
+    .select('id, caption, thumbnail_url, media_type, author_id, created_at, like_count, comment_count, view_count, author:profiles!posts_author_id_fkey(username)')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if (error) return [];
+
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    caption: row.caption ?? null,
+    thumbnail_url: typeof row.thumbnail_url === 'string' && row.thumbnail_url.length > 0 ? row.thumbnail_url : null,
+    media_type: row.media_type ?? null,
+    author_id: row.author_id,
+    author_username: normalizeJoinedUsername(row.author),
+    created_at: row.created_at,
+    like_count: toNumber(row.like_count),
+    comment_count: toNumber(row.comment_count),
+    view_count: toNumber(row.view_count),
+  }));
 }
 
 // ─── Seller balances ──────────────────────────────────────────────────────────

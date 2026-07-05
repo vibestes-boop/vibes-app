@@ -1,13 +1,17 @@
 import type { Metadata } from 'next';
-import { getAdminCommandCenterSnapshot } from '@/app/actions/admin';
+import { getAdminCommandCenterSnapshot, getAdminContentPosts } from '@/app/actions/admin';
 import { TopContentPanel } from '@/app/admin/command-center/top-content-panel';
 import { Panel, StatCard, ActivityList } from '@/components/admin/section-ui';
+import { ContentModerationTable } from '@/components/admin/content-moderation-table';
 
 export const metadata: Metadata = { title: 'Admin — Inhalte', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
 
 export default async function AdminContentPage() {
-  const snapshot = await getAdminCommandCenterSnapshot();
+  const [snapshot, posts] = await Promise.all([
+    getAdminCommandCenterSnapshot(),
+    getAdminContentPosts(30),
+  ]);
 
   return (
     <div className="space-y-3">
@@ -31,6 +35,10 @@ export default async function AdminContentPage() {
           <ActivityList items={snapshot.activity} />
         </Panel>
       </div>
+
+      <Panel title={`Inhalte moderieren (${posts.length})`}>
+        <ContentModerationTable posts={posts} />
+      </Panel>
     </div>
   );
 }
