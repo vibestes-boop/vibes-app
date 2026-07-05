@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { getAdminCommandCenterSnapshot } from '@/app/actions/admin';
 import { Panel, StatCard, ActivityList, QueueList } from '@/components/admin/section-ui';
+import { AutoRefresh } from '@/components/admin/auto-refresh';
 
 export const metadata: Metadata = { title: 'Admin — Live Feed', robots: { index: false, follow: false } };
 export const dynamic = 'force-dynamic';
@@ -10,9 +11,12 @@ export default async function AdminLiveFeedPage() {
 
   return (
     <div className="space-y-3">
-      <div>
-        <h1 className="text-lg font-bold text-foreground">Live Feed</h1>
-        <p className="text-xs text-muted-foreground">Aktivität in Echtzeit und offene Moderation.</p>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h1 className="text-lg font-bold text-foreground">Live Feed</h1>
+          <p className="text-xs text-muted-foreground">Aktivität in Echtzeit und offene Moderation.</p>
+        </div>
+        <AutoRefresh intervalMs={20000} />
       </div>
 
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
