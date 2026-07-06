@@ -6,30 +6,13 @@ import Image from 'next/image';
 import { useQuery } from '@tanstack/react-query';
 import { createClient } from '@/lib/supabase/client';
 import { StarDisplay } from './star-display';
+import { useI18n } from '@/lib/i18n/client';
 import type { ProductReview } from '@/lib/data/shop';
 
 // -----------------------------------------------------------------------------
 // ReviewList — fetcht via TanStack Query vom Browser-Client (RLS erlaubt Public-
 // Lesen). Keine Pagination — erste 50, für "mehr anzeigen" später.
 // -----------------------------------------------------------------------------
-
-function formatAgo(iso: string): string {
-  const then = new Date(iso).getTime();
-  if (!Number.isFinite(then)) return '';
-  const diffSec = Math.max(1, Math.floor((Date.now() - then) / 1000));
-  if (diffSec < 60) return `vor ${diffSec}s`;
-  const diffMin = Math.floor(diffSec / 60);
-  if (diffMin < 60) return `vor ${diffMin} Min.`;
-  const diffH = Math.floor(diffMin / 60);
-  if (diffH < 24) return `vor ${diffH} Std.`;
-  const diffD = Math.floor(diffH / 24);
-  if (diffD < 7) return `vor ${diffD} Tg.`;
-  const diffW = Math.floor(diffD / 7);
-  if (diffW < 5) return `vor ${diffW} W.`;
-  const diffMo = Math.floor(diffD / 30);
-  if (diffMo < 12) return `vor ${diffMo} Mo.`;
-  return `vor ${Math.floor(diffD / 365)} J.`;
-}
 
 async function fetchReviews(productId: string): Promise<ProductReview[]> {
   const supabase = createClient();
@@ -58,6 +41,7 @@ export function ReviewList({
   productId: string;
   initialData: ProductReview[];
 }) {
+  const { t } = useI18n();
   const { data: reviews = initialData } = useQuery({
     queryKey: ['reviews', productId],
     queryFn: () => fetchReviews(productId),
@@ -65,10 +49,29 @@ export function ReviewList({
     staleTime: 60_000,
   });
 
+  // Relative-Zeit i18n-fähig (schließt über `t`, daher lokal statt Modul-Ebene).
+  const formatAgo = (iso: string): string => {
+    const then = new Date(iso).getTime();
+    if (!Number.isFinite(then)) return '';
+    const diffSec = Math.max(1, Math.floor((Date.now() - then) / 1000));
+    if (diffSec < 60) return t('shop.reviews.agoSec', { n: diffSec });
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return t('shop.reviews.agoMin', { n: diffMin });
+    const diffH = Math.floor(diffMin / 60);
+    if (diffH < 24) return t('shop.reviews.agoHour', { n: diffH });
+    const diffD = Math.floor(diffH / 24);
+    if (diffD < 7) return t('shop.reviews.agoDay', { n: diffD });
+    const diffW = Math.floor(diffD / 7);
+    if (diffW < 5) return t('shop.reviews.agoWeek', { n: diffW });
+    const diffMo = Math.floor(diffD / 30);
+    if (diffMo < 12) return t('shop.reviews.agoMonth', { n: diffMo });
+    return t('shop.reviews.agoYear', { n: Math.floor(diffD / 365) });
+  };
+
   if (reviews.length === 0) {
     return (
       <div className="rounded-xl border border-dashed p-6 text-center text-sm text-muted-foreground">
-        Noch keine Bewertungen. Sei der/die Erste — kauf das Produkt und hinterlasse eine Bewertung.
+        {t('shop.reviews.empty')}
       </div>
     );
   }
@@ -93,7 +96,7 @@ export function ReviewList({
                     @{r.reviewer.username}
                   </Link>
                 ) : (
-                  <span className="text-sm font-medium text-muted-foreground">Gelöschter User</span>
+                  <span className="text-sm font-medium text-muted-foreground">{t('shop.reviews.deletedUser')}</span>
                 )}
                 <span className="text-xs text-muted-foreground">{formatAgo(r.created_at)}</span>
               </div>

@@ -3,6 +3,7 @@
 import { useLayoutEffect, useRef, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/lib/i18n/client';
 
 // -----------------------------------------------------------------------------
 // ProductDescription (C6) — ersetzt das alte `<details><summary>`-Pattern.
@@ -36,6 +37,7 @@ export function ProductDescription({
   text: string;
   className?: string;
 }) {
+  const { t } = useI18n();
   const [expanded, setExpanded] = useState(false);
   const [needsToggle, setNeedsToggle] = useState(false);
   const [measuredHeight, setMeasuredHeight] = useState<number | null>(null);
@@ -63,7 +65,7 @@ export function ProductDescription({
       )}
     >
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="font-semibold text-foreground">Beschreibung</h3>
+        <h3 className="font-semibold text-foreground">{t('shop.detail.description')}</h3>
         {needsToggle && (
           <button
             type="button"
@@ -71,7 +73,7 @@ export function ProductDescription({
             className="inline-flex items-center gap-1 rounded-full bg-background/70 px-2.5 py-1 text-xs font-medium text-foreground ring-1 ring-black/5 transition-colors duration-fast ease-out-expo hover:bg-background dark:bg-background/50 dark:ring-white/10 dark:hover:bg-background/80"
             aria-expanded={expanded}
           >
-            {expanded ? 'Weniger' : 'Mehr'}
+            {expanded ? t('shop.reviews.toggleLess') : t('shop.reviews.toggleMore')}
             <ChevronDown
               className={cn(
                 'h-3.5 w-3.5 transition-transform duration-base ease-out-expo',

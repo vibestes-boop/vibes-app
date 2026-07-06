@@ -5,6 +5,7 @@ import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { StarPicker } from './star-display';
 import { useSubmitReview } from '@/hooks/use-shop';
+import { useI18n } from '@/lib/i18n/client';
 import type { ProductReview } from '@/lib/data/shop';
 
 // -----------------------------------------------------------------------------
@@ -20,6 +21,7 @@ export function ReviewForm({
   productId: string;
   initialReview: ProductReview | null;
 }) {
+  const { t } = useI18n();
   const [rating, setRating] = useState(initialReview?.rating ?? 0);
   const [comment, setComment] = useState(initialReview?.comment ?? '');
   const submit = useSubmitReview();
@@ -35,10 +37,10 @@ export function ReviewForm({
   return (
     <div className="rounded-xl border bg-card p-5">
       <h3 className="text-base font-semibold">
-        {isEdit ? 'Deine Bewertung bearbeiten' : 'Produkt bewerten'}
+        {isEdit ? t('shop.reviews.formTitleEdit') : t('shop.reviews.formTitleNew')}
       </h3>
       <p className="mt-1 text-xs text-muted-foreground">
-        Deine Meinung hilft anderen Käufern. Du kannst deine Bewertung später bearbeiten.
+        {t('shop.reviews.formHint')}
       </p>
 
       <div className="mt-4 flex items-center gap-3">
@@ -51,7 +53,7 @@ export function ReviewForm({
       <textarea
         value={comment}
         onChange={(e) => setComment(e.target.value)}
-        placeholder="Schreib einen kurzen Kommentar (optional)"
+        placeholder={t('shop.reviews.commentPlaceholder')}
         maxLength={1000}
         rows={4}
         className="mt-3 w-full resize-none rounded-md border bg-background px-3 py-2 text-sm outline-none focus:border-ring"
@@ -64,9 +66,9 @@ export function ReviewForm({
         {submit.isPending ? (
           <Loader2 className="h-4 w-4 animate-spin" />
         ) : isEdit ? (
-          'Bewertung aktualisieren'
+          t('shop.reviews.submitEdit')
         ) : (
-          'Bewertung abschicken'
+          t('shop.reviews.submitNew')
         )}
       </Button>
     </div>

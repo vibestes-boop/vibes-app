@@ -28,6 +28,7 @@ import {
 import type { ShopProduct } from "@/lib/data/shop";
 import { ProductImage } from "./product-image";
 import { PreorderCelebrateDialog } from "./preorder-celebrate-dialog";
+import { useI18n } from "@/lib/i18n/client";
 
 // -----------------------------------------------------------------------------
 // BuyBar — Call-to-Action-Block für die Produkt-Detail-Seite.
@@ -61,6 +62,7 @@ export function BuyBar({
   className?: string;
 }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [qty, setQty] = useState(1);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [result, setResult] = useState<{
@@ -151,13 +153,13 @@ export function BuyBar({
                 {formatEur(product.price_eur)}
               </span>
               <span className="text-xs font-medium text-amber-700 dark:text-amber-400">
-                Vorbestellung
+                {t("shop.buy.preorderLabel")}
               </span>
             </div>
           )}
           <p className="text-xs leading-snug text-muted-foreground">
-            🤎 <span className="font-medium text-foreground">Sammelbestellung</span> — du zahlst
-            erst, wenn die Ware da ist. Trag dich ein, @{product.seller.username} meldet sich.
+            🤎 <span className="font-medium text-foreground">{t("shop.buy.preorderCollectiveWord")}</span> —{" "}
+            {t("shop.buy.preorderCollectiveHint", { username: product.seller.username })}
           </p>
           <div className="flex items-center gap-3">
             {/* Merken */}
@@ -173,7 +175,7 @@ export function BuyBar({
                 "flex h-12 w-12 flex-none items-center justify-center rounded-full border bg-card transition-colors hover:bg-muted",
                 product.saved_by_me && "text-primary",
               )}
-              aria-label={product.saved_by_me ? "Nicht mehr merken" : "Merken"}
+              aria-label={product.saved_by_me ? t("shop.buy.unsaveAria") : t("shop.buy.saveAria")}
             >
               {product.saved_by_me ? (
                 <BookmarkCheck className="h-5 w-5 fill-current" />
@@ -204,22 +206,22 @@ export function BuyBar({
               ) : isPreordered ? (
                 <>
                   <CheckCircle2 className="h-4 w-4" />
-                  Vorbestellt
+                  {t("shop.buy.preordered")}
                 </>
               ) : isOwnP ? (
-                "Dein Produkt"
+                t("shop.buy.ownProduct")
               ) : (
                 // Auch ausgeloggt „Vorbestellen" — der Tap leitet zum Login
                 // (handleVormerken). Der lange Label „Einloggen zum
                 // Vorbestellen" lief 3-zeilig aus der h-12-Pille.
-                "Vorbestellen"
+                t("shop.buy.preorderCta")
               )}
             </button>
           </div>
           {isPreordered && (
             <div className="flex items-center justify-between gap-2">
               <p className="text-xs leading-snug text-emerald-600 dark:text-emerald-400">
-                Eingetragen — @{product.seller.username} meldet sich bei dir. 🤎
+                {t("shop.buy.preorderedNote", { username: product.seller.username })}
               </p>
               <button
                 type="button"
@@ -227,7 +229,7 @@ export function BuyBar({
                 disabled={cancelInterest.isPending}
                 className="flex-none text-xs font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline disabled:opacity-60"
               >
-                {cancelInterest.isPending ? "…" : "Zurücknehmen"}
+                {cancelInterest.isPending ? "…" : t("shop.buy.cancelPreorder")}
               </button>
             </div>
           )}
@@ -279,7 +281,7 @@ export function BuyBar({
               "flex h-12 w-12 flex-none items-center justify-center rounded-full border bg-card transition-colors hover:bg-muted",
               product.saved_by_me && "text-primary",
             )}
-            aria-label={product.saved_by_me ? "Nicht mehr merken" : "Merken"}
+            aria-label={product.saved_by_me ? t("shop.buy.unsaveAria") : t("shop.buy.saveAria")}
           >
             {product.saved_by_me ? (
               <BookmarkCheck className="h-5 w-5 fill-current" />
@@ -320,14 +322,14 @@ export function BuyBar({
             <span className="h-5 w-px bg-current/30" aria-hidden />
             <span>
               {soldOut
-                ? "Ausverkauft"
+                ? t("shop.buy.soldOut")
                 : isOwn
-                  ? "Dein Produkt"
+                  ? t("shop.buy.ownProduct")
                   : !viewerId
-                    ? "Jetzt kaufen" // Tap → Login-Redirect (handleBuy)
+                    ? t("shop.buy.buyNow") // Tap → Login-Redirect (handleBuy)
                     : !canAfford
-                      ? "Coins aufladen"
-                      : "Jetzt kaufen"}
+                      ? t("shop.buy.topUpCoins")
+                      : t("shop.buy.buyNow")}
             </span>
           </button>
         </div>
@@ -351,7 +353,7 @@ export function BuyBar({
           ) : (
             <>
               <DialogHeader>
-                <DialogTitle>Produkt kaufen?</DialogTitle>
+                <DialogTitle>{t("shop.buy.confirmTitle")}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 <div className="flex items-center gap-3 rounded-lg bg-muted/60 p-3">
@@ -388,7 +390,7 @@ export function BuyBar({
                 <div className="rounded-lg border p-3 text-sm">
                   <div className="flex items-center justify-between">
                     <span className="text-muted-foreground">
-                      Aktuelles Guthaben
+                      {t("shop.buy.currentBalance")}
                     </span>
                     <span className="inline-flex items-center gap-1 tabular-nums">
                       <CoinIcon className="h-3.5 w-3.5 text-muted-foreground" />
@@ -396,7 +398,7 @@ export function BuyBar({
                     </span>
                   </div>
                   <div className="mt-1 flex items-center justify-between">
-                    <span className="text-muted-foreground">Nach Kauf</span>
+                    <span className="text-muted-foreground">{t("shop.buy.afterPurchase")}</span>
                     <span
                       className={cn(
                         "inline-flex items-center gap-1 tabular-nums font-medium",
@@ -411,9 +413,9 @@ export function BuyBar({
 
                 {!canAfford && (
                   <div className="rounded-lg border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
-                    Dir fehlen{" "}
-                    {(totalCost - coinBalance).toLocaleString("de-DE")} Coins.
-                    Lade Guthaben im Coin-Shop auf.
+                    {t("shop.buy.insufficient", {
+                      count: (totalCost - coinBalance).toLocaleString("de-DE"),
+                    })}
                   </div>
                 )}
 
@@ -423,7 +425,7 @@ export function BuyBar({
                     className="flex-1"
                     onClick={() => setConfirmOpen(false)}
                   >
-                    Abbrechen
+                    {t("common.cancel")}
                   </Button>
                   <Button
                     className="flex-1"
@@ -435,7 +437,7 @@ export function BuyBar({
                     {buy.isPending ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
-                      "Bestätigen"
+                      t("shop.buy.confirm")
                     )}
                   </Button>
                 </div>
@@ -458,21 +460,24 @@ function SuccessPanel({
   onClose: () => void;
 }) {
   const router = useRouter();
+  const { t } = useI18n();
   return (
     <div className="flex flex-col items-center gap-4 py-2 text-center">
       <div className="rounded-full bg-emerald-500/10 p-3">
         <CheckCircle2 className="h-8 w-8 text-emerald-500" />
       </div>
       <div>
-        <h3 className="text-lg font-semibold">Kauf erfolgreich</h3>
+        <h3 className="text-lg font-semibold">{t("shop.buy.successTitle")}</h3>
         <p className="mt-1 text-sm text-muted-foreground">
-          Bestellung für &bdquo;{product.title}&quot; gespeichert. Neues
-          Guthaben: {result.newBalance.toLocaleString("de-DE")} Coins.
+          {t("shop.buy.successBody", {
+            title: product.title,
+            balance: result.newBalance.toLocaleString("de-DE"),
+          })}
         </p>
       </div>
       <div className="flex w-full gap-2">
         <Button variant="outline" className="flex-1" onClick={onClose}>
-          Schließen
+          {t("common.close")}
         </Button>
         <Button
           className="flex-1"
@@ -481,7 +486,7 @@ function SuccessPanel({
             router.push("/shop/orders" as Route);
           }}
         >
-          Meine Käufe
+          {t("shop.buy.myPurchases")}
         </Button>
       </div>
     </div>

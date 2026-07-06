@@ -8,10 +8,6 @@ import { CoinIcon } from '@/components/ui/coin-icon';
 import {
   BadgeCheck,
   MapPin,
-  Package,
-  Download,
-  Wrench,
-  Gem,
   ShoppingBag,
   Star,
   Pencil,
@@ -34,6 +30,7 @@ import {
   getOrderRating,
 } from "@/lib/data/shop";
 import { getUser } from "@/lib/auth/session";
+import { getT } from "@/lib/i18n/server";
 import { formatEur } from "@/lib/utils";
 
 // -----------------------------------------------------------------------------
@@ -96,34 +93,9 @@ export async function generateMetadata({
   };
 }
 
-const CATEGORY_META: Record<
-  string,
-  { label: string; icon: typeof Package; delivery: string }
-> = {
-  physical: {
-    label: "Physisches Produkt",
-    icon: Package,
-    delivery: "Wird verschickt. Details koordinierst du mit dem Verkäufer.",
-  },
-  digital: {
-    label: "Digitaler Download",
-    icon: Download,
-    delivery: "Sofortiger Download nach Kauf.",
-  },
-  service: {
-    label: "Service",
-    icon: Wrench,
-    delivery: "Nach Kauf kontaktiert dich der Anbieter für Details.",
-  },
-  collectible: {
-    label: "Collectible",
-    icon: Gem,
-    delivery: "Sammelobjekt — Lieferbedingungen siehe Beschreibung.",
-  },
-};
-
 export default async function ProductDetailPage({ params }: PageProps) {
   const { id } = await params;
+  const t = await getT();
   const product = await getProduct(id);
   if (!product) notFound();
 
@@ -145,7 +117,16 @@ export default async function ProductDetailPage({ params }: PageProps) {
   const images = [product.cover_url, ...product.image_urls].filter(
     (s): s is string => typeof s === "string" && s.length > 0,
   );
-  const catMeta = CATEGORY_META[product.category];
+  const categoryLabel =
+    product.category === "physical"
+      ? t("shop.detail.categoryPhysical")
+      : product.category === "digital"
+        ? t("shop.detail.categoryDigital")
+        : product.category === "service"
+          ? t("shop.detail.categoryService")
+          : product.category === "collectible"
+            ? t("shop.detail.categoryCollectible")
+            : product.category;
 
   const eff = product.sale_price_coins ?? product.price_coins;
   const isSale = product.sale_price_coins !== null;
@@ -159,10 +140,12 @@ export default async function ProductDetailPage({ params }: PageProps) {
     : null;
   const isLowStock = product.stock > 0 && product.stock <= 5;
   const subline = [
-    catMeta?.label ?? product.category,
-    product.women_only ? "Women-Only" : null,
+    categoryLabel,
+    product.women_only ? t("shop.detail.womenOnly") : null,
     product.sold_count > 0
-      ? `${product.sold_count.toLocaleString("de-DE")}× verkauft`
+      ? t("shop.detail.soldCount", {
+          count: product.sold_count.toLocaleString("de-DE"),
+        })
       : null,
   ]
     .filter(Boolean)
@@ -170,18 +153,18 @@ export default async function ProductDetailPage({ params }: PageProps) {
   const deliveryShort =
     product.category === "physical"
       ? product.free_shipping
-        ? "Gratis"
-        : "Per DM"
+        ? t("shop.detail.deliveryFree")
+        : t("shop.detail.deliveryDm")
       : product.category === "digital"
-        ? "Sofort"
-        : "Nach Kauf";
+        ? t("shop.detail.deliveryInstant")
+        : t("shop.detail.deliveryAfterPurchase");
   const stockShort =
     product.stock === -1
-      ? "Auf Lager"
+      ? t("shop.detail.stockInStock")
       : product.stock === 0
-        ? "Ausverkauft"
+        ? t("shop.detail.stockSoldOut")
         : isLowStock
-          ? `Nur ${product.stock}`
+          ? t("shop.detail.stockOnly", { count: product.stock })
           : `${product.stock}`;
 
   // ── JSON-LD: Product schema ──────────────────────────────────────────────
@@ -242,7 +225,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
         {/* Breadcrumb */}
         <nav className="mb-4 text-sm text-muted-foreground">
           <Link href={"/shop" as Route} className="hover:text-foreground">
-            Shop
+            {t("shop.detail.breadcrumbShop")}
           </Link>
           <span className="mx-2">/</span>
           <span className="text-foreground">{product.title}</span>
@@ -280,12 +263,12 @@ export default async function ProductDetailPage({ params }: PageProps) {
                       {formatEur(product.price_eur)}
                     </span>
                     <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-600/15 px-2.5 py-1 text-xs font-medium text-amber-700 dark:text-amber-400">
-                      🤎 Vorbestellung · Zahlung bei Eintreffen
+                      {t("shop.detail.preorderPayOnArrival")}
                     </span>
                   </div>
                 ) : (
                   <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-600/15 px-3 py-1.5 text-sm font-medium text-amber-700 dark:text-amber-400">
-                    🤎 Vorbestellung · Preis siehe Beschreibung
+                    {t("shop.detail.preorderSeeDescription")}
                   </span>
                 )
               ) : (
@@ -320,7 +303,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
             <div className="grid grid-cols-3 overflow-hidden rounded-xl border border-border">
               <div className="px-4 py-3">
                 <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                  Lieferung
+                  {t("shop.detail.infoDelivery")}
                 </div>
                 <div className="mt-0.5 truncate text-sm font-medium text-foreground">
                   {deliveryShort}
@@ -328,7 +311,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
               </div>
               <div className="border-l border-border px-4 py-3">
                 <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                  Bewertung
+                  {t("shop.detail.infoRating")}
                 </div>
                 <div className="mt-0.5 flex items-center gap-1 truncate text-sm font-medium text-foreground">
                   {product.review_count > 0 && product.avg_rating !== null ? (
@@ -337,13 +320,13 @@ export default async function ProductDetailPage({ params }: PageProps) {
                       {product.avg_rating.toFixed(1)} ({product.review_count})
                     </>
                   ) : (
-                    "Neu"
+                    t("shop.detail.ratingNew")
                   )}
                 </div>
               </div>
               <div className="border-l border-border px-4 py-3">
                 <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
-                  Lager
+                  {t("shop.detail.infoStock")}
                 </div>
                 <div className="mt-0.5 truncate text-sm font-medium text-foreground">
                   {stockShort}
@@ -396,10 +379,10 @@ export default async function ProductDetailPage({ params }: PageProps) {
                     <div className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
                       <StarDisplay rating={sellerRating.sellerAvg ?? 0} size={12} />
                       <span className="font-medium text-foreground">{sellerRating.sellerAvg?.toFixed(1)}</span>
-                      <span>· {sellerRating.sellerCount} {sellerRating.sellerCount === 1 ? 'Bewertung' : 'Bewertungen'}</span>
+                      <span>· {sellerRating.sellerCount} {sellerRating.sellerCount === 1 ? t("shop.detail.ratingSingular") : t("shop.detail.ratingPlural")}</span>
                     </div>
                   ) : (
-                    <div className="text-xs text-muted-foreground">Profil ansehen →</div>
+                    <div className="text-xs text-muted-foreground">{t("shop.detail.viewProfile")}</div>
                   )}
                 </div>
               </Link>
@@ -414,7 +397,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
                 className="ml-1 inline-flex items-center gap-1.5 rounded-full bg-background/70 px-3 py-1.5 text-xs font-medium text-foreground ring-1 ring-black/5 transition-colors duration-fast ease-out-expo hover:bg-background dark:bg-background/50 dark:ring-white/10 dark:hover:bg-background/80"
               >
                 <ShoppingBag className="h-3.5 w-3.5" />
-                Shop
+                {t("shop.detail.sellerShop")}
               </Link>
             </div>
 
@@ -424,7 +407,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
             {product.description && (
               <div>
                 <div className="mb-1.5 text-[11px] uppercase tracking-wide text-muted-foreground">
-                  Beschreibung
+                  {t("shop.detail.description")}
                 </div>
                 <ProductDescription text={product.description} />
               </div>
@@ -439,7 +422,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
                   className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-foreground px-4 py-3 text-sm font-semibold text-background transition hover:opacity-90"
                 >
                   <Pencil className="h-4 w-4" />
-                  Produkt bearbeiten
+                  {t("shop.detail.editProduct")}
                 </Link>
               ) : (
                 <BuyBar
@@ -457,7 +440,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
         <section id="reviews" className="mt-16 border-t pt-12">
           <div className="mb-6 flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-semibold">Bewertungen</h2>
+              <h2 className="text-xl font-semibold">{t("shop.detail.reviewsTitle")}</h2>
               {product.review_count > 0 && (
                 <div className="mt-1 flex items-center gap-2">
                   <StarDisplay
@@ -468,7 +451,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
                   />
                   <span className="text-sm text-muted-foreground tabular-nums">
                     {product.avg_rating?.toFixed(1) ?? "–"} ·{" "}
-                    {product.review_count} Bewertungen
+                    {t("shop.detail.reviewsCount", { count: product.review_count })}
                   </span>
                 </div>
               )}
@@ -487,7 +470,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
         {others.length > 0 && (
           <section className="mt-16 border-t pt-12">
             <h2 className="mb-6 text-xl font-semibold">
-              Mehr von @{product.seller.username}
+              {t("shop.detail.moreFromSeller", { username: product.seller.username })}
             </h2>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
               {others.map((p) => (
@@ -512,7 +495,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-foreground px-4 py-3 text-sm font-semibold text-background transition hover:opacity-90"
               >
                 <Pencil className="h-4 w-4" />
-                Produkt bearbeiten
+                {t("shop.detail.editProduct")}
               </Link>
             </div>
           ) : (

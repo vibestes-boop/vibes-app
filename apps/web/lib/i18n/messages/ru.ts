@@ -1,10 +1,12 @@
 // Русский — Russische Übersetzung.
 //
-// Shape muss 1:1 `Messages` (= typeof deMessages) entsprechen — TypeScript
-// erzwingt das über den `satisfies`-Operator am Ende. Fehlende/überflüssige
-// Keys sind Compile-Errors.
+// Darf partiell sein (`DeepPartial<Messages>`): fehlende Keys fallen zur
+// Laufzeit auf Deutsch zurück (siehe translate.ts). So können wir Russisch
+// inkrementell vervollständigen, ohne den Build zu brechen. Überflüssige/falsch
+// getippte Keys bleiben Compile-Errors.
 
 import type { Messages } from './de';
+import type { DeepPartial } from '../translate';
 
 const ruMessages = {
   common: {
@@ -322,6 +324,88 @@ const ruMessages = {
     emptyTitle: 'Ничего не найдено',
     emptyHint:
       'Ослабь фильтры или попробуй другую категорию. В сайдбаре слева есть кнопка «Сбросить».',
+
+    // Страница товара (/shop/[id])
+    detail: {
+      categoryPhysical: 'Физический товар',
+      categoryDigital: 'Цифровая загрузка',
+      categoryService: 'Услуга',
+      categoryCollectible: 'Коллекционное',
+      womenOnly: 'Только для женщин',
+      soldCount: 'Продано {count}×',
+      preorderPayOnArrival: '🤎 Предзаказ · Оплата по прибытии',
+      preorderSeeDescription: '🤎 Предзаказ · Цена в описании',
+      deliveryFree: 'Бесплатно',
+      deliveryDm: 'В личке',
+      deliveryInstant: 'Сразу',
+      deliveryAfterPurchase: 'После покупки',
+      stockInStock: 'В наличии',
+      stockSoldOut: 'Распродано',
+      stockOnly: 'Осталось {count}',
+      breadcrumbShop: 'Магазин',
+      infoDelivery: 'Доставка',
+      infoRating: 'Оценка',
+      infoStock: 'Наличие',
+      ratingNew: 'Новинка',
+      ratingSingular: 'отзыв',
+      ratingPlural: 'отзывов',
+      viewProfile: 'Открыть профиль →',
+      sellerShop: 'Магазин',
+      description: 'Описание',
+      editProduct: 'Редактировать товар',
+      reviewsTitle: 'Отзывы',
+      reviewsCount: '{count} отзывов',
+      moreFromSeller: 'Ещё от @{username}',
+    },
+
+    // Кнопка покупки / BuyBar (components/shop/buy-bar.tsx)
+    buy: {
+      saveAria: 'В избранное',
+      unsaveAria: 'Убрать из избранного',
+      preorderLabel: 'Предзаказ',
+      preorderCollectiveWord: 'Коллективный заказ',
+      preorderCollectiveHint:
+        'платишь только когда товар придёт. Запишись — @{username} свяжется с тобой.',
+      preordered: 'В предзаказе',
+      ownProduct: 'Твой товар',
+      preorderCta: 'Предзаказать',
+      preorderedNote: 'Записан — @{username} свяжется с тобой. 🤎',
+      cancelPreorder: 'Отменить',
+      soldOut: 'Распродано',
+      buyNow: 'Купить',
+      topUpCoins: 'Пополнить монеты',
+      confirmTitle: 'Купить товар?',
+      currentBalance: 'Текущий баланс',
+      afterPurchase: 'После покупки',
+      insufficient: 'Не хватает {count} монет. Пополни баланс в магазине монет.',
+      confirm: 'Подтвердить',
+      successTitle: 'Покупка совершена',
+      successBody: 'Заказ «{title}» сохранён. Новый баланс: {balance} монет.',
+      myPurchases: 'Мои покупки',
+    },
+
+    // Описание + отзывы (product-description / review-list / review-form)
+    reviews: {
+      toggleMore: 'Ещё',
+      toggleLess: 'Свернуть',
+      empty:
+        'Пока нет отзывов. Стань первым — купи товар и оставь отзыв.',
+      deletedUser: 'Удалённый пользователь',
+      agoSec: '{n} с назад',
+      agoMin: '{n} мин назад',
+      agoHour: '{n} ч назад',
+      agoDay: '{n} дн назад',
+      agoWeek: '{n} нед назад',
+      agoMonth: '{n} мес назад',
+      agoYear: '{n} г назад',
+      formTitleEdit: 'Редактировать отзыв',
+      formTitleNew: 'Оценить товар',
+      formHint:
+        'Твоё мнение помогает другим покупателям. Отзыв можно изменить позже.',
+      commentPlaceholder: 'Напиши короткий комментарий (необязательно)',
+      submitEdit: 'Обновить отзыв',
+      submitNew: 'Отправить отзыв',
+    },
   },
 
   studio: {
@@ -400,6 +484,6 @@ const ruMessages = {
     period28: '28 дней',
     period90: '90 дней',
   },
-} satisfies Messages;
+} satisfies DeepPartial<Messages>;
 
 export default ruMessages;
