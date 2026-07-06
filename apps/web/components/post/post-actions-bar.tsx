@@ -7,6 +7,7 @@ import { LikeButton } from '@/components/feed/like-button';
 import { PostLikersDialog } from '@/components/post/post-likers-dialog';
 import { useTogglePostLike, useTogglePostSave } from '@/hooks/use-engagement';
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/lib/i18n/client';
 
 // -----------------------------------------------------------------------------
 // PostActionsBar — Like + Bookmark + Download als Client-Island im Post-Detail.
@@ -48,6 +49,7 @@ export function PostActionsBar({
   videoUrl?: string;
   allowDownload?: boolean;
 }) {
+  const { t } = useI18n();
   const [liked, setLiked] = useState(initialLiked);
   const [saved, setSaved] = useState(initialSaved);
   const [likeCount, setLikeCount] = useState(initialLikeCount);
@@ -59,7 +61,7 @@ export function PostActionsBar({
 
   const handleLike = () => {
     if (!isAuthenticated) {
-      toast.error('Bitte melde dich an, um Posts zu liken.');
+      toast.error(t('postActions.likeLoginToast'));
       return;
     }
     const wasLiked = liked;
@@ -78,7 +80,7 @@ export function PostActionsBar({
 
   const handleSave = () => {
     if (!isAuthenticated) {
-      toast.error('Bitte melde dich an, um Posts zu speichern.');
+      toast.error(t('postActions.saveLoginToast'));
       return;
     }
     const wasSaved = saved;
@@ -111,7 +113,7 @@ export function PostActionsBar({
         type="button"
         onClick={handleSave}
         disabled={saveMutation.isPending}
-        aria-label={saved ? 'Gespeichert — entfernen' : 'Post speichern'}
+        aria-label={saved ? t('postActions.unsaveAria') : t('postActions.saveAria')}
         className={cn(
           'flex flex-col items-center gap-1 rounded-md outline-none transition-opacity',
           'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
@@ -126,7 +128,7 @@ export function PostActionsBar({
           )}
         </span>
         <span className="text-xs font-semibold tabular-nums text-foreground/70">
-          {saved ? 'Gespeichert' : 'Speichern'}
+          {saved ? t('postActions.saved') : t('postActions.save')}
         </span>
       </button>
 
@@ -135,7 +137,7 @@ export function PostActionsBar({
         <a
           href={videoUrl}
           download
-          aria-label="Video herunterladen"
+          aria-label={t('postActions.downloadAria')}
           className={cn(
             'flex flex-col items-center gap-1 rounded-md outline-none transition-opacity',
             'focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
@@ -144,7 +146,7 @@ export function PostActionsBar({
           <span className="flex h-9 w-9 items-center justify-center rounded-full bg-foreground/10 transition-colors hover:bg-foreground/20">
             <Download className="h-5 w-5 text-foreground" />
           </span>
-          <span className="text-xs font-semibold text-foreground/70">Download</span>
+          <span className="text-xs font-semibold text-foreground/70">{t('postActions.download')}</span>
         </a>
       )}
     </div>

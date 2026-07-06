@@ -177,6 +177,33 @@ const deMessages = {
     noImage: "Kein Bild hinterlegt.",
   },
 
+  // Post-Aktionen (post-actions-bar: Like/Speichern/Download)
+  postActions: {
+    save: "Speichern",
+    saved: "Gespeichert",
+    saveAria: "Post speichern",
+    unsaveAria: "Gespeichert — entfernen",
+    download: "Download",
+    downloadAria: "Video herunterladen",
+    likeLoginToast: "Bitte melde dich an, um Posts zu liken.",
+    saveLoginToast: "Bitte melde dich an, um Posts zu speichern.",
+  },
+
+  // Teilen (share-buttons)
+  share: {
+    share: "Teilen",
+    link: "Link",
+    copied: "Kopiert",
+    copyAria: "Link kopieren",
+    viaDm: "Via DM",
+    copiedToast: "Link kopiert",
+    copyFailed: "Kopieren fehlgeschlagen",
+    shareFailed: "Teilen fehlgeschlagen",
+    whatsappAria: "Auf WhatsApp teilen",
+    telegramAria: "Auf Telegram teilen",
+    xAria: "Auf X teilen",
+  },
+
   // Kommentar-System (post-comments / comment-thread / comment-form / load-more)
   comments: {
     disabled: "Kommentare für dieses Video sind deaktiviert.",

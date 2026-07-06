@@ -170,6 +170,33 @@ const ruMessages = {
     noImage: 'Изображение не добавлено.',
   },
 
+  // Действия с постом (post-actions-bar: лайк/сохранить/скачать)
+  postActions: {
+    save: 'Сохранить',
+    saved: 'Сохранено',
+    saveAria: 'Сохранить пост',
+    unsaveAria: 'Убрать из сохранённого',
+    download: 'Скачать',
+    downloadAria: 'Скачать видео',
+    likeLoginToast: 'Войди, чтобы ставить лайки.',
+    saveLoginToast: 'Войди, чтобы сохранять посты.',
+  },
+
+  // Поделиться (share-buttons)
+  share: {
+    share: 'Поделиться',
+    link: 'Ссылка',
+    copied: 'Скопировано',
+    copyAria: 'Скопировать ссылку',
+    viaDm: 'В личку',
+    copiedToast: 'Ссылка скопирована',
+    copyFailed: 'Не удалось скопировать',
+    shareFailed: 'Не удалось поделиться',
+    whatsappAria: 'Поделиться в WhatsApp',
+    telegramAria: 'Поделиться в Telegram',
+    xAria: 'Поделиться в X',
+  },
+
   // Комментарии (post-comments / comment-thread / comment-form / load-more)
   comments: {
     disabled: 'Комментарии к этому видео отключены.',
