@@ -22,6 +22,7 @@ import {
 } from '@/lib/data/public';
 import { ProductLinkCard } from '@/components/messages/product-link-card';
 import { getProfile, getUser } from '@/lib/auth/session';
+import { getT } from '@/lib/i18n/server';
 import { ExploreVideoCard } from '@/components/explore/explore-video-card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { VideoPlayer } from '@/components/video/video-player';
@@ -174,6 +175,7 @@ export default async function PostDetailPage({
   params: Promise<{ postId: string }>;
 }) {
   const { postId } = await params;
+  const t = await getT();
 
   const post = await getPost(postId);
   if (!post) notFound();
@@ -308,7 +310,7 @@ export default async function PostDetailPage({
                   {post.author.verified && (
                     <BadgeCheck
                       className="h-4 w-4 shrink-0 fill-foreground text-background"
-                      aria-label="Verifiziert"
+                      aria-label={t('profile.verifiedBadge')}
                     />
                   )}
                 </div>
@@ -386,7 +388,7 @@ export default async function PostDetailPage({
               {(post.music_id || post.audio_url) && (
                 <span className="inline-flex items-center gap-1">
                   <Music2 className="h-3 w-3" />
-                  {post.audio_url ? 'Musik' : 'Sound'}
+                  {post.audio_url ? t('post.music') : t('post.sound')}
                 </span>
               )}
             </div>
@@ -396,7 +398,7 @@ export default async function PostDetailPage({
         // Shoppable Post (#2): verknüpftes Produkt → kompakte Karte → /shop/[id].
         const productCard = linkedProductId ? (
           <div className="rounded-xl border border-border bg-card p-4">
-            <div className="mb-2 text-sm font-semibold">Im Beitrag</div>
+            <div className="mb-2 text-sm font-semibold">{t('post.inPost')}</div>
             <ProductLinkCard productId={linkedProductId} />
           </div>
         ) : null;
@@ -405,7 +407,7 @@ export default async function PostDetailPage({
         const shareCard = (
           <div className="rounded-xl border border-border bg-card p-4">
             <div className="mb-3 text-sm font-semibold">
-              {isImage ? 'Beitrag teilen' : 'Video teilen'}
+              {isImage ? t('post.sharePost') : t('post.shareVideo')}
             </div>
             <ShareButtons
               url={`/p/${post.id}`}
@@ -446,7 +448,7 @@ export default async function PostDetailPage({
           <div className="rounded-xl border border-border bg-card p-4">
             <div className="mb-3 flex items-center justify-between">
               <span className="text-sm font-semibold">
-                Mehr von{' '}
+                {t('post.moreFrom')}{' '}
                 <Link
                   href={`/u/${post.author.username}`}
                   className="text-primary hover:underline underline-offset-2"
@@ -458,7 +460,7 @@ export default async function PostDetailPage({
                 href={`/u/${post.author.username}`}
                 className="text-xs text-muted-foreground transition-colors hover:text-foreground"
               >
-                Alle ansehen
+                {t('post.viewAll')}
               </Link>
             </div>
             <ul className={`grid gap-1.5 ${isLandscape ? 'grid-cols-6' : 'grid-cols-3'}`}>
@@ -491,11 +493,11 @@ export default async function PostDetailPage({
             {/* v1.w.UI.169 — WOZ badge: only visible to RLS-verified members */}
             {post.women_only && (
               <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted px-3 py-1 text-xs font-semibold text-muted-foreground">
-                Women-Only
+                {t('post.womenOnly')}
               </span>
             )}
           <div className="flex flex-wrap items-center gap-4">
-            <StatLine icon={Eye}           value={post.view_count}    label="Aufrufe" />
+            <StatLine icon={Eye}           value={post.view_count}    label={t('post.statViews')} />
             <PostActionsBar
               postId={post.id}
               initialLiked={interaction.liked}
@@ -506,8 +508,8 @@ export default async function PostDetailPage({
               videoUrl={post.video_url || undefined}
               allowDownload={post.allow_download}
             />
-            <StatLine icon={MessageCircle} value={post.comment_count} label="Kommentare" />
-            <StatLine icon={ShareIcon}     value={post.share_count}   label="Shares" />
+            <StatLine icon={MessageCircle} value={post.comment_count} label={t('post.statComments')} />
+            <StatLine icon={ShareIcon}     value={post.share_count}   label={t('post.statShares')} />
           </div>
           </div>
         );
@@ -536,7 +538,7 @@ export default async function PostDetailPage({
               />
             ) : (
               <div className="flex h-full items-center justify-center text-sm text-white/60">
-                Kein Bild hinterlegt.
+                {t('post.noImage')}
               </div>
             )}
           </div>

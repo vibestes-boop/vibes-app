@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { useCreateComment } from '@/hooks/use-engagement';
 import { fetchCommentReplies, deleteComment, toggleCommentLike } from '@/app/actions/engagement';
 import type { CommentWithAuthor } from '@/lib/data/public';
+import { useI18n } from '@/lib/i18n/client';
 
 // -----------------------------------------------------------------------------
 // CommentThread — Client-Component für einen Top-Level-Kommentar mit Replies.
@@ -20,17 +21,6 @@ import type { CommentWithAuthor } from '@/lib/data/public';
 // - Inline-Reply-Form öffnet sich beim Klick auf "Antworten".
 // - Replies werden oldest-first gezeigt (konsistent mit Top-Level).
 // -----------------------------------------------------------------------------
-
-// ── Relative Zeitanzeige ──────────────────────────────────────────────────────
-function formatRelative(iso: string): string {
-  const delta = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
-  if (delta < 60) return 'gerade eben';
-  if (delta < 3600) return `vor ${Math.floor(delta / 60)} Min`;
-  if (delta < 86400) return `vor ${Math.floor(delta / 3600)} Std`;
-  if (delta < 172800) return 'gestern';
-  if (delta < 604800) return `vor ${Math.floor(delta / 86400)} Tagen`;
-  return new Date(iso).toLocaleDateString('de-DE', { day: 'numeric', month: 'short' });
-}
 
 // ── Single CommentRow (wiederverwendet für Top-Level und Reply) ───────────────
 function CommentRow({
@@ -46,10 +36,22 @@ function CommentRow({
   onReply?: (username: string) => void;
   onDeleted?: (id: string) => void;
 }) {
+  const { t, locale } = useI18n();
   const [isDeleting, setIsDeleting] = useState(false);
   // Lokaler Like-State für optimistische Aktualisierung (SSR-Wert als Initialwert).
   const [liked, setLiked] = useState(comment.liked_by_me ?? false);
   const [likeCount, setLikeCount] = useState(comment.like_count);
+
+  // Relative Zeitanzeige — i18n-fähig (schließt über `t`/`locale`).
+  const formatRelative = (iso: string): string => {
+    const delta = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000);
+    if (delta < 60) return t('comments.relJustNow');
+    if (delta < 3600) return t('comments.relMinAgo', { n: Math.floor(delta / 60) });
+    if (delta < 86400) return t('comments.relHourAgo', { n: Math.floor(delta / 3600) });
+    if (delta < 172800) return t('comments.relYesterday');
+    if (delta < 604800) return t('comments.relDaysAgo', { n: Math.floor(delta / 86400) });
+    return new Date(iso).toLocaleDateString(locale, { day: 'numeric', month: 'short' });
+  };
 
   const router = useRouter();
   const qc = useQueryClient();
@@ -57,18 +59,18 @@ function CommentRow({
   const authorName = comment.author.display_name ?? `@${comment.author.username}`;
 
   const handleDelete = async () => {
-    if (!confirm('Kommentar wirklich löschen?')) return;
+    if (!confirm(t('comments.deleteConfirm'))) return;
     setIsDeleting(true);
     const res = await deleteComment(comment.id);
     if (res.ok) {
-      toast('Kommentar gelöscht.');
+      toast(t('comments.deleted'));
       onDeleted?.(comment.id);
       // Replies-Cache + Feed-Comment-Count invalidieren
       qc.invalidateQueries({ queryKey: ['replies', comment.id] });
       router.refresh();
     } else {
       setIsDeleting(false);
-      toast.error(res.error ?? 'Löschen fehlgeschlagen.');
+      toast.error(res.error ?? t('comments.deleteFailed'));
     }
   };
 
@@ -85,19 +87,19 @@ function CommentRow({
         // Rollback bei Server-Fehler.
         setLiked(liked);
         setLikeCount(likeCount);
-        toast.error(res.error ?? 'Like fehlgeschlagen.');
+        toast.error(res.error ?? t('comments.likeFailed'));
       }
     },
     onError: () => {
       setLiked(liked);
       setLikeCount(likeCount);
-      toast.error('Like konnte nicht gespeichert werden.');
+      toast.error(t('comments.likeSaveFailed'));
     },
   });
 
   const handleLike = () => {
     if (!viewerId) {
-      toast('Bitte zuerst anmelden.');
+      toast(t('comments.loginFirst'));
       return;
     }
     likeMut.mutate();
@@ -128,7 +130,7 @@ function CommentRow({
             {comment.author.verified && (
               <BadgeCheck
                 className="h-3.5 w-3.5 fill-brand-gold text-background"
-                aria-label="Verifiziert"
+                aria-label={t('profile.verifiedBadge')}
               />
             )}
           </Link>
@@ -145,7 +147,7 @@ function CommentRow({
             type="button"
             onClick={handleLike}
             disabled={likeMut.isPending}
-            aria-label={liked ? 'Kommentar nicht mehr liken' : 'Kommentar liken'}
+            aria-label={liked ? t('comments.unlikeAria') : t('comments.likeAria')}
             className={cn(
               'inline-flex items-center gap-1 text-xs transition-colors disabled:opacity-50',
               liked
@@ -165,7 +167,7 @@ function CommentRow({
               onClick={() => onReply(comment.author.username ?? '')}
               className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
-              Antworten
+              {t('comments.reply')}
             </button>
           )}
           {isOwn && (
@@ -173,7 +175,7 @@ function CommentRow({
               type="button"
               onClick={handleDelete}
               disabled={isDeleting}
-              aria-label="Kommentar löschen"
+              aria-label={t('comments.deleteAria')}
               className="text-xs text-muted-foreground/60 transition-colors hover:text-destructive disabled:opacity-40"
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -205,6 +207,7 @@ function ReplyForm({
   onCancel: () => void;
   onSuccess: () => void;
 }) {
+  const { t } = useI18n();
   const [body, setBody] = useState(`@${targetUsername} `);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const router = useRouter();
@@ -217,9 +220,9 @@ function ReplyForm({
           href={`/login?next=${encodeURIComponent(postPath)}`}
           className="font-medium text-primary underline-offset-4 hover:underline"
         >
-          Einloggen
+          {t('auth.login')}
         </Link>{' '}
-        um zu antworten.
+        {t('comments.loginToReply')}
       </div>
     );
   }
@@ -257,7 +260,7 @@ function ReplyForm({
           value={body}
           onChange={(e) => setBody(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Antwort schreiben…"
+          placeholder={t('comments.replyPlaceholder')}
           rows={2}
           maxLength={MAX + 1}
           disabled={mutation.isPending}
@@ -265,7 +268,7 @@ function ReplyForm({
         />
         <div className="flex items-center justify-between border-t border-border px-3 py-1.5">
           <span className={cn('text-xs tabular-nums text-muted-foreground', remaining < 50 && 'text-amber-500', remaining < 0 && 'font-semibold text-destructive')}>
-            {remaining < 100 ? `${remaining} Zeichen` : ''}
+            {remaining < 100 ? t('comments.charsShort', { count: remaining }) : ''}
           </span>
           <div className="flex items-center gap-2">
             <button
@@ -273,7 +276,7 @@ function ReplyForm({
               onClick={onCancel}
               className="text-xs text-muted-foreground transition-colors hover:text-foreground"
             >
-              Abbrechen
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
@@ -281,7 +284,7 @@ function ReplyForm({
               className="flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50"
             >
               <Send className="h-3 w-3" />
-              {mutation.isPending ? 'Senden…' : 'Senden'}
+              {mutation.isPending ? t('comments.sending') : t('comments.send')}
             </button>
           </div>
         </div>
@@ -305,6 +308,7 @@ export function CommentThread({
   postPath: string;
   viewerId: string | null;
 }) {
+  const { t } = useI18n();
   const [repliesOpen, setRepliesOpen] = useState(false);
   const [replyTarget, setReplyTarget] = useState<string | null>(null);
   // Optimistisch gelöschte Reply-IDs — sofort aus der UI entfernen.
@@ -349,12 +353,14 @@ export function CommentThread({
           {repliesOpen ? (
             <>
               <ChevronUp className="h-3.5 w-3.5" />
-              Antworten ausblenden
+              {t('comments.hideReplies')}
             </>
           ) : (
             <>
               <ChevronDown className="h-3.5 w-3.5" />
-              {replyCount} {replyCount === 1 ? 'Antwort' : 'Antworten'} anzeigen
+              {replyCount === 1
+                ? t('comments.showRepliesSingular', { count: replyCount })
+                : t('comments.showRepliesPlural', { count: replyCount })}
             </>
           )}
         </button>
@@ -364,7 +370,7 @@ export function CommentThread({
       {repliesOpen && (
         <div className="flex flex-col gap-3 pt-1">
           {repliesQuery.isLoading && (
-            <div className="pl-10 text-xs text-muted-foreground">Lade Antworten…</div>
+            <div className="pl-10 text-xs text-muted-foreground">{t('comments.loadingReplies')}</div>
           )}
           {repliesQuery.data
             ?.filter((r) => !deletedReplyIds.has(r.id))

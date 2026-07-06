@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { CommentThread } from './comment-thread';
 import { fetchMoreComments } from '@/app/actions/engagement';
 import type { CommentWithAuthor } from '@/lib/data/public';
+import { useI18n } from '@/lib/i18n/client';
 
 // -----------------------------------------------------------------------------
 // LoadMoreComments — v1.w.UI.60
@@ -39,6 +40,7 @@ export function LoadMoreComments({
   isAuthenticated: boolean;
   postPath: string;
 }) {
+  const { t } = useI18n();
   const [extra, setExtra] = useState<CommentWithAuthor[]>([]);
   const [offset, setOffset] = useState(initialOffset);
   const [loading, setLoading] = useState(false);
@@ -56,7 +58,7 @@ export function LoadMoreComments({
         setOffset((o) => o + next.length);
       }
     } catch {
-      toast.error('Kommentare konnten nicht geladen werden.');
+      toast.error(t('comments.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -95,8 +97,10 @@ export function LoadMoreComments({
               <ChevronDown className="h-4 w-4" />
             )}
             {loading
-              ? 'Lädt…'
-              : `${remaining.toLocaleString('de-DE')} weitere Kommentar${remaining === 1 ? '' : 'e'} laden`}
+              ? t('comments.loading')
+              : remaining === 1
+                ? t('comments.loadMoreSingular', { count: remaining.toLocaleString('de-DE') })
+                : t('comments.loadMorePlural', { count: remaining.toLocaleString('de-DE') })}
           </button>
         </div>
       )}

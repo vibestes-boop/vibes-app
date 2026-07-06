@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { UserPlus, UserCheck, Clock, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toggleFollow } from '@/app/actions/engagement';
+import { useI18n } from '@/lib/i18n/client';
 
 // -----------------------------------------------------------------------------
 // FollowButton — v1.w.UI.40 Follow-Graph live.
@@ -37,6 +38,7 @@ export function FollowButton({
   /** Supabase-UUID des Profil-Inhabers — nötig für toggleFollow Server Action. */
   targetUserId: string;
 }) {
+  const { t } = useI18n();
   const [isFollowing, setIsFollowing] = useState(initialIsFollowing);
   const [isPendingRequest, setIsPendingRequest] = useState(initialIsPendingRequest);
   const [isTransitioning, startTransition] = useTransition();
@@ -45,7 +47,7 @@ export function FollowButton({
   if (isSelf) {
     return (
       <Button asChild variant="outline" size="sm" className="min-w-[120px]">
-        <Link href={'/settings/profile' as Route}>Profil bearbeiten</Link>
+        <Link href={'/settings/profile' as Route}>{t('follow.editProfile')}</Link>
       </Button>
     );
   }
@@ -56,7 +58,7 @@ export function FollowButton({
       <Button asChild size="sm" className="min-w-[120px]">
         <Link href={`/login?next=${encodeURIComponent(`/u/${username}`)}` as Route}>
           <UserPlus className="h-4 w-4" />
-          Folgen
+          {t('follow.follow')}
         </Link>
       </Button>
     );
@@ -84,7 +86,7 @@ export function FollowButton({
         // Rollback
         setIsFollowing(wasFollowing);
         setIsPendingRequest(wasPending);
-        toast.error('Aktion fehlgeschlagen', { description: result.error });
+        toast.error(t('follow.actionFailed'), { description: result.error });
         return;
       }
 
@@ -92,11 +94,11 @@ export function FollowButton({
       setIsPendingRequest(result.data.pending);
 
       if (result.data.following) {
-        toast.success(`Du folgst jetzt @${username}`);
+        toast.success(t('follow.toastFollowing', { username }));
       } else if (result.data.pending) {
-        toast.success(`Anfrage an @${username} gesendet`);
+        toast.success(t('follow.toastRequested', { username }));
       } else if (wasPending) {
-        toast.info(`Anfrage an @${username} zurückgezogen`);
+        toast.info(t('follow.toastWithdrawn', { username }));
       }
     });
   };
@@ -116,17 +118,17 @@ export function FollowButton({
       ) : isFollowing ? (
         <>
           <UserCheck className="h-4 w-4" />
-          Folgst du
+          {t('follow.following')}
         </>
       ) : isPendingRequest ? (
         <>
           <Clock className="h-4 w-4" />
-          Anfrage gesendet
+          {t('follow.requested')}
         </>
       ) : (
         <>
           <UserPlus className="h-4 w-4" />
-          Folgen
+          {t('follow.follow')}
         </>
       )}
     </Button>

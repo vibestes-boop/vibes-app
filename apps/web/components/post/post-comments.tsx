@@ -6,6 +6,7 @@ import type { CommentWithAuthor } from '@/lib/data/public';
 import { CommentThread } from './comment-thread';
 import { LoadMoreComments } from './load-more-comments';
 import { CommentForm } from './comment-form';
+import { useI18n } from '@/lib/i18n/client';
 
 type LocalComment = CommentWithAuthor & {
   localStatus: 'pending' | 'confirmed';
@@ -39,6 +40,7 @@ export function PostComments({
   viewerId: string | null;
   viewerAuthor?: CommentWithAuthor['author'] | null;
 }) {
+  const { t } = useI18n();
   const [localComments, setLocalComments] = useState<LocalComment[]>([]);
 
   useEffect(() => {
@@ -50,7 +52,7 @@ export function PostComments({
       <section className="mt-8 rounded-lg border border-border bg-card p-4">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Lock className="h-4 w-4" />
-          Kommentare für dieses Video sind deaktiviert.
+          {t('comments.disabled')}
         </div>
       </section>
     );
@@ -69,12 +71,12 @@ export function PostComments({
   return (
     <section className="mt-8">
       <h2 className="mb-4 text-sm font-semibold tracking-wide text-muted-foreground">
-        {visibleCount.toLocaleString('de-DE')} {visibleCount === 1 ? 'Kommentar' : 'Kommentare'}
+        {visibleCount.toLocaleString('de-DE')} {visibleCount === 1 ? t('comments.countSingular') : t('comments.countPlural')}
       </h2>
 
       {visibleComments.length === 0 ? (
         <p className="rounded-lg border border-dashed border-border bg-card/40 px-4 py-8 text-center text-sm text-muted-foreground">
-          Noch keine Kommentare. Sei der Erste!
+          {t('comments.empty')}
         </p>
       ) : (
         <ul className="space-y-5">

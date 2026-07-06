@@ -8,6 +8,7 @@ import { Send } from 'lucide-react';
 import { useCreateComment } from '@/hooks/use-engagement';
 import { cn } from '@/lib/utils';
 import type { CommentWithAuthor } from '@/lib/data/public';
+import { useI18n } from '@/lib/i18n/client';
 
 // -----------------------------------------------------------------------------
 // CommentForm — Kommentar-Eingabe für /p/[postId].
@@ -38,6 +39,7 @@ export function CommentForm({
   onCommentConfirmed?: (temporaryId: string, comment: CommentWithAuthor) => void;
   onCommentFailed?: (temporaryId: string) => void;
 }) {
+  const { t } = useI18n();
   const [body, setBody] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const router = useRouter();
@@ -50,9 +52,9 @@ export function CommentForm({
           href={`/login?next=${encodeURIComponent(postPath)}` as Route}
           className="font-medium text-primary underline-offset-4 hover:underline"
         >
-          Einloggen
+          {t('auth.login')}
         </Link>{' '}
-        um zu kommentieren.
+        {t('comments.loginToComment')}
       </div>
     );
   }
@@ -118,7 +120,7 @@ export function CommentForm({
           value={body}
           onChange={(e) => setBody(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Kommentar schreiben… (Enter zum Senden)"
+          placeholder={t('comments.writePlaceholder')}
           rows={2}
           maxLength={MAX + 1} // +1 damit wir den Overflow sehen
           disabled={mutation.isPending}
@@ -135,7 +137,7 @@ export function CommentForm({
               remaining < 0 && 'font-semibold text-destructive',
             )}
           >
-            {remaining < 100 ? `${remaining} Zeichen übrig` : ''}
+            {remaining < 100 ? t('comments.charsLeft', { count: remaining }) : ''}
           </span>
           <button
             type="submit"
@@ -147,7 +149,7 @@ export function CommentForm({
             )}
           >
             <Send className="h-3.5 w-3.5" />
-            {mutation.isPending ? 'Senden…' : 'Senden'}
+            {mutation.isPending ? t('comments.sending') : t('comments.send')}
           </button>
         </div>
       </div>
