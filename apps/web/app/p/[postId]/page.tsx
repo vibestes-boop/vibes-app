@@ -22,7 +22,7 @@ import {
 } from '@/lib/data/public';
 import { ProductLinkCard } from '@/components/messages/product-link-card';
 import { getProfile, getUser } from '@/lib/auth/session';
-import { getT } from '@/lib/i18n/server';
+import { getT, getLocale } from '@/lib/i18n/server';
 import { ExploreVideoCard } from '@/components/explore/explore-video-card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { VideoPlayer } from '@/components/video/video-player';
@@ -176,6 +176,7 @@ export default async function PostDetailPage({
 }) {
   const { postId } = await params;
   const t = await getT();
+  const locale = await getLocale();
 
   const post = await getPost(postId);
   if (!post) notFound();
@@ -378,7 +379,7 @@ export default async function PostDetailPage({
               <span className="inline-flex items-center gap-1">
                 <CalendarDays className="h-3 w-3" />
                 <time dateTime={post.created_at}>
-                  {created.toLocaleDateString('de-DE', {
+                  {created.toLocaleDateString(locale, {
                     day: 'numeric',
                     month: 'long',
                     year: 'numeric',

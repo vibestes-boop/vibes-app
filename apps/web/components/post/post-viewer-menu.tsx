@@ -25,6 +25,8 @@ import { reportPost, markPostNotInteresting } from '@/app/actions/report';
 import { blockUser } from '@/app/actions/blocks';
 import { adminRemovePost, getViewerIsAdmin } from '@/app/actions/admin';
 import { POST_REPORT_REASONS, type PostReportReason } from '@/lib/moderation/report-reasons';
+import { useI18n } from '@/lib/i18n/client';
+import type { TranslationKey } from '@/lib/i18n/translate';
 
 // -----------------------------------------------------------------------------
 // PostViewerMenu — v1.w.UI.58
@@ -56,6 +58,7 @@ export function PostViewerMenu({
   isAuthenticated: boolean;
 }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [pending, setPending] = useState(false);
   const { data: viewerIsAdmin } = useQuery({
     queryKey: ['viewer-is-admin'],
@@ -69,7 +72,7 @@ export function PostViewerMenu({
 
   const requireAuth = () => {
     if (!isAuthenticated) {
-      toast('Bitte zuerst anmelden.');
+      toast(t('comments.loginFirst'));
       return false;
     }
     return true;
@@ -81,7 +84,7 @@ export function PostViewerMenu({
     try {
       const res = await markPostNotInteresting(postId);
       if (res.ok) {
-        toast('Wir zeigen dir weniger davon.');
+        toast(t('postMenu.notInterestedToast'));
         router.refresh();
       } else {
         toast.error(res.error);
@@ -98,7 +101,7 @@ export function PostViewerMenu({
       const res = await reportPost(postId, reportReason);
       if (res.ok) {
         setReportDone(true);
-        toast('Danke für deine Meldung. Unser Team prüft das.');
+        toast(t('postMenu.reportThanksToast'));
       } else {
         toast.error(res.error);
       }
@@ -111,22 +114,22 @@ export function PostViewerMenu({
     try {
       const url = `${window.location.origin}/p/${postId}`;
       await navigator.clipboard.writeText(url);
-      toast('Link kopiert.');
+      toast(t('postMenu.linkCopied'));
     } catch {
-      toast.error('Kopieren fehlgeschlagen.');
+      toast.error(t('postMenu.copyFailed'));
     }
   };
 
   const handleAdminRemove = async () => {
-    if (!window.confirm('Diesen Beitrag als Admin entfernen? Wird protokolliert.')) return;
+    if (!window.confirm(t('postMenu.adminRemoveConfirm'))) return;
     setPending(true);
     try {
       const res = await adminRemovePost(postId);
       if (res.ok) {
-        toast('Beitrag entfernt.');
+        toast(t('postMenu.adminRemovedToast'));
         router.push('/' as Route);
       } else {
-        toast.error(res.error ?? 'Entfernen fehlgeschlagen.');
+        toast.error(res.error ?? t('postMenu.adminRemoveFailed'));
       }
     } finally {
       setPending(false);
@@ -135,15 +138,13 @@ export function PostViewerMenu({
 
   const handleBlock = async () => {
     if (!requireAuth()) return;
-    const confirmed = window.confirm(
-      `@${targetUsername} blockieren?\n\nDieser Account kann dir dann nicht mehr folgen, dir keine Nachrichten schicken und deine Posts nicht sehen.`,
-    );
+    const confirmed = window.confirm(t('postMenu.blockConfirm', { username: targetUsername }));
     if (!confirmed) return;
     setPending(true);
     try {
       const res = await blockUser(targetUserId);
       if (res.ok) {
-        toast.success(`@${targetUsername} wurde blockiert.`);
+        toast.success(t('postMenu.blockedToast', { username: targetUsername }));
         router.push('/' as Route);
       } else {
         toast.error(res.error);
@@ -159,7 +160,7 @@ export function PostViewerMenu({
       <DropdownMenuTrigger asChild>
         <button
           type="button"
-          aria-label="Weitere Optionen"
+          aria-label={t('postMenu.moreOptions')}
           disabled={pending}
           className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
         >
@@ -171,7 +172,7 @@ export function PostViewerMenu({
           onSelect={(e) => { e.preventDefault(); void handleNotInterested(); }}
         >
           <EyeOff className="h-4 w-4" />
-          <span>Kein Interesse</span>
+          <span>{t('postMenu.notInterested')}</span>
         </DropdownMenuItem>
         <DropdownMenuItem
           onSelect={(e) => {
@@ -182,14 +183,14 @@ export function PostViewerMenu({
           }}
         >
           <Flag className="h-4 w-4" />
-          <span>Melden</span>
+          <span>{t('postMenu.report')}</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           onSelect={(e) => { e.preventDefault(); void handleCopyLink(); }}
         >
           <LinkIcon className="h-4 w-4" />
-          <span>Link kopieren</span>
+          <span>{t('postMenu.copyLink')}</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem
@@ -197,7 +198,7 @@ export function PostViewerMenu({
           onSelect={(e) => { e.preventDefault(); void handleBlock(); }}
         >
           <ShieldOff className="h-4 w-4" />
-          <span>Blockieren</span>
+          <span>{t('postMenu.block')}</span>
         </DropdownMenuItem>
         {viewerIsAdmin && (
           <>
@@ -207,7 +208,7 @@ export function PostViewerMenu({
               onSelect={(e) => { e.preventDefault(); void handleAdminRemove(); }}
             >
               <Trash2 className="h-4 w-4" />
-              <span>Entfernen (Admin)</span>
+              <span>{t('postMenu.adminRemove')}</span>
             </DropdownMenuItem>
           </>
         )}
@@ -216,16 +217,16 @@ export function PostViewerMenu({
     <Dialog open={reportOpen} onOpenChange={setReportOpen}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>{reportDone ? 'Meldung eingereicht' : 'Post melden'}</DialogTitle>
+          <DialogTitle>{reportDone ? t('postMenu.reportDoneTitle') : t('postMenu.reportTitle')}</DialogTitle>
         </DialogHeader>
         {reportDone ? (
           <div className="py-4 text-center text-sm text-muted-foreground">
-            Danke für deine Meldung. Unser Team prüft sie so schnell wie möglich.
+            {t('postMenu.reportThanksLong')}
           </div>
         ) : (
           <>
             <div className="space-y-2">
-              <p className="text-sm text-muted-foreground">Wähle den Grund für deine Meldung:</p>
+              <p className="text-sm text-muted-foreground">{t('postMenu.reportChooseReason')}</p>
               <div className="flex flex-col gap-1.5">
                 {POST_REPORT_REASONS.map((reason) => (
                   <label
@@ -240,17 +241,17 @@ export function PostViewerMenu({
                       onChange={() => setReportReason(reason.value)}
                       className="accent-primary"
                     />
-                    {reason.label}
+                    {t(`postMenu.reason_${reason.value}` as TranslationKey)}
                   </label>
                 ))}
               </div>
             </div>
             <DialogFooter className="gap-2">
               <Button variant="outline" size="sm" onClick={() => setReportOpen(false)} disabled={pending}>
-                Abbrechen
+                {t('common.cancel')}
               </Button>
               <Button size="sm" onClick={() => void handleReport()} disabled={pending}>
-                {pending ? 'Wird gesendet…' : 'Melden'}
+                {pending ? t('postMenu.reportSubmitting') : t('postMenu.report')}
               </Button>
             </DialogFooter>
           </>
@@ -258,7 +259,7 @@ export function PostViewerMenu({
         {reportDone && (
           <DialogFooter>
             <Button size="sm" onClick={() => setReportOpen(false)}>
-              Schließen
+              {t('common.close')}
             </Button>
           </DialogFooter>
         )}

@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { deletePost, updatePost, togglePinPost } from '@/app/actions/posts';
 import type { UpdatePostInput } from '@/app/actions/posts';
+import { useI18n } from '@/lib/i18n/client';
 
 // -----------------------------------------------------------------------------
 // PostAuthorMenu — drei-Punkte-Dropdown für Post-Autoren auf /p/[postId].
@@ -43,6 +44,7 @@ export function PostAuthorMenu({
   // v1.w.UI.179: whether this post is currently pinned to the author's profile.
   isPinned?: boolean;
 }) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isPinning, setIsPinning] = useState(false);
@@ -68,7 +70,7 @@ export function PostAuthorMenu({
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          aria-label="Post-Optionen"
+          aria-label={t('postOwnerMenu.options')}
           aria-expanded={open}
           className="flex h-9 w-9 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
         >
@@ -84,16 +86,16 @@ export function PostAuthorMenu({
             {/* Link kopieren */}
             <MenuItem
               icon={<LinkIcon className="h-4 w-4" />}
-              label="Link kopieren"
+              label={t('postMenu.copyLink')}
               onClick={async () => {
                 setOpen(false);
                 try {
                   await navigator.clipboard.writeText(
                     `${window.location.origin}/p/${postId}`,
                   );
-                  toast('Link kopiert.');
+                  toast(t('postMenu.linkCopied'));
                 } catch {
-                  toast.error('Kopieren fehlgeschlagen.');
+                  toast.error(t('postMenu.copyFailed'));
                 }
               }}
             />
@@ -101,7 +103,7 @@ export function PostAuthorMenu({
             {/* Post bearbeiten */}
             <MenuItem
               icon={<Pencil className="h-4 w-4" />}
-              label="Post bearbeiten"
+              label={t('postOwnerMenu.editPost')}
               onClick={() => {
                 setOpen(false);
                 setEditOpen(true);
@@ -113,10 +115,10 @@ export function PostAuthorMenu({
               icon={isPinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
               label={
                 isPinning
-                  ? 'Wird gespeichert…'
+                  ? t('postOwnerMenu.pinSaving')
                   : isPinned
-                    ? 'Von Profil lösen'
-                    : 'Auf Profil anpinnen'
+                    ? t('postOwnerMenu.unpin')
+                    : t('postOwnerMenu.pin')
               }
               disabled={isPinning}
               onClick={async () => {
@@ -125,10 +127,10 @@ export function PostAuthorMenu({
                 const res = await togglePinPost(postId);
                 setIsPinning(false);
                 if (res.ok) {
-                  toast(isPinned ? 'Pin entfernt.' : 'Post angepinnt.');
+                  toast(isPinned ? t('postOwnerMenu.pinRemovedToast') : t('postOwnerMenu.pinnedToast'));
                   router.refresh();
                 } else {
-                  toast.error(res.error ?? 'Aktion fehlgeschlagen.');
+                  toast.error(res.error ?? t('postOwnerMenu.actionFailed'));
                 }
               }}
             />
@@ -139,25 +141,20 @@ export function PostAuthorMenu({
             {/* Post löschen */}
             <MenuItem
               icon={<Trash2 className="h-4 w-4" />}
-              label={isDeleting ? 'Wird gelöscht…' : 'Post löschen'}
+              label={isDeleting ? t('postOwnerMenu.deleting') : t('postOwnerMenu.deletePost')}
               destructive
               disabled={isDeleting}
               onClick={async () => {
                 setOpen(false);
-                if (
-                  !confirm(
-                    'Post wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.',
-                  )
-                )
-                  return;
+                if (!confirm(t('postOwnerMenu.deleteConfirm'))) return;
                 setIsDeleting(true);
                 const res = await deletePost(postId);
                 if (res.ok) {
-                  toast('Post gelöscht.');
+                  toast(t('postOwnerMenu.deletedToast'));
                   router.push(`/u/${authorUsername}` as Route);
                 } else {
                   setIsDeleting(false);
-                  toast.error(res.error ?? 'Löschen fehlgeschlagen.');
+                  toast.error(res.error ?? t('postOwnerMenu.deleteFailed'));
                 }
               }}
             />
@@ -195,13 +192,11 @@ type Privacy = 'public' | 'friends' | 'private';
 
 const PRIVACY_OPTIONS: {
   value: Privacy;
-  label: string;
   icon: React.ReactNode;
-  description: string;
 }[] = [
-  { value: 'public',  label: 'Öffentlich', icon: <Globe className="h-4 w-4" />,  description: 'Alle können diesen Post sehen' },
-  { value: 'friends', label: 'Freunde',    icon: <Users className="h-4 w-4" />,  description: 'Nur deine Follower sehen diesen Post' },
-  { value: 'private', label: 'Privat',     icon: <Lock  className="h-4 w-4" />,  description: 'Nur du siehst diesen Post' },
+  { value: 'public',  icon: <Globe className="h-4 w-4" /> },
+  { value: 'friends', icon: <Users className="h-4 w-4" /> },
+  { value: 'private', icon: <Lock  className="h-4 w-4" /> },
 ];
 
 // v1.w.UI.162: Same suggested tags as mobile edit-post screen.
@@ -248,7 +243,20 @@ function PostEditDialog({
     () => initialTags.map((t) => t.replace(/^#/, '').toLowerCase()),
   );
   const [isPending, startTransition]        = useTransition();
+  const { t } = useI18n();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Privacy-Labels/Beschreibungen i18n-fähig (value → Key).
+  const privacyLabel: Record<Privacy, string> = {
+    public: t('postOwnerMenu.privacyPublic'),
+    friends: t('postOwnerMenu.privacyFriends'),
+    private: t('postOwnerMenu.privacyPrivate'),
+  };
+  const privacyDesc: Record<Privacy, string> = {
+    public: t('postOwnerMenu.privacyPublicDesc'),
+    friends: t('postOwnerMenu.privacyFriendsDesc'),
+    private: t('postOwnerMenu.privacyPrivateDesc'),
+  };
 
   // Autofokus + ESC-Handler
   useEffect(() => {
@@ -292,10 +300,10 @@ function PostEditDialog({
       };
       const res = await updatePost(postId, input);
       if (res.ok) {
-        toast.success('Post gespeichert.');
+        toast.success(t('postOwnerMenu.savedToast'));
         onSaved();
       } else {
-        toast.error(res.error ?? 'Speichern fehlgeschlagen.');
+        toast.error(res.error ?? t('postOwnerMenu.saveFailed'));
       }
     });
   };
@@ -304,7 +312,7 @@ function PostEditDialog({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Post bearbeiten"
+      aria-label={t('postOwnerMenu.editPost')}
       onClick={onClose}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
     >
@@ -314,11 +322,11 @@ function PostEditDialog({
       >
         {/* Header */}
         <header className="flex items-center justify-between border-b px-4 py-3">
-          <h2 className="text-base font-semibold">Post bearbeiten</h2>
+          <h2 className="text-base font-semibold">{t('postOwnerMenu.editPost')}</h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Schließen"
+            aria-label={t('common.close')}
             className="grid h-8 w-8 place-items-center rounded-full transition-colors hover:bg-muted"
           >
             <span aria-hidden="true" className="text-lg leading-none">×</span>
@@ -330,7 +338,7 @@ function PostEditDialog({
           {/* Caption */}
           <section>
             <label className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Caption
+              {t('postOwnerMenu.caption')}
             </label>
             <textarea
               ref={textareaRef}
@@ -338,7 +346,7 @@ function PostEditDialog({
               onChange={(e) => setCaption(e.target.value)}
               rows={4}
               maxLength={2000}
-              placeholder="Was möchtest du mitteilen? #hashtag @mention"
+              placeholder={t('postOwnerMenu.captionPlaceholder')}
               className="w-full resize-none rounded-xl border border-border bg-background px-3 py-2.5 text-sm outline-none placeholder:text-muted-foreground focus:ring-2 focus:ring-ring"
             />
             <div className="mt-1 text-right text-xs text-muted-foreground">
@@ -349,7 +357,7 @@ function PostEditDialog({
           {/* v1.w.UI.162: Tag Picker — gleiche Suggested-Tags wie Mobile */}
           <section>
             <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Tags
+              {t('postOwnerMenu.tags')}
             </label>
             <div className="flex flex-wrap gap-2">
               {SUGGESTED_TAGS.map((tag) => {
@@ -374,7 +382,9 @@ function PostEditDialog({
             </div>
             {selectedTags.length > 0 && (
               <p className="mt-1.5 text-xs text-muted-foreground">
-                {selectedTags.length} Tag{selectedTags.length > 1 ? 's' : ''} ausgewählt
+                {selectedTags.length === 1
+                  ? t('postOwnerMenu.tagsSelectedSingular', { count: selectedTags.length })
+                  : t('postOwnerMenu.tagsSelectedPlural', { count: selectedTags.length })}
               </p>
             )}
           </section>
@@ -382,7 +392,7 @@ function PostEditDialog({
           {/* Privacy */}
           <section>
             <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Sichtbarkeit
+              {t('postOwnerMenu.visibility')}
             </label>
             <div className="space-y-1.5">
               {PRIVACY_OPTIONS.map((opt) => (
@@ -401,8 +411,8 @@ function PostEditDialog({
                     {opt.icon}
                   </span>
                   <span className="flex-1">
-                    <span className="block font-medium text-foreground">{opt.label}</span>
-                    <span className="block text-xs text-muted-foreground">{opt.description}</span>
+                    <span className="block font-medium text-foreground">{privacyLabel[opt.value]}</span>
+                    <span className="block text-xs text-muted-foreground">{privacyDesc[opt.value]}</span>
                   </span>
                   {privacy === opt.value && (
                     <span className="text-xs font-semibold text-primary">✓</span>
@@ -415,13 +425,13 @@ function PostEditDialog({
           {/* Format */}
           <section>
             <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Format
+              {t('postOwnerMenu.format')}
             </label>
             <div className="grid grid-cols-3 gap-2">
               {([
-                { value: 'portrait',  label: 'Hochformat', shape: '9:16' },
-                { value: 'landscape', label: 'Querformat', shape: '16:9' },
-                { value: 'square',    label: 'Quadrat',    shape: '1:1'  },
+                { value: 'portrait',  label: t('postOwnerMenu.formatPortrait'),  shape: '9:16' },
+                { value: 'landscape', label: t('postOwnerMenu.formatLandscape'), shape: '16:9' },
+                { value: 'square',    label: t('postOwnerMenu.formatSquare'),    shape: '1:1'  },
               ] as const).map((opt) => (
                 <button
                   key={opt.value}
@@ -454,14 +464,14 @@ function PostEditDialog({
           {/* Toggles */}
           <section>
             <label className="mb-2 block text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Interaktionen
+              {t('postOwnerMenu.interactions')}
             </label>
             <div className="overflow-hidden rounded-xl border border-border divide-y divide-border">
-              <ToggleRow label="Kommentare erlauben"        checked={allowComments} onChange={setAllowComments} />
-              <ToggleRow label="Download erlauben"          checked={allowDownload} onChange={setAllowDownload} />
-              <ToggleRow label="Duett erlauben"             checked={allowDuet}    onChange={setAllowDuet} />
+              <ToggleRow label={t('postOwnerMenu.allowComments')}        checked={allowComments} onChange={setAllowComments} />
+              <ToggleRow label={t('postOwnerMenu.allowDownload')}          checked={allowDownload} onChange={setAllowDownload} />
+              <ToggleRow label={t('postOwnerMenu.allowDuet')}             checked={allowDuet}    onChange={setAllowDuet} />
               <ToggleRow
-                label="Nur für Frauen"
+                label={t('postOwnerMenu.womenOnly')}
                 icon={<span className="text-pink-400 text-xs leading-none">♀</span>}
                 checked={womenOnly}
                 onChange={setWomenOnly}
@@ -477,7 +487,7 @@ function PostEditDialog({
             onClick={onClose}
             className="rounded-full px-4 py-2 text-sm font-medium transition-colors hover:bg-muted"
           >
-            Abbrechen
+            {t('common.cancel')}
           </button>
           <button
             type="button"
@@ -486,7 +496,7 @@ function PostEditDialog({
             className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
           >
             {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            Speichern
+            {t('common.save')}
           </button>
         </footer>
       </div>
