@@ -196,6 +196,26 @@ const deMessages = {
     emptyVideosDefault: "Noch keine Videos",
   },
 
+  // Creator-Tip (creator-tip-button)
+  tip: {
+    support: "Unterstützen",
+    dialogTitle: "@{name} unterstützen",
+    dialogDesc: "Sende einmalig Coins — 85% landen als Einnahmen beim Creator.",
+    customAmount: "Eigener Betrag",
+    customPlaceholder: "z.B. 250",
+    messageLabel: "Nachricht (optional, max. 140 Zeichen)",
+    messagePlaceholder: "Danke für den Content!",
+    balance: "Dein Guthaben",
+    coinsUnit: "{count} Coins",
+    notEnough: "Nicht genug — jetzt aufladen →",
+    minAmount: "Bitte einen Betrag ≥ 1 angeben.",
+    sendCoins: "{count} Coins senden",
+    sentCoins: "{count} Coins gesendet",
+    notified: "@{name} bekommt eine Benachrichtigung.",
+    errorTitle: "Konnte nicht gesendet werden",
+    unknownError: "Unbekannter Fehler",
+  },
+
   // Post-Detailseite (/p/[postId])
   post: {
     music: "Musik",

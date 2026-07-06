@@ -189,6 +189,26 @@ const ruMessages = {
     emptyVideosDefault: 'Пока нет видео',
   },
 
+  // Поддержка автора (creator-tip-button)
+  tip: {
+    support: 'Поддержать',
+    dialogTitle: 'Поддержать @{name}',
+    dialogDesc: 'Отправь монеты разово — 85% дойдут автору как доход.',
+    customAmount: 'Своя сумма',
+    customPlaceholder: 'напр. 250',
+    messageLabel: 'Сообщение (необязательно, до 140 символов)',
+    messagePlaceholder: 'Спасибо за контент!',
+    balance: 'Твой баланс',
+    coinsUnit: '{count} монет',
+    notEnough: 'Недостаточно — пополнить →',
+    minAmount: 'Укажи сумму ≥ 1.',
+    sendCoins: 'Отправить {count} монет',
+    sentCoins: '{count} монет отправлено',
+    notified: '@{name} получит уведомление.',
+    errorTitle: 'Не удалось отправить',
+    unknownError: 'Неизвестная ошибка',
+  },
+
   // Страница поста (/p/[postId])
   post: {
     music: 'Музыка',

@@ -16,6 +16,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { useI18n } from '@/lib/i18n/client';
 
 // -----------------------------------------------------------------------------
 // CreatorTipButton — One-off Coin-Tip ohne Gift-Wrapping.
@@ -56,6 +57,7 @@ export function CreatorTipButton({
   isSelf,
 }: Props) {
   const router = useRouter();
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
 
@@ -74,7 +76,7 @@ export function CreatorTipButton({
         className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-4 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-accent"
       >
         <Heart className="h-4 w-4" />
-        Unterstützen
+        {t('tip.support')}
       </Link>
     );
   }
@@ -103,7 +105,7 @@ export function CreatorTipButton({
   function handleSubmit() {
     setError(null);
     if (effectiveAmount < 1) {
-      setError('Bitte einen Betrag ≥ 1 angeben.');
+      setError(t('tip.minAmount'));
       return;
     }
 
@@ -132,7 +134,7 @@ export function CreatorTipButton({
           className="inline-flex items-center gap-1.5 rounded-full bg-brand-rose px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-rose/90"
         >
           <Heart className="h-4 w-4 fill-current" />
-          Unterstützen
+          {t('tip.support')}
         </button>
       </DialogTrigger>
 
@@ -140,10 +142,10 @@ export function CreatorTipButton({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Heart className="h-4 w-4 text-brand-rose" />
-            @{recipientName} unterstützen
+            {t('tip.dialogTitle', { name: recipientName })}
           </DialogTitle>
           <DialogDescription>
-            Sende einmalig Coins — 85% landen als Einnahmen beim Creator.
+            {t('tip.dialogDesc')}
           </DialogDescription>
         </DialogHeader>
 
@@ -180,7 +182,7 @@ export function CreatorTipButton({
                 htmlFor="custom-amount"
                 className="mb-1 block text-xs font-medium text-muted-foreground"
               >
-                Eigener Betrag
+                {t('tip.customAmount')}
               </label>
               <div className="flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2">
                 <CoinIcon className="h-4 w-4 text-brand-gold" />
@@ -192,7 +194,7 @@ export function CreatorTipButton({
                   step={1}
                   inputMode="numeric"
                   value={customInput}
-                  placeholder="z.B. 250"
+                  placeholder={t('tip.customPlaceholder')}
                   onChange={(e) => setCustomInput(e.target.value)}
                   className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/70"
                 />
@@ -205,14 +207,14 @@ export function CreatorTipButton({
                 htmlFor="tip-message"
                 className="mb-1 block text-xs font-medium text-muted-foreground"
               >
-                Nachricht (optional, max. 140 Zeichen)
+                {t('tip.messageLabel')}
               </label>
               <textarea
                 id="tip-message"
                 value={message}
                 onChange={(e) => setMessage(e.target.value.slice(0, 140))}
                 rows={2}
-                placeholder="Danke für den Content!"
+                placeholder={t('tip.messagePlaceholder')}
                 className="w-full rounded-lg border border-border bg-card px-3 py-2 text-sm outline-none placeholder:text-muted-foreground/70 focus:border-brand-rose/60"
               />
               <p className="mt-0.5 text-right text-[10px] text-muted-foreground">
@@ -230,9 +232,9 @@ export function CreatorTipButton({
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <span>Dein Guthaben</span>
+                  <span>{t('tip.balance')}</span>
                   <span className="font-medium tabular-nums">
-                    {currentCoins.toLocaleString('de-DE')} Coins
+                    {t('tip.coinsUnit', { count: currentCoins.toLocaleString('de-DE') })}
                   </span>
                 </div>
                 {lowBalance && (
@@ -240,7 +242,7 @@ export function CreatorTipButton({
                     href="/coin-shop"
                     className="mt-1 block text-xs font-semibold underline hover:no-underline"
                   >
-                    Nicht genug — jetzt aufladen →
+                    {t('tip.notEnough')}
                   </Link>
                 )}
               </div>
@@ -259,7 +261,7 @@ export function CreatorTipButton({
                 onClick={() => handleClose(false)}
                 className="rounded-lg border border-border bg-card px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-accent"
               >
-                Abbrechen
+                {t('common.cancel')}
               </button>
               <button
                 type="button"
@@ -272,7 +274,7 @@ export function CreatorTipButton({
                 ) : (
                   <Heart className="h-4 w-4 fill-current" />
                 )}
-                {effectiveAmount.toLocaleString('de-DE')} Coins senden
+                {t('tip.sendCoins', { count: effectiveAmount.toLocaleString('de-DE') })}
               </button>
             </DialogFooter>
           </>
@@ -284,10 +286,10 @@ export function CreatorTipButton({
               <CheckCircle2 className="h-8 w-8 text-emerald-500" />
             </div>
             <p className="text-center text-sm font-semibold">
-              {effectiveAmount.toLocaleString('de-DE')} Coins gesendet
+              {t('tip.sentCoins', { count: effectiveAmount.toLocaleString('de-DE') })}
             </p>
             <p className="max-w-[280px] text-center text-xs text-muted-foreground">
-              @{recipientName} bekommt eine Benachrichtigung.
+              {t('tip.notified', { name: recipientName })}
             </p>
           </div>
         )}
@@ -297,9 +299,9 @@ export function CreatorTipButton({
             <div className="flex h-14 w-14 items-center justify-center rounded-full bg-brand-rose/10">
               <X className="h-8 w-8 text-brand-rose" />
             </div>
-            <p className="text-center text-sm font-semibold">Konnte nicht gesendet werden</p>
+            <p className="text-center text-sm font-semibold">{t('tip.errorTitle')}</p>
             <p className="max-w-[300px] text-center text-xs text-muted-foreground">
-              {error ?? 'Unbekannter Fehler'}
+              {error ?? t('tip.unknownError')}
             </p>
             <div className="mt-2 flex gap-2">
               <button
@@ -307,14 +309,14 @@ export function CreatorTipButton({
                 onClick={reset}
                 className="rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent"
               >
-                Erneut versuchen
+                {t('common.retry')}
               </button>
               <Link
                 href="/coin-shop"
                 className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground hover:bg-primary/90"
               >
                 <CoinIcon className="h-3 w-3" />
-                Coins aufladen
+                {t('header.topUpCoins')}
               </Link>
             </div>
           </div>
