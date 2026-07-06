@@ -12,9 +12,12 @@
 //
 // TODO(i18n/ce): Review durch Muttersprachler. Bis dahin markieren wir diese
 // Datei als v0-Stand; Keys die mangels Sicherheit unübersetzt bleiben,
-// fallen bei der Source-Änderung automatisch per TypeScript-Check auf.
+// fallen zur Laufzeit auf Deutsch zurück (`DeepPartial<Messages>` + Fallback
+// in translate.ts) — neue deutsche Keys müssen hier NICHT sofort mit-gepflegt
+// werden, ohne dass der Build bricht.
 
 import type { Messages } from './de';
+import type { DeepPartial } from '../translate';
 
 const ceMessages = {
   common: {
@@ -412,6 +415,6 @@ const ceMessages = {
     period28: '28 де',
     period90: '90 де',
   },
-} satisfies Messages;
+} satisfies DeepPartial<Messages>;
 
 export default ceMessages;

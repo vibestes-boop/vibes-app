@@ -12,7 +12,7 @@ import { cookies } from 'next/headers';
 
 import { DEFAULT_LOCALE, LOCALE_COOKIE, isLocale, type Locale } from './config';
 import { MESSAGES, type Messages } from './messages';
-import { resolve, type TranslationKey } from './translate';
+import { resolve, type DeepPartial, type TranslationKey } from './translate';
 
 /** Liest den aktuellen Locale aus dem Cookie, fällt zurück auf Default. */
 export async function getLocale(): Promise<Locale> {
@@ -21,14 +21,14 @@ export async function getLocale(): Promise<Locale> {
   return isLocale(value) ? value : DEFAULT_LOCALE;
 }
 
-/** Liefert das passende Messages-Object für den aktuellen Locale. */
-export async function getMessages(): Promise<Messages> {
+/** Liefert das passende Messages-Object für den aktuellen Locale (ggf. partiell). */
+export async function getMessages(): Promise<DeepPartial<Messages>> {
   const locale = await getLocale();
   return MESSAGES[locale];
 }
 
 /** Bundle aus Locale + Messages — praktisch für `<I18nProvider>`-Props. */
-export async function getI18n(): Promise<{ locale: Locale; messages: Messages }> {
+export async function getI18n(): Promise<{ locale: Locale; messages: DeepPartial<Messages> }> {
   const locale = await getLocale();
   return { locale, messages: MESSAGES[locale] };
 }
@@ -43,5 +43,5 @@ export async function getT(): Promise<
   (key: TranslationKey, vars?: Record<string, string | number>) => string
 > {
   const messages = await getMessages();
-  return (key, vars) => resolve(messages, key, vars);
+  return (key, vars) => resolve(messages, key, vars, MESSAGES[DEFAULT_LOCALE]);
 }

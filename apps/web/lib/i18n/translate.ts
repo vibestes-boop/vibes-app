@@ -22,39 +22,59 @@ type PathInto<T, Prefix extends string = ''> = {
 export type TranslationKey = PathInto<Messages>;
 
 /**
- * Resolvt einen dot-path in einem Messages-Object und ersetzt `{vars}`.
- *
- * Schutzschild: Wenn der Key fehlt (z.B. weil eine Locale veraltet ist und
- * ein Key nach dem Satisfies-Check noch nicht gepflegt wurde), geben wir
- * den Key selbst als Fallback zurück anstatt zu crashen — macht UI-Regressionen
- * sichtbar ohne Production zu brechen. In Dev loggen wir einen Warning.
+ * DeepPartial — nicht-deutsche Locales dürfen unvollständig sein (nur Deutsch
+ * ist die strikte Source-of-Truth). Fehlende Keys fallen zur Laufzeit auf
+ * Deutsch zurück (siehe `resolve`), sodass wir Sprachen inkrementell füllen
+ * können, ohne den Build zu brechen oder rohe Key-Strings zu zeigen.
  */
-export function resolve(
-  messages: Messages,
+export type DeepPartial<T> = {
+  [K in keyof T]?: T[K] extends string
+    ? T[K]
+    : T[K] extends Record<string, unknown>
+    ? DeepPartial<T[K]>
+    : T[K];
+};
+
+// Läuft den dot-path ab und gibt den Leaf-String zurück — oder null, wenn der
+// Key in diesem (ggf. partiellen) Messages-Object fehlt / kein String ist.
+function lookup(
+  messages: DeepPartial<Messages>,
   key: TranslationKey,
-  vars?: Record<string, string | number>,
-): string {
-  const parts = key.split('.');
+): string | null {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let node: any = messages;
-  for (const p of parts) {
-    if (node == null || typeof node !== 'object') {
-      if (process.env.NODE_ENV !== 'production') {
-
-        console.warn(`[i18n] missing key: ${key}`);
-      }
-      return key;
-    }
+  for (const p of key.split('.')) {
+    if (node == null || typeof node !== 'object') return null;
     node = node[p];
   }
-  if (typeof node !== 'string') {
-    if (process.env.NODE_ENV !== 'production') {
+  return typeof node === 'string' ? node : null;
+}
 
-      console.warn(`[i18n] key is not a leaf string: ${key}`);
-    }
-    return key;
+/**
+ * Resolvt einen dot-path in einem Messages-Object und ersetzt `{vars}`.
+ *
+ * Fallback-Kette: gewählte Locale → `fallback` (Deutsch) → Key selbst. Fehlt ein
+ * Key in einer partiellen Locale (ru/ce/en), zeigt die UI also Deutsch statt
+ * eines rohen Key-Strings. In Dev loggen wir, wenn selbst der Fallback fehlt.
+ */
+export function resolve(
+  messages: DeepPartial<Messages>,
+  key: TranslationKey,
+  vars?: Record<string, string | number>,
+  fallback?: DeepPartial<Messages>,
+): string {
+  const direct = lookup(messages, key);
+  if (direct != null) return vars ? interpolate(direct, vars) : direct;
+
+  if (fallback) {
+    const fb = lookup(fallback, key);
+    if (fb != null) return vars ? interpolate(fb, vars) : fb;
   }
-  return vars ? interpolate(node, vars) : node;
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn(`[i18n] missing key (kein Fallback): ${key}`);
+  }
+  return key;
 }
 
 // `Hallo {name}!` + { name: 'Zaur' } → `Hallo Zaur!`

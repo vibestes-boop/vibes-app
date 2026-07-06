@@ -1,6 +1,8 @@
-// English translation.
+// English translation. May be partial (`DeepPartial<Messages>`) — missing keys
+// fall back to German at runtime (see translate.ts).
 
 import type { Messages } from './de';
+import type { DeepPartial } from '../translate';
 
 const enMessages = {
   common: {
@@ -397,6 +399,6 @@ const enMessages = {
     period28: '28 days',
     period90: '90 days',
   },
-} satisfies Messages;
+} satisfies DeepPartial<Messages>;
 
 export default enMessages;

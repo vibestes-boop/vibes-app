@@ -10,8 +10,11 @@ import en from './en';
 
 import type { Locale } from '../config';
 import type { Messages } from './de';
+import type { DeepPartial } from '../translate';
 
-export const MESSAGES: Record<Locale, Messages> = {
+// Deutsch ist strikt vollständig (Source-of-Truth); ru/ce/en dürfen partiell
+// sein und fallen zur Laufzeit auf Deutsch zurück (siehe translate.ts).
+export const MESSAGES: Record<Locale, DeepPartial<Messages>> = {
   de,
   ru,
   ce,
