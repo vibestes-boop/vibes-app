@@ -28,7 +28,6 @@
         "NSCameraUsageDescription": "Serlo braucht Kamera-Zugriff für Videos und Fotos.",
         "NSMicrophoneUsageDescription": "Serlo braucht Mikrofon-Zugriff für Video-Stories und Live-Streams.",
         "NSPhotoLibraryUsageDescription": "Serlo braucht Zugriff auf deine Fotos für Stories und Posts.",
-        "NSLocationWhenInUseUsageDescription": "Standortdaten werden von einer verwendeten Bibliothek referenziert, aber von Serlo nicht aktiv genutzt.",
         "UIStatusBarStyle": "UIStatusBarStyleLightContent",
         "UIViewControllerBasedStatusBarAppearance": false,
         "UIApplicationSceneManifest": {
@@ -69,7 +68,7 @@
           "Default"
         ]
       },
-      "buildNumber": "287"
+      "buildNumber": "288"
     },
     "android": {
       "package": "app.serlo.social",
