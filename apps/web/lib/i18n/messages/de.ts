@@ -159,6 +159,41 @@ const deMessages = {
       "Diesen Usernamen gibt's auf Serlo (noch) nicht — vielleicht ein Tippfehler, oder der Account wurde gelöscht.",
     nfHome: "Zur Startseite",
     nfSignup: "Eigenen Account erstellen",
+
+    // Order-Reputation
+    sellerRatingLabel: "als Verkäufer",
+    buyerRatingLabel: "als Käufer",
+
+    // Tabs (Ergänzung) + Sort-Bar
+    tabSaved: "Gespeichert",
+    tabLives: "Lives",
+    sortAria: "Sortierung",
+    sortNewest: "🕐 Neueste",
+    sortViews: "▶ Views",
+    sortLikes: "♥ Likes",
+
+    // Panel-Empty-States (Ergänzung)
+    emptyLikedTitle: "Noch nichts geliked",
+    emptyLikedHint:
+      "Videos, die du likest, erscheinen hier — nur für dich sichtbar.",
+    emptySavedTitle: "Nichts gespeichert",
+    emptySavedHint:
+      "Bookmarkte Posts erscheinen hier — nur für dich sichtbar.",
+    savedPrivateTitle: "Gespeicherte Posts sind privat",
+    savedPrivateHint: "Nur der Profilinhaber kann seine gespeicherten Posts sehen.",
+    shopHintSelf: "Erstelle dein erstes Produkt im Creator Studio.",
+    livesEmptyTitle: "Keine Replays",
+    livesEmptySelf: "Deine Live-Streams werden hier als Replay gespeichert.",
+    livesEmptyOther: "{username} hat noch keine öffentlichen Replays.",
+    liveReplayAlt: "Live Replay",
+
+    // Profil-Komponenten (share-button, post-grid, live-ring-avatar)
+    shareAria: "Profil teilen",
+    watchVideo: "Video ansehen",
+    watchVideoCaption: "Video ansehen: {caption}",
+    womenOnlyBadge: "Women Only",
+    womenOnlyZone: "Women-Only Zone",
+    emptyVideosDefault: "Noch keine Videos",
   },
 
   // Post-Detailseite (/p/[postId])

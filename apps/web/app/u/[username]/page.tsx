@@ -346,14 +346,14 @@ export default async function ProfilePage({
               <span className="inline-flex items-center gap-1.5 text-muted-foreground">
                 <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
                 <span className="font-semibold text-foreground">{orderRating.sellerAvg?.toFixed(1)}</span>
-                als Verkäufer · {orderRating.sellerCount} {orderRating.sellerCount === 1 ? 'Bewertung' : 'Bewertungen'}
+                {t('profile.sellerRatingLabel')} · {orderRating.sellerCount} {orderRating.sellerCount === 1 ? t('shop.detail.ratingSingular') : t('shop.detail.ratingPlural')}
               </span>
             )}
             {orderRating.buyerCount > 0 && (
               <span className="inline-flex items-center gap-1.5 text-muted-foreground">
                 <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
                 <span className="font-semibold text-foreground">{orderRating.buyerAvg?.toFixed(1)}</span>
-                als Käufer · {orderRating.buyerCount}
+                {t('profile.buyerRatingLabel')} · {orderRating.buyerCount}
               </span>
             )}
           </div>
@@ -390,7 +390,7 @@ export default async function ProfilePage({
             {meta.womenOnly && (
               <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
                 <Flower2 className="h-3.5 w-3.5 shrink-0 text-pink-400" />
-                Women-Only
+                {t('post.womenOnly')}
               </span>
             )}
           </div>
@@ -416,11 +416,11 @@ export default async function ProfilePage({
           tablist: t('profile.tablistLabel'),
           posts: t('profile.tabPosts'),
           likes: t('profile.tabLikes'),
-          saved: 'Gespeichert',
+          saved: t('profile.tabSaved'),
           reposts: t('profile.tabReposts'),
           shop: t('profile.tabShop'),
           battles: t('profile.tabBattles'),
-          lives: 'Lives',
+          lives: t('profile.tabLives'),
         }}
         savedVisible={isSelf}
       />
@@ -438,12 +438,12 @@ export default async function ProfilePage({
                 Matches mobile's sort bar: views / likes / newest.
                 Only shown when the profile has posts so it doesn't float above an EmptyState. */}
             {posts.length > 0 && (
-              <nav aria-label="Sortierung" className="mb-3 flex gap-1.5 px-0.5">
+              <nav aria-label={t('profile.sortAria')} className="mb-3 flex gap-1.5 px-0.5">
                 {(
                   [
-                    { key: 'newest', label: '🕐 Neueste' },
-                    { key: 'views',  label: '▶ Views'   },
-                    { key: 'likes',  label: '♥ Likes'   },
+                    { key: 'newest', label: t('profile.sortNewest') },
+                    { key: 'views',  label: t('profile.sortViews')  },
+                    { key: 'likes',  label: t('profile.sortLikes')  },
                   ] as { key: ProfileSortKey; label: string }[]
                 ).map(({ key, label }) => (
                   <Link
@@ -485,8 +485,8 @@ export default async function ProfilePage({
             // Eigener Account: echtes Liked-Grid mit infinite scroll (v1.w.UI.126)
             <PostGrid
               posts={likedPosts}
-              emptyTitle="Noch nichts geliked"
-              emptyDescription="Videos, die du likest, erscheinen hier — nur für dich sichtbar."
+              emptyTitle={t('profile.emptyLikedTitle')}
+              emptyDescription={t('profile.emptyLikedHint')}
               emptyIcon={<Heart className="h-7 w-7" strokeWidth={1.75} />}
               fetchMoreUrl="/api/posts/liked"
               initialHasMore={likedPosts.length >= 24}
@@ -506,8 +506,8 @@ export default async function ProfilePage({
             // v1.w.UI.203 — Saved/Bookmarks tab: own-profile only (parity with mobile 'saved' tab)
             <PostGrid
               posts={savedPosts}
-              emptyTitle="Nichts gespeichert"
-              emptyDescription="Bookmarkte Posts erscheinen hier — nur für dich sichtbar."
+              emptyTitle={t('profile.emptySavedTitle')}
+              emptyDescription={t('profile.emptySavedHint')}
               emptyIcon={<Bookmark className="h-7 w-7" strokeWidth={1.75} />}
               fetchMoreUrl="/api/posts/bookmarked"
               initialHasMore={savedPosts.length >= 48}
@@ -515,8 +515,8 @@ export default async function ProfilePage({
           ) : (
             <EmptyPanelInfo
               icon="likes"
-              title="Gespeicherte Posts sind privat"
-              hint="Nur der Profilinhaber kann seine gespeicherten Posts sehen."
+              title={t('profile.savedPrivateTitle')}
+              hint={t('profile.savedPrivateHint')}
             />
           )
         )}
@@ -552,7 +552,7 @@ export default async function ProfilePage({
             <EmptyPanelInfo
               icon="shop"
               title={t('profile.panelShopTitle')}
-              hint={isSelf ? 'Erstelle dein erstes Produkt im Creator Studio.' : t('profile.panelShopHint')}
+              hint={isSelf ? t('profile.shopHintSelf') : t('profile.panelShopHint')}
             />
           )
         )}
@@ -582,7 +582,7 @@ export default async function ProfilePage({
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
                         src={session.thumbnail_url}
-                        alt={session.title ?? 'Live Replay'}
+                        alt={session.title ?? t('profile.liveReplayAlt')}
                         className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                       />
                     ) : (
@@ -608,11 +608,11 @@ export default async function ProfilePage({
           ) : (
             <EmptyPanelInfo
               icon="lives"
-              title="Keine Replays"
+              title={t('profile.livesEmptyTitle')}
               hint={
                 isSelf
-                  ? 'Deine Live-Streams werden hier als Replay gespeichert.'
-                  : `${profile.username} hat noch keine öffentlichen Replays.`
+                  ? t('profile.livesEmptySelf')
+                  : t('profile.livesEmptyOther', { username: profile.username })
               }
             />
           )

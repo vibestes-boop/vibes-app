@@ -152,6 +152,41 @@ const ruMessages = {
       'Такого юзернейма на Serlo (пока) нет — возможно, опечатка или аккаунт удалён.',
     nfHome: 'На главную',
     nfSignup: 'Создать свой аккаунт',
+
+    // Репутация по заказам
+    sellerRatingLabel: 'как продавец',
+    buyerRatingLabel: 'как покупатель',
+
+    // Вкладки (доп.) + сортировка
+    tabSaved: 'Сохранённое',
+    tabLives: 'Эфиры',
+    sortAria: 'Сортировка',
+    sortNewest: '🕐 Новые',
+    sortViews: '▶ Просмотры',
+    sortLikes: '♥ Лайки',
+
+    // Пустые состояния вкладок (доп.)
+    emptyLikedTitle: 'Пока нет лайков',
+    emptyLikedHint:
+      'Видео, которые ты лайкаешь, появятся здесь — видно только тебе.',
+    emptySavedTitle: 'Ничего не сохранено',
+    emptySavedHint:
+      'Сохранённые посты появятся здесь — видно только тебе.',
+    savedPrivateTitle: 'Сохранённые посты приватны',
+    savedPrivateHint: 'Только владелец профиля видит свои сохранённые посты.',
+    shopHintSelf: 'Создай свой первый товар в Creator Studio.',
+    livesEmptyTitle: 'Нет записей',
+    livesEmptySelf: 'Твои эфиры сохранятся здесь как записи.',
+    livesEmptyOther: 'У {username} пока нет публичных записей.',
+    liveReplayAlt: 'Запись эфира',
+
+    // Компоненты профиля (share-button, post-grid, live-ring-avatar)
+    shareAria: 'Поделиться профилем',
+    watchVideo: 'Смотреть видео',
+    watchVideoCaption: 'Смотреть видео: {caption}',
+    womenOnlyBadge: 'Только для женщин',
+    womenOnlyZone: 'Зона «только для женщин»',
+    emptyVideosDefault: 'Пока нет видео',
   },
 
   // Страница поста (/p/[postId])

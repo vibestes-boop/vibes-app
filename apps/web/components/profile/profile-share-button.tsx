@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Share2, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useI18n } from '@/lib/i18n/client';
 
 // -----------------------------------------------------------------------------
 // ProfileShareButton — schlanker Single-Button „Teilen" fürs eigene Web-Profil.
@@ -17,6 +18,7 @@ export function ProfileShareButton({
   username: string;
   displayName: string;
 }) {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
 
   async function onShare() {
@@ -40,9 +42,9 @@ export function ProfileShareButton({
   }
 
   return (
-    <Button variant="outline" size="sm" onClick={onShare} aria-label="Profil teilen">
+    <Button variant="outline" size="sm" onClick={onShare} aria-label={t('profile.shareAria')}>
       {copied ? <Check className="h-4 w-4" /> : <Share2 className="h-4 w-4" />}
-      {copied ? 'Link kopiert' : 'Teilen'}
+      {copied ? t('share.copiedToast') : t('share.share')}
     </Button>
   );
 }

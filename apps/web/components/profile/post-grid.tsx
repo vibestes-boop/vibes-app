@@ -9,6 +9,7 @@ import type { Post } from '@shared/types';
 import { cn } from '@/lib/utils';
 import { EmptyState } from '@/components/ui/empty-state';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useI18n } from '@/lib/i18n/client';
 
 // -----------------------------------------------------------------------------
 // PostGrid — 3-Spalten-Grid, 9:16, klickbar zu /p/[id].
@@ -34,6 +35,7 @@ function formatCount(n: number): string {
 // ─── PostGridItem ─────────────────────────────────────────────────────────────
 
 function PostGridItem({ post }: { post: Post }) {
+  const { t } = useI18n();
   const videoRef = useRef<HTMLVideoElement>(null);
   const [videoReady, setVideoReady] = useState(false);
   const [thumbnailFailed, setThumbnailFailed] = useState(false);
@@ -96,7 +98,9 @@ function PostGridItem({ post }: { post: Post }) {
         href={`/p/${post.id}`}
         className={`relative block ${aspectClass} w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2`}
         aria-label={
-          post.caption ? `Video ansehen: ${post.caption.slice(0, 80)}` : 'Video ansehen'
+          post.caption
+            ? t('profile.watchVideoCaption', { caption: post.caption.slice(0, 80) })
+            : t('profile.watchVideo')
         }
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
@@ -162,7 +166,7 @@ function PostGridItem({ post }: { post: Post }) {
           </span>
           {/* v1.w.UI.169 — WOZ badge on thumbnail */}
           {post.women_only && (
-            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-pink-500/80 text-white" aria-label="Women Only" title="Women-Only Zone">
+            <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-pink-500/80 text-white" aria-label={t('profile.womenOnlyBadge')} title={t('profile.womenOnlyZone')}>
               <Heart className="h-3 w-3 fill-current" />
             </span>
           )}
@@ -205,6 +209,7 @@ export function PostGrid({
   /** True if the initial posts array hit the page limit. */
   initialHasMore?: boolean;
 }) {
+  const { t } = useI18n();
   const [posts, setPosts]     = useState<Post[]>(initialPosts);
   const [hasMore, setHasMore] = useState(initialHasMore && !!fetchMoreUrl);
   const [fetching, setFetching] = useState(false);
@@ -247,7 +252,7 @@ export function PostGrid({
     return (
       <EmptyState
         icon={emptyIcon ?? <Grid3x3 className="h-7 w-7" strokeWidth={1.75} />}
-        title={emptyTitle ?? 'Noch keine Videos'}
+        title={emptyTitle ?? t('profile.emptyVideosDefault')}
         description={emptyDescription}
         cta={emptyCta}
         size="md"
