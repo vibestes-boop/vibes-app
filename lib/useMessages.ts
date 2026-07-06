@@ -3,6 +3,7 @@ import { useCallback,useEffect,useRef,useState } from 'react';
 import { Alert } from 'react-native';
 import { useAuthStore } from './authStore';
 import { supabase } from './supabase';
+import { getBlockedIdSet } from './useBlock';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -104,7 +105,14 @@ export function useConversations() {
       const { data, error } = await supabase.rpc('get_conversations');
       if (error) throw error;
 
-      return (data ?? []).map((row: any) => ({
+      // Konversationen mit geblockten Usern ausblenden (Server verhindert das
+      // Senden zusätzlich per Trigger).
+      const blockedIds = await getBlockedIdSet();
+      const rows = ((data ?? []) as any[]).filter(
+        (row) => !blockedIds.has(row.other_user_id),
+      );
+
+      return rows.map((row: any) => ({
         id: row.id,
         other_user: {
           id: row.other_user_id,

@@ -2,6 +2,37 @@ import { useMutation,useQuery,useQueryClient } from '@tanstack/react-query';
 import { useAuthStore } from './authStore';
 import { supabase } from './supabase';
 
+// ── Block-Beziehungs-IDs (beide Richtungen), kurz gecacht ────────────────────
+// get_blocked_user_ids() liefert alle User, mit denen ich eine Block-Beziehung
+// habe (ich→sie ODER sie→ich; letzteres verbirgt die RLS auf user_blocks, daher
+// die SECURITY-DEFINER-RPC). Feed/Kommentar-Filter nutzen das, um geblockte
+// Autoren beidseitig auszublenden — ohne bei jeder Feed-Seite einen Roundtrip.
+let _blockedIdsCache: { at: number; ids: Set<string> } | null = null;
+const BLOCKED_IDS_TTL = 60_000;
+
+export async function getBlockedIdSet(): Promise<Set<string>> {
+  const now = Date.now();
+  if (_blockedIdsCache && now - _blockedIdsCache.at < BLOCKED_IDS_TTL) {
+    return _blockedIdsCache.ids;
+  }
+  try {
+    const { data } = await supabase.rpc('get_blocked_user_ids');
+    const ids = new Set<string>(
+      ((data ?? []) as { user_id: string }[]).map((r) => r.user_id),
+    );
+    _blockedIdsCache = { at: now, ids };
+    return ids;
+  } catch {
+    // Bei Fehler lieber nicht filtern als den Feed leeren.
+    return _blockedIdsCache?.ids ?? new Set<string>();
+  }
+}
+
+/** Cache verwerfen — nach Block/Unblock, damit Feed/Kommentare sofort greifen. */
+export function clearBlockedIdCache(): void {
+  _blockedIdsCache = null;
+}
+
 /** Prüft ob der aktuelle User einen anderen User geblockt hat */
 export function useIsBlocked(targetUserId: string | null) {
   const currentUserId = useAuthStore((s) => s.profile?.id);
@@ -35,6 +66,12 @@ export function useBlockUser(targetUserId: string | null) {
     },
     onSuccess: () => {
       queryClient.setQueryData(['block-status', currentUserId, targetUserId], true);
+      clearBlockedIdCache();
+      // Feed + Kommentare neu ziehen, damit die geblockten Inhalte sofort weg sind.
+      queryClient.invalidateQueries({ queryKey: ['vibe-feed'] });
+      queryClient.invalidateQueries({ queryKey: ['comments'] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['blocked-users'] });
     },
   });
 
@@ -45,6 +82,11 @@ export function useBlockUser(targetUserId: string | null) {
     },
     onSuccess: () => {
       queryClient.setQueryData(['block-status', currentUserId, targetUserId], false);
+      clearBlockedIdCache();
+      queryClient.invalidateQueries({ queryKey: ['vibe-feed'] });
+      queryClient.invalidateQueries({ queryKey: ['comments'] });
+      queryClient.invalidateQueries({ queryKey: ['conversations'] });
+      queryClient.invalidateQueries({ queryKey: ['blocked-users'] });
     },
   });
 

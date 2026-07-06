@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { Alert } from 'react-native';
 import { useAuthStore } from './authStore';
 import { supabase } from './supabase';
+import { getBlockedIdSet } from './useBlock';
 
 
 export type Comment = {
@@ -90,7 +91,12 @@ export function useComments(postId: string, enabled: boolean = true) {
         p_viewer_id: userId ?? null,
       });
       if (error) throw error;
-      const rows = (data ?? []) as Array<Record<string, any>>;
+      const allRows = (data ?? []) as Array<Record<string, any>>;
+      // Kommentare geblockter Nutzer (beide Richtungen) ausblenden.
+      const blockedIds = await getBlockedIdSet();
+      const rows = blockedIds.size === 0
+        ? allRows
+        : allRows.filter((r) => !blockedIds.has(r.user_id));
       return rows
         .map((r): Comment => ({
           id: r.id,

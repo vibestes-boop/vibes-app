@@ -2,6 +2,7 @@ import { useInfiniteQuery,useQuery } from '@tanstack/react-query';
 import { useAuthStore } from './authStore';
 import { useVibeStore } from './store';
 import { supabase } from './supabase';
+import { getBlockedIdSet } from './useBlock';
 
 export type PostWithAuthor = {
   id: string;
@@ -60,6 +61,12 @@ export function useVibeFeed(activeTag: string | null = null) {
       const excludeIds = pageParam as string[];
       const isInitialUntunedPage = excludeIds.length === 0 && !activeTag;
 
+      // Geblockte Autoren beidseitig ausblenden (der Server verhindert Kontakt;
+      // das Ausblenden im Feed passiert hier, ohne den v5-Algorithmus anzufassen).
+      const blockedIds = await getBlockedIdSet();
+      const stripBlocked = (posts: PostWithAuthor[]) =>
+        blockedIds.size === 0 ? posts : posts.filter((p) => !blockedIds.has(p.author_id));
+
       if (isInitialUntunedPage) {
         // include_seen: false — seit Algorithmus v5 ist „seen" ein weicher
         // Score-Penalty (×0.15) statt hartem Filter → die erste Seite kann nie
@@ -75,7 +82,7 @@ export function useVibeFeed(activeTag: string | null = null) {
         });
 
         if (!fastError && Array.isArray(fastData) && fastData.length > 0) {
-          return fastData as PostWithAuthor[];
+          return stripBlocked(fastData as PostWithAuthor[]);
         }
       }
 
@@ -94,7 +101,7 @@ export function useVibeFeed(activeTag: string | null = null) {
 
       // Genug frischer Content → direkt zurückgeben
       if (!rpcError && freshPosts.length >= SEEN_FALLBACK_THRESHOLD) {
-        return freshPosts;
+        return stripBlocked(freshPosts);
       }
 
       // ─── Schritt 2: Automatischer Fallback → gesehene Posts recyceln ────
@@ -110,7 +117,7 @@ export function useVibeFeed(activeTag: string | null = null) {
         });
 
         if (!seenError && Array.isArray(seenData) && seenData.length > 0) {
-          return seenData as PostWithAuthor[];
+          return stripBlocked(seenData as PostWithAuthor[]);
         }
       }
 
@@ -137,7 +144,7 @@ export function useVibeFeed(activeTag: string | null = null) {
       const { data: fallbackData, error: fallbackError } = await query;
       if (fallbackError) throw fallbackError;
 
-      return ((fallbackData ?? []) as any[]).map((p) => ({
+      return stripBlocked(((fallbackData ?? []) as any[]).map((p) => ({
         ...p,
         username:      (p.profiles as any)?.username   ?? null,
         avatar_url:    (p.profiles as any)?.avatar_url ?? null,
@@ -151,7 +158,7 @@ export function useVibeFeed(activeTag: string | null = null) {
         audio_volume:  p.audio_volume ?? 0.8,
         is_verified:   (p.profiles as any)?.is_verified ?? null,
         women_only:    p.women_only ?? false,
-      })) as PostWithAuthor[];
+      })) as PostWithAuthor[]);
     },
     staleTime: 1000 * 60,
     retry: 1,
