@@ -293,15 +293,26 @@ export default function SettingsScreen() {
                 try {
                   const { data: { session } } = await supabase.auth.getSession();
                   const token = session?.access_token;
-                  if (token) {
-                    const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
-                    await fetch(`${supabaseUrl}/functions/v1/delete-account`, {
-                      method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-                    });
+                  if (!token) throw new Error('Keine aktive Sitzung.');
+                  const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
+                  const res = await fetch(`${supabaseUrl}/functions/v1/delete-account`, {
+                    method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+                  });
+                  // Nur bei ECHTEM Erfolg ausloggen — vorher wurde jeder Fehler
+                  // verschluckt und der User trotzdem ausgeloggt, obwohl der
+                  // Auth-Account in Supabase erhalten blieb.
+                  if (!res.ok) {
+                    const body = await res.json().catch(() => ({} as { error?: string }));
+                    throw new Error(body?.error ?? `Löschen fehlgeschlagen (${res.status}).`);
                   }
-                } catch { /* ignore */ }
-                queryClient.clear();
-                await useAuthStore.getState().signOut();
+                  queryClient.clear();
+                  await useAuthStore.getState().signOut();
+                } catch (e: any) {
+                  Alert.alert(
+                    'Löschen fehlgeschlagen 🙈',
+                    e?.message ?? 'Bitte versuch es später nochmal.',
+                  );
+                }
               },
             },
           ]);
