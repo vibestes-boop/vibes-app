@@ -25,9 +25,10 @@
       "usesAppleSignIn": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSCameraUsageDescription": "Serlo braucht Kamera-Zugriff für Videos und Fotos.",
-        "NSMicrophoneUsageDescription": "Serlo braucht Mikrofon-Zugriff für Video-Stories und Live-Streams.",
-        "NSPhotoLibraryUsageDescription": "Serlo braucht Zugriff auf deine Fotos für Stories und Posts.",
+        "NSCameraUsageDescription": "Serlo verwendet die Kamera, damit du Videos und Fotos direkt in der App aufnehmen und als Beitrag, Story oder Live-Stream teilen kannst – zum Beispiel um ein kurzes Video aufzunehmen und in deinem Feed zu posten.",
+        "NSMicrophoneUsageDescription": "Serlo verwendet das Mikrofon, um Ton für deine Videos, Stories und Live-Streams aufzunehmen – zum Beispiel um ein Video mit deiner Stimme aufzunehmen und zu teilen.",
+        "NSPhotoLibraryUsageDescription": "Serlo greift auf deine Mediathek zu, damit du vorhandene Fotos und Videos auswählen und als Beitrag oder Story hochladen kannst – zum Beispiel um ein Video aus deiner Galerie in deinem Feed zu teilen.",
+        "NSPhotoLibraryAddUsageDescription": "Serlo speichert Fotos und Videos in deiner Mediathek, wenn du einen Beitrag herunterlädst – zum Beispiel um ein gespeichertes Video später offline anzusehen.",
         "UIStatusBarStyle": "UIStatusBarStyleLightContent",
         "UIViewControllerBasedStatusBarAppearance": false,
         "UIApplicationSceneManifest": {
@@ -68,7 +69,7 @@
           "Default"
         ]
       },
-      "buildNumber": "289"
+      "buildNumber": "290"
     },
     "android": {
       "package": "app.serlo.social",
@@ -108,8 +109,8 @@
       [
         "react-native-vision-camera",
         {
-          "cameraPermissionText": "Serlo braucht Kamera-Zugriff für Videos und Fotos.",
-          "microphonePermissionText": "Serlo braucht Mikrofon-Zugriff für Video-Aufnahmen.",
+          "cameraPermissionText": "Serlo verwendet die Kamera, damit du Videos und Fotos direkt in der App aufnehmen und als Beitrag, Story oder Live-Stream teilen kannst – zum Beispiel um ein kurzes Video aufzunehmen und in deinem Feed zu posten.",
+          "microphonePermissionText": "Serlo verwendet das Mikrofon, um Ton für deine Videos, Stories und Live-Streams aufzunehmen – zum Beispiel um ein Video mit deiner Stimme aufzunehmen und zu teilen.",
           "enableFrameProcessors": true
         }
       ],
@@ -140,8 +141,8 @@
       [
         "expo-media-library",
         {
-          "photosPermission": "Serlo möchte Videos in deiner Galerie speichern.",
-          "savePhotosPermission": "Serlo möchte Videos in deiner Galerie speichern.",
+          "photosPermission": "Serlo greift auf deine Mediathek zu, damit du vorhandene Fotos und Videos auswählen und als Beitrag oder Story hochladen kannst – zum Beispiel um ein Video aus deiner Galerie in deinem Feed zu teilen.",
+          "savePhotosPermission": "Serlo speichert Fotos und Videos in deiner Mediathek, wenn du einen Beitrag herunterlädst – zum Beispiel um ein gespeichertes Video später offline anzusehen.",
           "isAccessMediaLocationEnabled": true
         }
       ],
