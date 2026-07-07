@@ -101,6 +101,16 @@ export const useAuthStore = create<AuthStore>()(
 
       signOut: async () => {
         const { supabase } = await import('./supabase');
+        // Push-Registrierung dieses Users lösen, bevor die Session weg ist —
+        // sonst bekäme der Account nach dem Abmelden weiter Pushes auf dieses
+        // Gerät (beim Account-Wechsel greift zusätzlich der DB-Trigger).
+        const uid = get().profile?.id ?? get().user?.id;
+        if (uid) {
+          try {
+            await supabase.from('profiles').update({ push_token: null }).eq('id', uid);
+            await supabase.from('push_tokens').delete().eq('user_id', uid);
+          } catch { /* Logout darf nie an der Token-Bereinigung scheitern */ }
+        }
         await supabase.auth.signOut();
         // WICHTIG: `initialized` NICHT auf false setzen! Der getSession-Effekt
         // im Root-Layout läuft nur beim Mount und onAuthStateChange setzt bei
