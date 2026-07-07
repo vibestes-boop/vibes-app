@@ -102,7 +102,12 @@ export const useAuthStore = create<AuthStore>()(
       signOut: async () => {
         const { supabase } = await import('./supabase');
         await supabase.auth.signOut();
-        set({ session: null, user: null, profile: null, initialized: false });
+        // WICHTIG: `initialized` NICHT auf false setzen! Der getSession-Effekt
+        // im Root-Layout läuft nur beim Mount und onAuthStateChange setzt bei
+        // SIGNED_OUT kein initialized:true — bliebe es false, hinge die App
+        // ewig im „wird geladen…"-Screen. Mit initialized=true + session=null
+        // greift der AuthGuard und leitet sauber zu /(auth)/login.
+        set({ session: null, user: null, profile: null });
       },
     }),
     {
