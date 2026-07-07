@@ -1,8 +1,9 @@
 'use client';
 
-import { useTransition } from 'react';
+import { useState } from 'react';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { signInWithOAuth } from '@/app/actions/auth';
+import { createClient } from '@/lib/supabase/client';
 import { useI18n } from '@/lib/i18n/client';
 
 // Google "G" SVG logo (official brand colors). Inlined so no external asset fetch.
@@ -39,8 +40,29 @@ function AppleLogo() {
 
 export function OAuthButtons({ next = '/' }: { next?: string }) {
   const { t } = useI18n();
-  const [isGooglePending, startGoogle] = useTransition();
-  const [isApplePending, startApple] = useTransition();
+  const [pending, setPending] = useState<null | 'google' | 'apple'>(null);
+
+  // OAuth MUSS client-seitig gestartet werden: nur dann legt @supabase/ssr den
+  // PKCE-Code-Verifier in einem Browser-Cookie ab, das /auth/callback beim
+  // exchangeCodeForSession lesen kann. Vorher lief das in einer Server-Action —
+  // der Verifier-Cookie ging beim Redirect zum externen Provider (Google/Apple)
+  // verloren → „PKCE code verifier not found in storage".
+  async function handleOAuth(provider: 'google' | 'apple') {
+    if (pending) return;
+    setPending(provider);
+    try {
+      const supabase = createClient();
+      const redirectTo = `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`;
+      const { error } = await supabase.auth.signInWithOAuth({ provider, options: { redirectTo } });
+      if (error) throw error;
+      // signInWithOAuth navigiert den Browser automatisch zum Provider.
+    } catch (e: unknown) {
+      setPending(null);
+      toast.error(
+        e instanceof Error ? e.message : 'Anmeldung fehlgeschlagen — bitte erneut versuchen.',
+      );
+    }
+  }
 
   return (
     <div className="grid gap-2">
@@ -48,8 +70,8 @@ export function OAuthButtons({ next = '/' }: { next?: string }) {
         type="button"
         variant="outline"
         size="lg"
-        disabled={isGooglePending || isApplePending}
-        onClick={() => startGoogle(() => signInWithOAuth('google', next))}
+        disabled={!!pending}
+        onClick={() => handleOAuth('google')}
         data-testid="oauth-google-button"
       >
         <GoogleLogo />
@@ -59,8 +81,8 @@ export function OAuthButtons({ next = '/' }: { next?: string }) {
         type="button"
         variant="outline"
         size="lg"
-        disabled={isGooglePending || isApplePending}
-        onClick={() => startApple(() => signInWithOAuth('apple', next))}
+        disabled={!!pending}
+        onClick={() => handleOAuth('apple')}
         data-testid="oauth-apple-button"
       >
         <AppleLogo />

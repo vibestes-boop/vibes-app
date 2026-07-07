@@ -228,9 +228,12 @@ export async function deleteMyAccount(
     };
   }
 
-  // Session explizit invalidieren (das Auth-Cookie wird sonst bis Refresh
-  // weitergetragen und würde auf einen 404-User zeigen).
-  await supabase.auth.signOut();
+  // Session-Cookies löschen. WICHTIG: scope 'local' — der Default ('global')
+  // ruft Supabase server-seitig auf, um alle Sessions zu widerrufen; da der
+  // User aber gerade gelöscht wurde, schlägt dieser Call fehl und die Cookies
+  // blieben stehen → das noch gültige JWT ließ das Profil-Menü weiter anzeigen.
+  // 'local' entfernt nur die lokalen Cookies (kein Server-Call) → sauber weg.
+  await supabase.auth.signOut({ scope: 'local' });
 
   revalidatePath('/', 'layout');
   redirect('/?account-deleted=1' as Route);
