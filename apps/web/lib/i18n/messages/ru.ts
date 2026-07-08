@@ -350,6 +350,7 @@ const ruMessages = {
     newPosts: 'Новые посты',
     privacyLink: 'Конфиденциальность',
     imprintLink: 'Импрессум',
+    withdrawalLink: 'Возврат',
     // Плеер / карточка
     unmuteAria: 'Включить звук',
     muteAria: 'Выключить звук',

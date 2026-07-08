@@ -215,6 +215,7 @@ export async function LandingPage({ featured, liveNow, trendingPosts }: LandingP
             <Link href={'/terms' as Route} className="hover:text-foreground">{t('landing.terms')}</Link>
             <Link href={'/privacy' as Route} className="hover:text-foreground">{t('feed.privacyLink')}</Link>
             <Link href={'/imprint' as Route} className="hover:text-foreground">{t('feed.imprintLink')}</Link>
+            <Link href={'/widerruf' as Route} className="hover:text-foreground">{t('feed.withdrawalLink')}</Link>
             <Link href={'/support' as Route} className="hover:text-foreground">{t('landing.support')}</Link>
           </nav>
         </div>

@@ -200,6 +200,11 @@ export default function TermsPage() {
         <p className="font-semibold">Weiterführend</p>
         <ul className="mt-2 space-y-1">
           <li>
+            <Link href={'/widerruf' as Route} className="text-primary hover:underline">
+              Widerrufsbelehrung →
+            </Link>
+          </li>
+          <li>
             <Link href={'/privacy' as Route} className="text-primary hover:underline">
               Datenschutzerklärung →
             </Link>

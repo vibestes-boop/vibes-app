@@ -357,6 +357,7 @@ const deMessages = {
     newPosts: "Neue Posts",
     privacyLink: "Datenschutz",
     imprintLink: "Impressum",
+    withdrawalLink: "Widerruf",
     // Player / Karte
     unmuteAria: "Ton einschalten",
     muteAria: "Stummschalten",

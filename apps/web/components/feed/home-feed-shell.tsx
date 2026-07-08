@@ -492,6 +492,7 @@ function FeedSidebarRight({
           <Link href={'/terms' as Route} className="hover:text-foreground">AGB</Link>
           <Link href={'/privacy' as Route} className="hover:text-foreground">{t('feed.privacyLink')}</Link>
           <Link href={'/imprint' as Route} className="hover:text-foreground">{t('feed.imprintLink')}</Link>
+          <Link href={'/widerruf' as Route} className="hover:text-foreground">{t('feed.withdrawalLink')}</Link>
         </nav>
         <div className="mt-2">© {new Date().getFullYear()} Serlo</div>
       </footer>
