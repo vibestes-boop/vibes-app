@@ -560,6 +560,25 @@ const deMessages = {
     noSuggestedPeople: "Keine Vorschläge verfügbar.",
     follow: "Folgen",
     following: "Folgst du",
+    noTrendsTitle: "Noch keine starken Trends",
+    noTrendsHint:
+      "Sobald mehrere Posts und Gespräche denselben Hashtag tragen, erscheint hier eine kuratierte Trend-Liste statt eines leeren Feeds.",
+    wozVerifiedHint: "Dein geschützter Raum mit kuratierten Posts",
+    wozUnverifiedHint: "Geschützter Bereich mit separater Verifizierung",
+    reasonSamePod: "Gleicher Pod",
+    reasonInterests: "Interessen",
+    reasonNew: "Neu",
+    sortTrending: "Trending",
+    sortNewest: "Neueste",
+  },
+
+  // Benachrichtigungs-Drawer (notifications-drawer / notif-bell-pill)
+  notif: {
+    title: "Benachrichtigungen",
+    loginHint: "Einloggen um Benachrichtigungen zu sehen.",
+    empty: "Noch keine Benachrichtigungen.",
+    emptyHint: "Wenn jemand deinen Post liked oder dir folgt, erscheint es hier.",
+    unreadCountAria: "Benachrichtigungen — {count} ungelesen",
   },
 
   billing: {

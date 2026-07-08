@@ -5,6 +5,8 @@ import { ExploreVideoCard } from './explore-video-card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import type { FeedPost } from '@/lib/data/feed';
+import { useI18n } from '@/lib/i18n/client';
+import type { TranslationKey } from '@/lib/i18n/translate';
 
 // -----------------------------------------------------------------------------
 // ExplorePostGrid — Infinite-scroll wrapper around ExploreVideoCard.
@@ -28,10 +30,10 @@ type SortMode = 'forYou' | 'trending' | 'newest';
 
 type ExplorePageResponse = { posts: FeedPost[]; hasMore: boolean };
 
-const SORT_LABELS: Record<SortMode, string> = {
-  forYou:   'Für dich',
-  trending: 'Trending',
-  newest:   'Neueste',
+const SORT_LABEL_KEYS: Record<SortMode, TranslationKey> = {
+  forYou:   'feed.forYou',
+  trending: 'explore.sortTrending',
+  newest:   'explore.sortNewest',
 };
 
 const SORT_MODES: SortMode[] = ['forYou', 'trending', 'newest'];
@@ -43,6 +45,7 @@ export function ExplorePostGrid({
   initialPosts: FeedPost[];
   initialHasMore: boolean;
 }) {
+  const { t } = useI18n();
   const [sort, setSort]         = useState<SortMode>('forYou');
   const [posts, setPosts]       = useState<FeedPost[]>(initialPosts);
   const [hasMore, setHasMore]   = useState(initialHasMore);
@@ -134,7 +137,7 @@ export function ExplorePostGrid({
                 : 'bg-muted text-muted-foreground hover:bg-muted/80',
             )}
           >
-            {SORT_LABELS[mode]}
+            {t(SORT_LABEL_KEYS[mode])}
           </button>
         ))}
       </div>

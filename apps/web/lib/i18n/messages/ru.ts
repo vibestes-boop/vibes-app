@@ -552,6 +552,25 @@ const ruMessages = {
     noSuggestedPeople: 'Нет предложений.',
     follow: 'Подписаться',
     following: 'Вы подписаны',
+    noTrendsTitle: 'Пока нет сильных трендов',
+    noTrendsHint:
+      'Как только несколько постов и обсуждений получат один хештег, здесь появится курируемый список трендов вместо пустой ленты.',
+    wozVerifiedHint: 'Твоё защищённое пространство с отобранными постами',
+    wozUnverifiedHint: 'Защищённый раздел с отдельной верификацией',
+    reasonSamePod: 'Тот же Pod',
+    reasonInterests: 'Интересы',
+    reasonNew: 'Новичок',
+    sortTrending: 'В тренде',
+    sortNewest: 'Новые',
+  },
+
+  // Уведомления (notifications-drawer / notif-bell-pill)
+  notif: {
+    title: 'Уведомления',
+    loginHint: 'Войди, чтобы видеть уведомления.',
+    empty: 'Пока нет уведомлений.',
+    emptyHint: 'Когда кто-то лайкнет твой пост или подпишется, это появится здесь.',
+    unreadCountAria: 'Уведомления — {count} непрочитанных',
   },
 
   billing: {

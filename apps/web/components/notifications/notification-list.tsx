@@ -31,6 +31,7 @@ import {
   LifeBuoy,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/lib/i18n/client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { markAllNotificationsRead } from '@/app/actions/notifications';
 import { respondFollowRequest } from '@/app/actions/profile';
@@ -265,6 +266,7 @@ export function NotificationList({
   /** True wenn der Server genau `INITIAL_LIMIT` Notifications geliefert hat — könnte noch mehr geben. */
   initialHasMore?: boolean;
 }) {
+  const { t } = useI18n();
   const router = useRouter();
   const queryClient = useQueryClient();
   const channelRef = useRef<ReturnType<ReturnType<typeof createClient>['channel']> | null>(null);
@@ -405,9 +407,9 @@ export function NotificationList({
     return (
       <div className="flex flex-col items-center justify-center gap-3 py-20 text-center text-muted-foreground">
         <Bell className="h-10 w-10 opacity-30" />
-        <p className="text-sm">Noch keine Benachrichtigungen.</p>
+        <p className="text-sm">{t('notif.empty')}</p>
         <p className="text-xs opacity-70">
-          Wenn jemand deinen Post liked oder dir folgt, erscheint es hier.
+          {t('notif.emptyHint')}
         </p>
       </div>
     );

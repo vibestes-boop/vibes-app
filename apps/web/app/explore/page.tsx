@@ -75,10 +75,9 @@ export default async function ExplorePage() {
                 <Hash className="h-5 w-5" strokeWidth={1.8} />
               </div>
               <div>
-                <p className="text-sm font-semibold">Noch keine starken Trends</p>
+                <p className="text-sm font-semibold">{t('explore.noTrendsTitle')}</p>
                 <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-                  Sobald mehrere Posts und Gespräche denselben Hashtag tragen,
-                  erscheint hier eine kuratierte Trend-Liste statt eines leeren Feeds.
+                  {t('explore.noTrendsHint')}
                 </p>
               </div>
             </div>
@@ -133,6 +132,7 @@ export default async function ExplorePage() {
 }
 
 async function ExploreDeferredSections({ suggestedPeopleTitle }: { suggestedPeopleTitle: string }) {
+  const t = await getT();
   const hasAuthCookie = await hasSupabaseAuthCookie();
   const [topProducts, viewer] = await Promise.all([
     getPublicShopPreviewProducts(6).catch(() => []),
@@ -195,7 +195,7 @@ async function ExploreDeferredSections({ suggestedPeopleTitle }: { suggestedPeop
                       </Link>
                     </div>
 
-                    <DiscoverReasonBadge reason={person.reason} />
+                    <DiscoverReasonBadge reason={person.reason} label={t(REASON_KEYS[person.reason])} />
 
                     <FollowButton
                       isAuthenticated={!!viewer}
@@ -301,8 +301,8 @@ async function ExploreDeferredSections({ suggestedPeopleTitle }: { suggestedPeop
               </p>
               <p className="mt-0.5 truncate text-sm text-muted-foreground">
                 {isWozVerified
-                  ? 'Dein geschützter Raum mit kuratierten Posts'
-                  : 'Geschützter Bereich mit separater Verifizierung'}
+                  ? t('explore.wozVerifiedHint')
+                  : t('explore.wozUnverifiedHint')}
               </p>
             </div>
             <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5" />
@@ -323,11 +323,13 @@ function formatCount(n: number, locale: Locale): string {
 // Parity mit native discover reasons.
 // Labels aus useDiscoverPeople.ts. Kleine Pill unter dem Avatar-Namen.
 
-const REASON_LABELS: Record<DiscoverReason, string> = {
-  guild: 'Gleicher Pod',
-  interests: 'Interessen',
-  new: 'Neu',
-};
+// Labels via i18n — Badge ist eine synchrone Server-Sub-Komponente, deshalb
+// reicht die Page (getT) das aufgelöste Label als Prop durch.
+const REASON_KEYS = {
+  guild: 'explore.reasonSamePod',
+  interests: 'explore.reasonInterests',
+  new: 'explore.reasonNew',
+} as const;
 
 const REASON_CLASSES: Record<DiscoverReason, string> = {
   guild: 'bg-muted text-muted-foreground',
@@ -335,12 +337,12 @@ const REASON_CLASSES: Record<DiscoverReason, string> = {
   new: 'bg-muted text-muted-foreground',
 };
 
-function DiscoverReasonBadge({ reason }: { reason: DiscoverReason }) {
+function DiscoverReasonBadge({ reason, label }: { reason: DiscoverReason; label: string }) {
   return (
     <span
       className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium leading-none ${REASON_CLASSES[reason]}`}
     >
-      {REASON_LABELS[reason]}
+      {label}
     </span>
   );
 }

@@ -3,6 +3,7 @@
 import { Bell } from 'lucide-react';
 import { glassPillBase } from '@/lib/ui/glass-pill';
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/lib/i18n/client';
 import { useUnreadShellCounts } from '@/components/layout/use-unread-shell-counts';
 import { useNotificationsDrawer } from '@/lib/notifications-drawer-store';
 
@@ -26,6 +27,7 @@ interface NotifBellPillProps {
 }
 
 export function NotifBellPill({ initialCount, viewerId }: NotifBellPillProps) {
+  const { t } = useI18n();
   const { data: counts } = useUnreadShellCounts(viewerId, {
     dms: 0,
     notifications: initialCount,
@@ -40,8 +42,8 @@ export function NotifBellPill({ initialCount, viewerId }: NotifBellPillProps) {
       onClick={toggleDrawer}
       aria-label={
         count > 0
-          ? `Benachrichtigungen — ${count} ungelesen`
-          : 'Benachrichtigungen'
+          ? t('notif.unreadCountAria', { count })
+          : t('notif.title')
       }
       className={cn(
         glassPillBase,

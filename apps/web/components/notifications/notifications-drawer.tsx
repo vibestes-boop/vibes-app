@@ -7,6 +7,7 @@ import { getNotifications } from '@/lib/data/notifications';
 import { NotificationList } from './notification-list';
 import type { Notification } from '@/lib/data/notifications';
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/lib/i18n/client';
 
 // -----------------------------------------------------------------------------
 // NotificationsDrawer — globale Slide-Over von rechts.
@@ -19,6 +20,7 @@ import { cn } from '@/lib/utils';
 // -----------------------------------------------------------------------------
 
 export function NotificationsDrawer({ viewerId }: { viewerId: string | null }) {
+  const { t } = useI18n();
   const { open, closeDrawer } = useNotificationsDrawer();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
@@ -77,7 +79,7 @@ export function NotificationsDrawer({ viewerId }: { viewerId: string | null }) {
         ref={panelRef}
         role="dialog"
         aria-modal="true"
-        aria-label="Benachrichtigungen"
+        aria-label={t('notif.title')}
         className={cn(
           'fixed right-0 top-0 z-50 flex h-dvh w-full flex-col border-l border-border bg-background shadow-2xl transition-transform duration-300 ease-out sm:w-[400px]',
           open ? 'translate-x-0' : 'translate-x-full',
@@ -87,12 +89,12 @@ export function NotificationsDrawer({ viewerId }: { viewerId: string | null }) {
         <div className="flex items-center justify-between border-b px-4 py-3.5">
           <div className="flex items-center gap-2">
             <Bell className="h-5 w-5 text-foreground/70" />
-            <h2 className="text-base font-semibold">Benachrichtigungen</h2>
+            <h2 className="text-base font-semibold">{t('notif.title')}</h2>
           </div>
           <button
             type="button"
             onClick={closeDrawer}
-            aria-label="Schließen"
+            aria-label={t('common.close')}
             className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted"
           >
             <X className="h-4 w-4" />
@@ -103,7 +105,7 @@ export function NotificationsDrawer({ viewerId }: { viewerId: string | null }) {
         <div className="flex-1 overflow-y-auto">
           {!viewerId ? (
             <div className="flex h-full items-center justify-center text-sm text-muted-foreground">
-              Einloggen um Benachrichtigungen zu sehen.
+              {t('notif.loginHint')}
             </div>
           ) : loading ? (
             <NotificationsSkeleton />
