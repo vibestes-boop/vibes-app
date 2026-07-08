@@ -111,13 +111,14 @@ export function HeroHorizon({
     return () => ro.disconnect();
   }, []);
 
-  const AR_MIN = 1.25;
-  const AR_MAX = 1.9;
+  // Exakt das Editor-Seitenverhältnis (Desktop-Bühne 16:9): NUR so bleiben
+  // vertikale Beziehungen (Turm steht AUF dem Gipfel) auf jeder Fenstergröße
+  // erhalten. Schmale Fenster sehen einen seitlich beschnittenen Ausschnitt.
+  const SCENE_AR = 16 / 9;
   let scene: { w: number; h: number; left: number } | null = null;
   if (box && box.w > 0 && box.h > 0) {
-    const targetAR = Math.min(AR_MAX, Math.max(AR_MIN, box.w / box.h));
-    const sceneH = Math.max(box.h, box.w / targetAR);
-    const sceneW = sceneH * targetAR;
+    const sceneH = Math.max(box.h, box.w / SCENE_AR);
+    const sceneW = sceneH * SCENE_AR;
     const focusX = Math.min(0.8, Math.max(0.2, layout.sun.x));
     const idealLeft = box.w / 2 - focusX * sceneW;
     const left = Math.min(0, Math.max(box.w - sceneW, idealLeft));
@@ -175,8 +176,8 @@ export function HeroHorizon({
   }, [hasRuntimeAnim]);
 
   const horizonHaze = heroColors({ preset: layout.preset, colors: layout.colors }).fallback;
-  const riseDelay = (i: number) => 0.25 + i * 0.1;
-  const contentDelay = riseDelay(visualLayers.length) + 0.25;
+  const riseDelay = (i: number) => 0.2 + i * 0.06;
+  const contentDelay = riseDelay(visualLayers.length) + 0.2;
 
   return (
     <div
