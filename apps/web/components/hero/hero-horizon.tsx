@@ -10,7 +10,7 @@
 // (prefers-reduced-motion: alles sofort sichtbar, Sonne am Ziel).
 // -----------------------------------------------------------------------------
 
-import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import {
   createHeroShader,
   heroColors,
@@ -90,10 +90,39 @@ export function HeroHorizon({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const shaderRef = useRef<HeroShaderHandle | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
+  const [box, setBox] = useState<{ w: number; h: number } | null>(null);
 
   const fx = { ...DEFAULT_FX, ...(layout.fx ?? {}) };
   const visualLayers = layout.layers.filter((l) => l.type !== 'cloud');
   const hasRuntimeAnim = visualLayers.some((l) => l.anim && l.anim.type !== 'none');
+
+  // Die Szene wurde im Editor auf einer festen Bühne komponiert. Damit die
+  // Komposition auf Handy/kleinen Fenstern NICHT zusammenrutscht, rendern wir
+  // sie in eine virtuelle Bühne mit stabilem Seitenverhältnis (geclampt), die
+  // den Container wie background-size:cover füllt — Überstand wird beschnitten,
+  // horizontal verankert an der Sonne (dem visuellen Fokus der Komposition).
+  useLayoutEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const measure = () => setBox({ w: el.clientWidth, h: el.clientHeight });
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  const AR_MIN = 1.25;
+  const AR_MAX = 1.9;
+  let scene: { w: number; h: number; left: number } | null = null;
+  if (box && box.w > 0 && box.h > 0) {
+    const targetAR = Math.min(AR_MAX, Math.max(AR_MIN, box.w / box.h));
+    const sceneH = Math.max(box.h, box.w / targetAR);
+    const sceneW = sceneH * targetAR;
+    const focusX = Math.min(0.8, Math.max(0.2, layout.sun.x));
+    const idealLeft = box.w / 2 - focusX * sceneW;
+    const left = Math.min(0, Math.max(box.w - sceneW, idealLeft));
+    scene = { w: sceneW, h: sceneH, left };
+  }
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -127,8 +156,9 @@ export function HeroHorizon({
     const start = performance.now();
     const tick = () => {
       const t = (performance.now() - start) / 1000;
-      const W = stage.clientWidth;
-      const H = stage.clientHeight;
+      const sceneEl = stage.querySelector<HTMLElement>('[data-hero-scene]');
+      const W = sceneEl?.clientWidth || stage.clientWidth;
+      const H = sceneEl?.clientHeight || stage.clientHeight;
       stage.querySelectorAll<HTMLElement>('[data-hero-anim]').forEach((el) => {
         const idx = Number(el.dataset.heroAnim);
         const l = visualLayers[idx];
@@ -161,6 +191,15 @@ export function HeroHorizon({
           [data-hero-rise] { animation: none !important; opacity: 1 !important; transform: none !important; }
         }
       `}</style>
+      <div
+        data-hero-scene
+        aria-hidden
+        style={
+          scene
+            ? { position: 'absolute', left: scene.left, bottom: 0, width: scene.w, height: scene.h }
+            : { position: 'absolute', inset: 0 }
+        }
+      >
       <canvas
         ref={canvasRef}
         style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', display: 'block' }}
@@ -200,8 +239,10 @@ export function HeroHorizon({
                   transform: innerTransform,
                   whiteSpace: 'nowrap',
                   textAlign: 'center',
-                  // Näherung: der Landing-Hero ist ~78vh hoch (Editor: Anteil der Bühnenhöhe)
-                  fontSize: `${((l.size ?? 0.08) * 78).toFixed(2)}vh`,
+                  // Anteil der Bühnenhöhe — exakt wie im Editor, sobald gemessen
+                  fontSize: scene
+                    ? `${((l.size ?? 0.08) * scene.h).toFixed(1)}px`
+                    : `${((l.size ?? 0.08) * 78).toFixed(2)}vh`,
                   color: l.color ?? '#f5f3ee',
                   fontWeight: (l.weight as CSSProperties['fontWeight']) ?? 600,
                   textShadow: '0 2px 24px rgba(0,0,0,.45)',
@@ -231,6 +272,7 @@ export function HeroHorizon({
           </div>
         );
       })}
+      </div>
       {fx.vignette > 0 && (
         <div
           aria-hidden
