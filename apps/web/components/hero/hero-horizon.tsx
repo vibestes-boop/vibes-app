@@ -75,6 +75,31 @@ function animOffset(l: HeroLayer, t: number, W: number, H: number) {
   return { dx: Math.sin(t * s * 0.35) * m * 0.03 * W, dy: Math.sin(t * s * 0.7) * m * 0.012 * H };
 }
 
+// Tageszeit-Stimmung (lokale Uhr des Besuchers): nur Farben, Sterne, Licht und
+// Sonnen-Verhalten wechseln — Komposition, Sonnenposition, Wolken und Effekte
+// bleiben immer Zaurs Layout. Endzustand jeder Animation = das komponierte Bild.
+// Test-Override: ?sky=dawn|dusk|night
+interface HeroMood {
+  preset?: HeroPresetName;
+  stars?: number;
+  lightScale?: number;
+  sunAnim: 'rise' | 'set' | 'none';
+}
+
+function moodForHour(h: number): HeroMood {
+  if (h >= 22 || h < 5) return { preset: 'night', stars: 0.7, lightScale: 0.45, sunAnim: 'none' };
+  if (h >= 17) return { preset: 'dusk', sunAnim: 'set' };
+  return { sunAnim: 'rise' };
+}
+
+function resolveMood(): HeroMood {
+  const forced = new URLSearchParams(window.location.search).get('sky');
+  if (forced === 'night') return moodForHour(23);
+  if (forced === 'dusk') return moodForHour(19);
+  if (forced === 'dawn') return moodForHour(10);
+  return moodForHour(new Date().getHours());
+}
+
 const GRAIN_URI =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E\")";
 
@@ -125,15 +150,20 @@ export function HeroHorizon({
     scene = { w: sceneW, h: sceneH, left };
   }
 
+  const hazeRef = useRef<HTMLDivElement | null>(null);
+
   useEffect(() => {
     if (!canvasRef.current) return;
+    const mood = resolveMood();
+    const preset = mood.preset ?? layout.preset;
     shaderRef.current = createHeroShader(canvasRef.current, {
-      preset: layout.preset,
+      preset,
       sun: layout.sun,
       cloud: layout.cloud,
-      light: fx.light,
-      stars: fx.stars,
+      light: fx.light * (mood.lightScale ?? 1),
+      stars: Math.max(fx.stars, mood.stars ?? 0),
       colors: layout.colors,
+      sunAnim: mood.sunAnim,
       clouds: layout.layers
         .filter((l) => l.type === 'cloud')
         .map((l) => ({
@@ -141,6 +171,9 @@ export function HeroHorizon({
           soft: l.soft ?? 0.5, drift: l.drift ?? 0.6, seed: l.seed ?? 1,
         })),
     });
+    if (hazeRef.current) {
+      hazeRef.current.style.background = heroColors({ preset, colors: layout.colors }).fallback;
+    }
     return () => {
       shaderRef.current?.destroy();
       shaderRef.current = null;
@@ -207,6 +240,7 @@ export function HeroHorizon({
         aria-hidden
       />
       <div
+        ref={hazeRef}
         aria-hidden
         style={{
           position: 'absolute',

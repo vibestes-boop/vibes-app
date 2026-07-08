@@ -27,8 +27,10 @@ export interface HeroSky {
   stars: number;
   colors?: { skyTop: string; skyHorizon: string; sun: string; cloud: string };
   clouds: HeroFreeCloud[];
-  /** Dauer des Sonnenaufgangs in Sekunden; 0 = Sonne steht sofort am Ziel */
-  sunriseSecs?: number;
+  /** Sonnen-Auftritt: rise = geht auf, set = senkt sich sanft, none = ruht am Ziel */
+  sunAnim?: 'rise' | 'set' | 'none';
+  /** Dauer der Sonnen-Animation in Sekunden */
+  sunAnimSecs?: number;
 }
 
 type Rgb = [number, number, number];
@@ -125,10 +127,14 @@ void main(){
   col+=u_sunCol*rim*cloud*2.4*exp(-d*1.6);
   float disc=smoothstep(0.030,0.022,d);
   col+=u_sunCol*disc*(1.0-cloud*0.9)*min(u_boost,1.5);
-  float sr=hash(floor(st*vec2(240.,150.)));
-  float tw=0.75+0.25*sin(u_time*2.0+sr*40.0);
-  float star=step(1.0-0.003*u_stars,sr)*smoothstep(0.30,0.65,uv.y)*(1.0-cloud)*tw;
-  col+=vec3(0.85,0.90,1.0)*star*0.9;
+  vec2 sg=st*vec2(300.,190.);
+  vec2 scell=floor(sg);
+  float sr=hash(scell);
+  vec2 sp=vec2(hash(scell+vec2(7.1,1.3)),hash(scell+vec2(3.7,9.2)))*0.6+0.2;
+  float sd=length(fract(sg)-sp);
+  float tw=0.65+0.35*sin(u_time*2.0+sr*40.0);
+  float star=step(1.0-0.0028*u_stars,sr)*smoothstep(0.36,0.08,sd)*smoothstep(0.30,0.65,uv.y)*(1.0-cloud)*tw;
+  col+=vec3(0.85,0.90,1.0)*star*0.85;
   for(int i=0;i<8;i++){
     if(u_fc2[i].w<0.5) continue;
     vec4 fc=u_fc[i];
@@ -202,8 +208,10 @@ export function createHeroShader(canvas: HTMLCanvasElement, sky: HeroSky): HeroS
     fcB[i * 4] = c.seed; fcB[i * 4 + 1] = c.drift; fcB[i * 4 + 2] = c.soft; fcB[i * 4 + 3] = 1;
   });
 
-  const sunriseSecs = reduce ? 0 : (sky.sunriseSecs ?? 9);
-  const sunStartY = Math.min(-0.06, sky.sun.y - 0.5);
+  const sunAnim = reduce ? 'none' : (sky.sunAnim ?? 'rise');
+  const sunAnimSecs = sky.sunAnimSecs ?? (sunAnim === 'set' ? 12 : 9);
+  const sunStartY =
+    sunAnim === 'set' ? sky.sun.y + 0.12 : Math.min(-0.06, sky.sun.y - 0.5);
 
   let raf = 0;
   let running = false;
@@ -212,8 +220,8 @@ export function createHeroShader(canvas: HTMLCanvasElement, sky: HeroSky): HeroS
   const start = performance.now();
 
   function sunY(elapsed: number) {
-    if (sunriseSecs <= 0) return sky.sun.y;
-    const p = Math.min(1, elapsed / sunriseSecs);
+    if (sunAnim === 'none' || sunAnimSecs <= 0) return sky.sun.y;
+    const p = Math.min(1, elapsed / sunAnimSecs);
     const eased = 1 - Math.pow(1 - p, 3);
     return sunStartY + (sky.sun.y - sunStartY) * eased;
   }
