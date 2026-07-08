@@ -14,6 +14,9 @@ import heroLayoutJson from '@/public/hero/hero-layout.json';
 // Zaurs im Hero-Editor komponierte Berg-Szene (Sonnenaufgang, Wolken, Türme).
 const heroLayout = heroLayoutJson as unknown as HeroLayout;
 
+// Regions-neutraler Store-Link: Apple leitet automatisch in den Länder-Store.
+const APP_STORE_URL = 'https://apps.apple.com/app/serlo/id6760790424';
+
 // -----------------------------------------------------------------------------
 // Landing-Page für ausgeloggte Besucher.
 // Server-Component, rein markup-lastig; die Daten kommen via Props.
@@ -88,6 +91,32 @@ export async function LandingPage({ featured, liveNow, trendingPosts }: LandingP
             >
               <Link href={'/signup' as Route}>{t('auth.signup')}</Link>
             </Button>
+          </div>
+
+          {/* App-Download: Badge (klickbar) + QR für Desktop-Besucher */}
+          <div className="mt-10 flex flex-col items-center gap-3">
+            <p className="text-sm text-white/60">{t('landing.getApp')}</p>
+            <div className="flex items-center gap-4">
+              <a
+                href={APP_STORE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={t('landing.appStoreAlt')}
+                className="transition-transform hover:scale-105"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src="/badges/app-store-de.svg"
+                  alt={t('landing.appStoreAlt')}
+                  className="h-12 w-auto"
+                />
+              </a>
+              <div className="hidden items-center gap-3 rounded-xl border border-white/15 bg-white p-2 sm:flex">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/badges/app-qr.svg" alt="QR-Code" className="h-20 w-20" />
+              </div>
+            </div>
+            <p className="hidden text-xs text-white/40 sm:block">{t('landing.scanQr')}</p>
           </div>
         </section>
       </HeroHorizon>
@@ -223,6 +252,15 @@ export async function LandingPage({ featured, liveNow, trendingPosts }: LandingP
       <footer className="border-t border-border">
         <div className="container mx-auto flex flex-col items-center justify-between gap-4 py-8 text-sm text-muted-foreground md:flex-row">
           <span>© {new Date().getFullYear()} Serlo</span>
+          <a
+            href={APP_STORE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={t('landing.appStoreAlt')}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/badges/app-store-de.svg" alt={t('landing.appStoreAlt')} className="h-9 w-auto" />
+          </a>
           <nav className="flex gap-6">
             <Link href={'/terms' as Route} className="hover:text-foreground">{t('landing.terms')}</Link>
             <Link href={'/privacy' as Route} className="hover:text-foreground">{t('feed.privacyLink')}</Link>

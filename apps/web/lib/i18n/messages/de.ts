@@ -582,6 +582,9 @@ const deMessages = {
     heroSubtitle: "Jetzt auch im Browser.",
     heroText:
       "Die Serlo Web-Version. Streame in 1080p60 vom PC, verkaufe professionell im Shop, folge deiner Community — ohne App-Download.",
+    getApp: "Oder hol dir die App fürs iPhone",
+    scanQr: "Mit der Handy-Kamera scannen",
+    appStoreAlt: "Laden im App Store",
     liveNow: "Jetzt live",
     allStreams: "Alle Streams →",
     trending: "Trending",

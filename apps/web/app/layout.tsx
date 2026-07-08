@@ -62,6 +62,8 @@ export const metadata: Metadata = {
   },
   description: SITE_DESCRIPTION,
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'),
+  // Apple Smart App Banner — Safari auf iOS zeigt automatisch „Im App Store öffnen"
+  itunes: { appId: '6760790424' },
   openGraph: {
     type:      'website',
     siteName:  'Serlo',
