@@ -284,6 +284,18 @@ const ruMessages = {
     reason_other: 'Другая причина',
   },
 
+  // Жалоба на профиль / блокировка (profile-block-button) + хайлайты
+  userReport: {
+    title: 'Пожаловаться на @{username}',
+    reason_spam: 'Спам или введение в заблуждение',
+    reason_harassment: 'Домогательство или травля',
+    reason_inappropriate: 'Неприемлемый контент',
+    reason_fake_account: 'Фейковый аккаунт',
+    reason_other: 'Другая причина',
+    thanks: 'Спасибо за жалобу. Команда проверит её как можно скорее.',
+    highlightDeleteFailed: 'Не удалось удалить.',
+  },
+
   // Меню «···» для своих постов + диалог редактирования (post-author-menu)
   postOwnerMenu: {
     options: 'Опции поста',

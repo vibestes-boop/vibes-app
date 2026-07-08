@@ -291,6 +291,18 @@ const deMessages = {
     reason_other: "Anderer Grund",
   },
 
+  // Profil melden/blockieren (profile-block-button) + Highlights
+  userReport: {
+    title: "@{username} melden",
+    reason_spam: "Spam oder irreführend",
+    reason_harassment: "Belästigung oder Mobbing",
+    reason_inappropriate: "Unangemessene Inhalte",
+    reason_fake_account: "Gefälschtes Konto",
+    reason_other: "Anderer Grund",
+    thanks: "Danke für deine Meldung. Unser Team wird sie so schnell wie möglich prüfen.",
+    highlightDeleteFailed: "Löschen fehlgeschlagen.",
+  },
+
   // 3-Punkte-Menü für eigene Posts + Edit-Dialog (post-author-menu)
   postOwnerMenu: {
     options: "Post-Optionen",

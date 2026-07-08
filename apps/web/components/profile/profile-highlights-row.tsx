@@ -18,6 +18,7 @@ import Image from 'next/image';
 import { X, Loader2, ChevronLeft, ChevronRight, Camera } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { deleteHighlight } from '@/app/actions/highlights';
+import { useI18n } from '@/lib/i18n/client';
 import { toast } from 'sonner';
 import type { StoryHighlight } from '@/lib/data/story-highlights';
 
@@ -121,6 +122,7 @@ function HighlightViewerDialog({
   startIndex: number;
   onClose: () => void;
 }) {
+  const { t } = useI18n();
   const [current, setCurrent] = useState(startIndex);
   const item = highlights[current];
 
@@ -157,7 +159,7 @@ function HighlightViewerDialog({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Schließen"
+            aria-label={t('common.close')}
             className="grid h-8 w-8 place-items-center rounded-full text-white/70 hover:bg-white/10 hover:text-white"
           >
             <X className="h-4 w-4" />
@@ -251,6 +253,7 @@ export function ProfileHighlightsRow({
   isOwn: boolean;
   username: string;
 }) {
+  const { t } = useI18n();
   const [highlights, setHighlights] = useState<StoryHighlight[]>(initialHighlights);
   const [viewerIndex, setViewerIndex] = useState<number | null>(null);
 
@@ -263,7 +266,7 @@ export function ProfileHighlightsRow({
     if (!res.ok) {
       // Rollback
       setHighlights(initialHighlights);
-      toast.error(res.error ?? 'Löschen fehlgeschlagen.');
+      toast.error(res.error ?? t('userReport.highlightDeleteFailed'));
     }
   };
 

@@ -23,6 +23,8 @@ import { Button } from '@/components/ui/button';
 import { blockUser } from '@/app/actions/blocks';
 import { reportUser, type UserReportReason } from '@/app/actions/report';
 import { USER_REPORT_REASONS } from '@/lib/moderation/report-reasons';
+import { useI18n } from '@/lib/i18n/client';
+import type { TranslationKey } from '@/lib/i18n/translate';
 
 // -----------------------------------------------------------------------------
 // ProfileBlockButton — v1.w.UI.54 / v1.w.UI.116.
@@ -41,6 +43,7 @@ export function ProfileBlockButton({
   targetUsername: string;
 }) {
   const router = useRouter();
+  const { t } = useI18n();
   const [pending, setPending] = useState(false);
 
   // ── Report dialog state ───────────────────────────────────────────────────
@@ -50,9 +53,7 @@ export function ProfileBlockButton({
   const [reportDone, setReportDone] = useState(false);
 
   const handleBlock = async () => {
-    const confirmed = window.confirm(
-      `@${targetUsername} blockieren?\n\nDieser Account kann dir dann nicht mehr folgen, dir keine Nachrichten schicken und deine Posts nicht sehen.`,
-    );
+    const confirmed = window.confirm(t('postMenu.blockConfirm', { username: targetUsername }));
     if (!confirmed) return;
 
     setPending(true);
@@ -62,7 +63,7 @@ export function ProfileBlockButton({
         toast.error(result.error);
         return;
       }
-      toast.success(`@${targetUsername} wurde blockiert.`);
+      toast.success(t('postMenu.blockedToast', { username: targetUsername }));
       router.push('/' as Route);
     } finally {
       setPending(false);
@@ -89,7 +90,7 @@ export function ProfileBlockButton({
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            aria-label="Weitere Optionen"
+            aria-label={t('postMenu.moreOptions')}
             disabled={pending}
             className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-background text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
           >
@@ -106,7 +107,7 @@ export function ProfileBlockButton({
             }}
           >
             <Flag className="h-4 w-4" />
-            <span>Melden</span>
+            <span>{t('postMenu.report')}</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
@@ -114,7 +115,7 @@ export function ProfileBlockButton({
             onSelect={(e) => { e.preventDefault(); void handleBlock(); }}
           >
             <ShieldOff className="h-4 w-4" />
-            <span>Blockieren</span>
+            <span>{t('postMenu.block')}</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
@@ -124,18 +125,18 @@ export function ProfileBlockButton({
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>
-              {reportDone ? 'Meldung eingereicht' : `@${targetUsername} melden`}
+              {reportDone ? t('postMenu.reportDoneTitle') : t('userReport.title', { username: targetUsername })}
             </DialogTitle>
           </DialogHeader>
 
           {reportDone ? (
             <div className="py-4 text-center text-sm text-muted-foreground">
-              Danke für deine Meldung. Unser Team wird sie so schnell wie möglich prüfen.
+              {t('userReport.thanks')}
             </div>
           ) : (
             <>
               <div className="space-y-2">
-                <p className="text-sm text-muted-foreground">Wähle den Grund für deine Meldung:</p>
+                <p className="text-sm text-muted-foreground">{t('postMenu.reportChooseReason')}</p>
                 <div className="flex flex-col gap-1.5">
                   {USER_REPORT_REASONS.map((r) => (
                     <label
@@ -150,7 +151,7 @@ export function ProfileBlockButton({
                         onChange={() => setReportReason(r.value)}
                         className="accent-primary"
                       />
-                      {r.label}
+                      {t(`userReport.reason_${r.value}` as TranslationKey)}
                     </label>
                   ))}
                 </div>
@@ -162,14 +163,14 @@ export function ProfileBlockButton({
                   onClick={() => setReportOpen(false)}
                   disabled={reportPending}
                 >
-                  Abbrechen
+                  {t('common.cancel')}
                 </Button>
                 <Button
                   size="sm"
-                  onClick={void handleReport}
+                  onClick={() => void handleReport()}
                   disabled={reportPending}
                 >
-                  {reportPending ? 'Wird gesendet…' : 'Melden'}
+                  {reportPending ? t('postMenu.reportSubmitting') : t('postMenu.report')}
                 </Button>
               </DialogFooter>
             </>
@@ -178,7 +179,7 @@ export function ProfileBlockButton({
           {reportDone && (
             <DialogFooter>
               <Button size="sm" onClick={() => setReportOpen(false)}>
-                Schließen
+                {t('common.close')}
               </Button>
             </DialogFooter>
           )}
