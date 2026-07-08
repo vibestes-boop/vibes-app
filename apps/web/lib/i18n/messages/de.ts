@@ -257,6 +257,11 @@ const deMessages = {
     whatsappAria: "Auf WhatsApp teilen",
     telegramAria: "Auf Telegram teilen",
     xAria: "Auf X teilen",
+    sendFailed: "Senden fehlgeschlagen.",
+    sharePostAria: "Post teilen",
+    searchPlaceholder: "@username suchen",
+    searchRecipientAria: "Empfänger suchen",
+    sent: "Gesendet",
   },
 
   // 3-Punkte-Menü für fremde Posts (post-viewer-menu)
@@ -394,6 +399,51 @@ const deMessages = {
     kbdMute: "Stumm",
     kbdSpace: "Space",
     kbdPause: "Pause",
+    // Nebenkomponenten
+    now: "Jetzt",
+    likePostAria: "Liken",
+    unlikePostAria: "Like entfernen",
+    followedAria: "Gefolgte Accounts",
+    followedTitle: "Konten, denen ich folge",
+    followedDesc: "Alle Profile, denen du folgst. Tippe auf einen Account, um das Profil zu öffnen.",
+    showAll: "Alle anzeigen",
+    listLoadFailed: "Liste konnte nicht geladen werden.",
+    loadingShort: "Lädt …",
+    loadMore: "Mehr laden",
+  },
+
+  // Linke Desktop-Navigation (feed-sidebar) + Admin-Link
+  sidebar: {
+    more: "Mehr",
+    homeAria: "Serlo — zur Startseite",
+    searchAria: "Suchen",
+    searchPlaceholder: "Suchen",
+    newPostAria: "Neuen Post erstellen",
+    post: "Posten",
+    notifications: "Benachrichtigungen",
+    moreAreasAria: "Weitere Bereiche",
+    adminPanel: "Admin-Panel",
+    womenOnlyZone: "Women-Only Zone",
+    pods: "Pods",
+    unread: "ungelesen",
+    moreSection: "Weiteres",
+  },
+
+  // Vorlesen (voice-reader-control)
+  voice: {
+    stop: "Stop",
+    read: "Vorlesen",
+    loading: "Audio wird geladen...",
+    stopAria: "Vorlesen stoppen",
+    readCreatorAria: "Caption in Creator-Stimme vorlesen",
+    readAria: "Caption vorlesen",
+  },
+
+  // Story-Leiste (story-strip)
+  story: {
+    viewOwnAria: "Eigene Story ansehen",
+    createAria: "Story erstellen",
+    yourStory: "Deine Story",
   },
 
   // 3-Punkte-Menü für eigene Posts + Edit-Dialog (post-author-menu)
@@ -476,6 +526,11 @@ const deMessages = {
     relHourAgo: "vor {n} Std",
     relYesterday: "gestern",
     relDaysAgo: "vor {n} Tagen",
+    title: "Kommentare",
+    loginPrompt: "Melde dich an, um zu kommentieren.",
+    addPlaceholder: "Kommentar hinzufügen…",
+    sendAria: "Kommentar senden",
+    sendFailed: "Kommentar konnte nicht gesendet werden",
   },
 
   // Folgen-Button (profile/follow-button — auch Feed/Profil)

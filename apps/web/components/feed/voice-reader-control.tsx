@@ -5,6 +5,7 @@ import { Loader2, Volume2, VolumeX } from 'lucide-react';
 import { useCreatorVoiceSample } from '@/hooks/use-creator-voice-sample';
 import { useVoiceReader } from '@/hooks/use-voice-reader';
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/lib/i18n/client';
 
 interface VoiceReaderControlProps {
   postId: string;
@@ -19,6 +20,7 @@ export function VoiceReaderControl({
   caption,
   autoStart = false,
 }: VoiceReaderControlProps) {
+  const { t } = useI18n();
   const creatorVoiceUrl = useCreatorVoiceSample(authorId);
   const { isLoading, isPlaying, toggle } = useVoiceReader(
     postId,
@@ -34,14 +36,14 @@ export function VoiceReaderControl({
     void toggle();
   }, [autoStart, toggle]);
 
-  const label = isPlaying ? 'Stop' : 'Vorlesen';
+  const label = isPlaying ? t('voice.stop') : t('voice.read');
   const ariaLabel = isLoading
-    ? 'Audio wird geladen...'
+    ? t('voice.loading')
     : isPlaying
-      ? 'Vorlesen stoppen'
+      ? t('voice.stopAria')
       : creatorVoiceUrl
-        ? 'Caption in Creator-Stimme vorlesen'
-        : 'Caption vorlesen';
+        ? t('voice.readCreatorAria')
+        : t('voice.readAria');
 
   return (
     <button

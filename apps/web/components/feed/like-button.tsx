@@ -3,6 +3,7 @@
 import { useCallback, useRef, useState } from 'react';
 import { Heart } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/lib/i18n/client';
 
 // -----------------------------------------------------------------------------
 // LikeButton (v1.w.UI.4, A3 — Like-Burst-Animation)
@@ -81,6 +82,7 @@ export function LikeButton({
   circleClassName,
   overlay = false,
 }: LikeButtonProps) {
+  const { t } = useI18n();
   // Monotonic-Key für den Partikel-Container — jeder Burst bekommt einen
   // frischen Key und wird damit neu gemountet, womit die Keyframes
   // zuverlässig neu starten (ein reiner className-Toggle würde in Chrome
@@ -183,7 +185,7 @@ export function LikeButton({
           type="button"
           onClick={handleClick}
           disabled={disabled}
-          aria-label={`${liked ? 'Like entfernen' : 'Liken'} — ${rawCount} Likes`}
+          aria-label={`${liked ? t('feed.unlikePostAria') : t('feed.likePostAria')} — ${rawCount} Likes`}
           className="rounded-md outline-none transition-opacity duration-fast ease-out-expo focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-60"
         >
           {heartCircle}
@@ -207,7 +209,7 @@ export function LikeButton({
       type="button"
       onClick={handleClick}
       disabled={disabled}
-      aria-label={`${liked ? 'Like entfernen' : 'Liken'} — ${rawCount} Likes`}
+      aria-label={`${liked ? t('feed.unlikePostAria') : t('feed.likePostAria')} — ${rawCount} Likes`}
       className="group/like flex flex-col items-center gap-1 rounded-md outline-none transition-opacity duration-fast ease-out-expo focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-60"
     >
       {heartCircle}

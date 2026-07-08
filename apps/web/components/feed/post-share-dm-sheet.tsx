@@ -1,5 +1,6 @@
 'use client';
 
+import { useI18n } from '@/lib/i18n/client';
 import { useState, useEffect, useRef, useCallback, useTransition } from 'react';
 import Image from 'next/image';
 import { createBrowserClient } from '@supabase/ssr';
@@ -62,6 +63,7 @@ export function PostShareDmSheet({
   post: ShareablePost;
   onClose: () => void;
 }) {
+  const { t } = useI18n();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
@@ -117,7 +119,7 @@ export function PostShareDmSheet({
         const convRes = await getOrCreateConversation(userId);
         if (!convRes.ok) {
           setSentTo((prev) => ({ ...prev, [userId]: 'error' }));
-          toast.error('Senden fehlgeschlagen.', { description: convRes.error });
+          toast.error(t('share.sendFailed'), { description: convRes.error });
           return;
         }
         const msgRes = await sendDirectMessage({
@@ -126,24 +128,24 @@ export function PostShareDmSheet({
         });
         if (!msgRes.ok) {
           setSentTo((prev) => ({ ...prev, [userId]: 'error' }));
-          toast.error('Senden fehlgeschlagen.', { description: msgRes.error });
+          toast.error(t('share.sendFailed'), { description: msgRes.error });
           return;
         }
         setSentTo((prev) => ({ ...prev, [userId]: 'sent' }));
       });
     },
-    [post.id, sentTo],
+    [post.id, sentTo, t],
   );
 
   const handleCopyLink = useCallback(async () => {
     const url = `${window.location.origin}/p/${post.id}`;
     try {
       await navigator.clipboard.writeText(url);
-      toast('Link kopiert.');
+      toast(t('postMenu.linkCopied'));
     } catch {
-      toast.error('Kopieren fehlgeschlagen.');
+      toast.error(t('postMenu.copyFailed'));
     }
-  }, [post.id]);
+  }, [post.id, t]);
 
   const captionPreview =
     post.caption && post.caption.length > CAPTION_PREVIEW_MAX
@@ -155,7 +157,7 @@ export function PostShareDmSheet({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Post teilen"
+      aria-label={t('share.sharePostAria')}
       onClick={onClose}
       className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 p-4 pt-[8vh] backdrop-blur-sm"
     >
@@ -166,11 +168,11 @@ export function PostShareDmSheet({
       >
         {/* ── Header ─────────────────────────────────────────────── */}
         <header className="flex items-center justify-between border-b px-4 py-3">
-          <h2 className="text-lg font-semibold">Teilen</h2>
+          <h2 className="text-lg font-semibold">{t('share.share')}</h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Schließen"
+            aria-label={t('common.close')}
             className="grid h-8 w-8 place-items-center rounded-full transition-colors hover:bg-muted"
           >
             <X className="h-4 w-4" />
@@ -210,9 +212,9 @@ export function PostShareDmSheet({
               ref={inputRef}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="@username suchen"
+              placeholder={t('share.searchPlaceholder')}
               className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-              aria-label="Empfänger suchen"
+              aria-label={t('share.searchRecipientAria')}
             />
             {searching && (
               <Loader2 className="h-4 w-4 flex-none animate-spin text-muted-foreground" aria-hidden="true" />
@@ -284,12 +286,12 @@ export function PostShareDmSheet({
                       ) : state === 'sent' ? (
                         <span className="flex items-center gap-1">
                           <Check className="h-3.5 w-3.5" aria-hidden="true" />
-                          Gesendet
+                          {t('share.sent')}
                         </span>
                       ) : state === 'error' ? (
-                        'Retry'
+                        t('common.retry')
                       ) : (
-                        'Senden'
+                        t('comments.send')
                       )}
                     </button>
                   </li>
@@ -309,7 +311,7 @@ export function PostShareDmSheet({
             <span className="grid h-9 w-9 place-items-center rounded-full bg-muted">
               <LinkIcon className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
             </span>
-            <span className="font-medium">Link kopieren</span>
+            <span className="font-medium">{t('postMenu.copyLink')}</span>
           </button>
         </div>
       </div>

@@ -6,6 +6,7 @@ import { usePathname } from 'next/navigation';
 import { Shield } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/lib/i18n/client';
 import { createClient } from '@/lib/supabase/client';
 
 // -----------------------------------------------------------------------------
@@ -18,6 +19,7 @@ import { createClient } from '@/lib/supabase/client';
 // -----------------------------------------------------------------------------
 
 export function AdminNavLink() {
+  const { t } = useI18n();
   const pathname = usePathname();
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -57,7 +59,7 @@ export function AdminNavLink() {
       )}
     >
       <Shield className="h-5 w-5 shrink-0" />
-      <span>Admin-Panel</span>
+      <span>{t('sidebar.adminPanel')}</span>
     </Link>
   );
 }

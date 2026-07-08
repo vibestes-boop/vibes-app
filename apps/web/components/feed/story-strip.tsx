@@ -7,6 +7,7 @@ import { getActiveLiveSessions } from '@/lib/data/live';
 import { createClient } from '@/lib/supabase/server';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
+import { getT } from '@/lib/i18n/server';
 
 // -----------------------------------------------------------------------------
 // StoryStrip — Horizontaler Story-Ring-Strip oberhalb des Feeds.
@@ -25,6 +26,7 @@ import { cn } from '@/lib/utils';
 // -----------------------------------------------------------------------------
 
 export async function StoryStrip() {
+  const t = await getT();
   const supabase = await createClient();
   const {
     data: { user },
@@ -73,6 +75,9 @@ export async function StoryStrip() {
           hasStory={!!ownGroup}
           hasUnviewed={ownGroup?.hasUnviewed ?? false}
           ownUserId={user.id}
+          viewAria={t('story.viewOwnAria')}
+          createAria={t('story.createAria')}
+          yourStoryLabel={t('story.yourStory')}
         />
 
         {otherGroups.map((g) => {
@@ -111,12 +116,19 @@ function OwnStoryCard({
   hasStory,
   hasUnviewed,
   ownUserId,
+  viewAria,
+  createAria,
+  yourStoryLabel,
 }: {
   username: string | null;
   avatarUrl: string | null;
   hasStory: boolean;
   hasUnviewed: boolean;
   ownUserId: string;
+  /** i18n-Labels — Server-Sub-Komponente bekommt sie vom async Parent (getT). */
+  viewAria: string;
+  createAria: string;
+  yourStoryLabel: string;
 }) {
   const href = hasStory ? (`/stories/${ownUserId}` as Route) : ('/stories/new' as Route);
 
@@ -124,7 +136,7 @@ function OwnStoryCard({
     <Link
       href={href}
       className="flex w-16 shrink-0 flex-col items-center gap-1"
-      aria-label={hasStory ? 'Eigene Story ansehen' : 'Story erstellen'}
+      aria-label={hasStory ? viewAria : createAria}
     >
       <div className="relative">
         <div
@@ -152,7 +164,7 @@ function OwnStoryCard({
           </span>
         )}
       </div>
-      <span className="max-w-full truncate text-[11px] font-medium">Deine Story</span>
+      <span className="max-w-full truncate text-[11px] font-medium">{yourStoryLabel}</span>
     </Link>
   );
 }

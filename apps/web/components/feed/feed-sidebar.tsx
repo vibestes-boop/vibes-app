@@ -25,6 +25,8 @@ import { MoreMenu } from '@/components/layout/more-menu';
 import type { FollowedAccount } from '@/lib/data/feed';
 import { useUnreadShellCounts } from '@/components/layout/use-unread-shell-counts';
 import { useNotificationsDrawer } from '@/lib/notifications-drawer-store';
+import { useI18n } from '@/lib/i18n/client';
+import type { TranslationKey } from '@/lib/i18n/translate';
 import { useRouter } from 'next/navigation';
 
 // -----------------------------------------------------------------------------
@@ -44,27 +46,28 @@ import { useRouter } from 'next/navigation';
 // -----------------------------------------------------------------------------
 
 interface NavItem {
-  label: string;
+  /** i18n-Key — wird am Renderpunkt via t() aufgelöst (Modul-Konstante kann nicht selbst übersetzen). */
+  labelKey: TranslationKey;
   href: Route;
   icon: typeof Home;
   requiresAuth?: boolean;
 }
 
 const PRIMARY_NAV: NavItem[] = [
-  { label: 'Für dich', href: '/' as Route, icon: Home },
-  { label: 'Folge ich', href: '/following' as Route, icon: UserRound, requiresAuth: true },
-  { label: 'Freunde', href: '/friends' as Route, icon: Users, requiresAuth: true },
-  { label: 'Entdecken', href: '/explore' as Route, icon: Compass },
-  { label: 'Live', href: '/live' as Route, icon: Radio },
-  { label: 'Messages', href: '/messages' as Route, icon: MessageCircle, requiresAuth: true },
+  { labelKey: 'feed.forYou', href: '/' as Route, icon: Home },
+  { labelKey: 'feed.followingTab', href: '/following' as Route, icon: UserRound, requiresAuth: true },
+  { labelKey: 'feed.friends', href: '/friends' as Route, icon: Users, requiresAuth: true },
+  { labelKey: 'nav.explore', href: '/explore' as Route, icon: Compass },
+  { labelKey: 'nav.live', href: '/live' as Route, icon: Radio },
+  { labelKey: 'nav.messages', href: '/messages' as Route, icon: MessageCircle, requiresAuth: true },
   // Benachrichtigungen wird als Drawer-Button gerendert (kein href)
 ];
 
 const SECONDARY_NAV: NavItem[] = [
-  { label: 'Shop', href: '/shop' as Route, icon: ShoppingBag },
-  { label: 'Pods', href: '/guilds' as Route, icon: Users },
-  { label: 'Women-Only Zone', href: '/woz' as Route, icon: ShieldCheck, requiresAuth: true },
-  { label: 'Creator Studio', href: '/studio' as Route, icon: BarChart3, requiresAuth: true },
+  { labelKey: 'nav.shop', href: '/shop' as Route, icon: ShoppingBag },
+  { labelKey: 'sidebar.pods', href: '/guilds' as Route, icon: Users },
+  { labelKey: 'sidebar.womenOnlyZone', href: '/woz' as Route, icon: ShieldCheck, requiresAuth: true },
+  { labelKey: 'nav.studio', href: '/studio' as Route, icon: BarChart3, requiresAuth: true },
 ];
 
 export type SidebarViewerProfile = {
@@ -97,6 +100,7 @@ export function FeedSidebar({
    */
   railCollapsible?: boolean;
 }) {
+  const { t } = useI18n();
   const pathname = usePathname();
   const router = useRouter();
   const isActive = (href: Route) => pathname === href;
@@ -136,7 +140,7 @@ export function FeedSidebar({
        */}
       <Link
         href={'/' as Route}
-        aria-label="Serlo — zur Startseite"
+        aria-label={t('sidebar.homeAria')}
         className="px-3 pt-1 font-serif text-2xl font-medium tracking-tight text-foreground hover:text-foreground/80"
       >
         {iconOnly ? 'S' : 'Serlo'}
@@ -147,7 +151,7 @@ export function FeedSidebar({
       {iconOnly ? (
         <Link
           href={'/search' as Route}
-          aria-label="Suchen"
+          aria-label={t('sidebar.searchAria')}
           className="flex h-9 items-center rounded-lg px-3 text-foreground hover:bg-muted/60"
         >
           <span className="flex w-8 shrink-0 justify-center">
@@ -168,7 +172,7 @@ export function FeedSidebar({
           <input
             name="q"
             type="search"
-            placeholder="Suchen"
+            placeholder={t('sidebar.searchPlaceholder')}
             defaultValue=""
             className="h-9 w-full rounded-lg bg-muted/60 pl-12 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:bg-muted focus:outline-none focus:ring-1 focus:ring-ring"
           />
@@ -180,7 +184,7 @@ export function FeedSidebar({
       <Link
         href={'/create' as Route}
         aria-disabled={!viewerId}
-        aria-label="Neuen Post erstellen"
+        aria-label={t('sidebar.newPostAria')}
         className={cn(
           'flex items-center gap-3 rounded-lg px-3 py-2 text-[15px] font-semibold text-foreground transition-colors hover:bg-muted/60',
           !viewerId && 'pointer-events-none opacity-40',
@@ -189,11 +193,11 @@ export function FeedSidebar({
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-elevation-1">
           <Plus className="h-4 w-4" strokeWidth={2.5} />
         </span>
-        {!iconOnly && <span>Posten</span>}
+        {!iconOnly && <span>{t('sidebar.post')}</span>}
       </Link>
 
       {/* Primary Nav — inkl. Benachrichtigungen (Drawer) + Profil (Avatar) */}
-      <nav className="flex flex-col gap-0.5" aria-label="Hauptnavigation">
+      <nav className="flex flex-col gap-0.5" aria-label={t('nav.main')}>
         {PRIMARY_NAV.map((item) => {
           const disabled = item.requiresAuth && !viewerId;
           const active = isActive(item.href);
@@ -204,14 +208,14 @@ export function FeedSidebar({
           const badgeLabel = badgeCount > 99 ? '99+' : badgeCount;
           return (
             <Link
-              key={`${item.label}-${item.href}`}
+              key={`${item.labelKey}-${item.href}`}
               href={item.href}
               aria-disabled={disabled}
               aria-current={active ? 'page' : undefined}
               aria-label={
                 badgeCount > 0
-                  ? `${item.label} (${badgeLabel} ungelesen)`
-                  : item.label
+                  ? `${t(item.labelKey)} (${badgeLabel} ${t('sidebar.unread')})`
+                  : t(item.labelKey)
               }
               className={cn(
                 'relative flex items-center gap-3 rounded-lg px-3 py-2 text-[15px] transition-colors',
@@ -229,7 +233,7 @@ export function FeedSidebar({
               <span className="flex w-8 shrink-0 justify-center">
                 <Icon className="h-6 w-6" />
               </span>
-              {!iconOnly && <span className="flex-1 truncate">{item.label}</span>}
+              {!iconOnly && <span className="flex-1 truncate">{t(item.labelKey)}</span>}
               {!iconOnly && badgeCount > 0 && (
                 <span
                   aria-hidden="true"
@@ -247,7 +251,7 @@ export function FeedSidebar({
           <button
             type="button"
             onClick={toggleNotifications}
-            aria-label={unreadNotifs > 0 ? `Benachrichtigungen (${unreadNotifs} ungelesen)` : 'Benachrichtigungen'}
+            aria-label={unreadNotifs > 0 ? `${t('sidebar.notifications')} (${unreadNotifs} ${t('sidebar.unread')})` : t('sidebar.notifications')}
             className={cn(
               'relative flex w-full items-center gap-3 rounded-lg px-3 py-2 text-[15px] transition-colors',
               notifDrawerOpen
@@ -261,7 +265,7 @@ export function FeedSidebar({
             <span className="flex w-8 shrink-0 justify-center">
               <Bell className="h-6 w-6" />
             </span>
-            {!iconOnly && <span className="flex-1 truncate text-left">Benachrichtigungen</span>}
+            {!iconOnly && <span className="flex-1 truncate text-left">{t('sidebar.notifications')}</span>}
             {!iconOnly && unreadNotifs > 0 && (
               <span
                 aria-hidden="true"
@@ -293,7 +297,7 @@ export function FeedSidebar({
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={viewerProfile.avatar_url}
-                  alt={viewerProfile.display_name ?? viewerProfile.username ?? 'Profil'}
+                  alt={viewerProfile.display_name ?? viewerProfile.username ?? t('nav.profile')}
                   className="h-7 w-7 rounded-full object-cover ring-1 ring-border"
                 />
               ) : (
@@ -302,7 +306,7 @@ export function FeedSidebar({
                 </span>
               )}
             </span>
-            {!iconOnly && <span className="flex-1 truncate">Profil</span>}
+            {!iconOnly && <span className="flex-1 truncate">{t('nav.profile')}</span>}
           </Link>
         )}
 
@@ -319,20 +323,20 @@ export function FeedSidebar({
           'px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80',
           iconOnly && 'invisible',
         )}>
-          Weiteres
+          {t('sidebar.moreSection')}
         </h2>
-        <nav className="flex flex-col gap-0.5" aria-label="Weitere Bereiche">
+        <nav className="flex flex-col gap-0.5" aria-label={t('sidebar.moreAreasAria')}>
           {SECONDARY_NAV.map((item) => {
             const disabled = item.requiresAuth && !viewerId;
             const active = isActive(item.href);
             const Icon = item.icon;
             return (
               <Link
-                key={`${item.label}-${item.href}`}
+                key={`${item.labelKey}-${item.href}`}
                 href={item.href}
                 aria-disabled={disabled}
                 aria-current={active ? 'page' : undefined}
-                aria-label={item.label}
+                aria-label={t(item.labelKey)}
                 className={cn(
                   'flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors',
                   active
@@ -344,7 +348,7 @@ export function FeedSidebar({
                 <span className="flex w-8 shrink-0 justify-center">
                   <Icon className="h-5 w-5" />
                 </span>
-                {!iconOnly && <span className="truncate">{item.label}</span>}
+                {!iconOnly && <span className="truncate">{t(item.labelKey)}</span>}
               </Link>
             );
           })}
@@ -353,7 +357,7 @@ export function FeedSidebar({
         {viewerId && viewerIsAdmin && (
           <Link
             href={'/admin' as Route}
-            aria-label="Admin-Panel"
+            aria-label={t('sidebar.adminPanel')}
             className={cn(
               'flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
               pathname.startsWith('/admin')
@@ -364,7 +368,7 @@ export function FeedSidebar({
             <span className="flex w-8 shrink-0 justify-center">
               <ShieldCheck className="h-5 w-5" />
             </span>
-            {!iconOnly && <span>Admin-Panel</span>}
+            {!iconOnly && <span>{t('sidebar.adminPanel')}</span>}
           </Link>
         )}
       </div>

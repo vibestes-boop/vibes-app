@@ -1,6 +1,7 @@
 'use client';
 
 import { CommentsBody } from './comments-body';
+import { useI18n } from '@/lib/i18n/client';
 
 // -----------------------------------------------------------------------------
 // CommentPanel — Inline-Right-Column-Variante der Kommentar-Ansicht (v1.w.UI.11
@@ -21,10 +22,11 @@ export interface CommentPanelProps {
 }
 
 export function CommentPanel({ postId, allowComments, viewerId, onClose }: CommentPanelProps) {
+  const { t } = useI18n();
   return (
     <div
       role="complementary"
-      aria-label="Kommentare"
+      aria-label={t('comments.title')}
       className="sticky top-0 flex h-[100dvh] flex-col bg-background"
     >
       <CommentsBody

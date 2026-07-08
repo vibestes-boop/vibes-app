@@ -4,6 +4,7 @@ import Link from 'next/link';
 import type { Route } from 'next';
 import { Radio, Users } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useI18n } from '@/lib/i18n/client';
 
 // -----------------------------------------------------------------------------
 // WebLiveFeedCard — wird im vertikalen Feed alle 6 Posts injiziert.
@@ -31,6 +32,7 @@ export interface LiveFeedSession {
 }
 
 export function WebLiveFeedCard({ session }: { session: LiveFeedSession }) {
+  const { t } = useI18n();
   const host = session.host;
   const username = host?.username ?? '…';
   const avatarUrl = host?.avatar_url ?? undefined;
@@ -110,7 +112,7 @@ export function WebLiveFeedCard({ session }: { session: LiveFeedSession }) {
 
           {/* CTA-Button */}
           <div className="shrink-0 rounded-full bg-red-500 px-4 py-1.5">
-            <span className="text-xs font-bold text-white">Jetzt</span>
+            <span className="text-xs font-bold text-white">{t('feed.now')}</span>
           </div>
         </div>
       </div>

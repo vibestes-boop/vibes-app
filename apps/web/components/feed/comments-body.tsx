@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import type { FeedPost } from '@/lib/data/feed';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/lib/i18n/client';
 
 // -----------------------------------------------------------------------------
 // CommentsBody — reine Kommentar-Liste + Compose-Form, ohne Wrapper-Chrome.
@@ -159,6 +160,7 @@ function replaceOptimisticComment(
 }
 
 export function CommentsBody({ postId, allowComments, viewerId, variant, onClose }: CommentsBodyProps) {
+  const { t } = useI18n();
   const qc = useQueryClient();
   const [body, setBody] = useState('');
 
@@ -217,7 +219,7 @@ export function CommentsBody({ postId, allowComments, viewerId, variant, onClose
         }
         setBody(ctx.rawBody);
       }
-      toast.error(err instanceof Error ? err.message : 'Kommentar konnte nicht gesendet werden');
+      toast.error(err instanceof Error ? err.message : t('comments.sendFailed'));
     },
   });
 
@@ -237,12 +239,12 @@ export function CommentsBody({ postId, allowComments, viewerId, variant, onClose
       {variant === 'panel' && (
         <div className="flex items-center justify-between border-b border-border px-5 py-4">
           <h2 className="text-base font-semibold">
-            {comments ? `${comments.length} Kommentare` : 'Kommentare'}
+            {comments ? `${comments.length} ${comments.length === 1 ? t('comments.countSingular') : t('comments.countPlural')}` : t('comments.title')}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Kommentare schließen"
+            aria-label={t('feed.commentsClose')}
             className="inline-flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground transition-colors duration-fast ease-out-expo hover:bg-muted hover:text-foreground"
           >
             <X className="h-4 w-4" aria-hidden="true" />
@@ -291,13 +293,13 @@ export function CommentsBody({ postId, allowComments, viewerId, variant, onClose
         {!allowComments ? (
           <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
             <Lock className="h-4 w-4" />
-            <span>Kommentare sind für diesen Post deaktiviert.</span>
+            <span>{t('comments.disabled')}</span>
           </div>
         ) : !viewerId ? (
           <div className="flex items-center justify-between gap-3 rounded-lg bg-muted px-3 py-2 text-sm">
-            <span className="text-muted-foreground">Melde dich an, um zu kommentieren.</span>
+            <span className="text-muted-foreground">{t('comments.loginPrompt')}</span>
             <Button asChild size="sm" variant="secondary">
-              <Link href={'/login' as Route}>Login</Link>
+              <Link href={'/login' as Route}>{t('auth.login')}</Link>
             </Button>
           </div>
         ) : (
@@ -321,7 +323,7 @@ export function CommentsBody({ postId, allowComments, viewerId, variant, onClose
                   handleSend();
                 }
               }}
-              placeholder="Kommentar hinzufügen…"
+              placeholder={t('comments.addPlaceholder')}
               rows={1}
               className="min-h-[40px] max-h-24 flex-1 resize-none rounded-full border border-border bg-muted/50 px-4 py-2 text-sm outline-none placeholder:text-muted-foreground focus:border-ring focus:bg-background"
             />
@@ -333,7 +335,7 @@ export function CommentsBody({ postId, allowComments, viewerId, variant, onClose
                 'h-10 w-10 shrink-0 rounded-full',
                 !canSend && 'opacity-50',
               )}
-              aria-label="Kommentar senden"
+              aria-label={t('comments.sendAria')}
             >
               {createMut.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -367,6 +369,7 @@ function CommentRow({
   postId: string;
   viewerId: string | null;
 }) {
+  const { t } = useI18n();
   const qc = useQueryClient();
   const initials = (comment.author.display_name ?? comment.author.username)
     .slice(0, 2)
@@ -396,13 +399,13 @@ function CommentRow({
     onError: (_err, _vars, ctx) => {
       // Rollback bei Fehler.
       if (ctx?.prev) qc.setQueryData(['comments', postId], ctx.prev);
-      toast.error('Like konnte nicht gespeichert werden.');
+      toast.error(t('comments.likeSaveFailed'));
     },
   });
 
   const handleLike = () => {
     if (!viewerId) {
-      toast('Bitte zuerst anmelden.');
+      toast(t('comments.loginFirst'));
       return;
     }
     likeMut.mutate();
@@ -440,7 +443,7 @@ function CommentRow({
         type="button"
         onClick={handleLike}
         disabled={likeMut.isPending}
-        aria-label={comment.liked_by_me ? 'Kommentar-Like entfernen' : 'Kommentar liken'}
+        aria-label={comment.liked_by_me ? t('comments.unlikeAria') : t('comments.likeAria')}
         className={cn(
           'flex shrink-0 flex-col items-center gap-0.5 self-start pt-0.5',
           'text-muted-foreground transition-colors hover:text-foreground disabled:opacity-50',

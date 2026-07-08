@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/sheet';
 import type { FollowedAccount } from '@/lib/data/feed';
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/lib/i18n/client';
 
 // -----------------------------------------------------------------------------
 // FollowedAccountsSection — Short-Video-Parity-Sidebar-Sektion „Konten, denen ich
@@ -49,13 +50,14 @@ export function FollowedAccountsSection({
   initial,
   revealAllThreshold = 5,
 }: FollowedAccountsSectionProps) {
+  const { t } = useI18n();
   const [sheetOpen, setSheetOpen] = useState(false);
 
   if (initial.length === 0) {
     return (
-      <section aria-label="Gefolgte Accounts" className="flex flex-col gap-0.5">
+      <section aria-label={t('feed.followedAria')} className="flex flex-col gap-0.5">
         <h2 className="px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
-          Konten, denen ich folge
+          {t('feed.followedTitle')}
         </h2>
         <Link
           href={'/explore' as Route}
@@ -64,7 +66,7 @@ export function FollowedAccountsSection({
           <span className="flex w-8 shrink-0 justify-center">
             <Compass className="h-5 w-5" />
           </span>
-          <span className="truncate">Accounts entdecken</span>
+          <span className="truncate">{t('explore.suggestedPeople')}</span>
         </Link>
       </section>
     );
@@ -73,9 +75,9 @@ export function FollowedAccountsSection({
   const canRevealMore = initial.length >= revealAllThreshold;
 
   return (
-    <section aria-label="Gefolgte Accounts" className="flex flex-col gap-0.5">
+    <section aria-label={t('feed.followedAria')} className="flex flex-col gap-0.5">
       <h2 className="px-3 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/80">
-        Konten, denen ich folge
+        {t('feed.followedTitle')}
       </h2>
 
       <ul className="flex flex-col">
@@ -95,7 +97,7 @@ export function FollowedAccountsSection({
           <span className="flex w-8 shrink-0 justify-center">
             <Users className="h-5 w-5" />
           </span>
-          <span className="truncate">Alle anzeigen</span>
+          <span className="truncate">{t('feed.showAll')}</span>
         </button>
       )}
 
@@ -114,6 +116,7 @@ export function FollowedAccountsSection({
 // -----------------------------------------------------------------------------
 
 function AccountRow({ account }: { account: FollowedAccount }) {
+  const { t } = useI18n();
   const label = account.display_name ?? account.username;
   const initials = (account.display_name ?? account.username).slice(0, 2).toUpperCase();
 
@@ -133,7 +136,7 @@ function AccountRow({ account }: { account: FollowedAccount }) {
         <div className="flex items-center gap-1 truncate text-sm text-foreground">
           <span className="truncate">{label}</span>
           {account.verified && (
-            <BadgeCheck className="h-3.5 w-3.5 shrink-0" aria-label="Verifiziert" />
+            <BadgeCheck className="h-3.5 w-3.5 shrink-0" aria-label={t('profile.verifiedBadge')} />
           )}
         </div>
       </div>
@@ -164,6 +167,7 @@ function FollowedAccountsSheet({
   onOpenChange: (open: boolean) => void;
   initial: FollowedAccount[];
 }) {
+  const { t } = useI18n();
   const [accounts, setAccounts] = useState<FollowedAccount[]>(initial);
   const [loading, setLoading] = useState(false);
   const [loadedOnce, setLoadedOnce] = useState(false);
@@ -190,12 +194,12 @@ function FollowedAccountsSheet({
         });
         setHasMore(data.length === CHUNK_SIZE);
       } catch {
-        setError('Liste konnte nicht geladen werden.');
+        setError(t('feed.listLoadFailed'));
       } finally {
         setLoading(false);
       }
     },
-    [],
+    [t],
   );
 
   // First-open: Initial-Set war nur Top-5 (SSR-Prefetch). Wir holen jetzt die
@@ -211,9 +215,9 @@ function FollowedAccountsSheet({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="left" className="flex flex-col gap-0 p-0 sm:max-w-md">
         <SheetHeader className="border-b px-6 py-4 text-left">
-          <SheetTitle>Konten, denen ich folge</SheetTitle>
+          <SheetTitle>{t('feed.followedTitle')}</SheetTitle>
           <SheetDescription>
-            Alle Profile, denen du folgst. Tippe auf einen Account, um das Profil zu öffnen.
+            {t('feed.followedDesc')}
           </SheetDescription>
         </SheetHeader>
 
@@ -266,10 +270,10 @@ function FollowedAccountsSheet({
                 {loading ? (
                   <>
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Lädt …</span>
+                    <span>{t('feed.loadingShort')}</span>
                   </>
                 ) : (
-                  <span>Mehr laden</span>
+                  <span>{t('feed.loadMore')}</span>
                 )}
               </button>
             </div>
@@ -287,6 +291,7 @@ function AccountRowFull({
   account: FollowedAccount;
   onNavigate: () => void;
 }) {
+  const { t } = useI18n();
   const label = account.display_name ?? account.username;
   const initials = (account.display_name ?? account.username).slice(0, 2).toUpperCase();
 
@@ -305,7 +310,7 @@ function AccountRowFull({
         <div className="flex items-center gap-1 truncate text-sm font-semibold text-foreground">
           <span className="truncate">{label}</span>
           {account.verified && (
-            <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-label="Verifiziert" />
+            <BadgeCheck className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-label={t('profile.verifiedBadge')} />
           )}
         </div>
         <div className="truncate text-xs text-muted-foreground">@{account.username}</div>

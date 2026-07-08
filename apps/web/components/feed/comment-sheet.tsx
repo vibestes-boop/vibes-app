@@ -7,6 +7,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { CommentsBody } from './comments-body';
+import { useI18n } from '@/lib/i18n/client';
 
 // -----------------------------------------------------------------------------
 // CommentSheet — Bottom-Sheet auf Mobile, Right-Sheet auf Desktop/< xl.
@@ -29,6 +30,7 @@ export interface CommentSheetProps {
 }
 
 export function CommentSheet({ postId, open, onOpenChange, allowComments, viewerId }: CommentSheetProps) {
+  const { t } = useI18n();
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
@@ -43,7 +45,7 @@ export function CommentSheet({ postId, open, onOpenChange, allowComments, viewer
           {/* Radix-SheetTitle ist a11y-Pflicht; die tatsächliche Count-
               Headline wird vom Body in Panel-Variant gerendert — hier
               reicht ein statischer Title für Sheet-Mode. */}
-          <SheetTitle className="text-base font-semibold">Kommentare</SheetTitle>
+          <SheetTitle className="text-base font-semibold">{t('comments.title')}</SheetTitle>
         </SheetHeader>
         <CommentsBody
           postId={postId}

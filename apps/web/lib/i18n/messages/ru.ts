@@ -250,6 +250,11 @@ const ruMessages = {
     whatsappAria: 'Поделиться в WhatsApp',
     telegramAria: 'Поделиться в Telegram',
     xAria: 'Поделиться в X',
+    sendFailed: 'Не удалось отправить.',
+    sharePostAria: 'Поделиться постом',
+    searchPlaceholder: 'Найти @username',
+    searchRecipientAria: 'Поиск получателя',
+    sent: 'Отправлено',
   },
 
   // Меню «···» для чужих постов (post-viewer-menu)
@@ -387,6 +392,51 @@ const ruMessages = {
     kbdMute: 'Звук',
     kbdSpace: 'Пробел',
     kbdPause: 'Пауза',
+    // Второстепенные компоненты
+    now: 'Сейчас',
+    likePostAria: 'Лайкнуть',
+    unlikePostAria: 'Убрать лайк',
+    followedAria: 'Мои подписки',
+    followedTitle: 'Аккаунты, на которые я подписан',
+    followedDesc: 'Все профили, на которые ты подписан. Нажми на аккаунт, чтобы открыть профиль.',
+    showAll: 'Показать все',
+    listLoadFailed: 'Не удалось загрузить список.',
+    loadingShort: 'Загрузка…',
+    loadMore: 'Показать ещё',
+  },
+
+  // Левая навигация (feed-sidebar) + админ-ссылка
+  sidebar: {
+    more: 'Ещё',
+    homeAria: 'Serlo — на главную',
+    searchAria: 'Поиск',
+    searchPlaceholder: 'Поиск',
+    newPostAria: 'Создать новый пост',
+    post: 'Опубликовать',
+    notifications: 'Уведомления',
+    moreAreasAria: 'Другие разделы',
+    adminPanel: 'Админ-панель',
+    womenOnlyZone: 'Зона «только для женщин»',
+    pods: 'Pods',
+    unread: 'непрочитанных',
+    moreSection: 'Прочее',
+  },
+
+  // Озвучка (voice-reader-control)
+  voice: {
+    stop: 'Стоп',
+    read: 'Озвучить',
+    loading: 'Аудио загружается...',
+    stopAria: 'Остановить озвучку',
+    readCreatorAria: 'Озвучить описание голосом автора',
+    readAria: 'Озвучить описание',
+  },
+
+  // Сторис (story-strip)
+  story: {
+    viewOwnAria: 'Посмотреть свою историю',
+    createAria: 'Создать историю',
+    yourStory: 'Твоя история',
   },
 
   // Меню «···» для своих постов + диалог редактирования (post-author-menu)
@@ -468,6 +518,11 @@ const ruMessages = {
     relHourAgo: '{n} ч назад',
     relYesterday: 'вчера',
     relDaysAgo: '{n} дн назад',
+    title: 'Комментарии',
+    loginPrompt: 'Войди, чтобы комментировать.',
+    addPlaceholder: 'Добавить комментарий…',
+    sendAria: 'Отправить комментарий',
+    sendFailed: 'Не удалось отправить комментарий',
   },
 
   // Кнопка подписки (profile/follow-button)
