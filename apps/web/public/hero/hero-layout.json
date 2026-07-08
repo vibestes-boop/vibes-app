@@ -1,0 +1,45 @@
+{
+  "preset": "night",
+  "sun": {
+    "x": 0.3,
+    "y": 0.36
+  },
+  "cloud": 0.65,
+  "layers": [
+    {
+      "file": "ridge-a.png",
+      "x": 0.5,
+      "bottom": 0.26,
+      "scale": 1.12,
+      "depth": 0.85
+    },
+    {
+      "file": "ridge-b.png",
+      "x": 0.46,
+      "bottom": 0.16,
+      "scale": 1.1,
+      "depth": 0.62
+    },
+    {
+      "file": "ridge-c.png",
+      "x": 0.55,
+      "bottom": 0.06,
+      "scale": 1.14,
+      "depth": 0.4
+    },
+    {
+      "file": "tower-main.png",
+      "x": 0.66,
+      "bottom": 0.13,
+      "scale": 0.09,
+      "depth": 0.22
+    },
+    {
+      "file": "foreground.png",
+      "x": 0.5,
+      "bottom": -0.06,
+      "scale": 1.15,
+      "depth": 0.04
+    }
+  ]
+}
