@@ -105,10 +105,10 @@ Deno.serve(async (req) => {
     // STRIPE_PRODUCT_*-Override oder der /shop-Default.
     const successUrl =
       Deno.env.get('STRIPE_PRODUCT_SUCCESS_URL') ??
-      'https://serlo-web.vercel.app/shop/success?session_id={CHECKOUT_SESSION_ID}';
+      'https://www.serlo.ch/shop/success?session_id={CHECKOUT_SESSION_ID}';
     const cancelUrl =
       Deno.env.get('STRIPE_PRODUCT_CANCEL_URL') ??
-      'https://serlo-web.vercel.app/shop/cancelled';
+      'https://www.serlo.ch/shop/cancelled';
 
     const amountCents = Math.round(Number(order.amount_eur) * 100);
     const pform = new URLSearchParams();

@@ -18,12 +18,12 @@ import { Button } from "@/components/ui/button";
 export function InviteShare({ username }: { username: string }) {
   const [copied, setCopied] = useState(false);
 
-  // Auf der Live-Domain (serlo-web.vercel.app, OHNE www) ergibt origin den
-  // korrekten Share-Link; lokal zeigt er auf localhost (nur Dev sichtbar).
+  // Auf der Live-Domain (www.serlo.ch) ergibt origin den korrekten Share-Link;
+  // lokal zeigt er auf localhost (nur Dev sichtbar).
   const origin =
     typeof window !== "undefined"
       ? window.location.origin
-      : "https://serlo-web.vercel.app";
+      : "https://www.serlo.ch";
   const inviteUrl = `${origin}/i/${username}`;
 
   const shareText = `Komm zu Serlo 🌸 — Videos, Live-Streams und ein Marktplatz aus der Community.\n${inviteUrl}`;

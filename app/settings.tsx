@@ -142,7 +142,7 @@ export default function SettingsScreen() {
   const { canAccessWomenOnly, deactivate } = useWomenOnly();
   const queryClient = useQueryClient();
   // #5 Referral — Einladungslink + Zähler.
-  const inviteUrl = profile?.username ? `https://serlo-web.vercel.app/i/${profile.username}` : null;
+  const inviteUrl = profile?.username ? `https://www.serlo.ch/i/${profile.username}` : null;
   const { data: referralCount = 0 } = useQuery({
     queryKey: ['referral-count', profile?.id],
     enabled: !!profile?.id,
@@ -749,7 +749,7 @@ export default function SettingsScreen() {
         {/* ── Rechtliches & Hilfe ── */}
         <SectionLabel label="Rechtliches & Hilfe" colors={colors} />
         <View style={[s.card, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
-          <Pressable style={[s.rowItem, { paddingVertical: 11 }]} onPress={() => Linking.openURL('https://serlo-web.vercel.app/privacy').catch(() => {})} accessibilityRole="link">
+          <Pressable style={[s.rowItem, { paddingVertical: 11 }]} onPress={() => Linking.openURL('https://www.serlo.ch/privacy').catch(() => {})} accessibilityRole="link">
             <View style={s.rowIcon}>
               <FileText size={18} stroke={colors.text.primary} strokeWidth={2} />
             </View>
@@ -758,7 +758,7 @@ export default function SettingsScreen() {
           </Pressable>
           <View style={[s.sep, { backgroundColor: colors.border.subtle, marginLeft: 56 }]} />
 
-          <Pressable style={[s.rowItem, { paddingVertical: 11 }]} onPress={() => Linking.openURL('https://serlo-web.vercel.app/terms').catch(() => {})} accessibilityRole="link">
+          <Pressable style={[s.rowItem, { paddingVertical: 11 }]} onPress={() => Linking.openURL('https://www.serlo.ch/terms').catch(() => {})} accessibilityRole="link">
             <View style={s.rowIcon}>
               <FileText size={18} stroke={colors.text.primary} strokeWidth={2} />
             </View>

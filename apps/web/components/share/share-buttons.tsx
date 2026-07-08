@@ -39,7 +39,7 @@ export function ShareButtons({
   // inline-ersetzt → identisch auf Server UND Client). Früher via
   // window.location.origin → nur clientseitig → Hydration-Mismatch + der
   // SSR-gerenderte Share-Link war relativ/kaputt.
-  const siteBase = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://serlo-web.vercel.app').replace(/\/$/, '');
+  const siteBase = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://www.serlo.ch').replace(/\/$/, '');
   const absoluteUrl = url.startsWith('http')
     ? url
     : `${siteBase}${url.startsWith('/') ? '' : '/'}${url}`;

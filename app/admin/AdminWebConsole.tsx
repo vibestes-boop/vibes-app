@@ -14,7 +14,7 @@ import {
 import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-const WEB_ADMIN_BASE = process.env.EXPO_PUBLIC_WEB_ADMIN_URL ?? 'https://serlo-web.vercel.app/admin';
+const WEB_ADMIN_BASE = process.env.EXPO_PUBLIC_WEB_ADMIN_URL ?? 'https://www.serlo.ch/admin';
 
 type WebAdminPath = '/command-center' | '/reports' | '/users' | '/payouts';
 

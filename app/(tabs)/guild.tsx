@@ -134,7 +134,7 @@ export default function GuildScreen() {
   // Referral-Link (#5) mit Guild-Kontext über das native Share-Sheet.
   const handleInvite = useCallback(async () => {
     if (!profile?.username) return;
-    const inviteUrl = `https://serlo-web.vercel.app/i/${profile.username}`;
+    const inviteUrl = `https://www.serlo.ch/i/${profile.username}`;
     try {
       await Share.share({
         message: `Komm in meine Guild „${guildName}" auf Serlo 🌸 — Videos, Live & Marktplatz aus der Community:\n${inviteUrl}`,
