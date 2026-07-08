@@ -88,42 +88,44 @@ const TYPE_META: Record<NotificationType, NotifMeta> = {
 
 // ── Notification-Text pro Typ ─────────────────────────────────────────────────
 
-function notifText(n: Notification): string {
-  const name = n.sender?.display_name || n.sender?.username || 'Jemand';
+type Tfn = (key: import('@/lib/i18n/translate').TranslationKey, vars?: Record<string, string | number>) => string;
+
+function notifText(n: Notification, t: Tfn): string {
+  const name = n.sender?.display_name || n.sender?.username || t('notif.someone');
   switch (n.type) {
     case 'like':
-      return `${name} hat deinen Post geliked.`;
+      return t('notif.like', { name });
     case 'comment':
       return n.comment_text
-        ? `${name} hat kommentiert: „${n.comment_text}"`
-        : `${name} hat deinen Post kommentiert.`;
+        ? t('notif.commentQuoted', { name, text: n.comment_text })
+        : t('notif.comment', { name });
     case 'follow':
-      return `${name} folgt dir jetzt.`;
+      return t('notif.follow', { name });
     case 'mention':
       return n.comment_text
-        ? `${name} hat dich erwähnt: „${n.comment_text}"`
-        : `${name} hat dich erwähnt.`;
+        ? t('notif.mentionQuoted', { name, text: n.comment_text })
+        : t('notif.mention', { name });
     case 'dm':
-      return `${name} hat dir eine Nachricht geschickt.`;
+      return t('notif.dm', { name });
     case 'gift':
       return n.gift_emoji && n.gift_name
-        ? `${name} hat dir ${n.gift_emoji} ${n.gift_name} gesendet.`
+        ? t('notif.giftNamed', { name, emoji: n.gift_emoji, gift: n.gift_name })
         : n.comment_text
           ? n.comment_text
-          : `${name} hat dir ein Geschenk gesendet.`;
+          : t('notif.gift', { name });
     case 'preorder_interest':
       return n.product_name
-        ? `${name} hat „${n.product_name}" vorbestellt 🌸`
-        : `${name} hat ein Produkt vorbestellt 🌸`;
+        ? t('notif.preorderNamed', { name, product: n.product_name })
+        : t('notif.preorder', { name });
     case 'product_saved':
       return n.product_name
-        ? `${name} hat „${n.product_name}" gemerkt 🔖`
-        : `${name} hat dein Produkt gemerkt 🔖`;
+        ? t('notif.savedNamed', { name, product: n.product_name })
+        : t('notif.savedGeneric', { name });
     case 'preorder_round_open':
       return n.comment_text
         ?? (n.product_name
-          ? `Sammelbestellung läuft: „${n.product_name}" 🌸`
-          : 'Eine Sammelbestellung ist offen 🌸');
+          ? t('notif.roundOpenNamed', { product: n.product_name })
+          : t('notif.roundOpen'));
     case 'order_payment_requested':
     case 'order_payment_reminder':
     case 'order_paid':
@@ -133,37 +135,37 @@ function notifText(n: Notification): string {
     case 'order_review':
     case 'order_dispute':
       return n.comment_text
-        ?? (n.product_name ? `Update zu „${n.product_name}"` : 'Update zu deiner Bestellung');
+        ?? (n.product_name ? t('notif.orderUpdateNamed', { product: n.product_name }) : t('notif.orderUpdate'));
     case 'live':
-      return `${name} ist jetzt live.`;
+      return t('notif.liveNow', { name });
     case 'live_invite':
-      return `${name} hat dich zum Duett eingeladen.`;
+      return t('notif.liveInvite', { name });
     case 'follow_request':
-      return `${name} möchte dir folgen.`;
+      return t('notif.followRequest', { name });
     case 'follow_request_accepted':
-      return `${name} hat deine Follower-Anfrage angenommen.`;
+      return t('notif.followAccepted', { name });
     case 'new_order':
       return n.product_name
-        ? `${name} hat „${n.product_name}" gekauft.`
-        : `${name} hat ein Produkt bei dir gekauft.`;
+        ? t('notif.boughtNamed', { name, product: n.product_name })
+        : t('notif.bought', { name });
     case 'comment_like':
-      return `${name} hat deinen Kommentar geliked.`;
+      return t('notif.commentLike', { name });
     case 'repost':
-      return `${name} hat deinen Post geteilt.`;
+      return t('notif.repost', { name });
     case 'story_reaction':
-      return `${name} hat auf deine Story reagiert.`;
+      return t('notif.storyReaction', { name });
     case 'guild':
-      return `Neue Aktivität in deiner Guild.`;
+      return t('notif.guildActivity');
     case 'support_reply':
       return n.comment_text
-        ? `Antwort vom Team: „${n.comment_text}"`
-        : 'Das Team hat auf deine Support-Anfrage geantwortet 💬';
+        ? t('notif.supportReplyQuoted', { text: n.comment_text })
+        : t('notif.supportReply');
     case 'support_new':
       return n.comment_text
-        ? `Neue Support-Anfrage: „${n.comment_text}"`
-        : `${name} hat eine neue Support-Anfrage gestellt 🆘`;
+        ? t('notif.supportNewQuoted', { text: n.comment_text })
+        : t('notif.supportNew', { name });
     default:
-      return `Neue Aktivität von ${name}.`;
+      return t('notif.genericActivity', { name });
   }
 }
 
@@ -471,7 +473,7 @@ export function NotificationList({
                     !n.read && 'font-medium',
                   )}
                 >
-                  {notifText(n)}
+                  {notifText(n, t)}
                 </p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
                   {formatRelative(n.created_at)}

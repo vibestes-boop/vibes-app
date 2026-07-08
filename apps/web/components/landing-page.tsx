@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import type { LiveSessionWithHost } from '@/lib/data/live';
 import type { FeedPost } from '@/lib/data/feed';
 import { ExploreVideoCard } from '@/components/explore/explore-video-card';
+import { getT } from '@/lib/i18n/server';
 
 // -----------------------------------------------------------------------------
 // Landing-Page für ausgeloggte Besucher.
@@ -31,7 +32,8 @@ interface LandingPageProps {
   trendingPosts: FeedPost[];
 }
 
-export function LandingPage({ featured, liveNow, trendingPosts }: LandingPageProps) {
+export async function LandingPage({ featured, liveNow, trendingPosts }: LandingPageProps) {
+  const t = await getT();
   return (
     <main className="min-h-dvh bg-background" data-testid="public-landing">
       {/* Hero */}
@@ -51,30 +53,29 @@ export function LandingPage({ featured, liveNow, trendingPosts }: LandingPagePro
         <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-sm text-muted-foreground">
           <Sparkles className="h-3.5 w-3.5 text-brand-gold" />
           {liveNow.length > 0
-            ? `${liveNow.length} Stream${liveNow.length === 1 ? '' : 's'} jetzt live`
-            : 'Web-Beta · Live & Shop'}
+            ? (liveNow.length === 1 ? t('landing.streamsLiveOne') : t('landing.streamsLiveMany', { count: liveNow.length }))
+            : t('landing.betaBadge')}
         </div>
 
         <h1 className="max-w-3xl text-4xl font-bold tracking-tight sm:text-5xl md:text-7xl">
-          Live. Shop. Community.
+          {t('landing.heroTitle')}
           <br />
-          <span className="text-muted-foreground">Jetzt auch im Browser.</span>
+          <span className="text-muted-foreground">{t('landing.heroSubtitle')}</span>
         </h1>
 
         <p className="mt-6 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">
-          Die Serlo Web-Version. Streame in 1080p60 vom PC, verkaufe professionell im Shop,
-          folge deiner Community — ohne App-Download.
+          {t('landing.heroText')}
         </p>
 
         <div className="mt-10 flex flex-col gap-3 sm:flex-row">
           <Button asChild size="xl">
             <Link href={'/login' as Route}>
-              Einloggen
+              {t('auth.login')}
               <ArrowRight className="ml-1 h-4 w-4" />
             </Link>
           </Button>
           <Button asChild size="xl" variant="outline">
-            <Link href={'/signup' as Route}>Account erstellen</Link>
+            <Link href={'/signup' as Route}>{t('auth.signup')}</Link>
           </Button>
         </div>
       </section>
@@ -88,18 +89,18 @@ export function LandingPage({ featured, liveNow, trendingPosts }: LandingPagePro
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-500 opacity-75" />
                 <span className="relative inline-flex h-3 w-3 rounded-full bg-red-500" />
               </span>
-              Jetzt live
+              {t('landing.liveNow')}
             </h2>
             <Link
               href={'/live' as Route}
               className="text-sm font-medium text-primary hover:underline underline-offset-4"
             >
-              Alle Streams →
+              {t('landing.allStreams')}
             </Link>
           </div>
           <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {liveNow.map((s) => (
-              <LiveMiniCard key={s.id} session={s} />
+              <LiveMiniCard key={s.id} session={s} unknownHost={t('landing.unknownHost')} liveStreamAlt={t('landing.liveStreamAlt')} />
             ))}
           </ul>
         </section>
@@ -111,13 +112,13 @@ export function LandingPage({ featured, liveNow, trendingPosts }: LandingPagePro
           <div className="mb-6 flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
               <Eye className="h-5 w-5 text-brand-gold" />
-              Trending
+              {t('landing.trending')}
             </h2>
             <Link
               href={'/explore' as Route}
               className="text-sm font-medium text-primary hover:underline underline-offset-4"
             >
-              Mehr entdecken →
+              {t('landing.discoverMore')}
             </Link>
           </div>
           <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
@@ -149,20 +150,20 @@ export function LandingPage({ featured, liveNow, trendingPosts }: LandingPagePro
       <section className="container mx-auto grid gap-6 pb-20 md:grid-cols-3">
         <ValueCard
           icon={<Gamepad2 className="h-6 w-6" />}
-          title="PC-Streamer"
-          description="Gaming-Streams, IRL-Shows, Talk-Formate. Multi-Source-Deck mit Screenshare, Webcam, Mic — oder direkt aus OBS via WHIP-Ingest."
+          title={t('landing.vpStreamerTitle')}
+          description={t('landing.vpStreamerDesc')}
           badge="Phase 6"
         />
         <ValueCard
           icon={<ShoppingBag className="h-6 w-6" />}
-          title="Online-Händler"
-          description="Professionelles Storefront mit Facetten-Filtern, Sale-Management, Order-Tracking und Revenue-Analytics. Bezahlung per Coins oder Stripe."
+          title={t('landing.vpSellerTitle')}
+          description={t('landing.vpSellerDesc')}
           badge="Phase 4"
         />
         <ValueCard
           icon={<Radio className="h-6 w-6" />}
-          title="Creator"
-          description="Desktop-Creator-Studio mit Scheduled Posts, Cloud-Drafts, Peak-Hours-Heatmap und Watch-Time-Analytics. Mehr Kontrolle als im Native-App."
+          title={t('landing.vpCreatorTitle')}
+          description={t('landing.vpCreatorDesc')}
           badge="Phase 9"
         />
       </section>
@@ -173,10 +174,10 @@ export function LandingPage({ featured, liveNow, trendingPosts }: LandingPagePro
           <div className="mb-6 flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-xl font-semibold tracking-tight">
               <Compass className="h-5 w-5 text-brand-gold" />
-              Creator entdecken
+              {t('landing.discoverCreators')}
             </h2>
             <span className="text-xs text-muted-foreground">
-              Klick auf einen Account — kein Login nötig
+              {t('landing.noLoginNeeded')}
             </span>
           </div>
           <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -197,7 +198,7 @@ export function LandingPage({ featured, liveNow, trendingPosts }: LandingPagePro
                       {c.display_name ?? `@${c.username}`}
                     </div>
                     <div className="truncate text-xs text-muted-foreground">
-                      {formatCount(c.follower_count)} Follower
+                      {formatCount(c.follower_count)} {t('landing.followerUnit')}
                     </div>
                   </div>
                 </Link>
@@ -211,10 +212,10 @@ export function LandingPage({ featured, liveNow, trendingPosts }: LandingPagePro
         <div className="container mx-auto flex flex-col items-center justify-between gap-4 py-8 text-sm text-muted-foreground md:flex-row">
           <span>© {new Date().getFullYear()} Serlo</span>
           <nav className="flex gap-6">
-            <Link href={'/terms' as Route} className="hover:text-foreground">AGB</Link>
-            <Link href={'/privacy' as Route} className="hover:text-foreground">Datenschutz</Link>
-            <Link href={'/imprint' as Route} className="hover:text-foreground">Impressum</Link>
-            <Link href={'/support' as Route} className="hover:text-foreground">Support</Link>
+            <Link href={'/terms' as Route} className="hover:text-foreground">{t('landing.terms')}</Link>
+            <Link href={'/privacy' as Route} className="hover:text-foreground">{t('feed.privacyLink')}</Link>
+            <Link href={'/imprint' as Route} className="hover:text-foreground">{t('feed.imprintLink')}</Link>
+            <Link href={'/support' as Route} className="hover:text-foreground">{t('landing.support')}</Link>
           </nav>
         </div>
       </footer>
@@ -226,8 +227,8 @@ export function LandingPage({ featured, liveNow, trendingPosts }: LandingPagePro
 // LiveMiniCard — kompakte Session-Karte für die Landing-"Jetzt live"-Section.
 // Kein Client-State, kein Realtime — reine SSR-Snapshot-Ansicht.
 // -----------------------------------------------------------------------------
-function LiveMiniCard({ session }: { session: LiveSessionWithHost }) {
-  const hostName = session.host?.display_name ?? session.host?.username ?? 'Unbekannt';
+function LiveMiniCard({ session, unknownHost, liveStreamAlt }: { session: LiveSessionWithHost; unknownHost: string; liveStreamAlt: string }) {
+  const hostName = session.host?.display_name ?? session.host?.username ?? unknownHost;
   const viewerCount = session.viewer_count ?? 0;
 
   return (
@@ -241,7 +242,7 @@ function LiveMiniCard({ session }: { session: LiveSessionWithHost }) {
           {session.thumbnail_url ? (
             <Image
               src={session.thumbnail_url}
-              alt={session.title ?? 'Live Stream'}
+              alt={session.title ?? liveStreamAlt}
               fill
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
               className="object-cover transition-transform duration-300 group-hover:scale-105"
@@ -280,7 +281,7 @@ function LiveMiniCard({ session }: { session: LiveSessionWithHost }) {
             )}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-semibold">{session.title ?? 'Live-Stream'}</p>
+            <p className="truncate text-xs font-semibold">{session.title ?? liveStreamAlt}</p>
             <p className="truncate text-[11px] text-muted-foreground">{hostName}</p>
           </div>
         </div>
