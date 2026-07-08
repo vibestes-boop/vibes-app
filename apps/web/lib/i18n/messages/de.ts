@@ -303,6 +303,36 @@ const deMessages = {
     highlightDeleteFailed: "Löschen fehlgeschlagen.",
   },
 
+  // Cookie-Banner (consent-banner)
+  consent: {
+    title: "Cookies & Datenschutz",
+    descCompact:
+      "Essenzielle Cookies halten Login und Sicherheit am Laufen. Analytics nur mit Zustimmung.",
+    descFull:
+      "Essenzielle Cookies halten Login, Session und Sicherheit am Laufen. Produkt-Analytics und Marketing nutzen wir nur mit deiner Zustimmung; ändern kannst du die Wahl jederzeit in den Einstellungen.",
+    rowEssential: "Essenziell",
+    rowEssentialDesc:
+      "Session-Cookies, Anti-CSRF, Login-State. Ohne diese funktioniert die Plattform nicht.",
+    rowAnalytics: "Analytics",
+    rowAnalyticsDesc:
+      "PostHog — anonymisierte Feature-Nutzung für Produktverbesserungen. EU-Hosting.",
+    rowMarketing: "Marketing",
+    rowMarketingDesc:
+      "Conversion-Pixel und Remarketing. Aktuell inaktiv — du kannst dies vorab erlauben.",
+    alwaysActive: "immer aktiv",
+    privacyPolicy: "Datenschutzerklärung",
+    collapse: "Zusammenklappen",
+    details: "Details",
+    detailsShow: "Details anzeigen",
+    essentialShort: "Essenziell",
+    essentialOnly: "Nur essenziell",
+    saveSelection: "Auswahl speichern",
+    accept: "Akzeptieren",
+    acceptAll: "Alle akzeptieren",
+    closeAria: "Banner schließen und nur essenzielle Cookies akzeptieren",
+    settings: "Cookie-Einstellungen",
+  },
+
   // 3-Punkte-Menü für eigene Posts + Edit-Dialog (post-author-menu)
   postOwnerMenu: {
     options: "Post-Optionen",

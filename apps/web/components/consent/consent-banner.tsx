@@ -12,6 +12,7 @@ import {
   onConsentChange,
 } from '@/lib/consent';
 import { cn } from '@/lib/utils';
+import { useI18n, useOptionalI18n } from '@/lib/i18n/client';
 
 // -----------------------------------------------------------------------------
 // <ConsentBanner /> — DSGVO-konformer Cookie-Banner.
@@ -27,6 +28,7 @@ import { cn } from '@/lib/utils';
 // -----------------------------------------------------------------------------
 
 export function ConsentBanner() {
+  const { t } = useI18n();
   const [visible, setVisible] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const [analyticsOn, setAnalyticsOn] = useState(false);
@@ -88,7 +90,7 @@ export function ConsentBanner() {
             id="consent-title"
             className={cn('font-semibold', compactImmersiveBanner ? 'text-sm' : 'text-base')}
           >
-            Cookies & Datenschutz
+            {t('consent.title')}
           </h2>
           <p
             id="consent-desc"
@@ -97,28 +99,27 @@ export function ConsentBanner() {
               compactImmersiveBanner ? 'hidden text-xs sm:block' : 'line-clamp-2 text-xs leading-5 sm:line-clamp-none sm:text-sm',
             )}
           >
-            {compactImmersiveBanner
-              ? 'Essenzielle Cookies halten Login und Sicherheit am Laufen. Analytics nur mit Zustimmung.'
-              : 'Essenzielle Cookies halten Login, Session und Sicherheit am Laufen. Produkt-Analytics und Marketing nutzen wir nur mit deiner Zustimmung; ändern kannst du die Wahl jederzeit in den Einstellungen.'}
+            {compactImmersiveBanner ? t('consent.descCompact') : t('consent.descFull')}
           </p>
 
           {showDetails && (
             <div className="mt-4 space-y-3 rounded-lg border border-border/60 bg-muted/40 p-3">
               <Row
-                title="Essenziell"
-                description="Session-Cookies, Anti-CSRF, Login-State. Ohne diese funktioniert die Plattform nicht."
+                title={t('consent.rowEssential')}
+                description={t('consent.rowEssentialDesc')}
+                alwaysActiveLabel={t('consent.alwaysActive')}
                 checked
                 disabled
               />
               <Row
-                title="Analytics"
-                description="PostHog — anonymisierte Feature-Nutzung für Produktverbesserungen. EU-Hosting."
+                title={t('consent.rowAnalytics')}
+                description={t('consent.rowAnalyticsDesc')}
                 checked={analyticsOn}
                 onChange={setAnalyticsOn}
               />
               <Row
-                title="Marketing"
-                description="Conversion-Pixel und Remarketing. Aktuell inaktiv — du kannst dies vorab erlauben."
+                title={t('consent.rowMarketing')}
+                description={t('consent.rowMarketingDesc')}
                 checked={marketingOn}
                 onChange={setMarketingOn}
               />
@@ -140,7 +141,7 @@ export function ConsentBanner() {
                 compactImmersiveBanner && 'hidden sm:inline',
               )}
             >
-              Datenschutzerklärung
+              {t('consent.privacyPolicy')}
             </Link>
 
             <div className={cn('col-span-2 grid grid-cols-2 gap-2 sm:flex sm:items-center', (!compactImmersiveBanner || showDetails) && 'sm:flex-wrap', compactImmersiveBanner && 'md:flex-wrap')}>
@@ -149,10 +150,10 @@ export function ConsentBanner() {
                 onClick={() => setShowDetails((v) => !v)}
                 className="col-span-2 shrink-0 rounded-lg px-2.5 py-2 text-xs font-medium text-muted-foreground hover:bg-muted sm:col-span-1 sm:py-1.5 sm:px-3"
               >
-                {showDetails ? 'Zusammenklappen' : compactImmersiveBanner ? 'Details' : (
+                {showDetails ? t('consent.collapse') : compactImmersiveBanner ? t('consent.details') : (
                   <>
-                    <span className="sm:hidden">Details</span>
-                    <span className="hidden sm:inline">Details anzeigen</span>
+                    <span className="sm:hidden">{t('consent.details')}</span>
+                    <span className="hidden sm:inline">{t('consent.detailsShow')}</span>
                   </>
                 )}
               </button>
@@ -161,10 +162,10 @@ export function ConsentBanner() {
                 onClick={() => commit({ analytics: false, marketing: false })}
                 className="shrink-0 rounded-lg border border-border bg-background px-2.5 py-2 text-xs font-medium hover:bg-muted sm:py-1.5 sm:px-3"
               >
-                {compactImmersiveBanner ? 'Essenziell' : (
+                {compactImmersiveBanner ? t('consent.essentialShort') : (
                   <>
-                    <span className="sm:hidden">Essenziell</span>
-                    <span className="hidden sm:inline">Nur essenziell</span>
+                    <span className="sm:hidden">{t('consent.essentialShort')}</span>
+                    <span className="hidden sm:inline">{t('consent.essentialOnly')}</span>
                   </>
                 )}
               </button>
@@ -176,7 +177,7 @@ export function ConsentBanner() {
                   }
                   className="shrink-0 rounded-lg bg-primary px-2.5 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 sm:py-1.5 sm:px-3"
                 >
-                  Auswahl speichern
+                  {t('consent.saveSelection')}
                 </button>
               ) : (
                 <button
@@ -184,10 +185,10 @@ export function ConsentBanner() {
                   onClick={() => commit({ analytics: true, marketing: true })}
                   className="shrink-0 rounded-lg bg-primary px-2.5 py-2 text-xs font-semibold text-primary-foreground hover:bg-primary/90 sm:py-1.5 sm:px-3"
                 >
-                  {compactImmersiveBanner ? 'Akzeptieren' : (
+                  {compactImmersiveBanner ? t('consent.accept') : (
                     <>
-                      <span className="sm:hidden">Akzeptieren</span>
-                      <span className="hidden sm:inline">Alle akzeptieren</span>
+                      <span className="sm:hidden">{t('consent.accept')}</span>
+                      <span className="hidden sm:inline">{t('consent.acceptAll')}</span>
                     </>
                   )}
                 </button>
@@ -200,7 +201,7 @@ export function ConsentBanner() {
           type="button"
           onClick={() => commit({ analytics: false, marketing: false })}
           className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted"
-          aria-label="Banner schließen und nur essenzielle Cookies akzeptieren"
+          aria-label={t('consent.closeAria')}
         >
           <X className="h-4 w-4" />
         </button>
@@ -217,12 +218,15 @@ function Row({
   checked,
   disabled,
   onChange,
+  alwaysActiveLabel,
 }: {
   title: string;
   description: string;
   checked: boolean;
   disabled?: boolean;
   onChange?: (v: boolean) => void;
+  /** Badge-Text für die deaktivierte Essenziell-Zeile (i18n vom Aufrufer). */
+  alwaysActiveLabel?: string;
 }) {
   return (
     <label className="flex items-start gap-3">
@@ -252,7 +256,7 @@ function Row({
           {title}
           {disabled && (
             <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[10px] uppercase tracking-wider">
-              immer aktiv
+              {alwaysActiveLabel ?? 'immer aktiv'}
             </span>
           )}
         </p>
@@ -271,6 +275,9 @@ export function OpenConsentSettingsButton({
   className?: string;
   children?: React.ReactNode;
 }) {
+  // useOptionalI18n: der Button lebt im Footer — falls er je außerhalb des
+  // I18nProviders gerendert wird, fällt er auf den deutschen Text zurück.
+  const i18n = useOptionalI18n();
   return (
     <button
       type="button"
@@ -280,7 +287,7 @@ export function OpenConsentSettingsButton({
       }}
       className={className}
     >
-      {children ?? 'Cookie-Einstellungen'}
+      {children ?? i18n?.t('consent.settings') ?? 'Cookie-Einstellungen'}
     </button>
   );
 }

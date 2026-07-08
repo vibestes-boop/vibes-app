@@ -296,6 +296,36 @@ const ruMessages = {
     highlightDeleteFailed: 'Не удалось удалить.',
   },
 
+  // Cookie-баннер (consent-banner)
+  consent: {
+    title: 'Cookies и конфиденциальность',
+    descCompact:
+      'Необходимые cookies обеспечивают вход и безопасность. Аналитика — только с согласия.',
+    descFull:
+      'Необходимые cookies обеспечивают вход, сессию и безопасность. Аналитику и маркетинг мы используем только с твоего согласия; изменить выбор можно в любой момент в настройках.',
+    rowEssential: 'Необходимые',
+    rowEssentialDesc:
+      'Сессионные cookies, защита от CSRF, статус входа. Без них платформа не работает.',
+    rowAnalytics: 'Аналитика',
+    rowAnalyticsDesc:
+      'PostHog — анонимная статистика использования для улучшения продукта. Хостинг в ЕС.',
+    rowMarketing: 'Маркетинг',
+    rowMarketingDesc:
+      'Конверсионные пиксели и ремаркетинг. Сейчас неактивно — можно разрешить заранее.',
+    alwaysActive: 'всегда активны',
+    privacyPolicy: 'Политика конфиденциальности',
+    collapse: 'Свернуть',
+    details: 'Подробнее',
+    detailsShow: 'Показать подробности',
+    essentialShort: 'Необходимые',
+    essentialOnly: 'Только необходимые',
+    saveSelection: 'Сохранить выбор',
+    accept: 'Принять',
+    acceptAll: 'Принять все',
+    closeAria: 'Закрыть баннер и принять только необходимые cookies',
+    settings: 'Настройки cookies',
+  },
+
   // Меню «···» для своих постов + диалог редактирования (post-author-menu)
   postOwnerMenu: {
     options: 'Опции поста',
