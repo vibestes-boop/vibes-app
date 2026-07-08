@@ -35,6 +35,8 @@ import { deletePost, patchPostCaption } from '@/app/actions/posts';
 import { adminRemovePost, getViewerIsAdmin } from '@/app/actions/admin';
 import { recordDwell } from '@/app/actions/engagement';
 import { POST_REPORT_REASONS, type PostReportReason } from '@/lib/moderation/report-reasons';
+import { useI18n } from '@/lib/i18n/client';
+import type { TranslationKey } from '@/lib/i18n/translate';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import {
@@ -124,6 +126,7 @@ export function FeedCard({
   linkedProductId,
 }: FeedCardProps) {
   const router = useRouter();
+  const { t } = useI18n();
   const videoRef = useRef<HTMLVideoElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const activePlaybackRef = useRef({ postId: post.id, active: false });
@@ -357,12 +360,12 @@ export function FeedCard({
   async function submitPostReport(reason: PostReportReason) {
     setShowMoreMenu(false);
     if (!viewerId) {
-      toast('Bitte zuerst anmelden.');
+      toast(t('comments.loginFirst'));
       return;
     }
     const res = await reportPost(post.id, reason);
     if (res.ok) {
-      toast('Danke für deine Meldung. Unser Team prüft das.');
+      toast(t('postMenu.reportThanksToast'));
     } else {
       toast.error(res.error);
     }
@@ -682,7 +685,7 @@ export function FeedCard({
                 e.stopPropagation();
                 onMuteToggle();
               }}
-              aria-label={muted ? 'Ton einschalten' : 'Stummschalten'}
+              aria-label={muted ? t('feed.unmuteAria') : t('feed.muteAria')}
               className="flex h-9 w-9 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm transition-colors hover:bg-black/60"
             >
               {muted || volume === 0 ? (
@@ -711,7 +714,7 @@ export function FeedCard({
                     if (newVol > 0 && muted) onMuteToggle();
                     else if (newVol === 0 && !muted) onMuteToggle();
                   }}
-                  aria-label="Lautstärke"
+                  aria-label={t('feed.volumeAria')}
                   className="h-1 w-24 cursor-pointer accent-white"
                 />
               </div>
@@ -737,7 +740,7 @@ export function FeedCard({
                 e.stopPropagation();
                 setShowMoreMenu((v) => !v);
               }}
-              aria-label="Weitere Optionen"
+              aria-label={t('postMenu.moreOptions')}
               aria-expanded={showMoreMenu}
               className="flex h-9 w-9 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm transition-colors hover:bg-black/60"
             >
@@ -757,7 +760,7 @@ export function FeedCard({
                     {/* v1.w.UI.146 — Author: Bearbeiten + Löschen */}
                     <MoreMenuItem
                       icon={<Pencil className="h-4 w-4" />}
-                      label="Bearbeiten"
+                      label={t('feed.edit')}
                       onClick={() => {
                         setShowMoreMenu(false);
                         setEditCaption(post.caption ?? '');
@@ -766,17 +769,17 @@ export function FeedCard({
                     />
                     <MoreMenuItem
                       icon={<Trash2 className="h-4 w-4" />}
-                      label="Post löschen"
+                      label={t('postOwnerMenu.deletePost')}
                       destructive
                       onClick={async () => {
                         setShowMoreMenu(false);
-                        if (!confirm('Post wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.')) return;
+                        if (!confirm(t('postOwnerMenu.deleteConfirm'))) return;
                         const res = await deletePost(post.id);
                         if (res.ok) {
-                          toast('Post gelöscht.');
+                          toast(t('postOwnerMenu.deletedToast'));
                           router.refresh();
                         } else {
-                          toast.error(res.error ?? 'Löschen fehlgeschlagen.');
+                          toast.error(res.error ?? t('postOwnerMenu.deleteFailed'));
                         }
                       }}
                     />
@@ -785,16 +788,16 @@ export function FeedCard({
                   <>
                     <MoreMenuItem
                       icon={<EyeOff className="h-4 w-4" />}
-                      label="Kein Interesse"
+                      label={t('postMenu.notInterested')}
                       onClick={async () => {
                         setShowMoreMenu(false);
                         if (!viewerId) {
-                          toast('Bitte zuerst anmelden.');
+                          toast(t('comments.loginFirst'));
                           return;
                         }
                         const res = await markPostNotInteresting(post.id);
                         if (res.ok) {
-                          toast('Wir zeigen dir weniger davon.');
+                          toast(t('postMenu.notInterestedToast'));
                           router.refresh();
                         } else {
                           toast.error(res.error);
@@ -802,30 +805,30 @@ export function FeedCard({
                       }}
                     />
                     <div className="px-4 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wide text-white/45">
-                      Melden
+                      {t('postMenu.report')}
                     </div>
                     {POST_REPORT_REASONS.map((reason) => (
                       <MoreMenuItem
                         key={reason.value}
                         icon={<Flag className="h-4 w-4" />}
-                        label={reason.label}
+                        label={t(`postMenu.reason_${reason.value}` as TranslationKey)}
                         onClick={() => void submitPostReport(reason.value)}
                       />
                     ))}
                     {viewerIsAdmin && (
                       <MoreMenuItem
                         icon={<Trash2 className="h-4 w-4" />}
-                        label="Entfernen (Admin)"
+                        label={t('postMenu.adminRemove')}
                         destructive
                         onClick={async () => {
                           setShowMoreMenu(false);
-                          if (!confirm('Diesen Beitrag als Admin entfernen? Wird protokolliert.')) return;
+                          if (!confirm(t('postMenu.adminRemoveConfirm'))) return;
                           const res = await adminRemovePost(post.id);
                           if (res.ok) {
-                            toast('Beitrag entfernt.');
+                            toast(t('postMenu.adminRemovedToast'));
                             router.refresh();
                           } else {
-                            toast.error(res.error ?? 'Entfernen fehlgeschlagen.');
+                            toast.error(res.error ?? t('postMenu.adminRemoveFailed'));
                           }
                         }}
                       />
@@ -834,15 +837,15 @@ export function FeedCard({
                 )}
                 <MoreMenuItem
                   icon={<LinkIcon className="h-4 w-4" />}
-                  label="Link kopieren"
+                  label={t('postMenu.copyLink')}
                   onClick={async () => {
                     setShowMoreMenu(false);
                     const url = `${window.location.origin}/p/${post.id}`;
                     try {
                       await navigator.clipboard.writeText(url);
-                      toast('Link kopiert.');
+                      toast(t('postMenu.linkCopied'));
                     } catch {
-                      toast.error('Kopieren fehlgeschlagen.');
+                      toast.error(t('postMenu.copyFailed'));
                     }
                   }}
                 />
@@ -850,7 +853,7 @@ export function FeedCard({
                 {post.allow_download && post.media_type !== 'image' && post.video_url && (
                   <MoreMenuItem
                     icon={<Download className="h-4 w-4" />}
-                    label="Video herunterladen"
+                    label={t('feed.downloadVideo')}
                     onClick={() => {
                       setShowMoreMenu(false);
                       const a = document.createElement('a');
@@ -865,7 +868,7 @@ export function FeedCard({
                 )}
                 <MoreMenuItem
                   icon={<PictureInPicture2 className="h-4 w-4" />}
-                  label="Schwebender Player"
+                  label={t('feed.pipLabel')}
                   onClick={async () => {
                     setShowMoreMenu(false);
                     const v = videoRef.current;
@@ -885,11 +888,11 @@ export function FeedCard({
                         if (typeof reqPip === 'function') {
                           await reqPip.call(v);
                         } else {
-                          toast('Dein Browser unterstützt das nicht.');
+                          toast(t('feed.pipUnsupported'));
                         }
                       }
                     } catch {
-                      toast.error('Schwebender Player nicht verfügbar.');
+                      toast.error(t('feed.pipUnavailable'));
                     }
                   }}
                 />
@@ -947,7 +950,7 @@ export function FeedCard({
         <div
           role="button"
           tabIndex={0}
-          aria-label="Video pausieren / abspielen"
+          aria-label={t('feed.playPauseAria')}
           onClick={handleVideoTap}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ' ') {
@@ -1150,7 +1153,7 @@ export function FeedCard({
               <Music className="h-3 w-3" />
             </span>
             <span className="truncate max-w-[140px]">
-              {post.audio_url ? 'Musik' : 'Original-Sound'}
+              {post.audio_url ? t('feed.music') : t('feed.originalSound')}
             </span>
           </div>
         )}
@@ -1241,7 +1244,7 @@ export function FeedCard({
       <Link
         href={`/u/${post.author.username}` as Route}
         className="relative rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-        aria-label={`Profil von @${post.author.username} öffnen`}
+        aria-label={t('feed.profileOfAria', { username: post.author.username })}
       >
         <Avatar className="h-14 w-14 border-2 border-background shadow-elevation-1">
           <AvatarImage src={optimizedAuthorAvatarUrl} alt="" />
@@ -1259,7 +1262,7 @@ export function FeedCard({
               if (followMut.isPending) return;
               followMut.mutate({ userId: post.author.id, following: post.following_author });
             }}
-            aria-label="Folgen"
+            aria-label={t('feed.followAria')}
             className="absolute -bottom-1.5 left-1/2 flex h-5 w-5 -translate-x-1/2 items-center justify-center rounded-full bg-foreground text-background shadow-elevation-1 ring-2 ring-background transition-transform duration-fast ease-out-expo hover:scale-110 disabled:opacity-60"
             disabled={followMut.isPending}
           >
@@ -1305,10 +1308,10 @@ export function FeedCard({
         label={post.allow_comments ? formatCount(post.comment_count) : '—'}
         ariaLabel={
           !post.allow_comments
-            ? 'Kommentare deaktiviert'
+            ? t('feed.commentsDisabled')
             : isCommentsOpenForThisPost
-              ? 'Kommentare schließen'
-              : `Kommentare öffnen — ${post.comment_count} Kommentare`
+              ? t('feed.commentsClose')
+              : t('feed.commentsOpenAria', { count: post.comment_count })
         }
         onClick={() => {
           if (isCommentsOpenForThisPost) closeComments();
@@ -1328,8 +1331,8 @@ export function FeedCard({
             aria-hidden="true"
           />
         }
-        label={post.saved_by_me ? 'Gespeichert' : 'Merken'}
-        ariaLabel={post.saved_by_me ? 'Aus Merkliste entfernen' : 'Zur Merkliste hinzufügen'}
+        label={post.saved_by_me ? t('feed.saved') : t('feed.save')}
+        ariaLabel={post.saved_by_me ? t('feed.unsaveAria') : t('feed.saveAria')}
         disabled={!viewerId || saveMut.isPending}
         onClick={() =>
           viewerId && saveMut.mutate({ postId: post.id, saved: post.saved_by_me })
@@ -1346,8 +1349,8 @@ export function FeedCard({
               aria-hidden="true"
             />
           }
-          label={post.reposted_by_me ? 'Repostet' : 'Reposten'}
-          ariaLabel={post.reposted_by_me ? 'Repost entfernen' : 'Post reposten'}
+          label={post.reposted_by_me ? t('feed.reposted') : t('feed.repost')}
+          ariaLabel={post.reposted_by_me ? t('feed.unrepostAria') : t('feed.repostAria')}
           disabled={repostMut.isPending}
           onClick={() =>
             repostMut.mutate({ postId: post.id, reposted: post.reposted_by_me })
@@ -1360,7 +1363,7 @@ export function FeedCard({
       <ActionButton
         icon={<Share2 className="h-6 w-6" aria-hidden="true" />}
         label={formatCount(post.share_count)}
-        ariaLabel={`Teilen — ${post.share_count} mal geteilt`}
+        ariaLabel={t('feed.shareCountAria', { count: post.share_count })}
         onClick={handleShare}
         circleClassName="h-11 w-11"
       />
@@ -1409,13 +1412,13 @@ export function FeedCard({
       >
         <div className="pointer-events-none absolute inset-0 bg-black/60" aria-hidden="true" />
         <div className="relative z-10 w-full max-w-sm rounded-t-2xl sm:rounded-2xl bg-card border border-border p-5 shadow-xl">
-          <h3 className="mb-3 text-sm font-semibold">Caption bearbeiten</h3>
+          <h3 className="mb-3 text-sm font-semibold">{t('feed.editCaption')}</h3>
           <textarea
             value={editCaption}
             onChange={(e) => setEditCaption(e.target.value.slice(0, 2000))}
             rows={4}
             className="w-full resize-none rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-            placeholder="Was möchtest du teilen?"
+            placeholder={t('feed.captionPlaceholder')}
             disabled={editPending}
             autoFocus
           />
@@ -1429,7 +1432,7 @@ export function FeedCard({
               disabled={editPending}
               className="flex-1 rounded-full border border-border py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
             >
-              Abbrechen
+              {t('common.cancel')}
             </button>
             <button
               type="button"
@@ -1438,17 +1441,17 @@ export function FeedCard({
                 startEditTransition(async () => {
                   const res = await patchPostCaption(post.id, editCaption);
                   if (res.ok) {
-                    toast('Caption aktualisiert.');
+                    toast(t('feed.captionSaved'));
                     setEditOpen(false);
                     router.refresh();
                   } else {
-                    toast.error(res.error ?? 'Speichern fehlgeschlagen.');
+                    toast.error(res.error ?? t('feed.saveFailed'));
                   }
                 });
               }}
               className="flex-1 rounded-full bg-primary py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
-              {editPending ? 'Speichere…' : 'Speichern'}
+              {editPending ? t('feed.saving') : t('common.save')}
             </button>
           </div>
         </div>

@@ -11,6 +11,7 @@ import {
 } from './feed-interaction-context';
 import type { FeedPost, FollowedAccount, SuggestedFollow, TrendingHashtag } from '@/lib/data/feed';
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/lib/i18n/client';
 
 const LazyCommentSheet = dynamic(
   () => import('./comment-sheet').then((mod) => mod.CommentSheet),
@@ -110,6 +111,7 @@ function HomeFeedShellBody({
   viewerIsAdmin = false,
   viewerProfile,
 }: HomeFeedShellProps) {
+  const { t } = useI18n();
   const [tab, setTab] = useState<TabKey>(initialTab);
   const { commentsOpenForPostId, closeComments } = useFeedInteraction();
 
@@ -214,7 +216,7 @@ function HomeFeedShellBody({
 
   return (
     <main
-      aria-label="Feed"
+      aria-label={t('feed.feedAria')}
       className={cn(
         'grid h-[100dvh] w-full grid-cols-1 grid-rows-[minmax(0,1fr)]',
         // Grid-Template je nach Panel-Mode.
@@ -263,7 +265,7 @@ function HomeFeedShellBody({
       <div className="relative flex min-w-0 flex-col bg-background text-foreground">
         <div
           role="tablist"
-          aria-label="Feed-Quellen"
+          aria-label={t('feed.sourcesAria')}
           // v1.w.UI.246 — flachere, schlankere Pill: engeres gap/padding auf
           // Mobile (war zu wuchtig), ab xl wieder etwas luftiger. Die Buttons
           // selbst bekommen `whitespace-nowrap` damit „Für dich" / „Folge ich"
@@ -271,18 +273,18 @@ function HomeFeedShellBody({
           className="absolute left-1/2 top-2.5 z-20 flex -translate-x-1/2 items-center gap-4 rounded-full bg-black/60 px-4 py-1 backdrop-blur-md xl:gap-6 xl:px-5"
         >
           <FeedTabButton
-            label="Für dich"
+            label={t('feed.forYou')}
             active={tab === 'foryou'}
             onClick={() => setTab('foryou')}
           />
           <FeedTabButton
-            label="Folge ich"
+            label={t('feed.followingTab')}
             active={tab === 'following'}
             disabled={!viewerId}
             onClick={() => setTab('following')}
           />
           <FeedTabButton
-            label="Freunde"
+            label={t('feed.friends')}
             active={tab === 'friends'}
             disabled={!viewerId}
             onClick={() => setTab('friends')}
@@ -393,6 +395,7 @@ function FeedSidebarRight({
   viewerId: string | null;
   trendingHashtags?: TrendingHashtag[];
 }) {
+  const { t } = useI18n();
   const follow = useToggleFollow();
   const [pending, startTransition] = useTransition();
 
@@ -487,8 +490,8 @@ function FeedSidebarRight({
       <footer className="mt-auto text-xs text-muted-foreground">
         <nav className="flex flex-wrap gap-x-3 gap-y-1">
           <Link href={'/terms' as Route} className="hover:text-foreground">AGB</Link>
-          <Link href={'/privacy' as Route} className="hover:text-foreground">Datenschutz</Link>
-          <Link href={'/imprint' as Route} className="hover:text-foreground">Impressum</Link>
+          <Link href={'/privacy' as Route} className="hover:text-foreground">{t('feed.privacyLink')}</Link>
+          <Link href={'/imprint' as Route} className="hover:text-foreground">{t('feed.imprintLink')}</Link>
         </nav>
         <div className="mt-2">© {new Date().getFullYear()} Serlo</div>
       </footer>
@@ -524,6 +527,7 @@ function ForYouEmptyState({
   suggested: SuggestedFollow[];
   viewerId: string | null;
 }) {
+  const { t } = useI18n();
   const follow = useToggleFollow();
   const [, startTransition] = useTransition();
 
@@ -535,9 +539,9 @@ function ForYouEmptyState({
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-muted">
             <Sparkles className="h-7 w-7 text-muted-foreground" />
           </div>
-          <h2 className="text-lg font-semibold">Willkommen auf Serlo!</h2>
+          <h2 className="text-lg font-semibold">{t('feed.welcome')}</h2>
           <p className="text-sm text-muted-foreground">
-            Folge anderen Accounts — dein Feed füllt sich dann automatisch mit Content, der zu dir passt.
+            {t('feed.welcomeHint')}
           </p>
         </div>
 
@@ -630,6 +634,7 @@ function FollowingEmptyState({
   suggested: SuggestedFollow[];
   viewerId: string | null;
 }) {
+  const { t } = useI18n();
   const follow = useToggleFollow();
   const [, startTransition] = useTransition();
 
@@ -641,9 +646,9 @@ function FollowingEmptyState({
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
             <UserRound className="h-6 w-6 text-muted-foreground" />
           </div>
-          <h2 className="text-base font-semibold">Noch keine Posts</h2>
+          <h2 className="text-base font-semibold">{t('feed.emptyTitle')}</h2>
           <p className="text-sm text-muted-foreground">
-            Folge anderen Accounts, um ihren Content hier zu sehen.
+            {t('feed.followingEmptyHint')}
           </p>
         </div>
 

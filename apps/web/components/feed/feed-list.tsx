@@ -12,6 +12,7 @@ import { useTogglePostLike } from '@/hooks/use-engagement';
 import { recordPostView } from '@/app/actions/engagement';
 import type { FeedPost } from '@/lib/data/feed';
 import { cn } from '@/lib/utils';
+import { useI18n } from '@/lib/i18n/client';
 import { ArrowDown, ArrowUp, Compass, KeyboardIcon, RefreshCw } from 'lucide-react';
 
 // ── DisplayRow: interleaved Posts + Live-Cards ───────────────────────────────
@@ -54,6 +55,7 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header, f
   // Mutations in `use-engagement` nutzen `setQueriesData({ queryKey: ['feed'] }, …)`
   // mit Partial-Match, so werden BEIDE Caches bei Like/Save/Follow/Comment synchron
   // gehalten (ein Post kann in For-You UND Following gleichzeitig auftauchen).
+  const { t } = useI18n();
   const qc = useQueryClient();
   useEffect(() => {
     qc.setQueryData<FeedPost[]>(['feed', feedKey], initialPosts);
@@ -492,7 +494,7 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header, f
           className="absolute inset-x-0 top-4 z-30 mx-auto flex w-fit items-center gap-1.5 rounded-full bg-foreground px-4 py-2 text-xs font-semibold text-background shadow-lg transition-transform hover:scale-105 active:scale-95"
         >
           <RefreshCw className="h-3.5 w-3.5" />
-          Neue Posts
+          {t('feed.newPosts')}
         </button>
       )}
 
@@ -505,8 +507,8 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header, f
         {empty && (
           <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-muted-foreground">
             <Compass className="h-10 w-10 opacity-30" strokeWidth={1.5} />
-            <p className="text-sm font-medium">Noch keine Posts hier.</p>
-            <p className="text-xs opacity-70">Schau in /explore rein oder folge neuen Accounts.</p>
+            <p className="text-sm font-medium">{t('feed.emptyHereTitle')}</p>
+            <p className="text-xs opacity-70">{t('feed.emptyHereHint')}</p>
           </div>
         )}
 
@@ -583,7 +585,7 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header, f
           onClick={() => scrollTo(activeIdx - 1)}
           disabled={activeIdx === 0}
           className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-foreground shadow-md backdrop-blur hover:bg-background disabled:opacity-40"
-          aria-label="Vorheriges Video (K)"
+          aria-label={t('feed.prevVideoAria')}
         >
           <ArrowUp className="h-5 w-5" />
         </button>
@@ -592,7 +594,7 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header, f
           onClick={() => scrollTo(activeIdx + 1)}
           disabled={activeIdx >= displayRows.length - 1}
           className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-foreground shadow-md backdrop-blur hover:bg-background disabled:opacity-40"
-          aria-label="Nächstes Video (J)"
+          aria-label={t('feed.nextVideoAria')}
         >
           <ArrowDown className="h-5 w-5" />
         </button>
@@ -600,7 +602,7 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header, f
           type="button"
           onClick={() => setShowHint((s) => !s)}
           className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full bg-background/80 text-foreground shadow-md backdrop-blur hover:bg-background"
-          aria-label="Tastaturkürzel anzeigen"
+          aria-label={t('feed.shortcutsAria')}
         >
           <KeyboardIcon className="h-5 w-5" />
         </button>
@@ -610,15 +612,15 @@ export function FeedList({ initialPosts, viewerId, feedKey = 'foryou', header, f
         <div className="pointer-events-none absolute bottom-6 left-1/2 z-30 -translate-x-1/2 rounded-lg bg-background/95 px-4 py-3 text-xs shadow-lg backdrop-blur">
           <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
             <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono">J / ↓</kbd>
-            <span>Nächstes</span>
+            <span>{t('feed.kbdNext')}</span>
             <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono">K / ↑</kbd>
-            <span>Vorheriges</span>
+            <span>{t('feed.kbdPrev')}</span>
             <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono">L</kbd>
-            <span>Like</span>
+            <span>{t('feed.kbdLike')}</span>
             <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono">M</kbd>
-            <span>Stumm</span>
+            <span>{t('feed.kbdMute')}</span>
             <kbd className="rounded bg-muted px-1.5 py-0.5 font-mono">Space</kbd>
-            <span>Pause</span>
+            <span>{t('feed.kbdPause')}</span>
           </div>
         </div>
       )}
