@@ -1,45 +1,325 @@
 {
-  "preset": "night",
+  "preset": "dawn",
   "sun": {
-    "x": 0.3,
-    "y": 0.36
+    "x": 0.23779335355860096,
+    "y": 0.6026173531380961
   },
-  "cloud": 0.65,
+  "cloud": 1,
   "layers": [
     {
-      "file": "ridge-a.png",
-      "x": 0.5,
-      "bottom": 0.26,
-      "scale": 1.12,
-      "depth": 0.85
+      "file": "peak-solo-a.png",
+      "x": 0.3456742337064546,
+      "bottom": 0.37820070920227145,
+      "scale": 0.33343739835624514,
+      "depth": 0.5,
+      "flip": true,
+      "opacity": 1,
+      "anim": {
+        "type": "none",
+        "amount": 0.5,
+        "speed": 1
+      }
     },
     {
       "file": "ridge-b.png",
-      "x": 0.46,
-      "bottom": 0.16,
-      "scale": 1.1,
-      "depth": 0.62
+      "x": 0.2873974510138564,
+      "bottom": 0.059614992782530796,
+      "scale": 1.28,
+      "depth": 0.62,
+      "anim": {
+        "type": "none",
+        "amount": 0.5,
+        "speed": 1
+      },
+      "flip": false,
+      "opacity": 0.8
     },
     {
       "file": "ridge-c.png",
-      "x": 0.55,
-      "bottom": 0.06,
-      "scale": 1.14,
-      "depth": 0.4
-    },
-    {
-      "file": "tower-main.png",
-      "x": 0.66,
-      "bottom": 0.13,
-      "scale": 0.09,
-      "depth": 0.22
+      "x": 0.7396167148464151,
+      "bottom": 0.06194863767981211,
+      "scale": 0.7672508827887551,
+      "depth": 0.4,
+      "anim": {
+        "type": "none",
+        "amount": 0.5,
+        "speed": 1
+      },
+      "flip": false,
+      "opacity": null
     },
     {
       "file": "foreground.png",
-      "x": 0.5,
-      "bottom": -0.06,
-      "scale": 1.15,
-      "depth": 0.04
+      "x": 0.46944244086865416,
+      "bottom": -0.004109539943133139,
+      "scale": 1.6,
+      "depth": 0.04,
+      "anim": {
+        "type": "none",
+        "amount": 0.5,
+        "speed": 1
+      },
+      "flip": false,
+      "opacity": 0.978
+    },
+    {
+      "file": "fels-a.png",
+      "x": 0.18224998160043832,
+      "bottom": 0.23510849243686427,
+      "scale": 0.4,
+      "depth": 0.5,
+      "flip": false,
+      "opacity": 1,
+      "anim": {
+        "type": "none",
+        "amount": 0.5,
+        "speed": 1
+      }
+    },
+    {
+      "file": "fels-b.png",
+      "x": 0.38867382567486825,
+      "bottom": 0.2468847506278078,
+      "scale": 0.4,
+      "depth": 0.5,
+      "flip": false,
+      "opacity": 0.95,
+      "anim": {
+        "type": "none",
+        "amount": 0.5,
+        "speed": 1
+      }
+    },
+    {
+      "file": "kamm-a.png",
+      "x": 0.7644941939533424,
+      "bottom": 0.40704614774220754,
+      "scale": 0.4,
+      "depth": 0.5,
+      "flip": false,
+      "opacity": null,
+      "anim": {
+        "type": "none",
+        "amount": 0.5,
+        "speed": 1
+      }
+    },
+    {
+      "file": "kamm-b.png",
+      "x": 0.675966802664156,
+      "bottom": 0.3584417031725038,
+      "scale": 0.4,
+      "depth": 0.5,
+      "flip": false,
+      "opacity": 1,
+      "anim": {
+        "type": "none",
+        "amount": 0.5,
+        "speed": 1
+      }
+    },
+    {
+      "file": "kamm-c.png",
+      "x": 0.9418942009275725,
+      "bottom": 0.23678800803431943,
+      "scale": 0.4,
+      "depth": 0.5,
+      "flip": false,
+      "opacity": null,
+      "anim": {
+        "type": "none",
+        "amount": 0.5,
+        "speed": 1
+      }
+    },
+    {
+      "file": "peak-double-a.png",
+      "x": 0.017086864037381855,
+      "bottom": 0.4392764153048826,
+      "scale": 0.3468590136196417,
+      "depth": 0.5,
+      "flip": false,
+      "opacity": 1,
+      "anim": {
+        "type": "none",
+        "amount": 0.5,
+        "speed": 1
+      }
+    },
+    {
+      "file": "peak-solo-b.png",
+      "x": 0.9995536492659621,
+      "bottom": 0.13102275798056895,
+      "scale": 0.4,
+      "depth": 0.5,
+      "flip": false,
+      "opacity": null,
+      "anim": {
+        "type": "none",
+        "amount": 0.5,
+        "speed": 1
+      }
+    },
+    {
+      "file": "ridge-a.png",
+      "x": 0.8640583045646337,
+      "bottom": 0.245941314756581,
+      "scale": 0.5509734628867543,
+      "depth": 0.59,
+      "flip": false,
+      "opacity": 0.95,
+      "anim": {
+        "type": "none",
+        "amount": 0.5,
+        "speed": 1
+      }
+    },
+    {
+      "file": "ruecken-b.png",
+      "x": -0.04475014820239221,
+      "bottom": 0.5126515733875566,
+      "scale": 0.4,
+      "depth": 0.5,
+      "flip": false,
+      "opacity": null,
+      "anim": {
+        "type": "none",
+        "amount": 0.5,
+        "speed": 1
+      }
+    },
+    {
+      "file": "tower2-dark.webp",
+      "x": 0.1302542106914949,
+      "bottom": 0.562184568655657,
+      "scale": 0.04,
+      "depth": 0.5,
+      "flip": false,
+      "opacity": 1,
+      "anim": {
+        "type": "none",
+        "amount": 0.5,
+        "speed": 1
+      }
+    },
+    {
+      "file": "tower-c-poster.webp",
+      "x": 0.9278655368413709,
+      "bottom": 0.1819308859460575,
+      "scale": 0.158226519358905,
+      "depth": 0.5,
+      "flip": false,
+      "opacity": 1,
+      "anim": {
+        "type": "none",
+        "amount": 0.5,
+        "speed": 1
+      }
+    },
+    {
+      "type": "cloud",
+      "x": 0.7334461875893328,
+      "bottom": 0.8067002276776517,
+      "size": 0.22850004043924857,
+      "amount": 0.8,
+      "soft": 0.5,
+      "drift": 0.6,
+      "seed": 1.9829323156001932,
+      "scale": 0.3,
+      "depth": 0,
+      "flip": false,
+      "opacity": null,
+      "anim": {
+        "type": "none",
+        "amount": 0.5,
+        "speed": 1
+      }
+    },
+    {
+      "type": "cloud",
+      "x": 0.19631144995581432,
+      "bottom": 0.7659645241794422,
+      "size": 0.2,
+      "amount": 1,
+      "soft": 0.7,
+      "drift": 0.6,
+      "seed": 1.3700847931920612,
+      "scale": 0.3,
+      "depth": 0,
+      "flip": false,
+      "opacity": null,
+      "anim": {
+        "type": "none",
+        "amount": 0.5,
+        "speed": 1
+      }
+    },
+    {
+      "file": "ruecken-a.png",
+      "x": 0.49751717404191514,
+      "bottom": 0.4000916614636609,
+      "scale": 0.4,
+      "depth": 0.5,
+      "flip": false,
+      "opacity": null,
+      "anim": {
+        "type": "none",
+        "amount": 0.5,
+        "speed": 1
+      }
+    },
+    {
+      "type": "cloud",
+      "x": 0.6054394815109649,
+      "bottom": 0.6376067772501373,
+      "size": 0.14,
+      "amount": 0.8,
+      "soft": 0.5,
+      "drift": 0.6,
+      "seed": 8.932724587952057,
+      "scale": 0.3,
+      "depth": 0,
+      "flip": false,
+      "opacity": null,
+      "anim": {
+        "type": "none",
+        "amount": 0.5,
+        "speed": 1
+      }
+    },
+    {
+      "type": "cloud",
+      "x": 0.49967836996293236,
+      "bottom": 0.8809351866057686,
+      "size": 0.21499568804928895,
+      "amount": 0.8,
+      "soft": 0.5,
+      "drift": 0.6,
+      "seed": 1.6672329142995046,
+      "scale": 0.3,
+      "depth": 0,
+      "flip": false,
+      "opacity": null,
+      "anim": {
+        "type": "none",
+        "amount": 0.5,
+        "speed": 1
+      }
     }
-  ]
+  ],
+  "_v": 2,
+  "fx": {
+    "haze": 0.04,
+    "vignette": 0.02,
+    "grain": 0.085,
+    "light": 0.55,
+    "stars": 0
+  },
+  "colors": {
+    "skyTop": "#061326",
+    "skyHorizon": "#6b5c4d",
+    "sun": "#ffbd61",
+    "cloud": "#131d2d"
+  },
+  "format": "desktop"
 }

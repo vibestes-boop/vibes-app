@@ -8,6 +8,11 @@ import type { LiveSessionWithHost } from '@/lib/data/live';
 import type { FeedPost } from '@/lib/data/feed';
 import { ExploreVideoCard } from '@/components/explore/explore-video-card';
 import { getT } from '@/lib/i18n/server';
+import { HeroHorizon, type HeroLayout } from '@/components/hero/hero-horizon';
+import heroLayoutJson from '@/public/hero/hero-layout.json';
+
+// Zaurs im Hero-Editor komponierte Berg-Szene (Sonnenaufgang, Wolken, Türme).
+const heroLayout = heroLayoutJson as unknown as HeroLayout;
 
 // -----------------------------------------------------------------------------
 // Landing-Page für ausgeloggte Besucher.
@@ -36,49 +41,56 @@ export async function LandingPage({ featured, liveNow, trendingPosts }: LandingP
   const t = await getT();
   return (
     <main className="min-h-dvh bg-background" data-testid="public-landing">
-      {/* Hero */}
-      <section className="container mx-auto flex flex-col items-center px-4 py-16 text-center sm:py-20 lg:py-28">
-        <Link href="/" className="mb-5 flex items-center gap-3 rounded-full border border-border bg-card px-3 py-2 shadow-sm">
-          <Image
-            src="/icon.svg"
-            alt="Serlo"
-            width={36}
-            height={36}
-            className="h-9 w-9 rounded-xl"
-            priority
-          />
-          <span className="pr-1 text-sm font-semibold tracking-tight">Serlo</span>
-        </Link>
+      {/* Hero — Zaurs Silhouetten-Szene mit Sonnenaufgang, davor Text + CTAs */}
+      <HeroHorizon layout={heroLayout} className="min-h-[82svh]">
+        <section className="container mx-auto flex min-h-[82svh] flex-col items-center justify-center px-4 py-16 text-center sm:py-20">
+          <Link href="/" className="mb-5 flex items-center gap-3 rounded-full border border-white/15 bg-black/25 px-3 py-2 shadow-sm backdrop-blur-sm">
+            <Image
+              src="/icon.svg"
+              alt="Serlo"
+              width={36}
+              height={36}
+              className="h-9 w-9 rounded-xl"
+              priority
+            />
+            <span className="pr-1 text-sm font-semibold tracking-tight text-white">Serlo</span>
+          </Link>
 
-        <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-card px-4 py-1.5 text-sm text-muted-foreground">
-          <Sparkles className="h-3.5 w-3.5 text-brand-gold" />
-          {liveNow.length > 0
-            ? (liveNow.length === 1 ? t('landing.streamsLiveOne') : t('landing.streamsLiveMany', { count: liveNow.length }))
-            : t('landing.betaBadge')}
-        </div>
+          <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/25 px-4 py-1.5 text-sm text-white/85 backdrop-blur-sm">
+            <Sparkles className="h-3.5 w-3.5 text-brand-gold" />
+            {liveNow.length > 0
+              ? (liveNow.length === 1 ? t('landing.streamsLiveOne') : t('landing.streamsLiveMany', { count: liveNow.length }))
+              : t('landing.betaBadge')}
+          </div>
 
-        <h1 className="max-w-3xl text-4xl font-bold tracking-tight sm:text-5xl md:text-7xl">
-          {t('landing.heroTitle')}
-          <br />
-          <span className="text-muted-foreground">{t('landing.heroSubtitle')}</span>
-        </h1>
+          <h1 className="max-w-3xl text-4xl font-bold tracking-tight text-white drop-shadow-[0_2px_18px_rgba(0,0,0,0.55)] sm:text-5xl md:text-7xl">
+            {t('landing.heroTitle')}
+            <br />
+            <span className="text-white/65">{t('landing.heroSubtitle')}</span>
+          </h1>
 
-        <p className="mt-6 max-w-xl text-base leading-7 text-muted-foreground sm:text-lg">
-          {t('landing.heroText')}
-        </p>
+          <p className="mt-6 max-w-xl text-base leading-7 text-white/80 drop-shadow-[0_1px_10px_rgba(0,0,0,0.6)] sm:text-lg">
+            {t('landing.heroText')}
+          </p>
 
-        <div className="mt-10 flex flex-col gap-3 sm:flex-row">
-          <Button asChild size="xl">
-            <Link href={'/login' as Route}>
-              {t('auth.login')}
-              <ArrowRight className="ml-1 h-4 w-4" />
-            </Link>
-          </Button>
-          <Button asChild size="xl" variant="outline">
-            <Link href={'/signup' as Route}>{t('auth.signup')}</Link>
-          </Button>
-        </div>
-      </section>
+          <div className="mt-10 flex flex-col gap-3 sm:flex-row">
+            <Button asChild size="xl">
+              <Link href={'/login' as Route}>
+                {t('auth.login')}
+                <ArrowRight className="ml-1 h-4 w-4" />
+              </Link>
+            </Button>
+            <Button
+              asChild
+              size="xl"
+              variant="outline"
+              className="border-white/30 bg-white/10 text-white hover:bg-white/20 hover:text-white"
+            >
+              <Link href={'/signup' as Route}>{t('auth.signup')}</Link>
+            </Button>
+          </div>
+        </section>
+      </HeroHorizon>
 
       {/* Jetzt live — nur wenn Streams aktiv sind */}
       {liveNow.length > 0 && (
