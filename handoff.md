@@ -502,7 +502,7 @@ cd apps/web && npx tsc --noEmit && npm run build   # beide grün halten
 EAS_BUILD=1 npx eas update --branch production --message "…" --non-interactive
 #   → OTA zieht nur beim KALTEN App-Neustart (App-Switcher → hochwischen)!
 
-# Native Build (nur neue native Deps) — app.json: version 1.30.0, ios.buildNumber 286
+# Native Build (nur neue native Deps) — app.json: version 1.30.0, ios.buildNumber 291
 npx eas build --platform ios --profile production && npx eas submit --platform ios --latest
 
 # Push zu GitHub (PAT aus .env.local, NIE echoen!)
@@ -514,7 +514,7 @@ git push "https://x-access-token:${TOKEN}@github.com/vibestes-boop/vibes-app.git
 ```
 - **DB-Migrationen**: `.sql` unter `supabase/migrations/` (14-stellig), **Zaur führt sie im Supabase-SQL-Editor aus.** Return-Type-Change einer RPC = DROP + CREATE.
 - **Reihenfolge**: Bei Web-Selects auf neue Spalten (direktes PostgREST) → **Migration ZUERST**, dann pushen, sonst bricht der Shop (Spalte fehlt). Bei reinen RPC-Calls/Buttons ist die Reihenfolge egal.
-- **Verifizieren vor Commit** (Zaur: „commits kosten Geld"): Root `npx tsc --noEmit` (Baseline = **2 harmlose `rose`-Fehler** in explore/guild-Styles) + apps/web `npm run build`.
+- **Verifizieren vor Commit** (Zaur: „commits kosten Geld"): Root `npx tsc --noEmit` (Baseline seit Session 10 = **0 Fehler**) + apps/web `npm run build`.
 
 ---
 
