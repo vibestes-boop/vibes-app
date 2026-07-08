@@ -1,4 +1,4 @@
-# Handoff — Serlo/Vibes (Stand 5. Juli 2026 · Session 9)
+# Handoff — Serlo/Vibes (Stand 8. Juli 2026 · Session 10)
 
 > 📍 **Dieses Dokument: `/Users/zaurhatuev/vibes-app/handoff.md`**
 > Arbeite NUR in diesem Repo: **`/Users/zaurhatuev/vibes-app`** (Branch `main`).
@@ -14,16 +14,16 @@
 
 ## 🚀 Neue Sitzung — Start hier
 
-- **Stand:** Session 9 = **App-Store Build 287 gebaut + EINGEREICHT** (Apple prüft), Editor-Glas, Profil-Tabs icon-only, Home-/Clan-Profil-Swipe, Team-Doku (Briefing+PDF+Access-Map), großer **Admin-Command-Center-Ausbau** (4 Daten-Bugs + 4 neue Seiten + moderierbare Inhalte) und **In-App-Support-Kanal mit Antwort-Benachrichtigung**. Alles committed + gepusht + verifiziert, viele OTAs raus. Working Tree sauber. Letzter Commit **`2462477`**.
+- **Stand:** Session 10 (7.–8. Juli) = **3 App-Store-Ablehnungen durchgearbeitet → Build 291 hochgeladen** (alle 5 Apple-Punkte gefixt), **echte Block-Durchsetzung** (Server-Trigger), **Konto-Löschung repariert** (war komplett kaputt: Function nie deployt + FK-Konflikte), **Push-Token-Fix** (alter Account bekam nach Wechsel weiter Pushes), **Web-OAuth-PKCE-Fix**, **serlo.ch verbunden**, und ein **großer i18n-Russisch-Sprint** (kompletter öffentlicher Web-Kern de+ru). Alles committed + gepusht + verifiziert. Letzter Commit **`6a84b26`**.
 - **🔴 UNMITTELBAR OFFEN (hier weitermachen):**
-  1. **App-Store-Prüfung läuft** — 1.30.0 / Build 287 ist bei Apple „Warten auf Prüfung" (eingereicht 5.7. 2:12). **Nichts zu tun außer warten** auf Apples Verdikt; bei Ablehnung Gründe im ASC lesen.
-  2. **Support-Loop testen** (nach diesem Deploy): App → Einstellungen → Hilfe & Support → schreiben → Web `/admin/support` antworten → Nutzer bekommt Push „💬 Antwort vom Team" + In-App. Migration + Edge-Function sind ausgeführt/deployt.
-  3. **Optional — Admin-Gegen-Loop:** Admin benachrichtigen, wenn eine **neue** Support-Anfrage reinkommt (damit schnell geantwortet wird). Noch nicht gebaut.
-- **⚠️ OTA-Rollback-Falle (Session 8 gelernt, weiter gültig):** `fallbackToCacheTimeout: 0` (app.json) → OTA greift erst beim **2. Kaltstart**. Bei hängender Rollback-Schleife: App aus TestFlight neu installieren. Build 287 (alles im Binary) entschärft das dauerhaft.
-- **App-Store-Launch (Zaurs Hauptziel — FAST DURCH):** Build 287 gebaut (`eas build … production` von `main`), Auto-Submit lief, ASC-Metadaten (Screenshots via PIL gerahmt: `~/Downloads/serlo-store/out/`, Privacy-Labels, 17+, Demo-Account, Review-Notes) von Zaur ausgefüllt → **eingereicht**. Coin-Shop per Feature-Flag versteckt (`lib/featureFlags.ts` `COIN_SHOP_ENABLED=false`). Version bewusst 1.30.0 gelassen (runtimeVersion `appVersion` → OTA-Runtime bleibt 1.30.0). **Simulator-Screenshots gehen NICHT** (MLKit x86_64-only) → Gerät + PIL-Rahmen genutzt.
-- **Realer Kontext:** Parfüm läuft **offline** (verkauft), 80 Flaschen in Lieferung, 5 App-Vorbestellungen getestet. Premortem: **erst validieren, dann mehr bauen.** Guild-Commerce v1 (Sammelbestellungs-Runden) ist gebaut + Migration ausgeführt — bereit für die 80er-Runde.
-- **Screenshots-Falle beim UI-Testen:** Overlay-Icons sehen im **Screenshot** sichtbar aus, auf dem **echten Display** (Reflexion/Helligkeit) aber nicht → dünne weiße Umrisse verschwinden. Lösung war: **solide gefüllte** Icons (mehr weiße Fläche) + Schatten. Beim UI-Debuggen immer Foto-vom-Display statt Screenshot vertrauen.
-- **Git-Push:** via PAT aus `.env.local` (§4). Lokaler Reflog kann alt aussehen — mit `git ls-remote` verifizieren, nicht dem Reflog trauen.
+  1. **ASC-Resubmit prüfen/machen:** Build **291** ist hochgeladen + Antwort an Apple gepostet. In ASC auf der Versionsseite sicherstellen, dass **Build 291** (nicht 287/289) angehängt ist → **„Erneut zur App-Prüfung übermitteln"**. Details zu allen 5 Fix-Punkten in §1.0.3-A.
+  2. **serlo.ch fertig verdrahten:** (a) Supabase → Auth → URL Configuration → Redirect-URLs `https://www.serlo.ch/**` + `https://serlo.ch/**` ergänzen (sonst bricht Login auf der neuen Domain). (b) `WEB_BASE` in `lib/webLinks.ts` + ~13 Web-Stellen von `serlo-web.vercel.app` auf `https://www.serlo.ch` umstellen (Share-Links) + OTA. Aktuell: www = primär, Apex = 308-Redirect, SSL ✓.
+  3. **i18n-Russisch fortsetzen (optional):** Rest = Shop-Listen-Details (Filter-Sidebar), Messages-/Studio-/Live-Tiefe, `components/layout/more-menu.tsx`; später ru-Keys nach ce/en spiegeln. Methode + Stand in §1.0.3-D.
+  4. **Impressum-Entscheidung (Zaur):** Name + ladungsfähige Adresse sind Pflicht (§5 DDG, Einzelunternehmer). Optionen: brandwerkx-Marke + brandwerkx.de ERGÄNZEN (Name bleibt) oder Geschäftsadresse mieten (Privatadresse raus). Bis Entscheidung: Impressum/Datenschutz NICHT anfassen.
+- **⚠️ OTA-Falle (weiter gültig):** OTA greift erst beim **2. Kaltstart**. `EAS_BUILD=1` zwingend.
+- **⚠️ Apple-Review-Learnings (Session 10):** (1) Purpose-Strings brauchen KONKRETES Beispiel („zum Beispiel um …"). (2) „Blockieren" muss WIRKLICH durchgesetzt sein — Apple testet es. (3) IAPs nur einreichen, wenn in der App auffindbar (Coin-Shop ist per Flag versteckt → IAPs aus Submission entfernt). (4) Apple-Provider in Supabase aktivieren nicht vergessen (Client-ID = Bundle-ID `com.vibesapp.vibes`, kein Secret nötig für native).
+- **Realer Kontext:** Parfüm läuft offline, 80 Flaschen in Lieferung. Premortem: erst validieren, dann bauen.
+- **Git-Push:** via PAT aus `.env.local` (§4). Immer mit `git ls-remote` verifizieren.
 
 ---
 
@@ -32,18 +32,54 @@
 | Bereich | Stand |
 |---|---|
 | **Repo / Branch** | `/Users/zaurhatuev/vibes-app` · `main` · Working Tree **sauber** |
-| **Letzter Commit** | `2462477` — In-App-Support-Kanal + Antwort-Benachrichtigung. **Alle Session-9-Commits gepusht & verifiziert (`git ls-remote`).** |
-| **Web (apps/web)** | deployt via **Vercel** auf Push zu `main`. **Live: `serlo-web.vercel.app` — ⚠️ OHNE `www`!** Sentry-Web AKTIV. |
-| **App-Build** | v1.30.0 / iOS-**Build 287** — **bei Apple eingereicht, „Warten auf Prüfung"** (5.7. 2:12). Runtime **1.30.0**. OTAs greifen beim 2. Kaltstart. Channel `production` → Branch `production` ✓. |
-| **Letzter OTA** | `2462477` (In-App-Support). **Viele Session-9-OTAs raus, alle Runtime 1.30.0.** Nächste App-Änderung: `EAS_BUILD=1 npx eas update --branch production --message "…"`. ⚠️ OTA greift erst beim 2. Kaltstart. |
-| **Edge Functions deployed** | `create-checkout-session`, `stripe-webhook`, `revenuecat-webhook`, `send-push-notification` (Session 9 **neu deployt**: kennt jetzt `support_reply`-Push). Webhooks `--no-verify-jwt` via `supabase/config.toml`. CLI war eingeloggt; Deploy via `npx supabase functions deploy <name> --project-ref llymwqfgujwkoxzqxrlm`. |
-| **DB-Migrationen** | ✅ **ALLE ausgeführt** (Zaur). Neu Session 9: `20260705120000_admin_remove_post`, `20260705130000_admin_audit_metadata_fix` (Bug: audit-log-Spalte heißt `metadata`, nicht `details` — blockierte Löschen/Enforce/Nutzer-Aktionen still), `20260705140000_support_reply_notification`. **Keine offene Migration.** |
-| **GERADE FERTIG (Session 9)** | **App-Store Build 287 gebaut + eingereicht** · **Editor-Bottom-Sheets auf theme-aware Glas** (`editor/sharedStyles.tsx` GlassSheet/useEditorSheet) · **Profil-Tabs icon-only** · **Home-Profil-Swipe-Fix** (kein Re-Open) + **Clan-Detail-Profil-Swipe** (Parität mit Home) · **direktes protokolliertes Admin-Löschen** fremder Posts (Mobile+Web, RPC `admin_remove_post`) · **`admin_audit_log`-metadata-Fix** (schaltet Löschen/Enforce/Nutzer-Aktionen frei) · **Command-Center-Ausbau**: 4 Daten-Bugs (Kommentare/Report-Kategorien/not_interested/Release-Stub), 4 neue Seiten (Live Feed, Inhalte, Analytics, Sicherheit), moderierbare Inhalte-Liste, Live-Feed-Auto-Refresh · **In-App-Support-Kanal** (`app/support.tsx` + Antwort→Push/In-App) · **Team-Doku** (`docs/PROJECT_BRIEFING.md` + PDF + `docs/ACCESS_MAP.md`). Voll in §1.0.4. |
-| **🔴 NÄCHSTE AUFGABE** | **(1)** App-Store-Prüfung abwarten (bei Ablehnung Gründe lesen). **(2)** Support-Loop end-to-end testen. **(3)** Optional: Admin-Benachrichtigung bei NEUER Support-Anfrage. |
-| **Monitoring** | Alles bewacht: UptimeRobot (3 Monitore), Sentry App+Web (Source Maps), Telegram-CI-Alerts (alle 5 Workflows), Stripe-Webhook-Mails. Doku: `docs/MONITORING.md`. CI-Baseline = **0 Fehler**. |
-| **Admin** | Zaur (`username='zaur'`, `profiles.is_admin = true`, `zaurhatu@gmail.com`, id `46c70dfb…`) — is_admin gewährt im Web-Panel ALLE Rechte (can_moderate/operate/admin). ⚠️ `auth.uid()` ist im SQL-Editor NULL → is_admin per E-Mail/Username prüfen, nicht via auth.uid(). |
+| **Letzter Commit** | `6a84b26` — i18n Notification-Texte + Landing. **Alle Session-10-Commits gepusht & verifiziert.** |
+| **Web (apps/web)** | Vercel auf Push zu `main`. **Live: `https://www.serlo.ch`** (Apex 308→www, SSL ✓) + weiterhin `serlo-web.vercel.app`. ⚠️ Code-Links (`WEB_BASE`) zeigen noch auf vercel.app → Umstellung offen (Start-hier #2). Sentry-Web aktiv + **Build bricht bei Sentry-Ausfall nicht mehr ab** (errorHandler in next.config.mjs). |
+| **App-Build** | v1.30.0 / iOS-**Build 291** — **in ASC hochgeladen, Resubmit ggf. noch auszulösen** (Start-hier #1). Enthält: Location-Key raus, neue Kamera/Foto-Purpose-Strings, Block-Client-Filter, Logout-Fix. Runtime 1.30.0. |
+| **Letzter OTA** | Commit `3302dbf`-Reihe (Block-Filter, Logout-Fix, Konto-Lösch-Fehlerbehandlung, Push-Token-Cleanup) — alle Runtime 1.30.0, greifen beim 2. Kaltstart. |
+| **Edge Functions deployed** | Wie Session 9 **plus**: `send-push-notification` (kennt `support_new`), **`delete-account` (war NIE deployt → 404 → jetzt live!)**. Deploy: `npx supabase functions deploy <name> --project-ref llymwqfgujwkoxzqxrlm`. |
+| **DB-Migrationen** | ✅ **ALLE ausgeführt** (Zaur). Neu Session 10: `20260705150000_support_new_admin_notification`, `20260707000000_block_enforcement`, `20260707120000_fix_account_deletion_fks`, `20260707140000_push_token_single_owner`. **Keine offene Migration.** |
+| **GERADE FERTIG (Session 10)** | **App-Store-Fix-Marathon → Build 291** (§1.0.3-A) · **Block-Durchsetzung echt** (§1.0.3-B) · **Konto-Löschung + Push-Token + Web-OAuth repariert** (§1.0.3-B/C) · **serlo.ch live** (§1.0.3-C) · **i18n-Russisch: kompletter öffentlicher Web-Kern** (§1.0.3-D) · Admin-Gegen-Loop `support_new` · Video-Spinner-Fix `/p`. |
+| **🔴 NÄCHSTE AUFGABE** | **(1)** ASC: Build 291 anhängen + erneut einreichen. **(2)** serlo.ch: Supabase-Redirects + WEB_BASE. **(3)** i18n-Rest / ce+en-Nachzug. **(4)** Impressum-Entscheidung. |
+| **Monitoring** | Unverändert bewacht (UptimeRobot, Sentry App+Web, Telegram-CI, Stripe-Mails). CI-Baseline **0**; Root-tsc jetzt komplett 0 (alte rose-Fehler weg). |
+| **Admin** | Zaur (`username='zaur'`, `is_admin=true`, `zaurhatu@gmail.com`, id `46c70dfb…`). ⚠️ `auth.uid()` im SQL-Editor NULL. |
 
 ⚠️ **Quarantäne:** `/Users/zaurhatuev/Desktop/vibes-app` — NIEMALS bauen/deployen/pushen.
+
+---
+
+## 1.0.3 🆕 Session 10 (7.–8. Juli) — App-Store-Fix-Marathon · Block/Löschung/Push repariert · serlo.ch · i18n-Russisch
+
+> Alles committed + gepusht + verifiziert (`6a84b26`), mehrere OTAs raus (Runtime 1.30.0),
+> 4 Migrationen ausgeführt, 2 Edge-Functions deployt.
+
+### A) App-Store: 3 Ablehnungen → Build 291 (alle 5 Punkte gefixt)
+- **Reject 1 (Build 287):** 5.1.1 Location-Purpose-String („von Bibliothek referenziert, nicht genutzt" = rot) + 1.2 UGC. Fix: `NSLocationWhenInUseUsageDescription` KOMPLETT entfernt (App nutzt keinen Standort) → Build 288. UGC (EULA vor Register + Melden + Blockieren) existierte — Nachweis per **Screen-Recording** (Register-EULA-Text zeigen reicht, KEIN Checkbox nötig) + engl. Review-Notes; Video an Apples Nachricht angehängt.
+- **Dabei entdeckt: Blockieren war NICHT durchgesetzt** (nur `user_blocks`-Insert, nichts las ihn) → komplette Durchsetzung gebaut (→ B) → **Build 289** statt 288 eingereicht.
+- **Reject 2 (Build 289):** (a) **2.1(a) Apple-Sign-In kaputt** — Ursache NICHT App-Code, sondern **Supabase: Apple-Provider war nicht aktiviert**. Fix: Dashboard → Auth → Providers → Apple AN + Client-ID `com.vibesapp.vibes` (= Bundle-ID; kein Secret für native nötig). (b) **5.1.1 Kamera/Foto-Strings zu vage** → neue Texte MIT Beispiel („… zum Beispiel um ein kurzes Video aufzunehmen und in deinem Feed zu posten") in `app.json` infoPlist **UND** in den Plugins (react-native-vision-camera, expo-media-library — Plugins überschreiben infoPlist beim Prebuild!) + `NSPhotoLibraryAddUsageDescription` ergänzt → Build 290. (c) **2.1(b) IAP nicht auffindbar** (Coin-Shop per Flag versteckt) → Zaur hat die 4 Coin-IAPs aus ASC **gelöscht** (v1 ohne IAP, kein Paid Apps Agreement nötig).
+- **Bonus-Bug beim Testen: Logout hing ewig im „wird geladen…"-Screen.** Ursache: `authStore.signOut` setzte `initialized:false`, aber nichts setzte es je wieder true (getSession-Effekt nur beim Mount, onAuthStateChange ohne). Fix: initialized beim Logout auf true lassen → AuthGuard leitet zu /login. → **Build 291** (hochgeladen + Auto-Submit, Antwort an Apple gepostet).
+- **⚠️ STATUS: In ASC prüfen, dass die Version Build 291 trägt, dann „Erneut zur App-Prüfung übermitteln".** Die Übermittlungs-Detailseite zeigt so lange „Abgelehnt" (alter 289-Status), bis neu eingereicht ist.
+
+### B) Sicherheits-/Integritäts-Fixes (Migrationen ✅ ausgeführt)
+- **Block-Durchsetzung** (`20260707000000_block_enforcement`): `users_blocked(a,b)`-Helper + `get_blocked_user_ids()` (SECURITY DEFINER, beide Richtungen trotz RLS); `block_user()` löscht bestehende gegenseitige Follows; BEFORE-INSERT-**Trigger** auf `follows`/`conversations`/`messages`/`comments` (Exception `'blocked'`). Client (OTA + Binary 291): `getBlockedIdSet()` (60s-Cache in `lib/useBlock.ts`) blendet geblockte Autoren in Feed (`usePosts`), Kommentaren (`useComments`) und Konversationsliste (`useMessages`) beidseitig aus — Feed-v5-RPC bewusst NICHT angefasst. Block/Unblock invalidiert Caches.
+- **Konto-Löschung war komplett kaputt** — 3 Ursachen: (1) Edge-Function `delete-account` war **NIE deployt** (App bekam 404, `catch{}` verschluckte ihn und loggte trotzdem aus → „gelöscht" gelogen, Auth-User blieb). → **deployt**. (2) FK-Konflikte brachen den Cascade: `orders.buyer_id`/`seller_id` (SET NULL auf NOT-NULL!) + `live_moderators.user_id`/`granted_by` + `live_reports.reporter_id` (NO ACTION) → `20260707120000_fix_account_deletion_fks` stellt alle 5 auf CASCADE (voller Audit aller profiles-FKs gemacht — nur diese 5 waren betroffen). (3) App zeigt jetzt echte Fehler und loggt nur bei Erfolg aus (settings.tsx, OTA). **Getestet: funktioniert**; Geister-Accounts lassen sich jetzt auch in Supabase manuell löschen.
+- **Push-Token-Leck** (`20260707140000_push_token_single_owner`): Account A bekam nach Wechsel auf B weiter Pushes (Token blieb bei A in `profiles.push_token` + `push_tokens`). Trigger erzwingen **„ein Token = ein User"** (Zuweisung entfernt ihn bei allen anderen); `authStore.signOut` löscht eigene Registrierung (OTA). Getestet ✓.
+- **Admin-Gegen-Loop** (`20260705150000_support_new_admin_notification`): `create_support_thread` pingt alle `is_admin`-Profile mit neuem Typ `support_new` (+ Push, kein Pref-Gate). `send-push-notification` neu deployt; App/Web-Renderer + Deep-Link → `/admin/support`.
+
+### C) Web-Fixes + serlo.ch
+- **OAuth-PKCE-Login gefixt** (`oauth-buttons.tsx`): „PKCE code verifier not found" — OAuth wurde in einer **Server-Action** gestartet, der Verifier-Cookie ging beim Provider-Redirect verloren. Jetzt client-seitig via Browser-Client → Google/Apple-Web-Login funktioniert. (Magic-Link cross-device bleibt bekannte Grenze — same-browser ok.)
+- **Profil-Menü blieb nach Web-Konto-Löschung sichtbar** (`app/actions/gdpr.ts`): `signOut()` (global) scheiterte am toten Token → Cookies blieben. Fix: `signOut({ scope: 'local' })`.
+- **Video-Spinner-Fix** (`components/video/video-player.tsx`): `/p`-Video hing ewig im Lade-Spinner (State verließ `loading` nur via onPlaying — feuert bei autoPlay=false nie). Neuer `ready`-State via onLoadedMetadata/onCanPlay.
+- **Sentry-Build-Guard** (`next.config.mjs` errorHandler): Sentry-504 beim Source-Map-Upload riss vorher den ganzen Vercel-Deploy ab → loggt jetzt nur noch.
+- **serlo.ch verbunden:** Vercel-Projekt `serlo-web` → Domains: `serlo.ch` (308→www) + **`www.serlo.ch` = primär**, SSL ✓. IONOS-DNS: A `@`→`216.198.79.1`, AAAA gelöscht, CNAME `www`→`959bb6a28b278edb.vercel-dns-017.com`. Mail-Records (MX/SPF/DKIM) unangetastet. **OFFEN:** Supabase-Redirect-URLs + `WEB_BASE`-Umstellung (Start-hier #2).
+- **Impressum-Recht (kein Rechtsrat, aber klar):** §5 DDG verlangt echten Namen + ladungsfähige Anschrift (Einzelunternehmer). „brandwerkx" darf ERGÄNZEN, nicht ersetzen; Adresse nur durch gemietete Geschäftsadresse ersetzbar. Zaur entscheidet.
+
+### D) i18n-Russisch-Sprint — kompletter öffentlicher Web-Kern de+ru
+- **Infra zuerst** (`lib/i18n/translate.ts` + messages/index + server/client): `DeepPartial<Messages>` + **Deutsch-Fallback im Resolver** — ru/ce/en dürfen partiell sein, fehlende Keys zeigen Deutsch statt roher Key-Strings. Deutsch bleibt strikt (Source of Truth). Locale-Wechsel: Avatar-Menü → Sprache (Cookie `serlo-locale`).
+- **Komplett de+ru (alle im Preview verifiziert):** `/shop/[id]` (Shell + BuyBar + Beschreibung + Reviews) · `/p` (100 % inkl. Kommentar-System, Follow-Button, Actions-Bar, Share-Buttons, beide 3-Punkte-Menüs, Datum locale-aware) · `/u` (100 % inkl. Tabs/Sort/Empty-States, Tip-Button „Поддержать", Block-/Melde-Menü, Highlights) · **Cookie-Banner** · **Feed komplett** (feed-card ~46 Strings, feed-list, home-feed-shell, feed-sidebar via labelKey-Pattern, comments-body, post-share-dm-sheet, followed-accounts, voice-reader, story-strip [Server: getT+Props], like-button, comment-panel/-sheet, admin-nav-link) · **Explore-Details** (Sort-Pills, Trends-Empty, WOZ, Discover-Badges) · **Notification-Drawer + alle ~30 Notification-Texte** (notifText(n, t)) · **Landing-Page** („Эфиры. Магазин. Комьюнити.").
+- **Muster für Fortsetzung:** Modul-Konstanten → `labelKey: TranslationKey` + `t()` am Renderpunkt; Server-Komponenten → `getT()` (Sub-Komponenten kriegen Labels als Props); Client → `useI18n()`; Melde-Gründe via `t(\`ns.reason_${value}\` as TranslationKey)`; useCallback-deps um `t` ergänzen. Neue Keys IMMER de (strikt) + ru; ce/en fallen zurück.
+- **Bugfix nebenbei:** Profil-Melde-Dialog-Submit war TOT (`onClick={void handleReport}` ≡ undefined) → gefixt (auch UGC-relevant).
+- **OFFEN:** Shop-Listen-Details (Filter-Sidebar `/shop`), Messages-/Studio-/Live-Tiefe, `components/layout/more-menu.tsx`; ru-Keys später nach ce/en spiegeln. Metadata/OG bleibt bewusst de (Crawler senden keinen Locale-Cookie).
+- **Verifikations-Grenze:** Feed/Notifications sind login-only → headless nicht prüfbar; Zaur prüft eingeloggt (Sprache: Русский). Öffentliche Flächen wurden per Preview + Screenshot verifiziert.
 
 ---
 
