@@ -21,8 +21,10 @@ TextInput,
 View,
 } from 'react-native';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
+import { useI18n } from '@/lib/i18n';
 export default function RegisterScreen() {
   useThemedStatusBar('light');
+  const { t } = useI18n();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
@@ -35,15 +37,15 @@ export default function RegisterScreen() {
 
   const handleRegister = async () => {
     if (!email || !password || !username) {
-      Alert.alert('Fast!', 'Füll bitte alle Felder aus 🙂');
+      Alert.alert(t('common.almost'), t('auth.fillAll'));
       return;
     }
     if (username.length < 3) {
-      Alert.alert('Fast!', 'Dein Username braucht mindestens 3 Zeichen ✏️');
+      Alert.alert(t('common.almost'), t('auth.usernameMin3'));
       return;
     }
     if (password.length < 6) {
-      Alert.alert('Fast!', 'Das Passwort braucht mindestens 6 Zeichen 🔒');
+      Alert.alert(t('common.almost'), t('auth.passwordMin6'));
       return;
     }
 
@@ -61,9 +63,9 @@ export default function RegisterScreen() {
       setLoading(false);
       // Benutzername bereits vergeben
       if (error.message?.includes('duplicate') || (error as any).code === '23505') {
-        Alert.alert('Schon vergeben', 'Den Username gibt es leider schon — probier einen anderen ✏️');
+        Alert.alert(t('auth.usernameTakenTitle'), t('auth.usernameTakenText'));
       } else {
-        Alert.alert('Hat nicht geklappt', error.message);
+        Alert.alert(t('common.error'), error.message);
       }
       return;
     }
@@ -75,9 +77,9 @@ export default function RegisterScreen() {
 
     setLoading(false);
     Alert.alert(
-      'Fast geschafft! 🎉',
-      'Bestätige deine E-Mail und logge dich dann ein.',
-      [{ text: 'OK', onPress: () => router.replace('/(auth)/login') }]
+      t('auth.almostDoneTitle'),
+      t('auth.confirmEmailText'),
+      [{ text: t('common.ok'), onPress: () => router.replace('/(auth)/login') }]
     );
 
   };
@@ -104,8 +106,8 @@ export default function RegisterScreen() {
       >
         <View style={styles.logoArea}>
           <Zap size={32} stroke="#FFFFFF" strokeWidth={2} fill="#FFFFFF" />
-          <Text style={styles.logoText}>Werde Teil von Serlo ✨</Text>
-          <Text style={styles.tagline}>Dein KI-gematchter Feed wartet auf dich</Text>
+          <Text style={styles.logoText}>{t('auth.registerTitle')}</Text>
+          <Text style={styles.tagline}>{t('auth.registerTagline')}</Text>
         </View>
 
         <View style={styles.form}>
@@ -113,7 +115,7 @@ export default function RegisterScreen() {
             <User size={18} stroke="#4B5563" strokeWidth={1.8} />
             <TextInput
               style={styles.input}
-              placeholder="Username"
+              placeholder={t('auth.usernamePlaceholder')}
               placeholderTextColor="#4B5563"
               value={username}
               onChangeText={setUsername}
@@ -130,7 +132,7 @@ export default function RegisterScreen() {
             <TextInput
               ref={emailRef}
               style={styles.input}
-              placeholder="E-Mail"
+              placeholder={t('auth.emailPlaceholder')}
               placeholderTextColor="#4B5563"
               value={email}
               onChangeText={setEmail}
@@ -148,7 +150,7 @@ export default function RegisterScreen() {
             <TextInput
               ref={passwordRef}
               style={styles.input}
-              placeholder="Passwort (min. 6 Zeichen)"
+              placeholder={t('auth.passwordMinPlaceholder')}
               placeholderTextColor="#4B5563"
               value={password}
               onChangeText={setPassword}
@@ -163,7 +165,7 @@ export default function RegisterScreen() {
             style={styles.registerBtn}
             disabled={loading}
             accessibilityRole="button"
-            accessibilityLabel="Account erstellen"
+            accessibilityLabel={t('auth.createAccount')}
             accessibilityState={{ disabled: loading }}
           >
             <LinearGradient
@@ -174,27 +176,27 @@ export default function RegisterScreen() {
             />
             {loading
               ? <ActivityIndicator color="#fff" />
-              : <Text style={styles.registerBtnText}>Account erstellen</Text>
+              : <Text style={styles.registerBtnText}>{t('auth.createAccount')}</Text>
             }
           </Pressable>
 
           {/* Apple UGC (1.2): EULA-Zustimmung + Null-Toleranz-Hinweis */}
           <Text style={styles.legalText}>
-            Mit „Account erstellen" stimmst du den{' '}
+            {t('auth.legalPrefix')}
             <Text style={styles.legalLink} onPress={() => Linking.openURL('https://www.serlo.ch/terms').catch(() => {})}>
-              Nutzungsbedingungen
+              {t('auth.legalTerms')}
             </Text>
-            {' '}und der{' '}
+            {t('auth.legalAnd')}
             <Text style={styles.legalLink} onPress={() => Linking.openURL('https://www.serlo.ch/privacy').catch(() => {})}>
-              Datenschutzerklärung
+              {t('auth.legalPrivacy')}
             </Text>
-            {' '}zu. Null-Toleranz für anstößige Inhalte und missbräuchliche Nutzer.
+            {t('auth.legalSuffix')}
           </Text>
 
           {/* ── Apple Sign-In Divider ── */}
           <View style={styles.dividerRow}>
             <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>oder</Text>
+            <Text style={styles.dividerText}>{t('auth.or')}</Text>
             <View style={styles.dividerLine} />
           </View>
 
@@ -216,11 +218,11 @@ export default function RegisterScreen() {
               disabled={loading}
               style={styles.googleBtn}
               accessibilityRole="button"
-              accessibilityLabel="Mit Google registrieren"
+              accessibilityLabel={t('auth.googleRegister')}
               accessibilityState={{ disabled: loading }}
             >
               <GoogleGlyph />
-              <Text style={styles.googleBtnText}>Mit Google registrieren</Text>
+              <Text style={styles.googleBtnText}>{t('auth.googleRegister')}</Text>
             </Pressable>
           )}
 
@@ -228,11 +230,11 @@ export default function RegisterScreen() {
             <Pressable
               style={styles.loginLink}
               accessibilityRole="link"
-              accessibilityLabel="Einloggen"
+              accessibilityLabel={t('auth.loginNow')}
             >
               <Text style={styles.loginText}>
-                Bereits registriert?{' '}
-                <Text style={styles.loginHighlight}>Einloggen</Text>
+                {t('auth.hasAccount')}{' '}
+                <Text style={styles.loginHighlight}>{t('auth.loginNow')}</Text>
               </Text>
             </Pressable>
           </Link>

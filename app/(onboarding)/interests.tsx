@@ -23,11 +23,15 @@ withDelay,withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
+import { useI18n, type TranslationKey } from '@/lib/i18n';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View, Text: _animNS?.Text ?? _animMod?.Text };
 
 // ── Interesse-Kategorien ─────────────────────────────────────────────────────
+// WICHTIG: `tag` ist der DB-Wert (preferred_tags) — der Feed-Algorithmus matcht
+// darauf. NIEMALS übersetzen! Übersetzt wird nur das Anzeige-Label via
+// t(`onboarding.interests.${tag}`).
 const INTERESTS = [
   { tag: 'Musik', emoji: '🎵', color: '#FFFFFF' },
   { tag: 'Sport', emoji: '⚽', color: '#34D399' },
@@ -47,6 +51,7 @@ const MIN_SELECTED = 3;
 
 export default function OnboardingInterests() {
   useThemedStatusBar('light');
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const { profile } = useAuthStore();
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -122,10 +127,10 @@ export default function OnboardingInterests() {
 
         {/* Header */}
         <Animated.View style={[styles.header, titleStyle]}>
-          <Text style={styles.title}>Was begeistert{'\n'}dich?</Text>
+          <Text style={styles.title}>{t('onboarding.interestsTitle')}</Text>
         </Animated.View>
         <Animated.Text style={[styles.subtitle, subStyle]}>
-          Wähle mindestens {MIN_SELECTED} Themen — wir zeigen dir sofort die besten Vibes.
+          {t('onboarding.interestsSub', { min: MIN_SELECTED })}
         </Animated.Text>
 
         {/* Interesse-Grid */}
@@ -148,7 +153,7 @@ export default function OnboardingInterests() {
                 >
                   <Text style={styles.chipEmoji}>{item.emoji}</Text>
                   <Text style={[styles.chipLabel, isOn && { color: item.color }]}>
-                    {item.tag}
+                    {t(`onboarding.interests.${item.tag}` as TranslationKey)}
                   </Text>
                   {isOn && (
                     <View style={[styles.checkBadge, { backgroundColor: item.color }]}>
@@ -165,8 +170,8 @@ export default function OnboardingInterests() {
         <Animated.View style={[styles.bottom, btnStyle]}>
           <Text style={styles.counter}>
             {selected.size < MIN_SELECTED
-              ? `Noch ${MIN_SELECTED - selected.size} auswählen`
-              : `${selected.size} ausgewählt ✓`}
+              ? t('onboarding.selectMore', { count: MIN_SELECTED - selected.size })
+              : t('onboarding.selectedCount', { count: selected.size })}
           </Text>
           <Pressable
             style={[styles.btn, !canProceed && styles.btnDisabled]}
@@ -184,7 +189,7 @@ export default function OnboardingInterests() {
               ) : (
                 <>
                   <Text style={[styles.btnText, !canProceed && styles.btnTextDim]}>
-                    Weiter
+                    {t('onboarding.continueBtn')}
                   </Text>
                   <ChevronRight size={20} color={canProceed ? '#fff' : '#555'} strokeWidth={2.5} />
                 </>

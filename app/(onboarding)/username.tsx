@@ -18,9 +18,11 @@ View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
+import { useI18n } from '@/lib/i18n';
 
 export default function OnboardingUsername() {
   useThemedStatusBar('light');
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const { profile, session } = useAuthStore();
 
@@ -44,11 +46,11 @@ export default function OnboardingUsername() {
   const handleContinue = async () => {
     const trimmed = username.trim();
     if (!trimmed || trimmed.length < 3) {
-      setError('Username muss mindestens 3 Zeichen haben.');
+      setError(t('onboarding.usernameMin'));
       return;
     }
     if (!/^[a-z0-9_]+$/i.test(trimmed)) {
-      setError('Nur Buchstaben, Zahlen und _ erlaubt.');
+      setError(t('onboarding.usernameChars'));
       return;
     }
 
@@ -59,7 +61,7 @@ export default function OnboardingUsername() {
     __DEV__ && console.log('[Username] token:', accessToken ? accessToken.substring(0, 20) + '...' : 'FEHLT');
 
     if (!userId || !accessToken) {
-      setError('Session abgelaufen. Bitte App neu starten und einloggen.');
+      setError(t('onboarding.sessionExpired'));
       return;
     }
 
@@ -95,7 +97,7 @@ export default function OnboardingUsername() {
 
       if (!res.ok) {
         if (resText.includes('23505') || resText.includes('unique')) {
-          setError('Dieser Username ist bereits vergeben. Versuch einen anderen.');
+          setError(t('onboarding.usernameTaken'));
         } else {
           setError(`Fehler ${res.status}: ${resText.substring(0, 100)}`);
         }
@@ -120,7 +122,7 @@ export default function OnboardingUsername() {
 
     } catch (e: any) {
       __DEV__ && console.error('[Username] catch:', e?.message ?? e);
-      setError(e?.message ?? 'Netzwerkfehler. Bitte erneut versuchen.');
+      setError(e?.message ?? t('onboarding.networkError'));
     } finally {
       setLoading(false);
     }
@@ -156,8 +158,8 @@ export default function OnboardingUsername() {
           <View style={styles.step} />
         </View>
 
-        <Text style={styles.title}>Wie soll dich die{'\n'}Welt kennen?</Text>
-        <Text style={styles.sub}>Wähle deinen Vibes-Username und ein Profilbild.</Text>
+        <Text style={styles.title}>{t('onboarding.usernameTitle')}</Text>
+        <Text style={styles.sub}>{t('onboarding.usernameSub')}</Text>
 
         {/* Avatar Picker */}
         <Pressable style={styles.avatarWrap} onPress={pickAvatar}>
@@ -187,7 +189,7 @@ export default function OnboardingUsername() {
             style={styles.input}
             value={username}
             onChangeText={(t) => { setUsername(t); setError(''); }}
-            placeholder="deinusername"
+            placeholder={t('onboarding.usernamePlaceholder')}
             placeholderTextColor="rgba(255,255,255,0.25)"
             autoCapitalize="none"
             autoCorrect={false}
@@ -211,7 +213,7 @@ export default function OnboardingUsername() {
           >
             {loading
               ? <ActivityIndicator color="#fff" />
-              : <Text style={styles.btnText}>Weiter →</Text>
+              : <Text style={styles.btnText}>{t('onboarding.next')}</Text>
             }
           </LinearGradient>
         </Pressable>

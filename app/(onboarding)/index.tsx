@@ -12,39 +12,42 @@ withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
+import { useI18n } from '@/lib/i18n';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
 
+// labelKey-Muster: Konstanten tragen nur Keys, t() läuft am Renderpunkt.
 const FEATURES = [
   {
     icon: SlidersHorizontal,
     color: '#FFFFFF',
-    title: 'Du steuerst den Algorithmus',
-    desc: 'Kein Blackbox-Feed. Du entscheidest mit dem "Tune my Vibe"-Slider was du siehst.',
+    titleKey: 'onboarding.feat1Title',
+    descKey: 'onboarding.feat1Desc',
   },
   {
     icon: Users,
     color: '#34D399',
-    title: 'Dein eigener Clan',
-    desc: '150 Gleichgesinnte in deinem privaten Clan. Garantierte Sichtbarkeit, echte Verbindung.',
+    titleKey: 'onboarding.feat2Title',
+    descKey: 'onboarding.feat2Desc',
   },
   {
     icon: Heart,
     color: '#F472B6',
-    title: 'Dwell-Time schlägt Likes',
-    desc: 'Content gewinnt durch echte Verweildauer – nicht durch leere Klicks.',
+    titleKey: 'onboarding.feat3Title',
+    descKey: 'onboarding.feat3Desc',
   },
-];
+] as const;
 
 function FeatureCard({
   feature,
   index,
 }: {
-  feature: (typeof FEATURES)[0];
+  feature: (typeof FEATURES)[number];
   index: number;
 }) {
   const Icon = feature.icon;
+  const { t } = useI18n();
   const opacity = useSharedValue(0);
   const translateY = useSharedValue(30);
 
@@ -67,8 +70,8 @@ function FeatureCard({
           <Icon size={22} color={feature.color} strokeWidth={1.8} />
         </View>
         <View style={styles.cardText}>
-          <Text style={styles.cardTitle}>{feature.title}</Text>
-          <Text style={styles.cardDesc}>{feature.desc}</Text>
+          <Text style={styles.cardTitle}>{t(feature.titleKey)}</Text>
+          <Text style={styles.cardDesc}>{t(feature.descKey)}</Text>
         </View>
       </BlurView>
     </Animated.View>
@@ -77,6 +80,7 @@ function FeatureCard({
 
 export default function OnboardingWelcome() {
   useThemedStatusBar('light');
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
 
   const logoOpacity = useSharedValue(0);
@@ -120,13 +124,13 @@ export default function OnboardingWelcome() {
         <Animated.View style={[styles.logoWrap, logoStyle]}>
           <Text style={styles.logo}>Serlo</Text>
           <View style={styles.logoDot} />
-          <Text style={styles.tagline}>Die Social-App die du wirklich kontrollierst.</Text>
+          <Text style={styles.tagline}>{t('onboarding.welcomeTagline')}</Text>
         </Animated.View>
 
         {/* Feature Cards */}
         <View style={styles.cards}>
           {FEATURES.map((f, i) => (
-            <FeatureCard key={f.title} feature={f} index={i} />
+            <FeatureCard key={f.titleKey} feature={f} index={i} />
           ))}
         </View>
 
@@ -142,10 +146,10 @@ export default function OnboardingWelcome() {
               end={{ x: 1, y: 0 }}
               style={styles.btnGradient}
             >
-              <Text style={styles.btnText}>{'Los geht\u2019s →'}</Text>
+              <Text style={styles.btnText}>{t('onboarding.letsGo')}</Text>
             </LinearGradient>
           </Pressable>
-          <Text style={styles.hint}>In unter 30 Sekunden eingerichtet</Text>
+          <Text style={styles.hint}>{t('onboarding.setupHint')}</Text>
         </Animated.View>
       </View>
     </View>

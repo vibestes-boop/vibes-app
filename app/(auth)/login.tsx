@@ -25,12 +25,14 @@ useSharedValue,
 withTiming,
 } from 'react-native-reanimated';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
+import { useI18n } from '@/lib/i18n';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
 
 export default function LoginScreen() {
   useThemedStatusBar('light');
+  const { t } = useI18n();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -43,13 +45,13 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!email || !password) {
-      Alert.alert('Fast!', 'Gib E-Mail und Passwort ein 🙂');
+      Alert.alert(t('common.almost'), t('auth.fillEmailPassword'));
       return;
     }
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
-    if (error) Alert.alert('Login hat nicht geklappt', error.message);
+    if (error) Alert.alert(t('auth.loginFailed'), error.message);
   };
 
   const handleGoogle = async () => {
@@ -61,7 +63,7 @@ export default function LoginScreen() {
   const handleForgotPassword = async () => {
     const trimmedEmail = email.trim();
     if (!trimmedEmail) {
-      Alert.alert('Fast!', 'Trag zuerst deine E-Mail ein 📧');
+      Alert.alert(t('common.almost'), t('auth.enterEmailFirst'));
       return;
     }
     setLoading(true);
@@ -70,7 +72,7 @@ export default function LoginScreen() {
     });
     setLoading(false);
     if (error) {
-      Alert.alert('Hat nicht geklappt', error.message);
+      Alert.alert(t('common.error'), error.message);
     } else {
       setResetSent(true);
     }
@@ -90,7 +92,7 @@ export default function LoginScreen() {
       <Animated.View entering={FadeInDown.delay(60).duration(500)} style={styles.logoArea}>
         <Zap size={36} stroke="#FFFFFF" strokeWidth={2} fill="#FFFFFF" />
         <Text style={styles.logoText}>Serlo</Text>
-        <Text style={styles.tagline}>Dein Feed. Deine Regeln.</Text>
+        <Text style={styles.tagline}>{t('auth.tagline')}</Text>
       </Animated.View>
 
       {/* ── Form ── */}
@@ -99,7 +101,7 @@ export default function LoginScreen() {
           <Mail size={18} stroke="#4B5563" strokeWidth={1.8} />
           <TextInput
             style={styles.input}
-            placeholder="E-Mail"
+            placeholder={t('auth.emailPlaceholder')}
             placeholderTextColor="#4B5563"
             value={email}
             onChangeText={setEmail}
@@ -113,7 +115,7 @@ export default function LoginScreen() {
           <Lock size={18} stroke="#4B5563" strokeWidth={1.8} />
           <TextInput
             style={styles.input}
-            placeholder="Passwort"
+            placeholder={t('auth.passwordPlaceholder')}
             placeholderTextColor="#4B5563"
             value={password}
             onChangeText={setPassword}
@@ -130,7 +132,7 @@ export default function LoginScreen() {
             style={styles.loginBtn}
             disabled={loading}
             accessibilityRole="button"
-            accessibilityLabel="Einloggen"
+            accessibilityLabel={t('auth.login')}
             accessibilityState={{ disabled: loading }}
           >
             <LinearGradient
@@ -141,7 +143,7 @@ export default function LoginScreen() {
             />
             {loading
               ? <ActivityIndicator color="#fff" />
-              : <Text style={styles.loginBtnText}>Einloggen</Text>
+              : <Text style={styles.loginBtnText}>{t('auth.login')}</Text>
             }
           </Pressable>
         </Animated.View>
@@ -149,9 +151,7 @@ export default function LoginScreen() {
         {/* Passwort vergessen */}
         {resetSent ? (
           <View style={styles.resetSentBox}>
-            <Text style={styles.resetSentText}>
-              ✉️ Reset-Link gesendet! Prüfe dein E-Mail-Postfach.
-            </Text>
+            <Text style={styles.resetSentText}>{t('auth.resetSent')}</Text>
           </View>
         ) : (
           <Pressable
@@ -159,17 +159,17 @@ export default function LoginScreen() {
             style={styles.forgotBtn}
             disabled={loading}
             accessibilityRole="button"
-            accessibilityLabel="Passwort zurücksetzen"
+            accessibilityLabel={t('auth.forgot')}
             accessibilityState={{ disabled: loading }}
           >
-            <Text style={styles.forgotText}>Passwort vergessen?</Text>
+            <Text style={styles.forgotText}>{t('auth.forgot')}</Text>
           </Pressable>
         )}
 
         {/* ── Divider ── */}
         <View style={styles.dividerRow}>
           <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>oder</Text>
+          <Text style={styles.dividerText}>{t('auth.or')}</Text>
           <View style={styles.dividerLine} />
         </View>
 
@@ -191,11 +191,11 @@ export default function LoginScreen() {
             disabled={loading}
             style={styles.googleBtn}
             accessibilityRole="button"
-            accessibilityLabel="Mit Google anmelden"
+            accessibilityLabel={t('auth.googleLogin')}
             accessibilityState={{ disabled: loading }}
           >
             <GoogleGlyph />
-            <Text style={styles.googleBtnText}>Mit Google anmelden</Text>
+            <Text style={styles.googleBtnText}>{t('auth.googleLogin')}</Text>
           </Pressable>
         )}
 
@@ -204,11 +204,11 @@ export default function LoginScreen() {
           <Pressable
             style={styles.registerLink}
             accessibilityRole="link"
-            accessibilityLabel="Jetzt registrieren"
+            accessibilityLabel={t('auth.registerNow')}
           >
             <Text style={styles.registerText}>
-              Noch kein Account?{' '}
-              <Text style={styles.registerHighlight}>Jetzt registrieren</Text>
+              {t('auth.noAccount')}{' '}
+              <Text style={styles.registerHighlight}>{t('auth.registerNow')}</Text>
             </Text>
           </Pressable>
         </Link>

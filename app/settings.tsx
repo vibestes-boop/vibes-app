@@ -35,6 +35,7 @@ MessageCircle,
 Mic,
 Radio,
 Repeat2,
+Globe,
 Shield,
 ShieldCheck,
 Sparkles,
@@ -166,6 +167,11 @@ export default function SettingsScreen() {
   const themeMode    = _useTS((s: any) => s.mode);
   const setThemeMode = _useTS((s: any) => s.setMode);
   const colors       = _useTS((s: any) => s.colors);
+
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { useI18nStore: _useI18nS } = require('@/lib/i18n') as any;
+  const appLocale    = _useI18nS((s: any) => s.locale);
+  const setAppLocale = _useI18nS((s: any) => s.setLocale);
 
   const saveScale = useSharedValue(1);
   const saveStyle = useAnimatedStyle(() => ({ transform: [{ scale: saveScale.value }] }));
@@ -563,6 +569,35 @@ export default function SettingsScreen() {
                     >
                       <Text style={[s.themeBtnTxt, { color: active ? colors.bg.primary : colors.text.muted }]}>
                         {labels[m]}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          </View>
+          <View style={[s.sep, { backgroundColor: colors.border.subtle, marginLeft: 56 }]} />
+          {/* Sprache — v1 manuell (de/ru), Systemsprache kommt mit nächstem Binary */}
+          <View style={[s.fieldRow, { alignItems: 'flex-start', paddingVertical: 12 }]}>
+            <View style={s.fieldIcon}>
+              <Globe size={18} stroke={colors.text.primary} strokeWidth={2} />
+            </View>
+            <View style={{ flex: 1, gap: 10 }}>
+              <Text style={[s.fieldLabel, { color: colors.text.muted }]}>Sprache · Язык</Text>
+              <View style={s.themeRow}>
+                {(['de', 'ru'] as const).map((loc) => {
+                  const labels = { de: 'Deutsch', ru: 'Русский' };
+                  const active = appLocale === loc;
+                  return (
+                    <Pressable key={loc} onPress={() => setAppLocale(loc)}
+                      style={[s.themeBtn, {
+                        backgroundColor: active ? colors.text.primary : colors.bg.elevated,
+                        borderColor: active ? colors.text.primary : colors.border.default,
+                      }]}
+                      accessibilityRole="button" accessibilityState={{ selected: active }}
+                    >
+                      <Text style={[s.themeBtnTxt, { color: active ? colors.bg.primary : colors.text.muted }]}>
+                        {labels[loc]}
                       </Text>
                     </Pressable>
                   );

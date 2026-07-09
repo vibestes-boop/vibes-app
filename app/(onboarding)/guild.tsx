@@ -17,6 +17,7 @@ withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
+import { useI18n } from '@/lib/i18n';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any; const _animNS = _animMod?.default ?? _animMod;
 const Animated = { View: _animNS?.View ?? _animMod?.View };
@@ -31,6 +32,7 @@ const GUILD_COLORS: Record<string, [string, string]> = {
 
 export default function OnboardingGuild() {
   useThemedStatusBar('light');
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const { profile, fetchProfile } = useAuthStore();
   const [guildName, setGuildName] = useState<string | null>(null);
@@ -128,7 +130,7 @@ export default function OnboardingGuild() {
           <View style={[styles.step, styles.stepActive]} />
         </View>
 
-        <Text style={styles.title}>Dein Clan wartet{'\n'}auf dich.</Text>
+        <Text style={styles.title}>{t('onboarding.guildTitle')}</Text>
 
         {/* Guild Badge */}
         <Animated.View style={[styles.badgeWrap, badgeStyle]}>
@@ -148,7 +150,7 @@ export default function OnboardingGuild() {
             <View style={styles.sparkleRow}>
               <Sparkles size={12} color={colors[1]} strokeWidth={1.5} />
               <Text style={[styles.guildTag, { color: `${colors[1]}99` }]}>
-                Dein Micro-Pod
+                {t('onboarding.microPod')}
               </Text>
               <Sparkles size={12} color={colors[1]} strokeWidth={1.5} />
             </View>
@@ -158,28 +160,28 @@ export default function OnboardingGuild() {
         {/* Description */}
         <Animated.View style={[styles.descWrap, textStyle]}>
           <Text style={styles.descTitle}>
-            Willkommen in deiner Community!
+            {t('onboarding.welcomeCommunity')}
           </Text>
           <Text style={styles.descText}>
             {guildDesc
-              ? `Du bist Teil von „${guildName}" – ${guildDesc}. Hier siehst du jeden Post deiner 150 Gleichgesinnten, chronologisch und ohne Algorithmus.`
-              : 'Du wirst gleich deinem Clan zugewiesen...'}
+              ? t('onboarding.guildDescText', { name: guildName ?? '', desc: guildDesc })
+              : t('onboarding.guildAssigned')}
           </Text>
 
           <View style={styles.factRow}>
             <View style={styles.fact}>
               <Text style={[styles.factNum, { color: colors[1] }]}>150</Text>
-              <Text style={styles.factLabel}>Mitglieder</Text>
+              <Text style={styles.factLabel}>{t('onboarding.members')}</Text>
             </View>
             <View style={styles.factDivider} />
             <View style={styles.fact}>
               <Text style={[styles.factNum, { color: colors[1] }]}>100%</Text>
-              <Text style={styles.factLabel}>Sichtbarkeit</Text>
+              <Text style={styles.factLabel}>{t('onboarding.visibility')}</Text>
             </View>
             <View style={styles.factDivider} />
             <View style={styles.fact}>
-              <Text style={[styles.factNum, { color: colors[1] }]}>Kein</Text>
-              <Text style={styles.factLabel}>Algorithmus</Text>
+              <Text style={[styles.factNum, { color: colors[1] }]}>{t('onboarding.noAlgoValue')}</Text>
+              <Text style={styles.factLabel}>{t('onboarding.noAlgoLabel')}</Text>
             </View>
           </View>
         </Animated.View>
@@ -197,7 +199,7 @@ export default function OnboardingGuild() {
                 <ActivityIndicator color="#fff" />
               ) : (
                 <>
-                  <Text style={styles.btnText}>Vibes entdecken</Text>
+                  <Text style={styles.btnText}>{t('onboarding.discover')}</Text>
                   <ChevronRight size={20} color="#fff" strokeWidth={2.5} />
                 </>
               )}
