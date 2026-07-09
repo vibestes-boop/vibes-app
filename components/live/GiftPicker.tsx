@@ -1,4 +1,5 @@
 import { COIN_SHOP_ENABLED } from '@/lib/featureFlags';
+import { useI18n } from '@/lib/i18n';
 /**
  * components/live/GiftPicker.tsx
  *
@@ -234,6 +235,7 @@ export function GiftPicker({
   const router       = useRouter();
   const scheme       = useColorScheme();
   const isDark       = scheme === 'dark';
+  const { t } = useI18n();
 
   const { coins: walletCoins, loading: walletLoading, refetch } = useCoinsWallet();
   const coins    = (initialCoins !== undefined && initialCoins > 0) ? initialCoins : walletCoins;
@@ -295,19 +297,19 @@ export function GiftPicker({
     } else {
       // Warme Stimme — siehe Design-Gesetz in CLAUDE.md (Fehler → Mikro-Freude).
       const messages: Record<string, string> = {
-        insufficient_coins:   `Fast! Dir fehlen noch ${formatCoins(Math.max(0, selectedGift.coinCost - coins))} 🪙 — kurz aufladen?`,
-        no_wallet:            'Dein Coin-Konto wird gerade eingerichtet — gleich geht’s 🪙',
-        cannot_gift_yourself: 'Dir selbst schenken? Süß — aber das geht nicht 😄',
-        gift_not_found:       'Das Geschenk gibt’s gerade nicht mehr 🎁',
-        gifts_disabled:       'Geschenke sind in diesem Live gerade aus 🤫',
-        network_error:        'Kurz die Verbindung verloren — nochmal versuchen? 🙂',
+        insufficient_coins:   t('live.giftInsufficient', { amount: formatCoins(Math.max(0, selectedGift.coinCost - coins)) }),
+        no_wallet:            t('live.giftNoWallet'),
+        cannot_gift_yourself: t('live.giftSelf'),
+        gift_not_found:       t('live.giftGone'),
+        gifts_disabled:       t('live.giftsOff'),
+        network_error:        t('live.giftNetwork'),
       };
-      const msg = messages[result.error] ?? (__DEV__ ? `Fehler: ${result.error}` : 'Ein Fehler ist aufgetreten. Bitte versuche es erneut.');
+      const msg = messages[result.error] ?? (__DEV__ ? `Fehler: ${result.error}` : t('live.giftError'));
       // In DEV: echten Supabase-Error anhängen damit wir die Ursache sofort sehen
       const detailSuffix = __DEV__ && 'detail' in result && result.detail
         ? `\n\n[DEV] ${result.detail}`
         : '';
-      Alert.alert('Hat nicht geklappt', msg + detailSuffix);
+      Alert.alert(t('live.giftFailedTitle'), msg + detailSuffix);
     }
   }, [selectedGift, isSending, sendGift, effectiveRecipientId, liveSessionId, channelRef, onGiftSent, refetch, coins, onClose, battleMode, recipientChoice]);
 
@@ -361,7 +363,7 @@ export function GiftPicker({
           <View style={s.header}>
             <View style={s.headerLeft}>
               <Text style={[s.title, { color: titleClr }]}>
-                {battleMode ? '⚔️ Battle-Geschenk' : 'Geschenke'}
+                {battleMode ? t('live.battleGift') : t('live.giftsTitle')}
               </Text>
               <Text style={[s.subtitle, { color: subClr }]}>
                 an @{effectiveRecipientName}
@@ -470,7 +472,7 @@ export function GiftPicker({
                 <Text style={[
                   s.duetSubLabel,
                   { color: recipientChoice === 'host' ? subClr : 'transparent' },
-                ]}>Host</Text>
+                ]}>{t('live.host')}</Text>
               </Pressable>
               <Pressable
                 style={[
@@ -493,7 +495,7 @@ export function GiftPicker({
                 <Text style={[
                   s.duetSubLabel,
                   { color: recipientChoice === 'guest' ? subClr : 'transparent' },
-                ]}>Guest</Text>
+                ]}>{t('live.guest')}</Text>
               </Pressable>
             </View>
           )}

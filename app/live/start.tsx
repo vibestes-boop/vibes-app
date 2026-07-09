@@ -67,6 +67,7 @@ withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
+import { useI18n, type TranslationKey } from '@/lib/i18n';
 import { useTheme } from '@/lib/useTheme';
 import { GlassPanel, useCreateGlass } from '@/components/create/CreateGlass';
 // react-native-reanimated: CJS require() vermeidet Hermes HBC Crash
@@ -82,6 +83,7 @@ const _cMod = require('expo-constants') as any; const Constants = _cMod?.default
 const LIVE_CATEGORIES = ['Talk', 'Musik', 'Gaming', 'Sport', 'Kochen', 'Beauty', 'Wissen', 'Reisen', 'Comedy'] as const;
 
 export default function LiveStartScreen() {
+  const { t } = useI18n();
   useThemedStatusBar('light');
   const g = useCreateGlass();
   const { colors } = useTheme();
@@ -140,10 +142,10 @@ export default function LiveStartScreen() {
   // (Öffentlich → Nur Follower → [Nur Frauen, falls berechtigt] → zurück).
   const audienceMeta =
     audience === 'women'
-      ? { emoji: '🌸', label: 'Nur Frauen' }
+      ? { emoji: '🌸', label: t('live.audWomen') }
       : audience === 'followers'
-      ? { emoji: '👥', label: 'Nur Follower' }
-      : { emoji: '🌍', label: 'Öffentlich' };
+      ? { emoji: '👥', label: t('live.audFollowers') }
+      : { emoji: '🌍', label: t('live.audPublic') };
   const cycleAudience = () => {
     if (audience === 'public') setAudience('followers');
     else if (audience === 'followers') setAudience(canAccessWomenOnly ? 'women' : 'public');
@@ -156,7 +158,7 @@ export default function LiveStartScreen() {
     try {
       const { status } = await requestMediaLibraryPermissionsAsync();
       if (status === 'denied') {
-        Alert.alert('Zugriff verweigert', 'Bitte erlaube in den Einstellungen den Zugriff auf deine Fotos.');
+        Alert.alert(t('live.accessDenied'), t('live.accessDeniedPhotos'));
         return;
       }
       const result = await launchImageLibraryAsync({
@@ -173,7 +175,7 @@ export default function LiveStartScreen() {
       setThumbnailUrl(url);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {
-      Alert.alert('Hmm', 'Cover konnte nicht hochgeladen werden — versuch es nochmal. 🙂');
+      Alert.alert('Hmm', t('live.coverUploadFailed'));
     } finally {
       setCoverUploading(false);
     }
@@ -206,7 +208,7 @@ export default function LiveStartScreen() {
     try {
       const result = await startSession(title, { allowComments, allowGifts, womenOnly, followersOnly, thumbnailUrl, category });
       if (!result) {
-        Alert.alert('Hat nicht geklappt', 'Dein Live ist nicht gestartet — Verbindung prüfen und nochmal? 📡');
+        Alert.alert(t('live.startFailedTitle'), t('live.startFailedText'));
         return;
       }
 
@@ -231,8 +233,8 @@ export default function LiveStartScreen() {
         params: { sessionId: result.sessionId, title, lkToken: result.token, lkUrl: result.url },
       });
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Unbekannter Fehler';
-      Alert.alert('Live hat nicht geklappt', msg);
+      const msg = err instanceof Error ? err.message : t('live.unknownError');
+      Alert.alert(t('live.liveFailed'), msg);
     }
   };
 
@@ -240,11 +242,11 @@ export default function LiveStartScreen() {
   const openPlanner = () => {
     if (!title.trim()) {
       Alert.alert(
-        'Titel fehlt',
-        'Gib oben in den Einstellungen einen Titel für dein geplantes Live ein.',
+        t('live.titleMissing'),
+        t('live.titleMissingText'),
         [
-          { text: 'Abbrechen', style: 'cancel' },
-          { text: 'Einstellungen', onPress: () => setSettingsSheet(true) },
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('live.settings'), onPress: () => setSettingsSheet(true) },
         ],
       );
       return;
@@ -254,7 +256,7 @@ export default function LiveStartScreen() {
 
   const submitSchedule = async (at: Date) => {
     if (at.getTime() < Date.now() + 5 * 60_000) {
-      Alert.alert('Kurz später 🕒', 'Der Zeitpunkt muss mindestens 5 Minuten in der Zukunft liegen.');
+      Alert.alert(t('live.laterTitle'), t('live.laterText'));
       return;
     }
     try {
@@ -269,8 +271,8 @@ export default function LiveStartScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       router.replace('/creator/scheduled-lives' as never);
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Konnte nicht geplant werden.';
-      Alert.alert('Hat nicht geklappt', msg);
+      const msg = e instanceof Error ? e.message : t('live.scheduleFailed');
+      Alert.alert(t('live.startFailedTitle'), msg);
     }
   };
 
@@ -328,7 +330,7 @@ export default function LiveStartScreen() {
       {!permission?.granted && (
         <View style={s.permBanner}>
           <Pressable style={s.permBtn} onPress={requestPermission}>
-            <Text style={s.permBtnText}>Kamera-Zugriff erlauben</Text>
+            <Text style={s.permBtnText}>{t('live.allowCamera')}</Text>
           </Pressable>
         </View>
       )}
@@ -346,7 +348,7 @@ export default function LiveStartScreen() {
               style={[s.titleText, { color: title.trim() ? g.textPrimary : g.textMuted }, !title.trim() && { fontWeight: FONT_WEIGHT.medium }]}
               numberOfLines={1}
             >
-              {title.trim() || 'Titel hinzufügen'}
+              {title.trim() || t('live.addTitle')}
             </Text>
             <Pencil size={15} stroke={g.textMuted} strokeWidth={2} />
           </Pressable>
@@ -356,15 +358,15 @@ export default function LiveStartScreen() {
             <Pressable style={[s.tile, { backgroundColor: g.fill }]} onPress={cycleAudience}>
               <Text style={s.tileEmoji}>{audienceMeta.emoji}</Text>
               <View style={s.tileTextCol}>
-                <Text style={[s.tileLabel, { color: g.textMuted }]}>Publikum</Text>
+                <Text style={[s.tileLabel, { color: g.textMuted }]}>{t('live.audience')}</Text>
                 <Text style={[s.tileValue, { color: g.textPrimary }]} numberOfLines={1}>{audienceMeta.label}</Text>
               </View>
             </Pressable>
             <Pressable style={[s.tile, { backgroundColor: g.fill }]} onPress={() => setSettingsSheet(true)}>
               <Tag size={18} stroke={colors.text.secondary} strokeWidth={2} />
               <View style={s.tileTextCol}>
-                <Text style={[s.tileLabel, { color: g.textMuted }]}>Kategorie</Text>
-                <Text style={[s.tileValue, { color: g.textPrimary }]} numberOfLines={1}>{category ?? 'Wählen'}</Text>
+                <Text style={[s.tileLabel, { color: g.textMuted }]}>{t('live.category')}</Text>
+                <Text style={[s.tileValue, { color: g.textPrimary }]} numberOfLines={1}>{category ?? t('live.choose')}</Text>
               </View>
             </Pressable>
           </View>
@@ -379,8 +381,8 @@ export default function LiveStartScreen() {
               )}
             </View>
             <View style={s.tileTextCol}>
-              <Text style={[s.coverTitle, { color: g.textPrimary }]}>{thumbnailUrl ? 'Cover gesetzt' : 'Cover wählen'}</Text>
-              <Text style={[s.coverSub, { color: g.textMuted }]} numberOfLines={1}>Galerie oder mit KI</Text>
+              <Text style={[s.coverTitle, { color: g.textPrimary }]}>{thumbnailUrl ? t('live.coverSet') : t('live.chooseCover')}</Text>
+              <Text style={[s.coverSub, { color: g.textMuted }]} numberOfLines={1}>{t('live.galleryOrAi')}</Text>
             </View>
             <View style={s.aiChip}>
               <Sparkles size={12} stroke={g.accent} strokeWidth={2} />
@@ -430,7 +432,7 @@ export default function LiveStartScreen() {
               <>
                 <Animated.View style={[s.liveDot, dotStyle]} />
                 <Text style={s.liveBtnText}>
-                  {scheduledLiveIdRef.current ? 'Jetzt live gehen' : 'LIVE gehen'}
+                  {scheduledLiveIdRef.current ? t('live.goLiveNow') : 'LIVE gehen'}
                 </Text>
               </>
             )}
@@ -446,14 +448,14 @@ export default function LiveStartScreen() {
             hitSlop={8}
           >
             <CalendarClock size={15} stroke="rgba(255,255,255,0.9)" strokeWidth={2} />
-            <Text style={s.planBtnText}>Stattdessen planen</Text>
+            <Text style={s.planBtnText}>{t('live.scheduleInstead')}</Text>
           </Pressable>
         )}
 
         <Text style={s.hint}>
           {scheduledLiveIdRef.current
-            ? 'Du bist mit deinen Followern verknüpft'
-            : 'Deine Follower werden benachrichtigt'}
+            ? t('live.linkedFollowers')
+            : t('live.followersNotified')}
         </Text>
       </View>
 
@@ -467,7 +469,7 @@ export default function LiveStartScreen() {
         <Pressable style={ss.backdrop} onPress={() => setSettingsSheet(false)}>
           <Pressable style={[ss.sheet, { paddingBottom: insets.bottom + 24 }]} onPress={() => {}}>
             <View style={ss.handle} />
-            <Text style={ss.title}>Einstellungen</Text>
+            <Text style={ss.title}>{t('live.settings')}</Text>
 
             {/* Titel */}
             <View style={ss.section}>
@@ -475,7 +477,7 @@ export default function LiveStartScreen() {
               <View style={ss.inputRow}>
                 <TextInput
                   style={ss.input}
-                  placeholder="Titel für dein Live (optional)"
+                  placeholder={t('live.titlePlaceholder')}
                   placeholderTextColor="#9CA3AF"
                   value={title}
                   onChangeText={setTitle}
@@ -516,7 +518,7 @@ export default function LiveStartScreen() {
                       }}
                     >
                       <Sparkles size={15} stroke="#fff" strokeWidth={2} />
-                      <Text style={ss.coverAIBtnText}>Mit KI</Text>
+                      <Text style={ss.coverAIBtnText}>{t('live.withAi')}</Text>
                     </Pressable>
                     <Pressable
                       style={[ss.coverGalleryBtn, coverUploading && ss.coverBtnDisabled]}
@@ -528,14 +530,14 @@ export default function LiveStartScreen() {
                       ) : (
                         <>
                           <ImageIcon size={15} stroke="#111827" strokeWidth={2} />
-                          <Text style={ss.coverGalleryBtnText}>Galerie</Text>
+                          <Text style={ss.coverGalleryBtnText}>{t('live.gallery')}</Text>
                         </>
                       )}
                     </Pressable>
                   </View>
                   {thumbnailUrl && (
                     <Pressable style={ss.coverRemoveBtn} onPress={() => setThumbnailUrl(null)}>
-                      <Text style={ss.coverRemoveText}>Cover entfernen</Text>
+                      <Text style={ss.coverRemoveText}>{t('live.removeCover')}</Text>
                     </Pressable>
                   )}
                 </View>
@@ -554,7 +556,7 @@ export default function LiveStartScreen() {
                       onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setCategory(active ? null : c); }}
                       style={[ss.catChip, active && ss.catChipActive]}
                     >
-                      <Text style={[ss.catChipText, active && ss.catChipTextActive]}>{c}</Text>
+                      <Text style={[ss.catChipText, active && ss.catChipTextActive]}>{t(`live.cat_${c}` as TranslationKey)}</Text>
                     </Pressable>
                   );
                 })}
@@ -567,8 +569,8 @@ export default function LiveStartScreen() {
               <View style={ss.settingsCard}>
                 <View style={ss.row}>
                   <View>
-                    <Text style={ss.rowTitle}>Kommentare</Text>
-                    <Text style={ss.rowSub}>Zuschauer können kommentieren</Text>
+                    <Text style={ss.rowTitle}>{t('live.comments')}</Text>
+                    <Text style={ss.rowSub}>{t('live.commentsSub')}</Text>
                   </View>
                   <Switch
                     value={allowComments}
@@ -581,8 +583,8 @@ export default function LiveStartScreen() {
                 <View style={ss.divider} />
                 <View style={ss.row}>
                   <View>
-                    <Text style={ss.rowTitle}>Geschenke</Text>
-                    <Text style={ss.rowSub}>Zuschauer können Coins senden</Text>
+                    <Text style={ss.rowTitle}>{t('live.gifts')}</Text>
+                    <Text style={ss.rowSub}>{t('live.giftsSub')}</Text>
                   </View>
                   <Switch
                     value={allowGifts}
@@ -594,13 +596,13 @@ export default function LiveStartScreen() {
                 </View>
                 <View style={ss.divider} />
                 <View style={ss.audienceBlock}>
-                  <Text style={ss.rowTitle}>Wer kann zuschauen</Text>
+                  <Text style={ss.rowTitle}>{t('live.whoCanWatch')}</Text>
                   <Text style={ss.rowSub}>
                     {audience === 'public'
-                      ? 'Alle · Öffentlich'
+                      ? t('live.audAllPublic')
                       : audience === 'followers'
-                      ? 'Nur deine Follower kommen rein'
-                      : 'Nur verifizierte Frauen kommen rein'}
+                      ? t('live.audFollowersDesc')
+                      : t('live.audWomenDesc')}
                   </Text>
                   <View style={[ss.catWrap, { marginTop: 10 }]}>
                     <Pressable
@@ -629,7 +631,7 @@ export default function LiveStartScreen() {
             </View>
 
             <Pressable style={ss.doneBtn} onPress={() => setSettingsSheet(false)}>
-              <Text style={ss.doneBtnText}>Fertig</Text>
+              <Text style={ss.doneBtnText}>{t('live.done')}</Text>
             </Pressable>
           </Pressable>
         </Pressable>
@@ -659,10 +661,10 @@ export default function LiveStartScreen() {
         title="Live-Cover generieren"
         promptPlaceholder="Beschreibe das Cover-Bild für deinen Stream…"
         suggestions={[
-          'Neon-Cyberpunk Gaming-Setup mit RGB-Licht',
-          'Gemütliche Lesestunde bei Kerzenschein',
-          'Fitness-Workout in modernem Studio',
-          'Kochshow mit exotischen Zutaten auf Holztisch',
+          t('live.aiGaming'),
+          t('live.aiReading'),
+          t('live.aiFitness'),
+          t('live.aiCooking'),
         ]}
       />
     </View>
@@ -671,28 +673,28 @@ export default function LiveStartScreen() {
 
 // ─── Plan-Sheet: Zeitpunkt wählen ───────────────────────────────────────────
 
-function presetOptions(): { label: string; at: Date }[] {
+function presetOptions(t: (k: TranslationKey) => string): { label: string; at: Date }[] {
   const now = new Date();
   const opts: { label: string; at: Date }[] = [];
 
   const in1h = new Date(now.getTime() + 60 * 60 * 1000);
   const in3h = new Date(now.getTime() + 3 * 60 * 60 * 1000);
-  opts.push({ label: 'in 1 h', at: in1h });
-  opts.push({ label: 'in 3 h', at: in3h });
+  opts.push({ label: t('live.schedIn1h'), at: in1h });
+  opts.push({ label: t('live.schedIn3h'), at: in3h });
 
   const today20 = new Date(now); today20.setHours(20, 0, 0, 0);
   if (today20.getTime() > now.getTime() + 5 * 60_000) {
-    opts.push({ label: 'Heute 20:00', at: today20 });
+    opts.push({ label: t('live.schedToday8'), at: today20 });
   }
 
   const tom = new Date(now); tom.setDate(tom.getDate() + 1);
   const t9  = new Date(tom); t9.setHours(9, 0, 0, 0);
   const t20 = new Date(tom); t20.setHours(20, 0, 0, 0);
-  opts.push({ label: 'Morgen 09:00', at: t9 });
-  opts.push({ label: 'Morgen 20:00', at: t20 });
+  opts.push({ label: t('live.schedTomorrow9'), at: t9 });
+  opts.push({ label: t('live.schedTomorrow8'), at: t20 });
 
   const next7 = new Date(now); next7.setDate(next7.getDate() + 7); next7.setHours(20, 0, 0, 0);
-  opts.push({ label: 'In 1 Woche', at: next7 });
+  opts.push({ label: t('live.schedWeek'), at: next7 });
 
   return opts;
 }
@@ -731,6 +733,7 @@ function PlanSheet({
   isSaving: boolean;
   title: string;
 }) {
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const [date, setDate] = useState<Date>(new Date(Date.now() + 60 * 60_000));
 
@@ -739,7 +742,7 @@ function PlanSheet({
     if (visible) setDate(new Date(Date.now() + 60 * 60_000));
   }, [visible]);
 
-  const presets   = presetOptions();
+  const presets   = presetOptions(t);
   const minDateMs = Date.now() + 5 * 60_000;
   const maxDateMs = Date.now() + 30 * 24 * 3600 * 1000;
 
@@ -761,7 +764,7 @@ function PlanSheet({
           onPress={() => {}}
         >
           <View style={ps.handle} />
-          <Text style={ps.heading}>Live planen</Text>
+          <Text style={ps.heading}>{t('live.schedule')}</Text>
           <Text style={ps.sub}>
             Follower bekommen 15 Minuten vorher einen Reminder.
           </Text>
@@ -802,7 +805,7 @@ function PlanSheet({
 
           <View style={ps.actions}>
             <Pressable onPress={onClose} style={[ps.btn, ps.btnGhost]}>
-              <Text style={ps.btnGhostText}>Abbrechen</Text>
+              <Text style={ps.btnGhostText}>{t('common.cancel')}</Text>
             </Pressable>
             <Pressable
               onPress={() => onSubmit(date)}
@@ -810,7 +813,7 @@ function PlanSheet({
               style={[ps.btn, ps.btnPrimary, (isSaving || !valid) && { opacity: 0.5 }]}
             >
               <Text style={ps.btnPrimaryText}>
-                {isSaving ? 'Plane…' : 'Planen'}
+                {isSaving ? t('live.scheduling') : t('live.scheduleBtn')}
               </Text>
             </Pressable>
           </View>
