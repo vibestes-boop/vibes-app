@@ -38,6 +38,8 @@ interface I18nStore {
   /** true, sobald der User die Sprache manuell gewählt hat. */
   pickedByUser: boolean;
   setLocale: (locale: AppLocale) => void;
+  /** Auf „Automatisch" zurücksetzen: folgt wieder der Gerätesprache. */
+  useDeviceLocale: () => void;
 }
 
 export const useI18nStore = create<I18nStore>()(
@@ -47,6 +49,7 @@ export const useI18nStore = create<I18nStore>()(
       locale: detectDeviceLocale(),
       pickedByUser: false,
       setLocale: (locale) => set({ locale, pickedByUser: true }),
+      useDeviceLocale: () => set({ locale: detectDeviceLocale(), pickedByUser: false }),
     }),
     {
       name: 'vibes-i18n-v1',

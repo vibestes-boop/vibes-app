@@ -1073,6 +1073,7 @@ export const ru: DeepPartial<Messages> = {
     themeDark: '🌙 Тёмная',
     themeLight: '☀️ Светлая',
     langLabel: 'Sprache · Язык',
+    langAuto: '⚙️ Авто',
     tabBar: 'Настроить панель вкладок',
     tabBarSub: 'Выбери свои быстрые кнопки',
     // Автор и управление

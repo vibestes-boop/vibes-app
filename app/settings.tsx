@@ -172,8 +172,10 @@ export default function SettingsScreen() {
 
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { useI18nStore: _useI18nS } = require('@/lib/i18n') as any;
-  const appLocale    = _useI18nS((s: any) => s.locale);
-  const setAppLocale = _useI18nS((s: any) => s.setLocale);
+  const appLocale       = _useI18nS((s: any) => s.locale);
+  const setAppLocale    = _useI18nS((s: any) => s.setLocale);
+  const appPickedByUser = _useI18nS((s: any) => s.pickedByUser);
+  const useDeviceLocale = _useI18nS((s: any) => s.useDeviceLocale);
 
   const saveScale = useSharedValue(1);
   const saveStyle = useAnimatedStyle(() => ({ transform: [{ scale: saveScale.value }] }));
@@ -587,23 +589,23 @@ export default function SettingsScreen() {
             <View style={{ flex: 1, gap: 10 }}>
               <Text style={[s.fieldLabel, { color: colors.text.muted }]}>{t('settings.langLabel')}</Text>
               <View style={s.themeRow}>
-                {(['de', 'ru'] as const).map((loc) => {
-                  const labels = { de: 'Deutsch', ru: 'Русский' };
-                  const active = appLocale === loc;
-                  return (
-                    <Pressable key={loc} onPress={() => setAppLocale(loc)}
-                      style={[s.themeBtn, {
-                        backgroundColor: active ? colors.text.primary : colors.bg.elevated,
-                        borderColor: active ? colors.text.primary : colors.border.default,
-                      }]}
-                      accessibilityRole="button" accessibilityState={{ selected: active }}
-                    >
-                      <Text style={[s.themeBtnTxt, { color: active ? colors.bg.primary : colors.text.muted }]}>
-                        {labels[loc]}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
+                {([
+                  { key: 'auto', label: t('settings.langAuto'), active: !appPickedByUser, onPress: () => useDeviceLocale() },
+                  { key: 'de',   label: 'Deutsch',  active: appPickedByUser && appLocale === 'de', onPress: () => setAppLocale('de') },
+                  { key: 'ru',   label: 'Русский',  active: appPickedByUser && appLocale === 'ru', onPress: () => setAppLocale('ru') },
+                ] as const).map(({ key, label, active, onPress }) => (
+                  <Pressable key={key} onPress={onPress}
+                    style={[s.themeBtn, {
+                      backgroundColor: active ? colors.text.primary : colors.bg.elevated,
+                      borderColor: active ? colors.text.primary : colors.border.default,
+                    }]}
+                    accessibilityRole="button" accessibilityState={{ selected: active }}
+                  >
+                    <Text style={[s.themeBtnTxt, { color: active ? colors.bg.primary : colors.text.muted }]} numberOfLines={1}>
+                      {label}
+                    </Text>
+                  </Pressable>
+                ))}
               </View>
             </View>
           </View>

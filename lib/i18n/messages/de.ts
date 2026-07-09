@@ -1114,6 +1114,7 @@ export const de = {
     themeDark: '🌙 Dark',
     themeLight: '☀️ Hell',
     langLabel: 'Sprache · Язык',
+    langAuto: '⚙️ Automatisch',
     tabBar: 'Tab Bar anpassen',
     tabBarSub: 'Wähle deine Schnellzugriffe',
     // Creator & Verwaltung
