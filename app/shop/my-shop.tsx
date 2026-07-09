@@ -61,6 +61,7 @@ View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
+import { useI18n, type TranslationKey } from '@/lib/i18n';
 
 // ─── expo-document-picker LAZY laden (OTA-sicher) ─────────────────────────────
 // Wie der expo-video-Wrapper: try/require, damit ein OTA-Bundle NICHT crasht,
@@ -77,11 +78,11 @@ const HAS_DOCUMENT_PICKER = !!DocumentPicker?.getDocumentAsync;
 
 // ─── Kategorie-Optionen ───────────────────────────────────────────────────────
 
-const CATEGORIES: { key: ProductCategory; label: string; icon: any; desc: string }[] = [
-  { key: 'digital',    label: 'Digital',     icon: FileText, desc: 'PDF, Rezept, Preset, Tutorial' },
-  { key: 'physical',   label: 'Physisch',    icon: Box,      desc: 'Merchandise, Handwerk, Fashion' },
-  { key: 'service',    label: 'Service',     icon: Wrench,   desc: 'Coaching, Beratung, Custom Order' },
-  { key: 'collectible', label: 'Collectible', icon: Gem,     desc: 'Limitiertes Sammelobjekt' },
+const CATEGORIES: { key: ProductCategory; labelKey: TranslationKey; icon: any; descKey: TranslationKey }[] = [
+  { key: 'digital',    labelKey: 'myshop.catDigital',     icon: FileText, descKey: 'myshop.catDigitalSub' },
+  { key: 'physical',   labelKey: 'myshop.catPhysical',    icon: Box,      descKey: 'myshop.catPhysicalSub' },
+  { key: 'service',    labelKey: 'myshop.catService',     icon: Wrench,   descKey: 'myshop.catServiceSub' },
+  { key: 'collectible', labelKey: 'myshop.catCollectible', icon: Gem,     descKey: 'myshop.catCollectibleSub' },
 ];
 
 // ─── Leerer Initialzustand ────────────────────────────────────────────────────
@@ -109,6 +110,7 @@ const EMPTY_FORM: CreateProductInput = {
 // ─── Hauptscreen ──────────────────────────────────────────────────────────────
 
 export default function MyShopScreen() {
+  const { t } = useI18n();
   useThemedStatusBar('auto');
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -152,7 +154,7 @@ export default function MyShopScreen() {
 
   const pickCover = useCallback(async () => {
     const { granted } = await requestMediaLibraryPermissionsAsync();
-    if (!granted) { Alert.alert('Berechtigung fehlt'); return; }
+    if (!granted) { Alert.alert(t('myshop.permMissing')); return; }
     const result = await launchImageLibraryAsync({
       mediaTypes: MediaTypeOptions.Images,
       quality: 0.85,
@@ -168,7 +170,7 @@ export default function MyShopScreen() {
       const { url } = await uploadProductImage(user?.id ?? 'anon', uri, mimeType);
       setForm(f => ({ ...f, cover_url: url }));
     } catch {
-      Alert.alert('Hat nicht geklappt', 'Der Upload ist nicht durchgegangen — nochmal versuchen? 📤');
+      Alert.alert(t('myshop.saveFailed'), t('myshop.uploadFailed'));
     } finally {
       setUploadingCover(false);
     }
@@ -180,11 +182,11 @@ export default function MyShopScreen() {
 
   const pickGalleryImages = useCallback(async () => {
     if ((form.image_urls?.length ?? 0) >= 8) {
-      Alert.alert('Maximum', 'Du kannst max. 8 Galerie-Bilder hinzufügen.');
+      Alert.alert(t('myshop.max'), t('myshop.maxGallery'));
       return;
     }
     const { granted } = await requestMediaLibraryPermissionsAsync();
-    if (!granted) { Alert.alert('Berechtigung fehlt'); return; }
+    if (!granted) { Alert.alert(t('myshop.permMissing')); return; }
     const result = await launchImageLibraryAsync({
       mediaTypes: MediaTypeOptions.Images,
       quality: 0.85,
@@ -203,7 +205,7 @@ export default function MyShopScreen() {
       );
       setForm(f => ({ ...f, image_urls: [...(f.image_urls ?? []), ...urls].slice(0, 8) }));
     } catch {
-      Alert.alert('Hat nicht geklappt', 'Der Upload ist nicht durchgegangen — nochmal versuchen? 📤');
+      Alert.alert(t('myshop.saveFailed'), t('myshop.uploadFailed'));
     } finally {
       setUploadingGallery(false);
     }
@@ -218,7 +220,7 @@ export default function MyShopScreen() {
 
   const pickDigitalFile = useCallback(async () => {
     if (!HAS_DOCUMENT_PICKER) {
-      Alert.alert('Bald verfügbar', 'Die Datei-Auswahl ist nach dem nächsten App-Update verfügbar.');
+      Alert.alert(t('myshop.comingSoon'), t('myshop.filePickerSoon'));
       return;
     }
     try {
@@ -231,7 +233,7 @@ export default function MyShopScreen() {
       const { url } = await uploadDigitalFile(user?.id ?? 'anon', asset.uri, asset.name ?? 'datei', asset.mimeType);
       setForm(f => ({ ...f, file_url: url }));
     } catch (e: any) {
-      Alert.alert('Datei nicht hinzugefügt', e?.message ?? 'Bitte App aktualisieren und erneut versuchen.');
+      Alert.alert(t('myshop.fileNotAdded'), e?.message ?? t('myshop.updateApp'));
     } finally {
       setUploadingFile(false);
     }
@@ -295,32 +297,32 @@ export default function MyShopScreen() {
   // ── Produkt speichern (create oder update) ────────────────────────────────
 
   const handleSave = useCallback(async () => {
-    if (!form.title.trim()) { Alert.alert('Titel fehlt'); return; }
+    if (!form.title.trim()) { Alert.alert(t('myshop.titleMissing')); return; }
     // #2-Fix: Titelbild ist mit * als Pflicht markiert → jetzt auch erzwungen.
-    if (!form.cover_url) { Alert.alert('Titelbild fehlt', 'Füge ein Titelbild hinzu — oder erstelle eins mit KI.'); return; }
+    if (!form.cover_url) { Alert.alert(t('myshop.coverMissing'), t('myshop.coverMissingText')); return; }
     // #1-Fix: digitales Produkt braucht eine Datei (erst erzwingen, wenn der
     // Datei-Picker im Build verfügbar ist — pre-Rebuild kein Block).
     if (form.category === 'digital' && HAS_DOCUMENT_PICKER && !form.file_url) {
-      Alert.alert('Datei fehlt', 'Lade die digitale Datei hoch, die die Käuferin nach dem Kauf erhält.');
+      Alert.alert(t('myshop.fileMissing'), t('myshop.fileMissingText'));
       return;
     }
     const isPreorder = form.sale_mode === 'preorder';
     if (isPreorder) {
       // Vorbestellung: €-Preis ist Pflicht (Coin-Felder werden ignoriert).
       if (form.price_eur == null || form.price_eur <= 0) {
-        Alert.alert('€-Preis fehlt', 'Setze für die Vorbestellung einen Preis in Euro (z.B. 7,90).');
+        Alert.alert('€-Preis fehlt', t('myshop.setEuroPrice'));
         return;
       }
     } else {
-      if (form.price_coins < 1) { Alert.alert('Preis muss mindestens 1 Coin sein'); return; }
+      if (form.price_coins < 1) { Alert.alert(t('myshop.priceMin1')); return; }
       // v1.26.3: Angebotspreis muss kleiner als regulärer Preis sein (und > 0)
       if (form.sale_price_coins != null) {
         if (form.sale_price_coins < 1) {
-          Alert.alert('Preis kurz prüfen 👀', 'Der Angebotspreis muss mindestens 1 Coin sein.');
+          Alert.alert(t('myshop.checkPrice'), t('myshop.salePriceMin'));
           return;
         }
         if (form.sale_price_coins >= form.price_coins) {
-          Alert.alert('Preis kurz prüfen 👀', 'Der Angebotspreis muss kleiner als der reguläre Preis sein.');
+          Alert.alert(t('myshop.checkPrice'), t('myshop.salePriceLower'));
           return;
         }
       }
@@ -335,8 +337,8 @@ export default function MyShopScreen() {
       closeSheet();
     } catch (e: any) {
       Alert.alert(
-        'Fehler',
-        editingId ? 'Produkt konnte nicht gespeichert werden.' : 'Produkt konnte nicht erstellt werden.',
+        t('myshop.error'),
+        editingId ? t('myshop.saveFailedText') : t('myshop.createFailedText'),
       );
       __DEV__ && console.warn('[my-shop] save failed:', e?.message);
     }
@@ -346,15 +348,15 @@ export default function MyShopScreen() {
 
   const handleDelete = useCallback((product: Product) => {
     Alert.alert(
-      'Produkt löschen',
-      `"${product.title}" wirklich löschen? Alle Bestellungen bleiben erhalten.`,
+      t('myshop.deleteProduct'),
+      t('myshop.deleteConfirm', { title: product.title }),
       [
-        { text: 'Abbrechen', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Löschen', style: 'destructive',
+          text: t('myshop.delete'), style: 'destructive',
           onPress: async () => {
             try { await deleteProduct(product.id); }
-            catch { Alert.alert('Hoppla 🙈', 'Das Löschen ging nicht durch — gleich nochmal?'); }
+            catch { Alert.alert(t('orders.oopsEmoji'), t('myshop.deleteFailed')); }
           },
         },
       ]
@@ -372,7 +374,7 @@ export default function MyShopScreen() {
           <ArrowLeft size={22} color={colors.text.primary} strokeWidth={2} />
         </Pressable>
         <View style={{ flex: 1 }}>
-          <Text style={[s.headerTitle, { color: colors.text.primary }]}>Mein Shop</Text>
+          <Text style={[s.headerTitle, { color: colors.text.primary }]}>{t('myshop.title')}</Text>
           <Text style={[s.headerSub, { color: colors.text.muted }]}>
             {products.length} Produkt{products.length !== 1 ? 'e' : ''}
           </Text>
@@ -469,21 +471,21 @@ export default function MyShopScreen() {
         purpose="shop_mockup"
         defaultSize="1024x1024"
         title="Produktbild mit KI"
-        promptPlaceholder="z.B. „Schwarzer Hoodie auf weißem Studio-Hintergrund, minimalistisch, Produktfoto"
+        promptPlaceholder={t('myshop.aiPromptPlaceholder')}
         suggestions={
           form.category === 'physical'
             ? [
-                'Minimalistisches Produktfoto auf weißem Studio-Hintergrund',
-                'Handwerk-Produkt auf Holzmaserung, warmes Licht',
+                t('myshop.aiPhys1'),
+                t('myshop.aiPhys2'),
               ]
             : form.category === 'digital'
               ? [
-                  'Flat-Design-Icon für Digital-Produkt, moderne Farben',
-                  'Abstrakter Verlauf mit Text-Overlay-Placeholder',
+                  t('myshop.aiDig1'),
+                  t('myshop.aiDig2'),
                 ]
               : [
-                  'Professionelle Portrait-Szene, soft light',
-                  'Abstrakte Komposition für Service-Thumbnail',
+                  t('myshop.aiSvc1'),
+                  t('myshop.aiSvc2'),
                 ]
         }
       />
@@ -494,18 +496,19 @@ export default function MyShopScreen() {
 // ─── Leerer Zustand ───────────────────────────────────────────────────────────
 
 function EmptyShop({ onAdd, colors }: { onAdd: () => void; colors: any }) {
+  const { t } = useI18n();
   return (
     <View style={s.emptyWrap}>
       <View style={[s.emptyIconWrap, { backgroundColor: colors.bg.elevated }]}>
         <ShoppingBag size={40} color={colors.text.muted} strokeWidth={1.5} />
       </View>
-      <Text style={[s.emptyTitle, { color: colors.text.primary }]}>Dein Shop ist noch leer 🛍</Text>
+      <Text style={[s.emptyTitle, { color: colors.text.primary }]}>{t('myshop.emptyTitle')}</Text>
       <Text style={[s.emptySub, { color: colors.text.muted }]}>
         Erstelle dein erstes Produkt und fang an zu verkaufen.
       </Text>
       <Pressable style={[s.emptyBtn, { backgroundColor: colors.text.primary }]} onPress={onAdd}>
         <Plus size={16} color={colors.bg.primary} strokeWidth={2.5} />
-        <Text style={[s.emptyBtnText, { color: colors.bg.primary }]}>Erstes Produkt erstellen</Text>
+        <Text style={[s.emptyBtnText, { color: colors.bg.primary }]}>{t('myshop.createFirst')}</Text>
       </Pressable>
     </View>
   );
@@ -527,15 +530,16 @@ function ProductCard({
   onEdit:   () => void;
   onDelete: () => void;
 }) {
+  const { t } = useI18n();
   const catMeta = CATEGORIES.find(c => c.key === product.category);
   const CatIcon = catMeta?.icon ?? Package;
 
   // Status-Pill bestimmen — drei sich gegenseitig ausschließende Zustände
   const statusPill = product.is_active
     ? product.women_only
-      ? { dot: '#EC4899', label: 'Aktiv · Nur Frauen (WOZ)', textColor: '#EC4899' }
-      : { dot: '#22C55E', label: 'Aktiv · Für alle sichtbar', textColor: '#22C55E' }
-    : { dot: colors.text.muted, label: 'Inaktiv · Nicht im Shop', textColor: colors.text.muted };
+      ? { dot: '#EC4899', label: t('myshop.statusWoz'), textColor: '#EC4899' }
+      : { dot: '#22C55E', label: t('myshop.statusPublic'), textColor: '#22C55E' }
+    : { dot: colors.text.muted, label: t('myshop.statusInactive'), textColor: colors.text.muted };
 
   return (
     <Pressable
@@ -571,7 +575,7 @@ function ProductCard({
         <View style={s.cardMeta}>
           <View style={[s.catChip, { backgroundColor: colors.bg.primary }]}>
             <CatIcon size={11} color={colors.text.muted} strokeWidth={2} />
-            <Text style={[s.catLabel, { color: colors.text.muted }]}>{catMeta?.label}</Text>
+            <Text style={[s.catLabel, { color: colors.text.muted }]}>{catMeta ? t(catMeta.labelKey) : ''}</Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
             <CoinIcon size={13} />
@@ -636,6 +640,7 @@ function ProductFormSheet({
   colors: any;
   insets: any;
 }) {
+  const { t } = useI18n();
   const isPreorder = form.sale_mode === 'preorder';
   // €-Eingabe als String halten, damit Dezimal-Tippen (7,90) nicht abbricht.
   // Re-sync nur, wenn sich price_eur extern ändert (Edit-Sheet öffnet ein anderes
@@ -660,15 +665,15 @@ function ProductFormSheet({
       {/* Sheet-Header */}
       <View style={[s.sheetHeader, { borderBottomColor: colors.border.subtle }]}>
         <Pressable onPress={onClose} style={s.sheetClose}>
-          <Text style={[s.sheetCloseText, { color: colors.text.muted }]}>Abbrechen</Text>
+          <Text style={[s.sheetCloseText, { color: colors.text.muted }]}>{t('common.cancel')}</Text>
         </Pressable>
         <Text style={[s.sheetTitle, { color: colors.text.primary }]}>
-          {isEditMode ? 'Produkt bearbeiten' : 'Neues Produkt'}
+          {isEditMode ? t('myshop.editProduct') : t('myshop.newProduct')}
         </Text>
         <Pressable onPress={onSubmit} disabled={isSaving}>
           {isSaving
             ? <ActivityIndicator color={colors.accent.primary} />
-            : <Text style={[s.sheetSave, { color: colors.accent.primary }]}>Speichern</Text>}
+            : <Text style={[s.sheetSave, { color: colors.accent.primary }]}>{t('myshop.save')}</Text>}
         </Pressable>
       </View>
 
@@ -679,7 +684,7 @@ function ProductFormSheet({
         keyboardShouldPersistTaps="handled"
       >
         {/* Cover-Upload */}
-        <Text style={[s.label, { color: colors.text.primary, marginTop: 0 }]}>Titelbild *</Text>
+        <Text style={[s.label, { color: colors.text.primary, marginTop: 0 }]}>{t('myshop.coverLabel')}</Text>
         <Pressable onPress={onPickCover} style={[s.coverPicker, { borderColor: colors.border.subtle, backgroundColor: colors.bg.elevated }]}>
           {uploadingCover ? (
             <ActivityIndicator color={colors.accent.primary} />
@@ -688,7 +693,7 @@ function ProductFormSheet({
           ) : (
             <View style={{ alignItems: 'center', gap: 8 }}>
               <ImageIcon size={32} color={colors.text.muted} strokeWidth={1.5} />
-              <Text style={[s.coverHint, { color: colors.text.muted }]}>Titelbild hinzufügen</Text>
+              <Text style={[s.coverHint, { color: colors.text.muted }]}>{t('myshop.addCover')}</Text>
             </View>
           )}
         </Pressable>
@@ -740,7 +745,7 @@ function ProductFormSheet({
         )}
 
         {/* Kategorie wählen */}
-        <Text style={[s.label, { color: colors.text.primary }]}>Kategorie</Text>
+        <Text style={[s.label, { color: colors.text.primary }]}>{t('myshop.category')}</Text>
         <View style={s.catRow}>
           {CATEGORIES.map((cat) => {
             const Icon = cat.icon;
@@ -756,7 +761,7 @@ function ProductFormSheet({
                 onPress={() => setForm(f => ({ ...f, category: cat.key }))}
               >
                 <Icon size={16} color={isSelected ? colors.bg.primary : colors.text.muted} strokeWidth={2} />
-                <Text style={[s.catBtnLabel, { color: isSelected ? colors.bg.primary : colors.text.primary }]}>{cat.label}</Text>
+                <Text style={[s.catBtnLabel, { color: isSelected ? colors.bg.primary : colors.text.primary }]}>{t(cat.labelKey)}</Text>
               </Pressable>
             );
           })}
@@ -778,13 +783,13 @@ function ProductFormSheet({
               ) : form.file_url ? (
                 <>
                   <FileText size={18} color="#22C55E" strokeWidth={2} />
-                  <Text style={[s.fileText, { color: colors.text.primary }]} numberOfLines={1}>Datei angehängt · Ersetzen</Text>
+                  <Text style={[s.fileText, { color: colors.text.primary }]} numberOfLines={1}>{t('myshop.fileAttached')}</Text>
                 </>
               ) : (
                 <>
                   <FileText size={18} color={colors.text.muted} strokeWidth={1.8} />
                   <Text style={[s.fileText, { color: colors.text.muted }]} numberOfLines={1}>
-                    {HAS_DOCUMENT_PICKER ? 'Datei auswählen (PDF, ZIP … · max 50 MB)' : 'Verfügbar nach App-Update'}
+                    {HAS_DOCUMENT_PICKER ? t('myshop.pickFile') : t('myshop.fileAfterUpdate')}
                   </Text>
                 </>
               )}
@@ -796,10 +801,10 @@ function ProductFormSheet({
         )}
 
         {/* Titel */}
-        <Text style={[s.label, { color: colors.text.primary }]}>Produktname *</Text>
+        <Text style={[s.label, { color: colors.text.primary }]}>{t('myshop.productName')}</Text>
         <TextInput
           style={[s.input, { color: colors.text.primary, backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle }]}
-          placeholder="z.B. Hijab-Bindeanleitung PDF"
+          placeholder={t('myshop.productNamePlaceholder')}
           placeholderTextColor={colors.text.muted}
           value={form.title}
           onChangeText={(t) => setForm(f => ({ ...f, title: t }))}
@@ -807,10 +812,10 @@ function ProductFormSheet({
         />
 
         {/* Beschreibung */}
-        <Text style={[s.label, { color: colors.text.primary }]}>Beschreibung</Text>
+        <Text style={[s.label, { color: colors.text.primary }]}>{t('myshop.description')}</Text>
         <TextInput
           style={[s.input, s.textarea, { color: colors.text.primary, backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle }]}
-          placeholder="Was bekommt die Käuferin?"
+          placeholder={t('myshop.descriptionPlaceholder')}
           placeholderTextColor={colors.text.muted}
           value={form.description ?? ''}
           onChangeText={(t) => setForm(f => ({ ...f, description: t }))}
@@ -846,13 +851,13 @@ function ProductFormSheet({
         {/* Preis — Vorbestellung: €, sonst Coins */}
         {isPreorder ? (
           <>
-            <Text style={[s.label, { color: colors.text.primary }]}>Preis (€)</Text>
+            <Text style={[s.label, { color: colors.text.primary }]}>{t('myshop.priceEur')}</Text>
             <View style={[s.priceRow, { backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle }]}>
               <Text style={{ fontSize: 17, fontWeight: '700', color: colors.text.primary }}>€</Text>
               <TextInput
                 style={[s.priceInput, { color: colors.text.primary }]}
                 keyboardType="decimal-pad"
-                placeholder="z.B. 7,90"
+                placeholder={t('myshop.priceEurPlaceholder')}
                 placeholderTextColor={colors.text.muted}
                 value={eurText}
                 onChangeText={(t) => {
@@ -864,12 +869,12 @@ function ProductFormSheet({
               />
             </View>
             <Text style={[s.priceHint, { color: colors.text.muted, marginTop: 6 }]}>
-              {'Wird beim „Zahlung anfordern“ abgebucht. Coin-Preis wird ignoriert.'}
+              {t('myshop.priceEurHint')}
             </Text>
           </>
         ) : (
           <>
-            <Text style={[s.label, { color: colors.text.primary }]}>Preis (Serlo Coins)</Text>
+            <Text style={[s.label, { color: colors.text.primary }]}>{t('myshop.priceCoins')}</Text>
             <View style={[s.priceRow, { backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle }]}>
               <CoinIcon size={18} />
               <TextInput
@@ -886,7 +891,7 @@ function ProductFormSheet({
         )}
 
         {/* Stock */}
-        <Text style={[s.label, { color: colors.text.primary }]}>Verfügbarkeit</Text>
+        <Text style={[s.label, { color: colors.text.primary }]}>{t('myshop.availability')}</Text>
         <View style={s.stockRow}>
           <Pressable
             style={[s.stockBtn, form.stock === -1 && { backgroundColor: colors.text.primary }, { borderColor: colors.border.subtle, backgroundColor: colors.bg.elevated }]}
@@ -898,7 +903,7 @@ function ProductFormSheet({
             style={[s.stockBtn, form.stock >= 0 && { backgroundColor: colors.text.primary }, { borderColor: colors.border.subtle, backgroundColor: colors.bg.elevated }]}
             onPress={() => setForm(f => ({ ...f, stock: f.stock < 0 ? 10 : f.stock }))}
           >
-            <Text style={{ color: form.stock >= 0 ? colors.bg.primary : colors.text.primary, fontWeight: '700', fontSize: 13 }}>Begrenzt</Text>
+            <Text style={{ color: form.stock >= 0 ? colors.bg.primary : colors.text.primary, fontWeight: '700', fontSize: 13 }}>{t('myshop.limited')}</Text>
           </Pressable>
           {form.stock >= 0 && (
             <TextInput
@@ -922,7 +927,7 @@ function ProductFormSheet({
               <TextInput
                 style={[s.priceInput, { color: colors.text.primary }]}
                 keyboardType="number-pad"
-                placeholder="kein Angebot"
+                placeholder={t('myshop.noSale')}
                 placeholderTextColor={colors.text.muted}
                 value={form.sale_price_coins != null ? String(form.sale_price_coins) : ''}
                 onChangeText={(t) => {
@@ -945,7 +950,7 @@ function ProductFormSheet({
         </Text>
         <TextInput
           style={[s.input, { color: colors.text.primary, backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle }]}
-          placeholder="z.B. Berlin, Deutschland"
+          placeholder={t('myshop.locationPlaceholder')}
           placeholderTextColor={colors.text.muted}
           value={form.location ?? ''}
           onChangeText={(t) => setForm(f => ({ ...f, location: t.trim() === '' ? null : t }))}
@@ -974,7 +979,7 @@ function ProductFormSheet({
         <View style={[s.wozRow, { borderColor: colors.border.subtle, backgroundColor: colors.bg.elevated, marginTop: 12 }]}>
           <View style={{ flex: 1 }}>
             <Text style={[s.wozTitle, { color: colors.text.primary }]}>🌸 Women-Only Zone</Text>
-            <Text style={[s.wozSub, { color: colors.text.muted }]}>Nur für verifizierte Frauen sichtbar</Text>
+            <Text style={[s.wozSub, { color: colors.text.muted }]}>{t('myshop.womenOnlyVisible')}</Text>
           </View>
           <Switch
             value={form.women_only}
@@ -993,8 +998,8 @@ function ProductFormSheet({
             </Text>
             <Text style={[s.wozSub, { color: colors.text.muted }]}>
               {form.is_active
-                ? 'Im Shop sichtbar und kaufbar'
-                : 'Nicht im Shop sichtbar — keine Käufe möglich'}
+                ? t('myshop.activeVisible')
+                : t('myshop.inactiveHidden')}
             </Text>
           </View>
           <Switch

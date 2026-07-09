@@ -16,6 +16,7 @@ import {
 } from '@/lib/useShop';
 import { useTheme } from '@/lib/useTheme';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
+import { useI18n, type TranslationKey } from '@/lib/i18n';
 import { useAuthStore } from '@/lib/authStore';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
@@ -102,18 +103,19 @@ function TrackingRow({ carrier, number, colors }: { carrier: string | null; numb
   );
 }
 
-const STATUS: Record<ProductOrderStatus, { label: string; color: string }> = {
-  reserved:          { label: 'Vorbestellt',  color: '#9CA3AF' },
-  payment_requested: { label: 'Zahlung offen', color: '#F59E0B' },
-  paid:              { label: 'Bezahlt',       color: '#3B82F6' },
-  shipped:           { label: 'Unterwegs',     color: '#14B8A6' },
-  delivered:         { label: 'Geliefert',     color: '#22C55E' },
-  cancelled:         { label: 'Storniert',     color: '#EF4444' },
-  refunded:          { label: 'Erstattet',     color: '#8B5CF6' },
-  disputed:          { label: 'In Klärung',    color: '#EF4444' },
+const STATUS: Record<ProductOrderStatus, { labelKey: TranslationKey; color: string }> = {
+  reserved:          { labelKey: 'orders.stPreordered', color: '#9CA3AF' },
+  payment_requested: { labelKey: 'orders.stPaymentDue', color: '#F59E0B' },
+  paid:              { labelKey: 'orders.stPaid',       color: '#3B82F6' },
+  shipped:           { labelKey: 'orders.stShipped',    color: '#14B8A6' },
+  delivered:         { labelKey: 'orders.stDelivered',  color: '#22C55E' },
+  cancelled:         { labelKey: 'orders.stCancelled',  color: '#EF4444' },
+  refunded:          { labelKey: 'orders.stRefunded',   color: '#8B5CF6' },
+  disputed:          { labelKey: 'orders.stDisputed',   color: '#EF4444' },
 };
 
 export default function MyOrdersScreen() {
+  const { t } = useI18n();
   useThemedStatusBar('auto');
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
@@ -133,7 +135,7 @@ export default function MyOrdersScreen() {
       const convId = await orCreate.mutateAsync(o.seller_id);
       router.push({ pathname: '/messages/[id]', params: { id: convId } } as any);
     } catch {
-      Alert.alert('Hoppla', 'Chat konnte gerade nicht geöffnet werden — gleich nochmal?');
+      Alert.alert(t('orders.oops'), t('orders.chatFailed'));
     }
   };
 
@@ -143,21 +145,21 @@ export default function MyOrdersScreen() {
   const handlePay = async (o: ProductOrder) => {
     const res = await pay(o.id);
     if (res.error) {
-      Alert.alert('Hoppla', 'Die Bezahlung konnte gerade nicht geöffnet werden — gleich nochmal? 🙏');
+      Alert.alert(t('orders.oops'), t('orders.payFailed'));
     }
     // Bei Erfolg öffnet sich Stripe im Browser; nach Rückkehr aktualisiert die Liste.
   };
 
   const handleCancel = (o: ProductOrder) => {
     Alert.alert(
-      'Bestellung stornieren?',
-      'Solange noch nicht bezahlt ist, kannst du jederzeit absagen.',
+      t('orders.cancelTitle'),
+      t('orders.cancelText'),
       [
-        { text: 'Behalten', style: 'cancel' },
+        { text: t('orders.keep'), style: 'cancel' },
         {
-          text: 'Stornieren', style: 'destructive',
+          text: t('orders.cancelOrder'), style: 'destructive',
           onPress: () => cancelOrder.mutate(o.id, {
-            onError: () => Alert.alert('Hoppla', 'Hat nicht geklappt — gleich nochmal?'),
+            onError: () => Alert.alert(t('orders.oops'), t('orders.retry')),
           }),
         },
       ],
@@ -176,9 +178,9 @@ export default function MyOrdersScreen() {
     if (!addrOrder) return;
     const res = await updateAddr(addrOrder.id, form);
     if (res.error) {
-      Alert.alert('Hoppla', res.error === 'incomplete_address'
-        ? 'Bitte Name, Straße, PLZ und Ort ausfüllen.'
-        : 'Hat nicht geklappt — gleich nochmal?');
+      Alert.alert(t('orders.oops'), res.error === 'incomplete_address'
+        ? t('orders.addressIncomplete')
+        : t('orders.retry'));
       return;
     }
     setAddrOrder(null);
@@ -190,14 +192,14 @@ export default function MyOrdersScreen() {
 
   const handleConfirm = (o: ProductOrder) => {
     Alert.alert(
-      'Erhalten?',
-      'Bestätige, dass dein Paket angekommen ist.',
+      t('orders.receivedTitle'),
+      t('orders.receivedText'),
       [
-        { text: 'Abbrechen', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Ja, erhalten ✓',
+          text: t('orders.yesReceived'),
           onPress: () => confirmDelivered.mutate(o.id, {
-            onError: () => Alert.alert('Hoppla', 'Hat nicht geklappt — gleich nochmal?'),
+            onError: () => Alert.alert(t('orders.oops'), t('orders.retry')),
           }),
         },
       ],
@@ -223,13 +225,13 @@ export default function MyOrdersScreen() {
           )}
           <View style={{ flex: 1, gap: 3 }}>
             <Text style={[s.title, { color: colors.text.primary }]} numberOfLines={2}>
-              {o.product?.title ?? 'Produkt'}
+              {o.product?.title ?? t('orders.product')}
             </Text>
             <Text style={[s.amount, { color: colors.text.primary }]}>
               {formatEur(o.amount_eur) ?? '—'}{o.quantity > 1 ? `  ·  ${o.quantity}×` : ''}
             </Text>
             <View style={[s.badge, { backgroundColor: st.color + '22' }]}>
-              <Text style={[s.badgeText, { color: st.color }]}>{st.label}</Text>
+              <Text style={[s.badgeText, { color: st.color }]}>{t(st.labelKey)}</Text>
             </View>
             <Text style={[s.dateText, { color: colors.text.muted }]}>{fmtDateTime(o.created_at)}</Text>
           </View>
@@ -242,7 +244,7 @@ export default function MyOrdersScreen() {
               onPress={() => handleCancel(o)}
               style={[s.cancelBtn, { borderColor: colors.border.subtle }]}
             >
-              <Text style={[s.cancelText, { color: colors.text.muted }]}>Doch nicht</Text>
+              <Text style={[s.cancelText, { color: colors.text.muted }]}>{t('orders.notNow')}</Text>
             </Pressable>
             <Pressable
               onPress={() => handlePay(o)}
@@ -252,7 +254,7 @@ export default function MyOrdersScreen() {
               {isPaying
                 ? <ActivityIndicator size="small" color={colors.bg.primary} />
                 : <CreditCard size={16} color={colors.bg.primary} strokeWidth={2.4} />}
-              <Text style={[s.payBtnText, { color: colors.bg.primary }]}>Jetzt bezahlen</Text>
+              <Text style={[s.payBtnText, { color: colors.bg.primary }]}>{t('orders.payNow')}</Text>
             </Pressable>
           </View>
         )}
@@ -268,7 +270,7 @@ export default function MyOrdersScreen() {
               style={[s.confirmBtn, { borderColor: colors.border.subtle }]}
             >
               <CheckCircle2 size={16} color="#22C55E" strokeWidth={2.4} />
-              <Text style={[s.confirmText, { color: colors.text.primary }]}>Erhalten</Text>
+              <Text style={[s.confirmText, { color: colors.text.primary }]}>{t('orders.received')}</Text>
             </Pressable>
           </>
         )}
@@ -277,7 +279,7 @@ export default function MyOrdersScreen() {
           <>
             <View style={s.deliveredRow}>
               <CheckCircle2 size={14} color="#22C55E" strokeWidth={2.4} />
-              <Text style={[s.deliveredText, { color: '#22C55E' }]}>Geliefert — viel Freude 🌸</Text>
+              <Text style={[s.deliveredText, { color: '#22C55E' }]}>{t('orders.deliveredJoy')}</Text>
             </View>
             <OrderReviewControl
               orderId={o.id}
@@ -292,20 +294,20 @@ export default function MyOrdersScreen() {
           <>
             <View style={s.trackRow}>
               <Clock size={14} color={colors.text.muted} strokeWidth={2} />
-              <Text style={[s.trackText, { color: colors.text.muted }]}>Bezahlt — wird vorbereitet 📦</Text>
+              <Text style={[s.trackText, { color: colors.text.muted }]}>{t('orders.paidPreparing')}</Text>
             </View>
             <View style={[s.addrBox, { borderColor: colors.border.subtle, backgroundColor: colors.bg.elevated }]}>
               <View style={{ flex: 1, gap: 2 }}>
                 <View style={s.addrLabelRow}>
                   <MapPin size={12} color={colors.text.muted} strokeWidth={2} />
-                  <Text style={[s.addrLabel, { color: colors.text.muted }]}>Lieferadresse</Text>
+                  <Text style={[s.addrLabel, { color: colors.text.muted }]}>{t('orders.shippingAddress')}</Text>
                 </View>
                 <Text style={[s.addrVal, { color: colors.text.secondary }]}>
-                  {addrText(o) || 'Keine Adresse hinterlegt'}
+                  {addrText(o) || t('orders.noAddress')}
                 </Text>
               </View>
               <Pressable onPress={() => openAddr(o)} hitSlop={8}>
-                <Text style={[s.addrEdit, { color: colors.text.primary }]}>Ändern</Text>
+                <Text style={[s.addrEdit, { color: colors.text.primary }]}>{t('orders.change')}</Text>
               </Pressable>
             </View>
           </>
@@ -314,7 +316,7 @@ export default function MyOrdersScreen() {
         {/* Direktkontakt zum Verkäufer (Rückfragen, Probleme) */}
         <Pressable onPress={() => handleMessage(o)} style={s.msgRow} hitSlop={6}>
           <MessageCircle size={14} color={colors.text.muted} strokeWidth={2} />
-          <Text style={[s.msgText, { color: colors.text.muted }]}>Verkäufer anschreiben</Text>
+          <Text style={[s.msgText, { color: colors.text.muted }]}>{t('orders.messageSeller')}</Text>
         </Pressable>
 
         {/* Problem melden / Streit-Status (ab Bezahlung) */}
@@ -331,7 +333,7 @@ export default function MyOrdersScreen() {
         <Pressable onPress={() => router.back()} hitSlop={10} style={s.headerBtn}>
           <ArrowLeft size={22} color={colors.text.primary} strokeWidth={2} />
         </Pressable>
-        <Text style={[s.headerTitle, { color: colors.text.primary }]}>Meine Bestellungen</Text>
+        <Text style={[s.headerTitle, { color: colors.text.primary }]}>{t('orders.myOrders')}</Text>
         {isAdmin ? (
           <Pressable onPress={() => router.push('/shop/fulfillment' as any)} hitSlop={10} style={s.headerBtn}>
             <Store size={20} color={colors.text.primary} strokeWidth={2} />
@@ -357,7 +359,7 @@ export default function MyOrdersScreen() {
                 style={[s.sellLink, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}
               >
                 <Store size={16} color={colors.text.primary} strokeWidth={2.2} />
-                <Text style={[s.sellLinkText, { color: colors.text.primary, flex: 1 }]}>Meine Verkäufe verwalten</Text>
+                <Text style={[s.sellLinkText, { color: colors.text.primary, flex: 1 }]}>{t('orders.manageSales')}</Text>
                 <Text style={[s.sellLinkText, { color: colors.text.muted }]}>→</Text>
               </Pressable>
             ) : null
@@ -372,7 +374,7 @@ export default function MyOrdersScreen() {
           }
           ListFooterComponent={
             <Pressable onPress={() => router.push('/shop/orders' as any)} style={s.footerLink} hitSlop={6}>
-              <Text style={[s.footerLinkText, { color: colors.text.muted }]}>Digitale Käufe ansehen →</Text>
+              <Text style={[s.footerLinkText, { color: colors.text.muted }]}>{t('orders.viewDigital')}</Text>
             </Pressable>
           }
         />
@@ -383,26 +385,26 @@ export default function MyOrdersScreen() {
         <Pressable style={s.backdrop} onPress={() => setAddrOrder(null)}>
           <Pressable style={[s.sheet, { backgroundColor: colors.bg.elevated, paddingBottom: insets.bottom + 16 }]} onPress={(e) => e.stopPropagation()}>
             <View style={s.sheetHandle} />
-            <Text style={[s.sheetTitle, { color: colors.text.primary }]}>Lieferadresse ändern</Text>
+            <Text style={[s.sheetTitle, { color: colors.text.primary }]}>{t('orders.editAddress')}</Text>
             <TextInput
               style={[s.input, { color: colors.text.primary, backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}
-              placeholder="Name" placeholderTextColor={colors.text.muted}
+              placeholder={t('orders.fieldName')} placeholderTextColor={colors.text.muted}
               value={form.name} onChangeText={(v) => setForm((f) => ({ ...f, name: v }))}
             />
             <TextInput
               style={[s.input, { color: colors.text.primary, backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}
-              placeholder="Straße & Hausnummer" placeholderTextColor={colors.text.muted}
+              placeholder={t('orders.fieldStreet')} placeholderTextColor={colors.text.muted}
               value={form.street} onChangeText={(v) => setForm((f) => ({ ...f, street: v }))}
             />
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <TextInput
                 style={[s.input, { flex: 1, color: colors.text.primary, backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}
-                placeholder="PLZ" placeholderTextColor={colors.text.muted} keyboardType="number-pad"
+                placeholder={t('orders.fieldZip')} placeholderTextColor={colors.text.muted} keyboardType="number-pad"
                 value={form.zip} onChangeText={(v) => setForm((f) => ({ ...f, zip: v }))}
               />
               <TextInput
                 style={[s.input, { flex: 2, color: colors.text.primary, backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}
-                placeholder="Ort" placeholderTextColor={colors.text.muted}
+                placeholder={t('orders.fieldCity')} placeholderTextColor={colors.text.muted}
                 value={form.city} onChangeText={(v) => setForm((f) => ({ ...f, city: v }))}
               />
             </View>
@@ -424,7 +426,7 @@ export default function MyOrdersScreen() {
             >
               {isSavingAddr
                 ? <ActivityIndicator size="small" color={colors.bg.primary} />
-                : <Text style={[s.payBtnText, { color: colors.bg.primary }]}>Speichern</Text>}
+                : <Text style={[s.payBtnText, { color: colors.bg.primary }]}>{t('orders.save')}</Text>}
             </Pressable>
           </Pressable>
         </Pressable>

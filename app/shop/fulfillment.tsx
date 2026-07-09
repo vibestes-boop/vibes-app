@@ -24,6 +24,7 @@ import {
 } from '@/lib/useShop';
 import { useTheme } from '@/lib/useTheme';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
+import { useI18n } from '@/lib/i18n';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { ArrowLeft, Bell, CheckCircle2, Clock, Megaphone, MessageCircle, Package, PackageCheck, Send, Target, Truck } from 'lucide-react-native';
@@ -80,6 +81,7 @@ function timeAgo(iso: string): string {
 }
 
 export default function FulfillmentScreen() {
+  const { t } = useI18n();
   useThemedStatusBar('auto');
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
@@ -127,27 +129,27 @@ export default function FulfillmentScreen() {
   const confirmCreateRound = async () => {
     if (!roundProductId) return;
     const target = parseInt(roundTarget, 10);
-    if (!target || target < 1) { Alert.alert('Hoppla 🙈', 'Ziel-Menge fehlt — wie viele Flaschen?'); return; }
+    if (!target || target < 1) { Alert.alert(t('orders.oopsEmoji'), t('orders.targetMissing')); return; }
     const res = await createRound(roundProductId, target, nextSaturday(roundWeeks));
-    if (res.error) { Alert.alert('Hoppla 🙈', 'Hat nicht geklappt — gleich nochmal?'); return; }
+    if (res.error) { Alert.alert(t('orders.oopsEmoji'), t('orders.retry')); return; }
     setRoundSheetOpen(false);
-    showFlash('Runde gestartet 🎯 — sichtbar in jedem Clan');
+    showFlash(t('orders.roundStarted'));
     refetchRound();
   };
   const handleCloseRound = () => {
     if (!activeRound) return;
     Alert.alert(
-      'Runde schließen?',
-      `„${activeRound.title}" — ${activeRound.reserved_qty}/${activeRound.target_qty} gesammelt. Die Karte verschwindet aus den Clans; die Vorbestellungen bleiben.`,
+      t('orders.closeRoundTitle'),
+      t('orders.closeRoundText', { title: activeRound.title, reserved: activeRound.reserved_qty, target: activeRound.target_qty }),
       [
-        { text: 'Abbrechen', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Schließen',
+          text: t('orders.close'),
           style: 'destructive',
           onPress: async () => {
             const res = await closeRound(activeRound.id);
-            if (res.error) { Alert.alert('Hoppla 🙈', 'Hat nicht geklappt — gleich nochmal?'); return; }
-            showFlash('Runde geschlossen ✓ — weiter mit „Zahlung anfordern"');
+            if (res.error) { Alert.alert(t('orders.oopsEmoji'), t('orders.retry')); return; }
+            showFlash(t('orders.roundClosed'));
             refetchRound();
           },
         },
@@ -178,7 +180,7 @@ export default function FulfillmentScreen() {
   const confirmNotify = async () => {
     if (!notifyGroup) return;
     const res = await notifyBuyers(notifyGroup.id, notifyMsg);
-    if (res.error) { Alert.alert('Hoppla', 'Hat nicht geklappt — gleich nochmal?'); return; }
+    if (res.error) { Alert.alert(t('orders.oops'), t('orders.retry')); return; }
     setNotifyGroup(null); setNotifyMsg('');
     showFlash(`Angeschrieben ✓ — ${res.notified ?? 0} Vorbesteller`);
   };
@@ -188,7 +190,7 @@ export default function FulfillmentScreen() {
       const convId = await orCreate.mutateAsync(o.buyer_id);
       router.push({ pathname: '/messages/[id]', params: { id: convId } } as any);
     } catch {
-      Alert.alert('Hoppla', 'Chat konnte gerade nicht geöffnet werden — gleich nochmal?');
+      Alert.alert(t('orders.oops'), t('orders.chatFailed'));
     }
   };
 
@@ -229,7 +231,7 @@ export default function FulfillmentScreen() {
 
   const handleMarkPayable = async (productId: string, title: string) => {
     const res = await markPayable(productId);
-    if (res.error) { Alert.alert('Hoppla 🙈', 'Hat nicht geklappt — gleich nochmal?'); return; }
+    if (res.error) { Alert.alert(t('orders.oopsEmoji'), t('orders.retry')); return; }
     setRequested((prev) => new Set(prev).add(productId));
     if ((res.created ?? 0) === 0 && (res.skipped ?? 0) > 0) {
       showFlash(`Schon angefordert ✓ — ${res.skipped} warten auf Zahlung`);
@@ -243,7 +245,7 @@ export default function FulfillmentScreen() {
 
   const handleAnnounce = async (g: PreorderGroup) => {
     const res = await announce(g.id);
-    if (res.error) { Alert.alert('Hoppla 🙈', 'Hat nicht geklappt — gleich nochmal?'); return; }
+    if (res.error) { Alert.alert(t('orders.oopsEmoji'), t('orders.retry')); return; }
     showFlash(`Sammelbestellung angekündigt 🌸 — ${res.notified ?? 0} erreicht`);
   };
 
@@ -251,9 +253,9 @@ export default function FulfillmentScreen() {
   const confirmShip = async () => {
     if (!shipOrder) return;
     const res = await setShipped(shipOrder.id, carrier, tracking);
-    if (res.error) { Alert.alert('Hoppla 🙈', 'Hat nicht geklappt — gleich nochmal?'); return; }
+    if (res.error) { Alert.alert(t('orders.oopsEmoji'), t('orders.retry')); return; }
     setShipOrder(null); setCarrier(''); setTracking('');
-    showFlash('Als versendet markiert ✓');
+    showFlash(t('orders.markedShipped'));
   };
 
   const addr = (o: ProductOrder) =>
@@ -271,7 +273,7 @@ export default function FulfillmentScreen() {
         <Pressable onPress={() => router.back()} hitSlop={10} style={s.headerBtn}>
           <ArrowLeft size={22} color={colors.text.primary} strokeWidth={2} />
         </Pressable>
-        <Text style={[s.headerTitle, { color: colors.text.primary }]}>Bestellungen verwalten</Text>
+        <Text style={[s.headerTitle, { color: colors.text.primary }]}>{t('orders.manageOrders')}</Text>
         <View style={s.headerBtn} />
       </View>
 
@@ -294,7 +296,7 @@ export default function FulfillmentScreen() {
 
           {/* 0) Sammelbestellungs-Runde (Guild-Commerce) */}
           <View style={{ gap: 10 }}>
-            <Text style={[s.section, { color: colors.text.primary }]}>Sammelbestellungs-Runde</Text>
+            <Text style={[s.section, { color: colors.text.primary }]}>{t('orders.round')}</Text>
             {activeRound ? (
               <View style={[s.row, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
                 <View style={[s.thumb, s.thumbFallback, { backgroundColor: colors.bg.elevated }]}>
@@ -304,7 +306,7 @@ export default function FulfillmentScreen() {
                   <Text style={[s.rowTitle, { color: colors.text.primary }]} numberOfLines={1}>{activeRound.title}</Text>
                   <Text style={[s.rowSub, { color: colors.text.muted }]}>
                     {activeRound.reserved_qty}/{activeRound.target_qty} gesammelt · {activeRound.participant_count}{' '}
-                    {activeRound.participant_count === 1 ? 'Person' : 'Personen'} · bis {fmtDeadline(new Date(activeRound.closes_at))}
+                    {activeRound.participant_count === 1 ? t('orders.person') : t('orders.persons')} · bis {fmtDeadline(new Date(activeRound.closes_at))}
                   </Text>
                 </View>
                 <Pressable
@@ -312,7 +314,7 @@ export default function FulfillmentScreen() {
                   disabled={isClosingRound}
                   style={[s.smallBtnOutline, { borderColor: colors.border.strong, opacity: isClosingRound ? 0.5 : 1 }]}
                 >
-                  <Text style={[s.smallBtnText, { color: colors.text.primary }]}>Schließen</Text>
+                  <Text style={[s.smallBtnText, { color: colors.text.primary }]}>{t('orders.close')}</Text>
                 </Pressable>
               </View>
             ) : (
@@ -322,7 +324,7 @@ export default function FulfillmentScreen() {
                 style={[s.smallBtn, { backgroundColor: colors.text.primary, alignSelf: 'flex-start', opacity: preorderProducts.length === 0 ? 0.5 : 1 }]}
               >
                 <Target size={13} color={colors.bg.primary} strokeWidth={2.4} />
-                <Text style={[s.smallBtnText, { color: colors.bg.primary }]}>Runde starten</Text>
+                <Text style={[s.smallBtnText, { color: colors.bg.primary }]}>{t('orders.startRound')}</Text>
               </Pressable>
             )}
             {!activeRound && preorderProducts.length === 0 && (
@@ -335,7 +337,7 @@ export default function FulfillmentScreen() {
           {/* A) Ware ist da → Zahlung anfordern */}
           {requestableGroups.length > 0 && (
             <View style={{ gap: 10 }}>
-              <Text style={[s.section, { color: colors.text.primary }]}>Ware ist da → Zahlung anfordern</Text>
+              <Text style={[s.section, { color: colors.text.primary }]}>{t('orders.goodsArrived')}</Text>
               {requestableGroups.map(({ g, waitingCount, newCount, lastRequestedAt, requestedDone, hasNew }) => (
                 <View key={g.id} style={[s.row, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
                   <Pressable onPress={() => router.push(`/shop/${g.id}` as any)}>
@@ -351,7 +353,7 @@ export default function FulfillmentScreen() {
                     <Text style={[s.rowTitle, { color: colors.text.primary }]} numberOfLines={1}>{g.title}</Text>
                     <Text style={[s.rowSub, { color: colors.text.muted }]}>
                       {formatEur(g.price_eur) ?? 'kein €-Preis gesetzt'}
-                      {'  ·  '}{g.people} {g.people === 1 ? 'Person' : 'Personen'} · {g.bottles} {g.bottles === 1 ? 'Flasche' : 'Flaschen'}
+                      {'  ·  '}{g.people} {g.people === 1 ? t('orders.person') : t('orders.persons')} · {g.bottles} {g.bottles === 1 ? t('orders.bottle') : t('orders.bottles')}
                     </Text>
                     {g.buyers.length > 0 && (
                       <Text style={[s.rowSub, { color: colors.text.muted }]} numberOfLines={1}>
@@ -387,7 +389,7 @@ export default function FulfillmentScreen() {
                         ? <CheckCircle2 size={13} color="#22C55E" strokeWidth={2.6} />
                         : <Bell size={13} color={colors.bg.primary} strokeWidth={2.4} />}
                       <Text style={[s.smallBtnText, { color: (requestedDone && !hasNew) ? '#22C55E' : colors.bg.primary }]}>
-                        {!requestedDone ? 'Anfordern' : hasNew ? 'Erneut anfordern' : 'Angefordert'}
+                        {!requestedDone ? t('orders.request') : hasNew ? t('orders.requestAgain') : t('orders.requested')}
                       </Text>
                     </Pressable>
                     <Pressable
@@ -396,7 +398,7 @@ export default function FulfillmentScreen() {
                       style={[s.smallBtnOutline, { borderColor: colors.border.strong, opacity: isNotifying ? 0.5 : 1 }]}
                     >
                       <Send size={13} color={colors.text.primary} strokeWidth={2.2} />
-                      <Text style={[s.smallBtnText, { color: colors.text.primary }]}>Anschreiben</Text>
+                      <Text style={[s.smallBtnText, { color: colors.text.primary }]}>{t('orders.writeTo')}</Text>
                     </Pressable>
                     {/* Sammelbestellung offen → Vormerker + Speicherer anpingen */}
                     <Pressable
@@ -405,7 +407,7 @@ export default function FulfillmentScreen() {
                       style={[s.smallBtnOutline, { borderColor: colors.border.strong, opacity: isAnnouncing ? 0.5 : 1 }]}
                     >
                       <Megaphone size={13} color={colors.text.primary} strokeWidth={2.2} />
-                      <Text style={[s.smallBtnText, { color: colors.text.primary }]}>Ankündigen</Text>
+                      <Text style={[s.smallBtnText, { color: colors.text.primary }]}>{t('orders.announce')}</Text>
                     </Pressable>
                   </View>
                 </View>
@@ -419,7 +421,7 @@ export default function FulfillmentScreen() {
               Zu versenden{toShip.length > 0 ? ` (${toShip.length})` : ''}
             </Text>
             {toShip.length === 0 ? (
-              <Text style={[s.empty, { color: colors.text.muted }]}>Nichts zu versenden. 📭</Text>
+              <Text style={[s.empty, { color: colors.text.muted }]}>{t('orders.nothingToShip')}</Text>
             ) : toShip.map((o) => (
               <View key={o.id} style={[s.orderCard, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
                 <Pressable
@@ -435,18 +437,18 @@ export default function FulfillmentScreen() {
                     </View>
                   )}
                   <View style={{ flex: 1, gap: 2 }}>
-                    <Text style={[s.rowTitle, { color: colors.text.primary }]} numberOfLines={1}>{o.product?.title ?? 'Produkt'}</Text>
+                    <Text style={[s.rowTitle, { color: colors.text.primary }]} numberOfLines={1}>{o.product?.title ?? t('orders.product')}</Text>
                     <Text style={[s.rowSub, { color: colors.text.muted }]}>{formatEur(o.amount_eur)}{o.quantity > 1 ? ` · ${o.quantity}×` : ''}</Text>
                   </View>
                 </Pressable>
-                <Text style={[s.addr, { color: colors.text.secondary }]}>{addr(o) || 'Keine Adresse'}</Text>
+                <Text style={[s.addr, { color: colors.text.secondary }]}>{addr(o) || t('orders.noAddressShort')}</Text>
                 <Pressable onPress={() => openShip(o)} style={[s.shipBtn, { backgroundColor: colors.text.primary }]}>
                   <PackageCheck size={15} color={colors.bg.primary} strokeWidth={2.4} />
-                  <Text style={[s.shipBtnText, { color: colors.bg.primary }]}>Als versendet markieren</Text>
+                  <Text style={[s.shipBtnText, { color: colors.bg.primary }]}>{t('orders.markShipped')}</Text>
                 </Pressable>
                 <Pressable onPress={() => handleMessage(o)} style={s.msgRow} hitSlop={6}>
                   <MessageCircle size={14} color={colors.text.muted} strokeWidth={2} />
-                  <Text style={[s.msgText, { color: colors.text.muted }]}>Käufer anschreiben</Text>
+                  <Text style={[s.msgText, { color: colors.text.muted }]}>{t('orders.messageBuyer')}</Text>
                 </Pressable>
                 <OrderDisputeControl orderId={o.id} role="seller" dispute={o.dispute} />
               </View>
@@ -461,7 +463,7 @@ export default function FulfillmentScreen() {
                 <View key={o.id} style={[s.miniRow]}>
                   <Clock size={13} color="#F59E0B" strokeWidth={2.2} />
                   <Text style={[s.miniText, { color: colors.text.muted }]} numberOfLines={1}>
-                    {o.product?.title ?? 'Produkt'} · {formatEur(o.amount_eur)}
+                    {o.product?.title ?? t('orders.product')} · {formatEur(o.amount_eur)}
                   </Text>
                 </View>
               ))}
@@ -471,7 +473,7 @@ export default function FulfillmentScreen() {
           {/* Versendet / Geliefert */}
           {shipped.length > 0 && (
             <View style={{ gap: 8 }}>
-              <Text style={[s.section, { color: colors.text.primary }]}>Versendet</Text>
+              <Text style={[s.section, { color: colors.text.primary }]}>{t('orders.shipped')}</Text>
               {shipped.map((o) => (
                 <View key={o.id} style={{ gap: 4 }}>
                   <View style={[s.miniRow]}>
@@ -479,7 +481,7 @@ export default function FulfillmentScreen() {
                       ? <CheckCircle2 size={13} color="#22C55E" strokeWidth={2.2} />
                       : <Truck size={13} color="#14B8A6" strokeWidth={2.2} />}
                     <Text style={[s.miniText, { color: colors.text.muted }]} numberOfLines={1}>
-                      {o.product?.title ?? 'Produkt'}
+                      {o.product?.title ?? t('orders.product')}
                       {o.tracking_number ? ` · ${o.tracking_number}` : ''}
                       {o.status === 'delivered' ? ' · geliefert' : ''}
                     </Text>
@@ -508,17 +510,17 @@ export default function FulfillmentScreen() {
         <Pressable style={s.backdrop} onPress={() => setShipOrder(null)}>
           <Pressable style={[s.sheet, { backgroundColor: colors.bg.elevated, paddingBottom: insets.bottom + 16 }]} onPress={(e) => e.stopPropagation()}>
             <View style={s.sheetHandle} />
-            <Text style={[s.sheetTitle, { color: colors.text.primary }]}>Versand bestätigen</Text>
+            <Text style={[s.sheetTitle, { color: colors.text.primary }]}>{t('orders.confirmShipping')}</Text>
             <TextInput
               style={[s.input, { color: colors.text.primary, backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}
-              placeholder="Versanddienst (z.B. DHL)"
+              placeholder={t('orders.carrier')}
               placeholderTextColor={colors.text.muted}
               value={carrier}
               onChangeText={setCarrier}
             />
             <TextInput
               style={[s.input, { color: colors.text.primary, backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}
-              placeholder="Sendungsnummer (optional)"
+              placeholder={t('orders.trackingNumber')}
               placeholderTextColor={colors.text.muted}
               value={tracking}
               onChangeText={setTracking}
@@ -532,7 +534,7 @@ export default function FulfillmentScreen() {
               {isShipping
                 ? <ActivityIndicator size="small" color={colors.bg.primary} />
                 : <PackageCheck size={15} color={colors.bg.primary} strokeWidth={2.4} />}
-              <Text style={[s.shipBtnText, { color: colors.bg.primary }]}>Als versendet markieren</Text>
+              <Text style={[s.shipBtnText, { color: colors.bg.primary }]}>{t('orders.markShipped')}</Text>
             </Pressable>
           </Pressable>
         </Pressable>
@@ -545,7 +547,7 @@ export default function FulfillmentScreen() {
         <Pressable style={s.backdrop} onPress={() => setRoundSheetOpen(false)}>
           <Pressable style={[s.sheet, { backgroundColor: colors.bg.elevated, paddingBottom: insets.bottom + 16 }]} onPress={(e) => e.stopPropagation()}>
             <View style={s.sheetHandle} />
-            <Text style={[s.sheetTitle, { color: colors.text.primary }]}>Sammelbestellungs-Runde starten</Text>
+            <Text style={[s.sheetTitle, { color: colors.text.primary }]}>{t('orders.startRoundTitle')}</Text>
             <Text style={[s.rowSub, { color: colors.text.muted, marginBottom: 2 }]}>
               Erscheint als „Jetzt aktiv"-Karte in jedem Clan — mit Fortschritt und Mitbestellern. Tipp: danach „Ankündigen" drücken. 📣
             </Text>
@@ -576,7 +578,7 @@ export default function FulfillmentScreen() {
             {/* Ziel-Menge */}
             <TextInput
               style={[s.input, { color: colors.text.primary, backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}
-              placeholder="Ziel-Menge (z.B. 80)"
+              placeholder={t('orders.targetQty')}
               placeholderTextColor={colors.text.muted}
               value={roundTarget}
               onChangeText={setRoundTarget}
@@ -635,7 +637,7 @@ export default function FulfillmentScreen() {
             </Text>
             <TextInput
               style={[s.input, { color: colors.text.primary, backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle, height: 120, paddingTop: 12, textAlignVertical: 'top' }]}
-              placeholder="Deine Nachricht …"
+              placeholder={t('orders.yourMessage')}
               placeholderTextColor={colors.text.muted}
               value={notifyMsg}
               onChangeText={setNotifyMsg}
@@ -650,7 +652,7 @@ export default function FulfillmentScreen() {
               {isNotifying
                 ? <ActivityIndicator size="small" color={colors.bg.primary} />
                 : <Send size={15} color={colors.bg.primary} strokeWidth={2.4} />}
-              <Text style={[s.shipBtnText, { color: colors.bg.primary }]}>Senden</Text>
+              <Text style={[s.shipBtnText, { color: colors.bg.primary }]}>{t('orders.send')}</Text>
             </Pressable>
           </Pressable>
         </Pressable>
