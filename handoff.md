@@ -6,8 +6,8 @@
 > - **Widerruf-Seite `/widerruf`** live (gesetzl. Muster + Parfüm-Hygiene-Ausnahme §312g, Muster-Formular; verlinkt in Footer/Menü/AGB/App-Settings). ⚠️ Vor Stripe-Live: Anwalt. Commit `a507d5e`.
 > - **Landing-Hero live**: Zaurs Berg-Komposition (Standalone-Editor `~/serlo-tools/serlo-hero-editor.html` + Quellen in `hero-editor-source/`) → `HeroHorizon`-Komponente: WebGL-Shader (Sonne/FBM-Wolken/Sterne), 9s-Sonnenaufgang, Entrance-Stagger, virtuelle 16:9-Bühne (Mobile-stabil, Sonnen-Fokus-Crop), **Tageszeit-Himmel** dawn(5-17)/dusk(17-22)/night(22-5) nach Besucher-Uhr, Test: `?sky=dawn|dusk|night`. Layout-Quelle: `apps/web/public/hero/hero-layout.json` (aus Editor-Export, Workflow: Zaur exportiert → JSON+Schnipsel übernehmen). Commits `fedc713`→`dc90384`.
 > - **App-Store-Verlinkung Web**: offizieller Apple-Badge + QR (Desktop) im Hero + Footer, Smart App Banner global (itunes-Metadata). Commit `1bad203`.
-> - **📱 App-i18n de/ru GESTARTET** (OTA-only, Runtime 1.30.0): `lib/i18n/` = 1:1-Port des Web-Systems (de strikt, ru DeepPartial→de-Fallback, labelKey-Muster). **Fertig: Phase 0+1** (Sprachwahl in Settings + DE/RU-Pille auf Login, Auth komplett, 4 Onboarding-Screens; ⚠️ Interessen-Tags = DB-Werte, NIE übersetzen, nur Anzeige-Label) · **Phase 2a** (Tab-Labels via labelKey in tabBarStore, Aktivität komplett ~30 Notif-Texte via actionLabel(n,t)) · **Phase 2b** (CommentsSheet, Messages+Chat, Feed-Zustände). Commits `dfd7327`, `bcf50d0`, `2d8e3f6`.
-> - **🔴 OFFEN i18n**: Phase 2c (Explore, Profil), Phase 3 (Shop, Live, Create — textreich!), Settings-Voll, Alert-Sweep; später: expo-localization in NÄCHSTEN Binary (Systemsprache), profiles.locale + Push-Texte (Edge-Fn, Migration), ce-Kataloge (Community).
+> - **📱 App-i18n de/ru — GROSSTEIL FERTIG** (OTA-only, Runtime 1.30.0): `lib/i18n/` = 1:1-Port des Web-Systems (de strikt, ru DeepPartial→de-Fallback, {var}-Interpolation, type-safe Keys, persistenter Sprach-Store, `useI18n()`-Hook). **Details unten in §1.0.2** (eigener Abschnitt). **Fertig durch:** Phase 0+1 (Fundament, Auth, Onboarding, Sprachwahl+Login-Pille), 2a (Tabs, Aktivität), 2b (Kommentare, Nachrichten, Feed), 2c (Entdecken, Profil), 3a (Shop-Liste+Detail), 3b (Verkäufer: my-orders/fulfillment/my-shop), 3c-1/2/3 (Live Setup/Host/Viewer + GiftPicker), 3d (Create/Editor + AIImageSheet). Commits `dfd7327`→`1717573`.
+> - **🔴 OFFEN i18n (hier weitermachen — §1.0.2):** (1) **Settings-Volltext** (`app/settings.tsx` — nur Sprach-Zeile+Rechtliches übersetzt, Rest deutsch; war GERADE dran als unterbrochen). (2) **Fremde Profile** (`components/profile/UserProfileContent.tsx` — eigenes Profil ist durch, fremde nicht). (3) **Alert-Sweep** über kleine Randflächen (settings-Unterseiten, coin-shop, women-only, guild-Detail, Kleinkomponenten). (4) ru-Keys nach ce/en spiegeln. **Später/separat:** expo-localization im NÄCHSTEN Binary (Systemsprache-Autoerkennung), `profiles.locale`-Spalte + Push-Texte russisch (Edge-Fn `send-push-notification` + Migration).
 > - Hero-Editor-Feature-Doku: Werkstatt (Foto→Silhouette), 6 Presets + custom, Text/Wolken-Ebenen (Shader-Wolken u_fc[8]), Formate (Desktop/Story/Post/OG), PNG/Video-Export, Undo. Turm-Foto Sandukhoy = CC BY-SA (Takhirgeran Umar) → Footer-Credit offen.
 
 
@@ -55,6 +55,43 @@
 | **Admin** | Zaur (`username='zaur'`, `is_admin=true`, `zaurhatu@gmail.com`, id `46c70dfb…`). ⚠️ `auth.uid()` im SQL-Editor NULL. |
 
 ⚠️ **Quarantäne:** `/Users/zaurhatuev/Desktop/vibes-app` — NIEMALS bauen/deployen/pushen.
+
+---
+
+## 1.0.2 🆕 Session 11+ — App-i18n Russisch (de/ru) — Methode, Stand & Fortsetzung
+
+> **Ziel:** App auf Russisch (Tschetschenische Community). Deutsch = strikte Source-of-Truth,
+> Russisch darf lückenhaft sein (fällt auf Deutsch zurück, nie roher Key). Reine JS-Änderungen
+> → **alles per OTA** (kein Binary, kein Apple-Review). Runtime 1.30.0.
+
+### Infrastruktur (`lib/i18n/`)
+- **`translate.ts`** = Resolver (1:1-Port von `apps/web/lib/i18n/translate.ts`): `resolve(msgs, key, vars, fallback)`, `{var}`-Interpolation, type-safe `TranslationKey` (aus `de` abgeleitet), `DeepPartial<Messages>`.
+- **`messages/de.ts`** (strikt, Source-of-Truth) + **`messages/ru.ts`** (`DeepPartial`, darf fehlen) + **`messages/index.ts`** (`Messages`-Typ, `MESSAGES`, `AppLocale='de'|'ru'`).
+- **`i18nStore.ts`** = Zustand+AsyncStorage (`vibes-i18n-v1`, Default `de`, KEIN `system`-Modus — bewusst ohne `expo-localization`, das braucht Binary).
+- **`index.ts`** = öffentliche API: **`useI18n()` → { t, locale, setLocale }**; `tStatic()` für Nicht-React.
+
+### Muster (WICHTIG für Fortsetzung — genau so weitermachen)
+- Komponente: `const { t } = useI18n();` dann `t('ns.key')` / `t('ns.key', { var })`.
+- **Konstanten-Listen (Arrays/Objekte auf Modul-Ebene)** dürfen KEIN `t()` (kein Hook-Scope!) → als **`labelKey: 'ns.key'`** speichern, am Renderpunkt `t(x.labelKey)`. Gilt auch für Fehler-Code-Maps (`ERR[code]` → `ERR_KEYS[code]` mit `t()` am Call-Site) und module-level Helper-Funktionen (`fn(t)` als Param reinreichen).
+- **DB-Werte NIE übersetzen** — nur Anzeige: Interessen-Tags (`preferred_tags`), `live_sessions.category`, `products.category` bleiben deutsch (Feed/Discovery matcht darauf), Anzeige via `t(\`ns.cat_${wert}\`)`.
+- **⚠️ Namens-Kollision `t`:** Editor-Sheets (`components/create/editor/*`, `useEditorSheet()`) binden Styles an eine Variable `t`. Dort i18n als **`const { t: tr } = useI18n()`** binden und `tr(...)` nutzen (siehe Phase 3d).
+- **⚠️ JSX-Attribut-Falle:** Bei String→`t()`-Ersetzung in Props IMMER Klammern: `label={t('...')}` (nicht `label=t('...')`). Automatische sed/perl-Patches vergessen die gern → **tsc fängt's** (`'{' or JSX element expected`). Ebenso: leere `label=`-Props nach Auto-Patch prüfen.
+- **⚠️ zsh + Sonderzeichen:** Deutsche `„…"` und Backticks in Python-Inline-Skripten/Commit-Messages brechen → Datei-basierte Patches (`open(...,encoding='utf-8')`) nutzen; Commit-Messages ohne Backticks.
+- **Workflow pro Phase:** Strings sammeln (`grep -noE`) → Katalog de+ru → patchen (Datei-Skript) → `npx tsc --noEmit` (Root, Baseline 0) → Rest-Scan auf deutsche Literale → Commit → Push (PAT §4) → `EAS_BUILD=1 npx eas update`.
+
+### Sichtbarkeit
+- **Sprachwahl:** Einstellungen → Darstellung → „Sprache · Язык" (Deutsch/Русский) + **DE/RU-Pille oben rechts auf dem Login** (Neulinge schalten VOR Registrierung um). Persistiert.
+- **Kataloge (Namespaces):** common, language, tabs, notif, feed, comments, messages, explore, profile, shop, orders, myshop, ai, live, host, watch, create, auth, onboarding.
+
+### FERTIG (Commits)
+`dfd7327` P0+1 (Fundament/Auth/Onboarding) · `bcf50d0` P2a (Tabs/Aktivität/Login-Toggle) · `2d8e3f6` P2b (Kommentare/Nachrichten/Feed) · `20a7c42`+`e4da1b0` P2c (Entdecken/Profil + Button-Overflow-Fix) · `ca306db` P3a (Shop-Liste/Detail) · `350c219` P3b (Verkäufer) · `f82388f` (my-shop-Reste+KI-Sheet+Kategorie-Buttons) · `a4a60da` P3c-1 (Live-Setup/GiftPicker) · `fa588d5` P3c-2 (Live-Host) · `b510e69` P3c-3 (Live-Viewer) · `1717573` P3d (Create/Editor).
+
+### 🔴 OFFEN — nächste Schritte
+1. **`app/settings.tsx` Volltext** (nur Sprach-Zeile+„Rechtliches & Hilfe" übersetzt, Rest deutsch). War gerade dran. ~80 Strings. Danach die Settings-Unterseiten (`app/settings/*.tsx`).
+2. **`components/profile/UserProfileContent.tsx`** (fremde Profile; Tabs sind icon-only, aber Empty-States/Menüs/Tip-Button deutsch).
+3. **Alert-Sweep** Randflächen: coin-shop, women-only, guild-Detail, kleinere Sheets/Komponenten (`grep -rn "Alert.alert('[A-ZÄÖÜ]"` über `app/` + `components/`).
+4. ru-Keys nach `ce`/`en` spiegeln (Kataloge existieren als Platzhalter, fallen auf de zurück).
+5. **Nächster Binary-Build:** `expo-localization` einziehen → Systemsprache-Autoerkennung (`system`-Modus im i18nStore). **Push russisch:** `profiles.locale`-Spalte (Migration) + `send-push-notification` liest sie.
 
 ---
 
