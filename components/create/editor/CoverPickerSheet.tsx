@@ -1,3 +1,4 @@
+import { useI18n } from '@/lib/i18n';
 /**
  * CoverPickerSheet — Cover-Frame fürs Video wählen.
  *
@@ -24,6 +25,7 @@ export function CoverPickerSheet({ visible, uri, durationMs, initialTimeMs, onDo
   onDone: (timeMs: number) => void;
   onClose: () => void;
 }) {
+  const { t: tr } = useI18n();
   const insets = useSafeAreaInsets();
   const [frames, setFrames] = useState<Frame[]>([]);
   const [selectedTime, setSelectedTime] = useState<number>(initialTimeMs ?? 0);
@@ -84,7 +86,7 @@ export function CoverPickerSheet({ visible, uri, durationMs, initialTimeMs, onDo
           <Pressable onPress={onClose} hitSlop={12} style={s.headerBtn}>
             <X size={24} color="#fff" strokeWidth={2.2} />
           </Pressable>
-          <Text style={s.headerTitle}>Cover wählen</Text>
+          <Text style={s.headerTitle}>{tr('create.chooseCover')}</Text>
           <Pressable onPress={() => { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); onDone(selectedTime); }} hitSlop={12} style={s.headerBtn}>
             <Check size={24} color="#fff" strokeWidth={2.4} />
           </Pressable>
@@ -101,7 +103,7 @@ export function CoverPickerSheet({ visible, uri, durationMs, initialTimeMs, onDo
 
         {/* Filmstrip */}
         <View style={[s.stripWrap, { paddingBottom: insets.bottom + 18 }]}>
-          <Text style={s.hint}>Tippe einen Frame als Cover</Text>
+          <Text style={s.hint}>{tr('create.tapFrameCover')}</Text>
           {loading && frames.length === 0 ? (
             <View style={s.stripLoading}><ActivityIndicator color="rgba(255,255,255,0.7)" /></View>
           ) : (

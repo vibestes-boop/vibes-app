@@ -1,3 +1,4 @@
+import { useI18n } from '@/lib/i18n';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Send,X } from 'lucide-react-native';
 import { ActivityIndicator,Pressable,StyleSheet,Text,View } from 'react-native';
@@ -8,7 +9,7 @@ const _animMod = require('react-native-reanimated') as any; const _animNS = _ani
 const Animated = { View: _animNS?.View ?? _animMod?.View };
 
 export function CreateHeader({
-  title = 'Neuer Vibe',
+  title: titleProp,
   onClose,
   onPost,
   uploading,
@@ -18,6 +19,8 @@ export function CreateHeader({
   onPost: () => void;
   uploading: boolean;
 }) {
+  const { t: tr } = useI18n();
+  const title = titleProp ?? tr('create.newVibe');
   const sendScale = useSharedValue(1);
   const sendStyle = useAnimatedStyle(() => ({
     transform: [{ scale: sendScale.value }],
@@ -52,7 +55,7 @@ export function CreateHeader({
           ) : (
             <>
               <Send size={14} stroke="#fff" strokeWidth={2.5} />
-              <Text style={styles.postBtnText}>Posten</Text>
+              <Text style={styles.postBtnText}>{tr('create.publish')}</Text>
             </>
           )}
         </Pressable>

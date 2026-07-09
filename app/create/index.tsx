@@ -1,4 +1,5 @@
 import { useModerateImage } from '@/lib/useModerate';
+import { useI18n } from '@/lib/i18n';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import {
@@ -83,6 +84,7 @@ import {
 
 // ─── Haupt-Screen ────────────────────────────────────────────────────────────
 export default function CreatePostScreen() {
+  const { t: tr } = useI18n();
   useThemedStatusBar('light');
   const router     = useRouter();
   const insets     = useSafeAreaInsets();
@@ -245,7 +247,7 @@ export default function CreatePostScreen() {
     thumbnailUrl: string | null;
     mediaType:    'image' | 'video' | null;
   }> => {
-    if (!profile) throw new Error('Kein Profil');
+    if (!profile) throw new Error(tr('create.noProfile'));
     if (!image)  return { mediaUrl: null, thumbnailUrl: null, mediaType: null };
     const mt: 'image' | 'video' = image.type === 'video' ? 'video' : 'image';
     if (image.uri.startsWith('http') && uploadedMediaRef.current.url === image.uri) {
@@ -338,7 +340,7 @@ export default function CreatePostScreen() {
   // Media picker aus Galerie
   const pickFromLibrary = async () => {
     const { status } = await requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') { Alert.alert('Berechtigung', 'Bitte erlaube den Medienzugriff.'); return; }
+    if (status !== 'granted') { Alert.alert(tr('create.permission'), tr('create.allowMedia')); return; }
     const result = await launchImageLibraryAsync({ mediaTypes:['images','videos'], quality:0.92, videoMaxDuration:60 });
     if (!result.canceled && result.assets[0]) setImage(result.assets[0]);
   };
@@ -365,7 +367,7 @@ export default function CreatePostScreen() {
 
   const handlePost = async () => {
     if (!profile) return;
-    if (!image && !caption.trim()) { Alert.alert('Fast fertig ✨', 'Füg noch ein Bild oder eine Caption hinzu.'); return; }
+    if (!image && !caption.trim()) { Alert.alert(tr('create.almostDone'), tr('create.addImageOrCaption')); return; }
     const controller = new AbortController();
     abortRef.current = controller;
     try {
@@ -417,10 +419,10 @@ export default function CreatePostScreen() {
       const msg = err instanceof Error ? err.message : '';
       const isNetwork = msg.includes('network') || msg.includes('fetch') || msg.includes('Network');
       Alert.alert(
-        'Veröffentlichen fehlgeschlagen',
+        tr('create.publishFailed'),
         isNetwork
-          ? 'Keine Internetverbindung. Prüfe deine Verbindung und versuche es erneut.'
-          : (msg || 'Der Post konnte nicht hochgeladen werden. Versuche es erneut.'),
+          ? tr('create.noInternet')
+          : (msg || tr('create.postUploadFailed')),
         [{ text: 'OK' }]
       );
     } finally {
@@ -432,7 +434,7 @@ export default function CreatePostScreen() {
   const handleSaveCloudDraft = async () => {
     if (!profile) return;
     if (!image && !caption.trim() && selectedTags.length === 0) {
-      Alert.alert('Leer', 'Füge mindestens Text, Tags oder Medium hinzu.');
+      Alert.alert(tr('create.empty'), tr('create.addTextTagsMedia'));
       return;
     }
     const controller = new AbortController();
@@ -460,12 +462,12 @@ export default function CreatePostScreen() {
       });
       setActiveCloudDraftId(id);
       setShowDetails(false);
-      Alert.alert('Gespeichert', 'Dein Entwurf ist in der Cloud verfügbar.', [
+      Alert.alert(tr('create.draftSaved'), tr('create.draftInCloud'), [
         { text: 'OK', onPress: () => router.back() },
       ]);
     } catch (err: unknown) {
       if (err instanceof Error && err.name === 'AbortError') return;
-      Alert.alert('Hoppla 🙈', err instanceof Error ? err.message : 'Der Entwurf ging nicht durch — gleich nochmal?');
+      Alert.alert(tr('create.oops'), err instanceof Error ? err.message : tr('create.draftFailed'));
     } finally {
       setDraftSavingBusy(false);
       setUploading(false); setUploadPct(0);
@@ -475,7 +477,7 @@ export default function CreatePostScreen() {
   // v1.20 — Post planen (Scheduler-Modal öffnet sich zuvor)
   const handleSchedule = async (publishAt: Date) => {
     if (!profile) return;
-    if (!image && !caption.trim()) { Alert.alert('Fast fertig ✨', 'Füg noch ein Bild oder eine Caption hinzu.'); return; }
+    if (!image && !caption.trim()) { Alert.alert(tr('create.almostDone'), tr('create.addImageOrCaption')); return; }
     const controller = new AbortController();
     abortRef.current = controller;
     setSchedulingBusy(true);
@@ -504,12 +506,12 @@ export default function CreatePostScreen() {
       }
       setShowScheduler(false);
       setShowDetails(false);
-      Alert.alert('Geplant!', 'Dein Post wird zum gewählten Zeitpunkt automatisch veröffentlicht.', [
+      Alert.alert(tr('create.scheduled'), tr('create.scheduledText'), [
         { text: 'OK', onPress: () => router.back() },
       ]);
     } catch (err: unknown) {
       if (err instanceof Error && err.name === 'AbortError') return;
-      Alert.alert('Hoppla 🙈', err instanceof Error ? err.message : 'Die Planung ging nicht durch — gleich nochmal?');
+      Alert.alert(tr('create.oops'), err instanceof Error ? err.message : tr('create.scheduleFailed'));
     } finally {
       setSchedulingBusy(false);
       setUploading(false); setUploadPct(0);
@@ -548,11 +550,11 @@ export default function CreatePostScreen() {
           <View style={s.emptyState}>
             <Pressable onPress={pickFromLibrary} style={{ alignItems: 'center' }}>
               <Text style={s.emptyIcon}>📷</Text>
-              <Text style={s.emptyText}>Tippe um ein Foto oder Video auszuwählen</Text>
+              <Text style={s.emptyText}>{tr('create.tapSelectMedia')}</Text>
             </Pressable>
             <Pressable onPress={() => setShowAIPostSheet(true)} style={s.emptyAIBtn}>
               <Sparkles size={14} color="#fff" strokeWidth={2} />
-              <Text style={s.emptyAIText}>Mit KI erstellen</Text>
+              <Text style={s.emptyAIText}>{tr('create.aiWithAi')}</Text>
             </Pressable>
           </View>
         )}
@@ -645,9 +647,9 @@ export default function CreatePostScreen() {
         <Pressable
           onPress={() => {
             if ((caption.trim() || image) && !uploading) {
-              Alert.alert('Entwurf speichern?', '', [
-                { text: 'Verwerfen', style: 'destructive', onPress: () => router.back() },
-                { text: 'Speichern', onPress: async () => {
+              Alert.alert(tr('create.saveDraftTitle'), '', [
+                { text: tr('create.discard'), style: 'destructive', onPress: () => router.back() },
+                { text: tr('create.saveDraft'), onPress: async () => {
                   await saveDraft({ caption, tags: selectedTags, mediaUri: image?.uri ?? null, mediaType: image?.type === 'video' ? 'video' : image ? 'image' : null });
                   router.back();
                 }},
@@ -664,7 +666,7 @@ export default function CreatePostScreen() {
         <Pressable onPress={() => setShowMusicPicker(true)} style={s.musicBadge}>
           <Music2 size={13} color="#fff" strokeWidth={2.5} />
           <Text style={s.musicBadgeText} numberOfLines={1}>
-            {currentAudioTrack ? currentAudioTrack.title : 'Sound hinzufügen'}
+            {currentAudioTrack ? currentAudioTrack.title : tr('create.addSound')}
           </Text>
           {currentAudioTrack && (
             <Pressable hitSlop={8} onPress={(e) => { e.stopPropagation(); setCurrentAudioTrack(null); }}>
@@ -687,25 +689,25 @@ export default function CreatePostScreen() {
         <Pressable onPress={() => setShowMusicPicker(true)} style={s.sideBtn}>
           <Music2 size={26} color="#fff" strokeWidth={1.8} />
           {currentAudioTrack && <View style={s.sideBtnDot} />}
-          <Text style={s.sideLabel}>Sound</Text>
+          <Text style={s.sideLabel}>{tr('create.sound')}</Text>
         </Pressable>
 
         <Pressable style={s.sideBtn} onPress={() => setShowTextEditor(true)}>
           <Type size={26} color="#fff" strokeWidth={1.8} />
           {textOverlays.length > 0 && <View style={s.sideBtnDot} />}
-          <Text style={s.sideLabel}>Text</Text>
+          <Text style={s.sideLabel}>{tr('create.text')}</Text>
         </Pressable>
 
         <Pressable style={[s.sideBtn, stickerOverlays.length > 0 && s.sideBtnActive]} onPress={() => setShowStickerSheet(true)}>
           <Smile size={26} color="#fff" strokeWidth={1.8} />
           {stickerOverlays.length > 0 && <View style={s.sideBtnDot} />}
-          <Text style={s.sideLabel}>Sticker</Text>
+          <Text style={s.sideLabel}>{tr('create.sticker')}</Text>
         </Pressable>
 
         <Pressable style={[s.sideBtn, !!activeFilter && s.sideBtnActive]} onPress={() => setShowFilterSheet(true)}>
           <Palette size={26} color="#fff" strokeWidth={1.8} />
           {!!activeFilter && <View style={s.sideBtnDot} />}
-          <Text style={s.sideLabel}>Filter</Text>
+          <Text style={s.sideLabel}>{tr('create.filter')}</Text>
         </Pressable>
 
         {/* Zeichnen-Button entfernt (funktionierte nicht) — Draw-Code bleibt dormant für später */}
@@ -713,20 +715,20 @@ export default function CreatePostScreen() {
         <Pressable style={[s.sideBtn, (adjustValues.brightness !== 0 || adjustValues.contrast !== 0 || adjustValues.saturation !== 0) && s.sideBtnActive]} onPress={() => setShowAdjustSheet(true)}>
           <SlidersHorizontal size={26} color="#fff" strokeWidth={1.8} />
           {(adjustValues.brightness !== 0 || adjustValues.contrast !== 0) && <View style={s.sideBtnDot} />}
-          <Text style={s.sideLabel}>Anpassen</Text>
+          <Text style={s.sideLabel}>{tr('create.adjust')}</Text>
         </Pressable>
 
         <Pressable style={[s.sideBtn, (rotateState.rotation !== 0 || rotateState.flipH) && s.sideBtnActive]} onPress={() => setShowRotateSheet(true)}>
           <RotateCw size={26} color="#fff" strokeWidth={1.8} />
           {(rotateState.rotation !== 0 || rotateState.flipH) && <View style={s.sideBtnDot} />}
-          <Text style={s.sideLabel}>Drehen</Text>
+          <Text style={s.sideLabel}>{tr('create.rotate')}</Text>
         </Pressable>
 
         {/* Zuschneiden — nur für Bilder (v1: Seitenverhältnis-Center-Crop) */}
         {!isVideo && image && (
           <Pressable style={s.sideBtn} onPress={() => setShowCropSheet(true)}>
             <Crop size={26} color="#fff" strokeWidth={1.8} />
-            <Text style={s.sideLabel}>Zuschneiden</Text>
+            <Text style={s.sideLabel}>{tr('create.crop')}</Text>
           </Pressable>
         )}
 
@@ -735,7 +737,7 @@ export default function CreatePostScreen() {
           <Pressable style={[s.sideBtn, trimResult && s.sideBtnActive]} onPress={() => setShowTrimSheet(true)}>
             <Scissors size={26} color="#fff" strokeWidth={1.8} />
             {trimResult && <View style={s.sideBtnDot} />}
-            <Text style={s.sideLabel}>Kürzen</Text>
+            <Text style={s.sideLabel}>{tr('create.trim')}</Text>
           </Pressable>
         )}
 
@@ -744,7 +746,7 @@ export default function CreatePostScreen() {
           <Pressable style={[s.sideBtn, coverTimeMs > 0 && s.sideBtnActive]} onPress={() => setShowCoverSheet(true)}>
             <CoverIcon size={26} color="#fff" strokeWidth={1.8} />
             {coverTimeMs > 0 && <View style={s.sideBtnDot} />}
-            <Text style={s.sideLabel}>Cover</Text>
+            <Text style={s.sideLabel}>{tr('create.cover')}</Text>
           </Pressable>
         )}
 
@@ -763,7 +765,7 @@ export default function CreatePostScreen() {
         <View style={s.bottomActions}>
           {/* Story-Button */}
           <Pressable style={s.storyBtn} onPress={handlePost} disabled={uploading}>
-            <Text style={s.storyBtnText}>Story</Text>
+            <Text style={s.storyBtnText}>{tr('create.story')}</Text>
           </Pressable>
 
           {/* Weiter → Details-Sheet */}
@@ -772,7 +774,7 @@ export default function CreatePostScreen() {
             onPress={() => setShowDetails(true)}
             disabled={uploading}
           >
-            <Text style={s.nextBtnText}>Weiter</Text>
+            <Text style={s.nextBtnText}>{tr('create.next')}</Text>
             <ChevronRight size={18} color="#000" strokeWidth={2.5} />
           </Pressable>
         </View>
@@ -890,12 +892,12 @@ export default function CreatePostScreen() {
         onUseImage={applyAIImage}
         purpose="post_cover"
         defaultSize="1024x1536"
-        title="Post-Bild mit KI"
-        promptPlaceholder={'Beschreibe dein Wunsch-Motiv — z.B. „Sonnenuntergang über Bergen“'}
+        
+        promptPlaceholder={tr('create.aiPrompt')}
         suggestions={[
-          'Moody-Portrait in Neon-Licht, cinematisch',
-          'Abstrakte Komposition in warmen Farben',
-          'Street-Photography-Look, schwarz-weiß',
+          tr('create.aiMoody'),
+          tr('create.aiAbstract'),
+          tr('create.aiStreet'),
         ]}
       />
     </View>

@@ -1,3 +1,4 @@
+import { useI18n } from '@/lib/i18n';
 import React, { useRef } from 'react';
 import { Modal, PanResponder, Pressable, StyleSheet, Text, TouchableWithoutFeedback, View } from 'react-native';
 import { Animated as RNAnimated } from 'react-native';
@@ -10,6 +11,7 @@ function AdjustSlider({ label, value, min, max, onChange }: {
   label: string; value: number; min: number; max: number; onChange: (v: number) => void;
 }) {
   const t = useEditorSheet();
+  const { t: tr } = useI18n();
   const pct = (value - min) / (max - min);
   const pan = useRef(new RNAnimated.Value(pct)).current;
   const trackW = SW - 80;
@@ -42,20 +44,21 @@ export function AdjustSheet({ visible, values, onChange, onClose }: {
   visible: boolean; values: AdjustValues; onChange: (v: AdjustValues) => void; onClose: () => void;
 }) {
   const t = useEditorSheet();
+  const { t: tr } = useI18n();
   if (!visible) return null;
   return (
     <Modal transparent animationType="slide" visible={visible} statusBarTranslucent onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={onClose}><View style={t.overlay} /></TouchableWithoutFeedback>
       <GlassSheet style={aj.sheet}>
         <View style={t.handle} />
-        <Text style={t.title}>Anpassen</Text>
-        <AdjustSlider label="Helligkeit" value={values.brightness} min={-50} max={50}
+        <Text style={t.title}>{tr('create.adjust')}</Text>
+        <AdjustSlider label={tr('create.brightness')} value={values.brightness} min={-50} max={50}
           onChange={v => onChange({ ...values, brightness: Math.round(v) })} />
-        <AdjustSlider label="Kontrast" value={values.contrast} min={-50} max={50}
+        <AdjustSlider label={tr('create.contrast')} value={values.contrast} min={-50} max={50}
           onChange={v => onChange({ ...values, contrast: Math.round(v) })} />
-        <AdjustSlider label="Sättigung" value={values.saturation} min={-50} max={50}
+        <AdjustSlider label={tr('create.saturation')} value={values.saturation} min={-50} max={50}
           onChange={v => onChange({ ...values, saturation: Math.round(v) })} />
-        <Pressable style={t.doneBtn} onPress={onClose}><Text style={t.doneBtnText}>Fertig</Text></Pressable>
+        <Pressable style={t.doneBtn} onPress={onClose}><Text style={t.doneBtnText}>{tr('create.done')}</Text></Pressable>
       </GlassSheet>
     </Modal>
   );

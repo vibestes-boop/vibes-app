@@ -1,3 +1,4 @@
+import { useI18n } from '@/lib/i18n';
 /**
  * CreateSheet.tsx
  * Short-Video-Style Creation Flow — Bottom Sheet mit 3 visuell reichen Karten.
@@ -146,6 +147,7 @@ function CreateCard({
 
 // ── Haupt CreateSheet ─────────────────────────────────────────────────────────
 export function CreateSheet({ visible, onClose, onPost, onStory, onLive }: Props) {
+  const { t: tr } = useI18n();
   const insets = useSafeAreaInsets();
   const translateY = useSharedValue(SCREEN_H);
   const backdropOpacity = useSharedValue(0);
@@ -189,29 +191,29 @@ export function CreateSheet({ visible, onClose, onPost, onStory, onLive }: Props
         <View style={s.handle} />
 
         {/* Titel */}
-        <Text style={s.title}>Erstellen</Text>
+        <Text style={s.title}>{tr('create.createTitle')}</Text>
 
         {/* Die 3 Karten */}
         <View style={s.cardsRow}>
           <CreateCard
-            label="Post"
-            sublabel="Foto oder Video"
+            label={tr('create.post')}
+            sublabel={tr('create.photoVideo')}
             colors={['#1E3A5F', '#1a6bb5', '#0EA5E9']}
             icon={<Camera size={38} color="#fff" strokeWidth={1.8} />}
             onPress={() => handleAction(onPost)}
             delay={0}
           />
           <CreateCard
-            label="Story"
-            sublabel="24h sichtbar"
+            label={tr('create.story')}
+            sublabel={tr('create.story24h')}
             colors={['#6D1A6E', '#C026D3', '#F0ABFC']}
             icon={<Zap size={38} color="#fff" strokeWidth={1.8} />}
             onPress={() => handleAction(onStory)}
             delay={60}
           />
           <CreateCard
-            label="Live"
-            sublabel="Jetzt senden"
+            label={tr('create.live')}
+            sublabel={tr('create.sendNow')}
             colors={['#7F1D1D', '#DC2626', '#FCA5A5']}
             isLive
             onPress={() => handleAction(onLive)}
@@ -221,7 +223,7 @@ export function CreateSheet({ visible, onClose, onPost, onStory, onLive }: Props
 
         {/* Abbrechen */}
         <Pressable style={s.cancelBtn} onPress={onClose}>
-          <Text style={s.cancelText}>Abbrechen</Text>
+          <Text style={s.cancelText}>{tr('common.cancel')}</Text>
         </Pressable>
       </ReAnimated.View>
     </Modal>

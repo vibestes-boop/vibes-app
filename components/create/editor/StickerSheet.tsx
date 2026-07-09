@@ -1,3 +1,4 @@
+import { useI18n } from '@/lib/i18n';
 import { Image } from 'expo-image';
 import { useEffect, useRef, useState } from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, TouchableWithoutFeedback, View } from 'react-native';
@@ -41,17 +42,18 @@ export function StickerSheet({ visible, onAdd, onClose }: {
   };
 
   const t = useEditorSheet();
+  const { t: tr } = useI18n();
   if (!visible) return null;
   return (
     <Modal transparent animationType="slide" visible={visible} statusBarTranslucent onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={onClose}><View style={t.overlay} /></TouchableWithoutFeedback>
       <GlassSheet style={s.sheet}>
         <View style={t.handle} />
-        <Text style={t.title}>Sticker</Text>
+        <Text style={t.title}>{tr('create.sticker')}</Text>
         <View style={s.searchRow}>
           <TextInput
             style={[s.searchInput, { backgroundColor: t.fill, color: t.text, borderColor: t.border }]}
-            placeholder="Sticker suchen…"
+            
             placeholderTextColor={t.textMuted}
             value={query}
             onChangeText={onSearch}
@@ -60,7 +62,7 @@ export function StickerSheet({ visible, onAdd, onClose }: {
           />
         </View>
         {loading ? (
-          <View style={s.loadWrap}><Text style={[s.loadText, { color: t.textMuted }]}>Lädt…</Text></View>
+          <View style={s.loadWrap}><Text style={[s.loadText, { color: t.textMuted }]}>{tr('create.loading')}</Text></View>
         ) : (
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.stickerGrid}>
             <View style={s.stickerGridInner}>

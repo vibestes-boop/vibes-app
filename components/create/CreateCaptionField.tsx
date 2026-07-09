@@ -6,6 +6,7 @@
  * Tipp auf Vorschlag → fügt ihn in die Caption ein.
  */
 import { supabase } from '@/lib/supabase';
+import { useI18n } from '@/lib/i18n';
 import { Image } from 'expo-image';
 import { useCallback,useRef,useState } from 'react';
 import {
@@ -124,7 +125,7 @@ export function CreateCaptionField({
         <TextInput
           ref={inputRef}
           style={styles.captionInput}
-          placeholder="Was ist dein Vibe heute? ✨"
+          
           placeholderTextColor="#4B5563"
           value={caption}
           onChangeText={handleChange}

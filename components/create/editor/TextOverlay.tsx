@@ -1,3 +1,4 @@
+import { useI18n } from '@/lib/i18n';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Animated as RNAnimated,
@@ -32,6 +33,7 @@ export const TEXT_COLORS = ['#ffffff','#000000','#FF3B30','#FF9500','#FFD60A','#
 export function TextOverlayEditor({
   visible, onDone, onCancel,
 }: { visible: boolean; onDone: (overlay: Omit<TextOverlay,'id'|'x'|'y'>) => void; onCancel: () => void }) {
+  const { t: tr } = useI18n();
   const [text, setText] = useState('');
   const [fontSize, setFontSize] = useState(32);
   const [color, setColor] = useState('#ffffff');
@@ -52,13 +54,13 @@ export function TextOverlayEditor({
           </TouchableWithoutFeedback>
           <View style={to.topBar}>
             <Pressable onPress={onCancel} style={to.cancelBtn}>
-              <Text style={to.cancelText}>Abbrechen</Text>
+              <Text style={to.cancelText}>{tr('common.cancel')}</Text>
             </Pressable>
             <Pressable
               onPress={() => { if (text.trim()) { onDone({ text: text.trim(), fontSize, color }); setText(''); } else { onCancel(); } }}
               style={to.doneBtn}
             >
-              <Text style={to.doneText}>Fertig</Text>
+              <Text style={to.doneText}>{tr('create.done')}</Text>
             </Pressable>
           </View>
           <View style={to.previewArea} pointerEvents="box-none">
@@ -67,7 +69,7 @@ export function TextOverlayEditor({
               style={[to.textInput, { fontSize, color }]}
               value={text}
               onChangeText={setText}
-              placeholder="Text eingeben..."
+              
               placeholderTextColor="rgba(255,255,255,0.3)"
               multiline
               textAlign="center"
@@ -128,6 +130,7 @@ export const isInTrash = (x: number, y: number) =>
   y >= TRASH_BTN_TOP && y <= TRASH_BTN_BOT;
 
 export function TrashZone({ visible, isOver }: { visible: boolean; isOver: boolean }) {
+  const { t: tr } = useI18n();
   const scaleAnim = useRef(new RNAnimated.Value(1)).current;
   const opacityAnim = useRef(new RNAnimated.Value(0)).current;
 
@@ -161,7 +164,7 @@ export function TrashZone({ visible, isOver }: { visible: boolean; isOver: boole
     >
       <View style={[tz.zone, isOver && tz.zoneActive]}>
         <Text style={tz.icon}>🗑️</Text>
-        <Text style={tz.label}>{isOver ? 'Loslassen zum Löschen' : 'Zum Löschen ziehen'}</Text>
+        <Text style={tz.label}>{isOver ? tr('create.releaseDelete') : tr('create.dragDelete')}</Text>
       </View>
     </RNAnimated.View>
   );
@@ -184,6 +187,7 @@ export function TextOverlayItem({
   onDragEnd: (x: number, y: number, id: string) => void;
   onMove: (x: number, y: number) => void;
 }) {
+  const { t: tr } = useI18n();
   const posX = useRef(overlay.x * SW);
   const posY = useRef(overlay.y * SH);
   const currentScale = useRef(1);

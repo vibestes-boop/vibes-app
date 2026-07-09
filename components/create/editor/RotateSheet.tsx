@@ -1,3 +1,4 @@
+import { useI18n } from '@/lib/i18n';
 import React from 'react';
 import { Modal, Pressable, StyleSheet, Text, TouchableWithoutFeedback, View } from 'react-native';
 
@@ -9,29 +10,30 @@ export function RotateSheet({ visible, state, onChange, onClose }: {
   visible: boolean; state: RotateState; onChange: (s: RotateState) => void; onClose: () => void;
 }) {
   const t = useEditorSheet();
+  const { t: tr } = useI18n();
   if (!visible) return null;
   return (
     <Modal transparent animationType="slide" visible={visible} statusBarTranslucent onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={onClose}><View style={t.overlay} /></TouchableWithoutFeedback>
       <GlassSheet style={ro.sheet}>
         <View style={t.handle} />
-        <Text style={t.title}>Drehen & Spiegeln</Text>
+        <Text style={t.title}>{tr('create.rotateFlip')}</Text>
         <View style={ro.row}>
           <Pressable style={[ro.btn, { backgroundColor: t.fill }]} onPress={() => onChange({ ...state, rotation: (((state.rotation - 90) % 360 + 360) % 360) as RotateState['rotation'] })}>
-            <Text style={[ro.icon, { color: t.text }]}>↺</Text><Text style={[ro.btnLabel, { color: t.textSecondary }]}>Links 90°</Text>
+            <Text style={[ro.icon, { color: t.text }]}>↺</Text><Text style={[ro.btnLabel, { color: t.textSecondary }]}>{tr('create.left90')}</Text>
           </Pressable>
           <Pressable style={[ro.btn, { backgroundColor: t.fill }]} onPress={() => onChange({ ...state, rotation: ((state.rotation + 90) % 360) as RotateState['rotation'] })}>
-            <Text style={[ro.icon, { color: t.text }]}>↻</Text><Text style={[ro.btnLabel, { color: t.textSecondary }]}>Rechts 90°</Text>
+            <Text style={[ro.icon, { color: t.text }]}>↻</Text><Text style={[ro.btnLabel, { color: t.textSecondary }]}>{tr('create.right90')}</Text>
           </Pressable>
           <Pressable style={[ro.btn, { backgroundColor: state.flipH ? t.fillActive : t.fill }]} onPress={() => onChange({ ...state, flipH: !state.flipH })}>
-            <Text style={[ro.icon, { color: t.text }]}>⇔</Text><Text style={[ro.btnLabel, { color: t.textSecondary }]}>Spiegeln</Text>
+            <Text style={[ro.icon, { color: t.text }]}>⇔</Text><Text style={[ro.btnLabel, { color: t.textSecondary }]}>{tr('create.flip')}</Text>
           </Pressable>
           <Pressable style={[ro.btn, { backgroundColor: t.fill }]} onPress={() => onChange({ rotation: 0, flipH: false })}>
-            <Text style={[ro.icon, { color: t.text }]}>⊙</Text><Text style={[ro.btnLabel, { color: t.textSecondary }]}>Reset</Text>
+            <Text style={[ro.icon, { color: t.text }]}>⊙</Text><Text style={[ro.btnLabel, { color: t.textSecondary }]}>{tr('create.reset')}</Text>
           </Pressable>
         </View>
         <Text style={[ro.badge, { color: t.textMuted }]}>{state.rotation}° {state.flipH ? '· gespiegelt' : ''}</Text>
-        <Pressable style={t.doneBtn} onPress={onClose}><Text style={t.doneBtnText}>Fertig</Text></Pressable>
+        <Pressable style={t.doneBtn} onPress={onClose}><Text style={t.doneBtnText}>{tr('create.done')}</Text></Pressable>
       </GlassSheet>
     </Modal>
   );

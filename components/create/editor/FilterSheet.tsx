@@ -3,6 +3,7 @@ import React from 'react';
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TouchableWithoutFeedback, View } from 'react-native';
 
 import type { ColorFilterId } from '@/lib/cameraFilters';
+import { useI18n } from '@/lib/i18n';
 import { COLOR_FILTERS, FILTER_CATALOG } from '@/lib/cameraFilters';
 import { SkiaCanvas, SkiaColorMatrix, SkiaImage, SKIA_READY, useSkiaImage } from '@/lib/skiaLoader';
 import { GlassSheet, useEditorSheet, SH, SW } from './sharedStyles';
@@ -124,13 +125,14 @@ export function FilterSheet({ visible, mediaUri, currentId, onSelect, onClose }:
   onClose: () => void;
 }) {
   const t = useEditorSheet();
+  const { t: tr } = useI18n();
   if (!visible) return null;
   return (
     <Modal transparent animationType="slide" visible={visible} statusBarTranslucent onRequestClose={onClose}>
       <TouchableWithoutFeedback onPress={onClose}><View style={t.overlay} /></TouchableWithoutFeedback>
       <GlassSheet style={fs.sheet}>
         <View style={t.handle} />
-        <Text style={t.title}>Filter</Text>
+        <Text style={t.title}>{tr('create.filter')}</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={fs.row}>
           {COLOR_FILTER_LIST.map(preset => {
             const id = preset.id as ColorFilterId;
@@ -143,7 +145,7 @@ export function FilterSheet({ visible, mediaUri, currentId, onSelect, onClose }:
             );
           })}
         </ScrollView>
-        <Pressable style={t.doneBtn} onPress={onClose}><Text style={t.doneBtnText}>Fertig ✓</Text></Pressable>
+        <Pressable style={t.doneBtn} onPress={onClose}><Text style={t.doneBtnText}>{tr('create.doneCheck')}</Text></Pressable>
       </GlassSheet>
     </Modal>
   );

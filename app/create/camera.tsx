@@ -12,6 +12,7 @@
  *  - Premium Dark Ästhetik
  */
 import { MusicPickerSheet } from '@/components/camera/MusicPickerSheet';
+import { useI18n } from '@/lib/i18n';
 import type { MusicTrack } from '@/lib/useMusicPicker';
 import { useIsFocused } from '@react-navigation/native';
 import { CameraType,CameraView,FlashMode,useCameraPermissions,useMicrophonePermissions } from 'expo-camera';
@@ -64,11 +65,11 @@ const ASPECT_PRESETS: { key: AspectRatio; label: string; ratio: [number, number]
   { key: '16:9', label: '16:9\nBreit',    ratio: [16, 9] },
 ];
 
-const CAPTURE_MODES: { key: CaptureMode; label: string }[] = [
+const CAPTURE_MODES: { key: CaptureMode; label?: string; labelKey?: string }[] = [
   { key: '60s', label: '60s' },
   { key: '15s', label: '15s' },
-  { key: 'foto', label: 'Foto' },
-  { key: 'text', label: 'Text' },
+  { key: 'foto', labelKey: 'create.photo' },
+  { key: 'text', labelKey: 'create.text' },
 ];
 
 // Hintergrund-Farben für Text-Posts (TikTok-Stil)
@@ -86,18 +87,18 @@ const TEXT_GRADIENTS: [string, string][] = [
 
 // Text-Ausrichtung + Schrift-Stile (System-Fonts → kein Asset nötig, im Capture sichtbar)
 const TEXT_ALIGNS = ['center', 'left', 'right'] as const;
-const ALIGN_LABEL: Record<(typeof TEXT_ALIGNS)[number], string> = { center: 'Mitte', left: 'Links', right: 'Rechts' };
+const ALIGN_LABEL: Record<(typeof TEXT_ALIGNS)[number], string> = { center: 'create.center', left: 'create.left', right: 'create.right' };
 const TEXT_STYLES = [
-  { key: 'classic', label: 'Klassisch', fontFamily: undefined as string | undefined, fontWeight: '600' as const, fontStyle: 'normal' as const, glow: false },
+  { key: 'classic', label: 'Klassisch', labelKey: 'create.classic', fontFamily: undefined as string | undefined, fontWeight: '600' as const, fontStyle: 'normal' as const, glow: false },
   { key: 'serif',   label: 'Serif',     fontFamily: 'Georgia',  fontWeight: '700' as const, fontStyle: 'italic' as const, glow: false },
   { key: 'neon',    label: 'Neon',      fontFamily: undefined,  fontWeight: '600' as const, fontStyle: 'normal' as const, glow: true },
   { key: 'mono',    label: 'Mono',      fontFamily: 'Courier',  fontWeight: '700' as const, fontStyle: 'normal' as const, glow: false },
 ];
 
-const STUDIO_MODES: { key: StudioMode; label: string; Icon: typeof Video }[] = [
-  { key: 'vibe', label: 'AUFNAHME', Icon: Video },
+const STUDIO_MODES: { key: StudioMode; label?: string; labelKey?: string; Icon: typeof Video }[] = [
+  { key: 'vibe', labelKey: 'create.recording', Icon: Video },
   { key: 'studio', label: 'STUDIO', Icon: Sparkles },
-  { key: 'live', label: 'LIVE', Icon: Radio },
+  { key: 'live', labelKey: 'create.live', Icon: Radio },
 ];
 
 // ─── Animierter Record Button ─────────────────────────────────────────────────
@@ -215,6 +216,7 @@ function StudioModePill({
   active: StudioMode;
   onChange: (m: StudioMode) => void;
 }) {
+  const { t: tr } = useI18n();
   const { colors, isDark } = useTheme();
   const activeIdx = modes.findIndex((m) => m.key === active);
   const PILL_W = (SCREEN_W - 48 - 8) / modes.length;
@@ -257,7 +259,7 @@ function StudioModePill({
             {m.key === 'live' && isActive && <LiveDot />}
             <m.Icon size={16} color={iconColor} strokeWidth={2} />
             <Text style={[pill.label, { color: isActive ? colors.text.primary : colors.text.muted }]}>
-              {m.label}
+              {m.labelKey ? tr(m.labelKey as any) : m.label}
             </Text>
           </Pressable>
         );
@@ -324,6 +326,7 @@ function CaptureSwitcher({
   active: CaptureMode;
   onChange: (m: CaptureMode) => void;
 }) {
+  const { t: tr } = useI18n();
   return (
     <View style={cap.pill}>
       {modes.map((m, i) => {
@@ -338,7 +341,7 @@ function CaptureSwitcher({
             style={[cap.item, isActive && cap.itemActive]}
           >
             <Text style={[cap.label, isActive && cap.labelActive]}>
-              {m.label}
+              {m.labelKey ? tr(m.labelKey as any) : m.label}
             </Text>
           </Pressable>
         );
@@ -381,6 +384,7 @@ const cap = StyleSheet.create({
 
 // ─── Haupt Screen ──────────────────────────────────────────────────────────────
 export default function CreateCameraScreen() {
+  const { t: tr } = useI18n();
   useThemedStatusBar('light');
   const g = useCreateGlass();
   const router = useRouter();
@@ -449,7 +453,7 @@ export default function CreateCameraScreen() {
   }, []);
 
   const handleTextDone = useCallback(async () => {
-    if (!textContent.trim()) { Alert.alert('Schreib was 🙂', 'Tippe deinen Text ein.'); return; }
+    if (!textContent.trim()) { Alert.alert(tr('create.writeSomething'), tr('create.typeYourText')); return; }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Keyboard.dismiss();
     await new Promise((r) => setTimeout(r, 380));   // Tastatur einfahren lassen, sonst landet sie im Bild
@@ -460,16 +464,16 @@ export default function CreateCameraScreen() {
         const fileUri = uri.startsWith('file://') ? uri : `file://${uri}`;
         router.replace({ pathname: '/create', params: { mediaUri: fileUri, mediaType: 'image' } });
       } else {
-        Alert.alert('Schade', 'Text-Post konnte nicht erstellt werden.');
+        Alert.alert(tr('create.tooBad'), tr('create.textPostFailed'));
       }
     } catch {
-      Alert.alert('Schade', 'Text-Post konnte nicht erstellt werden.');
+      Alert.alert(tr('create.tooBad'), tr('create.textPostFailed'));
     }
   }, [textContent, router]);
 
   // Text als Story posten → Capture → vorhandener Story-Screen (mit Bild vorbefüllt)
   const handleTextStory = useCallback(async () => {
-    if (!textContent.trim()) { Alert.alert('Schreib was 🙂', 'Tippe deinen Text ein.'); return; }
+    if (!textContent.trim()) { Alert.alert(tr('create.writeSomething'), tr('create.typeYourText')); return; }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Keyboard.dismiss();
     await new Promise((r) => setTimeout(r, 380));
@@ -479,10 +483,10 @@ export default function CreateCameraScreen() {
         const fileUri = uri.startsWith('file://') ? uri : `file://${uri}`;
         router.push({ pathname: '/create-story', params: { mediaUri: fileUri, mediaType: 'image' } });
       } else {
-        Alert.alert('Schade', 'Story konnte nicht erstellt werden.');
+        Alert.alert(tr('create.tooBad'), tr('create.storyFailed'));
       }
     } catch {
-      Alert.alert('Schade', 'Story konnte nicht erstellt werden.');
+      Alert.alert(tr('create.tooBad'), tr('create.storyFailed'));
     }
   }, [textContent, router]);
 
@@ -505,11 +509,11 @@ export default function CreateCameraScreen() {
   const openGallery = useCallback(async () => {
     try {
       const { status } = await requestMediaLibraryPermissionsAsync();
-      // 'limited' = iOS "Ausgewählte Fotos" — Picker trotzdem öffnen
+      // 'limited' = iOS tr('create.selectedPhotos') — Picker trotzdem öffnen
       if (status === 'denied') {
         Alert.alert(
-          'Zugriff verweigert',
-          'Bitte erlaube in den Einstellungen den Zugriff auf deine Fotos.',
+          tr('create.accessDenied'),
+          tr('create.allowPhotosSettings'),
           [{ text: 'OK' }]
         );
         return;
@@ -533,7 +537,7 @@ export default function CreateCameraScreen() {
       }
     } catch (e) {
       __DEV__ && console.warn('[openGallery]', e);
-      Alert.alert('Hoppla 🙈', 'Die Galerie ließ sich nicht öffnen — gleich nochmal?');
+      Alert.alert(tr('create.oops'), tr('create.galleryFailed'));
     }
   }, [captureMode, router, studioMode, aspectRatio, selectedTrack, audioVolume]);
 
@@ -544,7 +548,7 @@ export default function CreateCameraScreen() {
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.92 });
       if (photo?.uri) router.replace({ pathname: '/create', params: { mediaUri: photo.uri, mediaType: 'image', audioUrl: selectedTrack?.url ?? '', audioTitle: selectedTrack?.title ?? '', audioVolume: String(audioVolume) } });
     } catch {
-      Alert.alert('Hoppla 🙈', 'Das Foto hat nicht geklappt — gleich nochmal?');
+      Alert.alert(tr('create.oops'), tr('create.photoFailed'));
     }
   }, [router, selectedTrack, audioVolume]);
 
@@ -626,17 +630,17 @@ export default function CreateCameraScreen() {
         <View style={s.permIcon}>
           <Video size={36} color="rgba(255,255,255,0.7)" strokeWidth={1.5} />
         </View>
-        <Text style={s.permTitle}>Kamera-Zugriff</Text>
+        <Text style={s.permTitle}>{tr('create.cameraAccess')}</Text>
         <Text style={s.permSub}>
           Serlo braucht Kamera und Mikrofon um{'\n'}Videos, Stories und Live-Streams zu erstellen.
         </Text>
         <Pressable onPress={requestCameraPermission} style={s.permBtn}>
           <View style={s.permBtnGrad}>
-            <Text style={s.permBtnText}>Kamera-Zugriff erlauben</Text>
+            <Text style={s.permBtnText}>{tr('create.allowCamera')}</Text>
           </View>
         </Pressable>
         <Pressable onPress={() => router.back()} style={{ marginTop: 16 }}>
-          <Text style={{ color: 'rgba(255,255,255,0.35)', fontSize: 14 }}>Abbrechen</Text>
+          <Text style={{ color: 'rgba(255,255,255,0.35)', fontSize: 14 }}>{tr('common.cancel')}</Text>
         </Pressable>
       </View>
     );
@@ -686,7 +690,7 @@ export default function CreateCameraScreen() {
                 ref={textInputRef}
                 value={textContent}
                 onChangeText={setTextContent}
-                placeholder="Tippe deinen Text…"
+                
                 placeholderTextColor={textColor === '#FFFFFF' ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.4)'}
                 multiline
                 autoFocus
@@ -757,14 +761,14 @@ export default function CreateCameraScreen() {
           <Text style={s.topTitle}>Serlo</Text>
           <Text style={s.topTitleSep}> · </Text>
           <Text style={s.topTitleMode}>
-            {studioMode === 'vibe' ? 'Aufnahme' : studioMode === 'studio' ? 'Studio' : 'Live'}
+            {studioMode === 'vibe' ? tr('create.recording') : studioMode === 'studio' ? 'Studio' : tr('create.live')}
           </Text>
         </View>
 
         {/* Rechts: im Text-Modus mit offener Tastatur „Fertig" (Tastatur zu), sonst Sound */}
         {isText && kbHeight > 0 ? (
           <Pressable style={s.topBtn} hitSlop={10} onPress={() => Keyboard.dismiss()}>
-            <Text style={s.doneText}>Fertig</Text>
+            <Text style={s.doneText}>{tr('create.done')}</Text>
           </Pressable>
         ) : (
           <Pressable
@@ -785,7 +789,7 @@ export default function CreateCameraScreen() {
                 style={s.soundText}
                 numberOfLines={1}
               >
-                {selectedTrack ? selectedTrack.title : 'Sound'}
+                {selectedTrack ? selectedTrack.title : tr('create.sound')}
               </Text>
             </View>
           </Pressable>
@@ -806,7 +810,7 @@ export default function CreateCameraScreen() {
       <View style={[s.tools, { top: insets.top + 72 }]}>
         <Pressable style={s.toolBtn} onPress={flipCamera}>
           <RotateCcw size={24} color="#fff" strokeWidth={1.8} />
-          <Text style={s.toolLabel}>Wenden</Text>
+          <Text style={s.toolLabel}>{tr('create.turn')}</Text>
         </Pressable>
 
         <Pressable
@@ -814,7 +818,7 @@ export default function CreateCameraScreen() {
           onPress={() => {
             if (cameraFacing === 'front') {
               // Frontkamera hat keinen Blitz
-              Alert.alert('Blitz nicht verfügbar', 'Wechsle zur Rückkamera um den Blitz zu nutzen.');
+              Alert.alert(tr('create.flashUnavailable'), tr('create.flashBackCam'));
               return;
             }
             setFlash(f => f === 'off' ? 'on' : 'off');
@@ -828,12 +832,12 @@ export default function CreateCameraScreen() {
                 strokeWidth={1.8}
               />
           }
-          <Text style={s.toolLabel}>Blitz</Text>
+          <Text style={s.toolLabel}>{tr('create.flash')}</Text>
         </Pressable>
 
         <Pressable style={s.toolBtn} onPress={cycleTimer}>
           <Timer size={24} color="#fff" strokeWidth={1.8} />
-          <Text style={s.toolLabel}>{timerSec > 0 ? `Timer · ${timerSec}s` : 'Timer'}</Text>
+          <Text style={s.toolLabel}>{timerSec > 0 ? `Timer · ${timerSec}s` : tr('create.timer')}</Text>
         </Pressable>
 
         {/* „Effekte" (AR-Kamera) entfernt — war buggy/verwirrend; AR-Code bleibt dormant.
@@ -846,11 +850,11 @@ export default function CreateCameraScreen() {
         <View style={[s.tools, { top: insets.top + 72, zIndex: 11 }]}>
           <Pressable style={s.toolBtn} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setStyleIdx((i) => (i + 1) % TEXT_STYLES.length); }}>
             <Text style={{ color: '#fff', fontSize: 22, fontWeight: '700', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 3 }}>Aa</Text>
-            <Text style={s.toolLabel}>{textStyle.label}</Text>
+            <Text style={s.toolLabel}>{textStyle.labelKey ? tr(textStyle.labelKey as any) : textStyle.label}</Text>
           </Pressable>
           <Pressable style={s.toolBtn} onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setAlignIdx((i) => (i + 1) % TEXT_ALIGNS.length); }}>
             <AlignCenter size={24} color="#fff" strokeWidth={1.8} />
-            <Text style={s.toolLabel}>{ALIGN_LABEL[textAlignMode]}</Text>
+            <Text style={s.toolLabel}>{tr(ALIGN_LABEL[textAlignMode] as any)}</Text>
           </Pressable>
         </View>
       )}
@@ -863,14 +867,14 @@ export default function CreateCameraScreen() {
           <GlassPanel style={s.studioPanel}>
 
             {/* Neu erstellen: Galerie / Text */}
-            <Text style={g.sectionLabel}>Neu erstellen</Text>
+            <Text style={g.sectionLabel}>{tr('create.newCreate')}</Text>
             <View style={s.studioCardRow}>
               <Pressable onPress={openGallery} style={g.card}>
                 <View style={g.cardIcon}>
                   <ImageIcon size={20} color={g.accent} strokeWidth={1.9} />
                 </View>
-                <Text style={g.title}>Aus Galerie</Text>
-                <Text style={g.sub}>Foto · Video · Clip</Text>
+                <Text style={g.title}>{tr('create.fromGallery')}</Text>
+                <Text style={g.sub}>{tr('create.photoVideoClip')}</Text>
               </Pressable>
               <Pressable
                 onPress={() => {
@@ -884,13 +888,13 @@ export default function CreateCameraScreen() {
                 <View style={g.cardIcon}>
                   <Type size={20} color={g.accent} strokeWidth={1.9} />
                 </View>
-                <Text style={g.title}>Text-Post</Text>
-                <Text style={g.sub}>Hintergrund · Schrift</Text>
+                <Text style={g.title}>{tr('create.textPostTab')}</Text>
+                <Text style={g.sub}>{tr('create.bgFont')}</Text>
               </Pressable>
             </View>
 
             {/* Format */}
-            <Text style={[g.sectionLabel, { marginTop: 14 }]}>Format</Text>
+            <Text style={[g.sectionLabel, { marginTop: 14 }]}>{tr('create.format')}</Text>
             <View style={g.segTrack}>
               {ASPECT_PRESETS.map(p => {
                 const active = aspectRatio === p.key;
@@ -910,19 +914,19 @@ export default function CreateCameraScreen() {
             </View>
 
             {/* Im Editor verfügbar — macht die vorhandene Tiefe sichtbar */}
-            <Text style={[g.sectionLabel, { marginTop: 14 }]}>Im Editor</Text>
+            <Text style={[g.sectionLabel, { marginTop: 14 }]}>{tr('create.inEditor')}</Text>
             <View style={s.studioToolStrip}>
-              <View style={g.chip}><Crop size={14} color={g.chipIcon} strokeWidth={2} /><Text style={g.chipText}>Zuschneiden</Text></View>
-              <View style={g.chip}><Palette size={14} color={g.chipIcon} strokeWidth={2} /><Text style={g.chipText}>Filter</Text></View>
-              <View style={g.chip}><Type size={14} color={g.chipIcon} strokeWidth={2} /><Text style={g.chipText}>Text</Text></View>
-              <View style={g.chip}><Smile size={14} color={g.chipIcon} strokeWidth={2} /><Text style={g.chipText}>Sticker</Text></View>
-              <View style={g.chip}><ImageIcon size={14} color={g.chipIcon} strokeWidth={2} /><Text style={g.chipText}>Cover</Text></View>
+              <View style={g.chip}><Crop size={14} color={g.chipIcon} strokeWidth={2} /><Text style={g.chipText}>{tr('create.crop')}</Text></View>
+              <View style={g.chip}><Palette size={14} color={g.chipIcon} strokeWidth={2} /><Text style={g.chipText}>{tr('create.filter')}</Text></View>
+              <View style={g.chip}><Type size={14} color={g.chipIcon} strokeWidth={2} /><Text style={g.chipText}>{tr('create.text')}</Text></View>
+              <View style={g.chip}><Smile size={14} color={g.chipIcon} strokeWidth={2} /><Text style={g.chipText}>{tr('create.sticker')}</Text></View>
+              <View style={g.chip}><ImageIcon size={14} color={g.chipIcon} strokeWidth={2} /><Text style={g.chipText}>{tr('create.cover')}</Text></View>
             </View>
 
             {/* Entwürfe fortsetzen → Cloud-Entwürfe */}
             <Pressable onPress={() => router.push('/creator/drafts' as any)} style={[g.rowBtn, { marginTop: 14 }]}>
               <FileText size={18} color={g.chipIcon} strokeWidth={1.8} />
-              <Text style={g.rowText}>Entwürfe fortsetzen</Text>
+              <Text style={g.rowText}>{tr('create.resumeDrafts')}</Text>
               <ChevronRight size={18} color={g.textMuted} strokeWidth={2} />
             </Pressable>
           </GlassPanel>
@@ -936,10 +940,10 @@ export default function CreateCameraScreen() {
               /* ── Text-Modus: „Deine Story" + „Weiter" (TikTok-Stil) statt Kamera-Aufnahme ── */
               <View style={s.textPostRow}>
                 <Pressable onPress={handleTextStory} style={s.textStoryBtn}>
-                  <Text style={s.textStoryBtnText}>Deine Story</Text>
+                  <Text style={s.textStoryBtnText}>{tr('create.yourStory')}</Text>
                 </Pressable>
                 <Pressable onPress={handleTextDone} style={s.textPostBtn}>
-                  <Text style={s.textPostBtnText}>Weiter</Text>
+                  <Text style={s.textPostBtnText}>{tr('create.next')}</Text>
                   <ChevronRight size={18} color="#000" strokeWidth={2.5} />
                 </Pressable>
               </View>
@@ -949,7 +953,7 @@ export default function CreateCameraScreen() {
                 {/* Links: Galerie */}
                 <Pressable onPress={openGallery} style={s.galleryBtn}>
                   <View style={s.galleryEmpty}>
-                    <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 9 }}>Galerie</Text>
+                    <Text style={{ color: 'rgba(255,255,255,0.3)', fontSize: 9 }}>{tr('create.galleryTab')}</Text>
                   </View>
                   <LinearGradient
                     colors={['rgba(255,255,255,0.18)', 'rgba(168,85,247,0.3)']}

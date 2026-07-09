@@ -1,3 +1,4 @@
+import { useI18n } from '@/lib/i18n';
 /**
  * CreatePostSettings.tsx
  * Post-Einstellungen wie bei Short-Video:
@@ -23,34 +24,35 @@ interface Props {
   showWomenOnly?: boolean;  // nur anzeigen wenn Nutzerin verifiziert ist
 }
 
-const PRIVACY_OPTIONS: { key: PostPrivacy; label: string; sub: string; icon: React.ReactNode }[] = [
+const PRIVACY_OPTIONS: { key: PostPrivacy; labelKey: string; subKey: string; icon: React.ReactNode }[] = [
   {
     key: 'public',
-    label: 'Öffentlich',
-    sub: 'Jeder kann sehen',
+    labelKey: 'create.public',
+    subKey: 'create.everyoneCanSee',
     icon: <Globe size={16} color="#FFFFFF" strokeWidth={1.8} />,
   },
   {
     key: 'friends',
-    label: 'Freunde',
-    sub: 'Nur Follower',
+    labelKey: 'create.friends',
+    subKey: 'create.followersOnly',
     icon: <Users size={16} color="#A855F7" strokeWidth={1.8} />,
   },
   {
     key: 'private',
-    label: 'Privat',
-    sub: 'Nur ich',
+    labelKey: 'create.private',
+    subKey: 'create.onlyMe',
     icon: <Lock size={16} color="rgba(255,255,255,0.45)" strokeWidth={1.8} />,
   },
 ];
 
 export function CreatePostSettings({ settings, onChange, showWomenOnly }: Props) {
+  const { t: tr } = useI18n();
   const set = (partial: Partial<PostSettingsState>) =>
     onChange({ ...settings, ...partial });
 
   return (
     <View style={s.root}>
-      <Text style={s.sectionTitle}>Einstellungen</Text>
+      <Text style={s.sectionTitle}>{tr('create.settings')}</Text>
 
       {/* ── Privatsphäre ── */}
       <View style={s.privacyRow}>
@@ -64,9 +66,9 @@ export function CreatePostSettings({ settings, onChange, showWomenOnly }: Props)
             >
               {opt.icon}
               <Text style={[s.privacyLabel, active && s.privacyLabelActive]}>
-                {opt.label}
+                {tr(opt.labelKey as any)}
               </Text>
-              <Text style={s.privacySub}>{opt.sub}</Text>
+              <Text style={s.privacySub}>{tr(opt.subKey as any)}</Text>
             </Pressable>
           );
         })}
@@ -75,19 +77,19 @@ export function CreatePostSettings({ settings, onChange, showWomenOnly }: Props)
       {/* ── Toggles ── */}
       <View style={s.toggleSection}>
         <ToggleRow
-          label="Kommentare erlauben"
+          label={tr('create.allowComments')}
           value={settings.allowComments}
           onValueChange={(v) => set({ allowComments: v })}
         />
         <View style={s.divider} />
         <ToggleRow
-          label="Download erlauben"
+          label={tr('create.allowDownload')}
           value={settings.allowDownload}
           onValueChange={(v) => set({ allowDownload: v })}
         />
         <View style={s.divider} />
         <ToggleRow
-          label="Duet erlauben"
+          label={tr('create.allowDuet')}
           value={settings.allowDuet}
           onValueChange={(v) => set({ allowDuet: v })}
         />
@@ -98,8 +100,8 @@ export function CreatePostSettings({ settings, onChange, showWomenOnly }: Props)
               <View style={s.womenOnlyLeft}>
                 <Text style={s.womenOnlyEmoji}>🌸</Text>
                 <View>
-                  <Text style={s.womenOnlyLabel}>Women-Only</Text>
-                  <Text style={s.womenOnlySub}>Nur für verifizierte Frauen</Text>
+                  <Text style={s.womenOnlyLabel}>{tr('create.womenOnly')}</Text>
+                  <Text style={s.womenOnlySub}>{tr('create.womenOnlyDesc')}</Text>
                 </View>
               </View>
               <Switch

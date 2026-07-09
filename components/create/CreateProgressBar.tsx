@@ -1,3 +1,4 @@
+import { useI18n } from '@/lib/i18n';
 import { X } from 'lucide-react-native';
 import { useEffect } from 'react';
 import { Pressable,StyleSheet,Text,View } from 'react-native';
@@ -20,6 +21,7 @@ interface CreateProgressBarProps {
 }
 
 export function CreateProgressBar({ visible, progress, onCancel }: CreateProgressBarProps) {
+  const { t: tr } = useI18n();
   const isRetrying = progress < 0;
   const retryAttempt = Math.abs(progress); // 1, 2 or 3
 
@@ -73,7 +75,7 @@ export function CreateProgressBar({ visible, progress, onCancel }: CreateProgres
           </Text>
         ) : (
           <Text style={styles.progressText}>
-            {progress < 100 ? `${Math.round(progress)}%` : 'Wird gespeichert…'}
+            {progress < 100 ? `${Math.round(progress)}%` : tr('create.saving')}
           </Text>
         )}
 
@@ -81,12 +83,12 @@ export function CreateProgressBar({ visible, progress, onCancel }: CreateProgres
           <Pressable
             onPress={onCancel}
             style={styles.cancelBtn}
-            accessibilityLabel="Upload abbrechen"
+            
             accessibilityRole="button"
             hitSlop={8}
           >
             <X size={13} stroke="#9CA3AF" strokeWidth={2.5} />
-            <Text style={styles.cancelText}>Abbrechen</Text>
+            <Text style={styles.cancelText}>{tr('common.cancel')}</Text>
           </Pressable>
         )}
       </View>

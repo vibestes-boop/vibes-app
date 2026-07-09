@@ -1,3 +1,4 @@
+import { useI18n } from '@/lib/i18n';
 import { Image } from 'expo-image';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { getThumbnailAsync } from 'expo-video-thumbnails';
@@ -114,6 +115,7 @@ export function VideoTrimSheet({
   const trimDur = Math.max(0, endSec - startSec);
 
   const t = useEditorSheet();
+  const { t: tr } = useI18n();
   if (!visible) return null;
 
   return (
@@ -124,7 +126,7 @@ export function VideoTrimSheet({
         </TouchableWithoutFeedback>
         <GlassSheet style={tv.sheet}>
           <View style={t.handle} />
-          <Text style={t.title}>Video kürzen</Text>
+          <Text style={t.title}>{tr('create.trimVideo')}</Text>
 
           <View style={tv.durRow}>
             <View style={[tv.badge, { backgroundColor: t.fill, borderColor: t.border }]}><Text style={[tv.badgeText, { color: t.textSecondary }]}>{fmt(startSec)} – {fmt(endSec)}</Text></View>
@@ -156,13 +158,13 @@ export function VideoTrimSheet({
             ))}
           </View>
 
-          <Text style={[tv.hint, { color: t.textMuted }]}>Ziehe die weißen Griffe um den Ausschnitt zu wählen</Text>
+          <Text style={[tv.hint, { color: t.textMuted }]}>{tr('create.dragHandles')}</Text>
 
           <Pressable
             style={t.doneBtn}
             onPress={() => onDone({ startMs: Math.round(startSec * 1000), endMs: Math.round(endSec * 1000), speedFactor })}
           >
-            <Text style={t.doneBtnText}>Übernehmen</Text>
+            <Text style={t.doneBtnText}>{tr('create.apply')}</Text>
           </Pressable>
         </GlassSheet>
       </GestureHandlerRootView>

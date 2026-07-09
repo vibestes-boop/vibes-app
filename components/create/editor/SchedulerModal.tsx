@@ -1,24 +1,25 @@
+import { useI18n } from '@/lib/i18n';
 import { ChevronDown, ChevronUp } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-export function schedPresets(): { label: string; at: Date }[] {
+export function schedPresets(tr: (k: any) => string): { label: string; at: Date }[] {
   const now = new Date();
   const opts: { label: string; at: Date }[] = [];
-  opts.push({ label: 'in 1 h', at: new Date(now.getTime() + 60 * 60 * 1000) });
-  opts.push({ label: 'in 3 h', at: new Date(now.getTime() + 3 * 60 * 60 * 1000) });
+  opts.push({ label: tr('create.schedIn1h'), at: new Date(now.getTime() + 60 * 60 * 1000) });
+  opts.push({ label: tr('create.schedIn3h'), at: new Date(now.getTime() + 3 * 60 * 60 * 1000) });
   const today20 = new Date(now); today20.setHours(20, 0, 0, 0);
-  if (today20.getTime() > now.getTime() + 60_000) opts.push({ label: 'Heute 20:00', at: today20 });
+  if (today20.getTime() > now.getTime() + 60_000) opts.push({ label: tr('create.schedToday8'), at: today20 });
   const tom = new Date(now); tom.setDate(tom.getDate() + 1);
   const t9  = new Date(tom); t9.setHours(9, 0, 0, 0);
   const t14 = new Date(tom); t14.setHours(14, 0, 0, 0);
   const t20 = new Date(tom); t20.setHours(20, 0, 0, 0);
-  opts.push({ label: 'Morgen 09:00', at: t9 });
-  opts.push({ label: 'Morgen 14:00', at: t14 });
-  opts.push({ label: 'Morgen 20:00', at: t20 });
+  opts.push({ label: tr('create.schedTomorrow9'), at: t9 });
+  opts.push({ label: tr('create.schedTomorrow14'), at: t14 });
+  opts.push({ label: tr('create.schedTomorrow8'), at: t20 });
   const next7 = new Date(now); next7.setDate(next7.getDate() + 7); next7.setHours(9, 0, 0, 0);
-  opts.push({ label: 'In 1 Woche', at: next7 });
+  opts.push({ label: tr('create.schedWeek'), at: next7 });
   return opts;
 }
 
@@ -39,6 +40,7 @@ export function SchedulerModal({
   onSave: (d: Date) => void;
   isSaving: boolean;
 }) {
+  const { t: tr } = useI18n();
   const insets = useSafeAreaInsets();
   const [date, setDate] = useState<Date>(() => new Date(Date.now() + 3 * 3600 * 1000));
 
@@ -63,8 +65,8 @@ export function SchedulerModal({
       <View style={[sm.sheetWrap, { paddingBottom: insets.bottom + 16 }]}>
         <View style={sm.sheet}>
           <View style={sm.handle} />
-          <Text style={sm.heading}>Wann veröffentlichen?</Text>
-          <Text style={sm.sub}>Mindestens 1 Minute, höchstens 60 Tage in der Zukunft.</Text>
+          <Text style={sm.heading}>{tr('create.schedule2')}</Text>
+          <Text style={sm.sub}>{tr('create.scheduleHint')}</Text>
 
           <View style={sm.dateCard}>
             <Text style={sm.dateBig}>{fmtSchedLabel(date)}</Text>
@@ -72,7 +74,7 @@ export function SchedulerModal({
 
           <Text style={sm.sectionLabel}>SCHNELLAUSWAHL</Text>
           <View style={sm.presetRow}>
-            {schedPresets().map((p) => (
+            {schedPresets(tr).map((p) => (
               <Pressable
                 key={p.label}
                 onPress={() => setDate(clamp(p.at))}
@@ -85,9 +87,9 @@ export function SchedulerModal({
 
           <Text style={sm.sectionLabel}>FEINSTEUERUNG</Text>
           <View style={sm.stepperRow}>
-            <SchedStepper label="Tag −/+"  onDec={() => bumpDays(-1)}    onInc={() => bumpDays(1)} />
-            <SchedStepper label="Std −/+" onDec={() => bumpHours(-1)}   onInc={() => bumpHours(1)} />
-            <SchedStepper label="Min −/+" onDec={() => bumpMinutes(-15)} onInc={() => bumpMinutes(15)} />
+            <SchedStepper label={tr('create.dayPlusMinus')}  onDec={() => bumpDays(-1)}    onInc={() => bumpDays(1)} />
+            <SchedStepper label={tr('create.hourPlusMinus')} onDec={() => bumpHours(-1)}   onInc={() => bumpHours(1)} />
+            <SchedStepper label={tr('create.minPlusMinus')} onDec={() => bumpMinutes(-15)} onInc={() => bumpMinutes(15)} />
           </View>
 
           <View style={sm.actions}>
@@ -95,7 +97,7 @@ export function SchedulerModal({
               onPress={onClose}
               style={sm.btnGhost}
             >
-              <Text style={sm.btnGhostText}>Abbrechen</Text>
+              <Text style={sm.btnGhostText}>{tr('common.cancel')}</Text>
             </Pressable>
             <Pressable
               onPress={() => onSave(date)}
@@ -103,7 +105,7 @@ export function SchedulerModal({
               style={[sm.btnPrimary, (isSaving || !valid) && { opacity: 0.5 }]}
             >
               <Text style={sm.btnPrimaryText}>
-                {isSaving ? 'Plant…' : 'Planen'}
+                {isSaving ? tr('create.scheduling') : tr('create.schedule')}
               </Text>
             </Pressable>
           </View>

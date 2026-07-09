@@ -7,7 +7,7 @@
  *  - Frame-Strip mit Thumbnails (expo-video-thumbnails)
  *  - Gesture-basierte Trim-Handles (links/rechts)
  *  - Aufnahmedauer-Anzeige
- *  - "Weiter" → /create mit trim params
+ *  - tr('create.next') → /create mit trim params
  */
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
@@ -33,6 +33,7 @@ useSharedValue,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
+import { useI18n } from '@/lib/i18n';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any;
 const _animNS = _animMod?.default ?? _animMod;
@@ -171,6 +172,7 @@ const handle = StyleSheet.create({
 
 // ─── Haupt TrimScreen ──────────────────────────────────────────────────────────
 export default function TrimScreen() {
+  const { t: tr } = useI18n();
   useThemedStatusBar('light');
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -355,7 +357,7 @@ export default function TrimScreen() {
             <Pressable onPress={() => router.back()} style={s.topIconBtn}>
               <X size={20} color="#fff" strokeWidth={2.5} />
             </Pressable>
-            <Text style={s.topTitle}>Video kürzen</Text>
+            <Text style={s.topTitle}>{tr('create.trimVideo')}</Text>
             <Pressable onPress={handleWeiter} style={s.nextBtn}>
               <LinearGradient
                 colors={['#FFFFFF', '#A855F7']}
@@ -364,7 +366,7 @@ export default function TrimScreen() {
                 end={{ x: 1, y: 0 }}
               >
                 <Check size={16} color="#fff" strokeWidth={3} />
-                <Text style={s.nextBtnText}>Weiter</Text>
+                <Text style={s.nextBtnText}>{tr('create.next')}</Text>
               </LinearGradient>
             </Pressable>
           </View>
@@ -439,7 +441,7 @@ export default function TrimScreen() {
               }}
             >
               <Text style={[s.coverToggleText, showCoverPicker && s.coverToggleTextActive]}>
-                {showCoverPicker ? `Cover: ${formatTime(coverSec)}` : 'Cover w\u00e4hlen'}
+                {showCoverPicker ? `Cover: ${formatTime(coverSec)}` : tr('create.chooseCover')}
               </Text>
             </Pressable>
 

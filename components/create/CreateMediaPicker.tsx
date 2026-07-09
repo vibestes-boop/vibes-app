@@ -1,3 +1,4 @@
+import { useI18n } from '@/lib/i18n';
 import { Video as AvVideo,ResizeMode } from 'expo-av';
 import { Image } from 'expo-image';
 import type * as ImagePicker from 'expo-image-picker';
@@ -15,6 +16,7 @@ export function CreateMediaPicker({
   onPickLibrary: () => void;
   onOpenCamera: () => void;
 }) {
+  const { t: tr } = useI18n();
   const isVideo = asset?.type === 'video';
 
   return (
@@ -38,18 +40,18 @@ export function CreateMediaPicker({
               {isVideo && (
                 <View style={styles.videoBadge}>
                   <Video size={12} color="#fff" />
-                  <Text style={styles.videoBadgeText}>Video</Text>
+                  <Text style={styles.videoBadgeText}>{tr('create.video')}</Text>
                 </View>
               )}
-              <Text style={styles.changeImageText}>Tippen zum Ändern</Text>
+              <Text style={styles.changeImageText}>{tr('create.tapToChange')}</Text>
             </View>
           </>
         ) : (
           <>
             <LinearGradient colors={['#0d0016', '#0a0a0a']} style={StyleSheet.absoluteFill} />
             <ImagePlus size={36} stroke="#374151" strokeWidth={1.5} />
-            <Text style={styles.imagePickerTitle}>Foto oder Video</Text>
-            <Text style={styles.imagePickerSub}>Tippe hier oder nutze die Kamera</Text>
+            <Text style={styles.imagePickerTitle}>{tr('create.photoVideo')}</Text>
+            <Text style={styles.imagePickerSub}>{tr('create.tapOrCamera')}</Text>
           </>
         )}
       </Pressable>

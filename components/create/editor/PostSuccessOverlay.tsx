@@ -1,3 +1,4 @@
+import { useI18n } from '@/lib/i18n';
 import { CheckCircle } from 'lucide-react-native';
 import React, { useEffect } from 'react';
 import { Modal, StyleSheet, Text, View } from 'react-native';
@@ -43,6 +44,7 @@ function ConfettiDot({ color, angle, delay }: { color: string; angle: number; de
 }
 
 export function PostSuccessOverlay({ visible, onDone }: { visible: boolean; onDone: () => void }) {
+  const { t: tr } = useI18n();
   const checkScale = useSharedValue(0), textOpacity = useSharedValue(0), bgOpacity = useSharedValue(0);
   useEffect(() => {
     if (!visible) { checkScale.value = 0; textOpacity.value = 0; bgOpacity.value = 0; return; }
@@ -67,8 +69,8 @@ export function PostSuccessOverlay({ visible, onDone }: { visible: boolean; onDo
           <CheckCircle size={88} color="#FFFFFF" strokeWidth={1.5} fill="rgba(255,255,255,0.10)" />
         </Animated.View>
         <Animated.View style={textStyle}>
-          <Text style={suc.title}>Vibe ist live! 🎉</Text>
-          <Text style={suc.sub}>Dein Post ist jetzt im Feed sichtbar</Text>
+          <Text style={suc.title}>{tr('create.vibeLive')}</Text>
+          <Text style={suc.sub}>{tr('create.postVisible')}</Text>
         </Animated.View>
       </Animated.View>
     </Modal>

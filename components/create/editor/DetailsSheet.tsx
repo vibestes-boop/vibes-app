@@ -29,6 +29,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export type LinkableProduct = { id: string; title: string; cover_url: string | null };
 
 import type { PostSettingsState } from '@/components/create';
+import { useI18n } from '@/lib/i18n';
 import { GlassSheet, useEditorSheet } from './sharedStyles';
 
 const TAG_OPTIONS = ['#vibes','#music','#chill','#art','#life','#travel','#food','#fitness','#coding','#fashion'];
@@ -55,10 +56,11 @@ export function DetailsSheet({
 }) {
   const insets = useSafeAreaInsets();
   const t = useEditorSheet();
+  const { t: tr } = useI18n();
   const privacyOptions = [
-    { id: 'public',  label: 'Öffentlich',  icon: Globe },
-    { id: 'friends', label: 'Freunde',      icon: Users },
-    { id: 'private', label: 'Privat',       icon: Lock  },
+    { id: 'public',  label: tr('create.public'),  icon: Globe },
+    { id: 'friends', label: tr('create.friends'),      icon: Users },
+    { id: 'private', label: tr('create.private'),       icon: Lock  },
   ] as const;
 
   if (!visible) return null;
@@ -71,11 +73,11 @@ export function DetailsSheet({
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={ds.sheetWrap}>
         <GlassSheet style={[ds.sheet, { paddingBottom: insets.bottom + 16 }]}>
           <View style={[ds.handle, { backgroundColor: t.border }]} />
-          <Text style={[ds.heading, { color: t.text }]}>Details</Text>
+          <Text style={[ds.heading, { color: t.text }]}>{tr('create.details')}</Text>
 
           <TextInput
             style={[ds.captionInput, { backgroundColor: t.fill, color: t.text }]}
-            placeholder="Was ist dein Vibe? #tags @mention"
+            
             placeholderTextColor={t.textMuted}
             value={caption}
             onChangeText={onCaption}
@@ -83,7 +85,7 @@ export function DetailsSheet({
             maxLength={500}
           />
 
-          <Text style={[ds.sectionLabel, { color: t.textMuted }]}>Tags</Text>
+          <Text style={[ds.sectionLabel, { color: t.textMuted }]}>{tr('create.tags')}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={ds.tagScroll} contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}>
             {TAG_OPTIONS.map((tag) => {
               const active = selectedTags.includes(tag);
@@ -101,7 +103,7 @@ export function DetailsSheet({
 
           {products && products.length > 0 && onLinkProduct && (
             <>
-              <Text style={[ds.sectionLabel, { color: t.textMuted }]}>Produkt verknüpfen</Text>
+              <Text style={[ds.sectionLabel, { color: t.textMuted }]}>{tr('create.linkProduct')}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={ds.tagScroll} contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}>
                 {products.map((p) => {
                   const active = linkedProductId === p.id;
@@ -126,7 +128,7 @@ export function DetailsSheet({
             </>
           )}
 
-          <Text style={[ds.sectionLabel, { color: t.textMuted }]}>Sichtbarkeit</Text>
+          <Text style={[ds.sectionLabel, { color: t.textMuted }]}>{tr('create.visibility')}</Text>
           <View style={ds.privacyRow}>
             {privacyOptions.map(({ id, label, icon: Icon }) => {
               const active = settings.privacy === id;
@@ -145,9 +147,9 @@ export function DetailsSheet({
 
           <View style={ds.toggleRow}>
             {([
-              { key: 'allowComments', icon: MessageCircle, label: 'Kommentare' },
-              { key: 'allowDownload', icon: Download,       label: 'Download'    },
-              { key: 'allowDuet',    icon: Repeat2,        label: 'Duet'        },
+              { key: 'allowComments', icon: MessageCircle, label: tr('create.comments') },
+              { key: 'allowDownload', icon: Download,       label: tr('create.download')    },
+              { key: 'allowDuet',    icon: Repeat2,        label: tr('create.duet')        },
             ] as const).map(({ key, icon: Icon, label }) => {
               const active = settings[key as keyof PostSettingsState] as boolean;
               return (
@@ -168,7 +170,7 @@ export function DetailsSheet({
             disabled={uploading}
             style={({ pressed }) => [ds.postBtn, { backgroundColor: t.accent }, pressed && { opacity: 0.85 }]}
           >
-            <Text style={ds.postBtnText}>{uploading ? 'Wird hochgeladen…' : 'Jetzt posten'}</Text>
+            <Text style={ds.postBtnText}>{uploading ? tr('create.uploading') : tr('create.postNow')}</Text>
             <ArrowRight size={18} color="#FFFFFF" strokeWidth={2.5} />
           </Pressable>
 
@@ -182,7 +184,7 @@ export function DetailsSheet({
                 >
                   <ClockIcon size={14} color={t.text} strokeWidth={2} />
                   <Text style={[ds.secondaryBtnText, { color: t.text }]}>
-                    {busySchedule ? 'Plane…' : 'Planen'}
+                    {busySchedule ? tr('create.scheduling') : tr('create.schedule')}
                   </Text>
                 </Pressable>
               )}
@@ -194,7 +196,7 @@ export function DetailsSheet({
                 >
                   <FileTextIcon size={14} color={t.text} strokeWidth={2} />
                   <Text style={[ds.secondaryBtnText, { color: t.text }]}>
-                    {busyDraft ? 'Speichert…' : 'Entwurf'}
+                    {busyDraft ? tr('create.savingDraft') : tr('create.draft')}
                   </Text>
                 </Pressable>
               )}

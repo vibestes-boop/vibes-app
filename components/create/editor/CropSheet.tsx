@@ -15,10 +15,11 @@ import { ActivityIndicator, Alert, Modal, PanResponder, Pressable, StyleSheet, T
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Skia, SKIA_READY, useSkiaImage } from '@/lib/skiaLoader';
+import { useI18n } from '@/lib/i18n';
 
 type AspectKey = 'frei' | '1:1' | '4:5' | '9:16' | '16:9';
-const ASPECTS: { key: AspectKey; label: string; ratio: number | null }[] = [
-  { key: 'frei', label: 'Frei', ratio: null },
+const ASPECTS: { key: AspectKey; label?: string; labelKey?: string; ratio: number | null }[] = [
+  { key: 'frei', labelKey: 'create.free', ratio: null },
   { key: '1:1', label: '1:1', ratio: 1 },
   { key: '4:5', label: '4:5', ratio: 4 / 5 },
   { key: '9:16', label: '9:16', ratio: 9 / 16 },
@@ -64,6 +65,7 @@ export function CropSheet({ visible, uri, onDone, onClose }: {
   onDone: (croppedUri: string) => void;
   onClose: () => void;
 }) {
+  const { t: tr } = useI18n();
   const insets = useSafeAreaInsets();
   const skImage = useSkiaImage(visible ? uri : null);
   const [aspect, setAspect] = useState<AspectKey>('frei');
@@ -157,9 +159,9 @@ export function CropSheet({ visible, uri, onDone, onClose }: {
     try {
       const out = await cropSkImageToFile(skImage, { x: cx, y: cy, w: cw, h: ch });
       if (out) { Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success); onDone(out); }
-      else Alert.alert('Schade', 'Zuschneiden hat nicht geklappt — versuch es nochmal.');
+      else Alert.alert(tr('create.tooBad'), tr('create.cropFailed'));
     } catch {
-      Alert.alert('Schade', 'Zuschneiden hat nicht geklappt — versuch es nochmal.');
+      Alert.alert(tr('create.tooBad'), tr('create.cropFailed'));
     } finally {
       setApplying(false);
     }
@@ -174,7 +176,7 @@ export function CropSheet({ visible, uri, onDone, onClose }: {
           <Pressable onPress={onClose} hitSlop={12} style={s.headerBtn}>
             <X size={24} color="#fff" strokeWidth={2.2} />
           </Pressable>
-          <Text style={s.headerTitle}>Zuschneiden</Text>
+          <Text style={s.headerTitle}>{tr('create.crop')}</Text>
           <Pressable onPress={apply} hitSlop={12} style={s.headerBtn} disabled={applying}>
             {applying ? <ActivityIndicator color="#fff" /> : <Check size={24} color="#fff" strokeWidth={2.4} />}
           </Pressable>
@@ -214,7 +216,7 @@ export function CropSheet({ visible, uri, onDone, onClose }: {
             const active = a.key === aspect;
             return (
               <Pressable key={a.key} onPress={() => pickAspect(a.key, a.ratio)} style={[s.aspectBtn, active && s.aspectBtnActive]}>
-                <Text style={[s.aspectLabel, active && s.aspectLabelActive]}>{a.label}</Text>
+                <Text style={[s.aspectLabel, active && s.aspectLabelActive]}>{a.labelKey ? tr(a.labelKey as any) : a.label}</Text>
               </Pressable>
             );
           })}
