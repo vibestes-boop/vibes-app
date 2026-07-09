@@ -19,6 +19,7 @@ import React,{ useState } from 'react';
 import { Pressable,ScrollView,StyleSheet,Text,View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
+import { useI18n, type TranslationKey } from '@/lib/i18n';
 
 // ─── Echter Tab Bar – Vorschau-Komponente (1:1 der echten CustomTabBar) ────────
 
@@ -27,6 +28,7 @@ function TabBarPreview({ slot2, slot4, colors }: {
   slot4: TabFeature;
   colors: any;
 }) {
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const s2 = TAB_FEATURES[slot2];
   const s4 = TAB_FEATURES[slot4];
@@ -69,7 +71,7 @@ function TabBarPreview({ slot2, slot4, colors }: {
         <Pressable
           style={[pb.tabItem, activeSlot === 2 && pb.tabItemHighlight]}
           onPress={() => setActiveSlot(a => a === 2 ? null : 2)}
-          accessibilityLabel={`Slot 2: ${s2.label}`}
+          accessibilityLabel={`Slot 2: ${t(s2.labelKey as TranslationKey)}`}
         >
           <View style={pb.iconWrap}>
             <S2Icon size={22}
@@ -79,7 +81,7 @@ function TabBarPreview({ slot2, slot4, colors }: {
             />
           </View>
           <Text style={[pb.tabLabel, { color: colors.tabBar?.inactive ?? colors.text.muted }]}>
-            {s2.label}
+            {t(s2.labelKey as TranslationKey)}
           </Text>
           {/* "Anpassbar" Indikator */}
           <View style={[pb.customBadge, { backgroundColor: colors.accent.primary }]}>
@@ -101,7 +103,7 @@ function TabBarPreview({ slot2, slot4, colors }: {
         <Pressable
           style={[pb.tabItem, activeSlot === 4 && pb.tabItemHighlight]}
           onPress={() => setActiveSlot(a => a === 4 ? null : 4)}
-          accessibilityLabel={`Slot 4: ${s4.label}`}
+          accessibilityLabel={`Slot 4: ${t(s4.labelKey as TranslationKey)}`}
         >
           <View style={pb.iconWrap}>
             <S4Icon size={22}
@@ -111,7 +113,7 @@ function TabBarPreview({ slot2, slot4, colors }: {
             />
           </View>
           <Text style={[pb.tabLabel, { color: colors.tabBar?.inactive ?? colors.text.muted }]}>
-            {s4.label}
+            {t(s4.labelKey as TranslationKey)}
           </Text>
           <View style={[pb.customBadge, { backgroundColor: colors.accent.primary }]}>
             <Pin size={8} color="#fff" strokeWidth={2.5} />
@@ -228,6 +230,7 @@ function FeatureList({
   onSelect: (f: TabFeature) => void;
   colors: any;
 }) {
+  const { t } = useI18n();
   return (
     <View style={[styles.featureList, { borderColor: colors.border.subtle }]}>
       {features.map((f, i) => {
@@ -246,13 +249,13 @@ function FeatureList({
             ]}
             accessibilityRole="radio"
             accessibilityState={{ checked: isSelected }}
-            accessibilityLabel={meta.label}
+            accessibilityLabel={t(meta.labelKey as TranslationKey)}
           >
             <View style={[styles.featureIconWrap, isSelected && { backgroundColor: `${colors.accent.primary}20` }]}>
               <Icon size={20} color={isSelected ? colors.accent.primary : colors.text.secondary} strokeWidth={1.8} />
             </View>
             <Text style={[styles.featureLabel, { color: isSelected ? colors.accent.primary : colors.text.primary }]}>
-              {meta.label}
+              {t(meta.labelKey as TranslationKey)}
             </Text>
             {isSelected && (
               <Check size={18} color={colors.accent.primary} strokeWidth={2.5} />

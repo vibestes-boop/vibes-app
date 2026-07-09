@@ -42,6 +42,8 @@ export type TabFeature =
 export interface TabFeatureMeta {
   key:      TabFeature;
   label:    string;
+  /** i18n-Key (tabs.*) — Konsumenten übersetzen am Renderpunkt via t() */
+  labelKey: string;
   icon:     LucideIcon;
   route:    string;  // Expo Router route oder push-path
   isPush:   boolean; // true = router.push, false = navigate (tab)
@@ -51,6 +53,7 @@ export interface TabFeatureMeta {
 export const TAB_FEATURES: Record<TabFeature, TabFeatureMeta> = {
   guild: {
     key:    'guild',
+    labelKey: 'tabs.guild',
     label:  'Clan',
     icon:   Users,
     route:  'guild',
@@ -58,6 +61,7 @@ export const TAB_FEATURES: Record<TabFeature, TabFeatureMeta> = {
   },
   messages: {
     key:    'messages',
+    labelKey: 'tabs.messages',
     label:  'Nachrichten',
     icon:   MessageCircle,
     route:  'messages',
@@ -65,6 +69,7 @@ export const TAB_FEATURES: Record<TabFeature, TabFeatureMeta> = {
   },
   shop: {
     key:    'shop',
+    labelKey: 'tabs.shop',
     label:  'Shop',
     icon:   ShoppingBag,
     route:  'shop',
@@ -72,6 +77,7 @@ export const TAB_FEATURES: Record<TabFeature, TabFeatureMeta> = {
   },
   explore: {
     key:    'explore',
+    labelKey: 'tabs.explore',
     label:  'Entdecken',
     icon:   Compass,
     route:  'explore',
@@ -79,6 +85,7 @@ export const TAB_FEATURES: Record<TabFeature, TabFeatureMeta> = {
   },
   notifications: {
     key:    'notifications',
+    labelKey: 'tabs.notifications',
     label:  'Aktivität',
     icon:   Bell,
     route:  'notifications',
@@ -86,6 +93,7 @@ export const TAB_FEATURES: Record<TabFeature, TabFeatureMeta> = {
   },
   live: {
     key:    'live',
+    labelKey: 'tabs.live',
     label:  'Live',
     icon:   Video,
     route:  '/live/start',
@@ -93,6 +101,7 @@ export const TAB_FEATURES: Record<TabFeature, TabFeatureMeta> = {
   },
   women_only: {
     key:    'women_only',
+    labelKey: 'tabs.women_only',
     label:  'WOZ 🌸',
     icon:   Flower2,
     route:  '/women-only',
@@ -176,6 +185,7 @@ export const useTabBarStore = create<TabBarStore>()(
 export interface FixedTab {
   key:      string;
   label:    string;
+  labelKey: string;
   icon:     LucideIcon;
   route:    string;
   isCreate: boolean;
@@ -183,11 +193,11 @@ export interface FixedTab {
 }
 
 export const FIXED_TAB_1: FixedTab = {
-  key: 'index', label: 'Feed', icon: Zap, route: 'index', isCreate: false, isFixed: true,
+  key: 'index', label: 'Feed', labelKey: 'tabs.home', icon: Zap, route: 'index', isCreate: false, isFixed: true,
 };
 export const FIXED_TAB_3: FixedTab = {
-  key: '_create', label: '', icon: User /* ersetzt */, route: '/create/camera', isCreate: true, isFixed: true,
+  key: '_create', label: '', labelKey: '', icon: User /* ersetzt */, route: '/create/camera', isCreate: true, isFixed: true,
 };
 export const FIXED_TAB_5: FixedTab = {
-  key: 'profile', label: 'Profil', icon: User, route: 'profile', isCreate: false, isFixed: true,
+  key: 'profile', label: 'Profil', labelKey: 'tabs.profile', icon: User, route: 'profile', isCreate: false, isFixed: true,
 };

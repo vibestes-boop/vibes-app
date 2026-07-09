@@ -8,6 +8,7 @@ type AppNotification,
 } from "@/lib/useNotifications";
 import { useTheme } from '@/lib/useTheme';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
+import { useI18n } from '@/lib/i18n';
 import { FlashList } from "@shopify/flash-list";
 import { impactAsync,ImpactFeedbackStyle } from "expo-haptics";
 import { Image } from "expo-image";
@@ -47,46 +48,48 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 // ── Hilfsfunktionen ────────────────────────────────────────────────────────
 
-function actionLabel(n: AppNotification): string {
+type TFn = ReturnType<typeof useI18n>['t'];
+
+function actionLabel(n: AppNotification, t: TFn): string {
   switch (n.type) {
     case "like":
-      return "hat deinen Post geliked";
+      return t('notif.like');
     case "follow":
-      return "folgt dir jetzt";
+      return t('notif.follow');
     case "comment":
       return n.comment_text
-        ? `hat kommentiert: "${n.comment_text}"`
-        : "hat deinen Post kommentiert";
+        ? t('notif.commentQuoted', { text: n.comment_text })
+        : t('notif.comment');
     case "mention":
-      return "hat dich in einem Kommentar erwähnt";
+      return t('notif.mention');
     case "dm":
       return n.comment_text
-        ? `hat dir geschrieben: "${n.comment_text}"`
-        : "hat dir eine Nachricht geschickt";
+        ? t('notif.dmQuoted', { text: n.comment_text })
+        : t('notif.dm');
     case "follow_request":
-      return "möchte dir folgen";
+      return t('notif.followRequest');
     case "follow_request_accepted":
-      return "hat deine Follow-Anfrage akzeptiert";
+      return t('notif.followAccepted');
     case "live":
-      return "ist jetzt live 🔴 Schau rein!";
+      return t('notif.live');
     case "live_invite":
-      return "hat dich zu einem Live eingeladen 🔴";
+      return t('notif.liveInvite');
     case "gift":
       return n.gift_emoji && n.gift_name
-        ? `hat dir ${n.gift_emoji} ${n.gift_name} geschickt!`
+        ? t('notif.giftNamed', { emoji: n.gift_emoji, gift: n.gift_name })
         : n.comment_text
           ? n.comment_text
-          : "hat dir ein Geschenk geschickt 🎁";
+          : t('notif.gift');
     case "preorder_interest":
-      return "hat ein Produkt vorbestellt 🌸";
+      return t('notif.preorder');
     case "product_saved":
-      return "hat dein Produkt gemerkt 🔖";
+      return t('notif.productSaved');
     case "preorder_round_open":
-      return n.comment_text ?? "Eine Sammelbestellung ist offen — jetzt sichern 🌸";
+      return n.comment_text ?? t('notif.roundOpen');
     case "new_order":
       return n.comment_text
-        ? `hat bestellt: ${n.comment_text}`
-        : "hat ein Produkt in deinem Shop gekauft 🛍";
+        ? t('notif.boughtQuoted', { text: n.comment_text })
+        : t('notif.bought');
     case "order_payment_requested":
     case "order_payment_reminder":
     case "order_paid":
@@ -95,15 +98,15 @@ function actionLabel(n: AppNotification): string {
     case "order_address_updated":
     case "order_review":
     case "order_dispute":
-      return n.comment_text ?? "Update zu deiner Bestellung";
+      return n.comment_text ?? t('notif.orderUpdate');
     case "support_reply":
       return n.comment_text
-        ? `hat auf deine Anfrage geantwortet: ${n.comment_text}`
-        : "hat auf deine Support-Anfrage geantwortet 💬";
+        ? t('notif.supportReplyQuoted', { text: n.comment_text })
+        : t('notif.supportReply');
     case "support_new":
       return n.comment_text
-        ? `hat eine Support-Anfrage gestellt: ${n.comment_text}`
-        : "hat eine neue Support-Anfrage gestellt 🆘";
+        ? t('notif.supportNewQuoted', { text: n.comment_text })
+        : t('notif.supportNew');
     default:
       return "";
   }
@@ -213,6 +216,7 @@ function buildListWithSections(notifs: GroupedNotif[]): ListItem[] {
 // ── Notification-Karte ─────────────────────────────────────────────────────
 
 function NotifCard({ item }: { item: AppNotification }) {
+  const { t } = useI18n();
   const { mutate: markOne } = useMarkOneRead();
   const { mutate: respond, isPending: responding } = useRespondFollowRequest();
   const { colors } = useTheme();
@@ -278,7 +282,7 @@ function NotifCard({ item }: { item: AppNotification }) {
 
   const senderName = item.sender?.username
     ? `@${item.sender.username}`
-    : "Jemand";
+    : t('notif.someone');
   const initial = (item.sender?.username ?? "?")[0].toUpperCase();
 
   return (
@@ -286,7 +290,7 @@ function NotifCard({ item }: { item: AppNotification }) {
       onPress={handlePress}
       style={[styles.card, !item.read && styles.cardUnread]}
       accessibilityRole="button"
-      accessibilityLabel={`Benachrichtigung von ${senderName}: ${actionLabel(item)}`}
+      accessibilityLabel={`${senderName}: ${actionLabel(item, t)}`}
     >
       {/* Ungelesen-Indikator */}
       {!item.read && <View style={styles.unreadDot} />}
@@ -314,9 +318,9 @@ function NotifCard({ item }: { item: AppNotification }) {
         <Text style={styles.cardText} numberOfLines={2}>
           <Text style={[styles.senderName, { color: colors.text.primary }]}>{senderName}</Text>
           {(item as GroupedNotif)._extraCount > 0 && (
-            <Text style={styles.actionText}>{` und ${(item as GroupedNotif)._extraCount} weitere`}</Text>
+            <Text style={styles.actionText}>{t('notif.andMore', { count: (item as GroupedNotif)._extraCount })}</Text>
           )}{" "}
-          <Text style={styles.actionText}>{actionLabel(item)}</Text>
+          <Text style={styles.actionText}>{actionLabel(item, t)}</Text>
         </Text>
         <Text style={styles.timeText}>{timeAgo(item.created_at)}</Text>
       </View>
@@ -390,6 +394,7 @@ function NotifCard({ item }: { item: AppNotification }) {
 
 export default function NotificationsScreen() {
   useThemedStatusBar('auto');
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
   const {
@@ -435,7 +440,7 @@ export default function NotificationsScreen() {
     <View style={[styles.screen, { paddingTop: insets.top, backgroundColor: colors.bg.primary }]}>
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.border.subtle }]}>
-        <Text style={[styles.title, { color: colors.text.primary }]}>Aktivität</Text>
+        <Text style={[styles.title, { color: colors.text.primary }]}>{t('notif.title')}</Text>
         {unreadCount > 0 && (
           <Pressable
             onPress={() => {
@@ -447,7 +452,7 @@ export default function NotificationsScreen() {
             accessibilityLabel="Alle als gelesen markieren"
           >
             <CheckCheck size={15} color={colors.text.primary} strokeWidth={2} />
-            <Text style={[styles.markAllText, { color: colors.text.primary }]}>Alle gelesen</Text>
+            <Text style={[styles.markAllText, { color: colors.text.primary }]}>{t('notif.markAll')}</Text>
           </Pressable>
         )}
       </View>
@@ -459,9 +464,9 @@ export default function NotificationsScreen() {
       ) : notifs.length === 0 ? (
         <View style={styles.center}>
           <Bell size={52} color={colors.icon.muted} strokeWidth={1.5} />
-          <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>Noch ruhig hier 🔔</Text>
+          <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>{t('notif.emptyTitle')}</Text>
           <Text style={[styles.emptyDesc, { color: colors.text.muted }]}>
-            Likes, Kommentare und neue Follower landen hier — bald geht’s los.
+            {t('notif.emptyDesc')}
           </Text>
           <Pressable
             onPress={() => router.push('/(tabs)/explore' as never)}
@@ -469,7 +474,7 @@ export default function NotificationsScreen() {
             accessibilityRole="button"
             accessibilityLabel="Leute entdecken"
           >
-            <Text style={[styles.emptyBtnText, { color: colors.text.primary }]}>Leute entdecken</Text>
+            <Text style={[styles.emptyBtnText, { color: colors.text.primary }]}>{t('notif.discoverPeople')}</Text>
           </Pressable>
         </View>
       ) : (

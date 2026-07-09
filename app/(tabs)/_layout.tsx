@@ -22,6 +22,7 @@ type TabFeatureMeta,
 } from '@/lib/tabBarStore';
 import { TabSlotSwitcher } from '@/components/nav/TabSlotSwitcher';
 import { useAuthStore } from '@/lib/authStore';
+import { useI18n, type TranslationKey } from '@/lib/i18n';
 import { useUnreadDMCount } from '@/lib/useMessages';
 import { useUnreadCount } from '@/lib/useNotifications';
 import { useNotificationsRealtime } from '@/lib/useNotificationsRealtime';
@@ -163,6 +164,7 @@ function CreateTabButton({ onPress }: { onPress: () => void }) {
 
 // ── Haupt Tab-Bar ────────────────────────────────────────────────────────────
 function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors } = useTheme();
@@ -245,7 +247,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 
           {/* ── Slot 1: Home (Feed, fest) ── */}
           <TabBarItem
-            route={{ name: 'index', label: 'Home', icon: Zap, pushTo: null, isCreate: false } as any}
+            route={{ name: 'index', label: t('tabs.home'), icon: Zap, pushTo: null, isCreate: false } as any}
             isFocused={isFeedFocused}
             onPress={() => {
               if (isFeedFocused) {
@@ -262,7 +264,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 
           {/* ── Slot 2: wählbar ── */}
           <TabBarItem
-            route={{ name: slot2Meta.route, label: slot2Meta.label, icon: slot2Meta.icon, pushTo: null, isCreate: false } as any}
+            route={{ name: slot2Meta.route, label: t(slot2Meta.labelKey as TranslationKey), icon: slot2Meta.icon, pushTo: null, isCreate: false } as any}
             isFocused={isSlot2Focused}
             badge={getBadge(slot2Feature)}
             onPress={() => {
@@ -288,7 +290,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 
           {/* ── Slot 4: wählbar ── */}
           <TabBarItem
-            route={{ name: slot4Meta.route, label: slot4Meta.label, icon: slot4Meta.icon, pushTo: null, isCreate: false } as any}
+            route={{ name: slot4Meta.route, label: t(slot4Meta.labelKey as TranslationKey), icon: slot4Meta.icon, pushTo: null, isCreate: false } as any}
             isFocused={isSlot4Focused}
             badge={getBadge(slot4Feature)}
             onPress={() => handleSlotPress(slot4Meta)}
@@ -297,7 +299,7 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 
           {/* ── Slot 5: Profil (fest) ── */}
           <TabBarItem
-            route={{ name: 'profile', label: 'Profil', icon: User, pushTo: null, isCreate: false } as any}
+            route={{ name: 'profile', label: t('tabs.profile'), icon: User, pushTo: null, isCreate: false } as any}
             isFocused={isProfileFocused}
             badge={unreadNotifs || undefined}
             onPress={() => {

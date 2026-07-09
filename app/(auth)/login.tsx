@@ -32,7 +32,7 @@ const Animated = { View: _animNS?.View ?? _animMod?.View };
 
 export default function LoginScreen() {
   useThemedStatusBar('light');
-  const { t } = useI18n();
+  const { t, locale, setLocale } = useI18n();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -87,6 +87,26 @@ export default function LoginScreen() {
         colors={['#000000', '#0d0016', '#000000']}
         style={StyleSheet.absoluteFill}
       />
+
+      {/* ── Sprach-Toggle (vor dem Login erreichbar — Neulinge!) ── */}
+      <View style={styles.langSwitch}>
+        {(['de', 'ru'] as const).map((loc) => {
+          const active = locale === loc;
+          return (
+            <Pressable
+              key={loc}
+              onPress={() => setLocale(loc)}
+              style={[styles.langBtn, active && styles.langBtnActive]}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+            >
+              <Text style={[styles.langTxt, active && styles.langTxtActive]}>
+                {loc.toUpperCase()}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
 
       {/* ── Logo ── */}
       <Animated.View entering={FadeInDown.delay(60).duration(500)} style={styles.logoArea}>
@@ -346,5 +366,33 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     textAlign: 'center',
     lineHeight: 19,
+  },
+  langSwitch: {
+    position: 'absolute',
+    top: 64,
+    right: 24,
+    flexDirection: 'row',
+    gap: 6,
+    zIndex: 10,
+  },
+  langBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.14)',
+  },
+  langBtnActive: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#FFFFFF',
+  },
+  langTxt: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  langTxtActive: {
+    color: '#000000',
   },
 });
