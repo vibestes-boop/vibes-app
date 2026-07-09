@@ -79,33 +79,34 @@ View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
+import { useI18n, type TranslationKey } from '@/lib/i18n';
 
 // ─── Konstanten ───────────────────────────────────────────────────────────────
 
 const CAT_META = {
-  digital:     { label: 'Digital',     icon: FileText, delivery: 'Sofortiger Download nach dem Kauf' },
-  physical:    { label: 'Physisch',    icon: Box,      delivery: 'Lieferung per DM mit dem Verkäufer' },
-  service:     { label: 'Service',     icon: Wrench,   delivery: 'Verkäufer meldet sich nach dem Kauf' },
-  collectible: { label: 'Collectible', icon: Gem,      delivery: 'Lieferung per DM mit dem Verkäufer' },
+  digital:     { labelKey: 'shop.catDigital' as TranslationKey,     icon: FileText, deliveryKey: 'shop.catDigitalDelivery' as TranslationKey },
+  physical:    { labelKey: 'shop.catPhysical' as TranslationKey,    icon: Box,      deliveryKey: 'shop.catPhysicalDelivery' as TranslationKey },
+  service:     { labelKey: 'shop.catService' as TranslationKey,     icon: Wrench,   deliveryKey: 'shop.catServiceDelivery' as TranslationKey },
+  collectible: { labelKey: 'shop.catCollectible' as TranslationKey, icon: Gem,      deliveryKey: 'shop.catCollectibleDelivery' as TranslationKey },
 };
 
 // Warme Stimme — siehe Design-Gesetz in CLAUDE.md (Fehler → Mikro-Freude).
-const BUY_ERRORS: Record<string, string> = {
-  insufficient_coins: 'Fast! Dafür reichen deine Coins nicht ganz — kurz aufladen? 🪙',
-  no_wallet:          'Dein Coin-Konto wird gerade eingerichtet — gleich geht’s 🪙',
-  cannot_buy_own:     'Das ist dein eigenes Produkt 😄',
-  product_not_found:  'Das Produkt ist leider weg 🙈',
-  out_of_stock:       'Ausverkauft — war wohl beliebt 🔥',
-  network_error:      'Kurz die Verbindung verloren — nochmal versuchen? 🙂',
+const BUY_ERROR_KEYS: Record<string, TranslationKey> = {
+  insufficient_coins: 'shop.errInsufficientCoins',
+  no_wallet:          'shop.errNoWallet',
+  cannot_buy_own:     'shop.errCannotBuyOwn',
+  product_not_found:  'shop.errProductNotFound',
+  out_of_stock:       'shop.errOutOfStock',
+  network_error:      'shop.errNetwork',
 };
 
-const PREORDER_ERRORS: Record<string, string> = {
-  not_authenticated:   'Bitte zuerst einloggen 🙂',
-  product_not_found:   'Das Produkt ist leider weg 🙈',
-  product_inactive:    'Das Produkt ist gerade nicht verfügbar.',
-  not_preorder:        'Dieses Produkt ist keine Vorbestellung.',
-  cannot_preorder_own: 'Das ist dein eigenes Produkt 😄',
-  network_error:       'Kurz die Verbindung verloren — nochmal versuchen? 🙂',
+const PREORDER_ERROR_KEYS: Record<string, TranslationKey> = {
+  not_authenticated:   'shop.errNotAuth',
+  product_not_found:   'shop.errProductNotFound',
+  product_inactive:    'shop.errProductInactive',
+  not_preorder:        'shop.errNotPreorder',
+  cannot_preorder_own: 'shop.errCannotBuyOwn',
+  network_error:       'shop.errNetwork',
 };
 
 // ─── v1.26.3: Effektiver Preis = Angebot falls gesetzt, sonst Original ───────
@@ -386,6 +387,7 @@ const car = StyleSheet.create({
 // ─── Beschreibung (collapsible) ───────────────────────────────────────────────
 
 function Description({ text, colors }: { text: string; colors: any }) {
+  const { t } = useI18n();
   const [expanded, setExpanded] = useState(false);
   return (
     <View style={{ gap: 8 }}>
@@ -402,8 +404,8 @@ function Description({ text, colors }: { text: string; colors: any }) {
           hitSlop={10}
         >
           {expanded
-            ? <><ChevronUp size={13} color={colors.text.primary} /><Text style={{ fontSize: 12, fontWeight: '700', color: colors.text.primary }}>Weniger</Text></>
-            : <><ChevronDown size={13} color={colors.text.primary} /><Text style={{ fontSize: 12, fontWeight: '700', color: colors.text.primary }}>Mehr lesen</Text></>
+            ? <><ChevronUp size={13} color={colors.text.primary} /><Text style={{ fontSize: 12, fontWeight: '700', color: colors.text.primary }}>{t('shop.less')}</Text></>
+            : <><ChevronDown size={13} color={colors.text.primary} /><Text style={{ fontSize: 12, fontWeight: '700', color: colors.text.primary }}>{t('shop.readMore')}</Text></>
           }
         </Pressable>
       )}
@@ -416,6 +418,7 @@ function Description({ text, colors }: { text: string; colors: any }) {
 type ShareTarget = { id: string; username: string | null; avatar_url: string | null };
 
 function ShareSheet({ product, onClose, colors, celebrate = false }: { product: Product; onClose: () => void; colors: any; celebrate?: boolean }) {
+  const { t } = useI18n();
   const currentUserId = useAuthStore((s) => s.profile?.id);
   const [search, setSearch]   = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -430,7 +433,7 @@ function ShareSheet({ product, onClose, colors, celebrate = false }: { product: 
   // serlo://-Deep-Link kann von keinem Messenger als Vorschau gerendert werden.
   const isPreorderShare = product.sale_mode === 'preorder';
   const priceLabel  = isPreorderShare
-    ? (formatEur(product.price_eur) ? `${formatEur(product.price_eur)} · Vorbestellung` : 'Vorbestellung')
+    ? (formatEur(product.price_eur) ? `${formatEur(product.price_eur)} · ${t('shop.preorderBadge')}` : t('shop.preorderBadge'))
     : `🪙 ${product.price_coins.toLocaleString('de-DE')} Coins`;
   const productUrl  = webProductUrl(product.id);
   const shareText   = `${product.title} — ${priceLabel}\n${productUrl}`;
@@ -477,15 +480,15 @@ function ShareSheet({ product, onClose, colors, celebrate = false }: { product: 
       }));
       notificationAsync(NotificationFeedbackType.Success);
       onClose();
-    } catch { Alert.alert('Hat nicht geklappt', 'Das Produkt ist nicht rausgegangen — nochmal versuchen? 🙏'); }
+    } catch { Alert.alert(t('shop.shareFailTitle'), t('shop.shareFailText')); }
     setSending(false);
   };
 
   const APPS = [
-    { id: 'copy',     label: 'Link\nkopieren', color: '#374151', emoji: '🔗' },
+    { id: 'copy',     label: t('shop.copyLink'), color: '#374151', emoji: '🔗' },
     { id: 'whatsapp', label: 'WhatsApp',       color: '#25D366', emoji: '💬' },
     { id: 'telegram', label: 'Telegram',       color: '#2CA5E0', emoji: '✈️' },
-    { id: 'more',     label: 'Mehr…',         color: '#6B7280', emoji: '⋯'  },
+    { id: 'more',     label: t('shop.more'), color: '#6B7280', emoji: '⋯'  },
   ];
 
   const handleApp = async (id: string) => {
@@ -520,7 +523,7 @@ function ShareSheet({ product, onClose, colors, celebrate = false }: { product: 
           {celebrate && (
             <View style={{ alignItems: 'center', paddingHorizontal: 22, paddingBottom: 14 }}>
               <Text style={{ fontSize: 34 }}>🤎</Text>
-              <Text style={{ color: '#fff', fontSize: 19, fontWeight: '600', marginTop: 2 }}>Vorbestellt!</Text>
+              <Text style={{ color: '#fff', fontSize: 19, fontWeight: '600', marginTop: 2 }}>{t('shop.preordered')}</Text>
               <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 13, textAlign: 'center', marginTop: 5, lineHeight: 18 }}>
                 Teil es mit Freunden — je mehr mitmachen, desto eher startet die Sammelbestellung 🚀
               </Text>
@@ -534,7 +537,7 @@ function ShareSheet({ product, onClose, colors, celebrate = false }: { product: 
               <Text style={ss.previewTitle} numberOfLines={2}>{product.title}</Text>
               {isPreorderShare ? (
                 <Text style={[ss.previewPrice, { color: '#FBBF24' }]}>
-                  {formatEur(product.price_eur) ? `${formatEur(product.price_eur)} · Vorbestellung` : 'Vorbestellung'}
+                  {formatEur(product.price_eur) ? `${formatEur(product.price_eur)} · ${t('shop.preorderBadge')}` : t('shop.preorderBadge')}
                 </Text>
               ) : (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
@@ -553,7 +556,7 @@ function ShareSheet({ product, onClose, colors, celebrate = false }: { product: 
             <Search size={14} color="rgba(255,255,255,0.35)" />
             <TextInput
               style={ss.searchInput}
-              placeholder="Follower suchen…"
+              placeholder={t('shop.searchFollower')}
               placeholderTextColor="rgba(255,255,255,0.25)"
               value={search}
               onChangeText={setSearch}
@@ -647,10 +650,11 @@ function MoreMenu({ onClose, onSave, onReport, colors }: {
   onReport: () => void;
   colors: any;
 }) {
+  const { t } = useI18n();
   const ITEMS = [
-    { icon: Bookmark, label: 'Gespeicherte ansehen', action: onSave },
-    { icon: Flag,     label: 'Melden',               action: onReport },
-    { icon: HelpCircle, label: 'Hilfecenter',        action: onClose },
+    { icon: Bookmark, label: t('shop.viewSaved'), action: onSave },
+    { icon: Flag,     label: t('shop.report'), action: onReport },
+    { icon: HelpCircle, label: t('shop.helpCenter'), action: onClose },
   ];
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
@@ -687,6 +691,7 @@ const mm = StyleSheet.create({
 // ─── Hauptscreen ─────────────────────────────────────────────────────────────
 
 export default function ProductDetailScreen() {
+  const { t } = useI18n();
   useThemedStatusBar('auto');
   const { id }     = useLocalSearchParams<{ id: string }>();
   const insets     = useSafeAreaInsets();
@@ -784,7 +789,7 @@ export default function ProductDetailScreen() {
     } catch {
       await notificationAsync(NotificationFeedbackType.Error);
       setBuyResult('error');
-      setResultMsg('Chat konnte nicht geöffnet werden.');
+      setResultMsg(t('shop.chatFailed'));
       setTimeout(() => setBuyResult(null), 2500);
     } finally {
       setIsChatOpening(false);
@@ -804,7 +809,7 @@ export default function ProductDetailScreen() {
     } else {
       await notificationAsync(NotificationFeedbackType.Error);
       setBuyResult('error');
-      setResultMsg(BUY_ERRORS[result.error] ?? 'Fehler.');
+      setResultMsg(result.error && BUY_ERROR_KEYS[result.error] ? t(BUY_ERROR_KEYS[result.error]) : t('shop.errorShort'));
       if (result.error === 'insufficient_coins' && COIN_SHOP_ENABLED) {
         setTimeout(() => { setBuyResult(null); router.push('/coin-shop' as any); }, 2000);
       } else {
@@ -816,12 +821,12 @@ export default function ProductDetailScreen() {
   // Vormerkung zurücknehmen (unverbindlich → reversibel). Bestätigung per Alert.
   const handleCancelPreorder = useCallback(() => {
     Alert.alert(
-      'Vorbestellung zurücknehmen?',
-      'Du wirst aus der Sammelbestellung entfernt — vorbestellen kannst du jederzeit wieder.',
+      t('shop.cancelPreorderTitle'),
+      t('shop.cancelPreorderText'),
       [
-        { text: 'Abbrechen', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Zurücknehmen',
+          text: t('shop.withdraw'),
           style: 'destructive',
           onPress: async () => {
             const ok = await cancelPreorder();
@@ -829,7 +834,7 @@ export default function ProductDetailScreen() {
               setPreorderDone(false);
               await notificationAsync(NotificationFeedbackType.Success);
             } else {
-              Alert.alert('Hat nicht geklappt', 'Bitte versuch es gleich nochmal 🙏');
+              Alert.alert(t('shop.shareFailTitle'), t('shop.tryAgainSoon'));
             }
           },
         },
@@ -853,7 +858,7 @@ export default function ProductDetailScreen() {
     } else {
       await notificationAsync(NotificationFeedbackType.Error);
       setBuyResult('error');
-      setResultMsg(PREORDER_ERRORS[result.error] ?? 'Fehler.');
+      setResultMsg(result.error && PREORDER_ERROR_KEYS[result.error] ? t(PREORDER_ERROR_KEYS[result.error]) : t('shop.errorShort'));
       setTimeout(() => setBuyResult(null), 2500);
     }
   }, [product, expressInterest, quantity]);
@@ -864,9 +869,9 @@ export default function ProductDetailScreen() {
   if (!product) {
     return (
       <View style={[s.root, s.center, { backgroundColor: colors.bg.secondary }]}>
-        <Text style={{ color: colors.text.muted, fontSize: 16 }}>Produkt nicht gefunden.</Text>
+        <Text style={{ color: colors.text.muted, fontSize: 16 }}>{t('shop.errProductNotFound')}</Text>
         <Pressable onPress={() => router.back()} style={[s.backPill, { borderColor: colors.border.subtle }]}>
-          <Text style={{ color: colors.text.primary, fontWeight: '600' }}>Zurück</Text>
+          <Text style={{ color: colors.text.primary, fontWeight: '600' }}>{t('shop.back')}</Text>
         </Pressable>
       </View>
     );
@@ -887,15 +892,15 @@ export default function ProductDetailScreen() {
 
   // ── Etsy-Minimal: kompakte Werte für Subline + 3-Spalten-Infozeile ──
   const subline = [
-    catMeta?.label,
-    product.women_only ? 'Women-Only' : null,
+    catMeta ? t(catMeta.labelKey) : null,
+    product.women_only ? t('shop.womenOnly') : null,
     product.sold_count > 0 ? `${product.sold_count.toLocaleString('de-DE')}× verkauft` : null,
   ].filter(Boolean).join(' · ');
   const deliveryShort = product.category === 'physical'
-    ? (product.free_shipping ? 'Gratis' : 'Per DM')
-    : product.category === 'digital' ? 'Sofort' : 'Nach Kauf';
-  const stockShort = product.stock === -1 ? 'Auf Lager'
-    : product.stock === 0 ? 'Ausverkauft'
+    ? (product.free_shipping ? t('shop.free') : t('shop.perDm'))
+    : product.category === 'digital' ? t('shop.instant') : t('shop.afterPurchase');
+  const stockShort = product.stock === -1 ? t('shop.inStock')
+    : product.stock === 0 ? t('shop.soldOut')
     : isLowStock ? `Nur ${product.stock}`
     : `${product.stock}`;
 
@@ -986,7 +991,7 @@ export default function ProductDetailScreen() {
             formatEur(product.price_eur) ? (
               <View style={s.priceRow2}>
                 <Text style={[s.priceNow, { color: colors.text.primary }]}>{formatEur(product.price_eur)}</Text>
-                <Text style={[s.priceOff, { color: '#B45309' }]}>Vorbestellung · Zahlung bei Eintreffen</Text>
+                <Text style={[s.priceOff, { color: '#B45309' }]}>{t('shop.preorderPayOnArrival')}</Text>
               </View>
             ) : (
               <Text style={[s.priceNow, { color: colors.text.primary, fontSize: 17 }]}>
@@ -1016,11 +1021,11 @@ export default function ProductDetailScreen() {
         {/* 4. Info-Zeile (3 Spalten): Lieferung | Bewertung | Lager */}
         <View style={[s.infoRow, { borderColor: colors.border.default }]}>
           <View style={s.infoCol}>
-            <Text style={[s.infoLabel, { color: colors.text.muted }]}>Lieferung</Text>
+            <Text style={[s.infoLabel, { color: colors.text.muted }]}>{t('shop.delivery')}</Text>
             <Text style={[s.infoValue, { color: colors.text.primary }]} numberOfLines={1}>{deliveryShort}</Text>
           </View>
           <View style={[s.infoCol, s.infoColMid, { borderColor: colors.border.default }]}>
-            <Text style={[s.infoLabel, { color: colors.text.muted }]}>Bewertung</Text>
+            <Text style={[s.infoLabel, { color: colors.text.muted }]}>{t('shop.rating')}</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
               {reviewCount > 0 && <Star size={12} color={colors.text.primary} strokeWidth={2} />}
               <Text style={[s.infoValue, { color: colors.text.primary }]} numberOfLines={1}>
@@ -1029,7 +1034,7 @@ export default function ProductDetailScreen() {
             </View>
           </View>
           <View style={[s.infoCol, s.infoColMid, { borderColor: colors.border.default }]}>
-            <Text style={[s.infoLabel, { color: colors.text.muted }]}>Lager</Text>
+            <Text style={[s.infoLabel, { color: colors.text.muted }]}>{t('shop.stock')}</Text>
             <Text style={[s.infoValue, { color: colors.text.primary }]} numberOfLines={1}>{stockShort}</Text>
           </View>
         </View>
@@ -1062,7 +1067,7 @@ export default function ProductDetailScreen() {
                     {sellerRating.sellerAvg?.toFixed(1)}
                   </Text>
                   <Text style={[s.sellerSub, { color: colors.text.muted }]}>
-                    · {sellerRating.sellerCount} {sellerRating.sellerCount === 1 ? 'Bewertung' : 'Bewertungen'}
+                    · {sellerRating.sellerCount} {sellerRating.sellerCount === 1 ? t('shop.rating') : t('shop.ratingPlural')}
                   </Text>
                 </View>
               ) : null}
@@ -1086,14 +1091,14 @@ export default function ProductDetailScreen() {
             onPress={() => router.push({ pathname: '/user/[id]', params: { id: product.seller_id } } as any)}
             style={[s.sellerShopBtn, { borderColor: colors.border.subtle }]}
           >
-            <Text style={[s.sellerShopText, { color: colors.text.primary }]}>Zum Shop</Text>
+            <Text style={[s.sellerShopText, { color: colors.text.primary }]}>{t('shop.toShop')}</Text>
           </Pressable>
         </View>
 
         {/* 6. Beschreibung (nur falls vorhanden) */}
         {product.description ? (
           <View style={s.descSection}>
-            <Text style={[s.descLabel, { color: colors.text.muted }]}>Beschreibung</Text>
+            <Text style={[s.descLabel, { color: colors.text.muted }]}>{t('shop.description')}</Text>
             <Description text={product.description} colors={colors} />
           </View>
         ) : null}
@@ -1108,7 +1113,7 @@ export default function ProductDetailScreen() {
         {/* Zeile 1: Quantity-Stepper (physisch/digital mit stock > 1 — oder Vorbestellung) */}
         {hasQtyRow && (
           <View style={s.qtyRow}>
-            <Text style={[s.qtyLabel, { color: colors.text.muted }]}>Menge</Text>
+            <Text style={[s.qtyLabel, { color: colors.text.muted }]}>{t('shop.quantity')}</Text>
             <View style={[s.qtyStepper, { backgroundColor: bgAccent, borderColor: colors.border.subtle }]}>
               <Pressable
                 onPress={() => {
@@ -1158,7 +1163,7 @@ export default function ProductDetailScreen() {
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
               <Pencil size={16} color={colors.bg.primary} strokeWidth={2.5} />
-              <Text style={[s.buyCtaText, { color: colors.bg.primary }]}>Produkt bearbeiten</Text>
+              <Text style={[s.buyCtaText, { color: colors.bg.primary }]}>{t('shop.editProduct')}</Text>
             </View>
           </Pressable>
         ) : (
@@ -1192,7 +1197,7 @@ export default function ProductDetailScreen() {
               ) : (preordered || preorderDone) ? (
                 <Text style={[s.buyCtaText, { color: colors.text.primary }]}>✓ Vorbestellt · Zurücknehmen</Text>
               ) : (
-                <Text style={[s.buyCtaText, { color: colors.bg.primary }]}>Vorbestellen</Text>
+                <Text style={[s.buyCtaText, { color: colors.bg.primary }]}>{t('shop.preorder')}</Text>
               )}
             </Pressable>
           ) : (
@@ -1210,7 +1215,7 @@ export default function ProductDetailScreen() {
               if (isOutOfStock) return;
               if (!canAfford) {
                 if (COIN_SHOP_ENABLED) { router.push('/coin-shop' as any); return; }
-                Alert.alert('Fast! 🪙', 'Dafür reichen deine Coins noch nicht ganz.');
+                Alert.alert(t('shop.notEnoughTitle'), t('shop.notEnoughText'));
                 return;
               }
               impactAsync(ImpactFeedbackStyle.Medium);
@@ -1221,12 +1226,12 @@ export default function ProductDetailScreen() {
             {isBuying ? (
               <ActivityIndicator color={canAfford ? colors.bg.primary : colors.text.primary} />
             ) : isOutOfStock ? (
-              <Text style={[s.buyBtnText, { color: colors.text.muted }]}>Ausverkauft</Text>
+              <Text style={[s.buyBtnText, { color: colors.text.muted }]}>{t('shop.soldOut')}</Text>
             ) : !canAfford ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <CoinIcon size={16} />
                 <Text style={[s.buyBtnText, { color: colors.text.primary }]}>
-                  {COIN_SHOP_ENABLED ? 'Aufladen' : 'Nicht genug Coins'}
+                  {COIN_SHOP_ENABLED ? t('shop.topUp') : t('shop.notEnoughCoins')}
                 </Text>
               </View>
             ) : (
@@ -1239,7 +1244,7 @@ export default function ProductDetailScreen() {
                   </Text>
                 </View>
                 <View style={[s.buyDivider, { backgroundColor: colors.bg.primary, opacity: 0.25 }]} />
-                <Text style={[s.buyCtaText, { color: colors.bg.primary }]}>Jetzt kaufen</Text>
+                <Text style={[s.buyCtaText, { color: colors.bg.primary }]}>{t('shop.buyNow')}</Text>
               </View>
             )}
           </Pressable>
@@ -1271,7 +1276,7 @@ export default function ProductDetailScreen() {
               </View>
             </View>
             <View style={[s.confirmBalance, { backgroundColor: bgAccent, borderColor: colors.border.subtle }]}>
-              <Text style={{ fontSize: 12, color: colors.text.muted }}>Guthaben nach Kauf</Text>
+              <Text style={{ fontSize: 12, color: colors.text.muted }}>{t('shop.balanceAfter')}</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                 <CoinIcon size={14} />
                 <Text style={{ fontSize: 15, fontWeight: '700', color: colors.text.primary }}>
@@ -1281,12 +1286,12 @@ export default function ProductDetailScreen() {
             </View>
             <View style={{ flexDirection: 'row', gap: 10 }}>
               <Pressable style={[s.confirmCancelBtn, { borderColor: colors.border.subtle }]} onPress={() => setShowConfirm(false)}>
-                <Text style={{ color: colors.text.muted, fontSize: 15, fontWeight: '600' }}>Abbrechen</Text>
+                <Text style={{ color: colors.text.muted, fontSize: 15, fontWeight: '600' }}>{t('common.cancel')}</Text>
               </Pressable>
               <Pressable style={[s.confirmBuyBtn, { backgroundColor: colors.text.primary }]} onPress={handleBuy} disabled={isBuying}>
                 {isBuying
                   ? <ActivityIndicator color={colors.bg.primary} />
-                  : <Text style={{ color: colors.bg.primary, fontSize: 15, fontWeight: '600' }}>Kaufen</Text>
+                  : <Text style={{ color: colors.bg.primary, fontSize: 15, fontWeight: '600' }}>{t('shop.buy')}</Text>
                 }
               </Pressable>
             </View>
@@ -1313,7 +1318,7 @@ export default function ProductDetailScreen() {
           <Pressable style={ss.overlay} onPress={() => setShowReport(false)}>
             <View style={[mm.sheet, { backgroundColor: colors.bg.elevated }]}>
               <View style={[mm.handle, { backgroundColor: colors.border.subtle }]} />
-              <Text style={[{ fontSize: 17, fontWeight: '600', color: colors.text.primary, marginBottom: 16 }]}>Produkt melden</Text>
+              <Text style={[{ fontSize: 17, fontWeight: '600', color: colors.text.primary, marginBottom: 16 }]}>{t('shop.reportProduct')}</Text>
               {REPORT_REASONS.map((r) => (
                 <Pressable
                   key={r.key}
@@ -1337,7 +1342,7 @@ export default function ProductDetailScreen() {
                   style={[s.confirmCancelBtn, { borderColor: colors.border.subtle }]}
                   onPress={() => { setShowReport(false); setReportReason(null); }}
                 >
-                  <Text style={{ color: colors.text.muted, fontSize: 14, fontWeight: '600' }}>Abbrechen</Text>
+                  <Text style={{ color: colors.text.muted, fontSize: 14, fontWeight: '600' }}>{t('common.cancel')}</Text>
                 </Pressable>
                 <Pressable
                   style={[s.confirmBuyBtn, {
@@ -1351,14 +1356,14 @@ export default function ProductDetailScreen() {
                     setReportReason(null);
                     if (res.success) {
                       setBuyResult('success');
-                      setResultMsg('Gemeldet. Danke für deine Meldung.');
+                      setResultMsg(t('shop.reported'));
                       setTimeout(() => setBuyResult(null), 2500);
                     }
                   }}
                 >
                   {isReporting
                     ? <ActivityIndicator color={colors.bg.primary} />
-                    : <Text style={{ color: reportReason ? colors.bg.primary : colors.text.muted, fontSize: 14, fontWeight: '600' }}>Melden</Text>
+                    : <Text style={{ color: reportReason ? colors.bg.primary : colors.text.muted, fontSize: 14, fontWeight: '600' }}>{t('shop.report')}</Text>
                   }
                 </Pressable>
               </View>

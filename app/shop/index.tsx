@@ -22,6 +22,7 @@ import { useCoinsWallet } from '@/lib/useGifts';
 import { formatEur, useActivePreorderRound, useSavedProducts, useShopBanners, useShopProducts, type Product, type ProductCategory, type ShopBanner } from '@/lib/useShop';
 import { useTheme } from '@/lib/useTheme';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
+import { useI18n, type TranslationKey } from '@/lib/i18n';
 import { useQueryClient } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { impactAsync, ImpactFeedbackStyle } from 'expo-haptics';
@@ -67,34 +68,34 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 //  physical/digital/service/collectible → echte Produkt-Kategorien (server-seitig)
 type TabKey = 'all' | 'sale' | 'physical' | 'digital' | 'service' | 'collectible' | 'women';
 
-const TABS: { key: TabKey; label: string }[] = [
-  { key: 'all',         label: 'Alle'      },
-  { key: 'sale',        label: 'Angebote'  },
-  { key: 'physical',    label: 'Physisch'  },
-  { key: 'digital',     label: 'Digital'   },
-  { key: 'service',     label: 'Service'   },
-  { key: 'collectible', label: 'Sammler'   },
-  { key: 'women',       label: 'Frauen'    },
+const TABS: { key: TabKey; labelKey: TranslationKey }[] = [
+  { key: 'all',         labelKey: 'shop.tabAll'         },
+  { key: 'sale',        labelKey: 'shop.tabSale'        },
+  { key: 'physical',    labelKey: 'shop.tabPhysical'    },
+  { key: 'digital',     labelKey: 'shop.tabDigital'     },
+  { key: 'service',     labelKey: 'shop.tabService'     },
+  { key: 'collectible', labelKey: 'shop.tabCollectible' },
+  { key: 'women',       labelKey: 'shop.tabWomen'       },
 ];
 
 const REAL_CATEGORIES: ProductCategory[] = ['physical', 'digital', 'service', 'collectible'];
 
 // Menü-Shortcuts (Navigation zu anderen Screens). Verkaufen bleibt der FAB.
 // Coins-Shortcut nur mit aktivem Coin-Shop (App-Store-v1: Flag aus).
-const SHORTCUTS: { key: string; label: string; Icon: typeof Package; route: string }[] = [
-  { key: 'orders', label: 'Bestellungen', Icon: Package, route: '/shop/my-orders'  },
-  { key: 'saved',  label: 'Favoriten',    Icon: Heart,   route: '/shop/saved'   },
-  ...(COIN_SHOP_ENABLED ? [{ key: 'coins', label: 'Coins', Icon: Coins, route: '/coin-shop' }] : []),
-  { key: 'myshop', label: 'Mein Shop',    Icon: Store,   route: '/shop/my-shop' },
+const SHORTCUTS: { key: string; labelKey: TranslationKey; Icon: typeof Package; route: string }[] = [
+  { key: 'orders', labelKey: 'shop.orders', Icon: Package, route: '/shop/my-orders'  },
+  { key: 'saved',  labelKey: 'shop.favorites', Icon: Heart,   route: '/shop/saved'   },
+  ...(COIN_SHOP_ENABLED ? [{ key: 'coins', labelKey: 'shop.coins' as TranslationKey, Icon: Coins, route: '/coin-shop' }] : []),
+  { key: 'myshop', labelKey: 'shop.myShop', Icon: Store,   route: '/shop/my-shop' },
 ];
 
 type SortKey = 'popular' | 'newest' | 'price_asc' | 'price_desc';
 
-const SORT_OPTIONS: { key: SortKey; label: string }[] = [
-  { key: 'popular',    label: 'Beliebt'       },
-  { key: 'newest',     label: 'Neueste'       },
-  { key: 'price_asc',  label: 'Preis ↑'       },
-  { key: 'price_desc', label: 'Preis ↓'       },
+const SORT_OPTIONS: { key: SortKey; labelKey: TranslationKey }[] = [
+  { key: 'popular',    labelKey: 'shop.sortPopular'  },
+  { key: 'newest',     labelKey: 'shop.sortNewest'   },
+  { key: 'price_asc',  labelKey: 'shop.sortPriceAsc' },
+  { key: 'price_desc', labelKey: 'shop.sortPriceDesc' },
 ];
 
 // Produkt gilt 48h lang als „neu"
@@ -237,6 +238,7 @@ function ProductCard({ product, onPress, colors, saved, onToggleSave }: {
   saved: boolean;
   onToggleSave: () => void;
 }) {
+  const { t } = useI18n();
   const isLowStock = product.stock !== -1 && product.stock > 0 && product.stock <= 5;
   const isSoldOut  = product.stock === 0;
 
@@ -294,7 +296,7 @@ function ProductCard({ product, onPress, colors, saved, onToggleSave }: {
         {/* Vorbestellung-Badge oben links (höchste Priorität) */}
         {isPreorder && (
           <View style={[card.saleBadge, { backgroundColor: 'rgba(217,119,6,0.92)' }]}>
-            <Text style={card.saleBadgeText}>Vorbestellung</Text>
+            <Text style={card.saleBadgeText}>{t('shop.preorderBadge')}</Text>
           </View>
         )}
 
@@ -319,7 +321,7 @@ function ProductCard({ product, onPress, colors, saved, onToggleSave }: {
           hitSlop={8}
           style={card.saveBtn}
           accessibilityRole="button"
-          accessibilityLabel={saved ? 'Aus Favoriten entfernen' : 'Merken'}
+          accessibilityLabel={saved ? t('shop.removeFav') : t('shop.save')}
           accessibilityState={{ selected: saved }}
         >
           <Heart
@@ -348,7 +350,7 @@ function ProductCard({ product, onPress, colors, saved, onToggleSave }: {
         {/* Ausverkauft-Badge */}
         {isSoldOut && (
           <View style={card.soldOut}>
-            <Text style={card.soldOutText}>Ausverkauft</Text>
+            <Text style={card.soldOutText}>{t('shop.soldOut')}</Text>
           </View>
         )}
 
@@ -407,7 +409,7 @@ function ProductCard({ product, onPress, colors, saved, onToggleSave }: {
         {showFreeShipping && (
           <View style={card.shippingPill}>
             <Truck size={10} color="#22C55E" strokeWidth={2.2} />
-            <Text style={card.shippingText}>Gratis Versand</Text>
+            <Text style={card.shippingText}>{t('shop.freeShipping')}</Text>
           </View>
         )}
 
@@ -416,7 +418,7 @@ function ProductCard({ product, onPress, colors, saved, onToggleSave }: {
         <View style={card.footer}>
           {isPreorder ? (
             <Text style={[card.price, { color: '#B45309' }]} numberOfLines={1}>
-              {formatEur(product.price_eur) ?? 'Vorbestellen'}
+              {formatEur(product.price_eur) ?? t('shop.preorder')}
             </Text>
           ) : (
             <>
@@ -584,6 +586,7 @@ const sk = StyleSheet.create({
 // ─── Hauptscreen ─────────────────────────────────────────────────────────────
 
 export default function ShopScreen() {
+  const { t } = useI18n();
   useThemedStatusBar('auto');
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -738,7 +741,7 @@ export default function ShopScreen() {
     setActiveTab('all'); setFreeShipOnly(false); setSearch('');
   }, []);
 
-  const currentSortLabel = SORT_OPTIONS.find(o => o.key === sortBy)?.label ?? 'Sort';
+  const currentSortLabel = t(SORT_OPTIONS.find(o => o.key === sortBy)?.labelKey ?? 'shop.sortPopular');
   const sortActive = sortBy !== 'popular' || freeShipOnly;
 
   // ── Scrollbarer Kopf: Shortcuts → Banner → Tabs → Ergebnis-Zeile ──
@@ -746,18 +749,18 @@ export default function ShopScreen() {
     <View>
       {/* Menü-Shortcuts */}
       <View style={s.shortcutRow}>
-        {SHORTCUTS.map(({ key, label, Icon, route }) => (
+        {SHORTCUTS.map(({ key, labelKey, Icon, route }) => (
           <Pressable
             key={key}
             onPress={() => router.push(route as any)}
             style={({ pressed }) => [s.shortcut, pressed && { opacity: 0.55 }]}
             hitSlop={6}
             accessibilityRole="button"
-            accessibilityLabel={label}
+            accessibilityLabel={t(labelKey)}
           >
             <Icon size={22} color={colors.text.primary} strokeWidth={1.9} />
             <Text style={[s.shortcutLabel, { color: colors.text.secondary }]} numberOfLines={1}>
-              {label}
+              {t(labelKey)}
             </Text>
           </Pressable>
         ))}
@@ -778,15 +781,15 @@ export default function ShopScreen() {
           style={s.tabScroll}
           contentContainerStyle={s.tabRow}
         >
-          {TABS.map((t) => {
-            const active = activeTab === t.key;
+          {TABS.map((tab) => {
+            const active = activeTab === tab.key;
             return (
-              <Pressable key={t.key} onPress={() => selectTab(t.key)} style={s.tab} hitSlop={4}>
+              <Pressable key={tab.key} onPress={() => selectTab(tab.key)} style={s.tab} hitSlop={4}>
                 <Text style={[
                   s.tabLabel,
                   { color: active ? colors.text.primary : colors.text.muted, fontWeight: active ? '700' : '500' },
                 ]}>
-                  {t.label}
+                  {t(tab.labelKey)}
                 </Text>
                 <View style={[s.tabUnderline, { backgroundColor: active ? colors.text.primary : 'transparent' }]} />
               </Pressable>
@@ -824,7 +827,7 @@ export default function ShopScreen() {
 
       {/* ── Fixierter Kopf: Titel + Coins ── */}
       <View style={[s.header, { paddingTop: insets.top + 10 }]}>
-        <Text style={[s.headerTitle, { color: colors.text.primary }]}>Shop</Text>
+        <Text style={[s.headerTitle, { color: colors.text.primary }]}>{t('shop.title')}</Text>
         <View style={s.coinRow}>
           <CoinIcon size={26} />
           <Text style={[s.coinText, { color: colors.text.primary }]}>
@@ -839,7 +842,7 @@ export default function ShopScreen() {
           <Search size={16} color={colors.text.muted} strokeWidth={2} />
           <TextInput
             style={[s.searchInput, { color: colors.text.primary }]}
-            placeholder="Düfte, Produkte, Creator suchen…"
+            placeholder={t('shop.searchPlaceholder')}
             placeholderTextColor={colors.text.muted}
             value={search}
             onChangeText={setSearch}
@@ -877,15 +880,15 @@ export default function ShopScreen() {
                 {search.trim()
                   ? `Zu „${search}" ist nichts dabei — anders suchen?`
                   : (activeTab !== 'all' || freeShipOnly)
-                    ? 'Mit dieser Auswahl ist nichts dabei — anders kombinieren?'
-                    : 'Hier ist noch nichts — bald gibt es was zu shoppen'}
+                    ? t('shop.emptyFilter')
+                    : t('shop.emptyShop')}
               </Text>
               {(activeTab !== 'all' || freeShipOnly || search.trim().length > 0) && (
                 <Pressable
                   onPress={resetAll}
                   style={[s.emptyAction, { backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle }]}
                 >
-                  <Text style={[s.emptyActionText, { color: colors.text.primary }]}>Zurücksetzen</Text>
+                  <Text style={[s.emptyActionText, { color: colors.text.primary }]}>{t('shop.reset')}</Text>
                 </Pressable>
               )}
             </View>
@@ -940,7 +943,7 @@ export default function ShopScreen() {
             onPress={e => e.stopPropagation()}
           >
             <View style={s.sheetHandle} />
-            <Text style={[s.sheetTitle, { color: colors.text.primary }]}>Sortieren nach</Text>
+            <Text style={[s.sheetTitle, { color: colors.text.primary }]}>{t('shop.sortTitle')}</Text>
             {SORT_OPTIONS.map((opt) => {
               const isActive = sortBy === opt.key;
               return (
@@ -954,7 +957,7 @@ export default function ShopScreen() {
                   ]}
                 >
                   <Text style={[s.sheetRowText, { color: colors.text.primary, fontWeight: isActive ? '700' : '500' }]}>
-                    {opt.label}
+                    {t(opt.labelKey)}
                   </Text>
                   {isActive && <Check size={18} color={colors.text.primary} strokeWidth={2.5} />}
                 </Pressable>
@@ -962,7 +965,7 @@ export default function ShopScreen() {
             })}
 
             {/* Filter: Gratis Versand */}
-            <Text style={[s.sheetTitle, { color: colors.text.primary, marginTop: 18 }]}>Filter</Text>
+            <Text style={[s.sheetTitle, { color: colors.text.primary, marginTop: 18 }]}>{t('shop.filter')}</Text>
             <Pressable
               onPress={() => setFreeShipOnly(v => !v)}
               style={({ pressed }) => [s.sheetRow, { borderBottomColor: colors.border.subtle }, pressed && { opacity: 0.7 }]}
@@ -988,7 +991,7 @@ export default function ShopScreen() {
         accessibilityLabel="Produkt verkaufen"
       >
         <Plus size={18} color={colors.bg.primary} strokeWidth={2.6} />
-        <Text style={[s.sellFabText, { color: colors.bg.primary }]}>Verkaufen</Text>
+        <Text style={[s.sellFabText, { color: colors.bg.primary }]}>{t('shop.sell')}</Text>
       </Pressable>
     </View>
   );
