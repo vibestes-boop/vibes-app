@@ -30,6 +30,7 @@ import { useGuildStories,type StoryGroup } from '@/lib/useStories';
 import { timeAgo } from '@/lib/timeAgo';
 import { useTheme } from '@/lib/useTheme';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
+import { useI18n } from '@/lib/i18n';
 import { useQuery,useQueryClient } from '@tanstack/react-query';
 import * as Haptics from 'expo-haptics';
 
@@ -185,6 +186,7 @@ function ConvItem({
 type UserResult = { id: string; username: string | null; avatar_url: string | null };
 
 function NewMessageModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
+  const { t } = useI18n();
   const [query, setQuery] = useState('');
   const currentUserId = useAuthStore((s) => s.profile?.id);
   const { mutateAsync: openConv, isPending } = useOrCreateConversation();
@@ -218,7 +220,7 @@ function NewMessageModal({ visible, onClose }: { visible: boolean; onClose: () =
       <View style={[modal.sheet, { backgroundColor: colors.bg.primary }]}>
         <View style={[modal.handle, { backgroundColor: colors.border.strong }]} />
         <View style={[modal.header, { borderBottomColor: colors.border.subtle }]}>
-          <Text style={[modal.title, { color: colors.text.primary }]}>Neue Nachricht</Text>
+          <Text style={[modal.title, { color: colors.text.primary }]}>{t('messages.newMessage')}</Text>
           <Pressable onPress={onClose} style={modal.closeBtn} hitSlop={10}>
             <X size={20} color={colors.icon.muted} strokeWidth={2} />
           </Pressable>
@@ -229,7 +231,7 @@ function NewMessageModal({ visible, onClose }: { visible: boolean; onClose: () =
           <Search size={16} color={colors.icon.muted} strokeWidth={2} />
           <TextInput
             style={[modal.searchInput, { color: colors.text.primary }]}
-            placeholder="Username suchen…"
+            placeholder={t('messages.searchUser')}
             placeholderTextColor={colors.text.muted}
             value={query}
             onChangeText={setQuery}
@@ -249,11 +251,11 @@ function NewMessageModal({ visible, onClose }: { visible: boolean; onClose: () =
           <ActivityIndicator color="#FFFFFF" style={{ marginTop: 32 }} />
         ) : query.trim().length === 0 ? (
           <View style={modal.hint}>
-            <Text style={[modal.hintText, { color: colors.text.muted }]}>Tippe einen Username ein um zu suchen</Text>
+            <Text style={[modal.hintText, { color: colors.text.muted }]}>{t('messages.searchHint')}</Text>
           </View>
         ) : results.length === 0 ? (
           <View style={modal.hint}>
-            <Text style={[modal.hintText, { color: colors.text.muted }]}>Kein User gefunden</Text>
+            <Text style={[modal.hintText, { color: colors.text.muted }]}>{t('messages.noUserFound')}</Text>
           </View>
         ) : (
           <FlashList
@@ -291,6 +293,7 @@ function ConvSeparator() {
 }
 
 export default function MessagesScreen() {
+  const { t } = useI18n();
   useThemedStatusBar('auto');
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
@@ -407,7 +410,7 @@ export default function MessagesScreen() {
     <View style={[styles.screen, { paddingTop: insets.top, backgroundColor: colors.bg.secondary }]}>
       <NewMessageModal visible={showNew} onClose={() => setShowNew(false)} />
       <View style={[styles.header, { borderBottomColor: colors.border.subtle }]}>
-        <Text style={[styles.title, { color: colors.text.primary }]}>Nachrichten</Text>
+        <Text style={[styles.title, { color: colors.text.primary }]}>{t('tabs.messages')}</Text>
         <Pressable
           onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowNew(true); }}
           style={styles.composeBtn}
@@ -437,9 +440,9 @@ export default function MessagesScreen() {
           ListEmptyComponent={
             <View style={styles.center}>
               <MessageCircle size={52} color={colors.icon.muted} strokeWidth={1.2} />
-              <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>Noch still hier 👋</Text>
+              <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>{t('messages.emptyTitle')}</Text>
               <Text style={[styles.emptyDesc, { color: colors.text.muted }]}>
-                Schreib jemandem aus der Community — der erste Schritt ist der schönste.
+                {t('messages.emptyDesc')}
               </Text>
               <Pressable
                 onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowNew(true); }}
@@ -447,7 +450,7 @@ export default function MessagesScreen() {
                 accessibilityRole="button"
                 accessibilityLabel="Nutzer suchen und Nachricht senden"
               >
-                <Text style={[styles.emptyBtnText, { color: colors.text.primary }]}>Nutzer suchen</Text>
+                <Text style={[styles.emptyBtnText, { color: colors.text.primary }]}>{t('messages.searchUsers')}</Text>
               </Pressable>
             </View>
           }

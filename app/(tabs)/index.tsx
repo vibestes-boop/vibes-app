@@ -30,6 +30,7 @@ import TuneMyVibeOverlay from '@/components/ui/TuneMyVibeOverlay';
 import { useAuthStore } from '@/lib/authStore';
 import { useTheme } from '@/lib/useTheme';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
+import { useI18n } from '@/lib/i18n';
 import { useFeedNavStore } from '@/lib/feedNavStore';
 import { useStoryViewerStore } from '@/lib/storyViewerStore';
 import { supabase } from '@/lib/supabase';
@@ -59,6 +60,7 @@ type FeedRow =
 
 
 export default function VibeFeedScreen() {
+  const { t } = useI18n();
   useThemedStatusBar('light');
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
@@ -564,22 +566,22 @@ export default function VibeFeedScreen() {
       {isError && (
         <View style={styles.emptyTag}>
           <AlertTriangle size={52} color="#F59E0B" />
-          <Text style={styles.emptyTagTitle}>Lädt gerade nicht 🌀</Text>
-          <Text style={styles.emptyTagSub}>Zieh nach unten zum Neu laden 👇</Text>
+          <Text style={styles.emptyTagTitle}>{t('feed.loadErrorTitle')}</Text>
+          <Text style={styles.emptyTagSub}>{t('feed.loadErrorSub')}</Text>
         </View>
       )}
       {!isLoading && !isError && feedData.length === 0 && activeTag && (
         <View style={styles.emptyTag}>
           <SearchX size={52} color="rgba(255,255,255,0.5)" />
           <Text style={styles.emptyTagTitle}>{`Nichts unter „${activeTag}“`}</Text>
-          <Text style={styles.emptyTagSub}>Noch keine Posts mit diesem Tag — sei der Erste.</Text>
+          <Text style={styles.emptyTagSub}>{t('feed.emptyTagSub')}</Text>
           <Pressable
             onPress={() => setActiveTag(null)}
             style={styles.emptyTagBtn}
             accessibilityRole="button"
             accessibilityLabel="Filter entfernen"
           >
-            <Text style={styles.emptyTagBtnText}>Filter entfernen</Text>
+            <Text style={styles.emptyTagBtnText}>{t('feed.removeFilter')}</Text>
           </Pressable>
         </View>
       )}
@@ -587,9 +589,9 @@ export default function VibeFeedScreen() {
       {feedMode === 'foryou' && !isLoading && !isError && feedRows.length === 0 && !activeTag && !isTrending && (
         <View style={[styles.emptyTag, { gap: 16 }]}>
           <Zap size={56} color={colors.accent.secondary} strokeWidth={1.5} />
-          <Text style={styles.emptyTagTitle}>Willkommen bei Serlo! ✨</Text>
+          <Text style={styles.emptyTagTitle}>{t('feed.welcomeTitle')}</Text>
           <Text style={styles.emptyTagSub}>
-            Folge anderen oder poste deinen ersten Vibe — dein Feed füllt sich automatisch.
+            {t('feed.welcomeSub')}
           </Text>
           <Pressable
             onPress={() => router.navigate('/(tabs)/explore')}
@@ -597,7 +599,7 @@ export default function VibeFeedScreen() {
             accessibilityRole="button"
             accessibilityLabel="Explore öffnen"
           >
-            <Text style={[styles.emptyTagBtnText, { color: colors.accent.secondary }]}>Explore öffnen</Text>
+            <Text style={[styles.emptyTagBtnText, { color: colors.accent.secondary }]}>{t('feed.openExplore')}</Text>
           </Pressable>
         </View>
       )}
@@ -687,7 +689,7 @@ export default function VibeFeedScreen() {
         <Pressable onPress={handleRefresh} style={styles.newPostsBannerInner}>
           <View style={[styles.newPostsBlur, { backgroundColor: 'rgba(10,10,20,0.92)' }]}>
             <View style={styles.newPostsDot} />
-            <Text style={styles.newPostsText}>Neue Posts verfügbar</Text>
+            <Text style={styles.newPostsText}>{t('feed.newPosts')}</Text>
             <Text style={styles.newPostsArrow}>↑</Text>
           </View>
         </Pressable>
@@ -733,7 +735,7 @@ export default function VibeFeedScreen() {
             hitSlop={12}
           >
             <Text style={[styles.feedModeTxt, feedMode === 'foryou' && styles.feedModeTxtActive]}>
-              Für dich
+              {t('feed.forYou')}
             </Text>
             {feedMode === 'foryou' && <View style={styles.feedModeLine} />}
           </Pressable>
@@ -747,7 +749,7 @@ export default function VibeFeedScreen() {
             hitSlop={12}
           >
             <Text style={[styles.feedModeTxt, feedMode === 'following' && styles.feedModeTxtActive]}>
-              Folge ich
+              {t('feed.following')}
             </Text>
             {feedMode === 'following' && <View style={styles.feedModeLine} />}
           </Pressable>

@@ -42,6 +42,7 @@ import { useAddComment,useCommentReplies,useComments,useDeleteComment,useToggleC
 import { useReportComment } from '@/lib/useReport';
 import { useExploreUserSearch } from '@/lib/useExplore';
 import { useTheme } from '@/lib/useTheme';
+import { useI18n } from '@/lib/i18n';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -321,6 +322,7 @@ function SheetInner({
   creatorUserId?: string | null;
   sheetTop: number;
 }) {
+  const { t } = useI18n();
   const { profile } = useAuthStore();
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
@@ -406,21 +408,21 @@ function SheetInner({
   }, [text, addComment, replyTo]);
 
   const handleDelete = useCallback((comment: Comment) => {
-    Alert.alert('Kommentar löschen', 'Möchtest du diesen Kommentar wirklich löschen?', [
-      { text: 'Abbrechen', style: 'cancel' },
-      { text: 'Löschen', style: 'destructive', onPress: () => deleteComment.mutate({ commentId: comment.id, parentId: comment.parent_id }) },
+    Alert.alert(t('comments.deleteTitle'), t('comments.deleteText'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('comments.delete'), style: 'destructive', onPress: () => deleteComment.mutate({ commentId: comment.id, parentId: comment.parent_id }) },
     ]);
   }, [deleteComment]);
 
   const { mutate: reportComment } = useReportComment();
   const handleReportComment = useCallback((comment: Comment) => {
-    Alert.alert('Kommentar melden', 'Warum meldest du diesen Kommentar?', [
-      { text: 'Spam', onPress: () => { reportComment({ commentId: comment.id, reason: 'spam' }); Alert.alert('Danke', 'Meldung eingegangen — wir prüfen das.'); } },
-      { text: 'Belästigung', onPress: () => { reportComment({ commentId: comment.id, reason: 'harassment' }); Alert.alert('Danke', 'Meldung eingegangen — wir prüfen das.'); } },
-      { text: 'Unangemessen', onPress: () => { reportComment({ commentId: comment.id, reason: 'inappropriate' }); Alert.alert('Danke', 'Meldung eingegangen — wir prüfen das.'); } },
-      { text: 'Abbrechen', style: 'cancel' },
+    Alert.alert(t('comments.reportTitle'), t('comments.reportWhy'), [
+      { text: t('comments.reasonSpam'), onPress: () => { reportComment({ commentId: comment.id, reason: 'spam' }); Alert.alert(t('comments.thanks'), t('comments.reportReceived')); } },
+      { text: t('comments.reasonHarassment'), onPress: () => { reportComment({ commentId: comment.id, reason: 'harassment' }); Alert.alert(t('comments.thanks'), t('comments.reportReceived')); } },
+      { text: t('comments.reasonInappropriate'), onPress: () => { reportComment({ commentId: comment.id, reason: 'inappropriate' }); Alert.alert(t('comments.thanks'), t('comments.reportReceived')); } },
+      { text: t('common.cancel'), style: 'cancel' },
     ]);
-  }, [reportComment]);
+  }, [reportComment, t]);
 
   const handleReplyWithVideo = useCallback((username: string) => {
     setText(`@${username} `);
@@ -518,13 +520,13 @@ function SheetInner({
 
   const sortOptions = useMemo(
     () => [
-      { key: 'neueste' as const, label: 'Neueste' },
-      { key: 'top' as const, label: 'Top' },
-      ...(creatorUserId ? [{ key: 'creator' as const, label: 'Von Creator' }] : []),
+      { key: 'neueste' as const, label: t('comments.sortNewest') },
+      { key: 'top' as const, label: t('comments.sortTop') },
+      ...(creatorUserId ? [{ key: 'creator' as const, label: t('comments.sortCreator') }] : []),
     ],
     [creatorUserId]
   );
-  const activeSortLabel = sortOptions.find((o) => o.key === sortMode)?.label ?? 'Neueste';
+  const activeSortLabel = sortOptions.find((o) => o.key === sortMode)?.label ?? t('comments.sortNewest');
 
   return (
     <View style={[{ flex: 1 }, { backgroundColor: colors.bg.secondary }]}>
@@ -533,7 +535,7 @@ function SheetInner({
         <View style={[styles.handle, { backgroundColor: colors.border.default }]} />
         <View style={[styles.header, { borderBottomColor: colors.border.subtle }]}>
           <Text style={[styles.headerTitle, { color: colors.text.primary }]}>
-            {commentTotal > 0 ? `${commentTotal} ${commentTotal === 1 ? 'Kommentar' : 'Kommentare'}` : 'Kommentare'}
+            {commentTotal > 0 ? (commentTotal === 1 ? t('comments.countOne', { count: commentTotal }) : t('comments.countMany', { count: commentTotal })) : t('comments.title')}
           </Text>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             {/* Sortier-Pille (TikTok-Stil) */}
@@ -593,10 +595,10 @@ function SheetInner({
       ) : sortedComments.length === 0 ? (
         <View style={styles.center}>
           <Text style={[styles.emptyText, { color: colors.text.muted }]}>
-            {sortMode === 'creator' ? 'Noch keine Kommentare vom Creator.' : 'Noch keine Kommentare.'}
+            {sortMode === 'creator' ? t('comments.emptyCreator') : t('comments.empty')}
           </Text>
           {sortMode !== 'creator' && (
-            <Text style={[styles.emptySubText, { color: colors.text.muted }]}>Sei der Erste! 💬</Text>
+            <Text style={[styles.emptySubText, { color: colors.text.muted }]}>{t('comments.beFirst')}</Text>
           )}
         </View>
       ) : (
@@ -647,7 +649,7 @@ function SheetInner({
       {replyTo && (
         <View style={styles.replyBanner}>
           <Text style={[styles.replyBannerText, { color: colors.text.muted }]}>
-            Antwort an <Text style={[styles.replyBannerUsername, { color: colors.text.primary }]}>@{replyTo.username}</Text>
+            {t('comments.replyBanner')}<Text style={[styles.replyBannerUsername, { color: colors.text.primary }]}>@{replyTo.username}</Text>
           </Text>
           <Pressable onPress={clearReply} hitSlop={10}>
             <X size={14} stroke="#9CA3AF" strokeWidth={2.5} />
@@ -676,7 +678,7 @@ function SheetInner({
             }]}
             value={text}
             onChangeText={handleTextChange}
-            placeholder="Kommentar schreiben..."
+            placeholder={t('comments.placeholder')}
             placeholderTextColor="#4B5563"
             multiline
             maxLength={500}
@@ -745,6 +747,7 @@ function CommentActionSheet({
   onReplyWithVideo: (username: string) => void;
   bottomInset?: number;
 }) {
+  const { t } = useI18n();
   if (!visible) return null;
 
   const handleCopy = () => {
@@ -775,25 +778,25 @@ function CommentActionSheet({
             <View style={styles.actionSheetGroup}>
               <Pressable style={styles.actionSheetItem} onPress={handleDelete}>
                 <Trash2 size={20} stroke="#EF4444" strokeWidth={2} />
-                <Text style={styles.actionSheetItemTextDestructive}>Löschen</Text>
+                <Text style={styles.actionSheetItemTextDestructive}>{t('comments.delete')}</Text>
               </Pressable>
             </View>
           )}
           <View style={styles.actionSheetGroup}>
             <Pressable style={[styles.actionSheetItem, styles.actionSheetItemBorder]} onPress={handleCopy}>
               <Copy size={20} stroke="#9CA3AF" strokeWidth={2} />
-              <Text style={styles.actionSheetItemText}>Kopieren</Text>
+              <Text style={styles.actionSheetItemText}>{t('comments.copy')}</Text>
             </Pressable>
             <Pressable style={styles.actionSheetItem} onPress={handleReplyWithVideo}>
               <Video size={20} stroke="#9CA3AF" strokeWidth={2} />
-              <Text style={styles.actionSheetItemText}>Mit Video antworten</Text>
+              <Text style={styles.actionSheetItemText}>{t('comments.videoReply')}</Text>
             </Pressable>
           </View>
           {!isOwn && (
             <View style={styles.actionSheetGroup}>
               <Pressable style={styles.actionSheetItem} onPress={() => { onReport(); onClose(); }}>
                 <Flag size={20} stroke="#EF4444" strokeWidth={2} />
-                <Text style={styles.actionSheetItemTextDestructive}>Melden</Text>
+                <Text style={styles.actionSheetItemTextDestructive}>{t('comments.report')}</Text>
               </Pressable>
             </View>
           )}
@@ -850,6 +853,7 @@ function CommentRowComponent({
   isRepliesExpanded?: boolean;
   onToggleReplies?: (commentId: string) => void;
 }) {
+  const { t } = useI18n();
   const showReplies = isRepliesExpanded ?? false;
   const { data: replies = [] } = useCommentReplies(comment.id, showReplies);
   const { colors } = useTheme();
@@ -936,7 +940,7 @@ function CommentRowComponent({
           <RichText text={comment.text} style={[styles.commentText, { color: colors.text.secondary }]} />
           {/* Antworten-Link (Like sitzt rechts als eigene Spalte) */}
           <Pressable onPress={handleReply} style={styles.commentReplyBtn} hitSlop={8}>
-            <Text style={[styles.commentReplyText, { color: colors.text.muted }]}>Antworten</Text>
+            <Text style={[styles.commentReplyText, { color: colors.text.muted }]}>{t('comments.reply')}</Text>
           </Pressable>
 
           {/* Antworten-Toggle — NUR wenn es tatsächlich Antworten gibt, mit Anzahl (TikTok-Stil) */}

@@ -43,6 +43,7 @@ withSpring,withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
+import { useI18n } from '@/lib/i18n';
 // reanimated: CJS require() vermeidet _interopRequireDefault Crash in Hermes HBC
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const _animMod = require('react-native-reanimated') as any;
@@ -237,6 +238,7 @@ function EmojiPicker({
   onClose: () => void;
   onDelete?: () => void;
 }) {
+  const { t } = useI18n();
   return (
     <View style={[styles.picker, isOwn ? styles.pickerOwn : styles.pickerOther]}>
       <View style={styles.pickerEmojis}>
@@ -256,7 +258,7 @@ function EmojiPicker({
           style={styles.deleteBtn}
         >
           <Trash2 size={14} color="#EF4444" strokeWidth={2} />
-          <Text style={styles.deleteBtnText}>Löschen</Text>
+          <Text style={styles.deleteBtnText}>{t('comments.delete')}</Text>
         </Pressable>
       )}
     </View>
@@ -316,6 +318,7 @@ function MessageBubble({
   onStoryReplyPress: () => void;
 
 }) {
+  const { t } = useI18n();
   const hasPost = !!msg.post;
   const hasImage = !!msg.image_url;
   const hasStoryReply = !!msg.story_media_url;
@@ -455,7 +458,7 @@ function MessageBubble({
               isOwn && { color: 'rgba(255,255,255,0.65)' },
             ]}>
               {isSending ? (
-                <Text style={{ color: 'rgba(255,255,255,0.4)' }}>Senden…</Text>
+                <Text style={{ color: 'rgba(255,255,255,0.4)' }}>{t('messages.sending')}</Text>
               ) : (
                 <>
                   {formatTime(msg.created_at)}
@@ -483,6 +486,7 @@ function MessageBubble({
 
 // ── Haupt-Screen ─────────────────────────────────────────────────────────────
 export default function ChatScreen() {
+  const { t } = useI18n();
   useThemedStatusBar('auto');
   const { id: conversationId, username, avatarUrl, otherUserId } = useLocalSearchParams<{
     id: string;
@@ -580,7 +584,7 @@ export default function ChatScreen() {
     if (!conversationId || !userId) return;
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Berechtigung erforderlich', 'Bitte erlaube den Zugriff auf deine Fotos.');
+      Alert.alert(t('messages.permTitle'), t('messages.permText'));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -597,7 +601,7 @@ export default function ChatScreen() {
       const { url } = await uploadPostMedia(userId, asset.uri, mimeType);
       await sendMessage({ conversationId, content: '', postId: null, imageUrl: url });
     } catch (e: any) {
-      Alert.alert('Bild blieb hängen 🙈', e?.message ?? 'Das Bild ging nicht raus — prüf kurz deine Verbindung.');
+      Alert.alert(t('messages.imgFailTitle'), e?.message ?? t('messages.imgFailText'));
     } finally {
       setImageUploading(false);
     }
@@ -610,7 +614,7 @@ export default function ChatScreen() {
     try {
       await sendMessage({ conversationId, content: '', postId: null, imageUrl: gifUrl });
     } catch (e: any) {
-      Alert.alert('GIF blieb hängen 🙈', e?.message ?? 'Das GIF ging nicht raus — prüf kurz deine Verbindung.');
+      Alert.alert(t('messages.gifFailTitle'), e?.message ?? t('messages.gifFailText'));
     }
   }, [conversationId, sendMessage]);
 
@@ -624,10 +628,10 @@ export default function ChatScreen() {
   }, []);
 
   const handleDelete = useCallback((messageId: string) => {
-    Alert.alert('Nachricht löschen?', 'Für alle Teilnehmer entfernt.', [
-      { text: 'Abbrechen', style: 'cancel' },
+    Alert.alert(t('messages.deleteTitle'), t('messages.deleteText'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Löschen',
+        text: t('comments.delete'),
         style: 'destructive',
         onPress: () => deleteMessage(messageId),
       },
@@ -755,7 +759,7 @@ export default function ChatScreen() {
                 }}
                 ListEmptyComponent={
                   <View style={styles.center}>
-                    <Text style={[styles.emptyText, { color: colors.text.muted }]}>Schreib die erste Nachricht 👋</Text>
+                    <Text style={[styles.emptyText, { color: colors.text.muted }]}>{t('messages.firstMessage')}</Text>
                   </View>
                 }
               />
@@ -808,7 +812,7 @@ export default function ChatScreen() {
                 value={text}
                 onChangeText={(v) => { setText(v); if (v.length > 0) onTypingStart(); else onTypingStop(); }}
                 onBlur={onTypingStop}
-                placeholder={replyTo ? 'Antworten…' : 'Nachricht…'}
+                placeholder={replyTo ? t('messages.replyPlaceholder') : t('messages.msgPlaceholder')}
                 placeholderTextColor={colors.text.muted}
                 multiline
                 maxLength={500}
