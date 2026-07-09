@@ -1,4 +1,15 @@
-# Handoff — Serlo/Vibes (Stand 8. Juli 2026 · Session 10)
+# Handoff — Serlo/Vibes (Stand 9. Juli 2026 · Session 11)
+
+> ## 🆕 Session 11 (8.–9. Juli) — Kurzfassung
+> - **🎉 APP IST GENEHMIGT + LIVE IM APP STORE** (nach 3 Ablehnungen): https://apps.apple.com/app/serlo/id6760790424
+> - **serlo.ch fertig verdrahtet**: Supabase-Redirects (Management-API), WEB_BASE + alle Links auf www.serlo.ch, Vercel-Env von Zaur gesetzt, Coin-Stripe-Secrets umgestellt (SHA-verifiziert). Commits `98d9681`…
+> - **Widerruf-Seite `/widerruf`** live (gesetzl. Muster + Parfüm-Hygiene-Ausnahme §312g, Muster-Formular; verlinkt in Footer/Menü/AGB/App-Settings). ⚠️ Vor Stripe-Live: Anwalt. Commit `a507d5e`.
+> - **Landing-Hero live**: Zaurs Berg-Komposition (Standalone-Editor `~/serlo-tools/serlo-hero-editor.html` + Quellen in `hero-editor-source/`) → `HeroHorizon`-Komponente: WebGL-Shader (Sonne/FBM-Wolken/Sterne), 9s-Sonnenaufgang, Entrance-Stagger, virtuelle 16:9-Bühne (Mobile-stabil, Sonnen-Fokus-Crop), **Tageszeit-Himmel** dawn(5-17)/dusk(17-22)/night(22-5) nach Besucher-Uhr, Test: `?sky=dawn|dusk|night`. Layout-Quelle: `apps/web/public/hero/hero-layout.json` (aus Editor-Export, Workflow: Zaur exportiert → JSON+Schnipsel übernehmen). Commits `fedc713`→`dc90384`.
+> - **App-Store-Verlinkung Web**: offizieller Apple-Badge + QR (Desktop) im Hero + Footer, Smart App Banner global (itunes-Metadata). Commit `1bad203`.
+> - **📱 App-i18n de/ru GESTARTET** (OTA-only, Runtime 1.30.0): `lib/i18n/` = 1:1-Port des Web-Systems (de strikt, ru DeepPartial→de-Fallback, labelKey-Muster). **Fertig: Phase 0+1** (Sprachwahl in Settings + DE/RU-Pille auf Login, Auth komplett, 4 Onboarding-Screens; ⚠️ Interessen-Tags = DB-Werte, NIE übersetzen, nur Anzeige-Label) · **Phase 2a** (Tab-Labels via labelKey in tabBarStore, Aktivität komplett ~30 Notif-Texte via actionLabel(n,t)) · **Phase 2b** (CommentsSheet, Messages+Chat, Feed-Zustände). Commits `dfd7327`, `bcf50d0`, `2d8e3f6`.
+> - **🔴 OFFEN i18n**: Phase 2c (Explore, Profil), Phase 3 (Shop, Live, Create — textreich!), Settings-Voll, Alert-Sweep; später: expo-localization in NÄCHSTEN Binary (Systemsprache), profiles.locale + Push-Texte (Edge-Fn, Migration), ce-Kataloge (Community).
+> - Hero-Editor-Feature-Doku: Werkstatt (Foto→Silhouette), 6 Presets + custom, Text/Wolken-Ebenen (Shader-Wolken u_fc[8]), Formate (Desktop/Story/Post/OG), PNG/Video-Export, Undo. Turm-Foto Sandukhoy = CC BY-SA (Takhirgeran Umar) → Footer-Credit offen.
+
 
 > 📍 **Dieses Dokument: `/Users/zaurhatuev/vibes-app/handoff.md`**
 > Arbeite NUR in diesem Repo: **`/Users/zaurhatuev/vibes-app`** (Branch `main`).
