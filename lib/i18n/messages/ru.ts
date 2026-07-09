@@ -171,6 +171,8 @@ export const ru: DeepPartial<Messages> = {
     savedEmptyDesc: 'Нажми закладку на посте — и он появится здесь.',
     editProfile: 'Редактировать профиль',
     share: 'Поделиться',
+    asSeller: 'как продавец · {count}',
+    newHighlight: 'Новое',
     posts: 'Посты',
     followers: 'Подписчики',
     followingCount: 'Подписки',

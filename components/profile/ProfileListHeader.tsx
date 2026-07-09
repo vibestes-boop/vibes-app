@@ -101,7 +101,14 @@ function ProfileActionRow({
           onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onEditProfile(); }}
         >
           <Edit3 size={14} color={colors.bg.primary} strokeWidth={2.5} />
-          <Text style={[msx.primaryText, { color: colors.bg.primary }]}>{t('profile.editProfile')}</Text>
+          <Text
+            style={[msx.primaryText, { color: colors.bg.primary, flexShrink: 1 }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.85}
+          >
+            {t('profile.editProfile')}
+          </Text>
         </Pressable>
 
         {/* Teilen — Outline */}
@@ -113,7 +120,14 @@ function ProfileActionRow({
           }}
         >
           <Share2 size={14} color={colors.text.primary} strokeWidth={2} />
-          <Text style={[msx.secondaryText, { color: colors.text.primary }]}>{t('profile.share')}</Text>
+          <Text
+            style={[msx.secondaryText, { color: colors.text.primary, flexShrink: 1 }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.85}
+          >
+            {t('profile.share')}
+          </Text>
         </Pressable>
 
         {/* ProfileShareSheet für eigenes Profil */}
@@ -506,7 +520,7 @@ export function ProfileListHeader({
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                 <Star size={14} color="#F59E0B" fill="#F59E0B" strokeWidth={2} />
                 <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text.primary }}>{orderRating.sellerAvg?.toFixed(1)}</Text>
-                <Text style={{ fontSize: 12.5, color: colors.text.muted }}>als Verkäufer · {orderRating.sellerCount}</Text>
+                <Text style={{ fontSize: 12.5, color: colors.text.muted }}>{t('profile.asSeller', { count: orderRating.sellerCount })}</Text>
               </View>
             ) : null}
             {orderRating.buyerCount > 0 ? (

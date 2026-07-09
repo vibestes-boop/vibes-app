@@ -169,6 +169,8 @@ export const de = {
     savedEmptyDesc: 'Tipp das Lesezeichen bei einem Post — dann ist es hier.',
     editProfile: 'Profil bearbeiten',
     share: 'Teilen',
+    asSeller: 'als Verkäufer · {count}',
+    newHighlight: 'Neu',
     posts: 'Posts',
     followers: 'Follower',
     followingCount: 'Following',

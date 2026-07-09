@@ -18,6 +18,7 @@ type HighlightItem,
 type StoryHighlight,
 } from '@/lib/useStoryHighlights';
 import { useTheme } from '@/lib/useTheme';
+import { useI18n } from '@/lib/i18n';
 import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -91,6 +92,7 @@ export function ProfileHighlightsRow({
 }) {
   const router = useRouter();
   const { colors } = useTheme();
+  const { t } = useI18n();
   const { data: highlights = [], isLoading } = useStoryHighlights(userId);
   const { mutate: removeHighlight } = useRemoveHighlight();
   const { mutate: addHighlight, isPending: isAdding } = useAddHighlight();
@@ -195,7 +197,7 @@ export function ProfileHighlightsRow({
                 : <PlusCircle size={28} color={colors.text.primary} strokeWidth={1.5} />
               }
             </View>
-            <Text style={[styles.bubbleLabel, { color: colors.text.muted }]}>Neu</Text>
+            <Text style={[styles.bubbleLabel, { color: colors.text.muted }]}>{t('profile.newHighlight')}</Text>
           </Pressable>
         )}
 
