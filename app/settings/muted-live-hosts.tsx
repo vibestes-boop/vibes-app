@@ -28,6 +28,7 @@ View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useI18n } from '@/lib/i18n';
 import { useMutedLiveHosts,useToggleMuteHost,type MutedHost } from '@/lib/useMutedLiveHosts';
 import { useTheme } from '@/lib/useTheme';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
@@ -47,7 +48,8 @@ function MutedRow({
   onPressUser: () => void;
   isBusy: boolean;
 }) {
-  const name = host.username ?? 'Unbekannt';
+  const { t } = useI18n();
+  const name = host.username ?? t('settings.unknownUser');
   return (
     <View
       style={[
@@ -83,7 +85,7 @@ function MutedRow({
             @{name}
           </Text>
           <Text style={[styles.sub, { color: colors.text.muted }]}>
-            Live-Pushes stummgeschaltet
+            {t('settings.mlhMutedSub')}
           </Text>
         </View>
       </Pressable>
@@ -101,7 +103,7 @@ function MutedRow({
         ) : (
           <>
             <Undo2 size={14} color="#fff" strokeWidth={2.2} />
-            <Text style={styles.unmuteText}>Aufheben</Text>
+            <Text style={styles.unmuteText}>{t('settings.mlhUnmute')}</Text>
           </>
         )}
       </Pressable>
@@ -116,6 +118,7 @@ export default function MutedLiveHostsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors } = useTheme();
+  const { t } = useI18n();
 
   const { data: mutedHosts, isLoading } = useMutedLiveHosts();
   const toggle = useToggleMuteHost();
@@ -138,7 +141,7 @@ export default function MutedLiveHostsScreen() {
           <ArrowLeft size={22} color={colors.text.primary} strokeWidth={2} />
         </Pressable>
         <Text style={[styles.headerTitle, { color: colors.text.primary }]}>
-          Live-Benachrichtigungen
+          {t('settings.mlhTitle')}
         </Text>
         <View style={{ width: 38 }} />
       </View>
@@ -151,11 +154,10 @@ export default function MutedLiveHostsScreen() {
         <View style={styles.empty}>
           <BellOff size={40} color={colors.icon.muted} />
           <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>
-            Niemand ist stummgeschaltet
+            {t('settings.mlhEmptyTitle')}
           </Text>
           <Text style={[styles.emptySub, { color: colors.text.muted }]}>
-            Tippe auf die Glocke in einem Profil, um Live-Pushes dieser Person
-            zu stummschalten — du folgst ihnen weiterhin ganz normal.
+            {t('settings.mlhEmptyDesc')}
           </Text>
         </View>
       ) : (
@@ -178,8 +180,7 @@ export default function MutedLiveHostsScreen() {
           )}
           ListHeaderComponent={
             <Text style={[styles.desc, { color: colors.text.muted }]}>
-              Diese Creator bekommen einen Push von dir nicht, wenn sie live gehen.
-              Du folgst ihnen weiterhin ganz normal.
+              {t('settings.mlhDesc')}
             </Text>
           }
         />

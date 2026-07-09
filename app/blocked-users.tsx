@@ -4,6 +4,7 @@
  * User können direkt in dieser Liste entblocken.
  */
 import { useAuthStore } from '@/lib/authStore';
+import { useI18n } from '@/lib/i18n';
 import { useBlockedUsers,useBlockUser,type BlockedUser } from '@/lib/useBlock';
 import { useTheme } from '@/lib/useTheme';
 import { useQueryClient } from '@tanstack/react-query';
@@ -29,15 +30,17 @@ function BlockedUserRow({ user }: { user: BlockedUser }) {
   const currentUserId = useAuthStore((s) => s.profile?.id);
   const { unblock } = useBlockUser(user.id);
   const { colors } = useTheme();
+  const { t } = useI18n();
+  const name = user.username ?? t('settings.unknownUser');
 
   const handleUnblock = () => {
     Alert.alert(
-      `@${user.username ?? 'User'} entblocken?`,
-      'Dieser User kann dann wieder dein Profil und deine Posts sehen.',
+      t('settings.unblockTitle', { name }),
+      t('settings.buUnblockText'),
       [
-        { text: 'Abbrechen', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Entblocken',
+          text: t('settings.unblock'),
           onPress: async () => {
             setUnblocking(true);
             try {
@@ -47,7 +50,7 @@ function BlockedUserRow({ user }: { user: BlockedUser }) {
                 (old) => (old ?? []).filter((u) => u.id !== user.id)
               );
             } catch {
-              Alert.alert('Hat nicht geklappt 🙈', 'Das Entblocken ging nicht durch — gleich nochmal?');
+              Alert.alert(t('settings.unblockFailTitle'), t('settings.unblockFailText'));
             } finally {
               setUnblocking(false);
             }
@@ -75,8 +78,8 @@ function BlockedUserRow({ user }: { user: BlockedUser }) {
       </View>
 
       <View style={styles.info}>
-        <Text style={[styles.username, { color: colors.text.primary }]}>@{user.username ?? 'Unbekannt'}</Text>
-        <Text style={styles.blockedLabel}>Geblockt</Text>
+        <Text style={[styles.username, { color: colors.text.primary }]}>@{name}</Text>
+        <Text style={styles.blockedLabel}>{t('settings.buBlocked')}</Text>
       </View>
 
       <Pressable
@@ -84,12 +87,12 @@ function BlockedUserRow({ user }: { user: BlockedUser }) {
         disabled={unblocking}
         style={styles.unblockBtn}
         accessibilityRole="button"
-        accessibilityLabel={`${user.username ?? 'User'} entblocken`}
+        accessibilityLabel={t('settings.unblockA11y', { name })}
       >
         {unblocking ? (
           <ActivityIndicator size="small" color="#FFFFFF" />
         ) : (
-          <Text style={styles.unblockText}>Entblocken</Text>
+          <Text style={styles.unblockText}>{t('settings.unblock')}</Text>
         )}
       </Pressable>
     </View>
@@ -101,6 +104,7 @@ export default function BlockedUsersScreen() {
   const insets = useSafeAreaInsets();
   const { data: blockedUsers = [], isLoading } = useBlockedUsers();
   const { colors } = useTheme();
+  const { t } = useI18n();
 
   return (
     <View style={[styles.container, { paddingTop: insets.top, backgroundColor: colors.bg.primary }]}>
@@ -110,12 +114,12 @@ export default function BlockedUsersScreen() {
           onPress={() => router.back()}
           style={[styles.backBtn, { backgroundColor: colors.bg.elevated }]}
           accessibilityRole="button"
-          accessibilityLabel="Zurück"
+          accessibilityLabel={t('settings.back')}
           hitSlop={12}
         >
           <ArrowLeft size={20} color={colors.text.secondary} strokeWidth={2} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Geblockte Nutzer</Text>
+        <Text style={[styles.headerTitle, { color: colors.text.primary }]}>{t('settings.blockedUsers')}</Text>
         <View style={{ width: 44 }} />
       </View>
 
@@ -126,9 +130,9 @@ export default function BlockedUsersScreen() {
       ) : blockedUsers.length === 0 ? (
         <View style={styles.center}>
           <ShieldOff size={48} color={colors.icon.muted} strokeWidth={1.5} />
-          <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>Niemand blockiert 🤍</Text>
+          <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>{t('settings.buEmptyTitle')}</Text>
           <Text style={[styles.emptySubtitle, { color: colors.text.muted }]}>
-            Nutzer die du blockst, kannst du hier verwalten.
+            {t('settings.buEmptyDesc')}
           </Text>
         </View>
       ) : (

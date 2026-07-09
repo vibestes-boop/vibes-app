@@ -50,7 +50,7 @@ function TabBarPreview({ slot2, slot4, colors }: {
       {/* Label */}
       <View style={pb.labelRow}>
         <View style={[pb.dot, { backgroundColor: colors.text.primary }]} />
-        <Text style={[pb.label, { color: colors.text.muted }]}>Live-Vorschau</Text>
+        <Text style={[pb.label, { color: colors.text.muted }]}>{t('settings.tbLivePreview')}</Text>
         <View style={[pb.dot, { backgroundColor: colors.text.primary }]} />
       </View>
 
@@ -64,7 +64,7 @@ function TabBarPreview({ slot2, slot4, colors }: {
               strokeWidth={0} fill={colors.tabBar?.active ?? colors.text.primary} />
           </View>
           <View style={[pb.activeDot, { backgroundColor: colors.tabBar?.active ?? colors.text.primary }]} />
-          <Text style={[pb.tabLabel, { color: colors.tabBar?.active ?? colors.text.primary }]}>Home</Text>
+          <Text style={[pb.tabLabel, { color: colors.tabBar?.active ?? colors.text.primary }]}>{t('tabs.home')}</Text>
         </View>
 
         {/* Slot 2 — wählbar */}
@@ -129,7 +129,7 @@ function TabBarPreview({ slot2, slot4, colors }: {
               fill="transparent"
             />
           </View>
-          <Text style={[pb.tabLabel, { color: colors.tabBar?.inactive ?? colors.text.muted }]}>Profil</Text>
+          <Text style={[pb.tabLabel, { color: colors.tabBar?.inactive ?? colors.text.muted }]}>{t('tabs.profile')}</Text>
         </View>
 
       </View>
@@ -144,6 +144,7 @@ export default function TabBarCustomizeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors } = useTheme();
+  const { t } = useI18n();
 
   const slot2 = useTabBarStore((s) => s.slot2);
   const slot4 = useTabBarStore((s) => s.slot4);
@@ -173,10 +174,10 @@ export default function TabBarCustomizeScreen() {
       {/* Header */}
       <View style={[styles.header, { paddingTop: insets.top + 8, borderBottomColor: colors.border.subtle }]}>
         <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={16}
-          accessibilityRole="button" accessibilityLabel="Zurück">
+          accessibilityRole="button" accessibilityLabel={t('settings.back')}>
           <ArrowLeft size={22} color={colors.text.primary} strokeWidth={2} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Tab Bar anpassen</Text>
+        <Text style={[styles.headerTitle, { color: colors.text.primary }]}>{t('settings.tabBar')}</Text>
         <View style={{ width: 38 }} />
       </View>
 
@@ -187,13 +188,12 @@ export default function TabBarCustomizeScreen() {
         showsVerticalScrollIndicator={false}
       >
         <Text style={[styles.desc, { color: colors.text.muted }]}>
-          Wähle was du in Slot 2 und Slot 4 sehen möchtest.
-          Die Vorschau unten aktualisiert sich sofort.
+          {t('settings.tbDesc')}
         </Text>
 
         {/* ── Slot 2 wählen ── */}
         <Text style={[styles.sectionLabel, { color: colors.text.primary }]}>
-          Slot 2 — links vom +
+          {t('settings.tbSlot2')}
         </Text>
         <FeatureList
           features={ALL_TAB_FEATURES}
@@ -204,7 +204,7 @@ export default function TabBarCustomizeScreen() {
 
         {/* ── Slot 4 wählen ── */}
         <Text style={[styles.sectionLabel, { color: colors.text.primary }]}>
-          Slot 4 — rechts vom +
+          {t('settings.tbSlot4')}
         </Text>
         <FeatureList
           features={ALL_TAB_FEATURES}

@@ -1,3 +1,4 @@
+import { useI18n } from '@/lib/i18n';
 import { useTheme } from '@/lib/useTheme';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import { useMySupport, useCreateSupportThread, useSendSupportMessage } from '@/lib/useSupport';
@@ -20,6 +21,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 export default function SupportScreen() {
   useThemedStatusBar('auto');
   const { colors } = useTheme();
+  const { t } = useI18n();
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
@@ -44,7 +46,7 @@ export default function SupportScreen() {
       if (thread) {
         await sendMessage({ threadId: thread.id, body });
       } else {
-        await createThread({ subject: 'Support-Anfrage', body });
+        await createThread({ subject: t('settings.supSubject'), body });
       }
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 120);
@@ -61,9 +63,9 @@ export default function SupportScreen() {
           <ArrowLeft size={22} color={colors.text.primary} strokeWidth={2} />
         </Pressable>
         <View style={{ flex: 1 }}>
-          <Text style={{ color: colors.text.primary, fontSize: 17, fontWeight: '700' }}>Hilfe & Support</Text>
+          <Text style={{ color: colors.text.primary, fontSize: 17, fontWeight: '700' }}>{t('settings.helpSupport')}</Text>
           <Text style={{ color: colors.text.secondary, fontSize: 12 }}>
-            {thread ? 'Wir antworten so schnell wir können.' : 'Schreib uns — wir helfen dir.'}
+            {thread ? t('settings.supSubThread') : t('settings.supSubNew')}
           </Text>
         </View>
       </View>
@@ -85,9 +87,9 @@ export default function SupportScreen() {
                 <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: colors.bg.subtle, alignItems: 'center', justifyContent: 'center' }}>
                   <LifeBuoy size={26} color={colors.text.secondary} strokeWidth={1.8} />
                 </View>
-                <Text style={{ color: colors.text.primary, fontSize: 15, fontWeight: '600' }}>Wie können wir helfen? 👋</Text>
+                <Text style={{ color: colors.text.primary, fontSize: 15, fontWeight: '600' }}>{t('settings.supEmptyTitle')}</Text>
                 <Text style={{ color: colors.text.secondary, fontSize: 13, textAlign: 'center', maxWidth: 260, lineHeight: 20 }}>
-                  Beschreib dein Problem oder Feedback. Du bekommst eine Benachrichtigung, sobald das Team antwortet.
+                  {t('settings.supEmptyDesc')}
                 </Text>
               </View>
             )}
@@ -97,7 +99,7 @@ export default function SupportScreen() {
               return (
                 <View key={m.id} style={{ alignItems: mine ? 'flex-end' : 'flex-start' }}>
                   {!mine && (
-                    <Text style={{ color: colors.text.muted, fontSize: 11, marginBottom: 3, marginLeft: 4 }}>Team</Text>
+                    <Text style={{ color: colors.text.muted, fontSize: 11, marginBottom: 3, marginLeft: 4 }}>{t('settings.supTeam')}</Text>
                   )}
                   <View
                     style={{
@@ -122,7 +124,7 @@ export default function SupportScreen() {
         <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8, paddingHorizontal: 12, paddingTop: 8, paddingBottom: insets.bottom + 8, borderTopWidth: 0.5, borderTopColor: colors.border.subtle }}>
           <TextInput
             style={{ flex: 1, maxHeight: 120, backgroundColor: colors.bg.input, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 10, color: colors.text.primary, fontSize: 15 }}
-            placeholder={thread ? 'Nachricht schreiben…' : 'Beschreib dein Anliegen…'}
+            placeholder={thread ? t('settings.supPlaceholderThread') : t('settings.supPlaceholderNew')}
             placeholderTextColor={colors.text.muted}
             value={draft}
             onChangeText={setDraft}

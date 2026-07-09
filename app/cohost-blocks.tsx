@@ -13,6 +13,7 @@
  * weiter als Viewer anschauen, aber NICHT mehr als Co-Host beitreten.
  */
 import { useAuthStore } from '@/lib/authStore';
+import { useI18n, type TranslationKey } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 import { useTheme } from '@/lib/useTheme';
 import { useQuery,useQueryClient } from '@tanstack/react-query';
@@ -88,45 +89,48 @@ function useCoHostBlocks() {
 }
 
 // ─── Helper ──────────────────────────────────────────────────────────────
-function formatRelativeAge(iso: string): string {
+type TFn = (key: TranslationKey, vars?: Record<string, string | number>) => string;
+
+function formatRelativeAge(iso: string, t: TFn): string {
   const diffMs = Date.now() - new Date(iso).getTime();
   const hours = Math.floor(diffMs / 3_600_000);
-  if (hours < 1)  return 'vor wenigen Minuten';
-  if (hours < 24) return `vor ${hours} h`;
+  if (hours < 1)  return t('settings.cbAgoMinutes');
+  if (hours < 24) return t('settings.cbAgoHours', { n: hours });
   const days = Math.floor(hours / 24);
-  if (days < 30) return `vor ${days} d`;
+  if (days < 30) return t('settings.cbAgoDays', { n: days });
   const months = Math.floor(days / 30);
-  return `vor ${months} mo`;
+  return t('settings.cbAgoMonths', { n: months });
 }
 
-function formatExpires(iso: string | null): string | null {
+function formatExpires(iso: string | null, t: TFn): string | null {
   if (!iso) return null; // permanent
   const ms = new Date(iso).getTime() - Date.now();
   if (ms <= 0) return null;
   const hours = Math.floor(ms / 3_600_000);
-  if (hours < 1) return 'läuft in <1h ab';
-  if (hours < 24) return `läuft in ${hours} h ab`;
+  if (hours < 1) return t('settings.cbExpSoon');
+  if (hours < 24) return t('settings.cbExpHours', { n: hours });
   const days = Math.floor(hours / 24);
-  return `läuft in ${days} d ab`;
+  return t('settings.cbExpDays', { n: days });
 }
 
 // ─── Row ─────────────────────────────────────────────────────────────────
 function CoHostBlockRow({ block, onUnblocked }: { block: CoHostBlock; onUnblocked: () => void }) {
   const [unblocking, setUnblocking] = useState(false);
   const { colors } = useTheme();
-  const username = block.profile?.username ?? 'Unbekannt';
+  const { t } = useI18n();
+  const username = block.profile?.username ?? t('settings.unknownUser');
   const avatarUrl = block.profile?.avatar_url ?? null;
   const initial = username[0]?.toUpperCase() ?? '?';
-  const expiresText = formatExpires(block.expires_at);
+  const expiresText = formatExpires(block.expires_at, t);
 
   const handleUnblock = useCallback(() => {
     Alert.alert(
-      `@${username} entblocken?`,
-      'Der User kann dann wieder als Co-Host zu deinen Lives beitreten.',
+      t('settings.unblockTitle', { name: username }),
+      t('settings.cbUnblockText'),
       [
-        { text: 'Abbrechen', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Entblocken',
+          text: t('settings.unblock'),
           onPress: async () => {
             setUnblocking(true);
             try {
@@ -137,7 +141,7 @@ function CoHostBlockRow({ block, onUnblocked }: { block: CoHostBlock; onUnblocke
               onUnblocked();
             } catch (err) {
               __DEV__ && console.warn('[CoHostBlocks] unblock failed:', err);
-              Alert.alert('Hat nicht geklappt 🙈', 'Das Entblocken ging nicht durch — gleich nochmal?');
+              Alert.alert(t('settings.unblockFailTitle'), t('settings.unblockFailText'));
             } finally {
               setUnblocking(false);
             }
@@ -145,7 +149,7 @@ function CoHostBlockRow({ block, onUnblocked }: { block: CoHostBlock; onUnblocke
         },
       ]
     );
-  }, [username, block.blocked_user_id, onUnblocked]);
+  }, [t, username, block.blocked_user_id, onUnblocked]);
 
   return (
     <View style={[styles.row, { borderBottomColor: colors.border.subtle }]}>
@@ -168,8 +172,8 @@ function CoHostBlockRow({ block, onUnblocked }: { block: CoHostBlock; onUnblocke
         </Text>
         <Text style={styles.metaLine} numberOfLines={1}>
           {block.reason ? `${block.reason} · ` : ''}
-          {formatRelativeAge(block.created_at)}
-          {expiresText ? ` · ${expiresText}` : ' · permanent'}
+          {formatRelativeAge(block.created_at, t)}
+          {expiresText ? ` · ${expiresText}` : ` · ${t('settings.cbPermanent')}`}
         </Text>
       </View>
 
@@ -178,13 +182,13 @@ function CoHostBlockRow({ block, onUnblocked }: { block: CoHostBlock; onUnblocke
         disabled={unblocking}
         style={styles.unblockBtn}
         accessibilityRole="button"
-        accessibilityLabel={`${username} entblocken`}
+        accessibilityLabel={t('settings.unblockA11y', { name: username })}
         hitSlop={8}
       >
         {unblocking ? (
           <ActivityIndicator size="small" color="#FFFFFF" />
         ) : (
-          <Text style={styles.unblockText}>Entblocken</Text>
+          <Text style={styles.unblockText}>{t('settings.unblock')}</Text>
         )}
       </Pressable>
     </View>
@@ -197,6 +201,7 @@ export default function CoHostBlocksScreen() {
   const insets = useSafeAreaInsets();
   const { data: blocks = [], isLoading, refetch } = useCoHostBlocks();
   const { colors } = useTheme();
+  const { t } = useI18n();
   const queryClient = useQueryClient();
   const hostId = useAuthStore((s) => s.profile?.id);
 
@@ -217,12 +222,12 @@ export default function CoHostBlocksScreen() {
           onPress={() => router.back()}
           style={[styles.backBtn, { backgroundColor: colors.bg.elevated }]}
           accessibilityRole="button"
-          accessibilityLabel="Zurück"
+          accessibilityLabel={t('settings.back')}
           hitSlop={12}
         >
           <ArrowLeft size={20} color={colors.text.secondary} strokeWidth={2} />
         </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.text.primary }]}>Co-Host Blocks</Text>
+        <Text style={[styles.headerTitle, { color: colors.text.primary }]}>{t('settings.cohostBlocks')}</Text>
         <View style={{ width: 44 }} />
       </View>
 
@@ -230,7 +235,7 @@ export default function CoHostBlocksScreen() {
       <View style={[styles.banner, { backgroundColor: colors.bg.secondary, borderBottomColor: colors.border.subtle }]}>
         <Info size={14} color={colors.icon.muted} strokeWidth={2} />
         <Text style={[styles.bannerText, { color: colors.text.muted }]}>
-          Geblockte User können deine Live weiter anschauen, aber nicht mehr als Co-Host beitreten.
+          {t('settings.cbBanner')}
         </Text>
       </View>
 
@@ -241,9 +246,9 @@ export default function CoHostBlocksScreen() {
       ) : blocks.length === 0 ? (
         <View style={styles.center}>
           <ShieldOff size={48} color={colors.icon.muted} strokeWidth={1.5} />
-          <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>Niemand gesperrt 🤍</Text>
+          <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>{t('settings.cbEmptyTitle')}</Text>
           <Text style={[styles.emptySubtitle, { color: colors.text.muted }]}>
-            Beim Rauswerfen eines Co-Hosts mit Grund landet er automatisch hier.
+            {t('settings.cbEmptyDesc')}
           </Text>
         </View>
       ) : (
