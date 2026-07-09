@@ -2,6 +2,7 @@ import { AIImageSheet } from '@/components/ai/AIImageSheet';
 import { VoiceSetupSheet } from '@/components/profile/VoiceSetupSheet';
 import { WomenOnlyVerificationSheet } from '@/components/women-only/WomenOnlyVerificationSheet';
 import { useAuthStore } from '@/lib/authStore';
+import { useI18n } from '@/lib/i18n';
 import { usePrompt } from '@/lib/promptCrossPlatform';
 import { supabase } from '@/lib/supabase';
 import { uploadAvatar } from '@/lib/uploadMedia';
@@ -125,6 +126,7 @@ export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
   const { profile, setProfile } = useAuthStore();
   const { show: showPrompt } = usePrompt();
+  const { t } = useI18n();
 
   const [username, setUsername] = useState(profile?.username ?? '');
   const [bio, setBio] = useState(profile?.bio ?? '');
@@ -156,7 +158,7 @@ export default function SettingsScreen() {
   const handleInvite = async () => {
     if (!inviteUrl) return;
     try {
-      await Share.share({ message: `Komm zu Serlo 🌸 — Videos, Live & Marktplatz aus der Community:\n${inviteUrl}` });
+      await Share.share({ message: t('settings.inviteShareMsg', { url: inviteUrl }) });
     } catch { /* abgebrochen */ }
   };
   const { prefs: notifPrefs, setPrefs: setNotifPrefs } = useNotificationPrefs();
@@ -181,38 +183,38 @@ export default function SettingsScreen() {
   // ── Handlers ──────────────────────────────────────────────────────────────
 
   const pickAvatar = () => {
-    Alert.alert('Profilbild ändern', 'Wie möchtest du dein Foto auswählen?', [
+    Alert.alert(t('settings.avatarChangeTitle'), t('settings.avatarChangeMsg'), [
       {
-        text: 'Mit KI erstellen ✨',
+        text: t('settings.avatarWithAi'),
         onPress: () => setShowAIAvatar(true),
       },
       {
-        text: 'Kamera',
+        text: t('settings.camera'),
         onPress: async () => {
           const { status } = await requestCameraPermissionsAsync();
-          if (status !== 'granted') { Alert.alert('Berechtigung erforderlich', 'Bitte erlaube den Kamerazugriff.'); return; }
+          if (status !== 'granted') { Alert.alert(t('settings.permTitle'), t('settings.permCamera')); return; }
           const result = await launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.8 });
           if (!result.canceled && result.assets[0]) setAvatarUri(result.assets[0].uri);
         },
       },
       {
-        text: 'Galerie',
+        text: t('settings.gallery'),
         onPress: async () => {
           const { status } = await requestMediaLibraryPermissionsAsync();
-          if (status !== 'granted') { Alert.alert('Berechtigung erforderlich', 'Bitte erlaube den Fotozugriff.'); return; }
+          if (status !== 'granted') { Alert.alert(t('settings.permTitle'), t('settings.permPhotos')); return; }
           const result = await launchImageLibraryAsync({ mediaTypes: ['images'], allowsEditing: true, aspect: [1, 1], quality: 0.8 });
           if (!result.canceled && result.assets[0]) setAvatarUri(result.assets[0].uri);
         },
       },
-      { text: 'Abbrechen', style: 'cancel' },
+      { text: t('common.cancel'), style: 'cancel' },
     ]);
   };
 
   const handleSave = async () => {
     if (!profile) return;
     const trimmedUsername = username.trim();
-    if (!trimmedUsername) { Alert.alert('Kurz prüfen 👀', 'Dein Benutzername darf nicht leer sein.'); return; }
-    if (trimmedUsername.length < 3) { Alert.alert('Kurz prüfen 👀', 'Dein Benutzername braucht mindestens 3 Zeichen.'); return; }
+    if (!trimmedUsername) { Alert.alert(t('settings.checkTitle'), t('settings.usernameEmpty')); return; }
+    if (trimmedUsername.length < 3) { Alert.alert(t('settings.checkTitle'), t('settings.usernameMin3')); return; }
     setSaving(true);
     try {
       let avatarUrl = profile.avatar_url;
@@ -231,7 +233,7 @@ export default function SettingsScreen() {
         .update({ username: trimmedUsername, bio: bio.trim() || null, website: website.trim() || null, avatar_url: avatarUrl, teip: teip || null })
         .eq('id', profile.id).select().single();
       if (error) {
-        if (error.code === '23505') Alert.alert('Schon vergeben 🙈', 'Den Namen schnappt sich grad jemand anders — probier einen anderen.');
+        if (error.code === '23505') Alert.alert(t('settings.takenTitle'), t('settings.takenText'));
         else throw error;
         return;
       }
@@ -239,9 +241,9 @@ export default function SettingsScreen() {
       queryClient.invalidateQueries({ queryKey: ['vibe-feed'] });
       queryClient.invalidateQueries({ queryKey: ['user-posts', profile.id] });
       queryClient.invalidateQueries({ queryKey: ['guild-feed'] });
-      Alert.alert('Gespeichert ✓', 'Dein Profil wurde aktualisiert.', [{ text: 'OK', onPress: () => router.back() }]);
+      Alert.alert(t('settings.savedTitle'), t('settings.savedText'), [{ text: t('common.ok'), onPress: () => router.back() }]);
     } catch (err: any) {
-      Alert.alert('Hoppla 🙈', err?.message ?? 'Speichern ging nicht durch — gleich nochmal?');
+      Alert.alert(t('settings.oops'), err?.message ?? t('settings.saveFailed'));
     } finally {
       setSaving(false);
     }
@@ -249,57 +251,57 @@ export default function SettingsScreen() {
 
   const handleChangePassword = () => {
     showPrompt({
-      title: 'Passwort ändern',
-      message: 'Gib dein neues Passwort ein (mindestens 8 Zeichen):',
+      title: t('settings.changePw'),
+      message: t('settings.changePwMsg'),
       secureText: true,
       onConfirm: async (newPassword) => {
         if (!newPassword) return;
-        if (newPassword.length < 8) { Alert.alert('Zu kurz', 'Das Passwort muss mindestens 8 Zeichen haben.'); return; }
+        if (newPassword.length < 8) { Alert.alert(t('settings.tooShort'), t('settings.pwMin8')); return; }
         setChangingPw(true);
         const { error } = await supabase.auth.updateUser({ password: newPassword });
         setChangingPw(false);
-        if (error) Alert.alert('Hoppla 🙈', error.message);
-        else Alert.alert('Passwort geändert ✓', 'Dein Passwort wurde erfolgreich aktualisiert.');
+        if (error) Alert.alert(t('settings.oops'), error.message);
+        else Alert.alert(t('settings.pwChanged'), t('settings.pwChangedText'));
       },
     });
   };
 
   const handleChangeEmail = () => {
     showPrompt({
-      title: 'E-Mail ändern',
-      message: 'Gib deine neue E-Mail-Adresse ein:',
+      title: t('settings.changeEmail'),
+      message: t('settings.changeEmailMsg'),
       keyboardType: 'email-address',
       onConfirm: async (newEmail) => {
-        if (!newEmail || !newEmail.includes('@')) { Alert.alert('E-Mail checken 📧', 'Die Adresse sieht noch nicht ganz richtig aus.'); return; }
+        if (!newEmail || !newEmail.includes('@')) { Alert.alert(t('settings.emailCheck'), t('settings.emailInvalid')); return; }
         setChangingEmail(true);
         const { error } = await supabase.auth.updateUser({ email: newEmail.trim() });
         setChangingEmail(false);
-        if (error) Alert.alert('Hoppla 🙈', error.message);
-        else Alert.alert('Link gesendet ✓', 'Bitte prüfe dein Postfach und bestätige die Änderung.');
+        if (error) Alert.alert(t('settings.oops'), error.message);
+        else Alert.alert(t('settings.linkSent'), t('settings.linkSentText'));
       },
     });
   };
 
   const handleLogout = () => {
-    Alert.alert('Abmelden', 'Möchtest du dich wirklich abmelden?', [
-      { text: 'Abbrechen', style: 'cancel' },
-      { text: 'Abmelden', style: 'destructive', onPress: async () => { queryClient.clear(); await useAuthStore.getState().signOut(); } },
+    Alert.alert(t('settings.logout'), t('settings.logoutConfirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('settings.logout'), style: 'destructive', onPress: async () => { queryClient.clear(); await useAuthStore.getState().signOut(); } },
     ]);
   };
 
   const handleDeleteAccount = () => {
-    Alert.alert('Account löschen', '⚠️ Dein Account und ALLE Daten werden dauerhaft gelöscht.', [
-      { text: 'Abbrechen', style: 'cancel' },
+    Alert.alert(t('settings.deleteAccount'), t('settings.deleteWarn'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Jetzt löschen', style: 'destructive', onPress: async () => {
-          Alert.alert('Wirklich sicher?', 'Diese Aktion kann NICHT rückgängig gemacht werden.', [
-            { text: 'Nein, behalten', style: 'cancel' },
+        text: t('settings.deleteNow'), style: 'destructive', onPress: async () => {
+          Alert.alert(t('settings.deleteSure'), t('settings.deleteIrreversible'), [
+            { text: t('settings.deleteKeep'), style: 'cancel' },
             {
-              text: 'Ja, Account löschen', style: 'destructive', onPress: async () => {
+              text: t('settings.deleteConfirmYes'), style: 'destructive', onPress: async () => {
                 try {
                   const { data: { session } } = await supabase.auth.getSession();
                   const token = session?.access_token;
-                  if (!token) throw new Error('Keine aktive Sitzung.');
+                  if (!token) throw new Error(t('settings.noSession'));
                   const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
                   const res = await fetch(`${supabaseUrl}/functions/v1/delete-account`, {
                     method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -309,14 +311,14 @@ export default function SettingsScreen() {
                   // Auth-Account in Supabase erhalten blieb.
                   if (!res.ok) {
                     const body = await res.json().catch(() => ({} as { error?: string }));
-                    throw new Error(body?.error ?? `Löschen fehlgeschlagen (${res.status}).`);
+                    throw new Error(body?.error ?? t('settings.deleteFailedStatus', { status: res.status }));
                   }
                   queryClient.clear();
                   await useAuthStore.getState().signOut();
                 } catch (e: any) {
                   Alert.alert(
-                    'Löschen fehlgeschlagen 🙈',
-                    e?.message ?? 'Bitte versuch es später nochmal.',
+                    t('settings.deleteFailedTitle'),
+                    e?.message ?? t('settings.tryLater'),
                   );
                 }
               },
@@ -339,11 +341,11 @@ export default function SettingsScreen() {
         <Pressable
           onPress={() => router.back()}
           style={[s.headerBtn, { backgroundColor: colors.bg.elevated }]}
-          accessibilityRole="button" accessibilityLabel="Zurück"
+          accessibilityRole="button" accessibilityLabel={t('settings.back')}
         >
           <ArrowLeft size={18} stroke={colors.text.primary} strokeWidth={2.5} />
         </Pressable>
-        <Text style={[s.headerTitle, { color: colors.text.primary }]}>Einstellungen</Text>
+        <Text style={[s.headerTitle, { color: colors.text.primary }]}>{t('settings.title')}</Text>
         <Animated.View style={saveStyle}>
           <Pressable
             onPressIn={() => { saveScale.value = withTiming(0.9, { duration: 80 }); }}
@@ -351,11 +353,11 @@ export default function SettingsScreen() {
             onPress={handleSave}
             disabled={saving}
             style={[s.saveBtn, { backgroundColor: colors.text.primary }]}
-            accessibilityRole="button" accessibilityLabel="Profil speichern"
+            accessibilityRole="button" accessibilityLabel={t('settings.a11ySave')}
           >
             {saving
               ? <ActivityIndicator color={colors.bg.primary} size="small" />
-              : <><Check size={13} stroke={colors.bg.primary} strokeWidth={3} /><Text style={[s.saveBtnText, { color: colors.bg.primary }]}>Speichern</Text></>
+              : <><Check size={13} stroke={colors.bg.primary} strokeWidth={3} /><Text style={[s.saveBtnText, { color: colors.bg.primary }]}>{t('settings.save')}</Text></>
             }
           </Pressable>
         </Animated.View>
@@ -368,7 +370,7 @@ export default function SettingsScreen() {
       >
         {/* ── Avatar / Profil-Card ── */}
         <View style={[s.profileCard, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
-          <Pressable onPress={pickAvatar} style={s.avatarWrap} accessibilityRole="button" accessibilityLabel="Profilbild ändern">
+          <Pressable onPress={pickAvatar} style={s.avatarWrap} accessibilityRole="button" accessibilityLabel={t('settings.avatarChangeTitle')}>
             {currentAvatar ? (
               <Image source={{ uri: currentAvatar }} style={s.avatarImg} contentFit="cover" />
             ) : (
@@ -387,13 +389,13 @@ export default function SettingsScreen() {
               {profile?.username ?? '—'}
             </Text>
             <Text style={[s.profileSub, { color: colors.text.muted }]}>
-              Tippe auf das Foto zum Ändern
+              {t('settings.tapPhotoToChange')}
             </Text>
           </View>
         </View>
 
         {/* ── Profil bearbeiten ── */}
-        <SectionLabel label="Profil" colors={colors} />
+        <SectionLabel label={t('settings.secProfile')} colors={colors} />
         <View style={[s.card, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
 
           <View style={s.fieldRow}>
@@ -401,11 +403,11 @@ export default function SettingsScreen() {
               <AtSign size={18} stroke={colors.text.primary} strokeWidth={2} />
             </View>
             <View style={s.fieldBody}>
-              <Text style={[s.fieldLabel, { color: colors.text.muted }]}>Benutzername</Text>
+              <Text style={[s.fieldLabel, { color: colors.text.muted }]}>{t('settings.username')}</Text>
               <TextInput
                 style={[s.fieldInput, { color: colors.text.primary }]}
                 value={username} onChangeText={setUsername}
-                placeholder="dein_username" placeholderTextColor={colors.text.muted}
+                placeholder={t('settings.usernamePlaceholder')} placeholderTextColor={colors.text.muted}
                 autoCapitalize="none" autoCorrect={false} maxLength={30}
               />
             </View>
@@ -417,11 +419,11 @@ export default function SettingsScreen() {
               <FileText size={18} stroke={colors.text.primary} strokeWidth={2} />
             </View>
             <View style={s.fieldBody}>
-              <Text style={[s.fieldLabel, { color: colors.text.muted }]}>Bio · {bio.length}/150</Text>
+              <Text style={[s.fieldLabel, { color: colors.text.muted }]}>{t('settings.bio')} · {bio.length}/150</Text>
               <TextInput
                 style={[s.fieldInput, s.bioInput, { color: colors.text.primary }]}
                 value={bio} onChangeText={setBio}
-                placeholder="Beschreibe deinen Vibe..."
+                placeholder={t('settings.bioPlaceholder')}
                 placeholderTextColor={colors.text.muted}
                 multiline maxLength={150}
               />
@@ -434,10 +436,10 @@ export default function SettingsScreen() {
               <Users size={18} stroke={colors.text.primary} strokeWidth={2} />
             </View>
             <View style={s.fieldBody}>
-              <Text style={[s.fieldLabel, { color: colors.text.muted }]}>Тейп (Clan)</Text>
+              <Text style={[s.fieldLabel, { color: colors.text.muted }]}>{t('settings.teipLabel')}</Text>
               <Pressable onPress={() => setShowTeipPicker(!showTeipPicker)} style={s.teipTrigger}>
                 <Text style={[s.fieldInput, { color: teip ? colors.text.primary : colors.text.muted, flex: 1 }]}>
-                  {teip ? `🏔️ ${teip}` : 'Auswählen...'}
+                  {teip ? `🏔️ ${teip}` : t('settings.teipSelect')}
                 </Text>
                 <Text style={{ color: colors.text.muted, fontSize: 10 }}>{showTeipPicker ? '▲' : '▼'}</Text>
               </Pressable>
@@ -448,7 +450,7 @@ export default function SettingsScreen() {
                   keyboardShouldPersistTaps="handled"
                 >
                   <Pressable style={s.teipOption} onPress={() => { setTeip(null); setShowTeipPicker(false); }}>
-                    <Text style={{ fontSize: 14, color: !teip ? colors.accent.primary : colors.text.secondary }}>— Kein Тейп —</Text>
+                    <Text style={{ fontSize: 14, color: !teip ? colors.accent.primary : colors.text.secondary }}>{t('settings.teipNone')}</Text>
                     {!teip && <Check size={13} stroke={colors.accent.primary} strokeWidth={2.5} />}
                   </Pressable>
                   {TEIP_LIST.map((name) => (
@@ -468,11 +470,11 @@ export default function SettingsScreen() {
               <Link size={18} stroke={colors.text.primary} strokeWidth={2} />
             </View>
             <View style={s.fieldBody}>
-              <Text style={[s.fieldLabel, { color: colors.text.muted }]}>Website</Text>
+              <Text style={[s.fieldLabel, { color: colors.text.muted }]}>{t('settings.website')}</Text>
               <TextInput
                 style={[s.fieldInput, { color: colors.text.primary }]}
                 value={website} onChangeText={setWebsite}
-                placeholder="https://deine-website.com" placeholderTextColor={colors.text.muted}
+                placeholder={t('settings.websitePlaceholder')} placeholderTextColor={colors.text.muted}
                 autoCapitalize="none" autoCorrect={false} keyboardType="url" maxLength={100}
               />
             </View>
@@ -480,18 +482,18 @@ export default function SettingsScreen() {
         </View>
 
         {/* ── Freunde einladen (#5 Referral) ── */}
-        <SectionLabel label="Freunde einladen" colors={colors} />
+        <SectionLabel label={t('settings.secInvite')} colors={colors} />
         <View style={[s.card, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
           <Pressable style={[s.rowItem, { paddingVertical: 11 }]} onPress={handleInvite} accessibilityRole="button" disabled={!inviteUrl}>
             <View style={s.rowIcon}>
               <UserPlus size={18} stroke={colors.text.primary} strokeWidth={2} />
             </View>
             <View style={s.rowBody}>
-              <Text style={[s.rowTitle, { color: colors.text.primary }]}>Freund:innen einladen</Text>
+              <Text style={[s.rowTitle, { color: colors.text.primary }]}>{t('settings.inviteTitle')}</Text>
               <Text style={[s.rowSub, { color: colors.text.muted }]}>
                 {referralCount > 0
-                  ? `${referralCount} ${referralCount === 1 ? 'Person ist' : 'Personen sind'} über dich dabei 🌸`
-                  : 'Teile deinen Link — bring die Community zusammen'}
+                  ? t(referralCount === 1 ? 'settings.inviteCountOne' : 'settings.inviteCountMany', { count: referralCount })
+                  : t('settings.inviteSub')}
               </Text>
             </View>
             <Share2 size={16} stroke={colors.icon.muted} strokeWidth={2} />
@@ -499,7 +501,7 @@ export default function SettingsScreen() {
         </View>
 
         {/* ── Women-Only Zone ── */}
-        <SectionLabel label="Women-Only Zone 🌸" colors={colors} />
+        <SectionLabel label={t('settings.secWomenOnly')} colors={colors} />
         <View style={[s.card, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
           <View style={[s.rowItem, { paddingVertical: 11 }]}>
             <View style={s.rowIcon}>
@@ -507,32 +509,32 @@ export default function SettingsScreen() {
             </View>
             <View style={s.rowBody}>
               <Text style={[s.rowTitle, { color: canAccessWomenOnly ? colors.accent.rose : colors.text.primary }]}>
-                {canAccessWomenOnly ? 'Women-Only Zone aktiv ✓' : 'Women-Only Zone'}
+                {canAccessWomenOnly ? t('settings.wozActive') : t('settings.wozTitle')}
               </Text>
               <Text style={[s.rowSub, { color: colors.text.muted }]}>
                 {canAccessWomenOnly
-                  ? 'Du hast Zugang zu Women-Only Inhalten'
-                  : 'Verifiziere dich um Women-Only Inhalte zu sehen'}
+                  ? t('settings.wozHasAccess')
+                  : t('settings.wozVerify')}
               </Text>
             </View>
             {canAccessWomenOnly ? (
               <Pressable
                 onPress={async () => {
                   Alert.alert(
-                    'Women-Only Zone verlassen?',
-                    'Du verlierst den Zugang zu Women-Only Inhalten.',
+                    t('settings.wozLeaveTitle'),
+                    t('settings.wozLeaveText'),
                     [
-                      { text: 'Abbrechen', style: 'cancel' },
-                      { text: 'Verlassen', style: 'destructive', onPress: async () => {
+                      { text: t('common.cancel'), style: 'cancel' },
+                      { text: t('settings.wozLeave'), style: 'destructive', onPress: async () => {
                         const { error } = await deactivate();
-                        if (error) Alert.alert('Hoppla 🙈', error);
+                        if (error) Alert.alert(t('settings.oops'), error);
                       }},
                     ]
                   );
                 }}
                 hitSlop={8}
               >
-                <Text style={{ fontSize: 12, color: colors.text.muted }}>Verlassen</Text>
+                <Text style={{ fontSize: 12, color: colors.text.muted }}>{t('settings.wozLeave')}</Text>
               </Pressable>
             ) : (
               <Pressable
@@ -540,24 +542,24 @@ export default function SettingsScreen() {
                 onPress={() => setShowWomenOnly(true)}
                 accessibilityRole="button"
               >
-                <Text style={[s.saveBtnText, { color: '#fff', fontSize: 12 }]}>Aktivieren</Text>
+                <Text style={[s.saveBtnText, { color: '#fff', fontSize: 12 }]}>{t('settings.wozActivate')}</Text>
               </Pressable>
             )}
           </View>
         </View>
 
         {/* ── Darstellung ── */}
-        <SectionLabel label="Darstellung" colors={colors} />
+        <SectionLabel label={t('settings.secAppearance')} colors={colors} />
         <View style={[s.card, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
           <View style={[s.fieldRow, { alignItems: 'flex-start', paddingBottom: 12 }]}>
             <View style={s.fieldIcon}>
               <Sun size={18} stroke={colors.text.primary} strokeWidth={2} />
             </View>
             <View style={{ flex: 1, gap: 10 }}>
-              <Text style={[s.fieldLabel, { color: colors.text.muted }]}>Erscheinungsbild</Text>
+              <Text style={[s.fieldLabel, { color: colors.text.muted }]}>{t('settings.appearance')}</Text>
               <View style={s.themeRow}>
                 {(['system', 'dark', 'light'] as const).map((m) => {
-                  const labels = { system: '⚙️ System', dark: '🌙 Dark', light: '☀️ Hell' };
+                  const labels = { system: t('settings.themeSystem'), dark: t('settings.themeDark'), light: t('settings.themeLight') };
                   const active = themeMode === m;
                   return (
                     <Pressable key={m} onPress={() => setThemeMode(m)}
@@ -583,7 +585,7 @@ export default function SettingsScreen() {
               <Globe size={18} stroke={colors.text.primary} strokeWidth={2} />
             </View>
             <View style={{ flex: 1, gap: 10 }}>
-              <Text style={[s.fieldLabel, { color: colors.text.muted }]}>Sprache · Язык</Text>
+              <Text style={[s.fieldLabel, { color: colors.text.muted }]}>{t('settings.langLabel')}</Text>
               <View style={s.themeRow}>
                 {(['de', 'ru'] as const).map((loc) => {
                   const labels = { de: 'Deutsch', ru: 'Русский' };
@@ -612,31 +614,31 @@ export default function SettingsScreen() {
               <Zap size={18} stroke={colors.text.primary} strokeWidth={2} />
             </View>
             <View style={s.rowBody}>
-              <Text style={[s.rowTitle, { color: colors.text.primary }]}>Tab Bar anpassen</Text>
-              <Text style={[s.rowSub, { color: colors.text.muted }]}>Wähle deine Schnellzugriffe</Text>
+              <Text style={[s.rowTitle, { color: colors.text.primary }]}>{t('settings.tabBar')}</Text>
+              <Text style={[s.rowSub, { color: colors.text.muted }]}>{t('settings.tabBarSub')}</Text>
             </View>
             <ChevronRight size={16} stroke={colors.icon.muted} strokeWidth={2} />
           </Pressable>
         </View>
 
         {/* ── Creator & Verwaltung ── */}
-        <SectionLabel label="Creator & Verwaltung" colors={colors} />
+        <SectionLabel label={t('settings.secCreator')} colors={colors} />
         <View style={[s.card, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
           <Pressable
             style={[s.rowItem, { paddingVertical: 11 }]}
             onPress={() => router.push(profile?.is_creator ? '/creator/dashboard' : '/creator/activate' as any)}
             accessibilityRole="button"
-            accessibilityLabel={profile?.is_creator ? 'Creator Studio öffnen' : 'Creator werden'}
+            accessibilityLabel={profile?.is_creator ? t('settings.creatorStudioOpen') : t('settings.becomeCreatorA11y')}
           >
             <View style={s.rowIcon}>
               <Sparkles size={18} color={colors.accent.secondary} strokeWidth={2} />
             </View>
             <View style={s.rowBody}>
               <Text style={[s.rowTitle, { color: colors.accent.secondary }]}>
-                {profile?.is_creator ? 'Creator Studio' : 'Creator werden ✦'}
+                {profile?.is_creator ? t('settings.creatorStudio') : t('settings.becomeCreator')}
               </Text>
               <Text style={[s.rowSub, { color: colors.text.muted }]}>
-                {profile?.is_creator ? 'Einnahmen, Analytics, Top Posts' : 'Kostenlos · Sofortzugang · Monetarisierung'}
+                {profile?.is_creator ? t('settings.creatorStudioSub') : t('settings.becomeCreatorSub')}
               </Text>
             </View>
             <ChevronRight size={16} stroke={colors.accent.secondary} strokeWidth={2} />
@@ -648,14 +650,14 @@ export default function SettingsScreen() {
                 style={[s.rowItem, { paddingVertical: 11 }]}
                 onPress={() => router.push('/admin' as any)}
                 accessibilityRole="button"
-                accessibilityLabel="Admin Panel"
+                accessibilityLabel={t('settings.adminPanel')}
               >
                 <View style={s.rowIcon}>
                   <ShieldCheck size={18} color="#6366F1" strokeWidth={2} />
                 </View>
                 <View style={s.rowBody}>
-                  <Text style={[s.rowTitle, { color: '#6366F1' }]}>Admin Panel</Text>
-                  <Text style={[s.rowSub, { color: colors.text.muted }]}>Nutzerverwaltung, Reports, Shop</Text>
+                  <Text style={[s.rowTitle, { color: '#6366F1' }]}>{t('settings.adminPanel')}</Text>
+                  <Text style={[s.rowSub, { color: colors.text.muted }]}>{t('settings.adminPanelSub')}</Text>
                 </View>
                 <ChevronRight size={16} stroke="#6366F1" strokeWidth={2} />
               </Pressable>
@@ -664,16 +666,16 @@ export default function SettingsScreen() {
         </View>
 
         {/* ── KI-Stimme ── */}
-        <SectionLabel label="KI-Stimme" colors={colors} />
+        <SectionLabel label={t('settings.secVoice')} colors={colors} />
         <View style={[s.card, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
           <Pressable style={s.rowItem} onPress={() => setShowVoiceSetup(true)} accessibilityRole="button">
             <View style={s.rowIcon}>
               <Mic size={18} stroke={hasVoice ? '#A78BFA' : colors.text.primary} strokeWidth={2} />
             </View>
             <View style={s.rowBody}>
-              <Text style={[s.rowTitle, { color: hasVoice ? '#A78BFA' : colors.text.primary }]}>Meine KI-Stimme</Text>
+              <Text style={[s.rowTitle, { color: hasVoice ? '#A78BFA' : colors.text.primary }]}>{t('settings.myVoice')}</Text>
               <Text style={[s.rowSub, { color: colors.text.muted }]}>
-                {hasVoice ? '✓ Stimme gespeichert — Chatterbox spricht wie du' : 'Stimme aufnehmen (5–15 Sek.)'}
+                {hasVoice ? t('settings.voiceSaved') : t('settings.voiceRecord')}
               </Text>
             </View>
             <ChevronRight size={16} stroke={colors.icon.muted} strokeWidth={2} />
@@ -681,31 +683,31 @@ export default function SettingsScreen() {
         </View>
 
         {/* ── Benachrichtigungen ── */}
-        <SectionLabel label="Benachrichtigungen" colors={colors} />
+        <SectionLabel label={t('settings.secNotif')} colors={colors} />
         <View style={[s.card, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
           {([
-            { key: 'likes',      label: 'Likes',          icon: Heart,         sub: 'Wenn jemand deinen Post liket' },
-            { key: 'comments',   label: 'Kommentare',     icon: MessageCircle, sub: 'Wenn jemand kommentiert' },
-            { key: 'follows',    label: 'Neue Follower',  icon: UserPlus,      sub: 'Wenn dir jemand folgt' },
-            { key: 'liveAlerts', label: 'Live-Streams',   icon: Radio,         sub: 'Wenn jemand live geht' },
-            { key: 'messages',   label: 'Nachrichten',    icon: Mail,          sub: 'Neue Direktnachrichten' },
-            { key: 'reposts',    label: 'Reposts',         icon: Repeat2,       sub: 'Wenn jemand deinen Post teilt' },
-          ] as const).map(({ key, label, icon: Icon, sub }, i, arr) => (
+            { key: 'likes',      labelKey: 'settings.notifLikes',    icon: Heart,         subKey: 'settings.notifLikesSub' },
+            { key: 'comments',   labelKey: 'settings.notifComments', icon: MessageCircle, subKey: 'settings.notifCommentsSub' },
+            { key: 'follows',    labelKey: 'settings.notifFollows',  icon: UserPlus,      subKey: 'settings.notifFollowsSub' },
+            { key: 'liveAlerts', labelKey: 'settings.notifLive',     icon: Radio,         subKey: 'settings.notifLiveSub' },
+            { key: 'messages',   labelKey: 'settings.notifMessages', icon: Mail,          subKey: 'settings.notifMessagesSub' },
+            { key: 'reposts',    labelKey: 'settings.notifReposts',  icon: Repeat2,       subKey: 'settings.notifRepostsSub' },
+          ] as const).map(({ key, labelKey, icon: Icon, subKey }, i, arr) => (
             <View key={key}>
               <View style={[s.rowItem, { paddingVertical: 10 }]}>
                 <View style={s.rowIcon}>
                   <Icon size={18} stroke={colors.text.primary} strokeWidth={2} />
                 </View>
                 <View style={s.rowBody}>
-                  <Text style={[s.rowTitle, { color: colors.text.primary }]}>{label}</Text>
-                  <Text style={[s.rowSub, { color: colors.text.muted }]}>{sub}</Text>
+                  <Text style={[s.rowTitle, { color: colors.text.primary }]}>{t(labelKey)}</Text>
+                  <Text style={[s.rowSub, { color: colors.text.muted }]}>{t(subKey)}</Text>
                 </View>
                 <Switch
                   value={notifPrefs[key]}
                   onValueChange={(val) => setNotifPrefs({ [key]: val })}
                   trackColor={{ false: colors.border.default, true: colors.text.primary }}
                   thumbColor={colors.bg.primary}
-                  accessibilityLabel={`${label} Benachrichtigungen`}
+                  accessibilityLabel={`${t(labelKey)} ${t('settings.notifSuffix')}`}
                 />
               </View>
               {i < arr.length - 1 && <View style={[s.sep, { backgroundColor: colors.border.subtle, marginLeft: 56 }]} />}
@@ -722,8 +724,8 @@ export default function SettingsScreen() {
                       <BellOff size={18} stroke={colors.text.primary} strokeWidth={2} />
                     </View>
                     <View style={s.rowBody}>
-                      <Text style={[s.rowTitle, { color: colors.text.primary }]}>Einzelne Hosts stummschalten</Text>
-                      <Text style={[s.rowSub, { color: colors.text.muted }]}>Pushes pro Creator an/aus</Text>
+                      <Text style={[s.rowTitle, { color: colors.text.primary }]}>{t('settings.muteHosts')}</Text>
+                      <Text style={[s.rowSub, { color: colors.text.muted }]}>{t('settings.muteHostsSub')}</Text>
                     </View>
                     <ChevronRight size={16} stroke={colors.icon.muted} strokeWidth={2} />
                   </Pressable>
@@ -734,16 +736,16 @@ export default function SettingsScreen() {
         </View>
 
         {/* ── Privatsphäre & Sicherheit ── */}
-        <SectionLabel label="Privatsphäre & Sicherheit" colors={colors} />
+        <SectionLabel label={t('settings.secPrivacy')} colors={colors} />
         <View style={[s.card, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
           <View style={[s.rowItem, { paddingVertical: 11 }]}>
             <View style={s.rowIcon}>
               <Lock size={18} stroke={colors.text.primary} strokeWidth={2} />
             </View>
             <View style={s.rowBody}>
-              <Text style={[s.rowTitle, { color: colors.text.primary }]}>Privates Profil</Text>
+              <Text style={[s.rowTitle, { color: colors.text.primary }]}>{t('settings.privateProfile')}</Text>
               <Text style={[s.rowSub, { color: colors.text.muted }]}>
-                {isPrivate ? 'Neue Follower müssen bestätigt werden' : 'Jeder kann dein Profil sehen'}
+                {isPrivate ? t('settings.privateOn') : t('settings.privateOff')}
               </Text>
             </View>
             <Switch
@@ -751,12 +753,12 @@ export default function SettingsScreen() {
               onValueChange={async (val) => {
                 setIsPrivate(val);
                 const { error } = await supabase.from('profiles').update({ is_private: val }).eq('id', profile?.id ?? '');
-                if (error) { setIsPrivate(!val); Alert.alert('Hat nicht geklappt', 'Die Einstellung wurde nicht gespeichert — gleich nochmal? 🙏'); }
+                if (error) { setIsPrivate(!val); Alert.alert(t('common.error'), t('settings.prefNotSaved')); }
                 else setProfile({ ...(profile as any), is_private: val });
               }}
               trackColor={{ false: colors.border.default, true: colors.text.primary }}
               thumbColor={colors.bg.primary}
-              accessibilityLabel="Privates Profil"
+              accessibilityLabel={t('settings.privateProfile')}
             />
           </View>
           <View style={[s.sep, { backgroundColor: colors.border.subtle, marginLeft: 56 }]} />
@@ -765,7 +767,7 @@ export default function SettingsScreen() {
             <View style={s.rowIcon}>
               <Shield size={18} stroke={colors.text.primary} strokeWidth={2} />
             </View>
-            <View style={s.rowBody}><Text style={[s.rowTitle, { color: colors.text.primary }]}>Geblockte Nutzer</Text></View>
+            <View style={s.rowBody}><Text style={[s.rowTitle, { color: colors.text.primary }]}>{t('settings.blockedUsers')}</Text></View>
             <ChevronRight size={16} stroke={colors.icon.muted} strokeWidth={2} />
           </Pressable>
           <View style={[s.sep, { backgroundColor: colors.border.subtle, marginLeft: 56 }]} />
@@ -776,19 +778,19 @@ export default function SettingsScreen() {
             <View style={s.rowIcon}>
               <ShieldCheck size={18} stroke={colors.text.primary} strokeWidth={2} />
             </View>
-            <View style={s.rowBody}><Text style={[s.rowTitle, { color: colors.text.primary }]}>Co-Host Blocks</Text></View>
+            <View style={s.rowBody}><Text style={[s.rowTitle, { color: colors.text.primary }]}>{t('settings.cohostBlocks')}</Text></View>
             <ChevronRight size={16} stroke={colors.icon.muted} strokeWidth={2} />
           </Pressable>
         </View>
 
         {/* ── Rechtliches & Hilfe ── */}
-        <SectionLabel label="Rechtliches & Hilfe" colors={colors} />
+        <SectionLabel label={t('settings.secLegal')} colors={colors} />
         <View style={[s.card, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
           <Pressable style={[s.rowItem, { paddingVertical: 11 }]} onPress={() => Linking.openURL('https://www.serlo.ch/privacy').catch(() => {})} accessibilityRole="link">
             <View style={s.rowIcon}>
               <FileText size={18} stroke={colors.text.primary} strokeWidth={2} />
             </View>
-            <View style={s.rowBody}><Text style={[s.rowTitle, { color: colors.text.primary }]}>Datenschutzerklärung</Text></View>
+            <View style={s.rowBody}><Text style={[s.rowTitle, { color: colors.text.primary }]}>{t('settings.privacyPolicy')}</Text></View>
             <ExternalLink size={15} stroke={colors.icon.muted} strokeWidth={2} />
           </Pressable>
           <View style={[s.sep, { backgroundColor: colors.border.subtle, marginLeft: 56 }]} />
@@ -797,7 +799,7 @@ export default function SettingsScreen() {
             <View style={s.rowIcon}>
               <FileText size={18} stroke={colors.text.primary} strokeWidth={2} />
             </View>
-            <View style={s.rowBody}><Text style={[s.rowTitle, { color: colors.text.primary }]}>Nutzungsbedingungen</Text></View>
+            <View style={s.rowBody}><Text style={[s.rowTitle, { color: colors.text.primary }]}>{t('settings.terms')}</Text></View>
             <ExternalLink size={15} stroke={colors.icon.muted} strokeWidth={2} />
           </Pressable>
           <View style={[s.sep, { backgroundColor: colors.border.subtle, marginLeft: 56 }]} />
@@ -806,7 +808,7 @@ export default function SettingsScreen() {
             <View style={s.rowIcon}>
               <FileText size={18} stroke={colors.text.primary} strokeWidth={2} />
             </View>
-            <View style={s.rowBody}><Text style={[s.rowTitle, { color: colors.text.primary }]}>Widerrufsbelehrung</Text></View>
+            <View style={s.rowBody}><Text style={[s.rowTitle, { color: colors.text.primary }]}>{t('settings.withdrawal')}</Text></View>
             <ExternalLink size={15} stroke={colors.icon.muted} strokeWidth={2} />
           </Pressable>
           <View style={[s.sep, { backgroundColor: colors.border.subtle, marginLeft: 56 }]} />
@@ -815,19 +817,19 @@ export default function SettingsScreen() {
             <View style={s.rowIcon}>
               <Mail size={18} stroke={colors.text.primary} strokeWidth={2} />
             </View>
-            <View style={s.rowBody}><Text style={[s.rowTitle, { color: colors.text.primary }]}>Hilfe & Support</Text></View>
+            <View style={s.rowBody}><Text style={[s.rowTitle, { color: colors.text.primary }]}>{t('settings.helpSupport')}</Text></View>
             <ChevronRight size={15} stroke={colors.icon.muted} strokeWidth={2} />
           </Pressable>
         </View>
 
         {/* ── Account ── */}
-        <SectionLabel label="Account" colors={colors} />
+        <SectionLabel label={t('settings.secAccount')} colors={colors} />
         <View style={[s.card, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
           <Pressable style={[s.rowItem, { paddingVertical: 11 }]} onPress={handleChangeEmail} disabled={changingEmail} accessibilityRole="button">
             <View style={s.rowIcon}>
               {changingEmail ? <ActivityIndicator size="small" color={colors.text.primary} /> : <Mail size={18} stroke={colors.text.primary} strokeWidth={2} />}
             </View>
-            <View style={s.rowBody}><Text style={[s.rowTitle, { color: colors.text.primary }]}>E-Mail ändern</Text></View>
+            <View style={s.rowBody}><Text style={[s.rowTitle, { color: colors.text.primary }]}>{t('settings.changeEmail')}</Text></View>
             <ChevronRight size={16} stroke={colors.icon.muted} strokeWidth={2} />
           </Pressable>
           <View style={[s.sep, { backgroundColor: colors.border.subtle, marginLeft: 56 }]} />
@@ -836,7 +838,7 @@ export default function SettingsScreen() {
             <View style={s.rowIcon}>
               {changingPw ? <ActivityIndicator size="small" color={colors.text.primary} /> : <Lock size={18} stroke={colors.text.primary} strokeWidth={2} />}
             </View>
-            <View style={s.rowBody}><Text style={[s.rowTitle, { color: colors.text.primary }]}>Passwort ändern</Text></View>
+            <View style={s.rowBody}><Text style={[s.rowTitle, { color: colors.text.primary }]}>{t('settings.changePw')}</Text></View>
             <ChevronRight size={16} stroke={colors.icon.muted} strokeWidth={2} />
           </Pressable>
         </View>
@@ -845,16 +847,16 @@ export default function SettingsScreen() {
         <Pressable
           onPress={handleLogout}
           style={[s.dangerBtn, { backgroundColor: 'rgba(239,68,68,0.07)', borderColor: 'rgba(239,68,68,0.18)' }]}
-          accessibilityRole="button" accessibilityLabel="Abmelden"
+          accessibilityRole="button" accessibilityLabel={t('settings.logout')}
         >
           <LogOut size={16} stroke="#EF4444" strokeWidth={2} />
-          <Text style={[s.dangerBtnText, { color: '#EF4444' }]}>Abmelden</Text>
+          <Text style={[s.dangerBtnText, { color: '#EF4444' }]}>{t('settings.logout')}</Text>
         </Pressable>
 
         {/* ── Account löschen ── */}
-        <Pressable onPress={handleDeleteAccount} style={s.deleteRow} accessibilityRole="button" accessibilityLabel="Account löschen">
+        <Pressable onPress={handleDeleteAccount} style={s.deleteRow} accessibilityRole="button" accessibilityLabel={t('settings.deleteAccount')}>
           <Trash2 size={13} stroke={colors.text.muted} strokeWidth={2} />
-          <Text style={[s.deleteText, { color: colors.text.muted }]}>Account löschen</Text>
+          <Text style={[s.deleteText, { color: colors.text.muted }]}>{t('settings.deleteAccount')}</Text>
         </Pressable>
 
         {/* ── Version ── */}
@@ -878,12 +880,12 @@ export default function SettingsScreen() {
         onUseImage={(url) => setAvatarUri(url)}
         purpose="avatar"
         defaultSize="1024x1024"
-        title="Avatar mit KI"
-        promptPlaceholder="z.B. „Minimalistisches Portrait-Illustration, flache Farben"
+        title={t('settings.aiAvatarTitle')}
+        promptPlaceholder={t('settings.aiAvatarPlaceholder')}
         suggestions={[
-          'Minimalistisches Portrait, flache Farben, Profil-Look',
-          'Abstrakte geometrische Komposition in Blau-Tönen',
-          'Cartoon-Avatar, freundlich, warme Farben',
+          t('settings.aiAvatar1'),
+          t('settings.aiAvatar2'),
+          t('settings.aiAvatar3'),
         ]}
       />
     </KeyboardAvoidingView>
