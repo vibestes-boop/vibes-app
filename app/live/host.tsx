@@ -7,6 +7,7 @@
 import { impactAsync,ImpactFeedbackStyle,notificationAsync,NotificationFeedbackType } from 'expo-haptics';
 import { Image } from "expo-image";
 import { CoinIcon } from '@/components/ui/CoinIcon';
+import { useI18n } from '@/lib/i18n';
 import { RollupNumber } from '@/components/ui/RollupNumber';
 import * as ImagePicker from 'expo-image-picker';
 import { useKeepAwake } from 'expo-keep-awake';
@@ -148,6 +149,7 @@ function HostUI({
   title?: string;
   onEnd: () => void;
 }) {
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { data: session } = useLiveSession(sessionId);
@@ -203,9 +205,9 @@ function HostUI({
   /** Host fügt eigene Wörter hinzu — Cross-Platform (iOS + Android) */
   const addHostWords = () => {
     showPrompt({
-      title: 'Eigene Wörter sperren',
-      message: 'Wörter kommagetrennt eingeben (z.B. Schimpfwort1, Schimpfwort2)',
-      placeholder: 'Schimpfwort1, Schimpfwort2',
+      title: t('host.blockWords'),
+      message: t('host.blockWordsHint'),
+      placeholder: t('host.blockWordsPlaceholder'),
       onConfirm: async (input) => {
         if (!input?.trim()) return;
         const newWords = input
@@ -281,20 +283,20 @@ function HostUI({
           sendSystemEvent(`⏱️ Slow-Mode an: ${label} zwischen Messages.`);
         }
       } else {
-        Alert.alert('Hat nicht geklappt', 'Slow-Mode ließ sich nicht setzen — gleich nochmal? 🙏');
+        Alert.alert(t('host.oops'), t('host.slowModeFailed'));
       }
     };
     Alert.alert(
       '⏱️ Slow-Mode',
       slowModeSeconds > 0
         ? `Aktuell: ${slowModeSeconds}s zwischen Messages pro User.`
-        : 'User müssen zwischen Messages warten.',
+        : t('host.slowModeWait'),
       [
-        { text: 'Aus',   onPress: () => apply(0,  'Aus') },
+        { text: t('host.off'),   onPress: () => apply(0,  t('host.off')) },
         { text: '3 s',   onPress: () => apply(3,  '3 s') },
         { text: '10 s',  onPress: () => apply(10, '10 s') },
         { text: '30 s',  onPress: () => apply(30, '30 s') },
-        { text: 'Abbrechen', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
       ]
     );
   }, [slowModeSeconds, rpcSetSlowMode, sendSystemEvent]);
@@ -380,13 +382,13 @@ function HostUI({
     try {
       if (recActive) {
         Alert.alert(
-          'Aufnahme beenden?',
-          'Das Replay wird erstellt und in den nächsten Minuten verfügbar.',
+          t('host.stopRecTitle'),
+          t('host.stopRecText'),
           [
-            { text: 'Abbrechen', style: 'cancel' },
-            { text: 'Beenden', style: 'destructive', onPress: async () => {
+            { text: t('common.cancel'), style: 'cancel' },
+            { text: t('host.end'), style: 'destructive', onPress: async () => {
                 try { await stopRecording({ sessionId }); } catch (e: any) {
-                  Alert.alert('Hat nicht geklappt', e?.message ?? 'Die Aufnahme ließ sich nicht stoppen — nochmal versuchen?');
+                  Alert.alert(t('host.oops'), e?.message ?? t('host.stopRecFailed'));
                 }
               } },
           ],
@@ -394,25 +396,25 @@ function HostUI({
       } else {
         const roomName = session?.room_name;
         if (!roomName) {
-          Alert.alert('Hat nicht geklappt', 'Der Stream-Raum ist gerade nicht bereit — nochmal versuchen? 📡');
+          Alert.alert(t('host.oops'), t('host.roomNotReady'));
           return;
         }
         impactAsync(ImpactFeedbackStyle.Medium);
         await startRecording({ sessionId, roomName });
       }
     } catch (err: any) {
-      Alert.alert('Aufnahme hat nicht geklappt', err?.message ?? 'Da ging was schief — gleich nochmal?');
+      Alert.alert(t('host.recFailedTitle'), err?.message ?? t('host.recFailedText'));
     }
   }, [sessionId, recActive, session?.room_name, startRecording, stopRecording]);
   const handleClosePoll = useCallback(() => {
     if (!activePoll || !sessionId) return;
     Alert.alert(
-      'Umfrage beenden?',
-      'Die Ergebnisse bleiben für Zuschauer sichtbar, aber es können keine neuen Stimmen mehr abgegeben werden.',
+      t('host.endPollTitle'),
+      t('host.endPollText'),
       [
-        { text: 'Abbrechen', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Beenden',
+          text: t('host.end'),
           style: 'destructive',
           onPress: () => { pollClose({ pollId: activePoll.id, sessionId }).catch(() => {}); },
         },
@@ -427,7 +429,7 @@ function HostUI({
   const totalGiftCoins = topGifters.reduce((sum, g) => sum + g.totalCoins, 0);
 
   // ── v1.23: Chat-Row Badges (Host/Mod/Top-Gifter) ─────────────────────────
-  // topGifterIds → schneller O(1)-Lookup in der Chat-Row für den "TOP"-Chip.
+  // topGifterIds → schneller O(1)-Lookup in der Chat-Row für den t('host.top')-Chip.
   //   Grenze: nur die echte Top-3 (nicht Top-10) bekommt das Badge, sonst wird
   //   der Chat zum Sticker-Panel.
   // modIds → Session-Moderatoren für den "🛡 MOD"-Chip.
@@ -498,15 +500,15 @@ function HostUI({
       // zeigen wir dem Host einen klaren Fehlertext mit Unblock-Hinweis.
       const isBlocked = err?.hint === 'blocked' || /blockiert/i.test(err?.message ?? '');
       Alert.alert(
-        isBlocked ? '🚫 User blockiert' : 'Fehler',
+        isBlocked ? '🚫 User blockiert' : t('host.error'),
         isBlocked
           ? `@${req.username} ist auf deiner Blocklist. Entblocken in den Einstellungen → Co-Host Blocks.`
-          : 'Co-Host konnte nicht autorisiert werden. Bitte erneut versuchen.'
+          : t('host.coHostAuthFailed')
       );
       // Viewer zurück auf idle schicken + Grund mitgeben damit er es sieht
       await rejectCoHost(
         req.userId,
-        isBlocked ? 'Du bist vom Host blockiert.' : undefined,
+        isBlocked ? t('host.blockedByHost') : undefined,
       );
       return;
     }
@@ -517,8 +519,8 @@ function HostUI({
     const ok = await acceptCoHost(req.userId, layout, battleDuration);
     if (!ok) {
       Alert.alert(
-        'Signal verloren',
-        'Die Bestätigung konnte nicht an den Co-Host zugestellt werden. Bitte erneut versuchen.'
+        t('host.signalLost'),
+        t('host.confirmNotDelivered')
       );
       try {
         await supabase.rpc('revoke_cohost', {
@@ -566,7 +568,7 @@ function HostUI({
   // Per Tap auf einen User → gleiche Accept-Flow wie bei Auto-Alert.
   const showQueuePicker = useCallback(() => {
     if (pendingRequests.length === 0) {
-      Alert.alert('📭 Keine Anfragen', 'Aktuell will niemand als Co-Host beitreten.');
+      Alert.alert('📭 Keine Anfragen', t('host.noCoHostRequests'));
       return;
     }
 
@@ -575,18 +577,18 @@ function HostUI({
       const chooseBattleDuration = () => {
         Alert.alert(
           '⚔️ Battle-Dauer',
-          'Wie lange soll die Battle-Runde laufen?',
+          t('host.battleDuration'),
           [
             { text: '3 min',  onPress: () => doAccept(req, 'battle', 3 * 60) },
             { text: '5 min',  onPress: () => doAccept(req, 'battle', 5 * 60) },
             { text: '10 min', onPress: () => doAccept(req, 'battle', 10 * 60) },
-            { text: 'Abbrechen', style: 'cancel' },
+            { text: t('common.cancel'), style: 'cancel' },
           ],
         );
       };
       Alert.alert(
         `🎥 @${req.username} annehmen`,
-        'Layout wählen:',
+        t('host.layoutChoose'),
         [
           { text: '📱 Top / Bottom',   onPress: () => doAccept(req, 'top-bottom') },
           { text: '↔️ Side-by-Side',   onPress: () => doAccept(req, 'side-by-side') },
@@ -597,13 +599,13 @@ function HostUI({
             style: 'destructive',
             onPress: () => rejectCoHost(req.userId),
           },
-          { text: 'Zurück', style: 'cancel' },
+          { text: t('host.back'), style: 'cancel' },
         ],
       );
     };
 
     // Alert-Liste: maximal 4 Einträge sind auf iOS noch gut lesbar,
-    // bei mehr zeigen wir "Top 4 + N mehr" Zusatzinfo.
+    // bei mehr zeigen wir t('host.top4More', { n: extraCount }) Zusatzinfo.
     const top = pendingRequests.slice(0, 4);
     const extraCount = pendingRequests.length - top.length;
     const buttons = top.map((r, idx) => ({
@@ -612,23 +614,23 @@ function HostUI({
     }));
     if (extraCount > 0) {
       buttons.push({
-        text: `+${extraCount} weitere (warten)`,
+        text: t('host.moreWaiting', { n: extraCount }),
         onPress: () => {},
       });
     }
-    buttons.push({ text: 'Schließen', onPress: () => {} });
+    buttons.push({ text: t('host.close'), onPress: () => {} });
 
     Alert.alert(
       `📥 Warteschlange (${pendingRequests.length})`,
       activeCoHostId
-        ? 'Ein Duet läuft gerade. Beende es um den nächsten Request anzunehmen.'
-        : 'Tippe auf einen Request zum Annehmen:',
+        ? t('host.duetRunning')
+        : t('host.tapRequestAccept'),
       buttons,
     );
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pendingRequests, activeCoHostId, rejectCoHost]);
 
-  // Phase 1.3: Kick mit Grund + Block. Long-Press auf "Duet beenden" öffnet
+  // Phase 1.3: Kick mit Grund + Block. Long-Press auf t('host.endDuet') öffnet
   // eine Auswahl aus Standard-Gründen. Bei Bestätigung wird der User geblockt
   // und kann während der laufenden Session nicht mehr requesten.
   const showKickDialog = useCallback(() => {
@@ -677,21 +679,21 @@ function HostUI({
         );
       } else {
         Alert.alert(
-          'Signal verloren',
-          'Kick konnte nicht an alle zugestellt werden. Der lokale State ist bereits resettet.'
+          t('host.signalLost'),
+          t('host.kickNotDelivered')
         );
       }
     };
 
     Alert.alert(
       '🚫 Co-Host entfernen',
-      'Grund auswählen — der Co-Host sieht den Grund in einem Alert.',
+      t('host.chooseReasonCoHost'),
       [
-        { text: 'Unangemessenes Verhalten',  onPress: () => doKick('Unangemessenes Verhalten', true) },
-        { text: 'Spam / Werbung',            onPress: () => doKick('Spam / Werbung', true) },
-        { text: 'Beleidigung',               onPress: () => doKick('Beleidigung', true) },
-        { text: 'Technisches Problem',       onPress: () => doKick('Technisches Problem', false) },
-        { text: 'Abbrechen', style: 'cancel' },
+        { text: t('host.reasonBehavior'),  onPress: () => doKick(t('host.reasonBehavior'), true) },
+        { text: t('host.reasonSpam'),            onPress: () => doKick(t('host.reasonSpam'), true) },
+        { text: t('host.reasonInsult'),               onPress: () => doKick(t('host.reasonInsult'), true) },
+        { text: t('host.reasonTech'),       onPress: () => doKick(t('host.reasonTech'), false) },
+        { text: t('common.cancel'), style: 'cancel' },
       ],
     );
   }, [activeCoHostId, sessionId, kickCoHost, sendSystemEvent]);
@@ -758,16 +760,16 @@ function HostUI({
       '🚫 Gast entfernen',
       `@${username} aus dem Duet entfernen?`,
       [
-        { text: 'Abbrechen', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
-          text: 'Entfernen',
+          text: t('host.remove'),
           style: 'destructive',
-          onPress: () => revokeCoHostById(userId, 'Vom Host entfernt', false),
+          onPress: () => revokeCoHostById(userId, t('host.removedByHost'), false),
         },
         {
-          text: 'Entfernen & Blockieren',
+          text: t('host.removeBlock'),
           style: 'destructive',
-          onPress: () => revokeCoHostById(userId, 'Vom Host blockiert', true),
+          onPress: () => revokeCoHostById(userId, t('host.blockedByHostShort'), true),
         },
       ],
     );
@@ -782,11 +784,11 @@ function HostUI({
       });
       const rpcError = error ? null : ((data as { error?: string } | null)?.error ?? null);
       if (error || rpcError) {
-        throw new Error(error?.message ?? rpcError ?? 'Meldung fehlgeschlagen.');
+        throw new Error(error?.message ?? rpcError ?? t('host.reportFailedShort'));
       }
-      Alert.alert('Danke', 'Meldung wurde an Moderation übermittelt.');
+      Alert.alert(t('host.thanks'), t('host.reportSent'));
     } catch (error: any) {
-      Alert.alert('Hat nicht geklappt', error?.message ?? 'Konnte die Meldung nicht senden — bitte später nochmal.');
+      Alert.alert(t('host.oops'), error?.message ?? t('host.reportFailed'));
     }
   }, []);
 
@@ -817,11 +819,11 @@ function HostUI({
           '🚫 Grund wählen',
           `@${username} entfernen — der Gast sieht den Grund.`,
           [
-            { text: 'Unangemessenes Verhalten', onPress: () => revokeCoHostById(userId, 'Unangemessenes Verhalten', true) },
-            { text: 'Spam / Werbung',           onPress: () => revokeCoHostById(userId, 'Spam / Werbung', true) },
-            { text: 'Beleidigung',              onPress: () => revokeCoHostById(userId, 'Beleidigung', true) },
-            { text: 'Technisches Problem',      onPress: () => revokeCoHostById(userId, 'Technisches Problem', false) },
-            { text: 'Abbrechen', style: 'cancel' },
+            { text: t('host.reasonBehavior'), onPress: () => revokeCoHostById(userId, t('host.reasonBehavior'), true) },
+            { text: t('host.reasonSpam'),           onPress: () => revokeCoHostById(userId, t('host.reasonSpam'), true) },
+            { text: t('host.reasonInsult'),              onPress: () => revokeCoHostById(userId, t('host.reasonInsult'), true) },
+            { text: t('host.reasonTech'),      onPress: () => revokeCoHostById(userId, t('host.reasonTech'), false) },
+            { text: t('common.cancel'), style: 'cancel' },
           ],
         );
       },
@@ -834,20 +836,20 @@ function HostUI({
           '🚩 Gast melden',
           `Warum möchtest du @${username} melden?`,
           [
-            { text: 'Spam / Werbung', onPress: () => reportGuest(userId, 'spam') },
-            { text: 'Belästigung', onPress: () => reportGuest(userId, 'harassment') },
-            { text: 'Unangemessener Inhalt', onPress: () => reportGuest(userId, 'inappropriate') },
-            { text: 'Fake Account', onPress: () => reportGuest(userId, 'fake_account') },
-            { text: 'Sonstiges', onPress: () => reportGuest(userId, 'other') },
-            { text: 'Abbrechen', style: 'cancel' },
+            { text: t('host.reasonSpam'), onPress: () => reportGuest(userId, 'spam') },
+            { text: t('host.reasonHarassment'), onPress: () => reportGuest(userId, 'harassment') },
+            { text: t('host.reasonInappropriate'), onPress: () => reportGuest(userId, 'inappropriate') },
+            { text: t('host.reasonFake'), onPress: () => reportGuest(userId, 'fake_account') },
+            { text: t('host.reasonOther'), onPress: () => reportGuest(userId, 'other') },
+            { text: t('common.cancel'), style: 'cancel' },
           ],
         );
       },
     });
 
-    buttons.push({ text: 'Abbrechen', style: 'cancel' });
+    buttons.push({ text: t('common.cancel'), style: 'cancel' });
 
-    Alert.alert(`@${username}`, 'Aktionen für diesen Gast:', buttons);
+    Alert.alert(`@${username}`, t('host.guestActions'), buttons);
   }, [activeCoHostId, coHostMutedAudio, coHostMutedVideo, muteCoHost, reportGuest, revokeCoHostById]);
 
   // Phase 1.1: Runtime Layout-Switcher — Host kann Layout live wechseln,
@@ -861,8 +863,8 @@ function HostUI({
       const ok = await changeLayout(layout, battleDuration);
       if (!ok) {
         Alert.alert(
-          'Signal verloren',
-          'Layout-Wechsel konnte nicht an alle zugestellt werden. Bitte erneut versuchen.'
+          t('host.signalLost'),
+          t('host.layoutNotDelivered')
         );
         return;
       }
@@ -880,7 +882,7 @@ function HostUI({
     // Stufe 1: Layout wählen
     Alert.alert(
       '🎥 Duet-Layout wechseln',
-      'Wähle wie der/die Co-Hosts angezeigt werden sollen:',
+      t('host.chooseCoHostDisplay'),
       [
         { text: '📱 Top / Bottom',  onPress: () => switchTo('top-bottom') },
         { text: '↔️ Side-by-Side',  onPress: () => switchTo('side-by-side') },
@@ -893,17 +895,17 @@ function HostUI({
             // Stufe 2: Battle-Dauer wählen (3/5/10 min)
             Alert.alert(
               '⚔️ Battle-Dauer',
-              'Wie lange soll die Battle-Runde laufen?',
+              t('host.battleDuration'),
               [
                 { text: '3 min',  onPress: () => switchTo('battle', 3 * 60) },
                 { text: '5 min',  onPress: () => switchTo('battle', 5 * 60) },
                 { text: '10 min', onPress: () => switchTo('battle', 10 * 60) },
-                { text: 'Abbrechen', style: 'cancel' },
+                { text: t('common.cancel'), style: 'cancel' },
               ],
             );
           },
         },
-        { text: 'Abbrechen', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
       ],
     );
   }, [activeCoHostId, activeLayout, changeLayout, sendSystemEvent]);
@@ -923,7 +925,7 @@ function HostUI({
   const setupGoal = useCallback(() => {
     Alert.alert(
       '🎯 LIVE Ziel setzen',
-      'Für welche Art gilt das Ziel?',
+      t('host.goalWhichKind'),
       [
         {
           text: '💎 Geschenke (Coins)',
@@ -935,8 +937,8 @@ function HostUI({
         },
         goal
           ? { text: '🗑️ Ziel entfernen', style: 'destructive', onPress: () => setLiveGoal(sessionId, null) }
-          : { text: 'Abbrechen', style: 'cancel' },
-        ...(!goal ? [{ text: 'Abbrechen', style: 'cancel' as const }] : []),
+          : { text: t('common.cancel'), style: 'cancel' },
+        ...(!goal ? [{ text: t('common.cancel'), style: 'cancel' as const }] : []),
       ]
     );
   }, [goal, promptGoalDetails, sessionId]);
@@ -1005,7 +1007,7 @@ function HostUI({
   // ⚠️ BUG FIX (v1.22.0): Beim Co-Host-Accept macht der Viewer einen INTENTIONAL
   // disconnect() (watch/[id].tsx ~L916), um mit einem Publisher-Token (canPublish=true)
   // frisch zu reconnecten. Während dieser 1–2s Lücke würde der alte Code hier sofort
-  // `endCoHostWithRevoke()` feuern → Flapping ("Verbindung verloren" → "beigetreten" loop).
+  // `endCoHostWithRevoke()` feuern → Flapping (t('host.connectionLost') → "beigetreten" loop).
   //
   // Fix: Grace-Period von GRACE_MS. Bei participantDisconnected: Timer starten.
   // Bei participantConnected mit derselben identity: Timer canceln — das war nur
@@ -1079,7 +1081,7 @@ function HostUI({
   // ── Kamera/Mikrofon muten wenn App in Hintergrund geht ──────────────────────
   // iOS stoppt automatisch die Kamera → Zuschauer sehen weißes Bild.
   // Lösung: Kamera + Mikrofon beim Hintergrundwechsel explizit muten.
-  // Beim Zurückkehren: wieder unmuten. Zuschauer sehen "Live pausiert"-Overlay.
+  // Beim Zurückkehren: wieder unmuten. Zuschauer sehen t('host.livePaused')-Overlay.
   useEffect(() => {
     const sub = AppState.addEventListener('change', async (nextState) => {
       if (!room) return;
@@ -1136,17 +1138,17 @@ function HostUI({
   const handleSaveReplay = () => {
     Alert.alert(
       '📱 Live aufzeichnen',
-      'So zeichnest du dein Live auf:\n\n1. Wisch von oben rechts nach unten\n2. Tippe auf „Bildschirmaufnahme“ ⏺\n3. Starte dein Live — es wird automatisch aufgezeichnet\n4. Nach dem Live: Aufnahme stoppen\n\nDie Aufnahme findest du in der Fotos-App.',
-      [{ text: 'Verstanden', style: 'default' }]
+      t('host.recHowTitle'),
+      [{ text: t('host.understood'), style: 'default' }]
     );
   };
 
   const handlePostAsVideo = () => {
     Alert.alert(
       '📤 Live als Video posten',
-      'Hast du deinen Live-Stream mit der iOS Bildschirmaufnahme aufgezeichnet?\n\nSo geht’s:\n1. Vor dem nächsten Live: Bildschirmaufnahme starten\n2. Nach dem Live: Aufnahme stoppen\n3. Video aus der Galerie auswählen\n\nDie Aufnahme findest du in der Fotos-App.',
+      t('host.recAskTitle'),
       [
-        { text: 'Abbrechen', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
         {
           text: '📁 Galerie öffnen',
           style: 'default',
@@ -1165,7 +1167,7 @@ function HostUI({
               params: {
                 mediaUri: asset.uri,
                 mediaType: 'video',
-                caption: title ? `Live Replay: ${title}` : 'Live Replay 🔴',
+                caption: title ? `Live Replay: ${title}` : t('host.liveReplay'),
               },
             });
           },
@@ -1190,9 +1192,9 @@ function HostUI({
     // —— Creator-Tools: Produktion (Poll/Sticker/Produkt/Goal/Shop/Record)
     list.push({
       key:         'poll',
-      label:       'Umfrage',
-      group:       'Engagement',
-      status:      activePoll ? 'Läuft' : 'Starten',
+      label:       t('host.poll'),
+      group:       t('host.engagement'),
+      status:      activePoll ? t('host.running') : t('host.start'),
       icon:        <BarChart3 size={26} stroke={activePoll ? LC.accent.purpleLight : '#fff'} strokeWidth={2.2} />,
       active:      !!activePoll,
       accentColor: LC.accent.purple,
@@ -1201,9 +1203,9 @@ function HostUI({
 
     list.push({
       key:         'sticker',
-      label:       'Sticker',
-      group:       'Engagement',
-      status:      activeStickers.length > 0 ? `${activeStickers.length} aktiv` : 'Aus',
+      label:       t('host.sticker'),
+      group:       t('host.engagement'),
+      status:      activeStickers.length > 0 ? t('host.nActive', { n: activeStickers.length }) : t('host.off'),
       icon:        <Smile size={26} stroke={activeStickers.length > 0 ? '#fbbf24' : '#fff'} strokeWidth={2.2} />,
       active:      activeStickers.length > 0,
       accentColor: '#fbbf24',
@@ -1213,9 +1215,9 @@ function HostUI({
 
     list.push({
       key:         'product-pin',
-      label:       'Produkt',
-      group:       'Verkaufen',
-      status:      placedProducts.length > 0 ? `${placedProducts.length} platziert` : 'Anpinnen',
+      label:       t('host.product'),
+      group:       t('host.sell'),
+      status:      placedProducts.length > 0 ? `${placedProducts.length} platziert` : t('host.pin'),
       icon:        <Tag size={26} stroke={placedProducts.length > 0 ? '#34d399' : '#fff'} strokeWidth={2.2} />,
       active:      placedProducts.length > 0,
       accentColor: '#22c55e',
@@ -1225,9 +1227,9 @@ function HostUI({
 
     list.push({
       key:         'goal',
-      label:       'Ziel',
-      group:       'Engagement',
-      status:      goal?.reached ? 'Erreicht' : goal ? 'Läuft' : 'Aus',
+      label:       t('host.goal'),
+      group:       t('host.engagement'),
+      status:      goal?.reached ? t('host.reached') : goal ? t('host.running') : t('host.off'),
       icon:        <Target
                      size={26}
                      stroke={goal?.reached ? '#4ade80' : goal ? '#fbbf24' : '#fff'}
@@ -1243,9 +1245,9 @@ function HostUI({
     // Featured-Product-Pill (shop-pin) und platzierten Karten (product-pin).
     list.push({
       key:         'shop-mode',
-      label:       'Shop',
-      group:       'Verkaufen',
-      status:      shopEnabled ? 'An · sichtbar' : 'Aus',
+      label:       t('host.shop'),
+      group:       t('host.sell'),
+      status:      shopEnabled ? t('host.onVisible') : t('host.off'),
       icon:        <ShoppingBag
                      size={26}
                      stroke={shopEnabled ? '#34d399' : '#fff'}
@@ -1260,9 +1262,9 @@ function HostUI({
 
     list.push({
       key:         'shop-pin',
-      label:       'Featured',
-      group:       'Verkaufen',
-      status:      shopPinnedProduct ? 'Aktiv' : 'Aus',
+      label:       t('host.featured'),
+      group:       t('host.sell'),
+      status:      shopPinnedProduct ? t('host.active') : t('host.off'),
       icon:        <ShoppingBag size={26} stroke={shopPinnedProduct ? '#34d399' : '#fff'} strokeWidth={2.2} />,
       active:      !!shopPinnedProduct,
       accentColor: '#22c55e',
@@ -1271,9 +1273,9 @@ function HostUI({
 
     list.push({
       key:         'record',
-      label:       'Aufnahme',
-      group:       'Stream & Chat',
-      status:      recActive ? 'Läuft' : recStarting ? 'Startet…' : recStopping ? 'Stoppt…' : 'Aus',
+      label:       t('host.recording'),
+      group:       t('host.streamChat'),
+      status:      recActive ? t('host.running') : recStarting ? t('host.starting') : recStopping ? t('host.stopping') : t('host.off'),
       icon:        <Circle
                      size={26}
                      stroke={recActive ? '#ef4444' : '#fff'}
@@ -1289,9 +1291,9 @@ function HostUI({
     // —— Chat-Moderation-Feinschliff
     list.push({
       key:         'slow-mode',
-      label:       'Slow-Mode',
-      group:       'Stream & Chat',
-      status:      slowModeSeconds > 0 ? `${slowModeSeconds}s Cooldown` : 'Aus',
+      label:       t('host.slowMode'),
+      group:       t('host.streamChat'),
+      status:      slowModeSeconds > 0 ? t('host.cooldownS', { n: slowModeSeconds }) : t('host.off'),
       icon:        <Timer size={26} stroke={slowModeSeconds > 0 ? '#fdba74' : '#fff'} strokeWidth={2.2} />,
       active:      slowModeSeconds > 0,
       accentColor: '#f97316',
@@ -1300,9 +1302,9 @@ function HostUI({
 
     list.push({
       key:         'followers-only',
-      label:       'Nur Follower',
-      group:       'Stream & Chat',
-      status:      followersOnlyChat ? 'Chat geschützt' : 'Aus',
+      label:       t('host.followersOnly'),
+      group:       t('host.streamChat'),
+      status:      followersOnlyChat ? t('host.chatProtected') : t('host.off'),
       icon:        <Users
                      size={26}
                      stroke={followersOnlyChat ? '#4ade80' : '#fff'}
@@ -1317,8 +1319,8 @@ function HostUI({
     if (queueDepth > 0) {
       list.push({
         key:         'queue',
-        label:       'Anfragen',
-        group:       'Co-Host',
+        label:       t('host.requests'),
+        group:       t('host.coHost'),
         status:      `${queueDepth} wartet`,
         icon:        <Inbox size={26} stroke="#60a5fa" strokeWidth={2.2} />,
         accentColor: '#3b82f6',
@@ -1331,9 +1333,9 @@ function HostUI({
     if (activeCoHostId) {
       list.push({
         key:         'duet-layout',
-        label:       'Layout',
-        group:       'Co-Host',
-        status:      'Wechseln',
+        label:       t('host.layout'),
+        group:       t('host.coHost'),
+        status:      t('host.switch'),
         icon:        <LayoutGrid size={26} stroke="#a5b4fc" strokeWidth={2.2} />,
         accentColor: '#6366f1',
         onPress:     showLayoutSwitcher,
@@ -1341,9 +1343,9 @@ function HostUI({
 
       list.push({
         key:         'cohost-mic',
-        label:       'Co-Mic',
-        group:       'Co-Host',
-        status:      coHostMutedAudio ? 'Stumm' : 'Frei',
+        label:       t('host.coMic'),
+        group:       t('host.coHost'),
+        status:      coHostMutedAudio ? t('host.muted') : t('host.free'),
         icon:        coHostMutedAudio
                        ? <MicOff size={26} stroke="#fca5a5" strokeWidth={2.2} />
                        : <Mic size={26} stroke="#fff" strokeWidth={2.2} />,
@@ -1363,9 +1365,9 @@ function HostUI({
 
       list.push({
         key:         'cohost-cam',
-        label:       'Co-Cam',
-        group:       'Co-Host',
-        status:      coHostMutedVideo ? 'Aus' : 'An',
+        label:       t('host.coCam'),
+        group:       t('host.coHost'),
+        status:      coHostMutedVideo ? t('host.off') : t('host.on'),
         icon:        coHostMutedVideo
                        ? <CameraOff size={26} stroke="#fca5a5" strokeWidth={2.2} />
                        : <Camera size={26} stroke="#fff" strokeWidth={2.2} />,
@@ -1385,9 +1387,9 @@ function HostUI({
 
       list.push({
         key:          'duet-end',
-        label:        'Duet beenden',
-        group:        'Co-Host',
-        status:       'Beenden',
+        label:        t('host.endDuet'),
+        group:        t('host.coHost'),
+        status:       t('host.end'),
         icon:         <Video size={26} stroke="#fca5a5" strokeWidth={2.2} />,
         destructive:  true,
         onPress:      () => {
@@ -1402,20 +1404,20 @@ function HostUI({
     if (isBattleActive && !battleState.ended) {
       list.push({
         key:         'battle-end',
-        label:       'Battle-Stop',
-        group:       'Battle',
-        status:      'Beenden',
+        label:       t('host.battleStop'),
+        group:       t('host.battle'),
+        status:      t('host.end'),
         icon:        <Zap size={26} stroke="#fde047" strokeWidth={2.2} />,
         accentColor: '#eab308',
         keepOpen:    true, // Alert öffnet sich ohnehin → Sheet bleibt für Confirm offen
         onPress:     () => {
           Alert.alert(
             '⚡ Battle beenden?',
-            'Der Gewinner wird sofort ermittelt. Der Countdown wird übersprungen.',
+            t('host.endBattleText'),
             [
-              { text: 'Abbrechen', style: 'cancel' },
+              { text: t('common.cancel'), style: 'cancel' },
               {
-                text:    'Battle beenden',
+                text:    t('host.endBattle'),
                 style:   'destructive',
                 onPress: () => {
                   endBattle();
@@ -1452,38 +1454,38 @@ function HostUI({
   }, []);
 
   const handleModerate = useCallback((item: LiveComment) => {
-    const username = item.profiles?.username ?? 'User';
+    const username = item.profiles?.username ?? t('host.guest');
     const userId = item.user_id;
     // Phase 6: Timeout-Submenu öffnet sich aus dem Haupt-Alert.
     const openTimeoutMenu = () => {
       Alert.alert(
         `⏳ @${username} stumm schalten`,
-        'Dauer auswählen:',
+        t('host.durationChoose'),
         [
           { text: '1 min',  onPress: async () => {
-            const ok = await timeoutUser(userId, 60, 'Chat-Timeout 1min');
+            const ok = await timeoutUser(userId, 60, t('host.timeout1'));
             if (ok) sendSystemEvent(`⏳ @${username} für 1 Minute gemutet.`);
           } },
           { text: '5 min',  onPress: async () => {
-            const ok = await timeoutUser(userId, 5 * 60, 'Chat-Timeout 5min');
+            const ok = await timeoutUser(userId, 5 * 60, t('host.timeout5'));
             if (ok) sendSystemEvent(`⏳ @${username} für 5 Minuten gemutet.`);
           } },
           { text: '30 min', onPress: async () => {
-            const ok = await timeoutUser(userId, 30 * 60, 'Chat-Timeout 30min');
+            const ok = await timeoutUser(userId, 30 * 60, t('host.timeout30'));
             if (ok) sendSystemEvent(`⏳ @${username} für 30 Minuten gemutet.`);
           } },
-          { text: 'Zurück', style: 'cancel' },
+          { text: t('host.back'), style: 'cancel' },
         ]
       );
     };
     Alert.alert(
-      'Kommentar',
+      t('host.comment'),
       `Von @${username}: "${item.text.slice(0, 60)}"`,
       [
         { text: '📌 Anpinnen',           onPress: () => pinComment(item) },
         { text: '⏳ User stumm schalten', onPress: openTimeoutMenu },
         { text: '🚫 Löschen', style: 'destructive', onPress: () => deleteComment(item.id) },
-        { text: 'Abbrechen', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
       ]
     );
   }, [timeoutUser, sendSystemEvent, pinComment, deleteComment]);
@@ -1552,7 +1554,7 @@ function HostUI({
       {/* Remote Co-Host (obere/linke Hälfte) — nur im klassischen Duet-Split */}
       {activeCoHostId && activeLayout !== 'pip' && !isGridMode && (() => {
         const activeGuest = activeCoHosts.find((c) => c.userId === activeCoHostId);
-        const guestUsername = activeGuest?.username ?? 'Gast';
+        const guestUsername = activeGuest?.username ?? t('host.guest');
         return (
         <Pressable
           onLongPress={() => showTileActionSheet(activeCoHostId, guestUsername)}
@@ -1607,7 +1609,7 @@ function HostUI({
           return (
             <Pressable
               key={ch.userId}
-              onLongPress={() => showTileActionSheet(ch.userId, ch.username ?? 'Gast')}
+              onLongPress={() => showTileActionSheet(ch.userId, ch.username ?? t('host.guest'))}
               delayLongPress={350}
               style={{
                 position: 'absolute',
@@ -1627,7 +1629,7 @@ function HostUI({
               </View>
               {/* v1.22.0: X-Button oben rechts pro Grid-Kachel */}
               <Pressable
-                onPress={() => confirmKickTile(ch.userId, ch.username ?? 'Gast')}
+                onPress={() => confirmKickTile(ch.userId, ch.username ?? t('host.guest'))}
                 hitSlop={10}
                 style={s.tileKickBtn}
               >
@@ -1645,7 +1647,7 @@ function HostUI({
         <PiPWindow
           trackRef={null}
           LocalView={StableRemoteCoHostView}
-          label="GAST"
+          label={t('host.guestCaps')}
         />
       )}
 
@@ -1812,7 +1814,7 @@ function HostUI({
           pointerEvents="box-none"
         >
           <View style={s.bottomActionInner}>
-          <Pressable onPress={handleShare} style={s.controlBtn} hitSlop={8} accessibilityLabel="Stream teilen">
+          <Pressable onPress={handleShare} style={s.controlBtn} hitSlop={8} >
             <Share2 size={22} stroke="#fff" strokeWidth={2.2} />
           </Pressable>
           {/* Geschenk-Indikator — zeigt Anzahl empfangener Geschenke */}
@@ -1822,7 +1824,7 @@ function HostUI({
             </View>
           )}
 
-          {/* 🛡️ Moderation Toggle — bleibt sichtbar als "An/Aus"-Indikator für Viewer */}
+          {/* 🛡️ Moderation Toggle — bleibt sichtbar als t('host.onOff')-Indikator für Viewer */}
           <Pressable
             style={[
               s.controlBtn,
@@ -1831,8 +1833,8 @@ function HostUI({
             onPress={toggleModeration}
             onLongPress={addHostWords}
             hitSlop={8}
-            accessibilityLabel="Chat-Moderation"
-            accessibilityHint="Tippen zum An-/Ausschalten, Gedrückthalten zum Verwalten der gesperrten Wörter"
+            accessibilityLabel={t('host.chatModeration')}
+            
           >
             {moderationEnabled ? (
               <ShieldCheck size={20} stroke="#a5b4fc" strokeWidth={2.2} />
@@ -1872,8 +1874,8 @@ function HostUI({
               setCreatorToolsVisible(true);
             }}
             hitSlop={8}
-            accessibilityLabel="Creator Tools öffnen"
-            accessibilityHint="Öffnet das Grid mit allen Live-Werkzeugen"
+            accessibilityLabel={t('host.creatorToolsOpen')}
+            
           >
             <Plus size={22} stroke="#fff" strokeWidth={2.4} />
             {queueDepth > 0 && (
@@ -1910,8 +1912,8 @@ function HostUI({
               style={[s.controlBtn, { backgroundColor: 'rgba(99,102,241,0.45)' }]}
               onPress={showLayoutSwitcher}
               hitSlop={8}
-              accessibilityLabel="Duet-Layout wechseln"
-              accessibilityHint="Öffnet die Auswahl zwischen Top/Bottom, Side-by-Side, PiP und Battle"
+              
+              
             >
               <LayoutGrid size={20} stroke="#a5b4fc" strokeWidth={2.2} />
             </Pressable>
@@ -1935,7 +1937,7 @@ function HostUI({
                 }
               }}
               hitSlop={8}
-              accessibilityLabel={coHostMutedAudio ? 'Co-Host Mikrofon entmuten' : 'Co-Host Mikrofon muten'}
+              accessibilityLabel={coHostMutedAudio ? t('host.coHostMicUnmute') : t('host.coHostMicMute')}
             >
               {coHostMutedAudio ? (
                 <MicOff size={20} stroke="#fca5a5" strokeWidth={2.2} />
@@ -1963,7 +1965,7 @@ function HostUI({
                 }
               }}
               hitSlop={8}
-              accessibilityLabel={coHostMutedVideo ? 'Co-Host Kamera entmuten' : 'Co-Host Kamera muten'}
+              accessibilityLabel={coHostMutedVideo ? t('host.coHostCamUnmute') : t('host.coHostCamMute')}
             >
               {coHostMutedVideo ? (
                 <CameraOff size={20} stroke="#fca5a5" strokeWidth={2.2} />
@@ -1980,11 +1982,11 @@ function HostUI({
               onPress={() => {
                 Alert.alert(
                   '⚡ Battle beenden?',
-                  'Der Gewinner wird sofort ermittelt. Der Countdown wird übersprungen.',
+                  t('host.endBattleText'),
                   [
-                    { text: 'Abbrechen', style: 'cancel' },
+                    { text: t('common.cancel'), style: 'cancel' },
                     {
-                      text: 'Battle beenden',
+                      text: t('host.endBattle'),
                       style: 'destructive',
                       onPress: () => {
                         endBattle();
@@ -1995,7 +1997,7 @@ function HostUI({
                 );
               }}
               hitSlop={8}
-              accessibilityLabel="Battle vorzeitig beenden"
+              
             >
               <Zap size={20} stroke="#fde047" strokeWidth={2.2} />
             </Pressable>
@@ -2011,8 +2013,8 @@ function HostUI({
               }}
               onLongPress={showKickDialog}
               hitSlop={8}
-              accessibilityLabel="Duet beenden"
-              accessibilityHint="Tippen zum Beenden, Gedrückthalten zum Entfernen mit Grund"
+              
+              
             >
               <Video size={20} stroke="#fca5a5" strokeWidth={2.2} />
               <View style={s.moderationBadge}>
@@ -2030,8 +2032,8 @@ function HostUI({
             onPress={toggleModeration}
             onLongPress={addHostWords}
             hitSlop={8}
-            accessibilityLabel="Chat-Moderation"
-            accessibilityHint="Tippen zum An-/Ausschalten, Gedrückthalten zum Verwalten der gesperrten Wörter"
+            accessibilityLabel={t('host.chatModeration')}
+            
           >
             {moderationEnabled ? (
               <ShieldCheck size={20} stroke="#a5b4fc" strokeWidth={2.2} />
@@ -2053,8 +2055,8 @@ function HostUI({
             ]}
             onPress={showSlowModeMenu}
             hitSlop={8}
-            accessibilityLabel="Slow-Mode"
-            accessibilityHint="Tippen zum Einstellen des Cool-Downs zwischen Messages"
+            
+            
           >
             <Timer size={20} stroke={slowModeSeconds > 0 ? '#fdba74' : '#fff'} strokeWidth={2.2} />
             {slowModeSeconds > 0 && (
@@ -2072,8 +2074,8 @@ function HostUI({
             ]}
             onPress={handleFollowersOnlyToggle}
             hitSlop={8}
-            accessibilityLabel="Nur-Follower-Chat"
-            accessibilityHint="Schaltet ein ob nur Follower kommentieren dürfen"
+            accessibilityLabel={t('host.followerChat')}
+            
           >
             <Users
               size={20}
@@ -2091,7 +2093,7 @@ function HostUI({
             ]}
             onPress={setupGoal}
             hitSlop={8}
-            accessibilityLabel="LIVE Ziel setzen"
+            
           >
             <Target
               size={20}
@@ -2108,7 +2110,7 @@ function HostUI({
             ]}
             onPress={() => { impactAsync(ImpactFeedbackStyle.Light); setPollSheetVisible(true); }}
             hitSlop={8}
-            accessibilityLabel="Umfrage starten"
+            accessibilityLabel={t('host.startPoll')}
           >
             <BarChart3
               size={20}
@@ -2125,8 +2127,8 @@ function HostUI({
             ]}
             onPress={() => { impactAsync(ImpactFeedbackStyle.Light); setStickerPickerVisible(true); }}
             hitSlop={8}
-            accessibilityLabel="Sticker platzieren"
-            accessibilityHint="Öffnet Sticker-Auswahl — Emoji frei im Stream platzieren"
+            accessibilityLabel={t('host.placeSticker')}
+            
           >
             <Smile
               size={20}
@@ -2143,8 +2145,8 @@ function HostUI({
             ]}
             onPress={() => { impactAsync(ImpactFeedbackStyle.Light); setProductPlaceSheetVisible(true); }}
             hitSlop={8}
-            accessibilityLabel="Produkt platzieren"
-            accessibilityHint="Platziert Shop-Produkte frei als Karten im Stream"
+            
+            
           >
             <Tag
               size={20}
@@ -2162,7 +2164,7 @@ function HostUI({
             onPress={handleToggleRecording}
             hitSlop={8}
             disabled={recStarting || recStopping}
-            accessibilityLabel={recActive ? 'Aufnahme stoppen' : 'Aufnahme starten'}
+            accessibilityLabel={recActive ? t('host.stopRec') : t('host.startRec')}
           >
             <Circle
               size={20}
@@ -2180,7 +2182,7 @@ function HostUI({
             ]}
             onPress={() => { impactAsync(ImpactFeedbackStyle.Light); setShopPanelVisible(true); }}
             hitSlop={8}
-            accessibilityLabel="Produkt pinnen"
+            accessibilityLabel={t('host.pinProduct')}
           >
             <ShoppingBag
               size={20}
@@ -2204,7 +2206,7 @@ function HostUI({
           >
             <Text style={s.pinnedLabel}>📌 Angepinnt</Text>
             <View style={{ flex: 1 }}>
-              <Text style={s.pinnedUser}>@{pinnedComment.profiles?.username ?? 'User'}</Text>
+              <Text style={s.pinnedUser}>@{pinnedComment.profiles?.username ?? t('host.guest')}</Text>
               <Text style={s.pinnedText} numberOfLines={2}>{pinnedComment.text}</Text>
             </View>
             <Text style={s.pinnedUnpin}>✕</Text>
@@ -2325,7 +2327,7 @@ function HostUI({
         <View style={[s.inputBar, { paddingBottom: insets.bottom + 12 }]}>
           <TextInput
             style={s.input}
-            placeholder="Als Host kommentieren …"
+            placeholder={t('host.commentAsHost')}
             placeholderTextColor="rgba(255,255,255,0.35)"
             value={input}
             onChangeText={(t) => { setInput(t); if (t.length > 0) setShowEmojiPicker(false); }}
@@ -2421,17 +2423,17 @@ function HostUI({
               <View style={s.summaryStatRow}>
                 <View style={s.summaryStatItem}>
                   <Text style={s.summaryStatNum}>{fmtNum(viewerCount + peakViewers > 0 ? peakViewers : 0)}</Text>
-                  <Text style={s.summaryStatLabel}>Peak Zuschauer</Text>
+                  <Text style={s.summaryStatLabel}>{t('host.peakViewers')}</Text>
                 </View>
                 <View style={s.summaryStatDivider} />
                 <View style={s.summaryStatItem}>
                   <Text style={s.summaryStatNum}>{fmtNum(session?.like_count ?? 0)}</Text>
-                  <Text style={s.summaryStatLabel}>Likes ❤️</Text>
+                  <Text style={s.summaryStatLabel}>{t('host.likes')}</Text>
                 </View>
                 <View style={s.summaryStatDivider} />
                 <View style={s.summaryStatItem}>
                   <Text style={s.summaryStatNum}>{fmtNum(comments.filter(c => !c.isSystem).length)}</Text>
-                  <Text style={s.summaryStatLabel}>Kommentare</Text>
+                  <Text style={s.summaryStatLabel}>{t('host.comments')}</Text>
                 </View>
                 {totalGiftCoins > 0 && (
                   <>
@@ -2446,7 +2448,7 @@ function HostUI({
                         duration={1000}
                       />
                       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                        <Text style={s.summaryStatLabel}>Coins</Text>
+                        <Text style={s.summaryStatLabel}>{t('host.coins')}</Text>
                         <CoinIcon size={11} />
                       </View>
                     </View>
@@ -2525,7 +2527,7 @@ function HostUI({
               <Text style={s.summaryActionSecondaryText}>💾 Replay Info</Text>
             </Pressable>
             <Pressable onPress={confirmEnd} style={s.summaryDoneBtn}>
-              <Text style={s.summaryDoneBtnText}>Fertig</Text>
+              <Text style={s.summaryDoneBtnText}>{t('host.done')}</Text>
             </Pressable>
           </View>
         </View>
@@ -2590,6 +2592,7 @@ function HostUI({
 
 export default function LiveHostScreen() {
   useThemedStatusBar('light');
+  const { t } = useI18n();
   const { sessionId, title, lkToken, lkUrl } = useLocalSearchParams<{
     sessionId: string;
     title?: string;
@@ -2759,7 +2762,7 @@ export default function LiveHostScreen() {
       // mit "Error deactivating audio session: Session deactivation failed" —
       // das passiert wenn RTCAudioSession.setActive(false) feuert während noch
       // LiveKit-Tracks angehängt sind. Ohne .catch() crashte der nächste Screen
-      // (Viewer-Watch) mit dem "Ups, etwas ist schiefgelaufen"-Error-Boundary.
+      // (Viewer-Watch) mit dem t('host.somethingWrong')-Error-Boundary.
       try {
         AudioSession?.stopAudioSession?.()?.catch?.(() => {});
       } catch { /* native-Modul fehlt (Expo Go) → ignorieren */ }
@@ -2769,10 +2772,10 @@ export default function LiveHostScreen() {
   }, []); // ← ABSICHTLICH LEER: läuft nur einmal!
 
   const handleEnd = () => {
-    Alert.alert("Live beenden", "Dein Live wird für alle Zuschauer beendet.", [
-      { text: "Abbrechen", style: "cancel" },
+    Alert.alert(t('host.endLive'), t('host.endLiveText'), [
+      { text: t('common.cancel'), style: "cancel" },
       {
-        text: "Beenden",
+        text: t('host.end'),
         style: "destructive",
         onPress: async () => {
           await endSession(sessionId);
@@ -2791,7 +2794,7 @@ export default function LiveHostScreen() {
       <View
         style={[s.root, { alignItems: "center", justifyContent: "center" }]}
       >
-        <Text style={{ color: "#fff" }}>Verbindungsdaten fehlen</Text>
+        <Text style={{ color: "#fff" }}>{t('host.noConnData')}</Text>
       </View>
     );
   }
@@ -2830,7 +2833,7 @@ export default function LiveHostScreen() {
             paddingVertical: 12,
           }}
         >
-          <Text style={{ color: "#fff", fontWeight: "700" }}>Zurück</Text>
+          <Text style={{ color: "#fff", fontWeight: "700" }}>{t('host.back')}</Text>
         </Pressable>
       </View>
     );
