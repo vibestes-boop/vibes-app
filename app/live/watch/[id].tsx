@@ -4,6 +4,7 @@
  * Braucht Dev-Build: npx expo run:ios / npx expo run:android
  */
 import { useClipNow } from '@/lib/useLiveClips';
+import { useI18n, type TranslationKey } from '@/lib/i18n';
 import { LC } from '@/lib/liveColors';
 import { useWomenOnly } from '@/lib/useWomenOnly';
 import * as Sentry from '@sentry/react-native';
@@ -110,8 +111,9 @@ const _cMod = require('expo-constants') as any; const Constants = _cMod?.default
 
 // ─── Remote Video (Host-Stream) ───────────────────────────────────────────────
 // ⚠️ BUG FIX: hostId-Prop ergänzt damit bei Duet der richtige Track angezeigt wird.
-// Ohne das würde useTracks() den Co-Host-Track als "Host-Video" zurückgeben.
+// Ohne das würde useTracks() den Co-Host-Track als t('watch.hostVideo') zurückgeben.
 function RemoteVideoView({ hostAvatar, hostId }: { hostAvatar?: string | null; hostId?: string | null }) {
+  const { t } = useI18n();
   const tracks = useTracks([{ source: Track.Source.Camera, withPlaceholder: true }]);
   // Host-Track: nicht lokal UND wenn hostId bekannt, nur dieser Participant
   const remoteTrack = tracks.find((t) => {
@@ -128,7 +130,7 @@ function RemoteVideoView({ hostAvatar, hostId }: { hostAvatar?: string | null; h
 
   // Echtzeit-Erkennung ob Host-Kamera gemuted ist (z.B. App-Wechsel)
   // ⚠️ BUG FIX: Nur Host-Participant prüfen — sonst zeigt Co-Host-Mute fals
-  //    "Live pausiert"-Overlay.
+  //    t('watch.livePaused')-Overlay.
   const [isCameraMuted, setIsCameraMuted] = useState(false);
   const room = useContext(RoomContext);
 
@@ -166,7 +168,7 @@ function RemoteVideoView({ hostAvatar, hostId }: { hostAvatar?: string | null; h
           </View>
         )}
         <ActivityIndicator color="rgba(255,255,255,0.5)" style={{ marginTop: 16 }} />
-        <Text style={s.connectingText}>Verbinde …</Text>
+        <Text style={s.connectingText}>{t('watch.connecting')}</Text>
       </View>
     );
   }
@@ -178,7 +180,7 @@ function RemoteVideoView({ hostAvatar, hostId }: { hostAvatar?: string | null; h
         style={StyleSheet.absoluteFill as any}
         objectFit="cover"
       />
-      {/* Short-Video-Style "Live pausiert"-Overlay: erscheint wenn Host App wechselt */}
+      {/* Short-Video-Style t('watch.livePaused')-Overlay: erscheint wenn Host App wechselt */}
       {isCameraMuted && (
         <View style={StyleSheet.absoluteFill}>
           {/* Blurred Avatar als Hintergrund */}
@@ -227,6 +229,7 @@ function RemoteVideoView({ hostAvatar, hostId }: { hostAvatar?: string | null; h
 // Grid-Kachel. Funktioniert viewer-side — der eigene Stream wird separat
 // via LocalCoHostCameraView gerendert.
 function GridRemoteTile({ userId, username }: { userId: string; username: string }) {
+  const { t } = useI18n();
   const room = useContext(RoomContext);
   const [trackRef, setTrackRef] = useState<{
     participant: Participant;
@@ -289,7 +292,7 @@ function GridRemoteTile({ userId, username }: { userId: string; username: string
   );
 }
 
-// ─── Short-Video-Style "Live beendet"-Overlay ──────────────────────────────────────
+// ─── Short-Video-Style t('watch.liveEnded')-Overlay ──────────────────────────────────────
 function LiveEndedOverlay({
   session,
   isFollowing,
@@ -305,6 +308,7 @@ function LiveEndedOverlay({
   onBack: () => void;
   isReplay?: boolean;
 }) {
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   // Auto-navigate nach 5s — nicht im Replay-Modus (User ist freiwillig hier)
   useEffect(() => {
@@ -352,25 +356,25 @@ function LiveEndedOverlay({
           <View style={s2.endedAvatarRing} />
         </View>
 
-        <Text style={s2.endedUsername}>@{host?.username ?? 'User'}</Text>
+        <Text style={s2.endedUsername}>@{host?.username ?? t('watch.viewer')}</Text>
         <Text style={s2.endedTitle}>hat das Live beendet</Text>
-        <Text style={s2.endedSubtitle}>Danke für deine Teilnahme 💜</Text>
+        <Text style={s2.endedSubtitle}>{t('watch.thanksParticipation')}</Text>
 
         {/* Stats */}
         <View style={s2.endedStats}>
           <View style={s2.endedStat}>
             <Text style={s2.endedStatNum}>{session?.viewer_count ?? 0}</Text>
-            <Text style={s2.endedStatLabel}>Zuschauer</Text>
+            <Text style={s2.endedStatLabel}>{t('watch.viewers')}</Text>
           </View>
           <View style={s2.endedStatDivider} />
           <View style={s2.endedStat}>
             <Text style={s2.endedStatNum}>{session?.like_count ?? 0}</Text>
-            <Text style={s2.endedStatLabel}>Likes</Text>
+            <Text style={s2.endedStatLabel}>{t('watch.likes')}</Text>
           </View>
           <View style={s2.endedStatDivider} />
           <View style={s2.endedStat}>
             <Text style={s2.endedStatNum}>{session?.comment_count ?? 0}</Text>
-            <Text style={s2.endedStatLabel}>Kommentare</Text>
+            <Text style={s2.endedStatLabel}>{t('watch.comments')}</Text>
           </View>
         </View>
 
@@ -388,10 +392,10 @@ function LiveEndedOverlay({
 
         {/* Zurück-Button */}
         <Pressable onPress={onBack} style={s2.endedBackBtn}>
-          <Text style={s2.endedBackText}>Zurück zum Feed</Text>
+          <Text style={s2.endedBackText}>{t('watch.backToFeed')}</Text>
         </Pressable>
 
-        <Text style={s2.endedAutoClose}>Weiterleitung in 5 Sekunden …</Text>
+        <Text style={s2.endedAutoClose}>{t('watch.redirect5s')}</Text>
       </View>
     </View>
   );
@@ -475,6 +479,7 @@ type WatchUIContentProps = WatchUIProps & {
 
 // ─── Inner Watch UI (innerhalb LiveKitRoom) ───────────────────────────────────
 function WatchUI({ sessionId, onRequestPublisherUpgrade }: WatchUIProps) {
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { profile } = useAuthStore();
@@ -500,7 +505,7 @@ function WatchUI({ sessionId, onRequestPublisherUpgrade }: WatchUIProps) {
             onPress={() => router.back()}
             style={{ backgroundColor: `${LC.accent.rose}26`, borderWidth: 1, borderColor: `${LC.accent.rose}66`, borderRadius: 16, paddingHorizontal: 28, paddingVertical: 14 }}
           >
-            <Text style={{ color: LC.accent.rose, fontSize: 15, fontWeight: '700' }}>Zurück</Text>
+            <Text style={{ color: LC.accent.rose, fontSize: 15, fontWeight: '700' }}>{t('watch.back')}</Text>
           </Pressable>
         </LinearGradient>
       </View>
@@ -527,6 +532,7 @@ function WatchUIContent({
   profile,
   session,
 }: WatchUIContentProps) {
+  const { t } = useI18n();
   useLiveViewer(sessionId);
   // Phase 6: Viewer muss Moderation-Einstellungen des Hosts kennen
   // (Word-Filter, Slow-Mode). Timeouts werden im Hook selbst via Broadcast
@@ -1230,8 +1236,8 @@ function WatchUIContent({
     // BUG 4 Fix: Followers-Only-Chat enforzen
     if (session?.followers_only_chat && !isOwnProfile && isFollowingForChat === false) {
       Alert.alert(
-        'Nur Follower',
-        'Du musst diesem Host folgen um im Chat schreiben zu können.',
+        t('watch.followersOnly'),
+        t('watch.mustFollowToChat'),
         [{ text: 'OK' }]
       );
       return;
@@ -1241,7 +1247,7 @@ function WatchUIContent({
     // damit der User seine Message nicht verliert.
     const result = await sendComment(input.trim());
     if (result && result.blocked) {
-      Alert.alert('Moment ...', result.reason, [{ text: 'OK' }]);
+      Alert.alert(t('watch.moment'), result.reason, [{ text: 'OK' }]);
       return;
     }
     setInput('');
@@ -1350,40 +1356,40 @@ function WatchUIContent({
   const canModerate = isSessionModerator;
   const handleModerate = useCallback((item: LiveComment) => {
     if (item.user_id === session?.host_id) return; // niemals Host
-    const username = item.profiles?.username ?? 'User';
+    const username = item.profiles?.username ?? t('watch.viewer');
     const userId = item.user_id;
     const openTimeoutMenu = () => {
       Alert.alert(
         `⏳ @${username} stumm schalten`,
-        'Dauer auswählen:',
+        t('watch.durationChoose'),
         [
           {
             text: '1 min',
             onPress: async () => {
-              const ok = await modTimeoutUser(userId, 60, 'Mod-Timeout 1min');
+              const ok = await modTimeoutUser(userId, 60, t('watch.timeout1'));
               if (ok) sendSystemEvent(`⏳ @${username} für 1 Minute gemutet.`);
             },
           },
           {
             text: '5 min',
             onPress: async () => {
-              const ok = await modTimeoutUser(userId, 5 * 60, 'Mod-Timeout 5min');
+              const ok = await modTimeoutUser(userId, 5 * 60, t('watch.timeout5'));
               if (ok) sendSystemEvent(`⏳ @${username} für 5 Minuten gemutet.`);
             },
           },
           {
             text: '30 min',
             onPress: async () => {
-              const ok = await modTimeoutUser(userId, 30 * 60, 'Mod-Timeout 30min');
+              const ok = await modTimeoutUser(userId, 30 * 60, t('watch.timeout30'));
               if (ok) sendSystemEvent(`⏳ @${username} für 30 Minuten gemutet.`);
             },
           },
-          { text: 'Zurück', style: 'cancel' },
+          { text: t('watch.back'), style: 'cancel' },
         ],
       );
     };
     Alert.alert(
-      'Moderation',
+      t('watch.moderation'),
       `Von @${username}: "${item.text.slice(0, 60)}"`,
       [
         { text: '📌 Anpinnen', onPress: () => pinComment(item) },
@@ -1393,7 +1399,7 @@ function WatchUIContent({
           style: 'destructive',
           onPress: () => deleteComment(item.id),
         },
-        { text: 'Abbrechen', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
       ],
     );
   }, [modTimeoutUser, sendSystemEvent, pinComment, deleteComment, session?.host_id]);
@@ -1588,8 +1594,9 @@ function WatchUIContent({
           // Host-Video als PiP (wenn Viewer Swap gedrückt hat)
           // ⚠️ BUG FIX: kein Inline-Arrow als LocalView, wird durch stabile Komponente ersetzt
           <PiPWindow
+            label={t('watch.host')}
             LocalView={HostRemoteVideoAsPiP}
-            label="HOST"
+            
             onSwap={() => setPipSwapped(false)}
           />
         ) : (
@@ -1708,7 +1715,7 @@ function WatchUIContent({
             hitSlop={6}
           >
             <Text style={[s.followBtnLgText, isFollowing && s.followBtnLgTextActive]}>
-              {isFollowing ? 'Gefolgt' : 'Folgen'}
+              {isFollowing ? t('watch.following') : t('watch.follow')}
             </Text>
           </Pressable>
         )}
@@ -1767,7 +1774,7 @@ function WatchUIContent({
         <View style={[s.pinnedBanner, { top: insets.top + (session?.title ? 90 : 58) }]}>
           <Text style={s.pinnedLabel}>📌</Text>
           <View style={{ flex: 1 }}>
-            <Text style={s.pinnedUser}>@{pinnedComment.profiles?.username ?? 'User'}</Text>
+            <Text style={s.pinnedUser}>@{pinnedComment.profiles?.username ?? t('watch.viewer')}</Text>
             <Text style={s.pinnedText} numberOfLines={2}>{pinnedComment.text}</Text>
           </View>
         </View>
@@ -1778,7 +1785,7 @@ function WatchUIContent({
         <View pointerEvents="none" style={[s.clipToastWrap, { top: insets.top + 58 }]}>
           <View style={s.clipToastPill}>
             <Scissors size={14} color="#fff" strokeWidth={2.2} />
-            <Text style={s.clipToastText}>Clip gespeichert</Text>
+            <Text style={s.clipToastText}>{t('watch.clipSaved')}</Text>
           </View>
         </View>
       )}
@@ -1853,7 +1860,7 @@ function WatchUIContent({
             onPress={() => setShopSheetVisible(true)}
             hitSlop={8}
             style={s.shopBagBtn}
-            accessibilityLabel="Shop öffnen"
+            accessibilityLabel={t('watch.openShop')}
           >
             <ShoppingBag size={22} color="#fff" strokeWidth={2.2} />
             {shopCount > 0 && (
@@ -1881,7 +1888,7 @@ function WatchUIContent({
               ? Math.max(0, Math.ceil((selfTimeoutUntil! - Date.now()) / 1000))
               : 0;
             const canType = commentsAllowed && !isTimedOut;
-            let placeholder = 'Kommentieren …';
+            let placeholder = t('watch.commentPlaceholder');
             if (!commentsAllowed)      placeholder = '💬 Kommentare deaktiviert';
             else if (isTimedOut)       placeholder = `⏳ Gemutet — ${timeoutRemainSec}s`;
             else if ((session?.slow_mode_seconds ?? 0) > 0)
@@ -1991,7 +1998,7 @@ function WatchUIContent({
                     }
                   }
                 } catch { /* ignorieren */ }
-                sendSystemEvent(`📹 @${profile?.username ?? 'User'} hat das Duet verlassen`);
+                sendSystemEvent(`📹 @${profile?.username ?? t('watch.viewer')} hat das Duet verlassen`);
               } else if (coHostStatus === 'idle') {
                 requestJoin();
               }
@@ -2005,11 +2012,11 @@ function WatchUIContent({
               <Video size={14} color="#fff" strokeWidth={2.2} />
             )}
             <Text style={s.coHostJoinText}>
-              {/* ⚠️ BUG FIX: 'accepted' zeigt auch 'Duet ✕' statt 'Beitreten' */}
-              {(coHostStatus === 'active' || coHostStatus === 'accepted') ? 'Duet ✕' :
-               coHostStatus === 'requesting' ? 'Warten…' :
-               coHostStatus === 'rejected' ? 'Abgelehnt' :
-               'Beitreten'}
+              {/* ⚠️ BUG FIX: 'accepted' zeigt auch t('watch.duetX') statt t('watch.join') */}
+              {(coHostStatus === 'active' || coHostStatus === 'accepted') ? t('watch.duetX') :
+               coHostStatus === 'requesting' ? t('watch.waiting') :
+               coHostStatus === 'rejected' ? t('watch.rejected') :
+               t('watch.join')}
             </Text>
           </Pressable>
         )}
@@ -2028,7 +2035,7 @@ function WatchUIContent({
         >
           <View style={[s.emojiPickerSheet, { paddingBottom: insets.bottom + 16 }]}>
             <View style={s.emojiPickerHandle} />
-            <Text style={s.emojiPickerTitle}>Reaktion senden</Text>
+            <Text style={s.emojiPickerTitle}>{t('watch.sendReaction')}</Text>
             <View style={s.emojiPickerGrid}>
               {LIVE_REACTION_EMOJIS.map((emoji) => (
                 <Pressable
@@ -2062,7 +2069,7 @@ function WatchUIContent({
         <View style={{ position: 'absolute', bottom: insets.bottom + 55 + 248, left: 0, right: 0, zIndex: 5 }}>
           <PinnedProductPill
             product={shopPinnedProduct}
-            viewerUsername={profile?.username ?? 'Viewer'}
+            viewerUsername={profile?.username ?? t('watch.viewer')}
             onBought={broadcastSold}
           />
         </View>
@@ -2115,7 +2122,7 @@ function WatchUIContent({
       />
 
       {/* v1.22.2 — Short-Video-Style Top-Zuschauer*innen Sheet (Viewer-Seite).
-          Self-CTA "Geschenk senden" öffnet GiftPicker nach Close-Animation.
+          Self-CTA t('watch.sendGift') öffnet GiftPicker nach Close-Animation.
           v1.22.3 — hostId/hostName für Follower-Badge "❤️ {hostName}". */}
       <ViewerListSheet
         visible={viewersVisible}
@@ -2138,15 +2145,15 @@ function WatchUIContent({
             {reportSent ? (
               <>
                 <Text style={s.reportTitle}>✅ Gemeldet</Text>
-                <Text style={s.reportSub}>Danke für dein Feedback. Wir prüfen den Inhalt.</Text>
+                <Text style={s.reportSub}>{t('watch.thanksFeedback')}</Text>
                 <Pressable style={s.reportDone} onPress={() => { setReportModalVisible(false); setReportSent(false); }}>
-                  <Text style={s.reportDoneText}>Schließen</Text>
+                  <Text style={s.reportDoneText}>{t('watch.close')}</Text>
                 </Pressable>
               </>
             ) : (
               <>
-                <Text style={s.reportTitle}>Live melden</Text>
-                <Text style={s.reportSub}>Warum möchtest du dieses Live melden?</Text>
+                <Text style={s.reportTitle}>{t('watch.reportLive')}</Text>
+                <Text style={s.reportSub}>{t('watch.reportWhy')}</Text>
                 {(['inappropriate', 'spam', 'violence', 'other'] as const).map((reason) => (
                   <Pressable
                     key={reason}
@@ -2154,7 +2161,7 @@ function WatchUIContent({
                     onPress={async () => {
                       const result = await reportLive(sessionId, reason);
                       if (result.error) {
-                        Alert.alert('Hat nicht geklappt', result.error);
+                        Alert.alert(t('watch.failed'), result.error);
                         return;
                       }
                       setReportSent(true);
@@ -2169,7 +2176,7 @@ function WatchUIContent({
                   </Pressable>
                 ))}
                 <Pressable style={s.reportCancel} onPress={() => setReportModalVisible(false)}>
-                  <Text style={s.reportCancelText}>Abbrechen</Text>
+                  <Text style={s.reportCancelText}>{t('common.cancel')}</Text>
                 </Pressable>
               </>
             )}
@@ -2240,7 +2247,7 @@ function WatchUIContent({
             {/* Header */}
             <View style={ss.header}>
               <Search size={20} color="#1C1C1E" strokeWidth={2} />
-              <Text style={ss.title}>Teilen</Text>
+              <Text style={ss.title}>{t('watch.share')}</Text>
               <Pressable onPress={() => setShareSheetVisible(false)} hitSlop={12}>
                 <X size={18} color="#1C1C1E" strokeWidth={2.5} />
               </Pressable>
@@ -2269,14 +2276,14 @@ function WatchUIContent({
             {/* Optionen-Grid */}
             <View style={ss.grid}>
               {[
-                { id: 'link',    icon: '🔗', label: 'Link kopieren',       onPress: handleShare },
+                { id: 'link',    icon: '🔗', label: t('watch.copyLink'),       onPress: handleShare },
                 { id: 'whats',   icon: '💬', label: 'WhatsApp',            onPress: handleShare },
                 { id: 'igdm',    icon: '📸', label: 'Instagram Direct',    onPress: handleShare },
                 { id: 'tg',      icon: '✈️', label: 'Telegram',            onPress: handleShare },
-                { id: 'cohost',  icon: '🤝', label: 'Co-Host',             onPress: () => { setShareSheetVisible(false); } },
-                { id: 'story',   icon: '◎',  label: 'Zu Story',            onPress: () => setShareSheetVisible(false) },
-                { id: 'report',  icon: '🚩', label: 'Melden',              onPress: () => { setShareSheetVisible(false); setReportModalVisible(true); } },
-                { id: 'feedback',icon: '💬', label: 'Feedback',            onPress: () => setShareSheetVisible(false) },
+                { id: 'cohost',  icon: '🤝', label: t('watch.coHost'),             onPress: () => { setShareSheetVisible(false); } },
+                { id: 'story',   icon: '◎',  label: t('watch.toStory'),            onPress: () => setShareSheetVisible(false) },
+                { id: 'report',  icon: '🚩', label: t('watch.report'),              onPress: () => { setShareSheetVisible(false); setReportModalVisible(true); } },
+                { id: 'feedback',icon: '💬', label: t('watch.feedback'),            onPress: () => setShareSheetVisible(false) },
               ].map((opt) => (
                 <Pressable key={opt.id} style={ss.gridItem} onPress={opt.onPress}>
                   <View style={ss.gridIcon}>
@@ -2296,6 +2303,7 @@ function WatchUIContent({
 // ─── Screen (lädt LiveKit Token dann verbindet) ───────────────────────────────
 export default function LiveWatchScreen() {
   useThemedStatusBar('light');
+  const { t } = useI18n();
   const { id, isReplay } = useLocalSearchParams<{ id: string; isReplay?: string }>();
   const isReplayMode = isReplay === '1';
   const router = useRouter();
@@ -2469,7 +2477,7 @@ export default function LiveWatchScreen() {
         <Text style={{ color: 'rgba(255,255,255,0.55)', fontSize: 14, textAlign: 'center', lineHeight: 20 }}>
           {session?.profiles?.username
             ? `@${session.profiles.username} streamt nur für Follower 🙂\nFolge zuerst — dann bist du dabei.`
-            : 'Dieser Stream ist nur für Follower 🙂\nFolge zuerst — dann bist du dabei.'}
+            : t('watch.followersOnlyStream')}
         </Text>
         <Pressable
           disabled={joiningAfterFollow}
@@ -2499,11 +2507,11 @@ export default function LiveWatchScreen() {
           style={[s.backBtnCenter, { backgroundColor: '#FF2D55', marginTop: 6, paddingHorizontal: 28 }]}
         >
           <Text style={{ color: '#fff', fontWeight: '600', fontSize: 15 }}>
-            {joiningAfterFollow ? 'Moment …' : amFollowingHost ? '🔄 Erneut versuchen' : 'Folgen & reinkommen'}
+            {joiningAfterFollow ? t('watch.moment') : amFollowingHost ? '🔄 Erneut versuchen' : t('watch.followJoin')}
           </Text>
         </Pressable>
         <Pressable onPress={() => router.back()} style={s.backBtnCenter}>
-          <Text style={{ color: 'rgba(255,255,255,0.4)', fontWeight: '600' }}>Zurück</Text>
+          <Text style={{ color: 'rgba(255,255,255,0.4)', fontWeight: '600' }}>{t('watch.back')}</Text>
         </Pressable>
       </View>
     );
@@ -2554,7 +2562,7 @@ export default function LiveWatchScreen() {
           <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 15 }}>🔄 Erneut versuchen</Text>
         </Pressable>
         <Pressable onPress={() => router.back()} style={s.backBtnCenter}>
-          <Text style={{ color: 'rgba(255,255,255,0.4)', fontWeight: '600' }}>Zurück</Text>
+          <Text style={{ color: 'rgba(255,255,255,0.4)', fontWeight: '600' }}>{t('watch.back')}</Text>
         </Pressable>
       </View>
     );
@@ -2567,9 +2575,9 @@ export default function LiveWatchScreen() {
         <Text style={{ color: '#fff', fontSize: 15, fontWeight: '600' }}>
           {session?.profiles?.username
             ? `@${session.profiles.username} ist LIVE`
-            : 'Live lädt …'}
+            : t('watch.liveLoading')}
         </Text>
-        <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>Verbinde mit Stream …</Text>
+        <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>{t('watch.connectingStream')}</Text>
       </View>
     );
   }
@@ -2605,7 +2613,7 @@ export default function LiveWatchScreen() {
 
           // LiveKit feuert onError auch bei transienten Fehlern (ICE reconnect, kurze Netz-Unterbrechung).
           // Das SDK versucht automatisch neu zu verbinden — wir zeigen NUR den Fehlerscreen,
-          // navigieren aber NICHT sofort weg. User kann "Erneut versuchen" drücken.
+          // navigieren aber NICHT sofort weg. User kann t('watch.tryAgain') drücken.
           // Bekannte harmlose Fehler filtern:
           const isHarmless =
             msg.includes('Client initiated disconnect') ||
