@@ -17,6 +17,7 @@ import { StoryRingAvatar } from '@/components/ui/StoryRingAvatar';
 import { VideoGridThumb } from '@/components/ui/VideoGridThumb';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuthStore } from '@/lib/authStore';
+import { useI18n } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 import { useBattleStats } from '@/lib/useBattleStats';
 import { useBlockUser,useIsBlocked } from '@/lib/useBlock';
@@ -148,6 +149,7 @@ export function UserProfileContent({ userId, onBack }: Props) {
   const insets = useSafeAreaInsets();
   const currentUserId = useAuthStore((s) => s.profile?.id);
   const { colors } = useTheme();
+  const { t } = useI18n();
 
   const [profile, setProfile] = useState<PublicProfile | null>(null);
   const [posts, setPosts] = useState<PostThumb[]>([]);
@@ -430,14 +432,14 @@ export function UserProfileContent({ userId, onBack }: Props) {
 
   const handleBlock = () => {
     if (isBlocked) {
-      Alert.alert('Blockierung aufheben', `Möchtest du @${profile?.username ?? ''} entblocken?`, [
-        { text: 'Abbrechen', style: 'cancel' },
-        { text: 'Entblocken', onPress: () => unblock.mutate() },
+      Alert.alert(t('profile.unblockTitle'), t('profile.unblockMsg', { name: profile?.username ?? '' }), [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('profile.unblock'), onPress: () => unblock.mutate() },
       ]);
     } else {
-      Alert.alert('User blockieren', `Möchtest du @${profile?.username ?? ''} blockieren?\nDieser User kann dir nicht mehr folgen oder schreiben.`, [
-        { text: 'Abbrechen', style: 'cancel' },
-        { text: 'Blockieren', style: 'destructive', onPress: () => { block.mutate(); onBack(); } },
+      Alert.alert(t('profile.blockTitle'), t('profile.blockMsg', { name: profile?.username ?? '' }), [
+        { text: t('common.cancel'), style: 'cancel' },
+        { text: t('profile.block'), style: 'destructive', onPress: () => { block.mutate(); onBack(); } },
       ]);
     }
   };
@@ -451,9 +453,9 @@ export function UserProfileContent({ userId, onBack }: Props) {
     if (isFollowing) { toggle(); return; }
     if (isPrivate) {
       if (hasPendingRequest) {
-        Alert.alert('Anfrage zurückziehen?', 'Deine Follow-Anfrage wird zurückgezogen.', [
-          { text: 'Abbrechen', style: 'cancel' },
-          { text: 'Zurückziehen', style: 'destructive', onPress: () => id && withdrawRequest(id) },
+        Alert.alert(t('profile.withdrawReqTitle'), t('profile.withdrawReqText'), [
+          { text: t('common.cancel'), style: 'cancel' },
+          { text: t('profile.withdraw'), style: 'destructive', onPress: () => id && withdrawRequest(id) },
         ]);
       } else { id && sendRequest(id); }
     } else { toggle(); }
@@ -462,7 +464,7 @@ export function UserProfileContent({ userId, onBack }: Props) {
   const handleReportUser = (reason: 'spam' | 'harassment' | 'inappropriate' | 'fake_account') => {
     setShowReportSheet(false);
     reportUser({ reportedId: id, reason });
-    setTimeout(() => Alert.alert('✅ Gemeldet', 'Danke. Wir prüfen das Profil zeitnah.'), 300);
+    setTimeout(() => Alert.alert(t('profile.reportedTitle'), t('profile.reportedText')), 300);
   };
 
   // — Short-Video-Style ⋯ Bottom Sheet (oben rechts)
@@ -483,9 +485,9 @@ export function UserProfileContent({ userId, onBack }: Props) {
   if (!profile) {
     return (
       <View style={[s.loadingWrap, { backgroundColor: colors.bg.primary }]}>
-        <Text style={{ color: colors.text.muted, fontSize: 16 }}>Profil nicht gefunden.</Text>
+        <Text style={{ color: colors.text.muted, fontSize: 16 }}>{t('profile.notFound')}</Text>
         <Pressable onPress={onBack} style={[s.backPill, { backgroundColor: colors.bg.elevated }]}>
-          <Text style={{ color: colors.text.primary, fontWeight: '600' }}>Zurück</Text>
+          <Text style={{ color: colors.text.primary, fontWeight: '600' }}>{t('profile.back')}</Text>
         </Pressable>
       </View>
     );
@@ -534,15 +536,15 @@ export function UserProfileContent({ userId, onBack }: Props) {
         <View style={s.inlineStatsWrap}>
           <View style={s.statItem}>
             <Text style={[s.statValue, { color: colors.text.primary }]}>{postCount}</Text>
-            <Text style={[s.statLabel, { color: colors.text.muted }]}>Posts</Text>
+            <Text style={[s.statLabel, { color: colors.text.muted }]}>{t('profile.posts')}</Text>
           </View>
           <Pressable style={s.statItem} onPress={() => router.push({ pathname: '/follow-list', params: { userId: id, mode: 'followers', username: profile.username } })}>
             <Text style={[s.statValue, { color: colors.text.primary }]}>{counts?.followers ?? 0}</Text>
-            <Text style={[s.statLabel, { color: colors.text.muted }]}>Follower</Text>
+            <Text style={[s.statLabel, { color: colors.text.muted }]}>{t('profile.followers')}</Text>
           </Pressable>
           <Pressable style={s.statItem} onPress={() => router.push({ pathname: '/follow-list', params: { userId: id, mode: 'following', username: profile.username } })}>
             <Text style={[s.statValue, { color: colors.text.primary }]}>{counts?.following ?? 0}</Text>
-            <Text style={[s.statLabel, { color: colors.text.muted }]}>Following</Text>
+            <Text style={[s.statLabel, { color: colors.text.muted }]}>{t('profile.followingCount')}</Text>
           </Pressable>
         </View>
       </View>
@@ -578,14 +580,14 @@ export function UserProfileContent({ userId, onBack }: Props) {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                 <Star size={14} color="#F59E0B" fill="#F59E0B" strokeWidth={2} />
                 <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text.primary }}>{orderRating.sellerAvg?.toFixed(1)}</Text>
-                <Text style={{ fontSize: 12.5, color: colors.text.muted }}>als Verkäufer · {orderRating.sellerCount}</Text>
+                <Text style={{ fontSize: 12.5, color: colors.text.muted }}>{t('profile.asSeller', { count: orderRating.sellerCount })}</Text>
               </View>
             ) : null}
             {orderRating.buyerCount > 0 ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
                 <Star size={14} color="#F59E0B" fill="#F59E0B" strokeWidth={2} />
                 <Text style={{ fontSize: 13, fontWeight: '700', color: colors.text.primary }}>{orderRating.buyerAvg?.toFixed(1)}</Text>
-                <Text style={{ fontSize: 12.5, color: colors.text.muted }}>als Käufer · {orderRating.buyerCount}</Text>
+                <Text style={{ fontSize: 12.5, color: colors.text.muted }}>{t('profile.asBuyer', { count: orderRating.buyerCount })}</Text>
               </View>
             ) : null}
           </View>
@@ -629,7 +631,7 @@ export function UserProfileContent({ userId, onBack }: Props) {
                 }]}>
                   {followLoading
                     ? <ActivityIndicator size="small" color={colors.text.primary} />
-                    : <><UserCheck size={14} color={colors.text.primary} strokeWidth={2.2} /><Text style={[s.followBtnText, { color: colors.text.primary, fontSize: 13 }]}>Folgst du</Text></>
+                    : <><UserCheck size={14} color={colors.text.primary} strokeWidth={2.2} /><Text style={[s.followBtnText, { color: colors.text.primary, fontSize: 13 }]}>{t('profile.youFollow')}</Text></>
                   }
                 </View>
               ) : hasPendingRequest ? (
@@ -637,7 +639,7 @@ export function UserProfileContent({ userId, onBack }: Props) {
                 <View style={[s.followBtnOutline, { borderColor: 'rgba(251,191,36,0.5)', backgroundColor: 'rgba(251,191,36,0.08)', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 }]}>
                   {withdrawing
                     ? <ActivityIndicator size="small" color="#FBBF24" />
-                    : <><Timer size={14} color="#FBBF24" strokeWidth={2.2} /><Text style={[s.followBtnText, { color: '#FBBF24', fontSize: 13 }]}>Angefragt</Text></>
+                    : <><Timer size={14} color="#FBBF24" strokeWidth={2.2} /><Text style={[s.followBtnText, { color: '#FBBF24', fontSize: 13 }]}>{t('profile.requested')}</Text></>
                   }
                 </View>
               ) : (
@@ -645,7 +647,7 @@ export function UserProfileContent({ userId, onBack }: Props) {
                 <View style={[s.followBtnFill, { backgroundColor: colors.text.primary }]}>
                   {(followLoading || sendingRequest)
                     ? <ActivityIndicator size="small" color={colors.bg.primary} />
-                    : <><UserPlus size={16} color={colors.bg.primary} strokeWidth={2.2} /><Text style={[s.followBtnText, { color: colors.bg.primary }]}>{(profile as any)?.is_private ? 'Anfragen' : 'Folgen'}</Text></>
+                    : <><UserPlus size={16} color={colors.bg.primary} strokeWidth={2.2} /><Text style={[s.followBtnText, { color: colors.bg.primary }]}>{(profile as any)?.is_private ? t('profile.requestFollow') : t('profile.follow')}</Text></>
                   }
                 </View>
               )}
@@ -667,7 +669,7 @@ export function UserProfileContent({ userId, onBack }: Props) {
                 }]}>
                   {dmLoading
                     ? <ActivityIndicator size="small" color={colors.text.primary} />
-                    : <><MessageCircle size={16} color={colors.text.primary} strokeWidth={2} /><Text style={[s.followBtnText, { color: colors.text.primary, fontSize: 14 }]}>Nachricht</Text></>
+                    : <><MessageCircle size={16} color={colors.text.primary} strokeWidth={2} /><Text style={[s.followBtnText, { color: colors.text.primary, fontSize: 14 }]}>{t('profile.message')}</Text></>
                   }
                 </View>
               ) : (
@@ -688,7 +690,7 @@ export function UserProfileContent({ userId, onBack }: Props) {
       )}
       {isOwn && (
         <Pressable onPress={() => router.push('/settings')} style={[s.editBtn, { backgroundColor: colors.bg.elevated, borderColor: colors.border.default }]}>
-          <Text style={[s.editBtnText, { color: colors.text.muted }]}>Profil bearbeiten</Text>
+          <Text style={[s.editBtnText, { color: colors.text.muted }]}>{t('profile.editProfile')}</Text>
         </Pressable>
       )}
       <ProfileHighlightsRow userId={id ?? null} isOwn={isOwn} />
@@ -751,10 +753,10 @@ export function UserProfileContent({ userId, onBack }: Props) {
   );
 
   const REPORT_REASONS = [
-    { key: 'spam' as const,          label: 'Spam',                  sub: 'Massenhafte oder irreführende Inhalte', color: '#F59E0B' },
-    { key: 'harassment' as const,    label: 'Belästigung / Hassrede', sub: 'Beleidigende oder bedrohliche Inhalte',  color: '#EF4444' },
-    { key: 'inappropriate' as const, label: 'Unangemessener Inhalt',  sub: 'Sexuelle oder schockierende Inhalte',   color: '#EC4899' },
-    { key: 'fake_account' as const,  label: 'Fake-Account',           sub: 'Gibt vor eine andere Person zu sein',   color: '#8B5CF6' },
+    { key: 'spam' as const,          label: t('profile.reasonSpam'),          sub: t('profile.reasonSpamSub'),          color: '#F59E0B' },
+    { key: 'harassment' as const,    label: t('profile.reasonHarassment'),    sub: t('profile.reasonHarassmentSub'),    color: '#EF4444' },
+    { key: 'inappropriate' as const, label: t('profile.reasonInappropriate'), sub: t('profile.reasonInappropriateSub'), color: '#EC4899' },
+    { key: 'fake_account' as const,  label: t('profile.reasonFake'),          sub: t('profile.reasonFakeSub'),          color: '#8B5CF6' },
   ];
 
   return (
@@ -778,7 +780,7 @@ export function UserProfileContent({ userId, onBack }: Props) {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={[pm.headerName, { color: colors.text.primary }]}>@{profile?.username}</Text>
-                <Text style={[pm.headerSub, { color: colors.text.muted }]}>Profiloptionen</Text>
+                <Text style={[pm.headerSub, { color: colors.text.muted }]}>{t('profile.profileOptions')}</Text>
               </View>
               <Pressable onPress={() => setShowProfileMenu(false)} style={[pm.closeBtn, { backgroundColor: colors.bg.subtle }]} hitSlop={12}>
                 <X size={16} color={colors.icon.muted} strokeWidth={2.5} />
@@ -792,8 +794,8 @@ export function UserProfileContent({ userId, onBack }: Props) {
                 <Share2 size={20} color={colors.text.primary} strokeWidth={2} />
               </View>
               <View style={pm.rowText}>
-                <Text style={[pm.rowLabel, { color: colors.text.primary }]}>Profil teilen</Text>
-                <Text style={[pm.rowSub, { color: colors.text.muted }]}>In-App oder Link teilen</Text>
+                <Text style={[pm.rowLabel, { color: colors.text.primary }]}>{t('profile.shareProfile')}</Text>
+                <Text style={[pm.rowSub, { color: colors.text.muted }]}>{t('profile.shareProfileSub')}</Text>
               </View>
             </Pressable>
 
@@ -813,12 +815,12 @@ export function UserProfileContent({ userId, onBack }: Props) {
                 </View>
                 <View style={pm.rowText}>
                   <Text style={[pm.rowLabel, { color: colors.text.primary }]}>
-                    {isLivePushMuted ? 'Live-Pushes aktivieren' : 'Live-Pushes stumm schalten'}
+                    {isLivePushMuted ? t('profile.livePushOn') : t('profile.livePushOff')}
                   </Text>
                   <Text style={[pm.rowSub, { color: colors.text.muted }]}>
                     {isLivePushMuted
-                      ? 'Du bekommst wieder Push wenn sie live gehen'
-                      : 'Kein Push mehr wenn dieser User live geht'}
+                      ? t('profile.livePushOnSub')
+                      : t('profile.livePushOffSub')}
                   </Text>
                 </View>
               </Pressable>
@@ -832,10 +834,10 @@ export function UserProfileContent({ userId, onBack }: Props) {
               </View>
               <View style={pm.rowText}>
                 <Text style={[pm.rowLabel, { color: isBlocked ? colors.text.primary : colors.accent.danger }]}>
-                  {isBlocked ? 'Entblocken' : 'Blockieren'}
+                  {isBlocked ? t('profile.unblock') : t('profile.block')}
                 </Text>
                 <Text style={[pm.rowSub, { color: colors.text.muted }]}>
-                  {isBlocked ? 'Dieser User kann dir wieder folgen' : 'Kein Kontakt mehr möglich'}
+                  {isBlocked ? t('profile.unblockSub') : t('profile.blockSub')}
                 </Text>
               </View>
             </Pressable>
@@ -845,8 +847,8 @@ export function UserProfileContent({ userId, onBack }: Props) {
                 <Flag size={20} color={colors.accent.danger} strokeWidth={2} />
               </View>
               <View style={pm.rowText}>
-                <Text style={[pm.rowLabel, { color: colors.accent.danger }]}>Melden</Text>
-                <Text style={[pm.rowSub, { color: colors.text.muted }]}>Verstoß gegen Community-Richtlinien</Text>
+                <Text style={[pm.rowLabel, { color: colors.accent.danger }]}>{t('profile.report')}</Text>
+                <Text style={[pm.rowSub, { color: colors.text.muted }]}>{t('profile.reportSub')}</Text>
               </View>
             </Pressable>
 
@@ -865,8 +867,8 @@ export function UserProfileContent({ userId, onBack }: Props) {
                 <Flag size={18} color={colors.accent.danger} strokeWidth={2} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[pm.headerName, { color: colors.text.primary }]}>@{profile?.username} melden</Text>
-                <Text style={[pm.headerSub, { color: colors.text.muted }]}>Wähle den Grund</Text>
+                <Text style={[pm.headerName, { color: colors.text.primary }]}>{t('profile.reportUser', { name: profile?.username ?? '' })}</Text>
+                <Text style={[pm.headerSub, { color: colors.text.muted }]}>{t('profile.chooseReason')}</Text>
               </View>
               <Pressable onPress={() => setShowReportSheet(false)} style={[pm.closeBtn, { backgroundColor: colors.bg.subtle }]} hitSlop={12}>
                 <X size={16} color={colors.icon.muted} strokeWidth={2.5} />
@@ -934,25 +936,25 @@ export function UserProfileContent({ userId, onBack }: Props) {
           ) : activeTab === 'shop' ? (
             <View style={s.emptyGrid}>
               <ShoppingBag size={36} stroke="#1F2937" strokeWidth={1.2} />
-              <Text style={[s.emptyTitle, { color: colors.text.secondary }]}>Noch kein Shop hier 🛍</Text>
+              <Text style={[s.emptyTitle, { color: colors.text.secondary }]}>{t('profile.shopEmptyHere')}</Text>
               <Text style={[s.emptySub, { color: colors.text.muted }]}>
-                {profile?.username ?? 'Dieser User'} hat aktuell keinen aktiven Shop.
+                {t('profile.shopEmptyHereSub', { name: profile?.username ?? t('profile.thisUser') })}
               </Text>
             </View>
           ) : (
             <View style={s.emptyGrid}>
               <Users size={36} stroke="#1F2937" strokeWidth={1.2} />
               <Text style={[s.emptyTitle, { color: colors.text.secondary }]}>
-                {activeTab === 'liked' ? 'Keine gelikten Posts'
-                  : activeTab === 'reposts' ? 'Keine geteilten Posts'
-                    : 'Noch keine Posts'}
+                {activeTab === 'liked' ? t('profile.noLiked')
+                  : activeTab === 'reposts' ? t('profile.noReposts')
+                    : t('profile.noPosts')}
               </Text>
               <Text style={[s.emptySub, { color: colors.text.muted }]}>
                 {activeTab === 'liked'
-                  ? `${profile?.username ?? 'Dieser User'} hat noch nichts geliket.`
+                  ? t('profile.noLikedSub', { name: profile?.username ?? t('profile.thisUser') })
                   : activeTab === 'reposts'
-                    ? `${profile?.username ?? 'Dieser User'} hat noch nichts geteilt.`
-                    : `${profile?.username ?? ''} hat noch nichts geteilt.`
+                    ? t('profile.noRepostsSub', { name: profile?.username ?? t('profile.thisUser') })
+                    : t('profile.noPostsSub', { name: profile?.username ?? t('profile.thisUser') })
                 }
               </Text>
             </View>
@@ -992,7 +994,7 @@ export function UserProfileContent({ userId, onBack }: Props) {
                 <View style={shopCellOverlay}>
                   <Text style={shopCellTitle} numberOfLines={1}>{product.title}</Text>
                   {isPreorder ? (
-                    <Text style={shopCellPrice} numberOfLines={1}>{eur ?? 'Vorbestellen'}</Text>
+                    <Text style={shopCellPrice} numberOfLines={1}>{eur ?? t('profile.preorder')}</Text>
                   ) : (
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
                       <CoinIcon size={12} />
