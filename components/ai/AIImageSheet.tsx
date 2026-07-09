@@ -22,6 +22,7 @@ type AIImagePurpose,
 type AIImageSize,
 } from '@/lib/useGenerateImage';
 import { useTheme } from '@/lib/useTheme';
+import { useI18n, type TranslationKey } from '@/lib/i18n';
 import { Image } from 'expo-image';
 import { Check,RefreshCw,Sparkles } from 'lucide-react-native';
 import { useEffect,useState } from 'react';
@@ -70,40 +71,24 @@ function availableSizes(purpose: AIImagePurpose): AIImageSize[] {
 // Human-readable Fehler-Mapping für Rate-Limits / Guards
 // Phase-4 Codes (feature_disabled, platform_budget_exhausted, rate_limit_week)
 // + Legacy-Codes aus Phase 1 (falls alte Edge-Function-Instanz noch läuft).
-function prettyError(code: string, fallback: string): string {
-  switch (code) {
-    case 'feature_disabled':
-      return 'AI-Bilder sind aktuell nicht verfügbar. Bitte später erneut versuchen.';
-    case 'platform_budget_exhausted':
-      return 'Das monatliche AI-Budget ist aufgebraucht. Anfang nächsten Monats wieder verfügbar.';
-    case 'rate_limit_day':
-      return 'Tages-Limit erreicht (3 Bilder / 24h). Morgen geht es weiter.';
-    case 'rate_limit_week':
-      return 'Wochen-Limit erreicht (10 Bilder / 7 Tage).';
-    // Legacy:
-    case 'rate_limit_minute':
-      return 'Du hast gerade mehrere Bilder generiert — kurz durchatmen und in einer Minute nochmal versuchen.';
-    case 'cost_limit_month':
-      return 'Monats-Budget erreicht. Am 1. des nächsten Monats steht wieder Kontingent bereit.';
-    case 'prompt_too_short':
-      return 'Dein Prompt ist zu kurz — beschreibe das gewünschte Bild in mindestens 3 Zeichen.';
-    case 'prompt_too_long':
-      return 'Dein Prompt ist zu lang (max 2000 Zeichen).';
-    case 'prompt_blocked':
-      return 'Dieser Prompt enthält nicht erlaubte Inhalte.';
-    case 'unauthorized':
-      return 'Du musst eingeloggt sein.';
-    case 'network_error':
-      return 'Keine Verbindung. Prüfe dein Internet.';
-    default:
-      // Die generische Supabase-Transport-Meldung ("non-2xx status code") ist
-      // kalt + nichtssagend (Design-Gesetz: Tiefs wärmer machen). Warm ersetzen,
-      // echte Server-Messages aber durchlassen.
-      if (/non-2xx status code/i.test(fallback)) {
-        return 'Das Cover ließ sich gerade nicht erstellen 😕 — versuch es gleich nochmal.';
-      }
-      return fallback;
-  }
+const AI_ERROR_KEYS: Record<string, TranslationKey> = {
+  feature_disabled: 'ai.unavailable',
+  platform_budget_exhausted: 'ai.budgetMonth',
+  rate_limit_day: 'ai.limitDay',
+  rate_limit_week: 'ai.limitWeek',
+  rate_limit_minute: 'ai.cooldown',
+  cost_limit_month: 'ai.budgetMonth2',
+  prompt_too_short: 'ai.promptShort',
+  prompt_too_long: 'ai.promptLong',
+  prompt_blocked: 'ai.promptDisallowed',
+  unauthorized: 'ai.mustLogin',
+  network_error: 'ai.noConnection',
+};
+
+function prettyError(code: string, fallback: string, t: (k: TranslationKey, v?: Record<string, string | number>) => string): string {
+  if (AI_ERROR_KEYS[code]) return t(AI_ERROR_KEYS[code]);
+  if (/non-2xx status code/i.test(fallback)) return t('ai.coverFailed');
+  return fallback;
 }
 
 export function AIImageSheet({
@@ -112,11 +97,14 @@ export function AIImageSheet({
   onUseImage,
   purpose,
   defaultSize,
-  title = 'Bild mit KI erstellen',
-  promptPlaceholder = 'Beschreibe dein Wunsch-Bild auf Deutsch oder Englisch…',
+  title: titleProp,
+  promptPlaceholder: promptPlaceholderProp,
   suggestions,
 }: AIImageSheetProps) {
   const { colors } = useTheme();
+  const { t } = useI18n();
+  const title = titleProp ?? t('ai.createTitle');
+  const promptPlaceholder = promptPlaceholderProp ?? t('ai.promptPlaceholder');
   const insets = useSafeAreaInsets();
   const { generate, isGenerating } = useGenerateImage();
   const { quota, refetch: refetchQuota } = useAIImageQuota(visible);
@@ -146,7 +134,7 @@ export function AIImageSheet({
   const handleGenerate = async () => {
     const trimmed = prompt.trim();
     if (trimmed.length < PROMPT_MIN) {
-      setErrorMsg(prettyError('prompt_too_short', 'Prompt zu kurz.'));
+      setErrorMsg(prettyError('prompt_too_short', t('ai.promptTooShort'), t));
       return;
     }
     setErrorMsg(null);
@@ -155,7 +143,7 @@ export function AIImageSheet({
 
     const result = await generate({ prompt: trimmed, purpose, size });
     if (!result.ok) {
-      setErrorMsg(prettyError(result.code, result.error));
+      setErrorMsg(prettyError(result.code, result.error, t));
       return;
     }
     setPreviewUrl(result.url);
@@ -188,16 +176,16 @@ export function AIImageSheet({
   const quotaBlock = (() => {
     if (!quota) return { blocked: false, reason: '' as string };
     if (!quota.feature_enabled) {
-      return { blocked: true, reason: 'AI-Bilder sind aktuell deaktiviert.' };
+      return { blocked: true, reason: t('ai.disabled') };
     }
     if (quota.platform_cap_reached) {
-      return { blocked: true, reason: 'Monatliches Platform-Budget aufgebraucht.' };
+      return { blocked: true, reason: t('ai.platformBudget') };
     }
     if (quota.remaining_today <= 0) {
-      return { blocked: true, reason: 'Tages-Limit (3 Bilder) erreicht.' };
+      return { blocked: true, reason: t('ai.limitDayShort') };
     }
     if (quota.remaining_week <= 0) {
-      return { blocked: true, reason: 'Wochen-Limit (10 Bilder) erreicht.' };
+      return { blocked: true, reason: t('ai.limitWeekShort') };
     }
     return { blocked: false, reason: '' };
   })();
@@ -223,7 +211,7 @@ export function AIImageSheet({
         {/* Header */}
         <View style={[s.header, { borderBottomColor: colors.border.subtle }]}>
           <Pressable onPress={handleClose} style={s.headerBtn}>
-            <Text style={[s.headerBtnText, { color: colors.text.muted }]}>Abbrechen</Text>
+            <Text style={[s.headerBtnText, { color: colors.text.muted }]}>{t('ai.cancel')}</Text>
           </Pressable>
           <View style={s.headerCenter}>
             <Sparkles size={16} color={colors.accent.primary} strokeWidth={2} />
@@ -285,7 +273,7 @@ export function AIImageSheet({
           {/* Prompt */}
           {!previewUrl && (
             <>
-              <Text style={[s.label, { color: colors.text.primary }]}>Dein Prompt</Text>
+              <Text style={[s.label, { color: colors.text.primary }]}>{t('ai.yourPrompt')}</Text>
               <TextInput
                 style={[
                   s.promptInput,
@@ -337,7 +325,7 @@ export function AIImageSheet({
               {/* Size-Picker */}
               {sizes.length > 1 && (
                 <>
-                  <Text style={[s.label, { color: colors.text.primary, marginTop: 20 }]}>Format</Text>
+                  <Text style={[s.label, { color: colors.text.primary, marginTop: 20 }]}>{t('ai.format')}</Text>
                   <View style={s.sizeRow}>
                     {sizes.map((sz) => {
                       const isActive = sz === size;
@@ -361,7 +349,7 @@ export function AIImageSheet({
                               { color: isActive ? colors.bg.primary : colors.text.primary },
                             ]}
                           >
-                            {sizeLabel(sz)}
+                            {sizeLabelKey(sz) ? t(sizeLabelKey(sz)!) : sz}
                           </Text>
                         </Pressable>
                       );
@@ -399,7 +387,7 @@ export function AIImageSheet({
                 ]}
               >
                 <RefreshCw size={16} color={colors.text.primary} strokeWidth={2} />
-                <Text style={[s.actionBtnText, { color: colors.text.primary }]}>Anderen Prompt</Text>
+                <Text style={[s.actionBtnText, { color: colors.text.primary }]}>{t('ai.otherPrompt')}</Text>
               </Pressable>
               <Pressable
                 onPress={handleUse}
@@ -407,7 +395,7 @@ export function AIImageSheet({
                 style={[s.actionBtn, { backgroundColor: colors.accent.primary }]}
               >
                 <Check size={16} color={colors.bg.primary} strokeWidth={2.5} />
-                <Text style={[s.actionBtnText, { color: colors.bg.primary }]}>Bild verwenden</Text>
+                <Text style={[s.actionBtnText, { color: colors.bg.primary }]}>{t('ai.useImage')}</Text>
               </Pressable>
             </>
           ) : (
@@ -425,12 +413,12 @@ export function AIImageSheet({
               {isGenerating ? (
                 <>
                   <ActivityIndicator color={colors.bg.primary} size="small" />
-                  <Text style={[s.actionBtnText, { color: colors.bg.primary }]}>Generiere…</Text>
+                  <Text style={[s.actionBtnText, { color: colors.bg.primary }]}>{t('ai.generating')}</Text>
                 </>
               ) : (
                 <>
                   <Sparkles size={16} color={colors.bg.primary} strokeWidth={2} />
-                  <Text style={[s.actionBtnText, { color: colors.bg.primary }]}>Bild generieren</Text>
+                  <Text style={[s.actionBtnText, { color: colors.bg.primary }]}>{t('ai.generate')}</Text>
                 </>
               )}
             </Pressable>
@@ -441,12 +429,12 @@ export function AIImageSheet({
   );
 }
 
-function sizeLabel(sz: AIImageSize): string {
-  if (sz === '512x512') return 'Klein · 1:1';
-  if (sz === '1024x1024') return 'Quadrat · 1:1';
-  if (sz === '1024x1536') return 'Hoch · 2:3';
-  if (sz === '1536x1024') return 'Quer · 3:2';
-  return sz;
+function sizeLabelKey(sz: AIImageSize): TranslationKey | null {
+  if (sz === '512x512') return 'ai.sizeSmall';
+  if (sz === '1024x1024') return 'ai.sizeSquare';
+  if (sz === '1024x1536') return 'ai.sizeTall';
+  if (sz === '1536x1024') return 'ai.sizeWide';
+  return null;
 }
 
 const s = StyleSheet.create({

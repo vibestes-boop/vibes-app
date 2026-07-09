@@ -390,7 +390,7 @@ export default function MyShopScreen() {
           <Pressable
             style={[s.addBtn, { backgroundColor: colors.bg.elevated, borderWidth: 1, borderColor: colors.border.subtle, marginRight: 8 }]}
             onPress={() => router.push('/shop/fulfillment' as any)}
-            accessibilityLabel="Bestellungen verwalten"
+            accessibilityLabel={t('myshop.a11yManageOrders')}
           >
             <Package size={18} color={colors.text.primary} strokeWidth={2.2} />
           </Pressable>
@@ -399,7 +399,7 @@ export default function MyShopScreen() {
         <Pressable
           style={[s.addBtn, { backgroundColor: colors.bg.elevated, borderWidth: 1, borderColor: colors.border.subtle, marginRight: 8 }]}
           onPress={() => router.push('/shop/analytics' as any)}
-          accessibilityLabel="Shop-Statistik"
+          accessibilityLabel={t('myshop.a11yShopStats')}
         >
           <BarChart3 size={18} color={colors.text.primary} strokeWidth={2.2} />
         </Pressable>
@@ -407,7 +407,7 @@ export default function MyShopScreen() {
         <Pressable
           style={[s.addBtn, { backgroundColor: colors.text.primary }]}
           onPress={openCreateSheet}
-          accessibilityLabel="Produkt erstellen"
+          accessibilityLabel={t('myshop.a11yCreateProduct')}
         >
           <Plus size={18} color={colors.bg.primary} strokeWidth={2.5} />
         </Pressable>
@@ -470,7 +470,7 @@ export default function MyShopScreen() {
         onUseImage={(url) => setForm((f) => ({ ...f, cover_url: url }))}
         purpose="shop_mockup"
         defaultSize="1024x1024"
-        title="Produktbild mit KI"
+        title={t('myshop.aiCoverTitle')}
         promptPlaceholder={t('myshop.aiPromptPlaceholder')}
         suggestions={
           form.category === 'physical'
@@ -599,7 +599,7 @@ function ProductCard({
         <Pressable
           onPress={(e) => { e.stopPropagation(); onDelete(); }}
           hitSlop={10}
-          accessibilityLabel="Löschen"
+          accessibilityLabel={t('myshop.delete')}
           style={s.cardActionBtn}
         >
           <Trash2 size={18} color='#EF4444' strokeWidth={2} />
@@ -705,14 +705,14 @@ function ProductFormSheet({
         >
           <Sparkles size={14} color={colors.accent.primary} strokeWidth={2} />
           <Text style={[s.aiPickerText, { color: colors.text.primary }]}>
-            Mit KI erstellen
+            {t('myshop.createWithAi')}
           </Text>
         </Pressable>
 
         {/* Galerie-Bilder */}
         <View style={s.galleryHeader}>
           <Text style={[s.label, { color: colors.text.primary, marginTop: 0, flex: 1 }]}>
-            Galerie ({(form.image_urls?.length ?? 0)}/8)
+            {t('myshop.gallery', { count: form.image_urls?.length ?? 0 })}
           </Text>
           <Pressable
             onPress={onPickGallery}
@@ -721,7 +721,7 @@ function ProductFormSheet({
           >
             {uploadingGallery
               ? <ActivityIndicator size="small" color={colors.text.primary} />
-              : <><Images size={14} color={colors.text.primary} strokeWidth={2} /><Text style={[s.galleryAddText, { color: colors.text.primary }]}>+ Bilder</Text></>
+              : <><Images size={14} color={colors.text.primary} strokeWidth={2} /><Text style={[s.galleryAddText, { color: colors.text.primary }]}>{t('myshop.addImages')}</Text></>
             }
           </Pressable>
         </View>
@@ -761,7 +761,7 @@ function ProductFormSheet({
                 onPress={() => setForm(f => ({ ...f, category: cat.key }))}
               >
                 <Icon size={16} color={isSelected ? colors.bg.primary : colors.text.muted} strokeWidth={2} />
-                <Text style={[s.catBtnLabel, { color: isSelected ? colors.bg.primary : colors.text.primary }]}>{t(cat.labelKey)}</Text>
+                <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[s.catBtnLabel, { color: isSelected ? colors.bg.primary : colors.text.primary, flexShrink: 1 }]}>{t(cat.labelKey)}</Text>
               </Pressable>
             );
           })}
@@ -771,7 +771,7 @@ function ProductFormSheet({
         {form.category === 'digital' && (
           <>
             <Text style={[s.label, { color: colors.text.primary }]}>
-              <FileText size={12} color={colors.text.primary} /> Digitale Datei *
+              <FileText size={12} color={colors.text.primary} /> {t('myshop.digitalFile')}
             </Text>
             <Pressable
               onPress={onPickFile}
@@ -795,7 +795,7 @@ function ProductFormSheet({
               )}
             </Pressable>
             <Text style={[s.fileHint, { color: colors.text.muted }]}>
-              Die Käuferin lädt diese Datei nach dem Kauf sicher herunter.
+              {t('myshop.digitalFileHint')}
             </Text>
           </>
         )}
@@ -830,9 +830,9 @@ function ProductFormSheet({
         {(isAdmin || isPreorder) && (
           <View style={[s.wozRow, { borderColor: colors.border.subtle, backgroundColor: colors.bg.elevated }]}>
             <View style={{ flex: 1 }}>
-              <Text style={[s.wozTitle, { color: colors.text.primary }]}>🌸 Vorbestellung (€)</Text>
+              <Text style={[s.wozTitle, { color: colors.text.primary }]}>{t('myshop.preorderEur')}</Text>
               <Text style={[s.wozSub, { color: colors.text.muted }]}>
-                Erst vormerken, später per Euro bezahlen — statt Coin-Kauf
+                {t('myshop.preorderEurSub')}
               </Text>
             </View>
             <Switch
@@ -884,7 +884,7 @@ function ProductFormSheet({
                 onChangeText={(t) => setForm(f => ({ ...f, price_coins: Math.min(1_000_000, Math.max(1, parseInt(t.replace(/[^0-9]/g, ''), 10) || 0)) }))}
               />
               <Text style={[s.priceHint, { color: colors.text.muted }]}>
-                ≈ {(form.price_coins * 0.0025).toFixed(2)} € für dich
+                {t('myshop.forYouEur', { eur: (form.price_coins * 0.0025).toFixed(2) })}
               </Text>
             </View>
           </>
@@ -897,7 +897,7 @@ function ProductFormSheet({
             style={[s.stockBtn, form.stock === -1 && { backgroundColor: colors.text.primary }, { borderColor: colors.border.subtle, backgroundColor: colors.bg.elevated }]}
             onPress={() => setForm(f => ({ ...f, stock: -1 }))}
           >
-            <Text style={{ color: form.stock === -1 ? colors.bg.primary : colors.text.primary, fontWeight: '700', fontSize: 13 }}>∞ Unbegrenzt</Text>
+            <Text style={{ color: form.stock === -1 ? colors.bg.primary : colors.text.primary, fontWeight: '700', fontSize: 13 }}>{t('myshop.unlimited')}</Text>
           </Pressable>
           <Pressable
             style={[s.stockBtn, form.stock >= 0 && { backgroundColor: colors.text.primary }, { borderColor: colors.border.subtle, backgroundColor: colors.bg.elevated }]}
@@ -920,7 +920,7 @@ function ProductFormSheet({
         {!isPreorder && (
           <>
             <Text style={[s.label, { color: colors.text.primary }]}>
-              <Percent size={12} color={colors.text.primary} /> Angebot (optional)
+              <Percent size={12} color={colors.text.primary} /> {t('myshop.saleOptional')}
             </Text>
             <View style={[s.priceRow, { backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle }]}>
               <CoinIcon size={18} />
@@ -946,7 +946,7 @@ function ProductFormSheet({
 
         {/* v1.26.3: Ort / Location — Freitext */}
         <Text style={[s.label, { color: colors.text.primary }]}>
-          <MapPin size={12} color={colors.text.primary} /> Ort (optional)
+          <MapPin size={12} color={colors.text.primary} /> {t('myshop.locationOptional')}
         </Text>
         <TextInput
           style={[s.input, { color: colors.text.primary, backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle }]}
@@ -1121,12 +1121,12 @@ const s = StyleSheet.create({
 
   label: { fontSize: 13, fontWeight: '700', marginBottom: 8, marginTop: 16 },
 
-  catRow: { flexDirection: 'row', gap: 8, marginBottom: 4 },
+  catRow: { flexDirection: 'row', gap: 6, marginBottom: 4 },
   catBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 6, paddingVertical: 10, borderRadius: 12, borderWidth: 1.5,
+    gap: 4, paddingVertical: 10, paddingHorizontal: 4, borderRadius: 12, borderWidth: 1.5,
   },
-  catBtnLabel: { fontSize: 12, fontWeight: '700' },
+  catBtnLabel: { fontSize: 11.5, fontWeight: '700' },
 
   input: {
     borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 12,
