@@ -31,6 +31,7 @@ import { useUserPosts } from '@/lib/usePosts';
 import { useGuildStories } from '@/lib/useStories';
 import { useTheme } from '@/lib/useTheme';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
+import { useI18n } from '@/lib/i18n';
 import { useFocusEffect } from '@react-navigation/native';
 import { useQueryClient } from '@tanstack/react-query';
 import { impactAsync,ImpactFeedbackStyle } from 'expo-haptics';
@@ -61,6 +62,7 @@ const shopCellTitle = { color: '#fff', fontSize: 11, fontWeight: '700' as const,
 const shopCellPrice = { color: '#fff', fontSize: 12, fontWeight: '600' as const, letterSpacing: 0.1 };
 
 export default function ProfileScreen() {
+  const { t } = useI18n();
   useThemedStatusBar('auto');
   const insets = useSafeAreaInsets();
   const router = useRouter();
@@ -222,16 +224,16 @@ export default function ProfileScreen() {
   };
 
   const handleDeletePost = (postId: string) => {
-    Alert.alert('Löschen?', 'Wirklich?', [
-      { text: 'Abbrechen', style: 'cancel' },
-      { text: 'Löschen', style: 'destructive', onPress: () => deletePost(postId) },
+    Alert.alert(t('profile.deleteTitle'), t('profile.deleteText'), [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('profile.delete'), style: 'destructive', onPress: () => deletePost(postId) },
     ]);
   };
 
   const handleSignOut = () =>
-    Alert.alert('Abmelden?', undefined, [
-      { text: 'Abbrechen', style: 'cancel' },
-      { text: 'Ausloggen', style: 'destructive', onPress: signOut },
+    Alert.alert(t('profile.signOutTitle'), undefined, [
+      { text: t('common.cancel'), style: 'cancel' },
+      { text: t('profile.signOut'), style: 'destructive', onPress: signOut },
     ]);
 
   const avatarInitial = (profile?.username ?? '?')[0].toUpperCase();
@@ -305,7 +307,7 @@ export default function ProfileScreen() {
             <View style={shopCellOverlay}>
               <Text style={shopCellTitle} numberOfLines={1}>{product.title}</Text>
               {isPreorder ? (
-                <Text style={shopCellPrice} numberOfLines={1}>{eur ?? 'Vorbestellen'}</Text>
+                <Text style={shopCellPrice} numberOfLines={1}>{eur ?? t('profile.preorder')}</Text>
               ) : (
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
                   <CoinIcon size={12} />
@@ -450,8 +452,8 @@ export default function ProfileScreen() {
               {drafts.length === 0 ? (
                 <View style={s.empty}>
                   <FileText size={40} color={colors.icon.muted} />
-                  <Text style={s.emptyTitle}>Noch keine Entwürfe ✏️</Text>
-                  <Text style={s.emptySub}>Speichere einen Post als Entwurf, um ihn später zu veröffentlichen.</Text>
+                  <Text style={s.emptyTitle}>{t('profile.draftsEmptyTitle')}</Text>
+                  <Text style={s.emptySub}>{t('profile.draftsEmptyDesc')}</Text>
                 </View>
               ) : (
                 drafts.map((draft) => (
@@ -461,7 +463,7 @@ export default function ProfileScreen() {
                     ]}>
                       <View style={{ flex: 1 }}>
                         <Text style={{ color: colors.text.primary, fontSize: 14, fontWeight: '600' }} numberOfLines={1}>
-                        {draft.caption || 'Ohne Titel'}
+                        {draft.caption || t('profile.untitled')}
                       </Text>
                         <Text style={{ color: colors.text.muted, fontSize: 11, marginTop: 2 }}>
                         {new Date(draft.createdAt).toLocaleDateString('de-DE')}
@@ -469,9 +471,9 @@ export default function ProfileScreen() {
                       </Text>
                     </View>
                     <Pressable
-                      onPress={() => Alert.alert('Entwurf löschen?', 'Dieser Entwurf wird unwiderruflich gelöscht.', [
-                        { text: 'Abbrechen', style: 'cancel' },
-                        { text: 'Löschen', style: 'destructive', onPress: () => deleteDraft(draft.id) },
+                      onPress={() => Alert.alert(t('profile.draftDeleteTitle'), t('profile.draftDeleteText'), [
+                        { text: t('common.cancel'), style: 'cancel' },
+                        { text: t('profile.delete'), style: 'destructive', onPress: () => deleteDraft(draft.id) },
                       ])}
                       hitSlop={8}
                     >
@@ -509,26 +511,26 @@ export default function ProfileScreen() {
           ) : activeTab === 'vibes' ? (
             <View style={s.empty}>
               <Sparkles size={40} color={colors.icon.muted} />
-              <Text style={s.emptyTitle}>Dein erster Vibe wartet 🎬</Text>
-              <Text style={s.emptySub}>Tipp auf + und zeig der Community, was du draufhast.</Text>
+              <Text style={s.emptyTitle}>{t('profile.vibesEmptyTitle')}</Text>
+              <Text style={s.emptySub}>{t('profile.vibesEmptyDesc')}</Text>
             </View>
           ) : activeTab === 'shop' ? (
             <View style={s.empty}>
               <ShoppingBag size={40} color={colors.icon.muted} />
-              <Text style={s.emptyTitle}>Dein Shop ist noch leer 🛍️</Text>
-              <Text style={s.emptySub}>Leg dein erstes Produkt über „Mein Shop" in den Tools an.</Text>
+              <Text style={s.emptyTitle}>{t('profile.shopEmptyTitle')}</Text>
+              <Text style={s.emptySub}>{t('profile.shopEmptyDesc')}</Text>
             </View>
           ) : activeTab === 'likes' ? (
             <View style={s.empty}>
               <Heart size={40} color={colors.icon.muted} />
-              <Text style={s.emptyTitle}>Noch nichts geliket ❤️</Text>
-              <Text style={s.emptySub}>Was dir gefällt, sammelt sich hier.</Text>
+              <Text style={s.emptyTitle}>{t('profile.likesEmptyTitle')}</Text>
+              <Text style={s.emptySub}>{t('profile.likesEmptyDesc')}</Text>
             </View>
           ) : (
             <View style={s.empty}>
               <Bookmark size={40} color={colors.icon.muted} />
-              <Text style={s.emptyTitle}>Noch nichts gespeichert 🔖</Text>
-              <Text style={s.emptySub}>Tipp das Lesezeichen bei einem Post — dann ist es hier.</Text>
+              <Text style={s.emptyTitle}>{t('profile.savedEmptyTitle')}</Text>
+              <Text style={s.emptySub}>{t('profile.savedEmptyDesc')}</Text>
             </View>
           )
         }

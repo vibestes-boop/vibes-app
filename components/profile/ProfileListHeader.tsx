@@ -17,6 +17,7 @@ import { AvatarZoomViewer } from '@/components/ui/AvatarZoomViewer';
 import { useBattleStats } from '@/lib/useBattleStats';
 import { useOrderRating } from '@/lib/useShop';
 import { useTheme } from '@/lib/useTheme';
+import { useI18n } from '@/lib/i18n';
 import { ProfileHighlightsRow } from './ProfileHighlightsRow';
 import { getProfileStyles } from './profileStyles';
 import type { ProfileTab } from './types';
@@ -82,6 +83,7 @@ function ProfileActionRow({
   onMyShop?: () => void; onSavedProducts?: () => void;
   onMyOrders?: () => void; onCreatorStudio?: () => void; onCreatorStats?: () => void;
 }) {
+  const { t } = useI18n();
   const [toolsOpen, setToolsOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const insets = useSafeAreaInsets();
@@ -99,7 +101,7 @@ function ProfileActionRow({
           onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); onEditProfile(); }}
         >
           <Edit3 size={14} color={colors.bg.primary} strokeWidth={2.5} />
-          <Text style={[msx.primaryText, { color: colors.bg.primary }]}>Profil bearbeiten</Text>
+          <Text style={[msx.primaryText, { color: colors.bg.primary }]}>{t('profile.editProfile')}</Text>
         </Pressable>
 
         {/* Teilen — Outline */}
@@ -111,7 +113,7 @@ function ProfileActionRow({
           }}
         >
           <Share2 size={14} color={colors.text.primary} strokeWidth={2} />
-          <Text style={[msx.secondaryText, { color: colors.text.primary }]}>Teilen</Text>
+          <Text style={[msx.secondaryText, { color: colors.text.primary }]}>{t('profile.share')}</Text>
         </Pressable>
 
         {/* ProfileShareSheet für eigenes Profil */}
@@ -163,7 +165,7 @@ function ProfileActionRow({
           { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle, paddingBottom: insets.bottom + 12 },
         ]}>
           <View style={[msx.handle, { backgroundColor: colors.border.strong }]} />
-          <Text style={[msx.sheetTitle, { color: colors.text.primary }]}>Tools</Text>
+          <Text style={[msx.sheetTitle, { color: colors.text.primary }]}>{t('profile.tools')}</Text>
 
           <ToolSection
             title="Shop"
@@ -171,17 +173,17 @@ function ProfileActionRow({
             items={[
               onMyShop && {
                 icon: Package, tint: colors.accent.secondary,
-                label: 'Mein Shop', sub: 'Produkte verwalten & erstellen',
+                label: t('profile.myShop'), sub: t('profile.myShopSub'),
                 onPress: () => { setToolsOpen(false); onMyShop(); },
               },
               onSavedProducts && {
                 icon: Bookmark, tint: '#1D9BF0',
-                label: 'Gespeicherte Produkte', sub: 'Merkliste anzeigen',
+                label: t('profile.savedProducts'), sub: t('profile.savedProductsSub'),
                 onPress: () => { setToolsOpen(false); onSavedProducts(); },
               },
               onMyOrders && {
                 icon: ShoppingBag, tint: colors.accent.warning,
-                label: 'Bestellungen & Verkäufe', sub: 'Käufe und Einnahmen',
+                label: t('profile.ordersSales'), sub: t('profile.ordersSalesSub'),
                 onPress: () => { setToolsOpen(false); onMyOrders(); },
               },
             ].filter(Boolean) as ToolItem[]}
@@ -194,12 +196,12 @@ function ProfileActionRow({
             items={[
               onCreatorStudio && {
                 icon: Sparkles, tint: colors.accent.secondary,
-                label: 'Creator Studio', sub: 'Live-Einstellungen, Duet & mehr',
+                label: t('profile.creatorStudio'), sub: t('profile.creatorStudioSub'),
                 onPress: () => { setToolsOpen(false); onCreatorStudio(); },
               },
               onCreatorStats && {
                 icon: BarChart, tint: colors.accent.success,
-                label: 'Creator Dashboard', sub: 'Statistiken, Follower & Einnahmen',
+                label: t('profile.creatorDashboard'), sub: t('profile.creatorDashboardSub'),
                 onPress: () => { setToolsOpen(false); onCreatorStats(); },
               },
             ].filter(Boolean) as ToolItem[]}
@@ -311,6 +313,7 @@ export function ProfileListHeader({
   onTabChange: (tab: ProfileTab) => void;
 }) {
   const { colors } = useTheme();
+  const { t } = useI18n();
   const s = getProfileStyles(colors);
   const [avatarZoomed, setAvatarZoomed] = useState(false);
   const formatCount = (n: number) =>
@@ -398,7 +401,7 @@ export function ProfileListHeader({
         <View style={s.statsRow}>
           <View style={s.statItem}>
             <Text style={s.statNum}>{loadingPosts ? '–' : formatCount(postCount)}</Text>
-            <Text style={s.statLabel}>Posts</Text>
+            <Text style={s.statLabel}>{t('profile.posts')}</Text>
           </View>
           <View style={s.statDivider} />
           <Pressable
@@ -412,7 +415,7 @@ export function ProfileListHeader({
             }}
           >
             <Text style={s.statNum}>{formatCount(followCounts?.followers ?? 0)}</Text>
-            <Text style={s.statLabel}>Follower</Text>
+            <Text style={s.statLabel}>{t('profile.followers')}</Text>
           </Pressable>
           <View style={s.statDivider} />
           <Pressable
@@ -426,7 +429,7 @@ export function ProfileListHeader({
             }}
           >
             <Text style={s.statNum}>{formatCount(followCounts?.following ?? 0)}</Text>
-            <Text style={s.statLabel}>Following</Text>
+            <Text style={s.statLabel}>{t('profile.followingCount')}</Text>
           </Pressable>
         </View>
       </View>
@@ -481,7 +484,7 @@ export function ProfileListHeader({
             {profile?.women_only_verified ? (
               <View style={[s.metaChip, { backgroundColor: 'rgba(244,114,182,0.12)', borderColor: 'rgba(244,114,182,0.3)' }]}>
                 <Flower2 size={13} color="#F472B6" strokeWidth={2} />
-                <Text style={[s.metaChipText, { color: '#F472B6' }]}>Women-Only</Text>
+                <Text style={[s.metaChipText, { color: '#F472B6' }]}>{t('profile.womenOnly')}</Text>
               </View>
             ) : null}
             {showBattleRecord && battleStats ? (

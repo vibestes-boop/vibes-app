@@ -3,6 +3,7 @@ import { supabase } from '@/lib/supabase';
 import { useInfiniteQuery,useQuery } from '@tanstack/react-query';
 import { Clock,Flame,Sparkles } from 'lucide-react-native';
 import type { ElementType } from 'react';
+import type { TranslationKey } from '@/lib/i18n';
 
 export const EXPLORE_FALLBACK_TAGS = [
   'Tech',
@@ -35,15 +36,16 @@ export type ExploreUserResult = {
   bio: string | null;
 };
 
+// labelKey/subKey → Übersetzung am Renderpunkt (ExploreSortModal via t()).
 export const EXPLORE_SORT_OPTIONS: {
   id: ExploreSortMode;
-  label: string;
-  sub: string;
+  labelKey: TranslationKey;
+  subKey: TranslationKey;
   Icon: ElementType;
 }[] = [
-  { id: 'forYou', label: 'Für dich', sub: 'Personalisiert nach Dwell-Time', Icon: Sparkles },
-  { id: 'trending', label: 'Trending', sub: 'Meistgeschaute Posts der Woche', Icon: Flame },
-  { id: 'newest', label: 'Neueste', sub: 'Chronologisch – komplett unfiltered', Icon: Clock },
+  { id: 'forYou', labelKey: 'explore.sortForYou', subKey: 'explore.sortForYouSub', Icon: Sparkles },
+  { id: 'trending', labelKey: 'explore.sortTrending', subKey: 'explore.sortTrendingSub', Icon: Flame },
+  { id: 'newest', labelKey: 'explore.sortNewest', subKey: 'explore.sortNewestSub', Icon: Clock },
 ];
 
 export function useTrendingTags() {

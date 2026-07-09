@@ -5,6 +5,7 @@ import { Search,SlidersHorizontal,X } from 'lucide-react-native';
 import { useRef } from 'react';
 import { Pressable,TextInput,View } from 'react-native';
 import { getExploreStyles } from './exploreStyles';
+import { useI18n } from '@/lib/i18n';
 
 export function ExploreSearchBar({
   query,
@@ -17,6 +18,7 @@ export function ExploreSearchBar({
   sortMode: ExploreSortMode;
   onOpenSort: () => void;
 }) {
+  const { t } = useI18n();
   const inputRef = useRef<TextInput>(null);
   const { colors } = useTheme();
   const styles = getExploreStyles(colors);
@@ -31,7 +33,7 @@ export function ExploreSearchBar({
             style={styles.searchInput}
             value={query}
             onChangeText={onQueryChange}
-            placeholder="Suche nach Nutzern oder Posts…"
+            placeholder={t('explore.searchPlaceholder')}
             placeholderTextColor={colors.text.muted}
             autoCapitalize="none"
             autoCorrect={false}

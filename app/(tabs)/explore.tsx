@@ -24,6 +24,7 @@ type ExploreSortMode,
 import { useShopProducts } from '@/lib/useShop';
 import { useTheme } from '@/lib/useTheme';
 import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
+import { useI18n } from '@/lib/i18n';
 import { useWomenOnly } from '@/lib/useWomenOnly';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams,useRouter } from 'expo-router';
@@ -44,6 +45,7 @@ function useDebounce<T>(value: T, delay = 300): T {
 }
 
 export default function ExploreScreen() {
+  const { t } = useI18n();
   useThemedStatusBar('auto');
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
@@ -130,7 +132,7 @@ export default function ExploreScreen() {
         <View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8 }}>
             <Sparkles size={15} color={colors.text.primary} strokeWidth={2} />
-            <Text style={[styles.sectionLabel, { marginBottom: 0 }]}>Nutzer entdecken</Text>
+            <Text style={[styles.sectionLabel, { marginBottom: 0 }]}>{t('explore.discoverUsers')}</Text>
           </View>
           <RNScrollView
             horizontal
@@ -174,10 +176,10 @@ export default function ExploreScreen() {
               <Text style={wozBannerStyle.emoji}>🌸</Text>
               <View>
                 <Text style={[wozBannerStyle.title, { color: canAccessWomenOnly ? colors.accent.rose : colors.text.primary }]}>
-                  {canAccessWomenOnly ? 'Women-Only Zone' : 'Women-Only Zone beitreten'}
+                  {canAccessWomenOnly ? t('explore.wozTitle') : t('explore.wozJoin')}
                 </Text>
                 <Text style={[wozBannerStyle.sub, { color: colors.text.muted }]}>
-                  {canAccessWomenOnly ? 'Dein geschützter Bereich ✓' : 'Exklusiv · Sicher · Nur für Frauen'}
+                  {canAccessWomenOnly ? t('explore.wozActive') : t('explore.wozTeaser')}
                 </Text>
               </View>
             </View>
@@ -197,9 +199,9 @@ export default function ExploreScreen() {
               onPress={() => router.navigate('/(tabs)/shop' as any)}
               style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}
               accessibilityRole="button"
-              accessibilityLabel="Alle Produkte anzeigen"
+              accessibilityLabel={t('explore.showAllProducts')}
             >
-              <Text style={{ fontSize: 12, fontWeight: '600', color: colors.text.muted }}>Alle anzeigen</Text>
+              <Text style={{ fontSize: 12, fontWeight: '600', color: colors.text.muted }}>{t('explore.showAll')}</Text>
               <ChevronRight size={13} color={colors.text.muted} strokeWidth={2} />
             </Pressable>
           </View>
@@ -231,7 +233,7 @@ export default function ExploreScreen() {
 
       {isSearching && (users?.length ?? 0) > 0 && (
         <View style={styles.usersSection}>
-          <Text style={styles.sectionLabel}>Nutzer</Text>
+          <Text style={styles.sectionLabel}>{t('explore.users')}</Text>
           {users!.map((u) => (
             <ExploreUserRow key={u.id} user={u} />
           ))}
@@ -249,27 +251,27 @@ export default function ExploreScreen() {
   ) : isSearching ? (
     <View style={styles.emptyWrap}>
       <SearchX size={48} color="rgba(255,255,255,0.3)" />
-      <Text style={styles.emptyText}>{`Dazu finde ich nichts 🔍 — probier was anderes für „${debouncedQuery}"`}</Text>
+      <Text style={styles.emptyText}>{t('explore.nothingFound', { query: debouncedQuery })}</Text>
       <Pressable
         onPress={() => setQuery('')}
         style={emptyBtnStyle.btn}
         accessibilityRole="button"
-        accessibilityLabel="Suche löschen"
+        accessibilityLabel={t('explore.clearSearch')}
       >
-        <Text style={[emptyBtnStyle.btnText, { color: colors.text.primary }]}>Suche löschen</Text>
+        <Text style={[emptyBtnStyle.btnText, { color: colors.text.primary }]}>{t('explore.clearSearch')}</Text>
       </Pressable>
     </View>
   ) : activeTag ? (
     <View style={styles.emptyWrap}>
       <Tag size={48} color="rgba(255,255,255,0.3)" />
-      <Text style={styles.emptyText}>{`Zu „${activeTag}" ist noch nichts dabei 🏷️ — bald bestimmt!`}</Text>
+      <Text style={styles.emptyText}>{t('explore.tagEmpty', { tag: activeTag })}</Text>
       <Pressable
         onPress={() => setActiveTag(null)}
         style={emptyBtnStyle.btn}
         accessibilityRole="button"
         accessibilityLabel="Tag-Filter entfernen"
       >
-        <Text style={[emptyBtnStyle.btnText, { color: colors.text.primary }]}>Filter entfernen</Text>
+        <Text style={[emptyBtnStyle.btnText, { color: colors.text.primary }]}>{t('feed.removeFilter')}</Text>
       </Pressable>
     </View>
   ) : null;

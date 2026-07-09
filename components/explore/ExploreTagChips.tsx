@@ -1,4 +1,5 @@
 import { useTheme } from '@/lib/useTheme';
+import { useI18n } from '@/lib/i18n';
 import { Pressable,ScrollView,StyleSheet,Text } from 'react-native';
 
 export function ExploreTagChips({
@@ -10,6 +11,7 @@ export function ExploreTagChips({
   activeTag: string | null;
   onSelectTag: (tag: string | null) => void;
 }) {
+  const { t } = useI18n();
   const { colors, isDark } = useTheme();
 
   const chip = {
@@ -48,7 +50,7 @@ export function ExploreTagChips({
         style={[chip, !activeTag && chipActive]}
         onPress={() => onSelectTag(null)}
       >
-        <Text style={[chipText, !activeTag && chipTextActive]}>Alle</Text>
+        <Text style={[chipText, !activeTag && chipTextActive]}>{t('explore.all')}</Text>
       </Pressable>
       {tags.map((tag) => (
         <Pressable

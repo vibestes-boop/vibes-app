@@ -1,6 +1,7 @@
 import type { ExploreUserResult } from '@/lib/useExplore';
 import { useFollow } from '@/lib/useFollow';
 import { useTheme } from '@/lib/useTheme';
+import { useI18n } from '@/lib/i18n';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { ActivityIndicator,Pressable,StyleSheet,Text,View } from 'react-native';
@@ -15,6 +16,7 @@ export function ExploreUserRow({
   reasonLabel?: string;
   compact?: boolean;
 }) {
+  const { t } = useI18n();
   const initials = user.username?.[0]?.toUpperCase() ?? '?';
   const { isFollowing, toggle, isLoading, isOwnProfile } = useFollow(user.id);
   const { colors } = useTheme();
@@ -55,7 +57,7 @@ export function ExploreUserRow({
                 { color: isFollowing ? '#FFFFFF' : colors.text.secondary },
                 isFollowing && compactStyles.followBtnTextActive,
               ]}>
-                {isFollowing ? 'Gefolgt' : '+ Folgen'}
+                {isFollowing ? t('explore.following') : t('explore.follow')}
               </Text>
             )}
           </Pressable>
@@ -106,7 +108,7 @@ export function ExploreUserRow({
               fontSize: 12,
               fontWeight: '700',
             }}>
-              {isFollowing ? 'Gefolgt' : '+ Folgen'}
+              {isFollowing ? t('explore.following') : t('explore.follow')}
             </Text>
           )}
         </Pressable>
