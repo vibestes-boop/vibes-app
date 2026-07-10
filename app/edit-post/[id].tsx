@@ -1,3 +1,4 @@
+import { useI18n } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 import { useUpdatePost } from '@/lib/usePostManagement';
 import { useMyProducts } from '@/lib/useShop';
@@ -40,6 +41,7 @@ export default function EditPostScreen() {
   const router  = useRouter();
   const insets  = useSafeAreaInsets();
   const { colors } = useTheme();
+  const { t } = useI18n();
 
   const [loading, setLoading]   = useState(true);
   const [caption, setCaption]   = useState('');
@@ -62,7 +64,7 @@ export default function EditPostScreen() {
       .single()
       .then(({ data, error }) => {
         if (error) {
-          Alert.alert('Hoppla 🙈', 'Der Post ließ sich nicht laden — gleich nochmal?');
+          Alert.alert(t('create.oops'), t('posts.loadFailed'));
           setLoading(false);
           return;
         }
@@ -92,7 +94,7 @@ export default function EditPostScreen() {
       await supabase.from('posts').update({ women_only: womenOnly, product_id: linkedProductId }).eq('id', id);
       router.back();
     } catch {
-      Alert.alert('Hoppla 🙈', 'Speichern ging nicht durch — gleich nochmal?');
+      Alert.alert(t('create.oops'), t('posts.saveFailed'));
     }
   };
 

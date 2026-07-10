@@ -11,6 +11,7 @@ import { PostShareModal } from '@/components/feed/PostShareModal';
 import { PostManageModal } from '@/components/profile/PostManageModal';
 import CommentsSheet from '@/components/ui/CommentsSheet';
 import { useAuthStore } from '@/lib/authStore';
+import { useI18n } from '@/lib/i18n';
 import { useFollow } from '@/lib/useFollow';
 import { useTogglePinPost } from '@/lib/usePostManagement';
 import { supabase } from '@/lib/supabase';
@@ -501,6 +502,7 @@ export default function UserPostsScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { profile } = useAuthStore();
+  const { t } = useI18n();
   const queryClient = useQueryClient();
 
   const [posts, setPosts] = useState<PostItem[]>([]);
@@ -595,10 +597,10 @@ export default function UserPostsScreen() {
   }, [userId, postIds]);
 
   const handleDelete = (postId: string) => {
-    Alert.alert('Post löschen', 'Wirklich löschen?', [
-      { text: 'Abbrechen', style: 'cancel' },
+    Alert.alert(t('posts.deleteTitle'), t('posts.deleteConfirm'), [
+      { text: t('common.cancel'), style: 'cancel' },
       {
-        text: 'Löschen',
+        text: t('posts.delete'),
         style: 'destructive',
         onPress: async () => {
           await supabase.from('posts').delete().eq('id', postId);

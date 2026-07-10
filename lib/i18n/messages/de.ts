@@ -985,6 +985,24 @@ export const de = {
     aiAbstract: 'Abstrakte Komposition in warmen Farben',
     aiMoody: 'Moody-Portrait in Neon-Licht, cinematisch',
     aiStreet: 'Street-Photography-Look, schwarz-weiß',
+    // AR-Kamera
+    recStuck: 'Aufnahme hat gehakt 🙈',
+    tryAgainShort: 'Gleich nochmal versuchen?',
+  },
+  story: {
+    permTitle: 'Berechtigung',
+    permPhotos: 'Bitte erlaube den Zugriff auf deine Fotos.',
+    published: 'Story veröffentlicht! 🎉',
+    publishedText: 'Deine Story ist 24 Stunden sichtbar.',
+    almostTitle: 'Fast geschafft 🙈',
+    failedText: 'Deine Story ist nicht durchgegangen — kurz nochmal?',
+  },
+  posts: {
+    deleteTitle: 'Post löschen',
+    deleteConfirm: 'Wirklich löschen?',
+    delete: 'Löschen',
+    loadFailed: 'Der Post ließ sich nicht laden — gleich nochmal?',
+    saveFailed: 'Speichern ging nicht durch — gleich nochmal?',
   },
   auth: {
     tagline: 'Dein Feed. Deine Regeln.',

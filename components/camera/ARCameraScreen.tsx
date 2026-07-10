@@ -23,6 +23,7 @@ type CameraFilter,
 type FrameFilterId,
 type ShaderFilterId,
 } from '@/lib/cameraFilters';
+import { useI18n } from '@/lib/i18n';
 import { SHADER_REGISTRY } from '@/lib/cameraShaders';
 import { getStickerPosition,useFaceDetection } from '@/lib/useFaceDetection';
 import { useLiveFaceDetection } from '@/lib/useLiveFaceDetection';
@@ -397,6 +398,7 @@ interface ARCameraScreenProps {
 }
 
 export function ARCameraScreen({ onMediaCaptured, onClose }: ARCameraScreenProps) {
+  const { t } = useI18n();
   const { hasPermission, requestPermission } = useCameraPermission();
   const isFocused   = useIsFocused();
   const [cameraPosition, setCameraPosition] = useState<'front' | 'back'>('front');
@@ -523,7 +525,7 @@ export function ARCameraScreen({ onMediaCaptured, onClose }: ARCameraScreenProps
       setCapturedPhoto(`file://${photo.path}`);
     } catch {
       triggerErrorHaptic();
-      Alert.alert('Hoppla 🙈', 'Das Foto hat nicht geklappt — gleich nochmal?');
+      Alert.alert(t('create.oops'), t('create.photoFailed'));
     } finally {
       setIsBusy(false);
     }
@@ -543,7 +545,7 @@ export function ARCameraScreen({ onMediaCaptured, onClose }: ARCameraScreenProps
         onRecordingError: (err) => {
           setIsRecording(false);
           triggerErrorHaptic();
-          Alert.alert('Aufnahme hat gehakt 🙈', err?.message ?? 'Gleich nochmal versuchen?');
+          Alert.alert(t('create.recStuck'), err?.message ?? t('create.tryAgainShort'));
         },
       });
     } else {

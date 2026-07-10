@@ -1,4 +1,5 @@
 import { useAuthStore } from '@/lib/authStore';
+import { useI18n } from '@/lib/i18n';
 import { generateAndUploadThumbnail,uploadPostMedia } from '@/lib/uploadMedia';
 import { useCreateStory,type StoryPoll } from '@/lib/useStories';
 import { Image } from 'expo-image';
@@ -26,6 +27,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function CreateStoryScreen() {
   useThemedStatusBar('light');
+  const { t } = useI18n();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { profile } = useAuthStore();
@@ -48,7 +50,7 @@ export default function CreateStoryScreen() {
   const pickMedia = useCallback(async () => {
     const { status } = await requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Berechtigung', 'Bitte erlaube den Zugriff auf deine Fotos.');
+      Alert.alert(t('story.permTitle'), t('story.permPhotos'));
       return;
     }
     const result = await launchImageLibraryAsync({
@@ -93,11 +95,11 @@ export default function CreateStoryScreen() {
           : null;
 
       await createStory({ mediaUrl: publicUrl, mediaType, interactive, thumbnailUrl });
-      Alert.alert('Story veröffentlicht! 🎉', 'Deine Story ist 24 Stunden sichtbar.', [
-        { text: 'OK', onPress: () => router.back() },
+      Alert.alert(t('story.published'), t('story.publishedText'), [
+        { text: t('common.ok'), onPress: () => router.back() },
       ]);
     } catch (err: any) {
-      Alert.alert('Fast geschafft 🙈', err?.message ?? 'Deine Story ist nicht durchgegangen — kurz nochmal?');
+      Alert.alert(t('story.almostTitle'), err?.message ?? t('story.failedText'));
     } finally {
       setUploading(false);
     }
