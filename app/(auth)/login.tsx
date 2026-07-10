@@ -90,7 +90,7 @@ export default function LoginScreen() {
 
       {/* ── Sprach-Toggle (vor dem Login erreichbar — Neulinge!) ── */}
       <View style={styles.langSwitch}>
-        {(['de', 'ru'] as const).map((loc) => {
+        {(['de', 'ru', 'en', 'ce'] as const).map((loc) => {
           const active = locale === loc;
           return (
             <Pressable

@@ -588,14 +588,16 @@ export default function SettingsScreen() {
             </View>
             <View style={{ flex: 1, gap: 10 }}>
               <Text style={[s.fieldLabel, { color: colors.text.muted }]}>{t('settings.langLabel')}</Text>
-              <View style={s.themeRow}>
+              <View style={s.langRow}>
                 {([
                   { key: 'auto', label: t('settings.langAuto'), active: !appPickedByUser, onPress: () => useDeviceLocale() },
                   { key: 'de',   label: 'Deutsch',  active: appPickedByUser && appLocale === 'de', onPress: () => setAppLocale('de') },
                   { key: 'ru',   label: 'Русский',  active: appPickedByUser && appLocale === 'ru', onPress: () => setAppLocale('ru') },
+                  { key: 'en',   label: 'English',  active: appPickedByUser && appLocale === 'en', onPress: () => setAppLocale('en') },
+                  { key: 'ce',   label: 'Нохчийн',  active: appPickedByUser && appLocale === 'ce', onPress: () => setAppLocale('ce') },
                 ] as const).map(({ key, label, active, onPress }) => (
                   <Pressable key={key} onPress={onPress}
-                    style={[s.themeBtn, {
+                    style={[s.langBtn, {
                       backgroundColor: active ? colors.text.primary : colors.bg.elevated,
                       borderColor: active ? colors.text.primary : colors.border.default,
                     }]}
@@ -987,6 +989,12 @@ const s = StyleSheet.create({
   themeRow: { flexDirection: 'row', gap: 8 },
   themeBtn: { flex: 1, paddingVertical: 10, borderRadius: 12, alignItems: 'center', borderWidth: StyleSheet.hairlineWidth },
   themeBtnTxt: { fontSize: 12, fontWeight: '600' },
+  // Language row (wraps — 5 options)
+  langRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  langBtn: {
+    flexGrow: 1, flexBasis: '30%', paddingVertical: 10, borderRadius: 12,
+    alignItems: 'center', borderWidth: StyleSheet.hairlineWidth,
+  },
 
   // Danger
   dangerBtn: {

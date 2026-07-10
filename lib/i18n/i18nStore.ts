@@ -26,7 +26,10 @@ function detectDeviceLocale(): AppLocale {
     } else {
       raw = (NativeModules.I18nManager as any)?.localeIdentifier;
     }
-    if (raw && raw.toLowerCase().startsWith('ru')) return 'ru';
+    const low = raw?.toLowerCase() ?? '';
+    if (low.startsWith('ru')) return 'ru';
+    if (low.startsWith('ce')) return 'ce';
+    if (low.startsWith('en')) return 'en';
   } catch {
     // Fallback unten
   }
