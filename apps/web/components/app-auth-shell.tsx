@@ -154,11 +154,17 @@ export function AppAuthShell() {
     };
   }, [getSupabase, loadAccount]);
 
+  // Ausgeloggte Landing (`/`): bringt eigene Navbar/CTAs/Footer im dunklen
+  // Marketing-Design mit — die globalen Glass-Pills würden die Login-Buttons
+  // doppeln und die Tab-Bar ragt im Light-Theme hell in die Dark-Seite.
+  const onAnonymousLanding = pathname === '/' && state.status !== 'authenticated';
+
   const hideGlobalChrome =
     pathname === '/login' ||
     pathname === '/signup' ||
     pathname?.startsWith('/auth/') ||
-    pathname?.startsWith('/reset-password');
+    pathname?.startsWith('/reset-password') ||
+    onAnonymousLanding;
 
   const viewerId = state.status === 'authenticated' ? state.user.id : null;
 

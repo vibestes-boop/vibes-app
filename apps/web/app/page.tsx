@@ -8,6 +8,7 @@ import {
   getSuggestedFollows,
 } from '@/lib/data/feed';
 import { getCachedActiveLiveSessions } from '@/lib/data/live';
+import { getShopProducts } from '@/lib/data/shop';
 
 /**
  * `/` Home-Route.
@@ -58,9 +59,12 @@ export default async function HomePage() {
   const userId = session?.user?.id ?? null;
 
   if (!userId) {
-    const [liveNow, trendingPosts] = await Promise.all([
+    const [liveNow, trendingPosts, shopProducts] = await Promise.all([
       withTimeout(getCachedActiveLiveSessions(4), [], HOME_PUBLIC_DYNAMIC_TIMEOUT_MS),
       withTimeout(getPublicForYouFeed({ limit: 6 }), [], HOME_PUBLIC_DYNAMIC_TIMEOUT_MS),
+      // Shop-Vorschau: etwas großzügigeres Timeout — die Sektion ist der
+      // Conversion-Kern der Landing (Parfüm-Funnel) und soll zuverlässig da sein.
+      withTimeout(getShopProducts({ limit: 4, sort: 'popular' }), [], 600),
     ]);
     // ── JSON-LD: WebSite + SearchAction ─────────────────────────────────────
     // Enables Google Sitelinks Searchbox in search results. Only on the public
@@ -89,7 +93,7 @@ export default async function HomePage() {
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: safeJsonLd(websiteJsonLd) }}
         />
-        <LandingPage featured={[]} liveNow={liveNow} trendingPosts={trendingPosts} />
+        <LandingPage featured={[]} liveNow={liveNow} trendingPosts={trendingPosts} shopProducts={shopProducts} />
       </>
     );
   }
