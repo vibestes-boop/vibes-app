@@ -5,6 +5,7 @@ import { COIN_SHOP_ENABLED } from '@/lib/featureFlags';
  */
 
 import { RollupNumber } from '@/components/ui/RollupNumber';
+import { useI18n } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 import { useCoinsWallet } from '@/lib/useGifts';
 import * as Haptics from 'expo-haptics';
@@ -48,6 +49,7 @@ function CoinShopScreen() {
   useThemedStatusBar('light');
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { t } = useI18n();
   const { coins, loading: walletLoading, refetch } = useCoinsWallet();
   const [selected, setSelected] = useState(COIN_PACKAGES[1].id);
   const [purchasing, setPurchasing] = useState(false);
@@ -100,7 +102,7 @@ function CoinShopScreen() {
 
   async function handleBuy() {
     if (!iapAvailable) {
-      Alert.alert('Nur im App Store', 'Käufe sind nur im fertigen App Store Build verfügbar.');
+      Alert.alert(t('coinshop.appStoreOnlyTitle'), t('coinshop.appStoreOnlyText'));
       return;
     }
     setPurchasing(true);
@@ -115,7 +117,7 @@ function CoinShopScreen() {
       await new Promise(r => setTimeout(r, 1500));
       await refetch();
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('🎉 Danke!', `${selectedPkg.coins} Serlo Coins wurden gutgeschrieben.`);
+      Alert.alert(t('coinshop.thanksTitle'), t('coinshop.credited', { coins: selectedPkg.coins }));
     } catch (err: unknown) {
       // err.userCancelled: RevenueCat setzt diesen Flag wenn User abbricht — kein Alert
       if ((err as Record<string, unknown>)?.userCancelled) return;
@@ -125,20 +127,20 @@ function CoinShopScreen() {
       // PurchasesErrorCode: 2 = NetworkError, 7 = PaymentPending
       if (rcCode === 2) {
         Alert.alert(
-          'Keine Verbindung',
-          'Prüfe deine Internetverbindung und versuche es erneut.',
-          [{ text: 'Erneut versuchen', onPress: handleBuy }, { text: 'Abbrechen', style: 'cancel' }]
+          t('coinshop.noConnTitle'),
+          t('coinshop.noConnText'),
+          [{ text: t('coinshop.retry'), onPress: handleBuy }, { text: t('common.cancel'), style: 'cancel' }]
         );
       } else if (rcCode === 7) {
         Alert.alert(
-          'Zahlung ausstehend',
-          'Deine Zahlung wird gerade verarbeitet. Die Coins werden in Kürze gutgeschrieben.'
+          t('coinshop.pendingTitle'),
+          t('coinshop.pendingText')
         );
       } else {
         Alert.alert(
-          'Kauf hat nicht geklappt',
-          'Da ist leider was schiefgelaufen. Versuch es in ein paar Minuten nochmal — oder melde dich beim Support, wir helfen dir.',
-          [{ text: 'OK' }]
+          t('coinshop.buyFailedTitle'),
+          t('coinshop.buyFailedText'),
+          [{ text: t('common.ok') }]
         );
       }
     } finally {
@@ -249,8 +251,8 @@ function CoinShopScreen() {
 // eslint-disable-next-line @typescript-eslint/no-require-imports
               const { Purchases } = require('react-native-purchases');
               await Purchases.restorePurchases(); await refetch();
-              Alert.alert('Wiederhergestellt ✅', 'Deine Käufe sind zurück.');
-            } catch { Alert.alert('Wiederherstellung hat nicht geklappt', 'Prüf kurz deine Internetverbindung und versuch es nochmal. Hält das Problem an, ist der Support für dich da.'); }
+              Alert.alert(t('coinshop.restoredTitle'), t('coinshop.restoredText'));
+            } catch { Alert.alert(t('coinshop.restoreFailedTitle'), t('coinshop.restoreFailedText')); }
           }} style={s.restoreBtn}>
             <Text style={s.restoreText}>Käufe wiederherstellen</Text>
           </Pressable>

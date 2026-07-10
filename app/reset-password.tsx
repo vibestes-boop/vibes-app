@@ -1,3 +1,4 @@
+import { useI18n } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -26,6 +27,7 @@ const Animated = { View: _animNS?.View ?? _animMod?.View };
 
 export default function ResetPasswordScreen() {
   useThemedStatusBar('light');
+  const { t } = useI18n();
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
@@ -38,15 +40,15 @@ export default function ResetPasswordScreen() {
 
   const handleReset = async () => {
     if (!password || !confirm) {
-      Alert.alert('Fast!', 'Füll bitte beide Felder aus 🙂');
+      Alert.alert(t('common.almost'), t('auth.rpFillBoth'));
       return;
     }
     if (password.length < 8) {
-      Alert.alert('Etwas länger', 'Das Passwort braucht mindestens 8 Zeichen 🔒');
+      Alert.alert(t('auth.rpTooShortTitle'), t('auth.rpMin8'));
       return;
     }
     if (password !== confirm) {
-      Alert.alert('Stimmt noch nicht', 'Die beiden Passwörter sind nicht gleich 🔒');
+      Alert.alert(t('auth.rpMismatchTitle'), t('auth.rpMismatch'));
       return;
     }
 
@@ -55,7 +57,7 @@ export default function ResetPasswordScreen() {
     setLoading(false);
 
     if (error) {
-      Alert.alert('Hat nicht geklappt', error.message);
+      Alert.alert(t('common.error'), error.message);
     } else {
       setDone(true);
       setTimeout(() => router.replace('/(tabs)'), 2200);
@@ -70,8 +72,8 @@ export default function ResetPasswordScreen() {
           style={StyleSheet.absoluteFill}
         />
         <CheckCircle2 size={60} stroke="#34D399" strokeWidth={1.5} />
-        <Text style={styles.doneTitle}>Passwort geändert!</Text>
-        <Text style={styles.doneSub}>Du wirst gleich weitergeleitet…</Text>
+        <Text style={styles.doneTitle}>{t('auth.rpChanged')}</Text>
+        <Text style={styles.doneSub}>{t('auth.rpRedirect')}</Text>
       </View>
     );
   }
@@ -88,10 +90,8 @@ export default function ResetPasswordScreen() {
 
       <View style={styles.logoArea}>
         <Zap size={32} stroke="#FFFFFF" strokeWidth={2} fill="#FFFFFF" />
-        <Text style={styles.title}>Neues Passwort</Text>
-        <Text style={styles.sub}>
-          Wähle ein sicheres Passwort{'\n'}(mindestens 8 Zeichen)
-        </Text>
+        <Text style={styles.title}>{t('auth.rpTitle')}</Text>
+        <Text style={styles.sub}>{t('auth.rpSub')}</Text>
       </View>
 
       <View style={styles.form}>
@@ -99,7 +99,7 @@ export default function ResetPasswordScreen() {
           <Lock size={18} stroke="#4B5563" strokeWidth={1.8} />
           <TextInput
             style={styles.input}
-            placeholder="Neues Passwort"
+            placeholder={t('auth.rpNewPlaceholder')}
             placeholderTextColor="#4B5563"
             value={password}
             onChangeText={setPassword}
@@ -112,7 +112,7 @@ export default function ResetPasswordScreen() {
           <Lock size={18} stroke="#4B5563" strokeWidth={1.8} />
           <TextInput
             style={styles.input}
-            placeholder="Passwort bestätigen"
+            placeholder={t('auth.rpConfirmPlaceholder')}
             placeholderTextColor="#4B5563"
             value={confirm}
             onChangeText={setConfirm}
@@ -140,7 +140,7 @@ export default function ResetPasswordScreen() {
             />
             {loading
               ? <ActivityIndicator color="#fff" />
-              : <Text style={styles.btnText}>Passwort speichern</Text>
+              : <Text style={styles.btnText}>{t('auth.rpSave')}</Text>
             }
           </Pressable>
         </Animated.View>
