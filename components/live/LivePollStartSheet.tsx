@@ -9,6 +9,7 @@
  *   Primary-Button: "Umfrage starten"
  */
 
+import { useI18n } from '@/lib/i18n';
 import { useCreateLivePoll } from '@/lib/useLivePolls';
 import * as Haptics from 'expo-haptics';
 import { BarChart3,Plus,X as XIcon } from 'lucide-react-native';
@@ -39,6 +40,7 @@ const MIN_OPTIONS = 2;
 
 export function LivePollStartSheet({ visible, onClose, sessionId, onCreated }: Props) {
   const insets = useSafeAreaInsets();
+  const { t } = useI18n();
   const { createPoll, isCreating } = useCreateLivePoll();
 
   const [question, setQuestion] = useState('');
@@ -91,7 +93,7 @@ export function LivePollStartSheet({ visible, onClose, sessionId, onCreated }: P
       reset();
       onClose();
     } catch (err: any) {
-      Alert.alert('Hat nicht geklappt', err?.message ?? 'Die Umfrage ließ sich nicht erstellen — nochmal versuchen?');
+      Alert.alert(t('common.error'), err?.message ?? t('host.pollCreateFailed'));
     }
   }, [canSubmit, isCreating, createPoll, sessionId, question, options, onCreated, reset, onClose]);
 

@@ -629,6 +629,10 @@ export const de = {
     battleGift: '⚔️ Battle-Geschenk',
     host: 'Host',
     guest: 'Guest',
+    // LiveShoppingUI
+    hmm: 'Hmm',
+    buyFailedTitle: 'Hat nicht geklappt 🙈',
+    buyFailedText: 'Kauf hat gerade nicht funktioniert — nochmal versuchen?',
   },
   host: {
     // gemeinsame
@@ -762,6 +766,7 @@ export const de = {
     reportSent: 'Meldung wurde an Moderation übermittelt.',
     reportFailedShort: 'Meldung fehlgeschlagen.',
     reportFailed: 'Konnte die Meldung nicht senden — bitte später nochmal.',
+    pollCreateFailed: 'Die Umfrage ließ sich nicht erstellen — nochmal versuchen?',
     top: 'TOP',
     // Host comment + End
     commentAsHost: 'Als Host kommentieren …',
@@ -1084,6 +1089,13 @@ export const de = {
     adminRemoveText: 'Der Post wird als Admin entfernt und protokolliert.',
     remove: 'Entfernen',
     storySaveDialog: 'Story speichern',
+  },
+  creator: {
+    cancelFailed: 'Ließ sich nicht abbrechen — nochmal versuchen?',
+    cancelLiveFailed: 'Ließ sich nicht absagen — nochmal versuchen?',
+    rescheduleFailed: 'Ließ sich nicht umplanen — nochmal versuchen?',
+    min1Future: 'Der Zeitpunkt muss mindestens 1 Minute in der Zukunft liegen.',
+    draftDeleteFailed: 'Der Entwurf ließ sich nicht löschen — nochmal versuchen?',
   },
   auth: {
     tagline: 'Dein Feed. Deine Regeln.',

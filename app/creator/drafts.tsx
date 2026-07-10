@@ -12,6 +12,7 @@
  * Design: App-native Monochrom-Stil (konsistent mit dashboard.tsx).
  */
 
+import { useI18n } from '@/lib/i18n';
 import { usePostDraftsCloud,type CloudDraft } from '@/lib/usePostDraftsCloud';
 import { useTheme } from '@/lib/useTheme';
 import { Image } from 'expo-image';
@@ -45,6 +46,7 @@ export default function DraftsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors } = useTheme();
+  const { t } = useI18n();
 
   const {
     drafts, isLoading, refetch,
@@ -63,7 +65,7 @@ export default function DraftsScreen() {
           onPress: async () => {
             try { await deleteDraft(d.id); }
             catch (e: any) {
-              Alert.alert('Hat nicht geklappt', e?.message ?? 'Der Entwurf ließ sich nicht löschen — nochmal versuchen?');
+              Alert.alert(t('common.error'), e?.message ?? t('creator.draftDeleteFailed'));
             }
           },
         },

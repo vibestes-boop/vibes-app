@@ -175,7 +175,7 @@ export default function LiveStartScreen() {
       setThumbnailUrl(url);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {
-      Alert.alert('Hmm', t('live.coverUploadFailed'));
+      Alert.alert(t('live.hmm'), t('live.coverUploadFailed'));
     } finally {
       setCoverUploading(false);
     }

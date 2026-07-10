@@ -617,6 +617,10 @@ export const ru: DeepPartial<Messages> = {
     battleGift: '⚔️ Батл-подарок',
     host: 'Хост',
     guest: 'Гость',
+    // LiveShoppingUI
+    hmm: 'Хм',
+    buyFailedTitle: 'Не получилось 🙈',
+    buyFailedText: 'Покупка сейчас не прошла — попробуешь ещё раз?',
   },
   host: {
     oops: 'Не получилось',
@@ -741,6 +745,7 @@ export const ru: DeepPartial<Messages> = {
     reportSent: 'Жалоба отправлена модерации.',
     reportFailedShort: 'Жалоба не отправлена.',
     reportFailed: 'Не удалось отправить жалобу — попробуй позже.',
+    pollCreateFailed: 'Не удалось создать опрос — попробуешь ещё раз?',
     top: 'ТОП',
     commentAsHost: 'Комментировать как хост …',
     comment: 'Комментарий',
@@ -1045,6 +1050,13 @@ export const ru: DeepPartial<Messages> = {
     adminRemoveText: 'Пост будет удалён администратором и запротоколирован.',
     remove: 'Удалить',
     storySaveDialog: 'Сохранить историю',
+  },
+  creator: {
+    cancelFailed: 'Не удалось отменить — попробуешь ещё раз?',
+    cancelLiveFailed: 'Не удалось отменить — попробуешь ещё раз?',
+    rescheduleFailed: 'Не удалось перенести — попробуешь ещё раз?',
+    min1Future: 'Время должно быть минимум через 1 минуту.',
+    draftDeleteFailed: 'Черновик не удалось удалить — попробуешь ещё раз?',
   },
   auth: {
     tagline: 'Твоя лента. Твои правила.',

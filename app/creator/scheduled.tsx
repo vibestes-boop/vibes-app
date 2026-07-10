@@ -19,6 +19,7 @@ scheduledPostLabel,
 useScheduledPosts,
 type ScheduledPost,
 } from '@/lib/useScheduledPosts';
+import { useI18n } from '@/lib/i18n';
 import { useTheme } from '@/lib/useTheme';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
@@ -54,6 +55,7 @@ export default function ScheduledPostsScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors } = useTheme();
+  const { t } = useI18n();
 
   const {
     list, pending, failed, isLoading, refetch,
@@ -77,7 +79,7 @@ export default function ScheduledPostsScreen() {
           onPress: async () => {
             try { await cancelScheduledPost(post.id); }
             catch (e: any) {
-              Alert.alert('Hat nicht geklappt', e?.message ?? 'Ließ sich nicht abbrechen — nochmal versuchen?');
+              Alert.alert(t('common.error'), e?.message ?? t('creator.cancelFailed'));
             }
           },
         },
@@ -88,14 +90,14 @@ export default function ScheduledPostsScreen() {
   const handleRescheduleSave = async (newTime: Date) => {
     if (!rescheduleTarget) return;
     if (newTime.getTime() < Date.now() + 60_000) {
-      Alert.alert('Kurz später 🕒', 'Der Zeitpunkt muss mindestens 1 Minute in der Zukunft liegen.');
+      Alert.alert(t('live.laterTitle'), t('creator.min1Future'));
       return;
     }
     try {
       await reschedulePost(rescheduleTarget.id, newTime);
       setRescheduleTarget(null);
     } catch (e: any) {
-      Alert.alert('Hat nicht geklappt', e?.message ?? 'Ließ sich nicht umplanen — nochmal versuchen?');
+      Alert.alert(t('common.error'), e?.message ?? t('creator.rescheduleFailed'));
     }
   };
 

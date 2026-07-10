@@ -19,6 +19,7 @@ scheduledLiveLabel,
 useScheduledLives,
 type ScheduledLive,
 } from '@/lib/useScheduledLives';
+import { useI18n } from '@/lib/i18n';
 import { useTheme } from '@/lib/useTheme';
 import { useRouter } from 'expo-router';
 import {
@@ -57,6 +58,7 @@ export default function ScheduledLivesScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors } = useTheme();
+  const { t } = useI18n();
 
   const {
     list, upcoming, liveNow, isLoading, refetch,
@@ -78,7 +80,7 @@ export default function ScheduledLivesScreen() {
           onPress: async () => {
             try { await cancelScheduledLive(live.id); }
             catch (e: any) {
-              Alert.alert('Hat nicht geklappt', e?.message ?? 'Ließ sich nicht absagen — nochmal versuchen?');
+              Alert.alert(t('common.error'), e?.message ?? t('creator.cancelLiveFailed'));
             }
           },
         },
@@ -89,14 +91,14 @@ export default function ScheduledLivesScreen() {
   const handleRescheduleSave = async (newTime: Date) => {
     if (!rescheduleTarget) return;
     if (newTime.getTime() < Date.now() + 5 * 60_000) {
-      Alert.alert('Kurz später 🕒', 'Der Zeitpunkt muss mindestens 5 Minuten in der Zukunft liegen.');
+      Alert.alert(t('live.laterTitle'), t('live.laterText'));
       return;
     }
     try {
       await rescheduleLive(rescheduleTarget.id, newTime);
       setRescheduleTarget(null);
     } catch (e: any) {
-      Alert.alert('Hat nicht geklappt', e?.message ?? 'Ließ sich nicht umplanen — nochmal versuchen?');
+      Alert.alert(t('common.error'), e?.message ?? t('creator.rescheduleFailed'));
     }
   };
 

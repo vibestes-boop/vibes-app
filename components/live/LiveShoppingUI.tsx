@@ -11,6 +11,7 @@ import { COIN_SHOP_ENABLED } from '@/lib/featureFlags';
 
 import { CoinIcon } from '@/components/ui/CoinIcon';
 import { ProductCoverImage } from '@/components/shop/ProductCoverImage';
+import { useI18n } from '@/lib/i18n';
 import { useCoinsWallet } from '@/lib/useGifts';
 import type { PinnedProduct,ProductSoldEvent } from '@/lib/useLiveShopping';
 import { useBuyProduct,useMyProducts,type Product } from '@/lib/useShop';
@@ -45,6 +46,7 @@ interface PinnedProductPillProps {
 
 export function PinnedProductPill({ product, onBought, viewerUsername }: PinnedProductPillProps) {
   const router = useRouter();
+  const { t } = useI18n();
   const { coins } = useCoinsWallet();
   const { buyProduct, isBuying } = useBuyProduct();
   const [showConfirm, setShowConfirm] = useState(false);
@@ -83,7 +85,7 @@ export function PinnedProductPill({ product, onBought, viewerUsername }: PinnedP
           : [{ text: 'Ok' }]
       );
     } else {
-      Alert.alert('Hat nicht geklappt 🙈', 'Kauf hat gerade nicht funktioniert — nochmal versuchen?');
+      Alert.alert(t('live.buyFailedTitle'), t('live.buyFailedText'));
     }
   }, [buyProduct, product, onBought, viewerUsername, router]);
 
@@ -96,7 +98,7 @@ export function PinnedProductPill({ product, onBought, viewerUsername }: PinnedP
           impactAsync(ImpactFeedbackStyle.Light);
           if (!canAfford) {
             if (COIN_SHOP_ENABLED) { router.push('/coin-shop' as any); return; }
-            Alert.alert('Fast! 🪙', 'Dafür reichen deine Coins noch nicht ganz.');
+            Alert.alert(t('shop.notEnoughTitle'), t('shop.notEnoughText'));
             return;
           }
           setShowConfirm(true);
