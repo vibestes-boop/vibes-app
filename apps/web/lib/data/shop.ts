@@ -110,6 +110,11 @@ export interface ShopBanner {
   bg_color: string;
   link: string | null; // '/route', '/route?x=y' oder 'tab:<key>'
   sort_order: number;
+  // Russische Text-Varianten (Migration 20260710120000) — optional/nullable,
+  // damit der Code auch vor der Migration läuft.
+  tag_ru?: string | null;
+  title_ru?: string | null;
+  subtitle_ru?: string | null;
 }
 
 export async function getShopBanners(): Promise<ShopBanner[]> {

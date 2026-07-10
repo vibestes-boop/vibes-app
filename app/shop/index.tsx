@@ -118,6 +118,8 @@ function BannerCarousel({ banners, onPress }: {
   banners: ShopBanner[];
   onPress: (b: ShopBanner) => void;
 }) {
+  const { locale } = useI18n();
+  const ru = locale === 'ru';
   const { width: winW } = useWindowDimensions();
   const PAD = 16, GAP = 10;
   const slideW = winW - PAD * 2;
@@ -158,13 +160,18 @@ function BannerCarousel({ banners, onPress }: {
         onMomentumScrollEnd={onMomentumEnd}
         contentContainerStyle={{ paddingHorizontal: PAD }}
       >
-        {banners.map((b) => (
+        {banners.map((b) => {
+          // Locale-Anzeige: ru-Spalten wenn vorhanden, sonst deutscher Basis-Text.
+          const tag      = (ru && b.tag_ru)      || b.tag;
+          const title    = (ru && b.title_ru)    || b.title;
+          const subtitle = (ru && b.subtitle_ru) || b.subtitle;
+          return (
           <Pressable
             key={b.id}
             onPress={() => onPress(b)}
             style={[bn.slide, { width: slideW, marginRight: GAP, backgroundColor: b.bg_color }]}
             accessibilityRole="button"
-            accessibilityLabel={b.title}
+            accessibilityLabel={title}
           >
             {b.image_url ? (
               <>
@@ -178,12 +185,13 @@ function BannerCarousel({ banners, onPress }: {
               </>
             ) : null}
             <View style={bn.slideInner}>
-              {b.tag ? <Text style={bn.tag} numberOfLines={1}>{b.tag}</Text> : null}
-              <Text style={bn.title} numberOfLines={1}>{b.title}</Text>
-              {b.subtitle ? <Text style={bn.subtitle} numberOfLines={1}>{b.subtitle}</Text> : null}
+              {tag ? <Text style={bn.tag} numberOfLines={1}>{tag}</Text> : null}
+              <Text style={bn.title} numberOfLines={1}>{title}</Text>
+              {subtitle ? <Text style={bn.subtitle} numberOfLines={1}>{subtitle}</Text> : null}
             </View>
           </Pressable>
-        ))}
+          );
+        })}
       </ScrollView>
 
       {banners.length > 1 && (
@@ -358,7 +366,7 @@ function ProductCard({ product, onPress, colors, saved, onToggleSave }: {
         {isLowStock && !isSoldOut && (
           <View style={card.lowStock}>
             <Flame size={11} color="#FBBF24" strokeWidth={2.4} />
-            <Text style={card.lowStockText}>Nur {product.stock} übrig</Text>
+            <Text style={card.lowStockText}>{t('shop.lowStockN', { n: product.stock })}</Text>
           </View>
         )}
       </View>
@@ -814,8 +822,8 @@ export default function ShopScreen() {
       {!isLoading && (
         <View style={s.resultRow}>
           <Text style={[s.resultText, { color: colors.text.muted }]}>
-            {filtered.length} Produkt{filtered.length !== 1 ? 'e' : ''}
-            {search.trim() ? ` für „${search}"` : ''}
+            {t(filtered.length === 1 ? 'shop.productsCountOne' : 'shop.productsCountMany', { n: filtered.length })}
+            {search.trim() ? t('shop.forQuery', { q: search }) : ''}
           </Text>
         </View>
       )}

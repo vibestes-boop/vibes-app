@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Route } from "next";
+import { useI18n } from "@/lib/i18n/client";
 import type { ShopBanner } from "@/lib/data/shop";
 
 // -----------------------------------------------------------------------------
@@ -29,6 +30,8 @@ function resolveHref(link: string | null): { href: string; external: boolean } |
 
 export function BannerCarousel({ banners }: { banners: ShopBanner[] }) {
   const router = useRouter();
+  const { locale } = useI18n();
+  const ru = locale === "ru";
   const [idx, setIdx] = useState(0);
   const count = banners.length;
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -44,6 +47,10 @@ export function BannerCarousel({ banners }: { banners: ShopBanner[] }) {
   if (count === 0) return null;
   const active = banners[Math.min(idx, count - 1)];
   const target = resolveHref(active.link);
+  // Locale-Anzeige: ru-Spalten wenn vorhanden, sonst deutscher Basis-Text.
+  const tag = (ru && active.tag_ru) || active.tag;
+  const title = (ru && active.title_ru) || active.title;
+  const subtitle = (ru && active.subtitle_ru) || active.subtitle;
 
   const go = () => {
     if (!target) return;
@@ -71,16 +78,16 @@ export function BannerCarousel({ banners }: { banners: ShopBanner[] }) {
         )}
         <div className="absolute inset-0 bg-gradient-to-r from-black/55 to-transparent" />
         <div className="relative flex h-full flex-col justify-center gap-1 px-5 sm:px-8">
-          {active.tag && (
+          {tag && (
             <span className="w-fit rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white backdrop-blur-sm">
-              {active.tag}
+              {tag}
             </span>
           )}
           <h2 className="max-w-[80%] text-lg font-bold leading-tight text-white sm:text-2xl">
-            {active.title}
+            {title}
           </h2>
-          {active.subtitle && (
-            <p className="max-w-[80%] text-xs text-white/85 sm:text-sm">{active.subtitle}</p>
+          {subtitle && (
+            <p className="max-w-[80%] text-xs text-white/85 sm:text-sm">{subtitle}</p>
           )}
         </div>
       </div>

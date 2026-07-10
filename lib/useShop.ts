@@ -76,6 +76,11 @@ export interface ShopBanner {
   bg_color:   string;
   link:       string | null;   // '/route', '/route?x=y' oder 'tab:<key>'
   sort_order: number;
+  // Russische Text-Varianten (Migration 20260710120000) — optional, damit die
+  // App auch VOR der Migration läuft (RPC liefert die Spalten dann nicht).
+  tag_ru?:      string | null;
+  title_ru?:    string | null;
+  subtitle_ru?: string | null;
 }
 
 export interface CreateProductInput {

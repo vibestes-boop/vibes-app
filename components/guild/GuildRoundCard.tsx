@@ -1,4 +1,5 @@
 import { RollupNumber } from '@/components/ui/RollupNumber';
+import { useI18n, type AppLocale, type TranslationKey } from '@/lib/i18n';
 import { useTheme } from '@/lib/useTheme';
 import type { ActivePreorderRound } from '@/lib/useShop';
 import { impactAsync, ImpactFeedbackStyle } from 'expo-haptics';
@@ -16,15 +17,19 @@ import { StyleSheet, Text, View, Pressable } from 'react-native';
 // Tap → Produktseite; der Kauf-Flow bleibt komplett dort (Buy-Bar).
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** „bis Sa., 05.07." — kompakte deutsche Deadline. Vergangen → „endet gleich". */
-function formatDeadline(iso: string): string {
+type TFn = (key: TranslationKey, vars?: Record<string, string | number>) => string;
+
+/** „bis Sa., 05.07." — kompakte Deadline, locale-aware. Vergangen → „endet gleich". */
+function formatDeadline(iso: string, t: TFn, locale: AppLocale): string {
   const d = new Date(iso);
-  if (d.getTime() <= Date.now()) return 'endet gleich';
-  return `bis ${d.toLocaleDateString('de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' })}`;
+  if (d.getTime() <= Date.now()) return t('orders.roundEndsSoon');
+  const date = d.toLocaleDateString(locale === 'ru' ? 'ru-RU' : 'de-DE', { weekday: 'short', day: '2-digit', month: '2-digit' });
+  return t('orders.roundUntil', { date });
 }
 
 export function GuildRoundCard({ round }: { round: ActivePreorderRound }) {
   const { colors } = useTheme();
+  const { t, locale } = useI18n();
   const router = useRouter();
 
   const progress = Math.min(1, round.target_qty > 0 ? round.reserved_qty / round.target_qty : 0);
@@ -34,10 +39,10 @@ export function GuildRoundCard({ round }: { round: ActivePreorderRound }) {
 
   // Social-Proof-Zeile: „@ahmed + 11 sind dabei" / „3 sind dabei" / Einladung
   const proofLabel = round.participant_count === 0
-    ? 'Sei die/der Erste 🌸'
+    ? t('orders.beFirstRound')
     : firstName
-      ? `@${firstName}${others > 0 ? ` + ${others}` : ''} ${round.participant_count === 1 ? 'ist' : 'sind'} dabei`
-      : `${round.participant_count} sind dabei`;
+      ? (others > 0 ? t('orders.proofMore', { name: firstName, n: others }) : t('orders.proofOne', { name: firstName }))
+      : t('orders.proofCount', { n: round.participant_count });
 
   return (
     <Pressable
@@ -47,7 +52,7 @@ export function GuildRoundCard({ round }: { round: ActivePreorderRound }) {
       }}
       style={[s.card, { backgroundColor: colors.bg.secondary, borderColor: goalReached ? 'rgba(251,191,36,0.5)' : colors.border.default }]}
       accessibilityRole="button"
-      accessibilityLabel={`Sammelbestellung: ${round.title}, ${round.reserved_qty} von ${round.target_qty}`}
+      accessibilityLabel={`${t('orders.roundShort')}: ${round.title}, ${t('orders.nOfM', { n: round.reserved_qty, m: round.target_qty })}`}
     >
       {/* Kopf: Cover + Titel + Deadline */}
       <View style={s.topRow}>
@@ -61,7 +66,7 @@ export function GuildRoundCard({ round }: { round: ActivePreorderRound }) {
         <View style={{ flex: 1, gap: 1 }}>
           <Text style={[s.title, { color: colors.text.primary }]} numberOfLines={1}>{round.title}</Text>
           <Text style={[s.deadline, { color: colors.text.muted }]}>
-            {goalReached ? 'Ziel erreicht 🎉' : `Sammelbestellung · ${formatDeadline(round.closes_at)}`}
+            {goalReached ? t('orders.goalReachedShort') : `${t('orders.roundShort')} · ${formatDeadline(round.closes_at, t, locale)}`}
           </Text>
         </View>
         <ChevronRight size={16} color={colors.icon.muted} strokeWidth={2.2} />
@@ -113,11 +118,11 @@ export function GuildRoundCard({ round }: { round: ActivePreorderRound }) {
         {round.me_joined ? (
           <View style={[s.cta, s.ctaJoined]}>
             <CheckCircle2 size={13} color="#22C55E" strokeWidth={2.6} />
-            <Text style={[s.ctaText, { color: '#22C55E' }]}>Dabei</Text>
+            <Text style={[s.ctaText, { color: '#22C55E' }]}>{t('orders.joined')}</Text>
           </View>
         ) : (
           <View style={[s.cta, { backgroundColor: colors.text.primary }]}>
-            <Text style={[s.ctaText, { color: colors.bg.primary }]}>Mitbestellen</Text>
+            <Text style={[s.ctaText, { color: colors.bg.primary }]}>{t('orders.joinRound')}</Text>
           </View>
         )}
       </View>
