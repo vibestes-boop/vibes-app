@@ -5,9 +5,10 @@
  * sonst de). Sobald der User in den Einstellungen manuell umschaltet
  * (`setLocale`), gewinnt diese Wahl dauerhaft (`pickedByUser`).
  *
- * Gerätesprache wird über React-Native-Core gelesen (SettingsManager /
- * I18nManager) — KEIN expo-localization (natives Modul → bräuchte Binary).
- * Dadurch OTA-fähig ohne neuen Build.
+ * Gerätesprache: bevorzugt expo-localization (natives Modul, erst ab dem
+ * nächsten Binary verlinkt — guarded require), Fallback React-Native-Core
+ * (SettingsManager / I18nManager, funktioniert im aktuellen Binary 291).
+ * Dadurch OTA-sicher heute UND sauber nativ ab dem nächsten Build.
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -16,8 +17,34 @@ import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import type { AppLocale } from './messages';
 
-/** Liest die Gerätesprache aus RN-Core und mappt auf unsere Locales. */
+/** Mappt einen Sprach-/Locale-Code auf unsere AppLocales. */
+function mapCode(code: string | null | undefined): AppLocale | null {
+  const low = code?.toLowerCase() ?? '';
+  if (low.startsWith('ru')) return 'ru';
+  if (low.startsWith('ce')) return 'ce';
+  if (low.startsWith('en')) return 'en';
+  if (low.startsWith('de')) return 'de';
+  return null;
+}
+
+/**
+ * Liest die Gerätesprache und mappt auf unsere Locales.
+ *
+ * 1. expo-localization — zuverlässige native API, aber erst ab dem NÄCHSTEN
+ *    Binary-Build verlinkt. Guarded require: im aktuellen Binary (291) wirft
+ *    der Zugriff → Fallback greift, kein Crash per OTA.
+ * 2. RN-Core (SettingsManager / I18nManager) — funktioniert überall heute.
+ */
 function detectDeviceLocale(): AppLocale {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const Localization = require('expo-localization') as typeof import('expo-localization');
+    const mapped = mapCode(Localization.getLocales?.()[0]?.languageCode);
+    if (mapped) return mapped;
+    if (Localization.getLocales?.()[0]) return 'de'; // bekannte, nicht unterstützte Sprache
+  } catch {
+    // Natives Modul (noch) nicht im Binary → RN-Core-Fallback.
+  }
   try {
     let raw: string | undefined;
     if (Platform.OS === 'ios') {
@@ -26,10 +53,8 @@ function detectDeviceLocale(): AppLocale {
     } else {
       raw = (NativeModules.I18nManager as any)?.localeIdentifier;
     }
-    const low = raw?.toLowerCase() ?? '';
-    if (low.startsWith('ru')) return 'ru';
-    if (low.startsWith('ce')) return 'ce';
-    if (low.startsWith('en')) return 'en';
+    const mapped = mapCode(raw);
+    if (mapped) return mapped;
   } catch {
     // Fallback unten
   }

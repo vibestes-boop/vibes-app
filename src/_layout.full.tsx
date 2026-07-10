@@ -223,11 +223,15 @@ function PushNotificationsProvider() {
     require('@/lib/usePushNotifications') as typeof import('@/lib/usePushNotifications');
   const { useAuthStore } =
     require('@/lib/authStore') as typeof import('@/lib/authStore');
+  const { useLocaleProfileSync } =
+    require('@/lib/i18n/useLocaleProfileSync') as typeof import('@/lib/i18n/useLocaleProfileSync');
   const initialized = useAuthStore((s: { initialized: boolean }) => s.initialized);
   const session = useAuthStore((s: { session: unknown }) => s.session);
   const profile = useAuthStore((s: { profile: unknown }) => s.profile);
 
   usePushNotifications();
+  // App-Sprache → profiles.locale (für lokalisierte Push-Texte serverseitig).
+  useLocaleProfileSync();
 
   // Cold-Start: App war geschlossen, User tippt auf eine Push-Notification.
   // Expo stellt die Response via getLastNotificationResponseAsync() bereit.

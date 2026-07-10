@@ -72,6 +72,17 @@ Deno.serve(async (req: Request) => {
       return new Response(JSON.stringify({ skipped: `Channel ${prefKey} disabled by user` }), { status: 200 });
     }
 
+    // Empfänger-Sprache holen — SEPARATE Query, damit die Function auch läuft,
+    // solange die profiles.locale-Migration (20260710130000) noch nicht
+    // ausgeführt ist (Fehler → Fallback 'de', Haupt-Select bleibt unberührt).
+    let locale: 'de' | 'ru' = 'de';
+    const { data: localeRow } = await supabase
+      .from('profiles')
+      .select('locale')
+      .eq('id', record.recipient_id)
+      .single();
+    if ((localeRow as { locale?: string } | null)?.locale === 'ru') locale = 'ru';
+
     // Auslöser-Username holen
     const { data: actor } = await supabase
       .from('profiles')
@@ -79,10 +90,84 @@ Deno.serve(async (req: Request) => {
       .eq('id', record.sender_id)
       .single();
 
-    const actorName = actor?.username ?? 'Jemand';
+    const actorName = actor?.username ?? (locale === 'ru' ? 'Кто-то' : 'Jemand');
 
-    // Notification-Text basierend auf Typ
-    const messages: Record<string, { title: string; body: string }> = {
+    // Notification-Text basierend auf Typ — Empfänger-Sprache entscheidet.
+    const messages: Record<string, { title: string; body: string }> = locale === 'ru' ? {
+      like:         { title: '❤️ Новый лайк',        body: `${actorName} нравится твой вайб` },
+      comment:      { title: '💬 Новый комментарий', body: `${actorName}: "${record.comment_text ?? '...'}"` },
+      follow:       { title: '👤 Новый подписчик',   body: `${actorName} подписался(ась) на тебя` },
+      dm:           { title: '✉️ Новое сообщение',   body: record.comment_text ?? `${actorName} пишет тебе` },
+      live:         { title: '🔴 Эфир на Serlo',     body: `${actorName} сейчас в ЭФИРЕ!${record.comment_text ? ` — ${record.comment_text}` : ''}` },
+      live_invite:  { title: '🎥 Приглашение в эфир', body: `${actorName} приглашает тебя в свой эфир!` },
+      gift:         { title: `${record.gift_emoji ?? '🎁'} Подарок`, body: `${actorName} отправил(а) тебе ${record.gift_emoji ?? '🎁'} ${record.gift_name ?? 'подарок'}!` },
+      new_order:    { title: '🛍️ Новая продажа!',   body: record.product_name ? `${actorName} купил(а) "${record.product_name}"` : `${actorName} купил(а) товар` },
+      scheduled_live_reminder: {
+        title: '🔔 Скоро эфир',
+        body: record.comment_text
+          ? `${actorName} начнёт через 15 мин: «${record.comment_text}»`
+          : `${actorName} выйдет в эфир через 15 минут!`,
+      },
+      preorder_interest: {
+        title: '🌸 Новый предзаказ',
+        body: record.product_name
+          ? `${actorName} предзаказал(а) «${record.product_name}»`
+          : `${actorName} предзаказал(а) товар`,
+      },
+      product_saved: {
+        title: '🔖 Товар сохранён',
+        body: record.product_name
+          ? `${actorName} сохранил(а) «${record.product_name}»`
+          : `${actorName} сохранил(а) твой товар`,
+      },
+      preorder_round_open: {
+        title: '🌸 Идёт коллективный заказ',
+        body: record.comment_text
+          ?? (record.product_name
+            ? `«${record.product_name}» сейчас собирают — успей забрать!`
+            : 'Открыт коллективный заказ — успей забрать!'),
+      },
+      order_payment_requested: {
+        title: '💶 Пора оплатить',
+        body: record.comment_text ?? 'Твой предзаказ прибыл — оплати сейчас 🌸',
+      },
+      order_payment_reminder: {
+        title: '🌸 Твой парфюм ждёт',
+        body: record.comment_text ?? 'Оплати — и твой предзаказ отправится в путь 🌸',
+      },
+      order_paid: {
+        title: '💶 Заказ оплачен',
+        body: `${actorName} оплатил(а) — отправь посылку 📦`,
+      },
+      order_shipped: {
+        title: '📦 В пути',
+        body: record.comment_text ?? 'Твой парфюм уже в пути 📦',
+      },
+      order_cancelled: {
+        title: '🚫 Заказ отменён',
+        body: `${actorName} отменил(а) заказ`,
+      },
+      order_address_updated: {
+        title: '📍 Адрес изменён',
+        body: `${actorName} обновил(а) адрес доставки`,
+      },
+      order_review: {
+        title: '⭐ Новый отзыв',
+        body: record.comment_text ?? `${actorName} оставил(а) тебе отзыв`,
+      },
+      order_dispute: {
+        title: '⚠️ Жалоба по заказу',
+        body: record.comment_text ?? 'По заказу сообщили о проблеме',
+      },
+      support_reply: {
+        title: '💬 Ответ от команды',
+        body: record.comment_text ?? 'Команда ответила на твой запрос в поддержку',
+      },
+      support_new: {
+        title: '🆘 Новый запрос в поддержку',
+        body: record.comment_text ?? `${actorName} нужна помощь`,
+      },
+    } : {
       like:         { title: '❤️ Neuer Like',       body: `${actorName} mag deinen Vibe` },
       comment:      { title: '💬 Neuer Kommentar',   body: `${actorName}: "${record.comment_text ?? '...'}"` },
       follow:       { title: '👤 Neuer Follower',    body: `${actorName} folgt dir jetzt` },
@@ -162,7 +247,8 @@ Deno.serve(async (req: Request) => {
       },
     };
 
-    const msg = messages[record.type] ?? { title: 'Neue Aktivität auf Vibes', body: '' };
+    const msg = messages[record.type]
+      ?? { title: locale === 'ru' ? 'Новая активность на Vibes' : 'Neue Aktivität auf Vibes', body: '' };
 
     // Expo Push API aufrufen
     const pushRes = await fetch(EXPO_PUSH_URL, {
@@ -274,7 +360,8 @@ function deriveWebUrl(
   record: NotificationPayload['record'],
   actorName: string,
 ): string {
-  const hasActorUsername = actorName && actorName !== 'Jemand';
+  // 'Jemand'/'Кто-то' = Fallback wenn das Sender-Profil nicht auflösbar war.
+  const hasActorUsername = actorName && actorName !== 'Jemand' && actorName !== 'Кто-то';
 
   switch (record.type) {
     case 'like':
