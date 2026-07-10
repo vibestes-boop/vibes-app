@@ -62,7 +62,7 @@ export function OrderReviewControl({
   const [rating, setRating] = useState(myReview?.rating ?? 0);
   const [comment, setComment] = useState(myReview?.comment ?? '');
 
-  const targetLabel = role === 'seller' ? 'Käufer' : 'Verkäufer';
+  const targetLabel = role === 'seller' ? t('orders.buyerLabel') : t('orders.sellerLabel');
 
   const openModal = () => {
     setRating(myReview?.rating ?? 0);
@@ -85,21 +85,21 @@ export function OrderReviewControl({
     <View style={{ gap: 6, paddingTop: 4 }}>
       {myReview ? (
         <Pressable onPress={openModal} style={s.row} hitSlop={4}>
-          <Text style={[s.recvLabel, { color: colors.text.muted }]}>Deine Bewertung:</Text>
+          <Text style={[s.recvLabel, { color: colors.text.muted }]}>{t('orders.yourRating')}</Text>
           <Stars value={myReview.rating} size={16} />
-          <Text style={[s.link, { color: colors.text.muted }]}>· ändern</Text>
+          <Text style={[s.link, { color: colors.text.muted }]}>{t('orders.changeInline')}</Text>
         </Pressable>
       ) : (
         <Pressable onPress={openModal} style={[s.rateBtn, { borderColor: colors.border.subtle }]} hitSlop={4}>
           <Star size={14} color={colors.text.primary} strokeWidth={2} />
-          <Text style={[s.rateText, { color: colors.text.primary }]}>{targetLabel} bewerten</Text>
+          <Text style={[s.rateText, { color: colors.text.primary }]}>{t('orders.rateTarget', { target: targetLabel })}</Text>
         </Pressable>
       )}
 
       {receivedReview ? (
         <View style={{ gap: 2 }}>
           <View style={s.row}>
-            <Text style={[s.recvLabel, { color: colors.text.muted }]}>Du wurdest bewertet:</Text>
+            <Text style={[s.recvLabel, { color: colors.text.muted }]}>{t('orders.youWereRated')}</Text>
             <Stars value={receivedReview.rating} size={13} />
           </View>
           {receivedReview.comment ? (
@@ -115,13 +115,13 @@ export function OrderReviewControl({
         <Pressable style={s.backdrop} onPress={() => setOpen(false)}>
           <Pressable style={[s.sheet, { backgroundColor: colors.bg.elevated }]} onPress={(e) => e.stopPropagation()}>
             <View style={s.handle} />
-            <Text style={[s.title, { color: colors.text.primary }]}>{targetLabel} bewerten</Text>
+            <Text style={[s.title, { color: colors.text.primary }]}>{t('orders.rateTarget', { target: targetLabel })}</Text>
             <View style={{ alignItems: 'center', paddingVertical: 10 }}>
               <Stars value={rating} onPress={setRating} size={34} />
             </View>
             <TextInput
               style={[s.input, { color: colors.text.primary, backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}
-              placeholder="Optional: ein paar Worte…"
+              placeholder={t('orders.reviewPlaceholder')}
               placeholderTextColor={colors.text.muted}
               value={comment}
               onChangeText={setComment}
@@ -135,7 +135,7 @@ export function OrderReviewControl({
             >
               {submit.isPending
                 ? <ActivityIndicator size="small" color={colors.bg.primary} />
-                : <Text style={[s.saveText, { color: colors.bg.primary }]}>Speichern</Text>}
+                : <Text style={[s.saveText, { color: colors.bg.primary }]}>{t('orders.save')}</Text>}
             </Pressable>
           </Pressable>
         </Pressable>

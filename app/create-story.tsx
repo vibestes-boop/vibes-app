@@ -43,8 +43,8 @@ export default function CreateStoryScreen() {
   // ── Poll-State ────────────────────────────────────────────────────────────────
   const [pollActive, setPollActive] = useState(false);
   const [pollQuestion, setPollQuestion] = useState('');
-  const [pollOption0, setPollOption0] = useState('Ja');
-  const [pollOption1, setPollOption1] = useState('Nein');
+  const [pollOption0, setPollOption0] = useState(t('story.yes'));
+  const [pollOption1, setPollOption1] = useState(t('story.no'));
 
   // ── Bild aus Galerie auswählen ──────────────────────────────────────────────
   const pickMedia = useCallback(async () => {
@@ -88,8 +88,8 @@ export default function CreateStoryScreen() {
             type: 'poll',
             question: pollQuestion.trim(),
             options: [
-              pollOption0.trim() || 'Option 1',
-              pollOption1.trim() || 'Option 2',
+              pollOption0.trim() || t('story.option1'),
+              pollOption1.trim() || t('story.option2'),
             ],
           }
           : null;
@@ -120,7 +120,7 @@ export default function CreateStoryScreen() {
         <Pressable onPress={() => router.back()} style={styles.backBtn}>
           <ArrowLeft size={20} stroke="#9CA3AF" strokeWidth={2} />
         </Pressable>
-        <Text style={styles.headerTitle}>Story erstellen</Text>
+        <Text style={styles.headerTitle}>{t('story.createTitle')}</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -140,8 +140,8 @@ export default function CreateStoryScreen() {
               style={StyleSheet.absoluteFill}
             />
             <ImagePlus size={48} stroke="#FFFFFF" strokeWidth={1.5} />
-            <Text style={styles.pickerLabel}>Foto oder Video auswählen</Text>
-            <Text style={styles.pickerSub}>Sichtbar für 24 Stunden</Text>
+            <Text style={styles.pickerLabel}>{t('story.pickMedia')}</Text>
+            <Text style={styles.pickerSub}>{t('story.visible24')}</Text>
           </Pressable>
         )}
       </View>
@@ -151,7 +151,7 @@ export default function CreateStoryScreen() {
         {mediaUri && (
           <Pressable onPress={pickMedia} style={styles.changeBtn}>
             <Type size={16} stroke="#9CA3AF" strokeWidth={2} />
-            <Text style={styles.changeBtnText}>Anderes Bild</Text>
+            <Text style={styles.changeBtnText}>{t('story.otherImage')}</Text>
           </Pressable>
         )}
 
@@ -168,7 +168,7 @@ export default function CreateStoryScreen() {
               ? <X size={16} stroke="#FBBF24" strokeWidth={2} />
               : <BarChart2 size={16} stroke="#9CA3AF" strokeWidth={2} />}
             <Text style={[styles.changeBtnText, pollActive && { color: '#FBBF24' }]}>
-              {pollActive ? 'Poll entfernen' : 'Poll hinzufügen'}
+              {pollActive ? t('story.pollRemove') : t('story.pollAdd')}
             </Text>
           </Pressable>
         )}
@@ -193,7 +193,7 @@ export default function CreateStoryScreen() {
                 color: '#fff',
                 fontSize: 14,
               }}
-              placeholder="Deine Frage…"
+              placeholder={t('story.pollQuestion')}
               placeholderTextColor="rgba(255,255,255,0.35)"
               value={pollQuestion}
               onChangeText={setPollQuestion}
@@ -209,7 +209,7 @@ export default function CreateStoryScreen() {
                   color: '#fff',
                   fontSize: 13,
                 }}
-                placeholder="Option 1"
+                placeholder={t('story.option1')}
                 placeholderTextColor="rgba(255,255,255,0.35)"
                 value={pollOption0}
                 onChangeText={setPollOption0}
@@ -224,7 +224,7 @@ export default function CreateStoryScreen() {
                   color: '#fff',
                   fontSize: 13,
                 }}
-                placeholder="Option 2"
+                placeholder={t('story.option2')}
                 placeholderTextColor="rgba(255,255,255,0.35)"
                 value={pollOption1}
                 onChangeText={setPollOption1}
@@ -251,7 +251,7 @@ export default function CreateStoryScreen() {
               />
               <Send size={16} stroke="#fff" strokeWidth={2.2} />
               <Text style={styles.publishBtnText}>
-                {mediaUri ? 'Story veröffentlichen' : 'Bild auswählen'}
+                {mediaUri ? t('story.publishBtn') : t('story.pickImageBtn')}
               </Text>
             </>
           )}
