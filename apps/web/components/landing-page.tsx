@@ -164,34 +164,6 @@ export async function LandingPage({ featured, liveNow, trendingPosts, shopProduc
         </section>
       )}
 
-      {/* ── Marktplatz — Produkt-Vorschau (Conversion-Kern) ── */}
-      {shopProducts.length > 0 && (
-        <section className="container mx-auto px-4 pt-16 sm:pt-20">
-          <SectionHeader
-            label={t('landing.shopLabel')}
-            title={t('landing.shopTitle')}
-            sub={t('landing.shopSub')}
-            href={'/shop' as Route}
-            linkText={t('landing.shopAll')}
-          />
-          <ul className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-4">
-            {shopProducts.map((p) => (
-              <li key={p.id}>
-                <ProductCard product={p} />
-              </li>
-            ))}
-          </ul>
-          <div className="mt-6 flex justify-center sm:hidden">
-            <Button asChild variant="outline" className="rounded-full border-white/15 bg-white/5 px-6 text-white hover:bg-white/10 hover:text-white">
-              <Link href={'/shop' as Route}>
-                {t('landing.shopAll')}
-                <ArrowRight className="ml-1.5 h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
-        </section>
-      )}
-
       {/* ── Trending ── */}
       {trendingPosts.length > 0 && (
         <section className="container mx-auto px-4 pt-16 sm:pt-20">
@@ -223,6 +195,34 @@ export async function LandingPage({ featured, liveNow, trendingPosts, shopProduc
               );
             })}
           </ul>
+        </section>
+      )}
+
+      {/* ── Marktplatz — Produkt-Vorschau (Conversion-Kern, unter den Posts) ── */}
+      {shopProducts.length > 0 && (
+        <section className="container mx-auto px-4 pt-16 sm:pt-20">
+          <SectionHeader
+            label={t('landing.shopLabel')}
+            title={t('landing.shopTitle')}
+            sub={t('landing.shopSub')}
+            href={'/shop' as Route}
+            linkText={t('landing.shopAll')}
+          />
+          <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4">
+            {shopProducts.map((p) => (
+              <li key={p.id}>
+                <ProductCard product={p} />
+              </li>
+            ))}
+          </ul>
+          <div className="mt-6 flex justify-center sm:hidden">
+            <Button asChild variant="outline" className="rounded-full border-white/15 bg-white/5 px-6 text-white hover:bg-white/10 hover:text-white">
+              <Link href={'/shop' as Route}>
+                {t('landing.shopAll')}
+                <ArrowRight className="ml-1.5 h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
         </section>
       )}
 
