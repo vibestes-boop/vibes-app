@@ -1065,6 +1065,14 @@ export const de = {
     liveReasonInappropriate: '🚫 Unangemessener Inhalt',
     liveReasonHarassment: '⚠️ Belästigung',
     liveReasonSpam: '🤖 Spam',
+    // PostShareModal
+    thisVibe: 'diesen Vibe',
+    shareTeaser: 'Schau dir {teaser} an 🎬',
+    postShareDialog: 'Post teilen',
+    adminRemoveTitle: 'Beitrag entfernen?',
+    adminRemoveText: 'Der Post wird als Admin entfernt und protokolliert.',
+    remove: 'Entfernen',
+    storySaveDialog: 'Story speichern',
   },
   auth: {
     tagline: 'Dein Feed. Deine Regeln.',

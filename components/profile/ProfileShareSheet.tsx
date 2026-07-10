@@ -7,6 +7,7 @@
  * Layer 3: Aktionen (Melden, Sperren, QR-Code, Nachricht)
  */
 import { useAuthStore } from '@/lib/authStore';
+import { useI18n } from '@/lib/i18n';
 import { webProfileUrl } from '@/lib/webLinks';
 import { supabase } from '@/lib/supabase';
 import { useOrCreateConversation,useSendMessage } from '@/lib/useMessages';
@@ -55,6 +56,8 @@ const APP_OPTIONS = [
 // ─── Haupt-Komponente ─────────────────────────────────────────────────────────
 export function ProfileShareSheet({ visible, onClose, userId, username, avatarUrl, isOwnProfile }: Props) {
   const currentUserId = useAuthStore((s) => s.profile?.id);
+  const { t } = useI18n();
+  const shareName = username ?? t('share.userFallback');
   const [search, setSearch]   = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [copied, setCopied]   = useState(false);
@@ -69,7 +72,7 @@ export function ProfileShareSheet({ visible, onClose, userId, username, avatarUr
   const doReportUser = (reason: 'spam' | 'harassment' | 'inappropriate') => {
     reportUser({ reportedId: userId, reason });
     onClose();
-    Alert.alert('Danke', 'Meldung eingegangen — wir prüfen das.');
+    Alert.alert(t('share.thanks'), t('share.reportReceived'));
   };
 
   // Follower/Following laden für "Senden an"
@@ -153,7 +156,7 @@ export function ProfileShareSheet({ visible, onClose, userId, username, avatarUr
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       onClose();
     } catch {
-      Alert.alert('Hat nicht geklappt', 'Das Profil ist nicht rausgegangen — nochmal versuchen? 🙏');
+      Alert.alert(t('common.error'), t('share.failProfile'));
     }
     setSending(false);
   };
@@ -165,7 +168,7 @@ export function ProfileShareSheet({ visible, onClose, userId, username, avatarUr
       const conversationId = await getOrCreateConv(userId);
       router.push({ pathname: '/messages/[id]', params: { id: conversationId, otherUserId: userId, username: username ?? '' } } as any);
     } catch {
-      Alert.alert('Hoppla 🙈', 'Der Chat ließ sich grad nicht öffnen — gleich nochmal?');
+      Alert.alert(t('create.oops'), t('share.chatFailed'));
     }
   };
 
@@ -306,24 +309,24 @@ export function ProfileShareSheet({ visible, onClose, userId, username, avatarUr
                 <Pressable
                   style={ss.actionRow}
                   onPress={() => {
-                    Alert.alert(`@${username ?? 'User'} melden`, 'Warum meldest du dieses Profil?', [
-                      { text: 'Spam', onPress: () => doReportUser('spam') },
-                      { text: 'Belästigung', onPress: () => doReportUser('harassment') },
-                      { text: 'Unangemessen', onPress: () => doReportUser('inappropriate') },
-                      { text: 'Abbrechen', style: 'cancel' },
+                    Alert.alert(t('profile.reportUser', { name: shareName }), t('share.reportProfileWhy'), [
+                      { text: t('comments.reasonSpam'), onPress: () => doReportUser('spam') },
+                      { text: t('comments.reasonHarassment'), onPress: () => doReportUser('harassment') },
+                      { text: t('comments.reasonInappropriate'), onPress: () => doReportUser('inappropriate') },
+                      { text: t('common.cancel'), style: 'cancel' },
                     ]);
                   }}
                 >
                   <View style={ss.actionIcon}><Flag size={18} color="#fff" strokeWidth={1.8} /></View>
-                  <Text style={ss.actionLabel}>Melden</Text>
+                  <Text style={ss.actionLabel}>{t('share.report')}</Text>
                 </Pressable>
 
                 <Pressable
                   style={[ss.actionRow, { borderBottomWidth: 0 }]}
                   onPress={() => {
-                    Alert.alert(`@${username ?? 'User'} sperren?`, 'Dieser Nutzer kann dir dann nicht mehr folgen oder schreiben.', [
-                      { text: 'Abbrechen', style: 'cancel' },
-                      { text: 'Sperren', style: 'destructive', onPress: () => { block.mutate(); onClose(); Alert.alert('Gesperrt', `@${username ?? 'User'} wurde gesperrt.`); } },
+                    Alert.alert(t('share.blockTitle', { name: shareName }), t('share.blockText'), [
+                      { text: t('common.cancel'), style: 'cancel' },
+                      { text: t('share.block'), style: 'destructive', onPress: () => { block.mutate(); onClose(); Alert.alert(t('share.blocked'), t('share.blockedMsg', { name: shareName })); } },
                     ]);
                   }}
                 >

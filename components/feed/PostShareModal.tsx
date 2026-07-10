@@ -1,4 +1,5 @@
 import { useAuthStore } from '@/lib/authStore';
+import { useI18n } from '@/lib/i18n';
 import { webPostUrl } from '@/lib/webLinks';
 import { supabase } from '@/lib/supabase';
 import { useOrCreateConversation,useSendMessage } from '@/lib/useMessages';
@@ -73,6 +74,7 @@ export function PostShareModal({
   mediaType?: string;
   mediaUrl?: string;
 }) {
+  const { t } = useI18n();
   const currentUserId = useAuthStore((s) => s.profile?.id);
   const isAdmin = useAuthStore((s) => s.profile?.is_admin);
   const { mutateAsync: adminRemovePost } = useAdminRemovePost();
@@ -136,7 +138,7 @@ export function PostShareModal({
       setSearch('');
       onClose();
     } catch {
-      Alert.alert('Hat nicht geklappt', 'Dein Post ist nicht rausgegangen — gleich nochmal? 🙏');
+      Alert.alert(t('common.error'), t('share.failPost'));
     } finally {
       setSending(false);
     }
@@ -147,27 +149,27 @@ export function PostShareModal({
     // Kurzer Teaser — die Vorschaukarte zeigt Titel + @user + Thumbnail bereits,
     // der Text muss das NICHT wiederholen (kein "von @user auf Vibes", keine
     // doppelte URL). Der Link steht auf eigener Zeile.
-    const teaser = postCaption ? `„${postCaption}"` : 'diesen Vibe';
-    const text = `Schau dir ${teaser} an 🎬`;
+    const teaser = postCaption ? `„${postCaption}"` : t('share.thisVibe');
+    const text = t('share.shareTeaser', { teaser });
     switch (id) {
       case 'whatsapp':
         // wa.me erzeugt echten anklickbaren Link
         Linking.openURL(`https://wa.me/?text=${encodeURIComponent(`${text}\n${postLink}`)}`).catch(() =>
-          Alert.alert('WhatsApp nicht installiert')
+          Alert.alert(t('share.whatsappMissing'))
         );
         break;
       case 'telegram':
         Linking.openURL(`tg://msg_url?url=${encodeURIComponent(postLink)}&text=${encodeURIComponent(text)}`).catch(() =>
-          Alert.alert('Telegram nicht installiert')
+          Alert.alert(t('share.telegramMissing'))
         );
         break;
       case 'copy':
-        Alert.alert('Link kopiert', postLink);
+        Alert.alert(t('share.linkCopied'), postLink);
         break;
       case 'more':
         Share.share(
           Platform.OS === 'ios' ? { message: text, url: postLink } : { message: `${text}\n${postLink}` },
-          { dialogTitle: 'Post teilen' }
+          { dialogTitle: t('share.postShareDialog') }
         );
         break;
     }
@@ -218,25 +220,25 @@ export function PostShareModal({
         break;
       case 'notinterested':
         reportPost({ postId, reason: 'not_interested' });
-        Alert.alert('Verstanden', 'Wir zeigen dir weniger von diesem Content.');
+        Alert.alert(t('share.lessTitle'), t('share.lessContent'));
         break;
       case 'report':
-        Alert.alert('Melden', 'Wähle einen Grund:', [
+        Alert.alert(t('share.report'), t('share.chooseReason'), [
           {
-            text: 'Spam',
+            text: t('share.reasonSpam'),
             onPress: () => {
               reportPost({ postId, reason: 'report' });
-              Alert.alert('Danke', 'Der Post wurde gemeldet.');
+              Alert.alert(t('share.thanks'), t('share.reportedPost'));
             },
           },
           {
-            text: 'Unangemessener Inhalt',
+            text: t('share.reasonInappropriate'),
             onPress: () => {
               reportPost({ postId, reason: 'report' });
-              Alert.alert('Danke', 'Der Post wurde gemeldet.');
+              Alert.alert(t('share.thanks'), t('share.reportedPost'));
             },
           },
-          { text: 'Abbrechen', style: 'cancel' },
+          { text: t('common.cancel'), style: 'cancel' },
         ]);
         break;
       case 'download':
@@ -244,20 +246,20 @@ export function PostShareModal({
         break;
       case 'adminremove':
         Alert.alert(
-          'Beitrag entfernen?',
-          'Der Post wird als Admin entfernt und protokolliert.',
+          t('share.adminRemoveTitle'),
+          t('share.adminRemoveText'),
           [
-            { text: 'Abbrechen', style: 'cancel' },
+            { text: t('common.cancel'), style: 'cancel' },
             {
-              text: 'Entfernen',
+              text: t('share.remove'),
               style: 'destructive',
               onPress: async () => {
                 try {
                   await adminRemovePost({ postId });
                   Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                  Alert.alert('Entfernt', 'Der Beitrag wurde entfernt.');
+                  Alert.alert(t('share.removedTitle'), t('share.removedText'));
                 } catch (e) {
-                  Alert.alert('Fehlgeschlagen', e instanceof Error ? e.message : 'Konnte nicht entfernt werden.');
+                  Alert.alert(t('share.removeFailedTitle'), e instanceof Error ? e.message : t('share.removeFailedText'));
                 }
               },
             },

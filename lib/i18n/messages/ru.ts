@@ -1026,6 +1026,14 @@ export const ru: DeepPartial<Messages> = {
     liveReasonInappropriate: '🚫 Неприемлемый контент',
     liveReasonHarassment: '⚠️ Травля',
     liveReasonSpam: '🤖 Спам',
+    // PostShareModal
+    thisVibe: 'этот вайб',
+    shareTeaser: 'Зацени {teaser} 🎬',
+    postShareDialog: 'Поделиться постом',
+    adminRemoveTitle: 'Удалить публикацию?',
+    adminRemoveText: 'Пост будет удалён администратором и запротоколирован.',
+    remove: 'Удалить',
+    storySaveDialog: 'Сохранить историю',
   },
   auth: {
     tagline: 'Твоя лента. Твои правила.',

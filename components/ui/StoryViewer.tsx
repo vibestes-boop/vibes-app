@@ -35,6 +35,7 @@ withTiming
 
 import { StoryViewersSheet } from '@/components/ui/StoryViewersSheet';
 import { useAuthStore } from '@/lib/authStore';
+import { useI18n } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 import { useFollow } from '@/lib/useFollow';
 import { useOrCreateConversation,useSendMessage } from '@/lib/useMessages';
@@ -366,6 +367,7 @@ function InAppShareModal({
   storyMediaUrl: string;
   onClose: () => void;
 }) {
+  const { t } = useI18n();
   const currentUserId = useAuthStore((s) => s.profile?.id);
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -428,7 +430,7 @@ function InAppShareModal({
       setSearch('');
       onClose();
     } catch {
-      Alert.alert('Hat nicht geklappt', 'Deine Story ist nicht rausgegangen — gleich nochmal? 🙏');
+      Alert.alert(t('common.error'), t('share.failStory'));
     } finally {
       setSending(false);
     }
@@ -438,19 +440,19 @@ function InAppShareModal({
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     switch (id) {
       case 'whatsapp':
-        Linking.openURL(`whatsapp://send?text=${encodeURIComponent(`📸 Story von @${storyUsername} auf Vibes: ${storyLink}`)}`).catch(() => Alert.alert('WhatsApp nicht installiert'));
+        Linking.openURL(`whatsapp://send?text=${encodeURIComponent(t('share.storyWaText', { name: storyUsername, link: storyLink }))}`).catch(() => Alert.alert(t('share.whatsappMissing')));
         break;
       case 'telegram':
-        Linking.openURL(`tg://msg_url?url=${encodeURIComponent(storyLink)}&text=${encodeURIComponent(`Story von @${storyUsername}`)}`).catch(() => Alert.alert('Telegram nicht installiert'));
+        Linking.openURL(`tg://msg_url?url=${encodeURIComponent(storyLink)}&text=${encodeURIComponent(t('share.storyTgText', { name: storyUsername }))}`).catch(() => Alert.alert(t('share.telegramMissing')));
         break;
       case 'copy':
         clipboardSetString(storyLink).catch(() => { });
 
         Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-        Alert.alert('Link kopiert ✓', storyLink);
+        Alert.alert(t('share.linkCopiedCheck'), storyLink);
         break;
       case 'more':
-        Share.share({ message: `📸 Story von @${storyUsername} auf Vibes: ${storyLink}`, url: storyLink });
+        Share.share({ message: t('share.storyWaText', { name: storyUsername, link: storyLink }), url: storyLink });
         break;
     }
   };
@@ -460,20 +462,20 @@ function InAppShareModal({
     onClose();
     switch (id) {
       case 'report':
-        Alert.alert('Melden', 'Wähle einen Grund:', [
-          { text: 'Spam', onPress: () => Alert.alert('Gemeldet', 'Danke.') },
-          { text: 'Unangemessener Inhalt', onPress: () => Alert.alert('Gemeldet', 'Danke.') },
-          { text: 'Abbrechen', style: 'cancel' },
+        Alert.alert(t('share.report'), t('share.chooseReason'), [
+          { text: t('share.reasonSpam'), onPress: () => Alert.alert(t('share.reported'), t('share.thanksShort')) },
+          { text: t('share.reasonInappropriate'), onPress: () => Alert.alert(t('share.reported'), t('share.thanksShort')) },
+          { text: t('common.cancel'), style: 'cancel' },
         ]);
         break;
       case 'notinterested':
-        Alert.alert('Verstanden', 'Weniger Stories dieser Art.');
+        Alert.alert(t('share.lessTitle'), t('share.lessStories'));
         break;
       case 'download':
         (async () => {
           try {
             if (!storyMediaUrl) {
-              Alert.alert('Nichts da 🙈', 'Hier ist gerade kein Medium verfügbar.');
+              Alert.alert(t('share.nothingHereTitle'), t('share.nothingHereText'));
               return;
             }
             // Dateiendung ermitteln
@@ -488,12 +490,12 @@ function InAppShareModal({
 
             // Native Share-Sheet → User kann in Fotos, Dateien etc. speichern
             await Share.share(
-              { url: uri, message: `Story von @${storyUsername}` },
-              { dialogTitle: 'Story speichern' }
+              { url: uri, message: t('share.storyTgText', { name: storyUsername }) },
+              { dialogTitle: t('share.storySaveDialog') }
             );
           } catch (err: any) {
             if (err?.message?.includes('cancel')) return; // User hat abgebrochen
-            Alert.alert('Hat nicht geklappt', 'Konnte die Story nicht speichern — nochmal versuchen? 💾');
+            Alert.alert(t('common.error'), t('share.saveFailedStory'));
           }
         })();
         break;
@@ -619,6 +621,7 @@ function StoryCommentsSheet({
   onClose: () => void;
   onSubmit: (text: string) => Promise<void>;
 }) {
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const [text, setText] = useState('');
   const [sending, setSending] = useState(false);
@@ -633,7 +636,7 @@ function StoryCommentsSheet({
       setText('');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {
-      Alert.alert('Hat nicht geklappt', 'Dein Kommentar ist nicht rausgegangen — nochmal tippen? 🙏');
+      Alert.alert(t('common.error'), t('share.commentFailed'));
     } finally {
       setSending(false);
     }
@@ -787,6 +790,7 @@ const sc = StyleSheet.create({
 
 // ── Haupt-Komponente ─────────────────────────────────────────────────────────
 export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, onPrevGroup }: Props) {
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const currentUserId = useAuthStore((s) => s.profile?.id);
   const [showViewers, setShowViewers] = useState(false);
@@ -1075,7 +1079,7 @@ export function StoryViewer({ group, allGroups, visible, onClose, onNextGroup, o
       setReplyText('');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch {
-      Alert.alert('Hat nicht geklappt', 'Deine Nachricht ist nicht rausgegangen — gleich nochmal? 🙏');
+      Alert.alert(t('common.error'), t('share.messageFailed'));
     }
   };
 

@@ -4,6 +4,7 @@
  * Groups actions into three sections: Quick Actions, Social, Safety.
  */
 import { setStringAsync as clipboardSetString } from 'expo-clipboard';
+import { useI18n } from '@/lib/i18n';
 import { webPostUrl } from '@/lib/webLinks';
 import {
 Bookmark,
@@ -144,6 +145,7 @@ export default function PostLongPressSheet({
   onOpenShare,
 }: Props) {
   const router = useRouter();
+  const { t } = useI18n();
   const { liked, toggle: toggleLike } = useLike(postId);
   const { bookmarked, toggle: toggleBookmark } = useBookmark(postId);
   const { mutate: report } = useReport();
@@ -152,7 +154,7 @@ export default function PostLongPressSheet({
 
   const handleDownload = useCallback(async () => {
     if (!mediaUrl) {
-      Alert.alert('Kein Medieninhalt', 'Dieser Post hat kein Bild oder Video.');
+      Alert.alert(t('share.noMediaTitle'), t('share.noMediaText'));
       return;
     }
     onClose();
@@ -161,7 +163,7 @@ export default function PostLongPressSheet({
       await Share.share({ url: mediaUrl, title: 'Vibes Post' });
     } catch (e: any) {
       if (e?.message !== 'User did not share') {
-        Alert.alert('Hoppla 🙈', e?.message ?? 'Das Teilen ging nicht durch — gleich nochmal?');
+        Alert.alert(t('create.oops'), e?.message ?? t('share.failGeneric'));
       }
     }
   }, [mediaUrl, onClose]);
@@ -171,7 +173,7 @@ export default function PostLongPressSheet({
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     onClose();
-    Alert.alert('Link kopiert ✓', '');
+    Alert.alert(t('share.linkCopiedCheck'), '');
   }, [postLink, onClose]);
 
   const visitProfile = useCallback(() => {
@@ -183,16 +185,16 @@ export default function PostLongPressSheet({
   const handleReport = useCallback(() => {
     onClose();
     setTimeout(() => {
-      Alert.alert('Melden', 'Wähle einen Grund:', [
+      Alert.alert(t('share.report'), t('share.chooseReason'), [
         {
-          text: 'Spam',
-          onPress: () => { report({ postId, reason: 'report' }); Alert.alert('Danke', 'Gemeldet.'); },
+          text: t('share.reasonSpam'),
+          onPress: () => { report({ postId, reason: 'report' }); Alert.alert(t('share.thanks'), t('share.reported')); },
         },
         {
-          text: 'Unangemessener Inhalt',
-          onPress: () => { report({ postId, reason: 'report' }); Alert.alert('Danke', 'Gemeldet.'); },
+          text: t('share.reasonInappropriate'),
+          onPress: () => { report({ postId, reason: 'report' }); Alert.alert(t('share.thanks'), t('share.reported')); },
         },
-        { text: 'Abbrechen', style: 'cancel' },
+        { text: t('common.cancel'), style: 'cancel' },
       ]);
     }, 100);
   }, [onClose, postId, report]);
@@ -296,7 +298,7 @@ export default function PostLongPressSheet({
                 onPress={() => {
                   report({ postId, reason: 'not_interested' });
                   onClose();
-                  Alert.alert('Verstanden', 'Wir passen deinen Feed an.');
+                  Alert.alert(t('share.lessTitle'), t('share.feedAdjusted'));
                 }}
               />
               <ActionRow
