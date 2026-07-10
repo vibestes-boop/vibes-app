@@ -2,6 +2,7 @@
  * components/shop/ReviewSheet.tsx
  * Bottom-Sheet zum Abgeben / Bearbeiten einer Produktbewertung
  */
+import { useI18n } from '@/lib/i18n';
 import { useMyReview,useSubmitReview } from '@/lib/useProductReviews';
 import * as Haptics from 'expo-haptics';
 import { Send,Star,X } from 'lucide-react-native';
@@ -47,6 +48,7 @@ function StarPicker({ value, onChange }: { value: number; onChange: (v: number) 
 
 // ─── Sheet ────────────────────────────────────────────────────────────────────
 export function ReviewSheet({ productId, orderId, productTitle, visible, onClose }: ReviewSheetProps) {
+  const { t } = useI18n();
   const { data: existing } = useMyReview(productId);
   const { mutateAsync: submit, isPending } = useSubmitReview();
 
@@ -66,7 +68,7 @@ export function ReviewSheet({ productId, orderId, productTitle, visible, onClose
 
   const handleSubmit = async () => {
     if (rating === 0) {
-      Alert.alert('Bewertung fehlt', 'Bitte wähle 1-5 Sterne aus.');
+      Alert.alert(t('orders.reviewMissingTitle'), t('orders.reviewMissingText'));
       return;
     }
     try {
@@ -80,7 +82,7 @@ export function ReviewSheet({ productId, orderId, productTitle, visible, onClose
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       onClose();
     } catch (e: any) {
-      Alert.alert('Hoppla 🙈', e.message ?? 'Deine Bewertung ging nicht durch — gleich nochmal?');
+      Alert.alert(t('create.oops'), e.message ?? t('orders.reviewFailedText'));
     }
   };
 

@@ -6,6 +6,7 @@
 import { ProductCoverImage } from '@/components/shop/ProductCoverImage';
 import { ReviewSheet } from '@/components/shop/ReviewSheet';
 import { CoinIcon } from '@/components/ui/CoinIcon';
+import { useI18n } from '@/lib/i18n';
 import { useMyReview } from '@/lib/useProductReviews';
 import { useTheme } from '@/lib/useTheme';
 import { useDownloadDigitalProduct,useMyOrders,type Order } from '@/lib/useShop';
@@ -66,6 +67,7 @@ const CAT_LABELS: Record<string, string> = {
 
 // ─── Order Card ───────────────────────────────────────────────────────────────
 function OrderCard({ order, role, colors }: { order: Order; role: 'buyer' | 'seller'; colors: ThemeColors }) {
+  const { t } = useI18n();
   const { download, isLoading } = useDownloadDigitalProduct();
   const [reviewOpen, setReviewOpen] = useState(false);
   const product = order.product as any;
@@ -77,7 +79,7 @@ function OrderCard({ order, role, colors }: { order: Order; role: 'buyer' | 'sel
   const handleDownload = async () => {
     const result = await download(order.id);
     if (result.error) {
-      Alert.alert('Hat nicht geklappt', 'Der Download ist fehlgeschlagen — versuch es nochmal. 🙏');
+      Alert.alert(t('common.error'), t('orders.downloadFailedText'));
     }
   };
 

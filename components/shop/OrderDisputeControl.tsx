@@ -3,6 +3,7 @@
  * (Käufer/Verkäufer, ab Bezahlung) + Streit-Status anzeigen. Klärung läuft über
  * den Admin (Web). Auf der App: melden + Status sehen.
  */
+import { useI18n } from '@/lib/i18n';
 import { useReportOrderDispute, type OrderDispute } from '@/lib/useShop';
 import { useTheme } from '@/lib/useTheme';
 import { AlertTriangle } from 'lucide-react-native';
@@ -38,6 +39,7 @@ export function OrderDisputeControl({
   dispute?: OrderDispute | null;
 }) {
   const { colors } = useTheme();
+  const { t } = useI18n();
   const report = useReportOrderDispute();
   const [open, setOpen] = useState(false);
   const [reason, setReason] = useState('');
@@ -46,12 +48,12 @@ export function OrderDisputeControl({
   const options = REASONS.filter((r) => !r.role || r.role === role);
 
   const submit = () => {
-    if (!reason) { Alert.alert('Grund wählen', 'Bitte einen Grund auswählen.'); return; }
+    if (!reason) { Alert.alert(t('orders.disputeReasonTitle'), t('orders.disputeReasonText')); return; }
     report.mutate(
       { orderId, reason, detail },
       {
-        onSuccess: () => { setOpen(false); setReason(''); setDetail(''); Alert.alert('Gemeldet', 'Wir kümmern uns drum. 🙏'); },
-        onError: () => Alert.alert('Hoppla', 'Hat nicht geklappt — gleich nochmal?'),
+        onSuccess: () => { setOpen(false); setReason(''); setDetail(''); Alert.alert(t('orders.disputeReported'), t('orders.disputeReportedText')); },
+        onError: () => Alert.alert(t('orders.oops'), t('orders.retry')),
       },
     );
   };

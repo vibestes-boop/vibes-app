@@ -417,6 +417,17 @@ export const de = {
     targetQty: 'Ziel-Menge (z.B. 80)',
     yourMessage: 'Deine Nachricht …',
     send: 'Senden',
+    // Dispute / Review / Download
+    disputeReasonTitle: 'Grund wählen',
+    disputeReasonText: 'Bitte einen Grund auswählen.',
+    disputeReported: 'Gemeldet',
+    disputeReportedText: 'Wir kümmern uns drum. 🙏',
+    starsTitle: 'Sterne wählen',
+    starsText: 'Bitte 1–5 Sterne auswählen.',
+    reviewMissingTitle: 'Bewertung fehlt',
+    reviewMissingText: 'Bitte wähle 1-5 Sterne aus.',
+    reviewFailedText: 'Deine Bewertung ging nicht durch — gleich nochmal?',
+    downloadFailedText: 'Der Download ist fehlgeschlagen — versuch es nochmal. 🙏',
   },
   myshop: {
     catDigital: 'Digital',

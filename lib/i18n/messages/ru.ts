@@ -409,6 +409,17 @@ export const ru: DeepPartial<Messages> = {
     targetQty: 'Целевое кол-во (напр. 80)',
     yourMessage: 'Твоё сообщение …',
     send: 'Отправить',
+    // Спор / Отзыв / Загрузка
+    disputeReasonTitle: 'Выбери причину',
+    disputeReasonText: 'Пожалуйста, выбери причину.',
+    disputeReported: 'Отправлено',
+    disputeReportedText: 'Мы разберёмся. 🙏',
+    starsTitle: 'Выбери звёзды',
+    starsText: 'Поставь оценку 1–5 звёзд.',
+    reviewMissingTitle: 'Нет оценки',
+    reviewMissingText: 'Поставь оценку 1–5 звёзд.',
+    reviewFailedText: 'Твоя оценка не отправилась — попробуешь ещё раз?',
+    downloadFailedText: 'Загрузка не удалась — попробуй ещё раз. 🙏',
   },
   myshop: {
     catDigital: 'Цифровой',

@@ -3,6 +3,7 @@
  * Bestellung (Käufer↔Verkäufer). Zeigt die eigene (änderbare) Bewertung + die von
  * der Gegenseite erhaltene; öffnet ein Modal mit Sternen + optionalem Text.
  */
+import { useI18n } from '@/lib/i18n';
 import { useSubmitOrderReview, type OrderReview } from '@/lib/useShop';
 import { useTheme } from '@/lib/useTheme';
 import { Star } from 'lucide-react-native';
@@ -55,6 +56,7 @@ export function OrderReviewControl({
   receivedReview?: OrderReview | null;
 }) {
   const { colors } = useTheme();
+  const { t } = useI18n();
   const submit = useSubmitOrderReview();
   const [open, setOpen] = useState(false);
   const [rating, setRating] = useState(myReview?.rating ?? 0);
@@ -69,12 +71,12 @@ export function OrderReviewControl({
   };
 
   const save = () => {
-    if (rating < 1) { Alert.alert('Sterne wählen', 'Bitte 1–5 Sterne auswählen.'); return; }
+    if (rating < 1) { Alert.alert(t('orders.starsTitle'), t('orders.starsText')); return; }
     submit.mutate(
       { orderId, rating, comment },
       {
         onSuccess: () => setOpen(false),
-        onError: () => Alert.alert('Hoppla', 'Hat nicht geklappt — gleich nochmal?'),
+        onError: () => Alert.alert(t('orders.oops'), t('orders.retry')),
       },
     );
   };
