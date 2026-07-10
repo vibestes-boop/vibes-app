@@ -55,3 +55,35 @@ Supabase-Projekt-Ref: `llymwqfgujwkoxzqxrlm`
 - **Implicit-Flow** bewusst gewählt (kein globaler `flowType:'pkce'`-Wechsel am Supabase-Client → kein Risiko für E-Mail-/Magic-Link-Flows).
 - **OTA-Sicherheit:** `expo-web-browser` wird lazy via `require()` **innerhalb** von `googleSignIn()` geladen + Button gated → auf Build 285 (ohne native Dep) wird das Modul nie berührt, kein Crash.
 - **Scheme:** `vibes` (`app.json`) — daher Redirect `vibes://login-callback`.
+
+---
+
+## 5. OAuth-Fenster branden (statt `llym….supabase.co`) — Stand 10.07.2026
+
+Beim Google-Login zeigen zwei Fenster die rohe Supabase-Projekt-Domain.
+Zwei getrennte Ursachen, zwei Fixes:
+
+### 5a. Google-Fenster „Weiter zu llym….supabase.co" — KOSTENLOS, sofort
+Google zeigt die Redirect-Domain nur, solange der Consent-Screen nicht
+vollständig gebrandet + veröffentlicht ist.
+**Google Cloud Console → APIs & Services → OAuth consent screen:**
+App-Name „Serlo" + Support-Mail + Logo + Authorized domain `serlo.ch`
++ Privacy (`https://www.serlo.ch/privacy`) + Terms (`…/terms`)
+→ Publishing status **„In production"**. Danach: „Weiter zu Serlo".
+(Logo-Review durch Google kann einige Tage dauern; Name greift sofort.)
+
+### 5b. iOS-System-Dialog „…möchte zum Anmelden …supabase.co verwenden" — SPÄTER
+iOS (ASWebAuthenticationSession) zeigt IMMER den Host der Auth-URL —
+einzige Abhilfe: **Supabase Custom Domain** (z. B. `auth.serlo.ch`,
+Pro-Add-on ~10 $/Monat). Bewusst aufgeschoben bis Umsatz (Kosmetik).
+Migrations-Checkliste wenn es soweit ist:
+1. IONOS: CNAME `auth` → vom Supabase-Dashboard vorgegebenes Ziel;
+   Add-on im Dashboard aktivieren + verifizieren.
+2. Google Console: Redirect-URI `https://auth.serlo.ch/auth/v1/callback`
+   ERGÄNZEN (alte behalten bis Rollout durch). Apple-Provider ebenso.
+3. App: `EXPO_PUBLIC_SUPABASE_URL` auf `https://auth.serlo.ch` (OTA reicht,
+   Var ist im JS-Bundle inline). Web: `NEXT_PUBLIC_SUPABASE_URL` in Vercel.
+4. ⚠️ **storageKey-Falle:** supabase-js leitet den Auth-Storage-Key aus dem
+   Hostnamen ab (`sb-llymwqfgujwkoxzqxrlm-auth-token`). Beim Domain-Wechsel
+   in `lib/supabase.ts` + Web-Client `auth.storageKey` EXPLIZIT auf den
+   alten Wert pinnen — sonst werden alle eingeloggten User ausgeloggt.
