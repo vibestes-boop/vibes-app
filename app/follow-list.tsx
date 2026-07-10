@@ -1,4 +1,5 @@
 import { useAuthStore } from '@/lib/authStore';
+import { useI18n } from '@/lib/i18n';
 import { useFollow,useFollowerList,useFollowingList,type FollowUser } from '@/lib/useFollow';
 import { useTheme } from '@/lib/useTheme';
 import * as Haptics from 'expo-haptics';
@@ -24,6 +25,7 @@ function UserRow({ user, onPress }: { user: FollowUser; onPress: () => void }) {
   const { isFollowing, toggle, isLoading } = useFollow(isOwn ? null : user.id);
   const initial = (user.username ?? '?')[0].toUpperCase();
   const { colors } = useTheme();
+  const { t } = useI18n();
 
   return (
     <Pressable
@@ -59,12 +61,12 @@ function UserRow({ user, onPress }: { user: FollowUser; onPress: () => void }) {
           ) : isFollowing ? (
             <>
               <UserCheck size={13} color={colors.text.primary} strokeWidth={2.5} />
-              <Text style={[s.followBtnText, { color: colors.text.primary }]}>Folgst</Text>
+              <Text style={[s.followBtnText, { color: colors.text.primary }]}>{t('profile.followingBtn')}</Text>
             </>
           ) : (
             <>
               <UserPlus size={13} color="#fff" strokeWidth={2.5} />
-              <Text style={s.followBtnText}>Folgen</Text>
+              <Text style={s.followBtnText}>{t('profile.follow')}</Text>
             </>
           )}
         </Pressable>
@@ -83,6 +85,7 @@ export default function FollowListScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
+  const { t } = useI18n();
 
   const [mode, setMode] = useState<Mode>(initialMode ?? 'followers');
 
@@ -121,7 +124,7 @@ export default function FollowListScreen() {
             }}
           >
             <Text style={[s.tabText, mode === m && s.tabTextActive, { color: mode === m ? colors.text.primary : colors.text.muted }]}>
-              {m === 'followers' ? 'Follower' : 'Following'}
+              {m === 'followers' ? t('profile.followers') : t('profile.followingCount')}
             </Text>
             <Text style={[s.tabCount, mode === m && s.tabCountActive, { color: mode === m ? colors.text.primary : colors.text.secondary }]}>
               {m === 'followers' ? followers.length : following.length}
@@ -138,7 +141,7 @@ export default function FollowListScreen() {
         <View style={s.center}>
           <Text style={s.emptyEmoji}>{mode === 'followers' ? '👥' : '🔍'}</Text>
           <Text style={[s.emptyText, { color: colors.text.muted }]}>
-            {mode === 'followers' ? 'Noch keine Follower' : 'Folgt noch niemandem'}
+            {mode === 'followers' ? t('profile.noFollowersYet') : t('profile.followsNobody')}
           </Text>
         </View>
       ) : (

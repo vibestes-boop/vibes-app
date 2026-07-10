@@ -24,6 +24,7 @@ import {
 } from 'react-native-reanimated';
 import { notificationAsync, NotificationFeedbackType } from 'expo-haptics';
 
+import { useI18n, type TranslationKey } from '@/lib/i18n';
 import { TAB_FEATURES, type TabFeature } from '@/lib/tabBarStore';
 import { useTheme } from '@/lib/useTheme';
 
@@ -59,6 +60,7 @@ function ArcButton({
   onPress: () => void;
 }) {
   const { colors } = useTheme();
+  const { t } = useI18n();
   const tx0 = originX - targetX;      // Start-Versatz X (zum Ursprung)
   const ty0 = targetY - originY;      // Start-Versatz Y (startet tiefer, fährt hoch)
 
@@ -76,6 +78,7 @@ function ArcButton({
 
   const meta = TAB_FEATURES[feature];
   const Icon = meta.icon;
+  const label = t(meta.labelKey as TranslationKey);
 
   return (
     <Animated.View
@@ -85,14 +88,14 @@ function ArcButton({
         aStyle,
       ]}
     >
-      <Pressable onPress={onPress} style={styles.arcPress} accessibilityRole="button" accessibilityLabel={meta.label}>
+      <Pressable onPress={onPress} style={styles.arcPress} accessibilityRole="button" accessibilityLabel={label}>
         {/* Chip in der Original-Nav-Farbe (tabBar.bg): dark ≈ schwarz, light = weiß.
             Icon im Kontrast dazu (tabBar.active). */}
         <View style={[styles.circle, { backgroundColor: colors.tabBar.bg, borderColor: colors.tabBar.border }]}>
           <Icon size={24} color={colors.tabBar.active} strokeWidth={2} />
         </View>
         <Text numberOfLines={1} style={styles.arcLabel}>
-          {meta.label}
+          {label}
         </Text>
       </Pressable>
     </Animated.View>
@@ -113,6 +116,7 @@ export function TabSlotSwitcher({
   onClose: () => void;
 }) {
   const { colors } = useTheme();
+  const { t } = useI18n();
   const insets = useSafeAreaInsets();
   const progress = useSharedValue(0);
 
@@ -144,11 +148,11 @@ export function TabSlotSwitcher({
     <Modal transparent visible animationType="none" onRequestClose={onClose} statusBarTranslucent>
       {/* Backdrop — Tap schließt */}
       <Animated.View style={[StyleSheet.absoluteFill, styles.backdrop, backdropStyle]}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel="Schließen" />
+        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityLabel={t('host.close')} />
       </Animated.View>
 
       <Animated.Text style={[styles.caption, { bottom: apexY + 52, color: colors.text.muted }, captionStyle]}>
-        {slot === 2 ? 'Linker Tab' : 'Rechter Tab'} · tippen zum Wechseln
+        {slot === 2 ? t('tabs.switchLeft') : t('tabs.switchRight')}
       </Animated.Text>
 
       {points.map((p) => (

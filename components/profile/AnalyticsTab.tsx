@@ -9,6 +9,7 @@ useCreatorEarnings,useCreatorGiftHistory,
 useCreatorOverview,useCreatorTopPosts,useFollowerGrowth,
 type AnalyticsPeriod,type ContentSortBy,
 } from '@/lib/useAnalytics';
+import { useI18n } from '@/lib/i18n';
 import { useTheme } from '@/lib/useTheme';
 import { impactAsync,ImpactFeedbackStyle } from 'expo-haptics';
 import { Image } from 'expo-image';
@@ -38,11 +39,7 @@ const { width: SCREEN_W } = Dimensions.get('window');
 const CHART_W = SCREEN_W - 32;
 const CHART_H = 120;
 
-const PERIODS: { label: string; value: AnalyticsPeriod }[] = [
-  { label: '7 Tage',  value: 7  },
-  { label: '28 Tage', value: 28 },
-  { label: '60 Tage', value: 60 },
-];
+const PERIODS: AnalyticsPeriod[] = [7, 28, 60];
 
 // ─── Trend Arrow ─────────────────────────────────────────────────────────────
 function TrendChip({ delta }: { delta: number | null }) {
@@ -84,19 +81,20 @@ function KpiCard({ Icon, label, value, delta, sub }: {
 
 // ─── Horizontal Mini Bar (für Engagement-Rate) ───────────────────────────────
 function EngagementBar({ rate, colors }: { rate: number; colors: any }) {
+  const { t } = useI18n();
   const pct = Math.min(rate, 100);
   const quality =
-    pct >= 6 ? { label: 'Ausgezeichnet', color: colors.accent.success }
-    : pct >= 3 ? { label: 'Gut', color: colors.text.primary }
-    : pct >= 1 ? { label: 'Durchschnittlich', color: colors.text.secondary }
-    : { label: 'Niedrig', color: colors.accent.danger };
+    pct >= 6 ? { label: t('analytics.qExcellent'), color: colors.accent.success }
+    : pct >= 3 ? { label: t('analytics.qGood'), color: colors.text.primary }
+    : pct >= 1 ? { label: t('analytics.qAverage'), color: colors.text.secondary }
+    : { label: t('analytics.qLow'), color: colors.accent.danger };
 
   return (
     <View style={[s.engCard, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
       <View style={s.engHeader}>
         <View>
-          <Text style={[s.engTitle, { color: colors.text.primary }]}>Engagement-Rate</Text>
-          <Text style={[s.engSub, { color: colors.text.muted }]}>Likes + Kommentare ÷ Views</Text>
+          <Text style={[s.engTitle, { color: colors.text.primary }]}>{t('analytics.engRate')}</Text>
+          <Text style={[s.engSub, { color: colors.text.muted }]}>{t('analytics.engSub')}</Text>
         </View>
         <View style={s.engRateWrap}>
           <Text style={[s.engRate, { color: quality.color }]}>{pct.toFixed(1)}%</Text>
@@ -117,13 +115,14 @@ function EngagementBar({ rate, colors }: { rate: number; colors: any }) {
 
 // ─── Follower Growth Chart ─────────────────────────────────────────────────────
 function FollowerChart({ data, colors, isDark }: { data: { day: string; new_followers: number }[]; colors: any; isDark: boolean }) {
+  const { t } = useI18n();
   const labelColor = isDark ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.35)';
   const gridColor  = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
 
   if (data.length === 0) return (
     <View style={[s.emptyChart, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
       <TrendingUp size={22} color={colors.icon.muted} strokeWidth={1.5} />
-      <Text style={[s.emptyChartText, { color: colors.text.muted }]}>Noch keine Wachstums-Daten 📈</Text>
+      <Text style={[s.emptyChartText, { color: colors.text.muted }]}>{t('analytics.noGrowth')}</Text>
     </View>
   );
 
@@ -164,7 +163,7 @@ function FollowerChart({ data, colors, isDark }: { data: { day: string; new_foll
         })}
       </Svg>
       {/* Max label */}
-      <Text style={[s.chartMaxLabel, { color: colors.text.muted }]}>{max} max/Tag</Text>
+      <Text style={[s.chartMaxLabel, { color: colors.text.muted }]}>{t('analytics.maxPerDay', { n: max })}</Text>
     </View>
   );
 }
@@ -174,6 +173,7 @@ function PostRow({ post, idx, contentSort, onPress, colors }: {
   post: any; idx: number; contentSort: ContentSortBy;
   onPress: () => void; colors: any;
 }) {
+  const { t } = useI18n();
   const metricValue =
     contentSort === 'views'   ? post.view_count
     : contentSort === 'likes' ? post.like_count
@@ -211,7 +211,7 @@ function PostRow({ post, idx, contentSort, onPress, colors }: {
       {/* Info */}
       <View style={s.postInfo}>
         <Text style={[s.postCaption, { color: colors.text.primary }]} numberOfLines={1}>
-          {post.caption || (post.media_type === 'video' ? 'Video' : 'Bild')}
+          {post.caption || (post.media_type === 'video' ? t('analytics.video') : t('analytics.image'))}
         </Text>
         {/* Mini stats row */}
         <View style={s.miniStats}>
@@ -235,7 +235,7 @@ function PostRow({ post, idx, contentSort, onPress, colors }: {
       <View style={s.metricWrap}>
         <Text style={[s.metricValue, { color: colors.text.primary }]}>{fmtNum(metricValue)}</Text>
         <Text style={[s.metricLabel, { color: colors.text.muted }]}>
-          {contentSort === 'views' ? 'Views' : contentSort === 'likes' ? 'Likes' : 'Komm.'}
+          {contentSort === 'views' ? t('analytics.viewsShort') : contentSort === 'likes' ? t('analytics.likes') : t('analytics.commentsShort')}
         </Text>
       </View>
     </Pressable>
@@ -244,6 +244,7 @@ function PostRow({ post, idx, contentSort, onPress, colors }: {
 
 // ─── Earnings Panel ───────────────────────────────────────────────────────────
 function EarningsPanel({ userId, period, colors }: { userId: string | null; period: AnalyticsPeriod; colors: any }) {
+  const { t } = useI18n();
   const { data: earnings, isLoading } = useCreatorEarnings(userId, period);
   const { data: history = [] } = useCreatorGiftHistory(userId, 5);
 
@@ -258,14 +259,14 @@ function EarningsPanel({ userId, period, colors }: { userId: string | null; peri
         {/* Wallet-Stand */}
         <View style={ep.walletHeader}>
           <View style={ep.walletLeft}>
-            <Text style={[ep.walletLabel, { color: colors.text.muted }]}>EINNAHMEN</Text>
+            <Text style={[ep.walletLabel, { color: colors.text.muted }]}>{t('analytics.earningsCaps')}</Text>
             <Text style={[ep.walletBalance, { color: colors.text.primary }]}>
               {isLoading ? '…' : `${euroValue} €`}
             </Text>
             <View style={ep.walletSubRow}>
               <Gem size={12} color={colors.accent.rose} strokeWidth={2} />
               <Text style={[ep.walletSub, { color: colors.text.muted }]}>
-                {fmtNum(earnings?.diamonds_balance ?? 0) + ' Punkte'}
+                {t('analytics.points', { n: fmtNum(earnings?.diamonds_balance ?? 0) })}
               </Text>
             </View>
           </View>
@@ -280,19 +281,19 @@ function EarningsPanel({ userId, period, colors }: { userId: string | null; peri
             <Text style={[ep.periodValue, { color: colors.text.primary }]}>
               {isLoading ? '…' : `${((earnings?.period_diamonds ?? 0) * 0.02).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`}
             </Text>
-            <Text style={[ep.periodLabel, { color: colors.text.muted }]}>Verdient</Text>
+            <Text style={[ep.periodLabel, { color: colors.text.muted }]}>{t('analytics.earned')}</Text>
           </View>
           <View style={[ep.periodDivider, { backgroundColor: colors.border.subtle }]} />
           <View style={ep.periodStat}>
             <Text style={[ep.periodValue, { color: colors.text.primary }]}>
               {isLoading ? '…' : fmtNum(earnings?.period_gifts ?? 0)}
             </Text>
-            <Text style={[ep.periodLabel, { color: colors.text.muted }]}>Gifts erhalten</Text>
+            <Text style={[ep.periodLabel, { color: colors.text.muted }]}>{t('analytics.giftsReceived')}</Text>
           </View>
           <View style={[ep.periodDivider, { backgroundColor: colors.border.subtle }]} />
           <View style={ep.periodStat}>
             <Text style={[ep.periodValue, { color: colors.text.primary }]}>{periodEuro} €</Text>
-            <Text style={[ep.periodLabel, { color: colors.text.muted }]}>Auszahlbar</Text>
+            <Text style={[ep.periodLabel, { color: colors.text.muted }]}>{t('analytics.payable')}</Text>
           </View>
         </View>
 
@@ -303,7 +304,7 @@ function EarningsPanel({ userId, period, colors }: { userId: string | null; peri
               <View style={[ep.topBadge, { backgroundColor: colors.bg.elevated }]}>
                 <Text style={ep.topBadgeEmoji}>{earnings.top_gift_emoji ?? '🎁'}</Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={[ep.topBadgeLabel, { color: colors.text.muted }]}>Top Gift</Text>
+                  <Text style={[ep.topBadgeLabel, { color: colors.text.muted }]}>{t('analytics.topGift')}</Text>
                   <Text style={[ep.topBadgeValue, { color: colors.text.primary }]} numberOfLines={1}>{earnings.top_gift_name}</Text>
                 </View>
               </View>
@@ -312,7 +313,7 @@ function EarningsPanel({ userId, period, colors }: { userId: string | null; peri
               <View style={[ep.topBadge, { backgroundColor: colors.bg.elevated }]}>
                 <Text style={ep.topBadgeEmoji}>🏆</Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={[ep.topBadgeLabel, { color: colors.text.muted }]}>Top Sender</Text>
+                  <Text style={[ep.topBadgeLabel, { color: colors.text.muted }]}>{t('analytics.topSender')}</Text>
                   <Text style={[ep.topBadgeValue, { color: colors.text.primary }]} numberOfLines={1}>@{earnings.top_gifter_name}</Text>
                 </View>
               </View>
@@ -324,7 +325,7 @@ function EarningsPanel({ userId, period, colors }: { userId: string | null; peri
       {/* Gift-Historie */}
       {history.length > 0 && (
         <View style={[ep.historyCard, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
-          <Text style={[ep.historyTitle, { color: colors.text.muted }]}>LETZTE GIFTS</Text>
+          <Text style={[ep.historyTitle, { color: colors.text.muted }]}>{t('analytics.lastGifts')}</Text>
           {history.map((item, i) => (
             <View
               key={i}
@@ -333,7 +334,7 @@ function EarningsPanel({ userId, period, colors }: { userId: string | null; peri
               <Text style={ep.historyEmoji}>{item.gift_emoji}</Text>
               <View style={{ flex: 1 }}>
                 <Text style={[ep.historyName, { color: colors.text.primary }]}>
-                  {item.gift_name} <Text style={{ color: colors.text.muted, fontWeight: '400' }}>von @{item.sender_name}</Text>
+                  {item.gift_name} <Text style={{ color: colors.text.muted, fontWeight: '400' }}>{t('analytics.fromUser', { name: item.sender_name })}</Text>
                 </Text>
               </View>
               <Text style={[ep.historyDiamonds, { color: colors.accent.rose }]}>+{(item.diamond_value * 0.02).toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €</Text>
@@ -393,6 +394,7 @@ export function AnalyticsTab({
   userId, period, onPeriodChange, contentSort, onContentSortChange, onPostPress,
 }: AnalyticsTabProps) {
   const { colors, isDark } = useTheme();
+  const { t } = useI18n();
   const { data: overview, isLoading: loadingOverview } = useCreatorOverview(userId, period);
   const { data: topPosts = [], isLoading: loadingPosts } = useCreatorTopPosts(userId, contentSort, 8);
   const { data: followerGrowth = [] } = useFollowerGrowth(userId, period);
@@ -407,7 +409,7 @@ export function AnalyticsTab({
 
       {/* ── Period Picker ── */}
       <View style={[s.periodRow, { backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle }]}>
-        {PERIODS.map(({ label, value }) => {
+        {PERIODS.map((value) => {
           const active = period === value;
           return (
             <Pressable
@@ -417,7 +419,7 @@ export function AnalyticsTab({
               accessibilityRole="button"
             >
               <Text style={[s.periodText, { color: active ? colors.text.primary : colors.text.muted }]}>
-                {label}
+                {t('analytics.days', { n: value })}
               </Text>
             </Pressable>
           );
@@ -429,23 +431,23 @@ export function AnalyticsTab({
       ) : (
         <>
           {/* ── KPI 2×2 ── */}
-          <SectionLabel label="Leistung im Überblick" colors={colors} />
+          <SectionLabel label={t('analytics.overview')} colors={colors} />
           <View style={s.kpiGrid}>
-            <KpiCard Icon={Eye} label="Aufrufe gesamt" value={fmtNum(overview?.total_views ?? 0)} delta={overview?.views_delta ?? null} sub={`Ø ${fmtNum(avgPerPost)} / Post`} />
-            <KpiCard Icon={Users} label="Follower" value={fmtNum(overview?.total_followers ?? 0)} delta={overview?.followers_delta ?? null} sub={`+${fmtNum(overview?.new_followers ?? 0)} neu`} />
-            <KpiCard Icon={Heart} label="Likes" value={fmtNum(overview?.total_likes ?? 0)} delta={overview?.likes_delta ?? null} />
-            <KpiCard Icon={MessageCircle} label="Kommentare" value={fmtNum(overview?.total_comments ?? 0)} delta={overview?.comments_delta ?? null} sub={`${fmtNum(totalInteractions)} Interaktionen`} />
+            <KpiCard Icon={Eye} label={t('analytics.totalViews')} value={fmtNum(overview?.total_views ?? 0)} delta={overview?.views_delta ?? null} sub={t('analytics.perPost', { n: fmtNum(avgPerPost) })} />
+            <KpiCard Icon={Users} label={t('analytics.followers')} value={fmtNum(overview?.total_followers ?? 0)} delta={overview?.followers_delta ?? null} sub={t('analytics.newN', { n: fmtNum(overview?.new_followers ?? 0) })} />
+            <KpiCard Icon={Heart} label={t('analytics.likes')} value={fmtNum(overview?.total_likes ?? 0)} delta={overview?.likes_delta ?? null} />
+            <KpiCard Icon={MessageCircle} label={t('analytics.comments')} value={fmtNum(overview?.total_comments ?? 0)} delta={overview?.comments_delta ?? null} sub={t('analytics.interactions', { n: fmtNum(totalInteractions) })} />
           </View>
 
           {/* ── Engagement Rate ── */}
           <EngagementBar rate={overview?.engagement_rate ?? 0} colors={colors} />
 
           {/* ── Einnahmen (Serlo Coins / Diamonds) ── */}
-          <SectionLabel label={`Einnahmen · ${period} Tage`} colors={colors} />
+          <SectionLabel label={t('analytics.earningsSec', { n: period })} colors={colors} />
           <EarningsPanel userId={userId} period={period} colors={colors} />
 
           {/* ── Follower-Wachstum ── */}
-          <SectionLabel label={`Follower-Wachstum · ${period} Tage`} colors={colors} />
+          <SectionLabel label={t('analytics.growthSec', { n: period })} colors={colors} />
           <View style={[s.chartCard, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
             <FollowerChart data={followerGrowth} colors={colors} isDark={isDark} />
           </View>
@@ -454,12 +456,12 @@ export function AnalyticsTab({
 
       {/* ── Top Posts ── */}
       <View style={s.topPostsHeader}>
-        <SectionLabel label="Top-Inhalte" colors={colors} />
+        <SectionLabel label={t('analytics.topContent')} colors={colors} />
         <View style={[s.sortRow, { backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle }]}>
           {([
-            { key: 'views'    as ContentSortBy, label: 'Aufrufe' },
-            { key: 'likes'    as ContentSortBy, label: 'Likes' },
-            { key: 'comments' as ContentSortBy, label: 'Kommentare' },
+            { key: 'views'    as ContentSortBy, label: t('analytics.views') },
+            { key: 'likes'    as ContentSortBy, label: t('analytics.likes') },
+            { key: 'comments' as ContentSortBy, label: t('analytics.comments') },
           ]).map(({ key, label }) => {
             const active = contentSort === key;
             return (
@@ -481,9 +483,9 @@ export function AnalyticsTab({
       <View style={[s.postsCard, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
         <View style={[s.postsCardHeader, { borderBottomColor: colors.border.subtle }]}>
           <Text style={[s.postsCardHeaderText, { color: colors.text.muted }]}>#</Text>
-          <Text style={[s.postsCardHeaderText, { color: colors.text.muted, flex: 1, marginLeft: 52 }]}>Post · Abschlussrate</Text>
+          <Text style={[s.postsCardHeaderText, { color: colors.text.muted, flex: 1, marginLeft: 52 }]}>{t('analytics.postCompletion')}</Text>
           <Text style={[s.postsCardHeaderText, { color: colors.text.muted }]}>
-            {contentSort === 'views' ? 'Aufrufe' : contentSort === 'likes' ? 'Likes' : 'Komm.'}
+            {contentSort === 'views' ? t('analytics.views') : contentSort === 'likes' ? t('analytics.likes') : t('analytics.commentsShort')}
           </Text>
         </View>
 
@@ -492,8 +494,8 @@ export function AnalyticsTab({
         ) : topPosts.length === 0 ? (
           <View style={s.noPosts}>
             <BarChart2 size={26} color={colors.icon.muted} strokeWidth={1.5} />
-            <Text style={[s.noPostsText, { color: colors.text.muted }]}>Noch keine Post-Daten 📊</Text>
-            <Text style={[s.noPostsSub, { color: colors.text.muted }]}>Erstelle Posts und interagiere mit deiner Community</Text>
+            <Text style={[s.noPostsText, { color: colors.text.muted }]}>{t('analytics.noData')}</Text>
+            <Text style={[s.noPostsSub, { color: colors.text.muted }]}>{t('analytics.noDataSub')}</Text>
           </View>
         ) : (
           topPosts.map((post, idx) => (
