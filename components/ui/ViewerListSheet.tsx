@@ -6,6 +6,7 @@
  * 3. Report Flow (flag icon → select what to report)
  */
 import { useAuthStore } from '@/lib/authStore';
+import { useI18n, type TranslationKey } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 import { useFollow } from '@/lib/useFollow';
 import { useTopGifters,type TopGifter } from '@/lib/useGifts';
@@ -101,13 +102,13 @@ function fmtCoins(n: number): string {
 }
 
 // ─── Report-Optionen ──────────────────────────────────────────────────────────
-const REPORT_REASONS = [
-  { key: 'name', label: 'Unangemessener Name' },
-  { key: 'photo', label: 'Unangemessenes Profilbild' },
-  { key: 'spam', label: 'Spam / Werbung' },
-  { key: 'hate', label: 'Hassrede / Belästigung' },
-  { key: 'impersonation', label: 'Identitätsdiebstahl' },
-  { key: 'other', label: 'Anderer Grund' },
+const REPORT_REASONS: { key: string; labelKey: TranslationKey }[] = [
+  { key: 'name', labelKey: 'share.vlrName' },
+  { key: 'photo', labelKey: 'share.vlrPhoto' },
+  { key: 'spam', labelKey: 'share.vlrSpam' },
+  { key: 'hate', labelKey: 'share.vlrHate' },
+  { key: 'impersonation', labelKey: 'share.vlrImpersonation' },
+  { key: 'other', labelKey: 'share.vlrOther' },
 ];
 
 // ─── User Profile Mini-Sheet ──────────────────────────────────────────────────
@@ -133,6 +134,7 @@ function UserProfileSheet({
   onRevokeMod?: (userId: string) => Promise<unknown> | void;
   isModBusy?: boolean;
 }) {
+  const { t } = useI18n();
   const { isFollowing, toggle, isLoading, isOwnProfile } = useFollow(user.id);
   const [showReport, setShowReport] = useState(false);
 
@@ -149,7 +151,7 @@ function UserProfileSheet({
         reason,
       })
       .then();
-    Alert.alert('Gemeldet', 'Deine Meldung wurde eingereicht. Danke!');
+    Alert.alert(t('share.reported'), t('share.viewerReported'));
   };
 
   // v1.22.3 — Grant/Revoke Handler mit Confirm-Alert
@@ -311,7 +313,7 @@ function UserProfileSheet({
                 style={s.reportOption}
                 onPress={() => handleReport(r.key)}
               >
-                <Text style={s.reportOptionText}>{r.label}</Text>
+                <Text style={s.reportOptionText}>{t(r.labelKey)}</Text>
               </Pressable>
             ))}
             <Pressable

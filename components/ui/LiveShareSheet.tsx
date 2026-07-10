@@ -6,6 +6,7 @@
  * Layer 3: Function buttons (Link kopieren, Story, Melden, etc.)
  */
 import { useAuthStore } from '@/lib/authStore';
+import { useI18n } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 import { setStringAsync as clipboardSetString } from 'expo-clipboard';
 import { Image } from 'expo-image';
@@ -133,6 +134,7 @@ const FUNCTION_BUTTONS = [
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export default function LiveShareSheet({ visible, onClose, sessionId, title }: Props) {
+  const { t } = useI18n();
   const currentUserId = useAuthStore((s) => s.profile?.id);
   const [followers, setFollowers] = useState<FollowerUser[]>([]);
   const [copied, setCopied] = useState(false);
@@ -255,26 +257,26 @@ export default function LiveShareSheet({ visible, onClose, sessionId, title }: P
         // Story-Sharing: teile den Live-Link über das native Share-Sheet
         Share.share({
           message: shareMsg,
-          title: title || 'Live auf Serlo',
+          title: title || t('share.liveShareTitle'),
         }).catch(() => { });
         break;
       case 'report':
         // Melden: System-Level Alert mit Report-Optionen
         Alert.alert(
-          'Live-Stream melden',
-          'Wähle den Grund für deine Meldung:',
+          t('share.liveReportTitle'),
+          t('share.liveReportWhy'),
           [
             {
-              text: '\uD83D\uDEAB Unangemessener Inhalt',
-              onPress: () => Alert.alert('Gemeldet', 'Vielen Dank. Wir prüfen den Stream zeitnah.'),
+              text: t('share.liveReasonInappropriate'),
+              onPress: () => Alert.alert(t('share.reported'), t('share.reportedLive')),
             },
             {
-              text: '\u26A0\uFE0F Belästigung',
-              onPress: () => Alert.alert('Gemeldet', 'Vielen Dank. Wir prüfen den Stream zeitnah.'),
+              text: t('share.liveReasonHarassment'),
+              onPress: () => Alert.alert(t('share.reported'), t('share.reportedLive')),
             },
             {
-              text: '\uD83E\uDD16 Spam',
-              onPress: () => Alert.alert('Gemeldet', 'Vielen Dank. Wir prüfen den Stream zeitnah.'),
+              text: t('share.liveReasonSpam'),
+              onPress: () => Alert.alert(t('share.reported'), t('share.reportedLive')),
             },
             { text: 'Abbrechen', style: 'cancel' },
           ]
