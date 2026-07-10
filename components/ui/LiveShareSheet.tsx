@@ -285,7 +285,7 @@ export default function LiveShareSheet({ visible, onClose, sessionId, title }: P
       case 'qr':
         // QR-Code: Link in Clipboard + Hinweis
         copyLink();
-        Alert.alert('QR-Code', 'Der Link wurde kopiert. Du kannst ihn in einem QR-Code-Generator einfügen.');
+        Alert.alert(t('share.qrTitle'), t('share.qrText'));
         break;
       default:
         break;
