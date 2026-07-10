@@ -1,0 +1,1462 @@
+# Tschetschenisch (ce) — Übersetzungs-To-do
+
+> Fülle die **Нохчийн**-Spalte Zeile für Zeile aus und übertrage die Werte
+> nach `lib/i18n/messages/ce.ts` (App) bzw. `apps/web/lib/i18n/messages/ce.ts` (Web).
+> Struktur = gleiche Namespaces/Keys wie `de.ts`. Leer gelassene Keys fallen automatisch auf Deutsch zurück.
+>
+> **1324 Strings** in 26 Bereichen. `⏎` = Zeilenumbruch (`\n`), `{var}` = Platzhalter unverändert lassen.
+
+## common  (4)
+
+| Key | Deutsch | Нохчийн |
+|---|---|---|
+| ok | OK |  |
+| cancel | Abbrechen |  |
+| almost | Fast! |  |
+| error | Hat nicht geklappt |  |
+
+## language  (4)
+
+| Key | Deutsch | Нохчийн |
+|---|---|---|
+| title | Sprache |  |
+| pickTitle | Sprache wählen |  |
+| de | Deutsch |  |
+| ru | Русский |  |
+
+## tabs  (9)
+
+| Key | Deutsch | Нохчийн |
+|---|---|---|
+| home | Home |  |
+| guild | Clan |  |
+| messages | Nachrichten |  |
+| shop | Shop |  |
+| explore | Entdecken |  |
+| notifications | Aktivität |  |
+| live | Live |  |
+| women_only | WOZ 🌸 |  |
+| profile | Profil |  |
+
+## notif  (32)
+
+| Key | Deutsch | Нохчийн |
+|---|---|---|
+| title | Aktivität |  |
+| markAll | Alle gelesen |  |
+| someone | Jemand |  |
+| andMore |  und {count} weitere |  |
+| emptyTitle | Noch ruhig hier 🔔 |  |
+| emptyDesc | Likes, Kommentare und neue Follower landen hier — bald geht’s los. |  |
+| discoverPeople | Leute entdecken |  |
+| accept | Anfrage annehmen |  |
+| decline | Anfrage ablehnen |  |
+| like | hat deinen Post geliked |  |
+| follow | folgt dir jetzt |  |
+| commentQuoted | hat kommentiert: "{text}" |  |
+| comment | hat deinen Post kommentiert |  |
+| mention | hat dich in einem Kommentar erwähnt |  |
+| dmQuoted | hat dir geschrieben: "{text}" |  |
+| dm | hat dir eine Nachricht geschickt |  |
+| followRequest | möchte dir folgen |  |
+| followAccepted | hat deine Follow-Anfrage akzeptiert |  |
+| live | ist jetzt live 🔴 Schau rein! |  |
+| liveInvite | hat dich zu einem Live eingeladen 🔴 |  |
+| giftNamed | hat dir {emoji} {gift} geschickt! |  |
+| gift | hat dir ein Geschenk geschickt 🎁 |  |
+| preorder | hat ein Produkt vorbestellt 🌸 |  |
+| productSaved | hat dein Produkt gemerkt 🔖 |  |
+| roundOpen | Eine Sammelbestellung ist offen — jetzt sichern 🌸 |  |
+| boughtQuoted | hat bestellt: {text} |  |
+| bought | hat ein Produkt in deinem Shop gekauft 🛍 |  |
+| orderUpdate | Update zu deiner Bestellung |  |
+| supportReplyQuoted | hat auf deine Anfrage geantwortet: {text} |  |
+| supportReply | hat auf deine Support-Anfrage geantwortet 💬 |  |
+| supportNewQuoted | hat eine Support-Anfrage gestellt: {text} |  |
+| supportNew | hat eine neue Support-Anfrage gestellt 🆘 |  |
+
+## feed  (10)
+
+| Key | Deutsch | Нохчийн |
+|---|---|---|
+| forYou | Für dich |  |
+| following | Folge ich |  |
+| loadErrorTitle | Lädt gerade nicht 🌀 |  |
+| loadErrorSub | Zieh nach unten zum Neu laden 👇 |  |
+| emptyTagSub | Noch keine Posts mit diesem Tag — sei der Erste. |  |
+| removeFilter | Filter entfernen |  |
+| welcomeTitle | Willkommen bei Serlo! ✨ |  |
+| welcomeSub | Folge anderen oder poste deinen ersten Vibe — dein Feed füllt sich automatisch. |  |
+| openExplore | Explore öffnen |  |
+| newPosts | Neue Posts verfügbar |  |
+
+## comments  (25)
+
+| Key | Deutsch | Нохчийн |
+|---|---|---|
+| title | Kommentare |  |
+| countOne | {count} Kommentar |  |
+| countMany | {count} Kommentare |  |
+| empty | Noch keine Kommentare. |  |
+| emptyCreator | Noch keine Kommentare vom Creator. |  |
+| beFirst | Sei der Erste! 💬 |  |
+| placeholder | Kommentar schreiben... |  |
+| replyBanner | Antwort an  |  |
+| reply | Antworten |  |
+| deleteTitle | Kommentar löschen |  |
+| deleteText | Möchtest du diesen Kommentar wirklich löschen? |  |
+| delete | Löschen |  |
+| copy | Kopieren |  |
+| videoReply | Mit Video antworten |  |
+| report | Melden |  |
+| reportTitle | Kommentar melden |  |
+| reportWhy | Warum meldest du diesen Kommentar? |  |
+| reasonSpam | Spam |  |
+| reasonHarassment | Belästigung |  |
+| reasonInappropriate | Unangemessen |  |
+| thanks | Danke |  |
+| reportReceived | Meldung eingegangen — wir prüfen das. |  |
+| sortNewest | Neueste |  |
+| sortTop | Top |  |
+| sortCreator | Von Creator |  |
+
+## messages  (19)
+
+| Key | Deutsch | Нохчийн |
+|---|---|---|
+| newMessage | Neue Nachricht |  |
+| searchUser | Username suchen… |  |
+| searchHint | Tippe einen Username ein um zu suchen |  |
+| noUserFound | Kein User gefunden |  |
+| emptyTitle | Noch still hier 👋 |  |
+| emptyDesc | Schreib jemandem aus der Community — der erste Schritt ist der schönste. |  |
+| searchUsers | Nutzer suchen |  |
+| firstMessage | Schreib die erste Nachricht 👋 |  |
+| msgPlaceholder | Nachricht… |  |
+| replyPlaceholder | Antworten… |  |
+| sending | Senden… |  |
+| deleteTitle | Nachricht löschen? |  |
+| deleteText | Für alle Teilnehmer entfernt. |  |
+| permTitle | Berechtigung erforderlich |  |
+| permText | Bitte erlaube den Zugriff auf deine Fotos. |  |
+| imgFailTitle | Bild blieb hängen 🙈 |  |
+| imgFailText | Das Bild ging nicht raus — prüf kurz deine Verbindung. |  |
+| gifFailTitle | GIF blieb hängen 🙈 |  |
+| gifFailText | Das GIF ging nicht raus — prüf kurz deine Verbindung. |  |
+
+## explore  (23)
+
+| Key | Deutsch | Нохчийн |
+|---|---|---|
+| searchPlaceholder | Suche nach Nutzern oder Posts… |  |
+| showAll | Alle anzeigen |  |
+| users | Nutzer |  |
+| discoverUsers | Nutzer entdecken |  |
+| showAllProducts | Alle Produkte anzeigen |  |
+| clearSearch | Suche löschen |  |
+| nothingFound | Dazu finde ich nichts 🔍 — probier was anderes für „{query}" |  |
+| tagEmpty | Zu „{tag}" ist noch nichts dabei 🏷️ — bald bestimmt! |  |
+| sortTitle | Sortierung |  |
+| sortSub | Wie soll der Explore-Grid sortiert werden? |  |
+| all | Alle |  |
+| following | Gefolgt |  |
+| follow | + Folgen |  |
+| wozTitle | Women-Only Zone |  |
+| wozJoin | Women-Only Zone beitreten |  |
+| wozActive | Dein geschützter Bereich ✓ |  |
+| wozTeaser | Exklusiv · Sicher · Nur für Frauen |  |
+| sortForYou | Für dich |  |
+| sortForYouSub | Personalisiert nach Dwell-Time |  |
+| sortTrending | Trending |  |
+| sortTrendingSub | Meistgeschaute Posts der Woche |  |
+| sortNewest | Neueste |  |
+| sortNewestSub | Chronologisch – komplett unfiltered |  |
+
+## profile  (87)
+
+| Key | Deutsch | Нохчийн |
+|---|---|---|
+| deleteTitle | Löschen? |  |
+| deleteText | Wirklich? |  |
+| delete | Löschen |  |
+| signOutTitle | Abmelden? |  |
+| signOut | Ausloggen |  |
+| preorder | Vorbestellen |  |
+| draftsEmptyTitle | Noch keine Entwürfe ✏️ |  |
+| draftsEmptyDesc | Speichere einen Post als Entwurf, um ihn später zu veröffentlichen. |  |
+| untitled | Ohne Titel |  |
+| draftDeleteTitle | Entwurf löschen? |  |
+| draftDeleteText | Dieser Entwurf wird unwiderruflich gelöscht. |  |
+| vibesEmptyTitle | Dein erster Vibe wartet 🎬 |  |
+| vibesEmptyDesc | Tipp auf + und zeig der Community, was du draufhast. |  |
+| shopEmptyTitle | Dein Shop ist noch leer 🛍️ |  |
+| shopEmptyDesc | Leg dein erstes Produkt über „Mein Shop" in den Tools an. |  |
+| likesEmptyTitle | Noch nichts geliket ❤️ |  |
+| likesEmptyDesc | Was dir gefällt, sammelt sich hier. |  |
+| savedEmptyTitle | Noch nichts gespeichert 🔖 |  |
+| savedEmptyDesc | Tipp das Lesezeichen bei einem Post — dann ist es hier. |  |
+| editProfile | Profil bearbeiten |  |
+| share | Teilen |  |
+| asSeller | als Verkäufer · {count} |  |
+| newHighlight | Neu |  |
+| posts | Posts |  |
+| followers | Follower |  |
+| followingCount | Following |  |
+| womenOnly | Women-Only |  |
+| tools | Tools |  |
+| myShop | Mein Shop |  |
+| myShopSub | Produkte verwalten & erstellen |  |
+| savedProducts | Gespeicherte Produkte |  |
+| savedProductsSub | Merkliste anzeigen |  |
+| ordersSales | Bestellungen & Verkäufe |  |
+| ordersSalesSub | Käufe und Einnahmen |  |
+| creatorStudio | Creator Studio |  |
+| creatorStudioSub | Live-Einstellungen, Duet & mehr |  |
+| creatorDashboard | Creator Dashboard |  |
+| creatorDashboardSub | Statistiken, Follower & Einnahmen |  |
+| back | Zurück |  |
+| notFound | Profil nicht gefunden. |  |
+| thisUser | Dieser User |  |
+| asBuyer | als Käufer · {count} |  |
+| youFollow | Folgst du |  |
+| requested | Angefragt |  |
+| requestFollow | Anfragen |  |
+| follow | Folgen |  |
+| message | Nachricht |  |
+| unblockTitle | Blockierung aufheben |  |
+| unblockMsg | Möchtest du @{name} entblocken? |  |
+| unblock | Entblocken |  |
+| blockTitle | User blockieren |  |
+| blockMsg | Möchtest du @{name} blockieren? ⏎ Dieser User kann dir nicht mehr folgen oder schreiben. |  |
+| block | Blockieren |  |
+| unblockSub | Dieser User kann dir wieder folgen |  |
+| blockSub | Kein Kontakt mehr möglich |  |
+| withdrawReqTitle | Anfrage zurückziehen? |  |
+| withdrawReqText | Deine Follow-Anfrage wird zurückgezogen. |  |
+| withdraw | Zurückziehen |  |
+| reportedTitle | ✅ Gemeldet |  |
+| reportedText | Danke. Wir prüfen das Profil zeitnah. |  |
+| report | Melden |  |
+| reportSub | Verstoß gegen Community-Richtlinien |  |
+| reportUser | @{name} melden |  |
+| chooseReason | Wähle den Grund |  |
+| reasonSpam | Spam |  |
+| reasonSpamSub | Massenhafte oder irreführende Inhalte |  |
+| reasonHarassment | Belästigung / Hassrede |  |
+| reasonHarassmentSub | Beleidigende oder bedrohliche Inhalte |  |
+| reasonInappropriate | Unangemessener Inhalt |  |
+| reasonInappropriateSub | Sexuelle oder schockierende Inhalte |  |
+| reasonFake | Fake-Account |  |
+| reasonFakeSub | Gibt vor eine andere Person zu sein |  |
+| profileOptions | Profiloptionen |  |
+| shareProfile | Profil teilen |  |
+| shareProfileSub | In-App oder Link teilen |  |
+| livePushOn | Live-Pushes aktivieren |  |
+| livePushOff | Live-Pushes stumm schalten |  |
+| livePushOnSub | Du bekommst wieder Push wenn sie live gehen |  |
+| livePushOffSub | Kein Push mehr wenn dieser User live geht |  |
+| shopEmptyHere | Noch kein Shop hier 🛍 |  |
+| shopEmptyHereSub | {name} hat aktuell keinen aktiven Shop. |  |
+| noLiked | Keine gelikten Posts |  |
+| noReposts | Keine geteilten Posts |  |
+| noPosts | Noch keine Posts |  |
+| noLikedSub | {name} hat noch nichts geliket. |  |
+| noRepostsSub | {name} hat noch nichts geteilt. |  |
+| noPostsSub | {name} hat noch nichts geteilt. |  |
+
+## shop  (89)
+
+| Key | Deutsch | Нохчийн |
+|---|---|---|
+| tabAll | Alle |  |
+| tabSale | Angebote |  |
+| tabPhysical | Physisch |  |
+| tabDigital | Digital |  |
+| tabService | Service |  |
+| tabCollectible | Sammler |  |
+| tabWomen | Frauen |  |
+| orders | Bestellungen |  |
+| favorites | Favoriten |  |
+| coins | Coins |  |
+| myShop | Mein Shop |  |
+| sortPopular | Beliebt |  |
+| sortNewest | Neueste |  |
+| sortPriceAsc | Preis ↑ |  |
+| sortPriceDesc | Preis ↓ |  |
+| sortTitle | Sortieren nach |  |
+| filter | Filter |  |
+| sell | Verkaufen |  |
+| title | Shop |  |
+| searchPlaceholder | Düfte, Produkte, Creator suchen… |  |
+| emptyFilter | Mit dieser Auswahl ist nichts dabei — anders kombinieren? |  |
+| emptyShop | Hier ist noch nichts — bald gibt es was zu shoppen |  |
+| reset | Zurücksetzen |  |
+| preorderBadge | Vorbestellung |  |
+| removeFav | Aus Favoriten entfernen |  |
+| save | Merken |  |
+| soldOut | Ausverkauft |  |
+| freeShipping | Gratis Versand |  |
+| preorder | Vorbestellen |  |
+| catDigital | Digital |  |
+| catDigitalDelivery | Sofortiger Download nach dem Kauf |  |
+| catPhysical | Physisch |  |
+| catPhysicalDelivery | Lieferung per DM mit dem Verkäufer |  |
+| catService | Service |  |
+| catServiceDelivery | Verkäufer meldet sich nach dem Kauf |  |
+| catCollectible | Collectible |  |
+| catCollectibleDelivery | Lieferung per DM mit dem Verkäufer |  |
+| errInsufficientCoins | Fast! Dafür reichen deine Coins nicht ganz — kurz aufladen? 🪙 |  |
+| errNoWallet | Dein Coin-Konto wird gerade eingerichtet — gleich geht’s 🪙 |  |
+| errCannotBuyOwn | Das ist dein eigenes Produkt 😄 |  |
+| errProductNotFound | Das Produkt ist leider weg 🙈 |  |
+| errOutOfStock | Ausverkauft — war wohl beliebt 🔥 |  |
+| errNetwork | Kurz die Verbindung verloren — nochmal versuchen? 🙂 |  |
+| errNotAuth | Bitte zuerst einloggen 🙂 |  |
+| errProductInactive | Das Produkt ist gerade nicht verfügbar. |  |
+| errNotPreorder | Dieses Produkt ist keine Vorbestellung. |  |
+| less | Weniger |  |
+| readMore | Mehr lesen |  |
+| shareFailTitle | Hat nicht geklappt |  |
+| shareFailText | Das Produkt ist nicht rausgegangen — nochmal versuchen? 🙏 |  |
+| copyLink | Link ⏎ kopieren |  |
+| more | Mehr… |  |
+| preordered | Vorbestellt! |  |
+| searchFollower | Follower suchen… |  |
+| viewSaved | Gespeicherte ansehen |  |
+| report | Melden |  |
+| helpCenter | Hilfecenter |  |
+| chatFailed | Chat konnte nicht geöffnet werden. |  |
+| errorShort | Fehler. |  |
+| cancelPreorderTitle | Vorbestellung zurücknehmen? |  |
+| cancelPreorderText | Du wirst aus der Sammelbestellung entfernt — vorbestellen kannst du jederzeit wieder. |  |
+| withdraw | Zurücknehmen |  |
+| tryAgainSoon | Bitte versuch es gleich nochmal 🙏 |  |
+| back | Zurück |  |
+| womenOnly | Women-Only |  |
+| free | Gratis |  |
+| perDm | Per DM |  |
+| instant | Sofort |  |
+| afterPurchase | Nach Kauf |  |
+| inStock | Auf Lager |  |
+| preorderPayOnArrival | Vorbestellung · Zahlung bei Eintreffen |  |
+| delivery | Lieferung |  |
+| rating | Bewertung |  |
+| ratingPlural | Bewertungen |  |
+| stock | Lager |  |
+| newInShop | Neu im Shop |  |
+| toShop | Zum Shop |  |
+| description | Beschreibung |  |
+| quantity | Menge |  |
+| editProduct | Produkt bearbeiten |  |
+| notEnoughTitle | Fast! 🪙 |  |
+| notEnoughText | Dafür reichen deine Coins noch nicht ganz. |  |
+| topUp | Aufladen |  |
+| notEnoughCoins | Nicht genug Coins |  |
+| buyNow | Jetzt kaufen |  |
+| balanceAfter | Guthaben nach Kauf |  |
+| buy | Kaufen |  |
+| reportProduct | Produkt melden |  |
+| reported | Gemeldet. Danke für deine Meldung. |  |
+
+## orders  (89)
+
+| Key | Deutsch | Нохчийн |
+|---|---|---|
+| oops | Hoppla |  |
+| oopsEmoji | Hoppla 🙈 |  |
+| retry | Hat nicht geklappt — gleich nochmal? |  |
+| product | Produkt |  |
+| stPreordered | Vorbestellt |  |
+| stPaymentDue | Zahlung offen |  |
+| stPaid | Bezahlt |  |
+| stShipped | Unterwegs |  |
+| stDelivered | Geliefert |  |
+| stCancelled | Storniert |  |
+| stRefunded | Erstattet |  |
+| stDisputed | In Klärung |  |
+| chatFailed | Chat konnte gerade nicht geöffnet werden — gleich nochmal? |  |
+| payFailed | Die Bezahlung konnte gerade nicht geöffnet werden — gleich nochmal? 🙏 |  |
+| cancelTitle | Bestellung stornieren? |  |
+| cancelText | Solange noch nicht bezahlt ist, kannst du jederzeit absagen. |  |
+| keep | Behalten |  |
+| cancelOrder | Stornieren |  |
+| addressIncomplete | Bitte Name, Straße, PLZ und Ort ausfüllen. |  |
+| receivedTitle | Erhalten? |  |
+| receivedText | Bestätige, dass dein Paket angekommen ist. |  |
+| yesReceived | Ja, erhalten ✓ |  |
+| notNow | Doch nicht |  |
+| payNow | Jetzt bezahlen |  |
+| received | Erhalten |  |
+| deliveredJoy | Geliefert — viel Freude 🌸 |  |
+| paidPreparing | Bezahlt — wird vorbereitet 📦 |  |
+| shippingAddress | Lieferadresse |  |
+| noAddress | Keine Adresse hinterlegt |  |
+| change | Ändern |  |
+| messageSeller | Verkäufer anschreiben |  |
+| myOrders | Meine Bestellungen |  |
+| manageSales | Meine Verkäufe verwalten |  |
+| viewDigital | Digitale Käufe ansehen → |  |
+| editAddress | Lieferadresse ändern |  |
+| fieldName | Name |  |
+| fieldStreet | Straße & Hausnummer |  |
+| fieldZip | PLZ |  |
+| fieldCity | Ort |  |
+| save | Speichern |  |
+| targetMissing | Ziel-Menge fehlt — wie viele Flaschen? |  |
+| roundStarted | Runde gestartet 🎯 — sichtbar in jedem Clan |  |
+| closeRoundTitle | Runde schließen? |  |
+| closeRoundText | „{title}" — {reserved}/{target} gesammelt. Die Karte verschwindet aus den Clans; die Vorbestellungen bleiben. |  |
+| close | Schließen |  |
+| roundClosed | Runde geschlossen ✓ — weiter mit „Zahlung anfordern" |  |
+| markedShipped | Als versendet markiert ✓ |  |
+| manageOrders | Bestellungen verwalten |  |
+| round | Sammelbestellungs-Runde |  |
+| person | Person |  |
+| persons | Personen |  |
+| bottle | Flasche |  |
+| bottles | Flaschen |  |
+| startRound | Runde starten |  |
+| goodsArrived | Ware ist da → Zahlung anfordern |  |
+| request | Anfordern |  |
+| requestAgain | Erneut anfordern |  |
+| requested | Angefordert |  |
+| writeTo | Anschreiben |  |
+| announce | Ankündigen |  |
+| nothingToShip | Nichts zu versenden. 📭 |  |
+| noAddressShort | Keine Adresse |  |
+| markShipped | Als versendet markieren |  |
+| messageBuyer | Käufer anschreiben |  |
+| shipped | Versendet |  |
+| confirmShipping | Versand bestätigen |  |
+| carrier | Versanddienst (z.B. DHL) |  |
+| trackingNumber | Sendungsnummer (optional) |  |
+| startRoundTitle | Sammelbestellungs-Runde starten |  |
+| targetQty | Ziel-Menge (z.B. 80) |  |
+| yourMessage | Deine Nachricht … |  |
+| send | Senden |  |
+| disputeReasonTitle | Grund wählen |  |
+| disputeReasonText | Bitte einen Grund auswählen. |  |
+| disputeReported | Gemeldet |  |
+| disputeReportedText | Wir kümmern uns drum. 🙏 |  |
+| starsTitle | Sterne wählen |  |
+| starsText | Bitte 1–5 Sterne auswählen. |  |
+| reviewMissingTitle | Bewertung fehlt |  |
+| reviewMissingText | Bitte wähle 1-5 Sterne aus. |  |
+| reviewFailedText | Deine Bewertung ging nicht durch — gleich nochmal? |  |
+| downloadFailedText | Der Download ist fehlgeschlagen — versuch es nochmal. 🙏 |  |
+| buyerLabel | Käufer |  |
+| sellerLabel | Verkäufer |  |
+| yourRating | Deine Bewertung: |  |
+| changeInline | · ändern |  |
+| rateTarget | {target} bewerten |  |
+| youWereRated | Du wurdest bewertet: |  |
+| reviewPlaceholder | Optional: ein paar Worte… |  |
+
+## myshop  (86)
+
+| Key | Deutsch | Нохчийн |
+|---|---|---|
+| catDigital | Digital |  |
+| catDigitalSub | PDF, Rezept, Preset, Tutorial |  |
+| catPhysical | Physisch |  |
+| catPhysicalSub | Merchandise, Handwerk, Fashion |  |
+| catService | Service |  |
+| catServiceSub | Coaching, Beratung, Custom Order |  |
+| catCollectible | Collectible |  |
+| catCollectibleSub | Limitiertes Sammelobjekt |  |
+| permMissing | Berechtigung fehlt |  |
+| saveFailed | Hat nicht geklappt |  |
+| uploadFailed | Der Upload ist nicht durchgegangen — nochmal versuchen? 📤 |  |
+| max | Maximum |  |
+| maxGallery | Du kannst max. 8 Galerie-Bilder hinzufügen. |  |
+| comingSoon | Bald verfügbar |  |
+| filePickerSoon | Die Datei-Auswahl ist nach dem nächsten App-Update verfügbar. |  |
+| fileNotAdded | Datei nicht hinzugefügt |  |
+| updateApp | Bitte App aktualisieren und erneut versuchen. |  |
+| titleMissing | Titel fehlt |  |
+| coverMissing | Titelbild fehlt |  |
+| coverMissingText | Füge ein Titelbild hinzu — oder erstelle eins mit KI. |  |
+| fileMissing | Datei fehlt |  |
+| fileMissingText | Lade die digitale Datei hoch, die die Käuferin nach dem Kauf erhält. |  |
+| setEuroPrice | Setze für die Vorbestellung einen Preis in Euro (z.B. 7,90). |  |
+| priceMin1 | Preis muss mindestens 1 Coin sein |  |
+| checkPrice | Preis kurz prüfen 👀 |  |
+| salePriceMin | Der Angebotspreis muss mindestens 1 Coin sein. |  |
+| salePriceLower | Der Angebotspreis muss kleiner als der reguläre Preis sein. |  |
+| error | Fehler |  |
+| saveFailedText | Produkt konnte nicht gespeichert werden. |  |
+| createFailedText | Produkt konnte nicht erstellt werden. |  |
+| deleteProduct | Produkt löschen |  |
+| deleteConfirm | "{title}" wirklich löschen? Alle Bestellungen bleiben erhalten. |  |
+| delete | Löschen |  |
+| deleteFailed | Das Löschen ging nicht durch — gleich nochmal? |  |
+| title | Mein Shop |  |
+| emptyTitle | Dein Shop ist noch leer 🛍 |  |
+| createFirst | Erstes Produkt erstellen |  |
+| statusWoz | Aktiv · Nur Frauen (WOZ) |  |
+| statusPublic | Aktiv · Für alle sichtbar |  |
+| statusInactive | Inaktiv · Nicht im Shop |  |
+| editProduct | Produkt bearbeiten |  |
+| newProduct | Neues Produkt |  |
+| save | Speichern |  |
+| coverLabel | Titelbild * |  |
+| addCover | Titelbild hinzufügen |  |
+| category | Kategorie |  |
+| fileAttached | Datei angehängt · Ersetzen |  |
+| pickFile | Datei auswählen (PDF, ZIP … · max 50 MB) |  |
+| fileAfterUpdate | Verfügbar nach App-Update |  |
+| productName | Produktname * |  |
+| productNamePlaceholder | z.B. Hijab-Bindeanleitung PDF |  |
+| description | Beschreibung |  |
+| descriptionPlaceholder | Was bekommt die Käuferin? |  |
+| priceEur | Preis (€) |  |
+| priceEurPlaceholder | z.B. 7,90 |  |
+| priceEurHint | Wird beim „Zahlung anfordern“ abgebucht. Coin-Preis wird ignoriert. |  |
+| priceCoins | Preis (Serlo Coins) |  |
+| availability | Verfügbarkeit |  |
+| limited | Begrenzt |  |
+| noSale | kein Angebot |  |
+| locationPlaceholder | z.B. Berlin, Deutschland |  |
+| aiPromptPlaceholder | z.B. „Schwarzer Hoodie auf weißem Studio-Hintergrund, minimalistisch, Produktfoto" |  |
+| aiPhys1 | Minimalistisches Produktfoto auf weißem Studio-Hintergrund |  |
+| aiPhys2 | Handwerk-Produkt auf Holzmaserung, warmes Licht |  |
+| aiDig1 | Flat-Design-Icon für Digital-Produkt, moderne Farben |  |
+| aiDig2 | Abstrakter Verlauf mit Text-Overlay-Placeholder |  |
+| aiSvc1 | Professionelle Portrait-Szene, soft light |  |
+| aiSvc2 | Abstrakte Komposition für Service-Thumbnail |  |
+| womenOnlyVisible | Nur für verifizierte Frauen sichtbar |  |
+| activeVisible | Im Shop sichtbar und kaufbar |  |
+| inactiveHidden | Nicht im Shop sichtbar — keine Käufe möglich |  |
+| createWithAi | Mit KI erstellen |  |
+| gallery | Galerie ({count}/8) |  |
+| addImages | + Bilder |  |
+| digitalFile | Digitale Datei * |  |
+| digitalFileHint | Die Käuferin lädt diese Datei nach dem Kauf sicher herunter. |  |
+| preorderEur | 🌸 Vorbestellung (€) |  |
+| preorderEurSub | Erst vormerken, später per Euro bezahlen — statt Coin-Kauf |  |
+| forYouEur | ≈ {eur} € für dich |  |
+| unlimited | ∞ Unbegrenzt |  |
+| saleOptional | Angebot (optional) |  |
+| locationOptional | Ort (optional) |  |
+| aiCoverTitle | Produktbild mit KI |  |
+| a11yManageOrders | Bestellungen verwalten |  |
+| a11yShopStats | Shop-Statistik |  |
+| a11yCreateProduct | Produkt erstellen |  |
+
+## ai  (30)
+
+| Key | Deutsch | Нохчийн |
+|---|---|---|
+| unavailable | AI-Bilder sind aktuell nicht verfügbar. Bitte später erneut versuchen. |  |
+| budgetMonth | Das monatliche AI-Budget ist aufgebraucht. Anfang nächsten Monats wieder verfügbar. |  |
+| limitDay | Tages-Limit erreicht (3 Bilder / 24h). Morgen geht es weiter. |  |
+| limitWeek | Wochen-Limit erreicht (10 Bilder / 7 Tage). |  |
+| cooldown | Du hast gerade mehrere Bilder generiert — kurz durchatmen und in einer Minute nochmal versuchen. |  |
+| budgetMonth2 | Monats-Budget erreicht. Am 1. des nächsten Monats steht wieder Kontingent bereit. |  |
+| promptShort | Dein Prompt ist zu kurz — beschreibe das gewünschte Bild in mindestens 3 Zeichen. |  |
+| promptLong | Dein Prompt ist zu lang (max 2000 Zeichen). |  |
+| promptDisallowed | Dieser Prompt enthält nicht erlaubte Inhalte. |  |
+| mustLogin | Du musst eingeloggt sein. |  |
+| noConnection | Keine Verbindung. Prüfe dein Internet. |  |
+| coverFailed | Das Cover ließ sich gerade nicht erstellen 😕 — versuch es gleich nochmal. |  |
+| createTitle | Bild mit KI erstellen |  |
+| promptPlaceholder | Beschreibe dein Wunsch-Bild auf Deutsch oder Englisch… |  |
+| promptTooShort | Prompt zu kurz. |  |
+| disabled | AI-Bilder sind aktuell deaktiviert. |  |
+| platformBudget | Monatliches Platform-Budget aufgebraucht. |  |
+| limitDayShort | Tages-Limit (3 Bilder) erreicht. |  |
+| limitWeekShort | Wochen-Limit (10 Bilder) erreicht. |  |
+| cancel | Abbrechen |  |
+| yourPrompt | Dein Prompt |  |
+| format | Format |  |
+| otherPrompt | Anderen Prompt |  |
+| useImage | Bild verwenden |  |
+| generating | Generiere… |  |
+| generate | Bild generieren |  |
+| sizeSmall | Klein · 1:1 |  |
+| sizeSquare | Quadrat · 1:1 |  |
+| sizeTall | Hoch · 2:3 |  |
+| sizeWide | Quer · 3:2 |  |
+
+## live  (78)
+
+| Key | Deutsch | Нохчийн |
+|---|---|---|
+| cat_Talk | Talk |  |
+| cat_Musik | Musik |  |
+| cat_Gaming | Gaming |  |
+| cat_Sport | Sport |  |
+| cat_Kochen | Kochen |  |
+| cat_Beauty | Beauty |  |
+| cat_Wissen | Wissen |  |
+| cat_Reisen | Reisen |  |
+| cat_Comedy | Comedy |  |
+| audWomen | Nur Frauen |  |
+| audFollowers | Nur Follower |  |
+| audPublic | Öffentlich |  |
+| audAllPublic | Alle · Öffentlich |  |
+| audFollowersDesc | Nur deine Follower kommen rein |  |
+| audWomenDesc | Nur verifizierte Frauen kommen rein |  |
+| accessDenied | Zugriff verweigert |  |
+| accessDeniedPhotos | Bitte erlaube in den Einstellungen den Zugriff auf deine Fotos. |  |
+| coverUploadFailed | Cover konnte nicht hochgeladen werden — versuch es nochmal. 🙂 |  |
+| startFailedTitle | Hat nicht geklappt |  |
+| startFailedText | Dein Live ist nicht gestartet — Verbindung prüfen und nochmal? 📡 |  |
+| unknownError | Unbekannter Fehler |  |
+| liveFailed | Live hat nicht geklappt |  |
+| titleMissing | Titel fehlt |  |
+| titleMissingText | Gib oben in den Einstellungen einen Titel für dein geplantes Live ein. |  |
+| settings | Einstellungen |  |
+| laterTitle | Kurz später 🕒 |  |
+| laterText | Der Zeitpunkt muss mindestens 5 Minuten in der Zukunft liegen. |  |
+| scheduleFailed | Konnte nicht geplant werden. |  |
+| allowCamera | Kamera-Zugriff erlauben |  |
+| addTitle | Titel hinzufügen |  |
+| audience | Publikum |  |
+| category | Kategorie |  |
+| choose | Wählen |  |
+| coverSet | Cover gesetzt |  |
+| chooseCover | Cover wählen |  |
+| galleryOrAi | Galerie oder mit KI |  |
+| goLiveNow | Jetzt live gehen |  |
+| scheduleInstead | Stattdessen planen |  |
+| linkedFollowers | Du bist mit deinen Followern verknüpft |  |
+| followersNotified | Deine Follower werden benachrichtigt |  |
+| titlePlaceholder | Titel für dein Live (optional) |  |
+| withAi | Mit KI |  |
+| gallery | Galerie |  |
+| removeCover | Cover entfernen |  |
+| comments | Kommentare |  |
+| commentsSub | Zuschauer können kommentieren |  |
+| gifts | Geschenke |  |
+| giftsSub | Zuschauer können Coins senden |  |
+| whoCanWatch | Wer kann zuschauen |  |
+| done | Fertig |  |
+| schedule | Live planen |  |
+| scheduling | Plane… |  |
+| scheduleBtn | Planen |  |
+| aiGaming | Neon-Cyberpunk Gaming-Setup mit RGB-Licht |  |
+| aiReading | Gemütliche Lesestunde bei Kerzenschein |  |
+| aiFitness | Fitness-Workout in modernem Studio |  |
+| aiCooking | Kochshow mit exotischen Zutaten auf Holztisch |  |
+| schedIn1h | in 1 h |  |
+| schedIn3h | in 3 h |  |
+| schedToday8 | Heute 20:00 |  |
+| schedTomorrow9 | Morgen 09:00 |  |
+| schedTomorrow8 | Morgen 20:00 |  |
+| schedWeek | In 1 Woche |  |
+| giftInsufficient | Fast! Dir fehlen noch {amount} 🪙 — kurz aufladen? |  |
+| giftNoWallet | Dein Coin-Konto wird gerade eingerichtet — gleich geht’s 🪙 |  |
+| giftSelf | Dir selbst schenken? Süß — aber das geht nicht 😄 |  |
+| giftGone | Das Geschenk gibt’s gerade nicht mehr 🎁 |  |
+| giftsOff | Geschenke sind in diesem Live gerade aus 🤫 |  |
+| giftNetwork | Kurz die Verbindung verloren — nochmal versuchen? 🙂 |  |
+| giftError | Ein Fehler ist aufgetreten. Bitte versuche es erneut. |  |
+| giftFailedTitle | Hat nicht geklappt |  |
+| giftsTitle | Geschenke |  |
+| battleGift | ⚔️ Battle-Geschenk |  |
+| host | Host |  |
+| guest | Guest |  |
+| hmm | Hmm |  |
+| buyFailedTitle | Hat nicht geklappt 🙈 |  |
+| buyFailedText | Kauf hat gerade nicht funktioniert — nochmal versuchen? |  |
+
+## host  (139)
+
+| Key | Deutsch | Нохчийн |
+|---|---|---|
+| oops | Hat nicht geklappt |  |
+| error | Fehler |  |
+| thanks | Danke |  |
+| close | Schließen |  |
+| back | Zurück |  |
+| end | Beenden |  |
+| understood | Verstanden |  |
+| signalLost | Signal verloren |  |
+| somethingWrong | Ups, etwas ist schiefgelaufen |  |
+| connectionLost | Verbindung verloren |  |
+| blockWords | Eigene Wörter sperren |  |
+| blockWordsHint | Wörter kommagetrennt eingeben (z.B. Schimpfwort1, Schimpfwort2) |  |
+| blockWordsPlaceholder | Schimpfwort1, Schimpfwort2 |  |
+| slowModeFailed | Slow-Mode ließ sich nicht setzen — gleich nochmal? 🙏 |  |
+| slowModeWait | User müssen zwischen Messages warten. |  |
+| chatModeration | Chat-Moderation |  |
+| durationChoose | Dauer auswählen: |  |
+| timeout1 | Chat-Timeout 1min |  |
+| timeout5 | Chat-Timeout 5min |  |
+| timeout30 | Chat-Timeout 30min |  |
+| stopRecTitle | Aufnahme beenden? |  |
+| stopRecText | Das Replay wird erstellt und in den nächsten Minuten verfügbar. |  |
+| stopRecFailed | Die Aufnahme ließ sich nicht stoppen — nochmal versuchen? |  |
+| roomNotReady | Der Stream-Raum ist gerade nicht bereit — nochmal versuchen? 📡 |  |
+| recFailedTitle | Aufnahme hat nicht geklappt |  |
+| recFailedText | Da ging was schief — gleich nochmal? |  |
+| recording | Aufnahme |  |
+| startRec | Aufnahme starten |  |
+| stopRec | Aufnahme stoppen |  |
+| liveReplay | Live Replay 🔴 |  |
+| recHowTitle | So zeichnest du dein Live auf: ⏎  ⏎ 1. Wisch von oben rechts nach unten ⏎ 2. Tippe auf „Bildschirmaufnahme“ ⏺ ⏎ 3. Starte dein Live — es wird automatisch aufgezeichnet ⏎ 4. Nach dem Live: Aufnahme stoppen ⏎  ⏎ Die Aufnahme findest du in der Fotos-App. |  |
+| recAskTitle | Hast du deinen Live-Stream mit der iOS Bildschirmaufnahme aufgezeichnet? ⏎  ⏎ So geht’s: ⏎ 1. Vor dem nächsten Live: Bildschirmaufnahme starten ⏎ 2. Nach dem Live: Aufnahme stoppen ⏎ 3. Video aus der Galerie auswählen ⏎  ⏎ Die Aufnahme findest du in der Fotos-App. |  |
+| endPollTitle | Umfrage beenden? |  |
+| endPollText | Die Ergebnisse bleiben für Zuschauer sichtbar, aber es können keine neuen Stimmen mehr abgegeben werden. |  |
+| poll | Umfrage |  |
+| engagement | Engagement |  |
+| running | Läuft |  |
+| start | Starten |  |
+| startPoll | Umfrage starten |  |
+| coHostAuthFailed | Co-Host konnte nicht autorisiert werden. Bitte erneut versuchen. |  |
+| blockedByHost | Du bist vom Host blockiert. |  |
+| confirmNotDelivered | Die Bestätigung konnte nicht an den Co-Host zugestellt werden. Bitte erneut versuchen. |  |
+| noCoHostRequests | Aktuell will niemand als Co-Host beitreten. |  |
+| battleDuration | Wie lange soll die Battle-Runde laufen? |  |
+| layoutChoose | Layout wählen: |  |
+| duetRunning | Ein Duet läuft gerade. Beende es um den nächsten Request anzunehmen. |  |
+| tapRequestAccept | Tippe auf einen Request zum Annehmen: |  |
+| kickNotDelivered | Kick konnte nicht an alle zugestellt werden. Der lokale State ist bereits resettet. |  |
+| chooseReasonCoHost | Grund auswählen — der Co-Host sieht den Grund in einem Alert. |  |
+| reasonBehavior | Unangemessenes Verhalten |  |
+| reasonSpam | Spam / Werbung |  |
+| reasonInsult | Beleidigung |  |
+| reasonTech | Technisches Problem |  |
+| reasonHarassment | Belästigung |  |
+| reasonInappropriate | Unangemessener Inhalt |  |
+| reasonFake | Fake Account |  |
+| reasonOther | Sonstiges |  |
+| guestActions | Aktionen für diesen Gast: |  |
+| layoutNotDelivered | Layout-Wechsel konnte nicht an alle zugestellt werden. Bitte erneut versuchen. |  |
+| chooseCoHostDisplay | Wähle wie der/die Co-Hosts angezeigt werden sollen: |  |
+| coHostMicUnmute | Co-Host Mikrofon entmuten |  |
+| coHostMicMute | Co-Host Mikrofon muten |  |
+| coHostCamUnmute | Co-Host Kamera entmuten |  |
+| coHostCamMute | Co-Host Kamera muten |  |
+| remove | Entfernen |  |
+| removeBlock | Entfernen & Blockieren |  |
+| requests | Anfragen |  |
+| coHost | Co-Host |  |
+| layout | Layout |  |
+| switch | Wechseln |  |
+| coMic | Co-Mic |  |
+| muted | Stumm |  |
+| coCam | Co-Cam |  |
+| endDuet | Duet beenden |  |
+| battleStop | Battle-Stop |  |
+| battle | Battle |  |
+| endBattleEarly | Battle vorzeitig beenden |  |
+| endBattleText | Der Gewinner wird sofort ermittelt. Der Countdown wird übersprungen. |  |
+| endBattle | Battle beenden |  |
+| guest | Gast |  |
+| guestCaps | GAST |  |
+| free | Frei |  |
+| goalTitle | LIVE Ziel setzen |  |
+| goalWhichKind | Für welche Art gilt das Ziel? |  |
+| goal | Ziel |  |
+| reached | Erreicht |  |
+| sticker | Sticker |  |
+| placeSticker | Sticker platzieren |  |
+| stickerHint | Öffnet Sticker-Auswahl — Emoji frei im Stream platzieren |  |
+| product | Produkt |  |
+| sell | Verkaufen |  |
+| pin | Anpinnen |  |
+| pinProduct | Produkt pinnen |  |
+| placeProduct | Produkt platzieren |  |
+| productHint | Platziert Shop-Produkte frei als Karten im Stream |  |
+| onVisible | An · sichtbar |  |
+| featured | Featured |  |
+| active | Aktiv |  |
+| streamChat | Stream & Chat |  |
+| starting | Startet… |  |
+| stopping | Stoppt… |  |
+| slowMode | Slow-Mode |  |
+| followersOnly | Nur Follower |  |
+| chatProtected | Chat geschützt |  |
+| followerChat | Nur-Follower-Chat |  |
+| followerChatHint | Schaltet ein ob nur Follower kommentieren dürfen |  |
+| onOff | An/Aus |  |
+| off | Aus |  |
+| on | An |  |
+| nActive | {n} aktiv |  |
+| cooldownS | {n}s Cooldown |  |
+| moreWaiting | +{n} weitere (warten) |  |
+| creatorToolsOpen | Creator Tools öffnen |  |
+| creatorToolsHint | Öffnet das Grid mit allen Live-Werkzeugen |  |
+| layoutOpenHint | Öffnet die Auswahl zwischen Top/Bottom, Side-by-Side, PiP und Battle |  |
+| slowModeHint | Tippen zum Einstellen des Cool-Downs zwischen Messages |  |
+| blockWordsToggleHint | Tippen zum An-/Ausschalten, Gedrückthalten zum Verwalten der gesperrten Wörter |  |
+| endTapHint | Tippen zum Beenden, Gedrückthalten zum Entfernen mit Grund |  |
+| top4More | Top 4 + {n} mehr |  |
+| reportSent | Meldung wurde an Moderation übermittelt. |  |
+| reportFailedShort | Meldung fehlgeschlagen. |  |
+| reportFailed | Konnte die Meldung nicht senden — bitte später nochmal. |  |
+| pollCreateFailed | Die Umfrage ließ sich nicht erstellen — nochmal versuchen? |  |
+| top | TOP |  |
+| commentAsHost | Als Host kommentieren … |  |
+| comment | Kommentar |  |
+| endLive | Live beenden |  |
+| endLiveText | Dein Live wird für alle Zuschauer beendet. |  |
+| livePaused | Live pausiert |  |
+| shareStream | Stream teilen |  |
+| peakViewers | Peak Zuschauer |  |
+| likes | Likes ❤️ |  |
+| comments | Kommentare |  |
+| coins | Coins |  |
+| done | Fertig |  |
+| noConnData | Verbindungsdaten fehlen |  |
+| removedByHost | Vom Host entfernt |  |
+| blockedByHostShort | Vom Host blockiert |  |
+| shop | Shop |  |
+
+## watch  (48)
+
+| Key | Deutsch | Нохчийн |
+|---|---|---|
+| rejected | Abgelehnt |  |
+| join | Beitreten |  |
+| clipSaved | Clip gespeichert |  |
+| coHost | Co-Host |  |
+| thanksFeedback | Danke für dein Feedback. Wir prüfen den Inhalt. |  |
+| thanksParticipation | Danke für deine Teilnahme 💜 |  |
+| durationChoose | Dauer auswählen: |  |
+| followersOnlyStream | Dieser Stream ist nur für Follower 🙂 ⏎ Folge zuerst — dann bist du dabei. |  |
+| mustFollowToChat | Du musst diesem Host folgen um im Chat schreiben zu können. |  |
+| duetX | Duet ✕ |  |
+| tryAgain | Erneut versuchen |  |
+| feedback | Feedback |  |
+| follow | Folgen |  |
+| followJoin | Folgen & reinkommen |  |
+| following | Gefolgt |  |
+| sendGift | Geschenk senden |  |
+| host | HOST |  |
+| hostVideo | Host-Video |  |
+| comments | Kommentare |  |
+| commentPlaceholder | Kommentieren … |  |
+| likes | Likes |  |
+| copyLink | Link kopieren |  |
+| liveEnded | Live beendet |  |
+| liveLoading | Live lädt … |  |
+| reportLive | Live melden |  |
+| livePaused | Live pausiert |  |
+| report | Melden |  |
+| timeout1 | Mod-Timeout 1min |  |
+| timeout5 | Mod-Timeout 5min |  |
+| timeout30 | Mod-Timeout 30min |  |
+| moderation | Moderation |  |
+| moment | Moment … |  |
+| followersOnly | Nur Follower |  |
+| sendReaction | Reaktion senden |  |
+| close | Schließen |  |
+| openShop | Shop öffnen |  |
+| share | Teilen |  |
+| connecting | Verbinde … |  |
+| connectingStream | Verbinde mit Stream … |  |
+| viewer | Viewer |  |
+| waiting | Warten… |  |
+| reportWhy | Warum möchtest du dieses Live melden? |  |
+| redirect5s | Weiterleitung in 5 Sekunden … |  |
+| toStory | Zu Story |  |
+| back | Zurück |  |
+| backToFeed | Zurück zum Feed |  |
+| viewers | Zuschauer |  |
+| failed | Hat nicht geklappt |  |
+
+## create  (150)
+
+| Key | Deutsch | Нохчийн |
+|---|---|---|
+| cameraAccess | Kamera-Zugriff |  |
+| allowCamera | Kamera-Zugriff erlauben |  |
+| accessDenied | Zugriff verweigert |  |
+| permission | Berechtigung |  |
+| allowMedia | Bitte erlaube den Medienzugriff. |  |
+| allowPhotosSettings | Bitte erlaube in den Einstellungen den Zugriff auf deine Fotos. |  |
+| photoFailed | Das Foto hat nicht geklappt — gleich nochmal? |  |
+| galleryFailed | Die Galerie ließ sich nicht öffnen — gleich nochmal? |  |
+| flash | Blitz |  |
+| flashUnavailable | Blitz nicht verfügbar |  |
+| flashBackCam | Wechsle zur Rückkamera um den Blitz zu nutzen. |  |
+| fromGallery | Aus Galerie |  |
+| photo | Foto |  |
+| video | Video |  |
+| live | Live |  |
+| story | Story |  |
+| photoVideo | Foto oder Video |  |
+| photoVideoClip | Foto · Video · Clip |  |
+| timer | Timer |  |
+| sound | Sound |  |
+| addSound | Sound hinzufügen |  |
+| recording | Aufnahme |  |
+| filter | Filter |  |
+| adjust | Anpassen |  |
+| rotate | Drehen |  |
+| rotateFlip | Drehen & Spiegeln |  |
+| crop | Zuschneiden |  |
+| trim | Kürzen |  |
+| cover | Cover |  |
+| chooseCover | Cover wählen |  |
+| text | Text |  |
+| sticker | Sticker |  |
+| details | Details |  |
+| format | Format |  |
+| free | Frei |  |
+| reset | Reset |  |
+| apply | Übernehmen |  |
+| done | Fertig |  |
+| doneCheck | Fertig ✓ |  |
+| next | Weiter |  |
+| brightness | Helligkeit |  |
+| contrast | Kontrast |  |
+| saturation | Sättigung |  |
+| left90 | Links 90° |  |
+| right90 | Rechts 90° |  |
+| flip | Spiegeln |  |
+| left | Links |  |
+| right | Rechts |  |
+| center | Mitte |  |
+| turn | Wenden |  |
+| enterText | Text eingeben... |  |
+| typeText | Tippe deinen Text… |  |
+| typeYourText | Tippe deinen Text ein. |  |
+| bgFont | Hintergrund · Schrift |  |
+| classic | Klassisch |  |
+| searchSticker | Sticker suchen… |  |
+| tapFrameCover | Tippe einen Frame als Cover |  |
+| tapToChange | Tippen zum Ändern |  |
+| dragDelete | Zum Löschen ziehen |  |
+| releaseDelete | Loslassen zum Löschen |  |
+| dragHandles | Ziehe die weißen Griffe um den Ausschnitt zu wählen |  |
+| cropFailed | Zuschneiden hat nicht geklappt — versuch es nochmal. |  |
+| trimVideo | Video kürzen |  |
+| minPlusMinus | Min −/+ |  |
+| caption | Was ist dein Vibe? #tags @mention |  |
+| captionShort | Was ist dein Vibe heute? ✨ |  |
+| writeSomething | Schreib was 🙂 |  |
+| linkProduct | Produkt verknüpfen |  |
+| tags | Tags |  |
+| visibility | Sichtbarkeit |  |
+| public | Öffentlich |  |
+| everyoneCanSee | Jeder kann sehen |  |
+| followersOnly | Nur Follower |  |
+| womenOnly | Women-Only |  |
+| womenOnlyDesc | Nur für verifizierte Frauen |  |
+| onlyMe | Nur ich |  |
+| private | Privat |  |
+| comments | Kommentare |  |
+| allowComments | Kommentare erlauben |  |
+| duet | Duet |  |
+| allowDuet | Duet erlauben |  |
+| download | Download |  |
+| allowDownload | Download erlauben |  |
+| post | Post |  |
+| story24h | 24h sichtbar |  |
+| postNow | Jetzt posten |  |
+| publish | Posten |  |
+| sendNow | Jetzt senden |  |
+| schedule | Planen |  |
+| scheduling | Plane… |  |
+| saveDraft | Speichern |  |
+| savingDraft | Speichert… |  |
+| uploading | Wird hochgeladen… |  |
+| saving | Wird gespeichert… |  |
+| almostDone | Fast fertig ✨ |  |
+| postVisible | Dein Post ist jetzt im Feed sichtbar |  |
+| vibeLive | Vibe ist live! 🎉 |  |
+| scheduled | Geplant! |  |
+| scheduledText | Dein Post wird zum gewählten Zeitpunkt automatisch veröffentlicht. |  |
+| draftSaved | Gespeichert |  |
+| draftInCloud | Dein Entwurf ist in der Cloud verfügbar. |  |
+| newVibe | Neuer Vibe |  |
+| newCreate | Neu erstellen |  |
+| inEditor | Im Editor |  |
+| yourStory | Deine Story |  |
+| createTitle | Erstellen |  |
+| galleryTab | Galerie |  |
+| textPostTab | Text-Post |  |
+| saveDraftTitle | Entwurf speichern? |  |
+| resumeDrafts | Entwürfe fortsetzen |  |
+| draft | Entwurf |  |
+| discard | Verwerfen |  |
+| cancelUpload | Upload abbrechen |  |
+| oops | Hoppla 🙈 |  |
+| tooBad | Schade |  |
+| postUploadFailed | Der Post konnte nicht hochgeladen werden. Versuche es erneut. |  |
+| draftFailed | Der Entwurf ging nicht durch — gleich nochmal? |  |
+| scheduleFailed | Die Planung ging nicht durch — gleich nochmal? |  |
+| noInternet | Keine Internetverbindung. Prüfe deine Verbindung und versuche es erneut. |  |
+| publishFailed | Veröffentlichen fehlgeschlagen |  |
+| storyFailed | Story konnte nicht erstellt werden. |  |
+| textPostFailed | Text-Post konnte nicht erstellt werden. |  |
+| addImageOrCaption | Füg noch ein Bild oder eine Caption hinzu. |  |
+| addTextTagsMedia | Füge mindestens Text, Tags oder Medium hinzu. |  |
+| noProfile | Kein Profil |  |
+| tapSelectMedia | Tippe um ein Foto oder Video auszuwählen |  |
+| tapOrCamera | Tippe hier oder nutze die Kamera |  |
+| selectedPhotos | Ausgewählte Fotos |  |
+| empty | Leer |  |
+| loading | Lädt… |  |
+| settings | Einstellungen |  |
+| schedule2 | Wann veröffentlichen? |  |
+| friends | Freunde |  |
+| schedToday8 | Heute 20:00 |  |
+| schedTomorrow9 | Morgen 09:00 |  |
+| schedTomorrow14 | Morgen 14:00 |  |
+| schedTomorrow8 | Morgen 20:00 |  |
+| schedWeek | In 1 Woche |  |
+| scheduleHint | Mindestens 1 Minute, höchstens 60 Tage in der Zukunft. |  |
+| hourPlusMinus | Std −/+ |  |
+| dayPlusMinus | Tag −/+ |  |
+| minPlusMinus2 | Min −/+ |  |
+| aiWithAi | Mit KI erstellen |  |
+| aiPostCover | Post-Bild mit KI |  |
+| aiPrompt | Beschreibe dein Wunsch-Motiv — z.B. „Sonnenuntergang über Bergen“ |  |
+| aiAbstract | Abstrakte Komposition in warmen Farben |  |
+| aiMoody | Moody-Portrait in Neon-Licht, cinematisch |  |
+| aiStreet | Street-Photography-Look, schwarz-weiß |  |
+| recStuck | Aufnahme hat gehakt 🙈 |  |
+| tryAgainShort | Gleich nochmal versuchen? |  |
+
+## story  (19)
+
+| Key | Deutsch | Нохчийн |
+|---|---|---|
+| permTitle | Berechtigung |  |
+| permPhotos | Bitte erlaube den Zugriff auf deine Fotos. |  |
+| published | Story veröffentlicht! 🎉 |  |
+| publishedText | Deine Story ist 24 Stunden sichtbar. |  |
+| almostTitle | Fast geschafft 🙈 |  |
+| failedText | Deine Story ist nicht durchgegangen — kurz nochmal? |  |
+| yes | Ja |  |
+| no | Nein |  |
+| option1 | Option 1 |  |
+| option2 | Option 2 |  |
+| createTitle | Story erstellen |  |
+| pickMedia | Foto oder Video auswählen |  |
+| visible24 | Sichtbar für 24 Stunden |  |
+| otherImage | Anderes Bild |  |
+| pollRemove | Poll entfernen |  |
+| pollAdd | Poll hinzufügen |  |
+| pollQuestion | Deine Frage… |  |
+| publishBtn | Story veröffentlichen |  |
+| pickImageBtn | Bild auswählen |  |
+
+## posts  (5)
+
+| Key | Deutsch | Нохчийн |
+|---|---|---|
+| deleteTitle | Post löschen |  |
+| deleteConfirm | Wirklich löschen? |  |
+| delete | Löschen |  |
+| loadFailed | Der Post ließ sich nicht laden — gleich nochmal? |  |
+| saveFailed | Speichern ging nicht durch — gleich nochmal? |  |
+
+## share  (65)
+
+| Key | Deutsch | Нохчийн |
+|---|---|---|
+| failPost | Dein Post ist nicht rausgegangen — gleich nochmal? 🙏 |  |
+| failStory | Deine Story ist nicht rausgegangen — gleich nochmal? 🙏 |  |
+| failProfile | Das Profil ist nicht rausgegangen — nochmal versuchen? 🙏 |  |
+| failGeneric | Das Teilen ging nicht durch — gleich nochmal? |  |
+| whatsappMissing | WhatsApp nicht installiert |  |
+| telegramMissing | Telegram nicht installiert |  |
+| linkCopied | Link kopiert |  |
+| linkCopiedCheck | Link kopiert ✓ |  |
+| report | Melden |  |
+| chooseReason | Wähle einen Grund: |  |
+| reasonSpam | Spam |  |
+| reasonInappropriate | Unangemessener Inhalt |  |
+| thanks | Danke |  |
+| thanksShort | Danke. |  |
+| reportedPost | Der Post wurde gemeldet. |  |
+| reported | Gemeldet |  |
+| reportReceived | Meldung eingegangen — wir prüfen das. |  |
+| reportedLive | Vielen Dank. Wir prüfen den Stream zeitnah. |  |
+| viewerReported | Deine Meldung wurde eingereicht. Danke! |  |
+| lessTitle | Verstanden |  |
+| lessContent | Wir zeigen dir weniger von diesem Content. |  |
+| feedAdjusted | Wir passen deinen Feed an. |  |
+| lessStories | Weniger Stories dieser Art. |  |
+| removedTitle | Entfernt |  |
+| removedText | Der Beitrag wurde entfernt. |  |
+| removeFailedTitle | Fehlgeschlagen |  |
+| removeFailedText | Konnte nicht entfernt werden. |  |
+| noMediaTitle | Kein Medieninhalt |  |
+| noMediaText | Dieser Post hat kein Bild oder Video. |  |
+| nothingHereTitle | Nichts da 🙈 |  |
+| nothingHereText | Hier ist gerade kein Medium verfügbar. |  |
+| saveFailedStory | Konnte die Story nicht speichern — nochmal versuchen? 💾 |  |
+| commentFailed | Dein Kommentar ist nicht rausgegangen — nochmal tippen? 🙏 |  |
+| messageFailed | Deine Nachricht ist nicht rausgegangen — gleich nochmal? 🙏 |  |
+| chatFailed | Der Chat ließ sich grad nicht öffnen — gleich nochmal? |  |
+| qrTitle | QR-Code |  |
+| qrText | Der Link wurde kopiert. Du kannst ihn in einem QR-Code-Generator einfügen. |  |
+| storyWaText | 📸 Story von @{name} auf Vibes: {link} |  |
+| storyTgText | Story von @{name} |  |
+| reportProfileWhy | Warum meldest du dieses Profil? |  |
+| blockTitle | @{name} sperren? |  |
+| blockText | Dieser Nutzer kann dir dann nicht mehr folgen oder schreiben. |  |
+| block | Sperren |  |
+| blocked | Gesperrt |  |
+| blockedMsg | @{name} wurde gesperrt. |  |
+| userFallback | User |  |
+| vlrName | Unangemessener Name |  |
+| vlrPhoto | Unangemessenes Profilbild |  |
+| vlrSpam | Spam / Werbung |  |
+| vlrHate | Hassrede / Belästigung |  |
+| vlrImpersonation | Identitätsdiebstahl |  |
+| vlrOther | Anderer Grund |  |
+| liveShareTitle | Live auf Serlo |  |
+| liveReportTitle | Live-Stream melden |  |
+| liveReportWhy | Wähle den Grund für deine Meldung: |  |
+| liveReasonInappropriate | 🚫 Unangemessener Inhalt |  |
+| liveReasonHarassment | ⚠️ Belästigung |  |
+| liveReasonSpam | 🤖 Spam |  |
+| thisVibe | diesen Vibe |  |
+| shareTeaser | Schau dir {teaser} an 🎬 |  |
+| postShareDialog | Post teilen |  |
+| adminRemoveTitle | Beitrag entfernen? |  |
+| adminRemoveText | Der Post wird als Admin entfernt und protokolliert. |  |
+| remove | Entfernen |  |
+| storySaveDialog | Story speichern |  |
+
+## creator  (5)
+
+| Key | Deutsch | Нохчийн |
+|---|---|---|
+| cancelFailed | Ließ sich nicht abbrechen — nochmal versuchen? |  |
+| cancelLiveFailed | Ließ sich nicht absagen — nochmal versuchen? |  |
+| rescheduleFailed | Ließ sich nicht umplanen — nochmal versuchen? |  |
+| min1Future | Der Zeitpunkt muss mindestens 1 Minute in der Zukunft liegen. |  |
+| draftDeleteFailed | Der Entwurf ließ sich nicht löschen — nochmal versuchen? |  |
+
+## sheet  (35)
+
+| Key | Deutsch | Нохчийн |
+|---|---|---|
+| like | Liken |  |
+| liked | Geliked |  |
+| comment | Kommentar |  |
+| save | Speichern |  |
+| saved | Gespeichert |  |
+| share | Teilen |  |
+| link | Link |  |
+| linkCopy | Link kopieren |  |
+| toClipboard | In die Zwischenablage |  |
+| more | Mehr |  |
+| download | Herunterladen |  |
+| downloadSub | Video / Bild auf dein Gerät |  |
+| saving | Speichern… |  |
+| report | Melden |  |
+| reportSub | Spam oder unangemessenen Inhalt |  |
+| notInterested | Kein Interesse |  |
+| notInterestedSub | Weniger solchen Content zeigen |  |
+| visitProfile | @{name} besuchen |  |
+| visitProfileSub | Profil & alle Posts ansehen |  |
+| followName | @{name} folgen |  |
+| unfollowName | @{name} entfolgen |  |
+| followSub | Netzwerk erweitern |  |
+| unfollowSub | Aus deinem Netzwerk entfernen |  |
+| follow | Folgen |  |
+| unfollow | Entfolgen |  |
+| adminRemove | Entfernen (Admin) |  |
+| sendTo | Senden an |  |
+| noUsers | Keine User |  |
+| sendN | Senden ({count}) |  |
+| sending | Senden… |  |
+| secSocial | Sozial |  |
+| secPost | Post |  |
+| secSafety | Sicherheit |  |
+| search | Suchen… |  |
+| tuneVibe | Tune my Vibe |  |
+
+## auth  (45)
+
+| Key | Deutsch | Нохчийн |
+|---|---|---|
+| tagline | Dein Feed. Deine Regeln. |  |
+| emailPlaceholder | E-Mail |  |
+| passwordPlaceholder | Passwort |  |
+| login | Einloggen |  |
+| fillEmailPassword | Gib E-Mail und Passwort ein 🙂 |  |
+| loginFailed | Login hat nicht geklappt |  |
+| enterEmailFirst | Trag zuerst deine E-Mail ein 📧 |  |
+| resetSent | ✉️ Reset-Link gesendet! Prüfe dein E-Mail-Postfach. |  |
+| forgot | Passwort vergessen? |  |
+| or | oder |  |
+| googleLogin | Mit Google anmelden |  |
+| googleRegister | Mit Google registrieren |  |
+| noAccount | Noch kein Account? |  |
+| registerNow | Jetzt registrieren |  |
+| registerTitle | Werde Teil von Serlo ✨ |  |
+| registerTagline | Dein KI-gematchter Feed wartet auf dich |  |
+| usernamePlaceholder | Username |  |
+| passwordMinPlaceholder | Passwort (min. 6 Zeichen) |  |
+| createAccount | Account erstellen |  |
+| fillAll | Füll bitte alle Felder aus 🙂 |  |
+| usernameMin3 | Dein Username braucht mindestens 3 Zeichen ✏️ |  |
+| passwordMin6 | Das Passwort braucht mindestens 6 Zeichen 🔒 |  |
+| usernameTakenTitle | Schon vergeben |  |
+| usernameTakenText | Den Username gibt es leider schon — probier einen anderen ✏️ |  |
+| almostDoneTitle | Fast geschafft! 🎉 |  |
+| confirmEmailText | Bestätige deine E-Mail und logge dich dann ein. |  |
+| legalPrefix | Mit „Account erstellen" stimmst du den  |  |
+| legalTerms | Nutzungsbedingungen |  |
+| legalAnd |  und der  |  |
+| legalPrivacy | Datenschutzerklärung |  |
+| legalSuffix |  zu. Null-Toleranz für anstößige Inhalte und missbräuchliche Nutzer. |  |
+| hasAccount | Bereits registriert? |  |
+| loginNow | Einloggen |  |
+| rpFillBoth | Füll bitte beide Felder aus 🙂 |  |
+| rpTooShortTitle | Etwas länger |  |
+| rpMin8 | Das Passwort braucht mindestens 8 Zeichen 🔒 |  |
+| rpMismatchTitle | Stimmt noch nicht |  |
+| rpMismatch | Die beiden Passwörter sind nicht gleich 🔒 |  |
+| rpChanged | Passwort geändert! |  |
+| rpRedirect | Du wirst gleich weitergeleitet… |  |
+| rpTitle | Neues Passwort |  |
+| rpSub | Wähle ein sicheres Passwort ⏎ (mindestens 8 Zeichen) |  |
+| rpNewPlaceholder | Neues Passwort |  |
+| rpConfirmPlaceholder | Passwort bestätigen |  |
+| rpSave | Passwort speichern |  |
+
+## onboarding  (45)
+
+| Key | Deutsch | Нохчийн |
+|---|---|---|
+| welcomeTagline | Die Social-App die du wirklich kontrollierst. |  |
+| feat1Title | Du steuerst den Algorithmus |  |
+| feat1Desc | Kein Blackbox-Feed. Du entscheidest mit dem "Tune my Vibe"-Slider was du siehst. |  |
+| feat2Title | Dein eigener Clan |  |
+| feat2Desc | 150 Gleichgesinnte in deinem privaten Clan. Garantierte Sichtbarkeit, echte Verbindung. |  |
+| feat3Title | Dwell-Time schlägt Likes |  |
+| feat3Desc | Content gewinnt durch echte Verweildauer – nicht durch leere Klicks. |  |
+| letsGo | Los geht’s → |  |
+| setupHint | In unter 30 Sekunden eingerichtet |  |
+| usernameTitle | Wie soll dich die ⏎ Welt kennen? |  |
+| usernameSub | Wähle deinen Vibes-Username und ein Profilbild. |  |
+| usernamePlaceholder | deinusername |  |
+| usernameMin | Username muss mindestens 3 Zeichen haben. |  |
+| usernameChars | Nur Buchstaben, Zahlen und _ erlaubt. |  |
+| sessionExpired | Session abgelaufen. Bitte App neu starten und einloggen. |  |
+| usernameTaken | Dieser Username ist bereits vergeben. Versuch einen anderen. |  |
+| networkError | Netzwerkfehler. Bitte erneut versuchen. |  |
+| next | Weiter → |  |
+| interestsTitle | Was begeistert ⏎ dich? |  |
+| interestsSub | Wähle mindestens {min} Themen — wir zeigen dir sofort die besten Vibes. |  |
+| selectMore | Noch {count} auswählen |  |
+| selectedCount | {count} ausgewählt ✓ |  |
+| continueBtn | Weiter |  |
+| guildTitle | Dein Clan wartet ⏎ auf dich. |  |
+| microPod | Dein Micro-Pod |  |
+| welcomeCommunity | Willkommen in deiner Community! |  |
+| guildAssigned | Du wirst gleich deinem Clan zugewiesen... |  |
+| members | Mitglieder |  |
+| visibility | Sichtbarkeit |  |
+| noAlgoValue | Kein |  |
+| noAlgoLabel | Algorithmus |  |
+| discover | Vibes entdecken |  |
+| interests.Musik | Musik |  |
+| interests.Sport | Sport |  |
+| interests.Kunst | Kunst |  |
+| interests.Tech | Tech |  |
+| interests.Gaming | Gaming |  |
+| interests.Reisen | Reisen |  |
+| interests.Kochen | Kochen |  |
+| interests.Mode | Mode |  |
+| interests.Natur | Natur |  |
+| interests.Film | Film |  |
+| interests.Business | Business |  |
+| interests.Fitness | Fitness |  |
+| guildDescText | Du bist Teil von „{name}" – {desc}. Hier siehst du jeden Post deiner 150 Gleichgesinnten, chronologisch und ohne Algorithmus. |  |
+
+## settings  (168)
+
+| Key | Deutsch | Нохчийн |
+|---|---|---|
+| title | Einstellungen |  |
+| back | Zurück |  |
+| save | Speichern |  |
+| a11ySave | Profil speichern |  |
+| avatarChangeTitle | Profilbild ändern |  |
+| avatarChangeMsg | Wie möchtest du dein Foto auswählen? |  |
+| avatarWithAi | Mit KI erstellen ✨ |  |
+| camera | Kamera |  |
+| gallery | Galerie |  |
+| permTitle | Berechtigung erforderlich |  |
+| permCamera | Bitte erlaube den Kamerazugriff. |  |
+| permPhotos | Bitte erlaube den Fotozugriff. |  |
+| tapPhotoToChange | Tippe auf das Foto zum Ändern |  |
+| checkTitle | Kurz prüfen 👀 |  |
+| usernameEmpty | Dein Benutzername darf nicht leer sein. |  |
+| usernameMin3 | Dein Benutzername braucht mindestens 3 Zeichen. |  |
+| takenTitle | Schon vergeben 🙈 |  |
+| takenText | Den Namen schnappt sich grad jemand anders — probier einen anderen. |  |
+| oops | Hoppla 🙈 |  |
+| saveFailed | Speichern ging nicht durch — gleich nochmal? |  |
+| savedTitle | Gespeichert ✓ |  |
+| savedText | Dein Profil wurde aktualisiert. |  |
+| changePw | Passwort ändern |  |
+| changePwMsg | Gib dein neues Passwort ein (mindestens 8 Zeichen): |  |
+| tooShort | Zu kurz |  |
+| pwMin8 | Das Passwort muss mindestens 8 Zeichen haben. |  |
+| pwChanged | Passwort geändert ✓ |  |
+| pwChangedText | Dein Passwort wurde erfolgreich aktualisiert. |  |
+| changeEmail | E-Mail ändern |  |
+| changeEmailMsg | Gib deine neue E-Mail-Adresse ein: |  |
+| emailCheck | E-Mail checken 📧 |  |
+| emailInvalid | Die Adresse sieht noch nicht ganz richtig aus. |  |
+| linkSent | Link gesendet ✓ |  |
+| linkSentText | Bitte prüfe dein Postfach und bestätige die Änderung. |  |
+| logout | Abmelden |  |
+| logoutConfirm | Möchtest du dich wirklich abmelden? |  |
+| deleteAccount | Account löschen |  |
+| deleteWarn | ⚠️ Dein Account und ALLE Daten werden dauerhaft gelöscht. |  |
+| deleteNow | Jetzt löschen |  |
+| deleteSure | Wirklich sicher? |  |
+| deleteIrreversible | Diese Aktion kann NICHT rückgängig gemacht werden. |  |
+| deleteKeep | Nein, behalten |  |
+| deleteConfirmYes | Ja, Account löschen |  |
+| noSession | Keine aktive Sitzung. |  |
+| deleteFailedStatus | Löschen fehlgeschlagen ({status}). |  |
+| deleteFailedTitle | Löschen fehlgeschlagen 🙈 |  |
+| tryLater | Bitte versuch es später nochmal. |  |
+| secProfile | Profil |  |
+| secInvite | Freunde einladen |  |
+| secWomenOnly | Women-Only Zone 🌸 |  |
+| secAppearance | Darstellung |  |
+| secCreator | Creator & Verwaltung |  |
+| secVoice | KI-Stimme |  |
+| secNotif | Benachrichtigungen |  |
+| secPrivacy | Privatsphäre & Sicherheit |  |
+| secLegal | Rechtliches & Hilfe |  |
+| secAccount | Account |  |
+| username | Benutzername |  |
+| usernamePlaceholder | dein_username |  |
+| bio | Bio |  |
+| bioPlaceholder | Beschreibe deinen Vibe... |  |
+| teipLabel | Тейп (Clan) |  |
+| teipSelect | Auswählen... |  |
+| teipNone | — Kein Тейп — |  |
+| website | Website |  |
+| websitePlaceholder | https://deine-website.com |  |
+| inviteTitle | Freund:innen einladen |  |
+| inviteCountOne | {count} Person ist über dich dabei 🌸 |  |
+| inviteCountMany | {count} Personen sind über dich dabei 🌸 |  |
+| inviteSub | Teile deinen Link — bring die Community zusammen |  |
+| inviteShareMsg | Komm zu Serlo 🌸 — Videos, Live & Marktplatz aus der Community: ⏎ {url} |  |
+| wozTitle | Women-Only Zone |  |
+| wozActive | Women-Only Zone aktiv ✓ |  |
+| wozHasAccess | Du hast Zugang zu Women-Only Inhalten |  |
+| wozVerify | Verifiziere dich um Women-Only Inhalte zu sehen |  |
+| wozLeaveTitle | Women-Only Zone verlassen? |  |
+| wozLeaveText | Du verlierst den Zugang zu Women-Only Inhalten. |  |
+| wozLeave | Verlassen |  |
+| wozActivate | Aktivieren |  |
+| appearance | Erscheinungsbild |  |
+| themeSystem | ⚙️ System |  |
+| themeDark | 🌙 Dark |  |
+| themeLight | ☀️ Hell |  |
+| langLabel | Sprache · Язык |  |
+| langAuto | ⚙️ Automatisch |  |
+| tabBar | Tab Bar anpassen |  |
+| tabBarSub | Wähle deine Schnellzugriffe |  |
+| creatorStudio | Creator Studio |  |
+| creatorStudioSub | Einnahmen, Analytics, Top Posts |  |
+| becomeCreator | Creator werden ✦ |  |
+| becomeCreatorSub | Kostenlos · Sofortzugang · Monetarisierung |  |
+| creatorStudioOpen | Creator Studio öffnen |  |
+| becomeCreatorA11y | Creator werden |  |
+| adminPanel | Admin Panel |  |
+| adminPanelSub | Nutzerverwaltung, Reports, Shop |  |
+| myVoice | Meine KI-Stimme |  |
+| voiceSaved | ✓ Stimme gespeichert — Chatterbox spricht wie du |  |
+| voiceRecord | Stimme aufnehmen (5–15 Sek.) |  |
+| notifLikes | Likes |  |
+| notifLikesSub | Wenn jemand deinen Post liket |  |
+| notifComments | Kommentare |  |
+| notifCommentsSub | Wenn jemand kommentiert |  |
+| notifFollows | Neue Follower |  |
+| notifFollowsSub | Wenn dir jemand folgt |  |
+| notifLive | Live-Streams |  |
+| notifLiveSub | Wenn jemand live geht |  |
+| notifMessages | Nachrichten |  |
+| notifMessagesSub | Neue Direktnachrichten |  |
+| notifReposts | Reposts |  |
+| notifRepostsSub | Wenn jemand deinen Post teilt |  |
+| notifSuffix | Benachrichtigungen |  |
+| muteHosts | Einzelne Hosts stummschalten |  |
+| muteHostsSub | Pushes pro Creator an/aus |  |
+| privateProfile | Privates Profil |  |
+| privateOn | Neue Follower müssen bestätigt werden |  |
+| privateOff | Jeder kann dein Profil sehen |  |
+| prefNotSaved | Die Einstellung wurde nicht gespeichert — gleich nochmal? 🙏 |  |
+| blockedUsers | Geblockte Nutzer |  |
+| cohostBlocks | Co-Host Blocks |  |
+| privacyPolicy | Datenschutzerklärung |  |
+| terms | Nutzungsbedingungen |  |
+| withdrawal | Widerrufsbelehrung |  |
+| helpSupport | Hilfe & Support |  |
+| aiAvatarTitle | Avatar mit KI |  |
+| aiAvatarPlaceholder | z.B. „Minimalistisches Portrait-Illustration, flache Farben |  |
+| aiAvatar1 | Minimalistisches Portrait, flache Farben, Profil-Look |  |
+| aiAvatar2 | Abstrakte geometrische Komposition in Blau-Tönen |  |
+| aiAvatar3 | Cartoon-Avatar, freundlich, warme Farben |  |
+| tbLivePreview | Live-Vorschau |  |
+| tbDesc | Wähle was du in Slot 2 und Slot 4 sehen möchtest. Die Vorschau unten aktualisiert sich sofort. |  |
+| tbSlot2 | Slot 2 — links vom + |  |
+| tbSlot4 | Slot 4 — rechts vom + |  |
+| mlhTitle | Live-Benachrichtigungen |  |
+| mlhMutedSub | Live-Pushes stummgeschaltet |  |
+| mlhUnmute | Aufheben |  |
+| mlhEmptyTitle | Niemand ist stummgeschaltet |  |
+| mlhEmptyDesc | Tippe auf die Glocke in einem Profil, um Live-Pushes dieser Person zu stummschalten — du folgst ihnen weiterhin ganz normal. |  |
+| mlhDesc | Diese Creator bekommen einen Push von dir nicht, wenn sie live gehen. Du folgst ihnen weiterhin ganz normal. |  |
+| supSubThread | Wir antworten so schnell wir können. |  |
+| supSubNew | Schreib uns — wir helfen dir. |  |
+| supEmptyTitle | Wie können wir helfen? 👋 |  |
+| supEmptyDesc | Beschreib dein Problem oder Feedback. Du bekommst eine Benachrichtigung, sobald das Team antwortet. |  |
+| supTeam | Team |  |
+| supPlaceholderThread | Nachricht schreiben… |  |
+| supPlaceholderNew | Beschreib dein Anliegen… |  |
+| supSubject | Support-Anfrage |  |
+| unblock | Entblocken |  |
+| unblockTitle | @{name} entblocken? |  |
+| unblockFailTitle | Hat nicht geklappt 🙈 |  |
+| unblockFailText | Das Entblocken ging nicht durch — gleich nochmal? |  |
+| unblockA11y | {name} entblocken |  |
+| unknownUser | Unbekannt |  |
+| buUnblockText | Dieser User kann dann wieder dein Profil und deine Posts sehen. |  |
+| buBlocked | Geblockt |  |
+| buEmptyTitle | Niemand blockiert 🤍 |  |
+| buEmptyDesc | Nutzer die du blockst, kannst du hier verwalten. |  |
+| cbBanner | Geblockte User können deine Live weiter anschauen, aber nicht mehr als Co-Host beitreten. |  |
+| cbEmptyTitle | Niemand gesperrt 🤍 |  |
+| cbEmptyDesc | Beim Rauswerfen eines Co-Hosts mit Grund landet er automatisch hier. |  |
+| cbUnblockText | Der User kann dann wieder als Co-Host zu deinen Lives beitreten. |  |
+| cbPermanent | permanent |  |
+| cbAgoMinutes | vor wenigen Minuten |  |
+| cbAgoHours | vor {n} h |  |
+| cbAgoDays | vor {n} d |  |
+| cbAgoMonths | vor {n} mo |  |
+| cbExpSoon | läuft in <1h ab |  |
+| cbExpHours | läuft in {n} h ab |  |
+| cbExpDays | läuft in {n} d ab |  |
+
+## coinshop  (15)
+
+| Key | Deutsch | Нохчийн |
+|---|---|---|
+| appStoreOnlyTitle | Nur im App Store |  |
+| appStoreOnlyText | Käufe sind nur im fertigen App Store Build verfügbar. |  |
+| thanksTitle | 🎉 Danke! |  |
+| credited | {coins} Serlo Coins wurden gutgeschrieben. |  |
+| noConnTitle | Keine Verbindung |  |
+| noConnText | Prüfe deine Internetverbindung und versuche es erneut. |  |
+| retry | Erneut versuchen |  |
+| pendingTitle | Zahlung ausstehend |  |
+| pendingText | Deine Zahlung wird gerade verarbeitet. Die Coins werden in Kürze gutgeschrieben. |  |
+| buyFailedTitle | Kauf hat nicht geklappt |  |
+| buyFailedText | Da ist leider was schiefgelaufen. Versuch es in ein paar Minuten nochmal — oder melde dich beim Support, wir helfen dir. |  |
+| restoredTitle | Wiederhergestellt ✅ |  |
+| restoredText | Deine Käufe sind zurück. |  |
+| restoreFailedTitle | Wiederherstellung hat nicht geklappt |  |
+| restoreFailedText | Prüf kurz deine Internetverbindung und versuch es nochmal. Hält das Problem an, ist der Support für dich da. |  |
+
