@@ -226,26 +226,26 @@ export default function PostLongPressSheet({
         <View style={s.pillRow}>
           <QuickPill
             icon={Heart}
-            label={liked ? 'Geliked' : 'Liken'}
+            label={liked ? t('sheet.liked') : t('sheet.like')}
             active={liked}
             activeColor="#F472B6"
             onPress={() => { toggleLike(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); }}
           />
           <QuickPill
             icon={MessageCircle}
-            label="Kommentar"
+            label={t('sheet.comment')}
             onPress={() => { onClose(); setTimeout(onOpenComments, 80); }}
           />
           <QuickPill
             icon={Bookmark}
-            label={bookmarked ? 'Gespeichert' : 'Speichern'}
+            label={bookmarked ? t('sheet.saved') : t('sheet.save')}
             active={bookmarked}
             activeColor="#FFFFFF"
             onPress={() => { toggleBookmark(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
           />
           <QuickPill
             icon={Share2}
-            label="Teilen"
+            label={t('sheet.share')}
             onPress={() => { onClose(); setTimeout(onOpenShare, 80); }}
           />
         </View>
@@ -254,18 +254,18 @@ export default function PostLongPressSheet({
 
         <ScrollView scrollEnabled={false}>
           {/* ── Sozial ── */}
-          <Text style={s.sectionLabel}>Sozial</Text>
+          <Text style={s.sectionLabel}>{t('sheet.secSocial')}</Text>
           <ActionRow
             icon={User}
-            label={`@${authorName} besuchen`}
-            sublabel="Profil & alle Posts ansehen"
+            label={t('sheet.visitProfile', { name: authorName })}
+            sublabel={t('sheet.visitProfileSub')}
             onPress={visitProfile}
           />
           {!isOwnProfile && (
             <ActionRow
               icon={isFollowing ? UserCheck : UserPlus}
-              label={isFollowing ? `@${authorName} entfolgen` : `@${authorName} folgen`}
-              sublabel={isFollowing ? 'Aus deinem Netzwerk entfernen' : 'Netzwerk erweitern'}
+              label={isFollowing ? t('sheet.unfollowName', { name: authorName }) : t('sheet.followName', { name: authorName })}
+              sublabel={isFollowing ? t('sheet.unfollowSub') : t('sheet.followSub')}
               onPress={() => { onToggleFollow(); onClose(); }}
             />
           )}
@@ -273,28 +273,28 @@ export default function PostLongPressSheet({
           <View style={s.divider} />
 
           {/* ── Post-Aktionen ── */}
-          <Text style={s.sectionLabel}>Post</Text>
+          <Text style={s.sectionLabel}>{t('sheet.secPost')}</Text>
           <ActionRow
             icon={Link2}
-            label="Link kopieren"
-            sublabel="In die Zwischenablage"
+            label={t('sheet.linkCopy')}
+            sublabel={t('sheet.toClipboard')}
             onPress={copyLink}
           />
           <ActionRow
             icon={Download}
-            label="Herunterladen"
-            sublabel="Video / Bild auf dein Gerät"
+            label={t('sheet.download')}
+            sublabel={t('sheet.downloadSub')}
             onPress={handleDownload}
           />
 
           {!isOwnProfile && (
             <>
               <View style={s.divider} />
-              <Text style={s.sectionLabel}>Sicherheit</Text>
+              <Text style={s.sectionLabel}>{t('sheet.secSafety')}</Text>
               <ActionRow
                 icon={EyeOff}
-                label="Kein Interesse"
-                sublabel="Weniger solchen Content zeigen"
+                label={t('sheet.notInterested')}
+                sublabel={t('sheet.notInterestedSub')}
                 onPress={() => {
                   report({ postId, reason: 'not_interested' });
                   onClose();
@@ -303,8 +303,8 @@ export default function PostLongPressSheet({
               />
               <ActionRow
                 icon={Flag}
-                label="Melden"
-                sublabel="Spam oder unangemessenen Inhalt"
+                label={t('sheet.report')}
+                sublabel={t('sheet.reportSub')}
                 color="#f87171"
                 onPress={handleReport}
               />

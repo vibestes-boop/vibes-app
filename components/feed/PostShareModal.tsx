@@ -1,5 +1,5 @@
 import { useAuthStore } from '@/lib/authStore';
-import { useI18n } from '@/lib/i18n';
+import { useI18n, type TranslationKey } from '@/lib/i18n';
 import { webPostUrl } from '@/lib/webLinks';
 import { supabase } from '@/lib/supabase';
 import { useOrCreateConversation,useSendMessage } from '@/lib/useMessages';
@@ -38,11 +38,11 @@ View,
 } from 'react-native';
 import { postShareModalStyles as pss } from './feedStyles';
 
-const POST_APP_OPTIONS = [
+const POST_APP_OPTIONS: { id: string; label: string; labelKey?: TranslationKey; emoji?: string; icon?: any; color: string }[] = [
   { id: 'whatsapp', label: 'WhatsApp', emoji: '💬', color: '#25D366' },
   { id: 'telegram', label: 'Telegram', emoji: '✈️', color: '#2CA5E0' },
-  { id: 'copy', label: 'Link', icon: Copy, color: '#6366f1' },
-  { id: 'more', label: 'Mehr', icon: Share2, color: '#374151' },
+  { id: 'copy', label: 'Link', labelKey: 'sheet.link', icon: Copy, color: '#6366f1' },
+  { id: 'more', label: 'Mehr', labelKey: 'sheet.more', icon: Share2, color: '#374151' },
 ];
 
 type ShareTarget = { id: string; username: string | null; avatar_url: string | null };
@@ -181,28 +181,28 @@ export function PostShareModal({
       ? [
           {
             id: 'follow',
-            label: isFollowing ? 'Entfolgen' : 'Folgen',
+            label: isFollowing ? t('sheet.unfollow') : t('sheet.follow'),
             icon: isFollowing ? UserCheck : UserPlus,
             color: '#FFFFFF',
           },
         ]
       : []),
     ...(onOpenTune
-      ? [{ id: 'tune', label: 'Tune my Vibe', icon: SlidersHorizontal, color: '#FFFFFF' }]
+      ? [{ id: 'tune', label: t('sheet.tuneVibe'), icon: SlidersHorizontal, color: '#FFFFFF' }]
       : []),
     // Melden / Kein Interesse ergeben nur bei FREMDEN Posts Sinn.
     ...(!isOwnProfile
       ? [
-          { id: 'notinterested', label: 'Kein Interesse', icon: EyeOff, color: '#6B7280' },
-          { id: 'report', label: 'Melden', icon: Flag, color: '#ef4444' },
+          { id: 'notinterested', label: t('sheet.notInterested'), icon: EyeOff, color: '#6B7280' },
+          { id: 'report', label: t('sheet.report'), icon: Flag, color: '#ef4444' },
         ]
       : []),
     ...(hasSavableVideo
-      ? [{ id: 'download', label: isSaving ? 'Speichern…' : 'Speichern', icon: Download, color: '#6B7280' }]
+      ? [{ id: 'download', label: isSaving ? t('sheet.saving') : t('sheet.save'), icon: Download, color: '#6B7280' }]
       : []),
     // Admin-only: fremden Post direkt entfernen (protokolliert). Nicht am eigenen Post.
     ...(isAdmin && !isOwnProfile
-      ? [{ id: 'adminremove', label: 'Entfernen (Admin)', icon: Trash2, color: '#ef4444' }]
+      ? [{ id: 'adminremove', label: t('sheet.adminRemove'), icon: Trash2, color: '#ef4444' }]
       : []),
   ];
 
@@ -275,12 +275,12 @@ export function PostShareModal({
         <Pressable style={pss.sheet} onPress={(e) => e.stopPropagation()}>
           <View style={pss.handle} />
 
-          <Text style={pss.sectionLabel}>Senden an</Text>
+          <Text style={pss.sectionLabel}>{t('sheet.sendTo')}</Text>
           <View style={pss.searchRow}>
             <Search size={15} color="rgba(255,255,255,0.4)" />
             <TextInput
               style={pss.searchInput}
-              placeholder="Suchen…"
+              placeholder={t('sheet.search')}
               placeholderTextColor="rgba(255,255,255,0.35)"
               value={search}
               onChangeText={setSearch}
@@ -289,7 +289,7 @@ export function PostShareModal({
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={pss.userScroll} contentContainerStyle={pss.userScrollContent}>
             {filtered.length === 0 ? (
-              <Text style={pss.emptyUsers}>Keine User</Text>
+              <Text style={pss.emptyUsers}>{t('sheet.noUsers')}</Text>
             ) : (
               filtered.map((u) => {
                 const chosen = selected.has(u.id);
@@ -320,7 +320,7 @@ export function PostShareModal({
           {selected.size > 0 && (
             <Pressable style={[pss.sendBtn, sending && { opacity: 0.5 }]} onPress={handleSendToUsers} disabled={sending}>
               <Send size={16} color="#fff" />
-              <Text style={pss.sendBtnText}>{sending ? 'Senden…' : `Senden (${selected.size})`}</Text>
+              <Text style={pss.sendBtnText}>{sending ? t('sheet.sending') : t('sheet.sendN', { count: selected.size })}</Text>
             </Pressable>
           )}
 
@@ -338,7 +338,7 @@ export function PostShareModal({
                       IconComp && <IconComp size={22} color="#fff" strokeWidth={1.8} />
                     )}
                   </View>
-                  <Text style={pss.appLabel}>{opt.label}</Text>
+                  <Text style={pss.appLabel}>{opt.labelKey ? t(opt.labelKey) : opt.label}</Text>
                 </Pressable>
               );
             })}

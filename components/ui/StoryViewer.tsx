@@ -35,7 +35,7 @@ withTiming
 
 import { StoryViewersSheet } from '@/components/ui/StoryViewersSheet';
 import { useAuthStore } from '@/lib/authStore';
-import { useI18n } from '@/lib/i18n';
+import { useI18n, type TranslationKey } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 import { useFollow } from '@/lib/useFollow';
 import { useOrCreateConversation,useSendMessage } from '@/lib/useMessages';
@@ -343,17 +343,17 @@ function LikeBtn({ storyId }: { storyId: string | undefined }) {
 // ── Short-Video-Style Share Sheet ─────────────────────────────────────────────────
 type ShareTarget = { id: string; username: string | null; avatar_url: string | null };
 
-const APP_SHARE_OPTIONS = [
+const APP_SHARE_OPTIONS: { id: string; label: string; labelKey?: TranslationKey; emoji?: string; icon?: any; color: string }[] = [
   { id: 'whatsapp', label: 'WhatsApp', emoji: '💬', color: '#25D366' },
   { id: 'telegram', label: 'Telegram', emoji: '✈️', color: '#2CA5E0' },
-  { id: 'copy', label: 'Link', icon: Copy, color: '#6366f1' },
-  { id: 'more', label: 'Mehr', icon: Share2, color: '#374151' },
+  { id: 'copy', label: 'Link', labelKey: 'sheet.link', icon: Copy, color: '#6366f1' },
+  { id: 'more', label: 'Mehr', labelKey: 'sheet.more', icon: Share2, color: '#374151' },
 ];
 
-const ACTION_BUTTONS = [
-  { id: 'report', label: 'Melden', icon: Flag, color: '#ef4444' },
-  { id: 'notinterested', label: 'Kein Interesse', icon: EyeOff, color: '#6B7280' },
-  { id: 'download', label: 'Herunterladen', icon: Download, color: '#6B7280' },
+const ACTION_BUTTONS: { id: string; labelKey: TranslationKey; icon: any; color: string }[] = [
+  { id: 'report', labelKey: 'sheet.report', icon: Flag, color: '#ef4444' },
+  { id: 'notinterested', labelKey: 'sheet.notInterested', icon: EyeOff, color: '#6B7280' },
+  { id: 'download', labelKey: 'sheet.download', icon: Download, color: '#6B7280' },
 ];
 
 function InAppShareModal({
@@ -578,7 +578,7 @@ function InAppShareModal({
                       : <IconComp size={22} color="#fff" strokeWidth={1.8} />
                     }
                   </View>
-                  <Text style={ss.appLabel}>{opt.label}</Text>
+                  <Text style={ss.appLabel}>{opt.labelKey ? t(opt.labelKey) : opt.label}</Text>
                 </Pressable>
               );
             })}
@@ -595,7 +595,7 @@ function InAppShareModal({
                   <View style={[ss.actionIcon, { backgroundColor: 'rgba(255,255,255,0.07)' }]}>
                     <IconComp size={22} color={btn.color} strokeWidth={1.8} />
                   </View>
-                  <Text style={ss.actionLabel}>{btn.label}</Text>
+                  <Text style={ss.actionLabel}>{t(btn.labelKey)}</Text>
                 </Pressable>
               );
             })}
