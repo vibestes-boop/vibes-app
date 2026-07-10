@@ -575,6 +575,11 @@ const deMessages = {
 
   // Landing-Page (ausgeloggte Besucher, components/landing-page.tsx)
   landing: {
+    // /app — Share-Weiterleitung in den App Store (schönes WhatsApp-Unfurl)
+    appShareTitle: "Serlo für iPhone",
+    appShareSub: "Videos · Live · Marktplatz — aus der Community.",
+    appShareRedirect: "Du wirst zum App Store weitergeleitet …",
+    appShareCta: "Im App Store öffnen",
     streamsLiveOne: "1 Stream jetzt live",
     streamsLiveMany: "{count} Streams jetzt live",
     betaBadge: "Web-Beta · Live & Shop",

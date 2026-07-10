@@ -567,6 +567,11 @@ const ruMessages = {
 
   // Лендинг (для неавторизованных, components/landing-page.tsx)
   landing: {
+    // /app — шаринг-переход в App Store
+    appShareTitle: 'Serlo для iPhone',
+    appShareSub: 'Видео · Эфиры · Маркетплейс — из комьюнити.',
+    appShareRedirect: 'Перенаправляем в App Store …',
+    appShareCta: 'Открыть в App Store',
     streamsLiveOne: '1 стрим сейчас в эфире',
     streamsLiveMany: '{count} стримов сейчас в эфире',
     betaBadge: 'Веб-бета · Live и магазин',

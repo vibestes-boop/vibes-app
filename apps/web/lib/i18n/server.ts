@@ -8,17 +8,31 @@
 // oder Messages direkt fürs `<I18nProvider messages={…}>` in layout.tsx:
 //   const { locale, messages } = await getI18n();
 
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 
 import { DEFAULT_LOCALE, LOCALE_COOKIE, isLocale, type Locale } from './config';
 import { MESSAGES, type Messages } from './messages';
 import { resolve, type DeepPartial, type TranslationKey } from './translate';
 
-/** Liest den aktuellen Locale aus dem Cookie, fällt zurück auf Default. */
+/**
+ * Liest den aktuellen Locale: Cookie (explizite User-Wahl) → sonst
+ * Accept-Language des Browsers (Erstbesuch) → sonst Default (de).
+ * Sobald der User im Menü wählt, gewinnt der Cookie dauerhaft.
+ */
 export async function getLocale(): Promise<Locale> {
   const store = await cookies();
   const value = store.get(LOCALE_COOKIE)?.value;
-  return isLocale(value) ? value : DEFAULT_LOCALE;
+  if (isLocale(value)) return value;
+  try {
+    const accept = (await headers()).get('accept-language') ?? '';
+    for (const part of accept.split(',')) {
+      const code = part.split(';')[0]!.trim().slice(0, 2).toLowerCase();
+      if (isLocale(code)) return code;
+    }
+  } catch {
+    // Außerhalb eines Request-Scopes (z.B. Build) → Default.
+  }
+  return DEFAULT_LOCALE;
 }
 
 /** Liefert das passende Messages-Object für den aktuellen Locale (ggf. partiell). */

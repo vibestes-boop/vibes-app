@@ -519,6 +519,11 @@ const enMessages = {
   },
 
   landing: {
+    // /app — share redirect to the App Store
+    appShareTitle: 'Serlo for iPhone',
+    appShareSub: 'Videos · Live · Marketplace — from the community.',
+    appShareRedirect: 'Taking you to the App Store …',
+    appShareCta: 'Open in App Store',
     streamsLiveOne: '1 stream live now',
     streamsLiveMany: '{count} streams live now',
     betaBadge: 'Web beta · Live & Shop',
