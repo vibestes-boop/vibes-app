@@ -577,7 +577,7 @@ const deMessages = {
   landing: {
     // /app — Share-Weiterleitung in den App Store (schönes WhatsApp-Unfurl)
     appShareTitle: "Serlo für iPhone",
-    appShareSub: "Videos · Live · Marktplatz — aus der Community.",
+    appShareSub: "Videos · Live · Marktplatz. Aus der Community.",
     appShareRedirect: "Du wirst zum App Store weitergeleitet …",
     appShareCta: "Im App Store öffnen",
     // Landing-Redesign (dark)
@@ -585,19 +585,19 @@ const deMessages = {
     trendingLabel: "Entdecken",
     shopLabel: "Marktplatz",
     shopTitle: "Echte Produkte aus der Community",
-    shopSub: "Öl-Parfüm, Handmade & mehr — direkt von Menschen, denen du folgst.",
+    shopSub: "Öl-Parfüm, Handmade und mehr von Menschen, denen du folgst.",
     shopAll: "Alle Produkte",
     featuresLabel: "Warum Serlo",
     featuresTitle: "Gemacht für Streamer, Händler und Creator",
     ctaTitle: "Serlo gehört in deine Tasche",
-    ctaText: "Videos, Live-Streams und der Marktplatz — kostenlos im App Store.",
+    ctaText: "Videos, Live-Streams und der Marktplatz. Kostenlos im App Store.",
     streamsLiveOne: "1 Stream jetzt live",
     streamsLiveMany: "{count} Streams jetzt live",
-    betaBadge: "Neu — Serlo ist im App Store",
+    betaBadge: "Jetzt im App Store",
     heroTitle: "Live. Shop. Community.",
     heroSubtitle: "Für deine Community gemacht.",
     heroText:
-      "Schau Live-Streams, entdecke Videos und bestell Parfüm & mehr — direkt von Menschen aus deiner Community. Kostenlos im Browser und als App.",
+      "Schau Live-Streams, entdecke Videos und bestell Parfüm direkt von Menschen aus deiner Community. Kostenlos im Browser und als App.",
     getApp: "Oder hol dir die App fürs iPhone",
     scanQr: "Mit der Handy-Kamera scannen",
     appStoreAlt: "Laden im App Store",
@@ -607,7 +607,7 @@ const deMessages = {
     discoverMore: "Mehr entdecken →",
     vpStreamerTitle: "PC-Streamer",
     vpStreamerDesc:
-      "Gaming-Streams, IRL-Shows, Talk-Formate. Multi-Source-Deck mit Screenshare, Webcam, Mic — oder direkt aus OBS via WHIP-Ingest.",
+      "Gaming-Streams, IRL-Shows, Talk-Formate. Multi-Source-Deck mit Screenshare, Webcam und Mic, oder direkt aus OBS.",
     vpSellerTitle: "Online-Händler",
     vpSellerDesc:
       "Professionelles Storefront mit Facetten-Filtern, Sale-Management, Order-Tracking und Revenue-Analytics. Bezahlung per Coins oder Stripe.",

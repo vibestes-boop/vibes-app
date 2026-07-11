@@ -521,7 +521,7 @@ const enMessages = {
   landing: {
     // /app — share redirect to the App Store
     appShareTitle: 'Serlo for iPhone',
-    appShareSub: 'Videos · Live · Marketplace — from the community.',
+    appShareSub: 'Videos · Live · Marketplace. From the community.',
     appShareRedirect: 'Taking you to the App Store …',
     appShareCta: 'Open in App Store',
     // Landing redesign (dark)
@@ -529,19 +529,19 @@ const enMessages = {
     trendingLabel: 'Discover',
     shopLabel: 'Marketplace',
     shopTitle: 'Real products from the community',
-    shopSub: 'Oil perfume, handmade & more — straight from people you follow.',
+    shopSub: 'Oil perfume, handmade and more from people you follow.',
     shopAll: 'All products',
     featuresLabel: 'Why Serlo',
     featuresTitle: 'Built for streamers, sellers and creators',
     ctaTitle: 'Serlo belongs in your pocket',
-    ctaText: 'Videos, live streams and the marketplace — free on the App Store.',
+    ctaText: 'Videos, live streams and the marketplace. Free on the App Store.',
     streamsLiveOne: '1 stream live now',
     streamsLiveMany: '{count} streams live now',
-    betaBadge: 'New — Serlo is on the App Store',
+    betaBadge: 'Now on the App Store',
     heroTitle: 'Live. Shop. Community.',
     heroSubtitle: 'Made for your community.',
     heroText:
-      'Watch live streams, discover videos and order perfume & more — straight from people in your community. Free in the browser and as an app.',
+      'Watch live streams, discover videos and order perfume straight from people in your community. Free in the browser and as an app.',
     getApp: 'Or get the app for iPhone',
     scanQr: 'Scan with your phone camera',
     appStoreAlt: 'Download on the App Store',
@@ -551,7 +551,7 @@ const enMessages = {
     discoverMore: 'Discover more →',
     vpStreamerTitle: 'PC streamer',
     vpStreamerDesc:
-      'Gaming streams, IRL shows, talk formats. Multi-source deck with screen share, webcam, mic — or straight from OBS via WHIP ingest.',
+      'Gaming streams, IRL shows, talk formats. Multi-source deck with screen share, webcam and mic, or straight from OBS.',
     vpSellerTitle: 'Online seller',
     vpSellerDesc:
       'Professional storefront with facet filters, sale management, order tracking and revenue analytics. Payment by coins or Stripe.',
