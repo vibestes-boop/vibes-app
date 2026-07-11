@@ -1,6 +1,21 @@
-# Handoff — Serlo/Vibes (Stand 9. Juli 2026 · Session 11)
+# Handoff — Serlo/Vibes (Stand 11. Juli 2026 · Session 12)
 
-> ## 🆕 Session 11 (8.–9. Juli) — Kurzfassung
+> ## 🆕 Session 12 (10.–11. Juli) — Kurzfassung
+> - **✅ App-i18n de/ru KOMPLETT ABGESCHLOSSEN** (alles per OTA, Runtime 1.30.0): Settings-Volltext + alle Unterseiten (tab-bar, muted-live-hosts, support, blocked-users, cohost-blocks) · fremde Profile (`UserProfileContent`) · kompletter **Alert-Sweep** über alle Randflächen (coin-shop, reset-password, Story/Kamera/Posts, alle Share-Sheets inkl. In-Sheet-Labels, Shop-Dispute/Review, Live-Shopping/Poll/Creator) · Gerätetest-Fixes (Bottom-Nav-Karussell `TabSlotSwitcher`, Statistik-Tab `AnalyticsTab`, follow-list, `GuildRoundCard`, Shop-Zähler/Low-Stock). **Kein bekannter deutscher Reststring bei Locale ru** — weitere Funde: Zaur schickt Screenshots.
+> - **✅ Sprach-Automatik:** App folgt beim Erststart der **Gerätesprache** (RN-Core, OTA-sicher; `expo-localization ~17.0.9` installiert + app.json-Plugin → wird ab dem **nächsten Binary** nativ genutzt, guarded require in `lib/i18n/i18nStore.ts`). Einstellungen → Sprache: 3 Pillen **⚙️ Automatisch / Deutsch / Русский** (`pickedByUser`). Web: `getLocale()` liest ohne Cookie jetzt **Accept-Language**.
+> - **✅ Russische Push-Texte SCHARF:** Migration `20260710130000_profiles_locale` ✅ + `send-push-notification` neu deployt — liest Empfänger-`profiles.locale` (separate defensive Query, Fallback de), alle ~20 Push-Typen russisch, Web-Push erbt. App synct Sprache via `lib/i18n/useLocaleProfileSync.ts` (gemountet in `src/_layout.full.tsx` → `PushNotificationsProvider`).
+> - **✅ Sprachen en + ce angelegt:** App `en.ts` voll, `ce.ts` Stub (→ de-Fallback); Web-`en.ts` 735/735. **ce-Übersetzungstabelle für Zaur:** `docs/i18n-ce-todo.md` (1324 Strings) + **Excel auf dem Desktop** `~/Desktop/Serlo-Tschetschenisch-Uebersetzung.xlsx` (Kopie `docs/i18n-ce-todo.xlsx`, untracked). Sobald (teilweise) ausgefüllt → gefüllte Zeilen nach `lib/i18n/messages/ce.ts` (App) + `apps/web/lib/i18n/messages/ce.ts` (Web) übertragen; leere bleiben de.
+> - **✅ Shop-Banner russisch:** Migration `20260710120000_shop_banners_ru` ✅ (`tag_ru/title_ru/subtitle_ru` + ru-Texte der 3 Seeds); App+Web-Karussell zeigen ru mit de-Fallback (RPC unverändert, `select *`). Neue Banner: beide Sprachvarianten pflegen.
+> - **✅ Security-Restpunkt zu:** `seller_accounts`-Read-RLS → `auth.uid() = user_id` + revoke anon (Migration `20260710140000` ✅; vorher verifiziert: kein Client/Edge/RPC-Read → nichts bricht).
+> - **✅ OAuth-Branding:** Zaur hat den Google-Consent-Screen gebrandet (Google Auth Platform → Branding: „Serlo", Logo, serlo.ch, Privacy/Terms) + Domain via Search Console verifiziert (TXT bei IONOS). **Status: „Branding wird derzeit überprüft"** (1–3 Tage) → danach zeigt das Google-Fenster „Weiter zu Serlo". Der iOS-System-Dialog zeigt weiter supabase.co — Fix nur via **Supabase Custom Domain** `auth.serlo.ch` (~10 $/Mon, bewusst aufgeschoben); Checkliste inkl. **storageKey-Falle** (sonst alle User ausgeloggt!) in `docs/auth-setup.md` §5.
+> - **✅ Teilbarer App-Link `serlo.ch/app`:** eigenes Marken-OG (Satori) + Client-Redirect zum App Store (bewusst KEIN Server-Redirect — sonst zieht der WhatsApp-Crawler Apples Vorschau). **Zum Teilen IMMER serlo.ch/app statt apps.apple.com.** WhatsApp cached Unfurls → notfalls `?v=2` anhängen.
+> - **✅ Landing-Redesign (durchgehend dark):** erzwungener `dark`-Wrapper, fixe Glas-Navbar, **Marktplatz-Sektion** (4 beliebte Produkte via kanonischer `ProductCard`, unter Trending, 2/3/4-Spalten), Value-Cards ohne „Phase"-Dev-Badges, App-CTA-Band, neuer Footer. `AppAuthShell` blendet globale Chrome (Glass-Pills + MobileBottomNav) auf der **anonymen Landing** aus (`onAnonymousLanding`). Hero-Copy community-first (Badge „Jetzt im App Store", „Für deine Community gemacht"), **alle Gedankenstriche entfernt** (KI-Muster; Rest nur in Zaurs DB-Produkttiteln — Empfehlung: kürzen auf „Divine" etc.).
+> - **✅ Hero-Feinschliff:** Wolken mit **4 Formtypen** (Shader-`u_fc2`-w-Kanal: türmig/flauschig/zerfasert/stratus) **+20 % Zusatzwolken** (`deriveClouds()` in `hero-horizon.tsx` — Zaurs Editor-Export bleibt unangetastete Quelle, Shader-Limit 8). **Berg-Ambience:** 14-MB-MP3 → nahtloser 120s-AAC-Loop (1,4 MB, `apps/web/public/hero/mountain-ambience.m4a`, Crossfade-Schnitt via ffmpeg); Sound-Button im Hero (`hero-ambience.tsx`): lädt **erst beim Klick** (0 Bytes vorher), Erstbesucher 8s Hint-Label+Puls, **Wiederkehrer mit Opt-in starten automatisch bei der ersten Geste** (localStorage `serlo-ambience`; Scroll zählt browserseitig NICHT als Geste — geklärt).
+> - **⚠️ TEST-LEKTION** (Memory `vibes-preview-browser-no-streaming-hydration`): Der eingebettete Preview-Browser führt bei `force-dynamic`-Seiten (Landing `/`) das Next-Streaming-Replacement NICHT aus — Inhalt bleibt im `<div hidden id="S:1">`, Klicks tot, keine Konsolen-Fehler (kostete ~1 h Fehlersuche, sah wie eigener Bug aus). **Interaktivität dort NUR mit puppeteer-core + System-Chrome verifizieren** (Muster liegt in `/tmp/serlo-verify/`; `npm i puppeteer-core` ohne Browser-Download, executablePath = installiertes Chrome). WebGL-Hero: Pane-Screenshots rendern den Canvas schwarz → per DOM/elementFromPoint prüfen.
+> - **Vercel-Env `NEXT_PUBLIC_SITE_URL` = www.serlo.ch: von Zaur gesetzt ✅** (Session-11-Restpunkt). **Google-Login funktioniert** (Zaur auf Gerät bestätigt) — Altlast aus §3.8 erledigt.
+> - **Nebenprojekt MRG** (mrg-logistik.de, eigenes Repo `~/Desktop/Ahmad Seite/repo`): Hero-Video-Intro gebaut (15s-Anflug im Bild-Slot, friert lückenlos auf letztem Frame ein, Iso-Bild als Fallback, 13,8→3,4 MB; Commits dort `df2ff12`+`66dd9a3`). Offen dort: Deployment klären (Dockerfile/standalone; statischer Export bricht an Formular-Server-Actions = Altbestand). **Gehört NICHT zu Serlo.**
+
+> ## Session 11 (8.–9. Juli) — Kurzfassung
 > - **🎉 APP IST GENEHMIGT + LIVE IM APP STORE** (nach 3 Ablehnungen): https://apps.apple.com/app/serlo/id6760790424
 > - **serlo.ch fertig verdrahtet**: Supabase-Redirects (Management-API), WEB_BASE + alle Links auf www.serlo.ch, Vercel-Env von Zaur gesetzt, Coin-Stripe-Secrets umgestellt (SHA-verifiziert). Commits `98d9681`…
 > - **Widerruf-Seite `/widerruf`** live (gesetzl. Muster + Parfüm-Hygiene-Ausnahme §312g, Muster-Formular; verlinkt in Footer/Menü/AGB/App-Settings). ⚠️ Vor Stripe-Live: Anwalt. Commit `a507d5e`.
@@ -25,15 +40,17 @@
 
 ## 🚀 Neue Sitzung — Start hier
 
-- **Stand:** Session 10 (7.–8. Juli) = **3 App-Store-Ablehnungen durchgearbeitet → Build 291 hochgeladen** (alle 5 Apple-Punkte gefixt), **echte Block-Durchsetzung** (Server-Trigger), **Konto-Löschung repariert** (war komplett kaputt: Function nie deployt + FK-Konflikte), **Push-Token-Fix** (alter Account bekam nach Wechsel weiter Pushes), **Web-OAuth-PKCE-Fix**, **serlo.ch verbunden**, und ein **großer i18n-Russisch-Sprint** (kompletter öffentlicher Web-Kern de+ru). Alles committed + gepusht + verifiziert. Letzter Commit **`6a84b26`**.
-- **🔴 UNMITTELBAR OFFEN (hier weitermachen):**
-  1. ✅ **ASC-Resubmit** — Zaur hat Build 291 erneut zur Prüfung eingereicht (8.7.).
-  2. ✅ **serlo.ch verdrahtet (8.7.):** (a) Supabase-Redirect-URLs `https://www.serlo.ch/**` + `https://serlo.ch/**` per Management-API ergänzt (bestehende Liste unangetastet, Site-URL bewusst auf vercel.app gelassen). (b) `WEB_BASE` + alle hartkodierten App-/Web-/Edge-Links auf `https://www.serlo.ch` (Commit `98d9681`, OTA raus, `create-checkout-session` neu deployt — keine `STRIPE_PRODUCT_*`-Overrides gesetzt, Fallback greift). **⚠️ NOCH OFFEN (Zaur, 2 Min):** Vercel → serlo-web → Settings → Environment Variables → `NEXT_PUBLIC_SITE_URL` = `https://www.serlo.ch` (Production) → **Redeploy** (Build-Time-Var!). Bis dahin zeigen OG-URLs/Sitemap/OAuth-Origin des Webs weiter auf vercel.app (funktioniert, nur nicht kanonisch). CLI-Token war abgelaufen → ging nicht automatisch.
-  3. **i18n-Russisch fortsetzen (optional):** Rest = Shop-Listen-Details (Filter-Sidebar), Messages-/Studio-/Live-Tiefe, `components/layout/more-menu.tsx`; später ru-Keys nach ce/en spiegeln. Methode + Stand in §1.0.3-D.
-  4. ✅ **Impressum-Entscheidung (8.7.):** Bleibt vorerst Zaurs Privatadresse — **nichts ändern**, Impressum/Datenschutz nicht anfassen. (Optionen brandwerkx-Ergänzung / Geschäftsadresse bleiben für später notiert, §1.0.3-C.)
+- **Stand:** App ist **live im App Store**, der komplette tägliche App-Kern ist **de/ru fertig** (i18n abgeschlossen), Pushes russisch, Landing dark + Marktplatz sichtbar, `serlo.ch/app` als Share-Link. **Technisch gibt es keinen Blocker** — nach Zaurs eigener Leitlinie ist der eigentliche nächste Schritt **validieren/verkaufen** (Parfüm + Community-Akquise), nicht bauen.
+- **🔴 OFFENE PUNKTE (nach Priorität):**
+  1. **Gerätetest-Loop:** Zaur testet täglich auf Russisch; bei Übersetzungslücken/Bugs schickt er Screenshots → Fix per OTA. (So liefen die Session-12-Funde: Bottom-Nav-Karussell, Statistik-Tab, follow-list, Sammelbestellungs-Karte, Werbe-Banner.)
+  2. **ce-Übersetzung:** Zaur füllt die Excel (`~/Desktop/Serlo-Tschetschenisch-Uebersetzung.xlsx`, 1324 Strings, Teilstände ok) → gefüllte Zeilen nach `lib/i18n/messages/ce.ts` (App) + `apps/web/lib/i18n/messages/ce.ts` (Web) übertragen.
+  3. **Google-Branding-Prüfung abwarten** („Branding wird derzeit überprüft", 1–3 Tage ab 10.7.) → dann zeigt das Google-Login-Fenster „Weiter zu Serlo". Status: Google Auth Platform → Überprüfungscenter.
+  4. **Nächster Binary-Build (wenn ohnehin fällig):** `expo-localization` aktiviert sich automatisch (schon installiert + Plugin); wichtigster inhaltlicher Grund wäre **Editor-Compositing** (Text/Sticker landen nicht im Post — Memory `vibes-create-overlay-compositing`, Plan: react-native-view-shot).
+  5. **Später/an Bedingungen geknüpft:** Stripe Live (wartet auf Anwalt für AGB/Widerruf) · Supabase Custom Domain `auth.serlo.ch` für den iOS-Login-Dialog (~10 $/Mon, Checkliste `docs/auth-setup.md` §5, ⚠️ storageKey-Falle) · Coin-Shop-Reaktivierung (IAPs neu in ASC + Flag + Receipt-Verify) · Web-Sammelbestellungs-Karte (WhatsApp→Web-Neukunden sehen die Runde nicht) · Marktplatz Phase 2 (Connect/KYC) · Kleinkram: Telegram-Alert-Token rotieren, `bunny-webhook` in config.toml prüfen, Resend/E-Mail (Android-Signup).
+- **Untracked im Repo (bewusst):** `deno.lock` (unklar woher, nicht angefasst) + `docs/i18n-ce-todo.xlsx` (Arbeitskopie der Excel).
 - **⚠️ OTA-Falle (weiter gültig):** OTA greift erst beim **2. Kaltstart**. `EAS_BUILD=1` zwingend.
-- **⚠️ Apple-Review-Learnings (Session 10):** (1) Purpose-Strings brauchen KONKRETES Beispiel („zum Beispiel um …"). (2) „Blockieren" muss WIRKLICH durchgesetzt sein — Apple testet es. (3) IAPs nur einreichen, wenn in der App auffindbar (Coin-Shop ist per Flag versteckt → IAPs aus Submission entfernt). (4) Apple-Provider in Supabase aktivieren nicht vergessen (Client-ID = Bundle-ID `com.vibesapp.vibes`, kein Secret nötig für native).
-- **Realer Kontext:** Parfüm läuft offline, 80 Flaschen in Lieferung. Premortem: erst validieren, dann bauen.
+- **⚠️ Verifikations-Regeln (Session 12 gelernt):** Landing/`force-dynamic`-Interaktivität NIE im Preview-Pane testen (Streaming-Hydration läuft dort nicht — Memory `vibes-preview-browser-no-streaming-hydration`) → puppeteer-core + System-Chrome (`/tmp/serlo-verify/`-Muster). Dev-Server-HMR verliert nach Katalog-/Datei-Neuanlagen Styles/Keys → Server-Neustart. Web-Sound/Autoplay: Scroll zählt nicht als Geste; stumme Videos dürfen autoplayen.
+- **Realer Kontext:** Parfüm läuft offline, 80 Flaschen in Lieferung (Sammelbestellungs-Runde „Fireside" läuft, 1/80). Premortem: erst validieren, dann bauen.
 - **Git-Push:** via PAT aus `.env.local` (§4). Immer mit `git ls-remote` verifizieren.
 
 ---
@@ -42,16 +59,18 @@
 
 | Bereich | Stand |
 |---|---|
-| **Repo / Branch** | `/Users/zaurhatuev/vibes-app` · `main` · Working Tree **sauber** |
-| **Letzter Commit** | `6a84b26` — i18n Notification-Texte + Landing. **Alle Session-10-Commits gepusht & verifiziert.** |
-| **Web (apps/web)** | Vercel auf Push zu `main`. **Live: `https://www.serlo.ch`** (Apex 308→www, SSL ✓) + weiterhin `serlo-web.vercel.app`. ✅ Code-Links (`WEB_BASE` + Fallbacks) zeigen auf www.serlo.ch (`98d9681`); ⚠️ nur Vercel-Env `NEXT_PUBLIC_SITE_URL` fehlt noch (Start-hier #2). Sentry-Web aktiv + **Build bricht bei Sentry-Ausfall nicht mehr ab** (errorHandler in next.config.mjs). |
-| **App-Build** | v1.30.0 / iOS-**Build 291** — **in ASC hochgeladen, Resubmit ggf. noch auszulösen** (Start-hier #1). Enthält: Location-Key raus, neue Kamera/Foto-Purpose-Strings, Block-Client-Filter, Logout-Fix. Runtime 1.30.0. |
-| **Letzter OTA** | Commit `3302dbf`-Reihe (Block-Filter, Logout-Fix, Konto-Lösch-Fehlerbehandlung, Push-Token-Cleanup) — alle Runtime 1.30.0, greifen beim 2. Kaltstart. |
-| **Edge Functions deployed** | Wie Session 9 **plus**: `send-push-notification` (kennt `support_new`), **`delete-account` (war NIE deployt → 404 → jetzt live!)**. Deploy: `npx supabase functions deploy <name> --project-ref llymwqfgujwkoxzqxrlm`. |
-| **DB-Migrationen** | ✅ **ALLE ausgeführt** (Zaur). Neu Session 10: `20260705150000_support_new_admin_notification`, `20260707000000_block_enforcement`, `20260707120000_fix_account_deletion_fks`, `20260707140000_push_token_single_owner`. **Keine offene Migration.** |
-| **GERADE FERTIG (Session 10)** | **App-Store-Fix-Marathon → Build 291** (§1.0.3-A) · **Block-Durchsetzung echt** (§1.0.3-B) · **Konto-Löschung + Push-Token + Web-OAuth repariert** (§1.0.3-B/C) · **serlo.ch live** (§1.0.3-C) · **i18n-Russisch: kompletter öffentlicher Web-Kern** (§1.0.3-D) · Admin-Gegen-Loop `support_new` · Video-Spinner-Fix `/p`. |
-| **🔴 NÄCHSTE AUFGABE** | **(1)** Zaur: Vercel-Env `NEXT_PUBLIC_SITE_URL` → www.serlo.ch + Redeploy (Start-hier #2). **(2)** i18n-Rest / ce+en-Nachzug. **(3)** ASC-Prüfergebnis abwarten (Build 291 eingereicht). |
-| **Monitoring** | Unverändert bewacht (UptimeRobot, Sentry App+Web, Telegram-CI, Stripe-Mails). CI-Baseline **0**; Root-tsc jetzt komplett 0 (alte rose-Fehler weg). |
+| **Repo / Branch** | `/Users/zaurhatuev/vibes-app` · `main` · Working Tree sauber (untracked: `deno.lock`, `docs/i18n-ce-todo.xlsx`) |
+| **Letzter Commit** | `565758e` — Sound-Button entdeckbar + Auto-Resume. **Alle Session-12-Commits gepusht & per `ls-remote` verifiziert.** |
+| **App Store** | 🎉 **LIVE**: https://apps.apple.com/app/serlo/id6760790424 (Build 291, v1.30.0). Teilbarer Link mit Marken-Vorschau: **`https://www.serlo.ch/app`**. |
+| **Web (apps/web)** | Vercel auf Push zu `main`. Live: `https://www.serlo.ch` (Apex 308→www). ✅ `NEXT_PUBLIC_SITE_URL` gesetzt (Zaur, Session 12). Landing komplett dark + Marktplatz-Sektion + Berg-Sound. Sprach-Erkennung: Cookie → Accept-Language → de. |
+| **App-i18n** | ✅ **de/ru komplett** (OTA, Runtime 1.30.0) + **en voll**, **ce Stub** (de-Fallback). Gerätesprache-Automatik + „Automatisch"-Pille. ce-Excel bei Zaur (Desktop). |
+| **Push** | ✅ **Lokalisiert de/ru** — `profiles.locale` (App synct automatisch) + `send-push-notification` (deployt 10.7.). |
+| **Letzter OTA** | Group `618a792a`-Reihe bis „Locale-Sync + expo-localization Fallback" (10.7.) — Runtime 1.30.0, greift beim 2. Kaltstart. |
+| **Edge Functions deployed** | Wie Session 10/11 **plus**: `send-push-notification` (Locale-aware, 10.7.). Deploy: `npx supabase functions deploy <name> --project-ref llymwqfgujwkoxzqxrlm`. |
+| **DB-Migrationen** | ✅ **ALLE ausgeführt** (Zaur). Neu Session 12: `20260710120000_shop_banners_ru`, `20260710130000_profiles_locale`, `20260710140000_seller_accounts_rls`. **Keine offene Migration.** |
+| **GERADE FERTIG (Session 12)** | i18n-Abschluss de/ru · Gerätesprache App+Web · russische Pushes · en/ce-Kataloge + ce-Excel · Landing-Redesign dark + Marktplatz · `serlo.ch/app` · Hero-Wolken-Varianten + Berg-Ambience · seller_accounts-RLS · OAuth-Consent-Branding eingereicht. |
+| **🔴 NÄCHSTE AUFGABE** | **(1)** Zaur: testen + verkaufen (Parfüm-Funnel); Screenshots bei Funden. **(2)** ce-Excel → ce.ts übertragen (wenn geliefert). **(3)** Google-Branding-Prüfung checken (→ „Weiter zu Serlo"). |
+| **Monitoring** | Unverändert bewacht (UptimeRobot, Sentry App+Web, Telegram-CI, Stripe-Mails). Root-tsc **0** · apps/web tsc **0** · Web-Build grün. |
 | **Admin** | Zaur (`username='zaur'`, `is_admin=true`, `zaurhatu@gmail.com`, id `46c70dfb…`). ⚠️ `auth.uid()` im SQL-Editor NULL. |
 
 ⚠️ **Quarantäne:** `/Users/zaurhatuev/Desktop/vibes-app` — NIEMALS bauen/deployen/pushen.
@@ -86,12 +105,12 @@
 ### FERTIG (Commits)
 `dfd7327` P0+1 (Fundament/Auth/Onboarding) · `bcf50d0` P2a (Tabs/Aktivität/Login-Toggle) · `2d8e3f6` P2b (Kommentare/Nachrichten/Feed) · `20a7c42`+`e4da1b0` P2c (Entdecken/Profil + Button-Overflow-Fix) · `ca306db` P3a (Shop-Liste/Detail) · `350c219` P3b (Verkäufer) · `f82388f` (my-shop-Reste+KI-Sheet+Kategorie-Buttons) · `a4a60da` P3c-1 (Live-Setup/GiftPicker) · `fa588d5` P3c-2 (Live-Host) · `b510e69` P3c-3 (Live-Viewer) · `1717573` P3d (Create/Editor).
 
-### 🔴 OFFEN — nächste Schritte
-1. **`app/settings.tsx` Volltext** (nur Sprach-Zeile+„Rechtliches & Hilfe" übersetzt, Rest deutsch). War gerade dran. ~80 Strings. Danach die Settings-Unterseiten (`app/settings/*.tsx`).
-2. **`components/profile/UserProfileContent.tsx`** (fremde Profile; Tabs sind icon-only, aber Empty-States/Menüs/Tip-Button deutsch).
-3. **Alert-Sweep** Randflächen: coin-shop, women-only, guild-Detail, kleinere Sheets/Komponenten (`grep -rn "Alert.alert('[A-ZÄÖÜ]"` über `app/` + `components/`).
-4. ru-Keys nach `ce`/`en` spiegeln (Kataloge existieren als Platzhalter, fallen auf de zurück).
-5. **Nächster Binary-Build:** `expo-localization` einziehen → Systemsprache-Autoerkennung (`system`-Modus im i18nStore). **Push russisch:** `profiles.locale`-Spalte (Migration) + `send-push-notification` liest sie.
+### ✅ ALLES ERLEDIGT (Session 12, 10.–11. Juli) — Historie:
+1. ✅ `app/settings.tsx` Volltext + alle Unterseiten (`a1c1c9f`, `f0a98db`).
+2. ✅ `UserProfileContent.tsx` fremde Profile (`eba3a79`).
+3. ✅ Alert-Sweep komplett — 7 Commits bis `81864c0`, In-Sheet-Labels `6db7a82`/`d303abb`; danach Gerätetest-Funde (TabSlotSwitcher/AnalyticsTab/follow-list, GuildRoundCard/Banner `b90a213`).
+4. ✅ `en` voll übersetzt, `ce` als Stub (`f51d6b3`); Web-en 735/735 (`c202cb2`). **ce-Inhalte: warten auf Zaurs Excel** (`~/Desktop/Serlo-Tschetschenisch-Uebersetzung.xlsx`) → dann in `ce.ts` (App+Web) übertragen.
+5. ✅ Gerätesprache: RN-Core-Erkennung per OTA live (`6581404`), „Automatisch"-Pille (`caed1f6`), `expo-localization` installiert → nativ ab nächstem Binary (`39c97d6`). ✅ **Push russisch live**: `profiles.locale` + Edge-Fn deployt (`39c97d6`).
 
 ---
 
