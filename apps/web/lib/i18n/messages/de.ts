@@ -582,6 +582,7 @@ const deMessages = {
     appShareCta: "Im App Store öffnen",
     soundOn: "Berg-Klang abspielen",
     soundOff: "Klang ausschalten",
+    soundHint: "Berg-Sound 🏔",
     // Landing-Redesign (dark)
     liveLabel: "Live",
     trendingLabel: "Entdecken",

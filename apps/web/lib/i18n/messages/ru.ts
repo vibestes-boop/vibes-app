@@ -574,6 +574,7 @@ const ruMessages = {
     appShareCta: 'Открыть в App Store',
     soundOn: 'Включить звук гор',
     soundOff: 'Выключить звук',
+    soundHint: 'Звук гор 🏔',
     // Лендинг-редизайн (тёмный)
     liveLabel: 'Эфир',
     trendingLabel: 'Обзор',

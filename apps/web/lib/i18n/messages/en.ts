@@ -526,6 +526,7 @@ const enMessages = {
     appShareCta: 'Open in App Store',
     soundOn: 'Play mountain ambience',
     soundOff: 'Mute sound',
+    soundHint: 'Mountain sound 🏔',
     // Landing redesign (dark)
     liveLabel: 'Live',
     trendingLabel: 'Discover',
