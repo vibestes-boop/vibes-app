@@ -11,6 +11,7 @@ import { ExploreVideoCard } from '@/components/explore/explore-video-card';
 import { ProductCard } from '@/components/shop/product-card';
 import { getT } from '@/lib/i18n/server';
 import { HeroHorizon, type HeroLayout } from '@/components/hero/hero-horizon';
+import { HeroAmbience } from '@/components/hero/hero-ambience';
 import heroLayoutJson from '@/public/hero/hero-layout.json';
 
 // Zaurs im Hero-Editor komponierte Berg-Szene (Sonnenaufgang, Wolken, Türme).
@@ -143,6 +144,10 @@ export async function LandingPage({ featured, liveNow, trendingPosts, shopProduc
             </div>
             <p className="hidden text-xs text-white/40 sm:block">{t('landing.scanQr')}</p>
           </div>
+
+          {/* Berg-Ambience: startet erst auf Klick (Autoplay-Policy) und lädt
+              den Loop auch erst dann — 0 Bytes bis zum ersten Tap. */}
+          <HeroAmbience />
         </section>
       </HeroHorizon>
 

@@ -580,6 +580,8 @@ const deMessages = {
     appShareSub: "Videos · Live · Marktplatz. Aus der Community.",
     appShareRedirect: "Du wirst zum App Store weitergeleitet …",
     appShareCta: "Im App Store öffnen",
+    soundOn: "Berg-Klang abspielen",
+    soundOff: "Klang ausschalten",
     // Landing-Redesign (dark)
     liveLabel: "Live",
     trendingLabel: "Entdecken",

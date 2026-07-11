@@ -572,6 +572,8 @@ const ruMessages = {
     appShareSub: 'Видео · Эфиры · Маркетплейс. Из комьюнити.',
     appShareRedirect: 'Перенаправляем в App Store …',
     appShareCta: 'Открыть в App Store',
+    soundOn: 'Включить звук гор',
+    soundOff: 'Выключить звук',
     // Лендинг-редизайн (тёмный)
     liveLabel: 'Эфир',
     trendingLabel: 'Обзор',

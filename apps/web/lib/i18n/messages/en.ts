@@ -524,6 +524,8 @@ const enMessages = {
     appShareSub: 'Videos · Live · Marketplace. From the community.',
     appShareRedirect: 'Taking you to the App Store …',
     appShareCta: 'Open in App Store',
+    soundOn: 'Play mountain ambience',
+    soundOff: 'Mute sound',
     // Landing redesign (dark)
     liveLabel: 'Live',
     trendingLabel: 'Discover',

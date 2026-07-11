@@ -103,6 +103,37 @@ function resolveMood(): HeroMood {
 const GRAIN_URI =
   "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E\")";
 
+// Wolken aus dem Layout anreichern: (1) jede bekommt zyklisch einen der vier
+// Shader-Form-Typen (tuermig/flauschig/zerfasert/stratus) statt Einheitslook,
+// (2) +20% zusaetzliche Wolken, ABGELEITET aus den komponierten (versetzt,
+// kleiner, eigener Seed) — Zaurs Editor-Export bleibt unangetastete Quelle.
+// Shader-Limit: 8 Slots.
+function deriveClouds(layers: HeroLayer[]) {
+  const base = layers
+    .filter((l) => l.type === 'cloud')
+    .map((l, i) => ({
+      x: l.x, y: l.bottom, size: l.size ?? 0.14, amount: l.amount ?? 0.8,
+      soft: l.soft ?? 0.5, drift: l.drift ?? 0.6, seed: l.seed ?? 1,
+      shape: 1 + (i % 4),
+    }));
+  const extraCount = Math.min(Math.ceil(base.length * 0.2), 8 - base.length);
+  for (let k = 0; k < extraCount; k++) {
+    const src = base[k % base.length];
+    if (!src) break;
+    base.push({
+      x: (src.x + 0.33 + k * 0.17) % 1,
+      y: Math.min(0.92, Math.max(0.55, src.y - 0.07 - k * 0.03)),
+      size: src.size * 0.72,
+      amount: src.amount * 0.85,
+      soft: Math.min(1, src.soft + 0.15),
+      drift: src.drift * 1.25,
+      seed: src.seed + 5.73 + k * 2.1,
+      shape: 1 + ((k + 2) % 4),
+    });
+  }
+  return base.slice(0, 8);
+}
+
 export function HeroHorizon({
   layout,
   className,
@@ -164,12 +195,7 @@ export function HeroHorizon({
       stars: Math.max(fx.stars, mood.stars ?? 0),
       colors: layout.colors,
       sunAnim: mood.sunAnim,
-      clouds: layout.layers
-        .filter((l) => l.type === 'cloud')
-        .map((l) => ({
-          x: l.x, y: l.bottom, size: l.size ?? 0.14, amount: l.amount ?? 0.8,
-          soft: l.soft ?? 0.5, drift: l.drift ?? 0.6, seed: l.seed ?? 1,
-        })),
+      clouds: deriveClouds(layout.layers),
     });
     if (hazeRef.current) {
       hazeRef.current.style.background = heroColors({ preset, colors: layout.colors }).fallback;

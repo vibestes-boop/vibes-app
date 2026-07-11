@@ -17,6 +17,8 @@ export interface HeroFreeCloud {
   soft: number;
   drift: number;
   seed: number;
+  /** Form-Typ 1–4 (1 türmig · 2 flauschig · 3 zerfasert · 4 flach/stratus). */
+  shape?: number;
 }
 
 export interface HeroSky {
@@ -138,16 +140,20 @@ void main(){
   for(int i=0;i<8;i++){
     if(u_fc2[i].w<0.5) continue;
     vec4 fc=u_fc[i];
+    // Form-Typ (w-Kanal, 1..4 -> sh 0..3): steuert Streckung, Detail-Frequenz,
+    // Verwirbelung und Kantenhaerte -> vier klar unterscheidbare Wolken-Charaktere
+    // (tuermig / flauschig / zerfasert / flach-stratus).
+    float sh=clamp(u_fc2[i].w-1.0,0.0,3.0);
     float cx=fract(fc.x + u_time*u_fc2[i].y*0.008 + 8.0)*1.4-0.2;
     vec2 center=vec2(cx*aspect, fc.y);
-    vec2 rel=st-center; rel.y*=2.1;
+    vec2 rel=st-center; rel.y*=(1.6+0.55*sh);
     float m=smoothstep(fc.z, fc.z*0.2, length(rel));
     if(m<0.004) continue;
     vec2 cp2=rel*(2.2/max(fc.z,0.03)) + vec2(u_fc2[i].x*19.0);
     cp2.x-=u_time*0.04*max(u_fc2[i].y,0.15);
-    float q2=fbm(cp2*1.7 + u_time*0.02);
-    float dn=fbm(cp2 + q2*0.6);
-    float edge=mix(0.60,0.40,u_fc2[i].z);
+    float q2=fbm(cp2*(1.45+0.22*sh) + u_time*0.02);
+    float dn=fbm(cp2 + q2*(0.45+0.14*mod(sh,2.0)));
+    float edge=mix(0.60,0.40,u_fc2[i].z)+(sh-1.5)*0.022;
     float cl=smoothstep(edge,edge+0.24,dn*0.72+m*0.42)*fc.w*m;
     if(cl<=0.002) continue;
     float dl=fbm(cp2 + normalize(sun-st+vec2(1e-4))*0.22 + q2*0.6);
@@ -205,7 +211,9 @@ export function createHeroShader(canvas: HTMLCanvasElement, sky: HeroSky): HeroS
   const fcB = new Float32Array(32);
   sky.clouds.slice(0, 8).forEach((c, i) => {
     fcA[i * 4] = c.x; fcA[i * 4 + 1] = c.y; fcA[i * 4 + 2] = c.size; fcA[i * 4 + 3] = c.amount;
-    fcB[i * 4] = c.seed; fcB[i * 4 + 1] = c.drift; fcB[i * 4 + 2] = c.soft; fcB[i * 4 + 3] = 1;
+    // w-Kanal: Form-Typ 1..4 (war frueher nur Aktiv-Flag 1); 0 = Slot leer.
+    fcB[i * 4] = c.seed; fcB[i * 4 + 1] = c.drift; fcB[i * 4 + 2] = c.soft;
+    fcB[i * 4 + 3] = Math.min(4, Math.max(1, Math.round(c.shape ?? 1)));
   });
 
   const sunAnim = reduce ? 'none' : (sky.sunAnim ?? 'rise');
