@@ -2,7 +2,7 @@
   "expo": {
     "name": "Serlo",
     "slug": "vibes",
-    "version": "1.30.0",
+    "version": "1.31.0",
     "scheme": "vibes",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -69,7 +69,7 @@
           "Default"
         ]
       },
-      "buildNumber": "291"
+      "buildNumber": "292"
     },
     "android": {
       "package": "app.serlo.social",
