@@ -7,6 +7,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import type { FeedPost } from '@/lib/data/feed';
 import { createTestQueryClient } from '@/test-utils/query-client';
+import { TestI18nProvider } from '@/test-utils/i18n';
 import { makeFeedPost, resetFeedPostCounter } from '@/test-utils/feed-post-factory';
 
 // FeedCard wird zu einem thin Stub — wir testen FeedList-Cache-Verhalten,
@@ -68,7 +69,7 @@ describe('FeedList — cache isolation per feedKey', () => {
 
     const client = createTestQueryClient();
     const wrapper = ({ children }: { children: ReactNode }) => (
-      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+      <QueryClientProvider client={client}><TestI18nProvider>{children}</TestI18nProvider></QueryClientProvider>
     );
 
     render(
@@ -92,7 +93,7 @@ describe('FeedList — cache isolation per feedKey', () => {
     const posts = [makeFeedPost({ id: 'default-1' })];
     const client = createTestQueryClient();
     const wrapper = ({ children }: { children: ReactNode }) => (
-      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+      <QueryClientProvider client={client}><TestI18nProvider>{children}</TestI18nProvider></QueryClientProvider>
     );
 
     render(<FeedList initialPosts={posts} viewerId={null} />, { wrapper });
@@ -104,7 +105,7 @@ describe('FeedList — cache isolation per feedKey', () => {
   it('renders empty state when initialPosts is []', () => {
     const client = createTestQueryClient();
     const wrapper = ({ children }: { children: ReactNode }) => (
-      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+      <QueryClientProvider client={client}><TestI18nProvider>{children}</TestI18nProvider></QueryClientProvider>
     );
 
     render(<FeedList initialPosts={[]} viewerId={null} feedKey="following" />, { wrapper });
@@ -127,7 +128,7 @@ describe('FeedList — A7 keyboard-hint behavior', () => {
   const wrapperFactory = () => {
     const client = createTestQueryClient();
     const wrapper = ({ children }: { children: ReactNode }) => (
-      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+      <QueryClientProvider client={client}><TestI18nProvider>{children}</TestI18nProvider></QueryClientProvider>
     );
     return wrapper;
   };
@@ -279,7 +280,7 @@ describe('FeedList — mute persistence (v1.w.UI.67)', () => {
   const wrapperFactory = () => {
     const client = createTestQueryClient();
     const wrapper = ({ children }: { children: ReactNode }) => (
-      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+      <QueryClientProvider client={client}><TestI18nProvider>{children}</TestI18nProvider></QueryClientProvider>
     );
     return wrapper;
   };
@@ -322,7 +323,7 @@ describe('FeedList — "Neue Posts" pill (v1.w.UI.68)', () => {
   const wrapperFactory = () => {
     const client = createTestQueryClient();
     const wrapper = ({ children }: { children: ReactNode }) => (
-      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+      <QueryClientProvider client={client}><TestI18nProvider>{children}</TestI18nProvider></QueryClientProvider>
     );
     return wrapper;
   };

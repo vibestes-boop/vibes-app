@@ -16,7 +16,11 @@
  *   - sonner: toast.success / toast.error als jest.fn() Handles.
  */
 
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react';
+import { TestI18nProvider } from '@/test-utils/i18n';
+
+// Alle Render-Aufrufe laufen durch den I18nProvider — FollowButton nutzt useI18n().
+const render = (ui: React.ReactElement) => rtlRender(ui, { wrapper: TestI18nProvider });
 import { FollowButton } from '../follow-button';
 
 // ── useTransition-Mock — isPending per Test steuerbar ────────────────────────

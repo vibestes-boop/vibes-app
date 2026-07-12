@@ -4,6 +4,7 @@
 
 import { render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { TestI18nProvider } from '@/test-utils/i18n';
 import { FeedSidebar } from '../feed-sidebar';
 
 function renderWithQueryClient(ui: React.ReactElement) {
@@ -11,12 +12,12 @@ function renderWithQueryClient(ui: React.ReactElement) {
     defaultOptions: { queries: { retry: false } },
   });
   const { rerender, ...rest } = render(
-    <QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>,
+    <QueryClientProvider client={queryClient}><TestI18nProvider>{ui}</TestI18nProvider></QueryClientProvider>,
   );
   return {
     ...rest,
     rerender: (newUi: React.ReactElement) =>
-      rerender(<QueryClientProvider client={queryClient}>{newUi}</QueryClientProvider>),
+      rerender(<QueryClientProvider client={queryClient}><TestI18nProvider>{newUi}</TestI18nProvider></QueryClientProvider>),
   };
 }
 
@@ -81,8 +82,8 @@ jest.mock('@/lib/notifications-drawer-store', () => ({
 }));
 
 describe('FeedSidebar — Layout-Reset (v1.w.UI.10) Struktur', () => {
-  const PRIMARY_LABELS = ['Für dich', 'Folge ich', 'Freunde', 'Entdecken', 'Live', 'Messages', 'Benachrichtigungen', 'Profil'];
-  const SECONDARY_LABELS = ['Shop', 'Pods', 'Women-Only Zone', 'Creator Studio'];
+  const PRIMARY_LABELS = ['Für dich', 'Folge ich', 'Freunde', 'Entdecken', 'Live', 'Nachrichten', 'Benachrichtigungen', 'Profil'];
+  const SECONDARY_LABELS = ['Shop', 'Pods', 'Women-Only Zone', 'Creator-Studio'];
   const REMOVED_LABELS = [
     'Entwürfe',
     'Geplant',
@@ -131,16 +132,16 @@ describe('FeedSidebar — Layout-Reset (v1.w.UI.10) Struktur', () => {
     const ctaLink = screen.getByRole('link', { name: /Neuen Post erstellen/i });
     expect(ctaLink).toHaveAttribute('aria-disabled', 'true');
 
-    // „Folge ich" + „Messages" + „Creator Studio" sind requiresAuth →
+    // „Folge ich" + „Nachrichten" + „Creator-Studio" sind requiresAuth →
     // disabled wenn kein Viewer. Benachrichtigungen (Drawer-Button) und Profil
     // rendern logged-out gar nicht.
     const folgeIch = screen.getByText('Folge ich').closest('a');
     expect(folgeIch).toHaveAttribute('aria-disabled', 'true');
-    const messages = screen.getByText('Messages').closest('a');
+    const messages = screen.getByText('Nachrichten').closest('a');
     expect(messages).toHaveAttribute('aria-disabled', 'true');
     expect(screen.queryByText('Benachrichtigungen')).not.toBeInTheDocument();
     expect(screen.queryByText('Profil')).not.toBeInTheDocument();
-    const creatorStudio = screen.getByText('Creator Studio').closest('a');
+    const creatorStudio = screen.getByText('Creator-Studio').closest('a');
     expect(creatorStudio).toHaveAttribute('aria-disabled', 'true');
 
     // Öffentliche Items bleiben aktiviert

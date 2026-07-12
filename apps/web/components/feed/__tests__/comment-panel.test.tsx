@@ -4,6 +4,7 @@
 
 import { render, screen, fireEvent } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { TestI18nProvider } from '@/test-utils/i18n';
 import { CommentPanel } from '../comment-panel';
 
 // -----------------------------------------------------------------------------
@@ -42,7 +43,7 @@ function renderWithQC(ui: React.ReactElement) {
   const qc = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0 } },
   });
-  return render(<QueryClientProvider client={qc}>{ui}</QueryClientProvider>);
+  return render(<QueryClientProvider client={qc}><TestI18nProvider>{ui}</TestI18nProvider></QueryClientProvider>);
 }
 
 describe('CommentPanel', () => {
@@ -74,7 +75,7 @@ describe('CommentPanel', () => {
     );
 
     expect(
-      screen.getByText(/Kommentare sind für diesen Post deaktiviert/i),
+      screen.getByText(/Kommentare für dieses Video sind deaktiviert/i),
     ).toBeInTheDocument();
     // Kein Textarea gerendert wenn Kommentare disabled
     expect(screen.queryByPlaceholderText(/Kommentar hinzufügen/i)).not.toBeInTheDocument();
@@ -91,7 +92,7 @@ describe('CommentPanel', () => {
     );
 
     expect(screen.getByText(/Melde dich an, um zu kommentieren/i)).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /Login/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Einloggen/i })).toBeInTheDocument();
     expect(screen.queryByPlaceholderText(/Kommentar hinzufügen/i)).not.toBeInTheDocument();
   });
 

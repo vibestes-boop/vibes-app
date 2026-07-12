@@ -17,6 +17,10 @@ export default defineConfig({
   reporter: process.env.CI ? [['github'], ['list']] : 'list',
   use: {
     baseURL,
+    // Deterministisch deutsch: getLocale() liest ohne Cookie den Accept-Language-
+    // Header (seit Session 12). Playwright-Default en-US ließe die Landing englisch
+    // rendern und alle deutschen Text-Assertions ins Leere laufen.
+    locale: 'de-DE',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },

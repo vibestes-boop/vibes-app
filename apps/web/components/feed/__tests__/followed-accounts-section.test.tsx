@@ -2,7 +2,11 @@
  * @jest-environment jsdom
  */
 
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render as rtlRender, screen, fireEvent, waitFor } from '@testing-library/react';
+import { TestI18nProvider } from '@/test-utils/i18n';
+
+// Alle Render-Aufrufe laufen durch den I18nProvider — die Section nutzt useI18n().
+const render = (ui: React.ReactElement) => rtlRender(ui, { wrapper: TestI18nProvider });
 import { FollowedAccountsSection } from '../followed-accounts-section';
 import type { FollowedAccount } from '@/lib/data/feed';
 
