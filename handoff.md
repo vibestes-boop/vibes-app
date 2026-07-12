@@ -60,7 +60,7 @@
 | Bereich | Stand |
 |---|---|
 | **Repo / Branch** | `/Users/zaurhatuev/vibes-app` · `main` · Working Tree sauber (untracked: `deno.lock`, `docs/i18n-ce-todo.xlsx`) |
-| **Letzter Commit** | `ed125a0` — v1.31.0 Build 292 Versions-Bump (gepusht + `ls-remote` verifiziert). |
+| **Letzter Commit** | `8fd32f9` — medienlose Posts verhindert (App-Guard + Web-Schedule-Guard); davor `4e6c567` Test-Suiten an i18n angepasst (Jest 290/290 + Playwright de-DE), `783b0a1` /p-Video-Autoplay. Alle gepusht + verifiziert. |
 | **App Store** | 🎉 **LIVE**: https://apps.apple.com/app/serlo/id6760790424 (Build 291, v1.30.0). **v1.31.0 (292) am 12.7. ZUR PRÜFUNG eingereicht** (expo-localization nativ + ru-Store-Listing, Auto-Release). Teilbarer Link: **`https://www.serlo.ch/app`**. |
 | **Web (apps/web)** | Vercel auf Push zu `main`. Live: `https://www.serlo.ch` (Apex 308→www). ✅ `NEXT_PUBLIC_SITE_URL` gesetzt (Zaur, Session 12). Landing komplett dark + Marktplatz-Sektion + Berg-Sound. Sprach-Erkennung: Cookie → Accept-Language → de. |
 | **App-i18n** | ✅ **de/ru komplett** (OTA, Runtime 1.30.0) + **en voll**, **ce Stub** (de-Fallback). Gerätesprache-Automatik + „Automatisch"-Pille. ce-Excel bei Zaur (Desktop). |
@@ -69,8 +69,8 @@
 | **Edge Functions deployed** | Wie Session 10/11 **plus**: `send-push-notification` (Locale-aware, 10.7.). Deploy: `npx supabase functions deploy <name> --project-ref llymwqfgujwkoxzqxrlm`. |
 | **DB-Migrationen** | ✅ **ALLE ausgeführt** (Zaur). Neu Session 12: `20260710120000_shop_banners_ru`, `20260710130000_profiles_locale`, `20260710140000_seller_accounts_rls`. **Keine offene Migration.** |
 | **GERADE FERTIG (Session 12)** | i18n-Abschluss de/ru · Gerätesprache App+Web · russische Pushes · en/ce-Kataloge + ce-Excel · Landing-Redesign dark + Marktplatz · `serlo.ch/app` · Hero-Wolken-Varianten + Berg-Ambience · seller_accounts-RLS · OAuth-Consent-Branding eingereicht. |
-| **🔴 NÄCHSTE AUFGABE** | **(1)** Zaur: testen + verkaufen (Parfüm-Funnel); Screenshots bei Funden. **(2)** ce-Excel → ce.ts übertragen (wenn geliefert). **(3)** Google-Branding-Prüfung checken (→ „Weiter zu Serlo"). |
-| **Monitoring** | Unverändert bewacht (UptimeRobot, Sentry App+Web, Telegram-CI, Stripe-Mails). Root-tsc **0** · apps/web tsc **0** · Web-Build grün. |
+| **🔴 NÄCHSTE AUFGABE** | **(1) Zaur: kaputten Post löschen** — `6d2ff292-bfc4-4362-8bc8-9943293a353f` (medienlos, User 805ad03b, 11.7.) via Admin → Inhalte „Entfernen (Admin)" ODER SQL `DELETE FROM posts WHERE id='6d2ff292-bfc4-4362-8bc8-9943293a353f';` → macht den `stability`-Wächter wieder grün. **(2) Zaur: 2 Moderations-Meldungen über SLA** im Command-Center abarbeiten. **(3)** testen + verkaufen (Parfüm-Funnel). **(4)** ce-Excel → ce.ts (wenn geliefert). **(5)** Google-Branding-Prüfung checken. |
+| **Monitoring** | Bewacht (UptimeRobot, Sentry App+Web, Telegram-CI, Stripe-Mails). Root-tsc **0** · Web-tsc **0** · Jest **135/135 + 290/290** · e2e-smoke **4/4**. ⚠️ **CI war 2+ Tage rot** (test seit i18n-Sprint, e2e seit Accept-Language-Erkennung) — 12.7. gefixt (`4e6c567`). `stability` wird grün, sobald der medienlose Post gelöscht ist. ⚠️ Playwright braucht `locale: 'de-DE'` (Accept-Language steuert die Web-Sprache!). UptimeRobot-Monitore zeigen noch auf serlo-web.vercel.app → auf www.serlo.ch umstellen (Zaur, 2 Min). |
 | **Admin** | Zaur (`username='zaur'`, `is_admin=true`, `zaurhatu@gmail.com`, id `46c70dfb…`). ⚠️ `auth.uid()` im SQL-Editor NULL. |
 
 ⚠️ **Quarantäne:** `/Users/zaurhatuev/Desktop/vibes-app` — NIEMALS bauen/deployen/pushen.
