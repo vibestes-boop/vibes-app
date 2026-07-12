@@ -1005,6 +1005,7 @@ export const ru: DeepPartial<Messages> = {
     storyFailed: 'Не удалось создать историю.',
     textPostFailed: 'Не удалось создать текстовый пост.',
     addImageOrCaption: 'Добавь ещё картинку или подпись.',
+    mediaRequired: 'Добавь фото или видео — для текста есть режим TEXT 📝',
     addTextTagsMedia: 'Добавь хотя бы текст, теги или медиа.',
     noProfile: 'Нет профиля',
     tapSelectMedia: 'Нажми, чтобы выбрать фото или видео',

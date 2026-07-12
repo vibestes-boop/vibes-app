@@ -236,8 +236,10 @@ export async function schedulePost(
   if (caption.length > CAPTION_MAX_LEN) {
     return { ok: false, error: `Caption max ${CAPTION_MAX_LEN} Zeichen.` };
   }
-  if (!input.mediaUrl && !caption) {
-    return { ok: false, error: 'Weder Caption noch Medium.' };
+  if (!input.mediaUrl) {
+    // Medienlose Posts brechen Feed-Renderer + API-Contract (Vorfall 11.7.:
+    // Caption-only-Post ohne media_url). Gleiche Regel wie publishPost.
+    return { ok: false, error: 'Kein Medium angehängt.' };
   }
 
   const publishAtDate = new Date(input.publishAt);

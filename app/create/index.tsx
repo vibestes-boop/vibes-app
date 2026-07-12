@@ -367,7 +367,9 @@ export default function CreatePostScreen() {
 
   const handlePost = async () => {
     if (!profile) return;
-    if (!image && !caption.trim()) { Alert.alert(tr('create.almostDone'), tr('create.addImageOrCaption')); return; }
+    // Medium ist Pflicht — Feed/Web/Contract unterstützen keine medienlosen Posts.
+    // Reiner Text läuft über den TEXT-Modus (Studio), der Text als Bild rendert.
+    if (!image) { Alert.alert(tr('create.almostDone'), tr('create.mediaRequired')); return; }
     const controller = new AbortController();
     abortRef.current = controller;
     try {
@@ -477,7 +479,9 @@ export default function CreatePostScreen() {
   // v1.20 — Post planen (Scheduler-Modal öffnet sich zuvor)
   const handleSchedule = async (publishAt: Date) => {
     if (!profile) return;
-    if (!image && !caption.trim()) { Alert.alert(tr('create.almostDone'), tr('create.addImageOrCaption')); return; }
+    // Medium ist Pflicht — Feed/Web/Contract unterstützen keine medienlosen Posts.
+    // Reiner Text läuft über den TEXT-Modus (Studio), der Text als Bild rendert.
+    if (!image) { Alert.alert(tr('create.almostDone'), tr('create.mediaRequired')); return; }
     const controller = new AbortController();
     abortRef.current = controller;
     setSchedulingBusy(true);

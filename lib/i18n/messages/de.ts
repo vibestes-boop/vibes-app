@@ -1041,6 +1041,7 @@ export const de = {
     storyFailed: 'Story konnte nicht erstellt werden.',
     textPostFailed: 'Text-Post konnte nicht erstellt werden.',
     addImageOrCaption: 'Füg noch ein Bild oder eine Caption hinzu.',
+    mediaRequired: 'Füg noch ein Foto oder Video hinzu — für reinen Text nimm den TEXT-Modus 📝',
     addTextTagsMedia: 'Füge mindestens Text, Tags oder Medium hinzu.',
     noProfile: 'Kein Profil',
     // Media picker

@@ -935,6 +935,7 @@ export const en: DeepPartial<Messages> = {
     storyFailed: 'Couldn’t create the story.',
     textPostFailed: 'Couldn’t create the text post.',
     addImageOrCaption: 'Add an image or a caption.',
+    mediaRequired: 'Add a photo or video — for plain text use TEXT mode 📝',
     addTextTagsMedia: 'Add at least text, tags or media.',
     noProfile: 'No profile',
     tapSelectMedia: 'Tap to choose a photo or video',
