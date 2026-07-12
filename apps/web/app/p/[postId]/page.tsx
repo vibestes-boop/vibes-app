@@ -547,9 +547,11 @@ export default async function PostDetailPage({
           <VideoPlayer
             src={post.video_url}
             poster={post.thumbnail_url}
-            autoPlay={false}
+            // Geteilte Links (WhatsApp) sollen sofort Bewegtbild zeigen —
+            // Autoplay-Policy erlaubt das nur stumm, Ton via Controls.
+            autoPlay
             loop={false}
-            muted={false}
+            muted
             aspect={videoAspect}
             className={`mx-auto w-full ${mediaMaxW}`}
           />
