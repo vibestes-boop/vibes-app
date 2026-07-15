@@ -11,7 +11,7 @@
 import { cookies, headers } from 'next/headers';
 
 import { DEFAULT_LOCALE, LOCALE_COOKIE, isLocale, type Locale } from './config';
-import { MESSAGES, type Messages } from './messages';
+import { fallbackChainFor, MESSAGES, type Messages } from './messages';
 import { resolve, type DeepPartial, type TranslationKey } from './translate';
 
 /**
@@ -56,6 +56,8 @@ export async function getI18n(): Promise<{ locale: Locale; messages: DeepPartial
 export async function getT(): Promise<
   (key: TranslationKey, vars?: Record<string, string | number>) => string
 > {
-  const messages = await getMessages();
-  return (key, vars) => resolve(messages, key, vars, MESSAGES[DEFAULT_LOCALE]);
+  const locale = await getLocale();
+  const messages = MESSAGES[locale];
+  const chain = fallbackChainFor(locale);
+  return (key, vars) => resolve(messages, key, vars, chain);
 }

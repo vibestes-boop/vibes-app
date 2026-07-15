@@ -21,4 +21,10 @@ export const MESSAGES: Record<Locale, DeepPartial<Messages>> = {
   en,
 };
 
+// Fallback-Kette pro Locale: Tschetschenisch fällt zuerst auf Russisch zurück
+// (das gelebte Zweitsprach-Paar der Community), erst dann auf Deutsch.
+export function fallbackChainFor(locale: Locale): DeepPartial<Messages>[] {
+  return locale === 'ce' ? [ru, de] : [de];
+}
+
 export type { Messages };

@@ -6,14 +6,9 @@
 
 import { createContext, useContext, useMemo, type ReactNode } from 'react';
 
-import { DEFAULT_LOCALE } from './config';
 import type { Locale } from './config';
-import { MESSAGES, type Messages } from './messages';
+import { fallbackChainFor, type Messages } from './messages';
 import { resolve, type DeepPartial, type TranslationKey } from './translate';
-
-// Deutsch als Laufzeit-Fallback für Keys, die in einer partiellen Locale
-// (ru/ce/en) noch fehlen — verhindert rohe Key-Strings in der UI.
-const FALLBACK_MESSAGES = MESSAGES[DEFAULT_LOCALE];
 
 type I18nContextValue = {
   locale: Locale;
@@ -47,7 +42,7 @@ export function useI18n() {
     locale: ctx.locale,
     /** Übersetzt einen Key mit optionaler Variablen-Interpolation. */
     t: (key: TranslationKey, vars?: Record<string, string | number>) =>
-      resolve(ctx.messages, key, vars, FALLBACK_MESSAGES),
+      resolve(ctx.messages, key, vars, fallbackChainFor(ctx.locale)),
   };
 }
 
@@ -62,6 +57,6 @@ export function useOptionalI18n() {
   return {
     locale: ctx.locale,
     t: (key: TranslationKey, vars?: Record<string, string | number>) =>
-      resolve(ctx.messages, key, vars, FALLBACK_MESSAGES),
+      resolve(ctx.messages, key, vars, fallbackChainFor(ctx.locale)),
   };
 }

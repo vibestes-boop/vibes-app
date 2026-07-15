@@ -11,7 +11,7 @@
 
 import { useCallback } from 'react';
 import { useI18nStore } from './i18nStore';
-import { de, MESSAGES, type AppLocale } from './messages';
+import { fallbackChainFor, MESSAGES, type AppLocale } from './messages';
 import { resolve, type TranslationKey } from './translate';
 
 export type { AppLocale } from './messages';
@@ -25,7 +25,7 @@ export function useI18n() {
 
   const t = useCallback(
     (key: TranslationKey, vars?: Record<string, string | number>) =>
-      resolve(MESSAGES[locale], key, vars, de),
+      resolve(MESSAGES[locale], key, vars, fallbackChainFor(locale)),
     [locale],
   );
 
@@ -35,5 +35,5 @@ export function useI18n() {
 /** Für Code außerhalb von React (Utils, Stores) — liest die aktuelle Locale. */
 export function tStatic(key: TranslationKey, vars?: Record<string, string | number>): string {
   const locale: AppLocale = useI18nStore.getState().locale;
-  return resolve(MESSAGES[locale], key, vars, de);
+  return resolve(MESSAGES[locale], key, vars, fallbackChainFor(locale));
 }

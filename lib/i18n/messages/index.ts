@@ -17,4 +17,10 @@ export const LOCALE_LABELS: Record<AppLocale, string> = {
   ce: 'Нохчийн',
 };
 
+// Fallback-Kette pro Locale: Tschetschenisch fällt zuerst auf Russisch zurück
+// (das gelebte Zweitsprach-Paar der Community), erst dann auf Deutsch.
+export function fallbackChainFor(locale: AppLocale): DeepPartial<Messages>[] {
+  return locale === 'ce' ? [ru, de] : [de];
+}
+
 export { de };

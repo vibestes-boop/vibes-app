@@ -45,14 +45,15 @@ export function resolve(
   messages: DeepPartial<Messages>,
   key: TranslationKey,
   vars?: Record<string, string | number>,
-  fallback?: DeepPartial<Messages>,
+  fallback?: DeepPartial<Messages> | DeepPartial<Messages>[],
 ): string {
   const direct = lookup(messages, key);
   if (direct != null) return vars ? interpolate(direct, vars) : direct;
 
-  if (fallback) {
-    const fb = lookup(fallback, key);
-    if (fb != null) return vars ? interpolate(fb, vars) : fb;
+  // Fallback-KETTE (z.B. ce → ru → de): erste Sprache, die den Key hat, gewinnt.
+  for (const fb of Array.isArray(fallback) ? fallback : fallback ? [fallback] : []) {
+    const hit = lookup(fb, key);
+    if (hit != null) return vars ? interpolate(hit, vars) : hit;
   }
 
   __DEV__ && console.warn(`[i18n] missing key (kein Fallback): ${key}`);
