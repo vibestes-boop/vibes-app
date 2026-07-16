@@ -7,6 +7,7 @@ import type { Route } from 'next';
 import { ArrowLeft, Flag } from 'lucide-react';
 import {
   getActiveLiveSessions,
+  getViewerIsWozVerified,
   getLiveSession,
   getLiveComments,
   getActiveLivePoll,
@@ -121,6 +122,13 @@ export default async function LiveViewerPage({ params }: PageProps) {
   const [session, user] = await Promise.all([getLiveSession(id), getUser()]);
 
   if (!session) notFound();
+
+  // Women-Only-Guard (Defense-in-Depth zur RLS-Policy): Nicht-verifizierte
+  // Betrachter — auch mit Direktlink — sehen die Seite nicht. Der Host selbst
+  // bleibt immer zugelassen.
+  if (session.women_only && session.host_id !== user?.id) {
+    if (!user || !(await getViewerIsWozVerified(user.id))) notFound();
+  }
 
   // Initial-State für Client-Komponenten
   const shopEnabled = !!(session.shop_enabled);

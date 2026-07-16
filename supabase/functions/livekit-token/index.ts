@@ -193,7 +193,7 @@ serve(async (req: Request) => {
     // bestehende öffentliche Viewer-Verhalten bleibt unangetastet.
     if (!isHost && !coHostApproved) {
       const sessionResp = await fetch(
-        `${supabaseUrl}/rest/v1/live_sessions?room_name=eq.${encodeURIComponent(roomName)}&status=eq.active&select=host_id,followers_only&limit=1`,
+        `${supabaseUrl}/rest/v1/live_sessions?room_name=eq.${encodeURIComponent(roomName)}&status=eq.active&select=host_id,followers_only,women_only&limit=1`,
         {
           headers: {
             'apikey': serviceRoleKey,
@@ -201,8 +201,39 @@ serve(async (req: Request) => {
           },
         }
       );
-      const sessions = await sessionResp.json() as { host_id: string; followers_only: boolean }[];
+      const sessions = await sessionResp.json() as { host_id: string; followers_only: boolean; women_only: boolean }[];
       const session = sessions?.[0];
+
+      // ── SEC 3b: Women-Only-Publikum durchsetzen ──────────────────────────
+      // UI-Gates (App-Guard, Web-notFound, RLS) reichen nicht: Wer die
+      // room_name kennt, könnte sich sonst direkt ein Viewer-Token holen.
+      // Nur verifizierte Frauen (gender=female + women_only_verified) — und
+      // defensiv der Host selbst — bekommen ein Token für WOZ-Streams.
+      if (session?.women_only === true && session.host_id !== userId) {
+        const profileResp = await fetch(
+          `${supabaseUrl}/rest/v1/profiles`
+          + `?id=eq.${userId}`
+          + `&gender=eq.female`
+          + `&women_only_verified=is.true`
+          + `&select=id&limit=1`,
+          {
+            headers: {
+              'apikey': serviceRoleKey,
+              'Authorization': `Bearer ${serviceRoleKey}`,
+            },
+          }
+        );
+        const verified = await profileResp.json() as { id: string }[];
+        if (!verified?.[0]) {
+          return new Response(
+            JSON.stringify({
+              error: 'women_only',
+              message: 'Dieser Live-Stream ist nur für Frauen 🌸',
+            }),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+      }
       // Defensiv: der Host selbst (falls er ausnahmsweise als Viewer anfragt)
       // wird nie aus seinem eigenen Stream gesperrt.
       if (session?.followers_only === true && session.host_id !== userId) {

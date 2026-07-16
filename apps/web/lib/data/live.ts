@@ -50,12 +50,22 @@ function normalizeHost<T extends { host: unknown }>(row: T): T {
 // Tie-Break auf started_at asc (älteste Live-Streams zuerst bei gleichem Publikum).
 // -----------------------------------------------------------------------------
 
-async function fetchActiveLiveSessions(limit = 30): Promise<LiveSessionWithHost[]> {
+async function fetchActiveLiveSessions(
+  limit = 30,
+  opts: { publicOnly?: boolean } = {},
+): Promise<LiveSessionWithHost[]> {
   const supabase = await createClient();
-  const { data } = await supabase
+  let query = supabase
     .from('live_sessions')
     .select(`${SESSION_COLUMNS}, ${HOST_JOIN}`)
-    .eq('status', 'active')
+    .eq('status', 'active');
+  // publicOnly: für global gecachte Flächen (Landing) — der Cache ist EIN
+  // Eintrag für alle Besucher, darf also nie Women-Only-Zeilen enthalten,
+  // egal wessen Session den Cache gerade wärmt. Per-Viewer-Flächen (/live,
+  // Messages-Rail …) bleiben ohne Filter: dort entscheidet die RLS-Policy
+  // live_sessions_select_with_women_only pro Betrachterin.
+  if (opts.publicOnly) query = query.eq('women_only', false);
+  const { data } = await query
     .order('viewer_count', { ascending: false })
     .order('started_at', { ascending: true })
     .limit(limit);
@@ -65,7 +75,7 @@ async function fetchActiveLiveSessions(limit = 30): Promise<LiveSessionWithHost[
 }
 
 const getCachedActiveLiveSessionsByLimit = unstable_cache(
-  async (limit: number): Promise<LiveSessionWithHost[]> => fetchActiveLiveSessions(limit),
+  async (limit: number): Promise<LiveSessionWithHost[]> => fetchActiveLiveSessions(limit, { publicOnly: true }),
   ['active-live-sessions'],
   { revalidate: 10, tags: [ACTIVE_LIVE_SESSIONS_CACHE_TAG] },
 );
@@ -424,4 +434,20 @@ export const getIsSessionModerator = cache(async (sessionId: string): Promise<bo
     user_id: user.id,
   });
   return !!data;
+});
+
+// -----------------------------------------------------------------------------
+// getViewerIsWozVerified — ist die aktuelle Betrachterin Women-Only-verifiziert?
+// Für den Zugangs-Guard auf /live/[id] (Defense-in-Depth zusätzlich zur RLS).
+// -----------------------------------------------------------------------------
+
+export const getViewerIsWozVerified = cache(async (userId: string): Promise<boolean> => {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from('profiles')
+    .select('gender, women_only_verified')
+    .eq('id', userId)
+    .maybeSingle();
+  const row = data as { gender: string | null; women_only_verified: boolean | null } | null;
+  return row?.gender === 'female' && row?.women_only_verified === true;
 });
