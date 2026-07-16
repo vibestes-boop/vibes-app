@@ -787,6 +787,16 @@ const enMessages = {
       reviewsCount: '{count} reviews',
       moreFromSeller: 'More from @{username}',
     },
+    round: {
+      badge: 'Group order live',
+      reservedOfTarget: '{reserved} of {target} reserved',
+      people: '{count} in',
+      untilDate: 'Open until {date}',
+      endsSoon: 'Ends soon',
+      goalReached: 'Goal reached 🎉 — you can still join',
+      cta: 'Pre-order now',
+      hint: 'Free to reserve · pay only on arrival',
+    },
     buy: {
       saveAria: 'Save',
       unsaveAria: 'Unsave',

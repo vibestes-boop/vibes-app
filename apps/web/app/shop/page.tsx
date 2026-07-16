@@ -13,8 +13,10 @@ import {
   getShopProducts,
   getShopBanners,
   getMyCoinBalance,
+  getActivePreorderRound,
   type ShopCatalogParams,
 } from "@/lib/data/shop";
+import { PreorderRoundCard } from "@/components/shop/preorder-round-card";
 import { getUser } from "@/lib/auth/session";
 import { getT, getLocale } from "@/lib/i18n/server";
 import { LOCALE_INTL } from "@/lib/i18n/config";
@@ -64,12 +66,13 @@ export default async function ShopCatalogPage({ searchParams }: PageProps) {
     limit: 24,
   };
 
-  const [products, banners, user, t, locale] = await Promise.all([
+  const [products, banners, user, t, locale, activeRound] = await Promise.all([
     getShopProducts(params),
     getShopBanners(),
     getUser(),
     getT(),
     getLocale(),
+    getActivePreorderRound(),
   ]);
   const balance = user ? await getMyCoinBalance() : null;
 
@@ -144,6 +147,16 @@ export default async function ShopCatalogPage({ searchParams }: PageProps) {
 
         {/* Werbe-Banner-Karussell (eigene Promos / vermietbare Fläche) */}
         {banners.length > 0 && <BannerCarousel banners={banners} />}
+
+        {/* Laufende Sammelbestellungs-Runde — Wiederkehr-Hook im Shop-Kopf */}
+        {activeRound?.product_id && (
+          <div className="mb-6">
+            <PreorderRoundCard
+              round={activeRound}
+              href={`/shop/${activeRound.product_id}` as Route}
+            />
+          </div>
+        )}
 
         {/* Such-Box */}
         <div className="mb-6 max-w-md">

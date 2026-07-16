@@ -846,6 +846,16 @@ const ruMessages = {
       reviewsCount: '{count} отзывов',
       moreFromSeller: 'Ещё от @{username}',
     },
+    round: {
+      badge: 'Идёт коллективный заказ',
+      reservedOfTarget: '{reserved} из {target} забронировано',
+      people: 'участников: {count}',
+      untilDate: 'До {date}',
+      endsSoon: 'Скоро закроется',
+      goalReached: 'Цель достигнута 🎉 — присоединиться ещё можно',
+      cta: 'Забронировать',
+      hint: 'Бесплатная бронь · оплата только при получении',
+    },
 
     // Кнопка покупки / BuyBar (components/shop/buy-bar.tsx)
     buy: {

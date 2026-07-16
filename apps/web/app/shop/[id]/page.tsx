@@ -28,7 +28,9 @@ import {
   getMerchantProducts,
   getMyCoinBalance,
   getOrderRating,
+  getActivePreorderRound,
 } from "@/lib/data/shop";
+import { PreorderRoundCard } from "@/components/shop/preorder-round-card";
 import { getUser } from "@/lib/auth/session";
 import { getT } from "@/lib/i18n/server";
 import { formatEur } from "@/lib/utils";
@@ -99,7 +101,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
   const product = await getProduct(id);
   if (!product) notFound();
 
-  const [reviews, myReview, eligibleOrderId, moreFromSeller, user, sellerRating] =
+  const [reviews, myReview, eligibleOrderId, moreFromSeller, user, sellerRating, activeRound] =
     await Promise.all([
       getProductReviews(id),
       getMyReview(id),
@@ -107,7 +109,11 @@ export default async function ProductDetailPage({ params }: PageProps) {
       getMerchantProducts(product.seller_id, 8),
       getUser(),
       getOrderRating(product.seller_id),
+      getActivePreorderRound(),
     ]);
+  // Nur zeigen, wenn die laufende Runde zu GENAU diesem Produkt gehört.
+  const roundForThisProduct =
+    activeRound && activeRound.product_id === product.id ? activeRound : null;
   const balance = user ? await getMyCoinBalance() : 0;
   // Eigenes Produkt → statt Buy-Bar ein „Bearbeiten" (führt zur vorhandenen
   // Edit-Seite /studio/shop/[id]/edit). Greift überall, wo der Besitzer auf
@@ -400,6 +406,11 @@ export default async function ProductDetailPage({ params }: PageProps) {
                 {t("shop.detail.sellerShop")}
               </Link>
             </div>
+
+            {/* Sammelbestellungs-Runde — Funnel-Anker für WhatsApp→Web-Neukunden. */}
+            {roundForThisProduct && (
+              <PreorderRoundCard round={roundForThisProduct} />
+            )}
 
             {/* Beschreibung (C6) — Gradient-Fade + animiertes Expand statt
               nativem <details>. Eigene Client-Komponente, weil die Animation

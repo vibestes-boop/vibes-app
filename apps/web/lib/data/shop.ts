@@ -885,3 +885,30 @@ export async function getMyPreorderGroups(): Promise<PreorderGroup[]> {
   }
   return [...groups.values()];
 }
+
+// -----------------------------------------------------------------------------
+// getActivePreorderRound — die laufende Sammelbestellungs-Runde (oder null).
+// Anon-tauglich via SECURITY-DEFINER-RPC get_active_preorder_round_public
+// (datensparsam: keine Teilnehmer-Namen). Schließt das Funnel-Loch, dass
+// WhatsApp→Web-Neukunden auf serlo.ch/shop/[id] die Runde nicht sahen.
+// -----------------------------------------------------------------------------
+
+export type ActivePreorderRound = {
+  id: string;
+  product_id: string;
+  title: string | null;
+  target_qty: number;
+  closes_at: string | null;
+  status: string;
+  reserved_qty: number;
+  participant_count: number;
+  product: { id: string; title: string; cover_url: string | null; price_eur: number | null } | null;
+};
+
+export const getActivePreorderRound = cache(async (): Promise<ActivePreorderRound | null> => {
+  // Public-Client: greift auch für anonyme Besucher (der eigentliche Funnel-Fall).
+  const supabase = createPublicClient();
+  const { data, error } = await supabase.rpc('get_active_preorder_round_public');
+  if (error || !data) return null;
+  return data as ActivePreorderRound;
+});

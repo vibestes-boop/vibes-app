@@ -865,6 +865,17 @@ const deMessages = {
       reviewsCount: "{count} Bewertungen",
       moreFromSeller: "Mehr von @{username}",
     },
+    // Sammelbestellungs-Runde (components/shop/preorder-round-card.tsx)
+    round: {
+      badge: "Sammelbestellung läuft",
+      reservedOfTarget: "{reserved} von {target} reserviert",
+      people: "{count} dabei",
+      untilDate: "Läuft bis {date}",
+      endsSoon: "Endet gleich",
+      goalReached: "Ziel erreicht 🎉 — noch dabei sein geht trotzdem",
+      cta: "Jetzt vorbestellen",
+      hint: "Kostenlos vormerken · Zahlung erst bei Ankunft",
+    },
 
     // Kauf-CTA / BuyBar (components/shop/buy-bar.tsx)
     buy: {
