@@ -900,6 +900,30 @@ export function useClosePreorderRound() {
   return { closeRound, isWorking };
 }
 
+export function useReschedulePreorderRound() {
+  const qc = useQueryClient();
+  const [isWorking, setIsWorking] = useState(false);
+  const rescheduleRound = useCallback(async (
+    roundId:  string,
+    closesAt: Date,
+  ): Promise<{ error?: string }> => {
+    setIsWorking(true);
+    try {
+      const { data, error } = await supabase.rpc('reschedule_preorder_round', {
+        p_round_id:  roundId,
+        p_closes_at: closesAt.toISOString(),
+      });
+      if (error) return { error: 'network_error' };
+      if (!(data as any)?.success) return { error: (data as any)?.error ?? 'network_error' };
+      qc.invalidateQueries({ queryKey: ['active-preorder-round'] });
+      return {};
+    } finally {
+      setIsWorking(false);
+    }
+  }, [qc]);
+  return { rescheduleRound, isWorking };
+}
+
 export function useMarkPreordersPayable() {
   const qc = useQueryClient();
   const [isWorking, setIsWorking] = useState(false);

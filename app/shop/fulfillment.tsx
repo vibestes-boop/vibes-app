@@ -13,6 +13,7 @@ import {
   useAnnouncePreorderRound,
   useClosePreorderRound,
   useCreatePreorderRound,
+  useReschedulePreorderRound,
   useMarkPreordersPayable,
   useMyPreorderGroups,
   useMyProducts,
@@ -112,6 +113,7 @@ export default function FulfillmentScreen() {
   const { data: activeRound, refetch: refetchRound } = useActivePreorderRound();
   const { createRound, isWorking: isCreatingRound } = useCreatePreorderRound();
   const { closeRound, isWorking: isClosingRound } = useClosePreorderRound();
+  const { rescheduleRound, isWorking: isReschedulingRound } = useReschedulePreorderRound();
   const { data: myProducts = [] } = useMyProducts();
   const preorderProducts = myProducts.filter((p) => p.sale_mode === 'preorder' && p.is_active);
 
@@ -119,6 +121,8 @@ export default function FulfillmentScreen() {
   const [roundProductId, setRoundProductId] = useState<string | null>(null);
   const [roundTarget, setRoundTarget] = useState('80');
   const [roundWeeks, setRoundWeeks] = useState(0); // 0 = nächster Samstag, 1/2 = +Wochen
+  const [extendSheetOpen, setExtendSheetOpen] = useState(false);
+  const [extendWeeks, setExtendWeeks] = useState(0);
 
   const openRoundSheet = () => {
     setRoundProductId(preorderProducts[0]?.id ?? null);
@@ -134,6 +138,18 @@ export default function FulfillmentScreen() {
     if (res.error) { Alert.alert(t('orders.oopsEmoji'), t('orders.retry')); return; }
     setRoundSheetOpen(false);
     showFlash(t('orders.roundStarted'));
+    refetchRound();
+  };
+  const openExtendSheet = () => {
+    setExtendWeeks(0);
+    setExtendSheetOpen(true);
+  };
+  const confirmExtendRound = async () => {
+    if (!activeRound) return;
+    const res = await rescheduleRound(activeRound.id, nextSaturday(extendWeeks));
+    if (res.error) { Alert.alert(t('orders.oopsEmoji'), t('orders.retry')); return; }
+    setExtendSheetOpen(false);
+    showFlash(t('orders.roundExtended'));
     refetchRound();
   };
   const handleCloseRound = () => {
@@ -309,13 +325,22 @@ export default function FulfillmentScreen() {
                     {activeRound.participant_count === 1 ? t('orders.person') : t('orders.persons')} · bis {fmtDeadline(new Date(activeRound.closes_at))}
                   </Text>
                 </View>
-                <Pressable
-                  onPress={handleCloseRound}
-                  disabled={isClosingRound}
-                  style={[s.smallBtnOutline, { borderColor: colors.border.strong, opacity: isClosingRound ? 0.5 : 1 }]}
-                >
-                  <Text style={[s.smallBtnText, { color: colors.text.primary }]}>{t('orders.close')}</Text>
-                </Pressable>
+                <View style={{ gap: 6, alignItems: 'flex-end' }}>
+                  <Pressable
+                    onPress={openExtendSheet}
+                    disabled={isReschedulingRound}
+                    style={[s.smallBtnOutline, { borderColor: colors.border.strong, opacity: isReschedulingRound ? 0.5 : 1 }]}
+                  >
+                    <Text style={[s.smallBtnText, { color: colors.text.primary }]}>{t('orders.extend')}</Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={handleCloseRound}
+                    disabled={isClosingRound}
+                    style={[s.smallBtnOutline, { borderColor: colors.border.subtle, opacity: isClosingRound ? 0.5 : 1 }]}
+                  >
+                    <Text style={[s.smallBtnText, { color: colors.text.muted }]}>{t('orders.close')}</Text>
+                  </Pressable>
+                </View>
               </View>
             ) : (
               <Pressable
@@ -621,6 +646,50 @@ export default function FulfillmentScreen() {
           </Pressable>
         </Pressable>
         </KeyboardAvoidingView>
+      </Modal>
+
+      {/* Verlängern-Modal — Deadline der laufenden Runde verschieben */}
+      <Modal transparent visible={extendSheetOpen} animationType="fade" onRequestClose={() => setExtendSheetOpen(false)}>
+        <Pressable style={s.backdrop} onPress={() => setExtendSheetOpen(false)}>
+          <Pressable style={[s.sheet, { backgroundColor: colors.bg.elevated, paddingBottom: insets.bottom + 16, gap: 14 }]} onPress={(e) => e.stopPropagation()}>
+            <View style={s.sheetHandle} />
+            <Text style={[s.sheetTitle, { color: colors.text.primary }]}>{t('orders.extendTitle')}</Text>
+            <Text style={[s.rowSub, { color: colors.text.muted }]}>{t('orders.extendSub')}</Text>
+
+            {/* Samstags-Presets — identisch zum Start-Sheet */}
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {([0, 1, 2] as const).map((w) => (
+                <Pressable
+                  key={w}
+                  onPress={() => setExtendWeeks(w)}
+                  style={[
+                    s.smallBtnOutline,
+                    { flex: 1, borderColor: extendWeeks === w ? colors.text.primary : colors.border.subtle },
+                  ]}
+                >
+                  <Text style={[s.smallBtnText, { color: extendWeeks === w ? colors.text.primary : colors.text.muted }]}>
+                    {w === 0
+                      ? `Sa. ${nextSaturday(0).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit' })}`
+                      : `+${w} Wo.`}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            <Pressable
+              onPress={confirmExtendRound}
+              disabled={isReschedulingRound}
+              style={[s.shipBtn, { backgroundColor: colors.text.primary, opacity: isReschedulingRound ? 0.6 : 1 }]}
+            >
+              {isReschedulingRound
+                ? <ActivityIndicator size="small" color={colors.bg.primary} />
+                : <Target size={15} color={colors.bg.primary} strokeWidth={2.4} />}
+              <Text style={[s.shipBtnText, { color: colors.bg.primary }]}>
+                {t('orders.extend')} · {fmtDeadline(nextSaturday(extendWeeks))}
+              </Text>
+            </Pressable>
+          </Pressable>
+        </Pressable>
       </Modal>
 
       {/* Anschreiben-Modal (DM an alle Vorbesteller) */}
