@@ -142,7 +142,7 @@ export default function SettingsScreen() {
   const [changingEmail, setChangingEmail] = useState(false);
   const [showVoiceSetup, setShowVoiceSetup] = useState(false);
   const [showWomenOnly, setShowWomenOnly] = useState(false);
-  const { canAccessWomenOnly, deactivate } = useWomenOnly();
+  const { canAccessWomenOnly, leave: leaveWomenOnly } = useWomenOnly();
   const queryClient = useQueryClient();
   // #5 Referral — Einladungslink + Zähler.
   const inviteUrl = profile?.username ? `https://www.serlo.ch/i/${profile.username}` : null;
@@ -528,7 +528,7 @@ export default function SettingsScreen() {
                     [
                       { text: t('common.cancel'), style: 'cancel' },
                       { text: t('settings.wozLeave'), style: 'destructive', onPress: async () => {
-                        const { error } = await deactivate();
+                        const { error } = await leaveWomenOnly();
                         if (error) Alert.alert(t('settings.oops'), error);
                       }},
                     ]

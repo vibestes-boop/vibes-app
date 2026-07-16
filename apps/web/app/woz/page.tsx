@@ -77,6 +77,8 @@ const FEATURES = [
   },
 ];
 
+import { getMyWomenOnlyStatus } from '@/app/actions/women-only';
+
 export default async function WozPage() {
   const status = await getWozStatus();
 
@@ -86,6 +88,8 @@ export default async function WozPage() {
 
   // ── Unverified State ────────────────────────────────────────────────────────
   if (!status.isVerified) {
+    const req = await getMyWomenOnlyStatus();
+    const isPending = req.status === 'pending';
     return (
       <main className="mx-auto max-w-md px-6 py-16">
         {/* Wordmark / badge */}
@@ -121,12 +125,20 @@ export default async function WozPage() {
           ))}
         </ul>
 
-        {/* CTA */}
-        <WozJoinButton />
-
-        <p className="mt-4 text-center text-[11px] leading-relaxed text-muted-foreground/70">
-          Mit dem Beitreten bestätigst du, dass du weiblich bist.
-        </p>
+        {/* CTA / Pending-Status */}
+        {isPending ? (
+          <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-center text-sm text-rose-600 dark:border-rose-900 dark:bg-rose-950/40 dark:text-rose-300">
+            ⏳ Dein Antrag ist in Prüfung. Zum Schutz der Zone wird jeder Beitritt
+            geprüft — du bekommst Zugang, sobald er freigegeben ist.
+          </div>
+        ) : (
+          <>
+            <WozJoinButton />
+            <p className="mt-4 text-center text-[11px] leading-relaxed text-muted-foreground/70">
+              Zum Schutz der Zone wird jeder Beitritt geprüft.
+            </p>
+          </>
+        )}
       </main>
     );
   }

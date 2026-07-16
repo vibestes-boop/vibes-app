@@ -2766,3 +2766,57 @@ function toNumber(value: unknown): number {
   const number = Number(value ?? 0);
   return Number.isFinite(number) ? number : 0;
 }
+
+// ─── Women-Only Zone — Freigabe-Verwaltung (WOZ-Audit Gap 3) ─────────────────
+
+export type WozRequest = {
+  user_id: string;
+  status: 'pending' | 'approved' | 'rejected' | 'revoked';
+  method: string;
+  requested_at: string;
+  reviewed_at: string | null;
+  note: string | null;
+  username: string | null;
+  display_name: string | null;
+  avatar_url: string | null;
+};
+
+export async function getWomenOnlyRequests(status = 'pending'): Promise<WozRequest[]> {
+  const { supabase, error } = await requireAdmin();
+  if (error) return [];
+  const { data } = await supabase.rpc('get_women_only_requests', { p_status: status });
+  return (data as WozRequest[] | null) ?? [];
+}
+
+export async function approveWomenOnlyRequest(userId: string): Promise<ActionResult> {
+  const { supabase, error } = await requireAdmin();
+  if (error) return { ok: false, error };
+  const { data, error: rpcErr } = await supabase.rpc('approve_women_only', { p_user: userId });
+  if (rpcErr || !(data as { success?: boolean } | null)?.success) {
+    return { ok: false, error: 'Freigabe fehlgeschlagen.' };
+  }
+  revalidatePath('/admin/women-only');
+  return { ok: true };
+}
+
+export async function rejectWomenOnlyRequest(userId: string, note?: string): Promise<ActionResult> {
+  const { supabase, error } = await requireAdmin();
+  if (error) return { ok: false, error };
+  const { data, error: rpcErr } = await supabase.rpc('reject_women_only', { p_user: userId, p_note: note ?? null });
+  if (rpcErr || !(data as { success?: boolean } | null)?.success) {
+    return { ok: false, error: 'Ablehnen fehlgeschlagen.' };
+  }
+  revalidatePath('/admin/women-only');
+  return { ok: true };
+}
+
+export async function revokeWomenOnlyAccess(userId: string, note?: string): Promise<ActionResult> {
+  const { supabase, error } = await requireAdmin();
+  if (error) return { ok: false, error };
+  const { data, error: rpcErr } = await supabase.rpc('revoke_women_only', { p_user: userId, p_note: note ?? null });
+  if (rpcErr || !(data as { success?: boolean } | null)?.success) {
+    return { ok: false, error: 'Aberkennen fehlgeschlagen.' };
+  }
+  revalidatePath('/admin/women-only');
+  return { ok: true };
+}

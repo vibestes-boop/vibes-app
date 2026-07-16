@@ -137,6 +137,10 @@ export async function searchPosts(query: string, limit = 20): Promise<SearchPost
        author:profiles!posts_author_id_fkey!inner(id, username, display_name, avatar_url, verified:is_verified, is_banned, is_shadow_banned)`,
     )
     .ilike('caption', `%${q}%`)
+    // Defense-in-Depth: WOZ-Content gehört NIE in die allgemeine Suche (verified
+    // Frauen finden ihn im WOZ-Hub). Expliziter Filter, damit ein RLS-Ausfall
+    // hier nicht sofort leakt — verlässt sich nicht allein auf die Policy.
+    .eq('women_only', false)
     .eq('author.is_banned', false)
     .eq('author.is_shadow_banned', false)
     .order('view_count', { ascending: false })

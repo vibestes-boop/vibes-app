@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { ShieldCheck, Loader2 } from 'lucide-react';
-import { activateWomenOnlyZone } from '@/app/actions/women-only';
+import { requestWomenOnlyZone } from '@/app/actions/women-only';
 
 // -----------------------------------------------------------------------------
 // WozActivateForm — Client-Button für Level-1 Selbstdeklaration.
@@ -19,13 +19,13 @@ export function WozActivateForm() {
   const handleActivate = () => {
     setError(null);
     startTransition(async () => {
-      const result = await activateWomenOnlyZone();
+      const result = await requestWomenOnlyZone();
       if (result.error === 'not_authenticated') {
         router.push('/login?next=/women-only');
         return;
       }
       if (result.error) {
-        setError('Aktivierung fehlgeschlagen — bitte versuche es erneut.');
+        setError('Antrag fehlgeschlagen — bitte versuche es erneut.');
         return;
       }
       router.refresh();

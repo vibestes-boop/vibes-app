@@ -42,7 +42,7 @@ export function WomenOnlyVerificationSheet({
 }: WomenOnlyVerificationSheetProps) {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
-  const { activateLevel1 } = useWomenOnly();
+  const { requestAccess } = useWomenOnly();
 
   const [step, setStep] = useState<Step>('info');
   const [loading, setLoading] = useState(false);
@@ -59,7 +59,7 @@ export function WomenOnlyVerificationSheet({
     setError(null);
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-    const { error: err } = await activateLevel1();
+    const { error: err } = await requestAccess();
 
     setLoading(false);
 
@@ -227,18 +227,18 @@ export function WomenOnlyVerificationSheet({
             </LinearGradient>
 
             <Text style={[s.title, { color: colors.text.primary }]}>
-              Willkommen! 🌸
+              Antrag ist da 🌸
             </Text>
             <Text style={[s.subtitle, { color: colors.text.secondary }]}>
-              Du hast jetzt Zugang zur Women-Only Zone.
+              Wir schauen ihn uns kurz an — zum Schutz der Zone wird jeder Beitritt
+              geprüft. Du bekommst Zugang, sobald er freigegeben ist.
             </Text>
 
             <View style={s.featureList}>
               {[
-                '✅ Du siehst Women-Only Posts im Feed',
-                '✅ Du kannst Women-Only Live-Streams beitreten',
-                '✅ Du kannst eigene Women-Only Posts erstellen',
-                '✅ Dein Profil zeigt das 🌸 Badge',
+                '⏳ Dein Antrag ist in Prüfung',
+                '🔔 Du wirst benachrichtigt, sobald er freigegeben ist',
+                '🔒 Erst danach siehst du Women-Only Inhalte',
               ].map((line) => (
                 <View key={line} style={s.featureRow}>
                   <Text style={[s.featureText, { color: colors.text.secondary }]}>

@@ -3,12 +3,12 @@
 import { useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, ArrowRight } from 'lucide-react';
-import { activateWomenOnlyZone } from '@/app/actions/women-only';
+import { requestWomenOnlyZone } from '@/app/actions/women-only';
 
 // -----------------------------------------------------------------------------
 // WozJoinButton — Level-1-Aktivierung der Women-Only Zone.
 //
-// v1.w.UI.213: Parity mit app/women-only/index.tsx → activateLevel1().
+// Parity mit lib/useWomenOnly.ts → requestAccess() (Antrag, keine Sofort-Freigabe).
 // Nach Erfolg: router.refresh() damit /woz die verifizierten State zeigt.
 // -----------------------------------------------------------------------------
 
@@ -18,7 +18,7 @@ export function WozJoinButton() {
 
   function handleJoin() {
     startTransition(async () => {
-      const result = await activateWomenOnlyZone();
+      const result = await requestWomenOnlyZone();
       if (!result.error) {
         router.refresh();
       }
@@ -34,11 +34,11 @@ export function WozJoinButton() {
       {pending ? (
         <>
           <Loader2 className="h-4 w-4 animate-spin" />
-          Wird aktiviert…
+          Wird gesendet…
         </>
       ) : (
         <>
-          Jetzt beitreten
+          Zugang beantragen
           <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
         </>
       )}

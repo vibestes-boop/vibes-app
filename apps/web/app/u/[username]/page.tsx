@@ -361,7 +361,7 @@ export default async function ProfilePage({
 
         {/* Meta-Zeile: Website · Battle · Teip · Women-Only — Parität zur Mobile-App.
             (Resonanz fehlt noch: PostgREST-Aggregate projektweit aus → eigene RPC nötig.) */}
-        {(profile.website || profile.teip || meta.battle || meta.womenOnly) && (
+        {(profile.website || profile.teip || meta.battle || (viewer && meta.womenOnly)) && (
           <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5">
             {profile.website && (
               <a
@@ -387,7 +387,7 @@ export default async function ProfilePage({
                 {profile.teip}
               </span>
             )}
-            {meta.womenOnly && (
+            {viewer && meta.womenOnly && (
               <span className="inline-flex items-center gap-1.5 text-sm text-muted-foreground">
                 <Flower2 className="h-3.5 w-3.5 shrink-0 text-pink-400" />
                 {t('post.womenOnly')}

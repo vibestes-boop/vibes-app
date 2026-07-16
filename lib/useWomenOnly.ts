@@ -1,77 +1,79 @@
 /**
  * useWomenOnly.ts
- * 
+ *
  * Zentraler Hook für die Women-Only Zone.
- * Gibt an ob die aktuelle Nutzerin Zugang hat und welches Level sie hat.
+ *
+ * Zugangs-Modell (seit 16.7.2026, WOZ-Audit Gap 3): Selbstdeklaration →
+ * Antrag → Admin-Freigabe. Der Client kann `women_only_verified` NICHT mehr
+ * direkt setzen (DB-Trigger sperrt die Spalte) — alles läuft über SECURITY-
+ * DEFINER-RPCs. `canAccessWomenOnly` bleibt der einzige Gate für die UI.
  */
 
+import { useCallback, useEffect, useState } from 'react';
 import { useAuthStore } from './authStore';
 import { supabase } from './supabase';
+
+export type WozStatus = 'none' | 'pending' | 'approved' | 'rejected' | 'revoked';
 
 export function useWomenOnly() {
   const { profile, setProfile } = useAuthStore();
 
-  /** Hat die Nutzerin Zugang zur Women-Only Zone? */
+  /** Hat die Nutzerin Zugang zur Women-Only Zone? (Gate für alle UI-Flächen) */
   const canAccessWomenOnly =
-    profile?.gender === 'female' &&
-    profile?.women_only_verified === true;
+    profile?.gender === 'female' && profile?.women_only_verified === true;
 
-  /** Aktuelles Verifikations-Level (0, 1 oder 2) */
   const verificationLevel = profile?.verification_level ?? 0;
 
-  /**
-   * Level-1-Verifikation aktivieren (Selbstdeklaration).
-   * Schreibt gender='female', women_only_verified=true, verification_level=1
-   * in die DB und aktualisiert den lokalen Auth-Store.
-   */
-  async function activateLevel1(): Promise<{ error: string | null }> {
-    if (!profile?.id) return { error: 'Kein Profil gefunden' };
+  // Antrags-Status (pending/rejected/…) für die Beitritts-UI. Wird lazy geladen.
+  const [status, setStatus] = useState<WozStatus>(canAccessWomenOnly ? 'approved' : 'none');
 
-    const { data, error } = await supabase
-      .from('profiles')
-      .update({
-        gender: 'female',
-        women_only_verified: true,
-        verification_level: 1,
-      })
-      .eq('id', profile.id)
-      .select()
-      .single();
+  const refreshStatus = useCallback(async () => {
+    if (!profile?.id) return;
+    const { data } = await supabase.rpc('get_my_women_only_status');
+    const s = (data as { status?: WozStatus } | null)?.status;
+    if (s) setStatus(s);
+  }, [profile?.id]);
 
-    if (error) return { error: error.message };
-
-    // Lokalen Store sofort aktualisieren (kein Re-Fetch nötig)
-    setProfile({ ...profile, ...data });
-    return { error: null };
-  }
+  useEffect(() => {
+    if (canAccessWomenOnly) setStatus('approved');
+    else void refreshStatus();
+  }, [canAccessWomenOnly, refreshStatus]);
 
   /**
-   * Women-Only Zone deaktivieren.
-   * Setzt women_only_verified=false zurück (gender bleibt gesetzt).
+   * Zugang beantragen (Selbstdeklaration). Setzt gender='female' + Level 1 und
+   * legt einen `pending`-Antrag an — GEWÄHRT ABER KEINEN ZUGANG. Erst die
+   * Admin-Freigabe setzt `women_only_verified=true`.
    */
-  async function deactivate(): Promise<{ error: string | null }> {
+  const requestAccess = useCallback(async (): Promise<{ error: string | null; status?: WozStatus }> => {
     if (!profile?.id) return { error: 'Kein Profil gefunden' };
-
-    const { data, error } = await supabase
-      .from('profiles')
-      .update({
-        women_only_verified: false,
-        verification_level: 0,
-      })
-      .eq('id', profile.id)
-      .select()
-      .single();
-
+    const { data, error } = await supabase.rpc('request_women_only');
     if (error) return { error: error.message };
+    const res = data as { success?: boolean; status?: WozStatus; error?: string };
+    if (!res?.success) return { error: res?.error ?? 'network_error' };
+    const s = res.status ?? 'pending';
+    setStatus(s);
+    // gender/level lokal spiegeln (women_only_verified bleibt bis zur Freigabe false)
+    setProfile({ ...profile, gender: 'female', verification_level: 1 });
+    return { error: null, status: s };
+  }, [profile, setProfile]);
 
-    setProfile({ ...profile, ...data });
+  /** Women-Only Zone freiwillig verlassen (kein Admin-Aberkennen). */
+  const leave = useCallback(async (): Promise<{ error: string | null }> => {
+    if (!profile?.id) return { error: 'Kein Profil gefunden' };
+    const { data, error } = await supabase.rpc('leave_women_only');
+    if (error) return { error: error.message };
+    if (!(data as { success?: boolean } | null)?.success) return { error: 'network_error' };
+    setStatus('none');
+    setProfile({ ...profile, women_only_verified: false, verification_level: 0 });
     return { error: null };
-  }
+  }, [profile, setProfile]);
 
   return {
     canAccessWomenOnly,
     verificationLevel,
-    activateLevel1,
-    deactivate,
+    status,
+    refreshStatus,
+    requestAccess,
+    leave,
   };
 }

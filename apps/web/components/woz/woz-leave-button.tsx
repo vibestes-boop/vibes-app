@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
-import { deactivateWomenOnlyZone } from '@/app/actions/women-only';
+import { leaveWomenOnlyZone } from '@/app/actions/women-only';
 
 // -----------------------------------------------------------------------------
 // WozLeaveButton — deaktiviert die Women-Only Zone für den aktuellen User.
@@ -21,7 +21,7 @@ export function WozLeaveButton() {
 
   function handleLeave() {
     startTransition(async () => {
-      await deactivateWomenOnlyZone();
+      await leaveWomenOnlyZone();
       router.refresh();
     });
   }

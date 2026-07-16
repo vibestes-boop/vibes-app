@@ -33,6 +33,7 @@ const NAV: {
   { label: 'Aktivierung', href: '/admin/activation' as Route, icon: 'rocket', canShow: (roles) => roles.can_operate || roles.can_creator_ops },
   { label: 'Analytics', href: '/admin/analytics' as Route, icon: 'chart', canShow: (roles) => roles.can_operate },
   { label: 'Sicherheit', href: '/admin/security' as Route, icon: 'lock', canShow: (roles) => roles.can_operate, badge: (badges) => badges.security_critical, badgeTone: 'amber' },
+  { label: 'Women-Only', href: '/admin/women-only' as Route, icon: 'shield', canShow: (roles) => roles.can_admin },
   { label: 'Auszahlungen', href: '/admin/payouts' as Route, icon: 'card', canShow: (roles) => roles.can_creator_ops },
   { label: 'Übersicht', href: '/admin' as Route, icon: 'settings', canShow: (roles) => roles.can_access_admin },
 ];
