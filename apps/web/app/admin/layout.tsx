@@ -1,9 +1,8 @@
 import { redirect } from 'next/navigation';
 import type { Route } from 'next';
+import Link from 'next/link';
 import {
   Bell,
-  CalendarDays,
-  Menu,
   Search,
   Shield,
 } from 'lucide-react';
@@ -104,10 +103,6 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       <div className="lg:pl-52 xl:pl-72">
         <header className="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur">
           <div className="flex min-h-14 items-center gap-2.5 px-4 py-2.5 sm:px-5">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-border lg:hidden">
-              <Menu className="h-4 w-4" />
-            </div>
-
             <form action="/admin/users" className="min-w-0 flex-1">
               <label className="relative block max-w-xl">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground/70" />
@@ -120,15 +115,26 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               </label>
             </form>
 
-            <div className="hidden items-center gap-2 rounded-lg border border-border bg-card px-2.5 py-2 text-xs text-foreground/80 sm:flex">
-              <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
-              Letzte 24 Stunden
-            </div>
-
-            <div className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card">
+            {/* Glocke = echter Einstieg in die Meldungen; Punkt nur bei offenen Reports */}
+            <Link
+              href={'/admin/reports' as Route}
+              className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-card transition hover:bg-muted"
+              aria-label={
+                badges.reports_pending > 0
+                  ? `${badges.reports_pending} offene Meldungen`
+                  : 'Keine offenen Meldungen'
+              }
+              title={
+                badges.reports_pending > 0
+                  ? `${badges.reports_pending} offene Meldungen`
+                  : 'Keine offenen Meldungen'
+              }
+            >
               <Bell className="h-4 w-4 text-foreground/80" />
-              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500" />
-            </div>
+              {badges.reports_pending > 0 && (
+                <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-red-500" />
+              )}
+            </Link>
 
             <div className="hidden items-center gap-2.5 border-l border-border pl-3 md:flex">
               <div className="flex h-9 w-9 items-center justify-center rounded-full bg-foreground text-xs font-bold text-background">
