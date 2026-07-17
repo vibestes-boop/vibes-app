@@ -1,33 +1,34 @@
 /**
- * WomenOnlyVerificationSheet.tsx
+ * WomenOnlyVerificationSheet.tsx — Beitritts-Sheet der Women-Only Zone.
  *
- * Bottom-Sheet für die Women-Only Zone Verifikation.
- * 3-Screen-Flow:
- *   1. Was ist die Women-Only Zone? (Info)
- *   2. Bestätigung (Selbstdeklaration Level 1)
- *   3. Willkommen! (Erfolg)
+ * Drei Schritte: info → confirm → sent.
+ * Seit dem Freigabe-Modell (16.7.2026) endet der Flow mit „Antrag ist da" —
+ * Zugang gibt es erst nach Admin-Freigabe, nicht sofort.
+ *
+ * Design-Sprache: Theme-Sheet (bg.elevated), monochrome Lucide-Icons,
+ * EIN Rose-Akzent — keine Gradients, keine Emoji-Icons.
  */
 
+import { useI18n } from '@/lib/i18n';
 import { useTheme } from '@/lib/useTheme';
 import { useWomenOnly } from '@/lib/useWomenOnly';
 import * as Haptics from 'expo-haptics';
-import { LinearGradient } from 'expo-linear-gradient';
-import { CheckCircle2,Lock,Shield,X } from 'lucide-react-native';
-import { useState } from 'react';
+import { Bell, Clock, Flower2, Lock, Radio, ShieldCheck, Users, X } from 'lucide-react-native';
+import React, { useState } from 'react';
 import {
-ActivityIndicator,
-Dimensions,
-Modal,
-Pressable,
-StyleSheet,
-Text,
-View,
+  ActivityIndicator,
+  Dimensions,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 
-type Step = 'info' | 'confirm' | 'success';
+type Step = 'info' | 'confirm' | 'sent';
 
 interface WomenOnlyVerificationSheetProps {
   visible: boolean;
@@ -42,6 +43,7 @@ export function WomenOnlyVerificationSheet({
 }: WomenOnlyVerificationSheetProps) {
   const insets = useSafeAreaInsets();
   const { colors } = useTheme();
+  const { t } = useI18n();
   const { requestAccess } = useWomenOnly();
 
   const [step, setStep] = useState<Step>('info');
@@ -69,9 +71,24 @@ export function WomenOnlyVerificationSheet({
     }
 
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setStep('success');
+    setStep('sent');
     onVerified?.();
   };
+
+  const INFO_FEATURES = [
+    { Icon: Lock, text: t('woz.featPrivacy') },
+    { Icon: Radio, text: t('woz.featShare') },
+    { Icon: Users, text: t('woz.featFeed') },
+  ];
+
+  const SENT_STEPS = [
+    { Icon: Clock, text: t('woz.sentStep1') },
+    { Icon: Bell, text: t('woz.sentStep2') },
+    { Icon: Lock, text: t('woz.sentStep3') },
+  ];
+
+  const primaryBtn = [s.primaryBtn, { backgroundColor: colors.text.primary }];
+  const primaryBtnText = [s.primaryBtnText, { color: colors.bg.primary }];
 
   return (
     <Modal
@@ -82,74 +99,39 @@ export function WomenOnlyVerificationSheet({
     >
       <Pressable style={s.backdrop} onPress={handleClose} />
 
-      <View style={[s.sheet, { paddingBottom: insets.bottom + 24, backgroundColor: colors.bg.primary }]}>
-
-        {/* ── Ziehgriff ── */}
+      <View style={[s.sheet, { paddingBottom: insets.bottom + 24, backgroundColor: colors.bg.elevated }]}>
         <View style={[s.handle, { backgroundColor: colors.border.default }]} />
 
-        {/* ── Schließen Button ── */}
         <Pressable style={s.closeBtn} onPress={handleClose} hitSlop={12}>
-          <X size={20} stroke={colors.icon.muted} strokeWidth={2} />
+          <X size={20} color={colors.icon.muted} strokeWidth={2} />
         </Pressable>
 
         {/* ══════════ STEP 1: INFO ══════════ */}
         {step === 'info' && (
           <View style={s.content}>
-            {/* Premium Gradient Header */}
-            <LinearGradient
-              colors={['#F43F5E', '#A855F7', '#6366F1']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={s.iconCircle}
-            >
-              <Text style={s.iconEmoji}>🌸</Text>
-            </LinearGradient>
+            <View style={[s.iconCircle, { backgroundColor: `${colors.accent.rose}14` }]}>
+              <Flower2 size={28} color={colors.accent.rose} strokeWidth={1.8} />
+            </View>
 
-            <Text style={[s.title, { color: colors.text.primary }]}>
-              Women-Only Zone
-            </Text>
-            <Text style={[s.subtitle, { color: colors.text.secondary }]}>
-              Ein geschützter Raum nur für Frauen
-            </Text>
+            <Text style={[s.title, { color: colors.text.primary }]}>{t('woz.title')}</Text>
+            <Text style={[s.subtitle, { color: colors.text.secondary }]}>{t('woz.gateSub')}</Text>
 
-            {/* Feature-Liste */}
             <View style={s.featureList}>
-              {[
-                { icon: '🔒', text: 'Kein Mann sieht deine Women-Only Inhalte' },
-                { icon: '👗', text: 'Teile Outfits und Videos ohne Sorgen' },
-                { icon: '🌸', text: 'Sei Teil einer sicheren Community' },
-                { icon: '✨', text: 'Exklusiver Premium-Content nur für Frauen' },
-              ].map((f) => (
-                <View key={f.text} style={s.featureRow}>
-                  <Text style={s.featureIcon}>{f.icon}</Text>
-                  <Text style={[s.featureText, { color: colors.text.secondary }]}>
-                    {f.text}
-                  </Text>
+              {INFO_FEATURES.map(({ Icon, text }) => (
+                <View key={text} style={s.featureRow}>
+                  <View style={[s.featureIconWrap, { backgroundColor: colors.bg.secondary }]}>
+                    <Icon size={15} color={colors.text.primary} strokeWidth={2} />
+                  </View>
+                  <Text style={[s.featureText, { color: colors.text.secondary }]}>{text}</Text>
                 </View>
               ))}
             </View>
 
-            {/* Technischer Hinweis */}
-            <View style={[s.infoBox, { backgroundColor: colors.bg.elevated, borderColor: colors.border.subtle }]}>
-              <Shield size={14} stroke={colors.text.muted} strokeWidth={2} />
-              <Text style={[s.infoBoxText, { color: colors.text.muted }]}>
-                Technisch gesichert: Women-Only Posts sind auf Datenbankebene
-                gesperrt — sie werden nie an nicht-verifizierte Nutzer gesendet.
-              </Text>
-            </View>
-
             <Pressable
-              style={({ pressed }) => [s.primaryBtn, pressed && { opacity: 0.85 }]}
+              style={({ pressed }) => [...primaryBtn, pressed && { opacity: 0.85 }]}
               onPress={() => setStep('confirm')}
             >
-              <LinearGradient
-                colors={['#F43F5E', '#A855F7']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={s.primaryBtnGradient}
-              >
-                <Text style={s.primaryBtnText}>Weiter →</Text>
-              </LinearGradient>
+              <Text style={primaryBtnText}>{t('woz.next')}</Text>
             </Pressable>
           </View>
         )}
@@ -157,113 +139,67 @@ export function WomenOnlyVerificationSheet({
         {/* ══════════ STEP 2: BESTÄTIGUNG ══════════ */}
         {step === 'confirm' && (
           <View style={s.content}>
-            <LinearGradient
-              colors={['#F43F5E', '#A855F7']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={s.iconCircle}
-            >
-              <Lock size={28} stroke="#fff" strokeWidth={2} />
-            </LinearGradient>
-
-            <Text style={[s.title, { color: colors.text.primary }]}>
-              Bestätigung
-            </Text>
-            <Text style={[s.subtitle, { color: colors.text.secondary }]}>
-              Du erklärst, dass du eine Frau bist und diese Zone nutzen möchtest.
-            </Text>
-
-            {/* Info zur Selbstdeklaration */}
-            <View style={[s.infoBox, { backgroundColor: 'rgba(244,63,94,0.08)', borderColor: 'rgba(244,63,94,0.2)' }]}>
-              <Text style={[s.infoBoxText, { color: colors.text.secondary }]}>
-                Durch Bestätigen erklärst du verbindlich, dass du weiblich bist.
-                Falsche Angaben führen zum dauerhaften Account-Ausschluss (AGB §3).
-              </Text>
+            <View style={[s.iconCircle, { backgroundColor: colors.bg.secondary }]}>
+              <Lock size={26} color={colors.text.primary} strokeWidth={2} />
             </View>
 
-            {error && (
-              <Text style={s.errorText}>{error}</Text>
-            )}
+            <Text style={[s.title, { color: colors.text.primary }]}>{t('woz.confirmTitle')}</Text>
+            <Text style={[s.subtitle, { color: colors.text.secondary }]}>{t('woz.confirmSub')}</Text>
+
+            <View style={[s.infoBox, { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle }]}>
+              <Text style={[s.infoBoxText, { color: colors.text.muted }]}>{t('woz.confirmNote')}</Text>
+            </View>
+
+            {error && <Text style={s.errorText}>{error}</Text>}
 
             <Pressable
-              style={({ pressed }) => [s.primaryBtn, pressed && { opacity: 0.85 }]}
+              style={({ pressed }) => [...primaryBtn, pressed && { opacity: 0.85 }]}
               onPress={handleConfirm}
               disabled={loading}
             >
-              <LinearGradient
-                colors={['#F43F5E', '#A855F7']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={s.primaryBtnGradient}
-              >
-                {loading
-                  ? <ActivityIndicator color="#fff" />
-                  : <Text style={s.primaryBtnText}>Ja, ich bin eine Frau ✓</Text>
-                }
-              </LinearGradient>
+              {loading
+                ? <ActivityIndicator color={colors.bg.primary} />
+                : <Text style={primaryBtnText}>{t('woz.confirmCta')}</Text>}
             </Pressable>
 
             <Pressable
               style={({ pressed }) => [s.secondaryBtn, pressed && { opacity: 0.7 }]}
               onPress={() => setStep('info')}
             >
-              <Text style={[s.secondaryBtnText, { color: colors.text.muted }]}>
-                Zurück
-              </Text>
+              <Text style={[s.secondaryBtnText, { color: colors.text.muted }]}>{t('woz.back')}</Text>
             </Pressable>
           </View>
         )}
 
-        {/* ══════════ STEP 3: ERFOLG ══════════ */}
-        {step === 'success' && (
+        {/* ══════════ STEP 3: ANTRAG GESENDET ══════════ */}
+        {step === 'sent' && (
           <View style={s.content}>
-            <LinearGradient
-              colors={['#10B981', '#059669']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={s.iconCircle}
-            >
-              <CheckCircle2 size={28} stroke="#fff" strokeWidth={2} />
-            </LinearGradient>
+            <View style={[s.iconCircle, { backgroundColor: `${colors.accent.rose}14` }]}>
+              <ShieldCheck size={28} color={colors.accent.rose} strokeWidth={2} />
+            </View>
 
-            <Text style={[s.title, { color: colors.text.primary }]}>
-              Antrag ist da 🌸
-            </Text>
-            <Text style={[s.subtitle, { color: colors.text.secondary }]}>
-              Wir schauen ihn uns kurz an — zum Schutz der Zone wird jeder Beitritt
-              geprüft. Du bekommst Zugang, sobald er freigegeben ist.
-            </Text>
+            <Text style={[s.title, { color: colors.text.primary }]}>{t('woz.sentTitle')}</Text>
+            <Text style={[s.subtitle, { color: colors.text.secondary }]}>{t('woz.sentSub')}</Text>
 
             <View style={s.featureList}>
-              {[
-                '⏳ Dein Antrag ist in Prüfung',
-                '🔔 Du wirst benachrichtigt, sobald er freigegeben ist',
-                '🔒 Erst danach siehst du Women-Only Inhalte',
-              ].map((line) => (
-                <View key={line} style={s.featureRow}>
-                  <Text style={[s.featureText, { color: colors.text.secondary }]}>
-                    {line}
-                  </Text>
+              {SENT_STEPS.map(({ Icon, text }) => (
+                <View key={text} style={s.featureRow}>
+                  <View style={[s.featureIconWrap, { backgroundColor: colors.bg.secondary }]}>
+                    <Icon size={15} color={colors.text.primary} strokeWidth={2} />
+                  </View>
+                  <Text style={[s.featureText, { color: colors.text.secondary }]}>{text}</Text>
                 </View>
               ))}
             </View>
 
             <Pressable
-              style={({ pressed }) => [s.primaryBtn, pressed && { opacity: 0.85 }]}
+              style={({ pressed }) => [...primaryBtn, pressed && { opacity: 0.85 }]}
               onPress={handleClose}
             >
-              <LinearGradient
-                colors={['#10B981', '#059669']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={s.primaryBtnGradient}
-              >
-                <Text style={s.primaryBtnText}>{"Los geht's!"}</Text>
-              </LinearGradient>
+              <Text style={primaryBtnText}>{t('woz.sentDone')}</Text>
             </Pressable>
           </View>
         )}
-
       </View>
     </Modal>
   );
@@ -303,51 +239,50 @@ const s = StyleSheet.create({
     height: 32,
     alignItems: 'center',
     justifyContent: 'center',
+    zIndex: 1,
   },
   content: {
     alignItems: 'center',
     paddingTop: 8,
   },
   iconCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 20,
-  },
-  iconEmoji: {
-    fontSize: 32,
+    marginBottom: 18,
   },
   title: {
-    fontSize: 24,
-    fontWeight: '600',
-    letterSpacing: -0.5,
+    fontSize: 22,
+    fontWeight: '700',
+    letterSpacing: -0.4,
     textAlign: 'center',
     marginBottom: 8,
   },
   subtitle: {
-    fontSize: 15,
+    fontSize: 14,
     textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 24,
+    lineHeight: 21,
+    marginBottom: 22,
     paddingHorizontal: 8,
   },
   featureList: {
     width: '100%',
     gap: 12,
-    marginBottom: 24,
+    marginBottom: 22,
   },
   featureRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
+    alignItems: 'center',
     gap: 12,
   },
-  featureIcon: {
-    fontSize: 18,
-    width: 24,
-    textAlign: 'center',
-    marginTop: 1,
+  featureIconWrap: {
+    width: 30,
+    height: 30,
+    borderRadius: 9,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   featureText: {
     flex: 1,
@@ -355,35 +290,27 @@ const s = StyleSheet.create({
     lineHeight: 20,
   },
   infoBox: {
-    flexDirection: 'row',
-    gap: 10,
-    alignItems: 'flex-start',
     padding: 14,
-    borderRadius: 14,
+    borderRadius: 12,
     borderWidth: 1,
-    marginBottom: 24,
+    marginBottom: 20,
     width: '100%',
   },
   infoBoxText: {
-    flex: 1,
     fontSize: 12,
     lineHeight: 18,
   },
   primaryBtn: {
     width: '100%',
     borderRadius: 16,
-    overflow: 'hidden',
-    marginBottom: 12,
-  },
-  primaryBtnGradient: {
-    paddingVertical: 16,
+    paddingVertical: 15,
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 10,
   },
   primaryBtnText: {
-    color: '#fff',
     fontSize: 16,
-    fontWeight: '700',
+    fontWeight: '600',
     letterSpacing: -0.2,
   },
   secondaryBtn: {

@@ -1,34 +1,48 @@
 /**
  * app/women-only/index.tsx — Women-Only Zone Hub
  *
- * Zwei Zustände:
- *   1. Nicht verifiziert → Premium Onboarding-Screen mit "Beitreten"
- *   2. Verifiziert → WOZ-Feed mit allen Women-Only Posts
+ * Drei Zustände:
+ *   1. Nicht verifiziert → ruhiger Gate-Screen mit „Zugang beantragen"
+ *   2. Antrag pending    → Wartehinweis (Freigabe durch Admin)
+ *   3. Verifiziert       → WOZ-Feed mit allen Women-Only Posts
+ *
+ * Design-Sprache: Theme-Flächen, EIN Akzent (colors.accent.rose, sparsam),
+ * monochrome Lucide-Icons — keine Gradients, keine Emoji-Icons.
  */
 
 import { WomenOnlyVerificationSheet } from '@/components/women-only/WomenOnlyVerificationSheet';
-import { LC } from '@/lib/liveColors';
+import { useI18n } from '@/lib/i18n';
 import { supabase } from '@/lib/supabase';
 import { useTheme } from '@/lib/useTheme';
 import { useWomenOnly } from '@/lib/useWomenOnly';
+import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import { useQuery } from '@tanstack/react-query';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { ArrowLeft,Lock,ShieldCheck,Video } from 'lucide-react-native';
-import React,{ useCallback,useState } from 'react';
 import {
-ActivityIndicator,
-Dimensions,
-FlatList,
-Pressable,
-RefreshControl,
-StyleSheet,
-Text,
-View,
+  ArrowLeft,
+  Clock,
+  Flower2,
+  Lock,
+  Radio,
+  ShieldCheck,
+  ShoppingBag,
+  Users,
+  Video,
+} from 'lucide-react-native';
+import React, { useCallback, useState } from 'react';
+import {
+  ActivityIndicator,
+  Dimensions,
+  FlatList,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const CARD_W = (SCREEN_W - 48) / 2;
@@ -70,37 +84,49 @@ export default function WomenOnlyScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors } = useTheme();
-  const { canAccessWomenOnly } = useWomenOnly();
+  const { t } = useI18n();
+  const { canAccessWomenOnly, status, refreshStatus } = useWomenOnly();
   const [showVerifySheet, setShowVerifySheet] = useState(false);
 
   return (
     <View style={[styles.root, { backgroundColor: colors.bg.primary }]}>
-      {/* Header */}
-      <LinearGradient
-        colors={[LC.accent.rose, LC.accent.purple]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={[styles.header, { paddingTop: insets.top + 10 }]}
+      {/* Header — ruhige Theme-Bar wie überall in der App */}
+      <View
+        style={[
+          styles.header,
+          {
+            paddingTop: insets.top + 10,
+            backgroundColor: colors.bg.primary,
+            borderBottomColor: colors.border.subtle,
+          },
+        ]}
       >
         <Pressable onPress={() => router.back()} style={styles.backBtn} hitSlop={16}>
-          <ArrowLeft size={22} color="#fff" strokeWidth={2} />
+          <ArrowLeft size={22} color={colors.text.primary} strokeWidth={2} />
         </Pressable>
         <View style={styles.headerCenter}>
-          <Text style={styles.headerEmoji}>🌸</Text>
-          <Text style={styles.headerTitle}>Women-Only Zone</Text>
+          <Flower2 size={17} color={colors.accent.rose} strokeWidth={2} />
+          <Text style={[styles.headerTitle, { color: colors.text.primary }]}>{t('woz.title')}</Text>
         </View>
         <View style={{ width: 38 }} />
-      </LinearGradient>
+      </View>
 
       {canAccessWomenOnly ? (
         <VerifiedContent colors={colors} insets={insets} />
       ) : (
-        <GateContent onJoin={() => setShowVerifySheet(true)} />
+        <GateContent
+          pending={status === 'pending'}
+          onJoin={() => setShowVerifySheet(true)}
+        />
       )}
 
       <WomenOnlyVerificationSheet
         visible={showVerifySheet}
-        onClose={() => setShowVerifySheet(false)}
+        onClose={() => {
+          setShowVerifySheet(false);
+          // Antrags-Status im Hub nachziehen (eigene Hook-Instanz)
+          void refreshStatus();
+        }}
       />
     </View>
   );
@@ -110,6 +136,7 @@ export default function WomenOnlyScreen() {
 
 function VerifiedContent({ colors, insets }: { colors: any; insets: any }) {
   const router = useRouter();
+  const { t } = useI18n();
   const { data: posts = [], isLoading, refetch, isRefetching } = useWOZFeed();
 
   const renderPost = useCallback(({ item }: { item: WOZPost }) => (
@@ -126,18 +153,16 @@ function VerifiedContent({ colors, insets }: { colors: any; insets: any }) {
           contentFit="cover"
         />
       )}
-      {/* Gradient unten */}
+      {/* Lesbarkeits-Scrim unten (Medien-Fläche = fest hell-auf-dunkel) */}
       <LinearGradient
         colors={['transparent', 'rgba(0,0,0,0.7)']}
         style={styles.cardGradient}
       />
-      {/* Video-Icon */}
       {item.media_type === 'video' && (
         <View style={styles.videoIcon}>
           <Video size={12} color="#fff" fill="#fff" strokeWidth={0} />
         </View>
       )}
-      {/* Author */}
       <View style={styles.cardAuthor}>
         {item.profiles?.avatar_url ? (
           <Image
@@ -156,7 +181,7 @@ function VerifiedContent({ colors, insets }: { colors: any; insets: any }) {
   if (isLoading) {
     return (
       <View style={styles.center}>
-        <ActivityIndicator color={LC.accent.rose} size="large" />
+        <ActivityIndicator color={colors.text.muted} size="large" />
       </View>
     );
   }
@@ -164,13 +189,9 @@ function VerifiedContent({ colors, insets }: { colors: any; insets: any }) {
   if (posts.length === 0) {
     return (
       <View style={styles.center}>
-        <Text style={{ fontSize: 40, marginBottom: 16 }}>🌸</Text>
-        <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>
-          Noch keine Posts
-        </Text>
-        <Text style={[styles.emptySub, { color: colors.text.muted }]}>
-          Sei die Erste! Erstelle einen Women-Only Post.
-        </Text>
+        <Flower2 size={34} color={colors.accent.rose} strokeWidth={1.6} style={{ marginBottom: 14 }} />
+        <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>{t('woz.emptyTitle')}</Text>
+        <Text style={[styles.emptySub, { color: colors.text.muted }]}>{t('woz.emptySub')}</Text>
       </View>
     );
   }
@@ -187,14 +208,19 @@ function VerifiedContent({ colors, insets }: { colors: any; insets: any }) {
         <RefreshControl
           refreshing={isRefetching}
           onRefresh={refetch}
-          tintColor={LC.accent.rose}
+          tintColor={colors.text.muted}
         />
       }
       ListHeaderComponent={() => (
-        <View style={[styles.verifiedBanner, { backgroundColor: `${LC.accent.rose}14`, borderColor: `${LC.accent.rose}33` }]}>
-          <ShieldCheck size={16} color={LC.accent.rose} strokeWidth={2} />
-          <Text style={[styles.verifiedBannerText, { color: LC.accent.rose }]}>
-            Nur für verifizierte Frauen · RLS-geschützt
+        <View
+          style={[
+            styles.verifiedBanner,
+            { backgroundColor: `${colors.accent.rose}14`, borderColor: `${colors.accent.rose}33` },
+          ]}
+        >
+          <ShieldCheck size={16} color={colors.accent.rose} strokeWidth={2} />
+          <Text style={[styles.verifiedBannerText, { color: colors.accent.rose }]}>
+            {t('woz.verifiedBadge')}
           </Text>
         </View>
       )}
@@ -202,63 +228,76 @@ function VerifiedContent({ colors, insets }: { colors: any; insets: any }) {
   );
 }
 
-// ─── Gate-Screen für nicht-verifizierte Nutzerinnen ──────────────────────────
+// ─── Gate-Screen (nicht verifiziert / Antrag pending) ────────────────────────
 
-function GateContent({ onJoin }: { onJoin: () => void }) {
+function GateContent({ pending, onJoin }: { pending: boolean; onJoin: () => void }) {
+  const { colors } = useTheme();
+  const { t } = useI18n();
+
   const FEATURES = [
-    { icon: '🔒', text: 'Kein Mann sieht jemals deine Women-Only Inhalte' },
-    { icon: '👗', text: 'Teile Outfits, Videos und Live-Streams ohne Sorgen' },
-    { icon: '🌸', text: 'Exklusiver Community-Feed nur für Frauen' },
-    { icon: '🛍️', text: 'Women-Only Shop-Produkte entdecken' },
-    { icon: '📡', text: 'Live-Streams die nur verifizierte Frauen sehen' },
-    { icon: '✨', text: 'Premium Badge auf deinem Profil' },
+    { Icon: Lock, text: t('woz.featPrivacy') },
+    { Icon: Radio, text: t('woz.featShare') },
+    { Icon: Users, text: t('woz.featFeed') },
+    { Icon: ShoppingBag, text: t('woz.featShop') },
   ];
 
   return (
     <View style={styles.gateRoot}>
-      {/* Hero */}
-      <LinearGradient
-        colors={[`${LC.accent.rose}1F`, `${LC.accent.purple}14`, 'transparent']}
-        style={styles.gateHero}
-      >
-        <Text style={styles.gateEmoji}>🌸</Text>
-        <Text style={styles.gateTitle}>Women-Only Zone</Text>
-        <Text style={styles.gateSub}>
-          Ein geschützter Raum nur für Frauen.{'\n'}
-          Technisch gesichert auf Datenbankebene.
-        </Text>
-      </LinearGradient>
+      {/* Hero — ein einziges Rose-Moment, sonst Ruhe */}
+      <View style={styles.gateHero}>
+        <View style={[styles.gateIconCircle, { backgroundColor: `${colors.accent.rose}14` }]}>
+          <Flower2 size={30} color={colors.accent.rose} strokeWidth={1.8} />
+        </View>
+        <Text style={[styles.gateTitle, { color: colors.text.primary }]}>{t('woz.gateTitle')}</Text>
+        <Text style={[styles.gateSub, { color: colors.text.secondary }]}>{t('woz.gateSub')}</Text>
+      </View>
 
-      {/* Features */}
+      {/* Features — monochrome Icons, Theme-Text */}
       <View style={styles.featureList}>
-        {FEATURES.map((f) => (
-          <View key={f.text} style={styles.featureRow}>
-            <Text style={styles.featureIcon}>{f.icon}</Text>
-            <Text style={styles.featureText}>{f.text}</Text>
+        {FEATURES.map(({ Icon, text }) => (
+          <View key={text} style={styles.featureRow}>
+            <View style={[styles.featureIconWrap, { backgroundColor: colors.bg.secondary }]}>
+              <Icon size={16} color={colors.text.primary} strokeWidth={2} />
+            </View>
+            <Text style={[styles.featureText, { color: colors.text.secondary }]}>{text}</Text>
           </View>
         ))}
       </View>
 
-      {/* Verifikations-Info */}
-      <View style={styles.infoBox}>
-        <Lock size={14} color={`${LC.accent.rose}B3`} strokeWidth={2} />
-        <Text style={styles.infoText}>
-          Sofortzugang durch Selbstdeklaration. Keine Upload-Pflicht.
-          Falsche Angaben = dauerhafter Account-Ban (AGB §3).
-        </Text>
+      {/* Prüf-Hinweis */}
+      <View
+        style={[
+          styles.infoBox,
+          { backgroundColor: colors.bg.secondary, borderColor: colors.border.subtle },
+        ]}
+      >
+        <Lock size={14} color={colors.text.muted} strokeWidth={2} />
+        <Text style={[styles.infoText, { color: colors.text.muted }]}>{t('woz.reviewNote')}</Text>
       </View>
 
-      {/* CTA */}
-      <Pressable onPress={onJoin} style={styles.joinBtn} accessibilityRole="button">
-        <LinearGradient
-          colors={[LC.accent.rose, LC.accent.purple]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.joinBtnGradient}
+      {/* CTA bzw. Pending-Hinweis */}
+      {pending ? (
+        <View
+          style={[
+            styles.pendingBox,
+            { backgroundColor: `${colors.accent.rose}14`, borderColor: `${colors.accent.rose}33` },
+          ]}
         >
-          <Text style={styles.joinBtnText}>🌸  Women-Only Zone beitreten</Text>
-        </LinearGradient>
-      </Pressable>
+          <Clock size={16} color={colors.accent.rose} strokeWidth={2} />
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.pendingTitle, { color: colors.accent.rose }]}>{t('woz.pendingTitle')}</Text>
+            <Text style={[styles.pendingSub, { color: colors.text.secondary }]}>{t('woz.pendingSub')}</Text>
+          </View>
+        </View>
+      ) : (
+        <Pressable
+          onPress={onJoin}
+          style={[styles.joinBtn, { backgroundColor: colors.text.primary }]}
+          accessibilityRole="button"
+        >
+          <Text style={[styles.joinBtnText, { color: colors.bg.primary }]}>{t('woz.join')}</Text>
+        </Pressable>
+      )}
     </View>
   );
 }
@@ -270,19 +309,19 @@ const styles = StyleSheet.create({
 
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingBottom: 14,
+    paddingHorizontal: 16, paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   backBtn: {
     width: 38, height: 38, borderRadius: 19,
     alignItems: 'center', justifyContent: 'center',
   },
-  headerCenter: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  headerEmoji: { fontSize: 18 },
-  headerTitle: { color: '#fff', fontSize: 17, fontWeight: '600' },
+  headerCenter: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  headerTitle: { fontSize: 17, fontWeight: '600', letterSpacing: -0.3 },
 
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
 
-  emptyTitle: { fontSize: 20, fontWeight: '600', marginBottom: 8 },
+  emptyTitle: { fontSize: 19, fontWeight: '600', marginBottom: 8 },
   emptySub: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
 
   // Grid Cards
@@ -311,38 +350,45 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 8,
     borderRadius: 12, borderWidth: 1, padding: 12, marginBottom: 16,
   },
-  verifiedBannerText: { fontSize: 12, fontWeight: '600' },
+  verifiedBannerText: { fontSize: 12, fontWeight: '600', flex: 1 },
 
   // Gate
   gateRoot: { flex: 1, padding: 24 },
-  gateHero: {
-    alignItems: 'center', paddingVertical: 32,
-    borderRadius: 20, marginBottom: 24,
+  gateHero: { alignItems: 'center', paddingVertical: 28, marginBottom: 20 },
+  gateIconCircle: {
+    width: 64, height: 64, borderRadius: 32,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 16,
   },
-  gateEmoji: { fontSize: 56, marginBottom: 12 },
   gateTitle: {
-    fontSize: 28, fontWeight: '700', letterSpacing: -0.5,
-    color: LC.accent.rose, marginBottom: 8,
+    fontSize: 26, fontWeight: '700', letterSpacing: -0.5,
+    textAlign: 'center', marginBottom: 8,
   },
-  gateSub: {
-    fontSize: 14, textAlign: 'center', lineHeight: 22,
-    color: `${LC.accent.rose}B3`,
-  },
+  gateSub: { fontSize: 14, textAlign: 'center', lineHeight: 21, paddingHorizontal: 8 },
 
-  featureList: { gap: 14, marginBottom: 24 },
-  featureRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
-  featureIcon: { fontSize: 18, width: 24, textAlign: 'center' },
-  featureText: { flex: 1, fontSize: 14, lineHeight: 20, color: 'rgba(200,200,210,0.9)' },
+  featureList: { gap: 12, marginBottom: 22 },
+  featureRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  featureIconWrap: {
+    width: 32, height: 32, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  featureText: { flex: 1, fontSize: 14, lineHeight: 20 },
 
   infoBox: {
     flexDirection: 'row', gap: 10, alignItems: 'flex-start',
-    backgroundColor: `${LC.accent.rose}0F`,
-    borderRadius: 12, borderWidth: 1, borderColor: `${LC.accent.rose}26`,
-    padding: 14, marginBottom: 24,
+    borderRadius: 12, borderWidth: 1,
+    padding: 14, marginBottom: 22,
   },
-  infoText: { flex: 1, fontSize: 12, lineHeight: 18, color: 'rgba(180,180,190,0.8)' },
+  infoText: { flex: 1, fontSize: 12, lineHeight: 18 },
 
-  joinBtn: { borderRadius: 18, overflow: 'hidden' },
-  joinBtnGradient: { paddingVertical: 18, alignItems: 'center' },
-  joinBtnText: { color: '#fff', fontSize: 17, fontWeight: '600', letterSpacing: -0.3 },
+  pendingBox: {
+    flexDirection: 'row', gap: 10, alignItems: 'flex-start',
+    borderRadius: 14, borderWidth: 1, padding: 14,
+  },
+  pendingTitle: { fontSize: 14, fontWeight: '600', marginBottom: 2 },
+  pendingSub: { fontSize: 13, lineHeight: 19 },
+
+  joinBtn: {
+    borderRadius: 16, paddingVertical: 16, alignItems: 'center',
+  },
+  joinBtnText: { fontSize: 16, fontWeight: '600', letterSpacing: -0.3 },
 });

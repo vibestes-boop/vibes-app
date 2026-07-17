@@ -28,7 +28,7 @@ import { useI18n } from '@/lib/i18n';
 import { useWomenOnly } from '@/lib/useWomenOnly';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams,useRouter } from 'expo-router';
-import { ChevronRight,SearchX,ShoppingBag,Sparkles,Tag } from 'lucide-react-native';
+import { Flower2, ChevronRight,SearchX,ShoppingBag,Sparkles,Tag } from 'lucide-react-native';
 import { useCallback,useEffect,useRef,useState } from 'react';
 import { ActivityIndicator,FlatList,Pressable,RefreshControl,ScrollView as RNScrollView,StyleSheet,Text,View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -173,7 +173,7 @@ export default function ExploreScreen() {
             style={[wozBannerStyle.inner, { borderColor: canAccessWomenOnly ? `${colors.accent.rose}59` : colors.border.subtle }]}
           >
             <View style={wozBannerStyle.left}>
-              <Text style={wozBannerStyle.emoji}>🌸</Text>
+              <Flower2 size={20} color={canAccessWomenOnly ? colors.accent.rose : colors.text.primary} strokeWidth={1.9} />
               <View>
                 <Text style={[wozBannerStyle.title, { color: canAccessWomenOnly ? colors.accent.rose : colors.text.primary }]}>
                   {canAccessWomenOnly ? t('explore.wozTitle') : t('explore.wozJoin')}
@@ -364,7 +364,6 @@ const wozBannerStyle = StyleSheet.create({
     borderRadius: 16, borderWidth: 1,
   },
   left:  { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
-  emoji: { fontSize: 26 },
   title: { fontSize: 14, fontWeight: '700', marginBottom: 2 },
   sub:   { fontSize: 12, fontWeight: '500' },
 });

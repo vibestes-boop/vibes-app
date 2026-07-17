@@ -1,24 +1,29 @@
 /**
  * WomenOnlyBlur.tsx
  *
- * Overlay das angezeigt wird wenn ein Post women_only=true ist
- * und die aktuelle Nutzerin keinen Zugang zur Women-Only Zone hat.
+ * Overlay über women_only-Posts, wenn die Betrachterin (noch) keinen Zugang
+ * zur Women-Only Zone hat. Tippen öffnet das Beitritts-Sheet.
  *
- * Tippen öffnet das Verifikations-Sheet.
+ * Liegt immer auf Medien → feste Hell-auf-Dunkel-Fläche (dunkler Scrim),
+ * ein dezenter Rose-Akzent am Icon — kein Gradient, kein Emoji.
  */
 
 import { WomenOnlyVerificationSheet } from '@/components/women-only/WomenOnlyVerificationSheet';
-import { LinearGradient } from 'expo-linear-gradient';
+import { Lock } from 'lucide-react-native';
 import { useState } from 'react';
-import { Pressable,StyleSheet,Text } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useI18n } from '@/lib/i18n';
 
 interface WomenOnlyBlurProps {
   /** Größe des Containers (für den Overlay) */
   style?: object;
 }
 
+const ROSE = '#F43F5E'; // Medien-Overlay ist theme-unabhängig (immer auf dunklem Scrim)
+
 export function WomenOnlyBlur({ style }: WomenOnlyBlurProps) {
   const [showSheet, setShowSheet] = useState(false);
+  const { t } = useI18n();
 
   return (
     <>
@@ -26,17 +31,13 @@ export function WomenOnlyBlur({ style }: WomenOnlyBlurProps) {
         style={[s.overlay, style]}
         onPress={() => setShowSheet(true)}
         accessibilityRole="button"
-        accessibilityLabel="Women-Only Inhalt — Tippen zum Verifizieren"
+        accessibilityLabel={`${t('woz.blurTitle')} — ${t('woz.blurSub')}`}
       >
-        <LinearGradient
-          colors={['rgba(244,63,94,0.75)', 'rgba(168,85,247,0.85)']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-        <Text style={s.lockEmoji}>🔒</Text>
-        <Text style={s.label}>Women-Only</Text>
-        <Text style={s.sub}>Tippen zum Verifizieren</Text>
+        <View style={s.iconCircle}>
+          <Lock size={18} color={ROSE} strokeWidth={2.2} />
+        </View>
+        <Text style={s.label}>{t('woz.blurTitle')}</Text>
+        <Text style={s.sub}>{t('woz.blurSub')}</Text>
       </Pressable>
 
       <WomenOnlyVerificationSheet
@@ -54,9 +55,15 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     gap: 4,
     zIndex: 10,
+    backgroundColor: 'rgba(10,10,14,0.82)',
   },
-  lockEmoji: {
-    fontSize: 28,
+  iconCircle: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(244,63,94,0.16)',
     marginBottom: 4,
   },
   label: {
@@ -66,7 +73,7 @@ const s = StyleSheet.create({
     letterSpacing: -0.3,
   },
   sub: {
-    color: 'rgba(255,255,255,0.8)',
+    color: 'rgba(255,255,255,0.75)',
     fontSize: 12,
     fontWeight: '500',
   },
