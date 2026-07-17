@@ -95,10 +95,10 @@ export default async function AdminCommandCenterPage() {
       <section className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h1 className="text-xl font-bold text-foreground sm:text-2xl">
-            Social Media Admin Command Center
+            Serlo Command Center
           </h1>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            Zentrale Steuerung fuer Moderation, Wachstum und Plattformkontrolle.
+            Moderation, Wachstum und Betrieb — auf einen Blick.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -117,7 +117,7 @@ export default async function AdminCommandCenterPage() {
           <PanelLink href="/admin/activation">Activation Review</PanelLink>
         </CommandPanel>
 
-        <CommandPanel title="Moderations-Uebersicht">
+        <CommandPanel title="Moderations-Übersicht">
           <ModerationOverview area={moderationArea} queue={snapshot.moderation_queue} />
           <PanelLink href="/admin/reports">Zur Moderation</PanelLink>
         </CommandPanel>
@@ -129,7 +129,7 @@ export default async function AdminCommandCenterPage() {
       </section>
 
       <section className="grid gap-3 xl:grid-cols-[repeat(24,minmax(0,1fr))]">
-        <CommandPanel title="Plattform-Ueberblick" className="min-h-[190px] p-3.5 xl:col-span-10">
+        <CommandPanel title="Plattform-Überblick" className="min-h-[190px] p-3.5 xl:col-span-10">
           <div className="grid grid-cols-4 gap-2">
             {snapshot.platform_metrics.map((metric) => (
               <MetricCard key={metric.key} metric={metric} variant="overview" />
@@ -137,9 +137,9 @@ export default async function AdminCommandCenterPage() {
           </div>
         </CommandPanel>
 
-        <CommandPanel className="xl:col-span-6" title="Live-Aktivitaeten" action={<span className="rounded-full bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400">Live</span>}>
+        <CommandPanel className="xl:col-span-6" title="Live-Aktivitäten" action={<span className="rounded-full bg-emerald-500/10 px-2 py-1 text-xs font-semibold text-emerald-700 dark:text-emerald-400">Live</span>}>
           <ActivityList items={snapshot.activity} />
-          <PanelLink href="/admin/command-center">Alle Aktivitaeten anzeigen</PanelLink>
+          <PanelLink href="/admin/command-center">Alle Aktivitäten anzeigen</PanelLink>
         </CommandPanel>
 
         <CommandPanel
@@ -151,13 +151,13 @@ export default async function AdminCommandCenterPage() {
           <PanelLink href="/admin/reports">Zur Moderation</PanelLink>
         </CommandPanel>
         <CommandPanel className="xl:col-span-5" title="Gemeldete Inhalte & Nutzer">
-          <DetailRows area={moderationArea} emptyLabel="Keine Moderationsdaten verfuegbar." />
+          <DetailRows area={moderationArea} emptyLabel="Keine Moderationsdaten verfügbar." />
           <PanelLink href="/admin/reports">Alle Meldungen anzeigen</PanelLink>
         </CommandPanel>
 
         <CommandPanel className="xl:col-span-5" title="Nutzerwachstum">
-          <DetailRows area={productArea} emptyLabel="Product Health noch nicht verfuegbar." />
-          <PanelLink href="/admin/activation">Creator Activation oeffnen</PanelLink>
+          <DetailRows area={productArea} emptyLabel="Product Health noch nicht verfügbar." />
+          <PanelLink href="/admin/activation">Creator Activation öffnen</PanelLink>
         </CommandPanel>
 
         <CommandPanel className="xl:col-span-8" title="Top Inhalte">
@@ -165,7 +165,7 @@ export default async function AdminCommandCenterPage() {
           <PanelLink href="/admin/command-center">Alle Top Inhalte anzeigen</PanelLink>
         </CommandPanel>
 
-        <CommandPanel className="xl:col-span-6" title="Kampagnen-Uebersicht">
+        <CommandPanel className="xl:col-span-6" title="Kampagnen-Übersicht">
           <CampaignOverview campaigns={snapshot.campaigns} />
           <PanelLink href="/admin/campaigns">Alle Kampagnen anzeigen</PanelLink>
         </CommandPanel>
@@ -174,7 +174,7 @@ export default async function AdminCommandCenterPage() {
       <section className="grid gap-3 xl:grid-cols-[1fr_1fr_0.9fr_1.2fr]">
         <CommandPanel title="Nachrichten / Support-Posteingang">
           <SupportInboxPreview support={snapshot.support_inbox} />
-          <PanelLink href="/admin/support">Posteingang oeffnen</PanelLink>
+          <PanelLink href="/admin/support">Posteingang öffnen</PanelLink>
         </CommandPanel>
 
         <CommandPanel title="Trust & Safety">
@@ -191,16 +191,11 @@ export default async function AdminCommandCenterPage() {
         </CommandPanel>
       </section>
 
-      <section className="grid gap-3 xl:grid-cols-[0.9fr_0.95fr_1.45fr]">
+      <section className="grid gap-3 xl:grid-cols-[0.9fr_2.1fr]">
         <CommandPanel title="Kostenstatus">
-          <DetailRows area={costArea} emptyLabel="Cost Health noch nicht verfuegbar." />
+          <DetailRows area={costArea} emptyLabel="Cost Health noch nicht verfügbar." />
         </CommandPanel>
-        <CommandPanel title="Command-Center Hinweise">
-          <UnavailableRows
-            rows={buildCommandCenterHints(productArea, pushFeedArea)}
-          />
-        </CommandPanel>
-        <CommandPanel title="Regionale Aktivitaet" className="min-h-[430px]">
+        <CommandPanel title="Regionale Aktivität">
           <RegionOverview regions={snapshot.regions} />
           <PanelLink href="/admin/regions">Alle Regionen anzeigen</PanelLink>
         </CommandPanel>
@@ -257,7 +252,7 @@ function OperationalAlerts({ areas }: { areas: CommandCenterArea[] }) {
               <div className="font-bold">{area.label}</div>
               <div className="mt-0.5 text-[11px] opacity-80">{area.summary}</div>
               <div className="mt-1 text-[11px] font-semibold">
-                Naechster Schritt: {String(area.detail.next_action ?? defaultNextAction(area))}
+                Nächster Schritt: {String(area.detail.next_action ?? defaultNextAction(area))}
               </div>
             </div>
             <ArrowRight className="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -302,7 +297,7 @@ function MetricCard({
           isOverview ? 'mt-1 text-lg leading-none' : 'mt-1 text-xl',
         )}
       >
-        {metric.value || 'Nicht verfuegbar'}
+        {metric.value || 'Nicht verfügbar'}
       </div>
       <div className={cn('truncate text-muted-foreground', isOverview ? 'mt-1.5 text-[10px]' : 'mt-1 text-[11px]')}>
         {metric.sublabel}
@@ -313,7 +308,7 @@ function MetricCard({
 
 function ActivityList({ items }: { items: CommandActivityItem[] }) {
   if (items.length === 0) {
-    return <EmptyState label="Keine aktuellen Aktivitaeten verfuegbar." />;
+    return <EmptyState label="Keine aktuellen Aktivitäten verfügbar." />;
   }
 
   return (
@@ -344,7 +339,7 @@ function ModerationQueueTable({ rows }: { rows: CommandQueueItem[] }) {
 
   return (
     <AdminTable
-      columns={['Inhalt', 'Grund', 'Prioritaet', 'Wartezeit']}
+      columns={['Inhalt', 'Grund', 'Priorität', 'Wartezeit']}
       rows={rows.map((row) => [
         `${normalizeTargetType(row.target_type)} ${shortId(row.target_id)}`,
         row.reason,
@@ -427,8 +422,8 @@ function ModerationOverview({
   return (
     <div className="space-y-2">
       <div className="grid grid-cols-4 gap-1.5">
-        <MiniKpi label="In Pruefung" value={pending} tone="blue" compact />
-        <MiniKpi label="Ueber SLA" value={overSla} tone={overSla > 0 ? 'red' : 'green'} compact />
+        <MiniKpi label="In Prüfung" value={pending} tone="blue" compact />
+        <MiniKpi label="Über SLA" value={overSla} tone={overSla > 0 ? 'red' : 'green'} compact />
         <MiniKpi label="Legacy" value={legacy} tone={legacy > 0 ? 'amber' : 'green'} compact />
         <MiniKpi label="Audit 7d" value={audit} tone="slate" compact />
       </div>
@@ -494,7 +489,7 @@ function SupportInboxPreview({ support }: { support: CommandSupportInbox }) {
           <MiniKpi label="Wartend" value={support.pending} tone="amber" compact />
           <MiniKpi label="SLA" value={support.over_sla} tone={support.over_sla > 0 ? 'red' : 'green'} compact />
         </div>
-        <EmptyState label="Keine offenen Supportfaelle." />
+        <EmptyState label="Keine offenen Supportfälle." />
       </div>
     );
   }
@@ -604,12 +599,9 @@ function RegionOverview({ regions }: { regions: CommandRegionSnapshot }) {
   }
 
   if (regions.latest.length === 0) {
-    return (
-      <div className="space-y-2">
-        <WorldActivityMap regions={regions.latest} />
-        <EmptyState label="Noch keine echten Regionen-Metriken. Unter /admin/regions eintragen oder importieren." />
-      </div>
-    );
+    // Kein riesiger Karten-Platzhalter für eine leere Tabelle — eine ruhige
+    // Zeile reicht, bis echte Regionsdaten existieren.
+    return <EmptyState label="Noch keine Regionen-Daten. Die Karte erscheint, sobald Metriken vorliegen." />;
   }
 
   return (
@@ -661,7 +653,7 @@ function WorldActivityMap({ regions }: { regions: CommandRegionSnapshot['latest'
 
   return (
     <div className="relative min-h-[300px] overflow-hidden rounded-md border border-border/60 bg-gradient-to-b from-muted to-card">
-      <svg viewBox="300 58 110 48" className="absolute inset-0 h-full w-full" role="img" aria-label="Regionale Aktivitaetskarte" preserveAspectRatio="xMidYMid meet">
+      <svg viewBox="300 58 110 48" className="absolute inset-0 h-full w-full" role="img" aria-label="Regionale Aktivitätskarte" preserveAspectRatio="xMidYMid meet">
         <defs>
           <filter id="regional-map-shadow" x="-5%" y="-5%" width="110%" height="110%">
             <feDropShadow dx="0" dy="5" stdDeviation="4" floodColor="#94a3b8" floodOpacity="0.22" />
@@ -761,7 +753,7 @@ const WORLD_ATLAS_ID_TO_ISO2: Record<string, string> = {
 };
 
 function SystemRows({ rows }: { rows: CommandSystemRow[] }) {
-  if (rows.length === 0) return <EmptyState label="Systemstatus nicht verfuegbar." />;
+  if (rows.length === 0) return <EmptyState label="Systemstatus nicht verfügbar." />;
 
   return (
     <div className="space-y-1.5">
@@ -783,7 +775,7 @@ function QuickActionGrid({
 }: {
   actions: QuickAction[];
 }) {
-  if (actions.length === 0) return <EmptyState label="Keine Schnellaktionen fuer diese Rolle." />;
+  if (actions.length === 0) return <EmptyState label="Keine Schnellaktionen für diese Rolle." />;
 
   return (
     <div className="grid grid-cols-2 gap-1.5">
@@ -804,19 +796,6 @@ function QuickActionGrid({
           </Link>
         );
       })}
-    </div>
-  );
-}
-
-function UnavailableRows({ rows }: { rows: [string, string][] }) {
-  return (
-    <div className="divide-y divide-border/60">
-      {rows.map(([label, value]) => (
-        <div key={label} className="flex items-center justify-between gap-2 py-1 text-[11px]">
-          <span className="text-muted-foreground">{label}</span>
-          <span className="text-[10px] font-semibold text-muted-foreground/70">{value}</span>
-        </div>
-      ))}
     </div>
   );
 }
@@ -908,34 +887,13 @@ function canUseQuickAction(role: QuickAction['role'], roles: AdminRoleStatus): b
   return roles.can_operate;
 }
 
-function buildCommandCenterHints(
-  productArea?: CommandCenterArea,
-  pushFeedArea?: CommandCenterArea,
-): Array<[string, string]> {
-  const rows: Array<[string, string]> = [
-    ['Keine Demo-Zahlen', 'Nur echte Snapshots oder klare Leerzustaende'],
-    ['Mutierende Aktionen', 'Bleiben auf spezialisierten Admin-Seiten'],
-  ];
-
-  if (productArea?.status !== 'green') {
-    rows.push(['Product Recovery', productArea?.summary ?? 'Product Health pruefen']);
-  }
-
-  if (pushFeedArea?.status !== 'green') {
-    rows.push(['Push/Feed Recovery', pushFeedArea?.summary ?? 'Push/Feed Health pruefen']);
-  }
-
-  rows.push(['Naechste Datenmodelle', 'Support-Aktionen, Region-Import']);
-  return rows;
-}
-
 function defaultNextAction(area: CommandCenterArea): string {
   if (area.key === 'product') return 'Creator Activation Review';
-  if (area.key === 'push-feed') return 'Unread Backlog und Push Tokens pruefen';
+  if (area.key === 'push-feed') return 'Unread Backlog und Push Tokens prüfen';
   if (area.key === 'moderation') return 'Reports mit SLA-Verstoss bearbeiten';
-  if (area.key === 'cost') return 'Budget/Provider-Kosten pruefen';
-  if (area.key === 'data-lifecycle') return 'Integrity Queue und Cron pruefen';
-  return 'Owner-Runbook oeffnen';
+  if (area.key === 'cost') return 'Budget/Provider-Kosten prüfen';
+  if (area.key === 'data-lifecycle') return 'Integrity Queue und Cron prüfen';
+  return 'Owner-Runbook öffnen';
 }
 
 function formatDate(value: string): string {
@@ -955,7 +913,7 @@ function formatTime(value: string): string {
 function formatValue(value: string | number | boolean | null): string {
   if (typeof value === 'number') return new Intl.NumberFormat('de-DE').format(value);
   if (typeof value === 'boolean') return value ? 'Ja' : 'Nein';
-  if (value === null) return 'Nicht verfuegbar';
+  if (value === null) return 'Nicht verfügbar';
   return value;
 }
 

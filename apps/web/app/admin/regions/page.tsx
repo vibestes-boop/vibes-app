@@ -36,9 +36,9 @@ export default async function AdminRegionsPage() {
     <div className="space-y-4">
       <section className="flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <h1 className="text-xl font-bold text-foreground">Regionale Aktivitaet</h1>
+          <h1 className="text-xl font-bold text-foreground">Regionale Aktivität</h1>
           <p className="mt-1 text-xs text-muted-foreground">
-            Freiwillige Profilangaben und explizit gepflegte Laender-/Region-Metriken fuer das Admin Command Center.
+            Freiwillige Profilangaben und explizit gepflegte Länder-/Region-Metriken für das Admin Command Center.
           </p>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -169,11 +169,11 @@ export default async function AdminRegionsPage() {
       <section className="rounded-lg border border-border bg-card p-3 shadow-sm">
         <div className="mb-2 flex items-center gap-2">
           <RadioTower className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-          <h2 className="text-xs font-bold text-foreground">Naechste Stufe</h2>
+          <h2 className="text-xs font-bold text-foreground">Nächste Stufe</h2>
         </div>
         <p className="text-[11px] leading-5 text-muted-foreground">
-          Diese Tabelle ist bewusst ein expliziter Admin-Importkanal. Spaeter kann sie aus Analytics,
-          CDN-Logs oder Provider-Exports befuellt werden, ohne personenbezogene Standortdaten in Profile zu schreiben.
+          Diese Tabelle ist bewusst ein expliziter Admin-Importkanal. Später kann sie aus Analytics,
+          CDN-Logs oder Provider-Exports befüllt werden, ohne personenbezogene Standortdaten in Profile zu schreiben.
         </p>
       </section>
     </div>

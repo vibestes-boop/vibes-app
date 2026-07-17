@@ -89,7 +89,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </div>
           <div>
             <div className="text-[13px] font-bold">Admin Center</div>
-            <div className="text-[11px] text-muted-foreground">Vibes Operations</div>
+            <div className="text-[11px] text-muted-foreground">Serlo Operations</div>
           </div>
         </div>
 

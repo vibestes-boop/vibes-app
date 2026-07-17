@@ -188,10 +188,33 @@ function VerifiedContent({ colors, insets }: { colors: any; insets: any }) {
 
   if (posts.length === 0) {
     return (
-      <View style={styles.center}>
-        <Flower2 size={34} color={colors.accent.rose} strokeWidth={1.6} style={{ marginBottom: 14 }} />
-        <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>{t('woz.emptyTitle')}</Text>
-        <Text style={[styles.emptySub, { color: colors.text.muted }]}>{t('woz.emptySub')}</Text>
+      <View style={{ flex: 1, padding: 16 }}>
+        {/* Schutz-Banner auch im Leerzustand — zeigt: du BIST in der Zone */}
+        <View
+          style={[
+            styles.verifiedBanner,
+            { backgroundColor: `${colors.accent.rose}14`, borderColor: `${colors.accent.rose}33` },
+          ]}
+        >
+          <ShieldCheck size={16} color={colors.accent.rose} strokeWidth={2} />
+          <Text style={[styles.verifiedBannerText, { color: colors.accent.rose }]}>
+            {t('woz.verifiedBadge')}
+          </Text>
+        </View>
+
+        <View style={styles.center}>
+          <Flower2 size={34} color={colors.accent.rose} strokeWidth={1.6} style={{ marginBottom: 14 }} />
+          <Text style={[styles.emptyTitle, { color: colors.text.primary }]}>{t('woz.emptyTitle')}</Text>
+          <Text style={[styles.emptySub, { color: colors.text.muted }]}>{t('woz.emptySub')}</Text>
+          <Pressable
+            onPress={() => router.push('/create/camera' as any)}
+            style={[styles.emptyCta, { backgroundColor: colors.text.primary }]}
+            accessibilityRole="button"
+          >
+            <Text style={[styles.emptyCtaText, { color: colors.bg.primary }]}>{t('woz.emptyCta')}</Text>
+          </Pressable>
+          <Text style={[styles.emptyHint, { color: colors.text.muted }]}>{t('woz.emptyHint')}</Text>
+        </View>
       </View>
     );
   }
@@ -322,6 +345,12 @@ const styles = StyleSheet.create({
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
 
   emptyTitle: { fontSize: 19, fontWeight: '600', marginBottom: 8 },
+  emptyCta: {
+    marginTop: 20, borderRadius: 14,
+    paddingVertical: 13, paddingHorizontal: 28,
+  },
+  emptyCtaText: { fontSize: 15, fontWeight: '600', letterSpacing: -0.2 },
+  emptyHint: { fontSize: 12, marginTop: 12, textAlign: 'center', lineHeight: 17 },
   emptySub: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
 
   // Grid Cards

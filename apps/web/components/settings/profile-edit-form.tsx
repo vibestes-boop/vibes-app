@@ -341,7 +341,7 @@ export function ProfileEditForm({
             Regionale Angabe
           </label>
           <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            Freiwillig. Wird nur aggregiert fuer regionale Admin-Statistiken verwendet und kann jederzeit geloescht werden.
+            Freiwillig. Wird nur aggregiert für regionale Admin-Statistiken verwendet und kann jederzeit gelöscht werden.
           </p>
         </div>
         <div className="grid gap-3 sm:grid-cols-2">

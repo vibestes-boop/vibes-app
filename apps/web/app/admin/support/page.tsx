@@ -46,7 +46,7 @@ export default async function AdminSupportPage() {
         <div>
           <h1 className="text-xl font-bold text-foreground">Support Inbox</h1>
           <p className="mt-1 text-xs text-muted-foreground">
-            Echte Supportfaelle mit Antwort- und Status-Workflow. Mutationen laufen ueber Admin-RPCs.
+            Echte Supportfälle mit Antwort- und Status-Workflow. Mutationen laufen über Admin-RPCs.
           </p>
         </div>
         <div className="grid grid-cols-3 gap-2">
@@ -59,7 +59,7 @@ export default async function AdminSupportPage() {
       {threads.length === 0 ? (
         <section className="rounded-lg border border-border bg-card p-3 shadow-sm">
           <div className="flex min-h-32 items-center justify-center rounded-md border border-dashed border-border px-3 text-center text-xs text-muted-foreground">
-            Keine offenen Supportfaelle.
+            Keine offenen Supportfälle.
           </div>
         </section>
       ) : (

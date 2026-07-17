@@ -1235,6 +1235,8 @@ export const de = {
     verifiedBadge: 'Geschützter Bereich · nur für verifizierte Frauen',
     emptyTitle: 'Noch ganz still hier 🌸',
     emptySub: 'Sei die Erste — erstelle einen Women-Only Post.',
+    emptyCta: 'Post erstellen',
+    emptyHint: 'Beim Posten den Women-Only-Schalter aktivieren — dann landet er hier.',
     confirmTitle: 'Bestätigung',
     confirmSub: 'Du erklärst, dass du eine Frau bist und diese Zone nutzen möchtest.',
     confirmNote: 'Durch Bestätigen erklärst du verbindlich, dass du weiblich bist. Zum Schutz der Zone wird jeder Beitritt geprüft.',

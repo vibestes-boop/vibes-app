@@ -1122,6 +1122,8 @@ export const en: DeepPartial<Messages> = {
     verifiedBadge: 'Protected area · verified women only',
     emptyTitle: 'Still quiet here 🌸',
     emptySub: 'Be the first — create a Women-Only post.',
+    emptyCta: 'Create a post',
+    emptyHint: 'Turn on the Women-Only switch when posting — it will show up here.',
     confirmTitle: 'Confirmation',
     confirmSub: 'You declare that you are a woman and want to use this zone.',
     confirmNote: 'By confirming you declare that you are female. To protect the zone, every join is reviewed.',

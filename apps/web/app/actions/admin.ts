@@ -684,10 +684,10 @@ export async function adminInviteUser(formData: FormData): Promise<ActionResult<
   const email = String(formData.get('email') ?? '').trim().toLowerCase();
   const role = String(formData.get('role') ?? 'user').trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return { ok: false, error: 'Bitte eine gueltige E-Mail eingeben.' };
+    return { ok: false, error: 'Bitte eine gültige E-Mail eingeben.' };
   }
   if (!['user', 'creator', 'moderator', 'operator', 'creator_ops'].includes(role)) {
-    return { ok: false, error: 'Diese Rolle ist fuer Einladungen nicht erlaubt.' };
+    return { ok: false, error: 'Diese Rolle ist für Einladungen nicht erlaubt.' };
   }
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -1056,7 +1056,7 @@ export async function adminUpsertRegionDailyMetrics(formData: FormData): Promise
 
   if (!/^[A-Z]{2}$/.test(countryCode)) return { ok: false, error: 'Land muss als ISO-2 Code angegeben werden.' };
   if (!countryName) return { ok: false, error: 'Landname fehlt.' };
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(metricDate)) return { ok: false, error: 'Datum ist ungueltig.' };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(metricDate)) return { ok: false, error: 'Datum ist ungültig.' };
 
   const { error } = await supabase
     .from('admin_region_daily_metrics')
@@ -1091,7 +1091,7 @@ export async function adminCreateCampaign(formData: FormData): Promise<ActionRes
 
   if (!title) return { ok: false, error: 'Titel fehlt.' };
   if (!['draft', 'active', 'paused'].includes(status)) return { ok: false, error: 'Status ist nicht erlaubt.' };
-  if (!Number.isFinite(budgetEuros) || budgetEuros < 0) return { ok: false, error: 'Budget ist ungueltig.' };
+  if (!Number.isFinite(budgetEuros) || budgetEuros < 0) return { ok: false, error: 'Budget ist ungültig.' };
 
   const { error } = await supabase.from('admin_campaigns').insert({
     title,
@@ -1143,7 +1143,7 @@ export async function adminUpsertCampaignDailyMetrics(formData: FormData): Promi
   const spendCents = eurosToCents(formData.get('spend_euros'));
 
   if (!campaignId) return { ok: false, error: 'Kampagne fehlt.' };
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(metricDate)) return { ok: false, error: 'Datum ist ungueltig.' };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(metricDate)) return { ok: false, error: 'Datum ist ungültig.' };
 
   const { error } = await supabase
     .from('admin_campaign_daily_metrics')

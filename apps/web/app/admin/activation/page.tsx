@@ -55,7 +55,7 @@ export default async function AdminActivationPage() {
             Creator Activation Review
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-            Echte Backend-Signale fuer North Star, erste Posts und Creator mit fehlendem Engagement.
+            Echte Backend-Signale für North Star, erste Posts und Creator mit fehlendem Engagement.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -118,7 +118,7 @@ export default async function AdminActivationPage() {
       </section>
 
       <section className="grid gap-3 xl:grid-cols-[0.85fr_1.15fr]">
-        <Panel title="Naechste Schritte">
+        <Panel title="Nächste Schritte">
           <ActionList actions={snapshot.next_actions} northStarReady={northStarReady} />
         </Panel>
 
@@ -140,7 +140,7 @@ export default async function AdminActivationPage() {
             />
             <Insight
               label="North Star"
-              value={northStarReady ? 'Gruen' : 'Beobachten'}
+              value={northStarReady ? 'Grün' : 'Beobachten'}
               detail={northStarReady
                 ? 'Mindestens ein aktiver Creator mit Engagement ist sichtbar.'
                 : 'Es fehlt ein Creator mit Post und Engagement in 7 Tagen.'}
@@ -316,7 +316,7 @@ function AdminUserLink({ username }: { username: string | null }) {
   const href = username ? (`/admin/users?q=${encodeURIComponent(username)}` as Route) : ('/admin/users' as Route);
   return (
     <Link href={href} className="inline-flex items-center gap-1 text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">
-      Nutzer pruefen
+      Nutzer prüfen
       <ArrowRight className="h-3 w-3" />
     </Link>
   );
@@ -410,9 +410,9 @@ function toneClass(tone: 'blue' | 'green' | 'amber' | 'violet'): string {
 
 function translateAction(action: string): string {
   const normalized = action.toLowerCase();
-  if (normalized.includes('without first post')) return 'Neue Nutzer ohne ersten Post gezielt zum ersten oeffentlichen Post fuehren.';
-  if (normalized.includes('without meaningful engagement')) return 'Creator mit Posts, aber ohne meaningful engagement pruefen.';
-  if (normalized.includes('engagement loops')) return 'Engagement-Loops ueber Kommentare, Follows, Saves oder Creator-Prompts anstossen.';
+  if (normalized.includes('without first post')) return 'Neue Nutzer ohne ersten Post gezielt zum ersten öffentlichen Post führen.';
+  if (normalized.includes('without meaningful engagement')) return 'Creator mit Posts, aber ohne meaningful engagement prüfen.';
+  if (normalized.includes('engagement loops')) return 'Engagement-Loops über Kommentare, Follows, Saves oder Creator-Prompts anstossen.';
   if (normalized.includes('pause non-activation')) return 'Nicht-aktivierende Features pausieren, solange die Weekly Active Creators schwach bleiben.';
   return action;
 }

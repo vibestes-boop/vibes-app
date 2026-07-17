@@ -49,7 +49,7 @@ export default async function AdminCampaignsPage() {
         <div>
           <h1 className="text-xl font-bold text-foreground">Kampagnen</h1>
           <p className="mt-1 text-xs text-muted-foreground">
-            Echte interne Kampagnensteuerung fuer Budget, Status und spaetere Performance-Metriken.
+            Echte interne Kampagnensteuerung für Budget, Status und spätere Performance-Metriken.
           </p>
         </div>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -138,7 +138,7 @@ export default async function AdminCampaignsPage() {
             </div>
             <div>
               <h2 className="text-sm font-bold text-foreground">Tagesmetriken eintragen</h2>
-              <p className="text-[11px] text-muted-foreground">Upsert pro Kampagne und Datum. Diese Werte fuellen die Dashboard-Uebersicht.</p>
+              <p className="text-[11px] text-muted-foreground">Upsert pro Kampagne und Datum. Diese Werte füllen die Dashboard-Übersicht.</p>
             </div>
           </div>
           <form action={upsertCampaignMetrics} className="grid gap-2 lg:grid-cols-[1.2fr_0.8fr_repeat(5,0.7fr)_auto]">
@@ -243,9 +243,9 @@ export default async function AdminCampaignsPage() {
       </section>
 
       <section className="grid gap-3 lg:grid-cols-3">
-        <InfoCard icon={Target} title="Ziel" text="Jede Kampagne braucht eine Zielmetrik, damit sie spaeter Keep / Improve / Kill bewertet werden kann." />
-        <InfoCard icon={Wallet} title="Kosten" text="Budget und Spend laufen in Cent im Backend und koennen in Cost Health einbezogen werden." />
-        <InfoCard icon={CalendarDays} title="Naechste Stufe" text="Als naechstes ergaenzen wir Statuswechsel und taegliche Metrik-Importe." />
+        <InfoCard icon={Target} title="Ziel" text="Jede Kampagne braucht eine Zielmetrik, damit sie später Keep / Improve / Kill bewertet werden kann." />
+        <InfoCard icon={Wallet} title="Kosten" text="Budget und Spend laufen in Cent im Backend und können in Cost Health einbezogen werden." />
+        <InfoCard icon={CalendarDays} title="Nächste Stufe" text="Als nächstes ergänzen wir Statuswechsel und tägliche Metrik-Importe." />
       </section>
     </div>
   );

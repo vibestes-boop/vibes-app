@@ -47,7 +47,7 @@ export function TopContentPanel({
 
       {items.length === 0 ? (
         <div className="flex min-h-24 items-center justify-center rounded-md border border-dashed border-border px-3 text-center text-[11px] text-muted-foreground">
-          Top Inhalte fuer diesen Bereich noch nicht verfuegbar.
+          Top Inhalte für diesen Bereich noch nicht verfügbar.
         </div>
       ) : (
         <table className="w-full min-w-0 table-fixed text-left text-[10px]">

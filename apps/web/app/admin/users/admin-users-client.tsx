@@ -194,8 +194,8 @@ export function AdminUsersClient({ initialSnapshot }: { initialSnapshot: AdminUs
       unverify: 'Verifizierung entfernt',
       makeAdmin: 'Admin-Rechte vergeben',
       removeAdmin: 'Admin-Rechte entzogen',
-      restrict: 'eingeschraenkt',
-      unrestrict: 'Einschraenkung entfernt',
+      restrict: 'eingeschränkt',
+      unrestrict: 'Einschränkung entfernt',
       shadowban: 'shadowbanned',
       unshadowban: 'Shadowban entfernt',
     };
@@ -309,7 +309,7 @@ export function AdminUsersClient({ initialSnapshot }: { initialSnapshot: AdminUs
         <div>
           <h1 className="text-2xl font-bold text-foreground">Nutzerverwaltung</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Verwalte Nutzer, Rollen, Verifizierung, Sicherheit und Aktivitaet deiner Plattform.
+            Verwalte Nutzer, Rollen, Verifizierung, Sicherheit und Aktivität deiner Plattform.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -325,7 +325,7 @@ export function AdminUsersClient({ initialSnapshot }: { initialSnapshot: AdminUs
             className="inline-flex h-9 items-center gap-2 rounded-md bg-blue-600 px-3 text-xs font-bold text-white hover:bg-blue-700"
           >
             <Plus className="h-4 w-4" />
-            Nutzer hinzufuegen
+            Nutzer hinzufügen
           </button>
         </div>
       </section>
@@ -336,7 +336,7 @@ export function AdminUsersClient({ initialSnapshot }: { initialSnapshot: AdminUs
         <StatCard icon={UserRound} label="Neue Nutzer" value={initialSnapshot.stats.new_users_30d} tone="violet" sublabel="30 Tage" />
         <StatCard icon={BadgeCheck} label="Verifiziert" value={initialSnapshot.stats.verified_users} tone="blue" />
         <StatCard icon={Ban} label="Gesperrt" value={initialSnapshot.stats.banned_users} tone="red" />
-        <StatCard icon={Shield} label="In Pruefung" value={initialSnapshot.stats.pending_reports} tone="amber" sublabel="offene Reports" />
+        <StatCard icon={Shield} label="In Prüfung" value={initialSnapshot.stats.pending_reports} tone="amber" sublabel="offene Reports" />
       </section>
 
       <section className="grid gap-3 xl:grid-cols-[1fr_320px]">
@@ -363,7 +363,7 @@ export function AdminUsersClient({ initialSnapshot }: { initialSnapshot: AdminUs
               options={[
                 ['all', 'Status'],
                 ['active', 'Aktiv'],
-                ['restricted', 'Eingeschraenkt'],
+                ['restricted', 'Eingeschränkt'],
                 ['banned', 'Gesperrt'],
               ]}
             />
@@ -398,14 +398,14 @@ export function AdminUsersClient({ initialSnapshot }: { initialSnapshot: AdminUs
               ]}
             />
             <FilterSelect
-              label="Aktivitaet"
+              label="Aktivität"
               value={activityFilter}
               onChange={(value) => {
                 setActivityFilter(value as AdminUserActivityFilter);
                 loadDirectory({ activity: value as AdminUserActivityFilter, page: 1 });
               }}
               options={[
-                ['all', 'Aktivitaet'],
+                ['all', 'Aktivität'],
                 ['active_30d', 'Aktiv 30d'],
                 ['inactive_30d', 'Inaktiv 30d'],
               ]}
@@ -425,7 +425,7 @@ export function AdminUsersClient({ initialSnapshot }: { initialSnapshot: AdminUs
               ]}
             />
             <button type="button" disabled={!hasActiveFilters} onClick={resetFilters} className="h-9 px-2 text-xs font-semibold text-blue-600 dark:text-blue-400 disabled:opacity-50">
-              Filter zuruecksetzen
+              Filter zurücksetzen
             </button>
           </div>
 
@@ -438,8 +438,8 @@ export function AdminUsersClient({ initialSnapshot }: { initialSnapshot: AdminUs
                   <th className="px-3 py-3 font-bold">Status</th>
                   <th className="px-3 py-3 font-bold">Verifiziert</th>
                   <th className="px-3 py-3 font-bold">Registriert</th>
-                  <th className="px-3 py-3 font-bold">Letzte Aktivitaet</th>
-                  <th className="px-3 py-3 text-right font-bold">Beitraege</th>
+                  <th className="px-3 py-3 font-bold">Letzte Aktivität</th>
+                  <th className="px-3 py-3 text-right font-bold">Beiträge</th>
                   <th className="px-3 py-3 text-right font-bold">Reports</th>
                   <th className="px-4 py-3 text-right font-bold">Aktionen</th>
                 </tr>
@@ -474,7 +474,7 @@ export function AdminUsersClient({ initialSnapshot }: { initialSnapshot: AdminUs
                       <button
                         type="button"
                         className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border text-muted-foreground hover:bg-muted/50"
-                        aria-label={`Aktionen fuer ${user.username}`}
+                        aria-label={`Aktionen für ${user.username}`}
                       >
                         {actionId === user.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <MoreHorizontal className="h-4 w-4" />}
                       </button>
@@ -484,7 +484,7 @@ export function AdminUsersClient({ initialSnapshot }: { initialSnapshot: AdminUs
                 {users.length === 0 && (
                   <tr>
                     <td colSpan={9} className="px-4 py-10 text-center text-sm text-muted-foreground">
-                      Keine Nutzer fuer diese Suche oder Filter gefunden.
+                      Keine Nutzer für diese Suche oder Filter gefunden.
                     </td>
                   </tr>
                 )}
@@ -501,7 +501,7 @@ export function AdminUsersClient({ initialSnapshot }: { initialSnapshot: AdminUs
                 onClick={() => loadDirectory({ page: page - 1 })}
                 className="h-8 rounded-md border border-border px-2 font-semibold text-foreground/80 disabled:opacity-40"
               >
-                Zurueck
+                Zurück
               </button>
               <span>Seite {page}</span>
               <button
@@ -574,7 +574,7 @@ function UserDetailPanel({
   if (!user) {
     return (
       <aside className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground shadow-sm">
-        Keine Nutzer ausgewaehlt.
+        Keine Nutzer ausgewählt.
       </aside>
     );
   }
@@ -596,13 +596,13 @@ function UserDetailPanel({
 
       <div className="mt-4 border-t border-border/60 pt-4 text-xs">
         <InfoRow label="Registriert seit" value={formatDate(user.created_at)} />
-        <InfoRow label="Letzte Aktivitaet" value={user.last_activity_at ? relativeTime(user.last_activity_at) : 'Noch nicht getrackt'} />
-        <InfoRow label="Letzter Login" value={detail?.identity?.last_sign_in_at ? relativeTime(detail.identity.last_sign_in_at) : detailLoading ? 'Laedt...' : 'Noch nicht verfuegbar'} muted={!detail?.identity?.last_sign_in_at} />
+        <InfoRow label="Letzte Aktivität" value={user.last_activity_at ? relativeTime(user.last_activity_at) : 'Noch nicht getrackt'} />
+        <InfoRow label="Letzter Login" value={detail?.identity?.last_sign_in_at ? relativeTime(detail.identity.last_sign_in_at) : detailLoading ? 'Lädt...' : 'Noch nicht verfügbar'} muted={!detail?.identity?.last_sign_in_at} />
         <InfoRow label="Nutzer-ID" value={shortId(user.id)} />
       </div>
 
       <div className="mt-4 grid grid-cols-3 overflow-hidden rounded-lg border border-border text-center">
-        <MiniStat label="Beitraege" value={user.post_count} />
+        <MiniStat label="Beiträge" value={user.post_count} />
         <MiniStat label="Kommentare" value={user.comment_count} />
         <MiniStat label="Reports" value={user.report_count} />
       </div>
@@ -612,12 +612,12 @@ function UserDetailPanel({
         <div className="mt-2 space-y-2 text-xs">
           <InfoRow label="Risiko-Level" value={riskLabel(user.risk_level)} valueClassName={riskText(user.risk_level)} />
           <InfoRow label="Account gesperrt" value={user.is_banned ? 'Ja' : 'Nein'} />
-          <InfoRow label="Eingeschraenkt" value={user.is_restricted ? 'Ja' : 'Nein'} />
+          <InfoRow label="Eingeschränkt" value={user.is_restricted ? 'Ja' : 'Nein'} />
           <InfoRow label="Shadowban" value={user.is_shadow_banned ? 'Ja' : 'Nein'} />
-          <InfoRow label="E-Mail" value={detail?.identity?.email ?? (detailLoading ? 'Laedt...' : 'Nicht verfuegbar')} muted={!detail?.identity?.email} />
-          <InfoRow label="E-Mail verifiziert" value={detail?.identity?.email_confirmed_at ? 'Ja' : detailLoading ? 'Laedt...' : 'Nein'} />
-          <InfoRow label="Telefon verifiziert" value={detail?.identity?.phone_confirmed_at ? 'Ja' : detail?.identity?.phone ? 'Nein' : detailLoading ? 'Laedt...' : 'Nicht hinterlegt'} muted={!detail?.identity?.phone} />
-          <InfoRow label="2FA" value={detail?.identity?.mfa_enabled === true ? 'Aktiv' : detail?.identity?.mfa_enabled === false ? 'Nicht aktiv' : detailLoading ? 'Laedt...' : 'Nicht verfuegbar'} muted={detail?.identity?.mfa_enabled == null} />
+          <InfoRow label="E-Mail" value={detail?.identity?.email ?? (detailLoading ? 'Lädt...' : 'Nicht verfügbar')} muted={!detail?.identity?.email} />
+          <InfoRow label="E-Mail verifiziert" value={detail?.identity?.email_confirmed_at ? 'Ja' : detailLoading ? 'Lädt...' : 'Nein'} />
+          <InfoRow label="Telefon verifiziert" value={detail?.identity?.phone_confirmed_at ? 'Ja' : detail?.identity?.phone ? 'Nein' : detailLoading ? 'Lädt...' : 'Nicht hinterlegt'} muted={!detail?.identity?.phone} />
+          <InfoRow label="2FA" value={detail?.identity?.mfa_enabled === true ? 'Aktiv' : detail?.identity?.mfa_enabled === false ? 'Nicht aktiv' : detailLoading ? 'Lädt...' : 'Nicht verfügbar'} muted={detail?.identity?.mfa_enabled == null} />
         </div>
       </div>
 
@@ -634,10 +634,10 @@ function UserDetailPanel({
           href={`/u/${encodeURIComponent(user.username)}`}
           className="inline-flex h-9 items-center justify-center rounded-md bg-blue-600 text-xs font-bold text-white hover:bg-blue-700"
         >
-          Profil oeffnen
+          Profil öffnen
         </Link>
         <label className="block text-xs font-semibold text-foreground/80">
-          Rolle aendern
+          Rolle ändern
           <select
             value={userRoleKey(user)}
             disabled={loading}
@@ -941,7 +941,7 @@ function RoleBadge({ user }: { user: AdminUserDirectoryItem }) {
 
 function StatusPill({ user }: { user: AdminUserDirectoryItem }) {
   if (user.is_banned) return <SmallBadge tone="red" label="Gesperrt" />;
-  if (user.is_restricted || user.is_shadow_banned) return <SmallBadge tone="amber" label="Eingeschraenkt" />;
+  if (user.is_restricted || user.is_shadow_banned) return <SmallBadge tone="amber" label="Eingeschränkt" />;
   return <SmallBadge tone="green" label="Aktiv" />;
 }
 
@@ -1031,7 +1031,7 @@ function AuditTimeline({ items, loading }: { items: AdminUserDetailSnapshot['aud
   if (items.length === 0) {
     return (
       <div className="mt-2 rounded-md border border-dashed border-border px-3 py-4 text-center text-xs text-muted-foreground">
-        Noch keine Admin-Aktionen fuer diesen Nutzer.
+        Noch keine Admin-Aktionen für diesen Nutzer.
       </div>
     );
   }
@@ -1128,7 +1128,7 @@ function shortId(value: string) {
 
 function userStatusLabel(user: AdminUserDirectoryItem) {
   if (user.is_banned) return 'Gesperrt';
-  if (user.is_restricted || user.is_shadow_banned) return 'Eingeschraenkt';
+  if (user.is_restricted || user.is_shadow_banned) return 'Eingeschränkt';
   return 'Aktiv';
 }
 
@@ -1180,9 +1180,9 @@ function adminActionLabel(action: string) {
     'admin.user.make_admin': 'Admin-Rechte vergeben',
     'admin.user.remove_admin': 'Admin-Rechte entzogen',
     'moderation.enforcement.ban_profile': 'Profil per Report gesperrt',
-    'moderation.enforcement.restrict_profile': 'Profil eingeschraenkt',
+    'moderation.enforcement.restrict_profile': 'Profil eingeschränkt',
     'moderation.enforcement.shadowban_profile': 'Profil verborgen',
-    'moderation.report.reviewed': 'Report geprueft',
+    'moderation.report.reviewed': 'Report geprüft',
     'moderation.report.actioned': 'Report umgesetzt',
     'moderation.report.dismissed': 'Report abgelehnt',
   };

@@ -62,7 +62,7 @@ export function GrowthPanel({
           value={range}
           onChange={(event) => setRange(event.target.value as CommandGrowthRange)}
           className="h-7 rounded-md border border-border bg-card px-2 text-[10px] font-semibold text-foreground/80 outline-none transition focus:border-blue-300 focus:ring-2 focus:ring-ring/20"
-          aria-label="Zeitraum fuer Nutzerwachstum"
+          aria-label="Zeitraum für Nutzerwachstum"
         >
           {RANGE_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
@@ -131,7 +131,7 @@ export function GrowthPanel({
           </svg>
         ) : (
           <div className="absolute inset-0 flex items-center justify-center text-[11px] font-medium text-muted-foreground/70">
-            Zeitreihe noch nicht verfuegbar
+            Zeitreihe noch nicht verfügbar
           </div>
         )}
         <div className="absolute inset-x-0 bottom-2 h-3 text-[10px] font-medium text-muted-foreground/70">
