@@ -16,8 +16,8 @@
 // -----------------------------------------------------------------------------
 
 // Bump bei jeder signifikanten SW-Änderung — Activate-Phase purged dann
-// alte Caches. v3 = brand icon PNG fallbacks.
-const CACHE_VERSION = 'serlo-v3';
+// alte Caches. v4 = Navigation-Retry + selbstheilende offline.html.
+const CACHE_VERSION = 'serlo-v4';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE_URLS = [
@@ -67,17 +67,25 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Navigation (HTML-Requests) → Network-first mit Offline-Fallback
+  // Navigation (HTML-Requests) → Network-first mit Offline-Fallback.
+  // WICHTIG: Ein einzelner fehlgeschlagener Fetch heißt auf Mobile oft NICHT
+  // „offline" — beim Aufwachen des Funkmodems (Foldable aufklappen, Doze,
+  // WLAN-Wechsel) scheitert der allererste Request gern transient. Deshalb:
+  // kurz warten, EINMAL wiederholen, erst dann die Offline-Seite zeigen.
   if (req.mode === 'navigate') {
     event.respondWith(
       (async () => {
         try {
-          const fresh = await fetch(req);
-          return fresh;
+          return await fetch(req);
         } catch {
-          const cache = await caches.open(CACHE_VERSION);
-          const cached = await cache.match(OFFLINE_URL);
-          return cached ?? new Response('Offline', { status: 503 });
+          try {
+            await new Promise((r) => setTimeout(r, 900));
+            return await fetch(req);
+          } catch {
+            const cache = await caches.open(CACHE_VERSION);
+            const cached = await cache.match(OFFLINE_URL);
+            return cached ?? new Response('Offline', { status: 503 });
+          }
         }
       })(),
     );

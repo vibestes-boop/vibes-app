@@ -70,5 +70,25 @@
     einfach nach unten zum Aktualisieren oder klickst hier:
   </p>
   <button type="button" onclick="location.reload()">Erneut versuchen</button>
+  <script>
+    // Selbstheilung: sobald der Browser wieder online meldet ODER unsere
+    // Erreichbarkeits-Probe durchgeht, laden wir automatisch neu — niemand
+    // soll auf dieser Seite festhängen, wenn das Netz längst zurück ist.
+    (function () {
+      var reloading = false;
+      function goBack() {
+        if (reloading) return;
+        reloading = true;
+        location.reload();
+      }
+      window.addEventListener('online', goBack);
+      setInterval(function () {
+        if (reloading) return;
+        fetch('/icon.svg?probe=' + Date.now(), { method: 'HEAD', cache: 'no-store' })
+          .then(function (res) { if (res && res.ok) goBack(); })
+          .catch(function () { /* weiter warten */ });
+      }, 3000);
+    })();
+  </script>
 </body>
 </html>
