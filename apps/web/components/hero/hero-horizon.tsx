@@ -11,6 +11,7 @@
 // -----------------------------------------------------------------------------
 
 import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { HeroEagle } from './hero-eagle';
 import {
   createHeroShader,
   heroColors,
@@ -333,6 +334,8 @@ export function HeroHorizon({
           </div>
         );
       })}
+      {/* Thermik-segelnder Adler — eigenes Flugmodell, siehe hero-eagle.tsx */}
+      <HeroEagle />
       </div>
       {fx.vignette > 0 && (
         <div
