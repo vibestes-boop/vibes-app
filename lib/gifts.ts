@@ -126,7 +126,7 @@ export const GIFT_CATALOG: GiftItem[] = [
     diamondValue: 8,
     color: '#f43f5e',
     lottieAsset: require('../assets/lottie/rose.json'),
-    imageAsset: require('../assets/gifts/rose.png'),
+    imageAsset: require('../assets/gifts/rose.jpg'),
     burstEmojis: ['🌹', '🌸', '💕'],
   },
   {
@@ -137,7 +137,7 @@ export const GIFT_CATALOG: GiftItem[] = [
     diamondValue: 20,
     color: '#ef4444',
     lottieAsset: require('../assets/lottie/heart.json'),
-    imageAsset: require('../assets/gifts/heart.png'),
+    imageAsset: require('../assets/gifts/heart.jpg'),
     burstEmojis: ['❤️', '💗', '💖'],
   },
   {
@@ -148,7 +148,7 @@ export const GIFT_CATALOG: GiftItem[] = [
     diamondValue: 85,
     color: '#06b6d4',
     lottieAsset: require('../assets/lottie/diamond.json'),
-    imageAsset: require('../assets/gifts/diamond.png'),
+    imageAsset: require('../assets/gifts/diamond.jpg'),
     burstEmojis: ['💎', '✨', '💙'],
   },
   {
@@ -159,7 +159,7 @@ export const GIFT_CATALOG: GiftItem[] = [
     diamondValue: 215,
     color: '#f59e0b',
     lottieAsset: require('../assets/lottie/crown.json'),
-    imageAsset: require('../assets/gifts/crown.png'),
+    imageAsset: require('../assets/gifts/crown.jpg'),
     burstEmojis: ['👑', '⭐', '✨'],
   },
   {
@@ -170,7 +170,7 @@ export const GIFT_CATALOG: GiftItem[] = [
     diamondValue: 435,
     color: '#eab308',
     lottieAsset: require('../assets/lottie/trophy.json'),
-    imageAsset: require('../assets/gifts/trophy.png'),
+    imageAsset: require('../assets/gifts/trophy.jpg'),
     burstEmojis: ['🏆', '🥇', '🎉'],
   },
   {
@@ -181,7 +181,7 @@ export const GIFT_CATALOG: GiftItem[] = [
     diamondValue: 660,
     color: '#b45309',
     lottieAsset: require('../assets/lottie/chechen_tower.json'),
-    imageAsset: require('../assets/gifts/chechen_tower.png'),
+    imageAsset: require('../assets/gifts/chechen_tower.jpg'),
     burstEmojis: ['🏰', '🔥', '⚔️', '🗡️'],
   },
   {
@@ -193,7 +193,7 @@ export const GIFT_CATALOG: GiftItem[] = [
     color: '#92400e',
     videoAsset: require('../assets/gifts/video3.mp4'),
     lottieAsset: require('../assets/lottie/chechen_tower_premium.json'),
-    imageAsset: require('../assets/gifts/chechen_tower_premium.png'),
+    imageAsset: require('../assets/gifts/chechen_tower_premium.jpg'),
     burstEmojis: ['🏯', '🔥', '⚔️', '👑', '💥'],
   },
   {
@@ -203,7 +203,7 @@ export const GIFT_CATALOG: GiftItem[] = [
     coinCost: 1000,
     diamondValue: 880,
     color: '#8b5cf6',
-    imageAsset: require('../assets/gifts/galaxy.png'),
+    imageAsset: require('../assets/gifts/galaxy.jpg'),
     burstEmojis: ['🌌', '🚀', '⭐', '💫'],
   },
   {

@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "000000000000",
-    "project_id": "vibes-placeholder",
-    "storage_bucket": "vibes-placeholder.appspot.com"
+    "project_number": "686130681497",
+    "project_id": "serlo-199be",
+    "storage_bucket": "serlo-199be.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:000000000000:android:0000000000000000",
+        "mobilesdk_app_id": "1:686130681497:android:26746f0ce77578fb274a08",
         "android_client_info": {
-          "package_name": "app.vibes.social"
+          "package_name": "app.serlo.social"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "placeholder_key_replace_with_real_firebase_key"
+          "current_key": "AIzaSyBIRFubXa6ivCUenCyUZrZhlr82KI9DtsQ"
         }
       ],
       "services": {
