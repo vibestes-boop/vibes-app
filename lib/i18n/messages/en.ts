@@ -75,6 +75,9 @@ export const en: DeepPartial<Messages> = {
     welcomeSub: 'Follow others or post your first vibe — your feed fills up automatically.',
     openExplore: 'Open Explore',
     newPosts: 'New posts available',
+    firstVibeTitle: 'Start your first Vibe',
+    firstVibeSub: 'A photo or short video with a question gets real reactions faster.',
+    firstVibeCta: 'Post',
   },
   comments: {
     title: 'Comments',

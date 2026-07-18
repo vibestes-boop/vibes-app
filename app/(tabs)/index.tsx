@@ -81,6 +81,13 @@ export default function VibeFeedScreen() {
   const visibleItemIdRef = useRef<string | null>(null);
   const SCREEN_W = Dimensions.get('window').width;
   const profileSlideX = useRef(new RNAnimated.Value(SCREEN_W)).current;
+
+  // ── Foldables (Galaxy Z Fold): reale Feed-Viewport-Größe messen ─────────
+  // Modul-Load-Dimensions stimmen bei Cover↔Main-Wechsel/edge-to-edge nicht →
+  // FlatList-onLayout ist die Wahrheit. Ref fürs stabile renderItem, State für
+  // extraData + Swipe-Grenzen. Ohne Messung: statische Maße (iPhone identisch).
+  const [pageSize, setPageSize] = useState<{ h: number; w: number } | null>(null);
+  const pageSizeRef = useRef<{ h: number; w: number } | null>(null);
   const [profilePanel, setProfilePanel] = useState<{ authorId: string } | null>(null);
   const profilePanelRef = useRef<{ authorId: string } | null>(null);
 
@@ -97,9 +104,10 @@ export default function VibeFeedScreen() {
   const swipeBottomBoundaryRef = useRef(9999);
   useEffect(() => {
     swipeTopBoundaryRef.current = insets.top + 60;
-    // SCREEN_H - (insets.bottom + tab-bar 49px + hitArea 28px + 20px Puffer)
-    swipeBottomBoundaryRef.current = SCREEN_HEIGHT - insets.bottom - 110;
-  }, [insets.top, insets.bottom]);
+    // Seitenhöhe - (insets.bottom + tab-bar 49px + hitArea 28px + 20px Puffer);
+    // gemessene Höhe statt statischer SCREEN_HEIGHT (Foldables)
+    swipeBottomBoundaryRef.current = (pageSize?.h ?? SCREEN_HEIGHT) - insets.bottom - 110;
+  }, [insets.top, insets.bottom, pageSize]);
 
   const swipePan = useRef(
     PanResponder.create({
@@ -537,6 +545,8 @@ export default function VibeFeedScreen() {
           <LiveFeedCard
             session={item.data as LiveSession}
             isActive={item.id === visibleItemIdRef.current}
+            pageHeight={pageSizeRef.current?.h}
+            pageWidth={pageSizeRef.current?.w}
           />
         );
       }
@@ -553,6 +563,8 @@ export default function VibeFeedScreen() {
           engagement={engagementMapsRef.current}
           bunnyVideoId={bunnyByPostRef.current[postData.id] ?? null}
           product={productByPostRef.current[postData.id] ?? null}
+          pageHeight={pageSizeRef.current?.h}
+          pageWidth={pageSizeRef.current?.w}
         />
       );
     },
@@ -633,9 +645,17 @@ export default function VibeFeedScreen() {
       <FlatList
         ref={listRef}
         data={feedRows}
-        extraData={`${activePlaybackItemId ?? ''}:${screenFocused ? '1' : '0'}:${isMuted ? '1' : '0'}:${bunnyReadyCount}:${productReadyCount}:${profilePanel ? '1' : '0'}`}
+        extraData={`${activePlaybackItemId ?? ''}:${screenFocused ? '1' : '0'}:${isMuted ? '1' : '0'}:${bunnyReadyCount}:${productReadyCount}:${profilePanel ? '1' : '0'}:${pageSize ? `${pageSize.h}x${pageSize.w}` : ''}`}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
+        onLayout={(e) => {
+          const h = Math.round(e.nativeEvent.layout.height);
+          const w = Math.round(e.nativeEvent.layout.width);
+          if (h > 0 && w > 0 && (pageSizeRef.current?.h !== h || pageSizeRef.current?.w !== w)) {
+            pageSizeRef.current = { h, w };
+            setPageSize({ h, w });
+          }
+        }}
         pagingEnabled
         showsVerticalScrollIndicator={false}
         decelerationRate="fast"
@@ -810,6 +830,7 @@ export default function VibeFeedScreen() {
 }
 
 function FirstPostNudge({ top, onCreate }: { top: number; onCreate: () => void }) {
+  const { t } = useI18n();
   return (
     <View
       pointerEvents="box-none"
@@ -840,7 +861,7 @@ function FirstPostNudge({ top, onCreate }: { top: number; onCreate: () => void }
       >
         <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={{ color: '#fff', fontSize: 14, fontWeight: '600' }}>
-            Starte deinen ersten Vibe
+            {t('feed.firstVibeTitle')}
           </Text>
           <Text
             style={{
@@ -851,13 +872,13 @@ function FirstPostNudge({ top, onCreate }: { top: number; onCreate: () => void }
             }}
             numberOfLines={2}
           >
-            Ein Bild oder kurzes Video mit einer Frage bekommt schneller echte Reaktionen.
+            {t('feed.firstVibeSub')}
           </Text>
         </View>
         <Pressable
           onPress={onCreate}
           accessibilityRole="button"
-          accessibilityLabel="Ersten Post erstellen"
+          accessibilityLabel={t('feed.firstVibeTitle')}
           style={{
             flexDirection: 'row',
             alignItems: 'center',
@@ -869,7 +890,7 @@ function FirstPostNudge({ top, onCreate }: { top: number; onCreate: () => void }
           }}
         >
           <PlusCircle size={16} color="#070A16" strokeWidth={2.4} />
-          <Text style={{ color: '#070A16', fontSize: 12, fontWeight: '700' }}>Posten</Text>
+          <Text style={{ color: '#070A16', fontSize: 12, fontWeight: '700' }}>{t('feed.firstVibeCta')}</Text>
         </Pressable>
       </View>
     </View>

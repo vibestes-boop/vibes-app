@@ -273,8 +273,8 @@ const pbStyles = StyleSheet.create({
 const { height: SCREEN_H } = Dimensions.get('window');
 // Muss mit CommentsSheet SHEET_TOP (0.40) übereinstimmen:
 // Video-Peek oben ~40% (größer = mehr Video, kleineres Kommentarfeld, TikTok-Proportion).
+// Peek-Höhe wird in der Komponente aus der realen Seiten-Höhe berechnet (Foldables).
 const COMMENTS_PEEK_FRAC = 0.40;
-const COMMENTS_PEEK_H = Math.round(SCREEN_H * COMMENTS_PEEK_FRAC);
 
 // ─── Music Vinyl Badge ─────────────────────────────────────────────────────────
 function MusicVinylBadge({ trackTitle, isActive }: { trackTitle: string; isActive: boolean }) {
@@ -504,6 +504,8 @@ export const FeedItem = React.memo(function FeedItem({
   engagement,
   bunnyVideoId,
   product,
+  pageHeight,
+  pageWidth,
 }: {
   item: FeedItemData;
   shouldPlayVideo: boolean;
@@ -516,9 +518,14 @@ export const FeedItem = React.memo(function FeedItem({
   bunnyVideoId?: string | null;
   /** Shoppable Posts (#2): verknüpftes Shop-Produkt → tappbare Karte im Feed. */
   product?: LinkedProduct | null;
+  /** Reale Feed-Viewport-Größe (Foldables/Android edge-to-edge) — Fallback: statische Fenster-Maße. */
+  pageHeight?: number;
+  pageWidth?: number;
 }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const pageH = pageHeight ?? SCREEN_H;
+  const commentsPeekH = Math.round(pageH * COMMENTS_PEEK_FRAC);
   const [commentsOpen, setCommentsOpen] = useState(false);
   // Merkt sich, dass wir die Kommentare nur fürs Profil-Aufrufen geschlossen
   // haben → beim Zurückkommen (Screen-Focus) wieder öffnen, Video bleibt klein.
@@ -682,11 +689,11 @@ export const FeedItem = React.memo(function FeedItem({
     height: interpolate(
       sheetProgress.value,
       [0, 1],
-      [SCREEN_H, COMMENTS_PEEK_H],
+      [pageH, commentsPeekH],
       Extrapolation.CLAMP,
     ),
     overflow: 'hidden',
-  }));
+  }), [pageH, commentsPeekH]);
 
   // Overlays (Caption, Action-Buttons, Fortschrittsbalken) blenden aus, sobald
   // die Kommentare aufgehen — der Peek oben zeigt dann nur das Video (TikTok).
@@ -748,7 +755,7 @@ export const FeedItem = React.memo(function FeedItem({
   const handleSeekEnd = useCallback((frac: number) => videoSeekRef.current?.seek(frac), []);
 
   return (
-    <Animated.View style={[styles.feedItem, mediaAnimStyle]}>
+    <Animated.View style={[styles.feedItem, { width: pageWidth ?? undefined }, mediaAnimStyle]}>
 
       {/* ── Women-Only Blur-Overlay (für nicht-verifizierte Nutzerinnen) ── */}
       {showWozBlur && <WomenOnlyBlur />}

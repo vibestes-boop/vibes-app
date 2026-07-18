@@ -53,6 +53,9 @@ interface Props {
   session: LiveSession;
   isFollowing?: boolean;
   isActive: boolean; // nur verbinden wenn diese Card aktiv im Viewport ist
+  /** Reale Feed-Viewport-Größe (Foldables) — Fallback: statische Fenster-Maße. */
+  pageHeight?: number;
+  pageWidth?: number;
 }
 
 
@@ -99,7 +102,7 @@ function LiveVideoPreview({ hostAvatar }: { hostAvatar?: string | null }) {
   );
 }
 
-export function LiveFeedCard({ session, isFollowing = false, isActive }: Props) {
+export function LiveFeedCard({ session, isFollowing = false, isActive, pageHeight, pageWidth }: Props) {
   const router = useRouter();
   const host = session.profiles;
   const duration = formatDuration(session.started_at);
@@ -178,7 +181,7 @@ export function LiveFeedCard({ session, isFollowing = false, isActive }: Props) 
   };
 
   return (
-    <Pressable onPress={handlePress} style={s.container}>
+    <Pressable onPress={handlePress} style={[s.container, { height: pageHeight ?? SCREEN_H, width: pageWidth ?? SCREEN_W }]}>
 
       {/* ── Echter Live-Video oder Avatar-Fallback ── */}
       {isActive && lkToken && lkUrl ? (

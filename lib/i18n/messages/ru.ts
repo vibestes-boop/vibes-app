@@ -77,6 +77,9 @@ export const ru: DeepPartial<Messages> = {
     welcomeSub: 'Подпишись на других или выложи свой первый вайб — лента наполнится сама.',
     openExplore: 'Открыть обзор',
     newPosts: 'Есть новые посты',
+    firstVibeTitle: 'Запусти свой первый Vibe',
+    firstVibeSub: 'Фото или короткое видео с вопросом быстрее собирает живые реакции.',
+    firstVibeCta: 'Опубликовать',
   },
   comments: {
     title: 'Комментарии',

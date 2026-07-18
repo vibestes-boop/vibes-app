@@ -75,6 +75,9 @@ export const de = {
     welcomeSub: 'Folge anderen oder poste deinen ersten Vibe — dein Feed füllt sich automatisch.',
     openExplore: 'Explore öffnen',
     newPosts: 'Neue Posts verfügbar',
+    firstVibeTitle: 'Starte deinen ersten Vibe',
+    firstVibeSub: 'Ein Bild oder kurzes Video mit einer Frage bekommt schneller echte Reaktionen.',
+    firstVibeCta: 'Posten',
   },
   comments: {
     title: 'Kommentare',
