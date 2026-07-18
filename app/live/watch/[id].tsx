@@ -630,8 +630,12 @@ function WatchUIContent({
   const joinedRef = useRef(false);
 
   // ─── Keyboard tracking (RNAnimated, nicht Reanimated) ─────────────────────────
+  // NUR iOS: keyboardWillShow existiert auf Android nicht (Bar blieb verdeckt),
+  // und dort hebt adjustResize das Fenster selbst — ein zusätzlicher Offset
+  // würde die Chat-Bar doppelt anheben (Muster wie messages/[id]).
   const keyboardBottom = useRef(new RNAnimated.Value(0)).current;
   useEffect(() => {
+    if (Platform.OS !== 'ios') return;
     const show = Keyboard.addListener('keyboardWillShow', (e) => {
       RNAnimated.timing(keyboardBottom, {
         toValue: e.endCoordinates.height,
@@ -1439,7 +1443,7 @@ function WatchUIContent({
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       {/* ── Duet-Layouts (Fix #4: stabile Tree-Positionen) ──────────────
           WICHTIG: <RemoteVideoView/> (Host-Stream) ist IMMER an der gleichen

@@ -108,7 +108,7 @@ export default function CreateStoryScreen() {
   return (
     <KeyboardAvoidingView
       style={[styles.container, { paddingTop: insets.top }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <LinearGradient
         colors={['#0A0A0A', '#0d1a2e', '#0A0A0A']}

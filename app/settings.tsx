@@ -336,7 +336,7 @@ export default function SettingsScreen() {
   return (
     <KeyboardAvoidingView
       style={[s.root, { paddingTop: insets.top, backgroundColor: colors.bg.primary }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       {/* ── Header ── */}
       <View style={[s.header, { borderBottomColor: colors.border.subtle }]}>

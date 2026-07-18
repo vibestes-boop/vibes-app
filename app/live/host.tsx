@@ -64,7 +64,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { supabase } from "@/lib/supabase";
 import { LC } from "@/lib/liveColors";
 import { hostStyles as s } from "@/components/live/hostStyles";
-import { HostControls, LocalCameraView, RemoteCoHostVideoView, useViewerCount } from "@/components/live/hostVideoParts";
+import { HOST_CAMERA_CAPTURE_OPTIONS, HostControls, LocalCameraView, RemoteCoHostVideoView, useViewerCount } from "@/components/live/hostVideoParts";
 import { RoomContext } from "@livekit/components-react";
 import {
 AudioSession,
@@ -1093,8 +1093,9 @@ function HostUI({
           await localParticipant.setCameraEnabled(false);
           await localParticipant.setMicrophoneEnabled(false);
         } else if (nextState === 'active') {
-          // App kommt zurück → Kamera + Mikrofon unmuten
-          await localParticipant.setCameraEnabled(true);
+          // App kommt zurück → Kamera + Mikrofon unmuten (mit denselben
+          // Capture-Optionen wie beim Start — sonst Android-Querformat-Zoom)
+          await localParticipant.setCameraEnabled(true, HOST_CAMERA_CAPTURE_OPTIONS);
           await localParticipant.setMicrophoneEnabled(true);
         }
       } catch {
@@ -1510,7 +1511,7 @@ function HostUI({
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       {/* ── Duet-Layouts (Fix #4: stabile Tree-Positionen) ──────────────
           WICHTIG: Der Container um <LocalCameraView/> ist IMMER an der gleichen
@@ -2717,19 +2718,9 @@ export default function LiveHostScreen() {
         // Kamera mit explizitem facingMode um Device-Enumeration-Bug zu umgehen
         const enableCamera = async () => {
           if (!room.localParticipant) return;
-        await room.localParticipant.setCameraEnabled(true, {
-            facingMode: "user",
-            // 1080p-Capture: der Encoder kann nie schärfer sein als die Aufnahme.
-            // Vorher 720p → hat die Live-Qualität hart gedeckelt.
-            // KEIN aspectRatio-Constraint: 1920/1080 (=Landscape) widersprach dem
-            // Portrait-width/height — Android nahm ihn ernst und lieferte einen
-            // Querformat-Track → extremer Zoom in der Cover-Preview (Fold-Test 18.7.).
-            resolution: {
-              width: 1080,
-              height: 1920,
-              frameRate: 30,
-            },
-          });
+        // Geteilte Optionen (hostVideoParts): 1080p-Portrait-Capture, facingMode
+        // gegen den Android-Device-Enumeration-Bug, KEIN aspectRatio (Zoom-Bug).
+        await room.localParticipant.setCameraEnabled(true, HOST_CAMERA_CAPTURE_OPTIONS);
         };
 
         await enableCamera().catch(async (e: unknown) => {
