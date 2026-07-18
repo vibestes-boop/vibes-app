@@ -84,7 +84,7 @@ export function PostManageModal({
     <>
       {/* Haupt-Modal */}
       {visible && (
-        <Modal visible={visible} transparent animationType="fade">
+        <Modal visible={visible} transparent animationType="fade" onRequestClose={handleClose}>
           <Pressable style={s.modalOverlay} onPress={handleClose}>
             <Pressable style={s.modalContent} onPress={(e) => e.stopPropagation()}>
               <Text style={s.modalTitle}>Post verwalten</Text>

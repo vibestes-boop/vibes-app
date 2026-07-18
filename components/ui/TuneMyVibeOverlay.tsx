@@ -3,6 +3,7 @@ import { BlurView } from 'expo-blur';
 import { Brain,Compass,TrendingDown,TrendingUp,X } from 'lucide-react-native';
 import React,{ useMemo } from 'react';
 import {
+BackHandler,
 Dimensions,
 Pressable,
 StyleSheet,
@@ -156,6 +157,16 @@ export default function TuneMyVibeOverlay({ visible, onClose }: Props) {
       translateY.value = withTiming(PANEL_HEIGHT, { duration: 80 });
     }
   }, [visible, backdropOpacity, translateY]);
+
+  // Android: Hardware-Back schließt das Panel statt den Screen darunter zu poppen
+  React.useEffect(() => {
+    if (!visible) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      onClose();
+      return true;
+    });
+    return () => sub.remove();
+  }, [visible, onClose]);
 
   const panelStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],

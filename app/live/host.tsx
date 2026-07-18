@@ -2395,7 +2395,7 @@ function HostUI({
       />
 
       {/* Short-Video-Style Summary — Full Screen */}
-      <Modal visible={showSummary} animationType="slide" statusBarTranslucent>
+      <Modal visible={showSummary} animationType="slide" statusBarTranslucent onRequestClose={confirmEnd}>
         <View style={s.summaryScreen}>
           <LinearGradient
             colors={['#0D0D18', '#0f0020', '#0D0D18']}

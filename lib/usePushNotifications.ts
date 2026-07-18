@@ -21,6 +21,21 @@ try {
   /* Expo Go stub — ignorieren */
 }
 
+// Android 8+: Ohne explizit angelegten HIGH/MAX-Channel zeigt Android keine
+// Heads-up-Banner und spielt keinen Sound. Expo-Push ohne channelId → 'default'.
+try {
+  if (Platform.OS === 'android' && typeof Notifications.setNotificationChannelAsync === 'function') {
+    Notifications.setNotificationChannelAsync('default', {
+      name: 'Benachrichtigungen',
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: [0, 250, 250, 250],
+      lightColor: '#a78bfa',
+    }).catch(() => {});
+  }
+} catch {
+  /* Expo Go stub — ignorieren */
+}
+
 export function usePushNotifications() {
   const notificationListener = useRef<Notifications.EventSubscription | null>(null);
   const responseListener    = useRef<Notifications.EventSubscription | null>(null);

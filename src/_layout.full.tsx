@@ -329,7 +329,7 @@ function BuildBanner() {
 
   const cMod = require('expo-constants') as any;
   const C = cMod?.default ?? cMod;
-  const build = C?.expoConfig?.ios?.buildNumber ?? '?';
+  const build = C?.expoConfig?.ios?.buildNumber ?? C?.expoConfig?.android?.versionCode ?? '?';
   const version = C?.expoConfig?.version ?? '?';
   return (
     <View style={splashStyles.banner} pointerEvents="none">

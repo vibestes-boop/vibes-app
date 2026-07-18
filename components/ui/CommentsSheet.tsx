@@ -771,7 +771,7 @@ function CommentActionSheet({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade">
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={[styles.actionSheetOverlay, { paddingBottom: Math.max(bottomInset, 24) }]} onPress={onClose}>
         <Pressable style={styles.actionSheetContent} onPress={(e) => e.stopPropagation()}>
           {isOwn && (
