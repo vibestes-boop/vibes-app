@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { useLocalParticipant } from '@livekit/react-native';
 import { Room, Track } from 'livekit-client';
+import { HOST_CAMERA_CAPTURE_OPTIONS } from '@/components/live/hostVideoParts';
 
 export function HostControls({ onCameraSwitch }: { onCameraSwitch?: (isFront: boolean) => void }) {
   const { localParticipant, isMicrophoneEnabled, isCameraEnabled } = useLocalParticipant();
@@ -16,7 +17,8 @@ export function HostControls({ onCameraSwitch }: { onCameraSwitch?: (isFront: bo
 
   const toggleCamera = async () => {
     try {
-      await localParticipant.setCameraEnabled(!isCameraEnabled);
+      const next = !isCameraEnabled;
+      await localParticipant.setCameraEnabled(next, next ? HOST_CAMERA_CAPTURE_OPTIONS : undefined);
     } catch { /* ignore */ }
   };
 

@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import { useAuthStore } from './authStore';
 import { supabase } from './supabase';
 import {
@@ -94,6 +95,23 @@ async function assertUploadMediaHealthy(
     if (!uri) throw new Error('missing thumbnail uri');
   } catch (err) {
     __DEV__ && console.warn('[media-upload-health]', err);
+    // Android: MediaMetadataRetriever ist deutlich zickiger als AVFoundation
+    // (Rotation, HEVC, Galerie-Videos aus Fremd-Apps) → ein Thumbnail-Fehler
+    // heißt dort NICHT, dass das Video kaputt ist. Retry bei 0.5s, dann nur
+    // Warnung statt hartem Upload-Block (iOS bleibt strikt).
+    if (Platform.OS === 'android') {
+      try {
+        const VideoThumbnails = await import('expo-video-thumbnails');
+        const { uri } = await VideoThumbnails.getThumbnailAsync(localUri, {
+          time: 500,
+          quality: 0.25,
+        });
+        if (uri) return;
+      } catch {
+        /* Retry fehlgeschlagen — durchlassen, Server-Ingest prüft nochmal */
+      }
+      return;
+    }
     throw new Error('Video konnte nicht gelesen werden. Bitte waehle oder exportiere die Datei neu.');
   }
 }

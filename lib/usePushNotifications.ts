@@ -36,6 +36,66 @@ try {
   /* Expo Go stub — ignorieren */
 }
 
+/**
+ * Zentrale Push-Tap-Navigation — vom Warm-Listener (unten) UND vom
+ * Cold-Start-Handler (src/_layout.full.tsx, getLastNotificationResponseAsync)
+ * genutzt. Android killt Hintergrund-Apps aggressiv → dort ist der
+ * Cold-Start-Tap der Normalfall; die Kette muss an beiden Stellen identisch sein.
+ */
+export function routeFromNotificationData(data: Record<string, any> | undefined) {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { router } = require('expo-router');
+
+  if (data?.type === 'message' && data?.conversationId) {
+    router.push({
+      pathname: '/messages/[id]',
+      params: {
+        id: data.conversationId,
+        username: data.senderUsername ?? '',
+        avatarUrl: data.senderAvatar ?? '',
+      },
+    });
+  } else if ((data?.type === 'like' || data?.type === 'comment') && data?.postId) {
+    router.push({ pathname: '/post/[id]', params: { id: data.postId } });
+  } else if (data?.type === 'follow' && data?.senderId) {
+    router.push({ pathname: '/user/[id]', params: { id: data.senderId } });
+  } else if (data?.type === 'gift' && data?.senderId) {
+    // Gift → Sender-Profil öffnen damit Creator sehen kann wer gifted hat
+    router.push({ pathname: '/user/[id]', params: { id: data.senderId } });
+  } else if (
+    (data?.type === 'live' || data?.type === 'live_invite') &&
+    data?.session_id
+  ) {
+    router.push({ pathname: '/live/watch/[id]', params: { id: data.session_id } });
+  } else if (data?.type === 'scheduled_live_reminder' && data?.senderId) {
+    // Scheduled-Live-Reminder: Host ist noch nicht live (session_id=null).
+    // Öffne Host-Profil — User sieht dort „geht gleich live" Banner.
+    router.push({ pathname: '/user/[id]', params: { id: data.senderId } });
+  } else if ((data?.type === 'preorder_round_open' || data?.type === 'product_saved') && data?.productId) {
+    // Sammelbestellung offen / Produkt gemerkt → direkt aufs Produkt
+    router.push({ pathname: '/shop/[id]', params: { id: String(data.productId) } });
+  } else if (
+    data?.type === 'order_payment_requested' ||
+    data?.type === 'order_payment_reminder' ||
+    data?.type === 'order_shipped' ||
+    data?.type === 'order_review' ||
+    data?.type === 'order_dispute'
+  ) {
+    // Käufer-seitig / Rolle nicht eindeutig → eigene Bestellungen
+    router.push('/shop/my-orders');
+  } else if (
+    data?.type === 'order_paid' ||
+    data?.type === 'order_cancelled' ||
+    data?.type === 'order_address_updated' ||
+    data?.type === 'preorder_interest'
+  ) {
+    // Verkäufer-seitig → Fulfillment
+    router.push('/shop/fulfillment');
+  } else if (data?.type === 'support_reply') {
+    router.push('/support');
+  }
+}
+
 export function usePushNotifications() {
   const notificationListener = useRef<Notifications.EventSubscription | null>(null);
   const responseListener    = useRef<Notifications.EventSubscription | null>(null);
@@ -185,56 +245,7 @@ export function usePushNotifications() {
 
         // Lazy import um circular dep zu vermeiden
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const { router } = require('expo-router');
-
-        if (data?.type === 'message' && data?.conversationId) {
-          router.push({
-            pathname: '/messages/[id]',
-            params: {
-              id: data.conversationId,
-              username: data.senderUsername ?? '',
-              avatarUrl: data.senderAvatar ?? '',
-            },
-          });
-        } else if ((data?.type === 'like' || data?.type === 'comment') && data?.postId) {
-          router.push({ pathname: '/post/[id]', params: { id: data.postId } });
-        } else if (data?.type === 'follow' && data?.senderId) {
-          router.push({ pathname: '/user/[id]', params: { id: data.senderId } });
-        } else if (data?.type === 'gift' && data?.senderId) {
-          // Gift → Sender-Profil öffnen damit Creator sehen kann wer gifted hat
-          router.push({ pathname: '/user/[id]', params: { id: data.senderId } });
-        } else if (
-          (data?.type === 'live' || data?.type === 'live_invite') &&
-          data?.session_id
-        ) {
-          router.push({ pathname: '/live/watch/[id]', params: { id: data.session_id } });
-        } else if (data?.type === 'scheduled_live_reminder' && data?.senderId) {
-          // Scheduled-Live-Reminder: Host ist noch nicht live (session_id=null).
-          // Öffne Host-Profil — User sieht dort „geht gleich live" Banner.
-          router.push({ pathname: '/user/[id]', params: { id: data.senderId } });
-        } else if ((data?.type === 'preorder_round_open' || data?.type === 'product_saved') && data?.productId) {
-          // Sammelbestellung offen / Produkt gemerkt → direkt aufs Produkt
-          router.push({ pathname: '/shop/[id]', params: { id: String(data.productId) } });
-        } else if (
-          data?.type === 'order_payment_requested' ||
-          data?.type === 'order_payment_reminder' ||
-          data?.type === 'order_shipped' ||
-          data?.type === 'order_review' ||
-          data?.type === 'order_dispute'
-        ) {
-          // Käufer-seitig / Rolle nicht eindeutig → eigene Bestellungen
-          router.push('/shop/my-orders');
-        } else if (
-          data?.type === 'order_paid' ||
-          data?.type === 'order_cancelled' ||
-          data?.type === 'order_address_updated' ||
-          data?.type === 'preorder_interest'
-        ) {
-          // Verkäufer-seitig → Fulfillment
-          router.push('/shop/fulfillment');
-        } else if (data?.type === 'support_reply') {
-          router.push('/support');
-        }
+        routeFromNotificationData(data as Record<string, any>);
       });
     } catch {
       /* Expo Go stub */

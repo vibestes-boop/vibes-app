@@ -249,29 +249,15 @@ function PushNotificationsProvider() {
       Notifications.getLastNotificationResponseAsync().then((response) => {
         if (!response) return;
         const data = response.notification.request.content.data as Record<string, any>;
-        const { router } = require('expo-router') as typeof import('expo-router');
+        const { routeFromNotificationData } =
+          require('@/lib/usePushNotifications') as typeof import('@/lib/usePushNotifications');
 
-        // Kleiner Delay damit der Router nach Auth-Redirect bereit ist
+        // Kleiner Delay damit der Router nach Auth-Redirect bereit ist.
+        // Volle Typ-Kette aus usePushNotifications — vorher kannte der
+        // Cold-Start nur 5 Typen (Gift/Order/Shop/Support-Taps liefen ins Leere;
+        // auf Android der Normalfall, weil das OS Apps aggressiv killt).
         setTimeout(() => {
-          if (data?.type === 'message' && data?.conversationId) {
-            router.push({
-              pathname: '/messages/[id]',
-              params: {
-                id: data.conversationId,
-                username: data.senderUsername ?? '',
-                avatarUrl: data.senderAvatar ?? '',
-              },
-            });
-          } else if ((data?.type === 'like' || data?.type === 'comment') && data?.postId) {
-            router.push({ pathname: '/post/[id]', params: { id: data.postId } });
-          } else if (data?.type === 'follow' && data?.senderId) {
-            router.push({ pathname: '/user/[id]', params: { id: data.senderId } });
-          } else if (
-            (data?.type === 'live' || data?.type === 'live_invite') &&
-            data?.session_id
-          ) {
-            router.push({ pathname: '/live/watch/[id]', params: { id: data.session_id } });
-          }
+          routeFromNotificationData(data);
         }, 400);
       }).catch(() => { });
     } catch { /* Expo Go stub */ }

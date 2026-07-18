@@ -9,6 +9,18 @@ import { Camera, CameraOff, Mic, MicOff, RotateCcw } from "lucide-react-native";
 import { supabase } from "@/lib/supabase";
 import { hostStyles as s } from "@/components/live/hostStyles";
 
+/**
+ * Einheitliche Capture-Optionen für JEDEN setCameraEnabled(true)-Aufruf des Hosts.
+ * facingMode umgeht den Android-Device-Enumeration-Bug; Portrait-Auflösung OHNE
+ * aspectRatio verhindert den Querformat-Zoom (Fold-Test 18.7.). Re-Enable ohne
+ * Optionen (Background-Return, Kamera-Toggle) fiel sonst auf Defaults zurück
+ * und konnte den Zoom-Bug durch die Hintertür zurückbringen.
+ */
+export const HOST_CAMERA_CAPTURE_OPTIONS = {
+  facingMode: 'user' as const,
+  resolution: { width: 1080, height: 1920, frameRate: 30 },
+};
+
 // Ausgelagert aus app/live/host.tsx (Refactor #2 Schritt 2) — eigenstaendige
 // LiveKit-Host-Bausteine: Viewer-Count-Hook, Mic/Cam-Steuerung, lokale + remote
 // Video-Views. Keine Logikaenderung.
@@ -81,7 +93,8 @@ export function HostControls({ onCameraSwitch }: { onCameraSwitch?: (isFront: bo
 
   const toggleCamera = async () => {
     try {
-      await localParticipant.setCameraEnabled(!isCameraEnabled);
+      const next = !isCameraEnabled;
+      await localParticipant.setCameraEnabled(next, next ? HOST_CAMERA_CAPTURE_OPTIONS : undefined);
     } catch { /* ignore */ }
   };
 
