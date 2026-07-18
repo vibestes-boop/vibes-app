@@ -2721,11 +2721,13 @@ export default function LiveHostScreen() {
             facingMode: "user",
             // 1080p-Capture: der Encoder kann nie schärfer sein als die Aufnahme.
             // Vorher 720p → hat die Live-Qualität hart gedeckelt.
+            // KEIN aspectRatio-Constraint: 1920/1080 (=Landscape) widersprach dem
+            // Portrait-width/height — Android nahm ihn ernst und lieferte einen
+            // Querformat-Track → extremer Zoom in der Cover-Preview (Fold-Test 18.7.).
             resolution: {
               width: 1080,
               height: 1920,
               frameRate: 30,
-              aspectRatio: 1920 / 1080,
             },
           });
         };
