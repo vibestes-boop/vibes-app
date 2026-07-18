@@ -200,7 +200,7 @@ export default function OnboardingUsername() {
         {error ? <Text style={styles.error}>{error}</Text> : null}
 
         <Text style={styles.inputHint}>
-          Dein Username ist öffentlich sichtbar. Du kannst ihn später in den Einstellungen ändern.
+          {t('onboarding.usernamePublicHint')}
         </Text>
 
         {/* CTA */}
