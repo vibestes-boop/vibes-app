@@ -35,8 +35,9 @@ export type GoogleSignInResult = 'success' | 'canceled' | 'error';
 // alten Build 285 wird das Modul nie berührt (Button ist gated), also kein Crash,
 // selbst wenn dieser Code versehentlich per OTA mitläuft.
 
-/** Liest key=value-Paare aus dem URL-Fragment (`#a=1&b=2`). RN-sicher (kein URLSearchParams). */
-function parseFragment(url: string): Record<string, string> {
+/** Liest key=value-Paare aus dem URL-Fragment (`#a=1&b=2`). RN-sicher (kein URLSearchParams).
+ *  Exportiert für app/(auth)/login-callback.tsx (Android-Deep-Link-Landing). */
+export function parseFragment(url: string): Record<string, string> {
   const hash = url.includes('#') ? url.substring(url.indexOf('#') + 1) : '';
   const out: Record<string, string> = {};
   for (const pair of hash.split('&')) {
