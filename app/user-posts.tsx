@@ -211,6 +211,8 @@ function PostCard({
   isOwner,
   onManage,
   onShare,
+  pageHeight,
+  pageWidth,
 }: {
   item: PostItem;
   isVisible: boolean;
@@ -219,7 +221,12 @@ function PostCard({
   isOwner: boolean;
   onManage: (item: PostItem) => void;
   onShare: (item: PostItem) => void;
+  // Reale Seiten-Größe (Foldables) — Fallback: statische Fenster-Maße.
+  pageHeight?: number;
+  pageWidth?: number;
 }) {
+  const pH = pageHeight ?? H;
+  const pW = pageWidth ?? W;
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { profile } = useAuthStore();
@@ -297,14 +304,14 @@ function PostCard({
   }, [commentsOpen, sheetProgress]);
 
   const mediaAnimStyle = useAnimatedStyle(() => ({
-    height: interpolate(sheetProgress.value, [0, 1], [H, H * 0.40], Extrapolation.CLAMP),
-  }));
+    height: interpolate(sheetProgress.value, [0, 1], [pH, pH * 0.40], Extrapolation.CLAMP),
+  }), [pH]);
   const overlayFadeStyle = useAnimatedStyle(() => ({
     opacity: interpolate(sheetProgress.value, [0, 0.4], [1, 0], Extrapolation.CLAMP),
   }));
 
   return (
-    <View style={{ width: W, height: H, backgroundColor: '#000' }}>
+    <View style={{ width: pW, height: pH, backgroundColor: '#000' }}>
       {/* Media — vollständig (contain) auf schwarzem Grund, kein seitlicher
           Cover-Beschnitt/Zoom mehr (Parität mit Feed + guild-post). Schrumpft
           beim Öffnen der Kommentare nahtlos nach oben (mediaAnimStyle). */}
@@ -476,6 +483,7 @@ function PostCard({
         postId={item.id}
         visible={commentsOpen}
         seamlessPeek
+        sheetHeight={pH}
         sheetProgress={sheetProgress}
         onClose={() => setCommentsOpen(false)}
         onUserPress={(userId) => {
@@ -616,9 +624,14 @@ export default function UserPostsScreen() {
     router.push({ pathname: '/edit-post/[id]', params: { id: postId } });
   };
 
+  // Foldables: reale Seiten-Größe messen (Root-onLayout) statt Modul-Dimensions.
+  const [pageSize, setPageSize] = useState<{ h: number; w: number } | null>(null);
+  const pageSizeRef = useRef<{ h: number; w: number } | null>(null);
+  const itemH = pageSize?.h ?? H;
+
   const getItemLayout = (_: unknown, index: number) => ({
-    length: H,
-    offset: H * index,
+    length: itemH,
+    offset: itemH * index,
     index,
   });
 
@@ -652,7 +665,17 @@ export default function UserPostsScreen() {
   }
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#000' }}>
+    <View
+      style={{ flex: 1, backgroundColor: '#000' }}
+      onLayout={(e) => {
+        const h = Math.round(e.nativeEvent.layout.height);
+        const w = Math.round(e.nativeEvent.layout.width);
+        if (h > 0 && w > 0 && (pageSizeRef.current?.h !== h || pageSizeRef.current?.w !== w)) {
+          pageSizeRef.current = { h, w };
+          setPageSize({ h, w });
+        }
+      }}
+    >
         {/* Zurück-Button immer sichtbar oben links */}
         <Pressable
           onPress={() => router.back()}
@@ -669,7 +692,9 @@ export default function UserPostsScreen() {
           </Text>
         </View>
 
-        <FlatList
+        {/* FlatList erst nach der Messung: initialScrollIndex braucht den
+            korrekten getItemLayout-Offset (Foldables). Ein Frame schwarz. */}
+        {pageSize && <FlatList
           ref={flatRef}
           data={posts}
           keyExtractor={(item) => item.id}
@@ -682,6 +707,8 @@ export default function UserPostsScreen() {
               isOwner={item.author_id === profile?.id}
               onManage={setManageItem}
               onShare={setShareItem}
+              pageHeight={pageSize.h}
+              pageWidth={pageSize.w}
             />
           )}
           pagingEnabled
@@ -710,7 +737,7 @@ export default function UserPostsScreen() {
             }
           }}
           viewabilityConfig={VIEWABILITY_CONFIG}
-        />
+        />}
 
         {/* Kommentare laufen jetzt pro PostCard (nahtloser Peek) — keine
             Screen-Ebene mehr. */}

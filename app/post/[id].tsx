@@ -307,10 +307,16 @@ export default function PostDetailScreen() {
   const [profilePanel, setProfilePanel] = useState<{ authorId: string } | null>(null);
   const profilePanelRef = useRef<{ authorId: string } | null>(null);
 
+  // Foldables: reale Screen-Größe messen (Container-onLayout) statt Modul-Dimensions.
+  const [pageSize, setPageSize] = useState<{ h: number; w: number } | null>(null);
+  const pageSizeRef = useRef<{ h: number; w: number } | null>(null);
+  const pH = pageSize?.h ?? H;
+  const pw = () => pageSizeRef.current?.w ?? SCREEN_W;
+
   const snapPanelIn = () =>
     RNAnimated.spring(profileSlideX, { toValue: 0, useNativeDriver: true, bounciness: 0, speed: 20 }).start();
   const snapPanelOut = () =>
-    RNAnimated.spring(profileSlideX, { toValue: SCREEN_W, useNativeDriver: true, bounciness: 0, speed: 25 }).start(
+    RNAnimated.spring(profileSlideX, { toValue: pw(), useNativeDriver: true, bounciness: 0, speed: 25 }).start(
       () => { setProfilePanel(null); profilePanelRef.current = null; }
     );
 
@@ -328,17 +334,17 @@ export default function PostDetailScreen() {
         const panel = { authorId };
         profilePanelRef.current = panel;
         setProfilePanel(panel);
-        profileSlideX.setValue(SCREEN_W);
+        profileSlideX.setValue(pw());
       },
 
       onPanResponderMove: (_, g) => {
         if (!profilePanelRef.current) return;
-        profileSlideX.setValue(Math.max(0, SCREEN_W + g.dx));
+        profileSlideX.setValue(Math.max(0, pw() + g.dx));
       },
 
       onPanResponderRelease: (_, g) => {
         if (!profilePanelRef.current) return;
-        if (g.dx < -(SCREEN_W * 0.35) || g.vx < -0.5) {
+        if (g.dx < -(pw() * 0.35) || g.vx < -0.5) {
           impactAsync(ImpactFeedbackStyle.Medium);
           snapPanelIn();
         } else {
@@ -356,11 +362,11 @@ export default function PostDetailScreen() {
         g.dx > 15 && Math.abs(g.dx) > Math.abs(g.dy) * 1.8,
 
       onPanResponderMove: (_, g) => {
-        profileSlideX.setValue(Math.min(SCREEN_W, Math.max(0, g.dx)));
+        profileSlideX.setValue(Math.min(pw(), Math.max(0, g.dx)));
       },
 
       onPanResponderRelease: (_, g) => {
-        if (g.dx > SCREEN_W * 0.35 || g.vx > 0.5) {
+        if (g.dx > pw() * 0.35 || g.vx > 0.5) {
           impactAsync(ImpactFeedbackStyle.Light);
           snapPanelOut();
         } else {
@@ -451,8 +457,8 @@ export default function PostDetailScreen() {
     }
   }, [commentsOpen, sheetProgress]);
   const mediaAnimStyle = useAnimatedStyle(() => ({
-    height: interpolate(sheetProgress.value, [0, 1], [H, COMMENTS_PEEK_H], Extrapolation.CLAMP),
-  }));
+    height: interpolate(sheetProgress.value, [0, 1], [pH, Math.round(pH * 0.40)], Extrapolation.CLAMP),
+  }), [pH]);
   // Overlays (Aktionen, Autor/Caption, Fortschritt) faden aus, sobald die
   // Kommentare aufgehen — der Peek zeigt dann nur das laufende Video.
   const overlayFadeStyle = useAnimatedStyle(() => ({
@@ -658,18 +664,29 @@ export default function PostDetailScreen() {
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: '#000' }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={0}
       {...swipeLeftPan.panHandlers}
     >
       {/* swipePanResponder auf den inneren View — übernimmt nur vertikale Gesten */}
-      <View style={styles.container} {...swipePanResponder.panHandlers}>
+      <View
+        style={styles.container}
+        {...swipePanResponder.panHandlers}
+        onLayout={(e) => {
+          const h = Math.round(e.nativeEvent.layout.height);
+          const w = Math.round(e.nativeEvent.layout.width);
+          if (h > 0 && w > 0 && (pageSizeRef.current?.h !== h || pageSizeRef.current?.w !== w)) {
+            pageSizeRef.current = { h, w };
+            setPageSize({ h, w });
+          }
+        }}
+      >
 
         {/* 1. BACKGROUND — als Ganzes in einer Animated-Layer, die beim
             Kommentar-Öffnen auf den oberen Peek schrumpft (Video läuft weiter,
             keine zweite Instanz). pointerEvents none → die Tap-Zone darunter
             bekommt weiterhin alle Taps (Pause/Like). */}
-        <Animated.View style={[styles.mediaLayer, mediaAnimStyle]} pointerEvents="none">
+        <Animated.View style={[styles.mediaLayer, { height: pH }, mediaAnimStyle]} pointerEvents="none">
         {displayMediaUrl ? (
           displayMediaType === 'video' ? (
             USE_EXPO_VIDEO ? (
@@ -817,6 +834,7 @@ export default function PostDetailScreen() {
               postId={post.id}
               visible={commentsOpen}
               seamlessPeek
+              sheetHeight={pH}
               sheetProgress={sheetProgress}
               onClose={() => setCommentsOpen(false)}
               onUserPress={(userId) => {

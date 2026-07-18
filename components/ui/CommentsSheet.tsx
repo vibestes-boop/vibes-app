@@ -55,19 +55,25 @@ const Animated = { View: _animNS?.View ?? _animMod?.View };
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 // Klassisch (post/[id], Story, user-posts …): Standbild-Preview oben ~22%.
-const SHEET_TOP = SCREEN_HEIGHT * 0.22;
+const SHEET_TOP_FRAC = 0.22;
 // Feed seamlessPeek: größerer Video-Peek ~40% (muss mit FeedItem
 // COMMENTS_PEEK_FRAC übereinstimmen) → mehr Video, kleineres Kommentarfeld.
-const SHEET_TOP_SEAMLESS = SCREEN_HEIGHT * 0.40;
+// Beide werden zur Laufzeit mit der realen Seiten-Höhe multipliziert (Foldables).
+const SHEET_TOP_SEAMLESS_FRAC = 0.40;
 
-function useKeyboardOffset() {
+function useKeyboardOffset(androidSubtract = 0) {
   const keyboardHeight = useSharedValue(0);
 
   useEffect(() => {
     const show = Keyboard.addListener(
       Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
       (e: KeyboardEvent) => {
-        keyboardHeight.value = withTiming(e.endCoordinates.height, { duration: 60 });
+        // Android: endCoordinates.height reicht bis zur Fenster-Unterkante —
+        // der insets.bottom-Anteil (Systemleiste) steckt schon im Input-Padding
+        // → ohne Abzug schwebt die Eingabe ~48px über der Tastatur.
+        const raw = e.endCoordinates.height;
+        const h = Platform.OS === 'android' ? Math.max(0, raw - androidSubtract) : raw;
+        keyboardHeight.value = withTiming(h, { duration: 60 });
       }
     );
     const hide = Keyboard.addListener(
@@ -77,7 +83,7 @@ function useKeyboardOffset() {
       }
     );
     return () => { show.remove(); hide.remove(); };
-  }, [keyboardHeight]);
+  }, [keyboardHeight, androidSubtract]);
 
   return keyboardHeight;
 }
@@ -98,19 +104,26 @@ type Props = {
       weiterlaufende (in-place geschrumpfte) Video durchscheint — kein zweiter
       Player, kein Neustart. Ohne diese Flag: klassisches Overlay + Standbild. */
   seamlessPeek?: boolean;
+  /** Reale Seiten-Höhe des Parents (Foldables) — muss mit dessen gemessener
+      Höhe übereinstimmen, sonst driften Video-Peek und Sheet-Oberkante.
+      Fallback: statische Fenster-Höhe. */
+  sheetHeight?: number;
 };
 
 const CLOSE_DURATION = 300;
 const OPEN_DURATION = 250;
 const CLOSE_EASING = Easing.out(Easing.cubic);
 
-export default function CommentsSheet({ postId, visible, onClose, mediaUrl, mediaType, thumbnailUrl, onUserPress, creatorUserId, sheetProgress, seamlessPeek }: Props) {
+export default function CommentsSheet({ postId, visible, onClose, mediaUrl, mediaType, thumbnailUrl, onUserPress, creatorUserId, sheetProgress, seamlessPeek, sheetHeight }: Props) {
+  // Reale Seiten-Höhe (Foldables) — Fallback statische Fenster-Höhe.
+  const sheetH = sheetHeight ?? SCREEN_HEIGHT;
   // Feed-Peek (40%) vs. klassisch (22%) — bestimmt, wo das Sheet oben andockt.
-  const sheetTop = seamlessPeek ? SHEET_TOP_SEAMLESS : SHEET_TOP;
-  const translateY = useSharedValue(SCREEN_HEIGHT);
+  const sheetTop = (seamlessPeek ? SHEET_TOP_SEAMLESS_FRAC : SHEET_TOP_FRAC) * sheetH;
+  const translateY = useSharedValue(sheetH);
   const overlayOpacity = useSharedValue(0);
   const contentOpacity = useSharedValue(0);
-  const keyboardOffset = useKeyboardOffset();
+  const insets = useSafeAreaInsets();
+  const keyboardOffset = useKeyboardOffset(Platform.OS === 'android' ? insets.bottom : 0);
   const scrollAtTop = useSharedValue(1);
   const lastTouchY = useSharedValue(0);
   const isClosingRef = useRef(false);
@@ -126,13 +139,13 @@ export default function CommentsSheet({ postId, visible, onClose, mediaUrl, medi
       sheetProgress.value = withTiming(0, { duration: CLOSE_DURATION, easing: CLOSE_EASING });
     }
     translateY.value = withTiming(
-      SCREEN_HEIGHT,
+      sheetH,
       { duration: CLOSE_DURATION, easing: CLOSE_EASING },
       (finished) => {
         if (finished) runOnJS(onClose)();
       }
     );
-  }, [onClose, overlayOpacity, contentOpacity, translateY, sheetProgress]);
+  }, [onClose, overlayOpacity, contentOpacity, translateY, sheetProgress, sheetH]);
 
   useEffect(() => {
     if (visible) {
@@ -141,11 +154,11 @@ export default function CommentsSheet({ postId, visible, onClose, mediaUrl, medi
       contentOpacity.value = withTiming(1, { duration: OPEN_DURATION, easing: Easing.out(Easing.cubic) });
       translateY.value = withTiming(0, { duration: OPEN_DURATION, easing: Easing.out(Easing.cubic) });
     } else {
-      translateY.value = SCREEN_HEIGHT;
+      translateY.value = sheetH;
       overlayOpacity.value = 0;
       contentOpacity.value = 0;
     }
-  }, [visible, overlayOpacity, contentOpacity, translateY]);
+  }, [visible, overlayOpacity, contentOpacity, translateY, sheetH]);
 
   // panForList MUSS vor panGesture deklariert sein,
   // da panGesture via .requireExternalGestureToFail(panForList) darauf referenziert
@@ -172,7 +185,7 @@ export default function CommentsSheet({ postId, visible, onClose, mediaUrl, medi
         if (sheetProgress) {
           sheetProgress.value = interpolate(
             e.translationY,
-            [0, SCREEN_HEIGHT],
+            [0, sheetH],
             [1, 0],
             Extrapolation.CLAMP
           );
@@ -207,7 +220,7 @@ export default function CommentsSheet({ postId, visible, onClose, mediaUrl, medi
         if (sheetProgress) {
           sheetProgress.value = interpolate(
             e.translationY,
-            [0, SCREEN_HEIGHT],
+            [0, sheetH],
             [1, 0],
             Extrapolation.CLAMP
           );
@@ -270,7 +283,7 @@ export default function CommentsSheet({ postId, visible, onClose, mediaUrl, medi
           {/* Standbild-Preview oben nur im klassischen Modus. Bei seamlessPeek
               zeigt der Feed sein eigenes, weiterlaufendes Video im Peek-Bereich. */}
           {!seamlessPeek && mediaUrl && (
-            <View style={styles.postPreviewFrame} pointerEvents="none">
+            <View style={[styles.postPreviewFrame, { height: sheetTop }]} pointerEvents="none">
               {mediaType === 'video' ? (
                 <VideoGridThumb uri={mediaUrl} thumbnailUrl={thumbnailUrl} style={StyleSheet.absoluteFill} />
               ) : (
@@ -1041,7 +1054,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     top: 0,
-    height: SHEET_TOP,
+    // Höhe kommt inline (sheetTop — reale Seiten-Höhe × Fraction, Foldables)
     overflow: 'hidden',
     zIndex: 1,
   },

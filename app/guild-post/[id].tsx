@@ -153,6 +153,8 @@ function GuildPostDetailItem({
   onBack,
   autoOpenComments = false,
   product,
+  pageHeight,
+  pageWidth,
 }: {
   post: GuildPost;
   guildColors: [string, string];
@@ -162,9 +164,14 @@ function GuildPostDetailItem({
   autoOpenComments?: boolean;
   // Shoppable Post (#2): verknüpftes Produkt → tappbare Karte.
   product?: LinkedProduct | null;
+  // Reale Seiten-Größe (Foldables) — Fallback: statische Fenster-Maße.
+  pageHeight?: number;
+  pageWidth?: number;
 }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const pH = pageHeight ?? ITEM_HEIGHT;
+  const pW = pageWidth ?? W;
   const [c0, c1] = guildColors;
   const isVideo = post.media_type === 'video';
   const [showComments, setShowComments] = useState(false);
@@ -269,9 +276,9 @@ function GuildPostDetailItem({
   );
 
   const mediaAnimStyle = useAnimatedStyle(() => ({
-    height: interpolate(sheetProgress.value, [0, 1], [ITEM_HEIGHT, ITEM_HEIGHT * 0.40], Extrapolation.CLAMP),
+    height: interpolate(sheetProgress.value, [0, 1], [pH, pH * 0.40], Extrapolation.CLAMP),
     overflow: 'hidden',
-  }));
+  }), [pH]);
   const overlayFadeStyle = useAnimatedStyle(() => ({
     opacity: interpolate(sheetProgress.value, [0, 0.4], [1, 0], Extrapolation.CLAMP),
   }));
@@ -322,7 +329,7 @@ function GuildPostDetailItem({
   const initials = post.username ? post.username.slice(0, 2).toUpperCase() : '??';
 
   return (
-    <View style={[itemStyles.container, { height: ITEM_HEIGHT }]}>
+    <View style={[itemStyles.container, { height: pH, width: pW }]}>
       {/* ── Hintergrund — schrumpft in den oberen Peek, wenn Kommentare offen ── */}
       <Animated.View style={[itemStyles.mediaWrap, mediaAnimStyle]}>
       {post.media_url ? (
@@ -531,6 +538,7 @@ function GuildPostDetailItem({
         postId={post.id}
         visible={showComments}
         seamlessPeek
+        sheetHeight={pH}
         sheetProgress={sheetProgress}
         onClose={() => setShowComments(false)}
         onUserPress={(userId) => {
@@ -639,8 +647,17 @@ export default function GuildPostDetailScreen() {
   const activeIndexRef = useRef(activeIndex);
   useEffect(() => { activeIndexRef.current = activeIndex; }, [activeIndex]);
 
+  // ── Foldables: reale Seiten-Größe messen (Root-onLayout) ─────────────────
+  // Modul-Load-Dimensions stimmen auf Fold/edge-to-edge nicht → getItemLayout,
+  // Item-Höhen und Swipe-Schwellen rechnen mit der gemessenen Größe.
+  const [pageSize, setPageSize] = useState<{ h: number; w: number } | null>(null);
+  const pageSizeRef = useRef<{ h: number; w: number } | null>(null);
+  const itemH = pageSize?.h ?? ITEM_HEIGHT;
+  const itemW = pageSize?.w ?? W;
+  const pw = () => pageSizeRef.current?.w ?? W;
+
   const snapProfileIn  = () => RNAnimated.spring(profileSlideX, { toValue: 0, useNativeDriver: true, bounciness: 0, speed: 20 }).start();
-  const snapProfileOut = () => RNAnimated.spring(profileSlideX, { toValue: W, useNativeDriver: true, bounciness: 0, speed: 25 }).start(
+  const snapProfileOut = () => RNAnimated.spring(profileSlideX, { toValue: pw(), useNativeDriver: true, bounciness: 0, speed: 25 }).start(
     () => { setProfilePanel(null); profilePanelRef.current = null; }
   );
 
@@ -654,15 +671,15 @@ export default function GuildPostDetailScreen() {
         const panel = { authorId };
         profilePanelRef.current = panel;
         setProfilePanel(panel);
-        profileSlideX.setValue(W);
+        profileSlideX.setValue(pw());
       },
       onPanResponderMove: (_, g) => {
         if (!profilePanelRef.current) return;
-        profileSlideX.setValue(Math.max(0, W + g.dx));
+        profileSlideX.setValue(Math.max(0, pw() + g.dx));
       },
       onPanResponderRelease: (_, g) => {
         if (!profilePanelRef.current) return;
-        if (g.dx < -(W * 0.35) || g.vx < -0.5) { impactAsync(ImpactFeedbackStyle.Medium); snapProfileIn(); }
+        if (g.dx < -(pw() * 0.35) || g.vx < -0.5) { impactAsync(ImpactFeedbackStyle.Medium); snapProfileIn(); }
         else { snapProfileOut(); }
       },
       onPanResponderTerminate: () => snapProfileOut(),
@@ -672,9 +689,9 @@ export default function GuildPostDetailScreen() {
   const backPan = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, g) => g.dx > 15 && Math.abs(g.dx) > Math.abs(g.dy) * 1.8,
-      onPanResponderMove: (_, g) => { profileSlideX.setValue(Math.min(W, Math.max(0, g.dx))); },
+      onPanResponderMove: (_, g) => { profileSlideX.setValue(Math.min(pw(), Math.max(0, g.dx))); },
       onPanResponderRelease: (_, g) => {
-        if (g.dx > W * 0.35 || g.vx > 0.5) { impactAsync(ImpactFeedbackStyle.Light); snapProfileOut(); }
+        if (g.dx > pw() * 0.35 || g.vx > 0.5) { impactAsync(ImpactFeedbackStyle.Light); snapProfileOut(); }
         else { snapProfileIn(); }
       },
       onPanResponderTerminate: () => snapProfileIn(),
@@ -707,16 +724,18 @@ export default function GuildPostDetailScreen() {
         onBack={() => router.back()}
         autoOpenComments={item.id === id && comments === '1'}
         product={productByPost[item.id] ?? null}
+        pageHeight={itemH}
+        pageWidth={itemW}
       />
     ),
-    [guildColors, activeIndex, screenFocused, profilePanel, router, id, comments, productByPost]
+    [guildColors, activeIndex, screenFocused, profilePanel, router, id, comments, productByPost, itemH, itemW]
   );
 
   const getItemLayout = useCallback((_: unknown, index: number) => ({
-    length: ITEM_HEIGHT,
-    offset: ITEM_HEIGHT * index,
+    length: itemH,
+    offset: itemH * index,
     index,
-  }), []);
+  }), [itemH]);
 
   // ─ Linker Edge-Swipe → router.back() ─────────────────────────────────
   // Schmaler linker Streifen (~22px) mit PanResponder:
@@ -747,8 +766,22 @@ export default function GuildPostDetailScreen() {
   const safeInitialNumToRender = Math.max((initialIndex >= 0 ? initialIndex : 0) + 2, 3);
 
   return (
-    <View style={{ flex: 1, backgroundColor: '#000' }} {...swipePan.panHandlers}>
-      <FlatList
+    <View
+      style={{ flex: 1, backgroundColor: '#000' }}
+      {...swipePan.panHandlers}
+      onLayout={(e) => {
+        const h = Math.round(e.nativeEvent.layout.height);
+        const w = Math.round(e.nativeEvent.layout.width);
+        if (h > 0 && w > 0 && (pageSizeRef.current?.h !== h || pageSizeRef.current?.w !== w)) {
+          pageSizeRef.current = { h, w };
+          setPageSize({ h, w });
+        }
+      }}
+    >
+      {/* FlatList erst nach der Messung: initialScrollIndex springt via
+          getItemLayout-Offset — mit Fallback-Höhe säße der Start auf dem
+          Fold mitten im Post. Ein Frame schwarz, unsichtbar. */}
+      {pageSize && <FlatList
         ref={listRef}
         data={posts}
         keyExtractor={(item) => item.id}
@@ -771,7 +804,7 @@ export default function GuildPostDetailScreen() {
         // bleibt voll groß → unten/seitlich abgeschnitten im Peek). Der Feed
         // (app/(tabs)/index.tsx) nutzt aus genau diesem Grund nur Android.
         removeClippedSubviews={Platform.OS === 'android'}
-      />
+      />}
 
       {/* Linker Edge-Strip für Swipe-Back (wie iOS/Short-Video) */}
       <View

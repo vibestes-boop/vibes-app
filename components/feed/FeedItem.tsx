@@ -894,6 +894,7 @@ export const FeedItem = React.memo(function FeedItem({
         onClose={() => setCommentsOpen(false)}
         sheetProgress={sheetProgress}
         seamlessPeek
+        sheetHeight={pageH}
         creatorUserId={item.authorId}
         onUserPress={(userId) => {
           // Nur fürs Profil-Aufrufen schließen — beim Zurückkommen wieder öffnen,
