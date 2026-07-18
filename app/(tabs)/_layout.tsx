@@ -2,7 +2,7 @@ import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Tabs,useRouter } from 'expo-router';
 import { Plus,User,Zap } from 'lucide-react-native';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator,Pressable,StyleSheet,Text,View } from 'react-native';
+import { ActivityIndicator,Platform,Pressable,StyleSheet,Text,View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 // react-native-reanimated: named imports (safe for Hermes)
 import {
@@ -243,7 +243,10 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   return (
     <View style={[styles.tabBarContainer, { borderTopColor: colors.tabBar.border }]}>
       <View style={[styles.blurView, { backgroundColor: colors.tabBar.bg }]}>
-        <View style={[styles.tabBarInner, { paddingBottom: Math.max(insets.bottom - 6, 2) }]}>
+        {/* Android: voller insets.bottom — die 3-Tasten-Systemleiste ist hoch und
+            edge-to-edge zeichnet dahinter (Fold-Test 18.7.: Labels wurden angeschnitten).
+            iOS behält den -6-Rabatt (flacher Home-Indicator, gewollte Optik). */}
+        <View style={[styles.tabBarInner, { paddingBottom: Platform.OS === 'android' ? Math.max(insets.bottom, 8) : Math.max(insets.bottom - 6, 2) }]}>
 
           {/* ── Slot 1: Home (Feed, fest) ── */}
           <TabBarItem
