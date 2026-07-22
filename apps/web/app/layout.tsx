@@ -116,10 +116,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             preconnect/dns-prefetch automatisch in den <head>. */}
         <link rel="preconnect" href={R2_MEDIA_ORIGIN} />
         <link rel="dns-prefetch" href={R2_MEDIA_ORIGIN} />
+        {/* Dark ist der Serlo-Standard (Parität zur App, themeStore-Default 'dark').
+            enableSystem={false}: der Toggle bot nie „System" an — Bestands-Werte
+            'system' (nie aktiv gewählt) fallen damit auf den Dark-Default zurück,
+            explizit gewähltes Hell bleibt erhalten. */}
         <ThemeProvider
           attribute="class"
-          defaultTheme="system"
-          enableSystem
+          defaultTheme="dark"
+          enableSystem={false}
           disableTransitionOnChange
         >
           <I18nProvider locale={locale} messages={messages}>
