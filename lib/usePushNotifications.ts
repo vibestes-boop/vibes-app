@@ -46,7 +46,11 @@ export function routeFromNotificationData(data: Record<string, any> | undefined)
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { router } = require('expo-router');
 
-  if (data?.type === 'message' && data?.conversationId) {
+  // 'dm' ist der Typ, den die Datenbank und send-push-notification tatsächlich
+  // schicken (notifications_type_check kennt nur 'dm'); 'message' stand hier
+  // historisch und traf deshalb NIE zu — Tippen auf eine DM-Push öffnete keinen
+  // Chat, auf beiden Plattformen. Beide Schreibweisen bleiben akzeptiert.
+  if ((data?.type === 'dm' || data?.type === 'message') && data?.conversationId) {
     router.push({
       pathname: '/messages/[id]',
       params: {

@@ -11,6 +11,7 @@
  */
 /* eslint-disable @typescript-eslint/no-require-imports */
 import { useEffect, useRef, useState } from 'react';
+import { passwordRecovery } from '@/lib/passwordRecovery';
 import { View, Text, ActivityIndicator, StyleSheet, useColorScheme } from 'react-native';
 import {
   useFonts,
@@ -90,8 +91,10 @@ function AuthGuard() {
       async (event: string, session: import('@supabase/supabase-js').Session | null) => {
         setSession(session);
         if (session?.user) await fetchProfile(session.user.id);
-        if (event === 'PASSWORD_RECOVERY')
+        if (event === 'PASSWORD_RECOVERY') {
+          passwordRecovery.active = true;
           router.replace('/reset-password' as never);
+        }
       },
     );
 
@@ -102,6 +105,10 @@ function AuthGuard() {
   useEffect(() => {
     // Erst routen wenn Zustand hydrated UND Auth initialisiert ist
     if (!hydrated || !initialized) return;
+    // Passwort-Reset läuft: der Recovery-Link hat eine Sitzung gesetzt, aber der
+    // Nutzer MUSS erst ein neues Passwort vergeben. Ohne diese Sperre würde der
+    // Guard ihn sofort in die Tabs schicken und der Reset-Screen wäre unerreichbar.
+    if (passwordRecovery.active) return;
     const inAuthGroup = segments[0] === '(auth)';
     const inOnboardingGroup = segments[0] === '(onboarding)';
 
@@ -178,9 +185,14 @@ function AuthGuard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Schritt 2: Pending-URL verarbeiten sobald User authentifiziert ist
+  // Schritt 2: Pending-URL verarbeiten sobald User authentifiziert ist.
+  // AUSNAHME Passwort-Reset: der Recovery-Link kommt per Definition OHNE Sitzung
+  // an (der Nutzer kann sich ja gerade nicht anmelden). Früher wartete dieser
+  // Effekt auf session+profile → beim Kaltstart aus der E-Mail passierte nie etwas.
   useEffect(() => {
-    if (!initialized || !session || !profile) return;
+    if (!initialized) return;
+    const isRecovery = pendingDeepLink.current?.startsWith('vibes://reset-password');
+    if (!isRecovery && (!session || !profile)) return;
     if (!pendingDeepLink.current) return;
 
     const url = pendingDeepLink.current;
@@ -193,9 +205,38 @@ function AuthGuard() {
   }, [initialized, session, profile]);
 
   function navigateDeepLink(url: string) {
-    // vibes://reset-password — Passwort-Reset per E-Mail-Link
+    // vibes://reset-password — Passwort-Reset per E-Mail-Link.
+    // Supabase hängt die Tokens ans URL-Fragment (Implicit Flow, der Client hat
+    // detectSessionInUrl:false — in React Native parst das niemand automatisch).
+    // Ohne setSession() gäbe es keine Sitzung: updateUser() schlüge mit
+    // „Auth session missing" fehl und der Guard würde zurück zum Login werfen.
     if (url.match(/^vibes:\/\/reset-password/)) {
-      router.push('/reset-password' as never);
+      const { parseFragment } =
+        require('@/lib/useGoogleSignIn') as typeof import('@/lib/useGoogleSignIn');
+      const p = parseFragment(url);
+      __DEV__ && console.log('[Recovery] URL:', url.slice(0, 120), '| Tokens:', Object.keys(p).join(','));
+      if (p.access_token && p.refresh_token) {
+        passwordRecovery.active = true;
+        router.replace('/reset-password' as never);
+        void supabase.auth
+          .setSession({ access_token: p.access_token, refresh_token: p.refresh_token })
+          .then(({ error }: { error: unknown }) => {
+            if (error) {
+              passwordRecovery.active = false;
+              router.replace('/(auth)/login' as never);
+            }
+          })
+          .catch(() => {
+            passwordRecovery.active = false;
+            router.replace('/(auth)/login' as never);
+          });
+      } else {
+        // Abgelaufener oder bereits benutzter Link (Fragment enthält dann error=…)
+        const { Alert } = require('react-native') as typeof import('react-native');
+        const { tStatic } = require('@/lib/i18n') as typeof import('@/lib/i18n');
+        Alert.alert(tStatic('auth.rpLinkExpiredTitle'), tStatic('auth.rpLinkExpiredBody'));
+        router.replace('/(auth)/login' as never);
+      }
       return;
     }
     const liveMatch = url.match(/^vibes:\/\/live\/([^/?#]+)/);
@@ -299,7 +340,7 @@ function AppSplash() {
   return (
     <View style={splashStyles.overlay}>
       <ActivityIndicator color="#FFFFFF" size="large" />
-      <Text style={splashStyles.label}>Vibes — wird geladen…</Text>
+      <Text style={splashStyles.label}>Serlo — wird geladen…</Text>
     </View>
   );
 }
@@ -474,7 +515,10 @@ export default function RootLayoutFull() {
           <AuthGuard />
           <PushNotificationsProvider />
           <AppSplash />
-          <BuildBanner />
+          {/* Nur in Entwicklungs-Builds: die Versions-/Build-Pille ist ein
+              Debug-Hilfsmittel und hatte im Store-Build nichts verloren —
+              sie war 4 Sekunden lang das Erste, was jeder Nutzer sah. */}
+          {__DEV__ && <BuildBanner />}
           <OfflineBanner />
           <Stack screenOptions={{ headerShown: false, animation: 'none' }}>
             <Stack.Screen name="(tabs)" />

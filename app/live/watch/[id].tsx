@@ -1210,11 +1210,15 @@ function WatchUIContent({
     }).catch(() => {});
   }, [coHostStatus]);
 
-  // Portrait-Lock — Live-Stream ist immer vertikal
+  // Portrait-Lock — Live-Stream ist immer vertikal.
+  // Beim Verlassen NICHT unlockAsync(): das hebt die Sperre app-WEIT auf, und da
+  // die Hochkant-Vorgabe aus app.json auf Android nur beim Start greift, würde
+  // danach die ganze App mitdrehen (Feed, Profil, Editor). Wieder auf PORTRAIT_UP
+  // sperren stellt den App-Standard her. iOS erzwingt Portrait ohnehin nativ.
   useEffect(() => {
     ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => { });
     return () => {
-      ScreenOrientation.unlockAsync().catch(() => { });
+      ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => { });
     };
   }, []);
 

@@ -625,6 +625,8 @@ export const de = {
     sizeWide: 'Quer · 3:2',
   },
   live: {
+    micNeededTitle: 'Ohne Ton geht es nicht 🎙️',
+    micNeededBody: 'Für einen Live-Stream braucht Serlo Zugriff auf dein Mikrofon. Du kannst ihn in den Einstellungen erlauben.',
     // Kategorien — DB-Wert (live_sessions.category) bleibt deutsch, nur Anzeige
     cat_Talk: 'Talk',
     cat_Musik: 'Musik',
@@ -1299,6 +1301,8 @@ export const de = {
     rpChanged: 'Passwort geändert!',
     rpRedirect: 'Du wirst gleich weitergeleitet…',
     rpTitle: 'Neues Passwort',
+    rpLinkExpiredTitle: 'Link abgelaufen',
+    rpLinkExpiredBody: 'Dieser Link ist nicht mehr gültig. Fordere einen neuen an. 🙂',
     rpSub: 'Wähle ein sicheres Passwort\n(mindestens 8 Zeichen)',
     rpNewPlaceholder: 'Neues Passwort',
     rpConfirmPlaceholder: 'Passwort bestätigen',

@@ -548,6 +548,8 @@ export const en: DeepPartial<Messages> = {
     sizeWide: 'Wide · 3:2',
   },
   live: {
+    micNeededTitle: 'It needs sound 🎙️',
+    micNeededBody: 'Serlo needs microphone access to run a live stream. You can allow it in Settings.',
     cat_Talk: 'Talk',
     cat_Musik: 'Music',
     cat_Gaming: 'Gaming',
@@ -1185,6 +1187,8 @@ export const en: DeepPartial<Messages> = {
     rpChanged: 'Password changed!',
     rpRedirect: 'You’ll be redirected shortly…',
     rpTitle: 'New password',
+    rpLinkExpiredTitle: 'Link expired',
+    rpLinkExpiredBody: 'This link is no longer valid. Just request a new one. 🙂',
     rpSub: 'Choose a secure password\n(at least 8 characters)',
     rpNewPlaceholder: 'New password',
     rpConfirmPlaceholder: 'Confirm password',

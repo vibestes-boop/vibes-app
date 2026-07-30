@@ -2635,10 +2635,12 @@ export default function LiveHostScreen() {
     })
   );
 
-  // Portrait-Lock für den gesamten Live-Screen
+  // Portrait-Lock für den gesamten Live-Screen.
+  // Beim Verlassen wieder sperren statt unlockAsync() — sonst dreht auf Android
+  // anschließend die ganze App mit (siehe live/watch/[id].tsx).
   useEffect(() => {
     ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => { });
-    return () => { ScreenOrientation.unlockAsync().catch(() => { }); };
+    return () => { ScreenOrientation.lockAsync(ScreenOrientation.OrientationLock.PORTRAIT_UP).catch(() => { }); };
   }, []);
 
   // EINMALIGER useEffect (leere Deps) — verbindet, aktiviert Tracks, räumt auf.

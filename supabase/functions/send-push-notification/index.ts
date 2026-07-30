@@ -281,6 +281,11 @@ Deno.serve(async (req: Request) => {
         },
         sound: 'default',
         priority: 'high',
+        // Android 8+: ohne channelId landet die Meldung im System-Kanal
+        // „Sonstiges" (niedrige Wichtigkeit) — kein Banner, kein Ton, verzögert
+        // im Doze-Modus. 'default' ist der Kanal, den die App beim Start anlegt
+        // (lib/usePushNotifications.ts, AndroidImportance.MAX). iOS ignoriert es.
+        channelId: 'default',
       }),
     });
 

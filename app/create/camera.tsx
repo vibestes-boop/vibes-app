@@ -490,9 +490,17 @@ export default function CreateCameraScreen() {
     }
   }, [textContent, router]);
 
+  // Berechtigungen GENAU EINMAL anfragen. Vorher hing der Effekt an den
+  // Permission-Objekten selbst: bei Ablehnung änderte sich das Objekt, der Effekt
+  // lief erneut, fragte erneut → Endlosschleife. Auf Android löst der Request bei
+  // canAskAgain=false sofort auf, ohne Dialog — die Schleife lief dann heiß.
+  const permissionAskedRef = useRef(false);
   useEffect(() => {
-    if (!cameraPermission?.granted) requestCameraPermission();
-    if (!micPermission?.granted) requestMicPermission();
+    if (permissionAskedRef.current) return;
+    if (!cameraPermission || !micPermission) return;   // noch am Laden
+    permissionAskedRef.current = true;
+    if (!cameraPermission.granted && cameraPermission.canAskAgain) requestCameraPermission();
+    if (!micPermission.granted && micPermission.canAskAgain) requestMicPermission();
   }, [cameraPermission, micPermission, requestCameraPermission, requestMicPermission]);
 
 

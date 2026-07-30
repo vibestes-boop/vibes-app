@@ -1,9 +1,10 @@
 import { useI18n } from '@/lib/i18n';
+import { passwordRecovery } from '@/lib/passwordRecovery';
 import { supabase } from '@/lib/supabase';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { CheckCircle2,Lock,Zap } from 'lucide-react-native';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
 ActivityIndicator,
 Alert,
@@ -59,10 +60,17 @@ export default function ResetPasswordScreen() {
     if (error) {
       Alert.alert(t('common.error'), error.message);
     } else {
+      // Recovery ist abgeschlossen → Guard wieder freigeben, sonst bliebe die
+      // Navigation für den Rest der Session gesperrt.
+      passwordRecovery.active = false;
       setDone(true);
       setTimeout(() => router.replace('/(tabs)'), 2200);
     }
   };
+
+  // Verlässt der Nutzer den Screen ohne neues Passwort (Zurück-Taste), darf der
+  // Guard wieder übernehmen — er landet dann regulär im Feed bzw. auf dem Login.
+  useEffect(() => () => { passwordRecovery.active = false; }, []);
 
   if (done) {
     return (

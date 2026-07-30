@@ -12,6 +12,7 @@ import { useThemedStatusBar } from '@/lib/useThemedStatusBar';
 import React,{ useCallback,useEffect,useRef,useState } from 'react';
 import {
 Alert,
+BackHandler,
 Pressable,
 StyleSheet,
 Text,
@@ -169,6 +170,31 @@ export default function CreatePostScreen() {
   const [rotateState, setRotateState]           = useState<RotateState>({ rotation: 0, flipH: false });
   const [trimResult, setTrimResult]             = useState<TrimResult | null>(null);
   const [isDrawMode, setIsDrawMode]             = useState(false);
+
+  // Editor verlassen — mit Rückfrage, wenn etwas verloren ginge.
+  // Hing bisher nur am Zurück-KNOPF; die Android-Wischgeste umging ihn und
+  // verwarf Aufnahme, Text und Beschreibung kommentarlos.
+  const confirmLeave = useCallback(() => {
+    if ((caption.trim() || image) && !uploading) {
+      Alert.alert(tr('create.saveDraftTitle'), '', [
+        { text: tr('create.discard'), style: 'destructive', onPress: () => router.back() },
+        { text: tr('create.saveDraft'), onPress: async () => {
+          await saveDraft({ caption, tags: selectedTags, mediaUri: image?.uri ?? null, mediaType: image?.type === 'video' ? 'video' : image ? 'image' : null });
+          router.back();
+        }},
+      ]);
+    } else { router.back(); }
+  }, [caption, image, uploading, selectedTags, saveDraft, router, tr]);
+
+  // Android-Hardware-Zurück auf denselben Weg zwingen
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (uploading) return true;          // während des Uploads gar nicht verlassen
+      confirmLeave();
+      return true;                         // Standard-Verhalten unterdrücken
+    });
+    return () => sub.remove();
+  }, [confirmLeave, uploading]);
   const [drawnPaths, setDrawnPaths]             = useState<DrawnPath[]>([]);
   const [drawColor, setDrawColor]               = useState('#fff');
   const [drawWidth, setDrawWidth]               = useState(6);
@@ -649,17 +675,7 @@ export default function CreatePostScreen() {
       <View style={[s.topBar, { paddingTop: insets.top + 8 }]}>
         {/* Zurück */}
         <Pressable
-          onPress={() => {
-            if ((caption.trim() || image) && !uploading) {
-              Alert.alert(tr('create.saveDraftTitle'), '', [
-                { text: tr('create.discard'), style: 'destructive', onPress: () => router.back() },
-                { text: tr('create.saveDraft'), onPress: async () => {
-                  await saveDraft({ caption, tags: selectedTags, mediaUri: image?.uri ?? null, mediaType: image?.type === 'video' ? 'video' : image ? 'image' : null });
-                  router.back();
-                }},
-              ]);
-            } else { router.back(); }
-          }}
+          onPress={confirmLeave}
           style={s.topBtn}
           hitSlop={10}
         >

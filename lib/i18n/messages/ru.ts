@@ -617,6 +617,8 @@ export const ru: DeepPartial<Messages> = {
     sizeWide: 'Горизонтальный · 3:2',
   },
   live: {
+    micNeededTitle: 'Без звука не получится 🎙️',
+    micNeededBody: 'Для эфира Serlo нужен доступ к микрофону. Его можно разрешить в настройках.',
     cat_Talk: 'Разговор',
     cat_Musik: 'Музыка',
     cat_Gaming: 'Игры',
@@ -1260,6 +1262,8 @@ export const ru: DeepPartial<Messages> = {
     rpChanged: 'Пароль изменён!',
     rpRedirect: 'Сейчас тебя перенаправит…',
     rpTitle: 'Новый пароль',
+    rpLinkExpiredTitle: 'Ссылка устарела',
+    rpLinkExpiredBody: 'Эта ссылка больше не действует. Запроси новую. 🙂',
     rpSub: 'Выбери надёжный пароль\n(минимум 8 символов)',
     rpNewPlaceholder: 'Новый пароль',
     rpConfirmPlaceholder: 'Подтверди пароль',

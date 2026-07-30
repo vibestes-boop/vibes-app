@@ -27,7 +27,7 @@ useScheduledLives,
 } from '@/lib/useScheduledLives';
 import { useWomenOnly } from '@/lib/useWomenOnly';
 import { BlurView } from 'expo-blur';
-import { CameraView,useCameraPermissions } from 'expo-camera';
+import { CameraView,useCameraPermissions,useMicrophonePermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import { Image as ExpoImage } from 'expo-image';
 import { launchImageLibraryAsync,requestMediaLibraryPermissionsAsync } from 'expo-image-picker';
@@ -105,6 +105,9 @@ export default function LiveStartScreen() {
   const scheduledLiveIdRef = useRef<string | null>(params.scheduledLiveId ?? null);
 
   const [permission, requestPermission] = useCameraPermissions();
+  // Das Mikrofon wurde bisher NIE angefragt: LiveKit forderte es erst mitten im
+  // Stream an — wer ablehnte, sendete stumm weiter, ohne jeden Hinweis.
+  const [micPermission, requestMicPermission] = useMicrophonePermissions();
   const [facing, setFacing] = useState<'front' | 'back'>('front');
   const [title, setTitle] = useState(params.title ?? '');
   const [allowComments, setAllowComments] = useState(params.allowComments !== '0');
@@ -190,6 +193,18 @@ export default function LiveStartScreen() {
     if (!permission?.granted) {
       await requestPermission();
       return;
+    }
+    // Ton VOR dem Start klären — ein stummer Live-Stream fällt sonst erst vor
+    // Publikum auf, und der Host merkt es selbst gar nicht.
+    if (!micPermission?.granted) {
+      const res = await requestMicPermission();
+      if (!res?.granted) {
+        Alert.alert(
+          t('live.micNeededTitle'),
+          t('live.micNeededBody'),
+        );
+        return;
+      }
     }
 
     dotOpacity.value = withRepeat(

@@ -160,7 +160,9 @@ export default function PostLongPressSheet({
     onClose();
     try {
       // Native Share-Sheet — iOS: "In Fotos sichern" erscheint direkt, Android: Speichern möglich
-      await Share.share({ url: mediaUrl, title: 'Vibes Post' });
+      // Android ignoriert `url` komplett — ohne `message` öffnet sich ein leeres
+      // Teilen-Fenster. Beide Felder setzen (iOS nutzt url, Android message).
+      await Share.share({ message: mediaUrl, url: mediaUrl, title: 'Serlo Post' });
     } catch (e: any) {
       if (e?.message !== 'User did not share') {
         Alert.alert(t('create.oops'), e?.message ?? t('share.failGeneric'));
