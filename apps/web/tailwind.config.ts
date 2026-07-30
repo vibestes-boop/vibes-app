@@ -1,5 +1,6 @@
 import type { Config } from 'tailwindcss';
 import animate from 'tailwindcss-animate';
+import typography from '@tailwindcss/typography';
 
 /**
  * Tailwind-Config mit shadcn/ui-konformen CSS-Variablen.
@@ -199,5 +200,8 @@ export default {
       },
     },
   },
-  plugins: [animate],
+  // typography: die Rechtsseiten (Impressum, Datenschutz, AGB, Widerruf,
+  // Kinderschutz, Konto löschen) tragen seit jeher `prose`-Klassen, ohne dass das
+  // Plugin je installiert war — Überschriften rendern dort als Fließtext.
+  plugins: [animate, typography],
 } satisfies Config;
