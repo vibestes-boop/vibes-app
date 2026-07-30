@@ -92,9 +92,11 @@
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE",
         "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
-        "android.permission.ACCESS_MEDIA_LOCATION",
-        "android.permission.READ_MEDIA_AUDIO",
         "android.permission.POST_NOTIFICATIONS"
+      ],
+      "blockedPermissions": [
+        "android.permission.SYSTEM_ALERT_WINDOW",
+        "android.permission.READ_MEDIA_AUDIO"
       ],
       "versionCode": 47
     },
@@ -144,7 +146,7 @@
         {
           "photosPermission": "Serlo greift auf deine Mediathek zu, damit du vorhandene Fotos und Videos auswählen und als Beitrag oder Story hochladen kannst – zum Beispiel um ein Video aus deiner Galerie in deinem Feed zu teilen.",
           "savePhotosPermission": "Serlo speichert Fotos und Videos in deiner Mediathek, wenn du einen Beitrag herunterlädst – zum Beispiel um ein gespeichertes Video später offline anzusehen.",
-          "isAccessMediaLocationEnabled": true
+          "isAccessMediaLocationEnabled": false
         }
       ],
       "expo-audio",

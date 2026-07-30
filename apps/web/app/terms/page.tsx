@@ -101,6 +101,24 @@ export default function TermsPage() {
             zu entfernen, sofern sie gegen diese AGB, die Community-Richtlinien
             oder geltendes Recht verstoßen.
           </li>
+          <li>
+            <strong>Anstößige Inhalte und Missbrauch sind untersagt.</strong>{' '}
+            Unzulässig sind insbesondere sexuelle Darstellungen Minderjähriger,
+            Belästigung, Bedrohung, Mobbing, Hassrede gegen Personen oder
+            Gruppen, die Aufforderung zu Gewalt sowie die Veröffentlichung
+            intimer Aufnahmen ohne Einwilligung. Jeder Beitrag, jedes Profil,
+            jeder Live-Stream und jede Nachricht lässt sich in der App melden;
+            zusätzlich kann jeder Nutzer andere Nutzer blockieren.
+          </li>
+          <li>
+            <strong>Bearbeitung von Meldungen.</strong> Gemeldete Inhalte prüft
+            Serlo innerhalb von 24 Stunden. Bestätigt sich ein Verstoß, werden
+            der Inhalt entfernt und — je nach Schwere — das Konto verwarnt,
+            eingeschränkt oder dauerhaft gesperrt. Für den Bereich Kinderschutz
+            gelten die gesonderten{' '}
+            <Link href={'/kinderschutz' as Route}>Kinderschutz-Standards</Link>{' '}
+            mit unmittelbarer Sperre und Meldung an die zuständigen Behörden.
+          </li>
         </ol>
       </section>
 

@@ -313,6 +313,8 @@ const enMessages = {
     privacyLink: 'Privacy',
     imprintLink: 'Imprint',
     withdrawalLink: 'Withdrawal',
+    childSafetyLink: 'Child safety',
+    deleteAccountLink: 'Delete account',
     unmuteAria: 'Unmute',
     muteAria: 'Mute',
     volumeAria: 'Volume',

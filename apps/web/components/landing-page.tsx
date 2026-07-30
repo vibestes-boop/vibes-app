@@ -331,6 +331,12 @@ export async function LandingPage({ featured, liveNow, trendingPosts, shopProduc
             <Link href={'/privacy' as Route} className="transition-colors hover:text-white">{t('feed.privacyLink')}</Link>
             <Link href={'/imprint' as Route} className="transition-colors hover:text-white">{t('feed.imprintLink')}</Link>
             <Link href={'/widerruf' as Route} className="transition-colors hover:text-white">{t('feed.withdrawalLink')}</Link>
+            {/* Beide von Google Play gefordert: die Kinderschutz-Standards müssen
+                öffentlich veröffentlicht und in der Play Console verlinkt sein,
+                die Löschseite muss auch Menschen erreichen, die die App schon
+                deinstalliert haben. Deshalb im Fußbereich statt nur intern. */}
+            <Link href={'/kinderschutz' as Route} className="transition-colors hover:text-white">{t('feed.childSafetyLink')}</Link>
+            <Link href={'/konto-loeschen' as Route} className="transition-colors hover:text-white">{t('feed.deleteAccountLink')}</Link>
             <Link href={'/support' as Route} className="transition-colors hover:text-white">{t('landing.support')}</Link>
           </nav>
           <a

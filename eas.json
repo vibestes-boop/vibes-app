@@ -51,14 +51,15 @@
       }
     },
     "production": {
-      "autoIncrement": false,
       "channel": "production",
       "ios": {
-        "resourceClass": "m-medium"
+        "resourceClass": "m-medium",
+        "autoIncrement": false
       },
       "android": {
         "resourceClass": "large",
-        "buildType": "app-bundle"
+        "buildType": "app-bundle",
+        "autoIncrement": "versionCode"
       },
       "env": {
         "APP_ENV": "production",

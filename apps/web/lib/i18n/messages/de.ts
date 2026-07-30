@@ -358,6 +358,8 @@ const deMessages = {
     privacyLink: "Datenschutz",
     imprintLink: "Impressum",
     withdrawalLink: "Widerruf",
+    childSafetyLink: "Kinderschutz",
+    deleteAccountLink: "Konto löschen",
     // Player / Karte
     unmuteAria: "Ton einschalten",
     muteAria: "Stummschalten",

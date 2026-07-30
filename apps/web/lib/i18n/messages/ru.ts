@@ -351,6 +351,8 @@ const ruMessages = {
     privacyLink: 'Конфиденциальность',
     imprintLink: 'Импрессум',
     withdrawalLink: 'Возврат',
+    childSafetyLink: 'Защита детей',
+    deleteAccountLink: 'Удалить аккаунт',
     // Плеер / карточка
     unmuteAria: 'Включить звук',
     muteAria: 'Выключить звук',
