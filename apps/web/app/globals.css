@@ -155,3 +155,18 @@
   animation: voice-bar linear infinite;
   min-height: 4px;
 }
+
+/* ── Cookie-Banner: Platz auf Textseiten reservieren ──────────────────────
+   Der Consent-Banner ist position:fixed und verdeckte auf reinen Textseiten
+   (Impressum, Datenschutz, AGB, Widerruf, Kinderschutz, Konto löschen) die
+   untersten Zeilen, bis man ihn wegklickt. Der Banner meldet seine gemessene
+   Höhe als --consent-banner-h; nur die prose-Artikel reservieren sie.
+   Vollbild-Layouts (Feed, Live) nutzen die Variable bewusst NICHT. */
+:root {
+  --consent-banner-h: 0px;
+}
+
+article.prose {
+  padding-bottom: var(--consent-banner-h);
+  transition: padding-bottom 150ms ease;
+}

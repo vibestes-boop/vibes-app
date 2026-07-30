@@ -98,7 +98,7 @@
         "android.permission.SYSTEM_ALERT_WINDOW",
         "android.permission.READ_MEDIA_AUDIO"
       ],
-      "versionCode": 47
+      "versionCode": 48
     },
     "web": {
       "favicon": "./assets/favicon.png",

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { Route } from 'next';
@@ -62,10 +62,37 @@ export function ConsentBanner() {
     setVisible(false);
   };
 
+  // Der Banner schwebt (position: fixed) über dem Inhalt. Auf reinen Textseiten
+  // — Impressum, Datenschutz, AGB, Widerruf, Kinderschutz, Konto löschen —
+  // verdeckte er dadurch dauerhaft die untersten Zeilen, bis man ihn wegklickt.
+  // Lösung: die eigene Höhe messen und als CSS-Variable bereitstellen; nur
+  // `article.prose` reserviert diesen Platz (globals.css). Vollbild-Layouts wie
+  // der Feed bleiben unberührt, weil sie die Variable nicht verwenden.
+  const bannerRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = bannerRef.current;
+    const root = document.documentElement;
+    if (!visible || !el) {
+      root.style.setProperty('--consent-banner-h', '0px');
+      return;
+    }
+    const apply = () => {
+      root.style.setProperty('--consent-banner-h', `${Math.ceil(el.getBoundingClientRect().height) + 24}px`);
+    };
+    apply();
+    const ro = new ResizeObserver(apply);
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      root.style.setProperty('--consent-banner-h', '0px');
+    };
+  }, [visible, showDetails]);
+
   if (!visible) return null;
 
   return (
     <div
+      ref={bannerRef}
       role="dialog"
       aria-labelledby="consent-title"
       aria-describedby="consent-desc"
