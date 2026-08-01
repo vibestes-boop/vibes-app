@@ -187,30 +187,54 @@ die Löschung veranlassen.
 
 ### 3.8 Datensicherheit (das längste Formular)
 
-**Wird verschlüsselt übertragen:** Ja (alles über HTTPS)
-**Nutzer können Löschung beantragen:** Ja
+⚠️ **Erste Frage: „Werden in deiner App erforderliche Nutzerdaten erhoben oder
+geteilt?" → JA.** Die Voreinstellung ist „Nein" und wäre eine Falschangabe —
+Google wertet das als Richtlinienverstoß und kann die App auch nachträglich
+entfernen.
 
-| Datenart | Erhoben | Geteilt | Zweck | Pflicht? |
-|---|---|---|---|---|
-| Name / Nutzername | Ja | Nein | App-Funktion, Konto | Pflicht |
-| E-Mail-Adresse | Ja | Nein | Konto, Anmeldung | Pflicht |
-| Profilfoto | Ja | Nein | App-Funktion | Optional |
-| Fotos | Ja | Nein | App-Funktion (Beiträge) | Optional |
-| Videos | Ja | Nein | App-Funktion (Beiträge) | Optional |
-| Sprachaufnahmen / Ton | Ja | Nein | App-Funktion (Video, Live) | Optional |
-| Nachrichten anderer Art | Ja | Nein | App-Funktion (Chat) | Optional |
-| Kaufhistorie | Ja | Nein | App-Funktion (Bestellungen) | Optional |
-| Absturzprotokolle | Ja | Nein | Analyse, Fehlerbehebung | Optional |
-| Diagnosedaten | Ja | Nein | Analyse, Fehlerbehebung | Optional |
-| Geräte- oder andere IDs | Ja | Nein | App-Funktion (Push) | Pflicht |
+Danach erscheint der Kategorienbaum. **Nur diese Häkchen setzen** (jede Zeile
+gegen den echten Code geprüft, Stand 01.08.2026):
 
-**Nicht erhoben:** Standort, Kontakte, Kalender, SMS, Anrufliste,
-Gesundheitsdaten, Finanzdaten (Zahlungen laufen über Stripe, nicht über die App),
-sexuelle Orientierung, Religion, politische Ansichten.
+| Kategorie | Ankreuzen | Warum |
+|---|---|---|
+| **Standort** | ❌ nichts | Standort-Berechtigung wurde komplett entfernt |
+| **Personenbezogene Daten** | ✅ Name · ✅ E-Mail-Adresse · ✅ Nutzer-IDs · ✅ Adresse | Konto + Lieferadresse im Shop (`update_order_shipping_address`) |
+| | ❌ Telefonnummer, Herkunft, Religion, sexuelle Orientierung, politische Ansichten | wird nirgends erhoben |
+| **Finanzinformationen** | ✅ Kaufhistorie · ❌ Zahlungsinformationen | Bestellungen ja; Kartendaten laufen extern über Stripe, nie durch die App |
+| **Gesundheit und Fitness** | ❌ nichts | |
+| **Nachrichten** | ✅ Andere In-App-Nachrichten · ❌ E-Mails, SMS | Direktnachrichten und Live-Chat |
+| **Fotos und Videos** | ✅ Fotos · ✅ Videos | Beiträge, Stories, Profilbild |
+| **Audiodateien** | ✅ Sprachaufnahmen · ❌ Musikdateien | Video-Ton, Live-Streams, Sprachnachrichten |
+| **Dateien und Dokumente** | ❌ nichts | |
+| **Kalender / Kontakte** | ❌ nichts | keine Berechtigung im Manifest |
+| **App-Aktivitäten** | ✅ App-Interaktionen · ✅ Andere nutzergenerierte Inhalte | Feed-Algorithmus (Verweildauer), Beiträge und Kommentare |
+| | ❌ In-App-Suchverlauf | Suche wird nicht gespeichert (nachgeprüft) |
+| | ❌ Installierte Apps, Andere Aktionen | |
+| **Web-Browsing** | ❌ nichts | |
+| **App-Informationen und Leistung** | ✅ Absturzprotokolle · ✅ Diagnose | Sentry |
+| **Geräte- oder andere IDs** | ✅ | Push-Token |
 
-Zur Frage „Werden Daten mit Dritten geteilt?": **Nein** im Sinne von Play —
-Supabase, Cloudflare, LiveKit und Sentry sind Dienstleister (Auftragsverarbeiter),
-keine Empfänger im Sinne der Weitergabe.
+**Für JEDE angekreuzte Datenart dann:**
+- Erhoben: **Ja** · Geteilt: **Nein**
+- Verarbeitung: **Daten werden dauerhaft gespeichert** (nicht „nur temporär")
+- Pflicht oder optional:
+  - **Pflicht:** Name, E-Mail, Nutzer-IDs, Geräte-IDs
+  - **Optional:** alles andere
+- Zweck:
+  - Name, E-Mail, Nutzer-IDs, Adresse, Fotos, Videos, Audio, Nachrichten,
+    Kaufhistorie, nutzergenerierte Inhalte → **App-Funktionalität**
+  - App-Interaktionen → **App-Funktionalität** + **Personalisierung**
+  - Absturzprotokolle, Diagnose → **Analysen**
+
+**Warum überall „Geteilt: Nein":** Supabase, Cloudflare, LiveKit und Sentry sind
+Auftragsverarbeiter (Dienstleister), keine Empfänger im Sinne von Google. Das
+zählt ausdrücklich nicht als Weitergabe.
+
+**Abschnitt Sicherheitspraktiken (am Ende):**
+- Verschlüsselung bei der Übertragung: **Ja**
+- Nutzer können Löschung ihrer Daten beantragen: **Ja**
+- Unabhängige Sicherheitsüberprüfung: **Nein** (optionales Gütesiegel, brauchst du nicht)
+- UPI-Zahlungen: **Nein** (nur für Finanz-Apps in Indien)
 
 ---
 
