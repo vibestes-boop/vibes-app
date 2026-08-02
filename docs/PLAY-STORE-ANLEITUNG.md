@@ -344,9 +344,22 @@ Genau das fragt Google im Formular ab.
 
 ---
 
-## Termin im Blick behalten
+## Termin: erledigt, kein Handlungsbedarf
 
-**31.08.2026:** Ab dann müssen neue Apps auf Android 16 ausgelegt sein. Deine ist
-auf Android 15 — bis einschließlich 30.08. zulässig. Wenn die Freigabe knapp
-wird, gibt es bei Google eine Fristverlängerung bis 01.11.2026 zu beantragen.
-Sag mir Bescheid, wenn es eng wird, dann stelle ich vorher auf Android 16 um.
+**31.08.2026 (Android-16-Pflicht für neue Apps): bereits erfüllt.**
+Die App zielt auf **API 36 (Android 16)** — bestätigt sowohl im Code
+(`react-native/gradle/libs.versions.toml`: `targetSdk = "36"`) als auch von der
+Play Console selbst beim Upload von versionCode 48 („Ziel-SDK 36").
+
+Frühere Notiz „Android 15, Migration nötig" war ein Lesefehler: Der Wert 35 ist
+nur Expos Rückfallwert, überschrieben wird er vom Versionskatalog von React
+Native 0.81. Es steht keine Migration und kein Fristverlängerungsantrag an.
+
+## Kennzahlen des ersten Bundles (versionCode 48)
+
+| | |
+|---|---|
+| Download-Größe pro Gerät | **101 MB** (die 206 MB der AAB-Datei enthalten alle Prozessor-Varianten) |
+| Geschätzte Downloadzeit | 58 Sekunden |
+| Unterstützte Geräte | ab Android 7 (API 24) |
+| Ziel-SDK | 36 (Android 16) |
