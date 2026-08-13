@@ -129,6 +129,20 @@ Der Raum meldet die Show bei jedem Datenabruf neu an (alle 15 s). Ohne Idempoten
 würde `connected` im selben Takt zurückgesetzt — der Gastgeber flöge alle 15 Sekunden aus seiner
 eigenen Sendung.
 
+### Eine Ebene ohne `box-none` macht das halbe Bild tot
+
+Tippen aufs Video schickt ein Herz. Die Fläche dafür liegt **ganz unten** im Stapel, direkt über dem
+Video — nur so bedient ein Tipp auf einen Knopf weiterhin den Knopf. Damit sie überhaupt etwas
+abbekommt, tragen alle reinen Anordnungs-Ebenen darüber `pointerEvents="box-none"`: die Spalte, die
+Kopfzeile, die Mitte.
+
+**Wer im Live-Raum eine neue Ebene einzieht und das vergisst, schaltet das Tippen in ihrem Bereich
+stumm** — ohne Fehlermeldung, ohne Absturz. Es passiert einfach nichts mehr.
+
+Umgekehrt gilt: Ein Berührungs-Erkenner **über** einem Eingabefeld nimmt diesem den Fokus, und die
+Tastatur geht nicht mehr auf. Deshalb hat der Kommentar-Stapel eine eigene kleine Tippfläche und
+nicht die ganze Chat-Spalte.
+
 ### `refreshing={isRefetching}` lässt Listen hängen aussehen
 
 Der Aktualisierungs-Kreisel springt sonst bei jedem Hintergrund-Abruf an. Für Ziehen-zum-Aktualisieren
@@ -282,7 +296,7 @@ Besitzer** — sonst wären Stellvertreter-Bieten und Gewinnspiel wertlos.
 | Live-Raum | Video, Kamera-Vorschau vor dem Senden, Kamera-Steuerung, Chat mit Eingabe, wegwischbare Kommentare, Sammelkorb-Leiste, „Als Nächstes", Shop-Zettel |
 | Auktion | Gebot, Anti-Snipe (+10 s), Sofortkauf, Max-Gebot, Zuschlag, „Du führst" |
 | Verkäufer-Regie | Show starten/beenden, Artikel auflegen mit Bild, **nachträglich ändern**, **Starten aus dem Raum heraus**, Dauer 20/30/60 s |
-| Reaktionen | Herz-Knopf, fliegende Herzen, Zähler — auf Serlos Broadcast-Vertrag, also plattformübergreifend |
+| Reaktionen | Herz-Knopf **und Tippen aufs Bild**, fliegende Herzen, Zähler — auf Serlos Broadcast-Vertrag, also plattformübergreifend |
 | Gewinnspiel | anlegen, mitmachen, ziehen — Teilnahme immer kostenlos |
 | Kleines Fenster | echtes Video, läuft über alle Reiter weiter |
 | Bezahlen | Sammelkorb → eine Bestellung → Stripe → Adresse → `paid` |
