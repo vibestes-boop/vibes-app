@@ -96,9 +96,13 @@ export function FloatingHearts({ reactions }: { reactions: LiveReaction[] }) {
 
 const styles = StyleSheet.create({
   // Der Kasten reicht vom Herz-Knopf bis nach oben, und die Herzen starten an
-  // seiner Unterkante — dort sitzt der Knopf. `bottom` ist die Höhe der rechten
-  // Leiste unterhalb des Herzens (Shop und Teilen samt Abständen); ändert sich
-  // deren Aufbau, muss dieser Wert mit.
+  // seiner Unterkante.
+  //
+  // `bottom` ist ausgerechnet, nicht geraten: In der rechten Leiste liegen
+  // unter dem Herzen der Innenabstand (12), „Shop" und „Teilen" mit je 38 px
+  // Knopf plus 14 px Beschriftung, und zwischen den Einträgen je 12 px —
+  // zusammen 164. Damit startet ein Herz auf Höhe des Herz-Knopfes. Kommt ein
+  // Eintrag dazu oder fällt einer weg, muss dieser Wert mit.
   //
   // Bewusst über `bottom` statt über eine feste Höhe: so bleibt der Kasten
   // immer innerhalb seines Elternteils, und kein Herz gerät auf Android an eine
@@ -107,7 +111,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 4,
     top: 0,
-    bottom: 150,
+    bottom: 164,
     width: 92,
     alignItems: 'center',
   },
