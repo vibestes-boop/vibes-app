@@ -119,9 +119,9 @@ Deno.serve(async (req) => {
     if (!stripeKey) return json({ error: 'stripe_not_configured' }, 500);
 
     // Berkats eigene Bestätigung ist ausdrücklich einzuschalten, nicht Standard.
-    // Absichtlich KEIN fester berkat.app-Wert: Zeigt die Domain noch nicht auf
-    // die Seite, wäre eine tote Seite direkt nach dem Bezahlen schlimmer als
-    // eine mit der falschen Marke. Ohne gesetzte Variable bleibt alles wie
+    // Absichtlich KEINE fest eingebaute Adresse: Ist die Seite noch nicht
+    // veröffentlicht, wäre eine tote Seite direkt nach dem Bezahlen schlimmer
+    // als eine mit der falschen Marke. Ohne gesetzte Variable bleibt alles wie
     // bisher — das Umstellen und das Veröffentlichen der Seite gehören zusammen.
     //   BERKAT_SUCCESS_URL = https://berkat-live.pages.dev/bezahlt
     //   BERKAT_CANCEL_URL  = https://berkat-live.pages.dev/abgebrochen

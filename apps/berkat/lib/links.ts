@@ -13,7 +13,15 @@
 
 export const SITE_URL = 'https://berkat-live.pages.dev';
 
-/** Adresse, unter der eine laufende Show geteilt wird. */
+/**
+ * Adresse, unter der eine laufende Show geteilt wird.
+ *
+ * Die Kennung steht als Parameter, nicht im Pfad. Cloudflare Pages räumt
+ * Adressen auf und macht aus `/live.html` die saubere Form `/live` — statt
+ * still umzuschreiben schickt es eine echte Weiterleitung, und die wirft den
+ * Pfadteil mit der Kennung weg. Am 14.08. auf der veröffentlichten Seite
+ * nachgemessen: `/live/<id>` antwortete mit 308 auf `/live`, ohne Kennung.
+ */
 export function showLink(sessionId: string): string {
-  return `${SITE_URL}/live/${sessionId}`;
+  return `${SITE_URL}/live?id=${encodeURIComponent(sessionId)}`;
 }

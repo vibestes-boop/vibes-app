@@ -39,13 +39,22 @@
     <footer>Berkat — Live-Auktionen</footer>
 
     <script>
-      // Die Show-Kennung steht im Pfad (/live/<id>) — Cloudflare liefert für jeden
-      // solchen Pfad diese Datei aus (siehe _redirects). Sie hier auszulesen ist
-      // billiger als eine Seite pro Show zu erzeugen, und der Inhalt wäre ohnehin
-      // derselbe: Die Show selbst liegt hinter der Anmeldung.
-      var id = location.pathname.split('/').filter(Boolean)[1] || '';
-      // Nur Zeichen, die eine UUID haben darf. Ohne diese Prüfung könnte jeder
-      // Pfad beliebigen Inhalt in das Ziel des Knopfes schreiben.
+      // Die Show-Kennung steht als Parameter in der Adresse (/live?id=<id>).
+      //
+      // Warum nicht im Pfad, wie es hübscher wäre: Cloudflare Pages räumt
+      // Adressen auf und macht aus dem Umschreib-Ziel `/live.html` die saubere
+      // Form `/live`. Statt still umzuschreiben schickt es dann eine echte
+      // Weiterleitung — und die wirft den Pfadteil mit der Kennung weg. Als
+      // Parameter überlebt sie jede Weiterleitung, und die Seite braucht
+      // überhaupt keine Umschreib-Regel mehr.
+      //
+      // Der Pfad wird trotzdem noch gelesen: Links in der alten Form sollen
+      // weiter funktionieren, falls sie doch einmal ankommen.
+      var params = new URLSearchParams(location.search);
+      var id = params.get('id') || location.pathname.split('/').filter(Boolean)[1] || '';
+
+      // Nur Zeichen, die eine UUID haben darf. Ohne diese Prüfung könnte eine
+      // beliebige Adresse beliebigen Inhalt in das Ziel des Knopfes schreiben.
       if (/^[0-9a-fA-F-]{10,40}$/.test(id)) {
         document.getElementById('open').setAttribute('href', 'berkat://live/' + id);
       }

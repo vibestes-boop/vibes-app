@@ -363,6 +363,15 @@ Function auch ausdrücklich einzuschalten und nicht Standard.
 
 Details in `apps/berkat-web/README.md`.
 
+### Falle: Pages wirft den Pfad weg
+
+Die Teilen-Adresse trägt die Show-Kennung als **Parameter** (`/live?id=…`), nicht im Pfad.
+Eine Umschreib-Regel `/live/*  /live.html  200` sieht richtig aus, greift auf Pages aber nicht:
+Es macht aus dem Ziel `/live.html` die saubere Form `/live` und schickt eine echte Weiterleitung
+— die Kennung ist damit weg, und der Knopf „In Berkat öffnen" kann die Show nicht mehr benennen.
+Auf der veröffentlichten Seite nachgemessen (308 auf `/live`). Wer dort auf Pfade umstellen will,
+braucht eine Pages-Function, keine Regel.
+
 ### Die Domain gehört jemand anderem
 
 `berkat.app` steht seit dem 19.06.2026 auf einen fremden Namen, `berkat.store` seit dem

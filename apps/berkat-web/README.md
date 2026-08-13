@@ -8,10 +8,19 @@ was hier liegt, wird genau so ausgeliefert.
 | `index.html` | `/` | Was Berkat ist. Später der Platz für Impressum, Widerruf, Datenschutz |
 | `bezahlt.html` | `/bezahlt` | Stripe schickt den Käufer nach erfolgreicher Zahlung hierher |
 | `abgebrochen.html` | `/abgebrochen` | Dasselbe, wenn er die Kasse verlässt |
-| `live.html` | `/live/<id>` | Landeseite fürs Teilen. Liest die Show-Kennung aus dem Pfad und bietet `berkat://live/<id>` an |
+| `live.html` | `/live?id=<id>` | Landeseite fürs Teilen. Liest die Show-Kennung aus der Adresse und bietet `berkat://live/<id>` an |
 
-`_redirects` schreibt jeden `/live/*`-Pfad auf `live.html` um, mit Status 200 —
-die Adresse muss stehen bleiben, sonst wäre die Kennung weg.
+### Warum die Kennung als Parameter steht und nicht im Pfad
+
+`/live/<id>` wäre hübscher, funktioniert auf Pages aber nicht. Die Regel
+`/live/*  /live.html  200` sollte still umschreiben; Pages macht stattdessen aus
+dem Ziel `/live.html` die saubere Form `/live` und schickt eine echte
+Weiterleitung — **samt Verlust des Pfadteils mit der Kennung**. Auf der
+veröffentlichten Seite nachgemessen: `/live/<id>` antwortete mit 308 auf `/live`.
+
+Als Parameter überlebt die Kennung jede Weiterleitung, und die Seite braucht gar
+keine Umschreib-Regel. `_redirects` enthält nur noch ein Auffangnetz für Links in
+der alten Form. `live.html` liest weiterhin beides.
 
 ## Warum eine eigene Seite
 

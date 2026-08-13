@@ -1,10 +1,15 @@
 # Cloudflare Pages.
 #
-# Jede geteilte Show hat eine eigene Adresse (/live/<id>), aber alle sehen gleich
-# aus — die Show selbst liegt hinter der Anmeldung in der App. Statt einer Seite
-# pro Show liefert Pages für jeden solchen Pfad dieselbe Datei aus, und die Seite
-# liest die Kennung selbst aus der Adresse.
+# Nur noch ein Auffangnetz für Links in der alten Form. Die App teilt seit dem
+# 14.08. `/live?id=<id>`, und dafür braucht es hier nichts: `/live` liefert
+# Pages von sich aus aus `live.html`, der Parameter überlebt jede Weiterleitung.
 #
-# Status 200 statt 301: Die Adresse in der Leiste soll stehen bleiben, sonst wäre
-# die Kennung weg, bevor das Skript sie lesen kann.
-/live/*  /live.html  200
+# Die frühere Regel `/live/*  /live.html  200` sollte still umschreiben, tat es
+# aber nicht: Pages macht aus dem Ziel `/live.html` die saubere Form `/live` und
+# schickt eine echte Weiterleitung (308) — samt Verlust des Pfadteils mit der
+# Kennung. Auf der veröffentlichten Seite nachgemessen.
+#
+# Deshalb hier ausdrücklich als Weiterleitung geschrieben statt als Umschreibung:
+# ehrlicher, weil es ohnehin eine ist. Wer einen alten Link öffnet, landet auf
+# der allgemeinen Seite statt im Nichts — die Show benennen kann sie dann nicht.
+/live/*  /live  301
