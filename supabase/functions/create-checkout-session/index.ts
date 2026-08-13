@@ -123,8 +123,8 @@ Deno.serve(async (req) => {
     // die Seite, wäre eine tote Seite direkt nach dem Bezahlen schlimmer als
     // eine mit der falschen Marke. Ohne gesetzte Variable bleibt alles wie
     // bisher — das Umstellen und das Veröffentlichen der Seite gehören zusammen.
-    //   BERKAT_SUCCESS_URL = https://berkat.app/bezahlt
-    //   BERKAT_CANCEL_URL  = https://berkat.app/abgebrochen
+    //   BERKAT_SUCCESS_URL = https://berkat-live.pages.dev/bezahlt
+    //   BERKAT_CANCEL_URL  = https://berkat-live.pages.dev/abgebrochen
     const berkatSuccess = isAuctionCart ? Deno.env.get('BERKAT_SUCCESS_URL') : null;
     const berkatCancel = isAuctionCart ? Deno.env.get('BERKAT_CANCEL_URL') : null;
 

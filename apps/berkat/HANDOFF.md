@@ -356,13 +356,23 @@ Die Reihenfolge ist keine Empfehlung, sondern Bedingung: Wer Schritt 3 vor Schri
 schickt Käufer direkt nach dem Bezahlen auf eine tote Seite. Deshalb ist die Weiche in der
 Function auch ausdrücklich einzuschalten und nicht Standard.
 
-1. `npx wrangler pages deploy apps/berkat-web --project-name berkat`
-2. Im Cloudflare-Dashboard `berkat.app` **und** `www.berkat.app` mit dem Projekt verbinden.
-   Der Apex ist der wichtige — dorthin zeigen die Teilen-Links aus der App.
-3. `supabase secrets set BERKAT_SUCCESS_URL=… BERKAT_CANCEL_URL=…`, dann
-   `supabase functions deploy create-checkout-session`
+1. `npx wrangler pages deploy apps/berkat-web --project-name berkat-live`
+2. `supabase secrets set BERKAT_SUCCESS_URL=https://berkat-live.pages.dev/bezahlt
+   BERKAT_CANCEL_URL=https://berkat-live.pages.dev/abgebrochen`
+3. `supabase functions deploy create-checkout-session`
 
 Details in `apps/berkat-web/README.md`.
+
+### Die Domain gehört jemand anderem
+
+`berkat.app` steht seit dem 19.06.2026 auf einen fremden Namen, `berkat.store` seit dem
+05.08.2026, `berkat.pages.dev` ist ebenfalls vergeben. Jemand baut parallel unter demselben
+Namen. **`berkat.de` ist ebenfalls weg** (DENIC-Status `connect`, A-Eintrag auf 188.40.92.90).
+
+Der Teilen-Knopf schickte Empfänger bis zum 14.08. auf genau diese fremde Domain. Das ist raus:
+Die Adresse steht jetzt an einer Stelle, `SITE_URL` in `lib/links.ts`, und zeigt auf die
+kostenlose Pages-Adresse. Eine gekaufte Domain kostet später drei Zeichenketten — frei wären
+`berkatlive.de`, `berkatmarkt.de`, `berkat.market`, `berkat.shop`.
 
 ### Dann: eine echte Show mit zwei Geräten
 

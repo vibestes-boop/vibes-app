@@ -17,23 +17,37 @@ die Adresse muss stehen bleiben, sonst wäre die Kennung weg.
 
 Zwei Gründe, beide handfest:
 
-1. **Der Teilen-Link zeigte ins Leere.** `apps/berkat/app/live/[id].tsx` teilt
-   `https://berkat.app/live/<id>`. Die Domain hatte keinen A-Eintrag — jede
-   geteilte Show war ein toter Link.
+1. **Der Teilen-Link zeigte auf eine fremde Domain.** `apps/berkat/app/live/[id].tsx`
+   teilte `https://berkat.app/live/<id>` — und `berkat.app` gehört jemand anderem
+   (am 19.06.2026 über Cloudflare registriert, `berkat.store` am 05.08.2026 dazu,
+   `berkat.pages.dev` ebenfalls belegt; da baut jemand parallel unter demselben
+   Namen). Jeder geteilte Link schickte Empfänger auf eine fremde Seite — heute
+   leer, morgen vielleicht Werbung oder Schlimmeres, mit Berkats Namen im Link.
 2. **Nach dem Bezahlen stand die falsche Marke in der Adresszeile.** Berkat-Käufer
    landeten auf `serlo.ch/shop/success`, der Bestätigung des Parfüm-Verkaufs.
 
+## Adresse
+
+`https://berkat-live.pages.dev` — die kostenlose Adresse des Pages-Projekts.
+Bewusst noch keine gekaufte Domain: `berkat.de` ist vergeben (DENIC-Status
+`connect`, A-Eintrag auf 188.40.92.90), `berkat.app`, `.store` und `.eu` ebenso.
+Frei wären `berkatlive.de`, `berkatmarkt.de`, `berkat.market`, `berkat.shop`.
+
+Die Entscheidung darüber kann warten, bis die ersten Verkäufer wirklich senden.
+Sie kostet dann drei Zeichenketten: `SITE_URL` in `apps/berkat/lib/links.ts` und
+die beiden Variablen unten.
+
 ## Veröffentlichen
 
-Die Domain liegt bereits auf Cloudflare-Nameservern.
-
 ```bash
-npx wrangler pages deploy /Users/zaurhatuev/vibes-app/apps/berkat-web --project-name berkat
+npx wrangler pages deploy /Users/zaurhatuev/vibes-app/apps/berkat-web --project-name berkat-live
 ```
 
-Danach im Cloudflare-Dashboard unter *Workers & Pages → berkat → Custom domains*
-sowohl `berkat.app` als auch `www.berkat.app` verbinden. **Der Apex ist der
-wichtige** — dorthin zeigen die Teilen-Links.
+Der Projektname bestimmt die Adresse — `berkat-live` ergibt
+`berkat-live.pages.dev`. `berkat` allein war schon vergeben.
+
+Eine eigene Domain käme später unter *Workers & Pages → berkat-live → Custom
+domains* dazu; bis dahin ist hier nichts weiter zu tun.
 
 ## Erst danach die Bezahl-Seite umstellen
 
@@ -43,7 +57,7 @@ Absicht: Eine tote Seite direkt nach dem Bezahlen wäre schlimmer als eine mit d
 falschen Marke.
 
 ```bash
-supabase secrets set BERKAT_SUCCESS_URL=https://berkat.app/bezahlt BERKAT_CANCEL_URL=https://berkat.app/abgebrochen
+supabase secrets set BERKAT_SUCCESS_URL=https://berkat-live.pages.dev/bezahlt BERKAT_CANCEL_URL=https://berkat-live.pages.dev/abgebrochen
 ```
 
 ```bash

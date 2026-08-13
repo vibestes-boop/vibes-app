@@ -54,6 +54,7 @@ import {
   useMyGiveawayEntry,
 } from '../../lib/useGiveaway';
 import { useLivePlayer } from '../../lib/livePlayer';
+import { showLink } from '../../lib/links';
 import { useLiveReactions } from '../../lib/useReactions';
 import { liveKitAvailable, liveKitFailure } from '../../lib/livekit';
 import { liveAccessErrorText, toLiveAccessError, useLiveAccess } from '../../lib/useLiveVideo';
@@ -307,7 +308,7 @@ export default function LiveAuctionRoom() {
 
   const shareShow = useCallback(() => {
     if (!id) return;
-    void Share.share({ message: `Schau dir das an: https://berkat.app/live/${id}` });
+    void Share.share({ message: `Schau dir das an: ${showLink(id)}` });
   }, [id]);
 
   const startItem = useCallback(
