@@ -1,7 +1,8 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { AppState } from 'react-native';
+import { focusManager, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 // So früh wie möglich: setzt den DOMException-Ersatz und meldet LiveKit an,
 // bevor irgendein Screen geladen wird. LiveKit verlangt das ausdrücklich vor
@@ -44,6 +45,23 @@ export default function RootLayout() {
         },
       }),
   );
+
+  // React Native hat kein Fenster, das den Fokus verlieren könnte — ohne diese
+  // Verkabelung erfährt TanStack Query nie, dass die App im Hintergrund liegt.
+  //
+  // Zwei Wirkungen, beide gewollt:
+  //   • Beim Zurückkommen aus einer fremden App wird nachgeladen statt einen
+  //     alten Stand zu zeigen. Bezahlt wird bei Stripe im Browser, und wer
+  //     danach zurückwechselt, will sein Paket nicht mehr offen sehen.
+  //   • Die regelmäßigen Abfragen pausieren, solange das Gerät in der Tasche
+  //     steckt. Vorher lief die 15-Sekunden-Abfrage einer Show weiter, die
+  //     gerade niemand ansieht.
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (status) => {
+      focusManager.setFocused(status === 'active');
+    });
+    return () => subscription.remove();
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>

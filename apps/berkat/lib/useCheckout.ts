@@ -57,8 +57,10 @@ export function useCheckoutCart() {
 
       await Linking.openURL(url);
       // Der Korb schließt sich erst, wenn Stripe die Zahlung bestätigt hat —
-      // das erledigt ein Trigger auf der Bestellung. Hier nur neu laden, damit
-      // die Rückkehr aus dem Browser den aktuellen Stand zeigt.
+      // das erledigt ein Trigger auf der Bestellung. Hier kann also noch nichts
+      // Neues stehen; das Nachladen beim Zurückwechseln erledigt der
+      // Fokus-Wächter im Wurzel-Layout. Dieser Ruf setzt nur den Zähler
+      // zurück, damit dort auch wirklich frisch geholt wird.
       void queryClient.invalidateQueries({ queryKey: ['berkat', 'my-carts'] });
       return { ok: true };
     },

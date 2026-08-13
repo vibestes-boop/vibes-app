@@ -19,7 +19,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Check, ImagePlus, Pencil, Plus, Radio, Trash2 } from 'lucide-react-native';
+import { Check, ImagePlus, Pencil, Plus, Radio, Trash2, X } from 'lucide-react-native';
 import { useSession } from '../../lib/session';
 import { useLivePlayer } from '../../lib/livePlayer';
 import { pickAndUpload, type ImageKind } from '../../lib/uploadImage';
@@ -505,6 +505,21 @@ export default function SellScreen() {
                   ) : !articleUrl ? (
                     <ImagePlus size={20} color={ui.textMuted} />
                   ) : null}
+
+                  {/* Antippen wechselt das Bild, das Kreuz nimmt es ganz weg.
+                      Ohne das ließ sich ein einmal gewähltes Bild nur noch
+                      ersetzen — die RPC konnte es längst, es fehlte der Knopf. */}
+                  {articleUrl && uploading === null ? (
+                    <Pressable
+                      onPress={() => setArticleUrl(null)}
+                      hitSlop={10}
+                      style={styles.thumbClear}
+                      accessibilityRole="button"
+                      accessibilityLabel="Bild entfernen"
+                    >
+                      <X size={13} color={ui.card} />
+                    </Pressable>
+                  ) : null}
                 </Pressable>
                 <TextInput
                   value={title}
@@ -654,6 +669,17 @@ const styles = StyleSheet.create({
     borderColor: ui.lineStrong,
     borderStyle: 'dashed',
     overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  thumbClear: {
+    position: 'absolute',
+    top: 3,
+    right: 3,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(20,36,30,0.65)',
     alignItems: 'center',
     justifyContent: 'center',
   },

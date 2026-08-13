@@ -33,6 +33,10 @@ function useMyCarts(userId: string | null) {
     queryKey: ['berkat', 'my-carts', userId],
     enabled: Boolean(userId),
     staleTime: 15_000,
+    // Diese Abfrage läuft nicht im Takt — ohne das hier stünde nach der
+    // Rückkehr aus dem Stripe-Browser weiterhin „noch offen" da, obwohl längst
+    // bezahlt ist. Die App-weite Verkabelung dafür sitzt im Wurzel-Layout.
+    refetchOnWindowFocus: true,
     queryFn: async (): Promise<OpenCart[]> => {
       const { data: carts, error } = await supabase
         .from('auction_carts')

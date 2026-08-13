@@ -32,6 +32,9 @@ export function useSellerOrders(userId: string | null) {
     queryKey: ['berkat', 'seller-orders', userId],
     enabled: Boolean(userId),
     refetchInterval: 30_000,
+    // Der Takt pausiert im Hintergrund. Ohne das hier sähe der Verkäufer eine
+    // eingegangene Zahlung erst bis zu dreißig Sekunden nach dem Zurückwechseln.
+    refetchOnWindowFocus: true,
     queryFn: async (): Promise<SellerOrder[]> => {
       const { data, error } = await supabase
         .from('product_orders')
