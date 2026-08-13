@@ -223,13 +223,23 @@ export default function LiveAuctionRoom() {
   // Zuschauer zählen — über dieselbe RPC wie Serlo, die doppelte Eintritte
   // desselben Kontos abfängt. Der Gastgeber zählt bewusst nicht mit: sonst
   // stünde in einer leeren Show immer "1".
+  //
+  // Das `.then()` ist PFLICHT, nicht Kosmetik: `supabase.rpc()` liefert einen
+  // faulen Erzeuger, der die Anfrage erst beim Abwarten losschickt. Ein blankes
+  // `void supabase.rpc(…)` baut ihn nur und wirft ihn weg — es geht nie etwas
+  // raus, und zwar völlig lautlos. Genau so zählte die Zuschauerzahl bis zum
+  // 14.08. nie, obwohl der Code richtig aussah.
   useEffect(() => {
     if (!id || !myUserId || isHost) return;
-    void supabase.rpc('join_live_session', { p_session_id: id });
+    void supabase.rpc('join_live_session', { p_session_id: id }).then(({ error }) => {
+      if (error && __DEV__) console.warn('[Berkat] Eintritt nicht gezählt:', error.message);
+    });
     return () => {
       // Beim Verkleinern bleibt man Zuschauer — die Show läuft ja weiter.
       if (!useLivePlayer.getState().minimized) {
-        void supabase.rpc('leave_live_session', { p_session_id: id });
+        void supabase.rpc('leave_live_session', { p_session_id: id }).then(({ error }) => {
+          if (error && __DEV__) console.warn('[Berkat] Austritt nicht gezählt:', error.message);
+        });
       }
     };
   }, [id, myUserId, isHost]);

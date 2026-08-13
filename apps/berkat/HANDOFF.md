@@ -130,6 +130,41 @@ Der Raum meldet die Show bei jedem Datenabruf neu an (alle 15 s). Ohne Idempoten
 würde `connected` im selben Takt zurückgesetzt — der Gastgeber flöge alle 15 Sekunden aus seiner
 eigenen Sendung.
 
+### `void supabase.rpc(…)` schickt gar nichts ab
+
+`supabase.rpc()` und `supabase.from()` liefern **keinen** Versprechen-Wert, sondern einen faulen
+Erzeuger, der die Anfrage erst beim Abwarten losschickt. Ein blankes `void supabase.rpc(…)` baut
+ihn nur und wirft ihn weg — **es geht nie etwas raus, und zwar völlig lautlos**. Kein Fehler, kein
+Log, der Code sieht richtig aus.
+
+Am 14.08. im Simulator gefunden: Die **Zuschauerzahl hat dadurch nie funktioniert**
+(`join_live_session` / `leave_live_session`), und der Herz-Zähler zählte nichts. Beweis: Sieben
+Herzen → `like_count` blieb 0; nach dem Anhängen von `.then()` zählten vier Herzen sauber 1 → 4.
+
+Regel: Jeder „abschicken und vergessen"-Ruf braucht ein `.then()`, und dort gehört gleich eine
+Fehlerausgabe hinein:
+
+```ts
+void supabase.rpc('…', { … }).then(({ error }) => {
+  if (error && __DEV__) console.warn('[Berkat] … :', error.message);
+});
+```
+
+`supabase.auth.*` und `supabase.removeChannel()` sind davon **nicht** betroffen — die geben echte
+Versprechen zurück. Serlo ist nicht betroffen, dort gibt es das Muster nicht.
+
+### Der Video-Anbieter darf nie verschwinden
+
+`LiveRoomProvider` rendert `LiveKitRoom` **immer**, auch ohne Verbindung. Wer daraus wieder ein
+`if (…) return <>{children}</>` macht, bringt den Fehler zurück, der am 14.08. gefunden wurde: Beim
+Umschalten wechselt der Elterntyp über dem gesamten Navigations-Baum, React baut den Teilbaum
+komplett ab und neu auf, der Navigations-Stapel wird zurückgesetzt — und der Gastgeber landet im
+Moment des Live-Gehens auf der **Startseite** statt in seiner eigenen Sendung.
+
+Möglich ist das Dauer-Rendern, weil `serverUrl` und `token` ausdrücklich `undefined` annehmen und
+`connect` die Verbindung steuert. `audio`/`video` hängen an `active`, sonst greift LiveKit nach der
+Kamera, während die Vorschau vor dem Live-Gehen sie noch hält.
+
 ### Eine Ebene ohne `box-none` macht das halbe Bild tot
 
 Tippen aufs Video schickt ein Herz. Die Fläche dafür liegt **ganz unten** im Stapel, direkt über dem

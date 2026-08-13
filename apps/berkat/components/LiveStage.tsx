@@ -53,15 +53,33 @@ export function LiveRoomProvider({ children }: { children: ReactNode }) {
     };
   }, [active]);
 
-  if (!session || !connected || !access.data) return <>{children}</>;
+  // `LiveKitRoom` steht IMMER, auch ohne Verbindung — und das ist der Kern
+  // dieser Datei.
+  //
+  // Vorher wurde zwischen `<>{children}</>` und `<LiveKitRoom>{children}</…>`
+  // umgeschaltet, sobald „Live gehen" `connected` setzte. Damit wechselte der
+  // Elterntyp über dem GESAMTEN Navigations-Baum, und React baut bei einem
+  // Typwechsel an derselben Stelle den kompletten Teilbaum ab und neu auf: Der
+  // Navigations-Stapel wurde zurückgesetzt, und der Gastgeber landete im Moment
+  // des Live-Gehens auf der Startseite statt in seiner eigenen Sendung.
+  //
+  // Möglich ist das Dauer-Rendern, weil `serverUrl` und `token` ausdrücklich
+  // `undefined` als Zwischenzustand annehmen und `connect` die Verbindung
+  // steuert. Die Komponente rendert selbst keine View, nur Kontext-Anbieter —
+  // sie kostet also nichts am Layout.
+  //
+  // Ton und Bild hängen an `active`, nicht nur am Gastgeber-Kennzeichen: Sonst
+  // griffe LiveKit schon nach der Kamera, während die Vorschau vor dem
+  // Live-Gehen sie noch hält — und die Sendung startete ohne Bild.
+  const publishes = active && session?.isHost === true;
 
   return (
     <LiveKitRoom
-      serverUrl={access.data.url}
-      token={access.data.token}
-      connect
-      audio={session.isHost}
-      video={session.isHost}
+      serverUrl={active ? access.data?.url : undefined}
+      token={active ? access.data?.token : undefined}
+      connect={active}
+      audio={publishes}
+      video={publishes}
       options={{ adaptiveStream: true, dynacast: true }}
     >
       {children}

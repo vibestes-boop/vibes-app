@@ -120,7 +120,12 @@ export function useLiveReactions(
    */
   const countLike = useCallback(() => {
     if (!sessionId || likeGate.current) return;
-    void supabase.rpc('increment_live_likes', { p_session_id: sessionId });
+    // Fehler nicht verschlucken. Der Ruf ist bewusst „abschicken und vergessen",
+    // aber lautlos scheitern darf er nicht — sonst steht der Zähler still und
+    // niemand erfährt warum.
+    void supabase.rpc('increment_live_likes', { p_session_id: sessionId }).then(({ error }) => {
+      if (error && __DEV__) console.warn('[Berkat] Herz nicht gezählt:', error.message);
+    });
     likeGate.current = setTimeout(() => {
       likeGate.current = null;
     }, LIKE_WINDOW_MS);
