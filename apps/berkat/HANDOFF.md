@@ -34,7 +34,8 @@ Was Berkat bewusst anders macht als Whatnot:
 | Bundle-IDs | iOS `com.berkat.app` · Android `app.berkat.market` |
 | EAS-Projekt | `@zaurhat/berkat` (`fb4e0381-264d-4cfd-8c3c-691987346915`) |
 | Backend | dieselbe Supabase-Instanz wie Serlo (`llymwqfgujwkoxzqxrlm`) |
-| Migrationen | `supabase/migrations/*berkat*.sql` (5 Stück, alle eingespielt) |
+| Migrationen | 7 Stück — **zwei davon noch nicht eingespielt**, siehe Abschnitt 5 |
+| Git | Branch `berkat`, drei Commits, **nicht gepusht** |
 
 ### Starten
 
@@ -71,7 +72,7 @@ cd /Users/zaurhatuev/vibes-app/apps/berkat && npx expo export --platform ios --o
 ```
 
 Der Export ist der ehrlichere Test: Er baut das komplette Bundle und findet Auflösungsfehler, die
-`tsc` nicht sieht. Aktueller Stand: **3168 Module, fehlerfrei**.
+`tsc` nicht sieht. Aktueller Stand: **3170 Module, fehlerfrei**.
 
 ---
 
@@ -146,9 +147,9 @@ lokale auf. Blockiert den Build nicht.
 
 ### EAS baut aus dem Arbeitsstand, nicht aus git
 
-Auf der Build-Seite steht der Commit mit Sternchen (`e9a4fed*`). **`apps/berkat` ist komplett
-untracked** — `git ls-files apps/berkat` liefert nichts. Der Build funktioniert trotzdem, aber ein
-`git clean -fd` würde die gesamte App löschen.
+Auf der Build-Seite steht der Commit mit Sternchen. Das bleibt so — EAS nimmt, was im Ordner liegt,
+nicht was in git steht. Bis zum 13.08.2026 war `apps/berkat` zusätzlich komplett untracked, ein
+`git clean -fd` hätte die gesamte App gelöscht; das ist inzwischen behoben (Branch `berkat`).
 
 ---
 
@@ -207,12 +208,24 @@ Wiederverwendet statt nachgebaut:
 | Zuschauerzahl | RPC `join_live_session` / `leave_live_session` |
 | Folgen | Tabelle `follows` (löst Serlos Benachrichtigungen mit aus) |
 | Chat | Tabelle `live_comments` (gemeinsam mit Serlo-App und -Web) |
+| Herzen | Broadcast `live-reactions-<id>` / `new-reaction` + RPC `increment_live_likes` |
+
+Beim Chat ist die **Tabelle** die gemeinsame Wahrheit, bei den Herzen der **Kanalname**. Deshalb
+bekommen Broadcast-Kanäle in `lib/realtime.ts` keine laufende Nummer, die `postgres_changes`-Kanäle
+dagegen schon: Dort ist der Name beliebig, hier ist er der Vertrag. Wer die Nummer anhängt, sendet
+in ein anderes Thema und bleibt für Serlo stumm — genau der Bruch, der im Juli 2026 zwischen
+Serlo-Web und -App auftrat.
+
+Herzen laufen bewusst **nicht** über eine Tabellenzeile pro Tipp: Bei zweihundert klatschenden
+Zuschauern wären das zweihundert Schreibvorgänge für etwas, das niemand je wieder liest. Der
+bleibende Zähler (`live_sessions.like_count`) wird gedrosselt gepflegt, ein Ruf je Applaus-Welle —
+er zählt also Wellen, nicht Finger. Die lebendige Zahl im Raum ist die lokale.
 
 ---
 
 ## 5. Datenbank
 
-Fünf Migrationen, **alle eingespielt und im Tracking vermerkt**:
+Fünf Migrationen sind eingespielt und im Tracking vermerkt:
 
 | Datei | Inhalt |
 |---|---|
@@ -221,6 +234,26 @@ Fünf Migrationen, **alle eingespielt und im Tracking vermerkt**:
 | `20260813233000_berkat_giveaways.sql` | `live_giveaways`, `live_giveaway_entries`, drei RPCs |
 | `20260814000000_berkat_cart_checkout.sql` | `product_orders.cart_id` + `.title`, Trigger „bezahlt → Korb zu", `checkout_auction_cart` |
 | `20260814010000_berkat_mark_shipped.sql` | `mark_order_shipped` |
+
+### ⚠️ Zwei Migrationen liegen noch bereit
+
+Beide sind geschrieben, aber **nicht in der Live-DB**. Bis sie drin sind, laufen die zugehörigen
+Funktionen ins Leere: „Artikel ändern" wirft `PGRST202`, und der Frauen-Only-Leak bleibt offen.
+
+| Datei | Inhalt |
+|---|---|
+| `20260814120000_live_reactions_rls.sql` | `live_reactions_select` von `USING(true)` auf Session-Vererbung |
+| `20260814130000_berkat_edit_auction.sql` | `update_live_auction` |
+
+Weg wie immer — **nicht** `db push` (siehe Abschnitt 3):
+
+1. Inhalt der Datei im Supabase-SQL-Editor ausführen
+2. `supabase migration repair --status applied 20260814120000` (analog für die zweite)
+
+Die Reaktions-Migration ist folgenlos einspielbar: Sie ändert nur die Lese-Policy, und **niemand
+liest die Tabelle** — App und Web schreiben ausschließlich hinein, gezeigt werden Reaktionen über
+den Broadcast-Kanal. Vorher stand dort `USING(true)`, womit jedes Konto die Teilnehmerliste jedes
+Frauen-Only-Raums auslesen konnte: Jede Zeile trägt `session_id` und `user_id`.
 
 ### RLS-Grundsatz
 
@@ -248,7 +281,8 @@ Besitzer** — sonst wären Stellvertreter-Bieten und Gewinnspiel wertlos.
 | Startseite | Suche, Kategorie-Leiste mit zwei Größen (schrumpft beim Scrollen), Show-Karten |
 | Live-Raum | Video, Kamera-Vorschau vor dem Senden, Kamera-Steuerung, Chat mit Eingabe, wegwischbare Kommentare, Sammelkorb-Leiste, „Als Nächstes", Shop-Zettel |
 | Auktion | Gebot, Anti-Snipe (+10 s), Sofortkauf, Max-Gebot, Zuschlag, „Du führst" |
-| Verkäufer-Regie | Show starten/beenden, Artikel auflegen mit Bild, **Starten aus dem Raum heraus**, Dauer 20/30/60 s |
+| Verkäufer-Regie | Show starten/beenden, Artikel auflegen mit Bild, **nachträglich ändern**, **Starten aus dem Raum heraus**, Dauer 20/30/60 s |
+| Reaktionen | Herz-Knopf, fliegende Herzen, Zähler — auf Serlos Broadcast-Vertrag, also plattformübergreifend |
 | Gewinnspiel | anlegen, mitmachen, ziehen — Teilnahme immer kostenlos |
 | Kleines Fenster | echtes Video, läuft über alle Reiter weiter |
 | Bezahlen | Sammelkorb → eine Bestellung → Stripe → Adresse → `paid` |
@@ -257,13 +291,13 @@ Besitzer** — sonst wären Stellvertreter-Bieten und Gewinnspiel wertlos.
 
 ### Was fehlt
 
-1. **Reaktionen (Herz)** — Whatnot hat sie, `live_reactions` existiert in Serlo bereits
-2. **Kategorien- und Aktivitäts-Reiter** — zwei von Whatnots fünf; bewusst weggelassen, solange
+1. **Kategorien- und Aktivitäts-Reiter** — zwei von Whatnots fünf; bewusst weggelassen, solange
    sie keinen Inhalt hätten
-3. **Eigene Erfolgsseite nach dem Bezahlen** — aktuell landet man auf `serlo.ch/shop/success`,
+2. **Eigene Erfolgsseite nach dem Bezahlen** — aktuell landet man auf `serlo.ch/shop/success`,
    weil die Umgebungsvariable mit dem Parfüm-Verkauf geteilt wird
-4. **Artikel nachträglich bearbeiten** — Bild oder Preis ändern geht nicht, nur löschen und neu
-5. **Google-/Apple-Anmeldung**
+3. **Google-/Apple-Anmeldung**
+4. **Bild beim Ändern entfernen** — ersetzen geht, wegnehmen nicht. Die RPC kann es
+   (`p_image_url = NULL`), es fehlt nur der Knopf am Vorschaubild
 
 ---
 
@@ -276,15 +310,11 @@ ist jeder künftige `db push` eine Falle. Eine vorbereitete Aufgabe dafür exist
 Sitzung. Vorgehen: jede der 62 gegen die Live-DB prüfen, vorhandene per `migration repair` markieren,
 fehlende einzeln nachziehen.
 
-### Berkat einchecken
+### Berkat pushen
 
-Alles ist untracked. Vorschlag:
-
-```bash
-cd /Users/zaurhatuev/vibes-app && git checkout -b berkat && git add apps/berkat supabase/migrations/*berkat*.sql && git commit -m "feat(berkat): Live-Auktions-App"
-```
-
-Pushen erst nach ausdrücklicher Freigabe.
+Eingecheckt ist alles: Branch `berkat`, drei Commits. **Gepusht ist nichts** — das braucht eine
+ausdrückliche Freigabe. `.env` ist über `apps/berkat/.gitignore` ausgeschlossen und liegt nicht im
+Commit; `node_modules`, `ios/` und `android/` ebenso wenig.
 
 ### Stripe-Modus prüfen
 
@@ -317,7 +347,10 @@ Der Code ist so weit, dass sich das testen lässt. Gelingt es nicht, spart die A
 
 ## 8. Nächster sinnvoller Schritt
 
-Eine echte Show mit zwei Geräten durchspielen:
+Zuerst die **zwei offenen Migrationen** einspielen (Abschnitt 5) — ohne sie wirft „Artikel ändern"
+einen Fehler.
+
+Dann eine echte Show mit zwei Geräten durchspielen:
 
 1. Gerät A: Show starten → live gehen → Artikel auflegen → starten
 2. Gerät B (anderes Konto): bieten, kontern, Max-Gebot setzen
@@ -326,3 +359,8 @@ Eine echte Show mit zwei Geräten durchspielen:
 
 Damit ist die gesamte Kette einmal durchlaufen. Was dabei hakt, ist wichtiger als jedes weitere
 Feature.
+
+Zwei Dinge lassen sich dabei gleich mitprüfen, weil sie sich ohne zweites Gerät nicht beurteilen
+lassen: ob die Herzen an der richtigen Stelle losfliegen (der Abstand in `FloatingHearts` ist an
+den Aufbau der rechten Leiste gebunden, nicht gemessen), und ob ein Herz aus der Serlo-App
+tatsächlich in Berkat ankommt.
