@@ -77,3 +77,102 @@ export function subscribeToTable(key: string, watch: TableWatch, listener: Liste
     void supabase.removeChannel(current.channel);
   };
 }
+
+// ── Broadcast ────────────────────────────────────────────────────────────────
+//
+// Für flüchtige Signale, die keine Zeile in der Datenbank verdienen — Herzen
+// zum Beispiel.
+//
+// Anders als oben bekommt der Kanalname hier KEINE laufende Nummer: bei
+// Broadcast ist der Name der Vertrag. Serlo-App und -Web senden und hören auf
+// `live-reactions-<id>`; eine Nummer dahinter wäre ein anderes Thema, und
+// Berkat bliebe für beide stumm — genau der Bruch, der im Juli 2026 zwischen
+// Serlo-Web und -App auftrat.
+//
+// Ohne die Nummer fehlt allerdings ihr Schutz: `removeChannel` meldet erst ab
+// und räumt dann auf, und `supabase.channel(name)` liefert in diesem Fenster
+// genau den Kanal zurück, der gerade stirbt. Deshalb merkt sich `closings` das
+// Abmelde-Versprechen pro Name, und ein neuer Zuhörer wartet es ab, bevor er
+// aufmacht. Der Merker hängt am Namen, nicht am Eintrag — sonst würde ein
+// frischer Eintrag ihn nicht finden.
+
+type BroadcastListener = (payload: Record<string, unknown>) => void;
+
+type BroadcastEntry = {
+  channel: RealtimeChannel | null;
+  listeners: Set<BroadcastListener>;
+  /** Verhindert, dass zwei Zuhörer gleichzeitig aufmachen. */
+  opening: boolean;
+};
+
+const broadcasts = new Map<string, BroadcastEntry>();
+const closings = new Map<string, Promise<unknown>>();
+
+async function openBroadcast(name: string, event: string, entry: BroadcastEntry): Promise<void> {
+  entry.opening = true;
+  try {
+    const closing = closings.get(name);
+    if (closing) await closing;
+    // Während des Wartens kann der letzte Zuhörer gegangen oder der Eintrag
+    // ersetzt worden sein.
+    if (entry.channel || entry.listeners.size === 0 || broadcasts.get(name) !== entry) return;
+
+    entry.channel = supabase
+      .channel(name)
+      .on('broadcast', { event }, (message) => {
+        const payload = (message as { payload?: Record<string, unknown> }).payload;
+        if (payload) entry.listeners.forEach((notify) => notify(payload));
+      })
+      .subscribe();
+  } finally {
+    entry.opening = false;
+  }
+}
+
+/** Meldet einen Zuhörer für ein Broadcast-Ereignis an. Gibt die Abmeldung zurück. */
+export function subscribeToBroadcast(
+  name: string,
+  event: string,
+  listener: BroadcastListener,
+): () => void {
+  let entry = broadcasts.get(name);
+  if (!entry) {
+    entry = { channel: null, listeners: new Set(), opening: false };
+    broadcasts.set(name, entry);
+  }
+
+  const active = entry;
+  active.listeners.add(listener);
+  if (!active.channel && !active.opening) void openBroadcast(name, event, active);
+
+  return () => {
+    active.listeners.delete(listener);
+    if (active.listeners.size > 0) return;
+
+    const channel = active.channel;
+    active.channel = null;
+    if (broadcasts.get(name) === active) broadcasts.delete(name);
+    if (!channel) return;
+
+    let closing: Promise<unknown>;
+    closing = supabase.removeChannel(channel).finally(() => {
+      if (closings.get(name) === closing) closings.delete(name);
+    });
+    closings.set(name, closing);
+  };
+}
+
+/**
+ * Sendet auf einen Kanal, den `subscribeToBroadcast` offen hält.
+ *
+ * Ohne offenen Kanal geht die Nachricht verloren, und das ist richtig so: ein
+ * verpasstes Herz ist kein Fehler, ein Sendepuffer für flüchtige Signale wäre
+ * einer.
+ */
+export function sendBroadcast(
+  name: string,
+  event: string,
+  payload: Record<string, unknown>,
+): void {
+  void broadcasts.get(name)?.channel?.send({ type: 'broadcast', event, payload });
+}

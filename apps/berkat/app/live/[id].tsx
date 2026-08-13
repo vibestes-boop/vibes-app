@@ -26,6 +26,7 @@ import {
   View,
   type ViewStyle,
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
@@ -33,6 +34,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ChevronDown,
   ChevronRight,
+  Heart,
   Lock,
   MessageSquare,
   Package,
@@ -51,6 +53,7 @@ import {
   useMyGiveawayEntry,
 } from '../../lib/useGiveaway';
 import { useLivePlayer } from '../../lib/livePlayer';
+import { useLiveReactions } from '../../lib/useReactions';
 import { liveKitAvailable, liveKitFailure } from '../../lib/livekit';
 import { liveAccessErrorText, toLiveAccessError, useLiveAccess } from '../../lib/useLiveVideo';
 import { stage, radius, space } from '../../theme/tokens';
@@ -70,6 +73,7 @@ import {
 } from '../../lib/useAuction';
 import { AuctionPanel } from '../../components/AuctionPanel';
 import { Avatar } from '../../components/Avatar';
+import { FloatingHearts } from '../../components/FloatingHearts';
 import { GiveawayCard } from '../../components/GiveawayCard';
 import { MaxBidSheet } from '../../components/MaxBidSheet';
 import { ShowItemsSheet } from '../../components/ShowItemsSheet';
@@ -97,11 +101,18 @@ type LiveSession = {
   host_id: string;
   title: string | null;
   viewer_count: number | null;
+  like_count: number | null;
   thumbnail_url: string | null;
   women_only: boolean;
   status: string;
   room_name: string | null;
 };
+
+/** 1240 Herzen sind „1,2k" — die genaue Zahl interessiert ab hier niemanden. */
+function formatCount(value: number): string {
+  if (value < 1000) return String(value);
+  return `${(value / 1000).toFixed(1).replace('.', ',').replace(',0', '')}k`;
+}
 
 function useLiveSession(sessionId: string | undefined) {
   return useQuery({
@@ -111,7 +122,9 @@ function useLiveSession(sessionId: string | undefined) {
     queryFn: async (): Promise<LiveSession | null> => {
       const { data, error } = await supabase
         .from('live_sessions')
-        .select('id, host_id, title, viewer_count, thumbnail_url, women_only, status, room_name')
+        .select(
+          'id, host_id, title, viewer_count, like_count, thumbnail_url, women_only, status, room_name',
+        )
         .eq('id', sessionId!)
         .maybeSingle();
       if (error) throw error;
@@ -156,6 +169,7 @@ export default function LiveAuctionRoom() {
   const placeBid = usePlaceBid();
   const follow = useFollow(session?.host_id, myUserId);
   const { startAuction } = useStudioActions(id);
+  const hearts = useLiveReactions(id, myUserId, session?.like_count ?? 0);
 
   const isHost = Boolean(myUserId && session?.host_id === myUserId);
   const connected = useLivePlayer((s) => s.connected);
@@ -324,6 +338,17 @@ export default function LiveAuctionRoom() {
     },
     [active, myUserId, placeBid, router],
   );
+
+  // Ein leichter Stups, nicht die Erfolgs-Haptik: Applaus ist kein Höhepunkt,
+  // und wer zwanzigmal klatscht, soll das Gerät nicht zwanzigmal feiern hören.
+  const sendHeart = useCallback(() => {
+    if (!myUserId) {
+      router.push('/login');
+      return;
+    }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    hearts.react();
+  }, [myUserId, router, hearts]);
 
   const sendChat = useCallback(async () => {
     if (!id || !draft.trim()) return;
@@ -526,6 +551,17 @@ export default function LiveAuctionRoom() {
           ) : null}
 
           <View style={styles.rail}>
+            <Pressable
+              style={styles.railItem}
+              onPress={sendHeart}
+              accessibilityRole="button"
+              accessibilityLabel="Herz senden"
+            >
+              <View style={styles.railButton}>
+                <Heart size={17} color={stage.live} fill={stage.live} />
+              </View>
+              <Text style={styles.railLabel}>{formatCount(hearts.likes)}</Text>
+            </Pressable>
             <Pressable style={styles.railItem} onPress={shareShow} accessibilityRole="button">
               <View style={styles.railButton}>
                 <Share2 size={17} color={stage.text} />
@@ -548,6 +584,10 @@ export default function LiveAuctionRoom() {
               <Text style={styles.railLabel}>Shop</Text>
             </Pressable>
           </View>
+
+          {/* Nach der Leiste, damit die Herzen davor fliegen und nicht dahinter.
+              Berührungen lässt die Ebene durch, die Knöpfe bleiben bedienbar. */}
+          <FloatingHearts reactions={hearts.reactions} />
         </View>
 
         <View style={{ paddingBottom: insets.bottom || space.xs }}>
