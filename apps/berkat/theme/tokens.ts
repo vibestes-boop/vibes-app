@@ -1,0 +1,98 @@
+// Berkat hat zwei Flächen, und jede hat eine feste Helligkeit.
+//
+//   ui    — hell, Sand. Stöbern, verkaufen, verwalten. Der Basar bei Tag.
+//   stage — dunkel. Nur der Live-Raum, wo das Video die Fläche ist.
+//
+// Es gibt bewusst KEINEN Hell-Dunkel-Umschalter. Jede Komponente weiß, auf
+// welcher Fläche sie sitzt, und nimmt genau deren Palette. Damit kann nie ein
+// heller Text auf heller Fläche landen — der Fehler, der sich in Serlo immer
+// wieder eingeschlichen hat, ist hier strukturell ausgeschlossen.
+//
+// Regel: NIE eine Farbe direkt in eine Komponente schreiben. Alles kommt hierher.
+
+/** Helle Fläche — Startseite, Kategorien, Studio, Konto, Anmeldung. */
+export const ui = {
+  /** Sand. Der Grundton der App. */
+  bg: '#FAF7F2',
+  /** Karten und Sheets liegen als Weiß auf dem Sand. */
+  card: '#FFFFFF',
+  /** Chips, Bildplatzhalter, ruhige Flächen. */
+  sunken: '#F0EAE0',
+
+  text: '#14241E',
+  textMuted: '#6E7D75',
+
+  line: 'rgba(20,36,30,0.10)',
+  lineStrong: 'rgba(20,36,30,0.18)',
+
+  brand: '#0E2A22',
+  /** Gold trägt auf hell KEINEN Text — nur Flächen mit dunkler Schrift darauf. */
+  gold: '#E9A73C',
+  goldInk: '#241703',
+  /** Auf hell etwas dunkler als auf der Bühne, sonst reicht der Kontrast nicht. */
+  live: '#D6452F',
+  liveInk: '#FFFFFF',
+  success: '#1E6E5C',
+  successInk: '#FFFFFF',
+} as const;
+
+/** Dunkle Fläche — ausschließlich der Live-Raum. */
+export const stage = {
+  /** Tiefster Grund hinter dem Video */
+  ink: '#0B1512',
+  /** Leisten, Karten, Sheets auf der Bühne */
+  surface: '#16241F',
+  /** Platzhalter und gefüllte Kacheln */
+  surfaceHigh: '#17332B',
+  brand: '#0E2A22',
+
+  /** Gold ist der Kauf. Nur Gebot, Preis, Zuschlag-Weg. */
+  gold: '#E9A73C',
+  goldInk: '#241703',
+
+  /** Terrakotta ist Dringlichkeit. Nur live und überboten — nie Fläche. */
+  live: '#E4573D',
+  liveInk: '#2A0B05',
+
+  /** Grün ist Bestätigung — gewonnen, verifiziert, Frauen-Only. */
+  success: '#1E6E5C',
+  successInk: '#EAF7F1',
+  /** Heller Grünton für "du führst" — Kontur, nie Fläche. */
+  lead: '#4FB78E',
+
+  text: '#F5F1E8',
+  textMuted: '#9CA9A2',
+  textOnGlass: '#F5F1E8',
+
+  line: 'rgba(245,241,232,0.12)',
+  lineStrong: 'rgba(245,241,232,0.22)',
+  /** Halbtransparente Unterlage für Text auf Video */
+  scrim: 'rgba(0,0,0,0.40)',
+} as const;
+
+export const radius = {
+  sm: 8,
+  md: 12,
+  lg: 16,
+  phone: 26,
+  pill: 999,
+} as const;
+
+export const space = {
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 24,
+} as const;
+
+/**
+ * Zeiten für die Auktion. Müssen mit der Migration übereinstimmen —
+ * der Server ist die Autorität, das hier ist nur die Anzeige.
+ */
+export const auction = {
+  /** Ab hier zählt der Countdown rot */
+  urgentSeconds: 10,
+  /** Ein Gebot in den letzten `urgentSeconds` verlängert um so viel */
+  extendSeconds: 10,
+} as const;

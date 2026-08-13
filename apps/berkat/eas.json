@@ -1,0 +1,64 @@
+{
+  "cli": {
+    "version": ">= 16.0.0",
+    "appVersionSource": "local"
+  },
+  "build": {
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "autoIncrement": true,
+      "ios": { "simulator": false, "resourceClass": "m-medium" },
+      "android": { "buildType": "apk" },
+      "env": {
+        "APP_ENV": "development",
+        "EAS_BUILD": "1",
+        "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
+      }
+    },
+    "development-simulator": {
+      "developmentClient": true,
+      "distribution": "internal",
+      "ios": { "simulator": true },
+      "env": {
+        "APP_ENV": "development",
+        "EAS_BUILD": "1",
+        "NPM_CONFIG_LEGACY_PEER_DEPS": "true"
+      }
+    },
+    "preview": {
+      "distribution": "internal",
+      "ios": { "resourceClass": "m-medium" },
+      "android": { "buildType": "apk", "resourceClass": "large" },
+      "env": {
+        "EAS_BUILD": "1",
+        "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://llymwqfgujwkoxzqxrlm.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_chfoBv6Yoha_84qYSjW20A_bAE4pYkg",
+        "EXPO_PUBLIC_R2_PUBLIC_URL": "https://pub-35c122d523ba4396b15392ace804c19b.r2.dev",
+        "EXPO_PUBLIC_LIVEKIT_URL": "wss://vibes-app-fklyiq5i.livekit.cloud"
+      }
+    },
+    "production": {
+      "channel": "production",
+      "ios": { "resourceClass": "m-medium", "autoIncrement": false },
+      "android": {
+        "resourceClass": "large",
+        "buildType": "app-bundle",
+        "autoIncrement": "versionCode"
+      },
+      "env": {
+        "APP_ENV": "production",
+        "EAS_BUILD": "1",
+        "NPM_CONFIG_LEGACY_PEER_DEPS": "true",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://llymwqfgujwkoxzqxrlm.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_chfoBv6Yoha_84qYSjW20A_bAE4pYkg",
+        "EXPO_PUBLIC_R2_PUBLIC_URL": "https://pub-35c122d523ba4396b15392ace804c19b.r2.dev",
+        "EXPO_PUBLIC_LIVEKIT_URL": "wss://vibes-app-fklyiq5i.livekit.cloud"
+      }
+    }
+  },
+  "submit": {
+    "production": {}
+  }
+}

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Berkat">
+  <path d="M32 56 L32 18" fill="none" stroke="#E9A73C" stroke-width="3.2" stroke-linecap="round"/>
+  <ellipse cx="24" cy="46" rx="3.6" ry="7.2" fill="#E9A73C" transform="rotate(-45 24 46)"/>
+  <ellipse cx="40" cy="46" rx="3.6" ry="7.2" fill="#E9A73C" transform="rotate(45 40 46)"/>
+  <ellipse cx="24.8" cy="35" rx="3.6" ry="7.2" fill="#E9A73C" transform="rotate(-45 24.8 35)"/>
+  <ellipse cx="39.2" cy="35" rx="3.6" ry="7.2" fill="#E9A73C" transform="rotate(45 39.2 35)"/>
+  <ellipse cx="25.6" cy="24" rx="3.6" ry="7.2" fill="#E9A73C" transform="rotate(-45 25.6 24)"/>
+  <ellipse cx="38.4" cy="24" rx="3.6" ry="7.2" fill="#E9A73C" transform="rotate(45 38.4 24)"/>
+  <ellipse cx="32" cy="13" rx="3.4" ry="7" fill="#E9A73C"/>
+</svg>

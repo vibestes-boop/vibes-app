@@ -82,7 +82,9 @@ Deno.serve(async (req) => {
 
     const { data: order } = await adminClient
       .from('product_orders')
-      .select('id, buyer_id, status, amount_eur, currency, product_id')
+      // `title` trägt den Namen für Bestellungen ohne products-Zeile —
+      // z. B. einen Berkat-Sammelkorb aus mehreren Auktionsartikeln.
+      .select('id, buyer_id, status, amount_eur, currency, product_id, title')
       .eq('id', body.order_id)
       .maybeSingle();
 
@@ -90,11 +92,16 @@ Deno.serve(async (req) => {
     if (order.buyer_id !== user.id) return json({ error: 'not_authorized' }, 403);
     if (order.status !== 'payment_requested') return json({ error: 'order_not_payable' }, 409);
 
-    const { data: product } = await adminClient
-      .from('products')
-      .select('title, cover_url, description')
-      .eq('id', order.product_id)
-      .maybeSingle();
+    // product_id ist bei Auktions-Bestellungen NULL — dann greift order.title.
+    const { data: product } = order.product_id
+      ? await adminClient
+          .from('products')
+          .select('title, cover_url, description')
+          .eq('id', order.product_id)
+          .maybeSingle()
+      : { data: null };
+
+    const lineItemName = product?.title ?? order.title ?? 'Serlo Produkt';
 
     const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
     if (!stripeKey) return json({ error: 'stripe_not_configured' }, 500);
@@ -124,10 +131,10 @@ Deno.serve(async (req) => {
     pform.set('shipping_address_collection[allowed_countries][1]', 'AT');
     pform.set('shipping_address_collection[allowed_countries][2]', 'CH');
     pform.set('invoice_creation[enabled]', 'true');
-    pform.set('invoice_creation[invoice_data][description]', `Serlo: ${product?.title ?? 'Produkt'}`);
+    pform.set('invoice_creation[invoice_data][description]', `Serlo: ${lineItemName}`);
     pform.set('line_items[0][price_data][currency]', order.currency ?? 'eur');
     pform.set('line_items[0][price_data][unit_amount]', String(amountCents));
-    pform.set('line_items[0][price_data][product_data][name]', product?.title ?? 'Serlo Produkt');
+    pform.set('line_items[0][price_data][product_data][name]', lineItemName);
     // Produktbild → Stripe-Checkout zeigt das Cover als Thumbnail. Das R2-Cover
     // ist WebP; manche Bild-Consumer rendern WebP nicht zuverlässig → on-the-fly
     // über images.weserv.nl zu JPEG konvertieren (gleiches Muster wie die OG-Bilder).

@@ -1,0 +1,72 @@
+{
+  "expo": {
+    "name": "Berkat",
+    "slug": "berkat",
+    "version": "0.1.0",
+    "scheme": "berkat",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0E2A22"
+    },
+    "ios": {
+      "bundleIdentifier": "com.berkat.app",
+      "buildNumber": "1",
+      "supportsTablet": false,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "Berkat braucht die Kamera, damit du deine Artikel live zeigen kannst.",
+        "NSMicrophoneUsageDescription": "Berkat braucht das Mikrofon, damit deine Zuschauer dich hören."
+      }
+    },
+    "android": {
+      "package": "app.berkat.market",
+      "versionCode": 1,
+      "edgeToEdgeEnabled": true,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png",
+        "backgroundColor": "#0E2A22"
+      },
+      "permissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "@livekit/react-native-expo-plugin",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Berkat braucht Zugriff auf deine Fotos, damit du deine Artikel zeigen kannst."
+        }
+      ],
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 180,
+          "resizeMode": "contain",
+          "backgroundColor": "#0E2A22"
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "fb4e0381-264d-4cfd-8c3c-691987346915"
+      }
+    }
+  }
+}

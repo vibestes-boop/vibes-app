@@ -1,0 +1,664 @@
+// Verkaufen — die Werkbank des Gastgebers.
+//
+// Bewusst kein Dashboard: eine Spalte, von oben nach unten in der Reihenfolge,
+// in der man sie während einer laufenden Show braucht. Wer live ist, hat eine
+// Hand frei und keine Zeit zu suchen.
+
+import { useMemo, useState } from 'react';
+import { useRouter } from 'expo-router';
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { Image } from 'expo-image';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ImagePlus, Plus, Radio, Trash2 } from 'lucide-react-native';
+import { useSession } from '../../lib/session';
+import { pickAndUpload, type ImageKind } from '../../lib/uploadImage';
+import {
+  formatCountdown,
+  formatEuro,
+  useCountdown,
+  useLiveAuctions,
+  useServerClock,
+  useSettleOnZero,
+  useUsernames,
+} from '../../lib/useAuction';
+import {
+  euroToCents,
+  studioErrorText,
+  useCreateShow,
+  useEndShow,
+  useMyActiveShow,
+  useSetShowCover,
+  useStudioActions,
+} from '../../lib/useStudio';
+import { orderErrorText, useMarkShipped, useSellerOrders } from '../../lib/useSellerOrders';
+import { BerkatMark } from '../../components/BerkatMark';
+import { SellerOrders } from '../../components/SellerOrders';
+import { ui, radius, space } from '../../theme/tokens';
+
+const DURATIONS = [20, 30, 60];
+
+export default function SellScreen() {
+  const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const myUserId = useSession((s) => s.userId);
+
+  const { serverNow } = useServerClock();
+  const { data: show, isLoading } = useMyActiveShow(myUserId);
+  const createShow = useCreateShow(myUserId);
+  const endShow = useEndShow(myUserId);
+  const setCover = useSetShowCover(myUserId);
+
+  const { auctions, active, upcoming } = useLiveAuctions(show?.id);
+  const { startAuction, cancelAuction, createAuction } = useStudioActions(show?.id);
+  const secondsLeft = useCountdown(active?.ends_at ?? null, serverNow);
+  // Der Gastgeber schaut garantiert zu — er ist der verlässlichste Auslöser für
+  // den Zuschlag. Ohne das bleibt ein Artikel bis zum Cron-Lauf hängen.
+  useSettleOnZero(active, secondsLeft);
+
+  const sold = useMemo(() => auctions.filter((a) => a.status === 'sold'), [auctions]);
+  const winnerNames = useUsernames(sold.map((a) => a.winner_id));
+
+  const [showTitle, setShowTitle] = useState('');
+  const [duration, setDuration] = useState(30);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const [title, setTitle] = useState('');
+  const [startPrice, setStartPrice] = useState('1');
+  const [increment, setIncrement] = useState('1');
+  const [buyNow, setBuyNow] = useState('');
+
+  const { data: orders = [] } = useSellerOrders(myUserId);
+  const markShipped = useMarkShipped(myUserId);
+  const [shippingId, setShippingId] = useState<string | null>(null);
+
+  const shipOrder = async (orderId: string, carrier: string, tracking: string) => {
+    setShippingId(orderId);
+    try {
+      setNotice(null);
+      await markShipped(orderId, carrier, tracking);
+    } catch (error) {
+      setNotice(orderErrorText(error instanceof Error ? error.message : String(error)));
+    } finally {
+      setShippingId(null);
+    }
+  };
+
+  const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const [articleUrl, setArticleUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState<ImageKind | null>(null);
+
+  /** Bild wählen und hochladen. Abbrechen ist kein Fehler, nur ein Nein. */
+  const chooseImage = async (kind: ImageKind, apply: (url: string) => void) => {
+    setUploading(kind);
+    try {
+      const url = await pickAndUpload(kind);
+      if (url) apply(url);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'Das Bild kam nicht durch.');
+    } finally {
+      setUploading(null);
+    }
+  };
+
+  const run = async (action: () => Promise<unknown>) => {
+    try {
+      setNotice(null);
+      await action();
+    } catch (error) {
+      setNotice(studioErrorText(error instanceof Error ? error.message : String(error)));
+    }
+  };
+
+  const addItem = () => {
+    if (!show) return;
+    const startCents = euroToCents(startPrice);
+    const stepCents = euroToCents(increment);
+    const buyNowCents = buyNow.trim() ? euroToCents(buyNow) : null;
+
+    if (!title.trim()) return setNotice('Der Artikel braucht einen Namen.');
+    if (!startCents || startCents <= 0) return setNotice('Startpreis prüfen.');
+    if (!stepCents || stepCents <= 0) return setNotice('Mindestschritt prüfen.');
+    if (buyNow.trim() && !buyNowCents) return setNotice('Sofortkaufpreis prüfen.');
+
+    void run(async () => {
+      await createAuction({
+        sessionId: show.id,
+        title: title.trim(),
+        startPriceCents: startCents,
+        minIncrementCents: stepCents,
+        buyNowCents,
+        imageUrl: articleUrl,
+      });
+      setTitle('');
+      setBuyNow('');
+      setArticleUrl(null);
+    });
+  };
+
+  if (!myUserId) {
+    return (
+      <View style={[styles.screen, styles.center, { padding: space.xl }]}>
+        <BerkatMark size={40} color={ui.brand} />
+        <Text style={styles.gateTitle}>Erst anmelden</Text>
+        <Text style={styles.gateBody}>
+          Zum Verkaufen brauchst du dein Konto — dasselbe wie bei Serlo.
+        </Text>
+        <Pressable style={styles.primaryButton} onPress={() => router.push('/login')}>
+          <Text style={styles.primaryButtonText}>Anmelden</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <View style={[styles.screen, styles.center]}>
+        <ActivityIndicator color={ui.brand} />
+      </View>
+    );
+  }
+
+  return (
+    <KeyboardAvoidingView
+      style={styles.screen}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
+      <View style={[styles.header, { paddingTop: insets.top + space.sm }]}>
+        <Text style={styles.headerTitle}>Verkaufen</Text>
+      </View>
+
+      <ScrollView
+        contentContainerStyle={{ padding: space.md, paddingBottom: insets.bottom + space.xl }}
+        keyboardShouldPersistTaps="handled"
+      >
+        {notice ? (
+          <Pressable style={styles.notice} onPress={() => setNotice(null)}>
+            <Text style={styles.noticeText}>{notice}</Text>
+          </Pressable>
+        ) : null}
+
+        {!show ? (
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Mach die Show auf</Text>
+            <Text style={styles.cardBody}>
+              Gib ihr einen Namen, den man im Feed erkennt — zum Beispiel „Parfüm ab 1 €".
+            </Text>
+            <TextInput
+              value={showTitle}
+              onChangeText={setShowTitle}
+              placeholder="Parfüm ab 1 €"
+              placeholderTextColor={ui.textMuted}
+              style={styles.input}
+            />
+
+            {/* Das Cover ist das, was im Feed über deine Show entscheidet —
+                deshalb steht es hier groß und nicht als Nebensache. */}
+            <Pressable
+              style={styles.coverPicker}
+              onPress={() => void chooseImage('cover', setCoverUrl)}
+              disabled={uploading !== null}
+              accessibilityRole="button"
+              accessibilityLabel="Cover auswählen"
+            >
+              {coverUrl ? (
+                <Image source={{ uri: coverUrl }} style={StyleSheet.absoluteFill} contentFit="cover" />
+              ) : null}
+              {uploading === 'cover' ? (
+                <ActivityIndicator color={ui.brand} />
+              ) : coverUrl ? (
+                <View style={styles.coverChange}>
+                  <Text style={styles.coverChangeText}>Cover ändern</Text>
+                </View>
+              ) : (
+                <>
+                  <ImagePlus size={22} color={ui.textMuted} />
+                  <Text style={styles.coverHint}>Cover wählen</Text>
+                </>
+              )}
+            </Pressable>
+
+            <Pressable
+              style={[styles.primaryButton, createShow.isPending && styles.buttonBusy]}
+              disabled={createShow.isPending || uploading !== null}
+              onPress={() =>
+                void run(() =>
+                  createShow.mutateAsync({ title: showTitle, thumbnailUrl: coverUrl }),
+                )
+              }
+            >
+              <Radio size={17} color={ui.goldInk} />
+              <Text style={styles.primaryButtonText}>Show starten</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <>
+            <View style={styles.card}>
+              <View style={styles.showRow}>
+                <Pressable
+                  style={styles.showCover}
+                  onPress={() =>
+                    void chooseImage('cover', (url) =>
+                      run(() => setCover.mutateAsync({ sessionId: show.id, url })),
+                    )
+                  }
+                  accessibilityRole="button"
+                  accessibilityLabel="Cover ändern"
+                >
+                  {show.thumbnail_url ? (
+                    <Image
+                      source={{ uri: show.thumbnail_url }}
+                      style={StyleSheet.absoluteFill}
+                      contentFit="cover"
+                    />
+                  ) : null}
+                  {uploading === 'cover' ? (
+                    <ActivityIndicator color={ui.brand} />
+                  ) : !show.thumbnail_url ? (
+                    <ImagePlus size={18} color={ui.textMuted} />
+                  ) : null}
+                </Pressable>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.cardTitle}>{show.title ?? 'Berkat-Show'}</Text>
+                  <Text style={styles.cardMeta}>{show.viewer_count ?? 0} schauen zu</Text>
+                </View>
+                <View style={styles.livePill}>
+                  <Text style={styles.livePillText}>live</Text>
+                </View>
+              </View>
+              <View style={styles.showActions}>
+                <Pressable style={styles.ghostButton} onPress={() => router.push(`/live/${show.id}`)}>
+                  <Text style={styles.ghostButtonText}>Zum Raum</Text>
+                </Pressable>
+                <Pressable
+                  style={styles.dangerButton}
+                  onPress={() => void run(() => endShow.mutateAsync(show.id))}
+                >
+                  <Text style={styles.dangerButtonText}>Show beenden</Text>
+                </Pressable>
+              </View>
+            </View>
+
+            {active ? (
+              <View style={[styles.card, styles.cardRunning]}>
+                <Text style={styles.sectionLabel}>Läuft gerade</Text>
+                <Text style={styles.cardTitle}>{active.title}</Text>
+                <Text style={styles.cardMeta}>
+                  {active.current_bid_cents == null
+                    ? `Noch kein Gebot · startet bei ${formatEuro(active.start_price_cents)}`
+                    : `${formatEuro(active.current_bid_cents)} · ${active.bid_count} Gebote`}
+                </Text>
+                <Text style={styles.countdown}>{formatCountdown(secondsLeft)}</Text>
+              </View>
+            ) : null}
+
+            <Text style={styles.sectionLabel}>Aufgelegt ({upcoming.length})</Text>
+            {upcoming.length === 0 ? (
+              <Text style={styles.emptyLine}>
+                Noch nichts aufgelegt. Trag unten den ersten Artikel ein.
+              </Text>
+            ) : (
+              upcoming.map((item) => (
+                <View key={item.id} style={styles.itemRow}>
+                  <View style={styles.itemThumb}>
+                    {item.image_url ? (
+                      <Image
+                        source={{ uri: item.image_url }}
+                        style={StyleSheet.absoluteFill}
+                        contentFit="cover"
+                      />
+                    ) : null}
+                  </View>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text numberOfLines={1} style={styles.itemTitle}>
+                      {item.title}
+                    </Text>
+                    <Text style={styles.itemMeta}>
+                      ab {formatEuro(item.start_price_cents)} · Schritt{' '}
+                      {formatEuro(item.min_increment_cents)}
+                      {item.buy_now_cents ? ` · sofort ${formatEuro(item.buy_now_cents)}` : ''}
+                    </Text>
+                  </View>
+                  <Pressable
+                    onPress={() => void run(() => cancelAuction(item.id))}
+                    hitSlop={8}
+                    accessibilityLabel={`${item.title} entfernen`}
+                  >
+                    <Trash2 size={17} color={ui.textMuted} />
+                  </Pressable>
+                  <Pressable
+                    style={[styles.startButton, Boolean(active) && styles.startButtonDisabled]}
+                    disabled={Boolean(active)}
+                    onPress={() => void run(() => startAuction(item.id, duration))}
+                  >
+                    <Text style={styles.startButtonText}>Starten</Text>
+                  </Pressable>
+                </View>
+              ))
+            )}
+
+            <View style={styles.durationRow}>
+              <Text style={styles.durationLabel}>Dauer</Text>
+              {DURATIONS.map((seconds) => (
+                <Pressable
+                  key={seconds}
+                  onPress={() => setDuration(seconds)}
+                  style={[styles.durationChip, duration === seconds && styles.durationChipActive]}
+                >
+                  <Text
+                    style={[
+                      styles.durationChipText,
+                      duration === seconds && styles.durationChipTextActive,
+                    ]}
+                  >
+                    {seconds} s
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+
+            {sold.length > 0 ? (
+              <>
+                <Text style={styles.sectionLabel}>Verkauft ({sold.length})</Text>
+                {sold.map((item) => (
+                  <View key={item.id} style={styles.itemRow}>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text numberOfLines={1} style={styles.itemTitle}>
+                        {item.title}
+                      </Text>
+                      <Text style={styles.itemMeta}>
+                        an {item.winner_id ? winnerNames[item.winner_id] ?? '…' : '—'}
+                      </Text>
+                    </View>
+                    <Text style={styles.soldPrice}>{formatEuro(item.current_bid_cents)}</Text>
+                  </View>
+                ))}
+              </>
+            ) : null}
+
+            <View style={[styles.card, { marginTop: space.lg }]}>
+              <Text style={styles.cardTitle}>Artikel auflegen</Text>
+              <View style={styles.articleRow}>
+                <Pressable
+                  style={styles.articleThumb}
+                  onPress={() => void chooseImage('article', setArticleUrl)}
+                  disabled={uploading !== null}
+                  accessibilityRole="button"
+                  accessibilityLabel="Bild des Artikels wählen"
+                >
+                  {articleUrl ? (
+                    <Image
+                      source={{ uri: articleUrl }}
+                      style={StyleSheet.absoluteFill}
+                      contentFit="cover"
+                    />
+                  ) : null}
+                  {uploading === 'article' ? (
+                    <ActivityIndicator color={ui.brand} />
+                  ) : !articleUrl ? (
+                    <ImagePlus size={20} color={ui.textMuted} />
+                  ) : null}
+                </Pressable>
+                <TextInput
+                  value={title}
+                  onChangeText={setTitle}
+                  placeholder="Seidenschal, handbestickt"
+                  placeholderTextColor={ui.textMuted}
+                  style={[styles.input, { flex: 1 }]}
+                  multiline
+                />
+              </View>
+              <View style={styles.priceRow}>
+                <View style={styles.priceField}>
+                  <Text style={styles.fieldLabel}>Startpreis</Text>
+                  <TextInput
+                    value={startPrice}
+                    onChangeText={setStartPrice}
+                    keyboardType="decimal-pad"
+                    placeholder="1"
+                    placeholderTextColor={ui.textMuted}
+                    style={styles.input}
+                  />
+                </View>
+                <View style={styles.priceField}>
+                  <Text style={styles.fieldLabel}>Schritt</Text>
+                  <TextInput
+                    value={increment}
+                    onChangeText={setIncrement}
+                    keyboardType="decimal-pad"
+                    placeholder="1"
+                    placeholderTextColor={ui.textMuted}
+                    style={styles.input}
+                  />
+                </View>
+                <View style={styles.priceField}>
+                  <Text style={styles.fieldLabel}>Sofort</Text>
+                  <TextInput
+                    value={buyNow}
+                    onChangeText={setBuyNow}
+                    keyboardType="decimal-pad"
+                    placeholder="—"
+                    placeholderTextColor={ui.textMuted}
+                    style={styles.input}
+                  />
+                </View>
+              </View>
+              <Pressable style={styles.primaryButton} onPress={addItem}>
+                <Plus size={17} color={ui.goldInk} />
+                <Text style={styles.primaryButtonText}>Auflegen</Text>
+              </Pressable>
+            </View>
+          </>
+        )}
+
+        {/* Außerhalb der Show-Bedingung: Bestellungen wollen bearbeitet werden,
+            auch wenn gerade keine Show läuft — meistens sogar dann. */}
+        <SellerOrders orders={orders} busyId={shippingId} onShip={shipOrder} />
+      </ScrollView>
+    </KeyboardAvoidingView>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: ui.bg },
+  center: { alignItems: 'center', justifyContent: 'center', gap: space.sm },
+  header: { paddingHorizontal: space.md, paddingBottom: space.sm },
+  headerTitle: { fontSize: 26, fontWeight: '700', color: ui.text },
+
+  gateTitle: { fontSize: 18, fontWeight: '700', color: ui.text, marginTop: space.sm },
+  gateBody: {
+    fontSize: 14,
+    color: ui.textMuted,
+    textAlign: 'center',
+    marginBottom: space.md,
+    lineHeight: 20,
+  },
+
+  card: {
+    backgroundColor: ui.card,
+    borderRadius: radius.md,
+    padding: space.md,
+    marginBottom: space.md,
+    gap: space.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: ui.line,
+  },
+  cardRunning: { borderWidth: 1.5, borderColor: ui.gold },
+  cardTitle: { fontSize: 17, fontWeight: '700', color: ui.text },
+  cardBody: { fontSize: 13, color: ui.textMuted, lineHeight: 19 },
+  cardMeta: { fontSize: 12, color: ui.textMuted },
+  countdown: { fontSize: 30, fontWeight: '700', color: ui.text },
+
+  showRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
+  showCover: {
+    width: 52,
+    height: 52,
+    borderRadius: radius.sm,
+    backgroundColor: ui.sunken,
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  coverPicker: {
+    height: 140,
+    borderRadius: radius.md,
+    backgroundColor: ui.sunken,
+    borderWidth: 1.5,
+    borderColor: ui.lineStrong,
+    borderStyle: 'dashed',
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  coverHint: { fontSize: 13, fontWeight: '600', color: ui.textMuted },
+  coverChange: {
+    position: 'absolute',
+    bottom: space.sm,
+    right: space.sm,
+    backgroundColor: 'rgba(20,36,30,0.72)',
+    borderRadius: radius.pill,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+  },
+  coverChangeText: { fontSize: 12, fontWeight: '700', color: '#FFFFFF' },
+  articleRow: { flexDirection: 'row', gap: space.sm, alignItems: 'stretch' },
+  articleThumb: {
+    width: 72,
+    height: 72,
+    borderRadius: radius.sm,
+    backgroundColor: ui.sunken,
+    borderWidth: 1.5,
+    borderColor: ui.lineStrong,
+    borderStyle: 'dashed',
+    overflow: 'hidden',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  itemThumb: {
+    width: 44,
+    height: 44,
+    borderRadius: radius.sm,
+    backgroundColor: ui.sunken,
+    overflow: 'hidden',
+  },
+  showActions: { flexDirection: 'row', gap: space.sm },
+  livePill: {
+    backgroundColor: ui.live,
+    borderRadius: radius.pill,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+  },
+  livePillText: { fontSize: 11, fontWeight: '700', color: ui.liveInk },
+
+  input: {
+    backgroundColor: ui.bg,
+    borderRadius: radius.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: ui.lineStrong,
+    paddingHorizontal: space.md,
+    paddingVertical: 11,
+    fontSize: 15,
+    color: ui.text,
+  },
+  fieldLabel: { fontSize: 11, color: ui.textMuted, marginBottom: 4 },
+  priceRow: { flexDirection: 'row', gap: space.sm },
+  priceField: { flex: 1 },
+
+  primaryButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: ui.gold,
+    borderRadius: radius.pill,
+    height: 50,
+    paddingHorizontal: space.xl,
+  },
+  primaryButtonText: { fontSize: 16, fontWeight: '700', color: ui.goldInk },
+  buttonBusy: { opacity: 0.6 },
+  ghostButton: {
+    flex: 1,
+    height: 42,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: ui.lineStrong,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ghostButtonText: { fontSize: 14, fontWeight: '700', color: ui.text },
+  dangerButton: {
+    flex: 1,
+    height: 42,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: ui.live,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dangerButtonText: { fontSize: 14, fontWeight: '700', color: ui.live },
+
+  sectionLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: ui.textMuted,
+    marginBottom: space.sm,
+    marginTop: space.xs,
+  },
+  emptyLine: { fontSize: 13, color: ui.textMuted, marginBottom: space.md },
+  itemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    paddingVertical: 11,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: ui.line,
+  },
+  itemTitle: { fontSize: 15, fontWeight: '600', color: ui.text },
+  itemMeta: { fontSize: 12, color: ui.textMuted },
+  soldPrice: { fontSize: 15, fontWeight: '700', color: ui.text },
+  startButton: {
+    backgroundColor: ui.gold,
+    borderRadius: radius.pill,
+    paddingHorizontal: space.lg,
+    paddingVertical: 9,
+  },
+  startButtonDisabled: { opacity: 0.35 },
+  startButtonText: { fontSize: 13, fontWeight: '700', color: ui.goldInk },
+
+  durationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    marginTop: space.md,
+  },
+  durationLabel: { fontSize: 12, color: ui.textMuted, marginRight: space.xs },
+  durationChip: {
+    borderRadius: radius.pill,
+    backgroundColor: ui.sunken,
+    paddingHorizontal: space.lg,
+    paddingVertical: 8,
+  },
+  durationChipActive: { backgroundColor: ui.brand },
+  durationChipText: { fontSize: 13, fontWeight: '600', color: ui.text },
+  durationChipTextActive: { color: ui.card },
+
+  notice: {
+    backgroundColor: ui.card,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: ui.live,
+    padding: space.md,
+    marginBottom: space.md,
+  },
+  noticeText: { fontSize: 13, color: ui.text },
+});
