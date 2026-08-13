@@ -1,0 +1,166 @@
+/* Berkats Fläche, dieselbe wie in der App: Sand, Dunkelgrün, Gold.
+   Werte aus apps/berkat/theme/tokens.ts — ändert sich dort etwas, muss es hier mit.
+
+   Bewusst flach: keine Verläufe, keine Schlagschatten, keine runden Kacheln mit
+   bunten Symbolkreisen. Haarlinien statt Rahmen, eine Kursive als einziger
+   Schmuck. Systemschriften, damit nichts nachgeladen wird — wer gerade bezahlt
+   hat, soll nicht auf eine Schriftdatei warten. */
+
+:root {
+  --bg: #faf7f2;
+  --ink: #14241e;
+  --muted: #6e7d75;
+  --line: rgba(20, 36, 30, 0.14);
+  --brand: #0e2a22;
+  --gold: #e9a73c;
+  --gold-ink: #241703;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 17px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+main {
+  flex: 1;
+  width: 100%;
+  max-width: 34rem;
+  margin: 0 auto;
+  padding: 4.5rem 1.5rem 3rem;
+}
+
+.mark {
+  display: block;
+  width: 40px;
+  height: 40px;
+}
+
+.eyebrow {
+  margin: 1.75rem 0 0;
+  font-size: 0.75rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+h1 {
+  margin: 0.4rem 0 0;
+  font-size: 2.1rem;
+  line-height: 1.15;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* Der einzige Schmuck auf der Seite. */
+h1 em {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-style: italic;
+  font-weight: 400;
+}
+
+.lead {
+  margin: 1rem 0 0;
+  color: var(--muted);
+}
+
+/* Nummerierte Zeilen statt Kacheln — was als Nächstes passiert, ist eine
+   Reihenfolge, keine Sammlung. */
+.steps {
+  margin: 2.5rem 0 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+  border-top: 1px solid var(--line);
+}
+
+.steps li {
+  counter-increment: step;
+  display: grid;
+  grid-template-columns: 2.25rem 1fr;
+  gap: 0.5rem;
+  padding: 0.95rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.steps li::before {
+  content: counter(step, decimal-leading-zero);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78rem;
+  color: var(--gold);
+  padding-top: 0.28rem;
+}
+
+.steps strong {
+  font-weight: 600;
+}
+
+.steps span {
+  /* Muss ausdrücklich in die zweite Spalte. Ohne das rutscht der Text als
+     drittes Rasterfeld unter die Nummer, also in 2,25rem Breite — und bricht
+     dann nach jedem einzelnen Wort um. */
+  grid-column: 2;
+  display: block;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.cta {
+  display: inline-block;
+  margin: 2.5rem 0 0;
+  padding: 0.9rem 1.6rem;
+  background: var(--gold);
+  color: var(--gold-ink);
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: 999px;
+}
+
+.cta.quiet {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--line);
+}
+
+.note {
+  margin: 1.25rem 0 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+footer {
+  border-top: 1px solid var(--line);
+  padding: 1.5rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+footer a {
+  color: inherit;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b1512;
+    --ink: #f5f1e8;
+    --muted: #9ca9a2;
+    --line: rgba(245, 241, 232, 0.16);
+  }
+}

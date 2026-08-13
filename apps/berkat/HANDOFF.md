@@ -31,6 +31,7 @@ Was Berkat bewusst anders macht als Whatnot:
 | | |
 |---|---|
 | App | `apps/berkat/` — eigenständige Expo-App, eigene `node_modules`, eigener Store-Eintrag |
+| Website | `apps/berkat-web/` — vier statische Seiten, **noch nicht veröffentlicht** (siehe dortige README) |
 | Bundle-IDs | iOS `com.berkat.app` · Android `app.berkat.market` |
 | EAS-Projekt | `@zaurhat/berkat` (`fb4e0381-264d-4cfd-8c3c-691987346915`) |
 | Backend | dieselbe Supabase-Instanz wie Serlo (`llymwqfgujwkoxzqxrlm`) |
@@ -239,7 +240,7 @@ er zählt also Wellen, nicht Finger. Die lebendige Zahl im Raum ist die lokale.
 
 ## 5. Datenbank
 
-Fünf Migrationen sind eingespielt und im Tracking vermerkt:
+Sieben Migrationen, **alle eingespielt und im Tracking vermerkt**:
 
 | Datei | Inhalt |
 |---|---|
@@ -248,26 +249,14 @@ Fünf Migrationen sind eingespielt und im Tracking vermerkt:
 | `20260813233000_berkat_giveaways.sql` | `live_giveaways`, `live_giveaway_entries`, drei RPCs |
 | `20260814000000_berkat_cart_checkout.sql` | `product_orders.cart_id` + `.title`, Trigger „bezahlt → Korb zu", `checkout_auction_cart` |
 | `20260814010000_berkat_mark_shipped.sql` | `mark_order_shipped` |
-
-### ⚠️ Zwei Migrationen liegen noch bereit
-
-Beide sind geschrieben, aber **nicht in der Live-DB**. Bis sie drin sind, laufen die zugehörigen
-Funktionen ins Leere: „Artikel ändern" wirft `PGRST202`, und der Frauen-Only-Leak bleibt offen.
-
-| Datei | Inhalt |
-|---|---|
 | `20260814120000_live_reactions_rls.sql` | `live_reactions_select` von `USING(true)` auf Session-Vererbung |
 | `20260814130000_berkat_edit_auction.sql` | `update_live_auction` |
 
-Weg wie immer — **nicht** `db push` (siehe Abschnitt 3):
-
-1. Inhalt der Datei im Supabase-SQL-Editor ausführen
-2. `supabase migration repair --status applied 20260814120000` (analog für die zweite)
-
-Die Reaktions-Migration ist folgenlos einspielbar: Sie ändert nur die Lese-Policy, und **niemand
-liest die Tabelle** — App und Web schreiben ausschließlich hinein, gezeigt werden Reaktionen über
-den Broadcast-Kanal. Vorher stand dort `USING(true)`, womit jedes Konto die Teilnehmerliste jedes
-Frauen-Only-Raums auslesen konnte: Jede Zeile trägt `session_id` und `user_id`.
+Die letzten beiden kamen am 14.08. dazu. Die Reaktions-Migration schloss ein Leck: Die Lese-Policy
+stand auf `USING(true)`, und weil jede Zeile `session_id` und `user_id` trägt, konnte jedes Konto
+die Teilnehmerliste jedes Frauen-Only-Raums auslesen. Folgenlos umzustellen, weil **niemand die
+Tabelle liest** — App und Web schreiben nur hinein, gezeigt werden Reaktionen über den
+Broadcast-Kanal.
 
 ### RLS-Grundsatz
 
@@ -307,11 +296,11 @@ Besitzer** — sonst wären Stellvertreter-Bieten und Gewinnspiel wertlos.
 
 1. **Kategorien- und Aktivitäts-Reiter** — zwei von Whatnots fünf; bewusst weggelassen, solange
    sie keinen Inhalt hätten
-2. **Eigene Erfolgsseite nach dem Bezahlen** — aktuell landet man auf `serlo.ch/shop/success`,
-   weil die Umgebungsvariable mit dem Parfüm-Verkauf geteilt wird
-3. **Google-/Apple-Anmeldung**
-4. **Bild beim Ändern entfernen** — ersetzen geht, wegnehmen nicht. Die RPC kann es
-   (`p_image_url = NULL`), es fehlt nur der Knopf am Vorschaubild
+2. **Google-/Apple-Anmeldung**
+3. **Eigene Erfolgsseite: gebaut, aber nicht veröffentlicht.** Die Seiten liegen in
+   `apps/berkat-web/`, die Weiche in `create-checkout-session` steht. Beides greift erst nach
+   den drei Schritten in Abschnitt 8. Bis dahin landet der Käufer weiter auf
+   `serlo.ch/shop/success` — das ist Absicht und kein Versehen, siehe dort. am Vorschaubild
 
 ---
 
@@ -361,10 +350,23 @@ Der Code ist so weit, dass sich das testen lässt. Gelingt es nicht, spart die A
 
 ## 8. Nächster sinnvoller Schritt
 
-Zuerst die **zwei offenen Migrationen** einspielen (Abschnitt 5) — ohne sie wirft „Artikel ändern"
-einen Fehler.
+### Website veröffentlichen — drei Schritte, in dieser Reihenfolge
 
-Dann eine echte Show mit zwei Geräten durchspielen:
+Die Reihenfolge ist keine Empfehlung, sondern Bedingung: Wer Schritt 3 vor Schritt 1 macht,
+schickt Käufer direkt nach dem Bezahlen auf eine tote Seite. Deshalb ist die Weiche in der
+Function auch ausdrücklich einzuschalten und nicht Standard.
+
+1. `npx wrangler pages deploy apps/berkat-web --project-name berkat`
+2. Im Cloudflare-Dashboard `berkat.app` **und** `www.berkat.app` mit dem Projekt verbinden.
+   Der Apex ist der wichtige — dorthin zeigen die Teilen-Links aus der App.
+3. `supabase secrets set BERKAT_SUCCESS_URL=… BERKAT_CANCEL_URL=…`, dann
+   `supabase functions deploy create-checkout-session`
+
+Details in `apps/berkat-web/README.md`.
+
+### Dann: eine echte Show mit zwei Geräten
+
+Alles Übrige aus dem Code ist beisammen. Was jetzt zählt, ist der Durchlauf:
 
 1. Gerät A: Show starten → live gehen → Artikel auflegen → starten
 2. Gerät B (anderes Konto): bieten, kontern, Max-Gebot setzen

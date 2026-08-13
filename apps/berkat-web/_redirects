@@ -1,0 +1,10 @@
+# Cloudflare Pages.
+#
+# Jede geteilte Show hat eine eigene Adresse (/live/<id>), aber alle sehen gleich
+# aus — die Show selbst liegt hinter der Anmeldung in der App. Statt einer Seite
+# pro Show liefert Pages für jeden solchen Pfad dieselbe Datei aus, und die Seite
+# liest die Kennung selbst aus der Adresse.
+#
+# Status 200 statt 301: Die Adresse in der Leiste soll stehen bleiben, sonst wäre
+# die Kennung weg, bevor das Skript sie lesen kann.
+/live/*  /live.html  200

@@ -84,13 +84,25 @@ Deno.serve(async (req) => {
       .from('product_orders')
       // `title` trägt den Namen für Bestellungen ohne products-Zeile —
       // z. B. einen Berkat-Sammelkorb aus mehreren Auktionsartikeln.
-      .select('id, buyer_id, status, amount_eur, currency, product_id, title')
+      // `cart_id` unterscheidet die beiden Herkünfte, siehe unten.
+      .select('id, buyer_id, status, amount_eur, currency, product_id, title, cart_id')
       .eq('id', body.order_id)
       .maybeSingle();
 
     if (!order) return json({ error: 'order_not_found' }, 404);
     if (order.buyer_id !== user.id) return json({ error: 'not_authorized' }, 403);
     if (order.status !== 'payment_requested') return json({ error: 'order_not_payable' }, 409);
+
+    // Zwei Herkünfte, zwei Marken. Nur eine Berkat-Bestellung trägt einen
+    // Sammelkorb — `cart_id` ist bei einem Serlo-Produktkauf immer NULL.
+    //
+    // Warum überhaupt getrennt: Wer bei einer Berkat-Auktion bezahlt hat und
+    // danach „serlo.ch" in der Adresszeile liest, zweifelt genau in dem Moment,
+    // in dem er gerade Geld überwiesen hat. Ein geteiltes
+    // STRIPE_PRODUCT_SUCCESS_URL kann das nicht lösen: Es würde umgekehrt den
+    // Parfüm-Kauf auf Berkats Seite schicken.
+    const isAuctionCart = Boolean(order.cart_id);
+    const brand = isAuctionCart ? 'Berkat' : 'Serlo';
 
     // product_id ist bei Auktions-Bestellungen NULL — dann greift order.title.
     const { data: product } = order.product_id
@@ -101,19 +113,31 @@ Deno.serve(async (req) => {
           .maybeSingle()
       : { data: null };
 
-    const lineItemName = product?.title ?? order.title ?? 'Serlo Produkt';
+    const lineItemName = product?.title ?? order.title ?? `${brand} Bestellung`;
 
     const stripeKey = Deno.env.get('STRIPE_SECRET_KEY');
     if (!stripeKey) return json({ error: 'stripe_not_configured' }, 500);
+
+    // Berkats eigene Bestätigung ist ausdrücklich einzuschalten, nicht Standard.
+    // Absichtlich KEIN fester berkat.app-Wert: Zeigt die Domain noch nicht auf
+    // die Seite, wäre eine tote Seite direkt nach dem Bezahlen schlimmer als
+    // eine mit der falschen Marke. Ohne gesetzte Variable bleibt alles wie
+    // bisher — das Umstellen und das Veröffentlichen der Seite gehören zusammen.
+    //   BERKAT_SUCCESS_URL = https://berkat.app/bezahlt
+    //   BERKAT_CANCEL_URL  = https://berkat.app/abgebrochen
+    const berkatSuccess = isAuctionCart ? Deno.env.get('BERKAT_SUCCESS_URL') : null;
+    const berkatCancel = isAuctionCart ? Deno.env.get('BERKAT_CANCEL_URL') : null;
 
     // WICHTIG: KEIN Fallback auf STRIPE_SUCCESS_URL/STRIPE_CANCEL_URL (= Coin-Shop-
     // Seiten). Ein Parfüm-Kauf muss auf die dedizierte Produkt-Bestätigung
     // (/shop/success) gehen, nicht auf „Coins gutgeschrieben". Nur ein eigener
     // STRIPE_PRODUCT_*-Override oder der /shop-Default.
     const successUrl =
+      berkatSuccess ??
       Deno.env.get('STRIPE_PRODUCT_SUCCESS_URL') ??
       'https://www.serlo.ch/shop/success?session_id={CHECKOUT_SESSION_ID}';
     const cancelUrl =
+      berkatCancel ??
       Deno.env.get('STRIPE_PRODUCT_CANCEL_URL') ??
       'https://www.serlo.ch/shop/cancelled';
 
@@ -131,7 +155,9 @@ Deno.serve(async (req) => {
     pform.set('shipping_address_collection[allowed_countries][1]', 'AT');
     pform.set('shipping_address_collection[allowed_countries][2]', 'CH');
     pform.set('invoice_creation[enabled]', 'true');
-    pform.set('invoice_creation[invoice_data][description]', `Serlo: ${lineItemName}`);
+    // Die Rechnung landet beim Käufer im Postfach — dort muss der Absender
+    // heißen, bei wem er gekauft hat.
+    pform.set('invoice_creation[invoice_data][description]', `${brand}: ${lineItemName}`);
     pform.set('line_items[0][price_data][currency]', order.currency ?? 'eur');
     pform.set('line_items[0][price_data][unit_amount]', String(amountCents));
     pform.set('line_items[0][price_data][product_data][name]', lineItemName);
