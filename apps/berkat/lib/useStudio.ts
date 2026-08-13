@@ -17,6 +17,12 @@ export type MyShow = {
   thumbnail_url: string | null;
 };
 
+/** Gegenstück für Eingabefelder: 1250 → "12,50", 100 → "1". */
+export function centsToEuroInput(cents: number): string {
+  if (cents % 100 === 0) return String(Math.round(cents / 100));
+  return (cents / 100).toFixed(2).replace('.', ',');
+}
+
 /** "12,50" oder "12.50" → 1250. Leere Eingabe → null. */
 export function euroToCents(input: string): number | null {
   const cleaned = input.replace(/\s/g, '').replace(',', '.');
@@ -144,6 +150,40 @@ export function useCreateAuction() {
   });
 }
 
+export type EditedAuction = {
+  auctionId: string;
+  title: string;
+  startPriceCents: number;
+  minIncrementCents: number;
+  buyNowCents: number | null;
+  imageUrl: string | null;
+};
+
+/**
+ * Aufgelegten Artikel korrigieren. Schickt immer den vollständigen Zustand —
+ * die RPC ersetzt, sie flickt nicht, damit „leer" nie zwischen „unverändert"
+ * und „entfernt" schwebt.
+ */
+export function useUpdateAuction(sessionId: string | undefined) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: EditedAuction): Promise<void> => {
+      const { error } = await supabase.rpc('update_live_auction', {
+        p_auction_id: input.auctionId,
+        p_title: input.title,
+        p_start_price_cents: input.startPriceCents,
+        p_min_increment_cents: input.minIncrementCents,
+        p_buy_now_cents: input.buyNowCents,
+        p_image_url: input.imageUrl,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['berkat', 'auctions', sessionId] });
+    },
+  });
+}
+
 export function useStartAuction(sessionId: string | undefined) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -184,8 +224,12 @@ export function studioErrorText(message: string): string {
   if (message.includes('another_auction_running'))
     return 'Es läuft noch ein Artikel. Warte, bis der Zuschlag durch ist.';
   if (message.includes('auction_not_scheduled')) return 'Dieser Artikel läuft schon.';
+  if (message.includes('auction_not_editable'))
+    return 'Ändern geht nur, solange der Artikel wartet — läuft er schon, bleibt der Preis stehen.';
   if (message.includes('has_bids'))
     return 'Darauf wurde schon geboten — das nimmst du nicht mehr vom Tisch.';
+  if (message.includes('invalid_title') || message.includes('title_check'))
+    return 'Der Name braucht mindestens zwei Zeichen.';
   if (message.includes('buy_now_below_start'))
     return 'Der Sofortkaufpreis muss über dem Startpreis liegen.';
   if (message.includes('invalid_price')) return 'Startpreis und Schritt müssen über null liegen.';
@@ -199,11 +243,17 @@ export function useStudioActions(sessionId: string | undefined) {
   const start = useStartAuction(sessionId);
   const cancel = useCancelAuction(sessionId);
   const create = useCreateAuction();
+  const update = useUpdateAuction(sessionId);
 
   const startAuction = useCallback(
     (auctionId: string, seconds: number) => start.mutateAsync({ auctionId, seconds }),
     [start],
   );
 
-  return { startAuction, cancelAuction: cancel.mutateAsync, createAuction: create.mutateAsync };
+  return {
+    startAuction,
+    cancelAuction: cancel.mutateAsync,
+    createAuction: create.mutateAsync,
+    updateAuction: update.mutateAsync,
+  };
 }

@@ -4,7 +4,7 @@
 // in der man sie während einer laufenden Show braucht. Wer live ist, hat eine
 // Hand frei und keine Zeit zu suchen.
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import {
   ActivityIndicator,
@@ -19,7 +19,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ImagePlus, Plus, Radio, Trash2 } from 'lucide-react-native';
+import { Check, ImagePlus, Pencil, Plus, Radio, Trash2 } from 'lucide-react-native';
 import { useSession } from '../../lib/session';
 import { pickAndUpload, type ImageKind } from '../../lib/uploadImage';
 import {
@@ -30,8 +30,10 @@ import {
   useServerClock,
   useSettleOnZero,
   useUsernames,
+  type Auction,
 } from '../../lib/useAuction';
 import {
+  centsToEuroInput,
   euroToCents,
   studioErrorText,
   useCreateShow,
@@ -59,7 +61,7 @@ export default function SellScreen() {
   const setCover = useSetShowCover(myUserId);
 
   const { auctions, active, upcoming } = useLiveAuctions(show?.id);
-  const { startAuction, cancelAuction, createAuction } = useStudioActions(show?.id);
+  const { startAuction, cancelAuction, createAuction, updateAuction } = useStudioActions(show?.id);
   const secondsLeft = useCountdown(active?.ends_at ?? null, serverNow);
   // Der Gastgeber schaut garantiert zu — er ist der verlässlichste Auslöser für
   // den Zuschlag. Ohne das bleibt ein Artikel bis zum Cron-Lauf hängen.
@@ -76,6 +78,12 @@ export default function SellScreen() {
   const [startPrice, setStartPrice] = useState('1');
   const [increment, setIncrement] = useState('1');
   const [buyNow, setBuyNow] = useState('');
+
+  // Gesetzt, während dasselbe Formular einen bestehenden Artikel ändert statt
+  // einen neuen anzulegen. Ein zweites Formular wäre dieselbe Maske doppelt.
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const scrollRef = useRef<ScrollView>(null);
+  const formY = useRef(0);
 
   const { data: orders = [] } = useSellerOrders(myUserId);
   const markShipped = useMarkShipped(myUserId);
@@ -119,7 +127,46 @@ export default function SellScreen() {
     }
   };
 
-  const addItem = () => {
+  /**
+   * Zurück auf „neuer Artikel". Start und Schritt bleiben absichtlich stehen —
+   * wer zehn Schals ab 1 € auflegt, will sie nicht zehnmal neu eintippen.
+   */
+  const resetForm = () => {
+    setEditingId(null);
+    setTitle('');
+    setBuyNow('');
+    setArticleUrl(null);
+  };
+
+  const beginEdit = (item: Auction) => {
+    setEditingId(item.id);
+    setTitle(item.title);
+    setStartPrice(centsToEuroInput(item.start_price_cents));
+    setIncrement(centsToEuroInput(item.min_increment_cents));
+    setBuyNow(item.buy_now_cents ? centsToEuroInput(item.buy_now_cents) : '');
+    setArticleUrl(item.image_url);
+    setNotice(null);
+    // Das Formular steht unter der Liste. Ohne den Sprung sähe der Griff zum
+    // Stift aus, als wäre nichts passiert.
+    requestAnimationFrame(() =>
+      scrollRef.current?.scrollTo({ y: Math.max(0, formY.current - space.md), animated: true }),
+    );
+  };
+
+  // Verlässt der Artikel die Warteschlange, während man ihn ändert — weil der
+  // Gastgeber ihn aus dem Raum heraus gestartet hat —, hat das Formular kein
+  // Ziel mehr. Der Server würde ablehnen; das hier verhindert, dass man erst
+  // tippt und dann die Absage liest.
+  //
+  // Der Effekt hängt am Wahrheitswert, nicht an `upcoming`: die Liste ist ein
+  // frisches Array pro Render, und der Vergleich liefe sonst jedes Mal mit.
+  const editingStillQueued = editingId === null || upcoming.some((item) => item.id === editingId);
+  useEffect(() => {
+    if (!editingStillQueued) resetForm();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingStillQueued]);
+
+  const submitItem = () => {
     if (!show) return;
     const startCents = euroToCents(startPrice);
     const stepCents = euroToCents(increment);
@@ -131,17 +178,26 @@ export default function SellScreen() {
     if (buyNow.trim() && !buyNowCents) return setNotice('Sofortkaufpreis prüfen.');
 
     void run(async () => {
-      await createAuction({
-        sessionId: show.id,
-        title: title.trim(),
-        startPriceCents: startCents,
-        minIncrementCents: stepCents,
-        buyNowCents,
-        imageUrl: articleUrl,
-      });
-      setTitle('');
-      setBuyNow('');
-      setArticleUrl(null);
+      if (editingId) {
+        await updateAuction({
+          auctionId: editingId,
+          title: title.trim(),
+          startPriceCents: startCents,
+          minIncrementCents: stepCents,
+          buyNowCents,
+          imageUrl: articleUrl,
+        });
+      } else {
+        await createAuction({
+          sessionId: show.id,
+          title: title.trim(),
+          startPriceCents: startCents,
+          minIncrementCents: stepCents,
+          buyNowCents,
+          imageUrl: articleUrl,
+        });
+      }
+      resetForm();
     });
   };
 
@@ -178,6 +234,7 @@ export default function SellScreen() {
       </View>
 
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={{ padding: space.md, paddingBottom: insets.bottom + space.xl }}
         keyboardShouldPersistTaps="handled"
       >
@@ -308,7 +365,10 @@ export default function SellScreen() {
               </Text>
             ) : (
               upcoming.map((item) => (
-                <View key={item.id} style={styles.itemRow}>
+                <View
+                  key={item.id}
+                  style={[styles.itemRow, editingId === item.id && styles.itemRowEditing]}
+                >
                   <View style={styles.itemThumb}>
                     {item.image_url ? (
                       <Image
@@ -328,6 +388,16 @@ export default function SellScreen() {
                       {item.buy_now_cents ? ` · sofort ${formatEuro(item.buy_now_cents)}` : ''}
                     </Text>
                   </View>
+                  <Pressable
+                    onPress={() => beginEdit(item)}
+                    hitSlop={8}
+                    accessibilityLabel={`${item.title} ändern`}
+                  >
+                    <Pencil
+                      size={17}
+                      color={editingId === item.id ? ui.brand : ui.textMuted}
+                    />
+                  </Pressable>
                   <Pressable
                     onPress={() => void run(() => cancelAuction(item.id))}
                     hitSlop={8}
@@ -385,8 +455,15 @@ export default function SellScreen() {
               </>
             ) : null}
 
-            <View style={[styles.card, { marginTop: space.lg }]}>
-              <Text style={styles.cardTitle}>Artikel auflegen</Text>
+            <View
+              style={[styles.card, { marginTop: space.lg }, editingId && styles.cardEditing]}
+              onLayout={(event) => {
+                formY.current = event.nativeEvent.layout.y;
+              }}
+            >
+              <Text style={styles.cardTitle}>
+                {editingId ? 'Artikel ändern' : 'Artikel auflegen'}
+              </Text>
               <View style={styles.articleRow}>
                 <Pressable
                   style={styles.articleThumb}
@@ -452,10 +529,22 @@ export default function SellScreen() {
                   />
                 </View>
               </View>
-              <Pressable style={styles.primaryButton} onPress={addItem}>
-                <Plus size={17} color={ui.goldInk} />
-                <Text style={styles.primaryButtonText}>Auflegen</Text>
-              </Pressable>
+              {editingId ? (
+                <View style={styles.editActions}>
+                  <Pressable style={styles.ghostButton} onPress={resetForm}>
+                    <Text style={styles.ghostButtonText}>Abbrechen</Text>
+                  </Pressable>
+                  <Pressable style={[styles.primaryButton, { flex: 1 }]} onPress={submitItem}>
+                    <Check size={17} color={ui.goldInk} />
+                    <Text style={styles.primaryButtonText}>Speichern</Text>
+                  </Pressable>
+                </View>
+              ) : (
+                <Pressable style={styles.primaryButton} onPress={submitItem}>
+                  <Plus size={17} color={ui.goldInk} />
+                  <Text style={styles.primaryButtonText}>Auflegen</Text>
+                </Pressable>
+              )}
             </View>
           </>
         )}
@@ -493,6 +582,9 @@ const styles = StyleSheet.create({
     borderColor: ui.line,
   },
   cardRunning: { borderWidth: 1.5, borderColor: ui.gold },
+  /** Zeigt, dass hier gerade korrigiert und nicht neu angelegt wird. */
+  cardEditing: { borderWidth: 1.5, borderColor: ui.brand },
+  editActions: { flexDirection: 'row', gap: space.sm },
   cardTitle: { fontSize: 17, fontWeight: '700', color: ui.text },
   cardBody: { fontSize: 13, color: ui.textMuted, lineHeight: 19 },
   cardMeta: { fontSize: 12, color: ui.textMuted },
@@ -623,6 +715,8 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: ui.line,
   },
+  /** Der Artikel, der gerade im Formular unten liegt. */
+  itemRowEditing: { backgroundColor: ui.sunken, borderRadius: radius.sm, paddingHorizontal: space.sm },
   itemTitle: { fontSize: 15, fontWeight: '600', color: ui.text },
   itemMeta: { fontSize: 12, color: ui.textMuted },
   soldPrice: { fontSize: 15, fontWeight: '700', color: ui.text },
