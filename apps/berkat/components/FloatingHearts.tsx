@@ -10,11 +10,14 @@
 // eine gerade Kette auf, und die sieht aus wie ein Fehler, nicht wie Jubel.
 
 import { useEffect, useRef } from 'react';
-import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import type { LiveReaction } from '../lib/useReactions';
 
 /** Muss unter `LIFETIME_MS` im Hook bleiben, sonst verschwindet ein Herz hart. */
 const RISE_MS = 2_400;
+
+/** Halbe Herzgröße — rückt das Herz unter die Fingerkuppe statt daneben. */
+const TAP_OFFSET = 15;
 
 function randomPath() {
   return {
@@ -26,7 +29,7 @@ function randomPath() {
   };
 }
 
-function FloatingHeart({ emoji }: { emoji: string }) {
+function FloatingHeart({ emoji, anchor }: { emoji: string; anchor: ViewStyle }) {
   const drive = useRef(new Animated.Value(0)).current;
   const path = useRef(randomPath()).current;
 
@@ -72,6 +75,7 @@ function FloatingHeart({ emoji }: { emoji: string }) {
     <Animated.View
       style={[
         styles.heart,
+        anchor,
         { opacity, transform: [{ translateX }, { translateY }, { scale }, { rotate: path.tilt }] },
       ]}
     >
@@ -81,15 +85,42 @@ function FloatingHeart({ emoji }: { emoji: string }) {
 }
 
 /**
- * Liegt über dem Video und fängt bewusst keine Berührung ab — darunter sitzen
- * Leiste und Auktion.
+ * Herzen, die am Herz-Knopf losfliegen: eigene und fremde, wenn kein Punkt
+ * dabei ist. Liegt über dem Video und fängt bewusst keine Berührung ab —
+ * darunter sitzen Leiste und Auktion.
  */
 export function FloatingHearts({ reactions }: { reactions: LiveReaction[] }) {
   return (
     <View style={styles.layer} pointerEvents="none">
-      {reactions.map((reaction) => (
-        <FloatingHeart key={reaction.id} emoji={reaction.emoji} />
-      ))}
+      {reactions
+        .filter((reaction) => !reaction.origin)
+        .map((reaction) => (
+          <FloatingHeart key={reaction.id} emoji={reaction.emoji} anchor={styles.railAnchor} />
+        ))}
+    </View>
+  );
+}
+
+/**
+ * Herzen, die dort losfliegen, wo der Finger war. Braucht die ganze Fläche,
+ * weil der Punkt in Bildschirmkoordinaten kommt — deshalb eine eigene Ebene
+ * statt derselben wie oben, die am Knopf klebt.
+ */
+export function TapHearts({ reactions }: { reactions: LiveReaction[] }) {
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      {reactions
+        .filter((reaction) => reaction.origin)
+        .map((reaction) => (
+          <FloatingHeart
+            key={reaction.id}
+            emoji={reaction.emoji}
+            anchor={{
+              left: reaction.origin!.x - TAP_OFFSET,
+              top: reaction.origin!.y - TAP_OFFSET,
+            }}
+          />
+        ))}
     </View>
   );
 }
@@ -115,5 +146,8 @@ const styles = StyleSheet.create({
     width: 92,
     alignItems: 'center',
   },
-  heart: { position: 'absolute', bottom: 0 },
+  // Ohne eigene Kante — die setzt der Anker. Sonst kämen bei einem Herz am
+  // Finger `top` und `bottom` zusammen und es würde in die Länge gezogen.
+  heart: { position: 'absolute' },
+  railAnchor: { bottom: 0 },
 });

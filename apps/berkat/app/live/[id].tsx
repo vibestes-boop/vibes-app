@@ -15,6 +15,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   ActivityIndicator,
   Animated,
+  Keyboard,
   KeyboardAvoidingView,
   PanResponder,
   Platform,
@@ -73,7 +74,7 @@ import {
 } from '../../lib/useAuction';
 import { AuctionPanel } from '../../components/AuctionPanel';
 import { Avatar } from '../../components/Avatar';
-import { FloatingHearts } from '../../components/FloatingHearts';
+import { FloatingHearts, TapHearts } from '../../components/FloatingHearts';
 import { GiveawayCard } from '../../components/GiveawayCard';
 import { MaxBidSheet } from '../../components/MaxBidSheet';
 import { ShowItemsSheet } from '../../components/ShowItemsSheet';
@@ -341,14 +342,23 @@ export default function LiveAuctionRoom() {
 
   // Ein leichter Stups, nicht die Erfolgs-Haptik: Applaus ist kein Höhepunkt,
   // und wer zwanzigmal klatscht, soll das Gerät nicht zwanzigmal feiern hören.
-  const sendHeart = useCallback(() => {
-    if (!myUserId) {
-      router.push('/login');
-      return;
-    }
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-    hearts.react();
-  }, [myUserId, router, hearts]);
+  //
+  // Mit Punkt fliegt das Herz am Finger los, ohne am Herz-Knopf.
+  const sendHeart = useCallback(
+    (x?: number, y?: number) => {
+      // Wer beim Tippen danebenlangt, will die Tastatur weghaben. Der
+      // angefangene Text bleibt stehen, das Feld behält ihn.
+      Keyboard.dismiss();
+      if (!myUserId) {
+        router.push('/login');
+        return;
+      }
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      hearts.react(x != null && y != null ? { x, y } : undefined);
+    },
+    [myUserId, router, hearts],
+  );
+
 
   const sendChat = useCallback(async () => {
     if (!id || !draft.trim()) return;
@@ -405,6 +415,19 @@ export default function LiveAuctionRoom() {
         <StageVideo hostIdentity={session.host_id} style={FILL} />
       ) : null}
 
+      {/* Tippen aufs Bild schickt ein Herz, wie bei TikTok und Whatnot.
+          Die Fläche liegt bewusst GANZ UNTEN im Stapel, direkt über dem Video:
+          Wer einen Knopf trifft, bedient den Knopf — hier landet nur, was
+          daneben geht. Möglich macht das `box-none` auf den Ebenen darüber,
+          die bloß anordnen und selbst nichts bedienen. */}
+      <View
+        style={FILL}
+        onStartShouldSetResponder={() => true}
+        onResponderRelease={(event) =>
+          sendHeart(event.nativeEvent.pageX, event.nativeEvent.pageY)
+        }
+      />
+
       <LinearGradient
         colors={['rgba(11,21,18,0.8)', 'rgba(11,21,18,0)']}
         style={[styles.topScrim, { height: insets.top + 84 }]}
@@ -417,11 +440,16 @@ export default function LiveAuctionRoom() {
         pointerEvents="none"
       />
 
+      {/* `box-none` von hier abwärts durch alle reinen Anordnungs-Ebenen:
+          Kopfzeile, Mitte und die Spalte selbst sollen keine Berührung
+          schlucken, die nicht auf einem ihrer Knöpfe landet. Sonst wäre der
+          größte Teil des Bildes tot. */}
       <KeyboardAvoidingView
         style={[styles.column, { paddingTop: insets.top + space.xs }]}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        pointerEvents="box-none"
       >
-        <View style={styles.header}>
+        <View style={styles.header} pointerEvents="box-none">
           <Avatar uri={host?.avatarUrl} name={host?.username} size={32} ring />
           <View style={styles.headerText}>
             <Text numberOfLines={1} style={styles.hostName}>
@@ -484,7 +512,7 @@ export default function LiveAuctionRoom() {
           </View>
         ) : null}
 
-        <View style={styles.middle}>
+        <View style={styles.middle} pointerEvents="box-none">
           <Animated.View
             style={[styles.chatColumn, { transform: [{ translateX: chatX }] }]}
             {...chatPan.panHandlers}
@@ -508,20 +536,36 @@ export default function LiveAuctionRoom() {
               </View>
             ) : null}
 
-            {comments.slice(-5).map((comment) => {
-              const author = profiles[comment.user_id];
-              return (
-                <View key={comment.id} style={styles.chatLine}>
-                  <Avatar uri={author?.avatarUrl} name={author?.username} size={22} />
-                  <View style={styles.chatBubble}>
-                    <Text style={styles.chatName}>{author?.username ?? '…'}</Text>
-                    <Text numberOfLines={2} style={styles.chatText}>
-                      {comment.text}
-                    </Text>
+            {/* Eigene Fläche NUR um die Kommentare. Die Spalte darüber bleibt
+                unangetastet, weil ein Erkenner, der einen Tipp beansprucht,
+                bevor das Eingabefeld darunter ihn bekommt, ihm den Fokus
+                nimmt — dann ginge die Tastatur nicht mehr auf. So bleibt auch
+                der Kommentar-Stapel tippbar, und genau dort liegt beim
+                Zuschauen der Daumen.
+                Wischt jemand stattdessen, übernimmt der Wisch-Erkenner der
+                Spalte die Berührung und das Loslassen fällt hier aus. */}
+            <View
+              style={styles.chatTapArea}
+              onStartShouldSetResponder={() => true}
+              onResponderRelease={(event) =>
+                sendHeart(event.nativeEvent.pageX, event.nativeEvent.pageY)
+              }
+            >
+              {comments.slice(-5).map((comment) => {
+                const author = profiles[comment.user_id];
+                return (
+                  <View key={comment.id} style={styles.chatLine}>
+                    <Avatar uri={author?.avatarUrl} name={author?.username} size={22} />
+                    <View style={styles.chatBubble}>
+                      <Text style={styles.chatName}>{author?.username ?? '…'}</Text>
+                      <Text numberOfLines={2} style={styles.chatText}>
+                        {comment.text}
+                      </Text>
+                    </View>
                   </View>
-                </View>
-              );
-            })}
+                );
+              })}
+            </View>
 
             <View style={styles.chatInputRow}>
               <TextInput
@@ -553,7 +597,9 @@ export default function LiveAuctionRoom() {
           <View style={styles.rail}>
             <Pressable
               style={styles.railItem}
-              onPress={sendHeart}
+              // Ohne Klammer bekäme `sendHeart` das Berührungs-Ereignis als
+              // ersten Wert übergeben und hielte es für eine X-Koordinate.
+              onPress={() => sendHeart()}
               accessibilityRole="button"
               accessibilityLabel="Herz senden"
             >
@@ -615,6 +661,10 @@ export default function LiveAuctionRoom() {
           />
         </View>
       </KeyboardAvoidingView>
+
+      {/* Über allem, weil der Punkt in Bildschirmkoordinaten kommt und sonst
+          an der Innenkante der Spalte hängen bliebe. */}
+      <TapHearts reactions={hearts.reactions} />
 
       {/* Außerhalb der Spalte, damit die absolute Position sich am Bildschirm
           orientiert und nicht am Innenabstand der Spalte.
@@ -728,6 +778,9 @@ const styles = StyleSheet.create({
 
   middle: { flex: 1, flexDirection: 'row', alignItems: 'flex-end' },
   chatColumn: { flex: 1, paddingLeft: space.md, paddingBottom: space.xs, gap: 4 },
+  // Trägt den Abstand der Spalte weiter: Durch die Klammer sind die Kommentare
+  // ein Kind statt fünf, und der `gap` der Spalte greift zwischen ihnen nicht mehr.
+  chatTapArea: { gap: 4 },
   chatLine: { flexDirection: 'row', alignItems: 'flex-end', gap: 6, maxWidth: '94%' },
   chatBubble: {
     flex: 1,

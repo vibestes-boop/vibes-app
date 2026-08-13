@@ -30,11 +30,20 @@ const LIFETIME_MS = 2_600;
 const MAX_ON_SCREEN = 14;
 /** Ein Schreibvorgang je Applaus-Welle, siehe `countLike`. */
 const LIKE_WINDOW_MS = 2_000;
+/** Höchstens so oft geht ein Herz nach draußen, siehe `react`. */
+const BROADCAST_WINDOW_MS = 250;
 
 export type LiveReaction = {
   id: string;
   user_id: string;
   emoji: string;
+  /**
+   * Wo das Herz losfliegen soll, in Bildschirmpunkten. Nur lokal — der
+   * Broadcast trägt es bewusst NICHT: Serlos Vertrag kennt drei Felder, und
+   * ein Punkt von einem fremden Gerät sagt auf meinem ohnehin nichts. Fehlt
+   * er, startet das Herz am Herz-Knopf.
+   */
+  origin?: { x: number; y: number };
 };
 
 export function reactionChannel(sessionId: string): string {
@@ -46,8 +55,11 @@ export type LiveReactions = {
   reactions: LiveReaction[];
   /** Herzen dieser Show — steigt, fällt nie. */
   likes: number;
-  /** Ein Herz senden. Ohne angemeldetes Konto passiert nichts. */
-  react: () => void;
+  /**
+   * Ein Herz senden. Mit `origin` fliegt es dort los, wo der Finger war, ohne
+   * am Herz-Knopf. Ohne angemeldetes Konto passiert nichts.
+   */
+  react: (origin?: { x: number; y: number }) => void;
 };
 
 export function useLiveReactions(
@@ -60,6 +72,7 @@ export function useLiveReactions(
 
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const likeGate = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sendGate = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Der Server holt nur nach oben. Ein Zähler, der zwischendurch zurückspringt,
   // sieht kaputt aus — und fachlich kann die Zahl ohnehin nie kleiner werden.
@@ -72,6 +85,7 @@ export function useLiveReactions(
       timers.current.forEach(clearTimeout);
       timers.current = [];
       if (likeGate.current) clearTimeout(likeGate.current);
+      if (sendGate.current) clearTimeout(sendGate.current);
     };
   }, []);
 
@@ -112,23 +126,43 @@ export function useLiveReactions(
     }, LIKE_WINDOW_MS);
   }, [sessionId]);
 
-  const react = useCallback(() => {
-    if (!sessionId || !myUserId) return;
+  const react = useCallback(
+    (origin?: { x: number; y: number }) => {
+      if (!sessionId || !myUserId) return;
 
-    const reaction: LiveReaction = {
-      // Nur zum Auseinanderhalten der fliegenden Herzen — nie ein Schlüssel in
-      // der Datenbank.
-      id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
-      user_id: myUserId,
-      emoji: HEART,
-    };
+      const reaction: LiveReaction = {
+        // Nur zum Auseinanderhalten der fliegenden Herzen — nie ein Schlüssel
+        // in der Datenbank.
+        id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+        user_id: myUserId,
+        emoji: HEART,
+        origin,
+      };
 
-    // Sofort zeigen. Supabase spiegelt den eigenen Broadcast nicht zurück, und
-    // ein Herz, das erst nach dem Netzweg erscheint, fühlt sich kaputt an.
-    show(reaction);
-    sendBroadcast(reactionChannel(sessionId), EVENT, reaction);
-    countLike();
-  }, [sessionId, myUserId, show, countLike]);
+      // Sofort zeigen, und zwar jedes Mal. Supabase spiegelt den eigenen
+      // Broadcast nicht zurück, und ein Herz, das erst nach dem Netzweg
+      // erscheint, fühlt sich kaputt an.
+      show(reaction);
+      countLike();
+
+      // Nach draußen aber gedrosselt. Realtime rechnet pro zugestellter
+      // Nachricht ab: Ein Tipp bei fünfzig Zuschauern sind fünfzig
+      // Nachrichten, und ein trommelnder Daumen schafft zehn pro Sekunde. Wer
+      // zuschaut, kann Herzen ohnehin nicht zählen — vier pro Sekunde sehen
+      // aus wie zehn und kosten weniger als die Hälfte.
+      if (sendGate.current) return;
+      sendBroadcast(reactionChannel(sessionId), EVENT, {
+        // Genau die drei Felder aus Serlos Vertrag, `origin` bleibt hier.
+        id: reaction.id,
+        user_id: reaction.user_id,
+        emoji: reaction.emoji,
+      });
+      sendGate.current = setTimeout(() => {
+        sendGate.current = null;
+      }, BROADCAST_WINDOW_MS);
+    },
+    [sessionId, myUserId, show, countLike],
+  );
 
   return { reactions, likes, react };
 }
