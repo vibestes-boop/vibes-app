@@ -274,6 +274,19 @@ export default function LiveAuctionRoom() {
     }),
   ).current;
 
+  // Dieser Bildschirm IST die große Ansicht. Wer hier ankommt, hat die Show
+  // nicht mehr klein — egal ob er über das kleine Fenster kam (das räumt selbst
+  // auf) oder über eine Karte auf der Startseite (die tut es nicht). Ohne das
+  // lief dieselbe Show doppelt: großes Bild und kleines Fenster gleichzeitig.
+  //
+  // Bewusst nur beim Aufbauen und NICHT in `open()`: Das Verkleinern setzt die
+  // Marke und geht zurück, und solange der Bildschirm noch abgebaut wird, könnte
+  // ein Datenabruf `open()` erneut auslösen und das kleine Fenster gleich wieder
+  // wegräumen.
+  useEffect(() => {
+    useLivePlayer.getState().restore();
+  }, []);
+
   // Show im Player anmelden, damit sie das Verkleinern überlebt.
   useEffect(() => {
     if (!session) return;

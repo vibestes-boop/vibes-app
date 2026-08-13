@@ -21,6 +21,7 @@ import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Check, ImagePlus, Pencil, Plus, Radio, Trash2 } from 'lucide-react-native';
 import { useSession } from '../../lib/session';
+import { useLivePlayer } from '../../lib/livePlayer';
 import { pickAndUpload, type ImageKind } from '../../lib/uploadImage';
 import {
   formatCountdown,
@@ -287,10 +288,21 @@ export default function SellScreen() {
             <Pressable
               style={[styles.primaryButton, createShow.isPending && styles.buttonBusy]}
               disabled={createShow.isPending || uploading !== null}
+              // Wer „Show starten" drückt, will senden — nicht auf einen zweiten
+              // Knopf schauen. Im Raum wartet die Kamera-Vorschau, erst danach
+              // geht wirklich etwas nach draußen.
               onPress={() =>
-                void run(() =>
-                  createShow.mutateAsync({ title: showTitle, thumbnailUrl: coverUrl }),
-                )
+                void run(async () => {
+                  const sessionId = await createShow.mutateAsync({
+                    title: showTitle,
+                    thumbnailUrl: coverUrl,
+                  });
+                  // Zurücksetzen, damit nach dem Beenden nicht der alte Name
+                  // und das alte Cover in der leeren Maske stehen.
+                  setShowTitle('');
+                  setCoverUrl(null);
+                  router.push(`/live/${sessionId}`);
+                })
               }
             >
               <Radio size={17} color={ui.goldInk} />
@@ -338,7 +350,16 @@ export default function SellScreen() {
                 </Pressable>
                 <Pressable
                   style={styles.dangerButton}
-                  onPress={() => void run(() => endShow.mutateAsync(show.id))}
+                  onPress={() =>
+                    void run(async () => {
+                      await endShow.mutateAsync(show.id);
+                      // Sonst bliebe die beendete Show als kleines Fenster
+                      // stehen und zeigte ein Video, das es nicht mehr gibt.
+                      if (useLivePlayer.getState().session?.id === show.id) {
+                        useLivePlayer.getState().close();
+                      }
+                    })
+                  }
                 >
                   <Text style={styles.dangerButtonText}>Show beenden</Text>
                 </Pressable>
