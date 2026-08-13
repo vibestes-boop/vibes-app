@@ -10,21 +10,24 @@
 // eine gerade Kette auf, und die sieht aus wie ein Fehler, nicht wie Jubel.
 
 import { useEffect, useRef } from 'react';
-import { Animated, Easing, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { Animated, Easing, StyleSheet, View, type ViewStyle } from 'react-native';
+import { LiveReactionIcon } from './LiveReactionIcon';
 import type { LiveReaction } from '../lib/useReactions';
 
 /** Muss unter `LIFETIME_MS` im Hook bleiben, sonst verschwindet ein Herz hart. */
 const RISE_MS = 2_400;
 
-/** Halbe Herzgröße — rückt das Herz unter die Fingerkuppe statt daneben. */
-const TAP_OFFSET = 15;
+/** Halbe Symbolgröße — rückt das Herz unter die Fingerkuppe statt daneben. */
+const TAP_OFFSET = 18;
 
 function randomPath() {
   return {
     startX: Math.random() * 24 - 12,
     drift: (Math.random() * 2 - 1) * 30,
     rise: 190 + Math.random() * 90,
-    size: 21 + Math.random() * 9,
+    // Kantenlänge des Symbols, nicht mehr Schriftgröße. Serlo lässt seine mit
+    // 36 fliegen; die Streuung hält den Applaus lebendig.
+    size: 30 + Math.random() * 12,
     tilt: `${Math.round(Math.random() * 26 - 13)}deg`,
   };
 }
@@ -79,7 +82,7 @@ function FloatingHeart({ emoji, anchor }: { emoji: string; anchor: ViewStyle }) 
         { opacity, transform: [{ translateX }, { translateY }, { scale }, { rotate: path.tilt }] },
       ]}
     >
-      <Text style={{ fontSize: path.size }}>{emoji}</Text>
+      <LiveReactionIcon emoji={emoji} size={path.size} />
     </Animated.View>
   );
 }
