@@ -36,7 +36,7 @@ Was Berkat bewusst anders macht als Whatnot:
 | EAS-Projekt | `@zaurhat/berkat` (`fb4e0381-264d-4cfd-8c3c-691987346915`) |
 | Backend | dieselbe Supabase-Instanz wie Serlo (`llymwqfgujwkoxzqxrlm`) |
 | Migrationen | 11 Stück, alle eingespielt — Abschnitt 5 |
-| Git | Branch `berkat`, Basis `origin/main` (nicht `origin/master`). ⚠️ Die Arbeit vom 14.08. abends ist **noch nicht gepusht** |
+| Git | Branch `berkat`, Basis `origin/main` (nicht `origin/master`) — gepusht. Für den Anmelde-Stolperstein siehe Abschnitt 7 |
 
 ### Starten
 
@@ -443,9 +443,9 @@ beim Käufer sichtbar.
 
 ### Was fehlt
 
-0. **Die App-Trennung ist nur halb ausgerollt** — DB und Code stehen, Serlo und Web haben sie noch
-   nicht. Bis dahin steht jede Berkat-Show weiter in Serlos Live-Bereich. Siehe Abschnitt 8; das
-   gehört vor allem anderen zu Ende gebracht.
+0. **Der Web-Teil der App-Trennung fehlt noch.** Datenbank, Berkat und beide Serlo-OTAs sind
+   draußen; `apps/web` hängt am Merge nach `main`. Bis dahin zeigt Serlos Web — `/live`, Landing,
+   Gilden-Rail, LIVE-Ring auf dem Profil — weiterhin Berkat-Shows. Siehe Abschnitt 8.
 1. **Benachrichtigungen an den Käufer — eigene Liste in Berkat fehlt.** Zuschlag, Versand und
    Zahlungserinnerung entstehen serverseitig und kommen auf dem Gerät an; wer einen Push
    wegwischt, findet ihn aber nirgends wieder. Details in Abschnitt 9.
@@ -554,9 +554,29 @@ still). `.env` ist über `apps/berkat/.gitignore` ausgeschlossen und liegt nicht
 Bots binnen Sekunden durchsucht. Vor jedem weiteren Push gilt deshalb: keine Geheimnisse, und keine
 Datei, die das Rechte-Modell der Live-DB beschreibt.
 
-⚠️ **Stand 14.08.2026 abends liegt die Arbeit wieder nur lokal** — App-Trennung, Live-Vorschau und
-die beiden Fixes sind committet, aber nicht gepusht. Der fine-grained PAT in `.env.local` ist seit
-dem 26.07.2026 abgelaufen (`401`); der Weg ist stattdessen `gh auth token -u vibestes-boop`.
+### Der Push scheitert an vier gh-Konten, nicht am Token
+
+Am 14.08.2026 abends eine halbe Stunde gekostet. Der fine-grained PAT in `.env.local` ist seit dem
+26.07.2026 abgelaufen, und er lag im **macOS-Schlüsselbund** — Git bot ihn an, GitHub lehnte ab, und
+weil Passwörter für Git-Operationen nicht mehr unterstützt werden, endete es in einer
+Passwort-Abfrage, die nie zum Ziel führt.
+
+`gh auth setup-git` allein löst das **nicht**. Der Helfer bedient immer nur das **aktive** gh-Konto,
+und auf diesem Rechner sind vier angemeldet (`ZaurHa` aktiv, dazu `vibestes-boop`, `mrg-tlogistik`,
+`MyxcuH2025`). Die Remote-URL verlangt ausdrücklich `vibestes-boop@` — für diesen Namen gibt der
+Helfer nichts zurück. Und den Namen wegzulassen hilft auch nicht: `ZaurHa` hat am Repo nur `pull`.
+
+Gelöst mit einem Helfer **nur für dieses Repo**, der den Token bei jedem Zugriff frisch von `gh`
+holt — nichts gespeichert, nichts läuft ab:
+
+```bash
+git config --local credential.helper '!f() { echo username=x-access-token; echo "password=$(gh auth token -u vibestes-boop)"; }; f'
+```
+
+⚠️ `gh auth setup-git` wirkt **global** und nimmt den Schlüsselbund für alle GitHub-Pushes aus dem
+Spiel. Andere Repos auf diesem Rechner (z. B. `MyxcuH2025/siraj-quran`) bekommen seither `ZaurHa`s
+Token. Scheitert dort ein Push, ist es dieselbe Ursache — und derselbe Einzeiler mit dem passenden
+Konto.
 
 ### Stripe-Modus
 
@@ -619,23 +639,32 @@ Listen-Abfragen beider Apps und im Web. Drei Stellen gingen über bloße Sichtba
 |---|---|
 | Migrationen `20260814280000` + `20260814290000` | ✅ eingespielt, Backfill gegengeprüft (0 verfehlt, 0 falsch markiert) |
 | Berkat | ✅ läuft — kein Store, kein OTA-Kanal, ein Neuladen aus Metro genügt |
-| Serlo (OTA) | ⏳ **offen** — bis dahin steht jede Berkat-Show weiter in Serlos Live-Bereich |
-| `apps/web` (Vercel) | ⏳ offen, hängt am Push nach `main` |
-| Push nach `origin/main` | ⏳ offen — die Arbeit liegt nur lokal |
+| Serlo, OTA Runtime **1.31.0** | ✅ raus am 14.08.2026, 22:43 |
+| Serlo, OTA Runtime **1.30.0** | ✅ raus am 14.08.2026, 23:0x |
+| Push `origin/berkat` | ✅ aktuell |
+| `apps/web` (Vercel) | ⏳ **offen** — hängt am Merge nach `main` |
 
-Berkat muss vor Serlo dran sein: Solange ein alter Berkat-Stand läuft, legt er Shows **ohne** `app`
-an, die per Default auf `'serlo'` fallen und trotz Filter wieder auftauchen. Das ist auch der Grund,
-warum ein Testlauf aus einer Metro-losen Berkat-Version (Android-APK) verboten ist, bis die neu
-gebaut wurde.
+Berkat musste vor Serlo dran sein: Solange ein alter Berkat-Stand läuft, legt er Shows **ohne**
+`app` an, die per Default auf `'serlo'` fallen und trotz Filter wieder auftauchen. Deshalb bleibt
+ein Testlauf aus einer Metro-losen Berkat-Version (Android-APK) verboten, bis die neu gebaut wurde.
 
-Der Serlo-OTA ist klein und geprüft: drei Commits, neun Dateien, 51 Zeilen — die Filter, zwei neue
-Übersetzungstexte, eine erweiterte Typ-Union, ein Kommentarblock. `version` steht auf 1.31.0, die
-Runtime stimmt also. Der letzte Release ging zusätzlich an Runtime 1.30.0; wer die Nutzer dort
-erreichen will, setzt `version` kurz auf `1.30.0`, veröffentlicht nochmal und stellt zurück.
+**Zwei Runtimes, zwei Veröffentlichungen.** `runtimeVersion` folgt der `version` aus der `app.json`
+(Richtlinie `appVersion`), und es sind Nutzer auf **1.30.0 und 1.31.0** unterwegs. Ein einzelnes
+`eas update` erreicht immer nur eine Hälfte. Für die andere die Version kurz umsetzen,
+veröffentlichen, zurückstellen — `git checkout app.json` stellt sie zeichengenau wieder her:
 
 ```bash
-EAS_BUILD=1 npx eas update --branch production --message "…" --non-interactive
+sed -i '' 's/"version": "1.31.0"/"version": "1.30.0"/' app.json && \
+EAS_BUILD=1 npx eas update --branch production --message "… (Runtime 1.30.0)" --non-interactive; \
+git checkout app.json && grep '"version"' app.json
 ```
+
+Das `;` vor dem Zurückstellen ist Absicht: Es läuft auch, wenn die Veröffentlichung scheitert.
+Bleibt die Version stehen, bekommt der nächste Build eine falsche.
+
+Vor einem OTA an eine **ältere** Runtime prüfen, ob seither native Abhängigkeiten dazukamen —
+`git diff <letzter-OTA-Commit>..HEAD -- package.json`. Am 14.08. war die Datei unverändert, dasselbe
+Bündel war für beide Runtimes sicher.
 
 Die `app.json`-Änderungen (Android-Berechtigungen, `versionCode` 48) gehen **nicht** per OTA raus —
 die warten auf einen nativen Build und gehören zum Play-Store-Test, nicht hierher.
