@@ -53,13 +53,13 @@ export function useSellerStats(sellerId: string | undefined) {
     staleTime: 5 * 60_000,
     queryFn: async (): Promise<SellerStats> => {
       const [reviewsRes, ordersRes, soldRes] = await Promise.all([
-        supabase
-          .from('order_reviews')
-          .select('rating')
-          .eq('reviewee_id', sellerId!)
-          // Nur was Käufer über Verkäufer sagen. Die Gegenrichtung steht in
-          // derselben Tabelle und gehört nicht in diese Zahl.
-          .eq('reviewer_role', 'buyer'),
+        // Über die RPC, nicht über die Tabelle: `order_reviews_party_read`
+        // erlaubt das Lesen nur dem Bewerter und dem Bewerteten. Ein Zuschauer
+        // im Live-Raum ist keins von beidem und bekäme null Zeilen — die Kachel
+        // stünde dauerhaft auf „—". `get_seller_rating` gibt ausschließlich
+        // Schnitt und Anzahl heraus, die einzelnen Bewertungen bleiben privat
+        // (Migration 20260814310000).
+        supabase.rpc('get_seller_rating', { p_seller_id: sellerId! }),
         // Versandtempo nur aus Berkat-Bestellungen: `cart_id IS NOT NULL` ist
         // dieselbe Weiche wie in create-checkout-session. Serlos Shop-Versand
         // hat andere Wege und würde die Zahl verfälschen.
@@ -83,8 +83,15 @@ export function useSellerStats(sellerId: string | undefined) {
 
       // Eine kaputte Teilabfrage darf nicht das ganze Sheet leeren — jede Zahl
       // fällt für sich auf ihren Leerzustand zurück.
-      const ratings = (reviewsRes.data ?? []) as { rating: number | null }[];
-      const valid = ratings.map((r) => r.rating).filter((r): r is number => typeof r === 'number');
+      //
+      // Die RPC liefert genau eine Zeile; ohne Bewertungen steht dort
+      // `rating: null` und `review_count: 0` (avg über die leere Menge).
+      const ratingRow = (reviewsRes.data ?? [])[0] as
+        | { rating: number | string | null; review_count: number }
+        | undefined;
+      const ratingValue =
+        ratingRow?.rating == null ? null : Number(ratingRow.rating);
+      const ratingCount = ratingRow?.review_count ?? 0;
 
       const orders = (ordersRes.data ?? []) as { paid_at: string; shipped_at: string }[];
       const spans = orders
@@ -94,8 +101,10 @@ export function useSellerStats(sellerId: string | undefined) {
         .filter((ms) => ms >= 0);
 
       return {
-        rating: valid.length ? valid.reduce((a, b) => a + b, 0) / valid.length : null,
-        ratingCount: valid.length,
+        // `numeric` kommt als String über PostgREST — Number() ist Pflicht,
+        // sonst rechnet toFixed() auf einem Text.
+        rating: Number.isFinite(ratingValue as number) ? (ratingValue as number) : null,
+        ratingCount,
         shipHours: spans.length
           ? spans.reduce((a, b) => a + b, 0) / spans.length / 3_600_000
           : null,

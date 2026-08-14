@@ -5,7 +5,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronRight, Lock, MessageSquare, Package, Truck } from 'lucide-react-native';
+import { Check, ChevronRight, Lock, MessageSquare, Package, Truck } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/session';
 import { buyerStatus, useMyOrders } from '../../lib/useMyOrders';
@@ -18,6 +18,8 @@ import {
 } from '../../lib/useAuction';
 import { useCheckoutCart } from '../../lib/useCheckout';
 import { useUnreadMessageCount } from '../../lib/useDirectMessages';
+import { useMyReviews, useOrderReviewActions } from '../../lib/useOrderReview';
+import { RatingStars } from '../../components/RatingStars';
 import { Avatar } from '../../components/Avatar';
 import { BerkatMark } from '../../components/BerkatMark';
 import { ui, radius, space } from '../../theme/tokens';
@@ -88,6 +90,30 @@ export default function AccountScreen() {
   const { data: carts = [], refetch: refetchCarts } = useMyCarts(myUserId);
   const { data: orders = [], refetch: refetchOrders } = useMyOrders(myUserId);
   const { data: unreadMessages = 0, refetch: refetchUnread } = useUnreadMessageCount(myUserId);
+
+  // Bewerten: was ich schon abgegeben habe, damit dieselbe Bestellung nicht
+  // zweimal nach Sternen fragt.
+  const { data: myReviews = {} } = useMyReviews(myUserId, orders.map((o) => o.id));
+  const { confirmDelivered, submitReview } = useOrderReviewActions(myUserId);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+
+  const confirmArrived = useCallback(
+    async (orderId: string) => {
+      setConfirmingId(orderId);
+      const res = await confirmDelivered(orderId);
+      setConfirmingId(null);
+      if (!res.ok) setNotice(res.message);
+    },
+    [confirmDelivered],
+  );
+
+  const rate = useCallback(
+    async (orderId: string, rating: number) => {
+      const res = await submitReview(orderId, rating);
+      setNotice(res.ok ? 'Danke — das hilft den Nächsten. ⭐' : res.message);
+    },
+    [submitReview],
+  );
 
   // Beim Öffnen des Reiters neu laden — nicht nur beim ersten Aufbauen.
   //
@@ -288,6 +314,46 @@ export default function AccountScreen() {
                     Sobald der Verkäufer packt, steht die Sendungsnummer hier.
                   </Text>
                 ) : null}
+
+                {/* Der Abschluss der Kette. Ohne diesen Knopf erreicht keine
+                    Bestellung je `delivered` — und `submit_order_review`
+                    verlangt genau das, also könnte niemand je bewertet werden. */}
+                {order.status === 'shipped' ? (
+                  <Pressable
+                    style={styles.arrivedButton}
+                    disabled={confirmingId === order.id}
+                    onPress={() => void confirmArrived(order.id)}
+                    accessibilityRole="button"
+                  >
+                    <Check size={16} color={ui.brand} />
+                    <Text style={styles.arrivedText}>
+                      {confirmingId === order.id ? 'Einen Moment …' : 'Ist angekommen'}
+                    </Text>
+                  </Pressable>
+                ) : null}
+
+                {order.status === 'delivered' ? (
+                  myReviews[order.id] ? (
+                    <View style={styles.reviewDone}>
+                      <RatingStars value={myReviews[order.id]} size={16} readOnly />
+                      <Text style={styles.reviewDoneText}>Danke für die Bewertung 🙏</Text>
+                    </View>
+                  ) : (
+                    <View style={styles.reviewBox}>
+                      <Text style={styles.reviewPrompt}>
+                        Wie war der Kauf bei {sellerNames[order.seller_id] ?? 'diesem Verkäufer'}?
+                      </Text>
+                      <RatingStars
+                        value={0}
+                        onChange={(rating) => void rate(order.id, rating)}
+                      />
+                      <Text style={styles.reviewHint}>
+                        Deine Sterne zählen in seinen Schnitt — den sehen alle, die seine Show
+                        aufmachen.
+                      </Text>
+                    </View>
+                  )
+                ) : null}
               </View>
             );
           })}
@@ -368,6 +434,36 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   linkBadgeText: { fontSize: 11, fontWeight: '800', color: ui.goldInk },
+
+  arrivedButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: space.sm,
+    height: 42,
+    borderRadius: radius.pill,
+    borderWidth: 1.5,
+    borderColor: ui.brand,
+    marginTop: space.md,
+  },
+  arrivedText: { fontSize: 14, fontWeight: '700', color: ui.brand },
+
+  reviewBox: {
+    marginTop: space.md,
+    paddingTop: space.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: ui.line,
+    gap: space.sm,
+  },
+  reviewPrompt: { fontSize: 14, fontWeight: '600', color: ui.text },
+  reviewHint: { fontSize: 11, color: ui.textMuted, lineHeight: 16 },
+  reviewDone: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    marginTop: space.md,
+  },
+  reviewDoneText: { fontSize: 12, color: ui.textMuted },
   card: {
     backgroundColor: ui.card,
     borderRadius: radius.md,
