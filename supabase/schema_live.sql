@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
--- \restrict APDlk79bQgveQzr4NcMMcTwShQ8T8aj9NF7M4PLj25UXjPuqFGH8Wsqmg42Vrh7
+-- \restrict 4yzxWcDhtqxaEr4QtAid3mgPYKbpvfBRwLBS1DxLS286jUeAH1NoNilSFPU9G8Y
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -13311,7 +13311,7 @@ COMMENT ON COLUMN "public"."profiles"."locale" IS 'App-Sprache des Users (von de
 -- Name: creator_live_history; Type: VIEW; Schema: public; Owner: postgres
 --
 
-CREATE OR REPLACE VIEW "public"."creator_live_history" AS
+CREATE OR REPLACE VIEW "public"."creator_live_history" WITH ("security_invoker"='on') AS
  SELECT "s"."id" AS "session_id",
     "s"."host_id",
     "s"."title",
@@ -13567,7 +13567,7 @@ ALTER TABLE "public"."live_clip_markers" OWNER TO "postgres";
 -- Name: live_clip_markers_hot; Type: VIEW; Schema: public; Owner: postgres
 --
 
-CREATE OR REPLACE VIEW "public"."live_clip_markers_hot" AS
+CREATE OR REPLACE VIEW "public"."live_clip_markers_hot" WITH ("security_invoker"='on') AS
  SELECT "session_id",
     ("ts_secs" / 15) AS "bucket_15s",
     "min"("ts_secs") AS "window_start",
@@ -13770,7 +13770,7 @@ ALTER TABLE "public"."live_poll_votes" OWNER TO "postgres";
 -- Name: live_poll_tallies; Type: VIEW; Schema: public; Owner: postgres
 --
 
-CREATE OR REPLACE VIEW "public"."live_poll_tallies" AS
+CREATE OR REPLACE VIEW "public"."live_poll_tallies" WITH ("security_invoker"='on') AS
  SELECT "poll_id",
     "option_index",
     ("count"(*))::integer AS "vote_count"
@@ -13874,7 +13874,7 @@ ALTER TABLE "public"."live_session_viewers" OWNER TO "postgres";
 -- Name: live_session_viewer_counts; Type: VIEW; Schema: public; Owner: postgres
 --
 
-CREATE OR REPLACE VIEW "public"."live_session_viewer_counts" AS
+CREATE OR REPLACE VIEW "public"."live_session_viewer_counts" WITH ("security_invoker"='on') AS
  SELECT "session_id",
     "count"(*) AS "active_viewers",
     "max"("joined_at") AS "last_join"
@@ -14692,7 +14692,7 @@ ALTER TABLE "public"."story_votes" OWNER TO "postgres";
 -- Name: user_battle_stats; Type: VIEW; Schema: public; Owner: postgres
 --
 
-CREATE OR REPLACE VIEW "public"."user_battle_stats" AS
+CREATE OR REPLACE VIEW "public"."user_battle_stats" WITH ("security_invoker"='on') AS
  SELECT "user_id",
     "count"(*) FILTER (WHERE ("result" = 'win'::"text")) AS "wins",
     "count"(*) FILTER (WHERE ("result" = 'loss'::"text")) AS "losses",
@@ -21493,5 +21493,5 @@ CREATE POLICY "woz_requests_select_own" ON "public"."women_only_requests" FOR SE
 -- PostgreSQL database dump complete
 --
 
--- \unrestrict APDlk79bQgveQzr4NcMMcTwShQ8T8aj9NF7M4PLj25UXjPuqFGH8Wsqmg42Vrh7
+-- \unrestrict 4yzxWcDhtqxaEr4QtAid3mgPYKbpvfBRwLBS1DxLS286jUeAH1NoNilSFPU9G8Y
 
