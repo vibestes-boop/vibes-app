@@ -541,22 +541,73 @@ Der Code ist so weit, dass sich das testen lässt. Gelingt es nicht, spart die A
 
 ## 8. Nächster sinnvoller Schritt
 
-### Benachrichtigungen an den Käufer — das ist der Bau
+### Live-Vorschau auf den Show-Karten — das ist der Bau
 
-Die Kette läuft technisch, aber sie läuft **stumm in eine Richtung**. Der Verkäufer wird informiert,
-wenn eine Bestellung bezahlt ist. Der Käufer erfährt nichts: nicht, dass er gewonnen hat, nicht,
-dass sein Korb in 24 Stunden verfällt, nicht, dass sein Paket unterwegs ist. Er muss von sich aus
-nachsehen — und genau das tut niemand.
+Analysiert am 14.08.2026 anhand von Whatnot-Screenshots. Auf deren Startseite liegt über jedem
+Show-Vorschaubild ein kleines Widget, das zeigt, was in dieser Show **gerade** passiert. Es macht
+aus einem Raster von Standbildern einen Marktplatz mit Puls: Man sieht ohne einen einzigen Tap,
+dass eine Uhr läuft, dass etwas für 1 € wegging, dass gleich das nächste kommt.
 
-Bei Whatnot ist das der Motor des Formats. Drei Ereignisse zählen:
+Für Berkat trifft das direkt Design-Gesetz 1 — Hochs lauter machen — nur eben **vor** dem Betreten
+des Raums. Es ist der Unterschied zwischen „hier sind Shows" und „hier passiert gerade etwas".
 
-1. **Zuschlag** („Du hast X gewonnen") — direkt im Moment, das ist der Freude-Höhepunkt
-2. **Erinnerung ans Zahlen**, bevor der 24-Stunden-Korb verfällt
-3. **Versendet**, mit Sendungsnummer
+#### Die Grammatik: eine Komponente, drei Zustände
 
-Serlo hat die Infrastruktur bereits (`notifications` + Expo-Push + Web-Push). Vorsicht dabei: Ein
-neuer `notifications.type` muss **drei Oberflächen** kennen, sonst erscheinen generische oder
-falsche Texte — In-App-Liste, Expo-Push und Web-Push, plus die CHECK-Bedingung auf der Spalte.
+Nicht drei Widgets. Zeile 1 und Zeile 3 wechseln nur ihren Inhalt:
+
+| Phase | Zeile 1 (klein, grau) | Zeile 2 (fett, 1 Zeile) | Zeile 3 links | Zeile 3 rechts |
+|---|---|---|---|---|
+| Artikel läuft | „Läuft aktuell" | Artikelname | `00:04` **rot**, tickt | Gebot |
+| gerade zugeschlagen | „Warten auf nächsten Artikel" | Artikelname | „Verkauft" **rot** | Endpreis |
+| noch nichts gestartet | „Als nächstes …" | Artikelname | „Beginnt bald …" grau | Startpreis |
+
+Dazu am rechten Rand ein kleines **Artikelbild**, quadratisch mit hellem Rand, das über die
+Oberkante des Widgets hinausragt.
+
+Das „Kommen und Gehen" ist kein eigener Mechanismus, sondern die Folge des Zustandswechsels — beim
+Wechsel wird das Widget kurz aus- und wieder eingeblendet.
+
+#### Die Zustände passen eins zu eins auf `live_auctions.status`
+
+    running    → „Läuft aktuell"              + Countdown aus ends_at
+    sold       → „Warten auf nächsten Artikel" + „Verkauft"
+    scheduled  → „Als nächstes …"              + „Beginnt bald …"
+
+#### Was schon da ist — fast alles
+
+| Baustein | Wo |
+|---|---|
+| `title`, `image_url`, `status`, `current_bid_cents`, `ends_at`, `sort_index` | `live_auctions` |
+| `useServerClock()` — Gerätezeit gegen Serverzeit abgeglichen | `lib/useAuction.ts` |
+| `useCountdown(endsAt, serverNow)` — tickt sekündlich | `lib/useAuction.ts` |
+| `formatCountdown(seconds)` — macht daraus `00:04` | `lib/useAuction.ts` |
+| Startseite lädt alle 20 s nach (`refetchInterval: 20_000`) | `app/(tabs)/index.tsx` |
+| Show-Karte mit Bild, Live-Pille, Zuschauerzahl | `app/(tabs)/index.tsx` |
+
+**Der Countdown tickt lokal.** Der Server liefert nur den Endzeitpunkt, die App zählt selbst
+herunter — deshalb reichen 20 Sekunden Nachladetakt für den Zustandswechsel, ohne dass die Uhr
+ruckelt. Schneller wäre teurer, ohne viel zu gewinnen.
+
+#### Was fehlt — drei Stücke
+
+1. **Die Abfrage.** Die Startseite holt heute nur Session-Felder
+   (`id, host_id, title, viewer_count, thumbnail_url, category, women_only`). Sie braucht zusätzlich
+   pro Show den aktuellen Artikel. Ein Aufruf über alle sichtbaren Sessions genügt, die Auswahl je
+   Session dann nach Vorrang: **läuft** → sonst **nächster geplanter** (kleinster `sort_index`) →
+   sonst **zuletzt verkaufter**. Kein neues DB-Objekt nötig.
+2. **Die Komponente.** Das dreizeilige Overlay plus Artikelbild.
+3. **Die Verkabelung** in der Show-Karte, plus Ein-/Ausblenden beim Zustandswechsel.
+
+#### ⚠️ Die Falle: Kontrast über beliebigen Bildern
+
+Das Widget liegt auf einem **Bild**, und Bilder sind mal hell, mal dunkel. Berkats Design-Gesetz
+kennt bewusst nur zwei feste Flächen (`ui` hell, `stage` dunkel), genau um diesen Fall
+auszuschließen — ein Overlay über fremdem Bildinhalt ist die Ausnahme.
+
+Whatnot löst es mit einer **milchigen, fast undurchsichtigen** Fläche, nicht mit zartem Glas. Wer
+hier auf dezente Transparenz setzt, bekommt genau den Fehler, der Serlo wiederholt erwischt hat:
+lesbar auf dem einen Bild, unsichtbar auf dem nächsten. Entweder deckend genug oder ein Verlauf
+darunter — und in beiden Fällen die Textfarbe fest wählen, nicht aus dem Theme.
 
 ### Website — bereits veröffentlicht
 
