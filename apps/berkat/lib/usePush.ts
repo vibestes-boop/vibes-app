@@ -55,15 +55,17 @@ if (Notifications) {
   });
 }
 
-/** Wohin führt ein Tipp auf die Meldung? Alle drei enden im Konto. */
+/** Wohin führt ein Tipp auf die Meldung? */
 function routeFor(type: unknown): string | null {
   switch (type) {
-    // Gewonnen, Erinnerung, versendet — was der Käufer als Nächstes tun oder
-    // sehen will, steht im Konto: Sammelkorb bezahlen bzw. Sendung verfolgen.
+    // In die Liste, nicht direkt ins Konto. Wer den Push antippt, hat oft mehr
+    // als eine Meldung offen — und aus der Liste führt jede Zeile weiter ins
+    // Konto. Direkt dorthin zu springen ließ die Meldung selbst verschwinden;
+    // genau das fiel beim ersten Durchlauf am 14.08.2026 auf.
     case 'auction_won':
     case 'order_payment_reminder':
     case 'order_shipped':
-      return '/(tabs)/account';
+      return '/notifications';
     default:
       return null;
   }

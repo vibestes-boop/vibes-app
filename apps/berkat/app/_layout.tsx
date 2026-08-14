@@ -86,6 +86,7 @@ export default function RootLayout() {
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="live/[id]" options={{ animation: 'slide_from_bottom' }} />
             <Stack.Screen name="login" options={{ animation: 'slide_from_bottom' }} />
+            <Stack.Screen name="notifications" options={{ animation: 'slide_from_right' }} />
           </Stack>
           {/* Liegt über allem, weil die verkleinerte Show über jedem Reiter
               weiterlaufen soll — nicht nur über der Startseite. */}

@@ -19,13 +19,15 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Lock, Search } from 'lucide-react-native';
+import { Bell, Lock, Search } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useProfiles } from '../../lib/useAuction';
 import { BerkatMark } from '../../components/BerkatMark';
 import { Avatar } from '../../components/Avatar';
 import { CategoryRail, type RailItem } from '../../components/CategoryRail';
 import { ui, radius, space } from '../../theme/tokens';
+import { useSession } from '../../lib/session';
+import { useUnreadCount } from '../../lib/useNotifications';
 
 type LiveShow = {
   id: string;
@@ -62,6 +64,10 @@ function useLiveShows() {
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  // Abzeichen an der Glocke. Scheitert die Abfrage, liefert der Hook 0 — eine
+  // fehlende Zahl darf die Startseite nicht mitreißen.
+  const userId = useSession((st) => st.userId);
+  const { data: unread = 0 } = useUnreadCount(userId);
   const { data: shows = [], isLoading, refetch } = useLiveShows();
 
   // Der Kreisel gehört NUR zum Ziehen von Hand. Hinge er an isRefetching,
@@ -125,6 +131,21 @@ export default function HomeScreen() {
       <View style={styles.header}>
         <BerkatMark size={24} color={ui.brand} />
         <Text style={styles.wordmark}>berkat</Text>
+
+        {/* Rechts außen: Meldungen. Das Abzeichen zählt nur Berkat-Meldungen —
+            die Tabelle gehört Serlo und Berkat gemeinsam. */}
+        <Pressable
+          hitSlop={10}
+          onPress={() => router.push('/notifications')}
+          style={styles.bell}
+        >
+          <Bell size={21} color={ui.text} />
+          {unread > 0 ? (
+            <View style={styles.badge}>
+              <Text style={styles.badgeText}>{unread > 9 ? '9+' : unread}</Text>
+            </View>
+          ) : null}
+        </Pressable>
       </View>
 
       <View style={styles.searchWrap}>
@@ -235,6 +256,20 @@ const styles = StyleSheet.create({
     paddingTop: space.sm,
   },
   wordmark: { fontSize: 21, fontWeight: '700', color: ui.text, letterSpacing: -0.4 },
+  bell: { marginLeft: 'auto', width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
+  badge: {
+    position: 'absolute',
+    top: 3,
+    right: 2,
+    minWidth: 16,
+    height: 16,
+    paddingHorizontal: 4,
+    borderRadius: radius.pill,
+    backgroundColor: ui.gold,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: { fontSize: 10, fontWeight: '800', color: ui.goldInk },
 
   searchWrap: {
     flexDirection: 'row',
