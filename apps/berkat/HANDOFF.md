@@ -31,12 +31,12 @@ Was Berkat bewusst anders macht als Whatnot:
 | | |
 |---|---|
 | App | `apps/berkat/` — eigenständige Expo-App, eigene `node_modules`, eigener Store-Eintrag |
-| Website | `apps/berkat-web/` — vier statische Seiten, **noch nicht veröffentlicht** (siehe dortige README) |
+| Website | `apps/berkat-web/` — vier statische Seiten, **live** unter `berkat-live.pages.dev` |
 | Bundle-IDs | iOS `com.berkat.app` · Android `app.berkat.market` |
 | EAS-Projekt | `@zaurhat/berkat` (`fb4e0381-264d-4cfd-8c3c-691987346915`) |
 | Backend | dieselbe Supabase-Instanz wie Serlo (`llymwqfgujwkoxzqxrlm`) |
-| Migrationen | 7 Stück — **zwei davon noch nicht eingespielt**, siehe Abschnitt 5 |
-| Git | Branch `berkat`, drei Commits, **nicht gepusht** |
+| Migrationen | 9 Stück, alle eingespielt — bei zweien fehlt nur der Tracking-Eintrag, siehe Abschnitt 5 |
+| Git | Branch `berkat`, **21 Commits, nicht gepusht** |
 
 ### Starten
 
@@ -73,7 +73,20 @@ cd /Users/zaurhatuev/vibes-app/apps/berkat && npx expo export --platform ios --o
 ```
 
 Der Export ist der ehrlichere Test: Er baut das komplette Bundle und findet Auflösungsfehler, die
-`tsc` nicht sieht. Aktueller Stand: **3170 Module, fehlerfrei**.
+`tsc` nicht sieht. Aktueller Stand: **3173 Module, fehlerfrei**.
+
+### Im Simulator laufen lassen
+
+Berkat läuft als vollwertiger Build im iOS-Simulator — damit gibt es ein zweites Gerät, ohne eins
+zu besitzen. Erstmalig bauen (dauert, WebRTC wird mitkompiliert):
+
+```bash
+cd /Users/zaurhatuev/vibes-app/apps/berkat && npx expo run:ios
+```
+
+Danach genügt Metro plus App-Start. Zwei Fallen dabei: Der Simulator hat **keine Kamera** (das Bild
+bleibt schwarz, die Vorschau meldet einen Fehler — beides erwartet), und ihm fehlt die
+**Emoji-Schrift**, weshalb Emoji als leere Kästchen erscheinen. Auf dem Gerät ist beides in Ordnung.
 
 ---
 
@@ -84,11 +97,11 @@ Diese Liste ist der wertvollste Teil des Dokuments.
 ### `supabase db push` ist verboten
 
 `supabase migration list` meldet **61 Migrationen als nicht eingespielt**, beginnend bei
-`20260614190000`. Das ist eine **Tracking-Lücke, kein fehlendes Schema** — die Tabellen existieren
-nachweislich in der Live-DB (gegen die REST-API geprüft). Das Tracking blieb bei
-`buy_product_wallet_lock` (`20260613120000`) stehen; alles danach wurde per SQL-Editor eingespielt.
+`20260614190000`. Das ist eine **Tracking-Lücke, kein fehlendes Schema** — am 14.08.2026 gegen die
+Live-DB belegt (siehe Abschnitt 7). Das Tracking blieb bei `buy_product_wallet_lock`
+(`20260613120000`) stehen; alles danach wurde per SQL-Editor eingespielt.
 
-**Ein `db push` würde alle 62 erneut fahren** und bei der ersten nicht-idempotenten Anweisung
+**Ein `db push` würde alle 61 erneut fahren** und bei der ersten nicht-idempotenten Anweisung
 mittendrin abbrechen.
 
 Richtiger Weg für neue Migrationen:
@@ -179,6 +192,19 @@ Umgekehrt gilt: Ein Berührungs-Erkenner **über** einem Eingabefeld nimmt diese
 Tastatur geht nicht mehr auf. Deshalb hat der Kommentar-Stapel eine eigene kleine Tippfläche und
 nicht die ganze Chat-Spalte.
 
+### Reiter-Bildschirme bleiben aufgebaut — sie laden nicht von selbst nach
+
+Expo Router hält die Reiter dauerhaft im Speicher. Wer „Konto" einmal geöffnet hat, sieht beim
+Zurückwechseln **denselben Stand von vorhin**: kein Aufbauen, kein Fokuswechsel der App, also kein
+Nachladen. Am 14.08. stand deshalb „Noch nichts gewonnen" da, während im Live-Raum schon
+„2 Artikel · 1 Paket" angezeigt wurde — die Pakete waren da, die Abfrage war alt. Damit war der
+Bezahl-Schritt schlicht nicht erreichbar.
+
+Abfragen auf einem Reiter, die auf Ereignisse von außen reagieren müssen, brauchen deshalb
+`useFocusEffect` aus `expo-router` plus `refetch()` — oder einen Takt. `refetchOnWindowFocus`
+allein genügt **nicht**: Das feuert nur beim Wechsel aus dem Hintergrund der ganzen App, nicht
+beim Reiter-Wechsel.
+
 ### `refreshing={isRefetching}` lässt Listen hängen aussehen
 
 Der Aktualisierungs-Kreisel springt sonst bei jedem Hintergrund-Abruf an. Für Ziehen-zum-Aktualisieren
@@ -245,6 +271,29 @@ Gerätezeit ab, damit ein falsch gestelltes Handy keinen falschen Countdown zeig
 
 Überall. Ein Rundungsfehler in einer Auktion ist ein Rechtsstreit.
 
+### Der Korb friert beim Gang zur Kasse ein
+
+`checkout_auction_cart` setzt den Korb auf `checkout_pending`. Das ist **keine Kosmetik**, sondern
+die Behebung eines Geldfehlers vom 14.08.:
+
+Vorher errechnete die Funktion den Betrag aus den Zuschlägen, schrieb ihn fest in die Bestellung —
+und ließ den Korb auf `open`. `ensure_auction_cart` sucht genau nach `open` und hängte jeden
+weiteren Zuschlag in denselben Korb. Die Idempotenz-Abfrage gab die alte Bestellung zurück, **ohne
+den Betrag neu zu rechnen**. Damit ließ sich Ware für 501 € mit 1 € bezahlen: billig gewinnen,
+„Bezahlen" antippen, nicht zahlen, teuer weitergewinnen, dann die 1 € zahlen. Ohne jede Absicht
+passiert dasselbe — antippen, abgelenkt werden, weiterbieten, zahlen.
+
+Ein eigener Zustand, nicht eine Neuberechnung: Neu zu rechnen hätte das Fenster nur verkleinert,
+zwischen Stripe-Sitzung und Zahlung kämen weiterhin Artikel hinzu.
+
+Drei Dinge hängen daran und dürfen nicht auseinanderlaufen:
+
+- Die **Idempotenz-Abfrage steht vor der Zustandsprüfung** — sonst findet niemand eine abgebrochene
+  Zahlung wieder.
+- `close_cart_on_order_paid` schließt `open` **und** `checkout_pending`.
+- Das **Konto** zeigt beide Zustände, die **Leiste im Live-Raum bewusst nur `open`**: Sie zeigt den
+  Korb, der gerade sammelt. Wer das „angleicht", zeigt einen eingefrorenen Korb als sammelnd an.
+
 ### Kein zweiter Weg, wo Serlo schon einen hat
 
 Wiederverwendet statt nachgebaut:
@@ -275,7 +324,11 @@ er zählt also Wellen, nicht Finger. Die lebendige Zahl im Raum ist die lokale.
 
 ## 5. Datenbank
 
-Sieben Migrationen, **alle eingespielt und im Tracking vermerkt**:
+Neun Migrationen, **alle eingespielt**. Bei den letzten beiden fehlt nur noch der Tracking-Eintrag:
+
+```bash
+cd /Users/zaurhatuev/vibes-app && supabase migration repair --status applied 20260814140000 20260814150000
+```
 
 | Datei | Inhalt |
 |---|---|
@@ -286,12 +339,24 @@ Sieben Migrationen, **alle eingespielt und im Tracking vermerkt**:
 | `20260814010000_berkat_mark_shipped.sql` | `mark_order_shipped` |
 | `20260814120000_live_reactions_rls.sql` | `live_reactions_select` von `USING(true)` auf Session-Vererbung |
 | `20260814130000_berkat_edit_auction.sql` | `update_live_auction` |
+| `20260814140000_restore_profile_on_signup.sql` | **Serlo-weit:** Trigger `on_auth_user_created` wiederhergestellt |
+| `20260814150000_berkat_cart_freeze_on_checkout.sql` | Korb-Zustand `checkout_pending`, `checkout_auction_cart` neu |
 
-Die letzten beiden kamen am 14.08. dazu. Die Reaktions-Migration schloss ein Leck: Die Lese-Policy
-stand auf `USING(true)`, und weil jede Zeile `session_id` und `user_id` trägt, konnte jedes Konto
-die Teilnehmerliste jedes Frauen-Only-Raums auslesen. Folgenlos umzustellen, weil **niemand die
-Tabelle liest** — App und Web schreiben nur hinein, gezeigt werden Reaktionen über den
-Broadcast-Kanal.
+Vier davon kamen am 14.08. dazu, drei schlossen echte Löcher:
+
+**`live_reactions_rls`** — die Lese-Policy stand auf `USING(true)`, und weil jede Zeile
+`session_id` und `user_id` trägt, konnte jedes Konto die Teilnehmerliste jedes Frauen-Only-Raums
+auslesen.
+
+**`restore_profile_on_signup`** — betrifft **Serlo, nicht Berkat**. Auf `auth.users` existierte
+kein Trigger mehr (am 17.04.2026 entfernt), und im gesamten App-Code legt niemand eine Zeile in
+`profiles` an; `register.tsx` verlässt sich ausdrücklich auf den Trigger. Wer sich registrierte,
+war angemeldet, hatte aber kein Profil — kein Name, keine Geldbörse, und jede Aktion mit
+Fremdschlüssel auf `profiles` schlug fehl, in Berkat schon das erste Gebot. Drei Konten standen so
+in der Datenbank (alle drei Test- oder Bot-Konten, kein echter Nutzer betroffen). Die neue Fassung
+pinnt `search_path`, macht den Namen bei Kollision eindeutig und blockiert nie.
+
+**`cart_freeze_on_checkout`** — siehe Abschnitt 4, „Der Korb friert beim Gang zur Kasse ein".
 
 ### RLS-Grundsatz
 
@@ -315,7 +380,7 @@ Besitzer** — sonst wären Stellvertreter-Bieten und Gewinnspiel wertlos.
 | Bereich | Zustand |
 |---|---|
 | Marke, Icon, Splash | fertig — `scripts/generate-icons.mjs` erzeugt alle PNGs analytisch aus `assets/mark.svg` |
-| Anmeldung | E-Mail/Passwort gegen dieselbe Supabase-Instanz. Google/Apple fehlen |
+| Anmeldung | E-Mail/Passwort **und Registrierung** gegen dieselbe Supabase-Instanz. Google/Apple fehlen |
 | Startseite | Suche, Kategorie-Leiste mit zwei Größen (schrumpft beim Scrollen), Show-Karten |
 | Live-Raum | Video, Kamera-Vorschau vor dem Senden, Kamera-Steuerung, Chat mit Eingabe, wegwischbare Kommentare, Sammelkorb-Leiste, „Als Nächstes", Shop-Zettel |
 | Auktion | Gebot, Anti-Snipe (+10 s), Sofortkauf, Max-Gebot, Zuschlag, „Du führst" |
@@ -323,19 +388,30 @@ Besitzer** — sonst wären Stellvertreter-Bieten und Gewinnspiel wertlos.
 | Reaktionen | Herz-Knopf **und Tippen aufs Bild**, fliegende Herzen, Zähler — auf Serlos Broadcast-Vertrag, also plattformübergreifend |
 | Gewinnspiel | anlegen, mitmachen, ziehen — Teilnahme immer kostenlos |
 | Kleines Fenster | echtes Video, läuft über alle Reiter weiter |
-| Bezahlen | Sammelkorb → eine Bestellung → Stripe → Adresse → `paid` |
-| Versand | Bestellliste mit Adresse, Sendungsnummer, Verfolgungs-Link |
+| Bezahlen | Sammelkorb → eine Bestellung → Stripe → Adresse → `paid` → eigene Erfolgsseite |
+| Versand (Verkäufer) | Bestellliste mit Adresse, Sendungsnummer, Verfolgungs-Link |
+| Kauf-Übersicht (Käufer) | „Gekauft" im Konto: Zustand, Artikel, Sendungsnummer |
 | Zuschauerzahl, Folgen, Teilen | fertig |
+
+**Die gesamte Kette ist am 14.08.2026 einmal komplett durchlaufen** — Show starten, live gehen,
+Artikel auflegen, von einem zweiten Konto bieten, Zuschlag, Sammelkorb, Stripe-Zahlung (Testkarte),
+eigene Erfolgsseite, Benachrichtigung an den Verkäufer, als versendet markieren, und die Sendung
+beim Käufer sichtbar.
 
 ### Was fehlt
 
-1. **Kategorien- und Aktivitäts-Reiter** — zwei von Whatnots fünf; bewusst weggelassen, solange
+1. **Benachrichtigungen an den Käufer.** Der Verkäufer bekommt „Eine Bestellung wurde bezahlt —
+   bitte versenden". In die Gegenrichtung gibt es **nichts**: kein „Du hast gewonnen", keine
+   Erinnerung ans Zahlen, kein „Dein Paket ist unterwegs". Bei Whatnot ist genau das der Motor.
+   Ohne das verfallen Sammelkörbe nach 24 Stunden, ohne dass jemand es merkt. **Der nächste
+   sinnvolle Bau.**
+2. **Kategorien- und Aktivitäts-Reiter** — zwei von Whatnots fünf; bewusst weggelassen, solange
    sie keinen Inhalt hätten
-2. **Google-/Apple-Anmeldung**
-3. **Eigene Erfolgsseite: gebaut, aber nicht veröffentlicht.** Die Seiten liegen in
-   `apps/berkat-web/`, die Weiche in `create-checkout-session` steht. Beides greift erst nach
-   den drei Schritten in Abschnitt 8. Bis dahin landet der Käufer weiter auf
-   `serlo.ch/shop/success` — das ist Absicht und kein Versehen, siehe dort. am Vorschaubild
+3. **Google-/Apple-Anmeldung** — braucht Entwickler-Zugänge und einen echten Rebuild
+4. **E-Mail-Bestätigung ist abgeschaltet.** Für eine Live-Auktion richtig — wer gerade zuschaut,
+   springt nicht ins Postfach. Der Preis: Niemand weist nach, dass ihm die Adresse gehört. Ein
+   Wegwerf-Konto kann bieten, gewinnen und nie zahlen — und blockiert den Artikel 24 Stunden im
+   Korb. Vor fremden Verkäufern neu abwägen.
 
 ---
 
@@ -354,27 +430,40 @@ Leeres Ergebnis heißt: gefahrlos markieren. Zeilen heißen: genau die fehlen.
 macht die Lücke für immer unsichtbar. Bei `drop_debug_coin_backdoors` hieße das, die Hintertüren
 lägen weiter in der Produktivdatenbank.
 
-19 der 61 sind bereits belegt: Ihre Tabellen und Spalten wurden am 14.08. über die REST-Schnittstelle
-geprüft, alle vorhanden. Die Abfrage deckt weitere 38 ab. Vier lassen sich prinzipiell nicht über
-die bloße Existenz eines Objekts prüfen — sie sind in der README benannt.
+19 der 61 sind über die REST-Schnittstelle belegt (Tabellen und Spalten, alle vorhanden). Die
+Abfrage deckt weitere 38 ab. Vier lassen sich prinzipiell nicht über die bloße Existenz eines
+Objekts prüfen — sie sind in der README benannt.
+
+**Der Lauf am 14.08. ergab genau einen Befund, und der war ein Fehlalarm:** `seller_accounts_read`
+fehlt — weil die spätere Migration `20260710140000` sie ausdrücklich löscht und
+`seller_accounts_read_own` an ihre Stelle setzt. Ihr Fehlen ist also der **Beleg**, dass die
+Nachfolge-Migration lief. Die Abfrage ist entsprechend korrigiert; sie erwartet später ersetzte
+Policies nicht mehr. **Alle 61 sind damit belegt eingespielt, die Reparatur ist gefahrlos:**
+
+```bash
+cd /Users/zaurhatuev/vibes-app && supabase migration repair --status applied $(ls supabase/migrations/*.sql | sed -n 's#.*/\([0-9]\{14\}\)_.*#\1#p' | awk '$1>="20260614190000" && $1<="20260716130000"')
+```
 
 ### Der Schema-Abzug ist zwei Monate alt
 
 `supabase/schema_live.sql` stammt vom **14.06.2026** und ist damit älter als fast alle 61
 Migrationen — obwohl CLAUDE.md ihn als Quelle der Wahrheit führt. Wer dort eine Spalte nachschlägt,
 prüft gegen einen veralteten Stand. Erneuern geht mit `supabase db dump`, das braucht aber Docker
-Desktop (auf diesem Rechner nicht installiert).
+Desktop (auf diesem Rechner nicht installiert). **Ohne Docker geht es nicht:** Die REST-Schnittstelle
+liefert die vollständige Beschreibung nur gegen einen *geheimen* Schlüssel, nicht gegen den
+öffentlichen. Einzelne Spalten lassen sich abfragen, eine vollständige Liste aufzählen nicht.
 
 ### Berkat pushen
 
-Eingecheckt ist alles: Branch `berkat`, drei Commits. **Gepusht ist nichts** — das braucht eine
+Eingecheckt ist alles: Branch `berkat`, **21 Commits**. **Gepusht ist nichts** — das braucht eine
 ausdrückliche Freigabe. `.env` ist über `apps/berkat/.gitignore` ausgeschlossen und liegt nicht im
 Commit; `node_modules`, `ios/` und `android/` ebenso wenig.
 
-### Stripe-Modus prüfen
+### Stripe-Modus
 
-Unklar, ob Test- oder Live-Schlüssel gesetzt sind (Secret, nicht auslesbar). Im Live-Modus ist
-jeder Testkauf echtes Geld. Zu sehen im Stripe-Dashboard oben rechts.
+Am 14.08. beim echten Durchlauf beantwortet: Die Zahlung lief mit der Testkarte
+`4242 4242 4242 4242` durch — also **Testbetrieb**. Vor dem Umstellen auf Echtbetrieb ist der
+Prüfpunkt die Adresszeile beim Bezahlen: `cs_test_…` ist Spielgeld, `cs_live_…` echtes Geld.
 
 ### Vor dem ersten fremden Verkäufer
 
@@ -402,16 +491,31 @@ Der Code ist so weit, dass sich das testen lässt. Gelingt es nicht, spart die A
 
 ## 8. Nächster sinnvoller Schritt
 
-### Website veröffentlichen — drei Schritte, in dieser Reihenfolge
+### Benachrichtigungen an den Käufer — das ist der Bau
 
-Die Reihenfolge ist keine Empfehlung, sondern Bedingung: Wer Schritt 3 vor Schritt 1 macht,
-schickt Käufer direkt nach dem Bezahlen auf eine tote Seite. Deshalb ist die Weiche in der
-Function auch ausdrücklich einzuschalten und nicht Standard.
+Die Kette läuft technisch, aber sie läuft **stumm in eine Richtung**. Der Verkäufer wird informiert,
+wenn eine Bestellung bezahlt ist. Der Käufer erfährt nichts: nicht, dass er gewonnen hat, nicht,
+dass sein Korb in 24 Stunden verfällt, nicht, dass sein Paket unterwegs ist. Er muss von sich aus
+nachsehen — und genau das tut niemand.
 
-1. `npx wrangler pages deploy apps/berkat-web --project-name berkat-live`
-2. `supabase secrets set BERKAT_SUCCESS_URL=https://berkat-live.pages.dev/bezahlt
-   BERKAT_CANCEL_URL=https://berkat-live.pages.dev/abgebrochen`
-3. `supabase functions deploy create-checkout-session`
+Bei Whatnot ist das der Motor des Formats. Drei Ereignisse zählen:
+
+1. **Zuschlag** („Du hast X gewonnen") — direkt im Moment, das ist der Freude-Höhepunkt
+2. **Erinnerung ans Zahlen**, bevor der 24-Stunden-Korb verfällt
+3. **Versendet**, mit Sendungsnummer
+
+Serlo hat die Infrastruktur bereits (`notifications` + Expo-Push + Web-Push). Vorsicht dabei: Ein
+neuer `notifications.type` muss **drei Oberflächen** kennen, sonst erscheinen generische oder
+falsche Texte — In-App-Liste, Expo-Push und Web-Push, plus die CHECK-Bedingung auf der Spalte.
+
+### Website — bereits veröffentlicht
+
+Läuft unter `berkat-live.pages.dev`, die Weiche in `create-checkout-session` ist eingeschaltet.
+Neu hochladen nach Änderungen:
+
+```bash
+npx wrangler pages deploy /Users/zaurhatuev/vibes-app/apps/berkat-web --project-name berkat-live
+```
 
 Details in `apps/berkat-web/README.md`.
 
@@ -435,19 +539,23 @@ Die Adresse steht jetzt an einer Stelle, `SITE_URL` in `lib/links.ts`, und zeigt
 kostenlose Pages-Adresse. Eine gekaufte Domain kostet später drei Zeichenketten — frei wären
 `berkatlive.de`, `berkatmarkt.de`, `berkat.market`, `berkat.shop`.
 
-### Dann: eine echte Show mit zwei Geräten
+### Der Durchlauf — schon einmal gemacht, jederzeit wiederholbar
 
-Alles Übrige aus dem Code ist beisammen. Was jetzt zählt, ist der Durchlauf:
+Am 14.08.2026 komplett durchgespielt: iPhone als Verkäufer, Simulator als Käufer mit einem zweiten
+Konto. Ein zweites Gerät braucht es also nicht.
 
-1. Gerät A: Show starten → live gehen → Artikel auflegen → starten
-2. Gerät B (anderes Konto): bieten, kontern, Max-Gebot setzen
-3. Zuschlag abwarten → Gerät B: Konto → Deine Pakete → bezahlen
-4. Gerät A: Verkaufen → Bestellungen → Adresse prüfen → als versendet markieren
+1. iPhone: Verkaufen → Show starten (springt direkt in den Raum) → „Live gehen" → Artikel auflegen → starten
+2. Simulator (anderes Konto): Show antippen → bieten → Zuschlag abwarten
+3. Simulator: Konto → Deine Pakete → bezahlen (Testkarte `4242 4242 4242 4242`, Ablauf `12/34`, CVC `123`)
+4. iPhone: Verkaufen → Bestellungen → Adresse prüfen → Sendungsnummer → als versendet markieren
+5. Simulator: Konto → „Gekauft" → Zustand und Sendungsnummer müssen dort stehen
 
-Damit ist die gesamte Kette einmal durchlaufen. Was dabei hakt, ist wichtiger als jedes weitere
-Feature.
+**Ein zweites Konto ist Pflicht:** Der Server lässt niemanden auf eigene Artikel bieten
+(`seller_cannot_bid`). Anlegen geht seit dem 14.08. direkt in Berkat.
 
-Zwei Dinge lassen sich dabei gleich mitprüfen, weil sie sich ohne zweites Gerät nicht beurteilen
-lassen: ob die Herzen an der richtigen Stelle losfliegen (der Abstand in `FloatingHearts` ist an
-den Aufbau der rechten Leiste gebunden, nicht gemessen), und ob ein Herz aus der Serlo-App
-tatsächlich in Berkat ankommt.
+### Was am Durchlauf noch ungeprüft ist
+
+- **Echtes Video** — der Simulator hat keine Kamera, das Bild blieb schwarz
+- **Ob ein Herz aus der Serlo-App in Berkat ankommt** — der Broadcast-Vertrag ist gebaut, aber nie
+  über beide Apps gemessen
+- **Max-Gebot und Anti-Snipe** unter echtem Gegendruck (zwei Menschen, die gleichzeitig bieten)
