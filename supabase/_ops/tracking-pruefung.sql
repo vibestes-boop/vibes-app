@@ -106,7 +106,6 @@ WITH f(version, name) AS (VALUES
   ('20260626120000','shop_banners_read','public','shop_banners'),
   ('20260627120000','product_orders_party_read','public','product_orders'),
   ('20260627120000','product_orders_service_write','public','product_orders'),
-  ('20260627120000','seller_accounts_read','public','seller_accounts'),
   ('20260627120000','seller_accounts_service_write','public','seller_accounts'),
   ('20260628100000','order_reviews_party_read','public','order_reviews'),
   ('20260628110000','order_disputes_read','public','order_disputes'),
@@ -115,6 +114,8 @@ WITH f(version, name) AS (VALUES
   ('20260710140000','seller_accounts_read_own','public','seller_accounts'),
   ('20260716100000','live_sessions_select_with_women_only','public','live_sessions'),
   ('20260716130000','woz_requests_select_own','public','women_only_requests')
+-- Später ersetzte Policies stehen hier bewusst NICHT: Ihr Fehlen ist der
+-- Beleg, dass die Nachfolge-Migration gelaufen ist, kein Loch.
 ), i(version, name) AS (VALUES
   ('20260617220000','idx_posts_bunny_pending'),
   ('20260617220000','idx_posts_bunny_video_id'),
