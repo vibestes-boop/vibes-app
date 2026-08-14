@@ -13,8 +13,18 @@
 -- verloren gingen (siehe CLAUDE.md, buy_product-Guard).
 --
 -- ZUSTELLUNG: Ein INSERT in `notifications` löst über `trg_push_notification`
--- (Migration 20260410030000) automatisch `send-push-notification` aus, das
--- wiederum den Web-Push weiterreicht. Die Zeile ist also Quelle für alle Wege.
+-- automatisch den Push aus. Die Zeile ist also die Quelle für alle Wege.
+--
+-- ⚠️ KORREKTUR (nachgetragen): Der Satz lautete hier ursprünglich „…löst
+-- send-push-notification aus, das wiederum den Web-Push weiterreicht". Das
+-- beschreibt den Stand VOR dem 01.07.2026. Migration 20260701050000 hat den
+-- Trigger auf den tokenlosen SQL-Helper `send_push_to_user()` umgestellt, weil
+-- kein Service-Role-Token in der DB gesetzt war (die Edge Function antwortete
+-- mit 401). Seither leben die Push-TEXTE als CASE in
+-- `fn_send_push_on_notification`, und Web-Push für Nicht-DM-Typen ist tot.
+-- Folge dieses Irrtums: `auction_won` bekam zunächst nur in der Edge Function
+-- einen Text und kam als „Neue Aktivität auf Serlo" an. Behoben in
+-- 20260814190000 — dort steht die vollständige Erklärung.
 --
 -- ⚠️ Die Mobil-App Berkat hat noch KEIN Push (kein `expo-notifications`, keine
 -- Token-Registrierung), und `profiles.push_token` ist EINE Spalte, die sich Serlo

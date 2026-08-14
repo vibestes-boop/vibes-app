@@ -18,6 +18,7 @@ interface NotificationPayload {
     gift_name?: string;    // Gift-Name für Notification-Text
     gift_emoji?: string;   // Gift-Emoji für Notification-Text
     product_name?: string; // Produkt-Name für new_order
+    product_id?: string;   // Produkt-Bezug (product_saved, preorder_*) → /shop/[id]
   };
 }
 
@@ -345,6 +346,7 @@ Deno.serve(async (req: Request) => {
                 senderUsername: actorName,
                 postId: record.post_id,
                 sessionId: record.session_id,
+                productId: record.product_id,
               },
             }),
           },
@@ -399,6 +401,13 @@ function deriveWebUrl(
       return hasActorUsername ? `/u/${actorName}` : '/';
     case 'new_order':
       return '/studio/orders';
+    // Die einzigen beiden Typen, die product_id setzen (notify_on_save,
+    // announce_preorder_round). Ziel ist die Produktseite — identisch zum
+    // Native-Handler in lib/usePushNotifications.ts. Ohne product_id (Produkt
+    // gelöscht → Spalte wird NULL) bleibt die Startseite als Fallback.
+    case 'product_saved':
+    case 'preorder_round_open':
+      return record.product_id ? `/shop/${record.product_id}` : '/';
     // Berkat-Zuschlag. Bewusst die Startseite: Serlos Web hat keine Seite für
     // eine Berkat-Auktion, und ein Klick, der auf einer fremden Bestellliste
     // landet, ist schlechter als einer, der nichts verspricht. Sobald Berkat
