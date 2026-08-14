@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "97228552209",
+    "project_id": "kleinanzeigen-62bc9",
+    "storage_bucket": "kleinanzeigen-62bc9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:97228552209:android:a9dcbd12c7e779cbf399b0",
+        "android_client_info": {
+          "package_name": "app.berkat.market"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyANPEDUXVRnZnTALDQCT-2Ui1KpZrIPcx8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

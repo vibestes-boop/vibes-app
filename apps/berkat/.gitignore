@@ -8,3 +8,10 @@ android/
 .env
 .env.local
 expo-env.d.ts
+
+# Firebase-Dienstkonto-Schlüssel. ECHTES GEHEIMNIS — enthält private_key und
+# erlaubt Push im Namen des Projekts. Anders als google-services.json (die ist
+# öffentlich und steckt ohnehin im APK). Das Repo ist öffentlich; eine solche
+# Datei darf hier nie landen.
+*firebase-adminsdk*.json
+*service-account*.json
