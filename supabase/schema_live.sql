@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
--- \restrict GudvgWqHaWG8ZGRb1oKN27kVcwJufai9uiFTCuJm02TzE9k6iXpjmhZXtXZ5gGI
+-- \restrict mwwzMTInDipcV5HBJfHtrCEGJe9l7r88vsG6b0e8lpeZlKOBxqrpMK7CBxHI1dL
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -20607,13 +20607,6 @@ CREATE POLICY "msg_update" ON "public"."messages" FOR UPDATE USING (("auth"."uid
 ALTER TABLE "public"."muted_live_hosts" ENABLE ROW LEVEL SECURITY;
 
 --
--- Name: notifications notif_insert; Type: POLICY; Schema: public; Owner: postgres
---
-
-CREATE POLICY "notif_insert" ON "public"."notifications" FOR INSERT WITH CHECK (true);
-
-
---
 -- Name: notifications notif_insert_own_sender; Type: POLICY; Schema: public; Owner: postgres
 --
 
@@ -21486,5 +21479,5 @@ CREATE POLICY "woz_requests_select_own" ON "public"."women_only_requests" FOR SE
 -- PostgreSQL database dump complete
 --
 
--- \unrestrict GudvgWqHaWG8ZGRb1oKN27kVcwJufai9uiFTCuJm02TzE9k6iXpjmhZXtXZ5gGI
+-- \unrestrict mwwzMTInDipcV5HBJfHtrCEGJe9l7r88vsG6b0e8lpeZlKOBxqrpMK7CBxHI1dL
 
