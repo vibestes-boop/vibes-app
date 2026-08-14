@@ -311,7 +311,9 @@ async function handleProductOrderPaid(admin: SupabaseClient, obj: unknown) {
     })
     .eq('id', orderId)
     .eq('status', 'payment_requested')
-    .select('id, buyer_id, seller_id, product_id, quantity');
+    // `cart_id` unterscheidet die Herkunft: gesetzt = Berkat-Sammelkorb,
+    // NULL = Serlo-Produktkauf. Dieselbe Weiche wie in create-checkout-session.
+    .select('id, buyer_id, seller_id, product_id, quantity, cart_id');
 
   if (claimErr) {
     console.error('[stripe-webhook] product claim failed', claimErr);
@@ -333,12 +335,19 @@ async function handleProductOrderPaid(admin: SupabaseClient, obj: unknown) {
     }
   }
 
-  // Verkäufer informieren: bezahlt → bitte versenden
+  // Verkäufer informieren: bezahlt → bitte versenden.
+  //
+  // `app` entscheidet, auf welchem Gerät die Meldung landet. Ohne die Spalte
+  // greift der Default 'serlo' — bei einem Berkat-Verkauf also die falsche App.
+  // Heute rettet das noch der Rückfall in send_push_to_user (kein Gerät der
+  // Ziel-App → alle Geräte des Nutzers), aber sobald ein Verkäufer BEIDE Apps
+  // installiert hat, käme die Berkat-Verkaufsmeldung in Serlo an.
   await admin.from('notifications').insert({
     recipient_id: row.seller_id,
     sender_id: row.buyer_id,
     type: 'order_paid',
     comment_text: 'Eine Bestellung wurde bezahlt — bitte versenden 📦',
+    app: row.cart_id ? 'berkat' : 'serlo',
   });
 }
 
