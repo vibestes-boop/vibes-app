@@ -22,6 +22,7 @@ Bookmark,
 Check,
 CheckCheck,
 CreditCard,
+Gavel,
 Gem,
 Heart,
 LifeBuoy,
@@ -86,6 +87,13 @@ function actionLabel(n: AppNotification, t: TFn): string {
       return t('notif.productSaved');
     case "preorder_round_open":
       return n.comment_text ?? t('notif.roundOpen');
+    // Berkat-Zuschlag. Eigener Fall statt Sammel-Zweig unten: Ein Gewinn ist
+    // kein „Update zu deiner Bestellung", sondern der Freude-Höhepunkt.
+    // comment_text trägt „Artikel · 12,50 €" aus dem Trigger.
+    case "auction_won":
+      return n.comment_text
+        ? t('notif.auctionWon', { text: n.comment_text })
+        : t('notif.auctionWonPlain');
     case "new_order":
       return n.comment_text
         ? t('notif.boughtQuoted', { text: n.comment_text })
@@ -159,6 +167,7 @@ function TypeIcon({ type }: { type: AppNotification["type"] }) {
       live:                     { Icon: Radio,         bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
       live_invite:              { Icon: Radio,         bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
       gift:                     { Icon: Gem,           bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
+      auction_won:              { Icon: Gavel,         bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
       new_order:                { Icon: ShoppingBag,   bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
       preorder_interest:        { Icon: ShoppingBag,   bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
       preorder_round_open:      { Icon: ShoppingBag,   bg: "rgba(255,255,255,0.1)",  color: "rgba(255,255,255,0.75)" },
@@ -278,6 +287,12 @@ function NotifCard({ item }: { item: AppNotification }) {
         },
       });
     }
+    // `auction_won` fällt hier bewusst durch: Der Zuschlag stammt aus Berkat,
+    // und Serlo hat keinen Bildschirm dafür. Antippen markiert nur als gelesen.
+    // NICHT an die session_id-Verzweigung oben hängen — die Live-Sitzung liegt
+    // zwar in derselben Tabelle, würde aber eine Berkat-Show in Serlos
+    // Zuschauer-Ansicht öffnen. Sobald Berkat eigene Zustellung hat, gehört der
+    // Sprung dorthin und nicht hierher.
   };
 
   const senderName = item.sender?.username

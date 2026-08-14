@@ -70,3 +70,5 @@ apps/remotion/out/*
 # Code backups (erstellt via cp *.backup-YYYYMMDD_HHMMSS)
 *.backup-*
 _backups/
+*.pt
+*.pt

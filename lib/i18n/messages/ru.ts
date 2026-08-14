@@ -60,6 +60,8 @@ export const ru: DeepPartial<Messages> = {
     roundOpen: 'Открыт коллективный заказ — успей забрать 🌸',
     boughtQuoted: 'заказал(а): {text}',
     bought: 'купил(а) товар в твоём магазине 🛍',
+    auctionWon: 'Лот твой! Ты выиграл(а) 🎉 {text}',
+    auctionWonPlain: 'Ты выиграл(а) аукцион 🎉',
     orderUpdate: 'Обновление по твоему заказу',
     supportReplyQuoted: 'ответил(а) на твой запрос: {text}',
     supportReply: 'ответил(а) на твой запрос в поддержку 💬',

@@ -53,6 +53,7 @@ Deno.serve(async (req: Request) => {
       live_invite:               'live',
       scheduled_live_reminder:   'live',
       gift:                      'gifts',
+      auction_won:               'orders',
       new_order:                 'orders',
       preorder_interest:         'orders',
       preorder_round_open:       'orders',
@@ -126,6 +127,12 @@ Deno.serve(async (req: Request) => {
           ?? (record.product_name
             ? `«${record.product_name}» сейчас собирают — успей забрать!`
             : 'Открыт коллективный заказ — успей забрать!'),
+      },
+      // Freude-Höhepunkt (Design-Gesetz 1): der Titel feiert, der Text nennt
+      // Artikel und Preis aus dem Trigger.
+      auction_won: {
+        title: '🎉 Лот твой — ты выиграл(а)!',
+        body: record.comment_text ?? 'Товар уже в твоей корзине',
       },
       order_payment_requested: {
         title: '💶 Пора оплатить',
@@ -204,6 +211,12 @@ Deno.serve(async (req: Request) => {
           ?? (record.product_name
             ? `„${record.product_name}" wird gerade gesammelt — jetzt sichern!`
             : 'Eine Sammelbestellung ist offen — jetzt sichern!'),
+      },
+      // Freude-Höhepunkt (Design-Gesetz 1): der Titel feiert, der Text nennt
+      // Artikel und Preis aus dem Trigger.
+      auction_won: {
+        title: '🎉 Zuschlag — du hast gewonnen!',
+        body: record.comment_text ?? 'Dein Artikel liegt im Sammelkorb',
       },
       order_payment_requested: {
         title: '💶 Zeit zu bezahlen',
@@ -386,6 +399,12 @@ function deriveWebUrl(
       return hasActorUsername ? `/u/${actorName}` : '/';
     case 'new_order':
       return '/studio/orders';
+    // Berkat-Zuschlag. Bewusst die Startseite: Serlos Web hat keine Seite für
+    // eine Berkat-Auktion, und ein Klick, der auf einer fremden Bestellliste
+    // landet, ist schlechter als einer, der nichts verspricht. Sobald Berkat
+    // eigene Zustellung hat, gehört hier die Berkat-Adresse hin.
+    case 'auction_won':
+      return '/';
     // Käufer-seitige Bestell-Pings → eigene Bestellungen
     case 'order_payment_requested':
     case 'order_shipped':
@@ -426,7 +445,10 @@ function deriveWebTag(record: NotificationPayload['record']): string {
     case 'new_order':
       return `new_order:${record.post_id ?? Date.now()}`;
     // Bestell-Pings: jede Zustands-Änderung ist eigenständig → keine Sammel-
-    // Gruppierung, eindeutig pro Notification-Row.
+    // Gruppierung, eindeutig pro Notification-Row. Ein Zuschlag erst recht:
+    // Wer drei Artikel in einer Show gewinnt, soll drei Meldungen sehen, nicht
+    // eine, die die anderen zwei verdeckt.
+    case 'auction_won':
     case 'order_payment_requested':
     case 'order_paid':
     case 'order_shipped':

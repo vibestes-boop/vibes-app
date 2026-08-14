@@ -58,6 +58,8 @@ export const en: DeepPartial<Messages> = {
     roundOpen: 'A group order is open — grab yours now 🌸',
     boughtQuoted: 'ordered: {text}',
     bought: 'bought a product in your shop 🛍',
+    auctionWon: 'Sold! You won 🎉 {text}',
+    auctionWonPlain: 'You won an auction 🎉',
     orderUpdate: 'Update on your order',
     supportReplyQuoted: 'replied to your request: {text}',
     supportReply: 'replied to your support request 💬',

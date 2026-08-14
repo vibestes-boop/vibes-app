@@ -58,6 +58,8 @@ export const de = {
     roundOpen: 'Eine Sammelbestellung ist offen — jetzt sichern 🌸',
     boughtQuoted: 'hat bestellt: {text}',
     bought: 'hat ein Produkt in deinem Shop gekauft 🛍',
+    auctionWon: 'Zuschlag! Du hast gewonnen 🎉 {text}',
+    auctionWonPlain: 'Du hast eine Auktion gewonnen 🎉',
     orderUpdate: 'Update zu deiner Bestellung',
     supportReplyQuoted: 'hat auf deine Anfrage geantwortet: {text}',
     supportReply: 'hat auf deine Support-Anfrage geantwortet 💬',

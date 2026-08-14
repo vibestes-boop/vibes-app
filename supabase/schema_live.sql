@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
--- \restrict G7mQ28LtuNWuMePa6ahRvcgEPkPUoNFZgn8KGFl6auK87xi4RMNoZCzCc09nNZu
+-- \restrict cpFYejaFxqgTezpH5mo38WAdXgsn8I9pGe03ADPY7CQE49u8lCd2NiIaUfTtCTm
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -8246,6 +8246,37 @@ $_$;
 ALTER FUNCTION "public"."moderation_health_snapshot"() OWNER TO "postgres";
 
 --
+-- Name: notify_auction_won(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."notify_auction_won"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  v_cents integer := COALESCE(NEW.current_bid_cents, 0);
+BEGIN
+  IF NEW.status <> 'sold'
+     OR OLD.status IS NOT DISTINCT FROM 'sold'
+     OR NEW.winner_id IS NULL
+     OR NEW.winner_id = NEW.seller_id THEN
+    RETURN NEW;
+  END IF;
+
+  INSERT INTO public.notifications
+    (recipient_id, sender_id, type, session_id, product_name, comment_text)
+  VALUES (
+    NEW.winner_id, NEW.seller_id, 'auction_won', NEW.session_id, NEW.title,
+    format('%s · %s,%s €', NEW.title, v_cents / 100, lpad((v_cents % 100)::text, 2, '0'))
+  );
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."notify_auction_won"() OWNER TO "postgres";
+
+--
 -- Name: notify_followers_on_go_live(); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
@@ -8664,6 +8695,39 @@ $$;
 
 
 ALTER FUNCTION "public"."notify_on_like_to_table"() OWNER TO "postgres";
+
+--
+-- Name: notify_order_shipped(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."notify_order_shipped"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+BEGIN
+  IF NEW.status <> 'shipped'
+     OR OLD.status IS NOT DISTINCT FROM 'shipped'
+     OR NEW.buyer_id IS NULL
+     OR NEW.cart_id IS NULL THEN
+    RETURN NEW;
+  END IF;
+
+  INSERT INTO public.notifications
+    (recipient_id, sender_id, type, product_name, comment_text)
+  VALUES (
+    NEW.buyer_id, NEW.seller_id, 'order_shipped', NEW.title,
+    CASE
+      WHEN NEW.tracking_number IS NOT NULL AND btrim(NEW.tracking_number) <> ''
+        THEN format('%s ist unterwegs · %s', COALESCE(NEW.title, 'Dein Paket'), NEW.tracking_number)
+      ELSE format('%s ist unterwegs', COALESCE(NEW.title, 'Dein Paket'))
+    END
+  );
+  RETURN NEW;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."notify_order_shipped"() OWNER TO "postgres";
 
 --
 -- Name: notify_preorder_buyers("uuid", "text"); Type: FUNCTION; Schema: public; Owner: postgres
@@ -13834,7 +13898,7 @@ CREATE TABLE IF NOT EXISTS "public"."notifications" (
     "gift_emoji" "text",
     "product_name" "text",
     "product_id" "uuid",
-    CONSTRAINT "notifications_type_check" CHECK (("type" = ANY (ARRAY['order_payment_reminder'::"text", 'scheduled_live_reminder'::"text", 'preorder_interest'::"text", 'support_new'::"text", 'order_review'::"text", 'order_address_updated'::"text", 'order_dispute'::"text", 'new_order'::"text", 'live_invite'::"text", 'order_payment_requested'::"text", 'like'::"text", 'comment'::"text", 'preorder_round_open'::"text", 'guild'::"text", 'order_paid'::"text", 'support_reply'::"text", 'follow_request'::"text", 'follow_request_accepted'::"text", 'gift'::"text", 'repost'::"text", 'dm'::"text", 'order_shipped'::"text", 'order_cancelled'::"text", 'story_reaction'::"text", 'product_saved'::"text", 'follow'::"text", 'mention'::"text", 'comment_like'::"text", 'live'::"text"])))
+    CONSTRAINT "notifications_type_check" CHECK (("type" = ANY (ARRAY['auction_won'::"text", 'order_payment_reminder'::"text", 'scheduled_live_reminder'::"text", 'preorder_interest'::"text", 'support_new'::"text", 'order_review'::"text", 'order_address_updated'::"text", 'order_dispute'::"text", 'new_order'::"text", 'live_invite'::"text", 'order_payment_requested'::"text", 'like'::"text", 'comment'::"text", 'preorder_round_open'::"text", 'guild'::"text", 'order_paid'::"text", 'support_reply'::"text", 'follow_request'::"text", 'follow_request_accepted'::"text", 'gift'::"text", 'repost'::"text", 'dm'::"text", 'order_shipped'::"text", 'order_cancelled'::"text", 'story_reaction'::"text", 'product_saved'::"text", 'follow'::"text", 'mention'::"text", 'comment_like'::"text", 'live'::"text"])))
 );
 
 
@@ -17488,6 +17552,13 @@ CREATE OR REPLACE TRIGGER "trg_message_not_blocked" BEFORE INSERT ON "public"."m
 
 
 --
+-- Name: live_auctions trg_notify_auction_won; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE TRIGGER "trg_notify_auction_won" AFTER UPDATE OF "status" ON "public"."live_auctions" FOR EACH ROW EXECUTE FUNCTION "public"."notify_auction_won"();
+
+
+--
 -- Name: live_sessions trg_notify_followers_on_go_live; Type: TRIGGER; Schema: public; Owner: postgres
 --
 
@@ -17499,6 +17570,13 @@ CREATE OR REPLACE TRIGGER "trg_notify_followers_on_go_live" AFTER INSERT ON "pub
 --
 
 CREATE OR REPLACE TRIGGER "trg_notify_on_gift" AFTER INSERT ON "public"."gift_transactions" FOR EACH ROW EXECUTE FUNCTION "public"."notify_on_gift"();
+
+
+--
+-- Name: product_orders trg_notify_order_shipped; Type: TRIGGER; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE TRIGGER "trg_notify_order_shipped" AFTER UPDATE OF "status" ON "public"."product_orders" FOR EACH ROW EXECUTE FUNCTION "public"."notify_order_shipped"();
 
 
 --
@@ -21262,5 +21340,5 @@ CREATE POLICY "woz_requests_select_own" ON "public"."women_only_requests" FOR SE
 -- PostgreSQL database dump complete
 --
 
--- \unrestrict G7mQ28LtuNWuMePa6ahRvcgEPkPUoNFZgn8KGFl6auK87xi4RMNoZCzCc09nNZu
+-- \unrestrict cpFYejaFxqgTezpH5mo38WAdXgsn8I9pGe03ADPY7CQE49u8lCd2NiIaUfTtCTm
 
