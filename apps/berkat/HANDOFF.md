@@ -716,8 +716,33 @@ dem Simulator und der Zuschlag-Push hat kein Ziel.
 1. **Eigene Benachrichtigungsliste in Berkat** — es gibt keine. Der Konto-Tab zeigt Körbe samt Frist,
    und der Gewinner sieht im Raum einen `won`-Zustand mit Erfolgs-Haptik, aber keine Historie. Wer
    einen Push wegwischt, findet ihn nirgends wieder.
-2. **Android-Build.** Dort wartet dieselbe Berechtigungs-Hürde wie eben bei iOS, nur über
-   Firebase (`google-services.json` + FCM-Schlüssel in EAS).
+2. **Android-Build — vorbereitet, wartet auf Firebase.** Für Android wurde noch nie gebaut.
+   `app.json` ist fertig konfiguriert (Berechtigungen inklusive `POST_NOTIFICATIONS`,
+   `googleServicesFile` gesetzt), es fehlt allein die Datei.
+
+   Beim Vergleich mit Serlo fiel dabei ein zweiter Mangel auf, der nichts mit Push zu tun hat:
+   Berkat deklarierte nur `RECORD_AUDIO`, **keine `CAMERA`-Berechtigung** — für eine
+   Live-Streaming-App auf Android wäre das schon ohne Benachrichtigungen ein Problem gewesen.
+   Ist mit ergänzt.
+
+   **Was du in Firebase tun musst** (geht nur mit deinem Google-Konto):
+
+   1. [console.firebase.google.com](https://console.firebase.google.com) → Projekt `serlo-199be`
+      öffnen (oder ein eigenes für Berkat anlegen — beides geht, ein gemeinsames Projekt ist
+      einfacher zu verwalten)
+   2. *Android-App hinzufügen* mit dem Paketnamen **`app.berkat.market`**
+   3. `google-services.json` herunterladen und nach `apps/berkat/` legen
+   4. In den Projekteinstellungen → *Cloud Messaging* den **FCM-V1-Dienstkontoschlüssel** als
+      JSON erzeugen und bei EAS hinterlegen:
+      `eas credentials --platform android` → *Push Notifications: Manage your FCM V1 service account key*
+
+   Danach baut `eas build --profile development --platform android`. Der Keystore wird von EAS
+   beim ersten Lauf selbst erzeugt, dafür braucht es nichts.
+
+   ⚠️ Ohne Schritt 3 scheitert der Build sofort mit „google-services.json not found" — die Datei
+   ist in `app.json` bereits referenziert. Wer vorher einen Android-Build **ohne** Push will,
+   streicht dort die Zeile `googleServicesFile`; die App läuft dann, nur `getExpoPushTokenAsync`
+   schlägt fehl und `pushAvailable` bleibt praktisch wirkungslos.
 3. **Web-Push hat null Abonnenten.** Der Weg ist seit 20260814220000 wieder da und VAPID-Schlüssel
    sind gesetzt, aber `web_push_subscriptions` ist leer — es hat schlicht noch nie jemand im Browser
    die Berechtigung erteilt. Erst dann lässt sich prüfen, ob wirklich etwas ankommt.
