@@ -110,7 +110,27 @@ export async function exportMyData(): Promise<ActionResult<UserDataExport>> {
     savedProducts,
   ] = await Promise.all([
     safeSelect('profile', () =>
-      supabase.from('profiles').select('*').eq('id', uid).maybeSingle(),
+      supabase
+        .from('profiles')
+        // Ausdrückliche Liste statt `*`: Seit 20260814240000 hat `authenticated`
+        // kein SELECT mehr auf push_token, expo_push_token, explore_vibe,
+        // brain_vibe, consistency_score und referred_by — jene Spalten waren ohne
+        // Anmeldung abrufbar und trugen echte Expo-Push-Tokens. Postgres verlangt
+        // bei `*` das Recht auf JEDE Spalte, der Export würde sonst scheitern.
+        //
+        // Die entzogenen Spalten sind keine Angaben des Nutzers, sondern
+        // Geräte-Kennungen und Algorithmus-Zwischenstände. Wer sie im Export
+        // braucht, holt sie serverseitig mit service_role dazu.
+        .select(
+          'id, username, display_name, bio, avatar_url, website, guild_id, created_at, ' +
+            'onboarding_complete, preferred_tags, is_private, voice_sample_url, is_verified, ' +
+            'teip, gender, women_only_verified, verification_level, is_admin, is_creator, ' +
+            'is_creator_ops, notif_prefs, is_banned, is_restricted, restricted_until, ' +
+            'is_shadow_banned, is_moderator, is_operator, country_code, country_name, city, ' +
+            'region_name, location_consent_at, nav_slot_2, nav_slot_4, locale',
+        )
+        .eq('id', uid)
+        .maybeSingle(),
     ),
     safeSelect('posts', () =>
       supabase.from('posts').select('*').eq('author_id', uid),
