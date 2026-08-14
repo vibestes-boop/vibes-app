@@ -208,7 +208,7 @@ export default function SellScreen() {
         <BerkatMark size={40} color={ui.brand} />
         <Text style={styles.gateTitle}>Erst anmelden</Text>
         <Text style={styles.gateBody}>
-          Zum Verkaufen brauchst du dein Konto — dasselbe wie bei Serlo.
+          Zum Verkaufen brauchst du ein Konto. Deins von Serlo gilt hier auch.
         </Text>
         <Pressable style={styles.primaryButton} onPress={() => router.push('/login')}>
           <Text style={styles.primaryButtonText}>Anmelden</Text>

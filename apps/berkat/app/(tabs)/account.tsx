@@ -117,7 +117,8 @@ export default function AccountScreen() {
         <BerkatMark size={40} color={ui.brand} />
         <Text style={styles.gateTitle}>Noch nicht angemeldet</Text>
         <Text style={styles.gateBody}>
-          Mit deinem Serlo-Konto kannst du mitbieten, folgen und verkaufen.
+          Mit einem Konto kannst du mitbieten, folgen und verkaufen. Deins von
+          Serlo gilt hier auch.
         </Text>
         <Pressable style={styles.primaryButton} onPress={() => router.push('/login')}>
           <Text style={styles.primaryButtonText}>Anmelden</Text>
