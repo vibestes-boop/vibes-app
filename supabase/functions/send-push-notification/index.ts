@@ -19,18 +19,79 @@ interface NotificationPayload {
     gift_emoji?: string;   // Gift-Emoji für Notification-Text
     product_name?: string; // Produkt-Name für new_order
     product_id?: string;   // Produkt-Bezug (product_saved, preorder_*) → /shop/[id]
+    app?: string;          // Ziel-App: 'serlo' (Default) oder 'berkat'
   };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Zweite Aufruf-Form: DIREKTVERSAND.
+//
+// Der Aufrufer liefert den fertigen Text und will keine notifications-Zeile —
+// es gibt also keinen Typ, aus dem sich etwas ableiten ließe. So rufen
+// `publish-scheduled-posts` („Dein geplanter Post ist live") und der Trigger
+// `notify_scheduled_post_failure` („Post fehlgeschlagen") auf.
+//
+// Diese Form wurde NIE unterstützt: `const { record } = payload` ergab
+// undefined, der nächste Zugriff warf, der catch lieferte 500 — und beide
+// Aufrufer protokollieren nur („best effort"). Die Meldungen gingen lautlos
+// verloren, seit es sie gibt.
+//
+// `userId` in CamelCase ist Absicht: notify_scheduled_post_failure schickt es so.
+// ─────────────────────────────────────────────────────────────────────────────
+interface DirectPushPayload {
+  user_id?: string;
+  userId?: string;
+  title?: string;
+  body?: string;
+  data?: Record<string, unknown>;
+  app?: string;
 }
 
 Deno.serve(async (req: Request) => {
   try {
-    const payload: NotificationPayload = await req.json();
-    const { record } = payload;
+    const payload = (await req.json()) as Partial<NotificationPayload> & DirectPushPayload;
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
     );
+
+    // ── Direktversand (siehe DirectPushPayload oben) ─────────────────────────
+    // Bewusst über die DB-Funktion `send_push_to_user` statt über eigenen
+    // Expo-Code: Die kennt bereits Mehrgeräte-Versand, App-Filter und das
+    // Aufräumen abgelaufener Tokens. Zwei Wege zum selben Ziel würden sofort
+    // auseinanderlaufen.
+    const directUserId = payload.user_id ?? payload.userId;
+    if (!payload.record && directUserId) {
+      if (!payload.title || !payload.body) {
+        return new Response(
+          JSON.stringify({ error: 'missing_fields', need: ['title', 'body'] }),
+          { status: 400 },
+        );
+      }
+      const { error } = await supabase.rpc('send_push_to_user', {
+        p_user_id: directUserId,
+        p_title:   payload.title,
+        p_body:    payload.body,
+        p_data:    payload.data ?? {},
+        // Beide bekannten Aufrufer sind Serlo-Funktionen. Wer aus Berkat ruft,
+        // setzt `app` selbst — sonst greift der Rückfall im Helper.
+        p_app:     payload.app ?? 'serlo',
+      });
+      if (error) {
+        console.error('[push] direct send failed:', error.message);
+        return new Response(JSON.stringify({ error: error.message }), { status: 500 });
+      }
+      return new Response(JSON.stringify({ ok: true, mode: 'direct' }), { status: 200 });
+    }
+
+    if (!payload.record) {
+      return new Response(
+        JSON.stringify({ error: 'missing_payload', need: ['record', 'oder user_id+title+body'] }),
+        { status: 400 },
+      );
+    }
+    const record = payload.record;
 
     // Push-Token + Notification-Prefs des Empfängers aus profiles holen
     const { data: recipient } = await supabase

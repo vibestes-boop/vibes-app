@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
--- \restrict SUgJW9ww1wajlJ82IkMQaXGj4KmySARNNt8El9ellPPQahYfwGD2aC4u25vv6cV
+-- \restrict gf26gkQhJL3bsIhblDyKMmTk5KAVWMZtVvbKmxlRbahok4BER0asdKBpm0pdgzq
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -8835,52 +8835,44 @@ ALTER FUNCTION "public"."notify_preorder_buyers"("p_product_id" "uuid", "p_messa
 
 CREATE OR REPLACE FUNCTION "public"."notify_scheduled_post_failure"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
+    SET "search_path" TO 'public', 'pg_temp'
     AS $$
 DECLARE
-  v_project_url      TEXT := current_setting('app.settings.project_url',      TRUE);
-  v_service_role_key TEXT := current_setting('app.settings.service_role_key', TRUE);
-  v_caption          TEXT;
-  v_body             TEXT;
+  v_caption TEXT;
+  v_body    TEXT;
 BEGIN
-  -- Nur feuern wenn status auf 'failed' wechselt (nicht bei anderem Wechsel)
+  -- Nur feuern, wenn der Status auf 'failed' wechselt — nicht bei jedem UPDATE.
   IF NEW.status = 'failed' AND (OLD.status IS NULL OR OLD.status <> 'failed') THEN
 
-    -- Kurze Beschreibung des fehlgeschlagenen Posts
-    v_caption := COALESCE(
-      LEFT(NEW.caption, 40),
-      'Geplanter Post'
-    );
+    v_caption := COALESCE(LEFT(NEW.caption, 40), 'Geplanter Post');
     IF LENGTH(NEW.caption) > 40 THEN
       v_caption := v_caption || '…';
     END IF;
 
-    -- Benachrichtigungs-Text
     v_body := format(
       '"%s" konnte nicht veröffentlicht werden. Öffne Creator Studio, um es erneut zu planen.',
       v_caption
     );
 
-    -- pg_net verfügbar und Config gesetzt?
-    IF v_project_url IS NOT NULL AND v_service_role_key IS NOT NULL THEN
-      PERFORM net.http_post(
-        url     := v_project_url || '/functions/v1/send-push-notification',
-        headers := jsonb_build_object(
-          'Content-Type',  'application/json',
-          'Authorization', 'Bearer ' || v_service_role_key
+    -- Ein Push-Fehler darf das Markieren als 'failed' NIEMALS verhindern, sonst
+    -- bliebe der Post in 'pending' hängen und der Cron versuchte es ewig weiter.
+    -- Der alte HTTP-Weg war fire-and-forget und damit implizit geschützt; ein
+    -- Direktaufruf ist es nicht, deshalb ausdrücklich.
+    BEGIN
+      PERFORM public.send_push_to_user(
+        p_user_id := NEW.author_id,
+        p_title   := '⚠️ Post fehlgeschlagen',
+        p_body    := v_body,
+        p_data    := jsonb_build_object(
+          'type',            'scheduled_post_failed',
+          'scheduledPostId', NEW.id::text
         ),
-        body    := jsonb_build_object(
-          'userId', NEW.author_id,
-          'title',  '⚠️ Post fehlgeschlagen',
-          'body',   v_body,
-          'data',   jsonb_build_object(
-            'type',            'scheduled_post_failed',
-            'scheduledPostId', NEW.id::text
-          )
-        )
+        -- Creator Studio ist eine Serlo-Funktion.
+        p_app     := 'serlo'
       );
-    END IF;
-
+    EXCEPTION WHEN OTHERS THEN
+      NULL;
+    END;
   END IF;
 
   RETURN NEW;
@@ -21467,5 +21459,5 @@ CREATE POLICY "woz_requests_select_own" ON "public"."women_only_requests" FOR SE
 -- PostgreSQL database dump complete
 --
 
--- \unrestrict SUgJW9ww1wajlJ82IkMQaXGj4KmySARNNt8El9ellPPQahYfwGD2aC4u25vv6cV
+-- \unrestrict gf26gkQhJL3bsIhblDyKMmTk5KAVWMZtVvbKmxlRbahok4BER0asdKBpm0pdgzq
 
