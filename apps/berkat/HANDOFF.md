@@ -671,36 +671,40 @@ Nebenbefund, entkräftet: Mehrere Geräte funktionieren längst. `send_push_to_u
 `push_tokens`, nicht die Einzelspalte `profiles.push_token` — nur die (nicht mehr laufende) Edge
 Function las die Spalte.
 
-### Push in Berkat: gebaut, aber der Build braucht eine Apple-Freigabe
+### Push in Berkat — steht seit 14.08.2026
 
 Die Registrierung liegt in `lib/usePush.ts` und hängt im Wurzel-Layout. Sie schreibt **nur** in
 `push_tokens` mit `app: 'berkat'` und fasst `profiles.push_token` bewusst nicht an — die Einzelspalte
-kann nur einen Token halten, Berkat würde sonst den von Serlo verdrängen. `tsc` und `expo export`
-laufen durch.
+kann nur einen Token halten, Berkat würde sonst den von Serlo verdrängen.
 
-**Der EAS-Build scheitert trotzdem**, und zwar reproduzierbar nach ~80 Sekunden:
+Belegt: Nach dem Build hat sich ein Gerät registriert (`berkat · ios`, Konto `amir32`), und der
+Filter im Zustellhelfer wählt für eine Berkat-Meldung genau dieses eine Gerät aus.
+
+**Der erste Build-Versuch scheiterte** — festhalten, weil es bei Android genauso kommen wird:
 
 ```
 XCODE_BUILD_ERROR
 Provisioning profile "*[expo] com.berkat.app AdHoc …" doesn't support the Push Notifications capability.
-Provisioning profile … doesn't include the aps-environment entitlement.
+Entitlements file defines the value "aps-environment" which is not registered for profile …
 ```
 
-Das Profil stammt aus der Zeit, als Berkat kein Push hatte. `expo-notifications` verlangt die
-Berechtigung auf der App-ID, und die fehlt.
+Das Profil stammte aus der Zeit vor Push. Der Code war korrekt — das `expo-notifications`-Plugin
+trägt `aps-environment` sauber ein, nur kannte die App-ID die Berechtigung nicht. **Nicht
+nicht-interaktiv behebbar:** Nötig sind Push Notifications auf der App-ID, ein neues Profil und ein
+APNs-Schlüssel. EAS erledigt alle drei selbst, aber nur im interaktiven Lauf mit Apple-Anmeldung und
+Zwei-Faktor — also `eas build --profile development --platform ios` **ohne** `--non-interactive`.
 
-**Das lässt sich nicht nicht-interaktiv beheben.** Nötig sind drei Dinge im Apple Developer Portal:
-Push Notifications auf der App-ID `com.berkat.app` aktivieren, das Provisioning-Profil neu erzeugen,
-und einen APNs-Schlüssel anlegen (ohne den kann Expo gar nichts zustellen). EAS erledigt alle drei
-selbst — aber nur im **interaktiven** Lauf, und dafür braucht es eine Apple-Anmeldung samt
-Zwei-Faktor-Bestätigung:
+**Falle beim Verbinden:** Läuft schon ein Metro auf 8081, weicht ein zweiter Start stillschweigend
+auf **8082** aus. Der Dev-Client meldet dann nur „failed to connect" auf die Adresse, die man von
+Hand eingetippt hat. Vor dem Tippen prüfen:
 
 ```bash
-cd /Users/zaurhatuev/vibes-app/apps/berkat && eas build --profile development --platform ios
+lsof -nP -iTCP -sTCP:LISTEN | grep 808
 ```
 
-Ohne `--non-interactive`. EAS fragt dann nach der Apple-ID, erkennt die fehlende Berechtigung und
-bietet an, sie einzurichten. Danach läuft der Build durch.
+Ebenfalls harmlos und verwirrend: Wird die Metro-Adresse in einem **Browser** geöffnet, versucht
+Metro ein Web-Bundle und scheitert an `react-native-web` — das hat Berkat gar nicht. Die roten
+Zeilen im Terminal bedeuten dann nichts.
 
 **Beim Testen beachten:** Push kommt nur auf einem echten Gerät an — der Simulator hat keine
 Push-Fähigkeit, die Registrierung überspringt ihn per `Device.isDevice`. Für den Durchlauf heißt das
@@ -709,11 +713,18 @@ dem Simulator und der Zuschlag-Push hat kein Ziel.
 
 ### Was noch fehlt
 
-1. **Der Build oben** — Apple-Freigabe, siehe eben.
-2. **Zahlungserinnerung** — `auction_carts.closes_at` trägt die 24-Stunden-Frist, der Typ
-   `order_payment_reminder` existiert in allen Oberflächen. Es fehlt ein pg_cron-Lauf, der offene
-   Körbe kurz vor Ablauf einsammelt und je Korb **genau einmal** pingt.
-3. **Eigene Benachrichtigungsliste in Berkat** — heute gibt es keine. Der Konto-Tab zeigt zwar Körbe
-   samt Frist, und der Gewinner sieht im Raum einen `won`-Zustand mit Erfolgs-Haptik, aber keine
-   Historie.
-4. **Web-Push wiederbeleben** — siehe oben, betrifft beide Apps.
+1. **Der Durchlauf mit Push.** Die Kette ist gebaut und jedes Glied einzeln belegt, aber noch nie am
+   Stück gelaufen: gewinnen → Meldung aufs iPhone. Das ist der nächste Test, und er braucht nur zwei
+   Konten und eine Show.
+2. **Eigene Benachrichtigungsliste in Berkat** — es gibt keine. Der Konto-Tab zeigt Körbe samt Frist,
+   und der Gewinner sieht im Raum einen `won`-Zustand mit Erfolgs-Haptik, aber keine Historie. Wer
+   einen Push wegwischt, findet ihn nirgends wieder.
+3. **Android-Build.** Dort wartet dieselbe Berechtigungs-Hürde wie eben bei iOS, nur über
+   Firebase (`google-services.json` + FCM-Schlüssel in EAS).
+4. **Web-Push hat null Abonnenten.** Der Weg ist seit 20260814220000 wieder da und VAPID-Schlüssel
+   sind gesetzt, aber `web_push_subscriptions` ist leer — es hat schlicht noch nie jemand im Browser
+   die Berechtigung erteilt. Erst dann lässt sich prüfen, ob wirklich etwas ankommt.
+
+**Erledigt und hier nur zur Einordnung:** Zuschlag, Versand und Zahlungserinnerung entstehen
+serverseitig (Trigger bzw. pg_cron alle 15 Minuten), die Texte stehen in allen Oberflächen, die
+App-Trennung beim Versand steht, und Berkat registriert seinen Token.
