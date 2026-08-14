@@ -157,7 +157,17 @@ export async function exportMyData(): Promise<ActionResult<UserDataExport>> {
       supabase.from('guild_memberships').select('*').eq('user_id', uid),
     ),
     safeSelect('live_sessions', () =>
-      supabase.from('live_sessions').select('*').eq('host_id', uid),
+      supabase
+        .from('live_sessions')
+        // Ausdrückliche Liste statt `*`: Seit 20260814260000 hat
+        // `authenticated` kein SELECT mehr auf ingress_url,
+        // ingress_stream_key, ingress_id und ingress_type — das waren die
+        // vollständigen OBS-Zugangsdaten und ohne Anmeldung abrufbar.
+        // Postgres verlangt bei `*` das Recht auf JEDE Spalte.
+        .select(
+          'id, host_id, title, status, viewer_count, peak_viewers, room_name, started_at, ended_at, like_count, comment_count, pinned_comment, replay_url, is_replayable, replay_views, thumbnail_url, category, moderation_enabled, moderation_words, goal_type, goal_target, goal_current, goal_title, goal_reached, allow_comments, allow_gifts, women_only, followers_only_chat, slow_mode_seconds, updated_at, recording_enabled, recording_id, shop_enabled, followers_only',
+        )
+        .eq('host_id', uid),
     ),
     safeSelect('coin_purchases', () =>
       supabase.from('coin_purchases').select('*').eq('user_id', uid),
