@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
--- \restrict mwwzMTInDipcV5HBJfHtrCEGJe9l7r88vsG6b0e8lpeZlKOBxqrpMK7CBxHI1dL
+-- \restrict S6fBlTeeVykt6nDsVzVfNGYQ3ebSvjPL3HodbT5ljWkCaOs48cu3treVYxORNbp
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -19692,6 +19692,18 @@ CREATE POLICY "ai_image_gen_select_own" ON "public"."ai_image_generations" FOR S
 ALTER TABLE "public"."ai_image_generations" ENABLE ROW LEVEL SECURITY;
 
 --
+-- Name: algo_experiments; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE "public"."algo_experiments" ENABLE ROW LEVEL SECURITY;
+
+--
+-- Name: algo_user_variants; Type: ROW SECURITY; Schema: public; Owner: postgres
+--
+
+ALTER TABLE "public"."algo_user_variants" ENABLE ROW LEVEL SECURITY;
+
+--
 -- Name: auction_carts; Type: ROW SECURITY; Schema: public; Owner: postgres
 --
 
@@ -20226,7 +20238,9 @@ CREATE POLICY "live_comments_insert" ON "public"."live_comments" FOR INSERT WITH
 -- Name: live_comments live_comments_select; Type: POLICY; Schema: public; Owner: postgres
 --
 
-CREATE POLICY "live_comments_select" ON "public"."live_comments" FOR SELECT USING (true);
+CREATE POLICY "live_comments_select" ON "public"."live_comments" FOR SELECT USING ((EXISTS ( SELECT 1
+   FROM "public"."live_sessions" "s"
+  WHERE (("s"."id" = "live_comments"."session_id") AND (("s"."women_only" = false) OR ("s"."host_id" = "auth"."uid"()) OR "public"."is_women_only_verified"())))));
 
 
 --
@@ -21479,5 +21493,5 @@ CREATE POLICY "woz_requests_select_own" ON "public"."women_only_requests" FOR SE
 -- PostgreSQL database dump complete
 --
 
--- \unrestrict mwwzMTInDipcV5HBJfHtrCEGJe9l7r88vsG6b0e8lpeZlKOBxqrpMK7CBxHI1dL
+-- \unrestrict S6fBlTeeVykt6nDsVzVfNGYQ3ebSvjPL3HodbT5ljWkCaOs48cu3treVYxORNbp
 
