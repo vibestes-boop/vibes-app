@@ -100,7 +100,25 @@ Deno.serve(async (req: Request) => {
       .eq('id', record.recipient_id)
       .single();
 
-    if (!recipient?.push_token) {
+    // ── Kanal-Wahl ───────────────────────────────────────────────────────────
+    // Ohne Angabe: beide Kanäle, wie bisher.
+    //
+    // Der DB-Trigger `fn_send_push_on_notification` schickt `['web']`, weil er
+    // den nativen Push bereits selbst über `send_push_to_user()` erledigt hat.
+    // Ohne diese Trennung bekäme jeder Empfänger den Expo-Push doppelt.
+    //
+    // Warum der Trigger den Web-Teil überhaupt hierher gibt statt selbst zu
+    // rufen: Die Ableitung von Klickziel und Gruppierungs-Tag (deriveWebUrl /
+    // deriveWebTag, unten) ist typ-abhängige Logik. Sie ein zweites Mal in
+    // plpgsql zu pflegen, hieße zwei Wahrheiten — und genau daran ist der Push
+    // schon einmal auseinandergelaufen.
+    const requested = Array.isArray((payload as { channels?: unknown }).channels)
+      ? ((payload as { channels: string[] }).channels)
+      : ['native', 'web'];
+    const wantNative = requested.includes('native');
+    const wantWeb    = requested.includes('web');
+
+    if (wantNative && !recipient?.push_token) {
       return new Response(JSON.stringify({ skipped: 'No push token' }), { status: 200 });
     }
 
@@ -130,7 +148,7 @@ Deno.serve(async (req: Request) => {
       order_dispute:             'orders',
     };
     const prefKey = TYPE_TO_PREF[record.type];
-    const prefs = recipient.notif_prefs as Record<string, boolean> | null;
+    const prefs = recipient?.notif_prefs as Record<string, boolean> | null;
     if (prefKey && prefs && prefs[prefKey] === false) {
       return new Response(JSON.stringify({ skipped: `Channel ${prefKey} disabled by user` }), { status: 200 });
     }
@@ -325,15 +343,16 @@ Deno.serve(async (req: Request) => {
     const msg = messages[record.type]
       ?? { title: locale === 'ru' ? 'Новая активность на Vibes' : 'Neue Aktivität auf Vibes', body: '' };
 
-    // Expo Push API aufrufen
-    const pushRes = await fetch(EXPO_PUSH_URL, {
+    // Expo Push API aufrufen — nur wenn der native Kanal gewünscht ist.
+    const pushRes = !wantNative ? null : await fetch(EXPO_PUSH_URL, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
       body: JSON.stringify({
-        to: recipient.push_token,
+        // wantNative ist hier wahr, und der Wächter oben hat den Token geprüft.
+        to: recipient!.push_token,
         title: msg.title,
         body: msg.body,
         // WICHTIG: Keys müssen exakt mit dem Client-Handler übereinstimmen (usePushNotifications.ts)
@@ -364,7 +383,7 @@ Deno.serve(async (req: Request) => {
       }),
     });
 
-    const result = await pushRes.json();
+    const result = pushRes ? await pushRes.json() : { skipped: 'native channel not requested' };
     console.log('[push] Expo response:', JSON.stringify(result));
 
     // ───────────────────────────────────────────────────────────────────────
@@ -383,7 +402,7 @@ Deno.serve(async (req: Request) => {
     //
     // Fire-and-forget: Web-Push-Fehler blockieren nie die Expo-Response.
     // ───────────────────────────────────────────────────────────────────────
-    if (record.type !== 'dm') {
+    if (wantWeb && record.type !== 'dm') {
       try {
         const webUrl = deriveWebUrl(record, actorName);
         const webTag = deriveWebTag(record);

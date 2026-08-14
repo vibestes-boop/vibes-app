@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
--- \restrict gf26gkQhJL3bsIhblDyKMmTk5KAVWMZtVvbKmxlRbahok4BER0asdKBpm0pdgzq
+-- \restrict GudvgWqHaWG8ZGRb1oKN27kVcwJufai9uiFTCuJm02TzE9k6iXpjmhZXtXZ5gGI
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -4712,7 +4712,7 @@ ALTER FUNCTION "public"."fn_notify_seller_on_save"() OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."fn_send_push_on_notification"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
+    SET "search_path" TO 'public', 'vault', 'extensions', 'pg_temp'
     AS $$
 DECLARE
   v_actor TEXT;
@@ -4822,6 +4822,29 @@ BEGIN
     -- Ziel-App: entscheidet, welche Geräte angesprochen werden.
     p_app     := COALESCE(NEW.app, 'serlo')
   );
+
+  -- ── Web-Push ───────────────────────────────────────────────────────────────
+  -- Nur der Web-Kanal: Der native Push ist zwei Zeilen weiter oben schon raus.
+  -- Klickziel und Gruppierungs-Tag leitet die Edge Function typ-abhängig ab —
+  -- diese Logik ein zweites Mal in plpgsql zu pflegen hieße zwei Wahrheiten.
+  --
+  -- DMs überspringen: Für die gibt es einen eigenen Trigger auf `messages`
+  -- (notify_web_push_on_dm). Ein zweiter Web-Push hier wäre ein Doppel-Ping.
+  --
+  -- Fire-and-forget über pg_net; scheitert der Aufruf, ist der native Push
+  -- trotzdem raus. Der EXCEPTION-Block unten fängt den Rest.
+  IF NEW.type <> 'dm' THEN
+    PERFORM net.http_post(
+      url     := 'https://llymwqfgujwkoxzqxrlm.supabase.co/functions/v1/send-push-notification',
+      headers := jsonb_build_object(
+        'Content-Type',  'application/json',
+        'Authorization', 'Bearer ' || (SELECT decrypted_secret FROM vault.decrypted_secrets
+                                        WHERE name = 'service_role_key' LIMIT 1)
+      ),
+      body    := jsonb_build_object('record', row_to_json(NEW), 'channels', jsonb_build_array('web')),
+      timeout_milliseconds := 10000
+    );
+  END IF;
 
   RETURN NEW;
 EXCEPTION WHEN OTHERS THEN
@@ -8888,15 +8911,19 @@ ALTER FUNCTION "public"."notify_scheduled_post_failure"() OWNER TO "postgres";
 
 CREATE OR REPLACE FUNCTION "public"."notify_web_push_on_dm"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO 'public'
+    SET "search_path" TO 'public', 'vault', 'extensions', 'pg_temp'
     AS $$
 DECLARE
   v_recipient_id UUID;
   v_sender_id    UUID := NEW.sender_id;
   v_sender_name  TEXT;
   v_body_preview TEXT;
-  v_service_role_key TEXT := current_setting('app.settings.service_role_key', TRUE);
-  v_project_url      TEXT := current_setting('app.settings.project_url',      TRUE);
+  -- Der Schlüssel kommt aus dem Vault, nicht aus app.settings — die Einstellung
+  -- war nie gesetzt (am 14.08.2026 geprüft: Länge 0), weshalb der Wächter unten
+  -- den Aufruf immer abbrach und Web-Push für DMs seit jeher stumm war.
+  v_service_role_key TEXT := (SELECT decrypted_secret FROM vault.decrypted_secrets
+                               WHERE name = 'service_role_key' LIMIT 1);
+  v_project_url      TEXT := 'https://llymwqfgujwkoxzqxrlm.supabase.co';
 BEGIN
   -- Empfänger = der andere Teilnehmer der Conversation. Schema-Annahme:
   -- `conversations` hat `user_a_id` + `user_b_id` (konsistent mit bestehenden
@@ -21459,5 +21486,5 @@ CREATE POLICY "woz_requests_select_own" ON "public"."women_only_requests" FOR SE
 -- PostgreSQL database dump complete
 --
 
--- \unrestrict gf26gkQhJL3bsIhblDyKMmTk5KAVWMZtVvbKmxlRbahok4BER0asdKBpm0pdgzq
+-- \unrestrict GudvgWqHaWG8ZGRb1oKN27kVcwJufai9uiFTCuJm02TzE9k6iXpjmhZXtXZ5gGI
 
