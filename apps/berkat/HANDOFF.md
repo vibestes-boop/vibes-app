@@ -713,18 +713,22 @@ dem Simulator und der Zuschlag-Push hat kein Ziel.
 
 ### Was noch fehlt
 
-1. **Der Durchlauf mit Push.** Die Kette ist gebaut und jedes Glied einzeln belegt, aber noch nie am
-   Stück gelaufen: gewinnen → Meldung aufs iPhone. Das ist der nächste Test, und er braucht nur zwei
-   Konten und eine Show.
-2. **Eigene Benachrichtigungsliste in Berkat** — es gibt keine. Der Konto-Tab zeigt Körbe samt Frist,
+1. **Eigene Benachrichtigungsliste in Berkat** — es gibt keine. Der Konto-Tab zeigt Körbe samt Frist,
    und der Gewinner sieht im Raum einen `won`-Zustand mit Erfolgs-Haptik, aber keine Historie. Wer
    einen Push wegwischt, findet ihn nirgends wieder.
-3. **Android-Build.** Dort wartet dieselbe Berechtigungs-Hürde wie eben bei iOS, nur über
+2. **Android-Build.** Dort wartet dieselbe Berechtigungs-Hürde wie eben bei iOS, nur über
    Firebase (`google-services.json` + FCM-Schlüssel in EAS).
-4. **Web-Push hat null Abonnenten.** Der Weg ist seit 20260814220000 wieder da und VAPID-Schlüssel
+3. **Web-Push hat null Abonnenten.** Der Weg ist seit 20260814220000 wieder da und VAPID-Schlüssel
    sind gesetzt, aber `web_push_subscriptions` ist leer — es hat schlicht noch nie jemand im Browser
    die Berechtigung erteilt. Erst dann lässt sich prüfen, ob wirklich etwas ankommt.
 
-**Erledigt und hier nur zur Einordnung:** Zuschlag, Versand und Zahlungserinnerung entstehen
-serverseitig (Trigger bzw. pg_cron alle 15 Minuten), die Texte stehen in allen Oberflächen, die
-App-Trennung beim Versand steht, und Berkat registriert seinen Token.
+**Am 14.08.2026 am Stück durchgelaufen — mit Push.** Simulator als Verkäufer (`berkattest`), iPhone
+als Käufer (`amir32`): Show, Artikel „Wasser" aufgelegt, geboten, Zuschlag bei 1,00 € — und die
+Meldung **„🎉 Zuschlag — du hast gewonnen! · Wasser · 1,00 €"** kam auf dem iPhone an. In der
+Datenbank belegt: Zeile mit `app = 'berkat'`, und Expo meldete für den Web-Aufruf
+`skipped: native channel not requested` — der Beweis, dass die Kanal-Trennung greift und niemand
+einen Doppel-Push bekommt.
+
+Zuschlag, Versand und Zahlungserinnerung entstehen damit serverseitig (Trigger bzw. pg_cron alle 15
+Minuten), die Texte stehen in allen Oberflächen, die App-Trennung beim Versand steht, und Berkat
+registriert seinen Token.
