@@ -9,6 +9,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 // der ersten Benutzung.
 import { liveKitAvailable } from '../lib/livekit';
 import { useSessionBootstrap } from '../lib/session';
+import { usePushRegistration } from '../lib/usePush';
 import { MiniLivePlayer } from '../components/MiniLivePlayer';
 import { ui } from '../theme/tokens';
 
@@ -31,6 +32,9 @@ const LiveRoomProvider = LiveStageModule?.LiveRoomProvider ?? PassThrough;
 
 function Bootstrap() {
   useSessionBootstrap();
+  // Muss NACH useSessionBootstrap stehen: Der Token wird an die Nutzer-ID
+  // gebunden, und die kommt erst aus dem Auth-Check.
+  usePushRegistration();
   return null;
 }
 
