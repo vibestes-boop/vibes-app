@@ -54,7 +54,10 @@ function useCreatorStats(userId: string | null) {
           supabase.from('live_sessions')
             .select('peak_viewers, like_count')
             .eq('host_id', userId)
-            .eq('status', 'ended'),
+            .eq('status', 'ended')
+            // Ein Verkäufer, der in beiden Apps sendet, hätte seine
+            // Berkat-Shows sonst in den Serlo-Creator-Zahlen stehen.
+            .eq('app', 'serlo'),
         ]);
 
         setStats({

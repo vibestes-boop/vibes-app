@@ -36,6 +36,9 @@ export const getMyActiveLiveSession = cache(
       .select('id, room_name, title, started_at, viewer_count, peak_viewer_count:peak_viewers')
       .eq('host_id', user.id)
       .eq('status', 'active')
+      // Ohne app-Filter übernähme das Serlo-Host-Deck eine laufende
+      // Berkat-Show als „meine aktive Session" — inklusive Beenden-Knopf.
+      .eq('app', 'serlo')
       .order('started_at', { ascending: false })
       .limit(1)
       .maybeSingle();

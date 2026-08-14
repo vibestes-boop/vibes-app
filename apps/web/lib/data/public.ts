@@ -187,6 +187,11 @@ async function fetchPublicProfile(username: string): Promise<PublicProfile | nul
       .select('id')
       .eq('host_id', profile.id)
       .eq('status', 'active')
+      // Eine Berkat-Show darf auf dem Serlo-Profil keinen LIVE-Ring erzeugen —
+      // der Link führte sonst auf eine Serlo-Live-Seite ohne Auktions-UI.
+      // Der schnelle Pfad oben (get_public_profile_web) filtert identisch,
+      // dort serverseitig im Funktionsrumpf (20260814280000).
+      .eq('app', 'serlo')
       .order('started_at', { ascending: false })
       .limit(1)
       .maybeSingle(),

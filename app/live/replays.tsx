@@ -49,6 +49,9 @@ function useReplays() {
         .eq('is_replayable', true)
         .not('replay_url', 'is', null)
         .eq('status', 'ended')
+        // Berkat-Shows sind Auktionen — deren Mitschnitte gehören nicht in
+        // Serlos Replay-Liste (20260814280000).
+        .eq('app', 'serlo')
         .order('ended_at', { ascending: false })
         .limit(40);
 

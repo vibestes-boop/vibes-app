@@ -292,6 +292,9 @@ export const getGuildActiveLiveSessions = cache(
       )
       .eq('status', 'active')
       .in('host_id', memberIds)
+      // Gilden sind ein Serlo-Konzept — eine Berkat-Show eines Mitglieds
+      // gehört nicht in die Live-Rail der Gilde (20260814280000).
+      .eq('app', 'serlo')
       .order('viewer_count', { ascending: false })
       .limit(10);
 

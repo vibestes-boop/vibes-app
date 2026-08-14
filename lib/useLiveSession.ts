@@ -104,6 +104,11 @@ export function useActiveLiveSessions(options: { enabled?: boolean } = {}) {
         .from('live_sessions')
         .select('*, profiles!host_id(username, avatar_url)')
         .eq('status', 'active')
+        // `live_sessions` teilt sich Serlo mit Berkat (gleiche Supabase-Instanz).
+        // Ohne diesen Filter landete jede Berkat-Auktions-Show im Live-Bereich
+        // der Produktions-App — in einer App ohne Gebots-Oberfläche, und jeder
+        // Berkat-Testlauf wäre öffentlich sichtbar. Spalte: 20260814280000.
+        .eq('app', 'serlo')
         .gte('started_at', new Date(Date.now() - 8 * 60 * 60 * 1000).toISOString()) // max 8h alte Sessions
         .order('viewer_count', { ascending: false })
         .limit(20);
@@ -348,12 +353,18 @@ export function useLiveHost() {
       const room = `vibes-live-${profile.id}-${Date.now()}`;
 
       // ── Zombie-Sessions bereinigen: alle aktiven Sessions dieses Hosts beenden ──
-      // Verhindert mehrfache LIVE-Kreise falls eine vorherige Session nie sauber beendet wurde
+      // Verhindert mehrfache LIVE-Kreise falls eine vorherige Session nie sauber beendet wurde.
+      //
+      // `app`-Filter ist hier NICHT kosmetisch: Ohne ihn beendet ein Serlo-Live-Start
+      // auch eine laufende Berkat-Auktions-Show desselben Verkäufers — der Zuschlag
+      // wäre weg, ohne dass irgendwo ein Fehler auftaucht. Aufräumen darf nur die
+      // eigene App. (Gleiche Stelle im Web: apps/web/app/actions/live-host.ts)
       await supabase
         .from('live_sessions')
         .update({ status: 'ended', ended_at: new Date().toISOString(), viewer_count: 0 })
         .eq('host_id', profile.id)
-        .eq('status', 'active');
+        .eq('status', 'active')
+        .eq('app', 'serlo');
 
       // Session in DB anlegen BEVOR Token geholt wird —
       // SEC-1 Check in Edge Function prüft ob aktive Session für diesen Room existiert.

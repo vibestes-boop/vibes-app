@@ -58,7 +58,11 @@ async function fetchActiveLiveSessions(
   let query = supabase
     .from('live_sessions')
     .select(`${SESSION_COLUMNS}, ${HOST_JOIN}`)
-    .eq('status', 'active');
+    .eq('status', 'active')
+    // `live_sessions` ist mit Berkat geteilt (gleiche Supabase-Instanz). Ohne
+    // diesen Filter erscheint jede Berkat-Auktions-Show auf /live und in der
+    // Landing-Rail — in einer Oberfläche ohne Gebote. Spalte: 20260814280000.
+    .eq('app', 'serlo');
   // publicOnly: für global gecachte Flächen (Landing) — der Cache ist EIN
   // Eintrag für alle Besucher, darf also nie Women-Only-Zeilen enthalten,
   // egal wessen Session den Cache gerade wärmt. Per-Viewer-Flächen (/live,
@@ -301,6 +305,8 @@ export const getPublicReplays = cache(
       .eq('is_replayable', true)
       .not('replay_url', 'is', null)
       .eq('status', 'ended')
+      // Berkat-Mitschnitte gehören nicht in Serlos Replay-Liste.
+      .eq('app', 'serlo')
       .order('ended_at', { ascending: false })
       .limit(limit);
 
@@ -331,6 +337,9 @@ export const getUserReplays = cache(
       .eq('is_replayable', true)
       .not('replay_url', 'is', null)
       .eq('status', 'ended')
+      // Lives-Tab auf dem Serlo-Profil zeigt nur Serlo-Mitschnitte — ein
+      // Verkäufer, der auch in Berkat sendet, mischt sonst beide Welten.
+      .eq('app', 'serlo')
       .order('ended_at', { ascending: false })
       .limit(limit);
 

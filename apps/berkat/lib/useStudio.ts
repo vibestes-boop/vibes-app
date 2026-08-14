@@ -43,6 +43,10 @@ export function useMyActiveShow(userId: string | null) {
         .select('id, title, viewer_count, status, started_at, thumbnail_url')
         .eq('host_id', userId!)
         .eq('status', 'active')
+        // Ohne app-Filter würde ein laufender Serlo-Live desselben Nutzers hier
+        // als „meine Berkat-Show" auftauchen — inklusive Studio-Steuerung, die
+        // auf eine Session zeigt, die gar nicht zu Berkat gehört.
+        .eq('app', 'berkat')
         .order('started_at', { ascending: false })
         .limit(1);
       if (error) throw error;
@@ -68,6 +72,10 @@ export function useCreateShow(userId: string | null) {
           category: 'shopping',
           room_name: roomName,
           thumbnail_url: input.thumbnailUrl,
+          // Die Spalte hat DEFAULT 'serlo' (20260814280000) — für eine
+          // Berkat-Show muss sie also ausdrücklich gesetzt werden, sonst
+          // landet die Auktion im Live-Bereich der Serlo-Produktions-App.
+          app: 'berkat',
         })
         .select('id')
         .single();

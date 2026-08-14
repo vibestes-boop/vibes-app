@@ -69,6 +69,10 @@ export async function startLiveSession(
   // 1) Zombie-Cleanup: Falls dieser Host noch eine alte 'active'-Session
   //    liegen hat (Crash, App-Kill während Stream), vorher sauber beenden.
   //    Native macht das in `lib/useLiveSession.ts:startSession` identisch.
+  //
+  //    Der `app`-Filter ist nicht kosmetisch: Ohne ihn beendet ein Serlo-Live-
+  //    Start auch eine laufende Berkat-Auktions-Show desselben Verkäufers —
+  //    lautlos, ohne Fehler. Aufräumen darf nur die eigene App.
   await supabase
     .from('live_sessions')
     .update({
@@ -77,7 +81,8 @@ export async function startLiveSession(
       viewer_count: 0,
     })
     .eq('host_id', host.id)
-    .eq('status', 'active');
+    .eq('status', 'active')
+    .eq('app', 'serlo');
 
   // 2) Room-Name generieren (Collision-Safe genug: host_id + ms-Timestamp).
   //    LiveKit-Edge-Function akzeptiert beliebige Room-Namen, deduped
@@ -96,6 +101,9 @@ export async function startLiveSession(
     allow_gifts: input.allowGifts ?? true,
     women_only: input.womenOnly ?? false,
     followers_only_chat: input.followersOnlyChat ?? false,
+    // Redundant zum DEFAULT 'serlo' (20260814280000), aber ausdrücklich:
+    // Diese Zeile ist die Stelle, an der Serlo-Web eine Session anlegt.
+    app: 'serlo',
   };
   if (input.category !== undefined) insertPayload.category = input.category;
   if (input.thumbnailUrl !== undefined)

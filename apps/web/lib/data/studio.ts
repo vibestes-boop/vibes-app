@@ -458,6 +458,8 @@ export const getMyLiveSessionsCount = cache(async (period: Period = 28): Promise
     .from('live_sessions')
     .select('id', { head: true, count: 'exact' })
     .eq('host_id', user.id)
+    // Creator-Studio ist Serlo — Berkat-Shows zählen hier nicht mit.
+    .eq('app', 'serlo')
     .gte('started_at', sinceIso);
 
   return count ?? 0;
@@ -530,6 +532,8 @@ export const getMyLiveSessions = cache(async (limit = 50): Promise<MyLiveSession
     .from('live_sessions')
     .select('id, title, thumbnail_url, started_at, ended_at, duration_secs, viewer_count, peak_viewer_count:peak_viewers, status')
     .eq('host_id', user.id)
+    // Session-Historie im Serlo-Studio zeigt keine Berkat-Auktionen.
+    .eq('app', 'serlo')
     .order('started_at', { ascending: false })
     .limit(limit);
 

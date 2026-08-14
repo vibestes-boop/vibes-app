@@ -60,6 +60,10 @@ function useLiveShows() {
         .from('live_sessions')
         .select('id, host_id, title, viewer_count, thumbnail_url, category, women_only')
         .eq('status', 'active')
+        // `live_sessions` teilt sich Berkat mit Serlo. Ohne diesen Filter
+        // standen hier auch ganz normale Serlo-Lives — ohne Artikel, ohne
+        // Gebote, in einer reinen Auktions-App.
+        .eq('app', 'berkat')
         .order('viewer_count', { ascending: false })
         .limit(60);
       if (error) throw error;

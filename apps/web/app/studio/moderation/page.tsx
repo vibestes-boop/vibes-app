@@ -41,7 +41,9 @@ export default async function StudioModerationPage() {
       .from('live_sessions')
       .select('id', { head: true, count: 'exact' })
       .eq('host_id', user.id)
-      .eq('moderation_enabled', true),
+      .eq('moderation_enabled', true)
+      // Serlo-Moderations-Übersicht — Berkat-Shows zählen nicht mit.
+      .eq('app', 'serlo'),
     supabase
       .from('reports')
       .select('id', { head: true, count: 'exact' })
