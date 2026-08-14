@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
--- \restrict fNzzzMsygDvxAS2S2WnZielGq0YchqVdMnOBNJIa7m8FlAKyYge3AmQQJnJW68Z
+-- \restrict G7mQ28LtuNWuMePa6ahRvcgEPkPUoNFZgn8KGFl6auK87xi4RMNoZCzCc09nNZu
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -11647,33 +11647,42 @@ CREATE OR REPLACE FUNCTION "public"."toggle_pin_post"("p_post_id" "uuid", "p_use
     SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
 DECLARE
+  v_user_id          uuid := auth.uid();
   v_currently_pinned boolean;
 BEGIN
-  -- Aktuellen Status ermitteln
+  IF v_user_id IS NULL THEN
+    RAISE EXCEPTION 'not_authenticated' USING ERRCODE = '42501';
+  END IF;
+
   SELECT is_pinned INTO v_currently_pinned
   FROM public.posts
-  WHERE id = p_post_id AND author_id = p_user_id;
+  WHERE id = p_post_id AND author_id = v_user_id;
 
   IF NOT FOUND THEN
     RAISE EXCEPTION 'Post nicht gefunden oder kein Zugriff';
   END IF;
 
-  -- Alle Pins dieses Users entfernen
   UPDATE public.posts
   SET is_pinned = false
-  WHERE author_id = p_user_id AND is_pinned = true;
+  WHERE author_id = v_user_id AND is_pinned = true;
 
-  -- Wenn vorher nicht gepinnt → jetzt pinnen
   IF NOT v_currently_pinned THEN
     UPDATE public.posts
     SET is_pinned = true
-    WHERE id = p_post_id AND author_id = p_user_id;
+    WHERE id = p_post_id AND author_id = v_user_id;
   END IF;
 END;
 $$;
 
 
 ALTER FUNCTION "public"."toggle_pin_post"("p_post_id" "uuid", "p_user_id" "uuid") OWNER TO "postgres";
+
+--
+-- Name: FUNCTION "toggle_pin_post"("p_post_id" "uuid", "p_user_id" "uuid"); Type: COMMENT; Schema: public; Owner: postgres
+--
+
+COMMENT ON FUNCTION "public"."toggle_pin_post"("p_post_id" "uuid", "p_user_id" "uuid") IS 'Pinnt den eigenen Beitrag an/ab (max. 1 pro Nutzer). p_user_id wird IGNORIERT — maßgeblich ist auth.uid(). Parameter bleibt nur aus Kompatibilität zu ausgelieferten App-Versionen, siehe Migration 20260814170000.';
+
 
 --
 -- Name: toggle_save_product("uuid"); Type: FUNCTION; Schema: public; Owner: postgres
@@ -21253,5 +21262,5 @@ CREATE POLICY "woz_requests_select_own" ON "public"."women_only_requests" FOR SE
 -- PostgreSQL database dump complete
 --
 
--- \unrestrict fNzzzMsygDvxAS2S2WnZielGq0YchqVdMnOBNJIa7m8FlAKyYge3AmQQJnJW68Z
+-- \unrestrict G7mQ28LtuNWuMePa6ahRvcgEPkPUoNFZgn8KGFl6auK87xi4RMNoZCzCc09nNZu
 

@@ -485,10 +485,17 @@ setzte die Rechte auf den Postgres-Standard zurück — `EXECUTE` für PUBLIC, u
 `anon` ein. Behoben mit `20260814160000_revoke_anon_money_rpcs.sql`, zusammen mit zehn weiteren
 ungeprüften `anon`-RPCs. Gegengeprüft: alle liefern jetzt `permission denied`.
 
-**Offen geblieben:** `toggle_pin_post(p_post_id, p_user_id)` nimmt die Nutzer-ID als Parameter und
-prüft sie nicht gegen `auth.uid()`. `anon` ist raus, aber ein angemeldetes Konto kann weiterhin
-fremde Beiträge an- und abpinnen. Der Fix ändert die Signatur und berührt zwei Aufrufstellen —
-eigener Schritt.
+**Nachtrag, ebenfalls erledigt:** `toggle_pin_post` nahm die Nutzer-ID als Parameter und prüfte sie
+nicht gegen `auth.uid()`. Sie filtert intern durchgehend auf `author_id`, weshalb ein angemeldetes
+Konto mit einer fremden ID nicht nur fremde Beiträge anpinnen, sondern über
+`UPDATE posts SET is_pinned = false WHERE author_id = …` auch jedem seinen angehefteten Beitrag
+abräumen konnte. Behoben mit `20260814170000_toggle_pin_post_auth_uid.sql`.
+
+Die **Signatur bleibt absichtlich zweiargumentig**, `p_user_id` wird nur ignoriert. Streichen wäre
+falsch: Ausgelieferte App-Versionen rufen weiter die alte Fassung, und eine zusätzliche
+Ein-Parameter-Überladung macht PostgREST mehrdeutig (`HTTP 300`, wie bei
+`publish_due_scheduled_posts` gemessen). Der Client wurde deshalb **nicht** geändert — er übergab
+ohnehin die eigene ID; nur Kommentare halten fest, dass der Parameter drinbleiben muss.
 
 **Konsequenz für den Schema-Abzug:** Er wird ab jetzt mit `--no-privileges` gezogen. Das Repo ist
 öffentlich; ein Abzug mit Rechten trägt ~1000 `GRANT`-Zeilen und hätte genau diese Lücke verraten.

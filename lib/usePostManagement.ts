@@ -76,7 +76,13 @@ export function useTogglePinPost() {
   return useMutation({
     mutationFn: async ({ postId, currentlyPinned }: { postId: string; currentlyPinned: boolean }) => {
       if (!userId) throw new Error('Nicht eingeloggt');
-      // RPC: setzt is_pinned für diesen Post, entfernt Pin von allen anderen
+      // RPC: setzt is_pinned für diesen Post, entfernt Pin von allen anderen.
+      //
+      // `p_user_id` wird serverseitig IGNORIERT — die RPC nimmt auth.uid()
+      // (Migration 20260814170000; vorher ließen sich mit einer fremden ID
+      // fremde Pins setzen und abräumen). NICHT entfernen: Die Signatur hat
+      // weiterhin zwei Argumente, damit ausgelieferte App-Versionen die
+      // Funktion finden — ohne den Parameter löst PostgREST sie nicht auf.
       const { error } = await supabase.rpc('toggle_pin_post', {
         p_post_id: postId,
         p_user_id: userId,

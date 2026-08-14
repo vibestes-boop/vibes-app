@@ -418,6 +418,13 @@ export async function deletePost(postId: string): Promise<ActionResult<null>> {
 //   1. Alle is_pinned=true Rows des Users zurücksetzt
 //   2. Den gewählten Post pinniert WENN er vorher nicht gepinnt war
 // → max. 1 gepinnter Post pro User, zweiter Klick auf denselben löst den Pin.
+//
+// `p_user_id` wird serverseitig IGNORIERT — maßgeblich ist auth.uid()
+// (Migration 20260814170000). Vorher filterte die RPC auf den übergebenen Wert,
+// womit sich fremde Beiträge anpinnen UND fremde Pins abräumen ließen.
+// NICHT aus dem Aufruf entfernen: Die Signatur hat weiterhin zwei Argumente,
+// damit ausgelieferte Mobil-App-Versionen die Funktion finden — ohne den
+// Parameter löst PostgREST sie nicht mehr auf.
 // -----------------------------------------------------------------------------
 
 export async function togglePinPost(postId: string): Promise<ActionResult<null>> {
