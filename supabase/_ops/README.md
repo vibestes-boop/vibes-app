@@ -52,8 +52,15 @@ zwei Monate alten Stand.
 supabase db dump --schema public -f supabase/schema_live.sql
 ```
 
-Braucht Docker Desktop (aktuell nicht installiert). Alternativ direkt mit
-`pg_dump` und der Verbindungs-URI, wie in CLAUDE.md beschrieben.
+Braucht Docker Desktop (auf diesem Rechner nicht installiert). Alternativ direkt
+mit `pg_dump` und der Verbindungs-URI, wie in CLAUDE.md beschrieben.
+
+**Ohne beides geht es nicht.** Am 14.08. probiert: Die REST-Schnittstelle
+liefert unter `/rest/v1/` zwar eine vollständige Beschreibung aller Tabellen und
+Spalten — aber nur gegen einen **geheimen** Schlüssel („Only secret API keys can
+be used for this endpoint"), nicht gegen den öffentlichen. Einzelne Tabellen und
+Spalten lassen sich mit dem öffentlichen Schlüssel gezielt abfragen, eine
+vollständige Liste aufzählen nicht.
 
 ---
 
