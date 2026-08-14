@@ -545,7 +545,7 @@
 - `host_id uuid`
 - `created_at timestamp`
 
-### notifications (15)
+### notifications (16)
 - `id uuid`
 - `recipient_id uuid`
 - `sender_id uuid`
@@ -561,6 +561,7 @@
 - `gift_emoji text`
 - `product_name text`
 - `product_id uuid`
+- `app text`
 
 ### order_disputes (11)
 - `id uuid`
@@ -814,13 +815,14 @@
 - `referred_by uuid`
 - `locale text`
 
-### push_tokens (6)
+### push_tokens (7)
 - `id uuid`
 - `user_id uuid`
 - `token text`
 - `platform text`
 - `last_seen_at timestamp`
 - `created_at timestamp`
+- `app text`
 
 ### r2_delete_queue (10)
 - `id uuid`

@@ -36,7 +36,7 @@ Was Berkat bewusst anders macht als Whatnot:
 | EAS-Projekt | `@zaurhat/berkat` (`fb4e0381-264d-4cfd-8c3c-691987346915`) |
 | Backend | dieselbe Supabase-Instanz wie Serlo (`llymwqfgujwkoxzqxrlm`) |
 | Migrationen | 9 Stück, alle eingespielt und seit 14.08.2026 auch alle sauber verzeichnet |
-| Git | Branch `berkat`, **21 Commits, nicht gepusht** |
+| Git | Branch `berkat`, seit 14.08.2026 **gepusht** (Basis `origin/main`, nicht `origin/master`) |
 
 ### Starten
 
@@ -401,11 +401,9 @@ beim Käufer sichtbar.
 
 ### Was fehlt
 
-1. **Benachrichtigungen an den Käufer.** Der Verkäufer bekommt „Eine Bestellung wurde bezahlt —
-   bitte versenden". In die Gegenrichtung gibt es **nichts**: kein „Du hast gewonnen", keine
-   Erinnerung ans Zahlen, kein „Dein Paket ist unterwegs". Bei Whatnot ist genau das der Motor.
-   Ohne das verfallen Sammelkörbe nach 24 Stunden, ohne dass jemand es merkt. **Der nächste
-   sinnvolle Bau.**
+1. **Benachrichtigungen an den Käufer — zur Hälfte gebaut (14.08.2026).** Zuschlag und Versand
+   entstehen jetzt serverseitig, die **Zahlungserinnerung fehlt noch**. Und die Zustellung an ein
+   Berkat-Gerät steht noch aus. Details in Abschnitt 9.
 2. **Kategorien- und Aktivitäts-Reiter** — zwei von Whatnots fünf; bewusst weggelassen, solange
    sie keinen Inhalt hätten
 3. **Google-/Apple-Anmeldung** — braucht Entwickler-Zugänge und einen echten Rebuild
@@ -611,3 +609,76 @@ Konto. Ein zweites Gerät braucht es also nicht.
 - **Ob ein Herz aus der Serlo-App in Berkat ankommt** — der Broadcast-Vertrag ist gebaut, aber nie
   über beide Apps gemessen
 - **Max-Gebot und Anti-Snipe** unter echtem Gegendruck (zwei Menschen, die gleichzeitig bieten)
+
+---
+
+## 9. Benachrichtigungen an den Käufer (Stand 14.08.2026)
+
+Die Kette lief stumm in eine Richtung: Der Verkäufer erfuhr, dass bezahlt wurde, der Käufer erfuhr
+nichts. Zwei der drei Ereignisse sind jetzt gebaut.
+
+| Ereignis | Zeile entsteht | Text im Push | Zustellung ans Berkat-Gerät |
+|---|---|---|---|
+| Zuschlag (`auction_won`) | ✅ Trigger auf `live_auctions` | ✅ | ⏳ Berkat hat kein Push |
+| Versendet (`order_shipped`) | ✅ Trigger auf `product_orders` | ✅ (Typ gab es schon) | ⏳ dito |
+| Zahlungserinnerung | ❌ fehlt | Typ existiert bereits | ⏳ dito |
+
+### Warum Trigger und nicht die RPCs
+
+Ein Zuschlag entsteht auf **zwei** Wegen — Uhr abgelaufen (`settle_live_auction`) und Sofortkauf
+(`buy_now_live_auction`). Beide setzen `status='sold'` + `winner_id`. Ein Trigger auf der Spalte
+greift für beide und kann nicht auseinanderlaufen, wenn ein dritter Weg dazukommt. Sonst hätten
+zwei große Rümpfe per `CREATE OR REPLACE` neu geschrieben werden müssen — die Stelle, an der laut
+CLAUDE.md schon einmal spätere Änderungen verlorengingen.
+
+`order_shipped` ist bewusst auf Berkat begrenzt (`cart_id IS NOT NULL`, dieselbe Weiche wie in
+`create-checkout-session`). Serlos Shop bekam nie ein Versand-Ping; das still mitzuändern wäre eine
+Verhaltensänderung an einem laufenden Produkt. Eine Bedingung streichen genügt.
+
+### Die Falle: es sind vier Oberflächen, nicht drei — und eine davon ist tot
+
+CLAUDE.md nennt drei (In-App-Liste, Expo-Push, Web-Push). Beim Bauen kam heraus:
+
+- **Der native Push-Text kommt aus SQL, nicht aus der Edge Function.** Migration `20260701050000`
+  hat den Trigger am 01.07.2026 auf den tokenlosen Direkt-Helper umgestellt, weil in der DB kein
+  Service-Role-Token gesetzt ist und `send-push-notification` mit 401 antwortete. Seither leben die
+  Texte als `CASE` in `fn_send_push_on_notification`. Wer nur die Edge Function anfasst, bekommt den
+  ELSE-Zweig: **„Neue Aktivität auf Serlo"**. Genau einmal so passiert, bevor es auffiel.
+- **Web-Push ist für alle Nicht-DM-Typen tot** — der Fan-out lebte in eben dieser Edge Function.
+  Betrifft Serlo genauso wie Berkat, eigener Schritt.
+- Die Edge-Function-Texte sind trotzdem ergänzt: Sie sind korrekt und greifen, sobald der
+  Token-Weg wieder aktiviert wird.
+
+Vollständige Liste für einen neuen Typ: `notifications_type_check` · `CASE` in
+`fn_send_push_on_notification` · `MESSAGES` in `send-push-notification` (de/ru) · `TYPE_TO_PREF` ·
+`deriveWebUrl` · `deriveWebTag` · `app/(tabs)/notifications.tsx` (Text, Symbol, Antippen) ·
+`lib/i18n/messages/{de,en,ru}.ts` · TypeScript-Union in `lib/useNotifications.ts`.
+
+### Warum der Käufer sie trotzdem noch nicht auf dem Handy sieht
+
+**Berkat hat kein Push.** Kein `expo-notifications`, kein Plugin, keine Token-Registrierung. Der
+Grund war strukturell: Serlo und Berkat teilen sich `profiles`, und die Zustellung kannte keine
+App-Dimension — ein Token hätte den anderen verdrängt.
+
+Das ist mit `20260814190000` behoben: `push_tokens.app` und `notifications.app` (Default `'serlo'`,
+also rückwirkend korrekt ohne Backfill), und `send_push_to_user` filtert danach. Solange Berkat
+keinen Token registriert, greift ein **bewusster Rückfall**: Findet sich kein Gerät der Ziel-App,
+gehen die Meldungen an alle Geräte des Nutzers. Wer beide Apps hat, bekommt den Zuschlag also
+vorerst in Serlo — unschön, aber besser als Stille. Abschalten: im Helper die Bedingung
+`v_count = 0` streichen.
+
+Nebenbefund, entkräftet: Mehrere Geräte funktionieren längst. `send_push_to_user` liest die Tabelle
+`push_tokens`, nicht die Einzelspalte `profiles.push_token` — nur die (nicht mehr laufende) Edge
+Function las die Spalte.
+
+### Was noch fehlt
+
+1. **`expo-notifications` in Berkat** — natives Modul, braucht einen EAS-Rebuild. Registrierung muss
+   `app: 'berkat'` in `push_tokens` schreiben, sonst greift der Filter nicht.
+2. **Zahlungserinnerung** — `auction_carts.closes_at` trägt die 24-Stunden-Frist, der Typ
+   `order_payment_reminder` existiert in allen Oberflächen. Es fehlt ein pg_cron-Lauf, der offene
+   Körbe kurz vor Ablauf einsammelt und je Korb **genau einmal** pingt.
+3. **Eigene Benachrichtigungsliste in Berkat** — heute gibt es keine. Der Konto-Tab zeigt zwar Körbe
+   samt Frist, und der Gewinner sieht im Raum einen `won`-Zustand mit Erfolgs-Haptik, aber keine
+   Historie.
+4. **Web-Push wiederbeleben** — siehe oben, betrifft beide Apps.

@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
--- \restrict cpFYejaFxqgTezpH5mo38WAdXgsn8I9pGe03ADPY7CQE49u8lCd2NiIaUfTtCTm
+-- \restrict ihxku2YQdN3b32ZqUfrFdt3YQEryNMZlxsa7gVJdLd3lpzBd5xtTVMWxGy2CxXu
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -4764,6 +4764,11 @@ BEGIN
       v_body  := COALESCE(NEW.comment_text,
                           '„' || NEW.product_name || '" wird gerade gesammelt — jetzt sichern!',
                           'Eine Sammelbestellung ist offen — jetzt sichern!');
+    -- Berkat-Zuschlag. Ohne eigenen Zweig fällt er in den ELSE unten und
+    -- käme als 'Neue Aktivität auf Serlo' an — falsche Marke, kein Anlass.
+    WHEN 'auction_won' THEN
+      v_title := '🎉 Zuschlag — du hast gewonnen!';
+      v_body  := COALESCE(NEW.comment_text, 'Dein Artikel liegt im Sammelkorb');
     WHEN 'order_payment_requested' THEN
       v_title := '💶 Zeit zu bezahlen';
       v_body  := COALESCE(NEW.comment_text, 'Deine Vorbestellung ist da — jetzt bezahlen 🌸');
@@ -4805,7 +4810,9 @@ BEGIN
     p_user_id := NEW.recipient_id,
     p_title   := v_title,
     p_body    := v_body,
-    p_data    := v_data
+    p_data    := v_data,
+    -- Ziel-App: entscheidet, welche Geräte angesprochen werden.
+    p_app     := COALESCE(NEW.app, 'serlo')
   );
 
   RETURN NEW;
@@ -8264,11 +8271,17 @@ BEGIN
   END IF;
 
   INSERT INTO public.notifications
-    (recipient_id, sender_id, type, session_id, product_name, comment_text)
+    (recipient_id, sender_id, type, session_id, product_name, comment_text, app)
   VALUES (
-    NEW.winner_id, NEW.seller_id, 'auction_won', NEW.session_id, NEW.title,
-    format('%s · %s,%s €', NEW.title, v_cents / 100, lpad((v_cents % 100)::text, 2, '0'))
+    NEW.winner_id,
+    NEW.seller_id,
+    'auction_won',
+    NEW.session_id,
+    NEW.title,
+    format('%s · %s,%s €', NEW.title, v_cents / 100, lpad((v_cents % 100)::text, 2, '0')),
+    'berkat'
   );
+
   RETURN NEW;
 END;
 $$;
@@ -8708,20 +8721,26 @@ BEGIN
   IF NEW.status <> 'shipped'
      OR OLD.status IS NOT DISTINCT FROM 'shipped'
      OR NEW.buyer_id IS NULL
+     -- cart_id ist die Berkat-Weiche, siehe 20260814180000.
      OR NEW.cart_id IS NULL THEN
     RETURN NEW;
   END IF;
 
   INSERT INTO public.notifications
-    (recipient_id, sender_id, type, product_name, comment_text)
+    (recipient_id, sender_id, type, product_name, comment_text, app)
   VALUES (
-    NEW.buyer_id, NEW.seller_id, 'order_shipped', NEW.title,
+    NEW.buyer_id,
+    NEW.seller_id,
+    'order_shipped',
+    NEW.title,
     CASE
       WHEN NEW.tracking_number IS NOT NULL AND btrim(NEW.tracking_number) <> ''
         THEN format('%s ist unterwegs · %s', COALESCE(NEW.title, 'Dein Paket'), NEW.tracking_number)
       ELSE format('%s ist unterwegs', COALESCE(NEW.title, 'Dein Paket'))
-    END
+    END,
+    'berkat'
   );
+
   RETURN NEW;
 END;
 $$;
@@ -10964,24 +10983,38 @@ END $$;
 ALTER FUNCTION "public"."send_payment_reminders"() OWNER TO "postgres";
 
 --
--- Name: send_push_to_user("uuid", "text", "text", "jsonb"); Type: FUNCTION; Schema: public; Owner: postgres
+-- Name: send_push_to_user("uuid", "text", "text", "jsonb", "text"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
-CREATE OR REPLACE FUNCTION "public"."send_push_to_user"("p_user_id" "uuid", "p_title" "text", "p_body" "text", "p_data" "jsonb" DEFAULT '{}'::"jsonb") RETURNS "void"
+CREATE OR REPLACE FUNCTION "public"."send_push_to_user"("p_user_id" "uuid", "p_title" "text", "p_body" "text", "p_data" "jsonb" DEFAULT '{}'::"jsonb", "p_app" "text" DEFAULT NULL::"text") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO 'public', 'extensions', 'pg_temp'
     AS $$
 DECLARE
   v_token TEXT;
+  v_count INT;
 BEGIN
   -- Stale Tokens (> 90 Tage nicht gesehen) aufräumen
   DELETE FROM public.push_tokens
    WHERE user_id = p_user_id
      AND last_seen_at < NOW() - INTERVAL '90 days';
 
-  -- An jedes aktive Gerät senden
+  -- Gibt es Geräte der Ziel-App?
+  SELECT COUNT(*) INTO v_count
+    FROM public.push_tokens
+   WHERE user_id = p_user_id
+     AND (p_app IS NULL OR app = p_app);
+
+  -- RÜCKFALL, bewusst: Findet sich kein Gerät der Ziel-App, gehen die Meldungen
+  -- an alle Geräte des Nutzers. Solange Berkat noch keinen Token registriert
+  -- (braucht expo-notifications und damit einen EAS-Rebuild), bekommt ein Nutzer
+  -- mit beiden Apps den Zuschlag so wenigstens in Serlo. Unschön, aber besser als
+  -- Stille. Sobald Berkat Tokens registriert, greift der Filter und dieser Zweig
+  -- läuft leer. Zum Abschalten: die COALESCE-Bedingung durch `app = p_app` ersetzen.
   FOR v_token IN
-    SELECT token FROM public.push_tokens WHERE user_id = p_user_id
+    SELECT token FROM public.push_tokens
+     WHERE user_id = p_user_id
+       AND (p_app IS NULL OR v_count = 0 OR app = p_app)
   LOOP
     PERFORM send_expo_push(
       token := v_token,
@@ -10994,7 +11027,7 @@ END;
 $$;
 
 
-ALTER FUNCTION "public"."send_push_to_user"("p_user_id" "uuid", "p_title" "text", "p_body" "text", "p_data" "jsonb") OWNER TO "postgres";
+ALTER FUNCTION "public"."send_push_to_user"("p_user_id" "uuid", "p_title" "text", "p_body" "text", "p_data" "jsonb", "p_app" "text") OWNER TO "postgres";
 
 --
 -- Name: set_admin_campaign_updated_at(); Type: FUNCTION; Schema: public; Owner: postgres
@@ -13898,6 +13931,8 @@ CREATE TABLE IF NOT EXISTS "public"."notifications" (
     "gift_emoji" "text",
     "product_name" "text",
     "product_id" "uuid",
+    "app" "text" DEFAULT 'serlo'::"text" NOT NULL,
+    CONSTRAINT "notifications_app_check" CHECK (("app" = ANY (ARRAY['serlo'::"text", 'berkat'::"text"]))),
     CONSTRAINT "notifications_type_check" CHECK (("type" = ANY (ARRAY['auction_won'::"text", 'order_payment_reminder'::"text", 'scheduled_live_reminder'::"text", 'preorder_interest'::"text", 'support_new'::"text", 'order_review'::"text", 'order_address_updated'::"text", 'order_dispute'::"text", 'new_order'::"text", 'live_invite'::"text", 'order_payment_requested'::"text", 'like'::"text", 'comment'::"text", 'preorder_round_open'::"text", 'guild'::"text", 'order_paid'::"text", 'support_reply'::"text", 'follow_request'::"text", 'follow_request_accepted'::"text", 'gift'::"text", 'repost'::"text", 'dm'::"text", 'order_shipped'::"text", 'order_cancelled'::"text", 'story_reaction'::"text", 'product_saved'::"text", 'follow'::"text", 'mention'::"text", 'comment_like'::"text", 'live'::"text"])))
 );
 
@@ -14309,6 +14344,8 @@ CREATE TABLE IF NOT EXISTS "public"."push_tokens" (
     "platform" "text" DEFAULT 'other'::"text",
     "last_seen_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "app" "text" DEFAULT 'serlo'::"text" NOT NULL,
+    CONSTRAINT "push_tokens_app_check" CHECK (("app" = ANY (ARRAY['serlo'::"text", 'berkat'::"text"]))),
     CONSTRAINT "push_tokens_platform_check" CHECK (("platform" = ANY (ARRAY['ios'::"text", 'android'::"text", 'other'::"text"])))
 );
 
@@ -16891,6 +16928,13 @@ CREATE INDEX "idx_profiles_username_gin" ON "public"."profiles" USING "gin" ("us
 --
 
 CREATE INDEX "idx_profiles_women_only_verified" ON "public"."profiles" USING "btree" ("women_only_verified") WHERE ("women_only_verified" = true);
+
+
+--
+-- Name: idx_push_tokens_user_app; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX "idx_push_tokens_user_app" ON "public"."push_tokens" USING "btree" ("user_id", "app");
 
 
 --
@@ -21340,5 +21384,5 @@ CREATE POLICY "woz_requests_select_own" ON "public"."women_only_requests" FOR SE
 -- PostgreSQL database dump complete
 --
 
--- \unrestrict cpFYejaFxqgTezpH5mo38WAdXgsn8I9pGe03ADPY7CQE49u8lCd2NiIaUfTtCTm
+-- \unrestrict ihxku2YQdN3b32ZqUfrFdt3YQEryNMZlxsa7gVJdLd3lpzBd5xtTVMWxGy2CxXu
 
