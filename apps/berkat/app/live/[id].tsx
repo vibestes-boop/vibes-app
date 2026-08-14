@@ -47,6 +47,9 @@ import { useSession } from '../../lib/session';
 import { sendLiveComment, useLiveChat } from '../../lib/useLiveChat';
 import { studioErrorText, useStudioActions } from '../../lib/useStudio';
 import { useFollow } from '../../lib/useFollow';
+import { useSellerStats } from '../../lib/useSellerStats';
+import { useMyBlocks, useSellerActions, type ReportReason } from '../../lib/useSellerActions';
+import { SellerSheet } from '../../components/SellerSheet';
 import {
   giveawayErrorText,
   useGiveawayActions,
@@ -190,6 +193,15 @@ export default function LiveAuctionRoom() {
   const [draft, setDraft] = useState('');
   const [chatHidden, setChatHidden] = useState(false);
   const [maxOpen, setMaxOpen] = useState(false);
+  const [sellerOpen, setSellerOpen] = useState(false);
+
+  // Wer ist der Mensch da vorne? Die Zahlen holt das Sheet erst, wenn es
+  // gebraucht wird — sonst zahlte jeder Zuschauer drei Abfragen für einen
+  // Bildschirm, den die meisten nie öffnen.
+  const { data: sellerStats } = useSellerStats(sellerOpen ? session?.host_id : undefined);
+  const { data: blocked } = useMyBlocks(myUserId);
+  const { block, unblock, report } = useSellerActions(myUserId);
+  const chatInputRef = useRef<TextInput>(null);
 
   const { data: myMax } = useMyMaxBid(active?.id, myUserId);
   const setMaxBid = useSetMaxBid();
@@ -414,6 +426,76 @@ export default function LiveAuctionRoom() {
     }
   }, [id, draft, myUserId, router]);
 
+  // ── Was man mit dem Verkäufer tun kann ────────────────────────────────────
+  // Alle sechs Wege laufen über das Sheet; hier steht nur, wohin sie führen.
+
+  const hostName = profiles[session?.host_id ?? '']?.username;
+
+  const mentionHost = useCallback(() => {
+    if (!hostName) return;
+    setSellerOpen(false);
+    setDraft((current) => {
+      const tag = `@${hostName} `;
+      if (current.includes(tag.trim())) return current;
+      return current ? `${current.trimEnd()} ${tag}` : tag;
+    });
+    // Erst schließen lassen, dann Fokus — sonst nimmt das Modal ihn wieder weg.
+    setTimeout(() => chatInputRef.current?.focus(), 250);
+  }, [hostName]);
+
+  const requireLogin = useCallback(() => {
+    if (myUserId) return false;
+    setSellerOpen(false);
+    router.push('/login');
+    return true;
+  }, [myUserId, router]);
+
+  const openSellerProfile = useCallback(() => {
+    if (!session?.host_id) return;
+    setSellerOpen(false);
+    router.push(`/seller/${session.host_id}`);
+  }, [router, session?.host_id]);
+
+  const openConversation = useCallback(() => {
+    if (!session?.host_id || requireLogin()) return;
+    setSellerOpen(false);
+    router.push(`/messages/${session.host_id}`);
+  }, [router, session?.host_id, requireLogin]);
+
+  const openTip = useCallback(() => {
+    if (!session?.host_id || requireLogin()) return;
+    setSellerOpen(false);
+    // Die Show wandert mit: Später lässt sich damit beantworten, welcher Abend
+    // was eingebracht hat, ohne dass wir die Zuordnung nachträglich raten.
+    router.push(`/tip/${session.host_id}?session=${id}`);
+  }, [router, session?.host_id, requireLogin, id]);
+
+  const blockHost = useCallback(async () => {
+    if (!session?.host_id || requireLogin()) return;
+    const res = await block(session.host_id);
+    setSellerOpen(false);
+    setNotice(res.ok ? `${hostName ?? 'Verkäufer'} ist gesperrt.` : res.message);
+  }, [block, session?.host_id, hostName, requireLogin]);
+
+  const unblockHost = useCallback(async () => {
+    if (!session?.host_id) return;
+    const res = await unblock(session.host_id);
+    setSellerOpen(false);
+    setNotice(res.ok ? 'Sperre aufgehoben.' : res.message);
+  }, [unblock, session?.host_id]);
+
+  const reportHost = useCallback(
+    async (reason: ReportReason) => {
+      if (!session?.host_id || requireLogin()) return;
+      const res = await report(session.host_id, reason);
+      setSellerOpen(false);
+      setNotice(
+        res.ok ? 'Danke — wir schauen uns das an. 🙏' : res.message,
+      );
+    },
+    [report, session?.host_id, requireLogin],
+  );
+
   if (isLoading) {
     return (
       <View style={[styles.screen, styles.center]}>
@@ -512,18 +594,28 @@ export default function LiveAuctionRoom() {
         pointerEvents="box-none"
       >
         <View style={styles.header} pointerEvents="box-none">
-          <Avatar uri={host?.avatarUrl} name={host?.username} size={32} ring />
-          <View style={styles.headerText}>
-            <Text numberOfLines={1} style={styles.hostName}>
-              {host?.username ?? '…'}
-            </Text>
-            <View style={styles.trustRow}>
-              <Package size={10} color={stage.textMuted} />
-              <Text style={styles.trustText}>
-                {soldCount != null ? `${soldCount} Zuschläge` : 'Neu hier'}
+          {/* Kopf und Name öffnen das Verkäufer-Sheet. Ein eigener Pressable
+              statt zweier: Der Name ist das größere Ziel, und wer den Kopf
+              trifft, meint dasselbe. */}
+          <Pressable
+            style={styles.identityTap}
+            onPress={() => setSellerOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel={`Mehr über ${host?.username ?? 'den Verkäufer'}`}
+          >
+            <Avatar uri={host?.avatarUrl} name={host?.username} size={32} ring />
+            <View style={styles.headerText}>
+              <Text numberOfLines={1} style={styles.hostName}>
+                {host?.username ?? '…'}
               </Text>
+              <View style={styles.trustRow}>
+                <Package size={10} color={stage.textMuted} />
+                <Text style={styles.trustText}>
+                  {soldCount != null ? `${soldCount} Zuschläge` : 'Neu hier'}
+                </Text>
+              </View>
             </View>
-          </View>
+          </Pressable>
 
           {follow.canFollow ? (
             <Pressable
@@ -613,7 +705,13 @@ export default function LiveAuctionRoom() {
                 sendHeart(event.nativeEvent.pageX, event.nativeEvent.pageY)
               }
             >
-              {comments.slice(-5).map((comment) => {
+              {/* Gesperrte werden hier ausgeblendet, nicht auf dem Server:
+                  Eine Sperre ist die Sicht EINES Zuschauers, die anderen sollen
+                  den Verlauf unverändert sehen. */}
+              {comments
+                .filter((c) => !blocked?.has(c.user_id))
+                .slice(-5)
+                .map((comment) => {
                 const author = profiles[comment.user_id];
                 return (
                   <View key={comment.id} style={styles.chatLine}>
@@ -631,6 +729,7 @@ export default function LiveAuctionRoom() {
 
             <View style={styles.chatInputRow}>
               <TextInput
+                ref={chatInputRef}
                 value={draft}
                 onChangeText={setDraft}
                 placeholder="Schreibe etwas …"
@@ -762,6 +861,25 @@ export default function LiveAuctionRoom() {
         />
       ) : null}
 
+      <SellerSheet
+        visible={sellerOpen}
+        sellerId={session.host_id}
+        username={host?.username}
+        avatarUrl={host?.avatarUrl}
+        stats={sellerStats}
+        isBlocked={Boolean(blocked?.has(session.host_id))}
+        isSelf={isHost}
+        follow={follow}
+        onClose={() => setSellerOpen(false)}
+        onTip={openTip}
+        onProfile={openSellerProfile}
+        onMessage={openConversation}
+        onMention={mentionHost}
+        onBlock={() => void blockHost()}
+        onUnblock={() => void unblockHost()}
+        onReport={(reason) => void reportHost(reason)}
+      />
+
       {/* Ganz zuletzt, damit die Vorschau alles überdeckt: Wer die Kamera noch
           ausrichtet, soll nicht schon die Auktion bedienen können. */}
       {GoLiveGate && isHost && !connected ? (
@@ -784,6 +902,9 @@ const styles = StyleSheet.create({
     gap: 7,
     paddingHorizontal: space.md,
   },
+  // Kopf und Name als ein Ziel. `flex: 1` liegt jetzt hier statt auf
+  // headerText, sonst schöbe der Pressable die Folgen-Pille aus dem Bild.
+  identityTap: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: space.sm },
   headerText: { flex: 1, minWidth: 0 },
   hostName: { fontSize: 14, fontWeight: '700', color: stage.text },
   trustRow: { flexDirection: 'row', alignItems: 'center', gap: 3 },

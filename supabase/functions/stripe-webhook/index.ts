@@ -140,6 +140,15 @@ async function handlePaid(admin: SupabaseClient, event: StripeEvent) {
     return;
   }
 
+  // Trinkgeld aus Berkat → eigener Pfad (berkat_tips), kein Coin-Credit und
+  // keine Bestellung. Steht VOR dem Produkt-Zweig, damit ein Trinkgeld nie
+  // versehentlich in der Bestell-Logik landet — dort hingen Versand,
+  // Streitfälle und Bewertungen dran, die es hier alle nicht gibt.
+  if (session.metadata?.kind === 'berkat_tip') {
+    await handleBerkatTipPaid(admin, event.data.object);
+    return;
+  }
+
   // Produkt-Bestellung (echte Ware) → eigener Pfad (product_orders), kein Coin-Credit.
   if (session.metadata?.kind === 'product_order') {
     await handleProductOrderPaid(admin, event.data.object);
@@ -277,6 +286,49 @@ async function handlePaid(admin: SupabaseClient, event: StripeEvent) {
 // Kein Coin-Credit — das Geld liegt direkt auf Zaurs Stripe (er = Verkäufer).
 // Claim-before-update: nur 'payment_requested' → 'paid' (idempotent gegen Retries).
 // Speichert die von Stripe Checkout eingesammelte Versandadresse.
+/**
+ * Trinkgeld bestätigen (Berkat).
+ *
+ * Bewusst schmal: Es gibt nichts zu versenden, nichts gutzuschreiben und keine
+ * Adresse zu übernehmen. Die Zeile wechselt von 'pending' auf 'paid', mehr
+ * nicht.
+ *
+ * Idempotent über den Zustand: Stripe stellt Ereignisse mehrfach zu, und der
+ * UPDATE filtert deshalb auf `status = 'pending'`. Ein zweites Ereignis trifft
+ * dann null Zeilen statt einen zweiten Eintrag zu erzeugen.
+ */
+async function handleBerkatTipPaid(admin: SupabaseClient, obj: unknown) {
+  const session = obj as {
+    id: string;
+    metadata?: Record<string, string>;
+  };
+
+  const tipId = session.metadata?.tip_id;
+  if (!tipId) {
+    console.error('[stripe-webhook] berkat_tip ohne tip_id', session.id);
+    return;
+  }
+
+  const { data: updated, error } = await admin
+    .from('berkat_tips')
+    .update({ status: 'paid', paid_at: new Date().toISOString() })
+    .eq('id', tipId)
+    .eq('status', 'pending')
+    .select('id, recipient_id, amount_cents');
+
+  if (error) {
+    console.error('[stripe-webhook] berkat_tip update fehlgeschlagen', error.message);
+    return;
+  }
+  if (!updated || updated.length === 0) {
+    // Kein Fehler: entweder schon bestätigt (Doppel-Zustellung) oder storniert.
+    console.log(`[stripe-webhook] berkat_tip ${tipId} war nicht mehr pending`);
+    return;
+  }
+
+  console.log(`[stripe-webhook] Trinkgeld ${tipId} bestätigt (${updated[0].amount_cents} Cent)`);
+}
+
 async function handleProductOrderPaid(admin: SupabaseClient, obj: unknown) {
   const session = obj as {
     id: string;

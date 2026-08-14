@@ -19,7 +19,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Check, ImagePlus, Pencil, Plus, Radio, Trash2, X } from 'lucide-react-native';
+import { Check, Gift, ImagePlus, Pencil, Plus, Radio, Trash2, X } from 'lucide-react-native';
 import { useSession } from '../../lib/session';
 import { useLivePlayer } from '../../lib/livePlayer';
 import { pickAndUpload, type ImageKind } from '../../lib/uploadImage';
@@ -44,6 +44,7 @@ import {
   useStudioActions,
 } from '../../lib/useStudio';
 import { orderErrorText, useMarkShipped, useSellerOrders } from '../../lib/useSellerOrders';
+import { useReceivedTips } from '../../lib/useTip';
 import { BerkatMark } from '../../components/BerkatMark';
 import { SellerOrders } from '../../components/SellerOrders';
 import { ui, radius, space } from '../../theme/tokens';
@@ -87,6 +88,8 @@ export default function SellScreen() {
   const formY = useRef(0);
 
   const { data: orders = [] } = useSellerOrders(myUserId);
+  const { data: tips = [] } = useReceivedTips(myUserId);
+  const tipperNames = useUsernames(tips.map((t) => t.sender_id));
   const markShipped = useMarkShipped(myUserId);
   const [shippingId, setShippingId] = useState<string | null>(null);
 
@@ -588,6 +591,29 @@ export default function SellScreen() {
         {/* Außerhalb der Show-Bedingung: Bestellungen wollen bearbeitet werden,
             auch wenn gerade keine Show läuft — meistens sogar dann. */}
         <SellerOrders orders={orders} busyId={shippingId} onShip={shipOrder} />
+
+        {/* Trinkgeld kommt ohne Bestellung an. Ohne diese Liste wüsste ein
+            Verkäufer nie, dass ihm jemand etwas dagelassen hat — und ein Danke,
+            das niemand sieht, ist keins. */}
+        {tips.length > 0 ? (
+          <View style={{ marginTop: space.lg }}>
+            <Text style={styles.sectionLabel}>Trinkgeld</Text>
+            {tips.map((tip) => (
+              <View key={tip.id} style={styles.tipRow}>
+                <Gift size={17} color={ui.gold} />
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={styles.tipFrom}>{tipperNames[tip.sender_id] ?? '…'}</Text>
+                  {tip.message ? (
+                    <Text numberOfLines={2} style={styles.tipMessage}>
+                      „{tip.message}"
+                    </Text>
+                  ) : null}
+                </View>
+                <Text style={styles.tipAmount}>{formatEuro(tip.amount_cents)}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -725,6 +751,20 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: { fontSize: 16, fontWeight: '700', color: ui.goldInk },
   buttonBusy: { opacity: 0.6 },
+
+  tipRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    backgroundColor: ui.card,
+    borderRadius: radius.md,
+    paddingHorizontal: space.md,
+    paddingVertical: 12,
+    marginBottom: space.sm,
+  },
+  tipFrom: { fontSize: 14, fontWeight: '600', color: ui.text },
+  tipMessage: { fontSize: 12, color: ui.textMuted, marginTop: 2, lineHeight: 17 },
+  tipAmount: { fontSize: 16, fontWeight: '700', color: ui.gold },
   ghostButton: {
     flex: 1,
     height: 42,

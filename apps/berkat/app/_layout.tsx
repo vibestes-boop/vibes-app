@@ -87,6 +87,12 @@ export default function RootLayout() {
             <Stack.Screen name="live/[id]" options={{ animation: 'slide_from_bottom' }} />
             <Stack.Screen name="login" options={{ animation: 'slide_from_bottom' }} />
             <Stack.Screen name="notifications" options={{ animation: 'slide_from_right' }} />
+            {/* Alles, was aus dem Verkäufer-Sheet abgeht. Von rechts wie der
+                Rest — nur der Live-Raum und die Anmeldung kommen von unten. */}
+            <Stack.Screen name="seller/[id]" />
+            <Stack.Screen name="messages/index" />
+            <Stack.Screen name="messages/[id]" />
+            <Stack.Screen name="tip/[id]" options={{ animation: 'slide_from_bottom' }} />
           </Stack>
           {/* Liegt über allem, weil die verkleinerte Show über jedem Reiter
               weiterlaufen soll — nicht nur über der Startseite. */}

@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
   const user = userRes.user;
 
   // ── Body ────────────────────────────────────────────────────────────────
-  let body: { tier_id?: string; order_id?: string } = {};
+  let body: { tier_id?: string; order_id?: string; tip_id?: string } = {};
   try {
     body = await req.json();
   } catch {
@@ -214,6 +214,84 @@ Deno.serve(async (req) => {
       .eq('id', order.id);
 
     return json({ order_id: order.id, session_id: pSession.id, url: pSession.url });
+  }
+
+  // ── Trinkgeld (Berkat) ───────────────────────────────────────────────────
+  // Eigener Zweig, weil ein Trinkgeld kein Kauf ist: keine Ware, kein Versand,
+  // keine Adresse. Die Zeile liegt in `berkat_tips` und wurde vom Client nur
+  // ANGEFRAGT — Betrag und Empfänger stehen fest, seit `create_berkat_tip` sie
+  // geprüft hat. Hier wird nichts mehr aus dem Body übernommen außer der ID.
+  if (body.tip_id && typeof body.tip_id === 'string') {
+    const tipClient = createClient(supabaseUrl, serviceRoleKey);
+
+    const { data: tip } = await tipClient
+      .from('berkat_tips')
+      .select('id, sender_id, recipient_id, amount_cents, currency, message, status')
+      .eq('id', body.tip_id)
+      .maybeSingle();
+
+    if (!tip) return json({ error: 'tip_not_found' }, 404);
+    if (tip.sender_id !== user.id) return json({ error: 'not_authorized' }, 403);
+    if (tip.status !== 'pending') return json({ error: 'tip_not_payable' }, 409);
+
+    const { data: recipient } = await tipClient
+      .from('profiles')
+      .select('username')
+      .eq('id', tip.recipient_id)
+      .maybeSingle();
+    const toName = recipient?.username ?? 'den Verkäufer';
+
+    // Dieselben Rückkehr-Seiten wie beim Sammelkorb — ein Trinkgeld ist für
+    // den Zahlenden derselbe Vorgang, nur ohne Ware.
+    const successUrl =
+      Deno.env.get('BERKAT_SUCCESS_URL') ?? `${Deno.env.get('SITE_URL') ?? ''}/bezahlt`;
+    const cancelUrl =
+      Deno.env.get('BERKAT_CANCEL_URL') ?? `${Deno.env.get('SITE_URL') ?? ''}/abgebrochen`;
+
+    const tform = new URLSearchParams();
+    tform.set('mode', 'payment');
+    tform.set('success_url', successUrl);
+    tform.set('cancel_url', cancelUrl);
+    tform.set('client_reference_id', tip.id);
+    tform.set('metadata[kind]', 'berkat_tip');
+    tform.set('metadata[tip_id]', tip.id);
+    tform.set('metadata[sender_id]', tip.sender_id);
+    tform.set('metadata[recipient_id]', tip.recipient_id);
+    tform.set('line_items[0][price_data][currency]', tip.currency ?? 'eur');
+    tform.set('line_items[0][price_data][unit_amount]', String(tip.amount_cents));
+    tform.set('line_items[0][price_data][product_data][name]', `Trinkgeld für ${toName}`);
+    if (tip.message) {
+      tform.set('line_items[0][price_data][product_data][description]', String(tip.message).slice(0, 200));
+    }
+    tform.set('line_items[0][quantity]', '1');
+
+    const tRes = await fetch(`${STRIPE_BASE_URL}/checkout/sessions`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${stripeKey}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Stripe-Version': STRIPE_API_VERSION,
+        // Ein zweiter Tipp auf „Bezahlen" erzeugt dieselbe Stripe-Sitzung,
+        // nicht eine zweite Abbuchung.
+        'Idempotency-Key': `berkat-tip-${tip.id}`,
+      },
+      body: tform.toString(),
+    });
+
+    if (!tRes.ok) {
+      const errBody = await tRes.text();
+      console.error('[create-checkout-session] tip stripe error', tRes.status, errBody);
+      return json({ error: 'stripe_session_create_failed' }, 502);
+    }
+
+    const tSession = (await tRes.json()) as { id: string; url: string };
+
+    await tipClient
+      .from('berkat_tips')
+      .update({ stripe_session_id: tSession.id })
+      .eq('id', tip.id);
+
+    return json({ tip_id: tip.id, session_id: tSession.id, url: tSession.url });
   }
 
   const tierId = body.tier_id;

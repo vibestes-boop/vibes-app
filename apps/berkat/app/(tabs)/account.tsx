@@ -5,7 +5,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Lock, Package, Truck } from 'lucide-react-native';
+import { ChevronRight, Lock, MessageSquare, Package, Truck } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/session';
 import { buyerStatus, useMyOrders } from '../../lib/useMyOrders';
@@ -17,6 +17,7 @@ import {
   useUsernames,
 } from '../../lib/useAuction';
 import { useCheckoutCart } from '../../lib/useCheckout';
+import { useUnreadMessageCount } from '../../lib/useDirectMessages';
 import { Avatar } from '../../components/Avatar';
 import { BerkatMark } from '../../components/BerkatMark';
 import { ui, radius, space } from '../../theme/tokens';
@@ -86,6 +87,7 @@ export default function AccountScreen() {
 
   const { data: carts = [], refetch: refetchCarts } = useMyCarts(myUserId);
   const { data: orders = [], refetch: refetchOrders } = useMyOrders(myUserId);
+  const { data: unreadMessages = 0, refetch: refetchUnread } = useUnreadMessageCount(myUserId);
 
   // Beim Öffnen des Reiters neu laden — nicht nur beim ersten Aufbauen.
   //
@@ -99,7 +101,8 @@ export default function AccountScreen() {
     useCallback(() => {
       void refetchCarts();
       void refetchOrders();
-    }, [refetchCarts, refetchOrders]),
+      void refetchUnread();
+    }, [refetchCarts, refetchOrders, refetchUnread]),
   );
   const sellerNames = useUsernames([
     ...carts.map((c) => c.seller_id),
@@ -157,6 +160,27 @@ export default function AccountScreen() {
           ) : null}
         </View>
       </View>
+
+      {/* Der einzige Weg zu eingehenden Nachrichten. Steht über den Paketen,
+          weil eine Frage des Verkäufers zur Lieferadresse dringender ist als
+          ein Paket, das ohnehin 24 Stunden Zeit hat. */}
+      <Pressable
+        style={({ pressed }) => [styles.linkRow, pressed && styles.linkRowPressed]}
+        onPress={() => router.push('/messages')}
+        accessibilityRole="button"
+        accessibilityLabel="Nachrichten"
+      >
+        <MessageSquare size={19} color={ui.text} />
+        <Text style={styles.linkLabel}>Nachrichten</Text>
+        {unreadMessages > 0 ? (
+          <View style={styles.linkBadge}>
+            <Text style={styles.linkBadgeText}>
+              {unreadMessages > 9 ? '9+' : unreadMessages}
+            </Text>
+          </View>
+        ) : null}
+        <ChevronRight size={18} color={ui.textMuted} />
+      </Pressable>
 
       <Text style={styles.sectionLabel}>Deine Pakete</Text>
       {carts.length === 0 ? (
@@ -321,6 +345,29 @@ const styles = StyleSheet.create({
   wozText: { fontSize: 11, fontWeight: '700', color: ui.successInk },
 
   sectionLabel: { fontSize: 12, fontWeight: '600', color: ui.textMuted, marginBottom: space.sm },
+
+  linkRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    backgroundColor: ui.card,
+    borderRadius: radius.md,
+    paddingHorizontal: space.md,
+    paddingVertical: 14,
+    marginBottom: space.lg,
+  },
+  linkRowPressed: { opacity: 0.6 },
+  linkLabel: { flex: 1, fontSize: 15, fontWeight: '600', color: ui.text },
+  linkBadge: {
+    minWidth: 20,
+    height: 20,
+    paddingHorizontal: 6,
+    borderRadius: radius.pill,
+    backgroundColor: ui.gold,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  linkBadgeText: { fontSize: 11, fontWeight: '800', color: ui.goldInk },
   card: {
     backgroundColor: ui.card,
     borderRadius: radius.md,
