@@ -671,10 +671,45 @@ Nebenbefund, entkräftet: Mehrere Geräte funktionieren längst. `send_push_to_u
 `push_tokens`, nicht die Einzelspalte `profiles.push_token` — nur die (nicht mehr laufende) Edge
 Function las die Spalte.
 
+### Push in Berkat: gebaut, aber der Build braucht eine Apple-Freigabe
+
+Die Registrierung liegt in `lib/usePush.ts` und hängt im Wurzel-Layout. Sie schreibt **nur** in
+`push_tokens` mit `app: 'berkat'` und fasst `profiles.push_token` bewusst nicht an — die Einzelspalte
+kann nur einen Token halten, Berkat würde sonst den von Serlo verdrängen. `tsc` und `expo export`
+laufen durch.
+
+**Der EAS-Build scheitert trotzdem**, und zwar reproduzierbar nach ~80 Sekunden:
+
+```
+XCODE_BUILD_ERROR
+Provisioning profile "*[expo] com.berkat.app AdHoc …" doesn't support the Push Notifications capability.
+Provisioning profile … doesn't include the aps-environment entitlement.
+```
+
+Das Profil stammt aus der Zeit, als Berkat kein Push hatte. `expo-notifications` verlangt die
+Berechtigung auf der App-ID, und die fehlt.
+
+**Das lässt sich nicht nicht-interaktiv beheben.** Nötig sind drei Dinge im Apple Developer Portal:
+Push Notifications auf der App-ID `com.berkat.app` aktivieren, das Provisioning-Profil neu erzeugen,
+und einen APNs-Schlüssel anlegen (ohne den kann Expo gar nichts zustellen). EAS erledigt alle drei
+selbst — aber nur im **interaktiven** Lauf, und dafür braucht es eine Apple-Anmeldung samt
+Zwei-Faktor-Bestätigung:
+
+```bash
+cd /Users/zaurhatuev/vibes-app/apps/berkat && eas build --profile development --platform ios
+```
+
+Ohne `--non-interactive`. EAS fragt dann nach der Apple-ID, erkennt die fehlende Berechtigung und
+bietet an, sie einzurichten. Danach läuft der Build durch.
+
+**Beim Testen beachten:** Push kommt nur auf einem echten Gerät an — der Simulator hat keine
+Push-Fähigkeit, die Registrierung überspringt ihn per `Device.isDevice`. Für den Durchlauf heißt das
+**andersherum als bisher**: iPhone als Käufer, Simulator als Verkäufer. Sonst gewinnt das Konto auf
+dem Simulator und der Zuschlag-Push hat kein Ziel.
+
 ### Was noch fehlt
 
-1. **`expo-notifications` in Berkat** — natives Modul, braucht einen EAS-Rebuild. Registrierung muss
-   `app: 'berkat'` in `push_tokens` schreiben, sonst greift der Filter nicht.
+1. **Der Build oben** — Apple-Freigabe, siehe eben.
 2. **Zahlungserinnerung** — `auction_carts.closes_at` trägt die 24-Stunden-Frist, der Typ
    `order_payment_reminder` existiert in allen Oberflächen. Es fehlt ein pg_cron-Lauf, der offene
    Körbe kurz vor Ablauf einsammelt und je Korb **genau einmal** pingt.
