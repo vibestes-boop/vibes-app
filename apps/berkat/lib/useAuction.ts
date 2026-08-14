@@ -379,6 +379,10 @@ export function useCart(userId: string | null, sellerId: string | undefined) {
         .select('id, seller_id, closes_at')
         .eq('buyer_id', userId!)
         .eq('seller_id', sellerId!)
+        // Nur `open`, und das ist Absicht — anders als im Konto. Die Leiste im
+        // Raum zeigt den Korb, der GERADE SAMMELT. Ein Korb in der Kasse ist
+        // eingefroren; was ab jetzt gewonnen wird, landet in einem frischen.
+        // Den eingefrorenen samt offener Zahlung findet man unter „Konto".
         .eq('status', 'open')
         .limit(1);
       if (error) throw error;

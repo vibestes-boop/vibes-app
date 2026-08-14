@@ -42,7 +42,10 @@ function useMyCarts(userId: string | null) {
         .from('auction_carts')
         .select('id, seller_id, closes_at')
         .eq('buyer_id', userId!)
-        .eq('status', 'open')
+        // `checkout_pending` gehört dazu: Der Korb ist eingefroren, weil er
+        // schon zur Kasse getragen wurde — die Zahlung steht aber noch aus.
+        // Ohne diesen Zustand fände niemand seine angefangene Zahlung wieder.
+        .in('status', ['open', 'checkout_pending'])
         .order('closes_at', { ascending: true });
       if (error) throw error;
 
