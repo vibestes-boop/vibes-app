@@ -4,11 +4,14 @@
 // Wurzel-Layout (siehe LiveStage), läuft also durch, während man daneben
 // stöbert. Antippen holt die Show zurück, das Kreuz beendet sie.
 
+import { useEffect } from 'react';
 import { useRouter } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
 import { Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
+import { supabase } from '../lib/supabase';
 import { useLivePlayer } from '../lib/livePlayer';
 import { liveKitAvailable } from '../lib/livekit';
 import { stage, radius, space } from '../theme/tokens';
@@ -37,6 +40,31 @@ export function MiniLivePlayer() {
   const restore = useLivePlayer((s) => s.restore);
   const close = useLivePlayer((s) => s.close);
   const ready = useStageReady();
+
+  // Merkt, wenn die Show endet, während man woanders ist.
+  //
+  // Der Raum-Bildschirm räumt selbst auf, aber im verkleinerten Zustand ist er
+  // abgebaut und bekommt nichts mit — dann schwebt weiter ein „live"-Fenster
+  // über den Reitern, hinter dem nichts mehr sendet. Nur alle 30 Sekunden und
+  // nur solange das Fenster wirklich offen ist: eine Abfrage, die sonst nie
+  // läuft.
+  const { data: stillLive } = useQuery({
+    queryKey: ['berkat', 'mini-alive', session?.id],
+    enabled: Boolean(session && minimized),
+    refetchInterval: 30_000,
+    queryFn: async (): Promise<boolean> => {
+      const { data } = await supabase
+        .from('live_sessions')
+        .select('status')
+        .eq('id', session!.id)
+        .maybeSingle();
+      return (data as { status?: string } | null)?.status === 'active';
+    },
+  });
+
+  useEffect(() => {
+    if (stillLive === false) useLivePlayer.getState().close();
+  }, [stillLive]);
 
   if (!session || !minimized) return null;
 

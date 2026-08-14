@@ -316,6 +316,21 @@ export default function LiveAuctionRoom() {
     router.back();
   }, [router]);
 
+  /** Endgültig raus — im Gegensatz zum Verkleinern bleibt nichts zurück. */
+  const leaveRoom = useCallback(() => {
+    useLivePlayer.getState().close();
+    router.back();
+  }, [router]);
+
+  // Endet die Show, während man zusieht, muss auch das kleine Fenster weg.
+  // Sonst schwebt weiter ein „live"-Fenster über den Reitern, hinter dem nichts
+  // mehr sendet — genau das war am 14.08. zu sehen.
+  useEffect(() => {
+    if (session && session.status !== 'active') {
+      useLivePlayer.getState().close();
+    }
+  }, [session]);
+
   const shareShow = useCallback(() => {
     if (!id) return;
     void Share.share({ message: `Schau dir das an: ${showLink(id)}` });
@@ -407,6 +422,29 @@ export default function LiveAuctionRoom() {
     );
   }
 
+  // Die Show ist zu Ende — als eigener Zustand, nicht als leerer Raum.
+  //
+  // Vorher blieb hier alles stehen: Chat, Leiste, Sammelkorb-Leiste. Nur das
+  // Video fehlte, weil die Verbindung an `status === 'active'` hängt. Der
+  // Zuschauer sah eine dunkelgrüne Fläche und wartete auf etwas, das nicht mehr
+  // kommt. Der Hinweis auf das Paket steht bewusst dabei: Wer gerade etwas
+  // gewonnen hat, soll wissen, wo es liegt.
+  if (session && session.status !== 'active') {
+    return (
+      <View style={[styles.screen, styles.center, { padding: space.xl }]}>
+        <Text style={styles.emptyTitle}>Die Show ist zu Ende</Text>
+        <Text style={styles.emptyBody}>
+          {cart && cart.itemCount > 0
+            ? `Dein Paket mit ${cart.itemCount} ${cart.itemCount === 1 ? 'Artikel' : 'Artikeln'} wartet unter „Konto“.`
+            : 'Danke fürs Zuschauen — schau, wer gerade sonst live ist.'}
+        </Text>
+        <Pressable style={styles.backButton} onPress={leaveRoom}>
+          <Text style={styles.backButtonText}>Zurück</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
   if (!session) {
     return (
       <View style={[styles.screen, styles.center, { padding: space.xl }]}>
@@ -414,7 +452,7 @@ export default function LiveAuctionRoom() {
         <Text style={styles.emptyBody}>
           Vielleicht ist sie zu Ende — schau, wer gerade sonst live ist.
         </Text>
-        <Pressable style={styles.backButton} onPress={() => router.back()}>
+        <Pressable style={styles.backButton} onPress={leaveRoom}>
           <Text style={styles.backButtonText}>Zurück</Text>
         </Pressable>
       </View>

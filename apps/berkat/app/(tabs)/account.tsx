@@ -1,7 +1,7 @@
 // Konto — wer du bist und was noch offen ist.
 
-import { useState } from 'react';
-import { useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -79,7 +79,21 @@ export default function AccountScreen() {
   const profile = useSession((s) => s.profile);
   const { serverNow } = useServerClock();
 
-  const { data: carts = [] } = useMyCarts(myUserId);
+  const { data: carts = [], refetch: refetchCarts } = useMyCarts(myUserId);
+
+  // Beim Öffnen des Reiters neu laden — nicht nur beim ersten Aufbauen.
+  //
+  // Expo Router hält die Reiter-Bildschirme dauerhaft aufgebaut. Wer „Konto"
+  // einmal geöffnet hat, sieht beim Zurückwechseln denselben Stand von vorhin:
+  // kein Aufbauen, kein Fokuswechsel der App, also kein Nachladen. Genau so
+  // stand am 14.08. „Noch nichts gewonnen" da, während im Live-Raum schon
+  // „2 Artikel · 1 Paket" angezeigt wurde — die Pakete waren da, die Abfrage
+  // war nur alt.
+  useFocusEffect(
+    useCallback(() => {
+      void refetchCarts();
+    }, [refetchCarts]),
+  );
   const sellerNames = useUsernames(carts.map((c) => c.seller_id));
 
   const checkout = useCheckoutCart();
