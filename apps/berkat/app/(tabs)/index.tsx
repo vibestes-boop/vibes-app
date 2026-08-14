@@ -4,7 +4,7 @@
 // Verkäufername steht ÜBER der Karte, nicht darunter — bei Live-Shopping kauft
 // man den Menschen, nicht das Bild.
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -21,10 +21,11 @@ import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Bell, Lock, Search } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
-import { useProfiles } from '../../lib/useAuction';
+import { useProfiles, useServerClock, useShowPreviews } from '../../lib/useAuction';
 import { BerkatMark } from '../../components/BerkatMark';
 import { Avatar } from '../../components/Avatar';
 import { CategoryRail, type RailItem } from '../../components/CategoryRail';
+import { LivePreview } from '../../components/LivePreview';
 import { ui, radius, space } from '../../theme/tokens';
 import { useSession } from '../../lib/session';
 import { useUnreadCount } from '../../lib/useNotifications';
@@ -83,6 +84,26 @@ export default function HomeScreen() {
     }
   }, [refetch]);
   const profiles = useProfiles(shows.map((s) => s.host_id));
+
+  // Was in jeder Show gerade läuft. Die Uhr des Servers gilt auch hier: Der
+  // Countdown auf den Karten darf nicht daran hängen, wie das Handy gestellt ist.
+  const { serverNow } = useServerClock();
+  const showIds = useMemo(() => shows.map((s) => s.id), [shows]);
+  const previews = useShowPreviews(showIds, serverNow);
+
+  // EIN Takt für die ganze Liste. Ein eigener Zähler je Karte wären sechzig
+  // Uhren für dieselbe Sekunde; hier tickt die Liste, und jede Karte rechnet
+  // sich ihre Restzeit selbst aus. Läuft nirgends eine Auktion, steht der Takt.
+  const hasRunning = useMemo(
+    () => Object.values(previews).some((p) => p.status === 'running'),
+    [previews],
+  );
+  const [, tick] = useState(0);
+  useEffect(() => {
+    if (!hasRunning) return;
+    const timer = setInterval(() => tick((n) => n + 1), 1000);
+    return () => clearInterval(timer);
+  }, [hasRunning]);
 
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState(ALL);
@@ -199,6 +220,11 @@ export default function HomeScreen() {
         }
         renderItem={({ item }) => {
           const host = profiles[item.host_id];
+          const preview = previews[item.id];
+          const secondsLeft =
+            preview?.status === 'running' && preview.endsAt
+              ? Math.max(0, (new Date(preview.endsAt).getTime() - serverNow()) / 1000)
+              : null;
           return (
             <Pressable
               style={styles.card}
@@ -222,16 +248,23 @@ export default function HomeScreen() {
                     transition={140}
                   />
                 ) : null}
-                <View style={styles.livePill}>
-                  <View style={styles.liveDot} />
-                  <Text style={styles.livePillText}>Live · {item.viewer_count ?? 0}</Text>
-                </View>
-                {item.women_only ? (
-                  <View style={styles.wozBadge}>
-                    <Lock size={11} color={ui.successInk} />
-                    <Text style={styles.wozText}>Frauen-Only</Text>
+                {/* Beide Merkzeichen stehen oben in einer Reihe. Das
+                    Frauen-Only-Zeichen saß früher unten links — da liegt jetzt
+                    die Vorschau. Die Reihe bricht um, statt sich zu überlappen. */}
+                <View style={styles.pillRow}>
+                  <View style={styles.livePill}>
+                    <View style={styles.liveDot} />
+                    <Text style={styles.livePillText}>Live · {item.viewer_count ?? 0}</Text>
                   </View>
-                ) : null}
+                  {item.women_only ? (
+                    <View style={styles.wozBadge}>
+                      <Lock size={11} color={ui.successInk} />
+                      <Text style={styles.wozText}>Frauen-Only</Text>
+                    </View>
+                  ) : null}
+                </View>
+
+                {preview ? <LivePreview preview={preview} secondsLeft={secondsLeft} /> : null}
               </View>
 
               <Text numberOfLines={2} style={styles.cardTitle}>
@@ -295,10 +328,17 @@ const styles = StyleSheet.create({
     backgroundColor: ui.sunken,
     overflow: 'hidden',
   },
-  livePill: {
+  pillRow: {
     position: 'absolute',
     top: space.sm,
     left: space.sm,
+    right: space.sm,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'flex-start',
+    gap: 5,
+  },
+  livePill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
@@ -310,9 +350,6 @@ const styles = StyleSheet.create({
   liveDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: ui.liveInk },
   livePillText: { fontSize: 11, fontWeight: '700', color: ui.liveInk },
   wozBadge: {
-    position: 'absolute',
-    bottom: space.sm,
-    left: space.sm,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,

@@ -18,6 +18,16 @@ export const ui = {
   card: '#FFFFFF',
   /** Chips, Bildplatzhalter, ruhige Flächen. */
   sunken: '#F0EAE0',
+  /**
+   * Milchige Auflage für Text auf einem FREMDEN Bild — die Live-Vorschau auf
+   * den Show-Karten ist die einzige Stelle, an der Berkat das tut.
+   *
+   * Bewusst fast deckend. Ein Vorschaubild ist mal hell, mal dunkel; zartes
+   * Glas wäre auf dem einen lesbar und auf dem nächsten weg. Genau diesen Fall
+   * schließen die zwei festen Flächen sonst aus — hier geht es nicht anders,
+   * also deckt die Fläche.
+   */
+  overlay: 'rgba(255,255,255,0.94)',
 
   text: '#14241E',
   textMuted: '#6E7D75',

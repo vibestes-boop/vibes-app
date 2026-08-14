@@ -383,6 +383,7 @@ Besitzer** — sonst wären Stellvertreter-Bieten und Gewinnspiel wertlos.
 | Marke, Icon, Splash | fertig — `scripts/generate-icons.mjs` erzeugt alle PNGs analytisch aus `assets/mark.svg` |
 | Anmeldung | E-Mail/Passwort **und Registrierung** gegen dieselbe Supabase-Instanz. Google/Apple fehlen |
 | Startseite | Suche, Kategorie-Leiste mit zwei Größen (schrumpft beim Scrollen), Show-Karten |
+| Live-Vorschau auf den Karten | zeigt je Show den laufenden / nächsten / gerade zugeschlagenen Artikel mit Uhr und Preis — Abschnitt 8 |
 | Live-Raum | Video, Kamera-Vorschau vor dem Senden, Kamera-Steuerung, Chat mit Eingabe, wegwischbare Kommentare, Sammelkorb-Leiste, „Als Nächstes", Shop-Zettel |
 | Auktion | Gebot, Anti-Snipe (+10 s), Sofortkauf, Max-Gebot, Zuschlag, „Du führst" |
 | Verkäufer-Regie | Show starten/beenden, Artikel auflegen mit Bild, **nachträglich ändern**, **Starten aus dem Raum heraus**, Dauer 20/30/60 s |
@@ -401,9 +402,9 @@ beim Käufer sichtbar.
 
 ### Was fehlt
 
-1. **Benachrichtigungen an den Käufer — zur Hälfte gebaut (14.08.2026).** Zuschlag und Versand
-   entstehen jetzt serverseitig, die **Zahlungserinnerung fehlt noch**. Und die Zustellung an ein
-   Berkat-Gerät steht noch aus. Details in Abschnitt 9.
+1. **Benachrichtigungen an den Käufer — eigene Liste in Berkat fehlt.** Zuschlag, Versand und
+   Zahlungserinnerung entstehen serverseitig und kommen auf dem Gerät an; wer einen Push
+   wegwischt, findet ihn aber nirgends wieder. Details in Abschnitt 9.
 2. **Kategorien- und Aktivitäts-Reiter** — zwei von Whatnots fünf; bewusst weggelassen, solange
    sie keinen Inhalt hätten
 3. **Google-/Apple-Anmeldung** — braucht Entwickler-Zugänge und einen echten Rebuild
@@ -541,73 +542,98 @@ Der Code ist so weit, dass sich das testen lässt. Gelingt es nicht, spart die A
 
 ## 8. Nächster sinnvoller Schritt
 
-### Live-Vorschau auf den Show-Karten — das ist der Bau
+### Berkat-Shows tauchen in Serlo auf — das ist der nächste Bau
 
-Analysiert am 14.08.2026 anhand von Whatnot-Screenshots. Auf deren Startseite liegt über jedem
-Show-Vorschaubild ein kleines Widget, das zeigt, was in dieser Show **gerade** passiert. Es macht
-aus einem Raster von Standbildern einen Marktplatz mit Puls: Man sieht ohne einen einzigen Tap,
-dass eine Uhr läuft, dass etwas für 1 € wegging, dass gleich das nächste kommt.
+Gefunden am 14.08.2026 beim Vorbereiten eines Testlaufs, **ungeprüft in Produktion**: Eine
+Berkat-Show ist eine ganz normale Zeile in `live_sessions`. Serlos Liste der laufenden Streams
+(`useActiveLiveSessions` in `lib/useLiveSession.ts`) holt **alle** aktiven Sessions der letzten
+acht Stunden, ohne jede Unterscheidung nach App — und diese Liste hängt in Serlos Startseite, im
+Gilden-Reiter, im Nachrichten-Reiter und im Zuschauer-Bildschirm.
 
-Für Berkat trifft das direkt Design-Gesetz 1 — Hochs lauter machen — nur eben **vor** dem Betreten
-des Raums. Es ist der Unterschied zwischen „hier sind Shows" und „hier passiert gerade etwas".
+Wer in Berkat eine Show aufmacht, erscheint damit für **echte Serlo-Nutzer** im Live-Bereich — in
+einer App ohne Gebots-Oberfläche. Sie sehen jemanden eine Auktion moderieren und können nicht
+mitmachen.
+
+Das blockiert nebenbei jeden weiteren Durchlauf: Solange es offen ist, ist jeder Testlauf für
+Fremde sichtbar. Die Live-Vorschau unten wurde deshalb **ohne** Testshow geprüft.
+
+Der Handgriff ist derselbe wie beim Push am 14.08.: `push_tokens.app` und `notifications.app` gibt
+es längst, der Session fehlt genau diese Spalte. `live_sessions.app` mit Default `'serlo'` ist
+rückwirkend richtig ohne Nachtragen; dazu ein Filter in beiden Listen.
+
+### Live-Vorschau auf den Show-Karten — gebaut am 14.08.2026
+
+Über jedem Vorschaubild auf der Startseite liegt jetzt ein Widget, das zeigt, was in dieser Show
+**gerade** passiert. Aus dem Raster von Standbildern wird ein Marktplatz mit Puls: Man sieht ohne
+einen einzigen Tap, dass eine Uhr läuft, dass etwas weggeht, dass gleich das nächste kommt. Das
+ist Design-Gesetz 1 — Hochs lauter machen — nur eben **vor** dem Betreten des Raums.
 
 #### Die Grammatik: eine Komponente, drei Zustände
 
-Nicht drei Widgets. Zeile 1 und Zeile 3 wechseln nur ihren Inhalt:
+`components/LivePreview.tsx`. Nicht drei Widgets — Zeile 1 und Zeile 3 wechseln nur ihren Inhalt:
 
-| Phase | Zeile 1 (klein, grau) | Zeile 2 (fett, 1 Zeile) | Zeile 3 links | Zeile 3 rechts |
+| `live_auctions.status` | Zeile 1 (klein, grau) | Zeile 2 (fett, 1 Zeile) | Zeile 3 links | Zeile 3 rechts |
 |---|---|---|---|---|
-| Artikel läuft | „Läuft aktuell" | Artikelname | `00:04` **rot**, tickt | Gebot |
-| gerade zugeschlagen | „Warten auf nächsten Artikel" | Artikelname | „Verkauft" **rot** | Endpreis |
-| noch nichts gestartet | „Als nächstes …" | Artikelname | „Beginnt bald …" grau | Startpreis |
+| `running` | „Läuft aktuell" | Artikelname | `00:04` **rot**, tickt | Gebot, zählt hoch |
+| `sold` | „Gleich der Nächste" | Artikelname | „Verkauft" **rot** | Endpreis |
+| `scheduled` | „Als Nächstes …" | Artikelname | „Beginnt bald …" grau | Startpreis |
 
-Dazu am rechten Rand ein kleines **Artikelbild**, quadratisch mit hellem Rand, das über die
-Oberkante des Widgets hinausragt.
+Rechts ragt das **Artikelbild** über die Oberkante hinaus. Beim Zustandswechsel blendet das Widget
+kurz aus und wieder ein — kein eigener Mechanismus, sondern die Folge des Wechsels: Es hängt am
+Schlüssel aus Artikel und Zustand.
 
-Das „Kommen und Gehen" ist kein eigener Mechanismus, sondern die Folge des Zustandswechsels — beim
-Wechsel wird das Widget kurz aus- und wieder eingeblendet.
+Läuft die Uhr auf null, steht dort **„Zuschlag …"** statt einer stehenden `00:00` — dieselbe
+Formulierung wie im Live-Raum, weil eine eingefrorene Uhr nach Absturz aussieht.
 
-#### Die Zustände passen eins zu eins auf `live_auctions.status`
+#### Die Abfrage: `useShowPreviews` in `lib/useAuction.ts`
 
-    running    → „Läuft aktuell"              + Countdown aus ends_at
-    sold       → „Warten auf nächsten Artikel" + „Verkauft"
-    scheduled  → „Als nächstes …"              + „Beginnt bald …"
+Vorrang je Show: **läuft** → sonst **nächster geplanter** (kleinster `sort_index`) → sonst
+**gerade zugeschlagen**. Findet sich nichts davon, steht in der Karte auch nichts — eine Show ohne
+Auktionsbetrieb soll keinen Puls vortäuschen. Kein neues DB-Objekt.
 
-#### Was schon da ist — fast alles
+Zwei Abfragen statt einer, weil die beiden Hälften verschiedene Grenzen haben: Offene Artikel sind
+je Show eine Handvoll, verkaufte wären unbegrenzt. Deshalb hat „gerade zugeschlagen" ein **Fenster
+von fünf Minuten**. Ohne das müsste die Abfrage die gesamte Verkaufsliste jeder Show mitziehen, um
+eine einzige Zeile Text zu finden — bei 60 Shows mit je zwei Stunden Betrieb sind das Tausende
+Zeilen.
 
-| Baustein | Wo |
-|---|---|
-| `title`, `image_url`, `status`, `current_bid_cents`, `ends_at`, `sort_index` | `live_auctions` |
-| `useServerClock()` — Gerätezeit gegen Serverzeit abgeglichen | `lib/useAuction.ts` |
-| `useCountdown(endsAt, serverNow)` — tickt sekündlich | `lib/useAuction.ts` |
-| `formatCountdown(seconds)` — macht daraus `00:04` | `lib/useAuction.ts` |
-| Startseite lädt alle 20 s nach (`refetchInterval: 20_000`) | `app/(tabs)/index.tsx` |
-| Show-Karte mit Bild, Live-Pille, Zuschauerzahl | `app/(tabs)/index.tsx` |
+**Der Countdown tickt lokal.** Der Server liefert nur den Endzeitpunkt; deshalb reichen 20 Sekunden
+Nachladetakt für den Zustandswechsel, ohne dass die Uhr ruckelt.
 
-**Der Countdown tickt lokal.** Der Server liefert nur den Endzeitpunkt, die App zählt selbst
-herunter — deshalb reichen 20 Sekunden Nachladetakt für den Zustandswechsel, ohne dass die Uhr
-ruckelt. Schneller wäre teurer, ohne viel zu gewinnen.
+#### Fallen, die dabei zugeschlagen haben
 
-#### Was fehlt — drei Stücke
-
-1. **Die Abfrage.** Die Startseite holt heute nur Session-Felder
-   (`id, host_id, title, viewer_count, thumbnail_url, category, women_only`). Sie braucht zusätzlich
-   pro Show den aktuellen Artikel. Ein Aufruf über alle sichtbaren Sessions genügt, die Auswahl je
-   Session dann nach Vorrang: **läuft** → sonst **nächster geplanter** (kleinster `sort_index`) →
-   sonst **zuletzt verkaufter**. Kein neues DB-Objekt nötig.
-2. **Die Komponente.** Das dreizeilige Overlay plus Artikelbild.
-3. **Die Verkabelung** in der Show-Karte, plus Ein-/Ausblenden beim Zustandswechsel.
+- **Der Countdown darf nicht je Karte ticken.** Sechzig Karten wären sechzig Uhren für dieselbe
+  Sekunde. Die Startseite hat **einen** Takt, jede Karte rechnet ihre Restzeit selbst aus — und der
+  Takt steht still, solange nirgends eine Auktion läuft.
+- **In Zeile 1 passen auf einer halbbreiten Karte knapp zwanzig Zeichen.** „Warten auf nächsten
+  Artikel" aus dem Entwurf stand im Simulator als „Warten auf nächst…" da. Daher „Gleich der
+  Nächste".
+- **Das Artikelbild hängt weit genug über die Oberkante**, dass es nur die kurze Zeile darüber
+  berührt. Hing es tiefer, musste der Artikelname ihm ausweichen — und aus „Gucci Bloom 50 ml"
+  wurde „Gucci Bloom 5…".
+- **Das Frauen-Only-Zeichen saß unten links**, wo jetzt die Vorschau liegt. Es steht jetzt oben
+  neben der Live-Pille, in einer Reihe, die auf schmalen Geräten umbricht statt sich zu überlappen.
+- **`pointerEvents="none"`** auf dem Widget: reine Anzeige, der Tipp gehört der Karte darunter.
 
 #### ⚠️ Die Falle: Kontrast über beliebigen Bildern
 
 Das Widget liegt auf einem **Bild**, und Bilder sind mal hell, mal dunkel. Berkats Design-Gesetz
 kennt bewusst nur zwei feste Flächen (`ui` hell, `stage` dunkel), genau um diesen Fall
-auszuschließen — ein Overlay über fremdem Bildinhalt ist die Ausnahme.
+auszuschließen — Text auf fremdem Bildinhalt ist die einzige Ausnahme in der ganzen App.
 
-Whatnot löst es mit einer **milchigen, fast undurchsichtigen** Fläche, nicht mit zartem Glas. Wer
-hier auf dezente Transparenz setzt, bekommt genau den Fehler, der Serlo wiederholt erwischt hat:
-lesbar auf dem einen Bild, unsichtbar auf dem nächsten. Entweder deckend genug oder ein Verlauf
-darunter — und in beiden Fällen die Textfarbe fest wählen, nicht aus dem Theme.
+Gelöst wie bei Whatnot: eine **milchige, fast deckende** Fläche, nicht zartes Glas. Sie steht als
+`ui.overlay` in `theme/tokens.ts`, damit niemand sie beim nächsten Mal „dezenter" macht. Wer hier
+auf Transparenz setzt, bekommt genau den Fehler, der Serlo wiederholt erwischt hat: lesbar auf dem
+einen Bild, unsichtbar auf dem nächsten.
+
+Geprüft im Simulator über hellen und dunklen Bildern, alle drei Zustände; `tsc` sauber, Export
+3264 Module fehlerfrei.
+
+#### Was dabei auffiel und offen blieb
+
+Bei **ungerader** Anzahl Shows wird die letzte Karte auf volle Breite gezogen (`flex: 1` in einem
+Raster mit zwei Spalten). Das ist älter als die Vorschau, fällt mit ihr aber stärker auf. Fix ist
+derselbe wie in Serlos Shop (v1.26.3): ein Platzhalter-Eintrag am Ende der Liste.
 
 ### Website — bereits veröffentlicht
 
@@ -666,13 +692,16 @@ Konto. Ein zweites Gerät braucht es also nicht.
 ## 9. Benachrichtigungen an den Käufer (Stand 14.08.2026)
 
 Die Kette lief stumm in eine Richtung: Der Verkäufer erfuhr, dass bezahlt wurde, der Käufer erfuhr
-nichts. Zwei der drei Ereignisse sind jetzt gebaut.
+nichts. Alle drei Ereignisse sind gebaut.
 
 | Ereignis | Zeile entsteht | Text im Push | Zustellung ans Berkat-Gerät |
 |---|---|---|---|
-| Zuschlag (`auction_won`) | ✅ Trigger auf `live_auctions` | ✅ | ⏳ Berkat hat kein Push |
-| Versendet (`order_shipped`) | ✅ Trigger auf `product_orders` | ✅ (Typ gab es schon) | ⏳ dito |
-| Zahlungserinnerung | ❌ fehlt | Typ existiert bereits | ⏳ dito |
+| Zuschlag (`auction_won`) | ✅ Trigger auf `live_auctions` | ✅ | ✅ seit `20260814190000` |
+| Versendet (`order_shipped`) | ✅ Trigger auf `product_orders` | ✅ (Typ gab es schon) | ✅ dito |
+| Zahlungserinnerung | ✅ `remind_due_auction_carts()`, pg_cron (`20260814200000`) | ✅ (Typ gab es schon) | ✅ dito |
+
+Die Tabelle stand bis zum Nachziehen im Widerspruch zum Absatz am Ende dieses Abschnitts — die
+Zahlungserinnerung kam am selben Tag noch dazu, die Zeile blieb stehen.
 
 ### Warum Trigger und nicht die RPCs
 

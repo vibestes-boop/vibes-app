@@ -5,7 +5,7 @@
 // über place_live_bid, nie über einen direkten Insert.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from './supabase';
 import { subscribeToTable } from './realtime';
 
@@ -157,6 +157,147 @@ export function useLiveAuctions(sessionId: string | undefined) {
   const upcoming = auctions.filter((a) => a.status === 'scheduled');
 
   return { auctions, active, upcoming, isLoading: query.isLoading, error: query.error };
+}
+
+// ─── Live-Vorschau für die Startseite ────────────────────────────────────────
+/**
+ * Was in einer Show GERADE passiert — höchstens ein Artikel je Session.
+ *
+ * Ohne das ist die Startseite ein Raster aus Standbildern; damit sieht man
+ * ohne einen einzigen Tap, dass eine Uhr läuft und etwas weggeht.
+ */
+export type ShowPreview = {
+  id: string;
+  sessionId: string;
+  title: string;
+  imageUrl: string | null;
+  /** Nur diese drei — 'unsold' und 'cancelled' sind keine Nachricht. */
+  status: 'running' | 'scheduled' | 'sold';
+  /** laufend: aktuelles Gebot · verkauft: Endpreis · geplant: Startpreis */
+  priceCents: number;
+  endsAt: string | null;
+};
+
+const PREVIEW_COLUMNS =
+  'id, session_id, title, image_url, status, sort_index, start_price_cents, ' +
+  'current_bid_cents, ends_at, settled_at';
+
+/**
+ * So lange gilt ein Zuschlag als „gerade passiert".
+ *
+ * Das Fenster ist nicht nur Geschmack: Ohne es müsste die Abfrage die gesamte
+ * Verkaufsliste jeder Show mitziehen, um den letzten Zuschlag zu finden — bei
+ * 60 Shows mit je zwei Stunden Betrieb sind das tausende Zeilen für eine
+ * einzige Zeile Text. Mit Fenster ist das Ergebnis von Natur aus winzig.
+ */
+const JUST_SOLD_MS = 5 * 60_000;
+
+type PreviewRow = {
+  id: string;
+  session_id: string;
+  title: string;
+  image_url: string | null;
+  status: AuctionStatus;
+  sort_index: number;
+  start_price_cents: number;
+  current_bid_cents: number | null;
+  ends_at: string | null;
+  settled_at: string | null;
+};
+
+function toPreview(row: PreviewRow, status: ShowPreview['status']): ShowPreview {
+  return {
+    id: row.id,
+    sessionId: row.session_id,
+    title: row.title,
+    imageUrl: row.image_url,
+    status,
+    priceCents:
+      status === 'scheduled'
+        ? row.start_price_cents
+        : (row.current_bid_cents ?? row.start_price_cents),
+    endsAt: row.ends_at,
+  };
+}
+
+const EMPTY_PREVIEWS: Record<string, ShowPreview> = {};
+
+/**
+ * Der aktuelle Artikel je Show, für das Raster auf der Startseite.
+ *
+ * Vorrang je Session: **läuft** → sonst **nächster geplanter** (kleinster
+ * `sort_index`) → sonst **gerade zugeschlagen**. Findet sich nichts davon,
+ * steht in der Karte auch nichts — eine Show ohne Auktions-Betrieb soll
+ * keinen Puls vortäuschen.
+ *
+ * Zwei Abfragen statt einer, weil die beiden Hälften verschiedene Grenzen
+ * haben: offene Artikel sind je Show eine Handvoll, verkaufte wären ohne das
+ * Zeitfenster unbegrenzt.
+ */
+export function useShowPreviews(
+  sessionIds: string[],
+  serverNow: () => number,
+): Record<string, ShowPreview> {
+  const ids = useMemo(() => Array.from(new Set(sessionIds)).sort(), [sessionIds]);
+
+  const query = useQuery({
+    queryKey: ['berkat', 'show-previews', ids.join(',')],
+    enabled: ids.length > 0,
+    // Gleicher Takt wie die Show-Liste. Schneller wäre teurer ohne Gewinn: der
+    // Countdown zählt lokal herunter, vom Server kommt nur der Zustandswechsel.
+    refetchInterval: 20_000,
+    staleTime: 10_000,
+    // Ohne das steht das Raster kurz ohne Vorschau da, sobald eine Show dazu-
+    // kommt oder geht: Der Schlüssel enthält die Session-Liste, ein neuer
+    // Schlüssel ist für React Query eine neue, leere Abfrage.
+    placeholderData: keepPreviousData,
+    queryFn: async (): Promise<Record<string, ShowPreview>> => {
+      // Serverzeit, nicht Gerätezeit — ein falsch gestelltes Handy würde das
+      // Fenster sonst entweder leer lassen oder viel zu weit aufmachen.
+      const soldSince = new Date(serverNow() - JUST_SOLD_MS).toISOString();
+
+      const [openRes, soldRes] = await Promise.all([
+        supabase
+          .from('live_auctions')
+          .select(PREVIEW_COLUMNS)
+          .in('session_id', ids)
+          .in('status', ['running', 'scheduled'])
+          .order('sort_index', { ascending: true }),
+        supabase
+          .from('live_auctions')
+          .select(PREVIEW_COLUMNS)
+          .in('session_id', ids)
+          .eq('status', 'sold')
+          .gte('settled_at', soldSince)
+          .order('settled_at', { ascending: false }),
+      ]);
+      if (openRes.error) throw openRes.error;
+      if (soldRes.error) throw soldRes.error;
+
+      const open = (openRes.data ?? []) as unknown as PreviewRow[];
+      const sold = (soldRes.data ?? []) as unknown as PreviewRow[];
+
+      // Die Reihenfolge der drei Durchgänge IST der Vorrang: Was zuerst
+      // einträgt, bleibt stehen.
+      const map: Record<string, ShowPreview> = {};
+      for (const row of open) {
+        if (row.status === 'running' && !map[row.session_id]) {
+          map[row.session_id] = toPreview(row, 'running');
+        }
+      }
+      for (const row of open) {
+        if (row.status === 'scheduled' && !map[row.session_id]) {
+          map[row.session_id] = toPreview(row, 'scheduled');
+        }
+      }
+      for (const row of sold) {
+        if (!map[row.session_id]) map[row.session_id] = toPreview(row, 'sold');
+      }
+      return map;
+    },
+  });
+
+  return query.data ?? EMPTY_PREVIEWS;
 }
 
 // ─── Namen der Bieter ────────────────────────────────────────────────────────
