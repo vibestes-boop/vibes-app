@@ -3,11 +3,13 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Lock, Package } from 'lucide-react-native';
+import { Lock, Package, Truck } from 'lucide-react-native';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/session';
+import { buyerStatus, useMyOrders } from '../../lib/useMyOrders';
+import { trackingUrl } from '../../lib/useSellerOrders';
 import {
   formatCartWindow,
   formatEuro,
@@ -83,6 +85,7 @@ export default function AccountScreen() {
   const { serverNow } = useServerClock();
 
   const { data: carts = [], refetch: refetchCarts } = useMyCarts(myUserId);
+  const { data: orders = [], refetch: refetchOrders } = useMyOrders(myUserId);
 
   // Beim Öffnen des Reiters neu laden — nicht nur beim ersten Aufbauen.
   //
@@ -95,9 +98,13 @@ export default function AccountScreen() {
   useFocusEffect(
     useCallback(() => {
       void refetchCarts();
-    }, [refetchCarts]),
+      void refetchOrders();
+    }, [refetchCarts, refetchOrders]),
   );
-  const sellerNames = useUsernames(carts.map((c) => c.seller_id));
+  const sellerNames = useUsernames([
+    ...carts.map((c) => c.seller_id),
+    ...orders.map((o) => o.seller_id),
+  ]);
 
   const checkout = useCheckoutCart();
   const [payingId, setPayingId] = useState<string | null>(null);
@@ -193,6 +200,76 @@ export default function AccountScreen() {
         ))
       )}
 
+      {/* Was schon bezahlt ist. Steht bewusst UNTER den offenen Paketen —
+          eine wartende Zahlung ist dringender als eine erledigte. */}
+      {orders.length > 0 ? (
+        <>
+          <Text style={[styles.sectionLabel, { marginTop: space.lg }]}>Gekauft</Text>
+          {orders.map((order) => {
+            const link = trackingUrl(order.tracking_carrier, order.tracking_number);
+            return (
+              <View key={order.id} style={styles.card}>
+                <View style={styles.cartHead}>
+                  <Package size={17} color={ui.text} />
+                  <Text style={styles.cardTitle}>{sellerNames[order.seller_id] ?? '…'}</Text>
+                  <Text style={styles.cartTotal}>
+                    {Number(order.amount_eur).toFixed(2).replace('.', ',')} €
+                  </Text>
+                </View>
+
+                <Text style={styles.orderStatus}>{buyerStatus(order.status)}</Text>
+
+                {/* Die Bestellung trägt nur eine Zusammenfassung wie „3 Artikel
+                    aus der Live-Show". Was tatsächlich drin liegt, weiß nur der
+                    Sammelkorb — und genau das will man hier sehen. */}
+                {order.items.length > 0 ? (
+                  <View style={styles.orderItems}>
+                    {order.items.map((item, index) => (
+                      <Text key={`${order.id}-${index}`} numberOfLines={1} style={styles.orderItem}>
+                        · {item}
+                      </Text>
+                    ))}
+                  </View>
+                ) : order.title ? (
+                  <Text style={styles.cardBody}>{order.title}</Text>
+                ) : null}
+
+                {order.tracking_number ? (
+                  // Kennt `trackingUrl` den Zusteller nicht, gibt es keinen
+                  // Verfolgungs-Link. Dann steht die Nummer als schlichter Text
+                  // da statt als Knopf, der nichts tut — abtippen kann man sie
+                  // trotzdem.
+                  link ? (
+                    <Pressable
+                      style={styles.trackRow}
+                      onPress={() => void Linking.openURL(link)}
+                      accessibilityRole="button"
+                      accessibilityLabel="Sendung verfolgen"
+                    >
+                      <Truck size={15} color={ui.brand} />
+                      <Text style={styles.trackText}>
+                        {order.tracking_carrier ?? 'Sendung'} · {order.tracking_number}
+                      </Text>
+                    </Pressable>
+                  ) : (
+                    <View style={styles.trackRow}>
+                      <Truck size={15} color={ui.textMuted} />
+                      <Text style={styles.trackPlain}>
+                        {order.tracking_carrier ?? 'Sendung'} · {order.tracking_number}
+                      </Text>
+                    </View>
+                  )
+                ) : order.status === 'paid' ? (
+                  <Text style={styles.payHint}>
+                    Sobald der Verkäufer packt, steht die Sendungsnummer hier.
+                  </Text>
+                ) : null}
+              </View>
+            );
+          })}
+        </>
+      ) : null}
+
       {notice ? (
         <Pressable style={styles.notice} onPress={() => setNotice(null)}>
           <Text style={styles.noticeText}>{notice}</Text>
@@ -256,6 +333,19 @@ const styles = StyleSheet.create({
   cartHead: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   cardTitle: { flex: 1, fontSize: 16, fontWeight: '700', color: ui.text },
   cartTotal: { fontSize: 16, fontWeight: '700', color: ui.text },
+
+  orderStatus: { fontSize: 13, fontWeight: '600', color: ui.success },
+  orderItems: { gap: 2, marginTop: 2 },
+  orderItem: { fontSize: 13, color: ui.textMuted },
+  trackRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: space.xs,
+    paddingVertical: 6,
+  },
+  trackText: { fontSize: 13, fontWeight: '600', color: ui.brand },
+  trackPlain: { fontSize: 13, fontWeight: '600', color: ui.textMuted },
   cardBody: { fontSize: 13, color: ui.textMuted, lineHeight: 19 },
   payButton: {
     marginTop: space.sm,
