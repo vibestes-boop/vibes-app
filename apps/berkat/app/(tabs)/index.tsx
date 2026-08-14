@@ -5,8 +5,8 @@
 // man den Menschen, nicht das Bild.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter } from 'expo-router';
-import { useQuery } from '@tanstack/react-query';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   FlatList,
   Pressable,
@@ -75,6 +75,7 @@ function useLiveShows() {
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const queryClient = useQueryClient();
   // Abzeichen an der Glocke. Scheitert die Abfrage, liefert der Hook 0 — eine
   // fehlende Zahl darf die Startseite nicht mitreißen.
   const userId = useSession((st) => st.userId);
@@ -114,6 +115,23 @@ export default function HomeScreen() {
     const timer = setInterval(() => tick((n) => n + 1), 1000);
     return () => clearInterval(timer);
   }, [hasRunning]);
+
+  // Beim Zurückwechseln auf diesen Reiter sofort nachladen. Expo Router hält
+  // die Reiter im Speicher — ohne das stand die Startseite nach einem
+  // Auktionsstart im Studio noch bis zu 20 Sekunden auf „Beginnt bald", obwohl
+  // die Uhr längst lief. Beim allerersten Fokus wird übersprungen, sonst holt
+  // die Startseite ihre eigenen Abfragen direkt nach dem Start doppelt.
+  const firstFocus = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (firstFocus.current) {
+        firstFocus.current = false;
+        return;
+      }
+      void queryClient.invalidateQueries({ queryKey: ['berkat', 'shows'] });
+      void queryClient.invalidateQueries({ queryKey: ['berkat', 'show-previews'] });
+    }, [queryClient]),
+  );
 
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState(ALL);
