@@ -42,6 +42,12 @@ type LiveShow = {
 
 const ALL = 'Für dich';
 
+// Der Lückenfüller der letzten Reihe. `spacer` ist kein Zierrat, sondern das
+// Kennzeichen, an dem Karte und Platzhalter sicher auseinandergehalten werden.
+const SPACER_ID = '__spacer__';
+type Spacer = { id: typeof SPACER_ID; spacer: true };
+type GridItem = LiveShow | Spacer;
+
 function useLiveShows() {
   return useQuery({
     queryKey: ['berkat', 'shows'],
@@ -147,6 +153,16 @@ export default function HomeScreen() {
     });
   }, [shows, search, filter, profiles]);
 
+  // Zwei Spalten, jede Karte `flex: 1`: Bleibt in der letzten Reihe ein Platz
+  // frei, zieht sich die einzelne Karte über die volle Breite — samt Vorschau.
+  // Ein leerer Platzhalter besetzt die zweite Spalte und hält die Karte halb.
+  // Bei null Shows entsteht keiner, sonst stünde die Leer-Ansicht nie da.
+  const gridData = useMemo(
+    (): GridItem[] =>
+      visible.length % 2 === 1 ? [...visible, { id: SPACER_ID, spacer: true }] : visible,
+    [visible],
+  );
+
   return (
     <View style={[styles.screen, { paddingTop: insets.top }]}>
       <View style={styles.header}>
@@ -191,7 +207,7 @@ export default function HomeScreen() {
       </View>
 
       <FlatList
-        data={visible}
+        data={gridData}
         keyExtractor={(item) => item.id}
         refreshing={pulling}
         onRefresh={pullToRefresh}
@@ -219,6 +235,10 @@ export default function HomeScreen() {
           )
         }
         renderItem={({ item }) => {
+          // Der Platzhalter hält nur die Spalte offen: keine Karte, kein Bild,
+          // nichts zum Drücken.
+          if ('spacer' in item) return <View style={styles.spacer} />;
+
           const host = profiles[item.host_id];
           const preview = previews[item.id];
           const secondsLeft =
@@ -320,6 +340,7 @@ const styles = StyleSheet.create({
   railWrap: { paddingVertical: space.md },
 
   card: { flex: 1, marginBottom: space.lg },
+  spacer: { flex: 1 },
   sellerRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
   sellerName: { flex: 1, fontSize: 13, fontWeight: '600', color: ui.text },
   thumb: {
