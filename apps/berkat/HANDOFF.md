@@ -83,7 +83,7 @@ Diese Liste ist der wertvollste Teil des Dokuments.
 
 ### `supabase db push` ist verboten
 
-`supabase migration list` meldet **62 Migrationen als nicht eingespielt**, beginnend bei
+`supabase migration list` meldet **61 Migrationen als nicht eingespielt**, beginnend bei
 `20260614190000`. Das ist eine **Tracking-Lücke, kein fehlendes Schema** — die Tabellen existieren
 nachweislich in der Live-DB (gegen die REST-API geprüft). Das Tracking blieb bei
 `buy_product_wallet_lock` (`20260613120000`) stehen; alles danach wurde per SQL-Editor eingespielt.
@@ -341,12 +341,29 @@ Besitzer** — sonst wären Stellvertreter-Bieten und Gewinnspiel wertlos.
 
 ## 7. Offene Punkte außerhalb des Codes
 
-### Migrations-Tracking begradigen
+### Migrations-Tracking begradigen — vorbereitet, wartet auf einen Klick
 
-62 Migrationen gelten als nicht eingespielt, obwohl das Schema aktuell ist. Solange das so bleibt,
-ist jeder künftige `db push` eine Falle. Eine vorbereitete Aufgabe dafür existiert als Chip in der
-Sitzung. Vorgehen: jede der 62 gegen die Live-DB prüfen, vorhandene per `migration repair` markieren,
-fehlende einzeln nachziehen.
+Es sind **61** (nicht 62), von `20260614190000` bis `20260716130000`. Zu jeder gibt es eine Datei.
+
+Vorbereitet liegt alles unter `supabase/_ops/`: eine **Nur-Lese-Abfrage** für den SQL-Editor, die
+75 Funktionen, 24 Policies, 21 Indizes, 2 Speicher-Eimer, 6 gelöschte Indizes, 3 gelöschte
+Funktionen und eine Spalten-Nullbarkeit in den Systemtabellen nachschlägt — plus die Anleitung.
+Leeres Ergebnis heißt: gefahrlos markieren. Zeilen heißen: genau die fehlen.
+
+**Warum nicht einfach markieren:** Eine Migration als eingespielt zu markieren, die es nicht ist,
+macht die Lücke für immer unsichtbar. Bei `drop_debug_coin_backdoors` hieße das, die Hintertüren
+lägen weiter in der Produktivdatenbank.
+
+19 der 61 sind bereits belegt: Ihre Tabellen und Spalten wurden am 14.08. über die REST-Schnittstelle
+geprüft, alle vorhanden. Die Abfrage deckt weitere 38 ab. Vier lassen sich prinzipiell nicht über
+die bloße Existenz eines Objekts prüfen — sie sind in der README benannt.
+
+### Der Schema-Abzug ist zwei Monate alt
+
+`supabase/schema_live.sql` stammt vom **14.06.2026** und ist damit älter als fast alle 61
+Migrationen — obwohl CLAUDE.md ihn als Quelle der Wahrheit führt. Wer dort eine Spalte nachschlägt,
+prüft gegen einen veralteten Stand. Erneuern geht mit `supabase db dump`, das braucht aber Docker
+Desktop (auf diesem Rechner nicht installiert).
 
 ### Berkat pushen
 
