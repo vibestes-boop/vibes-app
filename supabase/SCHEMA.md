@@ -109,7 +109,7 @@
 - `variant text`
 - `assigned_at timestamp`
 
-### auction_carts (7)
+### auction_carts (8)
 - `id uuid`
 - `buyer_id uuid`
 - `seller_id uuid`
@@ -117,6 +117,7 @@
 - `opened_at timestamp`
 - `closes_at timestamp`
 - `created_at timestamp`
+- `reminded_at timestamp`
 
 ### bookmarks (4)
 - `id uuid`

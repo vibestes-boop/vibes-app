@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
--- \restrict ihxku2YQdN3b32ZqUfrFdt3YQEryNMZlxsa7gVJdLd3lpzBd5xtTVMWxGy2CxXu
+-- \restrict SUgJW9ww1wajlJ82IkMQaXGj4KmySARNNt8El9ellPPQahYfwGD2aC4u25vv6cV
 
 -- Dumped from database version 17.6
 -- Dumped by pg_dump version 18.4 (Homebrew)
@@ -4773,8 +4773,16 @@ BEGIN
       v_title := '💶 Zeit zu bezahlen';
       v_body  := COALESCE(NEW.comment_text, 'Deine Vorbestellung ist da — jetzt bezahlen 🌸');
     WHEN 'order_payment_reminder' THEN
-      v_title := '🌸 Dein Parfüm wartet';
-      v_body  := COALESCE(NEW.comment_text, 'Kurz bezahlen — dann geht deine Vorbestellung raus 🌸');
+      -- Zwei Marken, ein Typ. Serlo erinnert an eine Vorbestellung, Berkat an
+      -- einen Sammelkorb, dessen Fenster zuläuft. „Dein Parfüm wartet" wäre in
+      -- einer Auktions-App schlicht falsch.
+      IF COALESCE(NEW.app, 'serlo') = 'berkat' THEN
+        v_title := '⏳ Dein Sammelkorb wartet';
+        v_body  := COALESCE(NEW.comment_text, 'Kurz bezahlen — sonst schließt das Fenster');
+      ELSE
+        v_title := '🌸 Dein Parfüm wartet';
+        v_body  := COALESCE(NEW.comment_text, 'Kurz bezahlen — dann geht deine Vorbestellung raus 🌸');
+      END IF;
     WHEN 'order_paid' THEN
       v_title := '💶 Bestellung bezahlt';
       v_body  := v_actor || ' hat bezahlt — bitte versenden 📦';
@@ -10007,6 +10015,73 @@ $$;
 ALTER FUNCTION "public"."reject_women_only"("p_user" "uuid", "p_note" "text") OWNER TO "postgres";
 
 --
+-- Name: remind_due_auction_carts(); Type: FUNCTION; Schema: public; Owner: postgres
+--
+
+CREATE OR REPLACE FUNCTION "public"."remind_due_auction_carts"() RETURNS integer
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO 'public', 'pg_temp'
+    AS $$
+DECLARE
+  c       record;
+  v_cents bigint;
+  v_items int;
+  v_hours int;
+  v_sent  int := 0;
+BEGIN
+  FOR c IN
+    SELECT id, buyer_id, seller_id, closes_at
+      FROM public.auction_carts
+     -- Beides sind unbezahlte Zustände mit Ware. 'checkout_pending' heißt: Der
+     -- Käufer hat „Bezahlen" gedrückt und es nicht zu Ende gebracht — genau der,
+     -- den man erinnern will.
+     WHERE status IN ('open', 'checkout_pending')
+       AND reminded_at IS NULL
+       -- Nicht mehr erinnern, wenn das Fenster ohnehin schon zu ist.
+       AND closes_at > now()
+       AND closes_at <= now() + interval '4 hours'
+     ORDER BY closes_at
+     -- Zwei überlappende Läufe dürfen denselben Korb nicht doppelt anfassen.
+     FOR UPDATE SKIP LOCKED
+  LOOP
+    SELECT COALESCE(SUM(current_bid_cents), 0), COUNT(*)
+      INTO v_cents, v_items
+      FROM public.live_auctions
+     WHERE cart_id = c.id AND status = 'sold';
+
+    -- Leerer Korb: nichts zu bezahlen, also nichts zu erinnern. Trotzdem
+    -- markieren, damit ihn nicht jeder weitere Lauf erneut aufgreift.
+    IF v_items = 0 OR v_cents <= 0 THEN
+      UPDATE public.auction_carts SET reminded_at = now() WHERE id = c.id;
+      CONTINUE;
+    END IF;
+
+    v_hours := GREATEST(1, FLOOR(EXTRACT(EPOCH FROM (c.closes_at - now())) / 3600)::int);
+
+    INSERT INTO public.notifications
+      (recipient_id, sender_id, type, comment_text, app)
+    VALUES (
+      c.buyer_id,
+      c.seller_id,
+      'order_payment_reminder',
+      -- Cent-Arithmetik in Integer, kein Fließkomma.
+      format('%s Artikel · %s,%s € — noch %s h',
+             v_items, v_cents / 100, lpad((v_cents % 100)::text, 2, '0'), v_hours),
+      'berkat'
+    );
+
+    UPDATE public.auction_carts SET reminded_at = now() WHERE id = c.id;
+    v_sent := v_sent + 1;
+  END LOOP;
+
+  RETURN v_sent;
+END;
+$$;
+
+
+ALTER FUNCTION "public"."remind_due_auction_carts"() OWNER TO "postgres";
+
+--
 -- Name: report_order_dispute("uuid", "text", "text"); Type: FUNCTION; Schema: public; Owner: postgres
 --
 
@@ -12758,6 +12833,7 @@ CREATE TABLE IF NOT EXISTS "public"."auction_carts" (
     "opened_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "closes_at" timestamp with time zone DEFAULT ("now"() + '24:00:00'::interval) NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "reminded_at" timestamp with time zone,
     CONSTRAINT "auction_carts_status_check" CHECK (("status" = ANY (ARRAY['open'::"text", 'checkout_pending'::"text", 'checked_out'::"text", 'expired'::"text", 'cancelled'::"text"])))
 );
 
@@ -15892,6 +15968,13 @@ CREATE INDEX "idx_algo_experiments_active" ON "public"."algo_experiments" USING 
 --
 
 CREATE INDEX "idx_algo_user_variants_lookup" ON "public"."algo_user_variants" USING "btree" ("user_id", "experiment_name");
+
+
+--
+-- Name: idx_auction_carts_reminder_due; Type: INDEX; Schema: public; Owner: postgres
+--
+
+CREATE INDEX "idx_auction_carts_reminder_due" ON "public"."auction_carts" USING "btree" ("closes_at") WHERE (("reminded_at" IS NULL) AND ("status" = ANY (ARRAY['open'::"text", 'checkout_pending'::"text"])));
 
 
 --
@@ -21384,5 +21467,5 @@ CREATE POLICY "woz_requests_select_own" ON "public"."women_only_requests" FOR SE
 -- PostgreSQL database dump complete
 --
 
--- \unrestrict ihxku2YQdN3b32ZqUfrFdt3YQEryNMZlxsa7gVJdLd3lpzBd5xtTVMWxGy2CxXu
+-- \unrestrict SUgJW9ww1wajlJ82IkMQaXGj4KmySARNNt8El9ellPPQahYfwGD2aC4u25vv6cV
 
