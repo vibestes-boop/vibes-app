@@ -35,8 +35,8 @@ Was Berkat bewusst anders macht als Whatnot:
 | Bundle-IDs | iOS `com.berkat.app` · Android `app.berkat.market` |
 | EAS-Projekt | `@zaurhat/berkat` (`fb4e0381-264d-4cfd-8c3c-691987346915`) |
 | Backend | dieselbe Supabase-Instanz wie Serlo (`llymwqfgujwkoxzqxrlm`) |
-| Migrationen | 9 Stück, alle eingespielt und seit 14.08.2026 auch alle sauber verzeichnet |
-| Git | Branch `berkat`, seit 14.08.2026 **gepusht** (Basis `origin/main`, nicht `origin/master`) |
+| Migrationen | 11 Stück, alle eingespielt — Abschnitt 5 |
+| Git | Branch `berkat`, Basis `origin/main` (nicht `origin/master`). ⚠️ Die Arbeit vom 14.08. abends ist **noch nicht gepusht** |
 
 ### Starten
 
@@ -114,6 +114,44 @@ Der Weg für neue Migrationen bleibt trotzdem derselbe, solange am SQL-Editor ge
 Wer stattdessen wieder auf `db push` umstellen will: Das geht ab jetzt sauber, aber **erst prüfen,
 ob die Datei wirklich noch nicht gelaufen ist** — nach zwei Monaten Editor-Betrieb ist die
 Gewohnheit „ich mach das schnell im Browser" die eigentliche Gefahr, nicht das Werkzeug.
+
+### Eine neue Spalte auf `live_sessions` ist für die Apps unsichtbar
+
+Am 14.08.2026 zugeschlagen, direkt nach dem Einspielen der App-Trennung: Die frisch angelegte
+Spalte `app` war für `anon` und `authenticated` **nicht lesbar**. Genau der Aufruf, den der neue
+Code macht, antwortete mit `42501 permission denied for table live_sessions` — während derselbe
+Aufruf ohne den Filter sauber zurückkam.
+
+Ein Filter zählt dabei als Lesezugriff: Postgres verlangt SELECT auf jede Spalte in der
+WHERE-Bedingung, auch wenn sie im Ergebnis gar nicht vorkommt. Ohne den Nachtrag wäre die
+Live-Liste in **allen drei** Oberflächen leer geblieben.
+
+Ursache ist eine Nebenwirkung, die man ihr nicht ansieht. `20260425170000` nahm den OBS-Stream-
+Schlüssel gezielt aus der Sicht der Clients:
+
+```sql
+REVOKE SELECT (ingress_stream_key) ON public.live_sessions FROM authenticated, anon;
+```
+
+Das war richtig. Aber Postgres kann ein Recht nicht spaltenweise abziehen — es löst das
+Tabellen-Recht auf und schreibt Einzelrechte für jede **damals vorhandene** Spalte. Ab da ist die
+Liste fest, und jede später hinzugefügte Spalte steht in keiner dieser Zusagen.
+
+Betroffen sind zwei Tabellen: `live_sessions` und `user_whip_ingresses` (`stream_key`,
+`20260426000000`). Wer einer davon eine Spalte hinzufügt, hängt an dieselbe Migration:
+
+```sql
+GRANT SELECT (<spalte>) ON <tabelle> TO anon, authenticated;
+```
+
+**Nie** das Tabellen-Recht wiederherstellen — das gäbe die geheime Spalte mit frei. Steht auch als
+Regel 11 in der `CLAUDE.md` des Hauptprojekts.
+
+### Fast Refresh verträgt keine neuen Hooks
+
+Wer einer laufenden Komponente einen Hook hinzufügt, bekommt einen **weißen Bildschirm** — React
+kann die geänderte Hook-Reihenfolge nicht auf den bestehenden Zustand abbilden. Das ist kein Fehler
+im Code: App komplett schließen und neu öffnen, dann läuft es. Erst danach lohnt die Fehlersuche.
 
 ### LiveKit läuft nicht in Expo Go
 
@@ -328,8 +366,9 @@ er zählt also Wellen, nicht Finger. Die lebendige Zahl im Raum ist die lokale.
 
 ## 5. Datenbank
 
-Neun Migrationen, **alle eingespielt und seit 14.08.2026 auch alle verzeichnet** — die beiden
-zuletzt offenen Tracking-Einträge (`20260814140000`, `20260814150000`) sind repariert.
+Elf Migrationen, **alle eingespielt**. Das Tracking war am 14.08.2026 vollständig begradigt; die
+beiden letzten (`20260814280000`, `20260814290000`) sind über den SQL-Editor gelaufen und brauchen
+noch ihr `supabase migration repair --status applied <version>`, falls das nicht schon geschehen ist.
 
 | Datei | Inhalt |
 |---|---|
@@ -342,6 +381,8 @@ zuletzt offenen Tracking-Einträge (`20260814140000`, `20260814150000`) sind rep
 | `20260814130000_berkat_edit_auction.sql` | `update_live_auction` |
 | `20260814140000_restore_profile_on_signup.sql` | **Serlo-weit:** Trigger `on_auth_user_created` wiederhergestellt |
 | `20260814150000_berkat_cart_freeze_on_checkout.sql` | Korb-Zustand `checkout_pending`, `checkout_auction_cart` neu |
+| `20260814280000_live_sessions_app_routing.sql` | **Serlo-weit:** `live_sessions.app` + Backfill über `room_name`, Index, `get_public_profile_web` gefiltert |
+| `20260814290000_grant_select_live_sessions_app.sql` | `GRANT SELECT (app)` — ohne das ist die neue Spalte für die Clients unsichtbar, siehe Abschnitt 3 |
 
 Vier davon kamen am 14.08. dazu, drei schlossen echte Löcher:
 
@@ -402,6 +443,9 @@ beim Käufer sichtbar.
 
 ### Was fehlt
 
+0. **Die App-Trennung ist nur halb ausgerollt** — DB und Code stehen, Serlo und Web haben sie noch
+   nicht. Bis dahin steht jede Berkat-Show weiter in Serlos Live-Bereich. Siehe Abschnitt 8; das
+   gehört vor allem anderen zu Ende gebracht.
 1. **Benachrichtigungen an den Käufer — eigene Liste in Berkat fehlt.** Zuschlag, Versand und
    Zahlungserinnerung entstehen serverseitig und kommen auf dem Gerät an; wer einen Push
    wegwischt, findet ihn aber nirgends wieder. Details in Abschnitt 9.
@@ -510,6 +554,10 @@ still). `.env` ist über `apps/berkat/.gitignore` ausgeschlossen und liegt nicht
 Bots binnen Sekunden durchsucht. Vor jedem weiteren Push gilt deshalb: keine Geheimnisse, und keine
 Datei, die das Rechte-Modell der Live-DB beschreibt.
 
+⚠️ **Stand 14.08.2026 abends liegt die Arbeit wieder nur lokal** — App-Trennung, Live-Vorschau und
+die beiden Fixes sind committet, aber nicht gepusht. Der fine-grained PAT in `.env.local` ist seit
+dem 26.07.2026 abgelaufen (`401`); der Weg ist stattdessen `gh auth token -u vibestes-boop`.
+
 ### Stripe-Modus
 
 Am 14.08. beim echten Durchlauf beantwortet: Die Zahlung lief mit der Testkarte
@@ -542,24 +590,69 @@ Der Code ist so weit, dass sich das testen lässt. Gelingt es nicht, spart die A
 
 ## 8. Nächster sinnvoller Schritt
 
-### Berkat-Shows tauchen in Serlo auf — das ist der nächste Bau
+### ⚠️ Zuerst: die App-Trennung fertig ausrollen
 
-Gefunden am 14.08.2026 beim Vorbereiten eines Testlaufs, **ungeprüft in Produktion**: Eine
-Berkat-Show ist eine ganz normale Zeile in `live_sessions`. Serlos Liste der laufenden Streams
-(`useActiveLiveSessions` in `lib/useLiveSession.ts`) holt **alle** aktiven Sessions der letzten
-acht Stunden, ohne jede Unterscheidung nach App — und diese Liste hängt in Serlos Startseite, im
-Gilden-Reiter, im Nachrichten-Reiter und im Zuschauer-Bildschirm.
+Gebaut am 14.08.2026, **in der Datenbank drin, im Code drin, aber noch nicht bei den Nutzern.**
+Ein halb ausgerollter Stand ist der schlechteste — das gehört als Erstes zu Ende gebracht.
 
-Wer in Berkat eine Show aufmacht, erscheint damit für **echte Serlo-Nutzer** im Live-Bereich — in
-einer App ohne Gebots-Oberfläche. Sie sehen jemanden eine Auktion moderieren und können nicht
-mitmachen.
+**Das Problem:** Eine Berkat-Show war eine ganz normale Zeile in `live_sessions`, und Serlos Listen
+holten alle aktiven Sessions ohne Unterscheidung. Wer in Berkat eine Show aufmachte, erschien für
+echte Serlo-Nutzer im Live-Bereich — in einer App ohne Gebots-Oberfläche. Umgekehrt listete Berkats
+Startseite Serlo-Lives ohne Artikel.
 
-Das blockiert nebenbei jeden weiteren Durchlauf: Solange es offen ist, ist jeder Testlauf für
-Fremde sichtbar. Die Live-Vorschau unten wurde deshalb **ohne** Testshow geprüft.
+**Die Lösung:** Spalte `live_sessions.app` (Default `'serlo'`), Filter an allen sieben
+Listen-Abfragen beider Apps und im Web. Drei Stellen gingen über bloße Sichtbarkeit hinaus:
 
-Der Handgriff ist derselbe wie beim Push am 14.08.: `push_tokens.app` und `notifications.app` gibt
-es längst, der Session fehlt genau diese Spalte. `live_sessions.app` mit Default `'serlo'` ist
-rückwirkend richtig ohne Nachtragen; dazu ein Filter in beiden Listen.
+- **Ein Backfill war nötig** — anders als beim Push-Routing, wo „rückwirkend korrekt ohne Backfill"
+  stimmte, weil Berkat nie einen Token registriert hatte. Sessions hatte Berkat sehr wohl schon
+  angelegt. Zuordnung über das `room_name`-Präfix: 20 Berkat-Zeilen, 197 `vibes-…`, 9 `obs-…`.
+- **Der Filter musste in die RPC.** `get_public_profile_web` rechnet `is_live` im Funktionsrumpf,
+  ein `.eq()` im Client erreicht das nicht — sonst erzeugte eine Berkat-Show weiter den LIVE-Ring
+  auf dem Serlo-Web-Profil.
+- **Der Schreibpfad war die eigentliche Gefahr.** Serlos „Live starten" beendet vorher alle aktiven
+  Sessions des Hosts. Ohne `app`-Filter also auch eine laufende Berkat-Auktion — lautlos, ohne
+  Fehler. Steckte an zwei Stellen (`lib/useLiveSession.ts`, `apps/web/app/actions/live-host.ts`).
+
+**Stand des Ausrollens:**
+
+| Schritt | Zustand |
+|---|---|
+| Migrationen `20260814280000` + `20260814290000` | ✅ eingespielt, Backfill gegengeprüft (0 verfehlt, 0 falsch markiert) |
+| Berkat | ✅ läuft — kein Store, kein OTA-Kanal, ein Neuladen aus Metro genügt |
+| Serlo (OTA) | ⏳ **offen** — bis dahin steht jede Berkat-Show weiter in Serlos Live-Bereich |
+| `apps/web` (Vercel) | ⏳ offen, hängt am Push nach `main` |
+| Push nach `origin/main` | ⏳ offen — die Arbeit liegt nur lokal |
+
+Berkat muss vor Serlo dran sein: Solange ein alter Berkat-Stand läuft, legt er Shows **ohne** `app`
+an, die per Default auf `'serlo'` fallen und trotz Filter wieder auftauchen. Das ist auch der Grund,
+warum ein Testlauf aus einer Metro-losen Berkat-Version (Android-APK) verboten ist, bis die neu
+gebaut wurde.
+
+Der Serlo-OTA ist klein und geprüft: drei Commits, neun Dateien, 51 Zeilen — die Filter, zwei neue
+Übersetzungstexte, eine erweiterte Typ-Union, ein Kommentarblock. `version` steht auf 1.31.0, die
+Runtime stimmt also. Der letzte Release ging zusätzlich an Runtime 1.30.0; wer die Nutzer dort
+erreichen will, setzt `version` kurz auf `1.30.0`, veröffentlicht nochmal und stellt zurück.
+
+```bash
+EAS_BUILD=1 npx eas update --branch production --message "…" --non-interactive
+```
+
+Die `app.json`-Änderungen (Android-Berechtigungen, `versionCode` 48) gehen **nicht** per OTA raus —
+die warten auf einen nativen Build und gehören zum Play-Store-Test, nicht hierher.
+
+### Und danach
+
+In dieser Reihenfolge, weil jeder Punkt den nächsten billiger macht:
+
+1. **Die zwei offenen Prüfungen an der Vorschau** — der Zustand „gerade zugeschlagen" und der
+   Kontrast über einem echten Foto. Beides fällt im nächsten Zwei-Konten-Durchlauf nebenbei ab,
+   wenn man daran denkt, ein **helles** Cover zu setzen und ein Gebot abzugeben.
+2. **Eine Benachrichtigungsliste in Berkat.** Der wunde Punkt aus Abschnitt 6: Wer einen Push
+   wegwischt, findet ihn nirgends wieder. Die Daten liegen längst in `notifications` mit
+   `app = 'berkat'`, es fehlt nur die Oberfläche.
+3. **Und dann das, was hier seit Anfang an als das eigentliche Risiko steht:** fünf Verkäufer, acht
+   Wochen, wöchentlich zwei Stunden. Der Code ist so weit, dass sich das testen lässt. Weitere
+   Funktionen zu bauen, bevor diese Frage beantwortet ist, ist die teurere Wette.
 
 ### Live-Vorschau auf den Show-Karten — gebaut am 14.08.2026
 
@@ -626,14 +719,37 @@ Gelöst wie bei Whatnot: eine **milchige, fast deckende** Fläche, nicht zartes 
 auf Transparenz setzt, bekommt genau den Fehler, der Serlo wiederholt erwischt hat: lesbar auf dem
 einen Bild, unsichtbar auf dem nächsten.
 
-Geprüft im Simulator über hellen und dunklen Bildern, alle drei Zustände; `tsc` sauber, Export
-3264 Module fehlerfrei.
+**Noch nicht über einem echten Foto gesehen.** Der Testlauf am 14.08. abends lief mit einer Show
+ohne Cover, das Widget lag also auf der Sandfläche statt auf Bildinhalt. Genau der Fall, vor dem
+dieser Abschnitt warnt, ist damit der einzige ungetestete. Beim nächsten Durchlauf ein Cover
+setzen — und zwar ein helles.
 
-#### Was dabei auffiel und offen blieb
+#### Am echten Datenstand geprüft (14.08.2026 abends)
 
-Bei **ungerader** Anzahl Shows wird die letzte Karte auf volle Breite gezogen (`flex: 1` in einem
-Raster mit zwei Spalten). Das ist älter als die Vorschau, fällt mit ihr aber stärker auf. Fix ist
-derselbe wie in Serlos Shop (v1.26.3): ein Platzhalter-Eintrag am Ende der Liste.
+Testlauf im Simulator, zwei der drei Zustände gesehen:
+
+- **`scheduled`** — „Als Nächstes … · Silberring · Beginnt bald … · 1 €"
+- **`running`** — „Läuft aktuell · Teekanne aus Kupfer · **00:43** · 1 €", sechs Sekunden später
+  `00:22`. Die Uhr tickt lokal, wie gebaut; beim Ablaufen wechselte sie auf „Zuschlag …".
+
+**`sold` blieb ungeprüft** — der Zustand braucht ein Gebot, und der Server lässt niemanden auf
+eigene Artikel bieten (`seller_cannot_bid`). Das geht nur im Zwei-Konten-Durchlauf.
+
+Ohne Artikelbild fällt das Bild am rechten Rand ersatzlos weg; die drei Zeilen stehen weiter
+korrekt. Kein Platzhalter, kein Loch.
+
+#### Was dabei auffiel und behoben wurde
+
+- **Ungerade Anzahl Shows** zog die letzte Karte auf volle Breite (`flex: 1` in einem Raster mit
+  zwei Spalten). Älter als die Vorschau, fiel mit ihr aber stärker auf. Behoben wie in Serlos Shop
+  (v1.26.3) mit einem Platzhalter-Eintrag — hier allerdings mit dem Merkmal `spacer: true` statt
+  eines Vergleichs auf der `id`: TypeScript reduziert `(LiveShow | { id: '__spacer__' })['id']` zu
+  `string`, das Literal geht verloren und die `id` taugt nicht mehr zur Unterscheidung.
+- **Die Startseite lud beim Reiter-Wechsel nicht nach.** Nach einem Auktionsstart im Studio stand
+  dort noch bis zu zwanzig Sekunden „Beginnt bald", obwohl die Uhr längst lief — die in Abschnitt 3
+  beschriebene Reiter-Falle. Der 20-Sekunden-Takt heilte es, aber eben erst nach zwanzig Sekunden.
+  `useFocusEffect` verwirft jetzt beide Abfragen beim Zurückwechseln; der **erste** Fokus wird
+  übersprungen, sonst lädt die Startseite direkt nach dem Start doppelt.
 
 ### Website — bereits veröffentlicht
 
@@ -686,6 +802,8 @@ Konto. Ein zweites Gerät braucht es also nicht.
 - **Ob ein Herz aus der Serlo-App in Berkat ankommt** — der Broadcast-Vertrag ist gebaut, aber nie
   über beide Apps gemessen
 - **Max-Gebot und Anti-Snipe** unter echtem Gegendruck (zwei Menschen, die gleichzeitig bieten)
+- **Der Vorschau-Zustand „gerade zugeschlagen"** und der **Kontrast über einem echten Foto** —
+  beides fällt im nächsten Zwei-Konten-Durchlauf ab, siehe Abschnitt 8
 
 ---
 
